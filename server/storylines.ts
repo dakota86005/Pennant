@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { db, tableExists } from './db.js';
 import { DATA_DIR } from './config.js';
-import { activeProvider, aiModel, getApiKey } from './settings.js';
+import { activeProvider, aiModel, providerCredential } from './settings.js';
 import { describeError, providerFor, type FallbackNotice } from './providers.js';
 import { computeProspects } from './org.js';
 import { computeContracts } from './contracts.js';
@@ -220,7 +220,7 @@ export function usableStoryline(s: Storyline): boolean {
 async function generateStorylines(orgId: number): Promise<StorylineCache> {
   const context = assembleContext(orgId);
   const provider = activeProvider();
-  const key = getApiKey(provider);
+  const key = providerCredential(provider);
   if (!key) throw Object.assign(new Error('missing-api-key'), { status: 401 });
 
   let notice: FallbackNotice | null = null;
@@ -348,7 +348,7 @@ storylineRoutes.get('/storylines/:orgId', (req, res) => {
 storylineRoutes.post('/storylines/:orgId', (req, res) => {
   if (!tableExists('players')) return res.status(400).json({ error: 'No data imported yet' });
   const orgId = Number(req.params.orgId);
-  if (!getApiKey()) {
+  if (!providerCredential()) {
     return res.status(401).json({
       error: 'No API key set. Open Settings and add your key — you can get one at console.claude.com.',
     });

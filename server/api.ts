@@ -6,7 +6,7 @@ import { detectSaves, resolveChosenFolder, searchLocations } from './paths.js';
 import { DATA_DIR, loadConfig, saveConfig } from './config.js';
 import { importCsvDir, type ImportProgress, type ImportResult } from './importer.js';
 import { clearPendingExport, pendingExport, startWatcher } from './watcher.js';
-import { getApiKey, loadSettings } from './settings.js';
+import { providerCredential, loadSettings } from './settings.js';
 import { orgRoutes } from './org.js';
 import { contractRoutes } from './contracts.js';
 import { freeAgentRoutes } from './freeagents.js';
@@ -91,7 +91,7 @@ export const importState: {
 function autoGenerate(): void {
   try {
     const settings = loadSettings();
-    if (!settings.autoGenerateAfterImport || !getApiKey()) return;
+    if (!settings.autoGenerateAfterImport || !providerCredential()) return;
     const orgId = settings.defaultOrgId ?? humanOrgId();
     if (!orgId) return;
     console.log('[import] starting storylines and briefing for org', orgId);

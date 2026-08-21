@@ -18,13 +18,20 @@ import { isUnusable, markUnusable } from './unusable.js';
  * upstream never learn which provider answered.
  */
 
-export type ProviderId = 'anthropic' | 'openai' | 'gemini' | 'opencode';
+export type ProviderId = 'anthropic' | 'openai' | 'gemini' | 'opencode' | 'ollama';
 
-export const PROVIDERS: Array<{ id: ProviderId; label: string; keyLabel: string; console: string }> = [
-  { id: 'anthropic', label: 'Anthropic (Claude)', keyLabel: 'Anthropic API key', console: 'console.claude.com' },
-  { id: 'openai', label: 'OpenAI', keyLabel: 'OpenAI API key', console: 'platform.openai.com' },
-  { id: 'gemini', label: 'Google Gemini', keyLabel: 'Gemini API key', console: 'aistudio.google.com' },
-  { id: 'opencode', label: 'OpenCode Zen', keyLabel: 'OpenCode Zen API key', console: 'opencode.ai/auth' },
+export const PROVIDERS: Array<{
+  id: ProviderId;
+  label: string;
+  keyLabel: string;
+  console: string;
+  requiresKey: boolean;
+}> = [
+  { id: 'anthropic', label: 'Anthropic (Claude)', keyLabel: 'Anthropic API key', console: 'console.claude.com', requiresKey: true },
+  { id: 'openai', label: 'OpenAI', keyLabel: 'OpenAI API key', console: 'platform.openai.com', requiresKey: true },
+  { id: 'gemini', label: 'Google Gemini', keyLabel: 'Gemini API key', console: 'aistudio.google.com', requiresKey: true },
+  { id: 'opencode', label: 'OpenCode Zen', keyLabel: 'OpenCode Zen API key', console: 'opencode.ai/auth', requiresKey: true },
+  { id: 'ollama', label: 'Ollama (local)', keyLabel: '', console: '', requiresKey: false },
 ];
 
 /**
@@ -39,6 +46,10 @@ export const PROVIDERS: Array<{ id: ProviderId; label: string; keyLabel: string;
  * out — no embeddings or speech models to trip over.
  */
 export const OPENCODE_BASE_URL = 'https://opencode.ai/zen/v1';
+const OLLAMA_HOST =
+  (process.env.OLLAMA_BASE_URL ?? 'http://127.0.0.1:11434').replace(/\/+$/, '');
+export const OLLAMA_BASE_URL =
+  OLLAMA_HOST.endsWith('/v1') ? OLLAMA_HOST : `${OLLAMA_HOST}/v1`;
 
 export const isProviderId = (v: unknown): v is ProviderId =>
   PROVIDERS.some((p) => p.id === v);
@@ -158,13 +169,15 @@ const anthropic: Provider = {
  */
 function openAiCompatible(
   baseURL: string | undefined,
-  keepModel: (id: string) => boolean
+  keepModel: (id: string) => boolean,
+  options: { sdkKey?: string; ollama?: boolean } = {}
 ): Provider {
-  const connect = (key: string) => new OpenAI({ apiKey: key, ...(baseURL ? { baseURL } : {}) });
+  const connect = (key: string) =>
+    new OpenAI({ apiKey: options.sdkKey ?? key, ...(baseURL ? { baseURL } : {}) });
   return {
   async complete({ key, model, system, messages, maxTokens, schema }) {
     const client = connect(key);
-    const isOllama = (baseURL ?? process.env.OPENAI_BASE_URL ?? '').includes('11434');
+    const isOllama = options.ollama === true;
     const isGptOss = /^gpt-oss(?::|$)/i.test(model);
     const response = await client.chat.completions.create({
       model,
@@ -224,6 +237,18 @@ const openAiChatModel = (id: string): boolean =>
   /^(gpt|o\d|chatgpt|gemma|qwen)/.test(id) && !/audio|realtime|image|tts|transcribe|search|embedding|moderation/.test(id);
 
 const openai: Provider = openAiCompatible(undefined, openAiChatModel);
+
+/**
+ * Ollama exposes an OpenAI-compatible API locally. The SDK insists on a
+ * non-empty apiKey even though Ollama does not authenticate local requests,
+ * so the adapter supplies an internal placeholder that is never stored as a
+ * user credential or shown in Settings.
+ */
+const ollama: Provider = openAiCompatible(
+  OLLAMA_BASE_URL,
+  () => true,
+  { sdkKey: 'ollama-local', ollama: true }
+);
 
 /**
  * A model on Zen that costs nothing, used only to prove a key works.
@@ -409,7 +434,7 @@ async function geminiComplete(
     return text;
 }
 
-const IMPLEMENTATIONS: Record<ProviderId, Provider> = { anthropic, openai, gemini, opencode };
+const IMPLEMENTATIONS: Record<ProviderId, Provider> = { anthropic, openai, gemini, opencode, ollama };
 
 export const providerFor = (id: ProviderId): Provider => IMPLEMENTATIONS[id];
 
@@ -425,6 +450,7 @@ export const DEFAULT_MODEL: Record<ProviderId, string> = {
   // Every prompt in this app was written and tuned against Claude, and the
   // gateway carries it, so that is where a Zen key starts
   opencode: 'claude-sonnet-5',
+  ollama: 'gpt-oss:20b',
 };
 
 // ── The tool loop, for providers that are not Anthropic ─────────────────
@@ -521,8 +547,12 @@ export function toOpenAiMessages(
   return out;
 }
 
-async function openAiToolLoop(o: ToolLoopOpts, baseURL?: string): Promise<ToolLoopResult> {
-  const client = new OpenAI({ apiKey: o.key, ...(baseURL ? { baseURL } : {}) });
+async function openAiToolLoop(
+  o: ToolLoopOpts,
+  baseURL?: string,
+  sdkKey?: string
+): Promise<ToolLoopResult> {
+  const client = new OpenAI({ apiKey: sdkKey ?? o.key, ...(baseURL ? { baseURL } : {}) });
   let answer = '';
 
   for (let turn = 0; turn < o.maxTurns; turn++) {
@@ -795,6 +825,7 @@ async function geminiLoop(o: ToolLoopOpts, model: string): Promise<ToolLoopResul
 export function toolLoopFor(provider: ProviderId): ((o: ToolLoopOpts) => Promise<ToolLoopResult>) | null {
   if (provider === 'openai') return (o) => openAiToolLoop(o);
   if (provider === 'opencode') return (o) => openAiToolLoop(o, OPENCODE_BASE_URL);
+  if (provider === 'ollama') return (o) => openAiToolLoop(o, OLLAMA_BASE_URL, 'ollama-local');
   if (provider === 'gemini') return geminiToolLoop;
   return null;
 }

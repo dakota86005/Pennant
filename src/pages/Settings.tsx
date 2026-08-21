@@ -6,7 +6,7 @@ import {
 import { FolderPicker } from '../FolderPicker';
 import { UpdatePanel } from '../Updater';
 
-export type ProviderId = 'anthropic' | 'openai' | 'gemini' | 'opencode';
+export type ProviderId = 'anthropic' | 'openai' | 'gemini' | 'opencode' | 'ollama';
 
 interface ApiKeyStatus {
   configured: boolean;
@@ -20,6 +20,7 @@ interface ProviderInfo {
   label: string;
   keyLabel: string;
   console: string;
+  requiresKey: boolean;
   /** What this provider would use right now, chosen or defaulted. */
   model: string;
 }
@@ -46,14 +47,14 @@ interface SettingsResponse {
 
 /** The placeholder for each provider's key, so the field looks like the real thing. */
 /** Named in the notice about an environment variable taking priority. */
-const ENV_VAR: Record<ProviderId, string> = {
+const ENV_VAR: Partial<Record<ProviderId, string>> = {
   anthropic: 'ANTHROPIC_API_KEY',
   openai: 'OPENAI_API_KEY',
   gemini: 'GEMINI_API_KEY',
   opencode: 'OPENCODE_API_KEY',
 };
 
-const KEY_PLACEHOLDER: Record<ProviderId, string> = {
+const KEY_PLACEHOLDER: Partial<Record<ProviderId, string>> = {
   anthropic: 'sk-ant-…',
   openai: 'sk-…',
   gemini: 'AIza…',
@@ -218,6 +219,8 @@ export function Settings({
   if (!data) return <p className="muted">Loading settings…</p>;
   const { settings, apiKey } = data;
   const current = providers?.providers.find((p) => p.id === settings.provider);
+  const requiresKey = current?.requiresKey !== false;
+  const isOllama = settings.provider === 'ollama';
   // Falls back to what the server says this provider would use — a provider
   // never chosen before has no entry here, and a blank select is not an answer
   const activeModel = settings.models?.[settings.provider] ?? current?.model ?? '';
@@ -227,18 +230,17 @@ export function Settings({
       <section className="settings-block">
         <h2>AI Features</h2>
         <p className="muted hint-line">
-          Storylines, the GM Briefing, and AI trade verdicts call an AI service with your own key.
-          Everything else in the app works without one. Generations cost a few cents each.
+          Storylines, the GM Briefing, and AI trade verdicts use the AI service selected below.
+          Cloud services use your own API key; Ollama runs models locally without one.
         </p>
 
         <div className="settings-row">
           <div>
             <strong>Service</strong>
             <div className="muted">
-              Anthropic is what the app was built against, and the staff chat uses features only it
-              has — tool calling with prompt caching. The others run the same prompts on your own key
-              if that is where your credit already is. OpenCode Zen is a gateway rather than a
-              laboratory: one key reaching Claude, GPT, Gemini and the rest, several of them free.
+              Anthropic is what the app was originally built against. OpenAI, Gemini, and
+              OpenCode Zen provide cloud alternatives. Ollama runs compatible models directly on
+              this computer, with no API key or per-generation charge.
             </div>
           </div>
           <select
@@ -254,58 +256,79 @@ export function Settings({
           </select>
         </div>
 
-        {apiKey.configured ? (
-          <div className="key-state">
-            <span className="badge promote">Key saved</span>
-            <span className="muted">
-              ending in <code>…{apiKey.hint}</code>
-              {apiKey.source === 'env'
-                ? ` — coming from a ${ENV_VAR[settings.provider]} environment variable, which takes priority over anything set here.`
-                : apiKey.encrypted
-                  ? ` — encrypted with ${apiKey.storageLabel}.`
-                  : ` — stored in ${apiKey.storageLabel}.`}
-            </span>
-            {apiKey.source !== 'env' && (
-              <button onClick={removeKey} disabled={keyBusy}>Remove key</button>
+        {requiresKey ? (
+          <>
+            {apiKey.configured ? (
+              <div className="key-state">
+                <span className="badge promote">Key saved</span>
+                <span className="muted">
+                  ending in <code>…{apiKey.hint}</code>
+                  {apiKey.source === 'env'
+                    ? ` — coming from a ${ENV_VAR[settings.provider] ?? 'provider'} environment variable, which takes priority over anything set here.`
+                    : apiKey.encrypted
+                      ? ` — encrypted with ${apiKey.storageLabel}.`
+                      : ` — stored in ${apiKey.storageLabel}.`}
+                </span>
+                {apiKey.source !== 'env' && (
+                  <button onClick={removeKey} disabled={keyBusy}>Remove key</button>
+                )}
+              </div>
+            ) : (
+              <p className="muted">
+                No {current?.keyLabel ?? 'API key'} set — the AI features will explain this instead
+                of failing.
+              </p>
             )}
-          </div>
-        ) : (
-          <p className="muted">
-            {/* keyLabel rather than the display label: "No Anthropic (Claude)
-                key set" reads badly, and "a Anthropic" worse still */}
-            No {current?.keyLabel ?? 'API key'} set — the AI features will explain this instead of
-            failing.
-          </p>
-        )}
 
-        {apiKey.source !== 'env' && (
-          <div className="folder-row">
-            <input
-              className="trade-search folder-input"
-              type="password"
-              placeholder={KEY_PLACEHOLDER[settings.provider]}
-              value={keyInput}
-              autoComplete="off"
-              onChange={(e) => setKeyInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && keyInput.trim() && void saveKey()}
-            />
-            <button className="btn-feature" onClick={saveKey} disabled={keyBusy || !keyInput.trim()}>
-              {keyBusy ? 'Verifying…' : apiKey.configured ? 'Replace key' : 'Verify and save'}
-            </button>
+            {apiKey.source !== 'env' && (
+              <div className="folder-row">
+                <input
+                  className="trade-search folder-input"
+                  type="password"
+                  placeholder={KEY_PLACEHOLDER[settings.provider] ?? ''}
+                  value={keyInput}
+                  autoComplete="off"
+                  onChange={(e) => setKeyInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && keyInput.trim() && void saveKey()}
+                />
+                <button
+                  className="btn-feature"
+                  onClick={saveKey}
+                  disabled={keyBusy || !keyInput.trim()}
+                >
+                  {keyBusy ? 'Verifying…' : apiKey.configured ? 'Replace key' : 'Verify and save'}
+                </button>
+              </div>
+            )}
+
+            {keyMessage && (
+              <div className={`banner ${keyMessage.ok ? 'success' : 'error'}`}>
+                {keyMessage.text}
+              </div>
+            )}
+
+            <p className="muted hint-line">
+              Get your {current?.keyLabel ?? 'API key'} at{' '}
+              <a href={`https://${current?.console ?? ''}`} target="_blank" rel="noreferrer">
+                {current?.console}
+              </a>. It is checked against the API before saving. Keys are kept per service, so
+              switching providers does not remove the others.
+            </p>
+          </>
+        ) : (
+          <div className="key-state">
+            <span className="badge promote">
+              {models === null ? 'Checking…' : models.live ? 'Connected' : 'Offline'}
+            </span>
+            <span className="muted">
+              {models === null
+                ? 'Checking the local Ollama server.'
+                : models.live
+                  ? `Ollama is running locally and reported ${models.models.length} installed model${models.models.length === 1 ? '' : 's'}.`
+                  : 'Could not reach Ollama. Start the Ollama service and refresh this page.'}
+            </span>
           </div>
         )}
-        {keyMessage && (
-          <div className={`banner ${keyMessage.ok ? 'success' : 'error'}`}>{keyMessage.text}</div>
-        )}
-        <p className="muted hint-line">
-          {/* Each service keeps its own key, so switching back does not mean
-              pasting it again */}
-          Get your {current?.keyLabel ?? 'API key'} at{' '}
-          <a href={`https://${current?.console ?? ''}`} target="_blank" rel="noreferrer">
-            {current?.console}
-          </a>. It is checked against the API before saving, so a typo is caught here rather than
-          later. Keys are kept per service — the others stay saved while you use this one.
-        </p>
 
         <div className="settings-row">
           <div>
@@ -316,7 +339,9 @@ export function Settings({
             </div>
             {models && !models.live && (
               <div className="muted">
-                Showing a short built-in list — add a key to read the current one from the API.
+                {isOllama
+                  ? 'Showing the built-in fallback because the local Ollama server could not be reached.'
+                  : 'Showing a short built-in list — add a key to read the current one from the API.'}
               </div>
             )}
             {models?.models.some((m) => m.id === activeModel && m.unusable) && (

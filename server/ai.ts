@@ -5,7 +5,7 @@ import { db, tableExists } from './db.js';
 import { jobStatus, startJob } from './jobs.js';
 import { orgInjuries } from './dashboard.js';
 import { DATA_DIR } from './config.js';
-import { activeProvider, aiModel, getApiKey } from './settings.js';
+import { activeProvider, aiModel, providerCredential } from './settings.js';
 import { PROVIDERS, describeError, providerFor, toolLoop, type FallbackNotice } from './providers.js';
 import { TOOLS, runTool } from './chat.js';
 import { computeProspects } from './org.js';
@@ -30,7 +30,7 @@ const noKeyMessage = (): string => {
  * words by callOpusThread, so it is passed along as it stands.
  */
 function aiErrorStatus(e: Error & { status?: number }): { status: number; message: string } {
-  if (!getApiKey()) return { status: 401, message: noKeyMessage() };
+  if (!providerCredential()) return { status: 401, message: noKeyMessage() };
   return { status: e.status === 401 ? 401 : 500, message: e.message };
 }
 
@@ -49,7 +49,7 @@ async function callOpusThread(
   onFallback?: (notice: FallbackNotice) => void
 ): Promise<string> {
   const provider = activeProvider();
-  const key = getApiKey(provider);
+  const key = providerCredential(provider);
   if (!key) throw Object.assign(new Error(noKeyMessage()), { status: 401 });
   /*
    * Translated at the call rather than at each route. The briefing runs as a
@@ -174,7 +174,7 @@ export function startBriefingJob(orgId: number): void {
 aiRoutes.post('/briefing/:orgId', (req, res) => {
   if (!tableExists('players')) return res.status(400).json({ error: 'No data imported yet' });
   const orgId = Number(req.params.orgId);
-  if (!getApiKey()) {
+  if (!providerCredential()) {
     return res.status(401).json({ error: 'No API key set. Open Settings and add your key.' });
   }
   const { started, status } = startJob('briefing', orgId, () => generateBriefing(orgId));
@@ -269,7 +269,7 @@ async function askTheDesk(
   onFallback: (n: FallbackNotice) => void
 ): Promise<string> {
   const provider = activeProvider();
-  const key = getApiKey(provider);
+  const key = providerCredential(provider);
   if (!key) throw Object.assign(new Error(noKeyMessage()), { status: 401 });
   try {
     const { answer } = await toolLoop(provider)({

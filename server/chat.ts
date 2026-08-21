@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { db, tableExists } from './db.js';
 import { DATA_DIR } from './config.js';
-import { activeProvider, aiModel, getApiKey } from './settings.js';
+import { activeProvider, aiModel, providerCredential } from './settings.js';
 import { describeError, stripProviderExtras, toolLoopFor, type ProviderId } from './providers.js';
 import { supportsAdaptiveThinking } from './models.js';
 import {
@@ -844,7 +844,7 @@ chatRoutes.post('/chat', async (req, res) => {
   if (!Array.isArray(history) || history.length === 0) {
     return res.status(400).json({ error: 'No message provided.' });
   }
-  const key = getApiKey();
+  const key = providerCredential();
   if (!key) return res.status(401).json({ error: NO_KEY_MESSAGE });
 
   const team = Number.isFinite(Number(orgId)) ? Number(orgId) : defaultOrgId();
@@ -979,7 +979,7 @@ chatRoutes.post('/chat', async (req, res) => {
     send('done', {});
   } catch (err) {
     const e = err as Error & { status?: number };
-    const message = getApiKey() ? describeError(activeProvider(), e) : NO_KEY_MESSAGE;
+    const message = providerCredential() ? describeError(activeProvider(), e) : NO_KEY_MESSAGE;
     send('error', { message });
   } finally {
     res.end();

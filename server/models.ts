@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import Anthropic from '@anthropic-ai/sdk';
-import { activeProvider, getApiKey } from './settings.js';
+import { activeProvider, getApiKey, providerCredential } from './settings.js';
 import { DEFAULT_MODEL, isProviderId, providerFor, type ProviderId } from './providers.js';
 import { unusableModels } from './unusable.js';
 
@@ -60,6 +60,15 @@ export const FALLBACK_MODELS: Record<ProviderId, ModelChoice[]> = {
     { id: 'claude-haiku-4-5', name: 'claude-haiku-4-5', contextTokens: null, adaptiveThinking: null },
     { id: 'deepseek-v4-flash-free', name: 'deepseek-v4-flash-free', contextTokens: null, adaptiveThinking: null },
   ],
+  ollama: [
+    {
+      id: 'gpt-oss:20b',
+      name: 'gpt-oss:20b',
+      contextTokens: null,
+      adaptiveThinking: null,
+    },
+  ],
+
 };
 
 export { DEFAULT_MODEL };
@@ -96,7 +105,10 @@ export async function listModels(
    * picker can show all sixty of them before you have an account, rather than
    * the short offline list. Every other provider needs the key first.
    */
-  const key = getApiKey(provider) ?? (provider === 'opencode' ? '' : null);
+  const key =
+    provider === 'opencode'
+      ? (getApiKey(provider) ?? '')
+      : providerCredential(provider);
   if (key === null) return { models: fallback, live: false };
 
   const fp = fingerprint(key);

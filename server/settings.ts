@@ -169,7 +169,7 @@ interface StoredKey {
 type KeyFile = Partial<Record<ProviderId, StoredKey>>;
 
 /** The environment variable each provider honours, as its own SDK names it. */
-const ENV_VAR: Record<ProviderId, string> = {
+const ENV_VAR: Partial<Record<ProviderId, string>> = {
   anthropic: 'ANTHROPIC_API_KEY',
   openai: 'OPENAI_API_KEY',
   gemini: 'GEMINI_API_KEY',
@@ -224,10 +224,25 @@ function decrypt(stored: StoredKey): string | null {
  * already using a .env file keeps working exactly as before.
  */
 export function getApiKey(provider: ProviderId = activeProvider()): string | null {
-  const fromEnv = process.env[ENV_VAR[provider]];
+  const envVar = ENV_VAR[provider];
+  const fromEnv = envVar ? process.env[envVar] : undefined;
   if (fromEnv) return fromEnv;
   const stored = readKeyFile()[provider];
   return stored ? decrypt(stored) : null;
+}
+
+/**
+ * Credential used when invoking a provider.
+ *
+ * Cloud providers return their real API key. Keyless local providers receive
+ * an internal sentinel so existing readiness checks can remain truthy without
+ * storing or exposing a fake API key.
+ */
+export function providerCredential(
+  provider: ProviderId = activeProvider()
+): string | null {
+  const info = PROVIDERS.find((p) => p.id === provider);
+  return info?.requiresKey === false ? 'local-provider' : getApiKey(provider);
 }
 
 export interface KeyStatus {
@@ -243,7 +258,8 @@ export function apiKeyStatus(provider: ProviderId = activeProvider()): KeyStatus
 }
 
 function statusOf(provider: ProviderId): KeyStatus {
-  const fromEnv = process.env[ENV_VAR[provider]];
+  const envVar = ENV_VAR[provider];
+  const fromEnv = envVar ? process.env[envVar] : undefined;
   if (fromEnv) {
     return { configured: true, source: 'env', hint: fromEnv.slice(-4), encrypted: false };
   }
@@ -338,7 +354,7 @@ settingsRoutes.post('/settings', (req, res) => {
 });
 
 /** Which key each provider expects, so a pasted one can be checked early. */
-const KEY_SHAPE: Record<ProviderId, { test: RegExp; hint: string }> = {
+const KEY_SHAPE: Partial<Record<ProviderId, { test: RegExp; hint: string }>> = {
   anthropic: { test: /^sk-ant-/, hint: 'Anthropic keys begin with "sk-ant-".' },
   openai: { test: /^sk-/, hint: 'OpenAI keys begin with "sk-".' },
   // Google's are a plain token with no prefix worth checking beyond length
@@ -359,8 +375,17 @@ settingsRoutes.post('/settings/api-key', async (req, res) => {
   if (!key?.trim()) return res.status(400).json({ ok: false, error: 'Enter a key first.' });
   const candidate = key.trim();
   const shape = KEY_SHAPE[provider];
+  if (!shape) {
+    return res.status(400).json({
+      ok: false,
+      error: `${provider} does not use an API key.`,
+    });
+  }
   if (!shape.test.test(candidate)) {
-    return res.status(400).json({ ok: false, error: `That does not look right — ${shape.hint}` });
+    return res.status(400).json({
+      ok: false,
+      error: `That does not look right — ${shape.hint}`,
+    });
   }
   try {
     // A models list is the cheapest call that proves the key works
