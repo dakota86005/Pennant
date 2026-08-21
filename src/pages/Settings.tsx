@@ -8,6 +8,40 @@ import { UpdatePanel } from '../Updater';
 
 export type ProviderId = 'anthropic' | 'openai' | 'gemini' | 'opencode' | 'ollama';
 
+export type AiFeatureId = 'briefing' | 'trade' | 'storylines' | 'chat';
+
+interface AiFeatureSettings {
+  provider?: ProviderId;
+  model?: string;
+}
+
+const AI_FEATURE_OPTIONS: Array<{
+  id: AiFeatureId;
+  label: string;
+  description: string;
+}> = [
+  {
+    id: 'briefing',
+    label: 'GM Briefing',
+    description: 'Weekly organizational analysis and recommendations.',
+  },
+  {
+    id: 'trade',
+    label: 'Trade Analysis',
+    description: 'Trade verdicts and follow-up discussion with the trade desk.',
+  },
+  {
+    id: 'storylines',
+    label: 'Storylines / Beat Writer',
+    description: 'Generated club stories from the current save.',
+  },
+  {
+    id: 'chat',
+    label: 'Staff Chat',
+    description: 'Peter and the staff-room tool-using chat.',
+  },
+];
+
 interface ApiKeyStatus {
   configured: boolean;
   source: 'env' | 'stored' | null;
@@ -36,6 +70,7 @@ export interface AppSettings {
   model: string;
   provider: ProviderId;
   models: Partial<Record<ProviderId, string>>;
+  aiFeatures: Partial<Record<AiFeatureId, AiFeatureSettings>>;
   roundRatingsToFive: boolean;
   autoGenerateAfterImport: boolean;
 }
@@ -86,6 +121,8 @@ export function Settings({
 }) {
   const [data, setData] = useState<SettingsResponse | null>(null);
   const [models, setModels] = useState<ModelsResponse | null>(null);
+  const [modelsByProvider, setModelsByProvider] =
+    useState<Partial<Record<ProviderId, ModelsResponse>>>({});
   const [providers, setProviders] = useState<ProvidersResponse | null>(null);
   const [keyInput, setKeyInput] = useState('');
   const [keyBusy, setKeyBusy] = useState(false);
@@ -98,10 +135,26 @@ export function Settings({
   const [progress, setProgress] = useState<ExportProgress | null>(null);
   const desktop = desktopBridge();
 
-  /** The list belongs to a provider, so switching must fetch the new one. */
+  /** The default provider's list, also cached for feature routing below. */
   const loadModels = (provider?: ProviderId) => {
     const q = provider ? `?provider=${provider}` : '';
-    apiGet<ModelsResponse>(`/api/models${q}`).then(setModels).catch(() => {});
+    apiGet<ModelsResponse>(`/api/models${q}`)
+      .then((result) => {
+        setModels(result);
+        if (provider) {
+          setModelsByProvider((current) => ({ ...current, [provider]: result }));
+        }
+      })
+      .catch(() => {});
+  };
+
+  /** Fetch a model list without changing the default provider's picker. */
+  const loadProviderModels = (provider: ProviderId) => {
+    apiGet<ModelsResponse>(`/api/models?provider=${provider}`)
+      .then((result) => {
+        setModelsByProvider((current) => ({ ...current, [provider]: result }));
+      })
+      .catch(() => {});
   };
 
   const loadProviders = () => {
@@ -112,6 +165,15 @@ export function Settings({
     apiGet<SettingsResponse>('/api/settings').then((r) => {
       setData(r);
       loadModels(r.settings.provider);
+
+      const featureProviders = new Set(
+        Object.values(r.settings.aiFeatures ?? {})
+          .map((feature) => feature?.provider)
+          .filter((provider): provider is ProviderId => Boolean(provider))
+      );
+      featureProviders.forEach((provider) => {
+        if (provider !== r.settings.provider) loadProviderModels(provider);
+      });
     }).catch(() => {});
     loadProviders();
   }, []);
@@ -182,6 +244,57 @@ export function Settings({
     apiGet<SettingsResponse>('/api/settings').then(setData).catch(() => {});
   };
 
+  const setFeatureProvider = async (
+    feature: AiFeatureId,
+    provider: ProviderId | null
+  ) => {
+    if (!data) return;
+
+    const aiFeatures = {
+      ...data.settings.aiFeatures,
+      [feature]: provider ? { provider } : {},
+    };
+
+    const next = { ...data.settings, aiFeatures };
+    setData({ ...data, settings: next });
+    onSettingsChanged(next);
+
+    await apiPost('/api/settings', {
+      aiFeatures: {
+        [feature]: provider ? { provider } : {},
+      },
+    });
+
+    if (provider) loadProviderModels(provider);
+  };
+
+  const setFeatureModel = async (
+    feature: AiFeatureId,
+    provider: ProviderId,
+    model: string | null
+  ) => {
+    if (!data) return;
+
+    const override: AiFeatureSettings = model
+      ? { provider, model }
+      : { provider };
+
+    const aiFeatures = {
+      ...data.settings.aiFeatures,
+      [feature]: override,
+    };
+
+    const next = { ...data.settings, aiFeatures };
+    setData({ ...data, settings: next });
+    onSettingsChanged(next);
+
+    await apiPost('/api/settings', {
+      aiFeatures: {
+        [feature]: override,
+      },
+    });
+  };
+
   const runExport = async () => {
     if (orgId === null) return;
     setExporting(true);
@@ -236,7 +349,7 @@ export function Settings({
 
         <div className="settings-row">
           <div>
-            <strong>Service</strong>
+            <strong>Default service</strong>
             <div className="muted">
               Anthropic is what the app was originally built against. OpenAI, Gemini, and
               OpenCode Zen provide cloud alternatives. Ollama runs compatible models directly on
@@ -332,10 +445,10 @@ export function Settings({
 
         <div className="settings-row">
           <div>
-            <strong>Model</strong>
+            <strong>Default model</strong>
             <div className="muted">
-              Used by Peter, Storylines, the GM Briefing, and trade verdicts. Larger models reason
-              better and cost more per generation; smaller ones are quicker and cheaper.
+              Used by any AI feature that does not have an override below. Larger cloud models
+              generally reason better and cost more; local models have no per-generation charge.
             </div>
             {models && !models.live && (
               <div className="muted">
@@ -372,6 +485,111 @@ export function Settings({
             ))}
           </select>
         </div>
+        <div style={{ marginTop: '1.5rem' }}>
+          <h3>Feature routing</h3>
+          <p className="muted hint-line">
+            Leave a feature on Default to use the service and model above. Choose a service here
+            only when this workload should use something different.
+          </p>
+
+          {AI_FEATURE_OPTIONS.map((feature) => {
+            const override = settings.aiFeatures?.[feature.id] ?? {};
+            const explicitProvider = override.provider;
+            const resolvedProvider = explicitProvider ?? settings.provider;
+            const providerInfo = providers?.providers.find((p) => p.id === resolvedProvider);
+            const catalogue =
+              modelsByProvider[resolvedProvider] ??
+              (resolvedProvider === settings.provider ? models : null);
+
+            const providerDefaultModel =
+              settings.models?.[resolvedProvider] ??
+              providerInfo?.model ??
+              '';
+
+            const resolvedModel = override.model ?? providerDefaultModel;
+            const needsKey = providerInfo?.requiresKey !== false;
+            const credentialReady =
+              !needsKey || providers?.keys[resolvedProvider]?.configured === true;
+
+            return (
+              <div className="settings-row" key={feature.id}>
+                <div>
+                  <strong>{feature.label}</strong>
+                  <div className="muted">{feature.description}</div>
+
+                  {!credentialReady && (
+                    <div className="muted">
+                      This provider does not currently have an API key configured.
+                    </div>
+                  )}
+
+                  {explicitProvider && catalogue && !catalogue.live && (
+                    <div className="muted">
+                      {resolvedProvider === 'ollama'
+                        ? 'Ollama is offline; showing the built-in fallback model list.'
+                        : 'Showing the built-in model list because the provider catalogue is unavailable.'}
+                    </div>
+                  )}
+                </div>
+
+                <div className="folder-row">
+                  <select
+                    value={explicitProvider ?? ''}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      void setFeatureProvider(
+                        feature.id,
+                        value ? (value as ProviderId) : null
+                      );
+                    }}
+                  >
+                    <option value="">
+                      Default — {current?.label ?? settings.provider}
+                    </option>
+                    {(providers?.providers ?? []).map((provider) => (
+                      <option key={provider.id} value={provider.id}>
+                        {provider.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  {explicitProvider ? (
+                    <select
+                      value={override.model ?? ''}
+                      onChange={(e) =>
+                        void setFeatureModel(
+                          feature.id,
+                          explicitProvider,
+                          e.target.value || null
+                        )
+                      }
+                    >
+                      <option value="">
+                        Provider default — {providerDefaultModel || 'automatic'}
+                      </option>
+
+                      {(catalogue?.models ?? []).map((model) => (
+                        <option
+                          key={model.id}
+                          value={model.id}
+                          disabled={model.unusable}
+                        >
+                          {model.name}
+                          {model.unusable ? ' — unavailable' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="muted">
+                      {resolvedModel || 'Provider default'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
       </section>
 
       <section className="settings-block">
