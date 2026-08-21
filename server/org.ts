@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { computeMinorLeagueRosterHealth } from './minorLeagueRoster.js';
 import { db, tableExists, tableColumns } from './db.js';
 import { LEVEL_NAMES } from './valuation.js';
 import { resolvePhilosophy } from './philosophy.js';
@@ -537,4 +538,19 @@ orgRoutes.get('/prospects/:orgId', (req, res) => {
   const orgId = Number(req.params.orgId);
   if (!tableExists('players')) return res.status(400).json({ error: 'No data imported yet' });
   res.json(computeProspects(orgId));
+});
+
+
+/** Structural health of every minor-league active roster in the organization. */
+orgRoutes.get('/minor-league-rosters/:orgId', (req, res) => {
+  const orgId = Number(req.params.orgId);
+
+  if (!Number.isFinite(orgId)) {
+    return res.status(400).json({ error: 'Invalid organization id' });
+  }
+
+  res.json({
+    orgId,
+    affiliates: computeMinorLeagueRosterHealth(orgId),
+  });
 });
