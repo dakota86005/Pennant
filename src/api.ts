@@ -294,6 +294,53 @@ export interface DepthPlayer {
   pot: number | null;
 }
 
+export type ProspectRecommendation =
+  | 'hold'
+  | 'watch'
+  | 'consider_promotion'
+  | 'strong_promotion_case'
+  | 'mlb_ready_discussion'
+  | 'consider_demotion';
+
+export interface ProspectDecision {
+  evidence: {
+    performance: number;
+    ageLevelUrgency: number;
+    ratingsMaturity: number;
+    sampleConfidence: number;
+    readiness: number;
+  };
+  organization: {
+    promotionAggressiveness: number;
+    basePromotionThreshold: number;
+    philosophyThresholdAdjustment: number;
+    ageThresholdAdjustment: number;
+    promotionThreshold: number;
+  };
+  recommendation: ProspectRecommendation;
+  confidence: 'limited' | 'moderate' | 'high';
+  nextAssignment: {
+    level: number;
+    levelName: string;
+    teams: Array<{
+      teamId: number;
+      label: string;
+    }>;
+    isMajorLeague: boolean;
+  } | null;
+  demotionAssignment: {
+    level: number;
+    levelName: string;
+    teams: Array<{
+      teamId: number;
+      label: string;
+    }>;
+    isMajorLeague: boolean;
+  } | null;
+  positives: string[];
+  cautions: string[];
+}
+
 export interface Prospect {
   player_id: number;
   name: string;
@@ -306,7 +353,11 @@ export interface Prospect {
   ageDiff: number | null;
   score: number;
   reasons: string[];
-  signal: 'promote' | 'watch' | null;
+  /** Legacy development signal; retained temporarily for A/B comparison. */
+  signal: 'promote' | 'watch' | 'demote' | null;
+
+  /** New philosophy-aware, transparent development analysis. */
+  decision?: ProspectDecision;
   war: number;
   // batters
   pa?: number;

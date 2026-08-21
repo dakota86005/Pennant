@@ -1,6 +1,12 @@
 import { Router } from 'express';
 import { db, tableExists, tableColumns } from './db.js';
 import { LEVEL_NAMES } from './valuation.js';
+import { resolvePhilosophy } from './philosophy.js';
+import { philosophyForOrg } from './settings.js';
+import {
+  evaluateProspectDecision,
+  type ProspectNextAssignment,
+} from './prospectDecision.js';
 
 export const orgRoutes = Router();
 
@@ -303,7 +309,70 @@ export function computeProspects(orgId: number): { batters: unknown[]; pitchers:
   const batting = seasonBatting();
   const pitching = seasonPitching();
   const baselines = levelBaselines(batting, pitching);
-  const teams = new Map(orgTeams(orgId).map((t) => [t.team_id, t]));
+
+  const teamList = orgTeams(orgId);
+  const teams = new Map(teamList.map((t) => [t.team_id, t]));
+
+  const philosophy = resolvePhilosophy(philosophyForOrg(orgId));
+  const promotionAggressiveness =
+    philosophy.dimensions.promotionAggressiveness.value;
+
+  /*
+   * OOTP levels count downward toward MLB. Read the actual affiliate
+   * structure from this save rather than assuming a fixed ladder.
+   */
+  const orgLevels = [...new Set(teamList.map((team) => team.level))]
+    .sort((a, b) => a - b);
+
+  const nextAssignmentFor = (
+    currentLevel: number
+  ): ProspectNextAssignment | null => {
+    const nextLevel = orgLevels
+      .filter((level) => level < currentLevel)
+      .sort((a, b) => b - a)[0];
+
+    if (nextLevel === undefined) return null;
+
+    return {
+      level: nextLevel,
+      levelName: LEVEL_NAMES[nextLevel] ?? `L${nextLevel}`,
+      teams: teamList
+        .filter((team) => team.level === nextLevel)
+        .map((team) => ({
+          teamId: team.team_id,
+          label:
+            team.name === team.nickname
+              ? team.name
+              : `${team.name} ${team.nickname}`,
+        })),
+      isMajorLeague: nextLevel === 1,
+    };
+  };
+
+  const demotionAssignmentFor = (
+    currentLevel: number
+  ): ProspectNextAssignment | null => {
+    const lowerLevel = orgLevels
+      .filter((level) => level > currentLevel)
+      .sort((a, b) => a - b)[0];
+
+    if (lowerLevel === undefined) return null;
+
+    return {
+      level: lowerLevel,
+      levelName: LEVEL_NAMES[lowerLevel] ?? `L${lowerLevel}`,
+      teams: teamList
+        .filter((team) => team.level === lowerLevel)
+        .map((team) => ({
+          teamId: team.team_id,
+          label:
+            team.name === team.nickname
+              ? team.name
+              : `${team.name} ${team.nickname}`,
+        })),
+      isMajorLeague: false,
+    };
+  };
 
   const batters: unknown[] = [];
   const pitchers: unknown[] = [];
@@ -368,6 +437,19 @@ export function computeProspects(orgId: number): { batters: unknown[]; pitchers:
         ...common, role: p.role, ip: Number(ip.toFixed(1)), era: Number(era.toFixed(2)),
         kpct: Number((kpct * 100).toFixed(1)), war: s.war ?? 0,
         score: Number(score.toFixed(1)), reasons,
+      decision: evaluateProspectDecision({
+        kind: 'pitcher',
+        primaryPerformanceDiff: eraDiff,
+        secondaryPerformanceDiff: kDiff,
+        ip,
+        ageDiff,
+        cur,
+        pot,
+        promotionAggressiveness,
+        nextAssignment: nextAssignmentFor(team.level),
+        demotionAssignment: demotionAssignmentFor(team.level),
+        canDemote: team.level !== lowestLevel,
+      }),
         /*
          * Demotion asks more than promotion does, on purpose. Sending a man
          * down is the more consequential call and the easier one to get wrong,
@@ -404,6 +486,18 @@ export function computeProspects(orgId: number): { batters: unknown[]; pitchers:
       batters.push({
         ...common, pa: s.pa, opsVal: Number(o.toFixed(3)), hr: s.hr, sb: s.sb, war: s.war ?? 0,
         score: Number(score.toFixed(1)), reasons,
+      decision: evaluateProspectDecision({
+        kind: 'batter',
+        primaryPerformanceDiff: opsDiff,
+        pa: s.pa,
+        ageDiff,
+        cur,
+        pot,
+        promotionAggressiveness,
+        nextAssignment: nextAssignmentFor(team.level),
+        demotionAssignment: demotionAssignmentFor(team.level),
+        canDemote: team.level !== lowestLevel,
+      }),
         signal:
           opsDiff >= 0.075 && s.pa >= 100 ? 'promote'
           : overmatched(opsDiff <= -0.100, s.pa >= 100, ageDiff, team.level) ? 'demote'
