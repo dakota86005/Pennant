@@ -311,7 +311,7 @@ settingsRoutes.post('/settings', (req, res) => {
   // Model ids are validated by shape only. The catalogue comes from the API and
   // grows over time, so refusing anything not on today's list would block a
   // model released after this build shipped — the API rejects a bad id anyway.
-  const modelShape = /^[a-z0-9.\-]{3,64}$/i;
+  const modelShape = /^[a-z0-9.:\-]{3,64}$/i;
   if (typeof body.model === 'string' && modelShape.test(body.model.trim())) {
     // Sent without a provider, this means "the one I am using"
     next.models = { ...next.models, [next.provider]: body.model.trim() };

@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { db, tableExists } from './db.js';
 import { jobStatus, startJob } from './jobs.js';
-import { HURT_SQL } from './health.js';
+import { orgInjuries } from './dashboard.js';
 import { DATA_DIR } from './config.js';
 import { activeProvider, aiModel, getApiKey } from './settings.js';
 import { PROVIDERS, describeError, providerFor, toolLoop, type FallbackNotice } from './providers.js';
@@ -89,14 +89,7 @@ function briefingContext(orgId: number) {
     const c = computeContracts(orgId);
     contracts = (c.players as unknown[]).slice(0, 15);
   } catch { /* no contract data */ }
-  const injuries = db
-    .prepare(
-      `SELECT p.first_name || ' ' || p.last_name AS name, p.age, p.injury_left AS days_left, t.level
-       FROM players p JOIN teams t ON t.team_id = p.team_id
-       LEFT JOIN players_roster_status rs ON rs.player_id = p.player_id
-       WHERE p.organization_id = ? AND ${HURT_SQL}`
-    )
-    .all(orgId);
+  const injuries = orgInjuries(orgId);
   return {
     organization: `${team.name} ${team.nickname}`,
     gameDate: currentGameDate(team.league_id as number),
@@ -141,6 +134,17 @@ async function generateBriefing(orgId: number): Promise<void> {
     `from the game's database. LEAGUE RULES: ${context.leagueRules} Everything you advise must fit ` +
     `these rules rather than the modern game. Be direct and decision-oriented: what happened, what ` +
     `needs a decision now, what to watch. Ground everything in the provided data with real numbers. ` +
+    `STRICT DATA RULES: Never infer a player's position, role, handedness, injury, contract demand, ` +
+    `salary demand, or roster status from his name or from outside baseball knowledge. Use only fields ` +
+    `explicitly present in the supplied data. If a fact is absent, omit it rather than guess. ` +
+    `A prospect signal of 'promote' means promotion ONE AFFILIATE LEVEL, not promotion to MLB. Only a ` +
+    `player currently at AAA may be described as an MLB call-up candidate, and do not say a minor-league ` +
+    `promotion fills an MLB bench or bullpen need. 'Market-dependent' is a recommendation category, not ` +
+    `a contract offer and cannot be accepted or declined. Do not invent extension years or dollar figures. ` +
+    `Only MLB-level injuries directly create major-league roster holes; affiliate injuries affect organizational ` +
+    `depth. Respect the game date: before Opening Day, 0-0 standings are not a development and expiring-after-season ` +
+    `contracts generally are not immediate weekly decisions unless the supplied recommendation specifically says ` +
+    `'Extend now'. Do not escape markdown punctuation with backslashes. ` +
     `Structure with short markdown headers (## Status, ## Decisions Needed, ## Watch List, ` +
     `## Recommendation of the Week). Keep it under 500 words. ${VALUE_PERCENTILE_NOTE}`,
     `Today is ${context.gameDate}, ${context.seasonYear} season. Organizational data:\n\n` +

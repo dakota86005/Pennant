@@ -164,11 +164,18 @@ function openAiCompatible(
   return {
   async complete({ key, model, system, messages, maxTokens, schema }) {
     const client = connect(key);
+    const isOllama = (baseURL ?? process.env.OPENAI_BASE_URL ?? '').includes('11434');
+    const isGptOss = /^gpt-oss(?::|$)/i.test(model);
     const response = await client.chat.completions.create({
       model,
-      // Newer models reject max_tokens; max_completion_tokens is the current
-      // name and is accepted by everything still worth choosing
-      max_completion_tokens: maxTokens,
+      ...(isOllama
+        ? {
+            max_tokens: Math.min(maxTokens, 6000),
+            ...(isGptOss ? { reasoning_effort: 'medium' as const } : {}),
+          }
+        : {
+            max_completion_tokens: maxTokens,
+          }),
       messages: [{ role: 'system', content: system }, ...messages],
       ...(schema
         ? {
@@ -214,7 +221,7 @@ export function authRejected(err: unknown): boolean {
  * which can hold a conversation about a baseball club.
  */
 const openAiChatModel = (id: string): boolean =>
-  /^(gpt|o\d|chatgpt)/.test(id) && !/audio|realtime|image|tts|transcribe|search|embedding|moderation/.test(id);
+  /^(gpt|o\d|chatgpt|gemma|qwen)/.test(id) && !/audio|realtime|image|tts|transcribe|search|embedding|moderation/.test(id);
 
 const openai: Provider = openAiCompatible(undefined, openAiChatModel);
 
