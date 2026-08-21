@@ -5,7 +5,9 @@ import { db, tableExists } from './db.js';
 import { jobStatus, startJob } from './jobs.js';
 import { orgInjuries } from './dashboard.js';
 import { DATA_DIR } from './config.js';
-import { activeProvider, aiModel, providerCredential } from './settings.js';
+import {
+  activeProvider, featureModel, featureProvider, providerCredential,
+} from './settings.js';
 import { PROVIDERS, describeError, providerFor, toolLoop, type FallbackNotice } from './providers.js';
 import { TOOLS, runTool } from './chat.js';
 import { computeProspects } from './org.js';
@@ -20,8 +22,8 @@ import {
 export const aiRoutes = Router();
 
 /** Names the provider actually selected, since it may not be Anthropic. */
-const noKeyMessage = (): string => {
-  const p = PROVIDERS.find((x) => x.id === activeProvider());
+const noKeyMessage = (provider = activeProvider()): string => {
+  const p = PROVIDERS.find((x) => x.id === provider);
   return `No ${p?.label ?? 'API'} key set. Open Settings and add your key — you can get one at ${p?.console ?? 'the provider console'}.`;
 };
 
@@ -48,16 +50,17 @@ async function callOpusThread(
   maxTokens = 16000,
   onFallback?: (notice: FallbackNotice) => void
 ): Promise<string> {
-  const provider = activeProvider();
+  const provider = featureProvider('briefing');
+  const model = featureModel('briefing');
   const key = providerCredential(provider);
-  if (!key) throw Object.assign(new Error(noKeyMessage()), { status: 401 });
+  if (!key) throw Object.assign(new Error(noKeyMessage(provider)), { status: 401 });
   /*
    * Translated at the call rather than at each route. The briefing runs as a
    * background job whose failure is read back long afterwards, so a raw
    * response body would be what the page eventually showed.
    */
   return providerFor(provider)
-    .complete({ key, model: aiModel(provider), system, messages, maxTokens, onFallback })
+    .complete({ key, model, system, messages, maxTokens, onFallback })
     .catch((err: unknown) => {
       throw Object.assign(new Error(describeError(provider, err)), {
         status: (err as { status?: number }).status,
@@ -174,8 +177,9 @@ export function startBriefingJob(orgId: number): void {
 aiRoutes.post('/briefing/:orgId', (req, res) => {
   if (!tableExists('players')) return res.status(400).json({ error: 'No data imported yet' });
   const orgId = Number(req.params.orgId);
-  if (!providerCredential()) {
-    return res.status(401).json({ error: 'No API key set. Open Settings and add your key.' });
+  const briefingProvider = featureProvider('briefing');
+  if (!providerCredential(briefingProvider)) {
+    return res.status(401).json({ error: noKeyMessage(briefingProvider) });
   }
   const { started, status } = startJob('briefing', orgId, () => generateBriefing(orgId));
   res.json({ started, job: status });
@@ -268,13 +272,14 @@ async function askTheDesk(
   messages: Array<{ role: 'user' | 'assistant'; content: string }>,
   onFallback: (n: FallbackNotice) => void
 ): Promise<string> {
-  const provider = activeProvider();
+  const provider = featureProvider('trade');
+  const model = featureModel('trade');
   const key = providerCredential(provider);
-  if (!key) throw Object.assign(new Error(noKeyMessage()), { status: 401 });
+  if (!key) throw Object.assign(new Error(noKeyMessage(provider)), { status: 401 });
   try {
     const { answer } = await toolLoop(provider)({
       key,
-      model: aiModel(provider),
+      model,
       system,
       messages: messages.map((m) => ({ role: m.role, content: m.content })),
       tools: TOOLS,

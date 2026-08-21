@@ -6,7 +6,7 @@ import { detectSaves, resolveChosenFolder, searchLocations } from './paths.js';
 import { DATA_DIR, loadConfig, saveConfig } from './config.js';
 import { importCsvDir, type ImportProgress, type ImportResult } from './importer.js';
 import { clearPendingExport, pendingExport, startWatcher } from './watcher.js';
-import { providerCredential, loadSettings } from './settings.js';
+import { featureProvider, providerCredential, loadSettings } from './settings.js';
 import { orgRoutes } from './org.js';
 import { contractRoutes } from './contracts.js';
 import { freeAgentRoutes } from './freeagents.js';
@@ -83,20 +83,36 @@ export const importState: {
  * Kicks off the storylines and the briefing after an import, when the club has
  * asked for that.
  *
- * Both cost money on the user's own key, so this happens only when the setting
- * is on and a key exists — and it starts jobs rather than waiting on them, so
- * an import is never held up by an API call. A club that has not been chosen
- * yet is skipped: there would be no way to know whose season to write about.
+ * Each feature may use a different provider. Start whichever generations have
+ * a usable credential (or a keyless local provider) rather than making one
+ * global provider gate both of them. Jobs start in the background, so an import
+ * is never held up by an AI call. A club that has not been chosen yet is
+ * skipped: there would be no way to know whose season to write about.
  */
 function autoGenerate(): void {
   try {
     const settings = loadSettings();
-    if (!settings.autoGenerateAfterImport || !providerCredential()) return;
+    if (!settings.autoGenerateAfterImport) return;
+
     const orgId = settings.defaultOrgId ?? humanOrgId();
     if (!orgId) return;
-    console.log('[import] starting storylines and briefing for org', orgId);
-    startStorylineJob(orgId);
-    startBriefingJob(orgId);
+
+    const storylineProvider = featureProvider('storylines');
+    const briefingProvider = featureProvider('briefing');
+    const canGenerateStorylines = providerCredential(storylineProvider) !== null;
+    const canGenerateBriefing = providerCredential(briefingProvider) !== null;
+
+    if (!canGenerateStorylines && !canGenerateBriefing) return;
+
+    if (canGenerateStorylines) {
+      console.log('[import] starting storylines for org', orgId);
+      startStorylineJob(orgId);
+    }
+
+    if (canGenerateBriefing) {
+      console.log('[import] starting briefing for org', orgId);
+      startBriefingJob(orgId);
+    }
   } catch (err) {
     // A failure here must never take the import down with it
     console.error('[import] could not start the generations:', err);

@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { db, tableExists } from './db.js';
 import { DATA_DIR } from './config.js';
-import { activeProvider, aiModel, providerCredential } from './settings.js';
+import { featureModel, featureProvider, providerCredential } from './settings.js';
 import { describeError, providerFor, type FallbackNotice } from './providers.js';
 import { computeProspects } from './org.js';
 import { computeContracts } from './contracts.js';
@@ -219,7 +219,8 @@ export function usableStoryline(s: Storyline): boolean {
 
 async function generateStorylines(orgId: number): Promise<StorylineCache> {
   const context = assembleContext(orgId);
-  const provider = activeProvider();
+  const provider = featureProvider('storylines');
+  const model = featureModel('storylines');
   const key = providerCredential(provider);
   if (!key) throw Object.assign(new Error('missing-api-key'), { status: 401 });
 
@@ -231,7 +232,7 @@ async function generateStorylines(orgId: number): Promise<StorylineCache> {
    */
   const text = await providerFor(provider).complete({
     key,
-    model: aiModel(provider),
+    model,
     maxTokens: 16000,
     schema: STORYLINE_SCHEMA,
     onFallback: (n) => { notice = n; },
@@ -276,7 +277,7 @@ async function generateStorylines(orgId: number): Promise<StorylineCache> {
   } catch {
     console.error('[storylines] response was not JSON:', text.slice(0, 2000));
     throw new Error(
-      `${aiModel()} returned something that was not JSON. The raw reply is in the app's log.`
+      `${model} returned something that was not JSON. The raw reply is in the app's log.`
     );
   }
 
@@ -296,12 +297,12 @@ async function generateStorylines(orgId: number): Promise<StorylineCache> {
   if (storylines.length === 0) {
     const faults = returned.map((s) => storylineFault(s));
     console.error(
-      '[storylines]', aiModel(), 'returned', returned.length, 'entries, none usable:',
+      '[storylines]', model, 'returned', returned.length, 'entries, none usable:',
       JSON.stringify({ faults, sample: returned.slice(0, 2) }, null, 1)
     );
     if (returned.length === 0) {
       throw new Error(
-        `${aiModel()} returned a well-formed reply with no storylines in it. ` +
+        `${model} returned a well-formed reply with no storylines in it. ` +
         'Try again, or choose a different model in Settings.'
       );
     }
@@ -311,7 +312,7 @@ async function generateStorylines(orgId: number): Promise<StorylineCache> {
       .join(' / ')
       .slice(0, 160);
     throw new Error(
-      `${aiModel()} returned ${returned.length} storyline${returned.length === 1 ? '' : 's'}, ` +
+      `${model} returned ${returned.length} storyline${returned.length === 1 ? '' : 's'}, ` +
       `none usable (${[...new Set(faults)].filter(Boolean).join(', ')}). It wrote: "${excerpt}". ` +
       'Trying again, or choosing a different model in Settings, usually clears it.'
     );
@@ -348,9 +349,10 @@ storylineRoutes.get('/storylines/:orgId', (req, res) => {
 storylineRoutes.post('/storylines/:orgId', (req, res) => {
   if (!tableExists('players')) return res.status(400).json({ error: 'No data imported yet' });
   const orgId = Number(req.params.orgId);
-  if (!providerCredential()) {
+  const provider = featureProvider('storylines');
+  if (!providerCredential(provider)) {
     return res.status(401).json({
-      error: 'No API key set. Open Settings and add your key — you can get one at console.claude.com.',
+      error: 'No API credential is configured for the Storylines provider.',
     });
   }
   const { started, status } = startJob('storylines', orgId, () => generateStorylines(orgId));

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { db, tableExists } from './db.js';
 import { DATA_DIR } from './config.js';
-import { activeProvider, aiModel, providerCredential } from './settings.js';
+import { featureModel, featureProvider, providerCredential } from './settings.js';
 import { describeError, stripProviderExtras, toolLoopFor, type ProviderId } from './providers.js';
 import { supportsAdaptiveThinking } from './models.js';
 import {
@@ -844,7 +844,9 @@ chatRoutes.post('/chat', async (req, res) => {
   if (!Array.isArray(history) || history.length === 0) {
     return res.status(400).json({ error: 'No message provided.' });
   }
-  const key = providerCredential();
+  const provider = featureProvider('chat');
+  const model = featureModel('chat');
+  const key = providerCredential(provider);
   if (!key) return res.status(401).json({ error: NO_KEY_MESSAGE });
 
   const team = Number.isFinite(Number(orgId)) ? Number(orgId) : defaultOrgId();
@@ -875,14 +877,12 @@ chatRoutes.post('/chat', async (req, res) => {
     res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
   };
 
-  const provider = activeProvider();
   const client = provider === 'anthropic' ? new Anthropic({ apiKey: key }) : null;
-  const model = aiModel(provider);
   // Only send the thinking parameter to a model the API reports as supporting
   // it. Omitting it is valid everywhere; sending it to a model that does not
   // take it is a 400, and the model is now the user's choice rather than ours.
   const thinking: Anthropic.ThinkingConfigParam | undefined =
-    (await supportsAdaptiveThinking(model)) ? { type: 'adaptive' } : undefined;
+    (await supportsAdaptiveThinking(model, provider)) ? { type: 'adaptive' } : undefined;
   const loop = { client, provider, key, model, thinking, send };
 
   try {
@@ -979,7 +979,7 @@ chatRoutes.post('/chat', async (req, res) => {
     send('done', {});
   } catch (err) {
     const e = err as Error & { status?: number };
-    const message = providerCredential() ? describeError(activeProvider(), e) : NO_KEY_MESSAGE;
+    const message = key ? describeError(provider, e) : NO_KEY_MESSAGE;
     send('error', { message });
   } finally {
     res.end();

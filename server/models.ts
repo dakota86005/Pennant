@@ -166,9 +166,12 @@ async function anthropicModels(key: string): Promise<ModelChoice[]> {
  * send the parameter". Omitting thinking is valid on every model; sending it to
  * one that does not accept it is a 400.
  */
-export async function supportsAdaptiveThinking(modelId: string): Promise<boolean> {
-  // Only Anthropic accepts the parameter at all
-  if (activeProvider() !== 'anthropic') return false;
+export async function supportsAdaptiveThinking(
+  modelId: string,
+  provider: ProviderId = activeProvider()
+): Promise<boolean> {
+  // Only Anthropic accepts the parameter at all.
+  if (provider !== 'anthropic') return false;
   const { models } = await listModels('anthropic');
   return models.find((m) => m.id === modelId)?.adaptiveThinking === true;
 }
