@@ -8,6 +8,23 @@ import {
 import { forgetUnusable } from './unusable.js';
 import { startWatcher, stopWatcher } from './watcher.js';
 
+export const AI_FEATURES = ['briefing', 'trade', 'storylines', 'chat'] as const;
+export type AiFeatureId = (typeof AI_FEATURES)[number];
+
+export interface AiFeatureSettings {
+  /** Override the global provider for this feature. */
+  provider?: ProviderId;
+  /** Override the resolved model for this feature. */
+  model?: string;
+}
+
+export function isAiFeatureId(value: unknown): value is AiFeatureId {
+  return (
+    typeof value === 'string' &&
+    (AI_FEATURES as readonly string[]).includes(value)
+  );
+}
+
 /**
  * User preferences, plus the Anthropic API key.
  *
@@ -37,6 +54,13 @@ export interface Settings {
    * provider would otherwise leave a model id the new one has never heard of.
    */
   models: Partial<Record<ProviderId, string>>;
+  /**
+   * Optional provider/model overrides for individual AI workloads.
+   *
+   * Missing entries inherit the global provider and that provider's selected
+   * model, preserving the behaviour of existing settings files.
+   */
+  aiFeatures: Partial<Record<AiFeatureId, AiFeatureSettings>>;
   /**
    * Write overall and potential in fives, the way scouts talk. Display only —
    * sorting and every calculation keep the exact grade.
@@ -72,6 +96,7 @@ export interface Settings {
 const DEFAULTS: Settings = {
   provider: 'anthropic',
   models: {},
+  aiFeatures: {},
   autoImport: true,
   useTeamColors: true,
   nextSeasonBudget: {},
@@ -90,7 +115,10 @@ export function activeProvider(): ProviderId {
 }
 
 /**
- * The model every AI call site should use, for whichever provider is active.
+ * The globally selected model for whichever provider is active.
+ *
+ * Feature-specific callers should use featureModel() below. Keeping this
+ * resolver preserves the existing global default and backwards compatibility.
  *
  * A hand-edited or truncated settings.json can put anything here, and every AI
  * feature would fail on it — fall back rather than throw. The legacy top-level
@@ -105,6 +133,29 @@ export function aiModel(provider: ProviderId = activeProvider()): string {
     if (typeof legacy === 'string' && legacy.trim()) return legacy.trim();
   }
   return DEFAULT_MODEL[provider];
+}
+
+/**
+ * Resolve the provider for one AI workload.
+ *
+ * No override means exactly what the application did before this feature was
+ * added: use the globally selected provider.
+ */
+export function featureProvider(feature: AiFeatureId): ProviderId {
+  const chosen: unknown = loadSettings().aiFeatures?.[feature]?.provider;
+  return isProviderId(chosen) ? chosen : activeProvider();
+}
+
+/**
+ * Resolve the model for one AI workload.
+ *
+ * A feature-level model wins. Otherwise use the model already remembered for
+ * the resolved provider, including the legacy Anthropic setting.
+ */
+export function featureModel(feature: AiFeatureId): string {
+  const selected: unknown = loadSettings().aiFeatures?.[feature]?.model;
+  if (typeof selected === 'string' && selected.trim()) return selected.trim();
+  return aiModel(featureProvider(feature));
 }
 
 const SETTINGS_PATH = path.join(DATA_DIR, 'settings.json');
@@ -327,7 +378,7 @@ settingsRoutes.post('/settings', (req, res) => {
   // Model ids are validated by shape only. The catalogue comes from the API and
   // grows over time, so refusing anything not on today's list would block a
   // model released after this build shipped — the API rejects a bad id anyway.
-  const modelShape = /^[a-z0-9.:\-]{3,64}$/i;
+  const modelShape = /^[a-z0-9._:/-]{3,128}$/i;
   if (typeof body.model === 'string' && modelShape.test(body.model.trim())) {
     // Sent without a provider, this means "the one I am using"
     next.models = { ...next.models, [next.provider]: body.model.trim() };
@@ -342,6 +393,42 @@ settingsRoutes.post('/settings', (req, res) => {
     }
     next.models = models;
   }
+
+  if (body.aiFeatures && typeof body.aiFeatures === 'object') {
+    const features = { ...next.aiFeatures };
+
+    for (const [id, raw] of Object.entries(
+      body.aiFeatures as Record<string, unknown>
+    )) {
+      if (!isAiFeatureId(id) || typeof raw !== 'object' || raw === null) continue;
+
+      const candidate = raw as {
+        provider?: unknown;
+        model?: unknown;
+      };
+      const override: AiFeatureSettings = {};
+
+      if (isProviderId(candidate.provider)) {
+        override.provider = candidate.provider;
+      }
+
+      if (
+        typeof candidate.model === 'string' &&
+        modelShape.test(candidate.model.trim())
+      ) {
+        override.model = candidate.model.trim();
+      }
+
+      if (override.provider || override.model) {
+        features[id] = override;
+      } else {
+        delete features[id];
+      }
+    }
+
+    next.aiFeatures = features;
+  }
+
   writeSettings(next);
 
   // Take the auto-import toggle into effect immediately, not on next launch
