@@ -7,6 +7,14 @@ import {
 } from './providers.js';
 import { forgetUnusable } from './unusable.js';
 import { startWatcher, stopWatcher } from './watcher.js';
+import {
+  PHILOSOPHY_DIMENSIONS,
+  PHILOSOPHY_POLICY_OPTIONS,
+  mergePhilosophyProfile,
+  normalizePhilosophyProfile,
+  resolvePhilosophy,
+  type PhilosophyProfile,
+} from './philosophy.js';
 
 export const AI_FEATURES = ['briefing', 'trade', 'storylines', 'chat'] as const;
 export type AiFeatureId = (typeof AI_FEATURES)[number];
@@ -91,6 +99,12 @@ export interface Settings {
    * one who knows which way the owner leans. Absent an entry, flat it stays.
    */
   nextSeasonBudget: Record<string, number>;
+
+  /**
+   * Organizational philosophy is saved per club. The string key is the OOTP
+   * organization/team id so different clubs and saves may think differently.
+   */
+  organizationPhilosophies: Record<string, PhilosophyProfile>;
 }
 
 const DEFAULTS: Settings = {
@@ -100,6 +114,7 @@ const DEFAULTS: Settings = {
   autoImport: true,
   useTeamColors: true,
   nextSeasonBudget: {},
+  organizationPhilosophies: {},
   roundRatingsToFive: false,
   showUnavailablePitchers: false,
   autoGenerateAfterImport: false,
@@ -171,6 +186,12 @@ export function loadSettings(): Settings {
 
 function writeSettings(next: Settings): void {
   fs.writeFileSync(SETTINGS_PATH, JSON.stringify(next, null, 2));
+}
+
+/** The normalized philosophy currently attached to one organization. */
+export function philosophyForOrg(orgId: number): PhilosophyProfile {
+  const stored = loadSettings().organizationPhilosophies?.[String(orgId)];
+  return normalizePhilosophyProfile(stored);
 }
 
 // ── Secret storage ──────────────────────────────────────────────────────
@@ -332,6 +353,84 @@ export const settingsRoutes = Router();
 
 settingsRoutes.get('/settings', (_req, res) => {
   res.json({ settings: loadSettings(), apiKey: apiKeyStatus(), dataDir: DATA_DIR });
+});
+
+/**
+ * Organizational philosophy for one club.
+ *
+ * Metadata travels with the response so the eventual UI does not duplicate
+ * slider labels, endpoint meanings, or policy choices.
+ */
+settingsRoutes.get('/settings/philosophy/:orgId', (req, res) => {
+  const orgId = Number(req.params.orgId);
+  if (!Number.isFinite(orgId) || orgId <= 0) {
+    return res.status(400).json({ error: 'Invalid organization id.' });
+  }
+
+  const profile = philosophyForOrg(orgId);
+
+  res.json({
+    orgId,
+    profile,
+    effective: resolvePhilosophy(profile),
+    dimensions: PHILOSOPHY_DIMENSIONS,
+    policyOptions: PHILOSOPHY_POLICY_OPTIONS,
+  });
+});
+
+settingsRoutes.put('/settings/philosophy/:orgId', (req, res) => {
+  const orgId = Number(req.params.orgId);
+  if (!Number.isFinite(orgId) || orgId <= 0) {
+    return res.status(400).json({ error: 'Invalid organization id.' });
+  }
+
+  const current = loadSettings();
+  const profile = mergePhilosophyProfile(
+    philosophyForOrg(orgId),
+    req.body
+  );
+
+  writeSettings({
+    ...current,
+    organizationPhilosophies: {
+      ...current.organizationPhilosophies,
+      [String(orgId)]: profile,
+    },
+  });
+
+  res.json({
+    orgId,
+    profile,
+    effective: resolvePhilosophy(profile),
+    dimensions: PHILOSOPHY_DIMENSIONS,
+    policyOptions: PHILOSOPHY_POLICY_OPTIONS,
+  });
+});
+
+settingsRoutes.delete('/settings/philosophy/:orgId', (req, res) => {
+  const orgId = Number(req.params.orgId);
+  if (!Number.isFinite(orgId) || orgId <= 0) {
+    return res.status(400).json({ error: 'Invalid organization id.' });
+  }
+
+  const current = loadSettings();
+  const next = { ...current.organizationPhilosophies };
+  delete next[String(orgId)];
+
+  writeSettings({
+    ...current,
+    organizationPhilosophies: next,
+  });
+
+  const profile = philosophyForOrg(orgId);
+
+  res.json({
+    orgId,
+    profile,
+    effective: resolvePhilosophy(profile),
+    dimensions: PHILOSOPHY_DIMENSIONS,
+    policyOptions: PHILOSOPHY_POLICY_OPTIONS,
+  });
 });
 
 /**
