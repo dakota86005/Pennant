@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { computeMinorLeagueRosterHealth } from './minorLeagueRoster.js';
 import { computeMinorLeagueRebalance } from './minorLeagueMoves.js';
+import { computeMinorLeagueRetention } from './minorLeagueRetention.js';
 import { computeMinorLeaguePitchingOperations } from './minorLeaguePitchingOperations.js';
 import { db, tableExists, tableColumns } from './db.js';
 import { LEVEL_NAMES } from './valuation.js';
@@ -642,6 +643,34 @@ orgRoutes.get('/prospects/:orgId', (req, res) => {
 
 
 /** Structural health of every minor-league active roster in the organization. */
+
+/**
+ * Organizational retention evidence for every assigned minor leaguer.
+ *
+ * REVIEW is intentionally weaker than RELEASE CANDIDATE. The review
+ * population is validated before stronger transaction language is introduced.
+ */
+orgRoutes.get('/minor-league-retention/:orgId', (req, res) => {
+  const orgId = Number(req.params.orgId);
+
+  if (!Number.isFinite(orgId)) {
+    return res.status(400).json({
+      error: 'Invalid organization id',
+    });
+  }
+
+  const prospects =
+    computeProspects(orgId);
+
+  res.json(
+    computeMinorLeagueRetention(
+      orgId,
+      prospects
+    )
+  );
+});
+
+
 orgRoutes.get('/minor-league-rosters/:orgId', (req, res) => {
   const orgId = Number(req.params.orgId);
 

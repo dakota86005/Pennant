@@ -141,15 +141,936 @@ export function takeSnapshot(): { gameDate: string; players: number } | null {
   return { gameDate, players: rows.length };
 }
 
+function gameDateEpoch(value: string): number {
+  const match =
+    /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(
+      value
+    );
+
+  if (!match) return Number.NaN;
+
+  return Date.UTC(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3])
+  );
+}
+
+function compareGameDates(
+  a: string,
+  b: string
+): number {
+  const aTime =
+    gameDateEpoch(a);
+
+  const bTime =
+    gameDateEpoch(b);
+
+  if (
+    Number.isFinite(aTime) &&
+    Number.isFinite(bTime)
+  ) {
+    return aTime - bTime;
+  }
+
+  return a.localeCompare(b);
+}
+
 export function snapshotDates(): string[] {
   return (
     historyDb
       .prepare(
-        `SELECT DISTINCT game_date FROM rating_snapshots WHERE save_name = ? ORDER BY game_date`
+        `SELECT DISTINCT game_date
+         FROM rating_snapshots
+         WHERE save_name = ?`
       )
-      .all(currentSaveName()) as Array<{ game_date: string }>
-  ).map((r) => r.game_date);
+      .all(
+        currentSaveName()
+      ) as Array<{
+        game_date: string;
+      }>
+  )
+    .map(
+      (row) =>
+        row.game_date
+    )
+    .sort(
+      compareGameDates
+    );
 }
+
+
+export type DevelopmentTrendStatus =
+  | 'insufficient'
+  | 'improving'
+  | 'flat'
+  | 'declining'
+  | 'mixed';
+
+export interface PlayerDevelopmentTrend {
+  status:
+    DevelopmentTrendStatus;
+
+  snapshotCount: number;
+
+  firstDate:
+    string | null;
+
+  latestDate:
+    string | null;
+
+  observationDays:
+    number | null;
+
+  /*
+   * These are changes in the history database's scouting composites:
+   *
+   * hitters:
+   * contact / gap / power / eye / avoid-K
+   *
+   * pitchers:
+   * stuff / movement / control
+   *
+   * They are deliberately NOT the player's displayed OVR grade.
+   */
+  currentDelta:
+    number | null;
+
+  potentialDelta:
+    number | null;
+
+  reasons:
+    string[];
+}
+
+interface DevelopmentTrendRow {
+  player_id: number;
+  game_date: string;
+
+  cur:
+    number | null;
+
+  pot:
+    number | null;
+}
+
+const MIN_TREND_SNAPSHOTS = 3;
+const MIN_TREND_DAYS = 75;
+
+function numericDelta(
+  latest: number | null,
+  first: number | null
+): number | null {
+  if (
+    typeof latest !== 'number' ||
+    !Number.isFinite(latest) ||
+    typeof first !== 'number' ||
+    !Number.isFinite(first)
+  ) {
+    return null;
+  }
+
+  return (
+    Math.round(
+      (latest - first) * 10
+    ) / 10
+  );
+}
+
+/**
+ * Persistent observed scouting development, keyed by player.
+ *
+ * The Development page already stores one rating snapshot on each import.
+ * This exposes the same history to baseball-decision engines without making
+ * those engines independently reinterpret history.db.
+ *
+ * Classification is intentionally conservative. A couple of closely spaced
+ * imports do not constitute evidence that development has stopped.
+ */
+export function developmentTrendByPlayer():
+  Map<number, PlayerDevelopmentTrend> {
+  const rows =
+    historyDb
+      .prepare(
+        `SELECT
+           player_id,
+           game_date,
+           cur,
+           pot
+         FROM rating_snapshots
+         WHERE save_name = ?`
+      )
+      .all(
+        currentSaveName()
+      ) as DevelopmentTrendRow[];
+
+  const byPlayer =
+    new Map<
+      number,
+      DevelopmentTrendRow[]
+    >();
+
+  for (const row of rows) {
+    const existing =
+      byPlayer.get(
+        row.player_id
+      );
+
+    if (existing) {
+      existing.push(row);
+    } else {
+      byPlayer.set(
+        row.player_id,
+        [row]
+      );
+    }
+  }
+
+  const out =
+    new Map<
+      number,
+      PlayerDevelopmentTrend
+    >();
+
+  for (
+    const [
+      playerId,
+      snapshots,
+    ] of byPlayer
+  ) {
+    snapshots.sort(
+      (a, b) =>
+        compareGameDates(
+          a.game_date,
+          b.game_date
+        )
+    );
+
+    const first =
+      snapshots[0];
+
+    const latest =
+      snapshots[
+        snapshots.length - 1
+      ];
+
+    const firstTime =
+      gameDateEpoch(
+        first.game_date
+      );
+
+    const latestTime =
+      gameDateEpoch(
+        latest.game_date
+      );
+
+    const observationDays =
+      Number.isFinite(
+        firstTime
+      ) &&
+      Number.isFinite(
+        latestTime
+      )
+        ? Math.round(
+            (
+              latestTime -
+              firstTime
+            ) /
+              86_400_000
+          )
+        : null;
+
+    const currentDelta =
+      numericDelta(
+        latest.cur,
+        first.cur
+      );
+
+    const potentialDelta =
+      numericDelta(
+        latest.pot,
+        first.pot
+      );
+
+    let status:
+      DevelopmentTrendStatus;
+
+    const reasons:
+      string[] = [];
+
+    if (
+      snapshots.length <
+        MIN_TREND_SNAPSHOTS ||
+      observationDays === null ||
+      observationDays <
+        MIN_TREND_DAYS ||
+      currentDelta === null
+    ) {
+      status =
+        'insufficient';
+
+      reasons.push(
+        `Only ${snapshots.length} usable snapshot${snapshots.length === 1 ? '' : 's'} across ${
+          observationDays === null
+            ? 'an unknown observation window'
+            : `${observationDays} in-game days`
+        }; trend classification requires at least ${MIN_TREND_SNAPSHOTS} snapshots across ${MIN_TREND_DAYS} days.`
+      );
+    } else if (
+      currentDelta >= 2
+    ) {
+      status =
+        'improving';
+
+      reasons.push(
+        `Current-skill scouting composite improved by ${currentDelta.toFixed(1)} across ${snapshots.length} snapshots and ${observationDays} in-game days.`
+      );
+    } else if (
+      currentDelta <= -2
+    ) {
+      status =
+        'declining';
+
+      reasons.push(
+        `Current-skill scouting composite declined by ${Math.abs(currentDelta).toFixed(1)} across ${snapshots.length} snapshots and ${observationDays} in-game days.`
+      );
+    } else if (
+      Math.abs(
+        currentDelta
+      ) <= 1
+    ) {
+      status =
+        'flat';
+
+      reasons.push(
+        `Current-skill scouting composite changed only ${currentDelta >= 0 ? '+' : ''}${currentDelta.toFixed(1)} across ${snapshots.length} snapshots and ${observationDays} in-game days.`
+      );
+    } else {
+      status =
+        'mixed';
+
+      reasons.push(
+        `Current-skill scouting composite changed ${currentDelta >= 0 ? '+' : ''}${currentDelta.toFixed(1)} across ${snapshots.length} snapshots and ${observationDays} in-game days; movement is not strong enough for a directional classification.`
+      );
+    }
+
+    if (
+      potentialDelta !== null &&
+      Math.abs(
+        potentialDelta
+      ) >= 1
+    ) {
+      reasons.push(
+        `Scouted projected ceiling changed ${potentialDelta >= 0 ? '+' : ''}${potentialDelta.toFixed(1)} over the same observation window.`
+      );
+    }
+
+    out.set(
+      playerId,
+      {
+        status,
+
+        snapshotCount:
+          snapshots.length,
+
+        firstDate:
+          first.game_date,
+
+        latestDate:
+          latest.game_date,
+
+        observationDays,
+
+        currentDelta,
+
+        potentialDelta,
+
+        reasons,
+      }
+    );
+  }
+
+  return out;
+}
+
+
+
+/**
+ * How the organization's observed development of a player compares with
+ * similarly situated minor leaguers.
+ *
+ * This is deliberately scouting-relative evidence, not omniscient player
+ * truth. The ratings are the observations persisted by the Development
+ * history system on each import.
+ */
+export type PeerDevelopmentPace =
+  | 'insufficient'
+  | 'behind'
+  | 'typical'
+  | 'ahead';
+
+export interface PeerDevelopmentTrend {
+  pace: PeerDevelopmentPace;
+
+  percentile: number | null;
+
+  /*
+   * Current-skill composite change normalized to 100 in-game days.
+   * Normalizing matters once players have different observation windows.
+   */
+  ratePer100Days: number | null;
+
+  cohortMedianRate: number | null;
+
+  peerAdjustedRate: number | null;
+
+  cohortSize: number;
+
+  cohort: {
+    kind: 'hitter' | 'pitcher';
+    ageBand: string;
+    startingLevel: number | null;
+    levelMatched: boolean;
+  } | null;
+
+  reasons: string[];
+}
+
+interface PeerSnapshotRow {
+  player_id: number;
+  game_date: string;
+  age: number | null;
+  level: number | null;
+  position: number | null;
+  cur: number | null;
+}
+
+interface PeerObservation {
+  playerId: number;
+
+  kind:
+    | 'hitter'
+    | 'pitcher';
+
+  ageBand: string;
+
+  startingLevel:
+    number | null;
+
+  snapshotCount: number;
+
+  observationDays: number;
+
+  currentDelta: number;
+
+  ratePer100Days: number;
+}
+
+function developmentAgeBand(
+  age: number
+): string {
+  if (age <= 19) return '<=19';
+  if (age <= 22) return '20-22';
+  if (age <= 25) return '23-25';
+  if (age <= 29) return '26-29';
+  return '30+';
+}
+
+function medianNumber(
+  values: number[]
+): number | null {
+  if (values.length === 0) {
+    return null;
+  }
+
+  const sorted =
+    [...values].sort(
+      (a, b) => a - b
+    );
+
+  const mid =
+    Math.floor(
+      sorted.length / 2
+    );
+
+  if (
+    sorted.length % 2 === 1
+  ) {
+    return sorted[mid];
+  }
+
+  return (
+    sorted[mid - 1] +
+    sorted[mid]
+  ) / 2;
+}
+
+/**
+ * Mid-rank percentile.
+ *
+ * Rating changes are discrete — especially pitcher composites, where one
+ * tool moving five points changes the three-rating average by about 1.67.
+ * Mid-rank avoids pretending all tied observations have different ranks.
+ */
+function percentileNumber(
+  values: number[],
+  value: number
+): number | null {
+  if (values.length === 0) {
+    return null;
+  }
+
+  let below = 0;
+  let equal = 0;
+
+  for (const candidate of values) {
+    if (candidate < value) {
+      below += 1;
+    } else if (
+      candidate === value
+    ) {
+      equal += 1;
+    }
+  }
+
+  return (
+    (
+      below +
+      equal * 0.5
+    ) /
+    values.length
+  ) * 100;
+}
+
+function peerKey(
+  kind: 'hitter' | 'pitcher',
+  ageBand: string,
+  level?: number | null
+): string {
+  return level == null
+    ? `${kind}|${ageBand}`
+    : `${kind}|${ageBand}|${level}`;
+}
+
+/**
+ * Peer-adjusted scouting development.
+ *
+ * Primary cohort:
+ *   player type + age band + STARTING level
+ *
+ * Starting level is used because the change being measured began there. A
+ * player who earned a promotion should not have his whole development window
+ * judged against players who began at the more advanced destination.
+ *
+ * When that cohort is too small, type + age band is used as the fallback.
+ */
+export function peerDevelopmentTrendByPlayer():
+  Map<number, PeerDevelopmentTrend> {
+  const rows =
+    historyDb
+      .prepare(
+        `SELECT
+           player_id,
+           game_date,
+           age,
+           level,
+           position,
+           cur
+         FROM rating_snapshots
+         WHERE save_name = ?`
+      )
+      .all(
+        currentSaveName()
+      ) as PeerSnapshotRow[];
+
+  const byPlayer =
+    new Map<
+      number,
+      PeerSnapshotRow[]
+    >();
+
+  for (const row of rows) {
+    const group =
+      byPlayer.get(
+        row.player_id
+      );
+
+    if (group) {
+      group.push(row);
+    } else {
+      byPlayer.set(
+        row.player_id,
+        [row]
+      );
+    }
+  }
+
+  const observations:
+    PeerObservation[] = [];
+
+  for (
+    const [
+      playerId,
+      snapshots,
+    ] of byPlayer
+  ) {
+    snapshots.sort(
+      (a, b) =>
+        compareGameDates(
+          a.game_date,
+          b.game_date
+        )
+    );
+
+    if (
+      snapshots.length <
+      MIN_TREND_SNAPSHOTS
+    ) {
+      continue;
+    }
+
+    const first =
+      snapshots[0];
+
+    const latest =
+      snapshots[
+        snapshots.length - 1
+      ];
+
+    if (
+      typeof first.cur !==
+        'number' ||
+      typeof latest.cur !==
+        'number' ||
+      typeof first.age !==
+        'number' ||
+      typeof first.position !==
+        'number'
+    ) {
+      continue;
+    }
+
+    const firstTime =
+      gameDateEpoch(
+        first.game_date
+      );
+
+    const latestTime =
+      gameDateEpoch(
+        latest.game_date
+      );
+
+    if (
+      !Number.isFinite(
+        firstTime
+      ) ||
+      !Number.isFinite(
+        latestTime
+      )
+    ) {
+      continue;
+    }
+
+    const observationDays =
+      Math.round(
+        (
+          latestTime -
+          firstTime
+        ) /
+        86_400_000
+      );
+
+    if (
+      observationDays <
+      MIN_TREND_DAYS
+    ) {
+      continue;
+    }
+
+    /*
+     * Only players who began this observation window in the minor leagues
+     * belong in the minor-league development baseline.
+     */
+    if (
+      typeof first.level !==
+        'number' ||
+      first.level <= 1
+    ) {
+      continue;
+    }
+
+    const currentDelta =
+      latest.cur -
+      first.cur;
+
+    const ratePer100Days =
+      currentDelta *
+      100 /
+      observationDays;
+
+    observations.push({
+      playerId,
+
+      kind:
+        first.position === 1
+          ? 'pitcher'
+          : 'hitter',
+
+      ageBand:
+        developmentAgeBand(
+          first.age
+        ),
+
+      startingLevel:
+        first.level,
+
+      snapshotCount:
+        snapshots.length,
+
+      observationDays,
+
+      currentDelta,
+
+      ratePer100Days,
+    });
+  }
+
+  const detailed =
+    new Map<
+      string,
+      number[]
+    >();
+
+  const broad =
+    new Map<
+      string,
+      number[]
+    >();
+
+  for (
+    const observation of
+    observations
+  ) {
+    const detailedKey =
+      peerKey(
+        observation.kind,
+        observation.ageBand,
+        observation.startingLevel
+      );
+
+    const broadKey =
+      peerKey(
+        observation.kind,
+        observation.ageBand
+      );
+
+    const detailedValues =
+      detailed.get(
+        detailedKey
+      ) ?? [];
+
+    detailedValues.push(
+      observation.ratePer100Days
+    );
+
+    detailed.set(
+      detailedKey,
+      detailedValues
+    );
+
+    const broadValues =
+      broad.get(
+        broadKey
+      ) ?? [];
+
+    broadValues.push(
+      observation.ratePer100Days
+    );
+
+    broad.set(
+      broadKey,
+      broadValues
+    );
+  }
+
+  const out =
+    new Map<
+      number,
+      PeerDevelopmentTrend
+    >();
+
+  for (
+    const observation of
+    observations
+  ) {
+    const detailedKey =
+      peerKey(
+        observation.kind,
+        observation.ageBand,
+        observation.startingLevel
+      );
+
+    const broadKey =
+      peerKey(
+        observation.kind,
+        observation.ageBand
+      );
+
+    const detailedValues =
+      detailed.get(
+        detailedKey
+      ) ?? [];
+
+    const levelMatched =
+      detailedValues.length >= 50;
+
+    const cohortValues =
+      levelMatched
+        ? detailedValues
+        : (
+            broad.get(
+              broadKey
+            ) ?? []
+          );
+
+    const median =
+      medianNumber(
+        cohortValues
+      );
+
+    const percentile =
+      percentileNumber(
+        cohortValues,
+        observation.ratePer100Days
+      );
+
+    if (
+      median === null ||
+      percentile === null ||
+      cohortValues.length < 20
+    ) {
+      out.set(
+        observation.playerId,
+        {
+          pace:
+            'insufficient',
+
+          percentile:
+            null,
+
+          ratePer100Days:
+            null,
+
+          cohortMedianRate:
+            null,
+
+          peerAdjustedRate:
+            null,
+
+          cohortSize:
+            cohortValues.length,
+
+          cohort: {
+            kind:
+              observation.kind,
+
+            ageBand:
+              observation.ageBand,
+
+            startingLevel:
+              observation
+                .startingLevel,
+
+            levelMatched,
+          },
+
+          reasons: [
+            'Not enough comparable scouting-history observations are available for a stable peer-development baseline.',
+          ],
+        }
+      );
+
+      continue;
+    }
+
+    const peerAdjustedRate =
+      observation.ratePer100Days -
+      median;
+
+    const pace:
+      PeerDevelopmentPace =
+        percentile <= 20
+          ? 'behind'
+          : percentile >= 80
+            ? 'ahead'
+            : 'typical';
+
+    const paceLabel =
+      pace === 'ahead'
+        ? 'ahead of'
+        : pace === 'behind'
+          ? 'behind'
+          : 'within the typical range for';
+
+    out.set(
+      observation.playerId,
+      {
+        pace,
+
+        percentile:
+          Math.round(
+            percentile
+          ),
+
+        ratePer100Days:
+          Math.round(
+            observation
+              .ratePer100Days *
+            10
+          ) / 10,
+
+        cohortMedianRate:
+          Math.round(
+            median * 10
+          ) / 10,
+
+        peerAdjustedRate:
+          Math.round(
+            peerAdjustedRate *
+            10
+          ) / 10,
+
+        cohortSize:
+          cohortValues.length,
+
+        cohort: {
+          kind:
+            observation.kind,
+
+          ageBand:
+            observation.ageBand,
+
+          startingLevel:
+            observation
+              .startingLevel,
+
+          levelMatched,
+        },
+
+        reasons: [
+          `Observed current-skill change ranks at the ${Math.round(percentile)}th percentile among ${cohortValues.length} comparable ${observation.kind}s.`,
+          `Development pace is ${paceLabel} the comparison cohort.`,
+          levelMatched
+            ? `Comparison cohort matches player type, age band, and starting level ${observation.startingLevel}.`
+            : 'Starting-level cohort was too small, so comparison falls back to player type and age band.',
+        ],
+      }
+    );
+  }
+
+  return out;
+}
+
 
 // ── Development tracking ────────────────────────────────────────────────
 
