@@ -4007,3 +4007,1600 @@ button.cta {
   text-decoration-color: var(--accent);
   text-underline-offset: 3px;
 }
+
+
+/* ── Farm system Player Development workspace ──────────────── */
+
+.development-page {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding-bottom: 30px;
+}
+
+
+/* Summary ----------------------------------------------------- */
+
+.development-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.development-metrics > div {
+  min-height: 105px;
+  padding: 12px 13px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+}
+
+.development-metrics span {
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.development-metrics strong {
+  margin: 5px 0 4px;
+  font-size: 25px;
+  font-variant-numeric: tabular-nums;
+}
+
+.development-metrics small {
+  margin-top: auto;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+
+/* Decision cases --------------------------------------------- */
+
+.development-case-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-items: start;
+}
+
+.development-case-card {
+  align-self: start;
+  padding: 15px 16px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  background: var(--panel);
+}
+
+.development-case-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.development-case-head h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.development-status,
+.development-table-status {
+  display: inline-block;
+  padding: 3px 7px;
+  border: 1px solid;
+  border-radius: 3px;
+  font-family: var(--font-display);
+  font-size: 8.5px;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.development-status-ready {
+  color: var(--good);
+  border-color: var(--good);
+}
+
+.development-status-consider {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.development-status-mlb {
+  color: var(--good);
+  border-color: var(--good);
+  background: color-mix(
+    in srgb,
+    var(--good) 8%,
+    transparent
+  );
+}
+
+.development-status-review {
+  color: var(--bad);
+  border-color: var(--bad);
+}
+
+.development-status-watch {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.development-status-hold {
+  color: var(--muted);
+  border-color: var(--border);
+}
+
+
+.development-case-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 13px;
+}
+
+.development-case-facts > div {
+  min-width: 0;
+  padding: 7px 8px;
+  background: var(--panel-raised);
+}
+
+.development-case-facts span {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--muted);
+  font-size: 8.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.development-case-facts strong {
+  display: block;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+}
+
+
+.development-verdict {
+  margin: 11px 0;
+  padding: 9px 10px;
+  border-left: 2px solid var(--accent);
+  background: color-mix(
+    in srgb,
+    var(--panel-raised) 65%,
+    transparent
+  );
+}
+
+.development-verdict > strong {
+  display: block;
+  margin-bottom: 3px;
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.development-verdict p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+
+.development-subhead {
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: 8.5px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+
+/* Eligible assignments -------------------------------------- */
+
+.development-assignment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.development-assignment {
+  display: grid;
+  grid-template-columns: 145px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 8px 9px;
+  border: 1px solid var(--border);
+  background: var(--panel-raised);
+}
+
+.development-assignment > div:first-child span {
+  display: block;
+  color: var(--muted);
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.development-assignment > div:first-child strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+}
+
+.development-destination-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  justify-content: flex-end;
+}
+
+.development-fit {
+  display: inline-block;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.development-fit-strong {
+  color: var(--good);
+  border-color: var(--good);
+}
+
+.development-fit-viable {
+  color: var(--good);
+}
+
+.development-fit-borderline {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.development-fit-poor {
+  color: var(--bad);
+  border-color: var(--bad);
+}
+
+
+/* Operations ------------------------------------------------ */
+
+.development-operations {
+  margin-top: 10px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+}
+
+.development-operations-active {
+  border-left: 3px solid var(--good);
+}
+
+.development-operations strong {
+  display: block;
+  font-size: 11px;
+}
+
+.development-operations p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+
+/* Full evaluation ------------------------------------------ */
+
+.development-evidence {
+  margin-top: 10px;
+}
+
+.development-evaluation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.development-evaluation {
+  padding: 7px 8px;
+  border-left: 2px solid var(--border);
+  background: var(--panel-raised);
+  font-size: 10px;
+}
+
+.development-evaluation.eligible {
+  border-left-color: var(--good);
+}
+
+.development-evaluation.blocked {
+  border-left-color: var(--muted);
+}
+
+.development-evaluation > div {
+  display: inline-block;
+  margin-right: 8px;
+}
+
+.development-evaluation > span {
+  color: var(--muted);
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.development-evaluation p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+
+/* Board filters --------------------------------------------- */
+
+.development-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.development-filter-tabs,
+.development-level-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.development-filter-tabs button,
+.development-level-tabs button {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  padding: 6px 9px;
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.development-filter-tabs button:hover,
+.development-level-tabs button:hover {
+  background: var(--panel);
+  color: var(--text);
+}
+
+.development-filter-tabs button.active,
+.development-level-tabs button.active {
+  border-color: var(--accent);
+  background: var(--panel-raised);
+  color: var(--text);
+}
+
+.development-filter-tabs button span {
+  display: inline-block;
+  min-width: 18px;
+  margin-left: 6px;
+  padding: 1px 4px;
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  text-align: center;
+}
+
+
+/* Development board ---------------------------------------- */
+
+.development-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+}
+
+.development-table {
+  width: 100%;
+  margin: 0;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+
+.development-table th {
+  padding: 8px 9px;
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: 8.5px;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.development-table td {
+  padding: 7px 9px;
+  border-top: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.development-table tbody tr:nth-child(even) {
+  background: color-mix(
+    in srgb,
+    var(--panel-raised) 35%,
+    transparent
+  );
+}
+
+.development-table tbody tr:hover {
+  background: var(--panel-raised);
+}
+
+.development-table td:first-child .player-link {
+  font-weight: 600;
+}
+
+.development-table-status {
+  font-size: 8px;
+}
+
+.development-operation-tag {
+  display: inline-block;
+  padding: 3px 6px;
+  border: 1px solid var(--good);
+  color: var(--good);
+  font-family: var(--font-display);
+  font-size: 8px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.development-inline-flag {
+  display: inline-block;
+  margin-left: 5px;
+  padding: 1px 4px;
+  border: 1px solid var(--bad);
+  color: var(--bad);
+  font-family: var(--font-display);
+  font-size: 7px;
+}
+
+.development-more {
+  margin-top: 8px;
+  font-size: 10px;
+}
+
+
+@media (min-width: 1750px) {
+  .development-case-grid {
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr));
+  }
+}
+
+
+@media (max-width: 1200px) {
+  .development-metrics,
+  .development-case-facts {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .development-case-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+@media (max-width: 720px) {
+  .development-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .development-assignment {
+    grid-template-columns: 1fr;
+  }
+
+  .development-destination-list {
+    justify-content: flex-start;
+  }
+}
+
+
+/* ── Player Development readability + terminology pass ────── */
+
+.development-page {
+  font-size: 12px;
+}
+
+
+/* How to interpret the development model -------------------- */
+
+.development-guide {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  background: color-mix(
+    in srgb,
+    var(--panel-raised) 50%,
+    transparent
+  );
+}
+
+.development-guide > div {
+  padding-right: 12px;
+  border-right: 1px solid var(--border);
+}
+
+.development-guide > div:last-child {
+  padding-right: 0;
+  border-right: 0;
+}
+
+.development-guide strong {
+  display: block;
+  margin-bottom: 4px;
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.development-guide span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+
+/* Summary cards --------------------------------------------- */
+
+.development-metrics > div {
+  min-height: 112px;
+  padding: 14px 15px;
+}
+
+.development-metrics span {
+  font-size: 10px;
+}
+
+.development-metrics strong {
+  font-size: 27px;
+}
+
+.development-metrics small {
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+
+/* Development meetings ------------------------------------- */
+
+/*
+ * These are reports, not tiny dashboard tiles.
+ * Two across is much easier to read even on a wide display.
+ */
+.development-case-grid {
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+}
+
+/*
+ * Override the earlier wide-screen rule that used three columns.
+ */
+@media (min-width: 1750px) {
+  .development-case-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+.development-case-card {
+  padding: 17px 18px;
+}
+
+.development-case-head h3 {
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.development-case-head .farm-player-meta {
+  margin-top: 4px;
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+
+/* Recommendation language ---------------------------------- */
+
+.development-recommendation-block {
+  max-width: 260px;
+  text-align: right;
+}
+
+.development-recommendation-block .development-status {
+  font-size: 9.5px;
+  padding: 4px 8px;
+}
+
+.development-recommendation-block small {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+
+/* Evidence summary ------------------------------------------ */
+
+.development-case-facts {
+  gap: 7px;
+  margin-top: 15px;
+}
+
+.development-case-facts > div {
+  padding: 9px 10px;
+}
+
+.development-case-facts span {
+  margin-bottom: 4px;
+  font-size: 9.5px;
+  line-height: 1.25;
+}
+
+.development-case-facts strong {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+
+/* Plain-language recommendation ----------------------------- */
+
+.development-verdict {
+  margin: 13px 0;
+  padding: 11px 12px;
+}
+
+.development-verdict > strong {
+  font-size: 10px;
+}
+
+.development-verdict p {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+
+/* Assignment options ---------------------------------------- */
+
+.development-subhead {
+  font-size: 9.5px;
+}
+
+.development-assignment {
+  grid-template-columns: 165px minmax(0, 1fr);
+  padding: 10px 11px;
+}
+
+.development-assignment > div:first-child span {
+  font-size: 9px;
+}
+
+.development-assignment > div:first-child strong {
+  margin-top: 3px;
+  font-size: 12px;
+}
+
+.development-fit {
+  padding: 4px 7px;
+  font-size: 10px;
+}
+
+
+/* Operations ------------------------------------------------ */
+
+.development-operations {
+  margin-top: 12px;
+  padding: 11px 12px;
+}
+
+.development-operations strong {
+  font-size: 12px;
+}
+
+.development-operations p {
+  margin-top: 4px;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+
+/* Expanded evidence ---------------------------------------- */
+
+.development-evidence {
+  margin-top: 12px;
+}
+
+.development-evidence summary {
+  font-size: 11.5px;
+}
+
+.development-score-note {
+  margin: 8px 0;
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+.development-evidence .farm-work-score-strip span {
+  font-size: 9.5px;
+}
+
+.development-evidence .farm-work-score-strip strong {
+  font-size: 14px;
+}
+
+.development-evidence .farm-work-evidence-section h4 {
+  font-size: 11px;
+}
+
+.development-evidence .farm-reason-list {
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+.development-evaluation {
+  padding: 9px 10px;
+  font-size: 11px;
+}
+
+.development-evaluation > span {
+  font-size: 9.5px;
+}
+
+.development-evaluation p {
+  margin-top: 5px;
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+
+/* Organization board --------------------------------------- */
+
+.development-table {
+  font-size: 12px;
+}
+
+.development-table th {
+  padding: 9px 10px;
+  font-size: 9.5px;
+}
+
+.development-table td {
+  padding: 8px 10px;
+}
+
+.development-table-status {
+  padding: 4px 7px;
+  font-size: 8.5px;
+}
+
+
+/* Responsive guide ----------------------------------------- */
+
+@media (max-width: 1200px) {
+  .development-guide {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .development-guide > div {
+    border-right: 0;
+  }
+}
+
+@media (max-width: 700px) {
+  .development-guide {
+    grid-template-columns: 1fr;
+  }
+
+  .development-recommendation-block {
+    max-width: none;
+    text-align: left;
+  }
+
+  .development-case-head {
+    flex-direction: column;
+  }
+}
+
+
+/* ── Player Development case-brief layout ─────────────────── */
+
+/*
+ * Needs Attention is a work queue, not a dashboard wall.
+ * One case per row makes the recommendation much easier to understand.
+ */
+
+.development-case-grid {
+  grid-template-columns: 1fr;
+  gap: 12px;
+  max-width: 1500px;
+}
+
+@media (min-width: 1750px) {
+  .development-case-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* Compact optional glossary -------------------------------- */
+
+.development-guide-details {
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.development-guide-details > summary {
+  padding: 9px 11px;
+  cursor: pointer;
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.development-guide-details[open] > summary {
+  border-bottom: 1px solid var(--border);
+}
+
+.development-guide-details .development-guide {
+  border: 0;
+}
+
+
+/* One-row case brief --------------------------------------- */
+
+.development-case-card {
+  padding: 17px 18px 15px;
+}
+
+.development-case-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  gap: 24px;
+}
+
+.development-recommendation-block {
+  max-width: none;
+}
+
+
+/*
+ * Only the three facts needed for the first scan.
+ * Sample strength remains available in expanded evidence.
+ */
+.development-case-facts {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 900px;
+  margin-top: 14px;
+}
+
+.development-case-facts > div {
+  min-height: 58px;
+  padding: 10px 11px;
+}
+
+.development-case-facts span {
+  font-size: 9.5px;
+}
+
+.development-case-facts strong {
+  font-size: 13px;
+}
+
+
+/* Flag explanation ---------------------------------------- */
+
+.development-verdict {
+  max-width: 1050px;
+  margin: 12px 0;
+}
+
+.development-verdict p {
+  max-width: 900px;
+}
+
+
+/* Assignments should read like a decision line ------------ */
+
+.development-assignment-list {
+  max-width: 1200px;
+}
+
+.development-assignment {
+  grid-template-columns: 190px minmax(0, 1fr);
+  min-height: 50px;
+}
+
+.development-destination-list {
+  gap: 7px;
+}
+
+.development-fit {
+  font-size: 10.5px;
+}
+
+
+/* Operations is secondary to Player Development ----------- */
+
+.development-operations {
+  max-width: 1200px;
+  border-left: 2px solid var(--border);
+  background: color-mix(
+    in srgb,
+    var(--panel-raised) 35%,
+    transparent
+  );
+}
+
+.development-operations-active {
+  border-left: 3px solid var(--good);
+}
+
+.development-operations strong {
+  font-size: 12px;
+}
+
+.development-operations p {
+  max-width: 850px;
+}
+
+
+/* Keep expanded evidence readable rather than sprawling ---- */
+
+.development-evidence {
+  max-width: 1200px;
+}
+
+.development-evidence .farm-work-score-strip {
+  max-width: 850px;
+}
+
+.development-evidence .farm-work-evidence-section {
+  max-width: 950px;
+}
+
+
+@media (max-width: 900px) {
+  .development-case-head {
+    grid-template-columns: 1fr;
+  }
+
+  .development-recommendation-block {
+    text-align: left;
+  }
+
+  .development-case-facts {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* ── Player Development inbox workspace ───────────────────── */
+
+/*
+ * Development cases behave like an inbox:
+ * compact queue on the left, selected case on the right.
+ */
+
+.development-inbox {
+  display: grid;
+  grid-template-columns:
+    minmax(300px, 360px)
+    minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  max-width: 1650px;
+}
+
+
+/* Queue ------------------------------------------------------ */
+
+.development-inbox-list {
+  position: sticky;
+  top: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.development-inbox-list-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-raised);
+}
+
+.development-inbox-list-head strong {
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.development-inbox-list-head span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+
+.development-inbox-items {
+  max-height: calc(100vh - 230px);
+  overflow-y: auto;
+}
+
+
+.development-inbox-item {
+  display: block;
+  width: 100%;
+  padding: 12px 12px 11px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.development-inbox-item:last-child {
+  border-bottom: 0;
+}
+
+.development-inbox-item:hover {
+  background: var(--panel-raised);
+}
+
+.development-inbox-item.active {
+  background: var(--panel-raised);
+  box-shadow:
+    inset 3px 0 0
+    var(--accent);
+}
+
+
+.development-inbox-item-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
+.development-inbox-item-head strong {
+  overflow: hidden;
+  font-size: 12.5px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+.development-inbox-operation {
+  flex: 0 0 auto;
+  padding: 2px 4px;
+  border: 1px solid var(--good);
+  color: var(--good);
+  font-family: var(--font-display);
+  font-size: 7px;
+  letter-spacing: 0.04em;
+}
+
+
+.development-inbox-meta {
+  overflow: hidden;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 9.5px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+.development-inbox-recommendation {
+  margin-top: 8px;
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.development-inbox-recommendation.development-status-ready {
+  color: var(--good);
+}
+
+.development-inbox-recommendation.development-status-consider,
+.development-inbox-recommendation.development-status-watch {
+  color: var(--accent);
+}
+
+.development-inbox-recommendation.development-status-review {
+  color: var(--bad);
+}
+
+.development-inbox-recommendation.development-status-mlb {
+  color: var(--good);
+}
+
+
+.development-inbox-assignment {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 5px;
+  font-size: 9.5px;
+  line-height: 1.3;
+}
+
+.development-inbox-assignment > span {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+
+/* Selected case --------------------------------------------- */
+
+.development-inbox-detail {
+  min-width: 0;
+}
+
+.development-inbox-detail .development-case-card {
+  margin: 0;
+  max-width: none;
+}
+
+.development-inbox-detail .development-case-head {
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(220px, 330px);
+}
+
+.development-inbox-detail .development-case-facts {
+  max-width: none;
+}
+
+.development-inbox-detail .development-verdict,
+.development-inbox-detail .development-assignment-list,
+.development-inbox-detail .development-operations,
+.development-inbox-detail .development-evidence {
+  max-width: none;
+}
+
+
+/*
+ * The old grid is no longer used for Needs Attention,
+ * but keep it sane if reused elsewhere.
+ */
+.development-case-grid {
+  grid-template-columns: 1fr;
+}
+
+
+/* Responsive ------------------------------------------------ */
+
+@media (max-width: 1050px) {
+  .development-inbox {
+    grid-template-columns: 1fr;
+  }
+
+  .development-inbox-list {
+    position: static;
+  }
+
+  .development-inbox-items {
+    display: grid;
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+    max-height: none;
+  }
+
+  .development-inbox-item {
+    border-right: 1px solid var(--border);
+  }
+}
+
+@media (max-width: 700px) {
+  .development-inbox-items {
+    grid-template-columns: 1fr;
+  }
+
+  .development-inbox-detail .development-case-head {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* ── Player Development inbox final spacing polish ────────── */
+
+/*
+ * Use the page width more naturally. The previous max-width left the
+ * development workspace feeling unnecessarily anchored to the left.
+ */
+.development-inbox {
+  grid-template-columns:
+    minmax(320px, 380px)
+    minmax(0, 1fr);
+  gap: 8px;
+  max-width: none;
+}
+
+
+/* The queue benefits from a little more breathing room. */
+.development-inbox-item {
+  padding: 13px 14px 12px;
+}
+
+.development-inbox-list-head {
+  padding: 11px 14px;
+}
+
+
+/*
+ * Treat the opened case as the reading pane of an inbox rather than
+ * an unrelated card sitting next to the list.
+ */
+.development-inbox-detail {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--border);
+  background: color-mix(
+    in srgb,
+    var(--panel-raised) 28%,
+    transparent
+  );
+}
+
+.development-inbox-detail .development-case-card {
+  border-top: 0;
+  border-right: 0;
+  border-bottom: 0;
+}
+
+
+/* Give the detail content a comfortable reading width without making
+ * individual lines stretch across the entire monitor.
+ */
+.development-inbox-detail .development-case-head,
+.development-inbox-detail .development-case-facts,
+.development-inbox-detail .development-verdict,
+.development-inbox-detail .development-assignment-list,
+.development-inbox-detail .development-operations,
+.development-inbox-detail .development-evidence {
+  max-width: 1100px;
+}
+
+
+/*
+ * The explanatory sentence beside Needs Attention was visually detached
+ * from the section. Keep it near the actual workspace.
+ */
+.development-page .farm-section-head {
+  max-width: none;
+}
+
+.development-page .farm-section-head > p {
+  max-width: 420px;
+  margin-left: 24px;
+  text-align: left;
+}
+
+
+/* Development Board should feel clearly separate from the inbox. */
+.development-inbox + * {
+  margin-top: 4px;
+}
+
+
+/* Slightly improve queue scanability. */
+.development-inbox-assignment {
+  margin-top: 7px;
+}
+
+.development-inbox-item.active {
+  box-shadow:
+    inset 3px 0 0 var(--accent);
+}
+
+
+/* Keep the reading-pane treatment sensible on smaller screens. */
+@media (max-width: 1050px) {
+  .development-inbox-detail {
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .development-inbox-detail .development-case-card {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+  }
+}
+
+
+/* ── Player Development inbox workspace geometry ──────────── */
+
+/*
+ * Treat Needs Attention like a real mail client:
+ *
+ * - the workspace has a stable viewport-relative height
+ * - the queue scrolls independently
+ * - the reading pane scrolls only when the opened case needs it
+ * - the Development Board can begin immediately below the workspace
+ */
+.development-inbox {
+  height: clamp(
+    500px,
+    calc(100vh - 390px),
+    690px
+  );
+
+  min-height: 500px;
+
+  grid-template-columns:
+    minmax(320px, 380px)
+    minmax(0, 1fr);
+
+  gap: 8px;
+  align-items: stretch;
+}
+
+
+/* Queue ------------------------------------------------------ */
+
+.development-inbox-list {
+  position: static;
+
+  display: flex;
+  flex-direction: column;
+
+  height: 100%;
+  min-height: 0;
+}
+
+.development-inbox-list-head {
+  flex: 0 0 auto;
+}
+
+.development-inbox-items {
+  flex: 1 1 auto;
+
+  min-height: 0;
+  max-height: none;
+
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+
+/* Reading pane ---------------------------------------------- */
+
+.development-inbox-detail {
+  height: 100%;
+  min-height: 0;
+
+  overflow-y: auto;
+  overscroll-behavior: contain;
+
+  padding: 12px 14px;
+
+  border: 1px solid var(--border);
+
+  background:
+    color-mix(
+      in srgb,
+      var(--panel-raised) 35%,
+      transparent
+    );
+}
+
+
+/*
+ * The case itself should feel like a document inside the reading pane,
+ * not a giant white rectangle stretched to the edge of a 4K monitor.
+ */
+.development-inbox-detail .development-case-card {
+  width: min(100%, 1180px);
+
+  margin: 0 auto;
+
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+
+  background: var(--panel);
+}
+
+
+/*
+ * Once the card itself has a deliberate reading width, its sections can
+ * use that width naturally instead of each carrying its own arbitrary cap.
+ */
+.development-inbox-detail .development-case-head,
+.development-inbox-detail .development-case-facts,
+.development-inbox-detail .development-verdict,
+.development-inbox-detail .development-assignment-list,
+.development-inbox-detail .development-operations,
+.development-inbox-detail .development-evidence {
+  max-width: none;
+}
+
+
+/* A little more breathing room between the card's major sections. */
+
+.development-inbox-detail .development-verdict {
+  margin-top: 14px;
+  margin-bottom: 14px;
+}
+
+.development-inbox-detail .development-assignment-list {
+  margin-top: 12px;
+}
+
+.development-inbox-detail .development-operations {
+  margin-top: 12px;
+}
+
+.development-inbox-detail .development-evidence {
+  margin-top: 12px;
+}
+
+
+/*
+ * Expanded evidence stays within the reading pane rather than changing the
+ * vertical geometry of the whole page.
+ */
+.development-inbox-detail details[open] {
+  padding-bottom: 6px;
+}
+
+
+/* Smaller screens return to normal document flow. */
+
+@media (max-width: 1050px) {
+  .development-inbox {
+    height: auto;
+    min-height: 0;
+  }
+
+  .development-inbox-list {
+    height: auto;
+  }
+
+  .development-inbox-items {
+    overflow: visible;
+  }
+
+  .development-inbox-detail {
+    height: auto;
+    overflow: visible;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .development-inbox-detail .development-case-card {
+    width: 100%;
+  }
+}
+
+
+/* ── Player Development reading-pane correction ───────────── */
+
+/*
+ * The reading pane should begin directly beside the queue.
+ * A centered document created large, artificial gutters.
+ */
+.development-inbox-detail {
+  padding: 0;
+  background: var(--panel);
+}
+
+
+/* The opened case IS the reading pane. */
+.development-inbox-detail .development-case-card {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+
+  border: 0;
+  border-left: 3px solid var(--accent);
+
+  background: var(--panel);
+}
+
+
+/*
+ * Keep the explanatory content readable without moving the entire
+ * case away from the queue.
+ */
+.development-inbox-detail .development-case-head,
+.development-inbox-detail .development-case-facts,
+.development-inbox-detail .development-verdict,
+.development-inbox-detail .development-assignment-list,
+.development-inbox-detail .development-operations,
+.development-inbox-detail .development-evidence {
+  max-width: 1080px;
+}
+
+
+/* Header should visually belong to the pane, not float in space. */
+.development-inbox-detail .development-case-head {
+  padding-right: 4px;
+}
+
+
+/*
+ * Let the closed case use the available vertical space gracefully.
+ * The content stays at the top like an email; the pane itself remains
+ * a coherent surface instead of producing a giant page-level gap.
+ */
+.development-inbox-detail .development-case-card {
+  box-sizing: border-box;
+}
+
+
+/*
+ * Expanded evidence is allowed to exceed the viewport and scroll inside
+ * the reading pane, but switching cases always returns to the top.
+ */
+.development-inbox-detail {
+  scrollbar-gutter: stable;
+}
+
+
+/* The workspace does not need to be quite as tall as the previous pass. */
+.development-inbox {
+  height: clamp(
+    470px,
+    calc(100vh - 430px),
+    620px
+  );
+
+  min-height: 470px;
+}
+
+
+@media (max-width: 1050px) {
+  .development-inbox {
+    height: auto;
+    min-height: 0;
+  }
+
+  .development-inbox-detail .development-case-card {
+    min-height: 0;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+  }
+
+  .development-inbox-detail .development-case-head,
+  .development-inbox-detail .development-case-facts,
+  .development-inbox-detail .development-verdict,
+  .development-inbox-detail .development-assignment-list,
+  .development-inbox-detail .development-operations,
+  .development-inbox-detail .development-evidence {
+    max-width: none;
+  }
+}

@@ -75,7 +75,7 @@ const NAV: Array<NavEntry<Page>> = [
       { page: 'farm-decisions', label: 'Decisions', hint: 'Assignments, retention, and roster churn' },
       { page: 'farm-affiliates', label: 'Affiliates', hint: 'Roster structure and positional coverage' },
 
-      { page: 'prospects', label: 'Players / Prospects', hint: 'Development and assignment signals' },
+      { page: 'prospects', label: 'Player Development', hint: 'Assignments, readiness, and scouting progression' },
       { page: 'development', label: 'Scouted Development', hint: 'How scouting evaluations change over time' },
     ],
   },
