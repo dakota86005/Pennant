@@ -399,6 +399,32 @@ function playerKind(
   };
 }
 
+/**
+ * Developmental pitching role for organizational planning.
+ *
+ * This deliberately differs from the player's current OOTP roster role.
+ * Current role describes how he is being used today; developmental role
+ * describes whether his stamina/repertoire still support starting.
+ */
+export function evaluatePitcherDevelopmentalRole(
+  playerId: number
+): PitcherRoleAssessment | null {
+  const ratings =
+    playerRatings(playerId);
+
+  if (
+    !ratings ||
+    ratings.position !== 1
+  ) {
+    return null;
+  }
+
+  return (
+    playerKind(ratings)
+      .roleAssessment
+  );
+}
+
 function definitionsFor(
   kind: DestinationPlayerKind
 ): ComponentDefinition[] {
