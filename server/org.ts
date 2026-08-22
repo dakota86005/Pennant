@@ -493,6 +493,7 @@ export function computeProspects(orgId: number): { batters: unknown[]; pitchers:
     const ageDiff = base.avgAge !== null ? base.avgAge - p.age : null;
     const common = {
       player_id: p.player_id,
+      team_id: p.team_id,
       name: `${p.first_name} ${p.last_name}`,
       age: p.age,
       team: `${team.name} ${team.nickname}`,
@@ -661,5 +662,13 @@ orgRoutes.get('/minor-league-moves/:orgId', (req, res) => {
     return res.status(400).json({ error: 'Invalid organization id' });
   }
 
-  res.json(computeMinorLeagueRebalance(orgId));
+  const prospects =
+    computeProspects(orgId);
+
+  res.json(
+    computeMinorLeagueRebalance(
+      orgId,
+      prospects
+    )
+  );
 });
