@@ -2313,3 +2313,622 @@ button.cta {
     min-height: 0;
   }
 }
+
+
+/* ── Farm system workspace ───────────────────────────────────── */
+
+.farm-page {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  padding-bottom: 30px;
+}
+
+.farm-page-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.farm-page-head h1 {
+  margin: 3px 0 6px;
+  font-family: var(--font-display);
+  font-size: 25px;
+  letter-spacing: 0.035em;
+}
+
+.farm-page-head p {
+  max-width: 830px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.farm-kicker {
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.farm-scouting-note {
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.farm-scouting-note strong {
+  color: var(--text);
+}
+
+.farm-section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-end;
+  margin-bottom: 12px;
+}
+
+.farm-section-head h2 {
+  margin: 3px 0 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 0.04em;
+}
+
+.farm-section-head > p {
+  max-width: 620px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.45;
+  text-align: right;
+}
+
+.farm-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.farm-metric {
+  min-height: 112px;
+  padding: 13px 14px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+}
+
+.farm-metric > span {
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.farm-metric > strong {
+  margin: 6px 0 4px;
+  font-size: 27px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.farm-metric small {
+  margin-top: auto;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.farm-metric-danger {
+  border-top: 2px solid var(--bad);
+}
+
+.farm-metric-danger > strong {
+  color: var(--bad);
+}
+
+.farm-metric-action {
+  border-top: 2px solid var(--good);
+}
+
+.farm-metric-action > strong {
+  color: var(--good);
+}
+
+
+.farm-affiliate-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(285px, 1fr));
+  gap: 10px;
+}
+
+.farm-affiliate {
+  padding: 13px 14px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  background: var(--panel);
+}
+
+.farm-affiliate.farm-health-critical {
+  border-left-color: var(--bad);
+}
+
+.farm-affiliate.farm-health-thin {
+  border-left-color: var(--accent);
+}
+
+.farm-affiliate.farm-health-healthy {
+  border-left-color: var(--good);
+}
+
+.farm-affiliate.farm-health-surplus {
+  border-left-color: var(--muted);
+}
+
+.farm-affiliate-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+
+.farm-affiliate-level {
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.farm-affiliate h3 {
+  margin: 2px 0 0;
+  font-size: 14px;
+}
+
+.farm-status,
+.farm-action-badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid;
+  padding: 3px 7px;
+  border-radius: 3px;
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 0.07em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.farm-status-critical {
+  color: var(--bad);
+  border-color: var(--bad);
+}
+
+.farm-status-thin {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.farm-status-healthy {
+  color: var(--good);
+  border-color: var(--good);
+}
+
+.farm-status-surplus {
+  color: var(--muted);
+  border-color: var(--muted);
+}
+
+.farm-roster-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  color: var(--muted);
+  font-size: 11.5px;
+  margin-bottom: 10px;
+}
+
+.farm-roster-line strong {
+  color: var(--text);
+}
+
+.farm-health-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin-bottom: 9px;
+}
+
+.farm-health-grid > div {
+  min-width: 0;
+  padding: 6px 7px;
+  background: var(--panel-raised);
+}
+
+.farm-health-grid span,
+.farm-player-evaluation span,
+.farm-evidence-grid span {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.farm-health-grid strong {
+  display: block;
+  overflow: hidden;
+  font-size: 10.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.farm-text-critical,
+.farm-text-thin {
+  color: var(--bad);
+}
+
+.farm-text-healthy {
+  color: var(--good);
+}
+
+.farm-text-surplus {
+  color: var(--accent);
+}
+
+.farm-issue-list,
+.farm-reason-list {
+  margin: 7px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.farm-issue-list li + li,
+.farm-reason-list li + li {
+  margin-top: 3px;
+}
+
+.farm-all-clear {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+
+.farm-decision-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(390px, 1fr));
+  gap: 10px;
+}
+
+.farm-decision-card {
+  padding: 14px 15px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.farm-move-card {
+  border-left: 3px solid var(--good);
+}
+
+.farm-release-card {
+  border-left: 3px solid var(--bad);
+}
+
+.farm-depth-card {
+  border-left: 3px solid var(--muted);
+}
+
+.farm-decision-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.farm-decision-eyebrow {
+  margin-bottom: 2px;
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.farm-decision-card h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.farm-player-meta {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.farm-action-move {
+  color: var(--good);
+  border-color: var(--good);
+}
+
+.farm-action-release {
+  color: var(--bad);
+  border-color: var(--bad);
+}
+
+.farm-action-depth {
+  color: var(--muted);
+  border-color: var(--muted);
+}
+
+.farm-route {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  margin: 13px 0 8px;
+  padding: 8px 10px;
+  background: var(--panel-raised);
+  font-size: 12px;
+}
+
+.farm-route span:first-child {
+  text-align: right;
+}
+
+.farm-route span:last-child {
+  text-align: left;
+}
+
+.farm-route strong {
+  color: var(--accent);
+}
+
+.farm-assignment,
+.farm-summary-copy {
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.farm-assignment strong {
+  color: var(--text);
+}
+
+.farm-plan-impact {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 10.5px;
+}
+
+.farm-player-evaluation {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.65fr) minmax(180px, 1.35fr);
+  gap: 7px;
+  margin: 13px 0 9px;
+}
+
+.farm-player-evaluation > div {
+  padding: 7px 9px;
+  background: var(--panel-raised);
+}
+
+.farm-player-evaluation strong {
+  font-size: 11px;
+}
+
+.farm-evidence {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.farm-evidence summary {
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 10.5px;
+}
+
+.farm-evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 9px;
+}
+
+.farm-evidence-grid > div {
+  padding: 7px 8px;
+  background: var(--panel-raised);
+}
+
+.farm-evidence-grid strong {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+
+.farm-depth-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 7px;
+}
+
+.farm-depth-list .farm-decision-card {
+  padding: 11px 12px;
+}
+
+.farm-depth-list .farm-decision-card h3 {
+  font-size: 13px;
+}
+
+.farm-more {
+  margin: 9px 0 0;
+  font-size: 11px;
+}
+
+.farm-empty {
+  padding: 16px;
+  border: 1px dashed var(--border);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.farm-model-note {
+  padding-top: 15px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.farm-model-note strong {
+  color: var(--text);
+}
+
+
+@media (max-width: 1050px) {
+  .farm-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .farm-page-head,
+  .farm-section-head {
+    display: block;
+  }
+
+  .farm-section-head > p {
+    margin-top: 5px;
+    text-align: left;
+  }
+
+  .farm-metric-grid,
+  .farm-decision-grid,
+  .farm-depth-list {
+    grid-template-columns: 1fr;
+  }
+
+  .farm-health-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .farm-player-evaluation {
+    grid-template-columns: 1fr;
+  }
+
+  .farm-evidence-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+
+/* ── Farm workspace wide-screen refinement ─────────────────── */
+
+/*
+ * On a large desktop an unconstrained auto-fit grid can put the entire farm
+ * system on one extremely wide row. That technically uses the space but makes
+ * each affiliate harder to scan. Four columns reads more like an organizational
+ * board and gives the problem descriptions room to breathe.
+ */
+.farm-affiliate-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+
+/*
+ * Decisions deserve more visual weight than affiliate status cards.
+ * Three columns keeps release cases readable instead of squeezing five across
+ * an ultrawide viewport.
+ */
+.farm-decision-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+
+/*
+ * A lone operational recommendation should not become a 1700px-wide memo.
+ * Keep move cards at a useful reading width while still allowing multiple
+ * recommendations to tile naturally.
+ */
+.farm-decision-grid:has(.farm-move-card) {
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(390px, 560px)
+  );
+}
+
+
+/*
+ * Expendable depth is a secondary queue, so it can stay denser than actual
+ * release recommendations.
+ */
+.farm-depth-list {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+
+/*
+ * Give affiliate issue text a little more breathing room.
+ */
+.farm-affiliate {
+  min-height: 178px;
+}
+
+.farm-issue-list {
+  line-height: 1.5;
+}
+
+
+/* Medium desktop / laptop */
+@media (max-width: 1350px) {
+  .farm-affiliate-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .farm-decision-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .farm-depth-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+
+/* Tablet-ish widths */
+@media (max-width: 950px) {
+  .farm-affiliate-grid,
+  .farm-decision-grid,
+  .farm-depth-list,
+  .farm-decision-grid:has(.farm-move-card) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+
+/* Existing mobile rules ultimately collapse these to one column. */
+@media (max-width: 720px) {
+  .farm-affiliate-grid,
+  .farm-decision-grid,
+  .farm-depth-list,
+  .farm-decision-grid:has(.farm-move-card) {
+    grid-template-columns: 1fr;
+  }
+}

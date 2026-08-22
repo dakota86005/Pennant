@@ -17,6 +17,7 @@ import { Trends } from './pages/Trends';
 import { Storylines } from './pages/Storylines';
 import { Dashboard } from './pages/Dashboard';
 import { Development } from './pages/Development';
+import { FarmSystem } from './pages/FarmSystem';
 import { TradeCenter } from './pages/TradeCenter';
 import { Philosophy } from './pages/Philosophy';
 import { RosterCrunch } from './pages/RosterCrunch';
@@ -40,7 +41,7 @@ import { Chat } from './Chat';
 import { apiGet, apiPost } from './api';
 
 type Page =
-  | 'dashboard' | 'storylines' | 'rosters' | 'depth' | 'prospects' | 'development' | 'draft' | 'franchise' | 'orgcompare'
+  | 'dashboard' | 'farm' | 'storylines' | 'rosters' | 'depth' | 'prospects' | 'development' | 'draft' | 'franchise' | 'orgcompare'
   | 'contracts' | 'crunch' | 'injuries' | 'freeagents' | 'trades' | 'philosophy' | 'lineup' | 'leaders'
   | 'staff' | 'watchlist' | 'players' | 'standings' | 'pitching' | 'schedule' | 'payroll' | 'trends' | 'settings';
 
@@ -68,8 +69,10 @@ const NAV: Array<NavEntry<Page>> = [
   {
     kind: 'group', label: 'Farm System', icon: '🌾',
     items: [
-      { page: 'prospects', label: 'Prospects', hint: 'Promotion signals by level' },
-      { page: 'development', label: 'Development', hint: 'Rating changes over time' },
+      { page: 'farm', label: 'Overview', hint: 'Affiliate health and decisions' },
+
+      { page: 'prospects', label: 'Players / Prospects', hint: 'Development and assignment signals' },
+      { page: 'development', label: 'Scouted Development', hint: 'How scouting evaluations change over time' },
     ],
   },
   {
@@ -328,7 +331,8 @@ export function App() {
                 (i) =>
                   i.page !== 'players' &&
                   i.page !== 'watchlist' &&
-                  i.page !== 'philosophy'
+                  i.page !== 'philosophy' &&
+                i.page !== 'farm'
               ),
             }
           : e
@@ -472,7 +476,8 @@ export function App() {
                 {page === 'storylines' && <Storylines orgId={orgId} orgLabel={org.label} />}
                 {page === 'rosters' && <RosterPage orgId={orgId} />}
                 {page === 'depth' && <DepthChart orgId={orgId} />}
-                {page === 'prospects' && <Prospects orgId={orgId} />}
+                {page === 'farm' && <FarmSystem orgId={orgId} orgLabel={org.label} />}
+              {page === 'prospects' && <Prospects orgId={orgId} />}
                 {page === 'development' && <Development orgId={orgId} />}
                 {page === 'draft' && <Draft orgId={orgId} />}
                 {page === 'franchise' && <Franchise orgId={orgId} />}
