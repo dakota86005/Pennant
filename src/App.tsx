@@ -18,6 +18,7 @@ import { Storylines } from './pages/Storylines';
 import { Dashboard } from './pages/Dashboard';
 import { Development } from './pages/Development';
 import { TradeCenter } from './pages/TradeCenter';
+import { Philosophy } from './pages/Philosophy';
 import { RosterCrunch } from './pages/RosterCrunch';
 import { Injuries } from './pages/Injuries';
 import { Leaderboards } from './pages/Leaderboards';
@@ -40,7 +41,7 @@ import { apiGet, apiPost } from './api';
 
 type Page =
   | 'dashboard' | 'storylines' | 'rosters' | 'depth' | 'prospects' | 'development' | 'draft' | 'franchise' | 'orgcompare'
-  | 'contracts' | 'crunch' | 'injuries' | 'freeagents' | 'trades' | 'lineup' | 'leaders'
+  | 'contracts' | 'crunch' | 'injuries' | 'freeagents' | 'trades' | 'philosophy' | 'lineup' | 'leaders'
   | 'staff' | 'watchlist' | 'players' | 'standings' | 'pitching' | 'schedule' | 'payroll' | 'trends' | 'settings';
 
 /**
@@ -74,6 +75,7 @@ const NAV: Array<NavEntry<Page>> = [
   {
     kind: 'group', label: 'Front Office', icon: '💼',
     items: [
+      { page: 'philosophy', label: 'Organizational Philosophy', hint: 'Define how your baseball operation thinks' },
       { page: 'payroll', label: 'Payroll & Budget', hint: 'Committed money by season' },
       { page: 'contracts', label: 'Contracts', hint: 'Re-sign, extend, or walk' },
       { page: 'freeagents', label: 'Free Agents', hint: 'Now and after this season' },
@@ -315,12 +317,20 @@ export function App() {
   if (!status) return <div className="shell"><p className="muted">Loading…</p></div>;
 
   const busy = switching || status.importing;
-  // A snapshot has no query endpoint behind Player Search and nowhere to save a
-  // watchlist, so those two entries come out of the menu entirely
+  // A static snapshot has no query endpoint behind Player Search, nowhere to
+  // save a watchlist, and no writable organizational-philosophy settings.
   const navEntries = isStaticSite()
     ? NAV.map((e) =>
         e.kind === 'group'
-          ? { ...e, items: e.items.filter((i) => i.page !== 'players' && i.page !== 'watchlist') }
+          ? {
+              ...e,
+              items: e.items.filter(
+                (i) =>
+                  i.page !== 'players' &&
+                  i.page !== 'watchlist' &&
+                  i.page !== 'philosophy'
+              ),
+            }
           : e
       )
     : NAV;
@@ -469,6 +479,7 @@ export function App() {
                 {page === 'orgcompare' && <OrgComparison orgId={orgId} />}
                 {page === 'contracts' && <Contracts orgId={orgId} />}
                 {page === 'payroll' && <Payroll orgId={orgId} />}
+                {page === 'philosophy' && <Philosophy orgId={orgId} orgLabel={org.label} />}
                 {page === 'crunch' && <RosterCrunch orgId={orgId} />}
                 {page === 'injuries' && <Injuries orgId={orgId} />}
                 {page === 'trades' && <TradeCenter orgId={orgId} orgLabel={org.label} />}
