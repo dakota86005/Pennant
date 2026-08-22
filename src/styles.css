@@ -3269,3 +3269,714 @@ button.cta {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+
+/* ── Farm system affiliate workspace ───────────────────────── */
+
+.affiliate-page {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  padding-bottom: 30px;
+}
+
+.affiliate-selector {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.affiliate-selector button {
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.affiliate-selector button:hover {
+  background: var(--panel-raised);
+}
+
+.affiliate-selector button.active {
+  border-color: var(--accent);
+  border-top: 2px solid var(--accent);
+  background: var(--panel-raised);
+}
+
+.affiliate-selector span {
+  display: block;
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.affiliate-selector strong {
+  display: block;
+  overflow: hidden;
+  margin: 3px 0;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.affiliate-selector small {
+  font-size: 9px;
+}
+
+
+.affiliate-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 15px;
+  margin-bottom: -14px;
+}
+
+.affiliate-hero h2 {
+  margin: 3px 0 0;
+  font-family: var(--font-display);
+  font-size: 22px;
+  letter-spacing: 0.035em;
+}
+
+
+.affiliate-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.affiliate-metric-grid > div {
+  padding: 10px 11px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.affiliate-metric-grid span {
+  display: block;
+  color: var(--muted);
+  font-size: 8.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.affiliate-metric-grid strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+}
+
+
+.affiliate-analysis-grid {
+  display: grid;
+  grid-template-columns: 1.35fr 0.65fr;
+  gap: 10px;
+}
+
+.affiliate-analysis-card {
+  padding: 13px 14px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.affiliate-analysis-card h3 {
+  margin: 3px 0 7px;
+  font-family: var(--font-display);
+  font-size: 14px;
+}
+
+.affiliate-pitch-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.affiliate-pitch-grid > div {
+  padding: 7px 8px;
+  background: var(--panel-raised);
+}
+
+.affiliate-pitch-grid span,
+.affiliate-pitch-grid small {
+  display: block;
+  color: var(--muted);
+  font-size: 8.5px;
+}
+
+.affiliate-pitch-grid strong {
+  display: block;
+  margin: 2px 0;
+  font-size: 11px;
+}
+
+
+.affiliate-coverage-grid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.affiliate-coverage-card {
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--border);
+  background: var(--panel);
+}
+
+.affiliate-coverage-card.affiliate-health-critical {
+  border-top-color: var(--bad);
+}
+
+.affiliate-coverage-card.affiliate-health-thin {
+  border-top-color: var(--accent);
+}
+
+.affiliate-coverage-card.affiliate-health-healthy {
+  border-top-color: var(--good);
+}
+
+.affiliate-coverage-card.affiliate-health-surplus {
+  border-top-color: var(--muted);
+}
+
+.affiliate-coverage-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 5px;
+  align-items: flex-start;
+}
+
+.affiliate-coverage-head > strong {
+  font-family: var(--font-display);
+  font-size: 15px;
+}
+
+.affiliate-coverage-head .farm-status {
+  padding: 2px 4px;
+  font-size: 7px;
+}
+
+.affiliate-coverage-count {
+  margin: 6px 0 8px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.affiliate-coverage-players {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.affiliate-coverage-players > div {
+  min-width: 0;
+}
+
+.affiliate-coverage-players .player-link {
+  display: block;
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.affiliate-coverage-players span {
+  display: block;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.affiliate-coverage-none {
+  color: var(--bad) !important;
+  font-size: 9px !important;
+}
+
+
+.affiliate-move-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 520px));
+  gap: 7px;
+}
+
+.affiliate-move-list article {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) auto minmax(190px, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  font-size: 10px;
+}
+
+.affiliate-move-in,
+.affiliate-move-out {
+  padding: 2px 5px;
+  border: 1px solid;
+  font-family: var(--font-display);
+  font-size: 8px;
+}
+
+.affiliate-move-in {
+  color: var(--good);
+  border-color: var(--good);
+}
+
+.affiliate-move-out {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.affiliate-move-route {
+  color: var(--muted);
+}
+
+
+.affiliate-roster-groups {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.affiliate-roster-group {
+  min-width: 0;
+}
+
+.affiliate-roster-group h3 {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  margin: 0 0 7px;
+  font-family: var(--font-display);
+  font-size: 13px;
+}
+
+.affiliate-roster-group h3 span {
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: var(--panel-raised);
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.affiliate-roster-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+}
+
+.affiliate-roster-table {
+  width: 100%;
+  margin: 0;
+  border-collapse: collapse;
+  font-size: 10.5px;
+}
+
+.affiliate-roster-table th {
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: 8px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.affiliate-roster-table th,
+.affiliate-roster-table td {
+  padding: 6px 7px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.affiliate-roster-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.affiliate-roster-status {
+  display: inline-block;
+  padding: 2px 5px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: 7.5px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.affiliate-roster-release {
+  color: var(--bad);
+  border-color: var(--bad);
+}
+
+.affiliate-roster-depth {
+  color: var(--muted);
+}
+
+.affiliate-roster-protected {
+  color: var(--good);
+  border-color: var(--good);
+}
+
+
+@media (max-width: 1350px) {
+  .affiliate-selector {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .affiliate-coverage-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .affiliate-metric-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .affiliate-analysis-grid,
+  .affiliate-roster-groups {
+    grid-template-columns: 1fr;
+  }
+
+  .affiliate-selector {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 650px) {
+  .affiliate-coverage-grid,
+  .affiliate-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .affiliate-move-list article {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* ── Affiliate workspace readability polish ───────────────── */
+
+/*
+ * Affiliate pages are operational workspaces, not leaderboard tables.
+ * Give the text enough size and vertical rhythm to be comfortably scanned
+ * on a large desktop display.
+ */
+
+.affiliate-page {
+  font-size: 12px;
+}
+
+
+/* Affiliate selector ------------------------------------------------ */
+
+.affiliate-selector button {
+  padding: 11px 12px;
+}
+
+.affiliate-selector span {
+  font-size: 9px;
+}
+
+.affiliate-selector strong {
+  margin: 4px 0;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.affiliate-selector small {
+  font-size: 10px;
+  font-weight: 600;
+}
+
+
+/* Summary metrics --------------------------------------------------- */
+
+.affiliate-metric-grid > div {
+  padding: 12px 13px;
+}
+
+.affiliate-metric-grid span {
+  font-size: 9.5px;
+}
+
+.affiliate-metric-grid strong {
+  margin-top: 4px;
+  font-size: 20px;
+}
+
+
+/* Diagnosis / pitching --------------------------------------------- */
+
+.affiliate-analysis-card {
+  padding: 15px 16px;
+}
+
+.affiliate-analysis-card h3 {
+  font-size: 15px;
+}
+
+.affiliate-analysis-card .farm-reason-list {
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.affiliate-pitch-grid > div {
+  padding: 9px 10px;
+}
+
+.affiliate-pitch-grid span,
+.affiliate-pitch-grid small {
+  font-size: 9.5px;
+}
+
+.affiliate-pitch-grid strong {
+  margin: 3px 0;
+  font-size: 12px;
+}
+
+
+/* Defensive coverage ------------------------------------------------ */
+
+.affiliate-coverage-card {
+  padding: 11px 11px;
+}
+
+.affiliate-coverage-head > strong {
+  font-size: 17px;
+}
+
+.affiliate-coverage-head .farm-status {
+  padding: 3px 5px;
+  font-size: 8px;
+}
+
+.affiliate-coverage-count {
+  margin: 7px 0 9px;
+  font-size: 10px;
+}
+
+.affiliate-coverage-players {
+  gap: 7px;
+}
+
+.affiliate-coverage-players .player-link {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.affiliate-coverage-players span {
+  margin-top: 1px;
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.affiliate-coverage-none {
+  font-size: 10px !important;
+}
+
+
+/* Operations -------------------------------------------------------- */
+
+.affiliate-move-list article {
+  padding: 11px 12px;
+  font-size: 11px;
+}
+
+.affiliate-move-in,
+.affiliate-move-out {
+  padding: 3px 6px;
+  font-size: 9px;
+}
+
+
+/* Active roster ----------------------------------------------------- */
+
+.affiliate-roster-group h3 {
+  margin-bottom: 9px;
+  font-size: 15px;
+}
+
+.affiliate-roster-group h3 span {
+  padding: 2px 6px;
+  font-size: 10px;
+}
+
+.affiliate-roster-table {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.affiliate-roster-table th {
+  padding: 8px 9px;
+  font-size: 9.5px;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.affiliate-roster-table td {
+  padding: 8px 9px;
+  vertical-align: middle;
+}
+
+.affiliate-roster-table tbody tr:hover {
+  background: var(--panel-raised);
+}
+
+.affiliate-roster-table .player-link {
+  font-weight: 600;
+}
+
+
+/*
+ * This was much too small. Org Status is an important operational field,
+ * not metadata.
+ */
+.affiliate-roster-status {
+  padding: 3px 7px;
+  border-radius: 3px;
+  font-size: 9px;
+  line-height: 1.25;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+
+/* Make the non-danger states easier to distinguish at a glance. */
+
+.affiliate-roster-protected {
+  background: color-mix(
+    in srgb,
+    var(--good) 8%,
+    transparent
+  );
+}
+
+.affiliate-roster-depth {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(
+    in srgb,
+    var(--accent) 7%,
+    transparent
+  );
+}
+
+.affiliate-roster-release {
+  background: color-mix(
+    in srgb,
+    var(--bad) 8%,
+    transparent
+  );
+}
+
+
+/* Section supporting text ------------------------------------------ */
+
+.affiliate-page .farm-section-head > p {
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+
+/* Give the two roster tables enough room before collapsing. */
+
+@media (max-width: 1200px) {
+  .affiliate-roster-groups {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Affiliate move direction should describe the relationship to this club. */
+.affiliate-move-in,
+.affiliate-move-out {
+  min-width: 58px;
+  text-align: center;
+}
+
+
+/* ── Affiliate workspace final polish ───────────────────────── */
+
+/* Don't stretch the diagnosis card just because its neighbor is taller. */
+.affiliate-analysis-grid {
+  align-items: start;
+}
+
+.affiliate-analysis-card {
+  align-self: start;
+}
+
+
+/*
+ * Recommended Operations moves are actual front-office decisions.
+ * Give a lone move enough width to read as a recommendation rather than
+ * a tiny utility widget.
+ */
+.affiliate-move-list {
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(460px, 620px)
+  );
+}
+
+.affiliate-move-list article {
+  min-height: 54px;
+  padding: 12px 14px;
+}
+
+.affiliate-move-list .player-link {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.affiliate-move-route {
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.affiliate-move-list article > strong {
+  font-size: 11px;
+}
+
+
+/* Org status should remain readable at normal 4K desktop scaling. */
+.affiliate-roster-status {
+  min-width: 52px;
+  padding: 4px 7px;
+  font-size: 9.5px;
+  text-align: center;
+}
+
+
+/* A little more structure without turning the roster into a spreadsheet. */
+.affiliate-roster-table tbody tr:nth-child(even) {
+  background: color-mix(
+    in srgb,
+    var(--panel-raised) 45%,
+    transparent
+  );
+}
+
+.affiliate-roster-table tbody tr:hover {
+  background: var(--panel-raised);
+}
+
+
+/*
+ * Player name is the primary thing the eye should track across the roster.
+ */
+.affiliate-roster-table td:first-child {
+  font-size: 12px;
+}
+
+.affiliate-roster-table td:first-child .player-link {
+  font-weight: 650;
+}

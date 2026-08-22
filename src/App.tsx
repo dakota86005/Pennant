@@ -19,6 +19,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Development } from './pages/Development';
 import { FarmSystem } from './pages/FarmSystem';
 import { FarmDecisions } from './pages/FarmDecisions';
+import { FarmAffiliates } from './pages/FarmAffiliates';
 import { TradeCenter } from './pages/TradeCenter';
 import { Philosophy } from './pages/Philosophy';
 import { RosterCrunch } from './pages/RosterCrunch';
@@ -42,7 +43,7 @@ import { Chat } from './Chat';
 import { apiGet, apiPost } from './api';
 
 type Page =
-  | 'dashboard' | 'farm' | 'farm-decisions' | 'storylines' | 'rosters' | 'depth' | 'prospects' | 'development' | 'draft' | 'franchise' | 'orgcompare'
+  | 'dashboard' | 'farm' | 'farm-decisions' | 'farm-affiliates' | 'storylines' | 'rosters' | 'depth' | 'prospects' | 'development' | 'draft' | 'franchise' | 'orgcompare'
   | 'contracts' | 'crunch' | 'injuries' | 'freeagents' | 'trades' | 'philosophy' | 'lineup' | 'leaders'
   | 'staff' | 'watchlist' | 'players' | 'standings' | 'pitching' | 'schedule' | 'payroll' | 'trends' | 'settings';
 
@@ -72,6 +73,7 @@ const NAV: Array<NavEntry<Page>> = [
     items: [
       { page: 'farm', label: 'Overview', hint: 'Affiliate health and decisions' },
       { page: 'farm-decisions', label: 'Decisions', hint: 'Assignments, retention, and roster churn' },
+      { page: 'farm-affiliates', label: 'Affiliates', hint: 'Roster structure and positional coverage' },
 
       { page: 'prospects', label: 'Players / Prospects', hint: 'Development and assignment signals' },
       { page: 'development', label: 'Scouted Development', hint: 'How scouting evaluations change over time' },
@@ -335,7 +337,8 @@ export function App() {
                   i.page !== 'watchlist' &&
                   i.page !== 'philosophy' &&
                 i.page !== 'farm' &&
-                i.page !== 'farm-decisions'
+                i.page !== 'farm-decisions' &&
+                i.page !== 'farm-affiliates'
               ),
             }
           : e
@@ -481,6 +484,7 @@ export function App() {
                 {page === 'depth' && <DepthChart orgId={orgId} />}
                 {page === 'farm' && <FarmSystem orgId={orgId} orgLabel={org.label} />}
               {page === 'farm-decisions' && <FarmDecisions orgId={orgId} orgLabel={org.label} />}
+              {page === 'farm-affiliates' && <FarmAffiliates orgId={orgId} orgLabel={org.label} />}
               {page === 'prospects' && <Prospects orgId={orgId} />}
                 {page === 'development' && <Development orgId={orgId} />}
                 {page === 'draft' && <Draft orgId={orgId} />}
