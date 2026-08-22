@@ -181,8 +181,47 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    refreshStatus().catch((e) => setError(e.message));
-    getSaves().then(setSaves).catch(() => {});
+    let cancelled = false;
+
+    /*
+     * In development Vite can be ready a moment before the API server.
+     * Treat an initial connection failure as startup ordering, not as a
+     * permanent application error.
+     */
+    const load = async () => {
+      for (let attempt = 0; attempt < 40 && !cancelled; attempt++) {
+        try {
+          await refreshStatus();
+
+          if (!cancelled) {
+            getSaves()
+              .then((result) => {
+                if (!cancelled) setSaves(result);
+              })
+              .catch(() => {});
+          }
+
+          return;
+        } catch (e) {
+          if (attempt === 39) {
+            if (!cancelled) {
+              setError((e as Error).message);
+            }
+            return;
+          }
+
+          await new Promise((resolve) =>
+            setTimeout(resolve, 250)
+          );
+        }
+      }
+    };
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
   }, [refreshStatus]);
 
   // Poll for a fresh export. Cheap, and the alternative is the user staring at
