@@ -444,7 +444,7 @@ function hittersForTeam(teamId: number): Hitter[] {
     JOIN team_roster tr
       ON tr.team_id = p.team_id
      AND tr.player_id = p.player_id
-     AND tr.list_id = 1
+     AND tr.list_id = 2
     ${values.join}
     WHERE p.team_id = ?
       AND p.retired = 0

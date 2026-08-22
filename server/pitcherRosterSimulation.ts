@@ -270,7 +270,7 @@ export function pitcherRosterForTeam(
     JOIN team_roster tr
       ON tr.team_id = ?
      AND tr.player_id = p.player_id
-     AND tr.list_id = 1
+     AND tr.list_id = 2
 
     LEFT JOIN players_pitching pp
       ON pp.player_id = p.player_id
