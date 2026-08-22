@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { computeMinorLeagueRosterHealth } from './minorLeagueRoster.js';
 import { computeMinorLeagueRebalance } from './minorLeagueMoves.js';
+import { computeMinorLeaguePitchingOperations } from './minorLeaguePitchingOperations.js';
 import { db, tableExists, tableColumns } from './db.js';
 import { LEVEL_NAMES } from './valuation.js';
 import { resolvePhilosophy } from './philosophy.js';
@@ -665,10 +666,20 @@ orgRoutes.get('/minor-league-moves/:orgId', (req, res) => {
   const prospects =
     computeProspects(orgId);
 
-  res.json(
+  const positionPlayerOperations =
     computeMinorLeagueRebalance(
       orgId,
       prospects
-    )
-  );
+    );
+
+  const pitchingOperations =
+    computeMinorLeaguePitchingOperations(
+      orgId,
+      prospects
+    );
+
+  res.json({
+    ...positionPlayerOperations,
+    pitching: pitchingOperations,
+  });
 });
