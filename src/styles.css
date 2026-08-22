@@ -2932,3 +2932,340 @@ button.cta {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* ── Farm system decision queue ─────────────────────────────── */
+
+.farm-decisions-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-bottom: 30px;
+}
+
+.farm-decisions-page .farm-page-head h1 {
+  margin: 3px 0 6px;
+}
+
+.farm-decision-tabs {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.farm-decision-tabs button {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 11px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.farm-decision-tabs button:hover {
+  background: var(--panel);
+  color: var(--text);
+}
+
+.farm-decision-tabs button.active {
+  border-color: var(--accent);
+  background: var(--panel-raised);
+  color: var(--text);
+}
+
+.farm-decision-tabs button span {
+  min-width: 20px;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.farm-decision-tabs button.active span {
+  background: var(--accent);
+  color: var(--panel);
+}
+
+.farm-decisions-intro {
+  margin-top: -14px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.farm-work-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.farm-work-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.farm-work-card {
+  padding: 15px 16px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.farm-work-assignment {
+  border-left: 3px solid var(--good);
+}
+
+.farm-work-release {
+  border-left: 3px solid var(--bad);
+}
+
+.farm-work-depth {
+  border-left: 3px solid var(--muted);
+}
+
+.farm-work-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  align-items: flex-start;
+}
+
+.farm-work-card-head h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.farm-work-route {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 12px;
+  align-items: center;
+  margin: 13px 0;
+  padding: 9px 11px;
+  background: var(--panel-raised);
+}
+
+.farm-work-route > div:first-child {
+  text-align: right;
+}
+
+.farm-work-route > div:last-child {
+  text-align: left;
+}
+
+.farm-work-route span {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.farm-work-route strong {
+  font-size: 12px;
+}
+
+.farm-work-route b {
+  color: var(--accent);
+  font-size: 16px;
+}
+
+.farm-work-verdict {
+  margin: 12px 0;
+  padding: 10px 11px;
+  border-left: 2px solid var(--border);
+  background: color-mix(
+    in srgb,
+    var(--panel-raised) 60%,
+    transparent
+  );
+}
+
+.farm-work-release .farm-work-verdict {
+  border-left-color: var(--bad);
+}
+
+.farm-work-assignment .farm-work-verdict {
+  border-left-color: var(--good);
+}
+
+.farm-work-verdict > strong {
+  display: block;
+  margin-bottom: 4px;
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.farm-work-verdict p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.farm-work-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.farm-work-facts > div {
+  min-width: 0;
+  padding: 7px 8px;
+  background: var(--panel-raised);
+}
+
+.farm-work-facts span {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--muted);
+  font-size: 8.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.farm-work-facts strong {
+  display: block;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+}
+
+.farm-work-evidence {
+  margin-top: 12px;
+  padding-top: 9px;
+  border-top: 1px solid var(--border);
+}
+
+.farm-work-evidence > summary {
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 10.5px;
+}
+
+.farm-work-evidence[open] > summary {
+  margin-bottom: 12px;
+  color: var(--text);
+}
+
+.farm-work-evidence-section + .farm-work-evidence-section {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.farm-work-evidence-section h4 {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.farm-work-evidence-section p {
+  margin: 4px 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+
+@media (min-width: 1650px) {
+  .farm-work-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  /*
+   * Assignment cards carry longer route/reasoning text and read better at
+   * roughly half-screen width even on a very wide display.
+   */
+  .farm-work-section:first-of-type .farm-work-list {
+    grid-template-columns: repeat(2, minmax(0, 620px));
+  }
+}
+
+@media (max-width: 1050px) {
+  .farm-work-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 650px) {
+  .farm-work-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .farm-work-card-head {
+    display: block;
+  }
+
+  .farm-work-card-head .farm-action-badge {
+    margin-top: 8px;
+  }
+}
+
+
+/* ── Decisions evidence layout fixes ───────────────────────── */
+
+/*
+ * Expanding one decision must not stretch every other card in its CSS-grid
+ * row to the same height.
+ */
+.farm-work-list {
+  align-items: start;
+}
+
+.farm-work-card {
+  align-self: start;
+}
+
+
+/*
+ * Exact model values belong in a compact evidence strip. Keep these deliberately
+ * secondary to the baseball-language labels on the collapsed card.
+ */
+.farm-work-score-strip {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+  margin: 0 0 13px;
+}
+
+.farm-work-score-strip > div {
+  min-width: 0;
+  padding: 7px 8px;
+  background: var(--panel-raised);
+}
+
+.farm-work-score-strip > div > span {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--muted);
+  font-size: 8.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.farm-work-score-strip > div > strong {
+  display: block;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 650px) {
+  .farm-work-score-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
