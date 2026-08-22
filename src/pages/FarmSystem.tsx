@@ -511,13 +511,37 @@ function moveEvidence(
 
 function AffiliateCard({
   affiliate,
+  onOpen,
 }: {
   affiliate:
     AffiliateHealth;
+
+  onOpen:
+    (teamId: number) => void;
 }) {
   return (
     <article
-      className={`farm-affiliate farm-health-${affiliate.overall}`}
+      className={`farm-affiliate farm-affiliate-link farm-health-${affiliate.overall}`}
+      role="button"
+      tabIndex={0}
+      aria-label={`Open ${affiliate.label} affiliate report`}
+      onClick={() =>
+        onOpen(
+          affiliate.teamId
+        )
+      }
+      onKeyDown={(event) => {
+        if (
+          event.key === 'Enter' ||
+          event.key === ' '
+        ) {
+          event.preventDefault();
+
+          onOpen(
+            affiliate.teamId
+          );
+        }
+      }}
     >
       <div className="farm-affiliate-head">
         <div>
@@ -983,12 +1007,16 @@ function RetentionCard({
 export function FarmSystem({
   orgId,
   orgLabel,
+  onOpenAffiliate,
 }: {
   orgId:
     number;
 
   orgLabel:
     string;
+
+  onOpenAffiliate:
+    (teamId: number) => void;
 }) {
   const [
     data,
@@ -1310,6 +1338,9 @@ export function FarmSystem({
                 }
                 affiliate={
                   affiliate
+                }
+                onOpen={
+                  onOpenAffiliate
                 }
               />
             )

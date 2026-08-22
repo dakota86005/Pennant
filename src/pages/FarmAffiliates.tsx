@@ -614,23 +614,23 @@ function RosterTable({
 export function FarmAffiliates({
   orgId,
   orgLabel,
+  selectedTeamId,
+  onSelectTeam,
 }: {
   orgId: number;
   orgLabel: string;
+
+  selectedTeamId:
+    number | null;
+
+  onSelectTeam:
+    (teamId: number) => void;
 }) {
   const [
     data,
     setData,
   ] =
     useState<AffiliateData | null>(
-      null
-    );
-
-  const [
-    selectedTeamId,
-    setSelectedTeamId,
-  ] =
-    useState<number | null>(
       null
     );
 
@@ -649,7 +649,6 @@ export function FarmAffiliates({
         false;
 
       setData(null);
-      setSelectedTeamId(null);
       setError(null);
 
       Promise.all([
@@ -683,20 +682,35 @@ export function FarmAffiliates({
               operations,
             });
 
-            const firstFlagged =
-              health.affiliates.find(
+            const requestedExists =
+              selectedTeamId != null &&
+              health.affiliates.some(
                 (affiliate) =>
-                  affiliate.overall !==
-                  'healthy'
+                  affiliate.teamId ===
+                  selectedTeamId
               );
 
-            setSelectedTeamId(
-              firstFlagged
-                ?.teamId ??
+            if (!requestedExists) {
+              const firstFlagged =
+                health.affiliates.find(
+                  (affiliate) =>
+                    affiliate.overall !==
+                    'healthy'
+                );
+
+              const defaultTeamId =
+                firstFlagged?.teamId ??
                 health.affiliates[0]
-                  ?.teamId ??
-                null
-            );
+                  ?.teamId;
+
+              if (
+                defaultTeamId != null
+              ) {
+                onSelectTeam(
+                  defaultTeamId
+                );
+              }
+            }
           }
         )
         .catch(
@@ -933,7 +947,7 @@ export function FarmAffiliates({
               }
               onClick={
                 () =>
-                  setSelectedTeamId(
+                  onSelectTeam(
                     item.teamId
                   )
               }

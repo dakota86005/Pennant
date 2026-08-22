@@ -152,6 +152,16 @@ export function App() {
   const [orgs, setOrgs] = useState<Org[]>([]);
   const [orgId, setOrgId] = useState<number | null>(null);
   const [page, setPage] = useState<Page>('dashboard');
+
+  /*
+   * Farm pages share affiliate context so Overview can drill directly into
+   * a club and the Affiliates workspace can preserve the user's selection.
+   */
+  const [
+    farmAffiliateTeamId,
+    setFarmAffiliateTeamId,
+  ] = useState<number | null>(null);
+
   const [switching, setSwitching] = useState(false);
   /** Live import progress, so a thirty-second wait is not a blank screen. */
   const [importing, setImporting] = useState<Status['importProgress']>(null);
@@ -482,9 +492,25 @@ export function App() {
                 {page === 'storylines' && <Storylines orgId={orgId} orgLabel={org.label} />}
                 {page === 'rosters' && <RosterPage orgId={orgId} />}
                 {page === 'depth' && <DepthChart orgId={orgId} />}
-                {page === 'farm' && <FarmSystem orgId={orgId} orgLabel={org.label} />}
+                {page === 'farm' && (
+                <FarmSystem
+                  orgId={orgId}
+                  orgLabel={org.label}
+                  onOpenAffiliate={(teamId) => {
+                    setFarmAffiliateTeamId(teamId);
+                    setPage('farm-affiliates');
+                  }}
+                />
+              )}
               {page === 'farm-decisions' && <FarmDecisions orgId={orgId} orgLabel={org.label} />}
-              {page === 'farm-affiliates' && <FarmAffiliates orgId={orgId} orgLabel={org.label} />}
+                {page === 'farm-affiliates' && (
+                <FarmAffiliates
+                  orgId={orgId}
+                  orgLabel={org.label}
+                  selectedTeamId={farmAffiliateTeamId}
+                  onSelectTeam={setFarmAffiliateTeamId}
+                />
+              )}
               {page === 'prospects' && <Prospects orgId={orgId} />}
                 {page === 'development' && <Development orgId={orgId} />}
                 {page === 'draft' && <Draft orgId={orgId} />}

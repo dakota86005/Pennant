@@ -3980,3 +3980,30 @@ button.cta {
 .affiliate-roster-table td:first-child .player-link {
   font-weight: 650;
 }
+
+
+/* ── Farm Overview → Affiliate drill-through ───────────────── */
+
+.farm-affiliate-link {
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    transform 120ms ease;
+}
+
+.farm-affiliate-link:hover {
+  background: var(--panel-raised);
+  transform: translateY(-1px);
+}
+
+.farm-affiliate-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.farm-affiliate-link:hover h3 {
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-underline-offset: 3px;
+}
