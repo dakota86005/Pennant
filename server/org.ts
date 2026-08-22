@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { computeMinorLeagueRosterHealth } from './minorLeagueRoster.js';
+import { computeMinorLeagueRebalance } from './minorLeagueMoves.js';
 import { db, tableExists, tableColumns } from './db.js';
 import { LEVEL_NAMES } from './valuation.js';
 import { resolvePhilosophy } from './philosophy.js';
@@ -8,6 +9,12 @@ import {
   evaluateProspectDecision,
   type ProspectNextAssignment,
 } from './prospectDecision.js';
+import {
+  evaluateProspectAssignments,
+} from './prospectAssignments.js';
+import {
+  applyDestinationFitToAssignments,
+} from './destinationFit.js';
 
 export const orgRoutes = Router();
 
@@ -375,6 +382,97 @@ export function computeProspects(orgId: number): { batters: unknown[]; pitchers:
     };
   };
 
+  const promotionAssignmentsFor = (
+    currentLevel: number
+  ): ProspectNextAssignment[] => {
+    return orgLevels
+      .filter((level) => level < currentLevel)
+      .sort((a, b) => b - a)
+      .map((level) => ({
+        level,
+        levelName:
+          LEVEL_NAMES[level] ?? `L${level}`,
+        teams: teamList
+          .filter((team) => team.level === level)
+          .map((team) => ({
+            teamId: team.team_id,
+            label:
+              team.name === team.nickname
+                ? team.name
+                : `${team.name} ${team.nickname}`,
+          })),
+        isMajorLeague: level === 1,
+      }));
+  };
+
+  const demotionAssignmentsFor = (
+    currentLevel: number
+  ): ProspectNextAssignment[] => {
+    return orgLevels
+      .filter((level) => level > currentLevel)
+      .sort((a, b) => a - b)
+      .map((level) => ({
+        level,
+        levelName:
+          LEVEL_NAMES[level] ?? `L${level}`,
+        teams: teamList
+          .filter((team) => team.level === level)
+          .map((team) => ({
+            teamId: team.team_id,
+            label:
+              team.name === team.nickname
+                ? team.name
+                : `${team.name} ${team.nickname}`,
+          })),
+        isMajorLeague: false,
+      }));
+  };
+
+  /*
+   * Keep objective decision evidence and assignment selection together in the
+   * Prospect API while preserving their separate responsibilities.
+   *
+   * evaluateProspectDecision:
+   *   Should movement be discussed?
+   *
+   * evaluateProspectAssignments:
+   *   Which organizational levels are developmentally defensible?
+   */
+  const decisionBundle = (
+    playerId: number,
+    currentLevel: number,
+    input: Parameters<
+      typeof evaluateProspectDecision
+    >[0]
+  ) => {
+    const decision =
+      evaluateProspectDecision(input);
+
+    const rawAssignments =
+      evaluateProspectAssignments({
+        decision,
+        higherAssignments:
+          promotionAssignmentsFor(
+            currentLevel
+          ),
+        lowerAssignments:
+          demotionAssignmentsFor(
+            currentLevel
+          ),
+      });
+
+    const assignments =
+      applyDestinationFitToAssignments(
+        playerId,
+        rawAssignments
+      );
+
+    return {
+      decision,
+      assignments,
+    };
+  };
+
   const batters: unknown[] = [];
   const pitchers: unknown[] = [];
 
@@ -438,7 +536,7 @@ export function computeProspects(orgId: number): { batters: unknown[]; pitchers:
         ...common, role: p.role, ip: Number(ip.toFixed(1)), era: Number(era.toFixed(2)),
         kpct: Number((kpct * 100).toFixed(1)), war: s.war ?? 0,
         score: Number(score.toFixed(1)), reasons,
-      decision: evaluateProspectDecision({
+      ...decisionBundle(p.player_id, team.level, {
         kind: 'pitcher',
         primaryPerformanceDiff: eraDiff,
         secondaryPerformanceDiff: kDiff,
@@ -487,7 +585,7 @@ export function computeProspects(orgId: number): { batters: unknown[]; pitchers:
       batters.push({
         ...common, pa: s.pa, opsVal: Number(o.toFixed(3)), hr: s.hr, sb: s.sb, war: s.war ?? 0,
         score: Number(score.toFixed(1)), reasons,
-      decision: evaluateProspectDecision({
+      ...decisionBundle(p.player_id, team.level, {
         kind: 'batter',
         primaryPerformanceDiff: opsDiff,
         pa: s.pa,
@@ -553,4 +651,15 @@ orgRoutes.get('/minor-league-rosters/:orgId', (req, res) => {
     orgId,
     affiliates: computeMinorLeagueRosterHealth(orgId),
   });
+});
+
+/** Conservative internal solutions for structurally unbalanced affiliates. */
+orgRoutes.get('/minor-league-moves/:orgId', (req, res) => {
+  const orgId = Number(req.params.orgId);
+
+  if (!Number.isFinite(orgId)) {
+    return res.status(400).json({ error: 'Invalid organization id' });
+  }
+
+  res.json(computeMinorLeagueRebalance(orgId));
 });
