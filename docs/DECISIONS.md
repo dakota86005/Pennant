@@ -49,6 +49,10 @@ Consequences:
 - Comparisons should use the organization's available evidence and identify
   small samples, missing fields, and low-confidence populations.
 - Synthetic fixtures must model only visible/exported information.
+- Continuous `players_value` fields are not approved scouting evidence for
+  Major League Operations: their organization-visible provenance is
+  unestablished. They remain out of bounds until a source-level audit proves
+  otherwise; missing values must not be treated as zero.
 
 ## D-003 — Development constrains; philosophy prefers; operations solves
 

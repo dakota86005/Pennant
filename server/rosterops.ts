@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db, tableExists } from './db.js';
-import { LEVEL_NAMES, rosterHoles, seasonYear } from './valuation.js';
+import { isOnFortyMan, LEVEL_NAMES, rosterHoles, seasonYear } from './valuation.js';
 
 export const rosterOpsRoutes = Router();
 
@@ -32,9 +32,7 @@ rosterOpsRoutes.get('/roster-crunch/:orgId', (req, res) => {
   const players = rows.map((r) => {
     const on26 = r.is_active === 1;
     // Secondary roster = the 40-man; MLB-level IL players also occupy 40-man spots
-    const on40 =
-      on26 || r.is_on_secondary === 1 ||
-      ((r.is_on_dl === 1 || r.is_on_dl60 === 1) && r.level === 1);
+    const on40 = isOnFortyMan(r, r.level as number | null);
     const optionsUsed = (r.options_used as number) ?? 0;
     const outOfOptions = on40 && !on26 && optionsUsed >= 3;
     const rule5Protected = (r.years_protected_from_rule_5 as number) ?? 0;

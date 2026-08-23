@@ -34,6 +34,25 @@ export interface ContractInfo {
  */
 export const ON_ROSTER = '(rs.is_active = 1 OR rs.is_on_dl = 1 OR rs.is_on_dl60 = 1)';
 
+/**
+ * Whether the exported status places a player on the secondary/40-man roster.
+ *
+ * OOTP represents the active roster and an MLB injured-list player slightly
+ * differently, but both occupy a 40-man spot. Keep that interpretation shared
+ * so a future transaction model and the existing roster-crunch page cannot
+ * disagree about the same imported status row.
+ */
+export function isOnFortyMan(status: {
+  is_active?: number | null;
+  is_on_secondary?: number | null;
+  is_on_dl?: number | null;
+  is_on_dl60?: number | null;
+}, teamLevel: number | null | undefined): boolean {
+  return status.is_active === 1 ||
+    status.is_on_secondary === 1 ||
+    ((status.is_on_dl === 1 || status.is_on_dl60 === 1) && teamLevel === 1);
+}
+
 /** OOTP's role code for a starting pitcher. */
 export const ROLE_STARTER = 11;
 

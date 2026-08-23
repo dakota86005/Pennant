@@ -175,6 +175,19 @@ Implemented behavior is distributed:
 There is no shared server-side organization-context resolver yet. Automatic
 resolution across all organization-specific features is future work.
 
+## Initial Major League Operations foundation
+
+- `server/majorLeagueOperations.ts` provides a read-only, schema-tolerant MLB
+  roster-context service. It returns imported active/40-man status, health,
+  service-time, and raw transaction-status facts separately from missing or
+  incompletely derivable transaction facts.
+- It deliberately does not perform need detection, candidate ranking, call-up
+  recommendations, transaction simulation, UI work, or OOTP writeback.
+- Continuous `players_value` fields are explicitly excluded from this
+  subsystem's subjective evaluation because their organization-visible
+  provenance is unverified. A source-backed audit is required to change that
+  boundary.
+
 ## Known gaps and constraints
 
 - Dedicated coverage for the new philosophy/development/operations modules is
