@@ -313,3 +313,36 @@ Consequences:
 - Need cause/horizon is carried as context only. No player quality, ranking,
   philosophy, service-time strategy, or prohibited `players_value` field may
   affect technical feasibility.
+
+## D-016 — Analyze a selected solution’s consequences without selecting its remedies
+
+**Status:** Accepted. **Implementation:** Initial first-order organizational
+consequence analysis present.
+
+Major League Operations aggregates the immediate MLB and source-affiliate facts
+created by one selected Phase 3 solution. It does not score, rank, recommend,
+or execute that solution. An active-MLB reassignment identifies only the
+immediate prior-role consequence; it does not recursively produce MLB needs.
+
+For a minor-league recall, Minor League Operations owns a read-only
+hypothetical removal scenario using its existing position, rotation, and
+bullpen roster-health rules. Factual removal, remaining coverage, and a newly
+created versus pre-existing/worsened operational problem are separate fields.
+Unavailable teammates are excluded where exported status establishes that they
+cannot be used; missing source role or roster evidence stays unknown.
+
+Consequences:
+
+- A source-affiliate shortage is delegated to Minor League Operations. Its
+  current safe response is an unranked, first-response discussion set only for
+  players with an existing Player Development-authorized destination to that
+  affiliate. Roster pressure never manufactures that authorization.
+- No lower-level player is selected, no current assignment is mutated, and no
+  multi-level hypothetical cascade is claimed. The first unresolved farm
+  problem remains explicit until a safe cascade model exists.
+- Active- and 40-man corresponding decisions remain GM/MLB Operations
+  decisions with no outgoing player selected, even in a complete consequence
+  package.
+- Need cause/horizon, transaction unknowns, and existing responder-development
+  context carry forward as facts. Organizational Philosophy and prohibited
+  continuous `players_value` fields remain outside this phase.

@@ -7,8 +7,8 @@ material implementation state changes.
 ## Repository snapshot
 
 - Package: `ootp-front-office` version `0.27.2`.
-- Inspected branch: `feature/organizational-philosophy`.
-- Inspected HEAD: `0d76be3` (`feat: rebuild player development workspace`).
+- Inspected branch: `feature/mlb-operations`.
+- Inspected HEAD: `3d09664` (`feat: add MLB transaction solution planning`).
 - Stack: TypeScript, React 18, Vite 6, Express 4, SQLite via
   `better-sqlite3`, Electron 41, and Vitest 4.
 - Before this documentation work, the worktree already had uncommitted
@@ -229,6 +229,20 @@ resolution across all organization-specific features is future work.
   indeterminate paths. Full active/40-man rosters produce player-unselected
   corresponding decisions; logical step order is not claimed as complete CBA
   sequencing.
+- `server/majorLeagueOrganizationalConsequences.ts` aggregates one selected
+  transaction solution’s facts without comparing it to another. Active MLB
+  reassignments retain their immediate prior-role consequence. For a
+  minor-league recall, `minorLeagueConsequences.ts` invokes a read-only source
+  affiliate removal scenario using the shared farm roster-health coverage,
+  rotation, and bullpen rules while excluding objectively unavailable
+  teammates. Player removal, coverage after removal, and an actual operational
+  deficiency are separate results.
+- A resulting source-affiliate problem belongs to Minor League Operations. The
+  present adapter may surface an unranked, Player Development-authorized
+  first-response discussion set, but chooses no player, alters no assignment,
+  and does not simulate a multi-level cascade. Corresponding MLB roster-space
+  decisions and farm unknowns remain unresolved facts for a later comparison
+  layer.
 - It deliberately does not perform candidate selection/readiness evaluation,
   call-up recommendations, transaction simulation, philosophy weighting,
   proactive upgrades, UI work, or OOTP writeback.

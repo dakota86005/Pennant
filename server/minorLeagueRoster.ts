@@ -1,5 +1,6 @@
-import { db, tableExists } from './db.js';
+import { db, tableColumns, tableExists } from './db.js';
 import { gloves, POSITION_CODES } from './gloves.js';
+import { standingOf } from './health.js';
 
 export type RosterHealthStatus =
   | 'critical'
@@ -77,6 +78,16 @@ export interface AffiliateRosterHealth {
   issues: string[];
 }
 
+/**
+ * A read-only roster-health scenario. It is intentionally limited to removing
+ * known players and/or excluding players who cannot currently be used. It
+ * never changes an imported roster or writes a hypothetical assignment.
+ */
+export interface MinorLeagueRosterHealthScenario {
+  excludePlayerIds?: readonly number[];
+  excludeUnavailablePlayers?: boolean;
+}
+
 const LEVEL_NAMES: Record<number, string> = {
   1: 'MLB',
   2: 'AAA',
@@ -124,6 +135,12 @@ interface ActivePlayer {
   fatigue_points: number;
   fatigue_played_today: number;
   stamina: number | null;
+  rosterStatusKnown: boolean;
+  rosterActive: number | null;
+  onIl: number | null;
+  onIl60: number | null;
+  designatedForAssignment: number | null;
+  onWaivers: number | null;
 }
 
 interface Affiliate {
@@ -174,27 +191,44 @@ function affiliates(orgId: number): Affiliate[] {
   `).all(orgId, orgId) as Affiliate[];
 }
 
-function activePlayers(teamId: number): ActivePlayer[] {
+function activePlayers(
+  teamId: number,
+  scenario: MinorLeagueRosterHealthScenario
+): ActivePlayer[] {
   if (!tableExists('players') || !tableExists('team_roster')) return [];
 
   const hasPitching = tableExists('players_pitching');
+  const hasRosterStatus = tableExists('players_roster_status');
+  const playerColumns = new Set(tableColumns('players'));
+  const rosterStatusColumns = hasRosterStatus ? new Set(tableColumns('players_roster_status')) : new Set<string>();
+  const canJoinRosterStatus = rosterStatusColumns.has('player_id');
+  const availabilityFields = ['is_active', 'is_on_dl', 'is_on_dl60', 'designated_for_assignment', 'is_on_waivers'];
+  const availabilityKnown = canJoinRosterStatus && availabilityFields.every((column) => rosterStatusColumns.has(column));
+  const statusColumn = (column: string) => canJoinRosterStatus && rosterStatusColumns.has(column) ? `rs.${column}` : 'NULL';
+  const playerColumn = (column: string, fallback = '0') => playerColumns.has(column) ? `p.${column}` : fallback;
 
-  return db.prepare(`
+  const rows = db.prepare(`
     SELECT
       p.player_id,
       p.first_name,
       p.last_name,
       p.position,
       p.role,
-      COALESCE(p.injury_is_injured, 0) AS injury_is_injured,
-      COALESCE(p.injury_dtd_injury, 0) AS injury_dtd_injury,
-      COALESCE(p.fatigue_points, 0) AS fatigue_points,
-      COALESCE(p.fatigue_played_today, 0) AS fatigue_played_today,
+      COALESCE(${playerColumn('injury_is_injured')}, 0) AS injury_is_injured,
+      COALESCE(${playerColumn('injury_dtd_injury')}, 0) AS injury_dtd_injury,
+      COALESCE(${playerColumn('fatigue_points')}, 0) AS fatigue_points,
+      COALESCE(${playerColumn('fatigue_played_today')}, 0) AS fatigue_played_today,
       ${
         hasPitching
           ? 'pp.pitching_ratings_misc_stamina'
           : 'NULL'
       } AS stamina
+      , ${availabilityKnown ? 'CASE WHEN rs.player_id IS NOT NULL THEN 1 ELSE 0 END' : '0'} AS roster_status_known
+      , ${statusColumn('is_active')} AS roster_active
+      , ${statusColumn('is_on_dl')} AS on_il
+      , ${statusColumn('is_on_dl60')} AS on_il60
+      , ${statusColumn('designated_for_assignment')} AS designated_for_assignment
+      , ${statusColumn('is_on_waivers')} AS on_waivers
     FROM players p
     JOIN team_roster tr
       ON tr.team_id = ?
@@ -205,9 +239,45 @@ function activePlayers(teamId: number): ActivePlayer[] {
         ? 'LEFT JOIN players_pitching pp ON pp.player_id = p.player_id'
         : ''
     }
+    ${canJoinRosterStatus ? 'LEFT JOIN players_roster_status rs ON rs.player_id = p.player_id' : ''}
     WHERE p.team_id = ?
       AND p.retired = 0
-  `).all(teamId, teamId) as ActivePlayer[];
+  `).all(teamId, teamId) as Array<Record<string, unknown>>;
+
+  const excluded = new Set(scenario.excludePlayerIds ?? []);
+  return rows
+    .map((row) => ({
+      player_id: Number(row.player_id),
+      first_name: String(row.first_name ?? ''),
+      last_name: String(row.last_name ?? ''),
+      position: Number(row.position),
+      role: Number(row.role),
+      injury_is_injured: Number(row.injury_is_injured ?? 0),
+      injury_dtd_injury: Number(row.injury_dtd_injury ?? 0),
+      fatigue_points: Number(row.fatigue_points ?? 0),
+      fatigue_played_today: Number(row.fatigue_played_today ?? 0),
+      stamina: row.stamina === null || row.stamina === undefined ? null : Number(row.stamina),
+      rosterStatusKnown: Number(row.roster_status_known) === 1,
+      rosterActive: row.roster_active === null || row.roster_active === undefined ? null : Number(row.roster_active),
+      onIl: row.on_il === null || row.on_il === undefined ? null : Number(row.on_il),
+      onIl60: row.on_il60 === null || row.on_il60 === undefined ? null : Number(row.on_il60),
+      designatedForAssignment: row.designated_for_assignment === null || row.designated_for_assignment === undefined
+        ? null : Number(row.designated_for_assignment),
+      onWaivers: row.on_waivers === null || row.on_waivers === undefined ? null : Number(row.on_waivers),
+    }))
+    .filter((player) => !excluded.has(player.player_id))
+    .filter((player) => {
+      if (!scenario.excludeUnavailablePlayers || !player.rosterStatusKnown) return true;
+      return standingOf({
+        is_active: player.rosterActive,
+        is_on_dl: player.onIl,
+        is_on_dl60: player.onIl60,
+        injury_is_injured: player.injury_is_injured,
+        injury_dtd_injury: player.injury_dtd_injury,
+        designated_for_assignment: player.designatedForAssignment,
+        is_on_waivers: player.onWaivers,
+      }).available;
+    });
 }
 
 function hitterEligibility(player: ActivePlayer): HitterEligibility {
@@ -438,8 +508,11 @@ function overallStatus(
   return 'healthy';
 }
 
-function computeAffiliate(team: Affiliate): AffiliateRosterHealth {
-  const roster = activePlayers(team.team_id);
+function computeAffiliate(
+  team: Affiliate,
+  scenario: MinorLeagueRosterHealthScenario
+): AffiliateRosterHealth {
+  const roster = activePlayers(team.team_id, scenario);
 
   const hittersRaw = roster.filter(
     (player) => player.position !== 1
@@ -655,7 +728,8 @@ function computeAffiliate(team: Affiliate): AffiliateRosterHealth {
 }
 
 export function computeMinorLeagueRosterHealth(
-  orgId: number
+  orgId: number,
+  scenario: MinorLeagueRosterHealthScenario = {}
 ): AffiliateRosterHealth[] {
-  return affiliates(orgId).map(computeAffiliate);
+  return affiliates(orgId).map((team) => computeAffiliate(team, scenario));
 }

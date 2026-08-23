@@ -113,9 +113,9 @@ artifact, not an alternative application backend.
 | Domain API | Express routers in `server/*.ts` compute rosters, player dossiers, standings, schedules, stats, contracts, payroll, trades, development, and other front-office reads. | Domain logic belongs here, not duplicated in React or AI prompts. |
 | Player Development | `org.ts`, `prospectDecision.ts`, `prospectAssignments.ts`, `destinationFit.ts`, `developmentFit.ts`, and scouting-history functions evaluate evidence, developmental protection, legal assignments, and destination fit. | This layer determines defensibility; it does not choose transactions for the GM. |
 | Organizational Philosophy | `philosophy.ts` defines organization-specific dimensions/policies; `settings.ts` persists and resolves profiles; `Philosophy.tsx` edits them. | Philosophy ranks or adjusts choices after hard baseball/development constraints. It is not player evidence. |
-| Minor League Operations | `minorLeagueRoster.ts`, `minorLeagueMoves.ts`, `pitcherRosterSimulation.ts`, `minorLeaguePitchingOperations.ts`, and `minorLeagueRetention.ts` diagnose affiliate structure and propose assignment/retention responses. | Level-changing moves must already be authorized by Player Development. Outputs are read-only recommendations. |
+| Minor League Operations | `minorLeagueRoster.ts`, `minorLeagueConsequences.ts`, `minorLeagueMoves.ts`, `pitcherRosterSimulation.ts`, `minorLeaguePitchingOperations.ts`, and `minorLeagueRetention.ts` diagnose affiliate structure and propose assignment/retention responses. | Level-changing moves must already be authorized by Player Development. Read-only hypothetical analysis may describe the first farm consequence of an MLB recall, but does not select an assignment or recursively solve a cascade. |
 | Roster & Transaction State | `rosterTransactionState.ts` normalizes imported roster/transaction facts and evaluates limited recall, option, and 40-man-addition rule state. `transactionHistory.ts` reads explicit trade and injury event records. `rosterStateHistory.ts` persists successive normalized observations and their factual differences. | It returns eligible, ineligible, or indeterminate results plus corresponding-move requirements. Snapshot transitions are observed facts, while causal correlation is separately evidence-bound; neither chooses players, simulates transactions, or invents events. |
-| Major League Operations | `majorLeagueOperations.ts` consumes shared roster/transaction context and derives current reactive MLB needs from roster history plus current coverage. `majorLeagueResponders.ts` assembles internal responders, and `majorLeagueTransactionPlan.ts` describes the path for one selected responder. | A roster event is not itself an open need. The layer detects objective capacity/role-coverage problems, unranked discussion sets, and read-only transaction paths without judging readiness itself, ranking candidates, applying philosophy, choosing corresponding players, or writing to OOTP. |
+| Major League Operations | `majorLeagueOperations.ts` consumes shared roster/transaction context and derives current reactive MLB needs from roster history plus current coverage. `majorLeagueResponders.ts` assembles internal responders, `majorLeagueTransactionPlan.ts` describes one selected path, and `majorLeagueOrganizationalConsequences.ts` aggregates its immediate consequences. | A roster event is not itself an open need. The layer detects objective capacity/role-coverage problems, unranked discussion sets, read-only transaction paths, and structured consequence facts without judging readiness itself, ranking candidates, applying philosophy, choosing corresponding players, or writing to OOTP. |
 | AI features | `providers.ts`, `models.ts`, `chat.ts`, `ai.ts`, and `storylines.ts` provide staff chat, briefings, trade discussion, and storylines through configurable providers. | AI consumes computed save-grounded facts, calls the same API as the UI, and supports the front-office experience. It does not become a parallel recommendation engine. |
 | Web UI | React pages in `src/` render domain results, evidence, alternatives, and local interactions. `src/App.tsx` owns selected-save and selected-organization UI context. | React may shape presentation but should not silently reimplement baseball rules. |
 | Desktop shell | `electron/main.ts`, `preload.ts`, and `updater.ts` embed the local server, expose a minimal IPC bridge, protect navigation, store secrets, and manage consent-first updates. | Keep Node access out of the renderer and keep IPC narrow. |
@@ -289,6 +289,33 @@ option, and exact ordering details remain unknown when the export/rules engine
 cannot establish them. Phase 4 will consume the selected path to describe
 source-affiliate consequences; philosophy and responder preference remain out
 of bounds.
+
+### Organizational consequence analysis
+
+`analyzeOrganizationalConsequences` aggregates the factual consequences of one
+selected transaction solution. An active-MLB reassignment records the immediate
+prior-role consequence (for example, moving a reliever into a starting role)
+without recursively generating MLB needs. A minor-league recall asks Minor
+League Operations to evaluate the source affiliate as though the responder were
+removed. The scenario is read-only: it neither alters imported rosters nor
+creates roster-history observations.
+
+The package distinguishes the factual player removal from post-removal coverage
+and from a newly created or pre-existing/worsened operational problem. It uses
+the farm roster-health model’s actual position, rotation, and bullpen
+thresholds, excluding teammates objectively unavailable through roster state.
+When a source problem exists, `minorLeagueConsequences.ts` can expose a stable,
+unranked first-response discussion set only for lower-level players whose
+existing Player Development assignment evaluation authorizes the source
+affiliate. It does not choose that player, use philosophy, manufacture a
+promotion, or simulate the source of that response.
+
+The current farm architecture does not safely model recursive hypothetical
+cascades, so the analysis reports cascade depth zero and preserves the first
+unresolved problem. Corresponding active/40-man decisions from the transaction
+plan remain explicitly unresolved. There is no organizational-cost score or
+solution ranking; Phase 5 may compare complete packages using need context and
+Organizational Philosophy.
 
 ### Organizational Philosophy owns preferences
 
