@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db, tableExists } from './db.js';
 import { isOnFortyMan, LEVEL_NAMES, rosterHoles, seasonYear } from './valuation.js';
+import { optionYearState } from './rosterTransactionState.js';
 
 export const rosterOpsRoutes = Router();
 
@@ -34,14 +35,15 @@ rosterOpsRoutes.get('/roster-crunch/:orgId', (req, res) => {
     // Secondary roster = the 40-man; MLB-level IL players also occupy 40-man spots
     const on40 = isOnFortyMan(r, r.level as number | null);
     const optionsUsed = (r.options_used as number) ?? 0;
-    const outOfOptions = on40 && !on26 && optionsUsed >= 3;
+    const optionState = optionYearState(optionsUsed);
+    const outOfOptions = on40 && !on26 && optionState === 'out_of_options';
     const rule5Protected = (r.years_protected_from_rule_5 as number) ?? 0;
     const rule5Exposed = !on40 && rule5Protected <= 0 && ((r.pro_service_years as number) ?? 0) >= 4;
     const issues: string[] = [];
     if (r.designated_for_assignment === 1) issues.push(`DFA — ${r.days_on_dfa_left ?? '?'} days to resolve`);
     if (r.is_on_waivers === 1) issues.push(`on waivers — ${r.days_on_waivers_left ?? '?'} days left`);
     if (outOfOptions) issues.push('out of options');
-    else if (on40 && !on26 && optionsUsed === 2) issues.push('last option year');
+    else if (on40 && !on26 && optionState === 'last_known_option_year') issues.push('last option year');
     if (rule5Exposed) issues.push('Rule 5 exposed');
     return {
       player_id: r.player_id,

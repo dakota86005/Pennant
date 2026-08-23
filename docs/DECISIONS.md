@@ -186,3 +186,25 @@ AI coding agents must inspect the worktree, preserve unrelated changes, avoid
 destructive Git commands, and never commit or push without explicit direction.
 They should make the smallest scoped change, validate it proportionally, and
 update durable documentation when a boundary or project-state fact changes.
+
+## D-011 — Shared roster state precedes MLB opportunity decisions
+
+**Status:** Accepted. **Implementation:** Initial read-only engine present.
+
+Current roster and transaction facts have one authoritative server-side
+interpretation in `rosterTransactionState.ts`. Major League Operations, Minor
+League Operations, and 40-man planning must consume that state/rule layer
+rather than independently interpreting raw OOTP flags.
+
+Consequences:
+
+- Action answers use eligible, ineligible, or indeterminate semantics; missing
+  columns and incomplete rule evidence cannot become a convenient default.
+- A full active or secondary roster yields a corresponding-move requirement,
+  not an invented recommendation about who should be removed.
+- The initial engine evaluates only recall, standard option/demotion, and
+  40-man addition state. It does not simulate transactions or emulate every
+  CBA rule.
+- Explicit trade and injury history may be read as events. Current-state flags
+  and generic messages must not be reverse-engineered into option, release, or
+  recall history.

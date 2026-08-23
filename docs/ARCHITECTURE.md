@@ -112,7 +112,8 @@ artifact, not an alternative application backend.
 | Player Development | `org.ts`, `prospectDecision.ts`, `prospectAssignments.ts`, `destinationFit.ts`, `developmentFit.ts`, and scouting-history functions evaluate evidence, developmental protection, legal assignments, and destination fit. | This layer determines defensibility; it does not choose transactions for the GM. |
 | Organizational Philosophy | `philosophy.ts` defines organization-specific dimensions/policies; `settings.ts` persists and resolves profiles; `Philosophy.tsx` edits them. | Philosophy ranks or adjusts choices after hard baseball/development constraints. It is not player evidence. |
 | Minor League Operations | `minorLeagueRoster.ts`, `minorLeagueMoves.ts`, `pitcherRosterSimulation.ts`, `minorLeaguePitchingOperations.ts`, and `minorLeagueRetention.ts` diagnose affiliate structure and propose assignment/retention responses. | Level-changing moves must already be authorized by Player Development. Outputs are read-only recommendations. |
-| Major League Operations | `majorLeagueOperations.ts` reads imported MLB roster, health, service-time, and transaction-status context. | It separates known facts from transaction unknowns; it does not judge readiness, detect needs, rank candidates, simulate transactions, or write to OOTP. |
+| Roster & Transaction State | `rosterTransactionState.ts` normalizes imported roster/transaction facts and evaluates limited recall, option, and 40-man-addition rule state. `transactionHistory.ts` reads explicit trade and injury event records. | It returns eligible, ineligible, or indeterminate results plus corresponding-move requirements. It does not choose players, simulate transactions, or infer events from changed current state. |
+| Major League Operations | `majorLeagueOperations.ts` consumes shared roster/transaction context for MLB workflows. | It separates known facts from transaction unknowns; it does not judge readiness, detect needs, rank candidates, simulate transactions, or write to OOTP. |
 | AI features | `providers.ts`, `models.ts`, `chat.ts`, `ai.ts`, and `storylines.ts` provide staff chat, briefings, trade discussion, and storylines through configurable providers. | AI consumes computed save-grounded facts, calls the same API as the UI, and supports the front-office experience. It does not become a parallel recommendation engine. |
 | Web UI | React pages in `src/` render domain results, evidence, alternatives, and local interactions. `src/App.tsx` owns selected-save and selected-organization UI context. | React may shape presentation but should not silently reimplement baseball rules. |
 | Desktop shell | `electron/main.ts`, `preload.ts`, and `updater.ts` embed the local server, expose a minimal IPC bridge, protect navigation, store secrets, and manage consent-first updates. | Keep Node access out of the renderer and keep IPC narrow. |
@@ -170,13 +171,25 @@ not an instruction to move the player.
 
 ### Major League Operations owns MLB context, not player readiness
 
-`majorLeagueOperations.ts` reads imported active/secondary roster status,
-health, service-time context, and raw transaction-status facts for an MLB
-organization. It returns known facts separately from missing or incompletely
-derivable transaction facts. It does not detect needs, rank candidates,
-recommend a call-up, simulate a transaction, or write to OOTP. A future MLB
-opportunity workflow must consume Player Development's defensible AAA-to-MLB
-discussion set rather than treating a roster opening as evidence of readiness.
+`majorLeagueOperations.ts` consumes `rosterTransactionState.ts` for imported
+active/secondary roster status, health, service-time context, and raw
+transaction-status facts. The shared engine owns current-state interpretation
+and the limited recall, option, and 40-man-addition action answers. It returns
+known facts separately from missing or incompletely derivable transaction
+facts, including corresponding-move requirements. It does not detect needs,
+rank candidates, recommend a call-up, simulate a transaction, or write to
+OOTP. A future MLB opportunity workflow must consume Player Development's
+defensible AAA-to-MLB discussion set rather than treating a roster opening as
+evidence of readiness.
+
+The importer has explicit `trade_history` and `players_injury_history` tables
+when OOTP exports them. `transactionHistory.ts` reads these as dated trade
+participation and injury events. `messages` includes dated, typed notices but
+is not a reliable general transaction log because its message-type semantics do
+not establish a stable event taxonomy. No explicit exported history currently
+establishes recalls, options/demotions, DFA resolution, waivers, releases, or
+ordinary assignment changes; those must remain unknown rather than inferred
+from current roster state.
 
 ### Organizational Philosophy owns preferences
 

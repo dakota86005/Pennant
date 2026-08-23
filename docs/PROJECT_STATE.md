@@ -177,10 +177,18 @@ resolution across all organization-specific features is future work.
 
 ## Initial Major League Operations foundation
 
-- `server/majorLeagueOperations.ts` provides a read-only, schema-tolerant MLB
-  roster-context service. It returns imported active/40-man status, health,
-  service-time, and raw transaction-status facts separately from missing or
-  incompletely derivable transaction facts.
+- `server/rosterTransactionState.ts` is the shared, schema-tolerant roster and
+  transaction-state engine. It normalizes player status and league active/
+  secondary roster capacity, then evaluates recall, standard option/demotion,
+  and 40-man-addition state as eligible, ineligible, or indeterminate with
+  corresponding-move requirements.
+- `server/majorLeagueOperations.ts` consumes that shared engine for its
+  read-only MLB roster context rather than reinterpreting raw OOTP flags.
+- `server/transactionHistory.ts` reads explicit dated `trade_history` player
+  participation and `players_injury_history` records. The import has no
+  reliable general history for recalls, options/demotions, releases, DFA
+  resolution, waivers, or ordinary assignments; generic messages are not used
+  as a causal event feed.
 - It deliberately does not perform need detection, candidate ranking, call-up
   recommendations, transaction simulation, UI work, or OOTP writeback.
 - Continuous `players_value` fields are explicitly excluded from this
