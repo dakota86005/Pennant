@@ -474,6 +474,14 @@ src/
 data/             Created at runtime (gitignored)
 ```
 
+### Development documentation
+
+- [`AGENTS.md`](AGENTS.md) — concise instructions for AI coding agents
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — system boundaries and subsystem responsibilities
+- [`docs/DECISIONS.md`](docs/DECISIONS.md) — durable product and architecture decisions
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) — implemented foundations and future work
+- [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md) — point-in-time implementation state and known gaps
+
 ---
 
 ## Configurable stat columns

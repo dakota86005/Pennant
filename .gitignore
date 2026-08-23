@@ -11,13 +11,36 @@ release/
 # Local data — imported league database, rating history, AI caches
 data/
 
+# OOTP saves/exports and generated SQLite files, wherever they are placed
+*.lg/
+saved_games/
+import_export/
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+
 # Local configuration — points at YOUR save on YOUR machine
 config.json
 
-# Secrets — your Anthropic API key lives here. NEVER commit this.
+# Machine-local app state, if accidentally written outside data/
+credentials.json
+settings.json
+last-import.json
+port.json
+briefing-*.json
+storylines-*.json
+chat-*.json
+
+# Secrets — provider API keys may live here. NEVER commit these.
 .env
 .env.*
 !.env.example
+
+# Signing credentials and private keys
+*.p12
+*.pfx
+*.pem
 
 # OS
 .DS_Store
