@@ -13,6 +13,7 @@ import {
 } from './prospectDecision.js';
 import {
   evaluateProspectAssignments,
+  type ProspectAssignmentEvaluation,
 } from './prospectAssignments.js';
 import {
   applyDestinationFitToAssignments,
@@ -633,6 +634,42 @@ export function computeProspects(orgId: number): { batters: unknown[]; pitchers:
   batters.sort(byScore);
   pitchers.sort(byScore);
   return { batters, pitchers, baselines };
+}
+
+/**
+ * The Player Development-owned AAA → MLB discussion gate, adapted for other
+ * domain consumers. Absence from this collection is intentionally not an
+ * implicit rejection: `computeProspects` only evaluates players with enough
+ * current-level evidence to be prospect-development subjects.
+ */
+export interface MlbDiscussionDevelopmentGate {
+  playerId: number;
+  eligible: boolean;
+  reasons: string[];
+  blockers: string[];
+  evidence: ProspectAssignmentEvaluation['evidence'];
+  requirements: ProspectAssignmentEvaluation['requirements'];
+}
+
+export function mlbDiscussionDevelopmentGates(orgId: number): MlbDiscussionDevelopmentGate[] {
+  const prospects = computeProspects(orgId);
+  return [...prospects.batters, ...prospects.pitchers].flatMap((candidate) => {
+    const row = candidate as {
+      player_id?: unknown;
+      assignments?: { evaluations?: ProspectAssignmentEvaluation[] };
+    };
+    if (typeof row.player_id !== 'number') return [];
+    const evaluation = row.assignments?.evaluations?.find((item) => item.kind === 'mlb_discussion');
+    if (!evaluation) return [];
+    return [{
+      playerId: row.player_id,
+      eligible: evaluation.eligible,
+      reasons: evaluation.reasons,
+      blockers: evaluation.blockers,
+      evidence: evaluation.evidence,
+      requirements: evaluation.requirements,
+    }];
+  });
 }
 
 orgRoutes.get('/prospects/:orgId', (req, res) => {

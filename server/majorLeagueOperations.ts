@@ -13,6 +13,14 @@ import {
   type RosterStateUnknown,
 } from './rosterTransactionState.js';
 import type { Health, Standing } from './health.js';
+import {
+  latestRosterStateSnapshot,
+  rosterStateEventsForSave,
+  rosterStateSnapshotById,
+  type PersistentRosterState,
+  type RosterCausalEvidence,
+  type StructuredRosterEvent,
+} from './rosterStateHistory.js';
 
 export type MajorLeagueOperationsGapCode = string;
 
@@ -129,4 +137,220 @@ export function majorLeagueRosterContext(orgId: number): MajorLeagueRosterContex
     ],
     scoutingValuePolicy: 'prohibited_pending_provenance',
   };
+}
+
+/**
+ * Read-only, reactive MLB roster needs. A need is a current operational
+ * problem validated against today's imported roster, not another name for a
+ * historical roster event and never a recommendation for who should solve it.
+ */
+export type MajorLeagueNeedCategory = 'active_roster_capacity' | 'role_coverage';
+export type MajorLeagueNeedCause = 'injury' | 'trade' | 'availability_loss_unknown';
+export type MajorLeagueNeedHorizon =
+  | { kind: 'temporary'; expectedDays: number; evidence: RosterCausalEvidence[] }
+  | { kind: 'structural' }
+  | { kind: 'unknown' };
+
+export interface MajorLeagueNeedRole {
+  kind: 'starting_pitcher' | 'relief_pitcher' | 'position' | 'unknown';
+  position: number | null;
+  label: string;
+  provenance: 'observed' | 'unknown';
+}
+
+export interface MajorLeagueNeedEvidence {
+  kind: 'roster_transition' | 'causal_event' | 'current_roster_capacity';
+  provenance: 'observed' | 'explicit' | 'corroborated';
+  details: Record<string, unknown>;
+}
+
+export interface MajorLeagueNeed {
+  id: string;
+  organizationId: number;
+  mlbTeamId: number;
+  category: MajorLeagueNeedCategory;
+  role: MajorLeagueNeedRole | null;
+  causalPlayer: { playerId: number; name: string } | null;
+  cause: { kind: MajorLeagueNeedCause; provenance: 'corroborated' | 'unknown' } | null;
+  detectedAt: string | null;
+  status: 'open';
+  lifecycle: 'opened_in_latest_snapshot' | 'continuing';
+  horizon: MajorLeagueNeedHorizon;
+  evidence: MajorLeagueNeedEvidence[];
+  unknowns: MajorLeagueOperationsGap[];
+}
+
+export interface MajorLeagueReactiveNeedReport {
+  organization: MajorLeagueRosterContext['organization'];
+  needs: MajorLeagueNeed[];
+  /** Derived identities no longer open under current roster state. */
+  resolvedNeedIds: string[];
+  unknowns: MajorLeagueOperationsGap[];
+  scoutingValuePolicy: 'prohibited_pending_provenance';
+}
+
+const POSITION_LABELS: Record<number, string> = {
+  2: 'catcher', 3: 'first baseman', 4: 'second baseman', 5: 'third baseman',
+  6: 'shortstop', 7: 'left fielder', 8: 'center fielder', 9: 'right fielder', 10: 'designated hitter',
+};
+const ROLE_STARTER = 11;
+
+function roleOf(state: Pick<PersistentRosterState, 'position' | 'role'>): MajorLeagueNeedRole {
+  if (state.position === 1) {
+    return state.role === ROLE_STARTER
+      ? { kind: 'starting_pitcher', position: 1, label: 'starting pitcher', provenance: 'observed' }
+      : { kind: 'relief_pitcher', position: 1, label: 'relief pitcher', provenance: 'observed' };
+  }
+  if (state.position !== null && POSITION_LABELS[state.position]) {
+    return { kind: 'position', position: state.position, label: POSITION_LABELS[state.position], provenance: 'observed' };
+  }
+  return { kind: 'unknown', position: state.position, label: 'unresolved role', provenance: 'unknown' };
+}
+
+function activeAndAvailable(player: PlayerRosterState): boolean {
+  return player.activeMlb === true && player.health?.playable !== false &&
+    player.transaction.onIl !== true && player.transaction.onIl60 !== true;
+}
+
+function coversRole(player: PlayerRosterState, role: MajorLeagueNeedRole): boolean {
+  if (!activeAndAvailable(player)) return false;
+  if (role.kind === 'starting_pitcher') return player.position === 1 && player.role === ROLE_STARTER;
+  if (role.kind === 'relief_pitcher') return player.position === 1 && player.role !== ROLE_STARTER;
+  return role.kind === 'position' && player.position === role.position;
+}
+
+function transitionSaysAvailabilityLost(event: StructuredRosterEvent): boolean {
+  const changes = event.transition.changes;
+  return changes.some((change) => change.field === 'activeMlb' && change.before === true && change.after === false) ||
+    changes.some((change) => change.field === 'organizationId') ||
+    changes.some((change) => change.field === 'onIl' && change.before === false && change.after === true) ||
+    changes.some((change) => change.field === 'onIl60' && change.before === false && change.after === true);
+}
+
+function eventCause(event: StructuredRosterEvent): MajorLeagueNeed['cause'] {
+  if (event.causalCorrelation.conclusion === 'trade_associated_organization_change') {
+    return { kind: 'trade', provenance: 'corroborated' };
+  }
+  if (event.causalCorrelation.conclusion === 'injury_associated_il_change') {
+    return { kind: 'injury', provenance: 'corroborated' };
+  }
+  return { kind: 'availability_loss_unknown', provenance: 'unknown' };
+}
+
+function horizonOf(event: StructuredRosterEvent): MajorLeagueNeedHorizon {
+  if (event.causalCorrelation.conclusion === 'trade_associated_organization_change') return { kind: 'structural' };
+  if (event.causalCorrelation.conclusion === 'injury_associated_il_change') {
+    const expectedDays = event.causalCorrelation.evidence
+      .map((item) => item.event.details.length)
+      .find((value): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0);
+    if (expectedDays !== undefined) return { kind: 'temporary', expectedDays, evidence: event.causalCorrelation.evidence };
+  }
+  return { kind: 'unknown' };
+}
+
+function evidenceOf(event: StructuredRosterEvent): MajorLeagueNeedEvidence[] {
+  return [
+    {
+      kind: 'roster_transition', provenance: 'observed',
+      details: {
+        snapshotId: event.transition.snapshotId,
+        priorSnapshotId: event.transition.priorSnapshotId,
+        changes: event.transition.changes,
+      },
+    },
+    ...event.causalCorrelation.evidence.map((item) => ({
+      kind: 'causal_event' as const,
+      provenance: item.provenance,
+      details: { source: item.event.source, date: item.event.date, ...item.event.details },
+    })),
+  ];
+}
+
+function unavailableToOrganization(player: PlayerRosterState | undefined, orgId: number): boolean {
+  return !player || player.organizationId !== orgId || !activeAndAvailable(player);
+}
+
+/**
+ * Derive the unresolved reactive workload for an MLB club from roster history
+ * and current normalized state. No needs are persisted: the stable IDs make a
+ * continuing item recognizable, and re-validating against current coverage is
+ * what closes stale historical losses safely.
+ */
+export function majorLeagueReactiveNeeds(orgId: number): MajorLeagueReactiveNeedReport {
+  const context = majorLeagueRosterContext(orgId);
+  if (!context.organization) return {
+    organization: null,
+    needs: [],
+    resolvedNeedIds: [],
+    unknowns: context.transactionUnknowns,
+    scoutingValuePolicy: 'prohibited_pending_provenance',
+  };
+  const current = organizationRosterTransactionState(orgId);
+  const latest = latestRosterStateSnapshot();
+  const unknowns = [...context.transactionUnknowns];
+  const needs: MajorLeagueNeed[] = [];
+  const resolvedNeedIds: string[] = [];
+  const activeCapacity = current.capacity.active;
+  if (activeCapacity.count !== null && activeCapacity.limit !== null && activeCapacity.count < activeCapacity.limit) {
+    needs.push({
+      id: `mlb:${orgId}:active-roster-capacity`, organizationId: orgId, mlbTeamId: orgId,
+      category: 'active_roster_capacity', role: null, causalPlayer: null, cause: null,
+      detectedAt: latest?.observedAt ?? null, status: 'open', lifecycle: 'continuing', horizon: { kind: 'unknown' },
+      evidence: [{
+        kind: 'current_roster_capacity', provenance: 'observed',
+        details: { activeRosterCount: activeCapacity.count, activeRosterLimit: activeCapacity.limit },
+      }],
+      unknowns: [],
+    });
+  } else if (activeCapacity.count === null || activeCapacity.limit === null) {
+    unknowns.push({ code: 'active_roster_capacity_unknown', message: 'The imported active-roster count or limit cannot establish whether an opening exists.' });
+  }
+
+  const currentByPlayer = new Map(current.players.map((player) => [player.playerId, player]));
+  const priorSnapshots = new Map<number, ReturnType<typeof rosterStateSnapshotById>>();
+  const candidates = rosterStateEventsForSave()
+    .filter((event) => transitionSaysAvailabilityLost(event))
+    .flatMap((event) => {
+      const priorId = event.transition.priorSnapshotId;
+      if (!priorSnapshots.has(priorId)) priorSnapshots.set(priorId, rosterStateSnapshotById(priorId));
+      const prior = priorSnapshots.get(priorId)?.players.find((player) => player.playerId === event.transition.playerId);
+      if (!prior || prior.organizationId !== orgId || prior.teamLevel !== 1 || prior.activeMlb !== true) return [];
+      return [{ event, prior }];
+    });
+
+  // One ongoing incident per player/role. A later loss after a return is a new
+  // incident; repeated imports of the same loss retain the existing identity.
+  const latestCandidate = new Map<string, { event: StructuredRosterEvent; prior: PersistentRosterState }>();
+  for (const candidate of candidates) {
+    const role = roleOf(candidate.prior);
+    const key = `${candidate.event.transition.playerId}:${role.kind}:${role.position ?? 'unknown'}`;
+    const existing = latestCandidate.get(key);
+    if (!existing || candidate.event.transition.snapshotId > existing.event.transition.snapshotId) latestCandidate.set(key, candidate);
+  }
+
+  for (const { event, prior } of latestCandidate.values()) {
+    const role = roleOf(prior);
+    const identity = `mlb:${orgId}:role-coverage:${event.transition.playerId}:${role.kind}:${role.position ?? 'unknown'}:${event.transition.snapshotId}`;
+    const currentPlayer = currentByPlayer.get(event.transition.playerId);
+    if (!unavailableToOrganization(currentPlayer, orgId)) {
+      resolvedNeedIds.push(identity);
+      continue;
+    }
+    if (role.kind === 'unknown') {
+      unknowns.push({ code: 'affected_role_unknown', playerId: prior.playerId, message: `The observed MLB availability loss for ${prior.name} has no reliable exported role or position.` });
+      continue;
+    }
+    if (current.players.some((player) => coversRole(player, role))) {
+      resolvedNeedIds.push(identity);
+      continue;
+    }
+    needs.push({
+      id: identity, organizationId: orgId, mlbTeamId: orgId, category: 'role_coverage', role,
+      causalPlayer: { playerId: prior.playerId, name: prior.name }, cause: eventCause(event),
+      detectedAt: event.transition.firstObservedAt, status: 'open',
+      lifecycle: latest?.id === event.transition.snapshotId ? 'opened_in_latest_snapshot' : 'continuing',
+      horizon: horizonOf(event), evidence: evidenceOf(event), unknowns: [],
+    });
+  }
+  return { organization: context.organization, needs, resolvedNeedIds, unknowns, scoutingValuePolicy: 'prohibited_pending_provenance' };
 }

@@ -202,8 +202,28 @@ resolution across all organization-specific features is future work.
   assignments, DFA/waiver resolution, and uncorroborated changes retain an
   `unknown` cause. No timeline is reconstructed before Front Office's first
   snapshot.
-- It deliberately does not perform need detection, candidate ranking, call-up
-  recommendations, transaction simulation, UI work, or OOTP writeback.
+- `majorLeagueReactiveNeeds` is the initial MLB decision layer. It derives
+  current, unresolved active-roster-capacity and basic role-coverage needs from
+  current normalized state plus observed roster events. Historical losses are
+  revalidated on every read, have stable incident identities, and are omitted
+  when current active coverage resolves them. Trade departures are structural;
+  injury-backed IL entries retain exported duration when available and otherwise
+  remain duration-unknown; unsupported availability losses retain unknown cause.
+- `server/majorLeagueResponders.ts` assembles unranked internal responders for
+  one open role need, separately listing active-MLB coverage alternatives and
+  minor-league call-up discussion candidates. It uses primary/current pitcher
+  role or visible current fielding ratings for role-fit evidence, excludes
+  unavailable players through shared roster state, and retains 40-man state as
+  transaction context rather than filtering on it.
+- `mlbDiscussionDevelopmentGates` adapts the existing Player Development
+  AAA→MLB discussion evaluation. Developmentally prohibited evaluated prospects
+  are excluded; available AAA depth without an applicable prospect assessment
+  remains explicitly not-developmentally-evaluated rather than being silently
+  excluded by prospect status. AA-and-lower direct MLB discussion remains
+  unsupported and excluded.
+- It deliberately does not perform candidate selection/readiness evaluation,
+  call-up recommendations, transaction simulation, philosophy weighting,
+  proactive upgrades, UI work, or OOTP writeback.
 - Continuous `players_value` fields are explicitly excluded from this
   subsystem's subjective evaluation because their organization-visible
   provenance is unverified. A source-backed audit is required to change that

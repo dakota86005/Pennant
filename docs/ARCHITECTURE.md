@@ -115,7 +115,7 @@ artifact, not an alternative application backend.
 | Organizational Philosophy | `philosophy.ts` defines organization-specific dimensions/policies; `settings.ts` persists and resolves profiles; `Philosophy.tsx` edits them. | Philosophy ranks or adjusts choices after hard baseball/development constraints. It is not player evidence. |
 | Minor League Operations | `minorLeagueRoster.ts`, `minorLeagueMoves.ts`, `pitcherRosterSimulation.ts`, `minorLeaguePitchingOperations.ts`, and `minorLeagueRetention.ts` diagnose affiliate structure and propose assignment/retention responses. | Level-changing moves must already be authorized by Player Development. Outputs are read-only recommendations. |
 | Roster & Transaction State | `rosterTransactionState.ts` normalizes imported roster/transaction facts and evaluates limited recall, option, and 40-man-addition rule state. `transactionHistory.ts` reads explicit trade and injury event records. `rosterStateHistory.ts` persists successive normalized observations and their factual differences. | It returns eligible, ineligible, or indeterminate results plus corresponding-move requirements. Snapshot transitions are observed facts, while causal correlation is separately evidence-bound; neither chooses players, simulates transactions, or invents events. |
-| Major League Operations | `majorLeagueOperations.ts` consumes shared roster/transaction context for MLB workflows. | It separates known facts from transaction unknowns; it does not judge readiness, detect needs, rank candidates, simulate transactions, or write to OOTP. |
+| Major League Operations | `majorLeagueOperations.ts` consumes shared roster/transaction context and derives current reactive MLB needs from roster history plus current coverage. `majorLeagueResponders.ts` assembles internal responders for an already-open role need. | A roster event is not itself an open need. The layer detects objective capacity/role-coverage problems and unranked discussion sets without judging readiness itself, ranking candidates, planning transactions, applying philosophy, or writing to OOTP. |
 | AI features | `providers.ts`, `models.ts`, `chat.ts`, `ai.ts`, and `storylines.ts` provide staff chat, briefings, trade discussion, and storylines through configurable providers. | AI consumes computed save-grounded facts, calls the same API as the UI, and supports the front-office experience. It does not become a parallel recommendation engine. |
 | Web UI | React pages in `src/` render domain results, evidence, alternatives, and local interactions. `src/App.tsx` owns selected-save and selected-organization UI context. | React may shape presentation but should not silently reimplement baseball rules. |
 | Desktop shell | `electron/main.ts`, `preload.ts`, and `updater.ts` embed the local server, expose a minimal IPC bridge, protect navigation, store secrets, and manage consent-first updates. | Keep Node access out of the renderer and keep IPC narrow. |
@@ -218,6 +218,58 @@ explicit source data; the supported causal conclusion is `corroborated`.
 All other causes remain `unknown`. The layer does not reconstruct roster states
 from before Front Office's first snapshot, even if a trade or injury record is
 older than that observation.
+
+### Major League Operations: current reactive needs
+
+`majorLeagueReactiveNeeds` owns the first MLB operational decision layer. It
+combines a current normalized organization roster with persisted observed events
+and returns only needs that remain open now. V1 supports an objective active-
+roster-capacity opening and basic role coverage after an observed MLB
+availability loss. Role coverage is deliberately factual: starting pitchers,
+relievers, and a player's exported primary position are considered; it does not
+evaluate player quality, defensive versatility, or upgrade value.
+
+A historical event is revalidated against current state on every read. If an
+available active player now supplies the affected basic role, the historical
+incident is returned as resolved rather than an ongoing need. Need identities
+are stable from the causal incident, so an unchanged later import produces a
+continuing need rather than a new one. This derived-current-state model avoids
+another persistent workflow state while retaining the original observation and
+evidence in roster history.
+
+Trade-supported departures are structural. Injury-supported IL/IL-60 losses are
+temporary only when the explicit injury record supplies a positive duration;
+otherwise their horizon is unknown. Unsupported availability losses retain an
+unknown cause. Organizational Philosophy and the prohibited continuous
+`players_value` fields play no role in whether a need exists. Candidate
+assembly, readiness, transaction planning, and proactive upgrade detection are
+later layers.
+
+### Internal MLB responder assembly
+
+`assembleInternalResponders` accepts one open role need and returns two stable,
+non-preferential sets: currently available active-MLB players who can cover the
+role, and available minor-league call-up discussion candidates. Primary
+position and current pitcher role establish direct fit; a revealed current
+fielding rating establishes a secondary position fit. The response retains that
+evidence rather than assigning a fit score. Stable player-ID ordering is only
+for API repeatability and carries no preference.
+
+For AAA players with a current Player Development prospect assessment,
+`mlbDiscussionDevelopmentGates` is the authoritative AAA→MLB gate: a
+prohibited player is explicitly excluded and an approved player carries the
+decision evidence. AAA organizational depth with no applicable prospect
+assessment remains discussable but is clearly labeled `not_applicable`, not
+developmentally approved. This avoids treating prospect status as a call-up
+requirement while not letting a roster need manufacture readiness. The present
+Player Development gate does not establish lower-level-to-MLB readiness, so
+those players are excluded rather than automatically promoted.
+
+IL/IL-60, DFA, waiver, and unavailable players are excluded using shared roster
+state. 40-man status and corresponding-move consequences are preserved only as
+factual transaction context: Phase 3 owns whether a responder can actually be
+placed on the roster. No candidate ranking, Organizational Philosophy, or
+continuous `players_value` field participates in assembly.
 
 ### Organizational Philosophy owns preferences
 

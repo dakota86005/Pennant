@@ -277,13 +277,18 @@ export function organizationRosterTransactionState(orgId: number): OrganizationR
     capacityUnknowns.push({ code: 'missing_leagues_table', message: 'No league rules table is imported.' });
   } else {
     const leagueColumns = new Set(tableColumns('leagues'));
-    const wanted = ['rules_active_roster_limit', 'rules_secondary_roster_limit'];
-    const missing = wanted.filter((column) => !leagueColumns.has(column));
-    if (missing.length) {
-      capacityUnknowns.push({ code: 'missing_roster_limit_columns', message: `League roster limits are unavailable: ${missing.join(', ')}.` });
-    } else {
+    const activeKnown = leagueColumns.has('rules_active_roster_limit');
+    const fortyKnown = leagueColumns.has('rules_secondary_roster_limit');
+    const missing = [
+      ...(activeKnown ? [] : ['rules_active_roster_limit']),
+      ...(fortyKnown ? [] : ['rules_secondary_roster_limit']),
+    ];
+    if (missing.length) capacityUnknowns.push({ code: 'missing_roster_limit_columns', message: `League roster limits are unavailable: ${missing.join(', ')}.` });
+    if (activeKnown || fortyKnown) {
       const rules = db.prepare(
-        'SELECT rules_active_roster_limit, rules_secondary_roster_limit FROM leagues WHERE league_id = ?'
+        `SELECT ${activeKnown ? 'rules_active_roster_limit' : 'NULL AS rules_active_roster_limit'},
+                ${fortyKnown ? 'rules_secondary_roster_limit' : 'NULL AS rules_secondary_roster_limit'}
+         FROM leagues WHERE league_id = ?`
       ).get(team.league_id) as { rules_active_roster_limit: number | null; rules_secondary_roster_limit: number | null } | undefined;
       activeLimit = numberOrNull(rules?.rules_active_roster_limit);
       fortyLimit = numberOrNull(rules?.rules_secondary_roster_limit);

@@ -243,6 +243,11 @@ function readSnapshotById(id: number): RosterStateSnapshot | null {
   }, rows);
 }
 
+/** Read a persisted snapshot when another domain layer needs its factual prior state. */
+export function rosterStateSnapshotById(id: number): RosterStateSnapshot | null {
+  return readSnapshotById(id);
+}
+
 function latestSnapshot(saveName: string): RosterStateSnapshot | null {
   const row = historyDb.prepare(
     `SELECT id FROM roster_state_snapshots WHERE save_name = ? ORDER BY id DESC LIMIT 1`
@@ -424,6 +429,23 @@ export function rosterStateEventsForSnapshot(snapshotId: number): StructuredRost
   return (historyDb.prepare(
     `SELECT transition_json FROM roster_state_transitions WHERE snapshot_id = ? ORDER BY player_id`
   ).all(snapshotId) as Array<{ transition_json: string }>).flatMap((row) => {
+    try { return [JSON.parse(row.transition_json) as StructuredRosterEvent]; } catch { return []; }
+  });
+}
+
+/**
+ * Read the event timeline for one save. Consumers still have to validate each
+ * observed loss against current roster state; this is history, not a list of
+ * perpetually open work items.
+ */
+export function rosterStateEventsForSave(saveName = currentSaveName()): StructuredRosterEvent[] {
+  return (historyDb.prepare(
+    `SELECT t.transition_json
+     FROM roster_state_transitions t
+     JOIN roster_state_snapshots s ON s.id = t.snapshot_id
+     WHERE s.save_name = ?
+     ORDER BY t.snapshot_id, t.player_id`
+  ).all(saveName) as Array<{ transition_json: string }>).flatMap((row) => {
     try { return [JSON.parse(row.transition_json) as StructuredRosterEvent]; } catch { return []; }
   });
 }

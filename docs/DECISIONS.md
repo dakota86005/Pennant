@@ -233,3 +233,57 @@ Consequences:
   only observed IL/IL-60 entry. An injury row alone is not an IL transaction.
 - No authoritative pre-Front Office roster timeline is claimed. Earlier
   imported trade/injury rows remain evidence, not missing snapshots.
+
+## D-013 — MLB needs are current, causal, and solution-agnostic
+
+**Status:** Accepted. **Implementation:** Initial reactive need detection
+present.
+
+Major League Operations may derive a current reactive need from the combination
+of a persisted observed roster loss and the current normalized MLB roster. A
+roster event does not itself remain a need: the current roster must still show
+an active-roster opening or a lack of basic coverage for the affected observed
+role. Derived needs have stable incident identities and are re-evaluated on
+each import/read rather than persisted as an independent workflow state.
+
+Consequences:
+
+- V1 recognizes only objective active-roster capacity and basic role-coverage
+  needs caused by an observed MLB availability loss. It is not strategic
+  roster-upgrade detection.
+- Trade-correlated organization departures have a structural horizon. An
+  injury-correlated IL/IL-60 entry is temporary only when explicit injury
+  duration is exported; otherwise horizon and/or cause remains unknown.
+- Current active coverage resolves a historical role loss. Repeated unchanged
+  imports therefore continue one conceptual need instead of manufacturing new
+  items.
+- Organizational Philosophy, subjective ratings, and `players_value`
+  continuous fields cannot affect whether a need exists. Candidate assembly,
+  readiness, transaction sequencing, and a removal choice remain later work.
+
+## D-014 — Assemble responders without selecting a solution
+
+**Status:** Accepted. **Implementation:** Initial internal responder assembly
+present.
+
+An open MLB role need may produce an unranked discussion set of currently
+available active-roster alternatives and internal minor-league call-up
+responders. Major League Operations establishes role relevance and availability;
+Player Development remains the authority on whether an evaluated AAA prospect
+is developmentally defensible for MLB discussion.
+
+Consequences:
+
+- Direct fit uses the exported primary position or current pitcher role;
+  secondary position fit requires a visible current fielding rating. No hidden
+  potential rating or arbitrary fit score is substituted.
+- An evaluated AAA player prohibited by Player Development is excluded even
+  when the MLB need is acute. AAA depth without an applicable prospect
+  assessment is not silently excluded merely for lacking prospect status, but
+  is labeled as not developmentally evaluated/approved.
+- The current gate does not justify AA-or-lower direct MLB discussion. Those
+  players remain outside the responder set until Player Development supplies a
+  trustworthy gate.
+- 40-man status and corresponding moves are transaction facts, not baseball
+  candidacy filters. Transaction feasibility, downstream minor-league effects,
+  philosophy, and a final choice are deferred.
