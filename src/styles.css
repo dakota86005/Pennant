@@ -5604,3 +5604,637 @@ button.cta {
     max-width: none;
   }
 }
+
+
+/* ── Scouted Development workspace ────────────────────────── */
+
+.scouted-page {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  padding-bottom: 30px;
+}
+
+
+/* Summary --------------------------------------------------- */
+
+.scouted-metrics {
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.scouted-metrics > div {
+  min-height: 105px;
+  padding: 13px 14px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+}
+
+.scouted-metrics span {
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.scouted-metrics strong {
+  margin: 5px 0;
+  font-size: 25px;
+}
+
+.scouted-metrics small {
+  margin-top: auto;
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+
+.scouted-guide {
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.scouted-guide summary {
+  padding: 9px 11px;
+  cursor: pointer;
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.scouted-guide p {
+  max-width: 1000px;
+  margin: 0;
+  padding: 0 11px 11px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+
+/* Toolbar --------------------------------------------------- */
+
+.scouted-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.scouted-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.scouted-tabs button {
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.scouted-tabs button:hover,
+.scouted-tabs button.active {
+  color: var(--text);
+  background: var(--panel-raised);
+}
+
+.scouted-tabs button.active {
+  border-color: var(--accent);
+}
+
+.scouted-tabs button span {
+  display: inline-block;
+  min-width: 18px;
+  margin-left: 5px;
+  padding: 1px 4px;
+  border-radius: 8px;
+  background: var(--panel);
+  text-align: center;
+}
+
+
+/* Workspace ------------------------------------------------- */
+
+.scouted-workspace {
+  display: grid;
+  grid-template-columns:
+    minmax(300px, 350px)
+    minmax(0, 1fr);
+  height: clamp(
+    520px,
+    calc(100vh - 390px),
+    680px
+  );
+  min-height: 520px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+
+
+.scouted-list {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+}
+
+.scouted-list-head {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-raised);
+}
+
+.scouted-list-head strong {
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.scouted-list-head span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+
+.scouted-list-items {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.scouted-list-item {
+  display: block;
+  width: 100%;
+  padding: 11px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.scouted-list-item:hover,
+.scouted-list-item.active {
+  background: var(--panel-raised);
+}
+
+.scouted-list-item.active {
+  box-shadow:
+    inset 3px 0 0
+    var(--accent);
+}
+
+.scouted-list-name {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.scouted-list-meta {
+  overflow: hidden;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 9.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scouted-list-bottom {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 7px;
+  font-size: 9.5px;
+}
+
+
+/* Peer pace ------------------------------------------------- */
+
+.scouted-pace-ahead {
+  color: var(--good);
+}
+
+.scouted-pace-behind {
+  color: var(--bad);
+}
+
+.scouted-pace-typical {
+  color: var(--text);
+}
+
+.scouted-pace-insufficient {
+  color: var(--muted);
+}
+
+.scouted-pace-badge {
+  display: inline-block;
+  padding: 4px 7px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+
+/* Detail ---------------------------------------------------- */
+
+.scouted-detail {
+  min-width: 0;
+  min-height: 0;
+  padding: 17px 18px;
+  overflow-y: auto;
+  border-left: 3px solid var(--accent);
+}
+
+.scouted-detail-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.scouted-detail-head h3 {
+  margin: 2px 0 0;
+  font-size: 18px;
+}
+
+.scouted-detail-head p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+
+.scouted-summary-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.scouted-summary-grid > div {
+  padding: 9px 10px;
+  background: var(--panel-raised);
+}
+
+.scouted-summary-grid span {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--muted);
+  font-size: 8.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.scouted-summary-grid strong {
+  font-size: 13px;
+}
+
+
+.scouted-read {
+  max-width: 1050px;
+  margin: 12px 0 15px;
+  padding: 10px 11px;
+  border-left: 2px solid var(--accent);
+  background: var(--panel-raised);
+}
+
+.scouted-read strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.scouted-read p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+
+.scouted-subhead {
+  margin: 12px 0 6px;
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+
+/* Timeline -------------------------------------------------- */
+
+.scouted-timeline {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.scouted-snapshot {
+  position: relative;
+  flex: 1 0 170px;
+  max-width: 240px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  background: var(--panel-raised);
+}
+
+.scouted-snapshot-date {
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.scouted-snapshot-level {
+  margin: 2px 0 7px;
+  color: var(--muted);
+  font-size: 8.5px;
+}
+
+.scouted-snapshot > div:not(
+  .scouted-snapshot-date
+):not(
+  .scouted-snapshot-level
+) {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 3px;
+}
+
+.scouted-snapshot span {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.scouted-snapshot strong {
+  font-size: 11px;
+}
+
+.scouted-timeline-arrow {
+  position: absolute;
+  top: 50%;
+  right: -9px;
+  z-index: 2;
+}
+
+
+/* Detail evidence ------------------------------------------ */
+
+.scouted-detail-columns {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 0.8fr)
+    minmax(0, 1.2fr);
+  gap: 20px;
+  max-width: 1150px;
+  margin-top: 8px;
+}
+
+
+.scouted-rating-list {
+  border: 1px solid var(--border);
+}
+
+.scouted-rating-list > div {
+  display: grid;
+  grid-template-columns:
+    1fr 80px 48px;
+  gap: 8px;
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--border);
+  font-size: 10.5px;
+}
+
+.scouted-rating-list > div:last-child {
+  border-bottom: 0;
+}
+
+.scouted-rating-list span:last-child {
+  text-align: right;
+}
+
+
+.scouted-fog-note {
+  display: flex;
+  gap: 10px;
+  max-width: 1150px;
+  margin-top: 15px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.scouted-fog-note strong {
+  flex: 0 0 auto;
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.scouted-fog-note span {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+
+/* Organization table --------------------------------------- */
+
+.scouted-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+}
+
+.scouted-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+
+.scouted-table th {
+  padding: 8px 9px;
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: 8.5px;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.scouted-table td {
+  padding: 8px 9px;
+  border-top: 1px solid var(--border);
+}
+
+.scouted-table tbody tr {
+  cursor: pointer;
+}
+
+.scouted-table tbody tr:nth-child(even) {
+  background: color-mix(
+    in srgb,
+    var(--panel-raised) 35%,
+    transparent
+  );
+}
+
+.scouted-table tbody tr:hover {
+  background: var(--panel-raised);
+}
+
+.scouted-table td:first-child .player-link {
+  font-weight: 600;
+}
+
+
+@media (max-width: 1100px) {
+  .scouted-metrics {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .scouted-workspace {
+    height: auto;
+    grid-template-columns: 1fr;
+  }
+
+  .scouted-list {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .scouted-list-items {
+    max-height: 350px;
+  }
+
+  .scouted-detail {
+    overflow: visible;
+  }
+}
+
+
+@media (max-width: 700px) {
+  .scouted-metrics,
+  .scouted-summary-grid,
+  .scouted-detail-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .scouted-detail-head {
+    flex-direction: column;
+  }
+}
+
+
+/* ── Scouted Development final readability polish ─────────── */
+
+.scouted-detail {
+  font-size: 12px;
+}
+
+.scouted-detail-head h3 {
+  font-size: 19px;
+}
+
+.scouted-detail-head p {
+  font-size: 11.5px;
+}
+
+
+/* Snapshot history is core evidence, not tiny metadata. */
+
+.scouted-snapshot {
+  padding: 10px 11px;
+}
+
+.scouted-snapshot-date {
+  font-size: 10.5px;
+}
+
+.scouted-snapshot-level {
+  font-size: 9px;
+}
+
+.scouted-snapshot span {
+  font-size: 9.5px;
+}
+
+.scouted-snapshot strong {
+  font-size: 12px;
+}
+
+
+/* Rating movement deserves easy scanning. */
+
+.scouted-rating-list > div {
+  grid-template-columns:
+    minmax(100px, 1fr)
+    95px
+    55px;
+
+  padding: 8px 9px;
+
+  font-size: 11px;
+}
+
+.scouted-rating-list strong {
+  font-size: 11px;
+}
+
+
+/* Peer explanation was slightly too fine on a 4K desktop. */
+
+.scouted-detail-columns .farm-reason-list {
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.scouted-fog-note span {
+  font-size: 10.5px;
+}
+
+
+/* Broader index should remain readable without becoming oversized. */
+
+.scouted-table {
+  font-size: 12px;
+}
+
+.scouted-table th {
+  font-size: 9px;
+}
+
+.scouted-table td {
+  padding: 8px 10px;
+}

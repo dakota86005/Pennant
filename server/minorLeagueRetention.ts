@@ -36,8 +36,8 @@ import {
 } from './settings.js';
 
 import {
-  developmentTrendByPlayer,
-  peerDevelopmentTrendByPlayer,
+  developmentTrendByPlayerForOrg,
+  peerDevelopmentTrendByPlayerForOrg,
   type PlayerDevelopmentTrend,
   type PeerDevelopmentTrend,
 } from './history.js';
@@ -1716,10 +1716,14 @@ export function computeMinorLeagueRetention(
     );
 
   const developmentHistory =
-    developmentTrendByPlayer();
+    developmentTrendByPlayerForOrg(
+      orgId
+    );
 
   const peerDevelopment =
-    peerDevelopmentTrendByPlayer();
+    peerDevelopmentTrendByPlayerForOrg(
+      orgId
+    );
 
   const health =
     computeMinorLeagueRosterHealth(
@@ -1817,7 +1821,7 @@ export function computeMinorLeagueRetention(
               null,
 
             reasons: [
-              'No peer-adjusted scouting-development baseline is available for this player.',
+              'Peer evidence is insufficient because no peer-adjusted scouting-development baseline is available for this player.',
             ],
           };
 

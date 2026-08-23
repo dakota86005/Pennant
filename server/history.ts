@@ -287,22 +287,42 @@ function numericDelta(
  * Classification is intentionally conservative. A couple of closely spaced
  * imports do not constitute evidence that development has stopped.
  */
-export function developmentTrendByPlayer():
+function developmentTrendByPlayerForScope(
+  orgId: number | null
+):
   Map<number, PlayerDevelopmentTrend> {
   const rows =
-    historyDb
-      .prepare(
-        `SELECT
-           player_id,
-           game_date,
-           cur,
-           pot
-         FROM rating_snapshots
-         WHERE save_name = ?`
-      )
-      .all(
-        currentSaveName()
-      ) as DevelopmentTrendRow[];
+    (
+      orgId === null
+        ? historyDb
+            .prepare(
+              `SELECT
+                 player_id,
+                 game_date,
+                 cur,
+                 pot
+               FROM rating_snapshots
+               WHERE save_name = ?`
+            )
+            .all(
+              currentSaveName()
+            )
+        : historyDb
+            .prepare(
+              `SELECT
+                 player_id,
+                 game_date,
+                 cur,
+                 pot
+               FROM rating_snapshots
+               WHERE save_name = ?
+                 AND org_id = ?`
+            )
+            .all(
+              currentSaveName(),
+              orgId
+            )
+    ) as DevelopmentTrendRow[];
 
   const byPlayer =
     new Map<
@@ -494,6 +514,25 @@ export function developmentTrendByPlayer():
 }
 
 
+/** Save-wide history for consumers that intentionally follow a player across organizations. */
+export function developmentTrendByPlayer():
+  Map<number, PlayerDevelopmentTrend> {
+  return developmentTrendByPlayerForScope(
+    null
+  );
+}
+
+
+/** History observed while each player belonged to one organization. */
+export function developmentTrendByPlayerForOrg(
+  orgId: number
+): Map<number, PlayerDevelopmentTrend> {
+  return developmentTrendByPlayerForScope(
+    orgId
+  );
+}
+
+
 
 /**
  * How the organization's observed development of a player compares with
@@ -664,24 +703,46 @@ function peerKey(
  *
  * When that cohort is too small, type + age band is used as the fallback.
  */
-export function peerDevelopmentTrendByPlayer():
+function peerDevelopmentTrendByPlayerForScope(
+  orgId: number | null
+):
   Map<number, PeerDevelopmentTrend> {
   const rows =
-    historyDb
-      .prepare(
-        `SELECT
-           player_id,
-           game_date,
-           age,
-           level,
-           position,
-           cur
-         FROM rating_snapshots
-         WHERE save_name = ?`
-      )
-      .all(
-        currentSaveName()
-      ) as PeerSnapshotRow[];
+    (
+      orgId === null
+        ? historyDb
+            .prepare(
+              `SELECT
+                 player_id,
+                 game_date,
+                 age,
+                 level,
+                 position,
+                 cur
+               FROM rating_snapshots
+               WHERE save_name = ?`
+            )
+            .all(
+              currentSaveName()
+            )
+        : historyDb
+            .prepare(
+              `SELECT
+                 player_id,
+                 game_date,
+                 age,
+                 level,
+                 position,
+                 cur
+               FROM rating_snapshots
+               WHERE save_name = ?
+                 AND org_id = ?`
+            )
+            .all(
+              currentSaveName(),
+              orgId
+            )
+    ) as PeerSnapshotRow[];
 
   const byPlayer =
     new Map<
@@ -985,7 +1046,7 @@ export function peerDevelopmentTrendByPlayer():
           },
 
           reasons: [
-            'Not enough comparable scouting-history observations are available for a stable peer-development baseline.',
+            'Peer evidence is still insufficient: not enough comparable scouting-history observations are available for a stable baseline.',
           ],
         }
       );
@@ -1072,9 +1133,170 @@ export function peerDevelopmentTrendByPlayer():
 }
 
 
+/** Save-wide peer history for callers that intentionally compare across organizations. */
+export function peerDevelopmentTrendByPlayer():
+  Map<number, PeerDevelopmentTrend> {
+  return peerDevelopmentTrendByPlayerForScope(
+    null
+  );
+}
+
+
+/** Peer history built only from observations recorded for one organization. */
+export function peerDevelopmentTrendByPlayerForOrg(
+  orgId: number
+): Map<number, PeerDevelopmentTrend> {
+  return peerDevelopmentTrendByPlayerForScope(
+    orgId
+  );
+}
+
+
 // ── Development tracking ────────────────────────────────────────────────
 
 export const historyRoutes = Router();
+
+
+/**
+ * Full scouting-history series for an organization.
+ *
+ * This is observational data only: the ratings captured at each import.
+ * It deliberately does not reinterpret those snapshots as true talent.
+ * Player Development and Retention already consume the derived trend models;
+ * this route exists so the UI can show the underlying history honestly.
+ */
+historyRoutes.get('/development-history/:orgId', (req, res) => {
+  const orgId =
+    Number(req.params.orgId);
+
+  if (!Number.isFinite(orgId)) {
+    return res.status(400).json({
+      error:
+        'Invalid organization id',
+    });
+  }
+
+  const saveName =
+    currentSaveName();
+
+  const rows =
+    historyDb
+      .prepare(
+        `SELECT
+           game_date,
+           player_id,
+           name,
+           team_id,
+           org_id,
+           level,
+           position,
+           age,
+           cur,
+           pot,
+           con,
+           gap,
+           pow,
+           eye,
+           avk,
+           spd,
+           stu,
+           mov,
+           ctl
+         FROM rating_snapshots
+         WHERE save_name = ?
+           AND org_id = ?`
+      )
+      .all(
+        saveName,
+        orgId
+      ) as Array<{
+        game_date: string;
+        player_id: number;
+        name: string;
+        team_id: number;
+        org_id: number;
+        level: number;
+        position: number;
+        age: number;
+        cur: number | null;
+        pot: number | null;
+        con: number | null;
+        gap: number | null;
+        pow: number | null;
+        eye: number | null;
+        avk: number | null;
+        spd: number | null;
+        stu: number | null;
+        mov: number | null;
+        ctl: number | null;
+      }>;
+
+  rows.sort(
+    (a, b) =>
+      a.player_id -
+        b.player_id ||
+      compareGameDates(
+        a.game_date,
+        b.game_date
+      )
+  );
+
+  const dates =
+    [
+      ...new Set(
+        rows.map(
+          (row) =>
+            row.game_date
+        )
+      ),
+    ].sort(
+      compareGameDates
+    );
+
+  let observationDays:
+    number | null =
+      null;
+
+  if (dates.length >= 2) {
+    const first =
+      gameDateEpoch(
+        dates[0]
+      );
+
+    const latest =
+      gameDateEpoch(
+        dates[
+          dates.length - 1
+        ]
+      );
+
+    if (
+      Number.isFinite(first) &&
+      Number.isFinite(latest)
+    ) {
+      observationDays =
+        Math.round(
+          (
+            latest -
+            first
+          ) /
+          86_400_000
+        );
+    }
+  }
+
+  res.json({
+    snapshots:
+      dates.length,
+
+    dates,
+
+    observationDays,
+
+    rows,
+  });
+});
+
 
 historyRoutes.get('/development/:orgId', (req, res) => {
   const orgId = Number(req.params.orgId);

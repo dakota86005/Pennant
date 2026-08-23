@@ -85,7 +85,10 @@ export function buildFixture(): string {
       draft_date TEXT, rules_amateur_draft_rounds INTEGER,
       -- Quoted deliberately: SQLite's own CURRENT_DATE keyword shadows a
       -- column of that name, so an unquoted read returns the real-world date
-      trade_deadline_date TEXT
+      trade_deadline_date TEXT,
+      avg_rating_contact REAL, avg_rating_gap REAL, avg_rating_power REAL,
+      avg_rating_eye REAL, avg_rating_strikeouts REAL, avg_rating_stuff REAL,
+      avg_rating_movement REAL, avg_rating_control REAL
     );
     -- Runs for and against, which the buy/hold/sell read takes talent from.
     -- On the pitching side the runs-allowed column is r, not ra
@@ -205,7 +208,13 @@ export function buildFixture(): string {
       pitching_ratings_overall_movement INTEGER, pitching_ratings_overall_control INTEGER,
       pitching_ratings_talent_stuff INTEGER, pitching_ratings_talent_movement INTEGER,
       pitching_ratings_talent_control INTEGER, pitching_ratings_misc_stamina INTEGER,
-      pitching_ratings_misc_velocity INTEGER
+      pitching_ratings_misc_velocity INTEGER,
+      pitching_ratings_pitches_fastball INTEGER, pitching_ratings_pitches_slider INTEGER,
+      pitching_ratings_pitches_curveball INTEGER, pitching_ratings_pitches_screwball INTEGER,
+      pitching_ratings_pitches_forkball INTEGER, pitching_ratings_pitches_changeup INTEGER,
+      pitching_ratings_pitches_sinker INTEGER, pitching_ratings_pitches_splitter INTEGER,
+      pitching_ratings_pitches_knuckleball INTEGER, pitching_ratings_pitches_cutter INTEGER,
+      pitching_ratings_pitches_circlechange INTEGER, pitching_ratings_pitches_knucklecurve INTEGER
     );
     CREATE TABLE players_fielding (
       player_id INTEGER, position INTEGER,
@@ -256,7 +265,14 @@ export function buildFixture(): string {
   `);
 
   db.prepare(
-    `INSERT INTO leagues VALUES (?, 'Test League', 'TL', 0, 1, ?, '2030-06-01', 6, 3, 700000, 1, 1, 1, '2030-07-10', 20, '2030-07-31')`
+    `INSERT INTO leagues
+     (league_id, name, abbr, parent_league_id, league_level, season_year,
+      "current_date", rules_fa_minimum_years,
+      rules_salary_arbitration_minimum_years, rules_minimum_salary,
+      financial_coefficient, rules_amateur_draft, show_draft_pool,
+      draft_date, rules_amateur_draft_rounds, trade_deadline_date)
+     VALUES (?, 'Test League', 'TL', 0, 1, ?, '2030-06-01', 6, 3,
+             700000, 1, 1, 1, '2030-07-10', 20, '2030-07-31')`
   ).run(IDS.league, SEASON);
   db.prepare(`INSERT INTO sub_leagues VALUES (?, 0, 'Only', 1)`).run(IDS.league);
 
@@ -452,7 +468,12 @@ export function buildFixture(): string {
     fielding.run(id, 20, 50, 50, 50, 50, 50, 50, 50, 50);
   }
   db.prepare(
-    `INSERT INTO players_pitching VALUES (?, 55, 50, 50, 60, 55, 55, 60, 93)`
+    `INSERT INTO players_pitching
+     (player_id, pitching_ratings_overall_stuff, pitching_ratings_overall_movement,
+      pitching_ratings_overall_control, pitching_ratings_talent_stuff,
+      pitching_ratings_talent_movement, pitching_ratings_talent_control,
+      pitching_ratings_misc_stamina, pitching_ratings_misc_velocity)
+     VALUES (?, 55, 50, 50, 60, 55, 55, 60, 93)`
   ).run(IDS.extended);
   db.prepare(`INSERT INTO projected_starting_pitchers VALUES (?, ?, 0, 0, 0, 0, 0, 0, 0)`)
     .run(IDS.mlbTeam, IDS.extended);

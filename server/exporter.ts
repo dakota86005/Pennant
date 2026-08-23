@@ -85,6 +85,28 @@ function collectPlayerIds(json: unknown, into: Set<number>): void {
   }
 }
 
+/** API payloads needed to render every organization-wide static page. */
+export function staticExportPages(
+  orgId: number,
+  teamIds: readonly number[]
+): string[] {
+  return [
+    'orgs', `dashboard/${orgId}`, `standings/${orgId}`, `contracts/${orgId}`, `payroll/${orgId}`,
+    `depth-chart/${orgId}`, `prospects/${orgId}`, `development/${orgId}`,
+    `development-history/${orgId}`, `minor-league-retention/${orgId}`, `draft/${orgId}`,
+    `injuries/${orgId}`, `leaderboards/${orgId}`, `roster-crunch/${orgId}`, `staff/${orgId}`,
+    `free-agents/${orgId}`, `storylines/${orgId}`, `briefing/${orgId}`, `trade/fits/${orgId}`,
+    `next-game/${orgId}`, `pitching/${orgId}`, `schedule/${orgId}`, `trends/${orgId}`,
+    // A static host drops query strings, so each lineup combination is its own file
+    ...['r', 'l'].flatMap((vs) =>
+      ['saber', 'trad'].flatMap((style) =>
+        ['auto', 'on', 'off'].map((dh) => `lineup/${orgId}?vs=${vs}&style=${style}&dh=${dh}`)
+      )
+    ),
+    ...teamIds.flatMap((teamId) => [`roster/${teamId}`, `pitching/${teamId}`]),
+  ];
+}
+
 export async function exportSite(orgId: number): Promise<ExportResult> {
   const port = process.env.OOTP_FO_PORT;
   if (!port) throw new Error('Server port unknown');
@@ -139,20 +161,10 @@ export async function exportSite(orgId: number): Promise<ExportResult> {
     .prepare(`SELECT team_id FROM teams WHERE team_id = ? OR parent_team_id = ?`)
     .all(orgId, orgId) as Array<{ team_id: number }>;
 
-  const pages = [
-    'orgs', `dashboard/${orgId}`, `standings/${orgId}`, `contracts/${orgId}`, `payroll/${orgId}`,
-    `depth-chart/${orgId}`, `prospects/${orgId}`, `development/${orgId}`, `draft/${orgId}`,
-    `injuries/${orgId}`, `leaderboards/${orgId}`, `roster-crunch/${orgId}`, `staff/${orgId}`,
-    `free-agents/${orgId}`, `storylines/${orgId}`, `briefing/${orgId}`, `trade/fits/${orgId}`,
-    `next-game/${orgId}`, `pitching/${orgId}`, `schedule/${orgId}`, `trends/${orgId}`,
-    // A static host drops query strings, so each lineup combination is its own file
-    ...['r', 'l'].flatMap((vs) =>
-      ['saber', 'trad'].flatMap((style) =>
-        ['auto', 'on', 'off'].map((dh) => `lineup/${orgId}?vs=${vs}&style=${style}&dh=${dh}`)
-      )
-    ),
-    ...teams.flatMap((t) => [`roster/${t.team_id}`, `pitching/${t.team_id}`]),
-  ];
+  const pages = staticExportPages(
+    orgId,
+    teams.map((team) => team.team_id)
+  );
 
   progress = { running: true, phase: 'Reading pages', done: 0, total: pages.length };
   for (const p of pages) {
