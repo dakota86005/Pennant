@@ -36,6 +36,7 @@ import { scheduleRoutes } from './schedule.js';
 import { payrollRoutes } from './payroll.js';
 import { trendsRoutes } from './trends.js';
 import { chatRoutes } from './chat.js';
+import { majorLeagueOperationsRoutes } from './majorLeagueOperationsRoutes.js';
 
 export const api = Router();
 api.use(logoRoutes);
@@ -49,6 +50,7 @@ api.use(scheduleRoutes);
 api.use(payrollRoutes);
 api.use(trendsRoutes);
 api.use(chatRoutes);
+api.use(majorLeagueOperationsRoutes);
 api.use(playerRoutes);
 api.use(historyRoutes);
 api.use(dashboardRoutes);

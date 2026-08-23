@@ -1,6 +1,6 @@
 # Project state
 
-Point-in-time snapshot from repository inspection on **2026-08-22**. Verify
+Point-in-time snapshot from repository inspection on **2026-08-23**. Verify
 this document against the current worktree before relying on it; update it when
 material implementation state changes.
 
@@ -278,9 +278,22 @@ resolution across all organization-specific features is future work.
   `defenseEmphasis`, `pitchingDepth`, `rosterDepth`, and `versatility`.
   Minor League Operations' plan preference is carried as delegated evidence
   without re-scoring its assignments.
-- Phase 5 deliberately does not perform proactive upgrade detection, choose an
-  outgoing active/40-man player, solve injury-return/demotion lifecycle, add UI
-  or API integration, call AI, execute transactions, or write to OOTP.
+- `server/majorLeagueOperationsRoutes.ts` exposes the existing read-only
+  reactive-need report at `GET /api/mlb-operations/:orgId/needs` and validates
+  an open stable need ID before exposing its Phase 5 comparison at `GET
+  /api/mlb-operations/:orgId/needs/:needId/solutions`. The list route adds
+  only a compact count of defensible internal responders for queue scanning;
+  it does not move decision logic into the API or UI.
+- `src/pages/MajorLeagueOperations.tsx` is a dedicated Front Office
+  inbox-style workspace. The current-need queue preserves selection while a
+  reading pane presents complete variants, distinct responder/farm paths,
+  transaction mechanics, unresolved GM roster decisions, visible role evidence,
+  Player Development evidence, farm cascades, uncertainty, and Philosophy
+  interpretation. Facts and interpretations are shown separately; tier ties
+  are not assigned a false numeric rank. The Dashboard is unchanged.
+- Phase 5B deliberately does not perform proactive upgrade detection, choose
+  an outgoing active/40-man player, solve injury-return/demotion lifecycle,
+  call AI, execute transactions, or write to OOTP.
 - Continuous `players_value` fields are explicitly excluded from this
   subsystem's subjective evaluation because their organization-visible
   provenance is unverified. A source-backed audit is required to change that

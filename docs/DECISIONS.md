@@ -414,5 +414,31 @@ Consequences:
   baseball judgment.
 - The layer handles current reactive needs only. It does not detect proactive
   upgrades, choose an outgoing roster player, solve the return/demotion
-  lifecycle, expose a UI/API endpoint, call AI, execute a transaction, or make
-  the GM's final decision.
+  lifecycle, call AI, execute a transaction, or make the GM's final decision.
+
+## D-019 — Present reactive MLB packets as a dedicated read-only workspace
+
+**Status:** Accepted. **Implementation:** Phase 5B workspace and API present.
+
+The Major League Operations page lives in the existing Front Office navigation,
+not the Dashboard. A compact current-need queue and a selected-need reading
+pane make the decision packet the primary unit of work. The UI compares complete
+Phase 5 variants, including distinct farm cascades for the same responder; it
+does not turn a preference tier into an imperative or invent a ranking within a
+tied tier.
+
+Consequences:
+
+- `GET /api/mlb-operations/:orgId/needs` and `GET
+  /api/mlb-operations/:orgId/needs/:needId/solutions` are read-only adapters
+  over the existing domain layers. The latter revalidates the open need before
+  synthesizing it.
+- React consumes backend facts and interpretation as presentation data only.
+  It must keep transaction requirements, partial/truncated/indeterminate
+  results, Player Development evidence, and farm consequences visible rather
+  than recreating their logic.
+- The selected organization already held by the app is passed internally; the
+  GM never supplies a raw organization ID as a workflow step.
+- The page is deliberately reactive-only. Strategic upgrades, external
+  alternatives, outgoing-player selection, return/demotion lifecycle,
+  transaction execution, and Dashboard redesign remain separate future work.

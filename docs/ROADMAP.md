@@ -30,7 +30,8 @@ These are implementation baselines, not roadmap promises:
 - A read-only reactive MLB Operations vertical slice from current need
   detection through responder assembly, transaction feasibility,
   organizational consequences, bounded farm cascades, visible role evidence,
-  and structured organization-specific solution comparison.
+  structured organization-specific solution comparison, read-only API, and a
+  dedicated GM-facing workspace.
 - Read-only recommendations with explicit safeguards and no OOTP transaction
   writeback.
 
@@ -85,22 +86,13 @@ AI context.
 - Add a manual "protect this player" control using the reservation already in
   the development-protection model.
 
-### 5. Present the reactive MLB opportunity layer
+### 5. Extend MLB operations only after a separate domain boundary exists
 
-The deterministic reactive opportunity model now composes developmental
-eligibility, 26/40-man facts, need horizon, visible MLB role evidence, farm
-consequences, and Organizational Philosophy. Add the read-only API and GM-facing
-decision surface for:
-
-- the current MLB need and complete solution variants;
-- structured preference reasons, tradeoffs, ties, and insufficient evidence;
-- unresolved active/40-man choices and transaction unknowns;
-- complete, partial, indeterminate, and truncated farm consequences; and
-- the specific Player Development and philosophy provenance behind each path.
-
-Keep proactive incumbent upgrades, external-player alternatives, outgoing-
-player selection, and injury-return/demotion lifecycle outside this surface
-until their own domain layers exist.
+The reactive needs workspace now presents complete, read-only internal solution
+packets. Future MLB work must first establish its own evidence and decision
+boundaries for proactive incumbent upgrades, external-player alternatives,
+outgoing-player selection, and injury-return/demotion lifecycle. Do not add
+those concepts as exceptions to the reactive workspace or the Dashboard.
 
 ## Then: deepen organizational identity
 

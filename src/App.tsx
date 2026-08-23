@@ -32,6 +32,7 @@ import { Franchise } from './pages/Franchise';
 import { OrgComparison } from './pages/OrgComparison';
 import { Players } from './pages/Players';
 import { Standings } from './pages/Standings';
+import { MajorLeagueOperations } from './pages/MajorLeagueOperations';
 import { PlayerModal } from './playerModal';
 import { Nav, type NavEntry } from './Nav';
 import { applyTeamTheme, type ThemeMode } from './theme';
@@ -45,7 +46,7 @@ import { apiGet, apiPost } from './api';
 type Page =
   | 'dashboard' | 'farm' | 'farm-decisions' | 'farm-affiliates' | 'storylines' | 'rosters' | 'depth' | 'prospects' | 'development' | 'draft' | 'franchise' | 'orgcompare'
   | 'contracts' | 'crunch' | 'injuries' | 'freeagents' | 'trades' | 'philosophy' | 'lineup' | 'leaders'
-  | 'staff' | 'watchlist' | 'players' | 'standings' | 'pitching' | 'schedule' | 'payroll' | 'trends' | 'settings';
+  | 'staff' | 'watchlist' | 'players' | 'standings' | 'pitching' | 'schedule' | 'payroll' | 'trends' | 'mlb-operations' | 'settings';
 
 /**
  * Grouped by front-office function: what you do daily (Dashboard, Storylines),
@@ -88,6 +89,7 @@ const NAV: Array<NavEntry<Page>> = [
       { page: 'freeagents', label: 'Free Agents', hint: 'Now and after this season' },
       { page: 'trades', label: 'Trade Center', hint: 'Analyzer and league-wide fits' },
       { page: 'crunch', label: '40-Man Roster', hint: 'Options, Rule 5, DFA clocks' },
+      { page: 'mlb-operations', label: 'Major League Operations', hint: 'Reactive roster needs and decision packets' },
     ],
   },
   {
@@ -346,6 +348,7 @@ export function App() {
                   i.page !== 'players' &&
                   i.page !== 'watchlist' &&
                   i.page !== 'philosophy' &&
+                  i.page !== 'mlb-operations' &&
                 i.page !== 'farm' &&
                 i.page !== 'farm-decisions' &&
                 i.page !== 'farm-affiliates'
@@ -520,6 +523,7 @@ export function App() {
                 {page === 'payroll' && <Payroll orgId={orgId} />}
                 {page === 'philosophy' && <Philosophy orgId={orgId} orgLabel={org.label} />}
                 {page === 'crunch' && <RosterCrunch orgId={orgId} />}
+                {page === 'mlb-operations' && <MajorLeagueOperations orgId={orgId} orgLabel={org.label} />}
                 {page === 'injuries' && <Injuries orgId={orgId} />}
                 {page === 'trades' && <TradeCenter orgId={orgId} orgLabel={org.label} />}
                 {page === 'freeagents' && <FreeAgents orgId={orgId} />}

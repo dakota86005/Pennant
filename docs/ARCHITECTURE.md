@@ -115,7 +115,7 @@ artifact, not an alternative application backend.
 | Organizational Philosophy | `philosophy.ts` defines organization-specific dimensions/policies; `settings.ts` persists and resolves profiles; `Philosophy.tsx` edits them. | Philosophy ranks or adjusts choices after hard baseball/development constraints. It is not player evidence. |
 | Minor League Operations | `minorLeagueRoster.ts`, `minorLeagueCascadePlanner.ts`, `minorLeagueConsequences.ts`, `minorLeagueMoves.ts`, `pitcherRosterSimulation.ts`, `minorLeaguePitchingOperations.ts`, and `minorLeagueRetention.ts` diagnose affiliate structure and propose assignment/retention responses. | The shared cascade planner evaluates bounded, read-only assignment states for normal farm issues and MLB-originated perturbations. Level-changing moves must already be authorized by Player Development; no plan writes assignments or OOTP state. |
 | Roster & Transaction State | `rosterTransactionState.ts` normalizes imported roster/transaction facts and evaluates limited recall, option, and 40-man-addition rule state. `transactionHistory.ts` reads explicit trade and injury event records. `rosterStateHistory.ts` persists successive normalized observations and their factual differences. | It returns eligible, ineligible, or indeterminate results plus corresponding-move requirements. Snapshot transitions are observed facts, while causal correlation is separately evidence-bound; neither chooses players, simulates transactions, or invents events. |
-| Major League Operations | `majorLeagueOperations.ts` derives current reactive MLB needs, `majorLeagueResponders.ts` assembles legitimate responders, `majorLeagueTransactionPlan.ts` describes one path, `majorLeagueOrganizationalConsequences.ts` aggregates its consequences, `majorLeagueRoleSuitability.ts` describes visible role evidence, and `majorLeagueSolutionSynthesis.ts` constructs and compares complete variants. | Player Development, the transaction engine, and Minor League Operations remain authoritative for their outputs. MLB-level philosophy may compare already-defensible variants but cannot revive a veto, hide an unresolved decision, re-score a farm assignment, choose the GM's transaction, or write to OOTP. |
+| Major League Operations | `majorLeagueOperations.ts` derives current reactive MLB needs, `majorLeagueResponders.ts` assembles legitimate responders, `majorLeagueTransactionPlan.ts` describes one path, `majorLeagueOrganizationalConsequences.ts` aggregates its consequences, `majorLeagueRoleSuitability.ts` describes visible role evidence, and `majorLeagueSolutionSynthesis.ts` constructs and compares complete variants. `majorLeagueOperationsRoutes.ts` exposes those packets to the dedicated React workspace. | Player Development, the transaction engine, and Minor League Operations remain authoritative for their outputs. MLB-level philosophy may compare already-defensible variants but cannot revive a veto, hide an unresolved decision, re-score a farm assignment, choose the GM's transaction, or write to OOTP. |
 | AI features | `providers.ts`, `models.ts`, `chat.ts`, `ai.ts`, and `storylines.ts` provide staff chat, briefings, trade discussion, and storylines through configurable providers. | AI consumes computed save-grounded facts, calls the same API as the UI, and supports the front-office experience. It does not become a parallel recommendation engine. |
 | Web UI | React pages in `src/` render domain results, evidence, alternatives, and local interactions. `src/App.tsx` owns selected-save and selected-organization UI context. | React may shape presentation but should not silently reimplement baseball rules. |
 | Desktop shell | `electron/main.ts`, `preload.ts`, and `updater.ts` embed the local server, expose a minimal IPC bridge, protect navigation, store secrets, and manage consent-first updates. | Keep Node access out of the renderer and keep IPC narrow. |
@@ -389,6 +389,27 @@ insufficient, indeterminate, and truncated alternatives are retained as not
 responsibly comparable. Stable variant-ID order is presentation consistency,
 not baseball preference. The result remains advisory and the GM makes the
 final decision.
+
+### Major League Operations workspace and API
+
+`GET /api/mlb-operations/:orgId/needs` returns the current reactive-need
+report plus a compact, read-only count of legitimate active-MLB and AAA
+internal responders for queue scanning. `GET
+/api/mlb-operations/:orgId/needs/:needId/solutions` first revalidates that the
+stable need ID is still open for that organization, then returns the existing
+Phase 5 comparison packet. A resolved, invalid, or cross-organization need is
+not synthesized. Neither endpoint records a snapshot, changes a roster,
+changes settings, or exposes `players_value` continuous fields.
+
+`MajorLeagueOperations.tsx` is a dedicated Front Office workspace, not a
+Dashboard addition. Its inbox-style queue keeps the selected current need in
+context while the reading pane renders complete solution variants, rather than
+flattening multiple farm paths into one player. React formats and progressively
+discloses domain results; it does not calculate eligibility, transaction
+feasibility, cascade state, philosophy preference, or a recommendation. Facts,
+Player Development evidence, Minor League Operations consequences, and
+Organizational Philosophy interpretations remain separately labeled. The GM
+remains the final decision-maker.
 
 ### Organizational Philosophy owns preferences
 
