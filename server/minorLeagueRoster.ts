@@ -36,6 +36,18 @@ export interface AffiliateRosterHealth {
     positionPlayers: number;
     pitchers: number;
     dayToDay: number;
+    /**
+     * The affiliate league's exported active-roster rule. A zero-valued rule
+     * means OOTP has explicitly configured no limit; a missing rule remains
+     * unknown rather than being treated as unlimited.
+     */
+    capacity: {
+      limit: number | null;
+      openSlots: number | null;
+      excess: number | null;
+      status: 'within_limit' | 'over_capacity' | 'unlimited' | 'unknown';
+      source: 'league_rules_active_roster_limit' | null;
+    };
   };
 
   positionPlayers: {
@@ -86,6 +98,8 @@ export interface AffiliateRosterHealth {
 export interface MinorLeagueRosterHealthScenario {
   excludePlayerIds?: readonly number[];
   excludeUnavailablePlayers?: boolean;
+  /** Read-only hypothetical player-to-affiliate assignment overrides. */
+  assignments?: readonly { playerId: number; teamId: number }[];
 }
 
 const LEVEL_NAMES: Record<number, string> = {
@@ -148,6 +162,7 @@ interface Affiliate {
   name: string;
   nickname: string;
   level: number;
+  league_id: number | null;
 }
 
 interface HitterEligibility {
@@ -172,23 +187,63 @@ function affiliateLabel(team: Affiliate): string {
 function affiliates(orgId: number): Affiliate[] {
   if (!tableExists('teams')) return [];
 
+  const columns = new Set(tableColumns('teams'));
+  const leagueId = columns.has('league_id') ? 'league_id' : 'NULL AS league_id';
+
   return db.prepare(`
     WITH RECURSIVE org AS (
-      SELECT team_id, name, nickname, level
+      SELECT team_id, name, nickname, level, ${leagueId}
       FROM teams
       WHERE team_id = ?
 
       UNION ALL
 
-      SELECT t.team_id, t.name, t.nickname, t.level
+      SELECT t.team_id, t.name, t.nickname, t.level, ${columns.has('league_id') ? 't.league_id' : 'NULL'} AS league_id
       FROM teams t
       JOIN org o ON t.parent_team_id = o.team_id
     )
-    SELECT DISTINCT team_id, name, nickname, level
+    SELECT DISTINCT team_id, name, nickname, level, league_id
     FROM org
     WHERE team_id != ?
     ORDER BY level, team_id
   `).all(orgId, orgId) as Affiliate[];
+}
+
+/**
+ * Minor affiliates follow their own league's active-roster rule. We use only
+ * the same explicit `rules_active_roster_limit` field already trusted by the
+ * shared MLB roster-state reader. No imported field means no invented limit.
+ */
+function activeRosterLimits(teams: Affiliate[]): Map<number, number | null> {
+  const limits = new Map<number, number | null>();
+  if (!tableExists('leagues') || !new Set(tableColumns('leagues')).has('rules_active_roster_limit')) return limits;
+  const leagueIds = [...new Set(teams.map((team) => team.league_id).filter((id): id is number => id !== null))];
+  if (!leagueIds.length) return limits;
+  const placeholders = leagueIds.map(() => '?').join(', ');
+  const rows = db.prepare(`SELECT league_id, rules_active_roster_limit FROM leagues WHERE league_id IN (${placeholders})`)
+    .all(...leagueIds) as Array<{ league_id: number; rules_active_roster_limit: number | null }>;
+  for (const row of rows) {
+    const rawLimit = row.rules_active_roster_limit === null ? null : Number(row.rules_active_roster_limit);
+    limits.set(Number(row.league_id), rawLimit !== null && Number.isFinite(rawLimit) && rawLimit >= 0 ? rawLimit : null);
+  }
+  return limits;
+}
+
+function rosterCapacity(team: Affiliate, total: number, limits: Map<number, number | null>): AffiliateRosterHealth['roster']['capacity'] {
+  if (team.league_id === null || !limits.has(team.league_id)) {
+    return { limit: null, openSlots: null, excess: null, status: 'unknown', source: null };
+  }
+  const limit = limits.get(team.league_id) ?? null;
+  if (limit === null) return { limit: null, openSlots: null, excess: null, status: 'unknown', source: 'league_rules_active_roster_limit' };
+  if (limit === 0) return { limit: null, openSlots: null, excess: 0, status: 'unlimited', source: 'league_rules_active_roster_limit' };
+  const openSlots = limit - total;
+  return {
+    limit,
+    openSlots,
+    excess: Math.max(0, -openSlots),
+    status: openSlots < 0 ? 'over_capacity' : 'within_limit',
+    source: 'league_rules_active_roster_limit',
+  };
 }
 
 function activePlayers(
@@ -510,9 +565,9 @@ function overallStatus(
 
 function computeAffiliate(
   team: Affiliate,
-  scenario: MinorLeagueRosterHealthScenario
+  roster: ActivePlayer[],
+  limits: Map<number, number | null>
 ): AffiliateRosterHealth {
-  const roster = activePlayers(team.team_id, scenario);
 
   const hittersRaw = roster.filter(
     (player) => player.position !== 1
@@ -601,6 +656,11 @@ function computeAffiliate(
       : 0;
 
   const issues: string[] = [];
+  const capacity = rosterCapacity(team, roster.length, limits);
+
+  if (capacity.status === 'over_capacity') {
+    issues.push(`Roster has ${roster.length} players against its exported active-roster limit of ${capacity.limit}; ${capacity.excess} player${capacity.excess === 1 ? '' : 's'} must leave through an unresolved assignment, release, or other transaction.`);
+  }
 
   if (!canFieldDefense) {
     issues.push(
@@ -681,6 +741,7 @@ function computeAffiliate(
       positionPlayers: hitters.length,
       pitchers: pitchers.length,
       dayToDay,
+      capacity,
     },
 
     positionPlayers: {
@@ -731,5 +792,15 @@ export function computeMinorLeagueRosterHealth(
   orgId: number,
   scenario: MinorLeagueRosterHealthScenario = {}
 ): AffiliateRosterHealth[] {
-  return affiliates(orgId).map((team) => computeAffiliate(team, scenario));
+  const teams = affiliates(orgId);
+  const limits = activeRosterLimits(teams);
+  const rosterByTeam = new Map(teams.map((team) => [team.team_id, [] as ActivePlayer[]]));
+  const assignments = new Map((scenario.assignments ?? []).map((assignment) => [assignment.playerId, assignment.teamId]));
+  for (const source of teams) {
+    for (const player of activePlayers(source.team_id, scenario)) {
+      const destinationId = assignments.get(player.player_id) ?? source.team_id;
+      rosterByTeam.get(destinationId)?.push(player);
+    }
+  }
+  return teams.map((team) => computeAffiliate(team, rosterByTeam.get(team.team_id) ?? [], limits));
 }

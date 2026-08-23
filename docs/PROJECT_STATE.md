@@ -140,12 +140,17 @@ Present on the inspected feature branch:
 - Defensive assignment fit uses visible fielding ratings/experience and becomes
   stricter for more protected prospects.
 - Affiliate health reads the actual affiliate tree and active rosters, then
-  diagnoses hitter body count/position coverage and pitcher body count,
-  rotation, and bullpen structure.
+  diagnoses hitter body count/position coverage, pitcher body count, rotation,
+  bullpen structure, and a positive exported affiliate-league active-roster
+  limit. Zero-valued limits are explicitly unlimited; missing rules stay
+  unknown.
 - Position-player and pitcher operations search for small sets of moves,
   simulate source/destination effects, consume Player Development authorization
   for level changes, apply philosophy preferences, show alternatives/rejections,
-  and never write transactions.
+  and never write transactions. A newly created or worsened roster-capacity
+  overage prevents a cascade plan from being complete until an existing
+  defensible assignment resolves it; release/displacement choices remain
+  unresolved.
 - Retention separates developmental protection, legal assignments,
   organization utility, roster pressure, transaction guardrails, observed
   development, peer-relative development, and philosophy. Release candidates
@@ -243,6 +248,21 @@ resolution across all organization-specific features is future work.
   and does not simulate a multi-level cascade. Corresponding MLB roster-space
   decisions and farm unknowns remain unresolved facts for a later comparison
   layer.
+- `server/minorLeagueCascadePlanner.ts` now provides the shared, bounded,
+  read-only organizational assignment search for normal farm operations and
+  MLB-originated recall consequences. It evaluates hypothetical assignments
+  through the same affiliate roster-health model, distinguishes baseline farm
+  flaws from new/worsened scenario consequences, retains multiple deterministic
+  complete or partial plans, and reports indeterminate or truncated searches.
+  It is bounded to three moves, 160 states, 24 actions per state, and eight
+  plans, with canonical state deduplication and no repeated player movement.
+- Every level-changing hypothetical move consumes existing Player Development
+  assignment authorization and retains its evidence. Persisted philosophy
+  preference is limited to `promotionAggressiveness`, `versatility`, and
+  `rosterDepth` among defensible plans; no continuous `players_value` fields
+  are used by the cascade planner. Current routes still take an explicit
+  organization ID because shared server-side organization resolution remains
+  future work.
 - It deliberately does not perform candidate selection/readiness evaluation,
   call-up recommendations, transaction simulation, philosophy weighting,
   proactive upgrades, UI work, or OOTP writeback.

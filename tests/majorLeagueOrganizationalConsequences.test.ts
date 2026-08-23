@@ -175,7 +175,7 @@ describe('MLB organizational consequence analysis', () => {
     ]));
   });
 
-  it('exposes an unranked Player Development-authorized first response without simulating a cascade', () => {
+  it('exposes the shared Minor League Operations cascade result for a developmentally authorized response', () => {
     addTeam();
     addPlayer(ID_START);
     addPlayer(ID_START + 1);
@@ -185,7 +185,7 @@ describe('MLB organizational consequence analysis', () => {
     expect(result.sourceAffiliateConsequence?.downstreamResponse).toMatchObject({
       status: 'discussion_candidates_available',
       candidates: [expect.objectContaining({ playerId: ID_START + 2, assignmentKind: 'normal_promotion' })],
-      cascade: { depth: 0, status: 'not_simulated' },
+      cascade: { status: 'partial' },
     });
     expect(result.ordering).toBe('single_solution_no_ranking');
     expect(result.scoring).toBe('none');

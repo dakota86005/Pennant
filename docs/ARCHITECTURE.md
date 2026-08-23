@@ -113,7 +113,7 @@ artifact, not an alternative application backend.
 | Domain API | Express routers in `server/*.ts` compute rosters, player dossiers, standings, schedules, stats, contracts, payroll, trades, development, and other front-office reads. | Domain logic belongs here, not duplicated in React or AI prompts. |
 | Player Development | `org.ts`, `prospectDecision.ts`, `prospectAssignments.ts`, `destinationFit.ts`, `developmentFit.ts`, and scouting-history functions evaluate evidence, developmental protection, legal assignments, and destination fit. | This layer determines defensibility; it does not choose transactions for the GM. |
 | Organizational Philosophy | `philosophy.ts` defines organization-specific dimensions/policies; `settings.ts` persists and resolves profiles; `Philosophy.tsx` edits them. | Philosophy ranks or adjusts choices after hard baseball/development constraints. It is not player evidence. |
-| Minor League Operations | `minorLeagueRoster.ts`, `minorLeagueConsequences.ts`, `minorLeagueMoves.ts`, `pitcherRosterSimulation.ts`, `minorLeaguePitchingOperations.ts`, and `minorLeagueRetention.ts` diagnose affiliate structure and propose assignment/retention responses. | Level-changing moves must already be authorized by Player Development. Read-only hypothetical analysis may describe the first farm consequence of an MLB recall, but does not select an assignment or recursively solve a cascade. |
+| Minor League Operations | `minorLeagueRoster.ts`, `minorLeagueCascadePlanner.ts`, `minorLeagueConsequences.ts`, `minorLeagueMoves.ts`, `pitcherRosterSimulation.ts`, `minorLeaguePitchingOperations.ts`, and `minorLeagueRetention.ts` diagnose affiliate structure and propose assignment/retention responses. | The shared cascade planner evaluates bounded, read-only assignment states for normal farm issues and MLB-originated perturbations. Level-changing moves must already be authorized by Player Development; no plan writes assignments or OOTP state. |
 | Roster & Transaction State | `rosterTransactionState.ts` normalizes imported roster/transaction facts and evaluates limited recall, option, and 40-man-addition rule state. `transactionHistory.ts` reads explicit trade and injury event records. `rosterStateHistory.ts` persists successive normalized observations and their factual differences. | It returns eligible, ineligible, or indeterminate results plus corresponding-move requirements. Snapshot transitions are observed facts, while causal correlation is separately evidence-bound; neither chooses players, simulates transactions, or invents events. |
 | Major League Operations | `majorLeagueOperations.ts` consumes shared roster/transaction context and derives current reactive MLB needs from roster history plus current coverage. `majorLeagueResponders.ts` assembles internal responders, `majorLeagueTransactionPlan.ts` describes one selected path, and `majorLeagueOrganizationalConsequences.ts` aggregates its immediate consequences. | A roster event is not itself an open need. The layer detects objective capacity/role-coverage problems, unranked discussion sets, read-only transaction paths, and structured consequence facts without judging readiness itself, ranking candidates, applying philosophy, choosing corresponding players, or writing to OOTP. |
 | AI features | `providers.ts`, `models.ts`, `chat.ts`, `ai.ts`, and `storylines.ts` provide staff chat, briefings, trade discussion, and storylines through configurable providers. | AI consumes computed save-grounded facts, calls the same API as the UI, and supports the front-office experience. It does not become a parallel recommendation engine. |
@@ -310,12 +310,46 @@ existing Player Development assignment evaluation authorizes the source
 affiliate. It does not choose that player, use philosophy, manufacture a
 promotion, or simulate the source of that response.
 
-The current farm architecture does not safely model recursive hypothetical
-cascades, so the analysis reports cascade depth zero and preserves the first
-unresolved problem. Corresponding active/40-man decisions from the transaction
-plan remain explicitly unresolved. There is no organizational-cost score or
-solution ranking; Phase 5 may compare complete packages using need context and
-Organizational Philosophy.
+Phase 4A initially stopped at the first unresolved farm problem; it now consumes
+the farm-owned cascade result described below. Corresponding active/40-man
+decisions from the transaction plan remain explicitly unresolved. There is no
+organizational-cost score or MLB-solution ranking; Phase 5 may compare complete
+packages using need context and Organizational Philosophy.
+
+### Minor League Operations cascade planning
+
+`planMinorLeagueCascade` is the shared bounded search used for an initial farm
+perturbation and exposed by the normal farm-operations API. It evaluates each
+in-memory assignment state through `computeMinorLeagueRosterHealth`, including
+the same position coverage, rotation, bullpen, availability, body-count, and
+exported affiliate active-roster-capacity rules used for current rosters. An
+affiliate's positive `leagues.rules_active_roster_limit` is enforced using its
+own league; a zero is an explicit no-limit rule, while a missing field remains
+unknown rather than being guessed. Baseline health is retained for consequence
+scenarios: only a new or materially worsened issue becomes a cascade
+obligation; unchanged pre-existing flaws remain context rather than being
+silently repaired.
+
+The planner explores Player Development-authorized normal promotions,
+skip-level promotions, and demotions to actual affiliate destinations. It also
+allows existing unevaluated organizational depth only for same-level
+reassignment, preserving the established veteran/depth behavior without using
+roster need to manufacture a promotion. Each move retains development evidence
+and is applied solely to an assignment map, so a player cannot exist on two
+hypothetical rosters.
+
+Search is deterministic and bounded at three moves, 160 explored states, 24
+actions per state, and eight retained plans. Canonical assignment-state IDs
+deduplicate equivalent states; a player cannot move twice in a plan. Plans are
+complete, partial, or truncated; missing readable farm state is indeterminate.
+An over-capacity destination is an unresolved scenario problem, so a plan that
+otherwise fills a role cannot be complete. The planner may relieve an overage
+only through its existing defensible assignment paths; it does not select a
+release, displacement, or any other outgoing transaction.
+The persisted philosophy dimensions used only among defensible plans are
+`promotionAggressiveness`, `versatility`, and `rosterDepth`; neutral or
+non-distinguishing evidence yields tied plans. Search truncation never means no
+other plan exists.
 
 ### Organizational Philosophy owns preferences
 

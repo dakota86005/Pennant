@@ -346,3 +346,36 @@ Consequences:
 - Need cause/horizon, transaction unknowns, and existing responder-development
   context carry forward as facts. Organizational Philosophy and prohibited
   continuous `players_value` fields remain outside this phase.
+
+## D-017 — Use one bounded farm-cascade planner for normal and hypothetical work
+
+**Status:** Accepted. **Implementation:** Initial shared cascade planner
+present.
+
+Minor League Operations owns `minorLeagueCascadePlanner.ts`. It searches an
+in-memory organizational assignment state, rather than a linear list of callups,
+so an action may resolve one scenario problem while creating another. Baseline
+health separates a scenario-caused deficiency from unchanged pre-existing farm
+health; normal operations may instead start with current deficiencies.
+
+Consequences:
+
+- Player Development eligibility gates every level-changing action and its
+  reasons/destination evidence remain attached to the move. Unevaluated depth
+  is limited to existing same-level reassignment behavior.
+- `promotionAggressiveness`, `versatility`, and `rosterDepth` are the only
+  persisted philosophy dimensions currently used for inspectable preference
+  among defensible plans. They never alter eligibility, availability, or facts.
+- The search is deterministic, deduplicates canonical assignment states,
+  forbids a player from moving twice, and is bounded at depth 3, 160 states,
+  24 actions per state, and 8 retained plans. A reached bound is explicit
+  truncation, not proof that alternatives do not exist.
+- The shared normal/hypothetical roster evaluator enforces a positive
+  affiliate-league `rules_active_roster_limit`; zero means the export
+  explicitly permits no limit, and a missing rule remains unknown. A new or
+  worsened overage is a cascade problem. It may be relieved only by an already
+  defensible assignment path; no release, displacement, or transaction solver
+  is implied by an unresolved overage.
+- Major League Operations consumes this farm-owned result for a selected
+  recall; it does not maintain an MLB-only cascade algorithm. No hypothetical
+  state mutates OOTP, imported SQLite data, or roster history.

@@ -3,6 +3,7 @@ import { computeMinorLeagueRosterHealth } from './minorLeagueRoster.js';
 import { computeMinorLeagueRebalance } from './minorLeagueMoves.js';
 import { computeMinorLeagueRetention } from './minorLeagueRetention.js';
 import { computeMinorLeaguePitchingOperations } from './minorLeaguePitchingOperations.js';
+import { planMinorLeagueCascade } from './minorLeagueCascadePlanner.js';
 import { db, tableExists, tableColumns } from './db.js';
 import { LEVEL_NAMES } from './valuation.js';
 import { resolvePhilosophy } from './philosophy.js';
@@ -744,8 +745,15 @@ orgRoutes.get('/minor-league-moves/:orgId', (req, res) => {
       prospects
     );
 
+  const cascade = planMinorLeagueCascade({
+    orgId,
+    prospectData: prospects,
+    problemScope: 'current',
+  });
+
   res.json({
     ...positionPlayerOperations,
     pitching: pitchingOperations,
+    cascade,
   });
 });

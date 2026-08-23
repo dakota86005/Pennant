@@ -17,6 +17,10 @@ import {
   organizationRosterTransactionState,
   type PlayerRosterState,
 } from './rosterTransactionState.js';
+import {
+  planMinorLeagueCascade,
+  type MinorLeagueCascadeResult,
+} from './minorLeagueCascadePlanner.js';
 
 export type MinorLeagueCoverageRole =
   | { kind: 'position'; position: number; label: string }
@@ -50,11 +54,7 @@ export interface MinorLeagueDownstreamResponse {
     | 'no_currently_defensible_response'
     | 'indeterminate';
   candidates: MinorLeagueDownstreamCandidate[];
-  cascade: {
-    depth: 0;
-    status: 'not_simulated';
-    reason: string;
-  };
+  cascade: MinorLeagueCascadeResult;
   unknowns: Array<{ code: string; message: string }>;
 }
 
@@ -134,16 +134,16 @@ function roleMatches(player: PlayerRosterState, role: MinorLeagueCoverageRole): 
 function downstreamResponse(
   orgId: number,
   problem: MinorLeagueCoverageProblem | null,
-  state: PlayerRosterState[]
+  state: PlayerRosterState[],
+  removedPlayerId: number,
 ): MinorLeagueDownstreamResponse {
-  const cascade = {
-    depth: 0 as const,
-    status: 'not_simulated' as const,
-    reason: 'Current Minor League Operations has no safe recursive hypothetical-assignment solver; only the first source-affiliate problem is analyzed.',
-  };
-  if (!problem) return { owner: 'minor_league_operations', status: 'not_required', candidates: [], cascade, unknowns: [] };
-
   const prospects = computeProspects(orgId);
+  const cascade = planMinorLeagueCascade({
+    orgId,
+    removePlayerIds: [removedPlayerId],
+    prospectData: prospects,
+  });
+  if (!problem) return { owner: 'minor_league_operations', status: 'not_required', candidates: [], cascade, unknowns: cascade.unknowns };
   const candidates: MinorLeagueDownstreamCandidate[] = [...prospects.batters, ...prospects.pitchers]
     .flatMap((candidate) => {
       const row = candidate as ProspectLike;
@@ -171,10 +171,10 @@ function downstreamResponse(
 
   return {
     owner: 'minor_league_operations',
-    status: candidates.length > 0 ? 'discussion_candidates_available' : 'no_currently_defensible_response',
+    status: cascade.plans.some((plan) => plan.moves.length > 0) ? 'discussion_candidates_available' : 'no_currently_defensible_response',
     candidates,
     cascade,
-    unknowns: candidates.length > 0 ? [] : [{
+    unknowns: candidates.length > 0 ? cascade.unknowns : [...cascade.unknowns, {
       code: 'no_developmentally_defensible_first_response',
       message: 'No available lower-level player has a Player Development-authorized assignment to this source affiliate for the affected role.',
     }],
@@ -220,7 +220,7 @@ export function analyzeHypotheticalAffiliateRemoval(
     after,
     coverage: { before: beforeCoverage, after: afterCoverage, remainsAdequate },
     operationalProblem,
-    downstreamResponse: downstreamResponse(orgId, problem, transactionState.players),
+    downstreamResponse: downstreamResponse(orgId, problem, transactionState.players, playerId),
     unknowns: [
       ...transactionState.unknowns,
       ...player.unknowns,
