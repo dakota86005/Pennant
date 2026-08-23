@@ -27,6 +27,10 @@ These are implementation baselines, not roadmap promises:
 - A farm-system architecture that separates prospect/development eligibility,
   destination fit, affiliate roster health, constrained position-player and
   pitcher proposals, and retention evidence.
+- A read-only reactive MLB Operations vertical slice from current need
+  detection through responder assembly, transaction feasibility,
+  organizational consequences, bounded farm cascades, visible role evidence,
+  and structured organization-specific solution comparison.
 - Read-only recommendations with explicit safeguards and no OOTP transaction
   writeback.
 
@@ -81,20 +85,22 @@ AI context.
 - Add a manual "protect this player" control using the reservation already in
   the development-protection model.
 
-### 5. Add the MLB opportunity layer
+### 5. Present the reactive MLB opportunity layer
 
-AAA-to-MLB is currently surfaced as a discussion, while direct skip-level MLB
-moves are intentionally excluded from the minor-league engine. Build a separate
-MLB opportunity model that combines developmental readiness with:
+The deterministic reactive opportunity model now composes developmental
+eligibility, 26/40-man facts, need horizon, visible MLB role evidence, farm
+consequences, and Organizational Philosophy. Add the read-only API and GM-facing
+decision surface for:
 
-- 26/40-man openings and role availability;
-- options, waivers, DFA and Rule 5 consequences;
-- service-time/control facts without hiding them as value judgments;
-- injuries, schedule needs, and competitive context; and
-- an explicit GM decision surface.
+- the current MLB need and complete solution variants;
+- structured preference reasons, tradeoffs, ties, and insufficient evidence;
+- unresolved active/40-man choices and transaction unknowns;
+- complete, partial, indeterminate, and truncated farm consequences; and
+- the specific Player Development and philosophy provenance behind each path.
 
-It must consume Player Development eligibility rather than treating a major
-league roster hole as proof a prospect is ready.
+Keep proactive incumbent upgrades, external-player alternatives, outgoing-
+player selection, and injury-return/demotion lifecycle outside this surface
+until their own domain layers exist.
 
 ## Then: deepen organizational identity
 

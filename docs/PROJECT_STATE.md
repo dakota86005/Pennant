@@ -8,7 +8,7 @@ material implementation state changes.
 
 - Package: `ootp-front-office` version `0.27.2`.
 - Inspected branch: `feature/mlb-operations`.
-- Inspected HEAD: `3d09664` (`feat: add MLB transaction solution planning`).
+- Inspected HEAD: `91d0555` (`feat: enforce minor league cascade roster capacity`).
 - Stack: TypeScript, React 18, Vite 6, Express 4, SQLite via
   `better-sqlite3`, Electron 41, and Vitest 4.
 - Before this documentation work, the worktree already had uncommitted
@@ -242,12 +242,10 @@ resolution across all organization-specific features is future work.
   rotation, and bullpen rules while excluding objectively unavailable
   teammates. Player removal, coverage after removal, and an actual operational
   deficiency are separate results.
-- A resulting source-affiliate problem belongs to Minor League Operations. The
-  present adapter may surface an unranked, Player Development-authorized
-  first-response discussion set, but chooses no player, alters no assignment,
-  and does not simulate a multi-level cascade. Corresponding MLB roster-space
-  decisions and farm unknowns remain unresolved facts for a later comparison
-  layer.
+- A resulting source-affiliate problem belongs to Minor League Operations. Its
+  bounded planner may return multiple complete, partial, or truncated cascade
+  plans while choosing no transaction and altering no imported assignment.
+  Corresponding MLB roster-space decisions remain unresolved.
 - `server/minorLeagueCascadePlanner.ts` now provides the shared, bounded,
   read-only organizational assignment search for normal farm operations and
   MLB-originated recall consequences. It evaluates hypothetical assignments
@@ -263,9 +261,26 @@ resolution across all organization-specific features is future work.
   are used by the cascade planner. Current routes still take an explicit
   organization ID because shared server-side organization resolution remains
   future work.
-- It deliberately does not perform candidate selection/readiness evaluation,
-  call-up recommendations, transaction simulation, philosophy weighting,
-  proactive upgrades, UI work, or OOTP writeback.
+- `server/majorLeagueRoleSuitability.ts` describes an admitted responder with
+  visible current batting/pitching/fielding ratings, handedness,
+  speed/stamina/repertoire, and objective current-level performance. It retains
+  structured offense, defense, versatility, and pitching evidence rather than
+  creating a single MLB-fit score. Missing evidence can make comparison
+  limited or insufficient.
+- `server/majorLeagueSolutionSynthesis.ts` constructs one causal solution
+  variant per responder and specific retained farm plan. It classifies factual
+  completeness before applying the persisted organization philosophy, keeps
+  transaction decisions and cascade uncertainty explicit, and compares
+  variants through structured non-dominance. It permits ties and conditional
+  or cannot-responsibly-compare outcomes; stable ID order is non-preferential.
+- MLB-level philosophy currently consumes `competitiveWindow`,
+  `riskTolerance`, `promotionAggressiveness`, `upsidePreference`,
+  `defenseEmphasis`, `pitchingDepth`, `rosterDepth`, and `versatility`.
+  Minor League Operations' plan preference is carried as delegated evidence
+  without re-scoring its assignments.
+- Phase 5 deliberately does not perform proactive upgrade detection, choose an
+  outgoing active/40-man player, solve injury-return/demotion lifecycle, add UI
+  or API integration, call AI, execute transactions, or write to OOTP.
 - Continuous `players_value` fields are explicitly excluded from this
   subsystem's subjective evaluation because their organization-visible
   provenance is unverified. A source-backed audit is required to change that
@@ -281,9 +296,9 @@ resolution across all organization-specific features is future work.
   while other parts of the app detect and display alternate OOTP scales.
 - Rookie-level ACL/DSL movement is explicitly deferred until eligibility and
   environment rules are modeled.
-- AAA-to-MLB is a discussion rather than a full opportunity decision; direct
-  skip-level moves to MLB are deliberately excluded from the minor-league
-  engine.
+- Player Development still supplies an AAA-to-MLB discussion gate rather than
+  a lower-level direct-to-MLB gate. Phase 5 compares only responders admitted
+  through that boundary; direct lower-level MLB moves remain excluded.
 - A manual-protection input is reserved in the development model, but no user
   control persists or supplies it.
 - Staff-derived philosophy values are not implemented.

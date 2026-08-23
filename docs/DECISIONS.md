@@ -333,13 +333,13 @@ cannot be used; missing source role or roster evidence stays unknown.
 
 Consequences:
 
-- A source-affiliate shortage is delegated to Minor League Operations. Its
-  current safe response is an unranked, first-response discussion set only for
-  players with an existing Player Development-authorized destination to that
-  affiliate. Roster pressure never manufactures that authorization.
-- No lower-level player is selected, no current assignment is mutated, and no
-  multi-level hypothetical cascade is claimed. The first unresolved farm
-  problem remains explicit until a safe cascade model exists.
+- A source-affiliate shortage is delegated to Minor League Operations. The
+  initial Phase 4A response was an unranked first-response set; D-017 now owns
+  the bounded multi-level hypothetical cascade. Roster pressure never
+  manufactures Player Development authorization.
+- No lower-level player is selected and no current assignment is mutated. A
+  partial or truncated bounded cascade remains an explicit unresolved farm
+  consequence rather than a claimed complete plan.
 - Active- and 40-man corresponding decisions remain GM/MLB Operations
   decisions with no outgoing player selected, even in a complete consequence
   package.
@@ -379,3 +379,40 @@ Consequences:
 - Major League Operations consumes this farm-owned result for a selected
   recall; it does not maintain an MLB-only cascade algorithm. No hypothetical
   state mutates OOTP, imported SQLite data, or roster history.
+
+## D-018 — Compare complete reactive MLB solution variants without a master score
+
+**Status:** Accepted. **Implementation:** Initial Phase 5 synthesis present.
+
+The comparison unit is one coherent need → responder → transaction →
+organizational consequence → specific farm-plan path. One responder may yield
+multiple variants when Minor League Operations returns materially different
+cascades. No responder may inherit another responder's cascade.
+
+Consequences:
+
+- Completeness is factual and precedes preference: fully actionable,
+  feasible with an unresolved GM decision, partial organizational solution,
+  indeterminate, search-truncated, and ineligible remain distinct.
+- Role suitability describes visible current batting/pitching/fielding,
+  handedness, speed/stamina/repertoire, and objective performance evidence for
+  a responder already admitted by Phase 2. It neither repeats Player
+  Development readiness nor creates a universal MLB-quality threshold.
+- MLB-level interpretation uses only the persisted shared dimensions
+  `competitiveWindow`, `riskTolerance`, `promotionAggressiveness`,
+  `upsidePreference`, `defenseEmphasis`, `pitchingDepth`, `rosterDepth`, and
+  `versatility`. No MLB-only philosophy object or hidden weight exists.
+- Farm-plan philosophy remains owned by Minor League Operations. Phase 5
+  retains its status/reasons as delegated evidence and does not re-score the
+  same assignments, explicitly preventing philosophy double-counting.
+- Need cause/horizon, transaction requirements, source-affiliate cascade,
+  development evidence, secondary MLB role consequences, and unknowns remain
+  inspectable. Philosophy interpretations are stored separately from facts.
+- Preference uses structured non-dominance, not an authoritative scalar.
+  Multiple preferred variants, conditional alternatives, stable ties, and
+  cannot-responsibly-compare results are valid. Stable ID ordering is not a
+  baseball judgment.
+- The layer handles current reactive needs only. It does not detect proactive
+  upgrades, choose an outgoing roster player, solve the return/demotion
+  lifecycle, expose a UI/API endpoint, call AI, execute a transaction, or make
+  the GM's final decision.

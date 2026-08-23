@@ -115,7 +115,7 @@ artifact, not an alternative application backend.
 | Organizational Philosophy | `philosophy.ts` defines organization-specific dimensions/policies; `settings.ts` persists and resolves profiles; `Philosophy.tsx` edits them. | Philosophy ranks or adjusts choices after hard baseball/development constraints. It is not player evidence. |
 | Minor League Operations | `minorLeagueRoster.ts`, `minorLeagueCascadePlanner.ts`, `minorLeagueConsequences.ts`, `minorLeagueMoves.ts`, `pitcherRosterSimulation.ts`, `minorLeaguePitchingOperations.ts`, and `minorLeagueRetention.ts` diagnose affiliate structure and propose assignment/retention responses. | The shared cascade planner evaluates bounded, read-only assignment states for normal farm issues and MLB-originated perturbations. Level-changing moves must already be authorized by Player Development; no plan writes assignments or OOTP state. |
 | Roster & Transaction State | `rosterTransactionState.ts` normalizes imported roster/transaction facts and evaluates limited recall, option, and 40-man-addition rule state. `transactionHistory.ts` reads explicit trade and injury event records. `rosterStateHistory.ts` persists successive normalized observations and their factual differences. | It returns eligible, ineligible, or indeterminate results plus corresponding-move requirements. Snapshot transitions are observed facts, while causal correlation is separately evidence-bound; neither chooses players, simulates transactions, or invents events. |
-| Major League Operations | `majorLeagueOperations.ts` consumes shared roster/transaction context and derives current reactive MLB needs from roster history plus current coverage. `majorLeagueResponders.ts` assembles internal responders, `majorLeagueTransactionPlan.ts` describes one selected path, and `majorLeagueOrganizationalConsequences.ts` aggregates its immediate consequences. | A roster event is not itself an open need. The layer detects objective capacity/role-coverage problems, unranked discussion sets, read-only transaction paths, and structured consequence facts without judging readiness itself, ranking candidates, applying philosophy, choosing corresponding players, or writing to OOTP. |
+| Major League Operations | `majorLeagueOperations.ts` derives current reactive MLB needs, `majorLeagueResponders.ts` assembles legitimate responders, `majorLeagueTransactionPlan.ts` describes one path, `majorLeagueOrganizationalConsequences.ts` aggregates its consequences, `majorLeagueRoleSuitability.ts` describes visible role evidence, and `majorLeagueSolutionSynthesis.ts` constructs and compares complete variants. | Player Development, the transaction engine, and Minor League Operations remain authoritative for their outputs. MLB-level philosophy may compare already-defensible variants but cannot revive a veto, hide an unresolved decision, re-score a farm assignment, choose the GM's transaction, or write to OOTP. |
 | AI features | `providers.ts`, `models.ts`, `chat.ts`, `ai.ts`, and `storylines.ts` provide staff chat, briefings, trade discussion, and storylines through configurable providers. | AI consumes computed save-grounded facts, calls the same API as the UI, and supports the front-office experience. It does not become a parallel recommendation engine. |
 | Web UI | React pages in `src/` render domain results, evidence, alternatives, and local interactions. `src/App.tsx` owns selected-save and selected-organization UI context. | React may shape presentation but should not silently reimplement baseball rules. |
 | Desktop shell | `electron/main.ts`, `preload.ts`, and `updater.ts` embed the local server, expose a minimal IPC bridge, protect navigation, store secrets, and manage consent-first updates. | Keep Node access out of the renderer and keep IPC narrow. |
@@ -180,7 +180,7 @@ and the limited recall, option, and 40-man-addition action answers. It returns
 known facts separately from missing or incompletely derivable transaction
 facts, including corresponding-move requirements. It does not detect needs,
 rank candidates, recommend a call-up, simulate a transaction, or write to
-OOTP. A future MLB opportunity workflow must consume Player Development's
+OOTP. The MLB solution workflow consumes Player Development's
 defensible AAA-to-MLB discussion set rather than treating a roster opening as
 evidence of readiness.
 
@@ -286,9 +286,8 @@ decision with no selected player. A non-40-man responder may require a logical
 planning sequence of 40-man space, 40-man addition, active-roster space, and
 recall. That is not asserted to be a complete legal CBA sequence: waiver, DFA,
 option, and exact ordering details remain unknown when the export/rules engine
-cannot establish them. Phase 4 will consume the selected path to describe
-source-affiliate consequences; philosophy and responder preference remain out
-of bounds.
+cannot establish them. Organizational consequence and synthesis layers consume
+this result unchanged; they do not reinterpret its feasibility.
 
 ### Organizational consequence analysis
 
@@ -304,17 +303,17 @@ The package distinguishes the factual player removal from post-removal coverage
 and from a newly created or pre-existing/worsened operational problem. It uses
 the farm roster-health model’s actual position, rotation, and bullpen
 thresholds, excluding teammates objectively unavailable through roster state.
-When a source problem exists, `minorLeagueConsequences.ts` can expose a stable,
-unranked first-response discussion set only for lower-level players whose
-existing Player Development assignment evaluation authorizes the source
-affiliate. It does not choose that player, use philosophy, manufacture a
-promotion, or simulate the source of that response.
+When a source problem exists, `minorLeagueConsequences.ts` retains its unranked
+first-response discussion set and invokes the shared farm cascade planner. Each
+level-changing hypothetical move must have an existing Player Development
+authorization. Minor League Operations may compare the returned farm plans
+with its own philosophy dimensions, but it does not choose or execute a move.
 
 Phase 4A initially stopped at the first unresolved farm problem; it now consumes
 the farm-owned cascade result described below. Corresponding active/40-man
-decisions from the transaction plan remain explicitly unresolved. There is no
-organizational-cost score or MLB-solution ranking; Phase 5 may compare complete
-packages using need context and Organizational Philosophy.
+decisions from the transaction plan remain explicitly unresolved. The package
+itself contains no organizational-cost score or cross-responder preference;
+the synthesis layer composes it with its original responder before comparison.
 
 ### Minor League Operations cascade planning
 
@@ -350,6 +349,46 @@ The persisted philosophy dimensions used only among defensible plans are
 `promotionAggressiveness`, `versatility`, and `rosterDepth`; neutral or
 non-distinguishing evidence yields tied plans. Search truncation never means no
 other plan exists.
+
+### Complete MLB solution synthesis
+
+`synthesizeMajorLeagueSolutions` handles one current reactive MLB need. Its
+unit is a complete causal variant: need, legitimate responder, visible role
+profile, Player Development context, authoritative transaction path, immediate
+MLB consequence, and one specific farm plan. A responder with two retained
+Minor League Operations plans therefore yields two variants; cascades are never
+cross-producted across responders. Active MLB responders and recalls whose
+source remains healthy carry an explicit no-op farm result.
+
+`majorLeagueRoleSuitability.ts` describes the baseball shape of an already-
+legitimate responder. Position-player evidence includes visible current
+batting components, target-position and secondary fielding grades, experience,
+handedness, speed, and objective current-level batting performance. Pitcher
+evidence includes visible current stuff/movement/control, stamina, repertoire,
+handedness, objective current-level performance, and exported workload facts.
+It creates no universal MLB threshold or overall quality score. Missing
+evidence remains limited or insufficient, and continuous `players_value`
+figures remain prohibited.
+
+Factual completeness is classified before preference as fully actionable,
+feasible with an unresolved GM roster decision, partial organizational
+solution, indeterminate, search-truncated, or ineligible. Organizational
+Philosophy cannot change that classification. The MLB comparison uses the
+persisted organization's existing `competitiveWindow`, `riskTolerance`,
+`promotionAggressiveness`, `upsidePreference`, `defenseEmphasis`,
+`pitchingDepth`, `rosterDepth`, and `versatility` dimensions. Need horizon,
+transaction disruption, visible role style, farm stability, and secondary MLB
+role continuity remain separate inspectable axes.
+
+Minor League Operations retains ownership of farm preference. Phase 5 carries
+each plan's preference status and reasons as delegated evidence; it never
+re-applies `promotionAggressiveness`, `versatility`, or `rosterDepth` to the
+same farm moves. MLB comparison uses structured non-dominance rather than an
+opaque master score. Multiple preferred variants and ties are valid;
+insufficient, indeterminate, and truncated alternatives are retained as not
+responsibly comparable. Stable variant-ID order is presentation consistency,
+not baseball preference. The result remains advisory and the GM makes the
+final decision.
 
 ### Organizational Philosophy owns preferences
 
