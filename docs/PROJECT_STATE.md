@@ -221,6 +221,14 @@ resolution across all organization-specific features is future work.
   remains explicitly not-developmentally-evaluated rather than being silently
   excluded by prospect status. AA-and-lower direct MLB discussion remains
   unsupported and excluded.
+- `server/majorLeagueTransactionPlan.ts` describes the read-only technical path
+  for one selected responder and one open need. Active MLB responders receive
+  internal-reassignment paths with an explicit possible role consequence.
+  Minor-league responders compose `evaluateRosterAction('recall')` into
+  feasible, feasible-with-corresponding-decisions, ineligible, or
+  indeterminate paths. Full active/40-man rosters produce player-unselected
+  corresponding decisions; logical step order is not claimed as complete CBA
+  sequencing.
 - It deliberately does not perform candidate selection/readiness evaluation,
   call-up recommendations, transaction simulation, philosophy weighting,
   proactive upgrades, UI work, or OOTP writeback.

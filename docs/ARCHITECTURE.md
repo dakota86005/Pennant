@@ -115,7 +115,7 @@ artifact, not an alternative application backend.
 | Organizational Philosophy | `philosophy.ts` defines organization-specific dimensions/policies; `settings.ts` persists and resolves profiles; `Philosophy.tsx` edits them. | Philosophy ranks or adjusts choices after hard baseball/development constraints. It is not player evidence. |
 | Minor League Operations | `minorLeagueRoster.ts`, `minorLeagueMoves.ts`, `pitcherRosterSimulation.ts`, `minorLeaguePitchingOperations.ts`, and `minorLeagueRetention.ts` diagnose affiliate structure and propose assignment/retention responses. | Level-changing moves must already be authorized by Player Development. Outputs are read-only recommendations. |
 | Roster & Transaction State | `rosterTransactionState.ts` normalizes imported roster/transaction facts and evaluates limited recall, option, and 40-man-addition rule state. `transactionHistory.ts` reads explicit trade and injury event records. `rosterStateHistory.ts` persists successive normalized observations and their factual differences. | It returns eligible, ineligible, or indeterminate results plus corresponding-move requirements. Snapshot transitions are observed facts, while causal correlation is separately evidence-bound; neither chooses players, simulates transactions, or invents events. |
-| Major League Operations | `majorLeagueOperations.ts` consumes shared roster/transaction context and derives current reactive MLB needs from roster history plus current coverage. `majorLeagueResponders.ts` assembles internal responders for an already-open role need. | A roster event is not itself an open need. The layer detects objective capacity/role-coverage problems and unranked discussion sets without judging readiness itself, ranking candidates, planning transactions, applying philosophy, or writing to OOTP. |
+| Major League Operations | `majorLeagueOperations.ts` consumes shared roster/transaction context and derives current reactive MLB needs from roster history plus current coverage. `majorLeagueResponders.ts` assembles internal responders, and `majorLeagueTransactionPlan.ts` describes the path for one selected responder. | A roster event is not itself an open need. The layer detects objective capacity/role-coverage problems, unranked discussion sets, and read-only transaction paths without judging readiness itself, ranking candidates, applying philosophy, choosing corresponding players, or writing to OOTP. |
 | AI features | `providers.ts`, `models.ts`, `chat.ts`, `ai.ts`, and `storylines.ts` provide staff chat, briefings, trade discussion, and storylines through configurable providers. | AI consumes computed save-grounded facts, calls the same API as the UI, and supports the front-office experience. It does not become a parallel recommendation engine. |
 | Web UI | React pages in `src/` render domain results, evidence, alternatives, and local interactions. `src/App.tsx` owns selected-save and selected-organization UI context. | React may shape presentation but should not silently reimplement baseball rules. |
 | Desktop shell | `electron/main.ts`, `preload.ts`, and `updater.ts` embed the local server, expose a minimal IPC bridge, protect navigation, store secrets, and manage consent-first updates. | Keep Node access out of the renderer and keep IPC narrow. |
@@ -270,6 +270,25 @@ state. 40-man status and corresponding-move consequences are preserved only as
 factual transaction context: Phase 3 owns whether a responder can actually be
 placed on the roster. No candidate ranking, Organizational Philosophy, or
 continuous `players_value` field participates in assembly.
+
+### Transaction solution planning
+
+`planTransactionSolution` composes the selected responder and need with the
+authoritative `evaluateRosterAction(..., 'recall')` result. An active-MLB
+responder has an internal-reassignment path: it needs no recall or 40-man move,
+but records that the player’s existing MLB role may change. A minor-league
+responder can be feasible, feasible with corresponding decisions, ineligible,
+or indeterminate; these are transaction-state results, not a judgment of the
+player.
+
+When capacity is full, the plan exposes an active-roster-space or 40-man-space
+decision with no selected player. A non-40-man responder may require a logical
+planning sequence of 40-man space, 40-man addition, active-roster space, and
+recall. That is not asserted to be a complete legal CBA sequence: waiver, DFA,
+option, and exact ordering details remain unknown when the export/rules engine
+cannot establish them. Phase 4 will consume the selected path to describe
+source-affiliate consequences; philosophy and responder preference remain out
+of bounds.
 
 ### Organizational Philosophy owns preferences
 

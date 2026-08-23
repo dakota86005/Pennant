@@ -287,3 +287,29 @@ Consequences:
 - 40-man status and corresponding moves are transaction facts, not baseball
   candidacy filters. Transaction feasibility, downstream minor-league effects,
   philosophy, and a final choice are deferred.
+
+## D-015 — Describe transaction paths without choosing the corresponding move
+
+**Status:** Accepted. **Implementation:** Initial selected-responder planning
+present.
+
+Transaction Solution Planning composes one legitimate responder with the shared
+roster/transaction engine. It describes the factual path needed to use that
+player, but does not select the responder, name a player to option/DFA/remove,
+or execute a transaction.
+
+Consequences:
+
+- An existing active-MLB responder follows an internal-reassignment path with
+  no recall/40-man action, while retaining its potential current-role
+  consequence for later analysis.
+- A minor-league recall retains `eligible`, `ineligible`, and `indeterminate`
+  semantics from `rosterTransactionState.ts`. Full active or 40-man rosters
+  create explicit corresponding decisions rather than making a responder
+  ineligible.
+- The plan may present a logical action order, but it must label incomplete
+  CBA/waiver/DFA/option sequencing as unknown. It cannot invent an option or
+  waiver solution for an unnamed outgoing player.
+- Need cause/horizon is carried as context only. No player quality, ranking,
+  philosophy, service-time strategy, or prohibited `players_value` field may
+  affect technical feasibility.
