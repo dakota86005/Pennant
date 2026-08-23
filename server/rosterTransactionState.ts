@@ -60,6 +60,12 @@ export interface PlayerRosterState {
   activeMlb: boolean | null;
   fortyMan: boolean | null;
   health: Health | null;
+  injury: {
+    /** Objective current injury fields from the player export, separate from IL flags. */
+    injured: boolean | null;
+    dayToDay: boolean | null;
+    daysLeft: number | null;
+  };
   standing: Standing | null;
   majorLeagueContract: boolean | null;
   serviceTime: {
@@ -157,6 +163,11 @@ function stateFromRow(
     activeMlb,
     fortyMan,
     health: healthKnown ? healthOf(row) : null,
+    injury: {
+      injured: playerColumns.has('injury_is_injured') ? row.injury_is_injured === 1 : null,
+      dayToDay: playerColumns.has('injury_dtd_injury') ? row.injury_dtd_injury === 1 : null,
+      daysLeft: playerColumns.has('injury_left') ? numberOrNull(row.injury_left) : null,
+    },
     standing: standingKnown ? standingOf(row) : null,
     majorLeagueContract: contractByPlayer === null ? null : (contractByPlayer.get(id) ?? false),
     serviceTime: {

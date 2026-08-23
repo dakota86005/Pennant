@@ -50,7 +50,10 @@ describe('Major League Operations read-only API', () => {
       expect.objectContaining({
         id: needId,
         status: 'open',
-        responderSummary: expect.objectContaining({ hasDefensibleInternalSolution: expect.any(Boolean) }),
+        responderSummary: expect.objectContaining({
+          hasDefensibleInternalSolution: false,
+          matchingStatus: 'role_not_established',
+        }),
       }),
     ]));
     const other = await request(`/api/mlb-operations/${IDS.otherMlbTeam}/needs`);

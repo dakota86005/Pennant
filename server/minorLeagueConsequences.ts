@@ -17,6 +17,7 @@ import {
   organizationRosterTransactionState,
   type PlayerRosterState,
 } from './rosterTransactionState.js';
+import { normalizedPitchingRole } from './pitchingRole.js';
 import {
   planMinorLeagueCascade,
   type MinorLeagueCascadeResult,
@@ -107,8 +108,9 @@ function sourceRole(player: PlayerRosterState): MinorLeagueCoverageRole | null {
       label: POSITION_CODES[player.position - 1] ?? `position ${player.position}`,
     };
   }
-  if (player.role === null) return null;
-  return player.role === 11
+  const pitchingRole = normalizedPitchingRole(player.position, player.role);
+  if (!pitchingRole) return null;
+  return pitchingRole === 'starting_pitcher'
     ? { kind: 'starting_pitcher', label: 'starting pitcher' }
     : { kind: 'relief_pitcher', label: 'relief pitcher' };
 }
@@ -128,7 +130,7 @@ function adequate(status: RosterHealthStatus): boolean {
 
 function roleMatches(player: PlayerRosterState, role: MinorLeagueCoverageRole): boolean {
   if (role.kind === 'position') return player.position === role.position;
-  return player.position === 1 && (role.kind === 'starting_pitcher' ? player.role === 11 : player.role !== null && player.role !== 11);
+  return normalizedPitchingRole(player.position, player.role) === role.kind;
 }
 
 function downstreamResponse(

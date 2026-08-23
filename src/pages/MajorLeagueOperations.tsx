@@ -14,7 +14,12 @@ type Need = {
   horizon: NeedHorizon;
   evidence: Array<{ kind: string; provenance: string; details: Record<string, unknown> }>;
   unknowns: Array<{ code: string; message: string }>;
-  responderSummary: { activeMlbCount: number; minorLeagueCallUpCount: number; hasDefensibleInternalSolution: boolean };
+  responderSummary: {
+    activeMlbCount: number;
+    minorLeagueCallUpCount: number;
+    hasDefensibleInternalSolution: boolean;
+    matchingStatus: 'responders_identified' | 'no_defensible_responder' | 'role_not_established';
+  };
 };
 
 type NeedReport = {
@@ -109,6 +114,14 @@ export function causeLabel(need: Need): string {
   if (need.cause?.kind === 'injury') return 'Documented injury';
   if (need.cause?.kind === 'trade') return 'Trade departure';
   return 'Availability change; cause unknown';
+}
+
+export function responderSummaryLabel(need: Need): string {
+  const summary = need.responderSummary;
+  if (summary.matchingStatus === 'role_not_established') return 'Role not established; responder matching unavailable';
+  if (!summary.hasDefensibleInternalSolution) return 'No defensible internal responder identified';
+  const count = summary.activeMlbCount + summary.minorLeagueCallUpCount;
+  return `${count} internal path${count === 1 ? '' : 's'} to review`;
 }
 
 export function preferenceLabel(tier: PreferenceTier): string {
@@ -310,7 +323,7 @@ export function MajorLeagueOperations({ orgId, orgLabel }: { orgId: number; orgL
     <div className="page-title">Front Office / Major League Operations</div>
     <header className="mlb-ops-hero"><div><div className="mlb-ops-eyebrow">{orgLabel}</div><h1>Major League Operations</h1><p>Reactive roster issues and complete internal decision packets. Your staff compares the paths; you make the decision.</p></div><span>Read only · current import</span></header>
     {report.needs.length === 0 ? <div className="mlb-empty-state"><h2>No current MLB roster needs require review.</h2><p>This workspace surfaces reactive operational issues, not general upgrade opportunities.</p>{report.unknowns.length > 0 && <p className="muted">Some roster context remains unavailable in this export.</p>}</div> : <div className="mlb-operations-inbox">
-      <aside className="mlb-need-queue" aria-label="Current MLB needs"><div className="mlb-need-queue-head"><strong>Current MLB needs</strong><span>{report.needs.length} open</span></div><div className="mlb-need-items">{report.needs.map((need) => <button type="button" key={need.id} onClick={() => setSelectedNeedId(need.id)} className={need.id === selectedNeedId ? 'active' : ''} aria-pressed={need.id === selectedNeedId}><strong>{need.role?.label ?? 'Active roster opening'}</strong><span>{need.causalPlayer?.name ?? causeLabel(need)}</span><small>{horizonLabel(need.horizon)}</small><em>{need.responderSummary.hasDefensibleInternalSolution ? `${need.responderSummary.activeMlbCount + need.responderSummary.minorLeagueCallUpCount} internal path${need.responderSummary.activeMlbCount + need.responderSummary.minorLeagueCallUpCount === 1 ? '' : 's'} to review` : 'No defensible internal responder identified'}</em></button>)}</div></aside>
+      <aside className="mlb-need-queue" aria-label="Current MLB needs"><div className="mlb-need-queue-head"><strong>Current MLB needs</strong><span>{report.needs.length} open</span></div><div className="mlb-need-items">{report.needs.map((need) => <button type="button" key={need.id} onClick={() => setSelectedNeedId(need.id)} className={need.id === selectedNeedId ? 'active' : ''} aria-pressed={need.id === selectedNeedId}><strong>{need.role?.label ?? 'Active roster opening'}</strong><span>{need.causalPlayer?.name ?? causeLabel(need)}</span><small>{horizonLabel(need.horizon)}</small><em>{responderSummaryLabel(need)}</em></button>)}</div></aside>
       <section className="mlb-need-detail">
         {selectedNeed && <><header className="mlb-need-head"><div><div className="mlb-ops-eyebrow">Selected roster need</div><h2>{selectedNeed.role?.label ?? 'Active roster opening'}</h2><p><strong>Fact:</strong> {selectedNeed.causalPlayer ? `${selectedNeed.causalPlayer.name} · ${causeLabel(selectedNeed)}` : causeLabel(selectedNeed)}.</p><p><strong>Interpretation:</strong> {selectedNeed.role ? `${selectedNeed.role.label} coverage is currently unresolved.` : 'The active MLB roster has an unfilled opening.'}</p></div><div className="mlb-need-horizon"><strong>{horizonLabel(selectedNeed.horizon)}</strong><span>{selectedNeed.cause?.provenance === 'corroborated' ? 'Cause corroborated' : 'Cause remains uncertain'}</span></div></header>
           {selectedNeed.unknowns.length > 0 && <p className="mlb-inline-unknown">Need context is incomplete: {selectedNeed.unknowns[0].message}</p>}
@@ -318,7 +331,7 @@ export function MajorLeagueOperations({ orgId, orgLabel }: { orgId: number; orgL
         </>}
         {solutionsError && <div className="banner error">Unable to load this decision packet: {solutionsError}</div>}
         {!comparison && !solutionsError && <p className="muted">Preparing complete organizational paths…</p>}
-        {comparison && comparison.variants.length === 0 && <div className="mlb-empty-state compact"><h2>No defensible internal solution was identified.</h2><p>Available players did not meet the current role and Player Development boundaries. No candidate has been invented.</p>{comparison.excludedResponders.length > 0 && <details><summary>Why other internal players are unavailable</summary><ul>{comparison.excludedResponders.map((item) => <li key={`${item.name}:${item.message}`}>{item.name}: {item.message}</li>)}</ul></details>}</div>}
+        {comparison && comparison.variants.length === 0 && <div className="mlb-empty-state compact"><h2>{selectedNeed?.responderSummary.matchingStatus === 'role_not_established' ? 'Role-specific responder matching is unavailable.' : 'No defensible internal solution was identified.'}</h2><p>{selectedNeed?.responderSummary.matchingStatus === 'role_not_established' ? 'This is an objective roster-capacity opening, but no affected role was established for responsible player matching.' : 'Available players did not meet the current role and Player Development boundaries. No candidate has been invented.'}</p>{comparison.excludedResponders.length > 0 && <details><summary>Why other internal players are unavailable</summary><ul>{comparison.excludedResponders.map((item) => <li key={`${item.name}:${item.message}`}>{item.name}: {item.message}</li>)}</ul></details>}</div>}
         {comparison && comparison.variants.length > 0 && <><div className="mlb-solutions-head"><div><div className="mlb-ops-eyebrow">Organizational solutions</div><h3>Compare complete paths, not just players</h3></div><span>{comparison.variants.length} path{comparison.variants.length === 1 ? '' : 's'} · equal tiers are not ranked</span></div><div className="mlb-variant-list">{comparison.variants.map((variant) => <button type="button" key={variant.id} className={`mlb-variant-row ${variant.id === selectedVariant?.id ? 'active' : ''} ${variant.preference.tier}`} onClick={() => setSelectedVariantId(variant.id)} aria-pressed={variant.id === selectedVariant?.id}><div><strong>{variant.responder.name}</strong><span>{variant.responder.source === 'active_mlb' ? 'Active MLB coverage' : 'AAA call-up discussion'} · {farmSummary(variant.farm)}</span>{farmPathLabel(variant.farm) && <small>Farm path: {farmPathLabel(variant.farm)}</small>}</div><div><em>{preferenceLabel(variant.preference.tier)}</em><small>{completenessLabel(variant.completeness)}</small></div></button>)}</div>{selectedVariant && <article className="mlb-variant-packet"><VariantDetail variant={selectedVariant} /></article>}</>}
       </section>
     </div>}

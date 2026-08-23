@@ -6,6 +6,7 @@ import {
   farmSummary,
   horizonLabel,
   preferenceLabel,
+  responderSummaryLabel,
   selectedById,
 } from '../src/pages/MajorLeagueOperations.tsx';
 
@@ -16,6 +17,14 @@ describe('Major League Operations workspace presentation', () => {
     expect(selectedById(needs, 'resolved')).toEqual({ id: 'rotation' });
     expect(horizonLabel({ kind: 'temporary', expectedDays: 18 })).toContain('18 days');
     expect(causeLabel({ category: 'role_coverage', cause: { kind: 'injury' } } as never)).toBe('Documented injury');
+    expect(responderSummaryLabel({
+      responderSummary: {
+        activeMlbCount: 0,
+        minorLeagueCallUpCount: 0,
+        hasDefensibleInternalSolution: false,
+        matchingStatus: 'role_not_established',
+      },
+    } as never)).toContain('Role not established');
   });
 
   it('does not turn preference tiers or conditional completeness into an instruction', () => {

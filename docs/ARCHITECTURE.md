@@ -200,7 +200,9 @@ the normalized state supplied by `rosterTransactionState.ts`. Page reads and
 other API requests never create a roster-history observation. The durable
 records are scoped by the configured save name and contain player organization,
 team/level, position/role, active and 40-man status, IL/IL-60, DFA, waivers,
-major-league contract state, and explicit unknowns.
+major-league contract state, current objective injury flags/remaining days, and
+explicit unknowns. Current injury evidence is retained because OOTP's injury-
+history export may omit an injury that is still active.
 
 Deduplication compares the immediately preceding snapshot's imported MLB game
 date and canonical roster-state hash. A repeated import of the same state is
@@ -212,9 +214,12 @@ transaction.
 
 `trade_history` may corroborate an organization change only when its dated,
 player-specific record falls in the observed game-date interval and names both
-organizations. `players_injury_history` may corroborate an IL/IL-60 entry only
-when a matching injury record falls in that interval. Evidence is retained as
-explicit source data; the supported causal conclusion is `corroborated`.
+organizations. `players_injury_history` may corroborate an IL/IL-60 entry when
+a matching injury record falls in that interval. When that history does not yet
+contain an active injury, an observed IL entry plus the same imported
+snapshot's positive current-injury flag may also corroborate the association;
+remaining injury days are retained as observed duration evidence. Evidence is
+labeled by source, and the supported causal conclusion is `corroborated`.
 All other causes remain `unknown`. The layer does not reconstruct roster states
 from before Front Office's first snapshot, even if a trade or injury record is
 older than that observation.
@@ -229,18 +234,21 @@ availability loss. Role coverage is deliberately factual: starting pitchers,
 relievers, and a player's exported primary position are considered; it does not
 evaluate player quality, defensive versatility, or upgrade value.
 
-A historical event is revalidated against current state on every read. If an
-available active player now supplies the affected basic role, the historical
-incident is returned as resolved rather than an ongoing need. Need identities
+A historical event is revalidated against current state on every read. If
+available active role depth has returned to the pre-loss observed count, the
+historical incident is returned as resolved rather than an ongoing need. One
+remaining player at the same position or in the same pitching group does not by
+itself erase an observed loss of roster coverage. Need identities
 are stable from the causal incident, so an unchanged later import produces a
 continuing need rather than a new one. This derived-current-state model avoids
 another persistent workflow state while retaining the original observation and
 evidence in roster history.
 
 Trade-supported departures are structural. Injury-supported IL/IL-60 losses are
-temporary only when the explicit injury record supplies a positive duration;
-otherwise their horizon is unknown. Unsupported availability losses retain an
-unknown cause. Organizational Philosophy and the prohibited continuous
+temporary when explicit injury length or observed remaining injury days supply
+a positive duration; otherwise their horizon is unknown. Unsupported
+availability losses retain an unknown cause. Organizational Philosophy and the
+prohibited continuous
 `players_value` fields play no role in whether a need exists. Candidate
 assembly, readiness, transaction planning, and proactive upgrade detection are
 later layers.
@@ -250,7 +258,9 @@ later layers.
 `assembleInternalResponders` accepts one open role need and returns two stable,
 non-preferential sets: currently available active-MLB players who can cover the
 role, and available minor-league call-up discussion candidates. Primary
-position and current pitcher role establish direct fit; a revealed current
+position and a normalized current pitcher role establish direct fit; OOTP role
+`11` is a starter and roles `12`/`13` are relief coverage, while missing or
+unrecognized values remain unknown. A revealed current
 fielding rating establishes a secondary position fit. The response retains that
 evidence rather than assigning a fit score. Stable player-ID ordering is only
 for API repeatability and carries no preference.

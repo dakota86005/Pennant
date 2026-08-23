@@ -15,6 +15,7 @@ import { evaluatePitcherDevelopmentalRole } from './destinationFit.js';
 import { resolvePhilosophy } from './philosophy.js';
 import { philosophyForOrg } from './settings.js';
 import { organizationRosterTransactionState, type PlayerRosterState } from './rosterTransactionState.js';
+import { normalizedPitchingRole } from './pitchingRole.js';
 
 export const MINOR_LEAGUE_CASCADE_LIMITS = {
   maxDepth: 3,
@@ -242,7 +243,9 @@ function playerFits(player: PlayerRosterState, role: MinorLeagueCascadeProblem['
   }
   if (player.position !== 1) return { fits: false, secondary: false, label: role.label };
   const developmental = evaluatePitcherDevelopmentalRole(player.playerId)?.developmentalRole;
-  const starter = developmental ?? (player.role === 11 ? 'starter' : 'reliever');
+  const assigned = normalizedPitchingRole(player.position, player.role);
+  const starter = developmental ?? (assigned === 'starting_pitcher' ? 'starter' : assigned === 'relief_pitcher' ? 'reliever' : null);
+  if (!starter) return { fits: false, secondary: false, label: role.label };
   return { fits: role.kind === 'starting_pitcher' ? starter === 'starter' : starter === 'reliever', secondary: false, label: role.label };
 }
 

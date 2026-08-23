@@ -37,6 +37,9 @@ const player = (overrides: Partial<PersistentRosterState> = {}): PersistentRoste
   fortyMan: true,
   onIl: false,
   onIl60: false,
+  injuryActive: false,
+  injuryDayToDay: false,
+  injuryDaysLeft: 0,
   designatedForAssignment: false,
   onWaivers: false,
   majorLeagueContract: true,
@@ -155,6 +158,34 @@ describe('persistent observed roster history', () => {
 
     const assignmentAfter = snapshot(3, '2030-06-03', [player({ teamId: IDS.mlbTeam, teamLevel: 1, activeMlb: true })]);
     expect(correlateRosterTransition(compareRosterStateSnapshots(before, assignmentAfter)[0], before, assignmentAfter))
+      .toEqual({ conclusion: 'unknown', provenance: 'unknown', evidence: [] });
+  });
+
+  it('corroborates an observed IL entry from objective current injury state when active injuries are absent from history', () => {
+    const before = snapshot(1, '2030-06-01', [player({ activeMlb: true })]);
+    const after = snapshot(2, '2030-06-02', [player({
+      activeMlb: false,
+      onIl: true,
+      injuryActive: true,
+      injuryDayToDay: false,
+      injuryDaysLeft: 26,
+    })]);
+    const transition = compareRosterStateSnapshots(before, after)[0];
+    expect(correlateRosterTransition(transition, before, after)).toMatchObject({
+      conclusion: 'injury_associated_il_change',
+      provenance: 'corroborated',
+      evidence: [{
+        provenance: 'observed',
+        event: {
+          source: 'normalized_roster_state',
+          date: '2030-06-02',
+          details: { injuryActive: true, dayToDay: false, daysLeft: 26 },
+        },
+      }],
+    });
+
+    const unsupported = snapshot(3, '2030-06-02', [player({ activeMlb: false, onIl: true })]);
+    expect(correlateRosterTransition(compareRosterStateSnapshots(before, unsupported)[0], before, unsupported))
       .toEqual({ conclusion: 'unknown', provenance: 'unknown', evidence: [] });
   });
 

@@ -21,6 +21,7 @@ import {
   type RosterCausalEvidence,
   type StructuredRosterEvent,
 } from './rosterStateHistory.js';
+import { normalizedPitchingRole } from './pitchingRole.js';
 
 export type MajorLeagueOperationsGapCode = string;
 
@@ -159,7 +160,7 @@ export interface MajorLeagueNeedRole {
 }
 
 export interface MajorLeagueNeedEvidence {
-  kind: 'roster_transition' | 'causal_event' | 'current_roster_capacity';
+  kind: 'roster_transition' | 'causal_event' | 'current_roster_capacity' | 'current_role_coverage';
   provenance: 'observed' | 'explicit' | 'corroborated';
   details: Record<string, unknown>;
 }
@@ -193,11 +194,10 @@ const POSITION_LABELS: Record<number, string> = {
   2: 'catcher', 3: 'first baseman', 4: 'second baseman', 5: 'third baseman',
   6: 'shortstop', 7: 'left fielder', 8: 'center fielder', 9: 'right fielder', 10: 'designated hitter',
 };
-const ROLE_STARTER = 11;
-
 function roleOf(state: Pick<PersistentRosterState, 'position' | 'role'>): MajorLeagueNeedRole {
-  if (state.position === 1) {
-    return state.role === ROLE_STARTER
+  const pitchingRole = normalizedPitchingRole(state.position, state.role);
+  if (pitchingRole) {
+    return pitchingRole === 'starting_pitcher'
       ? { kind: 'starting_pitcher', position: 1, label: 'starting pitcher', provenance: 'observed' }
       : { kind: 'relief_pitcher', position: 1, label: 'relief pitcher', provenance: 'observed' };
   }
@@ -214,8 +214,18 @@ function activeAndAvailable(player: PlayerRosterState): boolean {
 
 function coversRole(player: PlayerRosterState, role: MajorLeagueNeedRole): boolean {
   if (!activeAndAvailable(player)) return false;
-  if (role.kind === 'starting_pitcher') return player.position === 1 && player.role === ROLE_STARTER;
-  if (role.kind === 'relief_pitcher') return player.position === 1 && player.role !== ROLE_STARTER;
+  if (role.kind === 'starting_pitcher' || role.kind === 'relief_pitcher') {
+    return normalizedPitchingRole(player.position, player.role) === role.kind;
+  }
+  return role.kind === 'position' && player.position === role.position;
+}
+
+function coveredInSnapshot(player: PersistentRosterState, role: MajorLeagueNeedRole): boolean {
+  if (player.activeMlb !== true || player.onIl === true || player.onIl60 === true ||
+      player.designatedForAssignment === true || player.onWaivers === true) return false;
+  if (role.kind === 'starting_pitcher' || role.kind === 'relief_pitcher') {
+    return normalizedPitchingRole(player.position, player.role) === role.kind;
+  }
   return role.kind === 'position' && player.position === role.position;
 }
 
@@ -240,9 +250,13 @@ function eventCause(event: StructuredRosterEvent): MajorLeagueNeed['cause'] {
 function horizonOf(event: StructuredRosterEvent): MajorLeagueNeedHorizon {
   if (event.causalCorrelation.conclusion === 'trade_associated_organization_change') return { kind: 'structural' };
   if (event.causalCorrelation.conclusion === 'injury_associated_il_change') {
-    const expectedDays = event.causalCorrelation.evidence
-      .map((item) => item.event.details.length)
-      .find((value): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0);
+    const values = event.causalCorrelation.evidence.flatMap((item) => {
+      const details = item.event.details as Record<string, unknown>;
+      return [details.length, details.daysLeft];
+    });
+    const expectedDays = values.find((value): value is number =>
+      typeof value === 'number' && Number.isFinite(value) && value > 0
+    );
     if (expectedDays !== undefined) return { kind: 'temporary', expectedDays, evidence: event.causalCorrelation.evidence };
   }
   return { kind: 'unknown' };
@@ -313,14 +327,19 @@ export function majorLeagueReactiveNeeds(orgId: number): MajorLeagueReactiveNeed
     .flatMap((event) => {
       const priorId = event.transition.priorSnapshotId;
       if (!priorSnapshots.has(priorId)) priorSnapshots.set(priorId, rosterStateSnapshotById(priorId));
-      const prior = priorSnapshots.get(priorId)?.players.find((player) => player.playerId === event.transition.playerId);
+      const priorSnapshot = priorSnapshots.get(priorId);
+      const prior = priorSnapshot?.players.find((player) => player.playerId === event.transition.playerId);
       if (!prior || prior.organizationId !== orgId || prior.teamLevel !== 1 || prior.activeMlb !== true) return [];
-      return [{ event, prior }];
+      return [{ event, prior, priorSnapshot: priorSnapshot! }];
     });
 
   // One ongoing incident per player/role. A later loss after a return is a new
   // incident; repeated imports of the same loss retain the existing identity.
-  const latestCandidate = new Map<string, { event: StructuredRosterEvent; prior: PersistentRosterState }>();
+  const latestCandidate = new Map<string, {
+    event: StructuredRosterEvent;
+    prior: PersistentRosterState;
+    priorSnapshot: NonNullable<ReturnType<typeof rosterStateSnapshotById>>;
+  }>();
   for (const candidate of candidates) {
     const role = roleOf(candidate.prior);
     const key = `${candidate.event.transition.playerId}:${role.kind}:${role.position ?? 'unknown'}`;
@@ -328,7 +347,7 @@ export function majorLeagueReactiveNeeds(orgId: number): MajorLeagueReactiveNeed
     if (!existing || candidate.event.transition.snapshotId > existing.event.transition.snapshotId) latestCandidate.set(key, candidate);
   }
 
-  for (const { event, prior } of latestCandidate.values()) {
+  for (const { event, prior, priorSnapshot } of latestCandidate.values()) {
     const role = roleOf(prior);
     const identity = `mlb:${orgId}:role-coverage:${event.transition.playerId}:${role.kind}:${role.position ?? 'unknown'}:${event.transition.snapshotId}`;
     const currentPlayer = currentByPlayer.get(event.transition.playerId);
@@ -340,7 +359,11 @@ export function majorLeagueReactiveNeeds(orgId: number): MajorLeagueReactiveNeed
       unknowns.push({ code: 'affected_role_unknown', playerId: prior.playerId, message: `The observed MLB availability loss for ${prior.name} has no reliable exported role or position.` });
       continue;
     }
-    if (current.players.some((player) => coversRole(player, role))) {
+    const priorCoverageCount = priorSnapshot.players.filter((player) =>
+      player.organizationId === orgId && player.teamLevel === 1 && coveredInSnapshot(player, role)
+    ).length;
+    const currentCoverageCount = current.players.filter((player) => coversRole(player, role)).length;
+    if (currentCoverageCount >= priorCoverageCount) {
       resolvedNeedIds.push(identity);
       continue;
     }
@@ -349,7 +372,15 @@ export function majorLeagueReactiveNeeds(orgId: number): MajorLeagueReactiveNeed
       causalPlayer: { playerId: prior.playerId, name: prior.name }, cause: eventCause(event),
       detectedAt: event.transition.firstObservedAt, status: 'open',
       lifecycle: latest?.id === event.transition.snapshotId ? 'opened_in_latest_snapshot' : 'continuing',
-      horizon: horizonOf(event), evidence: evidenceOf(event), unknowns: [],
+      horizon: horizonOf(event),
+      evidence: [
+        ...evidenceOf(event),
+        {
+          kind: 'current_role_coverage', provenance: 'observed',
+          details: { priorCoverageCount, currentCoverageCount, affectedRole: role.kind },
+        },
+      ],
+      unknowns: [],
     });
   }
   return { organization: context.organization, needs, resolvedNeedIds, unknowns, scoutingValuePolicy: 'prohibited_pending_provenance' };

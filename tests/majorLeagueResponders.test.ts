@@ -79,6 +79,7 @@ describe('internal MLB responder assembly', () => {
   it('does not include active players whose role fit is not established, and separates starters from relievers', () => {
     addPlayer(ID_START, { level: 1, position: 7, active: 1, fielding: false });
     addPlayer(ID_START + 1, { level: 1, position: 1, role: 12, active: 1, fielding: false });
+    addPlayer(ID_START + 2, { level: 1, position: 1, role: 0, active: 1, fielding: false });
     const positionResponders = assembleInternalResponders(need(positionRole()));
     expect(positionResponders.activeRosterResponders.some((player) => player.playerId === ID_START)).toBe(false);
     const starters = assembleInternalResponders(need(starterRole));
@@ -86,9 +87,11 @@ describe('internal MLB responder assembly', () => {
       expect.objectContaining({ playerId: IDS.extended }),
     ]));
     expect(starters.activeRosterResponders.some((player) => player.playerId === ID_START + 1)).toBe(false);
-    expect(assembleInternalResponders(need(reliefRole)).activeRosterResponders).toEqual(expect.arrayContaining([
+    const relievers = assembleInternalResponders(need(reliefRole)).activeRosterResponders;
+    expect(relievers).toEqual(expect.arrayContaining([
       expect.objectContaining({ playerId: ID_START + 1 }),
     ]));
+    expect(relievers.some((player) => player.playerId === ID_START + 2)).toBe(false);
   });
 
   it('uses the Player Development AAA→MLB gate for evaluated prospects without allowing the need to override it', () => {

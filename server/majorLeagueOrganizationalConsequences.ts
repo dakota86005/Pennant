@@ -14,6 +14,7 @@ import {
 import type { MajorLeagueNeed, MajorLeagueOperationsGap } from './majorLeagueOperations.js';
 import type { InternalResponder } from './majorLeagueResponders.js';
 import type { TransactionSolution } from './majorLeagueTransactionPlan.js';
+import { normalizedPitchingRole } from './pitchingRole.js';
 import { playerRosterState } from './rosterTransactionState.js';
 
 export interface MajorLeagueOrganizationalConsequences {
@@ -47,8 +48,8 @@ function currentRole(playerId: number): string | null {
   const player = playerRosterState(playerId);
   if (!player || player.position === null) return null;
   if (player.position === 1) {
-    if (player.role === null) return null;
-    return player.role === 11 ? 'starting pitcher' : 'relief pitcher';
+    const role = normalizedPitchingRole(player.position, player.role);
+    return role === 'starting_pitcher' ? 'starting pitcher' : role === 'relief_pitcher' ? 'relief pitcher' : null;
   }
   return POSITION_CODES[player.position - 1] ?? `position ${player.position}`;
 }

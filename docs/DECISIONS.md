@@ -229,8 +229,10 @@ Consequences:
   explicit event supports an observed transition. `unknown` remains the cause
   when that support is unavailable; `inferred` is not used to turn ordinary
   assignment changes into transactions.
-- Trades corroborate only matching organization changes; injuries corroborate
-  only observed IL/IL-60 entry. An injury row alone is not an IL transaction.
+- Trades corroborate only matching organization changes. Injuries corroborate
+  only an observed IL/IL-60 entry, using either matching injury history or a
+  positive current-injury flag persisted with the post-entry observation. An
+  injury row or current injury state alone is not an IL transaction.
 - No authoritative pre-Front Office roster timeline is claimed. Earlier
   imported trade/injury rows remain evidence, not missing snapshots.
 
@@ -253,10 +255,13 @@ Consequences:
   roster-upgrade detection.
 - Trade-correlated organization departures have a structural horizon. An
   injury-correlated IL/IL-60 entry is temporary only when explicit injury
-  duration is exported; otherwise horizon and/or cause remains unknown.
-- Current active coverage resolves a historical role loss. Repeated unchanged
-  imports therefore continue one conceptual need instead of manufacturing new
-  items.
+  length or observed remaining injury days are exported; otherwise horizon
+  and/or cause remains unknown.
+- Current active coverage resolves a historical role loss only when available
+  role depth returns to the pre-loss observed count. The mere presence of one
+  other same-role player does not erase the causal coverage loss. Repeated
+  unchanged imports therefore continue one conceptual need instead of
+  manufacturing new items.
 - Organizational Philosophy, subjective ratings, and `players_value`
   continuous fields cannot affect whether a need exists. Candidate assembly,
   readiness, transaction sequencing, and a removal choice remain later work.
@@ -274,7 +279,8 @@ is developmentally defensible for MLB discussion.
 
 Consequences:
 
-- Direct fit uses the exported primary position or current pitcher role;
+- Direct fit uses the exported primary position or a recognized current pitcher
+  role (`11` starter; `12` relief; `13` closer mapped to relief coverage);
   secondary position fit requires a visible current fielding rating. No hidden
   potential rating or arbitrary fit score is substituted.
 - An evaluated AAA player prohibited by Player Development is excluded even

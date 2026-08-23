@@ -16,6 +16,7 @@ export interface MajorLeagueNeedQueueItem extends MajorLeagueNeed {
     activeMlbCount: number;
     minorLeagueCallUpCount: number;
     hasDefensibleInternalSolution: boolean;
+    matchingStatus: 'responders_identified' | 'no_defensible_responder' | 'role_not_established';
   };
 }
 
@@ -25,6 +26,17 @@ function organizationId(value: string): number | null {
 }
 
 function queueItem(need: MajorLeagueNeed): MajorLeagueNeedQueueItem {
+  if (!need.role || need.role.kind === 'unknown') {
+    return {
+      ...need,
+      responderSummary: {
+        activeMlbCount: 0,
+        minorLeagueCallUpCount: 0,
+        hasDefensibleInternalSolution: false,
+        matchingStatus: 'role_not_established',
+      },
+    };
+  }
   const responders = assembleInternalResponders(need);
   const activeMlbCount = responders.activeRosterResponders.length;
   const minorLeagueCallUpCount = responders.minorLeagueCallUpResponders.length;
@@ -34,6 +46,9 @@ function queueItem(need: MajorLeagueNeed): MajorLeagueNeedQueueItem {
       activeMlbCount,
       minorLeagueCallUpCount,
       hasDefensibleInternalSolution: activeMlbCount + minorLeagueCallUpCount > 0,
+      matchingStatus: activeMlbCount + minorLeagueCallUpCount > 0
+        ? 'responders_identified'
+        : 'no_defensible_responder',
     },
   };
 }

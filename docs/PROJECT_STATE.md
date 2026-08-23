@@ -207,19 +207,27 @@ resolution across all organization-specific features is future work.
   assignments, DFA/waiver resolution, and uncorroborated changes retain an
   `unknown` cause. No timeline is reconstructed before Front Office's first
   snapshot.
+- Current objective injury flags and remaining days are persisted with the
+  roster observation. This supports an injury-associated observed IL entry when
+  OOTP has not yet copied the still-active injury into
+  `players_injury_history`, without reconstructing a missing prior snapshot.
 - `majorLeagueReactiveNeeds` is the initial MLB decision layer. It derives
   current, unresolved active-roster-capacity and basic role-coverage needs from
   current normalized state plus observed roster events. Historical losses are
   revalidated on every read, have stable incident identities, and are omitted
-  when current active coverage resolves them. Trade departures are structural;
-  injury-backed IL entries retain exported duration when available and otherwise
-  remain duration-unknown; unsupported availability losses retain unknown cause.
+  when available active role depth returns to its pre-loss observed count.
+  Trade departures are structural; injury-backed IL entries retain explicit
+  injury length or observed remaining days when available and otherwise remain
+  duration-unknown; unsupported availability losses retain unknown cause.
 - `server/majorLeagueResponders.ts` assembles unranked internal responders for
   one open role need, separately listing active-MLB coverage alternatives and
   minor-league call-up discussion candidates. It uses primary/current pitcher
   role or visible current fielding ratings for role-fit evidence, excludes
   unavailable players through shared roster state, and retains 40-man state as
   transaction context rather than filtering on it.
+- Need detection, responder assembly, and immediate farm-consequence paths share
+  explicit pitcher-role normalization: `11` is starter and `12`/`13` are relief
+  coverage; missing or unrecognized codes remain unknown.
 - `mlbDiscussionDevelopmentGates` adapts the existing Player Development
   AAA→MLB discussion evaluation. Developmentally prohibited evaluated prospects
   are excluded; available AAA depth without an applicable prospect assessment

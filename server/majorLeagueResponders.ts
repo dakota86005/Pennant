@@ -10,6 +10,7 @@
 import { gloves } from './gloves.js';
 import { mlbDiscussionDevelopmentGates, type MlbDiscussionDevelopmentGate } from './org.js';
 import type { MajorLeagueNeed, MajorLeagueNeedRole, MajorLeagueOperationsGap } from './majorLeagueOperations.js';
+import { normalizedPitchingRole } from './pitchingRole.js';
 import { organizationRosterTransactionState, type PlayerRosterState } from './rosterTransactionState.js';
 
 export type InternalResponderSource = 'active_mlb' | 'minor_league_call_up';
@@ -66,8 +67,6 @@ export interface InternalResponderAssembly {
   scoutingValuePolicy: 'prohibited_pending_provenance';
 }
 
-const ROLE_STARTER = 11;
-
 function available(player: PlayerRosterState): boolean {
   return player.health?.playable !== false && player.transaction.onIl !== true && player.transaction.onIl60 !== true &&
     player.transaction.designatedForAssignment !== true && player.transaction.onWaivers !== true;
@@ -75,12 +74,12 @@ function available(player: PlayerRosterState): boolean {
 
 function defensiveFit(player: PlayerRosterState, role: MajorLeagueNeedRole): InternalResponderRoleEvidence | null {
   if (role.kind === 'starting_pitcher') {
-    return player.position === 1 && player.role === ROLE_STARTER
+    return normalizedPitchingRole(player.position, player.role) === 'starting_pitcher'
       ? { fit: 'direct', role, evidence: [{ kind: 'pitching_role', message: 'Current exported role is starting pitcher.' }] }
       : null;
   }
   if (role.kind === 'relief_pitcher') {
-    return player.position === 1 && player.role !== ROLE_STARTER
+    return normalizedPitchingRole(player.position, player.role) === 'relief_pitcher'
       ? { fit: 'direct', role, evidence: [{ kind: 'pitching_role', message: 'Current exported role is relief pitcher.' }] }
       : null;
   }

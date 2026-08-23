@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../server/db.js';
 import { historyDb } from '../server/history.js';
 import { majorLeagueReactiveNeeds } from '../server/majorLeagueOperations.js';
+import { assembleInternalResponders } from '../server/majorLeagueResponders.js';
 import { captureRosterStateSnapshot } from '../server/rosterStateHistory.js';
 import { IDS } from './fixture';
 
@@ -10,6 +11,13 @@ const ADDED_PLAYER_START = 990_000;
 
 let originalRoster: Array<Record<string, number>> = [];
 let originalPlayers: Array<Record<string, number>> = [];
+
+function dropActiveRosterLimit(): void {
+  const columns = db.pragma('table_info(leagues)') as Array<{ name: string }>;
+  if (columns.some((column) => column.name === 'rules_active_roster_limit')) {
+    db.exec('ALTER TABLE leagues DROP COLUMN rules_active_roster_limit');
+  }
+}
 
 function clearRosterHistory(): void {
   historyDb.prepare(
@@ -40,6 +48,7 @@ function removeOtherActiveAt(position: number, except: number): void {
 }
 
 beforeEach(() => {
+  dropActiveRosterLimit();
   clearRosterHistory();
   db.exec('DROP TABLE IF EXISTS trade_history');
   db.exec('DROP TABLE IF EXISTS players_injury_history');
@@ -52,11 +61,13 @@ beforeEach(() => {
      FROM players_roster_status`
   ).all() as Array<Record<string, number>>;
   originalPlayers = db.prepare(
-    'SELECT player_id, team_id, organization_id, position, role FROM players'
+    `SELECT player_id, team_id, organization_id, position, role,
+            injury_is_injured, injury_dtd_injury, injury_left FROM players`
   ).all() as Array<Record<string, number>>;
 });
 
 afterEach(() => {
+  dropActiveRosterLimit();
   for (const row of originalRoster) {
     db.prepare(
       `UPDATE players_roster_status
@@ -70,8 +81,13 @@ afterEach(() => {
   }
   for (const row of originalPlayers) {
     db.prepare(
-      'UPDATE players SET team_id = ?, organization_id = ?, position = ?, role = ? WHERE player_id = ?'
-    ).run(row.team_id, row.organization_id, row.position, row.role, row.player_id);
+      `UPDATE players SET team_id = ?, organization_id = ?, position = ?, role = ?,
+                          injury_is_injured = ?, injury_dtd_injury = ?, injury_left = ?
+       WHERE player_id = ?`
+    ).run(
+      row.team_id, row.organization_id, row.position, row.role,
+      row.injury_is_injured, row.injury_dtd_injury, row.injury_left, row.player_id
+    );
   }
   db.prepare('DELETE FROM players_roster_status WHERE player_id >= ?').run(ADDED_PLAYER_START);
   db.prepare('DELETE FROM players WHERE player_id >= ?').run(ADDED_PLAYER_START);
@@ -114,7 +130,6 @@ describe('causal MLB need detection', () => {
     ]));
     db.prepare('UPDATE leagues SET rules_active_roster_limit = 25 WHERE league_id = ?').run(IDS.league);
     expect(majorLeagueReactiveNeeds(IDS.mlbTeam).needs.some((need) => need.category === 'active_roster_capacity')).toBe(false);
-    db.exec('ALTER TABLE leagues DROP COLUMN rules_active_roster_limit');
   });
 
   it('creates a temporary, corroborated starting-pitcher coverage need after an IL loss', () => {
@@ -133,6 +148,80 @@ describe('causal MLB need detection', () => {
         horizon: expect.objectContaining({ kind: 'temporary', expectedDays: 18 }),
       }),
     ]));
+  });
+
+  it('keeps a causal relief-coverage need beside the roster opening and assembles MLB/AAA responders', () => {
+    db.prepare(
+      `UPDATE players SET position = 1, role = 12, injury_is_injured = 0,
+                          injury_dtd_injury = 0, injury_left = 0
+       WHERE player_id = ?`
+    ).run(IDS.starter);
+    db.prepare('UPDATE players SET position = 1, role = 13 WHERE player_id = ?').run(IDS.extended);
+
+    const aaaDepthId = ADDED_PLAYER_START;
+    db.prepare(
+      `INSERT INTO players (player_id, first_name, last_name, age, position, role, bats, throws,
+                            uniform_number, team_id, organization_id, retired, hidden, draft_eligible, college)
+       VALUES (?, 'Veteran', 'Relief Depth', 31, 1, 13, 1, 1, 0, ?, ?, 0, 0, 0, 0)`
+    ).run(aaaDepthId, IDS.aaaTeam, IDS.mlbTeam);
+    db.prepare(
+      `INSERT INTO players_roster_status
+       (player_id, is_active, is_on_dl, is_on_dl60, is_on_secondary,
+        mlb_service_years, mlb_service_days, mlb_service_days_this_year)
+       VALUES (?, 0, 0, 0, 0, 0, 0, 0)`
+    ).run(aaaDepthId);
+
+    const baselineActive = Number((db.prepare(
+      `SELECT COUNT(*) AS n FROM players_roster_status rs
+       JOIN players p ON p.player_id = rs.player_id
+       WHERE p.organization_id = ? AND rs.is_active = 1`
+    ).get(IDS.mlbTeam) as { n: number }).n);
+    db.exec('ALTER TABLE leagues ADD COLUMN rules_active_roster_limit INTEGER');
+    db.prepare('UPDATE leagues SET rules_active_roster_limit = ? WHERE league_id = ?').run(baselineActive, IDS.league);
+
+    captureLoss(IDS.starter, () => {
+      db.prepare('UPDATE players_roster_status SET is_active = 0, is_on_dl = 1 WHERE player_id = ?').run(IDS.starter);
+      db.prepare(
+        `UPDATE players SET injury_is_injured = 1, injury_dtd_injury = 0, injury_left = 26
+         WHERE player_id = ?`
+      ).run(IDS.starter);
+    });
+
+    const report = majorLeagueReactiveNeeds(IDS.mlbTeam);
+    const reliefNeed = report.needs.find((need) => need.causalPlayer?.playerId === IDS.starter)!;
+    expect(report.needs.map((need) => need.category)).toEqual(expect.arrayContaining([
+      'active_roster_capacity',
+      'role_coverage',
+    ]));
+    expect(reliefNeed).toMatchObject({
+      role: { kind: 'relief_pitcher' },
+      cause: { kind: 'injury', provenance: 'corroborated' },
+      horizon: { kind: 'temporary', expectedDays: 26 },
+      evidence: expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'current_role_coverage',
+          details: expect.objectContaining({ priorCoverageCount: 2, currentCoverageCount: 1 }),
+        }),
+      ]),
+    });
+
+    db.exec(`CREATE TABLE players_value (
+      player_id INTEGER, overall_value REAL, talent_value REAL, offensive_value REAL,
+      offensive_value_vsl REAL, offensive_value_vsr REAL, pitching_value REAL,
+      oa_rating REAL, pot_rating REAL, oa REAL, pot REAL
+    )`);
+    const responders = assembleInternalResponders(reliefNeed);
+    expect(responders.activeRosterResponders).toEqual(expect.arrayContaining([
+      expect.objectContaining({ playerId: IDS.extended }),
+    ]));
+    expect(responders.minorLeagueCallUpResponders).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        playerId: aaaDepthId,
+        development: expect.objectContaining({ status: 'not_applicable' }),
+        transactionContext: expect.objectContaining({ fortyMan: false }),
+      }),
+    ]));
+
   });
 
   it('does not create a need from injury history without an observed availability loss', () => {

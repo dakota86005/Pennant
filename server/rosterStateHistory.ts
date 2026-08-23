@@ -41,6 +41,9 @@ historyDb.exec(`
     forty_man INTEGER,
     on_il INTEGER,
     on_il60 INTEGER,
+    injury_active INTEGER,
+    injury_day_to_day INTEGER,
+    injury_days_left INTEGER,
     designated_for_assignment INTEGER,
     on_waivers INTEGER,
     major_league_contract INTEGER,
@@ -58,6 +61,21 @@ historyDb.exec(`
   );
 `);
 
+// Existing private history databases predate current-injury evidence. Additive
+// migration keeps their factual snapshots readable without rewriting history.
+const rosterSnapshotPlayerColumns = new Set(
+  (historyDb.pragma('table_info(roster_state_snapshot_players)') as Array<{ name: string }>).map((column) => column.name)
+);
+for (const [column, type] of [
+  ['injury_active', 'INTEGER'],
+  ['injury_day_to_day', 'INTEGER'],
+  ['injury_days_left', 'INTEGER'],
+] as const) {
+  if (!rosterSnapshotPlayerColumns.has(column)) {
+    historyDb.exec(`ALTER TABLE roster_state_snapshot_players ADD COLUMN ${column} ${type}`);
+  }
+}
+
 export type RosterStateProvenance = 'explicit' | 'observed' | 'corroborated' | 'inferred' | 'unknown';
 
 export interface PersistentRosterState {
@@ -72,6 +90,9 @@ export interface PersistentRosterState {
   fortyMan: boolean | null;
   onIl: boolean | null;
   onIl60: boolean | null;
+  injuryActive: boolean | null;
+  injuryDayToDay: boolean | null;
+  injuryDaysLeft: number | null;
   designatedForAssignment: boolean | null;
   onWaivers: boolean | null;
   majorLeagueContract: boolean | null;
@@ -118,8 +139,13 @@ export interface ObservedRosterTransition {
 }
 
 export interface RosterCausalEvidence {
-  provenance: 'explicit';
-  event: PlayerRosterEvent;
+  provenance: 'explicit' | 'observed';
+  event: PlayerRosterEvent | {
+    kind: 'injury';
+    date: string | null;
+    source: 'normalized_roster_state';
+    details: { injuryActive: true; dayToDay: boolean | null; daysLeft: number | null };
+  };
 }
 
 export interface RosterCausalCorrelation {
@@ -179,6 +205,9 @@ function persistedState(player: PlayerRosterState): PersistentRosterState {
     fortyMan: player.fortyMan,
     onIl: player.transaction.onIl,
     onIl60: player.transaction.onIl60,
+    injuryActive: player.injury.injured,
+    injuryDayToDay: player.injury.dayToDay,
+    injuryDaysLeft: player.injury.daysLeft,
     designatedForAssignment: player.transaction.designatedForAssignment,
     onWaivers: player.transaction.onWaivers,
     majorLeagueContract: player.majorLeagueContract,
@@ -211,6 +240,9 @@ function snapshotFromRows(
       fortyMan: boolFromDb(row.forty_man),
       onIl: boolFromDb(row.on_il),
       onIl60: boolFromDb(row.on_il60),
+      injuryActive: boolFromDb(row.injury_active),
+      injuryDayToDay: boolFromDb(row.injury_day_to_day),
+      injuryDaysLeft: numberOrNull(row.injury_days_left),
       designatedForAssignment: boolFromDb(row.designated_for_assignment),
       onWaivers: boolFromDb(row.on_waivers),
       majorLeagueContract: boolFromDb(row.major_league_contract),
@@ -229,7 +261,8 @@ function readSnapshotById(id: number): RosterStateSnapshot | null {
   if (!meta) return null;
   const rows = historyDb.prepare(
     `SELECT player_id, name, organization_id, team_id, team_level, position, role,
-            active_mlb, forty_man, on_il, on_il60, designated_for_assignment,
+            active_mlb, forty_man, on_il, on_il60, injury_active,
+            injury_day_to_day, injury_days_left, designated_for_assignment,
             on_waivers, major_league_contract, unknowns_json
      FROM roster_state_snapshot_players WHERE snapshot_id = ? ORDER BY player_id`
   ).all(id) as Array<Record<string, unknown>>;
@@ -354,10 +387,30 @@ export function correlateRosterTransition(
     evidence: tradeEvidence.map((event) => ({ provenance: 'explicit', event })),
   };
   const enteredIl = hasChange(transition, 'onIl', false, true) || hasChange(transition, 'onIl60', false, true);
-  const injuryEvidence = enteredIl ? events.filter((event) => event.kind === 'injury') : [];
+  const injuryEvidence: RosterCausalEvidence[] = enteredIl
+    ? events.filter((event) => event.kind === 'injury').map((event) => ({ provenance: 'explicit', event }))
+    : [];
+  const currentPlayer = enteredIl
+    ? current.players.find((player) => player.playerId === transition.playerId)
+    : undefined;
+  if (currentPlayer?.injuryActive === true) {
+    injuryEvidence.push({
+      provenance: 'observed',
+      event: {
+        kind: 'injury',
+        date: current.gameDate,
+        source: 'normalized_roster_state',
+        details: {
+          injuryActive: true,
+          dayToDay: currentPlayer.injuryDayToDay,
+          daysLeft: currentPlayer.injuryDaysLeft,
+        },
+      },
+    });
+  }
   if (injuryEvidence.length) return {
     conclusion: 'injury_associated_il_change', provenance: 'corroborated',
-    evidence: injuryEvidence.map((event) => ({ provenance: 'explicit', event })),
+    evidence: injuryEvidence,
   };
   return { conclusion: 'unknown', provenance: 'unknown', evidence: [] };
 }
@@ -396,9 +449,10 @@ export function captureRosterStateSnapshot(): RosterStateCapture {
   const insertPlayer = historyDb.prepare(
     `INSERT INTO roster_state_snapshot_players
      (snapshot_id, player_id, name, organization_id, team_id, team_level, position, role,
-      active_mlb, forty_man, on_il, on_il60, designated_for_assignment, on_waivers,
-      major_league_contract, unknowns_json)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      active_mlb, forty_man, on_il, on_il60, injury_active, injury_day_to_day,
+      injury_days_left, designated_for_assignment, on_waivers, major_league_contract,
+      unknowns_json)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
   let snapshotId = 0;
   historyDb.transaction(() => {
@@ -408,7 +462,8 @@ export function captureRosterStateSnapshot(): RosterStateCapture {
       insertPlayer.run(
         snapshotId, player.playerId, player.name, player.organizationId, player.teamId, player.teamLevel,
         player.position, player.role, dbBool(player.activeMlb), dbBool(player.fortyMan), dbBool(player.onIl),
-        dbBool(player.onIl60), dbBool(player.designatedForAssignment), dbBool(player.onWaivers),
+        dbBool(player.onIl60), dbBool(player.injuryActive), dbBool(player.injuryDayToDay),
+        player.injuryDaysLeft, dbBool(player.designatedForAssignment), dbBool(player.onWaivers),
         dbBool(player.majorLeagueContract), JSON.stringify(player.unknowns)
       );
     }
