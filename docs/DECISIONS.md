@@ -208,3 +208,28 @@ Consequences:
 - Explicit trade and injury history may be read as events. Current-state flags
   and generic messages must not be reverse-engineered into option, release, or
   recall history.
+
+## D-012 — Persist observations before interpreting roster causality
+
+**Status:** Accepted. **Implementation:** Present.
+
+Roster history is a sequence of normalized, imported observations in the
+persistent `history.db`, not a reconstruction from the current export or page
+access. A completed CSV import may create a snapshot; API reads may not. The
+snapshot is save-scoped and is deduplicated against its immediate predecessor
+by imported game date plus a canonical roster-state hash. This retains distinct
+same-date imports while avoiding duplicate observations.
+
+Consequences:
+
+- A snapshot, an observed transition, and a causal correlation are distinct
+  domain concepts. A transition may carry several factual changes at once.
+- `observed` means two saved states demonstrate a difference. `explicit` means
+  an authoritative imported history row. `corroborated` means a matching
+  explicit event supports an observed transition. `unknown` remains the cause
+  when that support is unavailable; `inferred` is not used to turn ordinary
+  assignment changes into transactions.
+- Trades corroborate only matching organization changes; injuries corroborate
+  only observed IL/IL-60 entry. An injury row alone is not an IL transaction.
+- No authoritative pre-Front Office roster timeline is claimed. Earlier
+  imported trade/injury rows remain evidence, not missing snapshots.

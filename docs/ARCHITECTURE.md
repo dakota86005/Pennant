@@ -59,7 +59,7 @@ schema-tolerant importer ---> data/league.db (replaceable imported snapshot)
               v                     v
        browser development    Electron shell (`electron/`)
 
-imports ---> data/history.db (persistent scouting snapshots, notes/watchlist)
+imports ---> data/history.db (persistent scouting and roster-state snapshots, notes/watchlist)
 ```
 
 The desktop application embeds the Express server on a local port and loads the
@@ -83,7 +83,9 @@ where practical instead of assuming one developer's save shape.
 ### Persistent local state
 
 `server/history.ts` keeps scouting-rating snapshots and user-owned state in a
-separate `history.db`, so a re-import cannot erase development history. Settings,
+separate `history.db`, and `server/rosterStateHistory.ts` keeps normalized
+roster-state snapshots and observed transitions there as well. A re-import
+therefore cannot erase either observation history. Settings,
 credentials, chat history, AI caches, import metadata, and the selected save
 also live under `DATA_DIR`.
 
@@ -112,7 +114,7 @@ artifact, not an alternative application backend.
 | Player Development | `org.ts`, `prospectDecision.ts`, `prospectAssignments.ts`, `destinationFit.ts`, `developmentFit.ts`, and scouting-history functions evaluate evidence, developmental protection, legal assignments, and destination fit. | This layer determines defensibility; it does not choose transactions for the GM. |
 | Organizational Philosophy | `philosophy.ts` defines organization-specific dimensions/policies; `settings.ts` persists and resolves profiles; `Philosophy.tsx` edits them. | Philosophy ranks or adjusts choices after hard baseball/development constraints. It is not player evidence. |
 | Minor League Operations | `minorLeagueRoster.ts`, `minorLeagueMoves.ts`, `pitcherRosterSimulation.ts`, `minorLeaguePitchingOperations.ts`, and `minorLeagueRetention.ts` diagnose affiliate structure and propose assignment/retention responses. | Level-changing moves must already be authorized by Player Development. Outputs are read-only recommendations. |
-| Roster & Transaction State | `rosterTransactionState.ts` normalizes imported roster/transaction facts and evaluates limited recall, option, and 40-man-addition rule state. `transactionHistory.ts` reads explicit trade and injury event records. | It returns eligible, ineligible, or indeterminate results plus corresponding-move requirements. It does not choose players, simulate transactions, or infer events from changed current state. |
+| Roster & Transaction State | `rosterTransactionState.ts` normalizes imported roster/transaction facts and evaluates limited recall, option, and 40-man-addition rule state. `transactionHistory.ts` reads explicit trade and injury event records. `rosterStateHistory.ts` persists successive normalized observations and their factual differences. | It returns eligible, ineligible, or indeterminate results plus corresponding-move requirements. Snapshot transitions are observed facts, while causal correlation is separately evidence-bound; neither chooses players, simulates transactions, or invents events. |
 | Major League Operations | `majorLeagueOperations.ts` consumes shared roster/transaction context for MLB workflows. | It separates known facts from transaction unknowns; it does not judge readiness, detect needs, rank candidates, simulate transactions, or write to OOTP. |
 | AI features | `providers.ts`, `models.ts`, `chat.ts`, `ai.ts`, and `storylines.ts` provide staff chat, briefings, trade discussion, and storylines through configurable providers. | AI consumes computed save-grounded facts, calls the same API as the UI, and supports the front-office experience. It does not become a parallel recommendation engine. |
 | Web UI | React pages in `src/` render domain results, evidence, alternatives, and local interactions. `src/App.tsx` owns selected-save and selected-organization UI context. | React may shape presentation but should not silently reimplement baseball rules. |
@@ -190,6 +192,32 @@ not establish a stable event taxonomy. No explicit exported history currently
 establishes recalls, options/demotions, DFA resolution, waivers, releases, or
 ordinary assignment changes; those must remain unknown rather than inferred
 from current roster state.
+
+### Persistent roster-state history and causality
+
+After a successful CSV import, `api.ts` asks `rosterStateHistory.ts` to capture
+the normalized state supplied by `rosterTransactionState.ts`. Page reads and
+other API requests never create a roster-history observation. The durable
+records are scoped by the configured save name and contain player organization,
+team/level, position/role, active and 40-man status, IL/IL-60, DFA, waivers,
+major-league contract state, and explicit unknowns.
+
+Deduplication compares the immediately preceding snapshot's imported MLB game
+date and canonical roster-state hash. A repeated import of the same state is
+ignored; a different state on the same OOTP date is retained, as is a later
+game-date observation with unchanged roster state. The comparison produces one
+complete observed transition per affected player (including appearance and
+disappearance), preserving simultaneous changes rather than naming a presumed
+transaction.
+
+`trade_history` may corroborate an organization change only when its dated,
+player-specific record falls in the observed game-date interval and names both
+organizations. `players_injury_history` may corroborate an IL/IL-60 entry only
+when a matching injury record falls in that interval. Evidence is retained as
+explicit source data; the supported causal conclusion is `corroborated`.
+All other causes remain `unknown`. The layer does not reconstruct roster states
+from before Front Office's first snapshot, even if a trade or injury record is
+older than that observation.
 
 ### Organizational Philosophy owns preferences
 

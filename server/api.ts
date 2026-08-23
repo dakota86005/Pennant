@@ -14,6 +14,7 @@ import { lineupRoutes } from './lineup.js';
 import { storylineRoutes, startStorylineJob } from './storylines.js';
 import { playerRoutes } from './player.js';
 import { historyRoutes, takeSnapshot } from './history.js';
+import { captureRosterStateSnapshot } from './rosterStateHistory.js';
 import { clearStatCaches, computeBatting, computePitching, leagueBaseline } from './stats.js';
 import { ratingScaleMax, clearScaleCache, clearValuationCaches, valuesByPlayer } from './valuation.js';
 import { clearTwoWayCache } from './twoway.js';
@@ -149,6 +150,14 @@ export async function runImport(csvDir: string): Promise<void> {
       takeSnapshot(); // development-tracking snapshot, keyed by in-game date
     } catch (err) {
       console.error('[history] snapshot failed:', err);
+    }
+    try {
+      // A roster-state observation belongs to a completed import, never to a
+      // page/API read. It maintains its own state-aware dedupe semantics.
+      captureRosterStateSnapshot();
+    } catch (err) {
+      // Like scouting history, this must not make an otherwise good import fail.
+      console.error('[history] roster-state snapshot failed:', err);
     }
     console.log(
       `[import] ${importState.lastImport.tables} tables, ${importState.lastImport.rows} rows imported`

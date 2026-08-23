@@ -189,6 +189,19 @@ resolution across all organization-specific features is future work.
   reliable general history for recalls, options/demotions, releases, DFA
   resolution, waivers, or ordinary assignments; generic messages are not used
   as a causal event feed.
+- `server/rosterStateHistory.ts` records normalized roster-state snapshots in
+  persistent `history.db` only after a successful import. It deduplicates a
+  repeated state using the immediate predecessor's imported game date and
+  canonical state hash, while retaining distinct states from the same OOTP
+  date. It compares successive observations into complete, factual player
+  transitions (including appearance/disappearance) and stores causal
+  correlation separately.
+- Transition provenance is `observed`; imported trade/injury rows are
+  `explicit`; only a matching trade organization change or injury-backed
+  IL/IL-60 entry is `corroborated`. Options, recalls, releases, ordinary
+  assignments, DFA/waiver resolution, and uncorroborated changes retain an
+  `unknown` cause. No timeline is reconstructed before Front Office's first
+  snapshot.
 - It deliberately does not perform need detection, candidate ranking, call-up
   recommendations, transaction simulation, UI work, or OOTP writeback.
 - Continuous `players_value` fields are explicitly excluded from this

@@ -190,14 +190,24 @@ function majorLeagueContracts(): Map<number, boolean> | null {
     .map((row) => [row.player_id, row.is_major === 1]));
 }
 
-function rowsFor(where: string, value: number): { rows: Array<Record<string, unknown>>; unknowns: RosterStateUnknown[] } {
+function rowsFor(
+  where?: string,
+  value?: number,
+  tolerateMissingRosterStatus = false
+): { rows: Array<Record<string, unknown>>; unknowns: RosterStateUnknown[] } {
   const unknowns: RosterStateUnknown[] = [];
   if (!tableExists('players')) return { rows: [], unknowns: [{ code: 'missing_players_table', message: 'No players table is imported.' }] };
-  if (!tableExists('players_roster_status')) return { rows: [], unknowns: [{ code: 'missing_roster_status_table', message: 'No roster-status table is imported.' }] };
+  if (!tableExists('players_roster_status') && !tolerateMissingRosterStatus) {
+    return { rows: [], unknowns: [{ code: 'missing_roster_status_table', message: 'No roster-status table is imported.' }] };
+  }
   const playerColumns = new Set(tableColumns('players'));
-  const statusColumns = new Set(tableColumns('players_roster_status'));
-  if (!['player_id', 'retired', where].every((column) => playerColumns.has(column))) {
-    return { rows: [], unknowns: [{ code: 'missing_player_column', message: `The players table cannot resolve ${where}.` }] };
+  const statusColumns = tableExists('players_roster_status') ? new Set(tableColumns('players_roster_status')) : new Set<string>();
+  if (!tableExists('players_roster_status')) {
+    unknowns.push({ code: 'missing_roster_status_table', message: 'No roster-status table is imported.' });
+  }
+  const requiredPlayerColumns = ['player_id', 'retired', ...(where ? [where] : [])];
+  if (!requiredPlayerColumns.every((column) => playerColumns.has(column))) {
+    return { rows: [], unknowns: [{ code: 'missing_player_column', message: `The players table cannot resolve ${where ?? 'the roster state'}.` }] };
   }
   const canJoinStatus = statusColumns.has('player_id');
   const teamColumns = new Set(tableColumns('teams'));
@@ -212,8 +222,8 @@ function rowsFor(where: string, value: number): { rows: Array<Record<string, unk
      FROM players p
      ${canJoinStatus ? 'LEFT JOIN players_roster_status rs ON rs.player_id = p.player_id' : ''}
      ${canJoinTeams ? 'LEFT JOIN teams t ON t.team_id = p.team_id' : ''}
-     WHERE p."${where}" = ? AND p.retired = 0`
-  ).all(value) as Array<Record<string, unknown>>;
+     WHERE p.retired = 0${where ? ` AND p."${where}" = ?` : ''}`
+  ).all(...(where ? [value] : [])) as Array<Record<string, unknown>>;
   return { rows, unknowns };
 }
 
@@ -225,6 +235,23 @@ export function playerRosterState(playerId: number): PlayerRosterState | null {
   const statusColumns = new Set(tableColumns('players_roster_status'));
   const contracts = majorLeagueContracts();
   return stateFromRow(rows[0], playerColumns, statusColumns, contracts);
+}
+
+/**
+ * Read normalized roster state for every non-retired player. This is a shared
+ * snapshot source, not an organization-specific MLB operation: it deliberately
+ * keeps players when optional roster-status tables are absent so their unknown
+ * state is preserved rather than silently dropping them from history.
+ */
+export function allRosterTransactionStates(): { players: PlayerRosterState[]; unknowns: RosterStateUnknown[] } {
+  const { rows, unknowns } = rowsFor(undefined, undefined, true);
+  const playerColumns = new Set(tableColumns('players'));
+  const statusColumns = tableExists('players_roster_status') ? new Set(tableColumns('players_roster_status')) : new Set<string>();
+  const contracts = majorLeagueContracts();
+  return {
+    players: rows.map((row) => stateFromRow(row, playerColumns, statusColumns, contracts)),
+    unknowns,
+  };
 }
 
 /** Read every player in an organization plus its imported roster capacities. */
