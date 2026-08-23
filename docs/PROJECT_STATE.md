@@ -6,7 +6,7 @@ material implementation state changes.
 
 ## Repository snapshot
 
-- Package: `ootp-front-office` version `0.27.1`.
+- Package: `ootp-front-office` version `0.27.2`.
 - Inspected branch: `feature/organizational-philosophy`.
 - Inspected HEAD: `0d76be3` (`feat: rebuild player development workspace`).
 - Stack: TypeScript, React 18, Vite 6, Express 4, SQLite via
@@ -16,7 +16,7 @@ material implementation state changes.
   `src/styles.css`. Those changes were inspected but not modified by the
   documentation task.
 
-The package version and latest changelog identify `0.27.1` as the release
+The package version and latest changelog identify `0.27.2` as the release
 baseline. The inspected feature branch contains substantial organizational
 philosophy and farm-system work beyond that release description. Branch code
 and uncommitted work should not be described as a shipped release without a
