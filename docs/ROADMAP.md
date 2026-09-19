@@ -24,6 +24,9 @@ These are implementation baselines, not roadmap promises:
   surfaces described in [PROJECT_STATE.md](PROJECT_STATE.md).
 - Organization-specific manual philosophy profiles with dimensions and policy
   settings.
+- An enforced authority boundary: Player Development judgments are
+  philosophy-independent and philosophy expresses preference among defensible
+  assignments only (`assignmentPreference.ts`, D-019).
 - A scouted-evidence adapter that is the single source of ability evidence for
   Player Development and Minor League Operations, with focused tests of the
   development engines and a static boundary guard.
@@ -98,12 +101,15 @@ static guard. Remaining:
 - Verify whether fielding-position grades share the tool ratings' display scale.
 - Keep AI context free of hidden or provenance-uncertain ratings.
 
-### 4. Correct the philosophy/eligibility boundary
+### 4. Let Operations consume the preference object
 
-Ordinary-promotion eligibility currently depends on a philosophy-derived
-threshold (D-003 known deviation). Make Player Development's eligibility
-independent of philosophy and let philosophy rank or gate only among defensible
-choices, then update `tests/prospectAssignments.test.ts` deliberately.
+The Player Development ↔ Philosophy boundary is enforced (D-019): eligibility is
+philosophy-independent and `assignments.preference` expresses preference among
+defensible assignments. Operations still ranks with its own philosophy-weighted
+costs. Move that ranking onto the preference object, keeping it inside the
+defensible set and for ordering only. Separately, retention still folds a
+philosophy adjustment into the development score that feeds release-candidate
+thresholds; decide whether that belongs in preference or in developmental value.
 
 ### 5. Finish farm-assignment edge cases
 

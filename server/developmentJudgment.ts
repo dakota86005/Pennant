@@ -17,8 +17,9 @@
  *   defensible     every constraint is satisfied
  *
  * `indeterminate` is a statement about evidence, not a decision. It does not
- * mean "protect", "hold", "block" or "approve": the GM may act despite it, and
- * Organizational Philosophy may not resolve it.
+ * mean "protect", "hold", "block" or "approve": the GM may act despite it.
+ * Organizational Philosophy never enters these judgments at all, so it cannot
+ * resolve one.
  */
 
 import type { ScoutedAbility } from './scoutedEvidence.js';
@@ -70,26 +71,6 @@ export function atLeast(range: ValueRange, threshold: number): ConstraintState {
   if (range.min >= threshold) return 'satisfied';
   if (range.max < threshold) return 'not_satisfied';
   return 'unknown';
-}
-
-/**
- * The same comparison for a threshold that Organizational Philosophy has moved.
- *
- * Philosophy expresses how readily the club acts on evidence; it does not supply
- * evidence. So when the value is uncertain, whether the philosophy-adjusted
- * threshold happens to sit above or below the whole range is not allowed to
- * settle it: if the answer is unknown against the neutral (philosophy-free)
- * threshold it stays unknown against the actual one. With a known value there
- * is nothing to resolve and the actual threshold applies unchanged.
- */
-export function atLeastWithoutPhilosophyResolution(
-  range: ValueRange,
-  actualThreshold: number,
-  neutralThreshold: number
-): ConstraintState {
-  if (range.min === range.max) return atLeast(range, actualThreshold);
-  if (atLeast(range, neutralThreshold) === 'unknown') return 'unknown';
-  return atLeast(range, actualThreshold);
 }
 
 /** The missing subjective evidence behind an ability that is not fully known. */

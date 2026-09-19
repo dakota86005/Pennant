@@ -1,16 +1,12 @@
 /**
  * Prospect development decision engine.
  *
- * This file intentionally knows nothing about SQLite or HTTP. It receives
- * normalized evidence about a player and applies the organization's development
- * philosophy to that evidence.
- *
- * The important separation:
- *
- *   evidence/readiness = what the player has shown
- *   philosophy         = how readily this organization acts on that evidence
- *
- * Changing philosophy must never change a player's objective readiness score.
+ * This file intentionally knows nothing about SQLite or HTTP, and it knows
+ * nothing about Organizational Philosophy: it receives normalized evidence about
+ * a player and applies baseball-development rules to it. Player Development owns
+ * what is developmentally defensible; how an organization PREFERS among
+ * defensible choices is expressed separately (assignmentPreference.ts) and can
+ * never reach this engine's thresholds, readiness, or recommendation.
  */
 
 import type { EvidenceStatus, ScoutedAbility } from './scoutedEvidence.js';
@@ -80,8 +76,6 @@ export interface ProspectDecisionInput {
    */
   ability: ScoutedAbility;
 
-  promotionAggressiveness: number;
-
   nextAssignment: ProspectNextAssignment | null;
 
   /** The next lower affiliate, when one exists. */
@@ -119,26 +113,17 @@ export interface ProspectDecision {
     readinessRange: ValueRange;
   };
 
-  organization: {
-    promotionAggressiveness: number;
-
-    /** Threshold created by organizational philosophy alone. */
-    basePromotionThreshold: number;
-
-    /** How many points philosophy moved the neutral threshold. */
-    philosophyThresholdAdjustment: number;
-
-    /** How many points age/level context moved the action threshold. */
-    ageThresholdAdjustment: number;
-
-    /** Final threshold after philosophy and age/level urgency. */
+  /**
+   * The developmental thresholds this decision was made against. They come from
+   * baseball-development rules and age/level context only; no organizational
+   * preference enters them.
+   */
+  development: {
+    /** Readiness a promotion must reach to be developmentally defensible. */
     promotionThreshold: number;
 
-    /**
-     * The threshold with philosophy removed (age/level context only). Used so
-     * philosophy cannot settle a question incomplete evidence leaves open.
-     */
-    neutralPromotionThreshold: number;
+    /** How age relative to level moved the threshold from its base. */
+    ageThresholdAdjustment: number;
   };
 
   /** Objective: poor production, a real sample, not young for the level. */
@@ -283,6 +268,9 @@ function confidenceLabel(
   return 'limited';
 }
 
+/** Readiness at which a promotion becomes developmentally defensible, before age context. */
+export const DEVELOPMENTAL_PROMOTION_BASE = 76;
+
 const readinessOf = (
   performance: number,
   maturity: number
@@ -332,24 +320,11 @@ export function evaluateProspectDecision(
           max: readinessOf(performance, MATURITY_CEILING),
         };
 
-  const aggressiveness =
-    rounded(input.promotionAggressiveness);
-
   /*
-   * The organization's development philosophy establishes the base threshold.
+   * The developmental promotion threshold: a base of 76 readiness, moved by age
+   * relative to level. It is a baseball-development rule, so it does not depend
+   * on the organization's philosophy.
    *
-   * Neutral organization: 76
-   * Extremely conservative: 86
-   * Extremely aggressive: 66
-   */
-  const basePromotionThreshold = rounded(
-    76 - ((aggressiveness - 50) / 50) * 10
-  );
-
-  const philosophyThresholdAdjustment =
-    76 - basePromotionThreshold;
-
-  /*
    * Age relative to level changes URGENCY, not readiness.
    *
    * Younger-than-level players may reasonably be asked to clear a slightly
@@ -364,11 +339,7 @@ export function evaluateProspectDecision(
   );
 
   const promotionThreshold = rounded(
-    basePromotionThreshold + ageThresholdAdjustment
-  );
-
-  const neutralPromotionThreshold = rounded(
-    76 + ageThresholdAdjustment
+    DEVELOPMENTAL_PROMOTION_BASE + ageThresholdAdjustment
   );
 
   const positives: string[] = [];
@@ -404,12 +375,6 @@ export function evaluateProspectDecision(
     cautions.push('The current-level sample still provides limited confidence.');
   } else if (sample >= 75) {
     positives.push('The current-level sample is large enough to support a confident evaluation.');
-  }
-
-  if (aggressiveness >= 70) {
-    positives.push('This organization is willing to act relatively early on convincing development evidence.');
-  } else if (aggressiveness <= 30) {
-    cautions.push('This organization generally requires stronger evidence before promoting prospects.');
   }
 
   /*
@@ -480,10 +445,10 @@ export function evaluateProspectDecision(
 
   /*
    * With known ratings there is one answer. With unknown ratings, evaluate the
-   * recommendation at both ends of the possible readiness — under the club's
-   * own threshold AND the philosophy-free one, so philosophy cannot decide what
-   * the missing evidence leaves open. If they all agree, the missing evidence
-   * does not matter and the conclusion stands; otherwise it is indeterminate.
+   * recommendation at both ends of the possible readiness. If they agree, the
+   * missing evidence does not matter and the conclusion stands; otherwise it is
+   * indeterminate. No preference is involved, so nothing but evidence can
+   * settle it.
    */
   const outcomes = new Set<DeterminateRecommendation>(
     readiness !== null
@@ -491,8 +456,6 @@ export function evaluateProspectDecision(
       : [
           recommend(readinessRange.min, promotionThreshold),
           recommend(readinessRange.max, promotionThreshold),
-          recommend(readinessRange.min, neutralPromotionThreshold),
-          recommend(readinessRange.max, neutralPromotionThreshold),
         ]
   );
 
@@ -539,13 +502,9 @@ export function evaluateProspectDecision(
       readinessRange,
     },
 
-    organization: {
-      promotionAggressiveness: aggressiveness,
-      basePromotionThreshold,
-      philosophyThresholdAdjustment,
-      ageThresholdAdjustment,
+    development: {
       promotionThreshold,
-      neutralPromotionThreshold,
+      ageThresholdAdjustment,
     },
 
     demotionCase,

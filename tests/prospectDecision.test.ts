@@ -36,7 +36,6 @@ function hitter(overrides: Partial<ProspectDecisionInput> = {}): ProspectDecisio
     pa: 250,
     ageDiff: 0,
     ability: ability(50, 50),
-    promotionAggressiveness: 50,
     nextAssignment: aa,
     demotionAssignment: single,
     canDemote: true,
@@ -74,14 +73,14 @@ describe('prospect readiness', () => {
     const old = evaluateProspectDecision(hitter({ ageDiff: -2 }));
     expect(young.evidence.readiness).toBe(old.evidence.readiness);
     expect(young.evidence.ageLevelUrgency).toBeLessThan(old.evidence.ageLevelUrgency);
-    expect(young.organization.promotionThreshold).toBeGreaterThan(old.organization.promotionThreshold);
+    expect(young.development.promotionThreshold).toBeGreaterThan(old.development.promotionThreshold);
   });
 
   it('caps the age effect on the threshold at five points', () => {
     const veryYoung = evaluateProspectDecision(hitter({ ageDiff: 10 }));
     const veryOld = evaluateProspectDecision(hitter({ ageDiff: -10 }));
-    expect(veryYoung.organization.ageThresholdAdjustment).toBe(5);
-    expect(veryOld.organization.ageThresholdAdjustment).toBe(-5);
+    expect(veryYoung.development.ageThresholdAdjustment).toBe(5);
+    expect(veryOld.development.ageThresholdAdjustment).toBe(-5);
   });
 
   it('measures pitchers on ERA and strikeout rate together', () => {
@@ -92,8 +91,7 @@ describe('prospect readiness', () => {
       ip: 60,
       ageDiff: 0,
       ability: ability(50, 50),
-      promotionAggressiveness: 50,
-      nextAssignment: aa,
+        nextAssignment: aa,
       demotionAssignment: single,
       canDemote: true,
     });
@@ -111,7 +109,7 @@ describe('sample confidence', () => {
   it('uses innings for pitchers: 15 IP is 25, 60 IP is 100', () => {
     const pitcher = (ip: number) => evaluateProspectDecision({
       kind: 'pitcher', primaryPerformanceDiff: 0, secondaryPerformanceDiff: 0, ip, ageDiff: 0,
-      ability: ability(50, 50), promotionAggressiveness: 50, nextAssignment: aa,
+      ability: ability(50, 50), nextAssignment: aa,
       demotionAssignment: single, canDemote: true,
     });
     expect(pitcher(15).evidence.sampleConfidence).toBe(25);
@@ -130,7 +128,7 @@ describe('sample confidence', () => {
 describe('recommendations', () => {
   it('considers promotion when readiness clears the neutral threshold of 76', () => {
     const d = evaluateProspectDecision(hitter());
-    expect(d.organization.promotionThreshold).toBe(76);
+    expect(d.development.promotionThreshold).toBe(76);
     expect(d.evidence.readiness).toBe(79);
     expect(d.recommendation).toBe('consider_promotion');
   });
@@ -185,46 +183,34 @@ describe('demotion', () => {
     expect(d.recommendation).toBe('consider_demotion');
     expect(d.cautions.join(' ')).toMatch(/No lower affiliate/);
   });
-
-  it('is not changed by promotion aggressiveness', () => {
-    for (const aggression of [0, 50, 100]) {
-      expect(evaluateProspectDecision(struggling({ promotionAggressiveness: aggression })).recommendation)
-        .toBe('consider_demotion');
-    }
-  });
 });
 
-describe('philosophy versus developmental evidence', () => {
-  const at = (promotionAggressiveness: number, extra: Partial<ProspectDecisionInput> = {}) =>
-    evaluateProspectDecision(hitter({ promotionAggressiveness, ...extra }));
-
-  it('moves the base promotion threshold from 86 (conservative) to 66 (aggressive)', () => {
-    expect(at(0).organization.basePromotionThreshold).toBe(86);
-    expect(at(50).organization.basePromotionThreshold).toBe(76);
-    expect(at(100).organization.basePromotionThreshold).toBe(66);
-    expect(at(100).organization.philosophyThresholdAdjustment).toBe(10);
+describe('the decision engine knows nothing of philosophy', () => {
+  it('has no philosophy input to take', () => {
+    // Structural: an extra property is ignored at runtime and rejected by tsc, so the
+    // engine cannot be handed a preference to act on
+    const withExtra = { ...hitter(), promotionAggressiveness: 100 } as ProspectDecisionInput;
+    expect(evaluateProspectDecision(withExtra)).toEqual(evaluateProspectDecision(hitter()));
   });
 
-  it('never changes what the player has shown — only how readily the club acts on it', () => {
-    const readiness = [0, 25, 50, 75, 100].map((a) => at(a).evidence);
-    for (const evidence of readiness) expect(evidence).toEqual(readiness[0]);
+  it('uses a developmental promotion threshold of 76, moved only by age and level', () => {
+    expect(evaluateProspectDecision(hitter()).development).toEqual({
+      promotionThreshold: 76,
+      ageThresholdAdjustment: 0,
+    });
+    expect(evaluateProspectDecision(hitter({ ageDiff: 2 })).development.promotionThreshold).toBe(79);
+    expect(evaluateProspectDecision(hitter({ ageDiff: -2 })).development.promotionThreshold).toBe(73);
   });
 
-  it('turns the same evidence into different recommendations', () => {
-    expect(at(0).recommendation).toBe('watch');
-    expect(at(50).recommendation).toBe('consider_promotion');
-    expect(at(100).recommendation).toBe('strong_promotion_case');
-  });
-
-  it('cannot promote on a thin sample, however aggressive the organization', () => {
-    const d = at(100, { pa: 60, primaryPerformanceDiff: 0.2 });
+  it('cannot promote on a thin sample', () => {
+    const d = evaluateProspectDecision(hitter({ pa: 60, primaryPerformanceDiff: 0.2 }));
     expect(d.evidence.sampleConfidence).toBeLessThan(45);
     expect(d.recommendation).toBe('watch');
   });
 
-  it('cannot promote weak production, however aggressive the organization', () => {
-    const d = at(100, { primaryPerformanceDiff: 0 });
-    expect(d.evidence.readiness).toBeLessThan(d.organization.promotionThreshold);
+  it('cannot promote weak production', () => {
+    const d = evaluateProspectDecision(hitter({ primaryPerformanceDiff: 0 }));
+    expect(d.evidence.readiness).toBeLessThan(d.development.promotionThreshold);
     expect(d.recommendation).not.toMatch(/promotion|mlb/);
   });
 });
@@ -253,7 +239,7 @@ describe('missing rating evidence', () => {
     expect(d.evidence.performance).toBe(known.evidence.performance);
     expect(d.evidence.sampleConfidence).toBe(known.evidence.sampleConfidence);
     expect(d.evidence.ageLevelUrgency).toBe(known.evidence.ageLevelUrgency);
-    expect(d.organization.promotionThreshold).toBe(known.organization.promotionThreshold);
+    expect(d.development.promotionThreshold).toBe(known.development.promotionThreshold);
     expect(d.positives.join(' ')).toMatch(/Production is clearly above/);
   });
 
@@ -276,7 +262,7 @@ describe('missing rating evidence', () => {
   it('still reaches a negative conclusion when no possible rating could matter', () => {
     // Even the most mature possible ratings leave readiness below the watch line
     const d = evaluateProspectDecision(hitter({ ability: unknown(null, null), primaryPerformanceDiff: -0.05 }));
-    expect(d.evidence.readinessRange.max).toBeLessThan(d.organization.promotionThreshold - 8);
+    expect(d.evidence.readinessRange.max).toBeLessThan(d.development.promotionThreshold - 8);
     expect(d.recommendation).toBe('hold');
     expect(d.possibleRecommendations).toEqual([]);
   });
@@ -287,15 +273,6 @@ describe('missing rating evidence', () => {
     );
     expect(d.demotionCase).toBe(true);
     expect(d.recommendation).toBe('consider_demotion');
-  });
-
-  it('is indeterminate under every philosophy, never settled by one', () => {
-    for (const aggression of [0, 25, 50, 75, 100]) {
-      const d = evaluateProspectDecision(
-        hitter({ ability: unknown(null, null), promotionAggressiveness: aggression })
-      );
-      expect(d.recommendation, `aggressiveness ${aggression}`).toBe('indeterminate');
-    }
   });
 
   it('is unchanged for known ratings', () => {

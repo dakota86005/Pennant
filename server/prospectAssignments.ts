@@ -3,8 +3,17 @@ import type {
   ProspectNextAssignment,
 } from './prospectDecision.js';
 
+/**
+ * Developmental authorization only. Nothing in this file receives or reads
+ * Organizational Philosophy: whether an assignment is defensible is a function
+ * of evidence and baseball-development rules, so it is identical for every
+ * organization. An organization's PREFERENCE among the defensible assignments is
+ * expressed afterwards, in assignmentPreference.ts, which can annotate but never
+ * change a judgment.
+ */
+
 import {
-  atLeastWithoutPhilosophyResolution,
+  atLeast,
   judgmentOf,
   type ConstraintState,
   type DevelopmentalJudgment,
@@ -16,6 +25,16 @@ export type ProspectAssignmentKind =
   | 'skip_level_promotion'
   | 'demotion'
   | 'mlb_discussion';
+
+/**
+ * An organization's stance toward a developmentally DEFENSIBLE assignment. It is
+ * not authorization: a disfavored assignment is exactly as defensible as a
+ * preferred one.
+ */
+export type AssignmentPreference =
+  | 'preferred'
+  | 'acceptable'
+  | 'disfavored';
 
 export type ProspectAssignmentRecommendation =
   | 'not_recommended'
@@ -77,6 +96,14 @@ export interface ProspectAssignmentEvaluation {
   eligible: boolean;
 
   recommendation: ProspectAssignmentRecommendation;
+
+  /**
+   * How this organization's philosophy regards the assignment among the
+   * defensible alternatives. Always null here: authorization carries no
+   * preference. Filled in by assignmentPreference.ts, and only for a defensible
+   * assignment.
+   */
+  preference: AssignmentPreference | null;
 
   /** Every requirement, with its state. Objective evidence is shown either way. */
   constraints: AssignmentConstraint[];
@@ -204,32 +231,31 @@ function promotionEvaluation(
   const sample =
     decision.evidence.sampleConfidence;
 
+  /*
+   * The developmental threshold: baseball-development rules plus age/level
+   * context. No organizational preference enters it.
+   */
   const baseThreshold =
-    decision.organization.promotionThreshold;
-
-  const neutralBaseThreshold =
-    decision.organization.neutralPromotionThreshold;
+    decision.development.promotionThreshold;
 
   const reasons: string[] = [];
 
   const constraints: AssignmentConstraint[] = [];
 
   /*
-   * A comparison against the readiness the evidence supports. Unknown while
-   * ratings are, and never settled by the philosophy-adjusted threshold.
+   * A comparison against the readiness the evidence supports: unknown while
+   * ratings are, and decided by evidence alone.
    */
   const readinessConstraint = (
     required: number,
-    neutralRequired: number,
     unmetText: string,
     unknownText: string,
     metText: string
   ): AssignmentConstraint => {
     const state =
-      atLeastWithoutPhilosophyResolution(
+      atLeast(
         readinessRange,
-        required,
-        neutralRequired
+        required
       );
 
     return {
@@ -258,10 +284,9 @@ function promotionEvaluation(
     constraints.push(
       readinessConstraint(
         requiredReadiness,
-        neutralBaseThreshold,
-        `Readiness ${readiness ?? `at most ${readinessRange.max}`} is below the organizational promotion threshold of ${requiredReadiness}.`,
+        `Readiness ${readiness ?? `at most ${readinessRange.max}`} is below the developmental promotion threshold of ${requiredReadiness}.`,
         `Readiness cannot be established: it depends on organization-visible ratings that are unavailable (it lies between ${readinessRange.min} and ${readinessRange.max} against a threshold of ${requiredReadiness}).`,
-        `Readiness ${readiness ?? readinessRange.min} clears the organizational threshold of ${requiredReadiness}.`
+        `Readiness ${readiness ?? readinessRange.min} clears the developmental threshold of ${requiredReadiness}.`
       )
     );
 
@@ -287,7 +312,7 @@ function promotionEvaluation(
 
     if (eligible) {
       reasons.push(
-        `Readiness ${readiness} clears the organizational threshold of ${requiredReadiness}.`
+        `Readiness ${readiness} clears the developmental threshold of ${requiredReadiness}.`
       );
 
       if (sample >= 60) {
@@ -326,6 +351,7 @@ function promotionEvaluation(
               ? 'indeterminate'
               : 'not_recommended',
 
+        preference: null,
         constraints,
         missingEvidence,
         evidence,
@@ -359,6 +385,7 @@ function promotionEvaluation(
               ? 'strong'
               : 'consider',
 
+      preference: null,
       constraints,
       missingEvidence,
       evidence,
@@ -370,11 +397,10 @@ function promotionEvaluation(
   }
 
   /*
-   * Skip-level promotions require qualitatively stronger evidence.
-   *
-   * Philosophy still matters because baseThreshold is philosophy-aware, but a
-   * hard floor prevents an extremely aggressive organization from manufacturing
-   * a skip-level case from merely adequate evidence.
+   * Skip-level promotions require qualitatively stronger evidence than an
+   * ordinary one: at least ten points of readiness above the developmental
+   * promotion threshold, with a hard floor. These are developmental rules and
+   * are the same for every organization.
    *
    * First skipped existing level:
    *   readiness >= at least 84
@@ -386,22 +412,14 @@ function promotionEvaluation(
    */
   const skipped = index;
 
-  const requiredReadinessFor = (
-    base: number
-  ): number =>
+  const requiredReadiness =
     Math.min(
       97,
       Math.max(
         84 + (skipped - 1) * 6,
-        base + 10 + (skipped - 1) * 6
+        baseThreshold + 10 + (skipped - 1) * 6
       )
     );
-
-  const requiredReadiness =
-    requiredReadinessFor(baseThreshold);
-
-  const neutralRequiredReadiness =
-    requiredReadinessFor(neutralBaseThreshold);
 
   const requiredPerformance = Math.min(
     95,
@@ -438,7 +456,6 @@ function promotionEvaluation(
   constraints.push(
     readinessConstraint(
       requiredReadiness,
-      neutralRequiredReadiness,
       `Readiness ${readiness ?? `at most ${readinessRange.max}`} is below the skip-level requirement of ${requiredReadiness}.`,
       `Readiness cannot be established: it depends on organization-visible ratings that are unavailable (it lies between ${readinessRange.min} and ${readinessRange.max} against a requirement of ${requiredReadiness}).`,
       `Readiness ${readiness ?? readinessRange.min} clears the exceptional assignment threshold of ${requiredReadiness}.`
@@ -518,6 +535,7 @@ function promotionEvaluation(
           ? 'indeterminate'
           : 'not_recommended',
 
+    preference: null,
     constraints,
     missingEvidence,
 
@@ -597,6 +615,7 @@ function demotionEvaluation(
         ? 'consider'
         : 'not_recommended',
 
+    preference: null,
     constraints,
     missingEvidence: [],
 

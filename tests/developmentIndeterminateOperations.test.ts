@@ -6,6 +6,7 @@ import { evaluateProspectDecision, type ProspectNextAssignment } from '../server
 import { evaluateProspectAssignments } from '../server/prospectAssignments.js';
 import { syntheticScoutedAbility } from '../server/scoutedEvidence.js';
 import { IDS } from './fixture.js';
+import request from './request.js';
 
 /**
  * How an indeterminate Player Development assessment travels into Minor League
@@ -146,7 +147,6 @@ function prospect(
     ip: 60,
     ageDiff: 0,
     ability,
-    promotionAggressiveness: 50,
     nextAssignment: higher,
     demotionAssignment: null,
     canDemote: false,
@@ -301,5 +301,101 @@ describe('pitching operations', () => {
 
   it('states the rule in its safeguards', () => {
     expect(result().safeguards.join(' ')).toMatch(/indeterminate/);
+  });
+});
+
+/**
+ * The same, end to end and across organizations: the prospects and operations
+ * endpoints are read under conservative, neutral and aggressive philosophies.
+ * Player Development's judgments must not move, and Operations must plan only
+ * what Player Development called defensible.
+ */
+describe('across organizational philosophies (end to end)', () => {
+  const setAggressiveness = async (value: number) => {
+    await request('/api/settings'); // starts the test server, which sets the port
+    const res = await fetch(`http://127.0.0.1:${process.env.OOTP_FO_PORT}/api/settings/philosophy/${ORG}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ manual: { promotionAggressiveness: value } }),
+    });
+    expect(res.ok).toBe(true);
+  };
+
+  const snapshot = async () => {
+    const prospects = await request(`/api/prospects/${ORG}`);
+    const judgments: Record<string, string[]> = {};
+    const defensible = new Set<string>();
+    for (const p of [...prospects.batters, ...prospects.pitchers] as Array<Record<string, any>>) {
+      judgments[String(p.player_id)] = p.assignments.evaluations.map(
+        (e: Record<string, any>) => `${e.kind}:${e.target.levelName}:${e.judgment}:${e.eligible}`
+      );
+      for (const e of p.assignments.evaluations as Array<Record<string, any>>) {
+        if (e.judgment === 'defensible') defensible.add(`${p.player_id}:${e.kind}`);
+      }
+    }
+    const moves = await request(`/api/minor-league-moves/${ORG}`);
+    const planned = new Set<string>();
+    for (const plan of [...moves.plans, ...(moves.pitching?.plans ?? [])] as Array<Record<string, any>>) {
+      for (const move of plan.moves as Array<Record<string, any>>) {
+        planned.add(`${move.playerId}:${move.kind}`);
+      }
+    }
+    return { judgments, defensible, planned };
+  };
+
+  it('gives Player Development the same judgments under every philosophy', async () => {
+    await setAggressiveness(0);
+    const conservative = await snapshot();
+    await setAggressiveness(50);
+    const neutral = await snapshot();
+    await setAggressiveness(100);
+    const aggressive = await snapshot();
+    expect(Object.keys(neutral.judgments).length).toBeGreaterThan(0);
+    expect(conservative.judgments).toEqual(neutral.judgments);
+    expect(aggressive.judgments).toEqual(neutral.judgments);
+  });
+
+  it('plans a level-changing move only when Player Development called it defensible', async () => {
+    for (const value of [0, 50, 100]) {
+      await setAggressiveness(value);
+      const { defensible, planned } = await snapshot();
+      for (const move of planned) {
+        if (move.endsWith(':same_level_reassignment')) continue;
+        expect(defensible.has(move), `${move} planned at aggressiveness ${value}`).toBe(true);
+      }
+    }
+  });
+
+  it('never plans an indefensible or indeterminate assignment, whatever the philosophy', async () => {
+    for (const value of [0, 50, 100]) {
+      await setAggressiveness(value);
+      const { planned, judgments } = await snapshot();
+      for (const id of [PROSPECT_UNKNOWN, PROSPECT_INDEFENSIBLE]) {
+        const evaluations = judgments[String(id)] ?? [];
+        expect(evaluations.length, `prospect ${id} was evaluated`).toBeGreaterThan(0);
+        for (const entry of evaluations) {
+          const [kind, , judgment] = entry.split(':');
+          if (judgment !== 'defensible') {
+            expect(planned.has(`${id}:${kind}`), `${entry} @ ${value}`).toBe(false);
+          }
+        }
+      }
+    }
+  });
+
+  it('exposes the organization\'s preference beside, not inside, the judgment', async () => {
+    await setAggressiveness(100);
+    const prospects = await request(`/api/prospects/${ORG}`);
+    const withPreference = (prospects.batters as Array<Record<string, any>>).find((p) => p.assignments.preference);
+    expect(withPreference).toBeDefined();
+    const summary = withPreference!.assignments.preference;
+    expect(summary).toMatchObject({ promotionAggressiveness: 100, stance: 'advancement' });
+    expect(summary).toHaveProperty('preferred');
+    expect(summary.options.every((o: Record<string, any>) => ['preferred', 'acceptable', 'disfavored'].includes(o.preference)))
+      .toBe(true);
+    // Nothing indefensible or indeterminate is ever a preferred option
+    for (const e of withPreference!.assignments.evaluations as Array<Record<string, any>>) {
+      if (e.judgment !== 'defensible') expect(e.preference).toBeNull();
+    }
   });
 });

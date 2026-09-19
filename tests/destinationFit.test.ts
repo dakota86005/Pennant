@@ -223,8 +223,7 @@ describe('destination fit applied to an assignment plan', () => {
   const planFor = (playerId: number, destinationTeams: Array<{ team: number }>) => {
     const decision = evaluateProspectDecision({
       kind: 'batter', primaryPerformanceDiff: 0.2, pa: 250, ageDiff: 0, ability: ability(50, 50),
-      promotionAggressiveness: 50,
-      nextAssignment: team(destinationTeams[0], 3, 'AA'),
+        nextAssignment: team(destinationTeams[0], 3, 'AA'),
       demotionAssignment: lower, canDemote: true,
     });
     const higher = destinationTeams.map((t, i) => team(t, 3 - i, `L${3 - i}`));

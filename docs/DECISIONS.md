@@ -55,7 +55,8 @@ Consequences:
 ## D-003 — Development constrains; philosophy prefers; operations solves
 
 **Status:** Accepted. **Implementation:** Implemented for the current farm
-assignment/operations work, with known gaps in the roadmap.
+assignment/operations work (authority boundary enforced structurally, D-019),
+with known gaps in the roadmap.
 
 Player Development determines which assignments or development decisions are
 defensible. Organizational Philosophy expresses preferences among defensible
@@ -71,14 +72,7 @@ Consequences:
 - The response must expose blockers, safeguards, and philosophy adjustments so
   the GM can understand why a proposal exists.
 
-**Known deviation (not yet corrected):** ordinary-promotion eligibility is
-gated on `promotionThreshold`, which is derived from the philosophy dimension
-`promotionAggressiveness`. Aggression can therefore move a player across the
-line between "not defensible" and "defensible", contrary to the second
-consequence above. Skip-level moves keep a hard floor and demotion is
-unaffected. Moving the philosophy influence off eligibility and onto ranking is
-a separate, behavior-changing correction; it is pinned by
-`tests/prospectAssignments.test.ts` so the change is deliberate.
+The former deviation from the second consequence is corrected; see D-019.
 
 ## D-004 — The user/GM makes the final decision
 
@@ -267,11 +261,9 @@ explicitly (`server/developmentJudgment.ts`):
 
 Consequences:
 
-- **Philosophy cannot resolve unknown evidence.** If a comparison is unknown
-  against the philosophy-free threshold it stays unknown against the club's own,
-  so an aggressive threshold cannot turn an indeterminate assessment into
-  authorization. (Philosophy's effect on determinate assessments is the
-  separate D-003 deviation.)
+- **Philosophy cannot resolve unknown evidence.** Player Development's
+  judgments never receive a philosophy (D-019), so no philosophy setting can
+  turn an indeterminate assessment into authorization or into a rejection.
 - **Operations must handle the third state.** `eligible` is true only for
   `defensible`; `eligible: false` does not mean rejected — read `judgment`.
   Position and pitching operations list an indeterminate candidate in
@@ -290,3 +282,60 @@ stamina is unknown keeps his current role as developmental role (flagged
 `structureEvidence: 'unknown'`); a comparison population below 25 is treated as
 not satisfied rather than unknown; neutral defaults for missing objective
 context (level-average age, K% baseline) are unchanged.
+
+## D-019 — Player Development authorizes; Organizational Philosophy only prefers
+
+**Status:** Accepted. **Implementation:** Present (`prospectDecision.ts`,
+`prospectAssignments.ts`, `assignmentPreference.ts`).
+
+Whether an assignment is developmentally defensible is a function of evidence
+and baseball-development rules. It is identical for every organization: for the
+same player, evidence, and destination, `defensible` / `indefensible` /
+`indeterminate` does not vary with philosophy. Organizational Philosophy
+expresses which of the DEFENSIBLE alternatives the organization prefers, and
+nothing else.
+
+Before this decision, `promotionAggressiveness` set the promotion threshold
+(76 ± 10) that ordinary-promotion and MLB-discussion eligibility, the skip-level
+requirement above its floor, and the recommendation bands were measured against.
+An aggressive organization could therefore call defensible a promotion a neutral
+one could not, and a conservative one could call indefensible what a neutral one
+could authorize. The threshold combined two concepts and is now split:
+
+- **Developmental (Player Development):** `development.promotionThreshold` —
+  a base readiness of 76 moved only by age relative to level. It gates ordinary
+  promotion and MLB discussion; a skip-level move needs ten more (never below 84,
+  with fixed performance, maturity and sample floors); a demotion rests on
+  objective production, sample and age. The 45-point minimum sample applies to
+  every organization.
+- **Preference (Philosophy):** `assignmentPreference.ts` runs after
+  authorization and destination fit, and only annotates. Among the defensible
+  promotion-direction assignments, plus staying (patience), aggressiveness
+  chooses how far up the challenge ordering the organization prefers to reach:
+  each defensible option is `preferred`, `acceptable`, or `disfavored`. A
+  disfavored assignment is exactly as defensible as a preferred one.
+
+Consequences:
+
+- Player Development modules (`prospectDecision`, `prospectAssignments`,
+  `destinationFit`, `developmentFit`, `developmentJudgment`) take no philosophy
+  and may not import or mention it; `tests/philosophyBoundary.test.ts` enforces
+  it statically and by behavior across philosophies.
+- Philosophy cannot authorize an indefensible assignment, cannot make a
+  defensible one indefensible, and cannot resolve an indeterminate one: an
+  indeterminate assignment is never ranked and is never read as "stay".
+- Demotion is not ranked: no philosophy dimension expresses demotion patience.
+- Minor League Operations receives the defensible set, the indeterminate set
+  separately, and the preference beside them (`assignments.preference`). It
+  optimizes within the defensible set and never plans anything else. Its own
+  philosophy-based ranking adjustments (`promotionAggressiveness`,
+  `prospectPreservation`, and others) apply only to candidates Player
+  Development has already authorized. Operations does not yet read the
+  preference object; when it does, it must keep preference inside the defensible
+  set and use it for ordering only, never as a cutoff.
+
+**Remaining gaps:** retention still adds a philosophy adjustment to its
+development score, which feeds release-candidate thresholds (a retention
+judgment, not assignment authorization, but it blends the two); Operations'
+same-level moves are ranked with philosophy-weighted costs.
+

@@ -18,6 +18,9 @@ import {
 import {
   applyDestinationFitToAssignments,
 } from './destinationFit.js';
+import {
+  expressAssignmentPreference,
+} from './assignmentPreference.js';
 
 export const orgRoutes = Router();
 
@@ -404,10 +407,19 @@ export function computeProspects(orgId: number): { batters: unknown[]; pitchers:
           ),
       });
 
+    /*
+     * Authorization first, with no philosophy in it: which assignments are
+     * developmentally defensible is the same for every organization. Only then
+     * does philosophy say which of the defensible ones this organization
+     * prefers. The preference annotates; it cannot change a judgment.
+     */
     const assignments =
-      applyDestinationFitToAssignments(
-        playerId,
-        rawAssignments
+      expressAssignmentPreference(
+        applyDestinationFitToAssignments(
+          playerId,
+          rawAssignments
+        ),
+        promotionAggressiveness
       );
 
     return {
@@ -493,7 +505,6 @@ export function computeProspects(orgId: number): { batters: unknown[]; pitchers:
         ip,
         ageDiff,
         ability,
-        promotionAggressiveness,
         nextAssignment: nextAssignmentFor(team.level),
         demotionAssignment: demotionAssignmentFor(team.level),
         canDemote: team.level !== lowestLevel,
@@ -540,7 +551,6 @@ export function computeProspects(orgId: number): { batters: unknown[]; pitchers:
         pa: s.pa,
         ageDiff,
         ability,
-        promotionAggressiveness,
         nextAssignment: nextAssignmentFor(team.level),
         demotionAssignment: demotionAssignmentFor(team.level),
         canDemote: team.level !== lowestLevel,

@@ -11,8 +11,8 @@ material implementation state changes.
   `a57fc63`.
 - Stack: TypeScript, React 18, Vite 6, Express 4, SQLite via
   `better-sqlite3`, Electron 41, and Vitest 4.
-- Validation at this snapshot: `npx tsc --noEmit` clean, `npm test` 67 files /
-  590 tests passing, `npm run build` succeeds.
+- Validation at this snapshot: `npx tsc --noEmit` clean, `npm test` 68 files /
+  624 tests passing, `npm run build` succeeds.
 - `origin/feature/mlb-operations` (a linear descendant of `main`, not merged)
   holds the MLB Operations work described in its own project-state document. It
   is an integration candidate and is not part of this snapshot.
@@ -114,8 +114,10 @@ Present on `main`:
 - Manual, staff, and hybrid modes in the stored type/normalizer.
 - A React Organizational Philosophy page and settings API for reading,
   updating, and resetting a profile.
-- Philosophy consumers in prospect promotion thresholds, position-player and
-  pitcher minor-league plan ranking, and retention scoring/pressure.
+- Philosophy consumers: preference among defensible assignments
+  (`assignmentPreference.ts`), position-player and pitcher minor-league plan
+  ranking, and retention scoring/pressure. Philosophy does not enter Player
+  Development's authorization (D-019).
 - Responses expose effective values and philosophy adjustments.
 
 Only **manual values are implemented as an actual source**. Staff/hybrid mode
@@ -128,8 +130,10 @@ trades, free agency, or other front-office models.
 Present on `main`:
 
 - Prospect decisions separate current-level performance, sample confidence,
-  age/level urgency, observed current-to-potential maturity, and organization
-  promotion aggression.
+  age/level urgency, and observed current-to-potential maturity, against
+  developmental thresholds that no philosophy can move. The organization's
+  promotion aggression is applied afterwards, as a preference among the
+  defensible assignments.
 - Assignment plans evaluate normal promotion, exceptional skip-level promotion,
   one-level demotion, and AAA-to-MLB discussion against the organization's
   actual affiliate ladder.
@@ -216,9 +220,10 @@ resolution across all organization-specific features is future work.
   have direct synthetic tests. Roster simulation, plan ranking, retention
   guardrails, and organization resolution do not, and the farm modules assume
   export columns the shared fixture lacks.
-- Ordinary-promotion eligibility depends on a philosophy-derived threshold, so
-  promotion aggressiveness can change whether a promotion is defensible
-  (D-003 known deviation).
+- Operations does not yet consume the per-assignment preference object; it ranks
+  with its own philosophy-weighted costs among defensible candidates. Retention
+  folds a philosophy adjustment into the development score behind
+  release-candidate thresholds.
 - Development thresholds are written for 20-80 and now receive normalized
   ratings; the scale itself is detected heuristically from the data, and whether
   fielding grades share it is an unverified assumption.

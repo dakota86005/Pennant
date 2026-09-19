@@ -40,6 +40,11 @@ decision, roadmap item, or project-state fact changes.
 - Player Development decides which assignments are defensible. Organizational
   Philosophy expresses preferences among defensible choices. Minor League
   Operations solves roster and assignment problems within both boundaries.
+- Philosophy never enters Player Development's judgments (`prospectDecision`,
+  `prospectAssignments`, `destinationFit`, `developmentFit`): no threshold,
+  requirement, or blocker may depend on it, and it is applied only afterwards in
+  `assignmentPreference.ts` to rank defensible assignments (D-019). Do not
+  recreate eligibility through ranking or cutoffs.
 - Recommendations are advisory. The user/GM makes the final decision. Do not
   add automatic OOTP transactions or save mutation as an incidental feature.
 - Organization-specific behavior should resolve the configured organization,

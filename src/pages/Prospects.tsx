@@ -71,12 +71,10 @@ interface ProspectDecision {
     readiness: number | null;
   };
 
-  organization: {
-    promotionAggressiveness: number;
-    basePromotionThreshold: number;
-    philosophyThresholdAdjustment: number;
-    ageThresholdAdjustment: number;
+  /** Developmental thresholds: evidence and age/level context, never philosophy. */
+  development: {
     promotionThreshold: number;
+    ageThresholdAdjustment: number;
   };
 
   recommendation:
@@ -149,6 +147,16 @@ interface ProspectAssignment {
     | 'indeterminate';
 
   eligible: boolean;
+
+  /**
+   * The organization's stance toward a DEFENSIBLE assignment. Not authorization:
+   * a disfavored assignment is exactly as defensible as a preferred one.
+   */
+  preference?:
+    | 'preferred'
+    | 'acceptable'
+    | 'disfavored'
+    | null;
 
   missingEvidence?: MissingEvidence[];
 
@@ -1222,6 +1230,17 @@ function AttentionCard({
                           ? 'Eligible'
                           : 'Not supported'}
                     </span>
+
+                    {assignment.preference && (
+                      <span>
+                        {' · '}
+                        {assignment.preference === 'preferred'
+                          ? 'Preferred by this organization'
+                          : assignment.preference === 'acceptable'
+                            ? 'Acceptable to this organization'
+                            : 'Less favored by this organization'}
+                      </span>
+                    )}
 
                     {(
                       assignment.missingEvidence ??

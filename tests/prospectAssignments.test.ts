@@ -38,7 +38,6 @@ function decide(overrides: Partial<ProspectDecisionInput> = {}, higher = [A, AA,
     pa: 250,
     ageDiff: 0,
     ability: ability(50, 50),
-    promotionAggressiveness: 50,
     nextAssignment: higher[0] ?? null,
     demotionAssignment: R,
     canDemote: true,
@@ -71,11 +70,11 @@ describe('ordinary promotion authorization', () => {
     expect(normal.recommendation).toBe('strong');
   });
 
-  it('blocks and explains when readiness is short of the organizational threshold', () => {
+  it('blocks and explains when readiness is short of the developmental threshold', () => {
     const [normal] = of(plan({ primaryPerformanceDiff: 0 }), 'normal_promotion');
     expect(normal.eligible).toBe(false);
     expect(normal.recommendation).toBe('not_recommended');
-    expect(normal.blockers.join(' ')).toMatch(/below the organizational promotion threshold/);
+    expect(normal.blockers.join(' ')).toMatch(/below the developmental promotion threshold/);
   });
 
   it('blocks on an immature sample even when readiness is high', () => {
@@ -142,15 +141,13 @@ describe('skip-level authorization', () => {
     expect(skip.blockers.join(' ')).toMatch(/below the skip-level requirement of 70/);
   });
 
-  it('keeps a hard readiness floor of 84 for even the most aggressive organization', () => {
-    const [skip] = of(plan({ promotionAggressiveness: 100 }), 'skip_level_promotion');
-    expect(skip.requirements.readiness).toBe(84);
-    expect(skip.eligible).toBe(false);
-  });
-
-  it('lets a conservative organization raise the skip bar above the floor', () => {
-    const [skip] = of(plan({ promotionAggressiveness: 0 }), 'skip_level_promotion');
-    expect(skip.requirements.readiness).toBe(96);
+  it('sits ten points above the developmental promotion threshold, with a hard floor of 84', () => {
+    // An older player has a lower ordinary threshold, but the skip requirement never drops below 84
+    const older = of(plan({ ageDiff: -5 }), 'skip_level_promotion')[0];
+    expect(older.requirements.readiness).toBe(84);
+    // A player young for the level has a higher one, and the skip requirement follows it
+    const younger = of(plan({ ageDiff: 5 }), 'skip_level_promotion')[0];
+    expect(younger.requirements.readiness).toBe(91);
   });
 
   it('is never evaluated straight to the majors by this engine', () => {
@@ -205,45 +202,6 @@ describe('the eligible set', () => {
   });
 });
 
-describe('philosophy versus hard developmental constraints (current behavior)', () => {
-  /*
-   * Ordinary promotion eligibility is currently gated on a philosophy-derived
-   * threshold, so promotion aggressiveness can move a player across the line.
-   * That is the boundary issue the philosophy-correction milestone addresses
-   * (docs/ROADMAP.md); it is pinned here so the change is deliberate and visible,
-   * not endorsed. The rules that must NOT move are asserted below it.
-   */
-  it('lets aggressiveness change ordinary promotion eligibility today', () => {
-    const borderline: Partial<ProspectDecisionInput> = { primaryPerformanceDiff: 0.06 };
-    expect(of(plan({ ...borderline, promotionAggressiveness: 0 }), 'normal_promotion')[0].eligible)
-      .toBe(false);
-    expect(of(plan({ ...borderline, promotionAggressiveness: 100 }), 'normal_promotion')[0].eligible)
-      .toBe(true);
-  });
-
-  it('cannot lower the sample requirement for any assignment', () => {
-    const [normal, skip] = of(plan({ pa: 60, primaryPerformanceDiff: 0.2, promotionAggressiveness: 100 }), 'normal_promotion')
-      .concat(of(plan({ pa: 60, primaryPerformanceDiff: 0.2, promotionAggressiveness: 100 }), 'skip_level_promotion'));
-    expect(normal.eligible).toBe(false);
-    expect(skip.eligible).toBe(false);
-  });
-
-  it('cannot make a skip-level move defensible without the skip-level evidence', () => {
-    for (const aggression of [0, 50, 100]) {
-      const [skip] = of(plan({ promotionAggressiveness: aggression }), 'skip_level_promotion');
-      expect(skip.eligible, `aggressiveness ${aggression}`).toBe(false);
-    }
-  });
-
-  it('cannot create or remove a demotion case', () => {
-    for (const aggression of [0, 50, 100]) {
-      expect(of(plan({ primaryPerformanceDiff: -0.2, pa: 200, promotionAggressiveness: aggression }), 'demotion')[0].eligible)
-        .toBe(true);
-      expect(of(plan({ promotionAggressiveness: aggression }), 'demotion')[0].eligible).toBe(false);
-    }
-  });
-});
-
 describe('missing rating evidence', () => {
   const unknownRatings = { ability: ability(null, null) };
 
@@ -281,7 +239,7 @@ describe('missing rating evidence', () => {
   it('still rejects when no possible rating could reach the threshold', () => {
     const [normal] = of(plan({ ...unknownRatings, primaryPerformanceDiff: 0 }), 'normal_promotion');
     expect(normal.judgment).toBe('indefensible');
-    expect(normal.blockers.join(' ')).toMatch(/below the organizational promotion threshold/);
+    expect(normal.blockers.join(' ')).toMatch(/below the developmental promotion threshold/);
   });
 
   it('leaves skip-level promotion indeterminate, with the maturity requirement unknown', () => {
@@ -308,27 +266,5 @@ describe('missing rating evidence', () => {
     expect(of(plan({ primaryPerformanceDiff: 0.2 }), 'skip_level_promotion')[0].judgment).toBe('defensible');
     expect(of(plan({ primaryPerformanceDiff: 0.2, ability: ability(30, 70) }), 'skip_level_promotion')[0].judgment)
       .toBe('indefensible');
-  });
-
-  it('does not let Organizational Philosophy convert an indeterminate result into authorization', () => {
-    /*
-     * Performance 88: readiness could be 71-89. Against the neutral threshold of
-     * 76 that is unknown, but an aggressive organization's threshold of 66 sits
-     * below the whole range, so a naive comparison would call it satisfied.
-     */
-    const straddling = { ability: ability(null, null), primaryPerformanceDiff: 0.152 };
-    for (const aggression of [0, 25, 50, 75, 100]) {
-      const p = plan({ ...straddling, promotionAggressiveness: aggression });
-      const [normal] = of(p, 'normal_promotion');
-      expect(normal.judgment, `aggressiveness ${aggression}`).not.toBe('defensible');
-      expect(p.eligible.filter((e) => e.direction === 'promotion'), `aggressiveness ${aggression}`)
-        .toEqual([]);
-    }
-    const aggressive = plan({ ...straddling, promotionAggressiveness: 100 });
-    expect(of(aggressive, 'normal_promotion')[0].judgment).toBe('indeterminate');
-    // Same evidence with the ratings KNOWN is decided by philosophy, as before
-    const known = { ability: ability(50, 50), primaryPerformanceDiff: 0.06 };
-    expect(of(plan({ ...known, promotionAggressiveness: 0 }), 'normal_promotion')[0].judgment).toBe('indefensible');
-    expect(of(plan({ ...known, promotionAggressiveness: 100 }), 'normal_promotion')[0].judgment).toBe('defensible');
   });
 });

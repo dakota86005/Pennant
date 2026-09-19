@@ -34,11 +34,10 @@ objective save facts + observed scouting evidence
              user/GM decides
 ```
 
-Organizational Philosophy never makes an indefensible move defensible. Roster
-pressure never manufactures a development case. (Known gap: today the ordinary
-promotion threshold is philosophy-derived, so aggression can move a player
-across the eligibility line. That is documented in D-003 and is a separate
-correction from the evidence boundary.) AI can explain, compare, and
+Organizational Philosophy never changes whether a move is defensible: Player
+Development's judgment is the same for every organization, and philosophy only
+says which of the defensible moves is preferred (D-019). Roster pressure never
+manufactures a development case. AI can explain, compare, and
 surface these results, but it must not replace the domain models or the GM.
 
 ## Runtime topology
@@ -204,9 +203,9 @@ Minor League Operations: plans = defensible only; rejected = indefensible;
 Retention: 'indeterminate' recommendation after objective guardrails
 ```
 
-Philosophy cannot resolve an unknown: it operates among defensible choices, and
-a comparison that is unknown against the philosophy-free threshold stays unknown
-under any philosophy.
+Philosophy cannot resolve an unknown: it never enters Player Development's
+judgments at all (see below), so an indeterminate assessment is indeterminate
+under every philosophy.
 
 ### Rating-field provenance
 
@@ -243,21 +242,42 @@ the tool ratings' scale is an assumption that cannot be verified.
 
 The prospect decision model evaluates current-level production, sample
 confidence, age/level urgency, observed current-to-potential maturity, and the
-actual affiliate ladder. Assignment evaluation then identifies normal,
-skip-level, demotion, or MLB-discussion destinations. Destination-fit compares
-observed tools with the actual destination league and gates exceptional skips.
+actual affiliate ladder against developmental thresholds: a base promotion
+readiness of 76 moved only by age relative to level, a skip-level requirement
+ten points higher with hard floors, and an objective demotion rule. Assignment
+evaluation then identifies normal, skip-level, demotion, or MLB-discussion
+destinations. Destination-fit compares observed tools with the actual
+destination league and gates exceptional skips.
 
-The output is a set of defensible assignments with reasons and blockers. It is
-not an instruction to move the player.
+The output is a set of defensible assignments with reasons and blockers, and a
+separate set of indeterminate ones. It is not an instruction to move the player.
+None of these modules receives, imports, or mentions Organizational Philosophy.
 
 ### Organizational Philosophy owns preferences
 
 Philosophy profiles are stored per OOTP organization. The current profile has
 manual values and policies; the persisted shape anticipates staff and hybrid
-modes, but staff-derived values are not implemented. Philosophy may change a
-threshold owned by the development policy (for example promotion aggression)
-or rank already-legal operational alternatives. It may not override hard
-guardrails, fabricate evidence, or conceal why a result changed.
+modes, but staff-derived values are not implemented.
+
+Philosophy acts only after Player Development, in `assignmentPreference.ts`:
+
+```text
+evidence -> prospectDecision -> prospectAssignments -> destinationFit
+              (development thresholds; no philosophy anywhere above)
+                                   |
+                                   v  defensible / indefensible / indeterminate
+                        expressAssignmentPreference(plan, promotionAggressiveness)
+                                   |
+                                   v  annotates only; judgments come out unchanged
+        evaluation.preference: preferred | acceptable | disfavored  (defensible only)
+        plan.preference: stance, preferred option, ranked defensible options
+```
+
+Among the defensible promotion-direction assignments, plus staying, promotion
+aggressiveness chooses how far up the challenge ordering the organization
+prefers to reach. It never touches a judgment, eligibility flag, constraint, or
+blocker; it ranks no indefensible or indeterminate assignment; and it does not
+rank demotion. It may not fabricate evidence or conceal why a result changed.
 
 ### Minor League Operations owns constrained roster solutions
 
@@ -265,8 +285,11 @@ Operations reads the real affiliate tree and active rosters, diagnoses body
 counts, defensive coverage, rotations, and bullpens, and searches for small
 sets of moves that improve a destination without making the source unhealthy.
 Same-level balancing has development-protection rules. Promotions/demotions
-must come from Player Development's eligible set. Philosophy adjusts the cost
-of viable alternatives, and the response exposes those adjustments.
+must come from Player Development's defensible set; indeterminate candidates are
+listed separately and never planned. Philosophy adjusts the cost of alternatives
+that are already defensible, and the response exposes those adjustments. The
+per-assignment preference object is exposed beside the judgments but Operations
+does not consume it yet.
 
 Retention similarly separates developmental value, organizational utility,
 roster pressure, transaction guardrails, and observed development. A release
