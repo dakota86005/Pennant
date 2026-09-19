@@ -27,8 +27,10 @@ across all features remains ongoing.
 
 ## D-002 — Preserve organizational knowledge and fog of war
 
-**Status:** Accepted. **Implementation:** Present in scouting/development paths;
-ongoing audit required elsewhere.
+**Status:** Accepted. **Implementation:** Enforced for Player Development and
+Minor League Operations through the scouted-evidence adapter (D-017); scouting
+history is present; pre-fork trade, contract, franchise, and roster surfaces
+still read `players_value` and are not yet audited.
 
 Subjective player-ability judgments must use the organization's/scouting
 director's observed ratings and development history. Hidden OOTP true-talent
@@ -68,6 +70,15 @@ Consequences:
   based on coverage, roster structure, source health, depth, and philosophy.
 - The response must expose blockers, safeguards, and philosophy adjustments so
   the GM can understand why a proposal exists.
+
+**Known deviation (not yet corrected):** ordinary-promotion eligibility is
+gated on `promotionThreshold`, which is derived from the philosophy dimension
+`promotionAggressiveness`. Aggression can therefore move a player across the
+line between "not defensible" and "defensible", contrary to the second
+consequence above. Skip-level moves keep a hard floor and demotion is
+unaffected. Moving the philosophy influence off eligibility and onto ranking is
+a separate, behavior-changing correction; it is pinned by
+`tests/prospectAssignments.test.ts` so the change is deliberate.
 
 ## D-004 — The user/GM makes the final decision
 
@@ -182,3 +193,53 @@ AI coding agents must inspect the worktree, preserve unrelated changes, avoid
 destructive Git commands, and never commit or push without explicit direction.
 They should make the smallest scoped change, validate it proportionally, and
 update durable documentation when a boundary or project-state fact changes.
+
+## D-017 — Subjective ability evidence comes only through the scouted-evidence adapter
+
+**Status:** Accepted. **Implementation:** Present for Player Development and
+Minor League Operations (`server/scoutedEvidence.ts`).
+
+`players_value.oa`, `players_value.pot`, and every other continuous
+`players_value` ability/talent field are **not** approved evidence for
+subjective ability or development judgments. The export carries no viewer
+organization, scouting-accuracy setting, or per-field visibility flag, and the
+one in-repo comparison against the game (commit `6ca89c8`) was made on a save a
+user reported at 100% scouting, where scouted and true grades coincide. A convenient exported field is
+not organization-visible merely because it is exported. Such a field may be
+approved only when its provenance is positively established as the
+human-managed organization's visible scouting evaluation.
+
+The approved source is the exported tool ratings (D-002): current
+`*_ratings_overall_*`, potential `*_ratings_talent_*`, stamina and pitch grades,
+and revealed fielding-position grades. That approval is by decision, not proof;
+every result carries `declared_organization_visible` /
+`not_verifiable_from_export`.
+
+Consequences:
+
+- One entry point. Development and operations code obtains a `ScoutedAbility`
+  from `loadScoutedAbilities`; it does not read rating columns, `players_value`,
+  or `gloves()` itself. `tests/evidenceBoundary.test.ts` fails if a guarded
+  module does, or if a new module starts reading `players_value`.
+- Missing stays missing. Absent, non-numeric, zero, and negative grades are
+  unknown. A composite (unweighted mean of the visible tools) exists only when
+  every tool is known. Potential is never inferred from current, or the reverse.
+  There is no fallback to `players_value`.
+- Ratings are normalized to 20-80 equivalents from the detected display scale,
+  so thresholds keep their meaning; the native scale is reported.
+- The composite is a Front Office summary, not OOTP's Overall. Pages that show
+  `cur`/`pot` from these paths therefore differ from the game card by design.
+- Consumers disclose incomplete evidence (`ratingsEvidence`,
+  `ratingEvidence`, destination-fit `unassessedComponents`). An unassessed core
+  tool blocks a skip-level move.
+- Objective facts (statistics, age, contracts, service time, options, injuries,
+  roster status, assignments, transactions) are unaffected and remain known.
+
+**Remaining gaps:** unknown ratings still enter the readiness and protection
+arithmetic as a neutral placeholder (maturity 50, rating 50, upside 50). It is
+disclosed but not removed, and it is not neutral in effect: an unknown player
+scores higher protection than a known average one. Scouting snapshots keep their
+own non-strict, native-scale composite. Pre-fork surfaces (trade, contracts,
+franchise, roster/player displays) still read `players_value`. Fielding-position
+grades are assumed to share the tool ratings' scale.
+

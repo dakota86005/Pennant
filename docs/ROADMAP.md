@@ -24,6 +24,9 @@ These are implementation baselines, not roadmap promises:
   surfaces described in [PROJECT_STATE.md](PROJECT_STATE.md).
 - Organization-specific manual philosophy profiles with dimensions and policy
   settings.
+- A scouted-evidence adapter that is the single source of ability evidence for
+  Player Development and Minor League Operations, with focused tests of the
+  development engines and a static boundary guard.
 - A farm-system architecture that separates prospect/development eligibility,
   destination fit, affiliate roster health, constrained position-player and
   pitcher proposals, and retention evidence.
@@ -33,6 +36,16 @@ These are implementation baselines, not roadmap promises:
 ## Next: make the organizational model dependable
 
 ### 1. Test the new domain boundaries directly
+
+Now covered with synthetic inputs: prospect decision thresholds, ordinary and
+skip-level authorization, demotion, destination-fit population and low-sample
+behavior, development protection, defensive assignment fit, philosophy profile
+mechanics, and the evidence adapter. Still uncovered: hitter and pitcher roster
+simulations, source-health safeguards and plan ranking, retention guardrails and
+advisory outcomes, and organization resolution. The farm modules also assume
+export columns (`fatigue_points`, `must_be_active`, and others) the shared
+fixture does not carry, so their endpoints need a fuller fixture or
+schema-tolerant queries.
 
 Add focused synthetic coverage for:
 
@@ -59,18 +72,35 @@ in organization-specific routes, background jobs, exports, and AI tools.
 Continue allowing deliberate organization switching, while removing the need
 for routine manual IDs.
 
-### 3. Complete rating-scale and fog-of-war audits
+### 3. Finish the fog-of-war audit
 
-The general UI detects the save's rating scale, but parts of the newer farm
-logic use 20–80 constants and thresholds. Normalize observed ratings through a
-shared scale-aware adapter, then test 20–80 and alternate OOTP scales.
+Done for Player Development and Minor League Operations (D-017): one
+scouted-evidence adapter, scale normalization, strict missing handling, and a
+static guard. Remaining:
 
-Audit every subjective player judgment to document which exported scouting
-field it consumes. Ensure missing grades remain missing and no hidden
-true-talent source enters valuation, development, trade, contract, draft, or
-AI context.
+- Decide what should replace the neutral placeholder that unknown ratings still
+  enter as in readiness (maturity 50) and protection (rating 50, upside 50).
+- Route scouting snapshots (`rating_snapshots.cur`/`pot`) through the same
+  composite, or record their aggregation method, so history and current level
+  share one definition.
+- Audit trade, contract, free-agent, franchise, roster, and player-card
+  surfaces, which still read `players_value`. Each is a subjective judgment or a
+  display that must be either moved to approved evidence or labelled.
+- Establish, or keep declining to assume, whether `players_value.oa`/`pot` are
+  the organization's scouted view. That needs an export from a save at
+  imperfect scouting compared with the in-game card; the repository cannot
+  settle it.
+- Verify whether fielding-position grades share the tool ratings' display scale.
+- Keep AI context free of hidden or provenance-uncertain ratings.
 
-### 4. Finish farm-assignment edge cases
+### 4. Correct the philosophy/eligibility boundary
+
+Ordinary-promotion eligibility currently depends on a philosophy-derived
+threshold (D-003 known deviation). Make Player Development's eligibility
+independent of philosophy and let philosophy rank or gate only among defensible
+choices, then update `tests/prospectAssignments.test.ts` deliberately.
+
+### 5. Finish farm-assignment edge cases
 
 - Model ACL/DSL and other same-level Rookie environments explicitly; current
   operations defer Rookie-level balancing.
@@ -81,7 +111,7 @@ AI context.
 - Add a manual "protect this player" control using the reservation already in
   the development-protection model.
 
-### 5. Add the MLB opportunity layer
+### 6. Add the MLB opportunity layer
 
 AAA-to-MLB is currently surfaced as a discussion, while direct skip-level MLB
 moves are intentionally excluded from the minor-league engine. Build a separate

@@ -1,26 +1,26 @@
 # Project state
 
-Point-in-time snapshot from repository inspection on **2026-08-22**. Verify
+Point-in-time snapshot from repository inspection on **2026-09-19**. Verify
 this document against the current worktree before relying on it; update it when
 material implementation state changes.
 
 ## Repository snapshot
 
 - Package: `ootp-front-office` version `0.27.2`.
-- Inspected branch: `feature/organizational-philosophy`.
-- Inspected HEAD: `0d76be3` (`feat: rebuild player development workspace`).
+- Inspected branch: `feature/evidence-boundary`, created from `main` at
+  `a57fc63`.
 - Stack: TypeScript, React 18, Vite 6, Express 4, SQLite via
   `better-sqlite3`, Electron 41, and Vitest 4.
-- Before this documentation work, the worktree already had uncommitted
-  application changes in `server/history.ts`, `src/pages/Development.tsx`, and
-  `src/styles.css`. Those changes were inspected but not modified by the
-  documentation task.
+- Validation at this snapshot: `npx tsc --noEmit` clean, `npm test` 66 files /
+  550 tests passing, `npm run build` succeeds.
+- `origin/feature/mlb-operations` (a linear descendant of `main`, not merged)
+  holds the MLB Operations work described in its own project-state document. It
+  is an integration candidate and is not part of this snapshot.
 
 The package version and latest changelog identify `0.27.2` as the release
-baseline. The inspected feature branch contains substantial organizational
-philosophy and farm-system work beyond that release description. Branch code
-and uncommitted work should not be described as a shipped release without a
-release/tag check.
+baseline. `main` contains substantial organizational philosophy, farm-system,
+and scouted-development work beyond that release description. Branch code should
+not be described as a shipped release without a release/tag check.
 
 ## Existing documentation and agent configuration
 
@@ -107,7 +107,7 @@ history domain outputs.
 
 ## Implemented organizational philosophy
 
-Present on the inspected feature branch:
+Present on `main`:
 
 - A per-organization versioned profile persisted in local settings.
 - Fifteen 0–100 preference dimensions plus explicit contract/trade policies.
@@ -125,7 +125,7 @@ trades, free agency, or other front-office models.
 
 ## Implemented player-development and farm operations
 
-Present on the inspected feature branch:
+Present on `main`:
 
 - Prospect decisions separate current-level performance, sample confidence,
   age/level urgency, observed current-to-potential maturity, and organization
@@ -153,13 +153,40 @@ Present on the inspected feature branch:
 - Farm Overview, Decisions, and Affiliates React workspaces surface these
   results.
 
-The current uncommitted application work adds a full scouting-history API and
-substantially rebuilds the Scouted Development page around observed snapshots,
-peer pace, rating movement, and explicit fog-of-war language. Focused follow-up
-work keeps the visible and calculated history organization-scoped, includes the
-new payloads in static exports, handles immature history without an empty default
-view, and adds regression coverage for those boundaries. Treat all of this as
-active work, not a released feature.
+The scouted-development work adds a full scouting-history API and a Scouted
+Development page built on observed snapshots, peer pace, rating movement, and
+explicit fog-of-war language. The visible and calculated history is
+organization-scoped, static exports carry the payloads, and focused regression
+tests cover those boundaries.
+
+## Implemented evidence boundary
+
+Present on this branch (D-017):
+
+- `server/scoutedEvidence.ts` is the single source of ability evidence for
+  Player Development and Minor League Operations. It reads the exported tool
+  ratings only, builds strict composites (all tools known or none), keeps
+  missing values missing, normalizes any detected OOTP display scale to 20-80,
+  reports provenance and the resolved viewer organization, and returns branded
+  `ScoutedAbility` values.
+- `players_value` ability/talent fields are no longer read by any development or
+  operations module and are never a fallback. Migrated consumers: prospect
+  decisions and the depth chart (`org.ts`), `minorLeagueMoves`,
+  `minorLeaguePitchingOperations`, `minorLeagueRetention`,
+  `minorLeagueRoster`, `pitcherRosterSimulation`, and `destinationFit`.
+- Decisions and protection disclose incomplete rating evidence. Destination fit
+  no longer reads a missing grade as zero, lists unassessed tools, and blocks a
+  skip-level move on an unevaluated core tool.
+- `tests/evidenceBoundary.test.ts` statically forbids guarded modules from
+  regaining a direct rating source and pins the set of modules allowed to read
+  `players_value`.
+
+Not yet done: unknown ratings still enter readiness and protection as a neutral
+placeholder; scouting snapshots use their own composite; trade, contract,
+franchise, roster, and player-card surfaces still read `players_value`; whether
+`players_value.oa`/`pot` are the organization's scouted view is unknowable from
+the repository. The provenance of every rating field is tabulated in
+[ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Current organization resolution
 
@@ -177,12 +204,17 @@ resolution across all organization-specific features is future work.
 
 ## Known gaps and constraints
 
-- Dedicated coverage for the new philosophy/development/operations modules is
-  still incomplete. Scouted Development now has focused history, presentation,
-  and static-export regression tests; broader philosophy and operations
-  boundaries still need the coverage described in the roadmap.
-- Some newer development and coverage thresholds assume a 20–80 scouting scale,
-  while other parts of the app detect and display alternate OOTP scales.
+- Player Development mechanics (readiness, assignment authorization, demotion,
+  destination fit, protection, philosophy profiles) and the evidence adapter now
+  have direct synthetic tests. Roster simulation, plan ranking, retention
+  guardrails, and organization resolution do not, and the farm modules assume
+  export columns the shared fixture lacks.
+- Ordinary-promotion eligibility depends on a philosophy-derived threshold, so
+  promotion aggressiveness can change whether a promotion is defensible
+  (D-003 known deviation).
+- Development thresholds are written for 20-80 and now receive normalized
+  ratings; the scale itself is detected heuristically from the data, and whether
+  fielding grades share it is an unverified assumption.
 - Rookie-level ACL/DSL movement is explicitly deferred until eligibility and
   environment rules are modeled.
 - AAA-to-MLB is a discussion rather than a full opportunity decision; direct

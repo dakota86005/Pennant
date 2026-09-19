@@ -35,7 +35,10 @@ objective save facts + observed scouting evidence
 ```
 
 Organizational Philosophy never makes an indefensible move defensible. Roster
-pressure never manufactures a development case. AI can explain, compare, and
+pressure never manufactures a development case. (Known gap: today the ordinary
+promotion threshold is philosophy-derived, so aggression can move a player
+across the eligibility line. That is documented in D-003 and is a separate
+correction from the evidence boundary.) AI can explain, compare, and
 surface these results, but it must not replace the domain models or the GM.
 
 ## Runtime topology
@@ -109,6 +112,7 @@ artifact, not an alternative application backend.
 | Import and save discovery | `server/paths.ts`, `importer.ts`, `watcher.ts`, and `api.ts` find OOTP 27 saves, import CSVs, report progress, and refresh on new exports. | Do not parse or mutate binary OOTP saves. |
 | Database compatibility | `server/db.ts` discovers available tables and columns; query modules adapt to export differences. | Do not hard-code a single save's schema without a guarded fallback. |
 | Domain API | Express routers in `server/*.ts` compute rosters, player dossiers, standings, schedules, stats, contracts, payroll, trades, development, and other front-office reads. | Domain logic belongs here, not duplicated in React or AI prompts. |
+| Scouted evidence | `scoutedEvidence.ts` is the only reader of ability ratings for development and operations judgments. It returns branded `ScoutedAbility` evidence with provenance, viewer, scale, and what is missing. | Nothing in Player Development or Minor League Operations may read a rating column or `players_value` directly; `tests/evidenceBoundary.test.ts` enforces it. |
 | Player Development | `org.ts`, `prospectDecision.ts`, `prospectAssignments.ts`, `destinationFit.ts`, `developmentFit.ts`, and scouting-history functions evaluate evidence, developmental protection, legal assignments, and destination fit. | This layer determines defensibility; it does not choose transactions for the GM. |
 | Organizational Philosophy | `philosophy.ts` defines organization-specific dimensions/policies; `settings.ts` persists and resolves profiles; `Philosophy.tsx` edits them. | Philosophy ranks or adjusts choices after hard baseball/development constraints. It is not player evidence. |
 | Minor League Operations | `minorLeagueRoster.ts`, `minorLeagueMoves.ts`, `pitcherRosterSimulation.ts`, `minorLeaguePitchingOperations.ts`, and `minorLeagueRetention.ts` diagnose affiliate structure and propose assignment/retention responses. | Level-changing moves must already be authorized by Player Development. Outputs are read-only recommendations. |
@@ -144,6 +148,65 @@ grade must remain unknown; do not replace it with a league lookup, another
 organization's view, or a confident AI guess. Rating movement means the
 organization's observed evaluation changed; it may reflect development,
 scouting revision, or both.
+
+### The scouted-evidence adapter
+
+`server/scoutedEvidence.ts` is the single entry point for ability evidence in
+Player Development and Minor League Operations (D-017). Callers decide *which*
+players (a roster, an affiliate, a league population — objective facts) and the
+adapter decides what their ratings are.
+
+- **Approved:** the exported tool ratings (`*_ratings_overall_*` current,
+  `*_ratings_talent_*` potential), stamina and pitch grades, and revealed
+  fielding-position grades (`gloves.ts`: a current grade above zero is the only
+  visibility signal the export offers).
+- **Prohibited:** every continuous `players_value` ability/talent field. They
+  are never read for a development or operations judgment and are never a
+  fallback.
+- **Composite:** current and potential are the unweighted mean of the visible
+  tools (hitters: contact, gap, power, eye, avoid-K; pitchers: stuff, movement,
+  control). It is a Front Office summary of visible tools, not OOTP's weighted,
+  position-aware Overall, and it exists only when *every* tool is known.
+- **Missing stays missing:** absent, non-numeric, zero, or negative grades are
+  unknown. Consumers receive `null` and a `status` of `complete`, `partial`, or
+  `unknown`, plus which tools are missing.
+- **Scale:** ratings are normalized to 20-80 equivalents so thresholds hold on
+  any OOTP display scale; the native scale is reported. See the limits below.
+- **Viewer and provenance:** every result names its provenance
+  (`declared_organization_visible`, `not_verifiable_from_export`) and the
+  resolved viewer organization (the single `human_team = 1` club, or
+  unresolved).
+- **Type barrier:** `evaluateProspectDecision` and
+  `evaluateDevelopmentProtection` take a `ScoutedAbility`, not numbers.
+
+### Rating-field provenance
+
+What the repository can and cannot establish. "Declared" means an
+owner-accepted decision (D-002) names the field as the organization's scouted
+evidence; the export itself proves nothing about visibility.
+
+| Field(s) | Origin | Status |
+|---|---|---|
+| `players_batting.batting_ratings_overall_*`, `players_pitching.pitching_ratings_overall_*` (current tool grades) | Exported verbatim by the importer. Upstream describes ratings as "your scouts' opinions"; D-002 declares them the scouted current grade. | **Declared visible; not verifiable.** Approved. |
+| `*_ratings_talent_*` (potential tool grades) | As above; the name says "talent" but D-002 treats it as the visible scouted potential. | **Declared visible; not verifiable.** Approved. |
+| `pitching_ratings_misc_stamina`, `pitching_ratings_pitches_*` | Exported verbatim. Nothing separates them from the other tool grades. | **Declared with the tools; not verifiable.** Approved. |
+| `players_fielding.fielding_rating_pos{n}` (current) | Exported. Checked against one in-game player card (commit `3af3aea`): the game shows a grade only where the export's current grade is above zero. | **Visible where > 0** (one observation). Approved. |
+| `players_fielding.fielding_rating_pos{n}_pot` | Exported for every position, including ones the game withholds. The same commit found ceilings in the export that the game does not show. | **Not visible where current is 0.** Used only for revealed positions. Shows the export is not uniformly fogged. |
+| `players_fielding.fielding_ratings_*` (range, arm, …) | Exported. | **Declared with the tools; not verifiable.** Approved via `gloves.ts`. |
+| `running_ratings_speed` | Exported. Not consumed by any development judgment; stored in scouting snapshots. | **UNKNOWN.** |
+| `players_value.oa`, `pot` | OOTP's printed Overall/Potential for every player in the league. The only in-repo check (commit `6ca89c8`) was made on a save a user reported at **100% scouting**, where scouted and true grades coincide, so it cannot separate them. | **UNKNOWN. Prohibited.** |
+| `players_value.oa_rating`, `pot_rating` | Exactly `round(oa/5)*5` (commit `6ca89c8`). | **UNKNOWN** (derived from `oa`/`pot`). Prohibited. |
+| `players_value.overall_value`, `talent_value`, `offensive_value*`, `pitching_value` | OOTP's continuous club-value figures; upstream notes playing time is baked into `overall_value`. A code comment calls `talent_value` "scouted"; nothing supports that. | **UNKNOWN. Prohibited.** |
+| `leagues.avg_rating_*` | League-wide aggregates, shown as context by destination fit. Not a judgment input. | **UNKNOWN** provenance. Context only. |
+| `rating_snapshots.cur`, `pot` | Derived by Front Office from the approved tool columns at import (unweighted mean, partial averages allowed, native scale). | **Derived.** Not yet routed through the adapter. |
+| Viewer organization | Not encoded anywhere in the import. `teams.human_team` marks the human-managed club; `coaches.scout_*` are staff attributes with no accuracy semantics. | **Not encoded.** The adapter uses `human_team`, or reports unresolved. |
+| Scouting accuracy setting | Not exported. | **UNKNOWN.** |
+
+The rating scale is the user's OOTP display setting (20-80, 1-20, 1-10, 2-8, or
+1-5). No column carries it, so `ratingScaleMax()` reads the largest grade in
+four rating columns and snaps it to a known scale. That varies by save and
+user configuration, and is a heuristic; whether fielding-position grades share
+the tool ratings' scale is an assumption that cannot be verified.
 
 ## Development, philosophy, and operations
 

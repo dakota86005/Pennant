@@ -26,6 +26,11 @@ decision, roadmap item, or project-state fact changes.
   ratings and its persisted scouting history. Never substitute hidden OOTP
   true-talent values or erase fog of war. Missing scouting evidence stays
   missing.
+- Read ability ratings for Player Development and Minor League Operations only
+  through `server/scoutedEvidence.ts`. Never read `players_value` (`oa`, `pot`,
+  `overall_value`, `talent_value`, ...) or a rating column for those judgments,
+  and never fall back to them; see D-017. `tests/evidenceBoundary.test.ts`
+  enforces it.
 - Statistics, contracts, service time, injuries, roster status, age, and
   transactions are objective save facts and may be treated as known.
 - Player Development decides which assignments are defensible. Organizational

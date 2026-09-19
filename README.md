@@ -58,6 +58,13 @@ developmental trajectory use the organization's exported scouting ratings and
 persisted scouting-history observations. They do not use hidden OOTP
 true-talent values. Missing scouting evidence remains missing.
 
+Farm and development pages read ability only through one evidence adapter,
+which uses the exported tool ratings (not OOTP's own Overall/Potential values).
+Their current and potential figures are therefore a Front Office summary of the
+visible tools, on a 20-80 scale whatever OOTP scale the save displays, and will
+not always match the number on the in-game player card. Where a grade is not
+exported the page says the evidence is incomplete instead of filling it in.
+
 Objective facts may be treated as known when present in the export: statistics,
 contracts, service time, age, injuries, roster status, and recorded
 transactions. Rating movement represents a change in the organization's
