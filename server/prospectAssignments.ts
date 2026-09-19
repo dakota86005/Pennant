@@ -3,6 +3,14 @@ import type {
   ProspectNextAssignment,
 } from './prospectDecision.js';
 
+import {
+  atLeastWithoutPhilosophyResolution,
+  judgmentOf,
+  type ConstraintState,
+  type DevelopmentalJudgment,
+  type MissingEvidence,
+} from './developmentJudgment.js';
+
 export type ProspectAssignmentKind =
   | 'normal_promotion'
   | 'skip_level_promotion'
@@ -14,7 +22,30 @@ export type ProspectAssignmentRecommendation =
   | 'consider'
   | 'strong'
   | 'exceptional'
-  | 'mlb_discussion';
+  | 'mlb_discussion'
+  /** Player Development cannot yet say; see `judgment` and `missingEvidence`. */
+  | 'indeterminate';
+
+/**
+ * One requirement an assignment must meet, and whether the evidence says it is.
+ * A constraint that `requiresSubjectiveEvidence` is `unknown` while the
+ * organization-visible ratings it depends on are missing.
+ */
+export interface AssignmentConstraint {
+  id:
+    | 'readiness'
+    | 'performance'
+    | 'ratings_maturity'
+    | 'sample_confidence'
+    | 'demotion_case'
+    | 'engine_scope'
+    | 'destination_fit';
+
+  label: string;
+  state: ConstraintState;
+  requiresSubjectiveEvidence: boolean;
+  detail: string;
+}
 
 export interface ProspectAssignmentEvaluation {
   kind: ProspectAssignmentKind;
@@ -31,13 +62,32 @@ export interface ProspectAssignmentEvaluation {
    */
   levelsSkipped: number;
 
+  /**
+   * Player Development's conclusion. `indeterminate` means a required
+   * organization-visible rating is missing and the answer depends on it: the
+   * assignment is neither approved nor rejected. It is not a hold, and the GM
+   * may still choose to act.
+   */
+  judgment: DevelopmentalJudgment;
+
+  /**
+   * True only when `judgment` is `defensible`. `eligible: false` therefore does
+   * NOT mean rejected — read `judgment`; `blockers` explains only a rejection.
+   */
   eligible: boolean;
+
   recommendation: ProspectAssignmentRecommendation;
 
+  /** Every requirement, with its state. Objective evidence is shown either way. */
+  constraints: AssignmentConstraint[];
+
+  /** What evidence Player Development lacks; empty unless `indeterminate`. */
+  missingEvidence: MissingEvidence[];
+
   evidence: {
-    readiness: number;
+    readiness: number | null;
     performance: number;
-    ratingsMaturity: number;
+    ratingsMaturity: number | null;
     sampleConfidence: number;
   };
 
@@ -60,6 +110,13 @@ export interface ProspectAssignmentPlan {
    * Minor-league operations may choose among these, but may not create others.
    */
   eligible: ProspectAssignmentEvaluation[];
+
+  /**
+   * Assignments Player Development cannot yet judge. Operations may surface
+   * them and explain the roster need, but must not treat them as approved —
+   * or as rejected.
+   */
+  indeterminate: ProspectAssignmentEvaluation[];
 }
 
 export interface ProspectAssignmentInput {
@@ -79,6 +136,54 @@ export interface ProspectAssignmentInput {
   lowerAssignments: ProspectNextAssignment[];
 }
 
+/**
+ * Turns constraints into the evaluation fields that depend on them. Blockers
+ * are the constraints known NOT to be met; unknown ones become missing
+ * evidence and never a blocker.
+ */
+function conclude(
+  decision: ProspectDecision,
+  constraints: AssignmentConstraint[]
+): {
+  judgment: DevelopmentalJudgment;
+  blockers: string[];
+  missingEvidence: MissingEvidence[];
+} {
+  const judgment =
+    judgmentOf(
+      constraints.map(
+        (constraint) => constraint.state
+      )
+    );
+
+  const ratingsUnknown =
+    constraints.some(
+      (constraint) =>
+        constraint.state === 'unknown' &&
+        constraint.requiresSubjectiveEvidence
+    );
+
+  return {
+    judgment,
+
+    blockers:
+      constraints
+        .filter(
+          (constraint) =>
+            constraint.state === 'not_satisfied'
+        )
+        .map(
+          (constraint) =>
+            constraint.detail
+        ),
+
+    missingEvidence:
+      judgment === 'indeterminate' && ratingsUnknown
+        ? decision.missingEvidence
+        : [],
+  };
+}
+
 function promotionEvaluation(
   decision: ProspectDecision,
   target: ProspectNextAssignment,
@@ -86,6 +191,9 @@ function promotionEvaluation(
 ): ProspectAssignmentEvaluation {
   const readiness =
     decision.evidence.readiness;
+
+  const readinessRange =
+    decision.evidence.readinessRange;
 
   const performance =
     decision.evidence.performance;
@@ -99,8 +207,44 @@ function promotionEvaluation(
   const baseThreshold =
     decision.organization.promotionThreshold;
 
+  const neutralBaseThreshold =
+    decision.organization.neutralPromotionThreshold;
+
   const reasons: string[] = [];
-  const blockers: string[] = [];
+
+  const constraints: AssignmentConstraint[] = [];
+
+  /*
+   * A comparison against the readiness the evidence supports. Unknown while
+   * ratings are, and never settled by the philosophy-adjusted threshold.
+   */
+  const readinessConstraint = (
+    required: number,
+    neutralRequired: number,
+    unmetText: string,
+    unknownText: string,
+    metText: string
+  ): AssignmentConstraint => {
+    const state =
+      atLeastWithoutPhilosophyResolution(
+        readinessRange,
+        required,
+        neutralRequired
+      );
+
+    return {
+      id: 'readiness',
+      label: 'Readiness',
+      state,
+      requiresSubjectiveEvidence: true,
+      detail:
+        state === 'satisfied'
+          ? metText
+          : state === 'not_satisfied'
+            ? unmetText
+            : unknownText,
+    };
+  };
 
   /*
    * The nearest higher assignment is the ordinary promotion.
@@ -111,19 +255,35 @@ function promotionEvaluation(
     const requiredReadiness = baseThreshold;
     const requiredSample = 45;
 
-    if (readiness < requiredReadiness) {
-      blockers.push(
-        `Readiness ${readiness} is below the organizational promotion threshold of ${requiredReadiness}.`
-      );
-    }
+    constraints.push(
+      readinessConstraint(
+        requiredReadiness,
+        neutralBaseThreshold,
+        `Readiness ${readiness ?? `at most ${readinessRange.max}`} is below the organizational promotion threshold of ${requiredReadiness}.`,
+        `Readiness cannot be established: it depends on organization-visible ratings that are unavailable (it lies between ${readinessRange.min} and ${readinessRange.max} against a threshold of ${requiredReadiness}).`,
+        `Readiness ${readiness ?? readinessRange.min} clears the organizational threshold of ${requiredReadiness}.`
+      )
+    );
 
-    if (sample < requiredSample) {
-      blockers.push(
-        `Current-level evidence confidence ${sample} is below the minimum of ${requiredSample}.`
-      );
-    }
+    constraints.push({
+      id: 'sample_confidence',
+      label: 'Evidence confidence',
+      state:
+        sample >= requiredSample
+          ? 'satisfied'
+          : 'not_satisfied',
+      requiresSubjectiveEvidence: false,
+      detail:
+        sample >= requiredSample
+          ? `Current-level evidence confidence ${sample} meets the minimum of ${requiredSample}.`
+          : `Current-level evidence confidence ${sample} is below the minimum of ${requiredSample}.`,
+    });
 
-    const eligible = blockers.length === 0;
+    const { judgment, blockers, missingEvidence } =
+      conclude(decision, constraints);
+
+    const eligible =
+      judgment === 'defensible';
 
     if (eligible) {
       reasons.push(
@@ -137,31 +297,39 @@ function promotionEvaluation(
       }
     }
 
+    const evidence = {
+      readiness,
+      performance,
+      ratingsMaturity,
+      sampleConfidence: sample,
+    };
+
+    const requirements = {
+      readiness: requiredReadiness,
+      performance: null,
+      ratingsMaturity: null,
+      sampleConfidence: requiredSample,
+    };
+
     if (target.isMajorLeague) {
       return {
         kind: 'mlb_discussion',
         direction: 'promotion',
         target,
         levelsSkipped: 0,
+        judgment,
         eligible,
         recommendation:
-          eligible
+          judgment === 'defensible'
             ? 'mlb_discussion'
-            : 'not_recommended',
+            : judgment === 'indeterminate'
+              ? 'indeterminate'
+              : 'not_recommended',
 
-        evidence: {
-          readiness,
-          performance,
-          ratingsMaturity,
-          sampleConfidence: sample,
-        },
-
-        requirements: {
-          readiness: requiredReadiness,
-          performance: null,
-          ratingsMaturity: null,
-          sampleConfidence: requiredSample,
-        },
+        constraints,
+        missingEvidence,
+        evidence,
+        requirements,
 
         reasons,
         blockers,
@@ -170,6 +338,7 @@ function promotionEvaluation(
 
     const strong =
       eligible &&
+      readiness !== null &&
       readiness >= requiredReadiness + 8 &&
       sample >= 60;
 
@@ -178,28 +347,22 @@ function promotionEvaluation(
       direction: 'promotion',
       target,
       levelsSkipped: 0,
+      judgment,
       eligible,
 
       recommendation:
-        !eligible
-          ? 'not_recommended'
-          : strong
-            ? 'strong'
-            : 'consider',
+        judgment === 'indeterminate'
+          ? 'indeterminate'
+          : !eligible
+            ? 'not_recommended'
+            : strong
+              ? 'strong'
+              : 'consider',
 
-      evidence: {
-        readiness,
-        performance,
-        ratingsMaturity,
-        sampleConfidence: sample,
-      },
-
-      requirements: {
-        readiness: requiredReadiness,
-        performance: null,
-        ratingsMaturity: null,
-        sampleConfidence: requiredSample,
-      },
+      constraints,
+      missingEvidence,
+      evidence,
+      requirements,
 
       reasons,
       blockers,
@@ -223,13 +386,22 @@ function promotionEvaluation(
    */
   const skipped = index;
 
-  const requiredReadiness = Math.min(
-    97,
-    Math.max(
-      84 + (skipped - 1) * 6,
-      baseThreshold + 10 + (skipped - 1) * 6
-    )
-  );
+  const requiredReadinessFor = (
+    base: number
+  ): number =>
+    Math.min(
+      97,
+      Math.max(
+        84 + (skipped - 1) * 6,
+        base + 10 + (skipped - 1) * 6
+      )
+    );
+
+  const requiredReadiness =
+    requiredReadinessFor(baseThreshold);
+
+  const neutralRequiredReadiness =
+    requiredReadinessFor(neutralBaseThreshold);
 
   const requiredPerformance = Math.min(
     95,
@@ -253,53 +425,82 @@ function promotionEvaluation(
    * questions and belongs to the major-league opportunity engine.
    */
   if (target.isMajorLeague) {
-    blockers.push(
-      'Skip-level promotion directly to MLB is not evaluated by the minor-league development engine.'
-    );
+    constraints.push({
+      id: 'engine_scope',
+      label: 'Engine scope',
+      state: 'not_satisfied',
+      requiresSubjectiveEvidence: false,
+      detail:
+        'Skip-level promotion directly to MLB is not evaluated by the minor-league development engine.',
+    });
   }
 
-  if (readiness < requiredReadiness) {
-    blockers.push(
-      `Readiness ${readiness} is below the skip-level requirement of ${requiredReadiness}.`
-    );
-  }
+  constraints.push(
+    readinessConstraint(
+      requiredReadiness,
+      neutralRequiredReadiness,
+      `Readiness ${readiness ?? `at most ${readinessRange.max}`} is below the skip-level requirement of ${requiredReadiness}.`,
+      `Readiness cannot be established: it depends on organization-visible ratings that are unavailable (it lies between ${readinessRange.min} and ${readinessRange.max} against a requirement of ${requiredReadiness}).`,
+      `Readiness ${readiness ?? readinessRange.min} clears the exceptional assignment threshold of ${requiredReadiness}.`
+    )
+  );
 
-  if (performance < requiredPerformance) {
-    blockers.push(
-      `Performance evidence ${performance} is below the skip-level requirement of ${requiredPerformance}.`
-    );
-  }
+  constraints.push({
+    id: 'performance',
+    label: 'Performance',
+    state:
+      performance >= requiredPerformance
+        ? 'satisfied'
+        : 'not_satisfied',
+    requiresSubjectiveEvidence: false,
+    detail:
+      performance >= requiredPerformance
+        ? `Performance evidence ${performance} is strong enough to support bypassing ${skipped} existing level${skipped === 1 ? '' : 's'}.`
+        : `Performance evidence ${performance} is below the skip-level requirement of ${requiredPerformance}.`,
+  });
 
-  if (ratingsMaturity < requiredMaturity) {
-    blockers.push(
-      `Ratings maturity ${ratingsMaturity} suggests too much projected development remains to justify bypassing this level.`
-    );
-  }
+  constraints.push({
+    id: 'ratings_maturity',
+    label: 'Ratings maturity',
+    state:
+      ratingsMaturity === null
+        ? 'unknown'
+        : ratingsMaturity >= requiredMaturity
+          ? 'satisfied'
+          : 'not_satisfied',
+    requiresSubjectiveEvidence: true,
+    detail:
+      ratingsMaturity === null
+        ? 'Ratings maturity cannot be established: the organization-visible current/potential ratings it depends on are unavailable.'
+        : ratingsMaturity >= requiredMaturity
+          ? `Ratings maturity ${ratingsMaturity} supports a substantially more challenging assignment.`
+          : `Ratings maturity ${ratingsMaturity} suggests too much projected development remains to justify bypassing this level.`,
+  });
 
-  if (sample < requiredSample) {
-    blockers.push(
-      `Evidence confidence ${sample} is below the skip-level requirement of ${requiredSample}.`
-    );
-  }
+  constraints.push({
+    id: 'sample_confidence',
+    label: 'Evidence confidence',
+    state:
+      sample >= requiredSample
+        ? 'satisfied'
+        : 'not_satisfied',
+    requiresSubjectiveEvidence: false,
+    detail:
+      sample >= requiredSample
+        ? `Evidence confidence ${sample} is sufficient for an exceptional move.`
+        : `Evidence confidence ${sample} is below the skip-level requirement of ${requiredSample}.`,
+  });
 
-  const eligible = blockers.length === 0;
+  const { judgment, blockers, missingEvidence } =
+    conclude(decision, constraints);
+
+  const eligible =
+    judgment === 'defensible';
 
   if (eligible) {
-    reasons.push(
-      `Readiness ${readiness} clears the exceptional assignment threshold of ${requiredReadiness}.`
-    );
-
-    reasons.push(
-      `Performance evidence ${performance} is strong enough to support bypassing ${skipped} existing level${skipped === 1 ? '' : 's'}.`
-    );
-
-    reasons.push(
-      `Ratings maturity ${ratingsMaturity} supports a substantially more challenging assignment.`
-    );
-
-    reasons.push(
-      `Evidence confidence ${sample} is sufficient for an exceptional move.`
-    );
+    for (const constraint of constraints) {
+      reasons.push(constraint.detail);
+    }
   }
 
   return {
@@ -307,12 +508,18 @@ function promotionEvaluation(
     direction: 'promotion',
     target,
     levelsSkipped: skipped,
+    judgment,
     eligible,
 
     recommendation:
-      eligible
+      judgment === 'defensible'
         ? 'exceptional'
-        : 'not_recommended',
+        : judgment === 'indeterminate'
+          ? 'indeterminate'
+          : 'not_recommended',
+
+    constraints,
+    missingEvidence,
 
     evidence: {
       readiness,
@@ -337,9 +544,29 @@ function demotionEvaluation(
   decision: ProspectDecision,
   target: ProspectNextAssignment
 ): ProspectAssignmentEvaluation {
+  /*
+   * A demotion case rests on objective evidence only — production, sample and
+   * age relative to the level — so it never depends on ratings and can be
+   * neither made nor unmade by unknown ones.
+   */
   const eligible =
-    decision.recommendation ===
-    'consider_demotion';
+    decision.demotionCase;
+
+  const constraints: AssignmentConstraint[] = [
+    {
+      id: 'demotion_case',
+      label: 'Demotion case',
+      state:
+        eligible
+          ? 'satisfied'
+          : 'not_satisfied',
+      requiresSubjectiveEvidence: false,
+      detail:
+        eligible
+          ? 'The prospect decision engine independently identifies a defensible demotion case.'
+          : 'Current developmental evidence does not independently support a demotion.',
+    },
+  ];
 
   const blockers = eligible
     ? []
@@ -359,12 +586,19 @@ function demotionEvaluation(
     direction: 'demotion',
     target,
     levelsSkipped: 0,
+    judgment:
+      eligible
+        ? 'defensible'
+        : 'indefensible',
     eligible,
 
     recommendation:
       eligible
         ? 'consider'
         : 'not_recommended',
+
+    constraints,
+    missingEvidence: [],
 
     evidence: {
       readiness:
@@ -431,7 +665,12 @@ export function evaluateProspectAssignments(
   return {
     evaluations,
     eligible: evaluations.filter(
-      (evaluation) => evaluation.eligible
+      (evaluation) =>
+        evaluation.judgment === 'defensible'
+    ),
+    indeterminate: evaluations.filter(
+      (evaluation) =>
+        evaluation.judgment === 'indeterminate'
     ),
   };
 }

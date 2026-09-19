@@ -322,7 +322,15 @@ describe('the boundary holds end to end', () => {
     expect(blank.ratingEvidence.status).toBe('unknown');
     expect(blank.ratingEvidence.provenance).toBe('declared_organization_visible');
     expect(blank.decision.ratingsEvidence).toBe('unknown');
-    expect(blank.decision.cautions.join(' ')).toMatch(/neutral placeholder/);
+    expect(blank.decision.evidence.ratingsMaturity).toBeNull();
+    expect(blank.decision.evidence.readiness).toBeNull();
+    expect(blank.decision.cautions.join(' ')).toMatch(/no neutral value is substituted/);
+    // Objective evidence is still there
+    expect(blank.decision.evidence.performance).toEqual(expect.any(Number));
+    expect(blank.decision.evidence.sampleConfidence).toEqual(expect.any(Number));
+    // ...and assignments say "indeterminate", not "no" and not "yes"
+    const judgments = (blank.assignments.evaluations as Array<Record<string, any>>).map((e) => e.judgment);
+    expect(judgments).not.toContain('defensible');
   });
 
   it('gives the decision the same ratings the payload shows', async () => {
@@ -336,11 +344,12 @@ describe('the boundary holds end to end', () => {
     const high = evaluateDevelopmentProtection({ age: 21, ability: abilityOf(HIGH) });
     const low = evaluateDevelopmentProtection({ age: 21, ability: abilityOf(LOW) });
     const blank = evaluateDevelopmentProtection({ age: 21, ability: abilityOf(BLANK) });
-    expect(high.score).toBeGreaterThan(low.score);
+    expect(high.score!).toBeGreaterThan(low.score!);
     expect(high.ratingEvidence).toBe('complete');
     expect(blank.ratingEvidence).toBe('unknown');
-    // players_value calls BLANK an 80/80 superstar; that must not lift him
-    expect(blank.score).toBeLessThan(high.score);
+    // players_value calls BLANK an 80/80 superstar; that must not lift him, or rate him at all
+    expect(blank.score).toBeNull();
+    expect(blank.tier).toBeNull();
     expect(blank.reasons.join(' ')).not.toMatch(/High-end projected ceiling/);
   });
 
@@ -355,7 +364,33 @@ describe('the boundary holds end to end', () => {
     expect(row(BLANK).current).toBeNull();
     expect(row(BLANK).potential).toBeNull();
     expect(row(BLANK).protection.ratingEvidence).toBe('unknown');
-    expect(row(HIGH).protection.score).toBeGreaterThan(row(BLANK).protection.score);
+    expect(row(BLANK).protection.tier).toBeNull();
+    expect(row(BLANK).protection.score).toBeNull();
+    expect(row(BLANK).evidence.development.score).toBeNull();
+    // Not released, not protected, not retained: retention cannot be judged
+    expect(row(BLANK).recommendation).toBe('indeterminate');
+    expect(row(BLANK).summary.join(' ')).toMatch(/cannot be judged/);
+    expect(row(BLANK).summary.join(' ')).toMatch(/No organization-visible current rating/);
+    expect(row(HIGH).recommendation).not.toBe('indeterminate');
+    expect(row(LOW).recommendation).not.toBe('indeterminate');
+  });
+
+  it('still applies objective transaction guardrails to a player whose ratings are unknown', async () => {
+    const id = 91_300;
+    addPlayer(id, 7, IDS.aaaTeam, 21);
+    poison(id);
+    db.prepare(`INSERT INTO team_roster VALUES (?, ?, 1)`).run(IDS.aaaTeam, id);
+    db.prepare(
+      `INSERT INTO players_roster_status (player_id, is_active, is_on_dl, is_on_dl60, is_on_secondary)
+       VALUES (?, 0, 0, 0, 1)`
+    ).run(id);
+    const { players, counts } = await request(`/api/minor-league-retention/${IDS.mlbTeam}`);
+    const row = (players as Array<Record<string, any>>).find((p) => p.playerId === id)!;
+    // The 40-man guardrail is a fact about his roster status, not a judgment of his ability
+    expect(row.recommendation).toBe('protected');
+    expect(row.guardrails.join(' ')).toMatch(/Secondary\/40-man/);
+    expect(row.protection.tier).toBeNull();
+    expect(counts.indeterminate).toBeGreaterThanOrEqual(1);
   });
 
   it('shows the depth chart the scouted composites, not players_value', async () => {

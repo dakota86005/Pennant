@@ -133,8 +133,11 @@ describe('destination-fit low-sample and missing behavior', () => {
     const fit = evaluateDestinationFit(hitter(), EMPTY.team)!;
     expect(fit.components).toEqual([]);
     expect(fit.populationMinimum).toBe(0);
-    expect(fit.compositePercentile).toBe(0);
-    expect(fit.classification).toBe('poor');
+    // Nothing could be compared, so nothing is scored: not a 0th percentile
+    expect(fit.compositePercentile).toBeNull();
+    expect(fit.weakestCorePercentile).toBeNull();
+    expect(fit.classification).toBe('indeterminate');
+    expect(fit.unassessedComponents.map((u) => u.reason)).toEqual(Array(5).fill('no_comparison_population'));
   });
 
   it('leaves a missing tool out and says so, instead of scoring it as zero', () => {
@@ -143,17 +146,31 @@ describe('destination-fit low-sample and missing behavior', () => {
     expect(fit.components).toHaveLength(4);
     expect(fit.unassessedComponents).toEqual([{ label: 'Eye', core: true, reason: 'no_visible_rating' }]);
     expect(fit.notes.join(' ')).toMatch(/Not evaluated: Eye \(no organization-visible rating\)/);
-    // Not dragged down by a phantom zero: the rest of the composite is re-weighted
-    const complete = evaluateDestinationFit(hitter({ eye: 50 }), BIG.team)!;
-    expect(fit.compositePercentile).toBeGreaterThan(0);
-    expect(Math.abs(fit.compositePercentile - complete.compositePercentile)).toBeLessThan(15);
   });
 
-  it('keeps a skip-level move from being authorized on an unevaluated core tool', () => {
+  it('gives no composite or classification while a role tool is unassessed', () => {
+    const fit = evaluateDestinationFit(hitter({ eye: null }), BIG.team)!;
+    // A partial composite is not the composite, and no value stands in for Eye
+    expect(fit.compositePercentile).toBeNull();
+    expect(fit.classification).toBe('indeterminate');
+    // What WAS assessed is still shown
+    expect(fit.weakestCorePercentile).not.toBeNull();
+    expect(fit.components.find((c) => c.key === 'contact')!.percentile).toBe(51.7);
+  });
+
+  it('is unknown, not failed, for a skip-level move with an unevaluated core tool', () => {
     const fit = evaluateDestinationFit(hitter({ contact: 59, eye: null, avoidK: 59 }), BIG.team)!;
     const gate = skipLevelDestinationGate(fit, 1);
-    expect(gate.passes).toBe(false);
-    expect(gate.reasons.join(' ')).toMatch(/not evaluated for lack of organization-visible evidence: Eye/);
+    expect(gate.state).toBe('unknown');
+    expect(gate.reasons).toEqual([]);
+    expect(gate.unknownReasons.join(' ')).toMatch(/Not evaluated for lack of organization-visible evidence: Eye \(core\)/);
+  });
+
+  it('is still rejected when what WAS assessed already fails, whatever the missing tool is', () => {
+    const fit = evaluateDestinationFit(hitter({ contact: 25, eye: null, avoidK: 59 }), BIG.team)!;
+    const gate = skipLevelDestinationGate(fit, 1);
+    expect(gate.state).toBe('not_satisfied');
+    expect(gate.reasons.join(' ')).toMatch(/Weakest core-skill percentile 0/);
   });
 
   it('treats a zero rating as unknown too, since no scale grades anyone zero', () => {
@@ -170,7 +187,7 @@ describe('destination-fit low-sample and missing behavior', () => {
 describe('the skip-level destination gate', () => {
   const fit = (composite: number, weakest: number, population = 30): DestinationFit => ({
     playerId: 1, destinationTeamId: 2, destinationTeam: 'X', leagueId: 3, leagueName: 'L', leagueLevel: 3,
-    kind: 'hitter', roleAssessment: null, components: [], unassessedComponents: [], compositePercentile: composite,
+    kind: 'hitter', roleAssessment: null, components: [{} as never], unassessedComponents: [], compositePercentile: composite,
     weakestCorePercentile: weakest, classification: 'viable', populationMinimum: population, notes: [],
   });
 
@@ -178,21 +195,21 @@ describe('the skip-level destination gate', () => {
     const g = (levels: number) => skipLevelDestinationGate(fit(50, 25), levels);
     expect([g(1), g(2), g(3)].map((x) => [x.requiredCompositePercentile, x.requiredWeakestCorePercentile]))
       .toEqual([[30, 10], [45, 20], [60, 30]]);
-    expect(g(1).passes).toBe(true);
-    expect(g(2).passes).toBe(true);
-    expect(g(3).passes).toBe(false);
+    expect(g(1).state).toBe('satisfied');
+    expect(g(2).state).toBe('satisfied');
+    expect(g(3).state).toBe('not_satisfied');
   });
 
   it('rejects a comparison built on fewer than 25 comparable players', () => {
     const gate = skipLevelDestinationGate(fit(90, 90, 24), 1);
-    expect(gate.passes).toBe(false);
+    expect(gate.state).toBe('not_satisfied');
     expect(gate.reasons.join(' ')).toMatch(/only 24; at least 25/);
-    expect(skipLevelDestinationGate(fit(90, 90, 25), 1).passes).toBe(true);
+    expect(skipLevelDestinationGate(fit(90, 90, 25), 1).state).toBe('satisfied');
   });
 
   it('rejects a catastrophic core weakness behind a good composite', () => {
     const gate = skipLevelDestinationGate(fit(80, 5), 1);
-    expect(gate.passes).toBe(false);
+    expect(gate.state).toBe('not_satisfied');
     expect(gate.reasons.join(' ')).toMatch(/Weakest core-skill percentile/);
   });
 });
@@ -234,10 +251,35 @@ describe('destination fit applied to an assignment plan', () => {
     expect(plan.eligible.every((e) => e.kind !== 'skip_level_promotion')).toBe(true);
   });
 
-  it('rejects rather than guesses when no destination population exists at all', () => {
+  it('calls the move indeterminate, not rejected, when there is no destination population to compare with', () => {
     const plan = planFor(hitter({ contact: 55, eye: 55, avoidK: 55 }), [{ team: HOME }, { team: EMPTY.team }]);
     const skip = plan.evaluations.find((e) => e.kind === 'skip_level_promotion')!;
+    expect(skip.judgment).toBe('indeterminate');
     expect(skip.eligible).toBe(false);
+    expect(skip.blockers).toEqual([]);
+    expect(skip.destinationFit!.indeterminateTeamIds).toEqual([EMPTY.team]);
+    expect(skip.missingEvidence.map((m) => m.dimension)).toContain('destination_comparison');
+    expect(plan.indeterminate).toContain(skip);
+    expect(plan.eligible).not.toContain(skip);
+  });
+
+  it('calls a skip-level move indeterminate when a core tool has no visible rating', () => {
+    const plan = planFor(hitter({ contact: 55, eye: null, avoidK: 55 }), [{ team: HOME }, { team: BIG.team }]);
+    const skip = plan.evaluations.find((e) => e.kind === 'skip_level_promotion')!;
+    expect(skip.judgment).toBe('indeterminate');
+    expect(skip.recommendation).toBe('indeterminate');
+    expect(skip.destinationFit!.eligibleTeamIds).toEqual([]);
+    expect(skip.destinationFit!.indeterminateTeamIds).toEqual([BIG.team]);
+    const gate = skip.constraints.find((c) => c.id === 'destination_fit')!;
+    expect(gate.state).toBe('unknown');
+  });
+
+  it('still rejects a skip-level move that known destination evidence rules out', () => {
+    const plan = planFor(hitter({ contact: 25, eye: 25, avoidK: 25 }), [{ team: HOME }, { team: BIG.team }]);
+    const skip = plan.evaluations.find((e) => e.kind === 'skip_level_promotion')!;
+    expect(skip.judgment).toBe('indefensible');
+    expect(skip.blockers.join(' ')).toMatch(/Weakest core-skill percentile/);
+    expect(skip.destinationFit!.indeterminateTeamIds).toEqual([]);
   });
 
   it('never gates an ordinary promotion on destination fit', () => {

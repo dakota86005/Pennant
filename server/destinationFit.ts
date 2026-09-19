@@ -1,5 +1,10 @@
 import { db } from './db.js';
 import { loadScoutedAbilities } from './scoutedEvidence.js';
+import {
+  judgmentOf,
+  type ConstraintState,
+  type MissingEvidence,
+} from './developmentJudgment.js';
 
 import type {
   ProspectAssignmentEvaluation,
@@ -15,7 +20,9 @@ export type DestinationFitClassification =
   | 'poor'
   | 'borderline'
   | 'viable'
-  | 'strong';
+  | 'strong'
+  /** Some role tools could not be compared, so no grade is given. */
+  | 'indeterminate';
 
 export interface DestinationFitComponent {
   key: string;
@@ -51,6 +58,13 @@ export interface PitcherRoleAssessment {
 
   establishedPitches: number;
   thirdBestPitch: number | null;
+
+  /**
+   * Whether stamina was available to judge starter structure. When it is not,
+   * the developmental role simply follows the current assignment: it is not a
+   * finding that the pitcher cannot start.
+   */
+  structureEvidence: 'known' | 'unknown';
 
   reasons: string[];
 }
@@ -89,15 +103,19 @@ export interface DestinationFit {
   }>;
 
   /**
-   * Weighted mean of component percentiles.
+   * Weighted mean of component percentiles. null while any role tool is
+   * unassessed: a partial composite is not the composite, and no value is
+   * substituted for the missing tools.
    */
-  compositePercentile: number;
+  compositePercentile: number | null;
 
   /**
-   * Lowest percentile among skills designated as essential for the role.
-   * Prevents one elite tool from hiding a serious developmental weakness.
+   * Lowest percentile among the ASSESSED skills designated as essential for
+   * the role (null if none was assessed). Prevents one elite tool from hiding
+   * a serious developmental weakness. An unassessed core tool may be weaker
+   * still — see `unassessedComponents`.
    */
-  weakestCorePercentile: number;
+  weakestCorePercentile: number | null;
 
   classification: DestinationFitClassification;
 
@@ -112,9 +130,17 @@ export interface DestinationFitGate {
   requiredCompositePercentile: number;
   requiredWeakestCorePercentile: number;
 
-  passes: boolean;
+  /**
+   * `unknown` while a role tool could not be assessed and nothing already
+   * assessed rules the move out. Never a pass by default, never a rejection.
+   */
+  state: ConstraintState;
 
+  /** Why the move is ruled out (only for `not_satisfied`). */
   reasons: string[];
+
+  /** What could not be assessed (only for `unknown`). */
+  unknownReasons: string[];
 }
 
 export interface AssignmentDestinationFit {
@@ -123,7 +149,11 @@ export interface AssignmentDestinationFit {
     gate: DestinationFitGate | null;
   }>;
 
+  /** Affiliates whose destination comparison establishes the move is defensible. */
   eligibleTeamIds: number[];
+
+  /** Affiliates the comparison cannot yet judge. Not approved, not rejected. */
+  indeterminateTeamIds: number[];
 }
 
 export type ProspectAssignmentEvaluationWithDestinationFit =
@@ -134,6 +164,7 @@ export type ProspectAssignmentEvaluationWithDestinationFit =
 export interface ProspectAssignmentPlanWithDestinationFit {
   evaluations: ProspectAssignmentEvaluationWithDestinationFit[];
   eligible: ProspectAssignmentEvaluationWithDestinationFit[];
+  indeterminate: ProspectAssignmentEvaluationWithDestinationFit[];
 }
 
 interface PlayerRatings {
@@ -378,6 +409,9 @@ function playerKind(
         ? 'starter'
         : 'reliever';
 
+  const structureKnown =
+    typeof stamina === 'number';
+
   const reasons: string[] = [];
 
   if (currentRole === 'starter') {
@@ -387,6 +421,10 @@ function playerKind(
   } else if (starterStructure) {
     reasons.push(
       'Current relief assignment does not prevent starter development: stamina and repertoire meet the structural starter criteria.'
+    );
+  } else if (!structureKnown) {
+    reasons.push(
+      'Organization-visible stamina is unavailable, so starter structure cannot be assessed; destination fit follows the current relief assignment. That is not a finding that he cannot start.'
     );
   } else {
     reasons.push(
@@ -416,6 +454,10 @@ function playerKind(
       currentRole,
       developmentalRole,
       stamina,
+      structureEvidence:
+        structureKnown
+          ? 'known'
+          : 'unknown',
       establishedPitches:
         established.length,
       thirdBestPitch,
@@ -830,8 +872,12 @@ export function evaluateDestinationFit(
       0
     );
 
+  const complete =
+    unassessedComponents.length === 0 &&
+    components.length > 0;
+
   const composite =
-    totalWeight > 0
+    complete && totalWeight > 0
       ? components.reduce(
           (sum, component) =>
             sum +
@@ -839,7 +885,7 @@ export function evaluateDestinationFit(
               component.weight,
           0
         ) / totalWeight
-      : 0;
+      : null;
 
   const core =
     components.filter(
@@ -854,7 +900,7 @@ export function evaluateDestinationFit(
               component.percentile
           )
         )
-      : 0;
+      : null;
 
   const populationMinimum =
     components.length
@@ -933,16 +979,23 @@ export function evaluateDestinationFit(
     unassessedComponents,
 
     compositePercentile:
-      round1(composite),
+      composite === null
+        ? null
+        : round1(composite),
 
     weakestCorePercentile:
-      round1(weakestCore),
+      weakestCore === null
+        ? null
+        : round1(weakestCore),
 
     classification:
-      classification(
-        composite,
-        weakestCore
-      ),
+      composite === null ||
+      weakestCore === null
+        ? 'indeterminate'
+        : classification(
+            composite,
+            weakestCore
+          ),
 
     populationMinimum,
 
@@ -982,19 +1035,15 @@ export function skipLevelDestinationGate(
   }
 
   const reasons: string[] = [];
+  const unknownReasons: string[] = [];
 
-  const unassessedCore =
-    fit.unassessedComponents
-      .filter((item) => item.core)
-      .map((item) => item.label);
-
-  if (unassessedCore.length) {
-    reasons.push(
-      `Core skill${unassessedCore.length === 1 ? '' : 's'} not evaluated for lack of organization-visible evidence: ${unassessedCore.join(', ')}.`
-    );
-  }
-
+  /*
+   * Ruled out: evidence that is known and falls short. A shortfall in what WAS
+   * assessed stands however the unassessed tools turn out (the overall weakest
+   * core tool can only be weaker than the weakest assessed one).
+   */
   if (
+    fit.components.length > 0 &&
     fit.populationMinimum < 25
   ) {
     reasons.push(
@@ -1003,6 +1052,7 @@ export function skipLevelDestinationGate(
   }
 
   if (
+    fit.compositePercentile !== null &&
     fit.compositePercentile <
     requiredCompositePercentile
   ) {
@@ -1012,11 +1062,25 @@ export function skipLevelDestinationGate(
   }
 
   if (
+    fit.weakestCorePercentile !== null &&
     fit.weakestCorePercentile <
     requiredWeakestCorePercentile
   ) {
     reasons.push(
       `Weakest core-skill percentile ${fit.weakestCorePercentile} is below the required ${requiredWeakestCorePercentile}.`
+    );
+  }
+
+  /*
+   * Not ruled out, not ruled in: tools with no organization-visible rating (or
+   * no comparison population) cannot be compared, so the destination question
+   * is unknown rather than failed.
+   */
+  if (fit.unassessedComponents.length) {
+    unknownReasons.push(
+      `Not evaluated for lack of organization-visible evidence: ${fit.unassessedComponents
+        .map((item) => `${item.label}${item.core ? ' (core)' : ''}`)
+        .join(', ')}.`
     );
   }
 
@@ -1026,9 +1090,15 @@ export function skipLevelDestinationGate(
     requiredCompositePercentile,
     requiredWeakestCorePercentile,
 
-    passes: reasons.length === 0,
+    state:
+      reasons.length > 0
+        ? 'not_satisfied'
+        : unknownReasons.length > 0
+          ? 'unknown'
+          : 'satisfied',
 
     reasons,
+    unknownReasons,
   };
 }
 
@@ -1102,17 +1172,28 @@ export function applyDestinationFitToAssignments(
       evaluation.kind !==
       'skip_level_promotion'
     ) {
+      const teamIds =
+        evaluation.target.teams.map(
+          (team) =>
+            team.teamId
+        );
+
       evaluations.push({
         ...evaluation,
 
         destinationFit: {
           teams: teamFits,
+
           eligibleTeamIds:
-            evaluation.eligible
-              ? evaluation.target.teams.map(
-                  (team) =>
-                    team.teamId
-                )
+            evaluation.judgment ===
+            'defensible'
+              ? teamIds
+              : [],
+
+          indeterminateTeamIds:
+            evaluation.judgment ===
+            'indeterminate'
+              ? teamIds
               : [],
         },
       });
@@ -1121,35 +1202,52 @@ export function applyDestinationFitToAssignments(
     }
 
     /*
-     * If the current-level evidence already rejected the skip, destination fit
-     * is still reported for transparency, but it cannot resurrect the move.
+     * If current-level evidence already ruled the skip out, destination fit is
+     * still reported for transparency, but it cannot resurrect the move.
      */
-    if (!evaluation.eligible) {
+    if (evaluation.judgment === 'indefensible') {
       evaluations.push({
         ...evaluation,
 
         destinationFit: {
           teams: teamFits,
           eligibleTeamIds: [],
+          indeterminateTeamIds: [],
         },
       });
 
       continue;
     }
 
-    const passing =
+    const satisfied =
       teamFits.filter(
         (team) =>
-          team.gate?.passes === true
+          team.gate?.state === 'satisfied'
+      );
+
+    const unknown =
+      teamFits.filter(
+        (team) =>
+          team.gate?.state === 'unknown'
       );
 
     const eligibleTeamIds =
-      passing.map(
+      satisfied.map(
         (team) =>
           team.fit.destinationTeamId
       );
 
-    if (!passing.length) {
+    const indeterminateTeamIds =
+      unknown.map(
+        (team) =>
+          team.fit.destinationTeamId
+      );
+
+    /*
+     * Every affiliate is ruled out by known evidence: the move is indefensible
+     * whatever Player Development's own (possibly indeterminate) evidence says.
+     */
+    if (!satisfied.length && !unknown.length) {
       const fitBlockers =
         teamFits.flatMap(
           ({ fit, gate }) =>
@@ -1159,63 +1257,167 @@ export function applyDestinationFitToAssignments(
             )
         );
 
+      const blockers = [
+        ...evaluation.blockers,
+
+        ...(fitBlockers.length
+          ? fitBlockers
+          : [
+              'No destination affiliate had sufficient rating-population data to support this skip-level assignment.',
+            ]),
+      ];
+
       evaluations.push({
         ...evaluation,
 
+        judgment: 'indefensible',
         eligible: false,
         recommendation:
           'not_recommended',
+        missingEvidence: [],
+        blockers,
 
-        blockers: [
-          ...evaluation.blockers,
-
-          ...(fitBlockers.length
-            ? fitBlockers
-            : [
-                'No destination affiliate had sufficient rating-population data to support this skip-level assignment.',
-              ]),
+        constraints: [
+          ...evaluation.constraints,
+          {
+            id: 'destination_fit',
+            label: 'Destination fit',
+            state: 'not_satisfied',
+            requiresSubjectiveEvidence: true,
+            detail: fitBlockers.join(' ') ||
+              'No destination affiliate had sufficient rating-population data.',
+          },
         ],
 
         destinationFit: {
           teams: teamFits,
           eligibleTeamIds: [],
+          indeterminateTeamIds: [],
         },
       });
 
       continue;
     }
 
-    const filteredTarget = {
-      ...evaluation.target,
+    const missingDestinationEvidence: MissingEvidence[] =
+      unknown.flatMap(
+        ({ fit, gate }) =>
+          (gate?.unknownReasons ?? []).map(
+            (detail) => ({
+              dimension:
+                'destination_comparison' as const,
+              detail:
+                `${fit.destinationTeam}: ${detail}`,
+            })
+          )
+      );
 
-      /*
-       * Player Development determines which actual affiliates are
-       * developmentally defensible. Minor League Operations may choose among
-       * these teams later.
-       */
-      teams:
-        evaluation.target.teams.filter(
-          (team) =>
-            eligibleTeamIds.includes(
-              team.teamId
-            )
-        ),
-    };
+    /*
+     * The destination comparison establishes the move for at least one
+     * affiliate: keep those. Affiliates it cannot judge are reported but are not
+     * approved targets.
+     */
+    if (
+      evaluation.judgment === 'defensible' &&
+      satisfied.length
+    ) {
+      evaluations.push({
+        ...evaluation,
+
+        target: {
+          ...evaluation.target,
+
+          /*
+           * Player Development determines which actual affiliates are
+           * developmentally defensible. Minor League Operations may choose
+           * among these teams later.
+           */
+          teams:
+            evaluation.target.teams.filter(
+              (team) =>
+                eligibleTeamIds.includes(
+                  team.teamId
+                )
+            ),
+        },
+
+        constraints: [
+          ...evaluation.constraints,
+          {
+            id: 'destination_fit',
+            label: 'Destination fit',
+            state: 'satisfied',
+            requiresSubjectiveEvidence: true,
+            detail:
+              'Current ratings also fall within the required empirical destination-level range.',
+          },
+        ],
+
+        reasons: [
+          ...evaluation.reasons,
+          'Current ratings also fall within the required empirical destination-level range.',
+        ],
+
+        destinationFit: {
+          teams: teamFits,
+          eligibleTeamIds,
+          indeterminateTeamIds,
+        },
+      });
+
+      continue;
+    }
+
+    /*
+     * Otherwise the move is neither defensible nor indefensible on the
+     * evidence: either current-level evidence is indeterminate, or the only
+     * remaining affiliates' destination comparisons are.
+     */
+    const constraints = [
+      ...evaluation.constraints,
+      {
+        id: 'destination_fit' as const,
+        label: 'Destination fit',
+        state:
+          (unknown.length
+            ? 'unknown'
+            : 'satisfied') as ConstraintState,
+        requiresSubjectiveEvidence: true,
+        detail:
+          unknown.length
+            ? 'Destination fit cannot be established for every remaining affiliate: some role tools have no organization-visible rating.'
+            : 'Current ratings fall within the required empirical destination-level range.',
+      },
+    ];
+
+    const judgment =
+      judgmentOf(
+        constraints.map(
+          (constraint) => constraint.state
+        )
+      );
 
     evaluations.push({
       ...evaluation,
 
-      target:
-        filteredTarget,
+      judgment,
+      eligible: judgment === 'defensible',
+      recommendation:
+        judgment === 'indeterminate'
+          ? 'indeterminate'
+          : evaluation.recommendation,
 
-      reasons: [
-        ...evaluation.reasons,
-        'Current ratings also fall within the required empirical destination-level range.',
+      constraints,
+
+      missingEvidence: [
+        ...evaluation.missingEvidence,
+        ...missingDestinationEvidence,
       ],
 
       destinationFit: {
         teams: teamFits,
         eligibleTeamIds,
+        indeterminateTeamIds,
       },
     });
   }
@@ -1226,7 +1428,15 @@ export function applyDestinationFitToAssignments(
     eligible:
       evaluations.filter(
         (evaluation) =>
-          evaluation.eligible
+          evaluation.judgment ===
+          'defensible'
+      ),
+
+    indeterminate:
+      evaluations.filter(
+        (evaluation) =>
+          evaluation.judgment ===
+          'indeterminate'
       ),
   };
 }

@@ -229,17 +229,64 @@ Consequences:
   so thresholds keep their meaning; the native scale is reported.
 - The composite is a Front Office summary, not OOTP's Overall. Pages that show
   `cur`/`pot` from these paths therefore differ from the game card by design.
-- Consumers disclose incomplete evidence (`ratingsEvidence`,
-  `ratingEvidence`, destination-fit `unassessedComponents`). An unassessed core
-  tool blocks a skip-level move.
+- Consumers report incomplete evidence (`ratingsEvidence`, `ratingEvidence`,
+  `missingEvidence`, destination-fit `unassessedComponents`) and treat what
+  depends on it as unknown (D-018), never as a pass or a failure.
 - Objective facts (statistics, age, contracts, service time, options, injuries,
   roster status, assignments, transactions) are unaffected and remain known.
 
-**Remaining gaps:** unknown ratings still enter the readiness and protection
-arithmetic as a neutral placeholder (maturity 50, rating 50, upside 50). It is
-disclosed but not removed, and it is not neutral in effect: an unknown player
-scores higher protection than a known average one. Scouting snapshots keep their
-own non-strict, native-scale composite. Pre-fork surfaces (trade, contracts,
-franchise, roster/player displays) still read `players_value`. Fielding-position
-grades are assumed to share the tool ratings' scale.
+**Remaining gaps:** scouting snapshots keep their own non-strict, native-scale
+composite. Pre-fork surfaces (trade, contracts, franchise, roster/player
+displays) still read `players_value`. Fielding-position grades are assumed to
+share the tool ratings' scale. Unknown ratings no longer enter any development
+arithmetic; see D-018.
 
+## D-018 — Unknown evidence stays unknown: indeterminate, not imputed
+
+**Status:** Accepted. **Implementation:** Present for Player Development
+(readiness, protection, assignment authorization, destination fit) and Minor
+League Operations (position and pitching operations, retention).
+
+"We do not know" is distinct from "average", "bad", and "good". A missing
+organization-visible rating is never replaced by a midpoint, average,
+replacement value, or zero. Player Development represents evidence sufficiency
+explicitly (`server/developmentJudgment.ts`):
+
+- A rating-dependent constraint is `satisfied`, `not_satisfied`, or `unknown`.
+- An assessment built from constraints is `indefensible` if any constraint is
+  not satisfied (a known negative stands whatever else is unknown),
+  `indeterminate` if none is but any is unknown, and `defensible` only if all
+  are satisfied.
+- Readiness is `null` when ratings maturity is; the range it could take is
+  reported (`readinessRange`, the model's own outer bounds, not an estimate). A
+  conclusion that holds across that whole range — poor production, a demotion —
+  still stands. Protection is `null` (tier `null`) unless both current and
+  potential are known.
+- Objective evidence (production, sample, age/level context, status, history)
+  is always evaluated and shown, including on an indeterminate assessment.
+
+Consequences:
+
+- **Philosophy cannot resolve unknown evidence.** If a comparison is unknown
+  against the philosophy-free threshold it stays unknown against the club's own,
+  so an aggressive threshold cannot turn an indeterminate assessment into
+  authorization. (Philosophy's effect on determinate assessments is the
+  separate D-003 deviation.)
+- **Operations must handle the third state.** `eligible` is true only for
+  `defensible`; `eligible: false` does not mean rejected — read `judgment`.
+  Position and pitching operations list an indeterminate candidate in
+  `indeterminate` with the missing evidence and the destination's roster need.
+  It is not planned (approved), not in `rejected`, and not ranked. Retention adds
+  an `indeterminate` recommendation (after objective transaction guardrails,
+  which still apply).
+- **Indeterminate is not a roster decision.** It does not mean protect, hold,
+  or block, and the GM may act despite it. No caller may encode it as one.
+- Ranking-only terms that depend on an unassessed comparison are omitted rather
+  than valued.
+
+**Remaining gaps:** a destination-fit stretch cost that cannot be computed is
+omitted from ranking (contributes nothing) rather than imputed; a pitcher whose
+stamina is unknown keeps his current role as developmental role (flagged
+`structureEvidence: 'unknown'`); a comparison population below 25 is treated as
+not satisfied rather than unknown; neutral defaults for missing objective
+context (level-average age, K% baseline) are unchanged.

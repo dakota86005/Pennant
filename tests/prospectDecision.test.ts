@@ -229,12 +229,81 @@ describe('philosophy versus developmental evidence', () => {
   });
 });
 
-describe('missing rating evidence (current behavior)', () => {
-  it('substitutes a neutral maturity of 50 for the missing gap', () => {
-    // Pinned so the substitution is visible and cannot change unnoticed. It is a
-    // neutral prior, not scouting evidence; see docs/DECISIONS.md D-017.
-    for (const ratings of [{ ability: ability(null, null) }, { ability: ability(50, null) }, { ability: ability(null, 60) }]) {
-      expect(evaluateProspectDecision(hitter(ratings)).evidence.ratingsMaturity).toBe(50);
+describe('missing rating evidence', () => {
+  const unknown = (current: number | null, potential: number | null) =>
+    ability(current, potential);
+
+  it('does not turn a missing current rating into a midpoint', () => {
+    const d = evaluateProspectDecision(hitter({ ability: unknown(null, 60) }));
+    expect(d.evidence.ratingsMaturity).toBeNull();
+    expect(d.evidence.readiness).toBeNull();
+    expect(d.ratingsEvidence).toBe('partial');
+  });
+
+  it('does not turn a missing potential rating into a midpoint', () => {
+    const d = evaluateProspectDecision(hitter({ ability: unknown(50, null) }));
+    expect(d.evidence.ratingsMaturity).toBeNull();
+    expect(d.evidence.readiness).toBeNull();
+    expect(d.ratingsEvidence).toBe('partial');
+  });
+
+  it('keeps every objective figure while readiness is unknown', () => {
+    const known = evaluateProspectDecision(hitter());
+    const d = evaluateProspectDecision(hitter({ ability: unknown(null, null) }));
+    expect(d.evidence.performance).toBe(known.evidence.performance);
+    expect(d.evidence.sampleConfidence).toBe(known.evidence.sampleConfidence);
+    expect(d.evidence.ageLevelUrgency).toBe(known.evidence.ageLevelUrgency);
+    expect(d.organization.promotionThreshold).toBe(known.organization.promotionThreshold);
+    expect(d.positives.join(' ')).toMatch(/Production is clearly above/);
+  });
+
+  it('bounds readiness by the maturity model\'s own range, not by an estimate', () => {
+    const d = evaluateProspectDecision(hitter({ ability: unknown(null, null) }));
+    // Performance 75: readiness is 0.75 * 75 + 0.25 * (20 to 90)
+    expect(d.evidence.readinessRange).toEqual({ min: 61, max: 79 });
+    const known = evaluateProspectDecision(hitter());
+    expect(known.evidence.readinessRange).toEqual({ min: 79, max: 79 });
+  });
+
+  it('is indeterminate for an otherwise promotion-ready player, and says what is missing', () => {
+    const d = evaluateProspectDecision(hitter({ ability: unknown(null, null) }));
+    expect(d.recommendation).toBe('indeterminate');
+    expect(d.possibleRecommendations.length).toBeGreaterThan(1);
+    expect(d.missingEvidence.map((m) => m.dimension)).toEqual(['current_ability', 'potential_ability']);
+    expect(d.cautions.join(' ')).toMatch(/no neutral value is substituted/);
+  });
+
+  it('still reaches a negative conclusion when no possible rating could matter', () => {
+    // Even the most mature possible ratings leave readiness below the watch line
+    const d = evaluateProspectDecision(hitter({ ability: unknown(null, null), primaryPerformanceDiff: -0.05 }));
+    expect(d.evidence.readinessRange.max).toBeLessThan(d.organization.promotionThreshold - 8);
+    expect(d.recommendation).toBe('hold');
+    expect(d.possibleRecommendations).toEqual([]);
+  });
+
+  it('still recommends a demotion, which rests on objective evidence only', () => {
+    const d = evaluateProspectDecision(
+      hitter({ ability: unknown(null, null), primaryPerformanceDiff: -0.2, pa: 200 })
+    );
+    expect(d.demotionCase).toBe(true);
+    expect(d.recommendation).toBe('consider_demotion');
+  });
+
+  it('is indeterminate under every philosophy, never settled by one', () => {
+    for (const aggression of [0, 25, 50, 75, 100]) {
+      const d = evaluateProspectDecision(
+        hitter({ ability: unknown(null, null), promotionAggressiveness: aggression })
+      );
+      expect(d.recommendation, `aggressiveness ${aggression}`).toBe('indeterminate');
     }
+  });
+
+  it('is unchanged for known ratings', () => {
+    const d = evaluateProspectDecision(hitter());
+    expect(d.ratingsEvidence).toBe('complete');
+    expect(d.missingEvidence).toEqual([]);
+    expect(d.evidence.readiness).toBe(79);
+    expect(d.recommendation).toBe('consider_promotion');
+    expect(d.possibleRecommendations).toEqual([]);
   });
 });

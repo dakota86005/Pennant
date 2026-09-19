@@ -3,7 +3,10 @@ import {
   canUseAsRegularAssignment,
   evaluateDevelopmentProtection,
   evaluatePositionAssignments,
+  hasKnownTier,
   minimumRegularAssignmentFit,
+  protectionTierState,
+  requireKnownProtection,
 } from '../server/developmentFit.js';
 import type { Gloves, PositionRating } from '../server/gloves.js';
 import { syntheticScoutedAbility } from '../server/scoutedEvidence.js';
@@ -61,29 +64,74 @@ describe('development protection', () => {
   });
 });
 
-describe('missing rating evidence (current behavior)', () => {
-  /*
-   * Missing ratings currently enter as a neutral 50 on the 20-80 scale, with a
-   * phantom mid-size upside (the gap component also defaults to 50). That is a
-   * disclosed prior, not scouting evidence, and it is not neutral in effect:
-   * an unknown veteran is protected MORE than a known average one. Pinned so
-   * the behavior is visible and cannot change unnoticed.
-   */
-  it('scores unknown ratings as a 50 with a 50 upside, and says so', () => {
+describe('missing rating evidence', () => {
+  it('does not turn a missing current rating into a midpoint', () => {
+    const p = protect(20, null, 70);
+    expect(p.score).toBeNull();
+    expect(p.tier).toBeNull();
+    expect(p.ratingEvidence).toBe('partial');
+    expect(p.missingEvidence.map((m) => m.dimension)).toEqual(['current_ability']);
+  });
+
+  it('does not turn a missing potential rating into a midpoint', () => {
+    const p = protect(20, 40, null);
+    expect(p.score).toBeNull();
+    expect(p.tier).toBeNull();
+    expect(p.missingEvidence.map((m) => m.dimension)).toEqual(['potential_ability']);
+  });
+
+  it('is indeterminate — neither protected nor unprotected — with both unknown', () => {
+    const p = protect(30, null, null);
+    expect(p.score).toBeNull();
+    expect(p.tier).toBeNull();
+    expect(p.ratingEvidence).toBe('unknown');
+    expect(p.missingEvidence.map((m) => m.dimension)).toEqual(['current_ability', 'potential_ability']);
+    expect(p.reasons.join(' ')).toMatch(/indeterminate/);
+    expect(p.reasons.join(' ')).toMatch(/no neutral value is substituted/);
+  });
+
+  it('gives an unknown player no score at all — not the average one, not a higher or lower one', () => {
+    for (const age of [19, 24, 30]) {
+      expect(protect(age, null, null).score).toBeNull();
+    }
+  });
+
+  it('still reports the evidence that is known', () => {
+    const p = protect(19, null, 70);
+    expect(p.reasons.join(' ')).toMatch(/High-end projected ceiling \(70\/80\)/);
+    expect(p.reasons.join(' ')).toMatch(/runway at age 19/);
+    expect(p.reasons.join(' ')).not.toMatch(/projected development remains/);
+  });
+
+  it('leaves known-evidence protection exactly as it was', () => {
+    const p = protect(19, 40, 70);
+    expect(p.ratingEvidence).toBe('complete');
+    expect(p.missingEvidence).toEqual([]);
+    expect(p.tier).toBe('core_prospect');
+    expect(hasKnownTier(p)).toBe(true);
+  });
+
+  it('is total protection when manually protected, whatever the ratings are', () => {
+    const p = evaluateDevelopmentProtection({
+      age: 30,
+      ability: syntheticScoutedAbility({ current: null, potential: null }),
+      manuallyProtected: true,
+    });
+    expect(p).toMatchObject({ score: 100, tier: 'core_prospect', manuallyProtected: true, missingEvidence: [] });
+  });
+
+  it('answers a tier constraint as unknown, never satisfied or not satisfied', () => {
     const unknown = protect(30, null, null);
-    expect(unknown.score).toBe(Math.round(50 * 0.6 + 50 * 0.2 + 5 * 0.1 + 50 * 0.1));
-    expect(unknown.ratingEvidence).toBe('unknown');
-    expect(unknown.reasons[0]).toBe('No exceptional developmental-protection signal is present.');
-    expect(unknown.reasons.join(' ')).toMatch(/neutral placeholder, not as scouting evidence/);
+    expect(protectionTierState(unknown, (t) => t === 'core_prospect')).toBe('unknown');
+    expect(protectionTierState(unknown, (t) => t !== 'core_prospect')).toBe('unknown');
+    const known = protect(19, 40, 70);
+    expect(protectionTierState(known, (t) => t === 'core_prospect')).toBe('satisfied');
+    expect(protectionTierState(known, (t) => t === 'normal')).toBe('not_satisfied');
   });
 
-  it('protects an unknown older player above a known average one', () => {
-    expect(protect(30, null, null).score).toBeGreaterThan(protect(30, 50, 50).score);
-  });
-
-  it('never invents a projected gap', () => {
-    expect(protect(20, 40, null).reasons.join(' ')).not.toMatch(/projected development remains/);
-    expect(protect(20, null, 70).reasons.join(' ')).not.toMatch(/projected development remains/);
+  it('refuses to hand an unknown tier to code that needs one', () => {
+    expect(() => requireKnownProtection(protect(30, null, null))).toThrow(/Indeterminate development protection/);
+    expect(requireKnownProtection(protect(19, 40, 70)).tier).toBe('core_prospect');
   });
 });
 
@@ -139,21 +187,35 @@ describe('what protection lets an operation do', () => {
   it('raises the fit required as protection rises', () => {
     const tiers = [protect(28, 30, 30), protect(30, 45, 45), protect(24, 45, 55), protect(21, 50, 65), protect(19, 40, 70)]
       .map(minimumRegularAssignmentFit);
-    expect(tiers).toEqual([...tiers].sort((a, b) => a - b));
+    expect(tiers).toEqual([...(tiers as number[])].sort((a, b) => a - b));
     expect(minimumRegularAssignmentFit(protect(19, 40, 70))).toBe(85);
     expect(minimumRegularAssignmentFit(protect(28, 30, 30))).toBe(45);
   });
 
+  it('has no minimum fit while protection is indeterminate', () => {
+    expect(minimumRegularAssignmentFit(protect(19, null, null))).toBeNull();
+  });
+
   it('refuses to move a core prospect to a merely appropriate secondary position', () => {
-    expect(canUseAsRegularAssignment(protect(19, 40, 70), secondary(65))).toBe(true);
-    expect(canUseAsRegularAssignment(protect(19, 40, 70), secondary(50))).toBe(false);
-    expect(canUseAsRegularAssignment(protect(28, 30, 30), secondary(50))).toBe(true);
+    expect(canUseAsRegularAssignment(protect(19, 40, 70), secondary(65))).toBe('satisfied');
+    expect(canUseAsRegularAssignment(protect(19, 40, 70), secondary(50))).toBe('not_satisfied');
+    expect(canUseAsRegularAssignment(protect(28, 30, 30), secondary(50))).toBe('satisfied');
+  });
+
+  it('cannot say whether a secondary position is regular-use while protection is indeterminate', () => {
+    for (const current of [30, 50, 65]) {
+      expect(canUseAsRegularAssignment(protect(19, null, null), secondary(current))).toBe('unknown');
+    }
   });
 
   it('allows only the preferred position for a manually protected player', () => {
-    const manual = evaluateDevelopmentProtection({ age: 30, ability: syntheticScoutedAbility({ current: 30, potential: 30 }), manuallyProtected: true });
-    expect(canUseAsRegularAssignment(manual, secondary(70))).toBe(false);
+    const manual = evaluateDevelopmentProtection({
+      age: 30,
+      ability: syntheticScoutedAbility({ current: 30, potential: 30 }),
+      manuallyProtected: true,
+    });
+    expect(canUseAsRegularAssignment(manual, secondary(70))).toBe('not_satisfied');
     const primary = evaluatePositionAssignments(gloves([rating(6, 'SS', 45, { isPrimary: true })]))[0];
-    expect(canUseAsRegularAssignment(manual, primary)).toBe(true);
+    expect(canUseAsRegularAssignment(manual, primary)).toBe('satisfied');
   });
 });

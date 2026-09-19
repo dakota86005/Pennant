@@ -13,8 +13,15 @@ import {
 
 import {
   evaluateDevelopmentProtection,
+  hasKnownTier,
+  requireKnownProtection,
   type DevelopmentProtection,
 } from './developmentFit.js';
+
+import type {
+  IndeterminateMoveCandidate,
+  MissingEvidence,
+} from './developmentJudgment.js';
 
 import {
   evaluatePitcherRoster,
@@ -62,8 +69,15 @@ interface ProspectAssignmentLike {
     | 'demotion'
     | 'mlb_discussion';
 
+  judgment:
+    | 'defensible'
+    | 'indefensible'
+    | 'indeterminate';
+
   eligible: boolean;
   recommendation: string;
+
+  missingEvidence: MissingEvidence[];
 
   target: {
     level: number;
@@ -86,14 +100,15 @@ interface ProspectAssignmentLike {
         destinationTeamId: number;
         destinationTeam: string;
 
-        compositePercentile: number;
-        weakestCorePercentile: number;
+        compositePercentile: number | null;
+        weakestCorePercentile: number | null;
 
         classification:
           | 'poor'
           | 'borderline'
           | 'viable'
-          | 'strong';
+          | 'strong'
+          | 'indeterminate';
       };
     }>;
 
@@ -131,10 +146,11 @@ interface DevelopmentAuthorization {
       | 'poor'
       | 'borderline'
       | 'viable'
-      | 'strong';
+      | 'strong'
+      | 'indeterminate';
 
-    compositePercentile: number;
-    weakestCorePercentile: number;
+    compositePercentile: number | null;
+    weakestCorePercentile: number | null;
   } | null;
 
   reasons: string[];
@@ -294,6 +310,13 @@ export interface MinorLeaguePitchingOperationsResult {
 
     reasons: string[];
   }>;
+
+  /**
+   * Pitching candidates Player Development cannot judge for lack of
+   * organization-visible rating evidence. Not approved, not rejected, and not
+   * ranked with the plans; the roster need is stated with each.
+   */
+  indeterminate: IndeterminateMoveCandidate[];
 
   deferred: Array<{
     teamId: number;
@@ -509,11 +532,17 @@ function pitchingNeedScore(
 }
 
 function sameLevelProtectionCost(
-  protection:
+  unknownProtection:
     DevelopmentProtection,
   philosophy:
     PitchingOperationsPhilosophy
 ): number {
+  // Indeterminate pitchers are set aside before ranking; reaching here with one throws
+  const protection =
+    requireKnownProtection(
+      unknownProtection
+    );
+
   const base =
     protection.tier ===
       'organizational_depth'
@@ -573,6 +602,19 @@ function destinationStretchCost(
     'borderline'
   ) {
     return 15;
+  }
+
+  if (
+    fit.classification ===
+    'indeterminate'
+  ) {
+    /*
+     * The destination comparison could not be made for lack of visible
+     * ratings. This term only ranks moves Player Development has already
+     * approved; it is omitted rather than given a value, so the missing
+     * comparison neither helps nor hurts the move.
+     */
+    return 0;
   }
 
   return 30;
@@ -739,24 +781,22 @@ function philosophyInfluence(
     move.kind ===
       'demotion'
   ) {
+    const knownTier =
+      requireKnownProtection(
+        move.player.protection
+      ).tier;
+
     const weight =
-      move.player.protection
-        .tier ===
+      knownTier ===
         'core_prospect'
         ? 1
-        : move.player
-              .protection
-              .tier ===
+        : knownTier ===
             'protected_prospect'
           ? 0.8
-          : move.player
-                .protection
-                .tier ===
+          : knownTier ===
               'development_priority'
             ? 0.5
-            : move.player
-                  .protection
-                  .tier ===
+            : knownTier ===
                 'normal'
               ? 0.25
               : 0;
@@ -959,6 +999,9 @@ function buildCandidates(
     MinorLeaguePitchingOperationsResult[
       'rejected'
     ];
+
+  indeterminate:
+    IndeterminateMoveCandidate[];
 } {
   const candidates:
     PitcherCandidate[] = [];
@@ -967,6 +1010,39 @@ function buildCandidates(
     MinorLeaguePitchingOperationsResult[
       'rejected'
     ] = [];
+
+  const indeterminate:
+    IndeterminateMoveCandidate[] = [];
+
+  const indeterminateMove = (
+    player: {
+      playerId: number;
+      name: string;
+    },
+    kind: string,
+    source: AffiliateRosterHealth,
+    missingEvidence: MissingEvidence[],
+    reasons: string[]
+  ): IndeterminateMoveCandidate => ({
+    playerId: player.playerId,
+    playerName: player.name,
+    kind,
+    fromTeamId: source.teamId,
+    fromTeam: source.label,
+    toTeamId: destination.teamId,
+    toTeam: destination.label,
+    phase: 'development',
+    developmentJudgment: 'indeterminate',
+    missingEvidence,
+
+    /* The destination's need is objective and stated regardless of the development question. */
+    rosterNeed: [
+      `${destination.label} is ${destination.overall.toUpperCase()}.`,
+      ...destination.issues,
+    ],
+
+    reasons,
+  });
 
   const healthByTeam =
     new Map(
@@ -1012,6 +1088,28 @@ function buildCandidates(
       const player of
       sourceRoster
     ) {
+      /*
+       * Whether a same-level move respects the pitcher's developmental
+       * protection cannot be answered without his ratings. He is listed as
+       * indeterminate with the roster need — neither cleared nor refused — and
+       * kept out of the ranked plans.
+       */
+      if (!hasKnownTier(player.protection)) {
+        indeterminate.push(
+          indeterminateMove(
+            player,
+            'same_level_reassignment',
+            source,
+            player.protection.missingEvidence,
+            [
+              'Developmental protection cannot be determined without organization-visible current and potential ratings, so Player Development cannot say whether this same-level move is defensible.',
+            ]
+          )
+        );
+
+        continue;
+      }
+
       /*
        * Core prospects are never generic roster-balancing pieces.
        */
@@ -1127,8 +1225,34 @@ function buildCandidates(
         continue;
       }
 
+      /*
+       * Player Development's judgment has three outcomes. Only `indefensible`
+       * is a rejection; `indeterminate` is surfaced with the roster need and
+       * the missing evidence, and is never treated as approved.
+       */
       if (
-        !evaluation.eligible
+        evaluation.judgment ===
+        'indeterminate'
+      ) {
+        indeterminate.push(
+          indeterminateMove(
+            player,
+            kind,
+            source,
+            evaluation.missingEvidence,
+            [
+              'Player Development cannot yet say whether this assignment is defensible; the required organization-visible evidence is missing.',
+              ...evaluation.reasons,
+            ]
+          )
+        );
+
+        continue;
+      }
+
+      if (
+        evaluation.judgment ===
+        'indefensible'
       ) {
         rejected.push({
           playerId:
@@ -1156,6 +1280,28 @@ function buildCandidates(
                   'Player Development did not authorize this assignment.',
                 ],
         });
+
+        continue;
+      }
+
+      /*
+       * Defensible level movement still depends on the pitcher's protection
+       * for the role he would fill; with that indeterminate the assignment is
+       * not established as a whole.
+       */
+      if (!hasKnownTier(player.protection)) {
+        indeterminate.push(
+          indeterminateMove(
+            player,
+            kind,
+            source,
+            player.protection.missingEvidence,
+            [
+              'Player Development authorized this assignment, but the pitcher\'s developmental protection cannot be determined without organization-visible ratings.',
+              ...evaluation.reasons,
+            ]
+          )
+        );
 
         continue;
       }
@@ -1264,6 +1410,7 @@ function buildCandidates(
   return {
     candidates,
     rejected,
+    indeterminate,
   };
 }
 
@@ -1286,6 +1433,8 @@ function findPlans(
     MinorLeaguePitchingOperationsResult[
       'rejected'
     ];
+  indeterminate:
+    IndeterminateMoveCandidate[];
 } {
   const baseline =
     evaluatePitcherRoster(
@@ -1301,6 +1450,7 @@ function findPlans(
     return {
       plans: [],
       rejected: [],
+      indeterminate: [],
     };
   }
 
@@ -1580,6 +1730,9 @@ function findPlans(
 
     rejected:
       pool.rejected,
+
+    indeterminate:
+      pool.indeterminate,
   };
 }
 
@@ -1653,6 +1806,9 @@ export function computeMinorLeaguePitchingOperations(
       'rejected'
     ] = [];
 
+  const indeterminate:
+    IndeterminateMoveCandidate[] = [];
+
   const deferred:
     MinorLeaguePitchingOperationsResult[
       'deferred'
@@ -1705,6 +1861,10 @@ export function computeMinorLeaguePitchingOperations(
 
     rejected.push(
       ...result.rejected
+    );
+
+    indeterminate.push(
+      ...result.indeterminate
     );
 
     const best =
@@ -1956,6 +2116,7 @@ export function computeMinorLeaguePitchingOperations(
 
     plans,
     rejected,
+    indeterminate,
     deferred,
 
     safeguards: [
@@ -1967,6 +2128,7 @@ export function computeMinorLeaguePitchingOperations(
       'A source rotation/bullpen must remain structurally healthy after every proposed move.',
       'A pitcher must improve the destination pitching problem; legal movement alone is not enough.',
       'Rookie-level movement remains deferred until ACL/DSL assignment rules are modeled explicitly.',
+      'A pitcher move Player Development cannot judge for lack of organization-visible ratings is listed as indeterminate: it is not approved, not rejected, and not ranked with the plans.',
       'Recommendations are read-only and never modify the OOTP save.',
     ],
   };

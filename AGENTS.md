@@ -31,6 +31,10 @@ decision, roadmap item, or project-state fact changes.
   `overall_value`, `talent_value`, ...) or a rating column for those judgments,
   and never fall back to them; see D-017. `tests/evidenceBoundary.test.ts`
   enforces it.
+- Unknown evidence stays unknown: never substitute a midpoint, average, or
+  zero for a missing rating. Use `satisfied` / `not_satisfied` / `unknown` and
+  `defensible` / `indefensible` / `indeterminate` (D-018); `eligible: false` is
+  not a rejection. Indeterminate is not "protect" or "hold".
 - Statistics, contracts, service time, injuries, roster status, age, and
   transactions are objective save facts and may be treated as known.
 - Player Development decides which assignments are defensible. Organizational

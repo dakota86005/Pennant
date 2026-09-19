@@ -78,8 +78,13 @@ Done for Player Development and Minor League Operations (D-017): one
 scouted-evidence adapter, scale normalization, strict missing handling, and a
 static guard. Remaining:
 
-- Decide what should replace the neutral placeholder that unknown ratings still
-  enter as in readiness (maturity 50) and protection (rating 50, upside 50).
+- Resolved: unknown ratings are no longer imputed anywhere in development
+  arithmetic (D-018). Remaining: a comparison population below 25 is treated as
+  not satisfied rather than unknown, and the destination-fit stretch cost is
+  omitted for an unassessed comparison.
+- Surface indeterminate operations candidates and retention items in the farm
+  workspaces (they are returned by the API; Player Development's own page
+  already labels them).
 - Route scouting snapshots (`rating_snapshots.cur`/`pot`) through the same
   composite, or record their aggregation method, so history and current level
   share one definition.

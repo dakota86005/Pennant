@@ -11,8 +11,8 @@ material implementation state changes.
   `a57fc63`.
 - Stack: TypeScript, React 18, Vite 6, Express 4, SQLite via
   `better-sqlite3`, Electron 41, and Vitest 4.
-- Validation at this snapshot: `npx tsc --noEmit` clean, `npm test` 66 files /
-  550 tests passing, `npm run build` succeeds.
+- Validation at this snapshot: `npx tsc --noEmit` clean, `npm test` 67 files /
+  590 tests passing, `npm run build` succeeds.
 - `origin/feature/mlb-operations` (a linear descendant of `main`, not merged)
   holds the MLB Operations work described in its own project-state document. It
   is an integration candidate and is not part of this snapshot.
@@ -174,18 +174,25 @@ Present on this branch (D-017):
   decisions and the depth chart (`org.ts`), `minorLeagueMoves`,
   `minorLeaguePitchingOperations`, `minorLeagueRetention`,
   `minorLeagueRoster`, `pitcherRosterSimulation`, and `destinationFit`.
-- Decisions and protection disclose incomplete rating evidence. Destination fit
-  no longer reads a missing grade as zero, lists unassessed tools, and blocks a
-  skip-level move on an unevaluated core tool.
+- Decisions and protection report incomplete rating evidence and what is
+  missing. Destination fit no longer reads a missing grade as zero, lists
+  unassessed tools, and leaves the skip-level destination gate unknown (D-018).
 - `tests/evidenceBoundary.test.ts` statically forbids guarded modules from
   regaining a direct rating source and pins the set of modules allowed to read
   `players_value`.
 
-Not yet done: unknown ratings still enter readiness and protection as a neutral
-placeholder; scouting snapshots use their own composite; trade, contract,
+Unknown ratings are not imputed anywhere (D-018): readiness and protection are
+`null` when the ratings they depend on are, assignments are `defensible`,
+`indefensible`, or `indeterminate`, and Minor League Operations and retention
+carry indeterminate results as such (`indeterminate` lists and recommendation),
+never as approval, rejection, protection, or a hold. Philosophy cannot resolve
+an unknown.
+
+Not yet done: scouting snapshots use their own composite; trade, contract,
 franchise, roster, and player-card surfaces still read `players_value`; whether
 `players_value.oa`/`pot` are the organization's scouted view is unknowable from
-the repository. The provenance of every rating field is tabulated in
+the repository; the farm workspaces do not yet render operations' indeterminate
+candidates. The provenance of every rating field is tabulated in
 [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Current organization resolution

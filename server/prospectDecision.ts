@@ -14,6 +14,11 @@
  */
 
 import type { EvidenceStatus, ScoutedAbility } from './scoutedEvidence.js';
+import {
+  missingAbilityEvidence,
+  type MissingEvidence,
+  type ValueRange,
+} from './developmentJudgment.js';
 
 export type ProspectKind = 'batter' | 'pitcher';
 
@@ -23,7 +28,13 @@ export type ProspectRecommendation =
   | 'consider_promotion'
   | 'strong_promotion_case'
   | 'mlb_ready_discussion'
-  | 'consider_demotion';
+  | 'consider_demotion'
+  /**
+   * The evidence available cannot establish which recommendation applies: a
+   * required organization-visible rating is missing and the answer would differ
+   * with it. This is a statement about evidence, not a hold.
+   */
+  | 'indeterminate';
 
 export interface ProspectNextAssignment {
   level: number;
@@ -82,16 +93,30 @@ export interface ProspectDecisionInput {
 export interface ProspectDecision {
   /**
    * Whether the ratings behind `ratingsMaturity` were known. Unknown ratings
-   * enter as a neutral maturity of 50 — a placeholder, not scouting evidence.
+   * are unknown: no neutral maturity is substituted.
    */
   ratingsEvidence: EvidenceStatus;
+
+  /** What is missing when ratings evidence is incomplete. */
+  missingEvidence: MissingEvidence[];
 
   evidence: {
     performance: number;
     ageLevelUrgency: number;
-    ratingsMaturity: number;
+
+    /** null when the organization-visible ratings it depends on are unknown. */
+    ratingsMaturity: number | null;
     sampleConfidence: number;
-    readiness: number;
+
+    /** null when ratings maturity is unknown; see `readinessRange`. */
+    readiness: number | null;
+
+    /**
+     * Every readiness this evidence is consistent with. It is the exact
+     * readiness when ratings are known, and otherwise spans the model's own
+     * range of ratings maturity — an outer bound, not an estimate.
+     */
+    readinessRange: ValueRange;
   };
 
   organization: {
@@ -108,9 +133,22 @@ export interface ProspectDecision {
 
     /** Final threshold after philosophy and age/level urgency. */
     promotionThreshold: number;
+
+    /**
+     * The threshold with philosophy removed (age/level context only). Used so
+     * philosophy cannot settle a question incomplete evidence leaves open.
+     */
+    neutralPromotionThreshold: number;
   };
 
+  /** Objective: poor production, a real sample, not young for the level. */
+  demotionCase: boolean;
+
   recommendation: ProspectRecommendation;
+
+  /** When `indeterminate`, the recommendations the missing evidence leaves open. */
+  possibleRecommendations: Array<Exclude<ProspectRecommendation, 'indeterminate'>>;
+
   confidence: 'limited' | 'moderate' | 'high';
 
   nextAssignment: ProspectNextAssignment | null;
@@ -206,11 +244,15 @@ function ageLevelPressure(ageDiff: number | null): number {
   return rounded(50 - ageDiff * 15);
 }
 
+/** The range of the maturity model itself, used only to bound readiness. */
+const MATURITY_FLOOR = 20;
+const MATURITY_CEILING = 90;
+
 function ratingsMaturity(
   cur: number | null,
   pot: number | null
-): number {
-  if (cur === null || pot === null) return 50;
+): number | null {
+  if (cur === null || pot === null) return null;
 
   /*
    * We intentionally use only the current-to-potential GAP here.
@@ -219,12 +261,17 @@ function ratingsMaturity(
    * near his ceiling must not automatically become a promotion candidate.
    *
    * Instead this answers: how much of the development the organization's
-   * scouts currently project for this player appears to remain?
+   * scouts currently project for this player appears to remain? If either
+   * rating is unknown the answer is unknown (null); no midpoint is used.
    */
   const gap = Math.max(0, pot - cur);
 
   return rounded(
-    clamp(90 - gap * 2.8, 20, 90)
+    clamp(
+      MATURITY_CEILING - gap * 2.8,
+      MATURITY_FLOOR,
+      MATURITY_CEILING
+    )
   );
 }
 
@@ -235,6 +282,18 @@ function confidenceLabel(
   if (sample >= 50) return 'moderate';
   return 'limited';
 }
+
+const readinessOf = (
+  performance: number,
+  maturity: number
+): number =>
+  rounded(
+    performance * 0.75 +
+    maturity * 0.25
+  );
+
+type DeterminateRecommendation =
+  Exclude<ProspectRecommendation, 'indeterminate'>;
 
 export function evaluateProspectDecision(
   input: ProspectDecisionInput
@@ -248,31 +307,30 @@ export function evaluateProspectDecision(
   /*
    * Objective development readiness.
    *
-   * Production carries most of the weight.
-   * Age/level context provides urgency.
-   * Ratings maturity contributes useful context without being allowed to
-   * override what the player is actually doing.
+   * Production carries most of the weight; ratings maturity contributes useful
+   * context without being allowed to override what the player is doing.
+   * Age is deliberately NOT included: a 19-year-old dominating Double-A is not
+   * less ready simply because he is young. Age changes how urgently the
+   * organization needs to challenge him, not what he has demonstrated.
    *
    * Sample confidence is NOT part of readiness. It affects how confidently we
    * act on the score rather than changing the score itself.
+   *
+   * With ratings unknown there is no readiness — it is null, and the range it
+   * could take is reported instead.
    */
-  /*
-   * Objective development readiness.
-   *
-   * Age is deliberately NOT included here.
-   *
-   * A 19-year-old dominating Double-A is not less ready simply because he is
-   * young. His age changes how urgently the organization needs to challenge
-   * him, not what he has demonstrated on the field.
-   *
-   * Performance therefore carries most of the readiness grade, while ratings
-   * maturity describes how much of the organization's scouted projected
-   * development appears to remain.
-   */
-  const readiness = rounded(
-    performance * 0.75 +
-    maturity * 0.25
-  );
+  const readiness =
+    maturity === null
+      ? null
+      : readinessOf(performance, maturity);
+
+  const readinessRange: ValueRange =
+    readiness !== null
+      ? { min: readiness, max: readiness }
+      : {
+          min: readinessOf(performance, MATURITY_FLOOR),
+          max: readinessOf(performance, MATURITY_CEILING),
+        };
 
   const aggressiveness =
     rounded(input.promotionAggressiveness);
@@ -309,6 +367,10 @@ export function evaluateProspectDecision(
     basePromotionThreshold + ageThresholdAdjustment
   );
 
+  const neutralPromotionThreshold = rounded(
+    76 + ageThresholdAdjustment
+  );
+
   const positives: string[] = [];
   const cautions: string[] = [];
 
@@ -328,9 +390,9 @@ export function evaluateProspectDecision(
     cautions.push('The player is young for this level, so there is little developmental urgency.');
   }
 
-  if (ratingsEvidence !== 'complete') {
+  if (maturity === null) {
     cautions.push(
-      'Organization-visible current/potential ratings are incomplete, so ratings maturity is a neutral placeholder (50), not scouting evidence.'
+      'Organization-visible current/potential ratings are incomplete, so ratings maturity and readiness are unknown; no neutral value is substituted.'
     );
   } else if (maturity >= 75) {
     positives.push('Current and potential ratings suggest much of the projected development is already realized.');
@@ -350,15 +412,14 @@ export function evaluateProspectDecision(
     cautions.push('This organization generally requires stronger evidence before promoting prospects.');
   }
 
-  let recommendation: ProspectRecommendation = 'hold';
-
   /*
    * Demotion remains intentionally difficult to trigger.
    *
    * It requires poor performance, a meaningful sample, and a player who is not
-   * substantially young for his level. Promotion aggressiveness does not alter
-   * this rule; promotion philosophy and demotion patience are not the same
-   * organizational trait.
+   * substantially young for his level. It rests on objective evidence only, so
+   * unknown ratings cannot make or unmake it. Promotion aggressiveness does not
+   * alter this rule; promotion philosophy and demotion patience are not the
+   * same organizational trait.
    */
   const demotionCase =
     input.canDemote &&
@@ -366,14 +427,17 @@ export function evaluateProspectDecision(
     sample >= 55 &&
     (input.ageDiff === null || input.ageDiff <= 0.5);
 
-  if (demotionCase) {
-    recommendation = 'consider_demotion';
-  } else {
-    const considerThreshold = promotionThreshold - 8;
-    const strongThreshold = promotionThreshold + 8;
+  const recommend = (
+    atReadiness: number,
+    threshold: number
+  ): DeterminateRecommendation => {
+    if (demotionCase) return 'consider_demotion';
+
+    const considerThreshold = threshold - 8;
+    const strongThreshold = threshold + 8;
 
     if (
-      readiness >= promotionThreshold &&
+      atReadiness >= threshold &&
       sample >= 45 &&
       input.nextAssignment?.isMajorLeague
     ) {
@@ -382,31 +446,68 @@ export function evaluateProspectDecision(
        * Roster need, 40-man status, options and service considerations belong
        * to the future MLB opportunity layer.
        */
-      recommendation = 'mlb_ready_discussion';
-    } else if (
-      readiness >= strongThreshold &&
+      return 'mlb_ready_discussion';
+    }
+
+    if (
+      atReadiness >= strongThreshold &&
       sample >= 60 &&
       input.nextAssignment
     ) {
-      recommendation = 'strong_promotion_case';
-    } else if (
-      readiness >= promotionThreshold &&
+      return 'strong_promotion_case';
+    }
+
+    if (
+      atReadiness >= threshold &&
       sample >= 45 &&
       input.nextAssignment
     ) {
-      recommendation = 'consider_promotion';
-    } else if (
-      readiness >= considerThreshold ||
+      return 'consider_promotion';
+    }
+
+    if (
+      atReadiness >= considerThreshold ||
       (
         performance >= 70 &&
         sample < 45
       )
     ) {
-      recommendation = 'watch';
+      return 'watch';
     }
-  }
 
-  if (recommendation === 'consider_demotion') {
+    return 'hold';
+  };
+
+  /*
+   * With known ratings there is one answer. With unknown ratings, evaluate the
+   * recommendation at both ends of the possible readiness — under the club's
+   * own threshold AND the philosophy-free one, so philosophy cannot decide what
+   * the missing evidence leaves open. If they all agree, the missing evidence
+   * does not matter and the conclusion stands; otherwise it is indeterminate.
+   */
+  const outcomes = new Set<DeterminateRecommendation>(
+    readiness !== null
+      ? [recommend(readiness, promotionThreshold)]
+      : [
+          recommend(readinessRange.min, promotionThreshold),
+          recommend(readinessRange.max, promotionThreshold),
+          recommend(readinessRange.min, neutralPromotionThreshold),
+          recommend(readinessRange.max, neutralPromotionThreshold),
+        ]
+  );
+
+  const possibleRecommendations = [...outcomes];
+
+  const recommendation: ProspectRecommendation =
+    outcomes.size === 1
+      ? possibleRecommendations[0]
+      : 'indeterminate';
+
+  if (recommendation === 'indeterminate') {
+    cautions.push(
+      'Which recommendation applies depends on ratings that are not available; the objective evidence above is still shown.'
+    );
+  } else if (recommendation === 'consider_demotion') {
     if (!input.demotionAssignment) {
       cautions.push(
         'No lower affiliate is available in the current organization structure.'
@@ -424,12 +525,18 @@ export function evaluateProspectDecision(
 
   return {
     ratingsEvidence,
+    missingEvidence:
+      maturity === null
+        ? missingAbilityEvidence(input.ability)
+        : [],
+
     evidence: {
       performance,
       ageLevelUrgency: agePressure,
       ratingsMaturity: maturity,
       sampleConfidence: sample,
       readiness,
+      readinessRange,
     },
 
     organization: {
@@ -438,9 +545,17 @@ export function evaluateProspectDecision(
       philosophyThresholdAdjustment,
       ageThresholdAdjustment,
       promotionThreshold,
+      neutralPromotionThreshold,
     },
 
+    demotionCase,
+
     recommendation,
+    possibleRecommendations:
+      recommendation === 'indeterminate'
+        ? possibleRecommendations
+        : [],
+
     confidence: confidenceLabel(sample),
     nextAssignment: input.nextAssignment,
     demotionAssignment: input.demotionAssignment,

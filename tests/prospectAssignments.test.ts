@@ -244,23 +244,91 @@ describe('philosophy versus hard developmental constraints (current behavior)', 
   });
 });
 
-describe('missing rating evidence (current behavior)', () => {
-  it('lets a neutral maturity of 50 stand in, which lowers readiness against a fully mature player', () => {
-    const known = of(plan(), 'normal_promotion')[0];
-    const unknown = of(plan({ ability: ability(null, null) }), 'normal_promotion')[0];
-    expect(unknown.evidence.ratingsMaturity).toBe(50);
-    expect(unknown.evidence.readiness).toBeLessThan(known.evidence.readiness);
-    expect(unknown.eligible).toBe(false);
+describe('missing rating evidence', () => {
+  const unknownRatings = { ability: ability(null, null) };
+
+  it('makes an otherwise promotion-ready player indeterminate — neither defensible nor indefensible', () => {
+    const p = plan(unknownRatings);
+    const [normal] = of(p, 'normal_promotion');
+    expect(normal.judgment).toBe('indeterminate');
+    expect(normal.eligible).toBe(false);
+    expect(normal.recommendation).toBe('indeterminate');
+    // Not a rejection: nothing blocks him, and the evidence gap is named instead
+    expect(normal.blockers).toEqual([]);
+    expect(normal.missingEvidence.map((m) => m.dimension)).toEqual(['current_ability', 'potential_ability']);
+    expect(p.indeterminate).toContain(normal);
+    expect(p.eligible).not.toContain(normal);
   });
 
-  it('still allows ordinary promotion when production alone is convincing', () => {
-    const [normal] = of(plan({ ability: ability(null, null), primaryPerformanceDiff: 0.16 }), 'normal_promotion');
-    expect(normal.eligible).toBe(true);
+  it('shows the objective constraints alongside the unknown one', () => {
+    const [normal] = of(plan(unknownRatings), 'normal_promotion');
+    const byId = Object.fromEntries(normal.constraints.map((c) => [c.id, c]));
+    expect(byId.sample_confidence.state).toBe('satisfied');
+    expect(byId.readiness.state).toBe('unknown');
+    expect(byId.readiness.requiresSubjectiveEvidence).toBe(true);
+    expect(normal.evidence.performance).toBeGreaterThan(0);
+    expect(normal.evidence.readiness).toBeNull();
+    expect(normal.evidence.ratingsMaturity).toBeNull();
   });
 
-  it('withholds skip-level promotion, because unknown maturity cannot meet the maturity floor', () => {
-    const [skip] = of(plan({ ability: ability(null, null), primaryPerformanceDiff: 0.2 }), 'skip_level_promotion');
+  it('still rejects on an objective shortfall even when ratings are unknown', () => {
+    const [normal] = of(plan({ ...unknownRatings, pa: 60, primaryPerformanceDiff: 0.2 }), 'normal_promotion');
+    expect(normal.judgment).toBe('indefensible');
+    expect(normal.blockers.join(' ')).toMatch(/evidence confidence/i);
+    expect(normal.missingEvidence).toEqual([]);
+  });
+
+  it('still rejects when no possible rating could reach the threshold', () => {
+    const [normal] = of(plan({ ...unknownRatings, primaryPerformanceDiff: 0 }), 'normal_promotion');
+    expect(normal.judgment).toBe('indefensible');
+    expect(normal.blockers.join(' ')).toMatch(/below the organizational promotion threshold/);
+  });
+
+  it('leaves skip-level promotion indeterminate, with the maturity requirement unknown', () => {
+    const [skip] = of(plan({ ...unknownRatings, primaryPerformanceDiff: 0.2 }), 'skip_level_promotion');
+    expect(skip.judgment).toBe('indeterminate');
+    const maturity = skip.constraints.find((c) => c.id === 'ratings_maturity')!;
+    expect(maturity.state).toBe('unknown');
+    expect(skip.blockers).toEqual([]);
     expect(skip.eligible).toBe(false);
-    expect(skip.blockers.join(' ')).toMatch(/Ratings maturity 50/);
+  });
+
+  it('does not touch demotion, which rests on objective evidence', () => {
+    const struggling = plan({ ...unknownRatings, primaryPerformanceDiff: -0.2, pa: 200 });
+    const [demotion] = of(struggling, 'demotion');
+    expect(demotion.judgment).toBe('defensible');
+    expect(demotion.eligible).toBe(true);
+    const [fine] = of(plan(unknownRatings), 'demotion');
+    expect(fine.judgment).toBe('indefensible');
+  });
+
+  it('lets known adequate evidence still authorize, and known shortfall still reject', () => {
+    expect(of(plan(), 'normal_promotion')[0].judgment).toBe('defensible');
+    expect(of(plan({ primaryPerformanceDiff: 0 }), 'normal_promotion')[0].judgment).toBe('indefensible');
+    expect(of(plan({ primaryPerformanceDiff: 0.2 }), 'skip_level_promotion')[0].judgment).toBe('defensible');
+    expect(of(plan({ primaryPerformanceDiff: 0.2, ability: ability(30, 70) }), 'skip_level_promotion')[0].judgment)
+      .toBe('indefensible');
+  });
+
+  it('does not let Organizational Philosophy convert an indeterminate result into authorization', () => {
+    /*
+     * Performance 88: readiness could be 71-89. Against the neutral threshold of
+     * 76 that is unknown, but an aggressive organization's threshold of 66 sits
+     * below the whole range, so a naive comparison would call it satisfied.
+     */
+    const straddling = { ability: ability(null, null), primaryPerformanceDiff: 0.152 };
+    for (const aggression of [0, 25, 50, 75, 100]) {
+      const p = plan({ ...straddling, promotionAggressiveness: aggression });
+      const [normal] = of(p, 'normal_promotion');
+      expect(normal.judgment, `aggressiveness ${aggression}`).not.toBe('defensible');
+      expect(p.eligible.filter((e) => e.direction === 'promotion'), `aggressiveness ${aggression}`)
+        .toEqual([]);
+    }
+    const aggressive = plan({ ...straddling, promotionAggressiveness: 100 });
+    expect(of(aggressive, 'normal_promotion')[0].judgment).toBe('indeterminate');
+    // Same evidence with the ratings KNOWN is decided by philosophy, as before
+    const known = { ability: ability(50, 50), primaryPerformanceDiff: 0.06 };
+    expect(of(plan({ ...known, promotionAggressiveness: 0 }), 'normal_promotion')[0].judgment).toBe('indefensible');
+    expect(of(plan({ ...known, promotionAggressiveness: 100 }), 'normal_promotion')[0].judgment).toBe('defensible');
   });
 });

@@ -1,5 +1,10 @@
 import type { Gloves, PositionRating } from './gloves.js';
 import type { EvidenceStatus, ScoutedAbility } from './scoutedEvidence.js';
+import {
+  missingAbilityEvidence,
+  type ConstraintState,
+  type MissingEvidence,
+} from './developmentJudgment.js';
 
 export type DevelopmentProtectionTier =
   | 'core_prospect'
@@ -33,16 +38,66 @@ export interface DevelopmentProtectionInput {
 }
 
 export interface DevelopmentProtection {
+  /**
+   * null when the organization-visible ratings are incomplete. No neutral value
+   * is substituted: an unknown rating is unknown, not average.
+   */
+  score: number | null;
+
+  /** null (indeterminate) when the score cannot be established. */
+  tier: DevelopmentProtectionTier | null;
+
+  manuallyProtected: boolean;
+
+  /** Whether the ratings behind the score were fully known. */
+  ratingEvidence: EvidenceStatus;
+
+  /** What is missing when `tier` is null. */
+  missingEvidence: MissingEvidence[];
+
+  reasons: string[];
+}
+
+/** A protection whose score and tier were established from complete evidence. */
+export type KnownProtection = DevelopmentProtection & {
   score: number;
   tier: DevelopmentProtectionTier;
-  manuallyProtected: boolean;
-  /**
-   * Whether the ratings behind the score were fully known. When they were not,
-   * the unknown grades entered as a neutral prior (see scoutingScale), which is
-   * a placeholder and not scouting evidence.
-   */
-  ratingEvidence: EvidenceStatus;
-  reasons: string[];
+};
+
+export function hasKnownTier(
+  protection: DevelopmentProtection
+): protection is KnownProtection {
+  return protection.tier !== null && protection.score !== null;
+}
+
+/**
+ * For code that has already set indeterminate players aside. Reaching it with
+ * an unknown tier is a bug, and it throws rather than pick a tier.
+ */
+export function requireKnownProtection(
+  protection: DevelopmentProtection
+): KnownProtection {
+  if (!hasKnownTier(protection)) {
+    throw new Error(
+      'Indeterminate development protection reached a ranking that requires a known tier.'
+    );
+  }
+
+  return protection;
+}
+
+/**
+ * Whether a constraint on the protection tier holds: unknown while the tier is.
+ */
+export function protectionTierState(
+  protection: DevelopmentProtection,
+  holds: (tier: DevelopmentProtectionTier) => boolean
+): ConstraintState {
+  if (protection.tier === null) return 'unknown';
+
+  return holds(protection.tier)
+    ? 'satisfied'
+    : 'not_satisfied';
 }
 
 export interface PositionAssignmentFit {
@@ -68,9 +123,7 @@ const clamp = (value: number, min = 0, max = 100): number =>
 const rounded = (value: number): number =>
   Math.round(clamp(value));
 
-function scoutingScale(value: number | null): number {
-  if (value === null || !Number.isFinite(value)) return 50;
-
+function scoutingScale(value: number): number {
   /*
    * Ratings arrive already normalized to the 20-80 scouting scale by the
    * scouted-evidence adapter, whatever scale the save displays.
@@ -79,8 +132,8 @@ function scoutingScale(value: number | null): number {
    * 50 -> 50
    * 80 -> 100
    *
-   * An unknown rating scores as 50. That is a neutral prior the caller is told
-   * about through `ratingEvidence`, not a scouting judgment.
+   * Only known ratings are scaled. An unknown rating never reaches this
+   * function and is never given a value.
    */
   return clamp(((value - 20) / 60) * 100);
 }
@@ -121,14 +174,12 @@ export function evaluateDevelopmentProtection(
       tier: 'core_prospect',
       manuallyProtected: true,
       ratingEvidence,
+      missingEvidence: [],
       reasons: [
         'Manually protected by the front office.',
       ],
     };
   }
-
-  const potential = scoutingScale(potentialRating);
-  const currentScore = scoutingScale(current);
 
   const rawGap =
     current !== null && potentialRating !== null
@@ -136,38 +187,9 @@ export function evaluateDevelopmentProtection(
       : null;
 
   /*
-   * Remaining upside is useful, but potential itself matters much more.
-   * We do not want a 25/45 player to outrank a nearly-developed 60/65 player
-   * simply because the first player has a bigger gap.
+   * Reasons that rest only on evidence that IS known are reported whether or
+   * not the rest is: a known ceiling or a young age is still worth showing.
    */
-  const upside =
-    rawGap === null
-      ? 50
-      : clamp((rawGap / 30) * 100);
-
-  const youth = youthScore(input.age);
-
-  const score = rounded(
-    potential * 0.60 +
-    upside * 0.20 +
-    youth * 0.10 +
-    currentScore * 0.10
-  );
-
-  let tier: DevelopmentProtectionTier;
-
-  if (score >= 78) {
-    tier = 'core_prospect';
-  } else if (score >= 57) {
-    tier = 'protected_prospect';
-  } else if (score >= 42) {
-    tier = 'development_priority';
-  } else if (score >= 25) {
-    tier = 'normal';
-  } else {
-    tier = 'organizational_depth';
-  }
-
   const reasons: string[] = [];
 
   if (potentialRating !== null && potentialRating >= 65) {
@@ -206,17 +228,63 @@ export function evaluateDevelopmentProtection(
     );
   }
 
+  /*
+   * Protection weighs ceiling, present ability and the gap between them. If
+   * either rating is unknown the score cannot be computed, and no neutral value
+   * is put in its place: the protection is indeterminate, with the missing
+   * evidence reported.
+   */
+  if (current === null || potentialRating === null) {
+    reasons.push(
+      'Developmental protection is indeterminate: the organization-visible current and/or potential ratings it depends on are unavailable, and no neutral value is substituted.'
+    );
+
+    return {
+      score: null,
+      tier: null,
+      manuallyProtected: false,
+      ratingEvidence,
+      missingEvidence: missingAbilityEvidence(input.ability),
+      reasons,
+    };
+  }
+
+  const potential = scoutingScale(potentialRating);
+  const currentScore = scoutingScale(current);
+
+  /*
+   * Remaining upside is useful, but potential itself matters much more.
+   * We do not want a 25/45 player to outrank a nearly-developed 60/65 player
+   * simply because the first player has a bigger gap.
+   */
+  const upside = clamp((Math.max(0, potentialRating - current) / 30) * 100);
+
+  const youth = youthScore(input.age);
+
+  const score = rounded(
+    potential * 0.60 +
+    upside * 0.20 +
+    youth * 0.10 +
+    currentScore * 0.10
+  );
+
+  let tier: DevelopmentProtectionTier;
+
+  if (score >= 78) {
+    tier = 'core_prospect';
+  } else if (score >= 57) {
+    tier = 'protected_prospect';
+  } else if (score >= 42) {
+    tier = 'development_priority';
+  } else if (score >= 25) {
+    tier = 'normal';
+  } else {
+    tier = 'organizational_depth';
+  }
+
   if (reasons.length === 0) {
     reasons.push(
       'No exceptional developmental-protection signal is present.'
-    );
-  }
-
-  if (ratingEvidence !== 'complete') {
-    reasons.push(
-      ratingEvidence === 'unknown'
-        ? 'No organization-visible current or potential ratings are available; unknown grades are scored as a neutral placeholder, not as scouting evidence.'
-        : 'Only part of the organization-visible current/potential evidence is available; the unknown grade is scored as a neutral placeholder, not as scouting evidence.'
     );
   }
 
@@ -225,6 +293,7 @@ export function evaluateDevelopmentProtection(
     tier,
     manuallyProtected: false,
     ratingEvidence,
+    missingEvidence: [],
     reasons,
   };
 }
@@ -332,12 +401,16 @@ export function evaluatePositionAssignments(
  * Minimum fit required before the roster optimizer may use a position as the
  * reason for a player's reassignment.
  *
- * Higher-protection players get increasingly strict treatment.
+ * Higher-protection players get increasingly strict treatment. Null when the
+ * protection tier is indeterminate: the requirement is then unknown.
  */
 export function minimumRegularAssignmentFit(
   protection: DevelopmentProtection
-): number {
+): number | null {
   switch (protection.tier) {
+    case null:
+      return null;
+
     case 'core_prospect':
       return 85;
 
@@ -355,16 +428,26 @@ export function minimumRegularAssignmentFit(
   }
 }
 
+/**
+ * Whether the assignment may be a regular one for this player. Unknown, not
+ * refused, while the protection tier is indeterminate.
+ */
 export function canUseAsRegularAssignment(
   protection: DevelopmentProtection,
   assignment: PositionAssignmentFit
-): boolean {
+): ConstraintState {
   if (protection.manuallyProtected) {
-    return assignment.use === 'preferred';
+    return assignment.use === 'preferred'
+      ? 'satisfied'
+      : 'not_satisfied';
   }
 
-  return (
-    assignment.fit >=
-    minimumRegularAssignmentFit(protection)
-  );
+  const required =
+    minimumRegularAssignmentFit(protection);
+
+  if (required === null) return 'unknown';
+
+  return assignment.fit >= required
+    ? 'satisfied'
+    : 'not_satisfied';
 }

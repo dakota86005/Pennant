@@ -179,6 +179,35 @@ adapter decides what their ratings are.
 - **Type barrier:** `evaluateProspectDecision` and
   `evaluateDevelopmentProtection` take a `ScoutedAbility`, not numbers.
 
+### Evidence sufficiency
+
+Missing evidence is not imputed (D-018). Rating-dependent constraints are
+`satisfied`, `not_satisfied`, or `unknown`; an assessment is `defensible`,
+`indefensible`, or `indeterminate`, and an indeterminate one reports the
+missing evidence while still showing every objective fact.
+
+```text
+ScoutedAbility (current/potential may be null)
+   |
+   +--> prospectDecision: readiness null + readinessRange; recommendation may be
+   |                       'indeterminate'; demotion stays objective
+   +--> developmentFit:   protection score/tier null; tier constraints unknown
+   +--> destinationFit:   unassessed tools -> gate unknown, no partial composite
+   |
+   v
+prospectAssignments: constraints[] -> judgment; plan.eligible (defensible only)
+                     plan.indeterminate (with missingEvidence)
+   |
+   v
+Minor League Operations: plans = defensible only; rejected = indefensible;
+                         indeterminate[] = surfaced with roster need, unranked
+Retention: 'indeterminate' recommendation after objective guardrails
+```
+
+Philosophy cannot resolve an unknown: it operates among defensible choices, and
+a comparison that is unknown against the philosophy-free threshold stays unknown
+under any philosophy.
+
 ### Rating-field provenance
 
 What the repository can and cannot establish. "Declared" means an
