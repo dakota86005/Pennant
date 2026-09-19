@@ -4,6 +4,10 @@ import {
   type ProspectDecisionInput,
   type ProspectNextAssignment,
 } from '../server/prospectDecision.js';
+import { syntheticScoutedAbility } from '../server/scoutedEvidence.js';
+
+const ability = (current: number | null, potential: number | null) =>
+  syntheticScoutedAbility({ current, potential });
 
 /**
  * Player Development's readiness model, driven by explicit synthetic inputs.
@@ -31,8 +35,7 @@ function hitter(overrides: Partial<ProspectDecisionInput> = {}): ProspectDecisio
     primaryPerformanceDiff: 0.1,
     pa: 250,
     ageDiff: 0,
-    cur: 50,
-    pot: 50,
+    ability: ability(50, 50),
     promotionAggressiveness: 50,
     nextAssignment: aa,
     demotionAssignment: single,
@@ -51,19 +54,19 @@ describe('prospect readiness', () => {
   });
 
   it('scores maturity from the gap between current and potential, not from either alone', () => {
-    const lowCeilingNearlyDone = evaluateProspectDecision(hitter({ cur: 40, pot: 42 }));
-    const highCeilingNearlyDone = evaluateProspectDecision(hitter({ cur: 65, pot: 67 }));
+    const lowCeilingNearlyDone = evaluateProspectDecision(hitter({ ability: ability(40, 42) }));
+    const highCeilingNearlyDone = evaluateProspectDecision(hitter({ ability: ability(65, 67) }));
     expect(lowCeilingNearlyDone.evidence.ratingsMaturity)
       .toBe(highCeilingNearlyDone.evidence.ratingsMaturity);
   });
 
   it('treats a large projected gap as immature, bottoming out at 20', () => {
-    expect(evaluateProspectDecision(hitter({ cur: 25, pot: 75 })).evidence.ratingsMaturity).toBe(20);
-    expect(evaluateProspectDecision(hitter({ cur: 50, pot: 60 })).evidence.ratingsMaturity).toBe(62);
+    expect(evaluateProspectDecision(hitter({ ability: ability(25, 75) })).evidence.ratingsMaturity).toBe(20);
+    expect(evaluateProspectDecision(hitter({ ability: ability(50, 60) })).evidence.ratingsMaturity).toBe(62);
   });
 
   it('does not count a potential below current as extra maturity', () => {
-    expect(evaluateProspectDecision(hitter({ cur: 60, pot: 50 })).evidence.ratingsMaturity).toBe(90);
+    expect(evaluateProspectDecision(hitter({ ability: ability(60, 50) })).evidence.ratingsMaturity).toBe(90);
   });
 
   it('keeps age out of readiness — it only moves urgency and the threshold', () => {
@@ -88,8 +91,7 @@ describe('prospect readiness', () => {
       secondaryPerformanceDiff: 0.05, // +5 points of K%: 75
       ip: 60,
       ageDiff: 0,
-      cur: 50,
-      pot: 50,
+      ability: ability(50, 50),
       promotionAggressiveness: 50,
       nextAssignment: aa,
       demotionAssignment: single,
@@ -109,7 +111,7 @@ describe('sample confidence', () => {
   it('uses innings for pitchers: 15 IP is 25, 60 IP is 100', () => {
     const pitcher = (ip: number) => evaluateProspectDecision({
       kind: 'pitcher', primaryPerformanceDiff: 0, secondaryPerformanceDiff: 0, ip, ageDiff: 0,
-      cur: 50, pot: 50, promotionAggressiveness: 50, nextAssignment: aa,
+      ability: ability(50, 50), promotionAggressiveness: 50, nextAssignment: aa,
       demotionAssignment: single, canDemote: true,
     });
     expect(pitcher(15).evidence.sampleConfidence).toBe(25);
@@ -231,7 +233,7 @@ describe('missing rating evidence (current behavior)', () => {
   it('substitutes a neutral maturity of 50 for the missing gap', () => {
     // Pinned so the substitution is visible and cannot change unnoticed. It is a
     // neutral prior, not scouting evidence; see docs/DECISIONS.md D-017.
-    for (const ratings of [{ cur: null, pot: null }, { cur: 50, pot: null }, { cur: null, pot: 60 }]) {
+    for (const ratings of [{ ability: ability(null, null) }, { ability: ability(50, null) }, { ability: ability(null, 60) }]) {
       expect(evaluateProspectDecision(hitter(ratings)).evidence.ratingsMaturity).toBe(50);
     }
   });

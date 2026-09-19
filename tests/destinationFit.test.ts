@@ -9,6 +9,10 @@ import {
 } from '../server/destinationFit.js';
 import { evaluateProspectDecision, type ProspectNextAssignment } from '../server/prospectDecision.js';
 import { evaluateProspectAssignments } from '../server/prospectAssignments.js';
+import { syntheticScoutedAbility } from '../server/scoutedEvidence.js';
+
+const ability = (current: number | null, potential: number | null) =>
+  syntheticScoutedAbility({ current, potential });
 
 /**
  * Destination fit compares a player's visible tools with the active players in
@@ -133,14 +137,28 @@ describe('destination-fit low-sample and missing behavior', () => {
     expect(fit.classification).toBe('poor');
   });
 
-  it('reads a missing tool as a zero rating (current behavior)', () => {
-    // numberOrNull(null) is Number(null) === 0, so an absent grade is scored as the
-    // worst possible one rather than left out. Pinned here; the evidence adapter
-    // migration replaces it with "missing stays missing".
+  it('leaves a missing tool out and says so, instead of scoring it as zero', () => {
     const fit = evaluateDestinationFit(hitter({ eye: null }), BIG.team)!;
-    const eye = fit.components.find((c) => c.key === 'eye')!;
-    expect(eye.playerRating).toBe(0);
-    expect(eye.percentile).toBe(0);
+    expect(fit.components.map((c) => c.key)).not.toContain('eye');
+    expect(fit.components).toHaveLength(4);
+    expect(fit.unassessedComponents).toEqual([{ label: 'Eye', core: true, reason: 'no_visible_rating' }]);
+    expect(fit.notes.join(' ')).toMatch(/Not evaluated: Eye \(no organization-visible rating\)/);
+    // Not dragged down by a phantom zero: the rest of the composite is re-weighted
+    const complete = evaluateDestinationFit(hitter({ eye: 50 }), BIG.team)!;
+    expect(fit.compositePercentile).toBeGreaterThan(0);
+    expect(Math.abs(fit.compositePercentile - complete.compositePercentile)).toBeLessThan(15);
+  });
+
+  it('keeps a skip-level move from being authorized on an unevaluated core tool', () => {
+    const fit = evaluateDestinationFit(hitter({ contact: 59, eye: null, avoidK: 59 }), BIG.team)!;
+    const gate = skipLevelDestinationGate(fit, 1);
+    expect(gate.passes).toBe(false);
+    expect(gate.reasons.join(' ')).toMatch(/not evaluated for lack of organization-visible evidence: Eye/);
+  });
+
+  it('treats a zero rating as unknown too, since no scale grades anyone zero', () => {
+    const fit = evaluateDestinationFit(hitter({ eye: 0 }), BIG.team)!;
+    expect(fit.unassessedComponents.map((u) => u.label)).toEqual(['Eye']);
   });
 
   it('has nothing to say about a player or destination that does not exist', () => {
@@ -152,7 +170,7 @@ describe('destination-fit low-sample and missing behavior', () => {
 describe('the skip-level destination gate', () => {
   const fit = (composite: number, weakest: number, population = 30): DestinationFit => ({
     playerId: 1, destinationTeamId: 2, destinationTeam: 'X', leagueId: 3, leagueName: 'L', leagueLevel: 3,
-    kind: 'hitter', roleAssessment: null, components: [], compositePercentile: composite,
+    kind: 'hitter', roleAssessment: null, components: [], unassessedComponents: [], compositePercentile: composite,
     weakestCorePercentile: weakest, classification: 'viable', populationMinimum: population, notes: [],
   });
 
@@ -187,7 +205,7 @@ describe('destination fit applied to an assignment plan', () => {
 
   const planFor = (playerId: number, destinationTeams: Array<{ team: number }>) => {
     const decision = evaluateProspectDecision({
-      kind: 'batter', primaryPerformanceDiff: 0.2, pa: 250, ageDiff: 0, cur: 50, pot: 50,
+      kind: 'batter', primaryPerformanceDiff: 0.2, pa: 250, ageDiff: 0, ability: ability(50, 50),
       promotionAggressiveness: 50,
       nextAssignment: team(destinationTeams[0], 3, 'AA'),
       demotionAssignment: lower, canDemote: true,

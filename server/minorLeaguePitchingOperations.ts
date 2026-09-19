@@ -1,8 +1,10 @@
 import {
   db,
-  tableColumns,
-  tableExists,
 } from './db.js';
+
+import {
+  loadScoutedAbilities,
+} from './scoutedEvidence.js';
 
 import {
   computeMinorLeagueRosterHealth,
@@ -303,164 +305,46 @@ export interface MinorLeaguePitchingOperationsResult {
 }
 
 
-function nullableRating(
-  value: unknown
-): number | null {
-  const n = Number(value);
-
-  return (
-    Number.isFinite(n) &&
-    n > 0
-      ? n
-      : null
-  );
-}
-
-function valueColumns(): {
-  join: string;
-  current: string;
-  potential: string;
-} {
-  if (
-    !tableExists(
-      'players_value'
-    )
-  ) {
-    return {
-      join: '',
-      current: 'NULL',
-      potential: 'NULL',
-    };
-  }
-
-  const columns =
-    tableColumns(
-      'players_value'
-    );
-
-  const current =
-    columns.includes('oa')
-      ? 'v.oa'
-      : columns.includes(
-          'oa_rating'
-        )
-        ? 'v.oa_rating'
-        : 'NULL';
-
-  const potential =
-    columns.includes('pot')
-      ? 'v.pot'
-      : columns.includes(
-          'pot_rating'
-        )
-        ? 'v.pot_rating'
-        : 'NULL';
-
-  return {
-    join:
-      'LEFT JOIN players_value v ON v.player_id = p.player_id',
-
-    current,
-    potential,
-  };
-}
-
-function playerValuesForTeam(
-  teamId: number
-): Map<
-  number,
-  {
-    current: number | null;
-    potential: number | null;
-  }
-> {
-  const values =
-    valueColumns();
-
-  if (
-    !tableExists('players')
-  ) {
-    return new Map();
-  }
-
-  const rows =
-    db.prepare(`
-      SELECT
-        p.player_id,
-        ${values.current}
-          AS current_rating,
-        ${values.potential}
-          AS potential_rating
-
-      FROM players p
-
-      ${values.join}
-
-      WHERE p.team_id = ?
-        AND p.retired = 0
-        AND p.position = 1
-    `).all(
-      teamId
-    ) as Array<
-      Record<string, unknown>
-    >;
-
-  return new Map(
-    rows.map((row) => [
-      Number(row.player_id),
-
-      {
-        current:
-          nullableRating(
-            row.current_rating
-          ),
-
-        potential:
-          nullableRating(
-            row.potential_rating
-          ),
-      },
-    ])
-  );
-}
-
 function pitchersForTeam(
   teamId: number
 ): OperationsPitcher[] {
-  const values =
-    playerValuesForTeam(
+  const roster =
+    pitcherRosterForTeam(
       teamId
     );
 
-  return pitcherRosterForTeam(
-    teamId
-  ).map((pitcher) => {
-    const ratings =
-      values.get(
+  /*
+   * The roster is an objective fact. What the pitchers' ratings say comes only
+   * from the scouted-evidence adapter.
+   */
+  const abilities =
+    loadScoutedAbilities(
+      roster.map(
+        (pitcher) =>
+          pitcher.playerId
+      )
+    );
+
+  return roster.map((pitcher) => {
+    const ability =
+      abilities.for(
         pitcher.playerId
-      ) ?? {
-        current: null,
-        potential: null,
-      };
+      );
 
     return {
       ...pitcher,
 
       current:
-        ratings.current,
+        ability.current,
 
       potential:
-        ratings.potential,
+        ability.potential,
 
       protection:
         evaluateDevelopmentProtection({
           age: pitcher.age,
 
-          current:
-            ratings.current,
-
-          potential:
-            ratings.potential,
+          ability,
         }),
     };
   });

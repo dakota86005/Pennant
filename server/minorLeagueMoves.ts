@@ -1,13 +1,15 @@
 import {
   db,
-  tableColumns,
-  tableExists,
 } from './db.js';
 
 import {
-  gloves,
   POSITION_CODES,
 } from './gloves.js';
+
+import {
+  loadScoutedAbilities,
+  scoutedGloves,
+} from './scoutedEvidence.js';
 
 import {
   computeMinorLeagueRosterHealth,
@@ -232,11 +234,6 @@ export interface MinorLeagueRebalanceResult {
   safeguards: string[];
 }
 
-function nullableRating(value: unknown): number | null {
-  const n = Number(value);
-  return Number.isFinite(n) && n > 0 ? n : null;
-}
-
 function hitterBodyStatus(count: number): RosterHealthStatus {
   if (count < 10) return 'critical';
   if (count < 12) return 'thin';
@@ -392,44 +389,7 @@ function severity(
   return 0;
 }
 
-function valueColumns(): {
-  join: string;
-  current: string;
-  potential: string;
-} {
-  if (!tableExists('players_value')) {
-    return {
-      join: '',
-      current: 'NULL',
-      potential: 'NULL',
-    };
-  }
-
-  const columns = tableColumns('players_value');
-
-  const current = columns.includes('oa')
-    ? 'v.oa'
-    : columns.includes('oa_rating')
-      ? 'v.oa_rating'
-      : 'NULL';
-
-  const potential = columns.includes('pot')
-    ? 'v.pot'
-    : columns.includes('pot_rating')
-      ? 'v.pot_rating'
-      : 'NULL';
-
-  return {
-    join:
-      'LEFT JOIN players_value v ON v.player_id = p.player_id',
-    current,
-    potential,
-  };
-}
-
 function hittersForTeam(teamId: number): Hitter[] {
-  const values = valueColumns();
-
   const rows = db.prepare(`
     SELECT
       p.player_id,
@@ -437,19 +397,24 @@ function hittersForTeam(teamId: number): Hitter[] {
       p.last_name,
       p.age,
       p.team_id,
-      p.position,
-      ${values.current} AS current_rating,
-      ${values.potential} AS potential_rating
+      p.position
     FROM players p
     JOIN team_roster tr
       ON tr.team_id = p.team_id
      AND tr.player_id = p.player_id
      AND tr.list_id = 2
-    ${values.join}
     WHERE p.team_id = ?
       AND p.retired = 0
       AND p.position != 1
   `).all(teamId) as Array<Record<string, unknown>>;
+
+  /*
+   * Who is on the roster is an objective fact read above. What their ratings
+   * say comes only from the scouted-evidence adapter.
+   */
+  const abilities = loadScoutedAbilities(
+    rows.map((row) => Number(row.player_id))
+  );
 
   return rows.map((row) => {
     const playerId = Number(row.player_id);
@@ -461,7 +426,7 @@ function hittersForTeam(teamId: number): Hitter[] {
         ? listedRaw as PositionCode
         : null;
 
-    const profile = gloves(playerId);
+    const profile = scoutedGloves(playerId);
 
     const coverage = new Set<PositionCode>();
 
@@ -513,17 +478,16 @@ function hittersForTeam(teamId: number): Hitter[] {
       ];
     }
 
-    const current =
-      nullableRating(row.current_rating);
+    const ability = abilities.for(playerId);
 
-    const potential =
-      nullableRating(row.potential_rating);
+    const current = ability.current;
+
+    const potential = ability.potential;
 
     const protection =
       evaluateDevelopmentProtection({
         age: Number(row.age),
-        current,
-        potential,
+        ability,
       });
 
     return {

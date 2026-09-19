@@ -6,6 +6,7 @@ import {
   minimumRegularAssignmentFit,
 } from '../server/developmentFit.js';
 import type { Gloves, PositionRating } from '../server/gloves.js';
+import { syntheticScoutedAbility } from '../server/scoutedEvidence.js';
 
 /**
  * Development protection and defensive-assignment fit, on explicit inputs.
@@ -15,7 +16,7 @@ import type { Gloves, PositionRating } from '../server/gloves.js';
  */
 
 const protect = (age: number, current: number | null, potential: number | null) =>
-  evaluateDevelopmentProtection({ age, current, potential });
+  evaluateDevelopmentProtection({ age, ability: syntheticScoutedAbility({ current, potential }) });
 
 describe('development protection', () => {
   it('protects a young high-ceiling player as a core prospect', () => {
@@ -55,7 +56,7 @@ describe('development protection', () => {
   });
 
   it('is total protection when manually protected, whatever the ratings', () => {
-    const p = evaluateDevelopmentProtection({ age: 33, current: 25, potential: 25, manuallyProtected: true });
+    const p = evaluateDevelopmentProtection({ age: 33, ability: syntheticScoutedAbility({ current: 25, potential: 25 }), manuallyProtected: true });
     expect(p).toMatchObject({ score: 100, tier: 'core_prospect', manuallyProtected: true });
   });
 });
@@ -68,10 +69,12 @@ describe('missing rating evidence (current behavior)', () => {
    * an unknown veteran is protected MORE than a known average one. Pinned so
    * the behavior is visible and cannot change unnoticed.
    */
-  it('scores unknown ratings as a 50 with a 50 upside, and gives no ceiling reason', () => {
+  it('scores unknown ratings as a 50 with a 50 upside, and says so', () => {
     const unknown = protect(30, null, null);
     expect(unknown.score).toBe(Math.round(50 * 0.6 + 50 * 0.2 + 5 * 0.1 + 50 * 0.1));
-    expect(unknown.reasons).toEqual(['No exceptional developmental-protection signal is present.']);
+    expect(unknown.ratingEvidence).toBe('unknown');
+    expect(unknown.reasons[0]).toBe('No exceptional developmental-protection signal is present.');
+    expect(unknown.reasons.join(' ')).toMatch(/neutral placeholder, not as scouting evidence/);
   });
 
   it('protects an unknown older player above a known average one', () => {
@@ -148,7 +151,7 @@ describe('what protection lets an operation do', () => {
   });
 
   it('allows only the preferred position for a manually protected player', () => {
-    const manual = evaluateDevelopmentProtection({ age: 30, current: 30, potential: 30, manuallyProtected: true });
+    const manual = evaluateDevelopmentProtection({ age: 30, ability: syntheticScoutedAbility({ current: 30, potential: 30 }), manuallyProtected: true });
     expect(canUseAsRegularAssignment(manual, secondary(70))).toBe(false);
     const primary = evaluatePositionAssignments(gloves([rating(6, 'SS', 45, { isPrimary: true })]))[0];
     expect(canUseAsRegularAssignment(manual, primary)).toBe(true);

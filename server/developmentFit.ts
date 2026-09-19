@@ -1,4 +1,5 @@
 import type { Gloves, PositionRating } from './gloves.js';
+import type { EvidenceStatus, ScoutedAbility } from './scoutedEvidence.js';
 
 export type DevelopmentProtectionTier =
   | 'core_prospect'
@@ -16,8 +17,13 @@ export type AssignmentUse =
 
 export interface DevelopmentProtectionInput {
   age: number;
-  current: number | null;
-  potential: number | null;
+
+  /**
+   * The organization-visible ability evidence, from the scouted-evidence
+   * adapter. A bare rating cannot be passed here, so protection cannot be
+   * computed from a source the evidence boundary has not approved.
+   */
+  ability: ScoutedAbility;
 
   /**
    * Reserved for the future manual "protect this player" control.
@@ -30,6 +36,12 @@ export interface DevelopmentProtection {
   score: number;
   tier: DevelopmentProtectionTier;
   manuallyProtected: boolean;
+  /**
+   * Whether the ratings behind the score were fully known. When they were not,
+   * the unknown grades entered as a neutral prior (see scoutingScale), which is
+   * a placeholder and not scouting evidence.
+   */
+  ratingEvidence: EvidenceStatus;
   reasons: string[];
 }
 
@@ -60,11 +72,15 @@ function scoutingScale(value: number | null): number {
   if (value === null || !Number.isFinite(value)) return 50;
 
   /*
-   * OOTP ratings in this save use the 20-80 scouting scale.
+   * Ratings arrive already normalized to the 20-80 scouting scale by the
+   * scouted-evidence adapter, whatever scale the save displays.
    *
    * 20 -> 0
    * 50 -> 50
    * 80 -> 100
+   *
+   * An unknown rating scores as 50. That is a neutral prior the caller is told
+   * about through `ratingEvidence`, not a scouting judgment.
    */
   return clamp(((value - 20) / 60) * 100);
 }
@@ -95,23 +111,28 @@ function youthScore(age: number): number {
 export function evaluateDevelopmentProtection(
   input: DevelopmentProtectionInput
 ): DevelopmentProtection {
+  const ratingEvidence = input.ability.status;
+  const current = input.ability.current;
+  const potentialRating = input.ability.potential;
+
   if (input.manuallyProtected) {
     return {
       score: 100,
       tier: 'core_prospect',
       manuallyProtected: true,
+      ratingEvidence,
       reasons: [
         'Manually protected by the front office.',
       ],
     };
   }
 
-  const potential = scoutingScale(input.potential);
-  const current = scoutingScale(input.current);
+  const potential = scoutingScale(potentialRating);
+  const currentScore = scoutingScale(current);
 
   const rawGap =
-    input.current !== null && input.potential !== null
-      ? Math.max(0, input.potential - input.current)
+    current !== null && potentialRating !== null
+      ? Math.max(0, potentialRating - current)
       : null;
 
   /*
@@ -130,7 +151,7 @@ export function evaluateDevelopmentProtection(
     potential * 0.60 +
     upside * 0.20 +
     youth * 0.10 +
-    current * 0.10
+    currentScore * 0.10
   );
 
   let tier: DevelopmentProtectionTier;
@@ -149,16 +170,16 @@ export function evaluateDevelopmentProtection(
 
   const reasons: string[] = [];
 
-  if (input.potential !== null && input.potential >= 65) {
+  if (potentialRating !== null && potentialRating >= 65) {
     reasons.push(
-      `High-end projected ceiling (${input.potential}/80).`
+      `High-end projected ceiling (${potentialRating}/80).`
     );
   } else if (
-    input.potential !== null &&
-    input.potential >= 55
+    potentialRating !== null &&
+    potentialRating >= 55
   ) {
     reasons.push(
-      `Meaningful projected major-league upside (${input.potential}/80).`
+      `Meaningful projected major-league upside (${potentialRating}/80).`
     );
   }
 
@@ -175,10 +196,10 @@ export function evaluateDevelopmentProtection(
   }
 
   if (
-    input.current !== null &&
-    input.potential !== null &&
-    input.current >= 50 &&
-    input.potential >= 55
+    current !== null &&
+    potentialRating !== null &&
+    current >= 50 &&
+    potentialRating >= 55
   ) {
     reasons.push(
       'Already combines useful present ability with meaningful ceiling.'
@@ -191,10 +212,19 @@ export function evaluateDevelopmentProtection(
     );
   }
 
+  if (ratingEvidence !== 'complete') {
+    reasons.push(
+      ratingEvidence === 'unknown'
+        ? 'No organization-visible current or potential ratings are available; unknown grades are scored as a neutral placeholder, not as scouting evidence.'
+        : 'Only part of the organization-visible current/potential evidence is available; the unknown grade is scored as a neutral placeholder, not as scouting evidence.'
+    );
+  }
+
   return {
     score,
     tier,
     manuallyProtected: false,
+    ratingEvidence,
     reasons,
   };
 }

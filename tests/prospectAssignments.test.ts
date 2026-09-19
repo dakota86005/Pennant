@@ -8,6 +8,10 @@ import {
   evaluateProspectAssignments,
   type ProspectAssignmentEvaluation,
 } from '../server/prospectAssignments.js';
+import { syntheticScoutedAbility } from '../server/scoutedEvidence.js';
+
+const ability = (current: number | null, potential: number | null) =>
+  syntheticScoutedAbility({ current, potential });
 
 /**
  * Which assignments Player Development calls defensible.
@@ -33,8 +37,7 @@ function decide(overrides: Partial<ProspectDecisionInput> = {}, higher = [A, AA,
     primaryPerformanceDiff: 0.1,
     pa: 250,
     ageDiff: 0,
-    cur: 50,
-    pot: 50,
+    ability: ability(50, 50),
     promotionAggressiveness: 50,
     nextAssignment: higher[0] ?? null,
     demotionAssignment: R,
@@ -128,7 +131,7 @@ describe('skip-level authorization', () => {
   });
 
   it('is denied when projected development remains, however good the production', () => {
-    const [skip] = of(plan({ ...elite, cur: 30, pot: 70 }), 'skip_level_promotion');
+    const [skip] = of(plan({ ...elite, ability: ability(30, 70) }), 'skip_level_promotion');
     expect(skip.eligible).toBe(false);
     expect(skip.blockers.join(' ')).toMatch(/too much projected development remains/);
   });
@@ -244,19 +247,19 @@ describe('philosophy versus hard developmental constraints (current behavior)', 
 describe('missing rating evidence (current behavior)', () => {
   it('lets a neutral maturity of 50 stand in, which lowers readiness against a fully mature player', () => {
     const known = of(plan(), 'normal_promotion')[0];
-    const unknown = of(plan({ cur: null, pot: null }), 'normal_promotion')[0];
+    const unknown = of(plan({ ability: ability(null, null) }), 'normal_promotion')[0];
     expect(unknown.evidence.ratingsMaturity).toBe(50);
     expect(unknown.evidence.readiness).toBeLessThan(known.evidence.readiness);
     expect(unknown.eligible).toBe(false);
   });
 
   it('still allows ordinary promotion when production alone is convincing', () => {
-    const [normal] = of(plan({ cur: null, pot: null, primaryPerformanceDiff: 0.16 }), 'normal_promotion');
+    const [normal] = of(plan({ ability: ability(null, null), primaryPerformanceDiff: 0.16 }), 'normal_promotion');
     expect(normal.eligible).toBe(true);
   });
 
   it('withholds skip-level promotion, because unknown maturity cannot meet the maturity floor', () => {
-    const [skip] = of(plan({ cur: null, pot: null, primaryPerformanceDiff: 0.2 }), 'skip_level_promotion');
+    const [skip] = of(plan({ ability: ability(null, null), primaryPerformanceDiff: 0.2 }), 'skip_level_promotion');
     expect(skip.eligible).toBe(false);
     expect(skip.blockers.join(' ')).toMatch(/Ratings maturity 50/);
   });

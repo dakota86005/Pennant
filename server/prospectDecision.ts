@@ -13,6 +13,8 @@
  * Changing philosophy must never change a player's objective readiness score.
  */
 
+import type { EvidenceStatus, ScoutedAbility } from './scoutedEvidence.js';
+
 export type ProspectKind = 'batter' | 'pitcher';
 
 export type ProspectRecommendation =
@@ -60,8 +62,12 @@ export interface ProspectDecisionInput {
    */
   ageDiff: number | null;
 
-  cur: number | null;
-  pot: number | null;
+  /**
+   * The organization-visible ability evidence, from the scouted-evidence
+   * adapter. Only its current/potential composites are read here; a bare
+   * rating from any other source cannot be supplied.
+   */
+  ability: ScoutedAbility;
 
   promotionAggressiveness: number;
 
@@ -74,6 +80,12 @@ export interface ProspectDecisionInput {
 }
 
 export interface ProspectDecision {
+  /**
+   * Whether the ratings behind `ratingsMaturity` were known. Unknown ratings
+   * enter as a neutral maturity of 50 — a placeholder, not scouting evidence.
+   */
+  ratingsEvidence: EvidenceStatus;
+
   evidence: {
     performance: number;
     ageLevelUrgency: number;
@@ -206,8 +218,8 @@ function ratingsMaturity(
    * This is not an absolute talent/readiness grade. A low-ceiling player being
    * near his ceiling must not automatically become a promotion candidate.
    *
-   * Instead this answers: how much of the development OOTP currently projects
-   * for this player appears to remain?
+   * Instead this answers: how much of the development the organization's
+   * scouts currently project for this player appears to remain?
    */
   const gap = Math.max(0, pot - cur);
 
@@ -229,7 +241,8 @@ export function evaluateProspectDecision(
 ): ProspectDecision {
   const performance = performanceEvidence(input);
   const agePressure = ageLevelPressure(input.ageDiff);
-  const maturity = ratingsMaturity(input.cur, input.pot);
+  const maturity = ratingsMaturity(input.ability.current, input.ability.potential);
+  const ratingsEvidence = input.ability.status;
   const sample = sampleConfidence(input);
 
   /*
@@ -253,8 +266,8 @@ export function evaluateProspectDecision(
    * him, not what he has demonstrated on the field.
    *
    * Performance therefore carries most of the readiness grade, while ratings
-   * maturity describes how much of OOTP's projected development appears to
-   * remain.
+   * maturity describes how much of the organization's scouted projected
+   * development appears to remain.
    */
   const readiness = rounded(
     performance * 0.75 +
@@ -315,10 +328,14 @@ export function evaluateProspectDecision(
     cautions.push('The player is young for this level, so there is little developmental urgency.');
   }
 
-  if (maturity >= 75) {
+  if (ratingsEvidence !== 'complete') {
+    cautions.push(
+      'Organization-visible current/potential ratings are incomplete, so ratings maturity is a neutral placeholder (50), not scouting evidence.'
+    );
+  } else if (maturity >= 75) {
     positives.push('Current and potential ratings suggest much of the projected development is already realized.');
   } else if (maturity <= 35) {
-    cautions.push('OOTP still projects substantial development between current and potential ability.');
+    cautions.push('The organization\'s scouted ratings still project substantial development between current and potential ability.');
   }
 
   if (sample < 50) {
@@ -406,6 +423,7 @@ export function evaluateProspectDecision(
   }
 
   return {
+    ratingsEvidence,
     evidence: {
       performance,
       ageLevelUrgency: agePressure,

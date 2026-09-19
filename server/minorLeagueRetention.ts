@@ -5,13 +5,16 @@ import {
 
 import {
   contractsByPlayer,
-  valuesByPlayer,
 } from './valuation.js';
 
 import {
-  gloves,
   POSITION_CODES,
 } from './gloves.js';
+
+import {
+  loadScoutedAbilities,
+  scoutedGloves,
+} from './scoutedEvidence.js';
 
 import {
   evaluateDevelopmentProtection,
@@ -554,7 +557,7 @@ function playablePositions(
   }
 
   const profile =
-    gloves(playerId);
+    scoutedGloves(playerId);
 
   if (profile) {
     for (
@@ -1707,9 +1710,6 @@ export function computeMinorLeagueRetention(
   const contracts =
     contractsByPlayer();
 
-  const values =
-    valuesByPlayer();
-
   const prospects =
     prospectMap(
       prospectData
@@ -1735,34 +1735,45 @@ export function computeMinorLeagueRetention(
       health
     );
 
-  const players =
+  const orgRows =
     orgPlayers(
       orgId
-    ).map(
+    );
+
+  /*
+   * Membership is an objective roster fact. Ability evidence comes only from
+   * the scouted-evidence adapter.
+   */
+  const abilities =
+    loadScoutedAbilities(
+      orgRows.map(
+        (player) =>
+          player.player_id
+      )
+    );
+
+  const players =
+    orgRows.map(
       (
         player
       ): MinorLeagueRetentionPlayer => {
-        const value =
-          values.get(
+        const ability =
+          abilities.for(
             player.player_id
           );
 
         const current =
-          value?.oaRating ??
-          null;
+          ability.current;
 
         const potential =
-          value?.potRating ??
-          null;
+          ability.potential;
 
         const protection =
           evaluateDevelopmentProtection({
             age:
               player.age,
 
-            current,
-
-            potential,
+            ability,
           });
 
         const history =

@@ -8,6 +8,10 @@ import {
   type PitcherRoleAssessment,
 } from './destinationFit.js';
 
+import {
+  loadScoutedAbilities,
+} from './scoutedEvidence.js';
+
 import type {
   RosterHealthStatus,
 } from './minorLeagueRoster.js';
@@ -260,10 +264,7 @@ export function pitcherRosterForTeam(
       p.first_name,
       p.last_name,
       p.age,
-      p.role,
-
-      pp.pitching_ratings_misc_stamina
-        AS stamina
+      p.role
 
     FROM players p
 
@@ -271,9 +272,6 @@ export function pitcherRosterForTeam(
       ON tr.team_id = ?
      AND tr.player_id = p.player_id
      AND tr.list_id = 2
-
-    LEFT JOIN players_pitching pp
-      ON pp.player_id = p.player_id
 
     WHERE p.team_id = ?
       AND p.retired = 0
@@ -286,6 +284,18 @@ export function pitcherRosterForTeam(
   ) as Array<
     Record<string, unknown>
   >;
+
+  /*
+   * The pitcher list is an objective roster fact. Stamina is a visible-rating
+   * judgment and comes only from the scouted-evidence adapter.
+   */
+  const abilities =
+    loadScoutedAbilities(
+      rows.map(
+        (row) =>
+          Number(row.player_id)
+      )
+    );
 
   return rows.map((row) => {
     const playerId =
@@ -325,10 +335,9 @@ export function pitcherRosterForTeam(
         ),
 
       stamina:
-        row.stamina === null ||
-        row.stamina === undefined
-          ? null
-          : Number(row.stamina),
+        abilities.for(
+          playerId
+        ).stamina,
 
       roleAssessment,
     };

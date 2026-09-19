@@ -1,4 +1,5 @@
 import { db } from './db.js';
+import { loadScoutedAbilities } from './scoutedEvidence.js';
 
 import type {
   ProspectAssignmentEvaluation,
@@ -74,6 +75,18 @@ export interface DestinationFit {
   roleAssessment: PitcherRoleAssessment | null;
 
   components: DestinationFitComponent[];
+
+  /**
+   * Role tools that could not be compared, and why. A tool with no
+   * organization-visible rating, or with no comparison population, is left out
+   * rather than scored as a zero — but it is reported here, and an unassessed
+   * core tool keeps a skip-level move from being authorized.
+   */
+  unassessedComponents: Array<{
+    label: string;
+    core: boolean;
+    reason: 'no_visible_rating' | 'no_comparison_population';
+  }>;
 
   /**
    * Weighted mean of component percentiles.
@@ -267,6 +280,18 @@ const RELIEVER_COMPONENTS: ComponentDefinition[] = [
 function numberOrNull(
   value: unknown
 ): number | null {
+  /*
+   * Number(null) is 0, so without this guard an absent value read as a real
+   * zero. Absent stays absent.
+   */
+  if (
+    value === null ||
+    value === undefined ||
+    value === ''
+  ) {
+    return null;
+  }
+
   const number = Number(value);
 
   return Number.isFinite(number)
@@ -442,44 +467,15 @@ function definitionsFor(
 function playerRatings(
   playerId: number
 ): PlayerRatings | null {
+  /*
+   * Who the player is and what he is used as are objective facts. Every rating
+   * comes from the scouted-evidence adapter, so an absent grade stays absent
+   * (null) instead of being read as a zero, and stamina and pitch grades are
+   * on the 20-80 scale the role thresholds below assume.
+   */
   const row = db.prepare(`
-    SELECT
-      p.player_id,
-      p.position,
-      p.role,
-
-      b.batting_ratings_overall_contact AS contact,
-      b.batting_ratings_overall_gap AS gap,
-      b.batting_ratings_overall_power AS power,
-      b.batting_ratings_overall_eye AS eye,
-      b.batting_ratings_overall_strikeouts AS avoid_k,
-
-      pp.pitching_ratings_overall_stuff AS stuff,
-      pp.pitching_ratings_overall_movement AS movement,
-      pp.pitching_ratings_overall_control AS control,
-      pp.pitching_ratings_misc_stamina AS stamina,
-
-      pp.pitching_ratings_pitches_fastball AS pitch_fastball,
-      pp.pitching_ratings_pitches_slider AS pitch_slider,
-      pp.pitching_ratings_pitches_curveball AS pitch_curveball,
-      pp.pitching_ratings_pitches_screwball AS pitch_screwball,
-      pp.pitching_ratings_pitches_forkball AS pitch_forkball,
-      pp.pitching_ratings_pitches_changeup AS pitch_changeup,
-      pp.pitching_ratings_pitches_sinker AS pitch_sinker,
-      pp.pitching_ratings_pitches_splitter AS pitch_splitter,
-      pp.pitching_ratings_pitches_knuckleball AS pitch_knuckleball,
-      pp.pitching_ratings_pitches_cutter AS pitch_cutter,
-      pp.pitching_ratings_pitches_circlechange AS pitch_circlechange,
-      pp.pitching_ratings_pitches_knucklecurve AS pitch_knucklecurve
-
+    SELECT p.player_id, p.position, p.role
     FROM players p
-
-    LEFT JOIN players_batting b
-      ON b.player_id = p.player_id
-
-    LEFT JOIN players_pitching pp
-      ON pp.player_id = p.player_id
-
     WHERE p.player_id = ?
     LIMIT 1
   `).get(playerId) as
@@ -488,42 +484,29 @@ function playerRatings(
 
   if (!row) return null;
 
+  const ability =
+    loadScoutedAbilities([playerId])
+      .for(playerId);
+
+  const tools = ability.currentTools;
+
   return {
     playerId: Number(row.player_id),
     position: Number(row.position),
     role: Number(row.role),
 
-    contact: numberOrNull(row.contact),
-    gap: numberOrNull(row.gap),
-    power: numberOrNull(row.power),
-    eye: numberOrNull(row.eye),
-    avoidK: numberOrNull(row.avoid_k),
+    contact: tools.contact ?? null,
+    gap: tools.gap ?? null,
+    power: tools.power ?? null,
+    eye: tools.eye ?? null,
+    avoidK: tools.avoidK ?? null,
 
-    stuff: numberOrNull(row.stuff),
-    movement: numberOrNull(row.movement),
-    control: numberOrNull(row.control),
-    stamina: numberOrNull(row.stamina),
+    stuff: tools.stuff ?? null,
+    movement: tools.movement ?? null,
+    control: tools.control ?? null,
+    stamina: ability.stamina,
 
-    pitches: [
-      row.pitch_fastball,
-      row.pitch_slider,
-      row.pitch_curveball,
-      row.pitch_screwball,
-      row.pitch_forkball,
-      row.pitch_changeup,
-      row.pitch_sinker,
-      row.pitch_splitter,
-      row.pitch_knuckleball,
-      row.pitch_cutter,
-      row.pitch_circlechange,
-      row.pitch_knucklecurve,
-    ]
-      .map(numberOrNull)
-      .filter(
-        (rating): rating is number =>
-          rating !== null &&
-          rating > 0
-      ),
+    pitches: [...ability.pitches],
   };
 }
 
@@ -601,68 +584,76 @@ function populationRows(
   leagueId: number,
   kind: DestinationPlayerKind
 ): Array<Record<string, unknown>> {
-  if (kind === 'hitter') {
-    return db.prepare(`
-      SELECT
-        b.batting_ratings_overall_contact AS contact,
-        b.batting_ratings_overall_gap AS gap,
-        b.batting_ratings_overall_power AS power,
-        b.batting_ratings_overall_eye AS eye,
-        b.batting_ratings_overall_strikeouts AS avoid_k
+  /*
+   * Membership — active, in this league, hitter or the right pitching role —
+   * is objective. The ratings compared are the scouted-evidence adapter's.
+   */
+  const ids = (
+    kind === 'hitter'
+      ? db.prepare(`
+          SELECT p.player_id
+          FROM players p
+          JOIN teams t
+            ON t.team_id = p.team_id
+          JOIN team_roster tr
+            ON tr.team_id = p.team_id
+           AND tr.player_id = p.player_id
+           AND tr.list_id = 2
+          WHERE t.league_id = ?
+            AND p.retired = 0
+            AND p.position != 1
+        `).all(leagueId)
+      : db.prepare(`
+          SELECT p.player_id
+          FROM players p
+          JOIN teams t
+            ON t.team_id = p.team_id
+          JOIN team_roster tr
+            ON tr.team_id = p.team_id
+           AND tr.player_id = p.player_id
+           AND tr.list_id = 2
+          WHERE t.league_id = ?
+            AND p.retired = 0
+            AND p.position = 1
+            ${
+              kind === 'starter'
+                ? 'AND p.role = 11'
+                : 'AND p.role IN (12, 13)'
+            }
+        `).all(leagueId)
+  ).map(
+    (row) =>
+      Number(
+        (row as { player_id: number })
+          .player_id
+      )
+  );
 
-      FROM players p
+  const abilities =
+    loadScoutedAbilities(ids);
 
-      JOIN teams t
-        ON t.team_id = p.team_id
+  return ids.map((id) => {
+    const ability =
+      abilities.for(id);
 
-      JOIN team_roster tr
-        ON tr.team_id = p.team_id
-       AND tr.player_id = p.player_id
-       AND tr.list_id = 2
+    const tools =
+      ability.currentTools;
 
-      JOIN players_batting b
-        ON b.player_id = p.player_id
-
-      WHERE t.league_id = ?
-        AND p.retired = 0
-        AND p.position != 1
-    `).all(leagueId) as Array<
-      Record<string, unknown>
-    >;
-  }
-
-  const roleClause =
-    kind === 'starter'
-      ? 'AND p.role = 11'
-      : 'AND p.role IN (12, 13)';
-
-  return db.prepare(`
-    SELECT
-      pp.pitching_ratings_overall_stuff AS stuff,
-      pp.pitching_ratings_overall_movement AS movement,
-      pp.pitching_ratings_overall_control AS control,
-      pp.pitching_ratings_misc_stamina AS stamina
-
-    FROM players p
-
-    JOIN teams t
-      ON t.team_id = p.team_id
-
-    JOIN team_roster tr
-      ON tr.team_id = p.team_id
-     AND tr.player_id = p.player_id
-     AND tr.list_id = 2
-
-    JOIN players_pitching pp
-      ON pp.player_id = p.player_id
-
-    WHERE t.league_id = ?
-      AND p.retired = 0
-      AND p.position = 1
-      ${roleClause}
-  `).all(leagueId) as Array<
-    Record<string, unknown>
-  >;
+    return kind === 'hitter'
+      ? {
+          contact: tools.contact ?? null,
+          gap: tools.gap ?? null,
+          power: tools.power ?? null,
+          eye: tools.eye ?? null,
+          avoid_k: tools.avoidK ?? null,
+        }
+      : {
+          stuff: tools.stuff ?? null,
+          movement: tools.movement ?? null,
+          control: tools.control ?? null,
+          stamina: ability.stamina,
+        };
+  });
 }
 
 function populationValues(
@@ -774,6 +765,9 @@ export function evaluateDestinationFit(
   const components: DestinationFitComponent[] =
     [];
 
+  const unassessedComponents: DestinationFit['unassessedComponents'] =
+    [];
+
   for (const definition of definitions) {
     const rating =
       ratings[definition.key];
@@ -782,6 +776,12 @@ export function evaluateDestinationFit(
       typeof rating !== 'number' ||
       !Number.isFinite(rating)
     ) {
+      unassessedComponents.push({
+        label: definition.label,
+        core: definition.core,
+        reason: 'no_visible_rating',
+      });
+
       continue;
     }
 
@@ -792,6 +792,12 @@ export function evaluateDestinationFit(
       );
 
     if (!values.length) {
+      unassessedComponents.push({
+        label: definition.label,
+        core: definition.core,
+        reason: 'no_comparison_population',
+      });
+
       continue;
     }
 
@@ -877,8 +883,24 @@ export function evaluateDestinationFit(
   }
 
   notes.push(
-    'Percentiles are calculated from active players in the actual destination league in the current save.'
+    'Percentiles are calculated from active players in the actual destination league in the current save, using organization-visible ratings only.'
   );
+
+  if (unassessedComponents.length) {
+    notes.push(
+      `Not evaluated: ${unassessedComponents
+        .map(
+          (item) =>
+            `${item.label} (${
+              item.reason ===
+              'no_visible_rating'
+                ? 'no organization-visible rating'
+                : 'no comparison population'
+            })`
+        )
+        .join(', ')}.`
+    );
+  }
 
   notes.push(
     'Defensive-position suitability is evaluated separately by the development-assignment model.'
@@ -907,6 +929,8 @@ export function evaluateDestinationFit(
     roleAssessment,
 
     components,
+
+    unassessedComponents,
 
     compositePercentile:
       round1(composite),
@@ -958,6 +982,17 @@ export function skipLevelDestinationGate(
   }
 
   const reasons: string[] = [];
+
+  const unassessedCore =
+    fit.unassessedComponents
+      .filter((item) => item.core)
+      .map((item) => item.label);
+
+  if (unassessedCore.length) {
+    reasons.push(
+      `Core skill${unassessedCore.length === 1 ? '' : 's'} not evaluated for lack of organization-visible evidence: ${unassessedCore.join(', ')}.`
+    );
+  }
 
   if (
     fit.populationMinimum < 25

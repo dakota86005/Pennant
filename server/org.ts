@@ -3,7 +3,8 @@ import { computeMinorLeagueRosterHealth } from './minorLeagueRoster.js';
 import { computeMinorLeagueRebalance } from './minorLeagueMoves.js';
 import { computeMinorLeagueRetention } from './minorLeagueRetention.js';
 import { computeMinorLeaguePitchingOperations } from './minorLeaguePitchingOperations.js';
-import { db, tableExists, tableColumns } from './db.js';
+import { db, tableExists } from './db.js';
+import { loadScoutedAbilities, summarizeEvidence } from './scoutedEvidence.js';
 import { LEVEL_NAMES } from './valuation.js';
 import { resolvePhilosophy } from './philosophy.js';
 import { philosophyForOrg } from './settings.js';
@@ -20,12 +21,6 @@ import {
 
 export const orgRoutes = Router();
 
-
-const avg = (vals: Array<number | null | undefined>): number | null => {
-  const nums = vals.filter((v): v is number => typeof v === 'number');
-  if (!nums.length) return null;
-  return Math.round(nums.reduce((a, b) => a + b, 0) / nums.length);
-};
 
 /** MLB parent clubs, with the human-controlled org flagged and team colors. */
 orgRoutes.get('/orgs', (_req, res) => {
@@ -73,40 +68,17 @@ interface OrgPlayer {
   role: number;
   /** 0 when the save has him on no roster — signed, not yet assigned. */
   rostered: number;
-  con: number | null; gap: number | null; pow: number | null; eye: number | null; avk: number | null;
-  conP: number | null; gapP: number | null; powP: number | null; eyeP: number | null; avkP: number | null;
-  stu: number | null; mov: number | null; ctl: number | null;
-  stuP: number | null; movP: number | null; ctlP: number | null;
-  spd: number | null;
-  /** OOTP's own Overall and Potential, when the export carries them. */
-  oa: number | null;
-  potOa: number | null;
 }
 
-/** Prefer OOTP's exact grade; fall back when a save only carries the rounded one. */
-const VALUE_OA = tableExists('players_value') && tableColumns('players_value').includes('oa')
-  ? 'v.oa'
-  : 'v.oa_rating';
-const VALUE_POT = tableExists('players_value') && tableColumns('players_value').includes('pot')
-  ? 'v.pot'
-  : 'v.pot_rating';
-
+/**
+ * The organization's players. Who they are is an objective roster fact; what
+ * their ratings say comes only from the scouted-evidence adapter
+ * (`loadScoutedAbilities`), never from a column read here.
+ */
 function orgPlayers(orgId: number): OrgPlayer[] {
   return db
     .prepare(
       `SELECT p.player_id, p.team_id, p.first_name, p.last_name, p.age, p.position, p.role,
-              b.batting_ratings_overall_contact AS con, b.batting_ratings_overall_gap AS gap,
-              b.batting_ratings_overall_power AS pow, b.batting_ratings_overall_eye AS eye,
-              b.batting_ratings_overall_strikeouts AS avk,
-              b.batting_ratings_talent_contact AS conP, b.batting_ratings_talent_gap AS gapP,
-              b.batting_ratings_talent_power AS powP, b.batting_ratings_talent_eye AS eyeP,
-              b.batting_ratings_talent_strikeouts AS avkP,
-              b.running_ratings_speed AS spd,
-              pi.pitching_ratings_overall_stuff AS stu, pi.pitching_ratings_overall_movement AS mov,
-              pi.pitching_ratings_overall_control AS ctl,
-              pi.pitching_ratings_talent_stuff AS stuP, pi.pitching_ratings_talent_movement AS movP,
-              pi.pitching_ratings_talent_control AS ctlP,
-              ${VALUE_OA} AS oa, ${VALUE_POT} AS potOa,
               /*
                * Whether he is on a roster anywhere.
                *
@@ -119,41 +91,9 @@ function orgPlayers(orgId: number): OrgPlayer[] {
                */
               EXISTS (SELECT 1 FROM team_roster r WHERE r.player_id = p.player_id) AS rostered
        FROM players p
-       LEFT JOIN players_batting b ON b.player_id = p.player_id
-       LEFT JOIN players_pitching pi ON pi.player_id = p.player_id
-       LEFT JOIN players_value v ON v.player_id = p.player_id
        WHERE p.organization_id = ? AND p.team_id > 0 AND p.retired = 0`
     )
     .all(orgId) as OrgPlayer[];
-}
-
-/**
- * Current ability and ceiling, as OOTP itself grades them.
- *
- * These pages used to average a player's component ratings — stuff, movement
- * and control for a pitcher; contact, gap, power, eye and avoid-K for a hitter
- * — and print the result in the same "current → potential" style the player
- * card uses for OOTP's own Overall. The two disagreed constantly, because an
- * unweighted mean of five scouted tools is not the same thing as a weighted,
- * position-aware Overall, and a user cross-checking the farm page against the
- * game found numbers that varied wildly with no way to tell why.
- *
- * OOTP's own grades are now used everywhere they are available, so the depth
- * chart, the farm pages, the roster and the player card all quote one number.
- * The old average survives only as a fallback for an export without
- * players_value, where something is better than an empty column.
- */
-function composites(p: OrgPlayer): { cur: number | null; pot: number | null } {
-  if (p.oa !== null && p.oa !== undefined) {
-    return { cur: p.oa, pot: p.potOa ?? p.oa };
-  }
-  if (p.position === 1) {
-    return { cur: avg([p.stu, p.mov, p.ctl]), pot: avg([p.stuP, p.movP, p.ctlP]) };
-  }
-  return {
-    cur: avg([p.con, p.gap, p.pow, p.eye, p.avk]),
-    pot: avg([p.conP, p.gapP, p.powP, p.eyeP, p.avkP]),
-  };
 }
 
 orgRoutes.get('/depth-chart/:orgId', (req, res) => {
@@ -165,6 +105,7 @@ orgRoutes.get('/depth-chart/:orgId', (req, res) => {
     levelName: LEVEL_NAMES[t.level] ?? `L${t.level}`,
   }));
   const roster = orgPlayers(orgId);
+  const abilities = loadScoutedAbilities(roster.map((p) => p.player_id));
   /*
    * A signing nobody has assigned yet sits on the parent club's team_id with
    * no roster entry, so the depth chart had a dozen sixteen-year-olds out of
@@ -185,7 +126,7 @@ orgRoutes.get('/depth-chart/:orgId', (req, res) => {
     });
   }
   const players = roster.map((p) => {
-    const { cur, pot } = composites(p);
+    const { current: cur, potential: pot } = abilities.for(p.player_id);
     return {
       player_id: p.player_id,
       team_id: p.rostered ? p.team_id : UNASSIGNED_TEAM,
@@ -486,12 +427,16 @@ export function computeProspects(orgId: number): { batters: unknown[]; pitchers:
    */
   const lowestLevel = Math.max(...[...teams.values()].map((t) => t.level));
 
-  for (const p of orgPlayers(orgId)) {
+  const players = orgPlayers(orgId);
+  const abilities = loadScoutedAbilities(players.map((p) => p.player_id));
+
+  for (const p of players) {
     const team = teams.get(p.team_id);
     if (!team || team.level <= 1) continue; // only minor leaguers
     const base = baselines[team.level];
     if (!base) continue;
-    const { cur, pot } = composites(p);
+    const ability = abilities.for(p.player_id);
+    const { current: cur, potential: pot } = ability;
     const ageDiff = base.avgAge !== null ? base.avgAge - p.age : null;
     const common = {
       player_id: p.player_id,
@@ -503,6 +448,8 @@ export function computeProspects(orgId: number): { batters: unknown[]; pitchers:
       levelName: LEVEL_NAMES[team.level] ?? `L${team.level}`,
       cur,
       pot,
+      /** What cur/pot rest on: organization-visible scouted tools, and what is missing. */
+      ratingEvidence: summarizeEvidence(ability),
       ageDiff,
     };
 
@@ -545,8 +492,7 @@ export function computeProspects(orgId: number): { batters: unknown[]; pitchers:
         secondaryPerformanceDiff: kDiff,
         ip,
         ageDiff,
-        cur,
-        pot,
+        ability,
         promotionAggressiveness,
         nextAssignment: nextAssignmentFor(team.level),
         demotionAssignment: demotionAssignmentFor(team.level),
@@ -593,8 +539,7 @@ export function computeProspects(orgId: number): { batters: unknown[]; pitchers:
         primaryPerformanceDiff: opsDiff,
         pa: s.pa,
         ageDiff,
-        cur,
-        pot,
+        ability,
         promotionAggressiveness,
         nextAssignment: nextAssignmentFor(team.level),
         demotionAssignment: demotionAssignmentFor(team.level),
