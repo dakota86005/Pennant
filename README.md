@@ -206,7 +206,7 @@ Run only one copy against a shared data directory at a time.
 
 ### Export your league
 
-Front Office never parses or modifies OOTP's binary save. In OOTP 27:
+Front Office never parses or modifies OOTP's binary save files. In OOTP 27:
 
 1. Load the save.
 2. Open **Database Tools**.
@@ -227,6 +227,18 @@ choose a folder manually in the app; you do not need to edit source code.
 | macOS (direct download) | `~/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games/` |
 | Windows | `Documents/Out of the Park Developments/OOTP Baseball 27/saved_games/` |
 | OneDrive | `~/Library/CloudStorage/OneDrive-Personal/ootp/saved_games/` or `~/OneDrive/Documents/Out of the Park Developments/OOTP Baseball 27/saved_games/` |
+
+### Transaction context (automatic)
+
+The CSV says where each player is now; it does not say how he got there. From
+the export's location Front Office finds the matching `<save>.lg` and reads a
+private, validated copy of the transaction log OOTP keeps in that save's `temp`
+folder — no extra step, and nothing in your save is ever written to. That is how
+it can tell an injury-rehab assignment from an option, which look identical in
+the export. The **Roster data** chip in the header shows how current each source
+is (league data, transactions, OOTP save). If the save folder or its log cannot
+be found, everything keeps working from the CSV and the chip says the
+transaction log is unavailable.
 
 ### Refresh and history
 

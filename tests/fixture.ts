@@ -162,7 +162,12 @@ export function buildFixture(): string {
       -- OOTP's trading block: 2 is listed for trade, 0 is everybody else
       trade_status INTEGER DEFAULT 0,
       -- Days spent on the injured list this season, which the dashboard reads
-      dl_days_this_year INTEGER DEFAULT 0
+      dl_days_this_year INTEGER DEFAULT 0,
+      -- Options, waivers and service time as the export states them. Left NULL
+      -- unless a test sets them, so nothing here changes an existing suite
+      options_used INTEGER, options_used_this_year INTEGER,
+      years_protected_from_rule_5 INTEGER, pro_service_years REAL, pro_service_days REAL,
+      days_on_waivers_left INTEGER, irrevocable_waivers INTEGER, was_traded INTEGER
     );
     CREATE TABLE team_roster (team_id INTEGER, player_id INTEGER, list_id INTEGER);
     CREATE TABLE human_managers (

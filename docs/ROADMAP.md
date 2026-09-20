@@ -122,7 +122,25 @@ thresholds; decide whether that belongs in preference or in developmental value.
 - Add a manual "protect this player" control using the reservation already in
   the development-protection model.
 
-### 6. Add the MLB opportunity layer
+### 6. Controlled copied-save experiments, then the rights evaluator
+
+The state and chronology layers exist (D-020). The third concern, rights and
+eligibility, depends on OOTP semantics that cannot be settled from the export or
+the log alone. Resolve them with experiments on copied saves, never a live one,
+and record each result before encoding a rule:
+
+- true optionability beyond the exported option counters and flags;
+- whether an IL-60 player occupies a 40-man slot (the export says not);
+- the recall waiting period after an option;
+- Rule 5 protection and the clock's precision;
+- outright semantics, and trades and claims (not yet observed in the log);
+- the meaning of the log's `transaction_type` codes and the remaining
+  `unsupported` wordings.
+
+Only then replace the older option-year warnings on the roster-crunch page with
+a rights evaluator that consumes `playerState.ts` and `assignmentContext.ts`.
+
+### 7. Add the MLB opportunity layer
 
 AAA-to-MLB is currently surfaced as a discussion, while direct skip-level MLB
 moves are intentionally excluded from the minor-league engine. Build a separate
@@ -135,7 +153,8 @@ MLB opportunity model that combines developmental readiness with:
 - an explicit GM decision surface.
 
 It must consume Player Development eligibility rather than treating a major
-league roster hole as proof a prospect is ready.
+league roster hole as proof a prospect is ready, and it depends on the rights
+evaluator above rather than on inferred roster state.
 
 ## Then: deepen organizational identity
 
