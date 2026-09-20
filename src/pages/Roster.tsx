@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getRoster, getTeams, type RosterPlayer, type RosterResponse, type Team } from '../api';
 import { PlayerLink, Tip, TIP_OA } from '../playerModal';
+import { AssignmentChip } from '../AssignmentContext';
 import { ColumnPicker } from '../ColumnPicker';
 import { formatRatingPair } from '../ratingScale';
 import {
@@ -171,6 +172,9 @@ function RosterTable({
                     {p.standing.daysLeft ? ` ${p.standing.daysLeft}d` : ''}
                   </span>
                 )}
+                {/* A rehab player looks exactly like an optioned one in the
+                    export; the log is what says which he is */}
+                <AssignmentChip assignment={p.assignment} />
               </td>
               <td>{p.age ?? ''}</td>
               <td>{p.positionName}</td>

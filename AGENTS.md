@@ -35,6 +35,19 @@ decision, roadmap item, or project-state fact changes.
   zero for a missing rating. Use `satisfied` / `not_satisfied` / `unknown` and
   `defensible` / `indefensible` / `indeterminate` (D-018); `eligible: false` is
   not a rejection. Indeterminate is not "protect" or "hold".
+- Roster evidence has a source hierarchy (D-020): explicit CSV/export current
+  state first, then OOTP's live transaction log for chronology, then Pennant's
+  own snapshots only as a fallback and cross-check. If the export states a fact
+  (40-man is `is_on_secondary`, DFA countdown, option counters, service time),
+  read it as exported; never re-derive it from history or snapshots. A snapshot
+  difference proves that state changed, never which transaction did it: do not
+  fabricate "optioned", "recalled", or "DFA". Current State, Transaction
+  Chronology, and Rights/Eligibility stay separate; rights are not implemented.
+  A rehab player looks exactly like an optioned one in the export and is not one.
+- Never write to OOTP files, and never open the live `temp/text_data.sqlite3` in
+  place: read it only through `server/liveLogSnapshot.ts` (a validated private
+  copy). Normal use must need no manual step beyond the existing database
+  export; the save and its live log are derived from the export's path.
 - Statistics, contracts, service time, injuries, roster status, age, and
   transactions are objective save facts and may be treated as known.
 - Player Development decides which assignments are defensible. Organizational

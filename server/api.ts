@@ -14,6 +14,10 @@ import { lineupRoutes } from './lineup.js';
 import { storylineRoutes, startStorylineJob } from './storylines.js';
 import { playerRoutes } from './player.js';
 import { historyRoutes, takeSnapshot } from './history.js';
+import { captureRosterStateSnapshot } from './rosterStateHistory.js';
+import { csvExportedAt, resetTransactionLogCache } from './dataStatus.js';
+import { importedAt, playerStateRoutes } from './playerStateRoutes.js';
+import { assignmentContextsFor } from './playerContext.js';
 import { clearStatCaches, computeBatting, computePitching, leagueBaseline } from './stats.js';
 import { ratingScaleMax, clearScaleCache, clearValuationCaches, valuesByPlayer } from './valuation.js';
 import { clearTwoWayCache } from './twoway.js';
@@ -49,6 +53,7 @@ api.use(payrollRoutes);
 api.use(trendsRoutes);
 api.use(chatRoutes);
 api.use(playerRoutes);
+api.use(playerStateRoutes);
 api.use(historyRoutes);
 api.use(dashboardRoutes);
 api.use(rosterOpsRoutes);
@@ -78,6 +83,7 @@ export const importState: {
   /** Where the running import has got to, so the page can show a bar. */
   progress: ImportProgress | null;
 } = { importing: false, lastImport: loadImportMeta(), lastError: null, progress: null };
+importedAt.value = importState.lastImport?.finishedAt ?? null;
 
 /**
  * Kicks off the storylines and the briefing after an import, when the club has
@@ -145,10 +151,21 @@ export async function runImport(csvDir: string): Promise<void> {
     fs.writeFileSync(META_PATH, JSON.stringify(importState.lastImport));
     clearStatCaches(); // league baselines are per-import
     clearValuationCaches();
+    importedAt.value = importState.lastImport.finishedAt;
     try {
       takeSnapshot(); // development-tracking snapshot, keyed by in-game date
     } catch (err) {
       console.error('[history] snapshot failed:', err);
+    }
+    try {
+      // Roster-state observation: a fallback and cross-check beside the CSV and
+      // the live transaction log, never a source of transactions itself. The
+      // live log is re-read first so the cross-check sees what OOTP has written
+      resetTransactionLogCache();
+      captureRosterStateSnapshot();
+    } catch (err) {
+      // Like scouting history, this must not make an otherwise good import fail
+      console.error('[history] roster-state snapshot failed:', err);
     }
     console.log(
       `[import] ${importState.lastImport.tables} tables, ${importState.lastImport.rows} rows imported`
@@ -180,20 +197,6 @@ api.post('/resolve-folder', (req, res) => {
   if (!chosen?.trim()) return res.status(400).json({ ok: false, error: 'No folder given.' });
   res.json(resolveChosenFolder(chosen));
 });
-
-function csvExportedAt(csvDir: string): string | null {
-  try {
-    let latest = 0;
-    for (const f of fs.readdirSync(csvDir)) {
-      if (!f.endsWith('.csv')) continue;
-      const mtime = fs.statSync(`${csvDir}/${f}`).mtimeMs;
-      if (mtime > latest) latest = mtime;
-    }
-    return latest ? new Date(latest).toISOString() : null;
-  } catch {
-    return null;
-  }
-}
 
 api.get('/status', (_req, res) => {
   const config = loadConfig();
@@ -233,7 +236,10 @@ api.get('/status', (_req, res) => {
 api.post('/config', (req, res) => {
   const { csvDir, saveName } = req.body as { csvDir?: string; saveName?: string };
   if (!csvDir) return res.status(400).json({ error: 'csvDir is required' });
-  saveConfig({ csvDir, saveName: saveName ?? null });
+  // A hand-picked .lg folder belongs to the save it was picked for
+  const previous = loadConfig();
+  saveConfig({ csvDir, saveName: saveName ?? null, lgPath: previous.csvDir === csvDir ? previous.lgPath ?? null : null });
+  resetTransactionLogCache();
   if (fs.existsSync(csvDir)) {
     importState.importing = true; // visible to /status before the import starts
     setImmediate(() => {
@@ -538,6 +544,10 @@ api.get('/roster/:teamId', (req, res) => {
     }
   }
 
+  // Why each player is where he is, read from explicit log evidence against the
+  // export. Only players for whom that changes the reading are included
+  const assignmentByPlayer = assignmentContextsFor(rosterIds);
+
   const roster = players.map((p) => {
     const id = p.player_id as number;
     const pos = p.position as number | null;
@@ -554,6 +564,7 @@ api.get('/roster/:teamId', (req, res) => {
       pitching: pitchingByPlayer.get(id) ?? null,
       contact: contactByPlayer.get(id) ?? null,
       standing: standingByPlayer.get(id) ?? null,
+      assignment: assignmentByPlayer.get(id) ?? null,
     };
   });
 

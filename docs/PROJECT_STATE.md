@@ -7,15 +7,20 @@ material implementation state changes.
 ## Repository snapshot
 
 - Package: `ootp-front-office` version `0.27.2`.
-- Inspected branch: `feature/evidence-boundary`, created from `main` at
-  `a57fc63`.
+- Inspected branch: `feature/player-state-foundation`, created from merged
+  `main` at `a8d28f7` (the evidence-boundary work, PR #1).
 - Stack: TypeScript, React 18, Vite 6, Express 4, SQLite via
   `better-sqlite3`, Electron 41, and Vitest 4.
-- Validation at this snapshot: `npx tsc --noEmit` clean, `npm test` 68 files /
-  624 tests passing, `npm run build` succeeds.
-- `origin/feature/mlb-operations` (a linear descendant of `main`, not merged)
-  holds the MLB Operations work described in its own project-state document. It
-  is an integration candidate and is not part of this snapshot.
+- Validation at this snapshot: `npx tsc --noEmit` clean, `npm test` 76 files /
+  751 tests passing, `npm run build` succeeds.
+- `origin/feature/mlb-operations` is **not merged**. Two of its foundation
+  modules, `rosterStateHistory.ts` and `transactionHistory.ts`, were ported
+  selectively and adapted to the source hierarchy in D-020 (snapshot differences
+  are `observed_snapshot` and never name a transaction). Its
+  `rosterTransactionState.ts` is superseded by `playerState.ts` and was not
+  ported; its rights evaluation (`evaluateRosterAction`) and the MLB Operations
+  workspace remain on that branch. When that branch is integrated, re-point it at
+  `playerState.ts` and `assignmentContext.ts`.
 
 The package version and latest changelog identify `0.27.2` as the release
 baseline. `main` contains substantial organizational philosophy, farm-system,
@@ -199,6 +204,51 @@ the repository; the farm workspaces do not yet render operations' indeterminate
 candidates. The provenance of every rating field is tabulated in
 [ARCHITECTURE.md](ARCHITECTURE.md).
 
+## Implemented roster evidence foundation
+
+Present on this branch (D-020 to D-022):
+
+- **Current State** (`server/playerState.ts`): every field read from its export
+  column with provenance and, when absent, an unknown reason. 40-man membership
+  is `is_on_secondary` as exported; DFA/waivers and countdowns, service time,
+  option counters, Rule 5 protection, injured-list flags, and major/minor
+  contract are preserved as exported.
+- **Save discovery** (`server/ootpSave.ts`): the `.lg` is derived from the CSV
+  export's path with no configuration; a hand-picked folder
+  (`POST /api/save-source`) is only a fallback. `last_date_simulated.dat` gives
+  the save's simulated date.
+- **Safe live-log reader** (`server/liveLogSnapshot.ts`): copies the live
+  `temp/text_data.sqlite3` and its WAL to a private directory, verifies the copy
+  did not move, validates it, retries, opens only the copy read-only, and
+  deletes it. Tolerates OOTP running, WAL/SHM present or absent, and an
+  unavailable database. Never writes to OOTP files.
+- **Transaction chronology** (`server/transactionLog.ts`): structured, dated,
+  attributed events for optioned, recalled, purchased contract, DFA/waivers
+  (with irrevocable status), injured list, restricted list, release, Rule 5
+  return, injury rehab, and level moves; unrecognised wording is kept as
+  `unsupported` events. Legacy-encoded text is decoded.
+- **Assignment context** (`server/assignmentContext.ts`,
+  `server/playerContext.ts`): rehab assignment is first-class and is not an
+  option or a demotion. A 40-man player below MLB that nothing explains is
+  `unattributed` with the reason, never assumed optioned.
+- **Freshness** (`server/dataFreshness.ts`, `server/dataStatus.ts`,
+  `GET /api/data-status`): save, CSV, and log compared on simulated game days;
+  overall `current`/`partial`/`stale`/`unavailable`.
+- **`rosterStateHistory`**: demoted to observed fallback and cross-check; it
+  attaches explicit log events in an interval as evidence and flags unexplained
+  changes.
+- **UI**: a header chip ("Roster data: Current") with a short panel, a banner
+  only when the snapshot is behind the save, a rehab/optioned mark on roster
+  rows, an assignment block on the player card, and assignment labels on the
+  roster-crunch page. Roster crunch now counts the exported 40-man and gives a
+  rehab player no option-year warnings.
+- **Verified against a real save** (read-only): 15,481 log rows read in about
+  100 ms, all sources current through 15 May, the 40-man is 30 as exported (the
+  old inference said 35), and Merrill Kelly is a rehab assignment sent 5 May.
+
+Not done, by design: rights/eligibility (true optionability, IL-60 versus
+40-man, recall waiting period, Rule 5 clock, outright, trade/claim semantics).
+
 ## Current organization resolution
 
 Implemented behavior is distributed:
@@ -237,6 +287,18 @@ resolution across all organization-specific features is future work.
 - Staff-derived philosophy values are not implemented.
 - Rule 5 protection years are context in retention but do not yet affect its
   score.
+- Roster rights/eligibility is not implemented and needs controlled
+  copied-save experiments: true optionability beyond the exported counters,
+  IL-60 versus 40-man, recall waiting period, Rule 5 clock precision, outright
+  semantics, and trade/claim semantics. Roster crunch still applies its older
+  option-year warnings to any non-active 40-man player other than a rehab
+  assignment, including an MLB injured-list player.
+- The meaning of the live log's `transaction_type` codes (0 and 1) is not
+  asserted, and about 5% of real log rows (signings, extensions, international
+  moves, staff hires) are kept as `unsupported` events.
+- `last_date_simulated.dat` is decoded from one real save. A move made after an
+  export on the same in-game day cannot be detected by date.
+- A player log entry outside the current and previous season is not read.
 - The system proposes actions but has no OOTP transaction execution or save
   writeback.
 - The README's AI-provider prose predates local Ollama support and should be

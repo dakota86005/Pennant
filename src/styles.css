@@ -6250,3 +6250,65 @@ button.cta {
 .scouted-table td {
   padding: 8px 10px;
 }
+
+/* ── Data status: how current Pennant's roster evidence is ─────── */
+
+.data-status { position: relative; }
+.data-status-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11.5px; padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+  background: transparent; color: var(--text); border: 1px solid var(--border);
+}
+.data-status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.data-status-chip.level-current .data-status-dot { background: var(--good); }
+.data-status-chip.level-partial .data-status-dot { background: var(--accent); }
+.data-status-chip.level-stale .data-status-dot,
+.data-status-chip.level-unavailable .data-status-dot { background: var(--bad); }
+.data-status-chip.level-stale { border-color: var(--bad); }
+.data-status-panel {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; width: 340px; max-width: 90vw;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px 14px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); font-size: 12.5px;
+}
+.data-status-title { font-family: var(--font-display); letter-spacing: 0.04em; margin-bottom: 8px; }
+.data-status-rows { margin: 0 0 8px; display: grid; gap: 4px; }
+.data-status-row { display: flex; justify-content: space-between; gap: 12px; }
+.data-status-row dt { color: var(--muted); }
+.data-status-row dd { margin: 0; text-align: right; }
+.data-status-row .tone-good { color: var(--good); }
+.data-status-row .tone-warn { color: var(--accent); }
+.data-status-row .tone-bad { color: var(--bad); }
+.data-status-action { margin: 8px 0 4px; color: var(--bad); }
+.data-status-note { margin: 6px 0 0; color: var(--muted); font-size: 11.5px; line-height: 1.4; }
+
+/* ── Assignment context on a player ────────────────────────────── */
+
+.assignment-chip {
+  display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px;
+  font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; vertical-align: middle;
+  border: 1px solid var(--accent); color: var(--accent); cursor: help;
+}
+.assignment-block {
+  margin: 8px 0; padding: 8px 10px; border-left: 3px solid var(--accent);
+  background: var(--panel); border-radius: 0 6px 6px 0; font-size: 12.5px;
+}
+.assignment-block.unestablished { border-left-color: var(--border); }
+.assignment-block-title {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
+  font-family: var(--font-display);
+}
+.assignment-block-label { font-weight: 700; }
+
+/* A snapshot behind the save: say so plainly, and say what to do */
+.banner.data-stale {
+  background: #3d1815; border: 1px solid #8b3a32; color: var(--bad);
+  font-size: 0.9rem;
+}
+
+.data-status-fallback { margin-top: 8px; }
+.data-status-fallback-row { display: flex; gap: 6px; margin-top: 4px; }
+.data-status-fallback-row input {
+  flex: 1; min-width: 0; font-size: 11.5px; padding: 3px 6px;
+  background: var(--panel-raised); color: var(--text); border: 1px solid var(--border); border-radius: 4px;
+}
+.data-status-note.error { color: var(--bad); }

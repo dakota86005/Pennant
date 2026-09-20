@@ -52,6 +52,12 @@ export interface AppConfig {
   csvDir: string | null;
   /** Display name of the selected save. */
   saveName: string | null;
+  /**
+   * A `<save>.lg` folder the user chose by hand. Only ever a fallback: the save
+   * is normally derived from where the CSV export lives, so nothing here needs
+   * setting unless that derivation genuinely fails.
+   */
+  lgPath?: string | null;
 }
 
 export function loadConfig(): AppConfig {

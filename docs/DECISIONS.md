@@ -339,3 +339,113 @@ development score, which feeds release-candidate thresholds (a retention
 judgment, not assignment authorization, but it blends the two); Operations'
 same-level moves are ranked with philosophy-weighted costs.
 
+
+## D-020 — Roster evidence has a source hierarchy, and three concerns stay separate
+
+**Status:** Accepted. **Implementation:** Current State and Transaction
+Chronology are implemented (`playerState.ts`, `transactionLog.ts`,
+`assignmentContext.ts`); Rights / Eligibility is deliberately not.
+
+An audit of a real macOS save overturned an earlier assumption that transaction
+chronology is unavailable. OOTP keeps a live SQLite transaction log in the
+save's `temp/` folder. The official CSV export remains the best broad source
+for current state. They answer different questions, so roster evidence is read
+in this order:
+
+1. **Explicit CSV/export current state** — team, level, active and 40-man
+   membership, injured-list flags, DFA/waivers and countdown, service time,
+   option counters, contract kind. If OOTP exports a fact, it is read as
+   exported and never re-derived from history or snapshots.
+2. **Explicit live transaction log** — what happened and when: optioned,
+   recalled, purchased contract, DFA/waivers, injured list, restricted list,
+   release, Rule 5 return, injury rehab, and level moves. Unrecognised wording
+   is kept as an `unsupported` event, not dropped and not interpreted.
+3. **Pennant's observed snapshots** (`rosterStateHistory`) — a longitudinal
+   fallback and a cross-check. A difference between two imports is evidence
+   that state changed, never proof of which transaction changed it. It must not
+   manufacture "optioned", "recalled", or "DFA" and must not override 1 or 2.
+
+Every meaningful field carries a provenance (`explicit_export`,
+`explicit_log`, `observed_snapshot`, `derived`, `unknown`) and, when unknown, a
+reason (`source_unavailable`, `source_stale`, `rule_not_implemented`,
+`not_exported_by_ootp`, `transaction_type_not_understood`,
+`no_observed_example`, `no_explicit_event`) — see `server/provenance.ts`.
+
+Three concerns are never collapsed into one roster object:
+
+- **Current State** — what is objectively true now.
+- **Transaction Chronology** — what explicitly happened.
+- **Rights / Eligibility** — what may legally or operationally be done now.
+  Not implemented; it depends on unresolved OOTP semantics (see the roadmap).
+
+Consequences:
+
+- **40-man membership is `players_roster_status.is_on_secondary`.** The earlier
+  inference (active, or secondary, or on the MLB injured list) reported 35
+  against the export's 30 on a real save, counting five 60-day-IL players OOTP
+  does not list. Whether such a player should occupy a slot is a rights
+  question and is not settled by overriding the export.
+- **Rehab is first-class.** A rehab player appears in the export as Triple-A, on
+  the 40-man, not active, with no distinguishing flag — identical to an optioned
+  player. Only the log tells them apart. A rehab assignment is not an option or
+  a demotion (`ordinaryOption: false`). When the log is unavailable the same
+  export state is `unattributed` with `ordinaryOption: null`; it is never
+  assumed to be an option.
+- The export outranks the log where they disagree about current placement: an
+  open rehab episode in the log does not survive the export showing the player
+  elsewhere.
+- Option counters are preserved as exported. Nothing reads them as
+  "optionable"; true optionability is unresolved.
+
+## D-021 — The live log is found automatically and only ever read from a copy
+
+**Status:** Accepted. **Implementation:** Present.
+
+Normal use must need nothing beyond the OOTP database export the user already
+makes. The save is derived from where the export lives
+(`<save>.lg/import_export/csv` names its own `.lg`), and the live database from
+the save (`temp/text_data.sqlite3`). A hand-picked `.lg` folder exists only as a
+fallback (`POST /api/save-source`) for when derivation genuinely fails.
+
+The live database belongs to OOTP and may be mid-write, so it is never opened in
+place. `server/liveLogSnapshot.ts` copies the database and its WAL to a private
+temp directory, re-stats the source and rejects a copy that moved or is the
+wrong size, validates the copy (`quick_check` plus required tables), retries
+when it is torn, opens only the copy read-only, and deletes it on close. The
+`-shm` file is not copied: it is a shared-memory index SQLite rebuilds from the
+copied WAL. Nothing ever opens an OOTP file for writing.
+
+Consequences:
+
+- If the save or database cannot be found or read, Pennant continues on CSV
+  state and reports the log as unavailable, with the reason.
+- Log text is read as bytes and decoded as UTF-8 with a Windows-1252 fallback:
+  OOTP stores some rows in a legacy encoding (`Vázquez` as byte `0xE1`).
+- Parsing the `.dat` binaries remains out of scope; `last_date_simulated.dat`
+  is the one exception, a seven-byte date whose layout is inferred from one
+  real save and rejected as unknown if it does not decode to a valid date.
+
+## D-022 — Freshness is measured in simulated game days, never wall-clock time
+
+**Status:** Accepted. **Implementation:** Present (`dataFreshness.ts`).
+
+The save, the CSV export, and the transaction log are each placed on one basis:
+the last in-game day whose games have been simulated. An export's
+`leagues.current_date` names the day about to be played, so it reflects the day
+before (verified: `current_date` 2026-5-16, last played game and log 2026-5-15).
+File modification times are diagnostics only.
+
+Consequences:
+
+- The log is judged by how far the database has been written (the newest date
+  across its transaction, history, news, and injury tables), not by its newest
+  transaction, so an off-day does not make it look behind.
+- Overall roster evidence is `current`, `partial`, `stale`, or `unavailable`. A
+  missing or lagging log makes it `partial` — current state is intact,
+  chronology-dependent reasoning is limited — and is never reported as a stale
+  snapshot. Only the CSV being behind the save is `stale`, with an
+  action-oriented message to export again.
+- Moves made on the current, not-yet-simulated day are dated that day in the
+  log and are in an export taken afterwards; they do not make the export look
+  behind. A move made after the export on the same day cannot be detected by
+  date.

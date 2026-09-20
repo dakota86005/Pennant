@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react';
 import { apiGet } from '../api';
 import { PlayerLink } from '../playerModal';
 import { Th } from '../Th';
+import { AssignmentChip } from '../AssignmentContext';
+import type { AssignmentContext } from '../api';
 
 interface CrunchPlayer {
   player_id: number; name: string; age: number; positionName: string; levelName: string;
   on26: boolean; on40: boolean; optionsUsed: number; rule5Protected: number; issues: string[];
+  assignment: AssignmentContext | null;
 }
 interface CrunchData {
   counts: { active: number; fortyMan: number; issues: number };
@@ -76,7 +79,10 @@ export function RosterCrunch({ orgId }: { orgId: number }) {
               <td>{p.positionName}</td>
               <td>{p.age}</td>
               <td><span className="level-tag">{p.levelName}</span></td>
-              <td>{p.on26 ? <span className="badge promote">Active</span> : <span className="flag">40-man</span>}</td>
+              <td>
+                {p.on26 ? <span className="badge promote">Active</span> : <span className="flag">40-man</span>}
+                <AssignmentChip assignment={p.assignment} />
+              </td>
               <td className="num">{p.optionsUsed}/3</td>
             </tr>
           ))}

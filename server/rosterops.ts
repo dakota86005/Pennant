@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db, tableExists } from './db.js';
 import { LEVEL_NAMES, rosterHoles, seasonYear } from './valuation.js';
+import { assignmentContextsFor } from './playerContext.js';
 
 export const rosterOpsRoutes = Router();
 
@@ -29,21 +30,34 @@ rosterOpsRoutes.get('/roster-crunch/:orgId', (req, res) => {
     )
     .all(orgId) as Array<Record<string, number | string | null>>;
 
+  // Why each non-active player is where he is, from explicit log evidence
+  const assignments = assignmentContextsFor(rows.map((r) => r.player_id as number));
+
   const players = rows.map((r) => {
     const on26 = r.is_active === 1;
-    // Secondary roster = the 40-man; MLB-level IL players also occupy 40-man spots
-    const on40 =
-      on26 || r.is_on_secondary === 1 ||
-      ((r.is_on_dl === 1 || r.is_on_dl60 === 1) && r.level === 1);
+    /*
+     * The 40-man is the export's own secondary-roster flag, exactly as
+     * exported. It used to be inferred as "active, or secondary, or on the MLB
+     * injured list", which counted five 60-day-IL players OOTP itself leaves off
+     * the 40-man: 35 reported against 30 exported on a real save. Whether an
+     * IL-60 player should occupy a slot is a rules question, not something to
+     * settle by overriding the export.
+     */
+    const on40 = r.is_on_secondary === 1;
+    const assignment = assignments.get(r.player_id as number) ?? null;
+    // A rehab assignment is not an option: it uses none, and says nothing about
+    // whether he can be optioned. The export shows him exactly like an optioned
+    // player (Triple-A, on the 40-man, not active), so only the log can tell
+    const onRehab = assignment?.kind === 'rehab_assignment';
     const optionsUsed = (r.options_used as number) ?? 0;
-    const outOfOptions = on40 && !on26 && optionsUsed >= 3;
+    const outOfOptions = on40 && !on26 && !onRehab && optionsUsed >= 3;
     const rule5Protected = (r.years_protected_from_rule_5 as number) ?? 0;
     const rule5Exposed = !on40 && rule5Protected <= 0 && ((r.pro_service_years as number) ?? 0) >= 4;
     const issues: string[] = [];
     if (r.designated_for_assignment === 1) issues.push(`DFA — ${r.days_on_dfa_left ?? '?'} days to resolve`);
     if (r.is_on_waivers === 1) issues.push(`on waivers — ${r.days_on_waivers_left ?? '?'} days left`);
     if (outOfOptions) issues.push('out of options');
-    else if (on40 && !on26 && optionsUsed === 2) issues.push('last option year');
+    else if (on40 && !on26 && !onRehab && optionsUsed === 2) issues.push('last option year');
     if (rule5Exposed) issues.push('Rule 5 exposed');
     return {
       player_id: r.player_id,
@@ -56,6 +70,17 @@ rosterOpsRoutes.get('/roster-crunch/:orgId', (req, res) => {
       optionsUsed,
       rule5Protected,
       issues,
+      assignment: assignment && {
+        kind: assignment.kind,
+        label: assignment.label,
+        sinceLabel: assignment.sinceLabel,
+        since: assignment.since,
+        ordinaryOption: assignment.ordinaryOption,
+        provenance: assignment.provenance,
+        source: assignment.source,
+        reason: assignment.reason ?? null,
+        note: assignment.note ?? null,
+      },
     };
   });
 

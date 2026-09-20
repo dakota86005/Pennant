@@ -4,6 +4,7 @@ import {
   getOrgs, getSaves, getStatus, isStaticSite, setConfig, setStaticSite, triggerImport,
   type Org, type SaveInfo, type Status,
 } from './api';
+import { DataStatusBanner, DataStatusChip, useDataStatus } from './DataStatus';
 import { RosterPage } from './pages/Roster';
 import { DepthChart } from './pages/DepthChart';
 import { Prospects } from './pages/Prospects';
@@ -173,6 +174,9 @@ export function App() {
   // Once opened, the panel stays mounted for the rest of the session
   const [chatUsed, setChatUsed] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Reloaded whenever an import finishes; the server derives the save and its
+  // live transaction log from the export, so there is nothing to configure
+  const dataStatus = useDataStatus(status?.lastImport?.finishedAt ?? null);
 
   const refreshStatus = useCallback(async () => {
     const s = await getStatus();
@@ -408,6 +412,7 @@ export function App() {
             ))}
           </select>
           )}
+          {status.hasData && !isStaticSite() && <DataStatusChip data={dataStatus} />}
           <span
             className="muted freshness"
             title={`OOTP export: ${fmtTime(status.csvExportedAt)} · imported: ${fmtTime(
@@ -468,6 +473,7 @@ export function App() {
 
       {error && <div className="banner error">{error}</div>}
       {status.lastError && <div className="banner error">Import failed: {status.lastError}</div>}
+      {status.hasData && !busy && <DataStatusBanner data={dataStatus} />}
       {status.exportPending && !busy && (
         <div className="banner refresh-prompt">
           <span>

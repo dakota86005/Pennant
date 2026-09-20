@@ -61,7 +61,13 @@ schema-tolerant importer ---> data/league.db (replaceable imported snapshot)
               v                     v
        browser development    Electron shell (`electron/`)
 
-imports ---> data/history.db (persistent scouting snapshots, notes/watchlist)
+imports ---> data/history.db (persistent scouting snapshots, notes/watchlist,
+                              observed roster-state snapshots)
+
+<save>.lg/temp/text_data.sqlite3 (+ -wal)      OOTP's live transaction log
+      |  found from the CSV export's path; never opened in place
+      v
+private read-only copy ---> parsed events ---> Express API
 ```
 
 The desktop application embeds the Express server on a local port and loads the
@@ -108,7 +114,8 @@ artifact, not an alternative application backend.
 
 | Subsystem | Current responsibility | Boundary |
 |---|---|---|
-| Import and save discovery | `server/paths.ts`, `importer.ts`, `watcher.ts`, and `api.ts` find OOTP 27 saves, import CSVs, report progress, and refresh on new exports. | Do not parse or mutate binary OOTP saves. |
+| Import and save discovery | `server/paths.ts`, `importer.ts`, `watcher.ts`, and `api.ts` find OOTP 27 saves, import CSVs, report progress, and refresh on new exports. | Do not parse or mutate binary OOTP saves. The live `temp/` transaction database is read only through a copy (D-021). |
+| Roster evidence | `playerState.ts` (current state), `transactionLog.ts` + `liveLogSnapshot.ts` + `ootpSave.ts` (chronology and save discovery), `assignmentContext.ts` + `playerContext.ts` (reading one against the other), `dataFreshness.ts` + `dataStatus.ts` (how current each is), `rosterStateHistory.ts` (observed fallback and cross-check). | Three concerns, kept apart: Current State, Transaction Chronology, Rights/Eligibility (not implemented). Sources are read in the order in D-020; nothing opens an OOTP file for writing. |
 | Database compatibility | `server/db.ts` discovers available tables and columns; query modules adapt to export differences. | Do not hard-code a single save's schema without a guarded fallback. |
 | Domain API | Express routers in `server/*.ts` compute rosters, player dossiers, standings, schedules, stats, contracts, payroll, trades, development, and other front-office reads. | Domain logic belongs here, not duplicated in React or AI prompts. |
 | Scouted evidence | `scoutedEvidence.ts` is the only reader of ability ratings for development and operations judgments. It returns branded `ScoutedAbility` evidence with provenance, viewer, scale, and what is missing. | Nothing in Player Development or Minor League Operations may read a rating column or `players_value` directly; `tests/evidenceBoundary.test.ts` enforces it. |
@@ -236,6 +243,97 @@ four rating columns and snaps it to a known scale. That varies by save and
 user configuration, and is a heuristic; whether fielding-position grades share
 the tool ratings' scale is an assumption that cannot be verified.
 
+## Roster evidence: state, chronology, and how current they are
+
+Established by D-020 to D-022. Roster facts come from three sources with three
+different jobs, read in a fixed order and never merged into one object.
+
+```text
+                 what is true NOW                  what HAPPENED                 how current
+  OOTP CSV ----> playerState.ts ------+
+  (explicit_export)                   |
+                                      +--> assignmentContext.ts --> roster rows,
+  live .lg/temp  transactionLog.ts ---+     (state read against      player card,
+  log  ---------> (explicit_log)      |      explicit history)       roster crunch
+      ^                               |
+      | ootpSave.ts finds it          +--> dataFreshness.ts / dataStatus.ts
+      | liveLogSnapshot.ts copies it        (save date, CSV date, log date)
+
+  imports ----> rosterStateHistory.ts   observed_snapshot: fallback + cross-check only
+```
+
+### Current State (`playerState.ts`)
+
+One `PlayerState` per player, each field a `Sourced<T>`: a value with its
+provenance, its source column, and, when absent, the reason. It reads the export
+as exported — organization, team, level, `is_active`, `is_on_secondary` (the
+40-man), `is_on_dl`/`is_on_dl60`, DFA/waiver flags and countdowns, service
+time, option counters, Rule 5 protection, and `players_contract.is_major`. A
+missing table, a missing column, a player with no row, and a blank value are
+four different unknowns. `standing` and `health` are derived conveniences,
+offered only when every field they read was exported.
+
+### Transaction chronology (`transactionLog.ts`)
+
+`team_transactions` holds an HTML sentence per club that saw a move, with a date
+(`YYYYMMDD`), a numeric team id, and an OOTP type code whose meaning is not
+asserted. It contains every row of `league_transactions`. The parser reads the
+observed wordings into structured events (`optioned`, `recalled`,
+`purchased_contract`, `designated_for_assignment` with waiver status,
+`il_placed`, `il_activated`, `restricted_list_placed`/`_activated`, `released`,
+`rule5_return`, `rehab_assigned`, `rehab_received`, `rehab_returned`, and
+`minor_league_assignment` for level moves) and keeps the rest as `unsupported`
+events with the original text. One move written for several clubs is coalesced
+and lists each source row. Only the current and previous season are parsed.
+
+### Assignment context (`assignmentContext.ts`)
+
+Reads current state against explicit history to say why a player is where he is.
+Precedence: export DFA/waivers; an open rehab episode the export's current team
+agrees with; the latest explicit event checked against the export; and finally
+`unattributed` for a 40-man player below MLB that nothing explains — with
+`source_unavailable`, `source_stale`, or `no_explicit_event` as the reason. It
+evaluates no rights: `ordinaryOption` says what the evidence shows the
+assignment is, not what may be done next.
+
+### Save discovery and the safe reader
+
+`ootpSave.ts` derives the `.lg` from the export path (`csv_layout`), then from an
+enclosing `.lg` (`ancestor_lg`), then from the configured save name, and only
+then from a hand-picked folder. `liveLogSnapshot.ts` is the only code that
+touches the live database: copy the database and WAL to a private temp
+directory, re-stat the source and reject a moved or short copy, validate, retry,
+open the copy read-only, delete it on close. Results are cached against the
+source files' size and modification time.
+
+### Freshness (`dataFreshness.ts`, `dataStatus.ts`)
+
+See D-022. `GET /api/data-status` reports the save (found, how, simulated-through
+date), the CSV (current date, imported), the log (readable, coverage, counts,
+unsupported samples), and the overall level with a headline and an action. The
+UI shows a compact chip in the header with a short panel, and a banner only when
+the snapshot is behind the save.
+
+### `rosterStateHistory.ts`
+
+Records a normalized snapshot after each import and the field-level differences
+between consecutive snapshots (`provenance: 'observed_snapshot'`). It attaches
+explicit log events found in the interval between two snapshots as evidence
+(`events_in_window`), and flags a change the covering log does not mention as
+`unexplained`, or reports the log as `log_behind`/`log_unavailable` instead. It
+never names a transaction, never overrides the export or the log, and is not
+read by `playerState.ts`, `transactionLog.ts`, or `assignmentContext.ts`
+(`tests/playerState.test.ts` enforces that statically).
+
+### Known limits
+
+- Rights/eligibility is not implemented: true optionability, IL-60 versus
+  40-man, recall waiting periods, Rule 5 clock precision, outright semantics,
+  and trade/claim semantics need controlled copied-save experiments.
+- The meaning of the log's `transaction_type` codes (0/1) is not asserted.
+- `last_date_simulated.dat` is decoded from one real save.
+- A move made after an export on the same in-game day is not detectable by date.
+
 ## Development, philosophy, and operations
 
 ### Player Development owns eligibility
@@ -330,4 +428,6 @@ credential.
 - Updates are consent-first: checking may be automatic, but download/install is
   user controlled.
 - The current product reads OOTP exports and proposes actions. It does not
-  perform transactions in OOTP or write to the save.
+  perform transactions in OOTP or write to the save. The one file it reads from
+  a live save beyond the export is the transaction log, and only through a
+  private copy (D-021).

@@ -73,6 +73,71 @@ export interface RosterPlayer {
   contact: Record<string, number | null> | null;
   /** DFA, waivers, injured list or plain active — and whether he can be used. */
   standing: { label: string; daysLeft: number | null; available: boolean } | null;
+  /** Why he is where he is, when the log and export together establish it. */
+  assignment: AssignmentContext | null;
+}
+
+export type AssignmentKind =
+  | 'rehab_assignment' | 'optioned' | 'recalled' | 'purchased_contract'
+  | 'designated_for_assignment' | 'waivers' | 'injured_list' | 'restricted_list'
+  | 'unattributed';
+
+/** Where a fact came from; see D-020. */
+export type Provenance = 'explicit_export' | 'explicit_log' | 'observed_snapshot' | 'derived' | 'unknown';
+
+export interface AssignmentContext {
+  kind: AssignmentKind;
+  label: string;
+  /** What `since` is the date of, e.g. "Sent on rehab". */
+  sinceLabel: string | null;
+  /** ISO date. */
+  since: string | null;
+  /** True only when the evidence shows an ordinary option; null when not established. */
+  ordinaryOption: boolean | null;
+  provenance: Provenance;
+  /** Display source, e.g. "OOTP transaction log". */
+  source: string;
+  note?: string | null;
+  reason?: string;
+}
+
+export type RosterEvidenceLevel = 'current' | 'partial' | 'stale' | 'unavailable';
+
+export interface DataStatus {
+  generatedAt: string;
+  configured: boolean;
+  save: {
+    found: boolean;
+    name: string | null;
+    lgPath: string | null;
+    discovery: 'csv_layout' | 'ancestor_lg' | 'save_name_match' | 'manual_override' | 'not_found';
+    discoveryNotes: string[];
+    simulatedThrough: string | null;
+    dateSource: string | null;
+  };
+  csv: {
+    currentDate: string | null;
+    simulatedThrough: string | null;
+    exportedAt: string | null;
+    importedAt: string | null;
+  };
+  transactionLog: {
+    found: boolean;
+    readable: boolean;
+    error: { code: string; message: string } | null;
+    unavailableReason: 'save_not_found' | 'database_missing' | 'unreadable' | null;
+    coverage: { lastTransactionDate: string | null; coveredThrough: string | null } | null;
+    counts: { events: number; unsupported: number } | null;
+  };
+  freshness: {
+    level: RosterEvidenceLevel;
+    save: { simulatedThrough: string | null };
+    csv: { state: 'current' | 'behind' | 'unverified' | 'unavailable'; through: string | null; currentDate: string | null; lagDays: number };
+    log: { state: 'current' | 'behind' | 'unverified' | 'unavailable'; through: string | null; lagDays: number };
+    headline: string;
+    reasons: string[];
+    action: string | null;
+  };
 }
 
 export interface RosterResponse {
@@ -181,6 +246,14 @@ export const desktopBridge = (): DesktopBridge | null =>
 
 export const getSaves = () => json<SaveInfo[]>('/api/saves');
 export const getStatus = () => json<Status>('/api/status');
+export const getDataStatus = () => json<DataStatus>('/api/data-status');
+/** Fallback only: names the `<save>.lg` folder by hand. An empty path returns to automatic. */
+export const setSaveSource = (lgPath: string) =>
+  json<{ ok: boolean; status: DataStatus }>('/api/save-source', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lgPath }),
+  });
 export const getTeams = () => json<Team[]>('/api/teams');
 export const getRoster = (teamId: number) => json<RosterResponse>(`/api/roster/${teamId}`);
 export interface Org {
@@ -222,6 +295,8 @@ export interface PlayerDossier {
   uniform: number | null;
   team: string | null;
   serviceYears: number | null;
+  /** Why he is where he is, when the log and export together establish it. */
+  assignment: AssignmentContext | null;
   overallPct: number | null;
   talentPct: number | null;
   /** OOTP's own Overall / Potential on the 20-80 scale, for cross-reference. */
