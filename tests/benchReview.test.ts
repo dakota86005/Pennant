@@ -35,7 +35,7 @@ describe('is the club covered when a regular sits?', () => {
     // a switch-hitter satisfies both sides
     const mixed = reviewBench([p({ playerId: 1, covers: [2, 4, 8], bats: 'S' })]);
     expect(mixed.findings.join(' ')).not.toMatch(/to send up/);
-    expect(BENCH_CALIBRATION.status).toBe('provisional');
+    expect(BENCH_CALIBRATION.status).toBe('policy');
   });
 
   it('shows the bench most-used first', () => {

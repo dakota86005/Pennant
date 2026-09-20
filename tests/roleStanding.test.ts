@@ -72,7 +72,7 @@ describe('unknown stays unknown', () => {
 
   it('carries the provisional calibration stamp', () => {
     expect(evaluateRoleStanding(p(9, 52), group).calibration).toBe(STANDING_CALIBRATION);
-    expect(STANDING_CALIBRATION.status).toBe('provisional');
+    expect(STANDING_CALIBRATION.status).toBe('policy');
   });
 });
 

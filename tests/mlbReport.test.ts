@@ -50,7 +50,7 @@ describe('a returning player who would improve the group', () => {
     expect(rows.filter((x) => x.relation === 'incumbent').map((x) => x.composite)).toEqual([62, 58, 54, 50, 40]);
     expect(rows.at(-1)).toMatchObject({ relation: 'subject', name: 'Mena', composite: 60 });
     expect(r.rolePicture!.basis).toMatch(/not a value, a projection or a decision/);
-    expect(r.rolePicture!.calibration.status).toBe('provisional');
+    expect(r.rolePicture!.calibration.status).toBe('policy');
   });
 
   it('offers the displacement as a pathway with the transaction chain and the consequence for the one moved', () => {

@@ -13,10 +13,10 @@ import { fakePorts, healthy26, mkState, viewOf, type Spec } from './mlbFixtures'
 const ev = (ratingsPct: number | null, skillsPct: number | null, runsPct: number | null, reliability = 0.75): LensEvidence => ({
   ratingsPct, ratingsEvidence: 'complete', skillsPct, runsPct, sample: 900, sampleUnit: 'BF', reliability, currentSample: 180, usage: [],
 });
-// SP5 (104) is a MODERATE case: weakest, well under the group's median, but not far enough below the pack to be strong.
+// SP5 (104) is a MODERATE case: unusually weak for a rotation (under its floor) on both lenses, but not far enough under it to be strong.
 const lens: Record<number, LensEvidence> = {
-  100: ev(60, 68, 60), 101: ev(55, 73, 77), 102: ev(50, 58, 36), 103: ev(47, 60, 40), 104: ev(42, 40, 41),
-  105: ev(60, 70, 66), 106: ev(55, 60, 55), 107: ev(52, 55, 50), 108: ev(50, 55, 52), 109: ev(48, 50, 50), 110: ev(45, 48, 44), 111: ev(40, 42, 42), 112: ev(30, 20, 22),
+  100: ev(60, 68, 60), 101: ev(55, 73, 77), 102: ev(50, 58, 36), 103: ev(47, 60, 40), 104: ev(30, 29, 29),
+  105: ev(60, 70, 66), 106: ev(55, 60, 55), 107: ev(52, 55, 50), 108: ev(50, 55, 52), 109: ev(48, 50, 50), 110: ev(45, 48, 44), 111: ev(40, 42, 42), 112: ev(12, 8, 10),
   500: ev(64, 70, 68, 0.6),   // a clear upgrade, veteran
   501: ev(64, 70, 68, 0.6),   // the same, young
 };
@@ -106,7 +106,7 @@ describe('choosing between equivalent replacements', () => {
     // make the strong case: the older man is the only clear upgrade
     const specs = [...healthy26(), farm[0]].map((s) => (AGE[s.id] ? { ...s, age: AGE[s.id] } : s));
     const view = viewOf(specs);
-    const strongLens: Record<number, LensEvidence> = { ...lens, 104: ev(35, 25, 26) };
+    const strongLens: Record<number, LensEvidence> = { ...lens, 104: ev(20, 14, 15) };
     const base = fakePorts({
       states: specs.map(mkState), assignments: { 500: 'optioned' }, development: { 500: {} },
       roleFit: (id) => ({ compositePercentile: strongLens[id]?.ratingsPct ?? null, weakestCorePercentile: 40 }),

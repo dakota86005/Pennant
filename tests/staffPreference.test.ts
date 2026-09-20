@@ -53,7 +53,7 @@ describe('reading the club: the window and the season, kept apart', () => {
     expect(r.used).toEqual(DIMENSIONS_USED);
     expect(r.notUsed).toEqual(DIMENSIONS_NOT_USED);
     expect(r.notUsed).toContain('teamControl');
-    expect(STAFF_PREFERENCE_CALIBRATION.status).toBe('provisional');
+    expect(STAFF_PREFERENCE_CALIBRATION.status).toBe('policy');
   });
 });
 

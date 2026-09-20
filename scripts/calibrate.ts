@@ -5,7 +5,7 @@
  *
  *   OOTP_FO_DATA_DIR=<dir with league.db> npx tsx scripts/calibrate.ts [section ...]
  *
- * Sections: results pitchers tools platoon aging running defense leverage (default: all).
+ * Sections: results pitchers tools platoon aging running defense leverage standards (default: all).
  *
  * It reads objective statistics directly and ratings only through `scoutedEvidence.ts`
  * (D-017, D-035). It never writes to the database or to OOTP's files. What it prints is
@@ -26,6 +26,7 @@ import {
   reliability, weightedBatting, weightedPitching, wobaOf,
   type BattingLine, type PitchingLine, type SeasonEnvironment,
 } from '../server/resultsMetrics.js';
+import { mlbOverview } from '../server/mlbOperations.js';
 import { bestOf, correlation, grid, mean, weightedRmse, wls } from './lib/fit.js';
 
 const LEAGUE = Number(process.env.CALIBRATION_LEAGUE ?? 203);
@@ -217,6 +218,41 @@ function toolsSection(): void {
     if (pooled) {
       console.log(`\npooled over ${windows.map((w) => w.join('-')).join(', ')} with window intercepts: n=${Y.length}, R2 ${f(pooled.r2)}`);
       console.log(`  ${TOOLS.map((t, i) => `${t} ${f(pooled.coefficients[i + 1], 5)}`).join('  ')}   <- slopes for server/toolsModel.ts`);
+    }
+  }
+
+  // Extreme profiles: is the straight line off for unusual combinations? Residual of the pooled linear model, by profile class, and whether
+  // an interaction (contact x power, contact x eye) or a squared term adds anything. A model that is right on average can still be wrong at
+  // the corners, and the corners are where a GM's attention goes.
+  {
+    const windows: Array<[number, number]> = [[2023, 2025], [2021, 2022], [2018, 2019]];
+    const rows: Array<{ x: number[]; y: number; pa: number; wi: number }> = [];
+    windows.forEach((w, wi) => { for (const r of hitterPopulation(profiles, w, 500)) rows.push({ x: r.x, y: r.y, pa: r.pa, wi }); });
+    const design = (r: { x: number[]; wi: number }, extra: (x: number[]) => number[] = () => []) => [...r.x, ...extra(r.x), ...windows.slice(1).map((_, j) => (r.wi === j + 1 ? 1 : 0))];
+    const base = wls(rows.map((r) => design(r)), rows.map((r) => r.y), rows.map((r) => r.pa));
+    heading('3c. Extreme profiles: does the linear tools model miss at the corners?');
+    if (base) {
+      const [c0, ...slopes] = base.coefficients;
+      const predict = (r: { x: number[]; wi: number }) => c0 + slopes.slice(0, 5).reduce((n, b, i) => n + b * r.x[i], 0) + (r.wi > 0 ? slopes[5 + r.wi - 1] : 0);
+      const classes: Array<[string, (x: number[]) => boolean]> = [
+        ['power-led (power >= 60, contact <= 45)', (x) => x[2] >= 60 && x[0] <= 45],
+        ['contact-led (contact >= 60, power <= 45)', (x) => x[0] >= 60 && x[2] <= 45],
+        ['eye-led (eye >= 60, contact <= 45)', (x) => x[3] >= 60 && x[0] <= 45],
+        ['three true outcomes (power >= 60, eye >= 60, contact <= 45)', (x) => x[2] >= 60 && x[3] >= 60 && x[0] <= 45],
+        ['all bat tools <= 40', (x) => x[0] <= 40 && x[1] <= 40 && x[2] <= 40 && x[3] <= 40],
+        ['all bat tools >= 60', (x) => x[0] >= 60 && x[1] >= 60 && x[2] >= 60 && x[3] >= 60],
+      ];
+      for (const [label, test] of classes) {
+        const set = rows.filter((r) => test(r.x));
+        if (set.length < 5) { console.log(`  ${label}: n=${set.length} (too few)`); continue; }
+        const res = set.map((r) => r.y - predict(r));
+        const w = set.map((r) => r.pa);
+        const m = res.reduce((n, v, i) => n + v * w[i], 0) / w.reduce((n, v) => n + v, 0);
+        const se = Math.sqrt(res.reduce((n, v, i) => n + w[i] * (v - m) ** 2, 0) / w.reduce((n, v) => n + v, 0)) / Math.sqrt(set.length);
+        console.log(`  ${label}: n=${set.length}  mean residual ${f(m * 1000, 1)} wOBA points (+/- ${f(se * 1000, 1)})`);
+      }
+      const withInteractions = wls(rows.map((r) => design(r, (x) => [x[0] * x[2] / 50, x[0] * x[3] / 50, x[2] * x[3] / 50])), rows.map((r) => r.y), rows.map((r) => r.pa));
+      console.log(`  linear R2 ${f(base.r2, 4)}; with contact x power, contact x eye and power x eye terms R2 ${f(withInteractions?.r2, 4)}`);
     }
   }
 
@@ -522,6 +558,63 @@ function leverageSection(): void {
   console.log(`  setup men (3+ holds, under 3 saves): ${holds.length}, mean leverage ${f(mean(holds), 2)}`);
 }
 
+
+// ── 9. role standards ───────────────────────────────────────────────────────
+
+/**
+ * What a holder of each role typically looks like in this league, on the working-estimate scale: the peer standard a concern is
+ * measured against (`server/roleStandards.ts`). It runs the PRODUCTION review on every major-league club and describes the
+ * distribution of the estimates it produces, so it is descriptive, not fitted to outcomes: percentiles among all hitters put a
+ * first baseman at the 78th and a shortstop at the 59th, and a concern that ignores the position flags the wrong men.
+ */
+function standardsSection(): void {
+  heading('9. Role standards: what a holder of each role typically looks like (production review, every club)');
+  const teams = db.prepare(`SELECT team_id FROM teams WHERE level = 1 AND league_id = ? ORDER BY team_id`).all(LEAGUE) as Array<{ team_id: number }>;
+  const hitters = new Map<number, { est: number[]; bat: number[] }>();
+  const starters: number[] = [];
+  const relievers = new Map<string, number[]>();
+  let clubs = 0;
+  for (const t of teams) {
+    const o = mlbOverview(t.team_id);
+    const lineup = o.review.find((g) => g.role === 'lineup regular');
+    if (!lineup || lineup.holders.length < 5) continue;
+    clubs += 1;
+    for (const h of lineup.holders) {
+      const pos = (h as { position?: number }).position;
+      if (pos === undefined || h.estimate.value === null) continue;
+      const b = hitters.get(pos) ?? { est: [], bat: [] };
+      b.est.push(h.estimate.value);
+      if (h.estimate.batValue !== null && h.estimate.batValue !== undefined) b.bat.push(h.estimate.batValue);
+      hitters.set(pos, b);
+    }
+    for (const g of o.review) {
+      if (g.kind === 'starting_pitcher') for (const h of g.holders) if (h.estimate.value !== null) starters.push(h.estimate.value);
+      if (g.kind === 'relief_pitcher') for (const h of g.holders) if (h.estimate.value !== null) {
+        const tier = (h as { tier?: string | null }).tier ?? 'unknown';
+        relievers.set(tier, [...(relievers.get(tier) ?? []), h.estimate.value]);
+      }
+    }
+  }
+  const quant = (xs: number[], p: number) => { const a = [...xs].sort((x, y) => x - y); return a.length ? a[Math.min(a.length - 1, Math.floor(p * a.length))] : NaN; };
+  const median = (xs: number[]) => quant(xs, 0.5);
+  const Q = Number(process.env.STANDARD_QUANTILE ?? 0.1);
+  console.log(`${clubs} clubs; floor = the ${Math.round(Q * 100)}th percentile of the pooled deviation from each role's median (a policy quantile over a descriptive spread)`);
+  const pooled = (groups: number[][]) => { const dev: number[] = []; for (const g of groups) { const m = median(g); for (const x of g) dev.push(x - m); } return quant(dev, Q); };
+  const hitterGap = pooled([...hitters.values()].map((v) => v.est));
+  console.log(`\nhitters (position: n, typical estimate, typical bat, floor)   pooled floor gap ${f(hitterGap, 1)}`);
+  for (const [pos, v] of [...hitters.entries()].sort((a, b) => a[0] - b[0])) {
+    console.log(`  ${pos}: n=${v.est.length}  typical ${f(median(v.est), 0)}  bat ${f(median(v.bat), 0)}  floor ${f(median(v.est) + hitterGap, 0)}   (own p10 ${f(quant(v.est, Q), 0)})`);
+  }
+  console.log(`\nstarters: n=${starters.length}  typical ${f(median(starters), 0)}  floor(p${Math.round(Q * 100)}) ${f(quant(starters, Q), 0)}   by slot ordering not used`);
+  const relGap = pooled([...relievers.values()].filter((g) => g.length >= 10));
+  console.log(`\nrelievers by tier   pooled floor gap ${f(relGap, 1)}`);
+  for (const [tier, xs] of [...relievers.entries()].sort((a, b) => median(b[1]) - median(a[1]))) {
+    console.log(`  ${tier}: n=${xs.length}  typical ${f(median(xs), 0)}  floor ${f(median(xs) + relGap, 0)}   (own p10 ${f(quant(xs, Q), 0)})`);
+  }
+  const all = [...relievers.values()].flat();
+  console.log(`  all relievers: n=${all.length}  typical ${f(median(all), 0)}  floor ${f(quant(all, Q), 0)}`);
+}
+
 if (want('results')) resultsSection();
 if (want('pitchers')) pitchersSection();
 if (want('tools')) toolsSection();
@@ -531,3 +624,4 @@ if (want('aging')) agingSection();
 if (want('running')) runningSection();
 if (want('defense')) defenseSection();
 if (want('leverage')) leverageSection();
+if (want('standards')) standardsSection();

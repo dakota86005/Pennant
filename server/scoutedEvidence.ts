@@ -483,6 +483,17 @@ export function clearFieldingPopulationCache(): void {
 }
 
 /**
+ * Who counts as a "major-league" peer. Every club carries, under its own `team_id`, the amateurs it has signed
+ * (sixteen- and seventeen-year-olds on the international pool, all-20 tools, no plate appearances); the export marks
+ * them with a NEGATIVE `players.league_id`, where a professional's is the league he plays in. Ranked against them a
+ * real hitter's percentile is inflated by the share of the pool they make up (about 12% of the hitters here), and
+ * every mean over the pool is pulled down. A peer is a player whose own league is the major league.
+ * Schema-tolerant: an export with no `league_id` (or a null one) leaves the population as it was.
+ */
+const majorLeaguerOnly = (): string => (tableColumns('players').includes('league_id') ? ' AND COALESCE(p.league_id, ?) = ?' : '');
+const majorLeaguerArgs = (leagueId: number): number[] => (tableColumns('players').includes('league_id') ? [leagueId, leagueId] : []);
+
+/**
  * The revealed fielding grades of a league's major-league players listed at a
  * position, on the 20-80 scale, ascending: the peers a defensive grade at that
  * position is ranked against. Only grades the game shows (current above zero)
@@ -502,8 +513,8 @@ export function scoutedFieldingPopulation(leagueId: number, position: number): n
        FROM players_fielding f
        JOIN players p ON p.player_id = f.player_id
        JOIN teams t ON t.team_id = p.team_id
-       WHERE t.league_id = ? AND t.level = 1 AND p.position = ? AND p.retired = 0 AND f."${column}" > 0`
-    ).all(leagueId, position) as Array<{ grade: number }>;
+       WHERE t.league_id = ? AND t.level = 1 AND p.position = ? AND p.retired = 0 AND f."${column}" > 0${majorLeaguerOnly()}`
+    ).all(leagueId, position, ...majorLeaguerArgs(leagueId)) as Array<{ grade: number }>;
     for (const r of rows) out.push(toScouting(r.grade, scale));
     out.sort((a, b) => a - b);
   }
@@ -630,8 +641,8 @@ export function scoutedHitterPopulation(leagueId: number): ScoutedHitterProfile[
   if (tableExists('players') && tableExists('teams') && tableExists('players_batting')) {
     const ids = (db.prepare(
       `SELECT p.player_id AS id FROM players p JOIN teams t ON t.team_id = p.team_id
-       WHERE t.league_id = ? AND t.level = 1 AND p.position > 1 AND p.retired = 0`
-    ).all(leagueId) as Array<{ id: number }>).map((r) => r.id);
+       WHERE t.league_id = ? AND t.level = 1 AND p.position > 1 AND p.retired = 0${majorLeaguerOnly()}`
+    ).all(leagueId, ...majorLeaguerArgs(leagueId)) as Array<{ id: number }>).map((r) => r.id);
     out = [...loadScoutedHitterProfiles(ids).values()];
   }
   hitterPopulationCache.set(leagueId, out);

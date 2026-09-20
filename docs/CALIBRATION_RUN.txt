@@ -186,3 +186,48 @@ running ratings (speed, baserunning, stealing) -> baserunning runs/600 PA: n=481
   innings per appearance quantiles: 25% 0.98  50% 1.19  75% 1.48  90% 1.76
   relievers with 3+ saves: 35, mean leverage 2.09
   setup men (3+ holds, under 3 saves): 85, mean leverage 1.23
+
+======================================================================
+ADDENDUM (hardening phase, 2026-09-20): sections 3c and 9, same import
+======================================================================
+
+==============================================================================
+9. Role standards: what a holder of each role typically looks like (production review, every club)
+==============================================================================
+30 clubs; floor = the 10th percentile of the pooled deviation from each role's median (a policy quantile over a descriptive spread)
+
+hitters (position: n, typical estimate, typical bat, floor)   pooled floor gap -20.2
+  2: n=29  typical 57  bat 65  floor 36   (own p10 38)
+  3: n=28  typical 77  bat 86  floor 57   (own p10 47)
+  4: n=28  typical 51  bat 55  floor 31   (own p10 39)
+  5: n=30  typical 49  bat 51  floor 29   (own p10 31)
+  6: n=29  typical 57  bat 55  floor 36   (own p10 29)
+  7: n=25  typical 68  bat 75  floor 48   (own p10 39)
+  8: n=27  typical 50  bat 45  floor 30   (own p10 31)
+  9: n=28  typical 62  bat 65  floor 42   (own p10 43)
+  10: n=26  typical 73  bat 76  floor 53   (own p10 53)
+
+starters: n=150  typical 53  floor(p10) 31   by slot ordering not used
+
+relievers by tier   pooled floor gap -18.3
+  closer: n=33  typical 71  floor 52   (own p10 46)
+  high_leverage: n=43  typical 63  floor 44   (own p10 47)
+  middle: n=62  typical 51  floor 33   (own p10 31)
+  low_leverage: n=34  typical 49  floor 31   (own p10 31)
+  unknown: n=21  typical 38  floor 19   (own p10 20)
+  long: n=47  typical 37  floor 19   (own p10 24)
+  all relievers: n=240  typical 51  floor 30
+3c. Extreme profiles: does the linear tools model miss at the corners?
+==============================================================================
+  power-led (power >= 60, contact <= 45): n=93  mean residual -3.1 wOBA points (+/- 2.0)
+  contact-led (contact >= 60, power <= 45): n=69  mean residual -1.9 wOBA points (+/- 2.3)
+  eye-led (eye >= 60, contact <= 45): n=95  mean residual -3.6 wOBA points (+/- 2.1)
+  three true outcomes (power >= 60, eye >= 60, contact <= 45): n=44  mean residual -2.1 wOBA points (+/- 3.3)
+  all bat tools <= 40: n=25  mean residual 7.8 wOBA points (+/- 4.0)
+  all bat tools >= 60: n=2 (too few)
+  linear R2 0.5343; with contact x power, contact x eye and power x eye terms R2 0.5391
+
+==============================================================================
+3b. Split tools: do vsL / vsR ratings predict results against that hand?
+3c. Pitcher tools: how well do the three visible tools (stuff, movement, control) track peripherals?
+==============================================================================

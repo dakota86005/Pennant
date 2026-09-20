@@ -15,12 +15,17 @@
  * PROVISIONAL (policy): the smallest gain across the two spots worth proposing.
  */
 
-import { provisional, type CalibrationStamp } from './calibration.js';
+import { policy, type CalibrationStamp } from './calibration.js';
 
-export const SHIFT_CALIBRATION: CalibrationStamp = provisional('The smallest combined gain worth proposing is a policy threshold, set to the same size as a meaningful difference between two players.');
+export const SHIFT_CALIBRATION: CalibrationStamp = policy('The smallest combined gain worth proposing is a policy threshold, set to the same size as a meaningful difference between two players.');
 
 /** PROVISIONAL (policy). Points of working estimate, summed across the two spots, a shift must gain to be proposed. */
 export const SHIFT_MIN_GAIN = 8;
+/**
+ * POLICY. Points a shift must gain OVER simply starting the best bench player at the weak spot before it is worth the extra move.
+ * A shift that does no better than the direct replacement is the same result reached by disturbing a second position.
+ */
+export const SHIFT_MIN_EDGE = 3;
 /** How many shifts are proposed at most. */
 export const SHIFT_LIMIT = 3;
 
@@ -34,6 +39,8 @@ export interface ShiftInput {
   supported(playerId: number, position: number): boolean;
   /** His working estimate at the position, or null when unknown. */
   estimate(playerId: number, position: number): number | null;
+  /** What starting the best bench player straight at the weak spot would gain there; a shift must beat it by `SHIFT_MIN_EDGE`. Absent when nobody on the bench can play it. */
+  direct?: number | null;
 }
 
 export interface ShiftOption {
@@ -70,6 +77,7 @@ export function shiftOptions(input: ShiftInput): ShiftOption[] {
     if (!best) continue;
     const gain = moverAtTarget + best.estimate - (before + moverAtHome);
     if (gain < SHIFT_MIN_GAIN) continue;
+    if (input.direct !== undefined && input.direct !== null && gain < input.direct + SHIFT_MIN_EDGE) continue;
     options.push({
       mover: { playerId: r.playerId, name: r.name, from: r.position, to: target.position },
       cover: { playerId: best.playerId, name: best.name, source: best.source },

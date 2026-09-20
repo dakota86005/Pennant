@@ -15,11 +15,11 @@ const ev = (ratingsPct: number | null, skillsPct: number | null, runsPct: number
 });
 // SP1..SP5 = 100..104 (SP5 is weak); RP1..RP8 = 105..112 (RP8 is the weakest arm); Reno arms = 500..503
 const lens: Record<number, LensEvidence> = {
-  100: ev(60, 68, 60), 101: ev(55, 73, 77), 102: ev(50, 58, 36), 103: ev(47, 60, 40), 104: ev(35, 25, 26),
-  105: ev(60, 70, 66), 106: ev(55, 60, 55), 107: ev(52, 55, 50), 108: ev(50, 55, 52), 109: ev(48, 50, 50), 110: ev(45, 48, 44), 111: ev(40, 42, 42), 112: ev(30, 20, 22),
+  100: ev(60, 68, 60), 101: ev(55, 73, 77), 102: ev(50, 58, 36), 103: ev(47, 60, 40), 104: ev(20, 14, 15),
+  105: ev(60, 70, 66), 106: ev(55, 60, 55), 107: ev(52, 55, 50), 108: ev(50, 55, 52), 109: ev(48, 50, 50), 110: ev(45, 48, 44), 111: ev(40, 42, 42), 112: ev(12, 8, 10),
   500: ev(58, 66, 64, 0.6),   // a clear upgrade with a real major-league record
   501: ev(56, null, null, 0), // an upgrade on tools alone
-  502: ev(15, null, null, 0), // a downgrade
+  502: ev(5, null, null, 0),  // a downgrade
 };
 const farm: Spec[] = [
   { id: 500, name: 'Reno Better', position: 1, role: 11, level: 2, forty: true, active: false },
@@ -59,7 +59,7 @@ describe('a replacement is compared with the player under review, lens by lens',
 
   it('the read says both lenses agree on the holder and names who would improve on him', () => {
     const t = p.report!.read.text;
-    expect(t).toMatch(/Both lenses agree: his tools \(35th\) and his results/);
+    expect(t).toMatch(/Both lenses agree: his tools \(20th\) and his results/);
     expect(t).toMatch(/Reno Better \(\+\d+\) is a clear upgrade/);
     expect(t).toMatch(/Reno ToolsOnly.*an upgrade on paper, but his read is not firm/);
   });
@@ -71,7 +71,7 @@ describe('a replacement is compared with the player under review, lens by lens',
     expect(rows.find((r) => r.playerId === 500)?.comparison?.verdict).toBe('clear_upgrade');
     // the lenses stay visible beside the estimate
     const row = rows.find((r) => r.playerId === 104)!;
-    expect(row).toMatchObject({ composite: 35, resultsPct: expect.any(Number), estimate: expect.any(Number) });
+    expect(row).toMatchObject({ composite: 20, resultsPct: expect.any(Number), estimate: expect.any(Number) });
   });
 
   it('a candidate Player Development blocks is not the lead, and the read says he is held up and why', () => {
@@ -170,7 +170,7 @@ describe('the staff recommendation follows a stated rubric', () => {
   });
 
   it('MONITOR: the best internal option is only a marginal upgrade', () => {
-    const cands: Record<number, LensEvidence> = { ...lens, 500: ev(40, 33, 33, 0.75), 501: ev(20, null, null, 0), 502: ev(15, null, null, 0) };
+    const cands: Record<number, LensEvidence> = { ...lens, 500: ev(22, 20, 20, 0.75), 501: ev(10, null, null, 0), 502: ev(5, null, null, 0) };
     const original = { ...lens };
     Object.assign(lens, cands);
     try {

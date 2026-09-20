@@ -12,7 +12,7 @@ OOTP_FO_DATA_DIR=<dir containing league.db> npm run calibrate               # ev
 OOTP_FO_DATA_DIR=<dir containing league.db> npx tsx scripts/calibrate.ts tools platoon
 ```
 
-Sections: `results pitchers tools platoon aging running defense leverage`. The harness reads objective statistics
+Sections: `results pitchers tools platoon aging running defense leverage standards`. The harness reads objective statistics
 directly and ratings only through `scoutedEvidence.ts` (D-017, D-035). It never writes to the database and changes
 no behavior by itself: a person reads the output, edits the one declaration, and records the run here.
 
@@ -68,3 +68,22 @@ Re-run after a fresh import, after the season has grown (defense and baserunning
 should be re-derived), and after any change to the results or tools code. The stamp names the run
 (`CALIBRATION_RUN` in `server/calibration.ts`): editing it re-points every stamp. A recalibration that moves a constant
 by a meaningful amount is a change to record here and, if it changes what the tool tells a GM, in DECISIONS.md.
+
+## 5. Addendum (hardening phase): corners, populations and role standards
+
+Three additions, none of which re-fit a constant. The run behind them is in [CALIBRATION_RUN.txt](CALIBRATION_RUN.txt) (addendum).
+
+**3c. Extreme profiles.** The straight-line tools model was checked at the corners by profile class (pooled residuals, per-window
+intercepts): power-led (power 60+, contact 45-) -3.1 wOBA points (+/- 2.0); contact-led -1.9 (+/- 2.3); eye-led -3.6 (+/- 2.1); three
+true outcomes -2.1 (+/- 3.3); all bat tools 40 or under +7.8 (+/- 4.0), which is survivorship (a hitter with poor tools reaches 500 PA only
+by hitting). Adding contact x power, contact x eye and power x eye terms moves R2 from 0.5343 to 0.5391. The straight line is kept.
+
+**Peer populations (D-039).** The population a hitter's tools, running and glove are ranked against excludes amateur signings (a negative
+`players.league_id`). It was 12% of the pool. The harness's fits use players with results, so they were never affected; the percentiles
+built on the pool were.
+
+**9. Role standards.** `standards` runs the PRODUCTION review on every club and describes the estimates it produces: the median
+estimate of each role (position for hitters, rotation member, bullpen tier) and the pooled 10th and 5th percentile deviation from
+it. These are descriptive, not fitted to outcomes: they are the peer standard a concern is measured against (`server/roleStandards.ts`,
+D-040). The typical levels are provisional (one snapshot); the pooled gaps are stable; the quantiles are policy (D-041). Re-run it after a
+fresh import and after the season has grown, and edit the declarations.

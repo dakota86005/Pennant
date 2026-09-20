@@ -28,11 +28,13 @@
  */
 
 import type { BullpenTier } from './bullpenRoles.js';
-import { calibrated, provisional, type CalibrationStamp } from './calibration.js';
+import { calibrated, policy, provisional, type CalibrationStamp } from './calibration.js';
 import { reliability, STABILIZATION } from './resultsMetrics.js';
+import type { RoleStandard } from './roleStandards.js';
+import type { ToolContribution } from './toolsModel.js';
 import { MEANINGFUL_GAP, ordinal } from './roleStanding.js';
 
-export const REVIEW_CALIBRATION: CalibrationStamp = provisional(
+export const REVIEW_CALIBRATION: CalibrationStamp = policy(
   'The concern thresholds (how low is a concern, how large a gap is a divergence) are policy judgments, not fitted; the pitcher results mix, the aging curve and the defensive and running blends are calibrated or derived (see each declaration).'
 );
 
@@ -91,6 +93,13 @@ export const DEFENSE_CALIBRATION: CalibrationStamp = provisional(
 export const DEFENSE_WEIGHT: Record<number, number> = { 2: 0.41, 3: 0.12, 4: 0.34, 5: 0.28, 6: 0.39, 7: 0.24, 8: 0.41, 9: 0.3, 10: 0 };
 
 /**
+ * POLICY. The share of a position's value that is glove from which an unseen glove makes a comparison less than firm: at these
+ * positions (every fielding position but first base) a hitter whose glove is not visible is judged on part of the job, and a
+ * comparison that leans on him says so.
+ */
+export const GLOVE_MATTERS = 0.2;
+
+/**
  * PROVISIONAL, DERIVED. The share of a hitter's estimate that is baserunning. The spread of baserunning runs among regulars is
  * about 1.4 runs per 600 PA (section 6) against the bat's 10 to 15, so it is a small part of value in this game; 0.05.
  */
@@ -138,6 +147,8 @@ export interface LensEvidence {
   toolsBasis?: 'model' | 'composite';
   /** For a hitter, the wOBA above the league his visible tools imply. */
   toolsExpected?: number | null;
+  /** For a hitter, what each visible tool adds to that expectation and a plain-words profile of the bat; null when a tool is not visible. */
+  toolsProfile?: { contributions: ToolContribution[]; leans: string[]; lacks: string[]; text: string } | null;
   ratingsPct: number | null;
   ratingsEvidence: 'complete' | 'partial' | 'unknown';
   /** Underlying results (peripherals / bat results) percentile among peers. */
@@ -245,6 +256,14 @@ export type FindingKind =
 
 export type CaseStrength = 'strong' | 'moderate' | 'watch' | 'none';
 
+export interface ConcernTrace {
+  rule: 'below_deep_floor' | 'below_role_floor' | 'below_absolute' | 'weakest_in_group' | 'none';
+  /** His working estimate, the level it was compared with, and the margin over it (negative is below). Null when no comparison applied. */
+  estimate: number | null;
+  threshold: number | null;
+  margin: number | null;
+}
+
 export interface HolderReview {
   playerId: number;
   name: string;
@@ -271,6 +290,13 @@ export interface HolderReview {
   group: string;
   /** How much the role matters where it is measured (a high-leverage reliever); absent when nothing says. */
   stakes?: 'high' | 'medium' | 'low' | null;
+  /**
+   * The peer standard his concern was measured against and where he stands on it (points above the floor; negative is below).
+   * Absent when no standard was supplied and the fallback rule applied.
+   */
+  standard?: (RoleStandard & { margin: number }) | null;
+  /** Which rule raised the finding, as data: the trace a reader (or a test) follows without reconstructing the logic from prose. */
+  concern: ConcernTrace;
   /** For a reliever: the role his usage shows (closer, high-leverage arm, middle, long man ...). */
   tier?: BullpenTier | null;
   evidence: LensEvidence;
@@ -286,7 +312,7 @@ const median = (values: number[]): number | null => {
 const r0 = (n: number) => Math.round(n);
 const POSITION_NAME: Record<number, string> = { 2: 'catcher', 3: 'first base', 4: 'second base', 5: 'third base', 6: 'shortstop', 7: 'left field', 8: 'center field', 9: 'right field', 10: 'designated hitter' };
 
-export function reviewGroup(holders: ReviewSubject[], opts: { pitcher: boolean; role: string }): HolderReview[] {
+export function reviewGroup(holders: ReviewSubject[], opts: { pitcher: boolean; role: string; standard?: (h: ReviewSubject) => RoleStandard | null }): HolderReview[] {
   const estimates = new Map(holders.map((h) => [h.playerId, estimateOf(h, opts.pitcher)]));
   const known = holders.filter((h) => estimates.get(h.playerId)!.value !== null);
   const values = known.map((h) => estimates.get(h.playerId)!.value as number);
@@ -303,7 +329,8 @@ export function reviewGroup(holders: ReviewSubject[], opts: { pitcher: boolean; 
     };
     if (est.value === null) {
       return {
-        ...base, rank: null, belowMedian: null, isWeakest: false, kind: 'cannot_judge', strength: 'none',
+        ...base, rank: null, belowMedian: null, isWeakest: false, kind: 'cannot_judge', strength: 'none', standard: null,
+        concern: { rule: 'none' as const, estimate: null, threshold: null, margin: null },
         reasons: ['There is no visible rating and no qualifying results to judge him on.'], explanations: [],
         wouldChange: ['A visible tool rating, or a larger sample of major-league results.'],
       };
@@ -312,19 +339,29 @@ export function reviewGroup(holders: ReviewSubject[], opts: { pitcher: boolean; 
     const rank = 1 + known.filter((o) => (estimates.get(o.playerId)!.value as number) > value).length;
     const belowMedian = groupMedian === null ? null : groupMedian - value;
     const isWeakest = weakestValue !== null && value === weakestValue && known.length > 1;
+    // A concern is measured against the ROLE when a peer standard is supplied (the league's holders of his job): being the weakest
+    // of nine, or under one absolute line, says nothing about a first baseman that it does not also say about a shortstop.
+    const std = opts.standard?.(h) ?? null;
+    const margin = std ? value - std.floor : null;
+    const lensLow = (pct: number | null, groupMed: number | null) => pct !== null && (std ? pct < std.lensFloor : groupMed !== null && pct < groupMed);
+    const ratingsLow = lensLow(h.ratingsPct, ratingsMedian);
+    const resultsLow = lensLow(est.resultsPct, resultsMedian);
     const lowAbs = value < CONCERN.absoluteEstimate;
     const lowRel = isWeakest && belowMedian !== null && belowMedian >= CONCERN.groupGap;
-    const concerned = lowAbs || lowRel;
-
-    const ratingsLow = h.ratingsPct !== null && ratingsMedian !== null && h.ratingsPct < ratingsMedian;
-    const resultsLow = est.resultsPct !== null && resultsMedian !== null && est.resultsPct < resultsMedian;
+    const belowFloor = margin !== null && margin < 0;
+    const belowDeep = std !== null && value < std.deepFloor;
+    const concerned = std ? belowFloor : lowAbs || lowRel;
+    const concern: ConcernTrace = std
+      ? { rule: belowDeep ? 'below_deep_floor' : belowFloor ? 'below_role_floor' : 'none', estimate: value, threshold: belowDeep ? std.deepFloor : std.floor, margin: belowDeep ? value - std.deepFloor : margin }
+      : { rule: lowAbs ? 'below_absolute' : lowRel ? 'weakest_in_group' : 'none', estimate: value, threshold: CONCERN.absoluteEstimate, margin: value - CONCERN.absoluteEstimate };
+    const standardOut = std && margin !== null ? { ...std, margin } : null;
 
     const reasons: string[] = [];
     const explanations: string[] = [];
     const wouldChange: string[] = [];
     const lens = [
-      h.ratingsPct !== null ? `tools ${ordinal(h.ratingsPct)} percentile${ratingsMedian !== null ? ` (group median ${ordinal(ratingsMedian)})` : ''}` : 'no visible tool rating',
-      est.resultsPct !== null ? `results ${ordinal(est.resultsPct)} (${r0(h.sample)} ${h.sampleUnit} of weighted sample, trusted ${r0(h.reliability * 100)}% as his level${resultsMedian !== null ? `; group median ${ordinal(resultsMedian)}` : ''})` : 'no qualifying results',
+      h.ratingsPct !== null ? `tools ${ordinal(h.ratingsPct)} percentile${!std && ratingsMedian !== null ? ` (group median ${ordinal(ratingsMedian)})` : ''}` : 'no visible tool rating',
+      est.resultsPct !== null ? `results ${ordinal(est.resultsPct)} (${r0(h.sample)} ${h.sampleUnit} of weighted sample, trusted ${r0(h.reliability * 100)}% as his level${!std && resultsMedian !== null ? `; group median ${ordinal(resultsMedian)}` : ''})` : 'no qualifying results',
     ];
     reasons.push(`${lens.join('; ')}.`);
     if (!opts.pitcher && est.batValue !== undefined && est.batValue !== null && ((est.weightOnDefense ?? 0) > 0 || (est.weightOnRunning ?? 0) > 0)) {
@@ -336,6 +373,9 @@ export function reviewGroup(holders: ReviewSubject[], opts: { pitcher: boolean; 
       }
       if ((est.weightOnRunning ?? 0) > 0 && est.runningPct !== null && est.runningPct !== undefined) parts.push(`running ${ordinal(est.runningPct)}, ${Math.round((est.weightOnRunning ?? 0) * 100)}%`);
       reasons.push(`${parts.join('; ')}.`);
+    }
+    if (std && margin !== null) {
+      reasons.push(`For ${std.label} the league's typical working estimate is about ${r0(std.typical)}; below ${r0(std.floor)} is unusually weak and below ${r0(std.deepFloor)} well below what the job takes. He is at ${ordinal(value)}, ${margin < 0 ? `${r0(-margin)} under the first line` : `${r0(margin)} above it`}.`);
     }
     if (groupMedian !== null) reasons.push(`Working estimate ${ordinal(value)} percentile of MLB ${opts.role}s${est.basis === 'ratings_and_results' ? ` (${r0(est.weightOnResults * 100)}% results, ${r0((1 - est.weightOnResults) * 100)}% tools)` : est.basis === 'ratings_only' ? ' (tools only: no results to weigh)' : ' (results only: no visible tools)'}; ${isWeakest ? 'the weakest' : `number ${rank}`} of ${known.length} in the group.`);
 
@@ -382,12 +422,12 @@ export function reviewGroup(holders: ReviewSubject[], opts: { pitcher: boolean; 
     let strength: CaseStrength = 'none';
     if (concerned) {
       if (h.reliability < CONCERN.minReliability) { kind = 'too_early'; strength = 'watch'; }
-      else if (ratingsLow && resultsLow) { kind = 'ratings_and_results_weak'; strength = lowAbs && isWeakest ? 'strong' : 'moderate'; }
+      else if (ratingsLow && resultsLow) { kind = 'ratings_and_results_weak'; strength = std ? (belowDeep ? 'strong' : 'moderate') : lowAbs && isWeakest ? 'strong' : 'moderate'; }
       else if (ratingsLow && !resultsLow) { kind = 'tools_weak_results_fine'; strength = 'watch'; }
       else if (!ratingsLow && resultsLow) { kind = 'results_weak_tools_fine'; strength = 'watch'; }
-      else { kind = 'weak_estimate'; strength = 'moderate'; }
+      else { kind = 'weak_estimate'; strength = std && !belowDeep ? 'watch' : 'moderate'; }
     }
-    return { ...base, rank, belowMedian, isWeakest, kind, strength, reasons, explanations, wouldChange };
+    return { ...base, rank, belowMedian, isWeakest, kind, strength, reasons, explanations, wouldChange, standard: standardOut, concern };
   });
 }
 
@@ -421,9 +461,12 @@ export function compareReplacement(candidate: ReviewSubject, incumbent: ReviewSu
   const toolsDelta = c.ratingsPct !== null && i.ratingsPct !== null ? c.ratingsPct - i.ratingsPct : null;
   const resultsDelta = c.resultsPct !== null && i.resultsPct !== null ? c.resultsPct - i.resultsPct : null;
   const incompleteTools = candidate.ratingsEvidence === 'partial' || (candidate.ratingsEvidence === 'unknown' && c.basis !== 'results_only');
+  // A glove that is not visible at a position that is largely glove leaves part of the job unread on that side of the comparison.
+  const gloveUnseen = (s: ReviewSubject) => !pitcher && s.position !== undefined && (DEFENSE_WEIGHT[s.position] ?? 0) >= GLOVE_MATTERS && defenseValue(s.defense) === null;
+  const unseen = [candidate, incumbent].filter(gloveUnseen);
   const certainty: ReplacementComparison['certainty'] = incompleteTools
     ? 'thin'
-    : c.basis === 'ratings_and_results' && candidate.reliability >= CONCERN.minReliability ? 'adequate' : 'limited';
+    : c.basis === 'ratings_and_results' && candidate.reliability >= CONCERN.minReliability && unseen.length === 0 ? 'adequate' : 'limited';
 
   let verdict: ReplacementVerdict;
   if (delta >= MEANINGFUL_GAP) verdict = certainty === 'adequate' ? 'clear_upgrade' : 'upgrade_uncertain';
@@ -435,7 +478,8 @@ export function compareReplacement(candidate: ReviewSubject, incumbent: ReviewSu
     `${candidate.name}: working estimate ${ordinal(c.value)} percentile${c.basis === 'ratings_only' ? ' on tools alone' : c.basis === 'results_only' ? ' on results alone' : ''}; ${incumbent.name}: ${ordinal(i.value)} (${delta >= 0 ? '+' : ''}${r0(delta)}).`,
     ...(toolsDelta !== null ? [`Tools: ${ordinal(c.ratingsPct as number)} against ${ordinal(i.ratingsPct as number)}.`] : []),
     ...(resultsDelta !== null ? [`Results: ${ordinal(c.resultsPct as number)} against ${ordinal(i.resultsPct as number)}.`] : c.resultsPct === null ? [`${candidate.name} has no qualifying major-league results, so this rests on his tools.`] : []),
-    ...(verdict === 'upgrade_uncertain' ? [`The gain is real on paper but the read on ${candidate.name} rests on ${certainty === 'thin' ? 'incomplete tools' : 'one lens'}, so it is not firm.`] : []),
+    ...unseen.map((s) => `${s.name}'s glove at ${POSITION_NAME[s.position as number] ?? 'the position'} is not visible, and that position is about ${Math.round((DEFENSE_WEIGHT[s.position as number] ?? 0) * 100)}% glove: that side of the comparison is his bat alone.`),
+    ...(verdict === 'upgrade_uncertain' ? [`The gain is real on paper but the read on ${candidate.name} rests on ${certainty === 'thin' ? 'incomplete tools' : unseen.length ? 'a bat with no glove to weigh against it' : 'one lens'}, so it is not firm.`] : []),
   ];
   return { ...base, verdict, delta, candidateEstimate: c.value, incumbentEstimate: i.value, toolsDelta, resultsDelta, certainty, reasons };
 }

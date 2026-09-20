@@ -158,8 +158,11 @@ describe('a position shift', () => {
   const specs = healthy26();
   // the left fielder is weak; the shortstop is strong everywhere and can play left
   const weakEv = (id: number, role: { position: number }) => (id === LF ? ev(30, 40, role.position) : id === regularAt(6) ? ev(80, 70, role.position) : ev(55, 55, role.position));
+  // Nobody on the bench has a visible grade in left, so there is no plain lineup change to make: a shift is only worth proposing when it beats
+  // starting a bench player, and here there is none to start. (When there is one, a shift must clear him by the edge: see lineupShifts.test.ts.)
   const ports: ResponsePorts = {
     ...fakePorts({ states: specs.map(mkState), roleFit: () => ({ compositePercentile: 50, weakestCorePercentile: 40 }), holderEvidence: (id, role) => weakEv(id, role) }),
+    crossRole: (id, role) => (!regularIds.has(id) && role.position === 7 ? { supported: 'no', evidence: [] } : { supported: 'yes', evidence: ['test'] }),
     hitterUsage: reviewPorts().hitterUsage, teamGames: () => 40,
   };
   const rp = reviewPorts({ holderEvidence: (ids, role) => new Map(ids.map((id) => [id, weakEv(id, role)] as const)) });

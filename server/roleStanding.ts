@@ -20,11 +20,11 @@
  */
 
 export const STANDING_CALIBRATION = {
-  status: 'provisional' as const,
-  note: 'The percentile gap that counts as clearly ahead is a provisional calibration parameter (roleStanding.ts), not an established baseball fact.',
+  status: 'policy' as const,
+  note: 'The percentile gap that counts as clearly ahead is a policy threshold (roleStanding.ts), a decision about what to call a real difference, not an established baseball fact.',
 };
 
-/** PROVISIONAL CALIBRATION. Composite-percentile points that separate "clearly ahead or behind" from "comparable". */
+/** POLICY. Composite-percentile points that separate "clearly ahead or behind" from "comparable". */
 export const MEANINGFUL_GAP = 8;
 
 export interface StandingPlayer {

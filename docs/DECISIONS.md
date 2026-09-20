@@ -771,3 +771,83 @@ platoon problem his ratings support, when a hitter is clearly better against the
 lineup decision. All of it is advice with its reasons; the estimate at each position is bat plus glove there, so what a
 shift costs in the field is in the number.
 
+
+## D-039 — A peer population is major leaguers; an amateur signing is not a peer
+
+**Status:** Accepted. **Implementation:** Present (`server/scoutedEvidence.ts`, `tests/mlbPopulation.test.ts`).
+
+Every club carries, under its own `team_id`, the amateurs it has signed: sixteen- and seventeen-year-olds with all-20
+tools and no plate appearances, marked by a negative `players.league_id`. Ranked against them a real hitter's tools
+percentile was inflated by the share of the pool they made up (60 of 486, 12%, in the Arizona import), and every mean over
+the pool was pulled down: the spread of expected wOBA across "MLB hitters" read 41 points where the real one is 18, the glove
+peers at each position included the same signings, and `toolsExpected` ("points against the league average") was about 12
+points too high. A peer is a player whose own league is the major league (`COALESCE(league_id, league) = league`); an export
+with no `league_id` leaves the population as it was (schema-tolerant). Found by the base-rate run on all 30 clubs
+(docs/MLB_OPERATIONS_HARDENING.md, F-0); pitchers were never affected (Player Development's population is the active roster).
+
+## D-040 — A concern is measured against the role, not the group and not one absolute line
+
+**Status:** Accepted. **Implementation:** Present (`server/roleStandards.ts`, `roleReview.ts`, `mlbReview.ts`,
+`scripts/calibrate.ts standards`, `tests/mlbGoldenHitters.test.ts`, `tests/mlbInvariants.test.ts`).
+
+A working estimate is a percentile among all major-league hitters (or pitchers of a kind), so the same estimate means
+different things in different jobs: regular first basemen and designated hitters typically sit at the 73rd to 77th
+percentile, second basemen, third basemen and center fielders near the 50th; a long man is expected to be the weakest arm
+in the pen and a closer is not. The previous rule (an estimate under 35, or the weakest of the group by 8) flagged a lineup
+regular on 25 of 30 clubs, mostly shortstops and center fielders with ordinary bats and good gloves, never flagged a first
+baseman with a mediocre bat, and flagged a fifth starter or a long man for being what he is.
+
+A holder is a concern when he is unusually weak FOR HIS ROLE: under the floor, the level below which the lowest tenth of
+the league's holders of that role sit (a moderate case when tools and results are each weak for the role), and a strong case
+under the deep floor (the lowest twentieth). A hitter's role is the position he plays, a starter's is a rotation spot, a
+reliever's is the tier his usage shows. The standard is shown with every finding ("regular left fielders typically 68,
+unusually weak under 48"), so the position is never a hidden adjustment; the estimate itself stays position-neutral so a
+candidate at the same position is compared like for like. Being the weakest of a group is context, no longer a trigger, and a
+finding does not change when another player joins or leaves the group (`tests/mlbInvariants.test.ts`).
+
+The typical levels are descriptive and provisional (the median of the production review across the 30 clubs at one snapshot);
+the quantiles are policy. After the change a lineup regular is flagged on 13 of 30 clubs, a starter on about 1 in 15, a
+reliever on about 1 in 8, and every flag is one of the league's lowest-twentieth-or-tenth holders of that job.
+
+## D-041 — Every constant is calibrated, provisional or policy, and the three are never confused
+
+**Status:** Accepted. **Implementation:** Present (`server/calibration.ts`; stamps across `server/`).
+
+`calibrated` is estimated from historical evidence and can be right or wrong; `provisional` is a MODEL parameter that ought to
+be estimated and has not been (one partial season of zone ratings); `policy` is a product decision about when to raise
+something or how loudly, so no backtest can call it optimal, it is chosen, stated, shown and changed by decision, never by
+fitting. The concern lines, the platoon margins, the regular and partner shares, the shift thresholds, the bench cover lines
+and functions, the deployment gap, every philosophy threshold and the quantiles behind the role floors are policy. The
+mechanisms (results are sample-aware, a hitter is bat plus glove at his position, shading applies only after validity) are
+architecture and carry no stamp: tests pin them. `npm run calibrate` is not re-run for a policy constant.
+
+## D-042 — The bench is a set of functions with a quality of cover, and the pen is read as a whole
+
+**Status:** Accepted. **Implementation:** Present (`server/benchReview.ts`, `bullpenRoles.ts`, `lineupPicture.ts`,
+`lineupShifts.ts`, `platoon.ts`; `tests/mlbGoldenBench.test.ts`, `mlbGoldenPitching.test.ts`, `mlbGoldenLineup.test.ts`).
+
+Standing at a position is not covering it. A cover's visible grade is ranked among the peers listed at the position: regular
+quality (about the median), credible (not in the bottom tenth) or emergency (playable, no more), so a middle infielder who
+can "play" center field with a first-percentile grade is an emergency cover, not a backup. The bench is reported as
+functions, never a score: who covers catcher, middle infield and center field and how well, a bat to send up, a glove for
+late innings, a runner, flexibility, a platoon partner. Only a hard gap (nobody has a visible grade) is an attention item;
+an emergency-only cover is a finding on the Bench view, because half of the league's benches are thin at center field and
+raising it would not say which club has a problem. The lineup names a regular at one spot per man and a partner where two men
+share it. The bullpen adds pen-wide findings (no credible high-leverage arm, nobody throwing multiple innings, a crowded role)
+and a rotation/bullpen conflict on tools alone, each stating what the pen appears to be doing, what the evidence supports and
+why the difference matters. A shift is offered only when it beats simply starting a bench player at the weak spot. Platoon reads
+say what drives them (league norm, ratings, record) and never report "no issue" on the strength of the league norm alone.
+
+## D-043 — MLB Operations is a workspace of views, each owning one question
+
+**Status:** Accepted. **Implementation:** Present (`src/pages/MlbOperations.tsx`, `src/pages/mlb/`;
+docs/MLB_OPERATIONS_HARDENING.md section 8).
+
+One page had accumulated the inbox, the scouting book, every candidate and every roster mechanic, and the list of what needs
+attention sat under all of it. The module is now five views behind one navigation entry, addressable by URL hash so a decision
+can be linked to and returned to: **Overview** (what needs my attention: an operational inbox, a one-line reading of the club,
+summary cards, no tables of players), **Position players** and **Pitching staff** (the scouting book: each player against the
+standard for his job, expandable to what a scout would say), **Bench and coverage** (functions, not a score) and **Decision**
+(one need opened, in the order a GM decides: the problem, why it was flagged and on what evidence, the staff's recommendation,
+the ways to respond followed through to their consequences, and only then the candidates and roster mechanics behind them).
+Information becomes more detailed as the GM drills down; nothing was deleted.

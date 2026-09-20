@@ -20,6 +20,7 @@
 import type { HolderReview } from './roleReview.js';
 import type { PlatoonRead } from './platoon.js';
 import type { ShadeReason } from './staffPreference.js';
+import type { FlagExplanation } from './mlbExplain.js';
 import { withUnavailable, activeMembers, type ClubView, type RoleKind, type RoleRef, type RosterMember } from './mlbRoster.js';
 
 /**
@@ -110,6 +111,8 @@ export interface MlbNeed {
   review?: HolderReview;
   /** How the organization's philosophy and the season shaded this flag's urgency (D-036); empty when they did not. */
   shading?: ShadeReason[];
+  /** Why the flag exists, what its estimate is made of, what a club with no philosophy would have been told, and what context did and did not change. */
+  explanation?: FlagExplanation;
   /** For a platoon-complement need: the read on the regular's platoon split that raised it. */
   platoon?: PlatoonRead;
 }

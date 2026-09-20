@@ -53,7 +53,7 @@ describe('regulars by innings', () => {
 
   it('states its basis and calibration', () => {
     expect(p.basis).toMatch(/at least 40% of the innings/);
-    expect(p.calibration.status).toBe('provisional');
+    expect(p.calibration.status).toBe('policy');
     expect(REGULAR_SHARE).toBe(0.4);
   });
 });

@@ -6338,15 +6338,6 @@ button.cta {
 
 /* ── MLB Operations ───────────────────────────────────────── */
 
-.mlb-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 18px; align-items: start; }
-@media (max-width: 900px) { .mlb-layout { grid-template-columns: 1fr; } }
-.mlb-issues h3 { margin: 4px 0 8px; }
-.mlb-issue {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 4px; width: 100%; text-align: left;
-  margin-bottom: 6px; padding: 8px 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; color: var(--text);
-}
-.mlb-issue.active { border-color: var(--accent); }
-.mlb-issue-title { font-size: 13px; line-height: 1.3; }
 .mlb-need-head h2 { margin: 0 0 6px; }
 .mlb-need-head p { margin: 8px 0; max-width: 70ch; }
 .mlb-workspace details { margin: 10px 0; }
@@ -6431,4 +6422,103 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); cur
 .mlb-scroll { overflow-x: auto; max-width: 100%; }
 .mlb-review-group table th, .mlb-review-group table td { white-space: normal; vertical-align: top; }
 .mlb-review-group td .mlb-option-line { font-size: 11px; }
-.mlb-layout > main, .mlb-workspace { min-width: 0; }
+.mlb-workspace { min-width: 0; }
+
+/* ── MLB Operations as a workspace: module tabs, the overview inbox, the decision layout ─────────────────────────────────────────────── */
+.mlb-module { min-width: 0; }
+.mlb-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 14px; border-bottom: 1px solid var(--border); }
+.mlb-tabs button {
+  padding: 8px 14px; background: none; border: 0; border-bottom: 2px solid transparent; border-radius: 0; color: var(--muted); cursor: pointer;
+  font-family: var(--font-display); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.mlb-tabs button:hover { color: var(--text); }
+.mlb-tabs button.active { color: var(--accent); border-bottom-color: var(--accent); }
+.mlb-count { margin-left: 6px; padding: 0 6px; border-radius: 9px; border: 1px solid currentColor; font-size: 10.5px; letter-spacing: 0; }
+.mlb-lede { max-width: 90ch; line-height: 1.5; margin: 0 0 14px; }
+.mlb-back { margin: 0 0 8px; padding: 0; }
+.mlb-kicker { font-family: var(--font-display); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; }
+.mlb-panel { margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); min-width: 0; }
+.mlb-panel h3 { margin: 0 0 8px; font-family: var(--font-display); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.mlb-panel h4 { margin: 12px 0 4px; font-family: var(--font-display); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.mlb-panel p { margin: 6px 0; max-width: 80ch; line-height: 1.5; }
+
+/* overview */
+.mlb-overview > section { margin-bottom: 20px; }
+.mlb-overview h3 { margin: 0 0 8px; font-family: var(--font-display); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.mlb-statusline { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 4px 0 14px; align-items: baseline; }
+.mlb-statusline b { font-size: 16px; font-variant-numeric: tabular-nums; }
+.mlb-need-group { margin: 0 0 14px; }
+.mlb-need-group h4 { margin: 0 0 6px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-family: var(--font-display); }
+.mlb-need-group summary { cursor: pointer; padding: 4px 0; }
+.mlb-need {
+  display: grid; gap: 3px; width: 100%; margin: 0 0 6px; padding: 10px 12px; text-align: left; background: var(--panel); border: 1px solid var(--border);
+  border-left: 3px solid var(--border); border-radius: 6px; color: var(--text); cursor: pointer;
+}
+.mlb-need:hover { border-color: var(--accent); border-left-color: var(--accent); }
+.mlb-need-top { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; }
+.mlb-need-title { font-size: 14px; line-height: 1.35; }
+.mlb-need-sub { font-size: 12.5px; line-height: 1.4; max-width: 110ch; }
+.mlb-glances { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.mlb-glance {
+  display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; text-align: left; background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text); cursor: pointer; font-size: 13px;
+}
+.mlb-glance:hover { border-color: var(--accent); }
+.mlb-glance-go { margin-top: 4px; color: var(--accent); font-size: 12px; }
+.mlb-whatif-panel p { margin: 6px 0 0; }
+
+/* a decision: the problem and its evidence on one side, the responses on the other */
+.mlb-decision { display: grid; grid-template-columns: minmax(320px, 4fr) minmax(0, 6fr); gap: 20px; align-items: start; }
+@media (max-width: 1100px) { .mlb-decision { grid-template-columns: 1fr; } }
+.mlb-decision-side, .mlb-decision-main { min-width: 0; }
+.mlb-decision-side .mlb-read { margin-top: 0; }
+.mlb-need-head { margin-bottom: 14px; }
+.mlb-need-head h2 { margin: 2px 0 8px; max-width: 90ch; line-height: 1.25; }
+.mlb-drill { margin: 14px 0; border-top: 1px solid var(--border); padding-top: 8px; }
+.mlb-drill > summary { cursor: pointer; padding: 6px 0; }
+.mlb-decision .mlb-picture { grid-template-columns: 1fr; }
+
+/* the standard a concern is measured against */
+.mlb-gauge { margin: 10px 0 14px; }
+.mlb-gauge-bar { position: relative; height: 14px; margin: 22px 0 6px; background: var(--panel-raised, rgba(255,255,255,0.06)); border-radius: 3px; }
+.mlb-gauge-zone { position: absolute; top: 0; bottom: 0; background: var(--bad, #d0605e); opacity: 0.45; }
+.mlb-gauge-zone.soft { opacity: 0.2; }
+.mlb-gauge-mark { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--text); }
+.mlb-gauge-mark i { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 2px; font-size: 10.5px; font-style: normal; white-space: nowrap; }
+.mlb-gauge-mark.typical { background: var(--muted); }
+.mlb-gauge-mark.typical i { color: var(--muted); }
+.mlb-gauge-mark.him { background: var(--accent); }
+.mlb-gauge-mark.him i { color: var(--accent); font-weight: 600; top: 100%; bottom: auto; margin: 2px 0 0; }
+.mlb-gauge-key { font-size: 12px; margin-top: 16px; }
+.mlb-parts { width: 100%; border-collapse: collapse; font-size: 12.5px; margin: 6px 0; }
+.mlb-parts th { text-align: left; font-weight: 600; padding: 3px 8px 3px 0; width: 1%; white-space: nowrap; }
+.mlb-parts td { padding: 3px 8px 3px 0; }
+
+/* review tables: expandable rows */
+.mlb-lineup td { vertical-align: top; }
+.mlb-detail.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 1100px) { .mlb-detail.three { grid-template-columns: 1fr; } }
+.mlb-chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+.mlb-tag { display: inline-block; margin: 1px 4px 1px 0; padding: 1px 7px; border: 1px solid var(--border); border-radius: 10px; font-size: 11.5px; white-space: nowrap; }
+.mlb-tag i { font-style: normal; opacity: 0.8; }
+.mlb-tag.plus { border-color: var(--good); color: var(--good); }
+.mlb-tag.minus { border-color: var(--bad); color: var(--bad); }
+.mlb-actions { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; }
+.mlb-part { margin-right: 10px; }
+
+/* the pen's findings and the bench's functions */
+.mlb-findings { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; margin: 0 0 12px; }
+.mlb-finding { padding: 8px 10px; border: 1px solid var(--border); border-left: 3px solid var(--warn, #d3a441); border-radius: 6px; font-size: 12.5px; line-height: 1.45; }
+.mlb-finding dl { margin: 6px 0 0; display: grid; grid-template-columns: max-content 1fr; gap: 3px 10px; }
+.mlb-finding dt { color: var(--muted); }
+.mlb-finding dd { margin: 0; }
+.mlb-functions { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.mlb-function { padding: 10px 12px; border: 1px solid var(--border); border-left: 3px solid var(--good); border-radius: 6px; font-size: 12.5px; line-height: 1.45; }
+.mlb-function.none, .mlb-function.thin { border-left-color: var(--bad); }
+.mlb-function.unknown { border-left-color: var(--warn, #d3a441); }
+.mlb-function-head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.mlb-detail > div { min-width: 0; overflow-wrap: anywhere; }
+.mlb-module table td.mlb-covers { white-space: normal; max-width: 300px; }
+.mlb-module .mlb-lineup th, .mlb-module .mlb-lineup td, .mlb-module .mlb-scroll th, .mlb-module .mlb-scroll td { padding-left: 6px; padding-right: 6px; }
+.mlb-module td.name { white-space: normal; min-width: 140px; }
+.mlb-module .mlb-row .rights-chip { white-space: normal; }

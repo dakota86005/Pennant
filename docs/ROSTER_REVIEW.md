@@ -207,6 +207,15 @@ rewritten `platoon` and the extended boundary suites).
 - The bench is reviewed for coverage and role, not ranked against Triple-A hitters for quality; the DH's platoon is read as a regular's.
 - Pitchers' rating splits (a left-handed specialist's platoon value) are not approved evidence.
 
+### Stage 7 (done): hardening
+
+The review was attacked before it was extended ([MLB_OPERATIONS_HARDENING.md](MLB_OPERATIONS_HARDENING.md)). What changed in how a
+roster is read: peers are major leaguers only (D-039); a concern is measured against the role (the position a hitter plays, a rotation
+spot, the tier a reliever's usage shows), with the standard shown beside the finding (D-040); a bench is functions and cover quality (D-042);
+the pen is read as a whole; a platoon with no data of its own is "not enough"; and every flag can say why it exists as data (`mlbExplain`).
+The limits above still stand, with two changes: the bench IS now ranked for cover quality (against the peers who play the position, not against
+Triple-A hitters), and the estimate remains position-neutral on purpose so a candidate at the same position is compared like for like.
+
 ## 7. Open owner decisions
 
 1. **Approve pitchers' rating splits?** A left-handed specialist's value against left-handed hitters is the pitching side of platoon. Not

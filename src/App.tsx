@@ -34,6 +34,7 @@ import { OrgComparison } from './pages/OrgComparison';
 import { Players } from './pages/Players';
 import { Standings } from './pages/Standings';
 import { MlbOperations } from './pages/MlbOperations';
+import { isMlbHash } from './pages/mlb/route';
 import { PlayerModal } from './playerModal';
 import { Nav, type NavEntry } from './Nav';
 import { applyTeamTheme, type ThemeMode } from './theme';
@@ -154,7 +155,11 @@ export function App() {
   const [saves, setSaves] = useState<SaveInfo[]>([]);
   const [orgs, setOrgs] = useState<Org[]>([]);
   const [orgId, setOrgId] = useState<number | null>(null);
-  const [page, setPage] = useState<Page>('dashboard');
+  // A link into MLB Operations (#/mlb/...) opens it; the module owns the rest of the address (src/pages/mlb/route.ts).
+  const [page, setPage] = useState<Page>(() => (isMlbHash(window.location.hash) ? 'mlb-operations' : 'dashboard'));
+  useEffect(() => {
+    if (page !== 'mlb-operations' && isMlbHash(window.location.hash)) window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  }, [page]);
 
   /*
    * Farm pages share affiliate context so Overview can drill directly into

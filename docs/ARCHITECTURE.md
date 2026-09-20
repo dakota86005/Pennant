@@ -449,7 +449,17 @@ need ──► mlbResponses ──┬─ discovery        objective
    running expectations) · platoon (ratings prior) · bullpenRoles · benchReview · lineupShifts · staffPreference (window and
    season shade urgency, the bar, tie-breaks and plan order: after validity, every lean shown) · calibration (stamps) ·
    scripts/calibrate.ts (the harness that tunes the constants against outcomes)
+
+   hardening phase (D-039 to D-043, MLB_OPERATIONS_HARDENING.md): scoutedEvidence peers are major leaguers only ·
+   roleStandards (what a holder of each role typically is; a concern is measured against the role, shown with the finding) ·
+   mlbExplain (why a flag exists, as data) · benchReview (cover quality, functions) · bullpenRoles (pen-wide findings,
+   rotation/pen conflict) · lineupPicture (one man one spot, partners) · calibration stamps: calibrated / provisional / policy
 ```
+
+UI (D-043): `src/pages/MlbOperations.tsx` is the module shell (tabs, URL-hash route, view boundary); `src/pages/mlb/` holds the views
+(`Overview`, `PositionPlayers`, `PitchingStaff`, `Bench`, `Decision`), the shared vocabulary (`common.tsx`), the API shapes
+(`types.ts`) and the address (`route.ts`). Overview is an inbox with no player tables; the scouting book and the decision workspace are one
+click away.
 
 The response builder is pure: it takes ports (`ResponsePorts`) and never reaches a table, the
 log, or a rating column. `mlbOperations.ts` wires the real specialists. Directions: **fill**

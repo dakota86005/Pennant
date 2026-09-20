@@ -82,3 +82,47 @@ export function centred(value: number | null, population: number[]): number | nu
   if (value === null || population.length === 0) return null;
   return value - population.reduce((s, v) => s + v, 0) / population.length;
 }
+
+export type BatTool = keyof typeof HITTER_TOOL_SLOPES;
+
+export interface ToolContribution {
+  tool: BatTool;
+  rating: number;
+  /** wOBA points this tool adds to (or takes from) an average hitter: the slope times the rating's distance from 50. */
+  points: number;
+}
+
+/**
+ * What each visible tool contributes to the expected wOBA, against an average (50) tool. The expectation is a straight sum of these, so
+ * they explain it completely: a contact-first hitter and a power-first hitter with the same total are different players, and this is
+ * how the difference is shown. Null unless every tool is visible (a missing tool is never averaged around, D-018).
+ */
+export function toolContributions(tools: ToolValues): ToolContribution[] | null {
+  const out: ToolContribution[] = [];
+  for (const tool of Object.keys(HITTER_TOOL_SLOPES) as BatTool[]) {
+    const rating = tools[tool];
+    if (rating === null || rating === undefined) return null;
+    out.push({ tool, rating, points: Math.round(HITTER_TOOL_SLOPES[tool] * (rating - 50) * 1000 * 10) / 10 });
+  }
+  return out;
+}
+
+/** POLICY. wOBA points a tool must add (or take) before it is named as what a hitter is built on (or lacks). About half a standard deviation of the tools' total among hitters. */
+export const PROFILE_MIN_POINTS = 9;
+
+const TOOL_WORD: Record<BatTool, string> = { contact: 'contact', gap: 'gap power', power: 'power', eye: 'plate discipline', avoidK: 'strikeout avoidance' };
+
+/**
+ * A plain-words profile of the bat from its contributions: what it leans on and what it lacks. It names only tools that move the expectation
+ * (strikeout avoidance never does), and says "no standout" rather than inventing a description for an ordinary bat.
+ */
+export function describeBat(contributions: ToolContribution[] | null): { leans: string[]; lacks: string[]; text: string } | null {
+  if (!contributions) return null;
+  const movers = contributions.filter((c) => HITTER_TOOL_SLOPES[c.tool] > 0);
+  const leans = movers.filter((c) => c.points >= PROFILE_MIN_POINTS).sort((a, b) => b.points - a.points).map((c) => TOOL_WORD[c.tool]);
+  const lacks = movers.filter((c) => c.points <= -PROFILE_MIN_POINTS).sort((a, b) => a.points - b.points).map((c) => TOOL_WORD[c.tool]);
+  const text = leans.length === 0 && lacks.length === 0
+    ? 'No tool stands out either way.'
+    : `${leans.length ? `Built on ${leans.join(' and ')}` : 'No tool carries the bat'}${lacks.length ? `${leans.length ? ', ' : '; '}short on ${lacks.join(' and ')}` : ''}.`;
+  return { leans, lacks, text };
+}

@@ -71,7 +71,7 @@ describe('the lineup review', () => {
     const needs = reviewNeeds(view, groups);
     const n = needs.find((x) => x.subject?.playerId === lineup.holders[0].playerId)!;
     expect(n.role).toMatchObject({ kind: 'position_player', position: 7 });
-    expect(n.title).toMatch(/\(left fielder\): the weakest lineup regular on the club/);
+    expect(n.title).toMatch(/\(left fielder\): well below the line for regular left fielders/);
     expect(reviewNeedFor(view, lineup.holders[0].playerId, ports)?.id).toBe(n.id);
   });
 

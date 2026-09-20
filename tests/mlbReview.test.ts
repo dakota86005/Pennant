@@ -14,10 +14,10 @@ const ev = (ratingsPct: number | null, skillsPct: number | null, runsPct: number
 });
 const table: Record<number, LensEvidence> = {
   100: ev(60, 68, 60), 101: ev(55, 73, 77), 102: ev(50, 58, 36), 103: ev(47, 60, 40),
-  104: ev(35, 25, 26),                                  // weak on both lenses: strong case
+  104: ev(20, 14, 15),                                  // far below what a rotation takes on both lenses: strong case
   105: ev(60, 70, 66), 106: ev(55, 60, 55), 107: ev(52, 55, 50), 108: ev(50, 55, 52), 109: ev(48, 50, 50),
   110: ev(45, 48, 44), 111: ev(40, 42, 42),
-  112: ev(30, 20, 22),                                  // weak on both lenses in the bullpen
+  112: ev(12, 8, 10),                                   // far below what a bullpen arm takes on both lenses
 };
 const ports: ReviewPorts = { holderEvidence: (ids) => new Map(ids.filter((id) => table[id]).map((id) => [id, table[id]] as const)) };
 const view = viewOf(healthy26());
@@ -63,7 +63,7 @@ describe('needs from the review', () => {
     const n = needs.find((x) => x.subject?.playerId === 104)!;
     expect(n.unknowns.join(' ')).toMatch(/flag for your attention, not a recommendation to move him/);
     expect(n.horizon.kind).toBe('unknown');
-    expect(n.title).toMatch(/SP5: the weakest starting pitcher on the club/);
+    expect(n.title).toMatch(/SP5: well below the line for starters in a rotation/);
     expect(n.facts.map((f) => f.label)).toEqual(expect.arrayContaining(['Working estimate', 'Tools', 'Results']));
   });
 

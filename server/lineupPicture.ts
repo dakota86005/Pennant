@@ -15,12 +15,14 @@
  */
 
 export const LINEUP_CALIBRATION = {
-  status: 'provisional' as const,
-  note: 'The share of a position\'s innings that makes a player its regular is a provisional calibration parameter (lineupPicture.ts).',
+  status: 'policy' as const,
+  note: 'The share of a position\'s innings that makes a player its regular is a policy threshold (lineupPicture.ts): a decision about what to call a regular, not a fact about baseball.',
 };
 
-/** PROVISIONAL CALIBRATION. Share of the team's innings at a position (or of its games, for DH) that makes a player the regular there. */
+/** POLICY. Share of the team's innings at a position (or of its games, for DH) that makes a player the regular there. */
 export const REGULAR_SHARE = 0.4;
+/** POLICY. Share of a position's innings a backup must have played to be named the regular's PARTNER (a platoon or a real timeshare), not just a fill-in. */
+export const PARTNER_SHARE = 0.25;
 
 export const POSITION_LABELS: Record<number, string> = {
   2: 'catcher', 3: 'first base', 4: 'second base', 5: 'third base', 6: 'shortstop', 7: 'left field', 8: 'center field', 9: 'right field', 10: 'designated hitter',
@@ -57,6 +59,8 @@ export interface LineupSpot {
   regular: LineupPlayer | null;
   /** Others who have played the position this season, most first. */
   backups: LineupPlayer[];
+  /** A backup who has played a real share of the position (a platoon or timeshare); null when nobody has. He is not the regular: his share is under the regular's threshold. */
+  partner: LineupPlayer | null;
   /** False when nobody has played enough of it to be its regular. */
   settled: boolean;
 }
@@ -65,7 +69,7 @@ export interface LineupPicture {
   spots: LineupSpot[];
   dh: LineupSpot;
   /** Hitters who are nobody's regular: the bench. */
-  bench: Array<{ playerId: number; name: string; bats: 'R' | 'L' | 'S' | null; pa: number; gs: number; listed: number | null }>;
+  bench: Array<{ playerId: number; name: string; bats: 'R' | 'L' | 'S' | null; pa: number; gs: number; listed: number | null; /** The position he shares with a regular, when he has played a real share of it. */ partnerAt?: number }>;
   /** Team games played, the denominator behind every share. */
   games: number;
   basis: string;
@@ -79,20 +83,35 @@ export function buildLineupPicture(hitters: HitterUsageInput[], teamGames: numbe
     playerId: h.playerId, name: h.name, bats: h.bats, amount, share, pa: h.pa,
   });
 
+  // Innings by position, per player. A man plays one position at a time, so he is ONE spot's regular: the pairs are taken largest
+  // share first, and a man already a regular elsewhere is not a second time (a utility man at 42% of second base and 40% of
+  // shortstop is second base's, and shortstop is unsettled, with him named among those who have played it).
+  const denominator = games * 9;
+  const share = (ip: number) => (denominator > 0 ? ip / denominator : 0);
+  const inningsAt = (h: HitterUsageInput, position: number) => h.fielding.filter((f) => f.position === position).reduce((n, f) => n + f.ip, 0);
+  const pairs = LINEUP_POSITIONS
+    .flatMap((position) => hitters.map((h) => ({ position, h, ip: inningsAt(h, position) })))
+    .filter((x) => x.ip > 0)
+    .sort((a, b) => b.ip - a.ip || a.h.name.localeCompare(b.h.name) || a.position - b.position);
+  const regularAt = new Map<number, (typeof pairs)[number]>();
+  for (const pair of pairs) {
+    if (share(pair.ip) < REGULAR_SHARE) break;
+    if (regularAt.has(pair.position) || regularIds.has(pair.h.playerId)) continue;
+    regularAt.set(pair.position, pair);
+    regularIds.add(pair.h.playerId);
+  }
+  const partnerAt = new Map<number, number>();
+
   const spots: LineupSpot[] = LINEUP_POSITIONS.map((position) => {
-    const at = hitters
-      .map((h) => ({ h, ip: h.fielding.filter((f) => f.position === position).reduce((n, f) => n + f.ip, 0) }))
-      .filter((x) => x.ip > 0)
-      .sort((a, b) => b.ip - a.ip || a.h.name.localeCompare(b.h.name));
-    const denominator = games * 9;
-    const top = at[0];
-    const share = (ip: number) => (denominator > 0 ? ip / denominator : 0);
-    const settled = !!top && share(top.ip) >= REGULAR_SHARE;
-    if (settled) regularIds.add(top.h.playerId);
+    const top = regularAt.get(position);
+    const others = pairs.filter((x) => x.position === position && x !== top);
+    const partner = others[0] && share(others[0].ip) >= PARTNER_SHARE && !regularIds.has(others[0].h.playerId) ? player(others[0].h, others[0].ip, share(others[0].ip)) : null;
+    if (partner) partnerAt.set(partner.playerId, position);
     return {
-      position, label: POSITION_LABELS[position], settled,
-      regular: settled ? player(top.h, top.ip, share(top.ip)) : null,
-      backups: at.slice(settled ? 1 : 0).map((x) => player(x.h, x.ip, share(x.ip))),
+      position, label: POSITION_LABELS[position], settled: !!top,
+      regular: top ? player(top.h, top.ip, share(top.ip)) : null,
+      backups: others.map((x) => player(x.h, x.ip, share(x.ip))),
+      partner,
     };
   });
 
@@ -108,12 +127,13 @@ export function buildLineupPicture(hitters: HitterUsageInput[], teamGames: numbe
     position: 10, label: POSITION_LABELS[10], settled: dhSettled,
     regular: dhSettled ? player(dhTop.h, dhTop.dh, dhTop.dh / games) : null,
     backups: dhGames.slice(dhSettled ? 1 : 0).map((x) => player(x.h, x.dh, games > 0 ? x.dh / games : 0)),
+    partner: null,
   };
 
   const bench = hitters
     .filter((h) => !regularIds.has(h.playerId))
     .sort((a, b) => b.pa - a.pa || a.name.localeCompare(b.name))
-    .map((h) => ({ playerId: h.playerId, name: h.name, bats: h.bats, pa: h.pa, gs: h.gs, listed: h.listed }));
+    .map((h) => ({ playerId: h.playerId, name: h.name, bats: h.bats, pa: h.pa, gs: h.gs, listed: h.listed, ...(partnerAt.has(h.playerId) ? { partnerAt: partnerAt.get(h.playerId) } : {}) }));
 
   return {
     spots, dh, bench, games,

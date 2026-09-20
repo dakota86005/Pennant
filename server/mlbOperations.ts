@@ -12,7 +12,7 @@ import { Router } from 'express';
 import { db, tableExists } from './db.js';
 import { getDataStatus } from './dataStatus.js';
 import {
-  crossRoleSupport, farmConsequence, hitterUsage, holderEvidence, performanceLine, platoonInputs, playableCovers, roleFitEvidence, teamGamesPlayed, topAffiliateTeamId,
+  coverReads, crossRoleSupport, farmConsequence, hitterUsage, holderEvidence, performanceLine, platoonInputs, playableCovers, roleFitEvidence, teamGamesPlayed, topAffiliateTeamId,
 } from './mlbEvidence.js';
 import { reviewClub, reviewNeedById, reviewNeeds, type ReviewPorts, type RoleGroupReview } from './mlbReview.js';
 import { DEFAULT_COVERAGE_FLOORS, detectNeeds, whatIfNeed, type CoverageFloors, type MlbNeed } from './mlbNeeds.js';
@@ -77,6 +77,12 @@ function reviewPorts(orgId: number): ReviewPorts {
     platoon: (ids) => platoonInputs(orgId, ids),
     teamGames: () => teamGamesPlayed(orgId),
     covers: (ids) => playableCovers(ids),
+    coverReads: (ids) => coverReads(orgId, ids),
+    asStarter: (ids) => new Map(ids.map((id) => {
+      const support = crossRoleSupport(id, ROLE_CHOICES.starting_pitcher);
+      const toolsPct = support.supported === 'yes' ? roleFitEvidence(id, orgId, ROLE_CHOICES.starting_pitcher).compositePercentile : null;
+      return [id, { supported: support.supported, toolsPct }] as const;
+    })),
     organization: organizationContext(orgId),
   };
 }

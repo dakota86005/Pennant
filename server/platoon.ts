@@ -20,7 +20,7 @@
  * through the tools model, statistics from `resultsEvidence.ts`. This reads no table.
  */
 
-import { calibrated, provisional, type CalibrationStamp } from './calibration.js';
+import { calibrated, policy, type CalibrationStamp } from './calibration.js';
 import { blendStabilization, reliability, wobaOf, type BattingLine } from './resultsMetrics.js';
 
 export const PLATOON_CALIBRATION: CalibrationStamp = calibrated(
@@ -40,7 +40,7 @@ export const COMPLEMENT_MARGIN = 0.025;
 /** PROVISIONAL. Share of plate appearances against left-handed pitching when nothing observed says otherwise. */
 export const DEFAULT_LEFT_SHARE = 0.3;
 
-export const PLATOON_POLICY: CalibrationStamp = provisional('The minimum split sample, the problem margin and the complement margin are policy thresholds.');
+export const PLATOON_POLICY: CalibrationStamp = policy('The minimum split sample, the problem margin and the complement margin are policy thresholds.');
 
 export type Hand = 'L' | 'R' | 'S';
 export type PitcherHand = 'L' | 'R';
@@ -96,6 +96,12 @@ export interface PlatoonRead {
   basis: PlatoonBasis;
   /** The rating-implied difference (right minus left) departing from the norm for his hand, when ratings are visible. */
   ratingDeparture: number | null;
+  /**
+   * What the read's platoon difference (against right-handers minus against left-handers, in wOBA points) is made of: the league's effect for his
+   * hand, his ratings' departure from it, and how far his own record moved it. They sum to `difference`; a part that does not apply is null.
+   */
+  difference: number | null;
+  drivers: { league: number; ratings: number | null; record: number | null };
   verdict: PlatoonVerdict;
   reasons: string[];
   calibration: typeof PLATOON_CALIBRATION;
@@ -122,7 +128,8 @@ export function evaluatePlatoon(input: PlatoonInput): PlatoonRead {
   const ratingDeparture = ratings && ratings.vsLeft !== null && ratings.vsRight !== null && ratings.norm !== null ? ratings.vsRight - ratings.vsLeft - ratings.norm : null;
   const haveObserved = wl !== null && wr !== null && Math.min(l.pa, r.pa) >= MIN_SPLIT_PA;
   const base = {
-    bats: input.bats, calibration: PLATOON_CALIBRATION, ratingDeparture,
+    bats: input.bats, calibration: PLATOON_CALIBRATION, ratingDeparture, difference: null as number | null,
+    drivers: { league: input.leagueEffect ?? 0, ratings: null as number | null, record: null as number | null },
     vsLeft: { pa: l.pa, observed: wl, expected: null as number | null }, vsRight: { pa: r.pa, observed: wr, expected: null as number | null },
     overall: null as number | null, weakSide: null as PitcherHand | null, weakBy: null as number | null, excessOverLeague: null as number | null, reliability: 0,
   };
@@ -138,6 +145,7 @@ export function evaluatePlatoon(input: PlatoonInput): PlatoonRead {
   const effective = haveObserved ? (l.pa * r.pa) / (l.pa + r.pa) : 0;
   const w = haveObserved ? reliability(effective, PLATOON_SHRINK_K) : 0;
   const diff = haveObserved ? prior + w * (wr - wl - prior) : prior;
+  const drivers = { league, ratings: ratingDeparture !== null ? RATING_PRIOR_WEIGHT * ratingDeparture : null, record: haveObserved ? w * (wr - wl - prior) : null };
   const pl = haveObserved ? l.pa / (l.pa + r.pa) : input.leagueLeftShare ?? DEFAULT_LEFT_SHARE;
   const pr = 1 - pl;
   // His overall level: his record where there is one, his ratings where there is not, blended by how much record there is.
@@ -156,6 +164,20 @@ export function evaluatePlatoon(input: PlatoonInput): PlatoonRead {
   const excess = weakBy - leagueWeak;
   const problem = excess >= PROBLEM_EXCESS;
   const basis: PlatoonBasis = haveObserved && ratingDeparture !== null ? 'ratings_and_splits' : ratingDeparture !== null ? 'ratings' : haveObserved ? 'splits' : 'league_norm';
+  // Nothing of HIS own to go on (his platoon ratings are not visible and his record is too thin to read): the league's norm for his
+  // handedness is all there is, and that is a prior, not a finding about him. Reporting "no issue" would turn an unknown into a neutral.
+  if (basis === 'league_norm') {
+    return {
+      ...base, overall, vsLeft: { pa: l.pa, observed: wl, expected: expectedL }, vsRight: { pa: r.pa, observed: wr, expected: expectedR },
+      verdict: 'insufficient', basis, reliability: 0,
+      reasons: [
+        input.ratings
+          ? 'His platoon ratings are not fully visible and his own record is too thin to read a split, so there is only the league norm for his handedness to go on.'
+          : `His own record is too thin to read a split (${l.pa} PA against left-handers, ${r.pa} against right-handers) and no platoon ratings are visible, so there is only the league norm for his handedness to go on.`,
+        'The league norm is a prior about hitters of his hand, not a read on him: whether he has a platoon problem is not established.',
+      ],
+    };
+  }
   const reasons: string[] = [];
   if (ratingDeparture !== null && ratings) {
     reasons.push(`His visible ratings against left-handers and right-handers imply ${pts(ratings.vsRight! - ratings.vsLeft!)} points of wOBA better against right-handers; for a hitter of his handedness the league norm is ${pts(ratings.norm!)}, so he departs from it by ${pts(ratingDeparture)}.`);
@@ -172,7 +194,7 @@ export function evaluatePlatoon(input: PlatoonInput): PlatoonRead {
     : `His weaker side (${weakSide === 'L' ? 'left' : 'right'}-handers) is ${fmt(weakBy)} below his overall level, no more than the league's own effect explains: not a platoon problem.`);
   return {
     ...base, overall, vsLeft: { pa: l.pa, observed: wl, expected: expectedL }, vsRight: { pa: r.pa, observed: wr, expected: expectedR },
-    weakSide, weakBy, excessOverLeague: excess, reliability: w, basis, verdict: problem ? 'problem' : 'no_issue', reasons,
+    weakSide, weakBy, excessOverLeague: excess, reliability: w, basis, verdict: problem ? 'problem' : 'no_issue', reasons, difference: diff, drivers,
   };
 }
 

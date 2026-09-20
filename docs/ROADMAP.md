@@ -163,6 +163,11 @@ Next, in dependency order:
   position shifts, the bench and the bullpen's leverage roles (D-038). Next: contract and prospect-capital dimensions leaning on
   the advice, pitchers' rating splits (an owner decision), three-way position chains, re-deriving the glove weights as the season
   grows.
+- **Done (hardening phase, MLB_OPERATIONS_HARDENING.md, D-039 to D-043):** a base-rate audit over all 30 clubs; a behavioral corpus of 159
+  invariant tests; the peer-population fix; role standards; bench cover quality and functions; pen-wide findings; explanations as data;
+  the module rebuilt as five views. Next refinement: re-derive the role standards and the glove weights as the season grows
+  (`npm run calibrate`, sections `standards` and `defense`); accumulate evidence on the debatable items listed in the hardening doc
+  (the policy quantiles, the IL-return window, center-field bench coverage) before changing any policy.
 - Minor League Operations: a cascade consumer (rehab-aware roster health is done, D-026) (the old branch's
   bounded planner was deferred, not adopted).
 - Service-time and Rule 5 consequences as stated facts where the export supports them.

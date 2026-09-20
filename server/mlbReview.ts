@@ -19,8 +19,10 @@ import { evaluatePlatoon, type PlatoonInput, type PlatoonRead } from './platoon.
 import { ordinal } from './roleStanding.js';
 import { estimateOf, reviewGroup, type HolderReview, type LensEvidence, type ReviewSubject } from './roleReview.js';
 import { flagShading, readContext, type ContextRead, type OrganizationContext } from './staffPreference.js';
-import { deploymentFindings, roleOf as bullpenRoleOf, type DeploymentFinding } from './bullpenRoles.js';
-import { reviewBench, type BenchReview } from './benchReview.js';
+import { hitterStandard, relieverStandard, starterStandard } from './roleStandards.js';
+import { explainFlag } from './mlbExplain.js';
+import { deploymentFindings, penFindings, roleOf as bullpenRoleOf, starterConflicts, type DeploymentFinding, type PenFinding } from './bullpenRoles.js';
+import { reviewBench, type BenchReview, type CoverRead } from './benchReview.js';
 
 export interface ReviewPorts {
   holderEvidence(playerIds: number[], role: RoleRef): Map<number, LensEvidence>;
@@ -28,10 +30,14 @@ export interface ReviewPorts {
   hitterUsage?(playerIds: number[]): Map<number, Pick<HitterUsageInput, 'bats' | 'fielding' | 'gs' | 'pa'>>;
   /** Observed splits and the league's own platoon effect. */
   platoon?(playerIds: number[]): Map<number, PlatoonInput>;
+  /** Whether visible evidence supports each reliever starting, and his tools as a starter (a percentile among MLB starters): the rotation/bullpen role conflict. */
+  asStarter?(playerIds: number[]): Map<number, { supported: 'yes' | 'no' | 'unknown'; toolsPct: number | null }>;
   /** Team games played this season, the denominator behind usage shares. */
   teamGames?(): number;
   /** The positions where each player's visible grade supports playing, for the bench's coverage. */
   covers?(playerIds: number[]): Map<number, number[]>;
+  /** How well each of those positions is played, against the peers listed there: the difference between a backup and an emergency cover. */
+  coverReads?(playerIds: number[]): Map<number, CoverRead[]>;
   /** The organization's philosophy and the season's standing: shades how urgently a flag is raised, never whether it is (D-036). */
   organization?: OrganizationContext | null;
 }
@@ -47,6 +53,8 @@ export interface RoleGroupReview {
   notReviewed: number;
   /** For the bullpen: where a clearly better arm is used in lower leverage than a worse one. A usage decision for the manager, not a roster move. */
   deployment?: DeploymentFinding[];
+  /** For the bullpen: what its roles are, what is missing, and where it is crowded, as a whole. */
+  pen?: PenFinding[];
   /** For the bench: who is on it for what, and which positions nobody on it can cover. */
   bench?: BenchReview;
 }
@@ -65,19 +73,39 @@ export function reviewClub(view: ClubView, ports: ReviewPorts): RoleGroupReview[
     if (!role || members.length === 0) continue;
     const evidence = ports.holderEvidence(members.map((m) => m.playerId), role);
     const reviewed = members.filter((m) => evidence.has(m.playerId));
-    const reviews = reviewGroup(reviewed.map((m) => subjectOf(m, evidence.get(m.playerId) as LensEvidence)), { pitcher: true, role: role.label });
     // A reliever's role is what his usage shows: it says how much a weak line costs, and whether the arms are where the estimates say they belong.
-    const roles = new Map(reviews.map((r) => {
-      const b = evidence.get(r.playerId)?.bullpen;
-      return [r.playerId, kind === 'relief_pitcher' && b ? bullpenRoleOf({ playerId: r.playerId, name: r.name, g: b.g, ip: b.ip, sv: b.sv, hld: b.hld, leverage: b.leverage }) : null] as const;
+    const roles = new Map(reviewed.map((m) => {
+      const b = evidence.get(m.playerId)?.bullpen;
+      return [m.playerId, kind === 'relief_pitcher' && b ? bullpenRoleOf({ playerId: m.playerId, name: m.name, g: b.g, ip: b.ip, sv: b.sv, hld: b.hld, leverage: b.leverage }) : null] as const;
     }));
+    // ...and the standard a pitcher is judged against is his job's: any rotation member, or a reliever of the tier his usage shows.
+    const standard = kind === 'starting_pitcher' ? () => starterStandard() : (h: ReviewSubject) => relieverStandard(roles.get(h.playerId)?.tier);
+    const reviews = reviewGroup(reviewed.map((m) => subjectOf(m, evidence.get(m.playerId) as LensEvidence)), { pitcher: true, role: role.label, standard });
     out.push({
       kind, role: role.label, notReviewed: members.length - reviewed.length,
       holders: reviews
         .map((r) => ({ ...r, role: members.find((m) => m.playerId === r.playerId)?.role ?? null, stakes: roles.get(r.playerId)?.stakes ?? null, tier: roles.get(r.playerId)?.tier ?? null }))
         .sort((a, b) => STRENGTH_ORDER[a.strength] - STRENGTH_ORDER[b.strength] || (a.estimate.value ?? 101) - (b.estimate.value ?? 101) || a.name.localeCompare(b.name)),
-      ...(kind === 'relief_pitcher' ? { deployment: deploymentFindings(reviews.map((r) => ({ playerId: r.playerId, name: r.name, tier: roles.get(r.playerId)?.tier ?? 'unknown', estimate: r.estimate.value }))) } : {}),
+      ...(kind === 'relief_pitcher' ? {
+        deployment: deploymentFindings(reviews.map((r) => ({ playerId: r.playerId, name: r.name, tier: roles.get(r.playerId)?.tier ?? 'unknown', estimate: r.estimate.value }))),
+        pen: penFindings(reviews.map((r) => {
+          const b = evidence.get(r.playerId)?.bullpen;
+          return { playerId: r.playerId, name: r.name, tier: roles.get(r.playerId)?.tier ?? 'unknown', estimate: r.estimate.value, ipPerAppearance: b && b.g > 0 ? b.ip / b.g : null };
+        })),
+      } : {}),
     });
+  }
+  // The rotation and the pen compete for the same arms: a reliever who would start better (on tools) than the rotation's weakest starter.
+  const rotation = out.find((g) => g.kind === 'starting_pitcher');
+  const pen = out.find((g) => g.kind === 'relief_pitcher');
+  if (rotation && pen && ports.asStarter) {
+    const weakest = [...rotation.holders].filter((h) => h.estimate.value !== null).sort((a, b) => (a.estimate.value as number) - (b.estimate.value as number))[0];
+    const asStarter = ports.asStarter(pen.holders.map((h) => h.playerId));
+    const conflicts = starterConflicts(
+      pen.holders.map((h) => ({ playerId: h.playerId, name: h.name, tier: h.tier ?? 'unknown', estimate: h.estimate.value, toolsAsStarter: asStarter.get(h.playerId)?.supported === 'yes' ? asStarter.get(h.playerId)?.toolsPct ?? null : null })),
+      weakest ? { playerId: weakest.playerId, name: weakest.name, tools: weakest.estimate.ratingsPct } : null
+    );
+    pen.pen = [...(pen.pen ?? []), ...conflicts];
   }
   const lineup = reviewLineup(view, ports);
   if (lineup) {
@@ -93,23 +121,32 @@ function benchGroup(view: ClubView, ports: ReviewPorts, picture: LineupPicture):
   if (!ports.covers) return null;
   const members = activeMembers(view).filter((m) => picture.bench.some((b) => b.playerId === m.playerId) && m.availability.status === 'available');
   const covers = ports.covers(members.map((m) => m.playerId));
+  const reads = ports.coverReads?.(members.map((m) => m.playerId));
   const players = members.map((m) => {
     const b = picture.bench.find((x) => x.playerId === m.playerId);
     const listed = m.role?.position ?? null;
     const role = roleOf(listed ?? 10, 0);
     const e = role ? ports.holderEvidence([m.playerId], role).get(m.playerId) : undefined;
-    return { playerId: m.playerId, name: m.name, bats: b?.bats ?? null, pa: b?.pa ?? 0, covers: covers.get(m.playerId) ?? [], batValue: e ? estimateOf(e, false).batValue ?? null : null, listed };
+    const est = e ? estimateOf(e, false) : null;
+    return {
+      playerId: m.playerId, name: m.name, bats: b?.bats ?? null, pa: b?.pa ?? 0, covers: covers.get(m.playerId) ?? [], coverReads: reads?.get(m.playerId),
+      batValue: est?.batValue ?? null, runningPct: est?.runningPct ?? null, listed, ...(b?.partnerAt !== undefined ? { partnerAt: b.partnerAt } : {}),
+    };
   });
   return { kind: 'position_player', role: 'bench', holders: [], notReviewed: 0, bench: reviewBench(players) };
 }
 
 const COVER_ROLE_POSITION: Record<string, number> = { catcher: 2, middle_infield: 4, center_field: 8 };
 
-/** A bench position nobody can cover, as a need: the position to find a backup for. */
+/**
+ * A bench position nobody can cover, as a need: the position to find a backup for. Only a HARD gap (nobody has a visible grade there) is an
+ * attention item. A position covered only by an emergency cover is a finding on the Bench view, not an inbox item: measured across the 30 clubs,
+ * half of the benches are thin at center field, so raising it would not tell a GM which club has a problem.
+ */
 function benchNeeds(groups: RoleGroupReview[]): MlbNeed[] {
   const bench = groups.find((g) => g.bench)?.bench;
   if (!bench) return [];
-  return bench.gaps.flatMap((g): MlbNeed[] => {
+  return bench.gaps.filter((g) => g.kind === 'none').flatMap((g): MlbNeed[] => {
     const role = roleOf(COVER_ROLE_POSITION[g.key] ?? g.positions[0], 0);
     if (!role) return [];
     return [{
@@ -185,7 +222,7 @@ export function reviewLineup(view: ClubView, ports: ReviewPorts): RoleGroupRevie
   }
   if (subjects.length === 0) return { kind: 'position_player', role: 'lineup regular', holders: [], notReviewed: regulars.length, lineup: picture };
   const platoons = ports.platoon ? ports.platoon(subjects.map((x) => x.member.playerId)) : new Map<number, PlatoonInput>();
-  const reviews = reviewGroup(subjects.map((x) => x.subject), { pitcher: false, role: 'lineup regular' });
+  const reviews = reviewGroup(subjects.map((x) => x.subject), { pitcher: false, role: 'lineup regular', standard: (h) => hitterStandard(h.position) });
   return {
     kind: 'position_player', role: 'lineup regular', notReviewed: regulars.length - subjects.length, lineup: picture,
     holders: reviews.map((r) => {
@@ -209,16 +246,22 @@ const KIND_TITLE: Record<HolderReview['kind'], string> = {
 /** The need a strong or moderate finding raises. */
 export function needFromReview(m: RosterMember, r: HolderReview, groupRole: string, roleOverride?: RoleRef | null, context: ContextRead | null = null): MlbNeed {
   const shade = flagShading(context, { strength: r.strength, subjectAge: m.age, stakes: r.stakes ?? null });
-  const weakest = r.isWeakest ? `the weakest ${groupRole} on the club` : `${r.belowMedian !== null && r.belowMedian > 0 ? `${Math.round(r.belowMedian)} points below the ${groupRole} median` : `number ${r.rank} of ${r.groupSize}`}`;
+  // The reason is the ROLE's line when there is one: what a regular at his position (or a pitcher of his kind) typically is. Where there is none, the group.
+  const weakest = r.standard
+    ? `${r.concern.rule === 'below_deep_floor' ? 'well below' : 'below'} the line for ${r.standard.label}`
+    : r.isWeakest ? `the weakest ${groupRole} on the club` : `${r.belowMedian !== null && r.belowMedian > 0 ? `${Math.round(r.belowMedian)} points below the ${groupRole} median` : `number ${r.rank} of ${r.groupSize}`}`;
+  const explanation = explainFlag(r, context);
+  const lenses = `Tools ${r.estimate.ratingsPct === null ? 'unknown' : ordinal(r.estimate.ratingsPct)}, results ${r.estimate.resultsPct === null ? 'no sample' : `${ordinal(r.estimate.resultsPct)} (${Math.round(r.evidence.sample)} ${r.evidence.sampleUnit}, trusted ${Math.round(r.evidence.reliability * 100)}%)`}.`;
   return {
     id: `mlb:role_holder_review:${m.playerId}`,
     kind: 'role_holder_review',
     origin: 'observed',
     role: roleOverride ?? m.role,
     title: `${m.name}${roleOverride && roleOverride.kind !== 'starting_pitcher' && roleOverride.kind !== 'relief_pitcher' ? ` (${roleOverride.label})` : ''}: ${weakest}; ${KIND_TITLE[r.kind]}`,
-    summary: `${m.name} (${m.age ?? '?'}, ${groupRole}) rates ${r.strength === 'strong' ? 'as a strong case' : 'as a case'} for a look: ${r.reasons.join(' ')}`,
+    summary: `${m.name} (${m.age ?? '?'}, ${groupRole}) rates ${r.strength === 'strong' ? 'as a strong case' : 'as a case'} for a look: ${explanation.why.text} ${lenses}`,
     severity: shade.level,
     shading: shade.reasons,
+    explanation,
     urgency: { label: 'Review', days: null },
     horizon: { kind: 'unknown', days: null, basis: 'How long a replacement would be needed is not known, so it is not assumed: a stopgap and a lasting change are different assignments.' },
     causes: [{ playerId: m.playerId, name: m.name, role: m.role?.label ?? null, status: m.availability.label ?? 'Active', daysLeft: null, assumed: false }],

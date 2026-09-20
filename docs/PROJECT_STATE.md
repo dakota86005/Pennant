@@ -11,8 +11,9 @@ material implementation state changes.
   (Player State foundation merged as PR #2; Player Rights not yet merged to `main`).
 - Stack: TypeScript, React 18, Vite 6, Express 4, SQLite via
   `better-sqlite3`, Electron 41, and Vitest 4.
-- Validation at this snapshot: `npx tsc --noEmit` clean, `npm test` 104 files /
-  1235 tests passing, `npm run build` succeeds.
+- Validation at this snapshot (after the hardening phase): `npx tsc --noEmit` clean, `npm test` 118 files /
+  1396 tests passing, `npm run build` succeeds. 159 of those tests are the behavioral corpus
+  ([BEHAVIOR_CASES.md](BEHAVIOR_CASES.md)).
 - `origin/feature/mlb-operations` is **not merged** and was audited end to end
   ([MLB_OPERATIONS.md](MLB_OPERATIONS.md) §2). `rosterStateHistory.ts` and
   `transactionHistory.ts` were ported earlier in adapted form; `rosterTransactionState.ts`
@@ -403,3 +404,22 @@ gaps.
 
 Vitest suites share a module-level SQLite handle and therefore run serially.
 Tests must continue to use synthetic temporary data, never a live OOTP save.
+
+## Hardening phase (MLB Operations)
+
+Recorded in [MLB_OPERATIONS_HARDENING.md](MLB_OPERATIONS_HARDENING.md); decisions D-039 to D-043.
+
+- **Found and fixed:** the hitter tools and glove peer populations included amateur signings (12% of the pool); a concern was
+  position-blind and group-relative; a platoon with no data of its own read "no issue"; a man could be the regular at two positions;
+  an unseen glove made a comparison look firm; the bench knew "can stand there" but not "is a backup"; a shift could be offered beside
+  an equal plain change.
+- **Refined:** role standards (`roleStandards.ts`) and role-relative concern; pen-wide bullpen findings and a rotation/bullpen conflict;
+  bench cover quality and functions; platoon drivers; a structured explanation on every review need; three kinds of constant stamp
+  (calibrated, provisional, policy).
+- **UI:** one page became five views behind one entry (Overview, Position players, Pitching staff, Bench and coverage, Decision),
+  addressable by URL hash.
+- **Not changed, on evidence:** the tools model (corner residuals within two standard errors), the results model, the platoon shrinkage,
+  the philosophy shading (adversarial tests found no leak).
+- **Base rate (30 clubs):** review-raised needs 2.2 to 0.7 per club; a lineup regular flagged on 13 of 30 clubs instead of 25.
+- **Still provisional:** the typical levels behind the role floors (one 43-game snapshot), the glove weights and defensive
+  stabilization (one partial season of zone ratings), the park share, steal values. Still policy: every threshold.

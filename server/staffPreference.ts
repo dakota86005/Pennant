@@ -28,11 +28,11 @@
  * Every threshold is a provisional policy parameter, declared here and nowhere else.
  */
 
-import { provisional, type CalibrationStamp } from './calibration.js';
+import { policy, type CalibrationStamp } from './calibration.js';
 import type { PhilosophyDimensionId } from './philosophy.js';
 import type { Posture } from './posture.js';
 
-export const STAFF_PREFERENCE_CALIBRATION: CalibrationStamp = provisional(
+export const STAFF_PREFERENCE_CALIBRATION: CalibrationStamp = policy(
   'The window cut-offs, the lean thresholds, the age gap, the tie band and the upside gap are policy parameters: they say when a philosophy leans on a recommendation, not how baseball works.'
 );
 

@@ -28,8 +28,9 @@ import {
   battingHistory, currentSeason, fieldingUsage, handedness, leaguePlatoon, loadDefenseResults, loadHitterResults, loadPitcherResults, majorLeagueId, platoonSplits,
 } from './resultsEvidence.js';
 import { percentileAmong } from './resultsMetrics.js';
-import { expectedRunningRaw, expectedWobaRaw, ratingPlatoon } from './toolsModel.js';
+import { describeBat, expectedRunningRaw, expectedWobaRaw, ratingPlatoon, toolContributions } from './toolsModel.js';
 import { roleOf as bullpenRoleOf } from './bullpenRoles.js';
+import { coverQuality, type CoverRead } from './benchReview.js';
 import { seasonEnvironments } from './resultsEvidence.js';
 import type { HitterUsageInput } from './lineupPicture.js';
 import type { PlatoonInput } from './platoon.js';
@@ -376,6 +377,7 @@ function hitterEvidence(orgId: number, playerIds: number[], role: RoleRef, leagu
       },
       toolsBasis: toolsPct !== null ? 'model' : 'composite',
       toolsExpected: batRaw !== null ? batRaw - meanBat : null,
+      toolsProfile: profile ? (() => { const c = toolContributions(profile.tools); const d = describeBat(c); return c && d ? { contributions: c, ...d } : null; })() : null,
       ratingsPct: toolsPct ?? fit.compositePercentile, ratingsEvidence: fit.evidenceStatus,
       skillsPct: r?.percentile ?? null, runsPct: null,
       sample: r?.sample ?? 0, sampleUnit: 'PA', reliability: r?.reliability ?? 0, currentSample: r?.current ? r.current.pa : null,
@@ -461,6 +463,27 @@ export function platoonInputs(orgId: number, playerIds: number[]): Map<number, P
       leagueEffect: bats ? lp.effect[bats] : null, leagueLeftShare: bats ? lp.leftShare[bats] : null, leagueWoba,
       ratings: rp && bats ? { vsLeft: rp.vsLeft === null ? null : rp.vsLeft - meanBat, vsRight: rp.vsRight === null ? null : rp.vsRight - meanBat, norm: norms[bats] } : null,
     });
+  }
+  return out;
+}
+
+/**
+ * How well each player plays each position he can (2-9): the visible current grade and where it ranks among the MLB players LISTED at
+ * that position. "Can stand there" is a grade above the playable line; "is a backup there" is not being in the bottom tenth of the
+ * peers who actually play it. From the scouted evidence only.
+ */
+export function coverReads(orgId: number, playerIds: number[]): Map<number, CoverRead[]> {
+  const league = majorLeagueId(orgId);
+  const out = new Map<number, CoverRead[]>();
+  for (const id of playerIds) {
+    const reads = (scoutedGloves(id)?.positions ?? [])
+      .filter((p) => p.position >= 2 && p.position <= 9 && p.current >= PLAYABLE_RATING)
+      .map((p): CoverRead => {
+        const peers = league !== null ? scoutedFieldingPopulation(league, p.position) : [];
+        const pct = peers.length ? percentileAmong(peers, p.current, true) : null;
+        return { position: p.position, grade: p.current, pct, quality: coverQuality(pct) };
+      });
+    out.set(id, reads);
   }
   return out;
 }

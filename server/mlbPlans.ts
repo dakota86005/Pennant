@@ -286,7 +286,15 @@ function shiftPlans(deps: PlanDeps): Plan[] {
   if (!lineup || !role || (role.kind !== 'position_player' && role.kind !== 'catcher') || role.position < 2 || role.position > 9) return [];
   const label = (pos: number) => POSITION_LABELS[pos] ?? `position ${pos}`;
   const at = (pos: number) => roleOf(pos, 0) as RoleRef;
+  // What the plain lineup change would gain: the best bench player who can play the spot, straight in. A shift is only worth its second move if it beats that.
+  const before = deps.estimate(subject.playerId, role);
+  const bestDirect = before === null ? null : lineup.bench
+    .filter((b) => deps.crossRole(b.playerId, role).supported === 'yes')
+    .map((b) => deps.estimate(b.playerId, role))
+    .filter((e): e is number => e !== null)
+    .reduce<number | null>((best, e) => (best === null || e > best ? e : best), null);
   const options = shiftOptions({
+    direct: before === null || bestDirect === null ? null : bestDirect - before,
     target: { position: role.position, playerId: subject.playerId, name: subject.name },
     regulars: lineup.spots.filter((s) => s.regular && s.position !== role.position).map((s) => ({ position: s.position, playerId: s.regular!.playerId, name: s.regular!.name })),
     bench: lineup.bench.map((b) => ({ playerId: b.playerId, name: b.name })),

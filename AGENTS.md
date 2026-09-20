@@ -89,7 +89,11 @@ decision, roadmap item, or project-state fact changes.
   provisional, declared once (D-037, docs/CALIBRATION.md). Philosophy and the season shade the ORDER and WORDING of advice
   (`staffPreference.ts`, D-036): after validity, never a change to a read, a right or a development finding, every lean
   shown with its dimension and value, and a recommendation says what a club with no philosophy would hear. Bullpen roles,
-  the bench, position shifts and platoon partners are flags and plans, never transactions (D-038).
+  the bench, position shifts and platoon partners are flags and plans, never transactions (D-038). Peer populations are major leaguers
+  only (D-039); a concern is measured against the ROLE with its standard shown, never against the group or one absolute line (D-040);
+  every constant is stamped calibrated, provisional or policy, and a policy constant is decided, never fitted (D-041); the bench is
+  functions and cover quality, not a score (D-042); the module is views, each owning one question (D-043). New baseball behavior gets a
+  case in the behavioral corpus first (docs/BEHAVIOR_CASES.md).
   `tests/mlbOperationsBoundary.test.ts` enforces it.
 - Recommendations are advisory. The user/GM makes the final decision. Do not
   add automatic OOTP transactions or save mutation as an incidental feature.

@@ -704,3 +704,33 @@ Design and build log: [ROSTER_REVIEW.md](ROSTER_REVIEW.md) stage 6; the evidence
   validity; every lean is a named reason, and the recommendation says what a club with no philosophy would have heard. The facts, the
   rights and the development findings are identical for every club (`tests/staffShading.test.ts`).
 
+
+## 30. Hardening, refinement and the workspace (sixth pass)
+
+The subsystem was attacked before it was extended: a base-rate run over all 30 clubs, adversarial and metamorphic tests, a golden corpus
+of 159 invariants, and a UI audit. Full record: [MLB_OPERATIONS_HARDENING.md](MLB_OPERATIONS_HARDENING.md); the corpus:
+[BEHAVIOR_CASES.md](BEHAVIOR_CASES.md); decisions D-039 to D-043.
+
+- **What testing found.** The peer populations for tools and glove included amateur signings (12% of "MLB hitters"); a concern was
+  position-blind and group-relative, so it flagged shortstops with ordinary bats and never a first baseman with a mediocre one, and flagged
+  a long man for being a long man; a platoon with nothing of its own read "no issue"; a man could be the regular at two positions; an unseen
+  glove made a comparison look firm; the bench could not tell "can stand there" from "is a backup"; a shift was offered beside an equal plain
+  change. What held up: the tools model at its corners, the results lens under stress, Rights and Development composition, and philosophy
+  shading (no leak across five adversarial clubs).
+- **A concern is against the role** (`roleStandards.ts`, D-040): the standard for his job (position, rotation spot, bullpen tier) is shown with
+  the finding. The estimate stays position-neutral so a candidate at the same position is compared like for like.
+- **Explanations are data** (`mlbExplain.ts`): every review need carries why it was flagged, what its estimate is made of, what a neutral club
+  would have seen, what this club's context changed and what it never changes, what would change the conclusion, and what is unknown.
+- **The bench** is functions and cover quality (D-042); **the pen** is read as a whole (no credible high-leverage arm, no length, a crowded
+  role, and a reliever who would start better than the weakest starter, on tools alone); **platoon** says what drives it.
+- **Three kinds of constant** (D-041): calibrated, provisional, policy. A policy constant is decided, never fitted.
+- **The module is five views** (D-043): Overview (the inbox), Position players, Pitching staff, Bench and coverage, and Decision. The path is
+  attention, issue, evidence, alternatives, consequences, the GM's decision. Deep links are URL hashes (`#/mlb/decision/<need id>`).
+- **Not built, by design:** contracts, trades, free agents, external acquisitions, long-term payroll planning; no OOTP experiment was asked
+  for and every unresolved semantic stays `indeterminate`.
+
+**Standing scope (from the hardening phase):** the owner is not asked to run OOTP experiments or touch `RIGHTS-EXP.lg`. The IL-activation
+experiment (RIGHTS_RESEARCH §4.11) remains an available tool for anyone who wants activation established, but nothing here waits on it:
+where OOTP semantics cannot be established from existing evidence, Player Rights returns `indeterminate`, this subsystem carries it
+forward unchanged and says so, and the limitation is documented. Earlier passages that say "you must run the experiment" describe how
+activation could be resolved, not a pending request.

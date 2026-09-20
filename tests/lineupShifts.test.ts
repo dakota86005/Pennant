@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { shiftOptions, SHIFT_LIMIT, SHIFT_MIN_GAIN, type ShiftInput } from '../server/lineupShifts';
+import { shiftOptions, SHIFT_LIMIT, SHIFT_MIN_EDGE, SHIFT_MIN_GAIN, type ShiftInput } from '../server/lineupShifts';
 
 /*
  * A shift fixes a weak spot by moving a regular and covering the spot he leaves. It is worth proposing only when
@@ -62,5 +62,18 @@ describe('position shifts', () => {
     const options = shiftOptions(many);
     expect(options.length).toBeLessThanOrEqual(SHIFT_LIMIT);
     for (let i = 1; i < options.length; i += 1) expect(options[i - 1].gain).toBeGreaterThanOrEqual(options[i].gain);
+  });
+});
+
+describe('a shift must beat the plain lineup change', () => {
+  // the bench utility (id 10) plays left at 50 against the weak regular's 30: starting him gains 20; the best shift gains 21
+  it('is not proposed when starting the best bench player at the spot gains nearly as much: the same result by disturbing a second position', () => {
+    expect(shiftOptions(input()).map((o) => o.gain)).toContain(21);
+    expect(shiftOptions(input({ direct: 20 }))).toEqual([]); // 21 does not clear 20 + the edge
+    expect(shiftOptions(input({ direct: 21 - SHIFT_MIN_EDGE })).map((o) => o.mover.name)).toContain('Shortstop');
+  });
+
+  it('with nobody on the bench who can play the spot, a shift stands on its own gain', () => {
+    expect(shiftOptions(input({ direct: null })).length).toBeGreaterThan(0);
   });
 });

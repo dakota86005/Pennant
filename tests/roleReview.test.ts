@@ -100,7 +100,7 @@ describe('a holder in his group', () => {
 
   it('exposes the thresholds it used through calibration, not through the verdict', () => {
     expect(CONCERN.absoluteEstimate).toBeGreaterThan(0);
-    expect(REVIEW_CALIBRATION.status).toBe('provisional');
+    expect(REVIEW_CALIBRATION.status).toBe('policy');
   });
 });
 
