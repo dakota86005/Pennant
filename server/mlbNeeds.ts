@@ -17,22 +17,52 @@
  * catcher.
  */
 
+import type { HolderReview } from './roleReview.js';
+import type { PlatoonRead } from './platoon.js';
+import type { ShadeReason } from './staffPreference.js';
 import { withUnavailable, activeMembers, type ClubView, type RoleKind, type RoleRef, type RosterMember } from './mlbRoster.js';
 
-/** Healthy active players Pennant expects in each role. An assumption, not a rule. */
-export const ROLE_STANDARDS: Partial<Record<RoleKind, { count: number; label: string }>> = {
-  starting_pitcher: { count: 5, label: 'five healthy starting pitchers' },
-  relief_pitcher: { count: 7, label: 'seven healthy relief pitchers' },
-  catcher: { count: 2, label: 'two healthy catchers' },
+/**
+ * Minimum role-coverage FLOORS: the fewest healthy active players in a role
+ * below which Pennant says the roster has a problem. They are floors, not ideal
+ * roster targets: a club above them may still want more depth, and nothing here
+ * says how a roster should be built. They are Pennant's first-pass assumption,
+ * not a league rule, and are shown to the GM with every need.
+ *
+ * They are data, not doctrine. A six-man rotation, a different pitching staff or
+ * a usage-specific requirement is a different `CoverageFloors` handed to the
+ * detector; nothing else in MLB Operations knows the numbers.
+ */
+export interface CoverageFloor {
+  count: number;
+  /** How the floor reads to the GM: "five healthy starting pitchers". */
+  label: string;
+}
+
+export interface CoverageFloors {
+  basis: 'minimum_floor';
+  /** Where the numbers come from, shown to the GM. */
+  source: string;
+  floors: Partial<Record<RoleKind, CoverageFloor>>;
+}
+
+export const DEFAULT_COVERAGE_FLOORS: CoverageFloors = {
+  basis: 'minimum_floor',
+  source: "Pennant's first-pass minimum, not a league rule or an ideal roster",
+  floors: {
+    starting_pitcher: { count: 5, label: 'five healthy starting pitchers' },
+    relief_pitcher: { count: 7, label: 'seven healthy relief pitchers' },
+    catcher: { count: 2, label: 'two healthy catchers' },
+  },
 };
 
-/** An injured player due back within this many days creates a return decision when the roster is full. */
+/** An injured player due back within this many days creates a return decision when a spot he needs (active, and for a 60-day player also 40-man) is missing. */
 export const IL_RETURN_WINDOW_DAYS = 15;
 /** Horizon boundaries, in days left on an injury: a 10-day IL stint, then two months. */
 export const TEMPORARY_DAYS = 15;
 export const EXTENDED_DAYS = 60;
 
-export type NeedKind = 'role_below_standard' | 'open_active_spot' | 'il_return_crunch';
+export type NeedKind = 'role_below_standard' | 'open_active_spot' | 'il_return_crunch' | 'role_holder_review' | 'platoon_complement' | 'bench_coverage';
 export type NeedOrigin = 'observed' | 'hypothetical';
 export type Severity = 'critical' | 'elevated' | 'watch';
 
@@ -75,6 +105,13 @@ export interface MlbNeed {
   unknowns: string[];
   /** For a return crunch: the player coming back. */
   returning: { playerId: number; name: string; daysLeft: number | null; onFortyMan: boolean | null } | null;
+  /** For a role-holder review: the player under review and the scouting read on him (a flag for attention, never a trigger). */
+  subject?: { playerId: number; name: string };
+  review?: HolderReview;
+  /** How the organization's philosophy and the season shaded this flag's urgency (D-036); empty when they did not. */
+  shading?: ShadeReason[];
+  /** For a platoon-complement need: the read on the regular's platoon split that raised it. */
+  platoon?: PlatoonRead;
 }
 
 const horizonOf = (days: number | null, basis: string): NeedHorizon => {
@@ -106,10 +143,10 @@ function unavailableRoleHolders(view: ClubView, kind: RoleKind): RosterMember[] 
   );
 }
 
-function roleNeeds(view: ClubView, origin: NeedOrigin): MlbNeed[] {
+function roleNeeds(view: ClubView, origin: NeedOrigin, coverage: CoverageFloors): MlbNeed[] {
   const needs: MlbNeed[] = [];
   const active = activeMembers(view);
-  for (const [kind, standard] of Object.entries(ROLE_STANDARDS) as Array<[RoleKind, { count: number; label: string }]>) {
+  for (const [kind, standard] of Object.entries(coverage.floors) as Array<[RoleKind, CoverageFloor]>) {
     const inRole = active.filter((m) => m.role?.kind === kind);
     const available = inRole.filter((m) => m.availability.status === 'available').length;
     const unknownAvailability = inRole.filter((m) => m.availability.status === 'unknown').length;
@@ -132,8 +169,8 @@ function roleNeeds(view: ClubView, origin: NeedOrigin): MlbNeed[] {
       kind: 'role_below_standard',
       origin,
       role,
-      title: `${label.charAt(0).toUpperCase()}${label.slice(1)} depth is below standard`,
-      summary: `${available} healthy ${label}${available === 1 ? '' : 's'} on the active roster against a standard of ${standard.count}.`,
+      title: `${label.charAt(0).toUpperCase()}${label.slice(1)} coverage is below the minimum floor`,
+      summary: `${available} healthy ${label}${available === 1 ? '' : 's'} on the active roster against a minimum floor of ${standard.count}.`,
       severity: !certain ? 'watch' : deficit >= 2 || available === 0 ? 'critical' : 'elevated',
       urgency: { label: 'Now', days: 0 },
       horizon: horizonOf(earliest, earliest === null
@@ -141,7 +178,7 @@ function roleNeeds(view: ClubView, origin: NeedOrigin): MlbNeed[] {
         : `Earliest return among the unavailable players in this role: ${causes.filter((c) => c.availability.daysLeft === earliest).map((c) => c.name).join(', ')} (${earliest} days, exported injury days left).`),
       causes: causes.map(causeOf),
       facts: [
-        { label: 'Standard', value: `Pennant expects ${standard.label} (an assumption, not a league rule)` },
+        { label: 'Coverage floor', value: `${standard.label}: ${coverage.source}` },
         { label: 'Active in role', value: `${inRole.length} (${available} available)` },
         ...(view.counts.active !== null && view.limits.active !== null
           ? [{ label: 'Active roster', value: `${view.counts.active} of ${view.limits.active}` }] : []),
@@ -176,30 +213,37 @@ function openSpotNeed(view: ClubView, origin: NeedOrigin): MlbNeed | null {
 }
 
 function returnCrunchNeeds(view: ClubView, origin: NeedOrigin): MlbNeed[] {
-  const { active } = view.counts;
-  const { active: limit } = view.limits;
-  // A return is a decision only when there is no spot for the returning player.
-  if (active === null || limit === null || active < limit) return [];
+  const { active, fortyMan } = view.counts;
+  const { active: limit, fortyMan: fortyLimit } = view.limits;
+  const activeFull = active !== null && limit !== null && active >= limit;
+  const fortyFull = fortyMan !== null && fortyLimit !== null && fortyMan >= fortyLimit;
   return view.members
-    .filter((m) =>
-      m.level === 1 && m.onInjuredList === true && m.availability.assumed !== true &&
-      m.availability.daysLeft !== null && m.availability.daysLeft <= IL_RETURN_WINDOW_DAYS)
+    .filter((m) => {
+      if (m.level !== 1 || m.onInjuredList !== true || m.availability.assumed === true) return false;
+      if (m.availability.daysLeft === null || m.availability.daysLeft > IL_RETURN_WINDOW_DAYS) return false;
+      // A return is a decision when a spot he needs is missing. A player on the 60-day list is off the 40-man,
+      // so a full 40-man is a second, separate constraint even when the active roster has room.
+      return activeFull || (m.onFortyMan === false && fortyFull);
+    })
     .map((m) => {
       const days = m.availability.daysLeft as number;
+      const needs40 = m.onFortyMan === false && fortyFull;
+      const full = [activeFull ? `the active roster is full (${active} of ${limit})` : '', needs40 ? `the 40-man is full (${fortyMan} of ${fortyLimit})` : ''].filter(Boolean);
+      const moves = [activeFull ? 'an active-roster spot' : '', needs40 ? 'a 40-man spot' : ''].filter(Boolean).join(' and ');
       return {
         id: `mlb:il_return_crunch:${m.playerId}`,
         kind: 'il_return_crunch' as const,
         origin,
         role: m.role,
-        title: `${m.name} is due back${days <= 0 ? ' now' : ` in about ${plural(days, 'day')}`}; the active roster is full`,
-        summary: `${m.name} (${m.role?.label ?? 'role unknown'}, ${m.availability.label ?? 'injured list'}) returns to a ${active} of ${limit} active roster. Someone must be moved for him to be activated.`,
+        title: `${m.name} is due back${days <= 0 ? ' now' : ` in about ${plural(days, 'day')}`}; ${full.join(' and ')}`,
+        summary: `${m.name} (${m.role?.label ?? 'role unknown'}, ${m.availability.label ?? 'injured list'}) returns to a club where ${full.join(' and ')}. ${moves.charAt(0).toUpperCase()}${moves.slice(1)} must be cleared for him to be activated.`,
         severity: 'watch' as const,
         urgency: { label: days <= 0 ? 'Now' : `In about ${plural(days, 'day')}`, days },
         horizon: horizonOf(days, 'Exported injury days left for the returning player.'),
         causes: [causeOf(m)],
         facts: [
-          { label: 'Active roster', value: `${active} of ${limit}` },
-          { label: '40-man', value: m.onFortyMan === true ? 'On the 40-man' : m.onFortyMan === false ? 'Not on the 40-man (60-day IL)' : 'Unknown' },
+          { label: 'Active roster', value: `${active ?? '?'} of ${limit ?? '?'}` },
+          { label: '40-man', value: m.onFortyMan === true ? `On the 40-man (${fortyMan ?? '?'} of ${fortyLimit ?? '?'})` : m.onFortyMan === false ? `Not on the 40-man (60-day IL); the 40-man is ${fortyMan ?? '?'} of ${fortyLimit ?? '?'}` : 'Unknown' },
         ],
         unknowns: ['The activation rules for the injured list have not been established (D-023), so whether he can be activated is not stated here.'],
         returning: { playerId: m.playerId, name: m.name, daysLeft: m.availability.daysLeft, onFortyMan: m.onFortyMan },
@@ -208,8 +252,8 @@ function returnCrunchNeeds(view: ClubView, origin: NeedOrigin): MlbNeed[] {
 }
 
 /** Needs the club has right now, from current Player State. */
-export function detectNeeds(view: ClubView, origin: NeedOrigin = 'observed'): MlbNeed[] {
-  const role = roleNeeds(view, origin);
+export function detectNeeds(view: ClubView, origin: NeedOrigin = 'observed', coverage: CoverageFloors = DEFAULT_COVERAGE_FLOORS): MlbNeed[] {
+  const role = roleNeeds(view, origin, coverage);
   const spot = role.length ? null : openSpotNeed(view, origin);
   return [...role, ...(spot ? [spot] : []), ...returnCrunchNeeds(view, origin)];
 }
@@ -219,21 +263,28 @@ export function detectNeeds(view: ClubView, origin: NeedOrigin = 'observed'): Ml
  * Returns null when he is not on the active roster. The need is stated as an
  * assumption: it says nothing about why he would be out or for how long.
  */
-export function whatIfNeed(view: ClubView, playerId: number): MlbNeed | null {
+export function whatIfNeed(
+  view: ClubView, playerId: number, coverage: CoverageFloors = DEFAULT_COVERAGE_FLOORS, assumedDays: number | null = null
+): MlbNeed | null {
   const target = view.members.find((m) => m.playerId === playerId);
   const after = withUnavailable(view, playerId);
   if (!target || !after) return null;
   const role = target.role;
-  const base = detectNeeds(after, 'hypothetical')
+  const base = detectNeeds(after, 'hypothetical', coverage)
     .filter((n) => n.kind !== 'il_return_crunch')
     // a real role shortfall already present, unrelated to this player, is not this scenario's need
     .filter((n) => n.kind !== 'role_below_standard' || n.role?.kind === role?.kind);
   const shortfall = base.find((n) => n.kind === 'role_below_standard');
   const cause: NeedCause = { ...causeOf(after.members.find((m) => m.playerId === playerId) as RosterMember) };
   const needsAssumption = 'This is a scenario you asked about, not a current problem: nothing says he will be unavailable.';
+  // The GM may state how long he would be out; that is an assumption, labelled as one.
+  const assumed: NeedHorizon | null = assumedDays === null || assumedDays <= 0
+    ? null
+    : horizonOf(assumedDays, `Assumed by you: out about ${assumedDays} day${assumedDays === 1 ? '' : 's'}. Nothing in the export says so.`);
   if (shortfall) {
     return {
       ...shortfall,
+      horizon: assumed ?? shortfall.horizon,
       id: `mlb:what_if:${playerId}`,
       title: `If ${target.name} is out: ${shortfall.title.toLowerCase()}`,
       causes: [cause, ...shortfall.causes.filter((c) => c.playerId !== playerId)],
@@ -248,10 +299,10 @@ export function whatIfNeed(view: ClubView, playerId: number): MlbNeed | null {
     origin: 'hypothetical',
     role,
     title: `If ${target.name} is out: an open ${role?.label ?? 'active-roster'} spot`,
-    summary: `Without ${target.name}${active !== null && limit !== null ? ` the active roster would be ${active} of ${limit}` : ''}. The remaining ${role?.label ?? 'players'} depth stays at or above Pennant's standard, so this is a spot to fill, not a role shortfall.`,
+    summary: `Without ${target.name}${active !== null && limit !== null ? ` the active roster would be ${active} of ${limit}` : ''}. The remaining ${role?.label ?? 'players'} coverage stays at or above the minimum floor, so this is a spot to fill, not a role shortfall.`,
     severity: 'watch',
     urgency: { label: 'Scenario', days: null },
-    horizon: { kind: 'unknown', days: null, basis: 'Assumed; no injury or duration is stated.' },
+    horizon: assumed ?? { kind: 'unknown', days: null, basis: 'Assumed; no injury or duration is stated.' },
     causes: [cause],
     facts: active !== null && limit !== null ? [{ label: 'Active roster', value: `${active} of ${limit}` }] : [],
     unknowns: [needsAssumption],

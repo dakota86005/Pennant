@@ -1,3 +1,4 @@
+import { screenAffiliatePlayers } from './rehabAssignments.js';
 import {
   db,
   tableExists,
@@ -258,7 +259,7 @@ export function pitcherRosterForTeam(
     return [];
   }
 
-  const rows = db.prepare(`
+  const listed = db.prepare(`
     SELECT
       p.player_id,
       p.first_name,
@@ -284,6 +285,10 @@ export function pitcherRosterForTeam(
   ) as Array<
     Record<string, unknown>
   >;
+
+  // A pitcher on a rehab assignment is not an ordinary member of this club's staff (rehabAssignments.ts).
+  const rehab = screenAffiliatePlayers(listed.map((row) => Number(row.player_id))).rehab;
+  const rows = listed.filter((row) => !rehab.has(Number(row.player_id)));
 
   /*
    * The pitcher list is an objective roster fact. Stamina is a visible-rating

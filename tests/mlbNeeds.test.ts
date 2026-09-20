@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detectNeeds, IL_RETURN_WINDOW_DAYS, whatIfNeed } from '../server/mlbNeeds';
+import { DEFAULT_COVERAGE_FLOORS, detectNeeds, IL_RETURN_WINDOW_DAYS, whatIfNeed, type CoverageFloors } from '../server/mlbNeeds';
 import { withUnavailable } from '../server/mlbRoster';
 import { healthy26, viewOf, type Spec } from './mlbFixtures';
 
@@ -26,7 +26,7 @@ describe('need detection is derived from current state', () => {
     expect(need.role?.kind).toBe('starting_pitcher');
     expect(need.causes).toEqual([expect.objectContaining({ name: 'Burnes', status: 'IL-60', daysLeft: 93, assumed: false })]);
     expect(need.horizon).toMatchObject({ kind: 'long_term', days: 93 });
-    expect(need.facts.some((f) => f.label === 'Standard' && /assumption/.test(f.value))).toBe(true);
+    expect(need.facts.some((f) => f.label === 'Coverage floor' && /not a league rule/.test(f.value))).toBe(true);
   });
 
   it('separates a three-day problem from a season-ending one', () => {
@@ -116,5 +116,43 @@ describe('what-if', () => {
   it('is not defined for a player who is not on the active roster', () => {
     expect(whatIfNeed(viewOf(rotationShort()), 100)).toBeNull();
     expect(withUnavailable(viewOf(healthy26()), 99999)).toBeNull();
+  });
+});
+
+describe('coverage floors are minimums, and they are data', () => {
+  it('states the first-pass numbers as floors, not ideal roster targets', () => {
+    expect(DEFAULT_COVERAGE_FLOORS.basis).toBe('minimum_floor');
+    expect(DEFAULT_COVERAGE_FLOORS.source).toMatch(/not a league rule or an ideal roster/);
+    expect(Object.fromEntries(Object.entries(DEFAULT_COVERAGE_FLOORS.floors).map(([k, v]) => [k, v!.count])))
+      .toEqual({ starting_pitcher: 5, relief_pitcher: 7, catcher: 2 });
+  });
+
+  it('a club above the floors has no coverage need, however lean it is by other measures', () => {
+    // exactly at the floors: 5 SP, 7 RP, 2 C
+    const lean = healthy26().filter((s) => s.id !== 112); // seven relievers
+    const need = detectNeeds(viewOf([...lean, { id: 901, position: 3 }]));
+    expect(need).toEqual([]);
+  });
+
+  it('a six-man rotation is a different floor, not a change to the detector', () => {
+    const six: CoverageFloors = { ...DEFAULT_COVERAGE_FLOORS, floors: { ...DEFAULT_COVERAGE_FLOORS.floors, starting_pitcher: { count: 6, label: 'six healthy starting pitchers' } } };
+    const view = viewOf(healthy26());
+    expect(detectNeeds(view)).toEqual([]);
+    const needs = detectNeeds(view, 'observed', six);
+    expect(needs).toHaveLength(1);
+    expect(needs[0].summary).toMatch(/5 healthy starting pitchers.*minimum floor of 6/);
+    expect(needs[0].facts.find((f) => f.label === 'Coverage floor')?.value).toMatch(/six healthy starting pitchers/);
+    // and the what-if respects the floors it is handed
+    expect(whatIfNeed(view, 100, six)?.kind).toBe('role_below_standard');
+  });
+
+  it('a what-if can state how long the player would be out, labelled as an assumption', () => {
+    const view = viewOf(healthy26());
+    const short = whatIfNeed(view, 100, DEFAULT_COVERAGE_FLOORS, 6)!;
+    expect(short.horizon).toMatchObject({ kind: 'temporary', days: 6 });
+    expect(short.horizon.basis).toMatch(/Assumed by you/);
+    expect(whatIfNeed(view, 100, DEFAULT_COVERAGE_FLOORS, 120)!.horizon.kind).toBe('long_term');
+    expect(whatIfNeed(view, 105, DEFAULT_COVERAGE_FLOORS, 30)!.horizon.kind).toBe('extended');
+    expect(whatIfNeed(view, 100)!.horizon.kind).not.toBe('long_term');
   });
 });

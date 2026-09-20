@@ -772,9 +772,17 @@ function classification(
   return 'poor';
 }
 
+/**
+ * Destination fit at a club's level.
+ *
+ * `asPitchingRole` asks the question for a role the pitcher does not hold today
+ * ("how would this starter's tools rate as a reliever?"). The default is the
+ * role his assignment and structure imply. It is ignored for a hitter.
+ */
 export function evaluateDestinationFit(
   playerId: number,
-  destinationTeamId: number
+  destinationTeamId: number,
+  asPitchingRole?: 'starter' | 'reliever'
 ): DestinationFit | null {
   const ratings =
     playerRatings(playerId);
@@ -790,7 +798,9 @@ export function evaluateDestinationFit(
     playerKind(ratings);
 
   const kind =
-    role.kind;
+    asPitchingRole && ratings.position === 1
+      ? asPitchingRole
+      : role.kind;
 
   const roleAssessment =
     role.roleAssessment;

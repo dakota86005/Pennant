@@ -103,7 +103,7 @@ export interface AssignmentContext {
 
 export type RightsAction =
   | 'option' | 'recall' | 'addToFortyMan' | 'designateForAssignment'
-  | 'outrightAssignment' | 'activateFromInjuredList';
+  | 'outrightAssignment' | 'activateFromInjuredList' | 'placeOnSixtyDayIl';
 export type RightsStatus = 'eligible' | 'ineligible' | 'indeterminate';
 export type SourceState = 'current' | 'behind' | 'unverified' | 'unavailable';
 

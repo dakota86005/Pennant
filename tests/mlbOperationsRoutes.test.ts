@@ -8,11 +8,12 @@ import request from './request';
  */
 
 describe('MLB Operations API', () => {
-  it('returns the roster summary, the stated standards, and needs derived from current state', async () => {
+  it('returns the roster summary, the stated coverage floors, and needs derived from current state', async () => {
     const overview = await request(`/api/mlb-operations/${IDS.mlbTeam}`);
     expect(overview.organization).toMatchObject({ orgId: IDS.mlbTeam });
     expect(overview.roster.active).toHaveProperty('limit', 26);
-    expect(overview.standards.map((s: { role: string }) => s.role)).toEqual(['starting_pitcher', 'relief_pitcher', 'catcher']);
+    expect(overview.coverage).toMatchObject({ basis: 'minimum_floor', source: expect.stringMatching(/not a league rule or an ideal roster/) });
+    expect(overview.coverage.floors.map((s: { role: string; count: number }) => [s.role, s.count])).toEqual([['starting_pitcher', 5], ['relief_pitcher', 7], ['catcher', 2]]);
     expect(overview.freshness).toHaveProperty('level');
     // the small fixture club is far below the standard: needs exist, each carries evidence and is observed
     expect(overview.needs.length).toBeGreaterThan(0);
@@ -35,7 +36,23 @@ describe('MLB Operations API', () => {
   it('answers a what-if for an active player as a hypothetical need', async () => {
     const packet = await request(`/api/mlb-operations/${IDS.mlbTeam}/responses?need=${encodeURIComponent(`mlb:what_if:${IDS.starter}`)}`);
     expect(packet.need).toMatchObject({ origin: 'hypothetical', id: `mlb:what_if:${IDS.starter}` });
+    // an assumed duration and a chosen context are honoured
+    const short = await request(`/api/mlb-operations/${IDS.mlbTeam}/responses?need=${encodeURIComponent(`mlb:what_if:${IDS.starter}`)}&days=5`);
+    expect(short.need.horizon).toMatchObject({ kind: 'temporary', days: 5 });
+    expect(short.need.horizon.basis).toMatch(/Assumed by you/);
+    if (short.assignment) expect(short.assignment.basis).toBe('derived_from_horizon');
     expect(packet.need.causes[0]).toMatchObject({ playerId: IDS.starter, assumed: true });
+  });
+
+  it('does not assume a duration: with none stated (or exported) both contexts are judged; a stated one asks a single context', async () => {
+    const unknown = await request(`/api/mlb-operations/${IDS.mlbTeam}/responses?need=${encodeURIComponent(`mlb:what_if:${IDS.starter}`)}`);
+    if (unknown.need.horizon.kind === 'unknown' && unknown.assignment) {
+      expect(unknown.assignment).toMatchObject({ context: null, basis: 'duration_unknown', evaluated: ['temporary_depth', 'durable_role'] });
+    }
+    const stated = await request(`/api/mlb-operations/${IDS.mlbTeam}/responses?need=${encodeURIComponent(`mlb:what_if:${IDS.starter}`)}&days=120`);
+    if (stated.assignment) expect(stated.assignment.evaluated).toEqual(['durable_role']);
+    const chosen = await request(`/api/mlb-operations/${IDS.mlbTeam}/responses?need=${encodeURIComponent(`mlb:what_if:${IDS.starter}`)}&context=temporary_depth`);
+    if (chosen.assignment) expect(chosen.assignment).toMatchObject({ basis: 'gm_selected', evaluated: ['temporary_depth'] });
   });
 
   it('does not invent a need that is not open, and rejects a bad organization', async () => {

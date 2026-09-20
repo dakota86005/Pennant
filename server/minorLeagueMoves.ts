@@ -1,3 +1,4 @@
+import { screenAffiliatePlayers } from './rehabAssignments.js';
 import {
   db,
 } from './db.js';
@@ -413,7 +414,7 @@ function severity(
 }
 
 function hittersForTeam(teamId: number): Hitter[] {
-  const rows = db.prepare(`
+  const listedRows = db.prepare(`
     SELECT
       p.player_id,
       p.first_name,
@@ -430,6 +431,10 @@ function hittersForTeam(teamId: number): Hitter[] {
       AND p.retired = 0
       AND p.position != 1
   `).all(teamId) as Array<Record<string, unknown>>;
+
+  // A hitter on a rehab assignment is not an ordinary member of this club (rehabAssignments.ts).
+  const rehab = screenAffiliatePlayers(listedRows.map((row) => Number(row.player_id))).rehab;
+  const rows = listedRows.filter((row) => !rehab.has(Number(row.player_id)));
 
   /*
    * Who is on the roster is an objective fact read above. What their ratings

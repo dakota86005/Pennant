@@ -11,8 +11,8 @@ material implementation state changes.
   (Player State foundation merged as PR #2; Player Rights not yet merged to `main`).
 - Stack: TypeScript, React 18, Vite 6, Express 4, SQLite via
   `better-sqlite3`, Electron 41, and Vitest 4.
-- Validation at this snapshot: `npx tsc --noEmit` clean, `npm test` 82 files /
-  867 tests passing, `npm run build` succeeds.
+- Validation at this snapshot: `npx tsc --noEmit` clean, `npm test` 104 files /
+  1235 tests passing, `npm run build` succeeds.
 - `origin/feature/mlb-operations` is **not merged** and was audited end to end
   ([MLB_OPERATIONS.md](MLB_OPERATIONS.md) §2). `rosterStateHistory.ts` and
   `transactionHistory.ts` were ported earlier in adapted form; `rosterTransactionState.ts`
@@ -279,27 +279,56 @@ Present on `feature/mlb-operations-v2` (D-024; design and audit in
 [MLB_OPERATIONS.md](MLB_OPERATIONS.md)):
 
 - **Needs** (`mlbNeeds.ts`): derived from the current export only. `role_below_standard`
-  (5 healthy SP, 7 RP, 2 C: Pennant's stated assumption), `open_active_spot`,
+  (below minimum coverage floors of 5 healthy SP, 7 RP, 2 C: floors, not targets, held as data), `open_active_spot`,
   `il_return_crunch` (an injured player due back within 15 days to a full active roster), and
   a GM-posed `what_if`. Each carries causes as stated facts, an injury-days horizon
   (temporary / extended / long-term), evidence and unknowns. Nothing is persisted or inferred
   from snapshot differences.
+- **Third pass (D-027, D-028, D-029):** an unknown duration is judged across temporary depth and a
+  durable assignment (`resolveAcrossDurations`, result `context_dependent`); the calibration
+  numbers are marked provisional; the active-roster and 40-man spots are separate constraints with
+  separate clearing lists (60-day list via the new Rights action `placeOnSixtyDayIl`, indeterminate
+  until measured; designation) and each candidate/return carries a visible chain; a 60-day return
+  onto a full 40-man is a need. IL activation stays indeterminate until the controlled experiment
+  (RIGHTS_RESEARCH §4.11) is run; `npm run rights:candidates` names the players for it.
+- **Scouting department (D-031 to D-034, ROSTER_REVIEW.md):** results evidence (`resultsMetrics`, `resultsEvidence`), a two-lens
+  working estimate and findings (`roleReview`), unprompted `role_holder_review` needs for the pitching staff and the
+  lineup (`mlbReview`), the `replace` direction with replacement comparison and a lead replacement, cascade plans
+  (`rosterScenario`, `mlbPlans`), hitters (`lineupPicture`, bat + glove by position weight, `platoon`), and a
+  rubric-based staff recommendation (ACT / EXPLORE / MONITOR / HOLD).
+- **Calibrated and philosophy-aware (D-035 to D-038, CALIBRATION.md):** the constants are backtested on the league's own history
+  and stamped (`calibration.ts`, `scripts/calibrate.ts`); a hitter's estimate is bat (calibrated tools model + park-adjusted
+  wOBA) + glove (visible grade + zone results) + running; platoon rests on rating splits (D-035); `platoon_complement` and
+  `bench_coverage` needs; `shift` and `platoon` plans; bullpen leverage roles and deployment findings; and
+  `staffPreference.ts` lets the club's window and season shade urgency, the bar for "recommend", tie-breaks and plan order,
+  every lean shown (D-036).
+- **Staff report (D-030):** `mlbReport.ts` + `roleStanding.ts` turn a packet into a briefing: situation, the role
+  picture (current holders vs the player, on visible ratings with season lines as context), the read, and
+  named pathways with chains and consequences; the workspace is laid out that way and the clearing
+  options are wrapping cards.
 - **Responses** (`mlbResponses.ts`, wired by `mlbOperations.ts`): candidates from role
   changes among active players, recalls of 40-man minor leaguers and non-40-man Triple-A
-  players, each with separate verdicts from Player Development (`org.ts`
-  `mlbDiscussionAssessments`; unassessed stays unassessed), Player Rights (per action,
+  players, each with separate verdicts from Player Development (`mlbAssignmentContext.ts`, `org.ts`
+  `mlbAssignmentAssessments`, judged per contemplated assignment context: spot start, short
+  bullpen, temporary depth, bench, durable; incomplete evaluations are never actionable), Player Rights (per action,
   three-valued), role fit (`evaluateDestinationFit` at the MLB club), MLB roster effect,
   Minor League Operations' affiliate scenario (`RosterHealthScenario`), contract facts and a
   philosophy annotation for valid alternatives. Groups are explained and unranked. For a
-  returning injured player it lists who could be moved, with Rights on optioning each.
+  returning injured player it groups the ways to clear a spot by transaction class (routine
+  option, final-option-year, disruptive designation), each with Rights and consequences. A
+  non-40-man promotion is two Rights component actions (`addToFortyMan`, `composed.promoteToActive`).
 - **API/UI:** `GET /api/mlb-operations/:orgId` and `.../responses?need=`; page "MLB
   Operations" (Front Office group). Read-only; not in the static export.
 - **Foundation changes:** `PlayerState.position/role`, `pitchingRole.ts`, exported
   `activeLimit`, schema-tolerant `minorLeagueRoster` player columns.
 - **Verified on the real Arizona save** (read-only): the one observed need is Cristian Mena's
   return; every Reno 40-man recall is `indeterminate` because that save has no live log.
-- **Not built:** performance-driven needs, bench/positional coverage, Rights for promoting a
-  new 40-man addition and for IL activation, a Minor League Operations cascade consumer,
+- **Rehab fix:** `rehabAssignments.ts`; Minor League Operations excludes log-established rehab
+  assignees from affiliate health, depth and retention and names ambiguous ones (D-026).
+- **IL activation** is still `indeterminate` but states what is known; the experiment required
+  is in RIGHTS_RESEARCH §4.9.
+- **Not built:** performance-driven needs, bench/positional coverage beyond the floors, ways to
+  clear a 40-man spot, IL-activation rules, a Minor League Operations cascade consumer,
   trades, waivers, free agency.
 
 ## Current organization resolution
@@ -340,7 +369,8 @@ resolution across all organization-specific features is future work.
 - Staff-derived philosophy values are not implemented.
 - Rule 5 protection years are context in retention but do not yet affect its
   score.
-- Rights that remain `indeterminate` are listed in D-023 and the roadmap.
+- Rights that remain `indeterminate` are listed in D-023 and the roadmap (IL activation now states
+  its known facts and exact unknowns).
   `minorLeagueRetention.ts` still reads a few raw roster flags for its own
   guardrails; those defer to "needs MLB transaction analysis" and draw no rights
   conclusion, so they were left as is.

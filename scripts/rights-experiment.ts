@@ -207,9 +207,62 @@ function diff(): void {
   console.log(`\nlog coverage: ${JSON.stringify((a.log as Json).coveredThrough)} -> ${JSON.stringify((b.log as Json).coveredThrough)}`);
 }
 
+/**
+ * Read-only: which players in a copied save fit each injured-list activation experiment
+ * (docs/RIGHTS_RESEARCH.md 4.11), and where the rosters stand. Prints; writes nothing but an
+ * isolated scratch database that it deletes.
+ */
+async function candidates(): Promise<void> {
+  const exportDir = flag('export');
+  if (!exportDir || !fs.existsSync(exportDir)) {
+    console.error('usage: rights:candidates --export <csv dir>');
+    process.exit(2);
+  }
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'rights-candidates-'));
+  process.env.OOTP_FO_DATA_DIR = scratch;
+  const { importCsvDir } = await import('../server/importer.js');
+  const { db } = await import('../server/db.js');
+  await importCsvDir(exportDir);
+  const org = (db.prepare(`SELECT team_id FROM teams WHERE human_team = 1 LIMIT 1`).get() as { team_id: number } | undefined)?.team_id;
+  if (!org) { console.error('No human team in this export.'); process.exit(1); }
+  const league = db.prepare(
+    `SELECT "current_date" AS d, rules_active_roster_limit AS act, rules_expanded_roster_limit AS exp, rosters_expanded AS ex, rules_secondary_roster_limit AS forty
+     FROM leagues WHERE league_id = (SELECT league_id FROM teams WHERE team_id = ?)`
+  ).get(org) as Record<string, number | string>;
+  const counts = db.prepare(
+    `SELECT SUM(CASE WHEN rs.is_active = 1 AND t.level = 1 THEN 1 ELSE 0 END) AS active, SUM(rs.is_on_secondary) AS forty
+     FROM players p JOIN players_roster_status rs ON rs.player_id = p.player_id JOIN teams t ON t.team_id = p.team_id
+     WHERE p.organization_id = ? AND p.retired = 0`
+  ).get(org) as { active: number; forty: number };
+  const limit = league.ex ? league.exp : league.act;
+  console.log(`Game date ${league.d}. Active roster ${counts.active} of ${limit}; 40-man ${counts.forty} of ${league.forty}.`);
+  const rows = db.prepare(
+    `SELECT p.player_id AS id, p.first_name || ' ' || p.last_name AS name, p.position AS pos, p.injury_left AS daysLeft,
+            rs.is_on_dl AS dl, rs.is_on_dl60 AS dl60, rs.is_on_secondary AS forty, rs.is_active AS active, t.level AS level
+     FROM players p JOIN players_roster_status rs ON rs.player_id = p.player_id JOIN teams t ON t.team_id = p.team_id
+     WHERE p.organization_id = ? AND p.retired = 0 AND (rs.is_on_dl = 1 OR rs.is_on_dl60 = 1) AND t.level = 1
+     ORDER BY rs.is_on_dl60, p.injury_left`
+  ).all(org) as Array<{ id: number; name: string; pos: number; daysLeft: number; dl: number; dl60: number; forty: number; active: number; level: number }>;
+  console.log('\nMajor-league injured list:');
+  for (const r of rows) {
+    console.log(`  #${r.id} ${r.name}: ${r.dl60 ? '60-day' : '10-day'} list, ${r.daysLeft} injury day(s) left${r.daysLeft <= 0 ? ' (healed)' : ''}, ${r.forty ? 'on' : 'off'} the 40-man`);
+  }
+  const healed10 = rows.filter((r) => !r.dl60 && r.daysLeft <= 0);
+  const healed60 = rows.filter((r) => r.dl60 && r.daysLeft <= 0);
+  const injured10 = rows.filter((r) => !r.dl60 && r.daysLeft > 0);
+  console.log('\nSuited to:');
+  console.log(`  Case 1  (early activation, a spot open)     ${injured10.map((r) => `${r.name} (${r.daysLeft}d)`).join(', ') || 'none: nobody on the 10-day list is still injured'}`);
+  console.log(`  Case 2a (healed 10-day, a spot open)        ${healed10.map((r) => r.name).join(', ') || 'none'}`);
+  console.log(`  Case 2b (healed 10-day, active roster full) ${healed10.map((r) => r.name).join(', ') || 'none'}${counts.active < Number(limit) ? `  [first fill the active roster to ${limit}; it is ${counts.active}]` : '  [active roster is full now]'}`);
+  console.log(`  Case 3a (healed 60-day, 40-man spot open)   ${healed60.map((r) => r.name).join(', ') || 'none: nobody on the 60-day list has healed'}`);
+  console.log(`  Case 3b (healed 60-day, 40-man full)        ${healed60.map((r) => r.name).join(', ') || 'none'}${counts.forty < Number(league.forty) ? `  [first fill the 40-man to ${league.forty}; it is ${counts.forty}]` : '  [40-man is full now]'}`);
+  fs.rmSync(scratch, { recursive: true, force: true });
+}
+
 if (command === 'capture') await capture();
+else if (command === 'candidates') await candidates();
 else if (command === 'diff') diff();
 else {
-  console.error('usage: rights-experiment.ts capture|diff ...');
+  console.error('usage: rights-experiment.ts capture|diff|candidates ...');
   process.exit(2);
 }

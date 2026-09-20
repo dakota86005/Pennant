@@ -46,3 +46,29 @@ describe('MLB Operations evidence adapters', () => {
     expect(crossRoleSupport(IDS.starter, { kind: 'relief_pitcher', label: 'relief pitcher', position: 1 }).supported).toBe('yes');
   });
 });
+
+describe('Player Development contextual assessments against the fixture league', () => {
+  it('assesses a Triple-A player for a temporary context, and only Triple-A players', async () => {
+    const { mlbAssignmentAssessments } = await import('../server/org');
+    const spot = mlbAssignmentAssessments(IDS.mlbTeam, 'spot_start', [IDS.optioned, IDS.starter]);
+    // the major-league player is not a Triple-A candidate and is not assessed
+    expect([...spot.keys()]).toEqual([IDS.optioned]);
+    const a = spot.get(IDS.optioned)!;
+    expect(a).toMatchObject({ context: 'spot_start', basis: 'contextual', level: 2 });
+    expect(['defensible', 'indefensible', 'indeterminate']).toContain(a.judgment);
+    expect(a.contextual?.constraints.map((c) => c.id)).toEqual(['context_scope', 'stakes', 'readiness_for_context']);
+  });
+
+  it('a durable role is the existing assessment, unchanged in basis', async () => {
+    const { mlbAssignmentAssessments, mlbDiscussionAssessments } = await import('../server/org');
+    const durable = mlbAssignmentAssessments(IDS.mlbTeam, 'durable_role', [IDS.optioned]);
+    const existing = mlbDiscussionAssessments(IDS.mlbTeam).get(IDS.optioned);
+    if (existing) expect(durable.get(IDS.optioned)).toMatchObject({ basis: 'durable_discussion', judgment: existing.judgment });
+    else expect(durable.size).toBe(0);
+  });
+
+  it('asks nothing of an empty request', async () => {
+    const { mlbAssignmentAssessments } = await import('../server/org');
+    expect(mlbAssignmentAssessments(IDS.mlbTeam, 'spot_start', []).size).toBe(0);
+  });
+});

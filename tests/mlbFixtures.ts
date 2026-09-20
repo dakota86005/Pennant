@@ -6,7 +6,11 @@ import type {
   CrossRoleSupport, FarmConsequence, PerformanceLine, RoleFitEvidence,
 } from '../server/mlbEvidence';
 import type { PhilosophyValues, ResponsePorts } from '../server/mlbResponses';
-import type { MlbDiscussionAssessment } from '../server/org';
+import { DEFAULT_COVERAGE_FLOORS, type CoverageFloors } from '../server/mlbNeeds';
+import type { MlbAssignmentAssessment } from '../server/org';
+import type { MlbAssignmentContext } from '../server/mlbAssignmentContext';
+import type { LensEvidence } from '../server/roleReview';
+import type { RoleRef } from '../server/mlbRoster';
 import { evaluatePlayerRights, rosterCounts, type PlayerRights, type RightsEvidence } from '../server/playerRights';
 import type { PlayerState } from '../server/playerState';
 import { derivedFrom, fromExport, unknownBecause, type Sourced } from '../server/provenance';
@@ -108,7 +112,10 @@ export function viewOf(specs: Spec[], leagueOver: Partial<Record<string, number 
 
 export const CURRENT: RightsEvidence = { currentState: 'current', chronology: 'current' };
 
-export function rightsFor(states: PlayerState[], evidence: RightsEvidence = CURRENT, assignments: Record<number, AssignmentKind> = {}) {
+export function rightsFor(
+  states: PlayerState[], evidence: RightsEvidence = CURRENT, assignments: Record<number, AssignmentKind> = {},
+  leagueOver: Partial<Record<string, number | null>> = {}
+) {
   const counts = rosterCounts(states);
   const out = new Map<number, { assignment: AssignmentContext | null; rights: PlayerRights }>();
   for (const state of states) {
@@ -122,7 +129,7 @@ export function rightsFor(states: PlayerState[], evidence: RightsEvidence = CURR
       : null;
     out.set(state.playerId, {
       assignment,
-      rights: evaluatePlayerRights({ state, assignment, league: league(), counts, evidence }),
+      rights: evaluatePlayerRights({ state, assignment, league: league(leagueOver), counts, evidence }),
     });
   }
   return out;
@@ -132,35 +139,60 @@ export interface PortOptions {
   states: PlayerState[];
   evidence?: RightsEvidence;
   assignments?: Record<number, AssignmentKind>;
-  development?: Record<number, Partial<MlbDiscussionAssessment>>;
+  /** Player Development's assessment by player; a context is recorded so tests can see what was asked. */
+  development?: Record<number, Partial<MlbAssignmentAssessment>>;
+  /** Player Development's assessment by context, then player. A context listed here overrides `development`; a player absent from it is unassessed for that context. */
+  developmentByContext?: Partial<Record<MlbAssignmentContext, Record<number, Partial<MlbAssignmentAssessment>>>>;
+  contextsAsked?: MlbAssignmentContext[];
+  /** League-rule overrides for Rights (must match the view's, e.g. a lowered 40-man limit). */
+  leagueOver?: Partial<Record<string, number | null>>;
+  floors?: CoverageFloors;
   crossRole?: (playerId: number) => CrossRoleSupport;
   roleFit?: (playerId: number) => Partial<RoleFitEvidence>;
   philosophy?: Partial<PhilosophyValues>;
+  performance?: (playerId: number) => PerformanceLine | null;
+  /** Lens evidence by player for a role; the default is tools from `roleFit` and no results. */
+  holderEvidence?: (playerId: number, role: RoleRef, opts?: { ignoreResults?: boolean }) => Partial<LensEvidence> | undefined;
   farm?: FarmConsequence | null;
 }
 
 export function fakePorts(opts: PortOptions): ResponsePorts {
-  const rightsMap = rightsFor(opts.states, opts.evidence ?? CURRENT, opts.assignments);
+  const rightsMap = rightsFor(opts.states, opts.evidence ?? CURRENT, opts.assignments, opts.leagueOver);
   return {
     rights: (ids) => new Map(ids.flatMap((id) => rightsMap.has(id) ? [[id, rightsMap.get(id)!] as const] : [])),
-    development: (id) => {
-      const d = opts.development?.[id];
-      return d ? {
-        playerId: id, level: 2, judgment: 'defensible', eligible: true, reasons: [], blockers: [],
-        missingEvidence: [], evidence: { readiness: 90, performance: 0, ratingsMaturity: 50, sampleConfidence: 70 },
-        requirements: { readiness: 76, performance: null, ratingsMaturity: null, sampleConfidence: 45 },
-        ...d,
-      } as MlbDiscussionAssessment : null;
+    floors: opts.floors ?? DEFAULT_COVERAGE_FLOORS,
+    development: (ids, context) => {
+      opts.contextsAsked?.push(context);
+      const out = new Map<number, MlbAssignmentAssessment>();
+      for (const id of ids) {
+        const perContext = opts.developmentByContext?.[context];
+        const d = perContext ? perContext[id] : opts.development?.[id];
+        if (!d) continue;
+        out.set(id, {
+          playerId: id, level: 2, context, basis: context === 'durable_role' ? 'durable_discussion' : 'contextual',
+          judgment: 'defensible', eligible: true, reasons: [], blockers: [], missingEvidence: [], contextual: null, ...d,
+        } as MlbAssignmentAssessment);
+      }
+      return out;
     },
     crossRole: opts.crossRole ?? (() => ({ supported: 'yes', evidence: ['test'] })),
     roleFit: (id) => ({
       classification: 'viable', compositePercentile: 50, weakestCorePercentile: 40, unassessed: [],
       comparisonPopulation: 300, evidenceStatus: 'complete', notes: [], ...(opts.roleFit?.(id) ?? {}),
     }),
-    performance: (): PerformanceLine | null => null,
+    performance: (id: number): PerformanceLine | null => opts.performance?.(id) ?? null,
+    holderEvidence: (ids, role, o) => new Map(ids.map((id) => {
+      const fit = opts.roleFit?.(id);
+      const override = opts.holderEvidence?.(id, role, o);
+      const base: LensEvidence = {
+        ratingsPct: fit && 'compositePercentile' in fit ? (fit.compositePercentile as number | null) : 50, ratingsEvidence: 'complete',
+        skillsPct: null, runsPct: null, sample: 0, sampleUnit: 'BF', reliability: 0, currentSample: null,
+      };
+      return [id, { ...base, ...(override ?? {}) }] as const;
+    })),
     farm: (_id, _role, direction, affiliate): FarmConsequence | null => opts.farm !== undefined ? opts.farm : {
       direction, affiliate: { teamId: affiliate ?? 2, label: 'Reno', level: 2, levelName: 'AAA' },
-      overall: { before: 'healthy', after: 'healthy' }, changes: [], issuesAfter: [],
+      overall: { before: 'healthy', after: 'healthy' }, changes: [], issuesAfter: [], rosterNotes: [],
     },
     optionAffiliateTeamId: () => 2,
     philosophy: { promotionAggressiveness: 50, versatility: 50, ...opts.philosophy },

@@ -355,11 +355,33 @@ describe('the boundary is structural', () => {
     'destinationFit.ts',
     'developmentFit.ts',
     'developmentJudgment.ts',
+    'mlbAssignmentContext.ts',
+    'roleReview.ts',
+    'roleStanding.ts',
+    'platoon.ts',
+    'lineupPicture.ts',
+    'resultsMetrics.ts',
+    'rosterScenario.ts',
+    'toolsModel.ts',
+    'calibration.ts',
+    'bullpenRoles.ts',
+    'benchReview.ts',
+    'lineupShifts.ts',
   ])('%s cannot see Organizational Philosophy', (file) => {
     const source = code(file);
     expect(source, file).not.toMatch(/philosoph/i);
     expect(source, file).not.toMatch(/aggressiv/i);
     expect(source, file).not.toMatch(/from '\.\/settings\.js'/);
+  });
+
+  it('the staff preference module leans on advice only: it imports no evaluator, sets no verdict, right or judgment, and reads philosophy as types', () => {
+    const source = code('staffPreference.ts');
+    // it may not pull in an evaluator whose answer it could then change
+    expect(source).not.toMatch(/from '\.\/(roleReview|platoon|resultsMetrics|playerRights|org|destinationFit|mlb[A-Za-z]*)\.js'/);
+    expect(source).toMatch(/import type \{ PhilosophyDimensionId \} from '\.\/philosophy\.js'/);
+    // it never assigns a verdict, a right, an eligibility or a judgment
+    expect(source).not.toMatch(/\b(verdict|judgment|eligible|blockers|constraints|estimate)\s*[:=]\s*['{\[0-9]/);
+    expect(source).not.toMatch(/\.run\(|\.prepare\(|INSERT|UPDATE /);
   });
 
   it('keeps the preference module downstream of authorization and unable to change a judgment', () => {

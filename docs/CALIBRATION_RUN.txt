@@ -1,0 +1,188 @@
+
+==============================================================================
+1. Results lens: season weights and stabilization (hitters)
+==============================================================================
+5923 hitter seasons (target PA >= 250), 19 target years
+current production setting (5/4/3 = 1, .8, .6; K 250): rmse 0.03112
+best of grid: weights 1 / 0.6 / 0.6, K 500: rmse 0.03067
+league-average guess (no information): rmse 0.03804
+  K  100 at 1/.8/.6: rmse 0.03242
+  K  150 at 1/.8/.6: rmse 0.03178
+  K  200 at 1/.8/.6: rmse 0.03138
+  K  250 at 1/.8/.6: rmse 0.03112
+  K  300 at 1/.8/.6: rmse 0.03094
+  K  400 at 1/.8/.6: rmse 0.03074
+  K  600 at 1/.8/.6: rmse 0.03069
+  weights 1/1/1 at K 500: rmse 0.03081
+  weights 1/0.8/0.6 at K 500: rmse 0.03068
+  weights 1/0.6/0.3 at K 500: rmse 0.03073
+  weights 1/0.5/0.25 at K 500: rmse 0.03080
+  weights 1/0.4/0.2 at K 500: rmse 0.03090
+
+==============================================================================
+2. Pitcher results: peripherals vs runs allowed, stabilization
+==============================================================================
+
+starters: 2799 seasons
+  predicting next-season ERA (K 300), skills share -> rmse: 0.0:0.9210  0.1:0.9100  0.2:0.9002  0.3:0.8915  0.4:0.8841  0.5:0.8780  0.6:0.8731  0.7:0.8696  0.8:0.8674  0.9:0.8665  1.0:0.8670
+  best skills share for era: 0.9
+  predicting next-season FIP (K 300), skills share -> rmse: 0.0:0.7562  0.1:0.7395  0.2:0.7241  0.3:0.7100  0.4:0.6973  0.5:0.6861  0.6:0.6764  0.7:0.6683  0.8:0.6618  0.9:0.6571  1.0:0.6541
+  best skills share for fip: 1.0
+  best weights / K predicting ERA at skills 0.7: 1 / 0.6 / 0.2, K 700 (rmse 0.8562)
+  production (1/.8/.6, K 300): rmse 0.8696
+
+relievers: 4244 seasons
+  predicting next-season ERA (K 300), skills share -> rmse: 0.0:1.3124  0.1:1.3022  0.2:1.2930  0.3:1.2848  0.4:1.2777  0.5:1.2717  0.6:1.2667  0.7:1.2629  0.8:1.2602  0.9:1.2586  1.0:1.2581
+  best skills share for era: 1.0
+  predicting next-season FIP (K 300), skills share -> rmse: 0.0:1.0022  0.1:0.9864  0.2:0.9719  0.3:0.9587  0.4:0.9468  0.5:0.9362  0.6:0.9271  0.7:0.9194  0.8:0.9132  0.9:0.9086  1.0:0.9055
+  best skills share for fip: 1.0
+  best weights / K predicting ERA at skills 0.7: 1 / 0.6 / 0.4, K 500 (rmse 1.2544)
+  production (1/.8/.6, K 300): rmse 1.2629
+
+==============================================================================
+3. Tools model: expected wOBA above league from the five visible bat tools
+==============================================================================
+3305 hitters with ratings
+
+results window 2023-2025: n=403
+  full model   R2 0.725  rmse 0.0153  cross-validated r 0.869 (R2 0.754)
+  intercept -0.2441  contact 0.00185  gap 0.00032  power 0.00155  eye 0.00108  avoidK 0.00012
+  unweighted mean of the five tools alone: R2 0.605
+
+results window 2021-2022: n=297
+  full model   R2 0.453  rmse 0.0232  cross-validated r 0.786 (R2 0.617)
+  intercept -0.1509  contact 0.00172  gap 0.00023  power 0.00121  eye 0.00056  avoidK -0.00034
+  unweighted mean of the five tools alone: R2 0.351
+
+results window 2018-2019: n=315
+  full model   R2 0.404  rmse 0.0253  cross-validated r 0.642 (R2 0.413)
+  intercept -0.1449  contact 0.00110  gap 0.00041  power 0.00090  eye 0.00086  avoidK 0.00017
+  unweighted mean of the five tools alone: R2 0.368
+
+results window 2015-2017: n=353
+  full model   R2 0.303  rmse 0.0246  cross-validated r 0.617 (R2 0.380)
+  intercept -0.0997  contact 0.00112  gap -0.00005  power 0.00090  eye 0.00075  avoidK -0.00015
+  unweighted mean of the five tools alone: R2 0.184
+
+pooled over 2023-2025, 2021-2022, 2018-2019 with window intercepts: n=1015, R2 0.534
+  contact 0.00155  gap 0.00033  power 0.00122  eye 0.00086  avoidK -0.00001   <- slopes for server/toolsModel.ts
+
+==============================================================================
+3b. Split tools: do vsL / vsR ratings predict results against that hand?
+==============================================================================
+pooled sides, 1077 player-sides, window 2022-2025
+  split tools -> split results: R2 0.580  intercept -0.2339  contact 0.00191  gap 0.00022  power 0.00154  eye 0.00097  avoidK 0.00008
+  overall tools -> split results: R2 0.536  (the split ratings add information)
+
+==============================================================================
+3c. Pitcher tools: how well do the three visible tools (stuff, movement, control) track peripherals?
+==============================================================================
+  results window 2023-2025: n=495  three-tool model R2 0.622  flat mean of the three R2 0.563  coefficients (FIP runs per rating point) 5.5990 -0.0414 -0.0546 -0.0234
+  results window 2021-2022: n=334  three-tool model R2 0.267  flat mean of the three R2 0.230  coefficients (FIP runs per rating point) 3.5642 -0.0337 -0.0339 -0.0141
+  results window 2018-2019: n=338  three-tool model R2 0.156  flat mean of the three R2 0.116  coefficients (FIP runs per rating point) 2.4619 -0.0360 -0.0130 -0.0119
+
+==============================================================================
+4. Platoon: how much to trust an observed split, and what the ratings add
+==============================================================================
+league platoon effect, batter hand R: -0.0133 wOBA (n=774)
+league platoon effect, batter hand L: 0.0207 wOBA (n=365)
+league platoon effect, batter hand S: 0.0018 wOBA (n=161)
+327 hitters with a prior window (2017-2022) and a target window (2023-2025)
+  shrink K   200: rmse 0.04056
+  shrink K   400: rmse 0.03898
+  shrink K   700: rmse 0.03819
+  shrink K  1000: rmse 0.03788
+  shrink K  1500: rmse 0.03767
+  shrink K  2000: rmse 0.03760
+  shrink K  3000: rmse 0.03754
+  shrink K  5000: rmse 0.03753
+  shrink K none: rmse 0.03757
+  best K for the observed-split prior: 5000
+  league-average effect only (no individual split): rmse 0.03757
+  spread among hitters: sd of the hand-centred rating effect 0.0087; sd of the observed effect above the batter-hand norm 0.0443 (mostly noise)
+
+  ratings: 327 hitters with both split profiles; mean rating-implied effect by hand R -0.0127 L 0.0178 S -0.0033
+  target effect (above the batter-hand norm) on the hand-centred RATING effect: slope 1.059 (1.0 would mean the ratings are exactly right), R2 0.054
+  target ~ shrunk observed split + rating effect: observed coefficient 0.103, rating slope 1.054, R2 0.054
+  correlation of the hand-centred rating effect with the observed 2023-2025 effect: 0.237
+  prior = league norm + 0 x rating effect: rmse 0.03757
+  prior = league norm + 0.25 x rating effect: rmse 0.03713
+  prior = league norm + 0.5 x rating effect: rmse 0.03681
+  prior = league norm + 0.75 x rating effect: rmse 0.03660
+  prior = league norm + 1 x rating effect: rmse 0.03651
+  best combination (rating weight rho, shrink K on the observed split around the ratings prior): rho 1, K 5000, rmse 0.03653
+
+==============================================================================
+5. Aging: mean change in league-relative production from one season to the next, by age
+==============================================================================
+hitters: age (this season) -> mean change in relative wOBA next season, n
+  22:   0.0073  n=72
+  23:   0.0008  n=159
+  24:   0.0015  n=259
+  25:   0.0002  n=376
+  26:  -0.0033  n=445
+  27:  -0.0029  n=479
+  28:  -0.0034  n=447
+  29:  -0.0016  n=439
+  30:  -0.0074  n=414
+  31:  -0.0078  n=388
+  32:  -0.0050  n=317
+  33:  -0.0071  n=262
+  34:  -0.0051  n=194
+  35:  -0.0103  n=137
+  36:  -0.0113  n=105
+  37:  -0.0016  n=68
+  38:  -0.0114  n=43
+  39:  -0.0158  n=28
+  40:  -0.0121  n=15
+pitchers: age -> mean change in relative FIP (runs per nine; positive is WORSE) next season, n
+  22:   -0.230  n=58
+  23:    0.048  n=135
+  24:   -0.057  n=216
+  25:   -0.016  n=295
+  26:    0.057  n=329
+  27:    0.011  n=322
+  28:    0.150  n=323
+  29:    0.110  n=272
+  30:    0.096  n=243
+  31:    0.139  n=185
+  32:    0.113  n=151
+  33:    0.168  n=130
+  34:    0.117  n=117
+  35:    0.190  n=91
+  36:    0.215  n=54
+  37:    0.047  n=37
+  38:    0.350  n=34
+  39:    0.082  n=24
+  40:    0.027  n=19
+
+==============================================================================
+6. Baserunning: repeatability and what the running ratings say
+==============================================================================
+year-to-year correlation of baserunning runs per 600 PA (UBR + .2 SB - .4 CS): r=0.500 over 3643 pairs
+  implied stabilization K (PA) = 550 * (1 - r) / r = 549
+running ratings (speed, baserunning, stealing) -> baserunning runs/600 PA: n=481, R2 0.429, coefficients -3.1928 0.0354 0.0237 0.0241
+  spread of baserunning runs per 600 PA among regulars: sd 1.42 runs; the bat's is roughly 15 runs, so baserunning is a small part of a hitter's value
+
+==============================================================================
+7. Defense: what the visible glove says about results, and how much of a hitter's value it is by position
+==============================================================================
+  bat talent spread among current regulars (tools model): sd 10.8 runs per 600 PA
+  position 2: n=31  r(grade, runs per 1300 IP)=0.751  slope 0.86 runs per grade point  grade sd 9.0  -> talent spread 7.7 runs  -> share of value 0.42
+  position 3: n=29  r(grade, runs per 1300 IP)=0.365  slope 0.33 runs per grade point  grade sd 7.2  -> talent spread 2.4 runs  -> share of value 0.18
+  position 4: n=32  r(grade, runs per 1300 IP)=0.620  slope 1.16 runs per grade point  grade sd 5.7  -> talent spread 6.6 runs  -> share of value 0.38
+  position 5: n=32  r(grade, runs per 1300 IP)=0.514  slope 0.77 runs per grade point  grade sd 6.3  -> talent spread 4.9 runs  -> share of value 0.31
+  position 6: n=32  r(grade, runs per 1300 IP)=0.733  slope 1.20 runs per grade point  grade sd 6.4  -> talent spread 7.7 runs  -> share of value 0.42
+  position 7: n=30  r(grade, runs per 1300 IP)=0.712  slope 0.79 runs per grade point  grade sd 8.4  -> talent spread 6.6 runs  -> share of value 0.38
+  position 8: n=31  r(grade, runs per 1300 IP)=0.819  slope 1.40 runs per grade point  grade sd 8.1  -> talent spread 11.4 runs  -> share of value 0.51
+  position 9: n=32  r(grade, runs per 1300 IP)=0.651  slope 1.12 runs per grade point  grade sd 6.4  -> talent spread 7.2 runs  -> share of value 0.40
+  (share = defensive talent spread / (defensive spread + bat spread); one partial season, so the slope is evidence, the weights are estimates)
+
+==============================================================================
+8. Bullpen leverage: how relievers are actually used (current season)
+==============================================================================
+227 relievers with 8+ appearances and exported leverage (average leverage per batter faced)
+  quantiles: 10% 0.58  25% 0.75  50% 1.10  75% 1.39  90% 1.91  max 3.50
+  innings per appearance quantiles: 25% 0.98  50% 1.19  75% 1.48  90% 1.76
+  relievers with 3+ saves: 35, mean leverage 2.09
+  setup men (3+ holds, under 3 saves): 85, mean leverage 1.23

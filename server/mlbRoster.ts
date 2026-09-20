@@ -110,6 +110,12 @@ export function loadClubView(orgId: number): ClubView {
   return buildClubView(orgId, organizationPlayerStates(orgId), leagueRulesForOrganization(orgId));
 }
 
+/** Same role: the same kind, and for a fielder the same listed position. */
+export function sameRole(a: RoleRef | null, b: RoleRef): boolean {
+  if (!a || a.kind !== b.kind) return false;
+  return b.kind === 'position_player' ? a.position === b.position : true;
+}
+
 /** The org's players on the MLB active roster. */
 export const activeMembers = (view: ClubView): RosterMember[] => view.members.filter((m) => m.onActive === true);
 

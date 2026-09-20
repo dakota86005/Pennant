@@ -151,12 +151,19 @@ roster and farm consequences, philosophy annotation, and a problem-centred works
 
 Next, in dependency order:
 
-- Decide the owner questions in MLB_OPERATIONS.md §13 (development gate for depth players,
-  roster standards, performance-review rules).
-- **Rights:** evaluate "add to the 40-man and promote" as one action; establish IL activation.
-- Performance-driven review flags (sample- and context-aware, never a transaction trigger),
-  bench and positional coverage needs, DH/platoon, defensive coverage.
-- Minor League Operations: rehab-aware roster health, and a cascade consumer (the old branch's
+- Calibrate the provisional constants in `mlbAssignmentContext.ts` against outcomes, not more
+  real-save inspection (first review done, no change: MLB_OPERATIONS.md §23).
+- **Rights:** run the injured-list experiment sheet (RIGHTS_RESEARCH §4.11), the one blocker for
+  `activateFromInjuredList` and `placeOnSixtyDayIl`. Done: unknown duration (D-027), separate
+  active and 40-man clearing with the chain (D-028).
+- **Done (fourth pass, ROSTER_REVIEW.md):** performance-aware review of the pitching staff and the lineup,
+  cascades, hitters (bat, glove, usage, platoon read), the staff recommendation.
+- **Done (fifth pass, ROSTER_REVIEW.md stage 6, CALIBRATION.md):** rating splits and running approved (D-035); constants tuned
+  against outcomes with a harness (D-037); philosophy and the competitive window shade the advice (D-036); platoon partners,
+  position shifts, the bench and the bullpen's leverage roles (D-038). Next: contract and prospect-capital dimensions leaning on
+  the advice, pitchers' rating splits (an owner decision), three-way position chains, re-deriving the glove weights as the season
+  grows.
+- Minor League Operations: a cascade consumer (rehab-aware roster health is done, D-026) (the old branch's
   bounded planner was deferred, not adopted).
 - Service-time and Rule 5 consequences as stated facts where the export supports them.
 - External acquisition, waiver claims, free-agent strategy and payroll planning build on this

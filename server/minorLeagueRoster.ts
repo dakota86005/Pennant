@@ -1,5 +1,6 @@
 import { db, tableColumns, tableExists } from './db.js';
 import { POSITION_CODES } from './gloves.js';
+import { screenAffiliatePlayers } from './rehabAssignments.js';
 import { loadScoutedAbilities, scoutedGloves } from './scoutedEvidence.js';
 
 export type RosterHealthStatus =
@@ -76,6 +77,18 @@ export interface AffiliateRosterHealth {
 
   overall: RosterHealthStatus;
   issues: string[];
+
+  /**
+   * Players on this affiliate's list who are not counted as ordinary members.
+   * `rehab`: an explicit log shows a parent-club player on a rehab assignment;
+   * he is excluded from every count above. `ambiguous`: a 40-man player nothing
+   * explains, who may be on rehab or optioned: he IS counted (nothing establishes
+   * otherwise) and is named here so the health above can be read as uncertain.
+   */
+  rosterTreatment: {
+    rehab: Array<{ playerId: number; name: string }>;
+    ambiguous: Array<{ playerId: number; name: string; reason: string }>;
+  };
 }
 
 const LEVEL_NAMES: Record<number, string> = {
@@ -209,14 +222,16 @@ function playerColumns(): string {
 
 type PlayerRow = Omit<ActivePlayer, 'stamina'>;
 
+type Treatment = AffiliateRosterHealth['rosterTreatment'];
+
 function activePlayers(
   teamId: number,
   scenario: RosterHealthScenario = {}
-): ActivePlayer[] {
-  if (!tableExists('players') || !tableExists('team_roster')) return [];
+): { players: ActivePlayer[]; treatment: Treatment } {
+  if (!tableExists('players') || !tableExists('team_roster')) return { players: [], treatment: { rehab: [], ambiguous: [] } };
 
   const removed = new Set(scenario.removePlayerIds ?? []);
-  const rows = (db.prepare(`
+  const listed = (db.prepare(`
     SELECT ${playerColumns()}
     FROM players p
     JOIN team_roster tr
@@ -226,6 +241,16 @@ function activePlayers(
     WHERE p.team_id = ?
       AND p.retired = 0
   `).all(teamId, teamId) as PlayerRow[]).filter((row) => !removed.has(row.player_id));
+
+  // A rehab assignee is a parent-club player, not an ordinary member of this club (rehabAssignments.ts).
+  const screen = screenAffiliatePlayers(listed.map((row) => row.player_id));
+  const nameOf = (row: PlayerRow) => `${row.first_name} ${row.last_name}`;
+  const treatment: Treatment = {
+    rehab: listed.filter((row) => screen.rehab.has(row.player_id)).map((row) => ({ playerId: row.player_id, name: nameOf(row) })),
+    ambiguous: listed.filter((row) => screen.ambiguous.has(row.player_id))
+      .map((row) => ({ playerId: row.player_id, name: nameOf(row), reason: screen.ambiguous.get(row.player_id) as string })),
+  };
+  const rows = listed.filter((row) => !screen.rehab.has(row.player_id));
 
   const joining = (scenario.addPlayers ?? [])
     .filter((add) => add.teamId === teamId && !rows.some((row) => row.player_id === add.playerId))
@@ -244,10 +269,13 @@ function activePlayers(
    */
   const abilities = loadScoutedAbilities(rows.map((row) => row.player_id));
 
-  return rows.map((row) => ({
-    ...row,
-    stamina: abilities.for(row.player_id).stamina,
-  }));
+  return {
+    players: rows.map((row) => ({
+      ...row,
+      stamina: abilities.for(row.player_id).stamina,
+    })),
+    treatment,
+  };
 }
 
 function hitterEligibility(player: ActivePlayer): HitterEligibility {
@@ -482,7 +510,7 @@ function computeAffiliate(
   team: Affiliate,
   scenario: RosterHealthScenario
 ): AffiliateRosterHealth {
-  const roster = activePlayers(team.team_id, scenario);
+  const { players: roster, treatment } = activePlayers(team.team_id, scenario);
 
   const hittersRaw = roster.filter(
     (player) => player.position !== 1
@@ -694,6 +722,7 @@ function computeAffiliate(
     ),
 
     issues,
+    rosterTreatment: treatment,
   };
 }
 

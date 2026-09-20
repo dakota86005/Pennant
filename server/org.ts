@@ -18,6 +18,12 @@ import {
 } from './prospectAssignments.js';
 import type { DevelopmentalJudgment, MissingEvidence } from './developmentJudgment.js';
 import {
+  evaluateMlbAssignmentContext,
+  type ContextAssessment,
+  type MlbAssignmentContext,
+  type UpperLevelExperience,
+} from './mlbAssignmentContext.js';
+import {
   applyDestinationFitToAssignments,
 } from './destinationFit.js';
 import {
@@ -635,6 +641,115 @@ export function mlbDiscussionAssessments(orgId: number): Map<number, MlbDiscussi
       missingEvidence: evaluation.missingEvidence,
       evidence: evaluation.evidence,
       requirements: evaluation.requirements,
+    });
+  }
+  return out;
+}
+
+/**
+ * Player Development's answer to "is THIS kind of major-league assignment
+ * defensible for him?" (see `mlbAssignmentContext.ts`).
+ *
+ * A durable role is the existing AAA-to-MLB assessment, unchanged. A temporary
+ * context (depth, bench, short bullpen, spot start) is judged by the contextual
+ * pathway from his stakes, visible ratings, upper-level experience and any
+ * current-level production. Only Triple-A players are assessed. Absence from the
+ * map means Player Development has not assessed the player (not a pass, not a
+ * rejection); `judgment` may be `indeterminate` and then says what is missing.
+ */
+export interface MlbAssignmentAssessment {
+  playerId: number;
+  level: number;
+  context: MlbAssignmentContext;
+  basis: 'durable_discussion' | 'contextual';
+  judgment: DevelopmentalJudgment;
+  eligible: boolean;
+  reasons: string[];
+  blockers: string[];
+  missingEvidence: MissingEvidence[];
+  /** The contextual detail (stakes, bars, routes, experience); null for a durable role. */
+  contextual: ContextAssessment | null;
+}
+
+/** Career Triple-A and major-league volume: objective statistics, not a rating. */
+function upperLevelExperience(playerIds: number[]): Map<number, UpperLevelExperience> | null {
+  if (!tableExists('players_career_batting_stats') || !tableExists('players_career_pitching_stats')) return null;
+  const out = new Map<number, UpperLevelExperience>();
+  const bump = (id: number, patch: Partial<UpperLevelExperience>) => {
+    const cur = out.get(id) ?? { plateAppearances: 0, inningsPitched: 0 };
+    out.set(id, { ...cur, ...patch });
+  };
+  for (let at = 0; at < playerIds.length; at += 500) {
+    const chunk = playerIds.slice(at, at + 500);
+    const marks = chunk.map(() => '?').join(',');
+    for (const r of db.prepare(
+      `SELECT player_id, SUM(pa) AS pa FROM players_career_batting_stats
+       WHERE split_id = 1 AND level_id IN (1, 2) AND player_id IN (${marks}) GROUP BY player_id`
+    ).all(...chunk) as Array<{ player_id: number; pa: number | null }>) bump(r.player_id, { plateAppearances: r.pa ?? 0 });
+    for (const r of db.prepare(
+      `SELECT player_id, SUM(outs) AS outs FROM players_career_pitching_stats
+       WHERE split_id = 1 AND level_id IN (1, 2) AND player_id IN (${marks}) GROUP BY player_id`
+    ).all(...chunk) as Array<{ player_id: number; outs: number | null }>) bump(r.player_id, { inningsPitched: (r.outs ?? 0) / 3 });
+  }
+  for (const id of playerIds) if (!out.has(id)) out.set(id, { plateAppearances: 0, inningsPitched: 0 });
+  return out;
+}
+
+export function mlbAssignmentAssessments(
+  orgId: number,
+  context: MlbAssignmentContext,
+  playerIds: number[]
+): Map<number, MlbAssignmentAssessment> {
+  const out = new Map<number, MlbAssignmentAssessment>();
+  if (playerIds.length === 0) return out;
+  if (context === 'durable_role') {
+    for (const [id, a] of mlbDiscussionAssessments(orgId)) {
+      if (!playerIds.includes(id)) continue;
+      out.set(id, {
+        playerId: id, level: a.level, context, basis: 'durable_discussion', judgment: a.judgment, eligible: a.eligible,
+        reasons: a.reasons, blockers: a.blockers, missingEvidence: a.missingEvidence, contextual: null,
+      });
+    }
+    return out;
+  }
+
+  // Only Triple-A players are assessed (as for the durable gate).
+  const levels = new Map(orgTeams(orgId).map((t) => [t.team_id, t.level]));
+  const players = orgPlayers(orgId).filter((p) => playerIds.includes(p.player_id) && levels.get(p.team_id) === 2);
+  if (players.length === 0) return out;
+
+  const prospects = computeProspects(orgId);
+  const decisions = new Map<number, { readiness: number | null; range: { min: number; max: number }; sample: number; threshold: number }>();
+  for (const row of [...prospects.batters, ...prospects.pitchers]) {
+    const r = row as {
+      player_id?: unknown;
+      decision?: {
+        evidence?: { readiness: number | null; readinessRange: { min: number; max: number }; sampleConfidence: number };
+        development?: { promotionThreshold: number };
+      };
+    };
+    if (typeof r.player_id !== 'number' || !r.decision?.evidence || !r.decision.development) continue;
+    decisions.set(r.player_id, {
+      readiness: r.decision.evidence.readiness, range: r.decision.evidence.readinessRange,
+      sample: r.decision.evidence.sampleConfidence, threshold: r.decision.development.promotionThreshold,
+    });
+  }
+  const abilities = loadScoutedAbilities(players.map((p) => p.player_id));
+  const experience = upperLevelExperience(players.map((p) => p.player_id));
+
+  for (const p of players) {
+    const d = decisions.get(p.player_id);
+    const assessed = evaluateMlbAssignmentContext({
+      context,
+      kind: p.position === 1 ? 'pitcher' : 'hitter',
+      age: typeof p.age === 'number' ? p.age : null,
+      ability: abilities.for(p.player_id),
+      experience: experience?.get(p.player_id) ?? null,
+      currentLevel: d ? { readiness: d.readiness, readinessRange: d.range, sampleConfidence: d.sample, promotionThreshold: d.threshold } : null,
+    });
+    out.set(p.player_id, {
+      playerId: p.player_id, level: 2, context, basis: 'contextual', judgment: assessed.judgment, eligible: assessed.eligible,
+      reasons: assessed.reasons, blockers: assessed.blockers, missingEvidence: assessed.missingEvidence, contextual: assessed,
     });
   }
   return out;

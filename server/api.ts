@@ -19,6 +19,8 @@ import { csvExportedAt, resetTransactionLogCache } from './dataStatus.js';
 import { importedAt, playerStateRoutes } from './playerStateRoutes.js';
 import { assignmentContextsFor } from './playerContext.js';
 import { clearStatCaches, computeBatting, computePitching, leagueBaseline } from './stats.js';
+import { clearResultsCaches } from './resultsEvidence.js';
+import { clearFieldingPopulationCache } from './scoutedEvidence.js';
 import { ratingScaleMax, clearScaleCache, clearValuationCaches, valuesByPlayer } from './valuation.js';
 import { clearTwoWayCache } from './twoway.js';
 import { dashboardRoutes } from './dashboard.js';
@@ -152,6 +154,8 @@ export async function runImport(csvDir: string): Promise<void> {
     clearPendingExport();
     fs.writeFileSync(META_PATH, JSON.stringify(importState.lastImport));
     clearStatCaches(); // league baselines are per-import
+    clearResultsCaches(); // and so are the league populations behind results percentiles
+    clearFieldingPopulationCache();
     clearValuationCaches();
     importedAt.value = importState.lastImport.finishedAt;
     try {
