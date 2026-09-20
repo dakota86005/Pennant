@@ -26,11 +26,25 @@ decision, roadmap item, or project-state fact changes.
   ratings and its persisted scouting history. Never substitute hidden OOTP
   true-talent values or erase fog of war. Missing scouting evidence stays
   missing.
+- Read ability ratings for Player Development and Minor League Operations only
+  through `server/scoutedEvidence.ts`. Never read `players_value` (`oa`, `pot`,
+  `overall_value`, `talent_value`, ...) or a rating column for those judgments,
+  and never fall back to them; see D-017. `tests/evidenceBoundary.test.ts`
+  enforces it.
+- Unknown evidence stays unknown: never substitute a midpoint, average, or
+  zero for a missing rating. Use `satisfied` / `not_satisfied` / `unknown` and
+  `defensible` / `indefensible` / `indeterminate` (D-018); `eligible: false` is
+  not a rejection. Indeterminate is not "protect" or "hold".
 - Statistics, contracts, service time, injuries, roster status, age, and
   transactions are objective save facts and may be treated as known.
 - Player Development decides which assignments are defensible. Organizational
   Philosophy expresses preferences among defensible choices. Minor League
   Operations solves roster and assignment problems within both boundaries.
+- Philosophy never enters Player Development's judgments (`prospectDecision`,
+  `prospectAssignments`, `destinationFit`, `developmentFit`): no threshold,
+  requirement, or blocker may depend on it, and it is applied only afterwards in
+  `assignmentPreference.ts` to rank defensible assignments (D-019). Do not
+  recreate eligibility through ranking or cutoffs.
 - Recommendations are advisory. The user/GM makes the final decision. Do not
   add automatic OOTP transactions or save mutation as an incidental feature.
 - Organization-specific behavior should resolve the configured organization,

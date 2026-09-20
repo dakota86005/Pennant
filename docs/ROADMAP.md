@@ -24,6 +24,12 @@ These are implementation baselines, not roadmap promises:
   surfaces described in [PROJECT_STATE.md](PROJECT_STATE.md).
 - Organization-specific manual philosophy profiles with dimensions and policy
   settings.
+- An enforced authority boundary: Player Development judgments are
+  philosophy-independent and philosophy expresses preference among defensible
+  assignments only (`assignmentPreference.ts`, D-019).
+- A scouted-evidence adapter that is the single source of ability evidence for
+  Player Development and Minor League Operations, with focused tests of the
+  development engines and a static boundary guard.
 - A farm-system architecture that separates prospect/development eligibility,
   destination fit, affiliate roster health, constrained position-player and
   pitcher proposals, and retention evidence.
@@ -33,6 +39,16 @@ These are implementation baselines, not roadmap promises:
 ## Next: make the organizational model dependable
 
 ### 1. Test the new domain boundaries directly
+
+Now covered with synthetic inputs: prospect decision thresholds, ordinary and
+skip-level authorization, demotion, destination-fit population and low-sample
+behavior, development protection, defensive assignment fit, philosophy profile
+mechanics, and the evidence adapter. Still uncovered: hitter and pitcher roster
+simulations, source-health safeguards and plan ranking, retention guardrails and
+advisory outcomes, and organization resolution. The farm modules also assume
+export columns (`fatigue_points`, `must_be_active`, and others) the shared
+fixture does not carry, so their endpoints need a fuller fixture or
+schema-tolerant queries.
 
 Add focused synthetic coverage for:
 
@@ -59,18 +75,43 @@ in organization-specific routes, background jobs, exports, and AI tools.
 Continue allowing deliberate organization switching, while removing the need
 for routine manual IDs.
 
-### 3. Complete rating-scale and fog-of-war audits
+### 3. Finish the fog-of-war audit
 
-The general UI detects the save's rating scale, but parts of the newer farm
-logic use 20–80 constants and thresholds. Normalize observed ratings through a
-shared scale-aware adapter, then test 20–80 and alternate OOTP scales.
+Done for Player Development and Minor League Operations (D-017): one
+scouted-evidence adapter, scale normalization, strict missing handling, and a
+static guard. Remaining:
 
-Audit every subjective player judgment to document which exported scouting
-field it consumes. Ensure missing grades remain missing and no hidden
-true-talent source enters valuation, development, trade, contract, draft, or
-AI context.
+- Resolved: unknown ratings are no longer imputed anywhere in development
+  arithmetic (D-018). Remaining: a comparison population below 25 is treated as
+  not satisfied rather than unknown, and the destination-fit stretch cost is
+  omitted for an unassessed comparison.
+- Surface indeterminate operations candidates and retention items in the farm
+  workspaces (they are returned by the API; Player Development's own page
+  already labels them).
+- Route scouting snapshots (`rating_snapshots.cur`/`pot`) through the same
+  composite, or record their aggregation method, so history and current level
+  share one definition.
+- Audit trade, contract, free-agent, franchise, roster, and player-card
+  surfaces, which still read `players_value`. Each is a subjective judgment or a
+  display that must be either moved to approved evidence or labelled.
+- Establish, or keep declining to assume, whether `players_value.oa`/`pot` are
+  the organization's scouted view. That needs an export from a save at
+  imperfect scouting compared with the in-game card; the repository cannot
+  settle it.
+- Verify whether fielding-position grades share the tool ratings' display scale.
+- Keep AI context free of hidden or provenance-uncertain ratings.
 
-### 4. Finish farm-assignment edge cases
+### 4. Let Operations consume the preference object
+
+The Player Development ↔ Philosophy boundary is enforced (D-019): eligibility is
+philosophy-independent and `assignments.preference` expresses preference among
+defensible assignments. Operations still ranks with its own philosophy-weighted
+costs. Move that ranking onto the preference object, keeping it inside the
+defensible set and for ordering only. Separately, retention still folds a
+philosophy adjustment into the development score that feeds release-candidate
+thresholds; decide whether that belongs in preference or in developmental value.
+
+### 5. Finish farm-assignment edge cases
 
 - Model ACL/DSL and other same-level Rookie environments explicitly; current
   operations defer Rookie-level balancing.
@@ -81,7 +122,7 @@ AI context.
 - Add a manual "protect this player" control using the reservation already in
   the development-protection model.
 
-### 5. Add the MLB opportunity layer
+### 6. Add the MLB opportunity layer
 
 AAA-to-MLB is currently surfaced as a discussion, while direct skip-level MLB
 moves are intentionally excluded from the minor-league engine. Build a separate

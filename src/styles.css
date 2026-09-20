@@ -4135,6 +4135,13 @@ button.cta {
   border-color: var(--border);
 }
 
+/* Indeterminate is a statement about evidence, not a hold: dashed, never a verdict color */
+.development-status-indeterminate {
+  color: var(--muted);
+  border-color: var(--muted);
+  border-style: dashed;
+}
+
 
 .development-case-facts {
   display: grid;
@@ -4321,6 +4328,11 @@ button.cta {
 }
 
 .development-evaluation.blocked {
+  border-left-color: var(--muted);
+}
+
+.development-evaluation.indeterminate {
+  border-left-style: dashed;
   border-left-color: var(--muted);
 }
 

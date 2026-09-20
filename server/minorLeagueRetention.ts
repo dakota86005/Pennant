@@ -5,13 +5,16 @@ import {
 
 import {
   contractsByPlayer,
-  valuesByPlayer,
 } from './valuation.js';
 
 import {
-  gloves,
   POSITION_CODES,
 } from './gloves.js';
+
+import {
+  loadScoutedAbilities,
+  scoutedGloves,
+} from './scoutedEvidence.js';
 
 import {
   evaluateDevelopmentProtection,
@@ -47,7 +50,13 @@ type RetentionRecommendation =
   | 'protected'
   | 'retain'
   | 'expendable_depth'
-  | 'release_candidate';
+  | 'release_candidate'
+  /**
+   * The retention question depends on developmental evidence that is missing
+   * (organization-visible current/potential ratings). It is not a hold, a
+   * protection, or a release: the GM is told what is unknown and decides.
+   */
+  | 'indeterminate';
 
 type PlayerKind =
   | 'hitter'
@@ -56,7 +65,9 @@ type PlayerKind =
 type DevelopmentalRunwayStatus =
   | 'not_applicable'
   | 'open'
-  | 'limited';
+  | 'limited'
+  /** Depends on ratings that are missing; neither open nor exhausted. */
+  | 'unknown';
 
 interface DevelopmentalRunway {
   status: DevelopmentalRunwayStatus;
@@ -69,6 +80,11 @@ interface ProspectAssignmentLike {
     | 'skip_level_promotion'
     | 'demotion'
     | 'mlb_discussion';
+
+  judgment:
+    | 'defensible'
+    | 'indefensible'
+    | 'indeterminate';
 
   eligible: boolean;
 
@@ -84,6 +100,9 @@ interface ProspectLike {
 
   assignments?: {
     eligible:
+      ProspectAssignmentLike[];
+
+    indeterminate:
       ProspectAssignmentLike[];
   };
 }
@@ -186,11 +205,20 @@ export interface MinorLeagueRetentionPlayer {
 
     legalDevelopmentMoves:
       string[];
+
+    /**
+     * Assignments Player Development cannot yet judge for lack of visible
+     * ratings. Not legal, not illegal, and not counted as an organizational
+     * role.
+     */
+    indeterminateDevelopmentMoves:
+      string[];
   };
 
   evidence: {
     development: {
-      score: number;
+      /** null when developmental protection is indeterminate. */
+      score: number | null;
       reasons: string[];
     };
 
@@ -534,6 +562,29 @@ function legalDevelopmentMoves(
     );
 }
 
+function indeterminateDevelopmentMoves(
+  prospect:
+    ProspectLike | undefined
+): string[] {
+  if (!prospect?.assignments) {
+    return [];
+  }
+
+  return (
+    prospect.assignments
+      .indeterminate ?? []
+  )
+    .filter(
+      (assignment) =>
+        !assignment.target
+          .isMajorLeague
+    )
+    .map(
+      (assignment) =>
+        `${assignment.kind} → ${assignment.target.levelName}`
+    );
+}
+
 function playablePositions(
   playerId: number,
   listedPositionNumber: number
@@ -554,7 +605,7 @@ function playablePositions(
   }
 
   const profile =
-    gloves(playerId);
+    scoutedGloves(playerId);
 
   if (profile) {
     for (
@@ -1165,6 +1216,19 @@ function retentionPhilosophyAdjustment(
   adjustment: number;
   reasons: string[];
 } {
+  /*
+   * The prospect-preservation weight depends on the protection tier. With it
+   * indeterminate no weight is chosen and no adjustment is applied.
+   */
+  if (protection.tier === null) {
+    return {
+      adjustment: 0,
+      reasons: [
+        'Philosophy adjustments are not applied: developmental protection is indeterminate.',
+      ],
+    };
+  }
+
   let adjustment = 0;
 
   const reasons:
@@ -1316,14 +1380,19 @@ function developmentalRunway(
     };
   }
 
+  /*
+   * Runway is judged from the gap between current and potential. With either
+   * unknown it is neither open nor exhausted: it is unknown, and no
+   * conservative default stands in for it.
+   */
   if (
     current === null ||
     potential === null
   ) {
     return {
-      status: 'open',
+      status: 'unknown',
       reasons: [
-        'Current/potential evidence is incomplete, so developmental runway is not treated as exhausted.',
+        'Current/potential evidence is incomplete, so developmental runway cannot be established.',
       ],
     };
   }
@@ -1423,7 +1492,7 @@ function recommendationFor(
   },
   legalMoves: string[],
   internalNeed: string[],
-  developmentScore: number,
+  developmentScore: number | null,
   utilityScore: number,
   pressureScore: number,
   peerDevelopment:
@@ -1447,7 +1516,7 @@ function recommendationFor(
    */
   if (
     level >= 6 &&
-    runway.status !== 'limited'
+    runway.status === 'open'
   ) {
     guardrails.push(
       'Rookie-level developmental runway remains open; release-candidate classification is suppressed.'
@@ -1514,6 +1583,28 @@ function recommendationFor(
     return {
       recommendation:
         'protected',
+
+      guardrails,
+    };
+  }
+
+  /*
+   * What is left depends on developmental evidence. If the protection tier, the
+   * development score, or the Rookie-level runway cannot be established, so
+   * cannot the recommendation: it is indeterminate — not retain, protect or
+   * release — and the missing evidence is reported.
+   */
+  if (
+    protection.tier === null ||
+    developmentScore === null ||
+    (
+      level >= 6 &&
+      runway.status === 'unknown'
+    )
+  ) {
+    return {
+      recommendation:
+        'indeterminate',
 
       guardrails,
     };
@@ -1707,9 +1798,6 @@ export function computeMinorLeagueRetention(
   const contracts =
     contractsByPlayer();
 
-  const values =
-    valuesByPlayer();
-
   const prospects =
     prospectMap(
       prospectData
@@ -1735,34 +1823,45 @@ export function computeMinorLeagueRetention(
       health
     );
 
-  const players =
+  const orgRows =
     orgPlayers(
       orgId
-    ).map(
+    );
+
+  /*
+   * Membership is an objective roster fact. Ability evidence comes only from
+   * the scouted-evidence adapter.
+   */
+  const abilities =
+    loadScoutedAbilities(
+      orgRows.map(
+        (player) =>
+          player.player_id
+      )
+    );
+
+  const players =
+    orgRows.map(
       (
         player
       ): MinorLeagueRetentionPlayer => {
-        const value =
-          values.get(
+        const ability =
+          abilities.for(
             player.player_id
           );
 
         const current =
-          value?.oaRating ??
-          null;
+          ability.current;
 
         const potential =
-          value?.potRating ??
-          null;
+          ability.potential;
 
         const protection =
           evaluateDevelopmentProtection({
             age:
               player.age,
 
-            current,
-
-            potential,
+            ability,
           });
 
         const history =
@@ -1915,13 +2014,19 @@ export function computeMinorLeagueRetention(
             philosophy
           );
 
+        /*
+         * Null while protection is indeterminate: the score is not computed
+         * from a placeholder, and the recommendation follows suit.
+         */
         const developmentScore =
-          round1(
-            clamp(
-              protection.score +
-              phi.adjustment
-            )
-          );
+          protection.score === null
+            ? null
+            : round1(
+                clamp(
+                  protection.score +
+                  phi.adjustment
+                )
+              );
 
         const contract =
           contracts.get(
@@ -2061,6 +2166,24 @@ export function computeMinorLeagueRetention(
         } else if (
           decision
             .recommendation ===
+          'indeterminate'
+        ) {
+          summary.push(
+            'Retention cannot be judged: it depends on developmental evidence (organization-visible current/potential ratings) that is missing. This is not a hold or a protection — the GM decides with that uncertainty in view.'
+          );
+
+          for (
+            const missing of
+            protection
+              .missingEvidence
+          ) {
+            summary.push(
+              missing.detail
+            );
+          }
+        } else if (
+          decision
+            .recommendation ===
           'protected'
         ) {
           summary.push(
@@ -2126,6 +2249,13 @@ export function computeMinorLeagueRetention(
 
             legalDevelopmentMoves:
               legalMoves,
+
+            indeterminateDevelopmentMoves:
+              indeterminateDevelopmentMoves(
+                prospects.get(
+                  player.player_id
+                )
+              ),
           },
 
           evidence: {
@@ -2195,8 +2325,9 @@ export function computeMinorLeagueRetention(
     > = {
       release_candidate: 0,
       expendable_depth: 1,
-      retain: 2,
-      protected: 3,
+      indeterminate: 2,
+      retain: 3,
+      protected: 4,
     };
 
   players.sort(
@@ -2213,12 +2344,33 @@ export function computeMinorLeagueRetention(
         a.evidence
           .rosterPressure
           .score ||
-      a.evidence
+      // Ordering only: an unknown development score sorts after known ones
+      (
+        a.evidence
           .development
-          .score -
+          .score ??
+        Number.POSITIVE_INFINITY
+      ) === (
         b.evidence
           .development
-          .score
+          .score ??
+        Number.POSITIVE_INFINITY
+      )
+        ? 0
+        : (
+            a.evidence
+              .development
+              .score ??
+            Number.POSITIVE_INFINITY
+          ) <
+            (
+              b.evidence
+                .development
+                .score ??
+              Number.POSITIVE_INFINITY
+            )
+          ? -1
+          : 1
   );
 
   const counts = {
@@ -2249,6 +2401,13 @@ export function computeMinorLeagueRetention(
           player.recommendation ===
           'release_candidate'
       ).length,
+
+    indeterminate:
+      players.filter(
+        (player) =>
+          player.recommendation ===
+          'indeterminate'
+      ).length,
   };
 
   return {
@@ -2271,6 +2430,7 @@ export function computeMinorLeagueRetention(
       'Historical trend classification requires at least three snapshots spanning at least 75 in-game days.',
       'Peer development is compared against similar minor leaguers and uses percentile rank to account for broad scouting/rating movement.',
       'Rule 5 protection years are displayed as context but do not yet affect scoring.',
+      'A player whose retention depends on missing organization-visible ratings is classed as indeterminate: not retained, protected or released on the strength of a placeholder.',
       'Recommendations are read-only and never modify the OOTP save.',
     ],
   };

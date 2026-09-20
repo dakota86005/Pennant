@@ -39,7 +39,8 @@ type ProspectRecommendation =
   | 'consider_promotion'
   | 'strong_promotion_case'
   | 'consider_demotion'
-  | 'mlb_ready_discussion';
+  | 'mlb_ready_discussion'
+  | 'indeterminate';
 
 
 type AssignmentKind =
@@ -49,21 +50,31 @@ type AssignmentKind =
   | 'mlb_discussion';
 
 
+interface MissingEvidence {
+  dimension: string;
+  detail: string;
+}
+
+
 interface ProspectDecision {
+  ratingsEvidence?: 'complete' | 'partial' | 'unknown';
+
+  missingEvidence?: MissingEvidence[];
+
   evidence: {
     performance: number;
     ageLevelUrgency: number;
-    ratingsMaturity: number;
+
+    /** null when the organization-visible ratings it needs are unknown. */
+    ratingsMaturity: number | null;
     sampleConfidence: number;
-    readiness: number;
+    readiness: number | null;
   };
 
-  organization: {
-    promotionAggressiveness: number;
-    basePromotionThreshold: number;
-    philosophyThresholdAdjustment: number;
-    ageThresholdAdjustment: number;
+  /** Developmental thresholds: evidence and age/level context, never philosophy. */
+  development: {
     promotionThreshold: number;
+    ageThresholdAdjustment: number;
   };
 
   recommendation:
@@ -112,14 +123,15 @@ interface DestinationFitTeam {
       | 'poor'
       | 'borderline'
       | 'viable'
-      | 'strong';
+      | 'strong'
+      | 'indeterminate';
 
-    compositePercentile: number;
-    weakestCorePercentile: number;
+    compositePercentile: number | null;
+    weakestCorePercentile: number | null;
   };
 
   gate: {
-    passes: boolean;
+    state: 'satisfied' | 'not_satisfied' | 'unknown';
   } | null;
 }
 
@@ -128,7 +140,25 @@ interface ProspectAssignment {
   kind:
     AssignmentKind;
 
+  /** defensible / indefensible / indeterminate. `eligible` is true only for defensible. */
+  judgment?:
+    | 'defensible'
+    | 'indefensible'
+    | 'indeterminate';
+
   eligible: boolean;
+
+  /**
+   * The organization's stance toward a DEFENSIBLE assignment. Not authorization:
+   * a disfavored assignment is exactly as defensible as a preferred one.
+   */
+  preference?:
+    | 'preferred'
+    | 'acceptable'
+    | 'disfavored'
+    | null;
+
+  missingEvidence?: MissingEvidence[];
 
   recommendation:
     string;
@@ -215,6 +245,10 @@ interface Prospect {
 
     eligible:
       ProspectAssignment[];
+
+    /** Assignments Player Development cannot yet judge (missing visible ratings). */
+    indeterminate?:
+      ProspectAssignment[];
   };
 }
 
@@ -254,8 +288,9 @@ interface RetentionPlayer {
     number | null;
 
   protection: {
-    tier: string;
-    score: number;
+    /** null (indeterminate) when the visible ratings it depends on are unknown. */
+    tier: string | null;
+    score: number | null;
   };
 
   transaction: {
@@ -424,7 +459,7 @@ interface DevelopmentPlayer {
     number | null;
 
   protectionTier:
-    string;
+    string | null;
 
   prospect:
     Prospect | null;
@@ -517,6 +552,9 @@ function recommendationLabel(
     case 'watch':
       return 'Hold & monitor';
 
+    case 'indeterminate':
+      return 'Cannot be judged — ratings unavailable';
+
     default:
       return 'Current level appropriate';
   }
@@ -545,6 +583,9 @@ function recommendationExplanation(
     case 'watch':
       return 'Keep the current assignment and continue collecting evidence.';
 
+    case 'indeterminate':
+      return 'The organization-visible current/potential ratings this recommendation depends on are unavailable, so Player Development cannot say. This is not a hold or an approval; the objective evidence below is unaffected.';
+
     default:
       return 'The current level remains a developmentally appropriate assignment.';
   }
@@ -572,6 +613,9 @@ function recommendationClass(
 
     case 'watch':
       return 'development-status-watch';
+
+    case 'indeterminate':
+      return 'development-status-indeterminate';
 
     default:
       return 'development-status-hold';
@@ -614,6 +658,9 @@ function fitLabel(
 
     case 'borderline':
       return 'Borderline';
+
+    case 'indeterminate':
+      return 'Fit not assessed';
 
     default:
       return 'Poor fit';
@@ -674,7 +721,12 @@ function queueAssignmentLabel(
       .eligible[0];
 
   if (!assignment) {
-    return `${player.levelName} · stay`;
+    // No defensible assignment is not the same as "stay": it may be undetermined
+    return (
+      (prospect.assignments.indeterminate?.length ?? 0) > 0
+        ? `${player.levelName} · undetermined`
+        : `${player.levelName} · stay`
+    );
   }
 
   return `${player.levelName} → ${assignment.target.levelName}`;
@@ -1040,7 +1092,8 @@ function AttentionCard({
 
             <strong>
               {decision.evidence
-                .readiness}
+                .readiness ??
+                'Unknown'}
             </strong>
           </div>
 
@@ -1062,7 +1115,8 @@ function AttentionCard({
 
             <strong>
               {decision.evidence
-                .ratingsMaturity}
+                .ratingsMaturity ??
+                'Unknown'}
             </strong>
           </div>
 
@@ -1146,9 +1200,12 @@ function AttentionCard({
                   <div
                     key={`${assignment.kind}-${assignment.target.level}-${index}`}
                     className={
-                      assignment.eligible
-                        ? 'development-evaluation eligible'
-                        : 'development-evaluation blocked'
+                      assignment.judgment ===
+                        'indeterminate'
+                        ? 'development-evaluation indeterminate'
+                        : assignment.eligible
+                          ? 'development-evaluation eligible'
+                          : 'development-evaluation blocked'
                     }
                   >
                     <div>
@@ -1166,10 +1223,40 @@ function AttentionCard({
                     </div>
 
                     <span>
-                      {assignment.eligible
-                        ? 'Eligible'
-                        : 'Not supported'}
+                      {assignment.judgment ===
+                      'indeterminate'
+                        ? 'Cannot be judged'
+                        : assignment.eligible
+                          ? 'Eligible'
+                          : 'Not supported'}
                     </span>
+
+                    {assignment.preference && (
+                      <span>
+                        {' · '}
+                        {assignment.preference === 'preferred'
+                          ? 'Preferred by this organization'
+                          : assignment.preference === 'acceptable'
+                            ? 'Acceptable to this organization'
+                            : 'Less favored by this organization'}
+                      </span>
+                    )}
+
+                    {(
+                      assignment.missingEvidence ??
+                      []
+                    ).map(
+                      (
+                        missing,
+                        missingIndex
+                      ) => (
+                        <p
+                          key={`missing-${missingIndex}`}
+                        >
+                          {missing.detail}
+                        </p>
+                      )
+                    )}
 
                     {assignment.blockers
                       .slice(0, 3)

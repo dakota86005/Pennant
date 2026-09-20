@@ -27,8 +27,10 @@ across all features remains ongoing.
 
 ## D-002 — Preserve organizational knowledge and fog of war
 
-**Status:** Accepted. **Implementation:** Present in scouting/development paths;
-ongoing audit required elsewhere.
+**Status:** Accepted. **Implementation:** Enforced for Player Development and
+Minor League Operations through the scouted-evidence adapter (D-017); scouting
+history is present; pre-fork trade, contract, franchise, and roster surfaces
+still read `players_value` and are not yet audited.
 
 Subjective player-ability judgments must use the organization's/scouting
 director's observed ratings and development history. Hidden OOTP true-talent
@@ -53,7 +55,8 @@ Consequences:
 ## D-003 — Development constrains; philosophy prefers; operations solves
 
 **Status:** Accepted. **Implementation:** Implemented for the current farm
-assignment/operations work, with known gaps in the roadmap.
+assignment/operations work (authority boundary enforced structurally, D-019),
+with known gaps in the roadmap.
 
 Player Development determines which assignments or development decisions are
 defensible. Organizational Philosophy expresses preferences among defensible
@@ -68,6 +71,8 @@ Consequences:
   based on coverage, roster structure, source health, depth, and philosophy.
 - The response must expose blockers, safeguards, and philosophy adjustments so
   the GM can understand why a proposal exists.
+
+The former deviation from the second consequence is corrected; see D-019.
 
 ## D-004 — The user/GM makes the final decision
 
@@ -182,3 +187,155 @@ AI coding agents must inspect the worktree, preserve unrelated changes, avoid
 destructive Git commands, and never commit or push without explicit direction.
 They should make the smallest scoped change, validate it proportionally, and
 update durable documentation when a boundary or project-state fact changes.
+
+## D-017 — Subjective ability evidence comes only through the scouted-evidence adapter
+
+**Status:** Accepted. **Implementation:** Present for Player Development and
+Minor League Operations (`server/scoutedEvidence.ts`).
+
+`players_value.oa`, `players_value.pot`, and every other continuous
+`players_value` ability/talent field are **not** approved evidence for
+subjective ability or development judgments. The export carries no viewer
+organization, scouting-accuracy setting, or per-field visibility flag, and the
+one in-repo comparison against the game (commit `6ca89c8`) was made on a save a
+user reported at 100% scouting, where scouted and true grades coincide. A convenient exported field is
+not organization-visible merely because it is exported. Such a field may be
+approved only when its provenance is positively established as the
+human-managed organization's visible scouting evaluation.
+
+The approved source is the exported tool ratings (D-002): current
+`*_ratings_overall_*`, potential `*_ratings_talent_*`, stamina and pitch grades,
+and revealed fielding-position grades. That approval is by decision, not proof;
+every result carries `declared_organization_visible` /
+`not_verifiable_from_export`.
+
+Consequences:
+
+- One entry point. Development and operations code obtains a `ScoutedAbility`
+  from `loadScoutedAbilities`; it does not read rating columns, `players_value`,
+  or `gloves()` itself. `tests/evidenceBoundary.test.ts` fails if a guarded
+  module does, or if a new module starts reading `players_value`.
+- Missing stays missing. Absent, non-numeric, zero, and negative grades are
+  unknown. A composite (unweighted mean of the visible tools) exists only when
+  every tool is known. Potential is never inferred from current, or the reverse.
+  There is no fallback to `players_value`.
+- Ratings are normalized to 20-80 equivalents from the detected display scale,
+  so thresholds keep their meaning; the native scale is reported.
+- The composite is a Front Office summary, not OOTP's Overall. Pages that show
+  `cur`/`pot` from these paths therefore differ from the game card by design.
+- Consumers report incomplete evidence (`ratingsEvidence`, `ratingEvidence`,
+  `missingEvidence`, destination-fit `unassessedComponents`) and treat what
+  depends on it as unknown (D-018), never as a pass or a failure.
+- Objective facts (statistics, age, contracts, service time, options, injuries,
+  roster status, assignments, transactions) are unaffected and remain known.
+
+**Remaining gaps:** scouting snapshots keep their own non-strict, native-scale
+composite. Pre-fork surfaces (trade, contracts, franchise, roster/player
+displays) still read `players_value`. Fielding-position grades are assumed to
+share the tool ratings' scale. Unknown ratings no longer enter any development
+arithmetic; see D-018.
+
+## D-018 — Unknown evidence stays unknown: indeterminate, not imputed
+
+**Status:** Accepted. **Implementation:** Present for Player Development
+(readiness, protection, assignment authorization, destination fit) and Minor
+League Operations (position and pitching operations, retention).
+
+"We do not know" is distinct from "average", "bad", and "good". A missing
+organization-visible rating is never replaced by a midpoint, average,
+replacement value, or zero. Player Development represents evidence sufficiency
+explicitly (`server/developmentJudgment.ts`):
+
+- A rating-dependent constraint is `satisfied`, `not_satisfied`, or `unknown`.
+- An assessment built from constraints is `indefensible` if any constraint is
+  not satisfied (a known negative stands whatever else is unknown),
+  `indeterminate` if none is but any is unknown, and `defensible` only if all
+  are satisfied.
+- Readiness is `null` when ratings maturity is; the range it could take is
+  reported (`readinessRange`, the model's own outer bounds, not an estimate). A
+  conclusion that holds across that whole range — poor production, a demotion —
+  still stands. Protection is `null` (tier `null`) unless both current and
+  potential are known.
+- Objective evidence (production, sample, age/level context, status, history)
+  is always evaluated and shown, including on an indeterminate assessment.
+
+Consequences:
+
+- **Philosophy cannot resolve unknown evidence.** Player Development's
+  judgments never receive a philosophy (D-019), so no philosophy setting can
+  turn an indeterminate assessment into authorization or into a rejection.
+- **Operations must handle the third state.** `eligible` is true only for
+  `defensible`; `eligible: false` does not mean rejected — read `judgment`.
+  Position and pitching operations list an indeterminate candidate in
+  `indeterminate` with the missing evidence and the destination's roster need.
+  It is not planned (approved), not in `rejected`, and not ranked. Retention adds
+  an `indeterminate` recommendation (after objective transaction guardrails,
+  which still apply).
+- **Indeterminate is not a roster decision.** It does not mean protect, hold,
+  or block, and the GM may act despite it. No caller may encode it as one.
+- Ranking-only terms that depend on an unassessed comparison are omitted rather
+  than valued.
+
+**Remaining gaps:** a destination-fit stretch cost that cannot be computed is
+omitted from ranking (contributes nothing) rather than imputed; a pitcher whose
+stamina is unknown keeps his current role as developmental role (flagged
+`structureEvidence: 'unknown'`); a comparison population below 25 is treated as
+not satisfied rather than unknown; neutral defaults for missing objective
+context (level-average age, K% baseline) are unchanged.
+
+## D-019 — Player Development authorizes; Organizational Philosophy only prefers
+
+**Status:** Accepted. **Implementation:** Present (`prospectDecision.ts`,
+`prospectAssignments.ts`, `assignmentPreference.ts`).
+
+Whether an assignment is developmentally defensible is a function of evidence
+and baseball-development rules. It is identical for every organization: for the
+same player, evidence, and destination, `defensible` / `indefensible` /
+`indeterminate` does not vary with philosophy. Organizational Philosophy
+expresses which of the DEFENSIBLE alternatives the organization prefers, and
+nothing else.
+
+Before this decision, `promotionAggressiveness` set the promotion threshold
+(76 ± 10) that ordinary-promotion and MLB-discussion eligibility, the skip-level
+requirement above its floor, and the recommendation bands were measured against.
+An aggressive organization could therefore call defensible a promotion a neutral
+one could not, and a conservative one could call indefensible what a neutral one
+could authorize. The threshold combined two concepts and is now split:
+
+- **Developmental (Player Development):** `development.promotionThreshold` —
+  a base readiness of 76 moved only by age relative to level. It gates ordinary
+  promotion and MLB discussion; a skip-level move needs ten more (never below 84,
+  with fixed performance, maturity and sample floors); a demotion rests on
+  objective production, sample and age. The 45-point minimum sample applies to
+  every organization.
+- **Preference (Philosophy):** `assignmentPreference.ts` runs after
+  authorization and destination fit, and only annotates. Among the defensible
+  promotion-direction assignments, plus staying (patience), aggressiveness
+  chooses how far up the challenge ordering the organization prefers to reach:
+  each defensible option is `preferred`, `acceptable`, or `disfavored`. A
+  disfavored assignment is exactly as defensible as a preferred one.
+
+Consequences:
+
+- Player Development modules (`prospectDecision`, `prospectAssignments`,
+  `destinationFit`, `developmentFit`, `developmentJudgment`) take no philosophy
+  and may not import or mention it; `tests/philosophyBoundary.test.ts` enforces
+  it statically and by behavior across philosophies.
+- Philosophy cannot authorize an indefensible assignment, cannot make a
+  defensible one indefensible, and cannot resolve an indeterminate one: an
+  indeterminate assignment is never ranked and is never read as "stay".
+- Demotion is not ranked: no philosophy dimension expresses demotion patience.
+- Minor League Operations receives the defensible set, the indeterminate set
+  separately, and the preference beside them (`assignments.preference`). It
+  optimizes within the defensible set and never plans anything else. Its own
+  philosophy-based ranking adjustments (`promotionAggressiveness`,
+  `prospectPreservation`, and others) apply only to candidates Player
+  Development has already authorized. Operations does not yet read the
+  preference object; when it does, it must keep preference inside the defensible
+  set and use it for ordering only, never as a cutoff.
+
+**Remaining gaps:** retention still adds a philosophy adjustment to its
+development score, which feeds release-candidate thresholds (a retention
+judgment, not assignment authorization, but it blends the two); Operations'
+same-level moves are ranked with philosophy-weighted costs.
+

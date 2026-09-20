@@ -310,12 +310,9 @@ export interface ProspectDecision {
     sampleConfidence: number;
     readiness: number;
   };
-  organization: {
-    promotionAggressiveness: number;
-    basePromotionThreshold: number;
-    philosophyThresholdAdjustment: number;
-    ageThresholdAdjustment: number;
+  development: {
     promotionThreshold: number;
+    ageThresholdAdjustment: number;
   };
   recommendation: ProspectRecommendation;
   confidence: 'limited' | 'moderate' | 'high';

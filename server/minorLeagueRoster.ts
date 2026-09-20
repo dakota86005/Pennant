@@ -1,5 +1,6 @@
 import { db, tableExists } from './db.js';
-import { gloves, POSITION_CODES } from './gloves.js';
+import { POSITION_CODES } from './gloves.js';
+import { loadScoutedAbilities, scoutedGloves } from './scoutedEvidence.js';
 
 export type RosterHealthStatus =
   | 'critical'
@@ -177,9 +178,7 @@ function affiliates(orgId: number): Affiliate[] {
 function activePlayers(teamId: number): ActivePlayer[] {
   if (!tableExists('players') || !tableExists('team_roster')) return [];
 
-  const hasPitching = tableExists('players_pitching');
-
-  return db.prepare(`
+  const rows = db.prepare(`
     SELECT
       p.player_id,
       p.first_name,
@@ -189,29 +188,31 @@ function activePlayers(teamId: number): ActivePlayer[] {
       COALESCE(p.injury_is_injured, 0) AS injury_is_injured,
       COALESCE(p.injury_dtd_injury, 0) AS injury_dtd_injury,
       COALESCE(p.fatigue_points, 0) AS fatigue_points,
-      COALESCE(p.fatigue_played_today, 0) AS fatigue_played_today,
-      ${
-        hasPitching
-          ? 'pp.pitching_ratings_misc_stamina'
-          : 'NULL'
-      } AS stamina
+      COALESCE(p.fatigue_played_today, 0) AS fatigue_played_today
     FROM players p
     JOIN team_roster tr
       ON tr.team_id = ?
      AND tr.player_id = p.player_id
      AND tr.list_id = 2
-    ${
-      hasPitching
-        ? 'LEFT JOIN players_pitching pp ON pp.player_id = p.player_id'
-        : ''
-    }
     WHERE p.team_id = ?
       AND p.retired = 0
-  `).all(teamId, teamId) as ActivePlayer[];
+  `).all(teamId, teamId) as Array<Omit<ActivePlayer, 'stamina'>>;
+
+  /*
+   * Who is active, and their health and workload, are objective facts read
+   * above. Stamina is a visible-rating judgment, so it comes only from the
+   * scouted-evidence adapter (on the 20-80 scale, unknown when not exported).
+   */
+  const abilities = loadScoutedAbilities(rows.map((row) => row.player_id));
+
+  return rows.map((row) => ({
+    ...row,
+    stamina: abilities.for(row.player_id).stamina,
+  }));
 }
 
 function hitterEligibility(player: ActivePlayer): HitterEligibility {
-  const profile = gloves(player.player_id);
+  const profile = scoutedGloves(player.player_id);
 
   const listed =
     POSITION_CODES[player.position - 1] ?? '—';

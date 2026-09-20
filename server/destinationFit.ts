@@ -1,4 +1,10 @@
 import { db } from './db.js';
+import { loadScoutedAbilities } from './scoutedEvidence.js';
+import {
+  judgmentOf,
+  type ConstraintState,
+  type MissingEvidence,
+} from './developmentJudgment.js';
 
 import type {
   ProspectAssignmentEvaluation,
@@ -14,7 +20,9 @@ export type DestinationFitClassification =
   | 'poor'
   | 'borderline'
   | 'viable'
-  | 'strong';
+  | 'strong'
+  /** Some role tools could not be compared, so no grade is given. */
+  | 'indeterminate';
 
 export interface DestinationFitComponent {
   key: string;
@@ -51,6 +59,13 @@ export interface PitcherRoleAssessment {
   establishedPitches: number;
   thirdBestPitch: number | null;
 
+  /**
+   * Whether stamina was available to judge starter structure. When it is not,
+   * the developmental role simply follows the current assignment: it is not a
+   * finding that the pitcher cannot start.
+   */
+  structureEvidence: 'known' | 'unknown';
+
   reasons: string[];
 }
 
@@ -76,15 +91,31 @@ export interface DestinationFit {
   components: DestinationFitComponent[];
 
   /**
-   * Weighted mean of component percentiles.
+   * Role tools that could not be compared, and why. A tool with no
+   * organization-visible rating, or with no comparison population, is left out
+   * rather than scored as a zero — but it is reported here, and an unassessed
+   * core tool keeps a skip-level move from being authorized.
    */
-  compositePercentile: number;
+  unassessedComponents: Array<{
+    label: string;
+    core: boolean;
+    reason: 'no_visible_rating' | 'no_comparison_population';
+  }>;
 
   /**
-   * Lowest percentile among skills designated as essential for the role.
-   * Prevents one elite tool from hiding a serious developmental weakness.
+   * Weighted mean of component percentiles. null while any role tool is
+   * unassessed: a partial composite is not the composite, and no value is
+   * substituted for the missing tools.
    */
-  weakestCorePercentile: number;
+  compositePercentile: number | null;
+
+  /**
+   * Lowest percentile among the ASSESSED skills designated as essential for
+   * the role (null if none was assessed). Prevents one elite tool from hiding
+   * a serious developmental weakness. An unassessed core tool may be weaker
+   * still — see `unassessedComponents`.
+   */
+  weakestCorePercentile: number | null;
 
   classification: DestinationFitClassification;
 
@@ -99,9 +130,17 @@ export interface DestinationFitGate {
   requiredCompositePercentile: number;
   requiredWeakestCorePercentile: number;
 
-  passes: boolean;
+  /**
+   * `unknown` while a role tool could not be assessed and nothing already
+   * assessed rules the move out. Never a pass by default, never a rejection.
+   */
+  state: ConstraintState;
 
+  /** Why the move is ruled out (only for `not_satisfied`). */
   reasons: string[];
+
+  /** What could not be assessed (only for `unknown`). */
+  unknownReasons: string[];
 }
 
 export interface AssignmentDestinationFit {
@@ -110,7 +149,11 @@ export interface AssignmentDestinationFit {
     gate: DestinationFitGate | null;
   }>;
 
+  /** Affiliates whose destination comparison establishes the move is defensible. */
   eligibleTeamIds: number[];
+
+  /** Affiliates the comparison cannot yet judge. Not approved, not rejected. */
+  indeterminateTeamIds: number[];
 }
 
 export type ProspectAssignmentEvaluationWithDestinationFit =
@@ -121,6 +164,7 @@ export type ProspectAssignmentEvaluationWithDestinationFit =
 export interface ProspectAssignmentPlanWithDestinationFit {
   evaluations: ProspectAssignmentEvaluationWithDestinationFit[];
   eligible: ProspectAssignmentEvaluationWithDestinationFit[];
+  indeterminate: ProspectAssignmentEvaluationWithDestinationFit[];
 }
 
 interface PlayerRatings {
@@ -267,6 +311,18 @@ const RELIEVER_COMPONENTS: ComponentDefinition[] = [
 function numberOrNull(
   value: unknown
 ): number | null {
+  /*
+   * Number(null) is 0, so without this guard an absent value read as a real
+   * zero. Absent stays absent.
+   */
+  if (
+    value === null ||
+    value === undefined ||
+    value === ''
+  ) {
+    return null;
+  }
+
   const number = Number(value);
 
   return Number.isFinite(number)
@@ -353,6 +409,9 @@ function playerKind(
         ? 'starter'
         : 'reliever';
 
+  const structureKnown =
+    typeof stamina === 'number';
+
   const reasons: string[] = [];
 
   if (currentRole === 'starter') {
@@ -362,6 +421,10 @@ function playerKind(
   } else if (starterStructure) {
     reasons.push(
       'Current relief assignment does not prevent starter development: stamina and repertoire meet the structural starter criteria.'
+    );
+  } else if (!structureKnown) {
+    reasons.push(
+      'Organization-visible stamina is unavailable, so starter structure cannot be assessed; destination fit follows the current relief assignment. That is not a finding that he cannot start.'
     );
   } else {
     reasons.push(
@@ -391,6 +454,10 @@ function playerKind(
       currentRole,
       developmentalRole,
       stamina,
+      structureEvidence:
+        structureKnown
+          ? 'known'
+          : 'unknown',
       establishedPitches:
         established.length,
       thirdBestPitch,
@@ -442,44 +509,15 @@ function definitionsFor(
 function playerRatings(
   playerId: number
 ): PlayerRatings | null {
+  /*
+   * Who the player is and what he is used as are objective facts. Every rating
+   * comes from the scouted-evidence adapter, so an absent grade stays absent
+   * (null) instead of being read as a zero, and stamina and pitch grades are
+   * on the 20-80 scale the role thresholds below assume.
+   */
   const row = db.prepare(`
-    SELECT
-      p.player_id,
-      p.position,
-      p.role,
-
-      b.batting_ratings_overall_contact AS contact,
-      b.batting_ratings_overall_gap AS gap,
-      b.batting_ratings_overall_power AS power,
-      b.batting_ratings_overall_eye AS eye,
-      b.batting_ratings_overall_strikeouts AS avoid_k,
-
-      pp.pitching_ratings_overall_stuff AS stuff,
-      pp.pitching_ratings_overall_movement AS movement,
-      pp.pitching_ratings_overall_control AS control,
-      pp.pitching_ratings_misc_stamina AS stamina,
-
-      pp.pitching_ratings_pitches_fastball AS pitch_fastball,
-      pp.pitching_ratings_pitches_slider AS pitch_slider,
-      pp.pitching_ratings_pitches_curveball AS pitch_curveball,
-      pp.pitching_ratings_pitches_screwball AS pitch_screwball,
-      pp.pitching_ratings_pitches_forkball AS pitch_forkball,
-      pp.pitching_ratings_pitches_changeup AS pitch_changeup,
-      pp.pitching_ratings_pitches_sinker AS pitch_sinker,
-      pp.pitching_ratings_pitches_splitter AS pitch_splitter,
-      pp.pitching_ratings_pitches_knuckleball AS pitch_knuckleball,
-      pp.pitching_ratings_pitches_cutter AS pitch_cutter,
-      pp.pitching_ratings_pitches_circlechange AS pitch_circlechange,
-      pp.pitching_ratings_pitches_knucklecurve AS pitch_knucklecurve
-
+    SELECT p.player_id, p.position, p.role
     FROM players p
-
-    LEFT JOIN players_batting b
-      ON b.player_id = p.player_id
-
-    LEFT JOIN players_pitching pp
-      ON pp.player_id = p.player_id
-
     WHERE p.player_id = ?
     LIMIT 1
   `).get(playerId) as
@@ -488,42 +526,29 @@ function playerRatings(
 
   if (!row) return null;
 
+  const ability =
+    loadScoutedAbilities([playerId])
+      .for(playerId);
+
+  const tools = ability.currentTools;
+
   return {
     playerId: Number(row.player_id),
     position: Number(row.position),
     role: Number(row.role),
 
-    contact: numberOrNull(row.contact),
-    gap: numberOrNull(row.gap),
-    power: numberOrNull(row.power),
-    eye: numberOrNull(row.eye),
-    avoidK: numberOrNull(row.avoid_k),
+    contact: tools.contact ?? null,
+    gap: tools.gap ?? null,
+    power: tools.power ?? null,
+    eye: tools.eye ?? null,
+    avoidK: tools.avoidK ?? null,
 
-    stuff: numberOrNull(row.stuff),
-    movement: numberOrNull(row.movement),
-    control: numberOrNull(row.control),
-    stamina: numberOrNull(row.stamina),
+    stuff: tools.stuff ?? null,
+    movement: tools.movement ?? null,
+    control: tools.control ?? null,
+    stamina: ability.stamina,
 
-    pitches: [
-      row.pitch_fastball,
-      row.pitch_slider,
-      row.pitch_curveball,
-      row.pitch_screwball,
-      row.pitch_forkball,
-      row.pitch_changeup,
-      row.pitch_sinker,
-      row.pitch_splitter,
-      row.pitch_knuckleball,
-      row.pitch_cutter,
-      row.pitch_circlechange,
-      row.pitch_knucklecurve,
-    ]
-      .map(numberOrNull)
-      .filter(
-        (rating): rating is number =>
-          rating !== null &&
-          rating > 0
-      ),
+    pitches: [...ability.pitches],
   };
 }
 
@@ -601,68 +626,76 @@ function populationRows(
   leagueId: number,
   kind: DestinationPlayerKind
 ): Array<Record<string, unknown>> {
-  if (kind === 'hitter') {
-    return db.prepare(`
-      SELECT
-        b.batting_ratings_overall_contact AS contact,
-        b.batting_ratings_overall_gap AS gap,
-        b.batting_ratings_overall_power AS power,
-        b.batting_ratings_overall_eye AS eye,
-        b.batting_ratings_overall_strikeouts AS avoid_k
+  /*
+   * Membership — active, in this league, hitter or the right pitching role —
+   * is objective. The ratings compared are the scouted-evidence adapter's.
+   */
+  const ids = (
+    kind === 'hitter'
+      ? db.prepare(`
+          SELECT p.player_id
+          FROM players p
+          JOIN teams t
+            ON t.team_id = p.team_id
+          JOIN team_roster tr
+            ON tr.team_id = p.team_id
+           AND tr.player_id = p.player_id
+           AND tr.list_id = 2
+          WHERE t.league_id = ?
+            AND p.retired = 0
+            AND p.position != 1
+        `).all(leagueId)
+      : db.prepare(`
+          SELECT p.player_id
+          FROM players p
+          JOIN teams t
+            ON t.team_id = p.team_id
+          JOIN team_roster tr
+            ON tr.team_id = p.team_id
+           AND tr.player_id = p.player_id
+           AND tr.list_id = 2
+          WHERE t.league_id = ?
+            AND p.retired = 0
+            AND p.position = 1
+            ${
+              kind === 'starter'
+                ? 'AND p.role = 11'
+                : 'AND p.role IN (12, 13)'
+            }
+        `).all(leagueId)
+  ).map(
+    (row) =>
+      Number(
+        (row as { player_id: number })
+          .player_id
+      )
+  );
 
-      FROM players p
+  const abilities =
+    loadScoutedAbilities(ids);
 
-      JOIN teams t
-        ON t.team_id = p.team_id
+  return ids.map((id) => {
+    const ability =
+      abilities.for(id);
 
-      JOIN team_roster tr
-        ON tr.team_id = p.team_id
-       AND tr.player_id = p.player_id
-       AND tr.list_id = 2
+    const tools =
+      ability.currentTools;
 
-      JOIN players_batting b
-        ON b.player_id = p.player_id
-
-      WHERE t.league_id = ?
-        AND p.retired = 0
-        AND p.position != 1
-    `).all(leagueId) as Array<
-      Record<string, unknown>
-    >;
-  }
-
-  const roleClause =
-    kind === 'starter'
-      ? 'AND p.role = 11'
-      : 'AND p.role IN (12, 13)';
-
-  return db.prepare(`
-    SELECT
-      pp.pitching_ratings_overall_stuff AS stuff,
-      pp.pitching_ratings_overall_movement AS movement,
-      pp.pitching_ratings_overall_control AS control,
-      pp.pitching_ratings_misc_stamina AS stamina
-
-    FROM players p
-
-    JOIN teams t
-      ON t.team_id = p.team_id
-
-    JOIN team_roster tr
-      ON tr.team_id = p.team_id
-     AND tr.player_id = p.player_id
-     AND tr.list_id = 2
-
-    JOIN players_pitching pp
-      ON pp.player_id = p.player_id
-
-    WHERE t.league_id = ?
-      AND p.retired = 0
-      AND p.position = 1
-      ${roleClause}
-  `).all(leagueId) as Array<
-    Record<string, unknown>
-  >;
+    return kind === 'hitter'
+      ? {
+          contact: tools.contact ?? null,
+          gap: tools.gap ?? null,
+          power: tools.power ?? null,
+          eye: tools.eye ?? null,
+          avoid_k: tools.avoidK ?? null,
+        }
+      : {
+          stuff: tools.stuff ?? null,
+          movement: tools.movement ?? null,
+          control: tools.control ?? null,
+          stamina: ability.stamina,
+        };
+  });
 }
 
 function populationValues(
@@ -774,6 +807,9 @@ export function evaluateDestinationFit(
   const components: DestinationFitComponent[] =
     [];
 
+  const unassessedComponents: DestinationFit['unassessedComponents'] =
+    [];
+
   for (const definition of definitions) {
     const rating =
       ratings[definition.key];
@@ -782,6 +818,12 @@ export function evaluateDestinationFit(
       typeof rating !== 'number' ||
       !Number.isFinite(rating)
     ) {
+      unassessedComponents.push({
+        label: definition.label,
+        core: definition.core,
+        reason: 'no_visible_rating',
+      });
+
       continue;
     }
 
@@ -792,6 +834,12 @@ export function evaluateDestinationFit(
       );
 
     if (!values.length) {
+      unassessedComponents.push({
+        label: definition.label,
+        core: definition.core,
+        reason: 'no_comparison_population',
+      });
+
       continue;
     }
 
@@ -824,8 +872,12 @@ export function evaluateDestinationFit(
       0
     );
 
+  const complete =
+    unassessedComponents.length === 0 &&
+    components.length > 0;
+
   const composite =
-    totalWeight > 0
+    complete && totalWeight > 0
       ? components.reduce(
           (sum, component) =>
             sum +
@@ -833,7 +885,7 @@ export function evaluateDestinationFit(
               component.weight,
           0
         ) / totalWeight
-      : 0;
+      : null;
 
   const core =
     components.filter(
@@ -848,7 +900,7 @@ export function evaluateDestinationFit(
               component.percentile
           )
         )
-      : 0;
+      : null;
 
   const populationMinimum =
     components.length
@@ -877,8 +929,24 @@ export function evaluateDestinationFit(
   }
 
   notes.push(
-    'Percentiles are calculated from active players in the actual destination league in the current save.'
+    'Percentiles are calculated from active players in the actual destination league in the current save, using organization-visible ratings only.'
   );
+
+  if (unassessedComponents.length) {
+    notes.push(
+      `Not evaluated: ${unassessedComponents
+        .map(
+          (item) =>
+            `${item.label} (${
+              item.reason ===
+              'no_visible_rating'
+                ? 'no organization-visible rating'
+                : 'no comparison population'
+            })`
+        )
+        .join(', ')}.`
+    );
+  }
 
   notes.push(
     'Defensive-position suitability is evaluated separately by the development-assignment model.'
@@ -908,17 +976,26 @@ export function evaluateDestinationFit(
 
     components,
 
+    unassessedComponents,
+
     compositePercentile:
-      round1(composite),
+      composite === null
+        ? null
+        : round1(composite),
 
     weakestCorePercentile:
-      round1(weakestCore),
+      weakestCore === null
+        ? null
+        : round1(weakestCore),
 
     classification:
-      classification(
-        composite,
-        weakestCore
-      ),
+      composite === null ||
+      weakestCore === null
+        ? 'indeterminate'
+        : classification(
+            composite,
+            weakestCore
+          ),
 
     populationMinimum,
 
@@ -958,8 +1035,15 @@ export function skipLevelDestinationGate(
   }
 
   const reasons: string[] = [];
+  const unknownReasons: string[] = [];
 
+  /*
+   * Ruled out: evidence that is known and falls short. A shortfall in what WAS
+   * assessed stands however the unassessed tools turn out (the overall weakest
+   * core tool can only be weaker than the weakest assessed one).
+   */
   if (
+    fit.components.length > 0 &&
     fit.populationMinimum < 25
   ) {
     reasons.push(
@@ -968,6 +1052,7 @@ export function skipLevelDestinationGate(
   }
 
   if (
+    fit.compositePercentile !== null &&
     fit.compositePercentile <
     requiredCompositePercentile
   ) {
@@ -977,11 +1062,25 @@ export function skipLevelDestinationGate(
   }
 
   if (
+    fit.weakestCorePercentile !== null &&
     fit.weakestCorePercentile <
     requiredWeakestCorePercentile
   ) {
     reasons.push(
       `Weakest core-skill percentile ${fit.weakestCorePercentile} is below the required ${requiredWeakestCorePercentile}.`
+    );
+  }
+
+  /*
+   * Not ruled out, not ruled in: tools with no organization-visible rating (or
+   * no comparison population) cannot be compared, so the destination question
+   * is unknown rather than failed.
+   */
+  if (fit.unassessedComponents.length) {
+    unknownReasons.push(
+      `Not evaluated for lack of organization-visible evidence: ${fit.unassessedComponents
+        .map((item) => `${item.label}${item.core ? ' (core)' : ''}`)
+        .join(', ')}.`
     );
   }
 
@@ -991,9 +1090,15 @@ export function skipLevelDestinationGate(
     requiredCompositePercentile,
     requiredWeakestCorePercentile,
 
-    passes: reasons.length === 0,
+    state:
+      reasons.length > 0
+        ? 'not_satisfied'
+        : unknownReasons.length > 0
+          ? 'unknown'
+          : 'satisfied',
 
     reasons,
+    unknownReasons,
   };
 }
 
@@ -1067,17 +1172,28 @@ export function applyDestinationFitToAssignments(
       evaluation.kind !==
       'skip_level_promotion'
     ) {
+      const teamIds =
+        evaluation.target.teams.map(
+          (team) =>
+            team.teamId
+        );
+
       evaluations.push({
         ...evaluation,
 
         destinationFit: {
           teams: teamFits,
+
           eligibleTeamIds:
-            evaluation.eligible
-              ? evaluation.target.teams.map(
-                  (team) =>
-                    team.teamId
-                )
+            evaluation.judgment ===
+            'defensible'
+              ? teamIds
+              : [],
+
+          indeterminateTeamIds:
+            evaluation.judgment ===
+            'indeterminate'
+              ? teamIds
               : [],
         },
       });
@@ -1086,35 +1202,52 @@ export function applyDestinationFitToAssignments(
     }
 
     /*
-     * If the current-level evidence already rejected the skip, destination fit
-     * is still reported for transparency, but it cannot resurrect the move.
+     * If current-level evidence already ruled the skip out, destination fit is
+     * still reported for transparency, but it cannot resurrect the move.
      */
-    if (!evaluation.eligible) {
+    if (evaluation.judgment === 'indefensible') {
       evaluations.push({
         ...evaluation,
 
         destinationFit: {
           teams: teamFits,
           eligibleTeamIds: [],
+          indeterminateTeamIds: [],
         },
       });
 
       continue;
     }
 
-    const passing =
+    const satisfied =
       teamFits.filter(
         (team) =>
-          team.gate?.passes === true
+          team.gate?.state === 'satisfied'
+      );
+
+    const unknown =
+      teamFits.filter(
+        (team) =>
+          team.gate?.state === 'unknown'
       );
 
     const eligibleTeamIds =
-      passing.map(
+      satisfied.map(
         (team) =>
           team.fit.destinationTeamId
       );
 
-    if (!passing.length) {
+    const indeterminateTeamIds =
+      unknown.map(
+        (team) =>
+          team.fit.destinationTeamId
+      );
+
+    /*
+     * Every affiliate is ruled out by known evidence: the move is indefensible
+     * whatever Player Development's own (possibly indeterminate) evidence says.
+     */
+    if (!satisfied.length && !unknown.length) {
       const fitBlockers =
         teamFits.flatMap(
           ({ fit, gate }) =>
@@ -1124,63 +1257,167 @@ export function applyDestinationFitToAssignments(
             )
         );
 
+      const blockers = [
+        ...evaluation.blockers,
+
+        ...(fitBlockers.length
+          ? fitBlockers
+          : [
+              'No destination affiliate had sufficient rating-population data to support this skip-level assignment.',
+            ]),
+      ];
+
       evaluations.push({
         ...evaluation,
 
+        judgment: 'indefensible',
         eligible: false,
         recommendation:
           'not_recommended',
+        missingEvidence: [],
+        blockers,
 
-        blockers: [
-          ...evaluation.blockers,
-
-          ...(fitBlockers.length
-            ? fitBlockers
-            : [
-                'No destination affiliate had sufficient rating-population data to support this skip-level assignment.',
-              ]),
+        constraints: [
+          ...evaluation.constraints,
+          {
+            id: 'destination_fit',
+            label: 'Destination fit',
+            state: 'not_satisfied',
+            requiresSubjectiveEvidence: true,
+            detail: fitBlockers.join(' ') ||
+              'No destination affiliate had sufficient rating-population data.',
+          },
         ],
 
         destinationFit: {
           teams: teamFits,
           eligibleTeamIds: [],
+          indeterminateTeamIds: [],
         },
       });
 
       continue;
     }
 
-    const filteredTarget = {
-      ...evaluation.target,
+    const missingDestinationEvidence: MissingEvidence[] =
+      unknown.flatMap(
+        ({ fit, gate }) =>
+          (gate?.unknownReasons ?? []).map(
+            (detail) => ({
+              dimension:
+                'destination_comparison' as const,
+              detail:
+                `${fit.destinationTeam}: ${detail}`,
+            })
+          )
+      );
 
-      /*
-       * Player Development determines which actual affiliates are
-       * developmentally defensible. Minor League Operations may choose among
-       * these teams later.
-       */
-      teams:
-        evaluation.target.teams.filter(
-          (team) =>
-            eligibleTeamIds.includes(
-              team.teamId
-            )
-        ),
-    };
+    /*
+     * The destination comparison establishes the move for at least one
+     * affiliate: keep those. Affiliates it cannot judge are reported but are not
+     * approved targets.
+     */
+    if (
+      evaluation.judgment === 'defensible' &&
+      satisfied.length
+    ) {
+      evaluations.push({
+        ...evaluation,
+
+        target: {
+          ...evaluation.target,
+
+          /*
+           * Player Development determines which actual affiliates are
+           * developmentally defensible. Minor League Operations may choose
+           * among these teams later.
+           */
+          teams:
+            evaluation.target.teams.filter(
+              (team) =>
+                eligibleTeamIds.includes(
+                  team.teamId
+                )
+            ),
+        },
+
+        constraints: [
+          ...evaluation.constraints,
+          {
+            id: 'destination_fit',
+            label: 'Destination fit',
+            state: 'satisfied',
+            requiresSubjectiveEvidence: true,
+            detail:
+              'Current ratings also fall within the required empirical destination-level range.',
+          },
+        ],
+
+        reasons: [
+          ...evaluation.reasons,
+          'Current ratings also fall within the required empirical destination-level range.',
+        ],
+
+        destinationFit: {
+          teams: teamFits,
+          eligibleTeamIds,
+          indeterminateTeamIds,
+        },
+      });
+
+      continue;
+    }
+
+    /*
+     * Otherwise the move is neither defensible nor indefensible on the
+     * evidence: either current-level evidence is indeterminate, or the only
+     * remaining affiliates' destination comparisons are.
+     */
+    const constraints = [
+      ...evaluation.constraints,
+      {
+        id: 'destination_fit' as const,
+        label: 'Destination fit',
+        state:
+          (unknown.length
+            ? 'unknown'
+            : 'satisfied') as ConstraintState,
+        requiresSubjectiveEvidence: true,
+        detail:
+          unknown.length
+            ? 'Destination fit cannot be established for every remaining affiliate: some role tools have no organization-visible rating.'
+            : 'Current ratings fall within the required empirical destination-level range.',
+      },
+    ];
+
+    const judgment =
+      judgmentOf(
+        constraints.map(
+          (constraint) => constraint.state
+        )
+      );
 
     evaluations.push({
       ...evaluation,
 
-      target:
-        filteredTarget,
+      judgment,
+      eligible: judgment === 'defensible',
+      recommendation:
+        judgment === 'indeterminate'
+          ? 'indeterminate'
+          : evaluation.recommendation,
 
-      reasons: [
-        ...evaluation.reasons,
-        'Current ratings also fall within the required empirical destination-level range.',
+      constraints,
+
+      missingEvidence: [
+        ...evaluation.missingEvidence,
+        ...missingDestinationEvidence,
       ],
 
       destinationFit: {
         teams: teamFits,
         eligibleTeamIds,
+        indeterminateTeamIds,
       },
     });
   }
@@ -1191,7 +1428,15 @@ export function applyDestinationFitToAssignments(
     eligible:
       evaluations.filter(
         (evaluation) =>
-          evaluation.eligible
+          evaluation.judgment ===
+          'defensible'
+      ),
+
+    indeterminate:
+      evaluations.filter(
+        (evaluation) =>
+          evaluation.judgment ===
+          'indeterminate'
       ),
   };
 }

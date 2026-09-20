@@ -1,13 +1,15 @@
 import {
   db,
-  tableColumns,
-  tableExists,
 } from './db.js';
 
 import {
-  gloves,
   POSITION_CODES,
 } from './gloves.js';
+
+import {
+  loadScoutedAbilities,
+  scoutedGloves,
+} from './scoutedEvidence.js';
 
 import {
   computeMinorLeagueRosterHealth,
@@ -19,9 +21,16 @@ import {
   canUseAsRegularAssignment,
   evaluateDevelopmentProtection,
   evaluatePositionAssignments,
+  hasKnownTier,
+  requireKnownProtection,
   type DevelopmentProtection,
   type PositionAssignmentFit,
 } from './developmentFit.js';
+
+import type {
+  IndeterminateMoveCandidate,
+  MissingEvidence,
+} from './developmentJudgment.js';
 
 import {
   resolvePhilosophy,
@@ -111,10 +120,11 @@ export interface MinorLeagueReassignment {
         | 'poor'
         | 'borderline'
         | 'viable'
-        | 'strong';
+        | 'strong'
+        | 'indeterminate';
 
-      compositePercentile: number;
-      weakestCorePercentile: number;
+      compositePercentile: number | null;
+      weakestCorePercentile: number | null;
     } | null;
 
     reasons: string[];
@@ -209,6 +219,14 @@ export interface MinorLeagueRejectedMove {
   reasons: string[];
 }
 
+/**
+ * A move Player Development cannot yet judge. Operations shows it and explains
+ * the roster need, but does not present it as approved, does not reject it, and
+ * does not rank it against approved plans.
+ */
+export type MinorLeagueIndeterminateMove =
+  IndeterminateMoveCandidate;
+
 export interface MinorLeagueRebalanceResult {
   orgId: number;
 
@@ -229,12 +247,14 @@ export interface MinorLeagueRebalanceResult {
    */
   rejected: MinorLeagueRejectedMove[];
 
-  safeguards: string[];
-}
+  /**
+   * Candidates that would address a roster need but that Player Development
+   * cannot judge because organization-visible rating evidence is missing.
+   * These are not developmentally approved and are not in `plans`.
+   */
+  indeterminate: MinorLeagueIndeterminateMove[];
 
-function nullableRating(value: unknown): number | null {
-  const n = Number(value);
-  return Number.isFinite(n) && n > 0 ? n : null;
+  safeguards: string[];
 }
 
 function hitterBodyStatus(count: number): RosterHealthStatus {
@@ -392,44 +412,7 @@ function severity(
   return 0;
 }
 
-function valueColumns(): {
-  join: string;
-  current: string;
-  potential: string;
-} {
-  if (!tableExists('players_value')) {
-    return {
-      join: '',
-      current: 'NULL',
-      potential: 'NULL',
-    };
-  }
-
-  const columns = tableColumns('players_value');
-
-  const current = columns.includes('oa')
-    ? 'v.oa'
-    : columns.includes('oa_rating')
-      ? 'v.oa_rating'
-      : 'NULL';
-
-  const potential = columns.includes('pot')
-    ? 'v.pot'
-    : columns.includes('pot_rating')
-      ? 'v.pot_rating'
-      : 'NULL';
-
-  return {
-    join:
-      'LEFT JOIN players_value v ON v.player_id = p.player_id',
-    current,
-    potential,
-  };
-}
-
 function hittersForTeam(teamId: number): Hitter[] {
-  const values = valueColumns();
-
   const rows = db.prepare(`
     SELECT
       p.player_id,
@@ -437,19 +420,24 @@ function hittersForTeam(teamId: number): Hitter[] {
       p.last_name,
       p.age,
       p.team_id,
-      p.position,
-      ${values.current} AS current_rating,
-      ${values.potential} AS potential_rating
+      p.position
     FROM players p
     JOIN team_roster tr
       ON tr.team_id = p.team_id
      AND tr.player_id = p.player_id
      AND tr.list_id = 2
-    ${values.join}
     WHERE p.team_id = ?
       AND p.retired = 0
       AND p.position != 1
   `).all(teamId) as Array<Record<string, unknown>>;
+
+  /*
+   * Who is on the roster is an objective fact read above. What their ratings
+   * say comes only from the scouted-evidence adapter.
+   */
+  const abilities = loadScoutedAbilities(
+    rows.map((row) => Number(row.player_id))
+  );
 
   return rows.map((row) => {
     const playerId = Number(row.player_id);
@@ -461,7 +449,7 @@ function hittersForTeam(teamId: number): Hitter[] {
         ? listedRaw as PositionCode
         : null;
 
-    const profile = gloves(playerId);
+    const profile = scoutedGloves(playerId);
 
     const coverage = new Set<PositionCode>();
 
@@ -513,17 +501,16 @@ function hittersForTeam(teamId: number): Hitter[] {
       ];
     }
 
-    const current =
-      nullableRating(row.current_rating);
+    const ability = abilities.for(playerId);
 
-    const potential =
-      nullableRating(row.potential_rating);
+    const current = ability.current;
+
+    const potential = ability.potential;
 
     const protection =
       evaluateDevelopmentProtection({
         age: Number(row.age),
-        current,
-        potential,
+        ability,
       });
 
     return {
@@ -655,7 +642,7 @@ function bestAssignment(
       canUseAsRegularAssignment(
         player.protection,
         assignment
-      )
+      ) === 'satisfied'
   );
 
   if (!allowed.length) return null;
@@ -702,6 +689,11 @@ function developmentMoveAllowed(
   allowed: boolean;
   reason?: string;
 } {
+  // Indeterminate players never reach here; a null tier would otherwise pass every check below
+  requireKnownProtection(
+    player.protection
+  );
+
   /*
    * Core prospects are never used to solve an ordinary roster imbalance.
    * A later development-specific tool may recommend moving them for their own
@@ -838,8 +830,15 @@ interface ProspectAssignmentLike {
     | 'demotion'
     | 'mlb_discussion';
 
+  judgment:
+    | 'defensible'
+    | 'indefensible'
+    | 'indeterminate';
+
   eligible: boolean;
   recommendation: string;
+
+  missingEvidence: MissingEvidence[];
 
   target: {
     level: number;
@@ -864,18 +863,19 @@ interface ProspectAssignmentLike {
 
         kind: string;
 
-        compositePercentile: number;
-        weakestCorePercentile: number;
+        compositePercentile: number | null;
+        weakestCorePercentile: number | null;
 
         classification:
           | 'poor'
           | 'borderline'
           | 'viable'
-          | 'strong';
+          | 'strong'
+          | 'indeterminate';
       };
 
       gate: {
-        passes: boolean;
+        state: 'satisfied' | 'not_satisfied' | 'unknown';
       } | null;
     }>;
 
@@ -913,10 +913,11 @@ interface DevelopmentAuthorization {
       | 'poor'
       | 'borderline'
       | 'viable'
-      | 'strong';
+      | 'strong'
+      | 'indeterminate';
 
-    compositePercentile: number;
-    weakestCorePercentile: number;
+    compositePercentile: number | null;
+    weakestCorePercentile: number | null;
   } | null;
 
   reasons: string[];
@@ -958,12 +959,19 @@ interface RankedSearchPlan {
 interface PlanSearchResult {
   plans: RankedSearchPlan[];
   rejected: MinorLeagueRejectedMove[];
+  indeterminate: MinorLeagueIndeterminateMove[];
 }
 
 function sameLevelProtectionCost(
-  protection: DevelopmentProtection,
+  unknownProtection: DevelopmentProtection,
   philosophy: MinorLeagueOperationsPhilosophy
 ): number {
+  // Indeterminate players are set aside before ranking; reaching here with one throws
+  const protection =
+    requireKnownProtection(
+      unknownProtection
+    );
+
   const base =
     protection.tier ===
       'organizational_depth'
@@ -1017,6 +1025,15 @@ function destinationStretchCost(
 
     case 'poor':
       return 30;
+
+    case 'indeterminate':
+      /*
+       * The destination comparison could not be made for lack of visible
+       * ratings. This term only ranks moves Player Development has already
+       * approved; it is omitted rather than given a value, so the missing
+       * comparison neither helps nor hurts the move.
+       */
+      return 0;
   }
 }
 
@@ -1135,17 +1152,22 @@ function philosophyInfluence(
   if (
     move.kind === 'demotion'
   ) {
+    const knownTier =
+      requireKnownProtection(
+        move.player.protection
+      ).tier;
+
     const protectionWeight =
-      move.player.protection.tier ===
+      knownTier ===
         'core_prospect'
         ? 1
-        : move.player.protection.tier ===
+        : knownTier ===
             'protected_prospect'
           ? 0.8
-          : move.player.protection.tier ===
+          : knownTier ===
               'development_priority'
             ? 0.5
-            : move.player.protection.tier ===
+            : knownTier ===
                 'normal'
               ? 0.25
               : 0;
@@ -1386,6 +1408,37 @@ function prospectBatters(
   return data.batters as ProspectLike[];
 }
 
+function indeterminateMove(input: {
+  playerId: number;
+  playerName: string;
+  kind: string;
+  source: AffiliateRosterHealth;
+  destination: AffiliateRosterHealth;
+  missingEvidence: MissingEvidence[];
+  reasons: string[];
+}): MinorLeagueIndeterminateMove {
+  return {
+    playerId: input.playerId,
+    playerName: input.playerName,
+    kind: input.kind,
+    fromTeamId: input.source.teamId,
+    fromTeam: input.source.label,
+    toTeamId: input.destination.teamId,
+    toTeam: input.destination.label,
+    phase: 'development',
+    developmentJudgment: 'indeterminate',
+    missingEvidence: input.missingEvidence,
+
+    /* The destination's need is objective and stated regardless of the development question. */
+    rosterNeed: [
+      `${input.destination.label} is ${input.destination.overall.toUpperCase()}.`,
+      ...input.destination.issues,
+    ],
+
+    reasons: input.reasons,
+  };
+}
+
 function buildCandidatePool(
   destination: AffiliateRosterHealth,
   peers: AffiliateRosterHealth[],
@@ -1395,9 +1448,11 @@ function buildCandidatePool(
 ): {
   candidates: SearchCandidate[];
   rejected: MinorLeagueRejectedMove[];
+  indeterminate: MinorLeagueIndeterminateMove[];
 } {
   const candidates: SearchCandidate[] = [];
   const rejected: MinorLeagueRejectedMove[] = [];
+  const indeterminate: MinorLeagueIndeterminateMove[] = [];
 
   const healthByTeam =
     new Map(
@@ -1432,6 +1487,31 @@ function buildCandidatePool(
         source.teamId
       ) ?? []
     ) {
+      /*
+       * Whether a same-level move respects the player's developmental
+       * protection cannot be answered without his ratings. He is neither
+       * cleared nor refused: he is listed as indeterminate, with the roster
+       * need, and kept out of the ranked plans.
+       */
+      if (!hasKnownTier(player.protection)) {
+        indeterminate.push(
+          indeterminateMove({
+            playerId: player.playerId,
+            playerName: player.name,
+            kind: 'same_level_reassignment',
+            source,
+            destination,
+            missingEvidence:
+              player.protection.missingEvidence,
+            reasons: [
+              'Developmental protection cannot be determined without organization-visible current and potential ratings, so Player Development cannot say whether this same-level move is defensible.',
+            ],
+          })
+        );
+
+        continue;
+      }
+
       candidates.push({
         kind:
           'same_level_reassignment',
@@ -1528,7 +1608,32 @@ function buildCandidatePool(
         continue;
       }
 
-      if (!evaluation.eligible) {
+      /*
+       * Player Development's judgment has three outcomes. Only `indefensible`
+       * is a rejection; `indeterminate` is surfaced with the roster need and
+       * the missing evidence, and is never treated as approved.
+       */
+      if (evaluation.judgment === 'indeterminate') {
+        indeterminate.push(
+          indeterminateMove({
+            playerId: prospect.player_id,
+            playerName: prospect.name,
+            kind,
+            source,
+            destination,
+            missingEvidence:
+              evaluation.missingEvidence,
+            reasons: [
+              'Player Development cannot yet say whether this assignment is defensible; the required organization-visible evidence is missing.',
+              ...evaluation.reasons,
+            ],
+          })
+        );
+
+        continue;
+      }
+
+      if (evaluation.judgment === 'indefensible') {
         rejected.push({
           playerId:
             prospect.player_id,
@@ -1559,6 +1664,32 @@ function buildCandidatePool(
                   'Player Development did not authorize this assignment.',
                 ],
         });
+
+        continue;
+      }
+
+      /*
+       * Defensible level movement still needs a regular defensive role that
+       * respects the player's protection tier. With that tier indeterminate
+       * the assignment is not established as a whole, so it is listed as
+       * indeterminate rather than planned.
+       */
+      if (!hasKnownTier(player.protection)) {
+        indeterminate.push(
+          indeterminateMove({
+            playerId: prospect.player_id,
+            playerName: prospect.name,
+            kind,
+            source,
+            destination,
+            missingEvidence:
+              player.protection.missingEvidence,
+            reasons: [
+              'Player Development authorized this assignment, but the regular defensive role it needs depends on developmental protection, which cannot be determined without organization-visible ratings.',
+              ...evaluation.reasons,
+            ],
+          })
+        );
 
         continue;
       }
@@ -1671,6 +1802,7 @@ function buildCandidatePool(
   return {
     candidates,
     rejected,
+    indeterminate,
   };
 }
 
@@ -1700,6 +1832,7 @@ function findPlans(
     return {
       plans: [],
       rejected: [],
+      indeterminate: [],
     };
   }
 
@@ -1859,10 +1992,10 @@ function findPlans(
          * because the destination needs a body.
          */
         if (
-          !canUseAsRegularAssignment(
+          canUseAsRegularAssignment(
             player.protection,
             assignment
-          )
+          ) !== 'satisfied'
         ) {
           continue;
         }
@@ -1993,6 +2126,9 @@ function findPlans(
 
     rejected:
       pool.rejected,
+
+    indeterminate:
+      pool.indeterminate,
   };
 }
 
@@ -2058,6 +2194,9 @@ export function computeMinorLeagueRebalance(
   const rejected:
     MinorLeagueRejectedMove[] = [];
 
+  const indeterminate:
+    MinorLeagueIndeterminateMove[] = [];
+
   for (
     const destination of health
   ) {
@@ -2103,6 +2242,10 @@ export function computeMinorLeagueRebalance(
 
     rejected.push(
       ...searchResult.rejected
+    );
+
+    indeterminate.push(
+      ...searchResult.indeterminate
     );
 
     const rankedPlan =
@@ -2302,14 +2445,16 @@ export function computeMinorLeagueRebalance(
                       ).adjustment,
 
                     protectionTier:
-                      move.player
-                        .protection
-                        .tier,
+                      requireKnownProtection(
+                        move.player
+                          .protection
+                      ).tier,
 
                     protectionScore:
-                      move.player
-                        .protection
-                        .score,
+                      requireKnownProtection(
+                        move.player
+                          .protection
+                      ).score,
 
                     assignment:
                       move.assignment.code,
@@ -2351,6 +2496,7 @@ export function computeMinorLeagueRebalance(
     plans,
     deferred,
     rejected,
+    indeterminate,
 
     safeguards: [
       'Minor League Operations cannot invent a promotion, skip-level promotion, or demotion; those moves must already be authorized by the Prospect Assignment Engine.',
@@ -2360,6 +2506,7 @@ export function computeMinorLeagueRebalance(
       'A source affiliate must remain structurally healthy after every proposed move.',
       'Rookie-level destination balancing remains deferred until ACL/DSL assignment rules are modeled explicitly.',
       'This version unifies position-player moves; pitcher roster simulation is intentionally handled in the next pass.',
+      'A move Player Development cannot judge for lack of organization-visible ratings is listed as indeterminate: it is not approved, not rejected, and not ranked with the plans.',
       'Recommendations are read-only and never modify the OOTP save.',
     ],
   };
