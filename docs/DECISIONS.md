@@ -502,3 +502,43 @@ within the season that used the last option year; a fourth option year; rehab
 returns; designating an injured or rehabbing player; claims, refusals and
 free-agency elections; trades. Each returns `indeterminate` with the missing
 evidence, never a default.
+
+## D-024 — MLB Operations is a consumer: needs from state, staged verdicts, no ranking
+
+**Status:** Accepted. **Implementation:** Present for one slice (`server/mlbRoster.ts`,
+`mlbNeeds.ts`, `mlbResponses.ts`, `mlbEvidence.ts`, `mlbOperations.ts`). Design and the audit
+of `origin/feature/mlb-operations`: [MLB_OPERATIONS.md](MLB_OPERATIONS.md).
+
+Major League Operations answers "what problems need my attention on the major-league
+roster, what could address them, what would each require, and what follows?" It
+coordinates specialists and owns none of their answers.
+
+- **Needs are derived from the current export's Player State**, never from differences
+  between Pennant's own imports (a snapshot difference proves state changed, not why:
+  D-020), and are never persisted. A need that stops being true is simply not returned. A
+  cause is a stated fact about a named player, or absent; Pennant does not infer one.
+  Roster standards (5 SP, 7 RP, 2 C) are named assumptions, shown with each need.
+- **Stages are never collapsed and no candidate silently disappears.** Discovery is
+  objective; availability comes from Player State; development from Player Development's
+  MLB assessment (`unassessed` is neither a pass nor a rejection, D-018); rights from Player
+  Rights per required action; role fit from Player Development's destination fit at the MLB
+  level; consequences from roster counts, Minor League Operations' read-only scenario and
+  contract facts. A candidate that fails a stage stays visible in a group naming the stage.
+- **A transaction path is only as certain as its least certain step.** Any `indeterminate`
+  or unevaluated step makes the path indeterminate; MLB Operations composes `ActionRights`
+  and never decides legality.
+- **No ranking, no score.** Groups and candidates are ordered by path kind, level and name.
+  Organizational Philosophy annotates a candidate that is valid on every stage
+  (`preferred` / `acceptable` / `disfavored` / `no_preference`, naming the dimension) and
+  can neither authorize, block, nor resolve an unknown.
+- **The GM may pose a what-if** ("if X is unavailable"); it is labelled hypothetical and
+  states that nothing says he will be.
+- **Read-only.** Nothing is executed or written.
+
+The old branch's `rosterTransactionState`, snapshot-based need detection, role-suitability
+and cascade planner were not carried over (MLB_OPERATIONS.md §2). Guarded by
+`tests/mlbOperationsBoundary.test.ts`.
+
+**Remaining gaps:** performance-driven and bench/positional needs; "add to the 40-man and
+promote" is not one Rights action, so non-40-man paths are `indeterminate`; IL activation
+rules; Minor League Operations counts rehabbing players in roster health.

@@ -232,7 +232,7 @@ const onIl = (c: RightsContext): boolean | null => {
 };
 
 /** The active-roster limit in force, or null when the league's rules are unknown. */
-function activeLimit(league: LeagueRules): number | null {
+export function activeLimit(league: LeagueRules): number | null {
   const expanded = league.rostersExpanded.value;
   if (expanded === null) return null;
   return expanded ? league.expandedRosterLimit.value : league.activeRosterLimit.value;

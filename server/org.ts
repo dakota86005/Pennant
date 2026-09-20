@@ -14,7 +14,9 @@ import {
 } from './prospectDecision.js';
 import {
   evaluateProspectAssignments,
+  type ProspectAssignmentEvaluation,
 } from './prospectAssignments.js';
+import type { DevelopmentalJudgment, MissingEvidence } from './developmentJudgment.js';
 import {
   applyDestinationFitToAssignments,
 } from './destinationFit.js';
@@ -588,6 +590,54 @@ export function computeProspects(orgId: number): { batters: unknown[]; pitchers:
   batters.sort(byScore);
   pitchers.sort(byScore);
   return { batters, pitchers, baselines };
+}
+
+/**
+ * Player Development's AAA -> MLB assessment for one minor leaguer, exposed to
+ * other domains (MLB Operations) with the full three-state judgment.
+ *
+ * Absence from the returned map means Player Development has NOT assessed the
+ * player: `computeProspects` only evaluates a minor leaguer with enough
+ * production at his current level. That is not a pass and not a rejection.
+ * `eligible: false` is not a rejection either; read `judgment` (D-018).
+ */
+export interface MlbDiscussionAssessment {
+  playerId: number;
+  level: number;
+  judgment: DevelopmentalJudgment;
+  eligible: boolean;
+  reasons: string[];
+  blockers: string[];
+  missingEvidence: MissingEvidence[];
+  evidence: ProspectAssignmentEvaluation['evidence'];
+  requirements: ProspectAssignmentEvaluation['requirements'];
+}
+
+export function mlbDiscussionAssessments(orgId: number): Map<number, MlbDiscussionAssessment> {
+  const prospects = computeProspects(orgId);
+  const out = new Map<number, MlbDiscussionAssessment>();
+  for (const candidate of [...prospects.batters, ...prospects.pitchers]) {
+    const row = candidate as {
+      player_id?: unknown;
+      level?: unknown;
+      assignments?: { evaluations?: ProspectAssignmentEvaluation[] };
+    };
+    if (typeof row.player_id !== 'number' || typeof row.level !== 'number') continue;
+    const evaluation = row.assignments?.evaluations?.find((item) => item.kind === 'mlb_discussion');
+    if (!evaluation) continue;
+    out.set(row.player_id, {
+      playerId: row.player_id,
+      level: row.level,
+      judgment: evaluation.judgment,
+      eligible: evaluation.eligible,
+      reasons: evaluation.reasons,
+      blockers: evaluation.blockers,
+      missingEvidence: evaluation.missingEvidence,
+      evidence: evaluation.evidence,
+      requirements: evaluation.requirements,
+    });
+  }
+  return out;
 }
 
 orgRoutes.get('/prospects/:orgId', (req, res) => {

@@ -123,6 +123,7 @@ artifact, not an alternative application backend.
 | Player Development | `org.ts`, `prospectDecision.ts`, `prospectAssignments.ts`, `destinationFit.ts`, `developmentFit.ts`, and scouting-history functions evaluate evidence, developmental protection, legal assignments, and destination fit. | This layer determines defensibility; it does not choose transactions for the GM. |
 | Organizational Philosophy | `philosophy.ts` defines organization-specific dimensions/policies; `settings.ts` persists and resolves profiles; `Philosophy.tsx` edits them. | Philosophy ranks or adjusts choices after hard baseball/development constraints. It is not player evidence. |
 | Minor League Operations | `minorLeagueRoster.ts`, `minorLeagueMoves.ts`, `pitcherRosterSimulation.ts`, `minorLeaguePitchingOperations.ts`, and `minorLeagueRetention.ts` diagnose affiliate structure and propose assignment/retention responses. | Level-changing moves must already be authorized by Player Development. Outputs are read-only recommendations. |
+| MLB Operations | `mlbRoster.ts` (club view over Player State), `mlbNeeds.ts` (state-derived needs), `mlbResponses.ts` (staged candidates, transaction path, consequences, philosophy annotation), `mlbEvidence.ts` (adapters to the specialists), `mlbOperations.ts` (service + `/api/mlb-operations`), `MlbOperations.tsx`. | Consumer only (D-024, [MLB_OPERATIONS.md](MLB_OPERATIONS.md)): decides no scouting, development, rights, philosophy or farm assignment question. Reads no raw rating, roster-status, option or log source; `tests/mlbOperationsBoundary.test.ts` enforces it. |
 | AI features | `providers.ts`, `models.ts`, `chat.ts`, `ai.ts`, and `storylines.ts` provide staff chat, briefings, trade discussion, and storylines through configurable providers. | AI consumes computed save-grounded facts, calls the same API as the UI, and supports the front-office experience. It does not become a parallel recommendation engine. |
 | Web UI | React pages in `src/` render domain results, evidence, alternatives, and local interactions. `src/App.tsx` owns selected-save and selected-organization UI context. | React may shape presentation but should not silently reimplement baseball rules. |
 | Desktop shell | `electron/main.ts`, `preload.ts`, and `updater.ts` embed the local server, expose a minimal IPC bridge, protect navigation, store secrets, and manage consent-first updates. | Keep Node access out of the renderer and keep IPC narrow. |
@@ -414,6 +415,32 @@ does not consume it yet.
 Retention similarly separates developmental value, organizational utility,
 roster pressure, transaction guardrails, and observed development. A release
 candidate is an advisory flag for GM review, never an automatic transaction.
+
+## MLB Operations
+
+```text
+Player State ──► mlbRoster (club view: roles, availability, counts, limits)
+                    │
+                    ├──► mlbNeeds ── need (kind, origin, severity, urgency, horizon, causes, unknowns)
+                    │
+need ──► mlbResponses ──┬─ discovery        objective
+                        ├─ availability     Player State
+                        ├─ development      org.ts mlbDiscussionAssessments (or: unassessed)
+                        ├─ rights           rightsFor / playerRights (per required action)
+                        ├─ role fit         destinationFit at the MLB club
+                        ├─ consequences     counts; minorLeagueRoster scenario; contract facts
+                        └─ philosophy       annotation, valid alternatives only
+                                 │
+                                 ▼
+                         groups, unranked ──► GM
+```
+
+The response builder is pure: it takes ports (`ResponsePorts`) and never reaches a table, the
+log, or a rating column. `mlbOperations.ts` wires the real specialists. Directions: **fill**
+(internal role change, recall, add to the 40-man), **clear** (who could be moved when an
+injured player returns to a full roster) and **role_needed** (an open spot names no role).
+Needs come from the current export only, so they appear on the first import; the GM can also
+pose a what-if. Details, standards, owner decisions: [MLB_OPERATIONS.md](MLB_OPERATIONS.md).
 
 ## Organization context
 

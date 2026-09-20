@@ -39,6 +39,11 @@ export interface PlayerState {
   /** `teams.level` of that club: 1 is MLB, 2 Triple-A, and so on. */
   level: Sourced<number>;
 
+  /** `players.position` — OOTP's listed position (1 pitcher, 2 catcher ... 9 right field, 10 DH). */
+  position: Sourced<number>;
+  /** `players.role` — OOTP's pitcher assignment (11 starter, 12 reliever, 13 closer); 0 for hitters. */
+  role: Sourced<number>;
+
   /** `players_roster_status.is_active` — on the MLB active roster. */
   activeRoster: Sourced<boolean>;
   /** `players_roster_status.is_on_secondary` — on the 40-man (secondary) roster. */
@@ -123,7 +128,7 @@ const STATUS_COLUMNS = [
   'pro_service_years', 'pro_service_days', 'was_traded',
 ];
 const PLAYER_COLUMNS = [
-  'player_id', 'first_name', 'last_name', 'age', 'organization_id', 'team_id', 'retired',
+  'player_id', 'first_name', 'last_name', 'age', 'organization_id', 'team_id', 'retired', 'position', 'role',
   'injury_is_injured', 'injury_dtd_injury', 'injury_left',
 ];
 
@@ -213,6 +218,8 @@ function stateFromRow(row: Row, schema: Schema, majorContract: Map<number, boole
     organizationId: player('organization_id', asIs),
     teamId: player('team_id', asIs),
     level: teamLevel,
+    position: player('position', asIs),
+    role: player('role', asIs),
     activeRoster: active,
     fortyMan: status('is_on_secondary', flag),
     injuredList: { onIl: il, onIl60: il60 },

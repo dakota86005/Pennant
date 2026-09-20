@@ -66,6 +66,11 @@ decision, roadmap item, or project-state fact changes.
   requirement, or blocker may depend on it, and it is applied only afterwards in
   `assignmentPreference.ts` to rank defensible assignments (D-019). Do not
   recreate eligibility through ranking or cutoffs.
+- MLB Operations (`server/mlb*.ts`) is a consumer of Player State, Player Rights, Player
+  Development, Minor League Operations and philosophy (D-024). Derive needs from the current
+  export, never from snapshot differences; never read a rating, option, 40-man, or log source
+  itself; never rank or score candidates; a path is only as certain as its least certain
+  step. `tests/mlbOperationsBoundary.test.ts` enforces it.
 - Recommendations are advisory. The user/GM makes the final decision. Do not
   add automatic OOTP transactions or save mutation as an incidental feature.
 - Organization-specific behavior should resolve the configured organization,

@@ -140,22 +140,27 @@ backed by controlled copied-save experiments and OOTP's own documentation
 - saying in the freshness model that the live log lags in-session moves until
   the game is saved.
 
-### 7. Add the MLB opportunity layer
+### 7. MLB opportunity layer — first slice implemented; extend it
 
-AAA-to-MLB is currently surfaced as a discussion, while direct skip-level MLB
-moves are intentionally excluded from the minor-league engine. Build a separate
-MLB opportunity model that combines developmental readiness with:
+`origin/feature/mlb-operations` was audited and **not merged**; the subsystem was rebuilt on
+Player State, Player Rights, Player Development and the evidence adapter ([D-024](DECISIONS.md),
+[MLB_OPERATIONS.md](MLB_OPERATIONS.md)). Implemented: state-derived needs (role below
+standard, open spot, IL return crunch, GM what-if), staged responses (internal role change,
+recall, add to the 40-man) with rights, development, MLB-level role fit, transaction path,
+roster and farm consequences, philosophy annotation, and a problem-centred workspace.
 
-- 26/40-man openings and role availability;
-- options, waivers, DFA and Rule 5 consequences;
-- service-time/control facts without hiding them as value judgments;
-- injuries, schedule needs, and competitive context; and
-- an explicit GM decision surface.
+Next, in dependency order:
 
-It must consume Player Development eligibility rather than treating a major
-league roster hole as proof a prospect is ready, and it depends on the rights
-evaluator (D-023) rather than on inferred roster state, and must re-point the
-old `rosterTransactionState`/`evaluateRosterAction` prior art at it.
+- Decide the owner questions in MLB_OPERATIONS.md §13 (development gate for depth players,
+  roster standards, performance-review rules).
+- **Rights:** evaluate "add to the 40-man and promote" as one action; establish IL activation.
+- Performance-driven review flags (sample- and context-aware, never a transaction trigger),
+  bench and positional coverage needs, DH/platoon, defensive coverage.
+- Minor League Operations: rehab-aware roster health, and a cascade consumer (the old branch's
+  bounded planner was deferred, not adopted).
+- Service-time and Rule 5 consequences as stated facts where the export supports them.
+- External acquisition, waiver claims, free-agent strategy and payroll planning build on this
+  later; they are out of scope here.
 
 ## Then: deepen organizational identity
 

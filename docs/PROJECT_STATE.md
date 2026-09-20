@@ -7,20 +7,17 @@ material implementation state changes.
 ## Repository snapshot
 
 - Package: `ootp-front-office` version `0.27.2`.
-- Inspected branch: `feature/player-rights`, created from `main` after the
-  merged Player State foundation (PR #2).
+- Inspected branch: `feature/mlb-operations-v2`, created from `feature/player-rights`
+  (Player State foundation merged as PR #2; Player Rights not yet merged to `main`).
 - Stack: TypeScript, React 18, Vite 6, Express 4, SQLite via
   `better-sqlite3`, Electron 41, and Vitest 4.
-- Validation at this snapshot: `npx tsc --noEmit` clean, `npm test` 77 files /
-  792 tests passing, `npm run build` succeeds.
-- `origin/feature/mlb-operations` is **not merged**. Two of its foundation
-  modules, `rosterStateHistory.ts` and `transactionHistory.ts`, were ported
-  selectively and adapted to the source hierarchy in D-020 (snapshot differences
-  are `observed_snapshot` and never name a transaction). Its
-  `rosterTransactionState.ts` is superseded by `playerState.ts` and was not
-  ported; its rights evaluation (`evaluateRosterAction`) and the MLB Operations
-  workspace remain on that branch. When that branch is integrated, re-point it at
-  `playerState.ts` and `assignmentContext.ts`.
+- Validation at this snapshot: `npx tsc --noEmit` clean, `npm test` 82 files /
+  867 tests passing, `npm run build` succeeds.
+- `origin/feature/mlb-operations` is **not merged** and was audited end to end
+  ([MLB_OPERATIONS.md](MLB_OPERATIONS.md) §2). `rosterStateHistory.ts` and
+  `transactionHistory.ts` were ported earlier in adapted form; `rosterTransactionState.ts`
+  is superseded and removed from consideration; the rest was replaced, modified or deferred
+  per component. The current MLB Operations slice is on `feature/mlb-operations-v2`.
 
 The package version and latest changelog identify `0.27.2` as the release
 baseline. `main` contains substantial organizational philosophy, farm-system,
@@ -276,6 +273,35 @@ Present on this branch (D-023; research in [RIGHTS_RESEARCH.md](RIGHTS_RESEARCH.
 Not done, by design: rights for IL activation, Rule 5, re-optioning after the
 last option year, rehab returns, claims, refusals, trades (all `indeterminate`).
 
+## Implemented MLB Operations (first slice)
+
+Present on `feature/mlb-operations-v2` (D-024; design and audit in
+[MLB_OPERATIONS.md](MLB_OPERATIONS.md)):
+
+- **Needs** (`mlbNeeds.ts`): derived from the current export only. `role_below_standard`
+  (5 healthy SP, 7 RP, 2 C: Pennant's stated assumption), `open_active_spot`,
+  `il_return_crunch` (an injured player due back within 15 days to a full active roster), and
+  a GM-posed `what_if`. Each carries causes as stated facts, an injury-days horizon
+  (temporary / extended / long-term), evidence and unknowns. Nothing is persisted or inferred
+  from snapshot differences.
+- **Responses** (`mlbResponses.ts`, wired by `mlbOperations.ts`): candidates from role
+  changes among active players, recalls of 40-man minor leaguers and non-40-man Triple-A
+  players, each with separate verdicts from Player Development (`org.ts`
+  `mlbDiscussionAssessments`; unassessed stays unassessed), Player Rights (per action,
+  three-valued), role fit (`evaluateDestinationFit` at the MLB club), MLB roster effect,
+  Minor League Operations' affiliate scenario (`RosterHealthScenario`), contract facts and a
+  philosophy annotation for valid alternatives. Groups are explained and unranked. For a
+  returning injured player it lists who could be moved, with Rights on optioning each.
+- **API/UI:** `GET /api/mlb-operations/:orgId` and `.../responses?need=`; page "MLB
+  Operations" (Front Office group). Read-only; not in the static export.
+- **Foundation changes:** `PlayerState.position/role`, `pitchingRole.ts`, exported
+  `activeLimit`, schema-tolerant `minorLeagueRoster` player columns.
+- **Verified on the real Arizona save** (read-only): the one observed need is Cristian Mena's
+  return; every Reno 40-man recall is `indeterminate` because that save has no live log.
+- **Not built:** performance-driven needs, bench/positional coverage, Rights for promoting a
+  new 40-man addition and for IL activation, a Minor League Operations cascade consumer,
+  trades, waivers, free agency.
+
 ## Current organization resolution
 
 Implemented behavior is distributed:
@@ -306,9 +332,9 @@ resolution across all organization-specific features is future work.
   fielding grades share it is an unverified assumption.
 - Rookie-level ACL/DSL movement is explicitly deferred until eligibility and
   environment rules are modeled.
-- AAA-to-MLB is a discussion rather than a full opportunity decision; direct
-  skip-level moves to MLB are deliberately excluded from the minor-league
-  engine.
+- AAA-to-MLB is assessed by Player Development and consumed by MLB Operations for
+  injury-driven roster problems only; direct skip-level moves to MLB remain excluded from the
+  minor-league engine.
 - A manual-protection input is reserved in the development model, but no user
   control persists or supplies it.
 - Staff-derived philosophy values are not implemented.
