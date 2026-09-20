@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { apiDelete, apiGet, apiPost, getPlayer, type PlayerDossier } from './api';
 import { PlayerHover } from './playerHover';
 import { AssignmentBlock } from './AssignmentContext';
+import { RightsBlock } from './PlayerRights';
 import { formatRatingPair, ratingFraction } from './ratingScale';
 
 // Tiny pub/sub so any table cell can open the player card without prop drilling
@@ -193,6 +194,7 @@ function Dossier({ d }: { d: PlayerDossier }) {
             </div>
           )}
           <AssignmentBlock assignment={d.assignment} />
+          <RightsBlock rights={d.rights} />
           <WatchControls playerId={d.player_id} name={d.name} />
         </div>
         <div className="dossier-pcts">

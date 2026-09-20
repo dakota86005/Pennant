@@ -7,12 +7,12 @@ material implementation state changes.
 ## Repository snapshot
 
 - Package: `ootp-front-office` version `0.27.2`.
-- Inspected branch: `feature/player-state-foundation`, created from merged
-  `main` at `a8d28f7` (the evidence-boundary work, PR #1).
+- Inspected branch: `feature/player-rights`, created from `main` after the
+  merged Player State foundation (PR #2).
 - Stack: TypeScript, React 18, Vite 6, Express 4, SQLite via
   `better-sqlite3`, Electron 41, and Vitest 4.
-- Validation at this snapshot: `npx tsc --noEmit` clean, `npm test` 76 files /
-  751 tests passing, `npm run build` succeeds.
+- Validation at this snapshot: `npx tsc --noEmit` clean, `npm test` 77 files /
+  792 tests passing, `npm run build` succeeds.
 - `origin/feature/mlb-operations` is **not merged**. Two of its foundation
   modules, `rosterStateHistory.ts` and `transactionHistory.ts`, were ported
   selectively and adapted to the source hierarchy in D-020 (snapshot differences
@@ -246,8 +246,35 @@ Present on this branch (D-020 to D-022):
   100 ms, all sources current through 15 May, the 40-man is 30 as exported (the
   old inference said 35), and Merrill Kelly is a rehab assignment sent 5 May.
 
-Not done, by design: rights/eligibility (true optionability, IL-60 versus
-40-man, recall waiting period, Rule 5 clock, outright, trade/claim semantics).
+## Implemented player rights
+
+Present on this branch (D-023; research in [RIGHTS_RESEARCH.md](RIGHTS_RESEARCH.md)):
+
+- **League rules** (`server/leagueRules.ts`): option rule, DFA and waiver
+  periods, active/expanded/40-man limits, read as exported.
+- **Rights evaluator** (`server/playerRights.ts`): option, recall, add to the
+  40-man, designate, outright assignment and IL activation, each
+  `eligible`/`ineligible`/`indeterminate` with reasons carrying their basis
+  (export, observed, documented), requirements, missing evidence and
+  limitations; plus an option-year standing and a Rule 5 standing. Stale export
+  makes every action indeterminate; only recall depends on the log.
+- **Consumers:** `rightsFor` in `playerContext.ts`; the roster-crunch route now
+  reads only `PlayerState` and rights (its Rule 5 flag, which could not fire on
+  real data, is gone); the player dossier carries `rights`.
+- **UI:** the 40-Man page shows the league's real limits and a "What can be
+  done" chip per player; the player card has a compact "Roster rights" block.
+- **Experiment tooling:** `scripts/rights-experiment.ts` (`rights:capture`,
+  `rights:diff`) imports a copied save's export into an isolated database and
+  diffs before/after. Captures land in the git-ignored `captures/`.
+- **Established by experiment** (copied save `RIGHTS-EXP.lg`): the 5-year
+  consent threshold, three option years and out-of-options refusal, the option
+  charge at the first day rollover (a same-day round trip is free), no recall
+  waiting period, the 7-day DFA with a 3-day claim window, outright vs option
+  told apart by `is_on_secondary`, restoration of a DFA player, 10-day IL stays
+  on the 40-man.
+
+Not done, by design: rights for IL activation, Rule 5, re-optioning after the
+last option year, rehab returns, claims, refusals, trades (all `indeterminate`).
 
 ## Current organization resolution
 
@@ -287,12 +314,13 @@ resolution across all organization-specific features is future work.
 - Staff-derived philosophy values are not implemented.
 - Rule 5 protection years are context in retention but do not yet affect its
   score.
-- Roster rights/eligibility is not implemented and needs controlled
-  copied-save experiments: true optionability beyond the exported counters,
-  IL-60 versus 40-man, recall waiting period, Rule 5 clock precision, outright
-  semantics, and trade/claim semantics. Roster crunch still applies its older
-  option-year warnings to any non-active 40-man player other than a rehab
-  assignment, including an MLB injured-list player.
+- Rights that remain `indeterminate` are listed in D-023 and the roadmap.
+  `minorLeagueRetention.ts` still reads a few raw roster flags for its own
+  guardrails; those defer to "needs MLB transaction analysis" and draw no rights
+  conclusion, so they were left as is.
+- The live log lags in-session moves until the game is saved, and the original
+  save's `temp/` log was absent when it was not the loaded save; the freshness
+  model does not yet say so.
 - The meaning of the live log's `transaction_type` codes (0 and 1) is not
   asserted, and about 5% of real log rows (signings, extensions, international
   moves, staff hires) are kept as `unsupported` events.

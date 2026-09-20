@@ -5,7 +5,7 @@ import { contactLeague, contactProfiles, situationalSplits } from './battedball.
 import { contractsByPlayer, leagueRules, mlbPercentiler, seasonYear, valuesByPlayer } from './valuation.js';
 import { controlAfterThisSeason, serviceRemainingThisSeason } from './contracts.js';
 import { DATE_KEY } from './dashboard.js';
-import { assignmentContextsFor } from './playerContext.js';
+import { rightsFor } from './playerContext.js';
 
 export const playerRoutes = Router();
 
@@ -402,7 +402,9 @@ playerRoutes.get('/player/:id', (req, res) => {
     organization: p.org_name ? `${p.org_name} ${p.org_nickname}` : (p.free_agent === 1 ? 'Free Agent' : null),
     serviceYears: rosterStatus?.mlb_service_years ?? null,
     /** Why he is where he is, where the log and export together establish it. */
-    assignment: assignmentContextsFor([id]).get(id) ?? null,
+    assignment: rightsFor([id]).get(id)?.assignment ?? null,
+    /** What may be done with him, from the state and chronology, with each conclusion's basis. */
+    rights: rightsFor([id]).get(id)?.rights ?? null,
     overallPct: overallPct(id),
     talentPct: talentPct(id),
     oaRating: values.get(id)?.oaRating ?? null,

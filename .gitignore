@@ -44,3 +44,6 @@ chat-*.json
 
 # OS
 .DS_Store
+
+# Rights-experiment captures come from a private save
+captures/
