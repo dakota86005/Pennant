@@ -8,7 +8,8 @@ material implementation state changes.
 
 - Package: `ootp-front-office` version `0.27.2`.
 - Inspected branch: `feature/mlb-operations-v2`, created from `feature/player-rights`
-  (Player State foundation merged as PR #2; Player Rights not yet merged to `main`).
+  (Player State foundation merged as PR #2 and Player Rights as PR #3; this branch is three commits ahead of `main`:
+  the MLB Operations rebuild, the scouting-department layer, and the hardening phase).
 - Stack: TypeScript, React 18, Vite 6, Express 4, SQLite via
   `better-sqlite3`, Electron 41, and Vitest 4.
 - Validation at this snapshot (after the hardening phase): `npx tsc --noEmit` clean, `npm test` 118 files /
