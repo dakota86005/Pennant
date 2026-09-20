@@ -83,6 +83,10 @@ export function buildFixture(): string {
       rules_salary_arbitration_minimum_years INTEGER, rules_minimum_salary INTEGER,
       financial_coefficient REAL, rules_amateur_draft INTEGER, show_draft_pool INTEGER,
       draft_date TEXT, rules_amateur_draft_rounds INTEGER,
+      -- Roster and transaction rules, as an export carries them
+      rules_minor_league_options INTEGER, rules_rule_5 INTEGER, rules_dfa_period_length INTEGER,
+      rules_waiver_period_length INTEGER, rules_active_roster_limit INTEGER,
+      rules_expanded_roster_limit INTEGER, rosters_expanded INTEGER, rules_secondary_roster_limit INTEGER,
       -- Quoted deliberately: SQLite's own CURRENT_DATE keyword shadows a
       -- column of that name, so an unquoted read returns the real-world date
       trade_deadline_date TEXT,
@@ -275,9 +279,13 @@ export function buildFixture(): string {
       "current_date", rules_fa_minimum_years,
       rules_salary_arbitration_minimum_years, rules_minimum_salary,
       financial_coefficient, rules_amateur_draft, show_draft_pool,
-      draft_date, rules_amateur_draft_rounds, trade_deadline_date)
+      draft_date, rules_amateur_draft_rounds, trade_deadline_date,
+      rules_minor_league_options, rules_rule_5, rules_dfa_period_length,
+      rules_waiver_period_length, rules_active_roster_limit,
+      rules_expanded_roster_limit, rosters_expanded, rules_secondary_roster_limit)
      VALUES (?, 'Test League', 'TL', 0, 1, ?, '2030-06-01', 6, 3,
-             700000, 1, 1, 1, '2030-07-10', 20, '2030-07-31')`
+             700000, 1, 1, 1, '2030-07-10', 20, '2030-07-31',
+             1, 1, 7, 3, 26, 28, 0, 40)`
   ).run(IDS.league, SEASON);
   db.prepare(`INSERT INTO sub_leagues VALUES (?, 0, 'Only', 1)`).run(IDS.league);
 

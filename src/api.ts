@@ -101,6 +101,34 @@ export interface AssignmentContext {
   reason?: string;
 }
 
+export type RightsAction =
+  | 'option' | 'recall' | 'addToFortyMan' | 'designateForAssignment'
+  | 'outrightAssignment' | 'activateFromInjuredList';
+export type RightsStatus = 'eligible' | 'ineligible' | 'indeterminate';
+export type SourceState = 'current' | 'behind' | 'unverified' | 'unavailable';
+
+export interface ActionRights {
+  action: RightsAction;
+  status: RightsStatus;
+  label: string;
+  reasons: Array<{ code: string; message: string; basis: 'export_state' | 'observed' | 'documented' | 'observed_and_documented'; source: string }>;
+  requirements: Array<{ kind: string; status: 'met' | 'unmet' | 'unknown'; message: string }>;
+  missing: Array<{ code: string; message: string }>;
+  facts: Record<string, string | number | boolean | null>;
+  limitation: string | null;
+}
+
+export interface PlayerRights {
+  playerId: number;
+  evidence: { currentState: SourceState; chronology: SourceState };
+  optionYears: {
+    used: number | null; remaining: number | null; usedThisSeason: number | null;
+    standing: 'available' | 'exhausted' | 'exhausted_charged_this_season' | 'indeterminate';
+  };
+  ruleFive: { status: 'protected_by_forty_man' | 'not_applicable' | 'indeterminate'; message: string };
+  actions: Record<RightsAction, ActionRights>;
+}
+
 export type RosterEvidenceLevel = 'current' | 'partial' | 'stale' | 'unavailable';
 
 export interface DataStatus {
@@ -297,6 +325,8 @@ export interface PlayerDossier {
   serviceYears: number | null;
   /** Why he is where he is, when the log and export together establish it. */
   assignment: AssignmentContext | null;
+  /** What may be done with him, and how sure that is. */
+  rights: PlayerRights | null;
   overallPct: number | null;
   talentPct: number | null;
   /** OOTP's own Overall / Potential on the 20-80 scale, for cross-reference. */

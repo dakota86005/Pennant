@@ -12,6 +12,8 @@
     "start": "npm run build && NODE_ENV=production tsx server/index.ts",
     "check:theme": "tsx scripts/check-theme-contrast.ts",
     "check:stats": "tsx scripts/check-stats.ts",
+    "rights:capture": "tsx scripts/rights-experiment.ts capture",
+    "rights:diff": "tsx scripts/rights-experiment.ts diff",
     "desktop:build": "npm run build && node scripts/build-desktop.mjs",
     "desktop": "npm run abi:electron && npm run desktop:build && electron .",
     "dist": "npm run abi:electron && npm run desktop:build && electron-builder",

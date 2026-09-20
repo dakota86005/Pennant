@@ -342,9 +342,9 @@ same-level moves are ranked with philosophy-weighted costs.
 
 ## D-020 — Roster evidence has a source hierarchy, and three concerns stay separate
 
-**Status:** Accepted. **Implementation:** Current State and Transaction
-Chronology are implemented (`playerState.ts`, `transactionLog.ts`,
-`assignmentContext.ts`); Rights / Eligibility is deliberately not.
+**Status:** Accepted. **Implementation:** Current State, Transaction Chronology
+and Rights / Eligibility are all implemented (`playerState.ts`,
+`transactionLog.ts`, `assignmentContext.ts`, `playerRights.ts`; see D-023).
 
 An audit of a real macOS save overturned an earlier assumption that transaction
 chronology is unavailable. OOTP keeps a live SQLite transaction log in the
@@ -375,8 +375,8 @@ Three concerns are never collapsed into one roster object:
 
 - **Current State** — what is objectively true now.
 - **Transaction Chronology** — what explicitly happened.
-- **Rights / Eligibility** — what may legally or operationally be done now.
-  Not implemented; it depends on unresolved OOTP semantics (see the roadmap).
+- **Rights / Eligibility** — what may legally or operationally be done now
+  (D-023).
 
 Consequences:
 
@@ -449,3 +449,56 @@ Consequences:
   log and are in an export taken afterwards; they do not make the export look
   behind. A move made after the export on the same day cannot be detected by
   date.
+
+## D-023 — Rights are evaluated per action, with three answers and a stated basis
+
+**Status:** Accepted. **Implementation:** Present (`server/playerRights.ts`,
+`server/leagueRules.ts`; roster crunch and the player card consume it).
+Research and experiments: [RIGHTS_RESEARCH.md](RIGHTS_RESEARCH.md).
+
+Given what Pennant knows, which transactions are available? Each action —
+option, recall, add to the 40-man, designate for assignment, outright
+assignment, activate from the injured list — is evaluated independently and
+answers `eligible`, `ineligible` or `indeterminate`. Missing rule knowledge is
+never turned into eligibility or rejection, and a GM may still act manually.
+
+- **Pure, layered.** The evaluator reads a `PlayerState`, an `AssignmentContext`,
+  the exported league rules, roster counts and source freshness. It opens no
+  table, log or snapshot. The direction is OOTP sources → state/chronology →
+  rights → operations → GM. A consumer must not reconstruct a rights conclusion
+  from raw columns (`tests/playerRights.test.ts` checks roster crunch).
+- **Every reason names its basis:** `export_state` (a value the export
+  states), `observed` (seen in a controlled copied-save experiment),
+  `documented` (OOTP's wiki/manual) or `observed_and_documented`. An observation
+  that contradicts documentation wins; documentation alone is used only where it
+  agrees with everything observed and is labeled as such.
+- **League rules are read, not assumed:** option rule, DFA and waiver periods,
+  active/expanded/40-man limits come from `leagues.*` as exported.
+- **Requirements are separate from eligibility.** An unmet roster spot does not
+  make a recall ineligible; it is listed as an unmet requirement. An unknown
+  requirement makes the answer indeterminate.
+- **Evidence is judged per action.** A stale or missing export makes every
+  answer indeterminate. The transaction log matters only where chronology
+  matters (a rehab assignment and an option are identical in the export, so a
+  recall needs a current log). A lagging log therefore leaves current-state
+  conclusions intact.
+- **The export outranks log wording.** `Assigned X to Triple A` after a DFA is an
+  outright or an option depending on `is_on_secondary` and the option counters;
+  `Optioned` is not a complete record of major-to-minor moves; `Purchased the
+  contract` also describes recalling a 40-man player.
+
+Rules encoded and their weight (details in the research record): 3 option years
+and a 5-year consent threshold (observed and documented); the option year is
+charged at the first day rollover after leaving the active roster (observed,
+one same-day round trip uncharged); no minimum minor-league stay before recall
+(observed, human and AI); DFA 7 days containing a 3-day claim window
+(documented, league-exported, observed); the 60-day IL removes a player from the
+40-man (documented, 68 of 68 exported); a player who clears waivers and is
+under 5 years is outrighted off the 40-man (observed twice).
+
+**Remaining indeterminate, deliberately:** activation from either injured list;
+Rule 5 exposure (the export gives a 0/4/5 window, not a countdown); re-optioning
+within the season that used the last option year; a fourth option year; rehab
+returns; designating an injured or rehabbing player; claims, refusals and
+free-agency elections; trades. Each returns `indeterminate` with the missing
+evidence, never a default.

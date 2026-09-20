@@ -122,23 +122,23 @@ thresholds; decide whether that belongs in preference or in developmental value.
 - Add a manual "protect this player" control using the reservation already in
   the development-protection model.
 
-### 6. Controlled copied-save experiments, then the rights evaluator
+### 6. Rights evaluator — implemented; finish the indeterminate edges
 
-The state and chronology layers exist (D-020). The third concern, rights and
-eligibility, depends on OOTP semantics that cannot be settled from the export or
-the log alone. Resolve them with experiments on copied saves, never a live one,
-and record each result before encoding a rule:
+The state and chronology layers (D-020) and the rights evaluator (D-023) exist,
+backed by controlled copied-save experiments and OOTP's own documentation
+([RIGHTS_RESEARCH.md](RIGHTS_RESEARCH.md)). Remaining, each returns
+`indeterminate` today:
 
-- true optionability beyond the exported option counters and flags;
-- whether an IL-60 player occupies a 40-man slot (the export says not);
-- the recall waiting period after an option;
-- Rule 5 protection and the clock's precision;
-- outright semantics, and trades and claims (not yet observed in the log);
-- the meaning of the log's `transaction_type` codes and the remaining
-  `unsupported` wordings.
-
-Only then replace the older option-year warnings on the roster-crunch page with
-a rights evaluator that consumes `playerState.ts` and `assignmentContext.ts`.
+- activation from the 10-day and 60-day injured lists, including a full 40-man;
+- Rule 5 exposure (the export gives a 0/4/5 window, not a countdown; needs a sim
+  through the Rule 5 draft to verify);
+- re-optioning in the season that used the last option year;
+- rehab returns, claims, refusals and free-agency elections, trades;
+- teaching the log parser `Placed X on the secondary (40-man) roster`, `on the
+  active roster`, and `claimed off waivers`, and classifying major-to-minor
+  `Demoted`/`Assigned` moves without asserting option vs outright;
+- saying in the freshness model that the live log lags in-session moves until
+  the game is saved.
 
 ### 7. Add the MLB opportunity layer
 
@@ -154,7 +154,8 @@ MLB opportunity model that combines developmental readiness with:
 
 It must consume Player Development eligibility rather than treating a major
 league roster hole as proof a prospect is ready, and it depends on the rights
-evaluator above rather than on inferred roster state.
+evaluator (D-023) rather than on inferred roster state, and must re-point the
+old `rosterTransactionState`/`evaluateRosterAction` prior art at it.
 
 ## Then: deepen organizational identity
 

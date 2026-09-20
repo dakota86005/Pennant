@@ -157,7 +157,7 @@ describe('rehab reaches the pages that used to mistake it for an option', () => 
   });
 
   it('roster crunch does not give a rehab player option-year warnings, but does for a real option', async () => {
-    setStatus(IDS.optioned, { options_used: 3 });
+    setStatus(IDS.optioned, { options_used: 3, options_used_this_year: 0 });
     useSave();
     let crunch = await request(`/api/roster-crunch/${IDS.mlbTeam}`);
     let kelly = crunch.fortyMan.find((p: { player_id: number }) => p.player_id === IDS.optioned);
@@ -172,6 +172,15 @@ describe('rehab reaches the pages that used to mistake it for an option', () => 
     kelly = crunch.fortyMan.find((p: { player_id: number }) => p.player_id === IDS.optioned);
     expect(kelly.assignment).toMatchObject({ kind: 'optioned', ordinaryOption: true });
     expect(kelly.issues).toContain('out of options');
+  });
+
+  it('does not call a player out of options when the export does not say whether this season charged one', async () => {
+    setStatus(IDS.optioned, { options_used: 3, options_used_this_year: null });
+    useSave({ rows: [{ date: '20300512', teamId: IDS.mlbTeam, text: tx.optioned(KELLY, 'SP', [IDS.aaaTeam, 'Reno']) }] });
+    const crunch = await request(`/api/roster-crunch/${IDS.mlbTeam}`);
+    const kelly = crunch.fortyMan.find((p: { player_id: number }) => p.player_id === IDS.optioned);
+    expect(kelly.issues).not.toContain('out of options');
+    expect(kelly.rights.optionYears.standing).toBe('indeterminate');
   });
 
   it('with no log, a 40-man minor leaguer is reported as not established, never as optioned', async () => {

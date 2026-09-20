@@ -42,8 +42,16 @@ decision, roadmap item, or project-state fact changes.
   read it as exported; never re-derive it from history or snapshots. A snapshot
   difference proves that state changed, never which transaction did it: do not
   fabricate "optioned", "recalled", or "DFA". Current State, Transaction
-  Chronology, and Rights/Eligibility stay separate; rights are not implemented.
-  A rehab player looks exactly like an optioned one in the export and is not one.
+  Chronology, and Rights/Eligibility stay separate. A rehab player looks exactly
+  like an optioned one in the export and is not one.
+- Roster rights come only from `server/playerRights.ts` (D-023): `eligible`,
+  `ineligible` or `indeterminate` per action, each reason with its basis. It is
+  pure and reads only the state, chronology and league-rule layers; a consumer
+  must not rebuild option, recall, 40-man, or DFA logic from raw columns. A rule
+  that has not been observed or documented returns `indeterminate` — never a
+  default and never a guess from MLB rules. Observed OOTP behavior beats
+  documentation, and the export beats log wording (`Assigned to Triple A` after
+  a DFA is an outright or an option depending on `is_on_secondary`).
 - Never write to OOTP files, and never open the live `temp/text_data.sqlite3` in
   place: read it only through `server/liveLogSnapshot.ts` (a validated private
   copy). Normal use must need no manual step beyond the existing database

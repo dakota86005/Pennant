@@ -1,7 +1,10 @@
 import { Router } from 'express';
 import { db, tableExists } from './db.js';
 import { LEVEL_NAMES, rosterHoles, seasonYear } from './valuation.js';
-import { assignmentContextsFor } from './playerContext.js';
+import { leagueRulesForOrganization } from './leagueRules.js';
+import { rightsFor } from './playerContext.js';
+import { rosterCounts } from './playerRights.js';
+import { organizationPlayerStates } from './playerState.js';
 
 export const rosterOpsRoutes = Router();
 
@@ -10,65 +13,62 @@ const POSITION_NAMES: Record<number, string> = {
 };
 const teamLabel = `CASE WHEN t.name = t.nickname THEN t.name ELSE t.name || ' ' || t.nickname END`;
 
-// ── Roster crunch (40-man / options / Rule 5 / DFA) ─────────────────────
+// ── Roster crunch (40-man / options / DFA) ──────────────────────────────
 
+/**
+ * Reads only the shared layers: `PlayerState` for what is true, and
+ * `PlayerRights` for what may be done. Nothing here reads an option counter, a
+ * roster flag or a rule column itself, so it cannot drift from the evaluator.
+ * (It used to: a Rule 5 flag built on `years_protected_from_rule_5 <= 0` could
+ * essentially never fire, because OOTP exports 4 or 5, never a countdown.)
+ */
 rosterOpsRoutes.get('/roster-crunch/:orgId', (req, res) => {
   const orgId = Number(req.params.orgId);
   if (!tableExists('players_roster_status')) return res.status(400).json({ error: 'No roster data imported yet' });
 
-  const rows = db
-    .prepare(
-      `SELECT p.player_id, p.first_name || ' ' || p.last_name AS name, p.age, p.position,
-              t.level, rs.is_active, rs.is_on_secondary, rs.is_on_dl, rs.is_on_dl60,
-              rs.options_used, rs.years_protected_from_rule_5, rs.pro_service_years,
-              rs.mlb_service_years, rs.designated_for_assignment, rs.days_on_dfa_left,
-              rs.is_on_waivers, rs.days_on_waivers_left
-       FROM players p
-       JOIN players_roster_status rs ON rs.player_id = p.player_id
-       JOIN teams t ON t.team_id = p.team_id
-       WHERE p.organization_id = ? AND p.retired = 0`
-    )
-    .all(orgId) as Array<Record<string, number | string | null>>;
+  const states = organizationPlayerStates(orgId);
+  const positions = new Map(
+    (db.prepare(`SELECT player_id, position FROM players WHERE organization_id = ? AND retired = 0`).all(orgId) as Array<{
+      player_id: number; position: number | null;
+    }>).map((r) => [r.player_id, r.position])
+  );
+  const league = leagueRulesForOrganization(orgId);
+  const counts = rosterCounts(states);
 
-  // Why each non-active player is where he is, from explicit log evidence
-  const assignments = assignmentContextsFor(rows.map((r) => r.player_id as number));
+  // Rights matter for anyone on the 40-man or in DFA limbo
+  const relevant = states.filter((s) => s.fortyMan.value === true || s.dfa.designated.value === true || s.dfa.onWaivers.value === true);
+  const picture = rightsFor(relevant.map((s) => s.playerId));
 
-  const players = rows.map((r) => {
-    const on26 = r.is_active === 1;
-    /*
-     * The 40-man is the export's own secondary-roster flag, exactly as
-     * exported. It used to be inferred as "active, or secondary, or on the MLB
-     * injured list", which counted five 60-day-IL players OOTP itself leaves off
-     * the 40-man: 35 reported against 30 exported on a real save. Whether an
-     * IL-60 player should occupy a slot is a rules question, not something to
-     * settle by overriding the export.
-     */
-    const on40 = r.is_on_secondary === 1;
-    const assignment = assignments.get(r.player_id as number) ?? null;
+  const players = states.map((state) => {
+    const on26 = state.activeRoster.value === true;
+    const on40 = state.fortyMan.value === true;
+    const found = picture.get(state.playerId) ?? null;
+    const assignment = found?.assignment ?? null;
+    const rights = found?.rights ?? null;
     // A rehab assignment is not an option: it uses none, and says nothing about
     // whether he can be optioned. The export shows him exactly like an optioned
-    // player (Triple-A, on the 40-man, not active), so only the log can tell
+    // player, so only the log can tell
     const onRehab = assignment?.kind === 'rehab_assignment';
-    const optionsUsed = (r.options_used as number) ?? 0;
-    const outOfOptions = on40 && !on26 && !onRehab && optionsUsed >= 3;
-    const rule5Protected = (r.years_protected_from_rule_5 as number) ?? 0;
-    const rule5Exposed = !on40 && rule5Protected <= 0 && ((r.pro_service_years as number) ?? 0) >= 4;
     const issues: string[] = [];
-    if (r.designated_for_assignment === 1) issues.push(`DFA — ${r.days_on_dfa_left ?? '?'} days to resolve`);
-    if (r.is_on_waivers === 1) issues.push(`on waivers — ${r.days_on_waivers_left ?? '?'} days left`);
-    if (outOfOptions) issues.push('out of options');
-    else if (on40 && !on26 && !onRehab && optionsUsed === 2) issues.push('last option year');
-    if (rule5Exposed) issues.push('Rule 5 exposed');
+    if (state.dfa.designated.value === true) issues.push(`DFA — ${state.dfa.daysLeft.value ?? '?'} days to resolve`);
+    if (state.dfa.onWaivers.value === true) issues.push(`on waivers — ${state.dfa.waiverDaysLeft.value ?? '?'} days left`);
+    const below = (state.level.value ?? 1) > 1 && on40 && !on26 && !onRehab;
+    if (below && rights) {
+      const years = rights.optionYears;
+      if (years.standing === 'exhausted') issues.push('out of options');
+      else if (years.standing === 'exhausted_charged_this_season') issues.push('third option year in use');
+      else if (years.standing === 'available' && years.remaining === 1) issues.push('last option year');
+    }
     return {
-      player_id: r.player_id,
-      name: r.name,
-      age: r.age,
-      positionName: POSITION_NAMES[r.position as number] ?? '?',
-      levelName: LEVEL_NAMES[r.level as number] ?? 'R',
+      player_id: state.playerId,
+      name: state.name,
+      age: state.age,
+      positionName: POSITION_NAMES[positions.get(state.playerId) as number] ?? '?',
+      levelName: LEVEL_NAMES[state.level.value as number] ?? 'R',
       on26,
       on40,
-      optionsUsed,
-      rule5Protected,
+      optionsUsed: state.options.used.value,
+      rule5Protected: state.options.yearsProtectedFromRule5.value,
       issues,
       assignment: assignment && {
         kind: assignment.kind,
@@ -81,6 +81,7 @@ rosterOpsRoutes.get('/roster-crunch/:orgId', (req, res) => {
         reason: assignment.reason ?? null,
         note: assignment.note ?? null,
       },
+      rights,
     };
   });
 
@@ -90,9 +91,13 @@ rosterOpsRoutes.get('/roster-crunch/:orgId', (req, res) => {
 
   res.json({
     counts: {
-      active: players.filter((p) => p.on26).length,
-      fortyMan: fortyMan.length,
+      active: counts.active ?? players.filter((p) => p.on26).length,
+      fortyMan: counts.fortyMan ?? fortyMan.length,
       issues: withIssues.length,
+    },
+    limits: {
+      active: league.rostersExpanded.value ? league.expandedRosterLimit.value : league.activeRosterLimit.value,
+      fortyMan: league.fortyManLimit.value,
     },
     issues: withIssues,
     fortyMan: fortyMan.sort((a, b) => (a.on26 === b.on26 ? 0 : a.on26 ? -1 : 1)),
