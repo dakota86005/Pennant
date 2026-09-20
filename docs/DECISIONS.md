@@ -502,3 +502,352 @@ within the season that used the last option year; a fourth option year; rehab
 returns; designating an injured or rehabbing player; claims, refusals and
 free-agency elections; trades. Each returns `indeterminate` with the missing
 evidence, never a default.
+
+## D-024 — MLB Operations is a consumer: needs from state, staged verdicts, no ranking
+
+**Status:** Accepted. **Implementation:** Present for one slice (`server/mlbRoster.ts`,
+`mlbNeeds.ts`, `mlbResponses.ts`, `mlbEvidence.ts`, `mlbOperations.ts`). Design and the audit
+of `origin/feature/mlb-operations`: [MLB_OPERATIONS.md](MLB_OPERATIONS.md).
+
+Major League Operations answers "what problems need my attention on the major-league
+roster, what could address them, what would each require, and what follows?" It
+coordinates specialists and owns none of their answers.
+
+- **Needs are derived from the current export's Player State**, never from differences
+  between Pennant's own imports (a snapshot difference proves state changed, not why:
+  D-020), and are never persisted. A need that stops being true is simply not returned. A
+  cause is a stated fact about a named player, or absent; Pennant does not infer one.
+  Roster standards (5 SP, 7 RP, 2 C) are named assumptions, shown with each need.
+- **Stages are never collapsed and no candidate silently disappears.** Discovery is
+  objective; availability comes from Player State; development from Player Development's
+  MLB assessment (`unassessed` is neither a pass nor a rejection, D-018); rights from Player
+  Rights per required action; role fit from Player Development's destination fit at the MLB
+  level; consequences from roster counts, Minor League Operations' read-only scenario and
+  contract facts. A candidate that fails a stage stays visible in a group naming the stage.
+- **A transaction path is only as certain as its least certain step.** Any `indeterminate`
+  or unevaluated step makes the path indeterminate; MLB Operations composes `ActionRights`
+  and never decides legality.
+- **No ranking, no score.** Groups and candidates are ordered by path kind, level and name.
+  Organizational Philosophy annotates a candidate that is valid on every stage
+  (`preferred` / `acceptable` / `disfavored` / `no_preference`, naming the dimension) and
+  can neither authorize, block, nor resolve an unknown.
+- **The GM may pose a what-if** ("if X is unavailable"); it is labelled hypothetical and
+  states that nothing says he will be.
+- **Read-only.** Nothing is executed or written.
+
+The old branch's `rosterTransactionState`, snapshot-based need detection, role-suitability
+and cascade planner were not carried over (MLB_OPERATIONS.md §2). Guarded by
+`tests/mlbOperationsBoundary.test.ts`.
+
+**Remaining gaps:** performance-driven and bench/positional needs; "add to the 40-man and
+promote" is not one Rights action, so non-40-man paths are `indeterminate`; IL activation
+rules; Minor League Operations counts rehabbing players in roster health.
+
+**Amended (second pass):** the role-coverage numbers are minimum floors, not roster targets, and
+are data (`CoverageFloors`); a candidate Player Development has not completed an evaluation of
+is "Evaluation incomplete", visible but never an actionable solution; ways to clear an active
+spot are grouped by transaction class, not listed flat; a non-40-man promotion is composed from
+two Player Rights component actions with no combined right.
+
+## D-025 — Development defensibility is contextual, and Player Development owns the context
+
+**Status:** Accepted. **Implementation:** Present (`server/mlbAssignmentContext.ts`,
+`org.ts` `mlbAssignmentAssessments`). See [MLB_OPERATIONS.md](MLB_OPERATIONS.md) §15.
+
+Whether a major-league assignment is developmentally defensible depends on the assignment
+context: a durable role, temporary depth, a bench role, a short bullpen assignment or a spot
+start are different developmental acts. Player Development answers per context; MLB
+Operations only describes the contemplated context and never holds a development threshold
+of its own or a bypass for veterans.
+
+- The durable bar is relieved for a temporary context by the context's exposure, shrunk by
+  the developmental **stakes** (protection tier from visible ratings and age). A core prospect
+  gets no relief; nobody is waived for being a veteran.
+- Evidence: current-level production against the relieved bar, or established Triple-A/MLB
+  experience with low stakes. Unknown ratings, no career data, or no established route leave
+  the assessment `indeterminate` (D-018); philosophy never enters (D-019).
+- An unknown duration is not assumed to be any context; see D-027 (this amends the earlier rule that assessed it as the most demanding context).
+
+## D-026 — Rehab assignees are not ordinary affiliate members
+
+**Status:** Accepted. **Implementation:** Present (`server/rehabAssignments.ts`, applied in
+`minorLeagueRoster`, `minorLeagueMoves`, `pitcherRosterSimulation`, `minorLeagueRetention`).
+
+A player on an injury-rehab assignment is a parent-club player; the export lists him exactly
+like an optioned one (D-020). When an explicit, current log shows the rehab he is excluded from
+ordinary affiliate roster health, pitching staff, hitter coverage and retention. When nothing
+explains a 40-man player below MLB he is counted and named as ambiguous (unknown stays
+unknown), and consequences that depend on him say so. Consumers such as MLB Operations do
+not work around it.
+
+## D-027 — Unknown assignment duration stays unknown; context-dependent defensibility is a result
+
+**Status:** Accepted. **Implementation:** Present (`server/mlbAssignmentContext.ts`
+`resolveAcrossDurations`, `server/mlbResponses.ts`). See [MLB_OPERATIONS.md](MLB_OPERATIONS.md) §22-§23.
+
+MLB Operations must not turn a missing duration into a durable-role assumption. When the
+expected duration is unknown, Player Development judges temporary depth and a durable
+assignment. Both defensible or both indefensible: that result, regardless of duration. One
+defensible and one not (or not established): **`context_dependent`**, a first-class result
+beside the D-018 three states, worded as dependent and never presented as open until the GM
+chooses a duration or a context. Missing evidence in every defensible context stays
+`indeterminate`. The GM is not asked for a duration when the answer would not change the
+judgment; the GM can always override the context.
+
+The relief and experience figures in `mlbAssignmentContext.ts` are **provisional calibration
+parameters**, not baseball facts, declared once, marked, and stamped on every assessment. The
+core-prospect rule and the experience-cannot-establish-high-stakes rule are architecture, not
+calibration.
+
+## D-028 — The active-roster spot and the 40-man spot are separate constraints; paths are composed
+
+**Status:** Accepted. **Implementation:** Present (`server/mlbResponses.ts`,
+`server/playerRights.ts` `placeOnSixtyDayIl`). See [MLB_OPERATIONS.md](MLB_OPERATIONS.md) §24.
+
+An option clears an active spot only and never a 40-man spot (even one that uses a final option
+year). Only the 60-day injured list and a designation take a player off the 40-man. They are
+separate constraints with separate, unranked lists grouped by transaction class, each option
+carrying its Rights status, which spots it opens, and its consequences. A promotion or a return
+is a **chain** of the transactions Player Rights owns plus the clearing each one needs, and is
+only as certain as its least certain link. MLB Operations composes prerequisite transactions;
+it defines no combined right. `placeOnSixtyDayIl` is `indeterminate` until the injury-length
+threshold is measured.
+
+## D-029 — Injured-list activation rules come only from observed OOTP behavior
+
+**Status:** Accepted; the rules themselves are **pending the experiment**
+([RIGHTS_RESEARCH.md](RIGHTS_RESEARCH.md) §4.11).
+
+Player Rights does not import real-world injured-list rules. `activateFromInjuredList` stays
+`indeterminate` and states the prerequisites the export invariants imply (a spot on the active
+roster; from the 60-day list also a 40-man spot), reported as requirements and clearing needs
+rather than as a rejection. A transaction the game performed for the club is not evidence of what
+a manager may do; a rule is encoded only after two concordant controlled observations.
+
+## D-030 — A role comparison is Player Development's, on one stated lens; the report composes it
+
+**Status:** Accepted. **Implementation:** Present (`server/roleStanding.ts`, `server/mlbReport.ts`).
+See [MLB_OPERATIONS.md](MLB_OPERATIONS.md) §27.
+
+"Would he fill the role better than who is there?" is answered from Player Development's
+destination fit (visible tool ratings against MLB peers) alone, with the gap that counts as clearly
+ahead a provisional calibration parameter. Season results are shown as context and can say a
+sample is too thin or that results agree or disagree with the ratings; they never change the
+verdict. A player with no visible rating is named, never ranked. The verdict is not a decision:
+MLB Operations turns it into a briefing (situation, role picture, read, pathways) and never picks
+a move. Pathways are ordered by readiness of the path, not by a score of players. This does not
+reverse the earlier rule against ranking candidates by a magic score; it adds an evidenced,
+labelled comparison against the incumbents.
+
+## D-031 — A proactive review is a flag with two lenses, never a trigger or a hidden score
+
+**Status:** Accepted. **Implementation:** Present (`server/roleReview.ts`, `server/mlbReview.ts`,
+`server/resultsMetrics.ts`, `server/resultsEvidence.ts`). See [ROSTER_REVIEW.md](ROSTER_REVIEW.md).
+
+MLB Operations now reviews role holders unprompted, as a scouting department would. The review reads two
+independent lenses, always shown: the organization-visible tools against MLB peers, and results
+(league-relative, recency-weighted, with the sample behind them). A **working estimate** blends them for
+comparison, weighting results by how far the sample can be trusted, and is always displayed with its
+lenses, its weight and its basis. A finding names its case (both lenses weak; tools weak but results
+fine; results weak but tools fine; too early), its strength, the competing explanations (luck, sample,
+age, results ahead of tools) and what would change the read. Only a strong or moderate case becomes a
+`role_holder_review` need; a watch item is shown but is not a need. A finding is never a transaction
+trigger and never a decision; unknown evidence is "cannot judge", never weak. Results are objective
+statistics and are read directly; ratings still come only through `scoutedEvidence.ts` (D-017). Every
+threshold is a provisional calibration parameter declared once.
+
+## D-032 — Replacing a holder is a chain of moves, followed through (cascades)
+
+**Status:** Accepted. **Implementation:** Present (`server/rosterScenario.ts`, `server/mlbPlans.ts`).
+
+Replacing a starter is never one move. A plan is a chain of the moves the rest of the system already
+evaluates (bring in, option, designate, 60-day, role change), applied to a club view, with the
+consequence per role group (floor, mean and weakest working estimate, before and after), the roster
+counts, the natural follow-up move for a group that gained a body, and the Player Rights status of
+every link; a plan is only as certain as its least certain link. Legality is Player Rights', ability
+is the evaluators', the affiliate effect is Minor League Operations'; the engine is bookkeeping. The
+duration of a replacement is not assumed (D-027). With no internal replacement there is no plan.
+
+## D-033 — A hitter is judged on his bat and his glove at the position he plays; the lineup is what usage shows
+
+**Status:** Accepted. **Implementation:** Present (`server/lineupPicture.ts`, `server/platoon.ts`,
+`server/roleReview.ts`, `server/mlbReview.ts`). See [ROSTER_REVIEW.md](ROSTER_REVIEW.md).
+
+The regular at a position is the player who has played the innings there; the designated hitter is whoever
+starts without a fielding start to explain it; the rest is the bench. A hitter's working estimate is his bat
+(visible tools and wOBA, weighted by sample) blended with his REVEALED fielding grade at the position against
+MLB peers listed there, by a provisional position weight; a grade the game does not show is never read and is
+not assumed bad. Platoon is judged from observed splits shrunk toward the league's own effect for a batter of
+his hand; only an effect clearly larger than the league explains counts. Rating splits and running speed are
+not approved evidence (D-017) and are not used. A bench player who would improve a spot is a lineup decision,
+not a transaction; moving another regular opens a new hole and is not offered.
+
+## D-034 — The staff recommendation is a stated rubric, advice with its reasons and what would change it
+
+**Status:** Accepted. **Implementation:** Present (`server/mlbReport.ts` `recommendationFor`).
+
+A recommendation is ACT, EXPLORE, MONITOR or HOLD, from an explicit rubric over the strength of the case, the
+lead replacement's verdict and certainty, whether his path is open and defensible, and whether a plan exists
+that puts nobody at risk. It names what must be settled first, what would change it, and where the
+replacement is still below the group median. A disruptive move is never an ACT. It is advice: MLB Operations
+executes nothing and the GM decides. This refines, and does not reverse, the rule against a hidden score: no
+candidate is ranked by a number the GM cannot see the parts of.
+
+## D-035 — A hitter's rating splits and running ratings are approved evidence, through the same adapter
+
+**Status:** Accepted (owner decision, 2026-09-20). **Implementation:** Present (`server/scoutedEvidence.ts`
+`loadScoutedHitterProfiles`, `scoutedHitterPopulation`; used by `server/toolsModel.ts`, `platoon.ts`).
+
+D-017 approved the overall and potential tool ratings, stamina and pitch grades, and revealed fielding-position
+grades. The owner extended it to two more families, for platoon and baserunning: a hitter's **ratings against
+left-handed and right-handed pitching** (`batting_ratings_vsl_*` / `_vsr_*`: contact, gap, power, eye, strikeout
+avoidance) and his **running ratings** (`running_ratings_speed`, `_baserunning`, `_stealing`, `_stealing_rate`).
+
+Everything D-017 and D-018 say about the adapter applies unchanged: these are read only in `scoutedEvidence.ts`;
+a grade that is absent, non-numeric or not positive is unknown, never averaged around; a composite exists only when
+every component is known; ratings are normalized to 20-80; provenance says `declared_organization_visible` and
+`not_verifiable_from_export`. Stealing RATE (how often he tries) is reported but never averaged into ability.
+
+What is **not** approved, and is enforced by `tests/evidenceBoundary.test.ts`: pitchers' rating splits, hit-by-pitch
+and BABIP ratings, ground/fly and holding-runners ratings, bunt ratings. Each would be a further owner decision.
+
+The evidence earned its place: against 2023 to 2025 results the rating-implied platoon effect has a calibration
+slope of 1.06 and beats every other predictor tried, while a hitter's own past split adds almost nothing
+(docs/CALIBRATION.md section 4).
+
+## D-036 — Philosophy and the season lean on the advice, after validity, and every lean is shown
+
+**Status:** Accepted (owner decision: philosophy and competitive window are pivotal to the recommendation).
+**Implementation:** Present (`server/staffPreference.ts`; used by `mlbReview`, `mlbResponses`, `mlbReport`,
+`mlbOperations`). Refines D-019; does not reverse it.
+
+The organization's philosophy and where its season stands are pivotal to how the staff advises: the same facts are
+told differently to a contender in the race and to a club that is building. Two inputs, kept apart and both shown: the
+**window** (the philosophy's competitive-window dimension: identity) and the **season** (the deadline read's chance of
+the postseason: the present). When they disagree the read says so and does not resolve it.
+
+What they may do, and only after validity: raise or lower **how urgently a flag is raised** (never remove one); choose
+**among replacements that are already ready and already equivalent** in what they add (a bucket of gain, after
+readiness and the verdict); set **how high the bar for "recommend" is** (a contender in the race can be told to act on a
+moderate case; a club that is not pressed is told to watch it; a club that is building will not be told to act on a
+replacement years older than the holder); order plans; and word the advice. The dimensions read are competitive window,
+risk tolerance, age-curve sensitivity, upside preference, defense emphasis, roster depth and pitching depth; the ones not
+read (contract and prospect-capital dimensions) are named as such.
+
+What they may not do: change a working estimate, a finding, whether a replacement is an upgrade, a Player Development
+judgment or a Player Rights status; make a blocked, indeterminate or incomplete alternative ready; or lean unseen.
+Every lean is a `ShadeReason` (which dimension, what value, what it did), and a recommendation that differs from what a
+club with no stated philosophy would hear says what that would have been. `tests/staffShading.test.ts` proves the facts
+are identical across clubs; `tests/mlbOperationsBoundary.test.ts` proves the ordering (readiness, then verdict, then
+equivalence, then preference, then size) and that no MLB module names a philosophy dimension.
+
+## D-037 — Scouting constants are tuned against outcomes, declared once, and stamped
+
+**Status:** Accepted. **Implementation:** Present (`server/calibration.ts`, `scripts/calibrate.ts`,
+`scripts/lib/fit.ts`, docs/CALIBRATION.md).
+
+A first-pass constant is a placeholder. The harness predicts later seasons from earlier ones with the production
+functions and reports the error for candidate parameters against a no-information baseline; the constants it supports
+are updated in their one declaration and stamped `calibrated` with the run; those it cannot support (one partial season
+of zone ratings; policy thresholds) stay `provisional` and say why. Ratings-versus-results tests are read on lagged windows
+because OOTP formed the ratings from recent real results. Where the tools are known, results are shrunk toward what the
+tools imply, so the sample they need is smaller by the share of talent the tools explain. Run 1 changed the season
+weights, stabilization constants, pitcher mix, tools lens, platoon prior and shrinkage, and found a nine-fold scale error in the
+FIP surrogate (percentiles were unaffected).
+
+## D-038 — Bench, bullpen roles, position shifts and platoon partners are flags and plans, never transactions
+
+**Status:** Accepted. **Implementation:** Present (`server/benchReview.ts`, `bullpenRoles.ts`, `lineupShifts.ts`,
+`platoon.ts`; composed in `mlbReview`, `mlbPlans`, `mlbResponses`, `mlbReport`).
+
+A **bullpen role** is what usage shows (closer, high-leverage arm, middle, long man, low-leverage), from leverage cut-offs
+on the league's own distribution; it sets the stakes of a weak arm, and a clearly better arm in a lower-leverage role than
+a worse one is a deployment finding for the manager, not a roster move. The **bench** is reviewed for what each man is for and
+for coverage: a required position (catcher, middle infield, center field) with nobody on the bench who can play it is a
+coverage need, filled by the same discovery as any role. A **position shift** fixes a weak spot by moving a regular there
+and covering the spot he leaves from within, proposed only when the two spots gain together; it is a lineup decision (no
+transaction) and carries a stated comfort cost the estimate cannot see. A **platoon partner** is proposed for a regular whose
+platoon problem his ratings support, when a hitter is clearly better against the weak hand; a partner already on the bench is a
+lineup decision. All of it is advice with its reasons; the estimate at each position is bat plus glove there, so what a
+shift costs in the field is in the number.
+
+
+## D-039 — A peer population is major leaguers; an amateur signing is not a peer
+
+**Status:** Accepted. **Implementation:** Present (`server/scoutedEvidence.ts`, `tests/mlbPopulation.test.ts`).
+
+Every club carries, under its own `team_id`, the amateurs it has signed: sixteen- and seventeen-year-olds with all-20
+tools and no plate appearances, marked by a negative `players.league_id`. Ranked against them a real hitter's tools
+percentile was inflated by the share of the pool they made up (60 of 486, 12%, in the Arizona import), and every mean over
+the pool was pulled down: the spread of expected wOBA across "MLB hitters" read 41 points where the real one is 18, the glove
+peers at each position included the same signings, and `toolsExpected` ("points against the league average") was about 12
+points too high. A peer is a player whose own league is the major league (`COALESCE(league_id, league) = league`); an export
+with no `league_id` leaves the population as it was (schema-tolerant). Found by the base-rate run on all 30 clubs
+(docs/MLB_OPERATIONS_HARDENING.md, F-0); pitchers were never affected (Player Development's population is the active roster).
+
+## D-040 — A concern is measured against the role, not the group and not one absolute line
+
+**Status:** Accepted. **Implementation:** Present (`server/roleStandards.ts`, `roleReview.ts`, `mlbReview.ts`,
+`scripts/calibrate.ts standards`, `tests/mlbGoldenHitters.test.ts`, `tests/mlbInvariants.test.ts`).
+
+A working estimate is a percentile among all major-league hitters (or pitchers of a kind), so the same estimate means
+different things in different jobs: regular first basemen and designated hitters typically sit at the 73rd to 77th
+percentile, second basemen, third basemen and center fielders near the 50th; a long man is expected to be the weakest arm
+in the pen and a closer is not. The previous rule (an estimate under 35, or the weakest of the group by 8) flagged a lineup
+regular on 25 of 30 clubs, mostly shortstops and center fielders with ordinary bats and good gloves, never flagged a first
+baseman with a mediocre bat, and flagged a fifth starter or a long man for being what he is.
+
+A holder is a concern when he is unusually weak FOR HIS ROLE: under the floor, the level below which the lowest tenth of
+the league's holders of that role sit (a moderate case when tools and results are each weak for the role), and a strong case
+under the deep floor (the lowest twentieth). A hitter's role is the position he plays, a starter's is a rotation spot, a
+reliever's is the tier his usage shows. The standard is shown with every finding ("regular left fielders typically 68,
+unusually weak under 48"), so the position is never a hidden adjustment; the estimate itself stays position-neutral so a
+candidate at the same position is compared like for like. Being the weakest of a group is context, no longer a trigger, and a
+finding does not change when another player joins or leaves the group (`tests/mlbInvariants.test.ts`).
+
+The typical levels are descriptive and provisional (the median of the production review across the 30 clubs at one snapshot);
+the quantiles are policy. After the change a lineup regular is flagged on 13 of 30 clubs, a starter on about 1 in 15, a
+reliever on about 1 in 8, and every flag is one of the league's lowest-twentieth-or-tenth holders of that job.
+
+## D-041 — Every constant is calibrated, provisional or policy, and the three are never confused
+
+**Status:** Accepted. **Implementation:** Present (`server/calibration.ts`; stamps across `server/`).
+
+`calibrated` is estimated from historical evidence and can be right or wrong; `provisional` is a MODEL parameter that ought to
+be estimated and has not been (one partial season of zone ratings); `policy` is a product decision about when to raise
+something or how loudly, so no backtest can call it optimal, it is chosen, stated, shown and changed by decision, never by
+fitting. The concern lines, the platoon margins, the regular and partner shares, the shift thresholds, the bench cover lines
+and functions, the deployment gap, every philosophy threshold and the quantiles behind the role floors are policy. The
+mechanisms (results are sample-aware, a hitter is bat plus glove at his position, shading applies only after validity) are
+architecture and carry no stamp: tests pin them. `npm run calibrate` is not re-run for a policy constant.
+
+## D-042 — The bench is a set of functions with a quality of cover, and the pen is read as a whole
+
+**Status:** Accepted. **Implementation:** Present (`server/benchReview.ts`, `bullpenRoles.ts`, `lineupPicture.ts`,
+`lineupShifts.ts`, `platoon.ts`; `tests/mlbGoldenBench.test.ts`, `mlbGoldenPitching.test.ts`, `mlbGoldenLineup.test.ts`).
+
+Standing at a position is not covering it. A cover's visible grade is ranked among the peers listed at the position: regular
+quality (about the median), credible (not in the bottom tenth) or emergency (playable, no more), so a middle infielder who
+can "play" center field with a first-percentile grade is an emergency cover, not a backup. The bench is reported as
+functions, never a score: who covers catcher, middle infield and center field and how well, a bat to send up, a glove for
+late innings, a runner, flexibility, a platoon partner. Only a hard gap (nobody has a visible grade) is an attention item;
+an emergency-only cover is a finding on the Bench view, because half of the league's benches are thin at center field and
+raising it would not say which club has a problem. The lineup names a regular at one spot per man and a partner where two men
+share it. The bullpen adds pen-wide findings (no credible high-leverage arm, nobody throwing multiple innings, a crowded role)
+and a rotation/bullpen conflict on tools alone, each stating what the pen appears to be doing, what the evidence supports and
+why the difference matters. A shift is offered only when it beats simply starting a bench player at the weak spot. Platoon reads
+say what drives them (league norm, ratings, record) and never report "no issue" on the strength of the league norm alone.
+
+## D-043 — MLB Operations is a workspace of views, each owning one question
+
+**Status:** Accepted. **Implementation:** Present (`src/pages/MlbOperations.tsx`, `src/pages/mlb/`;
+docs/MLB_OPERATIONS_HARDENING.md section 8).
+
+One page had accumulated the inbox, the scouting book, every candidate and every roster mechanic, and the list of what needs
+attention sat under all of it. The module is now five views behind one navigation entry, addressable by URL hash so a decision
+can be linked to and returned to: **Overview** (what needs my attention: an operational inbox, a one-line reading of the club,
+summary cards, no tables of players), **Position players** and **Pitching staff** (the scouting book: each player against the
+standard for his job, expandable to what a scout would say), **Bench and coverage** (functions, not a score) and **Decision**
+(one need opened, in the order a GM decides: the problem, why it was flagged and on what evidence, the staff's recommendation,
+the ways to respond followed through to their consequences, and only then the candidates and roster mechanics behind them).
+Information becomes more detailed as the GM drills down; nothing was deleted.

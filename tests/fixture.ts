@@ -155,7 +155,9 @@ export function buildFixture(): string {
       injury_left INTEGER DEFAULT 0,
       -- Player Search reads this to offer free agents, and had no coverage at
       -- all until the search filters were tested
-      free_agent INTEGER DEFAULT 0
+      free_agent INTEGER DEFAULT 0,
+      -- The league a player plays in. The export gives an amateur a NEGATIVE one; a fixture row that leaves it null is a professional
+      league_id INTEGER
     );
     CREATE TABLE players_roster_status (
       player_id INTEGER, is_active INTEGER, is_on_dl INTEGER, is_on_dl60 INTEGER,

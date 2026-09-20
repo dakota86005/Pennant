@@ -1,3 +1,4 @@
+import { screenAffiliatePlayers } from './rehabAssignments.js';
 import {
   db,
   tableExists,
@@ -354,7 +355,7 @@ function orgPlayers(
       'players_roster_status'
     );
 
-  return db.prepare(`
+  const rows = db.prepare(`
     WITH RECURSIVE org AS (
       SELECT
         team_id,
@@ -468,6 +469,10 @@ function orgPlayers(
   `).all(
     orgId
   ) as OrgPlayerRow[];
+
+  // A player on a rehab assignment is a parent-club player, not a minor leaguer to be judged for retention (rehabAssignments.ts).
+  const rehab = screenAffiliatePlayers(rows.map((row) => Number(row.player_id))).rehab;
+  return rows.filter((row) => !rehab.has(Number(row.player_id)));
 }
 
 function philosophyForRetention(

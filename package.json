@@ -14,6 +14,8 @@
     "check:stats": "tsx scripts/check-stats.ts",
     "rights:capture": "tsx scripts/rights-experiment.ts capture",
     "rights:diff": "tsx scripts/rights-experiment.ts diff",
+    "rights:candidates": "tsx scripts/rights-experiment.ts candidates",
+    "calibrate": "tsx scripts/calibrate.ts",
     "desktop:build": "npm run build && node scripts/build-desktop.mjs",
     "desktop": "npm run abi:electron && npm run desktop:build && electron .",
     "dist": "npm run abi:electron && npm run desktop:build && electron-builder",

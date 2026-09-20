@@ -501,6 +501,122 @@ OOTP 16-22; none is written for OOTP 27.
   in OOTP has one. The cause is not established; the log is a live artifact of a
   loaded save.
 
+## 4.9 Injured-list activation (study for MLB Operations, 2026-09-19)
+
+Question: what does OOTP require to activate a player from the injured list? Needed by the
+MLB Operations "injured player returns to a full active roster" workflow.
+
+**Documented.** The wiki's Injured Lists page covers placing a player on the 10-day and
+60-day lists and where they are in the interface. It says nothing on activation: not
+whether the player must be healed, whether an active or 40-man spot is required, any
+minimum stay, or what happens when a roster is full.
+
+**Observed (export state, no in-game action).** Two exports of the same league ten days
+apart (the original save at 05-15 and the `RIGHTS-EXP` copy at 05-25):
+
+- Every one of the 30 clubs has exactly 26 active players (25 in the copy after the
+  experiments); the limit is never exceeded.
+- No active MLB player carries an injured-list flag (0 in either export), and every active
+  player is on the 40-man (0 exceptions in the original; 1 in the copy, an experiment
+  artifact from restoring a DFA player).
+- Of 115 AI-club major-league players on the IL at 05-15, none was active at 05-25 while
+  still injured: those no longer injured had 9 or fewer injury days left ten days earlier.
+- Healed players are not activated automatically: 5 major-league players sit on the IL with
+  `injury_left = 0` in the original save (3 in the copy).
+
+This describes AI clubs. It suggests activation follows healing and that the active limit
+holds, but it is not evidence of what a human manager may do, and it says nothing about a
+full roster (the AI may clear a spot first).
+
+**Result.** `activateFromInjuredList` stays `indeterminate`. `playerRights.ts` now states
+what is known instead of a bare "not observed": the list, days left, whether he has healed,
+whether the active roster (and, from the 60-day list, the 40-man) has a spot, and, in
+`missing`, exactly which unknowns apply (early activation of an injured player; the behavior
+when a roster is full). The AI-only observation is carried as a `limitation`, not a reason.
+
+**Experiment required (not run).** In a copied save, one action each, capturing the export
+and the log before and after (`npm run rights:capture`):
+
+1. Activate an injured player who still has days left, with a spot open. Record the on-screen
+   message. (Early activation permitted or refused.)
+2. Activate a healed 10-day-IL player onto a full 26-man. Record whether OOTP refuses, or
+   forces a move, and which.
+3. Repeat 2 for a 60-day-IL player with the 40-man full (the league's limit may be lowered
+   in the copy as in section 4.8).
+4. Note the log wording (`Activated ... from the injured list`?) and the option counters.
+
+Two concordant players per case before encoding a rule (section 4.4).
+
+## 4.10 Composed component: place on the active roster after a 40-man addition
+
+`playerRights.ts` now returns `composed.promoteToActive` for a minor leaguer who is not on
+the 40-man: the active-roster component only. It is evaluated from the export invariants
+above (an active player is always on the 40-man; the active limit holds) and owns the
+active-roster spot; the 40-man spot stays with `addToFortyMan`. It needs no chronology (a
+player off the 40-man cannot be on rehab or optioned). A caller composes the two; there is
+no combined "add and promote" right. An IL or DFA player is `indeterminate` / `ineligible`
+as for `recall`.
+
+## 4.11 Injured-list activation and the 60-day list: what the log holds, and the experiment sheet (2026-09-19)
+
+**Status: the experiment has NOT been run.** Pennant cannot operate OOTP; the `RIGHTS-EXP.lg`
+and `RIGHTS-MASTER.lg` copies exist and the game in the copy has advanced, but no controlled
+before/after capture of an activation exists. Nothing below is encoded as a rule.
+
+**What the copy's live log already holds (not a controlled experiment).** The game in
+`RIGHTS-EXP.lg` is at 2026-06-05; its last CSV export is dated 2026-05-25 (a 12-day gap, so the
+export cannot be paired with these events). Arizona's log since the export:
+
+| Date | Event (log wording) | Note |
+|---|---|---|
+| 05-23 | `Placed SP Cristian Mena on the active roster.` / `Activated SP Cristian Mena from the injured list.` | 10-day list, healed the same day; spot open (25 active) |
+| 05-31 | `Placed 2B Ildemaro Vargas on the 10-day injured list.` | injury: day-to-day, 3 days |
+| 05-31 | `RP Jonathan Loáisiga was designated for assignment and placed on waivers.` | |
+| 06-03 | `Purchased the contract of SP Merrill Kelly from Triple A Reno` | |
+| 06-05 | `Placed CF Jordan Lawlar on the active roster.` / `Activated CF Jordan Lawlar from the injured list.` | injured 05-25 for about a week; healed about 06-01; activated four days later |
+
+Reading, with its limits: an activation of a healed 10-day player onto a roster with a spot is
+logged as two events (the placement, then the activation) with no option, designation or 40-man
+event beside it. **Provenance is unknown**: OOTP may place a human club's injured players on the
+list and activate healed ones automatically under a game setting Pennant has not established, so
+a game-performed activation is not evidence of what a manager may do. Two examples of unknown
+provenance are not a rule (section 4.4).
+
+**Sheet for the GM (one action at a time; two concordant players per case before any rule).**
+
+Setup, once:
+
+1. In OOTP (copy loaded, title bar `RIGHTS-EXP`): note whether any game setting places injured
+   players on the list, or activates healed players, for your club. Record its value.
+2. **Save Game**, then **Game ▸ Database ▸ Export to CSV**, so the export matches the log.
+3. `npm run rights:candidates -- --export "<...>/RIGHTS-EXP.lg/import_export/csv"` names the
+   players that fit each case and the roster counts.
+
+For each case: `npm run rights:capture -- --export "<...>" --label <case>-before --players "..."`,
+perform the one action, write down OOTP's message verbatim (including a refusal), **Save Game**,
+export again, `... --label <case>-after`, then `npm run rights:diff -- captures/<case>-before.json
+captures/<case>-after.json`.
+
+| Case | Setup | Action | Record |
+|---|---|---|---|
+| **1** early, spot open | a 10-day-list player with injury days left; active roster below the limit | activate him | allowed or refused; message; `is_on_dl`, `is_active`, `injury_left`; log events |
+| **2a** healed, spot open | a healed 10-day player; active roster below the limit | activate | as above; confirm no option/40-man counter moves |
+| **2b** healed, active full | fill the active roster to the limit first (recall a 40-man player); a healed 10-day player | activate | refused, or a forced move (which and who chooses); counts before and after |
+| **3a** 60-day, 40-man room | a healed 60-day player; 40-man below its limit | activate | does he return to the 40-man (`is_on_secondary` 0 to 1)? org 40-man and active counts; log events |
+| **3b** 60-day, 40-man full | as 3a with the 40-man at its limit (the copy's limit is lowered to 28) | activate | refused, forced move, or allowed over the limit; message |
+| **4** 60-day threshold | 10-day-list players with 8, 15, 30 and 60+ injury days left | try to place each on the 60-day list, one per player | accepted or refused at each length; message. Only a 7-day injury has been tried (refused) |
+
+Do not sim between the capture, the action and the second export unless a case says so. Do not
+generalize from an ambiguous failure. If a case cannot be constructed safely, leave that rule
+`indeterminate` and write down why.
+
+**What each result would change in `playerRights.ts`.** Cases 1 to 3b decide
+`activateFromInjuredList` (eligible / ineligible / a stated prerequisite, and whether a 40-man
+spot is restored or required); case 4 decides `placeOnSixtyDayIl`, which today is
+`indeterminate` for any injured 40-man player with the single refusal carried as a fact. MLB
+Operations needs no change: it already shows each prerequisite as a separate clearing link and
+consumes whatever status Rights returns.
+
 ## 5. What the evaluator implements (Phase 3)
 
 `server/playerRights.ts`, fed by `server/leagueRules.ts`, `PlayerState`, the
@@ -514,7 +630,8 @@ basis.
 | `addToFortyMan` | off the 40-man, not on the 60-day IL (also a DFA player, as Ross) | already on it | on the 60-day IL; 40-man size or limit unknown. A full 40-man is an unmet requirement. |
 | `designateForAssignment` | on the 40-man, not designated, not injured/rehab | not on the 40-man; already designated | injured list or rehab |
 | `outrightAssignment` | designated, <5 yrs service, waiver window ended | not designated; ≥5 yrs (refuses); waivers not cleared | a needed field is blank |
-| `activateFromInjuredList` | never | not on an IL | always when on an IL (rule not observed) |
+| `activateFromInjuredList` | never | not on an IL | always when on an IL (rule not observed); states the list, days left, healed, and `needsActiveSpot` / `needsFortyManSpot` / `activeClearingNeeded` / `fortyManClearingNeeded`; an unmet spot is a requirement, not a refusal |
+| `placeOnSixtyDayIl` | never (threshold unmeasured) | already on it; off the 40-man; no injury days left | any injured 40-man player not yet on the 60-day list (7-day refusal carried as a fact) |
 | Rule 5 | — | — | off the 40-man and league has Rule 5; "protected" on the 40-man |
 
 Stale evidence: a current-state gate (export behind the save, or no export)

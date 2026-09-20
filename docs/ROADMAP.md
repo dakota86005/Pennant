@@ -140,22 +140,39 @@ backed by controlled copied-save experiments and OOTP's own documentation
 - saying in the freshness model that the live log lags in-session moves until
   the game is saved.
 
-### 7. Add the MLB opportunity layer
+### 7. MLB opportunity layer — first slice implemented; extend it
 
-AAA-to-MLB is currently surfaced as a discussion, while direct skip-level MLB
-moves are intentionally excluded from the minor-league engine. Build a separate
-MLB opportunity model that combines developmental readiness with:
+`origin/feature/mlb-operations` was audited and **not merged**; the subsystem was rebuilt on
+Player State, Player Rights, Player Development and the evidence adapter ([D-024](DECISIONS.md),
+[MLB_OPERATIONS.md](MLB_OPERATIONS.md)). Implemented: state-derived needs (role below
+standard, open spot, IL return crunch, GM what-if), staged responses (internal role change,
+recall, add to the 40-man) with rights, development, MLB-level role fit, transaction path,
+roster and farm consequences, philosophy annotation, and a problem-centred workspace.
 
-- 26/40-man openings and role availability;
-- options, waivers, DFA and Rule 5 consequences;
-- service-time/control facts without hiding them as value judgments;
-- injuries, schedule needs, and competitive context; and
-- an explicit GM decision surface.
+Next, in dependency order:
 
-It must consume Player Development eligibility rather than treating a major
-league roster hole as proof a prospect is ready, and it depends on the rights
-evaluator (D-023) rather than on inferred roster state, and must re-point the
-old `rosterTransactionState`/`evaluateRosterAction` prior art at it.
+- Calibrate the provisional constants in `mlbAssignmentContext.ts` against outcomes, not more
+  real-save inspection (first review done, no change: MLB_OPERATIONS.md §23).
+- **Rights:** run the injured-list experiment sheet (RIGHTS_RESEARCH §4.11), the one blocker for
+  `activateFromInjuredList` and `placeOnSixtyDayIl`. Done: unknown duration (D-027), separate
+  active and 40-man clearing with the chain (D-028).
+- **Done (fourth pass, ROSTER_REVIEW.md):** performance-aware review of the pitching staff and the lineup,
+  cascades, hitters (bat, glove, usage, platoon read), the staff recommendation.
+- **Done (fifth pass, ROSTER_REVIEW.md stage 6, CALIBRATION.md):** rating splits and running approved (D-035); constants tuned
+  against outcomes with a harness (D-037); philosophy and the competitive window shade the advice (D-036); platoon partners,
+  position shifts, the bench and the bullpen's leverage roles (D-038). Next: contract and prospect-capital dimensions leaning on
+  the advice, pitchers' rating splits (an owner decision), three-way position chains, re-deriving the glove weights as the season
+  grows.
+- **Done (hardening phase, MLB_OPERATIONS_HARDENING.md, D-039 to D-043):** a base-rate audit over all 30 clubs; a behavioral corpus of 159
+  invariant tests; the peer-population fix; role standards; bench cover quality and functions; pen-wide findings; explanations as data;
+  the module rebuilt as five views. Next refinement: re-derive the role standards and the glove weights as the season grows
+  (`npm run calibrate`, sections `standards` and `defense`); accumulate evidence on the debatable items listed in the hardening doc
+  (the policy quantiles, the IL-return window, center-field bench coverage) before changing any policy.
+- Minor League Operations: a cascade consumer (rehab-aware roster health is done, D-026) (the old branch's
+  bounded planner was deferred, not adopted).
+- Service-time and Rule 5 consequences as stated facts where the export supports them.
+- External acquisition, waiver claims, free-agent strategy and payroll planning build on this
+  later; they are out of scope here.
 
 ## Then: deepen organizational identity
 

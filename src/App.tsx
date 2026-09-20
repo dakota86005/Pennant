@@ -33,6 +33,8 @@ import { Franchise } from './pages/Franchise';
 import { OrgComparison } from './pages/OrgComparison';
 import { Players } from './pages/Players';
 import { Standings } from './pages/Standings';
+import { MlbOperations } from './pages/MlbOperations';
+import { isMlbHash } from './pages/mlb/route';
 import { PlayerModal } from './playerModal';
 import { Nav, type NavEntry } from './Nav';
 import { applyTeamTheme, type ThemeMode } from './theme';
@@ -45,7 +47,7 @@ import { apiGet, apiPost } from './api';
 
 type Page =
   | 'dashboard' | 'farm' | 'farm-decisions' | 'farm-affiliates' | 'storylines' | 'rosters' | 'depth' | 'prospects' | 'development' | 'draft' | 'franchise' | 'orgcompare'
-  | 'contracts' | 'crunch' | 'injuries' | 'freeagents' | 'trades' | 'philosophy' | 'lineup' | 'leaders'
+  | 'contracts' | 'crunch' | 'mlb-operations' | 'injuries' | 'freeagents' | 'trades' | 'philosophy' | 'lineup' | 'leaders'
   | 'staff' | 'watchlist' | 'players' | 'standings' | 'pitching' | 'schedule' | 'payroll' | 'trends' | 'settings';
 
 /**
@@ -88,6 +90,7 @@ const NAV: Array<NavEntry<Page>> = [
       { page: 'contracts', label: 'Contracts', hint: 'Re-sign, extend, or walk' },
       { page: 'freeagents', label: 'Free Agents', hint: 'Now and after this season' },
       { page: 'trades', label: 'Trade Center', hint: 'Analyzer and league-wide fits' },
+      { page: 'mlb-operations', label: 'MLB Operations', hint: 'Roster problems, responses, consequences' },
       { page: 'crunch', label: '40-Man Roster', hint: 'Options, Rule 5, DFA clocks' },
     ],
   },
@@ -152,7 +155,11 @@ export function App() {
   const [saves, setSaves] = useState<SaveInfo[]>([]);
   const [orgs, setOrgs] = useState<Org[]>([]);
   const [orgId, setOrgId] = useState<number | null>(null);
-  const [page, setPage] = useState<Page>('dashboard');
+  // A link into MLB Operations (#/mlb/...) opens it; the module owns the rest of the address (src/pages/mlb/route.ts).
+  const [page, setPage] = useState<Page>(() => (isMlbHash(window.location.hash) ? 'mlb-operations' : 'dashboard'));
+  useEffect(() => {
+    if (page !== 'mlb-operations' && isMlbHash(window.location.hash)) window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  }, [page]);
 
   /*
    * Farm pages share affiliate context so Overview can drill directly into
@@ -350,6 +357,7 @@ export function App() {
                   i.page !== 'players' &&
                   i.page !== 'watchlist' &&
                   i.page !== 'philosophy' &&
+                  i.page !== 'mlb-operations' &&
                 i.page !== 'farm' &&
                 i.page !== 'farm-decisions' &&
                 i.page !== 'farm-affiliates'
@@ -526,6 +534,7 @@ export function App() {
                 {page === 'payroll' && <Payroll orgId={orgId} />}
                 {page === 'philosophy' && <Philosophy orgId={orgId} orgLabel={org.label} />}
                 {page === 'crunch' && <RosterCrunch orgId={orgId} />}
+                {page === 'mlb-operations' && <MlbOperations orgId={orgId} />}
                 {page === 'injuries' && <Injuries orgId={orgId} />}
                 {page === 'trades' && <TradeCenter orgId={orgId} orgLabel={org.label} />}
                 {page === 'freeagents' && <FreeAgents orgId={orgId} />}

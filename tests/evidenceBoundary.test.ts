@@ -27,6 +27,21 @@ const GUARDED = [
   'prospectAssignments.ts',
   'destinationFit.ts',
   'developmentFit.ts',
+  'mlbAssignmentContext.ts',
+  'roleReview.ts',
+  'roleStanding.ts',
+  'platoon.ts',
+  'lineupPicture.ts',
+  'resultsMetrics.ts',
+  'resultsEvidence.ts',
+  'rosterScenario.ts',
+  'toolsModel.ts',
+  'calibration.ts',
+  'staffPreference.ts',
+  'bullpenRoles.ts',
+  'benchReview.ts',
+  'lineupShifts.ts',
+  'rehabAssignments.ts',
   'minorLeagueRoster.ts',
   'minorLeagueMoves.ts',
   'pitcherRosterSimulation.ts',
@@ -71,6 +86,19 @@ describe('the evidence boundary', () => {
 
   it.each(GUARDED)('%s does not call gloves() directly', (file) => {
     expect(code(file), file).not.toMatch(/\bgloves\(/);
+  });
+
+  it('the adapter reads exactly the extra rating families D-035 approved, and no others', () => {
+    const source = code('scoutedEvidence.ts');
+    // approved by the owner: a hitter's rating splits against left- and right-handed pitching, and his running ratings
+    expect(source).toMatch(/batting_ratings_vsl_/);
+    expect(source).toMatch(/batting_ratings_vsr_/);
+    expect(source).toMatch(/running_ratings_speed/);
+    expect(source).toMatch(/running_ratings_baserunning/);
+    expect(source).toMatch(/running_ratings_stealing/);
+    // not approved: pitchers' splits, hit-by-pitch and BABIP ratings, ground/fly and holding-runners ratings
+    expect(source).not.toMatch(/pitching_ratings_vs[lr]_/);
+    expect(source).not.toMatch(/_hp\b|_babip\b|ground_fly|misc_hold|batting_ratings_misc_bunt/);
   });
 
   it('keeps players_value out of the adapter itself', () => {

@@ -1,5 +1,6 @@
-import { db, tableExists } from './db.js';
+import { db, tableColumns, tableExists } from './db.js';
 import { POSITION_CODES } from './gloves.js';
+import { screenAffiliatePlayers } from './rehabAssignments.js';
 import { loadScoutedAbilities, scoutedGloves } from './scoutedEvidence.js';
 
 export type RosterHealthStatus =
@@ -76,6 +77,18 @@ export interface AffiliateRosterHealth {
 
   overall: RosterHealthStatus;
   issues: string[];
+
+  /**
+   * Players on this affiliate's list who are not counted as ordinary members.
+   * `rehab`: an explicit log shows a parent-club player on a rehab assignment;
+   * he is excluded from every count above. `ambiguous`: a 40-man player nothing
+   * explains, who may be on rehab or optioned: he IS counted (nothing establishes
+   * otherwise) and is named here so the health above can be read as uncertain.
+   */
+  rosterTreatment: {
+    rehab: Array<{ playerId: number; name: string }>;
+    ambiguous: Array<{ playerId: number; name: string; reason: string }>;
+  };
 }
 
 const LEVEL_NAMES: Record<number, string> = {
@@ -100,7 +113,8 @@ const DEFENSIVE_POSITIONS = [
 
 type DefensivePosition = typeof DEFENSIVE_POSITIONS[number];
 
-const PLAYABLE_RATING = 35;
+/** Visible fielding grade at or above which a position counts as playable (shared with MLB Operations). */
+export const PLAYABLE_RATING = 35;
 const STRONG_RATING = 50;
 
 /*
@@ -175,20 +189,50 @@ function affiliates(orgId: number): Affiliate[] {
   `).all(orgId, orgId) as Affiliate[];
 }
 
-function activePlayers(teamId: number): ActivePlayer[] {
-  if (!tableExists('players') || !tableExists('team_roster')) return [];
+/**
+ * A read-only "what would this affiliate look like" scenario. It can only take
+ * known players off an affiliate's active roster and add known players to it;
+ * it never changes an imported roster, and it says nothing about whether the
+ * moves are allowed (Player Rights) or defensible (Player Development).
+ */
+export interface RosterHealthScenario {
+  /** Players who leave whichever affiliate's active roster they are on. */
+  removePlayerIds?: readonly number[];
+  /** Players who join an affiliate's active roster (e.g. an optioned MLB player). */
+  addPlayers?: readonly { playerId: number; teamId: number }[];
+  /** Compute only these affiliates (a cost limit, not a filter on evidence). */
+  onlyTeamIds?: readonly number[];
+}
 
-  const rows = db.prepare(`
-    SELECT
+/** The player columns the health evaluator reads; a column an export lacks is read as 0, not a failure. */
+function playerColumns(): string {
+  const present = new Set(tableColumns('players'));
+  const col = (name: string) => (present.has(name) ? `COALESCE(p.${name}, 0)` : '0');
+  return `
       p.player_id,
       p.first_name,
       p.last_name,
       p.position,
       p.role,
-      COALESCE(p.injury_is_injured, 0) AS injury_is_injured,
-      COALESCE(p.injury_dtd_injury, 0) AS injury_dtd_injury,
-      COALESCE(p.fatigue_points, 0) AS fatigue_points,
-      COALESCE(p.fatigue_played_today, 0) AS fatigue_played_today
+      ${col('injury_is_injured')} AS injury_is_injured,
+      ${col('injury_dtd_injury')} AS injury_dtd_injury,
+      ${col('fatigue_points')} AS fatigue_points,
+      ${col('fatigue_played_today')} AS fatigue_played_today`;
+}
+
+type PlayerRow = Omit<ActivePlayer, 'stamina'>;
+
+type Treatment = AffiliateRosterHealth['rosterTreatment'];
+
+function activePlayers(
+  teamId: number,
+  scenario: RosterHealthScenario = {}
+): { players: ActivePlayer[]; treatment: Treatment } {
+  if (!tableExists('players') || !tableExists('team_roster')) return { players: [], treatment: { rehab: [], ambiguous: [] } };
+
+  const removed = new Set(scenario.removePlayerIds ?? []);
+  const listed = (db.prepare(`
+    SELECT ${playerColumns()}
     FROM players p
     JOIN team_roster tr
       ON tr.team_id = ?
@@ -196,7 +240,27 @@ function activePlayers(teamId: number): ActivePlayer[] {
      AND tr.list_id = 2
     WHERE p.team_id = ?
       AND p.retired = 0
-  `).all(teamId, teamId) as Array<Omit<ActivePlayer, 'stamina'>>;
+  `).all(teamId, teamId) as PlayerRow[]).filter((row) => !removed.has(row.player_id));
+
+  // A rehab assignee is a parent-club player, not an ordinary member of this club (rehabAssignments.ts).
+  const screen = screenAffiliatePlayers(listed.map((row) => row.player_id));
+  const nameOf = (row: PlayerRow) => `${row.first_name} ${row.last_name}`;
+  const treatment: Treatment = {
+    rehab: listed.filter((row) => screen.rehab.has(row.player_id)).map((row) => ({ playerId: row.player_id, name: nameOf(row) })),
+    ambiguous: listed.filter((row) => screen.ambiguous.has(row.player_id))
+      .map((row) => ({ playerId: row.player_id, name: nameOf(row), reason: screen.ambiguous.get(row.player_id) as string })),
+  };
+  const rows = listed.filter((row) => !screen.rehab.has(row.player_id));
+
+  const joining = (scenario.addPlayers ?? [])
+    .filter((add) => add.teamId === teamId && !rows.some((row) => row.player_id === add.playerId))
+    .map((add) => add.playerId);
+  for (const id of joining) {
+    const row = db.prepare(`SELECT ${playerColumns()} FROM players p WHERE p.player_id = ? AND p.retired = 0`).get(id) as
+      | PlayerRow
+      | undefined;
+    if (row) rows.push(row);
+  }
 
   /*
    * Who is active, and their health and workload, are objective facts read
@@ -205,10 +269,13 @@ function activePlayers(teamId: number): ActivePlayer[] {
    */
   const abilities = loadScoutedAbilities(rows.map((row) => row.player_id));
 
-  return rows.map((row) => ({
-    ...row,
-    stamina: abilities.for(row.player_id).stamina,
-  }));
+  return {
+    players: rows.map((row) => ({
+      ...row,
+      stamina: abilities.for(row.player_id).stamina,
+    })),
+    treatment,
+  };
 }
 
 function hitterEligibility(player: ActivePlayer): HitterEligibility {
@@ -439,8 +506,11 @@ function overallStatus(
   return 'healthy';
 }
 
-function computeAffiliate(team: Affiliate): AffiliateRosterHealth {
-  const roster = activePlayers(team.team_id);
+function computeAffiliate(
+  team: Affiliate,
+  scenario: RosterHealthScenario
+): AffiliateRosterHealth {
+  const { players: roster, treatment } = activePlayers(team.team_id, scenario);
 
   const hittersRaw = roster.filter(
     (player) => player.position !== 1
@@ -652,11 +722,16 @@ function computeAffiliate(team: Affiliate): AffiliateRosterHealth {
     ),
 
     issues,
+    rosterTreatment: treatment,
   };
 }
 
 export function computeMinorLeagueRosterHealth(
-  orgId: number
+  orgId: number,
+  scenario: RosterHealthScenario = {}
 ): AffiliateRosterHealth[] {
-  return affiliates(orgId).map(computeAffiliate);
+  const only = scenario.onlyTeamIds ? new Set(scenario.onlyTeamIds) : null;
+  return affiliates(orgId)
+    .filter((team) => !only || only.has(team.team_id))
+    .map((team) => computeAffiliate(team, scenario));
 }

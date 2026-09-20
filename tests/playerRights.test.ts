@@ -424,3 +424,132 @@ describe('the evaluator depends only on the shared layers', () => {
     expect(crunch).toMatch(/rightsFor\(/);
   });
 });
+
+describe('composed component: place on the active roster after a 40-man addition', () => {
+  const offForty = { level: 2, active: false, forty: false } as const;
+
+  it('exists only for a minor leaguer who is not on the 40-man', () => {
+    expect(rights({ level: 2, active: false, forty: true }).composed.promoteToActive).toBeNull();
+    expect(rights({}).composed.promoteToActive).toBeNull();
+    expect(rights(offForty).composed.promoteToActive?.status).toBe('eligible');
+  });
+
+  it('owns the active-roster spot and leaves the 40-man spot to addToFortyMan', () => {
+    const open = rights(offForty, { counts: { active: 25, fortyMan: 40 } });
+    expect(open.composed.promoteToActive?.requirements).toEqual([expect.objectContaining({ kind: 'active_roster_spot', status: 'met' })]);
+    // a full 40-man is the first component's requirement, not this one's
+    expect(open.actions.addToFortyMan.requirements[0]).toMatchObject({ kind: 'forty_man_spot', status: 'unmet' });
+    const full = rights(offForty, { counts: { active: 26, fortyMan: 30 } });
+    expect(full.composed.promoteToActive).toMatchObject({ status: 'eligible', label: expect.stringMatching(/active roster full/) });
+    expect(full.composed.promoteToActive?.requirements[0].status).toBe('unmet');
+  });
+
+  it('is not a recall: it needs no chronology', () => {
+    const r = rights(offForty, { evidence: { currentState: 'current', chronology: 'unavailable' } });
+    expect(r.composed.promoteToActive?.status).toBe('eligible');
+    expect(r.actions.recall.status).toBe('ineligible');
+  });
+
+  it('is blocked by DFA, indeterminate on an injured list, and indeterminate on a stale export', () => {
+    expect(rights({ ...offForty, designated: true }).composed.promoteToActive?.status).toBe('ineligible');
+    expect(rights({ ...offForty, il: true }).composed.promoteToActive?.status).toBe('indeterminate');
+    expect(rights(offForty, { evidence: { currentState: 'behind', chronology: 'current' } }).composed.promoteToActive?.status).toBe('indeterminate');
+  });
+});
+
+describe('activation from an injured list stays indeterminate, and says exactly why', () => {
+  it('states what is known: list, days left, healed, and each roster spot', () => {
+    const a = rights({ il: true, active: false, injuryDaysLeft: 8 }, { counts: { active: 26, fortyMan: 30 } }).actions.activateFromInjuredList;
+    expect(a.status).toBe('indeterminate');
+    expect(a.facts).toMatchObject({ list: '10-day', injuryDaysLeft: 8, healed: false, activeRosterCount: 26 });
+    expect(a.requirements).toEqual([expect.objectContaining({ kind: 'active_roster_spot', status: 'unmet' })]);
+    const codes = a.missing.map((m) => m.message).join(' ');
+    expect(codes).toMatch(/injury day\(s\) left/);
+    expect(codes).toMatch(/active roster is full/);
+    expect(a.limitation).toMatch(/AI clubs/);
+  });
+
+  it('a healed player with a spot open is still not established: the rule was never observed', () => {
+    const a = rights({ il: true, active: false, injuryDaysLeft: 0 }, { counts: { active: 25, fortyMan: 30 } }).actions.activateFromInjuredList;
+    expect(a.status).toBe('indeterminate');
+    expect(a.facts.healed).toBe(true);
+    expect(a.requirements[0].status).toBe('met');
+    expect(a.missing[0].message).toMatch(/even with a healed player and a spot open/);
+  });
+
+  it('adds the 40-man requirement from the 60-day list', () => {
+    const a = rights({ il60: true, active: false, forty: false, injuryDaysLeft: 30 }, { counts: { active: 25, fortyMan: 40 } }).actions.activateFromInjuredList;
+    expect(a.facts.list).toBe('60-day');
+    expect(a.requirements.map((r) => [r.kind, r.status])).toEqual([['active_roster_spot', 'met'], ['forty_man_spot', 'unmet']]);
+  });
+
+  it('is ineligible off the list and indeterminate on a stale export, as before', () => {
+    expect(rights({}).actions.activateFromInjuredList.status).toBe('ineligible');
+    expect(rights({ il: true }, { evidence: { currentState: 'behind', chronology: 'current' } }).actions.activateFromInjuredList.status).toBe('indeterminate');
+  });
+});
+
+describe('activation states its prerequisite clearing moves and stays separate from them', () => {
+  it('an unmet spot is a requirement on the activation, never a rejection of it', () => {
+    const a = rights({ il: true, active: false, injuryDaysLeft: 0 }, { counts: { active: 26, fortyMan: 30 } }).actions.activateFromInjuredList;
+    expect(a.status).toBe('indeterminate');
+    expect(a.facts).toMatchObject({ needsActiveSpot: true, needsFortyManSpot: false, activeClearingNeeded: true, fortyManClearingNeeded: false });
+    expect(a.status).not.toBe('ineligible');
+  });
+
+  it('a 60-day return onto a full 40-man says a 40-man clearing move is needed first, in addition to any active one', () => {
+    const a = rights({ il60: true, active: false, forty: false, injuryDaysLeft: 0 }, { counts: { active: 26, fortyMan: 40 } }).actions.activateFromInjuredList;
+    expect(a.status).toBe('indeterminate');
+    expect(a.facts).toMatchObject({ needsFortyManSpot: true, fortyManClearingNeeded: true, activeClearingNeeded: true });
+    expect(a.requirements.map((r) => [r.kind, r.status])).toEqual([['active_roster_spot', 'unmet'], ['forty_man_spot', 'unmet']]);
+    expect(a.missing.map((m) => m.message).join(' ')).toMatch(/refuses the activation or forces a corresponding move has not been observed/);
+  });
+
+  it('with a spot on each roster no clearing is needed, and the rule is still not established', () => {
+    const a = rights({ il60: true, active: false, forty: false, injuryDaysLeft: 0 }, { counts: { active: 25, fortyMan: 30 } }).actions.activateFromInjuredList;
+    expect(a.facts).toMatchObject({ activeClearingNeeded: false, fortyManClearingNeeded: false });
+    expect(a.status).toBe('indeterminate');
+  });
+
+  it('unknown roster counts leave the clearing need unknown, not false', () => {
+    const a = rights({ il: true, active: false }, { counts: { active: null, fortyMan: null } }).actions.activateFromInjuredList;
+    expect(a.facts.activeClearingNeeded).toBeNull();
+    expect(a.requirements[0].status).toBe('unknown');
+  });
+});
+
+describe('placeOnSixtyDayIl (opens a 40-man spot)', () => {
+  it('is not established for an injured 40-man player: one refusal at 7 days is not a rule', () => {
+    const a = rights({ il: true, active: false, injuryDaysLeft: 50 }).actions.placeOnSixtyDayIl;
+    expect(a.status).toBe('indeterminate');
+    expect(a.facts).toMatchObject({ injuryDaysLeft: 50, observedRefusalAtDays: 7, opensFortyManSpot: true });
+    expect(codes(a)).toEqual(['sixty_day_leaves_forty_man']);
+    expect(a.missing[0].code).toBe('rule_not_established');
+    expect(a.missing[0].message).toMatch(/has not been measured/);
+  });
+
+  it('carries the observed refusal when the injury is no longer than the one that was refused', () => {
+    const a = rights({ il: true, active: false, injuryDaysLeft: 7 }).actions.placeOnSixtyDayIl;
+    expect(a.status).toBe('indeterminate');
+    expect(codes(a)).toEqual(['sixty_day_leaves_forty_man', 'at_or_below_observed_refusal']);
+  });
+
+  it('is ineligible when there is nothing to list: already on it, not on the 40-man, or not injured', () => {
+    expect(codes(rights({ il60: true, active: false, forty: false, injuryDaysLeft: 40 }).actions.placeOnSixtyDayIl)).toEqual(['already_sixty_day']);
+    expect(codes(rights({ il: true, active: false, forty: false, injuryDaysLeft: 40 }).actions.placeOnSixtyDayIl)).toEqual(['not_on_forty_man']);
+    const healthy = rights({}).actions.placeOnSixtyDayIl;
+    expect(healthy.status).toBe('ineligible');
+    expect(codes(healthy)).toEqual(['no_injury_to_list']);
+    expect(healthy.limitation).toMatch(/one observed refusal/);
+  });
+
+  it('a stale export or an unknown injury leaves it indeterminate', () => {
+    expect(rights({ il: true, injuryDaysLeft: 50 }, { evidence: { currentState: 'behind', chronology: 'current' } }).actions.placeOnSixtyDayIl.status).toBe('indeterminate');
+  });
+
+  it('never returns eligible from what has been observed', () => {
+    for (const days of [1, 7, 8, 30, 60, 120]) {
+      expect(rights({ il: true, active: false, injuryDaysLeft: days }).actions.placeOnSixtyDayIl.status).not.toBe('eligible');
+    }
+  });
+});

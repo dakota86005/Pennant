@@ -66,6 +66,35 @@ decision, roadmap item, or project-state fact changes.
   requirement, or blocker may depend on it, and it is applied only afterwards in
   `assignmentPreference.ts` to rank defensible assignments (D-019). Do not
   recreate eligibility through ranking or cutoffs.
+- MLB Operations (`server/mlb*.ts`) is a consumer of Player State, Player Rights, Player
+  Development, Minor League Operations and philosophy (D-024). Derive needs from the current
+  export, never from snapshot differences; never read a rating, option, 40-man, or log source
+  itself; never rank or score candidates; a path is only as certain as its least certain
+  step. Whether an assignment is developmentally defensible is asked of Player Development per
+  contemplated context (D-025); MLB Operations never holds a development threshold or a
+  bypass, and an incomplete evaluation is never an actionable solution. Coverage numbers are
+  floors held as data, not roster doctrine. An unknown duration is never assumed (D-027): judge
+  the contexts that could apply and say when the answer depends on it. The active-roster spot
+  and the 40-man spot are separate constraints (D-028); compose Rights' component actions and
+  invent no combined right. The relief/experience numbers are provisional calibration
+  parameters, declared only in `mlbAssignmentContext.ts`. IL activation rules come only from
+  observed OOTP behavior (D-029). The scouting layer (D-031 to D-034): a review finding is a flag with two
+  lenses (tools, results) and a working estimate that is always shown with its parts, never a trigger or a hidden
+  score; results are objective statistics read directly, ratings only through `scoutedEvidence.ts`; every
+  threshold is a provisional calibration parameter declared once (`roleReview`, `platoon`, `lineupPicture`,
+  `resultsMetrics`, `roleStanding`); a hitter is bat plus revealed glove at his position; the lineup is what
+  usage shows; a recommendation is advice from a stated rubric. A hitter's rating splits against each hand and his
+  running ratings are approved evidence, read only through `scoutedEvidence.ts` (D-035); pitchers' splits and the other
+  rating families are not. Every scouting constant is tuned against outcomes by `scripts/calibrate.ts` or stamped
+  provisional, declared once (D-037, docs/CALIBRATION.md). Philosophy and the season shade the ORDER and WORDING of advice
+  (`staffPreference.ts`, D-036): after validity, never a change to a read, a right or a development finding, every lean
+  shown with its dimension and value, and a recommendation says what a club with no philosophy would hear. Bullpen roles,
+  the bench, position shifts and platoon partners are flags and plans, never transactions (D-038). Peer populations are major leaguers
+  only (D-039); a concern is measured against the ROLE with its standard shown, never against the group or one absolute line (D-040);
+  every constant is stamped calibrated, provisional or policy, and a policy constant is decided, never fitted (D-041); the bench is
+  functions and cover quality, not a score (D-042); the module is views, each owning one question (D-043). New baseball behavior gets a
+  case in the behavioral corpus first (docs/BEHAVIOR_CASES.md).
+  `tests/mlbOperationsBoundary.test.ts` enforces it.
 - Recommendations are advisory. The user/GM makes the final decision. Do not
   add automatic OOTP transactions or save mutation as an incidental feature.
 - Organization-specific behavior should resolve the configured organization,

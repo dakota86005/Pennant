@@ -120,9 +120,10 @@ artifact, not an alternative application backend.
 | Database compatibility | `server/db.ts` discovers available tables and columns; query modules adapt to export differences. | Do not hard-code a single save's schema without a guarded fallback. |
 | Domain API | Express routers in `server/*.ts` compute rosters, player dossiers, standings, schedules, stats, contracts, payroll, trades, development, and other front-office reads. | Domain logic belongs here, not duplicated in React or AI prompts. |
 | Scouted evidence | `scoutedEvidence.ts` is the only reader of ability ratings for development and operations judgments. It returns branded `ScoutedAbility` evidence with provenance, viewer, scale, and what is missing. | Nothing in Player Development or Minor League Operations may read a rating column or `players_value` directly; `tests/evidenceBoundary.test.ts` enforces it. |
-| Player Development | `org.ts`, `prospectDecision.ts`, `prospectAssignments.ts`, `destinationFit.ts`, `developmentFit.ts`, and scouting-history functions evaluate evidence, developmental protection, legal assignments, and destination fit. | This layer determines defensibility; it does not choose transactions for the GM. |
+| Player Development | `org.ts`, `mlbAssignmentContext.ts` (per-context MLB assignment assessment, D-025), `prospectDecision.ts`, `prospectAssignments.ts`, `destinationFit.ts`, `developmentFit.ts`, and scouting-history functions evaluate evidence, developmental protection, legal assignments, and destination fit. | This layer determines defensibility; it does not choose transactions for the GM. |
 | Organizational Philosophy | `philosophy.ts` defines organization-specific dimensions/policies; `settings.ts` persists and resolves profiles; `Philosophy.tsx` edits them. | Philosophy ranks or adjusts choices after hard baseball/development constraints. It is not player evidence. |
-| Minor League Operations | `minorLeagueRoster.ts`, `minorLeagueMoves.ts`, `pitcherRosterSimulation.ts`, `minorLeaguePitchingOperations.ts`, and `minorLeagueRetention.ts` diagnose affiliate structure and propose assignment/retention responses. | Level-changing moves must already be authorized by Player Development. Outputs are read-only recommendations. |
+| Minor League Operations | `rehabAssignments.ts` (rehab assignees are not ordinary affiliate members, D-026), `minorLeagueRoster.ts`, `minorLeagueMoves.ts`, `pitcherRosterSimulation.ts`, `minorLeaguePitchingOperations.ts`, and `minorLeagueRetention.ts` diagnose affiliate structure and propose assignment/retention responses. | Level-changing moves must already be authorized by Player Development. Outputs are read-only recommendations. |
+| MLB Operations | `mlbRoster.ts` (club view over Player State), `mlbNeeds.ts` (state-derived needs), `mlbResponses.ts` (staged candidates, transaction path, consequences, philosophy annotation), `mlbEvidence.ts` (adapters to the specialists), `mlbOperations.ts` (service + `/api/mlb-operations`), `MlbOperations.tsx`. | Consumer only (D-024, [MLB_OPERATIONS.md](MLB_OPERATIONS.md)); coverage numbers are floors, not targets: decides no scouting, development, rights, philosophy or farm assignment question. Reads no raw rating, roster-status, option or log source; `tests/mlbOperationsBoundary.test.ts` enforces it. |
 | AI features | `providers.ts`, `models.ts`, `chat.ts`, `ai.ts`, and `storylines.ts` provide staff chat, briefings, trade discussion, and storylines through configurable providers. | AI consumes computed save-grounded facts, calls the same API as the UI, and supports the front-office experience. It does not become a parallel recommendation engine. |
 | Web UI | React pages in `src/` render domain results, evidence, alternatives, and local interactions. `src/App.tsx` owns selected-save and selected-organization UI context. | React may shape presentation but should not silently reimplement baseball rules. |
 | Desktop shell | `electron/main.ts`, `preload.ts`, and `updater.ts` embed the local server, expose a minimal IPC bridge, protect navigation, store secrets, and manage consent-first updates. | Keep Node access out of the renderer and keep IPC narrow. |
@@ -414,6 +415,62 @@ does not consume it yet.
 Retention similarly separates developmental value, organizational utility,
 roster pressure, transaction guardrails, and observed development. A release
 candidate is an advisory flag for GM review, never an automatic transaction.
+
+## MLB Operations
+
+```text
+Player State ──► mlbRoster (club view: roles, availability, counts, limits)
+                    │
+                    ├──► mlbNeeds ── need (kind, origin, severity, urgency, horizon, causes, unknowns)
+                    │
+need ──► mlbResponses ──┬─ discovery        objective
+                        ├─ availability     Player State
+                        ├─ development      org.ts mlbAssignmentAssessments, per contemplated context; an unknown duration
+                        │                   asks temporary depth AND durable role and resolveAcrossDurations answers,
+                        │                   incl. context_dependent (or: incomplete)
+                        ├─ rights           rightsFor / playerRights (per required action)
+                        ├─ clearing         a chain: clear 40-man spot → add → clear active spot → place; each constraint
+                        │                   solved separately (60-day list / designation vs option / designation)
+                        ├─ role fit         destinationFit at the MLB club
+                        ├─ consequences     counts; minorLeagueRoster scenario; contract facts
+                        └─ philosophy       annotation, valid alternatives only
+                                 │
+                                 ▼
+                         groups, unranked ──► GM
+                                 │
+                 mlbReport ◄─────┘  situation · role picture (working estimate: tools + results, and the glove
+                                    for a hitter) · the read · recommendation (D-034) · pathways / plans
+
+   scouting layer (D-031 to D-033): resultsEvidence + resultsMetrics (objective results) · roleReview (two
+   lenses, working estimate, findings, replacement comparison) · lineupPicture · platoon · rosterScenario
+   (cascades) · mlbReview (unprompted `role_holder_review` needs) · mlbPlans (ways to make room)
+
+   fifth pass (D-035 to D-038): scoutedEvidence (+ rating splits, running) → toolsModel (expected wOBA, platoon and
+   running expectations) · platoon (ratings prior) · bullpenRoles · benchReview · lineupShifts · staffPreference (window and
+   season shade urgency, the bar, tie-breaks and plan order: after validity, every lean shown) · calibration (stamps) ·
+   scripts/calibrate.ts (the harness that tunes the constants against outcomes)
+
+   hardening phase (D-039 to D-043, MLB_OPERATIONS_HARDENING.md): scoutedEvidence peers are major leaguers only ·
+   roleStandards (what a holder of each role typically is; a concern is measured against the role, shown with the finding) ·
+   mlbExplain (why a flag exists, as data) · benchReview (cover quality, functions) · bullpenRoles (pen-wide findings,
+   rotation/pen conflict) · lineupPicture (one man one spot, partners) · calibration stamps: calibrated / provisional / policy
+```
+
+UI (D-043): `src/pages/MlbOperations.tsx` is the module shell (tabs, URL-hash route, view boundary); `src/pages/mlb/` holds the views
+(`Overview`, `PositionPlayers`, `PitchingStaff`, `Bench`, `Decision`), the shared vocabulary (`common.tsx`), the API shapes
+(`types.ts`) and the address (`route.ts`). Overview is an inbox with no player tables; the scouting book and the decision workspace are one
+click away.
+
+The response builder is pure: it takes ports (`ResponsePorts`) and never reaches a table, the
+log, or a rating column. `mlbOperations.ts` wires the real specialists. Directions: **fill**
+(internal role change, recall, add to the 40-man as two Rights component actions), **clear**
+(the whole path for an injured player who returns to a roster with no spot: the activation, the
+chain, and the active-roster and 40-man constraints each cleared separately, grouped by transaction
+class; D-028) and **role_needed** (an open spot names no role). An unknown duration is not assumed:
+Player Development is asked about temporary depth and a durable assignment and may answer
+`context_dependent` (D-027).
+Needs come from the current export only, so they appear on the first import; the GM can also
+pose a what-if. Details, standards, owner decisions: [MLB_OPERATIONS.md](MLB_OPERATIONS.md).
 
 ## Organization context
 

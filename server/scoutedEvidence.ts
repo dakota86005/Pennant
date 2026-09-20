@@ -11,7 +11,10 @@
  *
  *   APPROVED      the exported tool ratings — `*_ratings_overall_*` (current),
  *                 `*_ratings_talent_*` (potential), stamina and pitch grades —
- *                 and revealed fielding-position grades (`gloves.ts`).
+ *                 and revealed fielding-position grades (`gloves.ts`); and, by
+ *                 owner decision D-035, a hitter's rating SPLITS against left- and
+ *                 right-handed pitching (`batting_ratings_vsl_*` / `_vsr_*`) and his
+ *                 RUNNING ratings (`running_ratings_*`).
  *   PROHIBITED    every continuous `players_value` ability/talent field
  *                 (`oa`, `pot`, `oa_rating`, `pot_rating`, `overall_value`,
  *                 `talent_value`, ...). Nothing in the export establishes that
@@ -49,10 +52,10 @@ import { gloves, type Gloves, type PositionRating } from './gloves.js';
  * justify one.
  */
 export interface EvidenceProvenance {
-  source: 'exported_tool_ratings' | 'exported_fielding_ratings';
+  source: 'exported_tool_ratings' | 'exported_fielding_ratings' | 'exported_split_and_running_ratings';
   status: 'declared_organization_visible';
   verification: 'not_verifiable_from_export';
-  basis: 'DECISIONS.md D-002, D-017';
+  basis: 'DECISIONS.md D-002, D-017' | 'DECISIONS.md D-002, D-017, D-035';
 }
 
 const TOOL_PROVENANCE: EvidenceProvenance = {
@@ -466,3 +469,182 @@ export function scoutedGloves(playerId: number): Gloves | null {
 
 /** The fielding provenance, for payloads that report it. */
 export const FIELDING_EVIDENCE_PROVENANCE: EvidenceProvenance = FIELDING_PROVENANCE;
+
+// ── Fielding peers ──────────────────────────────────────────────────────
+
+const fieldingPopulationCache = new Map<string, number[]>();
+
+const hitterPopulationCache = new Map<number, ScoutedHitterProfile[]>();
+
+/** Cleared whenever a fresh export is imported. */
+export function clearFieldingPopulationCache(): void {
+  fieldingPopulationCache.clear();
+  hitterPopulationCache.clear();
+}
+
+/**
+ * Who counts as a "major-league" peer. Every club carries, under its own `team_id`, the amateurs it has signed
+ * (sixteen- and seventeen-year-olds on the international pool, all-20 tools, no plate appearances); the export marks
+ * them with a NEGATIVE `players.league_id`, where a professional's is the league he plays in. Ranked against them a
+ * real hitter's percentile is inflated by the share of the pool they make up (about 12% of the hitters here), and
+ * every mean over the pool is pulled down. A peer is a player whose own league is the major league.
+ * Schema-tolerant: an export with no `league_id` (or a null one) leaves the population as it was.
+ */
+const majorLeaguerOnly = (): string => (tableColumns('players').includes('league_id') ? ' AND COALESCE(p.league_id, ?) = ?' : '');
+const majorLeaguerArgs = (leagueId: number): number[] => (tableColumns('players').includes('league_id') ? [leagueId, leagueId] : []);
+
+/**
+ * The revealed fielding grades of a league's major-league players listed at a
+ * position, on the 20-80 scale, ascending: the peers a defensive grade at that
+ * position is ranked against. Only grades the game shows (current above zero)
+ * are used, for the same reason `gloves()` uses them; a player listed elsewhere
+ * with a stray grade here is not a peer.
+ */
+export function scoutedFieldingPopulation(leagueId: number, position: number): number[] {
+  const key = `${leagueId}:${position}`;
+  const hit = fieldingPopulationCache.get(key);
+  if (hit) return hit;
+  const out: number[] = [];
+  const column = `fielding_rating_pos${position}`;
+  if (position >= 1 && position <= 9 && tableExists('players_fielding') && tableExists('teams') && tableColumns('players_fielding').includes(column)) {
+    const scale = ratingScale();
+    const rows = db.prepare(
+      `SELECT f."${column}" AS grade
+       FROM players_fielding f
+       JOIN players p ON p.player_id = f.player_id
+       JOIN teams t ON t.team_id = p.team_id
+       WHERE t.league_id = ? AND t.level = 1 AND p.position = ? AND p.retired = 0 AND f."${column}" > 0${majorLeaguerOnly()}`
+    ).all(leagueId, position, ...majorLeaguerArgs(leagueId)) as Array<{ grade: number }>;
+    for (const r of rows) out.push(toScouting(r.grade, scale));
+    out.sort((a, b) => a - b);
+  }
+  fieldingPopulationCache.set(key, out);
+  return out;
+}
+
+
+// ── Hitter splits and running (D-035) ───────────────────────────────────
+
+/**
+ * A hitter's rating splits against left- and right-handed pitching and his running
+ * ratings: the evidence the owner approved in D-035 (platoon and baserunning). Read
+ * only here. Every value is on the 20-80 scale; a grade that is absent, non-numeric
+ * or not positive is unknown, never replaced (D-018). A composite exists only when
+ * every component it averages is known.
+ */
+export type HitterSide = 'vsLeft' | 'vsRight';
+export type RunningKey = 'speed' | 'baserunning' | 'stealing' | 'stealingRate';
+
+const SPLIT_PREFIX: Record<HitterSide, string> = { vsLeft: 'batting_ratings_vsl_', vsRight: 'batting_ratings_vsr_' };
+const SPLIT_SUFFIX: Record<HitterTool, string> = { contact: 'contact', gap: 'gap', power: 'power', eye: 'eye', avoidK: 'strikeouts' };
+const RUNNING_COLUMN: Record<RunningKey, string> = {
+  speed: 'running_ratings_speed',
+  baserunning: 'running_ratings_baserunning',
+  stealing: 'running_ratings_stealing',
+  stealingRate: 'running_ratings_stealing_rate',
+};
+/** The running ratings that describe ability. Stealing RATE is how often he tries, not how good he is, and is reported but never averaged. */
+const RUNNING_ABILITY: readonly RunningKey[] = ['speed', 'baserunning', 'stealing'];
+const HITTER_TOOL_KEYS: readonly HitterTool[] = ['contact', 'gap', 'power', 'eye', 'avoidK'];
+
+const SPLIT_PROVENANCE: EvidenceProvenance = {
+  ...TOOL_PROVENANCE,
+  source: 'exported_split_and_running_ratings',
+  basis: 'DECISIONS.md D-002, D-017, D-035',
+};
+
+export type HitterToolSet = Readonly<Record<HitterTool, number | null>>;
+
+export interface ScoutedHitterProfile {
+  readonly playerId: number;
+  /** Current overall tools, the same ratings `loadScoutedAbilities` reports. */
+  readonly tools: HitterToolSet;
+  /** Tools against left-handed pitching and against right-handed pitching. */
+  readonly vsLeft: HitterToolSet;
+  readonly vsRight: HitterToolSet;
+  readonly running: Readonly<Record<RunningKey, number | null>>;
+  /** Mean of speed, baserunning and stealing; null unless all three are known. */
+  readonly runningAbility: number | null;
+  readonly missing: { tools: readonly HitterTool[]; vsLeft: readonly HitterTool[]; vsRight: readonly HitterTool[]; running: readonly RunningKey[] };
+  readonly provenance: EvidenceProvenance;
+}
+
+const toolSet = (row: Record<string, unknown>, column: (k: HitterTool) => string, scale: RatingScale): { set: HitterToolSet; missing: HitterTool[] } => {
+  const set = {} as Record<HitterTool, number | null>;
+  const missing: HitterTool[] = [];
+  for (const k of HITTER_TOOL_KEYS) {
+    const known = knownRating(row[column(k)]);
+    set[k] = known === null ? null : toScouting(known, scale);
+    if (known === null) missing.push(k);
+  }
+  return { set, missing };
+};
+
+/** Build a profile from native-scale column values; pure, so tests can supply rows. */
+export function hitterProfileFromRow(playerId: number, row: Record<string, unknown>, scale: RatingScale): ScoutedHitterProfile {
+  const overall = toolSet(row, (k) => HITTER_TOOLS.find((t) => t.key === k)?.current ?? '', scale);
+  const left = toolSet(row, (k) => `${SPLIT_PREFIX.vsLeft}${SPLIT_SUFFIX[k]}`, scale);
+  const right = toolSet(row, (k) => `${SPLIT_PREFIX.vsRight}${SPLIT_SUFFIX[k]}`, scale);
+  const running = {} as Record<RunningKey, number | null>;
+  const missingRunning: RunningKey[] = [];
+  for (const key of Object.keys(RUNNING_COLUMN) as RunningKey[]) {
+    const known = knownRating(row[RUNNING_COLUMN[key]]);
+    running[key] = known === null ? null : toScouting(known, scale);
+    if (known === null) missingRunning.push(key);
+  }
+  const ability = RUNNING_ABILITY.every((k) => running[k] !== null)
+    ? Math.round((RUNNING_ABILITY.reduce((n, k) => n + (running[k] as number), 0) / RUNNING_ABILITY.length) * 10) / 10
+    : null;
+  return {
+    playerId, tools: overall.set, vsLeft: left.set, vsRight: right.set, running, runningAbility: ability,
+    missing: { tools: overall.missing, vsLeft: left.missing, vsRight: right.missing, running: missingRunning },
+    provenance: SPLIT_PROVENANCE,
+  };
+}
+
+const hitterColumns = (): string[] => {
+  const columns = [
+    ...HITTER_TOOLS.map((t) => t.current),
+    ...HITTER_TOOL_KEYS.map((k) => `${SPLIT_PREFIX.vsLeft}${SPLIT_SUFFIX[k]}`),
+    ...HITTER_TOOL_KEYS.map((k) => `${SPLIT_PREFIX.vsRight}${SPLIT_SUFFIX[k]}`),
+    ...Object.values(RUNNING_COLUMN),
+  ];
+  return columns;
+};
+
+/** Splits and running for a set of players; a player with no row is absent (unknown), never defaulted. */
+export function loadScoutedHitterProfiles(playerIds: Iterable<number>): Map<number, ScoutedHitterProfile> {
+  const ids = [...new Set(playerIds)].filter((id) => Number.isFinite(id));
+  const out = new Map<number, ScoutedHitterProfile>();
+  if (ids.length === 0 || !tableExists('players_batting')) return out;
+  const present = new Set(tableColumns('players_batting'));
+  const select = hitterColumns().map((c) => (present.has(c) ? `b."${c}" AS "${c}"` : `NULL AS "${c}"`));
+  const scale = ratingScale();
+  for (let at = 0; at < ids.length; at += CHUNK) {
+    const chunk = ids.slice(at, at + CHUNK);
+    const rows = db.prepare(
+      `SELECT b.player_id AS player_id, ${select.join(', ')} FROM players_batting b WHERE b.player_id IN (${chunk.map(() => '?').join(', ')})`
+    ).all(...chunk) as Array<Record<string, unknown>>;
+    for (const row of rows) out.set(Number(row.player_id), hitterProfileFromRow(Number(row.player_id), row, scale));
+  }
+  return out;
+}
+
+/**
+ * The profiles of a league's major-league position players: the peers a hitter's tools and
+ * running are ranked against. Cached per league until the next import.
+ */
+export function scoutedHitterPopulation(leagueId: number): ScoutedHitterProfile[] {
+  const hit = hitterPopulationCache.get(leagueId);
+  if (hit) return hit;
+  let out: ScoutedHitterProfile[] = [];
+  if (tableExists('players') && tableExists('teams') && tableExists('players_batting')) {
+    const ids = (db.prepare(
+      `SELECT p.player_id AS id FROM players p JOIN teams t ON t.team_id = p.team_id
+       WHERE t.league_id = ? AND t.level = 1 AND p.position > 1 AND p.retired = 0${majorLeaguerOnly()}`
+    ).all(leagueId, ...majorLeaguerArgs(leagueId)) as Array<{ id: number }>).map((r) => r.id);
+    out = [...loadScoutedHitterProfiles(ids).values()];
+  }
+  hitterPopulationCache.set(leagueId, out);
+  return out;
+}
