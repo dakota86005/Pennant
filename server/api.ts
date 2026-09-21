@@ -20,6 +20,8 @@ import { importedAt, playerStateRoutes } from './playerStateRoutes.js';
 import { assignmentContextsFor } from './playerContext.js';
 import { clearStatCaches, computeBatting, computePitching, leagueBaseline } from './stats.js';
 import { clearResultsCaches } from './resultsEvidence.js';
+import { clearFarmResultsCaches } from './farmResults.js';
+import { clearFarmUsageCaches } from './farmUsage.js';
 import { clearFieldingPopulationCache } from './scoutedEvidence.js';
 import { ratingScaleMax, clearScaleCache, clearValuationCaches, valuesByPlayer } from './valuation.js';
 import { clearTwoWayCache } from './twoway.js';
@@ -42,6 +44,8 @@ import { payrollRoutes } from './payroll.js';
 import { trendsRoutes } from './trends.js';
 import { chatRoutes } from './chat.js';
 import { mlbOperationsRoutes } from './mlbOperations.js';
+import { farmRoutes } from './farmRoutes.js';
+import { scoutedDevelopmentRoutes } from './scoutedDevelopment.js';
 
 export const api = Router();
 api.use(logoRoutes);
@@ -61,6 +65,8 @@ api.use(historyRoutes);
 api.use(dashboardRoutes);
 api.use(rosterOpsRoutes);
 api.use(mlbOperationsRoutes);
+api.use(farmRoutes);
+api.use(scoutedDevelopmentRoutes);
 api.use(tradeRoutes);
 api.use(gameplanRoutes);
 api.use(aiRoutes);
@@ -155,6 +161,8 @@ export async function runImport(csvDir: string): Promise<void> {
     fs.writeFileSync(META_PATH, JSON.stringify(importState.lastImport));
     clearStatCaches(); // league baselines are per-import
     clearResultsCaches(); // and so are the league populations behind results percentiles
+    clearFarmResultsCaches(); // the farm's league populations, lines and club games
+    clearFarmUsageCaches(); // and who has been playing where
     clearFieldingPopulationCache();
     clearValuationCaches();
     importedAt.value = importState.lastImport.finishedAt;

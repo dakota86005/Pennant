@@ -5,7 +5,7 @@ import { playoffPicture } from './playoffs.js';
 import { deadlineRead } from './posture.js';
 import { healthOf, HURT_SQL } from './health.js';
 import { computeContracts } from './contracts.js';
-import { computeProspects } from './org.js';
+import { computeFarmSystem } from './farmOperations.js';
 
 export const dashboardRoutes = Router();
 
@@ -302,9 +302,27 @@ dashboardRoutes.get('/dashboard/:orgId', (req, res) => {
       }
     }
   } catch { /* contracts table may be absent */ }
-  const prospects = computeProspects(orgId);
-  const promoteSignals = [...(prospects.batters as Array<{ signal: string | null }>), ...(prospects.pitchers as Array<{ signal: string | null }>)]
-    .filter((p) => p.signal !== null).length;
+  /*
+   * What Minor League Operations says needs the GM's attention, not a count of promotion signals.
+   *
+   * The chip has been three things: a raw statistical badge counting every non-null `signal`
+   * including `watch` ("Promotion signals: 42" for a farm that proposed nothing, D-044); then Player
+   * Development's promotion-direction recommendations, which is a real number but the wrong door — a
+   * defensible promotion is one of eight things an assignment review can say, and the pressing ones
+   * are prospects who cannot get the work and affiliates that cannot field a team. The authoritative
+   * engine's own inbox is counted, and the chip opens it.
+   */
+  let farm: { pressing: number; assignments: number; affiliates: number; retention: number } = { pressing: 0, assignments: 0, affiliates: 0, retention: 0 };
+  try {
+    const view = computeFarmSystem(orgId);
+    const pressing = view.attention.filter((a) => a.severity !== 'noted');
+    farm = {
+      pressing: pressing.length,
+      assignments: view.assignments.filter((a) => a.attention === 'needs_attention').length,
+      affiliates: view.affiliates.filter((a) => a.operational.status !== 'healthy').length,
+      retention: view.retention.filter((r) => r.conclusion === 'review').length,
+    };
+  } catch { /* an export without minor-league tables has no farm to count */ }
   const injuries = orgInjuries(orgId);
   // Distinct players your staff has raised as trade targets, so the chip counts
   // decisions to make rather than messages received
@@ -344,7 +362,9 @@ dashboardRoutes.get('/dashboard/:orgId', (req, res) => {
     pending: {
       expiring,
       extensionCandidates,
-      promoteSignals,
+      /** Minor League Operations' pressing items: assignments, affiliate shortages and retention reviews. */
+      farmAttention: farm.pressing,
+      farm,
       injuredCount: injuries.length,
       crunchIssues,
       tradeTalk,

@@ -20,6 +20,7 @@ import { CONTEXT_PROFILES, type MlbAssignmentContext } from './mlbAssignmentCont
 import { buildResponsePacket, type ResponsePacket, type ResponsePorts } from './mlbResponses.js';
 import { activeMembers, loadClubView, type ClubView, type RoleRef } from './mlbRoster.js';
 import { mlbAssignmentAssessments } from './org.js';
+import { openFarmSession, type FarmSession } from './mlbEvidence.js';
 import { resolvePhilosophy } from './philosophy.js';
 import { deadlineRead } from './posture.js';
 import { readContext, type ContextRead, type OrganizationContext } from './staffPreference.js';
@@ -45,6 +46,7 @@ export function organizationContext(orgId: number): OrganizationContext {
 function realPorts(orgId: number, floors: CoverageFloors = DEFAULT_COVERAGE_FLOORS): ResponsePorts {
   const philosophy = resolvePhilosophy(philosophyForOrg(orgId));
   const status = getDataStatus();
+  let farm: FarmSession | null = null;
   return {
     floors,
     rights: (ids) => rightsFor(ids, status),
@@ -57,8 +59,9 @@ function realPorts(orgId: number, floors: CoverageFloors = DEFAULT_COVERAGE_FLOO
     platoon: (ids) => platoonInputs(orgId, ids),
     performance: performanceLine,
     // A failure inside Minor League Operations' evaluator leaves the farm consequence unknown; it never fails the packet.
+    // One farm session per request: the organization is read once however many candidates are asked about.
     farm: (id, role, direction, affiliate) => {
-      try { return farmConsequence(orgId, id, role, direction, affiliate); } catch { return null; }
+      try { return farmConsequence(orgId, id, role, direction, affiliate, (farm ??= openFarmSession(orgId))); } catch { return null; }
     },
     optionAffiliateTeamId: () => topAffiliateTeamId(orgId),
     philosophy: {

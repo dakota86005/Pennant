@@ -23,9 +23,15 @@ objective save facts + observed scouting evidence
        (which assignments are defensible?)
                     |
                     v
-     Minor League Operations candidate set
-       + roster/coverage/transaction needs
-       + Organizational Philosophy preferences
+   Organizational Philosophy preferences
+      (among the defensible, which?)
+                    |
+        +-----------+-----------+
+        v                       v
+  MLB Operations        Minor League Operations
+  (major-league          (affiliate roster, role,
+   roster problems)       playing time, cascades)
+        +-----------+-----------+
                     |
                     v
        explained options and recommendations
@@ -120,9 +126,9 @@ artifact, not an alternative application backend.
 | Database compatibility | `server/db.ts` discovers available tables and columns; query modules adapt to export differences. | Do not hard-code a single save's schema without a guarded fallback. |
 | Domain API | Express routers in `server/*.ts` compute rosters, player dossiers, standings, schedules, stats, contracts, payroll, trades, development, and other front-office reads. | Domain logic belongs here, not duplicated in React or AI prompts. |
 | Scouted evidence | `scoutedEvidence.ts` is the only reader of ability ratings for development and operations judgments. It returns branded `ScoutedAbility` evidence with provenance, viewer, scale, and what is missing. | Nothing in Player Development or Minor League Operations may read a rating column or `players_value` directly; `tests/evidenceBoundary.test.ts` enforces it. |
-| Player Development | `org.ts`, `mlbAssignmentContext.ts` (per-context MLB assignment assessment, D-025), `prospectDecision.ts`, `prospectAssignments.ts`, `destinationFit.ts`, `developmentFit.ts`, and scouting-history functions evaluate evidence, developmental protection, legal assignments, and destination fit. | This layer determines defensibility; it does not choose transactions for the GM. |
+| Player Development | `org.ts`, `mlbAssignmentContext.ts` (per-context MLB assignment assessment, D-025), `prospectDecision.ts`, `prospectAssignments.ts`, `destinationFit.ts`, `developmentFit.ts`, `currentAssignment.ts` (is the level a player is at still developing him? D-044), and scouting-history functions evaluate evidence, developmental protection, legal assignments, and destination fit. | This layer determines defensibility; it does not choose transactions for the GM. Age relative to level says how much developmental time is left and never lowers the bar (D-044). |
 | Organizational Philosophy | `philosophy.ts` defines organization-specific dimensions/policies; `settings.ts` persists and resolves profiles; `Philosophy.tsx` edits them. | Philosophy ranks or adjusts choices after hard baseball/development constraints. It is not player evidence. |
-| Minor League Operations | `rehabAssignments.ts` (rehab assignees are not ordinary affiliate members, D-026), `minorLeagueRoster.ts`, `minorLeagueMoves.ts`, `pitcherRosterSimulation.ts`, `minorLeaguePitchingOperations.ts`, and `minorLeagueRetention.ts` diagnose affiliate structure and propose assignment/retention responses. | Level-changing moves must already be authorized by Player Development. Outputs are read-only recommendations. |
+| Minor League Operations | `farmCalibration.ts` (every farm constant, declared once and stamped), `farmResults.ts` + `farmUsage.ts` (league-relative park-adjusted production; usage), `currentAssignment.ts` (Player Development: is this level still developing him?), `playingTime.ts` (conflicts), `farmAssignments.ts`, `farmAffiliate.ts`, `farmOrganization.ts`, `farmCascade.ts`, `farmRetention.ts`, `farmOperations.ts` (the service: the organization read once per request as a `FarmSession`, the whole view, the operational reading under a scenario), `farmConsequence.ts` (the MLB ↔ farm contract: what follows a departure, what an arrival does), `farmRoutes.ts` (`/api/farm-operations`), `rehabAssignments.ts` (D-026), `minorLeagueRoster.ts` (counts and coverage, and the read-only scenario; it decides nothing). `scoutedDevelopment.ts` (`/api/scouted-development`) serves the Player Development pages' roster with history evidence and is Player Development's, not the farm's. The superseded solvers were deleted in the hardening phase. | Consumer of the same specialists as MLB Operations (D-044 to D-046, [MINOR_LEAGUE_OPERATIONS.md](MINOR_LEAGUE_OPERATIONS.md)): it owns affiliate roster, role, playing-time and cascade problems and decides no scouting, development, rights or philosophy question. Level-changing moves must already be authorized by Player Development. Operational health and developmental health are separate outputs. Outputs are read-only. `tests/farmOperationsBoundary.test.ts` enforces it. |
 | MLB Operations | `mlbRoster.ts` (club view over Player State), `mlbNeeds.ts` (state-derived needs), `mlbResponses.ts` (staged candidates, transaction path, consequences, philosophy annotation), `mlbEvidence.ts` (adapters to the specialists), `mlbOperations.ts` (service + `/api/mlb-operations`), `MlbOperations.tsx`. | Consumer only (D-024, [MLB_OPERATIONS.md](MLB_OPERATIONS.md)); coverage numbers are floors, not targets: decides no scouting, development, rights, philosophy or farm assignment question. Reads no raw rating, roster-status, option or log source; `tests/mlbOperationsBoundary.test.ts` enforces it. |
 | AI features | `providers.ts`, `models.ts`, `chat.ts`, `ai.ts`, and `storylines.ts` provide staff chat, briefings, trade discussion, and storylines through configurable providers. | AI consumes computed save-grounded facts, calls the same API as the UI, and supports the front-office experience. It does not become a parallel recommendation engine. |
 | Web UI | React pages in `src/` render domain results, evidence, alternatives, and local interactions. `src/App.tsx` owns selected-save and selected-organization UI context. | React may shape presentation but should not silently reimplement baseball rules. |
@@ -400,21 +406,56 @@ prefers to reach. It never touches a judgment, eligibility flag, constraint, or
 blocker; it ranks no indefensible or indeterminate assignment; and it does not
 rank demotion. It may not fabricate evidence or conceal why a result changed.
 
-### Minor League Operations owns constrained roster solutions
+### Minor League Operations owns placement, playing time and cascades
 
-Operations reads the real affiliate tree and active rosters, diagnoses body
-counts, defensive coverage, rotations, and bullpens, and searches for small
-sets of moves that improve a destination without making the source unhealthy.
-Same-level balancing has development-protection rules. Promotions/demotions
-must come from Player Development's defensible set; indeterminate candidates are
-listed separately and never planned. Philosophy adjusts the cost of alternatives
-that are already defensible, and the response exposes those adjustments. The
-per-assignment preference object is exposed beside the judgments but Operations
-does not consume it yet.
+```text
+Player State ─┐
+statistics ───┼─► farmResults (league-relative, park-adjusted) ─┐
+usage ────────┘   farmUsage (who holds which job)               │
+scoutedEvidence ──► developmentFit (stakes) ────────────────────┤
+                                                                ▼
+                            currentAssignment ── is this level still developing him?
+                            (Player Development; no philosophy)  │
+                            playingTime ── can he get the work?  │
+                            (conflicts, never a score)           │
+                                                                 ▼
+  prospectAssignments + destinationFit ──► farmAssignments ── the assignment, one of eight
+  assignmentPreference (after defensibility) ──┘                 descriptive conclusions
+                                                                 │
+        farmAffiliate ── one club read TWICE: operational health | developmental health
+        farmOrganization ── congestion, depth, starters against rotation spots
+        farmCascade ── what follows one departure, and where it stops
+        farmRetention ── outlook (Player Development) | pressure (Operations) | stance (Philosophy)
+                                                                 │
+                              farmOperations (service + API) ─► the farm workspace ─► the GM
+```
 
-Retention similarly separates developmental value, organizational utility,
-roster pressure, transaction guardrails, and observed development. A release
-candidate is an advisory flag for GM review, never an automatic transaction.
+The question is whether where a player is, in the role he is in, getting the
+work he is getting, is defensible — not whether a promotion was earned (D-044).
+A level is not a peer group: production is read against the player's own league,
+park-adjusted, with the sample behind it. Age never lowers the developmental bar;
+a player past his level's window raises an organizational question instead. One
+man competes for one job, and versatility is cover rather than a second claim.
+Every player on an affiliate's active list is reasoned about, and one with no
+readable line is reported as not assessable with the reason rather than omitted.
+
+A cascade is a chain whose every step is independently defensible, and it stops:
+saying where it stopped is the answer (D-045). Retention is three questions with
+three owners, and philosophy cannot reach the developmental outlook.
+
+Everything from `currentAssignment` to `farmRetention` is pure; `farmOperations`
+does the reading. Every constant is declared once, in `farmCalibration.ts`.
+
+Hardened (MINOR_LEAGUE_OPERATIONS.md Part 7): a blocker holds the job — only a
+regular is one, and a part-time man ahead of a prospect leaves him in an
+opportunity conflict rather than "blocked by" a name; men taking innings at a
+job from another position (a corner outfielder in centre, a two-way pitcher at
+first) are named as ahead and count against nobody's claim; a designated hitter
+is batting, not fielding; a player injured past a week is not cover and competes
+for nothing; a pool Player Development has not evaluated leaves a cascade
+indeterminate rather than closed. The organization is read once per request
+(`FarmSession`) and never cached across requests. The superseded solvers, their
+routes and the three older farm pages are gone: there is one farm implementation.
 
 ## MLB Operations
 
@@ -471,6 +512,40 @@ Player Development is asked about temporary depth and a durable assignment and m
 `context_dependent` (D-027).
 Needs come from the current export only, so they appear on the first import; the GM can also
 pose a what-if. Details, standards, owner decisions: [MLB_OPERATIONS.md](MLB_OPERATIONS.md).
+
+## Baseball Operations: two sibling modules, one set of specialists
+
+```text
+                          Baseball Operations
+              ┌───────────────────┴───────────────────┐
+              ▼                                       ▼
+      MLB Operations                        Minor League Operations
+   "how do we solve major-league         "how do we organize the farm so players
+    roster problems?"                     develop and affiliates stay functional?"
+   mlb*.ts · src/pages/mlb/              farm*.ts · src/pages/farm/
+              │                                       │
+              └──────────────► shared specialists ◄───┘
+        scoutedEvidence · prospectDecision / prospectAssignments / destinationFit /
+        developmentFit / currentAssignment · playerState · playerRights ·
+        philosophy + assignmentPreference · objective statistics
+                                  │
+                                  ▼
+                        organizational effects
+```
+
+Neither module owns a specialist and neither reaches into the other's solver.
+They exchange consequences across one contract: MLB Operations asks what happens
+to the farm if a player leaves, and Minor League Operations owns the answer —
+the vacated job, whether it can be absorbed, whose playing time changes, the
+replacements Player Development allows (with the alternatives the chain did not
+follow), the cascade and where it stops (D-045) — and what an arrival does: the
+job an optioned player takes up, who holds it, whose developmental work he pushes
+aside. MLB Operations reaches the farm only through `mlbEvidence.ts`, opens one
+`FarmSession` per request and hands it through, and displays the farm's own
+findings-derived operational status before and after, so the two modules never
+describe one club differently (D-047). An unresolved farm consequence is
+information, never an illegality: legality is Player Rights'. The direction is
+enforced statically in both boundary tests.
 
 ## Organization context
 

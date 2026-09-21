@@ -93,7 +93,7 @@ export function staticExportPages(
   return [
     'orgs', `dashboard/${orgId}`, `standings/${orgId}`, `contracts/${orgId}`, `payroll/${orgId}`,
     `depth-chart/${orgId}`, `prospects/${orgId}`, `development/${orgId}`,
-    `development-history/${orgId}`, `minor-league-retention/${orgId}`, `draft/${orgId}`,
+    `development-history/${orgId}`, `scouted-development/${orgId}`, `farm-operations/${orgId}`, `draft/${orgId}`,
     `injuries/${orgId}`, `leaderboards/${orgId}`, `roster-crunch/${orgId}`, `staff/${orgId}`,
     `free-agents/${orgId}`, `storylines/${orgId}`, `briefing/${orgId}`, `trade/fits/${orgId}`,
     `next-game/${orgId}`, `pitching/${orgId}`, `schedule/${orgId}`, `trends/${orgId}`,

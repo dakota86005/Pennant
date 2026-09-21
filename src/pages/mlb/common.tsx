@@ -78,15 +78,46 @@ export const KIND_LABEL: Record<Need['kind'], string> = {
   role_below_standard: 'Roster floor', open_active_spot: 'Open spot', il_return_crunch: 'IL return', role_holder_review: 'Scouting review', platoon_complement: 'Platoon', bench_coverage: 'Bench coverage',
 };
 
+const FARM_STATUS: Record<string, string> = { critical: 'short', thin: 'thin', healthy: 'able', surplus: 'carrying extra' };
+const FARM_STATUS_CLASS: Record<string, string> = { critical: 'ineligible', thin: 'indeterminate', healthy: 'eligible', surplus: '' };
+
+/**
+ * Minor League Operations' answer, displayed. What the farm says follows a departure — the job he
+ * vacates, whether the club absorbs it, who could take it, where the chain stops and what it leaves
+ * open — or, for an option, the job he takes up and whose work he pushes aside. Nothing here is
+ * computed on this side of the contract (D-045).
+ */
 export function FarmView({ farm }: { farm: Farm | null }) {
   if (!farm) return <span className="muted">Unknown</span>;
   const moved = farm.changes.filter((c) => c.before !== c.after);
+  const same = farm.overall.before === farm.overall.after;
   return (
-    <div>
-      <div>{farm.affiliate.label} ({farm.affiliate.levelName}): {farm.overall.before === farm.overall.after ? `stays ${farm.overall.after}` : `${farm.overall.before} → ${farm.overall.after}`}</div>
-      {moved.length === 0
-        ? <div className="muted">No change to its structure by Minor League Operations' standards.</div>
-        : moved.map((c) => <div key={c.label}>{c.label}: {c.before} → <b>{c.after}</b></div>)}
+    <div className="mlb-farm">
+      <div>
+        {farm.affiliate.label} ({farm.affiliate.levelName}):{' '}
+        {same ? (
+          <>stays <Chip cls={FARM_STATUS_CLASS[farm.overall.after] ?? ''}>{FARM_STATUS[farm.overall.after] ?? farm.overall.after}</Chip></>
+        ) : (
+          <>
+            <Chip cls={FARM_STATUS_CLASS[farm.overall.before] ?? ''}>{FARM_STATUS[farm.overall.before] ?? farm.overall.before}</Chip> →{' '}
+            <Chip cls={FARM_STATUS_CLASS[farm.overall.after] ?? ''}>{FARM_STATUS[farm.overall.after] ?? farm.overall.after}</Chip>
+          </>
+        )}
+        <span className="muted"> by Minor League Operations' own reading.</span>
+      </div>
+      {farm.farm && <div><strong>{farm.farm.summary}</strong></div>}
+      {farm.arrival && <div><strong>{farm.arrival.summary}</strong></div>}
+      {moved.map((c) => <div key={c.label}>{c.label}: {c.before} → <b>{c.after}</b></div>)}
+      {farm.farm?.playingTimeImpact.slice(0, 3).map((p) => <div key={p.playerId} className="muted">{p.effect}</div>)}
+      {farm.farm?.replacementOptions.length ? (
+        <div className="muted">
+          Could take the job: {farm.farm.replacementOptions.map((r) => `${r.name} (${r.from}, ${r.judgment.replace(/_/g, ' ')})`).join('; ')}.
+        </div>
+      ) : null}
+      {farm.farm?.unresolvedIssues.map((u) => <div key={u} className="muted">Left open: {u}</div>)}
+      {farm.farm?.cascade && farm.farm.cascade.certainty === 'indeterminate' && (
+        <div className="muted">The chain below is only as certain as its least certain step, and one step cannot be judged.</div>
+      )}
       {farm.issuesAfter.map((i) => <div key={i} className="muted">{i}</div>)}
       {farm.rosterNotes.map((i) => <div key={i} className="muted">⚑ {i}</div>)}
     </div>

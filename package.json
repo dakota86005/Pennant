@@ -24,7 +24,8 @@
     "abi:electron": "electron-builder install-app-deps",
     "abi:node": "npm rebuild better-sqlite3",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "farm:base-rate": "tsx scripts/farm-base-rate.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

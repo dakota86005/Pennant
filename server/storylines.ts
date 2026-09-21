@@ -6,6 +6,7 @@ import { DATA_DIR } from './config.js';
 import { featureModel, featureProvider, providerCredential } from './settings.js';
 import { describeError, providerFor, type FallbackNotice } from './providers.js';
 import { computeProspects } from './org.js';
+import { farmBriefing } from './farmOperations.js';
 import { computeContracts } from './contracts.js';
 import { LEVEL_NAMES, currentGameDate, seasonYear, teamFinances, rulesBriefing } from './valuation.js';
 import { jobStatus, startJob } from './jobs.js';
@@ -132,7 +133,8 @@ export function assembleContext(orgId: number) {
         era: (p.ip as number) > 0 ? Number((((p.er as number) / (p.ip as number)) * 9).toFixed(2)) : null,
       })),
     },
-    topProspects: { batters: prospects.batters.slice(0, 6), pitchers: prospects.pitchers.slice(0, 6) },
+    /* The farm as Minor League Operations describes it, not an alphabetical head of the prospect list. */
+    farm: farmBriefing(orgId, prospects),
     contractSituations: (contracts.players as unknown as Array<{ flags: string[]; recommendation: unknown }>)
       .filter(
         (p) =>

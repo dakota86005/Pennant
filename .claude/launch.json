@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 5173
+    },
+    {
+      "name": "ootp-front-office (one port)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["start"],
+      "port": 5173
     }
   ]
 }

@@ -6,7 +6,7 @@ import { resetTransactionLogCache } from '../server/dataStatus.js';
 import { db } from '../server/db.js';
 import { farmConsequence } from '../server/mlbEvidence.js';
 import { computeMinorLeagueRosterHealth } from '../server/minorLeagueRoster.js';
-import { pitcherRosterForTeam } from '../server/pitcherRosterSimulation.js';
+import { computeFarmSystem } from '../server/farmOperations.js';
 import { IDS } from './fixture';
 import { makeSave, tx, type FakeSave, type LogRow } from './liveLogFixture';
 
@@ -64,7 +64,10 @@ describe('rehab assignees and affiliate roster health', () => {
     expect(h.rosterTreatment.rehab).toEqual([{ playerId: IDS.optioned, name: expect.any(String) }]);
     expect(h.pitching.starters).toBe(0);
     expect(h.roster.pitchers).toBe(0);
-    expect(pitcherRosterForTeam(IDS.aaaTeam).some((p) => p.playerId === IDS.optioned)).toBe(false);
+    const farm = computeFarmSystem(IDS.mlbTeam);
+    const club = farm.affiliates.find((a) => a.teamId === IDS.aaaTeam)!;
+    expect(club.rosterTreatment.rehab.map((p) => p.playerId)).toContain(IDS.optioned);
+    expect(farm.organization.scope.rehab).toBeGreaterThanOrEqual(1);
   });
 
   it('does not let a rehab assignee prop up the rotation: removing him changes nothing, and adding him is not free', () => {
@@ -72,7 +75,7 @@ describe('rehab assignees and affiliate roster health', () => {
     const before = affiliate();
     const without = computeMinorLeagueRosterHealth(IDS.mlbTeam, { removePlayerIds: [IDS.optioned], onlyTeamIds: [IDS.aaaTeam] })[0];
     expect(without.roster.total).toBe(before.roster.total);
-    expect(without.pitching.rotationStatus).toBe(before.pitching.rotationStatus);
+    expect(without.pitching.starters).toBe(before.pitching.starters);
   });
 
   it('counts an ordinarily optioned player as a member of the club', () => {
@@ -82,7 +85,7 @@ describe('rehab assignees and affiliate roster health', () => {
     ]);
     const h = affiliate();
     expect(h.pitching.starters).toBe(1);
-    expect(h.rosterTreatment).toEqual({ rehab: [], ambiguous: [] });
+    expect(h.rosterTreatment).toEqual({ rehab: [], ambiguous: [], injured: [] });
   });
 
   it('with no log he may be on rehab or optioned: counted, and named as ambiguous rather than assumed', () => {
@@ -99,7 +102,11 @@ describe('rehab assignees and affiliate roster health', () => {
     useSave(rehabRows());
     const c = farmConsequence(IDS.mlbTeam, IDS.optioned, { kind: 'starting_pitcher', label: 'starting pitcher', position: 1 }, 'leaves', IDS.aaaTeam)!;
     expect(c.rosterNotes.join(' ')).toMatch(/rehab assignment, so this club does not count him/);
-    expect(c.changes.find((x) => x.label === 'Rotation')).toMatchObject({ before: 'critical', after: 'critical' });
+    // Not counted before, not counted after: the rotation line does not move
+    const rotation = c.changes.find((x) => x.label === 'Rotation')!;
+    expect(rotation.before).toBe(rotation.after);
+    expect(c.overall.before).toBe(c.overall.after);
+    expect(c.farm?.affiliateImpact?.absorbed).toBe(true);
   });
 
   it('and, when nothing explains him, that the consequence may be overstated', () => {

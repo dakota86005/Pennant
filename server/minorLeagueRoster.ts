@@ -1,13 +1,16 @@
 import { db, tableColumns, tableExists } from './db.js';
+import { INJURED_DAYS_NOT_COUNTED, PLAYABLE_GRADE, STRONG_GRADE } from './farmCalibration.js';
 import { POSITION_CODES } from './gloves.js';
 import { screenAffiliatePlayers } from './rehabAssignments.js';
-import { loadScoutedAbilities, scoutedGloves } from './scoutedEvidence.js';
+import { scoutedGloves } from './scoutedEvidence.js';
 
-export type RosterHealthStatus =
-  | 'critical'
-  | 'thin'
-  | 'healthy'
-  | 'surplus';
+/*
+ * What an affiliate's active list is, counted: bodies, who can stand where, who is assigned to start
+ * and to relieve, and who is not an ordinary member. It decides nothing. Whether the club is SHORT is
+ * Minor League Operations' operational reading (`farmAffiliate.operationalReading`), which derives a
+ * status from its findings; the role-code statuses and prose lines this module used to carry beside
+ * the counts were a second, disagreeing description of the same club and are gone.
+ */
 
 export interface RosterCoveragePlayer {
   playerId: number;
@@ -19,10 +22,10 @@ export interface RosterCoveragePlayer {
 
 export interface PositionCoverage {
   position: string;
+  /** Men who can play it: a visible grade at or above the playable line, or listed there. */
   playable: number;
+  /** Men with a visible grade at or above the strong line. */
   strong: number;
-  emergency: number;
-  status: RosterHealthStatus;
   players: RosterCoveragePlayer[];
 }
 
@@ -40,43 +43,17 @@ export interface AffiliateRosterHealth {
   };
 
   positionPlayers: {
-    bodyCountStatus: RosterHealthStatus;
     fieldablePositions: number;
     canFieldDefense: boolean;
     coverage: PositionCoverage[];
   };
 
   pitching: {
-    bodyCountStatus: RosterHealthStatus;
-    rotationStatus: RosterHealthStatus;
-    bullpenStatus: RosterHealthStatus;
-
     /** OOTP role 11. */
     starters: number;
-
     /** OOTP roles 12 and 13. */
     relievers: number;
-    closers: number;
-
-    /** Supplemental stamina information, not roster-role classification. */
-    starterStamina: number;
-    longArmStamina: number;
-    staminaKnown: number;
   };
-
-  fatigue: {
-    /*
-     * Raw OOTP values only for now.
-     * We have not yet established what thresholds mean clinically in-game.
-     */
-    averagePoints: number;
-    maxPoints: number;
-    nonzeroPlayers: number;
-    playedToday: number;
-  };
-
-  overall: RosterHealthStatus;
-  issues: string[];
 
   /**
    * Players on this affiliate's list who are not counted as ordinary members.
@@ -84,10 +61,14 @@ export interface AffiliateRosterHealth {
    * he is excluded from every count above. `ambiguous`: a 40-man player nothing
    * explains, who may be on rehab or optioned: he IS counted (nothing establishes
    * otherwise) and is named here so the health above can be read as uncertain.
+   * `injured`: a player with a real injury (not day-to-day) cannot cover a
+   * position or take a start today, so he is excluded from the counts above and
+   * named here with the days the export gives him.
    */
   rosterTreatment: {
     rehab: Array<{ playerId: number; name: string }>;
     ambiguous: Array<{ playerId: number; name: string; reason: string }>;
+    injured: Array<{ playerId: number; name: string; listedPosition: string; daysLeft: number | null }>;
   };
 }
 
@@ -113,16 +94,17 @@ const DEFENSIVE_POSITIONS = [
 
 type DefensivePosition = typeof DEFENSIVE_POSITIONS[number];
 
-/** Visible fielding grade at or above which a position counts as playable (shared with MLB Operations). */
-export const PLAYABLE_RATING = 35;
-const STRONG_RATING = 50;
+/**
+ * Visible fielding grade at or above which a position counts as playable. The number is declared
+ * once, in `farmCalibration.ts`; this name is kept for MLB Operations' adapter, which reads it here.
+ */
+export const PLAYABLE_RATING: number = PLAYABLE_GRADE;
+const STRONG_RATING: number = STRONG_GRADE;
 
 /*
  * OOTP pitcher role codes, confirmed against the imported roster:
- * 11 = starter, 12 = reliever, 13 = closer.
- *
- * Stamina remains useful context, but role is the authoritative statement of
- * how the organization is currently using the pitcher.
+ * 11 = starter, 12 = reliever, 13 = closer. The role is what the organization has him assigned as;
+ * the farm's rotation finding counts the men actually taking the starts.
  */
 const ROLE_STARTER = 11;
 const ROLE_RELIEVER = 12;
@@ -136,9 +118,7 @@ interface ActivePlayer {
   role: number;
   injury_is_injured: number;
   injury_dtd_injury: number;
-  fatigue_points: number;
-  fatigue_played_today: number;
-  stamina: number | null;
+  injury_left: number | null;
 }
 
 interface Affiliate {
@@ -216,11 +196,18 @@ function playerColumns(): string {
       p.role,
       ${col('injury_is_injured')} AS injury_is_injured,
       ${col('injury_dtd_injury')} AS injury_dtd_injury,
-      ${col('fatigue_points')} AS fatigue_points,
-      ${col('fatigue_played_today')} AS fatigue_played_today`;
+      ${present.has('injury_left') ? 'p.injury_left' : 'NULL'} AS injury_left`;
 }
 
-type PlayerRow = Omit<ActivePlayer, 'stamina'>;
+type PlayerRow = ActivePlayer;
+
+/**
+ * Injured for longer than the operational reading's week. OOTP sets the day-to-day bit on most
+ * minor-league injuries whatever their length (two days and a thousand alike on the real import), so
+ * the days are what decide it; an injured man whose days are not exported is treated as out.
+ */
+export const isInjured = (row: { injury_is_injured: number | null; injury_left: number | null }): boolean =>
+  Number(row.injury_is_injured ?? 0) !== 0 && (row.injury_left === null || Number(row.injury_left) > INJURED_DAYS_NOT_COUNTED);
 
 type Treatment = AffiliateRosterHealth['rosterTreatment'];
 
@@ -228,7 +215,7 @@ function activePlayers(
   teamId: number,
   scenario: RosterHealthScenario = {}
 ): { players: ActivePlayer[]; treatment: Treatment } {
-  if (!tableExists('players') || !tableExists('team_roster')) return { players: [], treatment: { rehab: [], ambiguous: [] } };
+  if (!tableExists('players') || !tableExists('team_roster')) return { players: [], treatment: { rehab: [], ambiguous: [], injured: [] } };
 
   const removed = new Set(scenario.removePlayerIds ?? []);
   const listed = (db.prepare(`
@@ -249,8 +236,22 @@ function activePlayers(
     rehab: listed.filter((row) => screen.rehab.has(row.player_id)).map((row) => ({ playerId: row.player_id, name: nameOf(row) })),
     ambiguous: listed.filter((row) => screen.ambiguous.has(row.player_id))
       .map((row) => ({ playerId: row.player_id, name: nameOf(row), reason: screen.ambiguous.get(row.player_id) as string })),
+    injured: [],
   };
-  const rows = listed.filter((row) => !screen.rehab.has(row.player_id));
+  /*
+   * An injury of more than a week takes a man off the field for the schedule the reading is about.
+   * He is excluded: an active list that counts an injured shortstop as its shortstop cover is
+   * describing a club that cannot take the field. A two-day injury is counted and shows as day-to-day.
+   */
+  const injuredRows = listed.filter((row) => !screen.rehab.has(row.player_id) && isInjured(row));
+  treatment.injured = injuredRows.map((row) => ({
+    playerId: row.player_id,
+    name: nameOf(row),
+    listedPosition: POSITION_CODES[row.position - 1] ?? '—',
+    daysLeft: row.injury_left === null || row.injury_left === undefined ? null : Number(row.injury_left),
+  }));
+  const injured = new Set(injuredRows.map((row) => row.player_id));
+  const rows = listed.filter((row) => !screen.rehab.has(row.player_id) && !injured.has(row.player_id));
 
   const joining = (scenario.addPlayers ?? [])
     .filter((add) => add.teamId === teamId && !rows.some((row) => row.player_id === add.playerId))
@@ -262,20 +263,7 @@ function activePlayers(
     if (row) rows.push(row);
   }
 
-  /*
-   * Who is active, and their health and workload, are objective facts read
-   * above. Stamina is a visible-rating judgment, so it comes only from the
-   * scouted-evidence adapter (on the 20-80 scale, unknown when not exported).
-   */
-  const abilities = loadScoutedAbilities(rows.map((row) => row.player_id));
-
-  return {
-    players: rows.map((row) => ({
-      ...row,
-      stamina: abilities.for(row.player_id).stamina,
-    })),
-    treatment,
-  };
+  return { players: rows, treatment };
 }
 
 function hitterEligibility(player: ActivePlayer): HitterEligibility {
@@ -371,31 +359,6 @@ function maximumFieldablePositions(
   return Math.min(matched, DEFENSIVE_POSITIONS.length);
 }
 
-function bodyCountStatus(
-  count: number,
-  thinBelow: number,
-  surplusAt: number
-): RosterHealthStatus {
-  if (count < thinBelow - 2) return 'critical';
-  if (count < thinBelow) return 'thin';
-  if (count >= surplusAt) return 'surplus';
-  return 'healthy';
-}
-
-function rotationStatus(starters: number): RosterHealthStatus {
-  if (starters < 4) return 'critical';
-  if (starters === 4) return 'thin';
-  if (starters >= 7) return 'surplus';
-  return 'healthy';
-}
-
-function bullpenStatus(relievers: number): RosterHealthStatus {
-  if (relievers < 5) return 'critical';
-  if (relievers < 7) return 'thin';
-  if (relievers >= 12) return 'surplus';
-  return 'healthy';
-}
-
 function positionCoverage(
   position: DefensivePosition,
   hitters: HitterEligibility[]
@@ -424,86 +387,12 @@ function positionCoverage(
       candidate.rating >= STRONG_RATING
   ).length;
 
-  /*
-   * Players with a revealed rating below PLAYABLE_RATING but who are not the
-   * listed player are emergency-only. They do not make a position healthy.
-   */
-  const emergency = hitters.filter((hitter) => {
-    const rating = hitter.ratings.get(position);
-    return (
-      rating !== undefined &&
-      rating > 0 &&
-      rating < PLAYABLE_RATING &&
-      hitter.primary !== position
-    );
-  }).length;
-
-  let status: RosterHealthStatus;
-
-  if (candidates.length === 0) {
-    status = 'critical';
-  } else if (candidates.length === 1) {
-    status = 'thin';
-  } else if (candidates.length >= 4) {
-    status = 'surplus';
-  } else {
-    status = 'healthy';
-  }
-
   return {
     position,
     playable: candidates.length,
     strong,
-    emergency,
-    status,
     players: candidates,
   };
-}
-
-function overallStatus(
-  positionBody: RosterHealthStatus,
-  pitchingBody: RosterHealthStatus,
-  rotation: RosterHealthStatus,
-  bullpen: RosterHealthStatus,
-  canFieldDefense: boolean,
-  coverage: PositionCoverage[]
-): RosterHealthStatus {
-  const byPosition = new Map(
-    coverage.map((position) => [position.position, position])
-  );
-
-  const criticalDefensivePosition = ['C', 'SS', 'CF'].some(
-    (position) =>
-      byPosition.get(position)?.status === 'critical'
-  );
-
-  const thinDefensivePosition = ['C', 'SS', 'CF'].some(
-    (position) =>
-      byPosition.get(position)?.status === 'thin'
-  );
-
-  if (
-    !canFieldDefense ||
-    positionBody === 'critical' ||
-    pitchingBody === 'critical' ||
-    rotation === 'critical' ||
-    bullpen === 'critical' ||
-    criticalDefensivePosition
-  ) {
-    return 'critical';
-  }
-
-  if (
-    positionBody === 'thin' ||
-    pitchingBody === 'thin' ||
-    rotation === 'thin' ||
-    bullpen === 'thin' ||
-    thinDefensivePosition
-  ) {
-    return 'thin';
-  }
-
-  return 'healthy';
 }
 
 function computeAffiliate(
@@ -532,35 +421,8 @@ function computeAffiliate(
   const canFieldDefense =
     fieldablePositions === DEFENSIVE_POSITIONS.length;
 
-  /*
-   * Twelve position players gives an eight-man defensive alignment plus four
-   * additional bodies. Fewer than that begins creating recurring rest risk.
-   *
-   * These are V1 structural thresholds, deliberately isolated here so we can
-   * tune them after seeing real organizations.
-   */
-  const hitterBodyStatus =
-    bodyCountStatus(hitters.length, 12, 17);
-
-  /*
-   * We intentionally keep the pitching model conservative in V1.
-   * Total arms are trustworthy. Stamina is also exported, but OOTP role usage
-   * deserves validation before we pretend every stamina threshold is a true
-   * rotation assignment.
-   */
-  const pitcherBodyStatus =
-    bodyCountStatus(pitchers.length, 12, 18);
-
-  const staminaKnown = pitchers.filter(
-    (pitcher) => pitcher.stamina !== null
-  );
-
   const starters = pitchers.filter(
     (pitcher) => Number(pitcher.role) === ROLE_STARTER
-  ).length;
-
-  const closers = pitchers.filter(
-    (pitcher) => Number(pitcher.role) === ROLE_CLOSER
   ).length;
 
   const relievers = pitchers.filter(
@@ -568,98 +430,6 @@ function computeAffiliate(
       Number(pitcher.role) === ROLE_RELIEVER ||
       Number(pitcher.role) === ROLE_CLOSER
   ).length;
-
-  const starterStamina = staminaKnown.filter(
-    (pitcher) => Number(pitcher.stamina) >= 45
-  ).length;
-
-  const longArmStamina = staminaKnown.filter(
-    (pitcher) => Number(pitcher.stamina) >= 35
-  ).length;
-
-  const rotationHealth = rotationStatus(starters);
-  const bullpenHealth = bullpenStatus(relievers);
-
-  const fatigueValues = roster.map(
-    (player) => Number(player.fatigue_points ?? 0)
-  );
-
-  const averagePoints =
-    fatigueValues.length > 0
-      ? Math.round(
-          (fatigueValues.reduce((a, b) => a + b, 0) /
-            fatigueValues.length) *
-            10
-        ) / 10
-      : 0;
-
-  const maxPoints =
-    fatigueValues.length > 0
-      ? Math.max(...fatigueValues)
-      : 0;
-
-  const issues: string[] = [];
-
-  if (!canFieldDefense) {
-    issues.push(
-      `Only ${fieldablePositions} of 8 defensive positions can be filled simultaneously by players with established coverage.`
-    );
-  }
-
-  if (hitterBodyStatus === 'critical') {
-    issues.push(
-      `Only ${hitters.length} active position players; routine rest and injury coverage are at serious risk.`
-    );
-  } else if (hitterBodyStatus === 'thin') {
-    issues.push(
-      `Only ${hitters.length} active position players; the club has limited rest margin.`
-    );
-  }
-
-  if (pitcherBodyStatus === 'critical') {
-    issues.push(
-      `Only ${pitchers.length} active pitchers; workload coverage is critically thin.`
-    );
-  } else if (pitcherBodyStatus === 'thin') {
-    issues.push(
-      `Only ${pitchers.length} active pitchers; pitching workload depth is thin.`
-    );
-  }
-
-  for (const position of coverage) {
-    if (position.status === 'critical') {
-      issues.push(
-        `No established playable coverage at ${position.position}.`
-      );
-    } else if (
-      position.status === 'thin' &&
-      ['C', 'SS', 'CF'].includes(position.position)
-    ) {
-      issues.push(
-        `Only one established playable option at ${position.position}; regular rest or an injury would create a coverage problem.`
-      );
-    }
-  }
-
-  if (rotationHealth === 'critical') {
-    issues.push(
-      `Only ${starters} pitchers are assigned starting roles; the rotation cannot sustain a normal schedule.`
-    );
-  } else if (rotationHealth === 'thin') {
-    issues.push(
-      `Only ${starters} pitchers are assigned starting roles; rotation rest margin is thin.`
-    );
-  }
-
-  if (bullpenHealth === 'critical') {
-    issues.push(
-      `Only ${relievers} pitchers are assigned relief roles; bullpen workload coverage is critically thin.`
-    );
-  } else if (bullpenHealth === 'thin') {
-    issues.push(
-      `Only ${relievers} pitchers are assigned relief roles; bullpen workload depth is thin.`
-    );
-  }
 
   const dayToDay = roster.filter(
     (player) =>
@@ -682,46 +452,16 @@ function computeAffiliate(
     },
 
     positionPlayers: {
-      bodyCountStatus: hitterBodyStatus,
       fieldablePositions,
       canFieldDefense,
       coverage,
     },
 
     pitching: {
-      bodyCountStatus: pitcherBodyStatus,
-      rotationStatus: rotationHealth,
-      bullpenStatus: bullpenHealth,
       starters,
       relievers,
-      closers,
-      starterStamina,
-      longArmStamina,
-      staminaKnown: staminaKnown.length,
     },
 
-    fatigue: {
-      averagePoints,
-      maxPoints,
-      nonzeroPlayers: fatigueValues.filter(
-        (value) => value !== 0
-      ).length,
-      playedToday: roster.filter(
-        (player) =>
-          Number(player.fatigue_played_today) !== 0
-      ).length,
-    },
-
-    overall: overallStatus(
-      hitterBodyStatus,
-      pitcherBodyStatus,
-      rotationHealth,
-      bullpenHealth,
-      canFieldDefense,
-      coverage
-    ),
-
-    issues,
     rosterTreatment: treatment,
   };
 }

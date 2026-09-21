@@ -851,3 +851,166 @@ standard for his job, expandable to what a scout would say), **Bench and coverag
 (one need opened, in the order a GM decides: the problem, why it was flagged and on what evidence, the staff's recommendation,
 the ways to respond followed through to their consequences, and only then the candidates and roster mechanics behind them).
 Information becomes more detailed as the GM drills down; nothing was deleted.
+
+## D-044 — The farm asks whether the assignment is defensible, not whether a promotion was earned
+
+**Status:** Accepted. **Implementation:** Present (`server/currentAssignment.ts`, `farmAssignments.ts`,
+`farmResults.ts`, `playingTime.ts`; `server/prospectDecision.ts` age rule; the legacy verdict removed from
+`org.ts`). Audit and findings: [MINOR_LEAGUE_OPERATIONS.md](MINOR_LEAGUE_OPERATIONS.md).
+
+The farm system is not a promotion leaderboard. Good statistics are not authorization to promote and poor
+statistics are not authorization to demote. The question is whether where a player is, in the role he is in,
+getting the work he is getting, is developmentally defensible — and if not, what else is.
+
+The farm v1 model could only ask the second question, through one readiness score that was in practice
+"is his OPS well above his level's average", so the only thing it could say about a player standing still
+was to recommend moving him. Five things follow, each of them a measured defect on the real import:
+
+- **A level is not a peer group.** Production is read against the player's own LEAGUE, park-adjusted, with
+  the sample behind it (`farmResults.ts`). Pooling leagues put the two Arizona A-ball affiliates 43 OPS
+  points apart on the same baseline and rested the Rookie baseline on two players of a league Arizona does
+  not field a club in. A peer must also be on a roster: 148 unassigned amateur signings put the major-league
+  level's average age 1.77 years out, the same defect as D-039 and the same fix.
+- **Age never lowers the developmental bar.** Being old for a level is not evidence about what a player has
+  shown. The old rule discounted his promotion threshold by up to five points for it, which made a
+  29-year-old hitting 1.304 at Double-A a promotion case on a bar of 71. Age says how much developmental time
+  is left, so a player past his level's window raises an **organizational** question — what the club wants
+  from him — and Player Development says so rather than recommending a move.
+- **"Is this level still developing him?" is a separate Player Development question** with its own two
+  readings, level standing and developmental window, both always shown. Holding his own is the null reading;
+  moving off it needs a clear gap and a sample that supports a claim. A season that has not been played is
+  `not_assessable`, which is distinct from `indeterminate`: nothing is missing that scouting could supply.
+- **Playing time is a first-class operational concept**, represented as a named set of players competing for
+  a named job with what each is getting, never as a score. One man competes for ONE job — the one his usage
+  shows he holds — because versatility is cover, not five developmental claims. Missing reps costs
+  development only for a player Player Development places at development priority or better, and unknown
+  stakes claim nothing. Not playing is asked BEFORE the level, because a prospect's thin sample is usually
+  caused by his not playing and the two facts are one fact.
+- **One Player Development verdict, not two.** `org.ts`'s `signal` (`OPS above the level average by .075
+  over 100 plate appearances` was a promotion) and `score` (which ordered the list) are removed. They were a
+  second verdict beside the engine, disagreeing with it for 6 of 75 players, and the Dashboard counted every
+  non-null value — including `watch` — and announced "Promotion signals: 42" for an organization whose farm
+  system proposed nothing. The statistics themselves are objective facts and stay.
+
+Consequences:
+
+- A conclusion is one of eight descriptive states and never a promote/hold/demote trichotomy; most of the
+  organization is `current_assignment_defensible` and the module says so rather than inventing a question.
+- Every farm constant is declared once in `server/farmCalibration.ts` and stamped `policy` or `provisional`;
+  none is `calibrated`, because the export holds no minor-league history to fit against, and that is stated.
+- Every player on an affiliate's active list is reasoned about. One with no readable line is reported as
+  not assessable WITH THE REASON, never omitted: the old sample gates silently hid 172 of 247 minor leaguers,
+  including all 125 on the three complex affiliates.
+- A finding is structured data (`FarmFinding`: owner, evidence with its basis, what is missing, what would
+  resolve it), never prose. `tests/farmOperationsBoundary.test.ts` enforces the module's boundaries and
+  `docs/BEHAVIOR_CASES.md` carries the corpus.
+
+## D-045 — Minor League Operations owns the farm consequence; MLB Operations displays it
+
+**Status:** Accepted. **Implementation:** Present (`server/farmCascade.ts`, `farmOperations.ts`
+`farmConsequenceFor`, consumed by `mlbEvidence.ts` `farmConsequence`).
+See [MINOR_LEAGUE_OPERATIONS.md](MINOR_LEAGUE_OPERATIONS.md) Part 3.
+
+MLB Operations and Minor League Operations are sibling consumers of one set of specialists, and they exchange
+consequences across one explicit contract. "What happens to the farm if this player leaves?" is asked by MLB
+Operations and answered by Minor League Operations, which owns the calculation.
+
+- The answer is structured: the job he vacates, whether the affiliate can absorb it, whose playing time
+  changes, the replacements Player Development would allow in readiness order, the **cascade**, what the
+  chain leaves open, and how certain the answer is with how it was measured.
+- A cascade is a chain, not a search. Each step is independently defensible or the chain stops there, and it
+  is only as certain as its least certain step: one indeterminate link makes everything downstream
+  indeterminate, and an indeterminate best candidate stops the chain rather than falling through to a worse
+  but judgeable man. It stops when the club can absorb the vacancy, when no defensible move exists, when the
+  next step cannot be judged, when the chain would only relocate the same shortage, at the bottom of the
+  ladder, or at four steps. **Saying where it stopped is the answer**: "the recall is feasible, and Double-A
+  is left short at the rotation" is the intended output, and nothing manufactures a last step to complete a
+  chain.
+- **An unresolved farm consequence is information, never an illegality.** Whether a transaction is possible
+  is Player Rights'; nothing in the contract touches it.
+- A rehab assignee costs the affiliate nothing and the answer says so (D-026).
+- The direction is enforced statically: no MLB module but the adapter may import a farm module, and none may
+  contain a chain planner of its own. This is why the old branch's `minorLeagueCascadePlanner` was deferred
+  rather than adopted (MLB_OPERATIONS.md §2.1 item 12) — it was a second farm solver inside MLB work.
+
+Consequences:
+
+- Retention is split three ways with three owners, and philosophy may not reach the developmental outlook.
+  The farm v1 model added a philosophy adjustment to a development score which then gated a release
+  threshold, so the same player was expendable at one club and retained at another inside a quantity
+  labelled "development". Philosophy is now a stated lean on the order and wording, applied after the
+  outlook is fixed, which can never turn a `retain` into a question. A decision belonging to another process
+  — the 40-man, a major-league contract, an injured list — is `not_a_farm_decision` and names the process
+  that owns it, while still reporting the farm's own reading.
+- Operational health and developmental health are separate outputs of an affiliate and are never merged.
+  Only a SHORTAGE is an operational state: carrying more men than the club has work for is a developmental
+  problem, and reporting it as `surplus` in the same field as `critical` is what let an affiliate with
+  twenty-three relief arms read as fine.
+
+## D-046 — Minor League Operations is a workspace of views, in the family of MLB Operations
+
+**Status:** Accepted. **Implementation:** Present (`src/pages/MinorLeagueOperations.tsx`, `src/pages/farm/`).
+
+The farm module is five views behind one navigation entry, addressable by URL hash so a decision can be
+linked to and returned to: **Overview** (the inbox, and nothing else), **Organization** (system-wide
+congestion, depth and starters against rotation spots), **Affiliates** (one club read twice, operational
+beside developmental), **Assignments** (every minor leaguer, filterable to those in question, ordered by
+whether the GM needs to look and then by name) and **Decision** (one player in the order a GM decides).
+The same information architecture as D-043's, for the same reason.
+
+Family resemblance is structural rather than imitated: the shell, the tab bar, the view-error boundary, the
+hash-routing shape and the chip vocabulary (the `eligible` / `ineligible` / `indeterminate` colouring,
+ordinals, the uncertainty language) are imported from `src/pages/mlb/`, not re-implemented. What differs is
+what the farm talks about, not how it talks, and screens are not cloned where the baseball workflow differs:
+the farm has no bench view and MLB has no affiliate view.
+
+The Overview carries each player's own assignment review and each club's OPERATIONAL findings. A
+developmental finding about named players is the same problem those players' own reviews already raise, and
+carrying both made the list 137 items, half of them a second copy of the other half; those findings live on
+the Affiliates view, where the GM has drilled in deliberately.
+
+## D-047 — One description of the farm: a blocker holds the job, the organization is read once per request, and MLB Operations shows the farm's own reading
+
+**Status:** Accepted. **Implementation:** Present (`server/playingTime.ts` `blockersOf` / `alsoPlaying` / `bat_only`,
+`minorLeagueRoster.ts` injured treatment, `farmOperations.ts` `FarmSession` and `affiliateOperationalUnder`,
+`farmConsequence.ts`, `mlbEvidence.ts` `farmConsequence`). Findings: [MINOR_LEAGUE_OPERATIONS.md](MINOR_LEAGUE_OPERATIONS.md) §7.5.
+
+The hardening phase found the farm describing the same club two ways and the same prospect's problem
+by the wrong name, each a measured defect on the real import:
+
+- **A blocker holds the job.** "Blocked by" named anyone with more innings than the prospect, so a
+  centre fielder with a fifth of the club's innings was "occupying the developmental path" of the man
+  behind him. Only a REGULAR at the job is a blocker (`blockersOf`); when nobody is regular the
+  prospect's problem is real and is an opportunity conflict, not a blockage by a name. Men taking
+  innings at the job from another position — a corner outfielder covering centre, a two-way pitcher
+  who is in fact the regular first baseman — are named as ahead (`alsoPlaying`) and count against
+  nobody's claim: one man still competes for one job. A designated hitter is `bat_only` — batting,
+  not fielding — which is a quieter finding than not playing and no finding for a depth player. A
+  player injured for more than a week (`INJURED_DAYS_NOT_COUNTED`) is not cover, takes no starts and
+  competes for nothing; his review says he is injured.
+- **The organization is read once per request, and never longer.** `farmConsequenceFor` re-read the
+  organization per call and MLB Operations called it per candidate: ten Triple-A candidates cost
+  eleven seconds. A `FarmSession` memoizes the three reads (assembled players, Player Development's
+  payload, roster health) for the life of one request; MLB Operations opens one and hands it through
+  the adapter. Nothing is served across requests, exports or philosophy settings: correctness and
+  freshness are not traded for the cache.
+- **MLB Operations displays the farm's own reading.** The adapter reported a role-code status that
+  called Reno `thin` while the farm workspace, counting six men taking starts, called it able, and it
+  never displayed the v2 answer at all. `overall` and `issuesAfter` are now the farm's
+  findings-derived operational reading before and after the move (`operationalReading`, shared with
+  the Affiliates view), the change lines count what the move touches, and the Decision view and staff
+  report carry the farm's sentence, the replacements with philosophy's preference, and what is left
+  open. The arrival direction (an option) is answered too: the job he takes up, who holds it, whose
+  developmental work is pushed aside — the conflict that would exist with him on the club.
+- **A pool Player Development has not evaluated leaves a cascade indeterminate**, and says how many
+  were ruled out and how many were never looked at; `no_defensible_move` means every candidate was
+  judged and ruled out, or there was nobody.
+- **An open developmental runway is a development case** whatever this season's line says: it is a
+  fact about age and level. Retention reads it before the line.
+
+Consequences: the superseded solvers, their routes and the three older farm pages are deleted, so
+exactly one farm implementation exists; `minorLeagueRoster.ts` is counts and coverage and decides
+nothing (its `overall`, role-code statuses and prose lines are gone); the Player Development pages
+read `/api/scouted-development`, which is Player Development's and history's; the Dashboard counts
+the farm's own attention list and the AI briefing receives the farm's structured conclusions rather
+than an alphabetical head of the prospect list.

@@ -61,6 +61,10 @@ decision, roadmap item, or project-state fact changes.
 - Player Development decides which assignments are defensible. Organizational
   Philosophy expresses preferences among defensible choices. Minor League
   Operations solves roster and assignment problems within both boundaries.
+- MLB Operations and Minor League Operations are sibling consumers of one set of
+  specialists, not separate apps. Neither owns a specialist and neither reaches
+  into the other's solver; they exchange consequences across one contract, and
+  Minor League Operations owns the farm side of it (D-045).
 - Philosophy never enters Player Development's judgments (`prospectDecision`,
   `prospectAssignments`, `destinationFit`, `developmentFit`): no threshold,
   requirement, or blocker may depend on it, and it is applied only afterwards in
@@ -95,6 +99,43 @@ decision, roadmap item, or project-state fact changes.
   functions and cover quality, not a score (D-042); the module is views, each owning one question (D-043). New baseball behavior gets a
   case in the behavioral corpus first (docs/BEHAVIOR_CASES.md).
   `tests/mlbOperationsBoundary.test.ts` enforces it.
+- Minor League Operations (`server/farm*.ts`, `playingTime.ts`,
+  `currentAssignment.ts`; `farmConsequence.ts` is the MLB ↔ farm contract and
+  `farmRoutes.ts` the API) asks whether an assignment is DEFENSIBLE, never whether a
+  promotion was earned (D-044 to D-046, docs/MINOR_LEAGUE_OPERATIONS.md). A league
+  is the peer group, not a level, and a peer must be on a roster: production is
+  read against the player's own league, park-adjusted, with its sample. Age
+  relative to level says how much developmental time is left and never lowers the
+  developmental bar; a player past his level's window raises an ORGANIZATIONAL
+  question, which `currentAssignment.ts` answers and says so. Holding his own is
+  the null reading; `not_assessable` (no season to read) is not `indeterminate`
+  (missing evidence). One man competes for ONE job — versatility is cover, not a
+  second claim — and missing reps cost development only for a player Player
+  Development places at development priority or better; not playing is asked
+  BEFORE the level, because a prospect's thin sample is usually caused by it.
+  Operational health and developmental health are separate outputs of an affiliate
+  and only a SHORTAGE is operational. A cascade is a chain whose every step is
+  independently defensible and which STOPS; saying where it stopped is the answer,
+  and an unresolved hole is information, never an illegality. Retention is three
+  questions with three owners and philosophy may not reach the developmental
+  outlook. Every finding is structured data with its evidence, its owner, what is
+  missing and what would resolve it — never prose. Every constant is declared once
+  in `farmCalibration.ts` and stamped; none is calibrated, because the export holds
+  no minor-league history. `tests/farmOperationsBoundary.test.ts` enforces it and
+  `npm run farm:base-rate` is the check on how often it raises something.
+  There is ONE farm implementation: the superseded solvers, their routes and the
+  older farm pages were deleted in the hardening phase (MINOR_LEAGUE_OPERATIONS.md
+  Part 7). A blocker HOLDS the job — only a regular is one; a part-time man ahead
+  of a prospect makes it an opportunity conflict, not a blockage. Men getting
+  innings at a job from another position are named as ahead and count against
+  nobody's claim. A designated hitter is batting, not fielding. An injured man is
+  not cover and competes for nothing. The organization is read once per request
+  through a `FarmSession`; never cache it across requests. MLB Operations reaches
+  the farm only through `mlbEvidence.ts` (`farmConsequence`, which opens or is
+  handed a session) and displays the farm's own operational reading, so the two
+  modules never describe one club differently. The Player Development pages read
+  `/api/scouted-development`, which is Player Development's and history's, not
+  the farm's.
 - Recommendations are advisory. The user/GM makes the final decision. Do not
   add automatic OOTP transactions or save mutation as an incidental feature.
 - Organization-specific behavior should resolve the configured organization,

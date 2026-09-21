@@ -2315,14 +2315,9 @@ button.cta {
 }
 
 
+/* ── Shared farm vocabulary kept for Player Development and Minor League Operations ── */
 /* ── Farm system workspace ───────────────────────────────────── */
 
-.farm-page {
-  display: flex;
-  flex-direction: column;
-  gap: 30px;
-  padding-bottom: 30px;
-}
 
 .farm-page-head {
   display: flex;
@@ -2353,20 +2348,6 @@ button.cta {
   text-transform: uppercase;
 }
 
-.farm-scouting-note {
-  padding: 11px 14px;
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--accent);
-  background: var(--panel);
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.farm-scouting-note strong {
-  color: var(--text);
-}
-
 .farm-section-head {
   display: flex;
   justify-content: space-between;
@@ -2391,189 +2372,6 @@ button.cta {
   text-align: right;
 }
 
-.farm-metric-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.farm-metric {
-  min-height: 112px;
-  padding: 13px 14px;
-  border: 1px solid var(--border);
-  background: var(--panel);
-  display: flex;
-  flex-direction: column;
-}
-
-.farm-metric > span {
-  color: var(--muted);
-  font-family: var(--font-display);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.farm-metric > strong {
-  margin: 6px 0 4px;
-  font-size: 27px;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-.farm-metric small {
-  margin-top: auto;
-  color: var(--muted);
-  line-height: 1.35;
-}
-
-.farm-metric-danger {
-  border-top: 2px solid var(--bad);
-}
-
-.farm-metric-danger > strong {
-  color: var(--bad);
-}
-
-.farm-metric-action {
-  border-top: 2px solid var(--good);
-}
-
-.farm-metric-action > strong {
-  color: var(--good);
-}
-
-
-.farm-affiliate-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(285px, 1fr));
-  gap: 10px;
-}
-
-.farm-affiliate {
-  padding: 13px 14px;
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--border);
-  background: var(--panel);
-}
-
-.farm-affiliate.farm-health-critical {
-  border-left-color: var(--bad);
-}
-
-.farm-affiliate.farm-health-thin {
-  border-left-color: var(--accent);
-}
-
-.farm-affiliate.farm-health-healthy {
-  border-left-color: var(--good);
-}
-
-.farm-affiliate.farm-health-surplus {
-  border-left-color: var(--muted);
-}
-
-.farm-affiliate-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 9px;
-}
-
-.farm-affiliate-level {
-  color: var(--muted);
-  font-family: var(--font-display);
-  font-size: 9px;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
-}
-
-.farm-affiliate h3 {
-  margin: 2px 0 0;
-  font-size: 14px;
-}
-
-.farm-status,
-.farm-action-badge {
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid;
-  padding: 3px 7px;
-  border-radius: 3px;
-  font-family: var(--font-display);
-  font-size: 9px;
-  letter-spacing: 0.07em;
-  line-height: 1.2;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.farm-status-critical {
-  color: var(--bad);
-  border-color: var(--bad);
-}
-
-.farm-status-thin {
-  color: var(--accent);
-  border-color: var(--accent);
-}
-
-.farm-status-healthy {
-  color: var(--good);
-  border-color: var(--good);
-}
-
-.farm-status-surplus {
-  color: var(--muted);
-  border-color: var(--muted);
-}
-
-.farm-roster-line {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  color: var(--muted);
-  font-size: 11.5px;
-  margin-bottom: 10px;
-}
-
-.farm-roster-line strong {
-  color: var(--text);
-}
-
-.farm-health-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 5px;
-  margin-bottom: 9px;
-}
-
-.farm-health-grid > div {
-  min-width: 0;
-  padding: 6px 7px;
-  background: var(--panel-raised);
-}
-
-.farm-health-grid span,
-.farm-player-evaluation span,
-.farm-evidence-grid span {
-  display: block;
-  margin-bottom: 2px;
-  color: var(--muted);
-  font-size: 9px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.farm-health-grid strong {
-  display: block;
-  overflow: hidden;
-  font-size: 10.5px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .farm-text-critical,
 .farm-text-thin {
   color: var(--bad);
@@ -2581,10 +2379,6 @@ button.cta {
 
 .farm-text-healthy {
   color: var(--good);
-}
-
-.farm-text-surplus {
-  color: var(--accent);
 }
 
 .farm-issue-list,
@@ -2601,44 +2395,6 @@ button.cta {
   margin-top: 3px;
 }
 
-.farm-all-clear {
-  margin: 7px 0 0;
-  color: var(--muted);
-  font-size: 11px;
-}
-
-
-.farm-decision-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(390px, 1fr));
-  gap: 10px;
-}
-
-.farm-decision-card {
-  padding: 14px 15px;
-  border: 1px solid var(--border);
-  background: var(--panel);
-}
-
-.farm-move-card {
-  border-left: 3px solid var(--good);
-}
-
-.farm-release-card {
-  border-left: 3px solid var(--bad);
-}
-
-.farm-depth-card {
-  border-left: 3px solid var(--muted);
-}
-
-.farm-decision-top {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: flex-start;
-}
-
 .farm-decision-eyebrow {
   margin-bottom: 2px;
   color: var(--muted);
@@ -2648,136 +2404,9 @@ button.cta {
   text-transform: uppercase;
 }
 
-.farm-decision-card h3 {
-  margin: 0;
-  font-size: 15px;
-}
-
 .farm-player-meta {
   margin-top: 4px;
   color: var(--muted);
-  font-size: 11px;
-}
-
-.farm-action-move {
-  color: var(--good);
-  border-color: var(--good);
-}
-
-.farm-action-release {
-  color: var(--bad);
-  border-color: var(--bad);
-}
-
-.farm-action-depth {
-  color: var(--muted);
-  border-color: var(--muted);
-}
-
-.farm-route {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  gap: 9px;
-  align-items: center;
-  margin: 13px 0 8px;
-  padding: 8px 10px;
-  background: var(--panel-raised);
-  font-size: 12px;
-}
-
-.farm-route span:first-child {
-  text-align: right;
-}
-
-.farm-route span:last-child {
-  text-align: left;
-}
-
-.farm-route strong {
-  color: var(--accent);
-}
-
-.farm-assignment,
-.farm-summary-copy {
-  color: var(--muted);
-  font-size: 11.5px;
-  line-height: 1.5;
-}
-
-.farm-assignment strong {
-  color: var(--text);
-}
-
-.farm-plan-impact {
-  margin-top: 10px;
-  padding-top: 8px;
-  border-top: 1px solid var(--border);
-  color: var(--muted);
-  font-size: 10.5px;
-}
-
-.farm-player-evaluation {
-  display: grid;
-  grid-template-columns: minmax(120px, 0.65fr) minmax(180px, 1.35fr);
-  gap: 7px;
-  margin: 13px 0 9px;
-}
-
-.farm-player-evaluation > div {
-  padding: 7px 9px;
-  background: var(--panel-raised);
-}
-
-.farm-player-evaluation strong {
-  font-size: 11px;
-}
-
-.farm-evidence {
-  margin-top: 10px;
-  padding-top: 8px;
-  border-top: 1px solid var(--border);
-}
-
-.farm-evidence summary {
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 10.5px;
-}
-
-.farm-evidence-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 5px;
-  margin-top: 9px;
-}
-
-.farm-evidence-grid > div {
-  padding: 7px 8px;
-  background: var(--panel-raised);
-}
-
-.farm-evidence-grid strong {
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-}
-
-
-.farm-depth-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 7px;
-}
-
-.farm-depth-list .farm-decision-card {
-  padding: 11px 12px;
-}
-
-.farm-depth-list .farm-decision-card h3 {
-  font-size: 13px;
-}
-
-.farm-more {
-  margin: 9px 0 0;
   font-size: 11px;
 }
 
@@ -2801,13 +2430,6 @@ button.cta {
   color: var(--text);
 }
 
-
-@media (max-width: 1050px) {
-  .farm-metric-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 720px) {
   .farm-page-head,
   .farm-section-head {
@@ -2817,162 +2439,12 @@ button.cta {
   .farm-section-head > p {
     margin-top: 5px;
     text-align: left;
-  }
-
-  .farm-metric-grid,
-  .farm-decision-grid,
-  .farm-depth-list {
-    grid-template-columns: 1fr;
-  }
-
-  .farm-health-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .farm-player-evaluation {
-    grid-template-columns: 1fr;
-  }
-
-  .farm-evidence-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-
-/* ── Farm workspace wide-screen refinement ─────────────────── */
-
-/*
- * On a large desktop an unconstrained auto-fit grid can put the entire farm
- * system on one extremely wide row. That technically uses the space but makes
- * each affiliate harder to scan. Four columns reads more like an organizational
- * board and gives the problem descriptions room to breathe.
- */
-.farm-affiliate-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-
-/*
- * Decisions deserve more visual weight than affiliate status cards.
- * Three columns keeps release cases readable instead of squeezing five across
- * an ultrawide viewport.
- */
-.farm-decision-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-
-/*
- * A lone operational recommendation should not become a 1700px-wide memo.
- * Keep move cards at a useful reading width while still allowing multiple
- * recommendations to tile naturally.
- */
-.farm-decision-grid:has(.farm-move-card) {
-  grid-template-columns: repeat(
-    auto-fit,
-    minmax(390px, 560px)
-  );
-}
-
-
-/*
- * Expendable depth is a secondary queue, so it can stay denser than actual
- * release recommendations.
- */
-.farm-depth-list {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-
-/*
- * Give affiliate issue text a little more breathing room.
- */
-.farm-affiliate {
-  min-height: 178px;
-}
-
-.farm-issue-list {
-  line-height: 1.5;
-}
-
-
-/* Medium desktop / laptop */
-@media (max-width: 1350px) {
-  .farm-affiliate-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .farm-decision-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .farm-depth-list {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-
-/* Tablet-ish widths */
-@media (max-width: 950px) {
-  .farm-affiliate-grid,
-  .farm-decision-grid,
-  .farm-depth-list,
-  .farm-decision-grid:has(.farm-move-card) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-
-/* Existing mobile rules ultimately collapse these to one column. */
-@media (max-width: 720px) {
-  .farm-affiliate-grid,
-  .farm-decision-grid,
-  .farm-depth-list,
-  .farm-decision-grid:has(.farm-move-card) {
-    grid-template-columns: 1fr;
-  }
-}
-
-
+  }}/* ── Farm workspace wide-screen refinement ─────────────────── */
 /* ── Farm system decision queue ─────────────────────────────── */
 
-.farm-decisions-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  padding-bottom: 30px;
-}
 
 .farm-decisions-page .farm-page-head h1 {
   margin: 3px 0 6px;
-}
-
-.farm-decision-tabs {
-  display: flex;
-  gap: 5px;
-  flex-wrap: wrap;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--border);
-}
-
-.farm-decision-tabs button {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  padding: 7px 11px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--muted);
-  font-family: var(--font-display);
-  font-size: 10px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-.farm-decision-tabs button:hover {
-  background: var(--panel);
-  color: var(--text);
 }
 
 .farm-decision-tabs button.active {
@@ -2981,166 +2453,9 @@ button.cta {
   color: var(--text);
 }
 
-.farm-decision-tabs button span {
-  min-width: 20px;
-  padding: 1px 5px;
-  border-radius: 8px;
-  background: var(--panel);
-  color: var(--text);
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-
 .farm-decision-tabs button.active span {
   background: var(--accent);
   color: var(--panel);
-}
-
-.farm-decisions-intro {
-  margin-top: -14px;
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.farm-work-section {
-  display: flex;
-  flex-direction: column;
-}
-
-.farm-work-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.farm-work-card {
-  padding: 15px 16px;
-  border: 1px solid var(--border);
-  background: var(--panel);
-}
-
-.farm-work-assignment {
-  border-left: 3px solid var(--good);
-}
-
-.farm-work-release {
-  border-left: 3px solid var(--bad);
-}
-
-.farm-work-depth {
-  border-left: 3px solid var(--muted);
-}
-
-.farm-work-card-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 15px;
-  align-items: flex-start;
-}
-
-.farm-work-card-head h3 {
-  margin: 0;
-  font-size: 16px;
-}
-
-.farm-work-route {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  gap: 12px;
-  align-items: center;
-  margin: 13px 0;
-  padding: 9px 11px;
-  background: var(--panel-raised);
-}
-
-.farm-work-route > div:first-child {
-  text-align: right;
-}
-
-.farm-work-route > div:last-child {
-  text-align: left;
-}
-
-.farm-work-route span {
-  display: block;
-  margin-bottom: 2px;
-  color: var(--muted);
-  font-size: 9px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.farm-work-route strong {
-  font-size: 12px;
-}
-
-.farm-work-route b {
-  color: var(--accent);
-  font-size: 16px;
-}
-
-.farm-work-verdict {
-  margin: 12px 0;
-  padding: 10px 11px;
-  border-left: 2px solid var(--border);
-  background: color-mix(
-    in srgb,
-    var(--panel-raised) 60%,
-    transparent
-  );
-}
-
-.farm-work-release .farm-work-verdict {
-  border-left-color: var(--bad);
-}
-
-.farm-work-assignment .farm-work-verdict {
-  border-left-color: var(--good);
-}
-
-.farm-work-verdict > strong {
-  display: block;
-  margin-bottom: 4px;
-  font-family: var(--font-display);
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.farm-work-verdict p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 11.5px;
-  line-height: 1.5;
-}
-
-.farm-work-facts {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 5px;
-}
-
-.farm-work-facts > div {
-  min-width: 0;
-  padding: 7px 8px;
-  background: var(--panel-raised);
-}
-
-.farm-work-facts span {
-  display: block;
-  margin-bottom: 2px;
-  color: var(--muted);
-  font-size: 8.5px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.farm-work-facts strong {
-  display: block;
-  overflow: hidden;
-  font-size: 11px;
-  line-height: 1.35;
-  text-overflow: ellipsis;
 }
 
 .farm-work-evidence {
@@ -3179,57 +2494,8 @@ button.cta {
   color: var(--muted);
   font-size: 11px;
   line-height: 1.45;
-}
+}/* ── Decisions evidence layout fixes ───────────────────────── */
 
-
-@media (min-width: 1650px) {
-  .farm-work-list {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  /*
-   * Assignment cards carry longer route/reasoning text and read better at
-   * roughly half-screen width even on a very wide display.
-   */
-  .farm-work-section:first-of-type .farm-work-list {
-    grid-template-columns: repeat(2, minmax(0, 620px));
-  }
-}
-
-@media (max-width: 1050px) {
-  .farm-work-list {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 650px) {
-  .farm-work-facts {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .farm-work-card-head {
-    display: block;
-  }
-
-  .farm-work-card-head .farm-action-badge {
-    margin-top: 8px;
-  }
-}
-
-
-/* ── Decisions evidence layout fixes ───────────────────────── */
-
-/*
- * Expanding one decision must not stretch every other card in its CSS-grid
- * row to the same height.
- */
-.farm-work-list {
-  align-items: start;
-}
-
-.farm-work-card {
-  align-self: start;
-}
 
 
 /*
@@ -3267,216 +2533,13 @@ button.cta {
 @media (max-width: 650px) {
   .farm-work-score-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
+  }}/* ── Farm system affiliate workspace ───────────────────────── */
 
-
-/* ── Farm system affiliate workspace ───────────────────────── */
-
-.affiliate-page {
-  display: flex;
-  flex-direction: column;
-  gap: 26px;
-  padding-bottom: 30px;
-}
-
-.affiliate-selector {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 5px;
-}
-
-.affiliate-selector button {
-  min-width: 0;
-  padding: 9px 10px;
-  border: 1px solid var(--border);
-  background: var(--panel);
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
-}
-
-.affiliate-selector button:hover {
-  background: var(--panel-raised);
-}
 
 .affiliate-selector button.active {
   border-color: var(--accent);
   border-top: 2px solid var(--accent);
   background: var(--panel-raised);
-}
-
-.affiliate-selector span {
-  display: block;
-  color: var(--muted);
-  font-family: var(--font-display);
-  font-size: 8px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.affiliate-selector strong {
-  display: block;
-  overflow: hidden;
-  margin: 3px 0;
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.affiliate-selector small {
-  font-size: 9px;
-}
-
-
-.affiliate-hero {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 15px;
-  margin-bottom: -14px;
-}
-
-.affiliate-hero h2 {
-  margin: 3px 0 0;
-  font-family: var(--font-display);
-  font-size: 22px;
-  letter-spacing: 0.035em;
-}
-
-
-.affiliate-metric-grid {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 6px;
-}
-
-.affiliate-metric-grid > div {
-  padding: 10px 11px;
-  border: 1px solid var(--border);
-  background: var(--panel);
-}
-
-.affiliate-metric-grid span {
-  display: block;
-  color: var(--muted);
-  font-size: 8.5px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.affiliate-metric-grid strong {
-  display: block;
-  margin-top: 3px;
-  font-size: 17px;
-  font-variant-numeric: tabular-nums;
-}
-
-
-.affiliate-analysis-grid {
-  display: grid;
-  grid-template-columns: 1.35fr 0.65fr;
-  gap: 10px;
-}
-
-.affiliate-analysis-card {
-  padding: 13px 14px;
-  border: 1px solid var(--border);
-  background: var(--panel);
-}
-
-.affiliate-analysis-card h3 {
-  margin: 3px 0 7px;
-  font-family: var(--font-display);
-  font-size: 14px;
-}
-
-.affiliate-pitch-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 5px;
-}
-
-.affiliate-pitch-grid > div {
-  padding: 7px 8px;
-  background: var(--panel-raised);
-}
-
-.affiliate-pitch-grid span,
-.affiliate-pitch-grid small {
-  display: block;
-  color: var(--muted);
-  font-size: 8.5px;
-}
-
-.affiliate-pitch-grid strong {
-  display: block;
-  margin: 2px 0;
-  font-size: 11px;
-}
-
-
-.affiliate-coverage-grid {
-  display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
-  gap: 6px;
-}
-
-.affiliate-coverage-card {
-  min-width: 0;
-  padding: 9px 10px;
-  border: 1px solid var(--border);
-  border-top: 2px solid var(--border);
-  background: var(--panel);
-}
-
-.affiliate-coverage-card.affiliate-health-critical {
-  border-top-color: var(--bad);
-}
-
-.affiliate-coverage-card.affiliate-health-thin {
-  border-top-color: var(--accent);
-}
-
-.affiliate-coverage-card.affiliate-health-healthy {
-  border-top-color: var(--good);
-}
-
-.affiliate-coverage-card.affiliate-health-surplus {
-  border-top-color: var(--muted);
-}
-
-.affiliate-coverage-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 5px;
-  align-items: flex-start;
-}
-
-.affiliate-coverage-head > strong {
-  font-family: var(--font-display);
-  font-size: 15px;
-}
-
-.affiliate-coverage-head .farm-status {
-  padding: 2px 4px;
-  font-size: 7px;
-}
-
-.affiliate-coverage-count {
-  margin: 6px 0 8px;
-  color: var(--muted);
-  font-size: 9px;
-}
-
-.affiliate-coverage-players {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.affiliate-coverage-players > div {
-  min-width: 0;
 }
 
 .affiliate-coverage-players .player-link {
@@ -3486,286 +2549,12 @@ button.cta {
   font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
+}/* ── Affiliate workspace readability polish ───────────────── */
 
-.affiliate-coverage-players span {
-  display: block;
-  color: var(--muted);
-  font-size: 8px;
-}
-
-.affiliate-coverage-none {
-  color: var(--bad) !important;
-  font-size: 9px !important;
-}
-
-
-.affiliate-move-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 520px));
-  gap: 7px;
-}
-
-.affiliate-move-list article {
-  display: grid;
-  grid-template-columns: minmax(150px, 1fr) auto minmax(190px, 1fr) auto;
-  gap: 10px;
-  align-items: center;
-  padding: 9px 10px;
-  border: 1px solid var(--border);
-  background: var(--panel);
-  font-size: 10px;
-}
-
-.affiliate-move-in,
-.affiliate-move-out {
-  padding: 2px 5px;
-  border: 1px solid;
-  font-family: var(--font-display);
-  font-size: 8px;
-}
-
-.affiliate-move-in {
-  color: var(--good);
-  border-color: var(--good);
-}
-
-.affiliate-move-out {
-  color: var(--accent);
-  border-color: var(--accent);
-}
-
-.affiliate-move-route {
-  color: var(--muted);
-}
-
-
-.affiliate-roster-groups {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  align-items: start;
-}
-
-.affiliate-roster-group {
-  min-width: 0;
-}
-
-.affiliate-roster-group h3 {
-  display: flex;
-  gap: 7px;
-  align-items: center;
-  margin: 0 0 7px;
-  font-family: var(--font-display);
-  font-size: 13px;
-}
-
-.affiliate-roster-group h3 span {
-  padding: 1px 5px;
-  border-radius: 8px;
-  background: var(--panel-raised);
-  color: var(--muted);
-  font-size: 9px;
-}
-
-.affiliate-roster-table-wrap {
-  overflow-x: auto;
-  border: 1px solid var(--border);
-}
-
-.affiliate-roster-table {
-  width: 100%;
-  margin: 0;
-  border-collapse: collapse;
-  font-size: 10.5px;
-}
-
-.affiliate-roster-table th {
-  color: var(--muted);
-  font-family: var(--font-display);
-  font-size: 8px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.affiliate-roster-table th,
-.affiliate-roster-table td {
-  padding: 6px 7px;
-  border-bottom: 1px solid var(--border);
-  text-align: left;
-}
-
-.affiliate-roster-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.affiliate-roster-status {
-  display: inline-block;
-  padding: 2px 5px;
-  border: 1px solid var(--border);
-  color: var(--muted);
-  font-family: var(--font-display);
-  font-size: 7.5px;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.affiliate-roster-release {
-  color: var(--bad);
-  border-color: var(--bad);
-}
-
-.affiliate-roster-depth {
-  color: var(--muted);
-}
-
-.affiliate-roster-protected {
-  color: var(--good);
-  border-color: var(--good);
-}
-
-
-@media (max-width: 1350px) {
-  .affiliate-selector {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
-  .affiliate-coverage-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
-  .affiliate-metric-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 900px) {
-  .affiliate-analysis-grid,
-  .affiliate-roster-groups {
-    grid-template-columns: 1fr;
-  }
-
-  .affiliate-selector {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 650px) {
-  .affiliate-coverage-grid,
-  .affiliate-metric-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .affiliate-move-list article {
-    grid-template-columns: 1fr;
-  }
-}
-
-
-/* ── Affiliate workspace readability polish ───────────────── */
-
-/*
- * Affiliate pages are operational workspaces, not leaderboard tables.
- * Give the text enough size and vertical rhythm to be comfortably scanned
- * on a large desktop display.
- */
-
-.affiliate-page {
-  font-size: 12px;
-}
-
-
-/* Affiliate selector ------------------------------------------------ */
-
-.affiliate-selector button {
-  padding: 11px 12px;
-}
-
-.affiliate-selector span {
-  font-size: 9px;
-}
-
-.affiliate-selector strong {
-  margin: 4px 0;
-  font-size: 12px;
-  line-height: 1.3;
-}
-
-.affiliate-selector small {
-  font-size: 10px;
-  font-weight: 600;
-}
-
-
-/* Summary metrics --------------------------------------------------- */
-
-.affiliate-metric-grid > div {
-  padding: 12px 13px;
-}
-
-.affiliate-metric-grid span {
-  font-size: 9.5px;
-}
-
-.affiliate-metric-grid strong {
-  margin-top: 4px;
-  font-size: 20px;
-}
-
-
-/* Diagnosis / pitching --------------------------------------------- */
-
-.affiliate-analysis-card {
-  padding: 15px 16px;
-}
-
-.affiliate-analysis-card h3 {
-  font-size: 15px;
-}
 
 .affiliate-analysis-card .farm-reason-list {
   font-size: 12px;
   line-height: 1.6;
-}
-
-.affiliate-pitch-grid > div {
-  padding: 9px 10px;
-}
-
-.affiliate-pitch-grid span,
-.affiliate-pitch-grid small {
-  font-size: 9.5px;
-}
-
-.affiliate-pitch-grid strong {
-  margin: 3px 0;
-  font-size: 12px;
-}
-
-
-/* Defensive coverage ------------------------------------------------ */
-
-.affiliate-coverage-card {
-  padding: 11px 11px;
-}
-
-.affiliate-coverage-head > strong {
-  font-size: 17px;
-}
-
-.affiliate-coverage-head .farm-status {
-  padding: 3px 5px;
-  font-size: 8px;
-}
-
-.affiliate-coverage-count {
-  margin: 7px 0 9px;
-  font-size: 10px;
-}
-
-.affiliate-coverage-players {
-  gap: 7px;
 }
 
 .affiliate-coverage-players .player-link {
@@ -3773,109 +2562,8 @@ button.cta {
   font-weight: 600;
 }
 
-.affiliate-coverage-players span {
-  margin-top: 1px;
-  font-size: 9px;
-  line-height: 1.35;
-}
-
-.affiliate-coverage-none {
-  font-size: 10px !important;
-}
-
-
-/* Operations -------------------------------------------------------- */
-
-.affiliate-move-list article {
-  padding: 11px 12px;
-  font-size: 11px;
-}
-
-.affiliate-move-in,
-.affiliate-move-out {
-  padding: 3px 6px;
-  font-size: 9px;
-}
-
-
-/* Active roster ----------------------------------------------------- */
-
-.affiliate-roster-group h3 {
-  margin-bottom: 9px;
-  font-size: 15px;
-}
-
-.affiliate-roster-group h3 span {
-  padding: 2px 6px;
-  font-size: 10px;
-}
-
-.affiliate-roster-table {
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-.affiliate-roster-table th {
-  padding: 8px 9px;
-  font-size: 9.5px;
-  line-height: 1.25;
-  white-space: nowrap;
-}
-
-.affiliate-roster-table td {
-  padding: 8px 9px;
-  vertical-align: middle;
-}
-
-.affiliate-roster-table tbody tr:hover {
-  background: var(--panel-raised);
-}
-
 .affiliate-roster-table .player-link {
   font-weight: 600;
-}
-
-
-/*
- * This was much too small. Org Status is an important operational field,
- * not metadata.
- */
-.affiliate-roster-status {
-  padding: 3px 7px;
-  border-radius: 3px;
-  font-size: 9px;
-  line-height: 1.25;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-}
-
-
-/* Make the non-danger states easier to distinguish at a glance. */
-
-.affiliate-roster-protected {
-  background: color-mix(
-    in srgb,
-    var(--good) 8%,
-    transparent
-  );
-}
-
-.affiliate-roster-depth {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: color-mix(
-    in srgb,
-    var(--accent) 7%,
-    transparent
-  );
-}
-
-.affiliate-roster-release {
-  background: color-mix(
-    in srgb,
-    var(--bad) 8%,
-    transparent
-  );
 }
 
 
@@ -3884,130 +2572,17 @@ button.cta {
 .affiliate-page .farm-section-head > p {
   font-size: 11px;
   line-height: 1.5;
-}
+}/* ── Affiliate workspace final polish ───────────────────────── */
 
-
-/* Give the two roster tables enough room before collapsing. */
-
-@media (max-width: 1200px) {
-  .affiliate-roster-groups {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Affiliate move direction should describe the relationship to this club. */
-.affiliate-move-in,
-.affiliate-move-out {
-  min-width: 58px;
-  text-align: center;
-}
-
-
-/* ── Affiliate workspace final polish ───────────────────────── */
-
-/* Don't stretch the diagnosis card just because its neighbor is taller. */
-.affiliate-analysis-grid {
-  align-items: start;
-}
-
-.affiliate-analysis-card {
-  align-self: start;
-}
-
-
-/*
- * Recommended Operations moves are actual front-office decisions.
- * Give a lone move enough width to read as a recommendation rather than
- * a tiny utility widget.
- */
-.affiliate-move-list {
-  grid-template-columns: repeat(
-    auto-fit,
-    minmax(460px, 620px)
-  );
-}
-
-.affiliate-move-list article {
-  min-height: 54px;
-  padding: 12px 14px;
-}
 
 .affiliate-move-list .player-link {
   font-size: 12px;
   font-weight: 600;
 }
 
-.affiliate-move-route {
-  font-size: 11px;
-  line-height: 1.4;
-}
-
-.affiliate-move-list article > strong {
-  font-size: 11px;
-}
-
-
-/* Org status should remain readable at normal 4K desktop scaling. */
-.affiliate-roster-status {
-  min-width: 52px;
-  padding: 4px 7px;
-  font-size: 9.5px;
-  text-align: center;
-}
-
-
-/* A little more structure without turning the roster into a spreadsheet. */
-.affiliate-roster-table tbody tr:nth-child(even) {
-  background: color-mix(
-    in srgb,
-    var(--panel-raised) 45%,
-    transparent
-  );
-}
-
-.affiliate-roster-table tbody tr:hover {
-  background: var(--panel-raised);
-}
-
-
-/*
- * Player name is the primary thing the eye should track across the roster.
- */
-.affiliate-roster-table td:first-child {
-  font-size: 12px;
-}
-
 .affiliate-roster-table td:first-child .player-link {
   font-weight: 650;
-}
-
-
-/* ── Farm Overview → Affiliate drill-through ───────────────── */
-
-.farm-affiliate-link {
-  cursor: pointer;
-  transition:
-    background 120ms ease,
-    border-color 120ms ease,
-    transform 120ms ease;
-}
-
-.farm-affiliate-link:hover {
-  background: var(--panel-raised);
-  transform: translateY(-1px);
-}
-
-.farm-affiliate-link:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.farm-affiliate-link:hover h3 {
-  text-decoration: underline;
-  text-decoration-color: var(--accent);
-  text-underline-offset: 3px;
-}
-
+}/* ── Farm Overview → Affiliate drill-through ───────────────── */
 
 /* ── Farm system Player Development workspace ──────────────── */
 
@@ -6522,3 +5097,116 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); cur
 .mlb-module .mlb-lineup th, .mlb-module .mlb-lineup td, .mlb-module .mlb-scroll th, .mlb-module .mlb-scroll td { padding-left: 6px; padding-right: 6px; }
 .mlb-module td.name { white-space: normal; min-width: 140px; }
 .mlb-module .mlb-row .rights-chip { white-space: normal; }
+
+/* ── Minor League Operations ──────────────────────────────────
+ *
+ * The module reuses MLB Operations' shell (`.mlb-module`, `.mlb-tabs`, `.mlb-count`) and its chip
+ * vocabulary (`.rights-chip` and the eligible / ineligible / indeterminate colours), so the two
+ * modules look like siblings. Only what the farm adds is here, under its own `mlo-` namespace so it
+ * cannot collide with the older farm pages' styles.
+ */
+
+.mlo-read { margin: 0 0 16px; max-width: 80ch; color: var(--muted); font-size: 0.92rem; }
+
+/* The inbox: one row per thing that needs attention, and nothing else on the view. */
+.mlo-attention { list-style: none; margin: 0; padding: 0; }
+.mlo-attention > li { border-bottom: 1px solid var(--border); }
+.mlo-attention > li:last-child { border-bottom: none; }
+.mlo-attention-row {
+  display: flex; gap: 10px; align-items: baseline; width: 100%; padding: 9px 4px;
+  background: none; border: none; color: var(--text); text-align: left; cursor: pointer; font-size: 0.95rem;
+}
+.mlo-attention-row:hover { background: var(--panel-raised); }
+.mlo-attention-kind { flex: 0 0 5.5rem; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+.mlo-attention-headline { flex: 1 1 auto; min-width: 0; }
+.mlo-attention-detail { margin: 0 0 8px 6.6rem; font-size: 0.85rem; }
+
+.mlo-also { margin: 14px 0; }
+.mlo-also > summary { cursor: pointer; padding: 6px 0; color: var(--muted); }
+
+/* Affiliates, as a strip on the Overview and as a tab bar on their own view. */
+.mlo-affiliate-strip { display: flex; flex-wrap: wrap; gap: 8px; }
+.mlo-affiliate-chip {
+  display: flex; flex-direction: column; gap: 2px; align-items: flex-start; min-width: 150px;
+  padding: 8px 10px; background: var(--panel-raised); border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text); cursor: pointer; text-align: left;
+}
+.mlo-affiliate-chip:hover { border-color: var(--accent, var(--muted)); }
+.mlo-affiliate-chip .muted { font-size: 11px; }
+
+.mlo-affiliate-nav { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 14px; }
+.mlo-affiliate-nav button {
+  padding: 5px 10px; background: none; border: 1px solid var(--border); border-radius: 999px;
+  color: var(--muted); cursor: pointer; font-size: 12px;
+}
+.mlo-affiliate-nav button.active { color: var(--text); border-color: var(--text); }
+
+/* The two readings of one club, side by side and never merged. */
+.mlo-affiliate-hero { display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-between; margin-bottom: 18px; }
+.mlo-affiliate-hero h2 { margin: 0 0 4px; }
+.mlo-affiliate-states { display: flex; flex-wrap: wrap; gap: 18px; }
+.mlo-affiliate-states > div { display: flex; flex-direction: column; gap: 3px; min-width: 190px; }
+.mlo-affiliate-states small { color: var(--muted); font-size: 11px; max-width: 30ch; }
+
+/* A finding: the headline, then the evidence with its basis, behind a disclosure. */
+.mlo-findings { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 16px; }
+.mlo-finding, .mlo-conflict {
+  background: var(--panel-raised); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px;
+}
+.mlo-finding > summary, .mlo-conflict > summary { cursor: pointer; font-size: 0.93rem; }
+.mlo-finding-body { margin-top: 8px; }
+.mlo-finding-body table, .mlo-conflict table { margin: 6px 0; }
+.mlo-finding-body th { font-weight: 500; color: var(--muted); text-align: left; padding-right: 10px; }
+.mlo-finding-players { margin: 6px 0; padding-left: 18px; font-size: 0.9rem; }
+.mlo-finding-body p { margin: 6px 0; font-size: 0.87rem; max-width: 80ch; }
+
+/* The man the shortage is costing. */
+.mlo-squeezed > td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
+
+.mlo-unknowns { margin: 14px 0; padding: 8px 10px; border-left: 2px dashed var(--border); }
+.mlo-unknowns ul { margin: 4px 0 0; padding-left: 18px; font-size: 0.88rem; color: var(--muted); }
+
+.mlo-table-scroll { overflow-x: auto; }
+.mlo-filters { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-bottom: 10px; font-size: 0.88rem; }
+.mlo-assignment-table th[scope='row'] { white-space: nowrap; }
+
+/* The decision workspace: the questions in the order a GM decides them. */
+.mlo-decision-head { margin-bottom: 20px; }
+.mlo-decision-head h2 { margin: 6px 0 2px; }
+.mlo-decision section { margin-bottom: 22px; }
+.mlo-decision .farm-kicker { opacity: 0.7; }
+.mlo-reasons { margin: 6px 0; padding-left: 18px; max-width: 80ch; }
+.mlo-reasons > li { margin-bottom: 4px; }
+
+.mlo-cascade { margin: 10px 0; }
+.mlo-cascade-steps { margin: 0; padding-left: 20px; }
+.mlo-cascade-steps > li {
+  margin-bottom: 12px; padding-left: 8px; border-left: 2px solid var(--border);
+}
+.mlo-cascade-head { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
+.mlo-cascade-steps p { margin: 4px 0; }
+.mlo-cascade-consequence { margin: 4px 0; padding-left: 16px; font-size: 0.88rem; }
+.mlo-cascade-stop { margin: 12px 0 0; padding: 8px 10px; background: var(--panel-raised); border-radius: 6px; max-width: 80ch; }
+.mlo-unresolved { margin: 10px 0; padding: 8px 10px; border: 1px dashed var(--border); border-radius: 6px; }
+.mlo-unresolved ul { margin: 4px 0; padding-left: 18px; font-size: 0.9rem; }
+.mlo-unresolved p { margin: 6px 0 0; font-size: 0.85rem; }
+.mlo-guardrails { margin: 10px 0; padding-left: 18px; font-size: 0.9rem; max-width: 80ch; }
+
+/*
+ * A dense table scrolls inside its own box; it never widens the page.
+ *
+ * The Decision view's evidence tables carry an "on what basis" column that is a sentence, which took
+ * the page to 1374px in an 820px viewport before this. Every table in the module is wrapped rather
+ * than only the ones inside `.mlo-table-scroll`, so a new one cannot reintroduce the overflow.
+ */
+.mlo-module table { display: block; max-width: 100%; overflow-x: auto; }
+.mlo-module table thead, .mlo-module table tbody { display: table; width: 100%; }
+.mlo-finding-body table th[scope='row'], .mlo-decision table th[scope='row'] { min-width: 10rem; }
+
+@media (max-width: 900px) {
+  .mlo-attention-row { flex-wrap: wrap; gap: 4px; }
+  .mlo-attention-kind { flex-basis: auto; }
+  .mlo-attention-detail { margin-left: 4px; }
+  .mlo-affiliate-hero { flex-direction: column; }
+  .mlo-module table thead, .mlo-module table tbody { width: auto; min-width: 100%; }
+}

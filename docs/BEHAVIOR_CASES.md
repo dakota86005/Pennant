@@ -1,11 +1,14 @@
-# MLB Operations behavioral cases
+# Behavioral cases
 
-The regression protection for baseball behavior. **159 tests in 14 files**, added in the hardening phase
-([MLB_OPERATIONS_HARDENING.md](MLB_OPERATIONS_HARDENING.md)). They are not snapshots and they never say "Player X must be ranked first":
-each is a baseball invariant, an acceptable-behavior case, or a boundary, stated so that a failure means either the model has a defect
-or the invariant was wrong, and either is worth knowing.
+The regression protection for baseball behavior across both operations modules. **159 tests in 14 files** for
+MLB Operations, added in its hardening phase ([MLB_OPERATIONS_HARDENING.md](MLB_OPERATIONS_HARDENING.md)), and
+**234 tests in 12 files** for Minor League Operations, added with it and widened in its hardening phase
+([MINOR_LEAGUE_OPERATIONS.md](MINOR_LEAGUE_OPERATIONS.md) Parts 2 and 7). They are not snapshots and they never say
+"Player X must be ranked first": each is a baseball invariant, an acceptable-behavior case, or a boundary,
+stated so that a failure means either the model has a defect or the invariant was wrong, and either is worth
+knowing.
 
-## How they are organized
+## MLB Operations: how they are organized
 
 | File | What it protects |
 |---|---|
@@ -28,6 +31,26 @@ Shared scenario: `tests/mlbGolden.ts` (a club whose fifth starter is far below w
 upgrades on paper, and five organizations that lean every way the layer knows how) on top of `tests/mlbFixtures.ts`. Rights come from the
 real evaluator, so the tests exercise the actual three-valued contract.
 
+## Minor League Operations
+
+| File | What it protects |
+|---|---|
+| `farmGoldenDevelopment.test.ts` (15) | What the level is doing for a player, and what age has to do with it: holding his own is the null reading; a man clearly better than the league has nothing left to learn there; struggling at a level he is YOUNG for is on schedule; a man past the level's age window raises an organizational question, not a developmental one; a claim needs a sample however extreme the rate; nothing to read is not the same as missing evidence; age never lowers the developmental bar and does not change what he has shown. |
+| `farmGoldenPlayingTime.test.ts` (30) | One man, one job; competition, not absence, is a conflict; who is squeezed and who is ahead; a crowded job of depth players costs nobody development; unknown stakes stay unknown; no share is read from a club that has not played; a rehab assignee competes for nothing; a prospect who needs starter innings and gets none; a blocked prospect's thin sample IS the finding; a man with no development to cost is not a finding. Hardening: a cover holder (a corner outfielder in centre, a two-way pitcher at first) is named as ahead and counted against nobody's claim; only a REGULAR is a blocker; a designated hitter is batting, not fielding — a quieter finding for a prospect and none for a depth player; an injured man competes for nothing and his review says why; the shares say when a quarter of the job was played by men no longer on the club; two catchers. |
+| `farmGoldenCascade.test.ts` (23) | A chain whose every step is defensible, and a stop that is an answer: absorbed, no defensible move, indeterminate, relocates the same shortage, the bottom of the ladder, the step limit. An indeterminate best candidate stops the chain rather than falling through; it terminates however long the chain could be; preference attaches only to a defensible step; nothing is a transaction. Hardening: a pool Player Development has not evaluated leaves the chain indeterminate and says so, and `no_defensible_move` means every candidate was judged; the other defensible replacements are listed as the branch; a dire hole never makes an indefensible step defensible; the pool rule — a rotation hole takes a man taking starts, a relief hole a relief arm, a position anyone who can play it, never a rehab assignee, an injured man or a man two levels down. |
+| `farmGoldenAffiliate.test.ts` (16) | Operational health and developmental health are two readings and stay apart: a surplus is never an operational state; a rotation is short when nobody takes the starts, not when the role codes do not add up; a rehab assignee is named, not counted; a prospect who has outgrown the level is separated from a depth player past its window; a player with no line is not assessed rather than judged; every finding carries its evidence with a basis. Hardening: an injured player is not counted as cover and is named at his position; the operational reading on its own is the reading the view carries; the status never says more than the findings do. |
+| `farmGoldenRetention.test.ts` (17) | Three questions, three owners: the developmental outlook is identical at every philosophy; pressure is what makes a closed runway a question; the stance is a lean that is always shown and can never turn a retain into a question; a 40-man player, a major-league contract or an injured list is not the farm's decision and the process that owns it is named; the farm's own reading is reported beside the guardrail. Hardening: an open runway is a development case whatever this season's line says; a closing or closed runway with nothing to read is indeterminate, not negative; the same at every philosophy. |
+| `farmInvariants.test.ts` (14) | Metamorphic relations: a finding belongs to the man and his job, not the group (an unrelated player joining, or a reordering, changes nobody else's); a better reading is never a bigger problem; more developmental time never makes him a concern; the window only narrows with age; unknown is never firmer than known; congestion counts the path, depth counts what he can play; a shape is not read off a season that has not been played. |
+| `farmThresholdBoundaries.test.ts` (13) | Every policy threshold at the value and a step either side: the level-standing percentiles, the two sample lines, the age-relative-to-level lines, the positional, rotation and relief capacities, the club-games gate, and the declared structural floors. |
+| `farmOperationsBoundary.test.ts` (70) | The architecture, now over thirteen modules including the contract and the routes: no prohibited value field, no rating column, no `gloves()`; the pure modules open no table; nothing writes; no farm module holds a development threshold; philosophy reaches only the retention input, the service and the contract, and never a pure judgment; the developmental outlook is computed before philosophy is read; roster state comes from Player State; every threshold is declared once; the farm is not imported upstream; MLB Operations asks for the consequence and rebuilds no cascade; every conclusion keeps an indeterminate state. |
+| `farmMlbIntegration.test.ts` (13) | The contract end to end: the answer carries the vacated job, the chain and where it stops; MLB Operations reports it rather than rebuilding it; a player joining carries no farm answer; a man not on an affiliate is said to have none; an unresolved hole is never phrased as an illegality; the workspace serves the whole organization and accounts for every player it could not assess. Hardening: the answer is identical with and without a shared session; MLB Operations is told the same operational status the workspace shows, before and after; an arrival is answered with the job taken up and who holds it, never a cascade, on its own route. |
+| `farmGoldenArchetypes.test.ts` (14) | The archetypes through the composed review: a young player over a tiny sample is indeterminate, never a demotion case, and on schedule once the sample supports a claim; older depth dominating a lower level is an organizational question however defensible the move up; a high-upside prospect with incomplete evidence has his results read and his stakes left unknown; a mature low-upside bat is a promotion case only when Player Development calls the move defensible, and quietly; old for the level is closing, then organizational; strong tools never promote poor results; strong results never finish the argument alone; an older player never gets a lower bar; each kind of missing evidence stays missing. |
+| `farmPeerPools.test.ts` (3) | The two contaminations measured on the real import, pinned against the fixture: the same line read against two leagues' own environments gives two percentiles that follow the league (F-1-farm); a league too thin to compare says so; signings nobody has assigned never move the level's rostered average age (F-0-farm). |
+| `farmDevelopmentIndeterminate.test.ts` (6) | An indeterminate Player Development judgment travelling into the farm: reviewed as indeterminate, never a preferred alternative, no numeric protection anywhere, a cascade that stops rather than following him, and the same judgments and verdicts in both payloads under every philosophy. |
+
+Shared synthetic evidence: `tests/farmGolden.ts`. Protection tiers come from the real evaluator and abilities
+from the adapter's own `syntheticScoutedAbility`, so the cases exercise the real branded types.
+
 ## Adding a case
 
 When real-save testing finds a new failure mode, add the case before the fix:
@@ -44,6 +67,7 @@ When real-save testing finds a new failure mode, add the case before the fix:
 ## What is deliberately not encoded
 
 Who ranks first at a position, what any club's recommendation is, or any number that depends on the season's sample. Those change
-with the game and would make the corpus a snapshot. The base-rate run over all 30 clubs
-(`scripts/calibrate.ts standards`, and the counts in the hardening doc) is the check on how often a flag fires, and it is re-run when a
-threshold or a standard changes.
+with the game and would make the corpus a snapshot. The base-rate runs are the check on how often a flag fires, and they are
+re-run when a threshold or a standard changes: `scripts/calibrate.ts standards` over all 30 clubs for MLB
+Operations (counts in the hardening doc) and `npm run farm:base-rate` for the farm
+(MINOR_LEAGUE_OPERATIONS.md §6.1).

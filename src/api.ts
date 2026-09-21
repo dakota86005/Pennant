@@ -453,12 +453,9 @@ export interface Prospect {
   cur: number | null;
   pot: number | null;
   ageDiff: number | null;
-  score: number;
   reasons: string[];
-  /** Legacy development signal; retained temporarily for A/B comparison. */
-  signal: 'promote' | 'watch' | 'demote' | null;
 
-  /** New philosophy-aware, transparent development analysis. */
+  /** Player Development's transparent analysis. Absent when he has no qualifying line at his level. */
   decision?: ProspectDecision;
   war: number;
   // batters

@@ -76,11 +76,24 @@ describe('prospect readiness', () => {
     expect(young.development.promotionThreshold).toBeGreaterThan(old.development.promotionThreshold);
   });
 
-  it('caps the age effect on the threshold at five points', () => {
+  it('never lowers the developmental bar for a player who is old for his level', () => {
+    // Being old for a level is not evidence about what a player has shown. The earlier model
+    // discounted his threshold by up to five points for it, so age argued FOR a developmental
+    // promotion; a player past his level's window raises an organizational question instead
+    // (currentAssignment.ts). D-044.
+    const neutral = evaluateProspectDecision(hitter({ ageDiff: 0 }));
+    for (const ageDiff of [-0.5, -2, -5, -10]) {
+      const old = evaluateProspectDecision(hitter({ ageDiff }));
+      expect(old.development.ageThresholdAdjustment).toBe(0);
+      expect(old.development.promotionThreshold).toBe(neutral.development.promotionThreshold);
+    }
+  });
+
+  it('caps the age effect on the threshold at five points, and only upward', () => {
     const veryYoung = evaluateProspectDecision(hitter({ ageDiff: 10 }));
     const veryOld = evaluateProspectDecision(hitter({ ageDiff: -10 }));
     expect(veryYoung.development.ageThresholdAdjustment).toBe(5);
-    expect(veryOld.development.ageThresholdAdjustment).toBe(-5);
+    expect(veryOld.development.ageThresholdAdjustment).toBe(0);
   });
 
   it('measures pitchers on ERA and strikeout rate together', () => {
@@ -193,13 +206,13 @@ describe('the decision engine knows nothing of philosophy', () => {
     expect(evaluateProspectDecision(withExtra)).toEqual(evaluateProspectDecision(hitter()));
   });
 
-  it('uses a developmental promotion threshold of 76, moved only by age and level', () => {
+  it('uses a developmental promotion threshold of 76, raised only by youth relative to level', () => {
     expect(evaluateProspectDecision(hitter()).development).toEqual({
       promotionThreshold: 76,
       ageThresholdAdjustment: 0,
     });
     expect(evaluateProspectDecision(hitter({ ageDiff: 2 })).development.promotionThreshold).toBe(79);
-    expect(evaluateProspectDecision(hitter({ ageDiff: -2 })).development.promotionThreshold).toBe(73);
+    expect(evaluateProspectDecision(hitter({ ageDiff: -2 })).development.promotionThreshold).toBe(76);
   });
 
   it('cannot promote on a thin sample', () => {

@@ -68,7 +68,7 @@ describe('MLB Operations boundary', () => {
   it('is not imported by Player Development, Player Rights, Player State, or the evidence adapter', () => {
     const upstream = ['org.ts', 'prospectDecision.ts', 'prospectAssignments.ts', 'destinationFit.ts', 'developmentFit.ts',
       'developmentJudgment.ts', 'assignmentPreference.ts', 'playerRights.ts', 'playerState.ts', 'assignmentContext.ts',
-      'scoutedEvidence.ts', 'minorLeagueRoster.ts', 'minorLeagueMoves.ts', 'minorLeaguePitchingOperations.ts', 'minorLeagueRetention.ts',
+      'scoutedEvidence.ts', 'minorLeagueRoster.ts',
       'mlbAssignmentContext.ts', 'rehabAssignments.ts', 'roleStanding.ts', 'roleReview.ts', 'platoon.ts', 'lineupPicture.ts', 'resultsMetrics.ts', 'resultsEvidence.ts',
       'toolsModel.ts', 'calibration.ts', 'staffPreference.ts', 'bullpenRoles.ts', 'benchReview.ts', 'lineupShifts.ts'];
     for (const file of upstream) expect(code(file), file).not.toMatch(/from '\.\/(mlbRoster|mlbNeeds|mlbResponses|mlbEvidence|mlbOperations)\.js'/);

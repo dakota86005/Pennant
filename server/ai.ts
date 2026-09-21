@@ -11,6 +11,7 @@ import {
 import { PROVIDERS, describeError, providerFor, toolLoop, type FallbackNotice } from './providers.js';
 import { TOOLS, runTool } from './chat.js';
 import { computeProspects } from './org.js';
+import { farmBriefing } from './farmOperations.js';
 import { computeContracts } from './contracts.js';
 import { tradeContext } from './trade.js';
 import { tradingBlock } from './tradingblock.js';
@@ -98,7 +99,12 @@ function briefingContext(orgId: number) {
     gameDate: currentGameDate(team.league_id as number),
     seasonYear: seasonYear(team.league_id as number),
     standings,
-    topProspects: { batters: prospects.batters.slice(0, 5), pitchers: prospects.pitchers.slice(0, 5) },
+    /*
+     * The farm as its own department describes it: what needs a decision, and Player Development's
+     * promotion-direction recommendations. Not a "top prospects" slice — the prospect payload is
+     * ordered by name, so the first five were the first five alphabetically.
+     */
+    farm: farmBriefing(orgId, prospects),
     contractSituations: contracts,
     /*
      * Who is genuinely for sale, which is most of what a deadline briefing is
@@ -140,9 +146,12 @@ async function generateBriefing(orgId: number): Promise<void> {
     `STRICT DATA RULES: Never infer a player's position, role, handedness, injury, contract demand, ` +
     `salary demand, or roster status from his name or from outside baseball knowledge. Use only fields ` +
     `explicitly present in the supplied data. If a fact is absent, omit it rather than guess. ` +
-    `A prospect signal of 'promote' means promotion ONE AFFILIATE LEVEL, not promotion to MLB. Only a ` +
-    `player currently at AAA may be described as an MLB call-up candidate, and do not say a minor-league ` +
-    `promotion fills an MLB bench or bullpen need. 'Market-dependent' is a recommendation category, not ` +
+    `FARM: 'farm.attention' is what Minor League Operations says needs a decision (a prospect who cannot ` +
+    `get the work, an affiliate that cannot field a team, a roster spot in question); 'farm.promotionDirection' ` +
+    `lists players for whom Player Development finds a promotion ONE AFFILIATE LEVEL developmentally defensible — ` +
+    `never a call-up. 'mlb_ready_discussion' is a discussion, not a call-up. Only a player currently at AAA may be ` +
+    `described as an MLB call-up candidate, and do not say a minor-league promotion fills an MLB bench or bullpen ` +
+    `need. Do not rank prospects or invent a top-prospect list. 'Market-dependent' is a recommendation category, not ` +
     `a contract offer and cannot be accepted or declined. Do not invent extension years or dollar figures. ` +
     `Only MLB-level injuries directly create major-league roster holes; affiliate injuries affect organizational ` +
     `depth. Respect the game date: before Opening Day, 0-0 standings are not a development and expiring-after-season ` +
