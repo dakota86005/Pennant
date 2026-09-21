@@ -68,7 +68,7 @@ body {
 }
 
 .wordmark { display: flex; align-items: center; gap: 10px; }
-.wordmark-ball { font-size: 30px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.4)); }
+.wordmark-mark { width: 34px; height: 34px; object-fit: contain; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.4)); }
 .wordmark-title {
   display: block;
   font-family: var(--font-display);
@@ -535,6 +535,7 @@ th.sortable .tip { cursor: pointer; }
 
 /* ── Dashboard ────────────────────────────────────────────── */
 
+.dash-caption { margin: 0 0 8px; font-size: 13px; }
 .dash-decisions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
 .decision-chip {
   display: flex; align-items: center; gap: 8px;

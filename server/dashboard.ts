@@ -6,6 +6,7 @@ import { deadlineRead } from './posture.js';
 import { healthOf, HURT_SQL } from './health.js';
 import { computeContracts } from './contracts.js';
 import { computeFarmSystem } from './farmOperations.js';
+import { mlbOverview } from './mlbOperations.js';
 
 export const dashboardRoutes = Router();
 
@@ -323,6 +324,15 @@ dashboardRoutes.get('/dashboard/:orgId', (req, res) => {
       retention: view.retention.filter((r) => r.conclusion === 'review').length,
     };
   } catch { /* an export without minor-league tables has no farm to count */ }
+  /*
+   * MLB Operations' own inbox, counted the way the farm's is: what its workspace lists, not a second
+   * reading of the roster. A need is a flag for attention (D-024), so the chip is a door to the
+   * workspace and carries no verdict of its own.
+   */
+  let mlbNeeds = 0;
+  try {
+    mlbNeeds = mlbOverview(orgId).needs.length;
+  } catch { /* an export without the roster tables has no club to review */ }
   const injuries = orgInjuries(orgId);
   // Distinct players your staff has raised as trade targets, so the chip counts
   // decisions to make rather than messages received
@@ -364,6 +374,8 @@ dashboardRoutes.get('/dashboard/:orgId', (req, res) => {
       extensionCandidates,
       /** Minor League Operations' pressing items: assignments, affiliate shortages and retention reviews. */
       farmAttention: farm.pressing,
+      /** MLB Operations' open needs; an older payload has none. */
+      mlbNeeds,
       farm,
       injuredCount: injuries.length,
       crunchIssues,

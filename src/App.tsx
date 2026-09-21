@@ -50,10 +50,11 @@ type Page =
   | 'staff' | 'watchlist' | 'players' | 'standings' | 'pitching' | 'schedule' | 'payroll' | 'trends' | 'settings';
 
 /**
- * Grouped by front-office function: what you do daily (Dashboard, Storylines),
- * running the big-league club (Clubhouse), your own pipeline (Farm System),
- * transactions (Front Office), and everything league-wide, including the
- * amateur draft class, which belongs to nobody until it is drafted (League).
+ * Grouped by the work of a baseball organization: what you do daily (Dashboard,
+ * Storylines), running the big-league club (Clubhouse), your own pipeline (Farm
+ * System), the decisions that shape the roster and the books (Baseball
+ * Operations), and everything league-wide, including the amateur draft class,
+ * which belongs to nobody until it is drafted (League).
  */
 const NAV: Array<NavEntry<Page>> = [
   { kind: 'link', page: 'dashboard', label: 'Dashboard', hint: '🏟' },
@@ -79,7 +80,7 @@ const NAV: Array<NavEntry<Page>> = [
     ],
   },
   {
-    kind: 'group', label: 'Front Office', icon: '💼',
+    kind: 'group', label: 'Baseball Operations', icon: '💼',
     items: [
       { page: 'philosophy', label: 'Organizational Philosophy', hint: 'Define how your baseball operation thinks' },
       { page: 'payroll', label: 'Payroll & Budget', hint: 'Committed money by season' },
@@ -367,10 +368,12 @@ export function App() {
       {(busy || importing) && <ImportBar progress={importing} />}
       <header className="masthead-bar">
         <div className="wordmark">
-          <span className="wordmark-ball">⚾</span>
+          <img className="wordmark-mark" src="/favicon.png" alt="" width={34} height={34} />
           <div>
-            <span className="wordmark-title">Front Office</span>
-            <span className="wordmark-sub">OOTP Companion</span>
+            <span className="wordmark-title">Pennant</span>
+            <span className="wordmark-sub">
+              OOTP Companion{status.app?.version ? ` · v${status.app.version}` : ''}
+            </span>
           </div>
         </div>
 
@@ -547,7 +550,7 @@ export function App() {
                 {...(chatOpen ? {} : { inert: '' })}
               >
                 <header className="chat-head">
-                  <strong>Front Office</strong>
+                  <strong>Your Staff</strong>
                   <button className="chat-close" onClick={() => setChatOpen(false)} title="Close">
                     ✕
                   </button>

@@ -1,5 +1,23 @@
-appId: com.lsukev.ootpfrontoffice
-productName: OOTP Front Office
+# Pennant's display name. It names the .app, the installer, the window and the dock,
+# and owns no data path.
+productName: Pennant
+
+# The application id (D-049): the macOS bundle id and the Windows install identity.
+# It was inherited from upstream (com.lsukev.ootpfrontoffice) and was changed to
+# Pennant's own before the first installer was ever published, when doing so costs
+# nothing. It does NOT name the user-data folder, so it is safe to change; it must not
+# be changed again once installers exist (that resets the macOS folder-access grant
+# and installs beside the old copy instead of over it).
+appId: com.dakotawise.pennant
+
+# COMPATIBILITY HOLD (D-049). The npm package name stays "ootp-front-office":
+# Electron names the user-data folder from it, NOT from productName — the built
+# app's bundled package.json has `name` and no `productName` (checked in the packaged
+# app.asar). Changing it would point the app at a new, empty folder instead of the
+# user's imported league, and the OS keychain entry that guards a stored API key is
+# presumed keyed to the same app identity (not verified). No migration exists.
+
+# MIT requires upstream's notice to stay with every copy of the software.
 copyright: Copyright © 2026 Kevin Ivy
 
 directories:
@@ -8,11 +26,12 @@ directories:
 
 # Artifact names must not contain spaces. The release job uploads with
 # `gh release upload`, and GitHub rewrites spaces to dots in asset names —
-# so "OOTP Front Office-0.2.0.zip" becomes "OOTP.Front.Office-0.2.0.zip" on
-# the release while latest-mac.yml still points at the original name, and
-# every update download 404s. Naming from ${name} keeps the local file, the
-# published asset, and the manifest entry byte-identical.
-artifactName: ${name}-${version}-${arch}.${ext}
+# so "Some Name-0.2.0.zip" becomes "Some.Name-0.2.0.zip" on the release while
+# latest-mac.yml still points at the original name, and every update download
+# 404s. A literal, space-free name keeps the local file, the published asset, and
+# the manifest entry byte-identical. It is spelled out rather than built from
+# ${name} because ${name} is the compatibility-held package name above.
+artifactName: Pennant-${version}-${arch}.${ext}
 
 files:
   - build/main.cjs
@@ -32,8 +51,9 @@ asarUnpack:
 
 mac:
   category: public.app-category.sports
-  # electron-builder renders the .icns from this single high-res source
-  icon: docs/icons/frontoffice.png
+  # electron-builder renders the .icns from this single high-res source: the
+  # Pennant mark, cut from docs/brand/pennant-mark.png
+  icon: build/icon.png
   target:
     # dmg is what people download by hand; zip is what Squirrel.Mac needs to
     # apply an in-place update — it cannot install from a dmg. Both must be
@@ -55,7 +75,7 @@ dmg:
 
 win:
   # and the .ico from the same file, so both platforms stay in sync
-  icon: docs/icons/frontoffice.png
+  icon: build/icon.png
   target:
     - target: nsis
       arch: [x64]
@@ -65,12 +85,25 @@ nsis:
   perMachine: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
-  shortcutName: OOTP Front Office
+  shortcutName: Pennant
 
 linux:
   target: [AppImage]
   category: Game
 
+# Named explicitly so a build never depends on which git remote happens to be
+# `origin`. The updater must read Pennant's releases, never upstream's: upstream's
+# tags run to v0.40.1 and would look newer than any Pennant 0.x.
+#
+# tagNamePrefix: Pennant's tags are `pennant-v<version>` (D-049), never `v<version>`,
+# which is upstream's namespace. The release workflow publishes with `gh` and never
+# lets electron-builder create a release, so this only guards a hand-run
+# `electron-builder --publish always`, which would otherwise tag `v<version>`. The
+# updater does not read it: it asks GitHub for the latest release and downloads from
+# whatever tag that is, taking the version from latest*.yml.
 publish:
   provider: github
+  owner: dakota86005
+  repo: ootp-front-office
+  tagNamePrefix: pennant-v
   releaseType: release

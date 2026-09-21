@@ -2,6 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, powerMonitor, shell, Menu } from '
 import path from 'node:path';
 import fs from 'node:fs';
 import { initUpdater } from './updater.js';
+import { PRODUCT_NAME, PROJECT_URL, UPSTREAM_URL } from '../server/project.js';
 
 /**
  * Desktop shell. The Express server runs inside this process on a random free
@@ -16,6 +17,10 @@ process.env.OOTP_FO_APP_ROOT ??= app.isPackaged
   ? process.resourcesPath
   : path.resolve(__dirname, '..');
 process.env.OOTP_FO_EMBEDDED = '1';
+// The version lives in package.json, which the packaged app keeps inside its asar
+// archive; Electron has already read it, so hand the answer to the server
+// (server/appInfo.ts) rather than have anything keep a second copy.
+process.env.OOTP_FO_APP_VERSION ??= app.getVersion();
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -84,7 +89,7 @@ async function createWindow(): Promise<void> {
     minWidth: 900,
     minHeight: 600,
     backgroundColor: '#0c231a',
-    title: 'OOTP Front Office',
+    title: PRODUCT_NAME,
     show: false,
     webPreferences: {
       // The renderer is our own local UI and needs no Node access
@@ -196,7 +201,7 @@ async function createWindow(): Promise<void> {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     dialog.showErrorBox(
-      'OOTP Front Office could not start',
+      `${PRODUCT_NAME} could not start`,
       `The local server failed to start.\n\n${message}\n\nData folder:\n${process.env.OOTP_FO_DATA_DIR}`
     );
     app.quit();
@@ -221,8 +226,12 @@ function buildMenu(): void {
             click: () => void shell.openPath(process.env.OOTP_FO_DATA_DIR ?? ''),
           },
           {
-            label: 'Project on GitHub',
-            click: () => void shell.openExternal('https://github.com/lsukev/ootp-front-office'),
+            label: 'Pennant on GitHub',
+            click: () => void shell.openExternal(PROJECT_URL),
+          },
+          {
+            label: 'Upstream project (ootp-front-office)',
+            click: () => void shell.openExternal(UPSTREAM_URL),
           },
         ],
       },

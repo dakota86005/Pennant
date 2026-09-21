@@ -1809,7 +1809,7 @@ export function Development({
                   <span>
                     These snapshots preserve what the organization could observe
                     at the time. Movement can represent player development,
-                    scouting revision, or both; Front Office does not substitute
+                    scouting revision, or both; Pennant does not substitute
                     hidden true-talent ratings.
                   </span>
                 </div>

@@ -82,7 +82,6 @@ const EXTRA: Record<string, string> = {
   'Handle Rookies': 'How well the coach develops young and inexperienced players specifically.',
 
   Rk: 'Rank within this list.',
-  Signal: "The app's read on whether this player is ready for a promotion, is worth watching, or needs more time — driven by his performance relative to his level and his age relative to his peers.",
 
   // ── Misc ───────────────────────────────────────────────────────────────
   'Why here': 'The reason this player landed in this lineup slot.',

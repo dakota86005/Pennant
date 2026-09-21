@@ -1,10 +1,17 @@
-name: Build desktop apps
+name: Pennant release
 
-# Push a version tag to cut a release:  git tag v0.1.0 && git push origin v0.1.0
+# Push a Pennant tag to cut a release:
+#   git tag pennant-v0.1.0 && git push origin pennant-v0.1.0
+# The tag is `pennant-v` + package.json's version (checked below). Pennant's versions
+# are its own and its tags deliberately do NOT start with `v`: upstream's tags
+# (v0.1.0 … v0.40.1) are a different project's and must never trigger this workflow
+# or collide with these — see D-049.
 # Or trigger manually from the Actions tab to get installers without a release.
+#
+# Pull-request validation is ci.yml. Nothing here runs on a pull request.
 on:
   push:
-    tags: ['v*']
+    tags: ['pennant-v*']
   workflow_dispatch:
 
 permissions:
@@ -31,6 +38,18 @@ jobs:
       - run: npx tsc --noEmit
       - run: npm test
 
+      # The version has one source, package.json (server/appInfo.ts). A tag that
+      # disagrees would publish installers whose updater manifests say a different
+      # version than the release they hang from.
+      - name: Tag matches package.json
+        if: startsWith(github.ref, 'refs/tags/pennant-v')
+        run: |
+          expected="pennant-v$(node -p "require('./package.json').version")"
+          if [ "$expected" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match package.json (${expected})"
+            exit 1
+          fi
+
   macos:
     needs: test
     name: macOS
@@ -46,6 +65,9 @@ jobs:
       - run: npm run abi:electron
       - run: npm run desktop:build
 
+      # Until the Apple secrets exist this packages an UNSIGNED app and the
+      # verification step below cannot pass. That is intended: it is not weakened to
+      # turn CI green. What a signed release needs is in docs/DEVELOPMENT.md.
       - name: Package (signed and notarized when secrets are present)
         run: npx electron-builder --mac --publish never
         env:
@@ -114,7 +136,7 @@ jobs:
   release:
     name: Publish release
     needs: [macos, windows]
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/pennant-v')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -150,7 +172,7 @@ jobs:
           for attempt in 1 2 3 4 5; do
             if out=$(gh release create "${GITHUB_REF_NAME}" \
                        --repo "${GITHUB_REPOSITORY}" \
-                       --title "${GITHUB_REF_NAME}" \
+                       --title "Pennant ${GITHUB_REF_NAME#pennant-v}" \
                        --generate-notes 2>&1); then
               created=yes
               echo "Release created"
