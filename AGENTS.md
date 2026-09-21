@@ -129,7 +129,23 @@ decision, roadmap item, or project-state fact changes.
   of a prospect makes it an opportunity conflict, not a blockage. Men getting
   innings at a job from another position are named as ahead and count against
   nobody's claim. A designated hitter is batting, not fielding. An injured man is
-  not cover and competes for nothing. The organization is read once per request
+  not cover and competes for nothing. Season usage, recent usage and current state
+  are three kinds of fact (D-048, MINOR_LEAGUE_OPERATIONS.md Part 8). WHO IS ON A
+  CLUB is current state and is never inferred from usage: a departed man is
+  history, named with what he held, and never a blocker whatever his season total.
+  A man's current work level is the recent window (`farmRecentUsage.ts`, the
+  export's per-game log, counted in club GAMES and only over the games he could
+  have played in) when it can be read, the season's only when the export has no
+  game log, and `unknown` when fewer than `RECENT_MINIMUM_GAMES` can be counted —
+  thin is not unused, and an unknown role is neither squeezed nor a blocker. Less
+  evidence may only mean more uncertainty; evidence is a structured state, never a
+  confidence number. When the season and the window are two levels apart both are
+  shown. A relief window may confirm or clear a shortage and never raise one. An
+  arrival is dated only through `clubArrival.ts`, in D-020's order; no farm module
+  reads the transaction log. OOTP writes dates unpadded (`2026-5-9` sorts after
+  `2026-5-10`): order games only through `parseGameDate`. Recent usage is a usage
+  read — never recent form, a promotion case or a release rule; Player Development
+  and retention take no usage input. The organization is read once per request
   through a `FarmSession`; never cache it across requests. MLB Operations reaches
   the farm only through `mlbEvidence.ts` (`farmConsequence`, which opens or is
   handed a session) and displays the farm's own operational reading, so the two

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { PlayerLink } from '../../playerModal';
 import { Chip, ord } from '../mlb/common';
-import type { FarmFinding, PlayingTimeConflict, RosterStatus, WorkLevel } from './types';
+import type { ConflictTiming, FarmFinding, GoneHolder, PlayingTimeConflict, RosterStatus, Tenure, WorkLevel, WorkShare } from './types';
 
 /*
  * What the Minor League Operations views share.
@@ -175,40 +175,94 @@ export function Finding({ f, open = false }: { f: FarmFinding; open?: boolean })
   );
 }
 
-/** Who is competing for one job, and what each is getting. Represented, never scored. */
-export function Conflict({ c }: { c: PlayingTimeConflict }) {
+/**
+ * Whether a conflict is the present, the past or not yet readable. Shown only when it is NOT simply
+ * the present: the ordinary case carries no extra chip.
+ */
+export const TIMING_TEXT: Partial<Record<ConflictTiming, string>> = {
+  emerging: 'Newly emerging',
+  historical: 'Earlier this season',
+  recently_resolved: 'Recently resolved',
+  uncertain: 'Not yet readable',
+};
+
+const games = (n: number): string => `${n} ${n === 1 ? 'game' : 'games'}`;
+
+/** "joined 4 games ago", for a man who arrived inside the recent window. */
+export const tenureTag = (tenure: Tenure | null): string | null =>
+  tenure?.status === 'recent_arrival' ? `joined ${tenure.clubGamesSince === 0 ? 'after the last game' : `${games(tenure.clubGamesSince ?? 0)} ago`}` : null;
+
+const goneText = (g: GoneHolder): string => {
+  const where =
+    g.why === 'departed' ? `now at ${g.nowAt ?? 'another club'}` : g.why === 'inactive' ? 'off the active list' : g.why === 'rehab' ? 'on a rehab assignment' : 'injured';
+  const held = g.seasonShare !== null && g.seasonShare > 0 ? `${Math.round(g.seasonShare * 100)}% of the season's work here` : 'work here this season';
+  const last = g.lastStartGamesAgo !== null ? `, last started there ${games(g.lastStartGamesAgo)} ago` : '';
+  return `${g.name} (${where}; ${held}${last})`;
+};
+
+/** The men with work at a job who are not competing for it now. History, said as history. */
+export function Gone({ gone }: { gone: GoneHolder[] }) {
+  const worth = gone.filter((g) => g.material || g.windowStarts > 0 || (g.seasonShare ?? 0) >= 0.15);
+  if (worth.length === 0) return null;
+  return <p className="muted">No longer competing for it: {worth.map(goneText).join('; ')}. Their usage is history, not competition.</p>;
+}
+
+const EVIDENCE_TEXT: Record<string, string> = {
+  sufficient: '',
+  thin: 'too few games to establish his role',
+  none: 'no game can be counted for him yet',
+};
+
+const LEVEL_FROM_TEXT: Record<WorkShare['levelFrom'], string> = {
+  recent: 'from the club\'s recent games',
+  season: 'from the season to date',
+  current_state: 'from OOTP\'s projected rotation',
+};
+
+/**
+ * One man's work, read three ways and kept apart: what the season says, what the club's recent games
+ * say, and the reading that follows. When the first two disagree both are shown, and neither is
+ * silently chosen. A three-row table rather than three more columns on every list.
+ */
+export function WorkEvidence({ work, timing }: { work: WorkShare; timing: ConflictTiming | null }) {
+  const share = (x: number | null) => (x === null ? '—' : `${Math.round(x * 100)}%`);
+  const arrived = tenureTag(work.tenure);
   return (
-    <details className="mlo-conflict">
-      <summary>
-        <Chip cls={c.severity === 'blocking' ? 'ineligible' : c.severity === 'crowded' ? 'indeterminate' : ''}>
-          {c.severity === 'blocking' ? 'Costing development' : c.severity === 'crowded' ? 'Crowded' : 'Noted'}
-        </Chip>{' '}
-        {c.claimants.length} men on {jobLabel(c.job)}, which supports {c.capacity}
-      </summary>
-      <table className="compact">
-        <thead>
-          <tr><th>Player</th><th>Age</th><th>Getting</th><th>Stakes</th><th>On what basis</th></tr>
-        </thead>
-        <tbody>
-          {c.claimants.map((s) => (
-            <tr key={s.playerId} className={c.squeezed.some((x) => x.playerId === s.playerId) ? 'mlo-squeezed' : ''}>
-              <td><PlayerLink id={s.playerId}>{s.name}</PlayerLink></td>
-              <td>{s.age}</td>
-              <td><Chip cls={WORK_CLASS[s.level]}>{WORK_TEXT[s.level]}</Chip></td>
-              <td>{s.tier ? TIER_TEXT[s.tier] ?? s.tier : <span className="muted">indeterminate</span>}</td>
-              <td className="muted">{s.basis}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {c.alsoPlaying.length > 0 && (
-        <p className="muted">
-          Also getting innings here from another position: {c.alsoPlaying.map((s) => `${s.name} (${WORK_TEXT[s.level].toLowerCase()})`).join(', ')}.
-          They count against nobody's claim on the job.
-        </p>
-      )}
-      {c.unknowns.length > 0 && <p className="muted">{c.unknowns.join(' ')}</p>}
-    </details>
+    <table className="compact mlo-work-evidence">
+      <tbody>
+        <tr>
+          <th scope="row">Season</th>
+          <td><Chip cls={WORK_CLASS[work.season.level]}>{WORK_TEXT[work.season.level]}</Chip> {share(work.season.share)}</td>
+          <td className="muted">{work.season.basis}</td>
+        </tr>
+        <tr>
+          <th scope="row">Recent</th>
+          {work.recent ? (
+            <>
+              <td>
+                <Chip cls={WORK_CLASS[work.recent.level]}>{WORK_TEXT[work.recent.level]}</Chip> {share(work.recent.share)}
+              </td>
+              <td className="muted">
+                {work.recent.basis}
+                {EVIDENCE_TEXT[work.recent.evidence] ? ` ${work.recent.games} of the last ${work.recent.windowGames} counted: ${EVIDENCE_TEXT[work.recent.evidence]}.` : ''}
+                {arrived ? ` He ${arrived}${work.tenure?.from ? `, from ${work.tenure.from}` : ''}.` : ''}
+              </td>
+            </>
+          ) : (
+            <td colSpan={2} className="muted">Not available: this export carries no game log, so only the season can be read.</td>
+          )}
+        </tr>
+        <tr>
+          <th scope="row">Now</th>
+          <td><Chip cls={WORK_CLASS[work.level]}>{WORK_TEXT[work.level]}</Chip></td>
+          <td className="muted">
+            Read {LEVEL_FROM_TEXT[work.levelFrom]}
+            {work.disagrees ? '; the season and the recent games disagree, and both are shown.' : '.'}
+            {timing && TIMING_TEXT[timing] ? ` The competition at his job: ${TIMING_TEXT[timing]!.toLowerCase()}.` : ''}
+          </td>
+        </tr>
+      </tbody>
+    </table>
   );
 }
 

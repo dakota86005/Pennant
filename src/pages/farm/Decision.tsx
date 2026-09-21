@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiGet } from '../../api';
-import { Chip, CONCLUSION_CLASS, CONCLUSION_TEXT, jobLabel, ord, Section, STANDING_TEXT, STATUS_CLASS, STATUS_TEXT, TIER_TEXT, Unknowns, VERDICT_CLASS, VERDICT_TEXT, WINDOW_TEXT, WORK_TEXT } from './common';
+import { Chip, CONCLUSION_CLASS, CONCLUSION_TEXT, Gone, jobLabel, ord, Section, STANDING_TEXT, STATUS_CLASS, STATUS_TEXT, tenureTag, TIER_TEXT, Unknowns, VERDICT_CLASS, VERDICT_TEXT, WINDOW_TEXT, WORK_TEXT, WorkEvidence } from './common';
 import type { AssignmentReview, Cascade, FarmConsequence, FarmSystem, RetentionReview } from './types';
 import type { Route } from './route';
 
@@ -236,20 +236,31 @@ export function Decision({
         )}
       </Section>
 
-      <Section kicker="5" title="What he is getting where he is" note="Usage, not a roster label.">
+      <Section kicker="5" title="What he is getting where he is" note="Usage, not a roster label: what is happening now, with the season beside it.">
         {/* The men ahead of him are listed below with what each holds; the sentence naming them is not repeated here. */}
-        <p>{review.opportunity.reasons.filter((r) => !/ahead of him at/.test(r)).join(' ')}</p>
+        {/* His own basis, and the season's when the two disagree, are in the table below rather than said twice. */}
+        <p>
+          {review.opportunity.reasons
+            .filter((r) => !/ahead of him at/.test(r) && r !== review.opportunity.work?.basis && !/^Over the season:/.test(r))
+            .join(' ')}
+        </p>
+        {review.opportunity.work && <WorkEvidence work={review.opportunity.work} timing={review.opportunity.timing} />}
+        {review.roleChange && <p className="muted"><strong>His role has changed:</strong> {review.roleChange.detail}</p>}
         {review.opportunity.ahead.length > 0 && (
           <p>
             Ahead of him at {review.opportunity.job ? jobLabel(review.opportunity.job) : 'his job'}:{' '}
             {review.opportunity.ahead
-              .map((a) => `${a.name} (${a.age}, ${WORK_TEXT[a.level].toLowerCase()}${a.claimant ? '' : ', covering it from another position'})`)
+              .map((a) => {
+                const notes = [`${a.age}`, WORK_TEXT[a.level].toLowerCase(), a.claimant ? null : 'covering it from another position', tenureTag(a.tenure)].filter(Boolean);
+                return `${a.name} (${notes.join(', ')})`;
+              })
               .join('; ')}.
             {review.opportunity.ahead.some((a) => a.level === 'regular')
               ? ' A regular there holds the job.'
               : ' Nobody is regular there: the job is split, not held.'}
           </p>
         )}
+        <Gone gone={review.opportunity.gone} />
       </Section>
 
       <Section kicker="6 to 9" title="What follows if he moves" note="Minor League Operations owns this chain; each step is defensible on its own or the chain stops there.">

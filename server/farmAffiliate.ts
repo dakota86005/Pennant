@@ -22,6 +22,7 @@ import {
   BODY_COUNT,
   CRITICAL_POSITIONS,
   MINIMUM_CLUB_GAMES,
+  PART_TIME_SHARE,
   PLAYABLE_GRADE,
   RELIEF_CORPS,
   ROTATION_SPOTS,
@@ -446,29 +447,69 @@ export function buildAffiliateView(input: AffiliateInput): AffiliateView {
           : 'relief_crowded';
 
     const squeezedNames = nameList(conflict.squeezed);
+    const job = jobLabel(conflict.job);
+    /* A level in the reader's words: `unknown` is a role that cannot be read yet, not a missing value. */
+    const levelText = (level: string): string =>
+      level === 'unknown' ? 'not yet readable' : level === 'bat_only' ? 'batting, not fielding' : level.replace('_', ' ');
+    const overSeason = nameList(conflict.squeezedOverSeason);
+    const left = conflict.gone.find((g) => g.material);
+    /*
+     * A conflict is said in the tense it is true in. One the season shows and the club's recent games
+     * do not is still said — history is not erased — but as history, quietly, with nobody named as
+     * short of work today. One the recent games cannot yet confirm is said to be unreadable.
+     */
+    const headline =
+      conflict.squeezed.length > 0
+        ? `${squeezedNames} ${conflict.squeezed.length === 1 ? 'is' : 'are'} not getting developmental work at ${job}${conflict.timing === 'emerging' ? ', which is recent: the season\'s totals do not show it' : ''}.`
+        : conflict.timing === 'recently_resolved'
+          ? `${job}: the season's totals show ${overSeason} short of work, but ${left?.name ?? 'the man who held it'} has left it and the club's recent games show no shortage.`
+          : conflict.timing === 'historical'
+            ? `${job}: the season's totals show ${overSeason} short of work; the club's recent games do not.`
+            : conflict.timing === 'uncertain'
+              ? `${job}: whether ${overSeason} ${conflict.squeezedOverSeason.length === 1 ? 'is' : 'are'} getting the work cannot be read yet.`
+              : `${conflict.claimants.length} men have a claim on ${job}, which supports ${conflict.capacity}.`;
+
     developmentalFindings.push({
       id: nextId('dev'),
       code,
       lens: 'developmental',
       severity: conflict.severity === 'blocking' ? 'critical' : conflict.severity === 'crowded' ? 'attention' : 'noted',
       owner: 'minor_league_operations',
-      headline:
-        conflict.squeezed.length > 0
-          ? `${squeezedNames} ${conflict.squeezed.length === 1 ? 'is' : 'are'} not getting developmental work at ${jobLabel(conflict.job)}.`
-          : `${conflict.claimants.length} men have a claim on ${jobLabel(conflict.job)}, which supports ${conflict.capacity}.`,
+      headline,
       evidence: [
         { label: 'Claimants', value: String(conflict.claimants.length), basis: 'Men on the club with a claim on the job.' },
         { label: 'The job supports', value: String(conflict.capacity), basis: 'What the job can give developmental work to.' },
+        ...(conflict.window
+          ? [
+              {
+                label: 'Read over',
+                value: conflict.window.since
+                  ? `the ${conflict.window.counted} ${conflict.window.counted === 1 ? 'game' : 'games'} since ${conflict.window.since.name} last started there`
+                  : `the club's last ${conflict.window.games} games`,
+                basis: 'The recent window, from the export\'s game log. The season to date is shown beside each man where it differs.',
+              },
+            ]
+          : []),
         ...conflict.claimants.map((c) => ({
           label: `${c.name} (${c.age})`,
-          value: c.level.replace('_', ' '),
-          basis: c.basis,
+          value: levelText(c.level),
+          basis: c.recent && (c.disagrees || c.level === 'unknown') ? `${c.basis} Season: ${c.season.basis}` : c.basis,
         })),
+        ...conflict.gone
+          .filter((g) => g.material || g.windowStarts > 0 || (g.seasonShare ?? 0) >= PART_TIME_SHARE)
+          .map((g) => ({
+            label: `${g.name} (not competing: ${g.why === 'departed' ? `now at ${g.nowAt ?? 'another club'}` : g.why === 'inactive' ? 'off the active list' : g.why === 'rehab' ? 'rehab assignment' : 'injured'})`,
+            value: g.seasonShare === null ? 'history' : `${Math.round(g.seasonShare * 100)}% of the season's work`,
+            basis:
+              g.windowStarts > 0
+                ? `Started ${g.windowStarts} of the club's last ${conflict.window?.games ?? 0} games there, the last ${g.lastStartGamesAgo} ${g.lastStartGamesAgo === 1 ? 'game' : 'games'} ago. History, not competition.`
+                : 'No start there in the recent window. History, not competition.',
+          })),
       ],
       players: conflict.claimants.map((c) => ({
         playerId: c.playerId,
         name: c.name,
-        note: `${c.level.replace('_', ' ')}${c.tier ? `, ${c.tier.replace(/_/g, ' ')}` : ', developmental stakes indeterminate'}`,
+        note: `${levelText(c.level)}${c.tier ? `, ${c.tier.replace(/_/g, ' ')}` : ', developmental stakes indeterminate'}`,
       })),
       missing: conflict.unknowns,
       wouldResolve:
@@ -477,7 +518,11 @@ export function buildAffiliateView(input: AffiliateInput): AffiliateView {
               'Moving one of the claimants to a club where the job is open.',
               'A change in how the affiliate uses them, which is the affiliate\'s own decision.',
             ]
-          : ['Nothing needs resolving unless one of them has developmental stakes.'],
+          : conflict.timing === 'uncertain'
+            ? ['More games: the club\'s next several will show who is getting the work.']
+            : conflict.timing === 'recently_resolved' || conflict.timing === 'historical'
+              ? ['Nothing: the shortage the season\'s totals show is not in the club\'s recent games. It is kept here as history.']
+              : ['Nothing needs resolving unless one of them has developmental stakes.'],
     });
   }
 

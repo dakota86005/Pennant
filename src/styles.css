@@ -5163,6 +5163,14 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); cur
 /* The man the shortage is costing. */
 .mlo-squeezed > td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
 
+/* The other read of a man's work, set under the current one: the season beside a recent read, or the reverse. */
+.mlo-season-read { font-size: 0.82rem; color: var(--muted); opacity: 0.85; margin-top: 2px; }
+.mlo-conflict > p { margin: 6px 0; font-size: 0.87rem; max-width: 90ch; }
+/* Season, recent and the reading that follows: three rows, kept apart. */
+.mlo-work-evidence { margin: 8px 0 10px; }
+.mlo-work-evidence th { font-weight: 500; color: var(--muted); text-align: left; padding-right: 12px; white-space: nowrap; }
+.mlo-work-evidence td:nth-child(2) { white-space: nowrap; padding-right: 12px; }
+
 .mlo-unknowns { margin: 14px 0; padding: 8px 10px; border-left: 2px dashed var(--border); }
 .mlo-unknowns ul { margin: 4px 0 0; padding-left: 18px; font-size: 0.88rem; color: var(--muted); }
 

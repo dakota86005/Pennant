@@ -25,6 +25,7 @@ import type { CurrentAssignmentRead } from './currentAssignment.js';
 import type { DevelopmentProtection } from './developmentFit.js';
 import type { MissingEvidence } from './developmentJudgment.js';
 import type { FarmProduction } from './farmResults.js';
+import { describeTenure } from './farmRecentUsage.js';
 import { hasDevelopmentalStakes, jobLabel, type OpportunityRead } from './playingTime.js';
 
 /**
@@ -102,6 +103,9 @@ export interface AssignmentReview {
   /** Minor League Operations: is he getting the work? */
   opportunity: OpportunityRead;
 
+  /** His recent role differs from his season's (the game log). null for most players and every hitter. */
+  roleChange: { to: 'relief' | 'starting'; detail: string } | null;
+
   /** Player Development: what else is defensible, with philosophy's preference among those. */
   alternatives: AlternativeAssignment[];
 
@@ -146,6 +150,8 @@ export interface AssignmentReviewInput {
   blockedBy: Array<{ playerId: number; name: string; age: number; where: string; why: string }>;
   /** He is injured, so nothing about his playing time is read while he is (days left when exported). */
   injured?: { daysLeft: number | null } | null;
+  /** His recent role differs from his season's, from the game log: a fact beside his job, never a verdict. */
+  roleChange?: { to: 'relief' | 'starting'; detail: string } | null;
 }
 
 /**
@@ -240,11 +246,17 @@ export function reviewAssignment(input: AssignmentReviewInput): AssignmentReview
 
   /*
    * A thin sample caused by not playing is not "nothing to say about him" — it IS the finding, and
-   * the two facts are the same fact. Reading the level first put Druw Jones, a development-priority
-   * prospect at Triple-A with twelve plate appearances because another man has centre field, in
-   * `not_assessable` / `routine`: the most attention-worthy case in the organization reported as
-   * nothing to see. Usage needs no production evidence, so the opportunity read is available exactly
-   * when the production read is not, and it is asked first.
+   * the two facts are the same fact. Reading the level first puts a development-priority prospect
+   * with twelve plate appearances, because another man has his position, in `not_assessable` /
+   * `routine`: the most attention-worthy case in an organization reported as nothing to see. Usage
+   * needs no production evidence, so the opportunity read is available exactly when the production
+   * read is not, and it is asked first.
+   *
+   * The order is right and the example it was first drawn from was not: Druw Jones had twelve plate
+   * appearances at Triple-A because he had been promoted four games earlier, not because anybody held
+   * centre field (docs/MINOR_LEAGUE_OPERATIONS.md §8.2). A thin sample has two causes, and the
+   * playing-time read now tells them apart — a man too new to the club to be read is `indeterminate`
+   * here and falls through to the level question, where "no season to read" is the true answer.
    */
   if (input.injured) {
     /*
@@ -362,6 +374,17 @@ export function reviewAssignment(input: AssignmentReviewInput): AssignmentReview
     }
   }
 
+  /*
+   * When he got here, and what he has done since. For a man who joined the club inside the window it
+   * is the fact that frames everything else — his destination totals are small because he is new — so
+   * it is said first. It changes no conclusion: whether the level suits him is Player Development's
+   * and rests on his line, which a recent arrival does not yet have here.
+   */
+  const work = input.opportunity.work;
+  const arrived = work?.tenure?.status === 'recent_arrival' ? describeTenure(work.tenure) : null;
+  if (arrived && work?.recent) reasons.unshift(`${arrived} ${work.recent.basis}`);
+  if (input.roleChange) reasons.push(input.roleChange.detail);
+
   /* ── how much attention it deserves ────────────────────────────────────────────────────────── */
 
   const highStakes = developmentalStakes;
@@ -412,6 +435,7 @@ export function reviewAssignment(input: AssignmentReviewInput): AssignmentReview
     production: input.production,
     current: input.current,
     opportunity: input.opportunity,
+    roleChange: input.roleChange ?? null,
     alternatives: input.alternatives,
     conclusion,
     attention,

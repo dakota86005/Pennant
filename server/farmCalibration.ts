@@ -122,6 +122,47 @@ export const RELIEF_EVEN_SHARE_PART_TIME = 0.5;
  */
 export const DEPARTED_SHARE_NOTED = 0.25;
 
+/* ── recent usage: what has been happening lately ────────────────────────────────────────────── */
+
+export const RECENT_USAGE_CALIBRATION: CalibrationStamp = provisional(
+  'How far back "recently" reaches and how much of it must be observable before it is read. Chosen ' +
+    'from a backtest on the export\'s own game log (`npm run farm:usage-window`): after each club game ' +
+    'from the twentieth on, does a trailing window predict who starts the NEXT five? Measured on the ' +
+    '120 full-season minor-league clubs of one import, roster-aware. Fifteen club games is three ' +
+    'turns of a five-man rotation; "two starts in the last fifteen" identifies a rotation member with ' +
+    '86.8% precision against 79.4% for the season equivalent, and a 40% share of a position\'s starts ' +
+    'holds the season\'s 70% precision while recalling 38% of the men about to play there against 31%. ' +
+    'Ten games is noisier at a position (65.7%). The result is flat between twelve and fifteen. ' +
+    'Provisional, not calibrated: one partial season of one save, and no harness re-fits it.'
+);
+
+/**
+ * Club games the recent read looks back over. Games, not days: a club's off days and a complex
+ * league's short schedule make a calendar window mean different things at different affiliates, and a
+ * rotation turns over in games.
+ */
+export const RECENT_WINDOW_GAMES = 15;
+
+/**
+ * Club games a man must have been observable for — on the club and not in a recorded injury spell —
+ * before his recent share is read as his role. Below it the read is THIN and his current role is not
+ * established. Measured on 626 real arrivals: below six games the 40% rule's precision swings between
+ * 56% and 77% on integer effects (one start in two games is "half the job"); from six on it holds at
+ * 74–76%, the full window's level.
+ */
+export const RECENT_MINIMUM_GAMES = 6;
+
+/**
+ * A starter's share of his turns over the recent window: at or above `regular` he is in the rotation,
+ * at or above `partTime` he is spot-starting.
+ *
+ * Deliberately not `ROTATION_SHARE`. Three turns fit in fifteen games, so the only shares a man can
+ * have are 0, 1/3, 2/3 and 1: the season's 0.7 line would demand every turn (precision 91.8%, recall
+ * 63.1% — a third of the men actually in a rotation read as out of it) and its 0.35 line would call
+ * one start in three turns "not used". Two of three turns is the better line (86.8% / 78.4%).
+ */
+export const RECENT_ROTATION_SHARE = { regular: 0.6, partTime: 0.3 } as const;
+
 /** A starter needs a rotation spot. Beyond this many starters per club, somebody is not starting. */
 export const STARTER_CAPACITY = ROTATION_SPOTS;
 
