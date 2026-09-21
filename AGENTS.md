@@ -1,9 +1,19 @@
 # AI development guide
 
-Front Office should feel like running a baseball organization as its GM. AI is
+Pennant should feel like running a baseball organization as its GM. AI is
 supporting staff inside that experience, not a generic recommendation chatbot.
 Recommendations must remain explainable, preserve scouting uncertainty, and
 leave the final decision to the user/GM.
+
+Pennant began as a fork of `lsukev/ootp-front-office` and has its own name,
+architecture and version lineage (D-049). The Electron `appId` is Pennant's own
+(`com.dakotawise.pennant`) and release tags are `pennant-v<version>`, never the
+`v<version>` shape upstream uses. One inherited identifier is held back on
+purpose — the npm `name` `ootp-front-office`, from which Electron names the
+user-data folder — and the `OOTP_FO_*` environment variables and the `data/`
+layout keep their names; do not rename them as a cosmetic cleanup, and attempt no
+data migration without the owner (see
+[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#application-id-and-compatibility-holds)).
 
 ## Read before changing code
 
@@ -14,6 +24,9 @@ leave the final decision to the user/GM.
 - [Roadmap](docs/ROADMAP.md) — implemented foundations and future work.
 - [Project state](docs/PROJECT_STATE.md) — the current implementation and known
   gaps. Verify it against the worktree because it is a point-in-time record.
+- [Development](docs/DEVELOPMENT.md) — the one dev command (`npm run dev`),
+  validation, versions and releases. [docs/README.md](docs/README.md) says
+  which documents are current and which are historical records.
 
 Treat the repository and imported OOTP schema as the source of truth. Do not
 claim a feature is implemented because it appears in the roadmap or a prompt.
@@ -170,6 +183,9 @@ decision, roadmap item, or project-state fact changes.
   parallel domain implementations.
 - Preserve schema-tolerant reads: OOTP exports vary by version and save.
 - Add focused Vitest coverage for behavior changes. The normal validation
-  baseline is `npx tsc --noEmit`, `npm test`, and any relevant manual check from
-  `package.json` (`check:stats` and `check:theme` require suitable imported
-  data).
+  baseline is `npx tsc --noEmit`, `npm test`, `npm run build`, and any relevant
+  manual check from `package.json` (`check:stats` and `check:theme` require
+  suitable imported data).
+- The version lives only in `package.json` (`server/appInfo.ts` reads it); do
+  not hard-code it anywhere. Never create, move or delete Git tags or branches
+  without the owner's approval, and do not fetch upstream's tags into this clone.

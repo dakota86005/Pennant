@@ -6,47 +6,24 @@ material implementation state changes.
 
 ## Repository snapshot
 
-- Package: `ootp-front-office` version `0.27.2`.
-- Inspected branch: `feature/farm-windowed-usage`, created from `main` at `fcbe73e`. `main` carries the
-  Player State foundation (PR #2), Player Rights (PR #3), MLB Operations v2 with its scouting layer and
-  hardening phase (PR #4) and Minor League Operations v2 with its hardening phase (PR #5). This branch
-  adds windowed usage and current-opportunity evidence to the farm (D-048).
-- Stack: TypeScript, React 18, Vite 6, Express 4, SQLite via
-  `better-sqlite3`, Electron 41, and Vitest 4.
-- Validation at this snapshot (after the farm's windowed-usage phase): `npx tsc --noEmit`
-  clean, `npm test` 133 files / 1736 tests passing, `npm run build` succeeds. 512 of those tests are the
-  behavioral corpus ([BEHAVIOR_CASES.md](BEHAVIOR_CASES.md)): 159 for MLB Operations and 353 for the farm.
-- `origin/feature/mlb-operations` is **not merged** and was audited end to end
-  ([MLB_OPERATIONS.md](MLB_OPERATIONS.md) §2). `rosterStateHistory.ts` and
-  `transactionHistory.ts` were ported earlier in adapted form; `rosterTransactionState.ts`
-  is superseded and removed from consideration; the rest was replaced, modified or deferred
-  per component. The current MLB Operations slice is on `feature/mlb-operations-v2`.
-
-The package version and latest changelog identify `0.27.2` as the release
-baseline. `main` contains substantial organizational philosophy, farm-system,
-and scouted-development work beyond that release description. Branch code should
-not be described as a shipped release without a release/tag check.
-
-## Existing documentation and agent configuration
-
-Before the durable documents linked below were added:
-
-- `README.md` was the only broad product/technical guide. It includes install,
-  workflow, AI setup, troubleshooting, release instructions, a short “How it
-  works” section, project layout, statistics notes, and limitations.
-- `docs/` contained committed screenshots, an icon, and screenshot publishing
-  instructions, but no architecture, decisions, roadmap, or state document.
-- `.claude/launch.json` contained a single `npm run dev` launch configuration.
-- `.agents/` and `.codex/` contained no files.
-- There was no top-level `AGENTS.md` or other durable AI-agent instruction file.
-
-The new documentation extends rather than replaces the README:
-
-- `AGENTS.md` is the concise agent entry point.
-- `ARCHITECTURE.md` records boundaries and subsystem ownership.
-- `DECISIONS.md` records durable product/technical choices.
-- `ROADMAP.md` separates present foundations from future work.
-- This file records the point-in-time implementation state.
+- Product **Pennant**, version `0.1.0` (package `ootp-front-office`, a compatibility-held name; D-049). Pennant's
+  version lineage is its own and is unrelated to upstream's numbers; `package.json` is the only source of the version.
+- Inspected branch: `feature/pennant-project-consolidation`, created from `main` at `52dc14b`. `main` carries the
+  evidence boundary (PR #1), the Player State foundation (PR #2), Player Rights (PR #3), MLB Operations v2 with its
+  scouting layer and hardening (PR #4), Minor League Operations v2 with its hardening (PR #5) and windowed farm usage
+  (PR #6, D-048). This branch is repository, identity and workflow work only ([PENNANT_CONSOLIDATION.md](PENNANT_CONSOLIDATION.md));
+  it changes no baseball behavior.
+- Stack: TypeScript, React 18, Vite 6, Express 4, SQLite via `better-sqlite3`, Electron 41, and Vitest 4.
+- Validation at this snapshot: `npx tsc --noEmit` clean, `npm test` 136 files / 1773 tests passing,
+  `npm run build` succeeds. 512 of the tests are the behavioral corpus ([BEHAVIOR_CASES.md](BEHAVIOR_CASES.md)):
+  159 for MLB Operations and 353 for the farm.
+- `origin/feature/mlb-operations` is **not merged** and was audited end to end ([MLB_OPERATIONS.md](MLB_OPERATIONS.md)
+  §2); it is kept for that audit's `git show` references. `rosterStateHistory.ts` and `transactionHistory.ts` were
+  ported earlier in adapted form; `rosterTransactionState.ts` is superseded; the rest was replaced, modified or deferred
+  per component. The other feature branches are fully merged (see the branch audit in PENNANT_CONSOLIDATION.md §3).
+- No release has been published from this repository: `origin` has no tags and no GitHub releases. The `0.1.0`
+  heading in [../CHANGELOG.md](../CHANGELOG.md) records the milestone; it has not been tagged (the tag will be
+  `pennant-v0.1.0`).
 
 ## Implemented application foundation
 
@@ -87,11 +64,22 @@ display.
   preload bridge, restricted local-path opening, safe external navigation, a
   single-instance lock, renderer recovery, and OS-backed secret storage when
   available.
-- Updates check against GitHub releases and require user action to download and
-  install.
-- Release CI type-checks and tests on Linux, then builds macOS and Windows
-  packages. macOS signing/notarization is conditional on configured secrets;
-  Windows builds are intentionally unsigned in the current configuration.
+- Updates check Pennant's own GitHub releases (named explicitly in
+  `electron-builder.yml`) and require user action to download and install. No
+  release has been published yet.
+- `.github/workflows/ci.yml` typechecks, tests and builds every pull request and
+  push to `main`. `release.yml` (a `pennant-v<version>` tag matching `package.json`) does the same
+  on Linux, then builds macOS and Windows packages. macOS signing/notarization
+  needs Apple secrets the repository does not hold, so the macOS release job
+  cannot pass yet; Windows builds are intentionally unsigned
+  ([DEVELOPMENT.md](DEVELOPMENT.md#releases)).
+- Identity: product name, repository addresses and the version come from
+  `server/project.ts` and `server/appInfo.ts` (D-049). The Electron `appId` is
+  `com.dakotawise.pennant`, the package author is Dakota Wise, and release tags
+  are `pennant-v<version>` (never upstream's `v<version>` shape). The npm `name`
+  is held for compatibility because it names the desktop user-data folder; no
+  data migration exists. The one development command is
+  `npm run dev` (page 5173, API 5178; `scripts/devPorts.ts`).
 
 ## Implemented AI capabilities
 
@@ -132,20 +120,20 @@ trades, free agency, or other front-office models.
 
 ## Implemented player development
 
-Present on `main`, with one addition on this branch:
+Present on `main`:
 
 - Prospect decisions separate current-level performance, sample confidence,
   age/level urgency, and observed current-to-potential maturity, against
   developmental thresholds that no philosophy can move. The organization's
   promotion aggression is applied afterwards, as a preference among the
-  defensible assignments. **Changed on this branch (D-044):** age relative to
+  defensible assignments. **Changed by D-044:** age relative to
   level may RAISE the bar for a player young for it and never lowers it for one
   who is old for it, and the production diff it is measured on is league-relative
   and park-adjusted rather than level-pooled.
 - Assignment plans evaluate normal promotion, exceptional skip-level promotion,
   one-level demotion, and AAA-to-MLB discussion against the organization's
   actual affiliate ladder.
-- **New on this branch:** `currentAssignment.ts` answers "is the level a player is
+- **Added by D-044:** `currentAssignment.ts` answers "is the level a player is
   at still developing him?" as two readings (level standing, developmental window)
   with a four-state verdict, distinguishing `not_assessable` (no season to read)
   from `indeterminate` (missing evidence).
@@ -156,14 +144,14 @@ Present on `main`, with one addition on this branch:
   absolute-scale composite with no peer comparison.
 - Defensive assignment fit uses visible fielding ratings/experience and becomes
   stricter for more protected prospects.
-- **Removed on this branch (D-044):** `computeProspects`' `signal` and `score` — a
+- **Removed by D-044:** `computeProspects`' `signal` and `score` — a
   second promotion-and-demotion verdict built from raw statistics, which ordered
   the payload as a leaderboard and which the Dashboard and the AI briefing read.
   Both now read the engine.
 
 ## Implemented Minor League Operations
 
-Present on this branch (D-044 to D-046; design and audit in
+Present on `main` (D-044 to D-046; design and audit in
 [MINOR_LEAGUE_OPERATIONS.md](MINOR_LEAGUE_OPERATIONS.md)):
 
 - **Production evidence** (`farmResults.ts`): each minor leaguer's line read against
@@ -257,7 +245,7 @@ save 147 → 23; 30 organizations swept with no crash.
 
 ## Implemented evidence boundary
 
-Present on this branch (D-017):
+Present on `main` (D-017):
 
 - `server/scoutedEvidence.ts` is the single source of ability evidence for
   Player Development and Minor League Operations. It reads the exported tool
@@ -293,7 +281,7 @@ candidates. The provenance of every rating field is tabulated in
 
 ## Implemented roster evidence foundation
 
-Present on this branch (D-020 to D-022):
+Present on `main` (D-020 to D-022):
 
 - **Current State** (`server/playerState.ts`): every field read from its export
   column with provenance and, when absent, an unknown reason. 40-man membership
@@ -335,7 +323,7 @@ Present on this branch (D-020 to D-022):
 
 ## Implemented player rights
 
-Present on this branch (D-023; research in [RIGHTS_RESEARCH.md](RIGHTS_RESEARCH.md)):
+Present on `main` (D-023; research in [RIGHTS_RESEARCH.md](RIGHTS_RESEARCH.md)):
 
 - **League rules** (`server/leagueRules.ts`): option rule, DFA and waiver
   periods, active/expanded/40-man limits, read as exported.
@@ -365,7 +353,7 @@ last option year, rehab returns, claims, refusals, trades (all `indeterminate`).
 
 ## Implemented MLB Operations (first slice)
 
-Present on `feature/mlb-operations-v2` (D-024; design and audit in
+Present on `main` (D-024; design and audit in
 [MLB_OPERATIONS.md](MLB_OPERATIONS.md)):
 
 - **Needs** (`mlbNeeds.ts`): derived from the current export only. `role_below_standard`
@@ -408,7 +396,7 @@ Present on `feature/mlb-operations-v2` (D-024; design and audit in
   option, final-option-year, disruptive designation), each with Rights and consequences. A
   non-40-man promotion is two Rights component actions (`addToFortyMan`, `composed.promoteToActive`).
 - **API/UI:** `GET /api/mlb-operations/:orgId` and `.../responses?need=`; page "MLB
-  Operations" (Front Office group). Read-only; not in the static export.
+  Operations" (Baseball Operations group). Read-only; not in the static export.
 - **Foundation changes:** `PlayerState.position/role`, `pitchingRole.ts`, exported
   `activeLimit`, schema-tolerant `minorLeagueRoster` player columns.
 - **Verified on the real Arizona save** (read-only): the one observed need is Cristian Mena's
@@ -478,11 +466,20 @@ resolution across all organization-specific features is future work.
 - A player log entry outside the current and previous season is not read.
 - The system proposes actions but has no OOTP transaction execution or save
   writeback.
-- The README's AI-provider prose predates local Ollama support and should be
-  reconciled in a future user-documentation pass.
 
 See [ROADMAP.md](ROADMAP.md) for the planned sequence that addresses these
 gaps.
+
+## Project consolidation
+
+[PENNANT_CONSOLIDATION.md](PENNANT_CONSOLIDATION.md) records the phase that gave the project its identity: the
+legacy-reference audit, the branch/tag audit, the documentation classification and the brand-asset audit.
+Outcome: user-facing surfaces say Pennant; version lineage restarts at 0.1.0 (D-049); the update feed and in-app links
+name Pennant's repository; the dev server can no longer put the API and Vite on one port; upstream's release notes and
+forum posts moved to `docs/upstream/`; stale screenshots, the dead `Signal` glossary entry and the old icon were
+deleted; the Dashboard's attention chips now open MLB Operations and Minor League Operations first. Still owed by the
+owner: vector brand masters, the Apple signing secrets, and the repository-rename decision. Decided later
+(2026-09-21): the application id, the author and the `pennant-v<version>` tag convention.
 
 ## Verification surfaces
 
@@ -493,6 +490,8 @@ gaps.
 - `npm run check:theme` — checks generated team palettes for contrast.
 - `npm run build` — Vite production build.
 - `npm run desktop:build` — web plus Electron server/main/preload bundle.
+- `npm run dev` — the one development command (page 5173, API 5178).
+- `.github/workflows/ci.yml` — the same typecheck, tests and build on every pull request.
 
 Vitest suites share a module-level SQLite handle and therefore run serially.
 Tests must continue to use synthetic temporary data, never a live OOTP save.

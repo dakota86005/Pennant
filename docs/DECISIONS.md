@@ -8,7 +8,7 @@ not mistaken for present behavior.
 
 **Status:** Accepted. **Implementation:** Partial and ongoing.
 
-Front Office's primary goal is to feel like running a baseball organization as
+Pennant's primary goal is to feel like running a baseball organization as
 the GM. The experience should expose decisions, constraints, evidence,
 alternatives, organizational voices, and consequences. AI is a supporting
 staff capability inside that system, not the product's generic answer box.
@@ -221,7 +221,7 @@ Consequences:
   There is no fallback to `players_value`.
 - Ratings are normalized to 20-80 equivalents from the detected display scale,
   so thresholds keep their meaning; the native scale is reported.
-- The composite is a Front Office summary, not OOTP's Overall. Pages that show
+- The composite is a Pennant summary, not OOTP's Overall. Pages that show
   `cur`/`pot` from these paths therefore differ from the game card by design.
 - Consumers report incomplete evidence (`ratingsEvidence`, `ratingEvidence`,
   `missingEvidence`, destination-fit `unassessedComponents`) and treat what
@@ -1088,3 +1088,65 @@ pin them.
 Consequences: `DEPARTED_SHARE_NOTED` and its note survive only for an export with no game log, where
 they are still all that can be said. The protection tier is untouched: who can be squeezed is decided by
 it, and its peer-relative refinement is the next branch's.
+
+## D-049 — Pennant has its own name, version lineage, application id and tag namespace; one inherited identifier is held on purpose
+
+**Status:** Accepted; amended 2026-09-21 (owner decisions on the application id, the author and the tag convention).
+**Implementation:** Built in the project-consolidation phase ([PENNANT_CONSOLIDATION.md](PENNANT_CONSOLIDATION.md)). No
+baseball behavior changed.
+
+The project began as a fork of `lsukev/ootp-front-office` at upstream's `0.27.2` and has since become a different
+product with a different architecture. Taking that seriously means giving it its own identity everywhere that renaming
+is free, and not renaming the one thing where it is not.
+
+- **The product is Pennant.** Every surface a user sees says so: the application, installer, window, browser tab,
+  README and CHANGELOG. Upstream stays credited, prominently, in the README, the changelog, the Help menu, the license
+  and `docs/upstream/`; nothing implies Pennant's code was all written here or that upstream endorses it. The package
+  author is Dakota Wise; upstream's copyright notice stays in `LICENSE` and the build's `copyright` line.
+- **Version lineage restarts at `0.1.0`.** Inheriting `0.27.2` implied Pennant was upstream's next release, and
+  upstream has since shipped through `0.40.1`. `0.1.0` means "the first Pennant-native version", not "the first code
+  in this repository", and stays below 1.0 because several models are provisional. `package.json` is the only source
+  of the number: the server reads it (`server/appInfo.ts`), Electron hands it over when packaged, `/api/status` serves
+  it, the header shows it, and a test fails if the lockfile or the changelog disagrees. No upstream tag was renumbered,
+  moved or deleted, and no history was rewritten.
+- **The application id is `com.dakotawise.pennant`.** It is the macOS bundle id and the Windows install identity, and it
+  was upstream's `com.lsukev.ootpfrontoffice`. It is Pennant's own and identifies the author, not the project it began
+  as. It was changed while it was free to: `origin` has no tags and no GitHub releases, so no installer with the old id
+  exists in the wild, and the only cost of a new id (macOS re-asks for folder access; a new install sits beside an old
+  one) falls on no user. It is not what names the user-data folder (Electron uses the package name; checked), so it does
+  not touch the hold below; whether the API-key keychain entry follows the app name or the bundle id was not verified.
+  It must not change again once an installer is published.
+- **Release tags are `pennant-v<package version>`** (`pennant-v0.1.0`), never a bare `v<version>`. Upstream's tags
+  (`v0.1.0` … `v0.40.1`) have the same shape as a `v*` Pennant tag, so a `v*` convention would collide with them in any
+  clone that also fetches the `upstream` remote's tags, and the release workflow's trigger would match them. The
+  workflow triggers only on `pennant-v*` and refuses a tag that is not `pennant-v` + `package.json`'s version. The
+  prefix is in `server/project.ts` (`RELEASE_TAG_PREFIX`), `release.yml` and `electron-builder.yml`
+  (`publish.tagNamePrefix`), and a test keeps them in agreement. The application-visible version stays `0.1.0`.
+- **The desktop updater and every in-app link name Pennant's repository**, from one constant (`server/project.ts`), and
+  the feed is stated in `electron-builder.yml` rather than inferred from a git remote.
+- **One inherited identifier is held, pinned by `tests/projectIdentity.test.ts`: the npm `name` (`ootp-front-office`).**
+  Electron derives the desktop user-data folder from it, not from `productName`: the packaged app's bundled
+  `package.json` carries `name` and no `productName` (checked in a real build's `app.asar`), and the owner's existing
+  desktop data lives in `~/Library/Application Support/ootp-front-office` (2.5 GB). Renaming it points the app at a new,
+  empty folder. The OS keychain entry that protects a saved API key is presumed keyed to the same application identity;
+  that was not verified and is treated as a hazard. There is no migration, and none is attempted. The release asset name
+  is spelled as a literal (`Pennant-<version>-<arch>.<ext>`) so this hold does not leak into what users download. The
+  `OOTP_FO_*` environment variables and the `data/` layout are user configuration and persisted state, kept for the same
+  reason.
+
+**Updater and tags.** The updater does not need a `v` tag. On a stable version it asks GitHub for the latest release,
+downloads from whatever tag that release has, and reads the version from `latest*.yml`; the tag is an opaque string in
+the download URL (checked in `electron-updater` 6.8.9). One limit: a *prerelease* version (`0.2.0-beta.1`) puts the
+updater in a mode that requires the tag itself to be valid semver, which `pennant-v…` is not. Pennant uses plain
+`X.Y.Z` versions until that is solved.
+
+**Amendment, 2026-09-21.** The first version of this record held the application id back and kept `v<version>` tags. It
+said the updater requires `v<version>` tags and therefore no Pennant prefix was available; that was wrong (see above)
+and the tag paragraph was rewritten. The application id was to be "decided with macOS signing"; the owner decided it
+now, before any installer existed, and chose `com.dakotawise.pennant`. Also recorded: the author is Dakota Wise, and the
+tag convention is `pennant-v<version>`.
+
+**Not decided here.** Renaming the GitHub repository (`ootp-front-office` → something Pennant-shaped) is the owner's
+call: GitHub redirects the old URL, but clone URLs, the `remote`, the `publish` block, `server/project.ts`, the
+`package.json` `repository` and every link would follow. A data-directory or package-name migration is a separate piece
+of work. Vector brand masters, a macOS icon variant and the Apple signing secrets are owed by the owner.

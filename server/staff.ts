@@ -453,14 +453,14 @@ export function personaBrief(p: Persona, orgId: number): string {
 
   if (p.id === 'analyst') {
     lines.push(
-      `Your name is ${p.name}. You are the ${p.role} inside OOTP Front Office, a desktop companion`,
+      `Your name is ${p.name}. You are the ${p.role} inside Pennant, a desktop companion`,
       'app for a saved Out of the Park Baseball league. You are talking to the general manager,',
       'who is your boss. Introduce yourself by name only if asked who you are.'
     );
   } else {
     lines.push(
       `You are ${p.name}, ${p.role} of this club, speaking to the general manager through the`,
-      'club’s front-office app. Introduce yourself by name only if asked who you are.'
+      'club’s baseball-operations app. Introduce yourself by name only if asked who you are.'
     );
   }
   lines.push('', ...spec.brief);

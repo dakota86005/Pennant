@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import type { UpdateInfo } from 'electron-updater';
+import { RELEASES_URL, releaseTag } from '../server/project.js';
 
 /**
  * Auto-update against GitHub releases.
@@ -10,7 +11,9 @@ import type { UpdateInfo } from 'electron-updater';
  * them, and the download is ~120 MB.
  *
  * The feed URL comes from app-update.yml, which electron-builder bakes into
- * Resources from the `publish` block in electron-builder.yml.
+ * Resources from the `publish` block in electron-builder.yml. That block and
+ * RELEASES_URL (server/project.ts) must name the same repository: the feed decides
+ * what is offered, the URL is only where "Release notes" opens.
  */
 
 export type UpdateState =
@@ -22,8 +25,6 @@ export type UpdateState =
   | { status: 'downloading'; version: string; newVersion: string; percent: number }
   | { status: 'ready'; version: string; newVersion: string }
   | { status: 'error'; version: string; message: string };
-
-const RELEASES_URL = 'https://github.com/lsukev/ootp-front-office/releases';
 
 let state: UpdateState;
 let checking = false;
@@ -91,7 +92,7 @@ export function initUpdater(): void {
       version: currentVersion(),
       newVersion: info.version,
       notes: plainNotes(info.releaseNotes),
-      releaseUrl: `${RELEASES_URL}/tag/v${info.version}`,
+      releaseUrl: `${RELEASES_URL}/tag/${releaseTag(info.version)}`,
     });
   });
 

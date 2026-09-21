@@ -1,12 +1,20 @@
 {
   "name": "ootp-front-office",
-  "version": "0.27.2",
+  "version": "0.1.0",
+  "description": "Pennant — an organization-first decision-support companion for Out of the Park Baseball. Advice only: the GM decides.",
+  "license": "MIT",
+  "author": "Dakota Wise",
+  "homepage": "https://github.com/dakota86005/ootp-front-office#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dakota86005/ootp-front-office.git"
+  },
   "private": true,
   "type": "module",
   "main": "build/main.cjs",
   "scripts": {
     "dev": "concurrently -n server,web -c blue,green \"npm run dev:server\" \"npm run dev:web\"",
-    "dev:server": "tsx watch server/index.ts",
+    "dev:server": "tsx watch scripts/dev-server.ts",
     "dev:web": "vite",
     "build": "vite build",
     "start": "npm run build && NODE_ENV=production tsx server/index.ts",

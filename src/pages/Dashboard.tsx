@@ -54,6 +54,8 @@ interface DashboardData {
     expiring: number; extensionCandidates: number;
     /** Minor League Operations' pressing items; an older payload has none. */
     farmAttention?: number;
+    /** MLB Operations' open needs; an older payload has none. */
+    mlbNeeds?: number;
     injuredCount: number; crunchIssues: number;
     /** Optional: a save imported before this existed has no count to show. */
     tradeTalk?: number;
@@ -103,20 +105,31 @@ export function Dashboard({ orgId, onNavigate }: { orgId: number; onNavigate: (p
           </ul>
         </section>
       )}
+      {/* Each chip is a door to the workspace that owns the question, not a
+          verdict: the two operations modules first, then the rest of the desk */}
+      <p className="muted dash-caption">Where the organization wants your attention. Each opens the workspace that owns it.</p>
       <div className="dash-decisions">
-        <DecisionChip label="Expiring contracts" count={data.pending.expiring} onClick={() => onNavigate('contracts')} />
-        <DecisionChip label="Extension candidates" count={data.pending.extensionCandidates} onClick={() => onNavigate('contracts')} />
         <DecisionChip
-          label="Farm attention"
+          label="MLB Operations"
+          count={data.pending.mlbNeeds ?? 0}
+          onClick={() => {
+            window.location.hash = '#/mlb';
+            onNavigate('mlb-operations');
+          }}
+        />
+        <DecisionChip
+          label="Minor League Operations"
           count={data.pending.farmAttention ?? 0}
           onClick={() => {
             window.location.hash = '#/farm';
             onNavigate('minor-league-operations');
           }}
         />
-        <DecisionChip label="Trade talk" count={data.pending.tradeTalk ?? 0} onClick={() => onNavigate('trades')} />
         <DecisionChip label="Roster issues" count={data.pending.crunchIssues} onClick={() => onNavigate('crunch')} />
         <DecisionChip label="Injured org-wide" count={data.pending.injuredCount} onClick={() => onNavigate('injuries')} />
+        <DecisionChip label="Expiring contracts" count={data.pending.expiring} onClick={() => onNavigate('contracts')} />
+        <DecisionChip label="Extension candidates" count={data.pending.extensionCandidates} onClick={() => onNavigate('contracts')} />
+        <DecisionChip label="Trade talk" count={data.pending.tradeTalk ?? 0} onClick={() => onNavigate('trades')} />
       </div>
 
       <div className="dash-grid">
@@ -279,8 +292,8 @@ export function Dashboard({ orgId, onNavigate }: { orgId: number; onNavigate: (p
           ) : (
             !briefingBusy && (
               <p className="muted">
-                An AI assistant-GM digest of standings, injuries, prospects, and looming decisions. Regenerate after
-                each sim session.
+                A written digest of standings, injuries, the farm, and the decisions ahead, built from the
+                organization's own reports. Regenerate after each sim session.
               </p>
             )
           )}

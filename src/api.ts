@@ -7,6 +7,8 @@ export interface SaveInfo {
 }
 
 export interface Status {
+  /** Product name and version, from package.json. Absent in a static export made before it existed. */
+  app?: { name: string; version: string; projectUrl: string; upstreamUrl: string };
   csvExportedAt: string | null;
   /** True when running as a static export rather than against a live server. */
   exportedSite?: boolean;

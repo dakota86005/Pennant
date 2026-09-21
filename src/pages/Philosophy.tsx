@@ -779,7 +779,7 @@ export function Philosophy({
   if (error && !data) {
     return (
       <section className="philosophy-page">
-        <div className="page-title">Front Office / Organizational Philosophy</div>
+        <div className="page-title">Baseball Operations / Organizational Philosophy</div>
         <div className="banner error">{error}</div>
       </section>
     );
@@ -788,7 +788,7 @@ export function Philosophy({
   if (!data) {
     return (
       <section className="philosophy-page">
-        <div className="page-title">Front Office / Organizational Philosophy</div>
+        <div className="page-title">Baseball Operations / Organizational Philosophy</div>
         <p className="muted">Loading organizational philosophy…</p>
       </section>
     );
@@ -798,7 +798,7 @@ export function Philosophy({
 
   return (
     <section className="philosophy-page">
-      <div className="page-title">Front Office / Organizational Philosophy</div>
+      <div className="page-title">Baseball Operations / Organizational Philosophy</div>
 
       <div className="philosophy-hero">
         <div>
@@ -937,7 +937,7 @@ export function Philosophy({
 
       <section className="philosophy-section">
         <div className="philosophy-section-heading">
-          <h2>Front Office Policies</h2>
+          <h2>Organizational Policies</h2>
           <p>
             Some organizational choices are better expressed as explicit policies
             than as numerical preferences.

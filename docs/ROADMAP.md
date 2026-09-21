@@ -5,7 +5,7 @@ ordered by dependency and product risk, not promised release date.
 
 ## Product direction
 
-Front Office should increasingly model the actual work of running a baseball
+Pennant should increasingly model the actual work of running a baseball
 organization: imperfect information, specialized departments, constrained
 choices, conflicting preferences, and a GM who owns the final call. AI should
 make that work more legible and conversational, not replace it with generic
@@ -36,6 +36,8 @@ These are implementation baselines, not roadmap promises:
   exchange consequences across one contract (D-044 to D-046).
 - Read-only recommendations with explicit safeguards and no OOTP transaction
   writeback.
+- A project identity of its own: the name Pennant, a version lineage starting at 0.1.0, a changelog, a single
+  development command, pull-request CI, and documented compatibility holds (D-049).
 
 ## Next: make the organizational model dependable
 
@@ -209,6 +211,16 @@ Next, in dependency order:
 - Service-time and Rule 5 consequences as stated facts where the export supports them.
 - External acquisition, waiver claims, free-agent strategy and payroll planning build on this
   later; they are out of scope here.
+
+### 8. Release readiness — owner decisions outstanding
+
+Nothing here is baseball work; each item needs the owner.
+
+- Apple Developer ID and the five signing secrets (DEVELOPMENT.md), so a macOS release can be signed and notarized.
+- Vector brand masters and a macOS icon variant.
+- Whether to rename the GitHub repository (D-049).
+- The first tagged release (`pennant-v0.1.0`), once the above are settled. The application id
+  (`com.dakotawise.pennant`) and the tag convention are already decided (D-049).
 
 ## Then: deepen organizational identity
 

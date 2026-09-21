@@ -33,7 +33,7 @@
  *   - Ratings are normalized to the 20-80 scouting scale so development
  *     thresholds mean the same thing on any OOTP display scale. The native
  *     scale is reported alongside.
- *   - The composite is a Front Office summary of visible tools, not OOTP's
+ *   - The composite is a Pennant summary of visible tools, not OOTP's
  *     weighted, position-aware Overall.
  */
 

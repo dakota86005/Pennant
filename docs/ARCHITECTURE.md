@@ -7,7 +7,7 @@ that does not exist yet.
 
 ## Product model
 
-Front Office is a local companion for an Out of the Park Baseball save. Its
+Pennant is a local companion for an Out of the Park Baseball save. Its
 primary product goal is to make the user feel like they are actually running a
 baseball organization as the GM. The application should surface the work,
 tradeoffs, uncertainty, and competing voices of a front office; it should not
@@ -133,6 +133,7 @@ artifact, not an alternative application backend.
 | AI features | `providers.ts`, `models.ts`, `chat.ts`, `ai.ts`, and `storylines.ts` provide staff chat, briefings, trade discussion, and storylines through configurable providers. | AI consumes computed save-grounded facts, calls the same API as the UI, and supports the front-office experience. It does not become a parallel recommendation engine. |
 | Web UI | React pages in `src/` render domain results, evidence, alternatives, and local interactions. `src/App.tsx` owns selected-save and selected-organization UI context. | React may shape presentation but should not silently reimplement baseball rules. |
 | Desktop shell | `electron/main.ts`, `preload.ts`, and `updater.ts` embed the local server, expose a minimal IPC bridge, protect navigation, store secrets, and manage consent-first updates. | Keep Node access out of the renderer and keep IPC narrow. |
+| Identity and version | `server/project.ts` (product name, the repository addresses and the release-tag prefix, import-free so the shell can load it first) and `server/appInfo.ts` (the version, read from `package.json` from source or handed over by Electron when packaged); served on `/api/status`, shown in the header. `scripts/devPorts.ts` decides the dev page and API ports for both halves of `npm run dev`. | One source per fact (D-049). The npm `name` is held for compatibility (it names the desktop user-data folder); the Electron `appId` (`com.dakotawise.pennant`), the author and the `pennant-v<version>` tag prefix are pinned by `tests/projectIdentity.test.ts`. |
 | Tests and checks | Vitest uses a hand-built temporary league; release CI runs type-checking and tests. Manual stat/theme checks use real imported data. | Fixtures must be synthetic and contain no live-save or private data. |
 
 ## Evidence and fog of war
@@ -179,7 +180,7 @@ adapter decides what their ratings are.
   fallback.
 - **Composite:** current and potential are the unweighted mean of the visible
   tools (hitters: contact, gap, power, eye, avoid-K; pitchers: stuff, movement,
-  control). It is a Front Office summary of visible tools, not OOTP's weighted,
+  control). It is a Pennant summary of visible tools, not OOTP's weighted,
   position-aware Overall, and it exists only when *every* tool is known.
 - **Missing stays missing:** absent, non-numeric, zero, or negative grades are
   unknown. Consumers receive `null` and a `status` of `complete`, `partial`, or
@@ -241,7 +242,7 @@ evidence; the export itself proves nothing about visibility.
 | `players_value.oa_rating`, `pot_rating` | Exactly `round(oa/5)*5` (commit `6ca89c8`). | **UNKNOWN** (derived from `oa`/`pot`). Prohibited. |
 | `players_value.overall_value`, `talent_value`, `offensive_value*`, `pitching_value` | OOTP's continuous club-value figures; upstream notes playing time is baked into `overall_value`. A code comment calls `talent_value` "scouted"; nothing supports that. | **UNKNOWN. Prohibited.** |
 | `leagues.avg_rating_*` | League-wide aggregates, shown as context by destination fit. Not a judgment input. | **UNKNOWN** provenance. Context only. |
-| `rating_snapshots.cur`, `pot` | Derived by Front Office from the approved tool columns at import (unweighted mean, partial averages allowed, native scale). | **Derived.** Not yet routed through the adapter. |
+| `rating_snapshots.cur`, `pot` | Derived by Pennant from the approved tool columns at import (unweighted mean, partial averages allowed, native scale). | **Derived.** Not yet routed through the adapter. |
 | Viewer organization | Not encoded anywhere in the import. `teams.human_team` marks the human-managed club; `coaches.scout_*` are staff attributes with no accuracy semantics. | **Not encoded.** The adapter uses `human_team`, or reports unresolved. |
 | Scouting accuracy setting | Not exported. | **UNKNOWN.** |
 

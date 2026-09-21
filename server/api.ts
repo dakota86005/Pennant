@@ -45,6 +45,7 @@ import { trendsRoutes } from './trends.js';
 import { chatRoutes } from './chat.js';
 import { mlbOperationsRoutes } from './mlbOperations.js';
 import { farmRoutes } from './farmRoutes.js';
+import { appInfo } from './appInfo.js';
 import { scoutedDevelopmentRoutes } from './scoutedDevelopment.js';
 
 export const api = Router();
@@ -215,6 +216,8 @@ api.post('/resolve-folder', (req, res) => {
 api.get('/status', (_req, res) => {
   const config = loadConfig();
   res.json({
+    /** Product name and version, from package.json (see appInfo.ts). */
+    app: appInfo(),
     csvExportedAt: config.csvDir ? csvExportedAt(config.csvDir) : null,
     configured: !!config.csvDir,
     saveName: config.saveName,
