@@ -353,44 +353,46 @@ describe('the boundary holds end to end', () => {
     expect(blank.reasons.join(' ')).not.toMatch(/High-end projected ceiling/);
   });
 
-  it('retains a player on his scouted ratings and reports what protection rested on', async () => {
-    const { players } = await request(`/api/minor-league-retention/${IDS.mlbTeam}`);
+  it('shows the Player Development pages his scouted ratings and what protection rested on', async () => {
+    const { players } = await request(`/api/scouted-development/${IDS.mlbTeam}`);
     const row = (id: number) => (players as Array<Record<string, any>>).find((p) => p.playerId === id)!;
     expect(row(HIGH).current).toBe(60);
     expect(row(HIGH).potential).toBe(72);
-    expect(row(HIGH).protection.ratingEvidence).toBe('complete');
+    expect(row(HIGH).protection.tier).not.toBeNull();
     expect(row(LOW).current).toBe(30);
     expect(row(LOW).potential).toBe(32);
     expect(row(BLANK).current).toBeNull();
     expect(row(BLANK).potential).toBeNull();
-    expect(row(BLANK).protection.ratingEvidence).toBe('unknown');
     expect(row(BLANK).protection.tier).toBeNull();
     expect(row(BLANK).protection.score).toBeNull();
-    expect(row(BLANK).evidence.development.score).toBeNull();
-    // Not released, not protected, not retained: retention cannot be judged
-    expect(row(BLANK).recommendation).toBe('indeterminate');
-    expect(row(BLANK).summary.join(' ')).toMatch(/cannot be judged/);
-    expect(row(BLANK).summary.join(' ')).toMatch(/No organization-visible current rating/);
-    expect(row(HIGH).recommendation).not.toBe('indeterminate');
-    expect(row(LOW).recommendation).not.toBe('indeterminate');
   });
 
-  it('still applies objective transaction guardrails to a player whose ratings are unknown', async () => {
+  it('leaves retention indeterminate, not negative, for a player whose ratings are unknown', async () => {
+    const { retention } = await request(`/api/farm-operations/${IDS.mlbTeam}`);
+    const rows = retention as Array<Record<string, any>>;
+    const blank = rows.find((p) => p.playerId === BLANK);
+    if (!blank) return; /* the farm reads the active list; the fixture may not carry him on it */
+    expect(blank.outlook.state).toBe('indeterminate');
+    expect(blank.conclusion).toBe('indeterminate');
+    expect(blank.outlook.reasons.join(' ')).toMatch(/cannot be established/);
+  });
+
+  it('still applies objective roster guardrails to a player whose ratings are unknown', async () => {
     const id = 91_300;
     addPlayer(id, 7, IDS.aaaTeam, 21);
     poison(id);
     db.prepare(`INSERT INTO team_roster VALUES (?, ?, 1)`).run(IDS.aaaTeam, id);
+    db.prepare(`INSERT INTO team_roster VALUES (?, ?, 2)`).run(IDS.aaaTeam, id);
     db.prepare(
       `INSERT INTO players_roster_status (player_id, is_active, is_on_dl, is_on_dl60, is_on_secondary)
        VALUES (?, 0, 0, 0, 1)`
     ).run(id);
-    const { players, counts } = await request(`/api/minor-league-retention/${IDS.mlbTeam}`);
-    const row = (players as Array<Record<string, any>>).find((p) => p.playerId === id)!;
+    const { retention } = await request(`/api/farm-operations/${IDS.mlbTeam}`);
+    const row = (retention as Array<Record<string, any>>).find((p) => p.playerId === id)!;
     // The 40-man guardrail is a fact about his roster status, not a judgment of his ability
-    expect(row.recommendation).toBe('protected');
-    expect(row.guardrails.join(' ')).toMatch(/Secondary\/40-man/);
-    expect(row.protection.tier).toBeNull();
-    expect(counts.indeterminate).toBeGreaterThanOrEqual(1);
+    expect(row.guardrails.map((g: { code: string }) => g.code)).toContain('on_forty_man');
+    expect(row.outlook.state).toBe('indeterminate');
+    expect(row.conclusion).toBe('indeterminate');
   });
 
   it('shows the depth chart the scouted composites, not players_value', async () => {

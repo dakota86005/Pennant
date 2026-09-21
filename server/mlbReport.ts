@@ -202,7 +202,9 @@ const farmLine = (o: ClearingOption): string | null => {
   const f = o.farm;
   if (!f) return null;
   const same = f.overall.before === f.overall.after;
-  return `${f.affiliate.label} (${f.affiliate.levelName}) ${same ? `stays ${f.overall.after}` : `goes from ${f.overall.before} to ${f.overall.after}`}${f.changes.some((c) => c.before !== c.after) ? `; ${f.changes.filter((c) => c.before !== c.after).map((c) => `${c.label} ${c.before} to ${c.after}`).join(', ')}` : ''}.`;
+  const status = `${f.affiliate.label} (${f.affiliate.levelName}) ${same ? `stays ${f.overall.after}` : `goes from ${f.overall.before} to ${f.overall.after}`}${f.changes.some((c) => c.before !== c.after) ? `; ${f.changes.filter((c) => c.before !== c.after).map((c) => `${c.label} ${c.before} to ${c.after}`).join(', ')}` : ''}.`;
+  /* Minor League Operations' own sentence, when it has one: the job taken up, or the chain and where it stops. */
+  return f.arrival ? `${status} ${f.arrival.summary}` : f.farm ? `${status} ${f.farm.summary}` : status;
 };
 
 const roleEffectLine = (o: ClearingOption): string | null =>
@@ -432,7 +434,12 @@ function fillReport(need: MlbNeed, view: ClubView, ports: ResponsePorts, candida
         steps: c.path.chain.length ? c.path.chain.map((l) => `${l.label}${l.detail ? ` — ${l.detail}` : ''}`) : c.path.steps.map((s) => s.label),
         moves: [], moreMoves: 0,
         consequences: [
-          ...(c.consequences.farm ? [`${c.consequences.farm.affiliate.label} (${c.consequences.farm.affiliate.levelName}): ${c.consequences.farm.overall.before === c.consequences.farm.overall.after ? `stays ${c.consequences.farm.overall.after}` : `${c.consequences.farm.overall.before} to ${c.consequences.farm.overall.after}`}.`] : []),
+          ...(c.consequences.farm
+            ? [
+                `${c.consequences.farm.affiliate.label} (${c.consequences.farm.affiliate.levelName}): ${c.consequences.farm.overall.before === c.consequences.farm.overall.after ? `stays ${c.consequences.farm.overall.after}` : `${c.consequences.farm.overall.before} to ${c.consequences.farm.overall.after}`}.${c.consequences.farm.farm ? ` ${c.consequences.farm.farm.summary}` : ''}`,
+                ...(c.consequences.farm.farm?.unresolvedIssues.map((u) => `Left open below: ${u}`) ?? []),
+              ]
+            : []),
           ...(c.requiresClearing.fortyMan || c.requiresClearing.active ? [`Needs ${[c.requiresClearing.fortyMan ? 'a 40-man spot' : '', c.requiresClearing.active ? 'an active-roster spot' : ''].filter(Boolean).join(' and ')} cleared first (see the clearing options).`] : []),
         ],
         certainty: c.path.status,

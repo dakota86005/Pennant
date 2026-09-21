@@ -89,17 +89,29 @@ beforeAll(() => {
 });
 
 interface Prospect {
-  name: string; signal: string | null; reasons: string[]; levelName: string; age: number;
+  name: string;
+  reasons: string[];
+  levelName: string;
+  age: number;
+  decision: { recommendation: string | null };
 }
 
 const farm = async (): Promise<Prospect[]> =>
   ((await request(`/api/prospects/${IDS.mlbTeam}`)).batters ?? []) as Prospect[];
 
+/*
+ * The verdict is Player Development's own (`prospectDecision`), not the raw statistical `signal`
+ * this suite used to read. The signal was a second promotion-and-demotion rule beside the engine,
+ * built straight off the level-average line, and it is gone (D-044). The baseball behaviour it
+ * protected is what these cases are about and it is asserted against the engine instead.
+ */
+const verdict = (p: Prospect | undefined): string | null | undefined => p?.decision?.recommendation;
+
 describe('a man clearly below his level', () => {
   it('is told to go down', async () => {
     const him = (await farm()).find((p) => p.name === 'Farm Overmatched');
     expect(him, 'the overmatched man never reached the farm page').toBeDefined();
-    expect(him?.signal).toBe('demote');
+    expect(verdict(him)).toBe('consider_demotion');
   });
 
   it('is shown the case against him, not just the verdict', async () => {
@@ -119,7 +131,7 @@ describe('a man who is young for his level', () => {
   it('is not sent down for the same line', async () => {
     const him = (await farm()).find((p) => p.name === 'Farm Youngster');
     expect(him, 'the young man never reached the farm page').toBeDefined();
-    expect(him?.signal, 'a nineteen-year-old was demoted for holding his own early').not.toBe('demote');
+    expect(verdict(him), 'a nineteen-year-old was demoted for holding his own early').not.toBe('consider_demotion');
   });
 });
 
@@ -128,7 +140,9 @@ describe('the bottom of the organisation', () => {
     // There is nowhere to send him, so the verdict would be advice nobody can take
     const lowest = Math.max(...(await farm()).map((p) => (p.levelName === 'AAA' ? 2 : 99)));
     expect(lowest).toBeGreaterThan(0);
-    const atBottom = (await farm()).filter((p) => p.signal === 'demote' && p.levelName === 'R');
+    const atBottom = (await farm()).filter(
+      (p) => verdict(p) === 'consider_demotion' && p.levelName === 'R'
+    );
     expect(atBottom).toEqual([]);
   });
 });

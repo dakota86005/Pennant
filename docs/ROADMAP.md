@@ -30,9 +30,10 @@ These are implementation baselines, not roadmap promises:
 - A scouted-evidence adapter that is the single source of ability evidence for
   Player Development and Minor League Operations, with focused tests of the
   development engines and a static boundary guard.
-- A farm-system architecture that separates prospect/development eligibility,
-  destination fit, affiliate roster health, constrained position-player and
-  pitcher proposals, and retention evidence.
+- Two sibling operations modules over one set of specialists: MLB Operations
+  (major-league roster problems) and Minor League Operations (placement, playing
+  time, affiliate health, organizational congestion, cascades, retention), which
+  exchange consequences across one contract (D-044 to D-046).
 - Read-only recommendations with explicit safeguards and no OOTP transaction
   writeback.
 
@@ -43,29 +44,21 @@ These are implementation baselines, not roadmap promises:
 Now covered with synthetic inputs: prospect decision thresholds, ordinary and
 skip-level authorization, demotion, destination-fit population and low-sample
 behavior, development protection, defensive assignment fit, philosophy profile
-mechanics, and the evidence adapter. Still uncovered: hitter and pitcher roster
-simulations, source-health safeguards and plan ranking, retention guardrails and
-advisory outcomes, and organization resolution. The farm modules also assume
-export columns (`fatigue_points`, `must_be_active`, and others) the shared
-fixture does not carry, so their endpoints need a fuller fixture or
-schema-tolerant queries.
+mechanics, the evidence adapter, and — with the Minor League Operations rebuild —
+the current-assignment question, playing time and congestion, affiliate health,
+cascades, retention ownership, the architecture boundary and the MLB ↔ farm
+contract ([BEHAVIOR_CASES.md](BEHAVIOR_CASES.md)).
 
-Add focused synthetic coverage for:
+Still uncovered:
 
 - philosophy normalization, persistence, resolution, and per-organization
   isolation;
-- prospect decision thresholds and normal/skip/demotion assignment gates;
-- destination-fit populations, low-sample behavior, and alternate schemas;
-- development-protection and defensive-assignment constraints;
-- hitter and pitcher roster simulations, source-health safeguards, and plan
-  ranking;
-- retention guardrails, peer-development evidence, and advisory outcomes; and
 - organization resolution when a saved default, human-managed club, or neither
-  is present.
-
-The repository has broad API/regression coverage and focused Scouted Development
-history/export tests, but the new farm modules do not yet have comprehensive
-dedicated coverage.
+  is present;
+- (resolved) the superseded farm solvers were deleted in the hardening phase
+  rather than covered; their one invariant worth keeping — an indeterminate
+  Player Development judgment is never planned, rejected or ranked — is pinned
+  against the farm cascade in `tests/farmDevelopmentIndeterminate.test.ts`.
 
 ### 2. Centralize organization context
 
@@ -101,22 +94,51 @@ static guard. Remaining:
 - Verify whether fielding-position grades share the tool ratings' display scale.
 - Keep AI context free of hidden or provenance-uncertain ratings.
 
-### 4. Let Operations consume the preference object
+### 4. Let Operations consume the preference object — done
 
-The Player Development ↔ Philosophy boundary is enforced (D-019): eligibility is
-philosophy-independent and `assignments.preference` expresses preference among
-defensible assignments. Operations still ranks with its own philosophy-weighted
-costs. Move that ranking onto the preference object, keeping it inside the
-defensible set and for ordering only. Separately, retention still folds a
-philosophy adjustment into the development score that feeds release-candidate
-thresholds; decide whether that belongs in preference or in developmental value.
+The Player Development ↔ Philosophy boundary is enforced (D-019), and Minor
+League Operations v2 now reads `assignments.preference` rather than applying its
+own philosophy-weighted costs: preference is shown per defensible alternative and
+per defensible cascade step, and never attaches to anything else (D-044).
+Retention no longer folds a philosophy adjustment into a development score; the
+developmental outlook is Player Development's and philosophy is a stated lean
+applied afterwards (D-045). The superseded solvers that carried the old weighted
+costs are deleted.
 
-### 5. Finish farm-assignment edge cases
+### 5. Minor League Operations — rebuilt and hardened; what remains
 
-- Model ACL/DSL and other same-level Rookie environments explicitly; current
-  operations defer Rookie-level balancing.
-- Handle multiple affiliates at the same level, eligibility/geography, complex
-  assignments, rehabilitation, injuries, and unavailable players consistently.
+The farm system was audited end to end, rebuilt on the same foundations as MLB
+Operations ([MINOR_LEAGUE_OPERATIONS.md](MINOR_LEAGUE_OPERATIONS.md), D-044 to
+D-046) and then hardened the way MLB Operations was (Part 7, D-047): the
+superseded solvers, routes and pages are deleted and exactly one farm
+implementation exists; blockage, cover holders, designated hitters and injuries
+are read honestly; the organization is read once per request; MLB Operations
+displays the farm's own reading in both directions of the contract; the corpus
+stands at 234 tests in 12 files.
+
+Remaining, in dependency order:
+
+- **Cross-affiliate Rookie-level movement.** Eligibility and geography between a
+  complex league and a Dominican one are still unmodelled, so a cascade does not
+  draw across them. Everything else about Rookie affiliates is covered.
+- **Recency in usage.** Shares are the season to date; a regular promoted
+  mid-season still holds the largest share of a job he no longer has. The farm
+  now says when a quarter of a job was played by men no longer on the club; a
+  windowed read (the last N club games) is the next refinement and needs the
+  game-level fielding lines the export may not carry at every level.
+- **Calibrate what can be calibrated.** No farm constant is fitted, because the
+  export holds no minor-league history. Candidates if a longer record becomes
+  available: the sample minimums, the level-standing lines,
+  `AGE_LEVEL_DEVELOPMENT_LIMIT` (the constant with the largest effect on how many
+  players read as an organizational rather than a developmental question), and
+  the injured-days line.
+- **A peer-relative protection tier.** The tier is an absolute-scale composite, so
+  a 20-potential player in the Dominican Rookie League and one at Triple-A share
+  one. It is load-bearing for stakes, blockage and retention, and rebuilding it is
+  its own piece of work.
+- **Repeat-level and prior-experience context.** The assignment review does not
+  yet read a man's earlier seasons at the level; a second year at Double-A reads
+  the same as a first.
 - Validate position and pitcher-role assignments against observed scouting
   evidence without inventing coverage.
 - Add a manual "protect this player" control using the reservation already in
@@ -168,8 +190,12 @@ Next, in dependency order:
   the module rebuilt as five views. Next refinement: re-derive the role standards and the glove weights as the season grows
   (`npm run calibrate`, sections `standards` and `defense`); accumulate evidence on the debatable items listed in the hardening doc
   (the policy quantiles, the IL-return window, center-field bench coverage) before changing any policy.
-- Minor League Operations: a cascade consumer (rehab-aware roster health is done, D-026) (the old branch's
-  bounded planner was deferred, not adopted).
+- **Done:** the farm cascade, where the old branch's bounded planner was deferred to (D-045), and — in
+  the farm hardening phase (D-047) — MLB Operations displays the farm's own answer in both directions:
+  for a recall the vacated job, whether it can be absorbed, whose playing time changes, who could take
+  the job with the alternatives the chain did not follow, the chain and where it stops; for an option
+  the job the player takes up, who holds it and whose developmental work is pushed aside; and the
+  club's operational status before and after from the same reading the farm workspace shows.
 - Service-time and Rule 5 consequences as stated facts where the export supports them.
 - External acquisition, waiver claims, free-agent strategy and payroll planning build on this
   later; they are out of scope here.

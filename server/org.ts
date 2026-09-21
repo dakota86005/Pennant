@@ -1,8 +1,4 @@
 import { Router } from 'express';
-import { computeMinorLeagueRosterHealth } from './minorLeagueRoster.js';
-import { computeMinorLeagueRebalance } from './minorLeagueMoves.js';
-import { computeMinorLeagueRetention } from './minorLeagueRetention.js';
-import { computeMinorLeaguePitchingOperations } from './minorLeaguePitchingOperations.js';
 import { db, tableExists } from './db.js';
 import { loadScoutedAbilities, summarizeEvidence } from './scoutedEvidence.js';
 import { LEVEL_NAMES } from './valuation.js';
@@ -60,13 +56,21 @@ orgRoutes.get('/orgs', (_req, res) => {
 /** The column signings nobody has assigned yet are gathered under. */
 const UNASSIGNED_TEAM = -1;
 
+/**
+ * The organization's clubs, walked recursively: an affiliate's affiliate is still the organization's.
+ * The same walk Minor League Operations uses, so the two modules never see a different ladder.
+ */
 function orgTeams(orgId: number) {
   return db
     .prepare(
-      `SELECT team_id, name, nickname, level FROM teams
-       WHERE team_id = ? OR parent_team_id = ? ORDER BY level, team_id`
+      `WITH RECURSIVE org AS (
+         SELECT team_id, name, nickname, level, league_id FROM teams WHERE team_id = ?
+         UNION ALL
+         SELECT t.team_id, t.name, t.nickname, t.level, t.league_id FROM teams t JOIN org o ON t.parent_team_id = o.team_id
+       )
+       SELECT DISTINCT team_id, name, nickname, level, league_id FROM org ORDER BY level, team_id`
     )
-    .all(orgId, orgId) as Array<{ team_id: number; name: string; nickname: string; level: number }>;
+    .all(orgId) as Array<{ team_id: number; name: string; nickname: string; level: number; league_id: number }>;
 }
 
 interface OrgPlayer {
@@ -132,6 +136,7 @@ orgRoutes.get('/depth-chart/:orgId', (req, res) => {
       name: 'Unassigned',
       nickname: '',
       level: 99,
+      league_id: 0,
       label: 'Unassigned',
       levelName: 'ORG',
     });
@@ -231,43 +236,137 @@ const ops = (s: Record<string, number>): number | null => {
  * League-wide per-level baselines (avg age of rostered players; avg OPS / ERA / K%
  * of players with a meaningful sample), computed from THIS save's data so the
  * thresholds self-calibrate to the league environment.
+ *
+ * A peer has to be on a roster. OOTP parks a signing nobody has assigned yet on the parent club's
+ * `team_id` with no `team_roster` entry, so without the membership test the major-league level's
+ * average age is built partly out of sixteen-year-olds out of the international complex: on the
+ * Arizona import 148 such players (ages 16 to 19, mean 16.2) pulled it from 28.87 to 27.10. That
+ * 1.77-year error is 2.66 points of the +/-5 the age context may move the promotion threshold by,
+ * and it was printed to the reader as "level avg". Same defect as D-039 in the major-league peer
+ * pools, same fix. (docs/MINOR_LEAGUE_OPERATIONS.md F-0-farm.)
+ *
+ * The rate baselines are level-wide and therefore pool leagues with different run environments.
+ * They remain here as display context only: the production evidence a development judgment rests on
+ * is league-relative and park-adjusted (`farmResults.ts`, F-1-farm).
  */
-function levelBaselines(batting: Map<string, Record<string, number>>, pitching: Map<string, Record<string, number>>) {
+export interface RateBaseline {
+  avgAge: number | null;
+  avgOps: number | null;
+  avgEra: number | null;
+  avgKpct: number | null;
+  /** How many rostered players it was built from. */
+  players: number;
+  /** Whether it describes one league or a whole level. */
+  basis: 'league' | 'level';
+}
+
+/** A league baseline needs this many rostered players before it beats the level pool. */
+const LEAGUE_BASELINE_MINIMUM = 60;
+
+interface BaselineAccumulator {
+  ages: number[];
+  ops: number[];
+  era: number[];
+  kpct: number[];
+}
+
+const emptyAccumulator = (): BaselineAccumulator => ({ ages: [], ops: [], era: [], kpct: [] });
+
+const mean = (xs: number[]): number | null =>
+  xs.length ? xs.reduce((x, y) => x + y, 0) / xs.length : null;
+
+function summarize(a: BaselineAccumulator, basis: 'league' | 'level'): RateBaseline {
+  return {
+    avgAge: mean(a.ages),
+    avgOps: mean(a.ops),
+    avgEra: mean(a.era),
+    avgKpct: mean(a.kpct),
+    players: a.ages.length,
+    basis,
+  };
+}
+
+interface BaselineSet {
+  /** Per level, for display and as the fallback. */
+  byLevel: Record<number, RateBaseline>;
+  /** Per `level:leagueId`, the comparison a judgment actually rests on. */
+  byLeague: Record<string, RateBaseline>;
+}
+
+function levelBaselines(
+  batting: Map<string, Record<string, number>>,
+  pitching: Map<string, Record<string, number>>
+): BaselineSet {
   const players = db
     .prepare(
-      `SELECT p.player_id, p.age, p.position, t.level FROM players p
+      `SELECT p.player_id, p.age, p.position, t.level, t.league_id FROM players p
        JOIN teams t ON t.team_id = p.team_id
-       WHERE p.retired = 0 AND t.level >= 1 AND t.allstar_team = 0`
+       WHERE p.retired = 0 AND t.level >= 1 AND t.allstar_team = 0
+         AND EXISTS (SELECT 1 FROM team_roster r WHERE r.player_id = p.player_id)`
     )
-    .all() as Array<{ player_id: number; age: number; position: number; level: number }>;
+    .all() as Array<{ player_id: number; age: number; position: number; level: number; league_id: number }>;
 
-  const acc = new Map<number, { ages: number[]; ops: number[]; era: number[]; kpct: number[] }>();
+  const byLevelAcc = new Map<number, BaselineAccumulator>();
+  const byLeagueAcc = new Map<string, BaselineAccumulator>();
+
   for (const p of players) {
-    if (!acc.has(p.level)) acc.set(p.level, { ages: [], ops: [], era: [], kpct: [] });
-    const a = acc.get(p.level)!;
-    a.ages.push(p.age);
+    const leagueKey = `${p.level}:${p.league_id}`;
+    if (!byLevelAcc.has(p.level)) byLevelAcc.set(p.level, emptyAccumulator());
+    if (!byLeagueAcc.has(leagueKey)) byLeagueAcc.set(leagueKey, emptyAccumulator());
+    const targets = [byLevelAcc.get(p.level)!, byLeagueAcc.get(leagueKey)!];
+
+    for (const a of targets) a.ages.push(p.age);
+
     // The line he produced AT this level, so the level's own average is not
     // built partly out of what its players did somewhere else
     const b = batting.get(statKey(p.player_id, p.level));
     if (b && (b.pa ?? 0) >= 50) {
       const o = ops(b);
-      if (o !== null) a.ops.push(o);
+      if (o !== null) for (const a of targets) a.ops.push(o);
     }
     const pi = pitching.get(statKey(p.player_id, p.level));
     if (pi && (pi.outs ?? 0) >= 45) {
-      a.era.push(((pi.er ?? 0) / (pi.outs / 3)) * 9);
-      if (pi.bf > 0) a.kpct.push(pi.k / pi.bf);
+      const era = ((pi.er ?? 0) / (pi.outs / 3)) * 9;
+      for (const a of targets) {
+        a.era.push(era);
+        if (pi.bf > 0) a.kpct.push(pi.k / pi.bf);
+      }
     }
   }
-  const mean = (xs: number[]) => (xs.length ? xs.reduce((x, y) => x + y, 0) / xs.length : null);
-  const out: Record<number, { avgAge: number | null; avgOps: number | null; avgEra: number | null; avgKpct: number | null }> = {};
-  for (const [level, a] of acc) {
-    out[level] = { avgAge: mean(a.ages), avgOps: mean(a.ops), avgEra: mean(a.era), avgKpct: mean(a.kpct) };
-  }
-  return out;
+
+  const byLevel: Record<number, RateBaseline> = {};
+  for (const [level, a] of byLevelAcc) byLevel[level] = summarize(a, 'level');
+
+  const byLeague: Record<string, RateBaseline> = {};
+  for (const [key, a] of byLeagueAcc) byLeague[key] = summarize(a, 'league');
+
+  return { byLevel, byLeague };
 }
 
-export function computeProspects(orgId: number): { batters: unknown[]; pitchers: unknown[]; baselines: unknown } {
+/**
+ * The comparison one player's line is measured against: his own league at his own level.
+ *
+ * A level is not a peer group. Measured on the Arizona import the two Triple-A leagues are 35 OPS
+ * points apart, the two Arizona A-ball affiliates play in leagues 43 points apart, and the Dominican
+ * Rookie League's rostered average age is 2.5 years below the complex leagues' — so a level-pooled
+ * baseline penalises one affiliate and flatters another by roughly a quarter of the model's "strong
+ * promotion" band, and makes every Arizona Complex League player read as older than his level when
+ * he is average for his league. (docs/MINOR_LEAGUE_OPERATIONS.md F-1-farm.)
+ *
+ * A league too thin to describe itself falls back to the level pool, and says which it used.
+ */
+function baselineFor(set: BaselineSet, level: number, leagueId: number): RateBaseline {
+  const league = set.byLeague[`${level}:${leagueId}`];
+  if (league && league.players >= LEAGUE_BASELINE_MINIMUM) return league;
+  return set.byLevel[level] ?? { avgAge: null, avgOps: null, avgEra: null, avgKpct: null, players: 0, basis: 'level' };
+}
+
+export function computeProspects(orgId: number): {
+  batters: unknown[];
+  pitchers: unknown[];
+  baselines: unknown;
+  leagueBaselines: unknown;
+} {
   const batting = seasonBatting();
   const pitching = seasonPitching();
   const baselines = levelBaselines(batting, pitching);
@@ -453,8 +552,13 @@ export function computeProspects(orgId: number): { batters: unknown[]; pitchers:
   for (const p of players) {
     const team = teams.get(p.team_id);
     if (!team || team.level <= 1) continue; // only minor leaguers
-    const base = baselines[team.level];
-    if (!base) continue;
+    /*
+     * His own league at his own level, not the level pool: see `baselineFor`. The level pool is
+     * still returned to the reader as context, and is the fallback for a league too thin to
+     * describe itself.
+     */
+    const base = baselineFor(baselines, team.level, team.league_id);
+    if (base.players === 0) continue;
     const ability = abilities.for(p.player_id);
     const { current: cur, potential: pot } = ability;
     const ageDiff = base.avgAge !== null ? base.avgAge - p.age : null;
@@ -501,11 +605,10 @@ export function computeProspects(orgId: number): { batters: unknown[]; pitchers:
       if (kDiff >= 0.05) reasons.push(`K% ${(kpct * 100).toFixed(0)} vs level avg ${(base.avgKpct! * 100).toFixed(0)}`);
       if (ageDiff !== null && ageDiff >= 1.5) reasons.push(`young for level (${p.age} vs avg ${base.avgAge!.toFixed(1)})`);
       if (cur !== null && pot !== null && pot - cur <= 5) reasons.push('near ceiling — development mostly done');
-      const score = eraDiff * 12 + kDiff * 200 + (ageDiff ?? 0) * 8;
       pitchers.push({
         ...common, role: p.role, ip: Number(ip.toFixed(1)), era: Number(era.toFixed(2)),
         kpct: Number((kpct * 100).toFixed(1)), war: s.war ?? 0,
-        score: Number(score.toFixed(1)), reasons,
+        reasons,
       ...decisionBundle(p.player_id, team.level, {
         kind: 'pitcher',
         primaryPerformanceDiff: eraDiff,
@@ -517,19 +620,6 @@ export function computeProspects(orgId: number): { batters: unknown[]; pitchers:
         demotionAssignment: demotionAssignmentFor(team.level),
         canDemote: team.level !== lowestLevel,
       }),
-        /*
-         * Demotion asks more than promotion does, on purpose. Sending a man
-         * down is the more consequential call and the easier one to get wrong,
-         * so it wants a bigger gap, a longer look, and — the part that matters
-         * most — a man who is not young for where he is. A nineteen-year-old
-         * struggling at Double-A is on schedule; a twenty-six-year-old
-         * struggling at Single-A is not the same sentence.
-         */
-        signal:
-          eraDiff >= 1.0 && ip >= 30 ? 'promote'
-          : overmatched(eraDiff <= -1.25, ip >= 30, ageDiff, team.level) ? 'demote'
-          : score > 5 ? 'watch'
-          : null,
       });
     } else {
       const s = batting.get(statKey(p.player_id, team.level));
@@ -549,10 +639,9 @@ export function computeProspects(orgId: number): { batters: unknown[]; pitchers:
       if (ageDiff !== null && ageDiff >= 1.5) reasons.push(`young for level (${p.age} vs avg ${base.avgAge!.toFixed(1)})`);
       if (cur !== null && pot !== null && pot - cur <= 5) reasons.push('near ceiling — development mostly done');
       if (cur !== null && pot !== null && pot - cur >= 15) reasons.push('high remaining upside');
-      const score = opsDiff * 300 + (ageDiff ?? 0) * 8;
       batters.push({
         ...common, pa: s.pa, opsVal: Number(o.toFixed(3)), hr: s.hr, sb: s.sb, war: s.war ?? 0,
-        score: Number(score.toFixed(1)), reasons,
+        reasons,
       ...decisionBundle(p.player_id, team.level, {
         kind: 'batter',
         primaryPerformanceDiff: opsDiff,
@@ -563,39 +652,29 @@ export function computeProspects(orgId: number): { batters: unknown[]; pitchers:
         demotionAssignment: demotionAssignmentFor(team.level),
         canDemote: team.level !== lowestLevel,
       }),
-        signal:
-          opsDiff >= 0.075 && s.pa >= 100 ? 'promote'
-          : overmatched(opsDiff <= -0.100, s.pa >= 100, ageDiff, team.level) ? 'demote'
-          : score > 5 ? 'watch'
-          : null,
       });
     }
   }
 
-  /**
-   * Clearly below his level, with enough season behind it, and not young for it.
+  /*
+   * Ordered by name, not by a score.
    *
-   * The sample it asks for is the same one promote asks for; the asymmetry sits
-   * entirely in how big the gap has to be. That is the honest place for it —
-   * the claim is what differs, not the evidence needed to look. Demanding more
-   * innings as well simply hid the men the feature exists to find: a
-   * twenty-six-year-old carrying a 6.95 earned run average in Single-A missed
-   * the first version of this by six innings and showed no badge at all.
+   * The list used to be sorted by `opsDiff * 300 + ageDiff * 8` and carried a `signal` of
+   * promote / demote / watch from a raw statistical rule — `OPS above the level average by .075
+   * over 100 plate appearances` was a promotion. That made the payload a promotion leaderboard
+   * topped, on the real Arizona import, by three organizational-depth players aged 26, 29 and 26,
+   * and it was a SECOND Player Development verdict beside `decision` and `assignments`, disagreeing
+   * with them for six of seventy-five players. The Dashboard counted its non-null values and
+   * announced "Promotion signals: 42" for an organization whose farm system proposed nothing.
+   *
+   * Removed (D-044). The statistics themselves are objective facts and stay; the judgment comes
+   * from the engine below, and what needs attention comes from Minor League Operations.
    */
-  function overmatched(
-    belowLevel: boolean, enoughPlayed: boolean, ageDiff: number | null, level: number
-  ): boolean {
-    if (!belowLevel || !enoughPlayed) return false;
-    // Being young for the level excuses the numbers; being old for it does not
-    if (ageDiff === null || ageDiff > 0) return false;
-    // Nowhere below to send him
-    return level < lowestLevel;
-  }
-
-  const byScore = (a: unknown, b: unknown) => (b as { score: number }).score - (a as { score: number }).score;
-  batters.sort(byScore);
-  pitchers.sort(byScore);
-  return { batters, pitchers, baselines };
+  const byName = (a: unknown, b: unknown) =>
+    String((a as { name: string }).name).localeCompare(String((b as { name: string }).name));
+  batters.sort(byName);
+  pitchers.sort(byName);
+  return { batters, pitchers, baselines: baselines.byLevel, leagueBaselines: baselines.byLeague };
 }
 
 /**
@@ -762,73 +841,3 @@ orgRoutes.get('/prospects/:orgId', (req, res) => {
 });
 
 
-/** Structural health of every minor-league active roster in the organization. */
-
-/**
- * Organizational retention evidence for every assigned minor leaguer.
- *
- * REVIEW is intentionally weaker than RELEASE CANDIDATE. The review
- * population is validated before stronger transaction language is introduced.
- */
-orgRoutes.get('/minor-league-retention/:orgId', (req, res) => {
-  const orgId = Number(req.params.orgId);
-
-  if (!Number.isFinite(orgId)) {
-    return res.status(400).json({
-      error: 'Invalid organization id',
-    });
-  }
-
-  const prospects =
-    computeProspects(orgId);
-
-  res.json(
-    computeMinorLeagueRetention(
-      orgId,
-      prospects
-    )
-  );
-});
-
-
-orgRoutes.get('/minor-league-rosters/:orgId', (req, res) => {
-  const orgId = Number(req.params.orgId);
-
-  if (!Number.isFinite(orgId)) {
-    return res.status(400).json({ error: 'Invalid organization id' });
-  }
-
-  res.json({
-    orgId,
-    affiliates: computeMinorLeagueRosterHealth(orgId),
-  });
-});
-
-/** Conservative internal solutions for structurally unbalanced affiliates. */
-orgRoutes.get('/minor-league-moves/:orgId', (req, res) => {
-  const orgId = Number(req.params.orgId);
-
-  if (!Number.isFinite(orgId)) {
-    return res.status(400).json({ error: 'Invalid organization id' });
-  }
-
-  const prospects =
-    computeProspects(orgId);
-
-  const positionPlayerOperations =
-    computeMinorLeagueRebalance(
-      orgId,
-      prospects
-    );
-
-  const pitchingOperations =
-    computeMinorLeaguePitchingOperations(
-      orgId,
-      prospects
-    );
-
-  res.json({
-    ...positionPlayerOperations,
-    pitching: pitchingOperations,
-  });
-});

@@ -19,7 +19,14 @@
 
 import { db, tableColumns, tableExists } from './db.js';
 import { evaluateDestinationFit, evaluatePitcherDevelopmentalRole, type DestinationFitClassification } from './destinationFit.js';
-import { computeMinorLeagueRosterHealth, PLAYABLE_RATING, type AffiliateRosterHealth } from './minorLeagueRoster.js';
+import { PLAYABLE_RATING } from './minorLeagueRoster.js';
+import { affiliateOperationalUnder, openFarmSession, type FarmSession } from './farmOperations.js';
+import { farmArrivalFor, farmConsequenceFor, type FarmArrival, type FarmConsequenceV2 } from './farmConsequence.js';
+/*
+ * The one door between the modules. MLB Operations opens a farm session for a request and hands it to
+ * `farmConsequence`; it never imports a farm module itself (D-045, enforced by the boundary tests).
+ */
+export { openFarmSession, type FarmSession } from './farmOperations.js';
 import {
   loadScoutedAbilities, loadScoutedHitterProfiles, scoutedFieldingPopulation, scoutedGloves, scoutedHitterPopulation, summarizeEvidence,
   type ScoutedHitterProfile,
@@ -184,9 +191,16 @@ export interface FarmChange {
 export interface FarmConsequence {
   direction: 'leaves' | 'joins';
   affiliate: { teamId: number; label: string; level: number; levelName: string };
+  /**
+   * Minor League Operations' own operational reading of the club before and after: can it field a
+   * team and cover a schedule? The same findings-derived status the farm workspace shows, so the two
+   * modules describe one farm. (The first version read a role-code status here and called a club
+   * thin while the workspace, counting the men taking the starts, called it able.)
+   */
   overall: { before: string; after: string };
-  /** Only what changed, plus the role-specific line the move touches. */
+  /** Only what the move touches: the job's count before and after, and the active roster. */
   changes: FarmChange[];
+  /** The shortages the club would carry afterwards, in the workspace's words. */
   issuesAfter: string[];
   /**
    * How Minor League Operations treats players it cannot count as ordinary members
@@ -194,65 +208,105 @@ export interface FarmConsequence {
    * plain-words note where that bears on the player being moved.
    */
   rosterNotes: string[];
+
+  /**
+   * What Minor League Operations says follows, when a player LEAVES an affiliate: the job he
+   * vacates, whether the club can absorb it, who could fill it, the chain of moves that follows and
+   * where it stops, and any hole it leaves open.
+   *
+   * Minor League Operations OWNS this calculation; MLB Operations displays it and never reconstructs
+   * it (the reason the old branch's `minorLeagueCascadePlanner` was deferred rather than adopted,
+   * MLB_OPERATIONS.md §2.1 item 12). An unresolved farm consequence is information and never makes a
+   * major-league transaction illegal: what is possible is Player Rights', and nothing here touches
+   * it. Null for the `joins` direction, where nothing is vacated.
+   */
+  farm: FarmConsequenceV2 | null;
+
+  /**
+   * What follows when a player JOINS an affiliate (an option): the job he takes up there, who already
+   * holds it and whose developmental work he would push aside. Null for the `leaves` direction.
+   */
+  arrival: FarmArrival | null;
 }
 
-const healthLine = (h: AffiliateRosterHealth, role: RoleRef | null): FarmChange[] => {
-  const lines: FarmChange[] = [];
-  const push = (label: string, value: string) => lines.push({ label, before: value, after: value });
-  if (!role) return lines;
-  if (role.kind === 'starting_pitcher') push('Rotation', h.pitching.rotationStatus);
-  else if (role.kind === 'relief_pitcher') push('Bullpen', h.pitching.bullpenStatus);
-  else {
-    push('Position players', h.positionPlayers.bodyCountStatus);
-    const code = ({ 2: 'C', 3: '1B', 4: '2B', 5: '3B', 6: 'SS', 7: 'LF', 8: 'CF', 9: 'RF' } as Record<number, string>)[role.position];
-    const coverage = code ? h.positionPlayers.coverage.find((c) => c.position === code) : undefined;
-    if (coverage) push(`${code} coverage`, coverage.status);
-  }
-  return lines;
+/** A pitcher's job or a hitter's position, as the farm names it. */
+const jobNameOf = (role: RoleRef | null): string | null => {
+  if (!role) return null;
+  if (role.kind === 'starting_pitcher') return 'the rotation';
+  if (role.kind === 'relief_pitcher') return 'the bullpen';
+  return ({ 2: 'C', 3: '1B', 4: '2B', 5: '3B', 6: 'SS', 7: 'LF', 8: 'CF', 9: 'RF' } as Record<number, string>)[role.position] ?? null;
 };
+
+/** The count the move touches, in the operational reading's own terms. */
+function jobLine(op: NonNullable<ReturnType<typeof affiliateOperationalUnder>>, job: string | null): { label: string; value: string } | null {
+  if (!job) return null;
+  if (job === 'the rotation') return { label: 'Rotation', value: `${op.rotationClaimants} of ${op.pitching.rotationSpots} taking starts` };
+  if (job === 'the bullpen') return { label: 'Bullpen', value: `${op.pitching.relievers} relief arms` };
+  const c = op.coverage.find((x) => x.position === job);
+  return c ? { label: `${job} cover`, value: `${c.graded} graded${c.listedOnly > 0 ? `, ${c.listedOnly} by label only` : ''}` } : null;
+}
 
 /**
  * What one affiliate looks like if a player leaves it (a recall) or joins it (an
- * option), by Minor League Operations' own roster-health standards, read-only.
- * Reports the change; it does not choose or solve a replacement.
+ * option), by Minor League Operations' own standards, read-only. Reports the change
+ * and carries the farm's own answer; it does not choose or solve a replacement.
+ *
+ * A session, when the caller has one, is the organization read once for the whole request
+ * (`openFarmSession`); without one the farm is read for this call alone.
  */
 export function farmConsequence(
-  orgId: number, playerId: number, role: RoleRef | null, direction: 'leaves' | 'joins', affiliateTeamId: number | null
+  orgId: number, playerId: number, role: RoleRef | null, direction: 'leaves' | 'joins', affiliateTeamId: number | null,
+  session: FarmSession = openFarmSession(orgId)
 ): FarmConsequence | null {
   if (affiliateTeamId === null) return null;
-  const only = [affiliateTeamId];
-  const before = computeMinorLeagueRosterHealth(orgId, { onlyTeamIds: only })[0];
+  const before = affiliateOperationalUnder(session, affiliateTeamId);
   if (!before) return null;
-  const after = computeMinorLeagueRosterHealth(orgId, {
-    onlyTeamIds: only,
-    ...(direction === 'leaves' ? { removePlayerIds: [playerId] } : { addPlayers: [{ playerId, teamId: affiliateTeamId }] }),
-  })[0];
+  const scenario = direction === 'leaves' ? { removePlayerIds: [playerId] } : { addPlayers: [{ playerId, teamId: affiliateTeamId }] };
+  const after = affiliateOperationalUnder(session, affiliateTeamId, scenario);
   if (!after) return null;
+  const health = session.health().find((h) => h.teamId === affiliateTeamId);
+  if (!health) return null;
+
+  const job = jobNameOf(role);
   const changes: FarmChange[] = [];
-  const beforeLines = healthLine(before, role);
-  const afterLines = healthLine(after, role);
-  beforeLines.forEach((b, i) => changes.push({ label: b.label, before: b.before, after: afterLines[i]?.after ?? b.after }));
-  const bodies = (h: AffiliateRosterHealth) => `${h.roster.total} players (${h.roster.pitchers} P)`;
+  const line = jobLine(before, job);
+  const lineAfter = jobLine(after, job);
+  if (line && lineAfter) changes.push({ label: line.label, before: line.value, after: lineAfter.value });
+  const bodies = (h: { roster: { total: number; pitchers: number } }) => `${h.roster.total} players (${h.roster.pitchers} P)`;
   changes.push({ label: 'Active roster', before: bodies(before), after: bodies(after) });
+
   const rosterNotes: string[] = [];
-  const isRehab = before.rosterTreatment.rehab.some((p) => p.playerId === playerId);
-  const ambiguous = before.rosterTreatment.ambiguous.find((p) => p.playerId === playerId);
+  const isRehab = health.rosterTreatment.rehab.some((p) => p.playerId === playerId);
+  const ambiguous = health.rosterTreatment.ambiguous.find((p) => p.playerId === playerId);
   if (direction === 'leaves' && isRehab) {
     rosterNotes.push('He is on a rehab assignment, so this club does not count him in its roster health; his return changes nothing here.');
   } else if (direction === 'leaves' && ambiguous) {
     rosterNotes.push('Nothing establishes whether he is on a rehab assignment or was optioned. He is counted here; if he is on rehab this overstates what his leaving costs.');
   }
-  const others = before.rosterTreatment.ambiguous.filter((p) => p.playerId !== playerId);
+  const others = health.rosterTreatment.ambiguous.filter((p) => p.playerId !== playerId);
   if (others.length) {
     rosterNotes.push(`${others.length} other player(s) on this club (${others.slice(0, 3).map((p) => p.name).join(', ')}${others.length > 3 ? ', …' : ''}) may be on rehab; they are counted, so its depth may be overstated.`);
   }
+  if (health.rosterTreatment.injured.length) {
+    rosterNotes.push(`${health.rosterTreatment.injured.length} injured player(s) on this club (${health.rosterTreatment.injured.slice(0, 3).map((p) => p.name).join(', ')}${health.rosterTreatment.injured.length > 3 ? ', …' : ''}) are not counted as cover.`);
+  }
+
+  const meta = session.assembled().metas.find((m) => m.teamId === affiliateTeamId);
   return {
     direction,
-    affiliate: { teamId: before.teamId, label: before.label, level: before.level, levelName: before.levelName },
-    overall: { before: before.overall, after: after.overall },
+    affiliate: {
+      teamId: affiliateTeamId,
+      label: meta?.label ?? health.label,
+      level: meta?.level ?? health.level,
+      levelName: meta?.levelName ?? health.levelName,
+    },
+    overall: { before: before.status, after: after.status },
     changes,
-    issuesAfter: after.issues,
+    issuesAfter: after.findings.map((f) => f.headline),
     rosterNotes,
+    /* Asked of Minor League Operations, which owns both answers (D-045). */
+    farm: direction === 'leaves' ? farmConsequenceFor(orgId, playerId, session) : null,
+    arrival: direction === 'joins' ? farmArrivalFor(orgId, playerId, affiliateTeamId, session) : null,
   };
 }
 

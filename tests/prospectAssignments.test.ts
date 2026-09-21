@@ -142,12 +142,18 @@ describe('skip-level authorization', () => {
   });
 
   it('sits ten points above the developmental promotion threshold, with a hard floor of 84', () => {
-    // An older player has a lower ordinary threshold, but the skip requirement never drops below 84
+    // Age never lowers the ordinary threshold (D-044), so an older player's skip requirement is
+    // the ordinary bar plus ten, which is already above the 84 floor
     const older = of(plan({ ageDiff: -5 }), 'skip_level_promotion')[0];
-    expect(older.requirements.readiness).toBe(84);
-    // A player young for the level has a higher one, and the skip requirement follows it
+    expect(older.requirements.readiness).toBe(86);
+    // A player young for the level has a higher ordinary threshold, and the skip follows it
     const younger = of(plan({ ageDiff: 5 }), 'skip_level_promotion')[0];
     expect(younger.requirements.readiness).toBe(91);
+    // The floor still binds: nothing can put the skip requirement below 84
+    for (const ageDiff of [-10, -5, 0, 5, 10]) {
+      expect(of(plan({ ageDiff }), 'skip_level_promotion')[0].requirements.readiness)
+        .toBeGreaterThanOrEqual(84);
+    }
   });
 
   it('is never evaluated straight to the majors by this engine', () => {

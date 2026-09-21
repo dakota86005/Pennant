@@ -1,6 +1,6 @@
 # Project state
 
-Point-in-time snapshot from repository inspection on **2026-09-19**. Verify
+Point-in-time snapshot from repository inspection on **2026-09-20**. Verify
 this document against the current worktree before relying on it; update it when
 material implementation state changes.
 
@@ -9,12 +9,13 @@ material implementation state changes.
 - Package: `ootp-front-office` version `0.27.2`.
 - Inspected branch: `feature/mlb-operations-v2`, created from `feature/player-rights`
   (Player State foundation merged as PR #2 and Player Rights as PR #3; this branch is three commits ahead of `main`:
-  the MLB Operations rebuild, the scouting-department layer, and the hardening phase).
+  the MLB Operations rebuild, the scouting-department layer, and the hardening phase; the Minor League
+  Operations rebuild is uncommitted on top of them).
 - Stack: TypeScript, React 18, Vite 6, Express 4, SQLite via
   `better-sqlite3`, Electron 41, and Vitest 4.
-- Validation at this snapshot (after the hardening phase): `npx tsc --noEmit` clean, `npm test` 118 files /
-  1396 tests passing, `npm run build` succeeds. 159 of those tests are the behavioral corpus
-  ([BEHAVIOR_CASES.md](BEHAVIOR_CASES.md)).
+- Validation at this snapshot (after the Minor League Operations hardening phase): `npx tsc --noEmit`
+  clean, `npm test` 129 files / 1617 tests passing, `npm run build` succeeds. 393 of those tests are the
+  behavioral corpus ([BEHAVIOR_CASES.md](BEHAVIOR_CASES.md)): 159 for MLB Operations and 234 for the farm.
 - `origin/feature/mlb-operations` is **not merged** and was audited end to end
   ([MLB_OPERATIONS.md](MLB_OPERATIONS.md) §2). `rosterStateHistory.ts` and
   `transactionHistory.ts` were ported earlier in adapted form; `rosterTransactionState.ts`
@@ -129,43 +130,115 @@ plumbing exists, but no staff-derived values are supplied, so those modes fall
 back to manual values. Philosophy is not yet a universal input to contracts,
 trades, free agency, or other front-office models.
 
-## Implemented player-development and farm operations
+## Implemented player development
 
-Present on `main`:
+Present on `main`, with one addition on this branch:
 
 - Prospect decisions separate current-level performance, sample confidence,
   age/level urgency, and observed current-to-potential maturity, against
   developmental thresholds that no philosophy can move. The organization's
   promotion aggression is applied afterwards, as a preference among the
-  defensible assignments.
+  defensible assignments. **Changed on this branch (D-044):** age relative to
+  level may RAISE the bar for a player young for it and never lowers it for one
+  who is old for it, and the production diff it is measured on is league-relative
+  and park-adjusted rather than level-pooled.
 - Assignment plans evaluate normal promotion, exceptional skip-level promotion,
   one-level demotion, and AAA-to-MLB discussion against the organization's
   actual affiliate ladder.
+- **New on this branch:** `currentAssignment.ts` answers "is the level a player is
+  at still developing him?" as two readings (level standing, developmental window)
+  with a four-state verdict, distinguishing `not_assessable` (no season to read)
+  from `indeterminate` (missing evidence).
 - Destination fit compares visible current tools with active players in the
   actual destination league and adds stronger gates for skip-level moves.
 - Development protection scores visible current/potential grades and age; it
-  protects higher-value prospects from routine roster balancing.
+  protects higher-value prospects from routine roster balancing. It remains an
+  absolute-scale composite with no peer comparison.
 - Defensive assignment fit uses visible fielding ratings/experience and becomes
   stricter for more protected prospects.
-- Affiliate health reads the actual affiliate tree and active rosters, then
-  diagnoses hitter body count/position coverage and pitcher body count,
-  rotation, and bullpen structure.
-- Position-player and pitcher operations search for small sets of moves,
-  simulate source/destination effects, consume Player Development authorization
-  for level changes, apply philosophy preferences, show alternatives/rejections,
-  and never write transactions.
-- Retention separates developmental protection, legal assignments,
-  organization utility, roster pressure, transaction guardrails, observed
-  development, peer-relative development, and philosophy. Release candidates
-  remain advisory.
-- Farm Overview, Decisions, and Affiliates React workspaces surface these
-  results.
+- **Removed on this branch (D-044):** `computeProspects`' `signal` and `score` — a
+  second promotion-and-demotion verdict built from raw statistics, which ordered
+  the payload as a leaderboard and which the Dashboard and the AI briefing read.
+  Both now read the engine.
+
+## Implemented Minor League Operations
+
+Present on this branch (D-044 to D-046; design and audit in
+[MINOR_LEAGUE_OPERATIONS.md](MINOR_LEAGUE_OPERATIONS.md)):
+
+- **Production evidence** (`farmResults.ts`): each minor leaguer's line read against
+  his own LEAGUE at his own level, park-adjusted, with the sample and the
+  reliability it supports, and a stated reason whenever it cannot be read.
+  `farmUsage.ts` reads innings by position, starts and appearances.
+- **Playing time** (`playingTime.ts`): conflicts as named players competing for a
+  named job with what each is getting — one man one job, competition rather than
+  absence, stakes from Player Development's tier, and no share read from a club
+  that has played fewer than twenty games.
+- **Assignment review** (`farmAssignments.ts`): composes the current-assignment
+  read, the opportunity read, Player Development's defensible alternatives and
+  philosophy's preference among them into one of eight descriptive conclusions,
+  with ownership stated per question and the GM's decision named.
+- **Affiliate health** (`farmAffiliate.ts`): each club read twice — operational
+  (can it field a team and cover a schedule?) and developmental (are these players
+  developing?) — never merged, with structured findings carrying evidence, basis,
+  what is missing and what would resolve it.
+- **Organization view** (`farmOrganization.ts`): positional congestion on the
+  developmental path, depth on what a man can play, and starters against the
+  rotation spots each level has.
+- **Cascades** (`farmCascade.ts`): a chain whose every step is independently
+  defensible, stopping at absorbed / no defensible move / indeterminate /
+  relocates the same shortage / the bottom of the ladder / four steps.
+- **Retention** (`farmRetention.ts`): three questions with three owners —
+  developmental outlook (Player Development, philosophy cannot reach it),
+  operational pressure (Minor League Operations), organizational stance
+  (Philosophy, a stated lean after the outlook). A decision belonging to the
+  40-man, a major-league contract or an injured list is `not_a_farm_decision` and
+  names the process that owns it.
+- **Calibration** (`farmCalibration.ts`): every farm constant declared once and
+  stamped `policy` or `provisional`; none is `calibrated`, and the reason is
+  stated. `npm run farm:base-rate` reports how often the module raises something.
+- **API/UI:** `GET /api/farm-operations/:orgId`, `.../consequence/:playerId` and
+  `.../arrival/:playerId/:teamId` (`farmRoutes.ts`); page "Minor League Operations" (Farm System group),
+  five views behind one entry, hash-addressable, sharing MLB Operations' shell and
+  chip vocabulary. Read-only; not in the static export.
+- **The MLB ↔ farm contract** (`farmConsequence.ts`): `mlbEvidence.farmConsequence` carries
+  `farm: FarmConsequenceV2` for a departure — the vacated job, whether it can be
+  absorbed, whose playing time changes, the replacements, the cascade, what is left
+  open and how it was measured. Enforced statically in both directions.
+- **Verified on the real Arizona save** (read-only): 230 of 230 players on an
+  active list reasoned about (against 75 of 247 before), 18 attention items (11
+  pressing), and fourteen findings fixed or documented (§6.2).
+
+### Superseded and still present
+
+The superseded solvers (`minorLeagueMoves.ts`, `minorLeaguePitchingOperations.ts`,
+`pitcherRosterSimulation.ts`, `minorLeagueRetention.ts`), their three routes
+(`/api/minor-league-moves`, `/api/minor-league-retention`, `/api/minor-league-rosters`)
+and the three older Farm pages were **deleted** in the hardening phase
+([MINOR_LEAGUE_OPERATIONS.md](MINOR_LEAGUE_OPERATIONS.md) Part 7, D-047). Exactly one
+farm implementation exists. `minorLeagueRoster.ts` is counts and coverage only (its
+role-code statuses and prose lines are gone) and `rehabAssignments.ts` stays.
+The Player Development pages ("Player Development", "Scouted Development") read
+`/api/scouted-development/:orgId` (`scoutedDevelopment.ts`: the organization's minor
+leaguers with scouted grades, protection tier and history evidence).
 
 The scouted-development work adds a full scouting-history API and a Scouted
 Development page built on observed snapshots, peer pace, rating movement, and
 explicit fog-of-war language. The visible and calculated history is
 organization-scoped, static exports carry the payloads, and focused regression
 tests cover those boundaries.
+
+**Hardening phase (D-047, MINOR_LEAGUE_OPERATIONS.md Part 7):** a blocker holds the job (only a
+regular is one; otherwise an opportunity conflict); cover holders are named as ahead and count
+against nobody's claim; a designated hitter is `bat_only`; a player injured past a week is not
+cover and competes for nothing; a cascade over an unevaluated pool is `indeterminate` and says
+so; retention reads an open runway before this season's line; the organization is read once per
+request (`FarmSession`); MLB Operations displays the farm's own operational status before and
+after a move, the v2 answer, and an arrival answer for an option; the Dashboard chip counts the
+farm's attention list and the AI briefing receives the farm's structured conclusions; farm
+caches are cleared on import; every share line is declared once in `farmCalibration.ts`.
+Measured: ten consequences in one request 10.9 s → 1.1 s; retention indeterminates on the real
+save 147 → 23; 30 organizations swept with no crash.
 
 ## Implemented evidence boundary
 
@@ -350,19 +423,22 @@ resolution across all organization-specific features is future work.
 ## Known gaps and constraints
 
 - Player Development mechanics (readiness, assignment authorization, demotion,
-  destination fit, protection, philosophy profiles) and the evidence adapter now
-  have direct synthetic tests. Roster simulation, plan ranking, retention
-  guardrails, and organization resolution do not, and the farm modules assume
-  export columns the shared fixture lacks.
-- Operations does not yet consume the per-assignment preference object; it ranks
-  with its own philosophy-weighted costs among defensible candidates. Retention
-  folds a philosophy adjustment into the development score behind
-  release-candidate thresholds.
+  destination fit, protection, philosophy profiles), the evidence adapter and the
+  whole Minor League Operations model now have direct synthetic tests. Philosophy
+  normalization/persistence and organization resolution do not.
+- Minor League Operations consumes the per-assignment preference object, and
+  retention no longer folds a philosophy adjustment into a development score
+  (D-044, D-045). The superseded solvers that carried the old philosophy-weighted
+  plan costs are deleted (D-047).
+- No farm constant is calibrated against outcomes: the export holds no
+  minor-league history to fit against, and every one is stamped `policy` or
+  `provisional`.
+- Cross-affiliate Rookie-level MOVEMENT remains deferred (eligibility and
+  geography between a complex league and a Dominican one are unmodelled);
+  Rookie affiliates are otherwise fully covered rather than skipped.
 - Development thresholds are written for 20-80 and now receive normalized
   ratings; the scale itself is detected heuristically from the data, and whether
   fielding grades share it is an unverified assumption.
-- Rookie-level ACL/DSL movement is explicitly deferred until eligibility and
-  environment rules are modeled.
 - AAA-to-MLB is assessed by Player Development and consumed by MLB Operations for
   injury-driven roster problems only; direct skip-level moves to MLB remain excluded from the
   minor-league engine.

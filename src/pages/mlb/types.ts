@@ -116,7 +116,36 @@ export interface Step {
   missing: Array<{ message: string }>; limitation: string | null;
 }
 export interface FarmChange { label: string; before: string; after: string }
-export interface Farm { affiliate: { label: string; levelName: string }; overall: { before: string; after: string }; changes: FarmChange[]; issuesAfter: string[]; rosterNotes: string[] }
+/**
+ * Minor League Operations' answer, as displayed here and never rebuilt (D-045). `farm` is what
+ * follows a departure (the job vacated, the chain, what is left open); `arrival` is what an option
+ * does where the player lands.
+ */
+export interface Farm {
+  affiliate: { label: string; levelName: string };
+  overall: { before: string; after: string };
+  changes: FarmChange[];
+  issuesAfter: string[];
+  rosterNotes: string[];
+  farm: {
+    summary: string;
+    confidence: string;
+    lostRole: string | null;
+    affiliateImpact: { absorbed: boolean } | null;
+    playingTimeImpact: Array<{ playerId: number; name: string; effect: string }>;
+    replacementOptions: Array<{ playerId: number; name: string; from: string; judgment: string; preference: string | null }>;
+    cascade: { stop: string; stopDetail: string; certainty: string; steps: Array<{ index: number; usable: boolean }> } | null;
+    unresolvedIssues: string[];
+  } | null;
+  arrival: {
+    summary: string;
+    job: string | null;
+    contested: boolean;
+    displaced: Array<{ playerId: number; name: string; age: number }>;
+    confidence: string;
+    evidence: string[];
+  } | null;
+}
 export interface ChainLink { seq: number; kind: 'clear_spot' | 'transaction'; constraint: string | null; action: string; status: Status | 'not_a_transaction'; label: string; detail: string }
 
 export interface Candidate {

@@ -18,9 +18,6 @@ import { Trends } from './pages/Trends';
 import { Storylines } from './pages/Storylines';
 import { Dashboard } from './pages/Dashboard';
 import { Development } from './pages/Development';
-import { FarmSystem } from './pages/FarmSystem';
-import { FarmDecisions } from './pages/FarmDecisions';
-import { FarmAffiliates } from './pages/FarmAffiliates';
 import { TradeCenter } from './pages/TradeCenter';
 import { Philosophy } from './pages/Philosophy';
 import { RosterCrunch } from './pages/RosterCrunch';
@@ -35,6 +32,8 @@ import { Players } from './pages/Players';
 import { Standings } from './pages/Standings';
 import { MlbOperations } from './pages/MlbOperations';
 import { isMlbHash } from './pages/mlb/route';
+import { isFarmHash } from './pages/farm/route';
+import { MinorLeagueOperations } from './pages/MinorLeagueOperations';
 import { PlayerModal } from './playerModal';
 import { Nav, type NavEntry } from './Nav';
 import { applyTeamTheme, type ThemeMode } from './theme';
@@ -46,8 +45,8 @@ import { Chat } from './Chat';
 import { apiGet, apiPost } from './api';
 
 type Page =
-  | 'dashboard' | 'farm' | 'farm-decisions' | 'farm-affiliates' | 'storylines' | 'rosters' | 'depth' | 'prospects' | 'development' | 'draft' | 'franchise' | 'orgcompare'
-  | 'contracts' | 'crunch' | 'mlb-operations' | 'injuries' | 'freeagents' | 'trades' | 'philosophy' | 'lineup' | 'leaders'
+  | 'dashboard' | 'storylines' | 'rosters' | 'depth' | 'prospects' | 'development' | 'draft' | 'franchise' | 'orgcompare'
+  | 'contracts' | 'crunch' | 'mlb-operations' | 'minor-league-operations' | 'injuries' | 'freeagents' | 'trades' | 'philosophy' | 'lineup' | 'leaders'
   | 'staff' | 'watchlist' | 'players' | 'standings' | 'pitching' | 'schedule' | 'payroll' | 'trends' | 'settings';
 
 /**
@@ -74,10 +73,7 @@ const NAV: Array<NavEntry<Page>> = [
   {
     kind: 'group', label: 'Farm System', icon: '🌾',
     items: [
-      { page: 'farm', label: 'Overview', hint: 'Affiliate health and decisions' },
-      { page: 'farm-decisions', label: 'Decisions', hint: 'Assignments, retention, and roster churn' },
-      { page: 'farm-affiliates', label: 'Affiliates', hint: 'Roster structure and positional coverage' },
-
+      { page: 'minor-league-operations', label: 'Minor League Operations', hint: 'Assignments, playing time, affiliates, cascades' },
       { page: 'prospects', label: 'Player Development', hint: 'Assignments, readiness, and scouting progression' },
       { page: 'development', label: 'Scouted Development', hint: 'How scouting evaluations change over time' },
     ],
@@ -155,20 +151,18 @@ export function App() {
   const [saves, setSaves] = useState<SaveInfo[]>([]);
   const [orgs, setOrgs] = useState<Org[]>([]);
   const [orgId, setOrgId] = useState<number | null>(null);
-  // A link into MLB Operations (#/mlb/...) opens it; the module owns the rest of the address (src/pages/mlb/route.ts).
-  const [page, setPage] = useState<Page>(() => (isMlbHash(window.location.hash) ? 'mlb-operations' : 'dashboard'));
-  useEffect(() => {
-    if (page !== 'mlb-operations' && isMlbHash(window.location.hash)) window.history.replaceState(null, '', window.location.pathname + window.location.search);
-  }, [page]);
-
   /*
-   * Farm pages share affiliate context so Overview can drill directly into
-   * a club and the Affiliates workspace can preserve the user's selection.
+   * A link into either operations module (#/mlb/... or #/farm/...) opens it; the module owns the rest
+   * of the address (src/pages/mlb/route.ts, src/pages/farm/route.ts).
    */
-  const [
-    farmAffiliateTeamId,
-    setFarmAffiliateTeamId,
-  ] = useState<number | null>(null);
+  const [page, setPage] = useState<Page>(() =>
+    isMlbHash(window.location.hash) ? 'mlb-operations' : isFarmHash(window.location.hash) ? 'minor-league-operations' : 'dashboard'
+  );
+  useEffect(() => {
+    const strayMlb = page !== 'mlb-operations' && isMlbHash(window.location.hash);
+    const strayFarm = page !== 'minor-league-operations' && isFarmHash(window.location.hash);
+    if (strayMlb || strayFarm) window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  }, [page]);
 
   const [switching, setSwitching] = useState(false);
   /** Live import progress, so a thirty-second wait is not a blank screen. */
@@ -358,9 +352,7 @@ export function App() {
                   i.page !== 'watchlist' &&
                   i.page !== 'philosophy' &&
                   i.page !== 'mlb-operations' &&
-                i.page !== 'farm' &&
-                i.page !== 'farm-decisions' &&
-                i.page !== 'farm-affiliates'
+                  i.page !== 'minor-league-operations'
               ),
             }
           : e
@@ -506,26 +498,7 @@ export function App() {
                 {page === 'storylines' && <Storylines orgId={orgId} orgLabel={org.label} />}
                 {page === 'rosters' && <RosterPage orgId={orgId} />}
                 {page === 'depth' && <DepthChart orgId={orgId} />}
-                {page === 'farm' && (
-                <FarmSystem
-                  orgId={orgId}
-                  orgLabel={org.label}
-                  onOpenAffiliate={(teamId) => {
-                    setFarmAffiliateTeamId(teamId);
-                    setPage('farm-affiliates');
-                  }}
-                />
-              )}
-              {page === 'farm-decisions' && <FarmDecisions orgId={orgId} orgLabel={org.label} />}
-                {page === 'farm-affiliates' && (
-                <FarmAffiliates
-                  orgId={orgId}
-                  orgLabel={org.label}
-                  selectedTeamId={farmAffiliateTeamId}
-                  onSelectTeam={setFarmAffiliateTeamId}
-                />
-              )}
-              {page === 'prospects' && <Prospects orgId={orgId} />}
+                {page === 'prospects' && <Prospects orgId={orgId} />}
                 {page === 'development' && <Development orgId={orgId} />}
                 {page === 'draft' && <Draft orgId={orgId} />}
                 {page === 'franchise' && <Franchise orgId={orgId} />}
@@ -535,6 +508,7 @@ export function App() {
                 {page === 'philosophy' && <Philosophy orgId={orgId} orgLabel={org.label} />}
                 {page === 'crunch' && <RosterCrunch orgId={orgId} />}
                 {page === 'mlb-operations' && <MlbOperations orgId={orgId} />}
+                {page === 'minor-league-operations' && <MinorLeagueOperations orgId={orgId} />}
                 {page === 'injuries' && <Injuries orgId={orgId} />}
                 {page === 'trades' && <TradeCenter orgId={orgId} orgLabel={org.label} />}
                 {page === 'freeagents' && <FreeAgents orgId={orgId} />}

@@ -321,21 +321,28 @@ export function evaluateProspectDecision(
         };
 
   /*
-   * The developmental promotion threshold: a base of 76 readiness, moved by age
-   * relative to level. It is a baseball-development rule, so it does not depend
-   * on the organization's philosophy.
+   * The developmental promotion threshold: a base of 76 readiness, raised by youth relative to the
+   * level. It is a baseball-development rule, so it does not depend on the organization's
+   * philosophy.
    *
    * Age relative to level changes URGENCY, not readiness.
    *
-   * Younger-than-level players may reasonably be asked to clear a slightly
-   * higher bar before moving. Older-than-level players face somewhat more
-   * pressure to be challenged.
+   * A player who is young for his level has developmental time, and may reasonably be asked to
+   * clear a slightly higher bar before being pushed: there is a cost to challenging him early and
+   * no cost to waiting. The effect is capped at five points so age context can break borderline
+   * cases without overpowering what he has actually done.
    *
-   * The effect is intentionally capped at five points so age context can break
-   * borderline cases without overpowering actual performance.
+   * Being OLD for the level never lowers the bar. The earlier model read it as developmental
+   * urgency and discounted the threshold by up to five points for it, which made a 29-year-old
+   * hitting 1.304 at Double-A a promotion case on a bar of 71 — age arguing FOR a developmental
+   * move. Age is not evidence about what a player has shown, and a player past his level's
+   * developmental window raises an ORGANIZATIONAL question, not a developmental one:
+   * `currentAssignment.ts` answers it and says so (D-044,
+   * docs/MINOR_LEAGUE_OPERATIONS.md C-6). His promotion case, if he has one, rests entirely on
+   * what he has done.
    */
   const ageThresholdAdjustment = Math.round(
-    clamp((50 - agePressure) / 10, -5, 5)
+    clamp((50 - agePressure) / 10, 0, 5)
   );
 
   const promotionThreshold = rounded(

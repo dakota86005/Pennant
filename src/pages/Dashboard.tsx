@@ -51,7 +51,9 @@ interface DashboardData {
   cold: Array<{ player_id: number; name: string; positionName: string; pa: number; avg: number; ops: number }>;
   injuries: Array<{ player_id: number; name: string; positionName: string; levelName: string; status: string; daysLeft: number | null }>;
   pending: {
-    expiring: number; extensionCandidates: number; promoteSignals: number;
+    expiring: number; extensionCandidates: number;
+    /** Minor League Operations' pressing items; an older payload has none. */
+    farmAttention?: number;
     injuredCount: number; crunchIssues: number;
     /** Optional: a save imported before this existed has no count to show. */
     tradeTalk?: number;
@@ -104,7 +106,14 @@ export function Dashboard({ orgId, onNavigate }: { orgId: number; onNavigate: (p
       <div className="dash-decisions">
         <DecisionChip label="Expiring contracts" count={data.pending.expiring} onClick={() => onNavigate('contracts')} />
         <DecisionChip label="Extension candidates" count={data.pending.extensionCandidates} onClick={() => onNavigate('contracts')} />
-        <DecisionChip label="Promotion signals" count={data.pending.promoteSignals} onClick={() => onNavigate('prospects')} />
+        <DecisionChip
+          label="Farm attention"
+          count={data.pending.farmAttention ?? 0}
+          onClick={() => {
+            window.location.hash = '#/farm';
+            onNavigate('minor-league-operations');
+          }}
+        />
         <DecisionChip label="Trade talk" count={data.pending.tradeTalk ?? 0} onClick={() => onNavigate('trades')} />
         <DecisionChip label="Roster issues" count={data.pending.crunchIssues} onClick={() => onNavigate('crunch')} />
         <DecisionChip label="Injured org-wide" count={data.pending.injuredCount} onClick={() => onNavigate('injuries')} />

@@ -126,6 +126,7 @@ interface HistoryResponse {
 }
 
 
+/** One minor leaguer as `/api/scouted-development` serves him. */
 interface RetentionPlayer {
   playerId:
     number;
@@ -755,7 +756,7 @@ export function Development({
         ),
 
         apiGet<RetentionResponse>(
-          `/api/minor-league-retention/${orgId}`
+          `/api/scouted-development/${orgId}`
         ),
       ])
         .then(

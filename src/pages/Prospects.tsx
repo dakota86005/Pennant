@@ -265,151 +265,56 @@ interface ProspectsResponse {
 }
 
 
+/** One minor leaguer as `/api/scouted-development` serves him. */
 interface RetentionPlayer {
   playerId: number;
-
   name: string;
   age: number;
-
   kind:
     | 'hitter'
     | 'pitcher';
-
   teamId: number;
   team: string;
-
   level: number;
   levelName: string;
-
-  current:
-    number | null;
-
-  potential:
-    number | null;
-
+  current: number | null;
+  potential: number | null;
   protection: {
     /** null (indeterminate) when the visible ratings it depends on are unknown. */
     tier: string | null;
     score: number | null;
   };
-
   transaction: {
     active: boolean;
-    onSecondary: boolean;
-    onInjuredList: boolean;
-    onDl60: boolean;
-    mustBeActive: boolean;
-    majorContract: boolean;
-    proServiceYears: number;
+    onInjuredList: boolean | null;
   };
-
   role: {
     listedPosition: string;
-
     developmentalPitcherRole:
       | 'starter'
       | 'reliever'
       | null;
-
-    internalSameLevelNeed:
-      string[];
-
-    legalDevelopmentMoves:
-      string[];
   };
-
   evidence: {
     peerDevelopment: {
-      pace:
-        PeerPace;
-
-      percentile:
-        number | null;
-
-      cohortSize:
-        number;
-
-      reasons:
-        string[];
+      pace: PeerPace;
+      percentile: number | null;
+      cohortSize: number;
+      reasons: string[];
     };
-
     developmentHistory: {
       snapshotCount: number;
-
-      observationDays:
-        number | null;
-
-      currentDelta:
-        number | null;
-
-      potentialDelta:
-        number | null;
-
-      reasons:
-        string[];
+      observationDays: number | null;
+      currentDelta: number | null;
+      potentialDelta: number | null;
+      reasons: string[];
     };
   };
-
-  recommendation:
-    | 'protected'
-    | 'retain'
-    | 'expendable_depth'
-    | 'release_candidate';
 }
-
 
 interface RetentionResponse {
   players:
     RetentionPlayer[];
-}
-
-
-interface OperationsMove {
-  playerId: number;
-  playerName: string;
-
-  fromTeamId?: number;
-  fromTeam: string;
-
-  toTeamId?: number;
-  toTeam: string;
-
-  kind?: string;
-
-  assignment?: {
-    position?: string;
-    fit?: number;
-    use?: string;
-  };
-
-  destinationRole?: string;
-
-  reasons?: string[];
-
-  development?: {
-    recommendation?:
-      string | null;
-
-    reasons?:
-      string[];
-  };
-}
-
-
-interface OperationsPlan {
-  moves:
-    OperationsMove[];
-}
-
-
-interface OperationsResponse {
-  plans:
-    OperationsPlan[];
-
-  pitching?: {
-    plans?:
-      OperationsPlan[];
-  };
 }
 
 
@@ -463,9 +368,6 @@ interface DevelopmentPlayer {
 
   prospect:
     Prospect | null;
-
-  operation:
-    OperationsMove | null;
 }
 
 
@@ -1021,33 +923,13 @@ function AttentionCard({
       )}
 
 
-      <div
-        className={
-          player.operation
-            ? 'development-operations development-operations-active'
-            : 'development-operations'
-        }
-      >
+      <div className="development-operations">
         <div className="development-subhead">
-          Operations decision
+          Where he plays
         </div>
 
-        {player.operation ? (
-          <>
-            <strong>
-              Move recommended
-            </strong>
-
-            <p>
-              {player.operation
-                .fromTeam}
-              {' → '}
-              {player.operation
-                .toTeam}
-            </p>
-          </>
-        ) : decision
-            .recommendation ===
+        {decision
+          .recommendation ===
           'mlb_ready_discussion' ? (
           <>
             <strong>
@@ -1063,12 +945,13 @@ function AttentionCard({
         ) : (
           <>
             <strong>
-              No move recommended now
+              A Minor League Operations question
             </strong>
 
             <p>
-              The assignment is developmentally defensible, but current roster
-              structure does not create a reason to make the move.
+              Whether he can get the work where he is, who is ahead of him, and what
+              follows if he moves are answered in Minor League Operations, from the
+              same Player Development judgment shown here.
             </p>
           </>
         )}
@@ -1308,14 +1191,6 @@ export function Prospects({
     );
 
   const [
-    operations,
-    setOperations,
-  ] =
-    useState<OperationsResponse | null>(
-      null
-    );
-
-  const [
     filter,
     setFilter,
   ] =
@@ -1380,7 +1255,6 @@ export function Prospects({
 
       setProspects(null);
       setRetention(null);
-      setOperations(null);
       setError(null);
 
       Promise.all([
@@ -1389,18 +1263,13 @@ export function Prospects({
         ),
 
         apiGet<RetentionResponse>(
-          `/api/minor-league-retention/${orgId}`
-        ),
-
-        apiGet<OperationsResponse>(
-          `/api/minor-league-moves/${orgId}`
+          `/api/scouted-development/${orgId}`
         ),
       ])
         .then(
           ([
             prospectData,
             retentionData,
-            operationsData,
           ]) => {
             if (
               cancelled
@@ -1414,10 +1283,6 @@ export function Prospects({
 
             setRetention(
               retentionData
-            );
-
-            setOperations(
-              operationsData
             );
           }
         )
@@ -1451,8 +1316,7 @@ export function Prospects({
       () => {
         if (
           !prospects ||
-          !retention ||
-          !operations
+          !retention
         ) {
           return [];
         }
@@ -1473,44 +1337,6 @@ export function Prospects({
             prospect.player_id,
             prospect
           );
-        }
-
-
-        const operationMap =
-          new Map<
-            number,
-            OperationsMove
-          >();
-
-        for (
-          const plan of
-          operations.plans
-        ) {
-          for (
-            const move of
-            plan.moves
-          ) {
-            operationMap.set(
-              move.playerId,
-              move
-            );
-          }
-        }
-
-        for (
-          const plan of
-          operations.pitching
-            ?.plans ?? []
-        ) {
-          for (
-            const move of
-            plan.moves
-          ) {
-            operationMap.set(
-              move.playerId,
-              move
-            );
-          }
         }
 
 
@@ -1555,7 +1381,7 @@ export function Prospects({
 
               injured:
                 player.transaction
-                  .onInjuredList,
+                  .onInjuredList === true,
 
               listedRole:
                 roleLabel(
@@ -1600,18 +1426,12 @@ export function Prospects({
                 prospectMap.get(
                   player.playerId
                 ) ?? null,
-
-              operation:
-                operationMap.get(
-                  player.playerId
-                ) ?? null,
             })
           );
       },
       [
         prospects,
         retention,
-        operations,
       ]
     );
 
@@ -1627,8 +1447,7 @@ export function Prospects({
 
   if (
     !prospects ||
-    !retention ||
-    !operations
+          !retention
   ) {
     return (
       <p className="muted">
@@ -1764,22 +1583,6 @@ export function Prospects({
       )
       .sort(
         (a, b) => {
-          const operation =
-            Number(
-              Boolean(
-                b.operation
-              )
-            ) -
-            Number(
-              Boolean(
-                a.operation
-              )
-            );
-
-          if (operation !== 0) {
-            return operation;
-          }
-
           const aReadiness =
             a.prospect
               ?.decision
@@ -1817,7 +1620,7 @@ export function Prospects({
           </h1>
 
           <p>
-            Player Development asks what level a player has earned. Operations
+            Player Development asks what level a player has earned. Minor League Operations
             separately asks whether the organization should actually move him now.
             Scouting history shows how our observed view of the player is changing
             over time.
@@ -1852,25 +1655,6 @@ export function Prospects({
 
           <small>
             Players with at least one higher- or lower-level assignment supported by current evidence.
-          </small>
-        </div>
-
-        <div>
-          <span>
-            Operations recommendations
-          </span>
-
-          <strong>
-            {
-              players.filter(
-                (player) =>
-                  player.operation
-              ).length
-            }
-          </strong>
-
-          <small>
-            Developmentally defensible moves the organization actually needs.
           </small>
         </div>
 
@@ -2011,12 +1795,6 @@ export function Prospects({
                           <strong>
                             {player.name}
                           </strong>
-
-                          {player.operation && (
-                            <span className="development-inbox-operation">
-                              OPS
-                            </span>
-                          )}
                         </div>
 
                         <div className="development-inbox-meta">
@@ -2291,10 +2069,6 @@ export function Prospects({
                 <th>
                   Development recommendation
                 </th>
-
-                <th>
-                  Operations
-                </th>
               </tr>
             </thead>
 
@@ -2387,18 +2161,6 @@ export function Prospects({
                           </span>
                         )}
                       </td>
-
-                      <td>
-                        {player.operation ? (
-                          <span className="development-operation-tag">
-                            Recommended
-                          </span>
-                        ) : (
-                          <span className="muted">
-                            —
-                          </span>
-                        )}
-                      </td>
                     </tr>
                   );
                 }
@@ -2423,7 +2185,7 @@ export function Prospects({
         {' '}
         performance establishes readiness; age changes urgency; organizational
         philosophy changes the promotion threshold; scouting history describes
-        what the organization has observed; Operations decides whether a legal
+        what the organization has observed; Minor League Operations decides whether a legal
         move is actually useful now.
       </footer>
     </div>

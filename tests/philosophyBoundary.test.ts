@@ -287,9 +287,14 @@ describe('skip-level developmental floors are philosophy-independent', () => {
     }
   });
 
-  it('holds the 84 floor when age lowers the ordinary threshold', () => {
-    const older = evaluationOf(developmentPlan({ ageDiff: -5 }), 'skip_level_promotion');
-    expect(older.requirements.readiness).toBe(84);
+  it('holds the skip-level floor whatever age does to the ordinary threshold', () => {
+    // Age no longer lowers the ordinary bar (D-044), so the skip requirement is base + 10 and the
+    // 84 floor is what guarantees it can never fall below that whatever the base becomes.
+    for (const ageDiff of [-5, 0, 5]) {
+      const e = evaluationOf(developmentPlan({ ageDiff }), 'skip_level_promotion');
+      expect(e.requirements.readiness).toBeGreaterThanOrEqual(84);
+    }
+    expect(evaluationOf(developmentPlan({ ageDiff: -5 }), 'skip_level_promotion').requirements.readiness).toBe(86);
   });
 
   it('lets philosophy prefer or disfavor a skip only once it is defensible', () => {

@@ -43,10 +43,11 @@ const GUARDED = [
   'lineupShifts.ts',
   'rehabAssignments.ts',
   'minorLeagueRoster.ts',
-  'minorLeagueMoves.ts',
-  'pitcherRosterSimulation.ts',
-  'minorLeaguePitchingOperations.ts',
-  'minorLeagueRetention.ts',
+  'scoutedDevelopment.ts',
+  'farmOperations.ts',
+  'farmConsequence.ts',
+  'farmResults.ts',
+  'farmUsage.ts',
 ];
 
 /** Every way of naming a continuous OOTP value/ability field that is not approved evidence. */
