@@ -18,7 +18,19 @@ import { evaluateDevelopmentProtection } from './developmentFit.js';
 import type { AffiliateRosterHealth } from './minorLeagueRoster.js';
 import type { OperationalStatus } from './farmAffiliate.js';
 import { clubUsage } from './farmUsage.js';
-import { positionConflict, reliefConflict, rotationConflict, type PlayingTimeConflict, type UsageFacts } from './playingTime.js';
+import { describeTenure } from './farmRecentUsage.js';
+import {
+  ownWork,
+  positionConflict,
+  reliefConflict,
+  rotationConflict,
+  type ConflictTiming,
+  type FarmJob,
+  type PlayingTimeConflict,
+  type UsageFacts,
+  type WorkLevel,
+  type WorkShare,
+} from './playingTime.js';
 import {
   planCascade,
   poolFor,
@@ -32,6 +44,8 @@ import { POSITION_CAPACITY, RELIEF_CORPS, ROTATION_SPOTS } from './farmCalibrati
 import {
   affiliateOperationalUnder,
   anyPlayer,
+  castOf,
+  farmJobOf,
   FIELDING_POSITIONS,
   OOTP_STARTER_ROLE,
   openFarmSession,
@@ -66,6 +80,15 @@ export interface FarmConsequenceV2 {
     findingsAfter: string[];
   } | null;
 
+  /**
+   * What he is actually doing at the club NOW, which is what the vacancy is: a regular's job, a share
+   * of one, or a job he joined four games ago and has not established. The farm's own playing-time
+   * read — the recent window where the export's game log allows it, the season where it does not — so
+   * MLB Operations displays it and reconstructs nothing. null when there is nothing to read (a rehab
+   * assignee, a club that has barely played).
+   */
+  currentOpportunity: CurrentOpportunity | null;
+
   /** Who else's playing time changes. */
   playingTimeImpact: Array<{ playerId: number; name: string; effect: string }>;
 
@@ -96,6 +119,69 @@ export interface FarmConsequenceV2 {
   summary: string;
 }
 
+/** How a man's present role at his club reads, for the contract. Structured states; never a score. */
+export interface CurrentOpportunity {
+  /** His current work level at the job; `unknown` when his role there is not established. */
+  level: WorkLevel;
+  /** What the level rests on: the recent window, the season alone, or OOTP's projected rotation. */
+  basis: WorkShare['levelFrom'];
+  /**
+   * How much the recent read can carry. `season_only` means the export has no game log, so the season
+   * to date is all there is and it may describe a competition that no longer exists.
+   */
+  evidence: 'sufficient' | 'thin' | 'none' | 'season_only';
+  /** He joined the club inside the recent window: small destination totals are newness, not disuse. */
+  recentArrival: boolean;
+  /** The season and the recent read place him at different levels; both are in `detail`. */
+  disagrees: boolean;
+  /** Whether the competition at his job is the present, the past, or not yet readable. null when uncontested. */
+  timing: ConflictTiming | null;
+  /** What he holds, in words. */
+  detail: string;
+}
+
+/** The contract's description of one man's present role, from his own work read. */
+export function currentOpportunityOf(work: WorkShare | null, timing: ConflictTiming | null): CurrentOpportunity | null {
+  if (!work) return null;
+  const arrived = work.tenure?.status === 'recent_arrival' ? describeTenure(work.tenure) : null;
+  const parts = [arrived, work.basis, work.disagrees ? `Over the season: ${work.season.basis}` : null].filter((x): x is string => x !== null);
+  return {
+    level: work.level,
+    basis: work.levelFrom,
+    evidence: work.recent ? work.recent.evidence : 'season_only',
+    recentArrival: work.tenure?.status === 'recent_arrival',
+    disagrees: work.disagrees,
+    timing,
+    detail: parts.join(' '),
+  };
+}
+
+/** One man's own work at his job at his club, from the session. */
+function workOf(session: FarmSession, player: AssembledPlayer): { work: WorkShare | null; timing: ConflictTiming | null } {
+  const job = farmJobOf(player);
+  if (!job || player.rehab || player.injured !== null) return { work: null, timing: null };
+  const inConflict = session
+    .conflicts(player.meta.teamId)
+    .find((c) => sameJob(c.job, job) && c.claimants.some((s) => s.playerId === player.row.player_id));
+  if (inConflict) return { work: inConflict.claimants.find((s) => s.playerId === player.row.player_id) ?? null, timing: inConflict.timing };
+  const { players, year } = session.assembled();
+  const club = clubUsage(player.meta.teamId, year);
+  const { claimants, alsoPlaying } = castOf(job, players.filter((p) => p.meta.teamId === player.meta.teamId));
+  return {
+    work: ownWork(player.row.player_id, job, {
+      claimants,
+      alsoPlaying,
+      clubInningsAtPosition: job.kind === 'position' ? (club.inningsByPosition[job.position] ?? 0) : undefined,
+      clubGames: club.games,
+      window: session.jobWindow(player.meta.teamId, job),
+    }),
+    timing: null,
+  };
+}
+
+const sameJob = (a: FarmJob, b: FarmJob): boolean =>
+  a.kind === b.kind && (a.kind !== 'position' || (b.kind === 'position' && a.position === b.position));
+
 /**
  * "What happens to the farm if this player leaves?" — the question MLB Operations asks.
  *
@@ -114,6 +200,7 @@ export function farmConsequenceFor(orgId: number, playerId: number, session: Far
       sourceAffiliate: null,
       lostRole: null,
       affiliateImpact: null,
+      currentOpportunity: null,
       playingTimeImpact: [],
       replacementOptions: [],
       cascade: null,
@@ -142,6 +229,7 @@ export function farmConsequenceFor(orgId: number, playerId: number, session: Far
         statusAfter: affiliateOperationalUnder(session, leaving.meta.teamId)?.status ?? 'healthy',
         findingsAfter: affiliateOperationalUnder(session, leaving.meta.teamId)?.findings.map((f) => f.headline) ?? [],
       },
+      currentOpportunity: null,
       playingTimeImpact: [],
       replacementOptions: [],
       cascade: null,
@@ -192,8 +280,8 @@ export function farmConsequenceFor(orgId: number, playerId: number, session: Far
           name: s.name,
           effect:
             s.level === 'unknown'
-              ? `${jobDescription(c)} opens up; how much of it ${s.name} has been getting cannot be read yet.`
-              : `${jobDescription(c)} opens up: ${s.name} was ${s.level.replace('_', ' ')} there.`,
+              ? `${jobDescription(c)} opens up; how much of it ${s.name} has been getting cannot be read yet${s.tenure?.status === 'recent_arrival' ? ', because he joined the club inside the recent window' : ''}.`
+              : `${jobDescription(c)} opens up: ${s.name} has been ${s.level.replace('_', ' ')} there. ${s.basis}`,
         }))
     );
 
@@ -224,10 +312,26 @@ export function farmConsequenceFor(orgId: number, playerId: number, session: Far
         ]
       : [];
 
+  const mine = workOf(session, leaving);
+  const currentOpportunity = currentOpportunityOf(mine.work, mine.timing);
+
   const evidence: string[] = [];
   if (leaving.ambiguous) {
     evidence.push(
       `Nothing in the export or the log explains why he is at ${leaving.meta.label}, so he is counted as one of its own; if he is in fact on a rehab assignment this overstates the cost (D-026).`
+    );
+  }
+  /*
+   * How the playing-time side of the answer was read. Whether the club can ABSORB the vacancy is a
+   * roster count and needs no usage; who gains the reps, and what he himself was holding, do.
+   */
+  if (currentOpportunity?.evidence === 'season_only') {
+    evidence.push(
+      `${leaving.meta.label}'s playing time is read on the season to date: this export has no game log, so a man who has since left may still show as holding work.`
+    );
+  } else if (currentOpportunity && currentOpportunity.evidence !== 'sufficient') {
+    evidence.push(
+      `His own role at ${leaving.meta.label} is not established: ${currentOpportunity.recentArrival ? 'he joined the club inside the recent window' : 'too few of its recent games can be counted for him'}, so what the club would be losing at ${jobLabelOf(job)} is read from the roster, not from his usage.`
     );
   }
   evidence.push(
@@ -253,6 +357,7 @@ export function farmConsequenceFor(orgId: number, playerId: number, session: Far
           findingsAfter: operationalAfter?.findings.map((f) => f.headline) ?? [],
         }
       : null,
+    currentOpportunity,
     playingTimeImpact,
     replacementOptions,
     cascade,
@@ -449,6 +554,11 @@ export interface FarmArrival {
   capacity: number | null;
   /** More men with a claim on the job than it supports, once he is there. */
   contested: boolean;
+  /**
+   * Whether the competition he would join is the present, the past, or not yet readable. `uncertain`
+   * and `season_only` both mean the holders' roles should not be taken as settled.
+   */
+  timing: ConflictTiming | null;
   /** Men with developmental stakes who are already short of the job and would be pushed further. */
   displaced: Array<{ playerId: number; name: string; age: number; tier: string | null }>;
   confidence: 'established' | 'indeterminate' | 'cannot_be_established';
@@ -473,6 +583,7 @@ export function farmArrivalFor(orgId: number, playerId: number, teamId: number, 
       holders: [],
       capacity: null,
       contested: false,
+      timing: null,
       displaced: [],
       confidence: 'cannot_be_established',
       evidence: [meta ? 'He could not be found in the export.' : 'The destination is not a minor-league affiliate of this organization.'],
@@ -524,6 +635,7 @@ export function farmArrivalFor(orgId: number, playerId: number, teamId: number, 
       holders: [],
       capacity: null,
       contested: false,
+      timing: null,
       displaced: [],
       confidence: 'cannot_be_established',
       evidence: ['He has no listed position and no revealed fielding grade, so the job he would take up cannot be named.'],
@@ -535,19 +647,17 @@ export function farmArrivalFor(orgId: number, playerId: number, teamId: number, 
    * The arrival IS the conflict that would exist with him on the club. He is added as a claimant with
    * nothing yet, which is the truth of the day he arrives; the question is who is already on the job.
    */
-  const claimants = mine.filter((p) => p.primaryJob === job).map((p) => p.usage);
+  const farmJob: FarmJob = job === 'the rotation' ? { kind: 'rotation' } : job === 'the bullpen' ? { kind: 'relief' } : { kind: 'position', position: job };
+  const cast = castOf(farmJob, mine);
+  const claimants = cast.claimants;
+  /* The same window the workspace reads the club on: the holders are read as they are NOW. */
+  const window = session.jobWindow(teamId, farmJob);
   const conflict =
-    job === 'the rotation'
-      ? rotationConflict(teamId, [...claimants, newcomer], club.games)
-      : job === 'the bullpen'
+    farmJob.kind === 'rotation'
+      ? rotationConflict(teamId, [...claimants, newcomer], club.games, window)
+      : farmJob.kind === 'relief'
         ? reliefConflict(teamId, [...claimants, newcomer], club.games)
-        : positionConflict(
-            teamId,
-            job,
-            [...claimants, newcomer],
-            club.inningsByPosition[job] ?? 0,
-            mine.filter((p) => p.primaryJob !== job && (p.usage.inningsByPosition[job] ?? 0) > 0).map((p) => p.usage)
-          );
+        : positionConflict(teamId, farmJob.position, [...claimants, newcomer], club.inningsByPosition[farmJob.position] ?? 0, cast.alsoPlaying, window);
 
   const capacity = job === 'the rotation' ? calibration.STARTER_CAPACITY : job === 'the bullpen' ? calibration.RELIEF_CAPACITY : POSITION_CAPACITY.covered;
   const evidence: string[] = [];
@@ -560,6 +670,7 @@ export function farmArrivalFor(orgId: number, playerId: number, teamId: number, 
       holders: [],
       capacity,
       contested: claimants.length + 1 > capacity,
+      timing: null,
       displaced: [],
       confidence: 'indeterminate',
       evidence,
@@ -574,7 +685,12 @@ export function farmArrivalFor(orgId: number, playerId: number, teamId: number, 
     .filter((c) => c.playerId !== playerId)
     .map((c) => ({ playerId: c.playerId, name: c.name, age: c.age, tier: c.tier }));
   const contested = claimants.length + 1 > capacity;
-  evidence.push(`${meta.label} is read on its usage this season: ${claimants.length} ${claimants.length === 1 ? 'man has' : 'men have'} a claim on ${job} before he arrives, and it supports ${capacity}.`);
+  const readOn = conflict?.window
+    ? conflict.window.since
+      ? `the ${conflict.window.counted} ${conflict.window.counted === 1 ? 'game' : 'games'} since ${conflict.window.since.name} last started there`
+      : `its last ${conflict.window.games} games`
+    : 'its usage this season';
+  evidence.push(`${meta.label} is read on ${readOn}: ${claimants.length} ${claimants.length === 1 ? 'man has' : 'men have'} a claim on ${job} before he arrives, and it supports ${capacity}.`);
   if (conflict?.unknowns.length) evidence.push(...conflict.unknowns);
 
   const summary = contested
@@ -588,6 +704,7 @@ export function farmArrivalFor(orgId: number, playerId: number, teamId: number, 
     holders,
     capacity,
     contested,
+    timing: conflict?.timing ?? null,
     displaced,
     confidence: conflict?.unknowns.length ? 'indeterminate' : 'established',
     evidence,

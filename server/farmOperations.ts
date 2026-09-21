@@ -40,13 +40,30 @@ import {
   type FarmProduction,
   type FarmProductionRequest,
 } from './farmResults.js';
-import { clubUsage, noUsage } from './farmUsage.js';
+import {
+  clubGameLogs,
+  clubUsage,
+  exportThrough,
+  injuryAbsences,
+  lastGamesElsewhere,
+  noUsage,
+  projectedRotation,
+  whereabouts,
+  type ClubGameLog,
+  type ClubUsage,
+} from './farmUsage.js';
+import { lastAppearances, moundStarters, pitcherJob, positionStarters, recentPrimaryPosition, recentUsageFor, type RecentUsage } from './farmRecentUsage.js';
+import { arrivalsAtCurrentClub } from './clubArrival.js';
 import {
   blockersOf,
+  jobRead,
   positionConflict,
   readOpportunity,
   reliefConflict,
   rotationConflict,
+  type FarmJob,
+  type JobWindow,
+  type OpportunityRead,
   type PlayingTimeConflict,
   type UsageFacts,
 } from './playingTime.js';
@@ -198,6 +215,11 @@ export interface AssembledPlayer {
   ambiguous: string | null;
   /** Injured for longer than the operational week (the same rule as the roster reading), with the days exported. */
   injured: { daysLeft: number | null } | null;
+  /**
+   * His recent role differs from his season's: he started earlier in the year and has only relieved
+   * lately, or the other way round. A fact from the game log, shown beside his job; never a verdict.
+   */
+  roleChange: { to: 'relief' | 'starting'; detail: string } | null;
 }
 
 /** OOTP role 11 is a starting assignment; 12 and 13 are relief. */
@@ -213,8 +235,19 @@ export const OOTP_STARTER_ROLE = 11;
 function primaryPositionOf(
   inningsByPosition: Record<string, number>,
   listed: string | null,
-  coverage: readonly string[]
+  coverage: readonly string[],
+  recent: RecentUsage | null = null
 ): string | null {
+  /*
+   * What he has been playing lately is the job he is competing for NOW. A man moved from left field to
+   * centre three weeks ago has more season innings in left, and reading him there would report him as
+   * "not used" at a position the club has stopped playing him at. Only when enough of the window can
+   * be counted: four games at a new club do not re-assign anybody.
+   */
+  if (recent && recent.evidence === 'sufficient') {
+    const lately = recentPrimaryPosition(recent);
+    if (lately) return lately;
+  }
   const played = Object.entries(inningsByPosition)
     .filter(([, innings]) => innings > 0)
     .sort((a, b) => b[1] - a[1]);
@@ -269,9 +302,11 @@ export interface FarmSystemView {
 }
 
 function buildUsageFacts(
-  player: Omit<AssembledPlayer, 'production' | 'usage' | 'primaryJob' | 'roleConversion'>,
+  player: Omit<AssembledPlayer, 'production' | 'usage' | 'primaryJob' | 'roleConversion' | 'roleChange'>,
   clubGames: number,
-  raw: ReturnType<typeof noUsage>
+  raw: ReturnType<typeof noUsage>,
+  recent: RecentUsage | null,
+  projectedStarter: boolean | null
 ): UsageFacts {
   return {
     playerId: player.row.player_id,
@@ -286,7 +321,37 @@ function buildUsageFacts(
     tier: player.protection.tier,
     rehab: player.rehab,
     injured: player.injured !== null,
+    recent,
+    projectedStarter,
   };
+}
+
+/**
+ * His recent role against his season's, as a fact from the game log. Only with enough of the window
+ * counted, and only when the two genuinely differ: a starter who relieved once is not a conversion.
+ */
+export function roleChangeOf(
+  raw: Pick<ReturnType<typeof noUsage>, 'starts' | 'reliefAppearances'>,
+  recent: RecentUsage | null,
+  assignedStarter: boolean
+): AssembledPlayer['roleChange'] {
+  if (!recent || recent.evidence !== 'sufficient') return null;
+  const recentStarts = recent.pitchingStartGames.length;
+  const recentRelief = recent.reliefGames.length;
+  const over = `the club's last ${recent.observable.length} games`;
+  if (raw.starts > 0 && recentStarts === 0 && recentRelief > 0 && !assignedStarter) {
+    return {
+      to: 'relief',
+      detail: `He started ${raw.starts} ${raw.starts === 1 ? 'game' : 'games'} for the club earlier this season and none of ${over}, in which he has relieved ${recentRelief} ${recentRelief === 1 ? 'time' : 'times'}.`,
+    };
+  }
+  if (recentStarts > 0 && raw.starts === recentStarts && raw.reliefAppearances > recentRelief) {
+    return {
+      to: 'starting',
+      detail: `He has started ${recentStarts} of ${over}, after ${raw.reliefAppearances - recentRelief} relief ${raw.reliefAppearances - recentRelief === 1 ? 'appearance' : 'appearances'} and no start before them.`,
+    };
+  }
+  return null;
 }
 
 /**
@@ -298,7 +363,15 @@ function buildUsageFacts(
  * — were invisible to the whole subsystem rather than reported as not assessable
  * (docs/MINOR_LEAGUE_OPERATIONS.md C-13).
  */
-function assemble(orgId: number): { players: AssembledPlayer[]; metas: AffiliateMeta[]; year: number } {
+export interface Assembled {
+  players: AssembledPlayer[];
+  metas: AffiliateMeta[];
+  year: number;
+  /** Each club's game log for the season, read once. The recent read is cut from it. */
+  logs: Map<number, ClubGameLog>;
+}
+
+function assemble(orgId: number): Assembled {
   const metas = affiliateMeta(orgId);
   const year = currentYear();
   const players: AssembledPlayer[] = [];
@@ -311,7 +384,7 @@ function assemble(orgId: number): { players: AssembledPlayer[]; metas: Affiliate
   const screen = screenAffiliatePlayers(allIds);
 
   const productionRequests: FarmProductionRequest[] = [];
-  const pending: Array<Omit<AssembledPlayer, 'production' | 'usage' | 'primaryJob' | 'roleConversion'>> = [];
+  const pending: Array<Omit<AssembledPlayer, 'production' | 'usage' | 'primaryJob' | 'roleConversion' | 'roleChange'>> = [];
 
   for (const meta of metas) {
     for (const row of rowsByTeam.get(meta.teamId) ?? []) {
@@ -356,20 +429,44 @@ function assemble(orgId: number): { players: AssembledPlayer[]; metas: Affiliate
   const production = farmProduction(productionRequests, year);
   const usageByTeam = new Map(metas.map((m) => [m.teamId, clubUsage(m.teamId, year)]));
 
+  /*
+   * The temporal evidence, read once for the organization. Current state decides who is here; these
+   * decide what "lately" means for each of them: the club's games, when he joined it (OOTP's dated
+   * move first, the game log's bound where the log is unavailable), and the injury spells that kept
+   * him off the field. None of it touches a rating and none of it is cached past this request.
+   */
+  const logs = clubGameLogs(metas.map((m) => m.teamId));
+  const chronology = arrivalsAtCurrentClub(allIds, exportThrough());
+  const elsewhere = lastGamesElsewhere(pending.map((p) => ({ playerId: p.row.player_id, teamId: p.meta.teamId })));
+  const absences = injuryAbsences(allIds, year);
+  const rotations = new Map(metas.map((m) => [m.teamId, projectedRotation(m.teamId)]));
+
   for (const p of pending) {
     const club = usageByTeam.get(p.meta.teamId);
     const raw = club?.players.get(p.row.player_id) ?? noUsage(p.row.player_id);
     const prod = production.get(p.row.player_id);
     if (!prod) continue;
 
+    const log = logs.get(p.meta.teamId);
+    const dated = chronology.arrivals.get(p.row.player_id);
+    const recent = log
+      ? recentUsageFor({
+          log,
+          playerId: p.row.player_id,
+          arrival: dated ? { date: dated.date, from: dated.from?.name ?? null } : null,
+          chronologyAvailable: chronology.chronologyAvailable,
+          lastGameElsewhere: elsewhere.get(p.row.player_id) ?? null,
+          absences: absences.get(p.row.player_id) ?? [],
+        })
+      : null;
+    const projected = p.kind === 'pitcher' ? (rotations.get(p.meta.teamId)?.has(p.row.player_id) ?? (rotations.get(p.meta.teamId) ? false : null)) : null;
+
     const assignedStarter = Number(p.row.role) === OOTP_STARTER_ROLE;
-    const usedAsStarter = raw.starts > 0;
     const primaryJob =
       p.kind === 'pitcher'
-        ? assignedStarter || usedAsStarter
-          ? 'the rotation'
-          : 'the bullpen'
-        : primaryPositionOf(raw.inningsByPosition, p.listedPosition, p.coverage);
+        ? pitcherJob({ assignedStarter, projectedStarter: projected, seasonStarts: raw.starts, recent })
+        : primaryPositionOf(raw.inningsByPosition, p.listedPosition, p.coverage, recent);
+    const usedAsStarter = primaryJob === 'the rotation';
 
     players.push({
       ...p,
@@ -379,13 +476,14 @@ function assemble(orgId: number): { players: AssembledPlayer[]; metas: Affiliate
        * developmental question for Player Development, not a shortage, and it is reported as one
        * rather than making him a claimant for a rotation spot nobody is giving him.
        */
-      roleConversion: p.kind === 'pitcher' && p.developmentalStarter === true && !assignedStarter && !usedAsStarter,
+      roleConversion: p.kind === 'pitcher' && p.developmentalStarter === true && !assignedStarter && !usedAsStarter && projected !== true,
+      roleChange: p.kind === 'pitcher' ? roleChangeOf(raw, recent, assignedStarter || projected === true) : null,
       production: prod,
-      usage: buildUsageFacts(p, club?.games ?? 0, raw),
+      usage: buildUsageFacts(p, club?.games ?? 0, raw, recent, projected),
     });
   }
 
-  return { players, metas, year };
+  return { players, metas, year, logs };
 }
 
 /** The level's rostered average age minus his, from the prospect payload's own baselines. */
@@ -397,35 +495,137 @@ function ageRelativeToLevel(baselines: Record<string, { avgAge: number | null }>
 
 /* ── conflicts per affiliate ─────────────────────────────────────────────────────────────────── */
 
-function conflictsFor(meta: AffiliateMeta, players: readonly AssembledPlayer[], year: number): PlayingTimeConflict[] {
+/**
+ * What the game log says about one job: who started there in each game of the window, and which men
+ * with work there this season are no longer on the club. null when the export has no game log, which
+ * leaves every read the season's.
+ *
+ * A departed man is identified by CURRENT STATE — he is not on the roster — never by his usage. His
+ * innings are history and are named as history; he competes for nothing.
+ */
+function jobWindowFor(
+  job: FarmJob,
+  log: ClubGameLog | undefined,
+  club: ClubUsage,
+  onClub: ReadonlySet<number>
+): JobWindow | null {
+  if (!log || !log.available || log.games.length === 0) return null;
+  if (job.kind === 'relief') return null;
+  const starters = job.kind === 'position' ? positionStarters(log, job.position) : moundStarters(log);
+  const work = (raw: ClubUsage['players'] extends Map<number, infer R> ? R : never): number =>
+    job.kind === 'position' ? (raw.inningsByPosition[job.position] ?? 0) : raw.starts;
+  const leftIds = new Set<number>();
+  for (const [id, raw] of club.players) if (!onClub.has(id) && work(raw) > 0) leftIds.add(id);
+  for (const id of starters) if (id !== null && !onClub.has(id)) leftIds.add(id);
+  const now = whereabouts([...leftIds]);
+  const seen = lastAppearances(log);
+  return {
+    starters,
+    departed: [...leftIds].map((id) => ({
+      playerId: id,
+      name: now.get(id)?.name ?? `Player ${id}`,
+      seasonWork: club.players.has(id) ? work(club.players.get(id)!) : 0,
+      nowAt: now.get(id)?.team ?? null,
+      /* Still on this club in the export, but off its active list: an injured list, usually. Not a departure. */
+      withClub: now.get(id)?.teamId === club.teamId,
+      lastSeen: seen.get(id) ?? null,
+    })),
+  };
+}
+
+/** The men with a claim on one job at a club, and the men getting work there from another job. */
+export function castOf(job: FarmJob, mine: readonly AssembledPlayer[]): { claimants: UsageFacts[]; alsoPlaying: UsageFacts[] } {
+  if (job.kind === 'rotation') return { claimants: mine.filter((p) => p.kind === 'pitcher' && p.primaryJob === 'the rotation').map((p) => p.usage), alsoPlaying: [] };
+  if (job.kind === 'relief') return { claimants: mine.filter((p) => p.kind === 'pitcher' && p.primaryJob === 'the bullpen').map((p) => p.usage), alsoPlaying: [] };
+  const position = job.position;
+  /* One man, one job: only the players whose primary job is this position compete for it. */
+  const claimants = mine.filter((p) => p.kind === 'hitter' && p.primaryJob === position).map((p) => p.usage);
+  /*
+   * ...but anyone getting work there is a fact about who is ahead of them: the corner outfielder
+   * covering centre, the two-way pitcher who is in fact the regular first baseman. They count against
+   * nobody's capacity and they are named. Season innings or a recent start: a man who began covering
+   * the position last week has no season share of it yet.
+   */
+  const alsoPlaying = mine
+    .filter(
+      (p) =>
+        p.primaryJob !== position &&
+        ((p.usage.inningsByPosition[position] ?? 0) > 0 || (p.usage.recent?.startGames[position]?.length ?? 0) > 0)
+    )
+    .map((p) => p.usage);
+  return { claimants, alsoPlaying };
+}
+
+function conflictsFor(
+  meta: AffiliateMeta,
+  players: readonly AssembledPlayer[],
+  year: number,
+  windowOf: (job: FarmJob) => JobWindow | null
+): PlayingTimeConflict[] {
   const club = clubUsage(meta.teamId, year);
   const mine = players.filter((p) => p.meta.teamId === meta.teamId);
   const out: PlayingTimeConflict[] = [];
 
   for (const position of FIELDING_POSITIONS) {
-    /* One man, one job: only the players whose primary job is this position compete for it. */
-    const claimants = mine.filter((p) => p.kind === 'hitter' && p.primaryJob === position).map((p) => p.usage);
-    /*
-     * ...but anyone getting innings there is a fact about who is ahead of them: the corner outfielder
-     * covering centre, the two-way pitcher who is in fact the regular first baseman. They count against
-     * nobody's capacity and they are named.
-     */
-    const alsoPlaying = mine
-      .filter((p) => p.primaryJob !== position && (p.usage.inningsByPosition[position] ?? 0) > 0)
-      .map((p) => p.usage);
-    const conflict = positionConflict(meta.teamId, position, claimants, club.inningsByPosition[position] ?? 0, alsoPlaying);
+    const job: FarmJob = { kind: 'position', position };
+    const { claimants, alsoPlaying } = castOf(job, mine);
+    const conflict = positionConflict(
+      meta.teamId,
+      position,
+      claimants,
+      club.inningsByPosition[position] ?? 0,
+      alsoPlaying,
+      windowOf(job)
+    );
     if (conflict) out.push(conflict);
   }
 
-  const starters = mine.filter((p) => p.kind === 'pitcher' && p.primaryJob === 'the rotation').map((p) => p.usage);
-  const rotation = rotationConflict(meta.teamId, starters, club.games);
+  const rotation = rotationConflict(meta.teamId, castOf({ kind: 'rotation' }, mine).claimants, club.games, windowOf({ kind: 'rotation' }));
   if (rotation) out.push(rotation);
 
-  const relievers = mine.filter((p) => p.kind === 'pitcher' && p.primaryJob === 'the bullpen').map((p) => p.usage);
-  const relief = reliefConflict(meta.teamId, relievers, club.games);
+  const relief = reliefConflict(meta.teamId, castOf({ kind: 'relief' }, mine).claimants, club.games);
   if (relief) out.push(relief);
 
   return out;
+}
+
+/** The job a man is competing for, as the playing-time model names it. */
+export function farmJobOf(player: AssembledPlayer): FarmJob | null {
+  if (player.kind === 'pitcher') return player.primaryJob === 'the rotation' ? { kind: 'rotation' } : { kind: 'relief' };
+  return player.primaryJob ? { kind: 'position', position: player.primaryJob } : null;
+}
+
+/**
+ * A man's opportunity when nobody is competing with him for his job.
+ *
+ * A conflict needs competition, so most of the organization is in none. That is right for the
+ * affiliate's list of conflicts and was wrong for the man himself: "no job is contested for him" read
+ * a prospect starting twice a fortnight as getting regular work, because the men actually playing his
+ * position are listed at another one. His own work is a question about him either way, so a position
+ * player's verdict comes from the read of his job, contested or not. A pitcher's is left as it was: an
+ * uncrowded bullpen giving an arm few innings is a usage choice, not congestion, and a rotation with a
+ * man short of starts is already a conflict.
+ */
+function ownOpportunityOf(player: AssembledPlayer, session: FarmSession, fallback: OpportunityRead): OpportunityRead {
+  const job = farmJobOf(player);
+  if (!job) return fallback;
+  const { players, year } = session.assembled();
+  const club = clubUsage(player.meta.teamId, year);
+  const { claimants, alsoPlaying } = castOf(job, players.filter((p) => p.meta.teamId === player.meta.teamId));
+  const read = jobRead(
+    job,
+    {
+      claimants,
+      alsoPlaying,
+      clubInningsAtPosition: job.kind === 'position' ? (club.inningsByPosition[job.position] ?? 0) : undefined,
+      clubGames: club.games,
+      window: session.jobWindow(player.meta.teamId, job),
+    },
+    player.meta.teamId
+  );
+  if (!read) return fallback;
+  const own = readOpportunity(player.row.player_id, [read]);
+  return job.kind === 'position' ? own : { ...fallback, work: own.work };
 }
 
 /* ── the session: one organization, read once ───────────────────────────────────────────────── */
@@ -449,13 +649,15 @@ interface ProspectPayload {
  */
 export interface FarmSession {
   readonly orgId: number;
-  assembled(): { players: AssembledPlayer[]; metas: AffiliateMeta[]; year: number };
+  assembled(): Assembled;
   prospects(): ProspectPayload;
   health(): AffiliateRosterHealth[];
   /** Roster health of one affiliate under a read-only scenario, memoized on the scenario. */
   healthScenario(teamId: number, scenario: RosterHealthScenario): AffiliateRosterHealth | undefined;
   /** Playing-time conflicts of one affiliate as it stands. */
   conflicts(teamId: number): PlayingTimeConflict[];
+  /** What the game log says about one job at one club, read once: null without a game log. */
+  jobWindow(teamId: number, job: FarmJob): JobWindow | null;
 }
 
 export function openFarmSession(orgId: number): FarmSession {
@@ -464,6 +666,7 @@ export function openFarmSession(orgId: number): FarmSession {
   let healthMemo: AffiliateRosterHealth[] | null = null;
   const scenarioMemo = new Map<string, AffiliateRosterHealth | undefined>();
   const conflictMemo = new Map<number, PlayingTimeConflict[]>();
+  const windowMemo = new Map<string, JobWindow | null>();
 
   const session: FarmSession = {
     orgId,
@@ -484,9 +687,18 @@ export function openFarmSession(orgId: number): FarmSession {
       if (hit) return hit;
       const { players, metas, year } = session.assembled();
       const meta = metas.find((m) => m.teamId === teamId);
-      const out = meta ? conflictsFor(meta, players, year) : [];
+      const out = meta ? conflictsFor(meta, players, year, (job) => session.jobWindow(teamId, job)) : [];
       conflictMemo.set(teamId, out);
       return out;
+    },
+    jobWindow: (teamId, job) => {
+      const key = `${teamId}:${job.kind === 'position' ? job.position : job.kind}`;
+      if (!windowMemo.has(key)) {
+        const { players, year, logs } = session.assembled();
+        const onClub = new Set(players.filter((p) => p.meta.teamId === teamId).map((p) => p.row.player_id));
+        windowMemo.set(key, jobWindowFor(job, logs.get(teamId), clubUsage(teamId, year), onClub));
+      }
+      return windowMemo.get(key) ?? null;
     },
   };
   return session;
@@ -537,7 +749,9 @@ export function computeFarmSystem(orgId: number, session: FarmSession = openFarm
   for (const p of players) {
     const current = currentReads.get(p.row.player_id)!;
     const conflicts = conflictsByTeam.get(p.meta.teamId) ?? [];
-    const opportunity = readOpportunity(p.row.player_id, conflicts);
+    const read = readOpportunity(p.row.player_id, conflicts);
+    /* In no conflict he still has a job and a tenure; rehab and injured men are read for neither. */
+    const opportunity: OpportunityRead = read.work === null && !p.rehab && p.injured === null ? ownOpportunityOf(p, session, read) : read;
 
     const prospect = prospectById.get(p.row.player_id);
     const alternatives: AlternativeAssignment[] = (prospect?.assignments?.evaluations ?? [])
@@ -626,6 +840,7 @@ export function computeFarmSystem(orgId: number, session: FarmSession = openFarm
         alternatives,
         blockedBy,
         injured: p.injured,
+        roleChange: p.roleChange,
       })
     );
   }
@@ -975,7 +1190,10 @@ function farmCalibrationReport(): FarmSystemView['calibration'] {
     stamp('REGULAR_PLAY_SHARE', calibration.REGULAR_PLAY_SHARE, 'policy', 'Share of the club\'s games a man must appear in to be read as playing regularly.'),
     stamp('ROTATION_SHARE', calibration.ROTATION_SHARE, 'policy', 'A starter\'s share of a five-man rotation\'s starts: in it, spot-starting, or not used.'),
     stamp('MINIMUM_CLUB_GAMES', calibration.MINIMUM_CLUB_GAMES, 'policy', 'Games a club must have played before a share or a shape is read.'),
-    stamp('DEPARTED_SHARE_NOTED', calibration.DEPARTED_SHARE_NOTED, 'policy', 'Share of a job played by men no longer on the club past which the shares are said to lag.'),
+    stamp('DEPARTED_SHARE_NOTED', calibration.DEPARTED_SHARE_NOTED, 'policy', 'Share of a job played by men no longer on the club past which the shares are said to lag. Used only when the export has no game log.'),
+    stamp('RECENT_WINDOW_GAMES', calibration.RECENT_WINDOW_GAMES, 'provisional', 'Club games the recent read looks back over: three turns of a five-man rotation. Backtested on the export\'s own game log; one partial season of one save.'),
+    stamp('RECENT_MINIMUM_GAMES', calibration.RECENT_MINIMUM_GAMES, 'provisional', 'Games a man must have been observable for before his recent share is read as a role. Below it his role is not established.'),
+    stamp('RECENT_ROTATION_SHARE', calibration.RECENT_ROTATION_SHARE, 'provisional', 'A starter\'s share of his turns over the recent window: two of three is in the rotation, one is spot-starting.'),
     stamp('MINIMUM_SAMPLE', calibration.MINIMUM_SAMPLE, 'provisional', 'Plate appearances / innings below which a line is not read at all.'),
     stamp('MATURE_SAMPLE', calibration.MATURE_SAMPLE, 'provisional', 'Sample at which the current-level line is treated as mature.'),
     stamp('LEAGUE_POPULATION_MINIMUM', calibration.LEAGUE_POPULATION_MINIMUM, 'provisional', 'Qualified players a league needs before a percentile in it means anything.'),

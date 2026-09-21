@@ -132,6 +132,19 @@ export interface Farm {
     confidence: string;
     lostRole: string | null;
     affiliateImpact: { absorbed: boolean } | null;
+    /**
+     * What he is actually doing at his club now, from the farm's own playing-time read: the recent
+     * window where the export's game log allows it. Displayed, never reconstructed.
+     */
+    currentOpportunity: {
+      level: string;
+      basis: 'recent' | 'season' | 'current_state';
+      evidence: 'sufficient' | 'thin' | 'none' | 'season_only';
+      recentArrival: boolean;
+      disagrees: boolean;
+      timing: string | null;
+      detail: string;
+    } | null;
     playingTimeImpact: Array<{ playerId: number; name: string; effect: string }>;
     replacementOptions: Array<{ playerId: number; name: string; from: string; judgment: string; preference: string | null }>;
     cascade: { stop: string; stopDetail: string; certainty: string; steps: Array<{ index: number; usable: boolean }> } | null;
@@ -141,6 +154,8 @@ export interface Farm {
     summary: string;
     job: string | null;
     contested: boolean;
+    /** Whether the competition he would join is current, historical, or not yet readable. */
+    timing: string | null;
     displaced: Array<{ playerId: number; name: string; age: number }>;
     confidence: string;
     evidence: string[];

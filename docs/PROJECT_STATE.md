@@ -7,15 +7,15 @@ material implementation state changes.
 ## Repository snapshot
 
 - Package: `ootp-front-office` version `0.27.2`.
-- Inspected branch: `feature/mlb-operations-v2`, created from `feature/player-rights`
-  (Player State foundation merged as PR #2 and Player Rights as PR #3; this branch is three commits ahead of `main`:
-  the MLB Operations rebuild, the scouting-department layer, and the hardening phase; the Minor League
-  Operations rebuild is uncommitted on top of them).
+- Inspected branch: `feature/farm-windowed-usage`, created from `main` at `fcbe73e`. `main` carries the
+  Player State foundation (PR #2), Player Rights (PR #3), MLB Operations v2 with its scouting layer and
+  hardening phase (PR #4) and Minor League Operations v2 with its hardening phase (PR #5). This branch
+  adds windowed usage and current-opportunity evidence to the farm (D-048).
 - Stack: TypeScript, React 18, Vite 6, Express 4, SQLite via
   `better-sqlite3`, Electron 41, and Vitest 4.
-- Validation at this snapshot (after the Minor League Operations hardening phase): `npx tsc --noEmit`
-  clean, `npm test` 129 files / 1617 tests passing, `npm run build` succeeds. 393 of those tests are the
-  behavioral corpus ([BEHAVIOR_CASES.md](BEHAVIOR_CASES.md)): 159 for MLB Operations and 234 for the farm.
+- Validation at this snapshot (after the farm's windowed-usage phase): `npx tsc --noEmit`
+  clean, `npm test` 133 files / 1736 tests passing, `npm run build` succeeds. 512 of those tests are the
+  behavioral corpus ([BEHAVIOR_CASES.md](BEHAVIOR_CASES.md)): 159 for MLB Operations and 353 for the farm.
 - `origin/feature/mlb-operations` is **not merged** and was audited end to end
   ([MLB_OPERATIONS.md](MLB_OPERATIONS.md) §2). `rosterStateHistory.ts` and
   `transactionHistory.ts` were ported earlier in adapted form; `rosterTransactionState.ts`
@@ -174,6 +174,21 @@ Present on this branch (D-044 to D-046; design and audit in
   named job with what each is getting — one man one job, competition rather than
   absence, stakes from Player Development's tier, and no share read from a club
   that has played fewer than twenty games.
+- **Windowed usage and current opportunity** (D-048; `farmRecentUsage.ts`, `clubArrival.ts`,
+  `farmUsage.ts` `clubGameLogs`): season usage, recent usage and current state are three kinds of
+  fact. The export's per-game log (complete for every minor-league level and exact against the season
+  tables) gives a recent read over the club's last fifteen games, in starts, measured only over the
+  games a man could have played in — since he arrived (OOTP's transaction log first, the game log's
+  bound without it), outside a recorded injury spell. A man's current level is the recent read, the
+  season's when the export has no game log, and `unknown` when the window is too thin: a prospect
+  four games into a new club is neither bench depth nor blocked. A man who held a job and left it
+  restarts the window for everyone else and is named as history, never as a blocker; a rehab
+  assignee's starts are set aside. A rotation also has an exported present (`projected_starting_pitchers`).
+  Conflicts carry their `timing`; a relief window may confirm or clear a shortage and never raise one;
+  a lone claimant who is not playing is read as not playing. The contract gained `currentOpportunity`.
+  On the real save the farm's attention list went 19 → 10: all seven pressing blocked-prospect findings
+  were a promotion wave four games before the export. `npm run farm:usage-window` re-measures the
+  provisional window constants on any import.
 - **Assignment review** (`farmAssignments.ts`): composes the current-assignment
   read, the opportunity read, Player Development's defensible alternatives and
   philosophy's preference among them into one of eight descriptive conclusions,

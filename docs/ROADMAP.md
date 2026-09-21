@@ -121,21 +121,31 @@ Remaining, in dependency order:
 - **Cross-affiliate Rookie-level movement.** Eligibility and geography between a
   complex league and a Dominican one are still unmodelled, so a cascade does not
   draw across them. Everything else about Rookie affiliates is covered.
-- **Recency in usage.** Shares are the season to date; a regular promoted
-  mid-season still holds the largest share of a job he no longer has. The farm
-  now says when a quarter of a job was played by men no longer on the club; a
-  windowed read (the last N club games) is the next refinement and needs the
-  game-level fielding lines the export may not carry at every level.
+- ~~**Recency in usage.**~~ **Built** (D-048, MINOR_LEAGUE_OPERATIONS.md Part 8).
+  The export does carry a per-game log at every minor-league level. Season usage,
+  recent usage and current state are three kinds of fact; a man too new to a club
+  to be read is `unknown`, not unused; a departed man is history, not a blocker.
+  What remains of it:
+  - The window constants are provisional — one partial season of one save
+    (`npm run farm:usage-window` re-measures them on any import).
+  - No defensive innings by date: a recent share is in starts, and a mid-game
+    position switch is invisible.
+  - No current-state source for a hitter's role: the export has no lineup or
+    depth-chart table, so only a rotation has an exported present.
+  - A man OOTP has just DROPPED from its next five still reads as a rotation
+    regular until the window catches up; only the other direction is handled.
 - **Calibrate what can be calibrated.** No farm constant is fitted, because the
   export holds no minor-league history. Candidates if a longer record becomes
   available: the sample minimums, the level-standing lines,
   `AGE_LEVEL_DEVELOPMENT_LIMIT` (the constant with the largest effect on how many
   players read as an organizational rather than a developmental question), and
   the injured-days line.
-- **A peer-relative protection tier.** The tier is an absolute-scale composite, so
-  a 20-potential player in the Dominican Rookie League and one at Triple-A share
-  one. It is load-bearing for stakes, blockage and retention, and rebuilding it is
-  its own piece of work.
+- **A peer-relative protection tier.** *Next.* The tier is an absolute-scale
+  composite, so a 20-potential player in the Dominican Rookie League and one at
+  Triple-A share one. It is load-bearing for stakes, blockage and retention, and
+  rebuilding it is its own piece of work. Windowed usage sharpened what depends on
+  it: every "squeezed" and every "blocked" is only as good as the tier is at naming
+  who has development to cost (MINOR_LEAGUE_OPERATIONS.md §8.11).
 - **Repeat-level and prior-experience context.** The assignment review does not
   yet read a man's earlier seasons at the level; a second year at Double-A reads
   the same as a first.

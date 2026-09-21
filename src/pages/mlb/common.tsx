@@ -106,7 +106,23 @@ export function FarmView({ farm }: { farm: Farm | null }) {
         <span className="muted"> by Minor League Operations' own reading.</span>
       </div>
       {farm.farm && <div><strong>{farm.farm.summary}</strong></div>}
+      {/*
+        What he is actually doing there now, in the farm's words, and only when it changes how the
+        vacancy should be read: he joined the club inside the recent window, too few of its games can
+        be counted for him, or the season and the recent games disagree about his role.
+      */}
+      {farm.farm?.currentOpportunity &&
+        (farm.farm.currentOpportunity.recentArrival || farm.farm.currentOpportunity.disagrees || farm.farm.currentOpportunity.evidence === 'thin') && (
+          <div className="muted">At {farm.affiliate.label} now: {farm.farm.currentOpportunity.detail}</div>
+        )}
       {farm.arrival && <div><strong>{farm.arrival.summary}</strong></div>}
+      {farm.arrival && (farm.arrival.timing === 'uncertain' || farm.arrival.timing === 'recently_resolved') && (
+        <div className="muted">
+          {farm.arrival.timing === 'uncertain'
+            ? 'Who holds that job there cannot be read yet from the club\'s recent games.'
+            : 'The man who held that job there has recently left it; the club\'s recent games show no shortage.'}
+        </div>
+      )}
       {moved.map((c) => <div key={c.label}>{c.label}: {c.before} → <b>{c.after}</b></div>)}
       {farm.farm?.playingTimeImpact.slice(0, 3).map((p) => <div key={p.playerId} className="muted">{p.effect}</div>)}
       {farm.farm?.replacementOptions.length ? (

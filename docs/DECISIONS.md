@@ -1014,3 +1014,77 @@ nothing (its `overall`, role-code statuses and prose lines are gone); the Player
 read `/api/scouted-development`, which is Player Development's and history's; the Dashboard counts
 the farm's own attention list and the AI briefing receives the farm's structured conclusions rather
 than an alphabetical head of the prospect list.
+
+## D-048 — Season usage, recent usage and current state are three kinds of fact, and only current state says who is here
+
+**Status:** Accepted. **Implementation:** Present (`server/farmRecentUsage.ts`, `server/clubArrival.ts`,
+`farmUsage.ts` `clubGameLogs` / `lastGamesElsewhere` / `injuryAbsences` / `projectedRotation`,
+`playingTime.ts` `WorkShare` / `ConflictTiming` / `GoneHolder` / `jobRead`, `farmOperations.ts`
+`jobWindowFor` / `castOf` / `pitcherJob` wiring, `farmConsequence.ts` `currentOpportunity`). Findings:
+[MINOR_LEAGUE_OPERATIONS.md](MINOR_LEAGUE_OPERATIONS.md) Part 8.
+
+Season-to-date playing-time totals can describe a competition that no longer exists. On the real import
+a wave of promotions four games before the export made every promoted prospect read as "cannot get the
+work" at his new club, and **all seven of the farm's pressing blocked-prospect findings were that
+artifact**; across thirty organizations 217 such findings became 37. The hardening phase had recorded
+recency as roadmap work on the assumption that the export held no game-level data. It holds a complete
+per-game batting and pitching log for every minor-league level, which reconciles with the season tables
+exactly.
+
+- **Three kinds of fact, kept apart.** *Season usage* is what happened this year: context, always
+  shown, never deleted. *Recent usage* is what happened over the club's last fifteen games: evidence of
+  the present role. *Current state* is who is on the club now and available — the roster, Player State,
+  the rehab screen, the injury columns — and it is **never inferred from usage**. A man with 136 innings
+  who is not on the roster competes for nothing. Measured: restricting the season to men still on the
+  club is worth about twice what any window adds.
+- **A man's current work level is the recent read when it can be read**, the season's when the export
+  has no game log, and `unknown` when there is a recent read too thin to establish a role. History is
+  never allowed to stand in for a present it does not describe; nor is it erased — a conflict the season
+  shows and the recent games do not is kept, quietly, as `historical` or `recently_resolved`, with
+  nobody in it `squeezed`.
+- **Thin is not unused.** Fewer than `RECENT_MINIMUM_GAMES` observable games is `thin`, the role is
+  `unknown`, and an unknown role is neither squeezed nor a blocker. Evidence is a structured state
+  (`sufficient` / `thin` / `none`), never a confidence number. Less evidence may only ever mean more
+  uncertainty.
+- **The window is cut once per way a competition changes.** A man who arrived, or came back from an
+  injury, is measured only over the games he could have played in. When a man who HELD the job leaves
+  it — a regular's share of the window up to his last appearance for the club — everyone is measured
+  from the game after his last start there. Anyone else not competing who took starts there, a rehab
+  assignee above all (D-026), has those games set aside.
+- **A departed man is never a current blocker**, whatever his season total, and raising that total
+  cannot restore him. He is named, with what he held and where he is now, as history.
+- **An arrival is dated by chronology, in D-020's order**: OOTP's transaction log first, through
+  `clubArrival.ts` — the farm never reads the log itself, and an event counts only if it names the club
+  the EXPORT has him on; then the game log's bound; otherwise it is not established and is said not to
+  be. The log dated all 63 of one organization's in-season arrivals and the game log 24 of them.
+- **For a rotation the export states the present**, and an exported fact about now outranks a usage
+  read of the past: a man among OOTP's next five starters whose usage has not caught up holds a spot on
+  current state, and one whose sufficient usage contradicts it is a role change under way, never a man
+  blocked from starting. No such source exists for a hitter.
+- **The window is games, not days, and one length serves every job — with two differences the evidence
+  required.** The rotation has its own lines, because three turns fit in fifteen games. And **a relief
+  window may confirm or clear a shortage but never raise one**: a reliever's innings share correlates
+  0.31 window to window against 0.57 for a position's starts, and a fifth of the arms that were not
+  short in one window read as short in the next.
+- **A disagreement is two or more levels apart**, and then both reads are shown and neither is silently
+  chosen. One level apart is a fortnight's noise on a club that moves men through positions.
+- **A man's own opportunity does not depend on somebody else wanting his position.** A lone claimant
+  who is not playing is read as not playing.
+
+**What it may not do.** Recent usage is a usage read. It is never a performance read, never a "recent
+form" score, and never promotion or demotion authorization: `currentAssignment` takes no usage input and
+no Player Development module imports the window. Philosophy names no dimension in any usage module.
+Retention takes no usage input; low recent usage is never a release rule. A cascade step still needs
+Player Development's own authorization — recent usage can change an operational consequence and can
+never make an indefensible assignment defensible. MLB Operations receives `currentOpportunity` through
+the existing contract and reconstructs nothing (D-045).
+
+**Stamps.** `RECENT_WINDOW_GAMES` (15), `RECENT_MINIMUM_GAMES` (6) and `RECENT_ROTATION_SHARE` (0.6 /
+0.3) are **provisional**: backtested on the export's own game log (`npm run farm:usage-window`), on one
+partial season of one save, with the result flat between twelve and fifteen games. The three kinds of
+fact, the window rules, thin-is-not-unused and relief's confirm-or-clear are architecture, and tests
+pin them.
+
+Consequences: `DEPARTED_SHARE_NOTED` and its note survive only for an export with no game log, where
+they are still all that can be said. The protection tier is untouched: who can be squeezed is decided by
+it, and its peer-relative refinement is the next branch's.

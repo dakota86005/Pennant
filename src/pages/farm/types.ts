@@ -29,14 +29,62 @@ export interface FarmFinding {
 
 export type WorkLevel = 'regular' | 'part_time' | 'occasional' | 'not_used' | 'bat_only' | 'unknown';
 
+/** One read of how much of a job a man holds: the season's, or the recent window's. */
+export interface WorkRead {
+  level: WorkLevel;
+  share: number | null;
+  basis: string;
+}
+
+export type RecentEvidence = 'sufficient' | 'thin' | 'none';
+
+export interface RecentWorkRead extends WorkRead {
+  /** His starts at the job (in relief, his appearances) in the games counted. */
+  work: number;
+  /** The games counted for him: the sample. */
+  games: number;
+  windowGames: number;
+  evidence: RecentEvidence;
+}
+
+export interface Tenure {
+  status: 'established' | 'recent_arrival' | 'unknown';
+  arrivedOn: string | null;
+  basis: 'transaction_log' | 'game_log' | null;
+  from: string | null;
+  clubGamesSince: number | null;
+}
+
 export interface WorkShare {
   playerId: number;
   name: string;
   age: number;
   tier: string | null;
+  /** His CURRENT level: the recent read when it can be read, else the season's; `unknown` when too thin. */
   level: WorkLevel;
   share: number | null;
   basis: string;
+  levelFrom: 'recent' | 'season' | 'current_state';
+  season: WorkRead;
+  /** null when the export has no game log. */
+  recent: RecentWorkRead | null;
+  tenure: Tenure | null;
+  /** The season and the recent read are two or more levels apart. */
+  disagrees: boolean;
+}
+
+export type ConflictTiming = 'season_only' | 'current' | 'emerging' | 'historical' | 'recently_resolved' | 'uncertain';
+
+/** A man with work at the job who is not competing for it now. History, never competition. */
+export interface GoneHolder {
+  playerId: number;
+  name: string;
+  why: 'departed' | 'inactive' | 'injured' | 'rehab';
+  seasonShare: number | null;
+  windowStarts: number;
+  lastStartGamesAgo: number | null;
+  nowAt: string | null;
+  material: boolean;
 }
 
 export interface PlayingTimeConflict {
@@ -48,6 +96,11 @@ export interface PlayingTimeConflict {
   alsoPlaying: WorkShare[];
   squeezed: WorkShare[];
   severity: 'blocking' | 'crowded' | 'noted';
+  /** Whether it is the present, the past, or not yet readable. */
+  timing: ConflictTiming;
+  squeezedOverSeason: WorkShare[];
+  gone: GoneHolder[];
+  window: { games: number; counted: number; since: { playerId: number; name: string; why: GoneHolder['why'] } | null } | null;
   unknowns: string[];
 }
 
@@ -120,10 +173,16 @@ export interface AssignmentReview {
   opportunity: {
     verdict: string;
     job: PlayingTimeConflict['job'] | null;
-    ahead: Array<{ playerId: number; name: string; age: number; share: number | null; level: WorkLevel; claimant: boolean }>;
+    ahead: Array<{ playerId: number; name: string; age: number; share: number | null; level: WorkLevel; claimant: boolean; tenure: Tenure | null }>;
+    /** His own work at the job: season, recent window and tenure, side by side. */
+    work: WorkShare | null;
+    timing: ConflictTiming | null;
+    gone: GoneHolder[];
     reasons: string[];
     unknowns: string[];
   };
+  /** His recent role differs from his season's (the game log). Pitchers. */
+  roleChange: { to: 'relief' | 'starting'; detail: string } | null;
   alternatives: Array<{
     kind: string;
     direction: 'promotion' | 'demotion';
@@ -220,11 +279,23 @@ export interface Cascade {
   gmDecision: string[];
 }
 
+export interface CurrentOpportunity {
+  level: WorkLevel;
+  basis: WorkShare['levelFrom'];
+  evidence: RecentEvidence | 'season_only';
+  recentArrival: boolean;
+  disagrees: boolean;
+  timing: ConflictTiming | null;
+  detail: string;
+}
+
 export interface FarmConsequence {
   player: { playerId: number; name: string } | null;
   sourceAffiliate: { teamId: number; label: string; level: number; levelName: string } | null;
   lostRole: string | null;
   affiliateImpact: { before: string; after: string; absorbed: boolean; statusBefore: RosterStatus; statusAfter: RosterStatus; findingsAfter: string[] } | null;
+  /** What he is actually doing at the club now — which is what the vacancy is. */
+  currentOpportunity: CurrentOpportunity | null;
   playingTimeImpact: Array<{ playerId: number; name: string; effect: string }>;
   replacementOptions: Array<{ playerId: number; name: string; from: string; judgment: string; preference: string | null; detail: string }>;
   cascade: Cascade | null;

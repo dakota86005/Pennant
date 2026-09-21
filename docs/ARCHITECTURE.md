@@ -128,7 +128,7 @@ artifact, not an alternative application backend.
 | Scouted evidence | `scoutedEvidence.ts` is the only reader of ability ratings for development and operations judgments. It returns branded `ScoutedAbility` evidence with provenance, viewer, scale, and what is missing. | Nothing in Player Development or Minor League Operations may read a rating column or `players_value` directly; `tests/evidenceBoundary.test.ts` enforces it. |
 | Player Development | `org.ts`, `mlbAssignmentContext.ts` (per-context MLB assignment assessment, D-025), `prospectDecision.ts`, `prospectAssignments.ts`, `destinationFit.ts`, `developmentFit.ts`, `currentAssignment.ts` (is the level a player is at still developing him? D-044), and scouting-history functions evaluate evidence, developmental protection, legal assignments, and destination fit. | This layer determines defensibility; it does not choose transactions for the GM. Age relative to level says how much developmental time is left and never lowers the bar (D-044). |
 | Organizational Philosophy | `philosophy.ts` defines organization-specific dimensions/policies; `settings.ts` persists and resolves profiles; `Philosophy.tsx` edits them. | Philosophy ranks or adjusts choices after hard baseball/development constraints. It is not player evidence. |
-| Minor League Operations | `farmCalibration.ts` (every farm constant, declared once and stamped), `farmResults.ts` + `farmUsage.ts` (league-relative park-adjusted production; usage), `currentAssignment.ts` (Player Development: is this level still developing him?), `playingTime.ts` (conflicts), `farmAssignments.ts`, `farmAffiliate.ts`, `farmOrganization.ts`, `farmCascade.ts`, `farmRetention.ts`, `farmOperations.ts` (the service: the organization read once per request as a `FarmSession`, the whole view, the operational reading under a scenario), `farmConsequence.ts` (the MLB ↔ farm contract: what follows a departure, what an arrival does), `farmRoutes.ts` (`/api/farm-operations`), `rehabAssignments.ts` (D-026), `minorLeagueRoster.ts` (counts and coverage, and the read-only scenario; it decides nothing). `scoutedDevelopment.ts` (`/api/scouted-development`) serves the Player Development pages' roster with history evidence and is Player Development's, not the farm's. The superseded solvers were deleted in the hardening phase. | Consumer of the same specialists as MLB Operations (D-044 to D-046, [MINOR_LEAGUE_OPERATIONS.md](MINOR_LEAGUE_OPERATIONS.md)): it owns affiliate roster, role, playing-time and cascade problems and decides no scouting, development, rights or philosophy question. Level-changing moves must already be authorized by Player Development. Operational health and developmental health are separate outputs. Outputs are read-only. `tests/farmOperationsBoundary.test.ts` enforces it. |
+| Minor League Operations | `farmCalibration.ts` (every farm constant, declared once and stamped), `farmResults.ts` + `farmUsage.ts` (league-relative park-adjusted production; season usage and the export's game log), `farmRecentUsage.ts` (pure: the recent window, tenure, sample-awareness — D-048), `clubArrival.ts` (shared chronology: when a man joined the club the export has him on), `currentAssignment.ts` (Player Development: is this level still developing him?), `playingTime.ts` (conflicts), `farmAssignments.ts`, `farmAffiliate.ts`, `farmOrganization.ts`, `farmCascade.ts`, `farmRetention.ts`, `farmOperations.ts` (the service: the organization read once per request as a `FarmSession`, the whole view, the operational reading under a scenario), `farmConsequence.ts` (the MLB ↔ farm contract: what follows a departure, what an arrival does), `farmRoutes.ts` (`/api/farm-operations`), `rehabAssignments.ts` (D-026), `minorLeagueRoster.ts` (counts and coverage, and the read-only scenario; it decides nothing). `scoutedDevelopment.ts` (`/api/scouted-development`) serves the Player Development pages' roster with history evidence and is Player Development's, not the farm's. The superseded solvers were deleted in the hardening phase. | Consumer of the same specialists as MLB Operations (D-044 to D-046, [MINOR_LEAGUE_OPERATIONS.md](MINOR_LEAGUE_OPERATIONS.md)): it owns affiliate roster, role, playing-time and cascade problems and decides no scouting, development, rights or philosophy question. Level-changing moves must already be authorized by Player Development. Operational health and developmental health are separate outputs. Outputs are read-only. `tests/farmOperationsBoundary.test.ts` enforces it. |
 | MLB Operations | `mlbRoster.ts` (club view over Player State), `mlbNeeds.ts` (state-derived needs), `mlbResponses.ts` (staged candidates, transaction path, consequences, philosophy annotation), `mlbEvidence.ts` (adapters to the specialists), `mlbOperations.ts` (service + `/api/mlb-operations`), `MlbOperations.tsx`. | Consumer only (D-024, [MLB_OPERATIONS.md](MLB_OPERATIONS.md)); coverage numbers are floors, not targets: decides no scouting, development, rights, philosophy or farm assignment question. Reads no raw rating, roster-status, option or log source; `tests/mlbOperationsBoundary.test.ts` enforces it. |
 | AI features | `providers.ts`, `models.ts`, `chat.ts`, `ai.ts`, and `storylines.ts` provide staff chat, briefings, trade discussion, and storylines through configurable providers. | AI consumes computed save-grounded facts, calls the same API as the UI, and supports the front-office experience. It does not become a parallel recommendation engine. |
 | Web UI | React pages in `src/` render domain results, evidence, alternatives, and local interactions. `src/App.tsx` owns selected-save and selected-organization UI context. | React may shape presentation but should not silently reimplement baseball rules. |
@@ -411,7 +411,9 @@ rank demotion. It may not fabricate evidence or conceal why a result changed.
 ```text
 Player State ─┐
 statistics ───┼─► farmResults (league-relative, park-adjusted) ─┐
-usage ────────┘   farmUsage (who holds which job)               │
+usage ────────┤   farmUsage (season totals · the game log)      │
+chronology ───┘   farmRecentUsage (the window · tenure)         │
+  (clubArrival)                                                 │
 scoutedEvidence ──► developmentFit (stakes) ────────────────────┤
                                                                 ▼
                             currentAssignment ── is this level still developing him?
@@ -445,6 +447,32 @@ three owners, and philosophy cannot reach the developmental outlook.
 
 Everything from `currentAssignment` to `farmRetention` is pure; `farmOperations`
 does the reading. Every constant is declared once, in `farmCalibration.ts`.
+
+**Season, recent, current state (D-048, MINOR_LEAGUE_OPERATIONS.md Part 8).** Three
+kinds of fact are kept apart. *Season usage* (`farmUsage.clubUsage`, the season
+tables, in innings) is context and is always shown. *Recent usage*
+(`farmUsage.clubGameLogs` → the pure `farmRecentUsage.ts`, the export's per-game
+log, in starts) is evidence of the present role over the club's last fifteen
+games. *Current state* — the roster, Player State, the rehab screen, the injury
+columns, and for a rotation OOTP's projected starters — says who is here, and is
+**never inferred from usage**: a man with 136 innings who is not on the roster
+competes for nothing. A man's current work level is the recent read when it can be
+read, the season's when the export has no game log (every function then behaves
+exactly as before), and `unknown` when the recent read is too thin — so a prospect
+four games into a new club is neither "bench depth" nor blocked. The window is cut
+once per way a competition changes: a man is measured only over the games he could
+have played in (since he arrived, outside an injury spell); everyone is measured
+from the game after a man who HELD the job left it; and a rehab assignee's or a
+departed part-timer's starts are set aside. An arrival is dated by chronology in
+D-020's order — OOTP's transaction log through `clubArrival.ts` (shared handling,
+like `rehabAssignments.ts`; the farm never reads the log), then the game log's
+bound, else not established. A conflict carries its `timing` (`current`,
+`emerging`, `historical`, `recently_resolved`, `uncertain`, `season_only`) and the
+men no longer competing for the job as history: history is neither erased nor
+allowed to masquerade as the present. A relief window may confirm or clear a
+shortage and never raise one. None of this is a performance read: Player
+Development takes no usage input, philosophy reaches no usage module, and
+retention takes no usage input. Everything temporal is read once per `FarmSession`.
 
 Hardened (MINOR_LEAGUE_OPERATIONS.md Part 7): a blocker holds the job — only a
 regular is one, and a part-time man ahead of a prospect leaves him in an

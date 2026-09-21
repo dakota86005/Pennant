@@ -1314,3 +1314,382 @@ prior-experience context in the assignment review; a peer-relative protection ti
   Baseline after: `npx tsc --noEmit` clean, 129 files / 1,617 tests, `npm run build` succeeds, 19
   attention items on the real save (12 pressing), retention 201 retain · 5 review · 1 not a farm
   decision · 23 indeterminate.
+
+---
+
+# Part 8 — Windowed usage and current opportunity evidence
+
+Status: **built** (branch `feature/farm-windowed-usage`, from `main` at `fcbe73e`). An evidence
+refinement, not a new recommendation engine. The protection tier, contracts, trades and every other
+domain are out of scope. Nothing here asked the owner for an OOTP experiment or touched a save: every
+check ran read-only against the imported Arizona save (`data/league.db`, opened `mode=ro`), the other
+29 organizations in the same import, and the production readers.
+
+The weakness this part fixes, stated once:
+
+> Season-to-date playing-time totals can describe a competition that no longer exists.
+
+Part 7 recorded it as H-5 (**PROVISIONAL**): "Recency is not modelled … The honest fix — a windowed read
+of recent usage — needs game-level fielding lines and is roadmap work." That sentence assumed the export
+had no game-level data. **It does**, and §8.1 is the audit that established it.
+
+## 8.1 Temporal evidence audit
+
+Done before any design, because the desired shape —
+
+```text
+season usage  +  recent usage  +  current assignment/state   →   current opportunity
+```
+
+— is only worth building if the export can support it. Every candidate source was inspected directly.
+
+| # | Source | Granularity | Minors? | Hitters / pitchers / fielding | Survives an affiliate change? | Tells current from departed? | Standing | What it cannot say |
+|---|---|---|---|---|---|---|---|---|
+| S-1 | `players_game_batting` | **one row per player per game**: `game_id`, `team_id`, `level_id`, `position`, `gs`, `pa` | **Yes** — levels 1, 2, 3, 4 and 6; every one of the 3,124 played games | hitters; the position he STARTED at (or entered at) | **Yes**: `team_id` is the club he played for that day | No, by itself: it says who played. Joined to the current roster it does | **authoritative** (reconciles exactly, below) | defensive **innings**; a mid-game position switch; why a man did not play |
+| S-2 | `players_game_pitching_stats` | one row per pitcher per game: `gs`, `outs`, `pi` | **Yes**, same coverage | pitchers: starts, relief appearances, outs, pitches | Yes | as S-1 | **authoritative** | the role he was *meant* to have; a skipped turn's reason |
+| S-3 | `games` | one row per game: `date`, `time`, `played`, clubs | Yes | the club's game sequence — the window's backbone | n/a | n/a | **authoritative** | — |
+| S-4 | `projected_starting_pitchers` | one row per club, eight slots (a five-man cycle) | **Yes**: 30/30 AAA, 30/30 AA, 60/60 A, 82/86 Rookie | pitchers: who OOTP has lined up to start next | it is a statement about NOW | **Yes** — 100% of listed men are on that club's active list | **explicit export current state** | nothing about the past; nothing for hitters |
+| S-5 | OOTP live transaction log (`minor_league_assignment`, `optioned`, `rehab_assigned`, …) via `transactionLog.ts` | one dated event per move, with `from` / `to` club ids | **Yes**: 12,557 assignment events | both | it IS the move | the dated arrival at the current club | **explicit chronology** (D-020 tier 2) | it can be unavailable, and it can run AHEAD of the export (here 05-16 against 05-15) |
+| S-6 | `players_injury_history` + `players.injury_*` | injury onset date, length, day-to-day; current injury and days left | Yes | both | n/a | current injury is current state | **authoritative** | a return date beyond `injury_left` |
+| S-7 | `players_career_{batting,pitching,fielding}_stats` | **season cumulative**, per player / club / level / split | Yes | all three, **including defensive innings** | Yes (keyed by `team_id`) | No | authoritative for the season | **no dates at all** — it is the source whose staleness this part is about |
+| S-8 | Pennant snapshots (`history.db`) | one row per player per import | — | **ratings and roster state only — no usage statistic** | — | — | **rejected** | one snapshot date exists; a stat delta cannot be formed, and would depend on how often the owner imports |
+| S-9 | `players_at_bat_batting_stats`, `games_score`, `players_streak`, `messages`, `league_events` | per at-bat / per inning / streak / message | partly | — | — | — | **rejected** | none adds a usage fact S-1 and S-2 do not already hold exactly; `messages` is not a stable causal feed (`transactionHistory.ts` says so) |
+
+### The reconciliation that makes S-1 and S-2 authoritative
+
+| Check | Result |
+|---|---|
+| Played games present in the batting log / the pitching log, per league | **3,124 of 3,124** in both, all 14 active leagues, each league's opening day through 2026-05-15 |
+| Batting log summed per player-club against the season line (G, GS, PA, H) | **3,717 of 3,717 exact**. The 1,030 season rows with no log lines are `league_id 0`, levels 10 and 11 — college and high-school feeder seasons on clubs absent from `teams`; not affiliated ball |
+| Pitching log summed against the season line (G, GS, outs, K), levels 1–6 | **3,767 of 3,767 exact** |
+| Starters per club-game in the pitching log | **exactly one, 6,248 of 6,248** |
+| Starts at each of positions 2–9 in the batting log | **exactly 6,248 each** = 3,124 games × 2 clubs: one starter per fielding position per club-game. DH starts 6,151 + pitchers batting 97 = 6,248 |
+| `games` (played) per club against `team_record.g` | **262 of 262 professional clubs equal** — the window's denominator is the season's |
+| Grain | one row per player-game in both logs; `split_id`, `stint` constant |
+| Log starts at a position against the fielding table's `gs` | 58 of 7,190 rows differ, every one by exactly +1 in the log (0.1%, uniform across levels). The log's total is the definitionally correct 8 × 6,248, so the log is the more consistent of the two |
+
+### What the audit rules in, and out
+
+* **Starts by position by date: exact.** So is who started on the mound, relief appearances, outs, plate
+  appearances, DH starts and bench appearances.
+* **Defensive innings by date: do not exist.** The log records ONE position per player-game; the season
+  fielding table counts every position he touched (57,498 games-at-position against the log's 52,999,
+  and 478 player-positions appear only as in-game switches). A recent read is therefore in **starts**,
+  the season read stays in **innings**, and the two are not the same unit.
+* **The unit difference does not need a new threshold.** Across 6,023 full-season minor-league
+  player-positions, season innings share and season starts share differ by 1.06 points on average, and
+  agree on the 0.40 regular line in 99.1% of rows and on the 0.15 part-time line in 97.5%.
+* **Dates are unpadded strings** (`2026-5-9` sorts after `2026-5-10`). Every ordering goes through
+  `parseGameDate`; a club's games are ordered by (date, time, game id) because doubleheaders exist
+  (18 club-dates). `game_id` order agrees with date order (0 inversions in 3,060 pairs).
+* **Arrivals: the transaction log strictly dominates the game log.** Of Arizona's 230 farm players **63
+  arrived at their current club in-season (27%)**. The log dates all 63; the game log alone sees 24 (a
+  man who last appeared for another club), and none that the log misses. The 39 it cannot see came from
+  somewhere that played no games: off an injured list (Locklear, Del Castillo), from a Dominican club
+  that has not started, or before opening day. So: log first, game log as the bounded fallback when
+  the log is unavailable, and otherwise the arrival is **not established** and is said to be.
+* **Departure needs no dating.** A departed man is simply not on the roster, and the roster is current
+  state. The log adds when he last played here; Player State adds where he is now.
+* **`projected_starting_pitchers` is coherent with usage and adds what usage cannot.** Every full-season
+  club lists exactly five distinct men; 100% are on that club's active list; 92.2% started for it in
+  its last 15 games; 96.6% of men with two starts in the last 15 are listed. The 6% who have never
+  started for the club are the arrivals and conversions — exactly the men usage has not caught up with.
+* **No current-state source exists for hitters.** The export has no lineup or depth-chart table, so for
+  a position player recent usage is the only evidence of his present role.
+
+## 8.2 The defect, measured on the real save before any change
+
+Baseline (`npm run farm:base-rate`, Arizona, 2026-05-15): 19 attention items; **6 `organizational_blockage`
+and 1 `opportunity_conflict`** — the seven pressing blocked-prospect findings Part 6 led with.
+
+**All seven are temporal artifacts.** A wave of moves is dated 2026-05-11 in the transaction log and
+bracketed exactly by the game log (last game for the old club 05-10, first for the new 05-12):
+
+| Player | Season-only reading (before) | What the game log and current state show |
+|---|---|---|
+| Cristofer Torin, 20, Reno | `insufficient_work` at SS, "Jose Fernandez occupies the developmental path he needs" | Promoted 05-11. Reno has played 4 games since; he played all 4 and started 3 at SS |
+| Druw Jones, 22, Reno | `insufficient_work` at CF: "19 of the club's 378 innings" | Promoted 05-11. Played 4 of 4, started 3. **This was Part 7's verified showcase example** |
+| Gavin Conticello, 22, Amarillo | blocked at 1B by Luken Baker | **Demoted** from Reno 05-11 (H-5 recorded it as a promotion). Played 4 of 4, started 3 |
+| Manuel Pena, 22, Amarillo | blocked at 2B by Jansel Luis | Promoted 05-11. Played 3 of 4, started 2 — at 3B |
+| Enyervert Perez, 20, Visalia | blocked at 1B by Caden Grice | Arrived from the complex 05-11. Played 4 of 4, started 2 |
+| David Hagaman, 23, Amarillo | `insufficient_work` in the rotation, "blocked" by four regulars | Took every fifth-day turn at Hillsboro (8 starts), was promoted, and started for Amarillo on 05-15 **on his turn**. He is Amarillo's projected `starter_4` |
+| Wellington Aracena, 21, Hillsboro | `not_playing` in the rotation, "blocked" by four regulars | OOTP role 11 and Hillsboro's projected `starter_0`, with 15 one-inning relief appearances and no start. Current state says rotation, usage says bullpen: a role change under way, not a blockage |
+
+Classification: **SYSTEMATIC**. H-5 filed the problem as a departed man's innings lingering in a
+denominator. The larger failure is on the arrival side: a promoted prospect's tiny destination-club
+total reads as "cannot get the work", and the regular at his new club reads as the man blocking him. A
+promotion wave manufactures the farm's entire pressing list.
+
+## 8.3 The window, designed from the data
+
+Not "the last fourteen days". The window is a number of **club games**, because a rotation turns over
+in games and a club's off days make a calendar window mean different things at different affiliates,
+and its length was chosen by a backtest on the export's own game log (`npm run farm:usage-window`,
+read-only, re-runnable on any import):
+
+> After each club game from the twentieth on, how well does a trailing window of that club's games
+> predict who does the work in the NEXT ones? 120 full-season minor-league clubs, roster-aware.
+
+**The decomposition that decided the architecture.** For "who holds a position", going from the season
+alone to the season *restricted to men still on the club* lifts the job-holder's share of the next five
+starts from 34.8% to 38.4%. A window on top adds 1.9 more. **Knowing who is actually on the club is
+worth about twice what windowing is** — which is why current state is authoritative and never inferred
+from usage (§8.4), and why the arrival and departure rules matter more than the number fifteen.
+
+| Job | Rule | Window (15 games) | Season equivalent |
+|---|---|---|---|
+| A position | 40% of the window's starts there → starts ≥ 2 of the next 5 there | precision 70.0%, **recall 38.4%** | 70.6%, recall 31.4% |
+| | the same at 10 games | precision 65.7% — noisier | |
+| The rotation | ≥ 2 starts in the window → one of the next 5 starters | **precision 86.8%**, recall 78.4% | 79.4%, 80.6% |
+| | ≥ 3 starts (what the season's 0.7 line would demand) | 91.8%, recall **63.1%** | |
+| Relief | see below | | |
+
+The method was validated against the major leagues first, where the answer is known: there the
+job-holder starts 75% of the next five and the rotation rule scores 96% / 96%. In the minors he starts
+about 40% — a farm club genuinely moves men through positions — which is why `REGULAR_SHARE` is 0.40.
+
+Results are flat between twelve and fifteen games. Fifteen is three turns of a five-man rotation, so
+one window serves every job, with two differences the evidence required:
+
+* **The rotation has its own lines** (`RECENT_ROTATION_SHARE` 0.6 / 0.3). Three turns fit in fifteen
+  games, so a man's share can only be 0, ⅓, ⅔ or 1: the season's 0.7 line would demand every turn and
+  miss a third of the men actually in a rotation.
+* **Relief may confirm or clear, never raise.** A man's share of his corps' innings correlates **0.31**
+  from one fifteen-game window to the next, against **0.57** for a position's starts, and **20.5% of
+  relievers who were not short in one window read as short in the next**. So in relief his current
+  level is the better of the two reads — short of work only when the season and the window both say
+  so. The first version let the window raise a shortage alone and produced 20 new findings across
+  thirty organizations, every one a quiet fortnight.
+
+**Sample-awareness** (`RECENT_MINIMUM_GAMES` = 6). On 626 real arrivals the 40% rule's precision swings
+between 56% and 77% below six observable games — integer effects: one start in two games is "half the
+job" — and holds at 74–76%, the full window's level, from six on.
+
+**Stamps.** All three constants are **provisional**, not calibrated: they rest on one partial season of
+one save, the choice among twelve to fifteen is inside the noise, and no harness re-fits them. The
+mechanisms — the three kinds of fact, the three window rules, thin is not unused, a departed man is
+never a blocker — are **architecture**, and tests pin them.
+
+## 8.4 The evidence contract
+
+Three kinds of fact, kept apart because they are different kinds of fact:
+
+| | What it is | Source | Standing |
+|---|---|---|---|
+| **Season usage** | what has happened this year | `players_career_*_stats` (`farmUsage.clubUsage`), unchanged | Context. Always shown; never deleted. In innings. |
+| **Recent usage** | what happened over the club's last fifteen games | the game log (`farmUsage.clubGameLogs` → `farmRecentUsage.ts`) | Evidence of the PRESENT role. In starts. |
+| **Current state** | who is on the club now, and available | the roster, Player State, the rehab screen, the injury columns; for a rotation, `projected_starting_pitchers` | **Authoritative, and never inferred from usage.** A man with 136 innings who is not on the roster competes for nothing. |
+
+A man's **current work level** is the recent read when it can be read; the season's when there is no
+recent read at all (an export with no game log — every function then behaves exactly as it did, which
+the 1,617 pre-existing tests prove); and `unknown` when there is a recent read too thin to establish a
+role. *History is never allowed to stand in for a present it does not describe.*
+
+Every `WorkShare` carries `season`, `recent` (with the games counted, the work in them and
+`sufficient` / `thin` / `none`), `tenure`, `levelFrom` (`recent` / `season` / `current_state`) and
+`disagrees`. Every conflict carries `timing`, `squeezedOverSeason`, `gone` and the `window` it was read
+over. Nothing is a score and nothing is a confidence number.
+
+### The three window rules — one per way a competition changes
+
+| What happened | Rule | Scenario it answers |
+|---|---|---|
+| He arrived, or came back from an injury | He is measured only over the games he could have played in: since his arrival, outside a recorded non-day-to-day injury spell | newly arrived · recently reassigned · returned from injury |
+| A man who HELD the job left it (departed, off the active list, or injured past a week) | Everyone is measured from the game after his last start there: usage from before describes another competition | departed regular · recently injured regular |
+| Anyone else not competing took starts there (a departed part-timer, a rehab assignee) | Those games are set aside: they were never available to the men who remain | rehab (D-026) · roster churn |
+
+"Held" is a regular's share of the window's games **up to the last one he played for the club in any
+role** (§8.6, W-3). Fewer than six games left to count is **thin**: the facts are shown and the role is
+`unknown`, so a man four games into a club is neither "bench depth" nor "the regular", is not squeezed,
+and blocks nobody.
+
+### Arrival: the source hierarchy (D-020's)
+
+1. **OOTP's transaction log**, through `server/clubArrival.ts` — shared chronology handling, like
+   `rehabAssignments.ts`; the farm never reads the log itself. An event counts only if it names the
+   club the EXPORT has him on and nothing later in the log sends him elsewhere, and events after the
+   export's date are ignored, because the log can run a day ahead of it.
+2. **The game log's bound**: he cannot have joined before the day after he last played for another
+   club. Works with no log; blind to a man who came from somewhere that played no games.
+3. **Otherwise not established.** With the log readable, no dated move means he has been there since
+   before it began. Without it, a man never seen with the club before the window has `unknown` tenure
+   and his evidence is capped at thin: he may have arrived yesterday.
+
+Where both sources speak the later date wins — each is only a lower bound on his first possible game.
+
+### Timing: whether a conflict is the present
+
+| `timing` | Meaning | How it is shown |
+|---|---|---|
+| `season_only` | no game log: the season to date, as it always was | as before, with the departed-innings note |
+| `current` | the recent read shows it too | as before |
+| `emerging` | the recent read shows it and the season does not | pressing, and said to be recent |
+| `historical` | the season shows it and the recent read does not | **kept**, quietly (`noted`), nobody `squeezed` |
+| `recently_resolved` | historical, and the man who held the job has left it | kept, naming him |
+| `uncertain` | the recent evidence is too thin to say | kept, quietly, with what would settle it (more games) |
+
+History is not erased, and it is not allowed to masquerade as the present.
+
+### Current state for a rotation
+
+`projected_starting_pitchers` is the one statement the export makes about a present role. A man among
+the next five whose usage has not caught up — four games into a new club — holds a spot on **current
+state**, not on a thin window. A man among the next five whose *sufficient* usage shows no starts is a
+**role change under way**: `unknown`, said in words, never "blocked from starting". A pitcher's job
+(`pitcherJob`) is decided the same way: OOTP's assignment or projection first, then a start inside the
+window, and the season only when the window cannot be read — so a man with three April starts who has
+relieved since is a reliever, and is not rotation cover when a starter leaves.
+
+## 8.5 Integration
+
+* **Playing time.** `positionConflict`, `rotationConflict` and `reliefConflict` take the job's window
+  and read every man twice. `jobRead` is the same read whether or not the job is contested.
+* **The lone claimant (W-5).** "No job is contested for him" read a prospect starting twice a fortnight
+  as getting regular work, because the men playing his position are listed at another. A position
+  player's verdict now comes from the read of his own job, contested or not. A pitcher's does not: an
+  uncrowded bullpen giving an arm few innings is a usage choice, not congestion.
+* **Primary job.** The position a man has started at most lately, when enough of the window can be
+  counted; otherwise the season's, as before. Without this the window would have manufactured a new
+  false positive: a man moved from left to centre three weeks ago reads "not used" in left.
+* **Cascades.** A chain asks what happens if a man moves NOW. The rotation vacancy counts men taking
+  starts now, so a converted reliever no longer "absorbs" a starter's departure; a departed man is in
+  no pool and no count. Each step still needs Player Development's own authorization: recent usage can
+  change an operational consequence and can never make an indefensible assignment defensible.
+* **The MLB ↔ farm contract.** One field added, `currentOpportunity`: what the leaving man is actually
+  doing at his club now — level, what it rests on, how much the read can carry, whether he is a recent
+  arrival, whether the reads disagree, the timing of the competition at his job, and the sentence.
+  `FarmArrival` gains `timing`. MLB Operations asks, the farm calculates, MLB displays: the adapter
+  passes the object through whole, and MLB shows the line only when it changes how the vacancy reads.
+* **Retention.** Takes no usage input and gained none. It improves only through the conflicts it
+  already read: a man is "holding work somebody is waiting on" only if he is CURRENTLY regular and the
+  man waiting is CURRENTLY short. Low recent usage is never a release rule, and a test pins that the
+  function has no way to receive it.
+* **Player Development and Philosophy.** Untouched. `currentAssignment` takes no usage input; no Player
+  Development module imports the recent read; philosophy names no dimension in any usage module.
+
+## 8.6 Findings log
+
+| # | Finding | Class | Resolution |
+|---|---|---|---|
+| W-0 | All seven of the farm's pressing blocked-prospect findings on the real save were a promotion wave four games before the export (§8.2). League-wide, 217 such findings became 37, and of the 189 no longer raised **65 were thin recent arrivals and 88 are men who ARE playing now**. | **SYSTEMATIC** | The three window rules; thin is `unknown`. |
+| W-1 | H-5 assumed the export had no game-level data and recorded recency as roadmap work. It carries a complete per-game log for every minor-league level that reconciles with the season tables exactly. | **MISSING** → built | §8.1. |
+| W-2 | A pitcher with any start this season was a rotation claimant for the rest of it, so a converted reliever read as a starter not getting starts, and counted as rotation cover when a starter left. | **SYSTEMATIC** | `pitcherJob`: current state, then the window, then the season. |
+| W-3 | "Held the job while he was here" was measured to a departed man's last START at the position. Conticello started twice at first base early in the window and stayed with Reno another week; that read as two of five, made him "the man who held first base", cut the regular's window and reported LuJames Groover as newly squeezed. | **BUG** (found on the real save, in this phase) | Measured to his last APPEARANCE for the club. |
+| W-4 | The first cut rule fired on any departed man with a part-time share, so a 25% catcher leaving discarded ten games of valid evidence about the regular. | **SYSTEMATIC** | Only a man who HELD the job restarts the window; anyone less is set aside. |
+| W-5 | A lone claimant read "regular work: no job is contested for him". Roni Cabrera, a development-priority outfielder starting 2 of 14, dropped out of the findings when the other claimant's job moved. The design comment said his own review covered it; nothing did. | **BUG** (pre-existing, exposed by the cross-organization sweep) | A position player's verdict comes from his own job read. |
+| W-6 | The window alone raised relief shortages: 20 of the 22 new findings across thirty organizations were a reliever's quiet fortnight. | **SYSTEMATIC** | Measured (r = 0.31; 20.5% manufactured); relief confirms or clears. |
+| W-7 | "Disagrees" fired for 43% of claimants, because one level apart is a fortnight's noise on a club that rotates men (50.2% of readable claimants sit one level apart). | **SYSTEMATIC** | Two or more levels apart: 6.0% of claimants. |
+| W-8 | `blockersOf` named the regulars ahead of a man whose own work could not be read. Production never asked, and one golden case passed by an accident of its numbers. | **BUG** (latent) | An indeterminate read has no blocker. |
+| W-9 | A man "departed" to the club he was still on: he was off its active list, not gone. | **BUG** | A fourth reason, `inactive`. |
+| W-10 | The code comment justifying "not playing is asked before the level" cited Druw Jones as a blocked prospect. He had been promoted four games earlier. | **BUG** (documentation) | The order is right and the example was not; the comment says so. |
+
+**Debatable, documented, not changed:**
+
+* Fifteen games, six games and the rotation lines are provisional and inside their own noise.
+* A rehab assignee who has since gone back up is `departed`, and if he held the job his leaving restarts
+  the window. His starts were never available to anyone either way; cutting and setting aside give the
+  same men the same reads.
+* A man projected to start whose usage shows he has been starting all along, but whom OOTP has just
+  dropped from its next five, still reads `regular` until the window catches up. Only the other
+  direction produced false findings, so only it is handled.
+* One man, one job, is unchanged. A prospect rotating through three positions is `part_time` at his
+  main one and cover at the others, and the affiliate page still marks him squeezed there though he
+  plays every day. That is the abstraction, not the window, and it raises no finding on the player.
+
+## 8.7 Real-save and cross-organization validation
+
+Read-only. "Before" is the unchanged `main` at `fcbe73e`, run from a throwaway worktree against the
+same import, so every number is a measured pair.
+
+**Arizona.** Attention items 19 → **10**. Nine removed, **none added**, ten unchanged (three
+promotion-direction assignments, two operational shortages, the organizational count, three retention
+reviews). The nine: the seven arrival artifacts of §8.2, and two retention reviews whose "the spot is
+wanted" pressure came from them — Bryce Jarvis's waiter was David Hagaman, who is in the rotation.
+
+| Classification | Arizona examples |
+|---|---|
+| **CORRECTED STALE CONFLICT** | Hagaman (in OOTP's next five; took his turn). Amarillo's rotation reads `recently_resolved`: Jose Cabrera promoted to Reno, Hagaman into his spot. Tyler Locklear: 11% of the season's first-base innings, 5 of the 10 games since he was optioned — the current regular, with the disagreement shown. |
+| **CORRECTED STALE COVERAGE** | Reno CF reads from the four games since Conticello, who held 36% of it, was demoted; he is named as history and competes for nothing. |
+| **NEW UNCERTAINTY** | Torin, Jones, Conticello, Pena, Perez: joined four games ago, role not established. Aracena: OOTP's next starter with fifteen relief appearances — a role change under way. |
+| **NO MATERIAL CHANGE** | Visalia SS (a real, current squeeze); every operational finding; every Player Development verdict. |
+| **SUSPICIOUS CHANGE** | Groover newly "squeezed" at first base → W-3, a bug, fixed. None remain. |
+
+**All thirty organizations.** No crash. Per club: attention 12–37 → **10–29** (764 → 571 in all);
+`organizational_blockage` 123 → 31; `opportunity_conflict` 94 → 6; conflicts costing development 326 →
+128; retention reviews 287 → 281. Flagged prospects 217 → **37** (30 kept, 7 new). 12.9% of claimants
+read `unknown` (4–28% per club) and 6.0% carry a material season/recent disagreement; 27% are recent
+arrivals, because OOTP moves minor leaguers in waves. Of the 189 findings no longer raised: 65
+thin recent arrivals · 88 playing now · 29 corrected by current state (16 in the next five, 13 role
+changes) · 5 jobs that had just changed hands · 2 others. Of the **7 new**: five position players the
+recent games show have lost the job ("started 1 of the 11 games since Ryan Ritter last started there"),
+one designated hitter, one reliever short on BOTH reads. Conflict timing: 286 current · 82 uncertain ·
+77 historical · 50 recently resolved · 6 emerging.
+
+## 8.8 Performance
+
+Warm process, median of five, Arizona (230 players, seven affiliates).
+
+| | `main` | this branch |
+|---|---|---|
+| `computeFarmSystem` | 1,080 ms | 1,138 ms |
+| ten `farmConsequenceFor` in one session (the MLB case the hardening phase took from 10.9 s to 1.1 s) | 1,122 ms | 1,247 ms |
+| one `farmConsequenceFor` | 1,152 ms | 1,104 ms |
+| mean per organization, thirty organizations | 1,269 ms | 1,305 ms |
+| the temporal reads themselves | — | game logs 2 ms · last games elsewhere 2 ms · injury absences < 1 ms |
+
+The importer indexes the log tables on `team_id`, `game_id` and `player_id`. Everything temporal is
+read once per `FarmSession` and the job windows are memoized in it; nothing is cached across requests.
+The first version queried the database once per player for a departed man's name and cost a second;
+the session memo removed it.
+
+## 8.9 The workspace
+
+No new view and no new column on any list.
+
+* **Decision** — "What he is getting where he is" gains a three-row table, **Season / Recent / Now**,
+  each with its level and its facts; his tenure; a role change where there is one; and the men no longer
+  competing for his job, said as history.
+* **Affiliates** — a conflict is said in the tense it is true in ("the season's totals show Hagaman short
+  of work, but Jose Cabrera has left it and the club's recent games show no shortage"), says what it was
+  read over, shows the season beside a man only where the reads disagree or his role cannot be read, and
+  lists the men not competing with where they are now.
+* **Assignments, Overview** — unchanged in shape; they simply stop listing the artifacts.
+* **MLB Operations** — one line, "At Reno Aces now: …", and only when it changes how the vacancy reads.
+
+Verified in the browser against the real save at 1440 px, no horizontal overflow, no console error.
+
+## 8.10 Known limitations
+
+* **No defensive innings by date.** A recent share is in starts; a mid-game position switch is invisible.
+* **The window says who played, never why a man did not.** Blocked, resting, slumping and travelling
+  are one fact. The read is therefore a usage read and never a verdict on a player.
+* **No current-state source for hitters.** The export has no lineup or depth-chart table.
+* **Without OOTP's transaction log, an arrival from a club that played no games is invisible.** The man
+  is then `unknown` and his evidence thin, which is said, not guessed.
+* **Day-to-day injuries are not absences** — a third are played through — so a man nursing one who sits
+  for a week reads as not playing.
+* **A complex league is below the twenty-game gate for most of its season**, so none of this is read.
+* **The constants are provisional**: one partial season, one save, and a January export has no window.
+
+## 8.11 Deferred to the peer-relative protection-tier branch
+
+Nothing here changed a tier name, a tier threshold or what `core` / `protected` /
+`development_priority` mean. Recorded for that branch, not solved:
+
+* **Stakes decide who can be squeezed**, and the tier is an absolute-scale composite (C-9). Every
+  "squeezed" and every "blocked" in this part inherits that: a 20-potential player in the Dominican
+  league and one at Triple-A share a tier, so the window is only as good at finding a developmental cost
+  as the tier is at naming who has one.
+* **Visalia SS**: three men with a claim, two of them `development_priority`, all near a third of the
+  starts, one marked squeezed. Whether that is a cost depends on whether the tier is right about them.
+* `tier: null` (indeterminate stakes) claims nothing, correctly — and how often that happens at the
+  complex levels is a tier question.
+
+* **Checkpoint 10 — windowed usage: audit.** Every temporal source in the export inspected; the game log
+  found, reconciled and adopted; the defect measured (§8.1, §8.2).
+* **Checkpoint 11 — windowed usage: the model.** The window backtested; the three kinds of fact; the
+  three window rules; tenure with its source hierarchy; current state for the rotation (§8.3, §8.4).
+* **Checkpoint 12 — windowed usage: integration and validation.** Conflicts, the lone claimant, cascades,
+  the contract, the workspace; ten findings (§8.6), four of them found by validating against the real
+  save and the other twenty-nine organizations; 119 new cases. `npx tsc --noEmit` clean, 133 files /
+  1,736 tests, `npm run build` succeeds. Arizona: 10 attention items.
