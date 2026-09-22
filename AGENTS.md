@@ -28,6 +28,15 @@ data migration without the owner (see
   validation, versions and releases. [docs/README.md](docs/README.md) says
   which documents are current and which are historical records.
 
+Subsystem detail lives in the canonical documents below, not in this file.
+Before changing one of these subsystems, read the listed sections directly.
+Claude Code also loads the listed rule for matching paths; it is a short
+reminder that routes to the same documents, never the doctrine itself.
+
+| Subsystem | Canonical detail | Claude rule |
+|---|---|---|
+| Minor League Operations | D-044 to D-048 and D-051; ARCHITECTURE "Minor League Operations owns placement, playing time and cascades"; MINOR_LEAGUE_OPERATIONS.md Parts 2, 3, 7, 8 and 9 | `.claude/rules/farm-operations.md` |
+
 Treat the repository and imported OOTP schema as the source of truth. Do not
 claim a feature is implemented because it appears in the roadmap or a prompt.
 Update the relevant durable document when an architectural boundary, accepted
@@ -107,11 +116,6 @@ decision, roadmap item, or project-state fact changes.
   declared once in `developmentFit.ts`, all provisional or policy, none calibrated.
   `tests/developmentalStakesBoundary.test.ts` enforces it and `npm run stakes:report` is the
   check on the lines.
-- "Short of developmental work" is ONE line (D-051): `shortOfWork` in `server/playingTime.ts`
-  (`not_used`, `occasional`) decides `squeezed` for every job, and the man's review reads the same
-  line through `shortOfWorkVerdict`. Sharing a job (`part_time`) and batting without fielding
-  (`bat_only`) are not shortages; the review raises them for the man, the club does not. Never add
-  a work level to one side without the other.
 - MLB Operations (`server/mlb*.ts`) is a consumer of Player State, Player Rights, Player
   Development, Minor League Operations and philosophy (D-024). Derive needs from the current
   export, never from snapshot differences; never read a rating, option, 40-man, or log source
@@ -142,58 +146,24 @@ decision, roadmap item, or project-state fact changes.
   case in the behavioral corpus first (docs/BEHAVIOR_CASES.md).
   `tests/mlbOperationsBoundary.test.ts` enforces it.
 - Minor League Operations (`server/farm*.ts`, `playingTime.ts`,
-  `currentAssignment.ts`; `farmConsequence.ts` is the MLB ↔ farm contract and
-  `farmRoutes.ts` the API) asks whether an assignment is DEFENSIBLE, never whether a
-  promotion was earned (D-044 to D-046, docs/MINOR_LEAGUE_OPERATIONS.md). A league
-  is the peer group, not a level, and a peer must be on a roster: production is
-  read against the player's own league, park-adjusted, with its sample. Age
-  relative to level says how much developmental time is left and never lowers the
-  developmental bar; a player past his level's window raises an ORGANIZATIONAL
-  question, which `currentAssignment.ts` answers and says so. Holding his own is
-  the null reading; `not_assessable` (no season to read) is not `indeterminate`
-  (missing evidence). One man competes for ONE job — versatility is cover, not a
-  second claim — and missing reps cost development only for a player Player
-  Development places at development priority or better; not playing is asked
-  BEFORE the level, because a prospect's thin sample is usually caused by it.
-  Operational health and developmental health are separate outputs of an affiliate
-  and only a SHORTAGE is operational. A cascade is a chain whose every step is
-  independently defensible and which STOPS; saying where it stopped is the answer,
-  and an unresolved hole is information, never an illegality. Retention is three
-  questions with three owners and philosophy may not reach the developmental
-  outlook. Every finding is structured data with its evidence, its owner, what is
-  missing and what would resolve it — never prose. Every constant is declared once
-  in `farmCalibration.ts` and stamped; none is calibrated, because the export holds
-  no minor-league history. `tests/farmOperationsBoundary.test.ts` enforces it and
-  `npm run farm:base-rate` is the check on how often it raises something.
-  There is ONE farm implementation: the superseded solvers, their routes and the
-  older farm pages were deleted in the hardening phase (MINOR_LEAGUE_OPERATIONS.md
-  Part 7). A blocker HOLDS the job — only a regular is one; a part-time man ahead
-  of a prospect makes it an opportunity conflict, not a blockage. Men getting
-  innings at a job from another position are named as ahead and count against
-  nobody's claim. A designated hitter is batting, not fielding. An injured man is
-  not cover and competes for nothing. Season usage, recent usage and current state
-  are three kinds of fact (D-048, MINOR_LEAGUE_OPERATIONS.md Part 8). WHO IS ON A
-  CLUB is current state and is never inferred from usage: a departed man is
-  history, named with what he held, and never a blocker whatever his season total.
-  A man's current work level is the recent window (`farmRecentUsage.ts`, the
-  export's per-game log, counted in club GAMES and only over the games he could
-  have played in) when it can be read, the season's only when the export has no
-  game log, and `unknown` when fewer than `RECENT_MINIMUM_GAMES` can be counted —
-  thin is not unused, and an unknown role is neither squeezed nor a blocker. Less
-  evidence may only mean more uncertainty; evidence is a structured state, never a
-  confidence number. When the season and the window are two levels apart both are
-  shown. A relief window may confirm or clear a shortage and never raise one. An
-  arrival is dated only through `clubArrival.ts`, in D-020's order; no farm module
-  reads the transaction log. OOTP writes dates unpadded (`2026-5-9` sorts after
-  `2026-5-10`): order games only through `parseGameDate`. Recent usage is a usage
-  read — never recent form, a promotion case or a release rule; Player Development
-  and retention take no usage input. The organization is read once per request
-  through a `FarmSession`; never cache it across requests. MLB Operations reaches
-  the farm only through `mlbEvidence.ts` (`farmConsequence`, which opens or is
-  handed a session) and displays the farm's own operational reading, so the two
-  modules never describe one club differently. The Player Development pages read
-  `/api/scouted-development`, which is Player Development's and history's, not
-  the farm's.
+  `currentAssignment.ts`) solves affiliate roster, role, playing-time and cascade
+  problems inside Player Development's and Philosophy's boundaries and decides
+  no scouting, development, rights or philosophy question (D-044 to D-048,
+  D-051). It asks whether an assignment is DEFENSIBLE, never whether a promotion
+  was earned: results and usage authorize no move, age relative to level never
+  lowers the developmental bar, and philosophy cannot reach retention's
+  developmental outlook. Missing reps cost development only for a player Player
+  Development places at development priority or better; "short of developmental
+  work" is one line (`shortOfWork`) that the club's conflicts and the man's
+  review share. Who is on a club is current state, never inferred from usage;
+  a thin read is `unknown`, not unused, and less evidence only ever means more
+  uncertainty. A cascade is a chain of independently defensible steps that
+  stops, and an unresolved hole is information, never an illegality. Findings
+  are structured data with evidence, owner and what is missing; constants are
+  declared once in `farmCalibration.ts` and none is calibrated. OOTP writes
+  dates unpadded (`2026-5-9` sorts after `2026-5-10`): order them only through
+  `parseGameDate`. `tests/farmOperationsBoundary.test.ts` enforces the boundary;
+  read the canonical detail (routing table above) before changing it.
 - Recommendations are advisory. The user/GM makes the final decision. Do not
   add automatic OOTP transactions or save mutation as an incidental feature.
 - Organization-specific behavior should resolve the configured organization,
