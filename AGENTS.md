@@ -36,6 +36,7 @@ reminder that routes to the same documents, never the doctrine itself.
 | Subsystem | Canonical detail | Claude rule |
 |---|---|---|
 | Minor League Operations | D-044 to D-048 and D-051; ARCHITECTURE "Minor League Operations owns placement, playing time and cascades"; MINOR_LEAGUE_OPERATIONS.md Parts 2, 3, 7, 8 and 9 | `.claude/rules/farm-operations.md` |
+| MLB Operations | D-024 to D-043; ARCHITECTURE "MLB Operations"; MLB_OPERATIONS.md §3, §10, §11 and §15 to §30; MLB_OPERATIONS_HARDENING.md; CALIBRATION.md; BEHAVIOR_CASES.md "MLB Operations" | `.claude/rules/mlb-operations.md` |
 
 Treat the repository and imported OOTP schema as the source of truth. Do not
 claim a feature is implemented because it appears in the roadmap or a prompt.
@@ -116,35 +117,27 @@ decision, roadmap item, or project-state fact changes.
   declared once in `developmentFit.ts`, all provisional or policy, none calibrated.
   `tests/developmentalStakesBoundary.test.ts` enforces it and `npm run stakes:report` is the
   check on the lines.
-- MLB Operations (`server/mlb*.ts`) is a consumer of Player State, Player Rights, Player
-  Development, Minor League Operations and philosophy (D-024). Derive needs from the current
-  export, never from snapshot differences; never read a rating, option, 40-man, or log source
-  itself; never rank or score candidates; a path is only as certain as its least certain
-  step. Whether an assignment is developmentally defensible is asked of Player Development per
-  contemplated context (D-025); MLB Operations never holds a development threshold or a
-  bypass, and an incomplete evaluation is never an actionable solution. Coverage numbers are
-  floors held as data, not roster doctrine. An unknown duration is never assumed (D-027): judge
-  the contexts that could apply and say when the answer depends on it. The active-roster spot
-  and the 40-man spot are separate constraints (D-028); compose Rights' component actions and
-  invent no combined right. The relief/experience numbers are provisional calibration
-  parameters, declared only in `mlbAssignmentContext.ts`. IL activation rules come only from
-  observed OOTP behavior (D-029). The scouting layer (D-031 to D-034): a review finding is a flag with two
-  lenses (tools, results) and a working estimate that is always shown with its parts, never a trigger or a hidden
-  score; results are objective statistics read directly, ratings only through `scoutedEvidence.ts`; every
-  threshold is a provisional calibration parameter declared once (`roleReview`, `platoon`, `lineupPicture`,
-  `resultsMetrics`, `roleStanding`); a hitter is bat plus revealed glove at his position; the lineup is what
-  usage shows; a recommendation is advice from a stated rubric. A hitter's rating splits against each hand and his
-  running ratings are approved evidence, read only through `scoutedEvidence.ts` (D-035); pitchers' splits and the other
-  rating families are not. Every scouting constant is tuned against outcomes by `scripts/calibrate.ts` or stamped
-  provisional, declared once (D-037, docs/CALIBRATION.md). Philosophy and the season shade the ORDER and WORDING of advice
-  (`staffPreference.ts`, D-036): after validity, never a change to a read, a right or a development finding, every lean
-  shown with its dimension and value, and a recommendation says what a club with no philosophy would hear. Bullpen roles,
-  the bench, position shifts and platoon partners are flags and plans, never transactions (D-038). Peer populations are major leaguers
-  only (D-039); a concern is measured against the ROLE with its standard shown, never against the group or one absolute line (D-040);
-  every constant is stamped calibrated, provisional or policy, and a policy constant is decided, never fitted (D-041); the bench is
-  functions and cover quality, not a score (D-042); the module is views, each owning one question (D-043). New baseball behavior gets a
-  case in the behavioral corpus first (docs/BEHAVIOR_CASES.md).
-  `tests/mlbOperationsBoundary.test.ts` enforces it.
+- MLB Operations (`server/mlb*.ts` and its scouting layer) is a consumer of Player
+  State, Player Rights, Player Development, Minor League Operations and philosophy
+  and owns none of their answers (D-024). It derives needs from the current
+  export, never from snapshot differences; it never reads a rating, option,
+  40-man, or log source itself (ratings, including a hitter's approved splits and
+  running ratings, only through `scoutedEvidence.ts`: D-035); and it reaches the
+  farm only through `mlbEvidence.ts`. Developmental defensibility is asked of
+  Player Development per contemplated context, never held as an MLB threshold or
+  bypass (D-025), and an unknown duration is never assumed (D-027). Stages are
+  never collapsed and nothing is ranked or given a hidden score: a path is only
+  as certain as its least certain step, an incomplete evaluation is never an
+  actionable solution, and a review finding is a flag with its evidence shown,
+  never a trigger (D-031). Philosophy and the season shade only the order and
+  wording of advice, after validity, and every lean is shown (D-036). Every
+  constant is declared once and stamped calibrated, provisional or policy
+  (D-037, D-041). Recommendations, bench, bullpen, shift and platoon plans are
+  advice, never transactions (D-034, D-038); output is deterministic and no LLM
+  is in the decision path. New baseball behavior gets a behavioral-corpus case
+  first (docs/BEHAVIOR_CASES.md). `tests/mlbOperationsBoundary.test.ts`
+  enforces the boundary; read the canonical detail (routing table above) before
+  changing it.
 - Minor League Operations (`server/farm*.ts`, `playingTime.ts`,
   `currentAssignment.ts`) solves affiliate roster, role, playing-time and cascade
   problems inside Player Development's and Philosophy's boundaries and decides

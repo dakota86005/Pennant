@@ -1,0 +1,61 @@
+---
+paths:
+  - "server/mlb*.ts"
+  - "server/roleReview.ts"
+  - "server/roleStandards.ts"
+  - "server/roleStanding.ts"
+  - "server/platoon.ts"
+  - "server/lineupPicture.ts"
+  - "server/lineupShifts.ts"
+  - "server/resultsEvidence.ts"
+  - "server/benchReview.ts"
+  - "server/bullpenRoles.ts"
+  - "server/staffPreference.ts"
+  - "server/toolsModel.ts"
+  - "server/rosterScenario.ts"
+  - "src/pages/MlbOperations.tsx"
+  - "src/pages/mlb/**"
+  - "scripts/calibrate.ts"
+  - "tests/mlb*.ts"
+  - "tests/benchReview.test.ts"
+  - "tests/bullpenRoles.test.ts"
+  - "tests/lineupPicture.test.ts"
+  - "tests/lineupShifts.test.ts"
+  - "tests/platoon.test.ts"
+  - "tests/roleReview.test.ts"
+  - "tests/roleStanding.test.ts"
+  - "tests/rosterScenario.test.ts"
+  - "tests/staffPreference.test.ts"
+  - "tests/staffShading.test.ts"
+  - "tests/toolsModelProfiles.test.ts"
+  - "tests/resultsStress.test.ts"
+  - "tests/resultsEvidence.test.ts"
+---
+
+# MLB Operations: working reminder
+
+This is a router, not the doctrine. The canonical detail is in `docs/DECISIONS.md` D-024 to D-043,
+`docs/ARCHITECTURE.md` "MLB Operations", `docs/MLB_OPERATIONS.md` (§10 static boundaries, §11 AI, §15 to
+§30 the build passes), `docs/MLB_OPERATIONS_HARDENING.md`, `docs/CALIBRATION.md` and `docs/BEHAVIOR_CASES.md`.
+Read the relevant section before changing behavior; where this file and those documents differ, they win.
+
+MLB Operations coordinates specialists and owns none of their answers: Player State says who is available,
+Player Rights says what is legal, Player Development says what is defensible per context, Minor League
+Operations says what the farm feels (only through `mlbEvidence.ts`), philosophy shades advice afterwards.
+The pure core (`mlbRoster`, `mlbNeeds`, `mlbResponses`) opens no table; it takes ports.
+
+- Needs come from the current export, never snapshot differences; a cause is stated or absent (D-024).
+- Stages stay visible; no rank, no hidden score; `unassessed` and incomplete are never a pass (D-024, D-018).
+- Compose Rights' component actions; the active spot and the 40-man spot are separate (D-028); invent no right.
+- An unknown duration is not assumed; `context_dependent` is a result (D-027). IL rules only as observed (D-029).
+- A finding is a flag with two lenses and a working estimate shown with its parts, never a trigger (D-031).
+- A hitter is bat plus REVEALED glove at his position; an unseen grade is never read or assumed (D-033).
+- Concern is against the role's standard, shown; peers are major leaguers only (D-039, D-040).
+- Ratings only through `scoutedEvidence.ts`; approved families are D-017 and D-035, nothing else.
+- Philosophy and season: urgency, bar, tie-breaks, order, wording, after validity, each lean shown (D-036).
+- Constants declared once, stamped calibrated / provisional / policy; policy is never fitted (D-037, D-041).
+- Bench is functions and cover quality; the pen is read whole; views own one question (D-042, D-043).
+- Deterministic output; no LLM in the decision path; the GM decides and nothing is executed (§11, D-034).
+
+Checks: `tests/mlbOperationsBoundary.test.ts`, `tests/evidenceBoundary.test.ts`; new behavior gets a case in the
+corpus first; `npm run calibrate` only for a calibrated (never a policy) constant.
