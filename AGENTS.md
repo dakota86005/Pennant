@@ -5,14 +5,16 @@ supporting staff inside that experience, not a generic recommendation chatbot.
 Recommendations must remain explainable, preserve scouting uncertainty, and
 leave the final decision to the user/GM.
 
-Pennant began as a fork of `lsukev/ootp-front-office` and has its own name,
-architecture and version lineage (D-049). The Electron `appId` is Pennant's own
-(`com.dakotawise.pennant`) and release tags are `pennant-v<version>`, never the
-`v<version>` shape upstream uses. One inherited identifier is held back on
-purpose — the npm `name` `ootp-front-office`, from which Electron names the
-user-data folder — and the `OOTP_FO_*` environment variables and the `data/`
-layout keep their names; do not rename them as a cosmetic cleanup, and attempt no
-data migration without the owner (see
+Pennant began as a fork of `lsukev/ootp-front-office` (the `upstream` remote) and
+has its own name, architecture, version lineage, application id and
+`pennant-v<version>` release tags, never upstream's `v<version>` shape (D-049).
+`origin` is Pennant's repository; releases, the updater and in-app links name it,
+never upstream. Branding is not technical identity: the npm `name`
+`ootp-front-office` (Electron names the user-data folder from it), the
+`OOTP_FO_*` environment variables and the `data/` layout are held on purpose
+because persisted state and user configuration depend on them. Do not rename
+them as a cosmetic cleanup; changing one needs a designed data migration, which
+does not exist and is the owner's decision (see
 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#application-id-and-compatibility-holds)).
 
 ## Read before changing code
@@ -39,6 +41,7 @@ reminder that routes to the same documents, never the doctrine itself.
 | MLB Operations | D-024 to D-043; ARCHITECTURE "MLB Operations"; MLB_OPERATIONS.md §3, §10, §11 and §15 to §30; MLB_OPERATIONS_HARDENING.md; CALIBRATION.md; BEHAVIOR_CASES.md "MLB Operations" | `.claude/rules/mlb-operations.md` |
 | Developmental stakes | D-050 (D-018, D-019 and D-044 as referenced); ARCHITECTURE "Developmental stakes: the protection tier"; DEVELOPMENTAL_STAKES.md Parts 3, 4, 5 and 9; BEHAVIOR_CASES.md "Developmental stakes" | `.claude/rules/developmental-stakes.md` |
 | Roster evidence and rights | D-020 to D-023 (D-026 for rehab); ARCHITECTURE "Roster evidence: state, chronology, and how current they are"; RIGHTS_RESEARCH.md §2, §3 and §5 | `.claude/rules/roster-evidence.md` |
+| Project identity and releases | D-049; ARCHITECTURE "Subsystem responsibilities" (Identity and version); DEVELOPMENT.md "Versions", "Release tags", "Releases" and "Application id and compatibility holds"; PENNANT_CONSOLIDATION.md | `.claude/rules/release-identity.md` |
 
 Treat the repository and imported OOTP schema as the source of truth. Do not
 claim a feature is implemented because it appears in the roadmap or a prompt.
@@ -172,6 +175,6 @@ decision, roadmap item, or project-state fact changes.
   baseline is `npx tsc --noEmit`, `npm test`, `npm run build`, and any relevant
   manual check from `package.json` (`check:stats` and `check:theme` require
   suitable imported data).
-- The version lives only in `package.json` (`server/appInfo.ts` reads it); do
-  not hard-code it anywhere. Never create, move or delete Git tags or branches
-  without the owner's approval, and do not fetch upstream's tags into this clone.
+- The version lives only in `package.json`; do not hard-code it anywhere. Never
+  create, move or delete Git tags or branches without the owner's approval, and
+  do not fetch upstream's tags into this clone.
