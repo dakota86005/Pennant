@@ -120,7 +120,10 @@ describe('what the farm says about a man Player Development cannot judge', () =>
   it('carries no numeric protection for him anywhere in the organization\'s view', () => {
     const farm = computeFarmSystem(ORG);
     const unknown = farm.assignments.find((a) => a.playerId === PROSPECT_UNKNOWN)!;
-    expect(unknown.protection.score).toBeNull();
+    /* No tier, no reading behind one, and no number standing in for either (D-050: there is no score). */
+    expect(unknown.protection.tier).toBeNull();
+    expect(unknown.protection.reading).toBeNull();
+    expect(unknown.protection).not.toHaveProperty('score');
     const retention = farm.retention.find((r) => r.playerId === PROSPECT_UNKNOWN)!;
     expect(retention.outlook.state).toBe('indeterminate');
     expect(retention.conclusion).toBe('indeterminate');
@@ -187,6 +190,117 @@ describe('across organizational philosophies (end to end)', () => {
     expect(aggressive.judgments).toEqual(neutral.judgments);
     expect(conservative.verdicts).toEqual(neutral.verdicts);
     expect(aggressive.verdicts).toEqual(neutral.verdicts);
+  });
+
+  it('gives every player the same developmental stakes at organizations that lean opposite ways (D-050)', async () => {
+    /*
+     * Philosophy may prefer different actions involving a player. It cannot change what kind of
+     * developmental asset he is: the tier, the reasons and the readings behind it are identical at a
+     * club that hoards prospects and promotes slowly and at one that does neither, in the farm's
+     * payload and in Player Development's own.
+     */
+    const lean = async (manual: Record<string, number>) => {
+      await request('/api/settings');
+      const res = await fetch(`http://127.0.0.1:${process.env.OOTP_FO_PORT}/api/settings/philosophy/${ORG}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ manual }),
+      });
+      expect(res.ok).toBe(true);
+      const farm = (await request(`/api/farm-operations/${ORG}`)) as {
+        assignments: Array<{ playerId: number; level: number; protection: unknown }>;
+        retention: Array<{ playerId: number; outlook: unknown; guardrails: unknown }>;
+      };
+      const pages = (await request(`/api/scouted-development/${ORG}`)) as { players: Array<{ playerId: number; protection: unknown }> };
+      /* MLB Operations, through a what-if on the club's regular: the stakes each farm candidate is weighed with. */
+      const mlb: Record<string, unknown> = {};
+      for (const context of ['temporary_depth', 'durable_role']) {
+        const packet = (await request(`/api/mlb-operations/${ORG}/responses?need=mlb:what_if:${IDS.starter}&context=${context}`)) as {
+          groups: Array<{ candidates: Array<{ playerId: number; development: { contextual?: { stakesTier: string | null; stakesReasons: string[] } | null } }> }>;
+        };
+        for (const c of packet.groups.flatMap((g) => g.candidates)) mlb[`${context}:${c.playerId}`] = { contextual: c.development.contextual ?? null };
+      }
+      return {
+        farm: Object.fromEntries(farm.assignments.map((a) => [a.playerId, a.protection])),
+        pages: Object.fromEntries(pages.players.map((a) => [a.playerId, a.protection])),
+        /* The developmental outlook and the guardrail are Player Development's; retention's conclusion may still lean. */
+        outlook: Object.fromEntries(farm.retention.map((r) => [r.playerId, { outlook: r.outlook, guardrails: r.guardrails }])),
+        mlb,
+      };
+    };
+    const hoarder = await lean({ promotionAggressiveness: 0, prospectPreservation: 100, upsidePreference: 100, rosterDepth: 100, competitiveWindow: 0 });
+    const spender = await lean({ promotionAggressiveness: 100, prospectPreservation: 0, upsidePreference: 0, rosterDepth: 0, competitiveWindow: 100 });
+    expect(Object.keys(hoarder.farm).length).toBeGreaterThan(0);
+    expect(Object.keys(hoarder.outlook).length).toBeGreaterThan(0);
+    expect(Object.keys(hoarder.mlb).length).toBeGreaterThan(0);
+    expect(spender.farm).toEqual(hoarder.farm);
+    expect(spender.pages).toEqual(hoarder.pages);
+    expect(spender.outlook).toEqual(hoarder.outlook);
+    expect(spender.mlb).toEqual(hoarder.mlb);
+    /* ...and MLB Operations weighs each man with the tier the farm reads. */
+    let compared = 0;
+    for (const [key, stakes] of Object.entries(hoarder.mlb)) {
+      const contextual = (stakes as { contextual: { stakesTier?: string | null } | null }).contextual;
+      if (!contextual || contextual.stakesTier === undefined) continue;
+      const inFarm = hoarder.farm[key.split(':')[1]] as { tier: string | null } | undefined;
+      if (!inFarm) continue;
+      expect(contextual.stakesTier, key).toBe(inFarm.tier);
+      compared++;
+    }
+    expect(compared).toBeGreaterThan(0);
+    /* ...and the two payloads agree with each other about every man they both carry. */
+    for (const [id, protection] of Object.entries(hoarder.pages)) {
+      const inFarm = hoarder.farm[id] as { tier: string | null } | undefined;
+      if (inFarm) expect((protection as { tier: string | null }).tier).toBe(inFarm.tier);
+    }
+  });
+
+  it('gives every player the same developmental stakes whether the organization\'s hitters are hot or cold (D-050)', async () => {
+    /*
+     * Production is not an input to the tier at all. The whole organization's season lines are made
+     * monstrous, then made empty, and every protection in the farm's payload and Player Development's
+     * own is identical: whatever the surrounding review does with a hot month, the tier does nothing.
+     */
+    const snapshot = async () => {
+      const farm = (await request(`/api/farm-operations/${ORG}`)) as { assignments: Array<{ playerId: number; protection: unknown }> };
+      const pages = (await request(`/api/scouted-development/${ORG}`)) as { players: Array<{ playerId: number; protection: unknown }> };
+      return {
+        farm: Object.fromEntries(farm.assignments.map((a) => [a.playerId, a.protection])),
+        pages: Object.fromEntries(pages.players.map((a) => [a.playerId, a.protection])),
+      };
+    };
+    const ids = (Object.keys((await snapshot()).farm)).map(Number);
+    const placeholders = ids.map(() => '?').join(',');
+    const before = db.prepare(`SELECT * FROM players_career_batting_stats WHERE player_id IN (${placeholders})`).all(...ids) as Array<Record<string, unknown>>;
+    const pitching = db.prepare(`SELECT * FROM players_career_pitching_stats WHERE player_id IN (${placeholders})`).all(...ids) as Array<Record<string, unknown>>;
+    const baseline = await snapshot();
+    try {
+      db.prepare(`UPDATE players_career_batting_stats SET pa = 600, ab = 500, h = 250, d = 60, t = 10, hr = 50, bb = 90, k = 20 WHERE player_id IN (${placeholders})`).run(...ids);
+      db.prepare(`UPDATE players_career_pitching_stats SET outs = 600, er = 5, ra = 6, ha = 60, bb = 10, k = 300, hra = 1 WHERE player_id IN (${placeholders})`).run(...ids);
+      const hot = await snapshot();
+      db.prepare(`UPDATE players_career_batting_stats SET pa = 600, ab = 580, h = 60, d = 5, t = 0, hr = 0, bb = 10, k = 300 WHERE player_id IN (${placeholders})`).run(...ids);
+      db.prepare(`UPDATE players_career_pitching_stats SET outs = 300, er = 150, ra = 160, ha = 250, bb = 120, k = 20, hra = 40 WHERE player_id IN (${placeholders})`).run(...ids);
+      const cold = await snapshot();
+      db.prepare(`DELETE FROM players_career_batting_stats WHERE player_id IN (${placeholders})`).run(...ids);
+      db.prepare(`DELETE FROM players_career_pitching_stats WHERE player_id IN (${placeholders})`).run(...ids);
+      const none = await snapshot();
+      expect(Object.keys(baseline.farm).length).toBeGreaterThan(0);
+      for (const other of [hot, cold, none]) {
+        expect(other.farm).toEqual(baseline.farm);
+        expect(other.pages).toEqual(baseline.pages);
+      }
+    } finally {
+      db.prepare(`DELETE FROM players_career_batting_stats WHERE player_id IN (${placeholders})`).run(...ids);
+      db.prepare(`DELETE FROM players_career_pitching_stats WHERE player_id IN (${placeholders})`).run(...ids);
+      const restore = (table: string, rows: Array<Record<string, unknown>>) => {
+        for (const row of rows) {
+          const cols = Object.keys(row);
+          db.prepare(`INSERT INTO ${table} (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`).run(...cols.map((c) => row[c]));
+        }
+      };
+      restore('players_career_batting_stats', before);
+      restore('players_career_pitching_stats', pitching);
+    }
   });
 
   it('never attaches a preference to an indefensible or indeterminate assignment, whatever the philosophy', async () => {

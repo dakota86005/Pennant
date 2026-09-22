@@ -25,6 +25,7 @@ import {
 import {
   expressAssignmentPreference,
 } from './assignmentPreference.js';
+import { openDevelopmentalContext } from './developmentalContext.js';
 
 export const orgRoutes = Router();
 
@@ -815,14 +816,15 @@ export function mlbAssignmentAssessments(
   }
   const abilities = loadScoutedAbilities(players.map((p) => p.player_id));
   const experience = upperLevelExperience(players.map((p) => p.player_id));
+  /* His stakes here are the stakes every other module reads: the same context, from the same reader. */
+  const stakes = openDevelopmentalContext();
 
   for (const p of players) {
     const d = decisions.get(p.player_id);
     const assessed = evaluateMlbAssignmentContext({
       context,
       kind: p.position === 1 ? 'pitcher' : 'hitter',
-      age: typeof p.age === 'number' ? p.age : null,
-      ability: abilities.for(p.player_id),
+      protection: stakes.protect({ age: p.age, teamId: p.team_id, ability: abilities.for(p.player_id) }),
       experience: experience?.get(p.player_id) ?? null,
       currentLevel: d ? { readiness: d.readiness, readinessRange: d.range, sampleConfidence: d.sample, promotionThreshold: d.threshold } : null,
     });

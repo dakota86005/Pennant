@@ -30,7 +30,7 @@ import {
   RUNWAY_CLOSING_AGE,
   RUNWAY_SERVICE_LIMIT,
 } from './farmCalibration.js';
-import type { DevelopmentProtection, DevelopmentProtectionTier } from './developmentFit.js';
+import { tierWord, type DevelopmentProtection, type DevelopmentProtectionTier } from './developmentFit.js';
 import type { CurrentAssignmentRead } from './currentAssignment.js';
 import type { AssignmentConclusion } from './farmAssignments.js';
 
@@ -181,7 +181,7 @@ function outlookOf(input: RetentionInput): DevelopmentalOutlook {
   }
 
   if (isProtected(input.protection.tier)) {
-    reasons.push(`Player Development places him in the ${input.protection.tier.replace(/_/g, ' ')} tier.`);
+    reasons.push(`Player Development places him in the ${tierWord(input.protection.tier)} tier.`);
     return { state: 'developing', runway, reasons, missing };
   }
 
@@ -223,7 +223,7 @@ function outlookOf(input: RetentionInput): DevelopmentalOutlook {
         ? `The level has nothing left to teach him and at ${input.age} his runway is ${runway}.`
         : `The level is ahead of what he has shown and at ${input.age} his runway is ${runway}.`
     );
-    reasons.push(`Player Development places him in the ${input.protection.tier.replace(/_/g, ' ')} tier.`);
+    reasons.push(`Player Development places him in the ${tierWord(input.protection.tier)} tier.`);
     return {
       state: input.protection.tier === 'organizational_depth' ? 'exhausted' : 'plateaued',
       runway,
@@ -293,7 +293,7 @@ function guardrailsOf(input: RetentionInput): RetentionGuardrail[] {
   if (isProtected(input.protection.tier)) {
     out.push({
       code: 'protected_prospect',
-      detail: `Player Development places him in the ${String(input.protection.tier).replace(/_/g, ' ')} tier, which is not routine roster material.`,
+      detail: `Player Development places him in the ${tierWord(input.protection.tier as DevelopmentProtectionTier)} tier, which is not routine roster material.`,
       owner: 'Player Development',
     });
   }

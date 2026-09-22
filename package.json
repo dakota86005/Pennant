@@ -34,7 +34,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "farm:base-rate": "tsx scripts/farm-base-rate.ts",
-    "farm:usage-window": "tsx scripts/farm-usage-window.ts"
+    "farm:usage-window": "tsx scripts/farm-usage-window.ts",
+    "stakes:report": "tsx scripts/stakes-report.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

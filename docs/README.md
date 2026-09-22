@@ -12,6 +12,7 @@ Start with the four durable documents, then the subsystem document for the area 
 | [PROJECT_STATE.md](PROJECT_STATE.md) | A point-in-time implementation inventory and known gaps. Verify against the worktree. |
 | [MLB_OPERATIONS.md](MLB_OPERATIONS.md) | MLB Operations: design, the audit of the superseded branch, and the build log. |
 | [MINOR_LEAGUE_OPERATIONS.md](MINOR_LEAGUE_OPERATIONS.md) | Minor League Operations: audit, rebuild, hardening, windowed usage. |
+| [DEVELOPMENTAL_STAKES.md](DEVELOPMENTAL_STAKES.md) | Player Development's protection tier: what it means, the audit of the model it replaced, the stakes model and its validation (D-050). |
 | [ROSTER_REVIEW.md](ROSTER_REVIEW.md) | The scouting-department layer: role review, cascades, hitters, platoons. |
 | [CALIBRATION.md](CALIBRATION.md) | How scouting constants are tuned and stamped calibrated, provisional or policy. |
 | [BEHAVIOR_CASES.md](BEHAVIOR_CASES.md) | The behavioral corpus: where new baseball behavior gets its case first. |

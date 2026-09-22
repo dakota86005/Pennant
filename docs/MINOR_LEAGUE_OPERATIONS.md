@@ -1693,3 +1693,57 @@ Nothing here changed a tier name, a tier threshold or what `core` / `protected` 
   the contract, the workspace; ten findings (§8.6), four of them found by validating against the real
   save and the other twenty-nine organizations; 119 new cases. `npx tsc --noEmit` clean, 133 files /
   1,736 tests, `npm run build` succeeds. Arizona: 10 attention items.
+
+---
+
+# Part 9 — Developmental stakes underneath the farm (D-050)
+
+The branch §8.11 deferred to. Full record: [DEVELOPMENTAL_STAKES.md](DEVELOPMENTAL_STAKES.md). Nothing in this
+module's reasoning changed; what changed is the tier it is handed, and therefore who its findings are about.
+
+* **What the farm reads is unchanged**: `hasDevelopmentalStakes` (development priority or better) decides who can
+  be `squeezed`; `PROTECTED_TIERS` is the retention guardrail; `isPriority` counts congestion. The vocabulary is the
+  same five tiers.
+* **What the tier is now**: an absolute, organization-visible ceiling lowered by how much of the development that
+  would realize it is left. It is obtained from `FarmSession.stakes()` — Player Development's reader, opened once per
+  request — and never assembled here. The farm still takes no part in it: no usage, no result and no roster need is
+  an input, and philosophy cannot reach it.
+* **§8.11's open case, Visalia SS**: the man marked squeezed was a 23-year-old with a fringe ceiling sharing the
+  position with a 20-year-old who is now a protected prospect and is playing. The conflict is `historical` and quiet.
+* **Measured on the real save**: every player's current-assignment verdict, window, standing and opportunity
+  verdict is identical; every affiliate's operational status and findings are identical, in all thirty
+  organizations; retention's conclusions and every runway are identical (the `protected_prospect` guardrail fires
+  for the first time, for eight players); 54 cascades are identical in every structural part. Across thirty
+  organizations squeezed men went 144 → 125 (25 and over among them 3 → 0), blockages 31 → 25, the attention list
+  571 → 544. Arizona's stays at 10.
+* **B-1, fixed here**: `farmArrivalFor` named a job's holders only when the job was contested, which for a job with
+  one holder turned on the ARRIVING man's tier — and the old composite gave a 32-year-old major-league star
+  developmental stakes. It reads the job through `jobRead` now, contested or not (`tests/farmArrivalHolders.test.ts`).
+* **Noticed, then fixed in the stakes model's hardening pass (H-1 below)**: a part-time prospect was `squeezed` (a
+  critical affiliate finding) while his own review called sharing a job ordinary.
+
+* **Checkpoint 13 — developmental stakes.** `npx tsc --noEmit` clean, 141 files / 1,842 tests,
+  `npm run build` succeeds. Arizona: 10 attention items.
+
+### 9.1 One line between sharing a job and being short of it (the hardening pass)
+
+| # | Finding | Class | Fix |
+|---|---|---|---|
+| H-1 | `playingTime.ts` drew "short of developmental work" three ways: the rotation and the bullpen said `{not_used, occasional}`; the position conflict alone added `part_time` and `bat_only`. A sharing prospect was `squeezed` — a `blocking` conflict, a critical affiliate finding "not getting developmental work" — while his own review, from the same read, said "sharing the job, which is ordinary at this level"; a designated hitter was "not getting developmental work" at a position while H-6 had made his bat's work a quieter question. | **SYSTEMATIC** (predates the stakes model; the tier change exposed it by making the tiers it turned on right) | One exported line, `shortOfWork` = `{not_used, occasional}`, for all three jobs, and `verdictOf` / `shortOfWorkVerdict` so the review's verdict table is the same line; `tests/farmJobSharing.test.ts` proves they agree for every level of work and pairs the club's reading with the man's in ten golden cases. A part-time man is sharing; a designated hitter is the review's question (worth a look), not the club's. |
+| H-3 | `farmConsequenceFor`'s "whose playing time changes" read only the club's *contested* conflicts, so a departure from a job two men shared named nobody — and had named the sharer only while H-1 wrongly contested the job. | **BUG** (same class as B-1) | The departed man's job is read through `jobRead`, contested or not; 17 of Arizona's 54 departures now name a sharer, and the cascade's chain is identical in all 54. |
+
+Across thirty organizations, with every one of the 6,411 reviews' conclusions and attention levels unchanged:
+`squeezed` men 125 → 26 (ages 17–24; none 25 or over), `blocking` conflicts 115 → 24, conflicts 500 → 415, raised
+developmental findings 349 → 270, the attention list 544 → 537. The reviews not moving is the proof the affiliate view
+was the one out of step. Arizona: Amarillo's critical RF finding (Nathan Hall, part time) is gone; Visalia's SS reads
+"3 men have a claim on SS, which supports 2" (`noted`) in place of a historical shortage; Reno's CF "cannot be read yet"
+line names Druw Jones alone, Ryan Waldschmidt having been a part-time man over the season. Arizona's attention list
+stays at 10.
+
+The farm's `ageRelativeToLevel` (D-044) now comes from the stakes reader (`developmentalContext.ts`) rather than
+`computeProspects`' league baselines: the same population, but one implementation with one thin-league fallback, so a
+man's review and his stakes cannot disagree about how old he is for his league.
+
+* **Checkpoint 14 — hardening.** `npx tsc --noEmit` clean, 143 files / 1,868 tests, `npm run build` succeeds.
+  Arizona: 10 attention items; 14 conflicts; 26 arrivals name the same holders as before.
+

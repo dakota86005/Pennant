@@ -7,7 +7,7 @@ import {
   unknownScoutedAbility,
   viewerContext,
 } from '../server/scoutedEvidence.js';
-import { evaluateDevelopmentProtection } from '../server/developmentFit.js';
+import { evaluateDevelopmentProtection, TIER_ORDER } from '../server/developmentFit.js';
 import request from './request.js';
 import { IDS } from './fixture.js';
 
@@ -344,13 +344,16 @@ describe('the boundary holds end to end', () => {
     const high = evaluateDevelopmentProtection({ age: 21, ability: abilityOf(HIGH) });
     const low = evaluateDevelopmentProtection({ age: 21, ability: abilityOf(LOW) });
     const blank = evaluateDevelopmentProtection({ age: 21, ability: abilityOf(BLANK) });
-    expect(high.score!).toBeGreaterThan(low.score!);
+    // HIGH's scouted ceiling (72) is an impact major leaguer's and LOW's (32) is none: the tiers follow the scouted tools
+    expect(TIER_ORDER.indexOf(high.tier!)).toBeGreaterThan(TIER_ORDER.indexOf(low.tier!));
+    expect(high.reading!.ceiling.band).toBe('impact');
+    expect(low.reading!.ceiling.band).toBe('below_major_league');
     expect(high.ratingEvidence).toBe('complete');
     expect(blank.ratingEvidence).toBe('unknown');
     // players_value calls BLANK an 80/80 superstar; that must not lift him, or rate him at all
-    expect(blank.score).toBeNull();
     expect(blank.tier).toBeNull();
-    expect(blank.reasons.join(' ')).not.toMatch(/High-end projected ceiling/);
+    expect(blank.reading).toBeNull();
+    expect(blank.reasons.join(' ')).not.toMatch(/Visible ceiling/);
   });
 
   it('shows the Player Development pages his scouted ratings and what protection rested on', async () => {
@@ -364,7 +367,8 @@ describe('the boundary holds end to end', () => {
     expect(row(BLANK).current).toBeNull();
     expect(row(BLANK).potential).toBeNull();
     expect(row(BLANK).protection.tier).toBeNull();
-    expect(row(BLANK).protection.score).toBeNull();
+    expect(row(BLANK).protection).not.toHaveProperty('score');
+    expect(row(HIGH).protection.reasons.join(' ')).toMatch(/Visible ceiling of an impact major leaguer/);
   });
 
   it('leaves retention indeterminate, not negative, for a player whose ratings are unknown', async () => {

@@ -265,8 +265,8 @@ function CandidateDetail({ c }: { c: Candidate }) {
               </div>
             )}
             {c.development.contextual && (
-              <div className="muted">
-                Stakes: {c.development.contextual.stakesTier?.replace(/_/g, ' ') ?? 'unknown'}
+              <div className="muted" title={(c.development.contextual.stakesReasons ?? []).join('\n')}>
+                Developmental stakes: {c.development.contextual.stakesTier?.replace(/_/g, ' ') ?? 'unknown'}
                 {c.development.contextual.requiredReadiness !== null && <> · readiness bar {c.development.contextual.requiredReadiness} (durable role: {c.development.contextual.durableReadiness})</>}
                 {c.development.contextual.experience && <> · Triple-A/MLB career {Math.round(c.development.contextual.experience.plateAppearances)} PA, {Math.round(c.development.contextual.experience.inningsPitched)} IP</>}
               </div>

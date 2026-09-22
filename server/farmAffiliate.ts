@@ -18,6 +18,7 @@
  * each man's level). It decides no ability question and reads no rating column.
  */
 
+import { tierWord, type DevelopmentProtectionTier } from './developmentFit.js';
 import {
   BODY_COUNT,
   CRITICAL_POSITIONS,
@@ -509,7 +510,7 @@ export function buildAffiliateView(input: AffiliateInput): AffiliateView {
       players: conflict.claimants.map((c) => ({
         playerId: c.playerId,
         name: c.name,
-        note: `${levelText(c.level)}${c.tier ? `, ${c.tier.replace(/_/g, ' ')}` : ', developmental stakes indeterminate'}`,
+        note: `${levelText(c.level)}${c.tier ? `, ${tierWord(c.tier)}` : ', developmental stakes indeterminate'}`,
       })),
       missing: conflict.unknowns,
       wouldResolve:
@@ -536,7 +537,7 @@ export function buildAffiliateView(input: AffiliateInput): AffiliateView {
       headline: `${input.roleConversions.length} ${input.roleConversions.length === 1 ? 'arm is' : 'arms are'} being used in relief with the structure to start.`,
       evidence: input.roleConversions.map((r) => ({
         label: `${r.name} (${r.age})`,
-        value: r.tier ? r.tier.replace(/_/g, ' ') : 'stakes indeterminate',
+        value: r.tier ? tierWord(r.tier as DevelopmentProtectionTier) : 'stakes indeterminate',
         basis: r.basis,
       })),
       players: input.roleConversions.map((r) => ({ playerId: r.playerId, name: r.name, note: r.basis })),

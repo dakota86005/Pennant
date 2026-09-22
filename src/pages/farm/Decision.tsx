@@ -182,6 +182,15 @@ export function Decision({
             ))}
           </tbody>
         </table>
+        <div className="mlo-stakes">
+          <p>
+            <strong>
+              Developmental stakes: {review.protection.tier ? (TIER_TEXT[review.protection.tier] ?? review.protection.tier) : 'indeterminate'}.
+            </strong>{' '}
+            <span className="muted">How careful the organization should be with his development; it is not a verdict on where he should play.</span>
+          </p>
+          <ul className="mlo-reasons">{review.protection.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>
+        </div>
         <details>
           <summary>His results, league-relative and park-adjusted</summary>
           <table className="compact">
