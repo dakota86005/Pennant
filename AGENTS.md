@@ -48,6 +48,11 @@ decision, roadmap item, or project-state fact changes.
   zero for a missing rating. Use `satisfied` / `not_satisfied` / `unknown` and
   `defensible` / `indefensible` / `indeterminate` (D-018); `eligible: false` is
   not a rejection. Indeterminate is not "protect" or "hold".
+- Never make progress depend on asking the owner to run ad-hoc OOTP
+  experiments to discover undocumented behavior. When the exports, saves,
+  logs, code, tests and existing evidence cannot establish a behavior safely,
+  leave the conclusion indeterminate, document the uncertainty, and continue
+  without inventing an answer.
 - Roster evidence has a source hierarchy (D-020): explicit CSV/export current
   state first, then OOTP's live transaction log for chronology, then Pennant's
   own snapshots only as a fallback and cross-check. If the export states a fact

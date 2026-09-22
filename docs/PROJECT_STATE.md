@@ -13,7 +13,8 @@ material implementation state changes.
   scouting layer and hardening (PR #4), Minor League Operations v2 with its hardening (PR #5), windowed farm usage
   (PR #6, D-048) and the Pennant consolidation (PR #7, D-049). This branch rebuilds what sits under Player
   Development's protection tier (D-050, [DEVELOPMENTAL_STAKES.md](DEVELOPMENTAL_STAKES.md)) and, in its hardening
-  pass, draws "short of developmental work" once for the club and the man (D-051); it is uncommitted.
+  pass, draws "short of developmental work" once for the club and the man (D-051); it is committed (`f5538f6`) and
+  pushed, not yet merged into `main`.
 - Stack: TypeScript, React 18, Vite 6, Express 4, SQLite via `better-sqlite3`, Electron 41, and Vitest 4.
 - Validation at this snapshot: `npx tsc --noEmit` clean, `npm test` 143 files / 1,868 tests passing,
   `npm run build` succeeds. The behavioral corpus ([BEHAVIOR_CASES.md](BEHAVIOR_CASES.md)) is 159 tests for MLB
@@ -267,7 +268,8 @@ Present on `main` (D-017):
   operations module and are never a fallback. Migrated consumers: prospect
   decisions and the depth chart (`org.ts`), `minorLeagueMoves`,
   `minorLeaguePitchingOperations`, `minorLeagueRetention`,
-  `minorLeagueRoster`, `pitcherRosterSimulation`, and `destinationFit`.
+  `minorLeagueRoster`, `pitcherRosterSimulation`, and `destinationFit`. The four
+  superseded solvers among them were later deleted (D-047).
 - Decisions and protection report incomplete rating evidence and what is
   missing. Destination fit no longer reads a missing grade as zero, lists
   unassessed tools, and leaves the skip-level destination gate unknown (D-018).
@@ -467,9 +469,6 @@ resolution across all organization-specific features is future work.
   score.
 - Rights that remain `indeterminate` are listed in D-023 and the roadmap (IL activation now states
   its known facts and exact unknowns).
-  `minorLeagueRetention.ts` still reads a few raw roster flags for its own
-  guardrails; those defer to "needs MLB transaction analysis" and draw no rights
-  conclusion, so they were left as is.
 - The live log lags in-session moves until the game is saved, and the original
   save's `temp/` log was absent when it was not the loaded save; the freshness
   model does not yet say so.
