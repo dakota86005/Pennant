@@ -37,6 +37,7 @@ reminder that routes to the same documents, never the doctrine itself.
 |---|---|---|
 | Minor League Operations | D-044 to D-048 and D-051; ARCHITECTURE "Minor League Operations owns placement, playing time and cascades"; MINOR_LEAGUE_OPERATIONS.md Parts 2, 3, 7, 8 and 9 | `.claude/rules/farm-operations.md` |
 | MLB Operations | D-024 to D-043; ARCHITECTURE "MLB Operations"; MLB_OPERATIONS.md §3, §10, §11 and §15 to §30; MLB_OPERATIONS_HARDENING.md; CALIBRATION.md; BEHAVIOR_CASES.md "MLB Operations" | `.claude/rules/mlb-operations.md` |
+| Developmental stakes | D-050 (D-018, D-019 and D-044 as referenced); ARCHITECTURE "Developmental stakes: the protection tier"; DEVELOPMENTAL_STAKES.md Parts 3, 4, 5 and 9; BEHAVIOR_CASES.md "Developmental stakes" | `.claude/rules/developmental-stakes.md` |
 
 Treat the repository and imported OOTP schema as the source of truth. Do not
 claim a feature is implemented because it appears in the roadmap or a prompt.
@@ -98,25 +99,18 @@ decision, roadmap item, or project-state fact changes.
   requirement, or blocker may depend on it, and it is applied only afterwards in
   `assignmentPreference.ts` to rank defensible assignments (D-019). Do not
   recreate eligibility through ranking or cutoffs.
-- The protection tier is DEVELOPMENTAL STAKES (D-050, docs/DEVELOPMENTAL_STAKES.md): how much the
-  organization loses, developmentally, by mishandling a player. It is never authorization — not
-  promote, demote, start, call up, trade or release — never a rank, a trade value or a readiness
-  read, and organizational depth means his development is not what is at stake, not that he is no
-  use. It is his organization-visible CEILING, read against fixed lines (the absolute anchor; never
-  a percentile among the players around him), lowered by how much DEVELOPMENT REMAINS (his age;
-  behind his level's schedule; a projection already realized). Context may only lower what the
-  ceiling allows: youth is not talent, being young for a level raises nothing, a weak cohort cannot
-  manufacture a prospect and a strong one cannot erase one. No result, usage, roster need,
-  philosophy or other player's rating is an input; the only peer population is the ROSTERED players
-  of his own LEAGUE, for their age. Missing ratings or age leave the tier unknown; missing context is
-  said and discounts nothing. There is no score: the tier, its reasons and its two readings are the
-  output, and nothing may rank players by it. Obtain a tier only through
-  `server/developmentalContext.ts` (one reader per request; pass the age as the export has it —
-  a null age is an unknown age, and `Number(null)` is 0), so no two modules tier one man two
-  ways; a pure consumer is HANDED a `DevelopmentProtection`, never the ratings. Its constants are
-  declared once in `developmentFit.ts`, all provisional or policy, none calibrated.
-  `tests/developmentalStakesBoundary.test.ts` enforces it and `npm run stakes:report` is the
-  check on the lines.
+- The protection tier is DEVELOPMENTAL STAKES (D-050): how much the organization
+  loses, developmentally, by mishandling a player. It is never authorization (not
+  promote, demote, start, call up, trade or release) and never a rank, a trade
+  value or a readiness read; Player Development's defensibility judgments
+  (`prospectDecision`, `prospectAssignments`, `destinationFit`) do not read it.
+  No result, usage, roster need, philosophy or other player's rating is an input.
+  Missing ratings or age leave the tier unknown, and missing context discounts
+  nothing. There is no score, and nothing may rank players by the tier. Obtain a
+  tier only through `server/developmentalContext.ts`, so no two modules tier one
+  man two ways; a pure consumer is handed a `DevelopmentProtection`, never the
+  ratings. `tests/developmentalStakesBoundary.test.ts` enforces the boundary;
+  read the canonical detail (routing table above) before changing it.
 - MLB Operations (`server/mlb*.ts` and its scouting layer) is a consumer of Player
   State, Player Rights, Player Development, Minor League Operations and philosophy
   and owns none of their answers (D-024). It derives needs from the current
