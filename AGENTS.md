@@ -38,6 +38,7 @@ reminder that routes to the same documents, never the doctrine itself.
 | Minor League Operations | D-044 to D-048 and D-051; ARCHITECTURE "Minor League Operations owns placement, playing time and cascades"; MINOR_LEAGUE_OPERATIONS.md Parts 2, 3, 7, 8 and 9 | `.claude/rules/farm-operations.md` |
 | MLB Operations | D-024 to D-043; ARCHITECTURE "MLB Operations"; MLB_OPERATIONS.md §3, §10, §11 and §15 to §30; MLB_OPERATIONS_HARDENING.md; CALIBRATION.md; BEHAVIOR_CASES.md "MLB Operations" | `.claude/rules/mlb-operations.md` |
 | Developmental stakes | D-050 (D-018, D-019 and D-044 as referenced); ARCHITECTURE "Developmental stakes: the protection tier"; DEVELOPMENTAL_STAKES.md Parts 3, 4, 5 and 9; BEHAVIOR_CASES.md "Developmental stakes" | `.claude/rules/developmental-stakes.md` |
+| Roster evidence and rights | D-020 to D-023 (D-026 for rehab); ARCHITECTURE "Roster evidence: state, chronology, and how current they are"; RIGHTS_RESEARCH.md §2, §3 and §5 | `.claude/rules/roster-evidence.md` |
 
 Treat the repository and imported OOTP schema as the source of truth. Do not
 claim a feature is implemented because it appears in the roadmap or a prompt.
@@ -64,23 +65,21 @@ decision, roadmap item, or project-state fact changes.
   logs, code, tests and existing evidence cannot establish a behavior safely,
   leave the conclusion indeterminate, document the uncertainty, and continue
   without inventing an answer.
-- Roster evidence has a source hierarchy (D-020): explicit CSV/export current
-  state first, then OOTP's live transaction log for chronology, then Pennant's
-  own snapshots only as a fallback and cross-check. If the export states a fact
-  (40-man is `is_on_secondary`, DFA countdown, option counters, service time),
-  read it as exported; never re-derive it from history or snapshots. A snapshot
-  difference proves that state changed, never which transaction did it: do not
-  fabricate "optioned", "recalled", or "DFA". Current State, Transaction
-  Chronology, and Rights/Eligibility stay separate. A rehab player looks exactly
-  like an optioned one in the export and is not one.
+- Roster evidence keeps three concerns separate (D-020): Current State
+  (`playerState.ts`, what the export says is true now), Transaction Chronology
+  (`transactionLog.ts`, what OOTP's live log says happened) and Rights. A fact
+  the export states (40-man is `is_on_secondary`, DFA countdown, option counters,
+  service time) is read as exported, never re-derived, and outranks the log about
+  current placement; Pennant's own snapshots are only a fallback and cross-check.
+  A snapshot difference proves that state changed, never which transaction did
+  it: do not fabricate "optioned", "recalled", or "DFA". A rehab player looks
+  exactly like an optioned one in the export and is not one.
 - Roster rights come only from `server/playerRights.ts` (D-023): `eligible`,
-  `ineligible` or `indeterminate` per action, each reason with its basis. It is
-  pure and reads only the state, chronology and league-rule layers; a consumer
-  must not rebuild option, recall, 40-man, or DFA logic from raw columns. A rule
-  that has not been observed or documented returns `indeterminate` — never a
-  default and never a guess from MLB rules. Observed OOTP behavior beats
-  documentation, and the export beats log wording (`Assigned to Triple A` after
-  a DFA is an outright or an option depending on `is_on_secondary`).
+  `ineligible` or `indeterminate` per action, each reason with its basis. A
+  consumer must not rebuild option, recall, 40-man, or DFA logic from raw
+  columns. A rule that has not been observed or documented returns
+  `indeterminate` — never a default and never a guess from MLB rules. Observed
+  OOTP behavior beats documentation, and the export beats log wording.
 - Never write to OOTP files, and never open the live `temp/text_data.sqlite3` in
   place: read it only through `server/liveLogSnapshot.ts` (a validated private
   copy). Normal use must need no manual step beyond the existing database
@@ -147,9 +146,8 @@ decision, roadmap item, or project-state fact changes.
   uncertainty. A cascade is a chain of independently defensible steps that
   stops, and an unresolved hole is information, never an illegality. Findings
   are structured data with evidence, owner and what is missing; constants are
-  declared once in `farmCalibration.ts` and none is calibrated. OOTP writes
-  dates unpadded (`2026-5-9` sorts after `2026-5-10`): order them only through
-  `parseGameDate`. `tests/farmOperationsBoundary.test.ts` enforces the boundary;
+  declared once in `farmCalibration.ts` and none is calibrated.
+  `tests/farmOperationsBoundary.test.ts` enforces the boundary;
   read the canonical detail (routing table above) before changing it.
 - Recommendations are advisory. The user/GM makes the final decision. Do not
   add automatic OOTP transactions or save mutation as an incidental feature.
@@ -167,7 +165,9 @@ decision, roadmap item, or project-state fact changes.
   requested.
 - Keep browser and Electron behavior on the same Express API instead of adding
   parallel domain implementations.
-- Preserve schema-tolerant reads: OOTP exports vary by version and save.
+- Preserve schema-tolerant reads: OOTP exports vary by version and save. OOTP
+  writes dates unpadded (`2026-5-9` sorts after `2026-5-10`): compare or order
+  them only through `parseGameDate` (`server/dataFreshness.ts`).
 - Add focused Vitest coverage for behavior changes. The normal validation
   baseline is `npx tsc --noEmit`, `npm test`, `npm run build`, and any relevant
   manual check from `package.json` (`check:stats` and `check:theme` require
