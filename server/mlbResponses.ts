@@ -89,6 +89,8 @@ export type PathKind = 'role_change' | 'recall' | 'add_to_forty_man';
 export interface ContextualDevelopment {
   contextLabel: string;
   stakesTier: string | null;
+  /** Why Player Development reads his stakes that way: the ceiling, then what is left of his development. */
+  stakesReasons: string[];
   /** The bar this context sets against the durable bar it was taken from. */
   requiredReadiness: number | null;
   durableReadiness: number | null;
@@ -412,7 +414,7 @@ function contextualOf(a: MlbAssignmentAssessment): ContextualDevelopment | null 
   const c = a.contextual;
   return c
     ? {
-      contextLabel: c.contextLabel, stakesTier: c.stakes.tier, requiredReadiness: c.readiness.required,
+      contextLabel: c.contextLabel, stakesTier: c.stakes.tier, stakesReasons: c.stakes.reasons, requiredReadiness: c.readiness.required,
       durableReadiness: c.readiness.durable, routes: c.routes, experience: c.experience,
     }
     : null;

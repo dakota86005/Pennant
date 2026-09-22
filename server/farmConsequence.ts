@@ -14,16 +14,13 @@
  */
 
 import { loadScoutedAbilities, scoutedGloves } from './scoutedEvidence.js';
-import { evaluateDevelopmentProtection } from './developmentFit.js';
 import type { AffiliateRosterHealth } from './minorLeagueRoster.js';
 import type { OperationalStatus } from './farmAffiliate.js';
 import { clubUsage } from './farmUsage.js';
 import { describeTenure } from './farmRecentUsage.js';
 import {
+  jobRead,
   ownWork,
-  positionConflict,
-  reliefConflict,
-  rotationConflict,
   type ConflictTiming,
   type FarmJob,
   type PlayingTimeConflict,
@@ -156,6 +153,26 @@ export function currentOpportunityOf(work: WorkShare | null, timing: ConflictTim
   };
 }
 
+/** The read of one man's job at his club — contested or not — with him among the claimants. */
+function jobReadFor(session: FarmSession, player: AssembledPlayer): PlayingTimeConflict | null {
+  const job = farmJobOf(player);
+  if (!job) return null;
+  const { players, year } = session.assembled();
+  const club = clubUsage(player.meta.teamId, year);
+  const { claimants, alsoPlaying } = castOf(job, players.filter((p) => p.meta.teamId === player.meta.teamId));
+  return jobRead(
+    job,
+    {
+      claimants,
+      alsoPlaying,
+      clubInningsAtPosition: job.kind === 'position' ? (club.inningsByPosition[job.position] ?? 0) : undefined,
+      clubGames: club.games,
+      window: session.jobWindow(player.meta.teamId, job),
+    },
+    player.meta.teamId
+  );
+}
+
 /** One man's own work at his job at his club, from the session. */
 function workOf(session: FarmSession, player: AssembledPlayer): { work: WorkShare | null; timing: ConflictTiming | null } {
   const job = farmJobOf(player);
@@ -268,22 +285,25 @@ export function farmConsequenceFor(orgId: number, playerId: number, session: Far
    * departure does not change that; listing him said "a rotation spot opens up: Yu-min Lin was
    * regular there", which is true and useless. The men who gain are the ones who were sharing it or
    * not getting it.
+   *
+   * His job is READ whether or not the club contests it. Two men sharing a position are no conflict,
+   * and reading only the affiliate's conflicts said nothing about the man who now has the job to
+   * himself; it used to say something only because a sharing prospect was wrongly "squeezed".
    */
-  const conflicts = session.conflicts(leaving.meta.teamId);
-  const playingTimeImpact = conflicts
-    .filter((c) => c.claimants.some((s) => s.playerId === playerId))
-    .flatMap((c) =>
-      c.claimants
+  const read = jobReadFor(session, leaving);
+  const departedJob = read && read.claimants.some((s) => s.playerId === playerId) ? read : null;
+  const playingTimeImpact = departedJob
+    ? departedJob.claimants
         .filter((s) => s.playerId !== playerId && s.level !== 'regular')
         .map((s) => ({
           playerId: s.playerId,
           name: s.name,
           effect:
             s.level === 'unknown'
-              ? `${jobDescription(c)} opens up; how much of it ${s.name} has been getting cannot be read yet${s.tenure?.status === 'recent_arrival' ? ', because he joined the club inside the recent window' : ''}.`
-              : `${jobDescription(c)} opens up: ${s.name} has been ${s.level.replace('_', ' ')} there. ${s.basis}`,
+              ? `${jobDescription(departedJob)} opens up; how much of it ${s.name} has been getting cannot be read yet${s.tenure?.status === 'recent_arrival' ? ', because he joined the club inside the recent window' : ''}.`
+              : `${jobDescription(departedJob)} opens up: ${s.name} has been ${s.level.replace('_', ' ')} there. ${s.basis}`,
         }))
-    );
+    : [];
 
   /*
    * The first step's candidates are the replacements for HIM; a later step's candidate replaces the
@@ -608,7 +628,14 @@ export function farmArrivalFor(orgId: number, playerId: number, teamId: number, 
       : listed && (FIELDING_POSITIONS as readonly string[]).includes(listed)
         ? listed
         : (coverage[0] ?? null);
-  const tier = existing?.protection.tier ?? evaluateDevelopmentProtection({ age: Number(row.age), ability: loadScoutedAbilities([playerId]).for(playerId) }).tier;
+  /*
+   * A man who is not on an affiliate yet — a major leaguer being optioned — is tiered by the same
+   * reader, in the context of the club the export has him on NOW. Where he is being sent does not
+   * change what is at stake in his development.
+   */
+  const tier =
+    existing?.protection.tier ??
+    session.stakes().protect({ age: row.age, teamId: Number(row.team_id), ability: loadScoutedAbilities([playerId]).for(playerId) }).tier;
 
   const club = clubUsage(teamId, year);
   const mine = players.filter((p) => p.meta.teamId === teamId && p.row.player_id !== playerId);
@@ -652,12 +679,23 @@ export function farmArrivalFor(orgId: number, playerId: number, teamId: number, 
   const claimants = cast.claimants;
   /* The same window the workspace reads the club on: the holders are read as they are NOW. */
   const window = session.jobWindow(teamId, farmJob);
-  const conflict =
-    farmJob.kind === 'rotation'
-      ? rotationConflict(teamId, [...claimants, newcomer], club.games, window)
-      : farmJob.kind === 'relief'
-        ? reliefConflict(teamId, [...claimants, newcomer], club.games)
-        : positionConflict(teamId, farmJob.position, [...claimants, newcomer], club.inningsByPosition[farmJob.position] ?? 0, cast.alsoPlaying, window);
+  /*
+   * The job is READ whether or not it is contested. Who holds it is a fact about the club, and asking
+   * only for a contested job made the answer depend on the arriving man's own tier: a veteran the old
+   * absolute composite gave developmental stakes was himself "squeezed" on the day he arrived, which
+   * is what made a two-man job contested and its holders named (docs/DEVELOPMENTAL_STAKES.md B-1).
+   */
+  const conflict = jobRead(
+    farmJob,
+    {
+      claimants: [...claimants, newcomer],
+      alsoPlaying: cast.alsoPlaying,
+      clubInningsAtPosition: farmJob.kind === 'position' ? (club.inningsByPosition[farmJob.position] ?? 0) : undefined,
+      clubGames: club.games,
+      window,
+    },
+    teamId
+  );
 
   const capacity = job === 'the rotation' ? calibration.STARTER_CAPACITY : job === 'the bullpen' ? calibration.RELIEF_CAPACITY : POSITION_CAPACITY.covered;
   const evidence: string[] = [];

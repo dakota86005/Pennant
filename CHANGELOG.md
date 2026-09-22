@@ -13,6 +13,41 @@ later stability milestone.
 
 ## [Unreleased]
 
+### Player Development
+
+- **Developmental stakes.** The protection tier now answers one question — how high are the developmental stakes if
+  the organization mishandles this player? — from his organization-visible ceiling (read against what the weakest
+  tenth, the median and the best tenth of major leaguers are, never against the players around him) lowered by how
+  much of his development is left (his age; being behind his level's schedule; a projection already realized). It
+  replaces an absolute composite whose cut-offs could not be reached on the visible-tool scale — no player in thirty
+  organizations was a core prospect — and which gave a teenager with no major-league ceiling, a 25-year-old at
+  Triple-A and a 36-year-old major-league star the same kind of reading. The five tiers and what every module does
+  with them are unchanged; there is no longer a numeric score, and each tier comes with its reasons. No result,
+  usage or philosophy is an input (D-050, docs/DEVELOPMENTAL_STAKES.md).
+- Minor League Operations and MLB Operations read the same tier through one reader. On the real import no
+  assignment verdict, operational finding, retention conclusion, durable-role judgment or cascade step changed; the
+  findings are about different men (squeezed prospects 144 → 125 across thirty organizations, none of them 25 or
+  older), and the `protected prospect` retention guardrail fires for the first time.
+- `npm run stakes:report` re-measures, read-only, the reference the provisional ceiling lines stand for.
+- Every developmental-stakes reading ends by saying how its two parts made the tier ("that ceiling alone would set
+  protected prospect; it is lowered two steps for the development that has run out"), and the `normal` tier is
+  written "ordinary" wherever a reader sees it.
+
+### Fixed
+
+- The farm's answer to "what happens if he is sent there?" named the men holding the job only when the job was
+  contested, which depended on the arriving player's own tier. It names them always.
+- An affiliate raised a critical "not getting developmental work" for a prospect sharing a job, and for a designated
+  hitter, while the man's own review said sharing is ordinary: the position conflict had drawn "short of work" more
+  widely than the rotation and the bullpen did. One line now, for every job and for the review (D-051). Across
+  thirty organizations 99 of 125 "squeezed" men were sharing a job; not one review changed.
+- "What happens to the farm if he leaves?" said nothing about the man left sharing his job when the club had not
+  contested it. It reads the departed man's job directly.
+- A player with no exported age would have been tiered as if his development were all ahead of him (`Number(null)`
+  is 0); an unknown age now leaves the tier indeterminate. No player on the real import lacks an age.
+- MLB Operations' contextual assessment is handed Player Development's tier and can no longer compute one of its own
+  from the ratings; the farm's "how old is he for his league" comes from the same reader as his stakes.
+
 ## [0.1.0] - 2026-09-20
 
 The first Pennant-native version. It marks the point at which the project has its own name, architecture and version

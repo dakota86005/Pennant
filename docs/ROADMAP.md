@@ -142,12 +142,19 @@ Remaining, in dependency order:
   `AGE_LEVEL_DEVELOPMENT_LIMIT` (the constant with the largest effect on how many
   players read as an organizational rather than a developmental question), and
   the injured-days line.
-- **A peer-relative protection tier.** *Next.* The tier is an absolute-scale
-  composite, so a 20-potential player in the Dominican Rookie League and one at
-  Triple-A share one. It is load-bearing for stakes, blockage and retention, and
-  rebuilding it is its own piece of work. Windowed usage sharpened what depends on
-  it: every "squeezed" and every "blocked" is only as good as the tier is at naming
-  who has development to cost (MINOR_LEAGUE_OPERATIONS.md §8.11).
+- ~~**A peer-relative protection tier.**~~ **Built** (D-050, [DEVELOPMENTAL_STAKES.md](DEVELOPMENTAL_STAKES.md)).
+  The tier is developmental stakes: an absolute, organization-visible ceiling lowered by how much of the
+  development that would realize it is left. The old absolute composite's cut-offs were unreachable on the
+  adapter's scale (no core prospect in thirty organizations) and it was blind to age and level. Peers enter
+  only as a league's rostered age profile; talent is never read against neighbors. What remains of it:
+  - Every constant is provisional or policy and none can be calibrated from this export
+    (`npm run stakes:report` re-measures the reference on any import).
+  - **Owner's call:** whether a fringe major-league ceiling with most of his development ahead counts as
+    having stakes. It is the line with the largest effect (803 of 1,021 priority players league-wide).
+  - Trajectory is not read: one snapshot exists, and the snapshot composite is not the adapter's (§3).
+  - The manual "protect this player" control is still reserved and unsupplied.
+- ~~Part-time is `squeezed`, and his own review calls sharing ordinary.~~ **Built** in the stakes hardening pass:
+  one line, `shortOfWork`, for every job and for the review (D-051).
 - **Repeat-level and prior-experience context.** The assignment review does not
   yet read a man's earlier seasons at the level; a second year at Double-A reads
   the same as a first.

@@ -1,6 +1,6 @@
 # Project state
 
-Point-in-time snapshot from repository inspection on **2026-09-20**. Verify
+Point-in-time snapshot from repository inspection on **2026-09-21**. Verify
 this document against the current worktree before relying on it; update it when
 material implementation state changes.
 
@@ -8,15 +8,16 @@ material implementation state changes.
 
 - Product **Pennant**, version `0.1.0` (package `ootp-front-office`, a compatibility-held name; D-049). Pennant's
   version lineage is its own and is unrelated to upstream's numbers; `package.json` is the only source of the version.
-- Inspected branch: `feature/pennant-project-consolidation`, created from `main` at `52dc14b`. `main` carries the
+- Inspected branch: `feature/peer-relative-protection`, created from `main` at `d263962`. `main` carries the
   evidence boundary (PR #1), the Player State foundation (PR #2), Player Rights (PR #3), MLB Operations v2 with its
-  scouting layer and hardening (PR #4), Minor League Operations v2 with its hardening (PR #5) and windowed farm usage
-  (PR #6, D-048). This branch is repository, identity and workflow work only ([PENNANT_CONSOLIDATION.md](PENNANT_CONSOLIDATION.md));
-  it changes no baseball behavior.
+  scouting layer and hardening (PR #4), Minor League Operations v2 with its hardening (PR #5), windowed farm usage
+  (PR #6, D-048) and the Pennant consolidation (PR #7, D-049). This branch rebuilds what sits under Player
+  Development's protection tier (D-050, [DEVELOPMENTAL_STAKES.md](DEVELOPMENTAL_STAKES.md)) and, in its hardening
+  pass, draws "short of developmental work" once for the club and the man (D-051); it is uncommitted.
 - Stack: TypeScript, React 18, Vite 6, Express 4, SQLite via `better-sqlite3`, Electron 41, and Vitest 4.
-- Validation at this snapshot: `npx tsc --noEmit` clean, `npm test` 136 files / 1773 tests passing,
-  `npm run build` succeeds. 512 of the tests are the behavioral corpus ([BEHAVIOR_CASES.md](BEHAVIOR_CASES.md)):
-  159 for MLB Operations and 353 for the farm.
+- Validation at this snapshot: `npx tsc --noEmit` clean, `npm test` 143 files / 1,868 tests passing,
+  `npm run build` succeeds. The behavioral corpus ([BEHAVIOR_CASES.md](BEHAVIOR_CASES.md)) is 159 tests for MLB
+  Operations, 371 for the farm and 96 for developmental stakes.
 - `origin/feature/mlb-operations` is **not merged** and was audited end to end ([MLB_OPERATIONS.md](MLB_OPERATIONS.md)
   §2); it is kept for that audit's `git show` references. `rosterStateHistory.ts` and `transactionHistory.ts` were
   ported earlier in adapted form; `rosterTransactionState.ts` is superseded; the rest was replaced, modified or deferred
@@ -139,9 +140,18 @@ Present on `main`:
   from `indeterminate` (missing evidence).
 - Destination fit compares visible current tools with active players in the
   actual destination league and adds stronger gates for skip-level moves.
-- Development protection scores visible current/potential grades and age; it
-  protects higher-value prospects from routine roster balancing. It remains an
-  absolute-scale composite with no peer comparison.
+- **Developmental stakes (D-050, [DEVELOPMENTAL_STAKES.md](DEVELOPMENTAL_STAKES.md)).** The protection tier
+  answers how high the developmental stakes are if the organization mishandles a player: his
+  organization-visible ceiling, read against fixed lines that stand for the weakest tenth, the median and
+  the best tenth of major leaguers of his kind (the absolute anchor), lowered one step for each step by which
+  the development that would realize it has run out (age; behind his level's schedule, against the rostered
+  players of his own league; a projection already realized). Context may only lower it. No result, usage,
+  philosophy or other player's rating is an input, and there is no score: the tier, its reasons and its two
+  readings are the output. `developmentalContext.ts` is the one way a tier is computed, per request. It
+  replaced an absolute composite whose cut-offs could not be reached on the adapter's scale (no core prospect in
+  thirty organizations, none protected at Arizona) and which was blind to age and level. Every constant is
+  provisional or policy; `npm run stakes:report` re-measures the reference. Arizona now reads 0 core, 8
+  protected, 46 priority, 100 normal, 76 organizational depth.
 - Defensive assignment fit uses visible fielding ratings/experience and becomes
   stricter for more protected prospects.
 - **Removed by D-044:** `computeProspects`' `signal` and `score` — a
@@ -447,6 +457,11 @@ resolution across all organization-specific features is future work.
   minor-league engine.
 - A manual-protection input is reserved in the development model, but no user
   control persists or supplies it.
+- No developmental-stakes constant is calibrated: the save holds one snapshot of ratings, so no development curve
+  can be fitted. Trajectory is not read for the same reason. The line with the largest effect (a fringe
+  major-league ceiling with most of his development ahead counts as having stakes) is policy and open to the owner.
+- The schedule rule in the stakes model binds only in the rookie leagues on this import: in every full-season league
+  the age bands already say what "behind" would (DEVELOPMENTAL_STAKES.md Part 7).
 - Staff-derived philosophy values are not implemented.
 - Rule 5 protection years are context in retention but do not yet affect its
   score.

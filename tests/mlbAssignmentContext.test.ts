@@ -5,7 +5,8 @@ import {
   CALIBRATION_STATUS, CONTEXT_PROFILES, evaluateMlbAssignmentContext, STAKES_WEIGHT,
   type ContextInput, type CurrentLevelReadiness,
 } from '../server/mlbAssignmentContext';
-import { syntheticScoutedAbility } from '../server/scoutedEvidence';
+import { syntheticScoutedAbility, type ScoutedAbility } from '../server/scoutedEvidence';
+import { evaluateDevelopmentProtection } from '../server/developmentFit';
 
 /*
  * Player Development's contextual MLB assignment assessment, on explicit inputs.
@@ -21,8 +22,10 @@ const unknownRatings = { age: 27, ability: syntheticScoutedAbility({ current: nu
 const readiness = (over: Partial<CurrentLevelReadiness> = {}): CurrentLevelReadiness => ({
   readiness: 70, readinessRange: { min: 70, max: 70 }, sampleConfidence: 60, promotionThreshold: 80, ...over,
 });
-const base = (over: Partial<ContextInput>): ContextInput => ({
-  context: 'spot_start', kind: 'pitcher', age: veteran.age, ability: veteran.ability,
+/* The module is handed Player Development's verdict, never the ratings; the tests supply it the same way. */
+type Evidence = { age?: number | null; ability?: ScoutedAbility };
+const base = ({ age = veteran.age, ability = veteran.ability, ...over }: Partial<ContextInput> & Evidence): ContextInput => ({
+  context: 'spot_start', kind: 'pitcher', protection: evaluateDevelopmentProtection({ age, ability }),
   experience: { plateAppearances: 0, inningsPitched: 200 }, currentLevel: null, ...over,
 });
 

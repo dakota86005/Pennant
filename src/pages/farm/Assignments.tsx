@@ -94,7 +94,7 @@ export function AssignmentsView({ data, go }: { data: FarmSystem; go: (r: Route)
                       )}
                     </td>
                     <td className="muted">{a.opportunity.verdict.replace(/_/g, ' ')}</td>
-                    <td>{a.protection.tier ? TIER_TEXT[a.protection.tier] ?? a.protection.tier : <span className="muted">indeterminate</span>}</td>
+                    <td title={a.protection.reasons.join('\n')}>{a.protection.tier ? TIER_TEXT[a.protection.tier] ?? a.protection.tier : <span className="muted">indeterminate</span>}</td>
                     <td>
                       <Chip cls={CONCLUSION_CLASS[a.conclusion] ?? ''}>{CONCLUSION_TEXT[a.conclusion] ?? a.conclusion}</Chip>
                     </td>

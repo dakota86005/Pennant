@@ -18,7 +18,7 @@
 import { Router } from 'express';
 import { db, tableExists } from './db.js';
 import { evaluatePitcherDevelopmentalRole } from './destinationFit.js';
-import { evaluateDevelopmentProtection } from './developmentFit.js';
+import { openDevelopmentalContext } from './developmentalContext.js';
 import { POSITION_CODES } from './gloves.js';
 import {
   developmentTrendByPlayerForOrg,
@@ -44,7 +44,8 @@ export interface ScoutedDevelopmentPlayer {
   /** Organization-visible composite grades; null when the ratings behind them are not visible. */
   current: number | null;
   potential: number | null;
-  protection: { tier: string | null; score: number | null };
+  /** Player Development's developmental stakes, with why. */
+  protection: { tier: string | null; reasons: string[] };
   /** Roster facts, from Player State as exported. */
   transaction: { active: boolean; onInjuredList: boolean | null };
   role: { listedPosition: string; developmentalPitcherRole: 'starter' | 'reliever' | null };
@@ -118,12 +119,13 @@ export function computeScoutedDevelopment(orgId: number): ScoutedDevelopmentResp
   const states = playerStates(ids);
   const history = developmentTrendByPlayerForOrg(orgId);
   const peers = peerDevelopmentTrendByPlayerForOrg(orgId);
+  const stakes = openDevelopmentalContext();
 
   return {
     orgId,
     players: rows.map((r) => {
       const ability = abilities.for(r.player_id);
-      const protection = evaluateDevelopmentProtection({ age: Number(r.age), ability });
+      const protection = stakes.protect({ age: r.age, teamId: r.team_id, ability });
       const kind: 'hitter' | 'pitcher' = Number(r.position) === 1 ? 'pitcher' : 'hitter';
       const state = states.get(r.player_id);
       const trend = history.get(r.player_id);
@@ -139,7 +141,7 @@ export function computeScoutedDevelopment(orgId: number): ScoutedDevelopmentResp
         levelName: LEVEL_NAMES[r.level] ?? `L${r.level}`,
         current: ability.current,
         potential: ability.potential,
-        protection: { tier: protection.tier, score: protection.score },
+        protection: { tier: protection.tier, reasons: protection.reasons },
         transaction: {
           active: Number(r.active) === 1,
           onInjuredList: state ? state.injuredList.onIl.value === true || state.injuredList.onIl60.value === true : null,

@@ -26,12 +26,12 @@ export const protectionOf = (age: number, current: number | null, potential: num
 
 /** A tier by name, for a case that is about the tier rather than about the ratings behind it. */
 export const tierOf = (tier: DevelopmentProtection['tier']): DevelopmentProtection => ({
-  score: tier === null ? null : 50,
   tier,
   manuallyProtected: false,
   ratingEvidence: tier === null ? 'unknown' : 'complete',
   missingEvidence: tier === null ? [{ dimension: 'current_ability', detail: 'no visible current grade' }] : [],
   reasons: [],
+  reading: null,
 });
 
 export const currentInput = (overrides: Partial<CurrentAssignmentInput> = {}): CurrentAssignmentInput => ({

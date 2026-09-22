@@ -26,7 +26,7 @@ import type { DevelopmentProtection } from './developmentFit.js';
 import type { MissingEvidence } from './developmentJudgment.js';
 import type { FarmProduction } from './farmResults.js';
 import { describeTenure } from './farmRecentUsage.js';
-import { hasDevelopmentalStakes, jobLabel, type OpportunityRead } from './playingTime.js';
+import { hasDevelopmentalStakes, jobLabel, shortOfWorkVerdict, type OpportunityRead } from './playingTime.js';
 
 /**
  * What the review concludes. Descriptive, never an instruction, and deliberately not a
@@ -234,9 +234,8 @@ export function reviewAssignment(input: AssignmentReviewInput): AssignmentReview
    */
   const stakes = input.protection.tier;
   const developmentalStakes = hasDevelopmentalStakes(stakes);
-  const notPlaying =
-    developmentalStakes &&
-    (input.opportunity.verdict === 'not_playing' || input.opportunity.verdict === 'insufficient_work');
+  /* The same line the club's conflict draws (`shortOfWork`): sharing a job is not being short of it. */
+  const notPlaying = developmentalStakes && shortOfWorkVerdict(input.opportunity.verdict);
   /*
    * In the lineup most days but not in the field at his job: his bat is developing and his glove is
    * not. For a player whose development includes the position that is a real cost, and a quieter one
@@ -365,7 +364,7 @@ export function reviewAssignment(input: AssignmentReviewInput): AssignmentReview
     reasons.push(...input.current.reasons);
     if (input.opportunity.verdict === 'shared_work') {
       reasons.push('He is sharing the job, which is ordinary at this level.');
-    } else if (input.opportunity.verdict === 'not_playing' || input.opportunity.verdict === 'insufficient_work') {
+    } else if (shortOfWorkVerdict(input.opportunity.verdict)) {
       reasons.push(
         stakes === null
           ? 'He is not getting much work. Whether that costs development cannot be said: his developmental stakes are indeterminate.'

@@ -149,7 +149,16 @@ export interface AssignmentReview {
   level: number;
   levelName: string;
   leagueName: string;
-  protection: { score: number | null; tier: string | null; reasons: string[]; missingEvidence: Array<{ dimension: string; detail: string }> };
+  /** Developmental stakes (D-050): the tier, why, and the readings behind it. There is no score. */
+  protection: {
+    tier: string | null;
+    reasons: string[];
+    missingEvidence: Array<{ dimension: string; detail: string }>;
+    reading: {
+      ceiling: { band: string; kind: string; potential: number };
+      remaining: { state: string; byAge: string; schedule: string; boundBy: string[] };
+    } | null;
+  };
   production: {
     aboveLeague: number | null;
     percentile: number | null;

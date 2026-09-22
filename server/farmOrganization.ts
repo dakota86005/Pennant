@@ -19,7 +19,7 @@ import {
   UPPER_MINORS_DEPTH_FLOOR,
   UPPER_MINORS_LEVELS,
 } from './farmCalibration.js';
-import type { DevelopmentProtectionTier } from './developmentFit.js';
+import { tierWord, type DevelopmentProtectionTier } from './developmentFit.js';
 import type { FarmFinding } from './farmAffiliate.js';
 import type { AssignmentConclusion } from './farmAssignments.js';
 
@@ -167,7 +167,7 @@ export function buildOrganizationView(input: OrganizationInput): OrganizationVie
           },
           ...at.map((p) => ({
             label: `${p.name} (${p.age})`,
-            value: p.tier ? p.tier.replace(/_/g, ' ') : 'stakes indeterminate',
+            value: p.tier ? tierWord(p.tier) : 'stakes indeterminate',
             basis: `${p.team}; ${p.conclusion.replace(/_/g, ' ')}.`,
           })),
         ],
@@ -256,7 +256,7 @@ export function buildOrganizationView(input: OrganizationInput): OrganizationVie
         { label: 'Rotation spots at the level', value: String(row.rotationSpots), basis: `${input.rotationSpots} per affiliate.` },
         { label: 'Without a spot', value: String(surplus), basis: 'The difference.' },
       ],
-      players: at.map((p) => ({ playerId: p.playerId, name: p.name, note: `${p.team}, ${p.tier ? p.tier.replace(/_/g, ' ') : 'stakes indeterminate'}` })),
+      players: at.map((p) => ({ playerId: p.playerId, name: p.name, note: `${p.team}, ${p.tier ? tierWord(p.tier) : 'stakes indeterminate'}` })),
       missing: at.some((p) => p.developmentalStarter === null)
         ? ['Whether at least one of them has the structure to start could not be established.']
         : [],

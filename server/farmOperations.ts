@@ -28,7 +28,8 @@ import {
   type AffiliateRosterHealth,
   type RosterHealthScenario,
 } from './minorLeagueRoster.js';
-import { evaluateDevelopmentProtection, type DevelopmentProtection } from './developmentFit.js';
+import { STAKES_CALIBRATION, type DevelopmentProtection } from './developmentFit.js';
+import { openDevelopmentalContext, type DevelopmentalContextReader } from './developmentalContext.js';
 import { evaluatePitcherDevelopmentalRole } from './destinationFit.js';
 import { computeProspects } from './org.js';
 import { playerStates } from './playerState.js';
@@ -371,7 +372,7 @@ export interface Assembled {
   logs: Map<number, ClubGameLog>;
 }
 
-function assemble(orgId: number): Assembled {
+function assemble(orgId: number, stakes: DevelopmentalContextReader): Assembled {
   const metas = affiliateMeta(orgId);
   const year = currentYear();
   const players: AssembledPlayer[] = [];
@@ -397,7 +398,7 @@ function assemble(orgId: number): Assembled {
             .map((p) => p.code)
         : [];
 
-      const protection = evaluateDevelopmentProtection({ age: Number(row.age), ability: abilities.for(row.player_id) });
+      const protection = stakes.protect({ age: row.age, teamId: meta.teamId, ability: abilities.for(row.player_id) });
       const roleAssessment = kind === 'pitcher' ? evaluatePitcherDevelopmentalRole(row.player_id) : null;
 
       pending.push({
@@ -487,12 +488,6 @@ function assemble(orgId: number): Assembled {
 }
 
 /** The level's rostered average age minus his, from the prospect payload's own baselines. */
-function ageRelativeToLevel(baselines: Record<string, { avgAge: number | null }>, level: number, leagueId: number, age: number): number | null {
-  const league = baselines[`${level}:${leagueId}`];
-  if (league?.avgAge != null) return league.avgAge - age;
-  return null;
-}
-
 /* ── conflicts per affiliate ─────────────────────────────────────────────────────────────────── */
 
 /**
@@ -633,7 +628,6 @@ function ownOpportunityOf(player: AssembledPlayer, session: FarmSession, fallbac
 interface ProspectPayload {
   batters: ProspectRow[];
   pitchers: ProspectRow[];
-  leagueBaselines: Record<string, { avgAge: number | null }>;
 }
 
 /**
@@ -658,10 +652,13 @@ export interface FarmSession {
   conflicts(teamId: number): PlayingTimeConflict[];
   /** What the game log says about one job at one club, read once: null without a game log. */
   jobWindow(teamId: number, job: FarmJob): JobWindow | null;
+  /** Player Development's reader for developmental stakes, so an arrival is tiered as the organization was. */
+  stakes(): DevelopmentalContextReader;
 }
 
 export function openFarmSession(orgId: number): FarmSession {
   let assembledMemo: ReturnType<typeof assemble> | null = null;
+  let stakesMemo: DevelopmentalContextReader | null = null;
   let prospectsMemo: ProspectPayload | null = null;
   let healthMemo: AffiliateRosterHealth[] | null = null;
   const scenarioMemo = new Map<string, AffiliateRosterHealth | undefined>();
@@ -670,7 +667,8 @@ export function openFarmSession(orgId: number): FarmSession {
 
   const session: FarmSession = {
     orgId,
-    assembled: () => (assembledMemo ??= assemble(orgId)),
+    stakes: () => (stakesMemo ??= openDevelopmentalContext()),
+    assembled: () => (assembledMemo ??= assemble(orgId, session.stakes())),
     prospects: () => (prospectsMemo ??= computeProspects(orgId) as unknown as ProspectPayload),
     health: () => (healthMemo ??= computeMinorLeagueRosterHealth(orgId)),
     healthScenario: (teamId, scenario) => {
@@ -738,7 +736,8 @@ export function computeFarmSystem(orgId: number, session: FarmSession = openFarm
       leaguePercentile: p.production.percentile,
       reliability: p.production.sample.reliability,
       unassessable: p.production.unassessableDetail,
-      ageRelativeToLevel: ageRelativeToLevel(prospects.leagueBaselines, p.meta.level, p.meta.leagueId, Number(p.row.age)),
+      /* His age against his league's rostered average: the one reading the stakes rest on, from the same reader. */
+      ageRelativeToLevel: session.stakes().forLevel(p.row.age, p.meta.level, p.meta.leagueId, p.meta.leagueName).ageRelativeToLevel,
       tier: p.protection.tier,
       missingEvidence: p.protection.missingEvidence,
       canDemote: p.meta.level < lowestLevel,
@@ -1204,6 +1203,8 @@ function farmCalibrationReport(): FarmSystemView['calibration'] {
     stamp('CASCADE_MAX_STEPS', calibration.CASCADE_MAX_STEPS, 'policy', 'Steps a chain is followed before it is speculation.'),
     stamp('RUNWAY_CLOSING_AGE', calibration.RUNWAY_CLOSING_AGE, 'policy', 'Age at which an ordinary developmental runway at a level is treated as closing.'),
     stamp('RUNWAY_SERVICE_LIMIT', calibration.RUNWAY_SERVICE_LIMIT, 'policy', 'Professional seasons past which a player at a low level has had his developmental look.'),
+    /* Player Development's stakes constants: declared once in developmentFit.ts, reported here because they decide who can be squeezed. */
+    ...STAKES_CALIBRATION.map((c) => stamp(c.name, c.value, c.stamp.status === 'policy' ? 'policy' : 'provisional', c.stamp.basis)),
   ];
 }
 

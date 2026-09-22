@@ -282,7 +282,7 @@ interface RetentionPlayer {
   protection: {
     /** null (indeterminate) when the visible ratings it depends on are unknown. */
     tier: string | null;
-    score: number | null;
+    reasons: string[];
   };
   transaction: {
     active: boolean;

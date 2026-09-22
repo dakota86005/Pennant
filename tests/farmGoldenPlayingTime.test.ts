@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   blockersOf,
+  jobRead,
   positionConflict,
   readOpportunity,
   reliefConflict,
@@ -270,8 +271,12 @@ describe('a designated hitter', () => {
   const dh = (name: string, tier: Parameters<typeof tierOf>[0] = 'development_priority') =>
     usage({ playerId: 501, name, inningsByPosition: { '1B': 9 }, games: 85, clubGames: 100, tier });
 
+  /* The service reads a man's own job whether or not the club contests it (`ownOpportunityOf`). */
+  const ownJob = (claimants: ReturnType<typeof dh>[]) =>
+    jobRead({ kind: 'position', position: '1B' }, { claimants, clubInningsAtPosition: 900, clubGames: 100 }, 10)!;
+
   it('is read as playing but not fielding, which is neither regular work nor not playing', () => {
-    const c = positionConflict(10, '1B', [at('1B', 'Regular', 780), dh('The DH')], 900)!;
+    const c = ownJob([at('1B', 'Regular', 780), dh('The DH')]);
     const me = c.claimants.find((s) => s.name === 'The DH')!;
     expect(me.level).toBe('bat_only');
     expect(me.basis).toMatch(/in the lineup for 85 of its 100 games: he is batting, not fielding/);
@@ -280,7 +285,7 @@ describe('a designated hitter', () => {
 
   it('is a quieter conflict for a prospect whose development includes the glove: worth a look, not pressing', () => {
     const me = dh('The DH');
-    const c = positionConflict(10, '1B', [at('1B', 'Regular', 780), me], 900)!;
+    const c = ownJob([at('1B', 'Regular', 780), me]);
     const r = reviewAssignment({
       playerId: me.playerId, name: 'The DH', age: 21, kind: 'hitter', teamId: 10, team: 'A Club', level: 3, levelName: 'AA', leagueName: 'A League',
       protection: tierOf('development_priority'), production: production(),
@@ -296,6 +301,12 @@ describe('a designated hitter', () => {
   it('is no finding at all for a depth player: his bat is what the club wants', () => {
     const me = dh('Depth DH', 'organizational_depth');
     expect(positionConflict(10, '1B', [at('1B', 'Regular', 780), me], 900)).toBeNull();
+  });
+
+  it('is not a club-level shortage either: his bat IS getting developmental work, so the affiliate does not say he is not', () => {
+    const me = dh('The DH');
+    expect(positionConflict(10, '1B', [at('1B', 'Regular', 780), me], 900)).toBeNull();
+    expect(ownJob([at('1B', 'Regular', 780), me]).squeezed).toEqual([]);
   });
 });
 

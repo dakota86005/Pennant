@@ -126,7 +126,7 @@ artifact, not an alternative application backend.
 | Database compatibility | `server/db.ts` discovers available tables and columns; query modules adapt to export differences. | Do not hard-code a single save's schema without a guarded fallback. |
 | Domain API | Express routers in `server/*.ts` compute rosters, player dossiers, standings, schedules, stats, contracts, payroll, trades, development, and other front-office reads. | Domain logic belongs here, not duplicated in React or AI prompts. |
 | Scouted evidence | `scoutedEvidence.ts` is the only reader of ability ratings for development and operations judgments. It returns branded `ScoutedAbility` evidence with provenance, viewer, scale, and what is missing. | Nothing in Player Development or Minor League Operations may read a rating column or `players_value` directly; `tests/evidenceBoundary.test.ts` enforces it. |
-| Player Development | `org.ts`, `mlbAssignmentContext.ts` (per-context MLB assignment assessment, D-025), `prospectDecision.ts`, `prospectAssignments.ts`, `destinationFit.ts`, `developmentFit.ts`, `currentAssignment.ts` (is the level a player is at still developing him? D-044), and scouting-history functions evaluate evidence, developmental protection, legal assignments, and destination fit. | This layer determines defensibility; it does not choose transactions for the GM. Age relative to level says how much developmental time is left and never lowers the bar (D-044). |
+| Player Development | `org.ts`, `mlbAssignmentContext.ts` (per-context MLB assignment assessment, D-025), `prospectDecision.ts`, `prospectAssignments.ts`, `destinationFit.ts`, `developmentFit.ts` (developmental stakes: the protection tier, D-050) with `developmentalContext.ts` (the one reader of a player's objective developmental context, and the one way a tier is computed), `currentAssignment.ts` (is the level a player is at still developing him? D-044), and scouting-history functions evaluate evidence, developmental stakes, legal assignments, and destination fit. | This layer determines defensibility; it does not choose transactions for the GM. Age relative to level says how much developmental time is left and never lowers the bar (D-044). The protection tier is stakes, never authorization: `prospectDecision`, `prospectAssignments` and `destinationFit` do not read it. |
 | Organizational Philosophy | `philosophy.ts` defines organization-specific dimensions/policies; `settings.ts` persists and resolves profiles; `Philosophy.tsx` edits them. | Philosophy ranks or adjusts choices after hard baseball/development constraints. It is not player evidence. |
 | Minor League Operations | `farmCalibration.ts` (every farm constant, declared once and stamped), `farmResults.ts` + `farmUsage.ts` (league-relative park-adjusted production; season usage and the export's game log), `farmRecentUsage.ts` (pure: the recent window, tenure, sample-awareness — D-048), `clubArrival.ts` (shared chronology: when a man joined the club the export has him on), `currentAssignment.ts` (Player Development: is this level still developing him?), `playingTime.ts` (conflicts), `farmAssignments.ts`, `farmAffiliate.ts`, `farmOrganization.ts`, `farmCascade.ts`, `farmRetention.ts`, `farmOperations.ts` (the service: the organization read once per request as a `FarmSession`, the whole view, the operational reading under a scenario), `farmConsequence.ts` (the MLB ↔ farm contract: what follows a departure, what an arrival does), `farmRoutes.ts` (`/api/farm-operations`), `rehabAssignments.ts` (D-026), `minorLeagueRoster.ts` (counts and coverage, and the read-only scenario; it decides nothing). `scoutedDevelopment.ts` (`/api/scouted-development`) serves the Player Development pages' roster with history evidence and is Player Development's, not the farm's. The superseded solvers were deleted in the hardening phase. | Consumer of the same specialists as MLB Operations (D-044 to D-046, [MINOR_LEAGUE_OPERATIONS.md](MINOR_LEAGUE_OPERATIONS.md)): it owns affiliate roster, role, playing-time and cascade problems and decides no scouting, development, rights or philosophy question. Level-changing moves must already be authorized by Player Development. Operational health and developmental health are separate outputs. Outputs are read-only. `tests/farmOperationsBoundary.test.ts` enforces it. |
 | MLB Operations | `mlbRoster.ts` (club view over Player State), `mlbNeeds.ts` (state-derived needs), `mlbResponses.ts` (staged candidates, transaction path, consequences, philosophy annotation), `mlbEvidence.ts` (adapters to the specialists), `mlbOperations.ts` (service + `/api/mlb-operations`), `MlbOperations.tsx`. | Consumer only (D-024, [MLB_OPERATIONS.md](MLB_OPERATIONS.md)); coverage numbers are floors, not targets: decides no scouting, development, rights, philosophy or farm assignment question. Reads no raw rating, roster-status, option or log source; `tests/mlbOperationsBoundary.test.ts` enforces it. |
@@ -206,7 +206,7 @@ ScoutedAbility (current/potential may be null)
    |
    +--> prospectDecision: readiness null + readinessRange; recommendation may be
    |                       'indeterminate'; demotion stays objective
-   +--> developmentFit:   protection score/tier null; tier constraints unknown
+   +--> developmentFit:   protection tier null (there is no score); tier constraints unknown
    +--> destinationFit:   unassessed tools -> gate unknown, no partial composite
    |
    v
@@ -381,6 +381,42 @@ The output is a set of defensible assignments with reasons and blockers, and a
 separate set of indeterminate ones. It is not an instruction to move the player.
 None of these modules receives, imports, or mentions Organizational Philosophy.
 
+### Developmental stakes: the protection tier
+
+`developmentFit.ts` answers one question for every consumer — how high are the developmental stakes if the
+organization mishandles this player? — and authorizes nothing (D-050,
+[DEVELOPMENTAL_STAKES.md](DEVELOPMENTAL_STAKES.md)).
+
+```text
+ScoutedAbility (potential, by kind) ──► CEILING   impact · regular · fringe · below the major leagues
+                                        the ABSOLUTE anchor: against fixed lines (what the weakest tenth,
+                                        the median and the best tenth of major leaguers are), never
+                                        against the players around him
+
+age ────────────────────────────────┐
+league's ROSTERED age profile ──────┼─► DEVELOPMENT REMAINING   most · some · little · none
+potential − current ────────────────┘   the CONTEXT: age sets it; being behind his level's schedule or
+                                        a projection already realized may only shorten it
+
+            tier = the ceiling, lowered one step for each step by which that development has run out
+```
+
+Context may only lower what the ceiling allows: youth is not talent, being young for a level raises
+nothing, a weak cohort cannot manufacture a prospect and a strong one cannot erase one. No result,
+usage, roster need, philosophy or other player's rating is an input. Missing ratings or age leave the
+tier unknown; a missing age profile leaves the schedule unread and discounts nothing. There is no
+score: the tier, its reasons and the two readings are the output, and every reading ends by saying how
+the two made the tier. `developmentalContext.ts` reads the objective context once per request and is the
+only way production code obtains a tier: the farm, the Player Development pages and MLB Operations'
+contextual assessment (which is HANDED the protection and cannot compute one) cannot tier one man two
+ways, and the farm's "how old is he for his league" is the same reader's. A null age is an unknown
+age. `npm run stakes:report` re-measures the reference the provisional lines stand for.
+
+**Short of developmental work is one line** (D-051): `playingTime.ts`'s `shortOfWork` (`not_used`,
+`occasional`) decides `squeezed` for every job and, through `shortOfWorkVerdict`, "he is not getting the
+work" in the man's own review. Sharing a job and batting without fielding are not shortages; the review
+raises them for the man (ordinary, and worth a look), the club does not.
+
 ### Organizational Philosophy owns preferences
 
 Philosophy profiles are stored per OOTP organization. The current profile has
@@ -415,7 +451,7 @@ statistics ───┼─► farmResults (league-relative, park-adjusted) ─�
 usage ────────┤   farmUsage (season totals · the game log)      │
 chronology ───┘   farmRecentUsage (the window · tenure)         │
   (clubArrival)                                                 │
-scoutedEvidence ──► developmentFit (stakes) ────────────────────┤
+scoutedEvidence ──► developmentFit (stakes, via the reader) ────┤
                                                                 ▼
                             currentAssignment ── is this level still developing him?
                             (Player Development; no philosophy)  │

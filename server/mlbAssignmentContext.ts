@@ -21,11 +21,13 @@
  *
  * For a temporary context the readiness the durable role demands is RELIEVED by
  * an amount that depends on the exposure of the context and is shrunk by the
- * developmental STAKES: the player's protection tier from visible current and
- * potential ratings and age (`developmentFit.ts`). A core prospect gets no relief
- * in any context; an organizational-depth player gets all of it. Stakes are
- * continuous, so nobody is waived for being a veteran: he simply has less at
- * stake, and the evidence still has to establish the assignment.
+ * developmental STAKES: the player's protection tier, which is his visible
+ * ceiling lowered by how much of his development has run out (`developmentFit.ts`,
+ * D-050). A core prospect gets no relief in any context; an organizational-depth
+ * player gets all of it. Stakes are continuous, so nobody is waived for being a
+ * veteran: he simply has less at stake, and the evidence still has to establish
+ * the assignment. This module READS the tier and cannot change it: the same man
+ * has the same stakes whatever context is contemplated.
  *
  * Two routes can establish a temporary assignment, and both are evidence:
  *
@@ -60,13 +62,11 @@
  *       application; every assessment says they are provisional.
  */
 
-import type { DevelopmentProtectionTier } from './developmentFit.js';
-import { evaluateDevelopmentProtection } from './developmentFit.js';
+import { tierWord, type DevelopmentProtection, type DevelopmentProtectionTier } from './developmentFit.js';
 import {
-  atLeast, judgmentOf, missingAbilityEvidence,
+  atLeast, judgmentOf,
   type ConstraintState, type DevelopmentalJudgment, type MissingEvidence, type ValueRange,
 } from './developmentJudgment.js';
-import type { ScoutedAbility } from './scoutedEvidence.js';
 
 export type MlbAssignmentContext =
   | 'durable_role'
@@ -140,8 +140,12 @@ export interface CurrentLevelReadiness {
 export interface ContextInput {
   context: MlbAssignmentContext;
   kind: 'hitter' | 'pitcher';
-  age: number | null;
-  ability: ScoutedAbility;
+  /**
+   * His developmental stakes as Player Development established them, through the one reader
+   * (`developmentalContext.ts`), so the tier weighed here is the tier every other module reads. This
+   * module cannot compute one: it is handed the ratings' verdict, never the ratings (D-050).
+   */
+  protection: DevelopmentProtection;
   /** Objective career volume; null when the export carries no career statistics. */
   experience: UpperLevelExperience | null;
   currentLevel: CurrentLevelReadiness | null;
@@ -164,7 +168,8 @@ export interface ContextAssessment {
   blockers: string[];
   missingEvidence: MissingEvidence[];
   constraints: ContextConstraint[];
-  stakes: { tier: DevelopmentProtectionTier | null; score: number | null; weight: number | null };
+  /** His developmental stakes as Player Development reads them, why, and the share of relief they forfeit. */
+  stakes: { tier: DevelopmentProtectionTier | null; weight: number | null; reasons: string[] };
   /** The bar this context sets, and the durable bar it was taken from. */
   readiness: { required: number | null; durable: number | null; relief: number | null; current: number | null };
   routes: { production: ConstraintState; established: ConstraintState };
@@ -193,17 +198,15 @@ export function evaluateMlbAssignmentContext(input: ContextInput): ContextAssess
     detail: applies ? `${profile.label} applies to a ${input.kind}.` : `${profile.label} is not an assignment for a ${input.kind}.`,
   });
 
-  // Stakes need age as well as visible ratings; an unknown age leaves them unknown rather than assumed.
-  const protection = input.age === null
-    ? { tier: null, score: null }
-    : evaluateDevelopmentProtection({ age: input.age, ability: input.ability });
-  const known = protection.tier !== null && protection.score !== null;
+  // Stakes need age as well as visible ratings; when either is unknown the tier is null and nothing here assumes one.
+  const protection = input.protection;
+  const known = protection.tier !== null;
   const weight = known ? STAKES_WEIGHT[protection.tier as DevelopmentProtectionTier] : null;
   constraints.push({
     id: 'stakes', label: 'Developmental stakes established', requiresSubjectiveEvidence: true,
     state: known ? 'satisfied' : 'unknown',
     detail: known
-      ? `Development protection tier ${protection.tier} (score ${protection.score}); ${weight === 0 ? 'little is at stake developmentally' : `${Math.round((weight as number) * 100)}% of the temporary relief is given up`}.`
+      ? `Developmental stakes: ${tierWord(protection.tier as DevelopmentProtectionTier)}; ${weight === 0 ? 'little is at stake developmentally' : `${Math.round((weight as number) * 100)}% of the temporary relief is given up`}.`
       : 'Developmental stakes cannot be established: they depend on organization-visible current and potential ratings and age.',
   });
 
@@ -265,9 +268,9 @@ export function evaluateMlbAssignmentContext(input: ContextInput): ContextAssess
     eligible: judgment === 'defensible',
     reasons,
     blockers,
-    missingEvidence: judgment === 'indeterminate' && ratingsUnknown ? missingAbilityEvidence(input.ability) : [],
+    missingEvidence: judgment === 'indeterminate' && ratingsUnknown ? protection.missingEvidence : [],
     constraints,
-    stakes: { tier: protection.tier, score: protection.score, weight },
+    stakes: { tier: protection.tier, weight, reasons: protection.reasons },
     readiness: { required, durable, relief, current: cl?.readiness ?? null },
     routes: { production, established },
     experience: input.experience,

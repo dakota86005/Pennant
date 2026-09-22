@@ -175,7 +175,7 @@ export interface Candidate {
   development: {
     status: string; message?: string; reasons?: string[]; blockers?: string[]; missing?: string[]; context?: string | null;
     duration?: { matters: boolean; explanation: string; resolvedBy: string | null; verdicts: Array<{ context: string; label: string; judgment: string; assessed: boolean; blockers: string[]; missing: string[] }> } | null;
-    contextual?: { contextLabel: string; stakesTier: string | null; requiredReadiness: number | null; durableReadiness: number | null; routes: { production: string; established: string } | null; experience: { plateAppearances: number; inningsPitched: number } | null } | null;
+    contextual?: { contextLabel: string; stakesTier: string | null; stakesReasons?: string[]; requiredReadiness: number | null; durableReadiness: number | null; routes: { production: string; established: string } | null; experience: { plateAppearances: number; inningsPitched: number } | null } | null;
   };
   path: { status: string; steps: Step[]; chain: ChainLink[]; requirementsUnmet: string[]; unknowns: string[] };
   roleFit: { classification: string | null; evidence: { compositePercentile: number | null; weakestCorePercentile: number | null; unassessed: string[]; evidenceStatus: string; notes: string[] } } | null;

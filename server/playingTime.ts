@@ -316,8 +316,35 @@ function workLevel(share: number | null, clubGames: number, gameShare: number | 
   return 'occasional';
 }
 
-/** Work levels at which a claimant with developmental stakes is being squeezed. */
-const SQUEEZED_LEVELS: ReadonlySet<WorkLevel> = new Set<WorkLevel>(['occasional', 'not_used', 'part_time', 'bat_only']);
+/**
+ * Work levels at which a man is SHORT of his job: not getting it, or getting it only occasionally.
+ *
+ * One definition for every job, and the same one the man's own review uses (`shortOfWorkVerdict`),
+ * so a club and a player can never disagree about whether he is getting the work. A part-time man
+ * is SHARING the job, which the review calls ordinary at a farm level; a designated hitter is
+ * batting and not fielding, a quieter question the review raises for him alone. Neither is short.
+ * The position conflict once counted both as squeezed while the rotation and the bullpen did not,
+ * so an affiliate raised a critical "not getting developmental work" for a sharing prospect in the
+ * same view where his own review said sharing is ordinary (docs/MINOR_LEAGUE_OPERATIONS.md §9).
+ */
+export const SHORT_OF_WORK: ReadonlySet<WorkLevel> = new Set<WorkLevel>(['occasional', 'not_used']);
+
+export const shortOfWork = (level: WorkLevel): boolean => SHORT_OF_WORK.has(level);
+
+/** The review's verdict for each level of work. `shortOfWorkVerdict` agrees with `shortOfWork` by construction. */
+export function verdictOf(level: WorkLevel): OpportunityVerdict {
+  switch (level) {
+    case 'unknown': return 'indeterminate';
+    case 'not_used': return 'not_playing';
+    case 'occasional': return 'insufficient_work';
+    case 'bat_only': return 'bat_only';
+    case 'part_time': return 'shared_work';
+    case 'regular': return 'regular_work';
+  }
+}
+
+export const shortOfWorkVerdict = (verdict: OpportunityVerdict): boolean =>
+  verdict === 'not_playing' || verdict === 'insufficient_work';
 
 /** Men who are competing for something. Rehab assignees and injured players are not. */
 const competing = (c: UsageFacts): boolean => !c.rehab && c.injured !== true;
@@ -590,8 +617,8 @@ function buildPositionConflict(
     .sort(byShare);
 
   const capacity = POSITION_CAPACITY.covered;
-  const squeezed = shares.filter((s) => hasDevelopmentalStakes(s.tier) && SQUEEZED_LEVELS.has(s.level));
-  const squeezedOverSeason = shares.filter((s) => hasDevelopmentalStakes(s.tier) && SQUEEZED_LEVELS.has(s.season.level));
+  const squeezed = shares.filter((s) => hasDevelopmentalStakes(s.tier) && shortOfWork(s.level));
+  const squeezedOverSeason = shares.filter((s) => hasDevelopmentalStakes(s.tier) && shortOfWork(s.season.level));
 
   const unknowns: string[] = [];
   if (shares.some((s) => s.season.level === 'unknown')) {
@@ -777,9 +804,8 @@ function buildRotationConflict(
     })
     .sort((a, b) => (b.share ?? -1) - (a.share ?? -1));
 
-  const short = (level: WorkLevel): boolean => level === 'not_used' || level === 'occasional';
-  const squeezed = shares.filter((s) => hasDevelopmentalStakes(s.tier) && short(s.level));
-  const squeezedOverSeason = shares.filter((s) => hasDevelopmentalStakes(s.tier) && short(s.season.level));
+  const squeezed = shares.filter((s) => hasDevelopmentalStakes(s.tier) && shortOfWork(s.level));
+  const squeezedOverSeason = shares.filter((s) => hasDevelopmentalStakes(s.tier) && shortOfWork(s.season.level));
 
   const contested = members.length > STARTER_CAPACITY || (members.length > 1 && (squeezed.length > 0 || squeezedOverSeason.length > 0));
 
@@ -931,9 +957,8 @@ function buildReliefConflict(teamId: number, relievers: readonly UsageFacts[], c
     })
     .sort((a, b) => (b.share ?? -1) - (a.share ?? -1));
 
-  const short = (level: WorkLevel): boolean => level === 'occasional' || level === 'not_used';
-  const squeezed = shares.filter((s) => hasDevelopmentalStakes(s.tier) && short(s.level));
-  const squeezedOverSeason = shares.filter((s) => hasDevelopmentalStakes(s.tier) && short(s.season.level));
+  const squeezed = shares.filter((s) => hasDevelopmentalStakes(s.tier) && shortOfWork(s.level));
+  const squeezedOverSeason = shares.filter((s) => hasDevelopmentalStakes(s.tier) && shortOfWork(s.season.level));
 
   const unknowns: string[] = [];
   if (shares.some((s) => s.season.level === 'unknown')) unknowns.push(`The club has played fewer than ${MINIMUM_CLUB_GAMES} games, so an innings share cannot be read.`);
@@ -1072,18 +1097,7 @@ export function readOpportunity(playerId: number, conflicts: readonly PlayingTim
     .sort((a, b) => (b.share ?? -1) - (a.share ?? -1))
     .map((s) => ({ playerId: s.playerId, name: s.name, age: s.age, share: s.share, level: s.level, claimant: s.claimant, tenure: s.tenure }));
 
-  const verdict: OpportunityVerdict =
-    me.level === 'unknown'
-      ? 'indeterminate'
-      : me.level === 'not_used'
-        ? 'not_playing'
-        : me.level === 'occasional'
-          ? 'insufficient_work'
-          : me.level === 'bat_only'
-            ? 'bat_only'
-            : me.level === 'part_time'
-              ? 'shared_work'
-              : 'regular_work';
+  const verdict = verdictOf(me.level);
 
   const reasons = [me.basis];
   /*

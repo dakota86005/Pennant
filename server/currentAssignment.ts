@@ -204,7 +204,7 @@ export function evaluateCurrentAssignment(input: CurrentAssignmentInput): Curren
       value: input.tier ?? 'indeterminate',
       basis:
         input.tier !== null
-          ? 'Player Development\'s protection tier from the organization-visible ratings and age.'
+          ? 'Player Development\'s protection tier: his organization-visible ceiling, lowered by how much of his development has run out.'
           : 'The protection tier could not be established from the organization-visible ratings.',
     },
   ];

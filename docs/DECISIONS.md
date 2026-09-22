@@ -1150,3 +1150,83 @@ tag convention is `pennant-v<version>`.
 call: GitHub redirects the old URL, but clone URLs, the `remote`, the `publish` block, `server/project.ts`, the
 `package.json` `repository` and every link would follow. A data-directory or package-name migration is a separate piece
 of work. Vector brand masters, a macOS icon variant and the Apple signing secrets are owed by the owner.
+
+## D-050 — The protection tier is developmental stakes: an absolute ceiling, lowered by how much development is left
+
+**Status:** Accepted. **Implementation:** Present (`server/developmentFit.ts`, `server/developmentalContext.ts`;
+every caller through a reader; `scripts/stakes-report.ts`). Audit, measurements and validation:
+[DEVELOPMENTAL_STAKES.md](DEVELOPMENTAL_STAKES.md).
+
+The tier answers one question: **how high are the developmental stakes if the organization mishandles this
+player?** It is a reason to look harder when a man is not playing, to be slower to use him as temporary
+major-league cover, and not to treat him as a body. It is not whether to promote, demote, start, call up, trade or
+release him, and it is not a rank, a trade value, a readiness read or a read of how he is hitting. A core prospect
+can be ready for promotion; an organizational-depth player can have a defensible major-league assignment and be the
+best man on his club. Organizational depth says his development is no longer what is at stake.
+
+The model it replaces was an absolute 0–100 composite written against OOTP's printed Overall and Potential. D-017
+rightly replaced that input with the adapter's far narrower composite and the cut-offs were never re-anchored, so on
+the real import **no player in thirty organizations was a core prospect and 53 of 6,411 were protected**; it read
+age as a tenth of a score, so a 19-year-old five years young for Double-A and a 25-year-old at Triple-A with the same
+ratings shared a tier (2,250 players sat in such groups); youth and a wide gap made 43–48% of 16- and 17-year-olds a
+development priority whatever their ceiling; and a high rating made 50 major leaguers aged 27 or more, Freddie Freeman
+at 36 among them, players with developmental stakes.
+
+- **The anchor is absolute.** The ceiling is the player's own organization-visible potential read against three
+  lines — the composite of the weakest tenth, the median and the best tenth of major leaguers of his kind — held as
+  provisional constants, kind-aware because the composite is. It is never a percentile among the players around
+  him, so a weak cohort cannot manufacture a prospect and a strong one cannot erase one.
+- **Context says how much of that ceiling is still in play, and may only lower it.** Development remaining comes
+  from age; it is shortened when he is behind his level's schedule (D-044's lines, against the ROSTERED players of
+  his own LEAGUE) and when what the scouts project has already happened. The tier is the ceiling lowered one step for
+  each step by which that development has run out. Youth is not talent, and being young for a level raises nothing:
+  a level is an assignment the GM controls, and an upper level's rostered average is inflated by veterans.
+- **One peer population, for one purpose:** a league's rostered average age. Below the minimum population the
+  level's pool is used and said to be; with neither, the schedule is not read and nothing is discounted, because
+  missing context may never lower a man's stakes. Missing ratings or age leave the tier unknown (D-018).
+- **No result, no usage, no roster need and no philosophy is an input** (D-019). A hot month cannot raise a tier and
+  a cold one cannot lower it, because neither is read. Development history is not read: the save holds one snapshot,
+  the snapshot composite is not the adapter's, and OOTP's own collapsing projection already carries a plateau.
+- **There is no score.** The output is the tier, its reasons and the two readings it was composed from, plus what
+  the superseded composite would have said and why it differs, which decides nothing.
+- **One way to compute it.** Every production caller obtains a tier through `developmentalContext.ts`, per request,
+  so one man has one tier whichever module asks; MLB Operations' contextual assessment is handed the same context
+  and reads the tier without being able to change it.
+
+Consequences: the vocabulary and every consumer's semantics are unchanged (`hasDevelopmentalStakes`,
+`PROTECTED_TIERS`, `STAKES_WEIGHT`). On the real save no current-assignment verdict, opportunity read, operational
+finding, retention conclusion, durable-role judgment or cascade step moved; what moved is who the findings are
+about. `farmArrivalFor` reads a job whether or not it is contested, because who holds it must not depend on the
+arriving man's tier. `tests/developmentalStakesBoundary.test.ts` enforces the boundaries.
+
+**Stamps.** The ceiling lines, the age bands and the projection line are **provisional**; what the lines stand for
+(tenth, median, best tenth) is **policy**; the lookup, "context may only lower" and the null discipline are
+architecture. **None is calibrated, and none can be from this export.** The line with the largest effect — a fringe
+ceiling with most of his development ahead counts as having stakes (803 of 1,021 priority players) — is policy and
+is the owner's to move.
+
+**Hardened (same branch, same day).** `mlbAssignmentContext.ts` is handed the reader's `DevelopmentProtection` and
+no longer takes the ratings, so `evaluateDevelopmentProtection` has one production caller; a null age is an unknown
+age (`knownAge`), never `Number(null)`; the farm's "how old is he for his league" comes from the same reader; the
+dead position-assignment fit and tier-strictness helpers are gone; every reading ends by saying how its two parts
+made the tier. Adversarial sweeps found no discontinuity: one birthday or one potential point moves the tier at
+most one step and never up. Record: DEVELOPMENTAL_STAKES.md Part 9.
+
+## D-051 — "Short of developmental work" is one line, drawn once, and the club and the man read it together
+
+**Decision.** A man is short of his job when he is `not_used` or `occasional` at it — `shortOfWork` in
+`playingTime.ts` — and that is the only line. A `part_time` man is SHARING the job; a `bat_only` man is batting and
+not fielding. Every job's conflict (position, rotation, bullpen) decides `squeezed` from that line, and the man's
+own review decides "he is not getting the work" from the same line through `shortOfWorkVerdict`, whose agreement
+with `shortOfWork` for every level of work a test proves.
+
+**Why.** The position conflict alone had counted `part_time` and `bat_only` as squeezed while the rotation and the
+bullpen had not, so an affiliate raised a critical "not getting developmental work" for a sharing prospect in the
+same view where his review said sharing is ordinary, and for a designated hitter whose bat was getting its work.
+Across thirty organizations 99 of 125 "squeezed" men had reviews that found nothing wrong; with the one line,
+`squeezed` is 26 and not one review's conclusion or attention level moved. The affiliate view was the one out of step.
+
+**Consequences.** A sharing prospect and a DH-ing prospect still reach the attention list through their own reviews
+(routine, and worth a look). A club-level shortage means a man is not getting the job. Any future work level is
+placed on one side of the line, in one place. `farmConsequenceFor` reads a departed man's job whether or not it was
+contested, as `farmArrivalFor` already did (B-1), so a departure names the man left sharing the job.

@@ -83,6 +83,30 @@ decision, roadmap item, or project-state fact changes.
   requirement, or blocker may depend on it, and it is applied only afterwards in
   `assignmentPreference.ts` to rank defensible assignments (D-019). Do not
   recreate eligibility through ranking or cutoffs.
+- The protection tier is DEVELOPMENTAL STAKES (D-050, docs/DEVELOPMENTAL_STAKES.md): how much the
+  organization loses, developmentally, by mishandling a player. It is never authorization — not
+  promote, demote, start, call up, trade or release — never a rank, a trade value or a readiness
+  read, and organizational depth means his development is not what is at stake, not that he is no
+  use. It is his organization-visible CEILING, read against fixed lines (the absolute anchor; never
+  a percentile among the players around him), lowered by how much DEVELOPMENT REMAINS (his age;
+  behind his level's schedule; a projection already realized). Context may only lower what the
+  ceiling allows: youth is not talent, being young for a level raises nothing, a weak cohort cannot
+  manufacture a prospect and a strong one cannot erase one. No result, usage, roster need,
+  philosophy or other player's rating is an input; the only peer population is the ROSTERED players
+  of his own LEAGUE, for their age. Missing ratings or age leave the tier unknown; missing context is
+  said and discounts nothing. There is no score: the tier, its reasons and its two readings are the
+  output, and nothing may rank players by it. Obtain a tier only through
+  `server/developmentalContext.ts` (one reader per request; pass the age as the export has it —
+  a null age is an unknown age, and `Number(null)` is 0), so no two modules tier one man two
+  ways; a pure consumer is HANDED a `DevelopmentProtection`, never the ratings. Its constants are
+  declared once in `developmentFit.ts`, all provisional or policy, none calibrated.
+  `tests/developmentalStakesBoundary.test.ts` enforces it and `npm run stakes:report` is the
+  check on the lines.
+- "Short of developmental work" is ONE line (D-051): `shortOfWork` in `server/playingTime.ts`
+  (`not_used`, `occasional`) decides `squeezed` for every job, and the man's review reads the same
+  line through `shortOfWorkVerdict`. Sharing a job (`part_time`) and batting without fielding
+  (`bat_only`) are not shortages; the review raises them for the man, the club does not. Never add
+  a work level to one side without the other.
 - MLB Operations (`server/mlb*.ts`) is a consumer of Player State, Player Rights, Player
   Development, Minor League Operations and philosophy (D-024). Derive needs from the current
   export, never from snapshot differences; never read a rating, option, 40-man, or log source

@@ -389,8 +389,9 @@ defensible?" (`server/mlbAssignmentContext.ts`, `org.ts` `mlbAssignmentAssessmen
   all** — see §22). The GM can choose another.
 - **Not a bypass, not prospect-versus-veteran.** For a temporary context the durable
   readiness bar is *relieved* by an amount set by the context's exposure and shrunk by the
-  developmental **stakes**: the player's protection tier from visible current/potential
-  ratings and age (`developmentFit.ts`). A core prospect gets no relief in any context; an
+  developmental **stakes**: the player's protection tier — his organization-visible ceiling lowered
+  by how much of his development has run out (`developmentFit.ts`, D-050; before D-050 an absolute
+  composite of visible ratings and age). A core prospect gets no relief in any context; an
   organizational-depth player gets all of it; tiers in between get a continuous share.
 - **Two evidence routes.** *Production*: current-level readiness clears the relieved bar with
   enough sample. *Established*: Triple-A and MLB career volume (a full Triple-A season for a
@@ -549,6 +550,21 @@ Debatable, recorded, not tuned:
   the bench minimum by a single plate appearance (251 against 250).
 - The core-prospect rule (no relief) could not be exercised on real data: no core-tier player is
   at Triple-A.
+
+**Amended by D-050** ([DEVELOPMENTAL_STAKES.md](DEVELOPMENTAL_STAKES.md) §6.4). The last item had a cause this
+review did not find: under the absolute composite **no player in thirty organizations was a core prospect**, because
+its cut-offs could not be reached on the adapter's scale. Thirteen now play at Triple-A league-wide (still none at
+Reno). The first item is resolved in the direction it pointed: Yu-min Lin (22) and Spencer Giesting (24) are
+development priorities, not `normal`, so upper-level experience alone no longer establishes a short bullpen
+assignment for them and their readiness (39 and 42 against bars of 73 and 71) does not. Nothing in this module
+changed — `STAKES_WEIGHT`, `LOW_STAKES_WEIGHT` and every relief figure are as they were; what changed is the tier
+Player Development hands it, with the same developmental context every other module reads
+(`ContextInput.developmentalContext`). On the real save the durable-role judgments are identical, no candidate was
+added or removed across 233 evaluations, veterans' temporary bars sit 3.5 points lower and young upside players' 3.5
+higher, and one verdict a GM sees moved: Jorge Barrosa (25, 47/53, eight professional seasons) went from blocked to
+*depends on how long he would be needed*, because at 25 little of his development is still ahead of him and
+experience may establish a short assignment. `stakes` carries the tier, its weight and Player Development's reasons;
+there is no score.
 
 ## 24. Two roster constraints: clearing the active spot and the 40-man spot
 
