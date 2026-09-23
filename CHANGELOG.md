@@ -47,6 +47,10 @@ later stability milestone.
   is 0); an unknown age now leaves the tier indeterminate. No player on the real import lacks an age.
 - MLB Operations' contextual assessment is handed Player Development's tier and can no longer compute one of its own
   from the ratings; the farm's "how old is he for his league" comes from the same reader as his stakes.
+- The macOS release job stopped before packaging anything while the Apple signing secrets were unset: the missing
+  certificate reached electron-builder as an empty `CSC_LINK`, which it read as the path of the repository folder.
+  The secrets are now passed on only when they are set, so an unsigned build is packaged and the signature check
+  fails as intended.
 
 ## [0.1.0] - 2026-09-20
 

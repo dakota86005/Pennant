@@ -188,7 +188,9 @@ A signed macOS release needs:
 
 - An Apple Developer Program membership and a *Developer ID Application* certificate exported as a `.p12`.
 - These repository secrets: `APPLE_CERTIFICATE_P12` (base64 of the `.p12`), `APPLE_CERTIFICATE_PASSWORD`, `APPLE_ID`,
-  `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID`. The workflow already maps them to electron-builder's variables.
+  `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID`. The workflow already maps them to electron-builder's variables,
+  and only when they are set: an unset secret is an empty string, and an empty `CSC_LINK` makes electron-builder
+  fail with "`<repo>` not a file" before it packages anything.
 - The bundle id is already Pennant's (`com.dakotawise.pennant`); sign with a Developer ID certificate under
   your own team before the first signed release.
 

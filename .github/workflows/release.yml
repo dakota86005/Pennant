@@ -68,14 +68,32 @@ jobs:
       # Until the Apple secrets exist this packages an UNSIGNED app and the
       # verification step below cannot pass. That is intended: it is not weakened to
       # turn CI green. What a signed release needs is in docs/DEVELOPMENT.md.
+      #
+      # The secrets are exported to electron-builder's variables only when they are
+      # set. A missing secret expands to an empty string, and electron-builder reads
+      # an empty CSC_LINK as a certificate path relative to the working directory:
+      # it stops with "<repo> not a file" before packaging anything, so the unsigned
+      # build never happened at all.
       - name: Package (signed and notarized when secrets are present)
-        run: npx electron-builder --mac --publish never
         env:
-          CSC_LINK: ${{ secrets.APPLE_CERTIFICATE_P12 }}
-          CSC_KEY_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -n "${APPLE_CERTIFICATE_P12}" ]; then
+            export CSC_LINK="${APPLE_CERTIFICATE_P12}"
+            export CSC_KEY_PASSWORD="${APPLE_CERTIFICATE_PASSWORD}"
+          else
+            echo "::warning::No Apple signing certificate is configured; packaging an UNSIGNED app. The verification step will fail, as intended."
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+          fi
+          # Notarization credentials likewise: present or absent, never empty
+          for var in APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            [ -n "${!var}" ] || unset "${var}"
+          done
+          npx electron-builder --mac --publish never
 
       - name: Verify the app is signed and notarized
         run: |
