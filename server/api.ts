@@ -42,6 +42,8 @@ import { pitchingRoutes } from './pitching.js';
 import { scheduleRoutes } from './schedule.js';
 import { payrollRoutes } from './payroll.js';
 import { clubFinanceRoutes } from './clubFinanceRoutes.js';
+import { playerValueRoutes } from './playerValueRoutes.js';
+import { refitProductionIfNeeded } from './playerValue.js';
 import { captureMarketSnapshot } from './playerValueSnapshot.js';
 import { trendsRoutes } from './trends.js';
 import { chatRoutes } from './chat.js';
@@ -61,6 +63,7 @@ api.use(pitchingRoutes);
 api.use(scheduleRoutes);
 api.use(payrollRoutes);
 api.use(clubFinanceRoutes);
+api.use(playerValueRoutes);
 api.use(trendsRoutes);
 api.use(chatRoutes);
 api.use(playerRoutes);
@@ -151,8 +154,27 @@ function humanOrgId(): number | null {
   }
 }
 
+/**
+ * After an import: refit the production model where the export now holds a completed season newer
+ * than the last fit (D-053, PLAYER_VALUE.md Part 7). In the background, once the import has
+ * finished, so it can never block or fail it: every error is caught and logged. No timer: it runs
+ * once per import, and a re-import without a newer completed season fits nothing.
+ */
+function refitAfterImport(): void {
+  setImmediate(() => {
+    try {
+      for (const r of refitProductionIfNeeded()) {
+        if (r.refit) console.log(`[value] production refit, league ${r.leagueId} through ${r.throughSeason}: ${r.adopted ? 'adopted' : 'not adopted'} (${Math.round(r.ms ?? 0)} ms). ${r.reason}`);
+      }
+    } catch (err) {
+      console.error('[value] production refit failed:', err);
+    }
+  });
+}
+
 export async function runImport(csvDir: string): Promise<void> {
   if (importState.importing) return;
+  let imported = false;
   importState.importing = true;
   importState.lastError = null;
   importState.progress = null;
@@ -199,6 +221,7 @@ export async function runImport(csvDir: string): Promise<void> {
     clearScaleCache();
     clearTwoWayCache();
     autoGenerate();
+    imported = true;
   } catch (err) {
     importState.lastError = (err as Error).message;
     console.error('[import] failed:', err);
@@ -206,6 +229,7 @@ export async function runImport(csvDir: string): Promise<void> {
     importState.importing = false;
     importState.progress = null;
   }
+  if (imported) refitAfterImport();
 }
 
 api.get('/saves', (_req, res) => {

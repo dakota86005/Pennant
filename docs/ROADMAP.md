@@ -262,6 +262,20 @@ domain result and uncertainty, not invent its own hidden ranking.
 
 ## Later: calibration and longitudinal management
 
+- **Audit and migrate calibrated constants to per-save fits (D-053).** Calibration
+  belongs to the save: fitted per save from its own history, stored with a run
+  record, refitted after an import, adopted through a gate, with a provisional
+  fallback prior in code. Player Value's expected production does this (phase
+  3a). Not yet migrated, each a code-declared `calibrated` or fittable
+  `provisional` constant today: `resultsMetrics.ts` (season weights,
+  stabilization, tools information), `roleReview.ts` (`AGING_CURVE`,
+  `DEFENSE_WEIGHT`), `toolsModel.ts` (the tools model), `platoon.ts` (platoon
+  prior and shrinkage), `bullpenRoles.ts` (leverage cut-offs),
+  `roleStandards.ts` (MLB Operations role standards), `farmCalibration.ts`
+  (Minor League Operations: recent usage, farm results) and `developmentFit.ts`
+  (ceiling lines, development age, projection; developmental stakes). For each:
+  say which values are fittable on a save's history and which are policy, write
+  the method and its gate, and keep the current values as the provisional prior.
 - Validate thresholds across synthetic fixtures and diverse voluntarily
   described save shapes without collecting live private saves.
 - Track how past GM decisions and observed outcomes inform future review while

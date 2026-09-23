@@ -746,7 +746,8 @@ equivalence, then preference, then size) and that no MLB module names a philosop
 ## D-037 — Scouting constants are tuned against outcomes, declared once, and stamped
 
 **Status:** Accepted. **Implementation:** Present (`server/calibration.ts`, `scripts/calibrate.ts`,
-`scripts/lib/fit.ts`, docs/CALIBRATION.md).
+`scripts/lib/fit.ts`, docs/CALIBRATION.md). **Amended by D-053:** for new work, "calibrated" means fitted on the save's own
+outcomes, automatically, with the run record as the stamp; the constants below are not yet migrated.
 
 A first-pass constant is a placeholder. The harness predicts later seasons from earlier ones with the production
 functions and reports the error for candidate parameters against a no-information baseline; the constants it supports
@@ -813,7 +814,9 @@ reliever on about 1 in 8, and every flag is one of the league's lowest-twentieth
 
 ## D-041 — Every constant is calibrated, provisional or policy, and the three are never confused
 
-**Status:** Accepted. **Implementation:** Present (`server/calibration.ts`; stamps across `server/`).
+**Status:** Accepted. **Implementation:** Present (`server/calibration.ts`; stamps across `server/`). **Amended by D-053:** a
+`calibrated` value is fitted per save and stamped by its run record; code keeps the method, the policy and a
+provisional fallback prior.
 
 `calibrated` is estimated from historical evidence and can be right or wrong; `provisional` is a MODEL parameter that ought to
 be estimated and has not been (one partial season of zone ratings); `policy` is a product decision about when to raise
@@ -1236,13 +1239,15 @@ contested, as `farmArrivalFor` already did (B-1), so a departure names the man l
 ## D-052 — Player Value is a specialist that describes and never authorizes, in wins first and the save's own dollars
 
 **Status:** Accepted 2026-09-22, with the owner's answers in PLAYER_VALUE.md Part 12. **Implementation:** Partial
-(phases 1–2: contract facts and control; Club Finances, the opening price of a win, the replacement level and the
-per-import market snapshot). `server/playerValue.ts` (the entry point), `playerValueContract.ts`,
-`playerValueControl.ts`, `playerValueFinances.ts`, `playerValueSnapshot.ts` (the one writer, `history.db` only) and
+(phases 1–3a: contract facts and control; Club Finances, the opening price of a win, the replacement level and the
+per-import market snapshot; expected production in wins from major-league results, fitted per save under D-053).
+`server/playerValue.ts` (the entry point), `playerValueContract.ts`, `playerValueControl.ts`,
+`playerValueFinances.ts`, `playerValueHistory.ts`, `playerValueProduction.ts`, `playerValueProductionFit.ts`, the
+two writers (`playerValueSnapshot.ts` and `playerValueFitStore.ts`, `history.db` only), `playerValueRoutes.ts` and
 `playerValueCalibration.ts`; contract-control eligibility in `playerRights.ts` (`evaluateContractControl`); one
-`LeagueRules` in `leagueRules.ts`, with the financial regime; `tests/playerValueBoundary.test.ts`. Production, the
-measured price, surplus, the lens and the club's value of a win (phases 3 to 5) and the `players_value` consumer
-migration (phase 6) are not built. Design: [PLAYER_VALUE.md](PLAYER_VALUE.md). Research evidence:
+`LeagueRules` in `leagueRules.ts`, with the financial regime; `tests/playerValueBoundary.test.ts`. The ratings-based
+projection (phase 3b), the measured price, surplus, the lens and the club's value of a win (phases 4 and 5) and the
+`players_value` consumer migration (phase 6) are not built. Design: [PLAYER_VALUE.md](PLAYER_VALUE.md). Research evidence:
 [PLAYER_VALUE_RESEARCH.md](PLAYER_VALUE_RESEARCH.md). Refines D-002 and D-017 for the pre-fork value surfaces and
 applies D-018, D-023, D-036 and D-041 to them.
 
@@ -1263,7 +1268,9 @@ surplus exists.
   price of a win and replacement level, and the club's budget, payroll, revenue, market, cash and owner expectation);
   and surplus. Each has its own output and names its own unknowns.
 - **A decomposed, stated estimate, never a hidden score.** Value is reported as bands with their basis and every
-  component visible. Thinner evidence (a longer horizon, fewer results, partial ratings) only widens a band. No
+  component visible. Thinner evidence (fewer results, partial ratings) only widens a band; a longer horizon only widens
+  what is not known about a player's rate, while his band in wins follows his expected playing time (owner,
+  2026-09-23). No
   widening is applied to other organizations' players while the export cannot measure that asymmetry. A missing rule, service time or salary is `indeterminate` or `unknown`, never
   a default. Nothing is ranked by a single number.
 - **Wins are the unit, and dollars come from the save from import one.** Production is in wins, in the units of the
@@ -1300,7 +1307,8 @@ BEHAVIOR_CASES.md "Player Value".
 **Stamps.** Every constant is registered in PLAYER_VALUE.md Part 11. The opening replacement level, the opening
 price band and the arbitration ladder are **provisional**. What counts as a market contract, the discount rate, the
 horizon, the evidence needed to replace the opening price, the personality bands and the lens weights are
-**policy**. Production constants are to be **calibrated** against the export's WAR history in phase 3. Bands only
+**policy**. Production is fitted on each save's own history and stored per save (D-053): its policy is in code, its
+fitted numbers are the save's, and only the fallback prior is in code (provisional). Bands only
 widen, the lens comes after the neutral value, sunk money cancels and unknown is never a default: that is
 architecture, pinned by tests.
 
@@ -1318,3 +1326,66 @@ architecture, pinned by tests.
 - Super Two (2026-09-22): OOTP applies Super Two under MLB rules, and Pennant follows the real rule. This is the
   owner's statement of how OOTP behaves, a basis under D-018 and D-023 (`owner_attested`), not a guess from MLB
   rules. The cutoff is computed from the export's own class as a range, in leagues whose regime as read is MLB's.
+
+## D-053 — Calibration belongs to the save
+
+**Status:** Accepted 2026-09-22 (owner decision). **Implementation:** Partial. Player Value's expected production
+(phase 3a) implements it first: `server/playerValueProductionFit.ts` (the method and its backtest),
+`server/playerValueFitStore.ts` (table `value_production_fits` in `history.db`), `PRODUCTION_POLICY` and the
+provisional `PRODUCTION_PRIOR` in `server/playerValueCalibration.ts`, the refit after an import (`api.ts`
+`refitAfterImport`), `GET /api/player-value/production-fit/:orgId`, and `npm run calibrate production` for a
+developer's forced refit. Amends D-037 and D-041. The calibrated constants of other subsystems are not migrated
+yet (ROADMAP "Later: calibration and longitudinal management").
+
+Pennant has to work across very different saves, including fictional leagues whose ecosystems look nothing like
+modern major-league baseball. A number fitted on one save's history and written into the code is that save's
+answer, not a method: on another save it is a guess presented as a measurement.
+
+- **Code holds the method and the policy.** The method is the fitting procedure and its backtest. The policy is
+  what the method is asked to achieve and when it may be trusted: coverage targets (80% and 50% central
+  intervals), minimum samples, the era and hold-out rule, and the adoption tolerance. Fitted numbers (aging
+  curves, regression amounts, band widening per horizon, effects of injury proneness) are not written into code
+  as the answer.
+- **The fit is the save's.** It is computed from the save's own export history and stored per save in
+  `history.db` (additive and idempotent, like `value_market_snapshots`). Each fit carries a run record, which is its
+  stamp: the seasons and sample it was fitted on, the game date of the import, the held-out coverage per horizon for
+  both bands, the prior's weight, the gate's verdict and the method version.
+- **It refits itself.** After an import whose export holds a completed season newer than the last fit's (a season
+  is complete when every club has played its schedule, read from the league's own standings; no wall clock and no
+  timer), the fit is redone in the background, once. The refit can never block or fail the import. A re-import
+  without a newer completed season fits nothing.
+- **A gate decides adoption.** A new fit is adopted only if its held-out coverage is within the stated tolerance of
+  the targets at every horizon with enough held-out cases. Otherwise the previous fit stays in force, and the reason is recorded and
+  shown.
+- **Thin or no history uses a prior, and says so.** Below the minimum sample, each component is shrunk toward a
+  generic fallback prior with a weight set by the sample, and the bands are served wider by that weight. This is
+  labelled "not yet calibrated on this save (N seasons)". The fallback prior is the only fitted artefact code may
+  carry: it is stamped `provisional` with its source, and it is never presented as the save's own calibration.
+- **Visible.** The fit in force (its window, held-out coverage, when it was refitted and the prior's weight) is
+  served through the API, and every season of a projection carries its coverage target beside the coverage observed
+  at that horizon (or "not measured" under the prior), so the interface can show a one-line calibration status. A developer can force a refit
+  from the harness, but the user never needs to.
+
+"Calibrated" (D-037, D-041) now means fitted on the save's own outcomes, automatically, with the run record as the
+stamp. A code-declared calibrated constant becomes a per-save fitted value plus a provisional fallback prior.
+`provisional` and `policy` keep their meaning. This applies to all new work across the application; Player Value
+applies it first.
+
+**Injury proneness is a known fact** (owner, 2026-09-22). `players.prone_overall`, `prone_leg`, `prone_back` and
+`prone_arm` are shown in game, like personality, so they are read as exported facts with the basis `owner_attested`,
+through one reader (`server/injuryProneness.ts`), schema-tolerant. A missing column, a blank or a 0 (the export's
+unfilled value on the imported save) is unknown, never "normal". Its effect is measured, never asserted: the fit
+estimates, on the save's own history, how each proneness band's playing time differs from what its usage predicts,
+and how its aging departs from the curve. An effect is used only when it is at least two standard errors from none.
+Proneness never narrows a band: a measured effect moves the central and keeps the band's width, and an unknown
+proneness widens the band by the largest effect any band showed. On the Arizona import the fit measured a
+playing-time effect (hitters in the most injury-prone third play 94.1% ± 1.3 of their expected usage) and no aging
+effect that the data can distinguish.
+
+Consequences: every Player Value production answer carries the fit in force as its stamp (`basis.model`,
+`basis.calibration`). A historical save's first fits describe real-world stability and aging (the imported history),
+and move toward OOTP's engine as the save's own simulated seasons enter the window. Not migrated in this change:
+`resultsMetrics.ts` (season weights, stabilization, tools information), `roleReview.ts` (`AGING_CURVE`,
+`DEFENSE_WEIGHT`), `toolsModel.ts`, `platoon.ts`, `bullpenRoles.ts` (leverage cut-offs), `roleStandards.ts` (role
+standards), `farmCalibration.ts` (Minor League Operations) and `developmentFit.ts` (development and developmental
+stakes). ROADMAP lists them for an audit and migration.

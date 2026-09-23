@@ -22,6 +22,12 @@
  * Re-running `scripts/calibrate.ts` on a fresh save and editing the declarations is how a calibrated
  * constant is refreshed; the run is recorded in docs/CALIBRATION.md and named here so every stamp
  * points at it. A policy constant is not re-run, it is decided.
+ *
+ * D-053 amends this for new work: calibration belongs to the save. A `calibrated` value is fitted on
+ * the save's own history, stored per save with a run record that is its stamp, and refitted after an
+ * import; code keeps the method, the policy and a `provisional` fallback prior (Player Value's
+ * production is the first: playerValueProductionFit.ts, playerValueFitStore.ts). The constants stamped
+ * with `calibrated()` below are not yet migrated (docs/ROADMAP.md).
  */
 
 export interface CalibrationStamp {

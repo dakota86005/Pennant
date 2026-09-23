@@ -369,7 +369,7 @@ Present on `main` (D-023; research in [RIGHTS_RESEARCH.md](RIGHTS_RESEARCH.md)):
 Not done, by design: rights for IL activation, Rule 5, re-optioning after the
 last option year, rehab returns, claims, refusals, trades (all `indeterminate`).
 
-## Implemented Player Value (phases 1 and 2)
+## Implemented Player Value (phases 1, 2 and 3a)
 
 D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
 
@@ -415,14 +415,46 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   of a win" line, and its three lists are no longer capped at 12 rows.
   `valuation.teamFinances()` remains for Contracts, Free Agents, the AI context
   and Storylines.
+- **Expected production** (phase 3a, `server/playerValueProduction.ts`,
+  served as `PlayerValuation.production`): for players with major-league results
+  in the window, wins per season from this season through seven, each an 80% and
+  a 50% band in the export's WAR units with its basis (seasons and weights,
+  opportunities, regression share, age adjustment, usage band, proneness, the
+  fit in force). Results only; no rating and no `scoutedEvidence`. Everyone else
+  is `unknown`, "pending ratings-based projection (phase 3b)": 10,854 of 12,575
+  active players on the Arizona import, 4 of the 901 on major-league active and
+  injured lists.
+- **Calibration belongs to the save** (D-053): `playerValueProductionFit.ts`
+  fits the model on the save's own history and backtests it;
+  `playerValueFitStore.ts` stores each fit per save in `history.db`
+  (`value_production_fits`) with its run record; `runImport` refits in the
+  background when a newer completed season arrives, and the gate decides
+  adoption. The provisional `PRODUCTION_PRIOR` is used until then, labelled "not
+  yet calibrated on this save". On the Arizona import the fit (2006–2025,
+  held out 2016–2025) passed: held-out coverage as served is 81–84% (80%
+  band) and 53–61% (50% band) at every horizon (CALIBRATION.md section 6). The
+  rate band never narrows further out; the wins band follows expected playing
+  time (owner, 2026-09-23). Each season carries target and observed coverage.
+  A refit takes about 4.6 s.
+- **Injury proneness** (`server/injuryProneness.ts`): read as an
+  owner-attested known fact; 0, blank or missing is unknown. Its measured effect
+  on playing time moves production (hitters in the most injury-prone third play
+  94% of their expected usage on this save); no aging effect was distinguishable.
+- **Routes:** `/api/player-value/:playerId`, `/api/player-value?ids=`,
+  `/api/player-value/production-fit/:orgId`. No interface reads production yet
+  (consumer migration, phase 6). `npm run value:report` prints production bands,
+  counts by status and the median band width per horizon.
 - **Tests:** `playerValueControl`, `playerValueCost` (cost-band halves as
-  `it.todo`), `playerValueFinances` and `playerValueBoundary`.
+  `it.todo`), `playerValueFinances`, `playerValueProduction`,
+  `playerValueProductionFit` and `playerValueBoundary`.
 
-Not built: expected production, the arbitration and pre-arbitration cost
-bands, surplus, the philosophy lens and the club's value of a win (phases 3 to
-5), observed signings and the measured price (phase 4), a per-import store
-(everything is computed per request; see Part 7), and the consumer migration
-that deletes `players_value` reads and the percentile advice (phase 6). On the Arizona import 6,952 of 8,009 held players have indeterminate later
+Not built: ratings-based production for prospects and thin records (phase 3b),
+the arbitration and pre-arbitration cost bands, surplus, the philosophy lens and
+the club's value of a win (phases 4 and 5), observed signings and the measured
+price (phase 4), a per-import store (everything is computed per request; see
+Part 7), and the consumer migration that deletes `players_value` reads and the
+percentile advice (phase 6). The calibrated constants of other subsystems are
+not yet fitted per save (D-053; ROADMAP). On the Arizona import 6,952 of 8,009 held players have indeterminate later
 seasons because what follows a minor-league contract is not established from
 the export, and 494 meet a free-agency line inside this season's projection.
 Super Two follows the owner's ruling (2026-09-22): the cutoff is computed from

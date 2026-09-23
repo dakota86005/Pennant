@@ -5,7 +5,10 @@
  *
  *   OOTP_FO_DATA_DIR=<dir with league.db> npx tsx scripts/calibrate.ts [section ...]
  *
- * Sections: results pitchers tools platoon aging running defense leverage standards (default: all).
+ * Sections: results pitchers tools platoon aging running defense leverage standards production (default: all).
+ *
+ * `production` runs Player Value's per-save production fit (D-053; scripts/lib/productionCalibration.ts):
+ * `production --prior` also prints the fallback prior, `production --refit` forces a refit into history.db.
  *
  * It reads objective statistics directly and ratings only through `scoutedEvidence.ts`
  * (D-017, D-035). It never writes to the database or to OOTP's files. What it prints is
@@ -28,12 +31,13 @@ import {
 } from '../server/resultsMetrics.js';
 import { mlbOverview } from '../server/mlbOperations.js';
 import { bestOf, correlation, grid, mean, weightedRmse, wls } from './lib/fit.js';
+import { productionSection } from './lib/productionCalibration.js';
 
 const LEAGUE = Number(process.env.CALIBRATION_LEAGUE ?? 203);
 const FIRST = 2003;
 const LAST = Number(process.env.CALIBRATION_LAST ?? 2025);
 const SKIP = new Set([2020]);
-const sections = process.argv.slice(2);
+const sections = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const want = (name: string) => sections.length === 0 || sections.includes(name);
 const f = (n: number | null | undefined, d = 3) => (n === null || n === undefined || !Number.isFinite(n) ? '—' : n.toFixed(d));
 const heading = (t: string) => console.log(`\n${'='.repeat(78)}\n${t}\n${'='.repeat(78)}`);
@@ -625,3 +629,4 @@ if (want('running')) runningSection();
 if (want('defense')) defenseSection();
 if (want('leverage')) leverageSection();
 if (want('standards')) standardsSection();
+if (want('production')) productionSection(LEAGUE, process.argv.slice(2));

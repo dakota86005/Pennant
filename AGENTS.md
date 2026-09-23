@@ -45,7 +45,7 @@ research are evidence and rationale, not current implementation truth.
 | MLB Operations | D-024 (then D-025 to D-043 by topic); ARCHITECTURE "MLB Operations"; MLB_OPERATIONS.md §10, §11; ROSTER_REVIEW.md §2, §4; CALIBRATION.md; BEHAVIOR_CASES.md "MLB Operations"; historical rationale: MLB_OPERATIONS_HARDENING.md | `.claude/rules/mlb-operations.md` |
 | Developmental stakes | D-050; ARCHITECTURE "Developmental stakes: the protection tier"; DEVELOPMENTAL_STAKES.md Parts 3, 4, 9 | `.claude/rules/developmental-stakes.md` |
 | Roster evidence and rights | D-020 to D-023, D-026; ARCHITECTURE "Roster evidence: state, chronology, and how current they are"; research evidence: RIGHTS_RESEARCH.md §2, §3 | `.claude/rules/roster-evidence.md` |
-| Player Value | D-052 (with D-018, D-023, D-041); ARCHITECTURE "Subsystem responsibilities" (Player Value), "Player Rights (`playerRights.ts`, `leagueRules.ts`)"; PLAYER_VALUE.md Parts 1, 2, 7 to 11; BEHAVIOR_CASES.md "Player Value"; research evidence: PLAYER_VALUE_RESEARCH.md R-2, R-3, R-6, R-10 | `.claude/rules/player-value.md` |
+| Player Value | D-052 (with D-018, D-023, D-041), D-053 (calibration belongs to the save); ARCHITECTURE "Subsystem responsibilities" (Player Value), "Player Rights (`playerRights.ts`, `leagueRules.ts`)"; PLAYER_VALUE.md Parts 1, 2, 7 to 11; BEHAVIOR_CASES.md "Player Value"; research evidence: PLAYER_VALUE_RESEARCH.md R-2, R-3, R-6, R-10 | `.claude/rules/player-value.md` |
 | Project identity and releases | D-049; ARCHITECTURE "Subsystem responsibilities" (Identity and version); DEVELOPMENT.md "Versions", "Release tags", "Releases", "Application id and compatibility holds" | `.claude/rules/release-identity.md` |
 
 ## Non-negotiable boundaries
@@ -120,6 +120,10 @@ research are evidence and rationale, not current implementation truth.
   service time is `indeterminate`, never 6 / 3 / 172 or zero. Consumers read it
   through `server/playerValue.ts`; `tests/playerValueBoundary.test.ts`
   enforces the boundary.
+- **Calibration belongs to the save** (D-053). New fitted numbers are fitted
+  on the save's own history, stored per save with a run record, refitted after
+  an import and adopted only through a gate; code holds the method, the policy
+  and a provisional fallback prior. Player Value's production does this first.
 - **The application decides; AI explains** (D-001). Deterministic code computes
   facts, eligibility, findings and recommendations. Chat, briefings and
   storylines retrieve, explain and discuss those results through the same API

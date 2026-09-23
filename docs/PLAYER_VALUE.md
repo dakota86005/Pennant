@@ -4,8 +4,9 @@ Design record for the Player Value subsystem: contracts, control, cost, expected
 reality and surplus value. Decision: [D-052](DECISIONS.md) (accepted; owner answers in Part 12). Research evidence:
 [PLAYER_VALUE_RESEARCH.md](PLAYER_VALUE_RESEARCH.md) (R-1 to R-11).
 
-**Status: phases 1 and 2 built (contract facts and control; Club Finances, the opening price of a win and the
-per-import market snapshot, Part 9); phases 3 to 6 are design.** `PROJECT_STATE.md` says
+**Status: phases 1, 2 and 3a built (contract facts and control; Club Finances, the opening price of a win and the
+per-import market snapshot; expected production in wins from major-league results, fitted per save under D-053,
+Part 9); phases 3b to 6 are design.** `PROJECT_STATE.md` says
 what exists; this file says what is to be built and why. Every surface that reports value still reads the prohibited
 `players_value` fields for its value figures (Part 8), and they stay as they are until the phase that replaces each
 one; since phase 1 their control and contract facts come from Player Value.
@@ -172,7 +173,10 @@ how many seasons and plate appearances or innings, which ratings, what age did.
 
 **The band only widens** (D-018):
 
-- with the horizon: every season further out is wider than the one before;
+- with the horizon: his **rate** band (what is not known about his rate, plus the drift of talent) is never narrower
+  in a season further out. The **wins** band is rate × expected playing time with the playing-time uncertainty, and it
+  follows expected playing time down as it fades (owner, 2026-09-23: "it makes sense that eventually they predictably
+  become lower");
 - with thinner results: fewer plate appearances or innings, or no major-league line;
 - with thinner ratings: a partial `ScoutedAbility` widens the band, and none at all leaves the ability component
   `unknown`;
@@ -186,7 +190,53 @@ Nothing narrows a band except more evidence of the same kind. A missing input ne
 
 **Calibration is possible here, unlike developmental stakes.** The export carries per-season WAR for every season
 from 1871 (R-4), so projection error can be measured the way `scripts/calibrate.ts` measures the results engine
-(D-037): predict season *t+1* from seasons up to *t*, band coverage included.
+(D-037): predict season *t+1* from seasons up to *t*, band coverage included. Under D-053 that measurement is made on
+each save's own history and stored per save; code holds only the method, the policy and a provisional prior.
+
+**What phase 3a built** (`playerValueProduction.ts`, the projection; `playerValueProductionFit.ts`, the fit;
+`playerValueHistory.ts`, the reader; `playerValueFitStore.ts`, the store; the entry point serves it as
+`PlayerValuation.production`):
+
+- **Results only.** A player's major-league lines (level 1, the overall split, summed over clubs) in a rolling
+  window of three season-lengths ending today. The current partial season is in it at its own opportunities, so it
+  counts in proportion to its playing time, and the part of the window it does not yet cover comes from the seasons
+  before. No rating is read and `scoutedEvidence.ts` is not imported (phase 3b). Minor-league WAR is not read (Q-9).
+- **Rate:** WAR per opportunity, a plate appearance for a hitter and a batter faced for a pitcher (the opportunity
+  the results engine already counts in, and one that does not depend on how a pitcher is used within an inning),
+  recency-weighted and regressed toward the fitted mean of his kind (hitter, starter, reliever; a pitcher is a
+  starter when he started at least half his games in the window) by his weighted sample.
+- **Aging:** the fitted curve (hitters and pitchers apart) from his age at the window's end to his age in each
+  season. `roleReview.ts`'s `AGING_CURVE` answers another question (wOBA and FIP) and is not reused.
+- **Usage:** expected opportunities per season from observed usage and age only, never from a philosophy, with its
+  own band. A stated injury (`injury_is_injured`, `injury_left`, `injury_dl_left`, `injury_career_ending`) only lowers
+  a low edge, sized by the days out against the season's calendar measured from the save; a career-ending one puts
+  producing nothing inside every season's band.
+- **Injury proneness** (owner-attested known fact, D-053): its effect on usage and aging is measured on the save's
+  history and used only at two standard errors; it moves the central and never narrows a band, and an unknown
+  proneness widens the band by the largest effect any band showed.
+- **Each season** from this one through the horizon (seven seasons) is an 80% band and a 50% band inside it, with
+  the basis: the seasons read and their weights, opportunities, the regression share, the age adjustment, the usage
+  band, the proneness band and the fit in force. This season's band is what he has banked (a fact) plus the band for
+  the rest of it. A two-way player's band is the sum of both sides, edge with edge; a side under 100 opportunities in
+  the window is not projected and the basis says so. Production spans the whole horizon for every player, held or
+  not; surplus (phase 5) meets it with the control timeline.
+- **Unknown** stays unknown: no major-league results in the window is `unknown`, "pending ratings-based projection
+  (phase 3b)", never zero and never a league average; a missing age, WAR, season or share of the season played is
+  `unknown` with its reason.
+
+**The invariants as built, stated exactly.** The rate band (80% and 50%, WAR per 600 opportunities) is never
+narrower in a season further out: it is carried forward. The wins band is each season's own, so a player whose
+expected playing time declines may have a narrower wins band, never a narrower rate band. Removing a season of results, or reducing its opportunities, never narrows the band **on
+the same expected playing time**, and never narrows the uncertainty about his rate at all. Playing time is itself
+evidence of usage: a part-timer's wins are bounded by his playing time, so a projection that reads usage from the same
+lines can have a narrower band in wins when the usage it reads is lower. The projection keeps the two readings
+separate, and the usage band is never narrower relative to its central when usage evidence thins. A better visible
+line never lowers the central or either edge. Nothing in the projection knows the club.
+
+**What phase 3a leaves open.** Playing time is not modelled as depending on performance, so a player projected below
+replacement keeps his expected usage and his central can be slightly negative far out; the held-out bias (the actual
+above the central by 0.03 wins at horizon 1, 0.1 to 0.2 further out) is recorded, not tuned away. The fit on a
+historical save describes the real history it imported until the save's own seasons replace it.
 
 ### 2.4 Club Finances: the save's financial reality
 
@@ -231,8 +281,12 @@ the seasons included. Part 5 sets out the arithmetic and the sunk-cost rule.
 - **Wins** are the production unit. **Dollars** are derived from the save's own economy (Part 4). When the league
   has no financials (`rules_financials = 0` with no salaries), value is reported in wins and dollars are `unknown`,
   stating why.
-- **A band is three numbers and a basis.** It is not a confidence interval Pennant cannot justify. Until phase 3
-  calibrates coverage it is labelled a *range of reasonable readings* and each edge says what produced it.
+- **A band is three numbers and a basis.** It is not a confidence interval Pennant cannot justify. Until a band's
+  coverage is calibrated it is labelled a *range of reasonable readings* and each edge says what produced it. Expected
+  production (phase 3a) is calibrated: an 80% and a 50% central interval, whose held-out coverage per horizon is
+  measured on the save's own history and recorded with the fit (D-053, Part 7). Every season carries its targets
+  beside the coverage the fit in force observed at that horizon (`coverage.target`, `coverage.observed`; observed is
+  `null`, "not measured on this save", under the fallback prior), so the interface can say "80% target · 82% observed".
 - **Combining bands** uses interval arithmetic: low with low, high with high, cost subtracted edge against opposite
   edge. That widens honestly and assumes no independence the evidence cannot support. Phase 5 may replace it with a
   calibrated method once coverage is measured.
@@ -392,6 +446,31 @@ always states the neutral figure it started from.
 Phase 1 times the full-league compute on this import before choosing lazy-only or warm-after-import (R-9 sizes it
 at a few hundred thousand rows).
 
+**The production fit store (phase 3a, D-053).** Table `value_production_fits` in `history.db`
+(`playerValueFitStore.ts`, Player Value's second writer): one row per save, league, last completed season and
+method version (the primary key), additive (`CREATE TABLE IF NOT EXISTS`) and idempotent (`INSERT OR IGNORE`; only a
+developer's forced refit replaces a row). Each row holds the fitted model as JSON, the run record (window, training and
+held-out seasons, sample, prior weight, held-out coverage per horizon for both bands, pooled, by kind and by usage
+tier, the aging summary, the proneness findings, the gate's verdict and reason), whether it was adopted, the import's
+game date and the time the fit took; the wall-clock time is a diagnostic only. The model in force is the adopted row
+with the latest completed season; with none, the provisional fallback prior, labelled "not yet calibrated on this save
+(N seasons)" with why. **Refit:** `runImport` calls `refitProductionIfNeeded` after the import has finished, in the
+background (`setImmediate`, inside a try/catch that logs), so it can never block or fail the import. A league's last
+completed season is this season once every club has played its schedule (`team_record`), else the one before; a key
+already fitted is skipped, so a re-import without a newer completed season fits nothing. No timer, no wall-clock
+date. **Served** by `GET /api/player-value/production-fit/:orgId` (the fit in force, the latest attempt, the targets)
+and in every production answer's basis. **Forced** by `npx tsx scripts/calibrate.ts production --refit`.
+
+**Measured in phase 3a** (read-only, the same import, a scratch `history.db`): a full refit takes **4.6 s** end to end
+(history read 0.16 s: every major-league line 2002–2025; fit 4.5 s on 5,956 players), in the background after an import. Serving
+production reads the fit in force from `history.db` per request. `playerValues` for one organization (285 players,
+contract, control and production) takes **37–40 ms**; the league-wide pass for all 12,575 active players takes
+**568–614 ms** with production and 221–378 ms without it. **Choice: computed per request, no store.** Every route that
+serves production asks for a player, a list or an organization, well under half a second; nothing asks for the
+league-wide pass except `npm run value:report`. The disposable per-import store above is built when a consumer needs
+production league-wide per request (Free Agents or Org Comparison, phase 6), and is then dropped where
+`clearValuationCaches()` is called, never kept in `history.db`.
+
 **Measured in phase 2** (`npm run value:report`, read-only, same import): `leagueFinances` (the regime, the valuation
 of the 901 major leaguers on active and injured lists, three seasons of WAR, the standings, the price and replacement
 level) plus `clubFinances` takes **132–150 ms** per pass over three passes, and 603 ms for the first, cold pass of a
@@ -461,7 +540,8 @@ and the evidence boundary test's allow-list for `players_value` is empty.
 | **0** (this document) | Design, research, D-052, behavior cases | Done: the owner accepted D-052 and answered Q-1 to Q-10 (Part 12) |
 | **1** Contract facts and control — **done** (2026-09-22; evidence in Part 7 and below) | Concerns 1 and 2. Arbitration and free-agency eligibility added to `playerRights.ts` (Q-1). **One `LeagueRules`** (merge `valuation.ts`'s into `leagueRules.ts`'s `Sourced` form: every column guarded, no 6/3 fallback, service-year length from `rules_min_service_days`, the regime through `parent_league_id`). Missing service time is `unknown`, never 0. `controlAfterThisSeason` replaced in place. The boundary test (Part 10). A timed league-wide compute | Every active player has a control timeline, with every `indeterminate` counted and its reason named. Payroll's control column reads it. The boundary test passes. The full-league time is recorded here. Player Value has an `AGENTS.md` routing row and a Claude rule (Q-10). `tsc`, `npm test` and the build are clean |
 | **2** Club Finances and the opening price — **done** (2026-09-22; evidence in 2.4, 4.1, 4.3, Part 7 and below) | Concern 4. The per-import market snapshot in `history.db`. The opening price of a win and the replacement level with their bases | This save's opening price reproduces R-5's band from code. A snapshot is written once per import key. A league without financials yields wins and dollars `unknown`. No timer |
-| **3** Expected production | Concern 3, in wins, bands per Part 2.3, calibrated against the export's WAR history through the calibration harness | A calibration run is recorded and its constants stamped. The band invariants (Behavior cases) pass. Band coverage is reported |
+| **3a** Expected production from results — **done** (2026-09-22; evidence below, Part 7, CALIBRATION.md section 6) | Concern 3 for players with a major-league record, in wins, an 80% and a 50% band per season (Part 2.3). Calibrated per save (D-053): the fit and its backtest, the fit store, the refit after an import, the gate, the provisional prior. Injury proneness read as a known fact and its effect measured | A fit is recorded with its run record and adopted through the gate. The band invariants (Behavior cases) pass. Held-out coverage is reported per horizon for both bands. The timing is recorded |
+| **3b** Expected production from ratings | Ratings through `scoutedEvidence.ts` for prospects and players with thin or no major-league results, partial-rating widening, a prospect's low edge including producing nothing | The 3b behavior cases pass. Removing a rating never narrows a band; no ability evidence leaves that component `unknown` |
 | **4** Measured price and arbitration | Observed signings and arbitration awards across imports. The measured price replaces the opening one once its band is narrower (Q-4). The arbitration ladder is measured. Replacement is measured from freely available talent | On an off-season import, signings are identified and counted. While the measured band is still wider, the opening price stays and says why. The price history is visible |
 | **5** Surplus, the lens and the win curve | Concern 5, Part 5's two views, Part 6's lens, Part 4.5's club value of a win | The Player Value behavior cases pass. Neutral value is identical under every philosophy. Every lean is named |
 | **6** Consumer migration | Part 8, in order, one consumer per change | Each change deletes that consumer's `players_value` reads. Finally, the `players_value` allow-list is empty |
@@ -479,6 +559,30 @@ Judgments made in phase 1 beyond the text above: consumers that hold no freshnes
 their answers stand with that limitation (a stale export still makes eligibility `indeterminate`, D-023); a minor-league
 contract is held for this season at an unknown cost and what follows it is `indeterminate`; a vesting option is its
 own status beside club and player options; an unsigned player has no timeline rather than a `free_agent` season.
+
+**Phase 3a exit criteria, as met.** On the Arizona import the fit `203:2025:production-3a.1` (window 2006–2025, 2020
+skipped, trained through 2015, held out 2016–2025; prior weight 0.02) passed the gate and was adopted. Held-out
+coverage, 80% / 50% band, as fitted: horizon 1 80.4% / 53.3%, 2 79.2% / 52.7%, 3 78.4% / 52.0%, 4 80.1% / 54.2%, 5 80.5% /
+55.1%, 6 80.9% / 57.2%, 7 81.6% / 59.0%. As served (with the prior's widening and hold-out widening): 82.9% / 55.4%,
+81.8% / 54.7%, 81.1% / 53.5%, 82.4% / 56.5%, 82.3% / 57.6%, 82.6% / 59.2%, 83.6% / 61.1%. Part-time and regular thirds sit
+within two points of 80% at every horizon and within 7 of 50%; the fringe third over-covers (84–88% / 58–72%) because
+most of its outcomes are exactly zero (no playing time), which any band around a small central contains. The full tables, the aging curve, the regression and the proneness evidence are in
+CALIBRATION.md section 6. On this save 1,721 of 12,575 active players have a band and 10,854 are `unknown`, pending
+phase 3b; on the major-league clubs' active and injured lists 897 have a band and 4 do not. Median band width (80% /
+50%, wins) among those 897: 2026 (the rest of it plus what is banked) 1.94 / 0.89, 2027 2.64 / 1.03, 2028 2.52 / 0.83,
+2029 2.25 / 0.69, 2030 1.76 / 0.56, 2031 1.30 / 0.45, 2032 0.96 / 0.37: the cone narrows in wins as expected playing time
+fades, while every rate band widens. The timing is in Part 7. `tsc`, `npm test` and the build are
+clean.
+
+Judgments made in phase 3a beyond the text above: the invariant "removing results never narrows the band" is held on
+the same expected playing time (Part 2.3); a rolling window of three season-lengths, the current partial season in it
+at its own opportunities; production spans the horizon for every player, held or not; a side needs 100 opportunities
+in the window to be projected on a primary player's other side; only the rate band is carried forward and the wins band is
+each season's own (owner, 2026-09-23; an earlier build carried the wins band, which forced held-out coverage up to 93% /
+80% at horizon 7); the tails are set per usage tier, because pooled tails left regulars covered 65–71% and 20–28%; a drift term (rate variance no sample removes) is fitted; the prior
+widens the bands it serves by half its weight, and the gate judges the fit before that widening, so a thin save is not
+rejected for being honest; injury only lowers a low edge (the brief's widening-only rule) even where it states days
+out; a proneness of 0 is unknown (the export's unfilled value); the prior carries no proneness effect.
 
 **Phase 2 exit criteria, as met.** The opening price from code on the Arizona import is central $7.25M, band
 $6.57M–$9.78M, floor $4.22M–$4.33M; the floor is R-5's to the cent and the market bases differ only by the 17 players
@@ -524,13 +628,21 @@ price costs, not the market, and are left for the phase that builds cost bands (
 7. **Nothing writes.** No Player Value module writes to `league.db`. Only the snapshot writer touches `history.db`.
 8. **Every constant is declared once and stamped** (D-041), in one calibration module.
 9. **Schema tolerance.** Every column read that R-10 lists as unguarded is read through a column check.
+10. **Production (phase 3a).** The production modules (`playerValueProduction.ts`, `playerValueProductionFit.ts`,
+    `playerValueHistory.ts`, `playerValueFitStore.ts`) read no rating at all: no `scoutedEvidence`, no rating
+    column, no `players_value`, no philosophy, no tier, no defensibility. Injury proneness is read only through
+    `injuryProneness.ts`. The only fitted artefact in code is the provisional `PRODUCTION_PRIOR`; the projection and
+    the fit are handed a model, and the reader serves the adopted fit from the store. Only the two writers touch
+    `history.db`. The refit after an import is called once, in the background, inside a try/catch.
 
 ---
 
 ## Part 11 — Constants register
 
-Stamps per D-041. Nothing here is calibrated yet. Phase 2's stamps are declared in `playerValueCalibration.ts`, with
-the label `OPENING_PRICE_LABEL` and `PRICE_NARROWS_WHEN`; it adds no numeric constant.
+Stamps per D-041, amended by D-053: a **fitted per save** value is computed from the save's own history and stamped by
+its run record in `history.db`; code holds only policy, provisional values and the fallback prior. Phase 2's stamps are
+declared in `playerValueCalibration.ts`, with the label `OPENING_PRICE_LABEL` and `PRICE_NARROWS_WHEN`; it adds no
+numeric constant. Phase 3a adds `PRODUCTION_POLICY` (policy) and `PRODUCTION_PRIOR` (provisional).
 
 | Constant | Stamp | Basis |
 |---|---|---|
@@ -551,10 +663,15 @@ the label `OPENING_PRICE_LABEL` and `PRICE_NARROWS_WHEN`; it adds no numeric con
 | Which clause columns are "not populated" | **none: read** | A clause column that is 0 on every contract in the export is unknown, not "none" (R-6); measured per import |
 | Discount rate | **policy** | One stated rate in the neutral view, its value set when phase 5 builds surplus. `competitiveWindow` leans on it only in "our view" (Q-3). No backtest can call it optimal |
 | Projection horizon | **policy** | To the end of control, capped at 7 seasons (Q-3). Control is what the club owns. `CONTROL_HORIZON_SEASONS` in `playerValueCalibration.ts` (phase 1) |
-| Band widening per horizon season | **provisional → calibrated in phase 3** | WAR history makes it fittable |
-| Widening for thin results and partial ratings | **provisional → calibrated in phase 3** | Sample size against projection error |
+| Production coverage targets (80% and 50%), era and hold-out rule, adoption gate and tolerance, minimum samples, prior strength and widening, usage tiers, two-way minimum, starter share, usage pivot age, proneness banding and evidence rule | **policy** | `PRODUCTION_POLICY`, stamped `PRODUCTION_POLICY_CALIBRATION` (phase 3a). Decisions about the method (D-053) |
+| Band widening per horizon season (the tails, per kind and usage tier) | **fitted per save** (D-053) | The save's fit in `value_production_fits`, stamped by its run record; phase 3a |
+| Widening for thin results | **fitted per save** | The rate's uncertainty, noise ÷ (sample + K): season noise and K fitted on the save; phase 3a |
+| Regression (recency weights, K, the mean), season noise, drift, usage regression and its spread | **fitted per save** | The save's fit; phase 3a |
+| Aging curve for production | **fitted per save** | Delta method on the save's consecutive seasons, hitters and pitchers apart. `roleReview.ts`'s `AGING_CURVE` answers another question and is not reused |
+| Injury proneness's effect on usage and aging | **fitted per save**, used only at two standard errors | The save's fit; the prior carries none. Proneness itself is a known fact (`owner_attested`) |
+| The fallback prior | **provisional** | `PRODUCTION_PRIOR`, `PRODUCTION_PRIOR_CALIBRATION`: the same method on the real history 2006–2025 the Arizona save imports; the only fitted artefact in code |
+| Widening for partial ratings | **to be fitted per save in phase 3b** | Ratings enter in phase 3b |
 | Widening outside the organization | **none** | Not applied: one rating row per player makes it unmeasurable (R-9, Q-2) |
-| Aging curve for production | **calibrated in phase 3** | Fitted on WAR history. `roleReview.ts`'s `AGING_CURVE` answers another question and is not reused unrefitted |
 | Personality bands (low / normal / high) | **policy** | The central mass at 80–120 on a 1–200 scale (R-8). No claim about OOTP's bands |
 | Personality effects on price (greed, loyalty, play-for-winner) | **none until measured (phase 4)** | Shown as facts. They move no number until observed signings show their effect |
 | Win curve (playoff odds per win) | **provisional** | `posture.ts` / `playoffs.ts` odds |
