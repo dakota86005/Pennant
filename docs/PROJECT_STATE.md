@@ -441,12 +441,21 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   on playing time moves production (hitters in the most injury-prone third play
   94% of their expected usage on this save); no aging effect was distinguishable.
 - **Routes:** `/api/player-value/:playerId`, `/api/player-value?ids=`,
-  `/api/player-value/production-fit/:orgId`. No interface reads production yet
-  (consumer migration, phase 6). `npm run value:report` prints production bands,
+  `/api/player-value/production-fit/:orgId`, and `/api/player-value/:playerId/cone`
+  (production joined with control for the card, `server/playerValueCone.ts`).
+- **Player card production cone** (PLAYER_VALUE.md Part 8): an "Expected
+  production" section draws each season's 80% and 50% bands, the expected
+  path, replacement level and control, with target beside observed coverage on
+  hover and focus and the calibration line; unknown production shows its
+  reason and no cone. Drawn with visx, the charting library adopted in D-054
+  (`src/ProductionCone.tsx`, `src/productionConeGeometry.ts`,
+  `src/chartTheme.ts`). No other page reads production yet; the card's own
+  `players_value` reads wait for phase 6. A static site export omits it. `npm run value:report` prints production bands,
   counts by status and the median band width per horizon.
 - **Tests:** `playerValueControl`, `playerValueCost` (cost-band halves as
   `it.todo`), `playerValueFinances`, `playerValueProduction`,
-  `playerValueProductionFit` and `playerValueBoundary`.
+  `playerValueProductionFit`, `playerValueCone`, `productionCone` (geometry,
+  render and theme tokens) and `playerValueBoundary`.
 
 Not built: ratings-based production for prospects and thin records (phase 3b),
 the arbitration and pre-arbitration cost bands, surplus, the philosophy lens and
