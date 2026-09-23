@@ -21,8 +21,8 @@
 import { db, tableColumns, tableExists } from './db.js';
 import type { SourceState } from './dataFreshness.js';
 import { allLeagueRules, leagueRulesFromRow, type ContractRules } from './leagueRules.js';
-import { evaluateContractControl } from './playerRights.js';
-import { allPlayerStates, playerStates, seasonServiceClocks, type PlayerState } from './playerState.js';
+import { evaluateContractControl, superTwoCutoffs } from './playerRights.js';
+import { allPlayerStates, playerStates, seasonServiceClocks, serviceClassMembers, type PlayerState } from './playerState.js';
 import { unknownBecause } from './provenance.js';
 import { CONTROL_HORIZON_SEASONS } from './playerValueCalibration.js';
 import {
@@ -118,6 +118,8 @@ function valuate(states: PlayerState[], ids: number[] | null, options: Valuation
   const clocks = seasonServiceClocks();
   // A player whose club or league the export does not name has no regime to read
   const noRules = leagueRulesFromRow(null, new Set()).contract;
+  // The Super Two cutoff, once per contract regime for the whole pass: it ranks the league's class
+  const superTwo = superTwoCutoffs(serviceClassMembers(), (id) => rules.get(id)?.contract ?? null, clocks);
 
   for (const state of states) {
     const teamId = state.teamId.value;
@@ -137,6 +139,7 @@ function valuate(states: PlayerState[], ids: number[] | null, options: Valuation
         : unknownBecause('not_exported_by_ootp', null, 'His league\'s contract regime is unknown, so its season clock is too.'),
       currentState,
       seasons: CONTROL_HORIZON_SEASONS,
+      superTwo: regimeId !== null ? superTwo.get(regimeId) ?? null : null,
     });
     const control = composeControlTimeline({
       playerId: state.playerId,

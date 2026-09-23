@@ -12,6 +12,9 @@
 import { performance } from 'node:perf_hooks';
 import { db, tableExists } from '../server/db.js';
 import { leaguePlayerValues, type PlayerValuation } from '../server/playerValue.js';
+import { allLeagueRules } from '../server/leagueRules.js';
+import { superTwoCutoffs } from '../server/playerRights.js';
+import { seasonServiceClocks, serviceClassMembers } from '../server/playerState.js';
 
 if (!tableExists('players') || !tableExists('players_contract')) {
   throw new Error('No league imported: point OOTP_FO_DATA_DIR at a directory with league.db.');
@@ -59,7 +62,8 @@ let viaParent = 0;
 
 /** A reason, with its numbers taken out so the same cause counts once. */
 const category = (text: string): string => {
-  if (/Super Two/.test(text)) return 'Super Two window (the year before the arbitration line): whether OOTP grants it is not established';
+  if (/In the Super Two window/.test(text)) return 'Super Two: his projected service overlaps the projected cutoff';
+  if (/Super Two/.test(text)) return 'Super Two window: ' + text.replace(/\d+/g, '#').slice(0, 110);
   if (/free-agency line .* falls inside the projection/.test(text)) return 'projection straddles the free-agency line';
   if (/arbitration line .* falls inside the projection/.test(text)) return 'projection straddles the arbitration line';
   if (/minor-league contract/.test(text)) return 'after a minor-league contract: what follows is not established';
@@ -100,3 +104,46 @@ print('Every timeline season, by status', every);
 print('Indeterminate seasons, by what they lie between', between);
 print('Indeterminate seasons, by reason', reasons);
 print('Players with at least one indeterminate season, by reason', anyIndeterminate);
+
+/* ── Super Two (owner ruling, 2026-09-22) ─────────────────────────────────────────────────────── */
+
+const rules = allLeagueRules();
+const cutoffs = superTwoCutoffs(serviceClassMembers(), (id) => rules.get(id)?.contract ?? null, seasonServiceClocks());
+const spoken = (d: number) => `${Math.floor(d / 172)}.${String(Math.round(d % 172)).padStart(3, '0')}`;
+console.log('\nSuper Two cutoff at the end of this season, per contract regime');
+for (const [regime, c] of cutoffs) {
+  console.log(`  league ${regime}: applies ${c.applies}` + (c.cutoff
+    ? `; cutoff ${c.cutoff.low}-${c.cutoff.high} days (${spoken(c.cutoff.low)}-${spoken(c.cutoff.high)} in years.days); class ${c.classSize!.low}-${c.classSize!.high}; qualifiers ${c.qualifiers!.low}-${c.qualifiers!.high}`
+    : `; ${c.missing.map((m) => m.message).join(' ')}`));
+}
+
+// Everyone whose service entering next season can fall in the year before the arbitration line
+const window = new Map<string, number>();
+const windowMajor = new Map<string, number>();
+const near: string[] = [];
+for (const v of values.values()) {
+  const t = v.control;
+  const e = t.eligibility?.seasons.find((x) => x.season === (t.thisSeason ?? 0) + 1);
+  if (!e || !e.serviceDays || t.standing !== 'held') continue;
+  if (!(e.serviceDays.low < 3 * 172 && e.serviceDays.high >= 2 * 172)) continue;
+  const why = e.arbitration.status === 'indeterminate'
+    ? `indeterminate: ${category(e.arbitration.missing[0]?.message ?? '')}`
+    : `${e.arbitration.status}: ${e.arbitration.reasons[0]?.code ?? ''}`;
+  tally(window, why);
+  if (v.contract.kind.value === 'major_league' && v.contract.standing === 'signed') tally(windowMajor, why);
+  const c = cutoffs.values().next().value?.cutoff;
+  if (c && e.serviceDays.high >= c.low - 15 && e.serviceDays.low <= c.high + 15) {
+    const name = (db.prepare('SELECT first_name || \' \' || last_name AS n FROM players WHERE player_id = ?').get(v.playerId) as { n: string }).n;
+    near.push(`${name} (${v.playerId}): service ${e.serviceDays.low}-${e.serviceDays.high}, arbitration ${e.arbitration.status}, next season ${t.seasons.find((x) => x.season === e.season)?.status}`);
+  }
+}
+print('Players whose service entering next season can fall in the Super Two window, by answer', window);
+print('...of them, on a signed major-league deal', windowMajor);
+console.log('\nNear the cutoff (within 15 days of its range)');
+for (const line of near.slice(0, 25)) console.log(`  ${line}`);
+const check = values.get(38389);
+if (check) {
+  const e = check.control.eligibility?.seasons.find((x) => x.season === (check.control.thisSeason ?? 0) + 1);
+  console.log(`\nCheck: player 38389 service now ${JSON.stringify(check.control.eligibility?.service.now)}, next winter ${JSON.stringify(e?.serviceDays)}, ` +
+    `arbitration ${e?.arbitration.status}: ${[...(e?.arbitration.reasons ?? []).map((r) => r.message), ...(e?.arbitration.missing ?? []).map((m) => m.message)].join(' ')}`);
+}

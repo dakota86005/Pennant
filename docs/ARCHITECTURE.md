@@ -367,8 +367,11 @@ Player State and projected as a band: this season's remaining days (from the
 season's service clock, `seasonServiceClocks`) on the high edge only, each
 later season as a full service year on both. A threshold inside the band makes
 that season `indeterminate` and names the season on each side; the year before
-the arbitration line (Super Two) is `indeterminate` until OOTP's rule is
-observed; `has_received_arbitration` is not read. Player Value composes these
+the arbitration line is decided by Super Two where the league's regime as read
+is MLB's (owner ruling, 2026-09-22; basis `owner_attested`): `superTwoCutoffs`
+ranks the class once per request or league pass (`serviceClassMembers` in
+`playerState.ts`) into a cutoff range, and a player overlapping it stays
+`indeterminate`; `has_received_arbitration` is not read. Player Value composes these
 into its timeline and never re-derives them. Freshness is applied per action: a stale export
 makes every action indeterminate; the log matters only to recall. The rules,
 their basis and their unresolved edges are in

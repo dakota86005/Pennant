@@ -403,8 +403,11 @@ the philosophy lens (phases 2 to 5), the per-import market snapshot, a cache
 migration that deletes `players_value` reads and the percentile advice (phase
 6). On the Arizona import 6,952 of 8,009 held players have indeterminate later
 seasons because what follows a minor-league contract is not established from
-the export; 453 meet the Super Two window and 494 a free-agency line inside
-this season's projection.
+the export, and 494 meet a free-agency line inside this season's projection.
+Super Two follows the owner's ruling (2026-09-22): the cutoff is computed from
+the export's class (469–478 days at the end of 2026 on this import), and 130
+next-season answers stay `indeterminate` because the player's own range overlaps
+it or he has not yet banked 86 days.
 
 ## Implemented MLB Operations (first slice)
 
@@ -513,9 +516,10 @@ resolution across all organization-specific features is future work.
 - Rights that remain `indeterminate` are listed in D-023 and the roadmap (IL activation now states
   its known facts and exact unknowns).
 - Contract control stays `indeterminate` where the export cannot settle it: after a minor-league contract
-  (what follows, and how `rules_minor_league_fa_minimum_years` is counted, is not established), in the
-  Super Two window (the year before the arbitration line), and where a line falls inside this season's
-  service projection. Pre-arbitration and arbitration costs are unknown until the price of a win exists.
+  (what follows, and how `rules_minor_league_fa_minimum_years` is counted, is not established), where a
+  player's service range overlaps the projected Super Two cutoff or his 86 days are not yet banked, in a
+  league whose regime is not MLB's, for last winter's and later winters' Super Two classes, and where a line
+  falls inside this season's service projection. Pre-arbitration and arbitration costs are unknown until the price of a win exists.
 - The live log lags in-session moves until the game is saved, and the original
   save's `temp/` log was absent when it was not the loaded save; the freshness
   model does not yet say so.

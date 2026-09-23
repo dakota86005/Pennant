@@ -14,6 +14,7 @@ const BASIS: Record<string, string> = {
   observed: 'observed in OOTP',
   documented: 'OOTP documentation',
   observed_and_documented: 'observed in OOTP and documented',
+  owner_attested: 'the owner\'s statement of how OOTP behaves',
 };
 
 /** The actions worth showing: not a plain restatement of where he is. */

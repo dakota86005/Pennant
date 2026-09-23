@@ -51,7 +51,7 @@ interface OffTheBooks {
   money: number;
   players: Array<{
     player_id: number; name: string; age: number; salary: number;
-    status?: string | null; arbYear?: number | null; arbYearHigh?: number | null;
+    status?: string | null; arbYear?: number | null; arbYearHigh?: number | null; superTwo?: boolean;
     between?: string[]; reason?: string | null;
   }>;
 }
@@ -241,7 +241,7 @@ export function Payroll({ orgId }: { orgId: number }) {
                     <td className="num">{p.age}</td>
                     <td className="muted">
                       {p.status === 'arbitration'
-                        ? p.arbYearHigh != null ? `arb ${p.arbYear}-${p.arbYearHigh}` : `arb ${p.arbYear ?? ''}`.trim()
+                        ? p.superTwo && p.arbYear == null ? 'arb (Super Two)' : p.arbYearHigh != null ? `arb ${p.arbYear}-${p.arbYearHigh}` : `arb ${p.arbYear ?? ''}`.trim()
                         : p.status === 'reserve clause' ? 'reserve' : 'pre-arb'}
                     </td>
                     <td className="num">{money(p.salary)}</td>

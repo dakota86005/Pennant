@@ -186,6 +186,8 @@ export interface Control {
   arbYear: number | null;
   /** The high edge, when staying up all season would make it a later trip. */
   arbYearHigh: number | null;
+  /** Arbitration reached as a Super Two (owner ruling, 2026-09-22). */
+  superTwo: boolean;
   /** For an indeterminate status: the statuses it lies between. */
   between: ControlStatus[];
   /** Why, in a line: the basis, or what is missing. */
@@ -209,7 +211,7 @@ const LEGACY: Record<ControlTimeline['seasons'][number]['status'], ControlStatus
  * Null for a player no club holds.
  */
 export function controlAfterThisSeason(timeline: ControlTimeline | null | undefined): Control | null {
-  const unknown = (reason: string): Control => ({ status: 'indeterminate', arbYear: null, arbYearHigh: null, between: [], reason });
+  const unknown = (reason: string): Control => ({ status: 'indeterminate', arbYear: null, arbYearHigh: null, superTwo: false, between: [], reason });
   if (!timeline) return unknown('His contract and control could not be read from the export.');
   if (timeline.standing === 'unsigned') return null;
   if (timeline.thisSeason === null) return unknown(timeline.notes[timeline.notes.length - 1] ?? 'The current season is not known.');
@@ -226,6 +228,7 @@ export function controlAfterThisSeason(timeline: ControlTimeline | null | undefi
     status,
     arbYear: next.arbitrationYear?.low ?? null,
     arbYearHigh: next.arbitrationYear && next.arbitrationYear.high !== next.arbitrationYear.low ? next.arbitrationYear.high : null,
+    superTwo: next.superTwo,
     between: [...new Set(next.between.map((b) => LEGACY[b]))],
     reason: status === 'indeterminate' ? (next.reasons[0] ?? next.basis) : next.basis,
   };
@@ -233,6 +236,7 @@ export function controlAfterThisSeason(timeline: ControlTimeline | null | undefi
 
 /** "arbitration 2" or "arbitration 2-3" when the rest of the season decides which. */
 export function arbitrationLabel(control: Control): string {
+  if (control.superTwo && control.arbYear === null) return 'arbitration (Super Two)';
   return control.arbYearHigh !== null ? `arbitration ${control.arbYear}-${control.arbYearHigh}` : `arbitration ${control.arbYear ?? ''}`.trim();
 }
 

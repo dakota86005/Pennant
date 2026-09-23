@@ -1,6 +1,6 @@
 import { leagueRulesFromRow, type ContractRules, type LeagueRuleRow } from '../server/leagueRules';
 import type { PlayerState } from '../server/playerState';
-import { evaluateContractControl } from '../server/playerRights';
+import { evaluateContractControl, superTwoCutoffs, type SuperTwoCutoff } from '../server/playerRights';
 import type { SourceState } from '../server/dataFreshness';
 import {
   CONTRACT_COLUMNS, EXTENSION_COLUMNS, contractFactsOf, type ContractFacts, type ContractRow, type ContractTables,
@@ -155,6 +155,31 @@ export interface TimelineSpec {
   /** The season's service clock; null when not exported. Defaults to 40 days run. */
   clock?: number | null;
   currentState?: SourceState;
+  /**
+   * The league's service class, for the Super Two cutoff: every held player's service now and this
+   * season's days (null: not exported), and whether he is on a major-league roster. The player
+   * himself is not added; include him when he belongs to it.
+   */
+  superTwoClass?: ClassMemberSpec[];
+}
+
+export interface ClassMemberSpec {
+  days: number | null;
+  thisYear: number | null;
+  onRoster?: boolean | null;
+}
+
+/** A class of `count` held players, service evenly spread from `from` days in steps of `step`. */
+export function classOf(count: number, from: number, step: number, thisYear = 100): ClassMemberSpec[] {
+  return Array.from({ length: count }, (_, i) => ({ days: from + i * step, thisYear, onRoster: true }));
+}
+
+/** The Super Two cutoff for the synthetic major league's class, as Player Rights computes it. */
+export function superTwoFor(members: ClassMemberSpec[], rules: ContractRules, clock: number | null): SuperTwoCutoff | undefined {
+  const classMembers = members.map((m, i) => ({
+    playerId: 10_000 + i, leagueId: MLB, mlbDays: m.days, mlbDaysThisSeason: m.thisYear, onMajorLeagueRoster: m.onRoster ?? true,
+  }));
+  return superTwoCutoffs(classMembers, () => rules, () => (clock === null ? blank<number>() : derivedFrom(clock, 'test'))).get(MLB);
 }
 
 /** The whole path: Player Rights' eligibility, composed with the contract into a timeline. */
@@ -162,12 +187,15 @@ export function timelineOf(spec: TimelineSpec = {}): ControlTimeline {
   const state = spec.state ?? stateOf();
   const contract = spec.contract ?? factsOf(contractRow());
   const clock = spec.clock === undefined ? 40 : spec.clock;
+  const rules = spec.rules ?? mlbRules();
+  const superTwo = spec.superTwoClass ? superTwoFor(spec.superTwoClass, rules, clock) : undefined;
   const eligibility = contract.standing === 'unsigned' ? null : evaluateContractControl({
     state,
-    rules: spec.rules ?? mlbRules(),
+    rules,
     serviceClock: clock === null ? blank<number>() : derivedFrom(clock, 'test'),
     currentState: spec.currentState ?? 'current',
     seasons: CONTROL_HORIZON_SEASONS,
+    superTwo: superTwo ?? null,
   });
   return composeControlTimeline({
     playerId: state.playerId, holder: state.organizationId, contract, eligibility, horizon: CONTROL_HORIZON_SEASONS,

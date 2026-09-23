@@ -6,9 +6,14 @@
 
 import { assignmentContextFor, type AssignmentContext } from './assignmentContext.js';
 import { currentTransactionLog, getDataStatus, logAvailability, type DataStatus } from './dataStatus.js';
-import { leagueRulesForOrganization, type LeagueRules } from './leagueRules.js';
-import { evaluatePlayerRights, rosterCounts, type PlayerRights, type RightsEvidence, type RosterCounts } from './playerRights.js';
-import { organizationPlayerStates, playerState, playerStates, seasonServiceClocks, type PlayerState } from './playerState.js';
+import { allLeagueRules, leagueRulesForOrganization, type LeagueRules } from './leagueRules.js';
+import {
+  evaluatePlayerRights, rosterCounts, superTwoCutoffs,
+  type PlayerRights, type RightsEvidence, type RosterCounts, type SuperTwoCutoff,
+} from './playerRights.js';
+import {
+  organizationPlayerStates, playerState, playerStates, seasonServiceClocks, serviceClassMembers, type PlayerState,
+} from './playerState.js';
 import { unknownBecause, type Sourced } from './provenance.js';
 import type { TransactionEvent } from './transactionLog.js';
 
@@ -44,6 +49,16 @@ function clockFor(league: LeagueRules, clocks: (leagueId: number) => Sourced<num
     : clocks(regime);
 }
 
+/** The Super Two cutoff per contract regime, ranked once from the whole class, for one request. */
+function superTwoLookup(clocks: (leagueId: number) => Sourced<number>): (league: LeagueRules) => SuperTwoCutoff | null {
+  const rules = allLeagueRules();
+  const cutoffs = superTwoCutoffs(serviceClassMembers(), (id) => rules.get(id)?.contract ?? null, clocks);
+  return (league) => {
+    const regime = league.contract.regimeLeagueId.value;
+    return regime === null ? null : cutoffs.get(regime) ?? null;
+  };
+}
+
 /** League rules and roster counts for one organization; computed once per batch. */
 function organizationInputs(
   orgId: number, cache: Map<number, OrganizationRightsInputs>, clocks: (leagueId: number) => Sourced<number>
@@ -73,6 +88,7 @@ export function rightsFor(
   const evidence = rightsEvidence(status);
   const orgs = new Map<number, OrganizationRightsInputs>();
   const clocks = seasonServiceClocks();
+  const superTwoFor = superTwoLookup(clocks);
   const noLeague = leagueRulesForOrganization(-1);
   const noOrg: OrganizationRightsInputs = { league: noLeague, counts: { active: null, fortyMan: null }, serviceClock: clockFor(noLeague, clocks) };
   for (const [id, state] of playerStates(playerIds)) {
@@ -84,6 +100,7 @@ export function rightsFor(
       assignment,
       rights: evaluatePlayerRights({
         state, assignment, league: inputs.league, counts: inputs.counts, evidence, serviceClock: inputs.serviceClock,
+        superTwo: superTwoFor(inputs.league),
       }),
     });
   }
@@ -126,7 +143,8 @@ export function playerPicture(playerId: number, chronologyLimit = 25): PlayerPic
     chronologyNote,
     freshness: status.freshness,
     rights: evaluatePlayerRights({
-      state, assignment, league, counts, evidence: rightsEvidence(status), serviceClock: clockFor(league, seasonServiceClocks()),
+      state, assignment, league, counts, evidence: rightsEvidence(status),
+      serviceClock: clockFor(league, seasonServiceClocks()), superTwo: superTwoLookup(seasonServiceClocks())(league),
     }),
   };
 }

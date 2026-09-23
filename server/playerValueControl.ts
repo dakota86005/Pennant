@@ -56,8 +56,10 @@ export interface DeclinedBranch {
 export interface ControlSeason {
   season: number;
   status: ControlStatus;
-  /** Which arbitration year, on each edge, for an arbitration season. */
+  /** Which arbitration year by service class (3.x years is the first), on each edge, for an arbitration season. */
   arbitrationYear: { low: number; high: number } | null;
+  /** An arbitration season reached as a Super Two, from the year before the arbitration line. */
+  superTwo: boolean;
   /** For an indeterminate season: the statuses it lies between, in order; empty when nothing bounds it. */
   between: ControlStatus[];
   /** The club's cost that season; null only for a free agent (control ends, no cost to this club). */
@@ -135,7 +137,7 @@ const missingText = (e: SeasonControlEligibility): string[] => {
 function fromEligibility(e: SeasonControlEligibility | undefined, season: number, blocking: string[]): Omit<ControlSeason, 'declined'> {
   if (!e) {
     return {
-      season, status: 'indeterminate', arbitrationYear: null, between: [], cost: costOfStatus('indeterminate'),
+      season, status: 'indeterminate', arbitrationYear: null, superTwo: false, between: [], cost: costOfStatus('indeterminate'),
       from: 'player_rights', basis: 'Arbitration and free-agency eligibility could not be stated.', reasons: blocking, crossings: [],
     };
   }
@@ -153,7 +155,8 @@ function fromEligibility(e: SeasonControlEligibility | undefined, season: number
       : 'His control status cannot be stated.';
   }
   return {
-    season, status, arbitrationYear: status === 'arbitration' ? e.arbitration.trip : null, between,
+    season, status, arbitrationYear: status === 'arbitration' ? e.arbitration.trip : null,
+    superTwo: status === 'arbitration' && e.arbitration.superTwo, between,
     cost: costOfStatus(status), from: 'player_rights', basis, reasons: [...reasonsFor, ...e.crossings.map((c) => c.message)],
     crossings: e.crossings,
   };
@@ -213,7 +216,7 @@ export function composeControlTimeline(input: ControlInput): ControlTimeline {
       const fallback = fromEligibility(e, season, blocking);
       const salaryText = covered.salary.value !== null ? `$${covered.salary.value.toLocaleString('en-US')}` : 'a salary the export does not state';
       seasons.push({
-        season, status, arbitrationYear: null, between: [],
+        season, status, arbitrationYear: null, superTwo: false, between: [],
         cost: salaryBand(covered.salary),
         declined: covered.option
           ? {
@@ -235,7 +238,7 @@ export function composeControlTimeline(input: ControlInput): ControlTimeline {
     if (k === 0 && contract.standing === 'no_terms') {
       // On a club this season with no exported term covering it: held, at a cost the export does not state
       seasons.push({
-        season, status: 'under_contract', arbitrationYear: null, between: [],
+        season, status: 'under_contract', arbitrationYear: null, superTwo: false, between: [],
         cost: unknownBecause('not_exported_by_ootp', 'players_contract.years', minorLeague
           ? 'A minor-league contract whose salary and term the export does not carry; unknown, never $0 (Q-5).'
           : 'The contract row carries no term for this season.'),
@@ -248,7 +251,7 @@ export function composeControlTimeline(input: ControlInput): ControlTimeline {
 
     if (contract.standing === 'no_contract_row' || contract.standing === 'unavailable' || contract.kind.value === null) {
       seasons.push({
-        season, status: 'indeterminate', arbitrationYear: null, between: [], cost: costOfStatus('indeterminate'),
+        season, status: 'indeterminate', arbitrationYear: null, superTwo: false, between: [], cost: costOfStatus('indeterminate'),
         declined: null, from: 'none',
         basis: 'His contract is not in the export, so what holds him cannot be stated.',
         reasons: contract.notes, crossings: [],
@@ -258,7 +261,7 @@ export function composeControlTimeline(input: ControlInput): ControlTimeline {
 
     if (minorLeague) {
       seasons.push({
-        season, status: 'indeterminate', arbitrationYear: null, between: [], cost: costOfStatus('indeterminate'),
+        season, status: 'indeterminate', arbitrationYear: null, superTwo: false, between: [], cost: costOfStatus('indeterminate'),
         declined: null, from: 'none',
         basis: 'After a minor-league contract.',
         reasons: [

@@ -215,6 +215,7 @@ payrollRoutes.get('/payroll/:orgId', (req, res) => {
         status: p.control?.status ?? null,
         arbYear: p.control?.arbYear ?? null,
         arbYearHigh: p.control?.arbYearHigh ?? null,
+        superTwo: p.control?.superTwo ?? false,
         between: p.control?.between ?? [],
         reason: p.control?.reason ?? null,
       })),

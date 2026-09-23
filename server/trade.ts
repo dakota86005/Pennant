@@ -414,6 +414,7 @@ function controlOf(id: number) {
     status: c.status,
     arbitrationYear: c.arbYear,
     ...(c.arbYearHigh !== null ? { arbitrationYearIfHeStaysUp: c.arbYearHigh } : {}),
+    ...(c.superTwo ? { superTwo: true } : {}),
     ...(c.status === 'indeterminate' ? { between: c.between, why: c.reason } : {}),
   };
 }

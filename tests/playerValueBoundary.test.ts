@@ -145,10 +145,20 @@ describe('one LeagueRules (Part 9, phase 1)', () => {
   });
 
   it('no module declares a LeagueRules of its own, or assumes six, three or 172', () => {
+    /*
+     * One declaration is allowed: MLB's contract regime in playerRights.ts, which a league's rules as
+     * READ are compared against to decide whether Super Two applies (owner, 2026-09-22). It is never
+     * used in place of a league's own rule.
+     */
+    const REGIME = /export const MLB_CONTRACT_REGIME = \{ freeAgencyYears: 6, arbitrationYears: 3, serviceDaysPerYear: 172 \} as const;/;
+    expect(code('playerRights.ts')).toMatch(REGIME);
     for (const file of fs.readdirSync(SERVER).filter((f) => f.endsWith('.ts'))) {
-      const source = code(file);
+      const source = code(file).replace(REGIME, '');
       if (file !== 'leagueRules.ts') expect(source, file).not.toMatch(/interface LeagueRules\b|function leagueRules\(/);
-      expect(source, file).not.toMatch(/\b172\b|SERVICE_DAYS_PER_YEAR|faMinYears|arbMinYears/);
+      expect(source, file).not.toMatch(/\b172\b|SERVICE_DAYS_PER_YEAR|faMinYears|arbMinYears|MLB_CONTRACT_REGIME\s*=/);
     }
+    // ...and only the Super Two regime check reads it
+    const uses = fs.readdirSync(SERVER).filter((f) => f.endsWith('.ts') && /MLB_CONTRACT_REGIME\./.test(code(f)));
+    expect(uses).toEqual(['playerRights.ts']);
   });
 });

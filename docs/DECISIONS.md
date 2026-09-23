@@ -471,7 +471,9 @@ never turned into eligibility or rejection, and a GM may still act manually.
   states), `observed` (seen in a controlled copied-save experiment),
   `documented` (OOTP's wiki/manual) or `observed_and_documented`. An observation
   that contradicts documentation wins; documentation alone is used only where it
-  agrees with everything observed and is labeled as such.
+  agrees with everything observed and is labeled as such. `owner_attested` (the
+  owner's statement of how OOTP behaves) was added for Super Two on 2026-09-22
+  (D-052).
 - **League rules are read, not assumed:** option rule, DFA and waiver periods,
   active/expanded/40-man limits come from `leagues.*` as exported.
 - **Requirements are separate from eligibility.** An unmet roster spot does not
@@ -1311,3 +1313,6 @@ architecture, pinned by tests.
 - The Trade Center may show the difference between the sides only as a band with its components.
 - Minor-league WAR is not used in phase 3.
 - Player Value is routed in `AGENTS.md` from phase 1.
+- Super Two (2026-09-22): OOTP applies Super Two under MLB rules, and Pennant follows the real rule. This is the
+  owner's statement of how OOTP behaves, a basis under D-018 and D-023 (`owner_attested`), not a guess from MLB
+  rules. The cutoff is computed from the export's own class as a range, in leagues whose regime as read is MLB's.

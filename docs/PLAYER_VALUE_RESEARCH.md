@@ -214,6 +214,10 @@ minimum runs 0/19, 0/13, 0/12, 1/8, 1/11, 1/12, **6/12, 10/11, 11/12**. That mat
 which is priced into the imported contracts. **Whether OOTP's simulation grants arbitration below three years is
 unresolved**, and a player in that window has an arbitration eligibility of `indeterminate`.
 
+*Resolved by the owner, 2026-09-22 (the measurement above stands as recorded):* OOTP applies Super Two under MLB
+rules. Pennant now computes the cutoff from the export's class (PLAYER_VALUE.md 2.2). On this import it projects to
+469–478 days at the end of 2026, which is consistent with the 470–480-day step measured above.
+
 **Free-agent signings and raises year over year.** With one salary season these cannot be identified yet. From
 the second import across an off-season, a player whose contract `season_year` or `years` changed, or who changed
 club, has signed. Combined with his service class and prior salary, that identifies FA signings and arbitration
@@ -298,7 +302,8 @@ Each item is `indeterminate` in the design until the data proves it. None is to 
 1. The meaning of `rules_luxury_tax` (30), `rules_luxury_sharing_cap` (140), `rules_revenue_sharing_tax` (48),
    `rules_player_salary0..7`, `arbitration_offering`, `rules_fa_compensation`, `owner_expectation`, `mode` and the
    `market` scale.
-2. Whether OOTP's simulation applies Super Two, and what `has_received_arbitration` records.
+2. What `has_received_arbitration` records. (Whether OOTP applies Super Two was resolved by the owner on 2026-09-22:
+   it does, under MLB rules; see R-6.)
 3. Whether a minor-league contract's 0 salary is a cost of 0 or not exported.
 4. No-trade clauses, buyouts and retained salary: unpopulated on this historical start, so unknown rather than
    absent.

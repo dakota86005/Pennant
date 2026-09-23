@@ -113,7 +113,7 @@ export interface ActionRights {
   action: RightsAction;
   status: RightsStatus;
   label: string;
-  reasons: Array<{ code: string; message: string; basis: 'export_state' | 'observed' | 'documented' | 'observed_and_documented'; source: string }>;
+  reasons: Array<{ code: string; message: string; basis: 'export_state' | 'observed' | 'documented' | 'observed_and_documented' | 'owner_attested'; source: string }>;
   requirements: Array<{ kind: string; status: 'met' | 'unmet' | 'unknown'; message: string }>;
   missing: Array<{ code: string; message: string }>;
   facts: Record<string, string | number | boolean | null>;
@@ -504,7 +504,7 @@ export interface ContractRow {
   recommendation: { action: string; reasons: string[] } | null;
   /** What happens after this season (Player Value's control timeline); `reason` says why, or what is missing. */
   control?: {
-    status: string; arbYear: number | null; arbYearHigh: number | null; between: string[]; reason: string | null;
+    status: string; arbYear: number | null; arbYearHigh: number | null; superTwo?: boolean; between: string[]; reason: string | null;
   } | null;
 }
 

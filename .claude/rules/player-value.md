@@ -31,9 +31,10 @@ point; `playerValueContract.ts` (contract facts), `playerValueControl.ts` (contr
   owner Q-1). Value attaches a cost to each status and never compares service with a threshold.
 - One `LeagueRules` (`leagueRules.ts`). A minor leaguer's contract regime is his parent league's. A missing
   rule, service time or service-year length is `indeterminate`, never 6 / 3 / 172 or zero (D-018).
-- A threshold inside the service projection makes that season `indeterminate` and names both sides; the
-  Super Two window is `indeterminate` until the data shows OOTP applies it; `has_received_arbitration` is
-  not read.
+- A threshold inside the service projection makes that season `indeterminate` and names both sides.
+  Super Two follows the owner's ruling (2026-09-22; basis `owner_attested`): the cutoff is computed from the
+  export's class as a range, only where the regime as read is MLB's; an overlap is `indeterminate`.
+  `has_received_arbitration` is not read.
 - Minor-league $0 salaries, and clauses the export does not populate (no-trade, buyout, retained), are
   unknown, never none or $0. An option is shown on both branches.
 - Fog of war: ability only through `scoutedEvidence.ts`, never `players_value` (D-017). No philosophy in

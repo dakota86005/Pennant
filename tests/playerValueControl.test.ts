@@ -8,8 +8,8 @@ import { CONTROL_HORIZON_SEASONS } from '../server/playerValueCalibration.js';
 import { derivedFrom } from '../server/provenance.js';
 import { IDS, SEASON } from './fixture.js';
 import {
-  MLB, THIS_SEASON, YEAR, contractRow, factsOf, majorLeagueRow, minorLeagueRow, mlbRules, regimeOf, seasonOf,
-  stateOf, timelineOf,
+  MLB, THIS_SEASON, YEAR, classOf, contractRow, factsOf, majorLeagueRow, minorLeagueRow, mlbRules, regimeOf, seasonOf,
+  stateOf, superTwoFor, timelineOf,
 } from './playerValueFixtures.js';
 
 /*
@@ -134,19 +134,24 @@ describe('Player Value: control (phase 1)', () => {
     }
   });
 
-  it('a player in the Super Two window is indeterminate, never eligible and never ineligible, until the data proves the rule', () => {
-    // Two years and 130 days with the season over: the real world's Super Two step, priced into the
-    // imported contracts (R-6), and a rule OOTP is not known to apply
+  it("in a league whose contract regime is not MLB's, the year before the arbitration line stays indeterminate, never eligible and never ineligible", () => {
+    // Was: "a player in the Super Two window is indeterminate ... until the data proves the rule". The
+    // owner ruled on 2026-09-22 that OOTP applies Super Two under MLB rules, so the blanket window now
+    // holds only where the regime is not MLB's (here a seven-year free-agency line); the MLB cases are
+    // in playerValueSuperTwo.test.ts. Two years and 130 days, the season over, a class ranked all the same.
     const state = stateOf({ days: 2 * YEAR + 130, thisYear: YEAR });
+    const rules = mlbRules({ rules_fa_minimum_years: 7 });
+    const superTwo = superTwoFor([...classOf(50, 2 * YEAR, 3), { days: 2 * YEAR + 130, thisYear: YEAR }], rules, YEAR);
     const rights = evaluateContractControl({
-      state, rules: mlbRules(), serviceClock: derivedFrom(YEAR, 'test'), currentState: 'current', seasons: 2,
+      state, rules, serviceClock: derivedFrom(YEAR, 'test'), currentState: 'current', seasons: 2, superTwo,
     });
     const next = rights.seasons.find((s) => s.season === NEXT)!;
     expect(next.arbitration.status).toBe('indeterminate');
     expect(next.arbitration.missing.map((m) => m.message).join(' ')).toMatch(/Super Two/);
     expect(next.standing).toBe('indeterminate');
     expect(next.between).toEqual(['pre_arbitration', 'arbitration']);
-    const t = timelineOf({ state, contract: expiring, clock: YEAR });
+    expect(next.arbitration.missing.map((m) => m.message).join(' ')).toMatch(/not MLB's/);
+    const t = timelineOf({ state, rules, contract: expiring, clock: YEAR, superTwoClass: classOf(50, 2 * YEAR, 3) });
     expect(seasonOf(t, NEXT).status).toBe('indeterminate');
     expect(seasonOf(t, NEXT).between).toEqual(['pre_arbitration', 'arbitration']);
     // A year short of the window is plainly pre-arbitration, and a year into arbitration plainly arbitration

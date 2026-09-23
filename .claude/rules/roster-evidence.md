@@ -66,6 +66,7 @@ operations → GM. Farm and MLB modules consume these answers and never rebuild 
 - Contract-control eligibility (pre-arbitration, arbitration, free agency) is a right too:
   `evaluateContractControl`, read by Player Value, never re-derived (D-052, Q-1). `leagueRules.ts` is the one
   `LeagueRules`; a minor league's contract regime is its parent's, and a missing rule is never 6 / 3 / 172.
+  Super Two is owner-attested (2026-09-22), with its cutoff computed from the export's class (`superTwoCutoffs`).
 - The live `temp/text_data.sqlite3` is opened only as `liveLogSnapshot.ts`'s copy, read-only; nothing writes
   to an OOTP file; a missing log means CSV state continues and the log is reported unavailable (D-021).
 - Never make progress depend on an owner OOTP experiment; `scripts/rights-experiment.ts` only records one.
