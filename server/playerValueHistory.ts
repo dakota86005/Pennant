@@ -1,11 +1,14 @@
 /**
- * Player Value's reader of the league's playing history (phase 3a; PLAYER_VALUE.md Parts 2.3 and 7).
+ * Player Value's reader of the league's playing history (phases 3a and 3b; PLAYER_VALUE.md Parts 2.3 and 7).
  *
  * Opens `league.db` read-only, every column checked before it is read (D-007): the league's clubs
  * and standings, where this season stands, the major-league lines of the players asked about (or of
- * every player, for a fit), dates of birth and the season's calendar. Only the major-league level
- * (`level_id = 1`) and the overall split are read: minor-league and amateur WAR never stand in for a
- * major-league record (owner, Q-9). A season's WAR is summed over the clubs he played for (R-4).
+ * every player, for a fit), dates of birth and the season's calendar. WAR is read only at the
+ * major-league level (`level_id = 1`) and the overall split: minor-league and amateur WAR never stand in
+ * for a major-league record (owner, Q-9). A season's WAR is summed over the clubs he played for (R-4).
+ * Phase 3b adds, for players not yet in the majors, where and how much they played in the minors (usage
+ * only, `MINOR_USAGE_COLUMNS`), the save's minor levels, listed positions and batting hands, and how
+ * often each hand faces left-handers (plate appearances only).
  *
  * It reads no rating, no `players_value`, no philosophy and no tier, and writes nothing. Dates are
  * compared only through `parseGameDate`.
@@ -177,6 +180,142 @@ export function majorLeagueLines(ids: number[] | null, fromSeason: number, throu
   read('players_career_batting_stats', 'batting', 'pa', []);
   read('players_career_pitching_stats', 'pitching', 'bf', ['g', 'gs']);
   return { byPlayer, unavailable: null };
+}
+
+// ── the minor-league levels a player played at: usage only, never WAR (phase 3b, Q-9) ─────────
+
+/**
+ * The columns the minor-league reader may select. No WAR, ever: minor-league and amateur WAR never
+ * stand in for a major-league record (owner, Q-9). What a player not yet in the majors is expected to
+ * play there comes from how often players at his LEVEL and AGE reached the majors on this save, so the
+ * reader needs where he played and how much, and nothing about how well.
+ */
+const MINOR_USAGE_COLUMNS = ['player_id', 'year', 'level_id', 'split_id', 'pa', 'bf', 'g', 'gs'] as const;
+
+export interface LevelSeason {
+  season: number;
+  level: number;
+  /** Plate appearances (batting) and batters faced (pitching) at that level in that season. */
+  pa: number;
+  bf: number;
+  /** Pitching games and starts at that level (a pitcher's role without a major-league line). */
+  games: number;
+  starts: number;
+}
+
+/**
+ * Every line at the levels asked about (the minor levels of the save's affiliated clubs), one per
+ * player, season and level, summed over clubs, for the seasons asked about: usage only (MINOR_USAGE_COLUMNS).
+ */
+export function minorLeagueUsage(ids: number[] | null, levels: number[], fromSeason: number, throughSeason: number): Map<number, LevelSeason[]> {
+  const out = new Map<number, LevelSeason[]>();
+  if (levels.length === 0) return out;
+  const merged = new Map<string, LevelSeason & { player: number }>();
+  for (const [table, opp] of [['players_career_batting_stats', 'pa'], ['players_career_pitching_stats', 'bf']] as const) {
+    if (!tableExists(table)) continue;
+    const present = new Set(tableColumns(table));
+    const usable = MINOR_USAGE_COLUMNS.filter((c) => present.has(c));
+    if (!['player_id', 'year', 'level_id', 'split_id', opp].every((c) => usable.includes(c as typeof usable[number]))) continue;
+    const games = opp === 'bf' && usable.includes('g') ? 'SUM(g)' : '0';
+    const starts = opp === 'bf' && usable.includes('gs') ? 'SUM(gs)' : '0';
+    const base = `SELECT player_id, year, level_id, SUM(${opp}) AS opp, ${games} AS games, ${starts} AS starts
+                  FROM ${table} WHERE split_id = 1 AND level_id IN (${levels.map(() => '?').join(',')}) AND year BETWEEN ? AND ?`;
+    const take = (rows: Array<Record<string, unknown>>) => {
+      for (const r of rows) {
+        const player = numberOrNull(r.player_id);
+        const season = numberOrNull(r.year);
+        const level = numberOrNull(r.level_id);
+        const n = numberOrNull(r.opp) ?? 0;
+        if (player === null || season === null || level === null) continue;
+        const key = `${player}:${season}:${level}`;
+        const had = merged.get(key) ?? { player, season, level, pa: 0, bf: 0, games: 0, starts: 0 };
+        if (opp === 'pa') had.pa += n;
+        else { had.bf += n; had.games += numberOrNull(r.games) ?? 0; had.starts += numberOrNull(r.starts) ?? 0; }
+        merged.set(key, had);
+      }
+    };
+    const params = [...levels, fromSeason, throughSeason];
+    if (ids === null) take(db.prepare(`${base} GROUP BY player_id, year, level_id`).all(...params) as Array<Record<string, unknown>>);
+    else {
+      for (let at = 0; at < ids.length; at += 500) {
+        const chunk = ids.slice(at, at + 500);
+        take(db.prepare(`${base} AND player_id IN (${chunk.map(() => '?').join(',')}) GROUP BY player_id, year, level_id`).all(...params, ...chunk) as Array<Record<string, unknown>>);
+      }
+    }
+  }
+  for (const x of merged.values()) {
+    const list = out.get(x.player) ?? [];
+    list.push({ season: x.season, level: x.level, pa: x.pa, bf: x.bf, games: x.games, starts: x.starts });
+    out.set(x.player, list);
+  }
+  return out;
+}
+
+/**
+ * The levels below the majors that the market league's own affiliates play at: the levels of clubs in
+ * leagues whose parent is the market league. Where the export does not name parents, every club level
+ * other than the major league's.
+ */
+export function affiliatedLevels(marketLeagueId: number): number[] {
+  if (!tableExists('teams')) return [];
+  const teams = new Set(tableColumns('teams'));
+  if (!teams.has('level') || !teams.has('league_id')) return [];
+  const byParent = tableExists('leagues') && tableColumns('leagues').includes('parent_league_id');
+  const rows = byParent
+    ? db.prepare(`SELECT DISTINCT t.level AS level FROM teams t JOIN leagues l ON l.league_id = t.league_id WHERE l.parent_league_id = ?`).all(marketLeagueId)
+    : db.prepare(`SELECT DISTINCT level FROM teams WHERE league_id <> ?`).all(marketLeagueId);
+  return (rows as Array<{ level: unknown }>).map((r) => numberOrNull(r.level)).filter((l): l is number => l !== null && l > 1).sort((a, b) => a - b);
+}
+
+/** Objective facts a ratings projection needs about each player: his listed position and the hand he bats with. */
+export function listedFacts(ids: number[] | null): Map<number, { position: number | null; bats: 'L' | 'R' | 'S' | null }> {
+  const out = new Map<number, { position: number | null; bats: 'L' | 'R' | 'S' | null }>();
+  if (!tableExists('players')) return out;
+  const present = new Set(tableColumns('players'));
+  if (!present.has('player_id')) return out;
+  const cols = ['position', 'bats'].filter((c) => present.has(c));
+  const select = `SELECT player_id${cols.map((c) => `, "${c}"`).join('')} FROM players`;
+  // OOTP's code for the batting hand: 1 right, 2 left, 3 both
+  const hand = (v: unknown): 'L' | 'R' | 'S' | null => (v === 1 ? 'R' : v === 2 ? 'L' : v === 3 ? 'S' : null);
+  const take = (rows: Array<Record<string, unknown>>) => {
+    for (const r of rows) {
+      const id = numberOrNull(r.player_id);
+      if (id !== null) out.set(id, { position: numberOrNull(r.position ?? null), bats: hand(r.bats ?? null) });
+    }
+  };
+  if (ids === null) take(db.prepare(select).all() as Array<Record<string, unknown>>);
+  else {
+    for (let at = 0; at < ids.length; at += 500) {
+      const chunk = ids.slice(at, at + 500);
+      take(db.prepare(`${select} WHERE player_id IN (${chunk.map(() => '?').join(',')})`).all(...chunk) as Array<Record<string, unknown>>);
+    }
+  }
+  return out;
+}
+
+/**
+ * How often each batting hand faced left-handed pitching in the league's major-league lines over the
+ * seasons asked about: plate appearances against left- and right-handers (batting splits 2 and 3),
+ * summed by the hand the batter is listed with. Plate appearances only; no result is read.
+ */
+export function platoonExposure(leagueId: number, fromSeason: number, throughSeason: number): Record<'L' | 'R' | 'S', { vsLeft: number; vsRight: number }> | null {
+  const table = 'players_career_batting_stats';
+  if (!tableExists(table) || !tableExists('players')) return null;
+  const present = new Set(tableColumns(table));
+  if (!['player_id', 'year', 'level_id', 'split_id', 'league_id', 'pa'].every((c) => present.has(c)) || !tableColumns('players').includes('bats')) return null;
+  const rows = db.prepare(
+    `SELECT p.bats AS bats, s.split_id AS split, SUM(s.pa) AS pa FROM ${table} s JOIN players p ON p.player_id = s.player_id
+     WHERE s.level_id = 1 AND s.split_id IN (2, 3) AND s.league_id = ? AND s.year BETWEEN ? AND ? GROUP BY p.bats, s.split_id`
+  ).all(leagueId, fromSeason, throughSeason) as Array<{ bats: unknown; split: unknown; pa: unknown }>;
+  const out = { L: { vsLeft: 0, vsRight: 0 }, R: { vsLeft: 0, vsRight: 0 }, S: { vsLeft: 0, vsRight: 0 } };
+  for (const r of rows) {
+    const hand = r.bats === 1 ? 'R' : r.bats === 2 ? 'L' : r.bats === 3 ? 'S' : null;
+    const pa = numberOrNull(r.pa) ?? 0;
+    if (!hand) continue;
+    if (r.split === 2) out[hand].vsLeft += pa;
+    else if (r.split === 3) out[hand].vsRight += pa;
+  }
+  return out;
 }
 
 // ── age ─────────────────────────────────────────────────────────────────────

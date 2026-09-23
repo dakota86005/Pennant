@@ -369,7 +369,7 @@ Present on `main` (D-023; research in [RIGHTS_RESEARCH.md](RIGHTS_RESEARCH.md)):
 Not done, by design: rights for IL activation, Rule 5, re-optioning after the
 last option year, rehab returns, claims, refusals, trades (all `indeterminate`).
 
-## Implemented Player Value (phases 1, 2 and 3a)
+## Implemented Player Value (phases 1, 2, 3a and 3b)
 
 D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
 
@@ -415,15 +415,25 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   of a win" line, and its three lists are no longer capped at 12 rows.
   `valuation.teamFinances()` remains for Contracts, Free Agents, the AI context
   and Storylines.
-- **Expected production** (phase 3a, `server/playerValueProduction.ts`,
-  served as `PlayerValuation.production`): for players with major-league results
-  in the window, wins per season from this season through seven, each an 80% and
-  a 50% band in the export's WAR units with its basis (seasons and weights,
-  opportunities, regression share, age adjustment, usage band, proneness, the
-  fit in force). Results only; no rating and no `scoutedEvidence`. Everyone else
-  is `unknown`, "pending ratings-based projection (phase 3b)": 10,854 of 12,575
-  active players on the Arizona import, 4 of the 901 on major-league active and
-  injured lists.
+- **Expected production** (phases 3a and 3b, `server/playerValueProduction.ts`
+  and `server/playerValueRatings.ts`, served as `PlayerValuation.production`):
+  wins per season from this season through seven, each an 80% and a 50% band in
+  the export's WAR units with its basis (seasons and weights, opportunities,
+  regression share and the results/ratings weights, age adjustment, usage band,
+  proneness, the ability evidence and its provenance, a prospect's arrival
+  evidence, the development path's source, the fits in force). Ability comes only
+  through `scoutedEvidence.ts` (the reader loads it; the pure modules take its
+  types). A player with a major-league record has his rate regressed toward what
+  his ratings imply, with the weights shown (a full record is effectively his
+  results alone); a player without one is projected from his ratings, his
+  development toward potential and how often players at his level and age reached
+  the majors on this save, his low edge always including producing nothing.
+  Playing time is conditional on quality (attrition explicit), so stars keep
+  theirs. On the Arizona import 8,072 of 12,575 active players have a band (1,721
+  from results and ratings, 6,351 from ratings alone); 4,346 unsigned players
+  without a major-league line, 149 whose club is at the majors without a
+  major-league line, and 8 with no ratings are `unknown`, each with its reason;
+  897 of the 901 on major-league active and injured lists have a band.
 - **Calibration belongs to the save** (D-053): `playerValueProductionFit.ts`
   fits the model on the save's own history and backtests it;
   `playerValueFitStore.ts` stores each fit per save in `history.db`
@@ -435,21 +445,34 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   band) and 53–61% (50% band) at every horizon (CALIBRATION.md section 6). The
   rate band never narrows further out; the wins band follows expected playing
   time (owner, 2026-09-23). Each season carries target and observed coverage.
-  A refit takes about 4.6 s.
+  Since phase 3b the method is `production-3b.1` (served held-out coverage
+  81–85% / 53–65%; the top tenth of projected rate's central bias fell from
+  +0.20–0.44 to −0.12–+0.16 wins), and a second model, the ratings model
+  (`playerValueRatingsFit.ts`: the same-time ratings → rate mapping, arrival
+  rates by level and age from minor-league usage lines, the development path),
+  is fitted, stored and gated the same way; the development path, the ratings'
+  forecast reliability and the arrival chance by potential wait on the save's
+  own rating snapshots (one on this save) and use the provisional prior or the
+  kind's K until then, labelled. A results refit takes about 5 s, a ratings refit
+  about 1.5 s (CALIBRATION.md sections 6.1 and 6.2).
 - **Injury proneness** (`server/injuryProneness.ts`): read as an
   owner-attested known fact; 0, blank or missing is unknown. Its measured effect
   on playing time moves production (hitters in the most injury-prone third play
-  94% of their expected usage on this save); no aging effect was distinguishable.
+  95% of their expected usage on this save); no aging effect was distinguishable.
 - **Routes:** `/api/player-value/:playerId`, `/api/player-value?ids=`,
-  `/api/player-value/production-fit/:orgId`. No interface reads production yet
-  (consumer migration, phase 6). `npm run value:report` prints production bands,
-  counts by status and the median band width per horizon.
+  `/api/player-value/production-fit/:orgId` (with the ratings model in force and
+  its run record since phase 3b). Computed per request: one player about 30 ms,
+  an organization about 65 ms, 500 players about 80 ms; the league-wide pass
+  about 1.3 s, used only by `npm run value:report` (no per-import store yet,
+  PLAYER_VALUE.md Part 7). `npm run value:report` prints production bands,
+  counts by status and source and the median band width per horizon.
 - **Tests:** `playerValueControl`, `playerValueCost` (cost-band halves as
   `it.todo`), `playerValueFinances`, `playerValueProduction`,
-  `playerValueProductionFit` and `playerValueBoundary`.
+  `playerValueProductionFit`, `playerValueRatings` and `playerValueBoundary`.
 
-Not built: ratings-based production for prospects and thin records (phase 3b),
-the arbitration and pre-arbitration cost bands, surplus, the philosophy lens and
+Not built: the save's own development path, the ratings' forecast reliability
+and the arrival chance by potential (they fit themselves once the save's rating
+snapshots allow), the arbitration and pre-arbitration cost bands, surplus, the philosophy lens and
 the club's value of a win (phases 4 and 5), observed signings and the measured
 price (phase 4), a per-import store (everything is computed per request; see
 Part 7), and the consumer migration that deletes `players_value` reads and the

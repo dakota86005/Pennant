@@ -11,10 +11,11 @@ import { describe, expect, it } from 'vitest';
  *
  * Phase 1 built contract facts and control; phase 2 Club Finances, the opening price of a win and
  * the per-import market snapshot; phase 3a expected production from major-league results, fitted
- * per save (D-053). Two modules write, and only to history.db: the market snapshot and the fit
- * store. The allow-lists below grow phase by phase: the imports a value module may make
- * (scoutedEvidence.ts joins in phase 3b, not 3a) and the consumers migrated to the entry point. The
- * `players_value` allow-list in evidenceBoundary.test.ts shrinks as each consumer moves (Part 8).
+ * per save (D-053); phase 3b expected production from scouted ratings, which arrive only through
+ * `scoutedEvidence.ts` (D-017). Two modules write, and only to history.db: the market snapshot and the
+ * fit store. The allow-lists below grow phase by phase: the imports a value module may make and the
+ * consumers migrated to the entry point. The `players_value` allow-list in evidenceBoundary.test.ts
+ * shrinks as each consumer moves (Part 8).
  */
 
 const SERVER = path.join(process.cwd(), 'server');
@@ -30,13 +31,20 @@ const importsOf = (file: string): string[] => [...code(file).matchAll(/from '(\.
 /** Every Player Value module, found by name so a new one is covered the day it is added. */
 const VALUE_MODULES = fs.readdirSync(SERVER).filter((f) => /^playerValue[A-Za-z]*\.ts$/.test(f)).sort();
 
-/** What a value module may import in phase 3a: no scoutedEvidence yet (phase 3b), and proneness only through its reader. */
+/** What a value module may import in phase 3b: proneness only through its reader, ratings only through the adapter (below). */
 const ALLOWED_IMPORTS = new Set([
   './db.js', './dataFreshness.js', './leagueRules.js', './playerRights.js', './playerState.js', './provenance.js',
   './calibration.js', './playerValue.js', './playerValueCalibration.js', './playerValueContract.js', './playerValueControl.js',
   './playerValueFinances.js', './playerValueHistory.js', './playerValueProduction.js', './playerValueProductionFit.js',
-  './playerValueFitStore.js', './injuryProneness.js',
+  './playerValueFitStore.js', './injuryProneness.js', './playerValueRatings.js', './playerValueRatingsFit.js',
 ]);
+
+/** Phase 3b: the modules that may name the adapter at all. Only the reader loads ratings; the pure ratings modules take its types. */
+const ADAPTER_READER = 'playerValue.ts';
+const ADAPTER_TYPES_ONLY = ['playerValueRatings.ts', 'playerValueRatingsFit.ts'];
+
+/** The ratings modules (phase 3b). */
+const RATINGS_MODULES = ['playerValueRatings.ts', 'playerValueRatingsFit.ts'];
 
 /** The writers, and the one extra import they alone may make: the history store (Part 7, D-009, D-053). */
 const SNAPSHOT_WRITER = 'playerValueSnapshot.ts';
@@ -58,14 +66,57 @@ describe('the Player Value boundary', () => {
     expect(VALUE_MODULES).toEqual([
       'playerValue.ts', 'playerValueCalibration.ts', 'playerValueContract.ts', 'playerValueControl.ts',
       'playerValueFinances.ts', 'playerValueFitStore.ts', 'playerValueHistory.ts', 'playerValueProduction.ts',
-      'playerValueProductionFit.ts', 'playerValueRoutes.ts', 'playerValueSnapshot.ts',
+      'playerValueProductionFit.ts', 'playerValueRatings.ts', 'playerValueRatingsFit.ts', 'playerValueRoutes.ts', 'playerValueSnapshot.ts',
     ]);
   });
 
-  it.each(VALUE_MODULES)('%s imports only what phase 3a allows', (file) => {
+  it.each(VALUE_MODULES)('%s imports only what phase 3b allows', (file) => {
     const outside = importsOf(file).filter((i) => !ALLOWED_IMPORTS.has(i) && !(WRITERS.includes(file) && WRITER_IMPORTS.has(i))
-      && !(file === 'playerValueRoutes.ts' && i === './playerValue.js'));
+      && !(file === 'playerValueRoutes.ts' && i === './playerValue.js')
+      && !(i === './scoutedEvidence.js' && (file === ADAPTER_READER || ADAPTER_TYPES_ONLY.includes(file))));
     expect(outside, `${file} imports ${outside.join(', ')}`).toEqual([]);
+  });
+
+  it('ratings reach Player Value only through the adapter: the reader loads them, the pure ratings modules take its types only (3b, D-017)', () => {
+    const naming = VALUE_MODULES.filter((f) => /scoutedEvidence/.test(importsOf(f).join(' ')));
+    expect(naming.sort()).toEqual([ADAPTER_READER, ...ADAPTER_TYPES_ONLY].sort());
+    for (const file of ADAPTER_TYPES_ONLY) {
+      // A type import only: nothing from the adapter runs in the pure modules
+      const lines = code(file).split('\n').join(' ').match(/import[^;]*from '\.\/scoutedEvidence\.js'/g) ?? [];
+      expect(lines.length, file).toBeGreaterThan(0);
+      for (const l of lines) expect(l, file).toMatch(/^import type /);
+    }
+    // The reader loads ability, splits, running and the glove at his position through the adapter's loaders
+    expect(code(ADAPTER_READER)).toMatch(/loadScoutedAbilities\(/);
+    expect(code(ADAPTER_READER)).toMatch(/loadScoutedHitterProfiles\(/);
+    expect(code(ADAPTER_READER)).toMatch(/loadScoutedGlovesAtPosition\(/);
+    expect(code(ADAPTER_READER)).toMatch(/loadScoutedObservations\(/);
+    // ...and nobody reads the rating snapshots' table but the adapter
+    for (const file of VALUE_MODULES) expect(code(file), file).not.toMatch(/rating_snapshots/);
+  });
+
+  it('no minor-league WAR: the minor-league reader selects usage only, and the arrival history carries none (3b, Q-9)', () => {
+    const history = code('playerValueHistory.ts');
+    const columns = history.match(/const MINOR_USAGE_COLUMNS = \[([^\]]*)\]/);
+    expect(columns).not.toBeNull();
+    expect(columns![1]).not.toMatch(/war/);
+    const reader = history.slice(history.indexOf('export function minorLeagueUsage'), history.indexOf('export function affiliatedLevels'));
+    expect(reader.length).toBeGreaterThan(0);
+    expect(reader).not.toMatch(/\bwar\b|ra9war/);
+    // The major-league reader sums WAR at the major-league level only
+    expect(history).toMatch(/const where = \[`level_id = 1`/);
+    // The ratings fit's arrival history is usage: no WAR field anywhere in it
+    const fit = code('playerValueRatingsFit.ts');
+    const arrival = fit.slice(fit.indexOf('export interface ArrivalPlayer'), fit.indexOf('}', fit.indexOf('export interface ArrivalPlayer')));
+    expect(arrival).not.toMatch(/war/i);
+    // ...and nothing reads a WAR off the minor-league usage it is handed (a message may say so; a read may not)
+    for (const file of RATINGS_MODULES) expect(code(file), file).not.toMatch(/(minors|minor)\b[^;`]*\.war\b/);
+  });
+
+  it.each(RATINGS_MODULES)('%s (ratings, phase 3b) names no rating column, no players_value, no philosophy, no tier and no defensibility', (file) => {
+    const source = code(file);
+    expect(source, file).not.toMatch(/_ratings_|fielding_rating|players_batting\b|players_pitching\b|players_fielding\b|players_value|overall_value|talent_value/);
+    expect(importsOf(file).join(' '), file).not.toMatch(/philosophy|settings|staffPreference|assignmentPreference|developmentFit|developmentalContext|prospectDecision|prospectAssignments|destinationFit|db\.js|history\.js/);
   });
 
   it('Club Finances reads no ratings, no players_value and no scouting at all: it needs none', () => {
@@ -90,17 +141,22 @@ describe('the Player Value boundary', () => {
     expect(code('injuryProneness.ts')).toMatch(/PRONENESS_COLUMNS\.filter\(\(c\) => present\.has\(c\)\)/);
   });
 
-  it('production\'s fitted numbers come from the save\'s stored fit; the only fitted artefact in code is the provisional prior (D-053)', () => {
+  it('production\'s fitted numbers come from the save\'s stored fit; the only fitted artefacts in code are the provisional priors (D-053)', () => {
     const calibration = code('playerValueCalibration.ts');
-    // One ProductionModel in code, stamped provisional
+    // One ProductionModel and one RatingsModel in code, each stamped provisional
     expect([...calibration.matchAll(/export const ([A-Z_]+): ProductionModel =/g)].map((m) => m[1])).toEqual(['PRODUCTION_PRIOR']);
+    expect([...calibration.matchAll(/export const ([A-Z_]+): RatingsModel =/g)].map((m) => m[1])).toEqual(['RATINGS_PRIOR']);
     expect(calibration).toMatch(/PRODUCTION_PRIOR_CALIBRATION: CalibrationStamp = provisional\(/);
-    // The projection and the fit are handed a model; neither reaches for the prior itself
-    for (const file of ['playerValueProduction.ts', 'playerValueProductionFit.ts']) expect(code(file), file).not.toMatch(/PRODUCTION_PRIOR\b/);
+    expect(calibration).toMatch(/RATINGS_PRIOR_CALIBRATION: CalibrationStamp = provisional\(/);
+    // The ratings prior measures no arrivals: those are the save's or unknown
+    expect(calibration).toMatch(/export const RATINGS_PRIOR: RatingsModel = \{[\s\S]*?\n  arrival: null,/);
+    // The projection and the fit are handed a model; neither reaches for a prior itself
+    for (const file of ['playerValueProduction.ts', 'playerValueProductionFit.ts', ...RATINGS_MODULES]) expect(code(file), file).not.toMatch(/PRODUCTION_PRIOR\b|RATINGS_PRIOR\b/);
     // The reader serves the adopted fit from the store, and the prior only when there is none
     const reader = code('playerValue.ts');
     expect(reader).toMatch(/adoptedProductionFit\(leagueId, PRODUCTION_METHOD\)/);
     expect(reader).toMatch(/return \{ model: PRODUCTION_PRIOR, provenance: priorProvenance\(leagueId\) \}/);
+    expect(reader).toMatch(/adoptedProductionFit<RatingsModel, RatingsFitRecord>\(leagueId, RATINGS_METHOD\)/);
     // No other module fits, stores or reads a fit
     for (const file of fs.readdirSync(SERVER).filter((f) => f.endsWith('.ts') && f !== 'playerValue.ts' && f !== FIT_STORE)) {
       expect(code(file), file).not.toMatch(/value_production_fits|recordProductionFit|adoptedProductionFit/);
@@ -111,6 +167,9 @@ describe('the Player Value boundary', () => {
     const api = code('api.ts');
     expect(api.match(/refitProductionIfNeeded\(/g) ?? []).toHaveLength(1);
     expect(api).toMatch(/setImmediate\(\(\) => \{\s*try \{\s*for \(const \w+ of refitProductionIfNeeded\(\)\)/);
+    // Phase 3b: the ratings refit runs once, after the results refit (it reads the results model in force), in the same guard
+    expect(api.match(/refitRatingsIfNeeded\(/g) ?? []).toHaveLength(1);
+    expect(api).toMatch(/for \(const \w+ of refitProductionIfNeeded\(\)\)[\s\S]*?for \(const \w+ of refitRatingsIfNeeded\(\)\)[\s\S]*?\} catch \(err\)/);
     // After the import has finished, only when it succeeded
     expect(api).toMatch(/\} finally \{[\s\S]*?importState\.importing = false;[\s\S]*?\}\s*if \(imported\) refitAfterImport\(\);/);
   });
@@ -235,7 +294,9 @@ describe('the Player Value boundary', () => {
       ['FINANCE_ROW_CALIBRATION', 'policy'],
       ['PLACEHOLDER_ROW_CALIBRATION', 'policy'],
       ['PRODUCTION_POLICY_CALIBRATION', 'policy'],
+      ['RATINGS_POLICY_CALIBRATION', 'policy'],
       ['PRODUCTION_PRIOR_CALIBRATION', 'provisional'],
+      ['RATINGS_PRIOR_CALIBRATION', 'provisional'],
     ]);
     // Nothing in code is stamped calibrated for production: a save's fit is stamped by its own run record (D-053)
     expect(calibration).not.toMatch(/\bcalibrated\(/);
@@ -283,7 +344,8 @@ describe('one LeagueRules (Part 9, phase 1)', () => {
     for (const file of fs.readdirSync(SERVER).filter((f) => f.endsWith('.ts'))) {
       const source = code(file).replace(REGIME, '');
       if (file !== 'leagueRules.ts') expect(source, file).not.toMatch(/interface LeagueRules\b|function leagueRules\(/);
-      expect(source, file).not.toMatch(/\b172\b|SERVICE_DAYS_PER_YEAR|faMinYears|arbMinYears|MLB_CONTRACT_REGIME\s*=/);
+      // A service-year length of 172 (never a digit run inside a fitted decimal such as 1.172)
+      expect(source, file).not.toMatch(/(?<![\d.])172(?![\d.])|SERVICE_DAYS_PER_YEAR|faMinYears|arbMinYears|MLB_CONTRACT_REGIME\s*=/);
     }
     // ...and only the Super Two regime check reads it
     const uses = fs.readdirSync(SERVER).filter((f) => f.endsWith('.ts') && /MLB_CONTRACT_REGIME\./.test(code(f)));

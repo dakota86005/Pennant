@@ -1239,15 +1239,18 @@ contested, as `farmArrivalFor` already did (B-1), so a departure names the man l
 ## D-052 — Player Value is a specialist that describes and never authorizes, in wins first and the save's own dollars
 
 **Status:** Accepted 2026-09-22, with the owner's answers in PLAYER_VALUE.md Part 12. **Implementation:** Partial
-(phases 1–3a: contract facts and control; Club Finances, the opening price of a win, the replacement level and the
-per-import market snapshot; expected production in wins from major-league results, fitted per save under D-053).
+(phases 1–3: contract facts and control; Club Finances, the opening price of a win, the replacement level and the
+per-import market snapshot; expected production in wins from major-league results and, through `scoutedEvidence.ts`,
+scouted ratings, with playing time conditional on quality, fitted per save under D-053).
 `server/playerValue.ts` (the entry point), `playerValueContract.ts`, `playerValueControl.ts`,
-`playerValueFinances.ts`, `playerValueHistory.ts`, `playerValueProduction.ts`, `playerValueProductionFit.ts`, the
-two writers (`playerValueSnapshot.ts` and `playerValueFitStore.ts`, `history.db` only), `playerValueRoutes.ts` and
-`playerValueCalibration.ts`; contract-control eligibility in `playerRights.ts` (`evaluateContractControl`); one
-`LeagueRules` in `leagueRules.ts`, with the financial regime; `tests/playerValueBoundary.test.ts`. The ratings-based
-projection (phase 3b), the measured price, surplus, the lens and the club's value of a win (phases 4 and 5) and the
-`players_value` consumer migration (phase 6) are not built. Design: [PLAYER_VALUE.md](PLAYER_VALUE.md). Research evidence:
+`playerValueFinances.ts`, `playerValueHistory.ts`, `playerValueProduction.ts`, `playerValueProductionFit.ts`,
+`playerValueRatings.ts` and `playerValueRatingsFit.ts` (phase 3b), the two writers (`playerValueSnapshot.ts` and
+`playerValueFitStore.ts`, `history.db` only), `playerValueRoutes.ts` and `playerValueCalibration.ts`;
+contract-control eligibility in `playerRights.ts` (`evaluateContractControl`); one `LeagueRules` in `leagueRules.ts`,
+with the financial regime; `tests/playerValueBoundary.test.ts`. The measured price, surplus, the lens and the club's
+value of a win (phases 4 and 5) and the `players_value` consumer migration (phase 6) are not built. In phase 3b the
+development path, the ratings' reliability as a forecast and the arrival chance by potential wait on the save's own
+rating snapshots (one on the imported save) and use the provisional prior, or the kind's K, until then. Design: [PLAYER_VALUE.md](PLAYER_VALUE.md). Research evidence:
 [PLAYER_VALUE_RESEARCH.md](PLAYER_VALUE_RESEARCH.md). Refines D-002 and D-017 for the pre-fork value surfaces and
 applies D-018, D-023, D-036 and D-041 to them.
 
@@ -1330,11 +1333,13 @@ architecture, pinned by tests.
 ## D-053 — Calibration belongs to the save
 
 **Status:** Accepted 2026-09-22 (owner decision). **Implementation:** Partial. Player Value's expected production
-(phase 3a) implements it first: `server/playerValueProductionFit.ts` (the method and its backtest),
-`server/playerValueFitStore.ts` (table `value_production_fits` in `history.db`), `PRODUCTION_POLICY` and the
-provisional `PRODUCTION_PRIOR` in `server/playerValueCalibration.ts`, the refit after an import (`api.ts`
-`refitAfterImport`), `GET /api/player-value/production-fit/:orgId`, and `npm run calibrate production` for a
-developer's forced refit. Amends D-037 and D-041. The calibrated constants of other subsystems are not migrated
+(phases 3a and 3b) implements it first: `server/playerValueProductionFit.ts` (the method and its backtest; since phase
+3b playing time conditional on quality), `server/playerValueRatingsFit.ts` (phase 3b: the ratings mapping, the arrival
+rates and, from the save's own rating snapshots once enough exist, the development path),
+`server/playerValueFitStore.ts` (table `value_production_fits` in `history.db`, both models), `PRODUCTION_POLICY`,
+`RATINGS_POLICY` and the provisional `PRODUCTION_PRIOR` and `RATINGS_PRIOR` in `server/playerValueCalibration.ts`, the
+refit after an import (`api.ts` `refitAfterImport`), `GET /api/player-value/production-fit/:orgId`, and `npm run
+calibrate production` for a developer's forced refit. Amends D-037 and D-041. The calibrated constants of other subsystems are not migrated
 yet (ROADMAP "Later: calibration and longitudinal management").
 
 Pennant has to work across very different saves, including fictional leagues whose ecosystems look nothing like
@@ -1379,8 +1384,8 @@ estimates, on the save's own history, how each proneness band's playing time dif
 and how its aging departs from the curve. An effect is used only when it is at least two standard errors from none.
 Proneness never narrows a band: a measured effect moves the central and keeps the band's width, and an unknown
 proneness widens the band by the largest effect any band showed. On the Arizona import the fit measured a
-playing-time effect (hitters in the most injury-prone third play 94.1% ± 1.3 of their expected usage) and no aging
-effect that the data can distinguish.
+playing-time effect (hitters in the most injury-prone third play 94.1% ± 1.3 of their expected usage; 94.8% ± 1.2 under
+the phase 3b playing-time model) and no aging effect that the data can distinguish.
 
 Consequences: every Player Value production answer carries the fit in force as its stamp (`basis.model`,
 `basis.calibration`). A historical save's first fits describe real-world stability and aging (the imported history),

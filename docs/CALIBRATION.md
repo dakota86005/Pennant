@@ -96,27 +96,33 @@ fresh import and after the season has grown, and edit the declarations.
 ## 6. Calibration belongs to the save (D-053): Player Value's expected production
 
 From D-053 on, "calibrated" means fitted on the save's own outcomes, automatically, with the run record as the
-stamp. Player Value's expected production (phase 3a) is the first subsystem built this way; the scouting constants
-above keep their run-1 stamps until they are migrated (ROADMAP).
+stamp. Player Value's expected production (phases 3a and 3b) is the first subsystem built this way; the scouting
+constants above keep their run-1 stamps until they are migrated (ROADMAP). Phase 3b adds a second fitted model, the
+ratings model (section 6.2), and changed the results method to `production-3b.1`: playing time conditional on quality.
 
 **What is in code, and what is the save's.**
 
 | Kind | Where | What |
 |---|---|---|
 | Method | `server/playerValueProductionFit.ts` | The fit and its backtest (below) |
-| Policy | `PRODUCTION_POLICY` in `server/playerValueCalibration.ts` | Coverage targets 80% and 50%; the era rule (the most recent 20 completed seasons, a season under 90% of the schedule skipped); the hold-out share (the most recent 45% of them); the gate (held-out coverage within 10 points of each target at every horizon with 200+ cases, horizon 1 required); minimum samples (100 opportunities per season in an aging pair, 30 pairs, 50 cases per component); the prior's strength (250 cases, 100 aging pairs) and widening (half its weight); three usage tiers; the two-way minimum (100 opportunities); the starter share (half his games); the usage pivot age (30); proneness in three equal-count bands, an effect used only at two standard errors, aging read apart under and over 30 |
+| Policy | `PRODUCTION_POLICY` in `server/playerValueCalibration.ts` | Coverage targets 80% and 50%; the era rule (the most recent 20 completed seasons, a season under 90% of the schedule skipped); the hold-out share (the most recent 45% of them); the gate (held-out coverage within 10 points of each target at every horizon with 200+ cases, horizon 1 required); minimum samples (100 opportunities per season in an aging pair, 30 pairs, 50 cases per component); the prior's strength (250 cases, 100 aging pairs) and widening (half its weight); three usage tiers; the two-way minimum (100 opportunities); the starter share (half his games); the usage pivot age (30); proneness in three equal-count bands, an effect used only at two standard errors, aging read apart under and over 30; since phase 3b the tails also by quality tier (the bottom tenth, middle and top tenth of projected rate) |
+| Ratings policy | `RATINGS_POLICY` in `server/playerValueCalibration.ts` | Phase 3b (section 6.2): 200 opportunities for a major leaguer to enter the same-time mapping, 5 folds, 15 players for a position's own intercept, prior strength 150; arrival age bands of 60 player-seasons, 10 nodes, 10 arrivals; snapshot pairs 300–430 days apart with a gap of 2, 300 pairs for the save's own development path, bands of 30 pairs, 300 linked seasons for the chance by potential (thirds, two standard errors); the prior's development range up to twice its central share; an unknown grade anywhere on 20-80 |
 | Fallback prior | `PRODUCTION_PRIOR` in `server/playerValueCalibration.ts`, stamped **provisional** | The same method run with no prior and no hold-out on the real major-league history 2006–2025 the Arizona save imports. Real-world stability and aging, not OOTP's engine and not any save. It carries no proneness effect |
-| The save's fit | `value_production_fits` in `history.db` (`server/playerValueFitStore.ts`) | Everything fitted: the aging curve, the regression, season noise, drift, usage, the band tails, the proneness effects, with the run record |
+| Ratings fallback prior | `RATINGS_PRIOR`, stamped **provisional** | The ratings method with no prior on the Arizona import: the mapping, the batting hands' exposure, the stamina cut, the largest development by age, and the development path read from one cross-section of scouted gaps (not a path). **No arrivals**: measured per save or unknown |
+| The save's fit | `value_production_fits` in `history.db` (`server/playerValueFitStore.ts`) | Everything fitted: the aging curve, the regression, season noise, drift, usage, the band tails, the proneness effects, with the run record; and, under `ratings-3b.1`, the ratings model with its own record |
 
 **The method.** From each origin season O (a window of O, O−1 and O−2), every player with major-league results is
 projected for O+1 … O+7 and compared with what he produced; a player who did not play in a target season produced 0
 wins there. The fit sees only targets up to the last training season; the held-out seasons are predicted from
 origins at or after it. It fits, in order: the aging curve (delta method on consecutive training seasons, a weighted
 quadratic in age, hitters and pitchers apart); the regression per kind (recency weights, K and the mean, by grid on
-horizon-1 cases, weighted by opportunities); season noise (the model's own moments); the usage regression per kind
-and horizon (least squares on the window's three slots and age, zeros included, coefficients on usage never below
-zero) with its spread and tails; the proneness effects; drift (the rate variance no sample removes, from the excess
-squared residual on usage to the fourth power); and the band tails per kind, usage tier and horizon, the quantiles of
+horizon-1 cases, weighted by opportunities); season noise (the model's own moments); playing time per kind and
+horizon as attrition × playing time when he plays (since `production-3b.1`: a logistic for the chance of any
+major-league playing time and least squares on those who played, each on the window's three slots, his projected
+quality, his regressed rate above replacement aged to that horizon and never below zero, and his age; coefficients on
+usage and quality never below zero) with its spread and tails; the proneness effects; drift (the rate variance no
+sample removes, from the excess squared residual on usage to the fourth power); and the band tails per kind, quality
+tier, usage tier and horizon (a cell with too few cases takes its usage tier's), the quantiles of
 each horizon's own training outcomes (each season's wins band is its own; only the rate band, WAR per 600
 opportunities, is carried forward so it is never narrower further out, owner 2026-09-23). Each component is shrunk toward the prior by its sample. The gate then reads the held-out coverage of the fit
 itself; if it passes, a horizon still short of a target on the held-out seasons is widened until it is met, and the
@@ -132,6 +138,30 @@ OOTP_FO_DATA_DIR=<dir with league.db and a scratch history.db> OOTP_FO_DB_READON
 ```
 
 ### 6.1 The run on the Arizona import (2026-05-16)
+
+**Method `production-3b.1` (phase 3b, the fit in force).** Fit `203:2025:production-3b.1`, same window, hold-out and
+sample as below; **gate passed**, adopted; fit 4.8–5.0 s. The aging curve, the regression and season noise are
+unchanged (hitters K 153, mean 2.01; starters K 385, mean 1.38; relievers K 400, mean 0.93). Playing time now depends
+on quality: at horizon 1 a hitter who plays gets about 34 more plate appearances per WAR per 600 of projected quality,
+a starter about 92 more batters faced, and a reliever's chance of pitching at all rises (logit +1.48 per WAR per 600).
+Held-out coverage, 80% / 50%, as served: horizon 1 82.1 / 56.0, 2 81.1 / 52.8, 3 81.2 / 52.9, 4 82.4 / 55.6, 5 82.2 /
+58.3, 6 83.3 / 61.5, 7 84.7 / 64.9 (as fitted 77.8–81.3 / 49.8–60.0). **By projected rate** (tenths within each kind),
+served, and the central's bias (actual − central, wins), horizons 1 to 7:
+
+| Tier | 80% band | 50% band | Bias before (3a) | Bias after (3b) |
+|---|---|---|---|---|
+| Top tenth | 77.7–80.6 | 48.1–52.3 | +0.20, +0.33, +0.37, +0.41, +0.44, +0.44, +0.41 | −0.12, −0.01, −0.00, +0.05, +0.11, +0.14, +0.16 |
+| Middle | 81.8–85.5 | 53.3–67.9 | −0.00, +0.06, +0.10, +0.12, +0.13, +0.14, +0.14 | −0.01, +0.05, +0.09, +0.10, +0.12, +0.12, +0.12 |
+| Bottom tenth | 78.6–84.3 | 51.2–60.6 | +0.07, +0.12, +0.15, +0.17, +0.18, +0.17, +0.18 | +0.05, +0.09, +0.11, +0.12, +0.13, +0.11, +0.12 |
+
+Before the change the top tenth was covered 64–72% (80% band) and 30–40% (50% band). An intermediate build that made
+playing time depend on quality but kept tails by usage tier only fixed the stars' bias and left the bottom tenth
+overconfident (65–71% and 22–32%): that is why the tails are now set by quality tier too. Served coverage at horizons
+6 and 7 of the 50% band (61.5%, 64.9%) is higher than 3a's: the hold-out widening now acts per cell. Injury proneness
+under the new playing-time model: hitters in the most injury-prone third play 94.8% ± 1.2 of the league's rate for the
+same expected usage, pitchers 95.0% ± 1.4; the middle third of pitchers 104.7% ± 1.3; no aging effect is distinguishable.
+
+**Method `production-3a.1` (phase 3a, superseded).** The run the rest of this section describes.
 
 Fit `203:2025:production-3a.1`: window 2006–2025 (19 seasons; 2020 skipped at 37% of the schedule), trained through
 2015, held out 2016–2019 and 2021–2025. 5,956 players; 3,143 hitter and 3,019 pitcher aging pairs; horizon-1 training
@@ -180,3 +210,50 @@ rate for the same expected usage, horizons 1–3: hitters 102.2% ± 1.2 (not use
 pitchers 97.6% ± 1.8 (not used), 104.2% ± 1.3, 96.9% ± 1.5. Aging against the curve: none of the twelve cells (two
 groups × three bands × under/over 30) is distinguishable from none (the largest relative to its error, pitchers > 86 and 30 or
 over, +0.062 ± 0.069 per 600 a year), so proneness does not move aging on this save, and the record says why.
+
+### 6.2 The ratings model (phase 3b): what was fittable on this save, and what was not
+
+`server/playerValueRatingsFit.ts` fits the ratings model per save; it is stored in `value_production_fits` under
+`ratings-3b.1` with its run record and adopted through the same gate. Fit `203:2025:ratings-3b.1` on the Arizona
+import (2026-05-16): **gate passed**, adopted; 1.5–1.6 s (reading 1.1–1.7 s, fitting 0.5 s).
+
+**Fitted on this save now:**
+
+- **Ratings → rate, same-time.** 1,147 major leaguers with scouted ratings and 200+ opportunities in the projection
+  window (515 hitters, 240 starters, 390 relievers). Hitters (per point, WAR per 600): contact .098, power .083, eye
+  .046, gap .011, avoid-K .007, running .006, glove at his position .010, with an intercept by position; starters stuff
+  .082, movement .089, control .047; relievers .058, .095, .057. Held-out coverage over 5 folds of players, the variance
+  judged on the other folds: 84.5% / 57.2% (hitters 85.5 / 57.8, starters 79.6 / 56.7, relievers 85.9 / 56.4). **The
+  leakage caveat, measured:** for hitters and relievers the held-out residuals are *smaller than their own season noise*
+  (the 80% band covers 85–86% with no true-rate uncertainty at all): a historical start set these ratings from these
+  seasons, so the same-time fit describes, it does not forecast. Consequently the ratings are not given a reliability
+  the same-time fit claims: until the save's snapshots can measure it, what is not known about a player's rate given
+  his ratings is the kind's population variance (noise × 600 ÷ K), and in a blend the ratings weigh K ÷ (n + K), the
+  weight the kind's mean had.
+- **How often each batting hand faces left-handers** (major-league plate appearances 2023–2026): left .199, right .320,
+  switch .279. A hitter's bat is his splits weighted by it.
+- **The stamina cut** for a pitcher with no professional games: 50 (misclassifies 11.1% of 630 major-league pitchers).
+- **Arrival rates**, from the minor-league usage lines (never WAR) of 42,598 players, 571,079 player-seasons at levels
+  2, 3, 4 and 6, window 2006–2025, trained through 2015, held out 2016–2025; 78 level-and-age cells. Held-out, the
+  chance of any major-league playing time predicted and observed: the same season 4.6% / 4.7%, one season on 4.4% /
+  4.7%, two 7.2% / 7.7%, three 8.9% / 10.3%, four 9.4% / 11.5%, five 9.4% / 11.9%, six 8.7% / 11.1% (within the gate's 10
+  points; the fit slightly under-predicts later arrivals, recorded, not tuned away). The imported minor-league history
+  is the real world's, as the major-league history is.
+- **The largest scouted development by age** (the widening when a player's potential is unknown), from the save's
+  cross-section.
+
+**Not fittable on this save yet** (it holds one rating snapshot, 2026-5-16; R-9), each labelled and fitted
+automatically when the evidence exists:
+
+- **The development path** (ratings at t against ratings at t + h): 0 of the 300 snapshot pairs a season apart it
+  needs. In force: the provisional prior, one cross-section's mean scouted gap by age (hitters 20.8 at 16, 12.2 at 19,
+  10.8 at 21, 6.8 at 24, 3.1 at 25, none from 26; pitchers 15.7, 13.3, 10.5, 8.2, 4.3, none from 26), read as the share
+  of the gap closed from one age to a later one, with a range from no further development to twice that share. A
+  cross-section is not a path (players who do not develop leave it), so its central likely overstates development;
+  its range is wide on purpose.
+- **The ratings' reliability as a forecast** (this season's snapshot against next season's rate): 0 of the 50 seasons
+  per kind it needs.
+- **The arrival chance by potential**: 0 of the 300 linked snapshot seasons it needs; arrival is by level and age only.
+
+When the snapshots arrive, the refit after an import picks them up by itself (a ratings key that fitted before the
+snapshots were enough is refitted once when they become so), and the record says which parts are the save's.

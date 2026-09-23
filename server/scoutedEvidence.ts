@@ -40,6 +40,8 @@
 import { db, tableColumns, tableExists } from './db.js';
 import { ratingScaleMax } from './valuation.js';
 import { gloves, type Gloves, type PositionRating } from './gloves.js';
+import { parseGameDate } from './dataFreshness.js';
+import { currentSaveName, historyDb } from './history.js';
 
 // ── Provenance ──────────────────────────────────────────────────────────
 
@@ -646,5 +648,151 @@ export function scoutedHitterPopulation(leagueId: number): ScoutedHitterProfile[
     out = [...loadScoutedHitterProfiles(ids).values()];
   }
   hitterPopulationCache.set(leagueId, out);
+  return out;
+}
+
+// ── The glove at his listed position, in bulk ────────────────────────────
+
+/**
+ * A player's revealed fielding grade at the position he is listed at, current and potential, on the
+ * 20-80 scale: the "glove at the position he plays" of D-033, for a league-wide reader (Player Value)
+ * that cannot afford one `gloves()` call per player. The visibility rule is `gloves()`'s own: a
+ * current grade above zero is the only sign the game has shown the position; behind a dash nothing is
+ * read, and the grade is unknown, never assumed bad (D-018). A pitcher, or a listed position with no
+ * fielding column (a designated hitter), has no glove at his position: absent.
+ */
+export interface ScoutedGloveAtPosition {
+  readonly playerId: number;
+  /** OOTP's listed position, 2 to 9. */
+  readonly position: number;
+  readonly current: number | null;
+  /** The ceiling at that position; null when not shown (or not positive). */
+  readonly potential: number | null;
+  readonly provenance: EvidenceProvenance;
+}
+
+export function loadScoutedGlovesAtPosition(playerIds: Iterable<number>): Map<number, ScoutedGloveAtPosition> {
+  const ids = [...new Set(playerIds)].filter((id) => Number.isFinite(id));
+  const out = new Map<number, ScoutedGloveAtPosition>();
+  if (ids.length === 0 || !tableExists('players') || !tableExists('players_fielding')) return out;
+  const present = new Set(tableColumns('players_fielding'));
+  if (!present.has('player_id') || !tableColumns('players').includes('position')) return out;
+  const select: string[] = [];
+  for (let position = 2; position <= 9; position += 1) {
+    for (const column of [`fielding_rating_pos${position}`, `fielding_rating_pos${position}_pot`]) {
+      select.push(present.has(column) ? `f."${column}" AS "${column}"` : `NULL AS "${column}"`);
+    }
+  }
+  const scale = ratingScale();
+  for (let at = 0; at < ids.length; at += CHUNK) {
+    const chunk = ids.slice(at, at + CHUNK);
+    const rows = db.prepare(
+      `SELECT p.player_id AS player_id, p.position AS position, ${select.join(', ')}
+       FROM players p JOIN players_fielding f ON f.player_id = p.player_id
+       WHERE p.player_id IN (${chunk.map(() => '?').join(', ')})`
+    ).all(...chunk) as Array<Record<string, unknown>>;
+    for (const row of rows) {
+      const position = Number(row.position);
+      if (!Number.isInteger(position) || position < 2 || position > 9) continue;
+      const current = knownRating(row[`fielding_rating_pos${position}`]);
+      const potential = current === null ? null : knownRating(row[`fielding_rating_pos${position}_pot`]);
+      out.set(Number(row.player_id), {
+        playerId: Number(row.player_id),
+        position,
+        current: current === null ? null : toScouting(current, scale),
+        potential: potential === null ? null : toScouting(potential, scale),
+        provenance: FIELDING_PROVENANCE,
+      });
+    }
+  }
+  return out;
+}
+
+// ── Observed scouting over time (history.db rating snapshots) ────────────
+
+/**
+ * One persisted observation of a player's scouted tools: the rating snapshot `history.ts` takes after
+ * each import, read back as a `ScoutedAbility` under the same rules as today's export (missing stays
+ * missing; a composite only when every tool is known; the 20-80 scale). The snapshot keeps the tools
+ * as exported, so it is normalized with the scale detected from TODAY's export: an assumption, stated,
+ * that the save's display scale has not changed between imports.
+ *
+ * This is the longitudinal evidence (ratings at t against what followed at t + h) that a development
+ * path, or an arrival rate conditioned on ratings, needs. It is read only here, like every rating.
+ */
+export interface ScoutedObservation {
+  readonly playerId: number;
+  /** The snapshot's game date, ISO (`parseGameDate`); a snapshot whose date cannot be read is skipped. */
+  readonly gameDate: string;
+  /** The club's level and the player's age as the snapshot recorded them (objective facts at that date). */
+  readonly level: number | null;
+  readonly age: number | null;
+  readonly ability: ScoutedAbility;
+}
+
+const SNAPSHOT_TOOLS: Record<ToolKey, { current: string; potential: string }> = {
+  contact: { current: 'con', potential: 'conP' },
+  gap: { current: 'gap', potential: 'gapP' },
+  power: { current: 'pow', potential: 'powP' },
+  eye: { current: 'eye', potential: 'eyeP' },
+  avoidK: { current: 'avk', potential: 'avkP' },
+  stuff: { current: 'stu', potential: 'stuP' },
+  movement: { current: 'mov', potential: 'movP' },
+  control: { current: 'ctl', potential: 'ctlP' },
+};
+
+/**
+ * Every persisted observation for this save (or for the players asked about), oldest first per
+ * player. Schema-tolerant: a snapshot table without a tool column reads that tool as unknown.
+ */
+export function loadScoutedObservations(playerIds: Iterable<number> | null = null): Map<number, ScoutedObservation[]> {
+  const out = new Map<number, ScoutedObservation[]>();
+  const present = new Set((historyDb.prepare(`PRAGMA table_info(rating_snapshots)`).all() as Array<{ name: string }>).map((c) => c.name));
+  if (!['save_name', 'game_date', 'player_id', 'position'].every((c) => present.has(c))) return out;
+  const columns = Object.values(SNAPSHOT_TOOLS).flatMap((t) => [t.current, t.potential]);
+  const select = [
+    'player_id', 'game_date', 'position',
+    present.has('level') ? 'level' : 'NULL AS level',
+    present.has('age') ? 'age' : 'NULL AS age',
+    ...columns.map((c) => (present.has(c) ? `"${c}"` : `NULL AS "${c}"`)),
+  ].join(', ');
+  const scale = ratingScale();
+  const viewer = viewerContext();
+  const take = (rows: Array<Record<string, unknown>>) => {
+    for (const row of rows) {
+      const gameDate = parseGameDate(row.game_date ?? null);
+      const playerId = Number(row.player_id);
+      if (!gameDate || !Number.isFinite(playerId)) continue;
+      const position = Number(row.position);
+      const kind: ScoutedAbility['kind'] = !Number.isFinite(position) ? 'unknown' : position === 1 ? 'pitcher' : 'hitter';
+      const tools = kind === 'pitcher' ? PITCHER_TOOLS : HITTER_TOOLS;
+      const current: Partial<Record<ToolKey, unknown>> = {};
+      const potential: Partial<Record<ToolKey, unknown>> = {};
+      for (const t of tools) {
+        current[t.key] = row[SNAPSHOT_TOOLS[t.key].current];
+        potential[t.key] = row[SNAPSHOT_TOOLS[t.key].potential];
+      }
+      const level = Number(row.level);
+      const age = Number(row.age);
+      const list = out.get(playerId) ?? [];
+      list.push({
+        playerId, gameDate,
+        level: row.level === null || !Number.isFinite(level) ? null : level,
+        age: row.age === null || !Number.isFinite(age) ? null : age,
+        ability: buildAbility({ playerId, kind, current, potential, stamina: null, pitches: [] }, scale, viewer),
+      });
+      out.set(playerId, list);
+    }
+  };
+  const base = `SELECT ${select} FROM rating_snapshots WHERE save_name = ?`;
+  if (playerIds === null) take(historyDb.prepare(base).all(currentSaveName()) as Array<Record<string, unknown>>);
+  else {
+    const ids = [...new Set(playerIds)].filter((id) => Number.isFinite(id));
+    for (let at = 0; at < ids.length; at += CHUNK) {
+      const chunk = ids.slice(at, at + CHUNK);
+      take(historyDb.prepare(`${base} AND player_id IN (${chunk.map(() => '?').join(', ')})`).all(currentSaveName(), ...chunk) as Array<Record<string, unknown>>);
+    }
+  }
+  for (const list of out.values()) list.sort((a, b) => (a.gameDate < b.gameDate ? -1 : a.gameDate > b.gameDate ? 1 : 0));
   return out;
 }

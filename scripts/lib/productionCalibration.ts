@@ -12,9 +12,10 @@
 import { performance } from 'node:perf_hooks';
 import { allLeagueRules } from '../../server/leagueRules.js';
 import {
-  fitProductionModel, productionHistory, refitProductionIfNeeded, type CoverageRow, type FitRun, type ProductionModel,
+  fitProductionModel, fitRatingsModel, productionHistory, ratingsHistory, refitProductionIfNeeded, refitRatingsIfNeeded,
+  type CoverageRow, type FitRun, type ProductionModel, type RatingsFitRun,
 } from '../../server/playerValue.js';
-import { PRODUCTION_POLICY, PRODUCTION_PRIOR } from '../../server/playerValueCalibration.js';
+import { PRODUCTION_POLICY, PRODUCTION_PRIOR, RATINGS_PRIOR } from '../../server/playerValueCalibration.js';
 
 const pct = (x: number | null) => (x === null ? '   —  ' : `${(x * 100).toFixed(1).padStart(5)}%`);
 const f = (x: number, d = 3) => x.toFixed(d);
@@ -41,6 +42,7 @@ function describe(run: FitRun, ms: { read: number; fit: number }): void {
   table(r.coverage.adopted, 'Held-out coverage AS SERVED (after hold-out widening where a horizon fell short, with the prior\'s weight), pooled');
   for (const [k, rows] of Object.entries(r.coverage.byKind)) table(rows, `  ...served, ${k}`);
   for (const [k, rows] of Object.entries(r.coverage.byUsage ?? {})) table(rows, `  ...served, ${k} expected usage (a third of each kind)`);
+  for (const [k, rows] of Object.entries(r.coverage.byQuality ?? {})) table(rows, `  ...served, ${k} of projected rate (top and bottom tenth of each kind); bias = actual − central`);
   console.log('\nAging (WAR per 600 opportunities, change from each age to the next)');
   for (const g of ['hitter', 'pitcher'] as const) {
     const t = run.model.aging[g];
@@ -50,7 +52,9 @@ function describe(run: FitRun, ms: { read: number; fit: number }): void {
   console.log('\nRegression and noise per kind (rates per 600)');
   for (const [k, m] of Object.entries(run.model.kinds)) {
     console.log(`  ${k.padEnd(9)} usage tier cuts ${m.usageCuts.map((c) => Math.round(c)).join(', ') || 'none'}; weights ${m.weights.map((w) => w.toFixed(2)).join('/')}, K ${Math.round(m.stabilization)}, mean ${f(m.mean600, 2)}, noise ${f(m.noise600, 2)}, rate scale ${f(m.rateScale600, 2)}`);
-    m.horizons.forEach((h, i) => console.log(`    h${i + 1}: usage ${f(h.usage.intercept, 0)} + ${h.usage.recent.map((c) => f(c, 3)).join('/')} · slots, older ${f(h.usage.older, 1)}, younger ${f(h.usage.younger, 1)}; spread ${f(h.usageSpread.base, 0)} + ${f(h.usageSpread.slope, 3)}·P; tails by usage tier (80 low/high, 50 low/high) ${h.tails.map((t) => `${f(t.low80, 2)}/${f(t.high80, 2)} ${f(t.low50, 2)}/${f(t.high50, 2)}`).join(" | ")}; drift ${f(h.drift600 ?? 0, 3)}`));
+    const terms = (t: { intercept: number; recent: number[]; quality: number; older: number; younger: number }, d: number) =>
+      `${f(t.intercept, d)} + ${t.recent.map((c) => f(c, 5)).join('/')} · slots + ${f(t.quality, 3)} · quality, older ${f(t.older, 2)}, younger ${f(t.younger, 2)}`;
+    m.horizons.forEach((h, i) => console.log(`    h${i + 1}: chance logit ${terms(h.chance, 2)}; when he plays ${terms(h.conditional, 0)}; spread ${f(h.usageSpread.base, 0)} + ${f(h.usageSpread.slope, 3)}·P; tails by usage tier (80 low/high, 50 low/high) ${h.tails.map((t) => `${f(t.low80, 2)}/${f(t.high80, 2)} ${f(t.low50, 2)}/${f(t.high50, 2)}`).join(" | ")}; drift ${f(h.drift600 ?? 0, 3)}`));
   }
   console.log('\nInjury proneness');
   for (const line of r.proneness) console.log(`  ${line}`);
@@ -82,9 +86,64 @@ export function productionSection(leagueId: number, argv: string[]): void {
     console.log('\nPRODUCTION_PRIOR literal:\n' + JSON.stringify(round(prior.model), null, 2));
   }
 
+  // ── phase 3b: the ratings model (mapping, arrivals, development) ──
+  console.log(`\n${'='.repeat(78)}\n10b. Ratings (Player Value phase 3b): the save's own ratings fit (D-053)\n${'='.repeat(78)}`);
+  start = performance.now();
+  const rInput = ratingsHistory(leagueId, through, false, rules);
+  const rRead = performance.now() - start;
+  start = performance.now();
+  const rRun = fitRatingsModel(rInput, { prior: RATINGS_PRIOR });
+  describeRatings(rRun, { read: rRead, fit: performance.now() - start }, rInput.mapping.length, rInput.arrival.length, rInput.observations.length);
+
+  if (argv.includes('--prior')) {
+    start = performance.now();
+    const prior = fitRatingsModel(rInput, { prior: null, holdout: false });
+    console.log(`\nRatings fallback prior (no prior, no hold-out), ${Math.round(performance.now() - start)} ms:`);
+    describeRatings(prior, { read: rRead, fit: performance.now() - start }, rInput.mapping.length, rInput.arrival.length, rInput.observations.length);
+    console.log('\nRATINGS_PRIOR literal:\n' + JSON.stringify(roundAny({ ...prior.model, arrival: null }), null, 2));
+  }
+
   if (argv.includes('--refit')) {
     start = performance.now();
     const outcome = refitProductionIfNeeded({ force: true, leagues: [leagueId] });
     console.log(`\nForced refit recorded (${Math.round(performance.now() - start)} ms): ${JSON.stringify(outcome)}`);
+    start = performance.now();
+    const ratings = refitRatingsIfNeeded({ force: true, leagues: [leagueId] });
+    console.log(`Forced ratings refit recorded (${Math.round(performance.now() - start)} ms): ${JSON.stringify(ratings)}`);
   }
 }
+
+const roundAny = <T>(m: T): T => JSON.parse(JSON.stringify(m, (_k, v) => (typeof v === 'number' ? Number(v.toPrecision(4)) : v)));
+
+function describeRatings(run: RatingsFitRun, ms: { read: number; fit: number }, mapped: number, arrivals: number, observations: number): void {
+  const r = run.record;
+  const m = run.model;
+  console.log(`\nRatings fit ${r.id}: ${r.label}`);
+  console.log(`  read ${Math.round(ms.read)} ms (${mapped} major leaguers with ratings and window results, ${arrivals} players with minor-league usage, ${observations} rating snapshots); fit ${Math.round(ms.fit)} ms`);
+  console.log(`  gate: ${r.gate.passed ? 'PASSED' : 'FAILED'} — ${r.gate.reason}`);
+  console.log(`  mapping cases: ${JSON.stringify(r.mapping.cases)}; hitter variants ${JSON.stringify(r.mapping.variants)}`);
+  const c = r.mapping.coverage;
+  console.log(`  mapping held-out coverage (80/50), as fitted ${pctR(c.asFitted.outer)} / ${pctR(c.asFitted.inner)} on ${c.asFitted.cases}; served ${pctR(c.served.outer)} / ${pctR(c.served.inner)}`);
+  for (const [k, v] of Object.entries(c.byKind)) console.log(`    ${k.padEnd(9)} ${pctR(v.outer)} / ${pctR(v.inner)} on ${v.cases}`);
+  console.log(`  true-rate uncertainty given ratings (sd, WAR per 600): ${Object.entries(r.mapping.uncertainty).map(([k, v]) => `${k} ${f(v, 2)}`).join(', ')}`);
+  const h = m.mapping.hitter.full;
+  console.log(`  hitter (full) slopes per point: ${Object.entries(h.tools).map(([k, v]) => `${k} ${f(v, 3)}`).join(', ')}, running ${f(h.running, 3)}, glove ${f(h.glove, 3)}; intercepts ${Object.entries(h.intercepts).map(([k, v]) => `${k} ${f(v, 2)}`).join(', ')}`);
+  for (const k of ['starter', 'reliever'] as const) {
+    const p = m.mapping[k];
+    console.log(`  ${k} slopes: ${Object.entries(p.tools).map(([t, v]) => `${t} ${f(v, 3)}`).join(', ')}; intercept ${f(p.intercept, 2)}`);
+  }
+  console.log(`  ${r.mapping.caveat}`);
+  console.log(`  left-handed exposure by hand: ${JSON.stringify(r.leftShare)}; stamina cut ${r.staminaCut.cut} (misclassifies ${r.staminaCut.error === null ? '—' : pctR(r.staminaCut.error)} of ${r.staminaCut.cases})`);
+  console.log(`  arrival: ${r.arrival.reason} Window ${r.arrival.window[0]}–${r.arrival.window[r.arrival.window.length - 1]}, trained through ${r.arrival.trainingThrough}, held out ${r.arrival.holdout.join(', ') || 'none'}; ${r.arrival.cells} cells`);
+  console.log('  horizon   cases   predicted chance   observed   predicted mean opp   observed mean opp');
+  for (const x of r.arrival.heldOut) {
+    console.log(`  ${String(x.horizon).padStart(7)}  ${String(x.cases).padStart(6)}   ${pctR(x.predicted).padStart(8)}          ${pctR(x.observed).padStart(8)}   ${x.predictedMean === null ? '—' : f(x.predictedMean, 1).padStart(8)}             ${x.observedMean === null ? '—' : f(x.observedMean, 1).padStart(8)}`);
+  }
+  console.log(`  reliability as a forecast: ${r.reliability.note} ${JSON.stringify(m.reliability)}`);
+  console.log(`  development: ${r.development.label}`);
+  console.log(`  arrival by potential: ${r.arrivalByPotential.used ? 'used' : 'not used'} (${r.arrivalByPotential.linked} linked of ${r.arrivalByPotential.minimum}); ${r.arrivalByPotential.findings.slice(0, 3).join(' ')}`);
+  console.log(`  cross-section mean scouted gap by age (hitters): ${r.development.crossSectionGap.hitter.filter(([, g]) => g !== null).map(([a, g]) => `${a}:${f(g as number, 1)}`).join(' ')}`);
+  console.log(`  cross-section mean scouted gap by age (pitchers): ${r.development.crossSectionGap.pitcher.filter(([, g]) => g !== null).map(([a, g]) => `${a}:${f(g as number, 1)}`).join(' ')}`);
+}
+
+const pctR = (x: number | null) => (x === null ? '—' : `${(x * 100).toFixed(1)}%`);

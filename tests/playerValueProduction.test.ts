@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { db } from '../server/db.js';
 import {
-  PRODUCTION_PENDING_RATINGS, playerValues, projectProduction,
+  PRODUCTION_NO_EVIDENCE, playerValues, projectProduction,
   type PlayerProduction, type ProductionInput, type ProductionLine, type ProductionModelInForce, type WinsBand,
 } from '../server/playerValue.js';
 import { PRODUCTION_PRIOR } from '../server/playerValueCalibration.js';
@@ -88,7 +88,7 @@ function expectNoNarrower(thinner: PlayerProduction, fuller: PlayerProduction, l
 }
 
 describe('expected production (phase 3a): unknown stays unknown', () => {
-  it('a player with no major-league results in the projection window is unknown, pending the ratings-based projection: never zero, never a league average', () => {
+  it('a player with no major-league results in the projection window and no ability evidence is unknown: never zero, never a league average', () => {
     for (const input of [
       regular({ batting: [] }),
       regular({ batting: [bat(2019, 600, 4)] }),
@@ -96,7 +96,7 @@ describe('expected production (phase 3a): unknown stays unknown', () => {
     ]) {
       const p = projectProduction(input);
       expect(p.status).toBe('unknown');
-      expect(p.reason).toContain(PRODUCTION_PENDING_RATINGS);
+      expect(p.reason).toContain(PRODUCTION_NO_EVIDENCE);
       expect(p.seasons).toEqual([]);
     }
   });
@@ -112,7 +112,7 @@ describe('expected production (phase 3a): unknown stays unknown', () => {
       const p = projectProduction(input);
       expect(p.status, what).toBe('unknown');
       expect(p.reason, what).toBeTruthy();
-      expect(p.reason, what).not.toContain(PRODUCTION_PENDING_RATINGS);
+      expect(p.reason, what).not.toContain(PRODUCTION_NO_EVIDENCE);
       expect(p.seasons, what).toEqual([]);
     }
   });
@@ -201,7 +201,8 @@ describe('expected production (phase 3a): the band only widens', () => {
   it('thinner usage evidence never narrows the playing-time band relative to its central', () => {
     const input = regular();
     const full = projected(input);
-    const less = projected({ ...input, usage: { batting: input.batting.map((l) => ({ ...l, opportunities: Math.round(l.opportunities / 4) })) } });
+    // The same rate on a quarter of the playing time: thinner usage evidence, not a better player
+    const less = projected({ ...input, usage: { batting: input.batting.map((l) => ({ ...l, opportunities: Math.round(l.opportunities / 4), war: (l.war ?? 0) / 4 })) } });
     full.seasons.forEach((s, i) => {
       const a = s.sides[0].usage;
       const b = less.seasons[i].sides[0].usage;
@@ -218,7 +219,7 @@ describe('expected production (phase 3a): the band only widens', () => {
 });
 
 describe('expected production (phase 3a): what the evidence says', () => {
-  it.each(CAST)('a better visible line, all else equal, never lowers expected wins, nor either edge (%s)', (_, make) => {
+  it.each(CAST)('a better visible line, all else equal, never lowers expected wins, nor the high edge (%s)', (_, make) => {
     const input = make();
     const base = projected(input);
     const side = input.batting.length > 0 ? 'batting' : 'pitching';
@@ -230,9 +231,27 @@ describe('expected production (phase 3a): what the evidence says', () => {
       base.seasons.forEach((s, i) => {
         const b = better.seasons[i].wins;
         expect(b.central, `${season} → ${s.season}`).toBeGreaterThanOrEqual(s.wins.central - EPS);
-        expect(b.low, `${season} → ${s.season}`).toBeGreaterThanOrEqual(s.wins.low - EPS);
+        // The low edge may move down: a better player is expected to play more, and uncertainty about
+        // that playing time widens his band both ways (phase 3b, playing time conditional on quality)
         expect(b.high, `${season} → ${s.season}`).toBeGreaterThanOrEqual(s.wins.high - EPS);
       });
+    }
+  });
+
+  it('a better player is expected to keep more of his playing time than a worse one of the same age and usage', () => {
+    for (const [label, better, worse] of [
+      ['hitters', regular({ age: 29 }), regular({ age: 29, batting: regular().batting.map((l) => ({ ...l, war: (l.war ?? 0) * 0.1 })) })],
+      ['starters', starter(), starter({ pitching: starter().pitching.map((l) => ({ ...l, war: (l.war ?? 0) * 0.1 })) })],
+    ] as const) {
+      const b = projected(better);
+      const w = projected(worse);
+      // Same age, same observed playing time: only the quality differs
+      b.seasons.forEach((s, i) => {
+        if (i === 0) return;
+        expect(s.sides[0].usage.central, `${label}, ${s.season}`).toBeGreaterThanOrEqual(w.seasons[i].sides[0].usage.central - EPS);
+      });
+      // ...and three seasons on, while he is still above replacement, strictly more of it
+      expect(b.seasons[3].sides[0].usage.central, label).toBeGreaterThan(w.seasons[3].sides[0].usage.central);
     }
   });
 
@@ -461,8 +480,10 @@ describe('expected production through the reader (fixture league)', () => {
     // The draftee has only a school line; the starter has a major-league line and an older Triple-A one
     const values = playerValues([IDS.draftee, IDS.starter]);
     const draftee = values.get(IDS.draftee)!.production;
+    // His school line is not a major-league record: no results-based band, and no season built from it
     expect(draftee.status).toBe('unknown');
-    expect(draftee.reason).toContain(PRODUCTION_PENDING_RATINGS);
+    expect(draftee.basis.sides).toEqual([]);
+    expect(draftee.seasons).toEqual([]);
     const starterSeasons = values.get(IDS.starter)!.production;
     expect(starterSeasons.status).toBe('projected');
     expect(starterSeasons.basis.sides.flatMap((s) => s.seasons.map((x) => x.season))).toEqual([2030]);
