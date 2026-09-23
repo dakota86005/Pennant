@@ -1230,3 +1230,80 @@ Across thirty organizations 99 of 125 "squeezed" men had reviews that found noth
 (routine, and worth a look). A club-level shortage means a man is not getting the job. Any future work level is
 placed on one side of the line, in one place. `farmConsequenceFor` reads a departed man's job whether or not it was
 contested, as `farmArrivalFor` already did (B-1), so a departure names the man left sharing the job.
+
+## D-052 — Player Value is a specialist that describes and never authorizes, in wins first and the save's own dollars
+
+**Status:** Accepted 2026-09-22, with the owner's answers in PLAYER_VALUE.md Part 12. **Implementation:** Absent
+(phase 0: design and research only). Design: [PLAYER_VALUE.md](PLAYER_VALUE.md). Research evidence:
+[PLAYER_VALUE_RESEARCH.md](PLAYER_VALUE_RESEARCH.md). Refines D-002 and D-017 for the pre-fork value surfaces and
+applies D-018, D-023, D-036 and D-041 to them.
+
+Every value surface in Pennant (contract advice, payroll control, the trade desk, free agents, the organization
+comparison, the player card, the AI trade context) rests on OOTP's `players_value` figures, which D-017 prohibits as
+evidence. Contract advice cuts a percentile of them at 70 and 75. The trade desk sums them. A missing arbitration or
+free-agency rule becomes 3 or 6 years, and a missing service time becomes zero. No price of a win, cost path or
+surplus exists.
+
+- **A specialist that describes.** Player Value answers what a player costs, under what control, what he will
+  produce, what a win is worth and what is left. It never says trade, release, extend, sign or promote. It reads
+  ability only through `scoutedEvidence.ts`, service and state through Player State, roster rights and
+  arbitration and free-agency eligibility only as `playerRights.ts` states them (eligibility joins Player Rights
+  under D-023; Player Value owns only the cost band for each status), and never reads the protection tier, Player Development's defensibility or
+  philosophy. Player Development and developmental stakes never read value.
+- **Five concerns, kept apart:** contract facts; the control and cost path (pre-arbitration, arbitration, free
+  agency, as three-valued statuses with a cost band each); expected production; Club Finances (the league's regime,
+  price of a win and replacement level, and the club's budget, payroll, revenue, market, cash and owner expectation);
+  and surplus. Each has its own output and names its own unknowns.
+- **A decomposed, stated estimate, never a hidden score.** Value is reported as bands with their basis and every
+  component visible. Thinner evidence (a longer horizon, fewer results, partial ratings) only widens a band. No
+  widening is applied to other organizations' players while the export cannot measure that asymmetry. A missing rule, service time or salary is `indeterminate` or `unknown`, never
+  a default. Nothing is ranked by a single number.
+- **Wins are the unit, and dollars come from the save from import one.** Production is in wins, in the units of the
+  export's own WAR. The opening price of a win is salary above the minimum over the WAR of free-agency-eligible
+  players, shown with its basis and a wide band. On the Arizona import that is about $7M a win, band $6M–$10M,
+  floor $4.3M. It tightens only as observed signings accumulate across imports, and the measured price
+  replaces it once the measured band is narrower. Replacement starts at the level the
+  export's WAR implies (.288–.293), stamped provisional. A league with no financials is valued in wins, and its
+  dollars are `unknown`.
+- **Two prices of a win.** The league market price (what a win costs to buy) and the club's marginal value of a win
+  (what one more win is worth to this club now, from its competitive position) are both facts. The second is a club
+  fact, not philosophy, and is stated in playoff odds until the save can link odds to money.
+- **Philosophy is a visible lens, after a neutral valuation.** The neutral value is computed without philosophy and
+  cached per import. The lens is applied at read time and shown beside it as "our view", with every lean named
+  (the D-036 pattern). It never changes a fact, a band, a price, a control status or an unknown.
+- **Personality traits are known facts** where the export gives them. Nothing on this save marks one as unknown.
+  They are shown as evidence and move no price until their effect is observed.
+- **Sunk money never argues for keeping a player.** The retention view compares keeping him with not keeping him.
+  Money owed either way cancels, money already paid appears in neither, and a large remaining guarantee cannot make
+  keeping him look better.
+- **One computation.** Every player in the league is valued once per import, lazily or warmed after the import, in a
+  disposable store keyed by the import. The market figures are snapshotted per import into `history.db` so drift is
+  visible (D-009). There is no timer. Every consumer reads the same value through one module.
+- **Replace, don't run in parallel.** Each consumer (Contracts, Payroll, Trade Center, Free Agents, Org Comparison,
+  then the player card and the rest) moves to Player Value in the same change that deletes its `players_value`
+  reads. It shows facts only in the meantime rather than keep an invalid verdict. At the end no production module
+  reads `players_value`.
+
+Consequences: `valuation.ts` and `leagueRules.ts` become one `LeagueRules` with every column guarded and the regime
+resolved through the parent league (phase 1). `SERVICE_DAYS_PER_YEAR` becomes the league's `rules_min_service_days`.
+`tests/playerValueBoundary.test.ts` enforces the boundary from phase 1. New baseball behavior starts in
+BEHAVIOR_CASES.md "Player Value".
+
+**Stamps.** Every constant is registered in PLAYER_VALUE.md Part 11. The opening replacement level, the opening
+price band and the arbitration ladder are **provisional**. What counts as a market contract, the discount rate, the
+horizon, the evidence needed to replace the opening price, the personality bands and the lens weights are
+**policy**. Production constants are to be **calibrated** against the export's WAR history in phase 3. Bands only
+widen, the lens comes after the neutral value, sunk money cancels and unknown is never a default: that is
+architecture, pinned by tests.
+
+**Owner answers** (PLAYER_VALUE.md Part 12):
+- Arbitration and free-agency eligibility live in Player Rights; the cost for each status lives in Player Value.
+- No widening for other organizations' players until it can be measured.
+- The horizon runs to the end of control, capped at 7 seasons, with one stated policy discount rate.
+- The measured price replaces the opening one when its band is narrower.
+- A minor-league $0 salary is `unknown`.
+- The club's value of a win is in playoff odds for now.
+- Personality prices nothing until its effect is observed.
+- The Trade Center may show the difference between the sides only as a band with its components.
+- Minor-league WAR is not used in phase 3.
+- Player Value is routed in `AGENTS.md` from phase 1.

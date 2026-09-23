@@ -88,7 +88,11 @@ static guard. Remaining:
   share one definition.
 - Audit trade, contract, free-agent, franchise, roster, and player-card
   surfaces, which still read `players_value`. Each is a subjective judgment or a
-  display that must be either moved to approved evidence or labelled.
+  display that must be either moved to approved evidence or labelled. The
+  contract, payroll, trade, free-agent and organization-comparison surfaces are
+  to be replaced by the Player Value specialist, one consumer per change:
+  design, research and phase plan in [PLAYER_VALUE.md](PLAYER_VALUE.md)
+  (D-052, phase 0; nothing implemented).
 - Establish, or keep declining to assume, whether `players_value.oa`/`pot` are
   the organization's scouted view. That needs an export from a save at
   imperfect scouting compared with the in-game card; the repository cannot
@@ -243,7 +247,9 @@ source of each dimension, and let the GM override individual dimensions.
 Extend philosophy only where the underlying option set is already defensible:
 trade alternative ranking, contract posture, free-agent fit, roster depth, and
 competitive-window planning. Each consumer must expose the exact dimensions
-that affected it and retain hard transaction/development guardrails.
+that affected it and retain hard transaction/development guardrails. For
+contracts, trades and free agency the planned route is Player Value's
+philosophy lens, applied after a neutral valuation (PLAYER_VALUE.md Part 6).
 
 ### AI as staff interface to domain work
 
