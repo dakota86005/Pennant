@@ -337,13 +337,20 @@ Present on `main` (D-020 to D-022):
 Present on `main` (D-023; research in [RIGHTS_RESEARCH.md](RIGHTS_RESEARCH.md)):
 
 - **League rules** (`server/leagueRules.ts`): option rule, DFA and waiver
-  periods, active/expanded/40-man limits, read as exported.
+  periods, active/expanded/40-man limits, read as exported. Since Player Value
+  phase 1 it is the one `LeagueRules`: the contract regime (free-agency and
+  arbitration lines, minimum salary, service-year length, money scale) is read
+  here too, every column guarded, through `parent_league_id`; `valuation.ts`'s
+  duplicate with its 6 / 3 fallback is deleted.
 - **Rights evaluator** (`server/playerRights.ts`): option, recall, add to the
   40-man, designate, outright assignment and IL activation, each
   `eligible`/`ineligible`/`indeterminate` with reasons carrying their basis
   (export, observed, documented), requirements, missing evidence and
   limitations; plus an option-year standing and a Rule 5 standing. Stale export
-  makes every action indeterminate; only recall depends on the log.
+  makes every action indeterminate; only recall depends on the log. Contract-
+  control eligibility (`evaluateContractControl`: pre-arbitration, arbitration
+  trip, free agency, reserve clause, each season from a projected service band)
+  joined it in Player Value phase 1 (D-052, Q-1).
 - **Consumers:** `rightsFor` in `playerContext.ts`; the roster-crunch route now
   reads only `PlayerState` and rights (its Rule 5 flag, which could not fire on
   real data, is gone); the player dossier carries `rights`.
@@ -361,6 +368,43 @@ Present on `main` (D-023; research in [RIGHTS_RESEARCH.md](RIGHTS_RESEARCH.md)):
 
 Not done, by design: rights for IL activation, Rule 5, re-optioning after the
 last option year, rehab returns, claims, refusals, trades (all `indeterminate`).
+
+## Implemented Player Value (phase 1)
+
+D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
+
+- **Contract facts** (`server/playerValueContract.ts`): season-by-season salary
+  for the deal and a signed extension, options by kind, buyout, opt-out count,
+  incentives, the club of record for the money. A salary of 0 (every
+  minor-league deal on the imported save) is unknown, never $0, and a clause
+  column the export never populates (no-trade, buyout, retained) is unknown,
+  never "none".
+- **Control timeline** (`server/playerValueControl.ts`): for each season to the
+  end of control, capped at seven (policy, Q-3), a status (`under_contract`, an
+  option, `pre_arbitration`, `arbitration`, `free_agent`, `reserve_clause`,
+  `indeterminate` with what it lies between) and a cost band: the salary under
+  contract, both branches of an option, and `unknown` ("pending price of a win
+  (phase 2/4)") for pre-arbitration and arbitration seasons.
+- **Entry point** (`server/playerValue.ts`): per request for the players asked
+  about, or league-wide (`leaguePlayerValues`, about 0.2-0.3 s for all 12,575
+  active players on the Arizona import; `npm run value:report`).
+- **Consumers moved to it:** `controlAfterThisSeason` in `contracts.ts` now
+  reads the timeline, so Contracts, the Payroll control column and lists, the
+  Trade Center's AI context, the player card and Free Agents' "hitting the
+  market" list share one answer. A status the save cannot establish shows as
+  "Not yet established" (Contracts), a third Payroll list, or a count on Free
+  Agents. `SERVICE_DAYS_PER_YEAR` and `serviceRemainingThisSeason` are deleted.
+- **Tests:** `playerValueControl`, `playerValueCost` (phase-2 halves as
+  `it.todo`) and `playerValueBoundary`.
+
+Not built: expected production, club finances, the price of a win, surplus,
+the philosophy lens (phases 2 to 5), the per-import market snapshot, a cache
+(the league-wide pass is computed per request; see Part 7), and the consumer
+migration that deletes `players_value` reads and the percentile advice (phase
+6). On the Arizona import 6,952 of 8,009 held players have indeterminate later
+seasons because what follows a minor-league contract is not established from
+the export; 453 meet the Super Two window and 494 a free-agency line inside
+this season's projection.
 
 ## Implemented MLB Operations (first slice)
 
@@ -468,6 +512,10 @@ resolution across all organization-specific features is future work.
   score.
 - Rights that remain `indeterminate` are listed in D-023 and the roadmap (IL activation now states
   its known facts and exact unknowns).
+- Contract control stays `indeterminate` where the export cannot settle it: after a minor-league contract
+  (what follows, and how `rules_minor_league_fa_minimum_years` is counted, is not established), in the
+  Super Two window (the year before the arbitration line), and where a line falls inside this season's
+  service projection. Pre-arbitration and arbitration costs are unknown until the price of a win exists.
 - The live log lags in-session moves until the game is saved, and the original
   save's `temp/` log was absent when it was not the loaded save; the freshness
   model does not yet say so.

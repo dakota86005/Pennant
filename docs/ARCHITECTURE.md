@@ -122,7 +122,8 @@ artifact, not an alternative application backend.
 |---|---|---|
 | Import and save discovery | `server/paths.ts`, `importer.ts`, `watcher.ts`, and `api.ts` find OOTP 27 saves, import CSVs, report progress, and refresh on new exports. | Do not parse or mutate binary OOTP saves. The live `temp/` transaction database is read only through a copy (D-021). |
 | Roster evidence | `playerState.ts` + `leagueRules.ts` (current state), `transactionLog.ts` + `liveLogSnapshot.ts` + `ootpSave.ts` (chronology and save discovery), `assignmentContext.ts` + `playerContext.ts` (reading one against the other), `dataFreshness.ts` + `dataStatus.ts` (how current each is), `rosterStateHistory.ts` (observed fallback and cross-check). | Three concerns, kept apart: Current State, Transaction Chronology, Rights/Eligibility. Sources are read in the order in D-020; nothing opens an OOTP file for writing. |
-| Player Rights | `playerRights.ts` evaluates option, recall, add to 40-man, DFA, outright and IL activation as `eligible` / `ineligible` / `indeterminate` with a basis per reason (D-023); `playerContext.ts` (`rightsFor`) assembles its inputs. | Pure: no table or log access. Consumers (roster crunch, player card) read its output and never rebuild it from raw columns. |
+| Player Rights | `playerRights.ts` evaluates option, recall, add to 40-man, DFA, outright and IL activation as `eligible` / `ineligible` / `indeterminate` with a basis per reason (D-023), and contract-control eligibility (pre-arbitration, arbitration, free agency) season by season from service time (`evaluateContractControl`, D-052 owner Q-1); `playerContext.ts` (`rightsFor`) assembles its inputs. `leagueRules.ts` is the one `LeagueRules`. | Pure: no table or log access. Consumers (roster crunch, player card, Player Value) read its output and never rebuild it from raw columns. |
+| Player Value | `playerValue.ts` (the one entry point and reader), `playerValueContract.ts` (concern 1: contract facts, season by season), `playerValueControl.ts` (concern 2: the control timeline and each status's cost band), `playerValueCalibration.ts` (every constant, stamped). Phase 1 of D-052 ([PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9); production, club finances and surplus are later phases. Contracts, Payroll (control column), the Trade Center's control, the player card and Free Agents' "hitting the market" read it. | Describes, never authorizes (D-052). Eligibility comes from Player Rights; no rating column, `players_value`, philosophy, tier or defensibility; nothing written. A missing rule or service time is `indeterminate`. `tests/playerValueBoundary.test.ts` enforces it. |
 | Database compatibility | `server/db.ts` discovers available tables and columns; query modules adapt to export differences. | Do not hard-code a single save's schema without a guarded fallback. |
 | Domain API | Express routers in `server/*.ts` compute rosters, player dossiers, standings, schedules, stats, contracts, payroll, trades, development, and other front-office reads. | Domain logic belongs here, not duplicated in React or AI prompts. |
 | Scouted evidence | `scoutedEvidence.ts` is the only reader of ability ratings for development and operations judgments. It returns branded `ScoutedAbility` evidence with provenance, viewer, scale, and what is missing. | Nothing in Player Development or Minor League Operations may read a rating column or `players_value` directly; `tests/evidenceBoundary.test.ts` enforces it. |
@@ -352,7 +353,23 @@ freshness (export vs save, log vs save) -----+      |
 ```
 
 `leagueRules.ts` reads the league's option rule, DFA and waiver periods and
-roster limits as exported. Freshness is applied per action: a stale export
+roster limits as exported. It is the one `LeagueRules` (D-052): it also reads
+the contract regime (free-agency and arbitration lines, minimum salary,
+service-year length `rules_min_service_days`, `financial_coefficient`), every
+column guarded, resolved through `parent_league_id` because a minor league
+exports zeros for them; a missing value is unknown, never 6 / 3 / 172.
+
+Contract-control eligibility (`evaluateContractControl`, owner Q-1) answers,
+for this season and each later one asked for, whether a player is
+pre-arbitration, arbitration-eligible (which trip), free to leave, bound by a
+reserve clause, or `indeterminate`, each with a basis. Service is read through
+Player State and projected as a band: this season's remaining days (from the
+season's service clock, `seasonServiceClocks`) on the high edge only, each
+later season as a full service year on both. A threshold inside the band makes
+that season `indeterminate` and names the season on each side; the year before
+the arbitration line (Super Two) is `indeterminate` until OOTP's rule is
+observed; `has_received_arbitration` is not read. Player Value composes these
+into its timeline and never re-derives them. Freshness is applied per action: a stale export
 makes every action indeterminate; the log matters only to recall. The rules,
 their basis and their unresolved edges are in
 [RIGHTS_RESEARCH.md](RIGHTS_RESEARCH.md); the controlled-experiment capture tool

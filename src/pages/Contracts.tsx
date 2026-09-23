@@ -46,13 +46,14 @@ export function Pct({ value }: { value: number | null }) {
  * does not answer "who am I about to lose" at a glance — which is the question
  * the offseason is actually about.
  */
-type Status = 'freeAgency' | 'arbitration' | 'preArb' | 'reserve' | 'signed';
+type Status = 'freeAgency' | 'arbitration' | 'preArb' | 'reserve' | 'indeterminate' | 'signed';
 
 const STATUS_LABEL: Record<Status, string> = {
   freeAgency: 'Hitting free agency',
   arbitration: 'Arbitration',
   preArb: 'Pre-arbitration',
   reserve: 'Reserve clause',
+  indeterminate: 'Not yet established',
   signed: 'Under contract',
 };
 
@@ -63,6 +64,7 @@ function statusOf(p: ContractsResponse['players'][number]): Status {
   if (p.flags.includes('expiring')) return 'freeAgency';
   if (p.flags.some((f: string) => f.startsWith('arbitration'))) return 'arbitration';
   if (p.flags.includes('pre-arbitration')) return 'preArb';
+  if (p.flags.includes('control indeterminate')) return 'indeterminate';
   return 'signed';
 }
 
@@ -81,7 +83,7 @@ export function Contracts({ orgId }: { orgId: number }) {
   if (!data) return <p className="muted">Loading contracts…</p>;
 
   // Groups in the order they matter, skipping any the club does not have
-  const groups = (['freeAgency', 'arbitration', 'preArb', 'reserve', 'signed'] as Status[])
+  const groups = (['freeAgency', 'arbitration', 'preArb', 'reserve', 'indeterminate', 'signed'] as Status[])
     .map((key) => {
       const players = data.players.filter((p) => statusOf(p) === key);
       return { key, players, money: players.reduce((sum, p) => sum + (p.salaryNow ?? 0), 0) };
@@ -117,7 +119,9 @@ export function Contracts({ orgId }: { orgId: number }) {
         <p className="muted hint-line">
           Free agency means he can leave; arbitration and pre-arbitration mean the club keeps him
           whether he likes it or not, at a price the process sets. Money shown is this season&rsquo;s
-          salary, not what re-signing him would cost.
+          salary, not what re-signing him would cost. &ldquo;Not yet established&rdquo; means the save cannot
+          say which: his service will cross a line only if he stays up, or the league&rsquo;s rule is not in
+          the export. Hover the flag for why.
         </p>
       </section>
 
@@ -163,6 +167,7 @@ export function Contracts({ orgId }: { orgId: number }) {
                     className={`flag ${f === 'expiring' ? 'flag-hot' : ''}${
                       f.startsWith('extended thru') ? 'flag-locked' : ''
                     }`}
+                    title={f === 'control indeterminate' ? (p.control?.reason ?? undefined) : undefined}
                   >
                     {f}
                   </span>

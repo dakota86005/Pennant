@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { db, tableExists } from './db.js';
 import { contractsByPlayer, mlbPercentiler, rosterHoles, teamFinances, valuesByPlayer } from './valuation.js';
+import { controlAfterThisSeason } from './contracts.js';
+import { playerValues } from './playerValue.js';
 
 export const freeAgentRoutes = Router();
 
@@ -51,12 +53,10 @@ freeAgentRoutes.get('/free-agents/:orgId', (req, res) => {
   ).map(decorate);
 
   // Contracts around the league that expire after this season — the offseason
-  // market. Service-time filter matters: pre-arb/arb players on expiring 1-year
-  // deals stay team-controlled and never reach the market.
-  const faMinYears =
-    (db.prepare(`SELECT rules_fa_minimum_years AS y FROM leagues WHERE league_id = ?`).get(org.league_id) as
-      | { y: number }
-      | undefined)?.y ?? 6;
+  // market. Control matters: pre-arb/arb players on expiring 1-year deals stay
+  // team-controlled and never reach the market. Whether a man reaches it is
+  // Player Value's control timeline (D-052), never a free-agency rule assumed
+  // when the export does not state one.
   const upcoming = db
     .prepare(
       `SELECT p.player_id, p.first_name, p.last_name, p.age, p.position,
@@ -72,16 +72,18 @@ freeAgentRoutes.get('/free-agents/:orgId', (req, res) => {
     player_id: number; first_name: string; last_name: string; age: number; position: number;
     team_label: string; service_years: number | null;
   }>;
-  const upcomingFAs = upcoming
-    .filter((p) => {
-      const c = contracts.get(p.player_id);
-      return (
-        // A signed extension means he never reaches the market
-        c && c.isMajor && c.yearsAfterThis === 0 && !c.extension &&
-        !c.lastYearTeamOption && !c.lastYearPlayerOption &&
-        (p.service_years ?? 0) >= faMinYears - 1 // crosses the FA threshold during this season
-      );
-    })
+  const expiring = upcoming.filter((p) => {
+    const c = contracts.get(p.player_id);
+    // A signed extension means he never reaches the market
+    return c && c.isMajor && c.yearsAfterThis === 0 && !c.extension && !c.lastYearTeamOption && !c.lastYearPlayerOption;
+  });
+  const valuations = playerValues(expiring.map((p) => p.player_id));
+  const nextSeason = (id: number) => controlAfterThisSeason(valuations.get(id)?.control)?.status ?? null;
+  // Whether these reach the market is not established (a threshold inside the projection, a rule
+  // the export does not state): counted and said, not listed as if they were coming
+  const upcomingIndeterminate = expiring.filter((p) => nextSeason(p.player_id) === 'indeterminate').length;
+  const upcomingFAs = expiring
+    .filter((p) => nextSeason(p.player_id) === 'leaving')
     .map(decorate)
     .filter((p) => (p.overallPct ?? 0) >= 40);
 
@@ -95,5 +97,6 @@ freeAgentRoutes.get('/free-agents/:orgId', (req, res) => {
     holes: rosterHoles(orgId),
     currentFAs,
     upcomingFAs: upcomingFAs.slice(0, 80),
+    upcomingIndeterminate,
   });
 });

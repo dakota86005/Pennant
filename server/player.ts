@@ -2,8 +2,9 @@ import { Router } from 'express';
 import { db, tableExists } from './db.js';
 import { gloves } from './gloves.js';
 import { contactLeague, contactProfiles, situationalSplits } from './battedball.js';
-import { contractsByPlayer, leagueRules, mlbPercentiler, seasonYear, valuesByPlayer } from './valuation.js';
-import { controlAfterThisSeason, serviceRemainingThisSeason } from './contracts.js';
+import { contractsByPlayer, mlbPercentiler, seasonYear, valuesByPlayer } from './valuation.js';
+import { controlAfterThisSeason } from './contracts.js';
+import { playerValue } from './playerValue.js';
 import { DATE_KEY } from './dashboard.js';
 import { rightsFor } from './playerContext.js';
 
@@ -459,17 +460,7 @@ playerRoutes.get('/player/:id', (req, res) => {
            * the staff who read it were shown years-remaining alone, so an
            * arbitration case looked like a man about to reach the market.
            */
-          control:
-            p.team_league != null
-              ? controlAfterThisSeason({
-                  yearsAfterThis: contract.yearsAfterThis ?? 0,
-                  hasExtension: !!contract.extension,
-                  serviceDays: rosterStatus?.mlb_service_days ?? null,
-                  serviceYears: rosterStatus?.mlb_service_years ?? null,
-                  serviceLeft: serviceRemainingThisSeason(),
-                  rules: leagueRules(p.team_league as number),
-                })
-              : null,
+          control: controlAfterThisSeason(playerValue(id)?.control),
         }
       : null,
     battingYears,

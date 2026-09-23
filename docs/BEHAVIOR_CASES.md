@@ -78,10 +78,12 @@ on every dimension the farm reads.
 
 ## Player Value
 
-Written in phase 0, before any code (D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md)). **No test file exists
-yet.** Each invariant below becomes an `it` in the named file in the phase that builds its concern, and must fail
-first for the reason expected. Value describes and authorizes nothing, so no case says who is worth more or names a
-player.
+Written in phase 0, before any code (D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md)). Each invariant below becomes an
+`it` in the named file in the phase that builds its concern, and must fail first for the reason expected. Value
+describes and authorizes nothing, so no case says who is worth more or names a player. **Phase 1 built
+`playerValueControl.test.ts` (11), the phase-1 half of `playerValueCost.test.ts` (7, with the phase-2 bands as
+`it.todo`) and `playerValueBoundary.test.ts` (35)**, from synthetic evidence in `tests/playerValueFixtures.ts`.
+`payrollControl.test.ts` keeps its earlier cases, now driven through the timeline.
 
 | Planned file (phase) | Invariants |
 |---|---|

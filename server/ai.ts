@@ -250,7 +250,9 @@ function tradeSystem(voice: Persona, orgLabel: string | undefined, leagueId?: nu
     `in a new park is a different fact from a full season, and the reader wants both.\n` +
     `- A contract ending is not a player leaving. Each man carries a "control" field: "leaving" ` +
     `reaches free agency, "arbitration" means he is kept and paid more, "pre-arbitration" kept ` +
-    `cheaply, "reserve clause" cannot leave. Never call somebody a rental or a walk-year player ` +
+    `cheaply, "reserve clause" cannot leave, "indeterminate" means the save cannot yet establish ` +
+    `which (its "between" and "why" say what it lies between and why) — say so, never pick one. ` +
+    `Never call somebody a rental or a walk-year player ` +
     `from years-remaining alone — arbitration years are years of control, and they are worth ` +
     `paying for.\n` +
       `- "totals" holds the same value, talent and salary figures shown on the page beside your ` +

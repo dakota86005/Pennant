@@ -24,7 +24,7 @@
 
 import type { AssignmentContext } from './assignmentContext.js';
 import type { SourceState } from './dataFreshness.js';
-import type { LeagueRules } from './leagueRules.js';
+import type { ContractRules, LeagueRules } from './leagueRules.js';
 import type { PlayerState } from './playerState.js';
 import { UNKNOWN_REASON_TEXT, type Sourced } from './provenance.js';
 
@@ -76,7 +76,9 @@ export type MissingEvidenceCode =
   | 'chronology_unavailable'
   | 'assignment_cause_unknown'
   | 'field_not_exported'
-  | 'rule_not_established';
+  | 'rule_not_established'
+  /** A projected service band has a threshold inside it: which side he ends on is not yet decided. */
+  | 'projection_straddles_threshold';
 
 export interface MissingEvidence {
   code: MissingEvidenceCode;
@@ -131,6 +133,12 @@ export interface RightsContext {
   league: LeagueRules;
   counts: RosterCounts;
   evidence: RightsEvidence;
+  /**
+   * How far the season's service clock has run in the player's contract-regime
+   * league (`seasonServiceClocks` in `playerState.ts`). Optional: without it the
+   * projection's high edge is the most service the player could still bank.
+   */
+  serviceClock?: Sourced<number>;
 }
 
 export interface PlayerRights {
@@ -149,6 +157,8 @@ export interface PlayerRights {
     /** Place a player who is not on the 40-man on the active roster, once he has been added to it. Null when the player is already on the 40-man (use `recall`) or at the major-league club. */
     promoteToActive: ActionRights | null;
   };
+  /** Arbitration and free-agency eligibility for this season and the next (Q-1, D-052). */
+  contractControl: ContractControlEligibility;
 }
 
 /** Three option years exist in OOTP (wiki); no fourth is documented or observed. */
@@ -790,6 +800,367 @@ function ruleFive(ctx: RightsContext): RuleFiveStanding {
 
 const UNVERIFIED_NOTE = 'The export\'s freshness could not be checked against the save.';
 
+// ── contract control: arbitration and free-agency eligibility (Q-1, D-052) ───
+
+/**
+ * Where a player stands on the contract-control ladder for one season: renewed
+ * by the club (pre-arbitration), arbitration-eligible, free to leave, bound by a
+ * reserve clause, or not establishable. These are rights driven by service time,
+ * so they live here (D-023, owner Q-1); Player Value attaches a cost to each and
+ * never re-derives them.
+ */
+export type ControlStanding = 'pre_arbitration' | 'arbitration' | 'free_agency' | 'reserve_clause' | 'indeterminate';
+
+/** A span of major-league service, in days. */
+export interface ServiceBand {
+  low: number;
+  high: number;
+}
+
+export interface EligibilityAnswer {
+  status: RightsStatus;
+  reasons: RightsReason[];
+  missing: MissingEvidence[];
+}
+
+/**
+ * A threshold that falls inside a season's projected service: he is past it on
+ * one edge and short of it on the other. The season on each side is stated.
+ */
+export interface ThresholdCrossing {
+  line: 'free_agency' | 'arbitration' | 'super_two_window';
+  /** Days of major-league service the line sits at. */
+  lineDays: number;
+  /** The first season he is past it if he stays on the active list for the rest of this season. */
+  ifStaysUp: number;
+  /** The first season he is past it if he is optioned or hurt for the rest of this season. */
+  ifOptioned: number;
+  message: string;
+}
+
+export interface SeasonControlEligibility {
+  season: number;
+  /** Major-league service entering the season (at the winter before it), in days; null when unknown. */
+  serviceDays: ServiceBand | null;
+  freeAgency: EligibilityAnswer;
+  arbitration: EligibilityAnswer & {
+    /** Which arbitration year this would be, on each edge, when he is eligible. */
+    trip: { low: number; high: number } | null;
+  };
+  standing: ControlStanding;
+  /** For an indeterminate standing, the standings it lies between, in ladder order; empty when nothing bounds it. */
+  between: ControlStanding[];
+  crossings: ThresholdCrossing[];
+}
+
+export interface ContractControlEligibility {
+  /** Free agency exists in the regime, or a reserve clause binds every player. */
+  regime: Sourced<'free_agency' | 'reserve_clause'>;
+  /** The season the regime league is in. */
+  thisSeason: Sourced<number>;
+  serviceDaysPerYear: Sourced<number>;
+  service: {
+    /** Banked now, this season's days included (R-3). */
+    now: ServiceBand | null;
+    /** At the end of this season: low if optioned or hurt from now on, high if he stays on the active list. */
+    endOfSeason: ServiceBand | null;
+    /** How each edge was drawn, in words. */
+    basis: string[];
+  };
+  /** This season (decided at the last winter) and each later one asked for. */
+  seasons: SeasonControlEligibility[];
+  /** What blocks every season's answer, when something does. */
+  missing: MissingEvidence[];
+  limitation: string | null;
+}
+
+export interface ContractControlInput {
+  state: PlayerState;
+  /** The contract regime (`LeagueRules.contract`), already resolved through the parent league. */
+  rules: ContractRules;
+  serviceClock?: Sourced<number>;
+  /** The CSV export against the save (D-022, D-023). */
+  currentState: SourceState;
+  /** How many seasons to evaluate, from this season on (at least 1). */
+  seasons: number;
+}
+
+/**
+ * The service projection past this season (provisional, PLAYER_VALUE.md Part 11).
+ * This season's remaining days are a band: none (optioned or hurt from now on) up
+ * to all of them (he stays on the active list). Each LATER season is projected as
+ * one full service year on both edges, the convention a club's control is read
+ * by; a season spent in the minors only lengthens control, and is not assumed.
+ */
+export const SERVICE_PROJECTION_BASIS =
+  'Each season after this one is projected as a full service year; time in the minors would lengthen control, not shorten it.';
+
+const SERVICE_SOURCE = 'players_roster_status.mlb_service_days';
+const FA_SOURCE = 'leagues.rules_fa_minimum_years';
+const ARB_SOURCE = 'leagues.rules_salary_arbitration_minimum_years';
+
+/** The ladder a service total climbs, lowest first; the window is the year before the arbitration line. */
+const LADDER = ['pre_arbitration', 'super_two_window', 'arbitration', 'free_agency'] as const;
+type Rung = (typeof LADDER)[number];
+
+const answer = (status: RightsStatus, reasons: RightsReason[] = [], missing: MissingEvidence[] = []): EligibilityAnswer => ({
+  status, reasons, missing,
+});
+
+/** "5 years 87 days" in the league's own service-year length. */
+function spoken(days: number, perYear: number): string {
+  const years = Math.floor(days / perYear);
+  const rest = Math.round(days - years * perYear);
+  return `${years} year${years === 1 ? '' : 's'} ${rest} day${rest === 1 ? '' : 's'}`;
+}
+
+function rungOf(days: number, perYear: number, fa: number | null, arb: number | null): Rung | null {
+  if (fa !== null && fa > 0 && days >= fa * perYear) return 'free_agency';
+  if (arb === null) return null;
+  if (arb === 0) return 'pre_arbitration';
+  if (days >= arb * perYear) return 'arbitration';
+  if (days >= (arb - 1) * perYear) return 'super_two_window';
+  return 'pre_arbitration';
+}
+
+/** Every standing a service total anywhere from the low rung to the high rung could have, in ladder order. */
+function standingsBetween(low: Rung, high: Rung): ControlStanding[] {
+  const out: ControlStanding[] = [];
+  for (const rung of LADDER.slice(LADDER.indexOf(low), LADDER.indexOf(high) + 1)) {
+    const add: ControlStanding[] = rung === 'super_two_window' ? ['pre_arbitration', 'arbitration'] : [rung];
+    for (const s of add) if (!out.includes(s)) out.push(s);
+  }
+  return out;
+}
+
+function seasonEligibility(
+  season: number, band: ServiceBand | null, perYear: number | null, rules: ContractRules,
+  blocking: MissingEvidence[], crossingFor: (lineDays: number, line: ThresholdCrossing['line']) => ThresholdCrossing | null
+): SeasonControlEligibility {
+  const fa = rules.freeAgencyYears.value;
+  const arb = rules.arbitrationYears.value;
+  const unknownSeason = (missing: MissingEvidence[]): SeasonControlEligibility => ({
+    season, serviceDays: band, freeAgency: answer('indeterminate', [], missing),
+    arbitration: { ...answer('indeterminate', [], missing), trip: null },
+    standing: 'indeterminate', between: [], crossings: [],
+  });
+  if (blocking.length > 0) return unknownSeason(blocking);
+
+  // A reserve clause binds every player whatever his service (rules_fa_minimum_years = 0)
+  if (fa === 0) {
+    const reserve = reason('no_free_agency', 'This league has no free agency (its free-agency rule is 0): a reserve clause binds every player to his club.', 'export_state', FA_SOURCE);
+    const noArb = arb === 0;
+    return {
+      season, serviceDays: band, freeAgency: answer('ineligible', [reserve]),
+      arbitration: {
+        ...answer(
+          noArb ? 'ineligible' : 'indeterminate',
+          noArb ? [reason('no_arbitration', 'This league has no salary arbitration (its arbitration rule is 0).', 'export_state', ARB_SOURCE)] : [],
+          noArb ? [] : [{ code: 'rule_not_established', message: 'Whether arbitration applies under a reserve clause is not established.' }]
+        ),
+        trip: null,
+      },
+      standing: 'reserve_clause', between: [], crossings: [],
+    };
+  }
+  if (band === null || perYear === null) {
+    return unknownSeason([{ code: 'field_not_exported', message: 'Major-league service time is not available.' }]);
+  }
+
+  const low = rungOf(band.low, perYear, fa, arb);
+  const high = rungOf(band.high, perYear, fa, arb);
+  const faLine = fa !== null ? fa * perYear : null;
+  const arbLine = arb !== null && arb > 0 ? arb * perYear : null;
+  const windowLine = arb !== null && arb > 0 ? (arb - 1) * perYear : null;
+  const serviceText = band.low === band.high
+    ? spoken(band.low, perYear)
+    : `${spoken(band.low, perYear)} to ${spoken(band.high, perYear)}`;
+
+  const crossings: ThresholdCrossing[] = [];
+  const lines: Array<[number | null, ThresholdCrossing['line']]> = [
+    [faLine, 'free_agency'], [arbLine, 'arbitration'], [windowLine, 'super_two_window'],
+  ];
+  for (const [lineDays, line] of lines) {
+    if (lineDays === null || !(band.low < lineDays && lineDays <= band.high)) continue;
+    const c = crossingFor(lineDays, line);
+    if (c) crossings.push(c);
+  }
+
+  // ── free agency ──
+  let freeAgency: EligibilityAnswer;
+  if (faLine === null) {
+    freeAgency = answer('indeterminate', [], [{ code: 'rule_not_established', message: `The league's free-agency rule is not available: ${rules.freeAgencyYears.note ?? 'no source states it'}` }]);
+  } else if (band.low >= faLine) {
+    freeAgency = answer('eligible', [reason('past_free_agency_line', `${serviceText} of service by then, past the free-agency line of ${fa} years.`, 'export_state', `${SERVICE_SOURCE} + ${FA_SOURCE}`)]);
+  } else if (band.high < faLine) {
+    freeAgency = answer('ineligible', [reason('short_of_free_agency_line', `${serviceText} of service by then, short of the free-agency line of ${fa} years.`, 'export_state', `${SERVICE_SOURCE} + ${FA_SOURCE}`)]);
+  } else {
+    freeAgency = answer('indeterminate', [], [{
+      code: 'projection_straddles_threshold',
+      message: `${serviceText} of service by then: the free-agency line of ${fa} years falls inside the projection.`,
+    }]);
+  }
+
+  // ── arbitration (moot once he is certainly free to leave) ──
+  let arbitration: SeasonControlEligibility['arbitration'];
+  if (freeAgency.status === 'eligible') {
+    arbitration = { ...answer('ineligible', [reason('free_agent_instead', 'He is past the free-agency line, so arbitration does not arise.', 'export_state', FA_SOURCE)]), trip: null };
+  } else if (arb === null) {
+    arbitration = { ...answer('indeterminate', [], [{ code: 'rule_not_established', message: `The league's arbitration rule is not available: ${rules.arbitrationYears.note ?? 'no source states it'}` }]), trip: null };
+  } else if (arb === 0 || arbLine === null || windowLine === null) {
+    arbitration = { ...answer('ineligible', [reason('no_arbitration', 'This league has no salary arbitration (its arbitration rule is 0).', 'export_state', ARB_SOURCE)]), trip: null };
+  } else if (band.low >= arbLine) {
+    const trip = (d: number) => Math.floor(d / perYear) - arb + 1;
+    const topOfArbitration = faLine !== null ? Math.min(band.high, faLine - 1) : band.high;
+    arbitration = {
+      ...answer('eligible', [reason('past_arbitration_line', `${serviceText} of service by then, past the arbitration line of ${arb} years.`, 'export_state', `${SERVICE_SOURCE} + ${ARB_SOURCE}`)]),
+      trip: { low: trip(band.low), high: trip(topOfArbitration) },
+    };
+  } else if (band.high < windowLine) {
+    arbitration = { ...answer('ineligible', [reason('short_of_arbitration_line', `${serviceText} of service by then, more than a year short of the arbitration line of ${arb} years.`, 'export_state', `${SERVICE_SOURCE} + ${ARB_SOURCE}`)]), trip: null };
+  } else {
+    const missing: MissingEvidence[] = [];
+    if (low === 'super_two_window' || high === 'super_two_window' || (band.low < windowLine && band.high >= arbLine)) {
+      missing.push({
+        code: 'rule_not_established',
+        message: `${serviceText} of service by then reaches the year before the arbitration line. Whether OOTP grants arbitration there (the real-world "Super Two") is not established; the imported contracts show above-minimum pay starting at about two years and 130 days, which is the real world's rule priced in, not a rule OOTP is known to apply.`,
+      });
+    }
+    if (band.low < arbLine && arbLine <= band.high) {
+      missing.push({ code: 'projection_straddles_threshold', message: `The arbitration line of ${arb} years falls inside the projection (${serviceText}).` });
+    }
+    arbitration = { ...answer('indeterminate', [], missing), trip: null };
+  }
+
+  // ── standing: one rung on both edges, or indeterminate between them ──
+  let standing: ControlStanding;
+  let between: ControlStanding[] = [];
+  if (low === null || high === null || faLine === null) {
+    standing = 'indeterminate';
+    const top: Rung = faLine === null || high === null ? 'free_agency' : high;
+    between = low === null ? [] : standingsBetween(low, top);
+  } else if (low === high && low !== 'super_two_window') {
+    standing = low;
+  } else {
+    standing = 'indeterminate';
+    between = standingsBetween(low, high);
+  }
+  return { season, serviceDays: band, freeAgency, arbitration, standing, between, crossings };
+}
+
+/**
+ * Arbitration and free-agency eligibility, season by season, from service time
+ * (read through Player State) and the league's contract regime. Pure.
+ *
+ * Service is projected as a band (see `SERVICE_PROJECTION_BASIS`); a threshold
+ * inside it makes that season `indeterminate` and names the season on each
+ * side. A missing service time, rule or service-year length is `indeterminate`,
+ * never zero years, never six or three, never 172 days. The Super Two window
+ * (the year before the arbitration line) is `indeterminate` until the data shows
+ * whether OOTP applies it. `has_received_arbitration` is not read: it is 0 for
+ * every player on the imported save and carries no information (R-3).
+ */
+export function evaluateContractControl(input: ContractControlInput): ContractControlEligibility {
+  const { state, rules } = input;
+  const perYear = rules.serviceDaysPerYear.value;
+  const thisSeason = rules.season.value;
+  const fa = rules.freeAgencyYears.value;
+  const regime: ContractControlEligibility['regime'] = fa === null
+    ? { ...rules.freeAgencyYears, value: null }
+    : { ...rules.freeAgencyYears, value: fa === 0 ? 'reserve_clause' : 'free_agency' };
+
+  const blocking: MissingEvidence[] = [];
+  let limitation: string | null = null;
+  if (input.currentState === 'behind') {
+    blocking.push({ code: 'current_state_stale', message: 'The imported export is older than the save, so service time cannot be stated. Export the database again.' });
+  } else if (input.currentState === 'unavailable') {
+    blocking.push({ code: 'current_state_unavailable', message: 'No OOTP export is imported.' });
+  } else if (input.currentState === 'unverified') {
+    limitation = UNVERIFIED_NOTE;
+  }
+  if (perYear === null) {
+    blocking.push({ code: 'rule_not_established', message: `The league's service-year length (rules_min_service_days) is not available, so service cannot be read in years: ${rules.serviceDaysPerYear.note ?? 'no source states it'}` });
+  }
+
+  // ── service now and at the end of this season ──
+  const basis: string[] = [];
+  const days = state.serviceTime.mlbDays.value;
+  const years = state.serviceTime.mlbYears.value;
+  const thisYear = state.serviceTime.mlbDaysThisSeason.value;
+  let now: ServiceBand | null = null;
+  if (days !== null) {
+    now = { low: days, high: days };
+    basis.push('Service now is mlb_service_days as exported, this season\'s days included.');
+  } else if (years !== null && perYear !== null) {
+    now = { low: years * perYear, high: years * perYear + perYear - 1 };
+    basis.push('Only whole service years are exported (mlb_service_years); the days within the year are unknown, so service now is a band across that year.');
+  } else {
+    const why = state.serviceTime.mlbDays.reason ? UNKNOWN_REASON_TEXT[state.serviceTime.mlbDays.reason] : 'no source states it';
+    blocking.push({ code: 'field_not_exported', message: `Major-league service time is not available: ${why}. It is never read as zero.` });
+  }
+
+  let endOfSeason: ServiceBand | null = null;
+  let remaining: number | null = null;
+  if (now !== null && perYear !== null) {
+    const clock = input.serviceClock?.value ?? null;
+    if (clock !== null) {
+      remaining = Math.max(0, perYear - clock);
+      if (thisYear !== null) remaining = Math.min(remaining, Math.max(0, perYear - thisYear));
+      basis.push(`The season's service clock has run ${clock} of ${perYear} days; the high edge adds the ${remaining} left, the low edge none (optioned or hurt).`);
+    } else {
+      remaining = thisYear !== null ? Math.max(0, perYear - thisYear) : perYear;
+      basis.push(`The season's service clock is not available, so the high edge adds the most he could still bank this season (${remaining} days); the low edge adds none.`);
+    }
+    endOfSeason = { low: now.low, high: now.high + remaining };
+    basis.push(SERVICE_PROJECTION_BASIS);
+  }
+
+  const crossingFor = (lineDays: number, line: ThresholdCrossing['line']): ThresholdCrossing | null => {
+    // Only a projection from exact days names the seasons on either side; a band from whole years does not
+    if (days === null || endOfSeason === null || perYear === null || thisSeason === null || remaining === null) return null;
+    const first = (edge: number) => thisSeason + 1 + Math.max(0, Math.ceil((lineDays - edge) / perYear));
+    const ifStaysUp = first(endOfSeason.high);
+    const ifOptioned = first(endOfSeason.low);
+    const label = line === 'free_agency' ? 'free-agency line' : line === 'arbitration' ? 'arbitration line' : 'start of the year before arbitration';
+    const short = Math.max(0, Math.ceil(lineDays - endOfSeason.low));
+    return {
+      line, lineDays, ifStaysUp, ifOptioned,
+      message: `Past the ${label} (${spoken(lineDays, perYear)}) by ${ifStaysUp} if he stays on the active list for the rest of ${thisSeason}; not until ${ifOptioned} if he is optioned or hurt. He needs ${short} more day${short === 1 ? '' : 's'} and ${remaining} remain this season.`,
+    };
+  };
+
+  const seasons: SeasonControlEligibility[] = [];
+  if (thisSeason === null) {
+    blocking.push({ code: 'rule_not_established', message: `The league's current season is not available: ${rules.season.note ?? 'no source states it'}` });
+  } else {
+    for (let k = 0; k < Math.max(1, input.seasons); k += 1) {
+      let band: ServiceBand | null = null;
+      if (now !== null && perYear !== null) {
+        if (k === 0) {
+          // Decided at the last winter: service then was service now less this season's days (R-3)
+          band = thisYear !== null
+            ? { low: Math.max(0, now.low - thisYear), high: Math.max(0, now.high - thisYear) }
+            : { low: Math.max(0, now.low - perYear), high: now.high };
+        } else if (endOfSeason !== null) {
+          band = { low: endOfSeason.low + (k - 1) * perYear, high: endOfSeason.high + (k - 1) * perYear };
+        }
+      }
+      seasons.push(seasonEligibility(thisSeason + k, band, perYear, rules, blocking, k === 0 ? () => null : crossingFor));
+    }
+  }
+
+  return {
+    regime,
+    thisSeason: rules.season,
+    serviceDaysPerYear: rules.serviceDaysPerYear,
+    service: { now, endOfSeason, basis },
+    seasons,
+    missing: blocking,
+    limitation,
+  };
+}
+
+
 /** Evaluates every action for one player. Pure: no table or log is read. */
 
 export function evaluatePlayerRights(ctx: RightsContext): PlayerRights {
@@ -818,5 +1189,10 @@ export function evaluatePlayerRights(ctx: RightsContext): PlayerRights {
     ruleFive: ruleFive(ctx),
     actions,
     composed: { promoteToActive: evaluatePromoteToActive(ctx) },
+    // This season (decided at the last winter) and what happens after it
+    contractControl: evaluateContractControl({
+      state: ctx.state, rules: ctx.league.contract, serviceClock: ctx.serviceClock,
+      currentState: ctx.evidence.currentState, seasons: 2,
+    }),
   };
 }

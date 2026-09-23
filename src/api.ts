@@ -502,6 +502,10 @@ export interface ContractRow {
   /** Present only when a signed extension starts after the current deal. */
   extension: { years: number; startYear: number; endYear: number; firstSalary: number } | null;
   recommendation: { action: string; reasons: string[] } | null;
+  /** What happens after this season (Player Value's control timeline); `reason` says why, or what is missing. */
+  control?: {
+    status: string; arbYear: number | null; arbYearHigh: number | null; between: string[]; reason: string | null;
+  } | null;
 }
 
 export interface ContractsResponse {
@@ -527,6 +531,8 @@ export interface FreeAgentsResponse {
   holes: Array<{ position: number; positionName: string; bestValue: number | null }>;
   currentFAs: FreeAgentRow[];
   upcomingFAs: FreeAgentRow[];
+  /** Expiring deals whose control after this season the export cannot establish. */
+  upcomingIndeterminate?: number;
 }
 
 export interface LineupSlot {
