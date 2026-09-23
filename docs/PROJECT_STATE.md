@@ -8,12 +8,12 @@ material implementation state changes.
 
 - Product **Pennant**, version `0.1.0` (package `ootp-front-office`, a compatibility-held name; D-049). Pennant's
   version lineage is its own and is unrelated to upstream's numbers; `package.json` is the only source of the version.
-- Inspected branch: `feature/peer-relative-protection`, created from `main` at `d263962`. `main` carries the
-  evidence boundary (PR #1), the Player State foundation (PR #2), Player Rights (PR #3), MLB Operations v2 with its
-  scouting layer and hardening (PR #4), Minor League Operations v2 with its hardening (PR #5), windowed farm usage
-  (PR #6, D-048) and the Pennant consolidation (PR #7, D-049). This branch rebuilds what sits under Player
-  Development's protection tier (D-050, [DEVELOPMENTAL_STAKES.md](DEVELOPMENTAL_STAKES.md)) and, in its hardening
-  pass, draws "short of developmental work" once for the club and the man (D-051); it is uncommitted.
+- Baseline: `main` carries the evidence boundary (PR #1), the Player State foundation (PR #2), Player Rights
+  (PR #3), MLB Operations v2 with its scouting layer and hardening (PR #4), Minor League Operations v2 with its
+  hardening (PR #5), windowed farm usage (PR #6, D-048), the Pennant consolidation (PR #7, D-049) and the
+  developmental-stakes rebuild (PR #8), which rebuilt what sits under Player Development's protection tier (D-050,
+  [DEVELOPMENTAL_STAKES.md](DEVELOPMENTAL_STAKES.md)) and, in its hardening pass, drew "short of developmental
+  work" once for the club and the man (D-051).
 - Stack: TypeScript, React 18, Vite 6, Express 4, SQLite via `better-sqlite3`, Electron 41, and Vitest 4.
 - Validation at this snapshot: `npx tsc --noEmit` clean, `npm test` 143 files / 1,868 tests passing,
   `npm run build` succeeds. The behavioral corpus ([BEHAVIOR_CASES.md](BEHAVIOR_CASES.md)) is 159 tests for MLB
@@ -222,7 +222,7 @@ Present on `main` (D-044 to D-046; design and audit in
   active list reasoned about (against 75 of 247 before), 18 attention items (11
   pressing), and fourteen findings fixed or documented (§6.2).
 
-### Superseded and still present
+### Superseded and deleted
 
 The superseded solvers (`minorLeagueMoves.ts`, `minorLeaguePitchingOperations.ts`,
 `pitcherRosterSimulation.ts`, `minorLeagueRetention.ts`), their three routes
@@ -267,7 +267,8 @@ Present on `main` (D-017):
   operations module and are never a fallback. Migrated consumers: prospect
   decisions and the depth chart (`org.ts`), `minorLeagueMoves`,
   `minorLeaguePitchingOperations`, `minorLeagueRetention`,
-  `minorLeagueRoster`, `pitcherRosterSimulation`, and `destinationFit`.
+  `minorLeagueRoster`, `pitcherRosterSimulation`, and `destinationFit`. The four
+  superseded solvers among them were later deleted (D-047).
 - Decisions and protection report incomplete rating evidence and what is
   missing. Destination fit no longer reads a missing grade as zero, lists
   unassessed tools, and leaves the skip-level destination gate unknown (D-018).
@@ -467,9 +468,6 @@ resolution across all organization-specific features is future work.
   score.
 - Rights that remain `indeterminate` are listed in D-023 and the roadmap (IL activation now states
   its known facts and exact unknowns).
-  `minorLeagueRetention.ts` still reads a few raw roster flags for its own
-  guardrails; those defer to "needs MLB transaction analysis" and draw no rights
-  conclusion, so they were left as is.
 - The live log lags in-session moves until the game is saved, and the original
   save's `temp/` log was absent when it was not the loaded save; the freshness
   model does not yet say so.

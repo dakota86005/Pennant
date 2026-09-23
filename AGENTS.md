@@ -1,19 +1,17 @@
 # AI development guide
 
-Pennant should feel like running a baseball organization as its GM. AI is
-supporting staff inside that experience, not a generic recommendation chatbot.
-Recommendations must remain explainable, preserve scouting uncertainty, and
-leave the final decision to the user/GM.
+Pennant should feel like running a baseball organization as its GM, not like a
+generic analytics dashboard or recommendation chatbot. AI is supporting staff
+inside that experience. Recommendations must remain explainable, preserve
+scouting uncertainty, and leave the final decision to the user/GM.
 
-Pennant began as a fork of `lsukev/ootp-front-office` and has its own name,
-architecture and version lineage (D-049). The Electron `appId` is Pennant's own
-(`com.dakotawise.pennant`) and release tags are `pennant-v<version>`, never the
-`v<version>` shape upstream uses. One inherited identifier is held back on
-purpose — the npm `name` `ootp-front-office`, from which Electron names the
-user-data folder — and the `OOTP_FO_*` environment variables and the `data/`
-layout keep their names; do not rename them as a cosmetic cleanup, and attempt no
-data migration without the owner (see
-[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#application-id-and-compatibility-holds)).
+Pennant is its own product, forked from `lsukev/ootp-front-office`: `origin` is
+Pennant's repository and `upstream` the original. Releases, the updater and
+in-app links target `origin`; release tags are `pennant-v<version>`, never
+upstream's `v<version>` (D-049). Branding is not technical identity: the npm
+`name`, `OOTP_FO_*` variables and `data/` layout are held because persisted
+state and user configuration depend on them; changing one needs an explicit
+data migration, which is the owner's decision.
 
 ## Read before changing code
 
@@ -28,169 +26,99 @@ data migration without the owner (see
   validation, versions and releases. [docs/README.md](docs/README.md) says
   which documents are current and which are historical records.
 
-Treat the repository and imported OOTP schema as the source of truth. Do not
-claim a feature is implemented because it appears in the roadmap or a prompt.
-Update the relevant durable document when an architectural boundary, accepted
-decision, roadmap item, or project-state fact changes.
+The repository and the imported OOTP schema are the source of truth: code,
+tests and configuration establish what is implemented, and a roadmap entry or a
+prompt does not. Read the routed sections below, not whole large documents.
+Update the relevant durable document when a boundary, decision, roadmap item or
+project-state fact changes; record a durable architecture or product-boundary
+change as a new D-number in `docs/DECISIONS.md`.
+
+Before changing a subsystem, read its canonical sections. Claude Code also loads
+the listed rule for matching paths; a rule is a short reminder that routes to
+the same documents, never the doctrine itself. Documents marked historical or
+research are evidence and rationale, not current implementation truth.
+
+| Subsystem | Canonical detail | Claude rule |
+|---|---|---|
+| Scouted evidence and development authority | D-002, D-003, D-017 to D-019, D-025; ARCHITECTURE "Evidence and fog of war", "Player Development owns eligibility", "Organizational Philosophy owns preferences" | — |
+| Minor League Operations | D-044 to D-048, D-051; ARCHITECTURE "Minor League Operations owns placement, playing time and cascades"; MINOR_LEAGUE_OPERATIONS.md Parts 2, 3, 7, 8, 9 | `.claude/rules/farm-operations.md` |
+| MLB Operations | D-024 (then D-025 to D-043 by topic); ARCHITECTURE "MLB Operations"; MLB_OPERATIONS.md §10, §11; ROSTER_REVIEW.md §2, §4; CALIBRATION.md; BEHAVIOR_CASES.md "MLB Operations"; historical rationale: MLB_OPERATIONS_HARDENING.md | `.claude/rules/mlb-operations.md` |
+| Developmental stakes | D-050; ARCHITECTURE "Developmental stakes: the protection tier"; DEVELOPMENTAL_STAKES.md Parts 3, 4, 9 | `.claude/rules/developmental-stakes.md` |
+| Roster evidence and rights | D-020 to D-023, D-026; ARCHITECTURE "Roster evidence: state, chronology, and how current they are"; research evidence: RIGHTS_RESEARCH.md §2, §3 | `.claude/rules/roster-evidence.md` |
+| Project identity and releases | D-049; ARCHITECTURE "Subsystem responsibilities" (Identity and version); DEVELOPMENT.md "Versions", "Release tags", "Releases", "Application id and compatibility holds" | `.claude/rules/release-identity.md` |
 
 ## Non-negotiable boundaries
 
-- Subjective ability judgments may use the organization's exported scouting
-  ratings and its persisted scouting history. Never substitute hidden OOTP
-  true-talent values or erase fog of war. Missing scouting evidence stays
-  missing.
-- Read ability ratings for Player Development and Minor League Operations only
-  through `server/scoutedEvidence.ts`. Never read `players_value` (`oa`, `pot`,
-  `overall_value`, `talent_value`, ...) or a rating column for those judgments,
-  and never fall back to them; see D-017. `tests/evidenceBoundary.test.ts`
-  enforces it.
-- Unknown evidence stays unknown: never substitute a midpoint, average, or
-  zero for a missing rating. Use `satisfied` / `not_satisfied` / `unknown` and
-  `defensible` / `indefensible` / `indeterminate` (D-018); `eligible: false` is
-  not a rejection. Indeterminate is not "protect" or "hold".
-- Roster evidence has a source hierarchy (D-020): explicit CSV/export current
-  state first, then OOTP's live transaction log for chronology, then Pennant's
-  own snapshots only as a fallback and cross-check. If the export states a fact
-  (40-man is `is_on_secondary`, DFA countdown, option counters, service time),
-  read it as exported; never re-derive it from history or snapshots. A snapshot
-  difference proves that state changed, never which transaction did it: do not
-  fabricate "optioned", "recalled", or "DFA". Current State, Transaction
-  Chronology, and Rights/Eligibility stay separate. A rehab player looks exactly
-  like an optioned one in the export and is not one.
-- Roster rights come only from `server/playerRights.ts` (D-023): `eligible`,
-  `ineligible` or `indeterminate` per action, each reason with its basis. It is
-  pure and reads only the state, chronology and league-rule layers; a consumer
-  must not rebuild option, recall, 40-man, or DFA logic from raw columns. A rule
-  that has not been observed or documented returns `indeterminate` — never a
-  default and never a guess from MLB rules. Observed OOTP behavior beats
-  documentation, and the export beats log wording (`Assigned to Triple A` after
-  a DFA is an outright or an option depending on `is_on_secondary`).
-- Never write to OOTP files, and never open the live `temp/text_data.sqlite3` in
-  place: read it only through `server/liveLogSnapshot.ts` (a validated private
-  copy). Normal use must need no manual step beyond the existing database
-  export; the save and its live log are derived from the export's path.
-- Statistics, contracts, service time, injuries, roster status, age, and
-  transactions are objective save facts and may be treated as known.
-- Player Development decides which assignments are defensible. Organizational
-  Philosophy expresses preferences among defensible choices. Minor League
-  Operations solves roster and assignment problems within both boundaries.
-- MLB Operations and Minor League Operations are sibling consumers of one set of
-  specialists, not separate apps. Neither owns a specialist and neither reaches
-  into the other's solver; they exchange consequences across one contract, and
-  Minor League Operations owns the farm side of it (D-045).
-- Philosophy never enters Player Development's judgments (`prospectDecision`,
-  `prospectAssignments`, `destinationFit`, `developmentFit`): no threshold,
-  requirement, or blocker may depend on it, and it is applied only afterwards in
-  `assignmentPreference.ts` to rank defensible assignments (D-019). Do not
-  recreate eligibility through ranking or cutoffs.
-- The protection tier is DEVELOPMENTAL STAKES (D-050, docs/DEVELOPMENTAL_STAKES.md): how much the
-  organization loses, developmentally, by mishandling a player. It is never authorization — not
-  promote, demote, start, call up, trade or release — never a rank, a trade value or a readiness
-  read, and organizational depth means his development is not what is at stake, not that he is no
-  use. It is his organization-visible CEILING, read against fixed lines (the absolute anchor; never
-  a percentile among the players around him), lowered by how much DEVELOPMENT REMAINS (his age;
-  behind his level's schedule; a projection already realized). Context may only lower what the
-  ceiling allows: youth is not talent, being young for a level raises nothing, a weak cohort cannot
-  manufacture a prospect and a strong one cannot erase one. No result, usage, roster need,
-  philosophy or other player's rating is an input; the only peer population is the ROSTERED players
-  of his own LEAGUE, for their age. Missing ratings or age leave the tier unknown; missing context is
-  said and discounts nothing. There is no score: the tier, its reasons and its two readings are the
-  output, and nothing may rank players by it. Obtain a tier only through
-  `server/developmentalContext.ts` (one reader per request; pass the age as the export has it —
-  a null age is an unknown age, and `Number(null)` is 0), so no two modules tier one man two
-  ways; a pure consumer is HANDED a `DevelopmentProtection`, never the ratings. Its constants are
-  declared once in `developmentFit.ts`, all provisional or policy, none calibrated.
-  `tests/developmentalStakesBoundary.test.ts` enforces it and `npm run stakes:report` is the
-  check on the lines.
-- "Short of developmental work" is ONE line (D-051): `shortOfWork` in `server/playingTime.ts`
-  (`not_used`, `occasional`) decides `squeezed` for every job, and the man's review reads the same
-  line through `shortOfWorkVerdict`. Sharing a job (`part_time`) and batting without fielding
-  (`bat_only`) are not shortages; the review raises them for the man, the club does not. Never add
-  a work level to one side without the other.
-- MLB Operations (`server/mlb*.ts`) is a consumer of Player State, Player Rights, Player
-  Development, Minor League Operations and philosophy (D-024). Derive needs from the current
-  export, never from snapshot differences; never read a rating, option, 40-man, or log source
-  itself; never rank or score candidates; a path is only as certain as its least certain
-  step. Whether an assignment is developmentally defensible is asked of Player Development per
-  contemplated context (D-025); MLB Operations never holds a development threshold or a
-  bypass, and an incomplete evaluation is never an actionable solution. Coverage numbers are
-  floors held as data, not roster doctrine. An unknown duration is never assumed (D-027): judge
-  the contexts that could apply and say when the answer depends on it. The active-roster spot
-  and the 40-man spot are separate constraints (D-028); compose Rights' component actions and
-  invent no combined right. The relief/experience numbers are provisional calibration
-  parameters, declared only in `mlbAssignmentContext.ts`. IL activation rules come only from
-  observed OOTP behavior (D-029). The scouting layer (D-031 to D-034): a review finding is a flag with two
-  lenses (tools, results) and a working estimate that is always shown with its parts, never a trigger or a hidden
-  score; results are objective statistics read directly, ratings only through `scoutedEvidence.ts`; every
-  threshold is a provisional calibration parameter declared once (`roleReview`, `platoon`, `lineupPicture`,
-  `resultsMetrics`, `roleStanding`); a hitter is bat plus revealed glove at his position; the lineup is what
-  usage shows; a recommendation is advice from a stated rubric. A hitter's rating splits against each hand and his
-  running ratings are approved evidence, read only through `scoutedEvidence.ts` (D-035); pitchers' splits and the other
-  rating families are not. Every scouting constant is tuned against outcomes by `scripts/calibrate.ts` or stamped
-  provisional, declared once (D-037, docs/CALIBRATION.md). Philosophy and the season shade the ORDER and WORDING of advice
-  (`staffPreference.ts`, D-036): after validity, never a change to a read, a right or a development finding, every lean
-  shown with its dimension and value, and a recommendation says what a club with no philosophy would hear. Bullpen roles,
-  the bench, position shifts and platoon partners are flags and plans, never transactions (D-038). Peer populations are major leaguers
-  only (D-039); a concern is measured against the ROLE with its standard shown, never against the group or one absolute line (D-040);
-  every constant is stamped calibrated, provisional or policy, and a policy constant is decided, never fitted (D-041); the bench is
-  functions and cover quality, not a score (D-042); the module is views, each owning one question (D-043). New baseball behavior gets a
-  case in the behavioral corpus first (docs/BEHAVIOR_CASES.md).
-  `tests/mlbOperationsBoundary.test.ts` enforces it.
-- Minor League Operations (`server/farm*.ts`, `playingTime.ts`,
-  `currentAssignment.ts`; `farmConsequence.ts` is the MLB ↔ farm contract and
-  `farmRoutes.ts` the API) asks whether an assignment is DEFENSIBLE, never whether a
-  promotion was earned (D-044 to D-046, docs/MINOR_LEAGUE_OPERATIONS.md). A league
-  is the peer group, not a level, and a peer must be on a roster: production is
-  read against the player's own league, park-adjusted, with its sample. Age
-  relative to level says how much developmental time is left and never lowers the
-  developmental bar; a player past his level's window raises an ORGANIZATIONAL
-  question, which `currentAssignment.ts` answers and says so. Holding his own is
-  the null reading; `not_assessable` (no season to read) is not `indeterminate`
-  (missing evidence). One man competes for ONE job — versatility is cover, not a
-  second claim — and missing reps cost development only for a player Player
-  Development places at development priority or better; not playing is asked
-  BEFORE the level, because a prospect's thin sample is usually caused by it.
-  Operational health and developmental health are separate outputs of an affiliate
-  and only a SHORTAGE is operational. A cascade is a chain whose every step is
-  independently defensible and which STOPS; saying where it stopped is the answer,
-  and an unresolved hole is information, never an illegality. Retention is three
-  questions with three owners and philosophy may not reach the developmental
-  outlook. Every finding is structured data with its evidence, its owner, what is
-  missing and what would resolve it — never prose. Every constant is declared once
-  in `farmCalibration.ts` and stamped; none is calibrated, because the export holds
-  no minor-league history. `tests/farmOperationsBoundary.test.ts` enforces it and
-  `npm run farm:base-rate` is the check on how often it raises something.
-  There is ONE farm implementation: the superseded solvers, their routes and the
-  older farm pages were deleted in the hardening phase (MINOR_LEAGUE_OPERATIONS.md
-  Part 7). A blocker HOLDS the job — only a regular is one; a part-time man ahead
-  of a prospect makes it an opportunity conflict, not a blockage. Men getting
-  innings at a job from another position are named as ahead and count against
-  nobody's claim. A designated hitter is batting, not fielding. An injured man is
-  not cover and competes for nothing. Season usage, recent usage and current state
-  are three kinds of fact (D-048, MINOR_LEAGUE_OPERATIONS.md Part 8). WHO IS ON A
-  CLUB is current state and is never inferred from usage: a departed man is
-  history, named with what he held, and never a blocker whatever his season total.
-  A man's current work level is the recent window (`farmRecentUsage.ts`, the
-  export's per-game log, counted in club GAMES and only over the games he could
-  have played in) when it can be read, the season's only when the export has no
-  game log, and `unknown` when fewer than `RECENT_MINIMUM_GAMES` can be counted —
-  thin is not unused, and an unknown role is neither squeezed nor a blocker. Less
-  evidence may only mean more uncertainty; evidence is a structured state, never a
-  confidence number. When the season and the window are two levels apart both are
-  shown. A relief window may confirm or clear a shortage and never raise one. An
-  arrival is dated only through `clubArrival.ts`, in D-020's order; no farm module
-  reads the transaction log. OOTP writes dates unpadded (`2026-5-9` sorts after
-  `2026-5-10`): order games only through `parseGameDate`. Recent usage is a usage
-  read — never recent form, a promotion case or a release rule; Player Development
-  and retention take no usage input. The organization is read once per request
-  through a `FarmSession`; never cache it across requests. MLB Operations reaches
-  the farm only through `mlbEvidence.ts` (`farmConsequence`, which opens or is
-  handed a session) and displays the farm's own operational reading, so the two
-  modules never describe one club differently. The Player Development pages read
-  `/api/scouted-development`, which is Player Development's and history's, not
-  the farm's.
-- Recommendations are advisory. The user/GM makes the final decision. Do not
-  add automatic OOTP transactions or save mutation as an incidental feature.
+- **Fog of war** (D-002, D-017). Subjective player-ability judgments use only
+  what the organization can see: its exported scouting ratings and its observed
+  rating history. Hidden OOTP true-talent values never drive them. Development
+  and operations code reads ratings only through `server/scoutedEvidence.ts`
+  (`tests/evidenceBoundary.test.ts`), never a rating column or `players_value`
+  (`oa`, `pot`, `overall_value`, `talent_value`, ...), and never falls back to
+  them. Pre-fork surfaces (trade, contracts, franchise) still read
+  `players_value` and are unaudited; do not extend it to any new judgment.
+  Objective save facts (statistics, contracts, service time, injuries, roster
+  status, age, transactions) are known where the export provides them.
+- **Unknown stays unknown** (D-018). Missing evidence is never replaced by a
+  midpoint, average, zero or inference; its absence is not evidence of absence,
+  and thinner evidence only ever widens uncertainty, never becomes a confident
+  conclusion. Use `satisfied` / `not_satisfied` / `unknown` and `defensible` /
+  `indefensible` / `indeterminate`; `eligible: false` is not a rejection, and
+  indeterminate is not "protect" or "hold".
+- **Show the basis.** A baseball conclusion, finding or right carries its
+  evidence and basis and names what is missing (D-018, D-023, D-031, D-044), so
+  the GM can see why. Nothing is ranked by a hidden score.
+- Never make progress depend on asking the owner to run ad-hoc OOTP
+  experiments to discover undocumented behavior. When the exports, saves, logs,
+  code, tests and existing evidence cannot establish a behavior safely, leave
+  it indeterminate, document the uncertainty, and continue without inventing
+  an answer.
+- **Roster evidence** keeps Current State (what the export says is true now),
+  Transaction Chronology (what OOTP's live log says happened) and Rights apart
+  (D-020). An exported fact is read as exported and outranks the log about
+  current placement. A snapshot difference proves that state changed, never
+  which transaction did it: never fabricate "optioned", "recalled" or "DFA".
+  Rights come only from `server/playerRights.ts` (D-023); a consumer never
+  rebuilds option, recall, 40-man or DFA logic, and an unobserved rule is
+  `indeterminate`, never a guess from MLB rules.
+- Never write to OOTP files or save state. The live `temp/text_data.sqlite3` is
+  read only through `server/liveLogSnapshot.ts` (a validated private copy), and
+  normal use needs no manual step beyond the existing database export (D-021).
+- **Authority chain** (D-003, D-019, D-045). Player Development decides whether
+  an assignment is developmentally defensible, per context (D-025).
+  Developmental stakes describe what mishandling a player would cost and
+  authorize nothing. Organizational Philosophy only orders defensible choices,
+  afterwards (`assignmentPreference.ts`): nothing in Player Development's
+  judgments may depend on it, and ranking or cutoffs must not recreate
+  eligibility. Minor League Operations and MLB Operations solve their own
+  problems inside those answers and Player Rights'. They are sibling consumers
+  of one set of specialists, joined only by the farm ↔ MLB contract (the farm
+  owns its side), and neither reaches into the other's solver.
+- **Developmental stakes** (D-050), the protection tier, is developmental
+  consequence: never authorization, readiness, a rank, trade value or a
+  recommendation, and Player Development's defensibility judgments do not read
+  it. Obtain it only through `server/developmentalContext.ts`;
+  `tests/developmentalStakesBoundary.test.ts` enforces the boundary.
+- **MLB Operations** (D-024) consumes Player State, Player Rights, Player
+  Development, Minor League Operations and philosophy and owns none of their
+  answers. It derives needs from the current export, reaches the farm only
+  through `mlbEvidence.ts`, and holds no development threshold of its own
+  (D-025). `tests/mlbOperationsBoundary.test.ts` enforces the boundary.
+- **Minor League Operations** (D-044) solves affiliate roster, placement, role,
+  playing-time and cascade problems inside Player Development's and
+  Philosophy's answers and decides no scouting, development, rights or
+  philosophy question; results and usage authorize no move. A cascade is a
+  chain of independently defensible steps that stops, and an unresolved hole is
+  information, never an illegality. `tests/farmOperationsBoundary.test.ts`
+  enforces the boundary.
+- **The application decides; AI explains** (D-001). Deterministic code computes
+  facts, eligibility, findings and recommendations. Chat, briefings and
+  storylines retrieve, explain and discuss those results through the same API
+  and never silently replace them; no LLM is in the decision path. AI providers
+  are optional, and the non-AI application must work without a credential.
+- Recommendations, findings and plans are advisory, never transactions: the
+  user/GM makes the final decision. Do not add automatic OOTP transactions or
+  save mutation as an incidental feature.
 - Organization-specific behavior should resolve the configured organization,
   then the human-managed OOTP organization, without making the user supply a
   raw organization ID when the context is already available.
@@ -202,14 +130,18 @@ decision, roadmap item, or project-state fact changes.
 
 - Inspect `git status --short` before editing and preserve unrelated user work.
 - Do not use destructive Git commands. Do not commit or push unless explicitly
-  requested.
+  requested, and push only to `origin`.
 - Keep browser and Electron behavior on the same Express API instead of adding
   parallel domain implementations.
-- Preserve schema-tolerant reads: OOTP exports vary by version and save.
-- Add focused Vitest coverage for behavior changes. The normal validation
-  baseline is `npx tsc --noEmit`, `npm test`, `npm run build`, and any relevant
-  manual check from `package.json` (`check:stats` and `check:theme` require
-  suitable imported data).
-- The version lives only in `package.json` (`server/appInfo.ts` reads it); do
-  not hard-code it anywhere. Never create, move or delete Git tags or branches
-  without the owner's approval, and do not fetch upstream's tags into this clone.
+- Preserve schema-tolerant reads: OOTP exports vary by version and save. OOTP
+  writes dates unpadded (`2026-5-9` sorts after `2026-5-10`): compare or order
+  them only through `parseGameDate` (`server/dataFreshness.ts`).
+- New baseball behavior gets a case in `docs/BEHAVIOR_CASES.md` first, stated
+  as a baseball invariant ("Adding a case"). Add focused Vitest coverage for
+  other behavior changes. The normal validation baseline is `npx tsc --noEmit`,
+  `npm test`, `npm run build`, and any relevant manual check from
+  `package.json` (`check:stats` and `check:theme` require suitable imported
+  data).
+- The version lives only in `package.json`; do not hard-code it anywhere. Never
+  create, move or delete Git tags or branches without the owner's approval, and
+  do not fetch upstream's tags into this clone.

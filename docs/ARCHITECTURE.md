@@ -323,6 +323,11 @@ unsupported samples), and the overall level with a headline and an action. The
 UI shows a compact chip in the header with a short panel, and a banner only when
 the snapshot is behind the save.
 
+OOTP writes game dates unpadded (`2026-5-9`), so as text `2026-5-9` sorts after
+`2026-5-10` and lexical ordering is unsafe. Code that compares or orders OOTP
+dates normalizes them through `parseGameDate` in `dataFreshness.ts`, the one
+shared parser, never by comparing the raw strings.
+
 ### `rosterStateHistory.ts`
 
 Records a normalized snapshot after each import and the field-level differences

@@ -26,6 +26,9 @@ config.json
 # Machine-local app state, if accidentally written outside data/
 credentials.json
 settings.json
+# ...except the shared Claude Code project settings; the personal ones stay local
+!.claude/settings.json
+.claude/settings.local.json
 last-import.json
 port.json
 briefing-*.json
