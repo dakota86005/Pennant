@@ -46,6 +46,9 @@ chat-*.json
 *.p12
 *.pfx
 *.pem
+*.p8
+*.cer
+*.certSigningRequest
 
 # OS
 .DS_Store

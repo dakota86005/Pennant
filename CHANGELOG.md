@@ -52,6 +52,12 @@ later stability milestone.
   The secrets are now passed on only when they are set, so an unsigned build is packaged and the signature check
   fails as intended.
 
+### Changed
+
+- macOS release signing reads its Apple credentials from a `macos-signing` environment that admits only `main` and
+  `pennant-v*` tags, and notarizes with an App Store Connect API key instead of an Apple ID and app-specific
+  password. The release check now verifies both the arm64 and x64 apps, including the stapled notarization ticket.
+
 ## [0.1.0] - 2026-09-20
 
 The first Pennant-native version. It marks the point at which the project has its own name, architecture and version

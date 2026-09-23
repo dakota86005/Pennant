@@ -179,20 +179,60 @@ The updater reads Pennant's releases only: `electron-builder.yml` names the repo
 
 ### macOS signing — current status
 
-**Not configured.** The repository has none of the Apple secrets, so the macOS job builds an unsigned app and its
+**Not configured.** The `macos-signing` environment has none of the Apple secrets, so the macOS job builds an unsigned app and its
 "Verify the app is signed and notarized" step cannot pass. That is correct: an unnotarized app would be rejected by
 Gatekeeper on a user's machine, and the check is deliberately not weakened to turn CI green. Windows builds are
 unsigned by design and only show a SmartScreen prompt.
 
-A signed macOS release needs:
+A signed macOS release needs an Apple Developer Program membership and the five secrets below. They are **secrets
+of the `macos-signing` environment**, not of the repository: the macOS job is the only job that names that
+environment, and the environment admits only `main` and `pennant-v*` tags, so a pull request or a pushed branch
+cannot read them even by editing the workflow. From any other ref the job is refused rather than run unsigned; a
+manual test build is dispatched from `main`.
 
-- An Apple Developer Program membership and a *Developer ID Application* certificate exported as a `.p12`.
-- These repository secrets: `APPLE_CERTIFICATE_P12` (base64 of the `.p12`), `APPLE_CERTIFICATE_PASSWORD`, `APPLE_ID`,
-  `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID`. The workflow already maps them to electron-builder's variables,
-  and only when they are set: an unset secret is an empty string, and an empty `CSC_LINK` makes electron-builder
-  fail with "`<repo>` not a file" before it packages anything.
-- The bundle id is already Pennant's (`com.dakotawise.pennant`); sign with a Developer ID certificate under
-  your own team before the first signed release.
+| Secret | What it is |
+|---|---|
+| `APPLE_CERTIFICATE_P12` | base64 of the *Developer ID Application* certificate and its private key, exported as `.p12` |
+| `APPLE_CERTIFICATE_PASSWORD` | the password the `.p12` was exported with |
+| `APPLE_API_KEY_P8` | the contents of an App Store Connect API key (`AuthKey_<id>.p8`), Developer role |
+| `APPLE_API_KEY_ID` | that key's id |
+| `APPLE_API_ISSUER` | the issuer id shown above the list of keys |
+
+Notarization uses the API key, not an Apple ID and app-specific password: the key reaches only App Store Connect and
+can be revoked on its own, while an app-specific password also opens the account's iCloud data. The workflow writes
+the key to the runner's temp directory for the packaging command only.
+
+The workflow passes each secret on only when it is set: an unset secret is an empty string, and an empty `CSC_LINK`
+makes electron-builder fail with "`<repo>` not a file" before it packages anything.
+
+**Setting it up.** None of these values belongs in the repository, a log, an issue or a chat. The certificate, key and
+passwords stay on the owner's machine and in a password manager; `.gitignore` refuses `*.p12`, `*.p8`, `*.cer` and
+`*.certSigningRequest` as a backstop, but keep them outside the working tree anyway.
+
+1. Xcode → Settings → Accounts → the team → *Manage Certificates…* → **+** → *Developer ID Application*. Only the
+   Account Holder can create one. The private key is made in the login keychain.
+2. Keychain Access → *My Certificates* → "Developer ID Application: … (TEAMID)" → *Export* as `.p12` with a strong,
+   new password.
+3. App Store Connect → Users and Access → Integrations → App Store Connect API → *Team Keys* → generate a key with
+   the **Developer** role. The `.p8` downloads once; note its key id and the issuer id.
+4. Create the environment and load the secrets with `gh`, which reads each value from a file or a hidden prompt
+   (commands below). Then move the `.p12` and `.p8` into a password manager and delete the loose copies.
+
+```bash
+gh api -X PUT repos/dakota86005/Pennant/environments/macos-signing --input - <<'EOF'
+{"deployment_branch_policy": {"protected_branches": false, "custom_branch_policies": true}}
+EOF
+gh api -X POST repos/dakota86005/Pennant/environments/macos-signing/deployment-branch-policies -f name=main -f type=branch
+gh api -X POST repos/dakota86005/Pennant/environments/macos-signing/deployment-branch-policies -f name='pennant-v*' -f type=tag
+base64 -i /path/to/DeveloperID.p12 | gh secret set APPLE_CERTIFICATE_P12 --env macos-signing -R dakota86005/Pennant
+gh secret set APPLE_CERTIFICATE_PASSWORD --env macos-signing -R dakota86005/Pennant
+gh secret set APPLE_API_KEY_P8 --env macos-signing -R dakota86005/Pennant < /path/to/AuthKey_XXXXXXXXXX.p8
+gh secret set APPLE_API_KEY_ID --env macos-signing -R dakota86005/Pennant
+gh secret set APPLE_API_ISSUER --env macos-signing -R dakota86005/Pennant
+```
+
+A certificate or key that may have leaked is revoked at developer.apple.com (certificate) or in App Store Connect
+(key) and replaced; apps already signed stay valid. The bundle id is already Pennant's (`com.dakotawise.pennant`).
 
 ### Application id and compatibility holds
 

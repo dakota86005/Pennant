@@ -54,6 +54,11 @@ jobs:
     needs: test
     name: macOS
     runs-on: macos-latest
+    # The Apple credentials are secrets of this environment, not of the repository.
+    # The environment admits only main and pennant-v* tags, so a pull request or a
+    # pushed branch cannot read them even by editing this file. From any other ref
+    # the job is refused outright rather than run unsigned.
+    environment: macos-signing
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -74,13 +79,19 @@ jobs:
       # an empty CSC_LINK as a certificate path relative to the working directory:
       # it stops with "<repo> not a file" before packaging anything, so the unsigned
       # build never happened at all.
+      #
+      # Notarization uses an App Store Connect API key (Developer role), not an Apple
+      # ID and app-specific password: the key reaches only App Store Connect and is
+      # revoked on its own, where an app-specific password also opens the account's
+      # iCloud data. electron-builder wants the key as a file, so it is written to the
+      # runner's temp directory for the one command and removed afterwards.
       - name: Package (signed and notarized when secrets are present)
         env:
           APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         run: |
           if [ -n "${APPLE_CERTIFICATE_P12}" ]; then
             export CSC_LINK="${APPLE_CERTIFICATE_P12}"
@@ -89,20 +100,31 @@ jobs:
             echo "::warning::No Apple signing certificate is configured; packaging an UNSIGNED app. The verification step will fail, as intended."
             export CSC_IDENTITY_AUTO_DISCOVERY=false
           fi
-          # Notarization credentials likewise: present or absent, never empty
-          for var in APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
-            [ -n "${!var}" ] || unset "${var}"
-          done
+          if [ -n "${APPLE_API_KEY_P8}" ] && [ -n "${APPLE_API_KEY_ID}" ] && [ -n "${APPLE_API_ISSUER}" ]; then
+            key_file="${RUNNER_TEMP}/AuthKey_notarize.p8"
+            trap 'rm -f "${key_file}"' EXIT
+            (umask 077 && printf '%s\n' "${APPLE_API_KEY_P8}" > "${key_file}")
+            export APPLE_API_KEY="${key_file}"
+          else
+            echo "::warning::No App Store Connect API key is configured; the app will not be notarized."
+            unset APPLE_API_KEY_ID APPLE_API_ISSUER
+          fi
+          unset APPLE_API_KEY_P8
           npx electron-builder --mac --publish never
 
+      # Both architectures are checked: each .app is signed and notarized separately.
       - name: Verify the app is signed and notarized
         run: |
-          APP=$(find release -maxdepth 2 -name "*.app" -print -quit)
-          if [ -z "$APP" ]; then echo "No .app produced"; exit 1; fi
-          echo "Checking $APP"
-          codesign --verify --deep --strict --verbose=2 "$APP"
-          # Fails the build if Gatekeeper would reject it on a user's machine
-          spctl --assess --type execute --verbose=4 "$APP"
+          apps=$(find release -maxdepth 2 -name "*.app")
+          if [ -z "$apps" ]; then echo "No .app produced"; exit 1; fi
+          while IFS= read -r APP; do
+            echo "Checking $APP"
+            codesign --verify --deep --strict --verbose=2 "$APP"
+            # Fails the build if Gatekeeper would reject it on a user's machine
+            spctl --assess --type execute --verbose=4 "$APP"
+            # The notarization ticket is stapled, so it opens without a network check
+            xcrun stapler validate "$APP"
+          done <<< "$apps"
 
       # latest-mac.yml is the update feed electron-updater reads; the zips are
       # what Squirrel.Mac installs from (it cannot install from a dmg); the
