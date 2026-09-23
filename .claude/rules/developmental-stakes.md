@@ -2,10 +2,12 @@
 paths:
   - "server/developmentFit.ts"
   - "server/developmentalContext.ts"
+  - "server/mlbAssignmentContext.ts"
   - "scripts/stakes-report.ts"
   - "tests/developmentalStakes*.test.ts"
   - "tests/developmentalContext.test.ts"
   - "tests/developmentProtection.test.ts"
+  - "tests/mlbAssignmentContext.test.ts"
 ---
 
 # Developmental stakes: working reminder
@@ -19,7 +21,8 @@ differ, they win.
 The tier is Player Development's answer to one question: how high are the developmental stakes if the
 organization mishandles this player? `developmentFit.ts` is the pure model; `developmentalContext.ts` is the one
 reader that supplies the objective context and the only way production code obtains a tier. Consumers (the
-farm, `org.ts`, `scoutedDevelopment.ts`, MLB Operations' contextual assessment) use the answer and own none of it.
+farm, `org.ts`, `scoutedDevelopment.ts`, Player Development's MLB assignment context `mlbAssignmentContext.ts`)
+use the answer and own none of it.
 
 - Stakes, never authorization: not promote, demote, start, call up, trade or release; not a rank, trade value
   or readiness read. `prospectDecision`, `prospectAssignments` and `destinationFit` do not read it (D-050).

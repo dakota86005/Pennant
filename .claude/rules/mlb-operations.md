@@ -1,6 +1,14 @@
 ---
 paths:
-  - "server/mlb*.ts"
+  - "server/mlbEvidence.ts"
+  - "server/mlbExplain.ts"
+  - "server/mlbNeeds.ts"
+  - "server/mlbOperations.ts"
+  - "server/mlbPlans.ts"
+  - "server/mlbReport.ts"
+  - "server/mlbResponses.ts"
+  - "server/mlbReview.ts"
+  - "server/mlbRoster.ts"
   - "server/roleReview.ts"
   - "server/roleStandards.ts"
   - "server/roleStanding.ts"
@@ -36,8 +44,10 @@ paths:
 
 This is a router, not the doctrine. The canonical detail is in `docs/DECISIONS.md` D-024 to D-043,
 `docs/ARCHITECTURE.md` "MLB Operations", `docs/MLB_OPERATIONS.md` (§10 static boundaries, §11 AI, §15 to
-§30 the build passes), `docs/MLB_OPERATIONS_HARDENING.md`, `docs/CALIBRATION.md` and `docs/BEHAVIOR_CASES.md`.
+§30 the build passes), `docs/ROSTER_REVIEW.md` (§2 principles, §4 architecture: the scouting-department layer),
+`docs/CALIBRATION.md` and `docs/BEHAVIOR_CASES.md`; `docs/MLB_OPERATIONS_HARDENING.md` is historical rationale.
 Read the relevant section before changing behavior; where this file and those documents differ, they win.
+`mlbAssignmentContext.ts` is Player Development's (D-025), not this subsystem's; the stakes rule covers it.
 
 MLB Operations coordinates specialists and owns none of their answers: Player State says who is available,
 Player Rights says what is legal, Player Development says what is defensible per context, Minor League
@@ -55,7 +65,6 @@ The pure core (`mlbRoster`, `mlbNeeds`, `mlbResponses`) opens no table; it takes
 - Philosophy and season: urgency, bar, tie-breaks, order, wording, after validity, each lean shown (D-036).
 - Constants declared once, stamped calibrated / provisional / policy; policy is never fitted (D-037, D-041).
 - Bench is functions and cover quality; the pen is read whole; views own one question (D-042, D-043).
-- Deterministic output; no LLM in the decision path; the GM decides and nothing is executed (§11, D-034).
 
-Checks: `tests/mlbOperationsBoundary.test.ts`, `tests/evidenceBoundary.test.ts`; new behavior gets a case in the
-corpus first; `npm run calibrate` only for a calibrated (never a policy) constant.
+Checks: `tests/mlbOperationsBoundary.test.ts`, `tests/evidenceBoundary.test.ts`; `npm run calibrate` only for a
+calibrated (never a policy) constant.

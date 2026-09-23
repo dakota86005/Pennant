@@ -14,6 +14,8 @@ paths:
   - "server/rosterStateHistory.ts"
   - "server/playerRights.ts"
   - "server/leagueRules.ts"
+  - "server/clubArrival.ts"
+  - "server/rehabAssignments.ts"
   - "scripts/rights-experiment.ts"
   - "src/PlayerRights.tsx"
   - "src/AssignmentContext.tsx"
@@ -35,11 +37,12 @@ paths:
 
 This is a router, not the doctrine. The canonical detail is in `docs/DECISIONS.md` D-020 (source hierarchy,
 three concerns), D-021 (the live log), D-022 (freshness), D-023 (rights) and D-026 (rehab), `docs/ARCHITECTURE.md`
-"Roster evidence: state, chronology, and how current they are", and `docs/RIGHTS_RESEARCH.md` (§2 exported rule
-inputs, §3 findings, §5 what the evaluator implements). Where this file and those documents differ, they win.
+"Roster evidence: state, chronology, and how current they are"; `docs/RIGHTS_RESEARCH.md` (§2 exported rule
+inputs, §3 findings) is historical research evidence, not current doctrine. Where they differ from this file, they win.
 
 These are separate layers, not one roster object. Direction: OOTP sources → state / chronology → rights →
-operations → GM. Farm and MLB modules consume these answers and never rebuild them.
+operations → GM. Farm and MLB modules consume these answers and never rebuild them; `clubArrival.ts` and
+`rehabAssignments.ts` are the farm's shared readers of state against chronology and draw no rights conclusion.
 
 | Layer | Owns | Answers |
 |---|---|---|
@@ -62,7 +65,6 @@ operations → GM. Farm and MLB modules consume these answers and never rebuild 
 - A stale export makes every right indeterminate; a lagging log limits only chronology (recall) (D-022, D-023).
 - The live `temp/text_data.sqlite3` is opened only as `liveLogSnapshot.ts`'s copy, read-only; nothing writes
   to an OOTP file; a missing log means CSV state continues and the log is reported unavailable (D-021).
-- Dates: `parseGameDate` in `dataFreshness.ts` normalizes OOTP's unpadded `2026-5-9`; never compare raw strings.
 - Never make progress depend on an owner OOTP experiment; `scripts/rights-experiment.ts` only records one.
 
 Checks: `tests/playerState.test.ts` (snapshots are not read by the state layers), `tests/playerRights.test.ts`

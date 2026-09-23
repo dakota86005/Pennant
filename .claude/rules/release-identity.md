@@ -23,7 +23,7 @@ These identities are different things; a Pennant rename of one says nothing abou
 
 | Identity | Current value | Where |
 |---|---|---|
-| Product / display | Pennant | `productName`, window, installer, README, header |
+| Product / display | Pennant | `electron-builder.yml` `productName` (owns no data path), window, installer, README, header |
 | Application id | `com.dakotawise.pennant` | `electron-builder.yml` `appId`; must not change once an installer is published |
 | Package name (held) | `ootp-front-office` | `package.json` `name`; names the desktop user-data folder |
 | Environment / data (held) | `OOTP_FO_*`, `data/` | user configuration and persisted state |
@@ -33,8 +33,10 @@ These identities are different things; a Pennant rename of one says nothing abou
 | Repository / feed | Pennant's (`origin`) | `server/project.ts`, `electron-builder.yml` `publish` |
 | Upstream | `lsukev/ootp-front-office` | a credit only: README, CHANGELOG, Help menu, `LICENSE`, `docs/upstream/` |
 
-- A held identifier changes only with a designed migration; none exists and none is attempted. Adding a
-  `productName` to `package.json` would rename the data folder too. The keychain entry is a presumed hazard.
+- A held identifier changes only with a designed migration; none exists and none is attempted. `productName`
+  lives only in `electron-builder.yml`: the packaged `package.json` has `name` and no `productName`, and Electron
+  names the user-data folder from it, so adding a `productName` there would move the folder too. The keychain
+  entry is a presumed hazard.
 - Keep the tag prefix in its three places in agreement; the workflow refuses a tag that is not `pennant-v` +
   the `package.json` version. Use plain `X.Y.Z` (a prerelease breaks the updater's tag handling).
 - The updater and links name Pennant's repository from one constant; upstream is never the feed.

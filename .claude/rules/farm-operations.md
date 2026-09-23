@@ -11,6 +11,7 @@ paths:
   - "scripts/farm-*.ts"
   - "tests/farm*.test.ts"
   - "tests/farmGolden.ts"
+  - "tests/rehabAffiliateHealth.test.ts"
 ---
 
 # Minor League Operations: working reminder
@@ -37,6 +38,5 @@ legality, and the farm solves roster, role, playing-time and cascade problems in
 - One `FarmSession` per request, never cached across requests; MLB Operations reaches the farm only
   through `mlbEvidence.ts` (D-047).
 - Constants live once in `farmCalibration.ts`, stamped, none calibrated; findings are structured data (D-044).
-- Unknown baseball evidence stays unknown: never fill in a missing rating, role, arrival date or usage read.
 
 Checks: `tests/farmOperationsBoundary.test.ts`; `npm run farm:base-rate` against a real import.
