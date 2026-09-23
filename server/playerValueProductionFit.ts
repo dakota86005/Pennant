@@ -34,9 +34,9 @@
 
 import { PRODUCTION_METHOD, PRODUCTION_POLICY, CONTROL_HORIZON_SEASONS } from './playerValueCalibration.js';
 import {
-  agingBetween, bandsAlong, planSides, projectProductionWith, sideTrajectory, windowOf,
+  QUALITY_TIERS, agingBetween, bandsAlong, expectedUsage, planSides, projectProductionWith, sideTrajectory, tailCell, windowOf,
   type AgingGroup, type BandTails, type HorizonModel, type KindModel, type ModelProvenance, type ProductionKind,
-  type ProductionLine, type ProductionModel, type ProductionSide, type ProneModel, type SideTrajectory,
+  type ProductionLine, type ProductionModel, type ProductionSide, type ProneModel, type SideTrajectory, type UsageTerms,
 } from './playerValueProduction.js';
 
 // ── the history a fit reads ─────────────────────────────────────────────────
@@ -83,7 +83,11 @@ export interface FitRecord {
   window: { seasons: number[]; skipped: Array<{ season: number; reason: string }>; trainingThrough: number | null; holdout: number[] };
   sample: { players: number; cases: Record<ProductionKind, number[]>; agingPairs: Record<AgingGroup, number>; holdoutCases: number[] };
   priorWeight: { overall: number; kinds: Record<ProductionKind, number>; aging: Record<AgingGroup, number> };
-  coverage: { asFitted: CoverageRow[]; adopted: CoverageRow[]; byKind: Record<ProductionKind, CoverageRow[]>; byUsage: Record<UsageTier, CoverageRow[]> };
+  coverage: {
+    asFitted: CoverageRow[]; adopted: CoverageRow[]; byKind: Record<ProductionKind, CoverageRow[]>; byUsage: Record<UsageTier, CoverageRow[]>;
+    /** Held-out coverage and central bias by projected rate within each kind: the top tenth, the middle and the bottom tenth. */
+    byQuality?: Record<QualityTier, CoverageRow[]>;
+  };
   aging: Record<AgingGroup, { peakAge: number | null; declineFrom30: number; declineFrom34: number }>;
   proneness: string[];
   gate: { passed: boolean; reason: string; tolerance: number; minimumCases: number };
@@ -118,7 +122,7 @@ const INNER_LOW = (1 - PRODUCTION_POLICY.coverage.inner) / 2;
 /** The fewest cases a component is fitted on; below it the component is the prior's. */
 const MIN_CASES = PRODUCTION_POLICY.minimumSample.fitCases;
 
-function quantile(xs: number[], q: number): number | null {
+export function quantile(xs: number[], q: number): number | null {
   if (xs.length === 0) return null;
   const s = [...xs].sort((a, b) => a - b);
   const pos = (s.length - 1) * q;
@@ -128,7 +132,7 @@ function quantile(xs: number[], q: number): number | null {
 }
 
 /** Least squares with optional weights; null when singular. */
-function leastSquares(x: number[][], y: number[], w?: number[]): number[] | null {
+export function leastSquares(x: number[][], y: number[], w?: number[]): number[] | null {
   const k = x[0]?.length ?? 0;
   if (k === 0 || y.length <= k) return null;
   const a = Array.from({ length: k }, () => new Array<number>(k).fill(0));
@@ -161,8 +165,81 @@ function leastSquares(x: number[][], y: number[], w?: number[]): number[] | null
   return out;
 }
 
+/**
+ * Least squares whose coefficients at `nonNegative` are never below zero: a negative one is dropped
+ * (held at zero) and the rest refitted. Null when too few cases or singular.
+ */
+export function nonNegativeLeastSquares(x: number[][], y: number[], nonNegative: number[], w?: number[]): number[] | null {
+  const width = x[0]?.length ?? 0;
+  let keep = Array.from({ length: width }, (_, j) => j);
+  let out: number[] | null = null;
+  for (let pass = 0; pass <= nonNegative.length; pass += 1) {
+    const c = leastSquares(x.map((row) => keep.map((j) => row[j])), y, w);
+    if (!c) return out;
+    const full = new Array<number>(width).fill(0);
+    keep.forEach((j, i) => { full[j] = c[i]; });
+    out = full;
+    const negative = nonNegative.filter((j) => keep.includes(j) && full[j] < 0);
+    if (negative.length === 0) break;
+    keep = keep.filter((j) => !negative.includes(j));
+  }
+  return out;
+}
+
+/**
+ * A logistic regression by iteratively reweighted least squares, with the coefficients at
+ * `nonNegative` never below zero (dropped and refitted, as above). The features are scaled to unit
+ * spread while fitting, so the answer is in the features' own units. Null when it cannot be fitted.
+ */
+export function logisticFit(x: number[][], y: number[], nonNegative: number[]): number[] | null {
+  const width = x[0]?.length ?? 0;
+  if (width === 0 || y.length <= width) return null;
+  // Scale each feature (not the intercept) by its spread, for a well-conditioned Newton step
+  const scale = Array.from({ length: width }, (_, j) => {
+    if (j === 0) return 1;
+    const col = x.map((r) => r[j]);
+    const mean = col.reduce((a, b) => a + b, 0) / col.length;
+    const sd = Math.sqrt(col.reduce((a, b) => a + (b - mean) ** 2, 0) / col.length);
+    return sd > 0 ? sd : 1;
+  });
+  const xs = x.map((r) => r.map((v, j) => v / scale[j]));
+  const irls = (cols: number[]): number[] | null => {
+    let beta = new Array<number>(cols.length).fill(0);
+    for (let it = 0; it < 30; it += 1) {
+      const z: number[] = [];
+      const wts: number[] = [];
+      for (let i = 0; i < xs.length; i += 1) {
+        const eta = Math.min(Math.max(cols.reduce((t, j, k) => t + beta[k] * xs[i][j], 0), -30), 30);
+        const p = 1 / (1 + Math.exp(-eta));
+        const wi = Math.max(p * (1 - p), 1e-6);
+        wts.push(wi);
+        z.push(eta + (y[i] - p) / wi);
+      }
+      const next = leastSquares(xs.map((r) => cols.map((j) => r[j])), z, wts);
+      if (!next) return null;
+      const change = Math.max(...next.map((b, k) => Math.abs(b - beta[k])));
+      beta = next;
+      if (change < 1e-7) break;
+    }
+    return beta;
+  };
+  let keep = Array.from({ length: width }, (_, j) => j);
+  let out: number[] | null = null;
+  for (let pass = 0; pass <= nonNegative.length; pass += 1) {
+    const b = irls(keep);
+    if (!b || b.some((v) => !Number.isFinite(v))) return out;
+    const full = new Array<number>(width).fill(0);
+    keep.forEach((j, k) => { full[j] = b[k] / scale[j]; });
+    out = full;
+    const negative = nonNegative.filter((j) => keep.includes(j) && full[j] < 0);
+    if (negative.length === 0) break;
+    keep = keep.filter((j) => !negative.includes(j));
+  }
+  return out;
+}
+
 /** Shrink a fitted value toward the prior's by sample: the prior weighs strength ÷ (n + strength). */
-const blend = (fit: number | null, prior: number | null, n: number, strength: number): number => {
+export const blend = (fit: number | null, prior: number | null, n: number, strength: number): number => {
   if (fit === null || !Number.isFinite(fit)) return prior ?? 0;
   if (prior === null) return fit;
   const w = strength / (n + strength);
@@ -241,7 +318,7 @@ function coverageAlong(items: Traj[], k: KindModel, h: number): { n: number; out
 }
 
 /** The smallest scale in [lo, hi] at which `coverage(scale)` reaches the target (coverage never falls as the scale grows). */
-function solveScale(coverage: (scale: number) => number, target: number, lo = 0, hi = 4): number {
+export function solveScale(coverage: (scale: number) => number, target: number, lo = 0, hi = 4): number {
   if (coverage(lo) >= target) return lo;
   if (coverage(hi) < target) return hi;
   let a = lo;
@@ -392,41 +469,47 @@ export function fitProductionModel(history: FitHistory, options: FitOptions): Fi
     const rateScale600 = blend(aw > 0 ? Math.sqrt(rate2 / aw) * PER : null, pk?.rateScale600 ?? null, n1, S);
     kindPriorWeight[kind] = priorShare(n1, S, prior !== null);
 
-    // Usage per horizon: what he actually got, zeros included, on the window's three slots and age
+    // Usage per horizon, as attrition × playing time (phase 3b, supervisor 2026-09-23): the chance of any
+    // playing time (logistic) and the playing time when he plays (least squares on those who played),
+    // each on the window's three slots, his projected quality (his regressed rate above replacement at
+    // that horizon, aged by the curve) and his age. Coefficients on usage and on quality never negative.
     const horizons: HorizonModel[] = [];
     const counts: number[] = [];
+    const pivot = policy.usagePivotAge;
+    const originRate = (c: SideCase): number => {
+      const { slots } = windowOf(c.results, c.origin + 1, 0);
+      const n = slots[0].opportunities + weights[1] * slots[1].opportunities + weights[2] * slots[2].opportunities;
+      const num = slots[0].war + weights[1] * slots[1].war + weights[2] * slots[2].war;
+      return ((num + (mean600 / PER) * stabilization) / (n + stabilization)) * PER;
+    };
     for (let h = 1; h <= H; h += 1) {
       const set = mine.filter((c) => inTraining(c, h));
       counts.push(set.length);
-      const pivot = policy.usagePivotAge;
       const feats = set.map((c) => {
         const { slots } = windowOf(c.results, c.origin + 1, 0);
         const ageO = c.age - 1;
-        return [1, slots[0].opportunities, slots[1].opportunities, slots[2].opportunities, Math.max(0, ageO - pivot), Math.max(0, pivot - ageO)];
+        const q = Math.max(0, originRate(c) + agingBetween(agingModel[group], agingModel.firstAge, ageO, c.age + h - 1));
+        return [1, slots[0].opportunities, slots[1].opportunities, slots[2].opportunities, q, Math.max(0, ageO - pivot), Math.max(0, pivot - ageO)];
       });
       const ys = set.map((c) => c.actual(c.origin + h).opportunities);
-      // Non-negative on usage itself: more observed usage never lowers expected usage
-      let keep = [0, 1, 2, 3, 4, 5];
-      let coef: number[] | null = null;
-      for (let pass = 0; pass < 4 && set.length >= MIN_CASES; pass += 1) {
-        const c = leastSquares(feats.map((f) => keep.map((j) => f[j])), ys);
-        if (!c) break;
-        const full = new Array<number>(6).fill(0);
-        keep.forEach((j, i) => { full[j] = c[i]; });
-        const negative = [1, 2, 3].filter((j) => keep.includes(j) && full[j] < 0);
-        coef = full;
-        if (negative.length === 0) break;
-        keep = keep.filter((j) => !negative.includes(j));
-      }
       const ph = pk?.horizons[h - 1] ?? null;
       const n = set.length;
-      const usage = {
-        intercept: blend(coef?.[0] ?? null, ph?.usage.intercept ?? null, n, S),
-        recent: [1, 2, 3].map((j) => Math.max(0, blend(coef?.[j] ?? null, ph?.usage.recent[j - 1] ?? null, n, S))) as [number, number, number],
-        older: blend(coef?.[4] ?? null, ph?.usage.older ?? null, n, S),
-        younger: blend(coef?.[5] ?? null, ph?.usage.younger ?? null, n, S),
-      };
-      const pred = feats.map((f) => Math.max(0, usage.intercept + usage.recent[0] * f[1] + usage.recent[1] * f[2] + usage.recent[2] * f[3] + usage.older * f[4] + usage.younger * f[5]));
+      const NONNEG = [1, 2, 3, 4];
+      const chanceFit = set.length >= MIN_CASES ? logisticFit(feats, ys.map((y) => (y > 0 ? 1 : 0)), NONNEG) : null;
+      const played = ys.map((y, i) => [y, i] as const).filter(([y]) => y > 0);
+      const condFit = played.length >= MIN_CASES ? nonNegativeLeastSquares(played.map(([, i]) => feats[i]), played.map(([y]) => y), NONNEG) : null;
+      const termsOf = (fit: number[] | null, priorTerms: UsageTerms | null, cases: number): UsageTerms => ({
+        intercept: blend(fit?.[0] ?? null, priorTerms?.intercept ?? null, cases, S),
+        recent: [1, 2, 3].map((j) => Math.max(0, blend(fit?.[j] ?? null, priorTerms?.recent[j - 1] ?? null, cases, S))) as [number, number, number],
+        quality: Math.max(0, blend(fit?.[4] ?? null, priorTerms?.quality ?? null, cases, S)),
+        older: blend(fit?.[5] ?? null, priorTerms?.older ?? null, cases, S),
+        younger: blend(fit?.[6] ?? null, priorTerms?.younger ?? null, cases, S),
+      });
+      const chance = termsOf(chanceFit, ph?.chance ?? null, n);
+      const conditional = termsOf(condFit, ph?.conditional ?? null, played.length);
+      const row0 = { chance, conditional } as HorizonModel;
+      // (the age terms are (age − pivot)⁺ and (pivot − age)⁺, so the origin age is pivot + one − the other)
+      const pred = feats.map((f) => expectedUsage(row0, [f[1], f[2], f[3]], f[4], pivot + f[5] - f[6], pivot));
       // The usage scale: mean absolute error, linear in the expectation, never below zero at the origin
       const absRes = ys.map((y, i) => Math.abs(y - pred[i]));
       let spread: { base: number; slope: number } | null = null;
@@ -450,7 +533,7 @@ export function fitProductionModel(history: FitHistory, options: FitOptions): Fi
         low: blend(z.length >= MIN_CASES ? Math.max(0, -(quantile(z, OUTER_LOW) ?? 0)) : null, ph?.usageTails.low ?? null, n, S),
         high: blend(z.length >= MIN_CASES ? Math.max(0, quantile(z, 1 - OUTER_LOW) ?? 0) : null, ph?.usageTails.high ?? null, n, S),
       };
-      horizons.push({ usage, usageSpread, usageTails, tails: Array.from({ length: policy.usageTiers }, () => ({ low80: 1, high80: 1, low50: 0.5, high50: 0.5 })), drift600: 0, cases: n });
+      horizons.push({ chance, conditional, usageSpread, usageTails, tails: Array.from({ length: policy.usageTiers * QUALITY_TIERS }, () => ({ low80: 1, high80: 1, low50: 0.5, high50: 0.5 })), drift600: 0, cases: n });
     }
     caseCounts[kind] = counts;
     kinds[kind] = { weights, stabilization, mean600, noise600, rateScale600, horizons, usageCuts: [], priorWeight: 0 };
@@ -558,7 +641,7 @@ export function fitProductionModel(history: FitHistory, options: FitOptions): Fi
     });
   }
 
-  // ── tails: the 80% and 50% bands per kind, usage tier and horizon ──
+  // ── tails: the 80% and 50% bands per kind, quality and usage tier, and horizon ──
   //
   // The spread S is heteroscedastic by construction; the tails turn it into bands. A regular's and a
   // fringe player's outcomes are spread differently even relative to S, so the tails are set apart for
@@ -580,45 +663,63 @@ export function fitProductionModel(history: FitHistory, options: FitOptions): Fi
     k.usageCuts = Array.from({ length: TIERS - 1 }, (_, j) =>
       blend(n >= MIN_CASES ? quantile(p1, (j + 1) / TIERS) : null, pk?.usageCuts?.[j] ?? null, n, S));
   }
-  const trainTr = trajectories(cases.filter((c) => horizonsOf(c, inTraining).length > 0), model);
-  const zero: BandTails = { low80: 0, high80: 0, low50: 0, high50: 0 };
+  // The quality cuts: the bottom and top tenth of projected rate (read from the lines playing time is
+  // read from, as the projection does) among the kind's training cases at horizon 1
   for (const kind of KINDS) {
     const k = kinds[kind];
     const pk = prior?.kinds[kind] ?? null;
+    const r1 = trajectories(cases.filter((c) => c.kind === kind && inTraining(c, 1)), model).map((t) => t.tr.qualityRate);
+    const n = r1.length;
+    k.qualityCuts = [
+      blend(n >= MIN_CASES ? quantile(r1, policy.qualityTiers.edges[0]) : null, pk?.qualityCuts?.[0] ?? null, n, S),
+      blend(n >= MIN_CASES ? quantile(r1, policy.qualityTiers.edges[1]) : null, pk?.qualityCuts?.[1] ?? null, n, S),
+    ];
+  }
+  const trainTr = trajectories(cases.filter((c) => horizonsOf(c, inTraining).length > 0), model);
+  const zero: BandTails = { low80: 0, high80: 0, low50: 0, high50: 0 };
+  const rawTails = (items: Traj[], i: number): BandTails | null => {
+    const z = items.filter((t) => inTraining(t.c, i + 1) && t.tr.seasons[i].S > 0)
+      .map((t) => (t.c.actual(t.c.origin + i + 1).war - t.tr.seasons[i].central) / t.tr.seasons[i].S);
+    if (z.length < MIN_CASES) return null;
+    const q = (p: number) => quantile(z, p) as number;
+    return { low80: Math.max(0, -q(OUTER_LOW)), high80: Math.max(0, q(1 - OUTER_LOW)), low50: Math.max(0, -q(INNER_LOW)), high50: Math.max(0, q(1 - INNER_LOW)) };
+  };
+  const shrink = (t: BandTails, pt: BandTails | null, n: number): BandTails => ({
+    low80: blend(t.low80, pt?.low80 ?? null, n, S),
+    high80: blend(t.high80, pt?.high80 ?? null, n, S),
+    low50: blend(t.low50, pt?.low50 ?? null, n, S),
+    high50: blend(t.high50, pt?.high50 ?? null, n, S),
+  });
+  for (const kind of KINDS) {
+    const k = kinds[kind];
+    const pk = prior?.kinds[kind] ?? null;
+    // First each usage tier pooled over quality (the tails phase 3a set), the fallback for a thin cell
+    const pooled: BandTails[][] = [];
     for (let tier = 0; tier < TIERS; tier += 1) {
       const mine = trainTr.filter((t) => t.c.kind === kind && t.tr.tier === tier);
-      // The raw tails: quantiles of (actual − central) / S before any carrying forward
-      const raw: Array<BandTails | null> = k.horizons.map((_, i) => {
-        const z = mine.filter((t) => inTraining(t.c, i + 1) && t.tr.seasons[i].S > 0)
-          .map((t) => (t.c.actual(t.c.origin + i + 1).war - t.tr.seasons[i].central) / t.tr.seasons[i].S);
-        if (z.length < MIN_CASES) return null;
-        const q = (p: number) => quantile(z, p) as number;
-        return { low80: Math.max(0, -q(OUTER_LOW)), high80: Math.max(0, q(1 - OUTER_LOW)), low50: Math.max(0, -q(INNER_LOW)), high50: Math.max(0, q(1 - INNER_LOW)) };
-      });
-      // Each horizon's tails from its own quantiles; a horizon without enough cases takes the prior's
-      k.horizons.forEach((row, i) => {
-        const r = raw[i];
-        const priorTails = pk?.horizons[i]?.tails?.[tier] ?? null;
-        if (!r) {
-          row.tails[tier] = { ...(priorTails ?? row.tails[tier] ?? zero) };
-          return;
-        }
-        // Each season's wins band is its own (only the rate band is carried), so the quantiles are the tails
-        row.tails[tier] = { ...r };
-      });
-      // Shrink toward the prior by sample (the prior's weight widens the bands when served, not here)
-      k.horizons.forEach((row, i) => {
-        if (!raw[i]) return;
-        const n = mine.filter((x) => inTraining(x.c, i + 1)).length;
-        const pt = pk?.horizons[i]?.tails?.[tier] ?? null;
-        const t = row.tails[tier];
-        row.tails[tier] = {
-          low80: blend(t.low80, pt?.low80 ?? null, n, S),
-          high80: blend(t.high80, pt?.high80 ?? null, n, S),
-          low50: blend(t.low50, pt?.low50 ?? null, n, S),
-          high50: blend(t.high50, pt?.high50 ?? null, n, S),
-        };
-      });
+      pooled.push(k.horizons.map((_, i) => {
+        const r = rawTails(mine, i);
+        const ptRow = pk?.horizons[i]?.tails ?? null;
+        const pt = ptRow ? ptRow[tailCell(ptRow.length, tier, 1)] ?? null : null;
+        if (!r) return { ...(pt ?? zero) };
+        return shrink(r, pt, mine.filter((x) => inTraining(x.c, i + 1)).length);
+      }));
+    }
+    // Then each cell of quality (bottom tenth, middle, top tenth of projected rate) × usage tier: a
+    // replacement-level regular and a star regular are spread differently even relative to S
+    for (let quality = 0; quality < QUALITY_TIERS; quality += 1) {
+      for (let tier = 0; tier < TIERS; tier += 1) {
+        const mine = trainTr.filter((t) => t.c.kind === kind && t.tr.tier === tier && t.tr.quality === quality);
+        k.horizons.forEach((row, i) => {
+          const cell = quality * TIERS + tier;
+          const r = rawTails(mine, i);
+          const ptRow = pk?.horizons[i]?.tails ?? null;
+          const pt = ptRow ? ptRow[tailCell(ptRow.length, tier, quality)] ?? null : null;
+          // Each season's wins band is its own (only the rate band is carried), so the quantiles are the tails;
+          // a cell without enough cases takes its usage tier's; both are shrunk toward the prior by sample
+          row.tails[cell] = r ? shrink(r, pt, mine.filter((x) => inTraining(x.c, i + 1)).length) : { ...pooled[tier][i] };
+        });
+      }
     }
   }
 
@@ -650,15 +751,15 @@ export function fitProductionModel(history: FitHistory, options: FitOptions): Fi
   }
 
   if (passed && holdoutCases.length > 0) {
-    // Widen, never narrow, each kind, tier and horizon that falls short of a target on the held-out seasons
+    // Widen, never narrow, each kind, cell and horizon that falls short of a target on the held-out seasons
     for (const kind of KINDS) {
       const k = kinds[kind];
-      for (let tier = 0; tier < TIERS; tier += 1) {
-        const mine = holdTr.filter((t) => t.c.kind === kind && t.tr.tier === tier);
+      for (let cell = 0; cell < TIERS * QUALITY_TIERS; cell += 1) {
+        const mine = holdTr.filter((t) => t.c.kind === kind && t.tr.tier === cell % TIERS && t.tr.quality === Math.floor(cell / TIERS));
         k.horizons.forEach((row, i) => {
           const keep = mine.filter((t) => inHoldout(t.c, i + 1));
           if (keep.length < MIN_CASES) return;
-          const t = row.tails[tier];
+          const t = row.tails[cell];
           const base = { ...t };
           if (coverageAlong(keep, k, i + 1).outer < targets.outer) {
             const sc = solveScale((x) => { t.low80 = x * base.low80; t.high80 = x * base.high80; return coverageAlong(keep, k, i + 1).outer; }, targets.outer, 1, 4);
@@ -699,7 +800,7 @@ export function fitProductionModel(history: FitHistory, options: FitOptions): Fi
       holdoutCases: asFitted.pooled.map((r) => r.cases),
     },
     priorWeight: { overall, kinds: priorKinds, aging: priorAging },
-    coverage: { asFitted: asFitted.pooled, adopted: adopted.pooled, byKind: adopted.byKind, byUsage: adopted.byUsage },
+    coverage: { asFitted: asFitted.pooled, adopted: adopted.pooled, byKind: adopted.byKind, byUsage: adopted.byUsage, byQuality: adopted.byQuality },
     aging: { hitter: agingSummary(agingModel, 'hitter'), pitcher: agingSummary(agingModel, 'pitcher') },
     proneness: findings,
     gate: { passed, reason, tolerance: tol, minimumCases: policy.gate.minimumCases },
@@ -722,6 +823,7 @@ function agingSummary(aging: ProductionModel['aging'], group: AgingGroup): FitRe
 }
 
 export type UsageTier = 'low' | 'mid' | 'high';
+export type QualityTier = 'top' | 'middle' | 'bottom';
 
 /**
  * Held-out coverage, run through the projection itself so it is exactly what a GM would see: pooled,
@@ -729,14 +831,15 @@ export type UsageTier = 'low' | 'mid' | 'high';
  * calibrated on average is seen to hold for regulars and fringe players alike.
  */
 function coverageOf(set: SideCase[], model: ProductionModel, keep: (c: SideCase, h: number) => boolean): {
-  pooled: CoverageRow[]; byKind: Record<ProductionKind, CoverageRow[]>; byUsage: Record<UsageTier, CoverageRow[]>;
+  pooled: CoverageRow[]; byKind: Record<ProductionKind, CoverageRow[]>; byUsage: Record<UsageTier, CoverageRow[]>; byQuality: Record<QualityTier, CoverageRow[]>;
 } {
   const provenance: ModelProvenance = { source: 'save_fit', label: 'backtest', stamp: { status: 'calibrated', basis: 'backtest', run: null }, fitId: null, priorWeight: 0 };
   const acc = (): Array<{ n: number; outer: number; inner: number; bias: number }> => Array.from({ length: H }, () => ({ n: 0, outer: 0, inner: 0, bias: 0 }));
   const pooled = acc();
   const byKind = new Map<ProductionKind, ReturnType<typeof acc>>(KINDS.map((k) => [k, acc()]));
   const byUsage = new Map<UsageTier, ReturnType<typeof acc>>((['low', 'mid', 'high'] as UsageTier[]).map((t) => [t, acc()]));
-  const projected: Array<{ c: SideCase; seasons: Array<{ wins: { low: number; high: number; central: number }; inner: { low: number; high: number } } | null>; usage: number }> = [];
+  const byQuality = new Map<QualityTier, ReturnType<typeof acc>>((['top', 'middle', 'bottom'] as QualityTier[]).map((t) => [t, acc()]));
+  const projected: Array<{ c: SideCase; seasons: Array<{ wins: { low: number; high: number; central: number }; inner: { low: number; high: number } } | null>; usage: number; rate: number }> = [];
   for (const c of set) {
     const input = {
       playerId: c.player.playerId, season: c.origin + 1, seasonPlayed: 0, age: c.age,
@@ -746,7 +849,14 @@ function coverageOf(set: SideCase[], model: ProductionModel, keep: (c: SideCase,
     const p = projectProductionWith(input, model, provenance);
     if (p.status !== 'projected') continue;
     const sides = p.seasons.map((s) => s.sides.find((x) => x.side === c.side) ?? null);
-    projected.push({ c, seasons: sides, usage: sides[0]?.usage.central ?? 0 });
+    const rate = p.basis.sides.find((x) => x.side === c.side)?.regressedRate ?? 0;
+    projected.push({ c, seasons: sides, usage: sides[0]?.usage.central ?? 0, rate });
+  }
+  // The top and bottom tenth of projected rate within each kind
+  const rateCuts = new Map<ProductionKind, [number, number]>();
+  for (const kind of KINDS) {
+    const r = projected.filter((x) => x.c.kind === kind).map((x) => x.rate);
+    rateCuts.set(kind, [quantile(r, 0.1) ?? 0, quantile(r, 0.9) ?? 0]);
   }
   // Thirds of expected usage within each kind
   const cuts = new Map<ProductionKind, [number, number]>();
@@ -754,14 +864,16 @@ function coverageOf(set: SideCase[], model: ProductionModel, keep: (c: SideCase,
     const u = projected.filter((x) => x.c.kind === kind).map((x) => x.usage);
     cuts.set(kind, [quantile(u, 1 / 3) ?? 0, quantile(u, 2 / 3) ?? 0]);
   }
-  for (const { c, seasons, usage } of projected) {
+  for (const { c, seasons, usage, rate } of projected) {
     const [a, b] = cuts.get(c.kind)!;
     const tier: UsageTier = usage <= a ? 'low' : usage <= b ? 'mid' : 'high';
+    const [lo, hi] = rateCuts.get(c.kind)!;
+    const quality: QualityTier = rate >= hi ? 'top' : rate <= lo ? 'bottom' : 'middle';
     for (let h = 1; h <= H; h += 1) {
       const s = seasons[h - 1];
       if (!keep(c, h) || !s) continue;
       const actual = c.actual(c.origin + h).war;
-      for (const target of [pooled[h - 1], byKind.get(c.kind)![h - 1], byUsage.get(tier)![h - 1]]) {
+      for (const target of [pooled[h - 1], byKind.get(c.kind)![h - 1], byUsage.get(tier)![h - 1], byQuality.get(quality)![h - 1]]) {
         target.n += 1;
         if (actual >= s.wins.low && actual <= s.wins.high) target.outer += 1;
         if (actual >= s.inner.low && actual <= s.inner.high) target.inner += 1;
@@ -777,5 +889,6 @@ function coverageOf(set: SideCase[], model: ProductionModel, keep: (c: SideCase,
     pooled: rows(pooled),
     byKind: Object.fromEntries(KINDS.map((k) => [k, rows(byKind.get(k)!)])) as Record<ProductionKind, CoverageRow[]>,
     byUsage: Object.fromEntries((['low', 'mid', 'high'] as UsageTier[]).map((t) => [t, rows(byUsage.get(t)!)])) as Record<UsageTier, CoverageRow[]>,
+    byQuality: Object.fromEntries((['top', 'middle', 'bottom'] as QualityTier[]).map((t) => [t, rows(byQuality.get(t)!)])) as Record<QualityTier, CoverageRow[]>,
   };
 }

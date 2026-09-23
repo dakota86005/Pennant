@@ -149,7 +149,10 @@ describe('the production cone joins production with control, season by season', 
     const cone = productionCone(production, controlled());
     expect(cone.status).toBe('unknown');
     expect(cone.seasons).toEqual([]);
-    expect(cone.reason).toMatch(/pending ratings-based projection/);
+    // Production's own reason, passed through unchanged (its wording belongs to production, not the cone)
+    expect(production.status).toBe('unknown');
+    expect(cone.reason).toBeTruthy();
+    expect(cone.reason).toContain(production.reason!);
   });
 
   it('keeps a narrowing cone narrowing: a fading player\'s band follows his playing time down', () => {

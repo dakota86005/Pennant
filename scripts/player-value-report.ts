@@ -280,7 +280,7 @@ if (process.env.OOTP_FO_VALUE_SNAPSHOT === '1') {
   }
 }
 
-/* ── Expected production (phase 3a; PLAYER_VALUE.md Parts 2.3 and 7, D-053) ─────────────────────── */
+/* ── Expected production (phases 3a and 3b; PLAYER_VALUE.md Parts 2.3 and 7, D-053) ─────────────── */
 
 {
   const w = (b: { low: number; high: number }) => b.high - b.low;
@@ -310,7 +310,7 @@ if (process.env.OOTP_FO_VALUE_SNAPSHOT === '1') {
     playerValues(clubIds);
     clubTimes.push(performance.now() - start);
   }
-  console.log(`\nExpected production (phase 3a), ${RUNS} runs`);
+  console.log(`\nExpected production (phases 3a and 3b), ${RUNS} runs`);
   console.log(`  league-wide, contract + control + production   ${withTimes.map((t) => `${Math.round(t)} ms`).join(', ')}`);
   console.log(`  league-wide, contract + control only           ${withoutTimes.map((t) => `${Math.round(t)} ms`).join(', ')}`);
   console.log(`  one organization (${clubIds.length} players), everything     ${clubTimes.map((t) => `${Math.round(t)} ms`).join(', ')}`);
@@ -322,9 +322,11 @@ if (process.env.OOTP_FO_VALUE_SNAPSHOT === '1') {
     console.log(`  horizon ${o.horizon}: 80% target · ${o.outer.observed === null ? 'not measured' : `${(o.outer.observed * 100).toFixed(1)}% observed`}; 50% target · ${o.inner.observed === null ? 'not measured' : `${(o.inner.observed * 100).toFixed(1)}% observed`} (${o.cases} held-out cases)`);
   }
   if (cal.latestAttempt) console.log(`  latest fit attempt: through ${cal.latestAttempt.throughSeason}, adopted ${cal.latestAttempt.adopted}: ${cal.latestAttempt.reason}`);
+  console.log(`  ratings model in force (phase 3b): ${cal.ratings.source} — ${cal.ratings.label}`);
+  console.log(`  stamp: ${cal.ratings.stamp.status}; ${cal.ratings.stamp.run ?? ''} ${cal.ratings.stamp.basis}`);
 
   // Counts by status, and why the unknowns are unknown
-  const reasonOf = (r: string | null) => (r === null ? '' : /phase 3b/.test(r) ? 'no major-league results in the window: pending ratings-based projection (phase 3b)' : r.replace(/\d+/g, '#').slice(0, 120));
+  const reasonOf = (r: string | null) => (r === null ? '' : r.replace(/\d+/g, '#').replace(/\(missing[^)]*\)|\([^)]*tools missing\)/g, '(…)').slice(0, 160));
   const statuses = new Map<string, number>();
   const rosteredStatuses = new Map<string, number>();
   // On a major-league club's active roster or injured list
@@ -333,7 +335,7 @@ if (process.env.OOTP_FO_VALUE_SNAPSHOT === '1') {
      WHERE t.level = 1 AND (rs.is_active = 1 OR rs.is_on_dl = 1 OR rs.is_on_dl60 = 1)`
   ).all() as Array<{ player_id: number }>).map((r) => r.player_id));
   for (const v of all.values()) {
-    const key = v.production.status === 'projected' ? 'projected' : `unknown: ${reasonOf(v.production.reason)}`;
+    const key = v.production.status === 'projected' ? `projected from ${v.production.basis.source ?? 'results'}` : `unknown: ${reasonOf(v.production.reason)}`;
     tally(statuses, key);
     if (rostered.has(v.playerId)) tally(rosteredStatuses, key);
   }

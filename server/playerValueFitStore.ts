@@ -14,11 +14,13 @@
  *   - Additive and idempotent, like every history.db table: CREATE TABLE IF NOT EXISTS, INSERT OR
  *     IGNORE; only a developer's forced refit (the harness) replaces a row.
  *   - Never league.db, never a timer. It is reached only through the entry point (`playerValue.ts`).
+ *   - Phase 3b stores the ratings model (`playerValueRatingsFit.ts`) in the same table under its own
+ *     method (`RATINGS_METHOD`), with its own run record and gate verdict.
  */
 
 import { currentSaveName, historyDb } from './history.js';
 import type { ProductionModel } from './playerValueProduction.js';
-import type { FitRecord, FitRun } from './playerValueProductionFit.js';
+import type { FitRecord } from './playerValueProductionFit.js';
 
 historyDb.exec(`
   CREATE TABLE IF NOT EXISTS value_production_fits (
@@ -38,7 +40,17 @@ historyDb.exec(`
   );
 `);
 
-export interface StoredFit {
+/** What the store needs of any fit's run record: its key, the gate's verdict and the prior's weight. */
+export interface StorableRecord {
+  id: string;
+  leagueId: number;
+  throughSeason: number;
+  method: string;
+  gate: { passed: boolean; reason: string };
+  priorWeight: { overall: number };
+}
+
+export interface StoredFit<M = ProductionModel, R = FitRecord> {
   saveName: string;
   leagueId: number;
   throughSeason: number;
@@ -51,8 +63,8 @@ export interface StoredFit {
   reason: string;
   priorWeight: number | null;
   fitMs: number | null;
-  model: ProductionModel;
-  record: FitRecord;
+  model: M;
+  record: R;
 }
 
 interface Row {
@@ -62,14 +74,14 @@ interface Row {
 
 const COLUMNS = 'save_name, league_id, through_season, method, game_date, fitted_at, adopted, reason, prior_weight, fit_ms, model_json, record_json';
 
-function parse(row: Row | undefined): StoredFit | null {
+function parse<M, R>(row: Row | undefined): StoredFit<M, R> | null {
   if (!row) return null;
   try {
     return {
       saveName: row.save_name, leagueId: row.league_id, throughSeason: row.through_season, method: row.method,
       gameDate: row.game_date, fittedAt: row.fitted_at, adopted: row.adopted === 1, reason: row.reason,
       priorWeight: row.prior_weight, fitMs: row.fit_ms,
-      model: JSON.parse(row.model_json) as ProductionModel, record: JSON.parse(row.record_json) as FitRecord,
+      model: JSON.parse(row.model_json) as M, record: JSON.parse(row.record_json) as R,
     };
   } catch {
     return null;
@@ -87,7 +99,7 @@ export function productionFitAttempted(leagueId: number, throughSeason: number, 
  * Record a fit. Idempotent per key: a second record of the same key writes nothing, unless `force`
  * (a developer's refit from the harness) replaces it. Returns rows written.
  */
-export function recordProductionFit(run: FitRun, meta: { gameDate: string | null; fitMs: number | null; force?: boolean }): number {
+export function recordProductionFit(run: { model: unknown; record: StorableRecord }, meta: { gameDate: string | null; fitMs: number | null; force?: boolean }): number {
   const verb = meta.force ? 'INSERT OR REPLACE' : 'INSERT OR IGNORE';
   const r = run.record;
   return historyDb.prepare(
@@ -100,16 +112,16 @@ export function recordProductionFit(run: FitRun, meta: { gameDate: string | null
 }
 
 /** The fit in force for this save and league: the adopted one with the latest completed season, or null. */
-export function adoptedProductionFit(leagueId: number, method: string): StoredFit | null {
-  return parse(historyDb.prepare(
+export function adoptedProductionFit<M = ProductionModel, R = FitRecord>(leagueId: number, method: string): StoredFit<M, R> | null {
+  return parse<M, R>(historyDb.prepare(
     `SELECT ${COLUMNS} FROM value_production_fits WHERE save_name = ? AND league_id = ? AND method = ? AND adopted = 1
      ORDER BY through_season DESC LIMIT 1`
   ).get(currentSaveName(), leagueId, method) as Row | undefined);
 }
 
 /** The most recent fit attempt for this save and league, adopted or not (so a rejection's reason is visible). */
-export function latestProductionFitAttempt(leagueId: number, method: string): StoredFit | null {
-  return parse(historyDb.prepare(
+export function latestProductionFitAttempt<M = ProductionModel, R = FitRecord>(leagueId: number, method: string): StoredFit<M, R> | null {
+  return parse<M, R>(historyDb.prepare(
     `SELECT ${COLUMNS} FROM value_production_fits WHERE save_name = ? AND league_id = ? AND method = ?
      ORDER BY through_season DESC LIMIT 1`
   ).get(currentSaveName(), leagueId, method) as Row | undefined);

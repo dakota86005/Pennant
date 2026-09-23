@@ -43,7 +43,7 @@ import { scheduleRoutes } from './schedule.js';
 import { payrollRoutes } from './payroll.js';
 import { clubFinanceRoutes } from './clubFinanceRoutes.js';
 import { playerValueRoutes } from './playerValueRoutes.js';
-import { refitProductionIfNeeded } from './playerValue.js';
+import { refitProductionIfNeeded, refitRatingsIfNeeded } from './playerValue.js';
 import { captureMarketSnapshot } from './playerValueSnapshot.js';
 import { trendsRoutes } from './trends.js';
 import { chatRoutes } from './chat.js';
@@ -155,16 +155,24 @@ function humanOrgId(): number | null {
 }
 
 /**
- * After an import: refit the production model where the export now holds a completed season newer
+ * After an import: refit the production model (and, phase 3b, the ratings model) where the export now holds a completed season newer
  * than the last fit (D-053, PLAYER_VALUE.md Part 7). In the background, once the import has
  * finished, so it can never block or fail it: every error is caught and logged. No timer: it runs
  * once per import, and a re-import without a newer completed season fits nothing.
+ *
+ * Also called once at startup for a save that is already imported, so a save that has never been
+ * fitted (a new install, or a method version that ignores the stored fit) gets its own fit without
+ * waiting for the next import. It fits nothing when the latest completed season is already fitted.
  */
-function refitAfterImport(): void {
+export function refitAfterImport(): void {
   setImmediate(() => {
     try {
       for (const r of refitProductionIfNeeded()) {
         if (r.refit) console.log(`[value] production refit, league ${r.leagueId} through ${r.throughSeason}: ${r.adopted ? 'adopted' : 'not adopted'} (${Math.round(r.ms ?? 0)} ms). ${r.reason}`);
+      }
+      // Phase 3b: the ratings model, after the results model it reads (mapping, arrivals, development)
+      for (const r of refitRatingsIfNeeded()) {
+        if (r.refit) console.log(`[value] ratings refit, league ${r.leagueId} through ${r.throughSeason}: ${r.adopted ? 'adopted' : 'not adopted'} (${Math.round(r.ms ?? 0)} ms). ${r.reason}`);
       }
     } catch (err) {
       console.error('[value] production refit failed:', err);

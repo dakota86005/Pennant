@@ -24,6 +24,7 @@ Player Value describes and never authorizes: what a player costs, under what con
 what a win is worth and what is left, as bands with their basis. `server/playerValue.ts` is the one entry
 point; `playerValueContract.ts` (contract facts), `playerValueControl.ts` (control and cost path),
 `playerValueProduction.ts` (expected production, pure), `playerValueProductionFit.ts` (the per-save fit),
+`playerValueRatings.ts` and `playerValueRatingsFit.ts` (phase 3b: production from scouted ratings, and its per-save fit),
 `playerValueHistory.ts` (the history reader), `playerValueFinances.ts` (Club Finances, the opening price of a win,
 replacement level), `playerValueCone.ts` (the player card's production cone: production joined with control, pure)
 and `playerValueCalibration.ts` (policy and the provisional prior, stamped) sit behind it. Two
@@ -48,14 +49,21 @@ worktree.
   reads in the same change (Part 8). Nothing writes to `league.db`.
 - Club Finances: a financial value whose meaning is not established is shown raw (`meaning: 'unknown'`), a
   row of all-zero money is unknown, and a market contract is Player Rights' free-agency answer, never service.
-- Calibration belongs to the save (D-053): production's fitted numbers come from the save's stored fit, adopted
-  through the gate; code holds the method, `PRODUCTION_POLICY` and the provisional `PRODUCTION_PRIOR` only. Phase 3a
-  reads results only (no `scoutedEvidence`); no major-league results is `unknown`, pending phase 3b. Injury
-  proneness is an owner-attested known fact, read only through `server/injuryProneness.ts`; 0 or blank is unknown.
+- Calibration belongs to the save (D-053): production's fitted numbers (results and ratings models) come from the
+  save's stored fits, adopted through the gate; code holds the methods, `PRODUCTION_POLICY`, `RATINGS_POLICY` and the
+  provisional `PRODUCTION_PRIOR` and `RATINGS_PRIOR` only (the ratings prior has no arrivals). Ratings reach Player
+  Value only through `scoutedEvidence.ts`: the reader loads them, the pure ratings modules take its types; no minor-league
+  WAR (Q-9). The ratings mapping is a same-time fit (it describes, it does not forecast); the ratings count for the kind's
+  K until the save's own snapshots measure their reliability; the development path and the arrival chance by potential
+  wait on those snapshots too. Injury proneness is an owner-attested known fact, read only through
+  `server/injuryProneness.ts`; 0 or blank is unknown.
 - The rate band is never narrower further out; the wins band is rate × expected playing time and may narrow as
-  playing time fades (owner, 2026-09-23). Thinner evidence never narrows either on the same expected playing time.
+  playing time fades (owner, 2026-09-23). Thinner evidence never narrows either on the same expected playing time;
+  missing ratings widen by interval arithmetic, never a midpoint. Playing time is conditional on quality (a better
+  player keeps more of it). A prospect's low edge includes producing nothing.
 - Never ask the owner for an OOTP experiment; an unresolved rule stays `indeterminate` and is documented.
 
 Checks: `tests/playerValueBoundary.test.ts`, `tests/playerValueControl.test.ts`, `tests/playerValueCost.test.ts`,
-`tests/playerValueFinances.test.ts`, `tests/playerValueProduction.test.ts`, `tests/playerValueProductionFit.test.ts`;
+`tests/playerValueFinances.test.ts`, `tests/playerValueProduction.test.ts`, `tests/playerValueProductionFit.test.ts`,
+`tests/playerValueRatings.test.ts`;
 `npm run value:report` and `npx tsx scripts/calibrate.ts production` against a real import (read-only with `OOTP_FO_DB_READONLY=1`).

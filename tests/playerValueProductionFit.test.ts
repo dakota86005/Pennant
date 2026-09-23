@@ -1,10 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { db } from '../server/db.js';
 import {
-  fitProductionModel, productionCalibration, productionModelFor, projectProduction, refitProductionIfNeeded,
-  type FitHistory, type FitPlayer, type FitRun, type ProductionInput,
+  fitProductionModel, fitRatingsModel, productionCalibration, productionModelFor, projectProduction, refitProductionIfNeeded, refitRatingsIfNeeded,
+  type FitHistory, type FitPlayer, type FitRun, type ProductionInput, type RatingsFitInput, type RatingsFitRecord,
 } from '../server/playerValue.js';
-import { PRODUCTION_PRIOR } from '../server/playerValueCalibration.js';
+import { PRODUCTION_PRIOR, RATINGS_METHOD, RATINGS_POLICY, RATINGS_PRIOR } from '../server/playerValueCalibration.js';
+import { currentSaveName, historyDb } from '../server/history.js';
 import { IDS } from './fixture';
 
 /*
@@ -170,4 +171,57 @@ describe('the fit store and the refit after an import (fixture league)', () => {
     expect(status.inForce.fit?.throughSeason).toBe(2030);
     expect(status.coverageTargets).toEqual({ outer: 0.8, inner: 0.5 });
   });
+
+  it('the ratings model (3b) is fitted once per completed season beside the results fit, and refitted by itself when the save\'s rating snapshots become enough for its own development path', () => {
+    const fits: number[] = [];
+    const fitter = (input: RatingsFitInput) => {
+      fits.push(input.observations.length);
+      return fitRatingsModel(input, { prior: RATINGS_PRIOR });
+    };
+    const first = refitRatingsIfNeeded({ fit: fitter, leagues: [IDS.league] });
+    expect(first).toEqual([expect.objectContaining({ throughSeason: 2030, refit: true })]);
+    expect(productionCalibration(IDS.league).ratings.latestAttempt?.throughSeason).toBe(2030);
+    // A re-import with nothing new fits nothing
+    expect(refitRatingsIfNeeded({ fit: fitter, leagues: [IDS.league] })).toEqual([expect.objectContaining({ refit: false })]);
+    expect(fits).toHaveLength(1);
+    // The save's own snapshots a season apart arrive: enough of them refit it once, with no new season
+    const bat = historyDb.prepare(
+      `INSERT OR REPLACE INTO rating_snapshots (save_name, game_date, player_id, position, level, age, con, gap, pow, eye, avk, conP, gapP, powP, eyeP, avkP)
+       VALUES (?, ?, ?, 6, 3, ?, ?, ?, ?, ?, ?, 60, 60, 60, 60, 60)`
+    );
+    const arm = historyDb.prepare(
+      `INSERT OR REPLACE INTO rating_snapshots (save_name, game_date, player_id, position, level, age, stu, mov, ctl, stuP, movP, ctlP)
+       VALUES (?, ?, ?, 1, 3, ?, ?, ?, ?, 60, 60, 60)`
+    );
+    const save = currentSaveName();
+    for (let n = 0; n < RATINGS_POLICY.longitudinal.minimumPairs; n += 1) {
+      // Unpadded game dates, as OOTP writes them, a season apart
+      if (n % 2 === 0) {
+        bat.run(save, '2029-4-1', 70_000 + n, 20, 40, 40, 40, 40, 40);
+        bat.run(save, '2030-4-1', 70_000 + n, 21, 48, 48, 48, 48, 48);
+      } else {
+        arm.run(save, '2029-4-1', 70_000 + n, 20, 40, 40, 40);
+        arm.run(save, '2030-4-1', 70_000 + n, 21, 48, 48, 48);
+      }
+    }
+    try {
+      const again = refitRatingsIfNeeded({ fit: fitter, leagues: [IDS.league] });
+      expect(again).toEqual([expect.objectContaining({ throughSeason: 2030, refit: true })]);
+      expect(fits).toHaveLength(2);
+      const record = latestRatingsRecord();
+      expect(record?.development.source).toBe('save_fit');
+      expect(record?.development.pairs).toBeGreaterThanOrEqual(RATINGS_POLICY.longitudinal.minimumPairs);
+      // ...and once it has, a further re-import fits nothing
+      expect(refitRatingsIfNeeded({ fit: fitter, leagues: [IDS.league] })).toEqual([expect.objectContaining({ refit: false })]);
+    } finally {
+      historyDb.prepare(`DELETE FROM rating_snapshots WHERE player_id >= 70000 AND player_id < 71000`).run();
+    }
+  });
 });
+
+/** The latest ratings fit's run record for the fixture league, as stored. */
+function latestRatingsRecord(): RatingsFitRecord | null {
+  const row = historyDb.prepare(`SELECT record_json FROM value_production_fits WHERE league_id = ? AND method = ? ORDER BY through_season DESC LIMIT 1`)
+    .get(IDS.league, RATINGS_METHOD) as { record_json: string } | undefined;
+  return row ? JSON.parse(row.record_json) as RatingsFitRecord : null;
+}
