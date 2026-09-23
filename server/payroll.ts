@@ -3,7 +3,7 @@ import { db, tableExists } from './db.js';
 import { loadSettings } from './settings.js';
 import { seasonYear } from './valuation.js';
 import { controlAfterThisSeason } from './contracts.js';
-import { playerValues } from './playerValue.js';
+import { clubFinances, playerValues } from './playerValue.js';
 
 export const payrollRoutes = Router();
 
@@ -67,16 +67,9 @@ payrollRoutes.get('/payroll/:orgId', (req, res) => {
   if (!org) return res.status(404).json({ error: 'Unknown team' });
   const thisSeason = seasonYear(org.league_id);
 
-  const finances = tableExists('team_financials')
-    ? (db
-        .prepare(
-          `SELECT budget, player_payroll, player_payroll_next_season, cash, market,
-                  owner_expectation, total_revenue, total_expenses, budget_balance,
-                  cash_trades_available
-           FROM team_financials WHERE team_id = ?`
-        )
-        .get(orgId) as Record<string, number> | undefined) ?? null
-    : null;
+  // The finance header is Club Finances' (D-052 phase 2): each figure with its source, a missing
+  // one unknown rather than $0, the same answer /api/club-finances gives
+  const finances = clubFinances(orgId);
 
   // Payroll means major-league contracts, which is what OOTP's own figure
   // counts and how the money actually works: a man on the 40-man optioned to
@@ -186,7 +179,7 @@ payrollRoutes.get('/payroll/:orgId', (req, res) => {
     };
   });
 
-  const budget = finances?.budget ?? null;
+  const budget = finances.budget.value;
   // What the owner is expected to allow next season. Only a number you have
   // entered counts — otherwise the flat assumption stands, and the response
   // says which of the two produced the headroom below.
@@ -206,7 +199,7 @@ payrollRoutes.get('/payroll/:orgId', (req, res) => {
     players: list
       .slice()
       .sort((a, b) => b.salaryNow - a.salaryNow)
-      .slice(0, 12)
+      // Every player counted is listed: the count shown equals the rows (owner, phase 2)
       .map((p) => ({
         player_id: p.player_id,
         name: p.name,
@@ -224,20 +217,7 @@ payrollRoutes.get('/payroll/:orgId', (req, res) => {
   res.json({
     seasonYear: thisSeason,
     years,
-    finances: finances
-      ? {
-          budget: finances.budget ?? 0,
-          payroll: finances.player_payroll ?? 0,
-          payrollNextSeason: finances.player_payroll_next_season ?? 0,
-          cash: finances.cash ?? 0,
-          cashTradesAvailable: finances.cash_trades_available ?? 0,
-          revenue: finances.total_revenue ?? 0,
-          expenses: finances.total_expenses ?? 0,
-          budgetBalance: finances.budget_balance ?? 0,
-          market: finances.market ?? 0,
-          ownerExpectation: finances.owner_expectation ?? 0,
-        }
-      : null,
+    finances,
     deadMoney: (() => {
       // Only men the club is genuinely still paying. A departed player whose
       // contract has already run out owes nothing and simply is not dead money,

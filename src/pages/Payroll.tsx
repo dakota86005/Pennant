@@ -18,14 +18,33 @@ interface PayrollPlayer {
   options: string[];
   deadMoney: boolean;
 }
+/** A figure with where it came from; `value` is null only when it is unknown (D-018). */
+interface Sourced<T> { value: T | null; source: string | null; note?: string }
+/** Club Finances and the league market, from /api/club-finances (D-052 phase 2). */
+interface ClubFinancesData {
+  club: {
+    budget: Sourced<number>;
+    payroll: { now: Sourced<number>; nextSeason: Sourced<number> };
+    revenue: Sourced<number>;
+    expenses: Sourced<number>;
+    cashForTrades: Sourced<number>;
+  };
+  league: {
+    priceOfWin: {
+      label: string;
+      unit: 'dollars_per_win' | 'wins';
+      price: Sourced<{ central: number; low: number; high: number }>;
+      floor: Sourced<{ low: number; high: number }>;
+      bases: Array<{ id: string; description: string; perWin: Sourced<number> }>;
+      population: { market: number };
+      rules: { central: string; band: string };
+      narrowsWhen: string;
+    };
+  };
+}
 interface PayrollData {
   seasonYear: number;
   years: number[];
-  finances: {
-    budget: number; payroll: number; payrollNextSeason: number; cash: number;
-    cashTradesAvailable: number; revenue: number; expenses: number;
-    budgetBalance: number; market: number; ownerExpectation: number;
-  } | null;
   deadMoney: { total: number; players: Array<{ player_id: number; name: string; salary: number }> };
   commitments: Commitment[];
   /** What you told the app to expect next season, or null to assume flat. */
@@ -63,6 +82,22 @@ const money = (v: number | null | undefined): string => {
   return `$${Math.round(v / 1000)}K`;
 };
 
+/** A figure, or "unknown" when the export does not state it; never $0 for a missing value. */
+const figure = (s: Sourced<number> | undefined): string => (s?.value === null || s?.value === undefined ? 'unknown' : money(s.value) || '$0');
+const sourceOf = (s: Sourced<unknown> | undefined): string | undefined =>
+  s ? [s.source, s.note].filter(Boolean).join(' — ') || undefined : undefined;
+
+/** The basis of the league price of a win, for its hover: every reading, the rules and what is assumed. */
+function priceBasis(p: ClubFinancesData['league']['priceOfWin']): string {
+  const lines = p.bases
+    .map((b) => `${b.id}: ${b.description} — ${b.perWin.value === null ? `unknown (${b.perWin.note ?? 'not stated'})` : money(b.perWin.value)}`);
+  return [
+    `Salary above the league minimum ÷ WAR, over ${p.population.market} market contracts. ${p.rules.central} ${p.rules.band}`,
+    ...lines,
+    p.narrowsWhen,
+  ].join('\n');
+}
+
 const TIP_COMMITTED =
   'Guaranteed salary already on the books for that season, summed from every contract — ' +
   'including money still owed to players who were traded or released. It is NOT a payroll ' +
@@ -75,6 +110,7 @@ const TIP_HEADROOM =
 
 export function Payroll({ orgId }: { orgId: number }) {
   const [data, setData] = useState<PayrollData | null>(null);
+  const [finance, setFinance] = useState<ClubFinancesData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [budgetDraft, setBudgetDraft] = useState('');
 
@@ -101,46 +137,68 @@ export function Payroll({ orgId }: { orgId: number }) {
         setBudgetDraft(d.nextSeasonBudget ? String(d.nextSeasonBudget / 1_000_000) : '');
       })
       .catch((e) => setError(e.message));
+    // The header and the price of a win are Club Finances'; the page stands without them
+    setFinance(null);
+    apiGet<ClubFinancesData>(`/api/club-finances/${orgId}`).then(setFinance).catch(() => setFinance(null));
   }, [orgId]);
 
   if (error) return <div className="banner error">{error}</div>;
   if (!data) return <p className="muted">Adding up the books…</p>;
 
-  const f = data.finances;
+  const f = finance?.club ?? null;
+  const budget = f?.budget.value ?? null;
+  const payrollNow = f?.payroll.now.value ?? null;
+  const price = finance?.league.priceOfWin ?? null;
   // Leave headroom past the largest value so the budget marker never lands on
   // the track's edge, where a zero-width dashed border is invisible
-  const peak = Math.max(...data.commitments.map((c) => c.total), f?.budget ?? 0, 1) * 1.08;
+  const peak = Math.max(...data.commitments.map((c) => c.total), budget ?? 0, 1) * 1.08;
 
   return (
     <div>
       {f && (
         <div className="finance-grid">
-          <div className="finance-card">
+          <div className="finance-card" title={sourceOf(f.budget)}>
             <span className="muted">Budget</span>
-            <strong>{money(f.budget)}</strong>
+            <strong>{figure(f.budget)}</strong>
           </div>
-          <div className="finance-card">
+          <div className="finance-card" title={sourceOf(f.payroll.now)}>
             <span className="muted">Payroll now</span>
-            <strong>{money(f.payroll)}</strong>
-            <span className={f.budget - f.payroll >= 0 ? 'good-text' : 'bad-text'}>
-              {f.budget - f.payroll >= 0 ? '+' : ''}{money(f.budget - f.payroll)} room
-            </span>
+            <strong>{figure(f.payroll.now)}</strong>
+            {budget !== null && payrollNow !== null && (
+              <span className={budget - payrollNow >= 0 ? 'good-text' : 'bad-text'}>
+                {budget - payrollNow >= 0 ? '+' : ''}{money(budget - payrollNow)} room
+              </span>
+            )}
           </div>
-          <div className="finance-card">
+          <div className="finance-card" title={sourceOf(f.payroll.nextSeason)}>
             <span className="muted">Payroll next season</span>
-            <strong>{money(f.payrollNextSeason)}</strong>
+            <strong>{figure(f.payroll.nextSeason)}</strong>
             <span className="muted">OOTP estimate</span>
           </div>
-          <div className="finance-card">
+          <div className="finance-card" title={[sourceOf(f.revenue), sourceOf(f.expenses)].filter(Boolean).join('\n')}>
             <span className="muted">Revenue / expenses</span>
-            <strong>{money(f.revenue)}</strong>
-            <span className="muted">less {money(f.expenses)}</span>
+            <strong>{figure(f.revenue)}</strong>
+            <span className="muted">less {figure(f.expenses)}</span>
           </div>
-          <div className="finance-card">
+          <div className="finance-card" title={sourceOf(f.cashForTrades)}>
             <span className="muted">Cash for trades</span>
-            <strong>{money(f.cashTradesAvailable)}</strong>
+            <strong>{figure(f.cashForTrades)}</strong>
           </div>
         </div>
+      )}
+      {price && (
+        <p className="muted hint-line">
+          League price of a win:{' '}
+          {price.price.value ? (
+            <>
+              <Tip label={<strong>{money(price.price.value.central)}</strong>} tip={priceBasis(price)} /> (band{' '}
+              {money(price.price.value.low)}–{money(price.price.value.high)}
+              {price.floor.value ? `, floor ${money(price.floor.value.low)}` : ''}) — opening (imported market)
+            </>
+          ) : (
+            <Tip label={<strong>unknown</strong>} tip={price.price.note ?? priceBasis(price)} />
+          )}
+        </p>
       )}
 
       <section>
@@ -151,8 +209,8 @@ export function Payroll({ orgId }: { orgId: number }) {
               <span className="commit-year">{c.year}</span>
               <div className="commit-track">
                 <div className="commit-bar" style={{ width: `${(c.total / peak) * 100}%` }} />
-                {f && (
-                  <div className="commit-budget" style={{ left: `${(f.budget / peak) * 100}%` }} title={`Budget ${money(f.budget)}`} />
+                {budget !== null && (
+                  <div className="commit-budget" style={{ left: `${(budget / peak) * 100}%` }} title={`Budget ${money(budget)}`} />
                 )}
               </div>
               <span className="commit-value">{money(c.total)}</span>
@@ -172,7 +230,7 @@ export function Payroll({ orgId }: { orgId: number }) {
             type="number"
             min="0"
             step="1"
-            placeholder={f ? String(Math.round(f.budget / 1_000_000)) : ''}
+            placeholder={budget !== null ? String(Math.round(budget / 1_000_000)) : ''}
             value={budgetDraft}
             onChange={(e) => setBudgetDraft(e.target.value)}
             onBlur={saveNextBudget}

@@ -1,8 +1,14 @@
 /**
  * Player Value on a real import: the league-wide control timeline, timed, and every indeterminate
- * counted with its reason (docs/PLAYER_VALUE.md Part 7 and Part 9, phase 1). Read-only.
+ * counted with its reason (docs/PLAYER_VALUE.md Part 7 and Part 9, phase 1); Club Finances, the
+ * opening price of a win with every basis, and the replacement level per season, timed (phase 2).
+ * Read-only.
  *
  *   OOTP_FO_DATA_DIR=<dir containing league.db> OOTP_FO_DB_READONLY=1 npm run value:report
+ *
+ * With OOTP_FO_VALUE_SNAPSHOT=1 it also runs the per-import market snapshot twice (the second must
+ * write nothing). That writes to history.db in OOTP_FO_DATA_DIR, so point the directory at a scratch
+ * copy of history.db beside a link to the real league.db, never at a live data directory.
  *
  * `OOTP_FO_DB_READONLY=1` opens the import read-only, so the report can run against the league a
  * running app is using without changing it. It writes nothing, ranks nobody and changes no
@@ -11,7 +17,9 @@
 
 import { performance } from 'node:perf_hooks';
 import { db, tableExists } from '../server/db.js';
-import { leaguePlayerValues, type PlayerValuation } from '../server/playerValue.js';
+import {
+  clubFinances, leagueFinances, leaguePlayerValues, marketLeagueOfClub, marketLeagues, type PlayerValuation,
+} from '../server/playerValue.js';
 import { allLeagueRules } from '../server/leagueRules.js';
 import { superTwoCutoffs } from '../server/playerRights.js';
 import { seasonServiceClocks, serviceClassMembers } from '../server/playerState.js';
@@ -146,4 +154,126 @@ if (check) {
   const e = check.control.eligibility?.seasons.find((x) => x.season === (check.control.thisSeason ?? 0) + 1);
   console.log(`\nCheck: player 38389 service now ${JSON.stringify(check.control.eligibility?.service.now)}, next winter ${JSON.stringify(e?.serviceDays)}, ` +
     `arbitration ${e?.arbitration.status}: ${[...(e?.arbitration.reasons ?? []).map((r) => r.message), ...(e?.arbitration.missing ?? []).map((m) => m.message)].join(' ')}`);
+}
+
+/* ── Club Finances and the opening price of a win (phase 2) ──────────────────────────────────── */
+
+const m = (v: number | null | undefined): string => (v === null || v === undefined ? 'unknown' : `$${(v / 1_000_000).toFixed(2)}M`);
+const shown = (s: { value: unknown; source: string | null; note?: string; meaning?: string }): string =>
+  `${s.value === null ? 'unknown' : typeof s.value === 'number' && Math.abs(s.value) >= 10_000 ? m(s.value) : String(s.value)}` +
+  `${s.meaning ? ' (meaning unknown)' : ''}  [${s.source ?? '-'}]${s.value === null && s.note ? ` ${s.note}` : ''}`;
+
+const human = (db.prepare('SELECT team_id FROM teams WHERE human_team = 1 LIMIT 1').get() as { team_id: number } | undefined)?.team_id ?? null;
+const marketId = human !== null ? marketLeagueOfClub(human) : marketLeagues()[0] ?? null;
+if (marketId === null) throw new Error('No market league in the export.');
+
+// A cold first pass (statement preparation included), then timed passes
+const coldStart = performance.now();
+let league = leagueFinances(marketId);
+const cold = performance.now() - coldStart;
+const financeTimes: number[] = [];
+for (let i = 0; i < RUNS; i += 1) {
+  const start = performance.now();
+  league = leagueFinances(marketId);
+  if (human !== null) clubFinances(human);
+  financeTimes.push(performance.now() - start);
+}
+const clubTimes: number[] = [];
+for (let i = 0; i < RUNS; i += 1) {
+  const start = performance.now();
+  if (human !== null) clubFinances(human);
+  clubTimes.push(performance.now() - start);
+}
+
+console.log(`\nClub Finances and the market (league ${marketId}): one cold pass, then ${RUNS} runs`);
+console.log(`  cold leagueFinances            ${Math.round(cold)} ms`);
+console.log(`  leagueFinances + clubFinances  ${financeTimes.map((t) => `${Math.round(t)} ms`).join(', ')}`);
+console.log(`  clubFinances alone             ${clubTimes.map((t) => `${Math.round(t)} ms`).join(', ')}`);
+
+const r = league.regime;
+console.log('\nLeague regime (as exported, through the parent chain)');
+for (const [k, v] of Object.entries(r)) {
+  if (Array.isArray(v)) console.log(`  ${k.padEnd(30)} ${v.map((x) => x.value ?? 'unknown').join(', ')} (meaning unknown)`);
+  else console.log(`  ${k.padEnd(30)} ${shown(v as never)}`);
+}
+console.log(`  gamesPerTeam                   ${shown(league.gamesPerTeam as never)}`);
+console.log(`  season played                  ${league.seasonPlayed.value === null ? 'unknown' : `${(league.seasonPlayed.value * 100).toFixed(2)}%`} ${league.seasonPlayed.note ?? ''}`);
+console.log(`  league payroll                 ${m(league.leaguePayroll.value)} ${league.leaguePayroll.note ?? ''}`);
+
+const p = league.priceOfWin;
+console.log(`\nPrice of a win — ${p.label} (${p.unit})`);
+console.log(`  population ${JSON.stringify(p.population)}`);
+for (const b of p.bases) {
+  console.log(`  ${b.id.padEnd(3)} ${b.role.padEnd(6)} ${String(b.players).padStart(4)} players  ${m(b.salaryAboveMinimum).padStart(10)} above min  ` +
+    `${b.wins === null ? 'unknown'.padStart(8) : b.wins.toFixed(1).padStart(8)} WAR  → ${b.perWin.value === null ? `unknown: ${b.perWin.note}` : m(b.perWin.value)}   ${b.description}` +
+    `${b.excluded > 0 ? ` (${b.excluded} left out)` : ''}`);
+}
+console.log(`  PRICE  ${p.price.value ? `central ${m(p.price.value.central)}, band ${m(p.price.value.low)}–${m(p.price.value.high)}` : `unknown: ${p.price.note}`}`);
+console.log(`  FLOOR  ${p.floor.value ? `${m(p.floor.value.low)}–${m(p.floor.value.high)}` : `unknown: ${p.floor.note}`}`);
+
+console.log('\nReplacement level, per season (the level the export\'s WAR implies)');
+for (const x of league.replacementLevel) {
+  console.log(`  ${x.season}${x.toDate ? ' (to date)' : ''}: ${x.level.value === null ? `unknown — ${x.level.note}` : `${x.level.value.toFixed(4)} — ${x.level.note}`} [${x.stamp.status}]`);
+}
+
+/*
+ * R-5's reading, for comparison only: it took free-agency service to include this season's days.
+ * Player Value takes Player Rights' answer for this season (service at the last winter). Counted here
+ * from the export so the difference between the two is stated exactly, not tuned away.
+ */
+if (league.season.value !== null) {
+  const s = league.season.value;
+  const rows = db.prepare(
+    `SELECT c.player_id, rs.mlb_service_days AS now, rs.mlb_service_days - rs.mlb_service_days_this_year AS winter,
+            l.rules_fa_minimum_years * l.rules_min_service_days AS line
+     FROM players_contract c JOIN players p ON p.player_id = c.player_id
+     JOIN players_roster_status rs ON rs.player_id = c.player_id
+     JOIN teams t ON t.team_id = p.team_id JOIN leagues l ON l.league_id = t.league_id
+     WHERE p.retired = 0 AND c.is_major = 1 AND t.league_id = ? AND (rs.is_active = 1 OR rs.is_on_dl = 1 OR rs.is_on_dl60 = 1)`
+  ).all(marketId) as Array<{ player_id: number; now: number; winter: number; line: number }>;
+  const crossed = rows.filter((x) => x.now >= x.line && x.winter < x.line);
+  console.log(`\nR-5's reading (service including ${s}'s days) against Player Rights' (service at the last winter)`);
+  console.log(`  FA-eligible by R-5's reading: ${rows.filter((x) => x.now >= x.line).length}; by Player Rights this season: ${p.population.market}`);
+  console.log(`  crossed the line during ${s} (salary set before they were eligible): ${crossed.length}`);
+}
+
+if (human !== null) {
+  const c = clubFinances(human);
+  console.log(`\nClub Finances, club ${human}`);
+  console.log(`  rule: ${c.authority.rule}`);
+  for (const [k, v] of Object.entries({
+    budget: c.budget, payrollNow: c.payroll.now, payrollNext: c.payroll.nextSeason, payrollOffered: c.payroll.offered,
+    revenue: c.revenue, expenses: c.expenses, market: c.market, fanInterest: c.fans.interest, fanLoyalty: c.fans.loyalty,
+    cashForTrades: c.cashForTrades, ownerExpectation: c.ownerExpectation, mode: c.mode,
+    localMedia: c.media.local, localMediaExpires: c.media.localExpires, nationalMedia: c.media.national,
+    revenueSharing: c.sharing.revenueSharing, luxurySharing: c.sharing.luxurySharing,
+  })) console.log(`  ${k.padEnd(18)} ${shown(v as never)}`);
+  if (c.lastSeason) {
+    console.log(`  last season ${c.lastSeason.season}: revenue ${shown(c.lastSeason.revenue as never)}; expenses ${m(c.lastSeason.expenses.value)}`);
+    console.log(`    ${c.lastSeason.unnamedView.note}`);
+  }
+  console.log(`  revenue trend: ${c.revenueTrend.seasons.map((x) => `${x.season} ${m(x.revenue.value)}`).join(', ') || 'none'}`);
+  console.log(`  ${c.revenueTrend.placeholderSeasons.note} (${c.revenueTrend.placeholderSeasons.first}–${c.revenueTrend.placeholderSeasons.last})`);
+  const placeholders = (db.prepare(
+    `SELECT COUNT(*) AS n FROM team_history_financials WHERE total_revenue = 0 AND budget = 0 AND total_expenses = 0`
+  ).get() as { n: number }).n;
+  console.log(`  league-wide zeroed history rows (revenue, budget and expenses all 0): ${placeholders}`);
+}
+
+/*
+ * The snapshot writer, only when asked (OOTP_FO_VALUE_SNAPSHOT=1) and only against a data directory
+ * whose history.db is a scratch copy: importing it creates its table in DATA_DIR's history.db.
+ */
+if (process.env.OOTP_FO_VALUE_SNAPSHOT === '1') {
+  const { captureMarketSnapshot, marketSnapshotHistory } = await import('../server/playerValueSnapshot.js');
+  const first = captureMarketSnapshot({ importFinishedAt: 'value:report' });
+  const second = captureMarketSnapshot({ importFinishedAt: 'value:report' });
+  console.log('\nMarket snapshot (history.db in OOTP_FO_DATA_DIR)');
+  console.log(`  first call:  ${JSON.stringify(first)}`);
+  console.log(`  second call: ${JSON.stringify(second)}`);
+  const history = marketSnapshotHistory(marketId);
+  console.log(`  history rows for league ${marketId}: ${history.length}`);
+  for (const h of history) {
+    console.log(`    ${h.gameDate} (${h.gameDateExported}) ${h.priceLabel}: ${h.price ? `${m(h.price.central)} [${m(h.price.low)}–${m(h.price.high)}]` : 'unknown'}, floor ${h.floor ? `${m(h.floor.low)}–${m(h.floor.high)}` : 'unknown'}, market contracts ${h.marketContracts}, payroll ${m(h.leaguePayroll)}`);
+  }
 }

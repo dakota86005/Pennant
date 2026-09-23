@@ -80,6 +80,19 @@ export const derivedFrom = <T>(value: T, source: string, note?: string): Sourced
   ...(note ? { note } : {}),
 });
 
+/**
+ * A value shown exactly as exported whose meaning the export does not establish (the market scale,
+ * the owner-expectation code, the luxury-tax figure). It is displayed, never interpreted: no code
+ * compares it with a threshold or turns it into a label (D-018).
+ */
+export type Uninterpreted<T> = Sourced<T> & { meaning: 'unknown' };
+
+export const uninterpreted = <T>(value: Sourced<T>, why: string): Uninterpreted<T> => ({
+  ...value,
+  meaning: 'unknown',
+  note: value.note ? `${value.note} ${why}` : why,
+});
+
 export const unknownBecause = <T = never>(
   reason: UnknownReason,
   source: string | null = null,

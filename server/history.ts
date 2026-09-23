@@ -64,7 +64,7 @@ historyDb.exec(`
   CREATE INDEX IF NOT EXISTS idx_notes_player ON player_notes (save_name, player_id);
 `);
 
-function currentSaveName(): string {
+export function currentSaveName(): string {
   return loadConfig().saveName ?? 'unknown';
 }
 
