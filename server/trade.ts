@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { db, tableExists } from './db.js';
-import { LEVEL_NAMES, contractsByPlayer, leagueRules, mlbPercentiler, valuesByPlayer, type PlayerValue } from './valuation.js';
-import { controlAfterThisSeason, serviceRemainingThisSeason } from './contracts.js';
+import { LEVEL_NAMES, contractsByPlayer, mlbPercentiler, valuesByPlayer, type PlayerValue } from './valuation.js';
+import { controlAfterThisSeason } from './contracts.js';
+import { playerValue } from './playerValue.js';
 import { padDate } from './rosterops.js';
 import { contactProfiles } from './battedball.js';
 import { POSITION_CODES, glovesLine } from './gloves.js';
@@ -399,24 +400,23 @@ const ROLE_NAMES: Record<number, string> = { 11: 'Starter', 12: 'Reliever', 13: 
 /**
  * Whether a man is leaving, or merely at the end of a contract.
  *
- * Wrapped rather than called directly so a missing league — a free agent, an
- * unaffiliated club — degrades to saying nothing rather than to guessing at
- * free agency, which is the very mistake this exists to stop.
+ * Read from Player Value's control timeline (D-052), so the desk and the
+ * Payroll and Contracts pages give one answer. A man no club holds says
+ * nothing rather than guessing at free agency, which is the very mistake this
+ * exists to stop; a minor leaguer's control is read from his parent league's
+ * rules, never his own league's zeros; and a status the export cannot
+ * establish is `indeterminate` with its reason.
  */
-function controlOf(
-  id: number, leagueId: number | null, yearsAfterThis: number, hasExtension: boolean,
-  serviceDays: number | null, serviceYears: number | null
-) {
-  if (leagueId === null) return null;
-  const c = controlAfterThisSeason({
-    yearsAfterThis,
-    hasExtension,
-    serviceDays,
-    serviceYears,
-    serviceLeft: serviceRemainingThisSeason(),
-    rules: leagueRules(leagueId),
-  });
-  return { status: c.status, arbitrationYear: c.arbYear };
+function controlOf(id: number) {
+  const c = controlAfterThisSeason(playerValue(id)?.control);
+  if (!c) return null;
+  return {
+    status: c.status,
+    arbitrationYear: c.arbYear,
+    ...(c.arbYearHigh !== null ? { arbitrationYearIfHeStaysUp: c.arbYearHigh } : {}),
+    ...(c.superTwo ? { superTwo: true } : {}),
+    ...(c.status === 'indeterminate' ? { between: c.between, why: c.reason } : {}),
+  };
 }
 
 function tradePlayer(id: number, statYear: number | null) {
@@ -500,8 +500,7 @@ function tradePlayer(id: number, statYear: number | null) {
      * verdict priced him as a rental. A reader spotted it in the prose: talk
      * of a player being in his last year when arbitration was still to come.
      */
-    control: controlOf(id, p.league_id as number | null, c?.yearsAfterThis ?? 0, !!c?.extension,
-                       p.service_days as number | null, p.service_years as number | null),
+    control: controlOf(id),
     contact: isPitcher ? null : (contactProfiles([id]).get(id) ?? null),
     /*
      * Where he can play, and how well. Without this the desk was judging men

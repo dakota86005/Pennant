@@ -412,7 +412,8 @@ describe('the evaluator depends only on the shared layers', () => {
     const source = read('playerRights.ts');
     const imports = [...source.matchAll(/from '(\.\/[^']+)'/g)].map((m) => m[1]).sort();
     expect(imports).toEqual([
-      './assignmentContext.js', './dataFreshness.js', './leagueRules.js', './playerState.js', './provenance.js',
+      // calibration.js is the stamp helpers only (it imports nothing): the Super Two constants are stamped
+      './assignmentContext.js', './calibration.js', './dataFreshness.js', './leagueRules.js', './playerState.js', './provenance.js',
     ]);
     expect(source).not.toMatch(/\.prepare\(|players_roster_status\b.*FROM|rosterStateHistory|liveLogSnapshot|transactionLog/);
   });

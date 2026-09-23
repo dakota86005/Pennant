@@ -6,9 +6,15 @@
 
 import { assignmentContextFor, type AssignmentContext } from './assignmentContext.js';
 import { currentTransactionLog, getDataStatus, logAvailability, type DataStatus } from './dataStatus.js';
-import { leagueRulesForOrganization, type LeagueRules } from './leagueRules.js';
-import { evaluatePlayerRights, rosterCounts, type PlayerRights, type RightsEvidence, type RosterCounts } from './playerRights.js';
-import { organizationPlayerStates, playerState, playerStates, type PlayerState } from './playerState.js';
+import { allLeagueRules, leagueRulesForOrganization, type LeagueRules } from './leagueRules.js';
+import {
+  evaluatePlayerRights, rosterCounts, superTwoCutoffs,
+  type PlayerRights, type RightsEvidence, type RosterCounts, type SuperTwoCutoff,
+} from './playerRights.js';
+import {
+  organizationPlayerStates, playerState, playerStates, seasonServiceClocks, serviceClassMembers, type PlayerState,
+} from './playerState.js';
+import { unknownBecause, type Sourced } from './provenance.js';
 import type { TransactionEvent } from './transactionLog.js';
 
 export interface PlayerPicture {
@@ -31,13 +37,36 @@ export function rightsEvidence(status: DataStatus): RightsEvidence {
 interface OrganizationRightsInputs {
   league: LeagueRules;
   counts: RosterCounts;
+  /** The season's service clock in the league whose contract rules apply. */
+  serviceClock: Sourced<number>;
+}
+
+/** The service clock for a league's contract regime, or unknown when the regime is. */
+function clockFor(league: LeagueRules, clocks: (leagueId: number) => Sourced<number>): Sourced<number> {
+  const regime = league.contract.regimeLeagueId.value;
+  return regime === null
+    ? unknownBecause('not_exported_by_ootp', null, 'The league\'s contract regime is unknown, so its season clock is too.')
+    : clocks(regime);
+}
+
+/** The Super Two cutoff per contract regime, ranked once from the whole class, for one request. */
+function superTwoLookup(clocks: (leagueId: number) => Sourced<number>): (league: LeagueRules) => SuperTwoCutoff | null {
+  const rules = allLeagueRules();
+  const cutoffs = superTwoCutoffs(serviceClassMembers(), (id) => rules.get(id)?.contract ?? null, clocks);
+  return (league) => {
+    const regime = league.contract.regimeLeagueId.value;
+    return regime === null ? null : cutoffs.get(regime) ?? null;
+  };
 }
 
 /** League rules and roster counts for one organization; computed once per batch. */
-function organizationInputs(orgId: number, cache: Map<number, OrganizationRightsInputs>): OrganizationRightsInputs {
+function organizationInputs(
+  orgId: number, cache: Map<number, OrganizationRightsInputs>, clocks: (leagueId: number) => Sourced<number>
+): OrganizationRightsInputs {
   let inputs = cache.get(orgId);
   if (!inputs) {
-    inputs = { league: leagueRulesForOrganization(orgId), counts: rosterCounts(organizationPlayerStates(orgId)) };
+    const league = leagueRulesForOrganization(orgId);
+    inputs = { league, counts: rosterCounts(organizationPlayerStates(orgId)), serviceClock: clockFor(league, clocks) };
     cache.set(orgId, inputs);
   }
   return inputs;
@@ -58,15 +87,21 @@ export function rightsFor(
   const availability = logAvailability(status);
   const evidence = rightsEvidence(status);
   const orgs = new Map<number, OrganizationRightsInputs>();
-  const noOrg: OrganizationRightsInputs = { league: leagueRulesForOrganization(-1), counts: { active: null, fortyMan: null } };
+  const clocks = seasonServiceClocks();
+  const superTwoFor = superTwoLookup(clocks);
+  const noLeague = leagueRulesForOrganization(-1);
+  const noOrg: OrganizationRightsInputs = { league: noLeague, counts: { active: null, fortyMan: null }, serviceClock: clockFor(noLeague, clocks) };
   for (const [id, state] of playerStates(playerIds)) {
     const events = log ? (log.byPlayer.get(id) ?? []) : null;
     const assignment = assignmentContextFor(state, events, availability);
     const orgId = state.organizationId.value;
-    const inputs = orgId === null ? noOrg : organizationInputs(orgId, orgs);
+    const inputs = orgId === null ? noOrg : organizationInputs(orgId, orgs, clocks);
     out.set(id, {
       assignment,
-      rights: evaluatePlayerRights({ state, assignment, league: inputs.league, counts: inputs.counts, evidence }),
+      rights: evaluatePlayerRights({
+        state, assignment, league: inputs.league, counts: inputs.counts, evidence, serviceClock: inputs.serviceClock,
+        superTwo: superTwoFor(inputs.league),
+      }),
     });
   }
   return out;
@@ -107,6 +142,9 @@ export function playerPicture(playerId: number, chronologyLimit = 25): PlayerPic
     chronology: events ? [...events].reverse().slice(0, chronologyLimit) : [],
     chronologyNote,
     freshness: status.freshness,
-    rights: evaluatePlayerRights({ state, assignment, league, counts, evidence: rightsEvidence(status) }),
+    rights: evaluatePlayerRights({
+      state, assignment, league, counts, evidence: rightsEvidence(status),
+      serviceClock: clockFor(league, seasonServiceClocks()), superTwo: superTwoLookup(seasonServiceClocks())(league),
+    }),
   };
 }

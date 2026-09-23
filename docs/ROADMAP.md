@@ -92,7 +92,8 @@ static guard. Remaining:
   contract, payroll, trade, free-agent and organization-comparison surfaces are
   to be replaced by the Player Value specialist, one consumer per change:
   design, research and phase plan in [PLAYER_VALUE.md](PLAYER_VALUE.md)
-  (D-052, phase 0; nothing implemented).
+  (D-052). Phase 1 (contract facts, the control timeline, one `LeagueRules`)
+  is built; no consumer's `players_value` read is removed yet (phase 6).
 - Establish, or keep declining to assume, whether `players_value.oa`/`pot` are
   the organization's scouted view. That needs an export from a save at
   imperfect scouting compared with the in-game card; the repository cannot

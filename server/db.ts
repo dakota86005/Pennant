@@ -5,8 +5,17 @@ import { DATA_DIR } from './config.js';
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
-export const db = new Database(path.join(DATA_DIR, 'league.db'));
-db.pragma('journal_mode = WAL');
+/**
+ * `OOTP_FO_DB_READONLY=1` opens an existing import read-only, for a report run
+ * against a real league that must not change it (`npm run value:report`). The
+ * application itself always opens it read-write: the importer writes it.
+ */
+const READ_ONLY = process.env.OOTP_FO_DB_READONLY === '1';
+
+export const db = READ_ONLY
+  ? new Database(path.join(DATA_DIR, 'league.db'), { readonly: true, fileMustExist: true })
+  : new Database(path.join(DATA_DIR, 'league.db'));
+if (!READ_ONLY) db.pragma('journal_mode = WAL');
 
 export function tableExists(name: string): boolean {
   return !!db.prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?`).get(name);

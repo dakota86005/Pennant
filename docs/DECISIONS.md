@@ -471,7 +471,9 @@ never turned into eligibility or rejection, and a GM may still act manually.
   states), `observed` (seen in a controlled copied-save experiment),
   `documented` (OOTP's wiki/manual) or `observed_and_documented`. An observation
   that contradicts documentation wins; documentation alone is used only where it
-  agrees with everything observed and is labeled as such.
+  agrees with everything observed and is labeled as such. `owner_attested` (the
+  owner's statement of how OOTP behaves) was added for Super Two on 2026-09-22
+  (D-052).
 - **League rules are read, not assumed:** option rule, DFA and waiver periods,
   active/expanded/40-man limits come from `leagues.*` as exported.
 - **Requirements are separate from eligibility.** An unmet roster spot does not
@@ -1233,8 +1235,12 @@ contested, as `farmArrivalFor` already did (B-1), so a departure names the man l
 
 ## D-052 — Player Value is a specialist that describes and never authorizes, in wins first and the save's own dollars
 
-**Status:** Accepted 2026-09-22, with the owner's answers in PLAYER_VALUE.md Part 12. **Implementation:** Absent
-(phase 0: design and research only). Design: [PLAYER_VALUE.md](PLAYER_VALUE.md). Research evidence:
+**Status:** Accepted 2026-09-22, with the owner's answers in PLAYER_VALUE.md Part 12. **Implementation:** Partial
+(phase 1: contract facts and control). `server/playerValue.ts` (the entry point), `playerValueContract.ts`,
+`playerValueControl.ts` and `playerValueCalibration.ts`; contract-control eligibility in `playerRights.ts`
+(`evaluateContractControl`); one `LeagueRules` in `leagueRules.ts`; `tests/playerValueBoundary.test.ts`. Production,
+club finances, the price of a win and surplus (phases 2 to 5) and the `players_value` consumer migration (phase 6)
+are not built. Design: [PLAYER_VALUE.md](PLAYER_VALUE.md). Research evidence:
 [PLAYER_VALUE_RESEARCH.md](PLAYER_VALUE_RESEARCH.md). Refines D-002 and D-017 for the pre-fork value surfaces and
 applies D-018, D-023, D-036 and D-041 to them.
 
@@ -1307,3 +1313,6 @@ architecture, pinned by tests.
 - The Trade Center may show the difference between the sides only as a band with its components.
 - Minor-league WAR is not used in phase 3.
 - Player Value is routed in `AGENTS.md` from phase 1.
+- Super Two (2026-09-22): OOTP applies Super Two under MLB rules, and Pennant follows the real rule. This is the
+  owner's statement of how OOTP behaves, a basis under D-018 and D-023 (`owner_attested`), not a guess from MLB
+  rules. The cutoff is computed from the export's own class as a range, in leagues whose regime as read is MLB's.

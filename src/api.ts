@@ -113,7 +113,7 @@ export interface ActionRights {
   action: RightsAction;
   status: RightsStatus;
   label: string;
-  reasons: Array<{ code: string; message: string; basis: 'export_state' | 'observed' | 'documented' | 'observed_and_documented'; source: string }>;
+  reasons: Array<{ code: string; message: string; basis: 'export_state' | 'observed' | 'documented' | 'observed_and_documented' | 'owner_attested'; source: string }>;
   requirements: Array<{ kind: string; status: 'met' | 'unmet' | 'unknown'; message: string }>;
   missing: Array<{ code: string; message: string }>;
   facts: Record<string, string | number | boolean | null>;
@@ -502,6 +502,10 @@ export interface ContractRow {
   /** Present only when a signed extension starts after the current deal. */
   extension: { years: number; startYear: number; endYear: number; firstSalary: number } | null;
   recommendation: { action: string; reasons: string[] } | null;
+  /** What happens after this season (Player Value's control timeline); `reason` says why, or what is missing. */
+  control?: {
+    status: string; arbYear: number | null; arbYearHigh: number | null; superTwo?: boolean; between: string[]; reason: string | null;
+  } | null;
 }
 
 export interface ContractsResponse {
@@ -527,6 +531,8 @@ export interface FreeAgentsResponse {
   holes: Array<{ position: number; positionName: string; bestValue: number | null }>;
   currentFAs: FreeAgentRow[];
   upcomingFAs: FreeAgentRow[];
+  /** Expiring deals whose control after this season the export cannot establish. */
+  upcomingIndeterminate?: number;
 }
 
 export interface LineupSlot {

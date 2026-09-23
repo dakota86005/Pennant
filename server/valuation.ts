@@ -1,4 +1,5 @@
 import { db, tableExists, tableColumns } from './db.js';
+import { leagueRulesForLeague } from './leagueRules.js';
 
 export interface ContractInfo {
   salaryNow: number;
@@ -36,50 +37,6 @@ export const ON_ROSTER = '(rs.is_active = 1 OR rs.is_on_dl = 1 OR rs.is_on_dl60 
 
 /** OOTP's role code for a starting pitcher. */
 export const ROLE_STARTER = 11;
-
-export interface LeagueRules {
-  /** Service years needed for free agency; 0 means the league has none. */
-  faMinYears: number;
-  /** Service years needed for arbitration; 0 means the league has none. */
-  arbMinYears: number;
-  /** False in reserve-clause leagues, where a player cannot reach a market. */
-  hasFreeAgency: boolean;
-  hasArbitration: boolean;
-  minimumSalary: number;
-  /** OOTP's money scale. Historical leagues run far below 1.0. */
-  financialCoefficient: number;
-}
-
-/**
- * A league's own contract rules, rather than the modern CBA.
- *
- * Historical and reserve-clause leagues export a free-agency threshold of 0,
- * meaning "never". Read naively that turns into "everyone qualifies", which
- * flagged an entire 1910s roster as expiring and had the AI warning about an
- * open market that would not exist for another sixty years.
- */
-export function leagueRules(leagueId: number): LeagueRules {
-  const r = db
-    .prepare(
-      `SELECT rules_fa_minimum_years AS fa, rules_salary_arbitration_minimum_years AS arb,
-              rules_minimum_salary AS minSalary, financial_coefficient AS coef
-       FROM leagues WHERE league_id = ?`
-    )
-    .get(leagueId) as
-    | { fa: number | null; arb: number | null; minSalary: number | null; coef: number | null }
-    | undefined;
-
-  const faMinYears = r?.fa ?? 6;
-  const arbMinYears = r?.arb ?? 3;
-  return {
-    faMinYears,
-    arbMinYears,
-    hasFreeAgency: faMinYears > 0,
-    hasArbitration: arbMinYears > 0,
-    minimumSalary: r?.minSalary ?? 0,
-    financialCoefficient: r?.coef ?? 1,
-  };
-}
 
 /**
  * Whether this club's half of the league bats a designated hitter.
@@ -236,7 +193,14 @@ export function orgBriefing(orgId: number): string {
 }
 
 export function rulesBriefing(leagueId: number, teamId?: number): string {
-  const r = leagueRules(leagueId);
+  // The one LeagueRules (D-052): the contract regime is resolved through the
+  // parent league, and a rule the export does not state is said to be unknown,
+  // never assumed to be the modern game's six years or three
+  const r = leagueRulesForLeague(leagueId).contract;
+  const fa = r.freeAgencyYears.value;
+  const arb = r.arbitrationYears.value;
+  const minimum = r.minimumSalary.value;
+  const coefficient = r.financialCoefficient.value;
   const parts: string[] = [];
   // Whether the pitcher hits changes lineup construction, bench roles and what
   // a "bat-only" player is worth, so the model must not assume the modern game
@@ -248,7 +212,7 @@ export function rulesBriefing(leagueId: number, teamId?: number): string {
         'Never suggest using someone "at DH".'
     );
   }
-  if (!r.hasFreeAgency) {
+  if (fa === 0) {
     parts.push(
       'This league has NO FREE AGENCY — the reserve clause binds players to the club indefinitely. ' +
         'Contracts run a year at a time and simply renew. A player cannot leave for another team, so ' +
@@ -256,17 +220,27 @@ export function rulesBriefing(leagueId: number, teamId?: number): string {
         'contract as a risk of losing him. The real pressures are salary demands, holdouts, sales and ' +
         'trades between clubs.'
     );
-  } else {
-    parts.push(`Free agency requires ${r.faMinYears} years of major-league service.`);
-  }
-  if (r.hasArbitration) parts.push(`Salary arbitration begins at ${r.arbMinYears} years of service.`);
-  else if (r.hasFreeAgency) parts.push('This league has no salary arbitration.');
-  if (r.minimumSalary > 0) {
-    parts.push(`The league minimum salary is ${Math.round(r.minimumSalary).toLocaleString()}.`);
-  }
-  if (r.financialCoefficient !== 1) {
+  } else if (fa === null) {
     parts.push(
-      `Money in this league runs at a coefficient of ${r.financialCoefficient} versus a modern league — ` +
+      'The league\'s free-agency rule is not in the export, so it is unknown when a player can leave. ' +
+        'Do not assume the modern six years; say it is not known.'
+    );
+  } else {
+    parts.push(`Free agency requires ${fa} years of major-league service.`);
+  }
+  if (arb === null) {
+    if (fa !== 0) parts.push('The league\'s arbitration rule is not in the export; do not assume one.');
+  } else if (arb > 0) {
+    parts.push(`Salary arbitration begins at ${arb} years of service.`);
+  } else if (fa !== 0) {
+    parts.push('This league has no salary arbitration.');
+  }
+  if (minimum !== null && minimum > 0) {
+    parts.push(`The league minimum salary is ${Math.round(minimum).toLocaleString()}.`);
+  }
+  if (coefficient !== null && coefficient !== 1) {
+    parts.push(
+      `Money in this league runs at a coefficient of ${coefficient} versus a modern league — ` +
         'judge every salary against this league\'s own scale, not modern figures.'
     );
   }

@@ -24,6 +24,7 @@ export const PATH: Record<string, string> = { open: 'Open', open_with_requiremen
 export const PATH_CLASS: Record<string, string> = { open: 'eligible', open_with_requirements: 'eligible', indeterminate: 'indeterminate', blocked: 'ineligible' };
 export const BASIS: Record<string, string> = {
   export_state: 'stated by the export', observed: 'observed in OOTP', documented: 'OOTP documentation', observed_and_documented: 'observed and documented',
+  owner_attested: 'attested by the owner',
 };
 export const PATH_LABEL: Record<string, string> = { role_change: 'Change role', recall: 'Recall (40-man)', add_to_forty_man: 'Add to 40-man' };
 

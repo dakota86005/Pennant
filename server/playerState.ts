@@ -311,3 +311,103 @@ export function organizationPlayerStates(orgId: number): PlayerState[] {
 export function allPlayerStates(): PlayerState[] {
   return query('1 = 1', []);
 }
+
+/**
+ * How far the season's service clock has run, per major league: the most
+ * major-league service days anyone on one of its major-league clubs has banked
+ * this season (`players_roster_status.mlb_service_days_this_year`). A man who has
+ * been up since Opening Day has banked the season's whole clock, so this is the
+ * season's own progress: 0 before Opening Day, the service-year length once the
+ * season is over. Derived, and unknown (with why) where the export cannot state it.
+ */
+export function seasonServiceClocks(): (leagueId: number) => Sourced<number> {
+  const source = 'MAX(players_roster_status.mlb_service_days_this_year) on major-league clubs';
+  const unavailable = (reason: 'source_unavailable' | 'not_exported_by_ootp', note: string) => {
+    const u = unknownBecause<number>(reason, source, note);
+    return () => u;
+  };
+  if (!tableExists('players') || !tableExists(STATUS) || !tableExists('teams')) {
+    return unavailable('source_unavailable', 'The roster-status, players or teams table is not in the export.');
+  }
+  const schema = readSchema();
+  if (!schema.status?.has('mlb_service_days_this_year') || !schema.status.has('player_id')) {
+    return unavailable('not_exported_by_ootp', 'players_roster_status has no mlb_service_days_this_year column.');
+  }
+  if (!schema.teams?.has('level') || !schema.teams.has('league_id') || !schema.teams.has('team_id') || !schema.players.has('team_id')) {
+    return unavailable('not_exported_by_ootp', 'teams has no level or league_id column, so the major-league clubs cannot be found.');
+  }
+  const rows = db
+    .prepare(
+      `SELECT t.league_id AS league_id, MAX(rs.mlb_service_days_this_year) AS banked
+       FROM players_roster_status rs
+       JOIN players p ON p.player_id = rs.player_id
+       JOIN teams t ON t.team_id = p.team_id
+       WHERE t.level = 1${schema.players.has('retired') ? ' AND p.retired = 0' : ''}
+       GROUP BY t.league_id`
+    )
+    .all() as Array<{ league_id: unknown; banked: unknown }>;
+  const byLeague = new Map<number, Sourced<number>>();
+  for (const r of rows) {
+    const id = numberOrNull(r.league_id);
+    const banked = numberOrNull(r.banked);
+    if (id === null) continue;
+    byLeague.set(id, banked === null
+      ? unknownBecause<number>('not_exported_by_ootp', source, 'mlb_service_days_this_year is blank for every major leaguer.')
+      : derivedFrom(banked, source));
+  }
+  return (leagueId: number) =>
+    byLeague.get(leagueId) ?? unknownBecause<number>('not_exported_by_ootp', source, `League ${leagueId} has no major-league club with a roster-status row.`);
+}
+
+/** One held player's place in the league's service class (for the Super Two cutoff). */
+export interface ServiceClassMember {
+  playerId: number;
+  /** The league of the club he is on (`teams.league_id`); its contract regime decides his class. */
+  leagueId: number | null;
+  /** `mlb_service_days`, this season's included; null when not exported. */
+  mlbDays: number | null;
+  /** `mlb_service_days_this_year`; null when not exported. */
+  mlbDaysThisSeason: number | null;
+  /** On a major-league club's active roster or injured list, so still banking service; null when unknown. */
+  onMajorLeagueRoster: boolean | null;
+}
+
+/**
+ * Every player a club holds, with the service facts a Super Two class is ranked on, read once.
+ * Objective facts as exported; a value the export does not carry is null, never 0.
+ */
+export function serviceClassMembers(): ServiceClassMember[] {
+  if (!tableExists('players') || !tableExists('teams')) return [];
+  const schema = readSchema();
+  if (!schema.players.has('player_id') || !schema.players.has('team_id') || !schema.teams?.has('team_id')) return [];
+  const joined = !!schema.status?.has('player_id');
+  const status = (column: string) => (joined && schema.status?.has(column) ? `rs."${column}"` : 'NULL');
+  const level = schema.teams.has('level') ? 't.level' : 'NULL';
+  const league = schema.teams.has('league_id') ? 't.league_id' : 'NULL';
+  const rows = db
+    .prepare(
+      `SELECT p.player_id AS id, ${league} AS league_id, ${status('mlb_service_days')} AS days,
+              ${status('mlb_service_days_this_year')} AS this_year, ${level} AS level,
+              ${status('is_active')} AS active, ${status('is_on_dl')} AS il, ${status('is_on_dl60')} AS il60
+       FROM players p
+       JOIN teams t ON t.team_id = p.team_id
+       ${joined ? 'LEFT JOIN players_roster_status rs ON rs.player_id = p.player_id' : ''}
+       WHERE p.team_id > 0${schema.players.has('retired') ? ' AND p.retired = 0' : ''}`
+    )
+    .all() as Array<Record<string, unknown>>;
+  return rows.map((r) => {
+    const lvl = numberOrNull(r.level);
+    const flags = [r.active, r.il, r.il60].map(numberOrNull);
+    const onRoster = lvl === null ? null
+      : lvl !== 1 ? false
+        : flags.some((f) => f === 1) ? true
+          : flags.some((f) => f === null) ? null : false;
+    return {
+      playerId: numberOrNull(r.id) ?? 0,
+      leagueId: numberOrNull(r.league_id),
+      mlbDays: numberOrNull(r.days),
+      mlbDaysThisSeason: numberOrNull(r.this_year),
+      onMajorLeagueRoster: onRoster,
+    };
+  });
+}

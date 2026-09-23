@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import { db, tableExists } from './db.js';
 import { loadSettings } from './settings.js';
-import { leagueRules, seasonYear } from './valuation.js';
-import { controlAfterThisSeason, serviceRemainingThisSeason } from './contracts.js';
+import { seasonYear } from './valuation.js';
+import { controlAfterThisSeason } from './contracts.js';
+import { playerValues } from './playerValue.js';
 
 export const payrollRoutes = Router();
 
@@ -127,8 +128,9 @@ payrollRoutes.get('/payroll/:orgId', (req, res) => {
   }
 
   const years = Array.from({ length: HORIZON }, (_, i) => thisSeason + i);
-  const rules = leagueRules(org.league_id);
-  const serviceLeft = serviceRemainingThisSeason();
+  // The control column reads Player Value's timeline (D-052): one answer per player, shared with
+  // Contracts and the Trade Center, never a service-time sum of this page's own
+  const valuations = playerValues(rows.map((c) => c.player_id));
 
   const players = rows
     .map((c) => {
@@ -164,16 +166,10 @@ payrollRoutes.get('/payroll/:orgId', (req, res) => {
         /*
          * What actually happens to him, rather than merely that his deal ends.
          * Arbitration years left is not money coming off the books — the club
-         * still holds him and the salary is about to rise, not vanish.
+         * still holds him and the salary is about to rise, not vanish. Null for
+         * a man no club holds (a released player whose salary is retained).
          */
-        control: controlAfterThisSeason({
-          yearsAfterThis,
-          hasExtension: !!extension,
-          serviceDays: c.service_days,
-          serviceYears: c.service_years,
-          serviceLeft,
-          rules,
-        }),
+        control: controlAfterThisSeason(valuations.get(c.player_id)?.control),
         options,
         serviceYears: c.service_years,
       };
@@ -198,10 +194,12 @@ payrollRoutes.get('/payroll/:orgId', (req, res) => {
   const nextBudget = typeof entered === 'number' && entered > 0 ? entered : null;
   const endingAfterThisYear = players.filter((p) => p.expiring && !p.deadMoney);
   // Genuinely leaving, against still held but about to cost more
-  const leaving = endingAfterThisYear.filter((p) => p.control.status === 'leaving');
+  const leaving = endingAfterThisYear.filter((p) => p.control?.status === 'leaving');
   const stillControlled = endingAfterThisYear.filter(
-    (p) => p.control.status === 'arbitration' || p.control.status === 'pre-arbitration' || p.control.status === 'reserve clause'
+    (p) => p.control?.status === 'arbitration' || p.control?.status === 'pre-arbitration' || p.control?.status === 'reserve clause'
   );
+  // Neither list: the export cannot establish whether he leaves or stays, and the page says so
+  const controlIndeterminate = endingAfterThisYear.filter((p) => p.control?.status === 'indeterminate');
   const brief = (list: typeof players) => ({
     count: list.length,
     money: list.reduce((sum, p) => sum + (p.salaryNow ?? 0), 0),
@@ -214,8 +212,12 @@ payrollRoutes.get('/payroll/:orgId', (req, res) => {
         name: p.name,
         age: p.age,
         salary: p.salaryNow,
-        status: p.control.status,
-        arbYear: p.control.arbYear,
+        status: p.control?.status ?? null,
+        arbYear: p.control?.arbYear ?? null,
+        arbYearHigh: p.control?.arbYearHigh ?? null,
+        superTwo: p.control?.superTwo ?? false,
+        between: p.control?.between ?? [],
+        reason: p.control?.reason ?? null,
       })),
   });
 
@@ -267,6 +269,7 @@ payrollRoutes.get('/payroll/:orgId', (req, res) => {
      */
     comingOff: brief(leaving),
     stillControlled: brief(stillControlled),
+    controlIndeterminate: brief(controlIndeterminate),
     players,
   });
 });

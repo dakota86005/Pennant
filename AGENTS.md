@@ -45,6 +45,7 @@ research are evidence and rationale, not current implementation truth.
 | MLB Operations | D-024 (then D-025 to D-043 by topic); ARCHITECTURE "MLB Operations"; MLB_OPERATIONS.md §10, §11; ROSTER_REVIEW.md §2, §4; CALIBRATION.md; BEHAVIOR_CASES.md "MLB Operations"; historical rationale: MLB_OPERATIONS_HARDENING.md | `.claude/rules/mlb-operations.md` |
 | Developmental stakes | D-050; ARCHITECTURE "Developmental stakes: the protection tier"; DEVELOPMENTAL_STAKES.md Parts 3, 4, 9 | `.claude/rules/developmental-stakes.md` |
 | Roster evidence and rights | D-020 to D-023, D-026; ARCHITECTURE "Roster evidence: state, chronology, and how current they are"; research evidence: RIGHTS_RESEARCH.md §2, §3 | `.claude/rules/roster-evidence.md` |
+| Player Value | D-052 (with D-018, D-023, D-041); ARCHITECTURE "Subsystem responsibilities" (Player Value), "Player Rights (`playerRights.ts`, `leagueRules.ts`)"; PLAYER_VALUE.md Parts 1, 2, 7 to 11; BEHAVIOR_CASES.md "Player Value"; research evidence: PLAYER_VALUE_RESEARCH.md R-2, R-3, R-6, R-10 | `.claude/rules/player-value.md` |
 | Project identity and releases | D-049; ARCHITECTURE "Subsystem responsibilities" (Identity and version); DEVELOPMENT.md "Versions", "Release tags", "Releases", "Application id and compatibility holds" | `.claude/rules/release-identity.md` |
 
 ## Non-negotiable boundaries
@@ -110,6 +111,14 @@ research are evidence and rationale, not current implementation truth.
   philosophy question; results and usage authorize no move. A cascade is a
   chain of independently defensible steps that stops, and an unresolved hole is
   information, never an illegality. `tests/farmOperationsBoundary.test.ts`
+  enforces the boundary.
+- **Player Value** (D-052) describes and never authorizes: cost, control,
+  production and surplus are bands with their basis, never a verdict or a
+  single score. It reads eligibility only from Player Rights, ability only
+  through `scoutedEvidence.ts` (never `players_value`), and no philosophy
+  outside its lens, no protection tier and no defensibility; a missing rule or
+  service time is `indeterminate`, never 6 / 3 / 172 or zero. Consumers read it
+  through `server/playerValue.ts`; `tests/playerValueBoundary.test.ts`
   enforces the boundary.
 - **The application decides; AI explains** (D-001). Deterministic code computes
   facts, eligibility, findings and recommendations. Chat, briefings and

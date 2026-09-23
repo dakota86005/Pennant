@@ -1,42 +1,14 @@
 import { Router } from 'express';
 import { db, tableExists } from './db.js';
 import { seasonFormByPlayer, type SeasonForm } from './form.js';
+import { leagueRulesForLeague } from './leagueRules.js';
+import { playerValues, type ControlTimeline } from './playerValue.js';
 import {
-  contractsByPlayer, currentGameDate, leagueRules, mlbPercentiler, ON_ROSTER, seasonYear,
+  contractsByPlayer, currentGameDate, mlbPercentiler, ON_ROSTER, seasonYear,
   teamFinances, valuesByPlayer,
 } from './valuation.js';
 
 export const contractRoutes = Router();
-
-/** Days of major-league service that make one service year. */
-export const SERVICE_DAYS_PER_YEAR = 172;
-
-/**
- * How much service a player still on the major-league roster can bank between
- * now and the end of the season, as a fraction of a service year.
- *
- * The export publishes `mlb_service_days_this_year`, so the season's progress
- * is whatever the most-tenured man on a major-league roster has banked: he has
- * been up since Opening Day, so his total is the season's own clock. In the
- * off-season that reaches 172 and nothing is left to earn; before Opening Day
- * it is 0 and a full year remains.
- */
-export function serviceRemainingThisSeason(): number {
-  if (!tableExists('players_roster_status') || !tableExists('teams')) return 1;
-  const row = db
-    .prepare(
-      `SELECT MAX(rs.mlb_service_days_this_year) AS banked
-       FROM players_roster_status rs
-       JOIN players p ON p.player_id = rs.player_id
-       JOIN teams t ON t.team_id = p.team_id
-       WHERE t.level = 1`
-    )
-    .get() as { banked: number | null } | undefined;
-  const banked = row?.banked;
-  // An export without the column behaves as it always did, adding a full year
-  if (typeof banked !== 'number' || !Number.isFinite(banked)) return 1;
-  return Math.min(Math.max(SERVICE_DAYS_PER_YEAR - banked, 0), SERVICE_DAYS_PER_YEAR) / SERVICE_DAYS_PER_YEAR;
-}
 
 const POSITION_NAMES: Record<number, string> = {
   1: 'P', 2: 'C', 3: '1B', 4: '2B', 5: '3B', 6: 'SS', 7: 'LF', 8: 'CF', 9: 'RF', 10: 'DH',
@@ -69,14 +41,19 @@ const COMMITTING = new Set([
 function recommendOnValue(args: {
   age: number;
   yearsAfterThis: number;
-  reachingFA: boolean;
-  hasFreeAgency: boolean;
+  /** Null when his control after this season is indeterminate. */
+  reachingFA: boolean | null;
+  /** Null when the league's free-agency rule is not in the export. */
+  hasFreeAgency: boolean | null;
   overallPct: number | null;
   talentPct: number | null;
   salaryNow: number;
 }): Recommendation | null {
   const { age, yearsAfterThis, reachingFA, hasFreeAgency, overallPct, talentPct, salaryNow } = args;
   if (overallPct === null) return null;
+  // No advice that turns on control when control itself is not established (D-018)
+  if (hasFreeAgency === null) return null;
+  if (yearsAfterThis === 0 && reachingFA === null) return null;
   const declining = talentPct !== null && overallPct - talentPct >= 15;
 
   // Under the reserve clause there is no market to lose a player to, so the
@@ -187,50 +164,80 @@ function recommend(
  * about to go up rather than away. A reader reported it, and he is right —
  * the two belong in different columns.
  *
- * Lives here because this is where the service-time reasoning already was.
- * Working out arbitration eligibility twice, in two files, is how the two
- * pages would come to disagree about the same player.
+ * The answer is Player Value's control timeline (D-052), read for the season
+ * after this one; eligibility itself is Player Rights' (Q-1). Nothing here
+ * compares service time with a threshold any more, so the pages cannot come to
+ * disagree about the same player, and a rule or a service time the export does
+ * not state is `indeterminate` with its reason — never six years, never three,
+ * never zero service.
  */
 export type ControlStatus =
   | 'signed'          // still under contract next season
   | 'extended'        // an extension already picks him up
   | 'leaving'         // reaches free agency — the money genuinely comes off
   | 'arbitration'     // still controlled, and about to cost more
-  | 'pre-arbitration' // still controlled, renewed near the minimum
-  | 'reserve clause'; // no free agency in this league; he simply stays
+  | 'pre-arbitration' // still controlled, renewed by the club
+  | 'reserve clause'  // no free agency in this league; he simply stays
+  | 'indeterminate';  // the export cannot establish which
 
 export interface Control {
   status: ControlStatus;
-  /** Which arbitration trip this would be, when that is where he lands. */
+  /** Which arbitration trip this would be, when that is where he lands (the low edge). */
   arbYear: number | null;
+  /** The high edge, when staying up all season would make it a later trip. */
+  arbYearHigh: number | null;
+  /** Arbitration reached as a Super Two (owner ruling, 2026-09-22). */
+  superTwo: boolean;
+  /** For an indeterminate status: the statuses it lies between. */
+  between: ControlStatus[];
+  /** Why, in a line: the basis, or what is missing. */
+  reason: string | null;
 }
 
-export function controlAfterThisSeason(opts: {
-  yearsAfterThis: number;
-  hasExtension: boolean;
-  serviceDays: number | null;
-  serviceYears: number | null;
-  serviceLeft: number;
-  rules: { faMinYears: number; arbMinYears: number; hasFreeAgency: boolean; hasArbitration: boolean };
-}): Control {
-  const { yearsAfterThis, hasExtension, serviceDays, serviceYears, serviceLeft, rules } = opts;
-  if (hasExtension) return { status: 'extended', arbYear: null };
-  if (yearsAfterThis > 0) return { status: 'signed', arbYear: null };
+const LEGACY: Record<ControlTimeline['seasons'][number]['status'], ControlStatus> = {
+  under_contract: 'signed',
+  club_option: 'signed',
+  player_option: 'signed',
+  vesting_option: 'signed',
+  pre_arbitration: 'pre-arbitration',
+  arbitration: 'arbitration',
+  free_agent: 'leaving',
+  reserve_clause: 'reserve clause',
+  indeterminate: 'indeterminate',
+};
 
-  /*
-   * Service days are exact where mlb_service_years is truncated to whole
-   * years, and only the part of the season still to be played can be added:
-   * the banked days already count what he has earned so far.
-   */
-  const service = serviceDays != null ? serviceDays / SERVICE_DAYS_PER_YEAR : serviceYears ?? 0;
-  const projected = service + serviceLeft;
-
-  if (!rules.hasFreeAgency) return { status: 'reserve clause', arbYear: null };
-  if (projected >= rules.faMinYears) return { status: 'leaving', arbYear: null };
-  if (rules.hasArbitration && projected >= rules.arbMinYears) {
-    return { status: 'arbitration', arbYear: Math.floor(projected - rules.arbMinYears) + 1 };
+/**
+ * Where he stands the season after this one, read from his control timeline.
+ * Null for a player no club holds.
+ */
+export function controlAfterThisSeason(timeline: ControlTimeline | null | undefined): Control | null {
+  const unknown = (reason: string): Control => ({ status: 'indeterminate', arbYear: null, arbYearHigh: null, superTwo: false, between: [], reason });
+  if (!timeline) return unknown('His contract and control could not be read from the export.');
+  if (timeline.standing === 'unsigned') return null;
+  if (timeline.thisSeason === null) return unknown(timeline.notes[timeline.notes.length - 1] ?? 'The current season is not known.');
+  const next = timeline.seasons.find((s) => s.season === timeline.thisSeason! + 1);
+  if (!next) {
+    return unknown(timeline.controlEnds !== null && timeline.controlEnds <= timeline.thisSeason
+      ? 'He is already past the free-agency line and nothing holds him beyond this season.'
+      : 'His control after this season could not be stated.');
   }
-  return { status: 'pre-arbitration', arbYear: null };
+  // An extension already picks him up: the club holds him under a deal signed beyond the current one
+  const extended = (next.from === 'contract' || next.from === 'extension') && timeline.extensionSigned;
+  const status: ControlStatus = extended ? 'extended' : LEGACY[next.status];
+  return {
+    status,
+    arbYear: next.arbitrationYear?.low ?? null,
+    arbYearHigh: next.arbitrationYear && next.arbitrationYear.high !== next.arbitrationYear.low ? next.arbitrationYear.high : null,
+    superTwo: next.superTwo,
+    between: [...new Set(next.between.map((b) => LEGACY[b]))],
+    reason: status === 'indeterminate' ? (next.reasons[0] ?? next.basis) : next.basis,
+  };
+}
+
+/** "arbitration 2" or "arbitration 2-3" when the rest of the season decides which. */
+export function arbitrationLabel(control: Control): string {
+  if (control.superTwo && control.arbYear === null) return 'arbitration (Super Two)';
+  return control.arbYearHigh !== null ? `arbitration ${control.arbYear}-${control.arbYearHigh}` : `arbitration ${control.arbYear ?? ''}`.trim();
 }
 
 export function computeContracts(orgId: number) {
@@ -246,24 +253,24 @@ export function computeContracts(orgId: number) {
   // What each man has actually done this season, so a percentile built out of
   // playing time cannot recommend an extension by itself
   const formByPlayer = seasonFormByPlayer(orgId);
-  const rules = leagueRules(org.league_id);
-  const { faMinYears, arbMinYears, hasFreeAgency, hasArbitration } = rules;
+  // The contract regime, resolved through the parent league; a rule the export
+  // does not state stays unknown (D-052)
+  const rules = leagueRulesForLeague(org.league_id).contract;
+  const hasFreeAgency = rules.freeAgencyYears.value === null ? null : rules.freeAgencyYears.value > 0;
 
   const players = db
     .prepare(
-      `SELECT p.player_id, p.first_name, p.last_name, p.age, p.position,
-              rs.mlb_service_years AS service_years,
-              rs.mlb_service_days AS service_days
+      `SELECT p.player_id, p.first_name, p.last_name, p.age, p.position
        FROM players p
        LEFT JOIN players_roster_status rs ON rs.player_id = p.player_id
        WHERE p.team_id = ? AND p.retired = 0 AND ${ON_ROSTER}`
     )
     .all(orgId) as Array<{
     player_id: number; first_name: string; last_name: string; age: number; position: number;
-    service_years: number | null; service_days: number | null;
   }>;
 
-  const serviceLeft = serviceRemainingThisSeason();
+  // Contract facts and the control timeline, from the one Player Value entry point
+  const valuations = playerValues(players.map((p) => p.player_id));
 
   const rows = players
     .map((p) => {
@@ -276,25 +283,24 @@ export function computeContracts(orgId: number) {
       const yearsAfterThis = c.extension
         ? Math.max(c.controlledThrough - year, 0)
         : c.yearsAfterThis;
-      // mlb_service_years is truncated to whole years, so it cannot tell a
-      // player a week past a threshold from one most of a year past it. Service
-      // days are exact — 172 of them make an MLB service year.
-      const service =
-        p.service_days != null ? p.service_days / SERVICE_DAYS_PER_YEAR : p.service_years ?? 0;
-      // Where he lands next winter. Only the part of the season still to be
-      // played can be added: mlb_service_days already counts the days banked
-      // so far this year, so adding a whole year on top of it pushed players
-      // over the free-agency line months before they actually get there, and
-      // they were flagged "expiring" while still holding an arbitration year.
-      const projected = service + serviceLeft;
-      // With no free agency the reserve clause binds him regardless of service,
-      // so nobody is ever "reaching" a market
-      const reachingFA = hasFreeAgency && projected >= faMinYears;
-      // Which arbitration trip this would be, when he is not yet a free agent
-      const arbYear =
-        hasArbitration && !reachingFA && projected >= arbMinYears
-          ? Math.floor(projected - arbMinYears) + 1
-          : null;
+      const timeline = valuations.get(p.player_id)?.control ?? null;
+      /*
+       * Where he lands next winter, as Player Value's timeline states it. The
+       * projection adds only the part of this season still to be played (the
+       * banked days already count what he has earned), and a threshold inside
+       * that band leaves the season indeterminate rather than guessed.
+       */
+      const control = controlAfterThisSeason(timeline);
+      const reachingFA = control === null || control.status === 'indeterminate' ? null : control.status === 'leaving';
+      const arbYear = control?.status === 'arbitration' ? control.arbYear : null;
+      // Service in the league's own service-year length; unknown stays unknown, never 0
+      const service = timeline?.eligibility?.service.now ?? null;
+      const perYear = timeline?.eligibility?.serviceDaysPerYear.value ?? null;
+      const serviceYears = service === null || perYear === null
+        ? null
+        : service.low === service.high
+          ? Number((service.low / perYear).toFixed(2))
+          : Math.floor(service.low / perYear);
       const oPct = overallPct(p.player_id);
       const tPct = talentPct(p.player_id);
       const form = formByPlayer.get(p.player_id) ?? null;
@@ -312,21 +318,25 @@ export function computeContracts(orgId: number) {
       if (c.extension) {
         // Already locked up beyond the current deal — not a decision to make
         flags.push(`extended thru ${c.extension.endYear}`);
-      } else if (yearsAfterThis === 0 && !hasFreeAgency) {
-        // The deal ends but he cannot leave — the club simply renews him
-        flags.push('reserve clause');
-      } else if (yearsAfterThis === 0 && reachingFA) flags.push('expiring');
-      else if (yearsAfterThis === 0 && arbYear !== null) {
-        // Saying "team control" for an arbitration-eligible player hid the fact
-        // that he still has arbitration years left, which read as "expiring"
-        flags.push(`arbitration ${arbYear}`);
-      } else if (yearsAfterThis === 0) flags.push('pre-arbitration');
+      } else if (yearsAfterThis === 0 && control) {
+        if (control.status === 'reserve clause') {
+          // The deal ends but he cannot leave — the club simply renews him
+          flags.push('reserve clause');
+        } else if (control.status === 'leaving') flags.push('expiring');
+        else if (control.status === 'arbitration') {
+          // Saying "team control" for an arbitration-eligible player hid the fact
+          // that he still has arbitration years left, which read as "expiring"
+          flags.push(arbitrationLabel(control));
+        } else if (control.status === 'pre-arbitration') flags.push('pre-arbitration');
+        // The export cannot establish which: said, not guessed
+        else if (control.status === 'indeterminate') flags.push('control indeterminate');
+      }
       if (c.lastYearTeamOption) flags.push('team option');
       if (c.lastYearPlayerOption) flags.push('player option');
       if (c.lastYearVestingOption) flags.push('vesting option');
       if (c.noTrade) flags.push('no-trade');
       return {
-        sortKey: yearsAfterThis + (yearsAfterThis === 0 && !reachingFA ? 0.5 : 0),
+        sortKey: yearsAfterThis + (yearsAfterThis === 0 && reachingFA !== true ? 0.5 : 0),
         player_id: p.player_id,
         name: `${p.first_name} ${p.last_name}`,
         age: p.age,
@@ -336,8 +346,10 @@ export function computeContracts(orgId: number) {
         yearsAfterThis,
         endYear,
         extension: c.extension,
-        serviceYears: Number(service.toFixed(2)),
+        serviceYears,
         arbYear,
+        /** What happens after this season, with its basis; `indeterminate` names what is missing. */
+        control,
         overallPct: oPct,
         talentPct: tPct,
         /*

@@ -81,6 +81,9 @@ export function buildFixture(): string {
       league_id INTEGER, name TEXT, abbr TEXT, parent_league_id INTEGER, league_level INTEGER,
       season_year INTEGER, "current_date" TEXT, rules_fa_minimum_years INTEGER,
       rules_salary_arbitration_minimum_years INTEGER, rules_minimum_salary INTEGER,
+      -- Days of service in a service year. Read, never assumed: the control
+      -- timeline is indeterminate without it (D-052)
+      rules_min_service_days INTEGER,
       financial_coefficient REAL, rules_amateur_draft INTEGER, show_draft_pool INTEGER,
       draft_date TEXT, rules_amateur_draft_rounds INTEGER,
       -- Roster and transaction rules, as an export carries them
@@ -279,14 +282,14 @@ export function buildFixture(): string {
     `INSERT INTO leagues
      (league_id, name, abbr, parent_league_id, league_level, season_year,
       "current_date", rules_fa_minimum_years,
-      rules_salary_arbitration_minimum_years, rules_minimum_salary,
+      rules_salary_arbitration_minimum_years, rules_minimum_salary, rules_min_service_days,
       financial_coefficient, rules_amateur_draft, show_draft_pool,
       draft_date, rules_amateur_draft_rounds, trade_deadline_date,
       rules_minor_league_options, rules_rule_5, rules_dfa_period_length,
       rules_waiver_period_length, rules_active_roster_limit,
       rules_expanded_roster_limit, rosters_expanded, rules_secondary_roster_limit)
      VALUES (?, 'Test League', 'TL', 0, 1, ?, '2030-06-01', 6, 3,
-             700000, 1, 1, 1, '2030-07-10', 20, '2030-07-31',
+             700000, 172, 1, 1, 1, '2030-07-10', 20, '2030-07-31',
              1, 1, 7, 3, 26, 28, 0, 40)`
   ).run(IDS.league, SEASON);
   db.prepare(`INSERT INTO sub_leagues VALUES (?, 0, 'Only', 1)`).run(IDS.league);

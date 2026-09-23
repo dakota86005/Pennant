@@ -38,6 +38,11 @@ interface PayrollData {
    * which is the opposite of relief.
    */
   stillControlled?: OffTheBooks;
+  /**
+   * Deals ending where the save cannot establish whether he leaves or stays:
+   * his service crosses a line only if he stays up, or a rule is not exported.
+   */
+  controlIndeterminate?: OffTheBooks;
   players: PayrollPlayer[];
 }
 
@@ -46,7 +51,8 @@ interface OffTheBooks {
   money: number;
   players: Array<{
     player_id: number; name: string; age: number; salary: number;
-    status?: string; arbYear?: number | null;
+    status?: string | null; arbYear?: number | null; arbYearHigh?: number | null; superTwo?: boolean;
+    between?: string[]; reason?: string | null;
   }>;
 }
 
@@ -235,8 +241,38 @@ export function Payroll({ orgId }: { orgId: number }) {
                     <td className="num">{p.age}</td>
                     <td className="muted">
                       {p.status === 'arbitration'
-                        ? `arb ${p.arbYear ?? ''}`.trim()
+                        ? p.superTwo && p.arbYear == null ? 'arb (Super Two)' : p.arbYearHigh != null ? `arb ${p.arbYear}-${p.arbYearHigh}` : `arb ${p.arbYear ?? ''}`.trim()
                         : p.status === 'reserve clause' ? 'reserve' : 'pre-arb'}
+                    </td>
+                    <td className="num">{money(p.salary)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        )}
+
+        {/* Neither list: said, not guessed (D-018) */}
+        {data.controlIndeterminate && data.controlIndeterminate.count > 0 && (
+          <section>
+            <h2>
+              Deals ending, outcome not yet established{' '}
+              <span className="muted subtle-count">
+                — {data.controlIndeterminate.count} players, {money(data.controlIndeterminate.money)}
+              </span>
+            </h2>
+            <p className="muted hint-line">
+              The save cannot yet say whether these men leave or stay: their service crosses a line only
+              if they stay up, or a league rule is not in the export. Each says what it lies between.
+            </p>
+            <table className="mini">
+              <tbody>
+                {data.controlIndeterminate.players.map((p) => (
+                  <tr key={p.player_id}>
+                    <td className="name"><PlayerLink id={p.player_id}>{p.name}</PlayerLink></td>
+                    <td className="num">{p.age}</td>
+                    <td className="muted" title={p.reason ?? undefined}>
+                      {p.between && p.between.length > 0 ? p.between.join(' or ') : 'unknown'}
                     </td>
                     <td className="num">{money(p.salary)}</td>
                   </tr>

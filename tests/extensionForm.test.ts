@@ -44,12 +44,15 @@ beforeAll(() => {
                           draft_eligible, college)
      VALUES (?, 'Paper', 'Value', 27, 6, 0, 1, 1, 88, ?, ?, 0, 0, 0, 0)`
   ).run(VALUABLE_AND_STRUGGLING, IDS.mlbTeam, IDS.mlbTeam);
+  // Past six years already, so he reaches free agency whatever the rest of the season holds. (At
+  // 5.9 years, as first written, he crosses the line only if he stays up, and his control after
+  // this season is indeterminate — Player Value, D-052 — which is its own case, not this one.)
   db.prepare(
     `INSERT INTO players_roster_status
        (player_id, is_active, is_on_dl, is_on_dl60, is_on_secondary,
         mlb_service_years, mlb_service_days, mlb_service_days_this_year)
-     VALUES (?, 1, 0, 0, 0, 5.9, ?, 40)`
-  ).run(VALUABLE_AND_STRUGGLING, Math.round(5.9 * 172));
+     VALUES (?, 1, 0, 0, 0, 6, ?, 40)`
+  ).run(VALUABLE_AND_STRUGGLING, Math.round(6.2 * 172));
   // The highest value on the club, which is what recommended him
   db.prepare(
     `INSERT INTO players_value

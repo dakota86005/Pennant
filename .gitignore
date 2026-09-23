@@ -29,6 +29,8 @@ settings.json
 # ...except the shared Claude Code project settings; the personal ones stay local
 !.claude/settings.json
 .claude/settings.local.json
+# Agent worktrees created by Claude Code
+.claude/worktrees/
 last-import.json
 port.json
 briefing-*.json

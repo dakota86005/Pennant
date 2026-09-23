@@ -4,9 +4,10 @@ Design record for the Player Value subsystem: contracts, control, cost, expected
 reality and surplus value. Decision: [D-052](DECISIONS.md) (accepted; owner answers in Part 12). Research evidence:
 [PLAYER_VALUE_RESEARCH.md](PLAYER_VALUE_RESEARCH.md) (R-1 to R-11).
 
-**Status: phase 0, design only. Nothing described here is implemented.** `PROJECT_STATE.md` says what exists; this
-file says what is to be built and why. Every surface that reports value today reads the prohibited `players_value`
-fields (Part 8), and they stay as they are until the phase that replaces each one.
+**Status: phase 1 built (contract facts and control, Part 9); phases 2 to 6 are design.** `PROJECT_STATE.md` says
+what exists; this file says what is to be built and why. Every surface that reports value still reads the prohibited
+`players_value` fields for its value figures (Part 8), and they stay as they are until the phase that replaces each
+one; since phase 1 their control and contract facts come from Player Value.
 
 ---
 
@@ -142,9 +143,18 @@ on the active list for the rest of the season. When the free-agency or arbitrati
 season's status is `indeterminate`, and the dates on either side are stated.
 
 **Unknowns:** a missing rule (FA years, arbitration years, service-year length) makes the dependent status
-`indeterminate`. It never becomes 6 / 3 / 172 (R-10). **Super Two** is an `indeterminate` window, not a rule: the
-imported contracts show the real-world step at about 470–480 days (R-6), and whether OOTP's simulation grants it
-is unresolved. **`has_received_arbitration`** is 0 for every player on this save and carries no information
+`indeterminate`. It never becomes 6 / 3 / 172 (R-10). **Super Two** is OOTP's rule under MLB rules (owner, 2026-09-22;
+Part 12): a player with at least two but fewer than three years of service is arbitration-eligible if he banked at least 86 days in the season just ending and ranks in the top 22% (rounded to the nearest whole number) by total service of the class of players with two to three years and those 86 days (CBA Art. VI(E)(1)(b)); the cutoff therefore moves every winter (in the real world about 2.115 to 2.140 years.days). Player Rights computes the cutoff from the export's own class at the end of this season, once
+per contract regime (`superTwoCutoffs`). Every member's service and his days this season are projections, so the
+cutoff is a range of reasonable readings, from the men on a major-league roster now banking the rest of the season
+to every member banking it. A reading in which nobody banks another day is excluded because the season is played
+and its roster spots are filled; in May it would also leave nobody with 86 days and no class at all. A player above
+the cutoff's high edge with his 86 days is arbitration-eligible (basis `owner_attested`). A player below its low
+edge, or short of 86 days, is pre-arbitration. A player whose own range overlaps it is `indeterminate`, naming both
+edges. It applies only where the league's regime as read is MLB's: no export column names a rule set or Super Two,
+so it is detected by free agency 6, arbitration 3 and a 172-day service year. Any other regime keeps the window
+`indeterminate`, as does last winter's class (last season's days are not exported) and any later winter's (that
+class does not exist yet). **`has_received_arbitration`** is 0 for every player on this save and carries no information
 (R-3). It is not read until an import shows it set.
 
 ### 2.3 Expected production
@@ -354,6 +364,32 @@ always states the neutral figure it started from.
 Phase 1 times the full-league compute on this import before choosing lazy-only or warm-after-import (R-9 sizes it
 at a few hundred thousand rows).
 
+**Measured in phase 1** (`npm run value:report`, read-only, on the Arizona import at 2026-5-16): contract facts and
+the control timeline for all **12,575** active players (12,575 contract rows, 35 extensions with terms, 15 leagues;
+54,143 timeline seasons) in **203-294 ms** per pass over three passes, the first including statement preparation.
+That is cheap enough that phase 1 computes per request, for the players asked about, with no cache; the store in
+this part is built when production and the price of a win (phases 2 and 3) make a pass expensive, and the choice
+between lazy and warm-after-import is re-timed then. Counts on that pass: 8,009 players held by a club and 4,566
+unsigned (no timeline; no club holds them); 6,954 had their contract regime read through the parent league. Next
+season: 216 pre-arbitration, 197 arbitration, 120 free agents, 192 under contract, 60 option seasons and 7,224
+`indeterminate`: 6,952 after a minor-league contract (what follows is not established from the export), 234 in the
+Super Two window, 38 with the free-agency line inside this season's projection. Over every timeline season 42,889
+of 54,143 are `indeterminate`: 41,712 after a minor-league contract, 683 in the Super Two window, 494 with the
+free-agency line inside the projection. Against the old `controlAfterThisSeason` on the 1,057 major-league deals,
+272 next-season answers became `indeterminate` (137 pre-arbitration and 97 arbitration in the Super Two window, 38
+"leaving" with the line inside the projection); none changed from one definite status to another. The Trade
+Center and the player card had read the rules of the player's own club's league, so 171 major-league deals held in
+the minors read "reserve clause" from a minor league's zeros: R-2's error, live there. They now read the parent's
+regime (66 pre-arbitration, 28 arbitration, 12 leaving, 65 `indeterminate`).
+
+**After the owner's Super Two ruling** (same import): the projected cutoff at the end of 2026 is **469–478 days
+(2.125–2.134 years.days)**, a class of 117–220 players with 26–48 qualifiers. The real world's estimate for 2026 is
+2.130–2.134. Of the 234 next-season answers that the blanket window had left `indeterminate`, 104 are now
+pre-arbitration (below the cutoff even if they stay up) and 130 stay `indeterminate`: each one's own service range
+overlaps the cutoff, or he has not yet banked 86 days. On 2026-5-16 nobody has 86 days, so no one is yet certainly
+a Super Two. Next-season `indeterminate` answers among the 1,057 major-league deals fall from 272 to 168 (130 Super
+Two, 38 with the free-agency line inside the projection).
+
 ---
 
 ## Part 8 — Consumers and the migration
@@ -381,12 +417,26 @@ and the evidence boundary test's allow-list for `players_value` is empty.
 | Phase | Builds | Exit criteria |
 |---|---|---|
 | **0** (this document) | Design, research, D-052, behavior cases | Done: the owner accepted D-052 and answered Q-1 to Q-10 (Part 12) |
-| **1** Contract facts and control | Concerns 1 and 2. Arbitration and free-agency eligibility added to `playerRights.ts` (Q-1). **One `LeagueRules`** (merge `valuation.ts`'s into `leagueRules.ts`'s `Sourced` form: every column guarded, no 6/3 fallback, service-year length from `rules_min_service_days`, the regime through `parent_league_id`). Missing service time is `unknown`, never 0. `controlAfterThisSeason` replaced in place. The boundary test (Part 10). A timed league-wide compute | Every active player has a control timeline, with every `indeterminate` counted and its reason named. Payroll's control column reads it. The boundary test passes. The full-league time is recorded here. Player Value has an `AGENTS.md` routing row and a Claude rule (Q-10). `tsc`, `npm test` and the build are clean |
+| **1** Contract facts and control — **done** (2026-09-22; evidence in Part 7 and below) | Concerns 1 and 2. Arbitration and free-agency eligibility added to `playerRights.ts` (Q-1). **One `LeagueRules`** (merge `valuation.ts`'s into `leagueRules.ts`'s `Sourced` form: every column guarded, no 6/3 fallback, service-year length from `rules_min_service_days`, the regime through `parent_league_id`). Missing service time is `unknown`, never 0. `controlAfterThisSeason` replaced in place. The boundary test (Part 10). A timed league-wide compute | Every active player has a control timeline, with every `indeterminate` counted and its reason named. Payroll's control column reads it. The boundary test passes. The full-league time is recorded here. Player Value has an `AGENTS.md` routing row and a Claude rule (Q-10). `tsc`, `npm test` and the build are clean |
 | **2** Club Finances and the opening price | Concern 4. The per-import market snapshot in `history.db`. The opening price of a win and the replacement level with their bases | This save's opening price reproduces R-5's band from code. A snapshot is written once per import key. A league without financials yields wins and dollars `unknown`. No timer |
 | **3** Expected production | Concern 3, in wins, bands per Part 2.3, calibrated against the export's WAR history through the calibration harness | A calibration run is recorded and its constants stamped. The band invariants (Behavior cases) pass. Band coverage is reported |
 | **4** Measured price and arbitration | Observed signings and arbitration awards across imports. The measured price replaces the opening one once its band is narrower (Q-4). The arbitration ladder is measured. Replacement is measured from freely available talent | On an off-season import, signings are identified and counted. While the measured band is still wider, the opening price stays and says why. The price history is visible |
 | **5** Surplus, the lens and the win curve | Concern 5, Part 5's two views, Part 6's lens, Part 4.5's club value of a win | The Player Value behavior cases pass. Neutral value is identical under every philosophy. Every lean is named |
 | **6** Consumer migration | Part 8, in order, one consumer per change | Each change deletes that consumer's `players_value` reads. Finally, the `players_value` allow-list is empty |
+
+**Phase 1 exit criteria, as met.** Every active player has a control timeline (8,009 laid out, 4,566 unsigned with
+none), every `indeterminate` counted with its reason (Part 7). Payroll's control column and lists read it
+(`controlAfterThisSeason` in `contracts.ts` now reads the timeline; `SERVICE_DAYS_PER_YEAR` is gone). One
+`LeagueRules` in `leagueRules.ts`, every column guarded, the regime through `parent_league_id`; `valuation.ts`'s
+duplicate is deleted and every caller migrated (Contracts, Payroll, the Trade Center, the player card, the AI rules
+briefing, Free Agents). `tests/playerValueBoundary.test.ts` passes, with `playerValueControl.test.ts` and the phase-1
+half of `playerValueCost.test.ts`. The full-league time is in Part 7. `AGENTS.md` routes Player Value and
+`.claude/rules/player-value.md` exists. `tsc`, `npm test` and the build are clean.
+
+Judgments made in phase 1 beyond the text above: consumers that hold no freshness reading pass `unverified`, so
+their answers stand with that limitation (a stale export still makes eligibility `indeterminate`, D-023); a minor-league
+contract is held for this season at an unknown cost and what follows it is `indeterminate`; a vesting option is its
+own status beside club and player options; an unsigned player has no timeline rather than a `free_agent` season.
 
 ---
 
@@ -430,9 +480,12 @@ Stamps per D-041. Nothing here is calibrated yet.
 | When the measured price replaces the opening one | **policy** | When the measured band is narrower than the opening band (Q-4). No fixed count |
 | Arbitration ladder shares (about 22 / 42 / 53%) and their spread | **provisional** | Cross-section of imported contracts (R-6) |
 | Pre-arbitration renewal spread | **provisional** | Observed pre-arbitration pay above the minimum (R-5) |
-| Service projection edges (optioned against stays up) | **provisional** | The season clock and the roster state |
+| Service projection edges (optioned against stays up) | **provisional** | This season's remaining days, from the season's service clock, on the high edge only; each later season a full service year on both edges. Declared once as `SERVICE_PROJECTION_BASIS` in `playerRights.ts` (phase 1) |
+| Super Two share (22%), prior-season days (86), MLB's regime (6 / 3 / 172) | **policy** | The game's rule as the owner attested it (2026-09-22; CBA Art. VI(E)(1)(b)). `SUPER_TWO_SHARE`, `SUPER_TWO_PRIOR_SEASON_DAYS`, `MLB_CONTRACT_REGIME` in `playerRights.ts`, stamped `SUPER_TWO_CALIBRATION`. Not fitted and not provisional: changed only by the owner's decision. The regime is compared against, never assumed |
+| Super Two cutoff | **none: computed** | From the export's own class each winter, as a range across the projection readings |
+| Which clause columns are "not populated" | **none: read** | A clause column that is 0 on every contract in the export is unknown, not "none" (R-6); measured per import |
 | Discount rate | **policy** | One stated rate in the neutral view, its value set when phase 5 builds surplus. `competitiveWindow` leans on it only in "our view" (Q-3). No backtest can call it optimal |
-| Projection horizon | **policy** | To the end of control, capped at 7 seasons (Q-3). Control is what the club owns |
+| Projection horizon | **policy** | To the end of control, capped at 7 seasons (Q-3). Control is what the club owns. `CONTROL_HORIZON_SEASONS` in `playerValueCalibration.ts` (phase 1) |
 | Band widening per horizon season | **provisional → calibrated in phase 3** | WAR history makes it fittable |
 | Widening for thin results and partial ratings | **provisional → calibrated in phase 3** | Sample size against projection error |
 | Widening outside the organization | **none** | Not applied: one rating row per player makes it unmeasurable (R-9, Q-2) |
@@ -468,3 +521,6 @@ The owner answered these on 2026-09-22. Each answer is folded into the part it n
 - **Q-9 Minor-league WAR.** Not used in phase 3. Calibration against outcomes (D-037) decides later whether it adds
   anything for prospects (the league's `ml_equivalencies_*` columns are the candidate translation).
 - **Q-10 Routing.** Player Value gets an `AGENTS.md` routing row and a Claude rule in phase 1 (Part 9).
+- **Super Two (ruled 2026-09-22, after phase 1).** OOTP implements Super Two under MLB rules, and Pennant follows
+  the real rule: a player with at least two but fewer than three years of service is arbitration-eligible if he banked at least 86 days in the season just ending and ranks in the top 22% (rounded to the nearest whole number) by total service of the class of players with two to three years and those 86 days (CBA Art. VI(E)(1)(b)); the cutoff therefore moves every winter (in the real world about 2.115 to 2.140 years.days). This is the owner's statement of how OOTP behaves, a basis under D-018 and D-023
+  (`owner_attested`), not a guess from MLB rules (2.2).
