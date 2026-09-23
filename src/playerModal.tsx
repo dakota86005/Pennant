@@ -3,6 +3,7 @@ import { apiDelete, apiGet, apiPost, getPlayer, type PlayerDossier } from './api
 import { PlayerHover } from './playerHover';
 import { AssignmentBlock } from './AssignmentContext';
 import { RightsBlock } from './PlayerRights';
+import { ProductionConeSection } from './ProductionCone';
 import { formatRatingPair, ratingFraction } from './ratingScale';
 
 // Tiny pub/sub so any table cell can open the player card without prop drilling
@@ -294,6 +295,8 @@ function Dossier({ d }: { d: PlayerDossier }) {
           )}
         </section>
       </div>
+
+      <ProductionConeSection playerId={d.player_id} />
 
       {showBatting && d.battingYears.length > 0 && (
         <section>

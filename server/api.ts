@@ -159,8 +159,12 @@ function humanOrgId(): number | null {
  * than the last fit (D-053, PLAYER_VALUE.md Part 7). In the background, once the import has
  * finished, so it can never block or fail it: every error is caught and logged. No timer: it runs
  * once per import, and a re-import without a newer completed season fits nothing.
+ *
+ * Also called once at startup for a save that is already imported, so a save that has never been
+ * fitted (a new install, or a method version that ignores the stored fit) gets its own fit without
+ * waiting for the next import. It fits nothing when the latest completed season is already fitted.
  */
-function refitAfterImport(): void {
+export function refitAfterImport(): void {
   setImmediate(() => {
     try {
       for (const r of refitProductionIfNeeded()) {

@@ -461,14 +461,25 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   95% of their expected usage on this save); no aging effect was distinguishable.
 - **Routes:** `/api/player-value/:playerId`, `/api/player-value?ids=`,
   `/api/player-value/production-fit/:orgId` (with the ratings model in force and
-  its run record since phase 3b). Computed per request: one player about 30 ms,
-  an organization about 65 ms, 500 players about 80 ms; the league-wide pass
-  about 1.3 s, used only by `npm run value:report` (no per-import store yet,
-  PLAYER_VALUE.md Part 7). `npm run value:report` prints production bands,
-  counts by status and source and the median band width per horizon.
+  its run record since phase 3b), and `/api/player-value/:playerId/cone`
+  (production joined with control for the card, `server/playerValueCone.ts`).
+  Computed per request: one player about 30 ms, an organization about 65 ms,
+  500 players about 80 ms; the league-wide pass about 1.3 s, used only by
+  `npm run value:report` (no per-import store yet, PLAYER_VALUE.md Part 7).
+  `npm run value:report` prints production bands, counts by status and source
+  and the median band width per horizon.
+- **Player card production cone** (PLAYER_VALUE.md Part 8): an "Expected
+  production" section draws each season's 80% and 50% bands, the expected
+  path, replacement level and control, with target beside observed coverage on
+  hover and focus and the calibration line; unknown production shows its
+  reason and no cone. Drawn with visx, the charting library adopted in D-054
+  (`src/ProductionCone.tsx`, `src/productionConeGeometry.ts`,
+  `src/chartTheme.ts`). No other page reads production yet; the card's own
+  `players_value` reads wait for phase 6. A static site export omits it.
 - **Tests:** `playerValueControl`, `playerValueCost` (cost-band halves as
   `it.todo`), `playerValueFinances`, `playerValueProduction`,
-  `playerValueProductionFit`, `playerValueRatings` and `playerValueBoundary`.
+  `playerValueProductionFit`, `playerValueRatings`, `playerValueCone`,
+  `productionCone` (geometry, render and theme tokens) and `playerValueBoundary`.
 
 Not built: the save's own development path, the ratings' forecast reliability
 and the arrival chance by potential (they fit themselves once the save's rating

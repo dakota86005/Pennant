@@ -36,7 +36,7 @@ const ALLOWED_IMPORTS = new Set([
   './db.js', './dataFreshness.js', './leagueRules.js', './playerRights.js', './playerState.js', './provenance.js',
   './calibration.js', './playerValue.js', './playerValueCalibration.js', './playerValueContract.js', './playerValueControl.js',
   './playerValueFinances.js', './playerValueHistory.js', './playerValueProduction.js', './playerValueProductionFit.js',
-  './playerValueFitStore.js', './injuryProneness.js', './playerValueRatings.js', './playerValueRatingsFit.js',
+  './playerValueFitStore.js', './injuryProneness.js', './playerValueRatings.js', './playerValueRatingsFit.js', './playerValueCone.js',
 ]);
 
 /** Phase 3b: the modules that may name the adapter at all. Only the reader loads ratings; the pure ratings modules take its types. */
@@ -64,7 +64,7 @@ const SNAPSHOT_CALLERS = ['api.ts', 'clubFinanceRoutes.ts'];
 describe('the Player Value boundary', () => {
   it('finds the value modules', () => {
     expect(VALUE_MODULES).toEqual([
-      'playerValue.ts', 'playerValueCalibration.ts', 'playerValueContract.ts', 'playerValueControl.ts',
+      'playerValue.ts', 'playerValueCalibration.ts', 'playerValueCone.ts', 'playerValueContract.ts', 'playerValueControl.ts',
       'playerValueFinances.ts', 'playerValueFitStore.ts', 'playerValueHistory.ts', 'playerValueProduction.ts',
       'playerValueProductionFit.ts', 'playerValueRatings.ts', 'playerValueRatingsFit.ts', 'playerValueRoutes.ts', 'playerValueSnapshot.ts',
     ]);

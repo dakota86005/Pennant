@@ -959,7 +959,7 @@ th.sortable .tip { cursor: pointer; }
 .player-link:hover { color: var(--accent); border-bottom-color: var(--accent); }
 
 .tip { position: relative; cursor: help; border-bottom: 1px dotted var(--muted); }
-.tip-pop {
+.tip-pop, .chart-pop {
   display: none;
   position: absolute;
   top: calc(100% + 8px);
@@ -981,6 +981,8 @@ th.sortable .tip { cursor: pointer; }
   box-shadow: 0 6px 16px rgba(0,0,0,0.5);
 }
 .tip:hover .tip-pop { display: block; }
+/* A chart's hover detail wears the same popup, placed by the chart beside the season it describes */
+.chart-pop { display: block; pointer-events: none; }
 th:last-child .tip-pop, th:nth-last-child(2) .tip-pop { left: auto; right: 0; }
 
 /* ── Player modal ─────────────────────────────────────────── */
@@ -1053,6 +1055,43 @@ th:last-child .tip-pop, th:nth-last-child(2) .tip-pop { left: auto; right: 0; }
 table.mini { background: transparent; }
 table.mini th, table.mini td { padding: 3px 8px; font-size: 12.5px; }
 .history-scroll { overflow-x: auto; }
+
+/* The production cone (src/ProductionCone.tsx): the card's own type, tokens and popup, no chart chrome */
+.cone-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: var(--muted); margin: 0 0 6px; }
+.cone-key { display: inline-flex; align-items: center; gap: 6px; }
+.cone-swatch { width: 14px; height: 10px; border-radius: 2px; background: var(--accent); }
+.cone-swatch.outer { opacity: 0.16; }
+.cone-swatch.inner { opacity: 0.34; }
+.cone-plot { position: relative; }
+.cone-plot svg { display: block; overflow: visible; }
+.cone-hit {
+  position: absolute;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: default;
+}
+.cone-hit:hover:not(:disabled) { border-color: transparent; }
+.cone-hit:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
+.cone-pop-head { margin-bottom: 4px; }
+.cone-pop-table { width: 100%; margin: 0 0 4px; }
+table.cone-pop-table td { padding: 2px 8px 2px 0; font-size: 12px; vertical-align: top; white-space: normal; border-bottom: 0; }
+table.cone-pop-table td:first-child { white-space: nowrap; }
+.cone-foot { font-size: 12px; margin: 4px 0 0; }
+.cone-unknown { margin: 0; }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
 
 /* ── Storylines: the team paper ───────────────────────────── */
 

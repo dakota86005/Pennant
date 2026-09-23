@@ -1394,3 +1394,56 @@ and move toward OOTP's engine as the save's own simulated seasons enter the wind
 `DEFENSE_WEIGHT`), `toolsModel.ts`, `platoon.ts`, `bullpenRoles.ts` (leverage cut-offs), `roleStandards.ts` (role
 standards), `farmCalibration.ts` (Minor League Operations) and `developmentFit.ts` (development and developmental
 stakes). ROADMAP lists them for an audit and migration.
+
+## D-054 — Charting library
+
+**Status:** Accepted: owner approved adopting a charting dependency (2026-09-23); library choice per the evaluation.
+**Implementation:** Partial. visx (`@visx/shape`, `@visx/group`, 4.0.0, MIT) draws the player card's production
+cone (`src/ProductionCone.tsx`, PLAYER_VALUE.md Part 8); `src/chartTheme.ts` holds the shared conventions;
+`tests/productionCone.test.ts` covers the geometry, a server-side render and the theme tokens. No other chart
+exists yet.
+
+Pennant had no chart library; the owner plans more statistical analysis across the application, so the library is
+chosen as infrastructure, not for one chart. Evaluated on 2026-09-23 against npm metadata and a measured build:
+
+| Criterion | visx 4.0.0 | Observable Plot 0.6.17 | Recharts 3.10.1 | ECharts 6.1.0 | Nivo 0.99.0 |
+|---|---|---|---|---|---|
+| License | MIT | ISC | MIT | Apache-2.0 (outside MIT/ISC/BSD) | MIT |
+| Maintenance | 4.0.0 on 2026-06-11 | last release 2025-02-14 | 3.10.1 on 2026-07-25, canaries weekly | 6.1.0 on 2026-05-19 | last release 2025-05-23 |
+| React 18, TypeScript | peer React 18/19, typed | framework-free, typed; imperative DOM in an effect | peer React 16–19, typed | wrapper needed, typed | peer React 16–19, typed |
+| Offline, Electron | bundled, no runtime fetch | bundled (all of d3 7) | bundled | bundled | bundled |
+| Bundle | +6.4 kB gzip for the whole cone feature (measured) | d3 7 plus Plot, 1.5 MB unpacked | Redux Toolkit, Immer, react-redux, es-toolkit | large (zrender) | react-spring and one package per chart |
+| Theming by CSS variables | SVG elements take `var(--…)` directly | style strings, less direct | SVG, props take `var(--…)` | theme object; canvas by default, which reads no CSS variables | theme object, not CSS |
+| Statistical expressiveness | areas with y0/y1, lines, shapes, `@visx/stats` box and violin; density, bins, regression and small multiples composed from d3 (vendored) | the richest: areaY y1/y2, density, bin, linear regression, window smoothing, facets, tips | area ranges, lines, error bars; no density or regression | rich | moderate |
+| Interaction, accessibility | own DOM: `role="img"` summaries, focusable HTML controls | pointer tips, ARIA attributes; no keyboard focus | built-in keyboard layer, tooltips | aria description generator; canvas marks are not focusable | tooltips, some ARIA |
+| Testability in Vitest (node, no jsdom) | `renderToStaticMarkup` works | needs a DOM implementation | fixed sizes render; `ResponsiveContainer` needs a DOM | server-side SVG rendering exists | responsive wrappers need a DOM |
+
+**The pick is visx.** It is React components over SVG, so a chart is ordinary JSX whose fills and strokes are the
+theme's CSS variables, it renders on the server for tests, and it imports package by package, so a chart pays only
+for what it uses. It is the lowest level of the candidates: the chart's geometry is written as a pure function
+beside it, which is where Pennant wants it anyway (testable, and cheap to move to another library). Observable Plot
+is the most expressive statistically and was the close second; it was set aside for its imperative DOM (it needs a
+DOM in tests and sits outside React's tree for focus and events) and a release cadence that has slowed (last release
+February 2025). A statistical transform Plot would give for free (a kernel density, a regression line) is written as
+a pure helper over d3, which visx vendors. Recharts brings a state library and fixed chart shapes; ECharts is outside
+the allowed licenses and draws to canvas; Nivo's releases stopped in May 2025 and it themes through an object, not CSS.
+
+**Conventions for every chart:**
+
+- **Theme tokens only.** Colours come from `CHART_COLOR` in `src/chartTheme.ts` (`--text`, `--muted`, `--border`,
+  `--panel`, `--accent`), never a literal colour, so every club's palette and both modes reach the chart. The test
+  checks each token is one `derivePalette` sets in both modes; `npm run check:theme` keeps checking the palette itself.
+- **SVG, drawn from a pure geometry module.** A chart's layout (domain, ticks, positions, which label length fits) is
+  a pure function with its own tests; the component only draws it. Import only the visx packages a chart needs:
+  `@visx/axis` pulls `@visx/text` and a CSS-calc evaluator (about 17 kB) and `@visx/scale` d3's time and colour
+  modules (about 30 kB), so the cone uses neither; add them when a chart needs what they do.
+- **The card's look.** Charts reuse the page's type, section headers and popups (`.chart-pop` shares `.tip-pop`);
+  no chart chrome of their own. Marks follow the dataviz rules: 2px lines, markers with a surface ring, washes for
+  bands, hairline solid gridlines, text in text tokens, never in the data colour.
+- **Accessibility.** The SVG is `role="img"` with a sentence-length summary as its accessible name; each data point
+  that has detail is a focusable HTML control over the chart showing the same detail on focus as on hover; a visually
+  hidden table carries every value.
+- **Presentation only.** A chart draws what the API served and computes nothing about the player (D-001, D-008).
+
+Consequences: `@visx/group` and `@visx/shape` are dev dependencies (the frontend is bundled, like React). The
+production bundle grew by 18.7 kB (6.4 kB gzip: 518.4 to 537.1 kB, 149.7 to 156.1 kB gzip) for the cone, its geometry, the theme module and their styles.

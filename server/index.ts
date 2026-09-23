@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import type { AddressInfo } from 'node:net';
-import { api, runImport } from './api.js';
+import { api, refitAfterImport, runImport } from './api.js';
 import { buildIndexes } from './importer.js';
 import { APP_ROOT, loadConfig } from './config.js';
 import { startWatcher } from './watcher.js';
@@ -89,6 +89,11 @@ function requireLocalHost(
 
 /** Import on boot if needed, then watch for fresh OOTP exports. */
 function bootstrapData(): void {
+  // A save that is already imported but has no fit for its latest completed season gets one now,
+  // in the background, instead of waiting for the next import (D-053: nothing for the user to do).
+  // It reads only the imported database, so it does not depend on the export folder being present.
+  // Deferred with setImmediate, so it runs after the synchronous start-up below (indexes included).
+  if (tableExists('players')) refitAfterImport();
   const config = loadConfig();
   if (!config.csvDir || !fs.existsSync(config.csvDir)) return;
   if (!tableExists('players')) void runImport(config.csvDir);

@@ -379,6 +379,39 @@ export interface PlayerDossier {
 }
 
 export const getPlayer = (id: number) => json<PlayerDossier>(`/api/player/${id}`);
+
+/**
+ * The player card's production cone, as Player Value serves it (server/playerValueCone.ts): expected
+ * wins per season with the 80% and 50% bands, each season's control, coverage target beside what the
+ * save's fit observed (null when not measured), and the calibration status line. Nothing here is
+ * recomputed in the browser.
+ */
+export interface ConeBand { low: number; high: number }
+export interface ConeCoverage { target: number; observed: number | null }
+export interface ConeLabels { label: string; short: string; code: string }
+export interface ConeSeason {
+  season: number;
+  age: number;
+  central: number;
+  outer: ConeBand;
+  inner: ConeBand;
+  toDate: number | null;
+  usage: Array<{ unit: 'PA' | 'BF'; low: number; central: number; high: number }>;
+  coverage: { outer: ConeCoverage; inner: ConeCoverage; cases: number | null; note: string };
+  control: ConeLabels & { status: string; detail: string; after: ConeLabels | null };
+  notes: string[];
+}
+export interface ProductionCone {
+  playerId: number;
+  status: 'projected' | 'unknown';
+  reason: string | null;
+  unit: string;
+  seasons: ConeSeason[];
+  basis: string;
+  control: { standing: 'held' | 'unsigned' | 'unknown'; note: string | null };
+  calibration: { source: 'save_fit' | 'fallback_prior'; calibrated: boolean; status: string; detail: string };
+}
+export const getProductionCone = (id: number) => json<ProductionCone>(`/api/player-value/${id}/cone`);
 export const getStorylines = (orgId: number) => json<StorylineCache | null>(`/api/storylines/${orgId}`);
 export const generateStorylines = (orgId: number) =>
   json<StorylineCache>(`/api/storylines/${orgId}`, { method: 'POST' });

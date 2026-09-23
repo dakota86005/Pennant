@@ -43,7 +43,7 @@
     "@google/genai": "^2.16.0",
     "better-sqlite3": "^12.11.1",
     "chokidar": "^4.0.3",
-    "csv-parse": "^5.6.0",
+    "csv-parse": "^7.0.2",
     "electron-updater": "^6.8.9",
     "express": "^4.21.2",
     "openai": "^6.49.0"
@@ -54,6 +54,8 @@
     "@types/node": "^22.10.5",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
+    "@visx/group": "^4.0.0",
+    "@visx/shape": "^4.0.0",
     "@vitejs/plugin-react": "^4.3.4",
     "concurrently": "^9.1.2",
     "electron": "^41.10.4",
