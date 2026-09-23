@@ -13,6 +13,7 @@ Start with the four durable documents, then the subsystem document for the area 
 | [MLB_OPERATIONS.md](MLB_OPERATIONS.md) | MLB Operations: design, the audit of the superseded branch, and the build log. |
 | [MINOR_LEAGUE_OPERATIONS.md](MINOR_LEAGUE_OPERATIONS.md) | Minor League Operations: audit, rebuild, hardening, windowed usage. |
 | [DEVELOPMENTAL_STAKES.md](DEVELOPMENTAL_STAKES.md) | Player Development's protection tier: what it means, the audit of the model it replaced, the stakes model and its validation (D-050). |
+| [PLAYER_VALUE.md](PLAYER_VALUE.md) | Player Value: contracts, control, cost, expected production, club finances and surplus. Design only, D-052 (phase 0); nothing in it is implemented yet. |
 | [ROSTER_REVIEW.md](ROSTER_REVIEW.md) | The scouting-department layer: role review, cascades, hitters, platoons. |
 | [CALIBRATION.md](CALIBRATION.md) | How scouting constants are tuned and stamped calibrated, provisional or policy. |
 | [BEHAVIOR_CASES.md](BEHAVIOR_CASES.md) | The behavioral corpus: where new baseball behavior gets its case first. |
@@ -27,6 +28,7 @@ later code.
 |---|---|
 | [MLB_OPERATIONS_HARDENING.md](MLB_OPERATIONS_HARDENING.md) | The MLB Operations hardening phase (D-039 to D-043). |
 | [RIGHTS_RESEARCH.md](RIGHTS_RESEARCH.md) | The experiments and OOTP documentation behind Player Rights (D-023). |
+| [PLAYER_VALUE_RESEARCH.md](PLAYER_VALUE_RESEARCH.md) | Research evidence behind Player Value (D-052): what the import establishes about contracts, service time, WAR and club finances, and what it leaves unresolved. |
 | [CALIBRATION_RUN.txt](CALIBRATION_RUN.txt) | Raw output of the calibration run that `server/calibration.ts` stamps point at. |
 | [PENNANT_CONSOLIDATION.md](PENNANT_CONSOLIDATION.md) | The identity, version-lineage and repository consolidation phase. |
 

@@ -76,6 +76,24 @@ list, so no case says who ranks first or names a player.
 readings are identical, in the farm's payload and in Player Development's, at organizations that lean opposite ways
 on every dimension the farm reads.
 
+## Player Value
+
+Written in phase 0, before any code (D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md)). **No test file exists
+yet.** Each invariant below becomes an `it` in the named file in the phase that builds its concern, and must fail
+first for the reason expected. Value describes and authorizes nothing, so no case says who is worth more or names a
+player.
+
+| Planned file (phase) | Invariants |
+|---|---|
+| `playerValueControl.test.ts` (1) | A missing free-agency or arbitration rule leaves the season's control `indeterminate`, never six years or three. A missing service time is unknown, never pre-arbitration. A minor leaguer's control is read from his parent league's rules, never from his own league's zeros. A player whose projected service straddles a threshold has that season `indeterminate`, with the dates on both sides stated. Arbitration and free-agency eligibility come from Player Rights and are never re-derived from service time in a value module. A player in the Super Two window is `indeterminate`, never eligible and never ineligible, until the data proves the rule. `has_received_arbitration = 0` is not evidence that he has not been through arbitration. |
+| `playerValueCost.test.ts` (1–4) | An arbitration-eligible player's cost path is a band, never the league minimum and never a point. A pre-arbitration renewal is a band that starts at the minimum. An option is shown on both branches. A no-trade clause, buyout or minor-league salary the export does not populate is unknown, never none and never $0. |
+| `playerValueFinances.test.ts` (2) | A league without financials yields value in wins, with dollars `unknown` and the reason stated. The opening price of a win always carries its basis and a band, and a floor below it. The price only narrows as observed signings accumulate, and never on one import alone. The club's marginal value of a win moves with its competitive position and never with its philosophy. A market snapshot is written once per import. |
+| `playerValueProduction.test.ts` (3) | Thinner scouting widens the value band and never narrows it: removing a rating, results or a season of history leaves the band at least as wide, and removing all ability evidence makes that component unknown rather than average. Every season further out is at least as wide as the one before. A player outside the organization is valued on exactly the same terms as the same evidence inside it. A prospect's low edge includes producing nothing. A better visible line, all else equal, never lowers expected wins. |
+| `playerValueSurplus.test.ts` (5) | Sunk salary never favours keeping a player: raising the money already paid, or the guarantee owed whether he stays or goes, never raises his retention margin. A contract's surplus is his production value less his cost, season by season, with every component shown. Surplus bands are combined edge against edge and are never narrower than their parts allow. |
+| `playerValueLens.test.ts` (5) | The philosophy lens never changes the neutral value: every neutral figure, band, price, control status and unknown is identical under every philosophy. Every difference between "our view" and neutral names the dimension that made it. The lens cannot turn an indeterminate into a number. Changing philosophy recomputes nothing. |
+| `playerValueInvariants.test.ts` (5) | A player's value is the same regardless of which consumer asks: Contracts, Payroll, the Trade Center, Free Agents, Org Comparison and the player card receive one identical valuation. Adding or removing an unrelated player changes nobody else's value except through the league price of a win, and then by the price alone. Value never reads the protection tier, and the tier never reads value. |
+| `playerValueBoundary.test.ts` (1, widened each phase) | Ratings only through `scoutedEvidence.ts`. No `players_value` field in any value module. Consumers reach value only through its module. No philosophy in the neutral path. No tier, no defensibility and no rebuilt roster right. Nothing writes to `league.db`. Every constant is declared once and stamped. (PLAYER_VALUE.md Part 10.) |
+
 ## Adding a case
 
 When real-save testing finds a new failure mode, add the case before the fix:
