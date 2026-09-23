@@ -77,6 +77,21 @@ Point them at a database with `OOTP_FO_DATA_DIR=<directory containing league.db>
 Pull requests and pushes to `main` are validated by `.github/workflows/ci.yml` (typecheck, tests, build on Linux). It
 holds no signing material and never packages anything.
 
+### Dependency audit
+
+Last run 2026-09-23: `npm audit` reports 0 vulnerabilities. Nothing is left unresolved. Of the ten reported
+findings, nine were patch releases inside the existing ranges and needed only `npm audit fix`, without `--force`:
+`vitest`/`@vitest/mocker`, a dev dependency; `qs` and `body-parser` through `express` 4, the localhost server;
+`js-yaml`, through `electron-updater` (runtime) and `electron-builder`; `@xmldom/xmldom` and `fast-uri`, through
+`electron-builder` (packaging only); and `nanoid` through `vite`/`postcss` (build only). The tenth, `csv-parse`, took a
+major upgrade from 5 to 7. Its changelog renames no option the importer passes (`delimiter`, `relax_column_count`,
+`relax_quotes`, `skip_empty_lines`). The advisory's `columns` path is not reachable because the importer reads rows as
+arrays. A 5-against-7 comparison on edge-case input with those options gave identical output.
+
+When auditing again, fix what `npm audit fix` fixes, and take a major upgrade only after reading its changelog against
+this codebase and passing the validation baseline. Do not start an Express 5 migration just to satisfy the audit. Move
+`better-sqlite3` or `electron` only if the audit requires it, because both carry native ABI concerns.
+
 ## Desktop app
 
 ```bash
