@@ -23,10 +23,12 @@ to R-11) is research evidence, not current doctrine. Where they differ from this
 Player Value describes and never authorizes: what a player costs, under what control, what he will produce,
 what a win is worth and what is left, as bands with their basis. `server/playerValue.ts` is the one entry
 point; `playerValueContract.ts` (contract facts), `playerValueControl.ts` (control and cost path),
-`playerValueFinances.ts` (Club Finances, the opening price of a win, replacement level) and
-`playerValueCalibration.ts` (every constant, stamped) sit behind it. `playerValueSnapshot.ts` is the one
-writer: the per-import market snapshot, `history.db` only, called from `runImport` and the club-finances
-route. Which phases are built is in `docs/PROJECT_STATE.md`; check it against the worktree.
+`playerValueProduction.ts` (expected production, pure), `playerValueProductionFit.ts` (the per-save fit),
+`playerValueHistory.ts` (the history reader), `playerValueFinances.ts` (Club Finances, the opening price of a win,
+replacement level) and `playerValueCalibration.ts` (policy and the provisional prior, stamped) sit behind it. Two
+writers, `history.db` only: `playerValueSnapshot.ts` (the per-import market snapshot) and `playerValueFitStore.ts`
+(the per-save production fits, D-053). Which phases are built is in `docs/PROJECT_STATE.md`; check it against the
+worktree.
 
 - No verdict, rank or single score: never trade, release, extend, sign or promote (D-052, D-004).
 - Eligibility (pre-arbitration, arbitration, free agency) is Player Rights' (`evaluateContractControl`,
@@ -45,7 +47,14 @@ route. Which phases are built is in `docs/PROJECT_STATE.md`; check it against th
   reads in the same change (Part 8). Nothing writes to `league.db`.
 - Club Finances: a financial value whose meaning is not established is shown raw (`meaning: 'unknown'`), a
   row of all-zero money is unknown, and a market contract is Player Rights' free-agency answer, never service.
+- Calibration belongs to the save (D-053): production's fitted numbers come from the save's stored fit, adopted
+  through the gate; code holds the method, `PRODUCTION_POLICY` and the provisional `PRODUCTION_PRIOR` only. Phase 3a
+  reads results only (no `scoutedEvidence`); no major-league results is `unknown`, pending phase 3b. Injury
+  proneness is an owner-attested known fact, read only through `server/injuryProneness.ts`; 0 or blank is unknown.
+- The rate band is never narrower further out; the wins band is rate × expected playing time and may narrow as
+  playing time fades (owner, 2026-09-23). Thinner evidence never narrows either on the same expected playing time.
 - Never ask the owner for an OOTP experiment; an unresolved rule stays `indeterminate` and is documented.
 
 Checks: `tests/playerValueBoundary.test.ts`, `tests/playerValueControl.test.ts`, `tests/playerValueCost.test.ts`,
-`tests/playerValueFinances.test.ts`; `npm run value:report` against a real import (read-only with `OOTP_FO_DB_READONLY=1`).
+`tests/playerValueFinances.test.ts`, `tests/playerValueProduction.test.ts`, `tests/playerValueProductionFit.test.ts`;
+`npm run value:report` and `npx tsx scripts/calibrate.ts production` against a real import (read-only with `OOTP_FO_DB_READONLY=1`).

@@ -57,6 +57,10 @@ export interface PlayerState {
     injured: Sourced<boolean>;
     dayToDay: Sourced<boolean>;
     daysLeft: Sourced<number>;
+    /** `players.injury_dl_left`, days left on the injured list, as exported. */
+    ilDaysLeft: Sourced<number>;
+    /** `players.injury_career_ending`, as exported. */
+    careerEnding: Sourced<boolean>;
   };
 
   dfa: {
@@ -129,7 +133,7 @@ const STATUS_COLUMNS = [
 ];
 const PLAYER_COLUMNS = [
   'player_id', 'first_name', 'last_name', 'age', 'organization_id', 'team_id', 'retired', 'position', 'role',
-  'injury_is_injured', 'injury_dtd_injury', 'injury_left',
+  'injury_is_injured', 'injury_dtd_injury', 'injury_left', 'injury_dl_left', 'injury_career_ending',
 ];
 
 type Row = Record<string, unknown>;
@@ -223,7 +227,7 @@ function stateFromRow(row: Row, schema: Schema, majorContract: Map<number, boole
     activeRoster: active,
     fortyMan: status('is_on_secondary', flag),
     injuredList: { onIl: il, onIl60: il60 },
-    injury: { injured, dayToDay, daysLeft },
+    injury: { injured, dayToDay, daysLeft, ilDaysLeft: player('injury_dl_left', asIs), careerEnding: player('injury_career_ending', flag) },
     dfa: {
       designated,
       daysLeft: daysOnDfa,

@@ -1,8 +1,9 @@
 /**
  * Player Value on a real import: the league-wide control timeline, timed, and every indeterminate
  * counted with its reason (docs/PLAYER_VALUE.md Part 7 and Part 9, phase 1); Club Finances, the
- * opening price of a win with every basis, and the replacement level per season, timed (phase 2).
- * Read-only.
+ * opening price of a win with every basis, and the replacement level per season, timed (phase 2);
+ * expected production (phase 3a): the league-wide pass timed with and without it, counts by status,
+ * the median band width per horizon season, and four example players. Read-only.
  *
  *   OOTP_FO_DATA_DIR=<dir containing league.db> OOTP_FO_DB_READONLY=1 npm run value:report
  *
@@ -18,7 +19,8 @@
 import { performance } from 'node:perf_hooks';
 import { db, tableExists } from '../server/db.js';
 import {
-  clubFinances, leagueFinances, leaguePlayerValues, marketLeagueOfClub, marketLeagues, type PlayerValuation,
+  clubFinances, leagueFinances, leaguePlayerValues, marketLeagueOfClub, marketLeagues, playerValues, productionCalibration,
+  type PlayerValuation,
 } from '../server/playerValue.js';
 import { allLeagueRules } from '../server/leagueRules.js';
 import { superTwoCutoffs } from '../server/playerRights.js';
@@ -275,5 +277,103 @@ if (process.env.OOTP_FO_VALUE_SNAPSHOT === '1') {
   console.log(`  history rows for league ${marketId}: ${history.length}`);
   for (const h of history) {
     console.log(`    ${h.gameDate} (${h.gameDateExported}) ${h.priceLabel}: ${h.price ? `${m(h.price.central)} [${m(h.price.low)}–${m(h.price.high)}]` : 'unknown'}, floor ${h.floor ? `${m(h.floor.low)}–${m(h.floor.high)}` : 'unknown'}, market contracts ${h.marketContracts}, payroll ${m(h.leaguePayroll)}`);
+  }
+}
+
+/* ── Expected production (phase 3a; PLAYER_VALUE.md Parts 2.3 and 7, D-053) ─────────────────────── */
+
+{
+  const w = (b: { low: number; high: number }) => b.high - b.low;
+  const median = (xs: number[]) => {
+    if (xs.length === 0) return null;
+    const s = [...xs].sort((a, b) => a - b);
+    return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2;
+  };
+  const band = (b: { low: number; central: number; high: number }) => `${b.central.toFixed(1)} [${b.low.toFixed(1)}, ${b.high.toFixed(1)}]`;
+
+  // Timing: the league-wide pass with production, and without it, and a club-sized request
+  const withTimes: number[] = [];
+  const withoutTimes: number[] = [];
+  let all = new Map<number, PlayerValuation>();
+  for (let i = 0; i < RUNS; i += 1) {
+    let start = performance.now();
+    all = leaguePlayerValues();
+    withTimes.push(performance.now() - start);
+    start = performance.now();
+    leaguePlayerValues({ production: false });
+    withoutTimes.push(performance.now() - start);
+  }
+  const clubIds = human === null ? [] : (db.prepare('SELECT player_id FROM players WHERE organization_id = ? AND retired = 0').all(human) as Array<{ player_id: number }>).map((r) => r.player_id);
+  const clubTimes: number[] = [];
+  for (let i = 0; i < RUNS; i += 1) {
+    const start = performance.now();
+    playerValues(clubIds);
+    clubTimes.push(performance.now() - start);
+  }
+  console.log(`\nExpected production (phase 3a), ${RUNS} runs`);
+  console.log(`  league-wide, contract + control + production   ${withTimes.map((t) => `${Math.round(t)} ms`).join(', ')}`);
+  console.log(`  league-wide, contract + control only           ${withoutTimes.map((t) => `${Math.round(t)} ms`).join(', ')}`);
+  console.log(`  one organization (${clubIds.length} players), everything     ${clubTimes.map((t) => `${Math.round(t)} ms`).join(', ')}`);
+
+  const cal = productionCalibration(marketId);
+  console.log(`\n  model in force: ${cal.inForce.source} — ${cal.inForce.label}`);
+  console.log(`  stamp: ${cal.inForce.stamp.status}; ${cal.inForce.stamp.run ?? cal.inForce.stamp.basis}`);
+  for (const o of cal.observed) {
+    console.log(`  horizon ${o.horizon}: 80% target · ${o.outer.observed === null ? 'not measured' : `${(o.outer.observed * 100).toFixed(1)}% observed`}; 50% target · ${o.inner.observed === null ? 'not measured' : `${(o.inner.observed * 100).toFixed(1)}% observed`} (${o.cases} held-out cases)`);
+  }
+  if (cal.latestAttempt) console.log(`  latest fit attempt: through ${cal.latestAttempt.throughSeason}, adopted ${cal.latestAttempt.adopted}: ${cal.latestAttempt.reason}`);
+
+  // Counts by status, and why the unknowns are unknown
+  const reasonOf = (r: string | null) => (r === null ? '' : /phase 3b/.test(r) ? 'no major-league results in the window: pending ratings-based projection (phase 3b)' : r.replace(/\d+/g, '#').slice(0, 120));
+  const statuses = new Map<string, number>();
+  const rosteredStatuses = new Map<string, number>();
+  // On a major-league club's active roster or injured list
+  const rostered = new Set((db.prepare(
+    `SELECT rs.player_id FROM players_roster_status rs JOIN players p ON p.player_id = rs.player_id JOIN teams t ON t.team_id = p.team_id
+     WHERE t.level = 1 AND (rs.is_active = 1 OR rs.is_on_dl = 1 OR rs.is_on_dl60 = 1)`
+  ).all() as Array<{ player_id: number }>).map((r) => r.player_id));
+  for (const v of all.values()) {
+    const key = v.production.status === 'projected' ? 'projected' : `unknown: ${reasonOf(v.production.reason)}`;
+    tally(statuses, key);
+    if (rostered.has(v.playerId)) tally(rosteredStatuses, key);
+  }
+  print('Production status, every active player', statuses);
+  print('Production status, major-league active and injured lists', rosteredStatuses);
+
+  // Median band width per season of the horizon (80% and 50%)
+  const projected = [...all.values()].filter((v) => v.production.status === 'projected');
+  const widths = (pop: PlayerValuation[]) => (pop[0]?.production.seasons ?? []).map((s, i) => ({
+    season: s.season,
+    outer: median(pop.map((v) => w(v.production.seasons[i].wins))),
+    inner: median(pop.map((v) => w(v.production.seasons[i].inner))),
+    central: median(pop.map((v) => v.production.seasons[i].wins.central)),
+  }));
+  for (const [title, pop] of [['every projected player', projected], ['projected, on a major-league list', projected.filter((v) => rostered.has(v.playerId))]] as Array<[string, PlayerValuation[]]>) {
+    console.log(`\nMedian band width, wins (${title}, ${pop.length} players): season (horizon) — 80% / 50% width, median central`);
+    widths(pop).forEach((x, i) => console.log(`  ${x.season} (${i + 1}${i === 0 ? ', the rest of it plus what is banked' : ''})   ${x.outer?.toFixed(2)} / ${x.inner?.toFixed(2)}   central ${x.central?.toFixed(2)}`));
+  }
+
+  // Examples: a star, an average regular, an aging veteran, a reliever (chosen by the numbers, for a sanity check)
+  const name = (id: number) => (db.prepare(`SELECT first_name || ' ' || last_name AS n FROM players WHERE player_id = ?`).get(id) as { n: string }).n;
+  const onList = projected.filter((v) => rostered.has(v.playerId));
+  const hitters = onList.filter((v) => v.production.basis.sides[0]?.kind === 'hitter');
+  const byNext = (v: PlayerValuation) => v.production.seasons[1].wins.central;
+  const star = [...hitters].sort((a, b) => byNext(b) - byNext(a))[0];
+  const regulars = hitters.filter((v) => v.production.basis.sides[0].usagePerSeason[0] >= 450).sort((a, b) => byNext(a) - byNext(b));
+  const regular = regulars[Math.floor(regulars.length / 2)];
+  const veteran = [...onList].filter((v) => (v.production.basis.sides[0]?.opportunities ?? 0) >= 800)
+    .sort((a, b) => (b.production.basis.origin.age ?? 0) - (a.production.basis.origin.age ?? 0))[0];
+  const relievers = onList.filter((v) => v.production.basis.sides[0]?.kind === 'reliever').sort((a, b) => byNext(b) - byNext(a));
+  const reliever = relievers[Math.floor(relievers.length / 10)];
+  console.log('\nExamples (80% band, then 50%; wins in the export\'s WAR units)');
+  for (const [label, v] of [['star', star], ['average regular', regular], ['aging veteran', veteran], ['reliever (90th percentile of relievers)', reliever]] as Array<[string, PlayerValuation | undefined]>) {
+    if (!v) continue;
+    const p = v.production;
+    const side = p.basis.sides[0];
+    console.log(`  ${label}: ${name(v.playerId)} (${v.playerId}), age ${p.basis.origin.age}, ${side.kind}; window ${side.seasons.map((s) => `${s.season} ${s.opportunities}/${s.war.toFixed(1)}`).join(', ')}; ` +
+      `rate ${side.observedRate?.toFixed(2)} → regressed ${side.regressedRate.toFixed(2)} per 600 (${(side.regressionShare * 100).toFixed(0)}% mean); proneness ${p.basis.proneness.value ?? 'unknown'}`);
+    for (const s of [p.seasons[0], p.seasons[1], p.seasons[4]]) {
+      console.log(`    ${s.season}: ${band(s.wins)}  50% ${band(s.inner)}${s.toDate !== null ? `  (banked ${s.toDate.toFixed(1)}, rest ${band(s.remaining!)})` : ''}; rate ${s.sides[0].rateBand.central.toFixed(2)} [${s.sides[0].rateBand.low.toFixed(2)}, ${s.sides[0].rateBand.high.toFixed(2)}]/600; usage ${Math.round(s.sides[0].usage.central)} [${Math.round(s.sides[0].usage.low)}–${Math.round(s.sides[0].usage.high)}], age adj ${s.sides[0].aging.toFixed(2)}/600${s.notes.length ? `; ${s.notes.join(' ')}` : ''}`);
+    }
   }
 }

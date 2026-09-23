@@ -10,9 +10,10 @@ import { describe, expect, it } from 'vitest';
  * server source with comments stripped, so prose about a column is not mistaken for reading it.
  *
  * Phase 1 built contract facts and control; phase 2 Club Finances, the opening price of a win and
- * the per-import market snapshot, whose writer is the one Player Value module that writes anything,
- * and only to history.db. The allow-lists below grow phase by phase: the imports a value module may
- * make (scoutedEvidence.ts joins in phase 3) and the consumers migrated to the entry point. The
+ * the per-import market snapshot; phase 3a expected production from major-league results, fitted
+ * per save (D-053). Two modules write, and only to history.db: the market snapshot and the fit
+ * store. The allow-lists below grow phase by phase: the imports a value module may make
+ * (scoutedEvidence.ts joins in phase 3b, not 3a) and the consumers migrated to the entry point. The
  * `players_value` allow-list in evidenceBoundary.test.ts shrinks as each consumer moves (Part 8).
  */
 
@@ -29,19 +30,25 @@ const importsOf = (file: string): string[] => [...code(file).matchAll(/from '(\.
 /** Every Player Value module, found by name so a new one is covered the day it is added. */
 const VALUE_MODULES = fs.readdirSync(SERVER).filter((f) => /^playerValue[A-Za-z]*\.ts$/.test(f)).sort();
 
-/** What a value module may import in phase 2. */
+/** What a value module may import in phase 3a: no scoutedEvidence yet (phase 3b), and proneness only through its reader. */
 const ALLOWED_IMPORTS = new Set([
   './db.js', './dataFreshness.js', './leagueRules.js', './playerRights.js', './playerState.js', './provenance.js',
   './calibration.js', './playerValue.js', './playerValueCalibration.js', './playerValueContract.js', './playerValueControl.js',
-  './playerValueFinances.js',
+  './playerValueFinances.js', './playerValueHistory.js', './playerValueProduction.js', './playerValueProductionFit.js',
+  './playerValueFitStore.js', './injuryProneness.js',
 ]);
 
-/** The one writer, and the one extra import it alone may make: the history store (Part 7, D-009). */
+/** The writers, and the one extra import they alone may make: the history store (Part 7, D-009, D-053). */
 const SNAPSHOT_WRITER = 'playerValueSnapshot.ts';
+const FIT_STORE = 'playerValueFitStore.ts';
+const WRITERS = [FIT_STORE, SNAPSHOT_WRITER];
 const WRITER_IMPORTS = new Set(['./history.js']);
 
+/** The production modules (phase 3a). */
+const PRODUCTION_MODULES = ['playerValueProduction.ts', 'playerValueProductionFit.ts', 'playerValueHistory.ts', 'playerValueFitStore.ts'];
+
 /** Consumers migrated to the entry point, phase by phase (Part 8). Phase 1: control. Phase 2: club finances. */
-const MIGRATED_CONSUMERS = ['contracts.ts', 'payroll.ts', 'trade.ts', 'player.ts', 'freeagents.ts', 'clubFinanceRoutes.ts'];
+const MIGRATED_CONSUMERS = ['contracts.ts', 'payroll.ts', 'trade.ts', 'player.ts', 'freeagents.ts', 'clubFinanceRoutes.ts', 'playerValueRoutes.ts'];
 
 /** Who may call the snapshot writer: the import, and the one route that serves the history. */
 const SNAPSHOT_CALLERS = ['api.ts', 'clubFinanceRoutes.ts'];
@@ -50,12 +57,14 @@ describe('the Player Value boundary', () => {
   it('finds the value modules', () => {
     expect(VALUE_MODULES).toEqual([
       'playerValue.ts', 'playerValueCalibration.ts', 'playerValueContract.ts', 'playerValueControl.ts',
-      'playerValueFinances.ts', 'playerValueSnapshot.ts',
+      'playerValueFinances.ts', 'playerValueFitStore.ts', 'playerValueHistory.ts', 'playerValueProduction.ts',
+      'playerValueProductionFit.ts', 'playerValueRoutes.ts', 'playerValueSnapshot.ts',
     ]);
   });
 
-  it.each(VALUE_MODULES)('%s imports only what phase 2 allows', (file) => {
-    const outside = importsOf(file).filter((i) => !ALLOWED_IMPORTS.has(i) && !(file === SNAPSHOT_WRITER && WRITER_IMPORTS.has(i)));
+  it.each(VALUE_MODULES)('%s imports only what phase 3a allows', (file) => {
+    const outside = importsOf(file).filter((i) => !ALLOWED_IMPORTS.has(i) && !(WRITERS.includes(file) && WRITER_IMPORTS.has(i))
+      && !(file === 'playerValueRoutes.ts' && i === './playerValue.js'));
     expect(outside, `${file} imports ${outside.join(', ')}`).toEqual([]);
   });
 
@@ -66,6 +75,44 @@ describe('the Player Value boundary', () => {
     }
     // ...and neither does the reader's finance half, nor the route
     expect(code('clubFinanceRoutes.ts')).not.toMatch(/scoutedEvidence|players_value|valuation\.js/);
+  });
+
+  it.each(PRODUCTION_MODULES)('%s (production, phase 3a) reads no rating at all: no scoutedEvidence, no rating column, no players_value', (file) => {
+    const source = code(file);
+    expect(source, file).not.toMatch(/scoutedEvidence|ScoutedAbility|_ratings_|fielding_rating|players_batting\b|players_pitching\b|players_value|overall_value|talent_value/);
+    expect(importsOf(file).join(' '), file).not.toMatch(/scoutedEvidence|philosophy|settings|staffPreference|assignmentPreference|developmentFit|developmentalContext|prospectDecision|prospectAssignments|destinationFit/);
+  });
+
+  it('injury proneness is read only through its one declared reader (D-053)', () => {
+    const readers = fs.readdirSync(SERVER).filter((f) => f.endsWith('.ts') && /prone_(overall|leg|back|arm)/.test(code(f)));
+    expect(readers).toEqual(['injuryProneness.ts']);
+    // ...schema-tolerant: its columns are selected only where the export has them
+    expect(code('injuryProneness.ts')).toMatch(/PRONENESS_COLUMNS\.filter\(\(c\) => present\.has\(c\)\)/);
+  });
+
+  it('production\'s fitted numbers come from the save\'s stored fit; the only fitted artefact in code is the provisional prior (D-053)', () => {
+    const calibration = code('playerValueCalibration.ts');
+    // One ProductionModel in code, stamped provisional
+    expect([...calibration.matchAll(/export const ([A-Z_]+): ProductionModel =/g)].map((m) => m[1])).toEqual(['PRODUCTION_PRIOR']);
+    expect(calibration).toMatch(/PRODUCTION_PRIOR_CALIBRATION: CalibrationStamp = provisional\(/);
+    // The projection and the fit are handed a model; neither reaches for the prior itself
+    for (const file of ['playerValueProduction.ts', 'playerValueProductionFit.ts']) expect(code(file), file).not.toMatch(/PRODUCTION_PRIOR\b/);
+    // The reader serves the adopted fit from the store, and the prior only when there is none
+    const reader = code('playerValue.ts');
+    expect(reader).toMatch(/adoptedProductionFit\(leagueId, PRODUCTION_METHOD\)/);
+    expect(reader).toMatch(/return \{ model: PRODUCTION_PRIOR, provenance: priorProvenance\(leagueId\) \}/);
+    // No other module fits, stores or reads a fit
+    for (const file of fs.readdirSync(SERVER).filter((f) => f.endsWith('.ts') && f !== 'playerValue.ts' && f !== FIT_STORE)) {
+      expect(code(file), file).not.toMatch(/value_production_fits|recordProductionFit|adoptedProductionFit/);
+    }
+  });
+
+  it('the refit runs after an import, once, in the background, and can never fail it (D-053)', () => {
+    const api = code('api.ts');
+    expect(api.match(/refitProductionIfNeeded\(/g) ?? []).toHaveLength(1);
+    expect(api).toMatch(/setImmediate\(\(\) => \{\s*try \{\s*for \(const \w+ of refitProductionIfNeeded\(\)\)/);
+    // After the import has finished, only when it succeeded
+    expect(api).toMatch(/\} finally \{[\s\S]*?importState\.importing = false;[\s\S]*?\}\s*if \(imported\) refitAfterImport\(\);/);
   });
 
   it.each(VALUE_MODULES)('%s reads ratings only through the adapter: no rating column or ratings table (1)', (file) => {
@@ -123,23 +170,31 @@ describe('the Player Value boundary', () => {
     expect(askers).toEqual(['playerValue.ts']);
   });
 
-  it.each(VALUE_MODULES.filter((f) => f !== SNAPSHOT_WRITER))('%s writes nothing, and touches no history (7)', (file) => {
+  it.each(VALUE_MODULES.filter((f) => !WRITERS.includes(f)))('%s writes nothing, and touches no history (7)', (file) => {
     const source = code(file);
     expect(source, file).not.toMatch(/\b(INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|REPLACE)\b\s+(INTO|TABLE|FROM|INDEX)?/);
     expect(source, file).not.toMatch(/\.exec\(|\.run\(|history\.js|historyDb|writeFileSync/);
   });
 
-  it('only the snapshot writer touches history.db, and it never writes league.db (7)', () => {
+  it('only the two writers touch history.db, and neither writes league.db (7)', () => {
     const touching = VALUE_MODULES.filter((f) => /history\.js|historyDb/.test(code(f)));
-    expect(touching).toEqual([SNAPSHOT_WRITER]);
-    const source = code(SNAPSHOT_WRITER);
-    // Every statement that writes is prepared or executed on historyDb, never on the league's db
-    const statements = [...source.matchAll(/(\w+)\.(prepare|exec)\(\s*`([^`]*)`/g)];
-    expect(statements.length).toBeGreaterThan(0);
-    for (const [, receiver, , sql] of statements) {
-      if (/\b(INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|REPLACE)\b/i.test(sql)) expect(receiver, sql.slice(0, 60)).toBe('historyDb');
+    expect(touching).toEqual(WRITERS);
+    for (const writer of WRITERS) {
+      const source = code(writer);
+      // Every statement that writes is prepared or executed on historyDb, never on the league's db
+      const statements = [...source.matchAll(/(\w+)\.(prepare|exec)\(\s*`([^`]*)`/g)];
+      expect(statements.length).toBeGreaterThan(0);
+      for (const [, receiver, , sql] of statements) {
+        if (/\b(INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|REPLACE)\b/i.test(sql)) expect(receiver, sql.slice(0, 60)).toBe('historyDb');
+      }
+      expect(source, writer).not.toMatch(/\bdb\.exec\(|writeFileSync|DROP\s+TABLE|ALTER\s+TABLE|DELETE\s+FROM/i);
     }
-    expect(source).not.toMatch(/\bdb\.exec\(|writeFileSync|DROP\s+TABLE|ALTER\s+TABLE|DELETE\s+FROM/i);
+    // The fit store: additive, keyed by save, league, last completed season and method, idempotent unless forced
+    const store = code(FIT_STORE);
+    expect(store).toMatch(/CREATE TABLE IF NOT EXISTS value_production_fits/);
+    expect(store).toMatch(/PRIMARY KEY \(save_name, league_id, through_season, method\)/);
+    expect(store).toMatch(/meta\.force \? 'INSERT OR REPLACE' : 'INSERT OR IGNORE'/);
+    const source = code(SNAPSHOT_WRITER);
     // Additive: the table is created only if it is not there, as every history.db table is
     expect(source).toMatch(/CREATE TABLE IF NOT EXISTS value_market_snapshots/);
     // Idempotent per key: the key is the primary key and a second write of it is ignored
@@ -179,7 +234,11 @@ describe('the Player Value boundary', () => {
       ['REPLACEMENT_LEVEL_CALIBRATION', 'provisional'],
       ['FINANCE_ROW_CALIBRATION', 'policy'],
       ['PLACEHOLDER_ROW_CALIBRATION', 'policy'],
+      ['PRODUCTION_POLICY_CALIBRATION', 'policy'],
+      ['PRODUCTION_PRIOR_CALIBRATION', 'provisional'],
     ]);
+    // Nothing in code is stamped calibrated for production: a save's fit is stamped by its own run record (D-053)
+    expect(calibration).not.toMatch(/\bcalibrated\(/);
     // Declared once: nobody else defines the horizon
     for (const file of fs.readdirSync(SERVER).filter((f) => f.endsWith('.ts') && f !== 'playerValueCalibration.ts')) {
       expect(code(file), file).not.toMatch(/const CONTROL_HORIZON_SEASONS\b/);

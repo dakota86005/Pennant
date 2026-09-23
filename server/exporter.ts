@@ -91,7 +91,7 @@ export function staticExportPages(
   teamIds: readonly number[]
 ): string[] {
   return [
-    'orgs', `dashboard/${orgId}`, `standings/${orgId}`, `contracts/${orgId}`, `payroll/${orgId}`, `club-finances/${orgId}`,
+    'orgs', `dashboard/${orgId}`, `standings/${orgId}`, `contracts/${orgId}`, `payroll/${orgId}`, `club-finances/${orgId}`, `player-value/production-fit/${orgId}`,
     `depth-chart/${orgId}`, `prospects/${orgId}`, `development/${orgId}`,
     `development-history/${orgId}`, `scouted-development/${orgId}`, `farm-operations/${orgId}`, `draft/${orgId}`,
     `injuries/${orgId}`, `leaderboards/${orgId}`, `roster-crunch/${orgId}`, `staff/${orgId}`,
