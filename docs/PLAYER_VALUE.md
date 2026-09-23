@@ -4,7 +4,8 @@ Design record for the Player Value subsystem: contracts, control, cost, expected
 reality and surplus value. Decision: [D-052](DECISIONS.md) (accepted; owner answers in Part 12). Research evidence:
 [PLAYER_VALUE_RESEARCH.md](PLAYER_VALUE_RESEARCH.md) (R-1 to R-11).
 
-**Status: phase 1 built (contract facts and control, Part 9); phases 2 to 6 are design.** `PROJECT_STATE.md` says
+**Status: phases 1 and 2 built (contract facts and control; Club Finances, the opening price of a win and the
+per-import market snapshot, Part 9); phases 3 to 6 are design.** `PROJECT_STATE.md` says
 what exists; this file says what is to be built and why. Every surface that reports value still reads the prohibited
 `players_value` fields for its value figures (Part 8), and they stay as they are until the phase that replaces each
 one; since phase 1 their control and contract facts come from Player Value.
@@ -205,6 +206,18 @@ and **the club's marginal value of a win** (Part 4.5).
 **Unknowns (R-7):** which of the current, last and 2025 history rows is authoritative; which current-row columns are
 season-to-date; the revenue trend beyond one prior season, which accrues from Pennant's own snapshots.
 
+**As built (phase 2).** `playerValueFinances.ts` composes it and `playerValue.ts` reads it (`clubFinances`,
+`leagueFinances`); the regime is `LeagueRules.finance`, read through the parent league like the contract rules. The
+authoritative-row question is settled by a stated rule and left open as a fact: each figure comes from the row that
+names its season, `team_financials` for this season and `team_history_financials` for a past one.
+`team_last_financials` names no season, so it is reported beside last season where it disagrees (Arizona: $265.0M
+against the 2025 row's $274.3M) and never used or blended (`FINANCE_ROW_CALIBRATION`, policy). A row whose every money
+field is zero is a placeholder, read as unknown, never $0: every club-season before 2025 and one club's 2025 row
+(`PLACEHOLDER_ROW_CALIBRATION`). The luxury-tax figure (30), the luxury-sharing cap (140), the revenue-sharing figure
+(48), the salary scale, `arbitration_offering`, `rules_fa_compensation`, `market`, `owner_expectation`, `mode`, the
+media-contract `expires` columns and the zero sharing columns are shown as exported with `meaning: 'unknown'`
+(`Uninterpreted` in `provenance.ts`) and never interpreted. `cash` is never read.
+
 ### 2.5 Surplus
 
 Per controlled season: production value (wins × price of a win) less cost, discounted to today, and summed. It is
@@ -257,6 +270,18 @@ prior WAR standing in for expected WAR, and the 27.6%-of-a-season pace as the wi
 **The opening price is the imported market.** On a historical start the opening contracts are the real world's
 (R-1). The price is labelled with that basis until OOTP's own signings are observed.
 
+**As built (phase 2), and why it differs from R-5 by exactly 17 players.** A market contract is one whose holder
+Player Rights finds free-agency eligible *this* season (`evaluateContractControl`, service at the last winter, when
+the salary was set; `MARKET_CONTRACT_CALIBRATION`, policy). R-5 counted service including this season's days. On the
+Arizona import that is 253 market contracts against R-5's 270: the 17 who crossed six years during 2026, whose 2026
+salaries were set before they could reach the market. The floor, which does not depend on the market, reproduces R-5
+to the cent (A $4.22M, A′ $4.33M, 877 players, $4,425.9M above the minimum, 1,049.3 and 1,022.3 WAR). The market
+bases move with the 17: B $7.50M, B′ $7.32M, B″ $9.78M, C $6.57M (124 contracts starting 2026), C′ $6.92M, C″ $7.19M.
+**Central $7.25M (median of the six), band $6.57M–$9.78M, floor $4.22M–$4.33M**, against R-5's about $7M, $6M–$10M
+and $4.2M–$4.3M. A read-only query of the same export under R-5's reading returns R-5's figures exactly (7.28 / 7.16 / 9.47 / 6.13 / 6.51 /
+6.80), so the difference is the reading, not the arithmetic. Basis D is named as not used. A single market reading is
+not a band: the price is then `unknown`, never a point. The price has no input from earlier imports.
+
 ### 4.2 How it tightens
 
 At every import the market figures are snapshotted (Part 7). From the second import across an off-season,
@@ -269,7 +294,10 @@ Arbitration awards are identified the same way and measure the arbitration ladde
 ### 4.3 Replacement level
 
 The opening replacement level is **the one the export's WAR already uses**, measured from the save as (league wins −
-league WAR) ÷ league games: .288 in 2024 and .293 in 2026 to date, about 47 wins per 162 (R-4). Adopting it keeps
+league WAR) ÷ league games: .288 in 2024 and .293 in 2026 to date, about 47 wins per 162 (R-4). Phase 2 measures it
+per season from the export (`replacementLevelOf`): **2024 .2877, 2026 to date .2933, 2025 not measured**, because the
+2025 standings lack the Athletics (club 20) while their players have WAR; a level from the 29 clubs that remain would
+not be the league's. Adopting it keeps
 Pennant's wins and the game's WAR in the same units. It is stamped **provisional**. It is OOTP's convention, not a
 measurement of the talent a club can actually get for the minimum. That measurement (the production of waiver
 claims, minor-league free agents and call-ups) is phase 4 work. A change of 0.01 moves every price of a win by about
@@ -364,6 +392,20 @@ always states the neutral figure it started from.
 Phase 1 times the full-league compute on this import before choosing lazy-only or warm-after-import (R-9 sizes it
 at a few hundred thousand rows).
 
+**Measured in phase 2** (`npm run value:report`, read-only, same import): `leagueFinances` (the regime, the valuation
+of the 901 major leaguers on active and injured lists, three seasons of WAR, the standings, the price and replacement
+level) plus `clubFinances` takes **132–150 ms** per pass over three passes, and 603 ms for the first, cold pass of a
+process (statement preparation included); `clubFinances` alone is under 1 ms. **Choice: computed per request, no
+store.** A Payroll load stays well under half a second, so the disposable per-import store above is still not built;
+it is built when production (phase 3) makes a pass expensive. The **market snapshot** is built: table
+`value_market_snapshots` in `history.db` (`playerValueSnapshot.ts`, the one Player Value writer), primary key
+(save, league, ISO game date via `parseGameDate`), `INSERT OR IGNORE` after an existence check that skips the
+compute. It records the price's label, unit, central, band, floor and note, the market-contract count, OOTP's league
+payroll, the replacement level per season, the regime and the full basis as JSON. `runImport` calls it once, after
+the rating and roster-state snapshots, inside a try/catch, and the writer itself returns errors rather than throwing.
+The table is `CREATE TABLE IF NOT EXISTS`, as every history.db table is: additive for existing files. Its history is
+served by `/api/club-finances/:orgId`.
+
 **Measured in phase 1** (`npm run value:report`, read-only, on the Arizona import at 2026-5-16): contract facts and
 the control timeline for all **12,575** active players (12,575 contract rows, 35 extensions with terms, 15 leagues;
 54,143 timeline seasons) in **203-294 ms** per pass over three passes, the first including statement preparation.
@@ -418,7 +460,7 @@ and the evidence boundary test's allow-list for `players_value` is empty.
 |---|---|---|
 | **0** (this document) | Design, research, D-052, behavior cases | Done: the owner accepted D-052 and answered Q-1 to Q-10 (Part 12) |
 | **1** Contract facts and control — **done** (2026-09-22; evidence in Part 7 and below) | Concerns 1 and 2. Arbitration and free-agency eligibility added to `playerRights.ts` (Q-1). **One `LeagueRules`** (merge `valuation.ts`'s into `leagueRules.ts`'s `Sourced` form: every column guarded, no 6/3 fallback, service-year length from `rules_min_service_days`, the regime through `parent_league_id`). Missing service time is `unknown`, never 0. `controlAfterThisSeason` replaced in place. The boundary test (Part 10). A timed league-wide compute | Every active player has a control timeline, with every `indeterminate` counted and its reason named. Payroll's control column reads it. The boundary test passes. The full-league time is recorded here. Player Value has an `AGENTS.md` routing row and a Claude rule (Q-10). `tsc`, `npm test` and the build are clean |
-| **2** Club Finances and the opening price | Concern 4. The per-import market snapshot in `history.db`. The opening price of a win and the replacement level with their bases | This save's opening price reproduces R-5's band from code. A snapshot is written once per import key. A league without financials yields wins and dollars `unknown`. No timer |
+| **2** Club Finances and the opening price — **done** (2026-09-22; evidence in 2.4, 4.1, 4.3, Part 7 and below) | Concern 4. The per-import market snapshot in `history.db`. The opening price of a win and the replacement level with their bases | This save's opening price reproduces R-5's band from code. A snapshot is written once per import key. A league without financials yields wins and dollars `unknown`. No timer |
 | **3** Expected production | Concern 3, in wins, bands per Part 2.3, calibrated against the export's WAR history through the calibration harness | A calibration run is recorded and its constants stamped. The band invariants (Behavior cases) pass. Band coverage is reported |
 | **4** Measured price and arbitration | Observed signings and arbitration awards across imports. The measured price replaces the opening one once its band is narrower (Q-4). The arbitration ladder is measured. Replacement is measured from freely available talent | On an off-season import, signings are identified and counted. While the measured band is still wider, the opening price stays and says why. The price history is visible |
 | **5** Surplus, the lens and the win curve | Concern 5, Part 5's two views, Part 6's lens, Part 4.5's club value of a win | The Player Value behavior cases pass. Neutral value is identical under every philosophy. Every lean is named |
@@ -437,6 +479,25 @@ Judgments made in phase 1 beyond the text above: consumers that hold no freshnes
 their answers stand with that limitation (a stale export still makes eligibility `indeterminate`, D-023); a minor-league
 contract is held for this season at an unknown cost and what follows it is `indeterminate`; a vesting option is its
 own status beside club and player options; an unsigned player has no timeline rather than a `free_agent` season.
+
+**Phase 2 exit criteria, as met.** The opening price from code on the Arizona import is central $7.25M, band
+$6.57M–$9.78M, floor $4.22M–$4.33M; the floor is R-5's to the cent and the market bases differ only by the 17 players
+who crossed six years in 2026, explained in 4.1 (R-5's reading, run from the same export, returns R-5's figures).
+A snapshot is written once per import key: on the real import the first call wrote one row and the second wrote
+nothing (`{"written":0,"existing":1}`), and `playerValueFinances.test.ts` pins it on the fixture. A league without
+financials, or without salaries, or under a reserve clause, yields wins and dollars `unknown` with the reason. No
+timer. Payroll's finance header reads Club Finances, it shows one "league price of a win" line (central, band, floor,
+basis on hover, "opening (imported market)"), and its lists are no longer capped at 12 rows (owner-approved): the count
+shown equals the rows. `tsc`, `npm test` and the build are clean.
+
+Judgments made in phase 2 beyond the text above: the market is Player Rights' answer for this season rather than
+R-5's service-including-this-season reading (4.1); the central value is the median of the market bases (policy); the
+floor is shown as the range of bases A and A′; a player with no line in the league in a season counts 0 WAR in it
+while his salary stays in (R-5's arithmetic, stated as an assumption); the reserve-clause flag is read once in
+`leagueRules.ts` (`finance.reserveClause`); `valuation.teamFinances()` stays, because Contracts, Free Agents, the AI
+briefing context and Storylines still read it (their migration is phase 6). Two phase-1 `it.todo`s in
+`playerValueCost.test.ts` are labelled phase 2 (the pre-arbitration renewal band, the arbitration ladder band); they
+price costs, not the market, and are left for the phase that builds cost bands (4.4), not pulled forward.
 
 ---
 
@@ -468,15 +529,19 @@ own status beside club and player options; an unsigned player has no timeline ra
 
 ## Part 11 — Constants register
 
-Stamps per D-041. Nothing here is calibrated yet.
+Stamps per D-041. Nothing here is calibrated yet. Phase 2's stamps are declared in `playerValueCalibration.ts`, with
+the label `OPENING_PRICE_LABEL` and `PRICE_NARROWS_WHEN`; it adds no numeric constant.
 
 | Constant | Stamp | Basis |
 |---|---|---|
 | Service-year length | **none: read** | `rules_min_service_days`. Missing → unknown, never 172 (R-3) |
 | FA, arbitration and minimum-salary thresholds | **none: read** | The league's rules via the parent league. Missing → `indeterminate` |
-| Which contracts are "market prices" (FA-eligible service) | **policy** | What the market is taken to mean (4.1) |
-| Opening replacement level | **provisional** | The export's WAR convention, measured .288–.293 (R-4). Measured from free talent in phase 4 |
-| Opening price-of-win band (spread of bases) | **provisional** | R-5's bases. Replaced by observed signings |
+| Which contracts are "market prices" (FA-eligible service) | **policy** | What the market is taken to mean (4.1): Player Rights' free-agency answer for this season. `MARKET_CONTRACT_CALIBRATION` (phase 2) |
+| Opening replacement level | **provisional** | The export's WAR convention, measured per season from the export (.2877 in 2024, .2933 in 2026 to date; 2025 not measured). `REPLACEMENT_LEVEL_CALIBRATION` (phase 2). Measured from free talent in phase 4 |
+| Opening price-of-win band (spread of bases) | **provisional** | R-5's bases, computed from each import. `OPENING_PRICE_CALIBRATION` (phase 2). Replaced by observed signings |
+| Central value of the opening price | **policy** | The median of the market bases that could be computed: none is preferred. `OPENING_PRICE_CENTRAL_CALIBRATION` (phase 2) |
+| Which financial row is authoritative | **policy** | The row that names its season; `team_last_financials` named and never used (R-7). `FINANCE_ROW_CALIBRATION` (phase 2) |
+| A financial row with every money field zero | **policy** | A placeholder: unknown, never $0 (R-1). `PLACEHOLDER_ROW_CALIBRATION` (phase 2) |
 | When the measured price replaces the opening one | **policy** | When the measured band is narrower than the opening band (Q-4). No fixed count |
 | Arbitration ladder shares (about 22 / 42 / 53%) and their spread | **provisional** | Cross-section of imported contracts (R-6) |
 | Pre-arbitration renewal spread | **provisional** | Observed pre-arbitration pay above the minimum (R-5) |

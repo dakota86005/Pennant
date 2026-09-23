@@ -22,9 +22,11 @@ to R-11) is research evidence, not current doctrine. Where they differ from this
 
 Player Value describes and never authorizes: what a player costs, under what control, what he will produce,
 what a win is worth and what is left, as bands with their basis. `server/playerValue.ts` is the one entry
-point; `playerValueContract.ts` (contract facts), `playerValueControl.ts` (control and cost path) and
-`playerValueCalibration.ts` (every constant, stamped) sit behind it. Which phases are built is in
-`docs/PROJECT_STATE.md`; check it against the worktree.
+point; `playerValueContract.ts` (contract facts), `playerValueControl.ts` (control and cost path),
+`playerValueFinances.ts` (Club Finances, the opening price of a win, replacement level) and
+`playerValueCalibration.ts` (every constant, stamped) sit behind it. `playerValueSnapshot.ts` is the one
+writer: the per-import market snapshot, `history.db` only, called from `runImport` and the club-finances
+route. Which phases are built is in `docs/PROJECT_STATE.md`; check it against the worktree.
 
 - No verdict, rank or single score: never trade, release, extend, sign or promote (D-052, D-004).
 - Eligibility (pre-arbitration, arbitration, free agency) is Player Rights' (`evaluateContractControl`,
@@ -41,7 +43,9 @@ point; `playerValueContract.ts` (contract facts), `playerValueControl.ts` (contr
   the neutral value, no protection tier, no defensibility.
 - Consumers read value through the entry point and migrate one at a time, deleting their `players_value`
   reads in the same change (Part 8). Nothing writes to `league.db`.
+- Club Finances: a financial value whose meaning is not established is shown raw (`meaning: 'unknown'`), a
+  row of all-zero money is unknown, and a market contract is Player Rights' free-agency answer, never service.
 - Never ask the owner for an OOTP experiment; an unresolved rule stays `indeterminate` and is documented.
 
-Checks: `tests/playerValueBoundary.test.ts`, `tests/playerValueControl.test.ts`, `tests/playerValueCost.test.ts`;
-`npm run value:report` against a real import (read-only with `OOTP_FO_DB_READONLY=1`).
+Checks: `tests/playerValueBoundary.test.ts`, `tests/playerValueControl.test.ts`, `tests/playerValueCost.test.ts`,
+`tests/playerValueFinances.test.ts`; `npm run value:report` against a real import (read-only with `OOTP_FO_DB_READONLY=1`).

@@ -21,10 +21,13 @@
  *                   under, so they are read from the league at the top of its
  *                   `parent_league_id` chain. A league whose parent cannot be
  *                   established has an unknown regime, never its own zeros.
+ *   financial rules the regime's economy (Club Finances, D-052 phase 2), read
+ *                   from the same regime row; a value whose meaning is not
+ *                   established is shown as exported, never interpreted.
  */
 
 import { db, tableColumns, tableExists } from './db.js';
-import { fromExport, unknownBecause, type Sourced } from './provenance.js';
+import { fromExport, uninterpreted, unknownBecause, type Sourced, type Uninterpreted } from './provenance.js';
 
 /** The contract-control regime: the rules a player's contract rights are decided by. */
 export interface ContractRules {
@@ -48,8 +51,59 @@ export interface ContractRules {
   season: Sourced<number>;
 }
 
+/**
+ * The financial regime (Club Finances, PLAYER_VALUE.md Part 2.4), read from the same regime row as
+ * the contract rules: a minor league exports zeros here too (R-2), and its clubs live under the
+ * parent league's economy. A value whose meaning the export does not establish (R-2, R-11: the
+ * luxury-tax figure, the luxury-sharing cap, the revenue-sharing figure, the eight-step salary
+ * scale, `arbitration_offering`, `rules_fa_compensation`) is shown as exported and never
+ * interpreted.
+ */
+export interface FinancialRules {
+  regimeLeagueId: Sourced<number>;
+  /** `leagues.rules_financials` — the same reading as `ContractRules.financials`. */
+  financials: Sourced<boolean>;
+  /** `leagues.rules_salary_cap`; R-2 reads 0 as no cap. */
+  salaryCap: Sourced<number>;
+  /** `leagues.rules_luxury_tax` — a rate or a threshold; which is not established. */
+  luxuryTax: Uninterpreted<number>;
+  /** `leagues.rules_luxury_sharing` — luxury-tax money is shared. */
+  luxurySharing: Sourced<boolean>;
+  /** `leagues.rules_luxury_sharing_cap` — meaning not established (140 on the imported save). */
+  luxurySharingCap: Uninterpreted<number>;
+  /** `leagues.rules_revenue_sharing` — revenue sharing is on. */
+  revenueSharing: Sourced<boolean>;
+  /** `leagues.rules_revenue_sharing_tax` — meaning not established (48 on the imported save). */
+  revenueSharingTax: Uninterpreted<number>;
+  /** `leagues.rules_minimum_salary` — the same reading as `ContractRules.minimumSalary`. */
+  minimumSalary: Sourced<number>;
+  /** `leagues.financial_coefficient` — the same reading as `ContractRules.financialCoefficient`. */
+  financialCoefficient: Sourced<number>;
+  /**
+   * A reserve clause binds every player: `rules_fa_minimum_years` is 0, the export's way of saying
+   * the league has no free agency (R-2). Unknown when the rule is.
+   */
+  reserveClause: Sourced<boolean>;
+  /** `leagues.arbitration_offering` — a flag, a phase or an off-season state; not established. */
+  arbitrationOffering: Uninterpreted<number>;
+  /** `leagues.rules_owner_decides_budget` */
+  ownerDecidesBudget: Sourced<boolean>;
+  /** `leagues.rules_cash_maximum` — the most cash a trade may carry. */
+  cashMaximum: Sourced<number>;
+  /** `leagues.rules_average_national_media_contract` */
+  averageNationalMediaContract: Sourced<number>;
+  /** `leagues.rules_national_media_contract_fixed` */
+  nationalMediaContractFixed: Sourced<boolean>;
+  /** `leagues.rules_fa_compensation` — not established. */
+  freeAgentCompensation: Uninterpreted<number>;
+  /** `leagues.rules_player_salary0..7` — an eight-step salary scale; what each step is tied to is not established. */
+  playerSalaryScale: Array<Uninterpreted<number>>;
+}
+
 export interface LeagueRules {
   leagueId: Sourced<number>;
+  /** `leagues.rules_schedule_games_per_team` — the league's own schedule length. */
+  gamesPerTeam: Sourced<number>;
   /** `leagues.rules_minor_league_options` — option years exist in this league. */
   minorLeagueOptions: Sourced<boolean>;
   /** `leagues.rules_rule_5` */
@@ -68,6 +122,8 @@ export interface LeagueRules {
   fortyManLimit: Sourced<number>;
   /** The contract-control regime, resolved through `parent_league_id`. */
   contract: ContractRules;
+  /** The financial regime, resolved through `parent_league_id` like the contract rules. */
+  finance: FinancialRules;
 }
 
 const numberOrNull = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
@@ -75,7 +131,19 @@ const numberOrNull = (v: unknown): number | null => (typeof v === 'number' && Nu
 const ROSTER_COLUMNS = [
   'league_id', 'rules_minor_league_options', 'rules_rule_5', 'rules_dfa_period_length',
   'rules_waiver_period_length', 'rules_active_roster_limit', 'rules_expanded_roster_limit',
-  'rosters_expanded', 'rules_secondary_roster_limit',
+  'rosters_expanded', 'rules_secondary_roster_limit', 'rules_schedule_games_per_team',
+] as const;
+
+const SALARY_SCALE_COLUMNS = [
+  'rules_player_salary0', 'rules_player_salary1', 'rules_player_salary2', 'rules_player_salary3',
+  'rules_player_salary4', 'rules_player_salary5', 'rules_player_salary6', 'rules_player_salary7',
+] as const;
+
+const FINANCE_COLUMNS = [
+  'rules_salary_cap', 'rules_luxury_tax', 'rules_luxury_sharing', 'rules_luxury_sharing_cap',
+  'rules_revenue_sharing', 'rules_revenue_sharing_tax', 'arbitration_offering', 'rules_owner_decides_budget',
+  'rules_cash_maximum', 'rules_average_national_media_contract', 'rules_national_media_contract_fixed',
+  'rules_fa_compensation', ...SALARY_SCALE_COLUMNS,
 ] as const;
 
 const CONTRACT_COLUMNS = [
@@ -84,7 +152,7 @@ const CONTRACT_COLUMNS = [
   'season_year',
 ] as const;
 
-const COLUMNS = [...ROSTER_COLUMNS, ...CONTRACT_COLUMNS] as const;
+const COLUMNS = [...ROSTER_COLUMNS, ...CONTRACT_COLUMNS, ...FINANCE_COLUMNS] as const;
 type Column = (typeof COLUMNS)[number];
 
 /** The raw values `leagueRulesFromRow` reads; a test can supply them without a database. */
@@ -112,14 +180,35 @@ function unknownContract(reason: UnknownKind, note: string): ContractRules {
   };
 }
 
+const MEANING_NOT_ESTABLISHED = 'Shown as exported: what this value means is not established (PLAYER_VALUE_RESEARCH.md R-2, R-11).';
+
+function unknownFinance(reason: UnknownKind, note: string): FinancialRules {
+  const u = <T>(column: string): Sourced<T> => unknownBecause<T>(reason, `leagues.${column}`, note);
+  const raw = (column: string): Uninterpreted<number> => uninterpreted(u<number>(column), MEANING_NOT_ESTABLISHED);
+  return {
+    regimeLeagueId: u('parent_league_id'), financials: u('rules_financials'), salaryCap: u('rules_salary_cap'),
+    luxuryTax: raw('rules_luxury_tax'), luxurySharing: u('rules_luxury_sharing'), luxurySharingCap: raw('rules_luxury_sharing_cap'),
+    revenueSharing: u('rules_revenue_sharing'), revenueSharingTax: raw('rules_revenue_sharing_tax'),
+    minimumSalary: u('rules_minimum_salary'), financialCoefficient: u('financial_coefficient'),
+    reserveClause: u('rules_fa_minimum_years'), arbitrationOffering: raw('arbitration_offering'),
+    ownerDecidesBudget: u('rules_owner_decides_budget'), cashMaximum: u('rules_cash_maximum'),
+    averageNationalMediaContract: u('rules_average_national_media_contract'),
+    nationalMediaContractFixed: u('rules_national_media_contract_fixed'),
+    freeAgentCompensation: raw('rules_fa_compensation'),
+    playerSalaryScale: SALARY_SCALE_COLUMNS.map(raw),
+  };
+}
+
 function unavailable(reason: UnknownKind, note: string): LeagueRules {
   const u = <T>(column: string): Sourced<T> => unknownBecause<T>(reason, `leagues.${column}`, note);
   return {
-    leagueId: u('league_id'), minorLeagueOptions: u('rules_minor_league_options'), ruleFiveDraft: u('rules_rule_5'),
+    leagueId: u('league_id'), gamesPerTeam: u('rules_schedule_games_per_team'),
+    minorLeagueOptions: u('rules_minor_league_options'), ruleFiveDraft: u('rules_rule_5'),
     dfaPeriodDays: u('rules_dfa_period_length'), waiverPeriodDays: u('rules_waiver_period_length'),
     activeRosterLimit: u('rules_active_roster_limit'), expandedRosterLimit: u('rules_expanded_roster_limit'),
     rostersExpanded: u('rosters_expanded'), fortyManLimit: u('rules_secondary_roster_limit'),
     contract: unknownContract(reason, note),
+    finance: unknownFinance(reason, note),
   };
 }
 
@@ -171,26 +260,65 @@ function regimeRow(
   return { unknown: 'The parent_league_id chain is deeper than any export has.' };
 }
 
-function contractRulesFrom(row: LeagueRuleRow, present: Set<string>, lookup: LeagueRowLookup): ContractRules {
+function regimeRulesFrom(
+  row: LeagueRuleRow, present: Set<string>, lookup: LeagueRowLookup
+): { contract: ContractRules; finance: FinancialRules } {
   const regime = regimeRow(row, present, lookup);
-  if ('unknown' in regime) return unknownContract('not_exported_by_ootp', regime.unknown);
+  if ('unknown' in regime) {
+    return {
+      contract: unknownContract('not_exported_by_ootp', regime.unknown),
+      finance: unknownFinance('not_exported_by_ootp', regime.unknown),
+    };
+  }
   const regimeId = numberOrNull(regime.row.league_id);
   const note = regime.viaParent
     ? `Read from league ${regimeId}, the parent league whose contract rules a minor leaguer lives under; a minor league's own row exports zeros (R-2).`
     : undefined;
   const read = reader(regime.row, present, note);
+  const raw = (column: Column): Uninterpreted<number> => uninterpreted(read(column, asIs), MEANING_NOT_ESTABLISHED);
+  const regimeLeagueId: Sourced<number> = regimeId === null
+    ? unknownBecause('not_exported_by_ootp', 'leagues.league_id', 'The regime league has no league_id.')
+    : note ? { ...fromExport(regimeId, 'leagues.parent_league_id'), note } : fromExport(regimeId, 'leagues.league_id');
+  const financials = read('rules_financials', flag);
+  const freeAgencyYears = read('rules_fa_minimum_years', nonNegative);
+  const minimumSalary = read('rules_minimum_salary', nonNegative);
+  const financialCoefficient = read('financial_coefficient', positive);
+  const salaryCap = read('rules_salary_cap', nonNegative);
+  if (salaryCap.value === 0) salaryCap.note = [salaryCap.note, 'A cap of 0 is read as no salary cap (R-2).'].filter(Boolean).join(' ');
   return {
-    regimeLeagueId: regimeId === null
-      ? unknownBecause('not_exported_by_ootp', 'leagues.league_id', 'The regime league has no league_id.')
-      : note ? { ...fromExport(regimeId, 'leagues.parent_league_id'), note } : fromExport(regimeId, 'leagues.league_id'),
-    financials: read('rules_financials', flag),
-    freeAgencyYears: read('rules_fa_minimum_years', nonNegative),
-    arbitrationYears: read('rules_salary_arbitration_minimum_years', nonNegative),
-    minorLeagueFreeAgencyYears: read('rules_minor_league_fa_minimum_years', nonNegative),
-    minimumSalary: read('rules_minimum_salary', nonNegative),
-    serviceDaysPerYear: read('rules_min_service_days', positive, 'rules_min_service_days is not a positive number of days, so a service year has no length.'),
-    financialCoefficient: read('financial_coefficient', positive),
-    season: read('season_year', positive),
+    contract: {
+      regimeLeagueId,
+      financials,
+      freeAgencyYears,
+      arbitrationYears: read('rules_salary_arbitration_minimum_years', nonNegative),
+      minorLeagueFreeAgencyYears: read('rules_minor_league_fa_minimum_years', nonNegative),
+      minimumSalary,
+      serviceDaysPerYear: read('rules_min_service_days', positive, 'rules_min_service_days is not a positive number of days, so a service year has no length.'),
+      financialCoefficient,
+      season: read('season_year', positive),
+    },
+    finance: {
+      regimeLeagueId,
+      financials,
+      salaryCap,
+      luxuryTax: raw('rules_luxury_tax'),
+      luxurySharing: read('rules_luxury_sharing', flag),
+      luxurySharingCap: raw('rules_luxury_sharing_cap'),
+      revenueSharing: read('rules_revenue_sharing', flag),
+      revenueSharingTax: raw('rules_revenue_sharing_tax'),
+      minimumSalary,
+      financialCoefficient,
+      reserveClause: freeAgencyYears.value === null
+        ? { ...freeAgencyYears, value: null }
+        : { ...freeAgencyYears, value: freeAgencyYears.value === 0 },
+      arbitrationOffering: raw('arbitration_offering'),
+      ownerDecidesBudget: read('rules_owner_decides_budget', flag),
+      cashMaximum: read('rules_cash_maximum', nonNegative),
+      averageNationalMediaContract: read('rules_average_national_media_contract', nonNegative),
+      nationalMediaContractFixed: read('rules_national_media_contract_fixed', flag),
+      freeAgentCompensation: raw('rules_fa_compensation'),
+      playerSalaryScale: SALARY_SCALE_COLUMNS.map(raw),
+    },
   };
 }
 
@@ -205,8 +333,10 @@ export function leagueRulesFromRow(
   if (present === null) return unavailable('source_unavailable', 'leagues is not in the export.');
   if (row === null) return unavailable('not_exported_by_ootp', 'No leagues row for this club.');
   const read = reader(row, present);
+  const regime = regimeRulesFrom(row, present, lookup);
   return {
     leagueId: read('league_id', asIs),
+    gamesPerTeam: read('rules_schedule_games_per_team', positive),
     minorLeagueOptions: read('rules_minor_league_options', flag),
     ruleFiveDraft: read('rules_rule_5', flag),
     dfaPeriodDays: read('rules_dfa_period_length', asIs),
@@ -215,7 +345,8 @@ export function leagueRulesFromRow(
     expandedRosterLimit: read('rules_expanded_roster_limit', asIs),
     rostersExpanded: read('rosters_expanded', flag),
     fortyManLimit: read('rules_secondary_roster_limit', asIs),
-    contract: contractRulesFrom(row, present, lookup),
+    contract: regime.contract,
+    finance: regime.finance,
   };
 }
 

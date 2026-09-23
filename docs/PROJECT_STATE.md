@@ -369,7 +369,7 @@ Present on `main` (D-023; research in [RIGHTS_RESEARCH.md](RIGHTS_RESEARCH.md)):
 Not done, by design: rights for IL activation, Rule 5, re-optioning after the
 last option year, rehab returns, claims, refusals, trades (all `indeterminate`).
 
-## Implemented Player Value (phase 1)
+## Implemented Player Value (phases 1 and 2)
 
 D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
 
@@ -394,14 +394,35 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   market" list share one answer. A status the save cannot establish shows as
   "Not yet established" (Contracts), a third Payroll list, or a count on Free
   Agents. `SERVICE_DAYS_PER_YEAR` and `serviceRemainingThisSeason` are deleted.
-- **Tests:** `playerValueControl`, `playerValueCost` (phase-2 halves as
-  `it.todo`) and `playerValueBoundary`.
+- **Club Finances** (phase 2, `server/playerValueFinances.ts`, read by
+  `playerValue.ts`: `clubFinances`, `leagueFinances`): the league's financial
+  regime as `LeagueRules.finance` (through the parent league; values whose
+  meaning is not established shown raw with `meaning: 'unknown'`), the club's
+  budget, payroll, revenue, expenses, market, fans, cash for trades, owner
+  expectation and media contracts with sources, last season from the history
+  row that names it, and the revenue trend with all-zero placeholder rows read
+  as unknown. The **opening price of a win** (salary above the minimum ÷ WAR
+  over contracts Player Rights finds free-agency eligible this season; central
+  $7.25M, band $6.57M–$9.78M, floor $4.22M–$4.33M on the Arizona import,
+  labelled "opening: the imported market") and the **replacement level** per
+  season (.2877 in 2024, .2933 in 2026 to date, 2025 not measured: the
+  Athletics have no 2025 standings row). Computed per request (132–150 ms).
+- **Market snapshot** (`server/playerValueSnapshot.ts`): one row per save,
+  league and game date in `history.db` (`value_market_snapshots`), written once
+  per import from `runImport`, idempotent, never able to fail the import.
+- **Route and Payroll:** `/api/club-finances/:orgId` (club, league market,
+  snapshot history). Payroll's finance header reads it, with one "league price
+  of a win" line, and its three lists are no longer capped at 12 rows.
+  `valuation.teamFinances()` remains for Contracts, Free Agents, the AI context
+  and Storylines.
+- **Tests:** `playerValueControl`, `playerValueCost` (cost-band halves as
+  `it.todo`), `playerValueFinances` and `playerValueBoundary`.
 
-Not built: expected production, club finances, the price of a win, surplus,
-the philosophy lens (phases 2 to 5), the per-import market snapshot, a cache
-(the league-wide pass is computed per request; see Part 7), and the consumer
-migration that deletes `players_value` reads and the percentile advice (phase
-6). On the Arizona import 6,952 of 8,009 held players have indeterminate later
+Not built: expected production, the arbitration and pre-arbitration cost
+bands, surplus, the philosophy lens and the club's value of a win (phases 3 to
+5), observed signings and the measured price (phase 4), a per-import store
+(everything is computed per request; see Part 7), and the consumer migration
+that deletes `players_value` reads and the percentile advice (phase 6). On the Arizona import 6,952 of 8,009 held players have indeterminate later
 seasons because what follows a minor-league contract is not established from
 the export, and 494 meet a free-agency line inside this season's projection.
 Super Two follows the owner's ruling (2026-09-22): the cutoff is computed from
