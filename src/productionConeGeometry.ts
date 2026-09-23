@@ -1,0 +1,180 @@
+/**
+ * The production cone's geometry: pure, library-independent and tested without rendering
+ * (tests/productionCone.test.ts). It lays out what Player Value served and computes nothing about the
+ * player: every band, central and label comes from the API (`ProductionCone`). A band is drawn at
+ * exactly its served width, so a narrowing cone narrows and nothing is widened for looks.
+ */
+
+import type { ConeCoverage, ConeSeason, ProductionCone } from './api';
+import { CHART_TEXT, niceTicks, signed, textWidth, tickStep } from './chartTheme';
+
+export { niceTicks };
+
+/** Fixed layout: margins around the plot, the plot's height, and the label rows below it. */
+export const CONE_LAYOUT = { top: 12, right: 12, left: 34, plotHeight: 180, labelGap: 10, bottom: 4, labelPad: 6 } as const;
+
+/** Replacement level's direct label, set in the right margin where the card is wide enough to give it one. */
+export const REPLACEMENT_LABEL = 'Replacement';
+const REPLACEMENT_ROOM = 560;
+const replacementMargin = (width: number): number =>
+  (width >= REPLACEMENT_ROOM ? Math.ceil(textWidth(REPLACEMENT_LABEL, CHART_TEXT.size - 1)) + 10 : 0);
+
+/** How long a season's labels are: in full, shortened, or as codes with a key beneath the chart. */
+export type LabelMode = 'full' | 'short' | 'code';
+
+export interface BandSpan {
+  x: number;
+  /** Pixel y of the band's high edge (SVG y grows downwards, so top < bottom). */
+  top: number;
+  bottom: number;
+}
+
+export interface SeasonLabel {
+  x: number;
+  left: number;
+  right: number;
+  lines: string[];
+}
+
+export interface ConeGeometry {
+  width: number;
+  height: number;
+  plot: { left: number; right: number; top: number; bottom: number };
+  domain: [number, number];
+  ticks: number[];
+  /** Pixel y of a value in wins. */
+  y: (wins: number) => number;
+  /** Pixel y of replacement level (0 wins). */
+  baseline: number;
+  /** Whether replacement level carries a direct label in the right margin (the legend always names it). */
+  replacementLabel: boolean;
+  /** Pixel x of each season, at the centre of its slot. */
+  x: number[];
+  slot: number;
+  /** One season has no width to fill, so it is drawn as nested intervals rather than an area. */
+  shape: 'area' | 'interval';
+  outer: BandSpan[];
+  inner: BandSpan[];
+  path: Array<{ x: number; y: number }>;
+  labelMode: LabelMode;
+  labels: SeasonLabel[];
+  labelTop: number;
+  /** In code mode, what each code used stands for. */
+  key: Array<{ code: string; label: string }>;
+}
+
+/** The wins axis: every band edge and central, and replacement level always, padded and rounded to ticks. */
+export function winsDomain(seasons: ConeSeason[]): [number, number] {
+  let lo = 0;
+  let hi = 0;
+  for (const s of seasons) {
+    lo = Math.min(lo, s.outer.low, s.inner.low, s.central);
+    hi = Math.max(hi, s.outer.high, s.inner.high, s.central);
+  }
+  if (hi - lo < 1) {
+    const mid = (hi + lo) / 2;
+    lo = Math.min(lo, mid - 0.5);
+    hi = Math.max(hi, mid + 0.5);
+  }
+  const pad = (hi - lo) * 0.08;
+  lo -= pad;
+  hi += pad;
+  const step = tickStep(lo, hi);
+  return [Math.floor(lo / step) * step, Math.ceil(hi / step) * step];
+}
+
+const yearText = (season: number, mode: LabelMode): string => (mode === 'code' ? `’${String(season).slice(-2)}` : String(season));
+
+function linesOf(s: ConeSeason, mode: LabelMode): string[] {
+  const pick = (l: { label: string; short: string; code: string }) => (mode === 'full' ? l.label : mode === 'short' ? l.short : l.code);
+  const lines = [yearText(s.season, mode), pick(s.control)];
+  if (s.control.after) lines.push(pick(s.control.after));
+  return lines;
+}
+
+const labelWidth = (lines: string[]): number => Math.max(...lines.map((l) => textWidth(l)));
+
+const plotWidth = (width: number): number => Math.max(1, width - CONE_LAYOUT.left - CONE_LAYOUT.right - replacementMargin(width));
+
+/** The longest labels that fit every season's slot at this width. */
+export function labelModeFor(seasons: ConeSeason[], width: number): LabelMode {
+  const slot = plotWidth(width) / Math.max(1, seasons.length);
+  for (const mode of ['full', 'short'] as const) {
+    if (seasons.every((s) => labelWidth(linesOf(s, mode)) + CONE_LAYOUT.labelPad <= slot)) return mode;
+  }
+  return 'code';
+}
+
+export function coneGeometry(seasons: ConeSeason[], width: number): ConeGeometry {
+  const n = Math.max(1, seasons.length);
+  const plot = {
+    left: CONE_LAYOUT.left,
+    right: CONE_LAYOUT.left + plotWidth(width),
+    top: CONE_LAYOUT.top,
+    bottom: CONE_LAYOUT.top + CONE_LAYOUT.plotHeight,
+  };
+  const domain = winsDomain(seasons);
+  const y = (v: number): number => plot.bottom - ((v - domain[0]) / (domain[1] - domain[0])) * (plot.bottom - plot.top);
+  const slot = (plot.right - plot.left) / n;
+  const x = seasons.map((_, i) => plot.left + slot * (i + 0.5));
+
+  const labelMode = labelModeFor(seasons, width);
+  const labels = seasons.map((s, i) => {
+    const lines = linesOf(s, labelMode);
+    const w = labelWidth(lines);
+    return { x: x[i], left: x[i] - w / 2, right: x[i] + w / 2, lines };
+  });
+  const rows = Math.max(2, ...labels.map((l) => l.lines.length));
+  const labelTop = plot.bottom + CONE_LAYOUT.labelGap;
+
+  const key = new Map<string, string>();
+  if (labelMode === 'code') {
+    for (const s of seasons) {
+      key.set(s.control.code, s.control.label);
+      if (s.control.after) key.set(s.control.after.code, s.control.after.label);
+    }
+  }
+
+  return {
+    width,
+    height: labelTop + rows * CHART_TEXT.lineHeight + CONE_LAYOUT.bottom,
+    plot,
+    domain,
+    ticks: niceTicks(domain[0], domain[1]),
+    y,
+    baseline: y(0),
+    replacementLabel: replacementMargin(width) > 0,
+    x,
+    slot,
+    shape: seasons.length === 1 ? 'interval' : 'area',
+    outer: seasons.map((s, i) => ({ x: x[i], top: y(s.outer.high), bottom: y(s.outer.low) })),
+    inner: seasons.map((s, i) => ({ x: x[i], top: y(s.inner.high), bottom: y(s.inner.low) })),
+    path: seasons.map((s, i) => ({ x: x[i], y: y(s.central) })),
+    labelMode,
+    labels,
+    labelTop,
+    key: [...key.entries()].map(([code, label]) => ({ code, label })),
+  };
+}
+
+/** Wins as the card prints them: one decimal and a true minus sign. */
+export const formatWins = (v: number): string => signed(v, 1);
+
+const pct = (v: number): string => `${Math.round(v * 100)}%`;
+
+/** A band's coverage: its target beside what was observed, or "not measured" — never the target as if measured. */
+export function coverageText(c: ConeCoverage): string {
+  return `${pct(c.target)} target · ${c.observed === null ? 'not measured on this save' : `${pct(c.observed)} observed`}`;
+}
+
+/** The whole cone in words, for the image's accessible name. */
+export function coneSummary(cone: ProductionCone): string {
+  const s = cone.seasons;
+  if (s.length === 0) return `Expected production not yet established: ${cone.reason ?? 'no reason stated'}.`;
+  const range = s.length === 1 ? `${s[0].season}` : `${s[0].season} to ${s[s.length - 1].season}`;
+  const each = s.map((x) =>
+    `${x.season}, ${x.control.label.toLowerCase()}: ${formatWins(x.central)} wins expected; ` +
+    `80% of outcomes ${formatWins(x.outer.low)} to ${formatWins(x.outer.high)}, 50% ${formatWins(x.inner.low)} to ${formatWins(x.inner.high)}` +
+    (x.control.after ? `; ${x.control.after.label.toLowerCase()} ${x.season}` : ''));
+  return `Expected wins above replacement per season, ${range}. ${each.join('. ')}. ${cone.calibration.status}.`;
+}

@@ -58,6 +58,10 @@ npm run build       # Vite production build
 The suites share one SQLite handle and run serially. Tests must use synthetic data. New baseball behavior gets a case in
 the behavioral corpus first ([BEHAVIOR_CASES.md](BEHAVIOR_CASES.md)).
 
+Charts use visx (D-054): keep a chart's layout in a pure geometry module and test it there, and render the component
+with `react-dom/server`'s `renderToStaticMarkup` in a `.test.ts` (Vitest runs in Node, with no DOM);
+`tests/productionCone.test.ts` is the pattern. Colours come only from `src/chartTheme.ts`.
+
 Measurement scripts run against a real import and are not part of validation:
 
 ```bash

@@ -531,6 +531,22 @@ keep an invalid one. The order:
 The end state: no production module reads `players_value`, `mlbPercentiler` and `VALUE_PERCENTILE_NOTE` are gone,
 and the evidence boundary test's allow-list for `players_value` is empty.
 
+**The player card shows expected production (2026-09-23), ahead of its phase-6 migration.** An "Expected production"
+section draws the production cone (`src/ProductionCone.tsx`, visx, D-054): wins per season with the 80% and 50% bands
+as nested washes, the expected path as a dotted line with a marker per season, replacement level (0) as a labelled
+dashed baseline, and each season's control beneath it (signed, an option, pre-arbitration, arbitration *n*, reserve,
+not established, and "free agent after" on the last controlled season). Seasons run from this one to the last
+controlled season, capped by the production horizon; where the end of control is not established (unsigned, unknown,
+or past the horizon) the whole horizon is drawn and each season says so. The legend says what the bands mean ("80%
+of outcomes fall inside"); hover or keyboard focus on a season shows its central and both bands, each band's
+"target · observed" coverage ("not measured on this save" when the fit did not measure it, never the target), the
+seasons and plate appearances or batters faced it rests on, playing time and control. One line under the chart states
+calibration: "Calibrated on this save: 2006–2025, refit after the 2025 season", or "Not yet calibrated on this save
+(N seasons)". Unknown production draws no cone and states the reason. A cone may narrow (a fading player's playing
+time), and negative wins stay on the axis. The join is Player Value's (`playerValueCone.ts`, `productionCone`, served
+at `/api/player-value/:playerId/cone`); the card computes nothing. The card's existing `players_value` reads (Value,
+Talent) are untouched until phase 6. A static site export does not carry the route, so its cards omit the section.
+
 ---
 
 ## Part 9 — Phases and exit criteria

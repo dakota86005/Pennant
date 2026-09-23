@@ -129,6 +129,12 @@ export interface ModelProvenance {
   priorWeight: number;
   /** Coverage the fit observed on held-out seasons, per horizon, as served; null when not measured (the prior). */
   observed?: ObservedCoverage[] | null;
+  /**
+   * The history behind the model in force, for the one-line calibration status: how many seasons the save's
+   * last fit read, the first and last of them and the completed season it was refitted after (null under
+   * the prior), and whether the fit calls itself calibrated on this save (its own label's verdict).
+   */
+  window?: { seasons: number; first: number | null; last: number | null; refitAfter: number | null; calibrated: boolean };
 }
 
 export interface ObservedCoverage {

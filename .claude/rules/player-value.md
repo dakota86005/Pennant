@@ -25,7 +25,8 @@ what a win is worth and what is left, as bands with their basis. `server/playerV
 point; `playerValueContract.ts` (contract facts), `playerValueControl.ts` (control and cost path),
 `playerValueProduction.ts` (expected production, pure), `playerValueProductionFit.ts` (the per-save fit),
 `playerValueHistory.ts` (the history reader), `playerValueFinances.ts` (Club Finances, the opening price of a win,
-replacement level) and `playerValueCalibration.ts` (policy and the provisional prior, stamped) sit behind it. Two
+replacement level), `playerValueCone.ts` (the player card's production cone: production joined with control, pure)
+and `playerValueCalibration.ts` (policy and the provisional prior, stamped) sit behind it. Two
 writers, `history.db` only: `playerValueSnapshot.ts` (the per-import market snapshot) and `playerValueFitStore.ts`
 (the per-save production fits, D-053). Which phases are built is in `docs/PROJECT_STATE.md`; check it against the
 worktree.

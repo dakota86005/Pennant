@@ -35,6 +35,7 @@ import {
   type ContractFacts, type ContractRow, type ContractTables,
 } from './playerValueContract.js';
 import { composeControlTimeline, type ControlTimeline } from './playerValueControl.js';
+import { productionCone, type ProductionCone } from './playerValueCone.js';
 import {
   FINANCE_COLUMNS, clubFinancesOf, openingPriceOfWin, replacementLevelOf,
   type ClubFinances, type FinanceTable, type MarketCandidate, type PriceOfWin, type ReplacementLevel,
@@ -56,7 +57,7 @@ import {
   PRODUCTION_UNIT, projectProductionWith,
   type ModelProvenance, type PlayerProduction, type ProductionInput, type ProductionModel,
 } from './playerValueProduction.js';
-import { ageOn, fitProductionModel, type FitHistory, type FitPlayer, type FitRecord, type FitRun } from './playerValueProductionFit.js';
+import { NOT_YET_CALIBRATED, ageOn, fitProductionModel, type FitHistory, type FitPlayer, type FitRecord, type FitRun } from './playerValueProductionFit.js';
 
 export type { ContractFacts, ContractSeason, ContractTerm } from './playerValueContract.js';
 export type { ControlSeason, ControlStatus, ControlTimeline, CostBand } from './playerValueControl.js';
@@ -70,6 +71,8 @@ export type {
   ProductionKind, ProductionLine, ProductionModel, ProductionSeason, ProductionSide, SideBasis, SideSeason, WinsBand,
 } from './playerValueProduction.js';
 export type { CoverageRow, FitHistory, FitPlayer, FitRecord, FitRun, FitSeason } from './playerValueProductionFit.js';
+export type { ConeBand, ConeControl, ConeControlStatus, ConeCoverage, ConeSeason, ProductionCone } from './playerValueCone.js';
+export { productionCone } from './playerValueCone.js';
 export { PRODUCTION_UNIT } from './playerValueProduction.js';
 export { fitProductionModel } from './playerValueProductionFit.js';
 export { PRODUCTION_PENDING_RATINGS };
@@ -201,6 +204,16 @@ function valuate(states: PlayerState[], ids: number[] | null, options: Valuation
     for (const v of out.values()) v.production = productions.get(v.playerId);
   }
   return out as Map<number, PlayerValuation>;
+}
+
+/**
+ * The player card's production cone: his expected production joined with his control timeline, season by
+ * season, from this season to the end of control within the production horizon (`playerValueCone.ts`).
+ * Null when the export has no such active player.
+ */
+export function playerProductionCone(playerId: number, options: ValuationOptions = {}): ProductionCone | null {
+  const value = playerValue(playerId, options);
+  return value ? productionCone(value.production, value.control) : null;
 }
 
 /** Contract facts and control for the players asked about, keyed by id; retired players are not valued. */
@@ -430,12 +443,14 @@ function priorProvenance(leagueId: number): ModelProvenance {
   const why = last === null
     ? 'no fit has been made on this save yet'
     : `the last fit (through ${last.throughSeason}, ${last.record.window.seasons.length} seasons) was not adopted: ${last.reason}`;
+  const seasons = last?.record.window.seasons.length ?? 0;
   return {
     source: 'fallback_prior',
-    label: `not yet calibrated on this save (${last?.record.window.seasons.length ?? 0} seasons): the provisional fallback prior; ${why}`,
+    label: `${NOT_YET_CALIBRATED} (${seasons} seasons): the provisional fallback prior; ${why}`,
     stamp: PRODUCTION_PRIOR_CALIBRATION,
     fitId: null,
     priorWeight: 1,
+    window: { seasons, first: null, last: null, refitAfter: null, calibrated: false },
   };
 }
 
@@ -448,6 +463,14 @@ export function productionModelFor(leagueId: number): ProductionModelInForce {
       provenance: {
         source: 'save_fit', label: fit.record.label, stamp: savedStamp(fit), fitId: fit.record.id, priorWeight: fit.priorWeight ?? 0,
         observed: fit.record.coverage.adopted.map((r) => ({ horizon: r.horizon, cases: r.cases, outer: r.outer, inner: r.inner })),
+        window: {
+          seasons: fit.record.window.seasons.length,
+          first: fit.record.window.seasons[0] ?? null,
+          last: fit.record.window.seasons[fit.record.window.seasons.length - 1] ?? null,
+          refitAfter: fit.throughSeason,
+          // The fit's own verdict, as its label states it: an adopted fit that is still mostly the prior is not calibrated
+          calibrated: !fit.record.label.startsWith(NOT_YET_CALIBRATED),
+        },
       },
     };
   }

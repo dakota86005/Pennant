@@ -104,6 +104,9 @@ export interface FitOptions {
 
 // ── small statistics ─────────────────────────────────────────────────────────
 
+/** How a fit (or the prior in its place) that is mostly the fallback prior begins its label; the status line reads it. */
+export const NOT_YET_CALIBRATED = 'not yet calibrated on this save';
+
 const PER = PRODUCTION_POLICY.rateUnitOpportunities;
 const H = CONTROL_HORIZON_SEASONS;
 const KINDS: ProductionKind[] = ['hitter', 'starter', 'reliever'];
@@ -684,7 +687,7 @@ export function fitProductionModel(history: FitHistory, options: FitOptions): Fi
   const first = window[0];
   const lastSeason = window[window.length - 1];
   const label = overall >= 0.5 || window.length === 0
-    ? `not yet calibrated on this save (${window.length} season${window.length === 1 ? '' : 's'}): mostly the fallback prior`
+    ? `${NOT_YET_CALIBRATED} (${window.length} season${window.length === 1 ? '' : 's'}): mostly the fallback prior`
     : `calibrated on this save's seasons ${first}–${lastSeason} (${window.length}), held out ${holdoutSeasons[0] ?? '—'}–${holdoutSeasons[holdoutSeasons.length - 1] ?? '—'}`;
 
   const record: FitRecord = {

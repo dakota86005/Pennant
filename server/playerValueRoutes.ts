@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { tableExists } from './db.js';
-import { marketLeagueOfClub, playerValue, playerValues, productionCalibration } from './playerValue.js';
+import { marketLeagueOfClub, playerProductionCone, playerValue, playerValues, productionCalibration } from './playerValue.js';
 
 /**
  * The domain routes for a player's value (D-008, PLAYER_VALUE.md Part 7): contract facts, the
@@ -26,6 +26,19 @@ playerValueRoutes.get('/player-value', (req, res) => {
   const ids = String(req.query.ids ?? '').split(',').map((s) => Number(s.trim())).filter((n) => Number.isInteger(n) && n > 0);
   if (ids.length === 0 || ids.length > 500) return res.status(400).json({ error: 'Give 1 to 500 player ids as ?ids=1,2,3' });
   res.json(Object.fromEntries(playerValues(ids)));
+});
+
+/**
+ * The player card's production cone: expected production joined with control, season by season, from
+ * this season to the end of control within the production horizon, with the calibration status line.
+ */
+playerValueRoutes.get('/player-value/:playerId/cone', (req, res) => {
+  const id = Number(req.params.playerId);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: 'Bad player id' });
+  if (!tableExists('players')) return res.status(400).json({ error: 'No data imported yet' });
+  const cone = playerProductionCone(id);
+  if (!cone) return res.status(404).json({ error: 'No such active player' });
+  res.json(cone);
 });
 
 playerValueRoutes.get('/player-value/:playerId', (req, res) => {
