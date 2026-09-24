@@ -1435,7 +1435,32 @@ stakes). ROADMAP lists them for an audit and migration.
   own history, never through a season the league has not completed; a refit that fails the gate never replaces the fit
   in force; the refit runs off the server's event loop.
 - **Under the prior, the league's own WAR scale:** the kind's mean and the rate spreads come from the league's own recent
-  seasons (a plain measurement, stamped derived); the prior's shape stays.
+  seasons (a plain measurement, stamped derived); the prior's shape stays. The WAR scale is a unit: every term in WAR
+  per 600 is put in the league's unit and every coefficient on a rate by its inverse, so the same record in a league at
+  0.4 of the scale projects 0.4 of the rate on the same playing time.
+
+**Amended 2026-09-23 (owner decisions: option C and four approvals; PLAYER_VALUE.md Part 12, CALIBRATION.md section
+6.3).**
+
+- **The backtest is rolling-origin.** Each completed season from the window's start + 5 to the season before the last
+  (at most 8) is an origin scored by the method fitted through it; a horizon is scored only where that fit has enough
+  cases from at least 3 origin cohorts; the pooled cases are clustered by player and by origin, so one era cannot
+  decide the verdict. Seasons are weighted by a recency half-life (policy, 2 seasons). The gate's tolerances are
+  unchanged: pooled coverage within 5 points, every subgroup within 10, a bias failing at 10% of the mean outcome and
+  0.05 wins and three standard errors, 200 cases. A fit that fails is not adopted however close it is.
+- **The serving rule** (approved): the model served is the method refit through the last completed season, and the
+  held-out seasons are scored by refits of the method.
+- **A career-ending injury** (approved): the central goes to zero, the high edge is kept.
+- **The rest of this season** (approved): measured from this season's own games so far.
+- **Same-time ratings pull less** (approved): until the save measures them as a forecast, they pull only by their own
+  weight.
+- **A fit is calibrated only where it was measured:** a fit never scored on held-out seasons, or mostly the prior at
+  every horizon, is labelled "not yet calibrated" and stamped provisional wherever it is served; where no season is
+  usable, the label names the seasons of lines the league has and why none is.
+- **Injury proneness on the Arizona import** (a correction of the reading above): with each player's seasons clustered
+  and Holm's rule across the family, no playing-time or aging effect is distinguishable from none (hitters in the most
+  injury-prone third 97.9% ± 1.7), so proneness moves nothing on this save; the 94.1% and 94.8% readings treated a
+  player's seasons as independent.
 
 ## D-054 — Charting library
 

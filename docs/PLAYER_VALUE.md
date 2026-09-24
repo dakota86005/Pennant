@@ -646,9 +646,9 @@ with the latest completed season; with none, the provisional fallback prior, lab
 (`playerValueRefitWorker.ts`, its own read connections; better-sqlite3 works in a worker; A-17) and the main thread
 records the result only if no import started while it read; every failure is caught and logged, and without a worker
 the same work runs in-process after the turn. It can never block or fail the import, and it no longer blocks the
-server: on the Arizona import the refit took 12.0 s in the worker (production 9.7 s: four fits, the held-out refits
-and the served one; ratings 1.9 s), recording took 78 ms, and the main thread's event loop was never held more than
-3 ms. A league's last
+server: on the Arizona import the refit takes 20.4 s in the worker under `production-3h.2` (production 17.4 s: nine
+fits, one per rolling origin and the served one; ratings 2.2 s), recording takes 81 ms, and the main thread's event loop
+was never held more than 2 ms (under 3h.1, four fits, 12.0 s). A league's last
 completed season is this season once every club has played its schedule (`team_record`), else the one before; a key
 already fitted is skipped, so a re-import without a newer completed season fits nothing. The same background refit also runs once at server start for a save that is already imported (`bootstrapData`), so a save with no fit for its latest completed season (a new install, or a method version that ignores the stored fit) is fitted without waiting for an import; it does not need the export folder. No timer, no wall-clock
 date. **Served** by `GET /api/player-value/production-fit/:orgId` (the fit in force, the latest attempt, the targets)
@@ -852,6 +852,19 @@ this save until a refit passes or the owner changes the tolerance. Reviewer C's 
 one (C-06, opt-outs, F2's); 8,072 of 12,575 players have a band; the league-wide pass takes 1.4–1.9 s and one
 organization 71–80 ms.
 
+**Option C (owner, 2026-09-23): the rolling-origin backtest, method `production-3h.2`.** The owner kept the gate's
+tolerances and replaced the single hold-out block with rolling origins: every completed season from the window's start
++ 5 to the season before the last (at most 8, always the first and the last) is scored by the method fitted through it,
+a horizon only where that fit has 200 cases from at least 3 origin cohorts, the pooled cases clustered by player and by
+origin; each fit weights seasons by a recency half-life of 2 seasons (policy). On the Arizona import (origins 2011–2024)
+pooled coverage is 79.2–81.1 / 49.7–50.9 and the pooled bias −0.01 to −0.04 wins at horizons 1–7, every subgroup within
+10 points; the gate fails on two cells, hitters at horizons 5 and 6 (−0.096 wins, 21% and 27% of the mean outcome),
+scored only from origins 2017–2018 into 2022–2024. The tolerances were not loosened, so the fallback prior (fitted to
+the league's own WAR scale) stays in force until the save's own seasons pass it or the owner rules on the long-horizon
+bias rule (CALIBRATION.md section 6.3). The cross-save suite turned every F1 finding it held as a todo into a real case
+(D-01, D-02, D-05, D-06, D-08, D-09, D-12, D-13, D-15, D-16 and `ratingsHistory`'s unknown share), each failing first
+where the fix was new (D-08's season read as played with nothing in it, D-09, D-12, D-15).
+
 **Phase 3a exit criteria, as met.** On the Arizona import the fit `203:2025:production-3a.1` (window 2006–2025, 2020
 skipped, trained through 2015, held out 2016–2025; prior weight 0.02) passed the gate and was adopted. Held-out
 coverage, 80% / 50% band, as fitted: horizon 1 80.4% / 53.3%, 2 79.2% / 52.7%, 3 78.4% / 52.0%, 4 80.1% / 54.2%, 5 80.5% /
@@ -1014,7 +1027,8 @@ numeric constant. Phase 3a adds `PRODUCTION_POLICY` (policy) and `PRODUCTION_PRI
 | Each season's schedule, and whether it was short | **none: read** | The standings' modal games per club (else the most games any player played), against its neighbours' |
 | This season's in-season continuation | **measured per import** | This season's own game logs, per kind; unmeasured under 10 games per club each half (`PRODUCTION_POLICY.inSeason`, policy) |
 | The fallback prior's mean and spreads under the league's own WAR scale | **derived** | The league's last three seasons (`PRODUCTION_POLICY.priorAdaptation`, policy) |
-| The gate's tolerances (5 points pooled, 10 per subgroup; bias over 10% of the mean outcome, 0.05 wins and three clustered standard errors), the age bands, the tail grid, the injury rules (a lost season under a quarter of his best; a days-out value held by 10 or more injured players over a year and contradicted by their state), the logistic's ridge, the refit blocks (three origins) | **policy** | `PRODUCTION_POLICY`, stamped `PRODUCTION_POLICY_CALIBRATION` (hardening) |
+| The gate's tolerances (5 points pooled, 10 per subgroup; bias over 10% of the mean outcome, 0.05 wins and three standard errors clustered by player and origin), the age bands, the tail grid, the injury rules (a lost season under a quarter of his best; a days-out value held by 10 or more injured players over a year and contradicted by their state), the logistic's ridge | **policy** | `PRODUCTION_POLICY`, stamped `PRODUCTION_POLICY_CALIBRATION` (hardening) |
+| The rolling origins (from the window's start + 5 to the season before the last, at most 8; a horizon scored with 200 cases from 3 or more origin cohorts) and the recency half-life (2 seasons) | **policy** | `PRODUCTION_POLICY.rolling`, `PRODUCTION_POLICY.window.recencyHalfLife` (owner's option C, 2026-09-23; method `production-3h.2`) |
 | The ratings method's policy: sample rules, folds, position minimum, prior strength, age-band sizes, nodes, pair rule and minimums, the prior's development range | **policy** | `RATINGS_POLICY`, stamped `RATINGS_POLICY_CALIBRATION` (phase 3b) |
 | The ratings fallback prior | **provisional** | `RATINGS_PRIOR`, `RATINGS_PRIOR_CALIBRATION`: the ratings method with no prior on the Arizona import; no arrivals (phase 3b) |
 | Widening outside the organization | **none** | Not applied: one rating row per player makes it unmeasurable (R-9, Q-2) |
@@ -1055,6 +1069,19 @@ The owner answered these on 2026-09-22. Each answer is folded into the part it n
 - **Super Two (ruled 2026-09-22, after phase 1).** OOTP implements Super Two under MLB rules, and Pennant follows
   the real rule: a player with at least two but fewer than three years of service is arbitration-eligible if he banked at least 86 days in the season just ending and ranks in the top 22% (rounded to the nearest whole number) by total service of the class of players with two to three years and those 86 days (CBA Art. VI(E)(1)(b)); the cutoff therefore moves every winter (in the real world about 2.115 to 2.140 years.days). This is the owner's statement of how OOTP behaves, a basis under D-018 and D-023
   (`owner_attested`), not a guess from MLB rules (2.2).
+- **The production gate and its method (2026-09-23, hardening; D-053).** The owner chose option C: the gate's
+  tolerances stay (pooled coverage within 5 points, every subgroup within 10; a bias fails at 10% of the mean outcome
+  and 0.05 wins and three standard errors; 200 cases), and the backtest becomes rolling-origin, with a recency
+  half-life where the evidence supports it (CALIBRATION.md section 6.3). The owner approved four rules the hardening
+  had applied provisionally:
+  - **The serving rule.** The model a GM is served is the method refit through the last completed season, and the
+    held-out seasons are scored by refits of the same method (each origin's own), never by the served model.
+  - **A career-ending injury.** The central goes to zero for the seasons it covers, and the band keeps its high edge
+    (an earlier return stays possible).
+  - **The rest of this season.** Measured from this season's own games so far (how much of their playing time the
+    players who played early kept later), never next season's attrition.
+  - **Same-time ratings pull less.** Until the save measures the ratings as a forecast, ratings read at the same time
+    as the results pull the regression target only by their own weight, so they never undo the results regression.
 - **Super Two margin (2026-09-23, hardening).** The owner approved a policy margin of days around the computed
   cutoff range, within which the answer is `indeterminate`: the cutoff's edges are readings, not bounds. Set at 10
   days (Part 11), stamped policy under D-041 (2.2).

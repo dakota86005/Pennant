@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { leagueRulesFromRow, type LeagueRuleRow } from '../server/leagueRules.js';
 import {
-  clubFinances, leagueFinances, leaguePlayerValues, marketLeagues, playerProductionCone, productionCalibration,
-  refitProductionIfNeeded, refitRatingsIfNeeded, type PlayerValuation,
+  clearProductionCaches, clubFinances, leagueFinances, leaguePlayerValues, marketLeagues, playerProductionCone, productionCalibration,
+  ratingsHistory, refitProductionIfNeeded, refitRatingsIfNeeded, type PlayerValuation,
 } from '../server/playerValue.js';
+import { db } from '../server/db.js';
+import { historyDb } from '../server/history.js';
+import { PRODUCTION_PRIOR } from '../server/playerValueCalibration.js';
+import { leagueSeasons } from '../server/playerValueHistory.js';
 import { captureMarketSnapshot } from '../server/playerValueSnapshot.js';
 import { OPENING_PRICE_MINIMUMS } from '../server/playerValueCalibration.js';
 import { buildSave, dropColumn, dropTable, exec, insert, leagueRow, type BuiltSave, type SaveSpec } from './syntheticSave';
@@ -152,6 +156,17 @@ const base: SaveSpec = { season: 2040, historySeasons: 6, gamesPerTeam: 162, pla
 
 const priceOf = (r: Run, league: number) => r.finances.get(league)!.priceOfWin;
 const basis = (r: Run, league: number, id: string) => priceOf(r, league).bases.find((b) => b.id === id)!;
+/** A player's first side in one projected season (the production must be projected). */
+const sideIn = (r: Run, id: number, season: number) => {
+  const p = r.values.get(id)!.production;
+  expect(p.status, `player ${id}: ${p.reason ?? ''}`).toBe('projected');
+  return p.seasons.find((s) => s.season === season)!.sides[0];
+};
+/** Force the stored fit attempts adopted: what a fit that passed the gate would leave in the store. */
+const adoptEveryAttempt = () => {
+  historyDb.exec(`UPDATE value_production_fits SET adopted = 1`);
+  clearProductionCaches();
+};
 
 describe('cross-save: a new or thin league', () => {
   it('a brand-new fictional league on Opening Day: everything answers, and nothing is priced or projected from evidence it has not got', () => {
@@ -174,7 +189,19 @@ describe('cross-save: a new or thin league', () => {
     expect(priceOf(r, save.leagueId).price.value).toBeNull();
   }, SLOW);
 
-  it.todo('D-02 (F1): in a league\'s first seasons, a season before the league existed is unknown usage, never zero: a first-season regular\'s next-season 80% usage band contains a regular\'s playing time');
+  it("D-02 (F1): in a league's first seasons, a season before the league existed is unknown usage, never zero: a first-season regular's next-season 80% usage band contains a regular's playing time", () => {
+    // The same kind of regular in a league with six seasons behind it: his next season's playing time
+    const old = buildSave({ ...base, playedShare: 0.25 });
+    const established = sideIn(run(old, { refit: false }), old.regular, base.season + 1).usage;
+    const save = buildSave({ ...base, historySeasons: 0, playedShare: 0.25 });
+    const r = run(save, { refit: false });
+    expectInvariants(r);
+    const usage = sideIn(r, save.regular, base.season + 1).usage;
+    // The seasons the league never played are not read as nothing: his band holds a regular's playing time
+    expect(usage.low).toBeLessThanOrEqual(established.central);
+    expect(usage.high).toBeGreaterThanOrEqual(established.central);
+    expect(usage.high).toBeGreaterThan(0.9 * established.high);
+  }, SLOW);
 
   it('two completed seasons: the fallback prior is in force and labelled "not yet calibrated"', () => {
     const save = buildSave({ ...base, season: 2042, historySeasons: 2, playedShare: 0.3 });
@@ -192,7 +219,17 @@ describe('cross-save: a new or thin league', () => {
     expect(attempt?.throughSeason ?? null).toBe(2043);
   }, SLOW);
 
-  it.todo('D-09 (F1): an adopted fit that is mostly the fallback prior is not stamped "calibrated"');
+  it('D-09 (F1): an adopted fit that is mostly the fallback prior is not stamped "calibrated"', () => {
+    const save = buildSave(base);
+    run(save);
+    adoptEveryAttempt();
+    const inForce = productionCalibration(save.leagueId).inForce;
+    expect(inForce.source).toBe('save_fit');
+    // Six seasons of eight clubs: no held-out season was scored and every horizon leans on the prior, so it is not the save's calibration
+    expect(inForce.label).toMatch(/not yet calibrated/i);
+    expect(inForce.stamp.status).not.toBe('calibrated');
+    for (const cone of run(save, { refit: false }).cones) expect(cone.calibration.calibrated).toBe(false);
+  }, SLOW);
 });
 
 describe('cross-save: schedule length', () => {
@@ -227,8 +264,29 @@ describe('cross-save: schedule length', () => {
 
   it.todo('D-03 (F2): once a short season is over, no service day "remains this season", and the Super Two class is not built from phantom days');
   it.todo('D-04 (F2): in a short-schedule league a later season banks the days the league\'s season actually banks, so free agency is not shown definite seasons early');
-  it.todo('D-05 (F1): playing time is scaled to the schedule: a 60-game regular\'s 80% band never exceeds the plate appearances the schedule allows');
-  it.todo('D-06 (F1): a season\'s share of its own schedule is measured against that season\'s schedule, so a league that lengthened its schedule keeps its history for the fit');
+  it("D-05 (F1): playing time is scaled to the schedule: a 60-game regular's 80% band never exceeds the plate appearances the schedule allows", () => {
+    const save = buildSave({ ...base, gamesPerTeam: 60, bankedPerSeason: 69 });
+    const r = run(save);
+    expectInvariants(r);
+    // The most plate appearances any hitter has had in one of this league's 60-game seasons
+    const most = (db.prepare(`SELECT MAX(pa) AS m FROM players_career_batting_stats WHERE split_id = 1 AND level_id = 1 AND year < ${base.season}`).get() as { m: number }).m;
+    for (const id of save.hitters) {
+      const p = r.values.get(id)!.production;
+      if (p.status !== 'projected') continue;
+      for (const s of p.seasons.slice(1)) for (const side of s.sides) if (side.side === 'batting') expect(side.usage.high, `player ${id} ${s.season}`).toBeLessThanOrEqual(most);
+    }
+  }, SLOW);
+
+  it("D-06 (F1): a season's share of its own schedule is measured against that season's schedule, so a league that lengthened its schedule keeps its history for the fit", () => {
+    const save = buildSave({ ...base, pastGamesPerTeam: 100 });
+    const r = run(save);
+    expectInvariants(r);
+    const seasons = leagueSeasons(save.leagueId, base.season - 1);
+    expect(seasons.length).toBe(base.historySeasons);
+    for (const s of seasons) expect(s.scheduleShare, `${s.season}`).toBeCloseTo(1, 5);
+    const attempt = r.calibration.get(save.leagueId)!.latestAttempt!;
+    expect(attempt.reason).toMatch(new RegExp(`${base.historySeasons} usable seasons`));
+  }, SLOW);
 });
 
 describe('cross-save: contract and financial regimes', () => {
@@ -342,7 +400,16 @@ describe('cross-save: league structure', () => {
     expectInvariants(run(save));
   }, SLOW);
 
-  it.todo('D-16 (F1): an independent top-level league whose level is not 1 is projected from its own top level, or states plainly that it is not a major league');
+  it('D-16 (F1): an independent top-level league whose level is not 1 is projected from its own top level, or states plainly that it is not a major league', () => {
+    const save = buildSave({ ...base, minors: false });
+    exec(`UPDATE leagues SET league_level = 2; UPDATE teams SET level = 2; UPDATE players_career_batting_stats SET level_id = 2;
+          UPDATE players_career_pitching_stats SET level_id = 2; UPDATE players_contract SET is_major = 0;`);
+    const r = run(save);
+    expectInvariants(r);
+    // Its top level is its majors: its players are projected from their results there
+    sideIn(r, save.regular, base.season + 1);
+    expect(r.values.get(save.reliever)!.production.status).toBe('projected');
+  }, SLOW);
 
   it('two top-level leagues in one universe: each is its own market, and every entry point answers for both', () => {
     const save = buildSave(base);
@@ -374,7 +441,22 @@ describe('cross-save: environment and export shape', () => {
     expectInvariants(run(buildSave({ ...base, warScale: 2.5 })));
   }, SLOW);
 
-  it.todo("D-12 (F1): under the prior, a thin record is regressed toward the league's own measured mean, not MLB's");
+  it("D-12 (F1): under the prior, a thin record is regressed toward the league's own measured mean, not MLB's", () => {
+    for (const warScale of [0.4, 2.5]) {
+      const save = buildSave({ ...base, warScale });
+      const r = run(save, { refit: false });
+      expectInvariants(r);
+      expect(r.calibration.get(save.leagueId)!.inForce.source).toBe('fallback_prior');
+      const lg = db.prepare(`SELECT SUM(war) AS w, SUM(pa) AS p FROM players_career_batting_stats WHERE split_id = 1 AND level_id = 1`).get() as { w: number; p: number };
+      const own = (600 * lg.w) / lg.p;
+      const rates = save.hitters.map((id) => r.values.get(id)!.production)
+        .filter((p) => p.status === 'projected').map((p) => p.seasons[1].sides[0].rate);
+      const mean = rates.reduce((a, b) => a + b, 0) / rates.length;
+      // The league's own mean, not MLB's: the projected hitters sit around it (their aging and selection aside)
+      expect(Math.abs(mean - own), `WAR x${warScale}: projected ${mean.toFixed(2)}, league ${own.toFixed(2)}`)
+        .toBeLessThan(0.25 * Math.abs(PRODUCTION_PRIOR.kinds.hitter.mean600 - own));
+    }
+  }, SLOW);
 
   const shapes: Array<[string, () => void]> = [
     ['no players_contract_extension', () => dropTable('players_contract_extension')],
@@ -424,8 +506,34 @@ describe('cross-save: environment and export shape', () => {
     expect(reasons.every((reason) => /season/i.test(reason))).toBe(true);
   }, SLOW);
 
-  it.todo('D-13 (F1): one missing column in one career stats table blanks only that side: with no bf column, a hitter is projected and a pitcher is unknown with the reason');
-  it.todo('D-15 (F1): with no schedule length or standings history, the calibration label says how many seasons of lines exist and why none is usable, never "(0 seasons)"');
+  it('D-13 (F1): one missing column in one career stats table blanks only that side: with no bf column, a hitter is projected and a pitcher is unknown with the reason', () => {
+    const save = buildSave(base);
+    dropColumn('players_career_pitching_stats', 'bf');
+    const r = run(save, { refit: false });
+    expectInvariants(r);
+    sideIn(r, save.regular, base.season + 1);
+    const pitcher = r.values.get(save.pitchers[0])!.production;
+    expect(pitcher.status).toBe('unknown');
+    expect(pitcher.reason).toMatch(/players_career_pitching_stats has no bf column/);
+  }, SLOW);
+
+  it('D-15 (F1): with no schedule length or standings history, the calibration label says how many seasons of lines exist and why none is usable, never "(0 seasons)"', () => {
+    const save = buildSave(base);
+    dropTable('team_history_record');
+    const r = run(save);
+    expectInvariants(r);
+    const label = r.calibration.get(save.leagueId)!.inForce.label;
+    expect(label).not.toMatch(/\(0 seasons\)/);
+    expect(label).toMatch(new RegExp(`${base.historySeasons} seasons of major-league lines, none usable: schedule length not established`));
+    for (const cone of r.cones) expect(cone.calibration.status).not.toMatch(/\(0 seasons\)/);
+    // No schedule length at all: the seasons of lines are still counted, and production says what is missing
+    const noRule = buildSave(base);
+    dropColumn('leagues', 'rules_schedule_games_per_team');
+    const r2 = run(noRule);
+    expectInvariants(r2);
+    expect(r2.calibration.get(noRule.leagueId)!.inForce.label).toMatch(new RegExp(`\\(${base.historySeasons} seasons\\)`));
+    expect(r2.values.get(noRule.regular)!.production.reason).toMatch(/schedule length/);
+  }, SLOW);
   it.todo('D-26 (deferred): the consumer routes on the Player Value pages answer on older export shapes (pre-fork queries)');
 });
 
@@ -442,11 +550,59 @@ describe('cross-save: where in the season the export was taken', () => {
     expectInvariants(run(buildSave({ ...base, playedShare: 0, currentDate: '2040-2-10', clockDays: 0 })));
   }, SLOW);
 
-  it.todo("D-08 (F1): a season_year bump beside last season's standings does not mark the new season complete, and the real completion is fitted");
+  it("D-08 (F1): a season_year bump beside last season's standings does not mark the new season complete, and the real completion is fitted", () => {
+    const save = buildSave({ ...base, playedShare: 1, currentDate: '2040-12-10' });
+    exec(`UPDATE leagues SET season_year = ${base.season + 1}`);
+    const r = run(save);
+    expectInvariants(r);
+    // The fit is keyed to the season whose lines exist, never the bumped one
+    expect(r.calibration.get(save.leagueId)!.latestAttempt!.throughSeason).toBe(base.season);
+    // Last season's standings are not this season's: the new season is not read as played with nothing in it
+    const p = r.values.get(save.regular)!.production;
+    if (p.status === 'projected') expect(p.seasons[0].wins.high).toBeGreaterThan(p.seasons[0].wins.low);
+    else expect(p.reason).toMatch(/share of this season played/i);
+    // The new season is played and its lines are exported: that completion is fitted
+    exec(`CREATE TEMP TABLE next_b AS SELECT * FROM players_career_batting_stats WHERE year = ${base.season};
+          UPDATE next_b SET year = ${base.season + 1}; INSERT INTO players_career_batting_stats SELECT * FROM next_b; DROP TABLE next_b;
+          CREATE TEMP TABLE next_p AS SELECT * FROM players_career_pitching_stats WHERE year = ${base.season};
+          UPDATE next_p SET year = ${base.season + 1}; INSERT INTO players_career_pitching_stats SELECT * FROM next_p; DROP TABLE next_p;
+          INSERT INTO team_history_record (team_id, year, league_id, g, w, l, t, pct, pos, gb)
+            SELECT team_id, ${base.season}, ${save.leagueId}, g, w, l, t, pct, pos, gb FROM team_record WHERE team_id < 100;`);
+    const after = run(save);
+    expectInvariants(after);
+    expect(after.calibration.get(save.leagueId)!.latestAttempt!.throughSeason).toBe(base.season + 1);
+  }, SLOW);
 });
 
 describe('cross-save: identity of the save', () => {
-  it.todo("D-01 (F1): a new save under a reused save name and league id never inherits the previous save's adopted fit");
-  it.todo('D (minor, F1): a refit exception for one model or league does not skip the others');
-  it.todo("D (minor, F1): ratingsHistory never substitutes 0 for an unknown share of the season played");
+  it("D-01 (F1): a new save under a reused save name and league id never inherits the previous save's adopted fit", () => {
+    const first = buildSave(base);
+    run(first);
+    adoptEveryAttempt();
+    expect(productionCalibration(first.leagueId).inForce.source).toBe('save_fit');
+    const rows = historyDb.prepare(`SELECT * FROM value_production_fits`).all() as Array<Record<string, unknown>>;
+    expect(rows.length).toBeGreaterThan(0);
+    // Another league under the same save name and league id: the first save's rows are still in the store
+    const second = buildSave({ ...base, seed: 2 });
+    for (const row of rows) {
+      const cols = Object.keys(row);
+      historyDb.prepare(`INSERT INTO value_production_fits (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`).run(...cols.map((c) => row[c]));
+    }
+    clearProductionCaches();
+    const r = run(second, { refit: false });
+    expectInvariants(r);
+    const cal = r.calibration.get(second.leagueId)!;
+    expect(cal.inForce.source).toBe('fallback_prior');
+    expect(cal.latestAttempt).toBeNull();
+  }, SLOW);
+
+  it.todo('D (minor, F1, not fixed): a refit exception for one model or league does not skip the others. `computeProductionRefits` has no per-league guard and `computeRefits` runs the ratings refits after it in the same call, so one league\'s exception still skips the rest; F1 did not change this');
+
+  it('D (minor, F1): ratingsHistory never substitutes 0 for an unknown share of the season played', () => {
+    const save = buildSave(base);
+    expect(ratingsHistory(save.leagueId, base.season - 1, false).mapping.length).toBeGreaterThan(0);
+    // No standings: the share of this season is unknown, so the mapping reads no case at all (A-24)
+    dropTable('team_record');
+    expect(ratingsHistory(save.leagueId, base.season - 1, false).mapping).toEqual([]);
+  }, SLOW);
 });

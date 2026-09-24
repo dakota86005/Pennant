@@ -106,6 +106,8 @@ export interface HorizonModel {
   drift600: number;
   /** The drift of players 25 or younger in the first target season (PRODUCTION_POLICY.ageBands[0]): fitted apart. */
   driftYoung600?: number;
+  /** The origin seasons behind this horizon's training cases (how many cohorts it rests on). */
+  origins?: number;
   /** Backtest cases behind this horizon (training). */
   cases: number;
   /** The fallback prior's share of this horizon (1 where the save had no cases): the bands widen by it. */
@@ -186,6 +188,8 @@ export interface ModelProvenance {
   window?: {
     seasons: number; first: number | null; last: number | null; refitAfter: number | null; calibrated: boolean;
     horizons?: { calibrated: number[]; prior: number[] };
+    /** The seasons the last fit read, as the label says them ("6 seasons of major-league lines, none usable: …", D-15). */
+    note?: string;
   };
 }
 
@@ -1383,7 +1387,7 @@ export type SidePlan =
 export function planSides(input: ProductionInput): SidePlan {
   if (input.season === null || !Number.isFinite(input.season)) return { ok: false, code: 'missing_input', reason: "This season is not established in the export (the league's season year)." };
   if (input.seasonPlayed === null || !Number.isFinite(input.seasonPlayed)) {
-    return { ok: false, code: 'missing_input', reason: 'The share of this season played is not established (standings or schedule length missing), so the window cannot be placed.' };
+    return { ok: false, code: 'missing_input', reason: 'The share of this season played is not established (standings or schedule length missing, or standings that are not this season\'s), so the window cannot be placed.' };
   }
   if (input.age === null || !Number.isFinite(input.age)) return { ok: false, code: 'missing_input', reason: 'His age is not in the export, so no aging can be applied.' };
   const Y = input.season;
@@ -1456,7 +1460,12 @@ export function planSides(input: ProductionInput): SidePlan {
 /**
  * The fallback prior fitted to this league's own WAR scale (D-12): until the save has a fit of its own, a
  * thin record is regressed toward the league's own mean, and the rate spreads scale with its own spread, a
- * plain measurement of the export that needs no backtest. The shape (aging, usage, tails) stays the prior's.
+ * plain measurement of the export that needs no backtest. A league's WAR scale is a unit: every term in WAR
+ * per 600 (the survivor terms, the aging curve, the quality cuts, the noise and drift) is put in the league's
+ * unit by the ratio of its spread to the prior's, and every coefficient ON a rate (playing time's quality
+ * term) by its inverse, so the same record in a league at 0.4 of the scale projects 0.4 of the rate on the
+ * same playing time. The shape (usage by age and history, tails) stays the prior's. The aging curve is one
+ * per group, so a pitcher's is put in the mean of the starter's and the reliever's ratios.
  */
 export interface LeagueRateFacts {
   kinds: Partial<Record<ProductionKind, { mean600: number | null; spread600: number | null; opportunities: number; ceiling: number | null }>>;
@@ -1466,6 +1475,7 @@ export interface LeagueRateFacts {
 export function adaptPriorToLeague(model: ProductionModel, facts: LeagueRateFacts, priorSpread: Partial<Record<ProductionKind, number>>): { model: ProductionModel; note: string | null } {
   const kinds = { ...model.kinds };
   const adapted: string[] = [];
+  const ratios: Partial<Record<ProductionKind, number>> = {};
   for (const kind of Object.keys(kinds) as ProductionKind[]) {
     const f = facts.kinds[kind];
     if (!f) continue;
@@ -1477,20 +1487,41 @@ export function adaptPriorToLeague(model: ProductionModel, facts: LeagueRateFact
     const ps = priorSpread[kind];
     if (f.spread600 !== null && Number.isFinite(f.spread600) && f.spread600 > 0 && ps && ps > 0) {
       const r = f.spread600 / ps;
+      ratios[kind] = r;
       k.noise600 *= r * r;
       k.rateScale600 *= r;
+      if (k.qualityCuts) k.qualityCuts = [k.qualityCuts[0] * r, k.qualityCuts[1] * r];
       k.horizons = k.horizons.map((h) => ({
         ...h,
+        chance: { ...h.chance, quality: h.chance.quality / r },
+        conditional: { ...h.conditional, quality: h.conditional.quality / r },
         drift600: (h.drift600 ?? 0) * r * r,
         ...(typeof h.driftYoung600 === 'number' ? { driftYoung600: h.driftYoung600 * r * r } : {}),
-        survivor: h.survivor ? { ...h.survivor, intercept: h.survivor.intercept * r } : h.survivor,
+        // Every additive survivor term is in WAR per 600 (the slope alone is a pure number), so each is in the league's unit (D-12)
+        survivor: h.survivor
+          ? {
+            ...h.survivor, intercept: h.survivor.intercept * r, older: h.survivor.older * r, younger: h.survivor.younger * r,
+            ...(typeof h.survivor.usage === 'number' ? { usage: h.survivor.usage * r } : {}),
+          }
+          : h.survivor,
       }));
     }
     if (f.ceiling !== null && Number.isFinite(f.ceiling) && f.ceiling > 0) k.ceiling = f.ceiling;
     kinds[kind] = k;
   }
+  const groupRatio = (ks: ProductionKind[]): number | null => {
+    const rs = ks.map((x) => ratios[x]).filter((x): x is number => typeof x === 'number');
+    return rs.length === 0 ? null : rs.reduce((a, b) => a + b, 0) / rs.length;
+  };
+  const rh = groupRatio(['hitter']);
+  const rp = groupRatio(['starter', 'reliever']);
+  const aging = {
+    ...model.aging,
+    hitter: rh === null ? model.aging.hitter : model.aging.hitter.map((d) => d * rh),
+    pitcher: rp === null ? model.aging.pitcher : model.aging.pitcher.map((d) => d * rp),
+  };
   return {
-    model: { ...model, kinds },
+    model: { ...model, kinds, aging },
     note: adapted.length > 0
       ? `rates regressed toward this league's own mean and scaled to its own spread of rates (derived from the export: ${adapted.join(', ')})`
       : null,

@@ -503,6 +503,20 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   it (hitters and regulars over-projected at horizons 3–7 out of time, the
   2006–15 to 2016–25 era drift), so the fallback prior is in force there, labelled
   "not yet calibrated". The ratings model is adopted.
+- **Option C (owner, 2026-09-23; method `production-3h.2`;** CALIBRATION.md
+  section 6.3, D-053): the backtest is rolling-origin (origins from the window's
+  start + 5, at most 8, each scored by the method fitted through it, a horizon
+  only with 3+ origin cohorts, errors clustered by player and origin) with a
+  recency half-life of 2 seasons; the tolerances are unchanged. On the Arizona
+  import (origins 2011–2024) pooled coverage is within 1.1 points of both
+  targets and the pooled bias −0.01 to −0.04 wins; the gate still fails, on two
+  cells (hitters at horizons 5 and 6, −0.096 wins, scored from origins
+  2017–2018 into 2022–2024), so the fallback prior stays in force there. The
+  refit takes 20.4 s in the worker (nine production fits). Under the prior, a
+  league's WAR scale is a unit (every rate term and coefficient in its unit), a
+  fit never scored or mostly the prior at every horizon is labelled "not yet
+  calibrated", a label names the seasons of lines when none is usable, and
+  standings beside a season with no lines are not read as that season's.
 - **Injury proneness** (`server/injuryProneness.ts`): read as an
   owner-attested known fact; 0, blank or missing is unknown. Its effects are
   measured with standard errors clustered by player and Holm's correction; on

@@ -624,6 +624,7 @@ describe('the Player Value boundary', () => {
       ['PRODUCTION_POLICY_CALIBRATION', 'policy'],
       ['RATINGS_POLICY_CALIBRATION', 'policy'],
       ['PRODUCTION_PRIOR_CALIBRATION', 'provisional'],
+      ['PRODUCTION_PRIOR_SOURCE_CALIBRATION', 'provisional'],
       ['RATINGS_PRIOR_CALIBRATION', 'provisional'],
     ]);
     // Every policy object of numbers in the calibration module is stamped beside it

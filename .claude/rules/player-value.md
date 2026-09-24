@@ -60,7 +60,8 @@ worktree.
 - The central is the expected wins (hardening, 2026-09-23): the rate of those who play is fitted apart from the
   chance he plays; playing time is per scheduled game, under the save's measured ceiling. Known days out move the
   central (owner, 2026-09-23); a season lost to injury is never evidence of less playing time. The gate reads subgroups
-  and bias; fits are keyed by the save's identity and refitted in a worker thread (D-053 amendment).
+  and bias on a rolling-origin backtest, its tolerances never loosened to pass a fit (owner's option C, 2026-09-23);
+  fits are keyed by the save's identity and refitted in a worker thread (D-053 amendments).
 - The rate band is never narrower further out; the wins band is rate × expected playing time and may narrow as
   playing time fades (owner, 2026-09-23). Thinner evidence never narrows either on the same expected playing time;
   missing ratings widen by interval arithmetic, never a midpoint. Playing time is conditional on quality (a better

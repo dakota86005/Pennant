@@ -626,7 +626,14 @@ describe('expected production (hardening, 2026-09-23): the central, playing time
     const k = PRODUCTION_PRIOR.kinds.hitter;
     const blended = projectProductionWith({ ...input, abilityPrior: { batting: { rate600: observed, variance600: (k.noise600 * 600) / k.stabilization, path600: [0, 0, 0, 0, 0, 0, 0], pathVariance600: [0, 0, 0, 0, 0, 0, 0] } } }, PRODUCTION_PRIOR, results.basis.model);
     expect(blended.basis.source).toBe('results_and_ratings');
-    expect(Math.abs(blended.basis.sides[0].regressedRate - results.basis.sides[0].regressedRate)).toBeLessThan(0.05);
+    // Same-time ratings pull only by their own weight (owner, 2026-09-23): they undo at most that share of the
+    // results regression, never all of it (a figure of the method, not of the prior's calibration)
+    const regression = observed - results.basis.sides[0].regressedRate;
+    const undone = blended.basis.sides[0].regressedRate - results.basis.sides[0].regressedRate;
+    const weight = blended.basis.sides[0].blend!.ratings;
+    expect(regression).toBeGreaterThan(0);
+    expect(undone).toBeLessThanOrEqual(weight * regression + 1e-9);
+    expect(weight).toBeLessThan(0.5);
   });
 
   it('observed coverage belongs to the estimator served: a projection that leans on ratings, and the rest of a season under way, are not measured', () => {
@@ -758,5 +765,28 @@ describe('expected production (hardening, 2026-09-23): the fallback prior in ano
     expect(adapted.note).toMatch(/league's own mean/);
     // ...and its noise shrinks with its WAR scale: the band is narrower in a league whose wins are fewer
     expect(adapted.model.kinds.hitter.noise600).toBeLessThan(PRODUCTION_PRIOR.kinds.hitter.noise600);
+  });
+
+  it('a league\'s WAR scale is a unit: the same record in a league at 0.4 of the scale projects 0.4 of the rate and its band (D-12)', () => {
+    // The results model alone (`projectProductionWith`): what `adaptPriorToLeague` adapts. The ratings prior's
+    // development-path widening is a separate model, still in the prior's own unit.
+    const k = PRODUCTION_PRIOR.kinds.hitter;
+    const league = { kinds: { hitter: { mean600: k.mean600 * 0.4, spread600: k.rateScale600 * 0.4, opportunities: 50_000, ceiling: null } } };
+    const adapted = adaptPriorToLeague(PRODUCTION_PRIOR, league, { hitter: k.rateScale600 });
+    const provenance = { source: 'fallback_prior' as const, label: 'test', stamp: { status: 'provisional' as const, basis: 'test', run: null }, fitId: null, priorWeight: 1 };
+    const scaled = (p: ProductionInput): ProductionInput => ({ ...p, batting: p.batting.map((l) => ({ ...l, war: l.war === null ? null : l.war * 0.4 })) });
+    for (const [label, make] of [['a regular', () => regular()], ['a thin record', () => thin()], ['a star', () => star()]] as Array<[string, () => ProductionInput]>) {
+      const mlb = projectProductionWith(make(), PRODUCTION_PRIOR, provenance);
+      const small = projectProductionWith(scaled(make()), adapted.model, provenance);
+      for (let i = 1; i < 4; i += 1) {
+        const a = small.seasons[i].sides[0];
+        const b = mlb.seasons[i].sides[0];
+        // Playing time does not depend on the unit; the rate and its band are the prior's own times 0.4
+        expect(Math.abs(a.usage.central - b.usage.central), `${label} h${i + 1} usage`).toBeLessThan(1);
+        expect(Math.abs(a.rate - 0.4 * b.rate), `${label} h${i + 1} rate ${a.rate} vs ${0.4 * b.rate}`).toBeLessThan(0.05);
+        expect(Math.abs(a.rateBand.low - 0.4 * b.rateBand.low), `${label} h${i + 1} low`).toBeLessThan(0.05);
+        expect(Math.abs(a.rateBand.high - 0.4 * b.rateBand.high), `${label} h${i + 1} high`).toBeLessThan(0.05);
+      }
+    }
   });
 });

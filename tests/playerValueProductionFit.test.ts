@@ -1,4 +1,7 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+
+// Each fit runs the method once per rolling origin (owner, 2026-09-23): several seconds a synthetic league
+vi.setConfig({ testTimeout: 60_000 });
 import { db } from '../server/db.js';
 import {
   clearProductionCaches, fitProductionModel, fitRatingsModel, productionCalibration, productionModelFor, projectProduction, refitOffThread,
@@ -7,7 +10,8 @@ import {
 } from '../server/playerValue.js';
 import { holmSignificant, judgeGate, logisticFit, ratioEffect, seasonTotals, type FitOptions, type GateRow } from '../server/playerValueProductionFit.js';
 import { recordProductionFit } from '../server/playerValueFitStore.js';
-import { PRODUCTION_PRIOR, RATINGS_METHOD, RATINGS_POLICY, RATINGS_PRIOR } from '../server/playerValueCalibration.js';
+import { PRODUCTION_POLICY, PRODUCTION_PRIOR, RATINGS_METHOD, RATINGS_POLICY, RATINGS_PRIOR } from '../server/playerValueCalibration.js';
+import type { ProductionLine } from '../server/playerValueProduction.js';
 import { currentSaveName, historyDb } from '../server/history.js';
 import { IDS } from './fixture';
 
@@ -203,6 +207,45 @@ describe('the central is the expected wins (hardening, 2026-09-23)', () => {
     const coverage = run.record.coverage as FitRecord['coverage'] & { played?: CoverageRow[]; subgroups?: Record<string, CoverageRow[]> };
     expect(coverage.played?.map((r) => r.horizon)).toEqual([1, 2, 3, 4, 5, 6, 7]);
     expect(Object.keys(coverage.subgroups ?? {})).toEqual(expect.arrayContaining(['kind:hitter', 'usage:high', 'quality:top', 'age:≤25']));
+  });
+});
+
+/** A synthetic league whose WAR environment shifts once: from `shift` on every player's true rate is `factor` of what it was. */
+function eraLeague(first: number, last: number, shift: number, factor: number, seed: number): FitHistory {
+  const league = selectionLeague(first, last, 400, seed);
+  const scale = (l: ProductionLine): ProductionLine => (l.season >= shift && l.war !== null ? { ...l, war: l.war * factor } : l);
+  return { ...league, players: league.players.map((p) => ({ ...p, batting: p.batting.map(scale), pitching: p.pitching.map(scale) })) };
+}
+
+describe('the gate evaluates the method as it is served: rolling origins (owner, 2026-09-23)', () => {
+  it('every season from the window\'s start plus the policy\'s lead is an origin, projected by the method refit through it, and the verdict pools them', () => {
+    const r = fitProductionModel(syntheticLeague(2004, 2025, 300, 21), { prior: PRODUCTION_PRIOR }).record;
+    const scored = (r.window as FitRecord['window'] & { scored?: Array<{ origin: number; through: number; cases: number; horizon1: number }> }).scored;
+    const { firstOriginAfter, maxOrigins } = (PRODUCTION_POLICY as unknown as { rolling: { firstOriginAfter: number; maxOrigins: number } }).rolling;
+    const every = r.window.seasons.filter((y) => y >= r.window.seasons[0] + firstOriginAfter && y <= 2024);
+    expect(scored?.length).toBe(Math.min(every.length, maxOrigins));
+    expect(scored!.map((s) => s.origin)).toEqual(expect.arrayContaining([every[0], every[every.length - 1]]));
+    for (const s of scored!) {
+      expect(s.through, `${s.origin}`).toBe(s.origin);
+      expect(s.cases, `${s.origin}`).toBeGreaterThan(0);
+    }
+    // The pooled horizon-1 cases are exactly the origins' own
+    expect(r.coverage.asFitted[0].cases).toBe(scored!.reduce((t, s) => t + s.horizon1, 0));
+  });
+
+  it('one bad era cannot dominate the verdict: the origin right after a shift in the league\'s WAR environment is a minority of the evidence, and the pooled bias is a fraction of its own', () => {
+    const r = fitProductionModel(eraLeague(2004, 2025, 2016, 0.5, 23), { prior: PRODUCTION_PRIOR }).record;
+    const scored = (r.window as FitRecord['window'] & { scored?: Array<{ origin: number; cases: number }> }).scored ?? [];
+    const total = scored.reduce((t, s) => t + s.cases, 0);
+    expect(scored.length).toBeGreaterThanOrEqual(5);
+    // No origin holds a third of the evidence
+    for (const s of scored) expect(s.cases / total, `${s.origin}`).toBeLessThan(0.34);
+    // The last origin before the shift is projected by a fit that has not seen it: off at horizon 1...
+    const before = [...scored].reverse().find((s) => s.origin < 2016)!.origin;
+    const after = r.coverage.subgroups?.[`origin:${before}`]?.[0];
+    expect(after?.cases ?? 0).toBeGreaterThan(0);
+    // ...and the pooled horizon-1 bias, every origin together, is well under half of it
+    expect(Math.abs(r.coverage.asFitted[0].bias!)).toBeLessThan(0.5 * Math.abs(after!.bias!));
   });
 });
 

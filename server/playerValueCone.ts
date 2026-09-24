@@ -208,7 +208,7 @@ function calibrationOf(production: PlayerProduction): ProductionCone['calibratio
     const which = prior.length > 0 ? ` (horizons ${span(own)}; ${span(prior)} mostly the fallback prior)` : '';
     status = `Calibrated on this save: ${years}${w.refitAfter !== null ? `, refit after the ${w.refitAfter} season` : ''}${which}`;
   } else if (w) {
-    status = `Not yet calibrated on this save (${w.seasons} season${w.seasons === 1 ? '' : 's'})`;
+    status = `Not yet calibrated on this save (${w.note ?? `${w.seasons} season${w.seasons === 1 ? '' : 's'}`})`;
   } else {
     status = m.label.charAt(0).toUpperCase() + m.label.slice(1);
     if (/^calibrated/i.test(status)) status = `Not yet calibrated on this save: ${m.label}`;

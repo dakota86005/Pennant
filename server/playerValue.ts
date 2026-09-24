@@ -70,7 +70,7 @@ import {
   type InSeasonFacts, type LeagueRateFacts, type ModelProvenance, type PlayerProduction, type ProductionKind, type ProductionModel,
   type ProductionSide, type ScheduleFacts,
 } from './playerValueProduction.js';
-import { NOT_YET_CALIBRATED, ageOn, fitProductionModel, type FitHistory, type FitPlayer, type FitRecord, type FitRun } from './playerValueProductionFit.js';
+import { NOT_YET_CALIBRATED, ageOn, fitProductionModel, fitSeasonsNote, type FitHistory, type FitPlayer, type FitRecord, type FitRun } from './playerValueProductionFit.js';
 import {
   projectWithRatings, ratingsEvidence,
   type RatingsEvidence, type RatingsModel, type RatingsModelInForce, type RatingsProductionInput,
@@ -560,9 +560,10 @@ function priorSpread(model: ProductionModel): Partial<Record<ProductionKind, num
 /** The fallback prior's provenance, with why the save has no fit of its own yet. */
 function priorInForce(leagueId: number, season: number | null): ProductionModelInForce {
   const last = latestProductionFitAttempt(leagueId, PRODUCTION_METHOD);
+  const seasonsNote = last === null ? '0 seasons' : fitSeasonsNote(last.record.window);
   const why = last === null
     ? 'no fit has been made on this save yet'
-    : `the last fit (through ${last.throughSeason}, ${last.record.window.seasons.length} seasons) was not adopted: ${last.reason}`;
+    : `the last fit (through ${last.throughSeason}, ${seasonsNote}) was not adopted: ${last.reason}`;
   const seasons = last?.record.window.seasons.length ?? 0;
   // Fitted to the league's own WAR scale and ceiling: a plain measurement of the export (D-12)
   const facts = leagueFacts(leagueId, season);
@@ -577,11 +578,11 @@ function priorInForce(leagueId: number, season: number | null): ProductionModelI
     model: adapted.model,
     provenance: {
       source: 'fallback_prior',
-      label: `${NOT_YET_CALIBRATED} (${seasons} seasons): the provisional fallback prior${adapted.note ? `, ${adapted.note}` : ''}; ${why}`,
+      label: `${NOT_YET_CALIBRATED} (${seasonsNote}): the provisional fallback prior${adapted.note ? `, ${adapted.note}` : ''}; ${why}`,
       stamp: PRODUCTION_PRIOR_CALIBRATION,
       fitId: null,
       priorWeight: 1,
-      window: { seasons, first: null, last: null, refitAfter: null, calibrated: false },
+      window: { seasons, first: null, last: null, refitAfter: null, calibrated: false, note: seasonsNote },
     },
   };
 }
@@ -712,8 +713,13 @@ function leagueContext(leagueId: number, rules: Map<number, LeagueRules>): Leagu
   const clubs = leagueClubs(leagueId);
   const now = leagueRecord(leagueId, clubs, season, true);
   const games = gamesThisSeason(leagueId, league, clubs);
-  const played = seasonPlayedOf(now, games === null ? league.gamesPerTeam : derivedFrom(games, 'games', 'The schedule\'s regular-season games per club.')).value;
+  const standing = seasonPlayedOf(now, games === null ? league.gamesPerTeam : derivedFrom(games, 'games', 'The schedule\'s regular-season games per club.')).value;
   const facts = leagueFacts(leagueId, season);
+  // Standings with games played beside a season the league has no lines for, in a league whose lines are read, are
+  // not this season's (a season number bumped over last season's standings, D-08): its share played is not known,
+  // never a whole season played with nothing in it
+  const stale = standing !== null && standing > 0 && facts.firstSeason !== null && facts.firstSeason < season && !hasSeasonLines(leagueId, season);
+  const played = stale ? null : standing;
   const bySeason: Record<number, number | null> = {};
   for (const [y, g] of facts.schedules) bySeason[y] = g;
   return {

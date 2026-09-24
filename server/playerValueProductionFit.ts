@@ -92,8 +92,15 @@ export interface FitRecord {
   method: string;
   window: {
     seasons: number[]; skipped: Array<{ season: number; reason: string }>; trainingThrough: number | null; holdout: number[];
-    /** The seasons each held-out evaluation refit ran through (one per block of held-out origins). */
+    /** The seasons each held-out evaluation refit ran through (one per rolling origin). */
     refits?: number[];
+    /**
+     * The rolling origins (hardening, owner 2026-09-23): each origin Y projected by the method fitted on seasons ≤ Y,
+     * with the cases scored from it (every horizon the fit measured, where actuals exist) and at horizon 1.
+     */
+    scored?: Array<{ origin: number; through: number; cases: number; horizon1: number }>;
+    /** The recency half-life the fits used, seasons; null for none. */
+    recencyHalfLife?: number | null;
   };
   sample: { players: number; cases: Record<ProductionKind, number[]>; agingPairs: Record<AgingGroup, number>; holdoutCases: number[] };
   priorWeight: {
@@ -141,12 +148,28 @@ export interface FitOptions {
   holdout?: boolean;
   /** The seasons the prior was fitted on (their totals): a prior fitted on the save's own held-out seasons is not used. */
   priorSource?: SeasonTotals | null;
+  /**
+   * The recency half-life in seasons (a training season `through − t` seasons back weighs 0.5^((through − t) / half-life));
+   * null weighs every season alike. Absent: PRODUCTION_POLICY.window.recencyHalfLife. For the harness's comparison only.
+   */
+  recencyHalfLife?: number | null;
 }
 
 // ── small statistics ─────────────────────────────────────────────────────────
 
 /** How a fit (or the prior in its place) that is mostly the fallback prior begins its label; the status line reads it. */
 export const NOT_YET_CALIBRATED = 'not yet calibrated on this save';
+
+/**
+ * How many seasons a fit read, for its label: where it could use none, how many seasons of major-league lines
+ * the league has and why none is usable (D-15), never a bare "0 seasons" beside a save with history.
+ */
+export function fitSeasonsNote(window: { seasons: number[]; skipped: Array<{ season: number; reason: string }> }): string {
+  const n = window.seasons.length;
+  if (n > 0 || window.skipped.length === 0) return `${n} season${n === 1 ? '' : 's'}`;
+  const k = window.skipped.length;
+  return `${k} season${k === 1 ? '' : 's'} of major-league lines, none usable: ${[...new Set(window.skipped.map((x) => x.reason))].join('; ')}`;
+}
 
 const PER = PRODUCTION_POLICY.rateUnitOpportunities;
 const H = CONTROL_HORIZON_SEASONS;
@@ -465,9 +488,21 @@ export function fitProductionModel(history: FitHistory, options: FitOptions): Fi
     else window.push(s.season);
   }
   const eligible = new Set(window);
-  const holdoutCount = useHoldout && window.length >= 2 ? Math.max(1, Math.round(policy.window.holdoutShare * window.length)) : 0;
-  const holdoutSeasons = holdoutCount > 0 ? window.slice(window.length - holdoutCount) : [];
-  const trainingThrough = holdoutCount > 0 ? window[window.length - holdoutCount - 1] ?? null : window[window.length - 1] ?? null;
+  const lastSeason = window[window.length - 1] ?? null;
+  // Rolling origins (owner, 2026-09-23): every origin from the window's start plus the policy's lead through the last
+  // completed season less one, each projected by the method fitted through it; at most the policy's number, spread
+  // evenly with the first and the last kept
+  const originsAll = window.filter((o) => eligible.has(o - 1) && eligible.has(o - 2));
+  const candidates = useHoldout && lastSeason !== null
+    ? originsAll.filter((y) => y >= window[0] + policy.rolling.firstOriginAfter && y <= lastSeason - 1)
+    : [];
+  const rolling = candidates.length <= policy.rolling.maxOrigins
+    ? candidates
+    : [...new Set(Array.from({ length: policy.rolling.maxOrigins }, (_, i) => candidates[Math.round((i * (candidates.length - 1)) / (policy.rolling.maxOrigins - 1))]))];
+  const rollingSet = new Set(rolling);
+  const holdoutSeasons = rolling.length > 0 ? window.filter((y) => y > rolling[0]) : [];
+  const trainingThrough = rolling[0] ?? lastSeason;
+  const halfLife = options.recencyHalfLife === undefined ? policy.window.recencyHalfLife : options.recencyHalfLife;
 
   // A prior fitted on these same held-out seasons is not independent evidence: fit without it (B-09)
   const source = options.priorSource ?? null;
@@ -484,13 +519,20 @@ export function fitProductionModel(history: FitHistory, options: FitOptions): Fi
   const gamesOf = (s: number): number => gamesBySeason[s] ?? referenceGames ?? 1;
   const scheduleFor = (c: SideCase) => ({ games: gamesOf(c.origin + 1), bySeason: gamesBySeason });
 
-  const origins = window.filter((o) => eligible.has(o - 1) && eligible.has(o - 2));
-  const cases = sideCases(history.players, origins);
+  const cases = sideCases(history.players, originsAll);
   // The seasons a component is fitted through: set by each fit below (the evaluation's refits, then the served fit)
   let fitThrough: number | null = trainingThrough;
   const inTraining = (c: SideCase, h: number) => fitThrough !== null && c.origin + h <= fitThrough && eligible.has(c.origin + h) && c.actual(c.origin + h).war !== null;
   const horizonsOf = (c: SideCase, keep: (c: SideCase, h: number) => boolean) => Array.from({ length: H }, (_, i) => i + 1).filter((h) => keep(c, h));
-  const inHoldout = (c: SideCase, h: number) => holdoutCount > 0 && trainingThrough !== null && c.origin >= trainingThrough && eligible.has(c.origin + h) && c.actual(c.origin + h).war !== null;
+  // Scored: a rolling origin's case, at every horizon its own fit measured, where the actual exists
+  const originModels = new Map<number, ProductionModel>();
+  const inHoldout = (c: SideCase, h: number) => {
+    if (!rollingSet.has(c.origin) || lastSeason === null || c.origin + h > lastSeason || !eligible.has(c.origin + h) || c.actual(c.origin + h).war === null) return false;
+    const m = originModels.get(c.origin);
+    // ...never judged on a horizon its fit rests on fewer origin seasons than the policy's (no served model is that thin)
+    const row = m?.kinds[c.kind]?.horizons[h - 1];
+    return row !== undefined && (row.cases ?? 0) >= MIN_CASES && (row.origins ?? 0) >= policy.rolling.minimumOrigins;
+  };
   const listedPitcher = (p: FitPlayer) => p.position === 1;
 
   /**
@@ -502,6 +544,8 @@ export function fitProductionModel(history: FitHistory, options: FitOptions): Fi
    */
   const fitComponents = (through: number | null) => {
   fitThrough = through;
+  // Recent seasons weigh more where the policy says so, the same in every origin's fit and the served one
+  const recent = (target: number): number => (halfLife === null || through === null ? 1 : Math.pow(0.5, Math.max(0, through - target) / halfLife));
   // ── aging: the delta method on consecutive training seasons ──
   const agingModel: ProductionModel['aging'] = { firstAge: policy.agingAges.first, hitter: [], pitcher: [] };
   const agingPairs: Record<AgingGroup, number> = { hitter: 0, pitcher: 0 };
@@ -523,7 +567,7 @@ export function fitProductionModel(history: FitHistory, options: FitOptions): Fi
         if (age === null) continue;
         pairs.push({
           age, d: (b.war / b.opportunities - a.war / a.opportunities) * PER,
-          w: (2 * a.opportunities * b.opportunities) / (a.opportunities + b.opportunities), prone: p.proneness, player: p.playerId,
+          w: ((2 * a.opportunities * b.opportunities) / (a.opportunities + b.opportunities)) * recent(b.season), prone: p.proneness, player: p.playerId,
         });
       }
     }
@@ -599,7 +643,7 @@ export function fitProductionModel(history: FitHistory, options: FitOptions): Fi
       const { slots } = windowOf(c.results, c.origin + 1, 0);
       const act = c.actual(c.origin + 1);
       const ag = agingBetween(agingModel[group], agingModel.firstAge, c.age - 1, c.age) / PER;
-      return { slots, A: act.opportunities, y: (act.war as number) / act.opportunities, ag };
+      return { slots, A: act.opportunities, R: recent(c.origin + 1), y: (act.war as number) / act.opportunities, ag };
     });
     let best: { w1: number; w2: number; K: number; mu: number; sse: number } | null = null;
     if (rows.length >= MIN_CASES) {
@@ -614,13 +658,13 @@ export function fitProductionModel(history: FitHistory, options: FitOptions): Fi
               const num = r.slots[0].war + w1 * r.slots[1].war + w2 * r.slots[2].war;
               const a = num / (n + K);
               const b = K / (n + K);
-              sab += r.A * b * (r.y - a - r.ag);
-              sbb += r.A * b * b;
+              sab += r.R * r.A * b * (r.y - a - r.ag);
+              sbb += r.R * r.A * b * b;
               return { a, b };
             });
             const mu = sbb > 0 ? sab / sbb : 0;
             let sse = 0;
-            rows.forEach((r, i) => { sse += r.A * (r.y - parts[i].a - parts[i].b * mu - r.ag) ** 2; });
+            rows.forEach((r, i) => { sse += r.R * r.A * (r.y - parts[i].a - parts[i].b * mu - r.ag) ** 2; });
             if (!best || sse < best.sse) best = { w1, w2, K, mu, sse };
           }
         }
@@ -639,10 +683,10 @@ export function fitProductionModel(history: FitHistory, options: FitOptions): Fi
       const n = r.slots[0].opportunities + weights[1] * r.slots[1].opportunities + weights[2] * r.slots[2].opportunities;
       const num = r.slots[0].war + weights[1] * r.slots[1].war + weights[2] * r.slots[2].war;
       const pred = (num + (mean600 / PER) * stabilization) / (n + stabilization) + r.ag;
-      rr += (r.y * r.A - pred * r.A) ** 2;
-      den += r.A + (r.A * r.A) / (n + stabilization);
-      rate2 += r.A * pred * pred;
-      aw += r.A;
+      rr += r.R * (r.y * r.A - pred * r.A) ** 2;
+      den += r.R * (r.A + (r.A * r.A) / (n + stabilization));
+      rate2 += r.R * r.A * pred * pred;
+      aw += r.R * r.A;
     }
     const noise600 = blend(den > 0 ? (rr / den) * PER : null, pk?.noise600 ?? null, n1, S);
     const rateScale600 = blend(aw > 0 ? Math.sqrt(rate2 / aw) * PER : null, pk?.rateScale600 ?? null, n1, S);
@@ -678,14 +722,16 @@ export function fitProductionModel(history: FitHistory, options: FitOptions): Fi
       const U3 = (f: number[]) => [f[1], f[2], f[3]];
       const ageOf = (f: number[]) => pivot + f[5] - f[6];
       const priorHasTerms = ph !== null && ph.playSpread !== undefined;
+      // The prior's pseudo-cases weigh S in all, on the same scale as the recency-weighted cases (their mean weight)
+      const meanWeight = n > 0 ? set.reduce((t, c) => t + recent(c.origin + h), 0) / n : 1;
       // The attrition logistic, with the prior's predictions as pseudo-cases of total weight S
       let chance: UsageTerms;
       if (n >= MIN_CASES) {
         const x = [...feats];
         const y: number[] = ys.map((v) => (v > 0 ? 1 : 0));
-        const w = y.map(() => 1);
+        const w = set.map((c) => recent(c.origin + h));
         if (priorHasTerms) {
-          for (const f of feats) { x.push(f); y.push(usageParts(ph!, U3(f), f[4], ageOf(f), pivot).chance); w.push(S / n); }
+          for (const f of feats) { x.push(f); y.push(usageParts(ph!, U3(f), f[4], ageOf(f), pivot).chance); w.push((S / n) * meanWeight); }
         }
         const fit = logisticFit(x, y, NONNEG, w);
         health.push({ converged: fit?.converged ?? false, separated: fit?.separated ?? false });
@@ -700,9 +746,9 @@ export function fitProductionModel(history: FitHistory, options: FitOptions): Fi
       if (played.length >= MIN_CASES) {
         const x = played.map(([, i]) => feats[i]);
         const y = played.map(([v]) => v);
-        const w = y.map(() => 1);
+        const w = played.map(([, i]) => recent(set[i].origin + h));
         if (priorHasTerms) {
-          for (const [, i] of played) { x.push(feats[i]); y.push(usageParts(ph!, U3(feats[i]), feats[i][4], ageOf(feats[i]), pivot).perGame); w.push(S / played.length); }
+          for (const [, i] of played) { x.push(feats[i]); y.push(usageParts(ph!, U3(feats[i]), feats[i][4], ageOf(feats[i]), pivot).perGame); w.push((S / played.length) * meanWeight); }
         }
         const fit = nonNegativeLeastSquares(x, y, NONNEG, w);
         conditional = fit ? toTerms(fit) : (ph?.conditional ?? toTerms([0, 0, 0, 0, 0, 0, 0]));
@@ -732,7 +778,7 @@ export function fitProductionModel(history: FitHistory, options: FitOptions): Fi
       horizons.push({
         chance, conditional, playSpread, usageZ,
         survivor: ph?.survivor ?? { intercept: 0, slope: 1, older: 0, younger: 0 },
-        tails: [], drift600: 0, cases: n, priorWeight: pw,
+        tails: [], drift600: 0, cases: n, origins: new Set(set.map((c) => c.origin)).size, priorWeight: pw,
       });
     }
     caseCounts[kind] = counts;
@@ -754,7 +800,7 @@ export function fitProductionModel(history: FitHistory, options: FitOptions): Fi
         return [1, originRate(c), Math.max(0, ageO - pivot), Math.max(0, pivot - ageO), (U[0] + U[1] + U[2]) / 3];
       });
       const y = set.map((c) => ((c.actual(c.origin + h).war as number) / c.actual(c.origin + h).opportunities) * PER);
-      const w = set.map((c) => c.actual(c.origin + h).opportunities);
+      const w = set.map((c) => c.actual(c.origin + h).opportunities * recent(c.origin + h));
       const fit = set.length >= MIN_CASES ? nonNegativeLeastSquares(x, y, [1], w) : null;
       // Shrunk toward the prior's, or, with no prior, toward the horizon before (a horizon with few cases leans
       // on its neighbour, never on a made-up default)
@@ -875,8 +921,9 @@ export function fitProductionModel(history: FitHistory, options: FitOptions): Fi
           const x = tr.seasons[i].reading;
           const resid = (act.war as number) - x.mu;
           const a = (x.m * x.m + x.sigmaM * x.sigmaM) / (PER * PER);
-          num += a * (resid * resid - x.S * x.S);
-          den += a * a;
+          const r = recent(c.origin + i + 1);
+          num += r * a * (resid * resid - x.S * x.S);
+          den += r * a * a;
           n += 1;
         }
         return { fitted: n >= MIN_CASES && den > 0 ? Math.max(0, num / den) : null, n };
@@ -953,22 +1000,21 @@ export function fitProductionModel(history: FitHistory, options: FitOptions): Fi
   return { model, kinds, caseCounts, byHorizonPrior, kindPriorWeight, logisticHealth, agingPairs, agingModel, findings, ceiling };
   };
 
-  // ── the held-out seasons: each block of held-out origins projected by the method refit through its first ──
-  const holdoutCases = cases.filter((c) => horizonsOf(c, inHoldout).length > 0);
-  const holdoutOrigins = [...new Set(holdoutCases.map((c) => c.origin))].sort((a, b) => a - b);
+  // ── the held-out evidence: every rolling origin projected by the method fitted through it (owner, 2026-09-23) ──
   const refits: number[] = [];
-  const blockModels = new Map<number, ProductionModel>();
-  if (useHoldout && trainingThrough !== null) {
-    for (let i = 0; i < holdoutOrigins.length; i += policy.window.refitEvery) {
-      const start = holdoutOrigins[i];
-      const fitted = fitComponents(start).model;
-      refits.push(start);
-      for (const o of holdoutOrigins.slice(i, i + policy.window.refitEvery)) blockModels.set(o, fitted);
-    }
+  for (const y of rolling) {
+    originModels.set(y, fitComponents(y).model);
+    refits.push(y);
   }
+  const holdoutCases = cases.filter((c) => horizonsOf(c, inHoldout).length > 0);
+  const scored = rolling.map((y) => {
+    const mine = holdoutCases.filter((c) => c.origin === y);
+    return { origin: y, through: y, cases: mine.reduce((t, c) => t + horizonsOf(c, inHoldout).length, 0), horizon1: mine.filter((c) => inHoldout(c, 1)).length };
+  });
   // ...and the model served: the same method through the last completed season in the window
   const { model, kinds, caseCounts, byHorizonPrior, kindPriorWeight, logisticHealth, agingPairs, agingModel, findings, ceiling } =
-    fitComponents(useHoldout ? window[window.length - 1] ?? trainingThrough : trainingThrough);
+    fitComponents(lastSeason);
+  const blockModels = originModels;
   const bareOf = (m: ProductionModel): ProductionModel => ({ ...m, kinds: Object.fromEntries(KINDS.map((kind) => [kind, { ...m.kinds[kind], priorWeight: 0, horizons: m.kinds[kind].horizons.map((h) => ({ ...h, priorWeight: 0 })) }])) as Record<ProductionKind, KindModel> });
   const bareBlocks = new Map([...blockModels.entries()].map(([o, m]) => [o, bareOf(m)]));
   const asFitted = coverageOf(holdoutCases, (c) => bareBlocks.get(c.origin) ?? bareOf(model), inHoldout, scheduleFor);
@@ -978,7 +1024,8 @@ export function fitProductionModel(history: FitHistory, options: FitOptions): Fi
   let { passed, reason, failures } = judgeGate(gateRows);
   if (holdoutCases.length === 0) {
     passed = false;
-    reason = `Too few held-out seasons to validate (${window.length} usable season${window.length === 1 ? '' : 's'}; horizon 1 needs ${policy.gate.minimumCases} held-out cases).`;
+    const usable = window.length === 0 && skipped.length > 0 ? fitSeasonsNote({ seasons: window, skipped }) : `${window.length} usable season${window.length === 1 ? '' : 's'}`;
+    reason = `Too few held-out seasons to validate (${usable}; horizon 1 needs ${policy.gate.minimumCases} held-out cases).`;
   }
   if (!useHoldout) {
     passed = true;
@@ -991,21 +1038,34 @@ export function fitProductionModel(history: FitHistory, options: FitOptions): Fi
   const overall = priorShare(allCases, policy.prior.strength, prior !== null);
   const id = `${history.leagueId}:${history.throughSeason}:${PRODUCTION_METHOD}`;
   const first = window[0];
-  const lastSeason = window[window.length - 1];
   // Which horizons are the save's own, and which still mostly the prior (B-10)
   // A horizon is still mostly the prior where any kind's is (the most any kind leans on it)
   const pooledByHorizon = Array.from({ length: H }, (_, i) => Math.max(...KINDS.map((k) => byHorizonPrior[k]?.[i] ?? 0)));
   const mostlyPrior = pooledByHorizon.map((w, i) => (w >= 0.5 ? i + 1 : null)).filter((h): h is number => h !== null);
   const span = (hs: number[]) => (hs.length === 0 ? '' : hs.length === 1 ? `${hs[0]}` : `${hs[0]}–${hs[hs.length - 1]}`);
-  const label = overall >= 0.5 || window.length === 0
-    ? `${NOT_YET_CALIBRATED} (${window.length} season${window.length === 1 ? '' : 's'}): mostly the fallback prior`
-    : `calibrated on this save's seasons ${first}–${lastSeason} (${window.length}), held out ${holdoutSeasons[0] ?? '—'}–${holdoutSeasons[holdoutSeasons.length - 1] ?? '—'}${
+  // Calibrated on this save only where the save's own seasons carry the fit, it was measured on held-out seasons,
+  // and at least one horizon is the save's own: a fit never scored, or mostly the prior at every horizon, is not
+  // the save's calibration, and is stamped provisional wherever it is served (D-09). Whether a horizon is the
+  // save's own is read over its cases (a kind the league hardly has does not take the others' calibration away)
+  const ownAt = Array.from({ length: H }, (_, i) => {
+    let n = 0;
+    let w = 0;
+    for (const k of KINDS) {
+      const c = caseCounts[k]?.[i] ?? 0;
+      n += c;
+      w += c * (byHorizonPrior[k]?.[i] ?? 1);
+    }
+    return n > 0 && w / n < 0.5;
+  });
+  const label = overall >= 0.5 || window.length === 0 || holdoutCases.length === 0 || !ownAt.some(Boolean)
+    ? `${NOT_YET_CALIBRATED} (${fitSeasonsNote({ seasons: window, skipped })}): mostly the fallback prior`
+    : `calibrated on this save's seasons ${first}–${lastSeason} (${window.length}), projected from rolling origins ${rolling[0] ?? '—'}–${rolling[rolling.length - 1] ?? '—'}${
       mostlyPrior.length > 0 ? `; horizons ${span(mostlyPrior)} mostly the fallback prior (too few seasons that far ahead)` : ''}${
       priorOverlapsHoldout ? '; the fallback prior was fitted on these same seasons, so it is not used' : ''}`;
 
   const record: FitRecord = {
     id, leagueId: history.leagueId, throughSeason: history.throughSeason, method: PRODUCTION_METHOD,
-    window: { seasons: window, skipped, trainingThrough, holdout: holdoutSeasons, refits },
+    window: { seasons: window, skipped, trainingThrough, holdout: holdoutSeasons, refits, scored, recencyHalfLife: halfLife },
     sample: {
       players: new Set(cases.map((c) => c.player.playerId)).size,
       cases: caseCounts, agingPairs,
@@ -1084,8 +1144,9 @@ function coverageOf(set: SideCase[], modelOf: (c: SideCase) => ProductionModel, 
   subgroups: Record<string, CoverageRow[]>; played: CoverageRow[];
 } {
   const provenance: ModelProvenance = { source: 'save_fit', label: 'backtest', stamp: { status: 'calibrated', basis: 'backtest', run: null }, fitId: null, priorWeight: 0 };
-  interface Acc { n: number; outer: number; inner: number; bias: number; abs: number; byPlayer: Map<number, { e: number; k: number }> }
-  const acc = (): Acc[] => Array.from({ length: H }, () => ({ n: 0, outer: 0, inner: 0, bias: 0, abs: 0, byPlayer: new Map() }));
+  interface Acc { n: number; outer: number; inner: number; bias: number; abs: number; byPlayer: Map<number, { e: number; k: number }>; byOrigin: Map<number, { e: number; k: number }>; byBoth: Map<string, { e: number; k: number }> }
+  const acc = (): Acc[] => Array.from({ length: H }, () => ({ n: 0, outer: 0, inner: 0, bias: 0, abs: 0, byPlayer: new Map(), byOrigin: new Map(), byBoth: new Map() }));
+  const add = <K>(m: Map<K, { e: number; k: number }>, key: K, e: number) => { const had = m.get(key) ?? { e: 0, k: 0 }; m.set(key, { e: had.e + e, k: had.k + 1 }); };
   const groups = new Map<string, Acc[]>();
   const group = (name: string) => { let g = groups.get(name); if (!g) { g = acc(); groups.set(name, g); } return g; };
   const played = acc();
@@ -1120,7 +1181,7 @@ function coverageOf(set: SideCase[], modelOf: (c: SideCase) => ProductionModel, 
     const [lo, hi] = tenths.get(c.kind)!;
     const quality: QualityTier = rate >= hi ? 'top' : rate <= lo ? 'bottom' : 'middle';
     const decile = 1 + deciles.get(c.kind)!.filter((x) => rate > x).length;
-    const names = ['pooled', `kind:${c.kind}`, `usage:${tier}`, `quality:${quality}`, `age:${ageBandOf(c.age)}`, `decile:${decile}`];
+    const names = ['pooled', `kind:${c.kind}`, `usage:${tier}`, `quality:${quality}`, `age:${ageBandOf(c.age)}`, `decile:${decile}`, `origin:${c.origin}`];
     for (let h = 1; h <= H; h += 1) {
       const s = seasons[h - 1];
       if (!keep(c, h) || !s) continue;
@@ -1136,8 +1197,9 @@ function coverageOf(set: SideCase[], modelOf: (c: SideCase) => ProductionModel, 
         if (actual >= wp.low50 && actual <= wp.high50) t.inner += 1;
         t.bias += actual - wp.central;
         t.abs += Math.abs(actual);
-        const had = t.byPlayer.get(c.player.playerId) ?? { e: 0, k: 0 };
-        t.byPlayer.set(c.player.playerId, { e: had.e + actual - wp.central, k: had.k + 1 });
+        add(t.byPlayer, c.player.playerId, actual - wp.central);
+        add(t.byOrigin, c.origin, actual - wp.central);
+        add(t.byBoth, `${c.player.playerId}:${c.origin}`, actual - wp.central);
       }
       for (const t of targets) {
         t.n += 1;
@@ -1151,16 +1213,20 @@ function coverageOf(set: SideCase[], modelOf: (c: SideCase) => ProductionModel, 
         const e = actual - s.wins.central;
         t.bias += e;
         t.abs += Math.abs(actual);
-        const had = t.byPlayer.get(c.player.playerId) ?? { e: 0, k: 0 };
-        t.byPlayer.set(c.player.playerId, { e: had.e + e, k: had.k + 1 });
+        add(t.byPlayer, c.player.playerId, e);
+        add(t.byOrigin, c.origin, e);
+        add(t.byBoth, `${c.player.playerId}:${c.origin}`, e);
       }
     }
   }
   const rows = (x: Acc[]): CoverageRow[] => x.map((r, i) => {
     const mean = r.n > 0 ? r.bias / r.n : null;
-    // Clustered by player: each player's summed deviation from the mean bias
-    let ss = 0;
-    if (mean !== null) for (const { e, k } of r.byPlayer.values()) ss += (e - k * mean) ** 2;
+    // Clustered two ways (by player and by origin, the same player-season appearing under several origins):
+    // V = V(player) + V(origin) − V(player × origin), never below either one-way variance
+    const v = (m: Map<unknown, { e: number; k: number }>) => (mean === null ? 0 : [...m.values()].reduce((t, { e, k }) => t + (e - k * mean) ** 2, 0));
+    const vp = v(r.byPlayer);
+    const vo = v(r.byOrigin);
+    const ss = Math.max(vp + vo - v(r.byBoth), vp, vo);
     return {
       horizon: i + 1, cases: r.n,
       outer: r.n > 0 ? r.outer / r.n : null, inner: r.n > 0 ? r.inner / r.n : null, bias: mean,

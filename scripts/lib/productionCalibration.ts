@@ -33,7 +33,7 @@ function describe(run: FitRun, ms: { read: number; fit: number }): void {
   const r = run.record;
   console.log(`\nFit ${r.id}: ${r.label}`);
   console.log(`  window ${r.window.seasons[0]}–${r.window.seasons[r.window.seasons.length - 1]} (${r.window.seasons.length} seasons); skipped ${r.window.skipped.map((s) => `${s.season} (${s.reason})`).join(', ') || 'none'}`);
-  console.log(`  held out ${r.window.holdout.join(', ') || 'none'}, projected by the method refit through ${(r.window.refits ?? [r.window.trainingThrough]).join(', ')} (one refit per block of held-out origins); the model served is refit through ${r.window.seasons[r.window.seasons.length - 1] ?? '—'}`);
+  console.log(`  held out ${r.window.holdout.join(', ') || 'none'}, projected from rolling origins ${(r.window.scored ?? []).map((x) => `${x.origin} (${x.cases})`).join(', ')}, each by the method fitted through it (recency half-life ${r.window.recencyHalfLife ?? 'none'}); the model served is refit through ${r.window.seasons[r.window.seasons.length - 1] ?? '—'}`);
   console.log(`  players ${r.sample.players}; aging pairs hitters ${r.sample.agingPairs.hitter}, pitchers ${r.sample.agingPairs.pitcher}`);
   for (const [k, c] of Object.entries(r.sample.cases)) console.log(`  training cases ${k.padEnd(9)} by horizon ${c.join(' / ')}`);
   console.log(`  prior weight overall ${f(r.priorWeight.overall)}; ${Object.entries(r.priorWeight.kinds).map(([k, w]) => `${k} ${f(w)}`).join(', ')}; aging hitters ${f(r.priorWeight.aging.hitter)}, pitchers ${f(r.priorWeight.aging.pitcher)}`);
@@ -78,14 +78,17 @@ export function productionSection(leagueId: number, argv: string[]): void {
   const season = rules.get(leagueId)?.contract.season.value ?? null;
   if (season === null) throw new Error(`League ${leagueId} has no season in the export.`);
   console.log(`\n${'='.repeat(78)}\n10. Production (Player Value phase 3a): the save's own fit (D-053)\n${'='.repeat(78)}`);
-  console.log(`Policy: coverage ${PRODUCTION_POLICY.coverage.outer}/${PRODUCTION_POLICY.coverage.inner}, window ${PRODUCTION_POLICY.window.maxSeasons} seasons, hold-out share ${PRODUCTION_POLICY.window.holdoutShare}, gate ±${PRODUCTION_POLICY.gate.coverage.pooled} pooled / ±${PRODUCTION_POLICY.gate.coverage.subgroup} subgroups, bias ${PRODUCTION_POLICY.gate.bias.relative} or ${PRODUCTION_POLICY.gate.bias.standardErrors} SE`);
+  console.log(`Policy: coverage ${PRODUCTION_POLICY.coverage.outer}/${PRODUCTION_POLICY.coverage.inner}, window ${PRODUCTION_POLICY.window.maxSeasons} seasons, rolling origins from the window start + ${PRODUCTION_POLICY.rolling.firstOriginAfter}, at most ${PRODUCTION_POLICY.rolling.maxOrigins}, half-life ${PRODUCTION_POLICY.window.recencyHalfLife ?? 'none'}, gate ±${PRODUCTION_POLICY.gate.coverage.pooled} pooled / ±${PRODUCTION_POLICY.gate.coverage.subgroup} subgroups, bias ${PRODUCTION_POLICY.gate.bias.relative} or ${PRODUCTION_POLICY.gate.bias.standardErrors} SE`);
   // The last completed season: this is what the post-import refit uses (season − 1 while this one is under way)
   const through = season - 1;
   let start = performance.now();
   const history = productionHistory(leagueId, through, false, rules);
   const read = performance.now() - start;
   start = performance.now();
-  const run = fitProductionModel(history, { prior: PRODUCTION_PRIOR, priorSource: PRODUCTION_PRIOR_SOURCE });
+  // --half-life=N (seasons) or --half-life=none compares the recency weighting against the policy's
+  const hl = argv.find((a) => a.startsWith('--half-life='))?.slice('--half-life='.length);
+  const recencyHalfLife = hl === undefined ? undefined : hl === 'none' ? null : Number(hl);
+  const run = fitProductionModel(history, { prior: PRODUCTION_PRIOR, priorSource: PRODUCTION_PRIOR_SOURCE, recencyHalfLife });
   describe(run, { read, fit: performance.now() - start });
 
   if (argv.includes('--prior')) {

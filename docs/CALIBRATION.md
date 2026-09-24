@@ -99,8 +99,9 @@ From D-053 on, "calibrated" means fitted on the save's own outcomes, automatical
 stamp. Player Value's expected production (phases 3a and 3b) is the first subsystem built this way; the scouting
 constants above keep their run-1 stamps until they are migrated (ROADMAP). Phase 3b adds a second fitted model, the
 ratings model (section 6.2), and changed the results method to `production-3b.1`: playing time conditional on quality.
-The hardening (2026-09-23, section 6.3) rebuilt the central and the gate under method `production-3h.1`; the table and
-the method below describe 3b.1 where section 6.3 says what changed.
+The hardening (2026-09-23, section 6.3) rebuilt the central and the gate under method `production-3h.1`, and the
+owner's option C (the same day) replaced its block hold-out with a rolling-origin backtest under `production-3h.2`; the
+table and the method below describe 3b.1 where section 6.3 says what changed.
 
 **What is in code, and what is the save's.**
 
@@ -246,7 +247,8 @@ own history gives the same cohort one to six seasons on. The gate passed it beca
   from 2.01 to 2.28 WAR per 600.
 - **What is measured is what is served.** The held-out origins are projected in blocks of three, each by the method
   refit through the block's first origin, and the model served is the method refit through the last completed season
-  (no hold-out widening chosen on the held-out cases, B-05, B-16). Each horizon keeps its own prior weight and
+  (no hold-out widening chosen on the held-out cases, B-05, B-16). Under `production-3h.2` every origin is its own
+  refit (the rolling-origin backtest below). Each horizon keeps its own prior weight and
   widening (B-10). A prior fitted on the same seasons as the save's held-out ones (matched by their season totals) is
   not used (B-09): on this save the fit uses no prior at all.
 - **The gate** reads, as fitted, pooled coverage within 5 points and every subgroup (kind, usage third, quality tier,
@@ -317,6 +319,68 @@ Injury proneness: no effect survives Holm's correction with player-clustered err
 not separate at every kind and horizon. The rest of this season is measured on this season's own games: of the players
 who played in the first 22 games per club, hitters kept 97%, starters 98% and relievers 92% of their playing time per
 game in the next 23, carried to the 72% of the season left at the same rate of loss per game.
+
+#### The rolling-origin backtest (method `production-3h.2`, owner option C, 2026-09-23)
+
+The 3h.1 gate failed on era drift: one hold-out block, 2016–2025, scored against a fit through 2015, so a single era
+decided every long horizon. The owner kept the gate's tolerances (pooled coverage within 5 points, every subgroup
+within 10, a bias failing at 10% of the mean outcome AND 0.05 wins AND three standard errors, 200 cases) and chose a
+rolling-origin backtest instead of looser tolerances:
+
+- **Origins.** Every completed season from the window's start + 5 to the season before the last is an origin; at most
+  8 are used, evenly spaced and always including the first and the last (`PRODUCTION_POLICY.rolling`). Each origin Y
+  is scored by the method fitted on seasons up to Y (its own refit), for Y+1 … Y+7 up to the last completed season.
+- **What is scored.** A horizon of an origin is scored only where that origin's own fit has at least 200 cases and at
+  least 3 origin cohorts at that horizon (`minimumOrigins`): a horizon the method could only fit on one or two seasons'
+  cohorts is the prior's, not a test of the save's method. The pooled cases are clustered by player AND by origin
+  (two-way: V = max(Vp + Vo − Vpo, Vp, Vo)), so one bad era widens the error instead of deciding the verdict.
+- **Recency.** Each fit weights a season by 0.5^(age / half-life), the half-life a policy (2 seasons; `null` turns it
+  off). The prior's pseudo-cases are scaled by the mean weight so the down-weighting does not hand the prior more pull.
+  With the minimum-origins rule, the Arizona gate fails on 7 cells with no recency weighting, 5 at half-lives 4 and 3,
+  and 2 at 2, every other result nearly unchanged; 2 was adopted. The owner's four approvals of 2026-09-23 (the serving
+  rule, a career-ending injury, the rest of this season, the same-time ratings' pull) are recorded in PLAYER_VALUE.md
+  Part 12 and D-053.
+- **Serving.** The model served is the method refit through the last completed season; the origin refits exist only
+  to measure it. The origins' horizon-1 cases sum to the pooled horizon-1 cases, and each origin's coverage and bias is
+  reported on its own (`origin:` rows, not gated).
+
+**The run on the Arizona import** (read-only, scratch `history.db`, fit `203:2025:production-3h.2`): window 2006–2025
+(19 seasons, 2020 skipped); origins 2011, 2012, 2014, 2015, 2017, 2018, 2023, 2024 (horizon-1 cases 1,814 to 2,175
+each; scored cases per origin 1,814 to 11,706); 5,948 players; the prior was fitted on these same seasons, so it is not
+used. Nine fits (eight origins and the served one) take 17.2–17.4 s in the refit worker, 20.4 s with the ratings fit;
+the server's event loop lagged at most 2 ms while it ran, and recording took 81 ms. **Gate: not passed** (two cells),
+so the fallback prior stays in force, fitted to this league's own WAR scale.
+
+Held-out, as fitted (80% / 50%, bias in wins, actual − central):
+
+| Horizon | Cases | 80 / 50 | Bias | Hitters | Starters | Relievers |
+|---|---|---|---|---|---|---|
+| 1 | 15,497 | 80.6 / 50.4 | −0.01 | 81.7 / 51.5, −0.02 | 80.2 / 49.1, −0.01 | 79.4 / 49.6, −0.00 |
+| 2 | 9,619 | 80.9 / 50.9 | −0.03 | 81.8 / 51.9, −0.06 | 80.3 / 49.7, +0.01 | 80.0 / 50.2, −0.01 |
+| 3 | 5,661 | 81.1 / 50.7 | −0.03 | 82.5 / 52.5, −0.06 | 79.2 / 49.8, −0.03 | 80.2 / 48.8, −0.01 |
+| 4 | 7,602 | 80.3 / 50.2 | −0.04 | 81.3 / 51.0, −0.08 | 80.5 / 50.4, +0.03 | 79.1 / 49.2, −0.02 |
+| 5 | 3,892 | 79.6 / 50.0 | −0.04 | 80.7 / 50.6, **−0.10** | 79.3 / 50.0, +0.03 | 78.5 / 49.3, −0.01 |
+| 6 | 3,892 | 79.3 / 49.9 | −0.04 | 80.9 / 51.4, **−0.10** | 78.9 / 48.7, +0.03 | 77.6 / 48.7, −0.00 |
+| 7 | 3,892 | 79.2 / 49.7 | −0.02 | 81.3 / 50.9, −0.05 | 76.5 / 48.1, +0.06 | 77.9 / 49.0, −0.01 |
+
+Every subgroup's coverage is within 10 points at every horizon (the lowest, the top tenth of projected rate at horizon
+5, 72.7 / 43.7 on 377 cases); usage thirds, quality tiers and age bands are within −0.14 to +0.11 wins of the outcome
+and pass the bias rule. Each origin's horizon-1 bias is between −0.04 and +0.00. Players who played at the target
+horizon: 80.0–82.3 / 50.7–53.8, bias −0.03 to −0.17.
+
+**The two failing cells** are hitters at horizons 5 and 6: −0.096 wins each, against mean outcomes of 0.45 and 0.36
+(21% and 27%), over three clustered standard errors. They are scored from origins 2017 and 2018 only (the earlier
+origins' fits have fewer than 3 cohorts that far ahead, and the later origins have no season 5 or 6 years on), with
+targets 2022–2024: hitters after the universal designated hitter produced less five and six seasons on than the
+2006–2017 history that fitted them. Nothing was loosened. What would pass them: more of the save's own seasons (each
+completed season adds an origin and dilutes one era's long horizons), or an owner decision on the subgroup bias rule at
+long horizons. A half-life shorter than 2 was not tried.
+
+**Injury proneness under 3h.2:** no effect is distinguishable from none under player-clustered errors and Holm's rule
+(hitters above 75: 97.9% ± 1.7 of the league's playing time; pitchers at 56 and under: 91.8% ± 3.1). The phase 3b
+reading that the most injury-prone third of hitters played about 6% less (94.8% ± 1.2, section 6.1) used errors that
+treated each player-season as independent; with a player's seasons clustered it does not survive, so proneness moves
+nothing on this save.
 
 ### 6.2 The ratings model (phase 3b): what was fittable on this save, and what was not
 

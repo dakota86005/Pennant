@@ -8,7 +8,9 @@
  * carries are added where the fixture lacks them, and a league is written with the shape a spec asks
  * for. A case can then drop tables and columns to mimic an older or thinner export; the next build
  * restores them. It also clears the Player Value tables in the per-file `history.db`, so no fit or
- * snapshot leaks from one save into the next.
+ * snapshot leaks from one save into the next, and every cache that read the export, as an import does
+ * (`server/api.ts`): the save's identity and what Player Value measured about each league are the last
+ * save's otherwise, since every synthetic save reuses the same league id.
  *
  * The numbers mean nothing in themselves (they are drawn from a seeded generator); a case asserts the
  * mechanisms and invariants, never a figure. Promoted from Reviewer D's hardening probe (2026-09-23).
@@ -16,6 +18,13 @@
 import { db, tableColumns, tableExists } from '../server/db.js';
 import { historyDb } from '../server/history.js';
 import { clearScaleCache, clearValuationCaches } from '../server/valuation.js';
+import { clearProductionCaches } from '../server/playerValue.js';
+
+/** What an import clears (`server/api.ts`): the valuation caches and Player Value's (identity, schedules, rates). */
+function clearExportCaches(): void {
+  clearValuationCaches();
+  clearProductionCaches();
+}
 
 export interface SaveSpec {
   leagueId?: number;
@@ -172,7 +181,7 @@ export function buildSave(spec: SaveSpec): BuiltSave {
   restoreDropped();
   resetSchema();
   clearScaleCache();
-  clearValuationCaches();
+  clearExportCaches();
 
   const rnd = random(spec.seed ?? 1);
   const normal = () => Math.sqrt(-2 * Math.log(rnd() + 1e-12)) * Math.cos(2 * Math.PI * rnd());
@@ -335,16 +344,16 @@ export function clearPlayerValueHistory(): void {
 
 export function dropTable(name: string): void {
   db.exec(`DROP TABLE IF EXISTS "${name}"`);
-  clearValuationCaches();
+  clearExportCaches();
 }
 
 export function dropColumn(table: string, column: string): void {
   if (tableColumns(table).includes(column)) db.exec(`ALTER TABLE "${table}" DROP COLUMN "${column}"`);
-  clearValuationCaches();
+  clearExportCaches();
 }
 
 /** Runs SQL against the synthetic save (a case's reshaping), and clears the caches that read it. */
 export function exec(sql: string): void {
   db.exec(sql);
-  clearValuationCaches();
+  clearExportCaches();
 }
