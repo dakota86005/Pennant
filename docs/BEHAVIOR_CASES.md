@@ -114,6 +114,13 @@ usage, 338.5 plate appearances each).
 | `playerValueInvariants.test.ts` (5) | A player's value is the same regardless of which consumer asks: Contracts, Payroll, the Trade Center, Free Agents, Org Comparison and the player card receive one identical valuation. Adding or removing an unrelated player changes nobody else's value except through the league price of a win, and then by the price alone. Value never reads the protection tier, and the tier never reads value. |
 | `playerValueBoundary.test.ts` (1, widened each phase) | Ratings only through `scoutedEvidence.ts`: the reader alone loads them (ability, splits, running, the glove at his position, the persisted snapshots), the pure ratings modules import its types only, and no value module names a rating column or the snapshot table. No `players_value` field in any value module. No minor-league WAR: the minor-league reader selects usage only and the arrival history carries none. Consumers reach value only through its module. No philosophy in the neutral path. No tier, no defensibility, no prospect decision and no rebuilt roster right. Nothing writes to `league.db`. Every constant is declared once and stamped; the only fitted artefacts in code are the two provisional priors, and the ratings prior measures no arrivals. The ratings refit runs once, after the results refit, in the same guard. (PLAYER_VALUE.md Part 10.) |
 
+## Player card
+
+| File | What it protects |
+|---|---|
+| `player.test.ts` (the card header, 2026-09-23) | A position player is labelled by his position, never by a pitcher-assignment code: OOTP writes one (11 starter, 12 reliever, 13 closer) on hitters who have never pitched, so a shortstop is "SS", not "RP". A pitcher is labelled by his pitching role. Whether a man is two-way is read from what he has done this season, on the same test the staff and lineup pages use (`twoway.ts`), never from that code: a position player who has pitched a real amount is marked two-way under his position and given no pitching role, and a pitcher who has batted a real amount is marked two-way and keeps his pitching role. |
+| `storylineLevels.test.ts` (the storyline briefing, 2026-09-23) | The same rule in what the AI is told: a position player among the club's pitching leaders is sent with his position and no pitching role, and a listed pitcher keeps his. |
+
 ## Adding a case
 
 When real-save testing finds a new failure mode, add the case before the fix:

@@ -93,9 +93,16 @@ export function assembleContext(orgId: number) {
        GROUP BY p.player_id HAVING SUM(s.pa) >= 20 ORDER BY SUM(s.war) DESC LIMIT 8`
     )
     .all(orgId, year, level) as Array<Record<string, unknown>>;
+  /*
+   * The role is OOTP's pitcher assignment, which the export also writes on
+   * hitters. A position player who has pitched enough to lead the staff in
+   * something is sent with his position and no role, so the model is not told
+   * that a shortstop is a reliever.
+   */
   const pitchLeaders = db
     .prepare(
-      `SELECT p.first_name || ' ' || p.last_name AS name, p.age, p.role,
+      `SELECT p.first_name || ' ' || p.last_name AS name, p.age, p.position,
+              CASE WHEN p.position = 1 THEN p.role END AS role,
               SUM(s.outs) / 3.0 AS ip, SUM(s.er) AS er, SUM(s.k) AS k, SUM(s.bb) AS bb,
               SUM(s.w) AS w, SUM(s.l) AS l, SUM(s.s) AS sv, ROUND(SUM(s.war), 1) AS war
        FROM players p JOIN players_career_pitching_stats s ON s.player_id = p.player_id

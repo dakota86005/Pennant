@@ -112,7 +112,7 @@ function Card({ id, anchor }: { id: number; anchor: DOMRect }) {
             <strong>{data.name}</strong>
             <span className="muted">
               {data.uniform !== null ? `#${data.uniform} · ` : ''}
-              {data.roleName ?? data.positionName} · {data.bats}/{data.throws} · {data.age}
+              {data.roleName ?? data.positionName}{data.twoWay ? ' · Two-way' : ''} · {data.bats}/{data.throws} · {data.age}
             </span>
           </div>
           {data.team && <div className="muted phover-team">{data.team}</div>}
