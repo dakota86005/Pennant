@@ -91,6 +91,11 @@ export interface CostBasis {
    * season with no single central still names them; one entry where there is a single central.
    */
   centrals?: Array<{ status: ControlStatus; central: number; arbitrationClass?: number }> | null;
+  /**
+   * Each arbitration class's central the band covers (owner decision 2, 2026-09-24): which class is not noise, so Payroll
+   * keeps the lowest and highest at their edges and combines only the player's distance beyond them. Absent where none.
+   */
+  classCentrals?: Array<{ arbitrationClass: number; central: number }> | null;
   /** One line, in words. */
   text: string;
 }

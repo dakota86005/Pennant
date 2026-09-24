@@ -26,7 +26,14 @@
  *                       line is in this import's dollars, and only the prior's shares carry the price of a
  *                       win's band; an open season across each status it could be; a season that may be free
  *                       agency, or a branch the player decides, as what he costs if held, saying so. Every priced
- *                       band carries a central inside it, or, between statuses, each status's central.
+ *                       band carries a central inside it, or, between statuses, each status's central. An
+ *                       arbitration season is never below the player's previous season's salary where it is known
+ *                       (owner-attested, 2026-09-24; Player Rights' `arbitrationSalaryFloor`): this season's
+ *                       contract salary for next season, the season before's low edge after that, so a held
+ *                       player's arbitration low edges never fall; what he costs if tendered, the non-tender said.
+ *   the club's sum      `combineProjectedCosts` (owner, 2026-09-24): the players' seasons combined for Payroll, each
+ *                       player's distance from his central on each side as independent across players (root sum of
+ *                       squares), what is not noise (between statuses, a range of classes, may leave) at its edges.
  *
  * Status, class and trip are Player Rights' answers (`standing`, `trip`, `tripIfEligible`, `serviceClass`,
  * `arbitrationRegimeOf`); nothing here compares service with a threshold. Production arrives as Player
@@ -36,9 +43,10 @@
 
 import type { CalibrationStamp } from './calibration.js';
 import {
-  COST_NOT_PRICED, COST_POLICY, COST_POLICY_CALIBRATION, COST_PRIOR, COST_PRIOR_CALIBRATION, OPENING_PRICE_MINIMUMS,
+  COST_COMBINATION_POLICY, COST_COMBINATION_POLICY_CALIBRATION, COST_NOT_PRICED, COST_POLICY, COST_POLICY_CALIBRATION, COST_PRIOR,
+  COST_PRIOR_CALIBRATION, OPENING_PRICE_MINIMUMS,
 } from './playerValueCalibration.js';
-import type { ArbitrationRegime, SeasonControlEligibility } from './playerRights.js';
+import { arbitrationSalaryFloor, type ArbitrationRegime, type SeasonControlEligibility } from './playerRights.js';
 import type { ControlSeason, ControlStatus, ControlTimeline, CostBand, CostBasis } from './playerValueControl.js';
 import type { MarketCandidate, PriceBand, SeasonWar } from './playerValueFinances.js';
 import type { PlayerProduction } from './playerValueProduction.js';
@@ -680,8 +688,38 @@ function classesOf(
   return { wanted, centralClass };
 }
 
+/**
+ * The salary of the season before the one being priced, as the timeline already priced it (owner decision 3,
+ * 2026-09-24): a contract season's salary; a priced season's low edge (the least he is paid then if held); an option
+ * season the least of both branches. Unknown where the season before is not in the timeline, a branch has no cost to
+ * this club (he would not be held), or its cost is not established.
+ */
+interface PreviousSalary {
+  value: number | null;
+  words: string;
+}
+
+function previousSalaryOf(prev: ControlSeason | null, season: number): PreviousSalary {
+  const before = season - 1;
+  if (prev === null || prev.season !== before) return { value: null, words: `his ${before} salary is not in the export` };
+  const main = prev.cost;
+  if (main === null) return { value: null, words: `he may not be held in ${before}` };
+  if (main.value === null) return { value: null, words: `his ${before} salary is not known` };
+  const lows = [main.value.low];
+  if (prev.declined) {
+    const d = prev.declined.cost;
+    if (d === null) return { value: null, words: `${before} is an option season whose declined branch ends his control` };
+    if (d.value === null) return { value: null, words: `${before} is an option season whose declined branch's cost is not known` };
+    lows.push(d.value.low);
+  }
+  const value = Math.min(...lows);
+  const point = !prev.declined && main.value.low === main.value.high && (prev.from === 'contract' || prev.from === 'extension');
+  return { value, words: point ? `his ${before} salary (${millions(value)})` : `the least he is paid in ${before} if held (${millions(value)}, that season's low edge)` };
+}
+
 function priceArbitration(
-  season: number, e: SeasonControlEligibility | null, trip: { low: number; high: number } | null, input: PriceControlInput, ladder: CostLadder
+  season: number, e: SeasonControlEligibility | null, trip: { low: number; high: number } | null, input: PriceControlInput, ladder: CostLadder,
+  previous: PreviousSalary,
 ): Priced {
   const a = ladder.arbitration;
   if (a.status === 'no_arbitration' || a.classes.length === 0) return unknownCost(`Arbitration not priced: ${a.reason ?? 'the league has no arbitration ladder'}`);
@@ -722,13 +760,31 @@ function priceArbitration(
   }
   // The minimum, where the save paid this class the minimum at a platform as low as his
   const atMinimum = all.filter((c) => c.atMinimum.cases > 0 && c.atMinimum.platformHigh !== null && p.low <= c.atMinimum.platformHigh);
-  if (atMinimum.length > 0) {
-    low = 0;
-    notes.push(`The save paid ${atMinimum.map((c) => `${plural(c.atMinimum.cases, 'class-' + c.arbitrationClass + ' one-year contract')} the league minimum (at platforms up to ${wins(c.atMinimum.platformHigh as number)} wins)`).join(' and ')}; ` +
-      'his platform reaches as low, so the low edge is at the league minimum.');
+  if (atMinimum.length > 0) low = 0;
+  const minimumNote = atMinimum.length === 0 ? null
+    : `The save paid ${atMinimum.map((c) => `${plural(c.atMinimum.cases, 'class-' + c.arbitrationClass + ' one-year contract')} the league minimum (at platforms up to ${wins(c.atMinimum.platformHigh as number)} wins)`).join(' and ')}; ` +
+      'his platform reaches as low, so the low edge is at the league minimum';
+
+  // Owner decision 3 (2026-09-24): an arbitration salary is never below his previous season's salary, where it is known
+  const ladderBand = { low: minimum + low, high: minimum + high };
+  const rule = arbitrationSalaryFloor(ladder.arbitration.regime, previous.value);
+  const floor = rule.status === 'binds' ? rule.floor as number : null;
+  const lifts = floor !== null && floor > ladderBand.low;
+  const above = floor !== null && floor >= ladderBand.high;
+  if (minimumNote !== null) notes.push(lifts ? `${minimumNote}, except that his previous salary keeps it above the minimum (below).` : `${minimumNote}.`);
+  const tendered = 'What he costs if tendered: a non-tender stays possible, and the export does not say whether the club will tender him.';
+  if (rule.status === 'binds') {
+    notes.push(above
+      ? `Every reading of the ladder (${millions(ladderBand.low)}–${millions(ladderBand.high)}) is below his previous salary, ${previous.words}, and an arbitration salary is never below it (owner-attested, 2026-09-24): the season is at his previous salary. ${tendered}`
+      : lifts
+        ? `An arbitration salary is never below his previous salary (owner-attested, 2026-09-24): ${previous.words} lifts the low edge from ${millions(ladderBand.low)}. ${tendered}`
+        : `An arbitration salary is never below his previous salary (owner-attested, 2026-09-24): ${previous.words}, already below the band. ${tendered}`);
+  } else if (rule.status === 'unknown') {
+    notes.push(`${previous.words.charAt(0).toUpperCase()}${previous.words.slice(1)}, so his previous salary is not known and the owner-attested rule that an arbitration salary never falls (2026-09-24) cannot bind here. ${tendered}`);
   }
+  const floored = (v: number) => (floor === null ? v : Math.max(v, floor));
   const central = centralClass !== null ? centralByClass.get(centralClass) ?? null : null;
-  const centrals = [...centralByClass].map(([k, v]) => ({ status: 'arbitration' as ControlStatus, arbitrationClass: k, central: minimum + v }));
+  const centrals = [...centralByClass].map(([k, v]) => ({ status: 'arbitration' as ControlStatus, arbitrationClass: k, central: floored(minimum + v) }));
 
   // A prior class that observed awards joined (phase 4b) is measured in part, never still the prior alone (review R3-10)
   const source: CostBasis['source'] = all.every((c) => c.status === 'measured') ? 'measured'
@@ -750,17 +806,22 @@ function priceArbitration(
     ? "The save's own lines, in this import's dollars."
     : `${measuredAny ? "The save's own lines in this import's dollars, and the" : 'The'} provisional prior's shares × the price of a win ${millions((price as PriceBand).low)}–${millions((price as PriceBand).high)}: provisional.`;
   const centralText = central !== null
-    ? `Central ${millions(minimum + central)} (class ${centralClass} at the platform's central).`
+    ? `Central ${millions(floored(minimum + Math.min(high, Math.max(low, central))))} (class ${centralClass} at the platform's central${floor !== null && floor > minimum + Math.min(high, Math.max(low, central)) ? ', lifted to his previous salary' : ''}).`
     : `No single central: which trip is not established (class centrals ${centrals.map((c) => `${c.arbitrationClass} ${millions(c.central)}`).join(', ')}).`;
   const text = `Arbitration class ${span(wanted)} (${tripText}${byService}${fourth}): ${counted}; platform ${p.seasons[0]}–${p.seasons[p.seasons.length - 1]} production ` +
     `${wins(p.low)} to ${wins(p.high)} wins (central ${wins(p.central)}). ${money} ${centralText}${notes.length > 0 ? ` ${notes.join(' ')}` : ''} A range of reasonable readings, edge against edge.`;
-  const band: CostBand = { low: minimum + low, central: central === null ? null : minimum + Math.min(high, Math.max(low, central)), high: minimum + high };
+  const band: CostBand = {
+    low: floored(ladderBand.low),
+    central: central === null ? null : floored(minimum + Math.min(high, Math.max(low, central))),
+    high: floored(ladderBand.high),
+  };
   return {
     cost: derivedFrom(band, 'players_contract (this season\'s one-year arbitration contracts) + production' + (usesPrior ? ' + the price of a win' : ''), text),
     basis: {
       method: 'arbitration_ladder', source, classes: wanted, cases, platform: p,
       price: usesPrior ? { low: (price as PriceBand).low, high: (price as PriceBand).high } : null,
-      ifHeld: false, centrals: central !== null ? [{ status: 'arbitration', central: band.central as number }] : centrals, text,
+      ifHeld: false, centrals: central !== null ? [{ status: 'arbitration', central: band.central as number }] : centrals,
+      classCentrals: centrals.map((c) => ({ arbitrationClass: c.arbitrationClass, central: c.central })), text,
     },
   };
 }
@@ -769,12 +830,13 @@ const HELD: ControlStatus[] = ['pre_arbitration', 'arbitration'];
 
 /** The cost of a status Player Rights stated (or each it lies between), for a season no contract covers. */
 function priceStatus(
-  season: number, status: ControlStatus, between: ControlStatus[], e: SeasonControlEligibility | null, input: PriceControlInput
+  season: number, status: ControlStatus, between: ControlStatus[], e: SeasonControlEligibility | null, input: PriceControlInput,
+  previous: PreviousSalary,
 ): Priced {
   const ladder = input.ladder;
   if (ladder === null) return unknownCost("Not priced: his league's cost ladder could not be read.");
   if (status === 'pre_arbitration') return priceRenewal(ladder);
-  if (status === 'arbitration') return priceArbitration(season, e, e?.arbitration.trip ?? null, input, ladder);
+  if (status === 'arbitration') return priceArbitration(season, e, e?.arbitration.trip ?? null, input, ladder, previous);
   if (status !== 'indeterminate' || between.length === 0) return unknownCost("The season's control is not established, so neither is its cost.");
 
   const mayLeave = between.includes('free_agent');
@@ -785,7 +847,7 @@ function priceStatus(
   const held = between.filter((b) => HELD.includes(b));
   const branches = held.map((b) => (b === 'pre_arbitration'
     ? priceRenewal(ladder)
-    : priceArbitration(season, e, e?.arbitration.trip ?? e?.arbitration.tripIfEligible ?? null, input, ladder)));
+    : priceArbitration(season, e, e?.arbitration.trip ?? e?.arbitration.tripIfEligible ?? null, input, ladder, previous)));
   if (branches.length === 0) return unknownCost('Not priced: no status he could hold is priced.');
   const unknown = branches.find((b) => b.cost.value === null);
   if (unknown) return unknownCost(`Not priced across the statuses the season lies between: ${unknown.cost.note ?? ''}`);
@@ -812,7 +874,7 @@ function priceStatus(
     basis: {
       method: bases.length > 1 ? 'between' : bases[0].method, source, classes: arbitration?.classes ?? [],
       cases: bases.reduce((s, b) => s + b.cases, 0), platform: arbitration?.platform ?? null, price: arbitration?.price ?? null,
-      ifHeld: mayLeave, centrals, text,
+      ifHeld: mayLeave, centrals, classCentrals: arbitration?.classCentrals ?? null, text,
     },
   };
 }
@@ -841,20 +903,112 @@ function ifHeldByPlayer(p: Priced, s: ControlSeason): Priced {
 export function priceControlTimeline(input: PriceControlInput): ControlTimeline {
   const { control } = input;
   if (control.thisSeason === null || control.seasons.length === 0) return control;
-  const seasons: ControlSeason[] = control.seasons.map((s) => {
+  // In order: an arbitration season is floored at the season before it as already priced (owner decision 3, 2026-09-24)
+  const seasons: ControlSeason[] = [];
+  for (const s of control.seasons) {
     const e = control.eligibility?.seasons.find((x) => x.season === s.season) ?? null;
+    const previous = previousSalaryOf(seasons[seasons.length - 1] ?? null, s.season);
     let next: ControlSeason = s;
     if (unpriced(s.cost)) {
-      const p = priceStatus(s.season, s.status, s.between, e, input);
+      const p = priceStatus(s.season, s.status, s.between, e, input, previous);
       next = { ...next, cost: p.cost, costBasis: p.basis };
     }
     if (s.declined && unpriced(s.declined.cost)) {
-      const p = ifHeldByPlayer(priceStatus(s.season, s.declined.status, s.declined.between, e, input), s);
+      const p = ifHeldByPlayer(priceStatus(s.season, s.declined.status, s.declined.between, e, input, previous), s);
       next = { ...next, declined: { ...s.declined, cost: p.cost, costBasis: p.basis } };
     }
-    return next;
-  });
+    seasons.push(next);
+  }
   return { ...control, seasons };
+}
+
+// ── the club's sum (owner decision 2, 2026-09-24) ────────────────────────────
+
+/** One player's projected season as Payroll sums it: his band, its central (or each status's), and what it covers. */
+export interface ProjectedCost {
+  low: number;
+  high: number;
+  /** Null where the season lies between statuses Player Rights leaves open (then `centrals` names each). */
+  central: number | null;
+  centrals: Array<{ status: string; central: number }> | null;
+  /** He may leave instead, or the player decides: the band is what he costs if held. */
+  ifHeld: boolean;
+  /** The arbitration classes the band covers (more than one: a range of classes, not noise). */
+  classes: number[] | null;
+  /** Each covered class's central, where the band covers arbitration: the lowest and highest are the class range's edges. */
+  classCentrals?: number[] | null;
+}
+
+export interface CombinedCost {
+  /** The range shown: the sum of centrals, with the players' distances from their centrals combined as independent, and what is not noise at its edges. */
+  low: number;
+  high: number;
+  /** Every player at his low edge, summed, to every player at his high edge (a player who may leave adds nothing to the low edge). */
+  edges: { low: number; high: number };
+  /** The sum of centrals: a season that may be free agency adds its central only to the upper sum; one between statuses its lowest and highest. */
+  central: { low: number; high: number };
+  /** Players combined as independent, and players kept at their edges. */
+  combined: number;
+  atEdges: number;
+  text: string;
+  stamp: CalibrationStamp;
+}
+
+/**
+ * The club's projected cost for a season (owner decision 2, 2026-09-24; `COST_COMBINATION_POLICY`): the sum of the
+ * players' centrals, with each player's distance from his central on the low side and on the high side combined as
+ * independent across players (the root of the sum of squares), never every player at his edge at once. What is not
+ * random noise stays at its edges and is added, not combined (R2-01's corners): which status a season between statuses
+ * is (its lowest status's central on the low side, its highest on the high side), which class a range of arbitration
+ * classes is (its lowest and highest class's central), and whether he is held at all (a player who may leave adds
+ * nothing to the low side, and his held central to the high side). Only each player's own distance beyond those edges
+ * (the spread of his class's pay, his production, the line's error) is combined. It lies inside the edge-to-edge sum
+ * and holds the sum of centrals; for one player it is his own band. A range of reasonable readings, not a calibrated
+ * interval: a class's line error shared by its players is read as independent too.
+ */
+export function combineProjectedCosts(costs: ProjectedCost[]): CombinedCost {
+  let lowSquares = 0;
+  let highSquares = 0;
+  let edgeLow = 0;
+  let edgeHigh = 0;
+  let structuralLow = 0;
+  let structuralHigh = 0;
+  let centralLow = 0;
+  let centralHigh = 0;
+  let combined = 0;
+  let atEdges = 0;
+  for (const x of costs) {
+    const low = x.ifHeld ? 0 : x.low;
+    edgeLow += low;
+    edgeHigh += x.high;
+    const options = x.central !== null ? [x.central] : (x.centrals ?? []).map((c) => c.central);
+    // A priced band always names a central or its statuses'; were neither there, its own edges bound it
+    const lowOption = options.length > 0 ? Math.min(...options) : x.low;
+    const highOption = options.length > 0 ? Math.max(...options) : x.high;
+    centralLow += x.ifHeld ? 0 : lowOption;
+    centralHigh += highOption;
+    // The edges of what is not noise: which status, which class (the class range's lowest and highest central), held or not
+    const classes = (x.classes?.length ?? 0) > 1 ? (x.classCentrals ?? []) : [];
+    const anchorLow = x.ifHeld ? 0 : Math.max(x.low, Math.min(lowOption, ...classes));
+    const anchorHigh = Math.min(x.high, Math.max(highOption, ...classes));
+    if (x.ifHeld || anchorLow < anchorHigh) atEdges += 1;
+    else combined += 1;
+    structuralLow += anchorLow;
+    structuralHigh += anchorHigh;
+    // His own distance beyond them: combined as independent across players
+    lowSquares += x.ifHeld ? 0 : Math.max(0, anchorLow - x.low) ** 2;
+    highSquares += Math.max(0, x.high - anchorHigh) ** 2;
+  }
+  const range = {
+    low: Math.max(edgeLow, Math.min(centralLow, structuralLow - Math.sqrt(lowSquares))),
+    high: Math.min(edgeHigh, Math.max(centralHigh, structuralHigh + Math.sqrt(highSquares))),
+  };
+  const kept = atEdges > 0
+    ? ` For ${plural(atEdges, 'player')}, what is not noise stays at its edges, added: which status a season between statuses is, which class a range of arbitration classes is, or that he may leave (nothing on the low side).`
+    : '';
+  const text = `${COST_COMBINATION_POLICY.label}: around the sum of centrals, each player's own distance from it on each side is combined as independent across ${plural(costs.length, 'player')} (root sum of squares).${kept} ` +
+    `Every player at his edge, summed: ${millions(edgeLow)}–${millions(edgeHigh)}. Readings that move together (a class's line) are read as independent too.`;
+  return { ...range, edges: { low: edgeLow, high: edgeHigh }, central: { low: centralLow, high: centralHigh }, combined, atEdges, text, stamp: COST_COMBINATION_POLICY_CALIBRATION };
 }
 
 /** The distribution-free upper confidence bound of the q-th quantile of a sorted sample, as the renewal spread reads it. */

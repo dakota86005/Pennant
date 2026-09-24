@@ -591,6 +591,9 @@ export interface SeasonCostData {
   text: string; source: string | null;
   /** He may be a free agent instead, or the player decides: what he costs if held. */
   ifHeld: boolean;
+  /** The arbitration classes the band covers (more than one: a range of classes); null where none. */
+  classes?: number[] | null;
+  classCentrals?: number[] | null;
   /** An option or opt-out season's declined branch and its cost. */
   declined: { kind: string; status: string; cost: SeasonCostData | null } | null;
 }

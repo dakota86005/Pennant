@@ -31,6 +31,10 @@
  *   adopts            the measured price only when it holds the realized reading, its signings cover each third of
  *                     the winter's free-agent class, and its band is narrower than the opening band with its sampling
  *                     (owner Q-4); otherwise the opening price stays and says why, naming the unit of each reading.
+ *                     Owner decisions (2026-09-24): the price, once measured, is per win produced (the realized
+ *                     reading's central and band alone), the per-projected-win readings shown beside it as a check on
+ *                     the projection; an observed arbitration salary below the player's previous salary is flagged
+ *                     as contradicting the owner-attested rule that it never falls, counted and named.
  *
  * It reads no rating, no `players_value`, no service time and no live log: the standing, trip and production are the
  * answers the earlier import recorded from Player Rights and Player Value; the realized wins and whether a club held a
@@ -206,6 +210,59 @@ export function contractTimeline(imports: TimelineImport[], breaks: TimelineBrea
   return { pairs, superseded: out, text: parts.length > 0 ? parts.join(' ') : null };
 }
 
+// ── which full snapshots are kept (owner decision 4, 2026-09-24) ─────────────
+
+/** One recorded import as retention reads it: its place on the timeline, its season, and whether its snapshot was already pruned. */
+export interface RetentionImport {
+  gameDate: string;
+  seq: number;
+  season: number | null;
+  seasonPlayed: number | null;
+  pruned: boolean;
+}
+
+export interface Retention {
+  /** Imports whose full snapshot is kept, and imports whose snapshot is to be removed now (not already pruned). */
+  keep: string[];
+  prune: string[];
+  /** Why each kept import is kept, in words. */
+  reasons: Record<string, string>;
+}
+
+/**
+ * Which imports keep their full contract snapshot (owner decision 4, 2026-09-24; `SIGNINGS_POLICY.retention`): the most
+ * recent import (the next pair needs it), every import that brackets a winter (an endpoint of a pair of imports across
+ * one, by the calendar: the last before it, any inside it and the first after it), an import whose season is not read
+ * (whether it brackets a winter cannot be told), and both imports of a pair not yet stored under the current method while
+ * both snapshots are there (it still needs them). Every other import's snapshot goes; the stored pairs and the timeline's
+ * events stay, as the durable record. Pure.
+ */
+export function retainedImports(imports: RetentionImport[], breaks: TimelineBreak[], stored: (earlier: string, later: string) => boolean): Retention {
+  const reasons: Record<string, string> = {};
+  const keep = (date: string, why: string) => { reasons[keyOf(date)] ??= why; };
+  const sorted = [...imports].sort((a, b) => a.seq - b.seq);
+  const latest = sorted[sorted.length - 1];
+  if (latest) keep(latest.gameDate, 'the most recent import: the next pair needs it');
+  const byDate = new Map(imports.map((i) => [keyOf(i.gameDate), i]));
+  for (const i of imports) if (i.season === null) keep(i.gameDate, 'its season is not read, so whether it brackets a winter cannot be told');
+  const timeline = contractTimeline(imports.map((i) => ({ gameDate: i.gameDate, seq: i.seq })), breaks, null);
+  for (const t of timeline.pairs) {
+    const e = byDate.get(keyOf(t.earlier));
+    const l = byDate.get(keyOf(t.later));
+    if (!e || !l) continue;
+    if (e.season === null || l.season === null || wintersBetween(e, l).length > 0) {
+      keep(e.gameDate, `it brackets a winter (the last import before it, or one inside it, with ${keyOf(l.gameDate)})`);
+      keep(l.gameDate, `it brackets a winter (the first import after it, or one inside it, with ${keyOf(e.gameDate)})`);
+    } else if (!stored(t.earlier, t.later) && !e.pruned && !l.pruned) {
+      keep(e.gameDate, 'a pair not yet stored under the current method still needs it');
+      keep(l.gameDate, 'a pair not yet stored under the current method still needs it');
+    }
+  }
+  const kept = imports.filter((i) => reasons[keyOf(i.gameDate)] !== undefined).map((i) => keyOf(i.gameDate));
+  const prune = imports.filter((i) => reasons[keyOf(i.gameDate)] === undefined && !i.pruned).map((i) => keyOf(i.gameDate));
+  return { keep: kept, prune, reasons };
+}
+
 // ── observed changes ─────────────────────────────────────────────────────────
 
 export type ObservedKind =
@@ -254,6 +311,11 @@ export interface ObservedChange {
   /** For an arbitration salary: his trip (the later import's reading for the season where recorded, else the earlier's), and the band the earlier import priced for the season. */
   arbitrationClass?: { low: number; high: number } | null;
   nextCost?: { low: number; high: number } | null;
+  /**
+   * For an arbitration salary (owner decision 3, 2026-09-24): his salary for the season before its first, as the earlier
+   * import recorded his contract; null where that contract does not state it. Absent on a pair stored before `signings-4b.3`.
+   */
+  previousSalary?: number | null;
   /** The league minimum the later import states. */
   minimum: number | null;
 }
@@ -309,13 +371,13 @@ function describeChange(e: ContractSnapshotRow | null, l: ContractSnapshotRow | 
 }
 
 /** Whether the season had begun at the import: a share of 0 is a season not begun; an unknown share is read as begun (a deal then is left out, never priced on a guess). */
-const begun = (s: ContractSnapshot): boolean => s.seasonPlayed === null || s.seasonPlayed > 0;
+const begun = (s: Pick<ContractSnapshot, 'seasonPlayed'>): boolean => s.seasonPlayed === null || s.seasonPlayed > 0;
 
 /**
  * The winters a pair spans, each by the season it leads into (review R3-01, R3-11): an import in a season under way
  * is before the next winter; an import before its season's Opening Day is inside that season's winter.
  */
-function wintersBetween(e: ContractSnapshot, l: ContractSnapshot): number[] {
+function wintersBetween(e: Pick<ContractSnapshot, 'season' | 'seasonPlayed'>, l: Pick<ContractSnapshot, 'season'>): number[] {
   if (e.season === null || l.season === null) return [];
   const from = begun(e) ? e.season + 1 : e.season;
   const out: number[] = [];
@@ -577,8 +639,11 @@ export function observeChanges(earlier: ContractSnapshot, later: ContractSnapsho
         changes.push({ ...base('arbitration_at_minimum', `A one-year deal at the league minimum for a player in arbitration for ${first}: read as not tendered and signed again, not an arbitration salary (as the ladder reads it).`, [],
           'At the minimum: not read as an arbitration salary.', s), arbitrationClass: trip });
       } else {
+        // His salary the season before, as the earlier import's contract states it (owner decision 3): what the rule compares with
+        const before = first === null || e.firstSeason === null ? null : e.salaries[first - 1 - e.firstSeason] ?? null;
+        const previousSalary = before !== null && Number.isFinite(before) && before > 0 && first !== null && e.firstSeason !== null && first - 1 >= e.firstSeason ? before : null;
         changes.push({ ...base('arbitration_salary', `A one-year deal with his club for ${first}, when Player Rights had him in arbitration: an arbitration salary, an award or a settlement; the export does not say which.`,
-          pay === null ? [] : ['awards'], pay === null ? 'The salary is not stated.' : null, s), arbitrationClass: trip, nextCost: e.nextCost !== null && e.nextCost.season === first ? { low: e.nextCost.low, high: e.nextCost.high } : null });
+          pay === null ? [] : ['awards'], pay === null ? 'The salary is not stated.' : null, s), arbitrationClass: trip, nextCost: e.nextCost !== null && e.nextCost.season === first ? { low: e.nextCost.low, high: e.nextCost.high } : null, previousSalary });
       }
       continue;
     }
@@ -728,8 +793,17 @@ export interface MeasuredPrice {
   winters: number;
   imports: number;
   bases: MeasuredBasis[];
-  /** Dollars per win: the median of the bases, the band their spread with each one's sampling; unknown with the reason. */
+  /**
+   * Dollars per win produced (owner decision 1, 2026-09-24): the realized basis's central and resampled band, the opening's
+   * own unit; unknown, with the reason, until that reading exists.
+   */
   price: Sourced<PriceBand>;
+  /**
+   * The check on the projection (owner decision 1): the readings per win projected at signing, their median and spread
+   * with each one's sampling, and the ratio of that central to the price per win produced (how far the projection is
+   * off for the players who signed). Shown beside the price, never in it. Null where no projected basis was measured.
+   */
+  check: MeasuredCheck | null;
   /** Whether the realized reading (the opening's own unit) is among the bases measured. */
   realized: boolean;
   /** The priced signings in each third of their winter's free-agent class, and whether each third holds the policy minimum. */
@@ -738,6 +812,18 @@ export interface MeasuredPrice {
   replacement: 'export_convention';
   text: string;
   stamp: CalibrationStamp;
+}
+
+export interface MeasuredCheck {
+  status: 'measured';
+  unit: 'projected';
+  central: number;
+  low: number;
+  high: number;
+  /** The check's central over the price per win produced; null until the realized reading exists. */
+  ratio: number | null;
+  bases: MeasuredBasisId[];
+  text: string;
 }
 
 export interface MeasuredPriceInput {
@@ -839,9 +925,25 @@ export function measurePriceOfWin(input: MeasuredPriceInput): MeasuredPrice {
       : `The priced signings cover the winter's free-agent class by expected wins: ${thirds[0]}, ${thirds[1]} and ${thirds[2]} in its lowest, middle and top third${enough ? '' : `, fewer than the ${perThird} each third needs (a winter of cheap deals, or of stars alone, does not set the price of every win)`}.`,
   };
 
+  // The check on the projection (owner decision 1, 2026-09-24): the readings per win projected at signing, beside the price
+  const projectedBases = bases.filter((b) => b.unit === 'projected' && b.status === 'measured');
+  const realizedBasis = bases.find((b) => b.id === 'realized' && b.status === 'measured') ?? null;
+  const check: MeasuredCheck | null = projectedBases.length === 0 ? null : (() => {
+    const central = medianOf(projectedBases.map((b) => b.central as number));
+    const ratio = realizedBasis ? central / (realizedBasis.central as number) : null;
+    const low = Math.min(...projectedBases.map((b) => b.low as number));
+    const high = Math.max(...projectedBases.map((b) => b.high as number));
+    return {
+      status: 'measured', unit: 'projected', central, low, high, ratio, bases: projectedBases.map((b) => b.id),
+      text: `The check on the projection, per win projected at signing: ${millions(central)} (the median of ${plural(projectedBases.length, 'basis', 'bases')}; ${millions(low)} to ${millions(high)} with their sampling)` +
+        (ratio === null
+          ? ", beside no price per win produced yet: the price is per win produced, and waits for the signings' first season to be completed."
+          : `, ${ratio.toFixed(2)} times the price per win produced: how far the earlier import's expected wins sat from what the signed players went on to produce (expected wins include the chance a player does not play at all). Shown beside the price, never in it.`),
+    };
+  })();
   const out = (status: MeasuredPrice['status'], price: Sourced<PriceBand>, text: string): MeasuredPrice => ({
     status, label: MEASURED_PRICE_LABEL, signings: priced.length, observed: signings.length, winters: winters.length, imports: input.imports,
-    bases, price, realized: bases.some((b) => b.id === 'realized' && b.status === 'measured'), coverage, replacement: 'export_convention', text, stamp: SIGNINGS_POLICY_CALIBRATION,
+    bases, price, check, realized: realizedBasis !== null, coverage, replacement: 'export_convention', text, stamp: SIGNINGS_POLICY_CALIBRATION,
   });
   const unknown = (status: MeasuredPrice['status'], text: string) => out(status, unknownBecause('not_exported_by_ootp', source, text), text);
   if (input.dollars) return unknown('unknown', input.dollars);
@@ -865,14 +967,15 @@ export function measurePriceOfWin(input: MeasuredPriceInput): MeasuredPrice {
   if (unbounded.length > 0) return unknown('not_measured', `Not measured: ${counted}; ${unbounded.map((b) => b.text).join(' ')}`);
   const measured = bases.filter((b) => b.status === 'measured');
   if (measured.length === 0) return unknown('not_measured', `Not measured: ${counted}; each basis rests on at least ${need} signings (the opening basis's policy minimum). ${bases.map((b) => b.text).join(' ')}`);
-  // The central in the opening's own unit, per realized win, once that reading exists (until the owner rules on the
-  // unit, review R4-01); before it, the median of the projected bases, shown and never in force
-  const realizedBasis = measured.find((b) => b.id === 'realized');
-  const central = realizedBasis ? realizedBasis.central as number : medianOf(measured.map((b) => b.central as number));
-  const centralWords = realizedBasis ? 'per realized win, the opening\'s own unit' : `the median of ${plural(measured.length, 'basis', 'bases')} per win projected at signing, never in force until the realized reading exists`;
-  const value = { central, low: Math.min(...measured.map((b) => b.low as number)), high: Math.max(...measured.map((b) => b.high as number)) };
-  const text = `Measured on ${counted}: ${millions(value.central)} a win (${centralWords}), band ${millions(value.low)} to ${millions(value.high)}: ` +
-    `the spread of the bases with each one's sampling. ${measured.map((b) => b.text).join(' ')} ` +
+  // Owner decision 1 (2026-09-24): the price is per win produced, the realized basis's central and band alone; until that
+  // reading exists nothing is measured in the price's unit, and the projected readings are the check, shown beside
+  const realizedText = bases.find((b) => b.id === 'realized')!.text;
+  if (!realizedBasis) {
+    return unknown('not_measured', `Not measured per win produced: ${counted}; the price of a win is per win produced in the first season (owner, 2026-09-24), and that reading waits for the signings' first season to be completed. ${realizedText}${check ? ` ${check.text}` : ''} Wins are the export's own WAR (replacement at its convention).`);
+  }
+  const value = { central: realizedBasis.central as number, low: realizedBasis.low as number, high: realizedBasis.high as number };
+  const text = `Measured on ${counted}: ${millions(value.central)} per win produced (the first season, the opening's own unit; owner, 2026-09-24), band ${millions(value.low)} to ${millions(value.high)}: ` +
+    `its signings resampled. ${check ? `${check.text} ` : ''}${measured.map((b) => b.text).join(' ')} ` +
     "Wins are the export's own WAR (replacement at its convention): a replacement measured from free talent is shown beside it, never applied. " +
     "Each signing is in its own winter's dollars, and nothing is discounted. The projected bases read the earlier import's expected wins, which include the chance a player does not play at all: " +
     'for the players who did sign they sit below what signed players go on to produce, so the price per projected win reads high (the if-he-plays basis removes that chance, and the realized basis needs no projection). ' +
@@ -884,20 +987,22 @@ export function measurePriceOfWin(input: MeasuredPriceInput): MeasuredPrice {
 
 const ADOPTION_RULE =
   'The measured price replaces the opening one only when its band is narrower than the opening band with its sampling (owner Q-4): the evidence decides, not a ' +
-  "count of signings. It is compared only when it holds the realized reading, per win produced in the first season (the opening's own unit), and when its signings " +
-  "cover each third of the winter's free-agent class (review 2026-09-24, a tightening): a price per projected win is never swapped in for a price per realized win, " +
-  'and a winter of cheap deals alone never sets the price.';
+  "count of signings. The measured price is per win produced in the first season (owner, 2026-09-24: the opening's own unit), its central and band that reading's " +
+  "alone; the readings per win projected at signing are its check on the projection, never the price. It is compared only when its signings cover each third of " +
+  "the winter's free-agent class (review 2026-09-24, a tightening): a winter of cheap deals alone never sets the price.";
 
-/** The measured bases in their units, in words. */
+/** The measured price and its check, in their units, in words (owner decision 1: the price per win produced, the check per win projected at signing). */
 function unitWords(m: MeasuredPrice): string {
   const b = (id: MeasuredBasisId) => m.bases.find((x) => x.id === id && x.status === 'measured');
   const projected = (['whole', 'first', 'if_plays'] as const).map((id) => b(id)).filter((x): x is MeasuredBasis => !!x);
   const names: Record<MeasuredBasisId, string> = { whole: 'over the deal', first: 'first season', if_plays: 'if he plays', realized: 'first season' };
   const parts: string[] = [];
-  if (projected.length > 0) parts.push(`per win projected at signing (${projected.map((x) => `${names[x.id]} ${millions(x.central as number)}`).join(', ')})`);
   const r = b('realized');
-  if (r) parts.push(`per realized win (${names.realized} ${millions(r.central as number)}, on its schedule's footing, as the opening reads a season)`);
-  return parts.join(' and ');
+  if (r) parts.push(`per win produced (the first season ${millions(r.central as number)}, on its schedule's footing, as the opening reads a season)`);
+  if (projected.length > 0) {
+    parts.push(`its check per win projected at signing (${projected.map((x) => `${names[x.id]} ${millions(x.central as number)}`).join(', ')}${m.check?.ratio != null ? `; ${m.check.ratio.toFixed(2)} times the price` : ''}), never the price`);
+  }
+  return parts.join(', with ');
 }
 
 /** Flags on a measured central against the opening (review R4-11): below the floor, or outside the opening band with its sampling. */
@@ -928,7 +1033,11 @@ export function adoptPrice(opening: PriceOfWin, measured: MeasuredPrice): PriceO
     adoption: { inForce: 'opening', reason: `The opening price stays: ${reason}`, opening: openingSummary, measured, rule: ADOPTION_RULE },
   });
   const m = measured.price.value;
-  if (measured.status !== 'measured' || m === null) return stays(measured.price.note ?? measured.text);
+  if (measured.status !== 'measured' || m === null) {
+    // Not measured per win produced: said, with the check per win projected at signing where it was read (owner decision 1)
+    const note = measured.price.note ?? measured.text;
+    return stays(measured.check && !note.includes(measured.check.text) ? `${note} ${measured.check.text}` : note);
+  }
   const measuredBand = `${millions(m.low)}–${millions(m.high)} (${millions(m.high - m.low)} wide)`;
   const counted = `${plural(measured.observed, 'free-agent signing')} observed`;
   const units = unitWords(measured);
@@ -938,15 +1047,15 @@ export function adoptPrice(opening: PriceOfWin, measured: MeasuredPrice): PriceO
     ...opening, stage: 'measured', label: MEASURED_PRICE_LABEL, price: measured.price, unit: 'dollars_per_win',
     rules: {
       ...opening.rules,
-      band: 'The band runs over the measured bases with each basis\'s resampled band in it: the spread of defensible readings of the signings observed, with their sampling (the opening bases below are the opening reading, not in force).',
-      central: 'The realized basis: per win the signings produced in their first season, the opening price\'s own unit (until the owner rules on which unit the price in force uses).',
+      band: 'The band is the realized reading\'s, per win produced: the signings observed resampled, 10th to 90th percentile (the opening bases below are the opening reading, not in force; the readings per win projected at signing are the check, never in the band).',
+      central: 'The price per win produced: what the signings were paid in their first season above the minimum over the WAR they produced in it, the opening price\'s own unit (owner, 2026-09-24).',
     },
     stamps: { ...opening.stamps, bases: SIGNINGS_POLICY_CALIBRATION },
     adoption: { inForce: 'measured', reason: `The measured price is in force: ${reason}${flagged}`, opening: openingSummary, measured, rule: ADOPTION_RULE },
   });
   const unmet: string[] = [];
   if (!measured.realized) {
-    unmet.push(`its bases are ${units}; the opening price is per realized win (salary over the WAR a season produced), and the realized reading, per win the signings produced in their first season, waits for that season to be completed, so the two are not yet compared like for like (an open owner question: which unit the price in force uses)`);
+    unmet.push(`the price is per win produced (owner, 2026-09-24), and that reading waits for the signings' first season to be completed; ${units}`);
   }
   if (!measured.coverage.enough) unmet.push(measured.coverage.text.replace(/\.$/, '').replace(/^The /, 'the '));
   if (unmet.length > 0) return stays(`${counted}; the measured band ${measuredBand} is not compared: ${unmet.join('; ')}.${flagged}`);
@@ -981,6 +1090,13 @@ export interface AwardScore {
   byClass: Array<{ arbitrationClass: number; scored: number; covered: number }>;
   /** Scored awards whose trip was not recorded: in the total, in no class. */
   unclassed: number;
+  /**
+   * Owner decision 3 (2026-09-24): observed arbitration salaries below the player's previous salary, contradicting the
+   * owner-attested rule that an arbitration salary never falls: flagged and named, still scored, never silently absorbed.
+   */
+  belowPrevious: Array<{ playerId: number; name: string | null; firstSeason: number | null; salary: number; previous: number }>;
+  /** Observed arbitration salaries whose previous salary the earlier record does not state (or a pair stored before it was recorded). */
+  previousUnknown: number;
   text: string;
 }
 
@@ -990,8 +1106,10 @@ export interface AwardScore {
  * anything). A range of reasonable readings, not a calibrated interval, so it is reported, never gated. Each is read
  * in the class the ladder reads it in (a later trip in the top class); a trip not recorded is in no class.
  */
-export function scoreAwards(pairs: WinterPair[], regime: Pick<ArbitrationRegime, 'status' | 'classes' | 'mlb'>): AwardScore {
-  const empty = { awards: 0, scored: 0, covered: 0, coverage: null, sharpness: { medianRatio: null, medianWidthShare: null }, byClass: [], unclassed: 0 };
+export function scoreAwards(
+  pairs: WinterPair[], regime: Pick<ArbitrationRegime, 'status' | 'classes' | 'mlb'>, nameOf: (playerId: number) => string | null = () => null,
+): AwardScore {
+  const empty = { awards: 0, scored: 0, covered: 0, coverage: null, sharpness: { medianRatio: null, medianWidthShare: null }, byClass: [], unclassed: 0, belowPrevious: [], previousUnknown: 0 };
   if (regime.status === 'no_arbitration' || regime.status === 'reserve_clause') {
     return { status: 'no_arbitration', ...empty, text: 'This league has no salary arbitration: there are no arbitration salaries to score the ladder against.' };
   }
@@ -1020,17 +1138,27 @@ export function scoreAwards(pairs: WinterPair[], regime: Pick<ArbitrationRegime,
   const widths = scored.map((c) => ((c.nextCost as { low: number; high: number }).high - (c.nextCost as { low: number }).low) / (c.salary as number)).filter((x) => Number.isFinite(x));
   const sharpness = { medianRatio: ratios.length > 0 ? medianOf(ratios) : null, medianWidthShare: widths.length > 0 ? medianOf(widths) : null };
   const coverage = scored.length > 0 ? covered / scored.length : null;
+  // Owner decision 3 (2026-09-24): an arbitration salary never falls; one observed below his previous salary is flagged
+  const belowPrevious = awards
+    .filter((c) => typeof c.previousSalary === 'number' && (c.salary as number) < c.previousSalary)
+    .map((c) => ({ playerId: c.playerId, name: nameOf(c.playerId), firstSeason: c.firstSeason, salary: c.salary as number, previous: c.previousSalary as number }));
+  const previousUnknown = awards.filter((c) => c.previousSalary === null || c.previousSalary === undefined).length;
+  const who = (b: AwardScore['belowPrevious'][number]) => `${b.name ?? `player ${b.playerId}`} (${millions(b.salary)} for ${b.firstSeason ?? 'the season'} after ${millions(b.previous)})`;
+  const flagged = belowPrevious.length > 0
+    ? ` Flag: ${plural(belowPrevious.length, 'observed arbitration salary', 'observed arbitration salaries')} fell below the player's previous salary, contradicting the owner-attested rule that an arbitration salary never falls (2026-09-24): ${belowPrevious.map(who).join('; ')}. Counted and scored as observed, not absorbed; the rule stays the owner's until he rules again.`
+    : awards.length - previousUnknown > 0 ? ` None of the ${awards.length - previousUnknown} whose previous salary is recorded fell below it (the owner-attested rule, 2026-09-24).` : '';
+  const unchecked = previousUnknown > 0 ? ` ${plural(previousUnknown, 'arbitration salary', 'arbitration salaries')} could not be checked against the previous salary (not stated in the earlier record).` : '';
   const sharp = sharpness.medianRatio !== null
     ? ` The bands scored were a median ${sharpness.medianRatio.toFixed(1)} times as high at their top as at their bottom${sharpness.medianWidthShare !== null ? ` (${pct(sharpness.medianWidthShare)} of the salary wide)` : ''}: coverage follows partly from that width, so it is read beside it.`
     : '';
   const where = `${capped > 0 ? ` ${plural(capped, 'award')} on a trip beyond the top class ${capped === 1 ? 'is' : 'are'} read in class ${regime.classes}, the top class, as the ladder reads a later trip.` : ''}` +
     `${unclassed > 0 ? ` ${plural(unclassed, 'award')} whose trip was not recorded ${unclassed === 1 ? 'is' : 'are'} scored in the total and in no class.` : ''}`;
-  const text = scored.length > 0
+  const text = (scored.length > 0
     ? `${covered} of ${scored.length} observed arbitration salaries fell inside the band the earlier import priced for them (${Math.round((coverage as number) * 100)}%); ${awards.length - scored.length} had no band priced then.${sharp}${where} The ladder's bands are ranges of reasonable readings, not calibrated intervals: reported, not gated.`
-    : `${plural(awards.length, 'arbitration salary', 'arbitration salaries')} observed; the earlier import priced no band for any of them, so none is scored.`;
+    : `${plural(awards.length, 'arbitration salary', 'arbitration salaries')} observed; the earlier import priced no band for any of them, so none is scored.`) + flagged + unchecked;
   return {
     status: 'scored', awards: awards.length, scored: scored.length, covered, coverage, sharpness,
-    byClass: [...classes].sort((a, b) => a[0] - b[0]).map(([k, v]) => ({ arbitrationClass: k, ...v })), unclassed, text,
+    byClass: [...classes].sort((a, b) => a[0] - b[0]).map(([k, v]) => ({ arbitrationClass: k, ...v })), unclassed, belowPrevious, previousUnknown, text,
   };
 }
 

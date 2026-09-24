@@ -40,7 +40,7 @@ import {
 } from './playerState.js';
 import { CONTROL_HORIZON_SEASONS, OPENING_PRICE_MINIMUMS, PRODUCTION_NO_EVIDENCE, SIGNINGS_POLICY } from './playerValueCalibration.js';
 import {
-  contractBreaks, contractImports, contractPair, contractSnapshotAt, contractStoreVersion, type ContractSnapshotInput,
+  contractBreaks, contractImports, contractPair, contractSnapshotAt, contractStoreVersion, storedPairAnyMethod, type ContractSnapshotInput,
 } from './playerValueContractStore.js';
 import {
   adoptPrice, awardReadings, contractTimeline, freeAcquisitions, measurePriceOfWin, measureReplacement, observeChanges, priceReserveSeasons, reserveRenewals, scoreAwards,
@@ -97,10 +97,12 @@ export { contractSeasonFor } from './playerValueContract.js';
 /** Service as years.days for the pages: Player Rights' arithmetic, so no consumer divides by the year itself. */
 export { serviceReading } from './playerRights.js';
 export type { ControlSeason, ControlStatus, ControlTimeline, CostBand, CostBasis } from './playerValueControl.js';
-export type { ArbitrationLadder, CostLadder, CostReading, LadderClass, RenewalSpread } from './playerValueCost.js';
+export type { ArbitrationLadder, CombinedCost, CostLadder, CostReading, LadderClass, ProjectedCost, RenewalSpread } from './playerValueCost.js';
+/** Owner decision 2 (2026-09-24): how Payroll combines its players' projected seasons (players as independent). */
+export { combineProjectedCosts } from './playerValueCost.js';
 export type {
-  AwardReading, AwardScore, ContractSnapshot, ContractSnapshotRow, MeasuredBasis, MeasuredPrice, ObservedChange, ObservedKind, ReplacementReading,
-  ReserveRenewalSpread, Timeline, WinterPair,
+  AwardReading, AwardScore, ContractSnapshot, ContractSnapshotRow, MeasuredBasis, MeasuredCheck, MeasuredPrice, ObservedChange, ObservedKind,
+  ReplacementReading, ReserveRenewalSpread, Timeline, WinterPair,
 } from './playerValueSignings.js';
 export type {
   ClubFinanceInput, ClubFinances, FinanceSeason, FinanceTable, MarketCandidate, MarketStanding, OpeningPriceInput, OpeningSampling,
@@ -397,6 +399,11 @@ export interface ObservedMarket {
   imports: Array<{ gameDate: string; season: number | null; rows: number }>;
   /** The save's timeline (review R3-05): imports superseded when the save went back, and why pairs are not formed across a change. */
   timeline: { text: string | null; superseded: string[] };
+  /**
+   * Owner decision 4 (2026-09-24): which imports keep their full contract snapshot, how many were pruned, and how many pairs
+   * are read as stored under an earlier method because a snapshot of theirs was pruned.
+   */
+  retention: { kept: number; pruned: number; olderMethod: number; text: string };
   /** Each pair of consecutive imports of the timeline and what changed between them. */
   pairs: WinterPair[];
   measured: MeasuredPrice;
@@ -614,6 +621,18 @@ function leagueMarket(leagueId: number, options: ValuationOptions = {}): {
 
 // ── the market observed across imports (phase 4b) ────────────────────────────
 
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+/** A player's name as the export writes it, for a flag that names him (owner decision 3); null where the export has none. */
+function playerNameOf(playerId: number): string | null {
+  if (!tableExists('players')) return null;
+  const columns = new Set(tableColumns('players'));
+  if (!['player_id', 'first_name', 'last_name'].every((c) => columns.has(c))) return null;
+  const r = db.prepare('SELECT first_name, last_name FROM players WHERE player_id = ?').get(playerId) as { first_name: unknown; last_name: unknown } | undefined;
+  const name = r ? [r.first_name, r.last_name].filter((x) => typeof x === 'string' && x.length > 0).join(' ') : '';
+  return name.length > 0 ? name : null;
+}
+
 /** Read once per save identity, league and store version: an import's record, a stored pair or a break changes the version. */
 const observedCache = new Map<string, { market: ObservedMarket; platformOf: (playerId: number, first: number) => number | null }>();
 
@@ -689,6 +708,7 @@ function observedMarketOf(
   let last: { date: string; snapshot: ContractSnapshot | null } | null = null;
   const snapshotAt = (date: string) => (last?.date === date ? last.snapshot : contractSnapshotAt(marketId, date));
   const pairs: WinterPair[] = [];
+  let olderMethod = 0;
   for (const t of timeline.pairs) {
     const stored = contractPair(marketId, t.earlier, t.later, SIGNINGS_POLICY.method);
     if (stored) {
@@ -699,8 +719,23 @@ function observedMarketOf(
     const e = snapshotAt(t.earlier);
     const l = contractSnapshotAt(marketId, t.later);
     last = { date: t.later, snapshot: l };
-    if (e && l) pairs.push(observeChanges(e, l, context ??= pairContext()));
+    if (e && l) {
+      pairs.push(observeChanges(e, l, context ??= pairContext()));
+      continue;
+    }
+    // A snapshot of it was pruned (owner decision 4): the pair as stored is the durable record, under its own method
+    const kept = storedPairAnyMethod(marketId, t.earlier, t.later);
+    if (kept) {
+      pairs.push(kept);
+      olderMethod += 1;
+    }
   }
+  const prunedImports = imports.filter((i) => i.pruned).length;
+  const retention = {
+    kept: imports.length - prunedImports, pruned: prunedImports, olderMethod,
+    text: `Full contract snapshots are kept for the imports that bracket a winter and the most recent import (owner, 2026-09-24): ${imports.length - prunedImports} of ${plural(imports.length, 'import')} kept, ` +
+      `${prunedImports} pruned; every pair of imports observed is kept as stored.${olderMethod > 0 ? ` ${plural(olderMethod, 'pair')} ${olderMethod === 1 ? 'is' : 'are'} read as stored under an earlier method (${SIGNINGS_POLICY.method} is current): a snapshot of ${olderMethod === 1 ? 'it' : 'each'} was pruned, so it cannot be read again.` : ''}`,
+  };
   const acquisitions = freeAcquisitions(pairs);
   const replacement = measureReplacement(acquisitions, acquiredProduction(marketId, acquisitions));
   const dollars = finance.financials.value === false
@@ -740,9 +775,10 @@ function observedMarketOf(
     market: {
       imports: byDate.map((x) => ({ gameDate: x.gameDate, season: x.season, rows: x.rows })),
       timeline: { text: timeline.text, superseded: timeline.superseded },
+      retention,
       pairs,
       measured,
-      awards: { ...scoreAwards(pairs, regime), readings: [], readingsText: '' },
+      awards: { ...scoreAwards(pairs, regime, playerNameOf), readings: [], readingsText: '' },
       reserveClause: reserveRenewals(pairs, finance.minimumSalary.value, regime),
       replacement,
     },

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { COST_PENDING_OBSERVED_PAY, COST_POLICY } from '../server/playerValueCalibration.js';
-import { measureCostLadder, priceControlTimeline, type CostLadder, type CostLadderInput } from '../server/playerValueCost.js';
+import { combineProjectedCosts, measureCostLadder, priceControlTimeline, type CostLadder, type CostLadderInput, type ProjectedCost } from '../server/playerValueCost.js';
 import type { ControlSeason, ControlTimeline, CostBand } from '../server/playerValueControl.js';
 import type { MarketCandidate, PriceBand, SeasonWar } from '../server/playerValueFinances.js';
 import type { PlayerProduction } from '../server/playerValueProduction.js';
-import { arbitrationRegimeOf } from '../server/playerRights.js';
+import { arbitrationRegimeOf, arbitrationSalaryFloor } from '../server/playerRights.js';
 import type { ContractRules } from '../server/leagueRules.js';
 import { derivedFrom, fromExport, unknownBecause, type Sourced } from '../server/provenance.js';
 import {
@@ -650,5 +650,154 @@ describe('Player Value: the cost of controlled seasons, phase 4a review', () => 
     expect(band(farther).high).toBeGreaterThan(band(far).high);
     const inside = seasonOf(priced(arbitrationPlayer(1), ladder, productionOf({ low: 1, central: 2, high: 3 }), 2), NEXT);
     expect(inside.cost!.note).not.toMatch(/beyond the/);
+  });
+});
+
+// ── phase 4 owner decisions (2026-09-24): each case written before its code ──
+
+describe('owner decision 3 (2026-09-24): an arbitration salary is never below the previous season\'s salary', () => {
+  const WEAK = { low: -1, central: 0, high: 0.5 };
+  const paid = (c: number, salary: number) =>
+    timelineOf({ state: stateOf({ days: classDays(c, 60) + CLOCK, thisYear: CLOCK }), contract: factsOf(contractRow({ years: 1, salary })), clock: CLOCK });
+
+  it("the rule is Player Rights', owner-attested, and never MLB's 20% cut", () => {
+    const regime = arbitrationRegimeOf(mlbRules());
+    expect(regime.salaryFloor).toBeTruthy();
+    expect(regime.salaryFloor!.basis).toBe('owner_attested');
+    expect(regime.salaryFloor!.text).toMatch(/2026-09-24/);
+    expect(regime.salaryFloor!.text).not.toMatch(/20%|80%/);
+    // Stated once, by Player Rights: the floor is the previous salary itself, and an unknown one cannot bind
+    expect(arbitrationSalaryFloor(regime, 6_000_000)).toMatchObject({ status: 'binds', floor: 6_000_000 });
+    expect(arbitrationSalaryFloor(regime, null)).toMatchObject({ status: 'unknown', floor: null });
+    // A league without arbitration has no such rule
+    const none = arbitrationRegimeOf(mlbRules({ rules_salary_arbitration_minimum_years: 0 }));
+    expect(none.salaryFloor).toBeNull();
+    expect(arbitrationSalaryFloor(none, 6_000_000)).toMatchObject({ status: 'not_applicable', floor: null });
+  });
+
+  it('next season is at least this season\'s contract salary (low edge and central), what he costs if tendered, the non-tender said', () => {
+    const { ladder } = ladderOf(THICK);
+    // A modest platform: the ladder alone reads some of the season below his $6M
+    const t = priced(paid(2, 6_000_000), ladder, productionOf({ low: 0.5, central: 1.5, high: 3 }), 1);
+    const next = seasonOf(t, NEXT);
+    expect(next.status).toBe('arbitration');
+    const b = band(next);
+    expect(b.low).toBe(6_000_000);
+    expect(b.central!).toBeGreaterThanOrEqual(6_000_000);
+    expect(b.high).toBeGreaterThan(b.low);
+    expect(next.cost!.note).toMatch(/owner-attested/);
+    expect(next.cost!.note).toMatch(/tender/);
+    // Not the CBA's 80% of it: the floor is his salary itself
+    expect(b.low).not.toBe(4_800_000);
+  });
+
+  it('where the ladder reads every outcome below his previous salary, the season is his previous salary, said', () => {
+    const { ladder } = ladderOf(THICK);
+    const t = priced(paid(2, 40_000_000), ladder, productionOf(WEAK), 0);
+    const b = band(seasonOf(t, NEXT));
+    expect(b.low).toBe(40_000_000);
+    expect(b.high).toBe(40_000_000);
+    expect(seasonOf(t, NEXT).cost!.note).toMatch(/every reading|above the ladder|below his previous/);
+  });
+
+  it("a held player's arbitration low edges never fall from one season to the next", () => {
+    const { ladder } = ladderOf(THICK);
+    for (const salary of [MINIMUM, 3_000_000, 9_000_000]) {
+      for (const production of [productionOf(STAR), productionOf(WEAK)]) {
+        const t = priced(paid(1, salary), ladder, production, 2);
+        const arb = t.seasons.filter((s) => s.season > THIS_SEASON && s.cost?.value && (s.status === 'arbitration' || s.costBasis?.method === 'arbitration_ladder'));
+        expect(arb.length).toBeGreaterThan(1);
+        let previous = salary;
+        for (const s of arb) {
+          expect(band(s).low, `${salary} ${s.season}`).toBeGreaterThanOrEqual(previous - 1e-6);
+          previous = band(s).low;
+        }
+      }
+    }
+  });
+
+  it('where the previous salary is not known the rule cannot bind, and the basis says so', () => {
+    const { ladder } = ladderOf(THICK);
+    // A salary of 0 in a season the contract covers is not stated (unknown, never $0)
+    const t = priced(paid(2, 0), ladder, productionOf(WEAK), 0);
+    const next = seasonOf(t, NEXT);
+    expect(next.status).toBe('arbitration');
+    expect(next.cost!.note).toMatch(/previous (season's )?salary is not known|not known/);
+    expect(band(next).low).toBeLessThan(5_000_000);
+  });
+
+  it('the arbitration branch of a season between statuses is floored; the renewal branch is not', () => {
+    const { ladder } = ladderOf(THICK);
+    const t = priced(timelineOf({ state: stateOf({ days: 2 * YEAR + 100 + CLOCK, thisYear: CLOCK }), contract: factsOf(contractRow({ years: 1, salary: 5_000_000 })), clock: CLOCK }), ladder, productionOf(WEAK), 0);
+    const next = seasonOf(t, NEXT);
+    expect(next.status).toBe('indeterminate');
+    expect(next.between).toEqual(expect.arrayContaining(['pre_arbitration', 'arbitration']));
+    const arb = next.costBasis!.centrals!.filter((c) => c.status === 'arbitration');
+    expect(arb.length).toBeGreaterThan(0);
+    for (const c of arb) expect(c.central).toBeGreaterThanOrEqual(5_000_000);
+    expect(band(next).low).toBe(MINIMUM);
+    expect(band(next).high).toBeGreaterThanOrEqual(5_000_000);
+  });
+});
+
+describe('owner decision 2 (2026-09-24): Payroll combines players as independent', () => {
+  const c = (low: number, central: number | null, high: number, over: Partial<ProjectedCost> = {}): ProjectedCost =>
+    ({ low, central, high, centrals: null, ifHeld: false, classes: [2], ...over });
+
+  it("one player's combined range is his own band; many are narrower than edge to edge and hold the sum of centrals", () => {
+    const one = combineProjectedCosts([c(1e6, 3e6, 7e6)]);
+    expect(one.low).toBeCloseTo(1e6, 0);
+    expect(one.high).toBeCloseTo(7e6, 0);
+    const ten = combineProjectedCosts(Array.from({ length: 10 }, () => c(1e6, 3e6, 7e6)));
+    expect(ten.edges).toEqual({ low: 10e6, high: 70e6 });
+    expect(ten.low).toBeCloseTo(30e6 - Math.sqrt(10) * 2e6, 0);
+    expect(ten.high).toBeCloseTo(30e6 + Math.sqrt(10) * 4e6, 0);
+    expect(ten.combined).toBe(10);
+    expect(ten.atEdges).toBe(0);
+  });
+
+  it('what is not noise stays at its edges and is added: which status, which class, whether he is held; only each player\'s own distance beyond them is combined', () => {
+    // Between statuses: the renewal's central on the low side, arbitration's on the high side; beyond them, his own spread
+    const between = c(0.78e6, null, 9e6, { centrals: [{ status: 'pre_arbitration', central: 0.78e6 }, { status: 'arbitration', central: 4e6 }] });
+    // A range of classes: class 2's central to class 3's, and his own spread beyond
+    const classes = c(2e6, 5e6, 12e6, { classes: [2, 3], classCentrals: [4e6, 7e6] });
+    // May leave: nothing on the low side; held, his central and his own spread above it
+    const leave = c(3e6, 6e6, 10e6, { ifHeld: true });
+    const noise = c(1e6, 3e6, 7e6);
+    const r = combineProjectedCosts([between, classes, leave, noise]);
+    expect(r.atEdges).toBe(3);
+    expect(r.combined).toBe(1);
+    // Edges added: 0.78 + 4 + 0 + 3 on the low side, less the root of 0 + 2² + 0 + 2²; 4 + 7 + 6 + 3 on the high side, plus the root of 5² + 5² + 4² + 4²
+    expect(r.low).toBeCloseTo(7.78e6 - Math.sqrt(8) * 1e6, -2);
+    expect(r.high).toBeCloseTo(20e6 + Math.sqrt(82) * 1e6, -2);
+    expect(r.edges).toEqual({ low: 3.78e6, high: 38e6 });
+    // With nothing but structure (every player's band its own structural range) the combined range is the edge sum
+    const pure = combineProjectedCosts([c(0.78e6, null, 4e6, { centrals: [{ status: 'pre_arbitration', central: 0.78e6 }, { status: 'arbitration', central: 4e6 }] }), c(0, 0, 5e6, { ifHeld: true, central: 5e6 })]);
+    expect(pure.low).toBeCloseTo(pure.edges.low, 0);
+    expect(pure.high).toBeCloseTo(pure.edges.high, 0);
+    expect(r.text).toMatch(/independent/);
+    expect(r.text).toMatch(/not a calibrated interval/);
+  });
+
+  it('always lies inside the edge-to-edge range and holds the sum of centrals', () => {
+    let seed = 7;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    for (let k = 0; k < 50; k += 1) {
+      const list = Array.from({ length: 1 + Math.floor(rnd() * 20) }, () => {
+        const low = rnd() * 5e6;
+        const central = low + rnd() * 5e6;
+        const high = central + rnd() * 10e6;
+        const kind = rnd();
+        const other = low + rnd() * (high - low);
+        return kind < 0.15 ? c(low, null, high, { centrals: [{ status: 'pre_arbitration', central: low }, { status: 'arbitration', central }] })
+          : kind < 0.3 ? c(low, central, high, { ifHeld: true })
+            : kind < 0.4 ? c(low, central, high, { classes: [1, 2], classCentrals: [central, other] }) : c(low, central, high);
+      });
+      const r = combineProjectedCosts(list);
+      expect(r.low).toBeGreaterThanOrEqual(r.edges.low - 1);
+      expect(r.high).toBeLessThanOrEqual(r.edges.high + 1);
+      expect(r.low).toBeLessThanOrEqual(r.central.low + 1);
+      expect(r.high).toBeGreaterThanOrEqual(r.central.high - 1);
+    }
   });
 });

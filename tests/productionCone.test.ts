@@ -243,6 +243,8 @@ describe('the production cone renders', () => {
     expect(PROJECTED_TIP).toMatch(/range of reasonable readings/);
     expect(PROJECTED_TIP).toMatch(/edge against edge/);
     expect(PROJECTED_TIP).not.toMatch(/expected/i);
+    // Owner, 2026-09-24: the range shown combines players as independent, labelled honestly
+    expect(PROJECTED_TIP).toMatch(/players combined as independent; not a calibrated interval/);
   });
 });
 

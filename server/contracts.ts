@@ -277,6 +277,10 @@ export interface SeasonCost {
   source: string | null;
   /** He may be a free agent instead, or the player decides: the band is what he costs if the club holds him. */
   ifHeld: boolean;
+  /** The arbitration classes the band covers (more than one is a range of classes: Payroll keeps it at its edges); null where none. */
+  classes: number[] | null;
+  /** Each covered arbitration class's central (the class range's edges for Payroll's sum); null where none. */
+  classCentrals: number[] | null;
   /**
    * For an option or opt-out season: the declined branch, with what he falls to and its cost (null where control
    * ends there: no cost to this club), so the option is shown on both branches (review R1-06).
@@ -300,6 +304,8 @@ function costOf(season: CostOf): SeasonCost | null {
     text: season.cost.note ?? (point ? 'The contract\'s salary.' : 'Not established.'),
     source: season.costBasis?.source ?? null,
     ifHeld: season.costBasis?.ifHeld ?? false,
+    classes: season.costBasis?.classes && season.costBasis.classes.length > 0 ? season.costBasis.classes : null,
+    classCentrals: season.costBasis?.classCentrals && season.costBasis.classCentrals.length > 0 ? season.costBasis.classCentrals.map((c) => c.central) : null,
     declined: null,
   };
 }

@@ -3,7 +3,9 @@ import { db, tableColumns, tableExists } from './db.js';
 import { loadSettings } from './settings.js';
 import { leagueRulesForLeague } from './leagueRules.js';
 import { controlAfterThisSeason, seasonCost, type SeasonCost } from './contracts.js';
-import { clubFinances, contractSeasonFor, payrollValuations, serviceReading, type ContractFacts, type PlayerValuation } from './playerValue.js';
+import {
+  clubFinances, combineProjectedCosts, contractSeasonFor, payrollValuations, serviceReading, type ContractFacts, type PlayerValuation,
+} from './playerValue.js';
 
 export const payrollRoutes = Router();
 
@@ -54,24 +56,6 @@ function seasonMoney(contract: ContractFacts, thisSeason: number, year: number):
     return { salary, unstated: salary === null, option: { season: year, kind: 'opt_out', salary, committed: true } };
   }
   return { salary, unstated: salary === null, option: null };
-}
-
-/**
- * The sum of the projected seasons' centrals (phase 4a review): low counts a season that may be free agency as
- * leaving and a season between statuses at its lowest status's central; high counts him held and the highest.
- */
-function centralSum(known: SeasonCost[]): { low: number; high: number } {
-  let low = 0;
-  let high = 0;
-  for (const x of known) {
-    const options = x.central !== null ? [x.central] : (x.centrals ?? []).map((c) => c.central);
-    // A priced band always names a central or its statuses'; were neither there, its own edges bound it
-    const lo = options.length > 0 ? Math.min(...options) : (x.low as number);
-    const hi = options.length > 0 ? Math.max(...options) : (x.high as number);
-    low += x.ifHeld ? 0 : lo;
-    high += hi;
-  }
-  return { low, high };
 }
 
 payrollRoutes.get('/payroll/:orgId', (req, res) => {
@@ -194,26 +178,33 @@ payrollRoutes.get('/payroll/:orgId', (req, res) => {
     const optional = players.flatMap((p) => p.optionYears.filter((o) => o.season === year && !o.committed));
     const projected = players.map((p) => p.projected[i]).filter((x): x is SeasonCost => x !== null);
     const known = projected.filter((x) => x.low !== null && x.high !== null);
+    // Owner decision 2 (2026-09-24): players combined as independent, what is not noise at its edges (Player Value's method)
+    const combined = known.length > 0
+      ? combineProjectedCosts(known.map((x) => ({ low: x.low as number, high: x.high as number, central: x.central, centrals: x.centrals, ifHeld: x.ifHeld, classes: x.classes, classCentrals: x.classCentrals })))
+      : null;
     return {
       year,
       total: withMoney.reduce((sum, p) => sum + (p.byYear[i] ?? 0), 0),
       players: withMoney.length,
       /*
-       * Phase 4a: what the controlled seasons no contract covers are projected to cost, summed edge against
-       * edge: a range of reasonable readings (every player at his low edge, every player at his high edge), not an
-       * interval and not an expectation. Beside the committed total, never in it or in the headroom. A season that
-       * may be free agency adds nothing to the low edge (he may leave) and what he costs if held to the high edge;
-       * a season whose cost is not established is counted apart, never as $0. Whether players' readings should be
-       * combined statistically rather than edge to edge is an owner question (review R2-01), so edges stay summed.
+       * Phase 4a: what the controlled seasons no contract covers could cost, beside the committed total, never in it
+       * or in the headroom; a season whose cost is not established is counted apart, never as $0. Since the owner's
+       * decision 2 (2026-09-24) the range shown is Player Value's `combineProjectedCosts`: the sum of centrals, each
+       * player's distance from his central combined as independent across players, and what is not noise (between
+       * statuses, a range of arbitration classes, may leave) at its edges, added; labelled "players combined as
+       * independent; not a calibrated interval". The edge-to-edge sum (every player at his low edge to every player at
+       * his high edge; a season that may be free agency adding nothing to the low edge) is kept in `edges`.
        *
        * The centrals (review R2-03) are summed beside it: each season's own; a season that may be free agency adds
        * its central if held to the upper sum only; a season between statuses (no single central) adds its lowest
        * and highest status's central. Where nothing is open the two are one figure.
        */
       projected: {
-        low: known.length > 0 ? known.reduce((sum, x) => sum + (x.ifHeld ? 0 : (x.low as number)), 0) : null,
-        high: known.length > 0 ? known.reduce((sum, x) => sum + (x.high as number), 0) : null,
-        central: known.length > 0 ? centralSum(known) : null,
+        low: combined?.low ?? null,
+        high: combined?.high ?? null,
+        edges: combined?.edges ?? null,
+        combination: combined ? { combined: combined.combined, atEdges: combined.atEdges, text: combined.text } : null,
+        central: combined?.central ?? null,
         players: known.length,
         unpriced: projected.length - known.length,
         mayLeave: known.filter((x) => x.ifHeld).length,

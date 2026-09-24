@@ -122,6 +122,35 @@ describe("Payroll's price of a win", () => {
     expect(html).toMatch(/opening reading, not in force/i);
   });
 
+  it('with the measured price in force, names it per win produced and shows the per-projected-win reading as its check, in the line and the history (owner, 2026-09-24)', () => {
+    const html = renderToStaticMarkup(createElement(PriceOfWinLine, {
+      price: price({
+        label: 'measured: observed signings',
+        stage: 'measured',
+        price: { value: { central: 10_000_000, low: 9_400_000, high: 10_700_000 }, source: 'signings' },
+        adoption: {
+          inForce: 'measured',
+          reason: 'The measured price is in force: per win produced.',
+          opening: { central: 7_010_000, low: 6_050_000, high: 9_870_000, comparable: { low: 5_900_000, high: 11_100_000 } },
+          measured: {
+            status: 'measured', signings: 120, observed: 120, text: 'Measured on 120 signings, per win produced.',
+            price: { value: { central: 10_000_000, low: 9_400_000, high: 10_700_000 }, source: 'signings' },
+            check: { status: 'measured', unit: 'projected', central: 6_050_000, low: 5_900_000, high: 6_200_000, ratio: 0.605, text: 'The check: per win projected at signing.' },
+            bases: [],
+          },
+          rule: 'Q-4.',
+        },
+      }),
+      history: [
+        { gameDate: '2027-04-20', season: 2027, inForce: 'measured', opening: { central: 7_400_000, low: 6_600_000, high: 9_900_000 }, measured: { status: 'measured', signings: 120, central: 10_000_000, low: 9_400_000, high: 10_700_000, check: { central: 6_050_000, ratio: 0.605 } }, note: null },
+      ],
+    }));
+    expect(html).toMatch(/per win produced/);
+    expect(html).toMatch(/check/i);
+    expect(html).toMatch(/\$6\.05M/);
+    expect(html).toMatch(/0\.61|0\.60/);
+  });
+
   it('shows a known floor even when the price itself is unknown', () => {
     const html = renderToStaticMarkup(createElement(PriceOfWinLine, {
       price: price({ price: { value: null, source: null, note: 'A single reading is not a band.' } }),

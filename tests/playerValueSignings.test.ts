@@ -212,7 +212,8 @@ describe('observed changes: named for what changed, read through Player Rights a
 describe('the measured price of a win (ratio of sums, resampled band)', () => {
   it('is salary above the minimum over expected wins, summed over the free-agent signings, with a band that holds it', () => {
     const pair = marketWinter(30, (i) => 5e6 + (i % 5) * 0.4e6);
-    const m = measurePriceOfWin({ pairs: [pair], imports: 2, replacement: null });
+    // Each produced what was expected of him: per win produced (owner, 2026-09-24) equals per win expected here
+    const m = measurePriceOfWin({ pairs: [pair], imports: 3, replacement: null, realized: realizedOf(pair) });
     expect(m.status).toBe('measured');
     const signings = pair.changes.filter((c) => c.uses.includes('price'));
     const ratio = signings.reduce((s, c) => s + c.money!, 0) / signings.reduce((s, c) => s + c.wins!, 0);
@@ -233,8 +234,10 @@ describe('the measured price of a win (ratio of sums, resampled band)', () => {
 
   it('fewer signings at the same prices never give a narrower band (thinner evidence widens)', () => {
     const price = (i: number) => 3e6 + (i % 10) * 0.8e6;
-    const small = measurePriceOfWin({ pairs: [marketWinter(20, price)], imports: 2, replacement: null });
-    const large = measurePriceOfWin({ pairs: [marketWinter(80, price)], imports: 2, replacement: null });
+    const smallPair = marketWinter(20, price);
+    const largePair = marketWinter(80, price);
+    const small = measurePriceOfWin({ pairs: [smallPair], imports: 3, replacement: null, realized: realizedOf(smallPair) });
+    const large = measurePriceOfWin({ pairs: [largePair], imports: 3, replacement: null, realized: realizedOf(largePair) });
     const width = (m: typeof small) => m.price.value!.high - m.price.value!.low;
     expect(width(small)).toBeGreaterThan(width(large));
   });
@@ -539,20 +542,23 @@ describe('phase 4b review: the measured price read like the opening one (R4-01, 
     const realized = after.bases.find((b) => b.id === 'realized')!;
     expect(realized.status).toBe('measured');
     expect(realized.unit).toBe('realized');
-    // Half the wins realized: twice the price per realized win, and the band spans both readings
+    // Half the wins realized: twice the price per realized win. Since the owner's decision (2026-09-24) the price is the
+    // realized reading alone; the projected reading is its check, beside it
     expect(realized.central!).toBeCloseTo(2 * after.bases.find((b) => b.id === 'first')!.central!, -4);
-    expect(after.price.value!.low).toBeLessThanOrEqual(after.bases.find((b) => b.id === 'first')!.central!);
-    expect(after.price.value!.high).toBeGreaterThanOrEqual(realized.central!);
+    expect(after.price.value).toEqual({ central: realized.central, low: realized.low, high: realized.high });
+    expect(after.check!.central!).toBeLessThan(realized.central!);
   });
 
   it('never replaces the opening price by changing what it measures: without the realized reading it stays, naming both units', () => {
     const w = reviewWinter(120, (i) => 6e6 + (i % 3) * 0.1e6);
     const m = measurePriceOfWin({ pairs: [w.pair], imports: 2, replacement: null });
-    expect(m.status).toBe('measured');
+    // Owner, 2026-09-24: the price is per win produced; without that reading it is not measured, the projected reading its check
+    expect(m.status).toBe('not_measured');
+    expect(m.check!.status).toBe('measured');
     const inForce = adoptPrice(opening(), m);
     expect(inForce.stage).toBe('opening');
-    expect(inForce.adoption!.reason).toMatch(/per (projected )?win projected at signing|projected at signing/);
-    expect(inForce.adoption!.reason).toMatch(/realized/);
+    expect(inForce.adoption!.reason).toMatch(/projected at signing/);
+    expect(inForce.adoption!.reason).toMatch(/per win produced/);
   });
 
   it('with the realized reading, the signings covering the class and a narrower band, it replaces the opening price and names the unit', () => {
@@ -561,7 +567,7 @@ describe('phase 4b review: the measured price read like the opening one (R4-01, 
     const inForce = adoptPrice(opening(), m);
     expect(inForce.stage).toBe('measured');
     expect(inForce.adoption!.reason).toMatch(/narrower than the opening band/);
-    expect(inForce.adoption!.reason).toMatch(/per realized win/);
+    expect(inForce.adoption!.reason).toMatch(/per win produced/);
     expect(inForce.adoption!.reason).toMatch(/projected at signing/);
     expect(inForce.stamps.bases.basis).toMatch(/Observed signings/);
   });
@@ -634,7 +640,7 @@ describe('phase 4b review: the measured price read like the opening one (R4-01, 
 
   it('the band says it is a sampling band that covers less than its share at a few dozen signings (R4-09)', () => {
     const w = reviewWinter(30, () => 5e6);
-    const m = measurePriceOfWin({ pairs: [w.pair], imports: 2, replacement: null });
+    const m = measurePriceOfWin({ pairs: [w.pair], imports: 3, replacement: null, realized: w.realized(1) });
     expect(m.text).toMatch(/covers less than/);
   });
 });
@@ -642,7 +648,7 @@ describe('phase 4b review: the measured price read like the opening one (R4-01, 
 describe('phase 4b review: replacement never changes the unit (R3-06, R4-06); awards scored with their sharpness (R4-08, R3-10)', () => {
   it('a measured replacement level leaves the measured price in the export\'s WAR, and is shown with who it rests on', () => {
     const pair = marketWinter(30, () => 5e6);
-    const base = measurePriceOfWin({ pairs: [pair], imports: 2, replacement: null });
+    const base = measurePriceOfWin({ pairs: [pair], imports: 3, replacement: null, realized: realizedOf(pair) });
     const replacement = measureReplacement(
       Array.from({ length: 40 }, (_, i) => ({ playerId: 9000 + i, orgId: 1, firstSeason: 2041, how: 'minor_league_deal' as const, gameDate: '2041-05-01' })),
       new Map(Array.from({ length: 35 }, (_, i) => [9000 + i, { war: 0.4, opportunities: 200 }])),
@@ -650,7 +656,7 @@ describe('phase 4b review: replacement never changes the unit (R3-06, R4-06); aw
     expect(replacement.status).toBe('measured');
     expect(replacement.text).toMatch(/5 of 40|did not play/);
     expect(replacement.text).toMatch(/only (the )?pickups who played|who played/);
-    const withIt = measurePriceOfWin({ pairs: [pair], imports: 2, replacement });
+    const withIt = measurePriceOfWin({ pairs: [pair], imports: 3, replacement, realized: realizedOf(pair) });
     expect(withIt.price.value!.central).toBeCloseTo(base.price.value!.central, 0);
     expect(withIt.text).toMatch(/export's (own )?WAR/);
   });
@@ -670,5 +676,81 @@ describe('phase 4b review: replacement never changes the unit (R3-06, R4-06); aw
     expect(r.readings[0].status).toBe('measured');
     expect(r.text).toMatch(/top class|class 3/);
     expect(r.leftOut).toBe(1);
+  });
+});
+
+// ── phase 4 owner decisions (2026-09-24): each case written before its code ──
+
+describe('owner decision 1 (2026-09-24): the price of a win in force is per win produced', () => {
+  const opening = (): PriceOfWin => openingPriceFixture();
+
+  it('once measured, its central and band are the realized reading alone; the per-projected-win reading is its check, with the ratio, never in the band', () => {
+    // Signings priced at $6M per expected win who produce 0.6 of it: $10M per win produced
+    const w = reviewWinter(120, (i) => 6e6 + (i % 3) * 0.1e6);
+    const m = measurePriceOfWin({ pairs: [w.pair], imports: 3, replacement: null, realized: w.realized(0.6) });
+    const realized = m.bases.find((b) => b.id === 'realized')!;
+    expect(m.status).toBe('measured');
+    expect(m.price.value).toEqual({ central: realized.central, low: realized.low, high: realized.high });
+    // The projected readings sit well below it and are never inside the price's band
+    const first = m.bases.find((b) => b.id === 'first')!;
+    expect(first.high!).toBeLessThan(m.price.value!.low);
+    expect(m.check).toBeTruthy();
+    expect(m.check!.unit).toBe('projected');
+    expect(m.check!.ratio!).toBeCloseTo(m.check!.central! / realized.central!, 6);
+    expect(m.check!.text).toMatch(/check/i);
+    expect(m.text).toMatch(/per win produced/);
+    // In force, the price, its rules and the reason all say per win produced; the projected reading is named as the check
+    const inForce = adoptPrice(opening(), m);
+    if (inForce.stage === 'measured') {
+      expect(inForce.price.value).toEqual(m.price.value);
+      expect(inForce.rules.central).toMatch(/per win produced/);
+      expect(inForce.rules.band).toMatch(/per win produced/);
+      expect(inForce.rules.central).not.toMatch(/until the owner/);
+    }
+    expect(inForce.adoption!.reason).toMatch(/per win produced/);
+    expect(inForce.adoption!.reason).toMatch(/check/);
+  });
+
+  it('before the realized reading exists, nothing is in force from the signings: the measured price is not measured and says it waits, with the check shown', () => {
+    const w = reviewWinter(60, () => 5e6);
+    const m = measurePriceOfWin({ pairs: [w.pair], imports: 2, replacement: null });
+    expect(m.status).toBe('not_measured');
+    expect(m.price.value).toBeNull();
+    expect(m.price.note).toMatch(/per win produced/);
+    expect(m.price.note).toMatch(/completed/);
+    expect(m.check!.status).toBe('measured');
+    expect(m.check!.central!).toBeGreaterThan(0);
+    expect(m.check!.ratio).toBeNull();
+    const inForce = adoptPrice(opening(), m);
+    expect(inForce.stage).toBe('opening');
+  });
+});
+
+describe('owner decision 3 (2026-09-24): an observed arbitration salary below the previous salary contradicts the owner-attested rule', () => {
+  it('is flagged, counted and named, never silently absorbed', () => {
+    const cost = { season: 2041, low: 2e6, high: 9e6, method: 'arbitration_ladder', source: 'measured' };
+    // Each held a one-year 2040 deal at $5M; two are paid less for 2041
+    const before = [1, 2, 3, 4].map((id) => row(id, { salaries: [5e6], rights: standingFor('arbitration', { low: 2, high: 2 }), nextCost: cost }));
+    const after = [row(1, { firstSeason: 2041, salaries: [4e6] }), row(2, { firstSeason: 2041, salaries: [3.5e6] }), row(3, { firstSeason: 2041, salaries: [5e6] }), row(4, { firstSeason: 2041, salaries: [6e6] })];
+    const pair = observe(EARLY(before), LATE(after));
+    const awards = pair.changes.filter((c) => c.kind === 'arbitration_salary');
+    expect(awards).toHaveLength(4);
+    expect(awards.find((c) => c.playerId === 1)!.previousSalary).toBe(5e6);
+    const s = scoreAwards([pair], { status: 'arbitration', classes: 3, mlb: false }, (id) => `Player ${id} Name`);
+    expect(s.belowPrevious.map((b) => b.playerId)).toEqual([1, 2]);
+    expect(s.text).toMatch(/2 (observed )?arbitration salaries/);
+    expect(s.text).toMatch(/owner-attested/);
+    expect(s.text).toMatch(/Player 1 Name/);
+    expect(s.text).toMatch(/Player 2 Name/);
+    // Still scored: flagged, not dropped
+    expect(s.scored).toBe(4);
+  });
+
+  it('where the previous salary is not in the earlier record, nothing is flagged and the count says how many could not be checked', () => {
+    const cost = { season: 2041, low: 2e6, high: 9e6, method: 'arbitration_ladder', source: 'measured' };
+    const pair = observe(EARLY([row(1, { salaries: [null], rights: standingFor('arbitration', { low: 2, high: 2 }), nextCost: cost })]), LATE([row(1, { firstSeason: 2041, salaries: [3e6] })]));
+    const s = scoreAwards([pair], { status: 'arbitration', classes: 3, mlb: false });
+    expect(s.belowPrevious).toEqual([]);
+    expect(s.previousUnknown).toBe(1);
   });
 });

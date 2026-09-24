@@ -399,7 +399,10 @@ player of that service, so a Super Two's later trips sit one class below their c
 `arbitrationRegimeOf` states the regime as read (its arbitration classes, whether it is MLB's, or why it is
 unknown), so Player Value prices a controlled season (phase 4a) without reading a rule. A regime with no arbitration
 (its rule is 0, or free agency comes no later than the arbitration line) has no window and no arbitration rung, so no
-season lists arbitration among what it could be (phase 4a review). Player Value composes these
+season lists arbitration among what it could be (phase 4a review). Where the regime as read has arbitration it also
+states the owner-attested rule that an arbitration salary is never below the player's previous season's salary
+(2026-09-24, basis `owner_attested`; `arbitrationSalaryFloor`, never MLB's cap on a cut), which Player Value applies to
+every season it prices as arbitration where the previous salary is known. Player Value composes these
 into its timeline and never re-derives them. Freshness is applied per action: a stale export
 makes every action indeterminate; the log matters only to recall. The rules,
 their basis and their unresolved edges are in

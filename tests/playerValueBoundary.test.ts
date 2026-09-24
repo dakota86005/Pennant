@@ -576,7 +576,15 @@ describe('the Player Value boundary', () => {
       const aliases = nodesOf(writer).filter((n) => ts.isVariableDeclaration(n) && !!n.initializer
         && ts.isIdentifier(n.initializer) && ['db', 'historyDb'].includes(n.initializer.text));
       expect(aliases.length, writer).toBe(0);
-      expect(code(writer), writer).not.toMatch(/writeFileSync|appendFileSync|createWriteStream|DROP\s+TABLE|ALTER\s+TABLE|DELETE\s+FROM/i);
+      expect(code(writer), writer).not.toMatch(/writeFileSync|appendFileSync|createWriteStream|DROP\s+TABLE|ALTER\s+TABLE/i);
+      // Owner decision 4 (2026-09-24): the contract store alone deletes, and only its own full snapshots (value_contract_snapshots),
+      // keyed by the save's identity, league and game date; never an import's header, a stored pair or an event, never league.db
+      const deletes = stringsOf(writer).filter((x) => /DELETE\s+FROM/i.test(x));
+      if (writer !== CONTRACT_STORE) expect(deletes, writer).toEqual([]);
+      else {
+        expect(deletes.length, writer).toBeGreaterThan(0);
+        for (const d of deletes) expect(d, writer).toMatch(/^\s*DELETE FROM value_contract_snapshots WHERE save_name = \? AND league_id = \? AND game_date = \?\s*$/);
+      }
     }
     // The fit store: additive, keyed by save, league, last completed season and method, idempotent unless forced
     const store = code(FIT_STORE);
@@ -606,6 +614,9 @@ describe('the Player Value boundary', () => {
     expect(contracts).toMatch(/CREATE TABLE IF NOT EXISTS value_contract_events/);
     expect(contracts).toMatch(/INSERT OR IGNORE INTO value_contract_pairs/);
     expect(contracts).toMatch(/INSERT OR IGNORE INTO value_contract_events/);
+    // Owner decision 4: a pruned import is recorded as an event (the durable record), inside the writer's transaction
+    expect(contracts).toMatch(/'pruned'/);
+    expect(contracts).toMatch(/historyDb\.transaction\(/);
     // Recording an import and reading the market read one import at a time, never the whole history (review R3-03)
     for (const file of ['playerValue.ts', SNAPSHOT_WRITER]) expect(code(file), file).not.toMatch(/\bcontractSnapshots\(/);
   });
@@ -677,6 +688,8 @@ describe('the Player Value boundary', () => {
       ['COST_POLICY_CALIBRATION', 'policy'],
       ['COST_PRIOR_CALIBRATION', 'provisional'],
       ['SIGNINGS_POLICY_CALIBRATION', 'policy'],
+      // Owner decision 2 (2026-09-24): how Payroll combines players
+      ['COST_COMBINATION_POLICY_CALIBRATION', 'policy'],
     ]);
     // Every policy object of numbers in the calibration module is stamped beside it
     for (const name of ownNumbersOf('playerValueCalibration.ts').filter((n) => n !== 'CONTROL_HORIZON_SEASONS')) {
