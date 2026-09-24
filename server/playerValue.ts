@@ -946,8 +946,15 @@ export function computeProductionRefits(options: { fit?: (history: FitHistory) =
       continue;
     }
     const start = performance.now();
-    const history = productionHistory(leagueId, through, current, rules);
-    const run = (options.fit ?? ((h: FitHistory) => fitProductionModel(h, { prior: PRODUCTION_PRIOR, priorSource: PRODUCTION_PRIOR_SOURCE })))(history);
+    let run: FitRun;
+    try {
+      const history = productionHistory(leagueId, through, current, rules);
+      run = (options.fit ?? ((h: FitHistory) => fitProductionModel(h, { prior: PRODUCTION_PRIOR, priorSource: PRODUCTION_PRIOR_SOURCE })))(history);
+    } catch (err) {
+      // One league's failure never skips the others; the fit in force stays and the outcome says why
+      skip({ leagueId, throughSeason: through, refit: false, adopted: null, reason: refitFailure(err), ms: null });
+      continue;
+    }
     const ms = performance.now() - start;
     out.push({
       leagueId, throughSeason: through, run, gameDate: leagueGameDate(leagueId), ms, force: options.force === true,
@@ -957,12 +964,23 @@ export function computeProductionRefits(options: { fit?: (history: FitHistory) =
   return out;
 }
 
+/** A refit that threw, in words: the league's fit in force stays, and the others still run. */
+function refitFailure(err: unknown): string {
+  return `The refit failed (${err instanceof Error ? err.message : String(err)}); the fit in force stays, and no other league or model was skipped.`;
+}
+
 /** Record fits computed elsewhere (the main thread's half): each at its key, idempotent, never replacing an adopted fit with a failing one. */
 export function recordRefits(pending: PendingRefits): RefitOutcome[] {
   const out: RefitOutcome[] = [];
   for (const p of [...pending.production, ...pending.ratings] as Array<PendingFit<{ model: unknown; record: FitRecord | RatingsFitRecord }>>) {
     if (p.run) {
-      const written = recordProductionFit(p.run as { model: unknown; record: FitRecord }, { gameDate: p.gameDate, fitMs: p.ms, force: p.force });
+      let written: number;
+      try {
+        written = recordProductionFit(p.run as { model: unknown; record: FitRecord }, { gameDate: p.gameDate, fitMs: p.ms, force: p.force });
+      } catch (err) {
+        out.push({ ...p.outcome, adopted: null, reason: `${refitFailure(err)} Not recorded: the fit in force at this key stays.` });
+        continue;
+      }
       if (written === 0 && p.force && !p.outcome.adopted) {
         out.push({ ...p.outcome, reason: `${p.outcome.reason} Not recorded: the fit in force at this key stays (a failing refit never replaces an adopted one).` });
         continue;
@@ -1198,8 +1216,14 @@ export function computeRatingsRefits(options: { fit?: (input: RatingsFitInput) =
       continue;
     }
     const start = performance.now();
-    const input = ratingsHistory(leagueId, through, current, rules, options.production?.(leagueId));
-    const run = (options.fit ?? ((i: RatingsFitInput) => fitRatingsModel(i, { prior: RATINGS_PRIOR })))(input);
+    let run: RatingsFitRun;
+    try {
+      const input = ratingsHistory(leagueId, through, current, rules, options.production?.(leagueId));
+      run = (options.fit ?? ((i: RatingsFitInput) => fitRatingsModel(i, { prior: RATINGS_PRIOR })))(input);
+    } catch (err) {
+      out.push({ leagueId, throughSeason: through, run: null, gameDate: null, ms: null, force: false, outcome: { leagueId, throughSeason: through, refit: false, adopted: null, reason: refitFailure(err), ms: null } });
+      continue;
+    }
     const ms = performance.now() - start;
     out.push({
       leagueId, throughSeason: through, run, gameDate: leagueGameDate(leagueId), ms, force: options.force === true || longitudinalArrived,

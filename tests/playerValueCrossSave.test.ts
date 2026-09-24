@@ -3,10 +3,13 @@ import { leagueRulesFromRow, type LeagueRuleRow } from '../server/leagueRules.js
 import {
   clearProductionCaches, clubFinances, leagueFinances, leaguePlayerValues, marketLeagues, playerProductionCone, productionCalibration,
   ratingsHistory, refitProductionIfNeeded, refitRatingsIfNeeded, type PlayerValuation,
+  computeProductionRefits, computeRatingsRefits,
 } from '../server/playerValue.js';
+import { fitProductionModel } from '../server/playerValueProductionFit.js';
+import { fitRatingsModel } from '../server/playerValueRatingsFit.js';
 import { db } from '../server/db.js';
 import { historyDb } from '../server/history.js';
-import { PRODUCTION_PRIOR } from '../server/playerValueCalibration.js';
+import { PRODUCTION_PRIOR, RATINGS_PRIOR } from '../server/playerValueCalibration.js';
 import { leagueSeasons } from '../server/playerValueHistory.js';
 import { captureMarketSnapshot } from '../server/playerValueSnapshot.js';
 import { OPENING_PRICE_MINIMUMS } from '../server/playerValueCalibration.js';
@@ -621,7 +624,28 @@ describe('cross-save: identity of the save', () => {
     expect(cal.latestAttempt).toBeNull();
   }, SLOW);
 
-  it.todo('D (minor, F1, not fixed): a refit exception for one model or league does not skip the others. `computeProductionRefits` has no per-league guard and `computeRefits` runs the ratings refits after it in the same call, so one league\'s exception still skips the rest; F1 did not change this');
+  it('D (minor, F1; fixed after the hardening): a refit exception for one league or model never skips the others, and says why', () => {
+    const save = buildSave(base);
+    // The same league listed twice stands in for two leagues: the first fit throws, the second must still run
+    let calls = 0;
+    const production = computeProductionRefits({
+      leagues: [save.leagueId, save.leagueId], force: true,
+      fit: (h) => { calls += 1; if (calls === 1) throw new Error('synthetic failure'); return fitProductionModel(h, { prior: PRODUCTION_PRIOR }); },
+    });
+    expect(production).toHaveLength(2);
+    expect(production[0].run).toBeNull();
+    expect(production[0].outcome.refit).toBe(false);
+    expect(production[0].outcome.reason).toMatch(/synthetic failure/);
+    expect(production[1].run).not.toBeNull();
+    let ratingsCalls = 0;
+    const ratings = computeRatingsRefits({
+      leagues: [save.leagueId, save.leagueId], force: true,
+      fit: (i) => { ratingsCalls += 1; if (ratingsCalls === 1) throw new Error('synthetic ratings failure'); return fitRatingsModel(i, { prior: RATINGS_PRIOR }); },
+    });
+    expect(ratings).toHaveLength(2);
+    expect(ratings[0].outcome.reason).toMatch(/synthetic ratings failure/);
+    expect(ratings[1].run).not.toBeNull();
+  }, SLOW);
 
   it('D (minor, F1): ratingsHistory never substitutes 0 for an unknown share of the season played', () => {
     const save = buildSave(base);
