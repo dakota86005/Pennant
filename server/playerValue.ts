@@ -135,9 +135,10 @@ export interface ValuationOptions {
   /** Compute production (default true). The market's own valuation of its population leaves it out. */
   production?: boolean;
   /**
-   * Price the controlled seasons with the league's cost ladder (default true; phase 4a). The market's own
-   * valuation, from which the ladder is measured, leaves it out. Without production an arbitration season
-   * stays unknown with that reason; a renewal needs none.
+   * Price the controlled seasons with the league's cost ladder (phase 4a). By default only where production is
+   * computed (review R1-13): a reading without production could price renewals but not an arbitration season, a
+   * second, different cost for the same seasons that no consumer shows, so it prices none and each season keeps
+   * "not priced in this reading". The market's own valuation, from which the ladder is measured, leaves it out.
    */
   costs?: boolean;
 }
@@ -256,7 +257,7 @@ function valuate(states: PlayerState[], ids: number[] | null, options: Valuation
     for (const v of out.values()) v.production = productions.get(v.playerId);
   }
   // Phase 4a: the controlled seasons no contract covers, priced from the league's cost ladder
-  if (options.costs !== false) {
+  if (options.costs ?? options.production !== false) {
     for (const v of out.values()) {
       const regimeId = regimeOfPlayer.get(v.playerId) ?? null;
       if (v.control.standing !== 'held' || v.control.seasons.length === 0) continue;

@@ -861,6 +861,14 @@ export interface SeasonControlEligibility {
      * otherwise, and where an earlier winter is not established. What a cost band covers, never an eligibility.
      */
     tripIfEligible: { low: number; high: number } | null;
+    /**
+     * Where the season could be arbitration: his arbitration class by service at the winter (the year before the
+     * line and the first year past it are class 1, one more for each year after, capped at the regime's arbitration
+     * years). That is where a cross-section of one import reads a player of his service, so a Super Two's later
+     * trips sit one class below their count. What a cost band covers beside the trip, never an eligibility
+     * (phase 4a review, R1-05). Null where arbitration is not among what the season could be.
+     */
+    serviceClass: { low: number; high: number } | null;
     /** Eligible as a Super Two on at least one edge: from the year before the arbitration line. */
     superTwo: boolean;
   };
@@ -1192,6 +1200,8 @@ function rungOf(
   if (fa !== null && fa > 0 && days >= fa * perYear) return 'free_agency';
   if (arb === null) return null;
   if (arb === 0) return 'pre_arbitration';
+  // Free agency no later than the arbitration line: no season is an arbitration year, nor the year before it
+  if (fa !== null && fa > 0 && fa <= arb) return 'pre_arbitration';
   if (days >= arb * perYear) return 'arbitration';
   if (days >= (arb - 1) * perYear) {
     // The year before the arbitration line: Super Two decides it where the cutoff is known
@@ -1205,10 +1215,16 @@ function rungOf(
   return 'pre_arbitration';
 }
 
-/** Every standing a service total anywhere from the low rung to the high rung could have, in ladder order. */
-function standingsBetween(low: Rung, high: Rung): ControlStanding[] {
+/**
+ * Every standing a service total anywhere from the low rung to the high rung could have, in ladder order. In a
+ * regime with no arbitration (its rule is 0, or free agency comes no later than it) the window and the arbitration
+ * rung are not on the ladder: a season across the free-agency line lies between pre-arbitration and free agency
+ * only (phase 4a review, R2-07).
+ */
+function standingsBetween(low: Rung, high: Rung, arbitration: boolean): ControlStanding[] {
   const out: ControlStanding[] = [];
   for (const rung of LADDER.slice(LADDER.indexOf(low), LADDER.indexOf(high) + 1)) {
+    if (!arbitration && (rung === 'super_two_window' || rung === 'arbitration')) continue;
     const add: ControlStanding[] = rung === 'super_two_window' ? ['pre_arbitration', 'arbitration'] : [rung];
     for (const s of add) if (!out.includes(s)) out.push(s);
   }
@@ -1224,7 +1240,7 @@ function seasonEligibility(
   const arb = rules.arbitrationYears.value;
   const unknownSeason = (missing: MissingEvidence[]): SeasonControlEligibility => ({
     season, serviceDays: band, freeAgency: answer('indeterminate', [], missing),
-    arbitration: { ...answer('indeterminate', [], missing), trip: null, tripNote: null, tripIfEligible: null, superTwo: false },
+    arbitration: { ...answer('indeterminate', [], missing), trip: null, tripNote: null, tripIfEligible: null, serviceClass: null, superTwo: false },
     standing: 'indeterminate', between: [], crossings: [],
   });
   if (blocking.length > 0) return unknownSeason(blocking);
@@ -1244,6 +1260,7 @@ function seasonEligibility(
         trip: null,
         tripNote: null,
         tripIfEligible: null,
+        serviceClass: null,
         superTwo: false,
       },
       standing: 'reserve_clause', between: [], crossings: [],
@@ -1258,8 +1275,10 @@ function seasonEligibility(
   const low = rungOf(band.low, priorLow, perYear, fa, arb, st);
   const high = rungOf(band.high, priorHigh, perYear, fa, arb, st);
   const faLine = fa !== null ? fa * perYear : null;
-  const arbLine = arb !== null && arb > 0 ? arb * perYear : null;
-  const windowLine = arb !== null && arb > 0 ? (arb - 1) * perYear : null;
+  // No arbitration in this regime: its rule is 0, or free agency comes no later than the arbitration line
+  const noArbitration = arb === 0 || (arb !== null && fa !== null && fa > 0 && fa <= arb);
+  const arbLine = arb !== null && arb > 0 && !noArbitration ? arb * perYear : null;
+  const windowLine = arb !== null && arb > 0 && !noArbitration ? (arb - 1) * perYear : null;
   const serviceText = band.low === band.high
     ? spoken(band.low, perYear)
     : `${spoken(band.low, perYear)} to ${spoken(band.high, perYear)}`;
@@ -1293,13 +1312,16 @@ function seasonEligibility(
 
   // ── arbitration (moot once he is certainly free to leave) ──
   let arbitration: SeasonControlEligibility['arbitration'];
-  const none = { trip: null, tripNote: null, tripIfEligible: null, superTwo: false };
+  const none = { trip: null, tripNote: null, tripIfEligible: null, serviceClass: null, superTwo: false };
   if (freeAgency.status === 'eligible') {
     arbitration = { ...answer('ineligible', [reason('free_agent_instead', 'He is past the free-agency line, so arbitration does not arise.', 'export_state', FA_SOURCE)]), ...none };
   } else if (arb === null) {
     arbitration = { ...answer('indeterminate', [], [{ code: 'rule_not_established', message: `The league's arbitration rule is not available: ${rules.arbitrationYears.note ?? 'no source states it'}` }]), ...none };
   } else if (arb === 0 || arbLine === null || windowLine === null) {
-    arbitration = { ...answer('ineligible', [reason('no_arbitration', 'This league has no salary arbitration (its arbitration rule is 0).', 'export_state', ARB_SOURCE)]), ...none };
+    const why = arb === 0
+      ? 'This league has no salary arbitration (its arbitration rule is 0).'
+      : `Free agency (${fa} years) comes no later than the arbitration line (${arb} years): no season is an arbitration year.`;
+    arbitration = { ...answer('ineligible', [reason('no_arbitration', why, 'export_state', arb === 0 ? ARB_SOURCE : `${FA_SOURCE} + ${ARB_SOURCE}`)]), ...none };
   } else {
     const trip = (d: number) => Math.floor(d / perYear) - arb + 1;
     const topOfArbitration = faLine !== null ? Math.min(band.high, faLine - 1) : band.high;
@@ -1336,6 +1358,7 @@ function seasonEligibility(
           : { low: 1, high: 1 },
         tripNote: null,
         tripIfEligible: null,
+        serviceClass: null,
         superTwo: band.low < arbLine,
       };
     } else if (low === 'pre_arbitration' && high === 'pre_arbitration') {
@@ -1371,15 +1394,25 @@ function seasonEligibility(
   // ── standing: one rung on both edges, or indeterminate between them ──
   let standing: ControlStanding;
   let between: ControlStanding[] = [];
+  const hasArbitration = !noArbitration;
   if (low === null || high === null || faLine === null) {
     standing = 'indeterminate';
     const top: Rung = faLine === null || high === null ? 'free_agency' : high;
-    between = low === null ? [] : standingsBetween(low, top);
+    between = low === null ? [] : standingsBetween(low, top, hasArbitration);
   } else if (low === high && low !== 'super_two_window') {
     standing = low;
   } else {
     standing = 'indeterminate';
-    between = standingsBetween(low, high);
+    between = standingsBetween(low, high, hasArbitration);
+  }
+  if ((standing === 'arbitration' || between.includes('arbitration')) && arbLine !== null && windowLine !== null && arb !== null) {
+    const classes = fa !== null && fa > arb ? fa - arb : null;
+    const cls = (d: number) => {
+      const k = d >= arbLine ? Math.floor(d / perYear) - arb + 1 : 1;
+      return classes === null ? k : Math.min(classes, k);
+    };
+    const top = faLine !== null ? Math.min(band.high, faLine - 1) : band.high;
+    arbitration = { ...arbitration, serviceClass: { low: cls(Math.max(band.low, windowLine)), high: cls(Math.max(top, windowLine)) } };
   }
   return { season, serviceDays: band, freeAgency, arbitration, standing, between, crossings };
 }

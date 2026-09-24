@@ -410,4 +410,28 @@ describe('Player Rights for the cost of controlled seasons (phase 4a)', () => {
     expect(arb.arbitration.trip).toEqual({ low: 2, high: 3 });
     expect(arb.arbitration.tripIfEligible).toBeNull();
   });
+
+  it('in a league with no arbitration, never lists arbitration among the statuses a season could be (phase 4a review, R2-07)', () => {
+    // Straddling the free-agency line in a league with no arbitration (rule 0), or where free agency comes no later than it
+    for (const rules of [mlbRules({ rules_salary_arbitration_minimum_years: 0 }), mlbRules({ rules_fa_minimum_years: 3, rules_salary_arbitration_minimum_years: 3 })]) {
+      const t = timelineOf({ rules, state: stateOf({ days: 2 * YEAR + 100 + 40, thisYear: 40 }), contract: factsOf(contractRow({ years: 1 })), clock: 40 });
+      const seasons = t.eligibility!.seasons;
+      expect(seasons.some((s) => s.standing === 'indeterminate'), JSON.stringify(seasons.map((s) => [s.season, s.standing, s.between]))).toBe(true);
+      for (const s of seasons) {
+        expect(s.between, `${s.season}`).not.toContain('arbitration');
+        expect(s.standing).not.toBe('arbitration');
+        expect(s.arbitration.status).not.toBe('eligible');
+      }
+      const open = seasons.find((s) => s.standing === 'indeterminate')!;
+      expect(open.between).toEqual(['pre_arbitration', 'free_agency']);
+    }
+  });
+
+  it('names the class the ladder measures a season in: the class his service puts him in, beside the trip (phase 4a review, R1-05)', () => {
+    // Three years and 60 days at the winter, 40 banked: optioned from now he is still in class 1 next winter (his second trip)
+    const plain = timelineOf({ state: stateOf({ days: 3 * YEAR + 60 + 40, thisYear: 40 }), contract: factsOf(contractRow({ years: 1 })), clock: 40 });
+    const next = plain.eligibility!.seasons.find((s) => s.season === THIS_SEASON + 1)!;
+    expect(next.arbitration.trip).toEqual({ low: 2, high: 3 });
+    expect(next.arbitration.serviceClass).toEqual({ low: 1, high: 2 });
+  });
 });

@@ -154,9 +154,21 @@ function expectInvariants(r: Run): void {
         }
         expect(cost.value.low, `player ${v.playerId} ${s.season}`).toBeLessThanOrEqual(cost.value.high);
         if (status === 'arbitration' && minimum !== null) {
-          expect(cost.value.low, `player ${v.playerId} ${s.season}: an arbitration season at the minimum`).toBeGreaterThan(minimum);
+          // Never assumed to be the minimum: it reaches it only where the save paid the class the minimum, and says so (review)
+          expect(cost.value.low, `player ${v.playerId} ${s.season}: an arbitration season below the minimum`).toBeGreaterThanOrEqual(minimum);
+          if (cost.value.low === minimum) expect(cost.note, `player ${v.playerId} ${s.season}: at the minimum unsaid`).toMatch(/at the (league )?minimum/);
         }
         if (basis && basis.source !== 'measured') expect(cost.note, `player ${v.playerId} ${s.season}`).toMatch(/provisional/i);
+        // A priced band carries its central inside it, or names each status's central (review, R2-03)
+        if (basis) {
+          expect(cost.value.central, `player ${v.playerId} ${s.season}: no central`).not.toBeUndefined();
+          if (cost.value.central !== null && cost.value.central !== undefined) {
+            expect(cost.value.central).toBeGreaterThanOrEqual(cost.value.low - 1e-6);
+            expect(cost.value.central).toBeLessThanOrEqual(cost.value.high + 1e-6);
+          } else {
+            expect((basis.centrals ?? []).length, `player ${v.playerId} ${s.season}: no central and none named`).toBeGreaterThan(1);
+          }
+        }
       }
     }
   }
@@ -373,6 +385,30 @@ describe('cross-save: the cost of controlled seasons (phase 4a)', () => {
     expect(costs.arbitration.classes).toEqual([]);
     expect(seasonsOf(r).filter((s) => s.status === 'arbitration')).toEqual([]);
     expect(priced(r, 'arbitration_ladder')).toEqual([]);
+    // No season lists arbitration among what it could be, and one straddling free agency is a renewal if held (review, R2-07)
+    expect(seasonsOf(r).filter((s) => s.between.includes('arbitration'))).toEqual([]);
+    const open = seasonsOf(r).filter((s) => s.status === 'indeterminate' && s.between.includes('free_agent') && s.between.includes('pre_arbitration'));
+    expect(open.length).toBeGreaterThan(0);
+    for (const s of open) {
+      if (!s.cost?.value) continue;
+      expect(s.costBasis).toMatchObject({ method: 'renewal_spread', ifHeld: true });
+    }
+  }, SLOW);
+
+  it("a small league in MLB's regime: a few contracts in a thin class never set a slope that runs its bands far past what the league pays (review, R2-02)", () => {
+    const save = buildSave(base);
+    const r = run(save);
+    expectInvariants(r);
+    const classes = r.finances.get(save.leagueId)!.costs.arbitration.classes;
+    for (const c of classes) {
+      if (c.cases >= COST_POLICY.ladder.minimumCases) continue;
+      expect(c.readings.map((x) => x.source), `class ${c.arbitrationClass}`).toEqual(['prior']);
+    }
+    const largest = Math.max(...[...r.values.values()].map((v) => v.contract.term?.seasons[0]?.salary.value ?? 0));
+    const highs = priced(r, 'arbitration_ladder').map((s) => s.cost!.value!.high);
+    expect(highs.length).toBeGreaterThan(0);
+    // Before the review a 5-contract line reached $83M on a league whose largest salary is $15M
+    expect(Math.max(...highs)).toBeLessThan(2 * largest);
   }, SLOW);
 
   it('a league with its own minimum salary: a renewal starts at that minimum, never MLB\'s', () => {

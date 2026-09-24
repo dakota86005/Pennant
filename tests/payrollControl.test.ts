@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { controlAfterThisSeason } from '../server/contracts.js';
 import { db } from '../server/db.js';
+import { clearProductionCaches } from '../server/playerValue.js';
 import { IDS, SEASON } from './fixture.js';
 import request from './request.js';
 import {
@@ -130,6 +131,7 @@ describe('consumers read the timeline as it is (hardening F2)', () => {
 describe('the pages read Player Value (hardening F2)', () => {
   const OPTION_MAN = 8600;
   const OTHER_OPTION = 8601;
+  const RENEWAL_MAN = 8602;
 
   beforeAll(() => {
     // Retained salary zero on every contract: the column is not populated, as on the imported save
@@ -166,6 +168,23 @@ describe('the pages read Player Value (hardening F2)', () => {
     player.run(OTHER_OPTION, 'There', IDS.otherMlbTeam, IDS.otherMlbTeam);
     status.run(OTHER_OPTION, 8 * 172);
     contract.run(OTHER_OPTION, IDS.otherMlbTeam, IDS.otherMlbTeam, SEASON);
+    // Phase 4a review: the league runs financials (as a real export states), and a pre-arbitration man on a one-year
+    // deal, so a controlled season is priced and the pages' cost checks are never vacuous
+    const leagueColumns = new Set((db.prepare(`PRAGMA table_info(leagues)`).all() as Array<{ name: string }>).map((c) => c.name));
+    if (!leagueColumns.has('rules_financials')) db.prepare(`ALTER TABLE leagues ADD COLUMN rules_financials INTEGER DEFAULT 1`).run();
+    player.run(RENEWAL_MAN, 'Young', IDS.mlbTeam, IDS.mlbTeam);
+    db.prepare(
+      `INSERT INTO players_roster_status (player_id, is_active, is_on_dl, is_on_dl60, is_on_secondary,
+                                          mlb_service_years, mlb_service_days, mlb_service_days_this_year)
+       VALUES (?, 1, 0, 0, 1, 1, ?, 40)`
+    ).run(RENEWAL_MAN, 172);
+    db.prepare(
+      `INSERT INTO players_contract (player_id, team_id, contract_team_id, season_year, years, current_year, is_major,
+                                     retained, no_trade, last_year_team_option, last_year_player_option,
+                                     last_year_vesting_option, salary0)
+       VALUES (?, ?, ?, ?, 1, 0, 1, 0, 0, 0, 0, 0, 700000)`
+    ).run(RENEWAL_MAN, IDS.mlbTeam, IDS.mlbTeam, SEASON);
+    clearProductionCaches();
   });
 
   it("leaves dead money not established when the export does not populate retained salary, never $0", async () => {
@@ -180,7 +199,9 @@ describe('the pages read Player Value (hardening F2)', () => {
     const man = players.find((p: { player_id: number }) => p.player_id === OPTION_MAN);
     const next = years.indexOf(SEASON + 1);
     expect(man.byYear[next]).toBeNull();
-    expect(man.optionYears).toEqual([{ season: SEASON + 1, kind: 'club', salary: 9_000_000, committed: false }]);
+    expect(man.optionYears).toMatchObject([{ season: SEASON + 1, kind: 'club', salary: 9_000_000, committed: false }]);
+    // Declined, he is a free agent: control ends, no cost to this club (phase 4a review, R1-06)
+    expect(man.optionYears[0].declined).toMatchObject({ status: 'free_agent', cost: null });
     expect(man.control.status).toBe('option');
     expect(commitments[next].options.total).toBe(9_000_000);
   });
@@ -225,15 +246,61 @@ describe('the pages read Player Value (hardening F2)', () => {
     if (lows.length > 0) expect(commitments[next].projected.players).toBeGreaterThan(0);
   });
 
+  it("sums the projected bands edge against edge, a season that may be free agency adding nothing to the low edge, and the centrals beside them (phase 4a review, R1-08, R2-03)", async () => {
+    const { players, commitments, years } = await request(`/api/payroll/${IDS.mlbTeam}`);
+    type Projected = { low: number | null; high: number | null; central: number | null; centrals: Array<{ central: number }> | null; ifHeld: boolean } | null;
+    let checked = 0;
+    for (const [i, c] of commitments.entries()) {
+      const known = players.map((p: { projected: Projected[] }) => p.projected[i]).filter((x: Projected) => x !== null && x.low !== null) as NonNullable<Projected>[];
+      if (known.length === 0) { expect(c.projected.low, `${years[i]}`).toBeNull(); continue; }
+      checked += 1;
+      expect(c.projected.players).toBe(known.length);
+      expect(c.projected.low).toBeCloseTo(known.reduce((s, x) => s + (x.ifHeld ? 0 : x.low!), 0), 0);
+      expect(c.projected.high).toBeCloseTo(known.reduce((s, x) => s + x.high!, 0), 0);
+      // The centrals: each season's own; one that may be free agency adds its held central only to the upper sum;
+      // a season between statuses adds its lowest and highest status's central
+      const centralLow = known.reduce((s, x) => s + (x.ifHeld ? 0 : x.central ?? Math.min(...x.centrals!.map((k) => k.central))), 0);
+      const centralHigh = known.reduce((s, x) => s + (x.central ?? Math.max(...x.centrals!.map((k) => k.central))), 0);
+      expect(c.projected.central.low).toBeCloseTo(centralLow, 0);
+      expect(c.projected.central.high).toBeCloseTo(centralHigh, 0);
+      expect(c.projected.central.low).toBeGreaterThanOrEqual(c.projected.low - 1);
+      expect(c.projected.central.high).toBeLessThanOrEqual(c.projected.high + 1);
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+
   it("shows each season's cost on Contracts exactly as the timeline serves it (phase 4a)", async () => {
     const { players, seasonYear } = await request(`/api/contracts/${IDS.mlbTeam}`);
-    const value = await request(`/api/player-value/${IDS.boundary}`);
-    const row = players.find((p: { player_id: number }) => p.player_id === IDS.boundary);
+    const value = await request(`/api/player-value/${RENEWAL_MAN}`);
+    const row = players.find((p: { player_id: number }) => p.player_id === RENEWAL_MAN);
     expect(row).toBeDefined();
     const next = value.control.seasons.find((s: { season: number }) => s.season === seasonYear + 1);
-    expect(row.nextCost).toBeDefined();
-    expect(row.nextCost?.low ?? null).toBe(next?.cost?.value?.low ?? null);
-    expect(row.nextCost?.high ?? null).toBe(next?.cost?.value?.high ?? null);
+    // Never vacuous: next season is a controlled season the timeline priced (review R1-08)
+    expect(next?.cost?.value, JSON.stringify(next?.cost)).toBeTruthy();
+    expect(row.nextCost).toBeTruthy();
+    expect(row.nextCost.low).toBe(next.cost.value.low);
+    expect(row.nextCost.high).toBe(next.cost.value.high);
+    expect(row.nextCost.central).toBe(next.cost.value.central);
+  });
+
+  it('a reading computed without production prices no controlled season, so Free Agents serves no second cost (phase 4a review, R1-13)', async () => {
+    const { playerValues } = await import('../server/playerValue.js');
+    const { COST_NOT_PRICED } = await import('../server/playerValueCalibration.js');
+    const values = playerValues([IDS.boundary, IDS.starter, IDS.optioned], { production: false });
+    const controlled = [...values.values()].flatMap((v) => v.control.seasons).filter((s) => ['pre_arbitration', 'arbitration'].includes(s.status));
+    expect(controlled.length).toBeGreaterThan(0);
+    for (const s of controlled) {
+      expect(s.cost?.value ?? null).toBeNull();
+      expect(s.cost?.note).toBe(COST_NOT_PRICED);
+      expect(s.costBasis ?? null).toBeNull();
+    }
+  });
+
+  it("shows an option's declined branch with its cost wherever the option is shown (phase 4a review, R1-06)", async () => {
+    const { players } = await request(`/api/payroll/${IDS.mlbTeam}`);
+    const options = players.flatMap((p: { optionYears?: Array<{ declined?: unknown }> }) => p.optionYears ?? []);
+    expect(options.length).toBeGreaterThan(0);
+    for (const o of options) expect(o).toHaveProperty('declined');
   });
 
   it('counts a contract whose next season is an option as undecided on the upcoming market, never dropping it', async () => {

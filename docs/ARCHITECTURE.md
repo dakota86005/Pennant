@@ -393,9 +393,13 @@ banks a full service year (owner ruling, 2026-09-22; basis `owner_attested`):
 (`serviceClassMembers` in `playerState.ts`) into a cutoff range, and a player
 within the policy margin of either edge (`SUPER_TWO_MARGIN_DAYS`, owner-approved
 2026-09-23) stays `indeterminate`; `has_received_arbitration` is not read. For a season whose arbitration
-answer is open it also states which trip it would be if it is arbitration (`tripIfEligible`), and
+answer is open it also states which trip it would be if it is arbitration (`tripIfEligible`), the class his
+service puts him in wherever a season could be arbitration (`serviceClass`: where one import's cross-section reads a
+player of that service, so a Super Two's later trips sit one class below their count), and
 `arbitrationRegimeOf` states the regime as read (its arbitration classes, whether it is MLB's, or why it is
-unknown), so Player Value prices a controlled season (phase 4a) without reading a rule. Player Value composes these
+unknown), so Player Value prices a controlled season (phase 4a) without reading a rule. A regime with no arbitration
+(its rule is 0, or free agency comes no later than the arbitration line) has no window and no arbitration rung, so no
+season lists arbitration among what it could be (phase 4a review). Player Value composes these
 into its timeline and never re-derives them. Freshness is applied per action: a stale export
 makes every action indeterminate; the log matters only to recall. The rules,
 their basis and their unresolved edges are in

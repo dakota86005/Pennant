@@ -1355,13 +1355,30 @@ service), all in PLAYER_VALUE.md 2.1 and 2.2.
 **Amended 2026-09-23 (phase 4a: the cost of controlled seasons; PLAYER_VALUE.md 2.2 and 4.4, CALIBRATION.md section 8).**
 A pre-arbitration renewal and an arbitration season are priced from the save's own contracts, **measured on each import**
 and snapshotted with the market, never assumed: the renewal from the league minimum to the save's renewal spread; an
-arbitration season from the save's arbitration ladder by class (a base and a share of the price of a win per win of the
-two-season platform, with the class's spread and the line's error) at the platform seasons' production and the price
-of a win's band, edge against edge. It is a measurement, not a D-053 fit: one import has no held-out outcome to gate on,
+arbitration season from the save's arbitration ladder by class (a base and a pay per win of the two-season platform,
+with the class's spread and the line's error) at the platform seasons' production, edge against edge. The save's own
+line is in the import's dollars (read at the price's central); only the provisional prior's shares carry the price of a
+win's band. It is a measurement, not a D-053 fit: one import has no held-out outcome to gate on,
 and phase 4b tests it against observed awards. R-6's imported-contract ladder is only the provisional prior, used below
 the policy minimum and only where the regime as read is MLB's; a league without arbitration, or whose rule is not read,
 never gets it. Status, class and trip are Player Rights' (`arbitrationRegimeOf`, `tripIfEligible`). A projected cost is
 never committed money: consumers show it beside guaranteed commitments, never in their totals.
+
+**Amended 2026-09-23 (phase 4a review; PLAYER_VALUE.md 4.4 and Part 9, CALIBRATION.md section 8).** A class's line is
+read robustly (Theil–Sen), its uncertainty from a bootstrap of the same fit, so one star or one free-agent-market
+contract read in the class cannot move a rung. Below the policy minimum a class has **no line of its own**: it is the
+provisional prior's reading hulled with the range the save paid the class, so the save's own contracts only widen it and
+a handful of them never set a slope; where no prior applies it stays unknown. Every priced band carries a **central**
+inside it (the line at the platform's central); a season between statuses Player Rights leaves open names each status's
+central and chooses none. A band is a range of reasonable readings, edge against edge, and every surface says so;
+Payroll sums the players' edges (their statistical combination is an owner question) with the sum of centrals beside
+them. A contract at the league minimum is kept out of the line and is never named a transaction; a season whose
+platform reaches as low as such deals in its class reaches the minimum, said. A branch the player decides (a player or
+mutual option declined, an opt-out) is priced only as what he costs if held. Player Rights states each season's
+**service class** (`serviceClass`), where one import's cross-section reads a player of that service, and prices cover it
+beside the trip; in a regime with no arbitration Player Rights lists no season as possibly arbitration. A reading
+computed without production prices no controlled season. MLB's 20% maximum salary cut is not applied: it is not
+owner-attested for OOTP (an open owner question).
 
 ## D-053 — Calibration belongs to the save
 

@@ -221,6 +221,7 @@ console.log(`  arbitration      ${costs.arbitration.status}${costs.arbitration.r
 for (const c of costs.arbitration.classes) {
   console.log(`    ${c.text}${c.ratioShare !== null ? ` (R-6's statistic: ${(c.ratioShare * 100).toFixed(1)}% of the price per positive platform win)` : ''}`);
 }
+if (costs.arbitration.unread.text) console.log(`    ${costs.arbitration.unread.text}`);
 
 console.log('\nReplacement level, per season (the level the export\'s WAR implies)');
 for (const x of league.replacementLevel) {

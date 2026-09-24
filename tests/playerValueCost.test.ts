@@ -312,9 +312,9 @@ describe('Player Value: the arbitration ladder (phase 4a)', () => {
     const high = seasonOf(priced(arbitrationPlayer(1), ladder, productionOf({ low: 3, central: 5, high: 7 }), 5), NEXT);
     expect(band(high).low).toBeGreaterThanOrEqual(band(low).low);
     expect(band(high).high).toBeGreaterThanOrEqual(band(low).high);
-    // The basis names the platform seasons and the price band it multiplied
+    // The basis names the platform seasons; a measured line is in the import's dollars, so no price band is named (review R1-02)
     expect(high.costBasis!.platform!.seasons).toEqual([THIS_SEASON - 1, THIS_SEASON]);
-    expect(high.costBasis!.price).toEqual({ low: PRICE.low, high: PRICE.high });
+    expect(high.costBasis!.price).toBeNull();
   });
 
   it('thinner evidence widens, never narrows: a wider production band, a wider price band or fewer contracts never narrow the cost band', () => {
@@ -349,7 +349,9 @@ describe('Player Value: the arbitration ladder (phase 4a)', () => {
     const { ladder } = ladderOf(specs);
     const one = ladder.arbitration.classes.find((c) => c.arbitrationClass === 1)!;
     expect(one.status).toBe('thin');
-    expect(one.readings.map((r) => r.source).sort()).toEqual(['prior', 'save']);
+    // No line is fitted on a thin class: the prior's reading, hulled with the range the save paid it (review R1-01, R2-02)
+    expect(one.readings.map((r) => r.source)).toEqual(['prior']);
+    expect(one.observed).toMatchObject({ cases: minimum - 20 });
     expect(ladder.arbitration.status).toBe('partly_provisional');
     // 150 days at the winter: pre-arbitration, then the Super Two window, then arbitration 1–2
     const t = priced(timelineOf({ state: stateOf({ days: 150 + CLOCK, thisYear: CLOCK }), contract: expiring, clock: CLOCK }), ladder);
@@ -372,7 +374,9 @@ describe('Player Value: the arbitration ladder (phase 4a)', () => {
     const next = seasonOf(t, NEXT);
     expect(next.status).toBe('arbitration');
     expect(next.arbitrationYear).toEqual({ low: 2, high: 3 });
-    expect(next.costBasis!.classes).toEqual([2, 3]);
+    // Every year of the trip; and, optioned for the rest of this season, his service would put him in class 1, where the
+    // ladder reads a player of that service (a Super Two's later trips sit there too; review R1-05)
+    expect(next.costBasis!.classes).toEqual([1, 2, 3]);
     // Each year's own band sits inside it
     const two = priced(arbitrationPlayer(1), { ...ladder, arbitration: { ...ladder.arbitration, classes: ladder.arbitration.classes.map((c) => (c.arbitrationClass === 3 ? { ...ladder.arbitration.classes.find((x) => x.arbitrationClass === 2)!, arbitrationClass: 3 } : c)) } });
     contains(band(next), band(seasonOf(two, NEXT)));
@@ -441,10 +445,15 @@ describe('Player Value: the arbitration ladder (phase 4a)', () => {
     expect(after.cost!.value).toBeNull();
     expect(after.cost!.note).toMatch(/not established/);
 
+    // An unknown price of a win leaves only the prior's readings unknown: the save's own line is in dollars (review R1-10)
     const noPrice = ladderOf(THICK, { price: unknownBecause('not_exported_by_ootp', null, 'Only one market reading.') }).ladder;
-    const s = seasonOf(priced(arbitrationPlayer(1), noPrice), NEXT);
-    expect(s.cost!.value).toBeNull();
-    expect(s.cost!.note).toMatch(/price of a win/);
+    expect(band(seasonOf(priced(arbitrationPlayer(1), noPrice), NEXT))).toEqual(band(seasonOf(priced(arbitrationPlayer(1), ladderOf(THICK).ladder), NEXT)));
+    const thinNoPrice = ladderOf([...renewals(80), ...arbitrationClass(2, 60, 1_000_000, 2_000_000), ...arbitrationClass(3, 60, 1_500_000, 3_000_000)],
+      { price: unknownBecause('not_exported_by_ootp', null, 'Only one market reading.') }).ladder;
+    const t = priced(timelineOf({ state: stateOf({ days: 150 + CLOCK, thisYear: CLOCK }), contract: expiring, clock: CLOCK }), thinNoPrice);
+    const first = t.seasons.find((x) => x.status === 'arbitration' && x.arbitrationYear?.low === 1)!;
+    expect(first.cost!.value).toBeNull();
+    expect(first.cost!.note).toMatch(/price of a win/);
 
     const noMoney = ladderOf(THICK, { financials: fromExport(false, 'leagues.rules_financials') }).ladder;
     expect(noMoney.preArbitration.band.value).toBeNull();
@@ -480,5 +489,166 @@ describe('Player Value: the arbitration ladder (phase 4a)', () => {
     }
     // A later class is paid more per platform win
     expect(classes[1].readings[0].share).toBeGreaterThan(classes[0].readings[0].share);
+  });
+});
+
+// ── phase 4a review (2026-09-23) ─────────────────────────────────────────────
+
+/** Two measured classes (2 and 3) and the renewals; class 1 is whatever the case adds. */
+const withClassOne = (one: CaseSpec[]): CaseSpec[] => [
+  ...renewals(80), ...one, ...arbitrationClass(2, 60, 1_000_000, 2_000_000), ...arbitrationClass(3, 60, 1_500_000, 3_000_000),
+];
+/** 150 days at the winter: pre-arbitration, the Super Two window, then his first arbitration season (class 1–2). */
+const youngster = () => timelineOf({ state: stateOf({ days: 150 + CLOCK, thisYear: CLOCK }), contract: expiring, clock: CLOCK });
+const firstArbitration = (t: ControlTimeline) => {
+  const s = t.seasons.find((x) => x.status === 'arbitration' && x.arbitrationYear?.low === 1);
+  expect(s, JSON.stringify(t.seasons.map((x) => [x.season, x.status, x.arbitrationYear]))).toBeDefined();
+  return s!;
+};
+const classOf = (l: CostLadder, k: number) => l.arbitration.classes.find((c) => c.arbitrationClass === k)!;
+
+describe('Player Value: the cost of controlled seasons, phase 4a review', () => {
+  it("a thin class's own contracts widen its band, never narrow it, and never set a slope (R1-01, R2-02)", () => {
+    // 0, 1, 2 and 3 class-1 contracts at extreme pay and no platform: each widens the band at least as far as the one before
+    const stars = (n: number): CaseSpec[] => Array.from({ length: n }, (_, i) => ({ winter: classDays(1, 20 + i), salary: 20_000_000 + i * 500_000, war: [0, 0] as [number, number] }));
+    const bands = [0, 1, 2, 3].map((n) => {
+      const { ladder } = ladderOf(withClassOne(stars(n)));
+      const one = classOf(ladder, 1);
+      expect(one.status).toBe(n === 0 ? 'prior' : 'thin');
+      // No line is ever fitted on a handful of contracts
+      expect(one.readings.map((r) => r.source)).toEqual(['prior']);
+      return band(firstArbitration(priced(youngster(), ladder)));
+    });
+    for (let n = 1; n <= 3; n += 1) {
+      contains(bands[n], bands[n - 1]);
+      // What the save actually paid the class is inside the band
+      expect(bands[n].high).toBeGreaterThanOrEqual(20_000_000 + (n - 1) * 500_000);
+    }
+    expect(bands[1].high).toBeGreaterThan(bands[0].high);
+  });
+
+  it("one contract cannot move a rung: the class's line is robust to a star or a market contract read in the class (R2-04)", () => {
+    const base = classOf(ladderOf(THICK).ladder, 3).readings[0];
+    const noisy = classOf(ladderOf([...THICK,
+      { winter: classDays(3, 25), salary: 60_000_000, war: [6, 6] },
+      { winter: classDays(3, 26), salary: 22_000_000, war: [1, 1] },
+    ]).ladder, 3).readings[0];
+    const level = (r: typeof base, p: number) => r.base + (r.share as number) * PRICE.central * p;
+    for (const p of [0, 3, 6]) expect(Math.abs(level(noisy, p) - level(base, p)), `platform ${p}`).toBeLessThan(250_000);
+  });
+
+  it('every priced season has a central inside its band; a season between statuses names each central and chooses none (R2-03)', () => {
+    const { ladder } = ladderOf(THICK);
+    // A renewal: the save's median renewal
+    const renewal = seasonOf(priced(timelineOf({ state: stateOf({ days: 30, thisYear: 30 }), contract: expiring }), ladder), NEXT);
+    expect(band(renewal).central).toBe(MINIMUM);
+    // An arbitration season: the class his service puts him in, at the platform's central production
+    const arb = seasonOf(priced(arbitrationPlayer(1), ladder, productionOf({ low: 1, central: 3, high: 5 }), 2), NEXT);
+    const b = band(arb);
+    expect(b.central).not.toBeNull();
+    expect(b.central!).toBeGreaterThanOrEqual(b.low);
+    expect(b.central!).toBeLessThanOrEqual(b.high);
+    const r = classOf(ladder, 2).readings[0];
+    expect(Math.abs(b.central! - (MINIMUM + r.base + (r.share as number) * PRICE.central * 2.5))).toBeLessThan(150_000);
+    // A season between pre-arbitration and arbitration: no single central, each status's named
+    const window = seasonOf(priced(timelineOf({ state: stateOf({ days: 2 * YEAR + 100 + CLOCK, thisYear: CLOCK }), contract: expiring, clock: CLOCK }), ladder), NEXT);
+    expect(window.status).toBe('indeterminate');
+    expect(band(window).central).toBeNull();
+    expect(window.costBasis!.centrals!.map((c) => c.status).sort()).toEqual(['arbitration', 'pre_arbitration']);
+    expect(window.cost!.note).toMatch(/central/i);
+    // A season that may be free agency: the central if held
+    const leave = seasonOf(priced(timelineOf({ state: stateOf({ days: 5 * YEAR + 100 + CLOCK, thisYear: CLOCK }), contract: expiring, clock: CLOCK }), ladder), NEXT);
+    expect(leave.costBasis!.ifHeld).toBe(true);
+    expect(band(leave).central).not.toBeNull();
+  });
+
+  it('the text says what the band is, in plain words, and only what it used (R2-11, R1-09, R2-06)', () => {
+    const { ladder } = ladderOf(THICK);
+    const all = [ladder.rules.renewal, ladder.rules.arbitration, ladder.preArbitration.text, ...ladder.arbitration.classes.map((c) => c.text)].join(' ');
+    expect(all).not.toMatch(/1\.2816|90% point|10% to 90%|% of its pay/);
+    expect(all).toMatch(/10th to 90th percentile/);
+    // A player not known to be a Super Two: the fourth trip is the unseen-winter possibility, said so
+    const t = priced(arbitrationPlayer(2), ladder);
+    const next = seasonOf(t, NEXT);
+    expect(next.arbitrationYear).toEqual({ low: 3, high: 4 });
+    expect(next.cost!.note).not.toMatch(/a Super Two's extra trip/);
+    expect(next.cost!.note).toMatch(/earlier winter/);
+    // A band on the prior alone never mentions a save line
+    const priorOnly = ladderOf([...renewals(80), ...arbitrationClass(3, 60, 1_500_000, 3_000_000)]).ladder;
+    const first = firstArbitration(priced(youngster(), priorOnly));
+    expect(first.costBasis!.source).toBe('provisional_prior');
+    expect(first.cost!.note).not.toMatch(/save's own line/);
+    // The renewal band's text says which renewal bounds it: at 33 the largest, the only one that can
+    const few = ladderOf([...renewals(33), ...arbitrationClass(1, 60, 400_000, 1_000_000)]).ladder;
+    expect(few.preArbitration.status).toBe('measured');
+    expect(few.preArbitration.text).toMatch(/largest of the 33/);
+    expect(few.preArbitration.text).toMatch(/too few/);
+    expect(ladder.preArbitration.text).not.toMatch(/too few/);
+  });
+
+  it('the minimum is a reading, never an assumption: the low edge reaches it where the save paid the class the minimum at such a platform (R1-04)', () => {
+    const atMinimum = Array.from({ length: 6 }, (_, i) => ({ winter: classDays(1, 30 + i), salary: MINIMUM, war: [-0.5, 0] as [number, number] }));
+    const { ladder } = ladderOf([...THICK, ...atMinimum]);
+    expect(classOf(ladder, 1).excluded.atMinimum).toBe(6);
+    const weak = firstArbitration(priced(youngster(), ladder, productionOf({ low: -1, central: 0, high: 0.5 })));
+    expect(band(weak).low).toBe(MINIMUM);
+    expect(weak.cost!.note).toMatch(/at the (league )?minimum/);
+    // A platform above theirs never reaches it
+    const strong = firstArbitration(priced(youngster(), ladder, productionOf(STAR)));
+    expect(band(strong).low).toBeGreaterThan(MINIMUM);
+  });
+
+  it('the price band is named in the basis, and widens the band, only where the prior is in the reading (R1-02, R1-08)', () => {
+    const thin = ladderOf(withClassOne(arbitrationClass(1, 10, 400_000, 1_000_000))).ladder;
+    const widePrice = ladderOf(withClassOne(arbitrationClass(1, 10, 400_000, 1_000_000)), { price: derivedFrom({ central: 7_000_000, low: 5_000_000, high: 11_000_000 }, 'test') }).ladder;
+    // A Super Two known at an off-season import: next season is his first trip, class 1 alone (the thin class)
+    const members = Array.from({ length: 50 }, (_, i) => ({ days: 2 * YEAR + i * 3, thisYear: 100, onRoster: true }));
+    const days = 2 * YEAR + 140;
+    const superTwo = () => timelineOf({ state: stateOf({ days, thisYear: 141 }), contract: expiring, clock: YEAR, superTwoClass: [...members, { days, thisYear: 141, onRoster: true }] });
+    const narrow = seasonOf(priced(superTwo(), thin), NEXT);
+    const wide = seasonOf(priced(superTwo(), widePrice), NEXT);
+    expect(narrow.costBasis!.classes).toEqual([1]);
+    expect(narrow.costBasis!.source).toBe('measured_thin_with_prior');
+    expect(narrow.costBasis!.price).toEqual({ low: PRICE.low, high: PRICE.high });
+    contains(band(wide), band(narrow));
+    expect(band(wide).high).toBeGreaterThan(band(narrow).high);
+  });
+
+  it('a branch the player decides is never a certain cost: a player option declined or an opt-out is priced if held (R1-07)', () => {
+    const { ladder } = ladderOf(THICK);
+    const state = stateOf({ days: classDays(1, 60) + CLOCK, thisYear: CLOCK });
+    const player = seasonOf(priced(timelineOf({ state, contract: factsOf(contractRow({ years: 2, salary: [3_000_000, 6_000_000], playerOption: 1 })), clock: CLOCK }), ladder), NEXT);
+    expect(player.status).toBe('player_option');
+    expect(player.declined!.cost!.value).not.toBeNull();
+    expect(player.declined!.costBasis!.ifHeld).toBe(true);
+    expect(player.declined!.cost!.note).toMatch(/player decides/i);
+    const optOut = seasonOf(priced(timelineOf({ state, contract: factsOf(contractRow({ years: 3, salary: [3_000_000, 6_000_000, 7_000_000], optOut: 1 })), clock: CLOCK }), ladder), NEXT);
+    expect(optOut.declined?.kind).toBe('opted_out');
+    if (optOut.declined!.cost!.value !== null) expect(optOut.declined!.costBasis!.ifHeld).toBe(true);
+    // The club's own option declined: the club decides, and he is under its control
+    const club = seasonOf(priced(timelineOf({ state, contract: factsOf(contractRow({ years: 2, salary: [3_000_000, 6_000_000], teamOption: 1 })), clock: CLOCK }), ladder), NEXT);
+    expect(club.declined!.costBasis!.ifHeld).toBe(false);
+  });
+
+  it('a Super Two identified at an off-season import: his later seasons cover the class the ladder measures such players in (R1-05)', () => {
+    const { ladder } = ladderOf(THICK);
+    const members = Array.from({ length: 50 }, (_, i) => ({ days: 2 * YEAR + i * 3, thisYear: 100, onRoster: true }));
+    const days = 2 * YEAR + 140;
+    const t = priced(timelineOf({ state: stateOf({ days, thisYear: 141 }), contract: expiring, clock: YEAR, superTwoClass: [...members, { days, thisYear: 141, onRoster: true }] }), ladder);
+    expect(seasonOf(t, NEXT)).toMatchObject({ status: 'arbitration', superTwo: true, arbitrationYear: { low: 1, high: 1 } });
+    const second = seasonOf(t, NEXT + 1);
+    expect(second.arbitrationYear).toEqual({ low: 2, high: 2 });
+    // His service then puts him where the ladder reads the first class: that class is covered too
+    expect(second.costBasis!.classes).toEqual([1, 2]);
+  });
+
+  it('a platform beyond what the class was measured on says so, and the band is never capped to hide it (R2-08)', () => {
+    const { ladder } = ladderOf(THICK);
+    const far = seasonOf(priced(arbitrationPlayer(1), ladder, productionOf({ low: 3, central: 8, high: 12 }), 4), NEXT);
+    expect(far.cost!.note).toMatch(/beyond the 6\.0 wins/);
+    const farther = seasonOf(priced(arbitrationPlayer(1), ladder, productionOf({ low: 3, central: 9, high: 16 }), 4), NEXT);
+    expect(band(farther).high).toBeGreaterThan(band(far).high);
+    const inside = seasonOf(priced(arbitrationPlayer(1), ladder, productionOf({ low: 1, central: 2, high: 3 }), 2), NEXT);
+    expect(inside.cost!.note).not.toMatch(/beyond the/);
   });
 });
