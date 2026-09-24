@@ -434,6 +434,77 @@ export interface ProductionCone {
   calibration: { source: 'save_fit' | 'fallback_prior'; calibrated: boolean; status: string; detail: string };
 }
 export const getProductionCone = (id: number) => json<ProductionCone>(`/api/player-value/${id}/cone`);
+
+/**
+ * The player card's Value section, as Player Value serves it (server/playerValueSurplus.ts, phase 5a): the neutral
+ * contract surplus and the retention margin, season by season with every component, each a band with its central
+ * (null where no single central is chosen, then `centrals` names each reading), and what is unknown with its reason.
+ * Nothing here is recomputed in the browser.
+ */
+export interface SurplusFigure { low: number; central: number | null; high: number }
+export interface SurplusView {
+  status: 'known' | 'unknown';
+  reason: string | null;
+  band: SurplusFigure | null;
+  discounted: SurplusFigure | null;
+  centrals: Array<{ reading: string; low: number; high: number }>;
+  ifHeld: boolean;
+  text: string;
+}
+export interface SurplusSeason {
+  season: number;
+  age: number | null;
+  part: 'rest_of_season' | 'season';
+  share: number | null;
+  weight: number;
+  status: string;
+  control: string;
+  ifHeld: boolean;
+  wins: { low: number; central: number; high: number } | null;
+  banked: number | null;
+  price: SurplusFigure | null;
+  cost: SurplusFigure | null;
+  costText: string;
+  paid: number | null;
+  replacement: number | null;
+  owedEitherWay: SurplusFigure | null;
+  onlyIfKept: SurplusFigure | null;
+  branches: Array<{ label: string; held: boolean; wins: { low: number; central: number; high: number } | null; cost: SurplusFigure | null; surplus: SurplusFigure | null; reason: string | null }>;
+  contract: SurplusView;
+  retention: SurplusView;
+}
+export interface SurplusTotal {
+  status: 'known' | 'unknown';
+  from: number | null;
+  to: number | null;
+  low: number | null;
+  central: number | null;
+  high: number | null;
+  centralRange: { low: number; high: number } | null;
+  missing: number[];
+  reason: string | null;
+  established: { from: number; to: number; low: number; central: number | null; high: number; centralRange: { low: number; high: number } | null } | null;
+  ifHeld: boolean;
+}
+export interface PlayerSurplus {
+  playerId: number;
+  status: 'valued' | 'wins_only' | 'unknown' | 'not_held';
+  reason: string | null;
+  unit: 'dollars' | 'wins';
+  price: { stage: 'opening' | 'measured'; label: string; band: { low: number; central: number; high: number }; text: string } | null;
+  minimum: number | null;
+  discount: { rate: number; text: string };
+  replacement: { text: string; measured: string | null };
+  fortyMan: { onFortyMan: boolean | null; text: string };
+  seasons: SurplusSeason[];
+  contract: SurplusTotal;
+  retention: SurplusTotal;
+  wins: SurplusTotal;
+  excluded: string[];
+  basis: string[];
+  stamp: { status: string; basis: string };
+}
+export const getPlayerSurplus = (id: number) => json<PlayerSurplus>(`/api/player-value/${id}/surplus`);
 export const getStorylines = (orgId: number) => json<StorylineCache | null>(`/api/storylines/${orgId}`);
 export const generateStorylines = (orgId: number) =>
   json<StorylineCache>(`/api/storylines/${orgId}`, { method: 'POST' });

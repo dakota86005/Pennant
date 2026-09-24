@@ -371,7 +371,7 @@ Present on `main` (D-023; research in [RIGHTS_RESEARCH.md](RIGHTS_RESEARCH.md)):
 Not done, by design: rights for IL activation, Rule 5, re-optioning after the
 last option year, rehab returns, claims, refusals, trades (all `indeterminate`).
 
-## Implemented Player Value (phases 1, 2, 3a, 3b, 4a and 4b)
+## Implemented Player Value (phases 1, 2, 3a, 3b, 4a, 4b and 5a)
 
 D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
 
@@ -675,12 +675,28 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   print "<0.1"; a non-number draws no cone instead of blanking the app. The card
   is a modal dialog with a focus trap (`src/focusTrap.ts`, Escape, focus back to
   the opener) and fits the window at any width (`tests/playerCard.test.ts`).
+- **Neutral surplus and the retention margin** (phase 5a, 2026-09-24;
+  `server/playerValueSurplus.ts`, pure; PLAYER_VALUE.md 5.1): on every valuation
+  that computes production and cost (`PlayerValuation.surplus`), served for the
+  card by `/api/player-value/:playerId/surplus` (`playerSurplus`). Per controlled
+  season within the horizon: the wins band counted, the price of a win in force
+  held flat, the cost band, a replacement's minimum, the discount weight (5% a
+  season, owner 2026-09-24, `SURPLUS_POLICY`), each way the season can go, and
+  both views with their centrals; summed with the seasons named. The rest of this
+  season counts only its part still to be played; banked wins and paid salary are
+  sunk. A major-league contract's covered salary cancels in the retention margin,
+  so sunk salary never favours keeping a player. Unknown seasons are named, never
+  summed as zero; without dollars the value is in wins. The player card shows a
+  "Value" section below the production cone (`src/ValueSection.tsx`): both views
+  side by side, then season by season with the basis. No other consumer is
+  migrated (phase 6); the lens and the club's value of a win are phase 5b.
 - **Tests:** `playerValueControl`, `playerValueCost` (the phase 4a cost bands),
   `playerValueSignings` (phase 4b: observed changes, the measured price, adoption,
   awards, reserve-clause renewals, replacement),
   `playerValueFinances`, `playerValueProduction`,
   `playerValueProductionFit`, `playerValueRatings`, `playerValueCone`,
-  `productionCone` (geometry, render and theme tokens) and `playerValueBoundary`
+  `productionCone` (geometry, render and theme tokens), `playerValueSurplus`,
+  `playerValueInvariants` and `valueSection` (phase 5a) and `playerValueBoundary`
   (since the hardening it reads the source through the TypeScript parser, and
   each of its hardened checks was shown to catch a deliberate mutation; a known
   violation owned by another fix is listed with its finding and must still be
@@ -691,8 +707,8 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
 
 Not built: the save's own development path, the ratings' forecast reliability
 and the arrival chance by potential (they fit themselves once the save's rating
-snapshots allow), surplus, the philosophy lens and
-the club's value of a win (phase 5), personality's effect on price (it moves no number
+snapshots allow), the philosophy lens and
+the club's value of a win (phase 5b), personality's effect on price (it moves no number
 until observed signings are read against it), a per-import store (everything is computed per request; see
 Part 7), and the consumer migration that deletes `players_value` reads and the
 percentile advice (phase 6). The calibrated constants of other subsystems are

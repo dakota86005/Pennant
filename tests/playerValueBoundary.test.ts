@@ -242,7 +242,7 @@ const ALLOWED_IMPORTS = new Set([
   './calibration.js', './playerValue.js', './playerValueCalibration.js', './playerValueContract.js', './playerValueControl.js',
   './playerValueFinances.js', './playerValueHistory.js', './playerValueProduction.js', './playerValueProductionFit.js',
   './playerValueFitStore.js', './injuryProneness.js', './playerValueRatings.js', './playerValueRatingsFit.js', './playerValueCone.js',
-  './playerValueCost.js', './playerValueSignings.js', './playerValueContractStore.js',
+  './playerValueCost.js', './playerValueSignings.js', './playerValueContractStore.js', './playerValueSurplus.js',
 ]);
 
 /** The modules that open league.db at all: the readers, the snapshot writer (its game date) and the route (a table check). The pure modules never do. */
@@ -314,7 +314,7 @@ describe('the Player Value boundary', () => {
       'playerValue.ts', 'playerValueCalibration.ts', 'playerValueCone.ts', 'playerValueContract.ts', 'playerValueContractStore.ts',
       'playerValueControl.ts', 'playerValueCost.ts', 'playerValueFinances.ts', 'playerValueFitStore.ts', 'playerValueHistory.ts',
       'playerValueProduction.ts', 'playerValueProductionFit.ts', 'playerValueRatings.ts', 'playerValueRatingsFit.ts', 'playerValueRefitWorker.ts',
-      'playerValueRoutes.ts', 'playerValueSignings.ts', 'playerValueSnapshot.ts',
+      'playerValueRoutes.ts', 'playerValueSignings.ts', 'playerValueSnapshot.ts', 'playerValueSurplus.ts',
     ]);
   });
 
@@ -662,6 +662,16 @@ describe('the Player Value boundary', () => {
     expect(importsOf('playerValueCost.ts').join(' ')).not.toMatch(/scoutedEvidence|playerValueRatings|db\.js/);
   });
 
+  it('the surplus (phase 5a) is pure: it reads Player Value\'s own answers and the market as handed to it, opens no table, reads no rating, no tier and no philosophy, and says no verdict', () => {
+    const surplus = code('playerValueSurplus.ts');
+    expect(importsOf('playerValueSurplus.ts').filter((i) => !['./provenance.js', './calibration.js', './playerValueCalibration.js', './playerValueControl.js', './playerValueProduction.js', './playerValueFinances.js'].includes(i))).toEqual([]);
+    expect(surplus).not.toMatch(/\bdb\.|prepare\(|scoutedEvidence|players_value|evaluateContractControl|serviceDays|\.service\b|philosophy|protection/);
+    // Only the reader hands it the market; no consumer computes a surplus of its own
+    for (const file of SERVER_FILES.filter((f) => !VALUE_MODULES.includes(f))) expect(code(file), file).not.toMatch(/\bsurplusOf\b/);
+    // No verdict in its words
+    expect(surplus).not.toMatch(/\b(should|recommend\w*|release him|keep him|trade him|extend him|sign him)\b/i);
+  });
+
   it('every constant is declared once, stamped, in the calibration module (8)', () => {
     // A number of its own at module level, whatever its name, keyword or type: a literal, literal arithmetic, or an object or array holding one
     for (const file of VALUE_MODULES.filter((f) => f !== 'playerValueCalibration.ts')) {
@@ -690,6 +700,8 @@ describe('the Player Value boundary', () => {
       ['SIGNINGS_POLICY_CALIBRATION', 'policy'],
       // Owner decision 2 (2026-09-24): how Payroll combines players
       ['COST_COMBINATION_POLICY_CALIBRATION', 'policy'],
+      // Phase 5a (owner, 2026-09-24): the neutral view's discount rate and how the surplus is read
+      ['SURPLUS_POLICY_CALIBRATION', 'policy'],
     ]);
     // Every policy object of numbers in the calibration module is stamped beside it
     for (const name of ownNumbersOf('playerValueCalibration.ts').filter((n) => n !== 'CONTROL_HORIZON_SEASONS')) {

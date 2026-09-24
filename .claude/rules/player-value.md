@@ -30,7 +30,8 @@ point; `playerValueContract.ts` (contract facts), `playerValueControl.ts` (contr
 replacement level), `playerValueCost.ts` (phase 4a, pure: the cost ladder measured per import and the controlled seasons
 priced from it), `playerValueSignings.ts` (phase 4b, pure: observed changes between imports, the measured price, awards,
 reserve-clause renewals, replacement, adoption), `playerValueCone.ts` (the player card's production cone: production
-joined with control, pure) and `playerValueCalibration.ts` (policy and the provisional prior, stamped) sit behind it.
+joined with control, pure), `playerValueSurplus.ts` (phase 5a, pure: the neutral contract surplus and the retention
+margin) and `playerValueCalibration.ts` (policy and the provisional prior, stamped) sit behind it.
 Three writers, `history.db` only: `playerValueSnapshot.ts` (the per-import market snapshot), `playerValueContractStore.ts`
 (phase 4b: the per-import contract snapshot) and `playerValueFitStore.ts` (the per-save production fits, D-053). Which phases are built is in `docs/PROJECT_STATE.md`; check it against the
 worktree.
@@ -130,9 +131,21 @@ worktree.
   against the earlier import's band beside its width, read in the ladder's class, and joined as a class line at 30;
   reserve-clause renewals price a reserve-clause season at 30; replacement from freely acquired players at 30 is shown,
   never applied (price, ladder and production stay in the export's WAR until phase 5). Never the live log.
+- Surplus (phase 5a, D-052 amendment; PLAYER_VALUE.md 5.1): per controlled season within the horizon, production value
+  (the minimum plus wins × the price in force, one level of replacement on both sides, the measured replacement shown and
+  never applied) less cost, edge against edge, discounted at the owner's 5% a season (`SURPLUS_POLICY`; this season's
+  remaining part weighs 1; the price held flat) and summed; the rest of this season counts only its part still to be
+  played, banked wins and paid salary sunk. The retention margin: (his wins − the replacement's 0) × price + the minimum
+  a replacement costs − the costs only if kept; a major-league contract's covered salary cancels, so sunk salary never
+  favours keeping a player; an unexported buyout is read from nothing to the option's salary; a 40-man spot is stated,
+  never priced. An option season is the hull of its ways with no central chosen; "if held" where the player decides or
+  he may leave. An unknown season is named and never summed as zero; without dollars, wins only. No verdict words. One
+  valuation for every read (`surplusOf` only through the entry point; the card's route, Payroll and the league-wide read
+  agree). The lens and the club's value of a win are phase 5b; consumers other than the card migrate in phase 6.
 - Never ask the owner for an OOTP experiment; an unresolved rule stays `indeterminate` and is documented.
 
 Checks: `tests/playerValueBoundary.test.ts`, `tests/playerValueControl.test.ts`, `tests/playerValueCost.test.ts`,
 `tests/playerValueFinances.test.ts`, `tests/playerValueProduction.test.ts`, `tests/playerValueProductionFit.test.ts`,
-`tests/playerValueRatings.test.ts`, `tests/playerValueSignings.test.ts`, `tests/playerValueCrossSave.test.ts`;
+`tests/playerValueRatings.test.ts`, `tests/playerValueSignings.test.ts`, `tests/playerValueCrossSave.test.ts`,
+`tests/playerValueSurplus.test.ts`, `tests/playerValueInvariants.test.ts`, `tests/valueSection.test.ts`;
 `npm run value:report` and `npx tsx scripts/calibrate.ts production` against a real import (read-only with `OOTP_FO_DB_READONLY=1`).
