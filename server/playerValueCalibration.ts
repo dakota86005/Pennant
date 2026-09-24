@@ -2405,7 +2405,7 @@ export const TRADE_COMBINATION_POLICY = {
 } as const;
 
 export const TRADE_COMBINATION_POLICY_CALIBRATION: CalibrationStamp = policy(
-  "Phase 6b (supervisor, extending the owner's Payroll rule of 2026-09-24 to a trade; an open owner question): a side's contract " +
+  "Phase 6b (the owner's Payroll rule of 2026-09-24 extended to a trade; confirmed by the owner, 2026-09-24): a side's contract " +
     "value and the difference between the sides are the sum of the players' most likely readings, each player's distance from his " +
     'on each side combined as independent across players (root sum of squares), an open season (option, status, whether he stays) ' +
     'kept at its edges, added. Labelled "players combined as independent; not a calibrated interval"; the edge-to-edge sum is kept ' +

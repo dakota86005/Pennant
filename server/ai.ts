@@ -148,7 +148,9 @@ export function briefingSystem(organization: string, leagueRules: string): strin
     `contracts generally are not immediate weekly decisions. 'dataFreshness' says how current the data is: where it ` +
     `carries a warning, say so once. Do not escape markdown punctuation with backslashes. ` +
     `Structure with short markdown headers (## Status, ## Decisions Needed, ## Watch List, ` +
-    `## Recommendation of the Week). Keep it under 500 words. ${VALUE_FIGURES_NOTE}`
+    `## Worth a look this week). Under Worth a look this week, name one thing in the data the GM may want to look at ` +
+    `and why, worded as something to look at, never as an instruction or a decision made for him: the GM decides. ` +
+    `Keep it under 500 words. ${VALUE_FIGURES_NOTE}`
   );
 }
 

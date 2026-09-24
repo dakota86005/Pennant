@@ -3,7 +3,6 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { db } from '../server/db.js';
 import { scoutedGloves } from '../server/scoutedEvidence.js';
-import { clearValuationCaches } from '../server/valuation.js';
 import { LineupView } from '../src/pages/Lineup';
 import type { LineupResponse } from '../src/api';
 import request from './request';
@@ -41,8 +40,7 @@ function plantOffense(seed: number): void {
   // OOTP's valuation says the opposite of the scouts: the two platoon bats are the worst, everyone else the best
   db.prepare(`UPDATE players_value SET offensive_value = ?, offensive_value_vsl = ?, offensive_value_vsr = ?`).run(5000 + seed, 5000 + seed, 5000 + seed);
   db.prepare(`UPDATE players_value SET offensive_value = 1, offensive_value_vsl = 1, offensive_value_vsr = 1 WHERE player_id IN (?, ?)`).run(PLATOON_R, PLATOON_L);
-  // An import clears the valuation caches; so does this, so a reader of OOTP's figures would see the new ones
-  clearValuationCaches();
+  // No module caches OOTP's figures (phase 6e deleted the last reader), so a reader of them would see the new ones at once
 }
 
 beforeAll(() => {
@@ -82,7 +80,6 @@ describe('the lineup reads ratings only through the scouted-evidence adapter (ph
         const first = await card(vs, style);
         plantOffense(2);
         db.prepare(`UPDATE players_value SET offensive_value_vsr = 9999, offensive_value_vsl = 9999 WHERE player_id = ?`).run(21);
-        clearValuationCaches();
         const second = await card(vs, style);
         expect(second, `${vs} ${style}`).toEqual(first);
         plantOffense(0);

@@ -5,8 +5,9 @@ import { getProductionCone, isStaticSite, type ConeSeason, type ConeUnestablishe
 import { CHART_COLOR, CHART_MARK, CHART_OPACITY, CHART_TEXT, textWidth } from './chartTheme';
 import { COST_BAND_WORDS, centralText, costBandText } from './costBand';
 import {
-  REPLACEMENT_LABEL, bandWords, coneGeometry, coneIsDrawable, coneLabel, coneSummary, coverageText, formatWins, type ConeGeometry,
+  REPLACEMENT_LABEL, bandWords, calibrationWords, coneGeometry, coneIsDrawable, coneLabel, coneSummary, coverageText, formatWins, type ConeGeometry,
 } from './productionConeGeometry';
+import { Tip } from './Tip';
 
 /**
  * The player card's production cone (PLAYER_VALUE.md Part 8): expected wins per season with the 80%
@@ -20,26 +21,26 @@ const POP_WIDTH = 260;
 const NARROW = POP_WIDTH * 2 + 32;
 
 /**
- * A season's cost as served (phase 4a, review): "$8.5M", "$4.6M–$25.3M if held", "$780K–$790K" (a band never reads
+ * A season's cost as served (phase 4a, review): "$8.5M", "$4.6M–$25.3M if kept", "$780K–$790K" (a band never reads
  * as a point), "none (control ends)", "none (no club holds him)" or "not established"; an option season adds its
  * declined branch. The basis paragraph stays in the detail, not here.
  */
 const costText = (c: ConeSeason['control']): string => {
   const declined = c.declined
-    ? `; declined: ${c.declined.label}${c.declined.cost ? ` ${costBandText(c.declined.cost.low, c.declined.cost.high)}${c.declined.ifHeld ? ' if held' : ''}` : c.declined.status === 'free_agent' ? ' (no cost to this club)' : ' (cost not established)'}`
+    ? `; declined: ${c.declined.label}${c.declined.cost ? ` ${costBandText(c.declined.cost.low, c.declined.cost.high)}${c.declined.ifHeld ? ' if kept' : ''}` : c.declined.status === 'free_agent' ? ' (no cost to this club)' : ' (cost not established)'}`
     : '';
   if (!c.cost) {
     if (c.status === 'unsigned') return 'none (no club holds him)';
     return c.costDetail && /^Control ends/.test(c.costDetail) ? 'none (control ends)' : `not established${declined}`;
   }
-  return `${costBandText(c.cost.low, c.cost.high)}${c.ifHeld ? ' if held' : ''}${declined}`;
+  return `${costBandText(c.cost.low, c.cost.high)}${c.ifHeld ? ' if kept' : ''}${declined}`;
 };
 
 /** Under the cost line: its central and what the band is, for a band (a contract's point needs neither). */
 const costSubline = (c: ConeSeason['control']): string => {
   if (!c.cost || c.cost.low === c.cost.high) return '';
   const central = centralText(c.cost);
-  return `${central ? `${central}; ` : ''}${COST_BAND_WORDS}${c.ifHeld ? '. If held: he may leave instead, or the player decides' : ''}.`;
+  return `${central ? `${central}; ` : ''}${COST_BAND_WORDS}${c.ifHeld ? '. If kept: he may leave instead, or the choice is his' : ''}.`;
 };
 
 /** Expected playing time for a season, per side: "about 560 PA (400–650)". */
@@ -61,14 +62,14 @@ export function SeasonDetail({ season: s, basis }: { season: ConeSeason; basis: 
             <td><strong>{formatWins(s.central)}</strong> wins</td>
           </tr>
           <tr>
-            <td className="muted">80% band</td>
+            <td className="muted">80% range</td>
             <td>
               {formatWins(s.outer.low)} to {formatWins(s.outer.high)}
               <div className="muted">{coverageText(s.coverage.outer)}</div>
             </td>
           </tr>
           <tr>
-            <td className="muted">50% band</td>
+            <td className="muted">50% range</td>
             <td>
               {formatWins(s.inner.low)} to {formatWins(s.inner.high)}
               <div className="muted">{coverageText(s.coverage.inner)}</div>
@@ -266,8 +267,8 @@ export function ProductionConeChart({ cone, width }: { cone: ProductionCone; wid
   return (
     <>
       <div className="cone-legend" aria-hidden="true">
-        <span className="cone-key"><span className="cone-swatch outer" />{words.outer}</span>
-        <span className="cone-key"><span className="cone-swatch inner" />{words.inner}</span>
+        <span className="cone-key"><span className="cone-swatch outer" /><Tip label={words.outer} tip={words.tip} /></span>
+        <span className="cone-key"><span className="cone-swatch inner" /><Tip label={words.inner} tip={words.tip} /></span>
         <span className="cone-key">
           <svg width="22" height="10" aria-hidden="true">
             <line x1="2" y1="5" x2="20" y2="5" stroke={CHART_COLOR.mark} strokeWidth={CHART_MARK.line} strokeDasharray="0 5" strokeLinecap="round" />
@@ -314,7 +315,9 @@ export function ProductionConeChart({ cone, width }: { cone: ProductionCone; wid
         <p className="muted cone-foot">{g.key.map((k) => `${k.code} = ${k.label.toLowerCase()}`).join(' · ')}</p>
       )}
       {cone.control.note && <p className="muted cone-foot">{cone.control.note}</p>}
-      <p className="muted cone-foot" title={cone.calibration.detail}>{cone.calibration.status}</p>
+      <p className="muted cone-foot">
+        <Tip label={calibrationWords(cone)} tip={`${cone.calibration.status}.${cone.calibration.detail ? ` ${cone.calibration.detail}` : ''}`} />
+      </p>
       {/* A table ignores width: 1px and grows to its content, so the hiding
           wrapper is a div; otherwise it pushes the card into horizontal scroll.
           It carries every figure the season detail shows (D-20). */}
@@ -324,7 +327,7 @@ export function ProductionConeChart({ cone, width }: { cone: ProductionCone; wid
           <caption>Expected wins above replacement per season. {cone.basis ? `Rests on: ${cone.basis}.` : ''} {cone.calibration.status}.</caption>
           <thead>
             <tr>
-              <th>Season</th><th>Age</th><th>Control</th><th>Cost</th><th>Expected</th><th>50% band</th><th>80% band</th>
+              <th>Season</th><th>Age</th><th>Control</th><th>Cost</th><th>Expected</th><th>50% range</th><th>80% range</th>
               <th>Banked</th><th>Playing time</th><th>Notes</th>
             </tr>
           </thead>
@@ -334,7 +337,7 @@ export function ProductionConeChart({ cone, width }: { cone: ProductionCone; wid
                 <td>{s.season}</td>
                 <td>{s.age}</td>
                 <td>{s.control.label}{s.control.after ? `, ${s.control.after.label.toLowerCase()}` : ''}. {s.control.detail}</td>
-                <td>{costText(s.control)}{s.control.cost && centralText(s.control.cost) ? ` (${centralText(s.control.cost)})` : ''}</td>
+                <td>{costText(s.control)}{s.control.cost && centralText(s.control.cost) ? ` (${centralText(s.control.cost).replace(/^central /, 'most likely ')})` : ''}</td>
                 <td>{formatWins(s.central)}</td>
                 <td>{formatWins(s.inner.low)} to {formatWins(s.inner.high)} ({coverageText(s.coverage.inner)})</td>
                 <td>{formatWins(s.outer.low)} to {formatWins(s.outer.high)} ({coverageText(s.coverage.outer)})</td>
@@ -348,7 +351,7 @@ export function ProductionConeChart({ cone, width }: { cone: ProductionCone; wid
                 <td>{s.season}</td>
                 <td>{s.age}</td>
                 <td>{s.control.label}{s.control.after ? `, ${s.control.after.label.toLowerCase()}` : ''}. {s.control.detail}</td>
-                <td>{costText(s.control)}{s.control.cost && centralText(s.control.cost) ? ` (${centralText(s.control.cost)})` : ''}</td>
+                <td>{costText(s.control)}{s.control.cost && centralText(s.control.cost) ? ` (${centralText(s.control.cost).replace(/^central /, 'most likely ')})` : ''}</td>
                 <td>not established</td>
                 <td>not established</td>
                 <td>not established</td>

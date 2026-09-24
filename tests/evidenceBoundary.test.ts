@@ -9,7 +9,8 @@ import { describe, expect, it } from 'vitest';
  * does. It reads the server source (comments stripped) and fails when a module
  * that makes subjective development or operations judgments touches a rating
  * source directly instead of going through server/scoutedEvidence.ts, or when
- * a new module starts reading `players_value`.
+ * any module starts reading `players_value`: since Player Value phase 6e no server, client, script or desktop module may,
+ * and there is no allow-list.
  */
 
 const SERVER = path.join(process.cwd(), 'server');
@@ -19,6 +20,20 @@ const code = (file: string): string =>
     .readFileSync(path.join(SERVER, file), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+/** Comments stripped, as `code` does, for a source anywhere in the repository. */
+const strip = (source: string): string =>
+  source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+/** Every TypeScript source under a directory, recursively. */
+const sourceFiles = (dir: string): string[] =>
+  fs.existsSync(dir)
+    ? fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+      e.isDirectory() ? sourceFiles(path.join(dir, e.name)) : /\.(ts|tsx|mts)$/.test(e.name) ? [path.join(dir, e.name)] : [])
+    : [];
+
+/** The readers that handed players_value on under other names (deleted in phase 6e). */
+const INDIRECT = /\bvaluesByPlayer\b|\bmlbPercentiler\b/;
 
 /** Player Development and Minor League Operations. */
 const GUARDED = [
@@ -111,18 +126,15 @@ describe('the evidence boundary', () => {
     expect(source).toMatch(/import \{ ratingScaleMax \} from '\.\/valuation\.js'/);
   });
 
-  it('confines players_value to the modules that predate the boundary', () => {
-    // Trade, contract and franchise valuation are outside Player Development and
-    // Minor League Operations. Any NEW module reading players_value must be added
-    // here deliberately, with the same review this boundary was created for.
-    // Phase 6b (PLAYER_VALUE.md Part 8): the Trade Center left the list; it reads Player Value.
-    // Phase 6d: Org Comparison (franchise.ts) left it; it reads Player Value and the export's facts
-    const allowed = new Set(['valuation.ts']);
+  it('no server module reads players_value, and the list can never grow (phase 6e: the allow-list is empty)', () => {
+    // Player Value phase 6 (PLAYER_VALUE.md Part 8) moved every consumer off OOTP's hidden value figures, one per change;
+    // phase 6e deleted the last readers (valuation.ts's valuesByPlayer and mlbPercentiler). There is no allow-list any
+    // more: a module that starts reading players_value is a failure here, never an addition to a list (D-017).
     const readers = fs
       .readdirSync(SERVER)
       .filter((f) => f.endsWith('.ts'))
       .filter((f) => /players_value/.test(code(f)));
-    expect(new Set(readers)).toEqual(allowed);
+    expect(readers).toEqual([]);
   });
 
   it.each(['trade.ts', 'tradingblock.ts'])('%s, migrated to Player Value (phase 6b), reads no value field, percentile or OOTP rating', (file) => {
@@ -132,26 +144,27 @@ describe('the evidence boundary', () => {
     }
   });
 
-  it('confines the players_value readers to the consumers not yet migrated onto Player Value, and the list only shrinks', () => {
-    // valuation.ts's readers (valuesByPlayer, mlbPercentiler) hand players_value to their callers under other names.
-    // Player Value phase 6 (PLAYER_VALUE.md Part 8) removes one consumer per change: 6a removed the player card
-    // (player.ts) and Contracts (contracts.ts); 6b removed the Trade Center (trade.ts, tradingblock.ts); 6c removed Free Agents
-    // (freeagents.ts); 6d removed the Roster's scouting column (api.ts) and the lineup (lineup.ts). A module missing from this
-    // set is fine; a module added to it is not.
-    const allowed = new Set(['valuation.ts']);
+  it('no module reads players_value through another under a different name: valuation.ts holds no value reader (phase 6e)', () => {
+    // valuation.ts's valuesByPlayer and mlbPercentiler handed players_value to their callers under other names. Player
+    // Value phase 6 moved their callers one per change (6a the card and Contracts, 6b the Trade Center, 6c Free Agents, 6d
+    // the Roster and the lineup); phase 6e deleted them with contractsByPlayer. Nothing may name them again.
     const readers = fs
       .readdirSync(SERVER)
       .filter((f) => f.endsWith('.ts'))
-      .filter((f) => /\bvaluesByPlayer\b|\bmlbPercentiler\b/.test(code(f)));
-    for (const file of readers) expect(allowed.has(file), `${file} reads players_value through valuation.ts`).toBe(true);
-    expect(readers).not.toContain('player.ts');
-    expect(readers).not.toContain('contracts.ts');
-    expect(readers).not.toContain('trade.ts');
-    expect(readers).not.toContain('tradingblock.ts');
-    expect(readers).not.toContain('freeagents.ts');
-    expect(readers).not.toContain('api.ts');
-    expect(readers).not.toContain('lineup.ts');
-    expect(readers).not.toContain('franchise.ts');
+      .filter((f) => INDIRECT.test(code(f)));
+    expect(readers).toEqual([]);
+    expect(code('valuation.ts')).not.toMatch(/\bPercentiler\b|\bPlayerValue\b|\bContractInfo\b|\bcontractsByPlayer\b/);
+  });
+
+  it.each(['src', 'scripts', 'electron'])('no module under %s/ names a players_value figure or a percentile of one (phase 6e)', (dir) => {
+    const offenders: string[] = [];
+    for (const file of sourceFiles(path.join(process.cwd(), dir))) {
+      const source = strip(fs.readFileSync(file, 'utf8'));
+      for (const pattern of [...PROHIBITED, INDIRECT, /\boverallPct\b|\btalentPct\b|\bvaluePct\b|\bVALUE_PERCENTILE_NOTE\b/]) {
+        if (pattern.test(source)) offenders.push(`${path.relative(process.cwd(), file)} matches ${pattern}`);
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 
   it.each(['api.ts', 'lineup.ts', 'franchise.ts'])('%s, taken off players_value (phase 6d), reads no value field, percentile or OOTP rating', (file) => {

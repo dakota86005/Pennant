@@ -10,7 +10,6 @@ import {
   clearProductionCaches, leagueFinances, marketValueOf, playerValue, productionHeadlineOf, surplusMarketFrom, surplusMarketOf,
 } from '../server/playerValue.js';
 import { loadScoutedAbilities } from '../server/scoutedEvidence.js';
-import { clearValuationCaches } from '../server/valuation.js';
 import { buildSave, type BuiltSave, type SaveSpec } from './syntheticSave';
 import request from './request';
 import { visibleText } from './visibleText';
@@ -60,12 +59,22 @@ beforeAll(async () => {
   // The prospect's scouting too: no ability evidence and no major-league line, so his production is not established
   db.prepare(`DELETE FROM players_batting WHERE player_id = ?`).run(freeAgents.unknown);
   db.prepare(`DELETE FROM players_pitching WHERE player_id = ?`).run(freeAgents.unknown);
-  clearValuationCaches();
+  // Phase 6e: a club option on the last season of a veteran's deal elsewhere, the way the export writes one: next season is
+  // the club's decision, and declined he is a free agent, so he might reach the market
+  const veteran = db.prepare(`SELECT c.player_id FROM players_contract c JOIN players p ON p.player_id = c.player_id
+    JOIN players_roster_status rs ON rs.player_id = c.player_id JOIN teams t ON t.team_id = p.team_id
+    WHERE t.level = 1 AND p.organization_id != ? AND p.free_agent = 0 AND c.years = 1 AND c.is_major = 1
+    ORDER BY rs.mlb_service_days DESC, c.player_id LIMIT 1`).get(save.org) as { player_id: number };
+  optioned = veteran.player_id;
+  db.prepare(`UPDATE players_contract SET years = 2, salary1 = salary0, last_year_team_option = 1 WHERE player_id = ?`).run(optioned);
   clearProductionCaches();
   page = await request(`/api/free-agents/${save.org}`);
 }, SLOW);
 
-const rows = (): Any[] => [...page.currentFAs, ...page.upcomingFAs];
+/** The veteran given a club option on next season (phase 6e). */
+let optioned: number;
+
+const rows = (): Any[] => [...page.currentFAs, ...page.upcomingFAs, ...(page.mightReach ?? [])];
 
 describe('Free Agents shows what Player Value knows (phase 6c)', () => {
   it('lists the free agents in the club\'s league, and everyone reaching free agency after this season with no value cut', () => {
@@ -175,6 +184,92 @@ describe('Free Agents shows what Player Value knows (phase 6c)', () => {
     expect(needs.thinnest).toEqual(known.slice(0, 3).map((p) => p.positionName));
     expect(JSON.stringify(needs)).not.toMatch(/bestValue|overall/);
   }, SLOW);
+});
+
+describe('Free Agents lists the players who might reach the market (phase 6e, the owner\'s answer of 2026-09-24)', () => {
+  /** An option-like season: the club's, the player's, both, or his opt-out. */
+  const OPTIONS = new Set(['club_option', 'player_option', 'vesting_option', 'mutual_option', 'opt_out']);
+  /** Free agency is one of the ways it can go: a status not settled that may be free agency (or names nothing it lies between). */
+  const open = (status: string, between: string[]) => status === 'free_agent'
+    || (status === 'indeterminate' && (between.length === 0 || between.includes('free_agent')));
+
+  /** Read from each player's control timeline, not from the page: whether free agency after this season is open. */
+  function mightReach(id: number): boolean {
+    const v = playerValue(id);
+    // A contract that could not be read leaves free agency open too (D-018); a player no club signed is on another list
+    if (v === null) return true;
+    if (v.control.standing === 'unsigned') return false;
+    if (v.control.thisSeason === null) return true;
+    const next = v.control.seasons.find((s) => s.season === v.control.thisSeason! + 1);
+    if (!next) return !(v.control.controlEnds !== null && v.control.controlEnds <= v.control.thisSeason);
+    if (OPTIONS.has(next.status)) return next.declined ? open(next.declined.status, next.declined.between) : false;
+    return next.status === 'indeterminate' && open(next.status, next.between);
+  }
+
+  const elsewhere = (): number[] => (db.prepare(`SELECT p.player_id FROM players p JOIN teams t ON t.team_id = p.team_id
+    WHERE t.level = 1 AND t.allstar_team = 0 AND t.league_id = ? AND p.team_id != ? AND p.retired = 0`)
+    .all(save.leagueId, save.org) as Array<{ player_id: number }>).map((r) => r.player_id);
+
+  it('lists every player the control timeline leaves between staying and free agency after this season, and no one else', () => {
+    expect(Array.isArray(page.mightReach)).toBe(true);
+    const expected = elsewhere().filter(mightReach).sort((a, b) => a - b);
+    expect(page.mightReach.map((r: Any) => r.player_id).sort((a: number, b: number) => a - b)).toEqual(expected);
+    // The veteran with a club option on next season, declined into free agency, is there
+    expect(page.mightReach.map((r: Any) => r.player_id)).toContain(optioned);
+    // Never mixed into the free agents after this season
+    const upcoming = new Set(page.upcomingFAs.map((r: Any) => r.player_id));
+    for (const r of page.mightReach) expect(upcoming.has(r.player_id), r.name).toBe(false);
+  }, SLOW);
+
+  it('leaves off a player the club controls whichever way an open question goes', () => {
+    const listed = new Set(page.mightReach.map((r: Any) => r.player_id));
+    for (const id of elsewhere()) {
+      const v = playerValue(id);
+      const next = v?.control.seasons.find((s) => s.season === (v.control.thisSeason ?? 0) + 1);
+      if (!next || next.status !== 'indeterminate' || next.between.length === 0) continue;
+      if (!next.between.includes('free_agent')) expect(listed.has(id), `${id} lies between ${next.between.join(' and ')}`).toBe(false);
+    }
+  }, SLOW);
+
+  it('says why each might reach the market, in a short word with the reason on hover', () => {
+    for (const r of page.mightReach) {
+      expect(typeof r.why?.label, r.name).toBe('string');
+      expect(r.why.label.length).toBeGreaterThan(0);
+      expect(r.why.label.length).toBeLessThanOrEqual(24);
+      expect(r.why.reason.length).toBeGreaterThan(0);
+    }
+    const planted = page.mightReach.find((r: Any) => r.player_id === optioned);
+    expect(planted.why.label).toMatch(/option/i);
+  });
+
+  it('is ordered by expected wins next season, unknown last, with the same figures as the other lists', () => {
+    const order = page.mightReach.map((r: Any) => r.winsNext?.central ?? null);
+    const firstNull = order.indexOf(null);
+    const known = (firstNull < 0 ? order : order.slice(0, firstNull)) as number[];
+    if (firstNull >= 0) expect(order.slice(firstNull).every((x: number | null) => x === null)).toBe(true);
+    expect(known).toEqual([...known].sort((a, b) => b - a));
+    for (const r of page.mightReach) {
+      const v = playerValue(r.player_id)!;
+      expect(r.market).toEqual(JSON.parse(JSON.stringify(marketValueOf({ production: v.production, market: surplusMarketOf(save.leagueId), season: spec.season + 1 }))));
+      expect(r.team).toBeTruthy();
+    }
+  });
+
+  it('shows the list as its own chip, with the reason on hover and no verdict or method word', async () => {
+    const { FreeAgentsView } = await import('../src/pages/FreeAgents');
+    const html = renderToStaticMarkup(createElement(FreeAgentsView, { data: page, initialList: 'mightReach' }));
+    const text = visibleText(html);
+    expect(text).toMatch(/Might reach the market/);
+    const planted = page.mightReach.find((r: Any) => r.player_id === optioned);
+    expect(text).toContain(planted.name);
+    expect(text).toContain(planted.why.label);
+    expect(html).toContain(`class="tip-pop">${planted.why.reason.replace(/'/g, '&#x27;').replace(/"/g, '&quot;')}`);
+    expect(text).toMatch(/salary/i);
+    expect(text).not.toMatch(JARGON);
+    expect(text).not.toMatch(VERDICT);
+    // The count line that stood in for the list is gone: the players are listed now
+    expect(text).not.toMatch(/could go either way/);
+  });
 });
 
 describe('Free Agents shows no percentile and no signing verdict (D-052, D-017)', () => {

@@ -273,8 +273,9 @@ Present on `main` (D-017):
   missing. Destination fit no longer reads a missing grade as zero, lists
   unassessed tools, and leaves the skip-level destination gate unknown (D-018).
 - `tests/evidenceBoundary.test.ts` statically forbids guarded modules from
-  regaining a direct rating source and pins the set of modules allowed to read
-  `players_value`.
+  regaining a direct rating source, and (since Player Value phase 6e) any server,
+  client, script or desktop module from reading `players_value`: it holds no
+  allow-list.
 
 Unknown ratings are not imputed anywhere (D-018): readiness and protection are
 `null` when the ratings they depend on are, assignments are `defensible`,
@@ -283,12 +284,14 @@ carry indeterminate results as such (`indeterminate` lists and recommendation),
 never as approval, rejection, protection, or a hold. Philosophy cannot resolve
 an unknown.
 
-Not yet done: scouting snapshots use their own composite; no product surface
-reads `players_value` any longer (the player card and Contracts stopped in
-Player Value phase 6a, the Trade Center in 6b, Free Agents and the AI's value
-context in 6c, and Org Comparison, the Roster's scouting column and the Lineup in
-6d; `valuation.ts` still holds the unused readers until the cleanup, and the
-Roster's rating bars still read the rating columns directly, outside the adapter); whether
+Not yet done: scouting snapshots use their own composite; no module reads
+`players_value` any longer (the player card and Contracts stopped in Player Value
+phase 6a, the Trade Center in 6b, Free Agents and the AI's value context in 6c,
+Org Comparison, the Roster's scouting column and the Lineup in 6d, and 6e deleted
+`valuation.ts`'s unused readers), but the Roster's rating bars still read the
+approved tool-rating columns directly, outside the adapter (the adapter does not
+expose a pitcher's batting grades or a hitter's pitching grades and reads a 0 as
+unknown, so routing them is an owner question); whether
 `players_value.oa`/`pot` are the organization's scouted view is unknowable from
 the repository; the farm workspaces do not yet render operations' indeterminate
 candidates. The provenance of every rating field is tabulated in
@@ -782,8 +785,21 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   The lineup reads its bats (the tools model on the split grades against the hand,
   the overall grades where the export has none, said) and gloves through the
   adapter; its solver is unchanged; an ungraded bat is named, never ranked.
-  `api.ts`, `lineup.ts` and `franchise.ts` read no `players_value`; the direct
-  allow-list is `valuation.ts`.
+  `api.ts`, `lineup.ts` and `franchise.ts` read no `players_value`.
+- **The cleanup** (phase 6e, 2026-09-24; PLAYER_VALUE.md Part 8, Part 9):
+  `valuation.ts`'s `valuesByPlayer`, `mlbPercentiler` and `contractsByPlayer`
+  are deleted; no module reads `players_value` and the boundary test holds no
+  allow-list. Payroll speaks plainly ("most likely $X · could be $A to $B",
+  "if kept", "A win costs about $X here"), its method words and the owner's
+  "players combined as independent" label on hover and in the breakdowns, every
+  figure kept (`PayrollView`, `payrollPage.test.ts`); the card's production cone
+  says its bands and calibration line plainly too. The trading block reads on
+  the export's freshness. Free Agents has a third list, "Might reach the market"
+  (an option or opt-out declined into free agency, a season not settled that may
+  be free agency; the reason on hover). The briefing's last section is "Worth a
+  look this week". A hover on the last rows of a table that scrolls in its own
+  box opens upward (CSS). The owner's answers on phases 6a to 6d are recorded
+  (PLAYER_VALUE.md Part 12).
 - **Tests:** `playerValueControl`, `playerValueCost` (the phase 4a cost bands),
   `playerValueSignings` (phase 4b: observed changes, the measured price, adoption,
   awards, reserve-clause renewals, replacement),
@@ -795,7 +811,7 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   `playerValueWinValue` (phase 5b), `playerValueTrade`, `tradeAnalysis`,
   `tradeCenter` and `tradingBlock` (phase 6b), `freeAgents`, `aiValueContext` and
   `pageFreshness` (phase 6c), `rosterScouted`, `lineupEvidence` and `orgComparison`
-  (phase 6d) and `playerValueBoundary`
+  (phase 6d), `payrollPage` and `tableHovers` (phase 6e) and `playerValueBoundary`
   (since the hardening it reads the source through the TypeScript parser, and
   each of its hardened checks was shown to catch a deliberate mutation; a known
   violation owned by another fix is listed with its finding and must still be
@@ -809,10 +825,11 @@ and the arrival chance by potential (they fit themselves once the save's rating
 snapshots allow), a lens that reads the club's value of a win (an owner question), the odds
 model's wild-card route for a division leader, personality's effect on price (it moves no number
 until observed signings are read against it), a per-import store (everything is computed per request; see
-Part 7), and the rest of the consumer migration that deletes `players_value` reads
-(phase 6 is done: the card and Contracts, 6a, the Trade Center, 6b, Free Agents with
-the AI's value context, 6c, and Org Comparison, the Roster's scouting column and the
-Lineup, 6d; `valuesByPlayer` and `mlbPercentiler` are deleted in the cleanup). The calibrated constants of other subsystems are
+Part 7), and routing the Roster's rating bars through the adapter (an owner
+question). The consumer migration that deletes `players_value` reads is done
+(phase 6: the card and Contracts, 6a, the Trade Center, 6b, Free Agents with the
+AI's value context, 6c, Org Comparison, the Roster's scouting column and the
+Lineup, 6d, and the cleanup, 6e). The calibrated constants of other subsystems are
 not yet fitted per save (D-053; ROADMAP). On the Arizona import 6,952 of 8,009 held players have indeterminate later
 seasons because what follows a minor-league contract is not established from
 the export, and 494 meet a free-agency line inside this season's projection.

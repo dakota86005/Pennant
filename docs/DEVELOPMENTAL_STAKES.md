@@ -475,9 +475,11 @@ whole-league report runs in about a second.
   leagues: 358 players, 307 of them 20-to-22-year-olds in the Dominican league with no visible
   major-league ceiling going from ordinary to organizational depth, one regular's ceiling touched
   (Part 9).
-* **Pre-fork surfaces** still show OOTP's Overall and Potential (D-017's remaining gap), so a player
-  card can show a 70 potential beside a "regular's ceiling" read from the composite. They are
-  different numbers by design, and the reasons name the composite.
+* **No surface shows OOTP's Overall and Potential any longer** (Player Value phase 6, 2026-09-24:
+  the card's header and the Roster show the scouts' composite through the adapter, and no module
+  reads `players_value`). A GM comparing with the game's own card can still see a 70 potential there
+  beside a "regular's ceiling" read from the composite: different numbers by design, and the reasons
+  name the composite.
 
 ## Part 8 — Next
 

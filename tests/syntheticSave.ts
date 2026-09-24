@@ -17,12 +17,11 @@
  */
 import { db, tableColumns, tableExists } from '../server/db.js';
 import { historyDb } from '../server/history.js';
-import { clearScaleCache, clearValuationCaches } from '../server/valuation.js';
+import { clearScaleCache } from '../server/valuation.js';
 import { clearProductionCaches } from '../server/playerValue.js';
 
-/** What an import clears (`server/api.ts`): the valuation caches and Player Value's (identity, schedules, rates). */
+/** What an import clears (`server/api.ts`): Player Value's caches (identity, schedules, rates). */
 function clearExportCaches(): void {
-  clearValuationCaches();
   clearProductionCaches();
 }
 

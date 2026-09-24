@@ -5404,6 +5404,13 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); cur
 .contracts-empty { margin: 16px 0; }
 /* The table scrolls inside its own box; it never widens the page */
 .contracts-table-scroll { max-width: 100%; overflow-x: auto; }
+/*
+ * A box that scrolls sideways cannot let anything spill below it, so a hover opened on one of the last rows was cut off at
+ * the box's bottom edge (Contracts, Free Agents, Org Comparison, Payroll's contracts; phase 6e). On the last four rows it
+ * opens upward, into the table, instead.
+ */
+.contracts-table-scroll tbody tr:nth-last-child(-n + 4) .tip-pop,
+.payroll-table-scroll tbody tr:nth-last-child(-n + 4) .tip-pop { top: auto; bottom: calc(100% + 8px); }
 .contracts-table th.num, .contracts-table td.num { text-align: right; }
 .contracts-table th.num.sortable button { text-align: right; }
 .contracts-table td { vertical-align: top; }

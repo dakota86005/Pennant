@@ -4,7 +4,6 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { db } from '../server/db.js';
 import { loadScoutedAbilities } from '../server/scoutedEvidence.js';
-import { clearValuationCaches } from '../server/valuation.js';
 import request from './request';
 import { IDS } from './fixture';
 import { visibleText } from './visibleText';
@@ -25,7 +24,6 @@ const PLANTED = 77;
 beforeAll(() => {
   db.prepare(`UPDATE players_value SET oa = ?, pot = ?, oa_rating = ?, pot_rating = ?, overall_value = 9999, talent_value = 9999 WHERE player_id = ?`)
     .run(PLANTED, PLANTED, PLANTED, PLANTED, IDS.starter);
-  clearValuationCaches();
 });
 
 describe('the card header never shows a hidden value figure (D-017)', () => {

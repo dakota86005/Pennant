@@ -186,12 +186,26 @@ export function coverageText(c: ConeCoverage): string {
 /**
  * What the bands are, in words (D-19). With the save's own fit in force a band is stated as its
  * target, which each season's observed coverage then qualifies; with the fallback prior it is a range
- * of reasonable readings, never a claim that 80% of outcomes fall inside.
+ * of reasonable readings, never a claim that 80% of outcomes fall inside. Since Player Value phase 6e the legend says it in
+ * plain words (AGENTS.md "Writing for the GM") and `tip` carries the method's words on hover.
  */
-export function bandWords(cone: ProductionCone): { outer: string; inner: string } {
+export function bandWords(cone: ProductionCone): { outer: string; inner: string; tip: string } {
   return cone.calibration.calibrated
-    ? { outer: '80% band (target)', inner: '50% band (target)' }
-    : { outer: '80% range of reasonable readings (not yet calibrated)', inner: '50% range of reasonable readings' };
+    ? {
+      outer: '80% range (target)', inner: '50% range (target)',
+      tip: "Each band's target: the 80% band is meant to hold 8 seasons in 10 and the 50% band 5 in 10. How often they did on "
+        + "this save's own seasons is in each season's detail, beside the target.",
+    }
+    : {
+      outer: '80% range (not yet checked on this save)', inner: '50% range',
+      tip: "A range of reasonable readings, not yet calibrated: not yet checked against how this save's players actually did, "
+        + 'so it is not a claim that 8 seasons in 10 land inside it.',
+    };
+}
+
+/** The line under the chart in plain words; the calibration statement itself (the server's) is on hover. */
+export function calibrationWords(cone: ProductionCone): string {
+  return cone.calibration.calibrated ? "Checked against this save's own seasons" : "Not yet checked against this save's own seasons";
 }
 
 /** Every figure a season carries is a finite number: otherwise the cone is not drawn (D-24). */

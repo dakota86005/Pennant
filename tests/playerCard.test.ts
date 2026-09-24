@@ -60,7 +60,7 @@ describe("Payroll's price of a win", () => {
 
   it("shows the floor as the range it is, and the server's own label", () => {
     const html = renderToStaticMarkup(createElement(PriceOfWinLine, { price: price() }));
-    expect(html).toMatch(/\$4\.22M–\$4\.33M/);
+    expect(html).toMatch(/\$4\.22M to \$4\.33M/);
     expect(html).toMatch(/Opening price of a win \(imported market\)/);
   });
 
@@ -155,7 +155,7 @@ describe("Payroll's price of a win", () => {
     const html = renderToStaticMarkup(createElement(PriceOfWinLine, {
       price: price({ price: { value: null, source: null, note: 'A single reading is not a band.' } }),
     }));
-    expect(html).toMatch(/unknown/);
-    expect(html).toMatch(/\$4\.22M–\$4\.33M/);
+    expect(html).toMatch(/isn(&#x27;|')t known/);
+    expect(html).toMatch(/\$4\.22M to \$4\.33M/);
   });
 });

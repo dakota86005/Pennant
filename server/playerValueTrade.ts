@@ -453,7 +453,7 @@ const STATUS_WORD: Record<ControlStatus, string> = {
   vesting_option: 'vesting option',
   mutual_option: 'mutual option',
   opt_out: 'opt-out',
-  pre_arbitration: 'pre-arb',
+  pre_arbitration: 'pre-arbitration',
   arbitration: 'arbitration',
   free_agent: 'free agency',
   reserve_clause: 'reserve clause',

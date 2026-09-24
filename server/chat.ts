@@ -325,7 +325,9 @@ export const TOOLS: Anthropic.Tool[] = [
       'Who can be signed now and who reaches free agency after this season, each with his age, scouted tools (now and ' +
       'ceiling, 20-80), expected wins (the rest of this season and next, most likely with the range) and "market": what a ' +
       "season of his production next season costs at this league's market (the league minimum plus his expected wins × the " +
-      'price of a win), a range, never an asking price. Also the club’s thinnest positions by its best player’s expected ' +
+      'price of a win), a range, never an asking price. "mightReach" lists the players who could reach the market or stay ' +
+      '(an option or opt-out that would free him if declined, or a season not yet settled), each with "why"; they are not ' +
+      'free agents, so never present one as coming. Also the club’s thinnest positions by its best player’s expected ' +
       'wins, and what money there is to spend. Each list is ordered by expected wins next season, as "order" says, and ' +
       'trimmed to the first 40; "shown" gives how many of how many. It carries no recommendation: the GM decides.',
     input_schema: {
@@ -458,18 +460,21 @@ export async function runTool(name: string, input: Record<string, unknown>): Pro
       return cap(await callOwnApi(`contracts/${Number(input.team_id) || defaultOrgId()}`));
     case 'get_free_agents': {
       const market = (await callOwnApi(`free-agents/${Number(input.team_id) || defaultOrgId()}`)) as {
-        currentFAs?: unknown[]; upcomingFAs?: unknown[];
+        currentFAs?: unknown[]; upcomingFAs?: unknown[]; mightReach?: unknown[];
       };
       // A whole off-season market does not fit a tool result: each list in its stated order, trimmed, and said so
       const current = market.currentFAs ?? [];
       const upcoming = market.upcomingFAs ?? [];
+      const might = market.mightReach ?? [];
       return cap({
         ...market,
         currentFAs: current.slice(0, FREE_AGENTS_SHOWN),
         upcomingFAs: upcoming.slice(0, FREE_AGENTS_SHOWN),
+        mightReach: might.slice(0, FREE_AGENTS_SHOWN),
         shown: {
           currentFAs: `${Math.min(current.length, FREE_AGENTS_SHOWN)} of ${current.length}`,
           upcomingFAs: `${Math.min(upcoming.length, FREE_AGENTS_SHOWN)} of ${upcoming.length}`,
+          mightReach: `${Math.min(might.length, FREE_AGENTS_SHOWN)} of ${might.length}`,
         },
       });
     }

@@ -24,6 +24,7 @@ paths:
   - "src/pages/OrgComparison.tsx"
   - "tests/playerValue*.ts"
   - "tests/payrollControl.test.ts"
+  - "tests/payrollPage.test.ts"
   - "server/positionNeeds.ts"
   - "src/pages/FreeAgents.tsx"
   - "src/freeAgentsApi.ts"
@@ -187,7 +188,7 @@ worktree.
   optionally, our view computed by the caller; it never recomputes, narrows or re-reads a player's figures and names no
   philosophy. A deal is summed on contract value (the salary moves with the player; the value of keeping him is shown, never
   summed); players combined as independent around the sum of most likely readings, an open season at its edges
-  (`TRADE_COMBINATION_POLICY`, the owner's Payroll rule extended; open owner question), the edge-to-edge sum beside it; the
+  (`TRADE_COMBINATION_POLICY`, the owner's Payroll rule extended, confirmed by the owner 2026-09-24), the edge-to-edge sum beside it; the
   difference is what comes in less what goes out, a band with each player's signed part, never a point, a score or a verdict
   ("win/lose the trade", accept, reject are banned in code and on the page). An unknown player is named with one short reason
   and left out; a side with nothing valued makes the difference not a number. The neutral reading is the same under every
@@ -210,8 +211,15 @@ worktree.
   sum saying so; payroll and budget are Club Finances'; it sends no rank and the page sorts only by a shown column,
   unknown last. The Roster's scouting column and the lineup are not value questions: they read `scoutedEvidence.ts`
   (the card header's "Scouted" composite; the lineup's bats through the tools model, its gloves through
-  `scoutedGloves`), never Player Value. `api.ts`, `lineup.ts` and `franchise.ts` read no `players_value`; the direct
-  allow-list is `valuation.ts` alone.
+  `scoutedGloves`), never Player Value. `api.ts`, `lineup.ts` and `franchise.ts` read no `players_value`.
+- The cleanup (phase 6e; PLAYER_VALUE.md Part 8, Part 9): no module reads `players_value` (`valuation.ts`'s readers are
+  deleted) and `evidenceBoundary.test.ts` holds no allow-list, for server, client, scripts and desktop alike; a new
+  reader is a failure, never an addition. Payroll speaks plainly ("most likely $X · could be $A to $B", "if kept", "A win
+  costs about $X here"), its method words and the owner's "players combined as independent; not a calibrated interval"
+  label in the hovers and breakdowns, every figure kept (`payrollPage.test.ts`). The trading block reads on the export's
+  freshness. Free Agents lists "Might reach the market" (the timeline leaves free agency open after this season: an option
+  or opt-out declined into it, a season not settled that may be it), each with why on hover; the briefing's last section is
+  "Worth a look this week" (D-001). The owner's answers on 6a to 6d are in PLAYER_VALUE.md Part 12.
 - Never ask the owner for an OOTP experiment; an unresolved rule stays `indeterminate` and is documented.
 
 Checks: `tests/playerValueBoundary.test.ts`, `tests/playerValueControl.test.ts`, `tests/playerValueCost.test.ts`,
@@ -221,5 +229,5 @@ Checks: `tests/playerValueBoundary.test.ts`, `tests/playerValueControl.test.ts`,
 `tests/playerValueLens.test.ts`, `tests/playerValueWinValue.test.ts`, `tests/playoffs.test.ts`, `tests/contractsPage.test.ts`,
 `tests/playerCardHeader.test.ts`, `tests/playerValueTrade.test.ts`, `tests/tradeAnalysis.test.ts`, `tests/tradeCenter.test.ts`,
 `tests/tradingBlock.test.ts`, `tests/freeAgents.test.ts`, `tests/aiValueContext.test.ts`, `tests/pageFreshness.test.ts`,
-`tests/orgComparison.test.ts`;
+`tests/orgComparison.test.ts`, `tests/payrollPage.test.ts`, `tests/evidenceBoundary.test.ts`;
 `npm run value:report` and `npx tsx scripts/calibrate.ts production` against a real import (read-only with `OOTP_FO_DB_READONLY=1`).

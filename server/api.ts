@@ -23,7 +23,7 @@ import { clearResultsCaches } from './resultsEvidence.js';
 import { clearFarmResultsCaches } from './farmResults.js';
 import { clearFarmUsageCaches } from './farmUsage.js';
 import { clearFieldingPopulationCache, loadScoutedAbilities } from './scoutedEvidence.js';
-import { ratingScaleMax, clearScaleCache, clearValuationCaches } from './valuation.js';
+import { ratingScaleMax, clearScaleCache } from './valuation.js';
 import { clearTwoWayCache } from './twoway.js';
 import { dashboardRoutes } from './dashboard.js';
 import { rosterOpsRoutes } from './rosterops.js';
@@ -225,7 +225,6 @@ export async function runImport(csvDir: string): Promise<void> {
     clearFarmResultsCaches(); // the farm's league populations, lines and club games
     clearFarmUsageCaches(); // and who has been playing where
     clearFieldingPopulationCache();
-    clearValuationCaches();
     clearProductionCaches(); // what Player Value measured about the last export (schedules, rates, identity)
     importedAt.value = importState.lastImport.finishedAt;
     try {

@@ -1,7 +1,8 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { db } from '../server/db.js';
+import { getDataStatus, type DataStatus } from '../server/dataStatus.js';
 import { blockedIds, tradingBlock } from '../server/tradingblock.js';
-import { IDS } from './fixture.js';
+import { IDS, SEASON } from './fixture.js';
 
 /**
  * The trading block, which the export has carried all along.
@@ -44,6 +45,13 @@ beforeAll(() => {
   };
   add(LISTED, 'Available', 2);
   add(NOT_LISTED, 'Untouchable', 0);
+  // The listed veteran's deal runs out this season (phase 6e): whether he is a free agent after it turns on his service
+  db.prepare(
+    `INSERT INTO players_contract
+       (player_id, team_id, contract_team_id, season_year, years, current_year, is_major, retained,
+        no_trade, last_year_team_option, last_year_player_option, last_year_vesting_option, salary0)
+     VALUES (?, ?, ?, ?, 1, 0, 1, 0, 0, 0, 0, 0, 9000000)`
+  ).run(LISTED, IDS.otherMlbTeam, IDS.otherMlbTeam, SEASON);
 });
 
 describe('the trading block', () => {
@@ -74,6 +82,29 @@ describe('the trading block', () => {
     const all = tradingBlock();
     expect(all.sellingClubs).toBeGreaterThan(0);
     expect(all.total).toBeGreaterThanOrEqual(all.listed.length);
+  });
+
+  // Player Value phase 6e (BEHAVIOR_CASES.md "Player Value"): read on the export's own freshness, as the Trade Center is
+  it('reads each man on the export\'s own freshness and says it: an export behind the save states no control that turns on service', () => {
+    const real = getDataStatus();
+    const at = (state: 'current' | 'behind'): DataStatus => ({
+      ...real,
+      save: { ...real.save, simulatedThrough: `${SEASON}-06-01` },
+      freshness: {
+        ...real.freshness,
+        save: { simulatedThrough: `${SEASON}-06-01` },
+        csv: { ...real.freshness.csv, state, lagDays: state === 'behind' ? 3 : 0, currentDate: state === 'behind' ? `${SEASON}-05-29` : `${SEASON}-06-01` },
+      },
+    });
+    const fresh = tradingBlock({}, at('current'));
+    const stale = tradingBlock({}, at('behind'));
+    expect(fresh.freshness.state).toBe('current');
+    expect(stale.freshness.state).toBe('behind');
+    expect(stale.freshness.line).toMatch(/out of date/i);
+    // A veteran whose free agency after this season turns on his service: stated on a current export, not on a stale one
+    const him = (r: ReturnType<typeof tradingBlock>) => r.listed.find((p) => p.name === 'Block Available')!;
+    expect(him(fresh).control).toMatch(/free agent/i);
+    expect(him(stale).control).not.toEqual(him(fresh).control);
   });
 
   it('honours a limit', () => {

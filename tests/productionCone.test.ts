@@ -150,8 +150,10 @@ describe('the production cone renders', () => {
     expect(html).toMatch(/aria-label="[^"]*2030/);
     // A band is stated as its target (hardening F2, D-19): "80% of outcomes fall inside" is a claim
     // the calibration line and each season's observed coverage qualify
-    expect(html).toMatch(/80% band \(target\)/);
-    expect(html).toMatch(/50% band \(target\)/);
+    // In plain words since Player Value phase 6e: "range" on the page, the target's meaning on hover
+    expect(html).toMatch(/80% range \(target\)/);
+    expect(html).toMatch(/50% range \(target\)/);
+    expect(html).toMatch(/Checked against this save&#x27;s own seasons/);
     expect(html).toMatch(/Replacement/);
     expect(html).toMatch(/Calibrated on this save: 2006–2025, refit after the 2025 season/);
     // A focusable control per season, for the hover detail by keyboard
@@ -215,7 +217,7 @@ describe('the production cone renders', () => {
       control: { ...control('Arbitration or free agent', 'Arb/FA', 'A/F'), cost: { low: 5_300_000, high: 36_800_000, central: 12_000_000 }, ifHeld: true, costDetail: 'He may instead be a free agent.' },
     });
     const h = renderToStaticMarkup(createElement(SeasonDetail, { season: held, basis: 'x' }));
-    expect(h).toMatch(/if held/);
+    expect(h).toMatch(/if kept/);
     const option = s(2033, 2.3, [-0.4, 5.1], [1.0, 3.6], {
       control: {
         ...control('Club option', 'Option', 'Opt'), cost: { low: 6_000_000, high: 6_000_000 }, costDetail: "The contract's salary.",
@@ -228,7 +230,7 @@ describe('the production cone renders', () => {
     // The hidden table shows the same, without inlining the whole basis paragraph
     const table = renderToStaticMarkup(createElement(ProductionConeChart, { cone: cone([REGULAR[0], renewal, held, option]), width: 640 }));
     expect(table).toMatch(/\$780K–\$790K/);
-    expect(table).toMatch(/if held/);
+    expect(table).toMatch(/if kept/);
     expect(table).toMatch(/declined/i);
     expect(table).not.toMatch(/Pre-arbitration renewal: measured\./);
   });
