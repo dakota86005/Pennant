@@ -5,6 +5,7 @@ paths:
   - "server/playoffs.ts"
   - "src/ValueSection.tsx"
   - "server/clubFinanceRoutes.ts"
+  - "server/ourViewRoutes.ts"
   - "server/leagueRules.ts"
   - "server/contracts.ts"
   - "server/payroll.ts"
