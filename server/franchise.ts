@@ -1,5 +1,13 @@
 import { Router } from 'express';
-import { db, tableExists } from './db.js';
+import { freshnessCue, getDataStatus, type DataStatus } from './dataStatus.js';
+import { db, tableColumns, tableExists } from './db.js';
+import { leagueRulesForLeague } from './leagueRules.js';
+import {
+  clubFinances, groupWinsOf, playerValues, productionHeadlineOf, TRADE_COMBINATION_POLICY, tradeValueOf,
+  type PlayerValuation,
+} from './playerValue.js';
+import type { Sourced } from './provenance.js';
+import { currentGameDate, ON_ROSTER } from './valuation.js';
 
 /**
  * The club's whole history, which the export has carried all along.
@@ -102,125 +110,261 @@ franchiseRoutes.get('/franchise/:teamId', (req, res) => {
 });
 
 /**
- * Every organization side by side.
+ * Every organization side by side (Player Value phase 6d, PLAYER_VALUE.md Part 8, consumer 5).
  *
- * The rest of the app answers questions about one club. This answers the one
- * that needs the others in frame — whether the farm system is actually any
- * good, which is unanswerable without seeing the twenty-nine you are competing
- * with. Talent is OOTP's own scouted ceiling, summed over the men in the
- * system, so it reads as "how much future is in there" rather than a ranking of
- * today's results.
+ * The rest of the app answers questions about one club. This answers the ones that need the others in frame: how strong is
+ * the major-league roster for the rest of the season, how much is the farm about to add, what are the roster's contracts
+ * worth beyond what they pay, and what does the club spend. It used to add up OOTP's own overall and talent values
+ * (`players_value`) and rank the clubs by them: a hidden score the organization cannot see (D-017), ranked. Now every figure
+ * is Player Value's, as each player is served, or an objective fact of the export, and nothing is ranked; the page orders
+ * clubs only by a column it shows.
+ *
+ *   the roster      the club's rostered players (active or on the injured list, as Contracts lists them): their expected
+ *                   wins for the rest of this season (the whole season before it starts), and their contract value
+ *   the farm        the organization's players on its affiliates: their expected wins next season, and the one expected to
+ *                   add the most, with his figure
+ *   money           OOTP's payroll and budget as Club Finances reads them; a figure the export lacks is unknown, never $0
+ *   combining       each sum is its players' served figures combined as independent, the way Payroll combines players
+ *                   (`TRADE_COMBINATION_POLICY`, the owner's Payroll rule): around the sum of the most likely readings, each
+ *                   player's own distance combined across players, an open season kept at its edges; the every-player-at-
+ *                   his-edge sum is kept beside it
+ *   unknown         a player whose figure is not known is named with his reason and left out; the sum says so (D-018)
  */
-franchiseRoutes.get('/org-comparison/:orgId', (req, res) => {
-  const orgId = Number(req.params.orgId);
-  if (!tableExists('players_value')) return res.status(400).json({ error: 'No data imported yet' });
 
-  const org = db.prepare(`SELECT league_id FROM teams WHERE team_id = ?`).get(orgId) as
-    | { league_id: number }
-    | undefined;
-  if (!org) return res.status(404).json({ error: 'Unknown org' });
+const POSITION_NAMES: Record<number, string> = {
+  1: 'P', 2: 'C', 3: '1B', 4: '2B', 5: '3B', 6: 'SS', 7: 'LF', 8: 'CF', 9: 'RF', 10: 'DH',
+};
 
+const LABEL = TRADE_COMBINATION_POLICY.label;
+
+export interface OrgFigure {
+  low: number;
+  central: number | null;
+  high: number;
+  centralRange: { low: number; high: number } | null;
+}
+
+export interface OrgLeftOut {
+  player_id: number;
+  name: string;
+  /** One short sentence, for the page. */
+  reason: string;
+}
+
+/** A club's sum of one figure over a group of its players. */
+export interface OrgSum {
+  unit: 'wins' | 'dollars';
+  /** 'none': no player in the group has the figure (or the group is empty); never a zero. */
+  status: 'known' | 'none';
+  figure: OrgFigure | null;
+  /** Every player at his low edge, summed, to every player at his high edge. */
+  edges: { low: number; high: number } | null;
+  counted: number;
+  /** The players summed, so any reader can check the sum against each one's served figure. */
+  playerIds: number[];
+  excluded: OrgLeftOut[];
+  text: string;
+}
+
+type Group = Array<{ player_id: number; name: string }>;
+
+const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`;
+const winsText = (v: number): string => `${v < 0 ? '−' : ''}${Math.abs(v).toFixed(1)}`;
+
+function leavesOut(excluded: OrgLeftOut[]): string {
+  return excluded.length === 0 ? '' : ` Leaves out ${plural(excluded.length, 'player')} whose figure isn't known, each named with his reason; never counted as zero.`;
+}
+
+/** Wins over a group: each player's served band, or his reason; combined as independent by Player Value (`groupWinsOf`). */
+function winsSum(group: Group, read: (id: number) => { band: { low: number; central: number; high: number } | null; reason: string }, what: string): OrgSum {
+  const names = new Map(group.map((p) => [p.player_id, p.name]));
+  const sum = groupWinsOf(group.map((p) => {
+    const r = read(p.player_id);
+    return { playerId: p.player_id, wins: r.band, reason: r.reason };
+  }));
+  const excluded = sum.excluded.map((x) => ({ player_id: x.playerId, name: names.get(x.playerId) ?? `Player ${x.playerId}`, reason: x.reason }));
+  if (sum.status !== 'known' || !sum.figure || !sum.edges) {
+    return {
+      unit: 'wins', status: 'none', figure: null, edges: null, counted: 0, playerIds: [], excluded,
+      text: group.length === 0 ? `No players ${what}.` : `No player ${what} has a projection, so there is no total.${leavesOut(excluded)}`,
+    };
+  }
+  return {
+    unit: 'wins', status: 'known', figure: sum.figure, edges: sum.edges, counted: sum.counted.length, playerIds: sum.counted, excluded,
+    text: `Expected wins above replacement ${what}, summed over ${plural(sum.counted.length, 'player')}; ${LABEL}: around the sum of ` +
+      `each player's most likely wins, each player's own distance from his combined across players. Every player at his edge: ` +
+      `${winsText(sum.edges.low)} to ${winsText(sum.edges.high)} wins.${leavesOut(excluded)}`,
+  };
+}
+
+/** Contract value over a group: the Trade Center's reading of a side (`tradeValueOf`), each player's figure as served. */
+function contractSum(group: Group, valuations: Map<number, PlayerValuation>): OrgSum {
+  const read = tradeValueOf({ sent: [], received: group.map((p) => ({ playerId: p.player_id, surplus: valuations.get(p.player_id)?.surplus ?? null })) });
+  const side = read.received;
+  const names = new Map(group.map((p) => [p.player_id, p.name]));
+  const excluded = side.players.filter((p) => !p.counted)
+    .map((p) => ({ player_id: p.playerId, name: names.get(p.playerId) ?? `Player ${p.playerId}`, reason: p.notCounted ?? 'Not valued yet.' }));
+  const unit = read.unit ?? 'dollars';
+  if (side.total.status !== 'known' || !side.total.figure || !side.total.edges) {
+    return {
+      unit, status: 'none', figure: null, edges: null, counted: 0, playerIds: [], excluded,
+      text: group.length === 0 ? 'No players on the roster.' : `No player on the roster could be valued, so there is no total.${leavesOut(excluded)}`,
+    };
+  }
+  return {
+    unit, status: 'known', figure: side.total.figure, edges: side.total.edges, counted: side.total.counted,
+    playerIds: side.players.filter((p) => p.counted).map((p) => p.playerId), excluded,
+    text: `Contract value${unit === 'wins' ? ' (in wins: this league\'s dollars aren\'t known)' : ''} of the roster: ${side.total.text}`,
+  };
+}
+
+const median = (xs: number[]): number | null => {
+  if (xs.length === 0) return null;
+  const s = [...xs].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+};
+
+/** A figure's most likely reading: its central twice, or the range of its readings; never a midpoint made up between them. */
+const likelyOf = (f: OrgFigure | null): { low: number; high: number } | null =>
+  (f === null ? null : f.central !== null ? { low: f.central, high: f.central } : f.centralRange);
+
+/** The league's middle club on a figure: the median of the clubs' most likely readings, each edge of a range on its own. */
+const middleOf = (figures: Array<OrgFigure | null>): { low: number; high: number } | null => {
+  const likely = figures.map(likelyOf).filter((x): x is { low: number; high: number } => x !== null);
+  const low = median(likely.map((x) => x.low));
+  const high = median(likely.map((x) => x.high));
+  return low === null || high === null ? null : { low, high };
+};
+
+const moneyOf = (s: Sourced<number>) => ({ value: s.value, source: s.source, note: s.note ?? null });
+
+/**
+ * The page. `status` is how current the export is (D-022): handed to Player Value as `currentState`, as Contracts does, so a
+ * stale export leaves what rests on service time not established, and said on the page with the game date (A-20).
+ */
+export function computeOrgComparison(orgId: number, status: DataStatus = getDataStatus()) {
+  const org = db.prepare(`SELECT league_id FROM teams WHERE team_id = ?`).get(orgId) as { league_id: number } | undefined;
+  if (!org) throw new Error('Unknown org');
+  // The season is the league's own, as exported; never the wall-clock year (D-022)
+  const rules = leagueRulesForLeague(org.league_id).contract;
+  const season = rules.season.value;
+  if (season === null) throw new Error(`The league's current season is not in the export: ${rules.season.note ?? 'no source states it'}`);
+  const cue = freshnessCue(status);
+
+  const teamColumns = new Set(tableColumns('teams'));
   const clubs = db
     .prepare(
-      `SELECT team_id, CASE WHEN name = nickname THEN name ELSE name || ' ' || nickname END AS label
-       FROM teams WHERE level = 1 AND allstar_team = 0 AND league_id = ?`
+      `SELECT team_id, CASE WHEN name = nickname OR nickname IS NULL THEN name ELSE name || ' ' || nickname END AS label,
+              ${teamColumns.has('abbr') ? 'abbr' : 'NULL AS abbr'}
+       FROM teams WHERE level = 1 ${teamColumns.has('allstar_team') ? 'AND allstar_team = 0' : ''} AND league_id = ?
+       ORDER BY label`
     )
-    .all(org.league_id) as Array<{ team_id: number; label: string }>;
+    .all(org.league_id) as Array<{ team_id: number; label: string; abbr: string | null }>;
+  const clubIds = clubs.map((c) => c.team_id);
+  const holes = clubIds.map(() => '?').join(',');
 
-  // One pass over the league rather than a query per club
-  const rows = db
+  // The major-league roster: the club's players on its active roster or injured list, as Contracts lists them
+  const roster = clubIds.length === 0 ? [] : db
     .prepare(
-      `SELECT p.player_id, p.organization_id AS org, t.level AS level,
-              v.overall_value AS overall, v.talent_value AS talent, p.age AS age
-       FROM players p
-       JOIN teams t ON t.team_id = p.team_id
-       JOIN players_value v ON v.player_id = p.player_id
-       WHERE p.retired = 0 AND p.organization_id > 0`
+      `SELECT p.player_id, p.team_id AS club, p.first_name || ' ' || p.last_name AS name
+       FROM players p LEFT JOIN players_roster_status rs ON rs.player_id = p.player_id
+       WHERE p.team_id IN (${holes}) AND p.retired = 0 AND ${ON_ROSTER}`
     )
-    .all() as Array<{
-    player_id: number; org: number; level: number; overall: number; talent: number; age: number;
-  }>;
+    .all(...clubIds) as Array<{ player_id: number; club: number; name: string }>;
+  // The farm: the organization's players on its affiliates
+  const farm = clubIds.length === 0 || !tableColumns('players').includes('organization_id') ? [] : db
+    .prepare(
+      `SELECT p.player_id, p.organization_id AS club, p.first_name || ' ' || p.last_name AS name, p.age, p.position,
+              t.level, ${teamColumns.has('abbr') ? 't.abbr' : 'NULL'} AS team
+       FROM players p JOIN teams t ON t.team_id = p.team_id
+       WHERE p.organization_id IN (${holes}) AND t.level > 1 AND p.retired = 0`
+    )
+    .all(...clubIds) as Array<{ player_id: number; club: number; name: string; age: number | null; position: number | null; level: number; team: string | null }>;
 
-  const acc = new Map<
-    number,
-    { mlb: number; farm: number; farmCount: number; topFarm: number; topId: number | null; young: number }
-  >();
-  for (const r of rows) {
-    const cur = acc.get(r.org) ?? { mlb: 0, farm: 0, farmCount: 0, topFarm: 0, topId: null, young: 0 };
-    if (r.level === 1) {
-      cur.mlb += r.overall ?? 0;
-    } else {
-      cur.farm += r.talent ?? 0;
-      cur.farmCount += 1;
-      if ((r.talent ?? 0) > cur.topFarm) {
-        cur.topFarm = r.talent ?? 0;
-        cur.topId = r.player_id;
-      }
-      // Talent that is also young is worth more than the same talent at 26
-      if (r.age <= 21) cur.young += r.talent ?? 0;
-    }
-    acc.set(r.org, cur);
-  }
+  // Contract facts, control, production and value, from the one Player Value entry point, as current as the export is
+  const valuations = playerValues([...roster, ...farm].map((p) => p.player_id), { currentState: cue.state });
+  const limitations = new Set<string>();
+  for (const v of valuations.values()) if (v.control.eligibility?.limitation) limitations.add(v.control.eligibility.limitation);
+  const notActive = "Not valued: he isn't an active player in the export.";
 
-  // One name lookup for the handful of players actually shown
-  const topIds = [...acc.values()].map((a) => a.topId).filter((id): id is number => id !== null);
-  const names = new Map<number, string>();
-  if (topIds.length > 0) {
-    const holes = topIds.map(() => '?').join(',');
-    for (const r of db
-      .prepare(
-        `SELECT player_id, first_name || ' ' || last_name AS name FROM players WHERE player_id IN (${holes})`
-      )
-      .all(...topIds) as Array<{ player_id: number; name: string }>) {
-      names.set(r.player_id, r.name);
-    }
-  }
+  /** His expected wins for the rest of this season (the whole of it before it starts), as production serves them. */
+  const winsNow = (id: number) => {
+    const v = valuations.get(id);
+    if (!v) return { band: null, reason: notActive };
+    const h = productionHeadlineOf(v.production);
+    if (h.now && h.now.season === season) return { band: h.now.wins, reason: '' };
+    return { band: null, reason: h.reason ?? `His production in ${season} isn't projected.` };
+  };
+  /** His expected wins next season, as production serves them, or why they are not established. */
+  const winsNext = (id: number) => {
+    const v = valuations.get(id);
+    if (!v) return { band: null, reason: notActive };
+    const h = productionHeadlineOf(v.production);
+    if (h.next && h.next.season === season + 1) return { band: h.next.wins, reason: '' };
+    return { band: null, reason: h.nextReason ?? h.reason ?? `His production in ${season + 1} isn't projected.` };
+  };
 
   const records = new Map<number, { w: number; l: number }>();
   if (tableExists('team_record')) {
-    for (const r of db.prepare(`SELECT team_id, w, l FROM team_record`).all() as Array<{
-      team_id: number; w: number; l: number;
-    }>) {
+    for (const r of db.prepare(`SELECT team_id, w, l FROM team_record`).all() as Array<{ team_id: number; w: number; l: number }>) {
       records.set(r.team_id, { w: r.w, l: r.l });
     }
   }
 
   const list = clubs.map((c) => {
-    const a = acc.get(c.team_id) ?? { mlb: 0, farm: 0, farmCount: 0, topFarm: 0, topId: null, young: 0 };
-    const rec = records.get(c.team_id) ?? null;
+    const mine = roster.filter((p) => p.club === c.team_id);
+    const system = farm.filter((p) => p.club === c.team_id);
+    const farmWins = winsSum(system, winsNext, `on the farm in ${season + 1}`);
+    let top: { player_id: number; name: string; age: number | null; positionName: string; team: string | null; wins: { low: number; central: number; high: number } } | null = null;
+    for (const p of system) {
+      const w = winsNext(p.player_id).band;
+      if (w && (top === null || w.central > top.wins.central)) {
+        top = { player_id: p.player_id, name: p.name, age: p.age, positionName: POSITION_NAMES[p.position ?? 0] ?? '?', team: p.team, wins: { low: w.low, central: w.central, high: w.high } };
+      }
+    }
+    const finances = clubFinances(c.team_id);
     return {
       team_id: c.team_id,
       team: c.label,
-      isOrg: c.team_id === orgId,
-      mlbTalent: Math.round(a.mlb),
-      farmTalent: Math.round(a.farm),
-      farmCount: a.farmCount,
-      topProspect: Math.round(a.topFarm),
-      topProspectId: a.topId,
-      topProspectName: a.topId !== null ? (names.get(a.topId) ?? null) : null,
-      youngTalent: Math.round(a.young),
-      w: rec?.w ?? null,
-      l: rec?.l ?? null,
+      abbr: c.abbr,
+      isViewer: c.team_id === orgId,
+      record: records.get(c.team_id) ?? null,
+      roster: {
+        players: mine.length,
+        wins: winsSum(mine, winsNow, `on the major-league roster for the rest of ${season}`),
+        contract: contractSum(mine, valuations),
+      },
+      farm: { players: system.length, wins: farmWins, top },
+      payroll: moneyOf(finances.payroll.now),
+      budget: moneyOf(finances.budget),
     };
   });
 
-  /** Rank on a field, 1 = best, so the client does not re-sort to find a place. */
-  const rankBy = (key: 'mlbTalent' | 'farmTalent' | 'youngTalent'): Map<number, number> => {
-    const order = [...list].sort((a, b) => b[key] - a[key]);
-    return new Map(order.map((x, i) => [x.team_id, i + 1]));
+  const known = (xs: Array<number | null>) => xs.filter((x): x is number => x !== null);
+  return {
+    season,
+    nextSeason: season + 1,
+    gameDate: currentGameDate(org.league_id),
+    freshness: { ...cue, limitations: [...limitations] },
+    viewer: orgId,
+    /** The middle club on each figure (never a rank): context for reading one club's number. */
+    league: {
+      rosterWins: middleOf(list.map((c) => c.roster.wins.figure)),
+      farmWins: middleOf(list.map((c) => c.farm.wins.figure)),
+      contract: middleOf(list.filter((c) => c.roster.contract.unit === 'dollars').map((c) => c.roster.contract.figure)),
+      payroll: median(known(list.map((c) => c.payroll.value))),
+    },
+    clubs: list,
   };
-  const mlbRank = rankBy('mlbTalent');
-  const farmRank = rankBy('farmTalent');
-  const youngRank = rankBy('youngTalent');
+}
 
-  res.json({
-    clubs: list
-      .map((x) => ({
-        ...x,
-        mlbRank: mlbRank.get(x.team_id) ?? null,
-        farmRank: farmRank.get(x.team_id) ?? null,
-        youngRank: youngRank.get(x.team_id) ?? null,
-      }))
-      .sort((a, b) => (a.farmRank ?? 99) - (b.farmRank ?? 99)),
-  });
+franchiseRoutes.get('/org-comparison/:orgId', (req, res) => {
+  const orgId = Number(req.params.orgId);
+  if (!tableExists('players') || !tableExists('teams')) return res.status(400).json({ error: 'No data imported yet' });
+  try {
+    res.json(computeOrgComparison(orgId));
+  } catch (err) {
+    res.status(404).json({ error: (err as Error).message });
+  }
 });

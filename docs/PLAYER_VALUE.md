@@ -1283,8 +1283,8 @@ keep an invalid one. The order:
 | 2 | Payroll (`payroll.ts`) | Facts only; its control column comes from `controlAfterThisSeason` | The control timeline from concern 2, and club finances from concern 4 |
 | 3 | Trade Center (`trade.ts`, `tradingblock.ts`, AI trade context) — **done (phase 6b, 2026-09-24; below)** | `analyze` summed raw `overall_value`; fits, trade talk, the roster picker, the trading block and the AI context read `overall_value`, `oa`/`pot` and value percentiles | Both sides' value decompositions side by side: each player's contract value and value of keeping him, control season by season with its cost, expected wins. The difference between the sides is shown as a band with its components (owner, Q-8), never as a point, a single score or a verdict. As built: `playerValueTrade.ts` (`tradeValueOf`), read by `trade.ts` and `tradingblock.ts`; fits and the trading block order by expected wins, shown; the AI context carries the decomposition and the desk gives no accept-or-reject line |
 | 4 | Free Agents (`freeagents.ts`) | `players_value` | Expected production and the market price; cost as the market's band |
-| 5 | Org Comparison (`franchise.ts`) | `players_value` | Club finances and aggregated production, each with its basis |
-| 6 | Player card — **migrated, phase 6a** (`player.ts`); others (`lineup.ts:288`, `api.ts:462` the roster's OA/POT, `valuation.ts` `rosterHoles`) | The card: was Value and Talent percentiles, OA/POT from `players_value` and a direct `players_contract` query; now none. Others: `players_value` | The card's header: his contract in a phrase, the Value section's headline, his scouted tools through `scoutedEvidence.ts` (below). The others are classified in phase 6: a read that is not a value question (a lineup's quality of cover) moves to `scoutedEvidence.ts` under its owner, not to Player Value |
+| 5 | Org Comparison (`franchise.ts`) — **migrated, phase 6d** | Was: `players_value` joined directly (`overall_value` summed for the roster, `talent_value` for the farm and the under-22s, ranks by each). Now: none | Each club's record, the roster's expected wins for the rest of the season and its contract value, the farm's expected wins next season and its top contributor, OOTP's payroll and budget; each sum its players' served figures combined as independent, unknowns named; no rank (below) |
+| 6 | Player card — **migrated, phase 6a** (`player.ts`); the roster's OA/POT (`api.ts`) and the lineup (`lineup.ts`) — **moved to `scoutedEvidence.ts`, phase 6d**; others (`valuation.ts` `rosterHoles`) | The card: was Value and Talent percentiles, OA/POT from `players_value` and a direct `players_contract` query; now none. Others: `players_value` | The card's header: his contract in a phrase, the Value section's headline, his scouted tools through `scoutedEvidence.ts` (below). The others are classified in phase 6: a read that is not a value question (a lineup's quality of cover) moves to `scoutedEvidence.ts` under its owner, not to Player Value |
 
 The end state: no production module reads `players_value`, `mlbPercentiler` and `VALUE_PERCENTILE_NOTE` are gone,
 and the evidence boundary test's allow-list for `players_value` is empty.
@@ -1352,7 +1352,7 @@ migrated in one change that deleted their `players_value` reads (`player.ts` and
   at their ceiling, 20–80, from `scoutedEvidence.ts`; a missing grade reads "not scouted", never a stand-in); and "As of
   May 16, 2026", with a warning where the export is behind the save or could not be checked. The Value and Talent
   percentiles and OOTP's Overall / Potential are gone from the card and its hover (fog of war: nothing establishes they
-  are the organization's view; the Roster's OA/POT column is consumer 6's, not yet migrated). The totals are the ones the
+  are the organization's view; the Roster's OA/POT column is consumer 6's, migrated in phase 6d). The totals are the ones the
   Value section is served, from the same valuation read with the same freshness. The card's contract table reads the
   contract facts: a salary the export does not state is "not in the export", never $0.
 - *Contracts* (`server/contracts.ts` `computeContracts`, `src/pages/Contracts.tsx`) lists the club's rostered players
@@ -1424,6 +1424,46 @@ club), reads its philosophy from settings at read time and hands the lens's view
   the trade desk's prompt no longer carries `VALUE_PERCENTILE_NOTE`; the evidence boundary's `players_value` allow-list is
   `valuation.ts` and `franchise.ts`.
 
+**The Roster's scouting column, the Lineup and Org Comparison (phase 6d, as built, 2026-09-24).** Consumer 5 and the rest of
+consumer 6 migrated in one change that deleted their `players_value` reads: `api.ts` and `lineup.ts` no longer call
+`valuesByPlayer`, and `franchise.ts` no longer joins `players_value` (`evidenceBoundary.test.ts`: the direct allow-list is
+`valuation.ts` alone, the indirect one `valuation.ts` and `freeagents.ts`, and `lineup.ts` joins the guarded modules;
+`playerValueBoundary.test.ts`: `franchise.ts` a migrated consumer, the three pages free of OOTP's figures).
+
+- *The Roster's scouting column* (`/api/roster/:teamId`, `src/pages/Roster.tsx`) is not a value question, so it reads
+  `scoutedEvidence.ts`, not Player Value: "Scouted", the scouts' tools averaged now → at their ceiling on the 20–80 scale,
+  the card header's figure (`scouted: { now, ceiling, status, missing }`); a tool not graded leaves its side "not scouted",
+  never OOTP's Overall or Potential in its place. Sorted by it, a player not scouted comes after every scouted one either
+  way. `TIP_OA` (`src/playerModal.tsx`) says what it is, what it leaves out (defence, speed, stamina) and that it sits on one
+  major-league scale. The rating bars beside it still read the rating columns directly, outside the adapter (found, not
+  fixed here).
+- *The Lineup* (`lineup.ts`, MLB Operations territory) changed its evidence source and not its solver. The bat against a
+  hand was OOTP's `offensive_value_vsr / _vsl`; it is now the calibrated tools model (`toolsModel.ts`) on his split grades
+  against that hand (D-035), his overall grades where the export has no split grades (`batBasis: 'overall'`, said on the
+  card), in tenths of a point of wOBA (`BAT_POINTS_PER_WOBA`, a unit: on the Arizona import the major-league bats' spread,
+  19.6 wOBA points, is a tenth of OOTP's 196, the two readings correlating at 0.94), so `DEF_POINTS_PER_RATING`, the
+  half-point tie-break, `chooseFielders`, the slot rules and the run search are untouched. Gloves are `scoutedGloves` (the
+  revealed grade, the same visibility rule as before, and 20–80 on every display scale); contact, power, eye and speed come
+  from the adapter's profiles and a grade not given is passed over for a traditional slot rather than read as zero. A hitter
+  with no graded bat is named ("Not scouted"), kept off the ranking and used only to fill a position nobody graded is left
+  to play. The card shows "Bat vs RHP/LHP" in wOBA points above the league's major-league hitters. The before/after diff
+  on every club is in Part 9.
+- *Org Comparison* (`franchise.ts` `computeOrgComparison`, `/api/org-comparison/:orgId`, `src/pages/OrgComparison.tsx`)
+  shows every major-league club of the viewer's league side by side: the record; **Roster, rest of the season** (the
+  rostered players' expected wins, the part of this season still to be played, or the whole season before it starts);
+  **Farm, next season** (the organization's players on its affiliates, their expected wins next season, arrival included)
+  with its top contributor named with his figure; **Contract value** of the roster (each player's card figure, summed by
+  the Trade Center's side total, `tradeValueOf`); **Payroll** and budget as Club Finances reads them (unknown, never $0);
+  and the players on the roster and the farm. Each wins sum is `groupWinsOf` (pure, `playerValueTrade.ts`): around the sum
+  of the players' most likely wins, each player's own distance combined as independent (`TRADE_COMBINATION_POLICY`, the
+  owner's Payroll rule), the every-player-at-his-edge sum beside it; a player whose figure is unknown is named with one
+  short reason and left out, and the sum says so ("N not counted" on the page, the names on hover). No rank is computed or
+  sent; the table starts in club order and sorts by any shown column from the keyboard, unknown last either way; the
+  viewer's club is highlighted and its four figures sit above the table beside the league's middle club (a median, each
+  edge of a range of readings on its own; never a place, and never a midpoint made up inside a range). The export's freshness is handed to Player Value as `currentState` and said with the game date (A-20). The
+  page talks in plain words (`orgComparison.test.ts`), with designed loading, empty and error states, and the table scrolls
+  in its own box.
+
 **Consumers read the timeline as it is (hardening F2, 2026-09-23).** `controlAfterThisSeason` reports an option or
 opt-out next season as `option`, with whose decision it is and where he falls if it is declined, never "signed";
 "extended" only when next season is the extension's; a player whose control ends this season is leaving. The AI
@@ -1453,6 +1493,7 @@ cards are Club Finances' figures, a missing one "unknown", never $0.
 | **5b** The lens and the win curve — **done** (2026-09-24; evidence below, 4.5 and 6.1) | Part 6's lens, Part 4.5's club value of a win | The lens cases pass. Neutral value is identical under every philosophy. Every lean is named |
 | **6** Consumer migration — **6a done** (2026-09-24: the player card's header and Contracts, Part 8) | Part 8, in order, one consumer per change | Each change deletes that consumer's `players_value` reads. Finally, the `players_value` allow-list is empty. 6a: `player.ts` and `contracts.ts` read none; the boundary's PENDING list is empty; A-20 met for their routes; the sweep's Contracts and card checks pass on the Arizona import (Part 9, below) |
 | **6b** The Trade Center — **done** (2026-09-24; evidence below and Part 8) | Consumer 3: the trade analysis, trade fits, offers and trade talk, the trading block and the AI's trade context on Player Value; the difference between the sides as a band with its parts (Q-8) | `trade.ts` and `tradingblock.ts` read no `players_value`; the difference band contains its most likely; an unknown player is named and changes no known sum; the neutral reading is the same under every philosophy and for every viewer |
+| **6d** The Roster's scouting column, the Lineup and Org Comparison — **done** (2026-09-24; evidence below and Part 8) | Consumer 5 and the rest of consumer 6: the Roster shows the scouts' view; the lineup reads every rating through `scoutedEvidence.ts`; Org Comparison on Player Value and objective facts, no hidden score | `api.ts`, `lineup.ts` and `franchise.ts` read no `players_value`; the lineup's choices unchanged where the evidence is the same, every other difference explained; every club's sums equal its players' served figures, unknowns named |
 
 **Phase 6a exit criteria, as met (2026-09-24).** `player.ts` and `contracts.ts` read no `players_value` figure and no
 contract row of their own (`playerValueBoundary.test.ts`: the phase-6 migrated consumers, the pages' sources and the
@@ -1664,6 +1705,78 @@ unknown last) and fits compare most likely figures only; the AI desk's opening a
 accept-or-reject verdict (D-001, D-004, AGENTS.md: no LLM in the decision path); the AI context keeps its roster reading
 (season lines, fielding, incumbents, needs, the trading block) and drops OOTP's overall and potential; `fieldingRecord` reads
 zone rating only where the export has the column.
+
+**Phase 6d exit criteria, as met (2026-09-24): the Roster's scouting column, the Lineup and Org Comparison.** The behavior
+cases (BEHAVIOR_CASES.md "Player Value", phase 6d) are in `rosterScouted.test.ts` (5: no `players_value` figure on a roster
+row and the rows unmoved when OOTP's figures are planted; the scouted figure the adapter's; a tool not graded "not scouted";
+unknown sorted last either way; the page's words), `lineupEvidence.test.ts` (8: the talent order from the scouts' bat against
+each hand while OOTP's valuation says the opposite; unmoved when OOTP's offensive value moves; no `players_value` figure and
+each bat's basis; overall grades where there are no split grades, said; an ungraded bat named and never ranked; gloves the
+revealed grades; the traditional and production orders; the page's words), `orgComparison.test.ts` (13: every club once,
+the viewer's marked, no rank; the roster's, the farm's and the contract sums each equal to the players' served figures,
+their members exactly the group; a player with unknown production named and left out; payroll and budget Club Finances';
+unmoved by planted or absent `players_value`; `groupWinsOf` pure; the page's words, its loading, empty and error states and
+its sort, unknown last), `roster.test.ts` (2 rewritten: the scouts' view, no OOTP Overall exact or rounded),
+`evidenceBoundary.test.ts` (`lineup.ts` guarded; the direct allow-list `valuation.ts`; `api.ts`, `lineup.ts` and
+`franchise.ts` name no value field, percentile or OOTP rating) and `playerValueBoundary.test.ts` (`franchise.ts` a migrated
+consumer; the three pages free of OOTP's figures). Each was run against `origin/main` (51bbbc8) and failed for the reason
+expected (`oaRating` on the rows, no `scouted`, no `sortRosterPlayers`, `RosterTable`, `LineupView` or
+`OrgComparisonPanel`, slot 2 going to OOTP's best bat, no `batBasis` or `notScouted`, no `isViewer`, `roster` or `farm`
+on the clubs, `franchise.ts` still a `players_value` reader and not on the entry point, `api.ts` and `lineup.ts` still
+reading `valuesByPlayer`, the rating columns in `lineup.ts`). The lineup's metamorphic case first passed on `origin/main`
+for the wrong reason (`valuesByPlayer` is cached until an import); it clears the caches as an import does, and then failed.
+
+**The lineup's choices are unchanged where the evidence is the same, and every other difference is explained.** On the
+Arizona import every club's card was built three ways for both hands, both orders and both sorts (240 cards each):
+`origin/main`; an evidence-only variant (the new code with only the bat put back to OOTP's offensive value); and the new
+code. The variant equals `origin/main` on all 240 (lineup, slots, positions, gloves, reasons, bench, unavailable): the
+adapter's gloves, tools and roster read exactly what the columns did. The new card equals the old on 37; the other 203
+differ only through the bat, and each is explained: 88 change who plays or where (72 one player, 16 two), and on each the
+old card is the solver's best under OOTP's bat and the new one its best under the scouts' (the objective recomputed both
+ways; e.g. Arizona against right-handers: Carlos Santana at DH and Tim Tawa in left for Lourdes Gurriel Jr. and Alek Thomas,
+OOTP's valuation having Gurriel 68 of its points ahead of Santana, the scouts' grades Santana 5.3 wOBA points ahead of
+Gurriel); 68 keep the nine and reorder them on a talent card, where the two readings rank some pair of the nine
+differently; 47 change only the bench's order, where the readings rank (or one ties) a pair differently. The two bat
+readings agree closely (correlation 0.94 against right-handers), so most differences are one close call going the other way.
+
+**Org Comparison on the Arizona import** (2026-05-16, the export current): 30 clubs, every sum equal to its players' served
+figures (the checks below). The league's middle club: 20.2 wins from its roster over the rest of 2026, 6.0 from its farm in
+2027, contract value most likely $100.8M to $199.1M (the median of the clubs' low readings to the median of their high ones,
+never a midpoint made up between them), payroll $173.9M. Arizona (26–17): roster 19.6 wins (could be 13.5 to 26.5), farm 8.8 (4.2 to
+17.2; 247 players, top contributor Tommy Troy, 1.0), contract value most likely −$57.7M to $157.6M depending on open seasons
+(could be −$291.9M to $595.7M; 2 players not counted), payroll $190.7M. Every club's contract value has an open season
+somewhere on its roster, so its most likely is a range on every club. A club's farm includes established major leaguers
+optioned down (Boston's top contributor is Jarren Duran, 3.1 wins).
+
+The regression sweep passes 263 of 263 checks: 6b's 205 unchanged, 6a's 20 folded back in, and 38 for 6d: every roster
+of the league and its affiliates (232 clubs, 7,861 rows) with no `players_value` figure, the scouted figure the adapter's and
+on the 20–80 scale or unknown with its missing tools named (15 not scouted now, 5 at the ceiling); the lineup's 240 cards
+(the variant equal to `origin/main`, no `players_value` figure, every ranked bat read with its basis, every glove the
+revealed grade, every difference explained); Org Comparison's route equal to the page, every club once, no rank, no verdict
+word, and for each club and each of its three sums the group exactly counted or named, the most likely and the edges the sums
+of the players' served figures, the range inside the edges holding its most likely, the combination and the players left out
+said; payroll and budget Club Finances'; the top contributor the farm's most expected; the record the export's; no
+non-finite number. Timing: the page takes about 2.5 s (it values every rostered and farm player, about 7,500); a club's
+roster about 0.12 s; a lineup card about 0.65 s.
+
+Judgments made in phase 6d beyond the brief: the Roster's column keeps the name `TIP_OA` for its hover (AGENTS.md cites it
+as the voice to follow); the lineup's bat unit (`BAT_POINTS_PER_WOBA`, tenths of a wOBA point) was chosen so the solver is
+untouched rather than restating its glove weight; a hitter with no split grades is read on his overall grades, labelled,
+where `origin/main` fell back from OOTP's split value to its overall value (an owner question below); an ungraded bat can
+still fill an otherwise empty position, batting last and said; Org Comparison's roster is the club's active roster and
+injured list (as Contracts lists it), its farm the organization's players on affiliates (optioned major leaguers
+included); its contract value is the Trade Center's side total (`tradeValueOf`), so a no-dollar league reads it in wins;
+the wins sums go through a new pure `groupWinsOf` in `playerValueTrade.ts`, because the boundary keeps consumers from
+combining players themselves; the viewer's figures sit beside the league's middle club, a median, never a place; the table
+starts in club order.
+
+**Phase 6d owner questions (open).** (1) A bat with no split grades against a hand is read on his overall grades and labelled
+"overall"; should it instead be unknown (and the hitter not ranked) until split grades exist? No hitter on Arizona's major-league
+rosters lacks them; older exports may. (2) Is a roster's summed contract value useful on Org Comparison when every club's
+most likely is a range several hundred million dollars wide? The alternative is to show only the players whose most likely
+is a single figure, or to leave the column out until an owner rule on open seasons in club totals. (3) Should the farm
+column leave out established major leaguers optioned down (Duran, Volpe), so it reads as prospects only? Today it is every
+player on the affiliates, and the top contributor's hover says it is the nearest help, not the best prospect.
 
 **Phase 6b owner questions (open).** (1) Is the Payroll rule (players combined as independent) right for a trade's sides and
 the difference? The alternative is edge to edge (Part 3's default), shown in the details today; on the worked deals it is 8% to 30%

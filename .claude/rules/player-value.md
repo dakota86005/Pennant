@@ -20,6 +20,8 @@ paths:
   - "server/tradingblock.ts"
   - "src/**/Trade*.tsx"
   - "tests/trade*.ts"
+  - "server/franchise.ts"
+  - "src/pages/OrgComparison.tsx"
   - "tests/playerValue*.ts"
   - "tests/payrollControl.test.ts"
 ---
@@ -44,7 +46,7 @@ reserve-clause renewals, replacement, adoption), `playerValueCone.ts` (the playe
 joined with control, pure), `playerValueSurplus.ts` (phase 5a, pure: the neutral contract surplus and the retention
 margin), `playerValueLens.ts` (phase 5b, pure: "our view", the one value module that names philosophy),
 `playerValueWinValue.ts` (phase 5b, pure: the club's value of a win), `playerValueTrade.ts` (phase 6b, pure: a deal's two
-sides and the difference between them) and `playerValueCalibration.ts` (policy and the provisional prior, stamped) sit
+sides and the difference between them; since 6d also a group's expected wins, `groupWinsOf`) and `playerValueCalibration.ts` (policy and the provisional prior, stamped) sit
 behind it.
 Three writers, `history.db` only: `playerValueSnapshot.ts` (the per-import market snapshot), `playerValueContractStore.ts`
 (phase 4b: the per-import contract snapshot) and `playerValueFitStore.ts` (the per-save production fits, D-053). Which phases are built is in `docs/PROJECT_STATE.md`; check it against the
@@ -185,6 +187,15 @@ worktree.
   philosophy and for every viewer; the club's value of a win and salary are context. Fits and the trading block order by
   expected wins, shown; the AI desk quotes the decomposition, produces no value number of its own and gives no
   accept-or-reject line. `trade.ts` and `tradingblock.ts` read no `players_value`, rating or percentile.
+- Org Comparison, the Roster's scouting column and the Lineup (phase 6d; PLAYER_VALUE.md Part 8): Org Comparison
+  (`franchise.ts` `computeOrgComparison`) sums each club's players' served figures (the major-league roster's expected
+  wins for the rest of the season and its contract value, the farm's expected wins next season) with `groupWinsOf` and
+  `tradeValueOf`, players combined as independent (`TRADE_COMBINATION_POLICY`), each unknown named and left out, the
+  sum saying so; payroll and budget are Club Finances'; it sends no rank and the page sorts only by a shown column,
+  unknown last. The Roster's scouting column and the lineup are not value questions: they read `scoutedEvidence.ts`
+  (the card header's "Scouted" composite; the lineup's bats through the tools model, its gloves through
+  `scoutedGloves`), never Player Value. `api.ts`, `lineup.ts` and `franchise.ts` read no `players_value`; the direct
+  allow-list is `valuation.ts` alone.
 - Never ask the owner for an OOTP experiment; an unresolved rule stays `indeterminate` and is documented.
 
 Checks: `tests/playerValueBoundary.test.ts`, `tests/playerValueControl.test.ts`, `tests/playerValueCost.test.ts`,
@@ -193,5 +204,5 @@ Checks: `tests/playerValueBoundary.test.ts`, `tests/playerValueControl.test.ts`,
 `tests/playerValueSurplus.test.ts`, `tests/playerValueInvariants.test.ts`, `tests/valueSection.test.ts`,
 `tests/playerValueLens.test.ts`, `tests/playerValueWinValue.test.ts`, `tests/playoffs.test.ts`, `tests/contractsPage.test.ts`,
 `tests/playerCardHeader.test.ts`, `tests/playerValueTrade.test.ts`, `tests/tradeAnalysis.test.ts`, `tests/tradeCenter.test.ts`,
-`tests/tradingBlock.test.ts`;
+`tests/tradingBlock.test.ts`, `tests/orgComparison.test.ts`;
 `npm run value:report` and `npx tsx scripts/calibrate.ts production` against a real import (read-only with `OOTP_FO_DB_READONLY=1`).

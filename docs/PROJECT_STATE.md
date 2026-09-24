@@ -283,9 +283,11 @@ carry indeterminate results as such (`indeterminate` lists and recommendation),
 never as approval, rejection, protection, or a hold. Philosophy cannot resolve
 an unknown.
 
-Not yet done: scouting snapshots use their own composite; free-agent,
-franchise, roster and lineup surfaces still read `players_value` (the player
-card and Contracts stopped in Player Value phase 6a, the Trade Center in 6b); whether
+Not yet done: scouting snapshots use their own composite; the free-agent
+surface still reads `players_value` (the player
+card and Contracts stopped in Player Value phase 6a, the Trade Center in 6b, and
+Org Comparison, the Roster's scouting column and the Lineup in 6d; the Roster's
+rating bars still read the rating columns directly, outside the adapter); whether
 `players_value.oa`/`pot` are the organization's scouted view is unknowable from
 the repository; the farm workspaces do not yet render operations' indeterminate
 candidates. The provenance of every rating field is tabulated in
@@ -744,6 +746,23 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   and trade talk read the same analysis; the AI's trade context carries the
   decomposition, and the desk gives a one-line "Read", no accept-or-reject line.
   `trade.ts` and `tradingblock.ts` read no `players_value`, rating or percentile.
+- **Org Comparison, the Roster's scouting column and the Lineup** (phase 6d,
+  2026-09-24; PLAYER_VALUE.md Part 8, consumers 5 and 6): Org Comparison
+  (`franchise.ts` `computeOrgComparison`, `src/pages/OrgComparison.tsx`) shows
+  every club of the league side by side: its record, the major-league roster's
+  expected wins for the rest of the season, the farm's expected wins next season
+  and its top contributor, the roster's contract value, and OOTP's payroll and
+  budget; each sum is its players' served figures combined as independent
+  (`groupWinsOf`, `tradeValueOf`), an unknown player named and left out; no rank,
+  the table sorts by any shown column, unknown last, the viewer's club
+  highlighted, the export's date said. The Roster's OA→POT column is now
+  "Scouted" (the scouts' tools averaged now → ceiling through
+  `scoutedEvidence.ts`, "not scouted" where a tool is not graded, sorted last).
+  The lineup reads its bats (the tools model on the split grades against the hand,
+  the overall grades where the export has none, said) and gloves through the
+  adapter; its solver is unchanged; an ungraded bat is named, never ranked.
+  `api.ts`, `lineup.ts` and `franchise.ts` read no `players_value`; the direct
+  allow-list is `valuation.ts`.
 - **Tests:** `playerValueControl`, `playerValueCost` (the phase 4a cost bands),
   `playerValueSignings` (phase 4b: observed changes, the measured price, adoption,
   awards, reserve-clause renewals, replacement),
@@ -753,7 +772,8 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   `productionCone` (geometry, render and theme tokens), `playerValueSurplus`,
   `playerValueInvariants` and `valueSection` (phase 5a), `playerValueLens` and
   `playerValueWinValue` (phase 5b), `playerValueTrade`, `tradeAnalysis`,
-  `tradeCenter` and `tradingBlock` (phase 6b) and `playerValueBoundary`
+  `tradeCenter` and `tradingBlock` (phase 6b), `rosterScouted`, `lineupEvidence`
+  and `orgComparison` (phase 6d) and `playerValueBoundary`
   (since the hardening it reads the source through the TypeScript parser, and
   each of its hardened checks was shown to catch a deliberate mutation; a known
   violation owned by another fix is listed with its finding and must still be
@@ -768,8 +788,9 @@ snapshots allow), a lens that reads the club's value of a win (an owner question
 model's wild-card route for a division leader, personality's effect on price (it moves no number
 until observed signings are read against it), a per-import store (everything is computed per request; see
 Part 7), and the rest of the consumer migration that deletes `players_value` reads
-(phase 6: Free Agents, Org Comparison, the roster's OA/POT and the lineup; the card
-and Contracts are done, 6a, and the Trade Center, 6b). The calibrated constants of other subsystems are
+(phase 6: Free Agents; the card
+and Contracts are done, 6a, the Trade Center, 6b, and Org Comparison, the Roster's
+scouting column and the Lineup, 6d). The calibrated constants of other subsystems are
 not yet fitted per save (D-053; ROADMAP). On the Arizona import 6,952 of 8,009 held players have indeterminate later
 seasons because what follows a minor-league contract is not established from
 the export, and 494 meet a free-agency line inside this season's projection.

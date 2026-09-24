@@ -21,6 +21,8 @@ paths:
   - "server/staffPreference.ts"
   - "server/toolsModel.ts"
   - "server/rosterScenario.ts"
+  - "server/lineup.ts"
+  - "src/pages/Lineup.tsx"
   - "src/pages/MlbOperations.tsx"
   - "src/pages/mlb/**"
   - "scripts/calibrate.ts"
@@ -38,6 +40,8 @@ paths:
   - "tests/toolsModelProfiles.test.ts"
   - "tests/resultsStress.test.ts"
   - "tests/resultsEvidence.test.ts"
+  - "tests/lineup*.test.ts"
+  - "tests/fielders.test.ts"
 ---
 
 # MLB Operations: working reminder
@@ -65,6 +69,10 @@ The pure core (`mlbRoster`, `mlbNeeds`, `mlbResponses`) opens no table; it takes
 - Philosophy and season: urgency, bar, tie-breaks, order, wording, after validity, each lean shown (D-036).
 - Constants declared once, stamped calibrated / provisional / policy; policy is never fitted (D-037, D-041).
 - Bench is functions and cover quality; the pen is read whole; views own one question (D-042, D-043).
+- The Lineup page (`lineup.ts`, phase 6d) reads bats and gloves only through `scoutedEvidence.ts`: the bat is the tools
+  model on his split grades against the hand (his overall grades where the export has none, said), in tenths of a wOBA
+  point (`BAT_POINTS_PER_WOBA`, a unit, not a fit); the solver and its glove weight are unchanged; an ungraded bat is
+  named and never ranked (D-018). It is in the evidence boundary's guarded list.
 
 Checks: `tests/mlbOperationsBoundary.test.ts`, `tests/evidenceBoundary.test.ts`; `npm run calibrate` only for a
 calibrated (never a policy) constant.

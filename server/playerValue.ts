@@ -152,6 +152,11 @@ export type {
 } from './playerValueTrade.js';
 /** Phase 6b: a trade read on Player Value, both sides and the difference between them as a band with its parts (pure; Part 8). */
 export { combineTradeFigures, controlSummaryOf, productionHeadlineOf, tradeValueOf } from './playerValueTrade.js';
+/** Phase 6d: a group of players' expected wins in one season, combined the Payroll way (Org Comparison; pure). */
+export { groupWinsOf } from './playerValueTrade.js';
+export type { GroupWins, GroupWinsEntry } from './playerValueTrade.js';
+/** Phase 6d: the combination's policy, so a consumer summing players the Payroll way (Org Comparison) can label it. */
+export { TRADE_COMBINATION_POLICY } from './playerValueCalibration.js';
 
 /** A player's value, as far as phase 3 builds it: concerns 1, 2 and 3 (production from major-league results and scouted ratings). */
 export interface PlayerValuation {

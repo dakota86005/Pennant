@@ -4,16 +4,21 @@ import { PlayerLink, Tip } from '../playerModal';
 import { findStat, plusColor as statPlusColor } from '../stats';
 import { Th } from '../Th';
 
-/** OOTP's own internal rating, which is what the ordering is actually built on. */
-const TIP_OFF_VALUE =
-  "OOTP's own offensive value for this batter against this hand of pitching, read straight from " +
-  "the save (players_value.offensive_value_vsr / _vsl). It is a projection built from the hitter's " +
-  'current ratings — contact, power, eye, gap — on an arbitrary scale where only the ranking ' +
-  'matters, not the number itself. The batting order is sorted by it, and switching between ' +
-  'vs RHP and vs LHP re-ranks everyone on their platoon split.\n\n' +
-  'It is NOT this season\'s production. A veteran whose ratings have slipped can rank low while ' +
-  'hitting well, and a highly rated young player can rank high during a slump — so read it ' +
-  'alongside the OPS+ and wRC+ columns, which are what actually happened.';
+/**
+ * The bat the talent order is built on (Player Value phase 6d): the scouts' view, never OOTP's own offensive value, which
+ * the organization cannot see (D-017). Plain words on the page, the explanation here.
+ */
+const tipBat = (hand: 'RHP' | 'LHP') =>
+  `What your scouts' hitting grades against ${hand === 'RHP' ? 'right' : 'left'}-handed pitching say he'd hit, in points of ` +
+  'wOBA above an average major-league hitter: +20 is a good regular, −20 a bench bat. It reads contact, power, eye and gap ' +
+  "power the way they have predicted results in this league's history, and the talent order is built from it; switching " +
+  'between vs RHP and vs LHP re-reads everyone on their split grades.\n\n' +
+  "Where a hitter has no split grades it is read on his overall grades, marked \"overall\". It isn't this season's " +
+  'production: a veteran whose grades have slipped can read low while hitting well, so read it beside OPS+ and wRC+, which ' +
+  "are what actually happened. It isn't OOTP's own valuation, which your front office can't see.";
+const TIP_GLOVE =
+  "Your scouts' 20–80 grade for him at the position he's assigned. Positions are chosen on the bat adjusted for the glove: " +
+  'the best bat plays a spot he can actually field, and a player only plays where the game has shown a grade for him.';
 const TIP_OPS_PLUS = findStat('batting', 'opsPlus')?.desc ?? '';
 const TIP_WRC_PLUS = findStat('batting', 'wrcPlus')?.desc ?? '';
 
@@ -139,7 +144,19 @@ export function Lineup({ teamId }: { teamId: number }) {
       </div>
       {error && <div className="banner error">{error}</div>}
       {!data && !error && <p className="muted">Building lineup…</p>}
-      {data && (
+      {data && <LineupView data={data} vs={vs} style={style} sort={sort} />}
+    </div>
+  );
+}
+
+/** The card itself: pure, renders what the server built (the tests render it straight from the route). */
+export function LineupView({ data, vs, style, sort }: {
+  data: LineupResponse; vs: 'r' | 'l'; style: 'saber' | 'trad'; sort: 'talent' | 'production';
+}) {
+  const hand = vs === 'r' ? 'RHP' : 'LHP';
+  const bat = (off: number | null | undefined) =>
+    (off === null || off === undefined ? '—' : `${off > 0 ? '+' : off < 0 ? '−' : ''}${Math.abs(Math.round(off))}`);
+  return (
         <>
           <p className="muted hint-line">
             {style === 'saber'
@@ -147,8 +164,8 @@ export function Lineup({ teamId }: { teamId: number }) {
               : 'Classic ordering: speed leads off, bat control 2nd, best hitter 3rd, power cleanup.'}{' '}
             {sort === 'talent' ? (
               <>
-                Ranked on OOTP's offensive value {vs === 'r' ? 'vs right-handed' : 'vs left-handed'} pitching —
-                a projection from current ratings, not this season's results.{' '}
+                Ranked on your scouts&rsquo; view of each bat {vs === 'r' ? 'vs right-handed' : 'vs left-handed'} pitching —
+                a projection from their grades, not this season&rsquo;s results.{' '}
               </>
             ) : (
               <>
@@ -190,14 +207,11 @@ export function Lineup({ teamId }: { teamId: number }) {
                 <Th>Player</Th>
                 <Th>Pos</Th>
                 <th>
-                  <Tip
-                    label="Glove"
-                    tip="OOTP's 20-80 fielding rating for this player at the position he is assigned. Positions are chosen on offence adjusted for defence, then swapped wherever two men are better suited the other way round — so the best bat plays the spot he can actually field."
-                  />
+                  <Tip label="Glove" tip={TIP_GLOVE} />
                 </th>
                 <Th>B</Th>
-                <th>
-                  <Tip label="Off Value" tip={TIP_OFF_VALUE} />
+                <th className="num">
+                  <Tip label={`Bat vs ${hand}`} tip={tipBat(hand)} />
                 </th>
                 <Th>PA</Th>
                 <Th>OPS</Th>
@@ -225,9 +239,14 @@ export function Lineup({ teamId }: { teamId: number }) {
                       no rating to show — an empty glove is the honest answer */}
                   <td className="num">{l.defRating ?? '—'}</td>
                   <td>{l.bats}</td>
-                  {/* A pitcher has no scouted offensive value; 0 would read as
+                  {/* A pitcher batting ninth has no bat read; a number would read as
                       a measured one rather than "does not apply" */}
-                  <td className="num">{l.positionName === 'P' ? '—' : Math.round(l.off)}</td>
+                  <td className="num">
+                    {bat(l.off)}
+                    {l.batBasis === 'overall' && (
+                      <span className="muted"> <Tip label="overall" tip={`No split grades against ${hand === 'RHP' ? 'right' : 'left'}-handers for him in the export, so this reads his overall grades.`} /></span>
+                    )}
+                  </td>
                   <td className="num">{l.pa ?? ''}</td>
                   <td className="num">{l.ops !== null ? l.ops.toFixed(3).replace(/^0\./, '.') : ''}</td>
                   <td className="num" style={{ color: plusColor(l.opsPlus) }}>{l.opsPlus ?? ''}</td>
@@ -241,6 +260,12 @@ export function Lineup({ teamId }: { teamId: number }) {
           {data.bench.length > 0 && (
             <p className="muted">
               Bench: {data.bench.map((b) => `${b.name} (${b.positionName})`).join(', ')}
+            </p>
+          )}
+          {(data.notScouted?.length ?? 0) > 0 && (
+            <p className="muted">
+              <Tip label="Not scouted:" tip="Hitters whose bat your scouts haven't graded. Their bat can't be ranked against the others, so the card leaves them out rather than guess." />{' '}
+              {data.notScouted!.map((n) => `${n.name} (${n.positionName})`).join(', ')}
             </p>
           )}
           {data.unavailable.length > 0 && (
@@ -257,7 +282,5 @@ export function Lineup({ teamId }: { teamId: number }) {
             </p>
           )}
         </>
-      )}
-    </div>
   );
 }

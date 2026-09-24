@@ -2,7 +2,11 @@ import { Router } from 'express';
 import { db, tableExists } from './db.js';
 import { countsAsBatterSql, countsAsPitcherSql } from './twoway.js';
 import { healthOf, type Health, type HealthFields } from './health.js';
-import { ON_ROSTER, usesDH, valuesByPlayer } from './valuation.js';
+import { ON_ROSTER, usesDH } from './valuation.js';
+import {
+  loadScoutedHitterProfiles, scoutedGloves, scoutedHitterPopulation, type HitterSide, type ScoutedHitterProfile,
+} from './scoutedEvidence.js';
+import { expectedWobaRaw } from './toolsModel.js';
 import { computeBatting, leagueBaseline } from './stats.js';
 import { climb, expectedRuns, outcomesFrom, type BattingLine } from './runs.js';
 
@@ -32,6 +36,9 @@ function unavailability(p: HealthFields): Health | null {
   return health && !health.playable ? health : null;
 }
 
+/** What a bat was read on: his tools against this hand, or (no split grades) his overall tools. */
+export type BatBasis = 'vs_hand' | 'overall';
+
 export interface Candidate {
   player_id: number;
   name: string;
@@ -41,18 +48,25 @@ export interface Candidate {
   bats: number;
   /** Playable but carrying something — the manager's call, not the app's. */
   dayToDay: boolean;
-  off: number; // offensive value for the chosen platoon side
+  /**
+   * His bat against the chosen hand of pitching: what his scouted hitting tools say (the calibrated tools model,
+   * `toolsModel.ts`), in tenths of a point of wOBA above the league's major-league hitters (`BAT_POINTS_PER_WOBA`).
+   */
+  off: number;
+  /** What `off` was read on; absent for a man with no bat to read (the pitcher appended to a no-DH card). */
+  batBasis?: BatBasis;
   /**
    * The number the order is actually built from — talent or production,
    * whichever was asked for. Kept separate from `off` so the card can still
-   * show OOTP's valuation whichever way it was sorted.
+   * show the scouts' view of the bat whichever way it was sorted.
    */
   rank: number;
-  contact: number;
-  power: number;
-  eye: number;
-  speed: number;
-  /** OOTP's own 20-80 rating at each position; 0 means he cannot play there. */
+  /** The scouts' overall grades, 20-80 (the traditional order reads them); null where not graded. */
+  contact: number | null;
+  power: number | null;
+  eye: number | null;
+  speed: number | null;
+  /** The scouts' revealed 20-80 grade at each position; 0 means the game has not shown one there and he cannot play it. */
   defense: Record<number, number>;
   /** Filled in once he is assigned somewhere. */
   playedRating?: number;
@@ -83,27 +97,39 @@ function saberOrder(batters: Candidate[]): Array<{ slot: number; player: Candida
     .sort((a, b) => a.slot - b.slot);
 }
 
+/** A weighted sum of grades, or null when one of them has not been graded: never read as zero (D-018). */
+const graded = (...parts: Array<[number | null, number]>): number | null =>
+  (parts.some(([v]) => v === null) ? null : parts.reduce((sum, [v, w]) => sum + (v as number) * w, 0));
+
 function traditionalOrder(batters: Candidate[]): Array<{ slot: number; player: Candidate; why: string }> {
   const pool = new Set(batters);
-  const take = (score: (c: Candidate) => number): Candidate => {
+  /*
+   * A slot is filled from the men whose grades for it are known. One whose speed (say) has not been graded is not the
+   * slowest man on the club, so he is passed over for the leadoff spot rather than scored as zero; if nobody's grades
+   * for a slot are known, the best bat takes it.
+   */
+  const take = (score: (c: Candidate) => number | null): Candidate => {
     let best: Candidate | null = null;
     let bestScore = -Infinity;
     for (const c of pool) {
       const s = score(c);
-      if (s > bestScore) {
+      if (s !== null && s > bestScore) {
         best = c;
         bestScore = s;
       }
+    }
+    if (best === null) {
+      for (const c of pool) if (best === null || c.rank > best.rank) best = c;
     }
     pool.delete(best!);
     return best!;
   };
   const result: Array<{ slot: number; player: Candidate; why: string }> = [];
-  result.push({ slot: 1, player: take((c) => c.speed * 2 + c.eye + c.contact), why: 'table-setter — speed and on-base' });
-  result.push({ slot: 2, player: take((c) => c.contact * 2 + c.eye), why: 'bat control — moves the runner' });
+  result.push({ slot: 1, player: take((c) => graded([c.speed, 2], [c.eye, 1], [c.contact, 1])), why: 'table-setter — speed and on-base' });
+  result.push({ slot: 2, player: take((c) => graded([c.contact, 2], [c.eye, 1])), why: 'bat control — moves the runner' });
   result.push({ slot: 3, player: take((c) => c.rank), why: 'best all-around hitter' });
-  result.push({ slot: 4, player: take((c) => c.power * 2 + c.rank), why: 'cleanup power' });
-  result.push({ slot: 5, player: take((c) => c.power + c.rank), why: 'protection behind cleanup' });
+  result.push({ slot: 4, player: take((c) => graded([c.power, 2], [c.rank, 1])), why: 'cleanup power' });
+  result.push({ slot: 5, player: take((c) => graded([c.power, 1], [c.rank, 1])), why: 'protection behind cleanup' });
   for (let slot = 6; slot <= batters.length; slot++) {
     result.push({ slot, player: take((c) => c.rank), why: 'descending offense' });
   }
@@ -150,26 +176,59 @@ function startingPitcherCandidate(teamId: number): Candidate | null {
     positionName: 'P',
     bats: p.bats,
     dayToDay: false,
+    // He bats ninth for where he stands in the field, never for his bat: none is read
     off: 0,
     rank: 0,
-    contact: 0,
-    power: 0,
-    eye: 0,
-    speed: 0,
+    contact: null,
+    power: null,
+    eye: null,
+    speed: null,
     defense: {},
   };
+}
+
+/** A bat read from the scouts' tools: the tools model's expected wOBA (up to a constant) and what it was read on. */
+interface Bat {
+  raw: number;
+  basis: BatBasis;
+}
+
+/**
+ * His bat against this hand: the calibrated tools model (`toolsModel.ts`) on his split grades against it (D-035), or on
+ * his overall grades where the export has no split grades for him (said, `basis: 'overall'`). Null when neither set is
+ * fully graded: a missing tool is never averaged around (D-018).
+ */
+function batOf(profile: ScoutedHitterProfile | undefined, side: HitterSide): Bat | null {
+  if (!profile) return null;
+  const split = expectedWobaRaw(profile[side]);
+  if (split !== null) return { raw: split, basis: 'vs_hand' };
+  const overall = expectedWobaRaw(profile.tools);
+  return overall !== null ? { raw: overall, basis: 'overall' } : null;
 }
 
 /** Hardest position first down the defensive spectrum; the DH is appended. */
 const FIELD_POSITIONS = [2, 6, 8, 5, 4, 9, 7, 3];
 
 /**
- * What a point of fielding rating is worth against a point of offensive value.
+ * What a point of fielding rating is worth against a point of the bat.
  * Offence in this save spans roughly a thousand points and the rating spans
  * sixty, so eight keeps a ten-point glove difference meaningful — about eighty
  * points — without letting defence override a real bat.
+ *
+ * Unchanged in Player Value phase 6d, when the bat moved from OOTP's offensive
+ * value to the scouts' tools: `BAT_POINTS_PER_WOBA` puts the new bat on the
+ * same spread, so a ten-point glove difference is still worth about 0.4 of a
+ * standard deviation of major-league bats.
  */
 const DEF_POINTS_PER_RATING = 8;
+
+/**
+ * POLICY (phase 6d). The bat's unit: tenths of a point of expected wOBA (one wOBA point is 0.001). On the Arizona import
+ * (2026-05-16) the 425 major-league hitters' bats against right-handers spread with a standard deviation of 19.6 wOBA
+ * points on the tools model, where OOTP's offensive value spread 196 of its own points (the two correlate at 0.94), so
+ * tenths put the scouts' bat on the scale the glove weight and the tie-break below were written for. A unit, not a fit.
+ */
+export const BAT_POINTS_PER_WOBA = 10_000;
 
 /** A position nobody is rated at still has to be manned; this is the last resort. */
 const UNMANNED_RATING = 20;
@@ -182,7 +241,7 @@ const UNMANNED_RATING = 20;
  * identically, and the tie used to fall to whatever order the roster came back
  * in — which is how an everyday second baseman ends up at DH while his backup
  * fields with the same glove and a worse bat. Half a point cannot outweigh any
- * real difference, since offensive value is whole numbers, but it settles a tie
+ * real difference, since the bat is whole numbers, but it settles a tie
  * in favour of the man OOTP already lists there.
  */
 function slotValue(c: Candidate, pos: number, rating: number): number {
@@ -274,9 +333,10 @@ lineupRoutes.get('/lineup/:teamId', (req, res) => {
   // rule is actually worth to this roster.
   const dhParam = req.query.dh === 'on' ? 'on' : req.query.dh === 'off' ? 'off' : 'auto';
   /*
-   * What to build the order from. Talent is OOTP's own valuation and stays the
-   * default: it is a projection, and over the rest of a season a projection
-   * beats a third of a season of results. Production is here because plenty of
+   * What to build the order from. Talent is the scouts' view of each bat against
+   * this hand (phase 6d; it was OOTP's own valuation) and stays the default: it is
+   * a projection, and over the rest of a season a projection beats a third of a
+   * season of results. Production is here because plenty of
    * managers want the card to say what has actually happened — a man hitting
    * .274 on-base batting cleanup on the strength of his ratings is correct and
    * still hard to look at. Neither is the better answer; they answer different
@@ -285,32 +345,18 @@ lineupRoutes.get('/lineup/:teamId', (req, res) => {
   const sortBy = req.query.sort === 'production' ? 'production' : 'talent';
   if (!tableExists('players')) return res.status(400).json({ error: 'No data imported yet' });
 
-  const values = valuesByPlayer();
   const raw = db
     .prepare(
       `SELECT p.player_id, p.first_name, p.last_name, p.age, p.position, p.bats,
-              b.batting_ratings_overall_contact AS contact,
-              b.batting_ratings_overall_power AS power,
-              b.batting_ratings_overall_eye AS eye,
-              b.running_ratings_speed AS speed,
-              f.fielding_rating_pos2 AS d2, f.fielding_rating_pos3 AS d3,
-              f.fielding_rating_pos4 AS d4, f.fielding_rating_pos5 AS d5,
-              f.fielding_rating_pos6 AS d6, f.fielding_rating_pos7 AS d7,
-              f.fielding_rating_pos8 AS d8, f.fielding_rating_pos9 AS d9,
               p.injury_is_injured, p.injury_dtd_injury, p.injury_left,
               rs.is_on_dl, rs.is_on_dl60, rs.is_active
        FROM players p
-       LEFT JOIN players_batting b ON b.player_id = p.player_id
-       LEFT JOIN players_fielding f ON f.player_id = p.player_id
        LEFT JOIN players_roster_status rs ON rs.player_id = p.player_id
        -- A pitcher who genuinely hits is a bat available to the card
        WHERE p.team_id = ? AND p.retired = 0 AND ${countsAsBatterSql()} AND ${ON_ROSTER}`
     )
     .all(teamId) as Array<{
-    player_id: number; first_name: string; last_name: string; age: number; position: number;
-    bats: number; contact: number | null; power: number | null; eye: number | null; speed: number | null;
-    d2: number | null; d3: number | null; d4: number | null; d5: number | null;
-    d6: number | null; d7: number | null; d8: number | null; d9: number | null;
+    player_id: number; first_name: string; last_name: string; age: number; position: number; bats: number;
     injury_is_injured: number | null; injury_dtd_injury: number | null; injury_left: number | null;
     is_on_dl: number | null; is_on_dl60: number | null; is_active: number | null;
   }>;
@@ -327,33 +373,61 @@ lineupRoutes.get('/lineup/:teamId', (req, res) => {
     }));
   const sidelined = new Set(unavailable.map((u) => u.player_id));
 
-  const candidates: Candidate[] = raw
-    .filter((p) => !sidelined.has(p.player_id))
-    .map((p) => {
-      const v = values.get(p.player_id);
-      return {
-        player_id: p.player_id,
-        name: `${p.first_name} ${p.last_name}`,
-        age: p.age,
-        position: p.position,
-        positionName: POSITION_NAMES[p.position] ?? '?',
-        bats: p.bats,
-        dayToDay: p.injury_dtd_injury === 1,
-        off: (vs === 'r' ? v?.offenseVsR : v?.offenseVsL) ?? v?.offense ?? 0,
-        rank: 0, // filled in below, once the season lines are known
-        contact: p.contact ?? 0,
-        power: p.power ?? 0,
-        eye: p.eye ?? 0,
-        speed: p.speed ?? 0,
-        defense: {
-          2: p.d2 ?? 0, 3: p.d3 ?? 0, 4: p.d4 ?? 0, 5: p.d5 ?? 0,
-          6: p.d6 ?? 0, 7: p.d7 ?? 0, 8: p.d8 ?? 0, 9: p.d9 ?? 0,
-          // Anyone can DH, and nobody fields it, so it scores as a neutral
-          // glove — which makes the bat the only thing separating candidates
-          [DH_POS]: 50,
-        },
-      };
-    });
+  const teamRow = db.prepare(`SELECT league_id, level FROM teams WHERE team_id = ?`).get(teamId) as
+    | { league_id: number; level: number }
+    | undefined;
+
+  /*
+   * Every rating on the card is the organization's own, through the evidence adapter (D-017; phase 6d): the bat is what
+   * his scouted tools against this hand say, the glove his revealed grade at each position. The bat is placed against
+   * the league's major-league hitters read the same way, so the card can say "+12 against right-handers"; the centre is
+   * the same for every man, so it moves nobody.
+   */
+  const side: HitterSide = vs === 'r' ? 'vsRight' : 'vsLeft';
+  const available = raw.filter((p) => !sidelined.has(p.player_id));
+  const profiles = loadScoutedHitterProfiles(available.map((p) => p.player_id));
+  const league = teamRow ? scoutedHitterPopulation(teamRow.league_id).map((p) => batOf(p, side)).filter((b): b is Bat => b !== null) : [];
+  const centre = league.length > 0 ? league.reduce((sum, b) => sum + b.raw, 0) / league.length : null;
+
+  const toCandidate = (p: (typeof raw)[number], bat: Bat): Candidate => {
+    const profile = profiles.get(p.player_id);
+    const glove = scoutedGloves(p.player_id);
+    const at = (pos: number): number => glove?.positions.find((g) => g.position === pos)?.current ?? 0;
+    return {
+      player_id: p.player_id,
+      name: `${p.first_name} ${p.last_name}`,
+      age: p.age,
+      position: p.position,
+      positionName: POSITION_NAMES[p.position] ?? '?',
+      bats: p.bats,
+      dayToDay: p.injury_dtd_injury === 1,
+      off: Math.round((bat.raw - (centre ?? 0)) * BAT_POINTS_PER_WOBA),
+      batBasis: bat.basis,
+      rank: 0, // filled in below, once the season lines are known
+      contact: profile?.tools.contact ?? null,
+      power: profile?.tools.power ?? null,
+      eye: profile?.tools.eye ?? null,
+      speed: profile?.running.speed ?? null,
+      defense: {
+        2: at(2), 3: at(3), 4: at(4), 5: at(5), 6: at(6), 7: at(7), 8: at(8), 9: at(9),
+        // Anyone can DH, and nobody fields it, so it scores as a neutral
+        // glove — which makes the bat the only thing separating candidates
+        [DH_POS]: 50,
+      },
+    };
+  };
+
+  const candidates: Candidate[] = [];
+  /*
+   * A hitter whose bat the scouts have not graded cannot be ranked against the others: his bat is unknown, not average
+   * and not zero (D-018). He is named, kept off the ranking, and only fills a position no graded man is left to fill.
+   */
+  const ungraded: Array<(typeof raw)[number]> = [];
+  for (const p of available) {
+    const bat = batOf(profiles.get(p.player_id), side);
+    if (bat) candidates.push(toCandidate(p, bat));
+    else ungraded.push(p);
+  }
 
   const leagueUsesDH = usesDH(teamId);
   const dh = dhParam === 'auto' ? leagueUsesDH : dhParam === 'on';
@@ -387,6 +461,18 @@ lineupRoutes.get('/lineup/:teamId', (req, res) => {
     starters.push(extra);
     used.add(extra.player_id);
   }
+  /*
+   * Only when no graded bat is left: a man the scouts have not graded fills the spot rather than leave it empty. He
+   * bats last (his bat cannot be ranked above anyone's), and the card says why he is there.
+   */
+  const backfilled = new Set<number>();
+  for (const p of ungraded) {
+    if (starters.length >= fieldersNeeded) break;
+    const c = { ...toCandidate(p, { raw: centre ?? 0, basis: 'overall' }), off: Number.NaN, batBasis: undefined };
+    starters.push(c);
+    used.add(c.player_id);
+    backfilled.add(c.player_id);
+  }
   if (starters.length < fieldersNeeded) {
     return res.status(400).json({ error: 'Not enough position players on this roster to fill a lineup' });
   }
@@ -395,10 +481,7 @@ lineupRoutes.get('/lineup/:teamId', (req, res) => {
   const pitcher = dh ? null : startingPitcherCandidate(teamId);
 
   // Season rate stats for the chosen nine, so the card can be judged on
-  // production as well as OOTP's internal offensive value
-  const teamRow = db.prepare(`SELECT league_id, level FROM teams WHERE team_id = ?`).get(teamId) as
-    | { league_id: number; level: number }
-    | undefined;
+  // production as well as the scouts' view of the bat
   const statYear = tableExists('players_career_batting_stats')
     ? (db.prepare(`SELECT MAX(year) AS y FROM players_career_batting_stats`).get() as { y: number }).y
     : null;
@@ -467,7 +550,8 @@ lineupRoutes.get('/lineup/:teamId', (req, res) => {
    * quietly did nothing at all.
    */
   for (const c of [...candidates, ...starters]) {
-    c.rank = sortBy === 'production' ? productionScore(c.player_id) : c.off;
+    // An ungraded man filling a spot bats after every ranked one on a talent card: his bat is unknown, never a number
+    c.rank = sortBy === 'production' ? productionScore(c.player_id) : backfilled.has(c.player_id) ? -Infinity : c.off;
   }
 
   const seeded = style === 'saber' ? saberOrder(starters) : traditionalOrder(starters);
@@ -571,6 +655,9 @@ lineupRoutes.get('/lineup/:teamId', (req, res) => {
     .filter((c) => !used.has(c.player_id))
     .sort((a, b) => b.off - a.off)
     .slice(0, 8);
+  /** The bat as the card shows it: wOBA points above the league's major-league hitters against this hand; null where none was read. */
+  const shownBat = (c: Candidate): number | null =>
+    (c.batBasis && centre !== null && Number.isFinite(c.off) ? c.off / 10 : null);
 
   res.json({
     vs,
@@ -590,10 +677,11 @@ lineupRoutes.get('/lineup/:teamId', (req, res) => {
         defRating: l.player.playedRating ?? null,
         bats: { 1: 'R', 2: 'L', 3: 'S' }[l.player.bats] ?? '?',
         dayToDay: l.player.dayToDay === true,
-        off: l.player.off,
+        off: shownBat(l.player),
+        batBasis: l.player.batBasis ?? null,
         speed: l.player.speed,
         power: l.player.power,
-        why: l.why,
+        why: backfilled.has(l.player.player_id) ? 'bat not graded — fills a position nobody else is left to play' : l.why,
         pa: s?.pa ?? null,
         ops: s?.ops ?? null,
         opsPlus: s?.opsPlus ?? null,
@@ -605,10 +693,20 @@ lineupRoutes.get('/lineup/:teamId', (req, res) => {
       player_id: c.player_id,
       name: c.name,
       positionName: c.positionName,
-      off: c.off,
+      off: shownBat(c),
+      batBasis: c.batBasis ?? null,
     })),
     // Named rather than silently dropped: a coach who does not see why his
     // best hitter is missing will assume the card is broken
     unavailable,
+    /** Hitters whose bat the scouts have not graded, left off the ranking (a spot they fill is on the card, said). */
+    notScouted: ungraded
+      .filter((p) => !backfilled.has(p.player_id))
+      .map((p) => ({
+        player_id: p.player_id,
+        name: `${p.first_name} ${p.last_name}`,
+        positionName: POSITION_NAMES[p.position] ?? '?',
+        reason: "His hitting tools haven't been graded by your scouts, so his bat can't be ranked against the others.",
+      })),
   });
 });
