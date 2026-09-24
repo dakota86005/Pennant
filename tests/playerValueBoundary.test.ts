@@ -1,13 +1,18 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
 /**
  * The Player Value boundary (D-052, docs/PLAYER_VALUE.md Part 10), static, in the family of
  * evidenceBoundary.test.ts, developmentalStakesBoundary.test.ts and farmOperationsBoundary.test.ts.
  *
- * Runtime tests prove today's code honours it; this proves the next change does. It reads the
- * server source with comments stripped, so prose about a column is not mistaken for reading it.
+ * Runtime tests prove today's code honours it; this proves the next change does. It reads the server
+ * source through the TypeScript parser (hardening, A-16): comments are blanked by the parser, so a
+ * comment marker inside a string hides no code; every import is seen, whatever its quotes, whether it
+ * is static, dynamic (`import()`) or `require`, a bare package or a file in a subdirectory; and every
+ * database call is inspected by its receiver and its SQL, whatever the SQL's case or quoting. Each
+ * hardened check was shown to fail on a deliberate mutation of the code it guards.
  *
  * Phase 1 built contract facts and control; phase 2 Club Finances, the opening price of a win and
  * the per-import market snapshot; phase 3a expected production from major-league results, fitted
@@ -15,29 +20,240 @@ import { describe, expect, it } from 'vitest';
  * `scoutedEvidence.ts` (D-017). Two modules write, and only to history.db: the market snapshot and the
  * fit store. The allow-lists below grow phase by phase: the imports a value module may make and the
  * consumers migrated to the entry point. The `players_value` allow-list in evidenceBoundary.test.ts
- * shrinks as each consumer moves (Part 8).
+ * shrinks as each consumer moves (Part 8). To add a module or a consumer, add it to the list it
+ * belongs to; nothing else here should need to change.
  */
 
 const SERVER = path.join(process.cwd(), 'server');
 
-const code = (file: string): string =>
-  fs
-    .readFileSync(path.join(SERVER, file), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+// ── reading the source ───────────────────────────────────────────────────────
 
-const importsOf = (file: string): string[] => [...code(file).matchAll(/from '(\.\/[^']+)'/g)].map((m) => m[1]);
+/** Every .ts file under server/, recursively, as a path relative to it ("x.ts", "sub/y.ts"). */
+const SERVER_FILES: string[] = (() => {
+  const out: string[] = [];
+  const walk = (dir: string, prefix: string) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) walk(path.join(dir, entry.name), `${prefix}${entry.name}/`);
+      else if (entry.name.endsWith('.ts')) out.push(`${prefix}${entry.name}`);
+    }
+  };
+  walk(SERVER, '');
+  return out.sort();
+})();
+
+const memo = <T>(f: (file: string) => T) => {
+  const cache = new Map<string, T>();
+  return (file: string): T => {
+    if (!cache.has(file)) cache.set(file, f(file));
+    return cache.get(file) as T;
+  };
+};
+
+const sourceOf = memo((file) => fs.readFileSync(path.join(SERVER, file), 'utf8'));
+const astOf = memo((file) => ts.createSourceFile(file, sourceOf(file), ts.ScriptTarget.Latest, true));
+
+/** Every node of a file, depth first. */
+const nodesOf = memo((file) => {
+  const out: ts.Node[] = [];
+  const visit = (n: ts.Node) => { out.push(n); ts.forEachChild(n, visit); };
+  visit(astOf(file));
+  return out;
+});
+
+/**
+ * The source with every comment blanked (newlines kept, so positions and lines hold). The comments are
+ * the parser's trivia, never a regular expression's guess: `'a // b'` and `` `/* x *\/` `` are text.
+ */
+const code = memo((file) => {
+  const text = sourceOf(file);
+  const sf = astOf(file);
+  const chars = text.split('');
+  const seen = new Set<number>();
+  const blank = (ranges: ts.CommentRange[] | undefined) => {
+    for (const r of ranges ?? []) {
+      if (seen.has(r.pos)) continue;
+      seen.add(r.pos);
+      for (let i = r.pos; i < r.end; i += 1) if (chars[i] !== '\n') chars[i] = ' ';
+    }
+  };
+  const visit = (n: ts.Node) => {
+    blank(ts.getLeadingCommentRanges(text, n.pos));
+    blank(ts.getTrailingCommentRanges(text, n.end));
+    for (const child of n.getChildren(sf)) visit(child);
+  };
+  visit(sf);
+  return chars.join('');
+});
+
+interface ImportRecord { spec: string; typeOnly: boolean; dynamic: boolean }
+
+/** Every import of a file: static, `export … from`, `import x = require()`, dynamic `import()`, `require()` and type imports. */
+const importRecordsOf = memo((file): { records: ImportRecord[]; nonLiteral: string[] } => {
+  const records: ImportRecord[] = [];
+  const nonLiteral: string[] = [];
+  const sf = astOf(file);
+  for (const n of nodesOf(file)) {
+    if (ts.isImportDeclaration(n) && ts.isStringLiteral(n.moduleSpecifier)) {
+      const clause = n.importClause;
+      const named = clause?.namedBindings && ts.isNamedImports(clause.namedBindings) ? clause.namedBindings.elements : null;
+      const typeOnly = !!clause && (clause.isTypeOnly
+        || (!clause.name && named !== null && named.length > 0 && named.every((e) => e.isTypeOnly)));
+      records.push({ spec: n.moduleSpecifier.text, typeOnly, dynamic: false });
+    } else if (ts.isExportDeclaration(n) && n.moduleSpecifier && ts.isStringLiteral(n.moduleSpecifier)) {
+      records.push({ spec: n.moduleSpecifier.text, typeOnly: n.isTypeOnly, dynamic: false });
+    } else if (ts.isImportEqualsDeclaration(n) && ts.isExternalModuleReference(n.moduleReference)) {
+      const e = n.moduleReference.expression;
+      if (ts.isStringLiteral(e)) records.push({ spec: e.text, typeOnly: n.isTypeOnly, dynamic: false });
+      else nonLiteral.push(n.getText(sf));
+    } else if (ts.isImportTypeNode(n) && ts.isLiteralTypeNode(n.argument) && ts.isStringLiteral(n.argument.literal)) {
+      records.push({ spec: n.argument.literal.text, typeOnly: true, dynamic: false });
+    } else if (ts.isCallExpression(n) && (n.expression.kind === ts.SyntaxKind.ImportKeyword
+      || (ts.isIdentifier(n.expression) && n.expression.text === 'require'))) {
+      const arg = n.arguments[0];
+      if (arg && (ts.isStringLiteral(arg) || ts.isNoSubstitutionTemplateLiteral(arg))) records.push({ spec: arg.text, typeOnly: false, dynamic: true });
+      else nonLiteral.push(n.getText(sf).slice(0, 80));
+    }
+  }
+  return { records, nonLiteral };
+});
+
+/** The module specifiers a file imports, in any form ("./db.js", "express", "../x.js"). */
+const importsOf = (file: string): string[] => importRecordsOf(file).records.map((r) => r.spec);
+
+/** A relative import resolved to a server file ("playerValueControl.js" from "./" or "../server/"), or null for a package. */
+const resolvedOf = (file: string, spec: string): string | null =>
+  spec.startsWith('.') ? path.posix.normalize(path.posix.join(path.posix.dirname(file), spec)) : null;
+
+/** Every string a file holds: literals and templates (a substitution reads `${…}`). */
+const stringsOf = memo((file): string[] => {
+  const out: string[] = [];
+  for (const n of nodesOf(file)) {
+    if (ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n)) out.push(n.text);
+    else if (ts.isTemplateExpression(n)) out.push(n.head.text + n.templateSpans.map((s) => `\${…}${s.literal.text}`).join(''));
+  }
+  return out;
+});
+
+/**
+ * What SQL an argument can be, following a template's leading substitution, an identifier or a
+ * conditional to the declarations in the same file. Null where it cannot be established: an SQL the
+ * test cannot read is treated as a write.
+ */
+function sqlCandidates(file: string, e: ts.Expression, depth = 0): string[] | null {
+  if (depth > 6) return null;
+  if (ts.isStringLiteral(e) || ts.isNoSubstitutionTemplateLiteral(e)) return [e.text];
+  if (ts.isParenthesizedExpression(e)) return sqlCandidates(file, e.expression, depth + 1);
+  if (ts.isConditionalExpression(e)) {
+    const a = sqlCandidates(file, e.whenTrue, depth + 1);
+    const b = sqlCandidates(file, e.whenFalse, depth + 1);
+    return a && b ? [...a, ...b] : null;
+  }
+  if (ts.isIdentifier(e)) {
+    // Lexical scope: the declaration in the innermost block that encloses the use
+    const scopeOf = (n: ts.Node): ts.Node => {
+      let at: ts.Node = n.parent;
+      while (!ts.isBlock(at) && !ts.isSourceFile(at) && !ts.isModuleBlock(at)) at = at.parent;
+      return at;
+    };
+    const visible = nodesOf(file)
+      .filter((n): n is ts.VariableDeclaration => ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.name.text === e.text && !!n.initializer)
+      .map((d) => ({ d, scope: scopeOf(d) }))
+      .filter(({ scope }) => scope.pos <= e.pos && e.end <= scope.end)
+      .sort((a, b) => b.scope.pos - a.scope.pos);
+    if (visible.length === 0) return null;
+    return sqlCandidates(file, visible[0].d.initializer as ts.Expression, depth + 1);
+  }
+  if (ts.isTemplateExpression(e)) {
+    const rest = e.templateSpans.map((s) => `\${…}${s.literal.text}`).join('');
+    if (e.head.text.trim().length > 0) return [e.head.text + rest];
+    // The statement's first word is a substitution: what can it be?
+    const first = sqlCandidates(file, e.templateSpans[0].expression, depth + 1);
+    const after = e.templateSpans[0].literal.text + e.templateSpans.slice(1).map((s) => `\${…}${s.literal.text}`).join('');
+    return first ? first.map((f) => f + after) : null;
+  }
+  return null;
+}
+
+/** A statement that cannot write: a SELECT (better-sqlite3 prepares one statement), or reading a table's columns. */
+const READ_ONLY_SQL = /^\s*(SELECT\b|PRAGMA\s+table_x?info\b)/i;
+/** The first word of a statement that writes. */
+const WRITE_SQL = /^\s*(INSERT|UPDATE|DELETE|REPLACE|CREATE|DROP|ALTER|ATTACH|DETACH|VACUUM|REINDEX|PRAGMA\s+\w+\s*=)\b/i;
+
+/** Database methods that execute or configure rather than prepare. */
+const EXECUTING = new Set(['exec', 'run', 'pragma', 'transaction', 'backup', 'serialize', 'loadExtension', 'function', 'aggregate', 'table', 'unsafeMode']);
+
+interface DbCall { receiver: string; method: string; sql: string[] | null; text: string }
+
+/** Every call of a database method (`x.prepare(…)`, `x['exec'](…)`), with its receiver and what its SQL can be. */
+const dbCallsOf = memo((file): DbCall[] => {
+  const sf = astOf(file);
+  const out: DbCall[] = [];
+  for (const n of nodesOf(file)) {
+    if (!ts.isCallExpression(n)) continue;
+    const callee = n.expression;
+    let method: string | null = null;
+    let receiver: ts.Expression | null = null;
+    if (ts.isPropertyAccessExpression(callee)) { method = callee.name.text; receiver = callee.expression; }
+    else if (ts.isElementAccessExpression(callee) && ts.isStringLiteralLike(callee.argumentExpression)) {
+      method = callee.argumentExpression.text; receiver = callee.expression;
+    }
+    if (method === null || receiver === null || (method !== 'prepare' && !EXECUTING.has(method))) continue;
+    const arg = n.arguments[0];
+    out.push({ receiver: receiver.getText(sf), method, sql: arg ? sqlCandidates(file, arg) : null, text: n.getText(sf).replace(/\s+/g, ' ').slice(0, 90) });
+  }
+  return out;
+});
+
+/** A module-level declaration whose value is a number of its own (a literal, arithmetic of literals, or an object or array holding one). */
+const ownNumbersOf = memo((file): string[] => {
+  const numeric = (e: ts.Expression): boolean => {
+    if (ts.isNumericLiteral(e)) return true;
+    if (ts.isParenthesizedExpression(e) || ts.isAsExpression(e) || ts.isSatisfiesExpression(e) || ts.isTypeAssertionExpression(e)) return numeric(e.expression);
+    if (ts.isPrefixUnaryExpression(e)) return numeric(e.operand);
+    if (ts.isBinaryExpression(e)) return numeric(e.left) && numeric(e.right);
+    return false;
+  };
+  // Inside an object or array, 0 and 1 are structure (none, all, a share of one), not a tunable
+  const structural = (e: ts.Expression) => ts.isNumericLiteral(e) && (e.text === '0' || e.text === '1');
+  const holds = (e: ts.Expression, top = false): boolean => {
+    if (numeric(e)) return top || !structural(e);
+    if (ts.isParenthesizedExpression(e) || ts.isAsExpression(e) || ts.isSatisfiesExpression(e)) return holds(e.expression, top);
+    if (ts.isObjectLiteralExpression(e)) return e.properties.some((p) => ts.isPropertyAssignment(p) && holds(p.initializer));
+    if (ts.isArrayLiteralExpression(e)) return e.elements.some((x) => holds(x));
+    return false;
+  };
+  const sf = astOf(file);
+  const out: string[] = [];
+  for (const st of sf.statements) {
+    if (!ts.isVariableStatement(st)) continue;
+    for (const d of st.declarationList.declarations) if (d.initializer && holds(d.initializer, true)) out.push(d.name.getText(sf));
+  }
+  return out;
+});
+
+// ── the modules and the allow-lists ──────────────────────────────────────────
 
 /** Every Player Value module, found by name so a new one is covered the day it is added. */
-const VALUE_MODULES = fs.readdirSync(SERVER).filter((f) => /^playerValue[A-Za-z]*\.ts$/.test(f)).sort();
+const VALUE_MODULES = SERVER_FILES.filter((f) => /^playerValue[A-Za-z]*\.ts$/.test(f));
 
 /** What a value module may import in phase 3b: proneness only through its reader, ratings only through the adapter (below). */
 const ALLOWED_IMPORTS = new Set([
-  './db.js', './dataFreshness.js', './leagueRules.js', './playerRights.js', './playerState.js', './provenance.js',
+  './dataFreshness.js', './leagueRules.js', './playerRights.js', './playerState.js', './provenance.js',
   './calibration.js', './playerValue.js', './playerValueCalibration.js', './playerValueContract.js', './playerValueControl.js',
   './playerValueFinances.js', './playerValueHistory.js', './playerValueProduction.js', './playerValueProductionFit.js',
   './playerValueFitStore.js', './injuryProneness.js', './playerValueRatings.js', './playerValueRatingsFit.js', './playerValueCone.js',
 ]);
+
+/** The modules that open league.db at all: the readers, the snapshot writer (its game date) and the route (a table check). The pure modules never do. */
+const DB_READERS = ['playerValue.ts', 'playerValueHistory.ts', 'playerValueSnapshot.ts', 'playerValueRoutes.ts'];
+
+/** Packages a value module may import: the router its routes mount on. Nothing else (no fs, no database driver). */
+const PACKAGE_IMPORTS: Record<string, string[]> = {
+  'playerValueRoutes.ts': ['express'],
+  // The refit runs off the event loop (A-17): the entry point starts the worker, the worker reports back
+  'playerValue.ts': ['node:worker_threads'],
+  'playerValueRefitWorker.ts': ['node:worker_threads'],
+};
 
 /** Phase 3b: the modules that may name the adapter at all. Only the reader loads ratings; the pure ratings modules take its types. */
 const ADAPTER_READER = 'playerValue.ts';
@@ -61,30 +277,95 @@ const MIGRATED_CONSUMERS = ['contracts.ts', 'payroll.ts', 'trade.ts', 'player.ts
 /** Who may call the snapshot writer: the import, and the one route that serves the history. */
 const SNAPSHOT_CALLERS = ['api.ts', 'clubFinanceRoutes.ts'];
 
+/** Who may mount the Player Value routes. */
+const ROUTE_MOUNTERS = ['api.ts'];
+
+/**
+ * Service arithmetic of a consumer's own: service divided, multiplied or taken modulo, in any spelling
+ * (`service.low / perYear`, `svc.days % perYear`), or anything divided by a year length. Reading the
+ * exported service columns for display is an objective fact and is not arithmetic.
+ */
+const SERVICE_ARITHMETIC = /\b(?:\w*service\w*|\w*Service\w*|svc\w*)(?:\.\w+|\[[^\]]+\])*\s*[/*%](?![/*])|[/*%]\s*(?:\w*[pP]erYear|\w*[yY]earLength|SERVICE_DAYS_PER_YEAR)\b|\bSERVICE_DAYS_PER_YEAR\b|\bserviceRemainingThisSeason\b/g;
+
+/** A query of the contract tables: a migrated consumer reads contract facts through the entry point (Part 8). */
+const CONTRACT_QUERY = /\b(?:FROM|JOIN)\s+players_contract(?:_extension)?\b/gi;
+
+/**
+ * Known violations whose fix belongs to another change, each with its finding. Each is asserted to be
+ * STILL there, exactly as listed: when the fix lands the entry fails and is removed, and a new violation
+ * in the same file is not hidden by it. The list only empties.
+ */
+const PENDING: Array<{ check: 'service' | 'contract-query'; file: string; matches: string[]; finding: string }> = [
+  { check: 'contract-query', file: 'player.ts', matches: ['FROM players_contract'], finding: 'unassigned (A-16 sweep): the player card reads players_contract directly' },
+];
+
+/** The matches of a check in a consumer, as text; a pending entry is compared with them exactly. */
+function consumerMatches(check: 'service' | 'contract-query', file: string): string[] {
+  if (check === 'service') return [...code(file).matchAll(SERVICE_ARITHMETIC)].map((m) => m[0].trim());
+  return stringsOf(file).flatMap((s) => [...s.matchAll(CONTRACT_QUERY)].map((m) => m[0].replace(/\s+/g, ' ')));
+}
+
 describe('the Player Value boundary', () => {
   it('finds the value modules', () => {
     expect(VALUE_MODULES).toEqual([
       'playerValue.ts', 'playerValueCalibration.ts', 'playerValueCone.ts', 'playerValueContract.ts', 'playerValueControl.ts',
       'playerValueFinances.ts', 'playerValueFitStore.ts', 'playerValueHistory.ts', 'playerValueProduction.ts',
-      'playerValueProductionFit.ts', 'playerValueRatings.ts', 'playerValueRatingsFit.ts', 'playerValueRoutes.ts', 'playerValueSnapshot.ts',
+      'playerValueProductionFit.ts', 'playerValueRatings.ts', 'playerValueRatingsFit.ts', 'playerValueRefitWorker.ts', 'playerValueRoutes.ts',
+      'playerValueSnapshot.ts',
     ]);
   });
 
-  it.each(VALUE_MODULES)('%s imports only what phase 3b allows', (file) => {
-    const outside = importsOf(file).filter((i) => !ALLOWED_IMPORTS.has(i) && !(WRITERS.includes(file) && WRITER_IMPORTS.has(i))
-      && !(file === 'playerValueRoutes.ts' && i === './playerValue.js')
+  it('reads the source the way the compiler does: a comment marker in a string hides no code, and every import form is seen', () => {
+    // The helpers are the enforcement, so they are pinned on the forms a regular expression missed (A-16)
+    const probe = 'probe.ts';
+    const text = [
+      "const a = 'x // y'; db.exec('DROP TABLE t');",
+      'const s = `/* not a comment */`; // a real comment: db.exec(\'hidden\')',
+      'import { p } from "./philosophy.js";',
+      "const m = await import('./settings.js');",
+      "const r = require('./staffPreference.js');",
+      "export { q } from './developmentFit.js';",
+    ].join('\n');
+    const sf = ts.createSourceFile(probe, text, ts.ScriptTarget.Latest, true);
+    const blanked = (() => {
+      const chars = text.split('');
+      const visit = (n: ts.Node) => {
+        for (const r of [...(ts.getLeadingCommentRanges(text, n.pos) ?? []), ...(ts.getTrailingCommentRanges(text, n.end) ?? [])]) {
+          for (let i = r.pos; i < r.end; i += 1) if (chars[i] !== '\n') chars[i] = ' ';
+        }
+        for (const c of n.getChildren(sf)) visit(c);
+      };
+      visit(sf);
+      return chars.join('');
+    })();
+    expect(blanked).toMatch(/db\.exec\('DROP TABLE t'\)/);
+    expect(blanked).toMatch(/\/\* not a comment \*\//);
+    expect(blanked).not.toMatch(/hidden/);
+    // The real helpers on the real tree: every value module parses and yields its imports
+    for (const file of VALUE_MODULES) expect(importsOf(file).length, file).toBeGreaterThan(0);
+    expect(SERVER_FILES.length).toBeGreaterThan(VALUE_MODULES.length);
+  });
+
+  it.each(VALUE_MODULES)('%s imports only what phase 3b allows, in any form (static, dynamic, require, package)', (file) => {
+    const { records, nonLiteral } = importRecordsOf(file);
+    expect(nonLiteral, `${file} imports a module it names at run time`).toEqual([]);
+    const outside = records.map((r) => r.spec).filter((i) =>
+      !ALLOWED_IMPORTS.has(i)
+      && !(i === './db.js' && DB_READERS.includes(file))
+      && !(WRITERS.includes(file) && WRITER_IMPORTS.has(i))
+      && !(PACKAGE_IMPORTS[file] ?? []).includes(i)
       && !(i === './scoutedEvidence.js' && (file === ADAPTER_READER || ADAPTER_TYPES_ONLY.includes(file))));
     expect(outside, `${file} imports ${outside.join(', ')}`).toEqual([]);
   });
 
   it('ratings reach Player Value only through the adapter: the reader loads them, the pure ratings modules take its types only (3b, D-017)', () => {
-    const naming = VALUE_MODULES.filter((f) => /scoutedEvidence/.test(importsOf(f).join(' ')));
+    const naming = VALUE_MODULES.filter((f) => importsOf(f).includes('./scoutedEvidence.js'));
     expect(naming.sort()).toEqual([ADAPTER_READER, ...ADAPTER_TYPES_ONLY].sort());
     for (const file of ADAPTER_TYPES_ONLY) {
       // A type import only: nothing from the adapter runs in the pure modules
-      const lines = code(file).split('\n').join(' ').match(/import[^;]*from '\.\/scoutedEvidence\.js'/g) ?? [];
-      expect(lines.length, file).toBeGreaterThan(0);
-      for (const l of lines) expect(l, file).toMatch(/^import type /);
+      const adapter = importRecordsOf(file).records.filter((r) => r.spec === './scoutedEvidence.js');
+      expect(adapter.length, file).toBeGreaterThan(0);
+      for (const r of adapter) expect(r.typeOnly && !r.dynamic, file).toBe(true);
     }
     // The reader loads ability, splits, running and the glove at his position through the adapter's loaders
     expect(code(ADAPTER_READER)).toMatch(/loadScoutedAbilities\(/);
@@ -99,18 +380,19 @@ describe('the Player Value boundary', () => {
     const history = code('playerValueHistory.ts');
     const columns = history.match(/const MINOR_USAGE_COLUMNS = \[([^\]]*)\]/);
     expect(columns).not.toBeNull();
-    expect(columns![1]).not.toMatch(/war/);
+    expect(columns![1]).not.toMatch(/war/i);
     const reader = history.slice(history.indexOf('export function minorLeagueUsage'), history.indexOf('export function affiliatedLevels'));
     expect(reader.length).toBeGreaterThan(0);
-    expect(reader).not.toMatch(/\bwar\b|ra9war/);
-    // The major-league reader sums WAR at the major-league level only
-    expect(history).toMatch(/const where = \[`level_id = 1`/);
+    expect(reader).not.toMatch(/\bwar\b|ra9war/i);
+    // The major-league reader sums WAR at the major-league level only (level 1, or an independent market league's own top level)
+    expect(history).toMatch(/const where = \[levelWhere\.sql, `split_id = 1`/);
+    expect(history).toMatch(/sql: 'level_id = 1'/);
     // The ratings fit's arrival history is usage: no WAR field anywhere in it
     const fit = code('playerValueRatingsFit.ts');
     const arrival = fit.slice(fit.indexOf('export interface ArrivalPlayer'), fit.indexOf('}', fit.indexOf('export interface ArrivalPlayer')));
     expect(arrival).not.toMatch(/war/i);
     // ...and nothing reads a WAR off the minor-league usage it is handed (a message may say so; a read may not)
-    for (const file of RATINGS_MODULES) expect(code(file), file).not.toMatch(/(minors|minor)\b[^;`]*\.war\b/);
+    for (const file of RATINGS_MODULES) expect(code(file), file).not.toMatch(/(minors|minor)\b[^;`]*(\.war\b|\[['"`]war['"`]\])/);
   });
 
   it.each(RATINGS_MODULES)('%s (ratings, phase 3b) names no rating column, no players_value, no philosophy, no tier and no defensibility', (file) => {
@@ -135,7 +417,7 @@ describe('the Player Value boundary', () => {
   });
 
   it('injury proneness is read only through its one declared reader (D-053)', () => {
-    const readers = fs.readdirSync(SERVER).filter((f) => f.endsWith('.ts') && /prone_(overall|leg|back|arm)/.test(code(f)));
+    const readers = SERVER_FILES.filter((f) => /prone_(overall|leg|back|arm)/.test(code(f)));
     expect(readers).toEqual(['injuryProneness.ts']);
     // ...schema-tolerant: its columns are selected only where the export has them
     expect(code('injuryProneness.ts')).toMatch(/PRONENESS_COLUMNS\.filter\(\(c\) => present\.has\(c\)\)/);
@@ -154,22 +436,25 @@ describe('the Player Value boundary', () => {
     for (const file of ['playerValueProduction.ts', 'playerValueProductionFit.ts', ...RATINGS_MODULES]) expect(code(file), file).not.toMatch(/PRODUCTION_PRIOR\b|RATINGS_PRIOR\b/);
     // The reader serves the adopted fit from the store, and the prior only when there is none
     const reader = code('playerValue.ts');
-    expect(reader).toMatch(/adoptedProductionFit\(leagueId, PRODUCTION_METHOD\)/);
-    expect(reader).toMatch(/return \{ model: PRODUCTION_PRIOR, provenance: priorProvenance\(leagueId\) \}/);
-    expect(reader).toMatch(/adoptedProductionFit<RatingsModel, RatingsFitRecord>\(leagueId, RATINGS_METHOD\)/);
+    expect(reader).toMatch(/adoptedProductionFit\(leagueId, PRODUCTION_METHOD, done\.season\)/);
+    expect(reader).toMatch(/return priorInForce\(leagueId, season\);/);
+    expect(reader).toMatch(/adoptedProductionFit<RatingsModel, RatingsFitRecord>\(leagueId, RATINGS_METHOD, completedThrough\(leagueId, rules\)\.season\)/);
     // No other module fits, stores or reads a fit
-    for (const file of fs.readdirSync(SERVER).filter((f) => f.endsWith('.ts') && f !== 'playerValue.ts' && f !== FIT_STORE)) {
+    for (const file of SERVER_FILES.filter((f) => f !== 'playerValue.ts' && f !== FIT_STORE)) {
       expect(code(file), file).not.toMatch(/value_production_fits|recordProductionFit|adoptedProductionFit/);
     }
   });
 
-  it('the refit runs after an import, once, in the background, and can never fail it (D-053)', () => {
+  it('the refit runs after an import, once, off the event loop, and can never fail it (D-053, A-17)', () => {
     const api = code('api.ts');
-    expect(api.match(/refitProductionIfNeeded\(/g) ?? []).toHaveLength(1);
-    expect(api).toMatch(/setImmediate\(\(\) => \{\s*try \{\s*for \(const \w+ of refitProductionIfNeeded\(\)\)/);
-    // Phase 3b: the ratings refit runs once, after the results refit (it reads the results model in force), in the same guard
-    expect(api.match(/refitRatingsIfNeeded\(/g) ?? []).toHaveLength(1);
-    expect(api).toMatch(/for \(const \w+ of refitProductionIfNeeded\(\)\)[\s\S]*?for \(const \w+ of refitRatingsIfNeeded\(\)\)[\s\S]*?\} catch \(err\)/);
+    // In a worker thread, recorded only if no import started while it read; any failure is caught and logged
+    expect(api.match(/refitOffThread\(/g) ?? []).toHaveLength(1);
+    expect(api).toMatch(/refitOffThread\(\{ compute, stale: \(\) => importState\.importing \|\| generation !== importGeneration \}\)/);
+    expect(api).toMatch(/refitInWorker\(\)\.catch\(/);
+    expect(api).toMatch(/\.catch\(\(err\) => console\.error\('\[value\] production refit failed:', err\)\)/);
+    // The worker computes both refits (the ratings after the results model they read) and records nothing
+    expect(code('playerValueRefitWorker.ts')).toMatch(/computeRefits\(\)/);
+    expect(code('playerValue.ts')).toMatch(/const production = computeProductionRefits\(\);[\s\S]*?const ratings = computeRatingsRefits\(/);
     // After the import has finished, only when it succeeded
     expect(api).toMatch(/\} finally \{[\s\S]*?importState\.importing = false;[\s\S]*?\}\s*if \(imported\) refitAfterImport\(\);/);
   });
@@ -185,23 +470,46 @@ describe('the Player Value boundary', () => {
   });
 
   it('consumers reach value only through the entry point, and compute no cost of their own (3)', () => {
-    const internals = /from '\.\/(playerValueContract|playerValueControl|playerValueCalibration|playerValueFinances)\.js'/;
-    for (const file of fs.readdirSync(SERVER).filter((f) => f.endsWith('.ts') && !VALUE_MODULES.includes(f))) {
+    for (const file of SERVER_FILES.filter((f) => !VALUE_MODULES.includes(f))) {
       const source = code(file);
-      expect(source, `${file} reaches past the entry point`).not.toMatch(internals);
+      // Only the entry point, in any import form; the snapshot writer and the routes only for their one caller each
+      for (const spec of importsOf(file)) {
+        const target = resolvedOf(file, spec);
+        if (target === null || !/^playerValue[A-Za-z]*\.js$/.test(target)) continue;
+        const allowed = target === 'playerValue.js'
+          || (target === 'playerValueSnapshot.js' && SNAPSHOT_CALLERS.includes(file))
+          || (target === 'playerValueRoutes.js' && ROUTE_MOUNTERS.includes(file));
+        expect(allowed, `${file} reaches past the entry point: ${spec}`).toBe(true);
+      }
+      expect(importRecordsOf(file).nonLiteral.filter((t) => /playerValue/.test(t)), file).toEqual([]);
       // Eligibility is asked of Player Rights by the value reader only; nobody else composes a timeline
-      if (file !== 'playerRights.ts') expect(source, file).not.toMatch(/evaluateContractControl|composeControlTimeline/);
-      // The snapshot writer is reached by the import and the history route only
-      if (!SNAPSHOT_CALLERS.includes(file)) expect(source, `${file} reaches the snapshot writer`).not.toMatch(/playerValueSnapshot\.js/);
-      // Nobody else prices a win or reads the market's history from history.db
-      expect(source, file).not.toMatch(/value_market_snapshots|openingPriceOfWin\(|replacementLevelOf\(/);
+      if (file !== 'playerRights.ts') expect(source, file).not.toMatch(/\bevaluateContractControl\b|\bcomposeControlTimeline\b/);
+      // Nobody else prices a win, puts a season on a schedule's footing or reads the market's history (named at all, so an alias does not hide it)
+      expect(source, file).not.toMatch(/value_market_snapshots|\bopeningPriceOfWin\b|\breplacementLevelOf\b|\bclubFinancesOf\b|\bscheduleShareOf\b/);
     }
     for (const file of MIGRATED_CONSUMERS) {
       const source = code(file);
-      expect(source, `${file} is migrated and must read the entry point`).toMatch(/from '\.\/playerValue\.js'/);
+      expect(importsOf(file), `${file} is migrated and must read the entry point`).toContain('./playerValue.js');
       expect(source, file).not.toMatch(/CostBand|COST_PENDING|priceOfWin|price of a win/i);
-      // No service-time arithmetic of its own: that was controlAfterThisSeason's, and Player Rights' now
-      expect(source, file).not.toMatch(/service_days\s*\/|serviceDays\s*\/|SERVICE_DAYS_PER_YEAR|serviceRemainingThisSeason/);
+    }
+  });
+
+  it.each(MIGRATED_CONSUMERS)('%s does no service arithmetic of its own and queries no contract table: Player Rights and the contract facts answer (3)', (file) => {
+    for (const check of ['service', 'contract-query'] as const) {
+      const found = consumerMatches(check, file);
+      const pending = PENDING.find((p) => p.check === check && p.file === file);
+      if (pending) {
+        expect(found, `${file}: ${pending.finding}. If it is fixed, remove its PENDING entry`).toEqual(pending.matches);
+      } else {
+        expect(found, `${file} (${check})`).toEqual([]);
+      }
+    }
+  });
+
+  it('every pending violation names its finding and a migrated consumer', () => {
+    for (const p of PENDING) {
+      expect(MIGRATED_CONSUMERS).toContain(p.file);
+      expect(p.finding).toMatch(/^(A|B|C|D)-\d+|^unassigned/);
     }
   });
 
@@ -220,33 +528,52 @@ describe('the Player Value boundary', () => {
     expect(source, file).not.toMatch(
       /options_used|designated_for_assignment|days_on_dfa|is_on_waivers|waiver|rules_fa_minimum_years|rules_salary_arbitration|rules_min_service_days|mlb_service_days|mlb_service_years|has_received_arbitration/
     );
-    // It reads eligibility as Player Rights states it, never the thresholds or the service behind it
-    expect(source, file).not.toMatch(/\.(freeAgencyYears|arbitrationYears|serviceDaysPerYear|serviceTime)\b/);
+    // It reads eligibility as Player Rights states it, never the thresholds or the service behind it:
+    // named at all (a property, a destructuring, a bracket), not only as `.name`
+    expect(source, file).not.toMatch(/\b(freeAgencyYears|arbitrationYears|serviceDaysPerYear|serviceTime)\b/);
   });
 
   it('only the reader asks Player Rights for eligibility', () => {
-    const askers = VALUE_MODULES.filter((f) => /evaluateContractControl\(/.test(code(f)));
+    const askers = VALUE_MODULES.filter((f) => /\bevaluateContractControl\b/.test(code(f)));
     expect(askers).toEqual(['playerValue.ts']);
   });
 
   it.each(VALUE_MODULES.filter((f) => !WRITERS.includes(f)))('%s writes nothing, and touches no history (7)', (file) => {
     const source = code(file);
-    expect(source, file).not.toMatch(/\b(INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|REPLACE)\b\s+(INTO|TABLE|FROM|INDEX)?/);
-    expect(source, file).not.toMatch(/\.exec\(|\.run\(|history\.js|historyDb|writeFileSync/);
+    // No statement that writes, whatever its case or quotes
+    expect(stringsOf(file).filter((s) => WRITE_SQL.test(s)), file).toEqual([]);
+    // No database call that executes; every prepared statement is league.db's and provably a read
+    for (const call of dbCallsOf(file)) {
+      expect(EXECUTING.has(call.method), `${file}: ${call.text}`).toBe(false);
+      expect(call.receiver, `${file}: ${call.text}`).toBe('db');
+      expect(call.sql !== null && call.sql.every((s) => READ_ONLY_SQL.test(s)), `${file}: ${call.text}`).toBe(true);
+    }
+    expect(source, file).not.toMatch(/history\.js|historyDb|writeFileSync|appendFileSync|createWriteStream/);
   });
 
   it('only the two writers touch history.db, and neither writes league.db (7)', () => {
     const touching = VALUE_MODULES.filter((f) => /history\.js|historyDb/.test(code(f)));
     expect(touching).toEqual(WRITERS);
     for (const writer of WRITERS) {
-      const source = code(writer);
-      // Every statement that writes is prepared or executed on historyDb, never on the league's db
-      const statements = [...source.matchAll(/(\w+)\.(prepare|exec)\(\s*`([^`]*)`/g)];
-      expect(statements.length).toBeGreaterThan(0);
-      for (const [, receiver, , sql] of statements) {
-        if (/\b(INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|REPLACE)\b/i.test(sql)) expect(receiver, sql.slice(0, 60)).toBe('historyDb');
+      const calls = dbCallsOf(writer);
+      expect(calls.length).toBeGreaterThan(0);
+      for (const call of calls) {
+        // history.db takes the writes; league.db is only ever read, by a statement that provably reads
+        if (call.receiver === 'historyDb') continue;
+        if (call.method === 'run' || call.method === 'transaction') {
+          // a statement's run: its prepare is checked where the statement was made
+          expect(call.receiver, `${writer}: ${call.text}`).not.toBe('db');
+          continue;
+        }
+        expect(call.receiver, `${writer}: ${call.text}`).toBe('db');
+        expect(call.method, `${writer}: ${call.text}`).toBe('prepare');
+        expect(call.sql !== null && call.sql.every((s) => READ_ONLY_SQL.test(s)), `${writer}: ${call.text}`).toBe(true);
       }
-      expect(source, writer).not.toMatch(/\bdb\.exec\(|writeFileSync|DROP\s+TABLE|ALTER\s+TABLE|DELETE\s+FROM/i);
+      // Neither hands a database handle to anything under another name
+      const aliases = nodesOf(writer).filter((n) => ts.isVariableDeclaration(n) && !!n.initializer
+        && ts.isIdentifier(n.initializer) && ['db', 'historyDb'].includes(n.initializer.text));
+      expect(aliases.length, writer).toBe(0);
+      expect(code(writer), writer).not.toMatch(/writeFileSync|appendFileSync|createWriteStream|DROP\s+TABLE|ALTER\s+TABLE|DELETE\s+FROM/i);
     }
     // The fit store: additive, keyed by save, league, last completed season and method, idempotent unless forced
     const store = code(FIT_STORE);
@@ -277,9 +604,9 @@ describe('the Player Value boundary', () => {
   });
 
   it('every constant is declared once, stamped, in the calibration module (8)', () => {
-    const numeric = /^\s*(export\s+)?const\s+[A-Z][A-Z0-9_]*\s*(:\s*number\s*)?=\s*-?\d/m;
+    // A number of its own at module level, whatever its name, keyword or type: a literal, literal arithmetic, or an object or array holding one
     for (const file of VALUE_MODULES.filter((f) => f !== 'playerValueCalibration.ts')) {
-      expect(code(file), `${file} declares a number of its own`).not.toMatch(numeric);
+      expect(ownNumbersOf(file), `${file} declares a number of its own`).toEqual([]);
     }
     const calibration = code('playerValueCalibration.ts');
     const numbers = [...calibration.matchAll(/export const ([A-Z][A-Z0-9_]*)\s*=\s*-?\d/g)].map((m) => m[1]);
@@ -290,25 +617,32 @@ describe('the Player Value boundary', () => {
       ['MARKET_CONTRACT_CALIBRATION', 'policy'],
       ['OPENING_PRICE_CALIBRATION', 'provisional'],
       ['OPENING_PRICE_CENTRAL_CALIBRATION', 'policy'],
+      ['OPENING_PRICE_MINIMUMS_CALIBRATION', 'policy'],
       ['REPLACEMENT_LEVEL_CALIBRATION', 'provisional'],
       ['FINANCE_ROW_CALIBRATION', 'policy'],
       ['PLACEHOLDER_ROW_CALIBRATION', 'policy'],
       ['PRODUCTION_POLICY_CALIBRATION', 'policy'],
       ['RATINGS_POLICY_CALIBRATION', 'policy'],
       ['PRODUCTION_PRIOR_CALIBRATION', 'provisional'],
+      ['PRODUCTION_PRIOR_SOURCE_CALIBRATION', 'provisional'],
       ['RATINGS_PRIOR_CALIBRATION', 'provisional'],
     ]);
+    // Every policy object of numbers in the calibration module is stamped beside it
+    for (const name of ownNumbersOf('playerValueCalibration.ts').filter((n) => n !== 'CONTROL_HORIZON_SEASONS')) {
+      const stamp = name.replace(/(_POLICY|_MINIMUMS|_PRIOR)?$/, (s) => `${s}_CALIBRATION`);
+      expect(calibration, `${name} has no stamp`).toMatch(new RegExp(`export const ${stamp}: CalibrationStamp =`));
+    }
     // Nothing in code is stamped calibrated for production: a save's fit is stamped by its own run record (D-053)
     expect(calibration).not.toMatch(/\bcalibrated\(/);
     // Declared once: nobody else defines the horizon
-    for (const file of fs.readdirSync(SERVER).filter((f) => f.endsWith('.ts') && f !== 'playerValueCalibration.ts')) {
-      expect(code(file), file).not.toMatch(/const CONTROL_HORIZON_SEASONS\b/);
+    for (const file of SERVER_FILES.filter((f) => f !== 'playerValueCalibration.ts')) {
+      expect(code(file), file).not.toMatch(/\bCONTROL_HORIZON_SEASONS\s*[=:]/);
     }
   });
 
   it('reads every contract and rule column through a column check (9)', () => {
     for (const file of [...VALUE_MODULES, 'leagueRules.ts']) {
-      expect(code(file), `${file} selects columns it has not checked`).not.toMatch(/SELECT\s+\*/i);
+      expect(stringsOf(file).filter((s) => /\bSELECT\s+(DISTINCT\s+)?([\w"]+\.)?\*/i.test(s)), `${file} selects columns it has not checked`).toEqual([]);
     }
     // The reader selects only the columns the export has, for the contract tables and the leagues table
     expect(code('playerValue.ts')).toMatch(/wanted\.filter\(\(c\) => present\.has\(c\)\)/);
@@ -323,11 +657,10 @@ describe('one LeagueRules (Part 9, phase 1)', () => {
   const RULE_COLUMNS = /rules_fa_minimum_years|rules_salary_arbitration_minimum_years|rules_min_service_days|rules_minimum_salary|financial_coefficient|rules_financials|rules_minor_league_fa_minimum_years/;
 
   it('only leagueRules.ts reads the contract rules from the export', () => {
-    // A read is a query naming the column; a column named in a message or a source label is not one
-    const queries = (source: string): string[] => (source.match(/`[^`]*`/g) ?? []).filter((t) => /\bSELECT\b/i.test(t));
-    const readers = fs.readdirSync(SERVER)
-      .filter((f) => f.endsWith('.ts'))
-      .filter((f) => queries(code(f)).some((q) => RULE_COLUMNS.test(q)) || (f !== 'leagueRules.ts' && /\[[^\]]*'rules_fa_minimum_years'/.test(code(f))));
+    // A read is a query naming the column, in any quotes; a column named in a message or a source label is not one
+    const queries = (file: string): string[] => stringsOf(file).filter((t) => /\bSELECT\b/i.test(t));
+    const readers = SERVER_FILES
+      .filter((f) => queries(f).some((q) => RULE_COLUMNS.test(q)) || (f !== 'leagueRules.ts' && /\[[^\]]*['"`]rules_fa_minimum_years['"`]/.test(code(f))));
     expect(readers).toEqual([]);
     // leagueRules.ts reads them from its declared column list, filtered by what the export has
     expect(code('leagueRules.ts')).toMatch(/'rules_fa_minimum_years', 'rules_salary_arbitration_minimum_years'/);
@@ -341,14 +674,14 @@ describe('one LeagueRules (Part 9, phase 1)', () => {
      */
     const REGIME = /export const MLB_CONTRACT_REGIME = \{ freeAgencyYears: 6, arbitrationYears: 3, serviceDaysPerYear: 172 \} as const;/;
     expect(code('playerRights.ts')).toMatch(REGIME);
-    for (const file of fs.readdirSync(SERVER).filter((f) => f.endsWith('.ts'))) {
+    for (const file of SERVER_FILES) {
       const source = code(file).replace(REGIME, '');
       if (file !== 'leagueRules.ts') expect(source, file).not.toMatch(/interface LeagueRules\b|function leagueRules\(/);
       // A service-year length of 172 (never a digit run inside a fitted decimal such as 1.172)
       expect(source, file).not.toMatch(/(?<![\d.])172(?![\d.])|SERVICE_DAYS_PER_YEAR|faMinYears|arbMinYears|MLB_CONTRACT_REGIME\s*=/);
     }
     // ...and only the Super Two regime check reads it
-    const uses = fs.readdirSync(SERVER).filter((f) => f.endsWith('.ts') && /MLB_CONTRACT_REGIME\./.test(code(f)));
+    const uses = SERVER_FILES.filter((f) => /MLB_CONTRACT_REGIME\./.test(code(f)));
     expect(uses).toEqual(['playerRights.ts']);
   });
 });

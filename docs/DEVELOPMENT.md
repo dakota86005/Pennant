@@ -58,6 +58,21 @@ npm run build       # Vite production build
 The suites share one SQLite handle and run serially. Tests must use synthetic data. New baseball behavior gets a case in
 the behavioral corpus first ([BEHAVIOR_CASES.md](BEHAVIOR_CASES.md)).
 
+Player Value's cross-save suite runs every Player Value entry point over synthetic saves of many shapes (a brand-new
+fictional league, 60- and 100-game schedules, a reserve clause, no financials, a broken parent chain, missing tables and
+columns, two top-level leagues, and more) and asserts what must hold on any save: no exception, no non-finite number,
+every unknown with its reason, no label claiming more calibration than the fit in force. It is part of `npm test`, about
+ten seconds; run it alone with:
+
+```bash
+npx vitest run tests/playerValueCrossSave.test.ts
+```
+
+`tests/syntheticSave.ts` builds the saves: `buildSave(spec)` rewrites the per-file fixture league (a temporary directory,
+never `data/`) to the shape a spec asks for, and `dropTable`, `dropColumn` and `exec` reshape it into an older or thinner
+export. A new save type is one `it` with a spec. A gap another change owns is an `it.todo` naming its finding, turned into
+a real case when the fix lands.
+
 Charts use visx (D-054): keep a chart's layout in a pure geometry module and test it there, and render the component
 with `react-dom/server`'s `renderToStaticMarkup` in a `.test.ts` (Vitest runs in Node, with no DOM);
 `tests/productionCone.test.ts` is the pattern. Colours come only from `src/chartTheme.ts`.

@@ -7,6 +7,8 @@ dist/
 build/main.cjs
 build/main.cjs.map
 build/preload.cjs
+build/value-refit-worker.cjs
+build/value-refit-worker.cjs.map
 release/
 
 # Local data — imported league database, rating history, AI caches

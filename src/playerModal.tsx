@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { apiDelete, apiGet, apiPost, getPlayer, type PlayerDossier } from './api';
+import { focusablesIn, focusTrapTarget } from './focusTrap';
 import { PlayerHover } from './playerHover';
 import { AssignmentBlock } from './AssignmentContext';
 import { RightsBlock } from './PlayerRights';
@@ -78,13 +79,42 @@ const PITCH_LABELS: Record<string, string> = {
   circlechange: 'Circle Change', knucklecurve: 'Knuckle Curve', knuckleball: 'Knuckleball',
 };
 
+/**
+ * The card's frame: a labelled modal dialog over a backdrop, with a named close button (S-01). The
+ * keyboard handling lives in `PlayerModal`; this is the markup, rendered alone in tests.
+ */
+export function PlayerCardFrame({ onClose, label, dialogRef, children }: {
+  onClose: () => void;
+  label: string;
+  dialogRef?: RefObject<HTMLDivElement>;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" ref={dialogRef} role="dialog" aria-modal="true" aria-label={label} tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="modal-close" aria-label="Close the player card" onClick={onClose}>✕</button>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export function PlayerModal() {
   const [playerId, setPlayerId] = useState<number | null>(null);
   const [dossier, setDossier] = useState<PlayerDossier | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const dialog = useRef<HTMLDivElement>(null);
+  /** Whatever had focus when the card opened, to hand focus back to on close. */
+  const opener = useRef<HTMLElement | null>(null);
+  const open = useRef(false);
 
   useEffect(() => {
-    listener = setPlayerId;
+    listener = (id) => {
+      // A card opened from inside the card keeps the first opener
+      if (id !== null && !open.current && document.activeElement instanceof HTMLElement) opener.current = document.activeElement;
+      setPlayerId(id);
+    };
     return () => {
       listener = null;
     };
@@ -97,9 +127,42 @@ export function PlayerModal() {
     getPlayer(playerId).then(setDossier).catch((e) => setError(e.message));
   }, [playerId]);
 
+  // Focus moves into the card when it opens and back to whatever opened it when it closes
+  useEffect(() => {
+    if (playerId !== null) {
+      if (!open.current) dialog.current?.focus();
+      open.current = true;
+      return;
+    }
+    if (open.current) {
+      open.current = false;
+      const back = opener.current;
+      opener.current = null;
+      if (back && back.isConnected) back.focus();
+    }
+  }, [playerId]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setPlayerId(null);
+      if (!open.current) return;
+      // A season's detail in the cone takes the first Escape (it marks the event handled)
+      if (e.key === 'Escape' && !e.defaultPrevented) {
+        setPlayerId(null);
+        return;
+      }
+      if (e.key !== 'Tab' || !dialog.current) return;
+      const items = focusablesIn(dialog.current);
+      const current = document.activeElement instanceof HTMLElement && dialog.current.contains(document.activeElement)
+        ? document.activeElement
+        : null;
+      const target = focusTrapTarget(items, current, e.shiftKey);
+      if (target) {
+        e.preventDefault();
+        target.focus();
+      } else if (items.length === 0) {
+        e.preventDefault();
+        dialog.current.focus();
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -108,14 +171,11 @@ export function PlayerModal() {
   if (playerId === null) return null;
 
   return (
-    <div className="modal-backdrop" onClick={() => setPlayerId(null)}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={() => setPlayerId(null)}>✕</button>
-        {error && <div className="banner error">{error}</div>}
-        {!dossier && !error && <p className="muted">Loading player…</p>}
-        {dossier && <Dossier d={dossier} />}
-      </div>
-    </div>
+    <PlayerCardFrame onClose={() => setPlayerId(null)} label={dossier ? `Player card: ${dossier.name}` : 'Player card'} dialogRef={dialog}>
+      {error && <div className="banner error">{error}</div>}
+      {!dossier && !error && <p className="muted">Loading player…</p>}
+      {dossier && <Dossier d={dossier} />}
+    </PlayerCardFrame>
   );
 }
 

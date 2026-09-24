@@ -99,6 +99,9 @@ From D-053 on, "calibrated" means fitted on the save's own outcomes, automatical
 stamp. Player Value's expected production (phases 3a and 3b) is the first subsystem built this way; the scouting
 constants above keep their run-1 stamps until they are migrated (ROADMAP). Phase 3b adds a second fitted model, the
 ratings model (section 6.2), and changed the results method to `production-3b.1`: playing time conditional on quality.
+The hardening (2026-09-23, section 6.3) rebuilt the central and the gate under method `production-3h.1`, and the
+owner's option C (the same day) replaced its block hold-out with a rolling-origin backtest under `production-3h.2`; the
+table and the method below describe 3b.1 where section 6.3 says what changed.
 
 **What is in code, and what is the save's.**
 
@@ -139,7 +142,9 @@ OOTP_FO_DATA_DIR=<dir with league.db and a scratch history.db> OOTP_FO_DB_READON
 
 ### 6.1 The run on the Arizona import (2026-05-16)
 
-**Method `production-3b.1` (phase 3b, the fit in force).** Fit `203:2025:production-3b.1`, same window, hold-out and
+**Superseded by method `production-3h.1` (section 6.3).**
+
+**Method `production-3b.1` (phase 3b).** Fit `203:2025:production-3b.1`, same window, hold-out and
 sample as below; **gate passed**, adopted; fit 4.8–5.0 s. The aging curve, the regression and season noise are
 unchanged (hitters K 153, mean 2.01; starters K 385, mean 1.38; relievers K 400, mean 0.93). Playing time now depends
 on quality: at horizon 1 a hitter who plays gets about 34 more plate appearances per WAR per 600 of projected quality,
@@ -211,6 +216,172 @@ pitchers 97.6% ± 1.8 (not used), 104.2% ± 1.3, 96.9% ± 1.5. Aging against the
 groups × three bands × under/over 30) is distinguishable from none (the largest relative to its error, pitchers > 86 and 30 or
 over, +0.062 ± 0.069 per 600 a year), so proneness does not move aging on this save, and the record says why.
 
+### 6.3 The hardening run (method `production-3h.1`, 2026-09-23)
+
+Four reviewers audited phases 1–3b (findings B-01 to B-17, C-03 to C-11, D-01 to D-16, A-01 to A-24). The central was
+biased low and the bias grew with the horizon: pooled +0.05 to +0.12 wins at horizons 2–7, starters +0.08 to +0.26,
+regulars +0.19 at horizon 7, the save's established cohort projected 10% / 21% / 32% / 43% / 54% / 66% below what its
+own history gives the same cohort one to six seasons on. The gate passed it because it read pooled coverage only, with a
+10-point tolerance, and the drift term had absorbed the bias as variance. What changed:
+
+- **The central is E[rate × playing time].** Talent drifts, and the players who keep playing are the ones who stayed
+  good, so the expected rate of a player who plays at a horizon is fitted apart from the chance he plays (the
+  `survivor` terms per kind and horizon: his regressed rate now, his age and his window playing time, weighted by the
+  opportunities played). Expected wins = chance × playing time when he plays × that rate. The survivors' terms read his
+  regressed rate NOW and carry their own aging: a first build that fed them the rate aged by the curve compounded the
+  curve's decline for seven seasons (starters who played at horizon 7 predicted at 0.54 WAR per 600 against 1.53 actual).
+  The pooled held-out bias is now −0.03 to −0.05 at every horizon.
+- **Playing time per scheduled game,** each past season at its own schedule (the standings' modal games per club, or
+  the most any player played), each future season at the rules' schedule; a season is short against its neighbours'
+  schedules, never today's (D-05, D-06, B-11). A 2020 origin projected at 60 games for every later season was the
+  source of the part-timers' apparent under-projection in the first build of this run.
+- **A physical ceiling:** the most opportunities per scheduled game any player of the kind played in the window
+  (hitters 4.77 PA, starters 6.31 BF, relievers 3.88 BF on this save), times the season's schedule; the wins high
+  edge is at most the ceiling at the high edge of his rate (C-05).
+- **The band is a mixture** of no playing time and the wins when he plays, as quantiles of the fitted distribution
+  of each cell (15 points, `tailGrid`), so a point mass at nothing is exact (B-12); its shape is read from the usage
+  lines alone and moved to the central, so thinner evidence only widens it and proneness moves it whole. Young
+  players (25 and under) have cells and a drift of their own (B-04). Backtest coverage of an outcome of no playing time
+  is scored by the share of the point mass the band holds (a discrete outcome).
+- **A listed pitcher's batting is not a hitter's case** (A-01, B-02): hitters' K rose from 153 to 400 and their mean
+  from 2.01 to 2.28 WAR per 600.
+- **What is measured is what is served.** The held-out origins are projected in blocks of three, each by the method
+  refit through the block's first origin, and the model served is the method refit through the last completed season
+  (no hold-out widening chosen on the held-out cases, B-05, B-16). Under `production-3h.2` every origin is its own
+  refit (the rolling-origin backtest below). Each horizon keeps its own prior weight and
+  widening (B-10). A prior fitted on the same seasons as the save's held-out ones (matched by their season totals) is
+  not used (B-09): on this save the fit uses no prior at all.
+- **The gate** reads, as fitted, pooled coverage within 5 points and every subgroup (kind, usage third, quality tier,
+  age band) within 10 points, and a bias that is material (over 10% of the mean outcome and over 0.05 wins) and
+  significant (over three standard errors, clustered by player) fails it, at every horizon with 200 held-out cases
+  (B-03, D-09).
+- **Statistics.** Proneness effects are clustered by player and held to Holm's rule across the family of 18 tests,
+  and a playing-time effect applies only at horizons 1–3 (B-08). The attrition logistic is ridge-penalized, pulled
+  toward the prior's predictions by pseudo-cases rather than by blending coefficients, and flagged when it separates or
+  fails to converge (B-14). A target season with a blank WAR is not scored (A-24).
+
+**The run on the Arizona import** (read-only, scratch `history.db`): fit `203:2025:production-3h.1`, window 2006–2025
+(2020 skipped at 37% of its neighbours' schedule), held out 2016–2025 and projected by refits through 2015, 2018 and
+2021; the model served is fitted through 2025. 5,948 players. The prior was fitted on these same seasons, so it is not
+used. Fit 9.6 s (four fits), in a worker thread (Part 7). **Gate: not passed**, so the fallback prior stays in force.
+
+Held-out, as fitted (80% / 50%, bias in wins, actual − central), before (3b.1 as served) and after:
+
+| Horizon | Cases | Before 80 / 50 | Before bias | After 80 / 50 | After bias | After, players who played (80 / 50, bias against the band when he plays) |
+|---|---|---|---|---|---|---|
+| 1 | 11,963 | 82.1 / 56.0 | −0.01 | 80.8 / 50.3 | −0.03 | 79.8 / 50.9, −0.05 |
+| 2 | 9,859 | 81.1 / 52.8 | +0.05 | 80.4 / 50.4 | −0.03 | 80.0 / 50.6, −0.07 |
+| 3 | 7,694 | 81.2 / 52.9 | +0.08 | 80.3 / 50.2 | −0.04 | 80.7 / 51.9, −0.11 |
+| 4 | 7,724 | 82.4 / 55.6 | +0.10 | 80.0 / 50.1 | −0.05 | 80.7 / 50.0, −0.14 |
+| 5 | 7,763 | 82.2 / 58.3 | +0.12 | 79.6 / 50.2 | −0.04 | 81.7 / 53.0, −0.14 |
+| 6 | 9,635 | 83.3 / 61.5 | +0.12 | 79.3 / 49.9 | −0.04 | 81.2 / 53.3, −0.15 |
+| 7 | 7,675 | 84.7 / 64.9 | +0.12 | 79.6 / 50.1 | −0.04 | 81.8 / 52.3, −0.17 |
+
+By subgroup, after (80 / 50, bias; horizons 1, 3, 5, 7); the "before" column is the 3b.1 fit as served, bias at the
+same horizons (age from reviewer B's independent rebuild):
+
+| Subgroup | h1 | h3 | h5 | h7 | Bias before (h1 / h3 / h5 / h7) |
+|---|---|---|---|---|---|
+| Hitters | 82.6/52.6, −0.05 | 82.1/52.0, −0.08 | 81.6/51.3, −0.09 | 80.8/50.8, −0.08 | −0.02 / +0.09 / +0.12 / +0.12 |
+| Starters | 80.1/48.2, −0.02 | 79.4/50.1, −0.00 | 78.9/49.7, +0.01 | 79.1/49.6, +0.05 | −0.02 / +0.16 / +0.22 / +0.26 |
+| Relievers | 78.9/48.7, −0.01 | 78.7/48.1, −0.02 | 77.5/49.1, −0.01 | 78.5/49.3, −0.02 | −0.01 / +0.03 / +0.06 / +0.06 |
+| Usage: fringe third | 83.2/53.1, −0.02 | 82.0/51.6, −0.00 | 81.7/51.6, −0.01 | 81.7/51.1, +0.00 | −0.02 / +0.02 / +0.03 / +0.03 |
+| Usage: part-time third | 80.0/49.3, −0.01 | 79.1/49.0, −0.03 | 78.7/50.0, −0.01 | 79.8/50.8, −0.01 | −0.00 / +0.09 / +0.14 / +0.13 |
+| Usage: regular third | 79.4/49.0, −0.05 | 80.0/49.9, −0.10 | 78.1/48.8, −0.11 | 77.9/48.7, −0.09 | −0.02 / +0.13 / +0.17 / +0.19 |
+| Quality: top tenth | 78.2/50.1, −0.08 | 80.1/47.9, −0.10 | 75.3/45.7, −0.07 | 75.0/46.6, −0.05 | −0.12 / −0.00 / +0.11 / +0.16 |
+| Quality: middle | 81.5/50.6, −0.03 | 80.5/50.4, −0.04 | 79.8/50.4, −0.04 | 79.9/50.3, −0.04 | −0.01 / +0.09 / +0.12 / +0.12 |
+| Quality: bottom tenth | 77.6/48.4, +0.05 | 79.4/51.0, −0.00 | 81.9/53.1, −0.02 | 82.5/52.3, −0.02 | +0.05 / +0.11 / +0.13 / +0.12 |
+| Age 25 and under | 79.3/47.0, −0.02 | 77.9/47.1, −0.05 | 80.0/51.1, −0.13 | 77.6/48.3, −0.14 | +0.03 / — / — / +0.21 (72.8/32.4 at h3, 61.2/31.2 at h7) |
+| Age 26–29 | 80.6/51.4, −0.06 | 80.5/50.9, −0.06 | 77.9/48.9, −0.05 | 78.5/49.5, −0.03 | −0.03 / — / — / +0.17 |
+| Age 30–33 | 81.0/49.9, −0.00 | 79.9/49.1, −0.02 | 80.4/50.6, −0.01 | 81.7/51.5, −0.02 | −0.01 / — / — / +0.06 |
+| Age 34 and over | 82.0/51.3, −0.02 | 82.7/52.8, −0.03 | 81.7/51.5, −0.01 | 80.4/50.3, −0.01 | −0.03 / — / — / +0.03 (97.6/91.6 at h7) |
+
+Every subgroup's coverage is within 5 points of the targets. The gate fails on 13 subgroup-horizon cells, every one
+an over-projection: hitters at horizons 3–7 (−0.075 to −0.110 wins, 11–27% of the mean outcome), the regular third at
+horizons 4–7 (−0.09 to −0.12), players aged 26–29 at horizons 3–4 and 34 and over at horizon 2, and the bottom tenth at
+horizon 1 (+0.05). **In sample** (the served fit scored on its own training seasons) every one of these subgroups is
+within 0.02 wins; out of time it is not, because 2016–2025 hitters produced less at long horizons than 2006–2015 did
+(regulars' rate when they played 2.75 against 2.88 projected at horizon 5). That is era drift the save's own seasons will
+replace, and the gate reports it rather than tolerate it: until a refit passes, the fallback prior is served (labelled
+"not yet calibrated on this save", widened by its weight). Whether the subgroup tolerance should admit this drift is
+the owner's decision (PLAYER_VALUE.md Part 12).
+
+**The cohort, summed** (the 1,721 players projected from results, against what the save's own history gives the cohort
+with a major-league line in a three-season window, h seasons on): 2027 974.5 against ~969 (+1%; before −10%), 2028
+877.2 against ~879 (−0%; before −21%), 2029 748.7 against ~769 (−3%; before −32%), 2030 618.8 against ~654 (−5%;
+before −43%), 2031 501.4 against ~549 (−9%; before −54%), 2032 398.7 against ~442 (−10%; before −66%).
+
+**Components** (the served fit, through 2025): hitters K 400, mean 2.28; starters K 300, mean 1.29; relievers K 400,
+mean 0.87. At horizon 1 a hitter who plays keeps 0.50 of his most recent slot's playing time per game plus 0.25 PA a
+game per WAR per 600 of quality; the survivors' rate is −0.75 + 0.90 × his regressed rate (horizon 7: −0.46 + 0.63 ×).
+Injury proneness: no effect survives Holm's correction with player-clustered errors (the largest, pitchers ≤ 56 at
+92.3% ± 3.0 of expected playing time); proneness moves nothing on this save. The attrition logistic converged and did
+not separate at every kind and horizon. The rest of this season is measured on this season's own games: of the players
+who played in the first 22 games per club, hitters kept 97%, starters 98% and relievers 92% of their playing time per
+game in the next 23, carried to the 72% of the season left at the same rate of loss per game.
+
+#### The rolling-origin backtest (method `production-3h.2`, owner option C, 2026-09-23)
+
+The 3h.1 gate failed on era drift: one hold-out block, 2016–2025, scored against a fit through 2015, so a single era
+decided every long horizon. The owner kept the gate's tolerances (pooled coverage within 5 points, every subgroup
+within 10, a bias failing at 10% of the mean outcome AND 0.05 wins AND three standard errors, 200 cases) and chose a
+rolling-origin backtest instead of looser tolerances:
+
+- **Origins.** Every completed season from the window's start + 5 to the season before the last is an origin; at most
+  8 are used, evenly spaced and always including the first and the last (`PRODUCTION_POLICY.rolling`). Each origin Y
+  is scored by the method fitted on seasons up to Y (its own refit), for Y+1 … Y+7 up to the last completed season.
+- **What is scored.** A horizon of an origin is scored only where that origin's own fit has at least 200 cases and at
+  least 3 origin cohorts at that horizon (`minimumOrigins`): a horizon the method could only fit on one or two seasons'
+  cohorts is the prior's, not a test of the save's method. The pooled cases are clustered by player AND by origin
+  (two-way: V = max(Vp + Vo − Vpo, Vp, Vo)), so one bad era widens the error instead of deciding the verdict.
+- **Recency.** Each fit weights a season by 0.5^(age / half-life), the half-life a policy (2 seasons; `null` turns it
+  off). The prior's pseudo-cases are scaled by the mean weight so the down-weighting does not hand the prior more pull.
+  With the minimum-origins rule, the Arizona gate fails on 7 cells with no recency weighting, 5 at half-lives 4 and 3,
+  and 2 at 2, every other result nearly unchanged; 2 was adopted. The owner's four approvals of 2026-09-23 (the serving
+  rule, a career-ending injury, the rest of this season, the same-time ratings' pull) are recorded in PLAYER_VALUE.md
+  Part 12 and D-053.
+- **Serving.** The model served is the method refit through the last completed season; the origin refits exist only
+  to measure it. The origins' horizon-1 cases sum to the pooled horizon-1 cases, and each origin's coverage and bias is
+  reported on its own (`origin:` rows, not gated).
+
+**The run on the Arizona import** (read-only, scratch `history.db`, fit `203:2025:production-3h.2`): window 2006–2025
+(19 seasons, 2020 skipped); origins 2011, 2012, 2014, 2015, 2017, 2018, 2023, 2024 (horizon-1 cases 1,814 to 2,175
+each; scored cases per origin 1,814 to 11,706); 5,948 players; the prior was fitted on these same seasons, so it is not
+used. Nine fits (eight origins and the served one) take 17.2–17.4 s in the refit worker, 20.4 s with the ratings fit;
+the server's event loop lagged at most 2 ms while it ran, and recording took 81 ms. **Gate: not passed** (two cells),
+so the fallback prior stays in force, fitted to this league's own WAR scale.
+
+Held-out, as fitted (80% / 50%, bias in wins, actual − central):
+
+| Horizon | Cases | 80 / 50 | Bias | Hitters | Starters | Relievers |
+|---|---|---|---|---|---|---|
+| 1 | 15,497 | 80.6 / 50.4 | −0.01 | 81.7 / 51.5, −0.02 | 80.2 / 49.1, −0.01 | 79.4 / 49.6, −0.00 |
+| 2 | 9,619 | 80.9 / 50.9 | −0.03 | 81.8 / 51.9, −0.06 | 80.3 / 49.7, +0.01 | 80.0 / 50.2, −0.01 |
+| 3 | 5,661 | 81.1 / 50.7 | −0.03 | 82.5 / 52.5, −0.06 | 79.2 / 49.8, −0.03 | 80.2 / 48.8, −0.01 |
+| 4 | 7,602 | 80.3 / 50.2 | −0.04 | 81.3 / 51.0, −0.08 | 80.5 / 50.4, +0.03 | 79.1 / 49.2, −0.02 |
+| 5 | 3,892 | 79.6 / 50.0 | −0.04 | 80.7 / 50.6, **−0.10** | 79.3 / 50.0, +0.03 | 78.5 / 49.3, −0.01 |
+| 6 | 3,892 | 79.3 / 49.9 | −0.04 | 80.9 / 51.4, **−0.10** | 78.9 / 48.7, +0.03 | 77.6 / 48.7, −0.00 |
+| 7 | 3,892 | 79.2 / 49.7 | −0.02 | 81.3 / 50.9, −0.05 | 76.5 / 48.1, +0.06 | 77.9 / 49.0, −0.01 |
+
+Every subgroup's coverage is within 10 points at every horizon (the lowest, the top tenth of projected rate at horizon
+5, 72.7 / 43.7 on 377 cases); usage thirds, quality tiers and age bands are within −0.14 to +0.11 wins of the outcome
+and pass the bias rule. Each origin's horizon-1 bias is between −0.04 and +0.00. Players who played at the target
+horizon: 80.0–82.3 / 50.7–53.8, bias −0.03 to −0.17.
+
+**The two failing cells** are hitters at horizons 5 and 6: −0.096 wins each, against mean outcomes of 0.45 and 0.36
+(21% and 27%), over three clustered standard errors. They are scored from origins 2017 and 2018 only (the earlier
+origins' fits have fewer than 3 cohorts that far ahead, and the later origins have no season 5 or 6 years on), with
+targets 2022–2024: hitters after the universal designated hitter produced less five and six seasons on than the
+2006–2017 history that fitted them. Nothing was loosened. What would pass them: more of the save's own seasons (each
+completed season adds an origin and dilutes one era's long horizons), or an owner decision on the subgroup bias rule at
+long horizons. A half-life shorter than 2 was not tried.
+
+**Injury proneness under 3h.2:** no effect is distinguishable from none under player-clustered errors and Holm's rule
+(hitters above 75: 97.9% ± 1.7 of the league's playing time; pitchers at 56 and under: 91.8% ± 3.1). The phase 3b
+reading that the most injury-prone third of hitters played about 6% less (94.8% ± 1.2, section 6.1) used errors that
+treated each player-season as independent; with a player's seasons clustered it does not survive, so proneness moves
+nothing on this save.
+
 ### 6.2 The ratings model (phase 3b): what was fittable on this save, and what was not
 
 `server/playerValueRatingsFit.ts` fits the ratings model per save; it is stored in `value_production_fits` under
@@ -257,3 +428,210 @@ automatically when the evidence exists:
 
 When the snapshots arrive, the refit after an import picks them up by itself (a ratings key that fitted before the
 snapshots were enough is refitted once when they become so), and the record says which parts are the save's.
+
+### 6.4 The ratings model after hardening F4 (method `ratings-3h.1`, 2026-09-23)
+
+Four changes to the arrival part (PLAYER_VALUE.md 2.3, "What hardening F4 changed"), one to the blend, and a tighter
+gate. The method version moved, so the phase 3b fit is not read any more and every save refits once.
+
+- **C-01, the condition.** A player called up in his origin season stays in the later seasons' cases, kept apart
+  with his share; a projected player not yet called up at share f of his season is read with 1 − f of the season's
+  call-ups still to come (a call-up equally likely at any point of the season's games: policy, since the export dates
+  no past call-up), and the band reaches none and all of them. The held-out check is read on the same unconditioned
+  cases, each at the start of its season.
+- **D-07, the population.** Where the export names parents, lines in another market league's farm or an independent
+  league are left out; a league the export no longer lists (the Arizona import's defunct short-season and rookie
+  leagues, 214, 215, 216, 219, 235) is kept as not known to be another's; any top-level league is arriving. On the
+  Arizona import this changes nothing (one market league); the synthetic two-league save
+  (`playerValueCrossSave.test.ts`, D-07) pins it.
+- **C-02, quality.** The fit records the results fit's quality coefficients at the same usage (hitters' chance logit
+  0.20 / 0.20 / 0.32 / 0.66 / 0.89 / 1.00 / 0.91 per WAR per 600 above replacement for the rest of this season and
+  horizons 1 to 6; starters 0.52 to 0.92; relievers 1.42 falling to 0.38; playing time about 0.3 opportunities per
+  scheduled game), and each cell's players now at every horizon (20 sampled in order of quality). On the Arizona import
+  these are the fallback production prior's coefficients, because the results fit (F1's `production-3h.2`) is not
+  adopted on this save.
+- **The serving rule.** The arrival model served is the method refit through the last completed season (it was the
+  training seasons' fit); the held-out seasons are scored by the method fitted through the training seasons.
+- **B-15, the gate.** Beside the absolute 10 points, a held-out chance or expected playing time (opportunities per
+  case) biased beyond 10% of what happened AND beyond three standard errors clustered by player fails, the production
+  gate's rule (`RATINGS_POLICY.gate.arrivalBias`). A tightening only: every fit the absolute rule failed still fails. A
+  synthetic league predicting 12% where 4% happened (an 8-point miss) passed before and fails now
+  (`playerValueRatings.test.ts`).
+- **A-15, the blend.** Covered in PLAYER_VALUE.md; no fitted number.
+
+**The Arizona run** (`203:2025:ratings-3h.1`, `npx tsx scripts/calibrate.ts production --refit`, scratch data dir,
+`league.db` read-only): 42,598 players with minor-league usage, 592,916 player-seasons at levels 2, 3, 4 and 6 (571,079
+before: the origin season's call-ups now stay in the later cases), window 2006–2025, trained through 2015, held out
+2016–2025, 93 level-and-age cells. The mapping is unchanged (84.5% / 58.1% on 1,147). Held out, the chance predicted
+against what happened (± its standard error, clustered by player) and the expected opportunities per case:
+
+| Horizon | Cases | Chance predicted | Happened | Bias / happened | Opportunities predicted | Happened | Bias / happened |
+|---|---|---|---|---|---|---|---|
+| 0 (the same season) | 53,445 | 4.6% | 4.7% (± 0.1) | 0.7% | 5.2 | 5.2 | −0.1% |
+| 1 | 46,503 | 7.5% | 7.9% (± 0.1) | 4.4% | 12.4 | 12.7 | 2.4% |
+| 2 | 41,004 | 9.6% | 10.2% (± 0.2) | 6.2% | 18.9 | 19.0 | 1.0% |
+| 3 | 34,251 | 10.9% | 12.4% (± 0.2) | 12.1% | 23.9 | 24.5 | 2.7% |
+| 4 | 28,739 | 11.1% | 13.1% (± 0.3) | 15.8% | 25.8 | 27.3 | 5.5% |
+| 5 | 22,301 | 10.8% | 13.4% (± 0.3) | 19.4% | 26.8 | 29.3 | 8.4% |
+| 6 | 27,906 | 9.9% | 12.3% (± 0.3) | 19.8% | 25.4 | 28.1 | 9.6% |
+
+Before (method `ratings-3b.1`, which dropped the origin season's call-ups from horizons 1 to 6 in both the fit and the
+check): 4.6 / 4.7, 4.4 / 4.7, 7.2 / 7.7, 8.9 / 10.3, 9.4 / 11.5, 9.4 / 11.9, 8.7 / 11.1, all inside the absolute 10
+points; under the new rule the same numbers would also have failed at horizons 3 to 6.
+
+**Gate: FAILED** at horizons 3 to 6 (the chance 12–20% low, 7 to 9 standard errors). The save's arrival rates rose
+from the training seasons to the held-out ones, and the arrival method weighs every season alike; it is recorded, not
+tuned away. The fit is not adopted: the provisional ratings prior is in force, which measures no arrivals, so on this
+import a player not in the majors has production `unknown`, with the gate's reason in his basis. The results path's
+blend with ratings is unaffected in kind (the prior's mapping is this import's own, fitted with no prior).
+
+**Read as if adopted** (a diagnostic copy of the store with the fit forced in; never the served state):
+
+| Season | Prospects' summed central, before | C-01 alone | C-01 and C-02 | The save's own history, a population this size |
+|---|---|---|---|---|
+| 2027 | 15.2 | 69.2 | 101.6 | about 144 |
+| 2028 | 22.2 | 106.9 | 168.9 | about 260 |
+| 2029 | 23.6 | 116.8 | 211.4 | about 362 |
+| 2030 | 21.4 | 101.2 | 234.8 | about 426 |
+
+The history column is the recent origins' (2016–2025) total major-league WAR one to four seasons on of players at
+levels 2, 3, 4 and 6 with no major-league line in the two seasons before (22.7, 41.0, 57.0 and 67.0 wins per 1,000 such
+players), scaled to the 6,351 players projected from ratings. The prospects' expected playing time is close to that
+history's (17.8 opportunities per prospect one season on against 13.0 per case, the difference being who is in the
+population now); what remains short is their rate when they play, about 0.55–0.6 WAR per 600 against the save's real
+arrivals' 1.0–1.6, which is the ratings path's (the same-time mapping and the provisional development prior), not the
+arrival model's. Negative centrals: 4,480 in 2029 (4,348 before), almost all within a few hundredths of a win; 642
+players have some season below −0.1 wins (750 before), the worst Santiago Pereira (130821, 17, level 4) at −1.19 in 2031.
+Low edges below −1 in some season: 365 (574 before); below −3: 35 (6 before, the youngest weak prospects, whose
+chance C-01 raised). The regression sweep holds: 53 checks pass in the served state and 55 as if adopted, none failing.
+A full valuation of the league takes about 1.9 s as if adopted (1.5 s before), 1.0 s served.
+
+#### The arrival model under option C (hardening F5, method `ratings-3h.2`, owner 2026-09-23)
+
+The owner approved applying option C to the arrival model: the same rolling-origin backtest and 2-season recency
+weighting as the results fit, judged by the same (tightened) gate, the gate not loosened. The method version moved, so
+every save refits its ratings model once.
+
+- **Origins.** The results fit's rule, shared (`rollingOrigins`, `RATINGS_POLICY.backtest.origins` is
+  `PRODUCTION_POLICY.rolling`): every completed season Y from the window's start + 5 to the season before the last whose
+  next season is in the window, at most 8, evenly spaced with the first and last kept. Each origin is fitted through Y
+  and scored on season Y + 1's minor leaguers at horizons 0 to 6 (the served model is fitted through the last season and
+  projects the season under way, so this is its analogue); a horizon of an origin is scored only where the fit through
+  Y holds the gate's 200 cases on that side from at least 3 origin cohorts.
+- **Recency.** Each arrival fit weights a case by 0.5^((the fit's last season − its target season) / 2) in its chance,
+  playing time, nodes and call-up share (`RATINGS_POLICY.backtest.recencyHalfLife`). Age bands are still sized on the
+  cases themselves, and the arrival fit has no prior's pseudo-cases to rescale (the results fit's mean-weight rule has
+  nothing to apply to). Within one horizon, weighting by target season and by origin season are the same.
+- **Errors.** The gate's standard errors are clustered by player and by origin (two-way, the results gate's
+  `twoWayClusteredSe`, shared). The tolerances are F4's, unchanged: the absolute 10 points, and a bias beyond 10% of
+  what happened AND three standard errors, on the chance and on the expected opportunities per case.
+- **A tightening that the change needs.** Arrivals, once measured, are adopted only where the next season (horizon 1)
+  could be checked on held-out cases: with rolling origins a history shorter than seven seasons has no origin, where F4's
+  single split still checked it. Without this the change would have loosened the gate for short saves.
+- **Serving** is unchanged: the model served is the method refit through the last completed season.
+
+**The Arizona run** (`203:2025:ratings-3h.2`, `npx tsx scripts/calibrate.ts production --refit`, scratch data dir,
+`league.db` read-only): origins 2011, 2013, 2014, 2016, 2017, 2021, 2022, 2024 (2019 is not an origin: 2020 is short and
+out of the window), scored cases per origin 6,517 to 35,016. The mapping is unchanged (84.5% / 58.1% on 1,147).
+
+| Horizon | Cases | Origins | Chance predicted | Happened (± SE, player and origin) | Bias / happened | Opportunities predicted | Happened (± SE) | Bias / happened |
+|---|---|---|---|---|---|---|---|---|
+| 0 (the same season) | 46,504 | 8 | 4.7% | 4.6% (± 0.1) | −1.7% | 5.3 | 5.3 (± 0.15) | 1.4% |
+| 1 | 39,987 | 7 | 7.8% | 7.8% (± 0.4) | 0.3% | 12.6 | 12.9 (± 0.43) | 2.4% |
+| 2 | 34,655 | 6 | 10.0% | 10.0% (± 0.6) | 0.0% | 18.8 | 19.0 (± 0.61) | 1.1% |
+| 3 | 27,902 | 5 | 11.4% | 12.3% (± 0.7) | 7.5% | 24.0 | 24.8 (± 1.08) | 3.0% |
+| 4 | 22,243 | 4 | 11.4% | 13.7% (± 0.3) | **16.7%** | 26.4 | 28.7 (± 1.24) | 7.9% |
+| 5 | 16,638 | 3 | 11.1% | 13.3% (± 0.3) | **16.8%** | 27.4 | 30.0 (± 1.43) | 8.9% |
+| 6 | 16,773 | 3 | 10.1% | 12.2% (± 0.4) | **16.9%** | 26.0 | 27.8 (± 0.98) | 6.6% |
+
+**Gate: FAILED** at horizons 4 to 6: the chance is 17% below what happened, about 7 standard errors clustered by player
+and origin. Horizons 0 to 3 pass (F4's single split failed horizon 3 as well). The fit is not adopted; the provisional
+ratings prior stays in force, and a player not in the majors remains `unknown` on this import with the gate's reason.
+
+The half-life, compared (`--arrival-half-life=`, the same origins; the chance's bias as a share of what happened at
+horizons 3 / 4 / 5 / 6): none 11.4 / 19.2 / 19.0 / 18.3%; 4 seasons 9.2 / 17.9 / 17.9 / 17.6%; 3 seasons 8.5 / 17.5 /
+17.5 / 17.3%; 2 seasons (the policy) 7.5 / 16.7 / 16.8 / 16.9%. As a diagnostic only, not policy, a half-life of 1
+season still fails horizons 4 to 6 (15.0 / 15.2 / 15.7%). Recency cannot close it, and the reason is structural: at
+horizon h the fit through Y can hold no cohort later than Y − h, so a long horizon is always read from cohorts five or
+more seasons older than the one it is scored on, and on this save the long-horizon arrival rate rose cohort after cohort
+(horizons 4 to 6 are scored only from origins 2013 to 2017, targets 2018 to 2024, every one under-predicted). Nothing was
+loosened.
+
+**Read as if adopted** (a diagnostic copy with the failing fit forced in, never served): the prospects' summed central
+for 2027 / 2028 / 2029 / 2030 is 111 / 201 / 256 / 258 wins (F4's method as if adopted 102 / 169 / 211 / 235; the save's
+own history for a population this size about 144 / 260 / 362 / 426). 563 players have some season's central below −0.1
+(642 under F4's), 35 some low edge below −3 (35). Aidan Miller (41278) reads a chance of 0.59 for the rest of 2026, then
+0.81, 0.84, 0.91, 0.91, 0.97 and 0.92 (F4's 0.58, 0.77, 0.83, 0.90). The regression sweep holds: 53 checks pass served and
+55 as if adopted, none failing. The ratings refit takes 4.8 s in the worker (3.1 s before: nine arrival fits where there
+were two); a full league valuation 1.0 s served, 1.8 s as if adopted.
+
+#### The arrival model adopted horizon by horizon (hardening F6, method `ratings-3h.3`, owner 2026-09-23)
+
+The owner chose option (b): "The arrival model is adopted horizon by horizon: a horizon whose held-out check passes the
+(unchanged, tightened) gate is served; later horizons are shown as not established. The gate is not loosened." It applies
+to the arrival model only; the results fit keeps its all-horizons rule. The method version moved, so every save refits
+its ratings model once.
+
+- **The rule** (`RATINGS_POLICY.adoption`, policy). Each horizon's held-out check is judged by F4's tolerances as before.
+  The horizons served are the contiguous run from horizon 0 through the last horizon k whose check, and every check before
+  it, passed. A horizon after one that failed, or after one with fewer than the gate's 200 held-out cases, is never
+  served, even where its own check passes. Nothing is adopted unless the run reaches horizon 1, and the mapping must still
+  pass its own gate.
+- **Serving.** The model served carries nothing past k. A prospect's seasons 0 to k are projected exactly as before; each
+  season after k is not established, with the gate's finding at its horizon as its reason, and has no band, central or
+  zero. A total over seasons that include one is not a number (`productionTotal`). The fit's label and the cone say
+  "calibrated through N seasons out".
+- **A tightening for saves whose later horizons could not be checked.** Before, a horizon with too few held-out cases was
+  not judged and was served. Now it ends the run, so seasons past it are not established.
+
+**The Arizona run** (`203:2025:ratings-3h.3`, `npx tsx scripts/calibrate.ts production --refit`, scratch data dir,
+`league.db` read-only): the held-out figures are F5's to the digit, because the method is unchanged apart from adoption.
+Horizons 0 to 3 pass (bias / happened −1.7%, 0.3%, 0.0% and 7.5%) and 4 to 6 fail (16.7%, 16.8% and 16.9% low, about 7
+standard errors). **Gate: PASSED**, and the arrival model is **adopted through 3 seasons out**. The record reads, for
+example, "4 seasons out: the save's held-out arrival chance ran 17% low (predicted 11.4%, observed 13.7% ± 0.3%),
+outside the gate". The ratings refit takes 4.8 s in the worker. The results fit (`production-3h.2`) still fails its own
+gate (hitters' bias at horizons 5 and 6), so the fallback prior stays in force for results.
+
+Served (the first served state, not a diagnostic): 6,351 prospects are projected. The 149 players on the ratings path
+who stay `unknown` are on a major-league club with no major-league line in the window. All 6,351 are projected for the rest of 2026 and
+2027 to 2029; 2030 to 2032 are not established for every one of them.
+
+| Season | Prospects' summed central | F5 as if adopted | The save's own history, a population this size |
+|---|---|---|---|
+| 2026 (the rest of it) | 24.4 | — | — |
+| 2027 | 111.0 | 111 | about 144 |
+| 2028 | 201.4 | 201 | about 260 |
+| 2029 | 256.0 | 256 | about 362 |
+| 2030 to 2032 | not established | 258 (2030) | about 426 (2030) |
+
+- 262 players have an established season with a central below −0.1 wins (563 over all seven seasons as if adopted under F5).
+- 1 has a low edge below −3 (35).
+- No player's horizon total is a number, because each prospect has seasons that are not established.
+- Aidan Miller (41278, 21, level 2): chance 0.585 / 0.813 / 0.837 / 0.907 for 2026 to 2029, centrals 0.23 / 0.93 / 1.58
+  / 3.04 wins. 2030 to 2032 are not established, each with its horizon's finding.
+
+The regression sweep: 65 checks pass and none fails. These are F5's 53, with "7 seasons" re-read as seven consecutive
+seasons, established and then not established, plus 12 checks for this change. The prospect checks now have subjects:
+25,404 arrival chances.
+A league valuation takes 2.1 s.
+
+## 7. Player Value's opening price of a win: policy minimums (hardening, B-13)
+
+The opening price of a win (PLAYER_VALUE.md Part 4.1) is a spread of defensible bases, not a fit, so it has nothing
+fitted to calibrate. What the hardening added are two **policy** minimums, `OPENING_PRICE_MINIMUMS` in
+`server/playerValueCalibration.ts`, stamped `OPENING_PRICE_MINIMUMS_CALIBRATION`, and one mechanism.
+
+| What | Value | Stamp | Why |
+|---|---|---|---|
+| A season's WAR on this season's footing | share of this season's schedule it covered | mechanism, no constant | A 60-game season (2020) is 37% of a 162-game schedule; read as a full season it made bases A, B, C and C2 about 2.7 times the price. Each past season's WAR is divided by its games per club over this season's games per team, both ways, and a season whose share is not established is not assumed full |
+| Least share of a schedule a basis may rest on | a quarter (0.25) | policy | A pace's noise grows as the share shrinks (the pace at 5% of a season is noise); below a quarter the scaled reading is more noise than price. Applies to a past season and to this season's pace alike |
+| Fewest contracts one basis may rest on | 20 | policy | A basis is salaries over WAR; one player's season WAR scatters by about a win around what he was paid for, so a basis on n contracts moves by roughly 0.6 ÷ √n of itself (about 13% at 20). Fewer, and bases differ by who is in them, not by what they measure |
+
+Below either minimum a basis is not computed and says why; with fewer than two bases left the price is `unknown`, never a
+point. On the Arizona import (2026-05-16, 27.6% of the season played, 253 market contracts, 124 starting 2026, prior
+seasons 2024 and 2025 at 99.96% and 100% of the schedule) every basis clears both minimums and the price is unchanged:
+central $7.25M, band $6.57M–$9.78M, floor $4.22M–$4.33M. Basis B2's WAR moves from 454.6 to 454.7 (2024's rain-outs)
+and rounds to the same $7.32M. The pace bases stand on 27.6%, just over the quarter: a save exported two weeks earlier
+would drop them and price from the four prior-season bases alone. The sampling component B-13 also asks for (a
+bootstrap over contracts before the opening band is compared with a measured one) belongs to phase 4, where that
+comparison is built.

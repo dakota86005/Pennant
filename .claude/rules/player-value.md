@@ -57,10 +57,29 @@ worktree.
   K until the save's own snapshots measure their reliability; the development path and the arrival chance by potential
   wait on those snapshots too. Injury proneness is an owner-attested known fact, read only through
   `server/injuryProneness.ts`; 0 or blank is unknown.
+- The central is the expected wins (hardening, 2026-09-23): the rate of those who play is fitted apart from the
+  chance he plays; playing time is per scheduled game, under the save's measured ceiling. Known days out move the
+  central (owner, 2026-09-23); a season lost to injury is never evidence of less playing time. The gate reads subgroups
+  and bias on a rolling-origin backtest, its tolerances never loosened to pass a fit (owner's option C, 2026-09-23);
+  fits are keyed by the save's identity and refitted in a worker thread (D-053 amendments).
 - The rate band is never narrower further out; the wins band is rate × expected playing time and may narrow as
   playing time fades (owner, 2026-09-23). Thinner evidence never narrows either on the same expected playing time;
-  missing ratings widen by interval arithmetic, never a midpoint. Playing time is conditional on quality (a better
-  player keeps more of it). A prospect's low edge includes producing nothing.
+  missing ratings widen by interval arithmetic, never a midpoint (in the blend too: a missing grade is re-read across
+  the scale). Playing time is conditional on quality (a better player keeps more of it); for a prospect too, by the
+  results fit's own effect, located so his cell's players keep its measured chance (hardening F4). A prospect's low
+  edge includes producing nothing.
+- Arrival (hardening F4): read for a player not yet called up at this point of his season (the origin season's
+  call-ups stay in the later cases, kept apart); a league's arrival cases are its own farm's, and any top-level league
+  is arriving (never assume MLB); the arrival gate also fails a material, significant relative bias (a tightening, never
+  loosen it to pass); the model served is refit through the last completed season. Since F5 (owner, 2026-09-23) the
+  arrival model is scored on the results fit's rolling origins, fitted with its 2-season recency half-life
+  (`RATINGS_POLICY.backtest`), its gate errors clustered by player and origin, and adopted only where the next season
+  could be checked; a rating snapshot is read at its own point of the season. Since F6 (owner's option (b),
+  2026-09-23) the arrival model is adopted horizon by horizon (`RATINGS_POLICY.adoption`): a contiguous run of passing
+  horizons from the rest of this season that must reach the next season; a horizon after one that failed or could not
+  be checked is never served. A prospect's later seasons are `notEstablished`, each with the gate's finding, never
+  extrapolated or carried forward; a multi-season total including one is not a number (`productionTotal`); labels say
+  "calibrated through N seasons out". The results fit keeps its all-horizons rule.
 - Never ask the owner for an OOTP experiment; an unresolved rule stays `indeterminate` and is documented.
 
 Checks: `tests/playerValueBoundary.test.ts`, `tests/playerValueControl.test.ts`, `tests/playerValueCost.test.ts`,

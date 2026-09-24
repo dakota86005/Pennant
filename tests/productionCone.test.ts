@@ -1,12 +1,14 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import type { ConeSeason, ProductionCone } from '../src/api';
+import type { ConeSeason, ConeUnestablished, ProductionCone } from '../src/api';
 import { CHART_COLOR } from '../src/chartTheme';
 import {
-  coneGeometry, coneSummary, coverageText, formatWins, labelModeFor, niceTicks, winsDomain,
+  coneGeometry, coneLabel, coneSummary, coverageText, formatWins, labelModeFor, niceTicks, winsDomain,
 } from '../src/productionConeGeometry';
-import { ProductionConeChart, SeasonDetail } from '../src/ProductionCone';
+import { ProductionConeChart, SeasonDetail, UnestablishedDetail } from '../src/ProductionCone';
 import { derivePalette } from '../src/theme';
 
 /*
@@ -146,8 +148,10 @@ describe('the production cone renders', () => {
     const html = renderToStaticMarkup(createElement(ProductionConeChart, { cone: cone(REGULAR), width: 640 }));
     expect(html).toMatch(/role="img"/);
     expect(html).toMatch(/aria-label="[^"]*2030/);
-    expect(html).toMatch(/80% of outcomes fall inside/);
-    expect(html).toMatch(/50% of outcomes fall inside/);
+    // A band is stated as its target (hardening F2, D-19): "80% of outcomes fall inside" is a claim
+    // the calibration line and each season's observed coverage qualify
+    expect(html).toMatch(/80% band \(target\)/);
+    expect(html).toMatch(/50% band \(target\)/);
     expect(html).toMatch(/Replacement/);
     expect(html).toMatch(/Calibrated on this save: 2006–2025, refit after the 2025 season/);
     // A focusable control per season, for the hover detail by keyboard
@@ -176,6 +180,106 @@ describe('the production cone renders', () => {
     expect(prior).toMatch(/80% target · not measured on this save/);
     expect(prior).toMatch(/50% target · not measured on this save/);
     expect(prior).not.toMatch(/\d+% observed/);
+  });
+});
+
+/* Hardening (F2, 2026-09-23): D-19, D-20, D-22, D-23 and D-24. */
+describe('the production cone, hardening (F2)', () => {
+  const prior = (seasons: ConeSeason[]) => cone(seasons, {
+    calibration: { source: 'fallback_prior', calibrated: false, status: 'Not yet calibrated on this save (0 seasons)', detail: 'the fallback prior' },
+  });
+  const render = (c: ProductionCone, width = 640) => renderToStaticMarkup(createElement(ProductionConeChart, { cone: c, width }));
+
+  it('never says "80% of outcomes fall inside" while the prior is in force: the bands are reasonable readings', () => {
+    const html = render(prior(REGULAR));
+    expect(html).not.toMatch(/of outcomes fall inside/);
+    expect(html).toMatch(/reasonable readings/);
+    expect(coneSummary(prior(REGULAR))).not.toMatch(/of outcomes/);
+  });
+
+  it('carries every value the detail shows in the table for screen readers, and keeps the image\'s name short', () => {
+    const html = render(cone(REGULAR));
+    const table = html.slice(html.indexOf('<table'));
+    for (const heading of ['Age', 'Banked', 'Playing time', 'Control']) expect(table).toMatch(new RegExp(`<th[^>]*>${heading}`));
+    expect(table).toMatch(/0\.6/);
+    expect(table).toMatch(/about 560 PA/);
+    expect(table).toMatch(/Under contract\./);
+    expect(table).toMatch(/Rests on: Major-league results/);
+    const label = /<svg[^>]*aria-label="([^"]*)"/.exec(html)?.[1] ?? '';
+    expect(label.length).toBeGreaterThan(0);
+    expect(label.length).toBeLessThan(200);
+  });
+
+  it('gives the season controls a visible focus ring', () => {
+    const css = fs.readFileSync(path.join(process.cwd(), 'src', 'styles.css'), 'utf8');
+    expect(css).toMatch(/\.cone-hit:focus-visible\s*\{[^}]*outline:\s*2px/);
+  });
+
+  it('never prints a near-zero edge as "0.0"', () => {
+    expect(formatWins(0.04)).toBe('<0.1');
+    expect(formatWins(-0.04)).toBe('−<0.1');
+    expect(formatWins(0)).toBe('0.0');
+    expect(formatWins(0.05)).toBe('0.1');
+  });
+
+  it('never lets a non-finite number blank the card', () => {
+    expect(formatWins(Number.NaN)).toBe('—');
+    expect(formatWins(null as unknown as number)).toBe('—');
+    const broken = cone([s(2030, Number.NaN, [1, 2], [1.2, 1.8]), s(2031, 1.5, [0.5, Number.POSITIVE_INFINITY], [1, 2])]);
+    expect(() => render(broken)).not.toThrow();
+    expect(render(broken)).toMatch(/could not be drawn/);
+  });
+});
+
+/* Hardening F6 (2026-09-23): the arrival model adopted horizon by horizon; later seasons are not established. */
+describe('the production cone, a known-then-unknown path (hardening F6)', () => {
+  const REASON = '4 seasons out: the save\'s held-out arrival chance ran 17% low, outside the gate';
+  const pending = (season: number, over: Partial<ConeUnestablished> = {}): ConeUnestablished => ({
+    season, age: 27 + (season - 2030), reason: REASON.replace('4', String(season - 2030)), control: control('Arbitration 2', 'Arb 2', 'A2'), ...over,
+  });
+  const PENDING = [pending(2032), pending(2033, { control: control('Arbitration 3', 'Arb 3', 'A3', true) })];
+  const KNOWN = REGULAR.slice(0, 2);
+  const partial = () => cone(KNOWN, {
+    notEstablished: PENDING,
+    calibration: { source: 'save_fit', calibrated: false, status: 'Not yet calibrated on this save: arrival calibrated through 1 season out (2032–2036 not established)', detail: 'test' },
+  });
+  const render = (c: ProductionCone, width = 640) => renderToStaticMarkup(createElement(ProductionConeChart, { cone: c, width }));
+
+  it('draws the bands and the central over the established seasons only, and keeps a slot and a label for each season not established', () => {
+    const g = coneGeometry(KNOWN, 640, PENDING);
+    expect(g.x).toHaveLength(4);
+    expect(g.labels.map((l) => l.lines[0])).toEqual(['2030', '2031', '2032', '2033']);
+    expect(g.outer).toHaveLength(2);
+    expect(g.inner).toHaveLength(2);
+    expect(g.path).toHaveLength(2);
+    expect(g.shape).toBe('area');
+    // The axis is the established seasons' own: nothing is drawn, and nothing is scaled, for a season with no figure
+    expect(g.domain).toEqual(winsDomain(KNOWN));
+    expect(g.unestablished).not.toBeNull();
+    expect(g.unestablished!.left).toBeCloseTo(g.x[1] + g.slot / 2, 6);
+    expect(g.unestablished!.right).toBeCloseTo(g.plot.right, 6);
+    expect(g.unestablished!.seasons).toEqual([2032, 2033]);
+    // One established season is still an interval, not an invisible area
+    expect(coneGeometry(KNOWN.slice(0, 1), 640, PENDING).shape).toBe('interval');
+    // Fully established: no region
+    expect(coneGeometry(REGULAR, 640).unestablished).toBeNull();
+  });
+
+  it('marks the later seasons not established, with the reason on hover and in the table, and no band or zero drawn there', () => {
+    const html = render(partial());
+    expect(html).toMatch(/Production not established/);
+    expect(html.match(/tabindex="0"/g)?.length ?? 0).toBe(4);
+    expect(html).toMatch(/aria-label="2032, Arbitration 2: expected production not established/);
+    const table = html.slice(html.indexOf('<table'));
+    expect(table).toMatch(/2032/);
+    expect(table).toMatch(/2 seasons out: the save&#x27;s held-out arrival chance ran 17% low/);
+    expect(coneSummary(partial())).toMatch(/2033, arbitration 3: expected production not established/);
+    expect(coneSummary(partial())).toMatch(/through 1 season out/);
+    expect(coneLabel(partial())).toMatch(/2030 to 2033/);
+    const detail = renderToStaticMarkup(createElement(UnestablishedDetail, { season: PENDING[0] }));
+    expect(detail).toMatch(/not established/i);
+    expect(detail).toMatch(/2 seasons out/);
+    expect(detail).not.toMatch(/80% band/);
   });
 });
 

@@ -1,45 +1,42 @@
 /**
  * Player Value, concern 3: expected production in wins, for players with a major-league record
- * (phases 3a and 3b; PLAYER_VALUE.md Part 2.3, D-052, D-053).
+ * (phases 3a and 3b, hardened 2026-09-23; PLAYER_VALUE.md Part 2.3, D-052, D-053).
  *
- * Pure: it is handed a player's major-league lines, his age, the share of this season played, his
- * stated injury facts and injury proneness, and a FITTED MODEL, and opens no table. The model is
- * the save's own fit (`playerValueFitStore.ts`, fitted by `playerValueProductionFit.ts` on the
- * export's history, adopted only through the gate) or, until the save has one, the provisional
- * fallback prior in `playerValueCalibration.ts`. Nothing here holds a fitted number of its own.
+ * Pure: it is handed a player's major-league lines, his age, the share of this season played, the
+ * league's schedule, his stated injury facts and injury proneness, and a FITTED MODEL, and opens no
+ * table. The model is the save's own fit (`playerValueFitStore.ts`, fitted by
+ * `playerValueProductionFit.ts` on the export's history, adopted only through the gate) or, until the
+ * save has one, the provisional fallback prior in `playerValueCalibration.ts`, fitted to the league's own
+ * WAR scale (`adaptPriorToLeague`). Nothing here holds a fitted number of its own.
  *
  * The unit is the win, in the export's own WAR units (R-4). For each side a player has (batting,
  * pitching; a two-way player has both and they are summed edge with edge):
  *
  *   rate      a recency-weighted rate, WAR per opportunity (plate appearance for a hitter, batter
- *             faced for a pitcher: the opportunity the results engine already counts in), over a
- *             rolling window of three season-lengths ending today. The current partial season is
- *             in it at its own opportunities, so it counts in proportion to its playing time; the
- *             part of the window it does not yet cover is taken from the seasons before. The rate is
+ *             faced for a pitcher), over a rolling window of three season-lengths ending today,
  *             regressed toward the fitted mean by sample: (weighted WAR + mean × K) ÷ (weighted
  *             opportunities + K).
- *   aging     the fitted aging curve (hitters and pitchers apart), from his age at the window's end
- *             to his age in each season, plus the proneness shift where the fit found one.
- *   usage     expected opportunities per season from observed usage, his projected quality and his
- *             age (the chance he plays at all × his playing time when he does), never from a
- *             philosophy, with its own uncertainty.
- *   band      central = rate × usage. The spread S combines what is not known about his rate (which
- *             only grows as results thin: noise ÷ (sample + K)), the drift of true talent that no
- *             sample removes, season noise, and the usage uncertainty; the fitted tails turn S into an
- *             80% and a 50% band per horizon season.
+ *   usage     playing time PER SCHEDULED GAME (so a 60-game league, a 2020-style short season and a
+ *             schedule that changed length are read at their own schedules), from observed usage, his
+ *             projected quality and his age: the chance he plays at all (attrition) and his playing time
+ *             when he does, each at most the physical ceiling the save's own history shows.
+ *   selection the rate of the players who DO play at a horizon, fitted apart (hardening, B-01): talent
+ *             drifts, and the players who keep playing are the ones who stayed good, so the expected
+ *             wins are E[rate × playing time], never the product of the two expectations.
+ *   band      a mixture: no playing time with the attrition's chance, else the wins when he plays,
+ *             whose spread S combines what is not known about his rate, the drift of true talent, season
+ *             noise and the usage uncertainty; the fitted distribution of each cell turns S into the 80%
+ *             and 50% bands, as quantiles of the mixture (so a point mass at nothing is honest, B-12).
  *
- * Phase 3b hands in what the scouted ratings say about his rate AS NUMBERS ONLY (`AbilityPrior`,
- * built by `playerValueRatings.ts` from the adapter's evidence): the rate is then regressed toward the
- * ratings-implied rate instead of the kind's mean, with reliability weights (results n ÷ (n + K),
- * ratings K ÷ (n + K), K never below the kind's own), so a thin record leans on the ratings and a full
- * one is effectively the results alone. This module still reads no rating and names no rating column.
+ * Phase 3b hands in what the scouted ratings say about his rate AS NUMBERS ONLY (`AbilityPrior`); the
+ * same-time ratings pull his rate only for what his results do not already carry (B-06).
  *
  * Invariants held by construction (tests/playerValueProduction.test.ts): the rate band is never
  * narrower further out, while the wins band follows expected playing time (owner, 2026-09-23); on
- * the same expected usage, fewer results never narrow a
- * band; a better line never lowers the central or an edge; the 50% band sits inside the 80% band;
- * proneness and stated injuries only widen; a missing input is unknown, never a midpoint; nothing
- * here knows which club holds the player.
+ * the same expected usage, fewer results never narrow a band; a better line never lowers the central
+ * or the high edge; the 50% band sits inside the 80% band; proneness never narrows; known days out move
+ * the central and keep the high edge (owner, 2026-09-23); a missing input is unknown, never a
+ * midpoint; nothing here knows which club holds the player.
  */
 
 import type { CalibrationStamp } from './calibration.js';
@@ -51,7 +48,7 @@ export type ProductionSide = 'batting' | 'pitching';
 export type ProductionKind = 'hitter' | 'starter' | 'reliever';
 export type AgingGroup = 'hitter' | 'pitcher';
 
-/** Band tails, as multiples of the spread S: the edges are central − low × S and central + high × S. */
+/** Band tails of models made before the hardening (method production-3b.1): read only to say they are stale. */
 export interface BandTails {
   low80: number;
   high80: number;
@@ -60,10 +57,10 @@ export interface BandTails {
 }
 
 /**
- * A linear predictor of playing time: intercept + recent · [slot 0, 1, 2] (his observed opportunities in
- * the window's three slots) + quality · q (his projected rate above replacement, WAR per 600, never below
- * zero) + older · (age − pivot)⁺ + younger · (pivot − age)⁺. The coefficients on usage and on quality are
- * never negative: more observed playing time, or a better player, never lowers expected playing time.
+ * A linear predictor of playing time: intercept + recent · [slot 0, 1, 2] (his observed opportunities PER
+ * SCHEDULED GAME in the window's three slots) + quality · q (his projected rate above replacement, WAR per
+ * 600, never below zero) + older · (age − pivot)⁺ + younger · (pivot − age)⁺. The coefficients on usage
+ * and on quality are never negative.
  */
 export interface UsageTerms {
   intercept: number;
@@ -73,39 +70,54 @@ export interface UsageTerms {
   younger: number;
 }
 
+/**
+ * The rate, WAR per 600, of the players who play at a horizon: intercept + slope × his regressed rate now (plus
+ * what the aging curve does not carry: development toward potential, a proneness shift) + older · (age − pivot)⁺
+ * + younger · (pivot − age)⁺. The survivors' own aging is in these terms, fitted per horizon on the save's
+ * held-in seasons; the slope is never negative. Weighted by the opportunities they played, so E[wins] =
+ * E[opportunities] × this.
+ */
+export interface SurvivorTerms {
+  intercept: number;
+  slope: number;
+  older: number;
+  younger: number;
+  /** On his window playing time per scheduled game (the mean of the three slots): who plays on depends on how much he played. */
+  usage?: number;
+}
+
 export interface HorizonModel {
-  /**
-   * Expected opportunities at this horizon = the chance of any major-league playing time (a logistic in
-   * `chance`: attrition, conditional on usage, quality and age) × the opportunities he gets when he plays
-   * (`conditional`). A better player is expected to keep more of his playing time.
-   */
+  /** The chance of any major-league playing time at this horizon: a logistic in these terms (attrition). */
   chance: UsageTerms;
+  /** Opportunities per scheduled game when he plays. */
   conditional: UsageTerms;
-  /** The usage scale: base + slope × expected opportunities (base ≥ 0, so thinner usage is relatively wider). */
-  usageSpread: { base: number; slope: number };
-  /** The usage band's tails, as multiples of the usage scale (80%). */
-  usageTails: { low: number; high: number };
+  /** The spread of playing time when he plays, per scheduled game: base + slope × expected (base ≥ 0). */
+  playSpread: { base: number; slope: number };
+  /** Playing time when he plays, as multiples of that spread, at PRODUCTION_POLICY.tailGrid. */
+  usageZ: number[];
+  /** The rate of the players who play at this horizon (selection), WAR per 600. */
+  survivor: SurvivorTerms;
   /**
-   * The band's tails for each cell of quality tier × usage tier (`tailCell`): quality is the bottom
-   * tenth, the middle or the top tenth of projected rate (`KindModel.qualityCuts`), usage the thirds of
-   * expected first-season usage (`KindModel.usageCuts`). A model with one row per usage tier only (made
-   * before quality tiers) is read by usage tier.
+   * Wins when he plays, as multiples of the spread S around their expectation, at PRODUCTION_POLICY.tailGrid,
+   * for each cell of quality tier × usage tier (`tailCell`).
    */
-  tails: BandTails[];
-  /**
-   * Drift: the variance of a player's true rate that no sample removes (talent changing from season
-   * to season), (WAR per 600)², by horizon. It scales with usage squared, so a regular's band is as
-   * wide as his playing time makes his wins uncertain.
-   */
+  tails: number[][];
+  /** Drift: the variance of a player's true rate that no sample removes, (WAR per 600)², by horizon. */
   drift600: number;
-  /** Backtest cases behind this horizon (training), for the record and the prior's weight. */
+  /** The drift of players 25 or younger in the first target season (PRODUCTION_POLICY.ageBands[0]): fitted apart. */
+  driftYoung600?: number;
+  /** The origin seasons behind this horizon's training cases (how many cohorts it rests on). */
+  origins?: number;
+  /** Backtest cases behind this horizon (training). */
   cases: number;
+  /** The fallback prior's share of this horizon (1 where the save had no cases): the bands widen by it. */
+  priorWeight: number;
 }
 
 export interface KindModel {
   /** Recency weights of the window's three slots, the most recent first, relative to it (the first is 1). */
   weights: [number, number, number];
-  /** The regression's K, in weighted opportunities: the sample at which results and the mean count equally. */
+  /** The regression's K, in weighted opportunities. */
   stabilization: number;
   /** The mean results are regressed toward, WAR per 600 opportunities. */
   mean600: number;
@@ -115,24 +127,28 @@ export interface KindModel {
   rateScale600: number;
   /** Horizon seasons 1..H, from the window's end. */
   horizons: HorizonModel[];
-  /**
-   * Expected full-season usage at horizon 1 that separates the usage tiers the tails are set for
-   * (ascending; tier i holds usage up to cuts[i], the last tier everything above).
-   */
+  /** Expected usage per scheduled game at horizon 1 that separates the usage tiers (ascending). */
   usageCuts: number[];
-  /** Projected rate (WAR per 600) at the bottom and top tenth among the kind's training cases: the quality tiers of the tails. */
+  /** Projected rate (WAR per 600) at the bottom and top tenth among the kind's training cases. */
   qualityCuts?: [number, number];
   /**
-   * The fallback prior's share of this kind's fit (1 for the prior itself). The bands are served
-   * wider by it (PRODUCTION_POLICY.prior.widening): thin history on this save is thinner evidence.
+   * The physical ceiling: the most opportunities per scheduled game any player of this kind played in a
+   * season of the save's history (measured, never a constant); null when not measured.
    */
+  ceiling?: number | null;
+  /**
+   * The spread of player-season rates in the fit's window (WAR per 600, opportunity-weighted, seasons with at
+   * least PRODUCTION_POLICY.priorAdaptation.minimumOpportunities): the WAR scale the prior is fitted to a league against.
+   */
+  observedSpread600?: number | null;
+  /** The fallback prior's share of this kind at horizon 1 (1 for the prior itself). */
   priorWeight: number;
 }
 
 export interface ProneModel {
   /** Band cut points on the save's proneness scale: band i holds values ≤ cuts[i]; the last band everything above. */
   cuts: number[];
-  /** Usage multiplier per band (1 where the fit found no effect), hitters and pitchers apart. */
+  /** Usage multiplier per band (1 where the fit found no effect), hitters and pitchers apart; horizons 1 to 3 only. */
   usage: Record<AgingGroup, number[]>;
   /** Aging shift per band, WAR per 600 per year, [younger than ageSplit, ageSplit and older] (0 where no effect). */
   aging: Record<AgingGroup, Array<[number, number]>>;
@@ -149,6 +165,8 @@ export interface ProductionModel {
   /** The age at which the usage regression bends. */
   usagePivotAge: number;
   proneness: ProneModel | null;
+  /** The schedule the fit's history mostly played (games per club): used only for an input that states none. */
+  referenceGames?: number | null;
 }
 
 /** Where the model in use came from: the save's own adopted fit, or the provisional fallback prior (D-053). */
@@ -165,9 +183,14 @@ export interface ModelProvenance {
   /**
    * The history behind the model in force, for the one-line calibration status: how many seasons the save's
    * last fit read, the first and last of them and the completed season it was refitted after (null under
-   * the prior), and whether the fit calls itself calibrated on this save (its own label's verdict).
+   * the prior), whether the fit calls itself calibrated on this save, and which horizons are the save's own.
    */
-  window?: { seasons: number; first: number | null; last: number | null; refitAfter: number | null; calibrated: boolean };
+  window?: {
+    seasons: number; first: number | null; last: number | null; refitAfter: number | null; calibrated: boolean;
+    horizons?: { calibrated: number[]; prior: number[] };
+    /** The seasons the last fit read, as the label says them ("6 seasons of major-league lines, none usable: …", D-15). */
+    note?: string;
+  };
 }
 
 export interface ObservedCoverage {
@@ -194,12 +217,44 @@ export interface ProductionLine {
 /** Injury facts as the export states them; the calendar is measured from the save. */
 export interface InjuryFacts {
   injured: boolean | null;
-  /** Days out, as exported (the larger of the injury and injured-list figures). */
+  /** Days out, as exported (the larger of the injury and injured-list figures); null when not established. */
   daysLeft: number | null;
   careerEnding: boolean | null;
-  /** Days left in this season's calendar, and in a full season, measured from the save; null when not established. */
+  /** Days left in this season's calendar (from Opening Day, before it), and in a full season; null when not established. */
   seasonDaysLeft: number | null;
   seasonDays: number | null;
+  /** Days until Opening Day (0 once the season has started); null or absent when not established. */
+  daysToOpening?: number | null;
+  /** Days between this season's last game and the next season's first; null or absent when not established. */
+  offseasonDays?: number | null;
+  /** The export states an injury this season (injured now, or on the injured list this season). */
+  injuredThisSeason?: boolean | null;
+  /** Why the days out are not read (a value the export holds for many injured players it contradicts). */
+  durationNote?: string | null;
+}
+
+/** The league's schedule: this season's (and, as the rules stand, every later season's) and earlier ones'. */
+export interface ScheduleFacts {
+  /** Games per club this season; null when not established. */
+  games: number | null;
+  /** Games per club in earlier seasons, as the save's standings show them. */
+  bySeason?: Record<number, number | null>;
+  /** The league's first season with major-league lines: seasons before it are unknown, never zero (D-02). */
+  firstSeason?: number | null;
+}
+
+/**
+ * How much playing time holds within this season, measured on this season's own games (hardening, B-07):
+ * of the players who played in the first half of the games so far, their playing time per game in the
+ * second half against the first, per kind, over the share of a season the second half spans.
+ */
+export interface InSeasonFacts {
+  continuation: Partial<Record<ProductionKind, number>>;
+  /** The share of a season the measurement spans (the second half's games over the schedule). */
+  measuredShare: number;
+  /** Games per club behind it. */
+  games: number;
+  note: string;
 }
 
 export interface ProductionInput {
@@ -221,31 +276,35 @@ export interface ProductionInput {
   /** `prone_overall` on the save's scale (owner-attested known fact); null or absent when unknown. */
   proneness?: number | null;
   horizon?: number;
-  /**
-   * Phase 3b: what his scouted ratings say about a side's rate, as numbers (`AbilityPrior`), keyed by
-   * side (the side his ratings describe). Absent: the results alone, as phase 3a.
-   */
+  /** The league's schedule; absent, the model's reference schedule is assumed and said. */
+  schedule?: ScheduleFacts | null;
+  /** This season's in-season continuation, measured on the save; absent or null when not measured. */
+  inSeason?: InSeasonFacts | null;
+  /** His listed position and role, as exported (1 is a pitcher; a role above 0 is a pitching role). */
+  listed?: { position: number | null; role: number | null } | null;
+  /** A side whose lines the export cannot read (a missing column), with why. */
+  unavailable?: Partial<Record<ProductionSide, string>> | null;
+  /** Phase 3b: what his scouted ratings say about a side's rate, as numbers, keyed by side. */
   abilityPrior?: Partial<Record<ProductionSide, AbilityPrior>> | null;
-  /**
-   * Phase 3b: his ability evidence for a side is unknown, so the development the save shows at his age
-   * is not known either; per season, the rate variance ((WAR per 600)²) to widen by. Absent: none.
-   */
+  /** Phase 3b: ability unknown for a side, so per season the rate variance ((WAR per 600)²) to widen by. */
   abilityUnknownWidening?: Partial<Record<ProductionSide, number[]>> | null;
 }
 
-/**
- * What the scouted ratings say about a player's rate, as numbers only (phase 3b). Built from the
- * adapter's evidence by `playerValueRatings.ts`; this module never sees a rating.
- */
+/** What the scouted ratings say about a player's rate, as numbers only (phase 3b). */
 export interface AbilityPrior {
   /** The rate his current ratings imply, WAR per 600 opportunities. */
   rate600: number;
-  /** What is not known about his true rate given those ratings, (WAR per 600)²: the reliability of the ratings. */
+  /** What is not known about his true rate given those ratings, (WAR per 600)². */
   variance600: number;
   /** Per season of the horizon (0 = this one): the change his development and decline imply, WAR per 600. */
   path600: number[];
   /** Per season: the variance of that change, (WAR per 600)². */
   pathVariance600: number[];
+  /**
+   * Whether the ratings' reliability as a FORECAST was measured on the save's own snapshots. Until it is,
+   * the same-time ratings pull his rate only for what his results do not already carry (B-06).
+   */
+  forecast?: boolean;
 }
 
 /** How results and ratings were weighed for a side (phase 3b): shown in the basis, the two weights sum to one. */
@@ -254,7 +313,7 @@ export interface BlendBasis {
   results: number;
   /** K ÷ (n + K): how much is the ratings-implied rate. */
   ratings: number;
-  /** K, in weighted opportunities: the sample at which his results and his ratings count equally (never below the kind's own K). */
+  /** K, in weighted opportunities. */
   reliabilitySample: number;
   /** The rate his ratings imply now, WAR per 600. */
   ratingsRate: number;
@@ -276,15 +335,25 @@ export interface SideSeason {
   /** The 80% band; `inner` is the 50% band. */
   wins: WinsBand;
   inner: WinsBand;
-  /** WAR per 600 opportunities in this season, the age and proneness adjustment included. */
+  /** WAR per 600 opportunities when he plays this season (age, proneness and selection included). */
   rate: number;
   /** The rate's 80% and 50% bands, WAR per 600: never narrower further out. */
   rateBand: WinsBand;
   rateInner: WinsBand;
   /** The age adjustment to the rate so far, WAR per 600 (with the proneness shift). */
   aging: number;
+  /** How much better the players who keep playing are than projected (selection), WAR per 600. */
+  selection?: number;
   /** Expected opportunities, with the usage band (80%). */
   usage: WinsBand;
+  /** The chance of any major-league playing time this season. */
+  chance?: number;
+  /**
+   * The band's point mass at nothing (no playing time): the probability just below it and its size. A
+   * backtest scores an outcome of no playing time against a band edge at nothing by the share of this mass the
+   * band holds (a discrete outcome, never counted as wholly inside).
+   */
+  zero?: { below: number; mass: number };
   /** Phase 3b, a player not yet in the majors: his chance of any major-league playing time this season. */
   arrival?: { chance: number } | null;
 }
@@ -304,11 +373,16 @@ export interface ProductionSeason {
   remaining: WinsBand | null;
   sides: SideSeason[];
   notes: string[];
-  /** The bands' coverage targets and what the fit in force observed at this horizon on held-out seasons. */
+  /**
+   * The bands' coverage targets and what the fit in force observed at this horizon on held-out seasons, for
+   * THIS estimator; null (with the reason) where the estimator served was not measured.
+   */
   coverage: {
     horizon: number;
     target: { outer: number; inner: number };
     observed: { horizon: number; cases: number; outer: number | null; inner: number | null } | null;
+    /** A related figure that was measured (the results-only estimator), named as such, where this one was not. */
+    reference?: { estimator: 'results'; horizon: number; cases: number; outer: number | null; inner: number | null } | null;
     note: string;
   };
 }
@@ -332,8 +406,10 @@ export interface SideBasis {
   mean: number;
   /** What is not known about his rate, WAR per 600 (a standard deviation); it only grows as results thin. */
   rateUncertainty: number;
-  /** Observed usage per season-length in the window's three slots, the most recent first. */
+  /** Observed usage per season-length in the window's three slots, the most recent first (opportunities). */
   usagePerSeason: [number, number, number];
+  /** Seasons in the window not read as evidence of his playing time, and why (before the league; lost to injury). */
+  usageNotEvidence?: Array<{ season: number; reason: string }>;
   /** Phase 3b: how his results and his ratings were weighed; null when no ability evidence entered. */
   blend?: BlendBasis | null;
 }
@@ -341,30 +417,20 @@ export interface SideBasis {
 /** What the scouted ratings contributed (phase 3b), or why they could not. */
 export interface AbilityBasis {
   status: 'used' | 'unknown';
-  /** Why the ability component is unknown; null when used. */
   reason: string | null;
-  /** The adapter's evidence status and what it lacks (D-017, D-018). */
   evidence: { status: 'complete' | 'partial' | 'unknown'; missing: string[]; provenance: string; verification: string };
-  /** Which form of the mapping was used: every component, or without the glove or the running a player lacks. */
   variant: string | null;
-  /** A hitter's bat: his rating splits weighted by how often his hand faces left-handers on this save, or his overall tools. */
   bat: 'splits' | 'overall' | null;
-  /** The rate his current ratings imply, and his potential ratings, WAR per 600; null when not established. */
   currentRate: number | null;
   potentialRate: number | null;
-  /** What is not known about his true rate given the ratings (a standard deviation, WAR per 600). */
   uncertainty: number | null;
-  /** Where that uncertainty comes from: measured on the save's rating snapshots as a forecast, or the kind's own K. */
   reliability: 'save_snapshots' | 'kind_K' | null;
-  /** The development path toward his potential: its source and, per season, the share of the gap closed (80% range and central). */
   development: {
     source: 'save_fit' | 'fallback_prior' | 'unknown';
     label: string;
     path: Array<{ season: number; low: number; central: number; high: number }>;
   } | null;
-  /** The ratings model in force, with its stamp. */
   model: ModelProvenance;
-  /** The same-time caveat: ratings observed now against rates observed around now describe, they do not forecast. */
   caveat: string;
 }
 
@@ -372,41 +438,100 @@ export interface AbilityBasis {
 export interface ArrivalBasis {
   level: number | null;
   age: number | null;
-  /** The save's own history of players at his level and age: the age band and how many player-seasons it holds. */
   band: { ageFrom: number; ageTo: number; cases: number } | null;
-  /** Per season: his chance of any major-league playing time, and the playing time expected. */
   seasons: Array<{ season: number; chance: number; expected: number }>;
-  /** Whether the chance is conditioned on his potential (the save's own rating snapshots) or on level and age alone. */
-  conditioned: 'level_and_age' | 'level_age_and_potential';
+  /** What the chance (and, with quality, the playing time) is conditioned on beyond his level and age (hardening F4: quality). */
+  conditioned: 'level_and_age' | 'level_age_and_potential' | 'level_age_and_quality' | 'level_age_potential_and_quality';
   note: string;
+  /**
+   * The last horizon of the arrival model adopted (hardening F6; 0 is the rest of this season); null or absent where
+   * every horizon is served.
+   */
+  adoptedThrough?: number | null;
 }
 
 export interface ProductionBasis {
   origin: { season: number | null; seasonPlayed: number | null; age: number | null };
-  /** What the projection rests on: major-league results, results blended with ratings, or ratings alone (phase 3b). */
-  source?: 'results' | 'results_and_ratings' | 'ratings';
-  /** Phase 3b: the ability component, used or unknown with why. */
+  /**
+   * What the projection rests on: his major-league results, those blended with his scouted ratings, or his ratings
+   * alone. An unknown names it too (hardening F5): 'ratings' when his ability was projected and his playing time was
+   * not, 'none' when there was nothing to project from.
+   */
+  source?: 'results' | 'results_and_ratings' | 'ratings' | 'none';
   ability?: AbilityBasis | null;
-  /** Phase 3b: a player not yet in the majors, his expected playing time from the save's history. */
   arrival?: ArrivalBasis | null;
   sides: SideBasis[];
-  /** A side with some results that was not projected, and why (under the two-way minimum). */
   notProjected: Array<{ side: ProductionSide; opportunities: number; reason: string }>;
   proneness: { value: number | null; band: number | null; note: string };
   coverage: { outer: number; inner: number };
+  /** The schedule the playing time is read at, and where it came from. */
+  schedule?: { games: number | null; note: string } | null;
+  /** How the rest of this season's playing time was read: this season's own games, or not measured. */
+  inSeason?: { measured: boolean; note: string } | null;
   model: ModelProvenance;
-  /** The stamp the projection carries: the save's fit's run record, or the prior's provisional stamp. */
   calibration: CalibrationStamp;
+}
+
+/**
+ * A season inside the horizon whose production is not established (hardening F6: the arrival model adopted horizon by
+ * horizon). It has no band, no central and no zero: only the season and why.
+ */
+export interface UnestablishedSeason {
+  season: number;
+  /** Seasons from the window's end, as a projected season's. */
+  horizon: number;
+  age: number;
+  reason: string;
 }
 
 export interface PlayerProduction {
   playerId: number;
   status: 'projected' | 'unknown';
-  /** Why production is unknown; null when projected. */
   reason: string | null;
   unit: string;
+  /** The established seasons, from this season on, consecutive. */
   seasons: ProductionSeason[];
+  /**
+   * The seasons of the horizon after `seasons` whose production is not established, each with its reason (hardening
+   * F6); empty where every season is projected. A total over any of them is not a number (`productionTotal`).
+   */
+  notEstablished: UnestablishedSeason[];
   basis: ProductionBasis;
+}
+
+/** Expected wins over a run of seasons, or why there is no such total. */
+export type ProductionTotal =
+  | { status: 'known'; from: number; to: number; central: number; low: number; high: number }
+  | { status: 'unknown'; from: number; to: number; missing: number[]; reason: string };
+
+/**
+ * A player's expected wins summed over seasons `from` to `to` (hardening F6). A total is a number only where every
+ * season in it is established: a season not established, or outside the horizon, makes it unknown with the seasons it
+ * cannot include named, never a sum that reads them as zero (D-018). The central is the sum of centrals (an expectation
+ * adds); the 80% edges are added edge against edge, a range at least as wide as the total's own (PLAYER_VALUE.md Part 5).
+ */
+export function productionTotal(p: PlayerProduction, from: number, to: number): ProductionTotal {
+  if (p.status !== 'projected') return { status: 'unknown', from, to, missing: [], reason: p.reason ?? 'His production is not established.' };
+  const missing: number[] = [];
+  const reasons: string[] = [];
+  let central = 0;
+  let low = 0;
+  let high = 0;
+  for (let y = from; y <= to; y += 1) {
+    const s = p.seasons.find((x) => x.season === y);
+    if (s) {
+      central += s.wins.central;
+      low += s.wins.low;
+      high += s.wins.high;
+      continue;
+    }
+    missing.push(y);
+    const u = p.notEstablished.find((x) => x.season === y);
+    reasons.push(u ? `${y} is not established (${u.reason})` : `${y} is outside the projection's horizon`);
+  }
+  return missing.length > 0
+    ? { status: 'unknown', from, to, missing, reason: `No total over ${from}–${to}: ${reasons.join('; ')}.` }
+    : { status: 'known', from, to, central, low, high };
 }
 
 export const PRODUCTION_UNIT = "wins above replacement, in the export's own WAR units";
@@ -414,6 +539,7 @@ export const PRODUCTION_UNIT = "wins above replacement, in the export's own WAR 
 // ── arithmetic ───────────────────────────────────────────────────────────────
 
 const PER = PRODUCTION_POLICY.rateUnitOpportunities;
+const GRID: readonly number[] = PRODUCTION_POLICY.tailGrid;
 
 /** A per-horizon quantity at a fractional horizon, linear between whole seasons, held at the ends. */
 export function atHorizon<T>(rows: T[], h: number, read: (row: T) => number): number {
@@ -425,22 +551,46 @@ export function atHorizon<T>(rows: T[], h: number, read: (row: T) => number): nu
   return (1 - t) * read(rows[lo - 1]) + t * read(rows[hi - 1]);
 }
 
-const usageTerms = (t: UsageTerms, U: readonly number[], q: number, originAge: number, pivot: number): number =>
+/** A per-horizon grid at a fractional horizon, element by element. */
+function gridAtHorizon<T>(rows: T[], h: number, read: (row: T) => readonly number[]): number[] {
+  return GRID.map((_, j) => atHorizon(rows, h, (row) => read(row)[j] ?? 0));
+}
+
+export const usageTerms = (t: UsageTerms, U: readonly number[], q: number, originAge: number, pivot: number): number =>
   t.intercept + t.recent[0] * U[0] + t.recent[1] * U[1] + t.recent[2] * U[2] + t.quality * q
   + t.older * Math.max(0, originAge - pivot) + t.younger * Math.max(0, pivot - originAge);
 
-/** Expected opportunities at a horizon: the chance of any playing time × the playing time when he plays. */
+const logistic = (z: number): number => 1 / (1 + Math.exp(-Math.min(Math.max(z, -30), 30)));
+
+/** Playing time at a horizon: the chance of any, and opportunities per scheduled game when he plays. */
+export function usageParts(row: HorizonModel, U: readonly number[], q: number, originAge: number, pivot: number): { chance: number; perGame: number } {
+  return {
+    chance: logistic(usageTerms(row.chance, U, q, originAge, pivot)),
+    perGame: Math.max(0, usageTerms(row.conditional, U, q, originAge, pivot)),
+  };
+}
+
+/** Expected opportunities per scheduled game at a horizon: the chance × the playing time when he plays. */
 export function expectedUsage(row: HorizonModel, U: readonly number[], q: number, originAge: number, pivot: number): number {
-  const z = Math.min(Math.max(usageTerms(row.chance, U, q, originAge, pivot), -30), 30);
-  return (1 / (1 + Math.exp(-z))) * Math.max(0, usageTerms(row.conditional, U, q, originAge, pivot));
+  const u = usageParts(row, U, q, originAge, pivot);
+  return u.chance * u.perGame;
+}
+
+/** The rate of the players who play at a horizon, WAR per 600, for a projected rate and age. */
+export function survivorRate(t: SurvivorTerms | undefined, projected600: number, originAge: number, pivot: number, usagePerGame = 0): number {
+  if (!t) return projected600;
+  return t.intercept + t.slope * projected600 + t.older * Math.max(0, originAge - pivot) + t.younger * Math.max(0, pivot - originAge)
+    + (t.usage ?? 0) * usagePerGame;
 }
 
 /** Quality tiers of the band's tails: the bottom tenth of projected rate, the middle, the top tenth. */
 export const QUALITY_TIERS = PRODUCTION_POLICY.qualityTiers.edges.length + 1;
 
 /** Which of a horizon's tails applies: quality × usage cells, or usage tier alone in a model without quality tiers. */
-export function tailCell(available: number, usageTier: number, qualityTier: number): number {
+export function tailCell(available: number, usageTier: number, qualityTier: number, young = false): number {
   const tiers = PRODUCTION_POLICY.usageTiers;
+  // A young player's outcomes (breaking out or washing out) have cells of their own by quality tier (B-04)
+  if (young && available >= tiers * QUALITY_TIERS + QUALITY_TIERS) return tiers * QUALITY_TIERS + qualityTier;
   if (available >= tiers * QUALITY_TIERS) return qualityTier * tiers + Math.min(usageTier, tiers - 1);
   return Math.min(usageTier, Math.max(available - 1, 0));
 }
@@ -459,6 +609,66 @@ export function agingBetween(curve: number[], firstAge: number, from: number, to
   }
   return total;
 }
+
+// ── a stored distribution, and the mixture with no playing time ─────────────────
+
+/** The quantile function of a stored grid (probabilities PRODUCTION_POLICY.tailGrid), linear between points and beyond the ends. */
+export function gridQuantile(z: readonly number[], p: number): number {
+  const n = GRID.length;
+  if (z.length < n) return 0;
+  if (p <= GRID[0]) {
+    const slope = (z[1] - z[0]) / (GRID[1] - GRID[0]);
+    return z[0] - (GRID[0] - Math.max(p, 0)) * slope;
+  }
+  if (p >= GRID[n - 1]) {
+    const slope = (z[n - 1] - z[n - 2]) / (GRID[n - 1] - GRID[n - 2]);
+    return z[n - 1] + (Math.min(p, 1) - GRID[n - 1]) * slope;
+  }
+  let i = 0;
+  while (i < n - 2 && GRID[i + 1] < p) i += 1;
+  const t = (p - GRID[i]) / (GRID[i + 1] - GRID[i]);
+  return z[i] + t * (z[i + 1] - z[i]);
+}
+
+/** The distribution function of a stored grid: the probability of an outcome below x. */
+export function gridCdf(z: readonly number[], x: number): number {
+  const n = GRID.length;
+  if (z.length < n) return x >= 0 ? 1 : 0;
+  const lowEnd = gridQuantile(z, 0);
+  const highEnd = gridQuantile(z, 1);
+  if (x <= lowEnd) return 0;
+  if (x >= highEnd) return 1;
+  // Bisection on the quantile function, which never falls
+  let a = 0;
+  let b = 1;
+  for (let k = 0; k < 40; k += 1) {
+    const m = (a + b) / 2;
+    if (gridQuantile(z, m) < x) a = m;
+    else b = m;
+  }
+  return (a + b) / 2;
+}
+
+/**
+ * A quantile of the mixture of no playing time (nothing, with chance 1 − c) and the wins when he plays (the
+ * stored distribution, located at mu and scaled by S). The point mass at nothing is exact, never smoothed.
+ */
+export function mixtureQuantile(chance: number, mu: number, S: number, z: readonly number[], p: number): number {
+  const c = Math.min(Math.max(chance, 0), 1);
+  if (c <= 0) return 0;
+  if (!(S > 0)) {
+    // The continuous part is a point at mu
+    const [first, second] = mu < 0 ? [mu, 0] : [0, mu];
+    const firstMass = mu < 0 ? c : 1 - c;
+    return p <= firstMass ? first : second;
+  }
+  const below = c * gridCdf(z, -mu / S);
+  if (p <= below) return mu + S * gridQuantile(z, p / c);
+  if (p <= below + (1 - c)) return 0;
+  return mu + S * gridQuantile(z, (p - (1 - c)) / c);
+}
+
+// ── the window ──────────────────────────────────────────────────────────────
 
 export interface Slot { opportunities: number; war: number; games: number; starts: number }
 
@@ -479,13 +689,7 @@ export function windowOf(lines: ProductionLine[], season: number, f: number): { 
       }
       : l);
   }
-  // Which seasons feed which slot, and by how much
-  const coefficients = new Map<number, number[]>([
-    [season, [1, 0, 0]],
-    [season - 1, [1 - f, f, 0]],
-    [season - 2, [0, 1 - f, f]],
-    [season - 3, [0, 0, 1 - f]],
-  ]);
+  const coefficients = windowCoefficients(season, f);
   const slots: Slot[] = [0, 1, 2].map(() => ({ opportunities: 0, war: 0, games: 0, starts: 0 }));
   for (const [s, c] of coefficients) {
     const l = bySeason.get(s);
@@ -501,19 +705,79 @@ export function windowOf(lines: ProductionLine[], season: number, f: number): { 
   return { slots, coefficients };
 }
 
+/** Which seasons feed which slot, and by how much. */
+function windowCoefficients(season: number, f: number): Map<number, number[]> {
+  return new Map<number, number[]>([
+    [season, [1, 0, 0]],
+    [season - 1, [1 - f, f, 0]],
+    [season - 2, [0, 1 - f, f]],
+    [season - 3, [0, 0, 1 - f]],
+  ]);
+}
+
+/**
+ * The window's playing time PER SCHEDULED GAME, each season at its own schedule. Two readings: as observed
+ * (a season he did not play is nothing), and with the seasons that are not evidence of his playing time
+ * (before the league existed; a season possibly lost to injury) read at the pace of the seasons that are.
+ */
+export interface UsageWindow {
+  observed: [number, number, number];
+  read: [number, number, number];
+  /** His pace per scheduled game over the evidence seasons; null when none is evidence. */
+  pace: number | null;
+  notEvidence: Array<{ season: number; reason: string }>;
+}
+
+export function usageWindow(
+  lines: ProductionLine[], season: number, f: number, gamesOf: (s: number) => number,
+  evidence: (s: number, perShare: number, best: number) => string | null,
+): UsageWindow {
+  const coefficients = windowCoefficients(season, f);
+  const opp = new Map<number, number>();
+  for (const l of lines) opp.set(l.season, (opp.get(l.season) ?? 0) + l.opportunities);
+  const observed: [number, number, number] = [0, 0, 0];
+  const seasons: Array<{ s: number; coef: number[]; share: number; perShare: number }> = [];
+  for (const [s, coef] of coefficients) {
+    const full = s === season ? f : 1;
+    const share = coef.reduce((a, b) => a + b, 0) * full;
+    if (share <= 0) continue;
+    const perGame = (opp.get(s) ?? 0) / Math.max(gamesOf(s), 1e-9);
+    coef.forEach((k, i) => { observed[i] += k * perGame; });
+    seasons.push({ s, coef, share, perShare: full > 0 ? perGame / full : 0 });
+  }
+  const best = Math.max(0, ...seasons.map((x) => x.perShare));
+  const notEvidence: UsageWindow['notEvidence'] = [];
+  const flagged = new Set<number>();
+  for (const x of seasons) {
+    const why = evidence(x.s, x.perShare, best);
+    if (why) { flagged.add(x.s); notEvidence.push({ season: x.s, reason: why }); }
+  }
+  const kept = seasons.filter((x) => !flagged.has(x.s));
+  const keptShare = kept.reduce((a, x) => a + x.share, 0);
+  const pace = keptShare > 0 ? kept.reduce((a, x) => a + x.share * x.perShare, 0) / keptShare : null;
+  const read: [number, number, number] = [...observed];
+  if (pace !== null) {
+    for (const x of seasons) {
+      if (!flagged.has(x.s)) continue;
+      const full = x.s === season ? f : 1;
+      x.coef.forEach((k, i) => { read[i] += k * full * pace - k * full * x.perShare; });
+    }
+  }
+  return { observed, read, pace, notEvidence: pace === null ? [] : notEvidence };
+}
+
 export const clean = (lines: ProductionLine[] | undefined): ProductionLine[] =>
   (lines ?? []).filter((l) => Number.isFinite(l.season) && Number.isFinite(l.opportunities) && l.opportunities > 0);
 
 /** The seasons a window reads (a coefficient above zero), with any whose WAR is missing. */
 function windowSeasons(lines: ProductionLine[], season: number, f: number): { used: ProductionLine[]; missingWar: number[] } {
-  const { coefficients } = windowOf([], season, f);
+  const coefficients = windowCoefficients(season, f);
   const used = lines.filter((l) => (coefficients.get(l.season) ?? [0, 0, 0]).some((k) => k > 0));
   return { used, missingWar: [...new Set(used.filter((l) => l.war === null).map((l) => l.season))].sort() };
 }
 
 export const blank = (): WinsBand => ({ low: 0, central: 0, high: 0 });
 export const addBands = (a: WinsBand, b: WinsBand): WinsBand => ({ low: a.low + b.low, central: a.central + b.central, high: a.high + b.high });
-const widthOf = (b: WinsBand): number => b.high - b.low;
 
 /** Keep `inner` inside `outer`. */
 export const inside = (inner: WinsBand, outer: WinsBand): WinsBand => ({
@@ -530,6 +794,21 @@ function proneBandOf(model: ProneModel | null, value: number | null | undefined)
 
 // ── one side ─────────────────────────────────────────────────────────────────
 
+/** One reading of a season's playing time and wins when he plays. */
+export interface SeasonReading {
+  chance: number;
+  /** Opportunities when he plays, and their spread. */
+  m: number;
+  sigmaM: number;
+  /** Wins when he plays: expectation and spread. */
+  mu: number;
+  S: number;
+  /** The rate when he plays behind it, WAR per 600. */
+  g600: number;
+  /** The band's shape: this reading from his usage lines alone (the band is this shape, moved to the central). */
+  shape?: SeasonReading;
+}
+
 /** Where one side's projection comes from, season by season, before the tails turn it into bands. */
 export interface SideTrajectory {
   n: number;
@@ -537,36 +816,46 @@ export interface SideTrajectory {
   rate: number;
   rateVariance: number;
   usagePerSeason: [number, number, number];
+  usageNotEvidence: UsageWindow['notEvidence'];
   toDate: number;
   /** The usage tier the tails are read for: from expected usage only, never from results. */
   tier: number;
-  /** The quality tier the tails are read for (0 bottom tenth, 1 middle, 2 top tenth): from the usage lines, like usage. */
+  /** The quality tier the tails are read for (0 bottom tenth, 1 middle, 2 top tenth). */
   quality: number;
   /** The projected rate those tiers are read from, WAR per 600. */
   qualityRate: number;
-  /** The rate regressed toward (the ratings-implied rate, or the kind's mean), per opportunity, and the K it was regressed with. */
+  /** 25 or younger this season (PRODUCTION_POLICY.ageBands[0]): his tails and drift are fitted apart. */
+  young: boolean;
   target: number;
   K: number;
-  /** Phase 3b: the ratings' weight in the rate (0 without an ability prior). */
   ratingsWeight: number;
+  /** Whether the rest of this season was read from this season's own games. */
+  inSeasonMeasured: boolean;
   seasons: Array<{
     season: number;
-    /** The horizon the per-horizon quantities are read at (at least 1). */
+    /** The horizon the per-horizon quantities are read at (the rest of this season: 1 − f). */
     h: number;
+    /** Expected opportunities (chance × when he plays) and their band's reading. */
     P: number;
-    sigmaP: number;
-    /** Rate this season, the age and proneness adjustment included, per opportunity. */
+    reading: SeasonReading;
+    /** The reading with the seasons not read as evidence taken as observed (the band reaches it); null when none. */
+    observedReading: SeasonReading | null;
+    /** The rest of this season, not measured: the reading that keeps his pace (the band's high edge reaches it). */
+    paceReading: SeasonReading | null;
+    /** Rate when he plays this season, per opportunity (age, proneness and selection included). */
     r: number;
-    /** The age (and proneness) adjustment so far, WAR per 600. */
     aging: number;
+    selection: number;
     central: number;
-    S: number;
     /** The widening for unknown proneness, in wins. */
     extra: number;
     /** What is not known about his rate this season, per opportunity: its own uncertainty plus talent drift. */
     rateSd: number;
-    /** The widening of the rate for unknown proneness, per opportunity. */
     rateExtra: number;
+    /** The most opportunities the season allows (the save's ceiling × the schedule); null when not measured. */
+    ceiling: number | null;
+    /** The prior's weight at this horizon (the bands widen by it). */
+    priorWeight: number;
   }>;
 }
 
@@ -576,10 +865,23 @@ export interface SideContext {
   age: number;
   horizon: number;
   proneness: number | null | undefined;
-  /** Phase 3b: the ratings' view of his rate, as numbers; absent for the results alone. */
+  schedule?: ScheduleFacts | null;
+  inSeason?: InSeasonFacts | null;
+  injuredThisSeason?: boolean | null;
   abilityPrior?: AbilityPrior | null;
-  /** Phase 3b: ability unknown, so per season the largest development variance the save shows at his age, (WAR per 600)². */
   abilityUnknownWidening?: number[] | null;
+}
+
+/** The schedule a season is read at: its own where the save states it, else this season's, else the model's reference. */
+export function scheduleOf(model: ProductionModel, schedule: ScheduleFacts | null | undefined): { now: number | null; of: (s: number) => number } {
+  const now = schedule?.games ?? model.referenceGames ?? null;
+  return {
+    now,
+    of: (s) => {
+      const g = schedule?.bySeason?.[s];
+      return typeof g === 'number' && g > 0 ? g : now ?? 1;
+    },
+  };
 }
 
 /**
@@ -596,21 +898,22 @@ export function sideTrajectory(
   const w = k.weights;
   const { slots } = windowOf(results, Y, f);
   const usageSlots = windowOf(usageLines, Y, f).slots;
+  const pivot = model.usagePivotAge;
+  const schedule = scheduleOf(model, input.schedule);
+  const G = schedule.now ?? 1;
 
-  // The rate, regressed by sample toward the kind's mean, or (phase 3b) toward what his ratings imply.
-  // The ratings' reliability K = noise ÷ (what is not known about his rate given them), never below the
-  // kind's own K: ratings are at least the evidence the kind's mean is. Results weigh n ÷ (n + K).
+  // The rate, regressed by sample toward the kind's mean, or (phase 3b) toward what his ratings imply. Until
+  // the save measures the ratings as a forecast, they pull the target only by their own weight (B-06): a
+  // player whose ratings were set from these results is not regressed toward his results twice.
   const n = slots.reduce((s, x, i) => s + w[i] * x.opportunities, 0);
   const num = slots.reduce((s, x, i) => s + w[i] * x.war, 0);
   const prior = input.abilityPrior && input.abilityPrior.variance600 > 0 && Number.isFinite(input.abilityPrior.rate600) ? input.abilityPrior : null;
   const K = prior ? Math.max(k.stabilization, (k.noise600 * PER) / prior.variance600) : k.stabilization;
-  const target = prior ? prior.rate600 / PER : k.mean600 / PER;
+  const ratingsWeight = prior ? K / (n + K) : 0;
+  const pull = prior && prior.forecast !== true ? ratingsWeight : 1;
+  const target = prior ? (k.mean600 + pull * (prior.rate600 - k.mean600)) / PER : k.mean600 / PER;
   const rate = (num + target * K) / (n + K);
   const rateVariance = k.noise600 / PER / (n + K);
-  const ratingsWeight = prior ? K / (n + K) : 0;
-  // The development term (the ratings' path, or the largest the save shows when ability is unknown) is
-  // weighed by the kind's own prior share, K₀ ÷ (n + K₀): it never depends on how complete the ratings
-  // are, so thinner ratings, or none, never narrow the band.
   const devShare = k.stabilization / (n + k.stabilization);
   const devVariance = (i: number): number => {
     const v = prior ? prior.pathVariance600[i] : input.abilityUnknownWidening?.[i];
@@ -619,10 +922,13 @@ export function sideTrajectory(
   const noise = k.noise600 / PER;
   const scale = k.rateScale600 / PER;
 
-  // Proneness: a band's measured effect shifts the central; unknown proneness widens by every band's effect
+  // Proneness: a band's measured effect shifts the central (playing time only where it was measured); unknown widens
   const prone = model.proneness;
   const band = proneBandOf(prone, input.proneness);
-  const usageMultiplier = prone && band !== null ? prone.usage[group][band] ?? 1 : 1;
+  const usageMultiplier = (h: number): number => {
+    if (!prone || band === null || h < 1 || h > PRODUCTION_POLICY.proneness.usageHorizons) return 1;
+    return prone.usage[group][band] ?? 1;
+  };
   const proneShift = (a: number): number => {
     if (!prone || band === null) return 0;
     const [young, old] = prone.aging[group][band] ?? [0, 0];
@@ -632,61 +938,142 @@ export function sideTrajectory(
   const maxUsageEffect = unknownProne ? Math.max(0, ...prone!.usage[group].map((m) => Math.abs(m - 1))) : 0;
   const maxAgingEffect = unknownProne ? Math.max(0, ...prone!.aging[group].flat().map((d) => Math.abs(d))) : 0;
 
-  const U: [number, number, number] = [usageSlots[0].opportunities, usageSlots[1].opportunities, usageSlots[2].opportunities];
+  // Playing time per scheduled game, each season at its own schedule; seasons that are not evidence of his
+  // playing time (before the league existed, D-02; possibly lost to injury, owner 2026-09-23) read at his pace
+  const firstSeason = input.schedule?.firstSeason ?? null;
+  const lostShare = PRODUCTION_POLICY.injury.lostSeasonShare;
+  const window = usageWindow(usageLines, Y, f, schedule.of, (s, perShare, best) => {
+    if (firstSeason !== null && s < firstSeason) return `the league has no major-league season ${s}: not known, never nothing`;
+    if (input.injuredThisSeason === true && best > 0 && perShare < lostShare * best) {
+      return `possibly lost to injury (an injury is stated this season): not read as less playing time`;
+    }
+    return null;
+  });
+  const U = window.read;
+  const Uobs = window.observed;
+  const hasObserved = window.notEvidence.length > 0;
   const originAge = age - 1 + f;
-  // Quality for playing time is read from the lines playing time is read from (normally the same lines),
-  // regressed the same way: a better player keeps more of his playing time, a replacement-level one loses
-  // it. Only his rate above replacement counts (quality ≥ 0), so a better line never lowers expected wins.
   const nU = usageSlots.reduce((s, x, i) => s + w[i] * x.opportunities, 0);
   const numU = usageSlots.reduce((s, x, i) => s + w[i] * x.war, 0);
   const usageRate = (numU + target * K) / (nU + K);
-  const usageAt = (q: number) => (row: HorizonModel): number => expectedUsage(row, U, q, originAge, model.usagePivotAge);
-  const spreadAt = (q: number) => (row: HorizonModel): number => Math.max(0, row.usageSpread.base + row.usageSpread.slope * usageAt(q)(row));
   const agingAt = (i: number, withProneness = true): number => {
     const curve = agingBetween(model.aging[group], model.aging.firstAge, originAge, age + i, withProneness ? proneShift : undefined);
-    // Phase 3b: the ratings' path (development toward potential, then decline) in proportion to their weight
-    return prior ? ratingsWeight * (prior.path600[i] ?? 0) + (1 - ratingsWeight) * curve : curve;
+    // The ratings' development path enters with the weight their level does (a same-time rating discounted
+    // as B-06 says, the path with it), so a better scouted line never lowers the central
+    const pathWeight = ratingsWeight * pull;
+    return prior ? pathWeight * (prior.path600[i] ?? 0) + (1 - pathWeight) * curve : curve;
   };
-  // Proneness moves the central only (its measured effect), never the playing time the band is built on
   const qualityAt = (i: number): number => Math.max(0, usageRate * PER + agingAt(i, false));
+  // The band's SHAPE is read from his usage lines alone, regressed toward the kind's mean (never the ratings,
+  // never proneness): the chance of nothing and where it sits against the wins when he plays. His results and
+  // ratings then move the central and widen the spread. On the same playing-time reading, thinner evidence
+  // therefore only widens his band, and a measured effect moves it whole (owner, 2026-09-23; D-053). Where the
+  // usage lines are his results (always, outside a test), the shape is his own reading exactly.
+  const usageRateRef = (numU + (k.mean600 / PER) * k.stabilization) / (nU + k.stabilization);
+  const curveAt = (i: number): number => agingBetween(model.aging[group], model.aging.firstAge, originAge, age + i);
+
+  const partsAt = (h: number, slotsU: readonly number[], q: number): { chance: number; perGame: number; spread: number } => {
+    const chance = atHorizon(k.horizons, h, (row) => usageParts(row, slotsU, q, originAge, pivot).chance);
+    const perGame = atHorizon(k.horizons, h, (row) => usageParts(row, slotsU, q, originAge, pivot).perGame);
+    const spread = atHorizon(k.horizons, h, (row) => Math.max(0, (row.playSpread?.base ?? 0) + (row.playSpread?.slope ?? 0) * perGame));
+    return { chance, perGame, spread };
+  };
 
   const toDate = results.filter((l) => l.season === Y).reduce((s, l) => s + (l.war ?? 0), 0);
-  const firstSeason = atHorizon(k.horizons, 1, usageAt(qualityAt(0)));
-  const cut = (k.usageCuts ?? []).findIndex((c) => firstSeason <= c);
+  const first = partsAt(1, U, qualityAt(0));
+  const firstSeasonUsage = first.chance * first.perGame;
+  const cut = (k.usageCuts ?? []).findIndex((c) => firstSeasonUsage <= c);
   const tier = cut === -1 ? (k.usageCuts ?? []).length : cut;
   const qualityRate = usageRate * PER;
   const quality = !k.qualityCuts ? 1 : qualityRate <= k.qualityCuts[0] ? 0 : qualityRate >= k.qualityCuts[1] ? 2 : 1;
+  const measuredContinuation = input.inSeason?.continuation?.[kind];
+  const inSeasonMeasured = typeof measuredContinuation === 'number' && Number.isFinite(measuredContinuation) && (input.inSeason?.measuredShare ?? 0) > 0;
+  const ceilingPerGame = typeof k.ceiling === 'number' && k.ceiling > 0 ? k.ceiling : null;
+
   const seasons: SideTrajectory['seasons'] = [];
-  const point = (h: number, share: number, i: number) => {
-    const q = qualityAt(i);
-    const P = atHorizon(k.horizons, h, usageAt(q)) * share;
-    const sigmaP = atHorizon(k.horizons, h, spreadAt(q)) * share;
+  for (let i = 0; i < input.horizon; i += 1) {
+    const rest = i === 0;
+    const hRest = 1 - f;
+    const h = rest ? hRest : i + 1 - f;
+    const share = rest ? 1 - f : 1;
     const aging = agingAt(i);
-    const r = rate + aging / PER;
-    const drift = Math.max(0, atHorizon(k.horizons, h, (row) => row.drift600 ?? 0)) / (PER * PER) + devVariance(i);
-    const S = Math.sqrt(Math.max(0, (P * P + sigmaP * sigmaP) * (rateVariance + drift) + P * noise + sigmaP * sigmaP * scale * scale));
+    const projected600 = rate * PER + aging;
+    const young = age <= PRODUCTION_POLICY.ageBands[0];
+    const driftOf = (row: HorizonModel) => (young && typeof row.driftYoung600 === 'number' ? row.driftYoung600 : row.drift600 ?? 0);
+    const drift600 = rest ? hRest * Math.max(0, atHorizon(k.horizons, 1, driftOf)) : Math.max(0, atHorizon(k.horizons, h, driftOf));
+    const drift = drift600 / (PER * PER) + devVariance(i);
+    // The rate of those who play is fitted per horizon on his regressed rate now and his age (the survivors'
+    // own aging is in it); only what the curve does not carry (development toward potential, a proneness shift)
+    // is added to what it reads
+    const beyondCurve = aging - agingBetween(model.aging[group], model.aging.firstAge, originAge, age + i);
+    const survivorAt = (hh: number) => atHorizon(k.horizons, hh, (row) => (row.survivor ? survivorRate(row.survivor, rate * PER + beyondCurve, originAge, pivot, (U[0] + U[1] + U[2]) / 3) : projected600));
+    // The rest of this season: selection grows from none (now) to a season's (next season), linearly
+    const g600 = rest ? projected600 + hRest * (survivorAt(1) - projected600) : survivorAt(h);
+    const mult = usageMultiplier(h);
     const years = Math.max(0, age + i - originAge);
+    const priorWeight = rest ? atHorizon(k.horizons, 1, (row) => row.priorWeight ?? k.priorWeight ?? 0) : atHorizon(k.horizons, h, (row) => row.priorWeight ?? k.priorWeight ?? 0);
+    // Each season at its own schedule where it is known (a backtest's target seasons), else this season's rules
+    const Gi = i === 0 ? G : input.schedule?.bySeason?.[Y + i] ?? G;
+    const ceiling = ceilingPerGame === null ? null : ceilingPerGame * Gi * share;
+
+    const refProjected = usageRateRef * PER + curveAt(i);
+    const refAt = (hh: number) => atHorizon(k.horizons, hh, (row) => (row.survivor ? survivorRate(row.survivor, usageRateRef * PER, originAge, pivot, (U[0] + U[1] + U[2]) / 3) : refProjected));
+    const gRef600 = rest ? refProjected + hRest * (refAt(1) - refProjected) : refAt(h);
+    const readingOf = (slotsU: readonly number[], chanceOverride?: number, atPace = false, ref = false): SeasonReading => {
+      // A player below replacement when he plays gains no playing time from quality: his wins never fall as his line rises
+      const g = ref ? gRef600 : g600;
+      const q = g >= 0 ? (ref ? Math.max(0, usageRateRef * PER + curveAt(i)) : qualityAt(i)) : 0;
+      let chance: number;
+      let perGame: number;
+      let spread: number;
+      if (rest) {
+        const at1 = partsAt(1, slotsU, q);
+        const pace = slotsU[0];
+        // Measured on this season's games, the continuation carries the loss and he plays at his pace when he
+        // plays; not measured, his playing time when he plays moves from his pace toward next season's
+        perGame = atPace || inSeasonMeasured ? pace : pace + hRest * (at1.perGame - pace);
+        spread = Math.max(0, atHorizon(k.horizons, 1, (row) => (row.playSpread?.base ?? 0) + (row.playSpread?.slope ?? 0) * perGame)) * hRest;
+        chance = chanceOverride ?? (inSeasonMeasured
+          ? Math.min(1, Math.pow(Math.min(1, Math.max(measuredContinuation as number, 0)), hRest / (input.inSeason as InSeasonFacts).measuredShare))
+          : 1 - hRest * (1 - at1.chance));
+      } else {
+        const parts = partsAt(h, slotsU, q);
+        chance = chanceOverride ?? parts.chance;
+        perGame = parts.perGame;
+        spread = parts.spread;
+      }
+      let m = perGame * Gi * share;
+      if (ceiling !== null) m = Math.min(m, ceiling);
+      const sigmaM = spread * Gi * share;
+      const mu = (m * g * (ref ? 1 : mult)) / PER;
+      const S = Math.sqrt(Math.max(0, (m * m + sigmaM * sigmaM) * (rateVariance + drift) + m * noise + sigmaM * sigmaM * scale * scale));
+      return { chance, m, sigmaM, mu, S, g600: g };
+    };
+    // Each reading, and its shape (the same reading from the usage lines alone), with the reading's own spread
+    const pair = (slotsU: readonly number[], chanceOverride?: number, atPace = false): SeasonReading => {
+      const x = readingOf(slotsU, chanceOverride, atPace);
+      return { ...x, shape: { ...readingOf(slotsU, chanceOverride, atPace, true), S: x.S } };
+    };
+    const reading = pair(U);
+    const observedReading = hasObserved ? pair(Uobs) : null;
+    const paceReading = rest && !inSeasonMeasured && f > 0 ? pair(U, 1, true) : null;
+    const P = reading.chance * reading.m;
     const extra = unknownProne ? P * scale * maxUsageEffect + P * (maxAgingEffect / PER) * years : 0;
     const rateExtra = unknownProne ? (maxAgingEffect / PER) * years : 0;
-    return { h, P, sigmaP, r, aging, central: r * P * usageMultiplier, S, extra, rateSd: Math.sqrt(rateVariance + drift), rateExtra };
-  };
-  for (let i = 0; i < input.horizon; i += 1) {
-    // This season: the rest of it
-    seasons.push({ season: Y + i, ...point(Math.max(i + 1 - f, 1), i === 0 ? 1 - f : 1, i) });
+    seasons.push({
+      season: Y + i, h, P, reading, observedReading, paceReading, r: g600 / PER, aging, selection: g600 - projected600,
+      central: reading.chance * reading.mu, extra, rateSd: Math.sqrt(rateVariance + drift), rateExtra, ceiling, priorWeight,
+    });
   }
-  return { n, num, rate, rateVariance, usagePerSeason: U, toDate, tier, quality, qualityRate, target, K, ratingsWeight, seasons };
+  return {
+    n, num, rate, rateVariance, usagePerSeason: [U[0] * G, U[1] * G, U[2] * G], usageNotEvidence: window.notEvidence, toDate, tier, quality,
+    young: age <= PRODUCTION_POLICY.ageBands[0],
+    qualityRate, target, K, ratingsWeight, inSeasonMeasured, seasons,
+  };
 }
 
-/** The bands from a trajectory: the tails at each season's horizon, unknown proneness added outside. */
-export function bandsOf(tr: SideTrajectory['seasons'][number], k: KindModel, tier: number, quality = 1): { wins: WinsBand; inner: WinsBand; usage: WinsBand } {
-  const widen = 1 + PRODUCTION_POLICY.prior.widening * Math.min(Math.max(k.priorWeight ?? 0, 0), 1);
-  const t = (key: keyof BandTails) => widen * atHorizon(k.horizons, tr.h, (row) => (row.tails[tailCell(row.tails.length, tier, quality)] ?? row.tails[0])[key]);
-  const u = (key: 'low' | 'high') => atHorizon(k.horizons, tr.h, (row) => row.usageTails[key]);
-  const wins: WinsBand = { low: tr.central - t('low80') * tr.S - tr.extra, central: tr.central, high: tr.central + t('high80') * tr.S + tr.extra };
-  const inner = inside({ low: tr.central - t('low50') * tr.S - tr.extra / 2, central: tr.central, high: tr.central + t('high50') * tr.S + tr.extra / 2 }, wins);
-  const usage: WinsBand = { low: Math.max(0, tr.P - u('low') * tr.sigmaP), central: tr.P, high: tr.P + u('high') * tr.sigmaP };
-  return { wins, inner, usage };
-}
+const OUTER_LOW = (1 - PRODUCTION_POLICY.coverage.outer) / 2;
+const INNER_LOW = (1 - PRODUCTION_POLICY.coverage.inner) / 2;
 
 /** The standard normal quantile (Acklam's approximation): turns a coverage target into a two-sided multiple. */
 export function normalQuantile(p: number): number {
@@ -708,6 +1095,9 @@ export function normalQuantile(p: number): number {
 export const Z_OUTER = normalQuantile(0.5 + PRODUCTION_POLICY.coverage.outer / 2);
 export const Z_INNER = normalQuantile(0.5 + PRODUCTION_POLICY.coverage.inner / 2);
 
+/** The standard normal distribution at the tail grid: the fallback distribution where a model stores none. */
+const NORMAL_GRID = GRID.map((p) => normalQuantile(p));
+
 export interface SeasonBands {
   wins: WinsBand;
   inner: WinsBand;
@@ -715,28 +1105,91 @@ export interface SeasonBands {
   /** WAR per 600 opportunities, 80% and 50%. */
   rateBand: WinsBand;
   rateInner: WinsBand;
+  /** The main reading's point mass at nothing: the probability below it and its size (widened as served). */
+  zero: { below: number; mass: number };
+  whenPlays: { low80: number; high80: number; low50: number; high50: number; central: number };
+}
+
+/** The mixture's four edges for one reading, widened by the prior's weight at its horizon. */
+function readingBands(x: SeasonReading, z: readonly number[], widen: number): { low80: number; high80: number; low50: number; high50: number } {
+  const S = x.S * widen;
+  return {
+    low80: mixtureQuantile(x.chance, x.mu, S, z, OUTER_LOW),
+    high80: mixtureQuantile(x.chance, x.mu, S, z, 1 - OUTER_LOW),
+    low50: mixtureQuantile(x.chance, x.mu, S, z, INNER_LOW),
+    high50: mixtureQuantile(x.chance, x.mu, S, z, 1 - INNER_LOW),
+  };
 }
 
 /**
  * The bands along a side's trajectory, season by season (owner, 2026-09-23). The RATE band (what is
  * not known about his rate, its own uncertainty plus talent drift) is never narrower further out: it
- * is carried forward. The WINS band is rate × expected playing time with the playing-time uncertainty,
- * each season's own, so it follows his expected playing time down as it fades. `upTo` stops early.
+ * is carried forward. The WINS band is the mixture of no playing time and the wins when he plays, each
+ * season's own, so it follows his expected playing time down as it fades. `upTo` stops early.
  */
 export function bandsAlong(tr: SideTrajectory, k: KindModel, upTo = tr.seasons.length): SeasonBands[] {
   const out: SeasonBands[] = [];
-  const widen = 1 + PRODUCTION_POLICY.prior.widening * Math.min(Math.max(k.priorWeight ?? 0, 0), 1);
   let sd = 0;
   let extra = 0;
   for (let i = 0; i < Math.min(upTo, tr.seasons.length); i += 1) {
     const x = tr.seasons[i];
-    const b = bandsOf(x, k, tr.tier, tr.quality);
+    const widen = 1 + PRODUCTION_POLICY.prior.widening * Math.min(Math.max(x.priorWeight, 0), 1);
     sd = Math.max(sd, x.rateSd * widen);
     extra = Math.max(extra, x.rateExtra);
     const r = x.r * PER;
     const rateBand = { low: r - (Z_OUTER * sd + extra) * PER, central: r, high: r + (Z_OUTER * sd + extra) * PER };
     const rateInner = { low: r - (Z_INNER * sd + extra / 2) * PER, central: r, high: r + (Z_INNER * sd + extra / 2) * PER };
-    out.push({ ...b, rateBand, rateInner });
+
+    const hh = Math.max(x.h, 1);
+    const cell = (row: HorizonModel): readonly number[] => {
+      const c = row.tails?.[tailCell(row.tails.length, tr.tier, tr.quality, tr.young)] ?? row.tails?.[0];
+      return Array.isArray(c) && c.length === GRID.length ? c : NORMAL_GRID;
+    };
+    const z = gridAtHorizon(k.horizons, hh, cell);
+    const uz = gridAtHorizon(k.horizons, hh, (row) => (Array.isArray(row.usageZ) && row.usageZ.length === GRID.length ? row.usageZ : NORMAL_GRID));
+    // Each reading's band is its shape's mixture, moved to the reading's own central; the high edge is at most
+    // the ceiling at the high edge of the rate (a physical limit), applied to the shape before it moves
+    const rateHalf = rateBand.high - r;
+    // The whole band moves with the main reading's central: each reading's shape by the same amount
+    const mainShape = x.reading.shape ?? x.reading;
+    const d = x.reading.chance * x.reading.mu - mainShape.chance * mainShape.mu;
+    const moved = (y: SeasonReading) => {
+      const sh = y.shape ?? y;
+      const b = readingBands(sh, z, widen);
+      const cap = x.ceiling !== null && sh.g600 + rateHalf > 0 ? (x.ceiling * (sh.g600 + rateHalf)) / PER : Infinity;
+      const at = sh.chance * sh.mu;
+      return {
+        low80: Math.min(b.low80, at) + d, high80: Math.max(Math.min(b.high80, cap), at) + d,
+        low50: Math.min(b.low50, at) + d, high50: Math.max(Math.min(b.high50, cap), at) + d,
+      };
+    };
+    const main = moved(x.reading);
+    const readings = [main];
+    if (x.observedReading) readings.push(moved(x.observedReading));
+    if (x.paceReading) readings.push(moved(x.paceReading));
+    const central = x.central;
+    const lowOuter = Math.min(...readings.map((b) => b.low80), central);
+    const highOuter = Math.max(...readings.map((b) => b.high80), central);
+    const wins: WinsBand = { low: lowOuter - x.extra, central, high: highOuter + x.extra };
+    const inner = inside({
+      low: Math.min(main.low50, central) - x.extra / 2,
+      central,
+      high: Math.max(main.high50, central) + x.extra / 2,
+    }, wins);
+
+    // Playing time: the same mixture, at most the ceiling
+    const usageOf = (y: SeasonReading, p: number) => Math.max(0, mixtureQuantile(y.chance, y.m, y.sigmaM, uz, p));
+    const P = x.P;
+    const lowU = Math.min(usageOf(x.reading, OUTER_LOW), ...(x.observedReading ? [usageOf(x.observedReading, OUTER_LOW)] : []), P);
+    let highU = Math.max(usageOf(x.reading, 1 - OUTER_LOW), ...(x.paceReading ? [usageOf(x.paceReading, 1 - OUTER_LOW), x.paceReading.m] : []), P);
+    if (x.ceiling !== null) highU = Math.max(Math.min(highU, x.ceiling), P);
+    const usage: WinsBand = { low: lowU, central: P, high: highU };
+    const sh = x.reading.shape ?? x.reading;
+    const cz = Math.min(Math.max(sh.chance, 0), 1);
+    const zero = { below: sh.S * widen > 0 ? cz * gridCdf(z, -sh.mu / (sh.S * widen)) : cz * (sh.mu < 0 ? 1 : 0), mass: 1 - cz };
+    const wp = readingBands({ ...sh, chance: 1 }, z, widen);
+    const whenPlays = { low80: wp.low80 + d, high80: wp.high80 + d, low50: wp.low50 + d, high50: wp.high50 + d, central: x.reading.mu };
+    out.push({ wins, inner, usage, rateBand, rateInner, zero, whenPlays });
   }
   return out;
 }
@@ -749,30 +1202,44 @@ interface SideResult {
 function projectSide(
   side: ProductionSide, kind: ProductionKind, results: ProductionLine[], usageLines: ProductionLine[],
   input: SideContext & { injury: InjuryFacts | null }, model: ProductionModel,
-): SideResult {
+): SideResult & { tr: SideTrajectory } {
   const k = model.kinds[kind];
   const { season: Y, f } = input;
-  const tr = sideTrajectory(side, kind, results, usageLines, input, model);
+  const tr = sideTrajectory(side, kind, results, usageLines, { ...input, injuredThisSeason: input.injury?.injuredThisSeason ?? null }, model);
 
   const bands = bandsAlong(tr, k);
   const seasons: SideResult['seasons'] = tr.seasons.map((x, i) => {
-    let { wins, inner } = bands[i];
-    const remaining = i === 0 ? wins : null;
-    if (i === 0) {
-      wins = { low: wins.low + tr.toDate, central: wins.central + tr.toDate, high: wins.high + tr.toDate };
-      inner = { low: inner.low + tr.toDate, central: inner.central + tr.toDate, high: inner.high + tr.toDate };
-    }
+    const { wins, inner, usage } = bands[i];
     return {
-      season: x.season, wins, inner, remaining, toDate: i === 0 ? tr.toDate : null, notes: [],
-      side: { side, kind, wins, inner, rate: x.r * PER, rateBand: bands[i].rateBand, rateInner: bands[i].rateInner, aging: x.aging, usage: bands[i].usage },
+      season: x.season, wins, inner, remaining: i === 0 ? wins : null, toDate: i === 0 ? tr.toDate : null, notes: [],
+      side: {
+        side, kind, wins, inner, rate: x.r * PER, rateBand: bands[i].rateBand, rateInner: bands[i].rateInner, aging: x.aging,
+        selection: x.selection, usage, chance: x.reading.chance, zero: bands[i].zero, whenPlays: bands[i].whenPlays,
+      },
     };
   });
+  if (tr.usageNotEvidence.length > 0) {
+    const lost = tr.usageNotEvidence.filter((x) => /injury/.test(x.reason)).map((x) => x.season);
+    const before = tr.usageNotEvidence.filter((x) => !/injury/.test(x.reason)).map((x) => x.season);
+    for (const s of seasons.slice(1)) {
+      if (lost.length > 0) s.notes.push(`His playing time in ${lost.join(', ')} is read as possibly lost to injury (an injury is stated this season), never as less playing time: the central reads his healthy playing time, and the band reaches the reading with ${lost.length === 1 ? 'that season' : 'those seasons'}.`);
+      if (before.length > 0) s.notes.push(`The league has no major-league season ${before.join(', ')}: his playing time there is not known, never nothing; the central reads his pace, the band reaches the reading with nothing.`);
+    }
+  }
+  if (f > 0 && !tr.inSeasonMeasured) {
+    seasons[0].notes.push(`How much playing time holds within this season is not measured on this season's games: the rest of ${Y} is read from next season's attrition, scaled to what is left, and keeping his pace is inside the band.`);
+  }
 
-  // Stated injuries: only ever a lower low edge
-  applyInjury(seasons, input.injury, Y);
+  // Stated injuries: known days out come off his playing time (owner, 2026-09-23); always named
+  applyInjury(seasons, input.injury, Y, f);
   for (const x of seasons) x.side = { ...x.side, wins: x.wins, inner: x.inner };
+  // This season: what he has banked is a fact beside the band for the rest of it
+  seasons[0].remaining = seasons[0].wins;
+  seasons[0].wins = shift(seasons[0].wins, tr.toDate);
+  seasons[0].inner = shift(seasons[0].inner, tr.toDate);
+  seasons[0].side = { ...seasons[0].side, wins: seasons[0].wins, inner: seasons[0].inner };
 
-  const { coefficients } = windowOf([], Y, f);
+  const coefficients = windowCoefficients(Y, f);
   const w = k.weights;
   const weightOf = (s: number): number => {
     const c = coefficients.get(s) ?? [0, 0, 0];
@@ -784,6 +1251,7 @@ function projectSide(
     bySeason.set(l.season, { opportunities: had.opportunities + l.opportunities, war: had.war + (l.war ?? 0) });
   }
   return {
+    tr,
     basis: {
       side, kind,
       seasons: [...bySeason.entries()].sort((a, b) => a[0] - b[0]).map(([s, x]) => ({ season: s, ...x, weight: weightOf(s) })),
@@ -795,10 +1263,11 @@ function projectSide(
       mean: tr.target * PER,
       rateUncertainty: Math.sqrt(tr.rateVariance) * PER,
       usagePerSeason: tr.usagePerSeason,
+      usageNotEvidence: tr.usageNotEvidence,
       blend: input.abilityPrior && tr.ratingsWeight > 0
         ? {
           results: tr.n / (tr.n + tr.K), ratings: tr.ratingsWeight, reliabilitySample: tr.K,
-          ratingsRate: tr.target * PER, resultsRate: tr.n > 0 ? (tr.num / tr.n) * PER : null,
+          ratingsRate: input.abilityPrior.rate600, resultsRate: tr.n > 0 ? (tr.num / tr.n) * PER : null,
         }
         : null,
     },
@@ -806,48 +1275,95 @@ function projectSide(
   };
 }
 
-function applyInjury(seasons: SideResult['seasons'], injury: InjuryFacts | null, Y: number): void {
+const shift = (b: WinsBand, d: number): WinsBand => ({ low: b.low + d, central: b.central + d, high: b.high + d });
+
+/**
+ * The share of each season's playing time a stated injury takes, from the days out and the calendar
+ * (this season from today, the off-season, then each full season). Null where the calendar is not
+ * established.
+ */
+export function injuryShares(days: number, injury: InjuryFacts, f: number, seasons: number): number[] | null {
+  const daysLeft = injury.seasonDaysLeft;
+  const seasonDays = injury.seasonDays;
+  if (seasonDays === null || !(seasonDays > 0)) return null;
+  const toOpening = f <= 0 ? Math.max(0, injury.daysToOpening ?? 0) : 0;
+  const offseason = injury.offseasonDays;
+  const out: number[] = [];
+  let d = days - toOpening;
+  // This season: what is left of it (a whole season before Opening Day)
+  const left = f >= 1 ? 0 : daysLeft !== null && daysLeft > 0 ? daysLeft : f <= 0 ? seasonDays : null;
+  if (left === null) return null;
+  out.push(left > 0 ? Math.min(1, Math.max(0, d) / left) : 0);
+  d -= left;
+  for (let i = 1; i < seasons; i += 1) {
+    if (d <= 0) { out.push(0); continue; }
+    if (offseason === null || offseason === undefined) return out.concat(new Array(seasons - out.length).fill(NaN));
+    d -= offseason;
+    out.push(d > 0 ? Math.min(1, d / seasonDays) : 0);
+    d -= seasonDays;
+  }
+  return out;
+}
+
+function applyInjury(seasons: SideResult['seasons'], injury: InjuryFacts | null, Y: number, f: number): void {
   if (!injury || seasons.length === 0) return;
-  const lower = (i: number, lost: number, note: string) => {
+  // Known days out: the central and the low edge move by the share lost, the high edge (an earlier return) stays
+  const take = (i: number, lost: number, note: string) => {
     const x = seasons[i];
-    if (!x || lost <= 0) return;
-    const floor = i === 0 ? x.toDate ?? 0 : 0;
-    // Missing a share of the season scales what is left of it toward what he has already banked
-    const scaled = (b: WinsBand): number => floor + (b.low - floor) * (1 - Math.min(1, lost));
-    const low = Math.min(x.wins.low, scaled(x.wins));
-    const innerLow = Math.min(x.inner.low, scaled(x.inner));
-    if (low < x.wins.low || innerLow < x.inner.low) {
-      x.wins = { ...x.wins, low };
-      x.inner = { ...x.inner, low: innerLow };
-      x.notes.push(note);
-    }
+    if (!x) return;
+    x.notes.push(note);
+    if (!(lost > 0)) return;
+    const keep = 1 - Math.min(1, lost);
+    x.wins = { low: Math.min(x.wins.low, x.wins.low * keep), central: x.wins.central * keep, high: x.wins.high };
+    x.inner = { low: Math.min(x.inner.low, x.inner.low * keep), central: x.inner.central * keep, high: Math.max(x.inner.high, x.inner.central * keep) };
+    x.inner = inside(x.inner, x.wins);
+    const u = x.side.usage;
+    x.side = { ...x.side, usage: { low: u.low * keep, central: u.central * keep, high: u.high } };
+  };
+  // Not established: the central is not moved, and the low edge reaches the rest of the season lost
+  const widenOnly = (i: number, note: string) => {
+    const x = seasons[i];
+    if (!x) return;
+    x.notes.push(note);
+    x.wins = { ...x.wins, low: Math.min(x.wins.low, 0) };
+    x.inner = { ...x.inner, low: Math.min(x.inner.low, 0) };
   };
   if (injury.careerEnding === true) {
-    seasons.forEach((x, i) => {
-      const nothing = i === 0 ? x.toDate ?? 0 : 0;
-      if (x.wins.low > nothing) x.notes.push('Career-ending injury stated in the export: producing nothing more is inside the band.');
-      x.wins = { ...x.wins, low: Math.min(x.wins.low, nothing) };
-      x.inner = { ...x.inner, low: Math.min(x.inner.low, nothing) };
-    });
-  } else if (injury.injured === true) {
-    const d = injury.daysLeft;
-    if (d === null || injury.seasonDaysLeft === null || injury.seasonDaysLeft <= 0) {
-      lower(0, 1, `Injured; ${d === null ? 'the time out is not exported' : `${d} days out, but the season's calendar is not established`}, so the rest of ${Y} may be lost.`);
-    } else if (d > 0) {
-      lower(0, d / injury.seasonDaysLeft, `Injured, ${d} days out (of ${Math.round(injury.seasonDaysLeft)} left in ${Y}).`);
-      const spill = d - injury.seasonDaysLeft;
-      if (spill > 0 && injury.seasonDays !== null && injury.seasonDays > 0) {
-        lower(1, spill / injury.seasonDays, `Injured, ${d} days out: about ${Math.round(spill)} of them fall in ${Y + 1}.`);
-      }
-    }
+    seasons.forEach((_, i) => take(i, 1, 'Career-ending injury stated in the export: every later central is nothing, producing nothing is inside the band, and the high edge is kept.'));
+    return;
   }
+  if (injury.injured !== true) return;
+  const d = injury.daysLeft;
+  if (d === null) {
+    const why = injury.durationNote ? ` (${injury.durationNote})` : ' (the time out is not exported)';
+    widenOnly(0, `Injured; the time out is not established${why}, so the rest of ${Y} may be lost: the band reaches it, the central is not moved.`);
+    return;
+  }
+  const shares = injuryShares(d, injury, f, seasons.length);
+  if (shares === null) {
+    widenOnly(0, `Injured, ${d} days out, but the season's calendar is not established, so the rest of ${Y} may be lost: the band reaches it, the central is not moved.`);
+    return;
+  }
+  shares.forEach((lost, i) => {
+    if (Number.isNaN(lost)) {
+      widenOnly(i, `Injured, ${d} days out: whether any fall in ${Y + i} is not established (the off-season's length is not known).`);
+      return;
+    }
+    if (i === 0) {
+      take(0, lost, lost > 0
+        ? `Injured, ${d} days out: ${Math.round(lost * 100)}% of the rest of ${Y} comes off his expected playing time; the high edge keeps an earlier return.`
+        : `Injured, ${d} days out: over before any of ${Y}'s remaining games.`);
+    } else if (lost > 0) {
+      take(i, lost, `Injured, ${d} days out: about ${Math.round(lost * 100)}% of ${Y + i} comes off his expected playing time; the high edge keeps an earlier return.`);
+    }
+  });
 }
 
 // ── the player ───────────────────────────────────────────────────────────────
 
 export function unknownProduction(input: ProductionInput, reason: string, model: ProductionModel, provenance: ModelProvenance): PlayerProduction {
   return {
-    playerId: input.playerId, status: 'unknown', reason, unit: PRODUCTION_UNIT, seasons: [],
+    playerId: input.playerId, status: 'unknown', reason, unit: PRODUCTION_UNIT, seasons: [], notEstablished: [],
     basis: basisShell(input, model, provenance),
   };
 }
@@ -855,6 +1371,7 @@ export function unknownProduction(input: ProductionInput, reason: string, model:
 export function basisShell(input: ProductionInput, model: ProductionModel, provenance: ModelProvenance): ProductionBasis {
   const band = proneBandOf(model.proneness, input.proneness);
   const known = input.proneness !== null && input.proneness !== undefined && Number.isFinite(input.proneness);
+  const games = input.schedule?.games ?? null;
   return {
     origin: { season: input.season, seasonPlayed: input.seasonPlayed, age: input.age },
     sides: [],
@@ -869,23 +1386,52 @@ export function basisShell(input: ProductionInput, model: ProductionModel, prove
           : `Injury proneness ${input.proneness} (owner-attested known fact), band ${band! + 1} of ${model.proneness.cuts.length + 1}.`,
     },
     coverage: { outer: PRODUCTION_POLICY.coverage.outer, inner: PRODUCTION_POLICY.coverage.inner },
+    schedule: games !== null
+      ? { games, note: `Playing time per scheduled game, at ${games} games a season.` }
+      : { games: model.referenceGames ?? null, note: `The league's schedule is not stated: playing time is read at the ${model.referenceGames ?? '—'}-game schedule the model was fitted on.` },
     model: provenance,
     calibration: provenance.stamp,
   };
 }
 
-export function coverageAt(horizon: number, provenance: ModelProvenance): ProductionSeason['coverage'] {
+export type Estimator = 'results' | 'results_and_ratings' | 'rest_of_season';
+
+/**
+ * The coverage a season carries: its targets, and what the fit in force observed for THIS estimator at this
+ * horizon (interpolated between two measured horizons, and named so), or not measured with why.
+ */
+export function coverageAt(horizon: number, provenance: ModelProvenance, estimator: Estimator = 'results', ratingsWeight = 0): ProductionSeason['coverage'] {
   const target = { outer: PRODUCTION_POLICY.coverage.outer, inner: PRODUCTION_POLICY.coverage.inner };
-  const row = provenance.observed?.find((r) => r.horizon === horizon) ?? null;
-  const observed = row && row.cases > 0 ? { horizon, cases: row.cases, outer: row.outer, inner: row.inner } : null;
-  return {
-    horizon, target, observed,
-    note: observed
-      ? `Observed on ${row!.cases} held-out player-seasons of this save at horizon ${horizon}.`
-      : provenance.source === 'fallback_prior'
-        ? 'Not measured on this save: the fallback prior was not tested on its held-out seasons.'
-        : `Not measured: the fit had no held-out seasons at horizon ${horizon}.`,
-  };
+  const rows = provenance.observed ?? [];
+  const at = (h: number) => rows.find((r) => r.horizon === h && r.cases > 0) ?? null;
+  const lo = Math.floor(horizon + 1e-9);
+  const hi = Math.ceil(horizon - 1e-9);
+  const a = at(Math.max(lo, 1));
+  const b = at(Math.max(hi, 1));
+  let measured: { horizon: number; cases: number; outer: number | null; inner: number | null } | null = null;
+  if (a && b) {
+    const t = hi === lo ? 0 : horizon - lo;
+    const mix = (x: number | null, y: number | null) => (x === null || y === null ? null : (1 - t) * x + t * y);
+    measured = { horizon, cases: Math.min(a.cases, b.cases), outer: mix(a.outer, b.outer), inner: mix(a.inner, b.inner) };
+  }
+  const fmt = (x: number | null) => (x === null ? '—' : `${(x * 100).toFixed(0)}%`);
+  const where = hi === lo ? `horizon ${lo}` : `horizon ${horizon.toFixed(1)} (interpolated between the fit's horizons ${lo} and ${hi})`;
+  if (provenance.source === 'fallback_prior') {
+    return { horizon, target, observed: null, reference: null, note: 'Not measured on this save: the fallback prior was not tested on its held-out seasons.' };
+  }
+  if (estimator === 'rest_of_season') {
+    return { horizon, target, observed: null, reference: null, note: 'Not measured: the rest of a season under way is not backtested (the fit\'s cases start at a season\'s end).' };
+  }
+  if (estimator === 'results_and_ratings') {
+    return {
+      horizon, target, observed: null,
+      reference: measured ? { estimator: 'results', ...measured } : null,
+      note: `Not measured for a projection that leans on his ratings (${Math.round(ratingsWeight * 100)}% of his rate): the same-time blend cannot be backtested on this save${
+        measured ? `; the results-only estimator observed ${fmt(measured.outer)} / ${fmt(measured.inner)} at ${where}` : ''}.`,
+    };
+  }
+  if (!measured) return { horizon, target, observed: null, reference: null, note: `Not measured: the fit had no held-out seasons at ${where}.` };
+  return { horizon, target, observed: measured, reference: null, note: `Observed on ${measured.cases} held-out player-seasons of this save at ${where}.` };
 }
 
 /** Which sides of a player are projected, and as what: shared by the projection and the fit. */
@@ -905,19 +1451,26 @@ export type SidePlan =
 export function planSides(input: ProductionInput): SidePlan {
   if (input.season === null || !Number.isFinite(input.season)) return { ok: false, code: 'missing_input', reason: "This season is not established in the export (the league's season year)." };
   if (input.seasonPlayed === null || !Number.isFinite(input.seasonPlayed)) {
-    return { ok: false, code: 'missing_input', reason: 'The share of this season played is not established (standings or schedule length missing), so the window cannot be placed.' };
+    return { ok: false, code: 'missing_input', reason: 'The share of this season played is not established (standings or schedule length missing, or standings that are not this season\'s), so the window cannot be placed.' };
   }
   if (input.age === null || !Number.isFinite(input.age)) return { ok: false, code: 'missing_input', reason: 'His age is not in the export, so no aging can be applied.' };
   const Y = input.season;
   const f = Math.min(Math.max(input.seasonPlayed, 0), 1);
+  const unavailable = input.unavailable ?? {};
+  const listedPitcher = input.listed?.position === 1;
+  const listedField = input.listed?.position != null && input.listed.position !== 1;
+  const pitchingRole = (input.listed?.role ?? 0) > 0;
 
-  const results = { batting: clean(input.batting), pitching: clean(input.pitching) };
+  // A listed pitcher's side is pitching: a side the export cannot read that is his role leaves him unknown
+  if (listedPitcher && unavailable.pitching) return { ok: false, code: 'missing_input', reason: unavailable.pitching };
+  if (listedField && !pitchingRole && unavailable.batting) return { ok: false, code: 'missing_input', reason: unavailable.batting };
+
+  const results = { batting: unavailable.batting ? [] : clean(input.batting), pitching: unavailable.pitching ? [] : clean(input.pitching) };
   const usage = {
-    batting: input.usage?.batting ? clean(input.usage.batting) : results.batting,
-    pitching: input.usage?.pitching ? clean(input.usage.pitching) : results.pitching,
+    batting: unavailable.batting ? [] : input.usage?.batting ? clean(input.usage.batting) : results.batting,
+    pitching: unavailable.pitching ? [] : input.usage?.pitching ? clean(input.usage.pitching) : results.pitching,
   };
 
-  // Which sides have results in the window, and is any WAR missing among them
   const seen: Array<{ side: ProductionSide; n: number }> = [];
   for (const side of ['batting', 'pitching'] as const) {
     const { used, missingWar } = windowSeasons(results[side], Y, f);
@@ -925,15 +1478,28 @@ export function planSides(input: ProductionInput): SidePlan {
     const n = windowOf(used, Y, f).slots.reduce((s, x) => s + x.opportunities, 0);
     if (n > 0) seen.push({ side, n });
   }
-  if (seen.length === 0) {
+  const notProjected: ProductionBasis['notProjected'] = [];
+  // A listed pitcher's batting is not a role on that side (the export's own position): never a hitter's line
+  const eligible = seen.filter((x) => {
+    if (x.side === 'batting' && listedPitcher) {
+      notProjected.push({ side: 'batting', opportunities: Math.round(x.n), reason: `${Math.round(x.n)} plate appearances in the window, but he is a listed pitcher: his batting is not a hitter's role and is not projected.` });
+      return false;
+    }
+    return true;
+  });
+  for (const side of ['batting', 'pitching'] as const) {
+    if (unavailable[side]) notProjected.push({ side, opportunities: 0, reason: unavailable[side] as string });
+  }
+  if (eligible.length === 0) {
+    const why = Object.values(unavailable).filter(Boolean);
+    if (seen.length === 0 && why.length > 0) return { ok: false, code: 'missing_input', reason: why.join(' ') };
     return { ok: false, code: 'no_results', reason: `No major-league results in the projection window (${Y - 3}–${Y}).` };
   }
 
   // The primary side, and the other only for a two-way player
-  seen.sort((a, b) => b.n - a.n);
-  const projected: ProductionSide[] = [seen[0].side];
-  const notProjected: ProductionBasis['notProjected'] = [];
-  for (const other of seen.slice(1)) {
+  eligible.sort((a, b) => b.n - a.n);
+  const projected: ProductionSide[] = [eligible[0].side];
+  for (const other of eligible.slice(1)) {
     if (other.n >= PRODUCTION_POLICY.twoWayMinimum) projected.push(other.side);
     else notProjected.push({
       side: other.side, opportunities: Math.round(other.n),
@@ -956,28 +1522,106 @@ export function planSides(input: ProductionInput): SidePlan {
 }
 
 /**
+ * The fallback prior fitted to this league's own WAR scale (D-12): until the save has a fit of its own, a
+ * thin record is regressed toward the league's own mean, and the rate spreads scale with its own spread, a
+ * plain measurement of the export that needs no backtest. A league's WAR scale is a unit: every term in WAR
+ * per 600 (the survivor terms, the aging curve, the quality cuts, the noise and drift) is put in the league's
+ * unit by the ratio of its spread to the prior's, and every coefficient ON a rate (playing time's quality
+ * term) by its inverse, so the same record in a league at 0.4 of the scale projects 0.4 of the rate on the
+ * same playing time. The shape (usage by age and history, tails) stays the prior's. The aging curve is one
+ * per group, so a pitcher's is put in the mean of the starter's and the reliever's ratios.
+ */
+export interface LeagueRateFacts {
+  kinds: Partial<Record<ProductionKind, { mean600: number | null; spread600: number | null; opportunities: number; ceiling: number | null }>>;
+  /** The spread of rates the prior's own source showed, per kind, to scale against. */
+}
+
+export function adaptPriorToLeague(model: ProductionModel, facts: LeagueRateFacts, priorSpread: Partial<Record<ProductionKind, number>>): { model: ProductionModel; note: string | null } {
+  const kinds = { ...model.kinds };
+  const adapted: string[] = [];
+  const ratios: Partial<Record<ProductionKind, number>> = {};
+  for (const kind of Object.keys(kinds) as ProductionKind[]) {
+    const f = facts.kinds[kind];
+    if (!f) continue;
+    const k = { ...kinds[kind] };
+    if (f.mean600 !== null && Number.isFinite(f.mean600)) {
+      k.mean600 = f.mean600;
+      adapted.push(`${kind} mean ${f.mean600.toFixed(2)}`);
+    }
+    const ps = priorSpread[kind];
+    if (f.spread600 !== null && Number.isFinite(f.spread600) && f.spread600 > 0 && ps && ps > 0) {
+      const r = f.spread600 / ps;
+      ratios[kind] = r;
+      k.noise600 *= r * r;
+      k.rateScale600 *= r;
+      if (k.qualityCuts) k.qualityCuts = [k.qualityCuts[0] * r, k.qualityCuts[1] * r];
+      k.horizons = k.horizons.map((h) => ({
+        ...h,
+        chance: { ...h.chance, quality: h.chance.quality / r },
+        conditional: { ...h.conditional, quality: h.conditional.quality / r },
+        drift600: (h.drift600 ?? 0) * r * r,
+        ...(typeof h.driftYoung600 === 'number' ? { driftYoung600: h.driftYoung600 * r * r } : {}),
+        // Every additive survivor term is in WAR per 600 (the slope alone is a pure number), so each is in the league's unit (D-12)
+        survivor: h.survivor
+          ? {
+            ...h.survivor, intercept: h.survivor.intercept * r, older: h.survivor.older * r, younger: h.survivor.younger * r,
+            ...(typeof h.survivor.usage === 'number' ? { usage: h.survivor.usage * r } : {}),
+          }
+          : h.survivor,
+      }));
+    }
+    if (f.ceiling !== null && Number.isFinite(f.ceiling) && f.ceiling > 0) k.ceiling = f.ceiling;
+    kinds[kind] = k;
+  }
+  const groupRatio = (ks: ProductionKind[]): number | null => {
+    const rs = ks.map((x) => ratios[x]).filter((x): x is number => typeof x === 'number');
+    return rs.length === 0 ? null : rs.reduce((a, b) => a + b, 0) / rs.length;
+  };
+  const rh = groupRatio(['hitter']);
+  const rp = groupRatio(['starter', 'reliever']);
+  const aging = {
+    ...model.aging,
+    hitter: rh === null ? model.aging.hitter : model.aging.hitter.map((d) => d * rh),
+    pitcher: rp === null ? model.aging.pitcher : model.aging.pitcher.map((d) => d * rp),
+  };
+  return {
+    model: { ...model, kinds, aging },
+    note: adapted.length > 0
+      ? `rates regressed toward this league's own mean and scaled to its own spread of rates (derived from the export: ${adapted.join(', ')})`
+      : null,
+  };
+}
+
+/**
  * A player's expected production over the horizon, in wins per season, each an 80% and a 50% band
  * with its basis, from the model given (the save's adopted fit, or the fallback prior). Unknown, with
- * the reason, when an input is missing or he has no major-league results in the window (a player
- * without results is projected from his ratings by `playerValueRatings.ts`, phase 3b).
+ * the reason, when an input is missing or he has no major-league results in the window.
  */
 export function projectProductionWith(input: ProductionInput, model: ProductionModel, provenance: ModelProvenance): PlayerProduction {
   const horizon = Math.min(input.horizon ?? CONTROL_HORIZON_SEASONS, CONTROL_HORIZON_SEASONS);
   const plan = planSides(input);
   if (!plan.ok) return unknownProduction(input, plan.reason, model, provenance);
   const { season: Y, f, age } = plan;
+  if (scheduleOf(model, input.schedule).now === null) {
+    return unknownProduction(input, "The league's schedule length is not established, so playing time cannot be read per scheduled game.", model, provenance);
+  }
 
-  const sides: SideResult[] = plan.sides.map(({ side, kind }) => projectSide(side, kind, plan.results[side], plan.usage[side], {
+  const sides = plan.sides.map(({ side, kind }) => projectSide(side, kind, plan.results[side], plan.usage[side], {
     season: Y, f, age, horizon, proneness: input.proneness, injury: input.injury ?? null,
+    schedule: input.schedule ?? null, inSeason: input.inSeason ?? null,
     abilityPrior: input.abilityPrior?.[side] ?? null, abilityUnknownWidening: input.abilityUnknownWidening?.[side] ?? null,
   }, model));
 
+  const ratingsWeight = Math.max(0, ...sides.map((s) => s.tr.ratingsWeight));
+  const blended = ratingsWeight > 0;
   const seasons: ProductionSeason[] = [];
   for (let i = 0; i < horizon; i += 1) {
     const parts = sides.map((s) => s.seasons[i]);
+    const h = i + 1 - f;
+    const estimator: Estimator = i === 0 && f > 0 ? 'rest_of_season' : blended ? 'results_and_ratings' : 'results';
     seasons.push({
       season: Y + i,
-      horizon: i + 1 - f,
+      horizon: h,
       age: age + i,
       wins: parts.reduce((b, p) => addBands(b, p.wins), blank()),
       inner: parts.reduce((b, p) => addBands(b, p.inner), blank()),
@@ -985,12 +1629,17 @@ export function projectProductionWith(input: ProductionInput, model: ProductionM
       remaining: i === 0 ? parts.reduce((b, p) => addBands(b, p.remaining ?? blank()), blank()) : null,
       sides: parts.map((p) => p.side),
       notes: [...new Set(parts.flatMap((p) => p.notes))],
-      coverage: coverageAt(i + 1, provenance),
+      coverage: coverageAt(h, provenance, estimator, ratingsWeight),
     });
   }
   const basis = basisShell(input, model, provenance);
   basis.sides = sides.map((s) => s.basis);
   basis.notProjected = plan.notProjected;
-  basis.source = basis.sides.some((s) => s.blend) ? 'results_and_ratings' : 'results';
-  return { playerId: input.playerId, status: 'projected', reason: null, unit: PRODUCTION_UNIT, seasons, basis };
+  basis.source = blended ? 'results_and_ratings' : 'results';
+  basis.inSeason = f > 0
+    ? sides.every((s) => s.tr.inSeasonMeasured)
+      ? { measured: true, note: input.inSeason?.note ?? 'Measured on this season\'s games.' }
+      : { measured: false, note: 'Not measured on this season\'s games: next season\'s attrition, scaled to what is left.' }
+    : null;
+  return { playerId: input.playerId, status: 'projected', reason: null, unit: PRODUCTION_UNIT, seasons, notEstablished: [], basis };
 }

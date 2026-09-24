@@ -94,3 +94,61 @@ describe('Super Two (owner ruling, 2026-09-22)', () => {
     expect(seasonOf(none, NEXT).status).toBe('indeterminate');
   });
 });
+
+/*
+ * Hardening (F2, 2026-09-23): trips counted by winter (A-12, C-15), the owner's margin around the
+ * cutoff's readings (A-13) and a schedule shorter than the service year (D-03).
+ */
+describe('Super Two, hardening (F2)', () => {
+  it('counts arbitration trips by winter: after a Super Two year the next is his second trip', () => {
+    // 141 days this season: a year and 171 days at the last winter, so plainly pre-arbitration then
+    const days = 2 * YEAR + 140;
+    const t = timelineOf({ state: stateOf({ days, thisYear: 141 }), contract: expiring, clock: YEAR, superTwoClass: [...CLASS, him(days, 141)] });
+    expect(seasonOf(t, NEXT).status).toBe('arbitration');
+    expect(seasonOf(t, NEXT).superTwo).toBe(true);
+    expect(seasonOf(t, NEXT).arbitrationYear).toEqual({ low: 1, high: 1 });
+    expect(seasonOf(t, NEXT + 1).arbitrationYear).toEqual({ low: 2, high: 2 });
+    expect(seasonOf(t, NEXT + 2).arbitrationYear).toEqual({ low: 3, high: 3 });
+    expect(seasonOf(t, NEXT + 3).arbitrationYear).toEqual({ low: 4, high: 4 });
+    expect(seasonOf(t, NEXT + 4).status).toBe('free_agent');
+  });
+
+  it('never numbers an arbitration year he has already taken, and says an earlier Super Two year is not in the export', () => {
+    // Three years six days at the last winter: in arbitration now; 40 days banked, 132 left
+    const t = timelineOf({ state: stateOf({ days: 3 * YEAR + 46, thisYear: 40 }), contract: expiring, clock: 40 });
+    const now = t.eligibility!.seasons[0];
+    expect(now.arbitration.status).toBe('eligible');
+    // At least his first trip; his second if he was a Super Two a year early, which the export cannot show
+    expect(now.arbitration.trip).toEqual({ low: 1, high: 2 });
+    expect(now.arbitration.tripNote).toMatch(/Super Two/);
+    // Next winter is one more trip on every edge, whatever he banks: never his first again
+    const next = seasonOf(t, NEXT);
+    expect(next.status).toBe('arbitration');
+    expect(next.arbitrationYear).toEqual({ low: 2, high: 3 });
+  });
+
+  it("treats the cutoff's edges as readings: within the margin of either edge the year is indeterminate, a tie included", async () => {
+    const { SUPER_TWO_MARGIN_DAYS, SUPER_TWO_MARGIN_CALIBRATION } = await import('../server/playerRights.js');
+    expect(SUPER_TWO_MARGIN_CALIBRATION.status).toBe('policy');
+    expect(SUPER_TWO_MARGIN_CALIBRATION.basis).toMatch(/owner.*2026-09-23/);
+    // Season over: this class's cutoff is a point, 461 days (the 11th of 50, from 344 in steps of 3)
+    const cutoff = 461;
+    for (const days of [cutoff - 5, cutoff, cutoff + 5]) {
+      const { season } = nextSeason(days, 100, CLASS);
+      expect(season.status, `${days}`).toBe('indeterminate');
+      expect(season.between).toEqual(['pre_arbitration', 'arbitration']);
+    }
+    expect(nextSeason(cutoff - SUPER_TWO_MARGIN_DAYS - 1, 100, CLASS).season.status).toBe('pre_arbitration');
+    expect(nextSeason(cutoff + SUPER_TWO_MARGIN_DAYS, 100, CLASS).season.status).toBe('arbitration');
+  });
+
+  it('keeps the window indeterminate where the schedule banks less than a full service year', () => {
+    const days = 2 * YEAR + 140;
+    const t = timelineOf({
+      state: stateOf({ days, thisYear: 69 }), contract: expiring, clock: 69,
+      calendar: { scheduleDays: 69, daysLeft: 0 }, superTwoClass: [...CLASS, him(days)],
+    });
+    expect(seasonOf(t, NEXT).status).toBe('indeterminate');
+    expect(t.eligibility!.seasons[1].arbitration.missing.map((m) => m.message).join(' ')).toMatch(/schedule/);
+  });
+});

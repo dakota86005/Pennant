@@ -62,8 +62,18 @@ export function niceTicks(lo: number, hi: number, count = 5): number[] {
   return out;
 }
 
-/** A number with a true minus sign, as the card prints signed values. */
+/**
+ * A number with a true minus sign, as the card prints signed values. A value that is not zero but
+ * rounds to it prints as "<0.1" (or "−<0.1"), so an edge just above replacement never reads as
+ * touching it; a value that is not a finite number prints "—" rather than throwing or printing "NaN".
+ */
 export function signed(v: number, digits = 1): string {
+  if (typeof v !== 'number' || !Number.isFinite(v)) return '—';
   const text = v.toFixed(digits);
-  return Number(text) === 0 ? (0).toFixed(digits) : text.replace('-', '−');
+  if (Number(text) === 0) {
+    if (v === 0) return (0).toFixed(digits);
+    const unit = (10 ** -digits).toFixed(digits);
+    return v > 0 ? `<${unit}` : `−<${unit}`;
+  }
+  return text.replace('-', '−');
 }

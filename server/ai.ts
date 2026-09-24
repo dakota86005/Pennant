@@ -252,6 +252,9 @@ function tradeSystem(voice: Persona, orgLabel: string | undefined, leagueId?: nu
     `reaches free agency, "arbitration" means he is kept and paid more, "pre-arbitration" kept ` +
     `cheaply, "reserve clause" cannot leave, "indeterminate" means the save cannot yet establish ` +
     `which (its "between" and "why" say what it lies between and why) — say so, never pick one. ` +
+    `"option" means next season is an option or his opt-out: exercised he is under contract at the ` +
+    `salary, declined (or opted out) he falls to its "ifDeclined" — give both branches and never ` +
+    `call him signed for that season. ` +
     `Never call somebody a rental or a walk-year player ` +
     `from years-remaining alone — arbitration years are years of control, and they are worth ` +
     `paying for.\n` +

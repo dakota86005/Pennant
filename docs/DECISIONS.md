@@ -1270,6 +1270,11 @@ surplus exists.
   agency, as three-valued statuses with a cost band each); expected production; Club Finances (the league's regime,
   price of a win and replacement level, and the club's budget, payroll, revenue, market, cash and owner expectation);
   and surplus. Each has its own output and names its own unknowns.
+- **Expected production is the expected wins** (amended 2026-09-23, the hardening): the rate of the players who play at a
+  horizon is fitted apart from the chance he plays, since the players who keep playing are the ones who stayed good;
+  playing time is read per scheduled game and never exceeds the physical ceiling the save's own history shows. Known
+  days out are a fact that moves the central (owner, 2026-09-23), and a season lost to injury is never read as evidence
+  of less future playing time.
 - **A decomposed, stated estimate, never a hidden score.** Value is reported as bands with their basis and every
   component visible. Thinner evidence (fewer results, partial ratings) only widens a band; a longer horizon only widens
   what is not known about a player's rate, while his band in wins follows his expected playing time (owner,
@@ -1329,6 +1334,22 @@ architecture, pinned by tests.
 - Super Two (2026-09-22): OOTP applies Super Two under MLB rules, and Pennant follows the real rule. This is the
   owner's statement of how OOTP behaves, a basis under D-018 and D-023 (`owner_attested`), not a guess from MLB
   rules. The cutoff is computed from the export's own class as a range, in leagues whose regime as read is MLB's.
+- Super Two margin (2026-09-23, hardening): the cutoff's edges are readings, not bounds, so within a policy margin
+  of either edge (`SUPER_TWO_MARGIN_DAYS`, 10 days, stamped policy under D-041, owner-approved) the year before the
+  arbitration line is `indeterminate`.
+
+**Hardening, contracts and control (2026-09-23).** An option is both branches only for a future season: the season
+under way is under contract, its option decided before it began. An **opt-out** makes every season from the one the
+exported count reads (the term's first season plus the count, a reading and not established, R-6) show both
+branches, staying under the deal or leaving on his Player Rights standing; it is never a certain season at a point
+cost. A club and a player option on one season is mutual; an option flag the export does not populate is unknown on
+the term's last season. The export's blank contract row (no term, kind, salary or paying club) is not a
+minor-league contract: it has no kind, and a player the export places on a major-league club with major-league
+service reads his Player Rights standing after this season. Consumers see an option next season as an option,
+never "signed", and Payroll reads these contract facts through the entry point. Player Rights counts arbitration
+trips by winter, caps this season's remaining service by the schedule, projects later seasons from the schedule's
+calendar, and gives a player on the major-league injured list the days left on his stint (the list accrues
+service), all in PLAYER_VALUE.md 2.1 and 2.2.
 
 ## D-053 — Calibration belongs to the save
 
@@ -1394,6 +1415,108 @@ and move toward OOTP's engine as the save's own simulated seasons enter the wind
 `DEFENSE_WEIGHT`), `toolsModel.ts`, `platoon.ts`, `bullpenRoles.ts` (leverage cut-offs), `roleStandards.ts` (role
 standards), `farmCalibration.ts` (Minor League Operations) and `developmentFit.ts` (development and developmental
 stakes). ROADMAP lists them for an audit and migration.
+
+**Amended 2026-09-23 (Player Value hardening; PLAYER_VALUE.md 2.3 and Part 7, CALIBRATION.md section 6.3).**
+
+- **What is measured is what is served.** The held-out seasons are projected in blocks, each by the method refit
+  through the block's first origin, and the model a GM is served is the same method refit through the last completed
+  season. The record's held-out figures are the method's out-of-time performance at each horizon, which is what the
+  served model faces; no widening is chosen on the held-out cases. A projection carries observed coverage only for the
+  estimator that produced it (results only), at its own horizon; the rest of a season under way and a blend with
+  same-time ratings are "not measured".
+- **The gate reads subgroups and bias.** Adoption needs held-out coverage as fitted within the policy's tolerance pooled
+  and in every subgroup the method serves differently (kind, usage third, quality tier, age band) with enough cases, and
+  a central that is not materially and significantly biased in any of them. A fit that fails keeps the previous model
+  in force, however good its pooled figures.
+- **Each horizon's prior weight is its own,** and so is its widening and its label ("horizons 4–7 mostly the fallback
+  prior"). A prior fitted on the save's own held-out seasons (the same history, matched by season totals) is not used.
+  An adopted fit that is still mostly the prior is stamped provisional.
+- **The fit is the save's by identity, not name:** keyed by the save's configured name and a fingerprint of the league's
+  own history, never through a season the league has not completed; a refit that fails the gate never replaces the fit
+  in force; the refit runs off the server's event loop.
+- **Under the prior, the league's own WAR scale:** the kind's mean and the rate spreads come from the league's own recent
+  seasons (a plain measurement, stamped derived); the prior's shape stays. The WAR scale is a unit: every term in WAR
+  per 600 is put in the league's unit and every coefficient on a rate by its inverse, so the same record in a league at
+  0.4 of the scale projects 0.4 of the rate on the same playing time.
+
+**Amended 2026-09-23 (owner decisions: option C and four approvals; PLAYER_VALUE.md Part 12, CALIBRATION.md section
+6.3).**
+
+- **The backtest is rolling-origin.** Each completed season from the window's start + 5 to the season before the last
+  (at most 8) is an origin scored by the method fitted through it; a horizon is scored only where that fit has enough
+  cases from at least 3 origin cohorts; the pooled cases are clustered by player and by origin, so one era cannot
+  decide the verdict. Seasons are weighted by a recency half-life (policy, 2 seasons). The gate's tolerances are
+  unchanged: pooled coverage within 5 points, every subgroup within 10, a bias failing at 10% of the mean outcome and
+  0.05 wins and three standard errors, 200 cases. A fit that fails is not adopted however close it is.
+- **The serving rule** (approved): the model served is the method refit through the last completed season, and the
+  held-out seasons are scored by refits of the method.
+- **A career-ending injury** (approved): the central goes to zero, the high edge is kept.
+- **The rest of this season** (approved): measured from this season's own games so far.
+- **Same-time ratings pull less** (approved): until the save measures them as a forecast, they pull only by their own
+  weight.
+- **A fit is calibrated only where it was measured:** a fit never scored on held-out seasons, or mostly the prior at
+  every horizon, is labelled "not yet calibrated" and stamped provisional wherever it is served; where no season is
+  usable, the label names the seasons of lines the league has and why none is.
+- **Injury proneness on the Arizona import** (a correction of the reading above): with each player's seasons clustered
+  and Holm's rule across the family, no playing-time or aging effect is distinguishable from none (hitters in the most
+  injury-prone third 97.9% ± 1.7), so proneness moves nothing on this save; the 94.1% and 94.8% readings treated a
+  player's seasons as independent.
+
+**Amended 2026-09-23 (hardening F4: prospects; PLAYER_VALUE.md 2.3, CALIBRATION.md section 6.4).**
+
+- **The ratings fit's arrival gate is tightened, never loosened.** Beside its absolute tolerance (10 points), a
+  held-out arrival chance, or expected playing time per case, biased beyond 10% of what happened AND beyond three
+  standard errors clustered by player fails: the production gate's rule, so a fit predicting three times the observed
+  rate can no longer pass on a rate of a few percent. Every fit the absolute rule failed still fails. On the Arizona
+  import the ratings fit (`ratings-3h.1`) fails it at horizons 3 to 6 (the save's arrival rates rose between the
+  training and the held-out seasons, and the arrival method weighs every season alike): it is not adopted, so a player
+  not in the majors is `unknown` there, with the gate's reason, until a fit passes. Recorded, not tuned away.
+- **The serving rule applies to the arrival model:** served refit through the last completed season, scored on the
+  held-out seasons by the method fitted through the training seasons.
+- **The arrival population is the league's own:** another market league's farm and independent leagues are left out
+  where the export names parents, and reaching any top-level league is arriving.
+- **A fitted effect may be carried from one fit to another, recorded:** the ratings fit reads the results fit's quality
+  coefficients (at the same usage) and locates them on each arrival cell's players now, so the cell keeps its measured
+  chance and playing time; both are stored in its record, and a refit of either refits the arrival's use of them at
+  the next ratings refit.
+
+**Amended 2026-09-23 (owner decision: option C applied to the arrival model; hardening F5; PLAYER_VALUE.md Part 12,
+CALIBRATION.md section 6.4).** The owner approved: "the arrival model uses the same rolling-origin backtest and 2-season
+recency weighting approved for the results fit, judged by the same (tightened) gate; the gate is not loosened."
+
+- **The arrival backtest is rolling-origin,** by the results fit's own origin rule (shared code): each origin is fitted
+  through its season and scored on the next season's minor leaguers, a horizon only where that fit holds the gate's
+  minimum cases from at least 3 origin cohorts. Each arrival fit weights a case by a 2-season recency half-life
+  (`RATINGS_POLICY.backtest`, policy). The gate's standard errors are clustered by player and by origin; its
+  tolerances (10 points; 10% of what happened and three standard errors) are F4's, unchanged. A one-era miss is now
+  read across the origins, so a fit that keeps missing in one direction fails and one era's swing does not.
+- **A tightening the change needs:** measured arrivals are adopted only where the next season could be checked on
+  held-out cases (a history too short for any origin used to be checked by a single split).
+- **The serving rule is unchanged** (refit through the last completed season). Method `ratings-3h.2`: every save
+  refits once.
+- **On the Arizona import the fit still fails,** at horizons 4 to 6 (the chance 17% low, about 7 standard errors); 0 to 3
+  pass. Recency cannot reach it: a long horizon can only be fitted on cohorts at least that many seasons old, and on this
+  save the long-horizon arrival rate rose cohort after cohort. Recorded, not tuned away; prospects stay `unknown` there.
+
+**Amended 2026-09-23 (owner decision: option (b), the arrival model adopted horizon by horizon; hardening F6;
+PLAYER_VALUE.md 2.3 and Part 12, CALIBRATION.md section 6.4).** The owner decided: "The arrival model is adopted horizon
+by horizon: a horizon whose held-out check passes the (unchanged, tightened) gate is served; later horizons are shown as
+not established. The gate is not loosened."
+
+- **What is adopted is a contiguous run.** The horizons served run from the rest of this season through the last horizon
+  whose held-out check, and every check before it, passed the gate. A horizon after one that failed, or after one with too
+  few held-out cases to be checked, is never served, even where its own check passes. Nothing is adopted unless the run
+  reaches the next season (F5's rule), and the ratings mapping's own gate must still pass. No tolerance moved
+  (`RATINGS_POLICY.adoption`, policy, D-041).
+- **A season beyond the run is not established,** season by season, each with the gate's finding at its horizon; it has no
+  band, central or zero, and nothing is extrapolated, carried forward or averaged into it. A total over seasons that
+  include one is not a number. A label says how far the model is calibrated ("through N seasons out"), never plain
+  "calibrated"; the run record names each horizon's own check and why it is not served.
+- **The arrival model only.** The results fit keeps its rule that every horizon with enough cases must pass; whether it
+  should follow is an open owner question.
+- **Method `ratings-3h.3`:** every save refits its ratings model once. On the Arizona import the arrival model is adopted
+  through 3 seasons out (the held-out figures are F5's): prospects are projected for the rest of 2026 and 2027 to 2029, and
+  2030 to 2032 are not established.
 
 ## D-054 — Charting library
 
