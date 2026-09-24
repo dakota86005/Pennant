@@ -2323,3 +2323,63 @@ export const SURPLUS_POLICY_CALIBRATION: CalibrationStamp = policy(
     "games production reads); a major-league contract's covered salary is owed whatever the club does; a buyout the export does not " +
     "populate is read from nothing to the option's salary. Chosen and stated, never fitted (Q-3)."
 );
+
+// ── Phase 5b: the philosophy lens and the club's value of a win ──────────────
+
+/**
+ * POLICY (phase 5b, PLAYER_VALUE.md Part 6). How far "our view" may lean on the neutral valuation, per dimension the lens
+ * reads. Every number is a product decision about how strongly a stated preference leans, never fitted (D-041), and every
+ * lean it makes is named. A dimension inside `band` (the D-036 lean thresholds, 40 to 60) leans on nothing; outside it the
+ * lean grows linearly from the band's edge to its limit at 0 or 100.
+ *
+ *   window               the discount our view applies: the neutral 5% inside the band; `winNowRate` at 100 (a club
+ *                        maximizing current wins counts later seasons less); `futureRate` at 0 (a club building for the
+ *                        future counts them as much as this one). This season's remaining part always weighs 1.
+ *   risk                 how far our view reads each season from its centre toward its low edge: `lowEdgeShare` of the way
+ *                        at 0 (floor and certainty). At or above the band it reads the centre, as neutral: the lens never
+ *                        reads above the centre or below the low edge (Part 6).
+ *   teamControl          the extra (or lesser) weight on the seasons the club controls at its option (`controlled`):
+ *                        1 ± `weight` at 100 and 0.
+ *   costEfficiency       the weight on his cost against his production, in both views: 1 ± `weight`.
+ *   payrollFlexibility   the weight on guaranteed salary in later seasons, in the contract view only (in the retention
+ *                        margin that money is owed either way and cancels, so no philosophy may bring it back): 1 ± `weight`.
+ *   aging                the age from which a season is read as an aging season for the aging-contracts note (words only).
+ */
+export const LENS_POLICY = {
+  band: { low: 40, high: 60 },
+  window: { winNowRate: 0.15, futureRate: 0 },
+  risk: { lowEdgeShare: 0.5 },
+  teamControl: { weight: 0.2, controlled: ['pre_arbitration', 'arbitration', 'reserve_clause', 'club_option'] },
+  costEfficiency: { weight: 0.2 },
+  payrollFlexibility: { weight: 0.2 },
+  aging: { age: 33 },
+} as const;
+
+export const LENS_POLICY_CALIBRATION: CalibrationStamp = policy(
+  'Phase 5b (PLAYER_VALUE.md Part 6): how far each philosophy dimension leans "our view" on the neutral valuation. Inside 40 to 60 ' +
+    '(the D-036 lean thresholds) a dimension leans on nothing; beyond it the lean grows to its limit at 0 or 100: the competitive ' +
+    'window discounts from 0% (building) to 15% (win-now) against the neutral 5%; risk tolerance reads up to half way from the centre ' +
+    'to the low edge, never above the centre; team control, cost efficiency and payroll flexibility weigh their part by up to 20% ' +
+    'either way; an aging season is one at 33 or older (words only). Chosen and stated, never fitted; every lean is shown with the ' +
+    'neutral figure it started from.'
+);
+
+/** POLICY (phase 5b, Part 4.5). The club's win curve is shown from `fewer` wins fewer to `more` wins more over the rest of the season. */
+export const WIN_VALUE_POLICY = {
+  curve: { fewer: 3, more: 5 },
+} as const;
+
+export const WIN_VALUE_POLICY_CALIBRATION: CalibrationStamp = policy(
+  "Phase 5b: the club's win curve is shown from three wins fewer to five more over the rest of the season; a display choice."
+);
+
+/**
+ * PROVISIONAL (phase 5b, Part 4.5). The club's value of a win is read on the deadline read's odds model (`posture.ts`):
+ * talent from this season's runs (Pythagorean, exponent 1.83), the rival for the place a .520 club, the gap in games to
+ * the place from the standings (`playoffs.ts`), the difference over the games left read as normal. None of it is fitted
+ * on the save; it is in playoff odds, never dollars, until the save can link odds to revenue (Q-6).
+ */
+export const WIN_CURVE_CALIBRATION: CalibrationStamp = provisional(
+  "The deadline read's odds model, not fitted on the save: talent from this season's run differential, the rival a .520 club, the " +
+    'gap from the standings, the games left read as a normal difference. In playoff odds only (Q-6).'
+);

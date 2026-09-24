@@ -6,6 +6,7 @@ import { AssignmentBlock } from './AssignmentContext';
 import { RightsBlock } from './PlayerRights';
 import { ProductionConeSection } from './ProductionCone';
 import { ValueSection } from './ValueSection';
+import { Tip } from './Tip';
 import { formatRatingPair, ratingFraction } from './ratingScale';
 
 // Tiny pub/sub so any table cell can open the player card without prop drilling
@@ -26,15 +27,8 @@ export function PlayerLink({ id, children }: { id: number; children: ReactNode }
   );
 }
 
-/** Hoverable explainer — dotted underline with a styled popup. */
-export function Tip({ label, tip }: { label: ReactNode; tip: string }) {
-  return (
-    <span className="tip">
-      {label}
-      <span className="tip-pop">{tip}</span>
-    </span>
-  );
-}
+/** Hoverable explainer — dotted underline with a styled popup (its own module, so the card's sections can use it too). */
+export { Tip };
 
 export const TIP_OA =
   "OOTP's own Overall and Potential, on the 20-80 scouting scale — the same numbers printed on the " +

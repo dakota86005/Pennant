@@ -40,6 +40,13 @@ export interface PlayoffPicture {
    * how likely they were to stay there got the same answer for both.
    */
   cushion: number | null;
+  /**
+   * Games clear of the first club that would leave him outside the playoff field altogether: for a division leader in a
+   * league with wild cards, the larger of his division lead and his lead over the first club outside the field (a leader
+   * who is caught still has the wild-card route); for a wild-card holder, his wild-card cushion; with no wild cards, the
+   * division lead. Null when not in a place. The playoff odds read this, not the division lead (supervisor, 2026-09-24).
+   */
+  playoffCushion: number | null;
   /** OOTP's own number, when it has published one. */
   magicNumber: number | null;
   /** Said in a line, so the page does not have to assemble the wording. */
@@ -108,7 +115,9 @@ export function playoffPicture(teamId: number): PlayoffPicture | null {
   const divisionCushion = (): number | null => {
     const rivals = rows.filter((r) => r.division_id === mine.division_id && r.team_id !== teamId);
     if (rivals.length === 0) return null;
-    const nearest = rivals.reduce((a, b) => (gamesBack(a, b) <= 0 ? a : b));
+    // The rival furthest up the division: keep `a` while it is level with or ahead of `b` (it had kept the
+    // club furthest behind, so a leader read as clear of its last-placed rival, not of the club that would take the place)
+    const nearest = rivals.reduce((a, b) => (gamesBack(a, b) >= 0 ? a : b));
     return gamesBack(mine, nearest);
   };
 
@@ -120,6 +129,7 @@ export function playoffPicture(teamId: number): PlayoffPicture | null {
       wildcardGb: null,
       wildcardRank: null,
       cushion: leadsDivision ? divisionCushion() : null,
+      playoffCushion: leadsDivision ? divisionCushion() : null,
       magicNumber,
       summary: leadsDivision
         ? 'Leading the division.'
@@ -132,13 +142,18 @@ export function playoffPicture(teamId: number): PlayoffPicture | null {
   const rank = queue.findIndex((r) => r.team_id === teamId);
 
   if (leadsDivision) {
+    const division = divisionCushion();
+    // Caught by his division rival he drops into the wild-card queue, and is out only behind the first club outside the field
+    const outside = queue[spots];
+    const field = outside ? gamesBack(mine, outside) : null;
     return {
       spots,
       route: 'division',
       divisionGb,
       wildcardGb: null,
       wildcardRank: null,
-      cushion: divisionCushion(),
+      cushion: division,
+      playoffCushion: division === null ? field : field === null ? division : Math.max(division, field),
       magicNumber,
       summary: magicNumber
         ? `Leading the division — magic number ${magicNumber}.`
@@ -185,6 +200,7 @@ export function playoffPicture(teamId: number): PlayoffPicture | null {
     wildcardGb,
     wildcardRank: rank >= 0 ? rank + 1 : null,
     cushion: inAPlace && wildcardGb !== null ? -wildcardGb : null,
+    playoffCushion: inAPlace && wildcardGb !== null ? -wildcardGb : null,
     magicNumber,
     summary,
   };

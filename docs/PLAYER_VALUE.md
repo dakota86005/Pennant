@@ -7,8 +7,8 @@ reality and surplus value. Decision: [D-052](DECISIONS.md) (accepted; owner answ
 **Status: phases 1 to 4b built (contract facts and control; Club Finances, the opening price of a win and the
 per-import market snapshot; expected production in wins from major-league results and scouted ratings, fitted per save
 under D-053; the cost of controlled seasons, measured on each import; the measured price of a win across imports; the
-neutral contract surplus and the retention margin, phase 5a, Part 9); phase 5b (the philosophy lens and the club's value
-of a win) and phase 6 are design.** `PROJECT_STATE.md` says
+neutral contract surplus and the retention margin, phase 5a; the philosophy lens and the club's value of a win, phase 5b,
+Part 9); phase 6 is design.** `PROJECT_STATE.md` says
 what exists; this file says what is to be built and why. Every surface that reports value still reads the prohibited
 `players_value` fields for its value figures (Part 8), and they stay as they are until the phase that replaces each
 one; since phase 1 their control and contract facts come from Player Value.
@@ -911,6 +911,37 @@ fitted yet. Until it can, the club's marginal value of a win is stated in odds, 
 invented curve. Philosophy's competitive window is a *different* thing, an identity: it can lean through the lens
 and never replaces this fact (D-036 keeps window and season apart for the same reason).
 
+**As built (phase 5b, 2026-09-24).** `playerValueWinValue.ts` (pure, `winValueOf`) reads the deadline read's odds model as
+the entry point hands it over (`clubWinValue(teamId)`); `posture.ts` now exports the model it always used (`oddsModelOf`,
+`oddsAt`, `shownOdds`, `RIVAL_TALENT`), and the deadline read is computed from it unchanged. The model: talent from this
+season's runs (Pythagorean, exponent 1.83), the club holding (or chasing) the place read as a .520 club, the gap in games
+from the standings (`playoffs.ts`), the difference over the games left read as normal. **One more win** is a loss turned
+into a win: the gap to the place closes by a game, or a cushion grows by one. The answer is the odds now (as the deadline
+read shows them, within 1%–99%), the value of one more win in points of playoff odds (read on the model itself, before those
+display bounds), and the curve from three wins fewer to five more over the rest of the season (`WIN_VALUE_POLICY`), stamped
+provisional (`WIN_CURVE_CALIBRATION`), with its basis in words. **Unknown stays unknown:** before a game is played, without
+standings, or where the club is not in its conference's standings, it is unknown with the reason, never the deadline
+read's own default of a level race; with no games left a win can no longer be added (`no_games_left`); where the place is
+beyond reach by the model's arithmetic (a cushion or a gap larger than the games left, both clubs with this club's games
+left), or nobody is outside the club's place, a win moves nothing (`decided`, 0). A division leader is read against its
+own division only: the wild card, a second way in, is not in the model, and the basis says its odds read low. It is served
+on Club Finances (`/api/club-finances/:orgId`, Payroll's line under the price of a win) and with our view
+(`/api/player-value/:playerId/our-view`, for the viewing organization), in playoff odds only, and it enters neither the
+neutral surplus nor our view (`playerValueBoundary.test.ts`). It is the same for every organization that reads it.
+
+**The odds model's cushion, corrected.** Building it found that `playoffPicture` measured a division leader's cushion
+against the club at the BOTTOM of its division (its reduce kept the club furthest behind), so every leader read as far
+clearer than it was. Arizona, 26–17 and level with San Francisco, read as 7 games clear (of Colorado) and 86% to reach the
+postseason; it is 0 games clear. Fixed in `playoffs.ts` (`tests/playoffs.test.ts`), so the deadline read, the
+dashboard and MLB Operations' season read see the corrected cushion too. Read against its division alone that gave 57%;
+with the leader's wild-card route (the owner's answer, below) the odds read the lead over the first club outside the field,
+4 games, and Arizona is 75%.
+
+On the Arizona import (2026-05-16, 119 games left), the value of one more win now, in points of playoff odds (odds now in
+brackets): Arizona **+3.89** (75%); tight races: the Dodgers +5.15 (41%), St. Louis +5.15 (54%), Atlanta +5.14 (41%), the
+Angels +5.12 (55%); comfortable: Pittsburgh +1.28 (95%), Detroit +1.55 (93%), San Francisco +1.65 (93%); far out:
+Cincinnati +0.08, Washington +0.03 and Miami under 0.01 (each 1% as shown). No club's place is decided in May.
+
 ---
 
 ## Part 5 — Surplus, and why sunk money never argues for keeping a player
@@ -1035,6 +1066,63 @@ flexibility); and word emphasis for aging contracts, extensions, rentals and sal
 unseen. Every lean is a named reason (dimension, value, what it did), the `ShadeReason` pattern of D-036. "Our view"
 always states the neutral figure it started from.
 
+### 6.1 As built (phase 5b, 2026-09-24)
+
+`playerValueLens.ts` (pure, `ourViewOf`) is the one Player Value module that names philosophy. It is handed a neutral
+valuation (5a's surplus with its seasons and components, exactly as every read serves it) and the organization's
+philosophy (`LensPhilosophy`: each dimension's effective value and the policies), and returns `OurView` beside the neutral
+one. It imports `philosophy.ts` for the dimensions and the default policies only, never the settings that store a
+philosophy; it reaches no production, cost, fit, table, rating, protection tier, defensibility or club value of a win
+(boundary test). The route `/api/player-value/:playerId/our-view` (`server/ourViewRoutes.ts`, a consumer outside the
+neutral path) resolves whose view it is (the organization the page names, else the configured default, else the club the
+save is played as), reads that organization's philosophy from settings at read time and hands it to the lens; a
+philosophy edit invalidates nothing and recomputes nothing.
+
+| Read | What it does in our view | Policy (`LENS_POLICY`, stamped `LENS_POLICY_CALIBRATION`) |
+|---|---|---|
+| Every dimension | Inside 40–60 (D-036's lean thresholds) it leans on nothing; beyond, the lean grows linearly from the band's edge to its limit at 0 or 100 | `band` |
+| `competitiveWindow` | Our discount instead of the neutral 5%: toward 15% a season at 100 (a win-now club counts later seasons less), toward 0% at 0 (a club building counts them as much as this one). This season's remaining part weighs 1 either way | `window` |
+| `riskTolerance` | Reads each season's range from its centre toward its low edge, up to half way at 0. At or above the band it reads the centre, as neutral: never above the centre, never below the low edge (Part 6) | `risk` |
+| `teamControl` | The seasons the club controls at its option (pre-arbitration, arbitration, the reserve clause, a club option, or a season Player Rights leaves between those only) weigh 1 ± 0.2 | `teamControl` |
+| `costEfficiency` | His cost weighs 1 ± 0.2 against his production, in both views (in the retention margin, only the costs that exist if he is kept) | `costEfficiency` |
+| `payrollFlexibility` | Guaranteed salary in later seasons weighs 1 ± 0.2, **in the contract view only**: in the retention margin that money is owed whatever the club does and cancels, and no philosophy brings sunk money back | `payrollFlexibility` |
+| `agingContracts`, `arbitrationExtensions`, `rentalAcquisitions`, `salaryDumps` | Words only: a note names the policy and the seasons or facts it points at (seasons at 33 or older; arbitration seasons; a player another club holds whose control ends with this season; a contract below zero with guaranteed salary still to come). No number moves, and the default policy says nothing | `aging` |
+
+The rules, each in the answer's basis:
+
+- **The neutral figure is never changed.** Our view restates each neutral total it started from (`neutral`) beside its own
+  (`ours`); the valuation handed in is untouched (a property test over hundreds of random philosophies deep-freezes it).
+  A philosophy with every dimension inside the band and the default policies leans on nothing: our view is the neutral
+  view exactly (the served figures, not a recomputation), with no lean and no note. On this save the owner's configured
+  philosophy is exactly that (every dimension 50, the default policies), so our view is the neutral view for every player.
+- **Every difference is named.** Each lean is a `LensLean` (the dimension, its value, a few plain words for the card, a
+  sentence with its numbers, the seasons it touched) with **by how much** it moved our central reading in each view. The
+  leans are applied in a stated order (cost efficiency, payroll flexibility, risk tolerance, competitive window, team
+  control) and each amount is its step after the ones before, so the amounts add up to the difference. A dimension read but
+  not leaning says why (inside the band; no season it applies to; it made no difference). `read` lists all nine.
+- **Bands and centrals.** A cost weight on a season with a single central moves the band's edges and the central exactly
+  (the edge that made each edge); where a season has no single cost reading (between statuses, several ways) the
+  adjustment is a range taken edge against edge, only ever wider. Risk tolerance moves the reading, never the band. Our view
+  has its own band (the season bands under our weights), never the neutral one changed.
+- **Unknown stays unknown.** A total unknown in the neutral view is unknown in ours with the same reason; where the neutral
+  view gives the leading run of known seasons apart, ours does too, leaned.
+- **The club's value of a win is not read.** It is served beside our view as context (4.5); Part 6 forbids reading it as
+  identity, and no lean uses it (an owner question, Part 9).
+
+**Worked on the Arizona import** under three philosophies: the owner's configured one (every dimension 50, the default
+policies: no lean for any player); a win-now philosophy (window 90, risk 70, payroll flexibility 30, cost efficiency 35,
+team control 45; aging contracts willing, rentals aggressive); and a rebuild (window 10, risk 20, payroll flexibility 85,
+cost efficiency 80, team control 85; aging contracts avoid, extensions prefer, salary dumps willing). Contract value and
+the value of keeping him, most likely (or the range of readings), neutral then ours:
+
+| Player | Neutral (= owner's) | Win-now | Rebuild | The leans |
+|---|---|---|---|---|
+| Corbin Carroll | $37.1M–$59.0M; keeping him $139.9M–$161.8M | $43.7M–$59.6M; $122.7M–$138.6M | −$16.1M–$8.4M; $116.7M–$141.1M | Win-now: window 12.5% a season (2031 weighs 0.55 against 0.78), payroll flexibility 30 (+$3.6M, contract only), cost efficiency 35. Rebuild: risk (−$23.3M), cost efficiency (−$10.3M), payroll flexibility (−$10.1M), window 1.25%, the 2031 club option weighed 12.5% more |
+| Gunnar Henderson | $65.0M–$80.9M; $87.1M | $61.0M–$74.5M; $80.2M | $38.4M–$53.9M; $59.6M | Rebuild: risk −$26.1M to −$30.7M; team control +$4.0M on 2027–2028 (arbitration; 2029, which may be free agency, is not weighed); note: extensions preferred, arbitration seasons 2027–2029 |
+| Mike Trout | −$129.2M; $29.3M | −$102.5M; $27.1M | −$184.7M; $23.0M | Win-now: window +$16.4M (later guaranteed seasons count less), payroll flexibility +$6.4M; note: aging contracts willing, 2026–2030 at 34–38. Rebuild: payroll flexibility −$18.1M and cost efficiency −$15.8M in the contract value, **the value of keeping him moved only by risk (−$7.3M) and the window**: his guarantee is owed either way; notes: aging contracts avoided, salary still owed 2027–2030 |
+| Zac Gallen | −$2.0M; $11.5M | −$1.7M; $11.5M | −$6.1M; $8.8M | Only the rest of 2026 counts, so the window has no later season to weigh (said) |
+| Nick Kurtz | $170.5M–$198.0M; $193.4M–$198.6M | $149.4M–$170.5M; $166.1M–$170.8M | $145.7M–$174.0M; $167.7M–$173.3M | Win-now: window −$21.5M to −$29.0M. Rebuild: risk −$42.1M to −$50.0M, team control +$15.2M (2027–2030), window +$8.0M to +$12.1M |
+
 ---
 
 ## Part 7 — Compute and caching
@@ -1046,7 +1134,11 @@ always states the neutral figure it started from.
   `takeSnapshot` in `api.ts` `runImport`).
 - **A disposable derived store keyed by the import** (save name, game date, import finish time). It is dropped
   where `clearValuationCaches()` is called today and can be deleted at any time without loss. It is not `history.db`.
-- **The philosophy lens at read time**, so a philosophy edit never recomputes anything.
+- **The philosophy lens at read time**, so a philosophy edit never recomputes anything. As built (phase 5b): the lens
+  takes the neutral valuation every read serves and the organization's philosophy, reads no table, and costs 248 ms for
+  all 12,575 valuations of the league (about 20 µs each); the card's `our-view` route computes the same per-request
+  valuation the `surplus` route does and applies the lens (4.37 s for 40 players over HTTP, about 110 ms each, the
+  valuation's time). The club's value of a win reads the standings once per request. No store.
 - **Market figures snapshotted per import into `history.db`** (D-009): the price of a win (band and basis),
   replacement level, league regime, league payroll, the observed signings counted, and since phase 4a the cost ladder
   (the renewal spread and the arbitration ladder, in `basis_json.costs`; optional on read: a key first written before
@@ -1232,6 +1324,20 @@ wins only it says dollars are unknown and why and shows his wins over a replacem
 are untouched until phase 6, and no other consumer (Contracts, the Trade Center, Free Agents, Org Comparison) is
 migrated. A static site export does not carry the route, so its cards omit the section.
 
+**The Value section in plain words, our view and the club's value of a win (phase 5b, 2026-09-24).** The owner asked for
+plain words with the explanation on hover (the `Tip` component, keyboard-reachable on the card): "Contract value" (the
+API's contract surplus: "What he's worth beyond what he's paid") and "Value of keeping him" (the retention margin: "What
+you'd give up by letting him go"), each "Most likely $X" (or "$X to $Y depending on the 2031 option") and "could be $A to
+$B (2026–2030)", "if kept" for a season counted only if he is held, one short sentence where it is not valued ("Not valued
+yet: his pay for 2026–2029 isn't known, and his production is only projected through 2029"), the reasons in the
+"Season-by-season breakdown" whose headers each carry a hover, and what the figures rest on in plain sentences (the API's
+precise basis stays in the API). Below the two figures, **our view** under the selected organization's philosophy ("Contract
+value: $21.5M (neutral $28.0M)", then each lean as a short phrase with its amount and its sentence on hover, or "doesn't lean
+on him"), and **this club's value of a win** as context ("A win right now moves the Arizona Diamondbacks' playoff odds by
+about 3.9 points (now 75%)", on hover: context from the standings, not part of the value). Payroll shows the same line under
+the price of a win. No old term ("central", "retention margin", "edge against edge") is in the section's visible text
+(`valueSection.test.ts`).
+
 **Consumers read the timeline as it is (hardening F2, 2026-09-23).** `controlAfterThisSeason` reports an option or
 opt-out next season as `option`, with whose decision it is and where he falls if it is declined, never "signed";
 "extended" only when next season is the extension's; a player whose control ends this season is leaving. The AI
@@ -1258,7 +1364,7 @@ cards are Club Finances' figures, a missing one "unknown", never $0.
 | **4a** The cost of controlled seasons — **done** (2026-09-23; evidence below, 2.2, 4.4, CALIBRATION.md section 8) | The pre-arbitration renewal band and the arbitration ladder measured on each import from the save's own contracts (status and class from Player Rights), priced into every controlled season with the platform seasons' production and the price of a win; the provisional prior below the policy minimum where the regime is MLB's; the ladder in the market snapshot. Payroll, Contracts and the card show the bands | Every pre-arbitration, arbitration and open season is priced or says why. An arbitration season is never assumed to cost the minimum and is never a point (review: every priced band has a central, a thin class no line of its own); a league without arbitration never gets MLB's ladder; thinner evidence never narrows; committed payroll never includes a projected salary |
 | **4b** Measured price and observed awards — **done** (2026-09-23; evidence below, 4.2 to 4.4, CALIBRATION.md section 9) | Observed signings and arbitration awards across imports. The measured price replaces the opening one once its band is narrower (Q-4). Observed awards test and then measure the ladder; reserve-clause renewals are measured. Replacement is measured from freely available talent | On an off-season import, signings and awards are identified and counted. While the measured band is still wider, the opening price stays and says why. The price history is visible |
 | **5a** Neutral surplus and the retention margin — **done** (2026-09-24; evidence below and 5.1) | Concern 5: Part 5's two views, season by season with every component, the owner's 5% discount, one level of replacement on both sides; the card's Value section; the invariants for the card and the league-wide read | The surplus and invariant behavior cases pass; sunk money never raises the retention margin on any player of the save; one valuation whichever read asks; the boundary test passes |
-| **5b** The lens and the win curve | Part 6's lens, Part 4.5's club value of a win | The lens cases pass. Neutral value is identical under every philosophy. Every lean is named |
+| **5b** The lens and the win curve — **done** (2026-09-24; evidence below, 4.5 and 6.1) | Part 6's lens, Part 4.5's club value of a win | The lens cases pass. Neutral value is identical under every philosophy. Every lean is named |
 | **6** Consumer migration | Part 8, in order, one consumer per change | Each change deletes that consumer's `players_value` reads. Finally, the `players_value` allow-list is empty |
 
 **Phase 1 exit criteria, as met.** Every active player has a control timeline (8,009 laid out, 4,566 unsigned with
@@ -1369,6 +1475,46 @@ unexported buyout is read from nothing to the option's salary; a minor-league de
 margin (whether it is owed is not established); the 40-man spot is the export's flag, with Player Rights' roster rights
 named as where its consequences are read; his wins over a replacement's are discounted like the dollars; the rest of this
 season is read at production's share of the league's games.
+
+**Phase 5b exit criteria, as met (2026-09-24).** The behavior cases (BEHAVIOR_CASES.md "Player Value", phase 5b) are in
+`playerValueLens.test.ts` (17: the neutral valuation identical and untouched under 150 random philosophies for each of eight
+kinds of valuation; our view restating the neutral figure; the neutral band leaning on nothing; every difference named with
+amounts that add up; one dimension at a time; why a dimension does not lean; each lean's reach; sunk salary never favouring
+keeping a player in our view; unknowns; the policies as words; no verdict; nothing recomputed), `playerValueWinValue.test.ts`
+(8: far out, a tight race and a place beyond reach; the curve; odds not dollars with its basis; no philosophy; before a game,
+no standings, no games left, the race not established), `playoffs.test.ts` (1, the leader's cushion),
+`playerValueFinances.test.ts` (the phase-2 `it.todo` built: Club Finances serves the club's value of a win),
+`valueSection.test.ts` (10, the card in plain words, our view, the club's value of a win) and `playerValueBoundary.test.ts`
+(the lens the one value module that names philosophy, never the settings; the win value pure; only the reader reads the odds
+model; neither the surplus nor the lens reads it; the neutral pass never calls either; the new stamps). Each was run before
+the code and failed for the reason expected (`ourViewOf is not a function`, `clubWinValue is not a function`, the cushion 10
+where 5 was expected, no `playerValueLens.ts`, the module list and the stamps, "Contract surplus" where "Contract value" was
+expected). **Neutral value is identical under every philosophy** and **every lean is named**: the regression sweep checks
+both on every valuation of the save under three random philosophies each. It passes 180 of 180 checks
+(5a's 156, unchanged, and 24 for 5b: the default philosophy leaning on nothing for every valuation; the neutral
+valuation unchanged; our view restating the served figure; unknown with the same reason; every difference named; the
+amounts adding up; our reading inside our band; finite; every lean a read dimension with its value; notes moving nothing;
+no verdict words; payroll flexibility never touching the value of keeping him; the guarantee doubled never changing our
+value of keeping him; every club's value of a win known or with its reason, in odds, between 0 and 1, its curve never
+falling, its first step the value per win, the same on a second read; every division leader's cushion to its nearest rival;
+the route serving the lens under the configured philosophy with the managed club resolved and the club's value of a win).
+
+Judgments made in phase 5b beyond the brief: the lens leans only outside D-036's 40–60 band, linearly to its limit (a
+philosophy of 51 leans on nothing); the steps are sequential so their amounts add up; a season between pre-arbitration and
+arbitration counts as controlled, one that may be free agency does not; payroll flexibility is the weight on guaranteed
+salary in later seasons only (this season's is largely sunk); the win curve is read on the model before the deadline read's
+display bounds, and the deadline read's own defaults (a level race where the club is not in its conference's standings, a
+one-game cushion where nobody is outside its place) are unknown or decided here, never a number; the club named in "our
+view" and in the club's value of a win is the viewing organization's (the one selected in the app), not the player's.
+
+**Phase 5b owner answers (2026-09-24).** (1) The club's value of a win stays context only: no lean reads it until odds
+link to revenue (Q-6). (2) The lens weights (`LENS_POLICY`: the 40–60 band, 0%–15% against 5%, half way to the low edge,
+±20%, aging from 33) are approved as policy; they are shown with every lean and change by decision. (3) The odds model
+gives a division leader his wild-card route: the playoff odds read `playoffPicture`'s `playoffCushion` (a leader's lead
+over the first club outside the field, or his division lead if larger), so a caught leader still has the wild card
+(Arizona, level with San Francisco: 75%, where the division-only reading gave 57% and the old last-place cushion 86%). A
+richer odds model (roster-based team strength from Player Value's projections, the schedule, every rival, simulated
+seasons) is on the roadmap. (4) A club accepting variance leans on nothing (Part 6 forbids reading above the centre).
 
 **Phase 4 owner decisions (2026-09-24).** The owner ruled on the four open questions of the phase 4a and 4b
 reviews (Part 12); the behavior cases are the "phase 4 owner decisions" row, each written first and failing on
@@ -1619,7 +1765,9 @@ numeric constant. Phase 3a adds `PRODUCTION_POLICY` (policy) and `PRODUCTION_PRI
 4b adds `SIGNINGS_POLICY` (policy) and the label `MEASURED_PRICE_LABEL`; the numbers it serves are measured across the
 save's imports. The owner's decisions of 2026-09-24 add `COST_COMBINATION_POLICY` (policy), `SIGNINGS_POLICY.priceUnit` and
 `.retention` (policy), and Player Rights' `ARBITRATION_NO_CUT_CALIBRATION` (policy, owner-attested). Phase 5a adds
-`SURPLUS_POLICY` (policy, stamped `SURPLUS_POLICY_CALIBRATION`): the owner's 5% discount and how the surplus is read.
+`SURPLUS_POLICY` (policy, stamped `SURPLUS_POLICY_CALIBRATION`): the owner's 5% discount and how the surplus is read. Phase
+5b adds `LENS_POLICY` (policy, stamped `LENS_POLICY_CALIBRATION`), `WIN_VALUE_POLICY` (policy) and `WIN_CURVE_CALIBRATION`
+(provisional: the deadline read's odds model, whose one number, the .520 rival, is `posture.ts`'s `RIVAL_TALENT`).
 
 | Constant | Stamp | Basis |
 |---|---|---|
@@ -1659,7 +1807,7 @@ save's imports. The owner's decisions of 2026-09-24 add `COST_COMBINATION_POLICY
 | Super Two share (22%), prior-season days (86), MLB's regime (6 / 3 / 172) | **policy** | The game's rule as the owner attested it (2026-09-22; CBA Art. VI(E)(1)(b)). `SUPER_TWO_SHARE`, `SUPER_TWO_PRIOR_SEASON_DAYS`, `MLB_CONTRACT_REGIME` in `playerRights.ts`, stamped `SUPER_TWO_CALIBRATION`. Not fitted and not provisional: changed only by the owner's decision. The regime is compared against, never assumed |
 | Super Two cutoff | **none: computed** | From the export's own class each winter, as a range across the projection readings |
 | Which clause columns are "not populated" | **none: read** | A clause column that is 0 on every contract in the export is unknown, not "none" (R-6); measured per import |
-| Discount rate | **policy** | **5% a season** (owner, 2026-09-24; `SURPLUS_POLICY.discountRate`, stamped `SURPLUS_POLICY_CALIBRATION`): a time preference, one stated rate in the neutral view; a season *s* seasons out weighs 1/1.05^*s*, this season's remaining part 1. `competitiveWindow` leans on it only in "our view" (Q-3, phase 5b). No backtest can call it optimal |
+| Discount rate | **policy** | **5% a season** (owner, 2026-09-24; `SURPLUS_POLICY.discountRate`, stamped `SURPLUS_POLICY_CALIBRATION`): a time preference, one stated rate in the neutral view; a season *s* seasons out weighs 1/1.05^*s*, this season's remaining part 1. `competitiveWindow` leans on it only in "our view" (Q-3; as built in 5b, from 0% to 15%, `LENS_POLICY.window`). No backtest can call it optimal |
 | The price of a win in later seasons | **policy** | Held flat at the price in force (owner, 2026-09-24; `SURPLUS_POLICY.price`): no salary inflation is assumed unless the save's own measured price history later shows drift |
 | How the rest of this season counts | **policy** | Its part still to be played: production's rest-of-season band, and the same share (the league's games not yet played) of his salary and of a replacement's minimum; banked wins and paid salary sunk, shown and never counted (`SURPLUS_POLICY.restOfSeason`) |
 | Money owed whatever the club does | **policy** | A major-league contract's salary for each season it covers, the current deal or a signed extension (`SURPLUS_POLICY.guaranteed`); it cancels in the retention margin. A minor-league deal's is not established |
@@ -1697,8 +1845,9 @@ save's imports. The owner's decisions of 2026-09-24 add `COST_COMBINATION_POLICY
 | Widening outside the organization | **none** | Not applied: one rating row per player makes it unmeasurable (R-9, Q-2) |
 | Personality bands (low / normal / high) | **policy** | The central mass at 80–120 on a 1–200 scale (R-8). No claim about OOTP's bands |
 | Personality effects on price (greed, loyalty, play-for-winner) | **none until measured** | Shown as facts. They move no number until observed signings show their effect; phase 4b records the signings but does not yet read personality against them |
-| Win curve (playoff odds per win) | **provisional** | `posture.ts` / `playoffs.ts` odds |
-| Lens weights | **policy** | Each shown as a named lean |
+| Win curve (playoff odds per win) | **provisional** | The deadline read's odds model (`posture.ts` `oddsModelOf` / `oddsAt`, `playoffs.ts`): Pythagorean talent from this season's runs, the rival for the place a .520 club (`RIVAL_TALENT`), the difference over the games left read as normal. Not fitted on the save; in playoff odds only (Q-6). `WIN_CURVE_CALIBRATION` (phase 5b) |
+| The win curve's extent | **policy** | Three wins fewer to five more over the rest of the season (`WIN_VALUE_POLICY`, phase 5b); a display choice |
+| Lens weights | **policy** | `LENS_POLICY`, stamped `LENS_POLICY_CALIBRATION` (phase 5b, 6.1): no lean inside 40–60 (D-036's thresholds), linear to the limit at 0 or 100; the window's discount 0% to 15% against the neutral 5%; risk tolerance up to half way from the centre to the low edge; team control, cost efficiency and payroll flexibility ±20%; an aging season at 33 or older (words only). Each shown as a named lean with its amount |
 
 The mechanisms (bands only widen with thinner evidence, the lens after the neutral value, sunk money cancels, unknown
 is never a default) are architecture and carry no stamp: tests pin them.
@@ -1716,14 +1865,16 @@ The owner answered these on 2026-09-22. Each answer is folded into the part it n
   asymmetry, and an unmeasured widening would be an invented constant (2.3, Part 11).
 - **Q-3 Discount and horizon.** The horizon runs to the end of control, capped at 7 seasons. The neutral view uses
   one stated policy rate, set in phase 5. `competitiveWindow` changes only "our view" (Part 11). *Set by the owner on
-  2026-09-24 (below): 5% a season.*
+  2026-09-24 (below): 5% a season. Applied in phase 5b: the window changes our view's discount only (6.1), never the
+  neutral one.*
 - **Q-4 Measured price.** It replaces the opening price when its band is narrower than the opening band, not after
   a fixed count of signings (4.2). *Phase 4b review (2026-09-24):* the wording is unchanged; the comparison is made like
   for like, only once the measured bases hold the realized reading (the opening's unit) and cover the winter's
   free-agent class, both tightenings. Decided by the owner on 2026-09-24 (below): the price in force is per win
   produced, and the contract history is kept at the winters.
 - **Q-5 Minor-league $0.** Read as `unknown`, never a cost of zero (2.1).
-- **Q-6 Club value of a win.** In playoff-odds units until the save links odds to revenue (4.5).
+- **Q-6 Club value of a win.** In playoff-odds units until the save links odds to revenue (4.5). *Built in phase 5b:
+  points of playoff odds per win and the curve, never dollars, never in the value (4.5).*
 - **Q-7 Personality.** Shown as known fact. It moves no cost band until its effect is observed (Part 11).
 - **Q-8 Trade Center difference.** Allowed as a band with its components, never a point, a single score or a
   verdict (Part 8).

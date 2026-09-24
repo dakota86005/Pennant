@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { apiGet, apiPut, type SeasonCostData } from '../api';
+import { apiGet, apiPut, type ClubWinValue, type SeasonCostData } from '../api';
+import { ClubWinValueLine } from '../ValueSection';
 import { COST_BAND_WORDS, costBandText, costMoney } from '../costBand';
 import { PlayerLink, Tip } from '../playerModal';
 import { Sparkline } from '../Chart';
@@ -79,6 +80,8 @@ interface ClubFinancesData {
   };
   /** Phase 4b: the price of a win across the save's imports. */
   priceHistory?: PriceHistoryEntry[];
+  /** Phase 5b: this club's value of a win now, in playoff odds: context beside the league's price, never in any figure. */
+  winValue?: ClubWinValue;
 }
 /** Which price of a win is in force and why (phase 4b), as Club Finances serves it. */
 interface PriceAdoptionData {
@@ -435,6 +438,7 @@ export function Payroll({ orgId }: { orgId: number }) {
         </div>
       )}
       {price && <PriceOfWinLine price={price} history={finance?.priceHistory} timeline={finance?.league.observed?.timeline?.text ?? null} retention={finance?.league.observed?.retention?.text ?? null} />}
+      {finance?.winValue && <ClubWinValueLine value={finance.winValue} />}
       {finance?.league.costs && <CostLadderLine costs={finance.league.costs} observed={finance.league.observed} />}
 
       <section>

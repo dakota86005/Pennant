@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { tableExists } from './db.js';
-import { clubFinances, leagueFinances, marketLeagueOfClub } from './playerValue.js';
+import { clubFinances, clubWinValue, leagueFinances, marketLeagueOfClub } from './playerValue.js';
 import { marketSnapshotHistory, priceHistory, priceHistoryReport } from './playerValueSnapshot.js';
 
 /**
@@ -26,6 +26,8 @@ clubFinanceRoutes.get('/club-finances/:orgId', (req, res) => {
     history: marketSnapshotHistory(marketId),
     // Phase 4b: the price of a win across imports (opening, measured, which was in force)
     priceHistory: priceHistory(marketId),
+    // Phase 5b: this club's value of a win now (Part 4.5), in playoff odds, beside the league's price of a win; never in any value
+    winValue: clubWinValue(orgId),
   });
 });
 

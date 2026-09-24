@@ -243,7 +243,18 @@ const ALLOWED_IMPORTS = new Set([
   './playerValueFinances.js', './playerValueHistory.js', './playerValueProduction.js', './playerValueProductionFit.js',
   './playerValueFitStore.js', './injuryProneness.js', './playerValueRatings.js', './playerValueRatingsFit.js', './playerValueCone.js',
   './playerValueCost.js', './playerValueSignings.js', './playerValueContractStore.js', './playerValueSurplus.js',
+  './playerValueLens.js', './playerValueWinValue.js',
 ]);
+
+/**
+ * Phase 5b: the lens is the one value module that may name philosophy (PLAYER_VALUE.md Part 6, D-052): it is handed the
+ * organization's philosophy at read time and imports `philosophy.ts` for its dimensions and default policies only, never
+ * the settings that store it. The neutral path names none.
+ */
+const LENS = 'playerValueLens.ts';
+/** Phase 5b: the club's value of a win reads the deadline read's odds model; only the reader asks it (Part 4.5). */
+const WIN_VALUE = 'playerValueWinValue.ts';
+const ODDS_READER = 'playerValue.ts';
 
 /** The modules that open league.db at all: the readers, the snapshot writer (its game date) and the route (a table check). The pure modules never do. */
 const DB_READERS = ['playerValue.ts', 'playerValueHistory.ts', 'playerValueSnapshot.ts', 'playerValueRoutes.ts'];
@@ -313,8 +324,9 @@ describe('the Player Value boundary', () => {
     expect(VALUE_MODULES).toEqual([
       'playerValue.ts', 'playerValueCalibration.ts', 'playerValueCone.ts', 'playerValueContract.ts', 'playerValueContractStore.ts',
       'playerValueControl.ts', 'playerValueCost.ts', 'playerValueFinances.ts', 'playerValueFitStore.ts', 'playerValueHistory.ts',
-      'playerValueProduction.ts', 'playerValueProductionFit.ts', 'playerValueRatings.ts', 'playerValueRatingsFit.ts', 'playerValueRefitWorker.ts',
-      'playerValueRoutes.ts', 'playerValueSignings.ts', 'playerValueSnapshot.ts', 'playerValueSurplus.ts',
+      'playerValueLens.ts', 'playerValueProduction.ts', 'playerValueProductionFit.ts', 'playerValueRatings.ts', 'playerValueRatingsFit.ts',
+      'playerValueRefitWorker.ts', 'playerValueRoutes.ts', 'playerValueSignings.ts', 'playerValueSnapshot.ts', 'playerValueSurplus.ts',
+      'playerValueWinValue.ts',
     ]);
   });
 
@@ -357,6 +369,8 @@ describe('the Player Value boundary', () => {
       && !(i === './db.js' && DB_READERS.includes(file))
       && !(WRITERS.includes(file) && WRITER_IMPORTS.has(i))
       && !(PACKAGE_IMPORTS[file] ?? []).includes(i)
+      && !(i === './philosophy.js' && file === LENS)
+      && !(i === './posture.js' && file === ODDS_READER)
       && !(i === './scoutedEvidence.js' && (file === ADAPTER_READER || ADAPTER_TYPES_ONLY.includes(file))));
     expect(outside, `${file} imports ${outside.join(', ')}`).toEqual([]);
   });
@@ -516,8 +530,31 @@ describe('the Player Value boundary', () => {
     }
   });
 
-  it.each(VALUE_MODULES)('%s puts no philosophy in the neutral path (4)', (file) => {
+  it.each(VALUE_MODULES.filter((f) => f !== LENS))('%s puts no philosophy in the neutral path (4)', (file) => {
     expect(importsOf(file).join(' '), file).not.toMatch(/philosophy|settings|staffPreference|assignmentPreference/);
+  });
+
+  it('the lens (phase 5b) is the one value module that names philosophy, handed to it at read time: never the stored settings, never production, cost, a fit, a table, a rating, the tier, defensibility or the club\'s value of a win (4, Part 6)', () => {
+    expect(importsOf(LENS).filter((i) => !['./calibration.js', './philosophy.js', './playerValueCalibration.js', './playerValueSurplus.js'].includes(i))).toEqual([]);
+    const lens = code(LENS);
+    expect(lens).not.toMatch(/\bdb\.|prepare\(|scoutedEvidence|players_value|settings|staffPreference|assignmentPreference|projectProduction|priceControlTimeline|surplusOf\(|winValue|posture|playoff|protection/);
+    // The lens is applied after the neutral valuation, at read time: the neutral pass never calls it
+    const entry = code('playerValue.ts');
+    const valuate = entry.slice(entry.indexOf('function valuate('), entry.indexOf('interface CostContext'));
+    expect(valuate.length).toBeGreaterThan(0);
+    expect(valuate).not.toMatch(/ourViewOf|clubWinValue|winValueOf|deadlineRead|oddsModelOf/);
+    // Nothing that edits a philosophy reaches Player Value, so a philosophy change recomputes nothing
+    expect(importsOf('settings.ts').join(' ')).not.toMatch(/playerValue/);
+    // No verdict in its words
+    expect(lens).not.toMatch(/\b(should|recommend\w*|release him|keep him|trade him|extend him|sign him)\b/i);
+  });
+
+  it('the club\'s value of a win (phase 5b) is pure and names no philosophy; only the reader reads the odds model, and neither the surplus nor the lens reads it (Part 4.5, Q-6)', () => {
+    expect(importsOf(WIN_VALUE).filter((i) => !['./calibration.js', './playerValueCalibration.js'].includes(i))).toEqual([]);
+    expect(code(WIN_VALUE)).not.toMatch(/\bdb\.|prepare\(|philosophy|settings|competitiveWindow|staffPreference/);
+    const readers = VALUE_MODULES.filter((f) => importsOf(f).includes('./posture.js'));
+    expect(readers).toEqual([ODDS_READER]);
+    for (const file of ['playerValueSurplus.ts', LENS]) expect(code(file), file).not.toMatch(/winValue|WinValue|posture|playoff/);
   });
 
   it.each(VALUE_MODULES)('%s reads no protection tier and no defensibility (5)', (file) => {
@@ -702,6 +739,10 @@ describe('the Player Value boundary', () => {
       ['COST_COMBINATION_POLICY_CALIBRATION', 'policy'],
       // Phase 5a (owner, 2026-09-24): the neutral view's discount rate and how the surplus is read
       ['SURPLUS_POLICY_CALIBRATION', 'policy'],
+      // Phase 5b: the lens weights, and the club's value of a win (the curve's extent, and the odds model it reads)
+      ['LENS_POLICY_CALIBRATION', 'policy'],
+      ['WIN_VALUE_POLICY_CALIBRATION', 'policy'],
+      ['WIN_CURVE_CALIBRATION', 'provisional'],
     ]);
     // Every policy object of numbers in the calibration module is stamped beside it
     for (const name of ownNumbersOf('playerValueCalibration.ts').filter((n) => n !== 'CONTROL_HORIZON_SEASONS')) {

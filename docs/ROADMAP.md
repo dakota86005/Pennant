@@ -260,6 +260,18 @@ domain API tools used by the UI. Staff voices should discuss the organization's
 real constraints and disagree for role-specific reasons. AI should cite the
 domain result and uncertainty, not invent its own hidden ranking.
 
+### Playoff odds from the roster (owner, 2026-09-24)
+
+The deadline read's odds (`posture.ts`) are a two-club race: this season's
+Pythagorean record at face value against a .520 rival, over the games left
+(with a division leader's wild-card route since 2026-09-24). The owner wants a
+more sophisticated system later: team strength built from the roster (Player
+Value's projected wins per player, injuries, playing time), early-season
+regression, the real schedule, every rival in the division and wild-card
+races, and simulated seasons. It feeds the deadline read, the dashboard and
+the club's value of a win (PLAYER_VALUE.md 4.5). Likely an MLB Operations
+milestone that consumes Player Value.
+
 ## Later: calibration and longitudinal management
 
 - **Audit and migrate calibrated constants to per-save fits (D-053).** Calibration

@@ -1244,14 +1244,15 @@ per-import market snapshot; expected production in wins from major-league result
 scouted ratings, with playing time conditional on quality, fitted per save under D-053; phase 4a: the cost of
 controlled seasons, measured on each import, `playerValueCost.ts`; phase 4b: the measured price of a win across imports,
 `playerValueSignings.ts` and the third writer `playerValueContractStore.ts`; phase 5a: the neutral contract surplus and the
-retention margin, `playerValueSurplus.ts`, on the player card).
+retention margin, `playerValueSurplus.ts`, on the player card; phase 5b: the philosophy lens, `playerValueLens.ts`, and the
+club's value of a win, `playerValueWinValue.ts`).
 `server/playerValue.ts` (the entry point), `playerValueContract.ts`, `playerValueControl.ts`,
 `playerValueFinances.ts`, `playerValueHistory.ts`, `playerValueProduction.ts`, `playerValueProductionFit.ts`,
 `playerValueRatings.ts` and `playerValueRatingsFit.ts` (phase 3b), the two writers (`playerValueSnapshot.ts` and
 `playerValueFitStore.ts`, `history.db` only), `playerValueRoutes.ts` and `playerValueCalibration.ts`;
 contract-control eligibility in `playerRights.ts` (`evaluateContractControl`); one `LeagueRules` in `leagueRules.ts`,
-with the financial regime; `tests/playerValueBoundary.test.ts`. The lens and the club's
-value of a win (phase 5b) and the `players_value` consumer migration (phase 6) are not built. In phase 3b the
+with the financial regime; `tests/playerValueBoundary.test.ts`. The `players_value` consumer migration (phase 6) is
+not built. In phase 3b the
 development path, the ratings' reliability as a forecast and the arrival chance by potential wait on the save's own
 rating snapshots (one on the imported save) and use the provisional prior, or the kind's K, until then. Design: [PLAYER_VALUE.md](PLAYER_VALUE.md). Research evidence:
 [PLAYER_VALUE_RESEARCH.md](PLAYER_VALUE_RESEARCH.md). Refines D-002 and D-017 for the pre-fork value surfaces and
@@ -1502,7 +1503,37 @@ Part 12; CALIBRATION.md sections 8 and 9).** The owner ruled on the four questio
   retention margin.
 - **Unknown stays unknown**: a season with no established wins or cost has no surplus, and a sum over it names the seasons
   it cannot include; without dollars the value is in wins only. Neither view is a verdict. No consumer beyond the card is
-  migrated (phase 6), and the lens (phase 5b) is not built.
+  migrated (phase 6).
+
+**Amended 2026-09-24 (phase 5b: the philosophy lens and the club's value of a win; PLAYER_VALUE.md 4.5, 6.1, Part 7, Part 8,
+Part 9, Part 11, Part 12).**
+
+- **The lens is the one value module that names philosophy** (`playerValueLens.ts`, pure, `ourViewOf`). It is handed the
+  neutral valuation every read serves and the organization's philosophy at read time (the route reads it from settings for
+  the viewing organization: the one the page names, else the configured default, else the club the save is played as), and
+  returns "our view" beside the neutral one. It never changes a neutral figure, band, price, cost, control status or
+  unknown; a philosophy with every dimension inside 40–60 and the default policies leans on nothing, and our view is then
+  the neutral view exactly. Every lean names its dimension, value, what it did and by how much (sequential steps that add up
+  to the difference), and a dimension read but not leaning says why. It reads `competitiveWindow` (our discount, 0% to 15%
+  against the neutral 5%; this season's part weighs 1), `riskTolerance` (the reading from each range's centre toward its low
+  edge, up to half way; never above the centre), `teamControl` (the seasons the club controls at its option, ±20%),
+  `costEfficiency` (his cost against his production, ±20%) and `payrollFlexibility` (guaranteed salary in later seasons,
+  ±20%, in the contract view only: in the retention margin that money is owed either way and no philosophy brings it back);
+  the four policies only word emphasis. Policy under D-041 (`LENS_POLICY`, stamped `LENS_POLICY_CALIBRATION`). It reads no
+  production, cost, fit, table, rating, protection tier, defensibility or club value of a win (boundary test).
+- **The club's value of a win** (`playerValueWinValue.ts`, pure; `clubWinValue` in the entry point) is read on the deadline
+  read's odds model (`posture.ts` now exports it: `oddsModelOf`, `oddsAt`, `shownOdds`): how much one more win (a loss
+  turned into a win) moves this club's chance of the postseason now, and the curve from three wins fewer to five more over
+  the rest of the season, in points of playoff odds, never dollars (Q-6), stamped provisional (`WIN_CURVE_CALIBRATION`). A
+  club fact: the same for every organization, never read by the lens, never in the neutral value. Where the odds cannot be
+  read (no game played, no standings, the club not in its conference's standings) it is unknown with the reason, never the
+  deadline read's default; with no games left it is not applicable; where the place is beyond reach a win moves nothing.
+  Served on Club Finances (Payroll) and with our view on the player card.
+- **The odds model's cushion is the nearest rival's.** `playoffPicture` measured a division leader's cushion against the
+  last club in its division; it now measures it against the nearest (Arizona: 7 games and 86% before, 0 games after; 57% read against the division alone, 75% with the leader's wild-card route the owner approved the same day),
+  which the deadline read, the dashboard and MLB Operations' season read see too.
+- **The card says it plainly** (owner, 2026-09-24): "Contract value" and "Value of keeping him" (the API keeps "contract
+  surplus" and "retention margin"), "Most likely" and "could be", "if kept", the explanations on hover.
 
 ## D-053 — Calibration belongs to the save
 

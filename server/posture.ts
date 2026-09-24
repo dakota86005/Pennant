@@ -1,5 +1,5 @@
 import { db, tableExists } from './db.js';
-import { playoffPicture } from './playoffs.js';
+import { playoffPicture, type PlayoffPicture } from './playoffs.js';
 import { currentGameDate } from './valuation.js';
 
 /**
@@ -76,19 +76,56 @@ function parseDate(value: unknown): Date | null {
   return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
 }
 
-export function deadlineRead(teamId: number): DeadlineRead | null {
-  if (!tableExists('teams') || !tableExists('team_record')) return null;
+/**
+ * The rival for the place: whoever holds it is read as a .520 club — near enough for every league, and it avoids
+ * reading one rival's hot streak as permanent talent. PROVISIONAL (not fitted on the save).
+ */
+export const RIVAL_TALENT = 0.52;
+
+/**
+ * The odds model's inputs for one club, as the deadline read uses them: its record, its runs (the talent they imply),
+ * the games left on its schedule, and the gap in games to a playoff place (negative: a cushion). Player Value reads the
+ * club's value of a win on the same model (PLAYER_VALUE.md Part 4.5).
+ */
+export interface OddsModel {
+  teamId: number;
+  leagueId: number;
+  w: number;
+  l: number;
+  gamesPlayed: number;
+  gamesLeft: number;
+  rs: number;
+  ra: number;
+  /** Pythagorean winning percentage from this season's runs. */
+  talent: number;
+  rival: number;
+  picture: PlayoffPicture | null;
+  /** Games to close (negative: a cushion to defend). */
+  gap: number;
+  /**
+   * How the gap was read: from the race; or, where the race is not read, the deadline read's own default: level
+   * (`no_race`: the club is not in its conference's standings) or a one-game cushion (`no_rival`: nobody is outside its place).
+   */
+  gapRead: 'race' | 'no_race' | 'no_rival';
+}
+
+/** The club's odds model, or why it cannot be read. */
+export function oddsModelOf(teamId: number): { model: OddsModel; reason: null } | { model: null; reason: string } {
+  if (!tableExists('teams') || !tableExists('team_record')) return { model: null, reason: 'The standings are not in the export.' };
 
   const team = db
     .prepare(`SELECT league_id FROM teams WHERE team_id = ?`)
     .get(teamId) as { league_id: number } | undefined;
+  if (!team) return { model: null, reason: "The club is not in the export's standings." };
   const record = db
     .prepare(`SELECT w, l FROM team_record WHERE team_id = ?`)
     .get(teamId) as { w: number; l: number } | undefined;
-  if (!team || !record) return null;
+  if (!record) return { model: null, reason: "The club has no row in the export's standings." };
 
   const played = record.w + record.l;
-  if (played === 0) return null;
+  if (played === 0) {
+    return { model: null, reason: "No game has been played yet this season: the odds model reads the club's strength from this season's runs." };
+  }
 
   const scheduled = tableExists('games')
     ? Number((db
@@ -111,21 +148,47 @@ export function deadlineRead(teamId: number): DeadlineRead | null {
       ? (picture.wildcardGb ?? picture.divisionGb)
       // In a place: the gap is the cushion, negative, so the same arithmetic
       // asks how likely they are to still be there rather than to catch up
-      : -(picture.cushion ?? 1)
+      : -(picture.playoffCushion ?? 1)
     : 0;
+  const gapRead: OddsModel['gapRead'] = !picture ? 'no_race' : picture.route !== 'out' && picture.playoffCushion === null ? 'no_rival' : 'race';
 
-  /*
-   * Over the games that remain, the difference between two clubs' win totals
-   * is roughly normal. Assume whoever holds the place is a .520 club — near
-   * enough for every league, and it avoids reading one rival's hot streak as
-   * permanent talent.
-   */
-  const rival = 0.52;
-  const expectedGain = gamesLeft * (talent - rival);
-  const sigma = Math.sqrt(Math.max(1, gamesLeft) * (talent * (1 - talent) + rival * (1 - rival)));
-  const odds = gamesLeft === 0
-    ? (gap <= 0 ? 1 : 0)
-    : Math.min(0.99, Math.max(0.01, normalCdf((expectedGain - gap) / sigma)));
+  return {
+    model: {
+      teamId, leagueId: team.league_id, w: record.w, l: record.l, gamesPlayed: played, gamesLeft, rs, ra, talent,
+      rival: RIVAL_TALENT, picture, gap, gapRead,
+    },
+    reason: null,
+  };
+}
+
+/**
+ * The chance of reaching the postseason on the model, with `extraWins` more wins over the rest of the season (a loss
+ * turned into a win closes the gap by a game; negative for fewer). Unbounded: the deadline read shows it within 1%–99%.
+ *
+ * Over the games that remain, the difference between two clubs' win totals is roughly normal.
+ */
+export function oddsAt(m: OddsModel, extraWins = 0): number {
+  const gap = m.gap - extraWins;
+  if (m.gamesLeft === 0) return gap <= 0 ? 1 : 0;
+  const expectedGain = m.gamesLeft * (m.talent - m.rival);
+  const sigma = Math.sqrt(Math.max(1, m.gamesLeft) * (m.talent * (1 - m.talent) + m.rival * (1 - m.rival)));
+  return normalCdf((expectedGain - gap) / sigma);
+}
+
+/** The chance as the deadline read shows it: never quite certain either way while games are left. */
+export function shownOdds(m: OddsModel): number {
+  return m.gamesLeft === 0 ? oddsAt(m) : Math.min(0.99, Math.max(0.01, oddsAt(m)));
+}
+
+export function deadlineRead(teamId: number): DeadlineRead | null {
+  const read = oddsModelOf(teamId);
+  if (!read.model) return null;
+  const m = read.model;
+  const { rs, ra, talent, picture, gamesLeft } = m;
+  const played = m.gamesPlayed;
+  const record = { w: m.w, l: m.l };
+  const team = { league_id: m.leagueId };
+  const odds = shownOdds(m);
 
   const deadline = parseDate(
     (db.prepare(`SELECT trade_deadline_date AS d FROM leagues WHERE league_id = ?`).get(team.league_id) as { d?: string } | undefined)?.d

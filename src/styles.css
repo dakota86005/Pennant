@@ -980,7 +980,7 @@ th.sortable .tip { cursor: pointer; }
   white-space: normal;
   box-shadow: 0 6px 16px rgba(0,0,0,0.5);
 }
-.tip:hover .tip-pop { display: block; }
+.tip:hover .tip-pop, .tip:focus .tip-pop, .tip:focus-within .tip-pop { display: block; }
 /* A chart's hover detail wears the same popup, placed by the chart beside the season it describes */
 .chart-pop { display: block; pointer-events: none; }
 th:last-child .tip-pop, th:nth-last-child(2) .tip-pop { left: auto; right: 0; }
@@ -1109,6 +1109,17 @@ table.value-table td { vertical-align: top; }
 table.value-table td .muted { font-size: 11px; }
 .value-basis { margin: 6px 0 0; padding-left: 18px; font-size: 12px; color: var(--muted); }
 .value-basis li { margin: 2px 0; }
+/* Phase 5b: the lead words on a figure, our view beside the neutral one, and the club's value of a win */
+.value-view-lead { font-size: 12px; font-weight: 400; color: var(--muted); }
+.value-view-unknown { font-size: 14px; font-weight: 500; }
+.value-ours { margin: 6px 0 4px; padding-top: 6px; border-top: 1px solid var(--border); font-size: 13px; }
+.value-ours-whose { font-size: 12px; color: var(--muted); text-transform: none; letter-spacing: normal; }
+.value-ours-figures { margin: 2px 0; font-variant-numeric: tabular-nums; }
+.value-leans { margin: 2px 0 0; padding-left: 18px; font-size: 12px; color: var(--muted); }
+.value-leans li { margin: 1px 0; }
+.value-win { margin: 4px 0 2px; font-size: 12px; }
+/* Keep a hover explanation inside the card at any width */
+.value-section .tip-pop { max-width: calc(100vw - 64px); }
 
 /* Payroll's price of a win: the basis is a disclosure any keyboard can open, laid out as a list (D-25) */
 .price-of-win { margin: 6px 0 12px; }
