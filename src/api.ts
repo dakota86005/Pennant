@@ -321,7 +321,10 @@ export interface PlayerDossier {
   bats: string;
   throws: string;
   positionName: string;
+  /** A pitcher's role (SP, RP, CL); null for a position player. */
   roleName: string | null;
+  /** Has pitched and batted a real amount this season. */
+  twoWay: boolean;
   uniform: number | null;
   team: string | null;
   serviceYears: number | null;

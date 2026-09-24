@@ -247,7 +247,8 @@ export function ratingsEvidence(
   return {
     playerId: ability.playerId,
     group,
-    status: ability.status,
+    // Evidence that lists something missing is never "complete" (hardening C-14): a glove or running grade counts too
+    status: ability.status === 'complete' && missing.length > 0 ? 'partial' : ability.status,
     current,
     potential,
     composite: { current: ability.current, potential: ability.potential },

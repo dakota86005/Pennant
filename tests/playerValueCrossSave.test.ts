@@ -3,11 +3,14 @@ import { leagueRulesFromRow, type LeagueRuleRow } from '../server/leagueRules.js
 import {
   clearProductionCaches, clubFinances, leagueFinances, leaguePlayerValues, marketLeagues, playerProductionCone, productionCalibration,
   ratingsHistory, refitProductionIfNeeded, refitRatingsIfNeeded, type PlayerValuation,
+  computeProductionRefits, computeRatingsRefits,
 } from '../server/playerValue.js';
+import { fitProductionModel } from '../server/playerValueProductionFit.js';
+import { fitRatingsModel } from '../server/playerValueRatingsFit.js';
 import { db } from '../server/db.js';
 import { recordImportMarket } from '../server/api.js';
 import { historyDb } from '../server/history.js';
-import { PRODUCTION_PRIOR } from '../server/playerValueCalibration.js';
+import { PRODUCTION_PRIOR, RATINGS_PRIOR } from '../server/playerValueCalibration.js';
 import { leagueSeasons } from '../server/playerValueHistory.js';
 import { captureMarketSnapshot, marketSnapshotHistory, priceHistory } from '../server/playerValueSnapshot.js';
 import { contractImports, contractSnapshotAt, contractSnapshots, pruneContractSnapshots } from '../server/playerValueContractStore.js';
@@ -1095,7 +1098,18 @@ describe('cross-save: league structure', () => {
     expect(priceOf(r, save.leagueId).price.note).toMatch(/financials/i);
   }, SLOW);
 
-  it.todo('D-14 (F2): the control note for a club with no leagues row ends in one full stop, not two ("No leagues row for this club..")');
+  it('D-14 (F2): a note about a club with no leagues row never ends in a doubled full stop', () => {
+    const save = buildSave(base);
+    exec(`DELETE FROM leagues WHERE league_id = ${save.aaaLeagueId}`);
+    const r = run(save);
+    const texts: string[] = [];
+    for (const v of r.values.values()) {
+      for (const s of v.control.seasons) texts.push(s.basis, ...s.reasons, s.cost?.note ?? '', s.cost?.reason ?? '');
+      texts.push(...(v.control.notes ?? []), v.production.reason ?? '');
+    }
+    expect(texts.some((t) => /No leagues row/.test(t)), 'the case is exercised').toBe(true);
+    expect(texts.filter((t) => /[^.]\.\.(\s|$)/.test(t))).toEqual([]);
+  }, SLOW);
 
   it('a minor-league-only universe (an independent level-2 league, no major league)', () => {
     const save = buildSave({ ...base, minors: false });
@@ -1338,7 +1352,28 @@ describe('cross-save: identity of the save', () => {
     expect(cal.latestAttempt).toBeNull();
   }, SLOW);
 
-  it.todo('D (minor, F1, not fixed): a refit exception for one model or league does not skip the others. `computeProductionRefits` has no per-league guard and `computeRefits` runs the ratings refits after it in the same call, so one league\'s exception still skips the rest; F1 did not change this');
+  it('D (minor, F1; fixed after the hardening): a refit exception for one league or model never skips the others, and says why', () => {
+    const save = buildSave(base);
+    // The same league listed twice stands in for two leagues: the first fit throws, the second must still run
+    let calls = 0;
+    const production = computeProductionRefits({
+      leagues: [save.leagueId, save.leagueId], force: true,
+      fit: (h) => { calls += 1; if (calls === 1) throw new Error('synthetic failure'); return fitProductionModel(h, { prior: PRODUCTION_PRIOR }); },
+    });
+    expect(production).toHaveLength(2);
+    expect(production[0].run).toBeNull();
+    expect(production[0].outcome.refit).toBe(false);
+    expect(production[0].outcome.reason).toMatch(/synthetic failure/);
+    expect(production[1].run).not.toBeNull();
+    let ratingsCalls = 0;
+    const ratings = computeRatingsRefits({
+      leagues: [save.leagueId, save.leagueId], force: true,
+      fit: (i) => { ratingsCalls += 1; if (ratingsCalls === 1) throw new Error('synthetic ratings failure'); return fitRatingsModel(i, { prior: RATINGS_PRIOR }); },
+    });
+    expect(ratings).toHaveLength(2);
+    expect(ratings[0].outcome.reason).toMatch(/synthetic ratings failure/);
+    expect(ratings[1].run).not.toBeNull();
+  }, SLOW);
 
   it('D (minor, F1): ratingsHistory never substitutes 0 for an unknown share of the season played', () => {
     const save = buildSave(base);

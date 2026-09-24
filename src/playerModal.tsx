@@ -244,7 +244,7 @@ function Dossier({ d }: { d: PlayerDossier }) {
           </h2>
           {d.nickname && <div className="dossier-nick">“{d.nickname}”</div>}
           <div className="muted">
-            {d.roleName ?? d.positionName} · B/T {d.bats}/{d.throws} · Age {d.age}
+            {d.roleName ?? d.positionName}{d.twoWay ? ' · Two-way' : ''} · B/T {d.bats}/{d.throws} · Age {d.age}
             {d.heightWeight ? ` · ${d.heightWeight}` : ''}
           </div>
           <div className="muted">{d.team ?? 'No club'}{d.serviceYears !== null ? ` · ${d.serviceYears} yrs MLB service` : ''}</div>
