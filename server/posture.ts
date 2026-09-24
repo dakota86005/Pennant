@@ -148,9 +148,9 @@ export function oddsModelOf(teamId: number): { model: OddsModel; reason: null } 
       ? (picture.wildcardGb ?? picture.divisionGb)
       // In a place: the gap is the cushion, negative, so the same arithmetic
       // asks how likely they are to still be there rather than to catch up
-      : -(picture.cushion ?? 1)
+      : -(picture.playoffCushion ?? 1)
     : 0;
-  const gapRead: OddsModel['gapRead'] = !picture ? 'no_race' : picture.route !== 'out' && picture.cushion === null ? 'no_rival' : 'race';
+  const gapRead: OddsModel['gapRead'] = !picture ? 'no_race' : picture.route !== 'out' && picture.playoffCushion === null ? 'no_rival' : 'race';
 
   return {
     model: {

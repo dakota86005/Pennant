@@ -74,6 +74,15 @@ describe('a one-wild-card race', () => {
     expect(playoffPicture(leaderB)!.cushion).toBe(3.5);
   });
 
+  it("measures a division leader's playoff cushion against the first club outside the field, since a caught leader still has the wild card", () => {
+    // 60-40 against the first club out (55-46): five and a half games; his division lead is five
+    expect(playoffPicture(leaderA)!.playoffCushion).toBe(5.5);
+    // 58-42 leads by three and a half, but would still be in as a wild card: 58-42 against 55-46 is three and a half
+    expect(playoffPicture(leaderB)!.playoffCushion).toBe(3.5);
+    // A wild-card holder's playoff cushion is its wild-card cushion
+    expect(playoffPicture(holder)!.playoffCushion).toBe(0.5);
+  });
+
   it('does not put a division leader in the wild-card queue', () => {
     // 58-42 is the second-best record here and would top the queue on merit
     expect(playoffPicture(leaderB)!.route).toBe('division');

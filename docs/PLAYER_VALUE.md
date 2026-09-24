@@ -932,11 +932,13 @@ neutral surplus nor our view (`playerValueBoundary.test.ts`). It is the same for
 **The odds model's cushion, corrected.** Building it found that `playoffPicture` measured a division leader's cushion
 against the club at the BOTTOM of its division (its reduce kept the club furthest behind), so every leader read as far
 clearer than it was. Arizona, 26–17 and level with San Francisco, read as 7 games clear (of Colorado) and 86% to reach the
-postseason; it is 0 games clear and 57%. Fixed in `playoffs.ts` (`tests/playoffs.test.ts`), so the deadline read, the
-dashboard and MLB Operations' season read see the corrected cushion too.
+postseason; it is 0 games clear. Fixed in `playoffs.ts` (`tests/playoffs.test.ts`), so the deadline read, the
+dashboard and MLB Operations' season read see the corrected cushion too. Read against its division alone that gave 57%;
+with the leader's wild-card route (the owner's answer, below) the odds read the lead over the first club outside the field,
+4 games, and Arizona is 75%.
 
 On the Arizona import (2026-05-16, 119 games left), the value of one more win now, in points of playoff odds (odds now in
-brackets): Arizona **+5.03** (57%); tight races: the Dodgers +5.15 (41%), St. Louis +5.15 (54%), Atlanta +5.14 (41%), the
+brackets): Arizona **+3.89** (75%); tight races: the Dodgers +5.15 (41%), St. Louis +5.15 (54%), Atlanta +5.14 (41%), the
 Angels +5.12 (55%); comfortable: Pittsburgh +1.28 (95%), Detroit +1.55 (93%), San Francisco +1.65 (93%); far out:
 Cincinnati +0.08, Washington +0.03 and Miami under 0.01 (each 1% as shown). No club's place is decided in May.
 
@@ -1332,7 +1334,7 @@ yet: his pay for 2026–2029 isn't known, and his production is only projected t
 precise basis stays in the API). Below the two figures, **our view** under the selected organization's philosophy ("Contract
 value: $21.5M (neutral $28.0M)", then each lean as a short phrase with its amount and its sentence on hover, or "doesn't lean
 on him"), and **this club's value of a win** as context ("A win right now moves the Arizona Diamondbacks' playoff odds by
-about 5.0 points (now 57%)", on hover: context from the standings, not part of the value). Payroll shows the same line under
+about 3.9 points (now 75%)", on hover: context from the standings, not part of the value). Payroll shows the same line under
 the price of a win. No old term ("central", "retention margin", "edge against edge") is in the section's visible text
 (`valueSection.test.ts`).
 
@@ -1505,14 +1507,14 @@ display bounds, and the deadline read's own defaults (a level race where the clu
 one-game cushion where nobody is outside its place) are unknown or decided here, never a number; the club named in "our
 view" and in the club's value of a win is the viewing organization's (the one selected in the app), not the player's.
 
-**Phase 5b open questions for the owner.** (1) Should any lean read the club's value of a win (for instance a "contending"
-rentals policy, or this season's weight for a club in a race)? Part 6 forbids reading it as identity; recommendation: keep
-it context only until odds link to revenue (Q-6). (2) The lens weights (`LENS_POLICY`: the 40–60 band, 0%–15% against 5%,
-half way to the low edge, ±20%, aging from 33) are the builder's policy choices; recommendation: approve them as stated,
-they are shown with every lean and change by decision. (3) The odds model reads a division leader against its division only,
-so a leader in a tight division reads low now that its cushion is measured correctly (Arizona 57%); recommendation: give
-the model the leader's wild-card route, a change to `posture.ts` outside Player Value. (4) A club accepting variance leans on
-nothing (Part 6 forbids reading above the centre); recommendation: keep.
+**Phase 5b owner answers (2026-09-24).** (1) The club's value of a win stays context only: no lean reads it until odds
+link to revenue (Q-6). (2) The lens weights (`LENS_POLICY`: the 40–60 band, 0%–15% against 5%, half way to the low edge,
+±20%, aging from 33) are approved as policy; they are shown with every lean and change by decision. (3) The odds model
+gives a division leader his wild-card route: the playoff odds read `playoffPicture`'s `playoffCushion` (a leader's lead
+over the first club outside the field, or his division lead if larger), so a caught leader still has the wild card
+(Arizona, level with San Francisco: 75%, where the division-only reading gave 57% and the old last-place cushion 86%). A
+richer odds model (roster-based team strength from Player Value's projections, the schedule, every rival, simulated
+seasons) is on the roadmap. (4) A club accepting variance leans on nothing (Part 6 forbids reading above the centre).
 
 **Phase 4 owner decisions (2026-09-24).** The owner ruled on the four open questions of the phase 4a and 4b
 reviews (Part 12); the behavior cases are the "phase 4 owner decisions" row, each written first and failing on

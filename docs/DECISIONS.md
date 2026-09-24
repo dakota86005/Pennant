@@ -1530,7 +1530,7 @@ Part 9, Part 11, Part 12).**
   deadline read's default; with no games left it is not applicable; where the place is beyond reach a win moves nothing.
   Served on Club Finances (Payroll) and with our view on the player card.
 - **The odds model's cushion is the nearest rival's.** `playoffPicture` measured a division leader's cushion against the
-  last club in its division; it now measures it against the nearest (Arizona: 7 games and 86% before, 0 games and 57% after),
+  last club in its division; it now measures it against the nearest (Arizona: 7 games and 86% before, 0 games after; 57% read against the division alone, 75% with the leader's wild-card route the owner approved the same day),
   which the deadline read, the dashboard and MLB Operations' season read see too.
 - **The card says it plainly** (owner, 2026-09-24): "Contract value" and "Value of keeping him" (the API keeps "contract
   surplus" and "retention margin"), "Most likely" and "could be", "if kept", the explanations on hover.

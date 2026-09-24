@@ -859,5 +859,5 @@ model, which is provisional and not fitted on the save (`WIN_CURVE_CALIBRATION`)
 | The odds model | Pythagorean talent from this season's runs, a .520 rival, a normal difference over the games left | provisional | The deadline read's model; not fitted on the save. In playoff odds only (Q-6) |
 
 On the Arizona import (2026-05-16) the owner's configured philosophy leans on nothing for any player (every dimension 50,
-the default policies). One more win moves Arizona's odds by 5.0 points (57% now); the tightest races about 5.1 to 5.2; the
+the default policies). One more win moves Arizona's odds by 3.9 points (75% now, with the leader's wild-card route); the tightest races about 5.1 to 5.2; the
 clubs far out under 0.1. The regression sweep holds the phase's 24 checks.
