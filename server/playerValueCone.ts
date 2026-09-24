@@ -138,28 +138,74 @@ const coverageOf = (s: ProductionSeason): ConeSeason['coverage'] => ({
   note: s.coverage.note,
 });
 
+const DEVELOPMENT_WORDS: Record<'save_fit' | 'fallback_prior' | 'unknown', string> = {
+  save_fit: "development fitted on this save's rating snapshots",
+  fallback_prior: 'development not yet calibrated (the provisional prior)',
+  unknown: 'no development assumed (potential not known)',
+};
+
+/**
+ * What the projection rests on, in one line, from what it actually used (A-08, D-11, C-10): major-league
+ * results with the seasons and opportunities read (and the ratings' share where they were blended), or, for a
+ * player projected from ratings alone, the ratings, the arrival evidence and the development path. Never
+ * "results" that do not exist.
+ */
 function basisOf(production: PlayerProduction): string {
-  const sides = production.basis.sides.map((side) => {
+  const b = production.basis;
+  if (b.source === 'ratings') {
+    const a = b.ability;
+    const arrival = b.arrival;
+    const parts = [
+      `Scouted ratings (${a?.evidence.status ?? 'unknown'}${a?.currentRate != null ? `: ${a.currentRate.toFixed(1)} WAR per 600 now` : ''}${a?.potentialRate != null ? `, ${a.potentialRate.toFixed(1)} at potential` : ''})`,
+      arrival?.band
+        ? `arrival from level ${arrival.level}, ages ${arrival.band.ageFrom}–${arrival.band.ageTo} on this save's history (${arrival.band.cases.toLocaleString('en-US')} player-seasons)`
+        : `arrival from level ${arrival?.level ?? '—'}`,
+      a?.development ? DEVELOPMENT_WORDS[a.development.source] : 'development not established',
+    ];
+    return parts.join('; ');
+  }
+  const sides = b.sides.map((side) => {
     const years = side.seasons.map((x) => x.season);
     const span = years.length === 0 ? '' : years[0] === years[years.length - 1] ? `${years[0]}` : `${years[0]}–${years[years.length - 1]}`;
     const unit = side.side === 'batting' ? 'PA' : 'BF';
-    return `${span}: ${Math.round(side.opportunities).toLocaleString('en-US')} ${unit} as a ${side.kind}`;
+    const blend = side.blend && side.blend.ratings > 0 ? ` (scouted ratings ${Math.round(side.blend.ratings * 100)}% of his rate)` : '';
+    return `${span}: ${Math.round(side.opportunities).toLocaleString('en-US')} ${unit} as a ${side.kind}${blend}`;
   });
   return sides.length > 0 ? `Major-league results ${sides.join('; ')}` : '';
 }
 
+const span = (hs: number[]): string => (hs.length === 0 ? '' : hs.length === 1 ? `${hs[0]}` : `${hs[0]}–${hs[hs.length - 1]}`);
+
+/**
+ * The one-line calibration status. "Calibrated on this save" only when every part the projection rests on is
+ * (D-10, C-11): a projection from ratings is a same-time mapping and an unbacktested arrival-and-development
+ * path, never "calibrated"; a fit whose later horizons are still the prior says which horizons are its own.
+ */
 function calibrationOf(production: PlayerProduction): ProductionCone['calibration'] {
   const m = production.basis.model;
+  if (production.basis.source === 'ratings') {
+    const dev = production.basis.ability?.development?.source ?? 'unknown';
+    const mapping = m.source === 'save_fit' ? "ratings → rate fitted on this save (same-time: it describes, it does not forecast)" : 'ratings → rate from the provisional prior';
+    return {
+      source: m.source, calibrated: false,
+      status: `Not yet calibrated on this save: ${mapping}; ${DEVELOPMENT_WORDS[dev]}; not measured as a forecast`,
+      detail: m.label,
+    };
+  }
   const w = m.window;
   const calibrated = m.source === 'save_fit' && w?.calibrated === true;
   let status: string;
   if (w && calibrated) {
-    const span = w.first !== null && w.last !== null ? `${w.first}–${w.last}` : `${w.seasons} seasons`;
-    status = `Calibrated on this save: ${span}${w.refitAfter !== null ? `, refit after the ${w.refitAfter} season` : ''}`;
+    const years = w.first !== null && w.last !== null ? `${w.first}–${w.last}` : `${w.seasons} seasons`;
+    const prior = w.horizons?.prior ?? [];
+    const own = w.horizons?.calibrated ?? [];
+    const which = prior.length > 0 ? ` (horizons ${span(own)}; ${span(prior)} mostly the fallback prior)` : '';
+    status = `Calibrated on this save: ${years}${w.refitAfter !== null ? `, refit after the ${w.refitAfter} season` : ''}${which}`;
   } else if (w) {
     status = `Not yet calibrated on this save (${w.seasons} season${w.seasons === 1 ? '' : 's'})`;
   } else {
     status = m.label.charAt(0).toUpperCase() + m.label.slice(1);
+    if (/^calibrated/i.test(status)) status = `Not yet calibrated on this save: ${m.label}`;
   }
   return { source: m.source, calibrated, status, detail: m.label };
 }

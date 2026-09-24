@@ -57,6 +57,10 @@ worktree.
   K until the save's own snapshots measure their reliability; the development path and the arrival chance by potential
   wait on those snapshots too. Injury proneness is an owner-attested known fact, read only through
   `server/injuryProneness.ts`; 0 or blank is unknown.
+- The central is the expected wins (hardening, 2026-09-23): the rate of those who play is fitted apart from the
+  chance he plays; playing time is per scheduled game, under the save's measured ceiling. Known days out move the
+  central (owner, 2026-09-23); a season lost to injury is never evidence of less playing time. The gate reads subgroups
+  and bias; fits are keyed by the save's identity and refitted in a worker thread (D-053 amendment).
 - The rate band is never narrower further out; the wins band is rate × expected playing time and may narrow as
   playing time fades (owner, 2026-09-23). Thinner evidence never narrows either on the same expected playing time;
   missing ratings widen by interval arithmetic, never a midpoint. Playing time is conditional on quality (a better

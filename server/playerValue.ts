@@ -29,6 +29,7 @@
  * stored beside the results fit. Nothing here reads a rating column, `players_value` or minor-league WAR.
  */
 
+import { Worker } from 'node:worker_threads';
 import { db, tableColumns, tableExists } from './db.js';
 import type { SourceState } from './dataFreshness.js';
 import { allLeagueRules, leagueRulesFromRow, type ContractRules, type FinancialRules, type LeagueRules } from './leagueRules.js';
@@ -50,18 +51,21 @@ import { derivedFrom, unknownBecause, type Sourced } from './provenance.js';
 import type { CalibrationStamp } from './calibration.js';
 import { readInjuryProneness } from './injuryProneness.js';
 import {
-  PRODUCTION_METHOD, PRODUCTION_POLICY, PRODUCTION_PRIOR, PRODUCTION_PRIOR_CALIBRATION, RATINGS_METHOD, RATINGS_PRIOR, RATINGS_PRIOR_CALIBRATION,
+  PRODUCTION_METHOD, PRODUCTION_POLICY, PRODUCTION_PRIOR, PRODUCTION_PRIOR_CALIBRATION, PRODUCTION_PRIOR_SOURCE, RATINGS_METHOD,
+  RATINGS_PRIOR, RATINGS_PRIOR_CALIBRATION,
 } from './playerValueCalibration.js';
 import {
-  adoptedProductionFit, latestProductionFitAttempt, productionFitAttempted, recordProductionFit, type StoredFit,
+  adoptedProductionFit, clearFitStoreCaches, latestProductionFitAttempt, productionFitAttempted, recordProductionFit, type StoredFit,
 } from './playerValueFitStore.js';
 import {
-  affiliatedLevels, ageFacts, leagueClubs, leagueGameDate, leagueRecord, leagueSeasons, listedFacts, majorLeagueLines,
-  minorLeagueUsage, platoonExposure, seasonCalendar, seasonPlayedOf, type LevelSeason,
+  affiliatedLevels, ageFacts, firstLeagueSeason, hasSeasonLines, injuredThisSeason, injuryDurationSentinels, inSeasonContinuation,
+  leagueClubs, leagueGameDate, leagueRateFacts, leagueRecord, leagueSeasons, listedFacts, majorLeagueLines, minorLeagueUsage,
+  platoonExposure, scheduledGames, seasonCalendar, seasonPlayedOf, seasonSchedules, type LevelSeason, type SeasonCalendar,
 } from './playerValueHistory.js';
 import {
-  PRODUCTION_UNIT, planSides, projectProductionWith, windowOf,
-  type ModelProvenance, type PlayerProduction, type ProductionModel, type ProductionSide,
+  PRODUCTION_UNIT, adaptPriorToLeague, planSides, projectProductionWith, windowOf,
+  type InSeasonFacts, type LeagueRateFacts, type ModelProvenance, type PlayerProduction, type ProductionKind, type ProductionModel,
+  type ProductionSide, type ScheduleFacts,
 } from './playerValueProduction.js';
 import { NOT_YET_CALIBRATED, ageOn, fitProductionModel, type FitHistory, type FitPlayer, type FitRecord, type FitRun } from './playerValueProductionFit.js';
 import {
@@ -440,7 +444,7 @@ export function leagueFinances(leagueId: number, options: ValuationOptions = {})
   };
 }
 
-// ── Expected production (concern 3, phases 3a and 3b; D-053) ─────────────────────
+// ── Expected production (concern 3, phases 3a and 3b; D-053; hardened 2026-09-23) ─────────────
 
 /** The model in force for a league, with where it came from: the save's adopted fit, or the fallback prior. */
 export interface ProductionModelInForce {
@@ -448,40 +452,125 @@ export interface ProductionModelInForce {
   provenance: ModelProvenance;
 }
 
+/**
+ * What the reader measures about a league once per import (cached until `clearProductionCaches`): its
+ * schedules, its first season, its own rates (for the fallback prior), this season's in-season continuation
+ * and the injury durations it does not read as days.
+ */
+interface LeagueFacts {
+  schedules: Map<number, number>;
+  firstSeason: number | null;
+  rates: ReturnType<typeof leagueRateFacts> | null;
+}
+const factsCache = new Map<number, LeagueFacts>();
+let sentinelCache: Map<number, string> | null = null;
+
+/** Forget what was measured about the export: called after an import, and by a test that rebuilds a league. */
+export function clearProductionCaches(): void {
+  factsCache.clear();
+  sentinelCache = null;
+  clearFitStoreCaches();
+}
+
+function leagueFacts(leagueId: number, season: number | null): LeagueFacts {
+  let f = factsCache.get(leagueId);
+  if (!f) {
+    const through = season ?? 0;
+    // Completed seasons only: this season's schedule is the rules' (a partial season's games are not its length)
+    const schedules = seasonSchedules(leagueId, through - 1);
+    f = {
+      schedules,
+      firstSeason: firstLeagueSeason(leagueId),
+      rates: season === null ? null : leagueRateFacts(leagueId, season - 3, season - 1, schedules, PRODUCTION_POLICY.starterShare, PRODUCTION_POLICY.priorAdaptation.minimumOpportunities),
+    };
+    factsCache.set(leagueId, f);
+  }
+  return f;
+}
+
+function durationSentinels(): Map<number, string> {
+  if (!sentinelCache) sentinelCache = injuryDurationSentinels(PRODUCTION_POLICY.injury.sentinelHolders, PRODUCTION_POLICY.injury.sentinelMinimumDays);
+  return sentinelCache;
+}
+
+/**
+ * Stamp of an adopted fit: calibrated only when the fit calls itself calibrated on this save; one that is still
+ * mostly the fallback prior is provisional, with its run record kept (D-09).
+ */
 function savedStamp(fit: StoredFit): CalibrationStamp {
   const r = fit.record;
   const cov = r.coverage.adopted.filter((x) => x.cases > 0).map((x) =>
     `h${x.horizon} ${x.outer === null ? '—' : Math.round(x.outer * 100)}/${x.inner === null ? '—' : Math.round(x.inner * 100)}%`).join(', ');
+  const calibrated = !r.label.startsWith(NOT_YET_CALIBRATED);
   return {
-    status: 'calibrated',
-    basis: `Fitted on this save's own history (D-053): seasons ${r.window.seasons[0] ?? '—'}–${r.window.seasons[r.window.seasons.length - 1] ?? '—'}, ` +
+    status: calibrated ? 'calibrated' : 'provisional',
+    basis: `${calibrated ? 'Fitted on this save\'s own history' : 'Adopted on this save, but mostly the fallback prior'} (D-053): seasons ${r.window.seasons[0] ?? '—'}–${r.window.seasons[r.window.seasons.length - 1] ?? '—'}, ` +
       `held out ${r.window.holdout[0] ?? '—'}–${r.window.holdout[r.window.holdout.length - 1] ?? '—'}; held-out coverage (80/50) ${cov || 'not evaluable'}; ` +
       `prior weight ${fit.priorWeight === null ? '—' : fit.priorWeight.toFixed(2)}.`,
     run: `value_production_fits ${r.id}, fitted at game date ${fit.gameDate ?? 'unknown'} (${fit.method})`,
   };
 }
 
+/** The spread of player-season rates in the prior's own source, per kind: what the league's own spread is scaled against. */
+function priorSpread(model: ProductionModel): Partial<Record<ProductionKind, number>> {
+  const out: Partial<Record<ProductionKind, number>> = {};
+  for (const k of ['hitter', 'starter', 'reliever'] as ProductionKind[]) {
+    const s = model.kinds[k].observedSpread600;
+    if (typeof s === 'number' && s > 0) out[k] = s;
+  }
+  return out;
+}
+
 /** The fallback prior's provenance, with why the save has no fit of its own yet. */
-function priorProvenance(leagueId: number): ModelProvenance {
+function priorInForce(leagueId: number, season: number | null): ProductionModelInForce {
   const last = latestProductionFitAttempt(leagueId, PRODUCTION_METHOD);
   const why = last === null
     ? 'no fit has been made on this save yet'
     : `the last fit (through ${last.throughSeason}, ${last.record.window.seasons.length} seasons) was not adopted: ${last.reason}`;
   const seasons = last?.record.window.seasons.length ?? 0;
+  // Fitted to the league's own WAR scale and ceiling: a plain measurement of the export (D-12)
+  const facts = leagueFacts(leagueId, season);
+  const league: LeagueRateFacts = { kinds: {} };
+  if (facts.rates) {
+    for (const [k, v] of Object.entries(facts.rates.kinds)) {
+      league.kinds[k as ProductionKind] = { ...v, mean600: v.opportunities >= PRODUCTION_POLICY.priorAdaptation.minimumLeagueOpportunities ? v.mean600 : null };
+    }
+  }
+  const adapted = adaptPriorToLeague(PRODUCTION_PRIOR, league, priorSpread(PRODUCTION_PRIOR));
   return {
-    source: 'fallback_prior',
-    label: `${NOT_YET_CALIBRATED} (${seasons} seasons): the provisional fallback prior; ${why}`,
-    stamp: PRODUCTION_PRIOR_CALIBRATION,
-    fitId: null,
-    priorWeight: 1,
-    window: { seasons, first: null, last: null, refitAfter: null, calibrated: false },
+    model: adapted.model,
+    provenance: {
+      source: 'fallback_prior',
+      label: `${NOT_YET_CALIBRATED} (${seasons} seasons): the provisional fallback prior${adapted.note ? `, ${adapted.note}` : ''}; ${why}`,
+      stamp: PRODUCTION_PRIOR_CALIBRATION,
+      fitId: null,
+      priorWeight: 1,
+      window: { seasons, first: null, last: null, refitAfter: null, calibrated: false },
+    },
   };
 }
 
-/** The production model in force for a league: the save's adopted fit where there is one, else the fallback prior. */
-export function productionModelFor(leagueId: number): ProductionModelInForce {
-  const fit = adoptedProductionFit(leagueId, PRODUCTION_METHOD);
-  if (fit) {
+/** Which horizons are the save's own (the prior's weight under a half) and which still mostly the prior (B-10). */
+function horizonsOf(record: FitRecord): { calibrated: number[]; prior: number[] } {
+  const by = record.priorWeight.byHorizon;
+  if (!by) return { calibrated: [1, 2, 3, 4, 5, 6, 7], prior: [] };
+  const out = { calibrated: [] as number[], prior: [] as number[] };
+  for (let h = 1; h <= CONTROL_HORIZON_SEASONS; h += 1) {
+    const w = Math.max(...Object.values(by).map((row) => row[h - 1] ?? 1));
+    (w >= 0.5 ? out.prior : out.calibrated).push(h);
+  }
+  return out;
+}
+
+/**
+ * The production model in force for a league: the save's adopted fit where there is one (never through a
+ * season the league has not completed), else the fallback prior fitted to the league's own scale.
+ */
+export function productionModelFor(leagueId: number, rules: Map<number, LeagueRules> = allLeagueRules()): ProductionModelInForce {
+  const done = completedThrough(leagueId, rules);
+  const fit = adoptedProductionFit(leagueId, PRODUCTION_METHOD, done.season);
+  const season = rules.get(leagueId)?.contract.season.value ?? null;
+  if (fit && fit.model.kinds?.hitter?.horizons?.[0]?.survivor) {
     return {
       model: fit.model,
       provenance: {
@@ -492,13 +581,13 @@ export function productionModelFor(leagueId: number): ProductionModelInForce {
           first: fit.record.window.seasons[0] ?? null,
           last: fit.record.window.seasons[fit.record.window.seasons.length - 1] ?? null,
           refitAfter: fit.throughSeason,
-          // The fit's own verdict, as its label states it: an adopted fit that is still mostly the prior is not calibrated
           calibrated: !fit.record.label.startsWith(NOT_YET_CALIBRATED),
+          horizons: horizonsOf(fit.record),
         },
       },
     };
   }
-  return { model: PRODUCTION_PRIOR, provenance: priorProvenance(leagueId) };
+  return priorInForce(leagueId, season);
 }
 
 const FALLBACK: ProductionModelInForce = {
@@ -524,8 +613,8 @@ function savedRatingsStamp(fit: StoredRatingsFit): CalibrationStamp {
 }
 
 /** The ratings model in force for a league: the save's adopted ratings fit, else the provisional prior (which measures no arrivals). */
-export function ratingsModelFor(leagueId: number): RatingsModelInForce {
-  const fit = adoptedProductionFit<RatingsModel, RatingsFitRecord>(leagueId, RATINGS_METHOD);
+export function ratingsModelFor(leagueId: number, rules: Map<number, LeagueRules> = allLeagueRules()): RatingsModelInForce {
+  const fit = adoptedProductionFit<RatingsModel, RatingsFitRecord>(leagueId, RATINGS_METHOD, completedThrough(leagueId, rules).season);
   if (fit) {
     return {
       model: fit.model,
@@ -563,26 +652,42 @@ export function projectProduction(
 interface LeagueContext {
   season: number | null;
   seasonPlayed: number | null;
-  calendar: { daysLeft: number | null; seasonDays: number | null };
+  calendar: SeasonCalendar;
+  schedule: ScheduleFacts;
+  inSeason: InSeasonFacts | null;
   using: ProductionModelInForce;
   ratings: RatingsModelInForce;
+}
+
+/** This season's schedule length: the rules' figure, else the schedule itself (`games`, D-15). */
+function gamesThisSeason(leagueId: number, league: LeagueRules | undefined, clubs: Set<number>): number | null {
+  const rule = league?.gamesPerTeam.value ?? null;
+  if (rule !== null && rule > 0) return rule;
+  return scheduledGames(leagueId, clubs.size)?.perClub ?? null;
 }
 
 function leagueContext(leagueId: number, rules: Map<number, LeagueRules>): LeagueContext {
   const league = rules.get(leagueId);
   const season = league?.contract.season.value ?? null;
+  const none: SeasonCalendar = { daysLeft: null, seasonDays: null, daysToOpening: null, offseasonDays: null };
   if (!league || season === null) {
-    return { season: null, seasonPlayed: null, calendar: { daysLeft: null, seasonDays: null }, using: productionModelFor(leagueId), ratings: ratingsModelFor(leagueId) };
+    return { season: null, seasonPlayed: null, calendar: none, schedule: { games: null }, inSeason: null, using: productionModelFor(leagueId, rules), ratings: ratingsModelFor(leagueId, rules) };
   }
   const clubs = leagueClubs(leagueId);
   const now = leagueRecord(leagueId, clubs, season, true);
-  const played = seasonPlayedOf(now, league.gamesPerTeam).value;
+  const games = gamesThisSeason(leagueId, league, clubs);
+  const played = seasonPlayedOf(now, games === null ? league.gamesPerTeam : derivedFrom(games, 'games', 'The schedule\'s regular-season games per club.')).value;
+  const facts = leagueFacts(leagueId, season);
+  const bySeason: Record<number, number | null> = {};
+  for (const [y, g] of facts.schedules) bySeason[y] = g;
   return {
     season,
     seasonPlayed: played === null ? null : Math.min(1, played),
-    calendar: seasonCalendar(leagueId, now, league.gamesPerTeam.value),
-    using: productionModelFor(leagueId),
-    ratings: ratingsModelFor(leagueId),
+    calendar: seasonCalendar(leagueId, now, games),
+    schedule: { games, bySeason, firstSeason: facts.firstSeason },
+    inSeason: inSeasonContinuation(leagueId, clubs.size, games, PRODUCTION_POLICY.inSeason.minimumGames, PRODUCTION_POLICY.starterShare),
+    using: productionModelFor(leagueId, rules),
+    ratings: ratingsModelFor(leagueId, rules),
   };
 }
 
@@ -625,14 +730,20 @@ function productionsOf(states: PlayerState[], ids: number[] | null, rules: Map<n
   const seasons = [...rules.values()].map((r) => r.contract.season.value).filter((y): y is number => y !== null);
   const through = seasons.length > 0 ? Math.max(...seasons) : null;
   const lines = through === null
-    ? { byPlayer: new Map(), unavailable: "The league's season is not established in the export." }
+    ? { byPlayer: new Map(), unavailable: "The league's season is not established in the export.", sides: { batting: null, pitching: null } }
     : majorLeagueLines(ids, Math.min(...seasons) - 3, through, null);
   const ages = ageFacts(ids);
   const prone = readInjuryProneness(ids);
   const stateIds = states.map((s) => s.playerId);
   const evidence = evidenceOf(stateIds);
+  const listed = listedFacts(stateIds);
+  const hurtThisSeason = injuredThisSeason(stateIds);
+  const sentinels = durationSentinels();
   const levels = allAffiliatedLevels(rules);
   const minors = through === null ? new Map<number, LevelSeason[]>() : minorLeagueUsage(stateIds, levels, Math.min(...seasons) - 3, through);
+  const unavailable: Partial<Record<ProductionSide, string>> = {};
+  if (lines.sides.batting) unavailable.batting = lines.sides.batting;
+  if (lines.sides.pitching) unavailable.pitching = lines.sides.pitching;
   for (const state of states) {
     const mine = lines.byPlayer.get(state.playerId);
     // His league: his club's market league; for a player no club holds, the league of his last major-league line
@@ -642,11 +753,13 @@ function productionsOf(states: PlayerState[], ids: number[] | null, rules: Map<n
     const ctx = leagueId !== null ? contextOf(leagueId) : null;
     const a = ages.get(state.playerId);
     const age = ctx?.season != null && a?.birth ? ageOn(a.birth, ctx.season) : a?.age ?? state.age;
-    // His level: his club's (an objective fact). His professional pitching in the window, at every minor
-    // level: a pitcher's role without a major-league line (usage only, never minor-league WAR)
     const window = (minors.get(state.playerId) ?? []).filter((m) => ctx?.season != null && m.season >= ctx.season - 2 && m.season <= ctx.season);
     const level = state.level.value;
     const games = window.reduce((s, m) => s + m.games, 0);
+    // Days out: the larger of the injury's and the injured list's; a value the export holds for many players it contradicts is not days (A-10)
+    const stated = [state.injury.daysLeft.value, state.injury.ilDaysLeft?.value ?? null].reduce<number | null>((m, d) => (d === null ? m : m === null ? d : Math.max(m, d)), null);
+    const sentinel = stated !== null ? sentinels.get(stated) ?? null : null;
+    const f = listed.get(state.playerId);
     const input: RatingsProductionInput = {
       playerId: state.playerId,
       season: ctx?.season ?? null,
@@ -656,12 +769,20 @@ function productionsOf(states: PlayerState[], ids: number[] | null, rules: Map<n
       pitching: mine?.pitching ?? [],
       injury: {
         injured: state.injury.injured.value,
-        daysLeft: [state.injury.daysLeft.value, state.injury.ilDaysLeft?.value ?? null].reduce<number | null>((m, d) => (d === null ? m : m === null ? d : Math.max(m, d)), null),
+        daysLeft: sentinel ? null : stated,
         careerEnding: state.injury.careerEnding?.value ?? null,
         seasonDaysLeft: ctx?.calendar.daysLeft ?? null,
         seasonDays: ctx?.calendar.seasonDays ?? null,
+        daysToOpening: ctx?.calendar.daysToOpening ?? null,
+        offseasonDays: ctx?.calendar.offseasonDays ?? null,
+        injuredThisSeason: hurtThisSeason.has(state.playerId),
+        durationNote: sentinel,
       },
       proneness: prone.get(state.playerId)?.overall.value ?? null,
+      schedule: ctx?.schedule ?? null,
+      inSeason: ctx?.inSeason ?? null,
+      listed: f ? { position: f.position, role: f.role } : null,
+      unavailable: Object.keys(unavailable).length > 0 ? unavailable : null,
       ratings: evidence.get(state.playerId) ?? null,
       level,
       proUsage: games > 0 ? { games, starts: window.reduce((s, m) => s + m.starts, 0) } : null,
@@ -693,64 +814,167 @@ export interface RefitOutcome {
   ms: number | null;
 }
 
-/** The last completed season in a league: this season once every game is played, else the one before. */
+/**
+ * The last completed season in a league: this season once every game is played AND the league has its
+ * major-league lines (a season number bumped over last season's standings is not complete, D-08), else the
+ * one before.
+ */
 function completedThrough(leagueId: number, rules: Map<number, LeagueRules>): { season: number | null; current: boolean } {
   const league = rules.get(leagueId);
   const season = league?.contract.season.value ?? null;
   if (!league || season === null) return { season: null, current: false };
-  const played = seasonPlayedOf(leagueRecord(leagueId, leagueClubs(leagueId), season, true), league.gamesPerTeam).value;
-  return played !== null && played >= 1 ? { season, current: true } : { season: season - 1, current: false };
+  const clubs = leagueClubs(leagueId);
+  const games = gamesThisSeason(leagueId, league, clubs);
+  const played = seasonPlayedOf(leagueRecord(leagueId, clubs, season, true), games === null ? league.gamesPerTeam : derivedFrom(games, 'games', 'The schedule.')).value;
+  const schedule = scheduledGames(leagueId, clubs.size);
+  const allPlayed = played !== null && played >= 1 && (schedule === null || schedule.unplayed === 0);
+  return allPlayed && hasSeasonLines(leagueId, season) ? { season, current: true } : { season: season - 1, current: false };
 }
 
-/** The history a fit reads: the league's major-league lines over the window, with each player's birth date and proneness. */
+/** The history a fit reads: the league's major-league lines over the window, with each player's birth date, proneness and listed position. */
 export function productionHistory(leagueId: number, through: number, current: boolean, rules: Map<number, LeagueRules> = allLeagueRules()): FitHistory {
-  const gamesPerTeam = rules.get(leagueId)?.gamesPerTeam.value ?? null;
-  const seasons = leagueSeasons(leagueId, through, gamesPerTeam).map((s) => (current && s.season === through ? { ...s, scheduleShare: 1 } : s));
+  const seasons = leagueSeasons(leagueId, through).map((s) => (current && s.season === through ? { ...s, scheduleShare: 1 } : s));
   const from = through - PRODUCTION_POLICY.window.maxSeasons - 3;
   const lines = majorLeagueLines(null, from, through, leagueId);
   const ids = [...lines.byPlayer.keys()];
   const ages = ageFacts(ids);
   const prone = readInjuryProneness(ids);
+  const listed = listedFacts(ids);
+  void rules;
   const players: FitPlayer[] = ids.map((id) => ({
     playerId: id,
     birth: ages.get(id)?.birth ?? null,
     proneness: prone.get(id)?.overall.value ?? null,
     batting: lines.byPlayer.get(id)!.batting,
     pitching: lines.byPlayer.get(id)!.pitching,
+    position: listed.get(id)?.position ?? null,
+    role: listed.get(id)?.role ?? null,
   }));
   return { leagueId, throughSeason: through, seasons, players };
+}
+
+/** A fit computed but not yet recorded: the worker hands these back and the main thread records them. */
+export interface PendingFit<R> {
+  leagueId: number;
+  throughSeason: number | null;
+  run: R | null;
+  gameDate: string | null;
+  ms: number | null;
+  force: boolean;
+  outcome: RefitOutcome;
+}
+
+export interface PendingRefits {
+  production: Array<PendingFit<FitRun>>;
+  ratings: Array<PendingFit<RatingsFitRun>>;
+}
+
+/**
+ * The production fits an import calls for, computed and NOT recorded (the worker's half): for each league
+ * whose export holds a completed season newer than any fit made for it. Reads only.
+ */
+export function computeProductionRefits(options: { fit?: (history: FitHistory) => FitRun; force?: boolean; leagues?: number[] } = {}): Array<PendingFit<FitRun>> {
+  const rules = allLeagueRules();
+  const out: Array<PendingFit<FitRun>> = [];
+  const candidates = options.leagues ?? marketLeagues();
+  for (const leagueId of candidates) {
+    const { season: through, current } = completedThrough(leagueId, rules);
+    const skip = (outcome: RefitOutcome) => out.push({ leagueId, throughSeason: through, run: null, gameDate: null, ms: null, force: false, outcome });
+    if (through === null) {
+      skip({ leagueId, throughSeason: null, refit: false, adopted: null, reason: "The league's season is not established in the export.", ms: null });
+      continue;
+    }
+    const seasons = leagueSeasons(leagueId, through);
+    if (seasons.length === 0) continue; // no major-league results in this league at all: nothing to fit
+    if (!options.force && productionFitAttempted(leagueId, through, PRODUCTION_METHOD)) {
+      skip({ leagueId, throughSeason: through, refit: false, adopted: null, reason: `Already fitted through ${through} (${PRODUCTION_METHOD}).`, ms: null });
+      continue;
+    }
+    const start = performance.now();
+    const history = productionHistory(leagueId, through, current, rules);
+    const run = (options.fit ?? ((h: FitHistory) => fitProductionModel(h, { prior: PRODUCTION_PRIOR, priorSource: PRODUCTION_PRIOR_SOURCE })))(history);
+    const ms = performance.now() - start;
+    out.push({
+      leagueId, throughSeason: through, run, gameDate: leagueGameDate(leagueId), ms, force: options.force === true,
+      outcome: { leagueId, throughSeason: through, refit: true, adopted: run.record.gate.passed, reason: run.record.gate.reason, ms },
+    });
+  }
+  return out;
+}
+
+/** Record fits computed elsewhere (the main thread's half): each at its key, idempotent, never replacing an adopted fit with a failing one. */
+export function recordRefits(pending: PendingRefits): RefitOutcome[] {
+  const out: RefitOutcome[] = [];
+  for (const p of [...pending.production, ...pending.ratings] as Array<PendingFit<{ model: unknown; record: FitRecord | RatingsFitRecord }>>) {
+    if (p.run) {
+      const written = recordProductionFit(p.run as { model: unknown; record: FitRecord }, { gameDate: p.gameDate, fitMs: p.ms, force: p.force });
+      if (written === 0 && p.force && !p.outcome.adopted) {
+        out.push({ ...p.outcome, reason: `${p.outcome.reason} Not recorded: the fit in force at this key stays (a failing refit never replaces an adopted one).` });
+        continue;
+      }
+    }
+    out.push(p.outcome);
+  }
+  if (pending.production.some((p) => p.run) || pending.ratings.some((p) => p.run)) clearProductionCaches();
+  return out;
 }
 
 /**
  * After an import: refit the production model for each league whose export holds a completed season
  * newer than any fit made for it, record the fit per save (adopted only through the gate), and fit
- * nothing when there is none. Called from `runImport` after the import has finished, and never able
- * to fail it. `force` refits even a season already fitted (the developer's harness command).
+ * nothing when there is none. In-process (the harness and tests); the server runs the same work in a
+ * worker thread (`refitOffThread`). `force` refits even a season already fitted (the developer's harness).
  */
 export function refitProductionIfNeeded(options: { fit?: (history: FitHistory) => FitRun; force?: boolean; leagues?: number[] } = {}): RefitOutcome[] {
+  return recordRefits({ production: computeProductionRefits(options), ratings: [] });
+}
+
+/**
+ * The refit, off the server's event loop (A-17): `compute` computes the fits elsewhere (a worker thread), and
+ * they are recorded here only if no import started while they were read (`stale`), since a fit read across
+ * an import would be of neither export. Never throws into its caller's turn; resolves with the outcomes.
+ */
+export async function refitOffThread(options: { compute: () => Promise<PendingRefits>; stale: () => boolean }): Promise<RefitOutcome[]> {
+  await Promise.resolve();
+  const pending = await options.compute();
+  if (options.stale()) return [];
+  return recordRefits(pending);
+}
+
+/** The worker thread's entry file: the bundled desktop build ships it beside the bundle; the source runs it through tsx. */
+function refitWorkerUrl(): URL {
+  const here = new URL(import.meta.url);
+  return here.pathname.endsWith('.cjs') ? new URL('./value-refit-worker.cjs', here) : new URL('./playerValueRefitWorker.ts', here);
+}
+
+/** Compute the refits in a worker thread (better-sqlite3 opens its own connections there); rejects if the worker fails. */
+export function refitInWorker(): Promise<PendingRefits> {
+  return new Promise((resolve, reject) => {
+    let worker: Worker;
+    try {
+      worker = new Worker(refitWorkerUrl());
+    } catch (err) {
+      reject(err);
+      return;
+    }
+    worker.once('message', (m: { ok: boolean; pending?: PendingRefits; error?: string }) => {
+      if (m.ok && m.pending) resolve(m.pending);
+      else reject(new Error(m.error ?? 'the refit worker failed'));
+      void worker.terminate();
+    });
+    worker.once('error', reject);
+    worker.once('exit', (code) => { if (code !== 0) reject(new Error(`the refit worker exited with ${code}`)); });
+  });
+}
+
+/** Both refits, computed and not recorded: the production fits first, then the ratings fits on the production model they leave in force. */
+export function computeRefits(): PendingRefits {
+  const production = computeProductionRefits();
   const rules = allLeagueRules();
-  const out: RefitOutcome[] = [];
-  const candidates = options.leagues ?? marketLeagues();
-  for (const leagueId of candidates) {
-    const { season: through, current } = completedThrough(leagueId, rules);
-    if (through === null) {
-      out.push({ leagueId, throughSeason: null, refit: false, adopted: null, reason: "The league's season is not established in the export.", ms: null });
-      continue;
-    }
-    const seasons = leagueSeasons(leagueId, through, rules.get(leagueId)?.gamesPerTeam.value ?? null);
-    if (seasons.length === 0) continue; // no major-league results in this league at all: nothing to fit
-    if (!options.force && productionFitAttempted(leagueId, through, PRODUCTION_METHOD)) {
-      out.push({ leagueId, throughSeason: through, refit: false, adopted: null, reason: `Already fitted through ${through} (${PRODUCTION_METHOD}).`, ms: null });
-      continue;
-    }
-    const start = performance.now();
-    const history = productionHistory(leagueId, through, current, rules);
-    const run = (options.fit ?? ((h: FitHistory) => fitProductionModel(h, { prior: PRODUCTION_PRIOR })))(history);
-    const ms = performance.now() - start;
-    recordProductionFit(run, { gameDate: leagueGameDate(leagueId), fitMs: ms, force: options.force });
-    out.push({ leagueId, throughSeason: through, refit: true, adopted: run.record.gate.passed, reason: run.record.gate.reason, ms });
-  }
-  return out;
+  const adopted = new Map<number, ProductionModel>();
+  for (const p of production) if (p.run && p.run.record.gate.passed) adopted.set(p.leagueId, p.run.model);
+  const ratings = computeRatingsRefits({ production: (leagueId) => adopted.get(leagueId) ?? productionModelFor(leagueId, rules).model });
+  return { production, ratings };
 }
 
 /**
@@ -759,14 +983,16 @@ export function refitProductionIfNeeded(options: { fit?: (history: FitHistory) =
  * and every player's usage there by season (no minor-league WAR, Q-9), the cross-section of scouted gaps,
  * and the save's persisted rating snapshots. Ratings only through the adapter.
  */
-export function ratingsHistory(leagueId: number, through: number, current: boolean, rules: Map<number, LeagueRules> = allLeagueRules()): RatingsFitInput {
+export function ratingsHistory(leagueId: number, through: number, current: boolean, rules: Map<number, LeagueRules> = allLeagueRules(), productionModel?: ProductionModel): RatingsFitInput {
   const league = rules.get(leagueId);
   const season = league?.contract.season.value ?? through;
-  const played = league ? seasonPlayedOf(leagueRecord(leagueId, leagueClubs(leagueId), season, true), league.gamesPerTeam).value : null;
-  const f = Math.min(Math.max(played ?? 0, 0), 1);
-  const production = productionModelFor(leagueId).model;
-  const gamesPerTeam = league?.gamesPerTeam.value ?? null;
-  const fitSeasons = leagueSeasons(leagueId, through, gamesPerTeam).map((s) => (current && s.season === through ? { ...s, scheduleShare: 1 } : s));
+  const clubs = leagueClubs(leagueId);
+  const games = gamesThisSeason(leagueId, league, clubs);
+  const played = league ? seasonPlayedOf(leagueRecord(leagueId, clubs, season, true), games === null ? league.gamesPerTeam : derivedFrom(games, 'games', 'The schedule.')).value : null;
+  // An unknown share of the season is not zero (A-24): the window cannot be placed, so the mapping reads no case
+  const f = played === null ? null : Math.min(Math.max(played, 0), 1);
+  const production = productionModel ?? productionModelFor(leagueId, rules).model;
+  const fitSeasons = leagueSeasons(leagueId, through).map((s) => (current && s.season === through ? { ...s, scheduleShare: 1 } : s));
 
   // The active players, their evidence and ages: the mapping's major leaguers and the cross-section
   const active = allPlayerStates().map((s) => s.playerId);
@@ -777,12 +1003,14 @@ export function ratingsHistory(leagueId: number, through: number, current: boole
     return a?.birth ? ageOn(a.birth, season) : a?.age ?? null;
   };
   const window = majorLeagueLines(active, season - 3, season, leagueId);
+  const listedActive = listedFacts(active);
   const mapping: MappingCase[] = [];
-  for (const [id, lines] of window.byPlayer) {
+  for (const [id, lines] of f === null ? [] : window.byPlayer) {
     const ev = evidence.get(id);
     const age = ageNow(id);
-    if (!ev || ev.group === null || age === null) continue;
-    const plan = planSides({ playerId: id, season, seasonPlayed: f, age, batting: lines.batting, pitching: lines.pitching });
+    if (!ev || ev.group === null || age === null || f === null) continue;
+    const l = listedActive.get(id);
+    const plan = planSides({ playerId: id, season, seasonPlayed: f, age, batting: lines.batting, pitching: lines.pitching, listed: l ? { position: l.position, role: l.role } : null });
     if (!plan.ok) continue;
     const primary = plan.sides[0];
     if ((primary.side === 'batting') !== (ev.group === 'hitter')) continue;
@@ -835,13 +1063,25 @@ export function ratingsHistory(leagueId: number, through: number, current: boole
   };
 }
 
-/** Every persisted rating snapshot of the save, as the adapter reads it back, with the season each falls in. */
+/**
+ * Every persisted rating snapshot of the save, as the adapter reads it back, with the season each falls in.
+ * A snapshot whose age disagrees with the player's own date of birth is another person under a reused id (a
+ * regenerated league under the same save name, D-01), and is not read as his history.
+ */
 function observationsOf(facts: Map<number, { position: number | null }>): Observation[] {
   const out: Observation[] = [];
-  for (const list of loadScoutedObservations(null).values()) {
+  const all = loadScoutedObservations(null);
+  const births = ageFacts([...all.keys()]);
+  for (const list of all.values()) {
     for (const o of list) {
+      const birth = births.get(o.playerId)?.birth ?? null;
+      const season = Number(o.gameDate.slice(0, 4));
+      if (birth && typeof o.age === 'number' && Number.isFinite(o.age)) {
+        const expected = season - birth.year;
+        if (Math.abs(o.age - expected) > 1) continue;
+      }
       out.push({
-        playerId: o.playerId, gameDate: o.gameDate, season: Number(o.gameDate.slice(0, 4)), level: o.level, age: o.age,
+        playerId: o.playerId, gameDate: o.gameDate, season, level: o.level, age: o.age,
         group: o.ability.kind === 'hitter' ? 'hitter' : o.ability.kind === 'pitcher' ? 'pitcher' : null,
         current: o.ability.current, potential: o.ability.potential,
         tools: { ...o.ability.currentTools }, position: facts.get(o.playerId)?.position ?? null,
@@ -852,37 +1092,45 @@ function observationsOf(facts: Map<number, { position: number | null }>): Observ
 }
 
 /**
- * After an import: refit the ratings model (phase 3b) for each league whose export holds a completed
- * season it has not been fitted through, or whose rating snapshots have just become enough for its own
- * development path (the one case a key is refitted without a developer's force). Recorded in the same
- * store under RATINGS_METHOD; adopted only through the gate. Called after the results refit, since it
- * reads the results model in force.
+ * The ratings fits an import calls for, computed and not recorded: for each league whose export holds a
+ * completed season it has not been fitted through, or whose rating snapshots have just become enough for its
+ * own development path (then forced: a passing fit replaces the row, a failing one never does, A-02).
  */
-export function refitRatingsIfNeeded(options: { fit?: (input: RatingsFitInput) => RatingsFitRun; force?: boolean; leagues?: number[] } = {}): RefitOutcome[] {
+export function computeRatingsRefits(options: { fit?: (input: RatingsFitInput) => RatingsFitRun; force?: boolean; leagues?: number[]; production?: (leagueId: number) => ProductionModel } = {}): Array<PendingFit<RatingsFitRun>> {
   const rules = allLeagueRules();
-  const out: RefitOutcome[] = [];
+  const out: Array<PendingFit<RatingsFitRun>> = [];
   for (const leagueId of options.leagues ?? marketLeagues()) {
     const { season: through, current } = completedThrough(leagueId, rules);
     if (through === null) continue;
-    if (leagueSeasons(leagueId, through, rules.get(leagueId)?.gamesPerTeam.value ?? null).length === 0) continue;
+    if (leagueSeasons(leagueId, through).length === 0) continue;
     const last = latestProductionFitAttempt<RatingsModel, RatingsFitRecord>(leagueId, RATINGS_METHOD);
     const attempted = productionFitAttempted(leagueId, through, RATINGS_METHOD);
-    // The development path starts using the save's snapshots automatically once enough pairs exist
     const pairsNow = attempted && last?.throughSeason === through && last.record.development.pairs < last.record.development.minimumPairs ? countedPairs() : 0;
     const longitudinalArrived = attempted && last !== null && last.record.development.pairs < last.record.development.minimumPairs
       && pairsNow >= last.record.development.minimumPairs;
     if (!options.force && attempted && !longitudinalArrived) {
-      out.push({ leagueId, throughSeason: through, refit: false, adopted: null, reason: `Already fitted through ${through} (${RATINGS_METHOD}).`, ms: null });
+      out.push({ leagueId, throughSeason: through, run: null, gameDate: null, ms: null, force: false, outcome: { leagueId, throughSeason: through, refit: false, adopted: null, reason: `Already fitted through ${through} (${RATINGS_METHOD}).`, ms: null } });
       continue;
     }
     const start = performance.now();
-    const input = ratingsHistory(leagueId, through, current, rules);
+    const input = ratingsHistory(leagueId, through, current, rules, options.production?.(leagueId));
     const run = (options.fit ?? ((i: RatingsFitInput) => fitRatingsModel(i, { prior: RATINGS_PRIOR })))(input);
     const ms = performance.now() - start;
-    recordProductionFit(run, { gameDate: leagueGameDate(leagueId), fitMs: ms, force: options.force || longitudinalArrived });
-    out.push({ leagueId, throughSeason: through, refit: true, adopted: run.record.gate.passed, reason: run.record.gate.reason, ms });
+    out.push({
+      leagueId, throughSeason: through, run, gameDate: leagueGameDate(leagueId), ms, force: options.force === true || longitudinalArrived,
+      outcome: { leagueId, throughSeason: through, refit: true, adopted: run.record.gate.passed, reason: run.record.gate.reason, ms },
+    });
   }
   return out;
+}
+
+/**
+ * After an import: refit the ratings model (phase 3b), in-process (the harness and tests). Recorded in the
+ * same store under RATINGS_METHOD; adopted only through the gate. Called after the results refit, since it
+ * reads the results model in force.
+ */
+export function refitRatingsIfNeeded(options: { fit?: (input: RatingsFitInput) => RatingsFitRun; force?: boolean; leagues?: number[] } = {}): RefitOutcome[] {
+  return recordRefits({ production: [], ratings: computeRatingsRefits(options) });
 }
 
 /** How many rating-snapshot pairs about a season apart the save holds now (the development path's evidence). */
@@ -927,11 +1175,13 @@ export interface ProductionCalibration {
 }
 
 export function productionCalibration(leagueId: number): ProductionCalibration {
-  const { provenance } = productionModelFor(leagueId);
-  const fit = adoptedProductionFit(leagueId, PRODUCTION_METHOD);
+  const rules = allLeagueRules();
+  const { provenance } = productionModelFor(leagueId, rules);
+  const done = completedThrough(leagueId, rules).season;
+  const fit = adoptedProductionFit(leagueId, PRODUCTION_METHOD, done);
   const last = latestProductionFitAttempt(leagueId, PRODUCTION_METHOD);
-  const ratings = ratingsModelFor(leagueId);
-  const ratingsFit = adoptedProductionFit<RatingsModel, RatingsFitRecord>(leagueId, RATINGS_METHOD);
+  const ratings = ratingsModelFor(leagueId, rules);
+  const ratingsFit = adoptedProductionFit<RatingsModel, RatingsFitRecord>(leagueId, RATINGS_METHOD, done);
   const ratingsLast = latestProductionFitAttempt<RatingsModel, RatingsFitRecord>(leagueId, RATINGS_METHOD);
   return {
     leagueId,

@@ -753,7 +753,9 @@ export function projectWithRatings(input: RatingsProductionInput, production: { 
       widen[side] = unknownDevelopmentVariance(ratings.model, group, plan.age, plan.f, input.horizon ?? H);
       why = why ?? path.reason;
     } else {
-      priors[side] = abilityPriorOf(path);
+      // Measured as a forecast on the save's snapshots, the ratings pull his rate fully; until then, only for
+      // what his results do not already carry (B-06: a historical save's ratings were set from these results)
+      priors[side] = { ...abilityPriorOf(path), forecast: typeof ratings.model.reliability?.[kind]?.variance600 === 'number' };
       used = used ?? path;
     }
   }

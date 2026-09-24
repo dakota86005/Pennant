@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
-  playerProductionCone, productionCone, projectProduction,
-  type ControlSeason, type ControlStatus, type ControlTimeline, type ProductionInput, type ProductionLine, type ProductionModelInForce,
+  playerProductionCone, productionCone, projectProduction, ratingsEvidence,
+  type ArrivalModel, type ControlSeason, type ControlStatus, type ControlTimeline, type ProductionInput, type ProductionLine, type ProductionModelInForce,
+  type RatingsEvidence, type RatingsModelInForce,
 } from '../server/playerValue.js';
-import { PRODUCTION_PRIOR, PRODUCTION_PRIOR_CALIBRATION } from '../server/playerValueCalibration.js';
+import { PRODUCTION_PRIOR, PRODUCTION_PRIOR_CALIBRATION, RATINGS_PRIOR } from '../server/playerValueCalibration.js';
+import { FIELDING_EVIDENCE_PROVENANCE, hitterProfileFromRow, syntheticScoutedAbility } from '../server/scoutedEvidence.js';
 import { IDS } from './fixture';
 
 /*
@@ -106,8 +108,10 @@ describe('the production cone joins production with control, season by season', 
 
   it('carries observed coverage beside its target, and leaves it null where the fit did not measure it', () => {
     const measured = productionCone(projectProduction(regular(), fitted), controlled());
-    expect(measured.seasons[0].coverage.outer).toEqual({ target: 0.8, observed: 0.82 });
-    expect(measured.seasons[0].coverage.inner).toEqual({ target: 0.5, observed: 0.49 });
+    // The season under way is not measured (the rest of a season is never backtested)
+    expect(measured.seasons[0].coverage.outer).toEqual({ target: 0.8, observed: null });
+    // 2031 is 1.7 seasons out: between the fit's horizons 1 and 2, interpolated, and null where either is
+    expect(measured.seasons[1].coverage.outer.observed).toBeCloseTo(0.82 + 0.7 * (0.78 - 0.82), 9);
     expect(measured.seasons[1].coverage.inner.observed).toBeNull();
     // Horizon 3 was not measured at all: null, never the target
     expect(measured.seasons[2].coverage.outer.observed).toBeNull();
@@ -171,5 +175,76 @@ describe('the production cone joins production with control, season by season', 
     expect(['projected', 'unknown']).toContain(cone!.status);
     expect(cone!.calibration.status).toMatch(/alibrated on this save/);
     expect(playerProductionCone(999_999)).toBeNull();
+  });
+});
+
+describe('the cone states what the projection rests on, and is calibrated only where every part is (hardening, 2026-09-23)', () => {
+  const SCALE = { max: 80, min: 20, native2080: true, basis: 'detected_from_export_maximum' as const };
+  const BAT = (v: number) => ({ contact: v, gap: v, power: v, eye: v, avoidK: v });
+  const evidence = (): RatingsEvidence => {
+    const ability = syntheticScoutedAbility({ playerId: 7, kind: 'hitter', current: 50, potential: 62, currentTools: BAT(50), potentialTools: BAT(62) });
+    const row: Record<string, unknown> = {
+      batting_ratings_overall_contact: 50, batting_ratings_overall_gap: 50, batting_ratings_overall_power: 50, batting_ratings_overall_eye: 50,
+      batting_ratings_overall_strikeouts: 50, running_ratings_speed: 55, running_ratings_baserunning: 55, running_ratings_stealing: 55,
+    };
+    return ratingsEvidence(ability, {
+      profile: hitterProfileFromRow(7, row, SCALE),
+      glove: { playerId: 7, position: 6, current: 55, potential: 60, provenance: FIELDING_EVIDENCE_PROVENANCE }, position: 6, bats: 'R',
+    });
+  };
+  const arrival = (): ArrivalModel => ({
+    levels: [3],
+    cells: [{
+      side: 'batting', level: 3, ageFrom: 15, ageTo: 45, cases: 500,
+      horizons: Array.from({ length: 7 }, (_, h) => ({ cases: 500, chance: Math.min(0.9, 0.05 * (h + 1)), mean: 300, nodes: Array.from({ length: 10 }, (_, j) => 30 + 60 * j) })),
+    }],
+    byPotential: null,
+  });
+  const savedRatings: RatingsModelInForce = {
+    model: { ...RATINGS_PRIOR, arrival: arrival() },
+    provenance: {
+      source: 'save_fit', label: 'calibrated on this save: ratings → rate on 1147 major leaguers (same-time); development not yet calibrated (provisional prior)',
+      stamp: { status: 'calibrated', basis: 'test', run: 'test' }, fitId: 'test', priorWeight: 0,
+    },
+  };
+
+  it('a projection from ratings never rests on "Major-league results : 0 PA": it names the ratings, the arrival evidence and the development path', () => {
+    const production = projectProduction({ playerId: 7, season: SEASON, seasonPlayed: 0.3, age: 20, batting: [], pitching: [], ratings: evidence(), level: 3 }, fitted, savedRatings);
+    expect(production.status).toBe('projected');
+    const cone = productionCone(production, controlled());
+    expect(cone.basis).not.toMatch(/Major-league results/);
+    expect(cone.basis).toMatch(/ratings/i);
+    expect(cone.basis).toMatch(/level 3/i);
+    expect(cone.basis).toMatch(/development/i);
+  });
+
+  it('a projection from ratings never says "Calibrated on this save" while any part it rests on is not', () => {
+    const production = projectProduction({ playerId: 7, season: SEASON, seasonPlayed: 0.3, age: 20, batting: [], pitching: [], ratings: evidence(), level: 3 }, fitted, savedRatings);
+    const cone = productionCone(production, controlled());
+    expect(cone.calibration.calibrated).toBe(false);
+    expect(cone.calibration.status).not.toMatch(/^Calibrated/);
+    expect(cone.calibration.status).toMatch(/not yet calibrated|not measured|same-time/i);
+  });
+
+  it('a projection blended with ratings names the ratings\' share in its basis', () => {
+    const production = projectProduction({ ...regular(), ratings: evidence(), level: 1 }, fitted, savedRatings);
+    expect(production.basis.source).toBe('results_and_ratings');
+    const cone = productionCone(production, controlled());
+    expect(cone.basis).toMatch(/Major-league results/);
+    expect(cone.basis).toMatch(/ratings/i);
+    expect(cone.basis).toMatch(/%/);
+  });
+
+  it('a fit whose later horizons are still the prior says which horizons are the save\'s own', () => {
+    const partly: ProductionModelInForce = {
+      model: PRODUCTION_PRIOR,
+      provenance: {
+        ...fitted.provenance,
+        window: { seasons: 9, first: 2016, last: 2025, refitAfter: 2025, calibrated: true, horizons: { calibrated: [1, 2, 3], prior: [4, 5, 6, 7] } },
+      } as ProductionModelInForce['provenance'],
+    };
+    const cone = productionCone(projectProduction(regular(), partly), controlled());
+    expect(cone.calibration.status).toMatch(/1–3/);
+    expect(cone.calibration.status).toMatch(/4–7/);
   });
 });

@@ -66,7 +66,8 @@ describe('the Player Value boundary', () => {
     expect(VALUE_MODULES).toEqual([
       'playerValue.ts', 'playerValueCalibration.ts', 'playerValueCone.ts', 'playerValueContract.ts', 'playerValueControl.ts',
       'playerValueFinances.ts', 'playerValueFitStore.ts', 'playerValueHistory.ts', 'playerValueProduction.ts',
-      'playerValueProductionFit.ts', 'playerValueRatings.ts', 'playerValueRatingsFit.ts', 'playerValueRoutes.ts', 'playerValueSnapshot.ts',
+      'playerValueProductionFit.ts', 'playerValueRatings.ts', 'playerValueRatingsFit.ts', 'playerValueRefitWorker.ts', 'playerValueRoutes.ts',
+      'playerValueSnapshot.ts',
     ]);
   });
 
@@ -103,8 +104,9 @@ describe('the Player Value boundary', () => {
     const reader = history.slice(history.indexOf('export function minorLeagueUsage'), history.indexOf('export function affiliatedLevels'));
     expect(reader.length).toBeGreaterThan(0);
     expect(reader).not.toMatch(/\bwar\b|ra9war/);
-    // The major-league reader sums WAR at the major-league level only
-    expect(history).toMatch(/const where = \[`level_id = 1`/);
+    // The major-league reader sums WAR at the major-league level only (level 1, or an independent market league's own top level)
+    expect(history).toMatch(/const where = \[levelWhere\.sql, `split_id = 1`/);
+    expect(history).toMatch(/sql: 'level_id = 1'/);
     // The ratings fit's arrival history is usage: no WAR field anywhere in it
     const fit = code('playerValueRatingsFit.ts');
     const arrival = fit.slice(fit.indexOf('export interface ArrivalPlayer'), fit.indexOf('}', fit.indexOf('export interface ArrivalPlayer')));
@@ -154,22 +156,25 @@ describe('the Player Value boundary', () => {
     for (const file of ['playerValueProduction.ts', 'playerValueProductionFit.ts', ...RATINGS_MODULES]) expect(code(file), file).not.toMatch(/PRODUCTION_PRIOR\b|RATINGS_PRIOR\b/);
     // The reader serves the adopted fit from the store, and the prior only when there is none
     const reader = code('playerValue.ts');
-    expect(reader).toMatch(/adoptedProductionFit\(leagueId, PRODUCTION_METHOD\)/);
-    expect(reader).toMatch(/return \{ model: PRODUCTION_PRIOR, provenance: priorProvenance\(leagueId\) \}/);
-    expect(reader).toMatch(/adoptedProductionFit<RatingsModel, RatingsFitRecord>\(leagueId, RATINGS_METHOD\)/);
+    expect(reader).toMatch(/adoptedProductionFit\(leagueId, PRODUCTION_METHOD, done\.season\)/);
+    expect(reader).toMatch(/return priorInForce\(leagueId, season\);/);
+    expect(reader).toMatch(/adoptedProductionFit<RatingsModel, RatingsFitRecord>\(leagueId, RATINGS_METHOD, completedThrough\(leagueId, rules\)\.season\)/);
     // No other module fits, stores or reads a fit
     for (const file of fs.readdirSync(SERVER).filter((f) => f.endsWith('.ts') && f !== 'playerValue.ts' && f !== FIT_STORE)) {
       expect(code(file), file).not.toMatch(/value_production_fits|recordProductionFit|adoptedProductionFit/);
     }
   });
 
-  it('the refit runs after an import, once, in the background, and can never fail it (D-053)', () => {
+  it('the refit runs after an import, once, off the event loop, and can never fail it (D-053, A-17)', () => {
     const api = code('api.ts');
-    expect(api.match(/refitProductionIfNeeded\(/g) ?? []).toHaveLength(1);
-    expect(api).toMatch(/setImmediate\(\(\) => \{\s*try \{\s*for \(const \w+ of refitProductionIfNeeded\(\)\)/);
-    // Phase 3b: the ratings refit runs once, after the results refit (it reads the results model in force), in the same guard
-    expect(api.match(/refitRatingsIfNeeded\(/g) ?? []).toHaveLength(1);
-    expect(api).toMatch(/for \(const \w+ of refitProductionIfNeeded\(\)\)[\s\S]*?for \(const \w+ of refitRatingsIfNeeded\(\)\)[\s\S]*?\} catch \(err\)/);
+    // In a worker thread, recorded only if no import started while it read; any failure is caught and logged
+    expect(api.match(/refitOffThread\(/g) ?? []).toHaveLength(1);
+    expect(api).toMatch(/refitOffThread\(\{ compute, stale: \(\) => importState\.importing \|\| generation !== importGeneration \}\)/);
+    expect(api).toMatch(/refitInWorker\(\)\.catch\(/);
+    expect(api).toMatch(/\.catch\(\(err\) => console\.error\('\[value\] production refit failed:', err\)\)/);
+    // The worker computes both refits (the ratings after the results model they read) and records nothing
+    expect(code('playerValueRefitWorker.ts')).toMatch(/computeRefits\(\)/);
+    expect(code('playerValue.ts')).toMatch(/const production = computeProductionRefits\(\);[\s\S]*?const ratings = computeRatingsRefits\(/);
     // After the import has finished, only when it succeeded
     expect(api).toMatch(/\} finally \{[\s\S]*?importState\.importing = false;[\s\S]*?\}\s*if \(imported\) refitAfterImport\(\);/);
   });

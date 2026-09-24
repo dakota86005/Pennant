@@ -9,8 +9,14 @@
  * diagnostic). A fit that fails the gate is recorded too, never adopted, so the reason is visible
  * and the previous fit stays in force.
  *
- *   - Keyed by save, league, the last completed season the fit used, and the method version: a
- *     re-import that brings no newer completed season finds its key and fits nothing.
+ *   - Keyed by the save's IDENTITY (its configured name and a fingerprint of the league's own history:
+ *     its name, first season and first players, `leagueFingerprint`), the league, the last completed
+ *     season the fit used and the method version: a re-import that brings no newer completed season finds
+ *     its key and fits nothing, and a new save under a reused name and league id never finds another save's
+ *     fit (D-01). The column is still named `save_name`; rows written before the identity (the plain
+ *     name) are simply never matched, so the first start after the upgrade refits.
+ *   - A fit in force is never through a season the league has not completed (a reverted save, A-21), and a
+ *     refit that fails the gate never replaces an adopted row, even when forced (A-02).
  *   - Additive and idempotent, like every history.db table: CREATE TABLE IF NOT EXISTS, INSERT OR
  *     IGNORE; only a developer's forced refit (the harness) replaces a row.
  *   - Never league.db, never a timer. It is reached only through the entry point (`playerValue.ts`).
@@ -19,6 +25,7 @@
  */
 
 import { currentSaveName, historyDb } from './history.js';
+import { leagueFingerprint } from './playerValueHistory.js';
 import type { ProductionModel } from './playerValueProduction.js';
 import type { FitRecord } from './playerValueProductionFit.js';
 
@@ -88,11 +95,28 @@ function parse<M, R>(row: Row | undefined): StoredFit<M, R> | null {
   }
 }
 
+const identities = new Map<number, string>();
+
+/** The save's identity for a league: its configured name and the league's fingerprint (cached until an import). */
+export function saveIdentity(leagueId: number): string {
+  let id = identities.get(leagueId);
+  if (id === undefined) {
+    id = `${currentSaveName()}|${leagueFingerprint(leagueId)}`;
+    identities.set(leagueId, id);
+  }
+  return id;
+}
+
+/** Forget the cached identities: the export changed (an import), or a test rebuilt the league. */
+export function clearFitStoreCaches(): void {
+  identities.clear();
+}
+
 /** Whether a fit for this save, league, last completed season and method has been made (adopted or not). */
 export function productionFitAttempted(leagueId: number, throughSeason: number, method: string): boolean {
   return historyDb.prepare(
     `SELECT 1 FROM value_production_fits WHERE save_name = ? AND league_id = ? AND through_season = ? AND method = ?`
-  ).get(currentSaveName(), leagueId, throughSeason, method) !== undefined;
+  ).get(saveIdentity(leagueId), leagueId, throughSeason, method) !== undefined;
 }
 
 /**
@@ -100,23 +124,34 @@ export function productionFitAttempted(leagueId: number, throughSeason: number, 
  * (a developer's refit from the harness) replaces it. Returns rows written.
  */
 export function recordProductionFit(run: { model: unknown; record: StorableRecord }, meta: { gameDate: string | null; fitMs: number | null; force?: boolean }): number {
-  const verb = meta.force ? 'INSERT OR REPLACE' : 'INSERT OR IGNORE';
   const r = run.record;
+  const save = saveIdentity(r.leagueId);
+  // A refit that fails the gate never replaces the fit in force (A-02): the previous fit stays, as D-053 says
+  if (meta.force && !r.gate.passed) {
+    const held = historyDb.prepare(
+      `SELECT adopted FROM value_production_fits WHERE save_name = ? AND league_id = ? AND through_season = ? AND method = ?`
+    ).get(save, r.leagueId, r.throughSeason, r.method) as { adopted: number } | undefined;
+    if (held?.adopted === 1) return 0;
+  }
+  const verb = meta.force ? 'INSERT OR REPLACE' : 'INSERT OR IGNORE';
   return historyDb.prepare(
     `${verb} INTO value_production_fits (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
-    currentSaveName(), r.leagueId, r.throughSeason, r.method, meta.gameDate, new Date().toISOString(),
+    save, r.leagueId, r.throughSeason, r.method, meta.gameDate, new Date().toISOString(),
     r.gate.passed ? 1 : 0, r.gate.reason, r.priorWeight.overall, meta.fitMs,
     JSON.stringify(run.model), JSON.stringify(r),
   ).changes;
 }
 
-/** The fit in force for this save and league: the adopted one with the latest completed season, or null. */
-export function adoptedProductionFit<M = ProductionModel, R = FitRecord>(leagueId: number, method: string): StoredFit<M, R> | null {
+/**
+ * The fit in force for this save and league: the adopted one with the latest completed season, never one
+ * through a season the league has not completed (`throughMax`, A-21), or null.
+ */
+export function adoptedProductionFit<M = ProductionModel, R = FitRecord>(leagueId: number, method: string, throughMax: number | null = null): StoredFit<M, R> | null {
   return parse<M, R>(historyDb.prepare(
-    `SELECT ${COLUMNS} FROM value_production_fits WHERE save_name = ? AND league_id = ? AND method = ? AND adopted = 1
+    `SELECT ${COLUMNS} FROM value_production_fits WHERE save_name = ? AND league_id = ? AND method = ? AND adopted = 1 AND through_season <= ?
      ORDER BY through_season DESC LIMIT 1`
-  ).get(currentSaveName(), leagueId, method) as Row | undefined);
+  ).get(saveIdentity(leagueId), leagueId, method, throughMax ?? Number.MAX_SAFE_INTEGER) as Row | undefined);
 }
 
 /** The most recent fit attempt for this save and league, adopted or not (so a rejection's reason is visible). */
@@ -124,5 +159,5 @@ export function latestProductionFitAttempt<M = ProductionModel, R = FitRecord>(l
   return parse<M, R>(historyDb.prepare(
     `SELECT ${COLUMNS} FROM value_production_fits WHERE save_name = ? AND league_id = ? AND method = ?
      ORDER BY through_season DESC LIMIT 1`
-  ).get(currentSaveName(), leagueId, method) as Row | undefined);
+  ).get(saveIdentity(leagueId), leagueId, method) as Row | undefined);
 }
