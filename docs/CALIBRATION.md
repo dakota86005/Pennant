@@ -257,3 +257,24 @@ automatically when the evidence exists:
 
 When the snapshots arrive, the refit after an import picks them up by itself (a ratings key that fitted before the
 snapshots were enough is refitted once when they become so), and the record says which parts are the save's.
+
+## 7. Player Value's opening price of a win: policy minimums (hardening, B-13)
+
+The opening price of a win (PLAYER_VALUE.md Part 4.1) is a spread of defensible bases, not a fit, so it has nothing
+fitted to calibrate. What the hardening added are two **policy** minimums, `OPENING_PRICE_MINIMUMS` in
+`server/playerValueCalibration.ts`, stamped `OPENING_PRICE_MINIMUMS_CALIBRATION`, and one mechanism.
+
+| What | Value | Stamp | Why |
+|---|---|---|---|
+| A season's WAR on this season's footing | share of this season's schedule it covered | mechanism, no constant | A 60-game season (2020) is 37% of a 162-game schedule; read as a full season it made bases A, B, C and C2 about 2.7 times the price. Each past season's WAR is divided by its games per club over this season's games per team, both ways, and a season whose share is not established is not assumed full |
+| Least share of a schedule a basis may rest on | a quarter (0.25) | policy | A pace's noise grows as the share shrinks (the pace at 5% of a season is noise); below a quarter the scaled reading is more noise than price. Applies to a past season and to this season's pace alike |
+| Fewest contracts one basis may rest on | 20 | policy | A basis is salaries over WAR; one player's season WAR scatters by about a win around what he was paid for, so a basis on n contracts moves by roughly 0.6 ÷ √n of itself (about 13% at 20). Fewer, and bases differ by who is in them, not by what they measure |
+
+Below either minimum a basis is not computed and says why; with fewer than two bases left the price is `unknown`, never a
+point. On the Arizona import (2026-05-16, 27.6% of the season played, 253 market contracts, 124 starting 2026, prior
+seasons 2024 and 2025 at 99.96% and 100% of the schedule) every basis clears both minimums and the price is unchanged:
+central $7.25M, band $6.57M–$9.78M, floor $4.22M–$4.33M. Basis B2's WAR moves from 454.6 to 454.7 (2024's rain-outs)
+and rounds to the same $7.32M. The pace bases stand on 27.6%, just over the quarter: a save exported two weeks earlier
+would drop them and price from the four prior-season bases alone. The sampling component B-13 also asks for (a
+bootstrap over contracts before the opening band is compared with a measured one) belongs to phase 4, where that
+comparison is built.

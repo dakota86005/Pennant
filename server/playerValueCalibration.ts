@@ -79,6 +79,34 @@ export const OPENING_PRICE_CENTRAL_CALIBRATION: CalibrationStamp = policy(
 );
 
 /**
+ * What the opening price needs before a basis may rest on it (hardening, B-13). Below either minimum
+ * the basis is not computed and says why; with fewer than two bases left the price is unknown, never
+ * a point.
+ *
+ *   seasonShare  the least share of its schedule a season must cover before its WAR prices a
+ *                season's salary: a quarter of the schedule. A season's WAR is scaled to the full
+ *                schedule by the share it covered (a 60-game season under a 162-game schedule counts
+ *                162/60 of its WAR), and a pace's noise grows as the share shrinks; below a quarter
+ *                the scaled reading is more noise than price. It applies to a past season and to
+ *                this season's pace alike.
+ *   contracts    the fewest contracts one basis may rest on. A basis is a sum of salaries over a sum
+ *                of WAR; one player's season WAR scatters by about a win around what he was paid
+ *                for, so a basis on n contracts moves by roughly 0.6 ÷ √n of itself from that noise
+ *                alone: about 13% at 20. Fewer, and one basis differs from another by who happens
+ *                to be in it, not by what it measures.
+ */
+export const OPENING_PRICE_MINIMUMS = {
+  seasonShare: 0.25,
+  contracts: 20,
+} as const;
+
+export const OPENING_PRICE_MINIMUMS_CALIBRATION: CalibrationStamp = policy(
+  'A basis of the opening price rests on at least a quarter of a season\'s schedule (a past season scaled to the full schedule by the share it covered, or this season\'s pace) ' +
+    'and on at least 20 contracts; below either it is not computed, and with fewer than two bases the price is unknown (hardening, B-13). ' +
+    'Chosen so a basis\'s own sampling noise stays well inside the spread between bases; a decision, not a fit.'
+);
+
+/**
  * The opening replacement level: the one the export's own WAR implies, (league wins − league WAR) ÷
  * league games, measured per season (R-4). OOTP's convention, not a measurement of the talent a club
  * can get for the minimum; phase 4 measures that from freely available talent.

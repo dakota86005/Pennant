@@ -42,7 +42,7 @@ import {
 import { composeControlTimeline, type ControlTimeline } from './playerValueControl.js';
 import { productionCone, type ProductionCone } from './playerValueCone.js';
 import {
-  FINANCE_COLUMNS, clubFinancesOf, openingPriceOfWin, replacementLevelOf,
+  FINANCE_COLUMNS, clubFinancesOf, openingPriceOfWin, replacementLevelOf, scheduleShareOf,
   type ClubFinances, type FinanceTable, type MarketCandidate, type PriceOfWin, type ReplacementLevel,
   type SeasonRecord, type SeasonWar,
 } from './playerValueFinances.js';
@@ -294,9 +294,11 @@ const single = (t: { present: Set<string> | null; rows: Array<Record<string, unk
   ({ present: t.present, row: t.rows[0] ?? null });
 
 function clubFinancesWith(teamId: number, rules: Map<number, LeagueRules>): ClubFinances {
+  const league = rulesOfClub(teamId, rules);
   return clubFinancesOf({
     teamId,
-    season: rulesOfClub(teamId, rules).contract.season.value,
+    season: league.contract.season.value,
+    financials: league.finance.financials,
     current: single(financeRows('team_financials', teamId)),
     last: single(financeRows('team_last_financials', teamId)),
     history: financeRows('team_history_financials', teamId),
@@ -416,6 +418,8 @@ export function leagueFinances(leagueId: number, options: ValuationOptions = {})
   const gamesPerTeam = league.gamesPerTeam;
   const now = s === null ? null : records.get(s) ?? null;
   const seasonPlayed = seasonPlayedOf(now, gamesPerTeam);
+  // The share of this season's schedule each past season covered: its games per club over this season's games per team (B-13)
+  const seasonShares = new Map(seasons.filter((y) => y !== s).map((y) => [y, scheduleShareOf(records.get(y) ?? null, gamesPerTeam)]));
 
   return {
     leagueId: marketId,
@@ -431,6 +435,7 @@ export function leagueFinances(leagueId: number, options: ValuationOptions = {})
       candidates,
       war: war.bySeason,
       seasonFraction: seasonPlayed,
+      seasonShares,
       warUnavailable: war.unavailable,
     }),
     replacementLevel: seasons.map((y) => replacementLevelOf({

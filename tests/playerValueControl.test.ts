@@ -81,9 +81,11 @@ describe('Player Value: control (phase 1)', () => {
     const orphan = regimeOf(204, [minorLeagueRow(204, 999)]);
     expect(orphan.freeAgencyYears.value).toBeNull();
     const t2 = timelineOf({ state: veteranInTripleA, rules: orphan, contract: expiring });
-    expect(t2.standing).toBe('unknown');
+    // The season is the league's own fact (D-14), so his contract's season stands as signed; past it nothing is guessed
+    expect(orphan.season.value).toBe(THIS_SEASON);
+    expect(t2.seasons.filter((s) => s.season > THIS_SEASON).every((s) => s.status === 'indeterminate')).toBe(true);
     expect(t2.seasons.some((s) => s.status === 'reserve_clause' || s.status === 'free_agent')).toBe(false);
-    expect(t2.notes.join(' ')).toMatch(/parent league 999/);
+    expect([...t2.notes, ...t2.seasons.flatMap((s) => s.reasons)].join(' ')).toMatch(/parent league 999/);
     const noParentColumn = { ...minorLeagueRow(204) };
     delete noParentColumn.parent_league_id;
     expect(regimeOf(204, [noParentColumn]).freeAgencyYears).toMatchObject({ value: null, provenance: 'unknown' });

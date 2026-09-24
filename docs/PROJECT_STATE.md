@@ -341,7 +341,9 @@ Present on `main` (D-023; research in [RIGHTS_RESEARCH.md](RIGHTS_RESEARCH.md)):
   phase 1 it is the one `LeagueRules`: the contract regime (free-agency and
   arbitration lines, minimum salary, service-year length, money scale) is read
   here too, every column guarded, through `parent_league_id`; `valuation.ts`'s
-  duplicate with its 6 / 3 fallback is deleted.
+  duplicate with its 6 / 3 fallback is deleted. The season it applies them in is
+  the league's own `season_year` where the row states it, the regime's only
+  where it does not (hardening, D-14).
 - **Rights evaluator** (`server/playerRights.ts`): option, recall, add to the
   40-man, designate, outright assignment and IL activation, each
   `eligible`/`ineligible`/`indeterminate` with reasons carrying their basis
@@ -407,6 +409,13 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   labelled "opening: the imported market") and the **replacement level** per
   season (.2877 in 2024, .2933 in 2026 to date, 2025 not measured: the
   Athletics have no 2025 standings row). Computed per request (132–150 ms).
+  Hardening (B-13, D-17, D-14): a season's WAR is put on this season's
+  schedule's footing by the share it covered (`scheduleShareOf`), a basis on
+  under a quarter of a schedule or under 20 contracts is not computed
+  (`OPENING_PRICE_MINIMUMS`, policy), a league without financials shows no club
+  money in dollars, and "this season" is read from the league's own row where it
+  states it, so a broken parent chain leaves the regime unknown and the season
+  known. The Arizona figures are unchanged.
 - **Market snapshot** (`server/playerValueSnapshot.ts`): one row per save,
   league and game date in `history.db` (`value_market_snapshots`), written once
   per import from `runImport`, idempotent, never able to fail the import.
@@ -479,7 +488,13 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
 - **Tests:** `playerValueControl`, `playerValueCost` (cost-band halves as
   `it.todo`), `playerValueFinances`, `playerValueProduction`,
   `playerValueProductionFit`, `playerValueRatings`, `playerValueCone`,
-  `productionCone` (geometry, render and theme tokens) and `playerValueBoundary`.
+  `productionCone` (geometry, render and theme tokens) and `playerValueBoundary`
+  (since the hardening it reads the source through the TypeScript parser, and
+  each of its hardened checks was shown to catch a deliberate mutation; a known
+  violation owned by another fix is listed with its finding and must still be
+  there). `playerValueCrossSave` runs every entry point over synthetic saves of
+  every shape in Reviewer D's matrix (`tests/syntheticSave.ts`); the gaps other
+  fixes own are `it.todo` by finding ID.
 
 Not built: the save's own development path, the ratings' forecast reliability
 and the arrival chance by potential (they fit themselves once the save's rating

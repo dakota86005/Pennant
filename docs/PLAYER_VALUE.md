@@ -342,6 +342,12 @@ field is zero is a placeholder, read as unknown, never $0: every club-season bef
 media-contract `expires` columns and the zero sharing columns are shown as exported with `meaning: 'unknown'`
 (`Uninterpreted` in `provenance.ts`) and never interpreted. `cash` is never read.
 
+**Hardening (D-17).** A league that runs no financials (`rules_financials = 0`) is valued in wins, and so is its club:
+budget, payroll (now, next season, offered), revenue, expenses, cash for trades, media money, last season and the revenue
+trend are `unknown` with that reason, never the figures the export may still carry and never $0; the league's summed
+payroll follows. Scales and codes that are not money (fans, market, owner expectation) are still shown as exported. Where
+whether the league runs financials is not established, each figure stays as exported and says so.
+
 ### 2.5 Surplus
 
 Per controlled season: production value (wins × price of a win) less cost, discounted to today, and summed. It is
@@ -412,6 +418,18 @@ bases move with the 17: B $7.50M, B′ $7.32M, B″ $9.78M, C $6.57M (124 contra
 and $4.2M–$4.3M. A read-only query of the same export under R-5's reading returns R-5's figures exactly (7.28 / 7.16 / 9.47 / 6.13 / 6.51 /
 6.80), so the difference is the reading, not the arithmetic. Basis D is named as not used. A single market reading is
 not a band: the price is then `unknown`, never a point. The price has no input from earlier imports.
+
+**Hardening (B-13): enough of a season, enough of a market.** A season's WAR prices this season's salaries only on this
+season's footing: each past season's WAR is divided by the share of this season's schedule it covered (its games per club
+over this season's games per team, `scheduleShareOf`), both ways, and the basis says so ("2025 WAR, scaled from 37% of this
+season's schedule"). Read as a full season, a 60-game 2020 made bases A, B, C and C2 about 2.7 times the price and B2
+about 1.5 times. A season whose share is not established is not assumed full. Two policy minimums
+(`OPENING_PRICE_MINIMUMS`, Part 11): a basis rests on at least a quarter of a schedule, for a past season and for this
+season's pace alike, and on at least 20 contracts. Below either it is not computed and says why; with fewer than two bases
+the price is `unknown`. On the Arizona import every basis clears both, and the figures above are unchanged (B2's WAR moves
+from 454.6 to 454.7 for 2024's rain-outs and rounds to the same $7.32M). The pace bases rest on 27.6% of the season, just
+over the quarter. Not done here: a sampling component for the band (a bootstrap over contracts) before the opening band is
+compared with a measured one; that comparison is phase 4's, and the bootstrap belongs with it.
 
 ### 4.2 How it tightens
 
@@ -786,6 +804,32 @@ price costs, not the market, and are left for the phase that builds cost bands (
     `RATINGS_PRIOR`, both stamped provisional, and the ratings prior measures no arrivals. The ratings refit runs once,
     after the results refit, in the same background guard.
 
+**Hardening (A-16).** Reviewer A showed the test weaker than it looked: a write to `league.db` through the fit store's
+`${verb} INTO` statement, a dynamic or double-quoted import, and `contracts.ts`'s own service division all passed. The test
+now reads the source through the TypeScript parser, not regular expressions over text:
+
+- Comments are blanked by the parser, so `'a // b'` hides no code after it.
+- Imports are read in every form: static, `export … from`, `import()`, `require`, type imports, packages and subdirectories
+  (the whole of `server/` is walked). A value module's packages are allow-listed (`express` for the routes only), and only the
+  readers may import `db.js`; the pure modules may not.
+- Every database call is inspected by its receiver and its SQL, resolved through templates, identifiers (by lexical scope)
+  and conditionals. A non-writer runs nothing and prepares only statements that provably read `league.db`. A writer sends
+  every statement to `history.db` and reads `league.db` only by a provable SELECT, and aliases neither handle.
+- Consumers import only the entry point (the snapshot writer and the routes only for their one caller each); the pricing
+  functions are forbidden by name, so an alias does not hide them.
+- A migrated consumer does no service arithmetic in any spelling (`service.low / perYear` included), and queries no contract
+  table.
+- A threshold is forbidden by name, not only as `.name`, so destructuring does not hide it.
+- A module-level number of any name, or an object or array holding one, is forbidden outside the calibration module, and
+  every number-holding object there has a stamp.
+- `SELECT p.*` and a contract-rule query in any quotes are caught.
+
+A known violation owned by another fix (A-22: `contracts.ts` divides service itself; A-14: Payroll queries
+`players_contract`; the player card's own `players_contract` query, unassigned) is listed in `PENDING` with its finding and
+asserted to be still there exactly, so it cannot hide a new one and the list only empties. Each hardened check was shown to
+fail on a deliberate mutation that the earlier test passed (22 mutations in the hardening cycle, 2026-09-23; two the
+earlier test already caught were kept as controls).
+
 ---
 
 ## Part 11 — Constants register
@@ -804,6 +848,8 @@ numeric constant. Phase 3a adds `PRODUCTION_POLICY` (policy) and `PRODUCTION_PRI
 | Opening replacement level | **provisional** | The export's WAR convention, measured per season from the export (.2877 in 2024, .2933 in 2026 to date; 2025 not measured). `REPLACEMENT_LEVEL_CALIBRATION` (phase 2). Measured from free talent in phase 4 |
 | Opening price-of-win band (spread of bases) | **provisional** | R-5's bases, computed from each import. `OPENING_PRICE_CALIBRATION` (phase 2). Replaced by observed signings |
 | Central value of the opening price | **policy** | The median of the market bases that could be computed: none is preferred. `OPENING_PRICE_CENTRAL_CALIBRATION` (phase 2) |
+| What a basis of the opening price needs: a quarter of a schedule, 20 contracts | **policy** | `OPENING_PRICE_MINIMUMS`, stamped `OPENING_PRICE_MINIMUMS_CALIBRATION` (hardening, B-13). Below either, the basis is not computed. A season's WAR is put on this season's schedule's footing by the share it covered (a mechanism, no constant). CALIBRATION.md section 7 |
+| This season | **none: read** | The league's own `season_year`, where its row states it; the regime league's only where it does not (hardening, D-14) |
 | Which financial row is authoritative | **policy** | The row that names its season; `team_last_financials` named and never used (R-7). `FINANCE_ROW_CALIBRATION` (phase 2) |
 | A financial row with every money field zero | **policy** | A placeholder: unknown, never $0 (R-1). `PLACEHOLDER_ROW_CALIBRATION` (phase 2) |
 | When the measured price replaces the opening one | **policy** | When the measured band is narrower than the opening band (Q-4). No fixed count |

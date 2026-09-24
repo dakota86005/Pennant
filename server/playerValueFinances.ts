@@ -31,7 +31,8 @@ import type { ContractFacts } from './playerValueContract.js';
 import type { ControlTimeline } from './playerValueControl.js';
 import {
   FINANCE_ROW_CALIBRATION, MARKET_CONTRACT_CALIBRATION, OPENING_PRICE_CALIBRATION, OPENING_PRICE_CENTRAL_CALIBRATION,
-  OPENING_PRICE_LABEL, PLACEHOLDER_ROW_CALIBRATION, PRICE_NARROWS_WHEN, REPLACEMENT_LEVEL_CALIBRATION,
+  OPENING_PRICE_LABEL, OPENING_PRICE_MINIMUMS, OPENING_PRICE_MINIMUMS_CALIBRATION, PLACEHOLDER_ROW_CALIBRATION,
+  PRICE_NARROWS_WHEN, REPLACEMENT_LEVEL_CALIBRATION,
 } from './playerValueCalibration.js';
 import { derivedFrom, fromExport, uninterpreted, unknownBecause, type Sourced, type Uninterpreted } from './provenance.js';
 
@@ -76,6 +77,22 @@ export interface SeasonRecord {
   wins: number;
   games: number;
   source: string;
+}
+
+/**
+ * The share of this season's schedule a past season covered, for the price of a win (B-13): its games
+ * per club (over the clubs its standings hold) against this season's games per team. Measured against
+ * this season's schedule on purpose: the price sets this season's salaries against a season's WAR, so
+ * a season is put on this season's footing. Unknown with the reason when either side is not exported.
+ */
+export function scheduleShareOf(record: SeasonRecord | null, gamesPerTeam: Sourced<number>): Sourced<number> {
+  if (record === null || record.clubs.size === 0) return unknownBecause('not_exported_by_ootp', 'team_history_record.g', 'The export has no standings for that season.');
+  if (gamesPerTeam.value === null) {
+    return unknownBecause('not_exported_by_ootp', 'leagues.rules_schedule_games_per_team', `The schedule length is not established (${gamesPerTeam.note ?? 'not exported'}).`);
+  }
+  const perClub = record.games / record.clubs.size;
+  return derivedFrom(perClub / gamesPerTeam.value, `${record.source}.g + leagues.rules_schedule_games_per_team`,
+    `${round(perClub, 1)} games per club in ${record.season} against this season's ${gamesPerTeam.value}.`);
 }
 
 // ── replacement level (Part 4.3) ─────────────────────────────────────────────
@@ -149,6 +166,12 @@ export interface OpeningPriceInput {
   war: Map<number, SeasonWar>;
   /** The share of this season played, for the pace basis. */
   seasonFraction: Sourced<number>;
+  /**
+   * The share of this season's schedule each past season covered (its games per club over this
+   * season's games per team): a season's WAR prices a full season's salary only in proportion to it.
+   * A season absent here has an unknown share and is not assumed full.
+   */
+  seasonShares: Map<number, Sourced<number>>;
   /** Why the export's WAR cannot be read at all, when it cannot (a table or column missing). */
   warUnavailable?: string | null;
 }
@@ -207,9 +230,9 @@ export interface PriceOfWin {
   notUsed: string[];
   population: PricePopulation;
   assumptions: string[];
-  rules: { market: string; band: string; central: string; floor: string };
+  rules: { market: string; band: string; central: string; floor: string; minimums: string };
   narrowsWhen: string;
-  stamps: { market: CalibrationStamp; bases: CalibrationStamp; central: CalibrationStamp };
+  stamps: { market: CalibrationStamp; bases: CalibrationStamp; central: CalibrationStamp; minimums: CalibrationStamp };
 }
 
 const round = (n: number, digits = 0): string => n.toLocaleString('en-US', { maximumFractionDigits: digits, minimumFractionDigits: digits });
@@ -248,6 +271,13 @@ function basisOf(
   }
   if (kept.length === 0) {
     return { ...base, salaryAboveMinimum: null, wins: null, perWin: unknownBecause('not_exported_by_ootp', null, 'No player in this population has the salary this basis needs.') };
+  }
+  if (kept.length < OPENING_PRICE_MINIMUMS.contracts) {
+    return {
+      ...base, salaryAboveMinimum: null, wins: null,
+      perWin: unknownBecause('not_exported_by_ootp', null,
+        `Not computed: ${kept.length} contract${kept.length === 1 ? '' : 's'} with the salary this basis needs, fewer than the policy minimum of ${OPENING_PRICE_MINIMUMS.contracts} (a basis on so few differs from another by who is in it, not by what it measures).`),
+    };
   }
   const above = kept.reduce((sum, r) => sum + ((money(r) as number) - minimum), 0);
   const w = leagueWins ?? kept.reduce((sum, r) => sum + (wins as (r: Row) => number)(r), 0);
@@ -293,6 +323,8 @@ export function openingPriceOfWin(input: OpeningPriceInput): PriceOfWin {
     fraction !== null
       ? `The pace bases rest on ${round(fraction * 100, 1)}% of a season and are the widest.`
       : 'The pace bases need the share of the season played, which is not established here.',
+    `A season's WAR prices a full season's salary in proportion to the schedule it covered: a short season (a strike, a 60-game season) is scaled to this season's schedule, never read as a full one, and a season, or this season's pace, covering less than ${round(OPENING_PRICE_MINIMUMS.seasonShare * 100)}% of the schedule is not used (the policy minimum). A season whose share is not established is not assumed full.`,
+    `A basis rests on at least ${OPENING_PRICE_MINIMUMS.contracts} contracts (the policy minimum); a thinner one is not computed.`,
   ];
   const result = (price: Sourced<PriceBand>, floor: Sourced<{ low: number; high: number }>, bases: PriceBasis[], unit: PriceOfWin['unit']): PriceOfWin => ({
     leagueId: input.leagueId,
@@ -313,9 +345,13 @@ export function openingPriceOfWin(input: OpeningPriceInput): PriceOfWin {
       band: 'The band runs from the lowest to the highest market basis that could be computed: the spread of defensible bases, not a statistical interval (R-5). One reading is not a band.',
       central: OPENING_PRICE_CENTRAL_CALIBRATION.basis,
       floor: 'The floor divides every major leaguer\'s pay above the minimum by his WAR (A), and by the league\'s WAR (A2). Pre-arbitration and arbitration pay is held below the market by rule, so it understates what a win costs on the open market.',
+      minimums: OPENING_PRICE_MINIMUMS_CALIBRATION.basis,
     },
     narrowsWhen: PRICE_NARROWS_WHEN,
-    stamps: { market: MARKET_CONTRACT_CALIBRATION, bases: OPENING_PRICE_CALIBRATION, central: OPENING_PRICE_CENTRAL_CALIBRATION },
+    stamps: {
+      market: MARKET_CONTRACT_CALIBRATION, bases: OPENING_PRICE_CALIBRATION, central: OPENING_PRICE_CENTRAL_CALIBRATION,
+      minimums: OPENING_PRICE_MINIMUMS_CALIBRATION,
+    },
   });
 
   // Dollars exist only where the league runs finances, states its minimum and its season
@@ -339,31 +375,67 @@ export function openingPriceOfWin(input: OpeningPriceInput): PriceOfWin {
   const prior = input.war.get(season - 1) ?? null;
   const twoBack = input.war.get(season - 2) ?? null;
   const now = input.war.get(season) ?? null;
-  const missing = (s: number) => ({ unknown: input.warUnavailable ?? `The export has no WAR for the league in ${s}.` });
-  const byPlayer = (w: SeasonWar) => (r: Row) => w.byPlayer.get(r.playerId) ?? 0;
-  const priorWins = prior ? byPlayer(prior) : missing(season - 1);
-  const twoSeasonWins = prior && twoBack
-    ? (r: Row) => ((prior.byPlayer.get(r.playerId) ?? 0) + (twoBack.byPlayer.get(r.playerId) ?? 0)) / 2
-    : missing(prior ? season - 2 : season - 1);
-  const paceWins = now === null
+  type Wins = ((r: Row) => number) | { unknown: string };
+  const pct = (share: number) => `${round(share * 100)}%`;
+  const missing = (y: number): Wins => ({ unknown: input.warUnavailable ?? `The export has no WAR for the league in ${y}.` });
+  /**
+   * A season's WAR on this season's footing: each player's WAR divided by the share of this season's
+   * schedule it covered, both ways (a 60-game season under a 162-game schedule is scaled up; a
+   * 162-game season before a league shortened its schedule to 60 is scaled down), and not used below
+   * the policy minimum share (B-13). An unknown share is not assumed full.
+   */
+  const footing = (y: number, w: SeasonWar | null, share: Sourced<number> | undefined, what: string): { wins: Wins; share: number | null } => {
+    if (w === null) return { wins: missing(y), share: null };
+    const s = share?.value ?? null;
+    if (s === null || !(s > 0)) {
+      return {
+        wins: { unknown: `The share of the schedule ${what} is not established (${share?.note ?? `no standings for ${y}`}), so its WAR cannot be put on a full season's footing, and it is not assumed full.` },
+        share: null,
+      };
+    }
+    if (s < OPENING_PRICE_MINIMUMS.seasonShare) {
+      return {
+        wins: { unknown: `Not used: ${what} is ${pct(s)} of the schedule, under the policy minimum of ${pct(OPENING_PRICE_MINIMUMS.seasonShare)}; a WAR scaled from so little is more noise than price.` },
+        share: s,
+      };
+    }
+    return { wins: (r: Row) => (w.byPlayer.get(r.playerId) ?? 0) / s, share: s };
+  };
+  // Named where the scaling shows at the precision printed (a rain-out or two rounds to 100%)
+  const scaledFrom = (share: number | null) => (share !== null && pct(share) !== pct(1) ? `, scaled from ${pct(share)} of this season's schedule` : '');
+  const priorSeason = footing(season - 1, prior, input.seasonShares.get(season - 1), `${season - 1} covered`);
+  const twoBackSeason = footing(season - 2, twoBack, input.seasonShares.get(season - 2), `${season - 2} covered`);
+  const priorWins = priorSeason.wins;
+  const twoSeasonWins: Wins = 'unknown' in priorSeason.wins
+    ? priorSeason.wins
+    : 'unknown' in twoBackSeason.wins
+      ? twoBackSeason.wins
+      : ((a: (r: Row) => number, b: (r: Row) => number) => (r: Row) => (a(r) + b(r)) / 2)(priorSeason.wins, twoBackSeason.wins);
+  const paceWins: Wins = now === null
     ? missing(season)
     : fraction === null || !(fraction > 0)
       ? { unknown: `The share of ${season} played is not established (${input.seasonFraction.note ?? 'not exported'}), so there is no pace.` }
-      : (r: Row) => (now.byPlayer.get(r.playerId) ?? 0) / fraction;
+      : footing(season, now, input.seasonFraction, `the share of ${season} played`).wins;
+  const priorLabel = `${season - 1} WAR${scaledFrom(priorSeason.share)}`;
+  const twoSeasonLabel = `mean of ${season - 2} WAR${scaledFrom(twoBackSeason.share)} and ${season - 1} WAR${scaledFrom(priorSeason.share)}`;
+  // The league's whole prior-season WAR, on the same footing, for the second floor
+  const leaguePriorWins = prior !== null && priorSeason.share !== null && !('unknown' in priorSeason.wins)
+    ? prior.total / priorSeason.share
+    : null;
 
   const salaryNow = (r: Row) => r.salary;
   const market = rows.filter((r) => r.standing === 'market');
   const signed = market.filter((r) => r.startsThisSeason);
   const bases: PriceBasis[] = [
-    basisOf('A', 'floor', `Every major leaguer on the league's active or injured lists, ${season - 1} WAR`, rows, minimum, salaryNow, priorWins),
-    prior
-      ? basisOf('A2', 'floor', `The same salaries, over the league's whole ${season - 1} WAR`, rows, minimum, salaryNow, () => 0, prior.total)
-      : basisOf('A2', 'floor', `The same salaries, over the league's whole ${season - 1} WAR`, rows, minimum, salaryNow, missing(season - 1)),
-    basisOf('B', 'market', `Free-agency eligible this season, ${season - 1} WAR`, market, minimum, salaryNow, priorWins),
-    basisOf('B2', 'market', `Free-agency eligible this season, mean of ${season - 2} and ${season - 1} WAR`, market, minimum, salaryNow, twoSeasonWins),
+    basisOf('A', 'floor', `Every major leaguer on the league's active or injured lists, ${priorLabel}`, rows, minimum, salaryNow, priorWins),
+    leaguePriorWins !== null
+      ? basisOf('A2', 'floor', `The same salaries, over the league's whole ${priorLabel}`, rows, minimum, salaryNow, () => 0, leaguePriorWins)
+      : basisOf('A2', 'floor', `The same salaries, over the league's whole ${priorLabel}`, rows, minimum, salaryNow, priorWins),
+    basisOf('B', 'market', `Free-agency eligible this season, ${priorLabel}`, market, minimum, salaryNow, priorWins),
+    basisOf('B2', 'market', `Free-agency eligible this season, ${twoSeasonLabel}`, market, minimum, salaryNow, twoSeasonWins),
     basisOf('B3', 'market', `Free-agency eligible this season, ${season} pace (to date ÷ share of season played)`, market, minimum, salaryNow, paceWins),
-    basisOf('C', 'market', `Free-agency eligible, contracts starting ${season}: this season's salary, ${season - 1} WAR`, signed, minimum, salaryNow, priorWins),
-    basisOf('C2', 'market', `Free-agency eligible, contracts starting ${season}: average annual value, ${season - 1} WAR`, signed, minimum, (r) => r.averageAnnual, priorWins),
+    basisOf('C', 'market', `Free-agency eligible, contracts starting ${season}: this season's salary, ${priorLabel}`, signed, minimum, salaryNow, priorWins),
+    basisOf('C2', 'market', `Free-agency eligible, contracts starting ${season}: average annual value, ${priorLabel}`, signed, minimum, (r) => r.averageAnnual, priorWins),
     basisOf('C3', 'market', `Free-agency eligible, contracts starting ${season}: this season's salary, ${season} pace`, signed, minimum, salaryNow, paceWins),
   ];
 
@@ -406,6 +478,8 @@ export interface ClubFinanceInput {
   teamId: number;
   /** The league's season (the regime's); null when not established. */
   season: number | null;
+  /** Whether the club's league runs financials (`rules_financials`, the regime's); money is not in dollars when it does not. */
+  financials: Sourced<boolean>;
   /** `team_financials` */
   current: FinanceTable;
   /** `team_last_financials` */
@@ -500,10 +574,28 @@ function financeReader(table: string, t: FinanceTable | { present: Set<string> |
 
 const SEASON_TO_DATE = 'Which current-row columns are season-to-date and which are booked for the season is not established column by column (R-7).';
 
+/**
+ * Club money in a league that runs no financials is not in dollars (D-052): the export may still
+ * carry figures, and they are not read (D-017). Where whether it runs financials is not established,
+ * a figure stays as exported and says so.
+ */
+function moneyUnder(financials: Sourced<boolean>) {
+  const off = `The league runs no financials (rules_financials = 0): club money is not in dollars, and the figure the export still carries is not read.`;
+  const unsure = `Whether the league runs financials is not established (${financials.note ?? 'rules_financials is not exported'}).`;
+  return (figure: Sourced<number>): Sourced<number> => {
+    if (financials.value === false) return unknownBecause('not_exported_by_ootp', figure.source, off);
+    if (financials.value === null && figure.value !== null) return { ...figure, note: figure.note ? `${figure.note} ${unsure}` : unsure };
+    return figure;
+  };
+}
+
 export function clubFinancesOf(input: ClubFinanceInput): ClubFinances {
   const { season } = input;
-  const now = financeReader('team_financials', input.current);
-  const raw = (column: string, why: string) => uninterpreted(now(column), why);
+  const money = moneyUnder(input.financials);
+  const exported = financeReader('team_financials', input.current);
+  // Money figures pass through the league's financial regime; scales and codes are read as exported
+  const now = (column: string, note?: string) => money(exported(column, note));
+  const raw = (column: string, why: string) => uninterpreted(exported(column), why);
   const history = input.history.present === null
     ? []
     : input.history.rows
@@ -512,7 +604,7 @@ export function clubFinancesOf(input: ClubFinanceInput): ClubFinances {
       .sort((a, b) => a.year - b.year);
   const seasonOf = (h: { row: Record<string, unknown>; year: number }): FinanceSeason => {
     const read = financeReader('team_history_financials', { present: input.history.present, row: h.row });
-    return { season: h.year, revenue: read('total_revenue'), expenses: read('total_expenses'), budget: read('budget') };
+    return { season: h.year, revenue: money(read('total_revenue')), expenses: money(read('total_expenses')), budget: money(read('budget')) };
   };
   const placeholders = history.filter((h) => isPlaceholder(h.row, input.history.present as Set<string>));
   const withFigures = history.filter((h) => !isPlaceholder(h.row, input.history.present as Set<string>));
@@ -521,8 +613,8 @@ export function clubFinancesOf(input: ClubFinanceInput): ClubFinances {
   if (season !== null) {
     const lastRow = history.find((h) => h.year === season - 1);
     const view = financeReader('team_last_financials', input.last);
-    const revenueView = view('total_revenue');
-    const expensesView = view('total_expenses');
+    const revenueView = money(view('total_revenue'));
+    const expensesView = money(view('total_expenses'));
     const s: FinanceSeason = lastRow
       ? seasonOf(lastRow)
       : (() => {
@@ -562,7 +654,7 @@ export function clubFinancesOf(input: ClubFinanceInput): ClubFinances {
     revenue: now('total_revenue', SEASON_TO_DATE),
     expenses: now('total_expenses', SEASON_TO_DATE),
     market: raw('market', MEANING),
-    fans: { interest: now('fan_interest', "OOTP's own scale, as exported."), loyalty: now('fan_loyalty', "OOTP's own scale, as exported.") },
+    fans: { interest: exported('fan_interest', "OOTP's own scale, as exported."), loyalty: exported('fan_loyalty', "OOTP's own scale, as exported.") },
     cashForTrades: now('cash_trades_available', 'The cash a club can move in trades; `cash` is exported as zero for every club and is never read (R-7).'),
     ownerExpectation: raw('owner_expectation', "Shown as the exported code: the code meanings are not in the export (R-7)."),
     mode: raw('mode', MEANING),
