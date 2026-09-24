@@ -558,6 +558,39 @@ export function seasonCalendar(leagueId: number, now: SeasonRecord | null, games
 }
 
 /**
+ * Each season's first and last regular-season game in the save's own schedule (`games`), by the year of the game's
+ * date: where a dated record (a rating snapshot) falls in its season (hardening F5). A season the exported schedule
+ * does not hold is absent, so its point is not established, never read from another season's calendar.
+ */
+export function seasonSpans(leagueId: number): Map<number, { first: string; last: string }> {
+  const out = new Map<number, { first: string; last: string }>();
+  if (!tableExists('games')) return out;
+  const g = new Set(tableColumns('games'));
+  if (!g.has('date') || !g.has('league_id')) return out;
+  const type = g.has('game_type') ? ' AND COALESCE(game_type, 0) = 0' : '';
+  for (const r of db.prepare(`SELECT date FROM games WHERE league_id = ?${type}`).all(leagueId) as Array<{ date: unknown }>) {
+    const d = parseGameDate(r.date ?? null);
+    if (!d) continue;
+    const season = Number(d.slice(0, 4));
+    const had = out.get(season);
+    if (!had) out.set(season, { first: d, last: d });
+    else {
+      if (d < had.first) had.first = d;
+      if (d > had.last) had.last = d;
+    }
+  }
+  return out;
+}
+
+/** The share of a season's schedule behind a date (by days, from its first game to its last), or null where the span is not known. */
+export function seasonShareOn(span: { first: string; last: string } | undefined, date: string): number | null {
+  if (!span) return null;
+  const whole = daysBetween(span.first, span.last);
+  if (!(whole > 0)) return null;
+  return Math.min(1, Math.max(0, daysBetween(span.first, date) / whole));
+}
+
+/**
  * How much playing time holds within this season, measured on this season's own games (B-07): the games
  * played so far are split in two halves by date; of the players who played in the first half, their
  * opportunities per club game in the second half against the first, per kind (a pitcher by his starts in

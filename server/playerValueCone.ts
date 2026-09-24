@@ -158,6 +158,7 @@ const DEVELOPMENT_WORDS: Record<'save_fit' | 'fallback_prior' | 'unknown', strin
  */
 function basisOf(production: PlayerProduction): string {
   const b = production.basis;
+  if (b.source === 'none') return 'No major-league results in the window and no usable scouted ratings';
   if (b.source === 'ratings') {
     const a = b.ability;
     const arrival = b.arrival;
@@ -165,7 +166,7 @@ function basisOf(production: PlayerProduction): string {
       `Scouted ratings (${a?.evidence.status ?? 'unknown'}${a?.currentRate != null ? `: ${a.currentRate.toFixed(1)} WAR per 600 now` : ''}${a?.potentialRate != null ? `, ${a.potentialRate.toFixed(1)} at potential` : ''})`,
       arrival?.band
         ? `arrival from level ${arrival.level}, ages ${arrival.band.ageFrom}–${arrival.band.ageTo} on this save's history (${arrival.band.cases.toLocaleString('en-US')} player-seasons)`
-        : `arrival from level ${arrival?.level ?? '—'}`,
+        : arrival ? `arrival from level ${arrival.level ?? '—'}` : 'arrival not established',
       a?.development ? DEVELOPMENT_WORDS[a.development.source] : 'development not established',
     ];
     return parts.join('; ');

@@ -1480,6 +1480,24 @@ stakes). ROADMAP lists them for an audit and migration.
   chance and playing time; both are stored in its record, and a refit of either refits the arrival's use of them at
   the next ratings refit.
 
+**Amended 2026-09-23 (owner decision: option C applied to the arrival model; hardening F5; PLAYER_VALUE.md Part 12,
+CALIBRATION.md section 6.4).** The owner approved: "the arrival model uses the same rolling-origin backtest and 2-season
+recency weighting approved for the results fit, judged by the same (tightened) gate; the gate is not loosened."
+
+- **The arrival backtest is rolling-origin,** by the results fit's own origin rule (shared code): each origin is fitted
+  through its season and scored on the next season's minor leaguers, a horizon only where that fit holds the gate's
+  minimum cases from at least 3 origin cohorts. Each arrival fit weights a case by a 2-season recency half-life
+  (`RATINGS_POLICY.backtest`, policy). The gate's standard errors are clustered by player and by origin; its
+  tolerances (10 points; 10% of what happened and three standard errors) are F4's, unchanged. A one-era miss is now
+  read across the origins, so a fit that keeps missing in one direction fails and one era's swing does not.
+- **A tightening the change needs:** measured arrivals are adopted only where the next season could be checked on
+  held-out cases (a history too short for any origin used to be checked by a single split).
+- **The serving rule is unchanged** (refit through the last completed season). Method `ratings-3h.2`: every save
+  refits once.
+- **On the Arizona import the fit still fails,** at horizons 4 to 6 (the chance 17% low, about 7 standard errors); 0 to 3
+  pass. Recency cannot reach it: a long horizon can only be fitted on cohorts at least that many seasons old, and on this
+  save the long-horizon arrival rate rose cohort after cohort. Recorded, not tuned away; prospects stay `unknown` there.
+
 ## D-054 — Charting library
 
 **Status:** Accepted: owner approved adopting a charting dependency (2026-09-23); library choice per the evaluation.

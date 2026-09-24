@@ -180,6 +180,42 @@ const groupOf = (kind: ProductionKind): AgingGroup => (kind === 'hitter' ? 'hitt
 /** The fewest cases a component is fitted on; below it the component is the prior's. */
 const MIN_CASES = PRODUCTION_POLICY.minimumSample.fitCases;
 
+/**
+ * The rolling origins among the eligible seasons (owner, 2026-09-23): every candidate when there are at most
+ * `maxOrigins`, else that many spread evenly, the first and the last always in. Shared by the results fit and the
+ * ratings fit's arrival backtest (hardening F5), so both are judged by the one rule.
+ */
+export function rollingOrigins(candidates: number[], maxOrigins: number): number[] {
+  if (candidates.length <= maxOrigins) return [...candidates];
+  return [...new Set(Array.from({ length: maxOrigins }, (_, i) => candidates[Math.round((i * (candidates.length - 1)) / (maxOrigins - 1))]))];
+}
+
+/** A case's recency weight in a fit through `through`: 0.5^((through − target) / half-life); 1 with no half-life. */
+export function recencyWeight(through: number | null, target: number, halfLife: number | null): number {
+  return halfLife === null || through === null ? 1 : Math.pow(0.5, Math.max(0, through - target) / halfLife);
+}
+
+/** Sums of errors by cluster, for a two-way clustered standard error: e is the sum of the cluster's errors, k its cases. */
+export type ClusterSums<K> = Map<K, { e: number; k: number }>;
+
+export function addToCluster<K>(m: ClusterSums<K>, key: K, e: number): void {
+  const had = m.get(key) ?? { e: 0, k: 0 };
+  m.set(key, { e: had.e + e, k: had.k + 1 });
+}
+
+/**
+ * The standard error of a mean error of n cases, clustered two ways (by player and by origin, the same
+ * player-season appearing under several origins): V = V(player) + V(origin) − V(player × origin), never below
+ * either one-way variance. The results gate's rule, shared with the arrival gate (hardening F5).
+ */
+export function twoWayClusteredSe(n: number, mean: number, byPlayer: ClusterSums<unknown>, byOrigin: ClusterSums<unknown>, byBoth: ClusterSums<unknown>): number {
+  if (n <= 0) return 0;
+  const v = (m: ClusterSums<unknown>) => [...m.values()].reduce((t, { e, k }) => t + (e - k * mean) ** 2, 0);
+  const vp = v(byPlayer);
+  const vo = v(byOrigin);
+  return Math.sqrt(Math.max(vp + vo - v(byBoth), vp, vo)) / n;
+}
+
 export function quantile(xs: number[], q: number): number | null {
   if (xs.length === 0) return null;
   const s = [...xs].sort((a, b) => a - b);
@@ -496,9 +532,7 @@ export function fitProductionModel(history: FitHistory, options: FitOptions): Fi
   const candidates = useHoldout && lastSeason !== null
     ? originsAll.filter((y) => y >= window[0] + policy.rolling.firstOriginAfter && y <= lastSeason - 1)
     : [];
-  const rolling = candidates.length <= policy.rolling.maxOrigins
-    ? candidates
-    : [...new Set(Array.from({ length: policy.rolling.maxOrigins }, (_, i) => candidates[Math.round((i * (candidates.length - 1)) / (policy.rolling.maxOrigins - 1))]))];
+  const rolling = rollingOrigins(candidates, policy.rolling.maxOrigins);
   const rollingSet = new Set(rolling);
   const holdoutSeasons = rolling.length > 0 ? window.filter((y) => y > rolling[0]) : [];
   const trainingThrough = rolling[0] ?? lastSeason;
@@ -545,7 +579,7 @@ export function fitProductionModel(history: FitHistory, options: FitOptions): Fi
   const fitComponents = (through: number | null) => {
   fitThrough = through;
   // Recent seasons weigh more where the policy says so, the same in every origin's fit and the served one
-  const recent = (target: number): number => (halfLife === null || through === null ? 1 : Math.pow(0.5, Math.max(0, through - target) / halfLife));
+  const recent = (target: number): number => recencyWeight(through, target, halfLife);
   // ── aging: the delta method on consecutive training seasons ──
   const agingModel: ProductionModel['aging'] = { firstAge: policy.agingAges.first, hitter: [], pitcher: [] };
   const agingPairs: Record<AgingGroup, number> = { hitter: 0, pitcher: 0 };
@@ -1146,7 +1180,7 @@ function coverageOf(set: SideCase[], modelOf: (c: SideCase) => ProductionModel, 
   const provenance: ModelProvenance = { source: 'save_fit', label: 'backtest', stamp: { status: 'calibrated', basis: 'backtest', run: null }, fitId: null, priorWeight: 0 };
   interface Acc { n: number; outer: number; inner: number; bias: number; abs: number; byPlayer: Map<number, { e: number; k: number }>; byOrigin: Map<number, { e: number; k: number }>; byBoth: Map<string, { e: number; k: number }> }
   const acc = (): Acc[] => Array.from({ length: H }, () => ({ n: 0, outer: 0, inner: 0, bias: 0, abs: 0, byPlayer: new Map(), byOrigin: new Map(), byBoth: new Map() }));
-  const add = <K>(m: Map<K, { e: number; k: number }>, key: K, e: number) => { const had = m.get(key) ?? { e: 0, k: 0 }; m.set(key, { e: had.e + e, k: had.k + 1 }); };
+  const add = addToCluster;
   const groups = new Map<string, Acc[]>();
   const group = (name: string) => { let g = groups.get(name); if (!g) { g = acc(); groups.set(name, g); } return g; };
   const played = acc();
@@ -1221,17 +1255,12 @@ function coverageOf(set: SideCase[], modelOf: (c: SideCase) => ProductionModel, 
   }
   const rows = (x: Acc[]): CoverageRow[] => x.map((r, i) => {
     const mean = r.n > 0 ? r.bias / r.n : null;
-    // Clustered two ways (by player and by origin, the same player-season appearing under several origins):
-    // V = V(player) + V(origin) − V(player × origin), never below either one-way variance
-    const v = (m: Map<unknown, { e: number; k: number }>) => (mean === null ? 0 : [...m.values()].reduce((t, { e, k }) => t + (e - k * mean) ** 2, 0));
-    const vp = v(r.byPlayer);
-    const vo = v(r.byOrigin);
-    const ss = Math.max(vp + vo - v(r.byBoth), vp, vo);
+    // Clustered two ways (by player and by origin, the same player-season appearing under several origins)
     return {
       horizon: i + 1, cases: r.n,
       outer: r.n > 0 ? r.outer / r.n : null, inner: r.n > 0 ? r.inner / r.n : null, bias: mean,
       meanAbsolute: r.n > 0 ? r.abs / r.n : null,
-      biasSe: r.n > 0 ? Math.sqrt(ss) / r.n : null,
+      biasSe: r.n > 0 && mean !== null ? twoWayClusteredSe(r.n, mean, r.byPlayer, r.byOrigin, r.byBoth) : null,
     };
   });
   const subgroups: Record<string, CoverageRow[]> = {};

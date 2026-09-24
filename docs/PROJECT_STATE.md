@@ -534,6 +534,17 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   force and the 6,351 players who were projected from ratings alone are
   `unknown` production, each with the gate's reason; read as if adopted, their
   summed central is 102 / 169 / 211 wins for 2027–29 (was 15 / 22 / 24).
+- **Hardening F5, the arrival model under option C (owner, 2026-09-23; ratings
+  method `ratings-3h.2`;** CALIBRATION.md section 6.4, D-053 amendment): the
+  arrival model is scored on rolling origins (the results fit's rule, shared),
+  fitted with a 2-season recency half-life, its gate errors clustered by player
+  and origin, the tolerances unchanged, and measured arrivals adopted only where
+  the next season could be checked. A rating snapshot is read at its own point
+  of the season for the chance by potential, and an unknown production names
+  its source. On the Arizona import the fit **still fails** at horizons 4–6 (the
+  chance 17% low, about 7 SE; 0–3 pass) at every half-life tried, so prospects
+  stay `unknown` there; as if adopted their summed central is 111 / 201 / 256 /
+  258 wins for 2027–30. The ratings refit takes 4.8 s in the worker.
 - **Injury proneness** (`server/injuryProneness.ts`): read as an
   owner-attested known fact; 0, blank or missing is unknown. Its effects are
   measured with standard errors clustered by player and Holm's correction; on

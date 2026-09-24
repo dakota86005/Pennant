@@ -71,7 +71,10 @@ worktree.
 - Arrival (hardening F4): read for a player not yet called up at this point of his season (the origin season's
   call-ups stay in the later cases, kept apart); a league's arrival cases are its own farm's, and any top-level league
   is arriving (never assume MLB); the arrival gate also fails a material, significant relative bias (a tightening, never
-  loosen it to pass); the model served is refit through the last completed season.
+  loosen it to pass); the model served is refit through the last completed season. Since F5 (owner, 2026-09-23) the
+  arrival model is scored on the results fit's rolling origins, fitted with its 2-season recency half-life
+  (`RATINGS_POLICY.backtest`), its gate errors clustered by player and origin, and adopted only where the next season
+  could be checked; a rating snapshot is read at its own point of the season.
 - Never ask the owner for an OOTP experiment; an unresolved rule stays `indeterminate` and is documented.
 
 Checks: `tests/playerValueBoundary.test.ts`, `tests/playerValueControl.test.ts`, `tests/playerValueCost.test.ts`,

@@ -63,7 +63,7 @@ import {
 import {
   affiliatedLevels, ageFacts, firstLeagueSeason, hasSeasonLines, injuredThisSeason, injuryDurationSentinels, inSeasonContinuation,
   leagueClubs, leagueGameDate, leagueParentsNamed, leagueRateFacts, leagueRecord, leagueSeasons, listedFacts, majorLeagueLines, minorLeagueUsage,
-  platoonExposure, scheduledGames, seasonCalendar, seasonPlayedOf, seasonSchedules, type LevelSeason, type SeasonCalendar,
+  platoonExposure, scheduledGames, seasonCalendar, seasonPlayedOf, seasonSchedules, seasonShareOn, seasonSpans, type LevelSeason, type SeasonCalendar,
 } from './playerValueHistory.js';
 import {
   PRODUCTION_UNIT, adaptPriorToLeague, planSides, projectProductionWith, windowOf,
@@ -1087,8 +1087,10 @@ export function ratingsHistory(leagueId: number, through: number, current: boole
     };
   });
 
-  // The save's own rating snapshots, read back through the adapter, and the major-league seasons after them
-  const observations = observationsOf(listedFacts(null));
+  // The save's own rating snapshots, read back through the adapter, and the major-league seasons after them; each at
+  // its point of the season where the save's schedule for that season is exported, else not established (hardening F5)
+  const spans = seasonSpans(leagueId);
+  const observations = observationsOf(listedFacts(null)).map((o) => ({ ...o, seasonPlayed: seasonShareOn(spans.get(o.season), o.gameDate) }));
   const observed = [...new Set(observations.map((o) => o.playerId))];
   const after = majorLeagueLines(observed, from, season, leagueId);
   const forward: ForwardSeason[] = [];

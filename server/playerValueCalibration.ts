@@ -249,7 +249,7 @@ export const PRODUCTION_POLICY_CALIBRATION: CalibrationStamp = policy(
 // stored in the same fit store under its own method, and adopted only through the same gate.
 
 /** The ratings model's method version: stored beside the results fit, refitted when it changes. */
-export const RATINGS_METHOD = 'ratings-3h.1';
+export const RATINGS_METHOD = 'ratings-3h.2';
 
 /** Why a player has no production at all: neither major-league results nor ability evidence to project from. */
 export const PRODUCTION_NO_EVIDENCE = 'no major-league results in the projection window and no usable ability evidence';
@@ -280,11 +280,24 @@ export const PRODUCTION_NO_EVIDENCE = 'no major-league results in the projection
  *                  playing time's coefficient; hardening F4, C-02), located so that the players of his
  *                  level and age now (`populationNodes` of them sampled per cell and season) together keep
  *                  the cell's measured chance and playing time.
+ *   backtest       the arrival model is judged the way the results fit is (the owner's option C, applied to
+ *                  arrivals 2026-09-23, hardening F5): every completed season Y from the window's start + 5 to
+ *                  the season before the last whose next season is in the window is an origin, at most 8 of
+ *                  them (evenly spaced, the first and the last always in: the results fit's own rule, shared);
+ *                  each is scored by the method fitted through Y, projecting season Y + 1's minor leaguers,
+ *                  a horizon only where that fit has the gate's minimum cases on the side from at least 3
+ *                  origin cohorts. Each fit weights a case by 0.5^(the seasons from its target season to the
+ *                  fit's last / recencyHalfLife), 2 seasons (null: unweighted), in its chance, playing time,
+ *                  nodes and call-up share; an age band is still sized on the cases themselves, and the
+ *                  arrival fit has no prior's pseudo-cases to rescale. The model served is the method refit
+ *                  through the last completed season.
  *   gate           the arrival chance and its expected playing time, per horizon with the production gate's
  *                  minimum cases, fail on a miss beyond the absolute tolerance (10 points), and, since
  *                  hardening F4 (B-15), on a bias beyond 10% of what happened AND beyond three standard
- *                  errors clustered by player (the production gate's rule): material, and not noise. A
- *                  tightening only: every fit the absolute rule failed still fails.
+ *                  errors (the production gate's rule): material, and not noise. A tightening only: every fit
+ *                  the absolute rule failed still fails. Since hardening F5 the standard errors are clustered
+ *                  by player and by origin (two-way, as the results gate's), the same player-season scored
+ *                  under several origins; the tolerances are unchanged.
  *   longitudinal   the development path and the arrival rate conditioned on potential are fitted only
  *                  from the save's own rating snapshots: a pair is two snapshots of a player 300 to 430
  *                  days apart (about a season) whose first has a scouted gap of at least 2 points; the
@@ -305,6 +318,7 @@ export const PRODUCTION_NO_EVIDENCE = 'no major-league results in the projection
 export const RATINGS_POLICY = {
   mapping: { minimumOpportunities: 200, folds: 5, positionMinimum: 15, priorStrength: 150 },
   arrival: { bandCases: 60, nodes: 10, minimumArrivals: 10, populationNodes: 20 },
+  backtest: { origins: PRODUCTION_POLICY.rolling, recencyHalfLife: 2 as number | null },
   gate: { arrivalBias: { relative: 0.1, standardErrors: 3 } },
   longitudinal: { minimumPairs: 300, pairDays: { from: 300, to: 430 }, minimumGap: 2, bandPairs: 30, minimumLinked: 300, evidence: 2, potentialTiers: 3 },
   development: { priorRangeHigh: 2, ages: { first: 16, last: 40 } },
@@ -315,8 +329,9 @@ export const RATINGS_POLICY_CALIBRATION: CalibrationStamp = policy(
   'The same-time mapping\'s sample rule, folds, position minimum and prior strength; the arrival age-band size, nodes and arrival minimum; ' +
     'the arrival population (the league\'s own affiliates; any top-level league is arriving), the origin season\'s call-ups kept in the later ' +
     'seasons\' cases and read in proportion to the season still to play, and the quality effect located on 20 of the cell\'s players now ' +
-    '(hardening F4, 2026-09-23); the arrival gate\'s bias rule (10% of what happened and three standard errors clustered by player, beside the ' +
-    'absolute 10 points; a tightening, D-053); the longitudinal pair rule and the minimum pairs before the save\'s own development path replaces ' +
+    '(hardening F4, 2026-09-23); the arrival backtest\'s rolling origins (the results fit\'s rule) and its recency half-life of two seasons ' +
+    '(the owner\'s option C applied to arrivals, 2026-09-23, hardening F5); the arrival gate\'s bias rule (10% of what happened and three ' +
+    'standard errors clustered by player and by origin, beside the absolute 10 points; a tightening, D-053); the longitudinal pair rule and the minimum pairs before the save\'s own development path replaces ' +
     'the prior; the prior\'s development range; an unknown grade\'s scale ends and, in the blend, its five stations across them (hardening F4). ' +
     'Decisions about the ratings method (D-053), not fits.'
 );

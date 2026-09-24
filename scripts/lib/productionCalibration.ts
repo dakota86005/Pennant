@@ -106,7 +106,10 @@ export function productionSection(leagueId: number, argv: string[]): void {
   const rInput = ratingsHistory(leagueId, through, false, rules);
   const rRead = performance.now() - start;
   start = performance.now();
-  const rRun = fitRatingsModel(rInput, { prior: RATINGS_PRIOR });
+  // --arrival-half-life=N (seasons) or =none compares the arrival fit's recency weighting against the policy's (hardening F5)
+  const ahl = argv.find((a) => a.startsWith('--arrival-half-life='))?.slice('--arrival-half-life='.length);
+  const arrivalHalfLife = ahl === undefined ? undefined : ahl === 'none' ? null : Number(ahl);
+  const rRun = fitRatingsModel(rInput, { prior: RATINGS_PRIOR, recencyHalfLife: arrivalHalfLife });
   describeRatings(rRun, { read: rRead, fit: performance.now() - start }, rInput.mapping.length, rInput.arrival.length, rInput.observations.length);
 
   if (argv.includes('--prior')) {
@@ -148,11 +151,12 @@ function describeRatings(run: RatingsFitRun, ms: { read: number; fit: number }, 
   }
   console.log(`  ${r.mapping.caveat}`);
   console.log(`  left-handed exposure by hand: ${JSON.stringify(r.leftShare)}; stamina cut ${r.staminaCut.cut} (misclassifies ${r.staminaCut.error === null ? '—' : pctR(r.staminaCut.error)} of ${r.staminaCut.cases})`);
-  console.log(`  arrival: ${r.arrival.reason} Window ${r.arrival.window[0]}–${r.arrival.window[r.arrival.window.length - 1]}, trained through ${r.arrival.trainingThrough}, held out ${r.arrival.holdout.join(', ') || 'none'}; ${r.arrival.cells} cells`);
-  console.log('  horizon   cases   predicted chance   observed (± se, clustered)   bias/observed   predicted mean opp   observed mean opp (± se)   bias/observed');
+  console.log(`  arrival: ${r.arrival.reason} Window ${r.arrival.window[0]}–${r.arrival.window[r.arrival.window.length - 1]}; ${r.arrival.cells} cells; recency half-life ${r.arrival.recencyHalfLife ?? 'none'}; the model served is refit through ${r.arrival.window[r.arrival.window.length - 1] ?? '—'}`);
+  console.log(`  rolling origins (fitted through Y, scored on Y + 1's minor leaguers: cases, horizons): ${(r.arrival.scored ?? []).map((x) => `${x.origin} (${x.cases}; h${x.horizons.join('')})`).join(', ') || 'none'}`);
+  console.log('  horizon   cases   origins   predicted chance   observed (± se, by player and origin)   bias/observed   predicted mean opp   observed mean opp (± se)   bias/observed');
   const rel = (o: number | null, p: number | null) => (o === null || p === null || o === 0 ? '—' : `${((o - p) / o * 100).toFixed(1)}%`);
   for (const x of r.arrival.heldOut) {
-    console.log(`  ${String(x.horizon).padStart(7)}  ${String(x.cases).padStart(6)}   ${pctR(x.predicted).padStart(8)}          ${pctR(x.observed).padStart(8)} (± ${x.chanceSe == null ? '—' : pctR(x.chanceSe)})   ${rel(x.observed, x.predicted).padStart(8)}   ${x.predictedMean === null ? '—' : f(x.predictedMean, 1).padStart(8)}             ${x.observedMean === null ? '—' : f(x.observedMean, 1).padStart(8)} (± ${x.meanSe == null ? '—' : f(x.meanSe, 2)})   ${rel(x.observedMean, x.predictedMean).padStart(8)}`);
+    console.log(`  ${String(x.horizon).padStart(7)}  ${String(x.cases).padStart(6)}   ${String(x.origins ?? '—').padStart(7)}   ${pctR(x.predicted).padStart(8)}          ${pctR(x.observed).padStart(8)} (± ${x.chanceSe == null ? '—' : pctR(x.chanceSe)})   ${rel(x.observed, x.predicted).padStart(8)}   ${x.predictedMean === null ? '—' : f(x.predictedMean, 1).padStart(8)}             ${x.observedMean === null ? '—' : f(x.observedMean, 1).padStart(8)} (± ${x.meanSe == null ? '—' : f(x.meanSe, 2)})   ${rel(x.observedMean, x.predictedMean).padStart(8)}`);
   }
   const q = m.arrival?.quality;
   if (q) {

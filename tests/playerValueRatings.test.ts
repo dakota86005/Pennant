@@ -5,8 +5,8 @@ import {
   type ArrivalModel, type Observation, type PlayerProduction, type ProductionLine, type RatingsEvidence, type RatingsFitInput,
   type RatingsModelInForce, type RatingsProductionInput, type WinsBand,
 } from '../server/playerValue.js';
-import { PRODUCTION_PRIOR, RATINGS_METHOD, RATINGS_PRIOR } from '../server/playerValueCalibration.js';
-import { minorLeagueUsage } from '../server/playerValueHistory.js';
+import { PRODUCTION_PRIOR, RATINGS_METHOD, RATINGS_POLICY, RATINGS_PRIOR } from '../server/playerValueCalibration.js';
+import { minorLeagueUsage, seasonShareOn, seasonSpans } from '../server/playerValueHistory.js';
 import { FIELDING_EVIDENCE_PROVENANCE, hitterProfileFromRow, syntheticScoutedAbility } from '../server/scoutedEvidence.js';
 import { IDS } from './fixture';
 
@@ -421,20 +421,164 @@ describe('the ratings fit on a synthetic save (D-053)', () => {
       expect(h1.observed).toBeGreaterThan(0.6);
     });
 
-    it('B-15: the arrival gate fails a fit that predicts three times the observed rate, though the miss is under the absolute tolerance', () => {
+    it('B-15: the arrival gate fails a fit whose held-out chance keeps missing by a material share of what happened, though the miss is under the absolute tolerance', () => {
       const control = fitRatingsModel({ ...syntheticSave(), levels: [2], arrival: arrivals(6000, () => ({ upNow: 0, later: 0.12 })) }, { prior: RATINGS_PRIOR });
       // The same league, calibrated: the gate passes (its mapping and its arrivals)
       expect(control.record.gate.passed, control.record.gate.reason).toBe(true);
+      // Arrivals falling every season, from 20% to 1%: every origin's fit lags the fall the same way (hardening F5: a single
+      // step is learned by the origins after it, and one era's miss is read across the origins; a lag that persists is not)
       const drifted = fitRatingsModel({
         ...syntheticSave(), levels: [2],
-        arrival: arrivals(6000, (origin) => ({ upNow: 0, later: origin < (control.record.arrival.trainingThrough ?? 0) ? 0.12 : 0.04 })),
+        arrival: arrivals(6000, (origin) => ({ upNow: 0, later: 0.2 * (1 - (origin - 2006) / 19) })),
       }, { prior: RATINGS_PRIOR });
       const h1 = drifted.record.arrival.heldOut[1];
       expect(h1.predicted! - h1.observed!).toBeLessThan(0.1);
-      expect(h1.predicted! / h1.observed!).toBeGreaterThan(2);
+      expect(h1.predicted! / h1.observed!).toBeGreaterThan(1.4);
       expect(drifted.record.gate.passed, drifted.record.gate.reason).toBe(false);
       expect(drifted.record.gate.reason).toMatch(/arrival chance's held-out calibration/i);
     });
+  });
+
+  describe('hardening F5: the arrival model judged as it is served (the owner\'s option C, 2026-09-23)', () => {
+    const PHI = 0.6180339887498949;
+    /** An even spread on [0, 1) (a low-discrepancy draw): each cohort's proportions are exact, so no case rides on sampling luck. */
+    const spread = (j: number) => (j * PHI) % 1;
+    /** Batting prospects at Triple-A at 21, one origin season each (2006–2024), `perOrigin` of them, who play the next season at `rate(origin)`. */
+    function cohorts(perOrigin: number, rate: (origin: number) => number, firstId = 70_000): RatingsFitInput['arrival'] {
+      const out: RatingsFitInput['arrival'] = [];
+      let id = firstId;
+      for (let origin = 2006; origin <= 2024; origin += 1) {
+        const p = rate(origin);
+        for (let j = 0; j < perOrigin; j += 1) {
+          id += 1;
+          const majors = new Map<number, number>();
+          if (spread(j) < p) majors.set(origin + 1, 200);
+          out.push({ playerId: id, birth: { year: origin - 21, month: 3, day: 1 }, side: 'batting', majors, minors: [{ season: origin, level: 2, opportunities: 400 }] });
+        }
+      }
+      return out;
+    }
+    const inForce = (model: ReturnType<typeof fitRatingsModel>['model']): RatingsModelInForce => ({ model, provenance: MEASURED.provenance });
+    const aaa = (over: Partial<RatingsProductionInput> = {}) => prospect({ level: 2, age: 21, seasonPlayed: 0, ...over });
+
+    it('every eligible origin is scored by the method fitted through it, projecting the next season\'s minor leaguers; a horizon only where that fit rests on at least three origin cohorts', () => {
+      const run = fitRatingsModel({ ...syntheticSave(), levels: [2], arrival: cohorts(250, () => 0.12) }, { prior: RATINGS_PRIOR });
+      const a = run.record.arrival;
+      const scored = a.scored ?? [];
+      // The window is 2006–2025: origins from its start + 5 (2011) to the season before the last (2024), at most 8, evenly spaced, the first and the last kept
+      expect(scored.length).toBe(RATINGS_POLICY.backtest.origins.maxOrigins);
+      expect(scored[0].origin).toBe(2011);
+      expect(scored[scored.length - 1].origin).toBe(2024);
+      for (const x of scored) {
+        expect(x.through).toBe(x.origin);
+        expect(x.cohort).toBe(x.origin + 1);
+        // At horizon h the fit through Y holds the origin cohorts 2006 … Y − h
+        for (const h of x.horizons) expect(x.origin - h - 2006 + 1, `${x.origin} h${h}`).toBeGreaterThanOrEqual(RATINGS_POLICY.backtest.origins.minimumOrigins);
+        expect(x.horizons.every((h) => x.cohort + h <= 2025)).toBe(true);
+      }
+      // Horizon 1 pools the next season's cohort of every origin that scores it
+      expect(a.heldOut[1].cases).toBe(scored.filter((x) => x.horizons.includes(1)).length * 250);
+      expect(a.heldOut[1].origins).toBe(scored.filter((x) => x.horizons.includes(1)).length);
+      expect(a.recencyHalfLife).toBe(RATINGS_POLICY.backtest.recencyHalfLife);
+      expect(run.record.gate.passed, run.record.gate.reason).toBe(true);
+    });
+
+    it('recent seasons count for more: where arrival rates changed some seasons ago, the chance served is nearer the recent seasons\' rate than the whole window\'s', () => {
+      const run = fitRatingsModel({ ...syntheticSave(), levels: [2], arrival: cohorts(250, (o) => (o < 2016 ? 0.05 : 0.2)) }, { prior: RATINGS_PRIOR });
+      const next = projected(projectProduction(aaa(), undefined, inForce(run.model))).seasons[1].sides[0].arrival!.chance;
+      // The whole window's average is about 0.12, the last nine seasons' 0.20
+      expect(next).toBeGreaterThan(0.17);
+      expect(next).toBeLessThanOrEqual(0.2 + EPS);
+    });
+
+    it('one era\'s swing is not a bias: a rate that rose for some seasons and came back is not failed by the swing, while a model that keeps missing in one direction fails', () => {
+      // Arrivals tripled for six seasons and came back: the method learns each era in turn, and each origin's miss is its own era's
+      const swing = fitRatingsModel({ ...syntheticSave(), levels: [2], arrival: cohorts(1000, (o) => (o >= 2016 && o <= 2021 ? 0.3 : 0.1)) }, { prior: RATINGS_PRIOR });
+      const h1 = swing.record.arrival.heldOut[1];
+      // Material, and beyond three standard errors clustered by player alone: only clustering by origin as well reads it as the swing it is
+      expect(Math.abs(h1.observed! - h1.predicted!) / h1.observed!).toBeGreaterThan(RATINGS_POLICY.gate.arrivalBias.relative);
+      expect(swing.record.gate.passed, swing.record.gate.reason).toBe(true);
+      // A league whose arrivals fall every season: every origin's fit lags it, the same way, however it is weighted
+      const falling = fitRatingsModel({ ...syntheticSave(), levels: [2], arrival: cohorts(300, (o) => 0.2 * (1 - (o - 2006) / 19)) }, { prior: RATINGS_PRIOR });
+      const f1 = falling.record.arrival.heldOut[1];
+      expect(f1.predicted! - f1.observed!).toBeLessThan(0.1);
+      expect(f1.predicted! / f1.observed!).toBeGreaterThan(1.3);
+      expect(falling.record.gate.passed, falling.record.gate.reason).toBe(false);
+      expect(falling.record.gate.reason).toMatch(/clustered by player and by origin/);
+    });
+
+    describe('a rating snapshot is read at its own point of the season (the chance by potential)', () => {
+      /** Arrivals at Triple-A at 21 with the C-01 shape, exact: 60% called up in the origin season (all play the next), a quarter of the rest the next season. */
+      function c01(perOrigin: number): RatingsFitInput['arrival'] {
+        const out: RatingsFitInput['arrival'] = [];
+        let id = 90_000;
+        for (let origin = 2006; origin <= 2024; origin += 1) {
+          for (let j = 0; j < perOrigin; j += 1) {
+            id += 1;
+            const u = spread(j);
+            const majors = new Map<number, number>();
+            if (u < 0.6) { majors.set(origin, 150); majors.set(origin + 1, 400); } else if (u < 0.7) majors.set(origin + 1, 200);
+            out.push({ playerId: id, birth: { year: origin - 21, month: 3, day: 1 }, side: 'batting', majors, minors: [{ season: origin, level: 2, opportunities: 400 }] });
+          }
+        }
+        return out;
+      }
+      /**
+       * 1,200 hitters snapshotted at Triple-A at 21 in 2020 at `share` of the season, not yet called up. Of a tier's players,
+       * `up(potential)` are called up later this season (and play the next); a quarter of the rest play the next season. With
+       * half the season to play, the save's own rate for such a player is 3/7 this season (0.3 of the 0.7 not yet called up).
+       */
+      function linked(share: number | null | undefined, up: (potential: number) => number) {
+        const observations: Observation[] = [];
+        const players: RatingsFitInput['arrival'] = [];
+        for (let j = 0; j < 1200; j += 1) {
+          const id = 200_000 + j;
+          const potential = 40 + (j % 30);
+          const u = spread(j);
+          const p = up(potential);
+          const majors = new Map<number, number>();
+          if (u < p) { majors.set(2020, 150); majors.set(2021, 400); } else if (u < p + (1 - p) * 0.25) majors.set(2021, 200);
+          players.push({ playerId: id, birth: { year: 1999, month: 3, day: 1 }, side: 'batting', majors, minors: [] });
+          observations.push({ playerId: id, gameDate: '2020-07-01', season: 2020, level: 2, age: 21, group: 'hitter', current: 45, potential, ...(share === undefined ? {} : { seasonPlayed: share }) });
+        }
+        return fitRatingsModel({ ...syntheticSave(observations), levels: [2], arrival: [...c01(300), ...players] }, { prior: RATINGS_PRIOR });
+      }
+      const multipliers = (run: ReturnType<typeof fitRatingsModel>) => run.model.arrival?.byPotential?.multipliers.hitter ?? null;
+
+      it('a mid-season snapshot is compared with the chance of a player not yet called up at that point, never the season\'s start', () => {
+        const run = linked(0.5, () => 3 / 7);
+        expect(run.record.arrivalByPotential.used).toBe(true);
+        // Potential tells nothing here, and the expected chance is his condition's: no tier moves
+        for (const row of multipliers(run)!) for (const m of row) expect(m).toBe(1);
+        // ...and where the top third really does arrive twice as often, that tier is read, the others not
+        const better = linked(0.5, (potential) => (potential >= 60 ? 6 / 7 : 3 / 7));
+        const m = multipliers(better)!;
+        expect(m[2][0]).toBeGreaterThan(1.5);
+        expect(m[0][0]).toBe(1);
+      });
+
+      it('a snapshot whose point of the season is not established is read across the range, and a tier moves only if it holds across it', () => {
+        for (const share of [null, undefined]) {
+          const run = linked(share, () => 3 / 7);
+          expect(run.record.arrivalByPotential.used).toBe(true);
+          for (const row of multipliers(run)!) for (const m of row) expect(m).toBe(1);
+        }
+      });
+    });
+  });
+});
+
+describe('hardening F5: an unknown says what it rested on', () => {
+  it('a player with no major-league results whose production is unknown names its source: his scouted ratings when his ability was projected and his playing time was not, none when nothing could be projected', () => {
+    const noArrival = projectProduction(prospect(), undefined, PRIOR_ONLY);
+    expect(noArrival.status).toBe('unknown');
+    expect(noArrival.basis.ability?.status).toBe('used');
+    expect(noArrival.basis.source).toBe('ratings');
+    for (const ratings of [null, ratingsEvidence(syntheticScoutedAbility({ current: null, potential: null }))]) {
+      const nothing = projectProduction(prospect({ ratings }), undefined, MEASURED);
+      expect(nothing.status).toBe('unknown');
+      expect(nothing.basis.source).toBe('none');
+    }
   });
 });
 
@@ -588,6 +732,25 @@ describe('ratings through the reader (fixture league)', () => {
       expect(Object.keys(usage[0])).not.toContain('war');
     } finally {
       db.prepare(`DELETE FROM players_career_batting_stats WHERE player_id = ? AND level_id = 2`).run(HERE);
+    }
+  });
+
+  it('a rating snapshot\'s point of the season is read from the save\'s own schedule for that season, and is not established where the schedule is not exported (hardening F5)', () => {
+    const game = db.prepare(`INSERT INTO games (game_id, home_team, away_team, date, played, league_id, game_type) VALUES (?, ?, ?, ?, 1, ?, ?)`);
+    try {
+      // OOTP writes dates unpadded; an exhibition before Opening Day is not the season
+      game.run(990001, IDS.mlbTeam, IDS.otherMlbTeam, '2041-3-1', IDS.league, 4);
+      game.run(990002, IDS.mlbTeam, IDS.otherMlbTeam, '2041-4-1', IDS.league, 0);
+      game.run(990003, IDS.mlbTeam, IDS.otherMlbTeam, '2041-10-1', IDS.league, 0);
+      game.run(990004, IDS.mlbTeam, IDS.otherMlbTeam, '2041-9-28', IDS.league, 0);
+      const spans = seasonSpans(IDS.league);
+      expect(spans.get(2041)).toEqual({ first: '2041-04-01', last: '2041-10-01' });
+      expect(seasonShareOn(spans.get(2041), '2041-07-01')).toBeCloseTo(91 / 183, 6);
+      expect(seasonShareOn(spans.get(2041), '2041-02-01')).toBe(0);
+      expect(seasonShareOn(spans.get(2041), '2041-12-01')).toBe(1);
+      expect(seasonShareOn(spans.get(2042), '2042-07-01')).toBeNull();
+    } finally {
+      db.prepare(`DELETE FROM games WHERE game_id BETWEEN 990001 AND 990004`).run();
     }
   });
 });

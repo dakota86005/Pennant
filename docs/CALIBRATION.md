@@ -506,6 +506,65 @@ Low edges below −1 in some season: 365 (574 before); below −3: 35 (6 before,
 chance C-01 raised). The regression sweep holds: 53 checks pass in the served state and 55 as if adopted, none failing.
 A full valuation of the league takes about 1.9 s as if adopted (1.5 s before), 1.0 s served.
 
+#### The arrival model under option C (hardening F5, method `ratings-3h.2`, owner 2026-09-23)
+
+The owner approved applying option C to the arrival model: the same rolling-origin backtest and 2-season recency
+weighting as the results fit, judged by the same (tightened) gate, the gate not loosened. The method version moved, so
+every save refits its ratings model once.
+
+- **Origins.** The results fit's rule, shared (`rollingOrigins`, `RATINGS_POLICY.backtest.origins` is
+  `PRODUCTION_POLICY.rolling`): every completed season Y from the window's start + 5 to the season before the last whose
+  next season is in the window, at most 8, evenly spaced with the first and last kept. Each origin is fitted through Y
+  and scored on season Y + 1's minor leaguers at horizons 0 to 6 (the served model is fitted through the last season and
+  projects the season under way, so this is its analogue); a horizon of an origin is scored only where the fit through
+  Y holds the gate's 200 cases on that side from at least 3 origin cohorts.
+- **Recency.** Each arrival fit weights a case by 0.5^((the fit's last season − its target season) / 2) in its chance,
+  playing time, nodes and call-up share (`RATINGS_POLICY.backtest.recencyHalfLife`). Age bands are still sized on the
+  cases themselves, and the arrival fit has no prior's pseudo-cases to rescale (the results fit's mean-weight rule has
+  nothing to apply to). Within one horizon, weighting by target season and by origin season are the same.
+- **Errors.** The gate's standard errors are clustered by player and by origin (two-way, the results gate's
+  `twoWayClusteredSe`, shared). The tolerances are F4's, unchanged: the absolute 10 points, and a bias beyond 10% of
+  what happened AND three standard errors, on the chance and on the expected opportunities per case.
+- **A tightening that the change needs.** Arrivals, once measured, are adopted only where the next season (horizon 1)
+  could be checked on held-out cases: with rolling origins a history shorter than seven seasons has no origin, where F4's
+  single split still checked it. Without this the change would have loosened the gate for short saves.
+- **Serving** is unchanged: the model served is the method refit through the last completed season.
+
+**The Arizona run** (`203:2025:ratings-3h.2`, `npx tsx scripts/calibrate.ts production --refit`, scratch data dir,
+`league.db` read-only): origins 2011, 2013, 2014, 2016, 2017, 2021, 2022, 2024 (2019 is not an origin: 2020 is short and
+out of the window), scored cases per origin 6,517 to 35,016. The mapping is unchanged (84.5% / 58.1% on 1,147).
+
+| Horizon | Cases | Origins | Chance predicted | Happened (± SE, player and origin) | Bias / happened | Opportunities predicted | Happened (± SE) | Bias / happened |
+|---|---|---|---|---|---|---|---|---|
+| 0 (the same season) | 46,504 | 8 | 4.7% | 4.6% (± 0.1) | −1.7% | 5.3 | 5.3 (± 0.15) | 1.4% |
+| 1 | 39,987 | 7 | 7.8% | 7.8% (± 0.4) | 0.3% | 12.6 | 12.9 (± 0.43) | 2.4% |
+| 2 | 34,655 | 6 | 10.0% | 10.0% (± 0.6) | 0.0% | 18.8 | 19.0 (± 0.61) | 1.1% |
+| 3 | 27,902 | 5 | 11.4% | 12.3% (± 0.7) | 7.5% | 24.0 | 24.8 (± 1.08) | 3.0% |
+| 4 | 22,243 | 4 | 11.4% | 13.7% (± 0.3) | **16.7%** | 26.4 | 28.7 (± 1.24) | 7.9% |
+| 5 | 16,638 | 3 | 11.1% | 13.3% (± 0.3) | **16.8%** | 27.4 | 30.0 (± 1.43) | 8.9% |
+| 6 | 16,773 | 3 | 10.1% | 12.2% (± 0.4) | **16.9%** | 26.0 | 27.8 (± 0.98) | 6.6% |
+
+**Gate: FAILED** at horizons 4 to 6: the chance is 17% below what happened, about 7 standard errors clustered by player
+and origin. Horizons 0 to 3 pass (F4's single split failed horizon 3 as well). The fit is not adopted; the provisional
+ratings prior stays in force, and a player not in the majors remains `unknown` on this import with the gate's reason.
+
+The half-life, compared (`--arrival-half-life=`, the same origins; the chance's bias as a share of what happened at
+horizons 3 / 4 / 5 / 6): none 11.4 / 19.2 / 19.0 / 18.3%; 4 seasons 9.2 / 17.9 / 17.9 / 17.6%; 3 seasons 8.5 / 17.5 /
+17.5 / 17.3%; 2 seasons (the policy) 7.5 / 16.7 / 16.8 / 16.9%. As a diagnostic only, not policy, a half-life of 1
+season still fails horizons 4 to 6 (15.0 / 15.2 / 15.7%). Recency cannot close it, and the reason is structural: at
+horizon h the fit through Y can hold no cohort later than Y − h, so a long horizon is always read from cohorts five or
+more seasons older than the one it is scored on, and on this save the long-horizon arrival rate rose cohort after cohort
+(horizons 4 to 6 are scored only from origins 2013 to 2017, targets 2018 to 2024, every one under-predicted). Nothing was
+loosened.
+
+**Read as if adopted** (a diagnostic copy with the failing fit forced in, never served): the prospects' summed central
+for 2027 / 2028 / 2029 / 2030 is 111 / 201 / 256 / 258 wins (F4's method as if adopted 102 / 169 / 211 / 235; the save's
+own history for a population this size about 144 / 260 / 362 / 426). 563 players have some season's central below −0.1
+(642 under F4's), 35 some low edge below −3 (35). Aidan Miller (41278) reads a chance of 0.59 for the rest of 2026, then
+0.81, 0.84, 0.91, 0.91, 0.97 and 0.92 (F4's 0.58, 0.77, 0.83, 0.90). The regression sweep holds: 53 checks pass served and
+55 as if adopted, none failing. The ratings refit takes 4.8 s in the worker (3.1 s before: nine arrival fits where there
+were two); a full league valuation 1.0 s served, 1.8 s as if adopted.
+
 ## 7. Player Value's opening price of a win: policy minimums (hardening, B-13)
 
 The opening price of a win (PLAYER_VALUE.md Part 4.1) is a spread of defensible bases, not a fit, so it has nothing

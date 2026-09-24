@@ -759,13 +759,17 @@ export function projectFromRatings(input: RatingsProductionInput, production: { 
   const horizon = Math.min(input.horizon ?? H, H);
   const no = (why: string): PlayerProduction => {
     const p = unknownProduction(input, `${PRODUCTION_NO_EVIDENCE}: ${why}`, production.model, production.provenance);
+    // Nothing could be projected: no results and no usable ability evidence (hardening F5: named, never blank)
+    p.basis.source = 'none';
     p.basis.ability = abilityBasisOf(input.ratings, null, why, ratings);
     return p;
   };
   const ev = input.ratings ?? null;
   if (input.season === null || input.seasonPlayed === null || input.age === null) {
     const plan = planSides(input);
-    return unknownProduction(input, plan.ok ? 'An input is missing.' : plan.reason, production.model, production.provenance);
+    const p = unknownProduction(input, plan.ok ? 'An input is missing.' : plan.reason, production.model, production.provenance);
+    p.basis.source = 'none';
+    return p;
   }
   if (!ev || ev.group === null || ev.status === 'unknown') return no('no scouted ratings to project from');
   const season = input.season;
@@ -778,6 +782,8 @@ export function projectFromRatings(input: RatingsProductionInput, production: { 
   if ('reason' in path) return no(path.reason);
   const unknownArrival = (why: string): PlayerProduction => {
     const p = unknownProduction(input, `His ability is projected, but his major-league playing time is not established: ${why}`, production.model, production.provenance);
+    // His ability rests on his scouted ratings; what is unknown is his playing time (hardening F5: named, never blank)
+    p.basis.source = 'ratings';
     p.basis.ability = abilityBasisOf(ev, path, null, ratings);
     return p;
   };

@@ -447,7 +447,12 @@ export interface ArrivalBasis {
 
 export interface ProductionBasis {
   origin: { season: number | null; seasonPlayed: number | null; age: number | null };
-  source?: 'results' | 'results_and_ratings' | 'ratings';
+  /**
+   * What the projection rests on: his major-league results, those blended with his scouted ratings, or his ratings
+   * alone. An unknown names it too (hardening F5): 'ratings' when his ability was projected and his playing time was
+   * not, 'none' when there was nothing to project from.
+   */
+  source?: 'results' | 'results_and_ratings' | 'ratings' | 'none';
   ability?: AbilityBasis | null;
   arrival?: ArrivalBasis | null;
   sides: SideBasis[];
