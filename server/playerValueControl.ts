@@ -10,7 +10,10 @@
  *
  *   under contract     the contract's salary, a point, where the export states it
  *   option             both branches: exercised (the salary) and declined (the buyout, and the
- *                      status he would fall to)
+ *                      status he would fall to). Only a FUTURE season: the season under way had
+ *                      its option decided before it began, so it is under contract
+ *   opt-out            both branches: he stays (the salary) or walks away (his Player Rights
+ *                      standing), for every season from the one the exported count reads
  *   pre-arbitration    unknown until the price of a win exists (phases 2 and 4) — never the minimum
  *   arbitration (n)    unknown likewise — never the minimum, never a point
  *   free agent         control ends: no cost to this club
@@ -31,6 +34,10 @@ export type ControlStatus =
   | 'club_option'
   | 'player_option'
   | 'vesting_option'
+  /** Either side may decline it. */
+  | 'mutual_option'
+  /** Under the deal at its salary unless he opts out before it (the declined branch). */
+  | 'opt_out'
   | 'pre_arbitration'
   | 'arbitration'
   /** Control ends: he can leave. */
@@ -45,6 +52,8 @@ export interface CostBand {
 }
 
 export interface DeclinedBranch {
+  /** An option declined, or the player opting out of the deal. */
+  kind: 'option_declined' | 'opted_out';
   /** The buyout the club (or player) pays to decline; unknown where the export does not populate it. */
   buyout: Sourced<number>;
   /** What he falls to that season if the option is declined. */
@@ -144,6 +153,7 @@ function fromEligibility(e: SeasonControlEligibility | undefined, season: number
   const status = statusOfStanding(e.standing);
   const between = e.between.map(statusOfStanding);
   const reasonsFor = status === 'indeterminate' ? missingText(e) : [];
+  if (status === 'arbitration' && e.arbitration.tripNote) reasonsFor.push(e.arbitration.tripNote);
   let basis: string;
   switch (status) {
     case 'free_agent': basis = e.freeAgency.reasons[0]?.message ?? 'Past the free-agency line.'; break;
@@ -163,8 +173,15 @@ function fromEligibility(e: SeasonControlEligibility | undefined, season: number
 }
 
 const OPTION_STATUS: Record<NonNullable<ContractSeason['option']>, ControlStatus> = {
-  club: 'club_option', player: 'player_option', vesting: 'vesting_option',
+  club: 'club_option', player: 'player_option', vesting: 'vesting_option', mutual: 'mutual_option',
 };
+
+const OPT_OUT_TIMING =
+  "The export carries the opt-out as a count, read here as after that contract year; the timing is read, not established (R-6).";
+
+/** What a blank contract row leaves open after this season, where he is not on a major-league club with service. */
+const AFTER_BLANK_ROW =
+  'What follows a blank contract row (renewal, a place on the 40-man, or minor-league free agency) is not established from the export.';
 
 export interface ControlInput {
   playerId: number;
@@ -174,6 +191,11 @@ export interface ControlInput {
   eligibility: ContractControlEligibility | null;
   /** How many seasons to lay out, this one included (the horizon, Q-3). */
   horizon: number;
+  /**
+   * Whether Player State places him on a major-league club (`teams.level` 1); null when unknown. A
+   * blank contract row there, with major-league service, is read through his Player Rights standing.
+   */
+  majorLeagueClub?: boolean | null;
 }
 
 /**
@@ -203,34 +225,91 @@ export function composeControlTimeline(input: ControlInput): ControlTimeline {
 
   const blocking = (eligibility?.missing ?? []).map((m) => m.message);
   const minorLeague = contract.kind.value === 'minor_league';
+  const blankRow = contract.standing === 'no_terms' && contract.kind.value === null;
   const seasons: ControlSeason[] = [];
   let controlEnds: number | null = null;
+
+  // ── the opt-out, as the exported count reads (A-05) ──
+  const optOutFrom = contract.optOutFrom;
+  const covered = [...(contract.term?.seasons ?? []), ...(contract.extension?.seasons ?? [])].map((c) => c.season);
+  const lastCovered = covered.length > 0 ? Math.max(...covered) : null;
+  let optOutLive = false;
+  if (optOutFrom !== null && contract.optOut.value !== null) {
+    const n = contract.optOut.value;
+    if (optOutFrom <= thisSeason) {
+      notes.push(`An opt-out is exported (opt_out ${n}); read as after contract year ${n}, before ${optOutFrom}, it has passed and he is playing under the deal. ${OPT_OUT_TIMING}`);
+    } else if (lastCovered === null || optOutFrom > lastCovered) {
+      notes.push(`An opt-out is exported (opt_out ${n}); read as after contract year ${n}, before ${optOutFrom}, it lies past the seasons the contract covers, so which season it follows is not established (R-6).`);
+    } else {
+      optOutLive = true;
+      notes.push(`An opt-out is exported (opt_out ${n}): read as after contract year ${n}, he may opt out before ${optOutFrom}, so every season from ${optOutFrom} shows both branches. ${OPT_OUT_TIMING}`);
+    }
+  }
 
   for (let k = 0; k < Math.max(1, input.horizon); k += 1) {
     const season = thisSeason + k;
     const e = eligibility?.seasons.find((x) => x.season === season);
-    const covered = contractSeasonFor(contract, season);
+    const cover = contractSeasonFor(contract, season);
 
-    if (covered) {
-      const status = covered.option ? OPTION_STATUS[covered.option] : 'under_contract';
+    if (cover) {
       const fallback = fromEligibility(e, season, blocking);
-      const salaryText = covered.salary.value !== null ? `$${covered.salary.value.toLocaleString('en-US')}` : 'a salary the export does not state';
+      const salaryText = cover.salary.value !== null ? `$${cover.salary.value.toLocaleString('en-US')}` : 'a salary the export does not state';
+      const deal = cover.from === 'extension' ? 'a signed extension' : 'contract';
+      const term = cover.from === 'extension' ? contract.extension : contract.term;
+      const afterOptOut = optOutLive && optOutFrom !== null && season >= optOutFrom;
+      const optOutReason = afterOptOut
+        ? `He may opt out before ${optOutFrom} (opt_out ${contract.optOut.value}); if he does, he is ${fallback.status.replace('_', ' ')} this season. ${OPT_OUT_TIMING}`
+        : null;
+      const unknownOption = k > 0 && cover.optionUnknown ? cover.optionUnknown : null;
+      const extra = [optOutReason, unknownOption].filter((x): x is string => x !== null);
+
+      if (cover.option && k === 0) {
+        // The season under way: its option was decided before it began (A-03)
+        seasons.push({
+          season, status: 'under_contract', arbitrationYear: null, superTwo: false, between: [],
+          cost: salaryBand(cover.salary), declined: null, from: cover.from,
+          basis: `Under ${deal} at ${salaryText}: this season's ${cover.option} option was decided before it began, and he is playing it.`,
+          reasons: extra, crossings: [],
+        });
+        continue;
+      }
+      if (cover.option) {
+        seasons.push({
+          season, status: OPTION_STATUS[cover.option], arbitrationYear: null, superTwo: false, between: [],
+          cost: salaryBand(cover.salary),
+          declined: {
+            kind: 'option_declined',
+            buyout: term?.buyout ?? unknownBecause('not_exported_by_ootp', 'players_contract.last_year_option_buyout'),
+            status: fallback.status, between: fallback.between, cost: fallback.cost,
+          },
+          from: cover.from,
+          basis: `A ${cover.option} option season: exercised, ${salaryText}; declined, the buyout and then ${fallback.status.replace('_', ' ')}.`,
+          reasons: [...fallback.reasons, ...extra],
+          crossings: fallback.crossings,
+        });
+        continue;
+      }
+      if (afterOptOut && k > 0) {
+        seasons.push({
+          season, status: 'opt_out', arbitrationYear: null, superTwo: false, between: [],
+          cost: salaryBand(cover.salary),
+          declined: {
+            kind: 'opted_out',
+            buyout: unknownBecause('not_exported_by_ootp', 'players_contract.opt_out', 'The export carries no payment for an opt-out.'),
+            status: fallback.status, between: fallback.between, cost: fallback.cost,
+          },
+          from: cover.from,
+          basis: `Under ${deal} at ${salaryText} unless he opts out before ${optOutFrom}; if he opts out, ${fallback.status.replace('_', ' ')}.`,
+          reasons: [...extra, ...fallback.reasons],
+          crossings: fallback.crossings,
+        });
+        continue;
+      }
       seasons.push({
-        season, status, arbitrationYear: null, superTwo: false, between: [],
-        cost: salaryBand(covered.salary),
-        declined: covered.option
-          ? {
-              buyout: (covered.from === 'extension' ? contract.extension : contract.term)?.buyout
-                ?? unknownBecause('not_exported_by_ootp', 'players_contract.last_year_option_buyout'),
-              status: fallback.status, between: fallback.between, cost: fallback.cost,
-            }
-          : null,
-        from: covered.from,
-        basis: covered.option
-          ? `A ${covered.option} option season: exercised, ${salaryText}; declined, the buyout and then ${fallback.status.replace('_', ' ')}.`
-          : `Under ${covered.from === 'extension' ? 'a signed extension' : 'contract'} at ${salaryText}.`,
-        reasons: covered.option ? fallback.reasons : [],
-        crossings: covered.option ? fallback.crossings : [],
+        season, status: 'under_contract', arbitrationYear: null, superTwo: false, between: [],
+        cost: salaryBand(cover.salary), declined: null, from: cover.from,
+        basis: `Under ${deal} at ${salaryText}.`,
+        reasons: extra, crossings: [],
       });
       continue;
     }
@@ -239,12 +318,44 @@ export function composeControlTimeline(input: ControlInput): ControlTimeline {
       // On a club this season with no exported term covering it: held, at a cost the export does not state
       seasons.push({
         season, status: 'under_contract', arbitrationYear: null, superTwo: false, between: [],
-        cost: unknownBecause('not_exported_by_ootp', 'players_contract.years', minorLeague
-          ? 'A minor-league contract whose salary and term the export does not carry; unknown, never $0 (Q-5).'
+        cost: unknownBecause('not_exported_by_ootp', 'players_contract.years', blankRow
+          ? 'His contract row is blank (no term, salary or paying club): what he is paid this season is not exported; unknown, never $0.'
           : 'The contract row carries no term for this season.'),
         declined: null, from: 'contract',
-        basis: 'On the club this season under a contract whose term the export does not carry.',
+        basis: blankRow
+          ? 'On the club this season under a contract the export leaves blank.'
+          : 'On the club this season under a contract whose term the export does not carry.',
         reasons: [], crossings: [],
+      });
+      continue;
+    }
+
+    if (blankRow) {
+      // A blank row is not a minor-league contract (C-07). Where Player State places him on a major-league club
+      // with major-league service, what follows this season is his Player Rights standing, the blank row named
+      const service = eligibility?.service.now ?? null;
+      if (input.majorLeagueClub === true && service !== null && service.low > 0) {
+        const row = fromEligibility(e, season, blocking);
+        const named = `His contract row is blank, so a deal the export does not carry could still cover ${season}; ${row.status === 'free_agent' ? 'free agency is therefore not certain' : 'the standing shown is his Player Rights answer'}.`;
+        if (row.status === 'free_agent' || (row.status === 'indeterminate' && row.between.includes('free_agent'))) {
+          seasons.push({
+            ...row, status: 'indeterminate', declined: null, arbitrationYear: null, superTwo: false,
+            between: ['under_contract', ...row.between.filter((b) => b !== 'under_contract'), ...(row.status === 'free_agent' ? ['free_agent' as const] : [])],
+            cost: costOfStatus('indeterminate'),
+            basis: `Past the free-agency line by his service, unless a deal the export does not carry holds him: his contract row is blank.`,
+            reasons: [named, ...row.reasons],
+          });
+          continue;
+        }
+        seasons.push({ ...row, declined: null, reasons: [named, ...row.reasons] });
+        continue;
+      }
+      seasons.push({
+        season, status: 'indeterminate', arbitrationYear: null, superTwo: false, between: [], cost: costOfStatus('indeterminate'),
+        declined: null, from: 'none',
+        basis: 'After a contract row the export leaves blank.',
+        reasons: [AFTER_BLANK_ROW],
+        crossings: [],
       });
       continue;
     }
@@ -282,6 +393,10 @@ export function composeControlTimeline(input: ControlInput): ControlTimeline {
 
   const last = seasons[seasons.length - 1];
   const continuesPastHorizon = controlEnds === null && last !== undefined && last.status !== 'indeterminate';
-  if (continuesPastHorizon) notes.push(`Control continues past ${last.season}, the last season the timeline shows.`);
+  if (continuesPastHorizon) {
+    notes.push(optOutLive && optOutFrom !== null
+      ? `Under contract past ${last.season}, the last season the timeline shows, unless he opts out before ${optOutFrom}.`
+      : `Control continues past ${last.season}, the last season the timeline shows.`);
+  }
   return { ...base, standing: 'held', thisSeason, seasons, controlEnds, continuesPastHorizon, notes };
 }

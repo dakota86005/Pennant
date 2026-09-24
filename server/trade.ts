@@ -416,6 +416,8 @@ function controlOf(id: number) {
     ...(c.arbYearHigh !== null ? { arbitrationYearIfHeStaysUp: c.arbYearHigh } : {}),
     ...(c.superTwo ? { superTwo: true } : {}),
     ...(c.status === 'indeterminate' ? { between: c.between, why: c.reason } : {}),
+    // An option (or opt-out) next season is both branches, never "signed" (A-04)
+    ...(c.status === 'option' && c.option ? { option: c.option, why: c.reason } : {}),
   };
 }
 

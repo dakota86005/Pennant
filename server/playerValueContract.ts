@@ -11,13 +11,19 @@
  *     on the imported historical start) is not populated, and a 0 in it is unknown, not "none".
  *     Where the export does populate a column, its 0 reads as none.
  *   - The club carrying the money is `contract_team_id` as exported, not verified against payroll.
+ *   - A row with no term (`years` 0 or no first season) and `is_major` 0 is the export's blank row:
+ *     the same row it writes for thousands of players it carries no terms for (every minor leaguer
+ *     without a written deal, unassigned amateurs, and major leaguers on the 60-day injured list on
+ *     the imported save). Its `is_major` 0 is the blank's, not a minor-league contract, so it has no kind.
+ *   - A club and a player option flag on the same last season is a mutual option; an option flag the
+ *     export does not populate leaves that season's option unknown, and the season says so.
  *
  * Nothing here reads a rating, `players_value`, philosophy or a right.
  */
 
 import { fromExport, unknownBecause, type Sourced } from './provenance.js';
 
-export type OptionKind = 'club' | 'player' | 'vesting';
+export type OptionKind = 'club' | 'player' | 'vesting' | 'mutual';
 
 export interface ContractSeason {
   season: number;
@@ -25,6 +31,8 @@ export interface ContractSeason {
   salary: Sourced<number>;
   /** The option this season is, when the contract makes it one. */
   option: OptionKind | null;
+  /** On a term's last season: the option flags the export does not state (unpopulated or blank), in words; null when none. */
+  optionUnknown: string | null;
   from: 'contract' | 'extension';
 }
 
@@ -69,6 +77,13 @@ export interface ContractFacts {
   retained: Sourced<boolean>;
   /** `opt_out` — exported as a count, not a flag; which season it follows is not established (R-6). */
   optOut: Sourced<number>;
+  /**
+   * The first season he may walk away from, as the count reads: the term's first season plus the
+   * count (after contract year N). It matches the real deals it could be checked against (a 2025 deal
+   * with 5, a 2024 deal with 7), but the timing is a reading, not established (R-6). Null where no
+   * opt-out is exported or the term has no first season.
+   */
+  optOutFrom: number | null;
   /** Incentives as stated. */
   incentives: {
     minimumPa: Sourced<number>;
@@ -135,6 +150,11 @@ function columnReader(table: string, row: ContractRow, present: Set<string>, pop
   return read;
 }
 
+/** What the export's blank contract row is, in words (C-07). */
+export const BLANK_ROW =
+  "The export's blank contract row: no term, no first season, no salary and no paying club. The export writes this row for " +
+  'thousands of players it carries no terms for, so its is_major 0 names no kind of contract: the kind, term and salary are not exported.';
+
 const asIs = (n: number): number => n;
 const flag = (n: number): boolean => n === 1;
 
@@ -170,15 +190,22 @@ function termOf(
     player: read('last_year_player_option', flag),
     vesting: read('last_year_vesting_option', flag),
   };
-  const lastOption: OptionKind | null = options.club.value ? 'club'
-    : options.player.value ? 'player'
-      : options.vesting.value ? 'vesting' : null;
+  // Both sides holding an option on the same season is a mutual option, never the club's alone
+  const lastOption: OptionKind | null = options.club.value && options.player.value ? 'mutual'
+    : options.club.value ? 'club'
+      : options.player.value ? 'player'
+        : options.vesting.value ? 'vesting' : null;
+  const unstated = (Object.entries(options) as Array<[string, Sourced<boolean>]>)
+    .filter(([, flag]) => flag.value === null)
+    .map(([kind, flag]) => `Whether this season is a ${kind === 'club' ? 'club' : kind === 'player' ? 'player' : 'vesting'} option is not exported (${flag.note ?? 'the flag is blank'})`);
+  const optionUnknown = lastOption === null && unstated.length > 0 ? `${unstated.join('; ')}.` : null;
   const seasons: ContractSeason[] = [];
   for (let i = 0; i < count; i += 1) {
     seasons.push({
       season: first + i,
       salary: salaryOf(table, row, present, i, minorLeague),
       option: i === count - 1 ? lastOption : null,
+      optionUnknown: i === count - 1 ? optionUnknown : null,
       from,
     });
   }
@@ -202,7 +229,7 @@ export function contractFactsOf(
     playerId, standing,
     kind: blank(reason, note), payingClub: blank(reason, note), completedYears: blank(reason, note),
     term: null, extension: null,
-    noTrade: blank(reason, note), retained: blank(reason, note), optOut: blank(reason, note),
+    noTrade: blank(reason, note), retained: blank(reason, note), optOut: blank(reason, note), optOutFrom: null,
     incentives: {
       minimumPa: blank(reason, note), minimumPaBonus: blank(reason, note), minimumIp: blank(reason, note),
       minimumIpBonus: blank(reason, note), mvpBonus: blank(reason, note), cyYoungBonus: blank(reason, note),
@@ -221,11 +248,15 @@ export function contractFactsOf(
   const present = tables.contract;
   const read = columnReader('players_contract', row, present, tables.populated);
   const major = read('is_major', flag);
-  const kind: Sourced<'major_league' | 'minor_league'> = major.value === null
-    ? { ...major, value: null }
-    : { ...major, value: major.value ? 'major_league' : 'minor_league' };
   const minorLeague = major.value === false;
   const term = termOf('players_contract', row, present, tables.populated, 'contract', minorLeague);
+  // A row with no term and is_major 0 is the export's blank row: its 0 is not a minor-league contract
+  const blankRow = term === null && major.value === false;
+  const kind: Sourced<'major_league' | 'minor_league'> = blankRow
+    ? unknownBecause('not_exported_by_ootp', 'players_contract.is_major', BLANK_ROW)
+    : major.value === null
+      ? { ...major, value: null }
+      : { ...major, value: major.value ? 'major_league' : 'minor_league' };
   const ext = extension && tables.extension
     ? termOf('players_contract_extension', extension, tables.extension, tables.populated, 'extension', minorLeague)
     : null;
@@ -237,6 +268,8 @@ export function contractFactsOf(
   if (optOut.value !== null && optOut.value > 0) {
     optOut.note = 'Exported as a count, not a flag; which season it follows is not established (R-6).';
   }
+  const termStart = term?.firstSeason.value ?? null;
+  const optOutFrom = optOut.value !== null && optOut.value > 0 && termStart !== null ? termStart + optOut.value : null;
 
   let standing: ContractStanding;
   if (teamId.value === 0) standing = 'unsigned';
@@ -245,9 +278,7 @@ export function contractFactsOf(
   else standing = 'signed';
 
   if (standing === 'no_terms') {
-    notes.push(minorLeague
-      ? 'A minor-league contract whose term the export does not carry (years or first season is 0).'
-      : 'A contract row whose term the export does not carry (years or first season is 0).');
+    notes.push(blankRow ? BLANK_ROW : 'A contract row whose term the export does not carry (years or first season is 0).');
   }
   if (standing === 'unsigned' && term !== null) {
     notes.push('The export shows contract terms but no club; he is read as unsigned.');
@@ -260,6 +291,7 @@ export function contractFactsOf(
     noTrade: read('no_trade', flag),
     retained: read('retained', flag),
     optOut,
+    optOutFrom,
     incentives: {
       minimumPa: read('minimum_pa', asIs),
       minimumPaBonus: read('minimum_pa_bonus', asIs),

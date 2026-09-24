@@ -25,7 +25,7 @@
 import type { AssignmentContext } from './assignmentContext.js';
 import type { SourceState } from './dataFreshness.js';
 import type { ContractRules, LeagueRules } from './leagueRules.js';
-import type { PlayerState, ServiceClassMember } from './playerState.js';
+import type { PlayerState, ServiceCalendar, ServiceClassMember } from './playerState.js';
 import { policy, type CalibrationStamp } from './calibration.js';
 import { UNKNOWN_REASON_TEXT, type Sourced } from './provenance.js';
 
@@ -142,6 +142,8 @@ export interface RightsContext {
    * projection's high edge is the most service the player could still bank.
    */
   serviceClock?: Sourced<number>;
+  /** The regime league's schedule on the calendar (`seasonServiceCalendars`); see `ContractControlInput`. */
+  serviceCalendar?: Sourced<ServiceCalendar>;
   /** The Super Two cutoff for the player's contract regime (`superTwoCutoffs`); without it the window is indeterminate. */
   superTwo?: SuperTwoCutoff | null;
 }
@@ -851,6 +853,8 @@ export interface SeasonControlEligibility {
   arbitration: EligibilityAnswer & {
     /** Which arbitration year this would be by service class (3.x years is the first), on each edge, when he is eligible. */
     trip: { low: number; high: number } | null;
+    /** Why the trip is a range, when it is: an earlier winter the export does not show, or one the projection leaves open. */
+    tripNote: string | null;
     /** Eligible as a Super Two on at least one edge: from the year before the arbitration line. */
     superTwo: boolean;
   };
@@ -886,6 +890,12 @@ export interface ContractControlInput {
   /** The contract regime (`LeagueRules.contract`), already resolved through the parent league. */
   rules: ContractRules;
   serviceClock?: Sourced<number>;
+  /**
+   * The regime league's schedule on the calendar (`seasonServiceCalendars` in `playerState.ts`): what is
+   * left of this season and what a season of it banks. Without it, what remains is the service year
+   * less the clock, and each later season is taken as a full service year (the basis says so).
+   */
+  serviceCalendar?: Sourced<ServiceCalendar>;
   /** The CSV export against the save (D-022, D-023). */
   currentState: SourceState;
   /** How many seasons to evaluate, from this season on (at least 1). */
@@ -928,6 +938,24 @@ export const SUPER_TWO_CALIBRATION: CalibrationStamp = policy(
     'season just ending (CBA Art. VI(E)(1)(b)), in leagues whose read contract regime matches MLB\'s.'
 );
 
+/**
+ * The Super Two cutoff's margin, in days (owner, 2026-09-23: add a policy margin around the computed range).
+ * The cutoff's two edges are readings of how the class finishes the season, not bounds: they leave out
+ * the single roster moves among the class (a member optioned, recalled, reaching or missing the 86
+ * days), each of which moves the qualifying count or rank by one and the cutoff to a neighbour's
+ * service. On the imported save neighbours at the qualifying rank sit 0 to 5 days apart (ranks 22 to
+ * 29 of 117, and 44 to 51 of 220, in the two readings), so 10 days covers two or more such moves on
+ * either edge. Within the margin of either edge the year before the arbitration line is
+ * `indeterminate`; a tie with the cutoff is inside it. It only ever widens.
+ */
+export const SUPER_TWO_MARGIN_DAYS = 10;
+
+export const SUPER_TWO_MARGIN_CALIBRATION: CalibrationStamp = policy(
+  `Owner-approved (owner, 2026-09-23): the Super Two cutoff's edges are readings, not bounds, so within ${SUPER_TWO_MARGIN_DAYS} days ` +
+    'of either edge the year before the arbitration line is indeterminate. The size is chosen, not fitted: on the imported ' +
+    'save neighbours at the qualifying rank sit 0 to 5 days apart, so it covers two or more single roster moves among the class.'
+);
+
 export interface SuperTwoCutoff {
   /** Whether Super Two applies to this regime: it matches MLB's, it does not, or the rules are unknown. */
   applies: 'yes' | 'not_mlb_regime' | 'unknown';
@@ -958,7 +986,8 @@ export interface SuperTwoCutoff {
 export function superTwoCutoffs(
   members: ServiceClassMember[],
   regimeOf: (leagueId: number) => ContractRules | null,
-  clockOf: (regimeLeagueId: number) => Sourced<number>
+  clockOf: (regimeLeagueId: number) => Sourced<number>,
+  calendarOf?: (regimeLeagueId: number) => Sourced<ServiceCalendar>
 ): Map<number, SuperTwoCutoff> {
   const groups = new Map<number, { rules: ContractRules; members: ServiceClassMember[] }>();
   for (const m of members) {
@@ -991,6 +1020,15 @@ export function superTwoCutoffs(
       });
       continue;
     }
+    // A season shorter than the service year: whether the 86 days apply there is not established (D-03)
+    const calendar = calendarOf?.(regimeId).value ?? null;
+    if (calendar !== null && calendar.scheduleDays < perYear) {
+      out.set(regimeId, {
+        ...base, applies: 'not_mlb_regime', basis: [],
+        missing: [{ code: 'rule_not_established', message: `This league's schedule spans ${calendar.scheduleDays} days, shorter than its ${perYear}-day service year, so whether OOTP applies Super Two's ${SUPER_TWO_PRIOR_SEASON_DAYS} days in it is not established.` }],
+      });
+      continue;
+    }
     const regimeBasis = `The league's contract regime as exported (free agency ${fa} years, arbitration ${arb}, a ${perYear}-day service year) is MLB's, and ${SUPER_TWO_ATTESTATION}.`;
     const unstated = group.filter((m) => m.mlbDays === null || m.mlbDaysThisSeason === null).length;
     if (unstated > 0) {
@@ -1006,7 +1044,9 @@ export function superTwoCutoffs(
     type Point = { service: number; days: number };
     const scenario = (bank: (m: ServiceClassMember) => boolean): Point[] => group.map((m) => {
       const t = m.mlbDaysThisSeason as number;
-      const rest = Math.max(0, clock !== null ? Math.min(perYear - clock, perYear - t) : perYear - t);
+      const rest = Math.max(0, Math.min(
+        clock !== null ? perYear - clock : perYear, perYear - t, calendar !== null ? calendar.daysLeft : perYear
+      ));
       const add = bank(m) ? rest : 0;
       return { service: (m.mlbDays as number) + add, days: t + add };
     });
@@ -1032,8 +1072,9 @@ export function superTwoCutoffs(
         regimeBasis,
         `The class is every held player with ${arb - 1} to ${arb} years of service and at least ${SUPER_TWO_PRIOR_SEASON_DAYS} days in ${season ?? 'this season'}; the top ${Math.round(SUPER_TWO_SHARE * 100)}% by service qualify.`,
         clock !== null
-          ? `Projected to season end (${Math.max(0, perYear - clock)} of ${perYear} days left): from the men on a major-league roster now banking the rest of the season to every member banking it.`
+          ? `Projected to season end (${Math.max(0, Math.min(perYear - clock, calendar?.daysLeft ?? perYear))} of ${perYear} days left): from the men on a major-league roster now banking the rest of the season to every member banking it.`
           : 'The season clock is not exported, so each member may bank up to a full year less his days so far.',
+        `The cutoff's edges are readings, not bounds: within ${SUPER_TWO_MARGIN_DAYS} days of either the year is not decided (owner, 2026-09-23).`,
       ],
       missing: [],
     });
@@ -1049,13 +1090,18 @@ type SuperTwoContext =
 
 /**
  * The service projection past this season (provisional, PLAYER_VALUE.md Part 11).
- * This season's remaining days are a band: none (optioned or hurt from now on) up
- * to all of them (he stays on the active list). Each LATER season is projected as
- * one full service year on both edges, the convention a club's control is read
- * by; a season spent in the minors only lengthens control, and is not assumed.
+ * This season's remaining days are a band: none (optioned or outrighted from now on)
+ * up to all of them (he stays on the major-league roster), capped by what the schedule
+ * has left. A player on the major-league injured list keeps banking while he is on it
+ * (the export shows the list accruing the season's clock) and cannot be optioned from it
+ * (observed), so his low edge adds the days left on his stint. Each LATER season is
+ * projected as the service its schedule banks (the calendar from the first scheduled
+ * game to the last, never more than the service year) on both edges, the convention a
+ * club's control is read by; a season spent in the minors only lengthens control, and
+ * is not assumed.
  */
 export const SERVICE_PROJECTION_BASIS =
-  'Each season after this one is projected as a full service year; time in the minors would lengthen control, not shorten it.';
+  'Each season after this one is projected as the service its schedule banks, never more than the service year; time in the minors would lengthen control, not shorten it.';
 
 const SERVICE_SOURCE = 'players_roster_status.mlb_service_days';
 const FA_SOURCE = 'leagues.rules_fa_minimum_years';
@@ -1068,6 +1114,22 @@ type Rung = (typeof LADDER)[number];
 const answer = (status: RightsStatus, reasons: RightsReason[] = [], missing: MissingEvidence[] = []): EligibilityAnswer => ({
   status, reasons, missing,
 });
+
+/**
+ * Service as the GM reads it, in the league's own service-year length: whole years, and baseball's
+ * years.days notation ("2.126" is two years and 126 days), never a decimal of years (A-22). A band reads
+ * "2.xxx". Service arithmetic lives here, with the rights it decides, so no consumer divides by the year
+ * length itself (the Player Value boundary test enforces it); unknown stays unknown, never 0.
+ */
+export function serviceReading(
+  service: { low: number; high: number } | null,
+  perYear: number | null
+): { years: number | null; text: string | null } {
+  if (service === null || perYear === null || perYear <= 0) return { years: null, text: null };
+  const years = Math.floor(service.low / perYear);
+  if (service.low !== service.high) return { years, text: `${years}.xxx` };
+  return { years, text: `${years}.${String(Math.round(service.low - years * perYear)).padStart(3, '0')}` };
+}
 
 /** "5 years 87 days" in the league's own service-year length. */
 function spoken(days: number, perYear: number): string {
@@ -1086,9 +1148,10 @@ function rungOf(
   if (days >= (arb - 1) * perYear) {
     // The year before the arbitration line: Super Two decides it where the cutoff is known
     if (st.kind !== 'resolved') return 'super_two_window';
-    if (days < st.cutoff.low) return 'pre_arbitration';
+    // The cutoff's edges are readings, not bounds: within the margin of either the year is not decided
+    if (days < st.cutoff.low - SUPER_TWO_MARGIN_DAYS) return 'pre_arbitration';
     if (priorDays !== null && priorDays < SUPER_TWO_PRIOR_SEASON_DAYS) return 'pre_arbitration';
-    if (days >= st.cutoff.high && priorDays !== null) return 'arbitration';
+    if (days >= st.cutoff.high + SUPER_TWO_MARGIN_DAYS && priorDays !== null) return 'arbitration';
     return 'super_two_window';
   }
   return 'pre_arbitration';
@@ -1113,7 +1176,7 @@ function seasonEligibility(
   const arb = rules.arbitrationYears.value;
   const unknownSeason = (missing: MissingEvidence[]): SeasonControlEligibility => ({
     season, serviceDays: band, freeAgency: answer('indeterminate', [], missing),
-    arbitration: { ...answer('indeterminate', [], missing), trip: null, superTwo: false },
+    arbitration: { ...answer('indeterminate', [], missing), trip: null, tripNote: null, superTwo: false },
     standing: 'indeterminate', between: [], crossings: [],
   });
   if (blocking.length > 0) return unknownSeason(blocking);
@@ -1131,6 +1194,7 @@ function seasonEligibility(
           noArb ? [] : [{ code: 'rule_not_established', message: 'Whether arbitration applies under a reserve clause is not established.' }]
         ),
         trip: null,
+        tripNote: null,
         superTwo: false,
       },
       standing: 'reserve_clause', between: [], crossings: [],
@@ -1180,7 +1244,7 @@ function seasonEligibility(
 
   // ── arbitration (moot once he is certainly free to leave) ──
   let arbitration: SeasonControlEligibility['arbitration'];
-  const none = { trip: null, superTwo: false };
+  const none = { trip: null, tripNote: null, superTwo: false };
   if (freeAgency.status === 'eligible') {
     arbitration = { ...answer('ineligible', [reason('free_agent_instead', 'He is past the free-agency line, so arbitration does not arise.', 'export_state', FA_SOURCE)]), ...none };
   } else if (arb === null) {
@@ -1211,21 +1275,25 @@ function seasonEligibility(
       } else {
         reasons.push(reason(
           'super_two',
-          `${serviceText} of service by then is at or above the Super Two cutoff (${cutText}: ${classText}), with ${priorText} days in ${st.kind === 'resolved' ? st.priorSeason : 'the season just ending'}. ${SUPER_TWO_ATTESTATION}.`,
+          `${serviceText} of service by then is at or above the Super Two cutoff (${cutText}: ${classText}), at least ${SUPER_TWO_MARGIN_DAYS} days past its readings, with ${priorText} days in ${st.kind === 'resolved' ? st.priorSeason : 'the season just ending'}. ${SUPER_TWO_ATTESTATION}.`,
           'owner_attested', superSource
         ));
       }
+      // By service class here; `evaluateContractControl` counts trips by winter across the seasons
       arbitration = {
         ...answer('eligible', reasons),
-        trip: band.high >= arbLine ? { low: trip(Math.max(band.low, arbLine)), high: trip(topOfArbitration) } : null,
+        trip: band.low >= arbLine
+          ? { low: trip(band.low), high: trip(topOfArbitration) }
+          : { low: 1, high: 1 },
+        tripNote: null,
         superTwo: band.low < arbLine,
       };
     } else if (low === 'pre_arbitration' && high === 'pre_arbitration') {
       const reasons: RightsReason[] = [];
       if (band.high < windowLine) {
         reasons.push(reason('short_of_arbitration_line', `${serviceText} of service by then, more than a year short of the arbitration line of ${arb} years.`, 'export_state', `${SERVICE_SOURCE} + ${ARB_SOURCE}`));
-      } else if (st.kind === 'resolved' && band.high < st.cutoff.low) {
-        reasons.push(reason('below_super_two_cutoff', `${serviceText} of service by then is below the Super Two cutoff (${cutText}: ${classText}). ${SUPER_TWO_ATTESTATION}.`, 'owner_attested', superSource));
+      } else if (st.kind === 'resolved' && band.high < st.cutoff.low - SUPER_TWO_MARGIN_DAYS) {
+        reasons.push(reason('below_super_two_cutoff', `${serviceText} of service by then is below the Super Two cutoff (${cutText}: ${classText}), by more than its ${SUPER_TWO_MARGIN_DAYS}-day margin. ${SUPER_TWO_ATTESTATION}.`, 'owner_attested', superSource));
       } else {
         reasons.push(reason('short_of_super_two_days', `${priorText ?? 'Fewer than ' + SUPER_TWO_PRIOR_SEASON_DAYS} days in ${st.kind === 'resolved' ? st.priorSeason : 'the season just ending'}: Super Two needs at least ${SUPER_TWO_PRIOR_SEASON_DAYS} days of service in the season before the arbitration winter, whatever his rank. ${SUPER_TWO_ATTESTATION}.`, 'owner_attested', superSource));
       }
@@ -1235,7 +1303,7 @@ function seasonEligibility(
       if (inWindow) {
         if (st.kind === 'unresolved') missing.push(st.missing);
         else {
-          const parts = [`In the Super Two window: his service by then projects ${serviceText}; the Super Two cutoff projects ${cutText} (${classText}).`];
+          const parts = [`In the Super Two window: his service by then projects ${serviceText}; the Super Two cutoff projects ${cutText} (${classText}), and its edges are readings, so within ${SUPER_TWO_MARGIN_DAYS} days of either the year is not decided (owner, 2026-09-23).`];
           if (priorText === null) parts.push(`His days this season are not exported, so the ${SUPER_TWO_PRIOR_SEASON_DAYS}-day condition is unknown.`);
           else if ((st.priorDays.low as number) < SUPER_TWO_PRIOR_SEASON_DAYS && (st.priorDays.high as number) >= SUPER_TWO_PRIOR_SEASON_DAYS) {
             parts.push(`His days in ${st.priorSeason} project ${priorText}, and Super Two needs ${SUPER_TWO_PRIOR_SEASON_DAYS}.`);
@@ -1265,6 +1333,66 @@ function seasonEligibility(
   }
   return { season, serviceDays: band, freeAgency, arbitration, standing, between, crossings };
 }
+
+/**
+ * Arbitration trips count winters, not service classes (A-12, C-15): each winter a player is in
+ * arbitration is one more trip, whatever service he banked in between, so a Super Two's next
+ * arbitration year is his second and a player already in arbitration is never numbered a trip he has
+ * taken. This season's trip is counted from his service class and is a floor: a year reached early as
+ * a Super Two, or a winter with no service while eligible, is not in the export (earlier classes are
+ * not exported), so it may be one trip later. A later season's trip follows the one before: one more
+ * where he was surely in arbitration, a range where the projection leaves that winter open. Capped at
+ * the regime's trips (its arbitration years, plus a Super Two's). Sets each season's `arbitration.trip`.
+ */
+function countTripsByWinter(seasons: SeasonControlEligibility[], rules: ContractRules): void {
+  const fa = rules.freeAgencyYears.value;
+  const arb = rules.arbitrationYears.value;
+  if (fa === null || arb === null || arb <= 0 || fa <= arb) return;
+  const most = fa - arb + 1;
+  const cap = (n: number) => Math.min(most, n);
+  /** Trips taken through the season before, low and high; null once they cannot be counted. */
+  let taken: { low: number; high: number } | null = null;
+  for (const [k, s] of seasons.entries()) {
+    const a = s.arbitration;
+    if (k === 0) {
+      if (a.status === 'eligible' && a.trip) {
+        const floor = a.trip.low;
+        a.trip = { low: cap(floor), high: cap(Math.max(a.trip.high, floor + 1)) };
+        a.tripNote = a.trip.high > a.trip.low
+          ? `Counted from his service class, this is at least his ${ordinal(a.trip.low)} arbitration year; a year reached early as a Super Two (or a winter he banked no service while eligible) is not in the export, so it may be his ${ordinal(a.trip.high)}.`
+          : null;
+        taken = { ...a.trip };
+      } else if (s.standing === 'pre_arbitration') {
+        taken = { low: 0, high: 0 };
+      } else if (s.standing === 'indeterminate' && s.between.includes('arbitration')) {
+        taken = { low: 0, high: 1 };
+      } else {
+        taken = null;
+      }
+      continue;
+    }
+    if (a.status === 'eligible') {
+      if (taken === null) {
+        a.trip = null;
+        a.tripNote = 'Which arbitration year this is cannot be counted: an earlier winter is not established.';
+        continue;
+      }
+      a.trip = { low: cap(taken.low + 1), high: cap(taken.high + 1) };
+      a.tripNote = a.trip.high > a.trip.low
+        ? `Each winter in arbitration is one trip: this is his ${ordinal(a.trip.low)} to ${ordinal(a.trip.high)}, as the winters before it are counted.`
+        : null;
+      taken = { ...a.trip };
+    } else if (taken !== null && s.standing === 'indeterminate') {
+      // A winter the projection leaves open may or may not have been an arbitration year
+      taken = { low: taken.low, high: cap(taken.high + 1) };
+    } else if (s.standing !== 'pre_arbitration') {
+      taken = null;
+    }
+  }
+}
+
+const ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth'];
+const ordinal = (n: number): string => ORDINALS[n - 1] ?? `${n}th`;
 
 /**
  * Arbitration and free-agency eligibility, season by season, from service time
@@ -1320,31 +1448,61 @@ export function evaluateContractControl(input: ContractControlInput): ContractCo
 
   let endOfSeason: ServiceBand | null = null;
   let remaining: number | null = null;
+  /** What a whole later season banks, from the league's schedule (never more than the service year). */
+  let perSeason: ServiceBand | null = null;
+  /** Days he banks this season whatever happens: those left on a major-league injured-list stint. */
+  let certain = 0;
   if (now !== null && perYear !== null) {
     const clock = input.serviceClock?.value ?? null;
+    const calendar = input.serviceCalendar?.value ?? null;
     if (clock !== null) {
       remaining = Math.max(0, perYear - clock);
       if (thisYear !== null) remaining = Math.min(remaining, Math.max(0, perYear - thisYear));
-      basis.push(`The season's service clock has run ${clock} of ${perYear} days; the high edge adds the ${remaining} left, the low edge none (optioned or hurt).`);
     } else {
       remaining = thisYear !== null ? Math.max(0, perYear - thisYear) : perYear;
-      basis.push(`The season's service clock is not available, so the high edge adds the most he could still bank this season (${remaining} days); the low edge adds none.`);
     }
-    endOfSeason = { low: now.low, high: now.high + remaining };
+    // The schedule caps it: once its last game is played nothing remains (D-03)
+    if (calendar !== null) remaining = Math.min(remaining, calendar.daysLeft);
+    // The major-league injured list accrues service (every player on it has banked the season's clock on
+    // the imported save), and a player on it cannot be optioned (observed): the days left on his stint are banked
+    const onMajorLeagueIl = state.level?.value === 1
+      && (state.injuredList?.onIl?.value === true || state.injuredList?.onIl60?.value === true);
+    const ilLeft = state.injury?.ilDaysLeft?.value ?? null;
+    if (onMajorLeagueIl && ilLeft !== null) certain = Math.min(remaining, Math.max(0, ilLeft));
+    const lowText = certain > 0
+      ? `the low edge the ${certain} days left on his stint on the major-league injured list (the list accrues service, and he cannot be optioned from it)`
+      : onMajorLeagueIl
+        ? 'the low edge none: he is on the major-league injured list, which accrues service, but how long his stint runs is not exported'
+        : 'the low edge none (optioned or outrighted)';
+    basis.push(clock !== null
+      ? `The season's service clock has run ${clock} of ${perYear} days${calendar !== null ? ` and ${calendar.daysLeft} calendar days of the schedule are left` : ''}; the high edge adds the ${remaining} left, ${lowText}.`
+      : `The season's service clock is not available, so the high edge adds the most he could still bank this season (${remaining} days); ${lowText}.`);
+    endOfSeason = { low: now.low + certain, high: now.high + remaining };
+    // Each later season banks what its schedule spans, never more than the service year (D-04)
+    if (calendar !== null) {
+      perSeason = { low: Math.min(perYear, Math.max(0, calendar.scheduleDays - 1)), high: Math.min(perYear, calendar.scheduleDays) };
+      basis.push(perSeason.low >= perYear
+        ? `The league's schedule spans ${calendar.scheduleDays} days, longer than the ${perYear}-day service year, so a whole season banks a full service year.`
+        : `The league's schedule spans ${calendar.scheduleDays} days, shorter than the ${perYear}-day service year, so a whole season banks ${perSeason.low === perSeason.high ? perSeason.low : `${perSeason.low} to ${perSeason.high}`} days (the clock counts elapsed days).`);
+    } else {
+      perSeason = { low: perYear, high: perYear };
+      basis.push(`The league's schedule is not in the export (${input.serviceCalendar?.note ?? 'no calendar was read'}), so each later season is taken as a full ${perYear}-day service year: the provisional convention, not a reading.`);
+    }
     basis.push(SERVICE_PROJECTION_BASIS);
   }
 
   const crossingFor = (lineDays: number, line: ThresholdCrossing['line']): ThresholdCrossing | null => {
     // Only a projection from exact days names the seasons on either side; a band from whole years does not
-    if (days === null || endOfSeason === null || perYear === null || thisSeason === null || remaining === null) return null;
-    const first = (edge: number) => thisSeason + 1 + Math.max(0, Math.ceil((lineDays - edge) / perYear));
-    const ifStaysUp = first(endOfSeason.high);
-    const ifOptioned = first(endOfSeason.low);
+    if (days === null || endOfSeason === null || perYear === null || thisSeason === null || remaining === null || perSeason === null) return null;
+    const first = (edge: number, per: number) => thisSeason + 1 + (edge >= lineDays ? 0 : per > 0 ? Math.ceil((lineDays - edge) / per) : Infinity);
+    const ifStaysUp = first(endOfSeason.high, perSeason.high);
+    const ifOptioned = first(endOfSeason.low, perSeason.low);
     const label = line === 'free_agency' ? 'free-agency line' : line === 'arbitration' ? 'arbitration line' : 'start of the year before arbitration';
     const short = Math.max(0, Math.ceil(lineDays - endOfSeason.low));
+    const lowWhy = certain > 0 ? `if he leaves the major-league roster once his ${certain} injured-list days are banked` : 'if he is optioned or outrighted';
     return {
       line, lineDays, ifStaysUp, ifOptioned,
-      message: `Past the ${label} (${spoken(lineDays, perYear)}) by ${ifStaysUp} if he stays on the active list for the rest of ${thisSeason}; not until ${ifOptioned} if he is optioned or hurt. He needs ${short} more day${short === 1 ? '' : 's'} and ${remaining} remain this season.`,
+      message: `Past the ${label} (${spoken(lineDays, perYear)}) by ${ifStaysUp} if he stays on the major-league roster for the rest of ${thisSeason}; not until ${ifOptioned} ${lowWhy}. He needs ${short} more day${short === 1 ? '' : 's'} and ${remaining} remain this season.`,
     };
   };
 
@@ -1371,7 +1529,7 @@ export function evaluateContractControl(input: ContractControlInput): ContractCo
     // His days in the season just ending: banked now, up to the rest of the season if he stays up
     const prior = thisYear === null || remaining === null
       ? { low: null, high: null }
-      : { low: thisYear, high: thisYear + remaining };
+      : { low: thisYear + certain, high: thisYear + remaining };
     return { kind: 'resolved', cutoff: st.cutoff, classSize: st.classSize, qualifiers: st.qualifiers, priorDays: prior, priorSeason: s };
   };
 
@@ -1387,14 +1545,15 @@ export function evaluateContractControl(input: ContractControlInput): ContractCo
           band = thisYear !== null
             ? { low: Math.max(0, now.low - thisYear), high: Math.max(0, now.high - thisYear) }
             : { low: Math.max(0, now.low - perYear), high: now.high };
-        } else if (endOfSeason !== null) {
-          band = { low: endOfSeason.low + (k - 1) * perYear, high: endOfSeason.high + (k - 1) * perYear };
+        } else if (endOfSeason !== null && perSeason !== null) {
+          band = { low: endOfSeason.low + (k - 1) * perSeason.low, high: endOfSeason.high + (k - 1) * perSeason.high };
         }
       }
       seasons.push(seasonEligibility(
         thisSeason + k, band, perYear, rules, blocking, k === 0 ? () => null : crossingFor, superTwoContext(k)
       ));
     }
+    countTripsByWinter(seasons, rules);
   }
 
   return {
@@ -1440,6 +1599,7 @@ export function evaluatePlayerRights(ctx: RightsContext): PlayerRights {
     // This season (decided at the last winter) and what happens after it
     contractControl: evaluateContractControl({
       state: ctx.state, rules: ctx.league.contract, serviceClock: ctx.serviceClock,
+      serviceCalendar: ctx.serviceCalendar,
       currentState: ctx.evidence.currentState, seasons: 2, superTwo: ctx.superTwo ?? null,
     }),
   };

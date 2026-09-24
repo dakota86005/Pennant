@@ -341,7 +341,9 @@ Present on `main` (D-023; research in [RIGHTS_RESEARCH.md](RIGHTS_RESEARCH.md)):
   phase 1 it is the one `LeagueRules`: the contract regime (free-agency and
   arbitration lines, minimum salary, service-year length, money scale) is read
   here too, every column guarded, through `parent_league_id`; `valuation.ts`'s
-  duplicate with its 6 / 3 fallback is deleted.
+  duplicate with its 6 / 3 fallback is deleted. The season it applies them in is
+  the league's own `season_year` where the row states it, the regime's only
+  where it does not (hardening, D-14).
 - **Rights evaluator** (`server/playerRights.ts`): option, recall, add to the
   40-man, designate, outright assignment and IL activation, each
   `eligible`/`ineligible`/`indeterminate` with reasons carrying their basis
@@ -381,10 +383,22 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   never "none".
 - **Control timeline** (`server/playerValueControl.ts`): for each season to the
   end of control, capped at seven (policy, Q-3), a status (`under_contract`, an
-  option, `pre_arbitration`, `arbitration`, `free_agent`, `reserve_clause`,
-  `indeterminate` with what it lies between) and a cost band: the salary under
-  contract, both branches of an option, and `unknown` ("pending price of a win
-  (phase 2/4)") for pre-arbitration and arbitration seasons.
+  option (club, player, vesting, mutual), `opt_out`, `pre_arbitration`,
+  `arbitration`, `free_agent`, `reserve_clause`, `indeterminate` with what it lies
+  between) and a cost band: the salary under contract, both branches of a future
+  option or an opt-out, and `unknown` ("pending price of a win (phase 2/4)") for
+  pre-arbitration and arbitration seasons. **Hardening F2 (2026-09-23):** the
+  season under way is never an open option (19 were on the Arizona import); the
+  58 exported opt-outs are named, and 28 seasons after one (Soto, Witt, Yamamoto,
+  Bellinger and others) show both branches; the export's blank contract row (6,894
+  held players) has no kind, and the 24 major leaguers on the 60-day list with one
+  read their Player Rights standing; an unpopulated vesting flag is said on the
+  last season. Player Rights counts arbitration trips by winter (a Super Two's next
+  year is his second; 2027 for a player already in arbitration is never his first
+  again), keeps a 10-day policy margin around the Super Two cutoff (owner,
+  2026-09-23), gives an injured-list player the days left on his stint, and reads
+  the schedule's calendar (`seasonServiceCalendars`: 187 days, 135 left on the
+  import) so a short schedule never brings free agency early.
 - **Entry point** (`server/playerValue.ts`): per request for the players asked
   about, or league-wide (`leaguePlayerValues`, about 0.2-0.3 s for all 12,575
   active players on the Arizona import; `npm run value:report`).
@@ -394,6 +408,12 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   market" list share one answer. A status the save cannot establish shows as
   "Not yet established" (Contracts), a third Payroll list, or a count on Free
   Agents. `SERVICE_DAYS_PER_YEAR` and `serviceRemainingThisSeason` are deleted.
+  Since hardening F2 an option next season reaches every consumer (and the AI
+  prompts) as `option` with both branches, never "signed"; Payroll reads Player
+  Value's contract facts (`payrollValuations`), so dead money is "not
+  established" where `retained` is not populated (it is not on the import), club
+  option money is counted apart, and the season is the league's; Contracts shows
+  service as years.days; Free Agents counts option contracts as undecided.
 - **Club Finances** (phase 2, `server/playerValueFinances.ts`, read by
   `playerValue.ts`: `clubFinances`, `leagueFinances`): the league's financial
   regime as `LeagueRules.finance` (through the parent league; values whose
@@ -407,14 +427,22 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   labelled "opening: the imported market") and the **replacement level** per
   season (.2877 in 2024, .2933 in 2026 to date, 2025 not measured: the
   Athletics have no 2025 standings row). Computed per request (132–150 ms).
+  Hardening (B-13, D-17, D-14): a season's WAR is put on this season's
+  schedule's footing by the share it covered (`scheduleShareOf`), a basis on
+  under a quarter of a schedule or under 20 contracts is not computed
+  (`OPENING_PRICE_MINIMUMS`, policy), a league without financials shows no club
+  money in dollars, and "this season" is read from the league's own row where it
+  states it, so a broken parent chain leaves the regime unknown and the season
+  known. The Arizona figures are unchanged.
 - **Market snapshot** (`server/playerValueSnapshot.ts`): one row per save,
   league and game date in `history.db` (`value_market_snapshots`), written once
   per import from `runImport`, idempotent, never able to fail the import.
 - **Route and Payroll:** `/api/club-finances/:orgId` (club, league market,
   snapshot history). Payroll's finance header reads it, with one "league price
   of a win" line, and its three lists are no longer capped at 12 rows.
-  `valuation.teamFinances()` remains for Contracts, Free Agents, the AI context
-  and Storylines.
+  Contracts and Free Agents read Club Finances too (`financeCards`, hardening
+  F2), a missing figure "unknown"; `valuation.teamFinances()` remains for the AI
+  context and Storylines.
 - **Expected production** (phases 3a and 3b, `server/playerValueProduction.ts`
   and `server/playerValueRatings.ts`, served as `PlayerValuation.production`):
   wins per season from this season through seven, each an 80% and a 50% band in
@@ -455,10 +483,85 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   own rating snapshots (one on this save) and use the provisional prior or the
   kind's K until then, labelled. A results refit takes about 5 s, a ratings refit
   about 1.5 s (CALIBRATION.md sections 6.1 and 6.2).
+- **Hardening (2026-09-23, method `production-3h.1`;** CALIBRATION.md section
+  6.3, PLAYER_VALUE.md 2.3 and Part 7): the central is the expected wins (the
+  rate of the players who play is fitted apart from the chance he plays),
+  playing time is read per scheduled game under a physical ceiling measured on
+  the save, the band is the mixture of no playing time and the wins when he
+  plays, a listed pitcher's batting is not a hitter's line, known days out move
+  the central (owner, 2026-09-23) and a season lost to injury is not evidence of
+  less playing time, the rest of this season is measured on this season's games.
+  The gate reads subgroups and bias as fitted; the held-out seasons are projected
+  by refits of the method and the model served is refit through the last
+  completed season; fits are keyed by the save's identity (name and a
+  fingerprint of the league's history), never through a season not completed,
+  never replaced by a failing refit, and refitted in a worker thread (12 s in
+  the worker, the event loop never held over 3 ms). On the Arizona import the
+  method is within 5 points of both coverage targets pooled and in every
+  subgroup, the pooled central within 0.05 wins, and the cohort's summed central
+  within 1–10% of its own history (was 10–66% short); the gate did **not** adopt
+  it (hitters and regulars over-projected at horizons 3–7 out of time, the
+  2006–15 to 2016–25 era drift), so the fallback prior is in force there, labelled
+  "not yet calibrated". The ratings model was adopted then (method `ratings-3b.1`;
+  see hardening F4 below).
+- **Option C (owner, 2026-09-23; method `production-3h.2`;** CALIBRATION.md
+  section 6.3, D-053): the backtest is rolling-origin (origins from the window's
+  start + 5, at most 8, each scored by the method fitted through it, a horizon
+  only with 3+ origin cohorts, errors clustered by player and origin) with a
+  recency half-life of 2 seasons; the tolerances are unchanged. On the Arizona
+  import (origins 2011–2024) pooled coverage is within 1.1 points of both
+  targets and the pooled bias −0.01 to −0.04 wins; the gate still fails, on two
+  cells (hitters at horizons 5 and 6, −0.096 wins, scored from origins
+  2017–2018 into 2022–2024), so the fallback prior stays in force there. The
+  refit takes 20.4 s in the worker (nine production fits). Under the prior, a
+  league's WAR scale is a unit (every rate term and coefficient in its unit), a
+  fit never scored or mostly the prior at every horizon is labelled "not yet
+  calibrated", a label names the seasons of lines when none is usable, and
+  standings beside a season with no lines are not read as that season's.
+- **Hardening F4, prospects (2026-09-23; ratings method `ratings-3h.1`;**
+  CALIBRATION.md section 6.4, PLAYER_VALUE.md 2.3, D-053 amendment): a
+  prospect's arrival chance is read for a player not yet called up at this point
+  of his season (the origin season's call-ups stay in the later seasons' cases,
+  in proportion to the season still to play), his chance and playing time move
+  with his projected quality by the results fit's own effect located on his
+  cell's players now, another market league's farm is left out of a league's
+  arrival cases and any top-level league is arriving, the arrival gate also
+  fails a bias beyond 10% of what happened and three clustered standard errors
+  (a tightening), the arrival model served is refit through the last completed
+  season, and a missing grade widens a thin record's blend across the scale. On
+  the Arizona import the ratings fit **fails** that gate (the held-out chance
+  12–20% low at horizons 3–6: era drift), so the provisional ratings prior is in
+  force and the 6,351 players who were projected from ratings alone are
+  `unknown` production, each with the gate's reason; read as if adopted, their
+  summed central is 102 / 169 / 211 wins for 2027–29 (was 15 / 22 / 24).
+- **Hardening F5, the arrival model under option C (owner, 2026-09-23; ratings
+  method `ratings-3h.2`;** CALIBRATION.md section 6.4, D-053 amendment): the
+  arrival model is scored on rolling origins (the results fit's rule, shared),
+  fitted with a 2-season recency half-life, its gate errors clustered by player
+  and origin, the tolerances unchanged, and measured arrivals adopted only where
+  the next season could be checked. A rating snapshot is read at its own point
+  of the season for the chance by potential, and an unknown production names
+  its source. On the Arizona import the fit **still fails** at horizons 4–6 (the
+  chance 17% low, about 7 SE; 0–3 pass) at every half-life tried, so prospects
+  stay `unknown` there; as if adopted their summed central is 111 / 201 / 256 /
+  258 wins for 2027–30. The ratings refit takes 4.8 s in the worker.
+- **Hardening F6, the arrival model adopted horizon by horizon (owner's option
+  (b), 2026-09-23; ratings method `ratings-3h.3`;** CALIBRATION.md section 6.4,
+  D-053 amendment): the horizons served are a contiguous run of passing
+  horizons from the rest of this season, which must reach the next season. A
+  prospect's later seasons are not established (`PlayerProduction.notEstablished`),
+  each with the gate's finding at its horizon. A multi-season total that
+  includes one is not a number (`productionTotal`). Labels say "calibrated
+  through N seasons out". The cone keeps a "Production not established" slot for each
+  later season of control. The results fit's all-horizons rule is unchanged.
+  On the Arizona import the ratings fit is **adopted through 3 seasons out**.
+  6,351 prospects are projected for 2026–29, with summed centrals of 111 /
+  201 / 256 wins for 2027–29; 2030–32 are not established.
 - **Injury proneness** (`server/injuryProneness.ts`): read as an
-  owner-attested known fact; 0, blank or missing is unknown. Its measured effect
-  on playing time moves production (hitters in the most injury-prone third play
-  95% of their expected usage on this save); no aging effect was distinguishable.
+  owner-attested known fact; 0, blank or missing is unknown. Its effects are
+  measured with standard errors clustered by player and Holm's correction; on
+  this save none survives (phase 3b's hitters' 95% did not), so proneness moves
+  nothing here.
 - **Routes:** `/api/player-value/:playerId`, `/api/player-value?ids=`,
   `/api/player-value/production-fit/:orgId` (with the ratings model in force and
   its run record since phase 3b), and `/api/player-value/:playerId/cone`
@@ -476,10 +579,22 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   (`src/ProductionCone.tsx`, `src/productionConeGeometry.ts`,
   `src/chartTheme.ts`). No other page reads production yet; the card's own
   `players_value` reads wait for phase 6. A static site export omits it.
+  Hardening F2 (2026-09-23): the legend states the bands as targets, or as
+  reasonable readings under the prior; the hidden table carries every figure the
+  detail shows; Escape closes a season's detail before the card; near-zero wins
+  print "<0.1"; a non-number draws no cone instead of blanking the app. The card
+  is a modal dialog with a focus trap (`src/focusTrap.ts`, Escape, focus back to
+  the opener) and fits the window at any width (`tests/playerCard.test.ts`).
 - **Tests:** `playerValueControl`, `playerValueCost` (cost-band halves as
   `it.todo`), `playerValueFinances`, `playerValueProduction`,
   `playerValueProductionFit`, `playerValueRatings`, `playerValueCone`,
-  `productionCone` (geometry, render and theme tokens) and `playerValueBoundary`.
+  `productionCone` (geometry, render and theme tokens) and `playerValueBoundary`
+  (since the hardening it reads the source through the TypeScript parser, and
+  each of its hardened checks was shown to catch a deliberate mutation; a known
+  violation owned by another fix is listed with its finding and must still be
+  there). `playerValueCrossSave` runs every entry point over synthetic saves of
+  every shape in Reviewer D's matrix (`tests/syntheticSave.ts`); the gaps other
+  fixes own are `it.todo` by finding ID.
 
 Not built: the save's own development path, the ratings' forecast reliability
 and the arrival chance by potential (they fit themselves once the save's rating

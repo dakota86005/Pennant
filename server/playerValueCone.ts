@@ -7,7 +7,8 @@
  * carried exactly as production and control state them. It chooses only which seasons the card shows
  * (this season to the last controlled season, capped by the production horizon; the whole horizon where
  * the end of control is not established) and words them. Unknown production stays unknown: no season,
- * the reason stated, never a zero line or an average (D-018).
+ * the reason stated, never a zero line or an average (D-018); a season not established after established ones
+ * (hardening F6) keeps its slot and control, with its reason and no band.
  */
 
 import type { ControlSeason, ControlStatus, ControlTimeline } from './playerValueControl.js';
@@ -59,6 +60,17 @@ export interface ConeSeason {
   notes: string[];
 }
 
+/**
+ * A season of the cone whose production is not established (hardening F6: the arrival model adopted horizon by
+ * horizon). The card keeps its slot and its control, and draws no band and no central there: only why.
+ */
+export interface ConeUnestablished {
+  season: number;
+  age: number;
+  reason: string;
+  control: ConeControl;
+}
+
 export interface ProductionCone {
   playerId: number;
   status: PlayerProduction['status'];
@@ -66,6 +78,8 @@ export interface ProductionCone {
   reason: string | null;
   unit: string;
   seasons: ConeSeason[];
+  /** The seasons after `seasons`, within control and the horizon, whose production is not established (hardening F6). */
+  notEstablished: ConeUnestablished[];
   /** What the projection rests on: the seasons read and their plate appearances or batters faced. */
   basis: string;
   control: { standing: ControlTimeline['standing']; note: string | null };
@@ -81,16 +95,22 @@ export interface ProductionCone {
 
 const STATUS_WORDS: Record<ControlStatus, string> = {
   under_contract: 'under contract', club_option: 'club option', player_option: 'player option',
-  vesting_option: 'vesting option', pre_arbitration: 'pre-arbitration', arbitration: 'arbitration',
+  vesting_option: 'vesting option', mutual_option: 'mutual option', opt_out: 'under contract unless he opts out',
+  pre_arbitration: 'pre-arbitration', arbitration: 'arbitration',
   free_agent: 'free agency', reserve_clause: 'reserve clause', indeterminate: 'not established',
 };
 
-const NOT_ESTABLISHED: Labels = { label: 'Not established', short: 'Not est.', code: 'N/E' };
+const NOT_ESTABLISHED: Labels = { label: 'Control not established', short: 'Not est.', code: 'N/E' };
 const FREE_AGENT_AFTER: Labels = { label: 'Free agent after', short: 'FA after', code: 'FA›' };
 
 function labelsOf(c: ControlSeason): Labels {
   switch (c.status) {
-    case 'under_contract': return { label: c.from === 'extension' ? 'Signed (extension)' : 'Signed', short: 'Signed', code: 'Sgn' };
+    // An extension season has its own short label and code, so the narrow key never merges it with the current deal (D-21)
+    case 'under_contract': return c.from === 'extension'
+      ? { label: 'Signed (extension)', short: 'Extension', code: 'Ext' }
+      : { label: 'Signed', short: 'Signed', code: 'Sgn' };
+    case 'opt_out': return { label: 'Signed, opt-out', short: 'Opt-out', code: 'OO' };
+    case 'mutual_option': return { label: 'Mutual option', short: 'Mutual opt.', code: 'MO' };
     case 'club_option': return { label: 'Club option', short: 'Club opt.', code: 'CO' };
     case 'player_option': return { label: 'Player option', short: 'Plyr opt.', code: 'PO' };
     case 'vesting_option': return { label: 'Vesting option', short: 'Vest opt.', code: 'VO' };
@@ -138,28 +158,82 @@ const coverageOf = (s: ProductionSeason): ConeSeason['coverage'] => ({
   note: s.coverage.note,
 });
 
+const DEVELOPMENT_WORDS: Record<'save_fit' | 'fallback_prior' | 'unknown', string> = {
+  save_fit: "development fitted on this save's rating snapshots",
+  fallback_prior: 'development not yet calibrated (the provisional prior)',
+  unknown: 'no development assumed (potential not known)',
+};
+
+/**
+ * What the projection rests on, in one line, from what it actually used (A-08, D-11, C-10): major-league
+ * results with the seasons and opportunities read (and the ratings' share where they were blended), or, for a
+ * player projected from ratings alone, the ratings, the arrival evidence and the development path. Never
+ * "results" that do not exist.
+ */
 function basisOf(production: PlayerProduction): string {
-  const sides = production.basis.sides.map((side) => {
+  const b = production.basis;
+  if (b.source === 'none') return 'No major-league results in the window and no usable scouted ratings';
+  if (b.source === 'ratings') {
+    const a = b.ability;
+    const arrival = b.arrival;
+    const parts = [
+      `Scouted ratings (${a?.evidence.status ?? 'unknown'}${a?.currentRate != null ? `: ${a.currentRate.toFixed(1)} WAR per 600 now` : ''}${a?.potentialRate != null ? `, ${a.potentialRate.toFixed(1)} at potential` : ''})`,
+      arrival?.band
+        ? `arrival from level ${arrival.level}, ages ${arrival.band.ageFrom}–${arrival.band.ageTo} on this save's history (${arrival.band.cases.toLocaleString('en-US')} player-seasons)`
+        : arrival ? `arrival from level ${arrival.level ?? '—'}` : 'arrival not established',
+      a?.development ? DEVELOPMENT_WORDS[a.development.source] : 'development not established',
+    ];
+    return parts.join('; ');
+  }
+  const sides = b.sides.map((side) => {
     const years = side.seasons.map((x) => x.season);
     const span = years.length === 0 ? '' : years[0] === years[years.length - 1] ? `${years[0]}` : `${years[0]}–${years[years.length - 1]}`;
     const unit = side.side === 'batting' ? 'PA' : 'BF';
-    return `${span}: ${Math.round(side.opportunities).toLocaleString('en-US')} ${unit} as a ${side.kind}`;
+    const blend = side.blend && side.blend.ratings > 0 ? ` (scouted ratings ${Math.round(side.blend.ratings * 100)}% of his rate)` : '';
+    return `${span}: ${Math.round(side.opportunities).toLocaleString('en-US')} ${unit} as a ${side.kind}${blend}`;
   });
   return sides.length > 0 ? `Major-league results ${sides.join('; ')}` : '';
 }
 
+const span = (hs: number[]): string => (hs.length === 0 ? '' : hs.length === 1 ? `${hs[0]}` : `${hs[0]}–${hs[hs.length - 1]}`);
+
+/**
+ * The one-line calibration status. "Calibrated on this save" only when every part the projection rests on is
+ * (D-10, C-11): a projection from ratings is a same-time mapping and an unbacktested arrival-and-development
+ * path, never "calibrated"; a fit whose later horizons are still the prior says which horizons are its own.
+ */
 function calibrationOf(production: PlayerProduction): ProductionCone['calibration'] {
   const m = production.basis.model;
+  if (production.basis.source === 'ratings') {
+    const dev = production.basis.ability?.development?.source ?? 'unknown';
+    const mapping = m.source === 'save_fit' ? "ratings → rate fitted on this save (same-time: it describes, it does not forecast)" : 'ratings → rate from the provisional prior';
+    // An arrival model adopted horizon by horizon says how far (hardening F6), never plain "calibrated"
+    const through = production.basis.arrival?.adoptedThrough ?? null;
+    const later = production.notEstablished.map((s) => s.season);
+    const arrival = through === null
+      ? ''
+      : `; arrival calibrated through ${through === 1 ? '1 season' : `${through} seasons`} out` +
+        (later.length > 0 ? ` (${later.length === 1 ? later[0] : `${later[0]}–${later[later.length - 1]}`} not established)` : '');
+    return {
+      source: m.source, calibrated: false,
+      status: `Not yet calibrated on this save: ${mapping}${arrival}; ${DEVELOPMENT_WORDS[dev]}; not measured as a forecast`,
+      detail: m.label,
+    };
+  }
   const w = m.window;
   const calibrated = m.source === 'save_fit' && w?.calibrated === true;
   let status: string;
   if (w && calibrated) {
-    const span = w.first !== null && w.last !== null ? `${w.first}–${w.last}` : `${w.seasons} seasons`;
-    status = `Calibrated on this save: ${span}${w.refitAfter !== null ? `, refit after the ${w.refitAfter} season` : ''}`;
+    const years = w.first !== null && w.last !== null ? `${w.first}–${w.last}` : `${w.seasons} seasons`;
+    const prior = w.horizons?.prior ?? [];
+    const own = w.horizons?.calibrated ?? [];
+    const which = prior.length > 0 ? ` (horizons ${span(own)}; ${span(prior)} mostly the fallback prior)` : '';
+    status = `Calibrated on this save: ${years}${w.refitAfter !== null ? `, refit after the ${w.refitAfter} season` : ''}${which}`;
   } else if (w) {
-    status = `Not yet calibrated on this save (${w.seasons} season${w.seasons === 1 ? '' : 's'})`;
+    status = `Not yet calibrated on this save (${w.note ?? `${w.seasons} season${w.seasons === 1 ? '' : 's'}`})`;
   } else {
     status = m.label.charAt(0).toUpperCase() + m.label.slice(1);
+    if (/^calibrated/i.test(status)) status = `Not yet calibrated on this save: ${m.label}`;
   }
   return { source: m.source, calibrated, status, detail: m.label };
 }
@@ -175,7 +249,12 @@ export function productionCone(production: PlayerProduction, control: ControlTim
   let rows = production.seasons.filter((s) => ends === null || s.season < ends);
   // Free agent already this season: still show this season, labelled as it is
   if (rows.length === 0 && production.seasons.length > 0) rows = [production.seasons[0]];
-  const last = rows[rows.length - 1];
+  // The seasons not established follow the established ones, within control (hardening F6): slot and control kept, no band
+  const pending = rows.length === production.seasons.length
+    ? production.notEstablished.filter((s) => ends === null || s.season < ends)
+    : [];
+  const lastSeason = pending.length > 0 ? pending[pending.length - 1].season : rows[rows.length - 1]?.season;
+  const last = lastSeason === undefined ? undefined : { season: lastSeason };
 
   const seasons: ConeSeason[] = rows.map((s) => ({
     season: s.season,
@@ -192,12 +271,37 @@ export function productionCone(production: PlayerProduction, control: ControlTim
     control: controlOf(s.season, control, ends !== null && s.season === ends - 1),
     notes: s.notes,
   }));
+  const notEstablished: ConeUnestablished[] = pending.map((s) => ({
+    season: s.season, age: s.age, reason: s.reason,
+    control: controlOf(s.season, control, ends !== null && s.season === ends - 1),
+  }));
 
   let note: string | null = null;
   if (control.standing === 'unsigned') note = 'No club holds him, so no control is shown.';
   else if (control.standing === 'unknown') note = `Control not established: ${control.notes[control.notes.length - 1] ?? 'the export cannot lay it out.'}`;
-  else if (ends !== null && last && last.season === ends - 1) note = `Free agent after ${last.season}.`;
-  else if (control.continuesPastHorizon && last) note = `Control continues past ${last.season}, the last season projected.`;
+  else if (ends !== null && last && last.season === ends - 1) {
+    // Where the last controlled seasons may themselves be free agency, the mark names the earliest too (C-12)
+    let earliest = last.season;
+    for (let y = last.season; ; y -= 1) {
+      const c = control.seasons.find((x) => x.season === y);
+      // An unsettled season that may be free agency, or an option (or opt-out) whose other branch is
+      const mayBeFree = c !== undefined && (
+        (c.status === 'indeterminate' && c.between.includes('free_agent'))
+        || (c.declined !== null && (c.declined.status === 'free_agent' || c.declined.between.includes('free_agent'))));
+      if (!mayBeFree) break;
+      earliest = y - 1;
+    }
+    note = earliest < last.season
+      ? `Free agent after ${earliest === last.season - 1 ? `${earliest} or ${last.season}` : `${earliest} to ${last.season}`}: ${earliest + 1 === last.season ? `${last.season} may itself be` : `each season from ${earliest + 1} may be`} free agency.`
+      : `Free agent after ${last.season}.`;
+  }
+  else if (control.continuesPastHorizon && last) {
+    // A deal he can walk away from does not simply continue (A-05)
+    const optOut = control.seasons.find((x) => x.status === 'opt_out');
+    note = optOut
+      ? `Under contract past ${last.season}, the last season projected, unless he opts out before ${optOut.season}.`
+      : `Control continues past ${last.season}, the last season projected.`;
+  }
 
   return {
     playerId: production.playerId,
@@ -205,6 +309,7 @@ export function productionCone(production: PlayerProduction, control: ControlTim
     reason: production.reason,
     unit: production.unit,
     seasons,
+    notEstablished,
     basis: basisOf(production),
     control: { standing: control.standing, note },
     calibration: calibrationOf(production),

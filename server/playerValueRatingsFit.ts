@@ -16,8 +16,14 @@
  *                 and on a historical save the ratings were themselves set from those seasons.
  *   arrival       for players not in the majors: how often players at a level and an age reached the
  *                 majors, and how much they played, h seasons on, from the save's own minor-league usage
- *                 lines (usage only, never minor-league WAR, owner Q-9), trained and held out by season
- *                 like the results fit. Longitudinal from the stat lines, so it is fitted now.
+ *                 lines (usage only, never minor-league WAR, owner Q-9), recent seasons weighted more and judged
+ *                 on rolling origins, each by the method fitted through it (the owner's option C, applied to
+ *                 arrivals: hardening F5); the model served is the method refit through the last completed
+ *                 season. Longitudinal from
+ *                 the stat lines, so it is fitted now. The players called up in their origin season stay in
+ *                 the later seasons' cases, kept apart (C-01); another market league's farm is left out and
+ *                 any top-level league is arriving (D-07); each cell's players now carry the results fit's
+ *                 effect of quality, so a better prospect is likelier to arrive and plays more (C-02).
  *   development   the path from current toward potential needs RATINGS at t against ratings at t + h:
  *                 the save's own rating snapshots. The save's path is fitted from them, automatically,
  *                 once RATINGS_POLICY.longitudinal.minimumPairs pairs a season apart exist; until then
@@ -26,14 +32,24 @@
  *                 likewise fitted only once enough linked player-seasons exist, and used only at two
  *                 standard errors.
  *   gate          the mapping's held-out coverage within the tolerance of both targets, and the arrival
- *                 chance's held-out calibration within the tolerance at every horizon with enough cases.
+ *                 chance's and expected playing time's held-out calibration within the tolerance at every
+ *                 horizon with enough cases, and not biased beyond a share of what happened and three standard
+ *                 errors clustered by player and by origin (B-15, a tightening; two-way since F5); arrivals, once
+ *                 measured, are adopted only where the next season could be checked (F5, a tightening), and
+ *                 horizon by horizon (F6, the owner's option (b)): a contiguous run of passing horizons from the
+ *                 rest of this season through at least the next season is served, and the later horizons are not
+ *                 established, each with the gate's finding there. The tolerances are unchanged.
  */
 
 import { CONTROL_HORIZON_SEASONS, PRODUCTION_POLICY, RATINGS_METHOD, RATINGS_POLICY } from './playerValueCalibration.js';
 import { Z_INNER, Z_OUTER, type AgingGroup, type ProductionKind, type ProductionModel, type ProductionSide } from './playerValueProduction.js';
-import { ageOn, blend, nonNegativeLeastSquares, quantile, type FitPlayer, type FitSeason } from './playerValueProductionFit.js';
 import {
-  ARM_TOOLS, BAT_TOOLS, HITTER_VARIANTS, arrivalCellFor, batNow, hitterRateOf, hitterVariantOf, pitcherRateOf, rateFromRatings,
+  addToCluster, ageOn, blend, nonNegativeLeastSquares, quantile, recencyWeight, rollingOrigins, twoWayClusteredSe,
+  type ClusterSums, type FitPlayer, type FitSeason,
+} from './playerValueProductionFit.js';
+import {
+  ARM_TOOLS, BAT_TOOLS, HITTER_VARIANTS, arrivalCellFor, arrivalReading, batNow, hitterRateOf, hitterVariantOf, pitcherKindWithoutMajors,
+  pitcherRateOf, rateFromRatings, ratingsPath,
   type ArrivalCell, type ArrivalHorizon, type ArrivalModel, type DevelopmentModel, type HitterRate, type HitterVariant,
   type PitcherRate, type RatingsEvidence, type RatingsModel,
 } from './playerValueRatings.js';
@@ -79,6 +95,11 @@ export interface Observation {
   /** His current tools as the snapshot recorded them (20-80; null where unknown), and his listed position today. */
   tools?: Partial<Record<HitterTool | PitcherTool, number | null>>;
   position?: number | null;
+  /**
+   * The share of his season played at the snapshot's date, from the save's own schedule for that season (hardening
+   * F5). Null or absent: not established, and the snapshot is read across the whole season (its start to its end).
+   */
+  seasonPlayed?: number | null;
 }
 
 /** A major-league season of a player with snapshots: what followed a snapshot, for the ratings' forecast reliability. */
@@ -103,8 +124,14 @@ export interface RatingsFitInput {
   exposure: Record<'L' | 'R' | 'S', { vsLeft: number; vsRight: number }> | null;
   levels: number[];
   arrival: ArrivalPlayer[];
-  /** Every active player's evidence and age: the save's cross-section of scouted gaps. */
-  crossSection: Array<{ evidence: RatingsEvidence; age: number | null }>;
+  /**
+   * Every active player's evidence and age: the save's cross-section of scouted gaps. For the arrival cells'
+   * players now (hardening F4, C-02): his club's level where his club is one of the league's own (else absent
+   * or null), whether he has a major-league line in the window, and his professional pitching (games, starts).
+   */
+  crossSection: Array<{ evidence: RatingsEvidence; age: number | null; level?: number | null; majors?: boolean; proUsage?: { games: number; starts: number } | null }>;
+  /** The league's season and the share of it played now: where the cells' players' projected quality is read. Absent: not read. */
+  now?: { season: number; seasonPlayed: number } | null;
   observations: Observation[];
   /** Major-league seasons of the players with snapshots (optional: absent, reliability is not measured). */
   forward?: ForwardSeason[];
@@ -115,6 +142,11 @@ export interface RatingsFitOptions {
   prior: RatingsModel | null;
   /** False fits on every season (no hold-out, no gate): for making the fallback prior. */
   holdout?: boolean;
+  /**
+   * The arrival fit's recency half-life in seasons; null weighs every season alike. Absent:
+   * RATINGS_POLICY.backtest.recencyHalfLife. For the harness's comparison only.
+   */
+  recencyHalfLife?: number | null;
 }
 
 export interface CoverageSummary { cases: number; outer: number | null; inner: number | null }
@@ -126,6 +158,14 @@ export interface ArrivalCheck {
   observed: number | null;
   predictedMean: number | null;
   observedMean: number | null;
+  /**
+   * Standard errors of observed − predicted (the chance, and the opportunities per case), clustered by player (hardening
+   * F4, B-15) and, since hardening F5, by origin too (two-way).
+   */
+  chanceSe?: number | null;
+  meanSe?: number | null;
+  /** The origin cohorts scored at this horizon (hardening F5). */
+  origins?: number;
 }
 
 export interface RatingsFitRecord {
@@ -144,11 +184,25 @@ export interface RatingsFitRecord {
     measured: boolean;
     reason: string;
     window: number[];
+    /** The first rolling origin: the earliest season a scored fit runs through. */
     trainingThrough: number | null;
+    /** The seasons after the first origin: every season some scored fit never saw. */
     holdout: number[];
     cells: number;
     cases: number;
     heldOut: ArrivalCheck[];
+    /**
+     * The rolling origins (the owner's option C applied to arrivals, hardening F5): each origin Y is fitted through Y
+     * and scored on season Y + 1's minor leaguers (`cohort`), at the horizons its fit rests on enough origin cohorts for.
+     */
+    scored?: Array<{ origin: number; through: number; cohort: number; cases: number; horizons: number[] }>;
+    /** The recency half-life the arrival fits used, seasons; null for none. */
+    recencyHalfLife?: number | null;
+    /**
+     * Which horizons are adopted and why the rest are not (hardening F6, the owner's option (b)); null where arrivals
+     * were not measured or no hold-out was made.
+     */
+    adoption?: ArrivalAdoption | null;
   };
   development: {
     source: DevelopmentModel['source']; groups: Record<AgingGroup, 'save_fit' | 'fallback_prior'>;
@@ -166,6 +220,90 @@ export interface RatingsFitRecord {
 export interface RatingsFitRun {
   model: RatingsModel;
   record: RatingsFitRecord;
+}
+
+/** One horizon's held-out check against the arrival gate, and whether it is served (hardening F6). */
+export interface ArrivalHorizonAdoption {
+  horizon: number;
+  /** Its own check: passed the gate, failed it, or too few held-out cases to be checked. */
+  check: 'passed' | 'failed' | 'not_evaluable';
+  /** Served: it and every horizon before it passed. */
+  adopted: boolean;
+  /** Why it is not served, naming the horizon and the gate's finding; null where it is served. */
+  reason: string | null;
+}
+
+/** The arrival model's adoption, horizon by horizon: `through` is the last served horizon, null when none is. */
+export interface ArrivalAdoption {
+  through: number | null;
+  horizons: ArrivalHorizonAdoption[];
+}
+
+/** A horizon in words: 0 is the rest of this season. */
+export function seasonsOut(h: number): string {
+  return h === 0 ? 'the rest of this season' : `${h} season${h === 1 ? '' : 's'} out`;
+}
+
+/**
+ * The arrival model adopted horizon by horizon (the owner's option (b), 2026-09-23, hardening F6;
+ * RATINGS_POLICY.adoption). Each horizon's held-out check is judged by the unchanged gate: the absolute tolerance, and a
+ * bias beyond a share of what happened and the standard errors (B-15). The horizons served are the contiguous run from
+ * the rest of this season through the last horizon whose check, and every check before it, passed; a horizon after one
+ * that failed, or after one with too few held-out cases to be checked, is never served, whatever its own check says.
+ * Nothing is served unless the run reaches `requiredThrough` (the next season).
+ */
+export function arrivalAdoption(heldOut: ArrivalCheck[], minimumCases: number): ArrivalAdoption {
+  const tol = PRODUCTION_POLICY.gate.tolerance;
+  const bias = RATINGS_POLICY.gate.arrivalBias;
+  const judged = heldOut.map((r): { check: ArrivalHorizonAdoption['check']; finding: string | null } => {
+    if (r.cases < minimumCases || r.observed === null || r.predicted === null) {
+      return { check: 'not_evaluable', finding: `too few held-out cases to check its arrival chance (${r.cases}; ${minimumCases} needed)` };
+    }
+    const findings: string[] = [];
+    const e = r.observed - r.predicted;
+    const material = (err: number, observed: number, se: number | null | undefined) =>
+      Math.abs(err) > bias.relative * Math.abs(observed) && (se === null || se === undefined || Math.abs(err) > bias.standardErrors * se);
+    const ran = (err: number, observed: number) => `${Math.round((Math.abs(err) / Math.abs(observed)) * 100)}% ${err > 0 ? 'low' : 'high'}`;
+    if (Math.abs(e) > tol) {
+      findings.push(`the save's held-out arrival chance missed by ${Math.round(Math.abs(e) * 100)} points (predicted ${pct(r.predicted)}, observed ${pct(r.observed)})`);
+    } else if (material(e, r.observed, r.chanceSe)) {
+      findings.push(`the save's held-out arrival chance ran ${ran(e, r.observed)} (predicted ${pct(r.predicted)}, observed ${pct(r.observed)}${r.chanceSe == null ? '' : ` ± ${pct(r.chanceSe)}`})`);
+    }
+    if (r.observedMean !== null && r.predictedMean !== null) {
+      const m = r.observedMean - r.predictedMean;
+      if (material(m, r.observedMean, r.meanSe)) {
+        findings.push(`its expected playing time ran ${ran(m, r.observedMean)} (predicted ${num(r.predictedMean)}, observed ${num(r.observedMean)} opportunities per player)`);
+      }
+    }
+    return findings.length > 0
+      ? { check: 'failed', finding: `${findings.join('; ')}, outside the gate (${Math.round(tol * 100)} points, or a bias beyond ${Math.round(bias.relative * 100)}% of what happened and ${bias.standardErrors} standard errors)` }
+      : { check: 'passed', finding: null };
+  });
+  let last = -1;
+  while (last + 1 < judged.length && judged[last + 1].check === 'passed') last += 1;
+  const through = last >= RATINGS_POLICY.adoption.requiredThrough ? last : null;
+  const blocker = judged.findIndex((j) => j.check !== 'passed');
+  const horizons = judged.map((j, h): ArrivalHorizonAdoption => {
+    const adopted = through !== null && h <= through;
+    if (adopted) return { horizon: h, check: j.check, adopted, reason: null };
+    let why: string;
+    if (j.check !== 'passed') {
+      why = j.finding as string;
+    } else if (blocker !== -1 && blocker < h) {
+      why = `its own held-out check passed, but ${seasonsOut(blocker)} ${judged[blocker].check === 'failed' ? 'failed the gate' : 'could not be checked'}, and no horizon after one that did not pass is served`;
+    } else {
+      why = `its own held-out check passed, but nothing is served unless every horizon through ${seasonsOut(RATINGS_POLICY.adoption.requiredThrough)} passes the gate`;
+    }
+    return { horizon: h, check: j.check, adopted, reason: `${seasonsOut(h)}: ${why}` };
+  });
+  return { through, horizons };
+}
+
+/** Consecutive horizons in words: "4–6 seasons out", "6 seasons out". */
+function horizonSpan(hs: number[]): string {
+  if (hs.length === 0) return '';
+  if (hs.length === 1) return seasonsOut(hs[0]);
+  return `${hs[0]}–${hs[hs.length - 1]} seasons out`;
 }
 
 const SAME_TIME =
@@ -382,7 +520,11 @@ function pitcherMapping(rows: Row[], prior: PitcherRate | null, strength: number
 
 // ── arrival ──────────────────────────────────────────────────────────────────
 
-interface ArrivalCase { side: ProductionSide; level: number; age: number; origin: number; h: number; target: number; outcome: number; playerId: number }
+interface ArrivalCase {
+  side: ProductionSide; level: number; age: number; origin: number; h: number; target: number; outcome: number; playerId: number;
+  /** Horizon 1 and later: he reached the majors in his origin season (kept, apart: C-01). */
+  up: boolean;
+}
 
 function arrivalCases(players: ArrivalPlayer[], levels: number[], window: number[], through: number): ArrivalCase[] {
   const eligible = new Set(window);
@@ -395,40 +537,84 @@ function arrivalCases(players: ArrivalPlayer[], levels: number[], window: number
       const level = here.reduce((a, b) => (b.opportunities > a.opportunities ? b : a)).level;
       const age = ageOn(p.birth, origin);
       if (age === null) continue;
-      // Not yet a major leaguer: no major-league line in the two seasons before (and, beyond this season, in it)
+      // Not yet a major leaguer: no major-league line in the two seasons before. A player called up in the
+      // origin season stays in the later seasons' cases, marked (hardening F4, C-01): the player projected is
+      // not yet called up part-way through his season, so those called up later in theirs are players in his
+      // condition; dropping them read his chance as that of players passed over for the whole season
       if ((p.majors.get(origin - 1) ?? 0) > 0 || (p.majors.get(origin - 2) ?? 0) > 0) continue;
       const upThisSeason = (p.majors.get(origin) ?? 0) > 0;
       for (let h = 0; h < H; h += 1) {
         const target = origin + h;
         if (target > through) break;
-        if (h > 0 && upThisSeason) break;
         if (!eligible.has(target)) continue;
-        out.push({ side: p.side, level, age, origin, h, target, outcome: p.majors.get(target) ?? 0, playerId: p.playerId });
+        out.push({ side: p.side, level, age, origin, h, target, outcome: p.majors.get(target) ?? 0, playerId: p.playerId, up: h > 0 && upThisSeason });
       }
     }
   }
   return out;
 }
 
-function summarize(outcomes: number[], nodesFrom: number[] | null): ArrivalHorizon {
-  const positive = outcomes.filter((o) => o > 0);
-  const J = RATINGS_POLICY.arrival.nodes;
-  const source = positive.length >= RATINGS_POLICY.arrival.minimumArrivals ? positive : nodesFrom ?? positive;
-  const nodes = source.length === 0 ? [] : Array.from({ length: J }, (_, j) => quantile(source, (j + 0.5) / J) as number);
-  const mean = source.length === 0 ? 0 : source.reduce((a, b) => a + b, 0) / source.length;
-  return { cases: outcomes.length, chance: outcomes.length > 0 ? positive.length / outcomes.length : 0, mean, nodes };
+/** An outcome (opportunities in the target season) with its case's recency weight. */
+interface Weighted { value: number; w: number }
+
+/**
+ * A weighted quantile: linear between the cases' plotting positions, each at the middle of its weight; with
+ * equal weights it is exactly `quantile` (the same interpolation).
+ */
+function weightedQuantile(items: Weighted[], q: number): number | null {
+  if (items.length === 0) return null;
+  const sorted = [...items].sort((a, b) => a.value - b.value);
+  const first = sorted[0].w / 2;
+  const span = sorted.reduce((t, x) => t + x.w, 0) - first - sorted[sorted.length - 1].w / 2;
+  if (!(span > 0)) return quantile(sorted.map((x) => x.value), q);
+  const target = q * span;
+  let before = 0;
+  let prev: { pos: number; value: number } | null = null;
+  for (const x of sorted) {
+    const pos = before + x.w / 2 - first;
+    if (pos >= target) {
+      if (prev === null || !(pos > prev.pos)) return x.value;
+      return prev.value + ((x.value - prev.value) * (target - prev.pos)) / (pos - prev.pos);
+    }
+    prev = { pos, value: x.value };
+    before += x.w;
+  }
+  return sorted[sorted.length - 1].value;
 }
 
-function fitArrival(cases: ArrivalCase[], levels: number[], training: (c: ArrivalCase) => boolean): ArrivalModel {
+const weightOf = (items: Weighted[]): number => items.reduce((t, x) => t + x.w, 0);
+
+function summarize(outcomes: Weighted[], nodesFrom: Weighted[] | null): ArrivalHorizon {
+  const positive = outcomes.filter((o) => o.value > 0);
+  const J = RATINGS_POLICY.arrival.nodes;
+  // Whether a cell has enough arrivals of its own is a count of cases, never of weight
+  const source = positive.length >= RATINGS_POLICY.arrival.minimumArrivals ? positive : nodesFrom ?? positive;
+  const nodes = source.length === 0 ? [] : Array.from({ length: J }, (_, j) => weightedQuantile(source, (j + 0.5) / J) as number);
+  const sw = weightOf(source);
+  const mean = sw > 0 ? source.reduce((t, x) => t + x.w * x.value, 0) / sw : 0;
+  const all = weightOf(outcomes);
+  return { cases: outcomes.length, chance: all > 0 ? weightOf(positive) / all : 0, mean, nodes };
+}
+
+/**
+ * The arrival cells on the training cases, each case weighted by its recency (hardening F5): the chance, the
+ * playing time and its nodes, and the origin season's call-up share are weighted; the age bands are sized on the
+ * cases themselves, so a band holds the policy's player-seasons whatever their weights.
+ */
+function fitArrival(cases: ArrivalCase[], levels: number[], training: (c: ArrivalCase) => boolean, weight: (c: ArrivalCase) => number): ArrivalModel {
   const cells: ArrivalCell[] = [];
+  const W = (c: ArrivalCase): Weighted => ({ value: c.outcome, w: weight(c) });
   for (const side of ['batting', 'pitching'] as const) {
-    const sidePositive = (h: number) => cases.filter((c) => c.side === side && c.h === h && training(c) && c.outcome > 0).map((c) => c.outcome);
+    const sideCases = cases.filter((c) => c.side === side && training(c));
+    const sidePositive = Array.from({ length: H }, (_, h) => sideCases.filter((c) => c.h === h && c.outcome > 0).map(W));
     for (const level of levels) {
-      const mine = cases.filter((c) => c.side === side && c.level === level && training(c));
+      const mine = sideCases.filter((c) => c.level === level);
       if (mine.length === 0) continue;
+      const byH = Array.from({ length: H }, (_, h) => mine.filter((c) => c.h === h));
       // Age bands, youngest first, each grown until it holds enough player-seasons at horizon 1
+      const bandHorizon = byH[1].length > 0 ? 1 : 0;
       const byAge = new Map<number, number>();
-      for (const c of mine) if (c.h === 1 || (c.h === 0 && !mine.some((x) => x.h === 1))) byAge.set(c.age, (byAge.get(c.age) ?? 0) + 1);
+      for (const c of byH[bandHorizon]) byAge.set(c.age, (byAge.get(c.age) ?? 0) + 1);
       const ages = [...byAge.keys()].sort((a, b) => a - b);
       const bands: Array<[number, number, number]> = [];
       let from: number | null = null;
@@ -449,14 +635,23 @@ function fitArrival(cases: ArrivalCase[], levels: number[], training: (c: Arriva
         } else if (count > 0) bands.push([from, ages[ages.length - 1], count]);
       }
       if (bands.length === 0) continue;
-      const levelPositive = (h: number) => mine.filter((c) => c.h === h && c.outcome > 0).map((c) => c.outcome);
+      const levelPositive = byH.map((list) => list.filter((c) => c.outcome > 0).map(W));
       for (const [ageFrom, ageTo, n] of bands) {
         const horizons: Array<ArrivalHorizon | null> = [];
         for (let h = 0; h < H; h += 1) {
-          const outcomes = mine.filter((c) => c.h === h && c.age >= ageFrom && c.age <= ageTo).map((c) => c.outcome);
-          if (outcomes.length === 0) { horizons.push(null); continue; }
-          const lp = levelPositive(h);
-          horizons.push(summarize(outcomes, lp.length >= RATINGS_POLICY.arrival.minimumArrivals ? lp : sidePositive(h)));
+          const here = byH[h].filter((c) => c.age >= ageFrom && c.age <= ageTo);
+          if (here.length === 0) { horizons.push(null); continue; }
+          const fallback = levelPositive[h].length >= RATINGS_POLICY.arrival.minimumArrivals ? levelPositive[h] : sidePositive[h];
+          if (h === 0) { horizons.push(summarize(here.map(W), fallback)); continue; }
+          // The players passed over for the whole origin season, and apart those called up in it (C-01)
+          const upNow = here.filter((c) => c.up).map(W);
+          const passed = summarize(here.filter((c) => !c.up).map(W), fallback);
+          const all = weightOf(here.map(W));
+          horizons.push({
+            ...passed,
+            arrived: upNow.length > 0 ? summarize(upNow, fallback) : null,
+            upShare: all > 0 ? weightOf(upNow) / all : 0,
+          });
         }
         cells.push({ side, level, ageFrom, ageTo, cases: n, horizons });
       }
@@ -660,56 +855,152 @@ export function fitRatingsModel(input: RatingsFitInput, options: RatingsFitOptio
     if (s.season > input.throughSeason || s.season <= input.throughSeason - PRODUCTION_POLICY.window.maxSeasons) continue;
     if (s.scheduleShare !== null && s.scheduleShare >= PRODUCTION_POLICY.window.minShareOfSchedule) window.push(s.season);
   }
-  const holdoutCount = useHoldout && window.length >= 2 ? Math.max(1, Math.round(PRODUCTION_POLICY.window.holdoutShare * window.length)) : 0;
-  const holdout = holdoutCount > 0 ? window.slice(window.length - holdoutCount) : [];
-  const trainingThrough = holdoutCount > 0 ? window[window.length - holdoutCount - 1] ?? null : window[window.length - 1] ?? null;
+  // The owner's option C applied to arrivals (hardening F5): rolling origins, each scored by the method fitted through
+  // it on the next season's minor leaguers; recent seasons weighted more; the model served refit through the last season
+  const backtest = RATINGS_POLICY.backtest;
+  const halfLife = options.recencyHalfLife === undefined ? backtest.recencyHalfLife : options.recencyHalfLife;
+  const inWindow = new Set(window);
+  const lastSeason = window[window.length - 1] ?? null;
+  const candidates = useHoldout && lastSeason !== null
+    ? window.filter((y) => y >= window[0] + backtest.origins.firstOriginAfter && y <= lastSeason - 1 && inWindow.has(y + 1))
+    : [];
+  const rolling = rollingOrigins(candidates, backtest.origins.maxOrigins);
+  const holdout = rolling.length > 0 ? window.filter((y) => y > rolling[0]) : [];
+  const trainingThrough = rolling[0] ?? lastSeason;
   const cases = arrivalCases(input.arrival, input.levels, window, input.throughSeason);
-  const inTraining = (c: ArrivalCase) => trainingThrough !== null && c.target <= trainingThrough;
-  const inHoldout = (c: ArrivalCase) => holdoutCount > 0 && trainingThrough !== null && c.target > trainingThrough && c.origin >= trainingThrough;
-  let arrival: ArrivalModel | null = input.levels.length > 0 && cases.some(inTraining) ? fitArrival(cases, input.levels, inTraining) : null;
-  if (arrival && arrival.cells.length === 0) arrival = null;
-  const heldOut: ArrivalCheck[] = Array.from({ length: H }, (_, h) => {
-    const mine = arrival ? cases.filter((c) => c.h === h && inHoldout(c)) : [];
-    let p = 0;
-    let pm = 0;
+  const fitThrough = (through: number | null): ArrivalModel | null => {
+    if (input.levels.length === 0 || through === null) return null;
+    const m = fitArrival(cases, input.levels, (c) => c.target <= through, (c) => recencyWeight(through, c.target, halfLife));
+    return m.cells.length > 0 ? m : null;
+  };
+  let arrival: ArrivalModel | null = cases.length > 0 ? fitThrough(lastSeason) : null;
+  // The minimum-origins rule: a horizon of an origin is scored only where the fit through it holds the gate's minimum
+  // cases on the side, from at least the policy's origin cohorts (no served model is that thin)
+  const minimumCases = PRODUCTION_POLICY.gate.minimumCases;
+  const perOrigin = new Map<string, Map<number, number>>();
+  const byOrigin = new Map<number, ArrivalCase[]>();
+  for (const c of cases) {
+    const key = `${c.side}:${c.h}`;
+    const m = perOrigin.get(key) ?? new Map<number, number>();
+    m.set(c.origin, (m.get(c.origin) ?? 0) + 1);
+    perOrigin.set(key, m);
+    const list = byOrigin.get(c.origin) ?? [];
+    list.push(c);
+    byOrigin.set(c.origin, list);
+  }
+  const rests = (side: ProductionSide, h: number, through: number): boolean => {
     let n = 0;
-    for (const c of mine) {
-      const cell = arrivalCellFor(arrival!, c.side, c.level, c.age);
-      const A = cell?.horizons[h];
+    let cohorts = 0;
+    for (const [origin, k] of perOrigin.get(`${side}:${h}`) ?? []) {
+      if (origin + h > through) continue;
+      n += k;
+      cohorts += 1;
+    }
+    return n >= minimumCases && cohorts >= backtest.origins.minimumOrigins;
+  };
+  // Each held-out case is read as a player at the start of his origin season (every call-up still to come), so the
+  // check is on the same, unconditioned players the model describes (C-01)
+  interface Scored { player: number; origin: number; p: number; pm: number; played: number; outcome: number }
+  const scoredRows: Scored[][] = Array.from({ length: H }, () => []);
+  const scored: NonNullable<RatingsFitRecord['arrival']['scored']> = [];
+  for (const y of arrival ? rolling : []) {
+    const m = fitThrough(y);
+    const cohort = y + 1;
+    const horizons = new Set<number>();
+    let n = 0;
+    for (const c of m ? byOrigin.get(cohort) ?? [] : []) {
+      if (!rests(c.side, c.h, y)) continue;
+      const A = arrivalCellFor(m!, c.side, c.level, c.age)?.horizons[c.h];
       if (!A) continue;
-      p += A.chance;
-      pm += A.chance * A.mean;
+      const r = arrivalReading(A, c.h, 1);
+      scoredRows[c.h].push({ player: c.playerId, origin: y, p: r.chance, pm: r.chance * r.mean, played: c.outcome > 0 ? 1 : 0, outcome: c.outcome });
+      horizons.add(c.h);
       n += 1;
     }
-    const used = mine.filter((c) => arrivalCellFor(arrival!, c.side, c.level, c.age)?.horizons[h]);
+    scored.push({ origin: y, through: y, cohort, cases: n, horizons: [...horizons].sort((a, b) => a - b) });
+  }
+  // Pooled over the origins, the standard errors clustered by player and by origin (two-way, the results gate's rule)
+  const heldOut: ArrivalCheck[] = scoredRows.map((rows, h) => {
+    const n = rows.length;
+    if (n === 0) return { horizon: h, cases: 0, predicted: null, observed: null, predictedMean: null, observedMean: null, chanceSe: null, meanSe: null, origins: 0 };
+    const se = (e: (r: Scored) => number): number => {
+      const byPlayer: ClusterSums<number> = new Map();
+      const byOriginSums: ClusterSums<number> = new Map();
+      const byBoth: ClusterSums<string> = new Map();
+      let total = 0;
+      for (const r of rows) {
+        const x = e(r);
+        total += x;
+        addToCluster(byPlayer, r.player, x);
+        addToCluster(byOriginSums, r.origin, x);
+        addToCluster(byBoth, `${r.player}:${r.origin}`, x);
+      }
+      return twoWayClusteredSe(n, total / n, byPlayer, byOriginSums, byBoth);
+    };
     return {
       horizon: h, cases: n,
-      predicted: n > 0 ? p / n : null,
-      observed: n > 0 ? used.filter((c) => c.outcome > 0).length / n : null,
-      predictedMean: n > 0 ? pm / n : null,
-      observedMean: n > 0 ? used.reduce((s, c) => s + c.outcome, 0) / n : null,
+      predicted: rows.reduce((t, r) => t + r.p, 0) / n,
+      observed: rows.reduce((t, r) => t + r.played, 0) / n,
+      predictedMean: rows.reduce((t, r) => t + r.pm, 0) / n,
+      observedMean: rows.reduce((t, r) => t + r.outcome, 0) / n,
+      chanceSe: se((r) => r.played - r.p),
+      meanSe: se((r) => r.outcome - r.pm),
+      origins: new Set(rows.map((r) => r.origin)).size,
     };
   });
 
   // ── the gate ──
   let passed: boolean;
   let reason: string;
-  const minimumCases = PRODUCTION_POLICY.gate.minimumCases;
   const off = (o: number | null, t: number) => (o === null ? Infinity : Math.abs(o - t));
-  const arrivalOff = heldOut.filter((r) => r.cases >= minimumCases && off(r.observed, r.predicted ?? 0) > tol);
+  // The arrival chance and its expected playing time: a miss beyond the absolute tolerance fails as before, and
+  // (hardening F4, B-15) so does a bias that is material (beyond a share of what happened) and not noise (beyond
+  // the standard errors, clustered by player and by origin since F5): a tightening, never a loosening
+  const bias = RATINGS_POLICY.gate.arrivalBias;
+  const biased = (observed: number | null, predicted: number | null, se: number | null | undefined): boolean => {
+    if (observed === null || predicted === null) return false;
+    const e = observed - predicted;
+    return Math.abs(e) > bias.relative * Math.abs(observed) && (se === null || se === undefined || Math.abs(e) > bias.standardErrors * se);
+  };
+  // The arrival model is adopted horizon by horizon (the owner's option (b), hardening F6): a contiguous run of passing
+  // horizons from the rest of this season, which must reach the next season; the later horizons are not established
+  const adoption = arrival && useHoldout ? arrivalAdoption(heldOut, minimumCases) : null;
+  const required = RATINGS_POLICY.adoption.requiredThrough;
+  // What keeps anything from being adopted: a failure at or before the next season (the tolerances are unchanged)
+  const arrivalOff = heldOut.filter((r) => r.horizon <= required && r.cases >= minimumCases && (
+    off(r.observed, r.predicted ?? 0) > tol
+    || biased(r.observed, r.predicted, r.chanceSe)
+    || biased(r.observedMean, r.predictedMean, r.meanSe)
+  ));
+  const notAdopted = adoption ? adoption.horizons.filter((x) => !x.adopted) : [];
   if (asFitted.cases < minimumCases) {
     passed = false;
     reason = `Too few major leaguers with ratings and ${RATINGS_POLICY.mapping.minimumOpportunities}+ opportunities to validate the ratings mapping (${asFitted.cases} held out; ${minimumCases} needed).`;
   } else if (off(asFitted.outer, targets.outer) > tol || off(asFitted.inner, targets.inner) > tol) {
     passed = false;
     reason = `The ratings mapping's held-out coverage (${pct(asFitted.outer)} / ${pct(asFitted.inner)}) is outside ${Math.round(tol * 100)} points of ${Math.round(targets.outer * 100)}% and ${Math.round(targets.inner * 100)}%.`;
+  } else if (arrival && useHoldout && heldOut[1].cases < minimumCases) {
+    // Arrivals measured but never checked on a season their fit did not see are not adopted (hardening F5: with rolling
+    // origins a short history has none; before, a single split checked it): the next season must be evaluable
+    passed = false;
+    reason = `The arrival chance cannot be checked on held-out seasons: ${heldOut[1].cases} cases one season on from ${rolling.length} rolling origin${rolling.length === 1 ? '' : 's'} ` +
+      `(${minimumCases} needed; an origin needs ${backtest.origins.firstOriginAfter} seasons before it and a fit through it with ${backtest.origins.minimumOrigins} origin cohorts at the horizon).`;
   } else if (arrivalOff.length > 0) {
     passed = false;
-    reason = `The arrival chance's held-out calibration is outside ${Math.round(tol * 100)} points at horizon ${arrivalOff.map((r) => `${r.horizon} (predicted ${pct(r.predicted)}, observed ${pct(r.observed)})`).join(', ')}.`;
+    reason = `The arrival chance's held-out calibration is outside the gate (${Math.round(tol * 100)} points, or a bias beyond ${Math.round(bias.relative * 100)}% of what happened and ${bias.standardErrors} standard errors clustered by player and by origin) at horizon ` +
+      `${arrivalOff.map((r) => `${r.horizon} (chance predicted ${pct(r.predicted)}, observed ${pct(r.observed)}; opportunities per player predicted ${num(r.predictedMean)}, observed ${num(r.observedMean)})`).join(', ')}` +
+      `; the arrival model is adopted horizon by horizon, and nothing is adopted unless every horizon through ${seasonsOut(required)} passes.`;
+  } else if (adoption && adoption.through === null) {
+    passed = false;
+    reason = `The arrival model cannot be adopted: it is adopted horizon by horizon, and every horizon through ${seasonsOut(required)} must pass; ` +
+      `${adoption.horizons.filter((x) => x.horizon <= required && x.reason !== null).map((x) => x.reason).join('; ')}.`;
   } else {
     passed = true;
     reason = `The ratings mapping's held-out coverage (${pct(asFitted.outer)} / ${pct(asFitted.inner)} on ${asFitted.cases} major leaguers) is within ${Math.round(tol * 100)} points of the targets` +
-      (arrival ? `, and the arrival chance's held-out calibration is within ${Math.round(tol * 100)} points at every horizon with ${minimumCases}+ cases.` : '; arrivals are not measured on this save.');
+      (arrival && adoption && adoption.through !== null
+        ? `, and the arrival model is adopted horizon by horizon through ${seasonsOut(adoption.through)}: the arrival chance and its expected playing time are within ${Math.round(tol * 100)} points and not biased beyond ${Math.round(bias.relative * 100)}% of what happened and ${bias.standardErrors} standard errors at every horizon to it, scored on rolling origins ${rolling[0]}–${rolling[rolling.length - 1]}` +
+          (notAdopted.length > 0 ? `; ${horizonSpan(notAdopted.map((x) => x.horizon))} not established (${notAdopted.map((x) => x.reason).join('; ')}).` : '.')
+        : arrival ? '.' : '; arrivals are not measured on this save.');
   }
   if (!useHoldout) {
     passed = true;
@@ -799,6 +1090,23 @@ export function fitRatingsModel(input: RatingsFitInput, options: RatingsFitOptio
   // ── the ratings' reliability as a forecast: this season's snapshot against next season's rate ──
   const reliability = forwardReliability(input, mapping);
 
+  // ── a prospect's chance and playing time by his projected quality: the results fit's own effect, located on
+  // each cell's players now (hardening F4, C-02) ──
+  if (arrival && input.now) {
+    arrival = locateQuality(input, { method: RATINGS_METHOD, mapping, leftShare, staminaCut, development, arrival, potentialGap, reliability: reliability.model }, arrival, input.now);
+  }
+
+  // ── adopted horizon by horizon (hardening F6): the served cells carry nothing past the last adopted horizon, and
+  // each later horizon carries the gate's finding there, so a prospect's later seasons are not established ──
+  if (arrival && adoption && adoption.through !== null) {
+    const through = adoption.through;
+    arrival = {
+      ...arrival,
+      cells: arrival.cells.map((c) => ({ ...c, horizons: c.horizons.map((A, h) => (h <= through ? A : null)) })),
+      adopted: { through, notEstablished: notAdopted.map((x) => ({ horizon: x.horizon, reason: x.reason as string })) },
+    };
+  }
+
   const model: RatingsModel = { method: RATINGS_METHOD, mapping, leftShare, staminaCut, development, arrival, potentialGap, reliability: reliability.model };
   const nCases = asFitted.cases;
   const overall = prior ? strength / (nCases + strength) : 0;
@@ -821,6 +1129,7 @@ export function fitRatingsModel(input: RatingsFitInput, options: RatingsFitOptio
         : input.levels.length === 0 ? 'The save names no minor-league levels below this league.' : 'The save holds no minor-league usage history to measure arrivals from.',
       window, trainingThrough, holdout,
       cells: arrival?.cells.length ?? 0, cases: cases.length, heldOut,
+      scored, recencyHalfLife: halfLife, adoption,
     },
     development: {
       source: development.source, groups: development.groups ?? { hitter: development.source, pitcher: development.source },
@@ -832,11 +1141,69 @@ export function fitRatingsModel(input: RatingsFitInput, options: RatingsFitOptio
     leftShare,
     priorWeight: { overall },
     gate: { passed, reason, tolerance: tol, minimumCases },
+    // Calibrated only as far as it was measured (hardening F6): an arrival model adopted through N seasons out says so
     label: passed && useHoldout
-      ? `calibrated on this save: ratings → rate on ${nCases} major leaguers (same-time)${arrival ? `, arrivals from its seasons ${window[0]}–${window[window.length - 1]}` : ''}; development ${development.source === 'save_fit' ? 'from its own rating snapshots' : 'not yet calibrated (provisional prior)'}`
+      ? `calibrated on this save${arrival && adoption?.through != null ? ` through ${seasonsOut(adoption.through)}` : ''}: ratings → rate on ${nCases} major leaguers (same-time)` +
+        `${arrival ? `, arrivals from its seasons ${window[0]}–${window[window.length - 1]}${adoption?.through != null ? ` adopted through ${seasonsOut(adoption.through)}${notAdopted.length > 0 ? ` (${horizonSpan(notAdopted.map((x) => x.horizon))} not established)` : ''}` : ''}` : ''}` +
+        `; development ${development.source === 'save_fit' ? 'from its own rating snapshots' : 'not yet calibrated (provisional prior)'}`
       : `not yet calibrated on this save: ${reason}`,
   };
   return { model, record };
+}
+
+/**
+ * The results fit's own effect of quality at the same usage (the chance's logistic and the playing time's
+ * coefficient, per kind and horizon; the rest of this season at the first season's), and each arrival cell's
+ * players now at every horizon: their projected quality above replacement from their ratings path (never below
+ * zero, as the results path reads it) times those effects, sampled in order of quality. The projection locates
+ * the effect on them so that together they keep the cell's measured chance and playing time (hardening F4, C-02).
+ * Only the league's own affiliates' players not yet in the majors, with ability evidence and a kind, are read.
+ */
+function locateQuality(input: RatingsFitInput, model: RatingsModel, arrival: ArrivalModel, now: { season: number; seasonPlayed: number }): ArrivalModel {
+  const kinds: ProductionKind[] = ['hitter', 'starter', 'reliever'];
+  const effect = (read: (row: ProductionModel['kinds'][ProductionKind]['horizons'][number]) => number | undefined) => Object.fromEntries(kinds.map((kind) => [
+    kind, Array.from({ length: H }, (_, h) => {
+      const row = input.production.kinds[kind]?.horizons[Math.max(h, 1) - 1];
+      const v = row ? read(row) : undefined;
+      return typeof v === 'number' && Number.isFinite(v) ? Math.max(0, v) : 0;
+    }),
+  ])) as Record<ProductionKind, number[]>;
+  const quality = { chance: effect((row) => row.chance?.quality), perGame: effect((row) => row.conditional?.quality) };
+  const members = new Map<ArrivalCell, Array<Array<[number, number]>>>();
+  const f = Math.min(Math.max(now.seasonPlayed, 0), 1);
+  for (const x of input.crossSection) {
+    const ev = x.evidence;
+    if (x.level === null || x.level === undefined || x.level <= 1 || x.majors === true || x.age === null || ev.group === null || ev.status === 'unknown') continue;
+    const side: ProductionSide = ev.group === 'hitter' ? 'batting' : 'pitching';
+    if (!arrival.levels.includes(x.level)) continue;
+    const cell = arrivalCellFor(arrival, side, x.level, x.age);
+    if (!cell) continue;
+    const kind = ev.group === 'hitter' ? 'hitter' : pitcherKindWithoutMajors(x.proUsage, ev, model.staminaCut);
+    if (typeof kind !== 'string') continue;
+    const path = ratingsPath(ev, kind, { season: now.season, f, age: x.age }, model, input.production);
+    if ('reason' in path) continue;
+    const terms = path.seasons.map((s, h): [number, number] => {
+      const q = Math.max(0, s.rate);
+      return [quality.chance[kind][h] * q, quality.perGame[kind][h] * q];
+    });
+    const list = members.get(cell) ?? [];
+    list.push(terms);
+    members.set(cell, list);
+  }
+  const N = RATINGS_POLICY.arrival.populationNodes;
+  const sample = (list: Array<[number, number]>): Array<[number, number]> => {
+    const sorted = [...list].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    if (sorted.length <= N) return sorted;
+    return Array.from({ length: N }, (_, j) => sorted[Math.min(sorted.length - 1, Math.floor(((j + 0.5) * sorted.length) / N))]);
+  };
+  const cells = arrival.cells.map((cell) => {
+    const list = members.get(cell) ?? [];
+    return {
+      ...cell,
+      horizons: cell.horizons.map((A, h) => (A ? { ...A, population: list.length > 0 ? sample(list.map((t) => t[h])) : null } : A)),
+    };
+  });
+  return { ...arrival, cells, quality };
 }
 
 /**
@@ -908,7 +1275,10 @@ function linkedArrivals(input: RatingsFitInput, arrival: ArrivalModel, window: n
     const had = first.get(key);
     if (!had || o.gameDate < had.gameDate) first.set(key, o);
   }
-  interface Linked { group: AgingGroup; potential: number; h: number; expected: number; played: boolean }
+  // The chance he was expected to have is read at the snapshot's own point of the season (hardening F5, as C-01 reads a
+  // prospect): a player not yet called up with 1 − f of the season's call-ups still to come. Where f is not established
+  // the expected chance is the range between the season's start and its end (the reading is monotone in f)
+  interface Linked { group: AgingGroup; potential: number; h: number; expected: [number, number]; played: boolean }
   const rows: Linked[] = [];
   const eligible = new Set(window);
   for (const o of first.values()) {
@@ -924,7 +1294,9 @@ function linkedArrivals(input: RatingsFitInput, arrival: ArrivalModel, window: n
       if (!eligible.has(target)) continue;
       const A = cell.horizons[h];
       if (!A) continue;
-      rows.push({ group: o.group, potential: o.potential, h, expected: A.chance, played: (p?.majors.get(target) ?? 0) > 0 });
+      const f = typeof o.seasonPlayed === 'number' && Number.isFinite(o.seasonPlayed) ? Math.min(Math.max(o.seasonPlayed, 0), 1) : null;
+      const ends = f === null ? [arrivalReading(A, h, 0).chance, arrivalReading(A, h, 1).chance] : [arrivalReading(A, h, 1 - f).chance];
+      rows.push({ group: o.group, potential: o.potential, h, expected: [Math.min(...ends), Math.max(...ends)], played: (p?.majors.get(target) ?? 0) > 0 });
     }
   }
   const minimum = RATINGS_POLICY.longitudinal.minimumLinked;
@@ -942,14 +1314,25 @@ function linkedArrivals(input: RatingsFitInput, arrival: ArrivalModel, window: n
     const tierOf = (v: number) => { const i = cuts[group].findIndex((c) => v <= c); return i === -1 ? cuts[group].length : i; };
     multipliers[group] = Array.from({ length: T }, (_, tier) => Array.from({ length: H }, (_, h) => {
       const set = mine.filter((r) => r.h === h && tierOf(r.potential) === tier);
-      const expected = set.reduce((s, r) => s + r.expected, 0);
-      if (set.length === 0 || expected <= 0) return 1;
       const observed = set.filter((r) => r.played).length;
-      const m = observed / expected;
-      const se = Math.sqrt(set.reduce((s, r) => s + r.expected * (1 - r.expected), 0)) / expected;
-      const real = Math.abs(m - 1) >= RATINGS_POLICY.longitudinal.evidence * se;
-      findings.push(`${group === 'hitter' ? 'Hitters' : 'Pitchers'}, potential tier ${tier + 1} of ${T}, ${h} season${h === 1 ? '' : 's'} on: ${observed} reached the majors against ${expected.toFixed(1)} expected by level and age (× ${m.toFixed(2)} ± ${se.toFixed(2)})${real ? '' : ' — not distinguishable from none, not used'}.`);
-      return real ? m : 1;
+      // Each end of the expected range: its multiplier, its standard error, and which side of none it is beyond
+      const end = (i: 0 | 1) => {
+        const expected = set.reduce((s, r) => s + r.expected[i], 0);
+        if (!(expected > 0)) return { expected, m: observed > 0 ? Infinity : null, se: 0, side: observed > 0 ? 1 : 0 };
+        const m = observed / expected;
+        const se = Math.sqrt(set.reduce((s, r) => s + r.expected[i] * (1 - r.expected[i]), 0)) / expected;
+        return { expected, m, se, side: Math.abs(m - 1) >= RATINGS_POLICY.longitudinal.evidence * se ? Math.sign(m - 1) : 0 };
+      };
+      const [lo, hi] = [end(0), end(1)];
+      if (set.length === 0 || !(hi.expected > 0)) return 1;
+      // Used only where it holds across the whole range, and then the reading nearer none
+      const real = lo.side !== 0 && lo.side === hi.side;
+      const m = real ? [lo.m, hi.m].filter((x): x is number => x !== null && Number.isFinite(x)).reduce((a, b) => (Math.abs(b - 1) < Math.abs(a - 1) ? b : a)) : 1;
+      const range = lo.expected === hi.expected
+        ? `${hi.expected.toFixed(1)} expected by level and age (× ${(hi.m as number).toFixed(2)} ± ${hi.se.toFixed(2)})`
+        : `${lo.expected.toFixed(1)} to ${hi.expected.toFixed(1)} expected by level and age, the snapshot's point of the season not established (× ${hi.m === null ? '—' : (hi.m as number).toFixed(2)} to ${lo.m === null ? '—' : Number.isFinite(lo.m) ? (lo.m as number).toFixed(2) : 'any'})`;
+      findings.push(`${group === 'hitter' ? 'Hitters' : 'Pitchers'}, potential tier ${tier + 1} of ${T}, ${h} season${h === 1 ? '' : 's'} on: ${observed} reached the majors against ${range}${real ? '' : ' — not distinguishable from none across what is known, not used'}.`);
+      return m;
     }));
     // A higher potential tier is never given a lower chance than the tier below it
     for (let h = 0; h < H; h += 1) {
@@ -960,3 +1343,4 @@ function linkedArrivals(input: RatingsFitInput, arrival: ArrivalModel, window: n
 }
 
 const pct = (x: number | null): string => (x === null ? '—' : `${(x * 100).toFixed(1)}%`);
+const num = (x: number | null): string => (x === null ? '—' : x.toFixed(1));

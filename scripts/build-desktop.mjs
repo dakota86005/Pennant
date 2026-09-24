@@ -43,3 +43,21 @@ await build({
   },
   define: { 'import.meta.url': 'import_meta_url' },
 });
+
+// Player Value's refit runs in a worker thread (A-17): its entry ships beside the bundle, which finds it
+// as ./value-refit-worker.cjs next to itself.
+await build({
+  entryPoints: ['server/playerValueRefitWorker.ts'],
+  outfile: 'build/value-refit-worker.cjs',
+  bundle: true,
+  platform: 'node',
+  target: 'node20',
+  format: 'cjs',
+  external,
+  sourcemap: true,
+  logLevel: 'info',
+  banner: {
+    js: "const import_meta_url = require('url').pathToFileURL(__filename).href;",
+  },
+  define: { 'import.meta.url': 'import_meta_url' },
+});

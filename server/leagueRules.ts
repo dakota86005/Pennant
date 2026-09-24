@@ -47,7 +47,11 @@ export interface ContractRules {
   serviceDaysPerYear: Sourced<number>;
   /** `leagues.financial_coefficient` — OOTP's money scale; historical leagues run far below 1.0. */
   financialCoefficient: Sourced<number>;
-  /** `leagues.season_year` of the regime league: the season the contract rules are being applied in. */
+  /**
+   * `leagues.season_year`: the season the contract rules are being applied in. An objective fact, read
+   * from the league's own row where it states it, and from the regime league's only where it does not
+   * (D-14), so a broken parent chain leaves the rules unknown and the season known.
+   */
   season: Sourced<number>;
 }
 
@@ -260,13 +264,24 @@ function regimeRow(
   return { unknown: 'The parent_league_id chain is deeper than any export has.' };
 }
 
+/**
+ * "This season" is an objective fact of the league's own row (D-14, hardening): read there where the
+ * row states it, so a broken parent chain does not blank it. Only where the row leaves it blank or
+ * lacks the column is it read from the regime row through the chain; failing both, it is unknown.
+ */
+function seasonOf(row: LeagueRuleRow, present: Set<string>, regime: Sourced<number>): Sourced<number> {
+  const own = reader(row, present)('season_year', positive);
+  return own.value !== null ? own : regime;
+}
+
 function regimeRulesFrom(
   row: LeagueRuleRow, present: Set<string>, lookup: LeagueRowLookup
 ): { contract: ContractRules; finance: FinancialRules } {
   const regime = regimeRow(row, present, lookup);
   if ('unknown' in regime) {
+    const contract = unknownContract('not_exported_by_ootp', regime.unknown);
     return {
-      contract: unknownContract('not_exported_by_ootp', regime.unknown),
+      contract: { ...contract, season: seasonOf(row, present, contract.season) },
       finance: unknownFinance('not_exported_by_ootp', regime.unknown),
     };
   }
@@ -295,7 +310,7 @@ function regimeRulesFrom(
       minimumSalary,
       serviceDaysPerYear: read('rules_min_service_days', positive, 'rules_min_service_days is not a positive number of days, so a service year has no length.'),
       financialCoefficient,
-      season: read('season_year', positive),
+      season: seasonOf(row, present, read('season_year', positive)),
     },
     finance: {
       regimeLeagueId,

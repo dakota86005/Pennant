@@ -1,9 +1,11 @@
-import { useLayoutEffect, useEffect, useRef, useState } from 'react';
+import { Component, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { Group } from '@visx/group';
 import { Area, Line, LinePath } from '@visx/shape';
-import { getProductionCone, isStaticSite, type ConeSeason, type ProductionCone } from './api';
-import { CHART_COLOR, CHART_MARK, CHART_OPACITY, CHART_TEXT } from './chartTheme';
-import { REPLACEMENT_LABEL, coneGeometry, coneSummary, coverageText, formatWins, type ConeGeometry } from './productionConeGeometry';
+import { getProductionCone, isStaticSite, type ConeSeason, type ConeUnestablished, type ProductionCone } from './api';
+import { CHART_COLOR, CHART_MARK, CHART_OPACITY, CHART_TEXT, textWidth } from './chartTheme';
+import {
+  REPLACEMENT_LABEL, bandWords, coneGeometry, coneIsDrawable, coneLabel, coneSummary, coverageText, formatWins, type ConeGeometry,
+} from './productionConeGeometry';
 
 /**
  * The player card's production cone (PLAYER_VALUE.md Part 8): expected wins per season with the 80%
@@ -13,6 +15,8 @@ import { REPLACEMENT_LABEL, coneGeometry, coneSummary, coverageText, formatWins,
  */
 
 const POP_WIDTH = 260;
+/** Below this width the detail sits in the flow under the chart rather than beside a season. */
+const NARROW = POP_WIDTH * 2 + 32;
 
 /** Expected playing time for a season, per side: "about 560 PA (400–650)". */
 const usageText = (u: ConeSeason['usage'][number]): string =>
@@ -68,6 +72,50 @@ export function SeasonDetail({ season: s, basis }: { season: ConeSeason; basis: 
   );
 }
 
+/** The hover and focus detail for a season whose production is not established: its control and why, no figure. */
+export function UnestablishedDetail({ season: s }: { season: ConeUnestablished }) {
+  return (
+    <>
+      <div className="cone-pop-head">
+        <strong>{s.season}</strong> · age {s.age} · {s.control.label}
+        {s.control.after ? ` · ${s.control.after.label.toLowerCase()}` : ''}
+      </div>
+      <table className="mini cone-pop-table">
+        <tbody>
+          <tr>
+            <td className="muted">Expected</td>
+            <td><strong>Not established</strong></td>
+          </tr>
+        </tbody>
+      </table>
+      <div className="muted">{s.reason}</div>
+      <div className="muted">Control: {s.control.detail || s.control.label}</div>
+    </>
+  );
+}
+
+/** The mark over the seasons not established: a muted, outlined region with its words, and no band or zero in it. */
+function Unestablished({ g }: { g: ConeGeometry }) {
+  const u = g.unestablished;
+  if (!u) return null;
+  const inset = 4;
+  const w = Math.max(0, u.right - u.left - inset * 2);
+  // Production, not control: a season's control label below may itself read "Not established"
+  const words = ['Production not established', 'Not established', 'Not est.', 'N/E'].find((t) => textWidth(t) + 8 <= w) ?? '';
+  return (
+    <>
+      <rect x={u.left + inset} y={g.plot.top} width={w} height={g.plot.bottom - g.plot.top} rx={4}
+        fill={CHART_COLOR.surface} fillOpacity={0.75} stroke={CHART_COLOR.grid} strokeDasharray="4 4" />
+      {words && (
+        <text x={u.left + inset + w / 2} y={(g.plot.top + g.plot.bottom) / 2} dy="0.33em" textAnchor="middle"
+          fill={CHART_COLOR.muted} fontSize={CHART_TEXT.size} fontFamily={CHART_TEXT.family}>
+          {words}
+        </text>
+      )}
+    </>
+  );
+}
+
 function Cone({ g, active }: { g: ConeGeometry; active: number | null }) {
   const band = (spans: ConeGeometry['outer'], opacity: number) =>
     g.shape === 'area'
@@ -95,6 +143,7 @@ function Cone({ g, active }: { g: ConeGeometry; active: number | null }) {
           {REPLACEMENT_LABEL}
         </text>
       )}
+      <Unestablished g={g} />
       {active !== null && (
         <Line from={{ x: g.x[active], y: g.plot.top }} to={{ x: g.x[active], y: g.plot.bottom }} stroke={CHART_COLOR.muted} strokeWidth={1} />
       )}
@@ -122,7 +171,11 @@ function Cone({ g, active }: { g: ConeGeometry; active: number | null }) {
 
 /** The cone at a given width: legend, the chart, the calibration line, and a table for screen readers. */
 export function ProductionConeChart({ cone, width }: { cone: ProductionCone; width: number }) {
-  const [active, setActive] = useState<number | null>(null);
+  // Hover and keyboard focus are tracked apart, so leaving a hovered season never clears the focused one (D-22)
+  const [hovered, setHovered] = useState<number | null>(null);
+  const [focused, setFocused] = useState<number | null>(null);
+  const [dismissed, setDismissed] = useState(false);
+  const tipId = `${useId()}-season`;
 
   if (cone.status !== 'projected' || cone.seasons.length === 0) {
     return (
@@ -131,21 +184,46 @@ export function ProductionConeChart({ cone, width }: { cone: ProductionCone; wid
       </p>
     );
   }
+  // One figure that is not a number would break the drawing; say so rather than draw it (D-24)
+  if (!coneIsDrawable(cone)) {
+    return <p className="muted cone-unknown">Expected production could not be drawn: a figure the server sent is not a number.</p>;
+  }
 
-  const g = coneGeometry(cone.seasons, width);
-  const summary = coneSummary(cone);
+  const active = dismissed ? null : hovered ?? focused;
+  // The seasons after the established ones whose production is not established keep a slot, no band (hardening F6)
+  const pending = cone.notEstablished ?? [];
+  const known = cone.seasons.length;
+  const g = coneGeometry(cone.seasons, width, pending);
+  const words = bandWords(cone);
+  const narrow = width < NARROW;
   const side = active !== null && g.x[active] > width / 2 ? 'left' : 'right';
-  const popLeft = active === null ? 0
-    : width < POP_WIDTH * 2 + 32
-      ? Math.min(Math.max(0, g.x[active] - POP_WIDTH / 2), Math.max(0, width - POP_WIDTH))
-      : side === 'right' ? g.x[active] + 16 : g.x[active] - 16 - POP_WIDTH;
-  const popTop = width < POP_WIDTH * 2 + 32 ? g.height + 4 : g.plot.top;
+  const popLeft = active === null || narrow ? 0 : side === 'right' ? g.x[active] + 16 : g.x[active] - 16 - POP_WIDTH;
+
+  const onKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
+    // Escape closes the season's detail first; only a second Escape reaches the card (D-22)
+    if (e.key === 'Escape' && active !== null) {
+      e.preventDefault();
+      e.stopPropagation();
+      setDismissed(true);
+      setHovered(null);
+    }
+  };
+  const show = (set: (i: number | null) => void, i: number) => { setDismissed(false); set(i); };
+
+  const detail = active !== null && (
+    <div id={tipId} className={`chart-pop${narrow ? ' cone-pop-inline' : ''}`} role="tooltip"
+      style={narrow ? undefined : { left: popLeft, top: g.plot.top, width: POP_WIDTH }}>
+      {active < known
+        ? <SeasonDetail season={cone.seasons[active]} basis={cone.basis} />
+        : <UnestablishedDetail season={pending[active - known]} />}
+    </div>
+  );
 
   return (
     <>
       <div className="cone-legend" aria-hidden="true">
-        <span className="cone-key"><span className="cone-swatch outer" />80% of outcomes fall inside</span>
-        <span className="cone-key"><span className="cone-swatch inner" />50% of outcomes fall inside</span>
+        <span className="cone-key"><span className="cone-swatch outer" />{words.outer}</span>
+        <span className="cone-key"><span className="cone-swatch inner" />{words.inner}</span>
         <span className="cone-key">
           <svg width="22" height="10" aria-hidden="true">
             <line x1="2" y1="5" x2="20" y2="5" stroke={CHART_COLOR.mark} strokeWidth={CHART_MARK.line} strokeDasharray="0 5" strokeLinecap="round" />
@@ -161,59 +239,96 @@ export function ProductionConeChart({ cone, width }: { cone: ProductionCone; wid
         </span>
       </div>
       <div className="cone-plot" style={{ height: g.height }}>
-        <svg width={g.width} height={g.height} role="img" aria-label={summary}>
+        <svg width={g.width} height={g.height} role="img" aria-label={coneLabel(cone)}>
           <Group>
             <Cone g={g} active={active} />
           </Group>
         </svg>
-        {cone.seasons.map((s, i) => (
+        {[...cone.seasons, ...pending].map((s, i) => (
           <button
             key={s.season}
             type="button"
             className="cone-hit"
             tabIndex={0}
             style={{ left: g.x[i] - g.slot / 2, width: g.slot, top: g.plot.top, height: g.height - g.plot.top }}
-            aria-label={`${s.season}, ${s.control.label}: ${formatWins(s.central)} wins expected, 80% band ${formatWins(s.outer.low)} to ${formatWins(s.outer.high)} (${coverageText(s.coverage.outer)}), 50% band ${formatWins(s.inner.low)} to ${formatWins(s.inner.high)} (${coverageText(s.coverage.inner)})`}
-            onMouseEnter={() => setActive(i)}
-            onMouseLeave={() => setActive((a) => (a === i ? null : a))}
-            onFocus={() => setActive(i)}
-            onBlur={() => setActive((a) => (a === i ? null : a))}
+            aria-label={'central' in s
+              ? `${s.season}, ${s.control.label}: ${formatWins(s.central)} wins expected, 80% band ${formatWins(s.outer.low)} to ${formatWins(s.outer.high)} (${coverageText(s.coverage.outer)}), 50% band ${formatWins(s.inner.low)} to ${formatWins(s.inner.high)} (${coverageText(s.coverage.inner)})`
+              : `${s.season}, ${s.control.label}: expected production not established. ${s.reason}`}
+            aria-describedby={active === i ? tipId : undefined}
+            aria-expanded={active === i}
+            onMouseEnter={() => show(setHovered, i)}
+            onMouseLeave={() => setHovered((a) => (a === i ? null : a))}
+            onFocus={() => show(setFocused, i)}
+            onBlur={() => setFocused((a) => (a === i ? null : a))}
+            onKeyDown={onKeyDown}
           />
         ))}
-        {active !== null && (
-          <div className="chart-pop" role="tooltip" style={{ left: popLeft, top: popTop, width: POP_WIDTH }}>
-            <SeasonDetail season={cone.seasons[active]} basis={cone.basis} />
-          </div>
-        )}
+        {!narrow && detail}
       </div>
+      {narrow && detail}
       {g.key.length > 0 && (
         <p className="muted cone-foot">{g.key.map((k) => `${k.code} = ${k.label.toLowerCase()}`).join(' · ')}</p>
       )}
       {cone.control.note && <p className="muted cone-foot">{cone.control.note}</p>}
       <p className="muted cone-foot" title={cone.calibration.detail}>{cone.calibration.status}</p>
       {/* A table ignores width: 1px and grows to its content, so the hiding
-          wrapper is a div; otherwise it pushes the card into horizontal scroll */}
+          wrapper is a div; otherwise it pushes the card into horizontal scroll.
+          It carries every figure the season detail shows (D-20). */}
       <div className="visually-hidden">
-      <table>
-        <caption>Expected wins above replacement per season</caption>
-        <thead>
-          <tr><th>Season</th><th>Control</th><th>Expected</th><th>50% band</th><th>80% band</th></tr>
-        </thead>
-        <tbody>
-          {cone.seasons.map((s) => (
-            <tr key={s.season}>
-              <td>{s.season}</td>
-              <td>{s.control.label}{s.control.after ? `, ${s.control.after.label.toLowerCase()}` : ''}</td>
-              <td>{formatWins(s.central)}</td>
-              <td>{formatWins(s.inner.low)} to {formatWins(s.inner.high)} ({coverageText(s.coverage.inner)})</td>
-              <td>{formatWins(s.outer.low)} to {formatWins(s.outer.high)} ({coverageText(s.coverage.outer)})</td>
+        <p>{coneSummary(cone)}</p>
+        <table>
+          <caption>Expected wins above replacement per season. {cone.basis ? `Rests on: ${cone.basis}.` : ''} {cone.calibration.status}.</caption>
+          <thead>
+            <tr>
+              <th>Season</th><th>Age</th><th>Control</th><th>Expected</th><th>50% band</th><th>80% band</th>
+              <th>Banked</th><th>Playing time</th><th>Notes</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {cone.seasons.map((s) => (
+              <tr key={s.season}>
+                <td>{s.season}</td>
+                <td>{s.age}</td>
+                <td>{s.control.label}{s.control.after ? `, ${s.control.after.label.toLowerCase()}` : ''}. {s.control.detail}</td>
+                <td>{formatWins(s.central)}</td>
+                <td>{formatWins(s.inner.low)} to {formatWins(s.inner.high)} ({coverageText(s.coverage.inner)})</td>
+                <td>{formatWins(s.outer.low)} to {formatWins(s.outer.high)} ({coverageText(s.coverage.outer)})</td>
+                <td>{s.toDate === null ? 'none this season' : `${formatWins(s.toDate)} so far`}</td>
+                <td>{s.usage.length > 0 ? s.usage.map(usageText).join('; ') : 'not stated'}</td>
+                <td>{[s.coverage.cases === null ? s.coverage.note : '', ...s.notes].filter(Boolean).join(' ')}</td>
+              </tr>
+            ))}
+            {pending.map((s) => (
+              <tr key={s.season}>
+                <td>{s.season}</td>
+                <td>{s.age}</td>
+                <td>{s.control.label}{s.control.after ? `, ${s.control.after.label.toLowerCase()}` : ''}. {s.control.detail}</td>
+                <td>not established</td>
+                <td>not established</td>
+                <td>not established</td>
+                <td>none this season</td>
+                <td>not established</td>
+                <td>{s.reason}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </>
   );
+}
+
+/** A render error in the chart stays in the chart's section and never blanks the card or the app (D-24). */
+class ConeBoundary extends Component<{ children: ReactNode }, { failed: string | null }> {
+  state = { failed: null as string | null };
+  static getDerivedStateFromError(error: Error) {
+    return { failed: error.message || 'unknown error' };
+  }
+  render() {
+    return this.state.failed
+      ? <p className="muted cone-unknown">Expected production could not be drawn: {this.state.failed}</p>
+      : this.props.children;
+  }
 }
 
 /** The card's section: fetches the cone and sizes the chart to the card's width. */
@@ -252,7 +367,11 @@ export function ProductionConeSection({ playerId }: { playerId: number }) {
       <h3>Expected production</h3>
       {error && <p className="muted">Expected production could not be loaded: {error}</p>}
       {!cone && !error && <p className="muted">Loading expected production…</p>}
-      {cone && width > 0 && <ProductionConeChart cone={cone} width={width} />}
+      {cone && width > 0 && (
+        <ConeBoundary key={playerId}>
+          <ProductionConeChart cone={cone} width={width} />
+        </ConeBoundary>
+      )}
     </section>
   );
 }

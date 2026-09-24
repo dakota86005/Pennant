@@ -10,6 +10,7 @@ import { fromExport, unknownBecause } from '../server/provenance.js';
 import request from './request';
 import { IDS, SEASON } from './fixture';
 import { THIS_SEASON, YEAR, contractRow, factsOf, mlbRules, stateOf, timelineOf } from './playerValueFixtures';
+import { OPENING_PRICE_MINIMUMS } from '../server/playerValueCalibration.js';
 
 /*
  * Player Value phase 2: Club Finances and the opening price of a win (D-052, PLAYER_VALUE.md Parts
@@ -59,21 +60,25 @@ function warOf(specs: Spec[], covered: { prior?: boolean; twoBack?: boolean; thi
 
 /**
  * A small league shaped like the imported one: free-agency-eligible veterans paid well above the
- * minimum, and pre-arbitration and arbitration players held near it by rule.
+ * minimum (half of them on contracts starting this season), and pre-arbitration and arbitration
+ * players held near it by rule. Each market basis rests on at least the policy minimum of contracts
+ * (`OPENING_PRICE_MINIMUMS.contracts`), so every basis can be computed.
  */
-function league(over: Partial<Spec> = {}): Spec[] {
+function league(over: Partial<Spec> = {}, veterans = 2 * OPENING_PRICE_MINIMUMS.contracts): Spec[] {
   const specs: Spec[] = [];
-  for (let i = 0; i < 8; i += 1) {
+  for (let i = 0; i < veterans; i += 1) {
+    const k = i % 8;
     specs.push({
-      id: 100 + i, days: (7 + (i % 4)) * YEAR, salary: 12_000_000 + i * 3_000_000,
-      war: { prior: 2 + i * 0.4, twoBack: 2.2 + i * 0.4, thisSeason: 0.8 + i * 0.1 },
+      id: 100 + i, days: (7 + (k % 4)) * YEAR, salary: 12_000_000 + k * 3_000_000,
+      war: { prior: 2 + k * 0.4, twoBack: 2.2 + k * 0.4, thisSeason: 0.8 + k * 0.1 },
       firstSeason: i % 2 === 0 ? THIS_SEASON : THIS_SEASON - 2, years: i % 2 === 0 ? 2 : 4, ...over,
     });
   }
-  for (let i = 0; i < 8; i += 1) {
+  for (let i = 0; i < veterans / 2; i += 1) {
+    const k = i % 8;
     specs.push({
-      id: 200 + i, days: YEAR + i * 20, salary: MIN + i * 50_000,
-      war: { prior: 1.5 + i * 0.2, twoBack: 1, thisSeason: 0.5 }, ...over,
+      id: 1000 + i, days: YEAR + k * 20, salary: MIN + k * 50_000,
+      war: { prior: 1.5 + k * 0.2, twoBack: 1, thisSeason: 0.5 }, ...over,
     });
   }
   return specs;
@@ -88,6 +93,7 @@ function input(specs: Spec[], over: Partial<OpeningPriceInput> = {}): OpeningPri
     candidates: specs.map(candidate),
     war: warOf(specs),
     seasonFraction: fromExport(0.3, 'team_record.g'),
+    seasonShares: new Map([[PRIOR, fromExport(1, 'team_history_record.g')], [PRIOR - 1, fromExport(1, 'team_history_record.g')]]),
     ...over,
   };
 }
@@ -113,7 +119,7 @@ describe('Player Value: the opening price of a win (phase 2)', () => {
     // A minor-league contract's $0 is unknown, never a cost of zero (Q-5)
     const minors = openingPriceOfWin(input(league({ isMajor: 0 })));
     expect(minors.price.value).toBeNull();
-    expect(minors.population.unknownSalary).toBe(16);
+    expect(minors.population.unknownSalary).toBe(league().length);
   });
 
   it('a reserve-clause league has no market contract, so its dollars are unknown', () => {
@@ -180,10 +186,79 @@ describe('Player Value: the opening price of a win (phase 2)', () => {
     const price = openingPriceOfWin(input(league({ currentState: 'behind' })));
     expect(price.population.market).toBe(0);
     expect(price.population.heldBelowMarket).toBe(0);
-    expect(price.population.indeterminate).toBe(16);
+    expect(price.population.indeterminate).toBe(league().length);
     // He crossed the line this season: his salary was set before he was eligible (last winter's answer)
     const crossed = candidate({ id: 2, days: 6 * YEAR + 10, salary: 9_000_000, war: { prior: 2 } });
     expect(marketStandingOf(crossed.control)).toBe('held_below_market');
+  });
+});
+
+describe('Player Value: the opening price rests only on enough of a season and enough of a market (hardening, B-13)', () => {
+  const basis = (price: ReturnType<typeof openingPriceOfWin>, id: string) => price.bases.find((b) => b.id === id)!;
+  const shares = (prior: number, twoBack = 1) => new Map([
+    [PRIOR, fromExport(prior, 'team_history_record.g')], [PRIOR - 1, fromExport(twoBack, 'team_history_record.g')],
+  ]);
+
+  it("a short prior season prices a full season's salary in proportion to the schedule it covered, never as a full season", () => {
+    const full = openingPriceOfWin(input(league()));
+    // The same players and the same rates, in a prior season that played 37% of its schedule (a 60-game season)
+    const specs = league().map((s) => ({ ...s, war: { ...s.war, prior: (s.war.prior ?? 0) * 0.37 } }));
+    const short = openingPriceOfWin(input(specs, { seasonShares: shares(0.37) }));
+    for (const id of ['A', 'B', 'C', 'C2']) {
+      expect(basis(short, id).perWin.value, id).toBeCloseTo(basis(full, id).perWin.value!, -3);
+    }
+    // The two-season mean scales each season by its own share
+    expect(basis(short, 'B2').perWin.value).toBeCloseTo(basis(full, 'B2').perWin.value!, -3);
+    expect(short.price.value!.central).toBeCloseTo(full.price.value!.central, -3);
+    // A league that shortened its schedule: a 162-game prior season against a 60-game one now is scaled down, not read as one season
+    const longer = league().map((s) => ({ ...s, war: { ...s.war, prior: (s.war.prior ?? 0) * 2.7 } }));
+    const shortened = openingPriceOfWin(input(longer, { seasonShares: shares(2.7) }));
+    expect(basis(shortened, 'B').perWin.value).toBeCloseTo(basis(full, 'B').perWin.value!, -3);
+    // ...and says so
+    expect(basis(short, 'B').description).toMatch(/37% of this season's schedule/);
+    expect(short.assumptions.join(' ')).toMatch(/schedule/i);
+  });
+
+  it("a season below the minimum share of its schedule is not used, and one whose share is unknown is not assumed full", () => {
+    const tiny = openingPriceOfWin(input(league(), { seasonShares: shares(OPENING_PRICE_MINIMUMS.seasonShare - 0.05) }));
+    for (const id of ['A', 'A2', 'B', 'B2', 'C', 'C2']) {
+      expect(basis(tiny, id).perWin.value, id).toBeNull();
+      expect(basis(tiny, id).perWin.note, id).toMatch(/minimum/i);
+    }
+    const unknownShare = openingPriceOfWin(input(league(), { seasonShares: new Map() }));
+    for (const id of ['A', 'B', 'B2', 'C', 'C2']) {
+      expect(basis(unknownShare, id).perWin.value, id).toBeNull();
+      expect(basis(unknownShare, id).perWin.note, id).toMatch(/share of the schedule/i);
+    }
+    // The pace bases still stand on this season's share, and two readings still make a band
+    expect(basis(unknownShare, 'B3').perWin.value).not.toBeNull();
+  });
+
+  it("this season's pace is not used before the minimum share of the season has been played", () => {
+    const early = openingPriceOfWin(input(league(), { seasonFraction: fromExport(OPENING_PRICE_MINIMUMS.seasonShare - 0.05, 'team_record.g') }));
+    for (const id of ['B3', 'C3']) {
+      expect(basis(early, id).perWin.value, id).toBeNull();
+      expect(basis(early, id).perWin.note, id).toMatch(/minimum/i);
+    }
+    const enough = openingPriceOfWin(input(league(), { seasonFraction: fromExport(OPENING_PRICE_MINIMUMS.seasonShare + 0.05, 'team_record.g') }));
+    expect(basis(enough, 'B3').perWin.value).not.toBeNull();
+    expect(early.assumptions.join(' ')).toMatch(/minimum/i);
+  });
+
+  it('a basis resting on fewer market contracts than the minimum is not computed, and with none left the price is unknown, never a point', () => {
+    const thin = league({}, OPENING_PRICE_MINIMUMS.contracts - 2);
+    const price = openingPriceOfWin(input(thin));
+    for (const b of price.bases.filter((x) => x.role === 'market')) {
+      expect(b.perWin.value, b.id).toBeNull();
+      expect(b.perWin.note, b.id).toMatch(new RegExp(`minimum of ${OPENING_PRICE_MINIMUMS.contracts}`));
+    }
+    expect(price.price.value).toBeNull();
+    expect(price.price.note).toMatch(/minimum/i);
+    // Enough contracts on the whole market, too few signed this season: the C bases drop out, the B bases stand
+    const halfSigned = openingPriceOfWin(input(league({}, OPENING_PRICE_MINIMUMS.contracts + 4)));
+    expect(basis(halfSigned, 'B').perWin.value).not.toBeNull();
+    expect(basis(halfSigned, 'C').perWin.value).toBeNull();
+    expect(halfSigned.price.value).not.toBeNull();
   });
 });
 
@@ -220,7 +295,7 @@ describe('Player Value: Club Finances (phase 2)', () => {
     const real = { team_id: 1, year: 2025, ...MONEY, market: 7 };
     const current = { team_id: 1, ...MONEY, player_payroll: 190e6, market: 5, owner_expectation: 3 };
     const club = clubFinancesOf({
-      teamId: 1, season: 2026,
+      teamId: 1, season: 2026, financials: fromExport(true, 'leagues.rules_financials'),
       current: { present: present(current), row: current },
       last: { present: null, row: null },
       history: { present: present(real), rows: [zero, real] },
@@ -232,7 +307,7 @@ describe('Player Value: Club Finances (phase 2)', () => {
     expect(club.revenueTrend.placeholderSeasons.count).toBe(1);
     // The same rule holds for the current row
     const blankNow = clubFinancesOf({
-      teamId: 1, season: 2026,
+      teamId: 1, season: 2026, financials: fromExport(true, 'leagues.rules_financials'),
       current: { present: present(zero), row: { ...zero, year: undefined } },
       last: { present: null, row: null }, history: { present: null, rows: [] },
     });
@@ -243,7 +318,7 @@ describe('Player Value: Club Finances (phase 2)', () => {
   it('shows a value whose meaning the export does not establish as exported, and never interprets it', () => {
     const current = { team_id: 1, ...MONEY, market: 5, owner_expectation: 3, cash: 0, cash_trades_available: 22e6 };
     const club = clubFinancesOf({
-      teamId: 1, season: 2026,
+      teamId: 1, season: 2026, financials: fromExport(true, 'leagues.rules_financials'),
       current: { present: present(current), row: current },
       last: { present: null, row: null }, history: { present: null, rows: [] },
     });
@@ -259,6 +334,36 @@ describe('Player Value: Club Finances (phase 2)', () => {
     expect(club.payroll.offered.reason).toBe('not_exported_by_ootp');
     expect(club.authority.rule.length).toBeGreaterThan(20);
     expect(club.authority.alternatives.length).toBeGreaterThan(0);
+  });
+
+  it('a league that runs no financials shows no club money in dollars: each figure is unknown with that reason (hardening, D-017)', () => {
+    const current = { team_id: 1, ...MONEY, player_payroll: 90e6, player_payroll_next_season: 60e6, cash_trades_available: 5e6, fan_interest: 50, market: 3 };
+    const real = { team_id: 1, year: 2025, ...MONEY };
+    const club = clubFinancesOf({
+      teamId: 1, season: 2026, financials: fromExport(false, 'leagues.rules_financials'),
+      current: { present: present(current), row: current },
+      last: { present: present(current), row: current },
+      history: { present: present(real), rows: [real] },
+    });
+    for (const [label, figure] of Object.entries({
+      budget: club.budget, payroll: club.payroll.now, next: club.payroll.nextSeason, revenue: club.revenue,
+      expenses: club.expenses, cash: club.cashForTrades,
+    })) {
+      expect(figure.value, label).toBeNull();
+      expect(figure.note, label).toMatch(/runs no financials/);
+    }
+    expect(club.revenueTrend.seasons.every((s) => s.revenue.value === null)).toBe(true);
+    expect(club.lastSeason?.revenue.value ?? null).toBeNull();
+    // What is not money is still read as exported
+    expect(club.fans.interest.value).toBe(50);
+    // Whether it runs financials not established: the figures stay as exported, and say so
+    const unsure = clubFinancesOf({
+      teamId: 1, season: 2026, financials: unknownBecause('not_exported_by_ootp', 'leagues.rules_financials', 'blank'),
+      current: { present: present(current), row: current },
+      last: { present: null, row: null }, history: { present: null, rows: [] },
+    });
+    expect(unsure.budget.value).toBe(240e6);
+    expect(unsure.budget.note).toMatch(/financials is not established/);
   });
 });
 

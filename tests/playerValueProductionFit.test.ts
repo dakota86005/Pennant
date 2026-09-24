@@ -1,10 +1,17 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+
+// Each fit runs the method once per rolling origin (owner, 2026-09-23): several seconds a synthetic league
+vi.setConfig({ testTimeout: 60_000 });
 import { db } from '../server/db.js';
 import {
-  fitProductionModel, fitRatingsModel, productionCalibration, productionModelFor, projectProduction, refitProductionIfNeeded, refitRatingsIfNeeded,
-  type FitHistory, type FitPlayer, type FitRun, type ProductionInput, type RatingsFitInput, type RatingsFitRecord,
+  clearProductionCaches, fitProductionModel, fitRatingsModel, productionCalibration, productionModelFor, projectProduction, refitOffThread,
+  refitProductionIfNeeded, refitRatingsIfNeeded,
+  type CoverageRow, type FitHistory, type FitPlayer, type FitRecord, type FitRun, type ProductionInput, type RatingsFitInput, type RatingsFitRecord,
 } from '../server/playerValue.js';
-import { PRODUCTION_PRIOR, RATINGS_METHOD, RATINGS_POLICY, RATINGS_PRIOR } from '../server/playerValueCalibration.js';
+import { holmSignificant, judgeGate, logisticFit, ratioEffect, seasonTotals, type FitOptions, type GateRow } from '../server/playerValueProductionFit.js';
+import { recordProductionFit } from '../server/playerValueFitStore.js';
+import { PRODUCTION_POLICY, PRODUCTION_PRIOR, RATINGS_METHOD, RATINGS_POLICY, RATINGS_PRIOR } from '../server/playerValueCalibration.js';
+import type { ProductionLine } from '../server/playerValueProduction.js';
 import { currentSaveName, historyDb } from '../server/history.js';
 import { IDS } from './fixture';
 
@@ -77,18 +84,18 @@ describe('the save\'s own fit: thin history and the prior (D-053)', () => {
   });
 
   it('thin history shrinks toward the prior by its sample, widens the bands it serves, and says so', () => {
-    const thin = fitProductionModel(syntheticLeague(2021, 2025, 150, 7), { prior: PRODUCTION_PRIOR });
+    const thin = fitProductionModel(syntheticLeague(2022, 2025, 100, 7), { prior: PRODUCTION_PRIOR });
     const rich = fitProductionModel(syntheticLeague(2008, 2025, 300, 7), { prior: PRODUCTION_PRIOR });
     // The weight is set by sample size: more history, less prior
     expect(thin.record.priorWeight.overall).toBeGreaterThan(rich.record.priorWeight.overall);
     expect(thin.record.priorWeight.overall).toBeGreaterThanOrEqual(0.5);
     // ...and it is said, never presented as the save's own calibration
-    expect(thin.record.label).toMatch(/not yet calibrated on this save \(5 seasons\)/);
+    expect(thin.record.label).toMatch(/not yet calibrated on this save \(4 seasons\)/);
     expect(rich.record.label).toMatch(/calibrated on this save's seasons 2008–2025/);
     // The bands it serves are wider than the same fit without the prior's weight
     const served = projectProduction(input(), { model: thin.model, provenance: { source: 'save_fit', label: thin.record.label, stamp: { status: 'calibrated', basis: 'test', run: 'test' }, fitId: thin.record.id, priorWeight: thin.record.priorWeight.overall } });
     const bare = projectProduction(input(), {
-      model: { ...thin.model, kinds: { ...thin.model.kinds, hitter: { ...thin.model.kinds.hitter, priorWeight: 0 } } },
+      model: { ...thin.model, kinds: { ...thin.model.kinds, hitter: { ...thin.model.kinds.hitter, priorWeight: 0, horizons: thin.model.kinds.hitter.horizons.map((h) => ({ ...h, priorWeight: 0 })) } } },
       provenance: served.basis.model,
     });
     expect(thin.model.kinds.hitter.priorWeight).toBeGreaterThan(0);
@@ -107,12 +114,209 @@ describe('the save\'s own fit: thin history and the prior (D-053)', () => {
       expect(row.inner).not.toBeNull();
       expect(row.inner!).toBeLessThanOrEqual(row.outer! + 1e-9);
     }
-    // The verdict agrees with the numbers it names
-    const evaluable = r.coverage.asFitted.filter((x) => x.cases >= r.gate.minimumCases);
-    const off = evaluable.filter((x) => {
-      return Math.abs(x.outer! - 0.8) > r.gate.tolerance || Math.abs(x.inner! - 0.5) > r.gate.tolerance;
-    });
-    expect(r.gate.passed).toBe(evaluable.some((x) => x.horizon === 1) && off.length === 0);
+    // The verdict agrees with the numbers it names: the gate's own rule on the subgroups as fitted
+    const rows = Object.entries(r.coverage.subgroups ?? {}).flatMap(([group, xs]) => xs.map((x) => ({ ...x, group })));
+    expect(rows.some((x) => x.group === 'pooled')).toBe(true);
+    expect(r.gate.passed).toBe(judgeGate(rows).passed);
+  });
+});
+
+/**
+ * A league whose playing time follows a talent that drifts: each player's true rate takes a random walk,
+ * and a club keeps a player only while his true rate is good enough. The players who keep playing are the
+ * ones who stayed good, so the rate of those who play is not the rate projected for everyone.
+ */
+function selectionLeague(first: number, last: number, perSeason: number, seed: number): FitHistory {
+  const rnd = random(seed);
+  const normal = () => Math.sqrt(-2 * Math.log(rnd() + 1e-12)) * Math.cos(2 * Math.PI * rnd());
+  const players: FitPlayer[] = [];
+  let id = 1;
+  for (let debut = first - 4; debut <= last; debut += 1) {
+    for (let n = 0; n < perSeason / 4; n += 1) {
+      const pitcher = rnd() < 0.4;
+      let talent = (pitcher ? 1.0 : 2.0) + 1.3 * normal();
+      const age = 22 + Math.floor(rnd() * 5);
+      const p: FitPlayer = { playerId: id, birth: { year: debut - age, month: 3, day: 1 }, proneness: null, batting: [], pitching: [], position: pitcher ? 1 : 6, role: pitcher ? 12 : 0 };
+      id += 1;
+      for (let s = debut; s <= last; s += 1) {
+        // Talent drifts, and ages
+        talent += 0.9 * normal() - 0.25 * Math.max(0, s - debut + age - 29);
+        // A club plays him only while he is good enough, more the better he is
+        if (talent < (pitcher ? 0.2 : 0.8) + 0.3 * normal()) break;
+        const opp = Math.max(20, Math.round((pitcher ? 200 : 450) + (pitcher ? 25 : 60) * talent + (pitcher ? 40 : 80) * normal()));
+        const war = (talent * opp) / 600 + Math.sqrt(opp / 600) * 1.2 * normal();
+        if (s < first) continue;
+        if (pitcher) p.pitching.push({ season: s, opportunities: opp, war, games: Math.round(opp / 4), starts: 0 });
+        else p.batting.push({ season: s, opportunities: opp, war });
+      }
+      if (p.batting.length + p.pitching.length > 0) players.push(p);
+    }
+  }
+  const seasons = [];
+  for (let s = first; s <= last; s += 1) seasons.push({ season: s, scheduleShare: 1, games: 162 });
+  return { leagueId: 1, throughSeason: last, seasons, players };
+}
+
+describe('the central is the expected wins (hardening, 2026-09-23)', () => {
+  it('on a league whose playing time follows a talent that drifts, the held-out central is unbiased at every horizon', () => {
+    const run = fitProductionModel(selectionLeague(2004, 2025, 400, 5), { prior: PRODUCTION_PRIOR });
+    const rows = run.record.coverage.asFitted.filter((r) => r.cases >= 200);
+    expect(rows.length).toBeGreaterThanOrEqual(5);
+    for (const r of rows) {
+      // Never materially AND significantly off: within 10% of the mean outcome, or within three standard errors (by player)
+      const meanAbsolute = (r as { meanAbsolute?: number | null }).meanAbsolute ?? NaN;
+      const se = (r as { biasSe?: number | null }).biasSe ?? 0;
+      expect(Math.abs(r.bias!), `horizon ${r.horizon}: bias ${r.bias} (se ${se}) against a mean absolute outcome ${meanAbsolute}`)
+        .toBeLessThanOrEqual(Math.max(0.1 * meanAbsolute, 3 * se));
+    }
+  });
+
+  it('a listed pitcher\'s batting never enters the hitter fit: the hitter model is the same with or without pitchers who batted', () => {
+    const league = syntheticLeague(2008, 2025, 300, 13);
+    const tagged: FitHistory = { ...league, players: league.players.map((p) => ({ ...p, position: p.pitching.length > 0 ? 1 : 6, role: p.pitching.length > 0 ? 11 : 0 })) };
+    // National League starters before the universal DH: about 70 plate appearances a season, far below replacement
+    const batting: FitHistory = {
+      ...tagged,
+      players: tagged.players.map((p) => (p.pitching.length > 0 && p.playerId % 2 === 0
+        ? { ...p, batting: p.pitching.map((l) => ({ season: l.season, opportunities: 70, war: (-5 * 70) / 600 })) }
+        : p)),
+    };
+    const clean = fitProductionModel(tagged, { prior: PRODUCTION_PRIOR });
+    const mixed = fitProductionModel(batting, { prior: PRODUCTION_PRIOR });
+    expect(mixed.model.kinds.hitter.mean600).toBeCloseTo(clean.model.kinds.hitter.mean600, 9);
+    expect(mixed.model.kinds.hitter.stabilization).toBe(clean.model.kinds.hitter.stabilization);
+    expect(mixed.record.sample.cases.hitter).toEqual(clean.record.sample.cases.hitter);
+  });
+
+  it('a target season with a blank WAR is left out of the backtest, never scored as zero', () => {
+    const league = syntheticLeague(2008, 2025, 300, 17);
+    const blanked: FitHistory = {
+      ...league,
+      players: league.players.map((p) => (p.playerId % 7 === 0 ? { ...p, batting: p.batting.map((l) => (l.season === 2025 ? { ...l, war: null } : l)) } : p)),
+    };
+    const count = league.players.filter((p) => p.playerId % 7 === 0 && p.batting.some((l) => l.season === 2025)).length;
+    expect(count).toBeGreaterThan(0);
+    const a = fitProductionModel(league, { prior: PRODUCTION_PRIOR });
+    const b = fitProductionModel(blanked, { prior: PRODUCTION_PRIOR });
+    // 2025 is only ever a target season (no window reads it): fewer held-out cases, none scored as a zero
+    expect(b.record.sample.holdoutCases.reduce((x, y) => x + y, 0)).toBeLessThan(a.record.sample.holdoutCases.reduce((x, y) => x + y, 0));
+  });
+
+  it('the record reports coverage for the players who played beside everyone, and the gate\'s subgroups as fitted', () => {
+    const run = fitProductionModel(syntheticLeague(2008, 2025, 300, 11), { prior: PRODUCTION_PRIOR });
+    const coverage = run.record.coverage as FitRecord['coverage'] & { played?: CoverageRow[]; subgroups?: Record<string, CoverageRow[]> };
+    expect(coverage.played?.map((r) => r.horizon)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(Object.keys(coverage.subgroups ?? {})).toEqual(expect.arrayContaining(['kind:hitter', 'usage:high', 'quality:top', 'age:≤25']));
+  });
+});
+
+/** A synthetic league whose WAR environment shifts once: from `shift` on every player's true rate is `factor` of what it was. */
+function eraLeague(first: number, last: number, shift: number, factor: number, seed: number): FitHistory {
+  const league = selectionLeague(first, last, 400, seed);
+  const scale = (l: ProductionLine): ProductionLine => (l.season >= shift && l.war !== null ? { ...l, war: l.war * factor } : l);
+  return { ...league, players: league.players.map((p) => ({ ...p, batting: p.batting.map(scale), pitching: p.pitching.map(scale) })) };
+}
+
+describe('the gate evaluates the method as it is served: rolling origins (owner, 2026-09-23)', () => {
+  it('every season from the window\'s start plus the policy\'s lead is an origin, projected by the method refit through it, and the verdict pools them', () => {
+    const r = fitProductionModel(syntheticLeague(2004, 2025, 300, 21), { prior: PRODUCTION_PRIOR }).record;
+    const scored = (r.window as FitRecord['window'] & { scored?: Array<{ origin: number; through: number; cases: number; horizon1: number }> }).scored;
+    const { firstOriginAfter, maxOrigins } = (PRODUCTION_POLICY as unknown as { rolling: { firstOriginAfter: number; maxOrigins: number } }).rolling;
+    const every = r.window.seasons.filter((y) => y >= r.window.seasons[0] + firstOriginAfter && y <= 2024);
+    expect(scored?.length).toBe(Math.min(every.length, maxOrigins));
+    expect(scored!.map((s) => s.origin)).toEqual(expect.arrayContaining([every[0], every[every.length - 1]]));
+    for (const s of scored!) {
+      expect(s.through, `${s.origin}`).toBe(s.origin);
+      expect(s.cases, `${s.origin}`).toBeGreaterThan(0);
+    }
+    // The pooled horizon-1 cases are exactly the origins' own
+    expect(r.coverage.asFitted[0].cases).toBe(scored!.reduce((t, s) => t + s.horizon1, 0));
+  });
+
+  it('one bad era cannot dominate the verdict: the origin right after a shift in the league\'s WAR environment is a minority of the evidence, and the pooled bias is a fraction of its own', () => {
+    const r = fitProductionModel(eraLeague(2004, 2025, 2016, 0.5, 23), { prior: PRODUCTION_PRIOR }).record;
+    const scored = (r.window as FitRecord['window'] & { scored?: Array<{ origin: number; cases: number }> }).scored ?? [];
+    const total = scored.reduce((t, s) => t + s.cases, 0);
+    expect(scored.length).toBeGreaterThanOrEqual(5);
+    // No origin holds a third of the evidence
+    for (const s of scored) expect(s.cases / total, `${s.origin}`).toBeLessThan(0.34);
+    // The last origin before the shift is projected by a fit that has not seen it: off at horizon 1...
+    const before = [...scored].reverse().find((s) => s.origin < 2016)!.origin;
+    const after = r.coverage.subgroups?.[`origin:${before}`]?.[0];
+    expect(after?.cases ?? 0).toBeGreaterThan(0);
+    // ...and the pooled horizon-1 bias, every origin together, is well under half of it
+    expect(Math.abs(r.coverage.asFitted[0].bias!)).toBeLessThan(0.5 * Math.abs(after!.bias!));
+  });
+});
+
+describe('the gate cannot pass a miscalibrated fit (hardening, 2026-09-23)', () => {
+  const row = (over: Partial<GateRow>): GateRow => ({ group: 'pooled', horizon: 1, cases: 2000, outer: 0.8, inner: 0.5, bias: 0, meanAbsolute: 1, biasSe: 0.01, ...over });
+
+  it('rejects a fit whose pooled coverage is on target but whose regulars\' band covers half the time', () => {
+    const verdict = judgeGate([row({}), row({ group: 'usage:high', cases: 600, outer: 0.5, inner: 0.27 })]);
+    expect(verdict.passed).toBe(false);
+    expect(verdict.reason).toMatch(/usage:high/);
+  });
+
+  it('rejects a central materially and significantly biased in a subgroup, and not one that is only noisy or small', () => {
+    expect(judgeGate([row({}), row({ group: 'kind:starter', cases: 1200, bias: 0.25, meanAbsolute: 1.2, biasSe: 0.03 })]).passed).toBe(false);
+    // Material but not significant: a noisy subgroup
+    expect(judgeGate([row({}), row({ group: 'kind:starter', cases: 300, bias: 0.25, meanAbsolute: 1.2, biasSe: 0.2 })]).passed).toBe(true);
+    // Significant but not material
+    expect(judgeGate([row({}), row({ group: 'kind:starter', cases: 5000, bias: 0.05, meanAbsolute: 1.2, biasSe: 0.005 })]).passed).toBe(true);
+    // Too few cases to judge
+    expect(judgeGate([row({}), row({ group: 'age:34+', cases: 150, outer: 0.5, inner: 0.2 })]).passed).toBe(true);
+  });
+
+  it('holds the pooled coverage tighter than a subgroup, and needs horizon 1', () => {
+    expect(judgeGate([row({ outer: 0.73 })]).passed).toBe(false);
+    expect(judgeGate([row({ outer: 0.77 }), row({ group: 'kind:reliever', outer: 0.72 })]).passed).toBe(true);
+    expect(judgeGate([row({ horizon: 2 })]).passed).toBe(false);
+  });
+
+  it('keeps each horizon\'s prior weight: a save with nine seasons labels the horizons it has no cases for and widens them as the prior', () => {
+    const run = fitProductionModel(syntheticLeague(2016, 2025, 300, 7), { prior: PRODUCTION_PRIOR });
+    const byHorizon = (run.record.priorWeight as FitRecord['priorWeight'] & { byHorizon?: Record<string, number[]> }).byHorizon;
+    expect(byHorizon?.hitter?.[0]).toBeLessThan(0.5);
+    expect(byHorizon?.hitter?.[6]).toBeGreaterThanOrEqual(0.5);
+    expect(run.record.label).toMatch(/horizons? [0-9–]+ .*prior|prior.*horizons? [0-9–]+/);
+    const h7 = run.model.kinds.hitter.horizons[6] as { priorWeight?: number };
+    expect(h7.priorWeight).toBeGreaterThanOrEqual(0.5);
+  });
+
+  it('a prior fitted on the save\'s own held-out seasons is not used, and the record says so', () => {
+    const league = syntheticLeague(2008, 2025, 300, 11);
+    const run = fitProductionModel(league, { prior: PRODUCTION_PRIOR, priorSource: seasonTotals(league) } as FitOptions);
+    expect((run.record as FitRecord & { priorOverlapsHoldout?: boolean }).priorOverlapsHoldout).toBe(true);
+    expect(run.record.priorWeight.overall).toBe(0);
+    const clean = fitProductionModel(league, { prior: PRODUCTION_PRIOR, priorSource: {} } as FitOptions);
+    expect((clean.record as FitRecord & { priorOverlapsHoldout?: boolean }).priorOverlapsHoldout).toBe(false);
+  });
+});
+
+describe('the fit\'s statistics (hardening, 2026-09-23)', () => {
+  it('repeating one player\'s rows never makes an effect significant: the standard error is clustered by player', () => {
+    const rnd = random(3);
+    const rows = Array.from({ length: 20 }, (_, i) => ({ a: 100 + 30 * (rnd() - 0.5), p: 100, cluster: i }));
+    const once = ratioEffect(rows);
+    const repeated = ratioEffect(rows.flatMap((r) => Array.from({ length: 9 }, () => r)));
+    expect(repeated.m).toBeCloseTo(once.m, 12);
+    expect(repeated.se).toBeCloseTo(once.se, 12);
+  });
+
+  it('a family of tests is held to the two-standard-error rule together (Holm): one of eighteen at 2.1 is not significant', () => {
+    const z = [2.1, ...Array.from({ length: 17 }, () => 0.3)];
+    expect(holmSignificant(z, 2)).toEqual(z.map(() => false));
+    expect(holmSignificant([4, 0.3, 0.2], 2)).toEqual([true, false, false]);
+  });
+
+  it('a separable logistic is finite and flagged, never a silent cliff', () => {
+    const x = Array.from({ length: 60 }, (_, i) => [1, 270 + i]);
+    const y = x.map(([, v]) => (v >= 300 ? 1 : 0));
+    const fit = logisticFit(x, y, [1]) as unknown as { coefficients: number[]; separated: boolean; converged: boolean };
+    expect(fit.separated).toBe(true);
+    expect(fit.coefficients.every((c) => Number.isFinite(c))).toBe(true);
+    expect(Math.abs(fit.coefficients[1])).toBeLessThan(1);
   });
 });
 
@@ -165,7 +369,8 @@ describe('the fit store and the refit after an import (fixture league)', () => {
     expect(calls).toEqual([2029, 2030]);
     const inForce = productionModelFor(IDS.league);
     expect(inForce.provenance.source).toBe('save_fit');
-    expect(inForce.provenance.stamp.status).toBe('calibrated');
+    // Stamped by its run record: calibrated where the fit calls itself so, provisional while it is mostly the prior (D-09)
+    expect(inForce.provenance.stamp.status).toBe(inForce.provenance.label.startsWith('not yet calibrated') ? 'provisional' : 'calibrated');
     expect(inForce.provenance.stamp.run).toContain(`${IDS.league}:2030:`);
     const status = productionCalibration(IDS.league);
     expect(status.inForce.fit?.throughSeason).toBe(2030);
@@ -216,6 +421,83 @@ describe('the fit store and the refit after an import (fixture league)', () => {
     } finally {
       historyDb.prepare(`DELETE FROM rating_snapshots WHERE player_id >= 70000 AND player_id < 71000`).run();
     }
+  });
+});
+
+describe('the fit store keeps the fit in force honest (hardening, 2026-09-23)', () => {
+  // The league's history changed above (its earlier seasons were removed): its identity is measured afresh
+  beforeAll(() => clearProductionCaches());
+  const league = (): FitHistory => ({ leagueId: IDS.league, throughSeason: 2030, seasons: [], players: [] });
+  const run = (passed: boolean, throughSeason = 2030): FitRun => {
+    const real = fitProductionModel({ ...league(), throughSeason }, { prior: PRODUCTION_PRIOR });
+    return {
+      ...real,
+      record: { ...real.record, id: `${IDS.league}:${throughSeason}:${real.record.method}`, throughSeason, label: "calibrated on this save's seasons 2010–2030 (21), held out 2021–2030", gate: { ...real.record.gate, passed, reason: passed ? 'test: adopted' : 'test: rejected' } },
+    };
+  };
+
+  it('a refit that fails the gate never replaces the fit in force, even when forced', () => {
+    recordProductionFit(run(true), { gameDate: '2031-04-01', fitMs: 1 });
+    expect(productionModelFor(IDS.league).provenance.stamp.run).toContain(`${IDS.league}:2030:`);
+    const written = recordProductionFit(run(false), { gameDate: '2031-04-02', fitMs: 1, force: true });
+    expect(written).toBe(0);
+    expect(productionModelFor(IDS.league).provenance.source).toBe('save_fit');
+    // A passing forced refit may replace it
+    expect(recordProductionFit(run(true), { gameDate: '2031-04-03', fitMs: 1, force: true })).toBe(1);
+  });
+
+  it('a new save under a reused name and league id never inherits the fit in force', () => {
+    expect(productionModelFor(IDS.league).provenance.source).toBe('save_fit');
+    const name = (db.prepare(`SELECT name FROM leagues WHERE league_id = ?`).get(IDS.league) as { name: string }).name;
+    db.prepare(`UPDATE leagues SET name = ? WHERE league_id = ?`).run('A Different League', IDS.league);
+    try {
+      clearProductionCaches();
+      expect(productionModelFor(IDS.league).provenance.source).toBe('fallback_prior');
+    } finally {
+      db.prepare(`UPDATE leagues SET name = ? WHERE league_id = ?`).run(name, IDS.league);
+      clearProductionCaches();
+    }
+    expect(productionModelFor(IDS.league).provenance.source).toBe('save_fit');
+  });
+
+  it('a fit through a season the league has not completed is never in force', () => {
+    recordProductionFit(run(true, 2036), { gameDate: '2037-04-01', fitMs: 1 });
+    expect(productionModelFor(IDS.league).provenance.fitId).not.toContain(':2036:');
+  });
+
+  it('an adopted fit that is mostly the prior is stamped provisional, never calibrated', () => {
+    const thin = run(true, 2029);
+    thin.record.label = 'not yet calibrated on this save (4 seasons): mostly the fallback prior';
+    thin.record.priorWeight = { ...thin.record.priorWeight, overall: 0.8 };
+    // Only thin: make it the one in force by removing the others for this key range
+    historyDb.prepare(`DELETE FROM value_production_fits WHERE league_id = ? AND method = ? AND through_season >= 2030`).run(IDS.league, thin.record.method);
+    recordProductionFit(thin, { gameDate: '2030-04-01', fitMs: 1 });
+    const inForce = productionModelFor(IDS.league);
+    expect(inForce.provenance.source).toBe('save_fit');
+    expect(inForce.provenance.stamp.status).not.toBe('calibrated');
+  });
+
+  it('a season is complete only with its major-league lines: a season number bumped over last season\'s standings is not fitted through', () => {
+    const season = (db.prepare(`SELECT season_year AS y FROM leagues WHERE league_id = ?`).get(IDS.league) as { y: number }).y;
+    db.prepare(`UPDATE leagues SET season_year = ? WHERE league_id = ?`).run(season + 1, IDS.league);
+    try {
+      const out = refitProductionIfNeeded({ fit: (h) => fitProductionModel(h, { prior: PRODUCTION_PRIOR }), leagues: [IDS.league] });
+      expect(out.every((o) => o.throughSeason !== season + 1)).toBe(true);
+    } finally {
+      db.prepare(`UPDATE leagues SET season_year = ? WHERE league_id = ?`).run(season, IDS.league);
+    }
+  });
+
+  it('the refit runs off the event loop and never records a result read across an import', async () => {
+    let ran = false;
+    const pending = refitOffThread({
+      compute: async () => { ran = true; return { production: [], ratings: [] }; },
+      stale: () => true,
+    });
+    // Nothing ran synchronously: the caller's turn of the event loop is not blocked
+    expect(ran).toBe(false);
+    expect(await pending).toEqual([]);
+    expect(ran).toBe(true);
   });
 });
 

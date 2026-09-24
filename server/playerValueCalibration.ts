@@ -79,6 +79,34 @@ export const OPENING_PRICE_CENTRAL_CALIBRATION: CalibrationStamp = policy(
 );
 
 /**
+ * What the opening price needs before a basis may rest on it (hardening, B-13). Below either minimum
+ * the basis is not computed and says why; with fewer than two bases left the price is unknown, never
+ * a point.
+ *
+ *   seasonShare  the least share of its schedule a season must cover before its WAR prices a
+ *                season's salary: a quarter of the schedule. A season's WAR is scaled to the full
+ *                schedule by the share it covered (a 60-game season under a 162-game schedule counts
+ *                162/60 of its WAR), and a pace's noise grows as the share shrinks; below a quarter
+ *                the scaled reading is more noise than price. It applies to a past season and to
+ *                this season's pace alike.
+ *   contracts    the fewest contracts one basis may rest on. A basis is a sum of salaries over a sum
+ *                of WAR; one player's season WAR scatters by about a win around what he was paid
+ *                for, so a basis on n contracts moves by roughly 0.6 ÷ √n of itself from that noise
+ *                alone: about 13% at 20. Fewer, and one basis differs from another by who happens
+ *                to be in it, not by what it measures.
+ */
+export const OPENING_PRICE_MINIMUMS = {
+  seasonShare: 0.25,
+  contracts: 20,
+} as const;
+
+export const OPENING_PRICE_MINIMUMS_CALIBRATION: CalibrationStamp = policy(
+  'A basis of the opening price rests on at least a quarter of a season\'s schedule (a past season scaled to the full schedule by the share it covered, or this season\'s pace) ' +
+    'and on at least 20 contracts; below either it is not computed, and with fewer than two bases the price is unknown (hardening, B-13). ' +
+    'Chosen so a basis\'s own sampling noise stays well inside the spread between bases; a decision, not a fit.'
+);
+
+/**
  * The opening replacement level: the one the export's own WAR implies, (league wins − league WAR) ÷
  * league games, measured per season (R-4). OOTP's convention, not a measurement of the talent a club
  * can get for the minimum; phase 4 measures that from freely available talent.
@@ -117,56 +145,101 @@ export const PLACEHOLDER_ROW_CALIBRATION: CalibrationStamp = policy(
 // and adopted only through the gate below. No fitted number here is the save's answer.
 
 /** The fitting method's version: a stored fit made by another version is refitted, never reused. */
-export const PRODUCTION_METHOD = 'production-3b.1';
+export const PRODUCTION_METHOD = 'production-3h.2';
 
 /**
  * The method's policy (D-041, D-053): chosen, stated and changed by decision, never by fitting.
  *
  *   coverage       the bands' targets: an 80% outer and a 50% inner central interval.
  *   rateUnit       rates are stated in WAR per 600 opportunities (plate appearances or batters faced).
- *   window         the era rule: the most recent 20 completed seasons of the save's own history, a season
- *                  shorter than 90% of the schedule skipped (the 2020 season on a real-history save); the
- *                  most recent 45% of them held out as targets the fit never sees.
- *   gate           a fit is adopted only if, at every horizon with at least 200 held-out cases, its
- *                  held-out coverage is within 10 points of each target, and horizon 1 is evaluable.
+ *   window         the era rule: the most recent 20 completed seasons of the save's own history; a season
+ *                  whose schedule is under 90% of its neighbours' (the three seasons either side) is short
+ *                  and skipped (the 2020 season on a real-history save). Each fit weights a season by
+ *                  0.5^(its age in seasons / recencyHalfLife), 2 seasons (null: unweighted), with the prior's
+ *                  pseudo-cases scaled by the mean weight. `holdoutShare` is the ratings fit's hold-out.
+ *   rolling        the backtest (owner's option C, 2026-09-23): every completed season from the window's start
+ *                  + 5 to the season before the last is an origin, at most 8 of them (evenly spaced, the first
+ *                  and the last always in); each is scored by the method fitted through it, a horizon only where
+ *                  that fit has the gate's minimum cases from at least 3 origin cohorts. The model served is the
+ *                  method refit through the last completed season: what is measured is what is served.
+ *   gate           a fit is adopted only if, at every horizon, its held-out coverage AS FITTED (never after a
+ *                  widening chosen on the same cases) is within 5 points of each target pooled and within 10
+ *                  points in every subgroup (kind, usage third, quality tier, age band) with at least 200
+ *                  held-out cases, and its central is unbiased there: a subgroup fails when the mean of actual
+ *                  minus central is more than 10% of the mean absolute outcome, more than 0.05 wins a
+ *                  player-season, and more than three standard errors (clustered by player and by origin)
+ *                  from zero: material, and not noise. Horizon 1 must be evaluable. `tolerance` is the
+ *                  ratings fit's own gate, unchanged here.
  *   minimumSample  a season enters an aging pair only with 100 opportunities in each of the two seasons;
  *                  a component is fitted only on 50 cases (30 aging pairs), and is the prior's below that.
  *   agingAges      the aging curve is tabulated from 19 to 44; beyond, the end values hold.
  *   usageTiers     the band's tails are set apart for thirds of expected first-season usage within each
  *                  kind (fringe, part-time, regular), so a band calibrated on average holds for each.
+ *   ageBands       the gate's age subgroups: 25 and under, 26–29, 30–33, 34 and over (first target season).
  *   prior          thin history shrinks toward the fallback prior: weight strength ÷ (cases + strength)
- *                  per component (250 backtest cases per kind and horizon, 100 aging pairs: the sample at which
- *                  the save and the prior weigh equally), and the bands widen by
- *                  half the prior's weight.
- *   twoWayMinimum  a player's second side is projected only with 100 weighted opportunities in the window.
+ *                  per component and per horizon (250 backtest cases per kind and horizon, 100 aging pairs:
+ *                  the sample at which the save and the prior weigh equally), and each horizon's bands widen
+ *                  by half the prior's weight at that horizon.
+ *   twoWayMinimum  a player's second side is projected only with 100 weighted opportunities in the window,
+ *                  and only when his listed position gives him a role on it: a listed pitcher's batting is
+ *                  never a hitter's line (the export's own position).
  *   starterShare   a pitcher who started at least half his games in the window is read as a starter.
  *   usagePivotAge  the age at which the usage regression bends.
  *   qualityTiers   the band's tails are also set apart by projected rate within each kind: the bottom
- *                  tenth, the middle and the top tenth (phase 3b: playing time depends on quality, so a
- *                  replacement-level player's and a star's outcomes are spread differently).
- *   proneness      proneness is banded into three equal-count bands of the save's own values; an effect
- *                  is used only when it is at least two standard errors from none; aging effects are
- *                  read apart for players younger than 30 and 30 or older.
+ *                  tenth, the middle and the top tenth.
+ *   tailGrid       the probabilities at which a cell's outcome distribution is stored (as multiples of the
+ *                  spread): a band is a quantile of the mixture of no playing time and this distribution.
+ *   proneness      proneness is banded into three equal-count bands of the save's own values; an effect is
+ *                  used only when it is at least two standard errors from none, the standard errors clustered
+ *                  by player and the whole family of tests held to that rule by Holm's correction; a
+ *                  playing-time effect applies only at the horizons it was measured at (1 to 3); aging
+ *                  effects are read apart for players younger than 30 and 30 or older.
+ *   injury         a season in the window is read as possibly lost to injury, never as evidence of less
+ *                  playing time, when the export states an injury this season and that season's playing time
+ *                  is under a quarter of his best in the window. A days-out figure held by 10 or more injured
+ *                  players at exactly the same value over a year, some of them day-to-day or active, is not
+ *                  read as days.
+ *   inSeason       the rest of this season is measured on this season's own games: each half of the games
+ *                  played needs 10 games per club.
+ *   logistic       the attrition logistic is fitted with a ridge of 1 (standardized units) and at most 50
+ *                  iterations; a fit that does not converge or separates is flagged in the run record.
+ *   priorAdaptation until the save has a fit, the prior is fitted to the league's own WAR scale: its mean
+ *                  where the league's last three seasons hold 2,000 opportunities of the kind, its spreads by
+ *                  the ratio of the league's spread of player-season rates (seasons of 200 or more) to the
+ *                  prior's own source's.
  */
 export const PRODUCTION_POLICY = {
   coverage: { outer: 0.8, inner: 0.5 },
   rateUnitOpportunities: 600,
-  window: { maxSeasons: 20, minShareOfSchedule: 0.9, holdoutShare: 0.45 },
-  gate: { tolerance: 0.1, minimumCases: 200 },
+  window: { maxSeasons: 20, minShareOfSchedule: 0.9, holdoutShare: 0.45, neighbourSeasons: 3, recencyHalfLife: 2 as number | null },
+  rolling: { firstOriginAfter: 5, maxOrigins: 8, minimumOrigins: 3 },
+  gate: {
+    tolerance: 0.1, minimumCases: 200,
+    coverage: { pooled: 0.05, subgroup: 0.1 },
+    bias: { relative: 0.1, absolute: 0.05, standardErrors: 3 },
+  },
   minimumSample: { agingOpportunities: 100, agingPairs: 30, fitCases: 50 },
   agingAges: { first: 19, last: 44 },
   usageTiers: 3,
+  ageBands: [25, 29, 33],
   prior: { strength: 250, agingStrength: 100, widening: 0.5 },
   twoWayMinimum: 100,
   starterShare: 0.5,
   usagePivotAge: 30,
   qualityTiers: { edges: [0.1, 0.9] },
-  proneness: { bands: 3, evidence: 2, ageSplit: 30 },
+  tailGrid: [0.01, 0.03, 0.06, 0.1, 0.17, 0.25, 0.37, 0.5, 0.63, 0.75, 0.83, 0.9, 0.94, 0.97, 0.99],
+  proneness: { bands: 3, evidence: 2, ageSplit: 30, usageHorizons: 3 },
+  injury: { lostSeasonShare: 0.25, sentinelHolders: 10, sentinelMinimumDays: 366 },
+  inSeason: { minimumGames: 10 },
+  logistic: { ridge: 1, maxIterations: 50 },
+  priorAdaptation: { minimumOpportunities: 200, minimumLeagueOpportunities: 2000 },
 } as const;
 
 export const PRODUCTION_POLICY_CALIBRATION: CalibrationStamp = policy(
-  'The coverage targets (80% and 50%), the era and hold-out rule, the adoption gate and its tolerance, the minimum samples, the prior\'s strength and widening, ' +
-    'the two-way minimum, the starter share, the usage pivot age and the proneness banding and evidence rule are decisions about the method (D-053), not fits.'
+  'The coverage targets (80% and 50%), the era rule, the rolling origins and the recency half-life (the owner\'s option C, 2026-09-23), the adoption gate (coverage within 5 points pooled and 10 in every subgroup, ' +
+    'bias within 10% of the mean outcome or three standard errors), the minimum samples, the prior\'s strength and widening, the two-way minimum ' +
+    'and the listed-position rule, the starter share, the usage pivot age, the quality tiers and age bands, the tail grid, the proneness banding and ' +
+    'evidence rule (clustered, Holm), the injury rules, the in-season minimum and the logistic\'s ridge are decisions about the method (D-053), not fits.'
 );
 
 // ── phase 3b: expected production from scouted ratings (PLAYER_VALUE.md Part 2.3, D-053) ────────────
@@ -176,7 +249,7 @@ export const PRODUCTION_POLICY_CALIBRATION: CalibrationStamp = policy(
 // stored in the same fit store under its own method, and adopted only through the same gate.
 
 /** The ratings model's method version: stored beside the results fit, refitted when it changes. */
-export const RATINGS_METHOD = 'ratings-3b.1';
+export const RATINGS_METHOD = 'ratings-3h.3';
 
 /** Why a player has no production at all: neither major-league results nor ability evidence to project from. */
 export const PRODUCTION_NO_EVIDENCE = 'no major-league results in the projection window and no usable ability evidence';
@@ -193,8 +266,48 @@ export const PRODUCTION_NO_EVIDENCE = 'no major-league results in the projection
  *                  own lines: an age band is widened until it holds 60 player-seasons; the positive
  *                  playing time is summarised at 10 equal-probability nodes; a horizon with fewer than
  *                  10 arrivals in its band takes the level's own positive nodes at that horizon. The
- *                  levels are those some club of the save plays at, below the majors.
- *   longitudinal   the development path and the arrival rate conditioned on potential are fitted only
+ *                  levels are those the league's own affiliates play at, below the majors; where the export
+ *                  names parents, the lines of another market league's farm or of an independent league are
+ *                  left out (a league the export no longer lists, a defunct affiliate, is kept: not known to be
+ *                  another's), and reaching any top-level league is arriving (hardening F4, D-07).
+ *                  A player called up in his origin season stays in the later seasons' cases, kept apart
+ *                  (hardening F4, C-01): the export dates no past call-up, so a player not yet called up at
+ *                  share f of his season is read as one of those called up later in theirs in proportion to
+ *                  the season still to play (1 − f, a call-up taken as equally likely at any point of the
+ *                  season's games), and the band reaches none and all of them still to come.
+ *                  A prospect's chance and his playing time when he plays move with his projected quality by
+ *                  the results fit's own effect of quality at the same usage (the chance's logistic and the
+ *                  playing time's coefficient; hardening F4, C-02), located so that the players of his
+ *                  level and age now (`populationNodes` of them sampled per cell and season) together keep
+ *                  the cell's measured chance and playing time.
+ *   backtest       the arrival model is judged the way the results fit is (the owner's option C, applied to
+ *                  arrivals 2026-09-23, hardening F5): every completed season Y from the window's start + 5 to
+ *                  the season before the last whose next season is in the window is an origin, at most 8 of
+ *                  them (evenly spaced, the first and the last always in: the results fit's own rule, shared);
+ *                  each is scored by the method fitted through Y, projecting season Y + 1's minor leaguers,
+ *                  a horizon only where that fit has the gate's minimum cases on the side from at least 3
+ *                  origin cohorts. Each fit weights a case by 0.5^(the seasons from its target season to the
+ *                  fit's last / recencyHalfLife), 2 seasons (null: unweighted), in its chance, playing time,
+ *                  nodes and call-up share; an age band is still sized on the cases themselves, and the
+ *                  arrival fit has no prior's pseudo-cases to rescale. The model served is the method refit
+ *                  through the last completed season.
+ *   gate           the arrival chance and its expected playing time, per horizon with the production gate's
+ *                  minimum cases, fail on a miss beyond the absolute tolerance (10 points), and, since
+ *                  hardening F4 (B-15), on a bias beyond 10% of what happened AND beyond three standard
+ *                  errors (the production gate's rule): material, and not noise. A tightening only: every fit
+ *                  the absolute rule failed still fails. Since hardening F5 the standard errors are clustered
+ *                  by player and by origin (two-way, as the results gate's), the same player-season scored
+ *                  under several origins; the tolerances are unchanged.
+ *   adoption       the arrival model is adopted horizon by horizon (the owner's option (b), 2026-09-23, hardening
+ *                  F6): the horizons served are a contiguous run from horizon 0 (the rest of this season) through
+ *                  the last horizon k whose held-out check, and the check of every horizon before it, passed the
+ *                  gate above. A horizon after one that failed or could not be checked (fewer than the gate's
+ *                  minimum cases) is never served, even where its own check passes. Nothing is adopted unless
+ *                  horizon `requiredThrough` (1, the next season) is in the run, and the ratings mapping's own gate
+ *                  must still pass. Every tolerance is unchanged. A prospect's seasons after k are not established,
+ *                  each on its own with the gate's finding at that horizon: never extrapolated, carried forward
+ *                  or averaged. `rule` names the rule.
+ *   longitudinal  the development path and the arrival rate conditioned on potential are fitted only
  *                  from the save's own rating snapshots: a pair is two snapshots of a player 300 to 430
  *                  days apart (about a season) whose first has a scouted gap of at least 2 points; the
  *                  save's own path replaces the prior once 300 such pairs exist, an age band is widened
@@ -207,19 +320,31 @@ export const PRODUCTION_NO_EVIDENCE = 'no major-league results in the projection
  *                  the ends hold.
  *   unknownGrade   a glove or running grade the evidence lacks can be anywhere on the 20-80 scale the
  *                  adapter normalizes to: the band runs from its low end to its high end (interval
- *                  arithmetic), never a midpoint.
+ *                  arithmetic), never a midpoint. In the blend with results (hardening F4, A-15) the band
+ *                  reaches the projection re-read with the grade at five stations across that range (its
+ *                  ends, quarters and middle).
  */
 export const RATINGS_POLICY = {
   mapping: { minimumOpportunities: 200, folds: 5, positionMinimum: 15, priorStrength: 150 },
-  arrival: { bandCases: 60, nodes: 10, minimumArrivals: 10 },
+  arrival: { bandCases: 60, nodes: 10, minimumArrivals: 10, populationNodes: 20 },
+  backtest: { origins: PRODUCTION_POLICY.rolling, recencyHalfLife: 2 as number | null },
+  gate: { arrivalBias: { relative: 0.1, standardErrors: 3 } },
+  adoption: { rule: 'contiguous_prefix' as const, requiredThrough: 1 },
   longitudinal: { minimumPairs: 300, pairDays: { from: 300, to: 430 }, minimumGap: 2, bandPairs: 30, minimumLinked: 300, evidence: 2, potentialTiers: 3 },
   development: { priorRangeHigh: 2, ages: { first: 16, last: 40 } },
-  unknownGrade: { low: 20, high: 80 },
+  unknownGrade: { low: 20, high: 80, stations: [0, 0.25, 0.5, 0.75, 1] },
 } as const;
 
 export const RATINGS_POLICY_CALIBRATION: CalibrationStamp = policy(
   'The same-time mapping\'s sample rule, folds, position minimum and prior strength; the arrival age-band size, nodes and arrival minimum; ' +
-    'the longitudinal pair rule and the minimum pairs before the save\'s own development path replaces the prior; the prior\'s development range. ' +
+    'the arrival population (the league\'s own affiliates; any top-level league is arriving), the origin season\'s call-ups kept in the later ' +
+    'seasons\' cases and read in proportion to the season still to play, and the quality effect located on 20 of the cell\'s players now ' +
+    '(hardening F4, 2026-09-23); the arrival backtest\'s rolling origins (the results fit\'s rule) and its recency half-life of two seasons ' +
+    '(the owner\'s option C applied to arrivals, 2026-09-23, hardening F5); the arrival gate\'s bias rule (10% of what happened and three ' +
+    'standard errors clustered by player and by origin, beside the absolute 10 points; a tightening, D-053); the arrival model\'s ' +
+    'adoption horizon by horizon, a contiguous run of passing horizons from the rest of this season that must reach the next season ' +
+    '(the owner\'s option (b), 2026-09-23, hardening F6; the gate not loosened); the longitudinal pair rule and the minimum pairs before the save\'s own development path replaces ' +
+    'the prior; the prior\'s development range; an unknown grade\'s scale ends and, in the blend, its five stations across them (hardening F4). ' +
     'Decisions about the ratings method (D-053), not fits.'
 );
 
@@ -238,452 +363,1157 @@ export const PRODUCTION_PRIOR_CALIBRATION: CalibrationStamp = provisional(
     "effect: proneness is measured on each save's own history or not used."
 );
 
+/**
+ * The fallback prior's source seasons, as totals (plate appearances and WAR across every batting line): a
+ * fingerprint, so a save whose held-out seasons ARE these seasons (every historical-start save imports them)
+ * fits without the prior rather than validating the prior on its own training data (B-09).
+ */
+export const PRODUCTION_PRIOR_SOURCE: Record<number, { opportunities: number; war: number }> = {
+  2006: {
+    opportunities: 186650,
+    war: 658.7
+  },
+  2007: {
+    opportunities: 187143,
+    war: 664.9
+  },
+  2008: {
+    opportunities: 186245,
+    war: 680.8
+  },
+  2009: {
+    opportunities: 185673,
+    war: 679.9
+  },
+  2010: {
+    opportunities: 184216,
+    war: 685.2
+  },
+  2011: {
+    opportunities: 183933,
+    war: 717
+  },
+  2012: {
+    opportunities: 182929,
+    war: 706.7
+  },
+  2013: {
+    opportunities: 183621,
+    war: 733.4
+  },
+  2014: {
+    opportunities: 182623,
+    war: 741.8
+  },
+  2015: {
+    opportunities: 182350,
+    war: 707
+  },
+  2016: {
+    opportunities: 183288,
+    war: 702.3
+  },
+  2017: {
+    opportunities: 184069,
+    war: 662.7
+  },
+  2018: {
+    opportunities: 183854,
+    war: 708.4
+  },
+  2019: {
+    opportunities: 185288,
+    war: 653.4
+  },
+  2021: {
+    opportunities: 180222,
+    war: 730.6
+  },
+  2022: {
+    opportunities: 181708,
+    war: 696
+  },
+  2023: {
+    opportunities: 183613,
+    war: 633.2
+  },
+  2024: {
+    opportunities: 182449,
+    war: 687.8
+  },
+  2025: {
+    opportunities: 182926,
+    war: 671.5
+  }
+};
+
+export const PRODUCTION_PRIOR_SOURCE_CALIBRATION: CalibrationStamp = provisional(
+  'The season totals (plate appearances and WAR across every major-league batting line) of the real history 2006–2025 the fallback prior ' +
+    'was fitted on, read from the Arizona historical save (export of 2026-05-16, league 203) with `npm run calibrate production -- --prior`. ' +
+    'A fingerprint only: a save whose held-out seasons match it within half a percent fits without the prior (B-09). Never a parameter of any projection.'
+);
+
 export const PRODUCTION_PRIOR: ProductionModel = {
-  method: PRODUCTION_METHOD,
+  method: "production-3h.2",
   kinds: {
     hitter: {
-      weights: [1, 0.9, 0.8],
-      stabilization: 200,
-      mean600: 1.984,
-      noise600: 1.393,
-      rateScale600: 2.672,
+      weights: [1, 0.5, 0.5],
+      stabilization: 400,
+      mean600: 2.169,
+      noise600: 1.294,
+      rateScale600: 2.426,
       horizons: [
         {
-          chance: { intercept: -1.207, recent: [0.01047, 0.0006004, 0], quality: 0, older: -0.1937, younger: 0.2518 },
-          conditional: { intercept: 4.832, recent: [0.4956, 0.09136, 0.08525], quality: 35.4, older: -4.04, younger: 13.73 },
-          usageSpread: { base: 51.3, slope: 0.1935 },
-          usageTails: { low: 1.462, high: 1.573 },
+          chance: {
+            intercept: -2.012,
+            recent: [1.925, 0.1788, 0],
+            quality: 0.1966,
+            older: -0.2735,
+            younger: 0.3029
+          },
+          conditional: {
+            intercept: -0.2233,
+            recent: [0.4882, 0.1062, 0.09926],
+            quality: 0.2972,
+            older: -0.01922,
+            younger: 0.09955
+          },
+          playSpread: {
+            base: 0.6611,
+            slope: 0.03586
+          },
+          usageZ: [-2.823, -2.206, -1.804, -1.493, -1.155, -0.8502, -0.4337, -0.01388, 0.4173, 0.8389, 1.187, 1.658, 2.067, 2.51, 3.191],
+          survivor: {
+            intercept: -0.7595,
+            slope: 0.9048,
+            older: -0.0962,
+            younger: 0.09947,
+            usage: 0.2535
+          },
           tails: [
-            { low80: 1.722, high80: 0.2243, low50: 0.8132, high50: 0.03135 },
-            { low80: 0.9546, high80: 0.6602, low50: 0.4769, high50: 0.186 },
-            { low80: 1.088, high80: 1.437, low50: 0.6367, high50: 0.6971 },
-            { low80: 0.2071, high80: 0, low50: 0.1167, high50: 0 },
-            { low80: 0.7391, high80: 1.232, low50: 0.4496, high50: 0.04545 },
-            { low80: 1.01, high80: 1.471, low50: 0.6164, high50: 0.6573 },
-            { low80: 0.3366, high80: 0.01802, low50: 0.1312, high50: 0 },
-            { low80: 1.137, high80: 2.571, low50: 0.8292, high50: 1.219 },
-            { low80: 1.368, high80: 1.358, low50: 0.7694, high50: 0.755 }
+            [-1.078, -1.015, -0.7722, -0.6862, -0.5002, -0.3322, -0.2006, -0.05581, 0.2127, 0.5481, 0.7662, 1.415, 1.661, 2.068, 3.631],
+            [-1.205, -0.9735, -0.8116, -0.6858, -0.5263, -0.4308, -0.3121, -0.1793, -0.02163, 0.2807, 0.7201, 1.465, 1.873, 2.443, 3.141],
+            [-1.262, -1.022, -0.8963, -0.7973, -0.664, -0.5693, -0.3225, -0.1523, 0.144, 0.6629, 0.9863, 1.36, 1.795, 2.024, 2.69],
+            [-1.117, -0.9244, -0.7623, -0.639, -0.4846, -0.3955, -0.3005, -0.1955, -0.05074, 0.156, 0.394, 0.9519, 1.572, 2.228, 3.111],
+            [-1.271, -1.083, -0.9757, -0.8377, -0.7111, -0.6024, -0.4634, -0.3116, -0.05933, 0.3535, 0.7805, 1.384, 1.887, 2.43, 3.461],
+            [-1.631, -1.451, -1.28, -1.129, -0.9175, -0.6953, -0.4021, -0.07125, 0.2743, 0.6503, 1.026, 1.449, 1.832, 2.292, 3.143],
+            [-1.115, -0.9263, -0.7679, -0.6494, -0.4906, -0.3914, -0.2809, -0.1734, -0.01592, 0.2337, 0.5355, 1.111, 1.622, 2.242, 3.203],
+            [-1.276, -1.081, -0.9523, -0.8274, -0.6948, -0.5752, -0.4382, -0.2789, -0.04897, 0.352, 0.7835, 1.42, 1.899, 2.463, 3.416],
+            [-2.205, -1.859, -1.52, -1.298, -1.004, -0.6792, -0.3595, -0.006262, 0.4094, 0.7811, 1.106, 1.435, 1.798, 2.241, 2.707],
+            [-1.528, -1.037, -0.848, -0.7477, -0.5375, -0.4363, -0.2862, -0.112, 0.2281, 0.7396, 1.16, 1.557, 1.874, 2.311, 3.071],
+            [-1.509, -1.273, -1.122, -0.9794, -0.8098, -0.6946, -0.5292, -0.3056, 0.02706, 0.4791, 0.8846, 1.476, 1.921, 2.496, 3.102],
+            [-2.206, -1.735, -1.475, -1.262, -1.02, -0.7598, -0.3716, -0.005073, 0.4361, 0.8248, 1.138, 1.392, 1.806, 2.461, 3.05]
           ],
-          drift600: 1.144,
-          cases: 12070
+          drift600: 1.121,
+          cases: 11350,
+          origins: 13,
+          priorWeight: 0,
+          driftYoung600: 1.268
         },
         {
-          chance: { intercept: -1.525, recent: [0.006723, 0.0006974, 0], quality: 0.09621, older: -0.2507, younger: 0.2695 },
-          conditional: { intercept: 20.95, recent: [0.3754, 0.101, 0.1063], quality: 38.62, older: -5.081, younger: 18.09 },
-          usageSpread: { base: 53.47, slope: 0.2658 },
-          usageTails: { low: 1.439, high: 1.601 },
+          chance: {
+            intercept: -2.366,
+            recent: [1.266, 0.08028, 0.1011],
+            quality: 0.3146,
+            older: -0.3174,
+            younger: 0.321
+          },
+          conditional: {
+            intercept: -0.002986,
+            recent: [0.3554, 0.1476, 0.08491],
+            quality: 0.3154,
+            older: -0.02343,
+            younger: 0.1091
+          },
+          playSpread: {
+            base: 0.7865,
+            slope: 0.02546
+          },
+          usageZ: [-2.68, -2.161, -1.833, -1.526, -1.176, -0.8411, -0.4201, 0.01527, 0.4616, 0.9088, 1.252, 1.627, 1.972, 2.411, 2.95],
+          survivor: {
+            intercept: -0.4408,
+            slope: 0.8025,
+            older: -0.1051,
+            younger: 0.1271,
+            usage: 0.2062
+          },
           tails: [
-            { low80: 1.278, high80: 0.2418, low50: 0.3319, high50: 0.07089 },
-            { low80: 0.7733, high80: 0.6733, low50: 0.3341, high50: 0.2263 },
-            { low80: 0.8808, high80: 1.572, low50: 0.5263, high50: 0.7741 },
-            { low80: 0.1336, high80: 0.008699, low50: 0.06021, high50: 0 },
-            { low80: 0.5808, high80: 1.36, low50: 0.3403, high50: 0.05514 },
-            { low80: 0.7926, high80: 1.561, low50: 0.4976, high50: 0.7452 },
-            { low80: 0.169, high80: 0.04198, low50: 0.0648, high50: 0.001612 },
-            { low80: 1.105, high80: 3.358, low50: 0.6977, high50: 0.9815 },
-            { low80: 1.107, high80: 1.561, low50: 0.5964, high50: 0.808 }
+            [-0.9501, -0.8549, -0.7183, -0.6141, -0.4867, -0.3507, -0.2046, -0.1165, 0.07639, 0.3375, 0.5232, 1.001, 1.406, 2.022, 3.108],
+            [-1.313, -1.018, -0.8596, -0.7624, -0.6385, -0.52, -0.3813, -0.2438, -0.02206, 0.3769, 0.6627, 1.001, 1.375, 2.357, 2.732],
+            [-1.162, -1.078, -0.9857, -0.9394, -0.8236, -0.6817, -0.5401, -0.3112, -0.03391, 0.4374, 0.9639, 1.452, 2.242, 2.771, 3.212],
+            [-1.132, -0.8271, -0.6647, -0.5774, -0.5077, -0.4007, -0.2776, -0.1799, -0.06108, 0.1474, 0.487, 1.072, 1.577, 2.135, 2.899],
+            [-1.238, -1.064, -0.9354, -0.8269, -0.7112, -0.6118, -0.4677, -0.3088, -0.02412, 0.4057, 0.8756, 1.416, 1.912, 2.681, 3.625],
+            [-1.571, -1.383, -1.182, -1.061, -0.9014, -0.7236, -0.4548, -0.131, 0.2249, 0.6741, 0.9988, 1.453, 1.809, 2.212, 2.966],
+            [-1.14, -0.8468, -0.6851, -0.5857, -0.5022, -0.3959, -0.2696, -0.1529, -0.03461, 0.243, 0.5227, 1.076, 1.573, 2.14, 3.129],
+            [-1.242, -1.069, -0.9359, -0.821, -0.7034, -0.6046, -0.4593, -0.2921, -0.02196, 0.408, 0.8166, 1.348, 1.863, 2.63, 3.544],
+            [-2.018, -1.689, -1.426, -1.218, -0.8888, -0.613, -0.3064, 0.04564, 0.3977, 0.7865, 1.096, 1.414, 1.807, 2.292, 2.662],
+            [-1.442, -1.012, -0.9684, -0.8239, -0.7167, -0.5568, -0.4293, -0.0863, 0.3612, 0.7454, 0.9809, 1.401, 2.304, 2.843, 4.242],
+            [-1.413, -1.259, -1.124, -1.013, -0.8393, -0.7305, -0.5416, -0.2761, 0.0952, 0.5962, 1.008, 1.516, 1.885, 2.375, 3.155],
+            [-1.831, -1.627, -1.387, -1.141, -0.9035, -0.6642, -0.2963, 0.01465, 0.4476, 0.7745, 1.038, 1.38, 1.821, 2.089, 2.638]
           ],
-          drift600: 1.869,
-          cases: 11140
+          drift600: 1.795,
+          cases: 10430,
+          origins: 12,
+          priorWeight: 0,
+          driftYoung600: 2.088
         },
         {
-          chance: { intercept: -1.823, recent: [0.005105, 0.0005354, 0], quality: 0.2986, older: -0.31, younger: 0.2457 },
-          conditional: { intercept: 34.37, recent: [0.3131, 0.1025, 0.09892], quality: 41.75, older: -3.376, younger: 20.66 },
-          usageSpread: { base: 50.95, slope: 0.3293 },
-          usageTails: { low: 1.403, high: 1.599 },
+          chance: {
+            intercept: -2.382,
+            recent: [0.8066, 0.2004, 0],
+            quality: 0.6468,
+            older: -0.3322,
+            younger: 0.2287
+          },
+          conditional: {
+            intercept: 0.4535,
+            recent: [0.3033, 0.06174, 0.07081],
+            quality: 0.3377,
+            older: -0.008285,
+            younger: 0.07718
+          },
+          playSpread: {
+            base: 0.8956,
+            slope: 0.002103
+          },
+          usageZ: [-2.523, -2.114, -1.831, -1.584, -1.205, -0.8863, -0.4526, 0.03727, 0.4976, 0.9426, 1.255, 1.616, 1.869, 2.161, 2.625],
+          survivor: {
+            intercept: -0.4951,
+            slope: 0.8566,
+            older: -0.091,
+            younger: 0.1611,
+            usage: 0.1106
+          },
           tails: [
-            { low80: 0.8791, high80: 0.2059, low50: 0, high50: 0.1024 },
-            { low80: 0.5272, high80: 0.612, low50: 0.03072, high50: 0.3209 },
-            { low80: 0.7465, high80: 1.653, low50: 0.4171, high50: 0.7693 },
-            { low80: 0.0675, high80: 0.02656, low50: 0.0175, high50: 0.008081 },
-            { low80: 0.4757, high80: 1.26, low50: 0.2536, high50: 0.06834 },
-            { low80: 0.6459, high80: 1.675, low50: 0.3725, high50: 0.7573 },
-            { low80: 0.09032, high80: 0.07018, low50: 0.01674, high50: 0.01707 },
-            { low80: 0.8712, high80: 1.084, low50: 0.6724, high50: 0.009894 },
-            { low80: 0.9615, high80: 1.608, low50: 0.6044, high50: 0.809 }
+            [-0.7619, -0.6434, -0.5649, -0.4639, -0.378, -0.3003, -0.2479, -0.1795, -0.08397, 0.08258, 0.3859, 0.9502, 1.503, 2.239, 2.601],
+            [-1.021, -0.9577, -0.7549, -0.6871, -0.5903, -0.4691, -0.3377, -0.199, -0.006255, 0.2007, 0.6705, 1.082, 1.605, 2.223, 2.768],
+            [-1.174, -1.058, -0.8644, -0.8228, -0.737, -0.6103, -0.4339, -0.2496, 0.03153, 0.4991, 1.011, 1.476, 1.729, 2.11, 2.613],
+            [-1.096, -0.8543, -0.6862, -0.5706, -0.4896, -0.395, -0.2893, -0.2078, -0.07512, 0.2381, 0.6586, 1.426, 1.854, 2.565, 3.3],
+            [-1.19, -1.088, -0.9993, -0.9121, -0.7806, -0.6586, -0.5118, -0.306, -0.03965, 0.368, 0.7754, 1.336, 1.753, 2.323, 3.248],
+            [-1.458, -1.295, -1.189, -1.042, -0.8821, -0.7131, -0.4471, -0.108, 0.2468, 0.6723, 1.061, 1.478, 1.891, 2.342, 2.991],
+            [-1.026, -0.8102, -0.6624, -0.5631, -0.461, -0.3777, -0.277, -0.2056, -0.07628, 0.1895, 0.5734, 1.332, 1.852, 2.543, 3.205],
+            [-1.187, -1.079, -0.9864, -0.9022, -0.7521, -0.6399, -0.4819, -0.2882, -0.03576, 0.36, 0.7218, 1.303, 1.747, 2.32, 3.224],
+            [-1.823, -1.588, -1.416, -1.235, -0.9732, -0.7208, -0.3778, -0.0409, 0.2836, 0.6942, 1.05, 1.41, 1.692, 2.174, 2.59],
+            [-1.069, -1.03, -0.8962, -0.8234, -0.7019, -0.602, -0.4147, -0.16, 0.2491, 0.6158, 0.9747, 1.316, 2.016, 2.641, 3.052],
+            [-1.418, -1.242, -1.124, -1.037, -0.9052, -0.7594, -0.5552, -0.2681, 0.212, 0.6353, 1.044, 1.502, 1.969, 2.382, 3.223],
+            [-1.894, -1.725, -1.434, -1.211, -1.026, -0.8093, -0.3403, -0.04527, 0.3538, 0.7997, 1.207, 1.415, 1.635, 2.224, 2.307]
           ],
-          drift600: 2.457,
-          cases: 10190
+          drift600: 2.111,
+          cases: 9476,
+          origins: 11,
+          priorWeight: 0,
+          driftYoung600: 2.707
         },
         {
-          chance: { intercept: -2.171, recent: [0.004332, 0.0003252, 0], quality: 0.481, older: -0.3536, younger: 0.244 },
-          conditional: { intercept: 43.7, recent: [0.2919, 0.1103, 0.07271], quality: 42.1, older: -1.485, younger: 21.68 },
-          usageSpread: { base: 45.35, slope: 0.3882 },
-          usageTails: { low: 1.332, high: 1.56 },
+          chance: {
+            intercept: -2.469,
+            recent: [0.7728, 0.07084, 0],
+            quality: 0.8711,
+            older: -0.3831,
+            younger: 0.1716
+          },
+          conditional: {
+            intercept: 0.6475,
+            recent: [0.222, 0.1011, 0.04264],
+            quality: 0.3841,
+            older: -0.005618,
+            younger: 0.06405
+          },
+          playSpread: {
+            base: 0.9247,
+            slope: 8.389e-05
+          },
+          usageZ: [-2.445, -2.111, -1.855, -1.528, -1.216, -0.8809, -0.4085, 0.05599, 0.5059, 0.9765, 1.283, 1.616, 1.882, 2.152, 2.551],
+          survivor: {
+            intercept: -0.6545,
+            slope: 0.8119,
+            older: -0.08491,
+            younger: 0.197,
+            usage: 0.08023
+          },
           tails: [
-            { low80: 0.3164, high80: 0.2237, low50: 0, high50: 0.1307 },
-            { low80: 0.5406, high80: 0.5938, low50: 0, high50: 0.352 },
-            { low80: 0.6489, high80: 1.741, low50: 0.3265, high50: 0.7444 },
-            { low80: 0.01787, high80: 0.04274, low50: 0, high50: 0.0201 },
-            { low80: 0.3909, high80: 1.163, low50: 0.1689, high50: 0.08805 },
-            { low80: 0.5478, high80: 1.767, low50: 0.2689, high50: 0.7192 },
-            { low80: 0.02247, high80: 0.08747, low50: 0, high50: 0.03258 },
-            { low80: 0.8437, high80: 0.7929, low50: 0.4758, high50: 0 },
-            { low80: 0.8692, high80: 1.717, low50: 0.5362, high50: 0.7778 }
+            [-1.035, -0.7509, -0.6368, -0.5337, -0.441, -0.3494, -0.254, -0.1833, -0.06807, 0.2927, 0.5942, 1.069, 1.46, 2.246, 2.82],
+            [-0.938, -0.8628, -0.8013, -0.7173, -0.4911, -0.3916, -0.288, -0.1712, -0.007174, 0.2061, 0.4779, 0.9552, 1.299, 1.852, 2.696],
+            [-1.564, -1.052, -0.872, -0.7741, -0.6489, -0.5623, -0.389, -0.192, 0.1349, 1.154, 1.392, 2.045, 2.413, 3.436, 4.048],
+            [-0.846, -0.7546, -0.644, -0.566, -0.4615, -0.3892, -0.2705, -0.1868, 0.1015, 0.324, 0.8549, 1.166, 1.519, 2.598, 2.841],
+            [-1.347, -1.19, -1.018, -0.9054, -0.7868, -0.6606, -0.5048, -0.3113, 0.001475, 0.4435, 0.8701, 1.437, 1.784, 2.577, 3.325],
+            [-1.444, -1.291, -1.138, -1.003, -0.8673, -0.6719, -0.3976, -0.05402, 0.3422, 0.7639, 1.13, 1.63, 2.053, 2.582, 3.287],
+            [-1.035, -0.7509, -0.6368, -0.5337, -0.441, -0.3494, -0.254, -0.1833, -0.06807, 0.2927, 0.5942, 1.069, 1.46, 2.246, 2.82],
+            [-1.344, -1.186, -1.003, -0.8954, -0.7658, -0.6346, -0.4641, -0.2724, -0.001194, 0.3948, 0.81, 1.339, 1.775, 2.51, 3.227],
+            [-1.804, -1.534, -1.378, -1.185, -0.9638, -0.7466, -0.4221, -0.06754, 0.2968, 0.6797, 1.081, 1.601, 1.896, 2.301, 2.816],
+            [-1.226, -0.9561, -0.868, -0.7854, -0.6333, -0.4564, -0.2489, -0.08935, 0.289, 0.8966, 1.194, 2.208, 2.748, 3.505, 3.857],
+            [-1.487, -1.333, -1.223, -1.087, -0.9385, -0.8101, -0.5867, -0.2778, 0.1983, 0.7196, 1.123, 1.639, 2.087, 2.535, 3.174],
+            [-1.806, -1.675, -1.403, -1.21, -0.9558, -0.7493, -0.4965, -0.1299, 0.2175, 0.5979, 1.03, 1.616, 1.852, 2.156, 2.323]
           ],
-          drift600: 2.379,
-          cases: 10180
+          drift600: 1.968,
+          cases: 9471,
+          origins: 11,
+          priorWeight: 0,
+          driftYoung600: 1.865
         },
         {
-          chance: { intercept: -2.542, recent: [0.003593, 0.0005333, 0], quality: 0.5982, older: -0.4018, younger: 0.2641 },
-          conditional: { intercept: 57.54, recent: [0.293, 0.07269, 0.07283], quality: 36.33, older: 1.904, younger: 23.72 },
-          usageSpread: { base: 40.12, slope: 0.4531 },
-          usageTails: { low: 1.248, high: 1.473 },
+          chance: {
+            intercept: -2.667,
+            recent: [0.5932, 0.1337, 0],
+            quality: 0.9806,
+            older: -0.4439,
+            younger: 0.1896
+          },
+          conditional: {
+            intercept: 0.7423,
+            recent: [0.2254, 0.06367, 0.06485],
+            quality: 0.2642,
+            older: 0.000144,
+            younger: 0.1027
+          },
+          playSpread: {
+            base: 0.9612,
+            slope: 0
+          },
+          usageZ: [-2.434, -2.063, -1.795, -1.558, -1.208, -0.9216, -0.4396, 0.05237, 0.5425, 0.9468, 1.274, 1.608, 1.813, 2.071, 2.456],
+          survivor: {
+            intercept: -0.8301,
+            slope: 0.8321,
+            older: -0.1055,
+            younger: 0.2243,
+            usage: 0.04186
+          },
           tails: [
-            { low80: 0, high80: 0.2458, low50: 0, high50: 0.1596 },
-            { low80: 0.2222, high80: 0.6093, low50: 0, high50: 0.3865 },
-            { low80: 0.5195, high80: 1.66, low50: 0.2177, high50: 0.6159 },
-            { low80: 0, high80: 0.06649, low50: 0, high50: 0.03792 },
-            { low80: 0.2798, high80: 0.9235, low50: 0.08557, high50: 0.1135 },
-            { low80: 0.4186, high80: 1.647, low50: 0.1572, high50: 0.5007 },
-            { low80: 0, high80: 0.1103, low50: 0, high50: 0.0517 },
-            { low80: 0.5269, high80: 2.238, low50: 0.3651, high50: 0 },
-            { low80: 0.7352, high80: 1.665, low50: 0.4045, high50: 0.7813 }
+            [-0.8421, -0.7598, -0.6984, -0.6087, -0.4519, -0.3365, -0.23, -0.1525, -0.008141, 0.403, 0.727, 1.155, 1.734, 2.014, 2.396],
+            [-0.9468, -0.7427, -0.5215, -0.4235, -0.3601, -0.3001, -0.2141, -0.1413, 0.0641, 0.4266, 0.7647, 1.248, 1.586, 1.976, 2.35],
+            [-1.17, -1.072, -0.8117, -0.7503, -0.5512, -0.3868, -0.2735, -0.12, 0.2838, 0.6341, 1.118, 1.701, 2.278, 2.629, 2.999],
+            [-0.8632, -0.7976, -0.7062, -0.5981, -0.4259, -0.3356, -0.234, -0.1231, 0.1265, 0.4894, 0.9376, 1.203, 1.838, 2.067, 2.664],
+            [-1.3, -1.107, -0.9751, -0.8449, -0.7326, -0.6316, -0.47, -0.2545, 0.01258, 0.4097, 0.8858, 1.303, 1.774, 2.448, 3.396],
+            [-1.372, -1.188, -1.055, -0.9376, -0.7946, -0.6431, -0.412, -0.06847, 0.2684, 0.6824, 1.017, 1.493, 1.837, 2.272, 2.884],
+            [-0.8421, -0.7598, -0.6984, -0.6087, -0.4519, -0.3365, -0.23, -0.1525, -0.008141, 0.403, 0.727, 1.155, 1.734, 2.014, 2.396],
+            [-1.28, -1.089, -0.9508, -0.833, -0.7156, -0.5966, -0.4169, -0.2162, 0.02804, 0.4175, 0.8775, 1.301, 1.77, 2.308, 2.921],
+            [-1.725, -1.478, -1.298, -1.15, -0.9136, -0.7108, -0.3691, 0.007664, 0.2883, 0.6821, 0.9785, 1.425, 1.827, 2.43, 3.107],
+            [-1.09, -1.014, -0.8744, -0.7649, -0.5469, -0.4173, -0.2628, -0.1578, 0.41, 1.021, 1.497, 2.176, 2.352, 2.658, 2.878],
+            [-1.378, -1.259, -1.12, -1.011, -0.8649, -0.7425, -0.5325, -0.2219, 0.177, 0.6191, 1.044, 1.469, 1.72, 2.178, 2.792],
+            [-1.783, -1.653, -1.384, -1.253, -1.003, -0.7347, -0.3773, 0.0694, 0.3803, 0.7443, 0.9795, 1.295, 1.821, 1.951, 2.515]
           ],
-          drift600: 2.875,
-          cases: 10180
+          drift600: 2.82,
+          cases: 9470,
+          origins: 11,
+          priorWeight: 0,
+          driftYoung600: 2.894
         },
         {
-          chance: { intercept: -3.055, recent: [0.003317, 0.0006015, 0.0001113], quality: 0.6236, older: -0.439, younger: 0.3163 },
-          conditional: { intercept: 73.07, recent: [0.2464, 0.09885, 0.03935], quality: 39.79, older: 1.661, younger: 23.41 },
-          usageSpread: { base: 34.58, slope: 0.5088 },
-          usageTails: { low: 1.176, high: 1.234 },
+          chance: {
+            intercept: -3.11,
+            recent: [0.5806, 0.1097, 0],
+            quality: 0.8843,
+            older: -0.4799,
+            younger: 0.2694
+          },
+          conditional: {
+            intercept: 0.7693,
+            recent: [0.1698, 0.1173, 0.04884],
+            quality: 0.3266,
+            older: -0.02686,
+            younger: 0.1025
+          },
+          playSpread: {
+            base: 0.9752,
+            slope: 0
+          },
+          usageZ: [-2.358, -2.01, -1.804, -1.558, -1.226, -0.8764, -0.4058, 0.0816, 0.5285, 0.9695, 1.303, 1.622, 1.873, 2.147, 2.501],
+          survivor: {
+            intercept: -0.9304,
+            slope: 0.8245,
+            older: -0.1915,
+            younger: 0.241,
+            usage: 0.02208
+          },
           tails: [
-            { low80: 0, high80: 0.2646, low50: 0, high50: 0.181 },
-            { low80: 0.04934, high80: 0.6049, low50: 0, high50: 0.4184 },
-            { low80: 0.4207, high80: 1.62, low50: 0.1134, high50: 0.4301 },
-            { low80: 0, high80: 0.08628, low50: 0, high50: 0.05282 },
-            { low80: 0.2006, high80: 0.6486, low50: 0.01427, high50: 0.1399 },
-            { low80: 0.3039, high80: 1.569, low50: 0.03419, high50: 0.3222 },
-            { low80: 0, high80: 0.1281, low50: 0, high50: 0.06729 },
-            { low80: 0.4378, high80: 0.8452, low50: 0.1594, high50: 0.004217 },
-            { low80: 0.6235, high80: 1.816, low50: 0.2938, high50: 0.7252 }
+            [-2.326, -1.881, -1.555, -1.282, -0.9542, -0.6745, -0.3319, 0, 0.3319, 0.6745, 0.9542, 1.282, 1.555, 1.881, 2.326],
+            [-1.119, -1.014, -0.7208, -0.6586, -0.5803, -0.4579, -0.3365, -0.1977, 0.0641, 0.2766, 0.4723, 0.7193, 1.162, 1.777, 2.219],
+            [-1.061, -1, -0.9335, -0.8289, -0.6852, -0.449, -0.2812, -0.1096, 0.1117, 0.5693, 0.9907, 1.286, 1.577, 1.832, 2.276],
+            [-2.326, -1.881, -1.555, -1.282, -0.9542, -0.6745, -0.3319, 0, 0.3319, 0.6745, 0.9542, 1.282, 1.555, 1.881, 2.326],
+            [-1.371, -1.143, -1.019, -0.8902, -0.7401, -0.6309, -0.4718, -0.2664, 0.004897, 0.4279, 0.8336, 1.525, 2.052, 2.534, 3.542],
+            [-1.469, -1.248, -1.089, -0.9684, -0.8128, -0.6414, -0.4166, -0.07213, 0.2991, 0.6677, 1.008, 1.523, 1.945, 2.562, 3.144],
+            [-2.326, -1.881, -1.555, -1.282, -0.9542, -0.6745, -0.3319, 0, 0.3319, 0.6745, 0.9542, 1.282, 1.555, 1.881, 2.326],
+            [-1.328, -1.134, -1.017, -0.8711, -0.7194, -0.6057, -0.4489, -0.2557, 0.02026, 0.3893, 0.7581, 1.405, 1.984, 2.516, 3.354],
+            [-1.785, -1.595, -1.33, -1.181, -0.9517, -0.7342, -0.428, -0.09438, 0.2855, 0.6573, 0.9658, 1.395, 1.7, 2.271, 3.202],
+            [-1.088, -1.01, -0.9564, -0.8241, -0.7089, -0.5919, -0.4108, -0.2015, 0.07116, 0.5521, 0.7646, 1.414, 1.828, 2.18, 2.553],
+            [-1.583, -1.319, -1.165, -1.06, -0.8737, -0.7193, -0.4774, -0.1469, 0.3157, 0.7214, 1.138, 1.546, 1.891, 2.401, 3.113],
+            [-1.932, -1.759, -1.625, -1.238, -0.9896, -0.6761, -0.2999, -0.1347, 0.2619, 0.5513, 0.9199, 1.098, 1.48, 2.038, 2.972]
           ],
-          drift600: 2.658,
-          cases: 10180
+          drift600: 2.549,
+          cases: 9475,
+          origins: 11,
+          priorWeight: 0,
+          driftYoung600: 2.246
         },
         {
-          chance: { intercept: -3.587, recent: [0.003012, 0.0009171, 0], quality: 0.637, older: -0.4788, younger: 0.3737 },
-          conditional: { intercept: 78.69, recent: [0.2651, 0.04043, 0.05877], quality: 32.31, older: 1.096, younger: 25.5 },
-          usageSpread: { base: 27.99, slope: 0.5928 },
-          usageTails: { low: 1.107, high: 0.9057 },
+          chance: {
+            intercept: -3.695,
+            recent: [0.5508, 0.1263, 0],
+            quality: 0.7911,
+            older: -0.4874,
+            younger: 0.3571
+          },
+          conditional: {
+            intercept: 0.7922,
+            recent: [0.2042, 0.05145, 0.05883],
+            quality: 0.3129,
+            older: -0.04206,
+            younger: 0.1193
+          },
+          playSpread: {
+            base: 0.9768,
+            slope: 0
+          },
+          usageZ: [-2.42, -2.073, -1.818, -1.552, -1.228, -0.9025, -0.3898, 0.08171, 0.5446, 0.9535, 1.283, 1.599, 1.84, 2.128, 2.403],
+          survivor: {
+            intercept: -0.9993,
+            slope: 0.7593,
+            older: -0.1678,
+            younger: 0.2639,
+            usage: 0.04199
+          },
           tails: [
-            { low80: 0, high80: 0.2606, low50: 0, high50: 0.1692 },
-            { low80: 0, high80: 0.5919, low50: 0, high50: 0.4438 },
-            { low80: 0.2911, high80: 1.474, low50: 0.02318, high50: 0.3478 },
-            { low80: 0, high80: 0.1027, low50: 0, high50: 0.06531 },
-            { low80: 0.1073, high80: 0.3051, low50: 0, high50: 0.1644 },
-            { low80: 0.1814, high80: 1.381, low50: 0, high50: 0.3004 },
-            { low80: 0, high80: 0.1321, low50: 0, high50: 0.0773 },
-            { low80: 0.2748, high80: 0.02215, low50: 0.08855, high50: 0.01343 },
-            { low80: 0.4721, high80: 1.737, low50: 0.1586, high50: 0.6322 }
+            [-2.326, -1.881, -1.555, -1.282, -0.9542, -0.6745, -0.3319, 0, 0.3319, 0.6745, 0.9542, 1.282, 1.555, 1.881, 2.326],
+            [-1.316, -1.139, -0.9344, -0.8132, -0.5853, -0.431, -0.3243, -0.1493, 0.1178, 0.6124, 0.9457, 1.506, 1.694, 1.806, 2.333],
+            [-1.684, -1.37, -1.211, -1.074, -0.8789, -0.7217, -0.4349, -0.1085, 0.2644, 0.6096, 0.9315, 1.39, 1.84, 2.359, 3.292],
+            [-2.326, -1.881, -1.555, -1.282, -0.9542, -0.6745, -0.3319, 0, 0.3319, 0.6745, 0.9542, 1.282, 1.555, 1.881, 2.326],
+            [-1.265, -1.13, -0.9541, -0.8751, -0.7538, -0.6427, -0.5039, -0.2251, 0.05866, 0.4224, 0.8687, 1.394, 1.802, 2.733, 3.557],
+            [-1.46, -1.253, -1.093, -0.9838, -0.8585, -0.7125, -0.4228, -0.1332, 0.2553, 0.5866, 0.8776, 1.382, 1.76, 2.324, 3.054],
+            [-2.326, -1.881, -1.555, -1.282, -0.9542, -0.6745, -0.3319, 0, 0.3319, 0.6745, 0.9542, 1.282, 1.555, 1.881, 2.326],
+            [-1.297, -1.138, -0.9847, -0.8767, -0.7461, -0.6312, -0.4762, -0.2171, 0.05977, 0.4339, 0.8693, 1.414, 1.791, 2.668, 3.493],
+            [-1.891, -1.613, -1.334, -1.197, -0.9817, -0.7337, -0.4565, -0.05663, 0.301, 0.6428, 1.053, 1.454, 1.943, 2.381, 3.413],
+            [-1.434, -1.25, -1.127, -1.033, -0.9101, -0.7748, -0.5691, -0.2632, 0.2973, 0.6351, 1.001, 1.573, 1.762, 2.089, 2.592],
+            [-1.472, -1.251, -1.12, -1.042, -0.8968, -0.754, -0.5122, -0.1225, 0.2961, 0.6768, 1.025, 1.479, 1.817, 2.451, 2.935],
+            [-1.973, -1.872, -1.643, -1.46, -1.161, -0.8547, -0.3454, -0.03147, 0.3485, 0.5962, 0.8064, 1.056, 1.258, 1.516, 2.555]
           ],
-          drift600: 3.086,
-          cases: 9261
+          drift600: 2.562,
+          cases: 8615,
+          origins: 10,
+          priorWeight: 0,
+          driftYoung600: 2.206
         }
       ],
-      usageCuts: [41.07, 226.8],
-      priorWeight: 1,
-      qualityCuts: [0.3314, 3.329]
+      usageCuts: [0.235, 1.519],
+      ceiling: 4.765,
+      observedSpread600: 1.812,
+      priorWeight: 0,
+      qualityCuts: [1.308, 3.146]
     },
     starter: {
-      weights: [1, 0.5, 0.3],
+      weights: [1, 0.4, 0.2],
       stabilization: 300,
-      mean600: 1.294,
-      noise600: 0.9058,
-      rateScale600: 1.732,
+      mean600: 1.279,
+      noise600: 0.8544,
+      rateScale600: 1.697,
       horizons: [
         {
-          chance: { intercept: -1.679, recent: [0.004933, 0.0003346, 0.0006053], quality: 0.5342, older: -0.1698, younger: 0.2157 },
-          conditional: { intercept: 109.9, recent: [0.4369, 0.02195, 0.06404], quality: 74.81, older: 3.627, younger: 5.154 },
-          usageSpread: { base: 111.1, slope: 0.1809 },
-          usageTails: { low: 1.467, high: 1.615 },
+          chance: {
+            intercept: -1.283,
+            recent: [0.7495, 0.09189, 0.03336],
+            quality: 0.5371,
+            older: -0.1113,
+            younger: 0.1708
+          },
+          conditional: {
+            intercept: 0.7643,
+            recent: [0.3753, 0.04418, 0.09336],
+            quality: 0.3752,
+            older: -0.02795,
+            younger: 0.02233
+          },
+          playSpread: {
+            base: 1.12,
+            slope: 0.02272
+          },
+          usageZ: [-2.487, -2.02, -1.713, -1.418, -1.093, -0.8098, -0.3628, 0.1669, 0.6469, 1.02, 1.312, 1.594, 1.898, 2.221, 2.571],
+          survivor: {
+            intercept: -0.5261,
+            slope: 0.9808,
+            older: -0.02907,
+            younger: 0.08384,
+            usage: 0.1094
+          },
           tails: [
-            { low80: 0.35, high80: 0.2854, low50: 0.03715, high50: 0.06514 },
-            { low80: 0.5214, high80: 1.332, low50: 0.1939, high50: 0.3996 },
-            { low80: 1.097, high80: 1.3, low50: 0.6724, high50: 0.6903 },
-            { low80: 0.4202, high80: 0.04705, low50: 0.2263, high50: 0 },
-            { low80: 0.8826, high80: 1.346, low50: 0.5587, high50: 0.3918 },
-            { low80: 1.013, high80: 1.242, low50: 0.6449, high50: 0.6373 },
-            { low80: 0.3998, high80: 0.1549, low50: 0.2167, high50: 0 },
-            { low80: 0.8801, high80: 1.347, low50: 0.5375, high50: 0.4169 },
-            { low80: 1.379, high80: 1.362, low50: 0.8961, high50: 0.7702 }
+            [-1.199, -1.081, -0.7986, -0.6207, -0.356, -0.2089, -0.1029, -0.02169, 0.08067, 0.3217, 0.4865, 1.152, 1.219, 1.461, 2.641],
+            [-1.067, -0.7605, -0.7181, -0.5612, -0.4193, -0.2933, -0.1458, 0.001141, 0.2551, 0.4712, 0.8019, 1.301, 1.582, 1.827, 2.387],
+            [-1.968, -1.713, -1.421, -1.225, -0.9725, -0.764, -0.4297, -0.09195, 0.2974, 0.6595, 0.9042, 1.318, 1.706, 2.055, 2.757],
+            [-1.206, -1.06, -0.8498, -0.7305, -0.6178, -0.5138, -0.3756, -0.2661, -0.1323, 0.06845, 0.3909, 0.9511, 1.504, 1.996, 2.646],
+            [-1.56, -1.296, -1.09, -0.9195, -0.7571, -0.6316, -0.4176, -0.2565, 0.003245, 0.4498, 0.7765, 1.245, 1.56, 2.022, 2.848],
+            [-1.828, -1.51, -1.341, -1.127, -0.9366, -0.7545, -0.4278, -0.1015, 0.2765, 0.6254, 0.8762, 1.264, 1.573, 1.958, 2.531],
+            [-1.21, -1.08, -0.843, -0.7239, -0.5893, -0.4787, -0.3375, -0.2062, -0.06895, 0.1301, 0.4535, 1.043, 1.487, 1.927, 2.669],
+            [-1.591, -1.279, -1.088, -0.8915, -0.7292, -0.5927, -0.3904, -0.1993, 0.04259, 0.4618, 0.8091, 1.255, 1.587, 2.052, 2.797],
+            [-2.404, -1.882, -1.769, -1.425, -1.139, -0.8611, -0.4579, -0.06319, 0.4167, 0.7511, 1.052, 1.439, 1.896, 2.277, 2.78],
+            [-1.23, -0.8802, -0.7373, -0.5806, -0.3813, -0.2904, -0.1534, -0.02972, 0.1531, 0.4309, 0.8277, 1.152, 1.456, 1.755, 2.48],
+            [-1.385, -1.17, -1.074, -0.9366, -0.7976, -0.6464, -0.4174, -0.2203, 0.04026, 0.4909, 0.8203, 1.201, 1.54, 1.796, 2.57],
+            [-2.276, -2.043, -1.639, -1.118, -0.9564, -0.6232, -0.1508, 0.08023, 0.5973, 0.9315, 1.236, 1.618, 2.07, 2.346, 2.911]
           ],
-          drift600: 0.7305,
-          cases: 4112
+          drift600: 0.5933,
+          cases: 4112,
+          origins: 13,
+          priorWeight: 0,
+          driftYoung600: 1.118
         },
         {
-          chance: { intercept: -1.9, recent: [0.003066, 0.0006997, 0.0006005], quality: 0.7731, older: -0.2031, younger: 0.1938 },
-          conditional: { intercept: 160.5, recent: [0.286, 0.01445, 0.1019], quality: 74.97, older: 9.467, younger: 7.166 },
-          usageSpread: { base: 110.8, slope: 0.2784 },
-          usageTails: { low: 1.387, high: 1.707 },
+          chance: {
+            intercept: -1.653,
+            recent: [0.5064, 0.04085, 0.1307],
+            quality: 0.9008,
+            older: -0.1792,
+            younger: 0.1613
+          },
+          conditional: {
+            intercept: 0.9903,
+            recent: [0.2766, 0.02484, 0.1026],
+            quality: 0.3801,
+            older: -0.002157,
+            younger: 0.02942
+          },
+          playSpread: {
+            base: 1.29,
+            slope: 0.01176
+          },
+          usageZ: [-2.27, -1.915, -1.666, -1.408, -1.097, -0.8452, -0.3793, 0.1248, 0.6817, 1.049, 1.342, 1.619, 1.852, 2.151, 2.451],
+          survivor: {
+            intercept: -0.2313,
+            slope: 0.7937,
+            older: -0.05263,
+            younger: 0.1079,
+            usage: 0.09223
+          },
           tails: [
-            { low80: 0.1231, high80: 0.2766, low50: 0, high50: 0.1165 },
-            { low80: 0.4009, high80: 1.029, low50: 0.09751, high50: 0.3964 },
-            { low80: 0.9666, high80: 1.345, low50: 0.5558, high50: 0.6474 },
-            { low80: 0.2928, high80: 0.05114, low50: 0.1628, high50: 0.0006114 },
-            { low80: 0.745, high80: 1.565, low50: 0.4332, high50: 0.399 },
-            { low80: 0.8337, high80: 1.318, low50: 0.5073, high50: 0.6118 },
-            { low80: 0.2814, high80: 0.1727, low50: 0.1447, high50: 0.01205 },
-            { low80: 0.7363, high80: 1.528, low50: 0.4078, high50: 0.4173 },
-            { low80: 1.312, high80: 1.391, low50: 0.8538, high50: 0.7197 }
+            [-1.219, -1.061, -0.9337, -0.7836, -0.6253, -0.5274, -0.3986, -0.2821, -0.04777, 0.2269, 0.6259, 1.107, 1.745, 2.308, 2.873],
+            [-1.142, -0.9702, -0.8721, -0.5914, -0.4668, -0.352, -0.2188, -0.06244, 0.1749, 0.4731, 0.6853, 1.147, 1.493, 1.756, 2.451],
+            [-1.867, -1.608, -1.38, -1.186, -1.016, -0.8052, -0.5361, -0.1623, 0.2018, 0.6003, 0.8783, 1.322, 1.653, 2.116, 2.569],
+            [-1.205, -1.074, -0.9313, -0.8132, -0.6301, -0.5388, -0.4133, -0.2921, -0.09229, 0.2148, 0.6341, 1.151, 1.744, 2.247, 2.757],
+            [-1.517, -1.27, -1.115, -0.9505, -0.8082, -0.6683, -0.4766, -0.2689, 0.06188, 0.4917, 0.9179, 1.447, 2.036, 2.383, 3.229],
+            [-1.749, -1.468, -1.286, -1.171, -0.9922, -0.8101, -0.554, -0.2357, 0.06432, 0.5148, 0.8273, 1.197, 1.526, 1.973, 2.571],
+            [-1.219, -1.061, -0.9337, -0.7836, -0.6253, -0.5274, -0.3986, -0.2821, -0.04777, 0.2269, 0.6259, 1.107, 1.745, 2.308, 2.873],
+            [-1.477, -1.255, -1.078, -0.9142, -0.7635, -0.6284, -0.4154, -0.2219, 0.07923, 0.495, 0.8828, 1.415, 1.934, 2.367, 3.224],
+            [-2.051, -1.796, -1.615, -1.361, -1.073, -0.778, -0.4657, 0.03996, 0.4849, 0.7792, 1.081, 1.624, 2.026, 2.34, 2.558],
+            [-1.064, -0.9695, -0.9146, -0.7561, -0.6224, -0.4867, -0.3123, -0.1487, 0.06152, 0.4573, 0.8198, 1.158, 1.593, 2.066, 2.674],
+            [-1.488, -1.293, -1.208, -1.066, -0.8472, -0.7177, -0.5065, -0.2671, 0.1208, 0.528, 0.8968, 1.415, 1.889, 2.257, 2.95],
+            [-1.761, -1.463, -1.343, -1.223, -0.9249, -0.5873, -0.263, 0.2122, 0.5744, 0.8829, 1.353, 1.669, 2.189, 2.348, 2.526]
           ],
-          drift600: 1.285,
-          cases: 3772
+          drift600: 1.001,
+          cases: 3772,
+          origins: 12,
+          priorWeight: 0,
+          driftYoung600: 0.9139
         },
         {
-          chance: { intercept: -1.997, recent: [0.002575, 0.0006194, 0.0005325], quality: 0.739, older: -0.2337, younger: 0.1965 },
-          conditional: { intercept: 210.2, recent: [0.1765, 0.04421, 0.08564], quality: 75.04, older: 14.81, younger: 6.163 },
-          usageSpread: { base: 107.2, slope: 0.3396 },
-          usageTails: { low: 1.316, high: 1.813 },
+          chance: {
+            intercept: -1.89,
+            recent: [0.3711, 0.1257, 0.09031],
+            quality: 0.8637,
+            older: -0.2571,
+            younger: 0.164
+          },
+          conditional: {
+            intercept: 1.07,
+            recent: [0.171, 0.06191, 0.1156],
+            quality: 0.3073,
+            older: 0.1174,
+            younger: 0.07248
+          },
+          playSpread: {
+            base: 1.334,
+            slope: 0.0204
+          },
+          usageZ: [-2.149, -1.876, -1.593, -1.409, -1.166, -0.8591, -0.4492, 0.07687, 0.6607, 1.087, 1.308, 1.599, 1.793, 2.01, 2.409],
+          survivor: {
+            intercept: 0.1701,
+            slope: 0.7561,
+            older: -0.01337,
+            younger: 0.07324,
+            usage: -0.02545
+          },
           tails: [
-            { low80: 0.04081, high80: 0.3157, low50: 0, high50: 0.1721 },
-            { low80: 0.2473, high80: 1.08, low50: 0.06149, high50: 0.33 },
-            { low80: 0.8264, high80: 1.339, low50: 0.4595, high50: 0.6002 },
-            { low80: 0.2042, high80: 0.09722, low50: 0.09041, high50: 0.02676 },
-            { low80: 0.5878, high80: 1.481, low50: 0.3097, high50: 0.3837 },
-            { low80: 0.682, high80: 1.337, low50: 0.3973, high50: 0.5687 },
-            { low80: 0.1964, high80: 0.1918, low50: 0.0768, high50: 0.04525 },
-            { low80: 0.587, high80: 1.447, low50: 0.2942, high50: 0.3644 },
-            { low80: 1.136, high80: 1.363, low50: 0.7638, high50: 0.6599 }
+            [-1.259, -1.001, -0.8728, -0.7602, -0.5986, -0.5204, -0.4113, -0.2504, -0.02207, 0.3356, 0.9853, 1.531, 1.976, 2.386, 2.951],
+            [-1.163, -1.014, -0.9357, -0.7267, -0.4842, -0.3646, -0.3166, -0.1439, 0.0788, 0.4815, 0.668, 1.001, 1.664, 2.474, 3.638],
+            [-1.587, -1.36, -1.217, -1.056, -0.8532, -0.6992, -0.4602, -0.1791, 0.2392, 0.5629, 0.8677, 1.377, 1.679, 2.178, 2.786],
+            [-1.276, -1.092, -0.8877, -0.7624, -0.6488, -0.5437, -0.4616, -0.3214, -0.02714, 0.3434, 0.9727, 1.371, 1.948, 2.391, 2.979],
+            [-1.375, -1.164, -0.9705, -0.8781, -0.7276, -0.5768, -0.4224, -0.2293, 0.1029, 0.4676, 0.7918, 1.215, 1.677, 2.318, 3.013],
+            [-1.511, -1.231, -1.111, -0.9517, -0.8104, -0.6664, -0.4782, -0.2447, 0.1147, 0.4854, 0.7648, 1.163, 1.523, 1.978, 2.663],
+            [-1.259, -1.001, -0.8728, -0.7602, -0.5986, -0.5204, -0.4113, -0.2504, -0.02207, 0.3356, 0.9853, 1.531, 1.976, 2.386, 2.951],
+            [-1.439, -1.127, -0.9815, -0.8878, -0.7256, -0.576, -0.4023, -0.2237, 0.09706, 0.4684, 0.7869, 1.208, 1.713, 2.397, 3.048],
+            [-1.714, -1.548, -1.39, -1.25, -1.055, -0.7894, -0.4651, 0.06029, 0.4291, 0.8134, 1.229, 1.604, 1.965, 2.367, 2.823],
+            [-1.025, -0.993, -0.9531, -0.8037, -0.5198, -0.3973, -0.3099, -0.2078, -0.001621, 0.4627, 0.7685, 1.635, 1.949, 2.585, 3.463],
+            [-1.412, -1.169, -1.005, -0.8908, -0.7561, -0.6192, -0.455, -0.233, 0.1724, 0.5069, 0.9178, 1.356, 1.657, 2.133, 2.841],
+            [-1.546, -1.469, -1.193, -1.165, -0.8688, -0.6785, -0.1482, 0.2783, 0.8177, 1.124, 1.281, 1.542, 1.656, 1.899, 2.172]
           ],
-          drift600: 1.907,
-          cases: 3419
+          drift600: 1.55,
+          cases: 3419,
+          origins: 11,
+          priorWeight: 0,
+          driftYoung600: 1.556
         },
         {
-          chance: { intercept: -2.166, recent: [0.002233, 0.0006699, 0.0004012], quality: 0.7771, older: -0.2586, younger: 0.2096 },
-          conditional: { intercept: 226.7, recent: [0.1718, 0.04072, 0.07939], quality: 60.45, older: 15.49, younger: 6.216 },
-          usageSpread: { base: 89.45, slope: 0.4333 },
-          usageTails: { low: 1.221, high: 1.725 },
+          chance: {
+            intercept: -2.18,
+            recent: [0.3349, 0.1651, 0.05244],
+            quality: 0.9521,
+            older: -0.2667,
+            younger: 0.1794
+          },
+          conditional: {
+            intercept: 1.389,
+            recent: [0.1555, 0.08063, 0.0531],
+            quality: 0.2391,
+            older: 0.1439,
+            younger: 0.03376
+          },
+          playSpread: {
+            base: 1.135,
+            slope: 0.09534
+          },
+          usageZ: [-2.047, -1.785, -1.599, -1.416, -1.17, -0.9044, -0.4778, 0.002027, 0.6251, 1.126, 1.331, 1.602, 1.838, 2.063, 2.355],
+          survivor: {
+            intercept: 0.4146,
+            slope: 0.6143,
+            older: -0.09552,
+            younger: 0.04146,
+            usage: -0.01094
+          },
           tails: [
-            { low80: 0, high80: 0.3101, low50: 0, high50: 0.1916 },
-            { low80: 0.09758, high80: 1.071, low50: 0, high50: 0.4316 },
-            { low80: 0.6971, high80: 1.318, low50: 0.3853, high50: 0.5327 },
-            { low80: 0.133, high80: 0.1117, low50: 0.03238, high50: 0.05503 },
-            { low80: 0.5242, high80: 1.557, low50: 0.2567, high50: 0.2858 },
-            { low80: 0.5894, high80: 1.268, low50: 0.3103, high50: 0.4617 },
-            { low80: 0.1223, high80: 0.1651, low50: 0.0216, high50: 0.07418 },
-            { low80: 0.5057, high80: 1.558, low50: 0.2264, high50: 0.3378 },
-            { low80: 0.9932, high80: 1.551, low50: 0.6772, high50: 0.6813 }
+            [-1.257, -1.093, -0.9516, -0.769, -0.6994, -0.5783, -0.4752, -0.359, -0.1311, 0.1506, 0.4128, 0.8462, 1.41, 1.743, 1.985],
+            [-0.9229, -0.7998, -0.6301, -0.5159, -0.406, -0.3454, -0.2399, 0.03198, 0.2348, 0.5418, 1.038, 1.628, 1.74, 1.924, 4.016],
+            [-1.523, -1.334, -1.156, -1.039, -0.8966, -0.7021, -0.4716, -0.2291, 0.1543, 0.5759, 0.9175, 1.51, 1.879, 2.282, 2.753],
+            [-1.34, -1.1, -0.9977, -0.8204, -0.7345, -0.6344, -0.5168, -0.3843, -0.2404, 0.1011, 0.3924, 0.815, 1.41, 1.596, 2.082],
+            [-1.336, -1.153, -0.9892, -0.8587, -0.7331, -0.5943, -0.4266, -0.1997, 0.07788, 0.5152, 0.9567, 1.408, 1.757, 2.426, 3.322],
+            [-1.392, -1.19, -1.059, -0.9761, -0.831, -0.68, -0.4656, -0.26, 0.09257, 0.4355, 0.7685, 1.279, 1.646, 2.177, 2.782],
+            [-1.257, -1.093, -0.9516, -0.769, -0.6994, -0.5783, -0.4752, -0.359, -0.1311, 0.1506, 0.4128, 0.8462, 1.41, 1.743, 1.985],
+            [-1.447, -1.144, -0.9891, -0.8427, -0.7172, -0.5714, -0.4027, -0.1813, 0.08818, 0.5402, 0.983, 1.417, 1.753, 2.444, 3.367],
+            [-1.683, -1.498, -1.344, -1.211, -1.021, -0.8381, -0.4837, -0.1351, 0.3396, 0.7961, 1.271, 1.796, 2.09, 2.525, 2.677],
+            [-0.9528, -0.8209, -0.7665, -0.5597, -0.4078, -0.3256, -0.1022, 0.08451, 0.3882, 0.6878, 1.096, 1.723, 1.753, 1.835, 2.669],
+            [-1.197, -1.08, -0.9551, -0.8811, -0.7454, -0.5948, -0.4153, -0.169, 0.1073, 0.5448, 1, 1.475, 1.782, 2.448, 2.894],
+            [-1.709, -1.413, -1.244, -1.06, -0.8121, -0.5777, -0.3197, 0.4411, 0.8674, 1.439, 1.719, 2.284, 2.565, 2.614, 2.744]
           ],
-          drift600: 2.448,
-          cases: 3427
+          drift600: 1.616,
+          cases: 3427,
+          origins: 11,
+          priorWeight: 0,
+          driftYoung600: 1.994
         },
         {
-          chance: { intercept: -2.383, recent: [0.002054, 0.0004775, 0.0004327], quality: 0.7412, older: -0.2939, younger: 0.2501 },
-          conditional: { intercept: 236.2, recent: [0.1797, 0.04653, 0.05183], quality: 57.72, older: 18.4, younger: 3.448 },
-          usageSpread: { base: 74.59, slope: 0.5168 },
-          usageTails: { low: 1.149, high: 1.708 },
+          chance: {
+            intercept: -2.232,
+            recent: [0.3455, 0.08195, 0.05889],
+            quality: 0.838,
+            older: -0.281,
+            younger: 0.1924
+          },
+          conditional: {
+            intercept: 1.668,
+            recent: [0.1423, 0.05737, 0.02215],
+            quality: 0.276,
+            older: 0.01738,
+            younger: -0.008755
+          },
+          playSpread: {
+            base: 1.022,
+            slope: 0.1437
+          },
+          usageZ: [-1.905, -1.706, -1.53, -1.409, -1.182, -0.9096, -0.5129, -0.01096, 0.614, 1.086, 1.337, 1.626, 1.813, 2.067, 2.327],
+          survivor: {
+            intercept: 0.4086,
+            slope: 0.5158,
+            older: -0.1439,
+            younger: 0.03872,
+            usage: 0.02257
+          },
           tails: [
-            { low80: 0, high80: 0.303, low50: 0, high50: 0.2074 },
-            { low80: 0.1105, high80: 1.08, low50: 0, high50: 0.3814 },
-            { low80: 0.5508, high80: 1.382, low50: 0.262, high50: 0.4669 },
-            { low80: 0.07105, high80: 0.1398, low50: 0, high50: 0.0845 },
-            { low80: 0.4495, high80: 1.384, low50: 0.1781, high50: 0.2857 },
-            { low80: 0.4209, high80: 1.287, low50: 0.1777, high50: 0.419 },
-            { low80: 0.05711, high80: 0.1909, low50: 0, high50: 0.1053 },
-            { low80: 0.4237, high80: 1.364, low50: 0.1517, high50: 0.3272 },
-            { low80: 0.8703, high80: 1.61, low50: 0.5, high50: 0.692 }
+            [-1.407, -1.09, -0.8266, -0.713, -0.6017, -0.5277, -0.3965, -0.2871, -0.09451, 0.1442, 0.4326, 0.8395, 1.714, 1.922, 2.78],
+            [-1.004, -0.9371, -0.8005, -0.6881, -0.4956, -0.4357, -0.3461, -0.1346, 0.2079, 0.5481, 0.8835, 1.683, 2.105, 2.206, 2.371],
+            [-1.585, -1.311, -1.127, -0.9984, -0.8345, -0.7033, -0.5023, -0.2035, 0.1168, 0.5864, 0.9876, 1.479, 1.951, 2.563, 2.989],
+            [-1.474, -1.164, -0.8207, -0.7096, -0.5975, -0.5087, -0.4219, -0.2949, -0.09064, 0.1332, 0.301, 0.8505, 1.708, 1.9, 2.652],
+            [-1.519, -1.172, -0.9344, -0.8131, -0.6808, -0.5862, -0.447, -0.2633, 0.04816, 0.4309, 0.8895, 1.451, 1.828, 2.368, 3.488],
+            [-1.303, -1.16, -1.027, -0.9394, -0.7974, -0.6819, -0.5033, -0.2288, 0.07444, 0.4707, 0.8283, 1.257, 1.689, 2.448, 2.973],
+            [-1.407, -1.09, -0.8266, -0.713, -0.6017, -0.5277, -0.3965, -0.2871, -0.09451, 0.1442, 0.4326, 0.8395, 1.714, 1.922, 2.78],
+            [-1.497, -1.113, -0.9315, -0.8059, -0.6666, -0.5697, -0.4172, -0.2347, 0.06895, 0.4794, 0.9028, 1.451, 1.831, 2.317, 3.435],
+            [-1.691, -1.5, -1.336, -1.138, -0.9689, -0.7636, -0.4919, -0.163, 0.2247, 0.79, 1.343, 1.871, 2.153, 2.576, 2.908],
+            [-1.016, -0.9489, -0.9249, -0.6987, -0.5182, -0.4197, -0.336, -0.1916, 0.1626, 0.5972, 0.8936, 1.788, 2.069, 2.297, 3.18],
+            [-1.268, -1.118, -0.9846, -0.8623, -0.7357, -0.5914, -0.4143, -0.2277, 0.1318, 0.5907, 1.082, 1.511, 1.901, 2.446, 3.371],
+            [-1.473, -1.363, -1.137, -1.038, -0.7851, -0.5998, -0.2845, 0.07489, 0.7941, 1.153, 1.694, 2.241, 2.495, 2.776, 3.154]
           ],
-          drift600: 3.013,
-          cases: 3426
+          drift600: 1.61,
+          cases: 3426,
+          origins: 11,
+          priorWeight: 0,
+          driftYoung600: 2.13
         },
         {
-          chance: { intercept: -2.606, recent: [0.001804, 0.0006492, 0.000195], quality: 0.7403, older: -0.3298, younger: 0.2674 },
-          conditional: { intercept: 231.1, recent: [0.1841, 0.02114, 0.07628], quality: 47.86, older: 22.69, younger: 6.573 },
-          usageSpread: { base: 62.64, slope: 0.5989 },
-          usageTails: { low: 1.084, high: 1.728 },
+          chance: {
+            intercept: -2.35,
+            recent: [0.2896, 0.1281, 0.01047],
+            quality: 0.8889,
+            older: -0.2919,
+            younger: 0.1846
+          },
+          conditional: {
+            intercept: 1.505,
+            recent: [0.1929, 0, 0.0878],
+            quality: 0.1668,
+            older: -0.02849,
+            younger: 0.02627
+          },
+          playSpread: {
+            base: 1.264,
+            slope: 0.04532
+          },
+          usageZ: [-1.971, -1.717, -1.58, -1.424, -1.163, -0.9173, -0.5351, -0.0901, 0.5793, 1.117, 1.366, 1.594, 1.783, 2.028, 2.306],
+          survivor: {
+            intercept: 0.6695,
+            slope: 0.4445,
+            older: -0.1754,
+            younger: 0.02985,
+            usage: -0.02237
+          },
           tails: [
-            { low80: 0, high80: 0.3429, low50: 0, high50: 0.2579 },
-            { low80: 0.01264, high80: 0.6838, low50: 0, high50: 0.4046 },
-            { low80: 0.4957, high80: 1.297, low50: 0.1633, high50: 0.4443 },
-            { low80: 0.005112, high80: 0.1621, low50: 0, high50: 0.1115 },
-            { low80: 0.3698, high80: 1.167, low50: 0.1121, high50: 0.2806 },
-            { low80: 0.3177, high80: 1.241, low50: 0.07563, high50: 0.4315 },
-            { low80: 0, high80: 0.2236, low50: 0, high50: 0.1375 },
-            { low80: 0.3495, high80: 1.158, low50: 0.07247, high50: 0.3236 },
-            { low80: 0.7516, high80: 1.695, low50: 0.4614, high50: 0.5276 }
+            [-1.295, -0.9989, -0.8737, -0.7378, -0.6226, -0.5601, -0.4183, -0.2448, -0.07913, 0.1652, 0.5268, 0.7137, 1.392, 1.886, 2.152],
+            [-1.506, -1.154, -0.9761, -0.8769, -0.7417, -0.6411, -0.4562, -0.2671, 0.007774, 0.4319, 0.889, 1.481, 1.892, 2.573, 3.565],
+            [-1.597, -1.33, -1.177, -1.063, -0.9048, -0.7659, -0.5208, -0.1994, 0.1276, 0.5681, 0.999, 1.492, 2.039, 2.662, 3.097],
+            [-1.372, -1.047, -0.907, -0.7957, -0.6686, -0.6028, -0.5222, -0.3393, -0.1087, 0.07853, 0.578, 0.6826, 1.323, 1.988, 2.26],
+            [-1.595, -1.18, -0.9959, -0.9098, -0.7561, -0.6579, -0.5164, -0.3021, -0.03392, 0.3907, 0.8024, 1.42, 1.833, 2.439, 3.635],
+            [-1.466, -1.273, -1.1, -1.009, -0.8644, -0.6967, -0.5142, -0.2239, 0.09203, 0.4907, 0.9188, 1.371, 1.928, 2.577, 3.042],
+            [-1.295, -0.9989, -0.8737, -0.7378, -0.6226, -0.5601, -0.4183, -0.2448, -0.07913, 0.1652, 0.5268, 0.7137, 1.392, 1.886, 2.152],
+            [-1.506, -1.154, -0.9761, -0.8769, -0.7417, -0.6411, -0.4562, -0.2671, 0.007774, 0.4319, 0.889, 1.481, 1.892, 2.573, 3.565],
+            [-1.73, -1.556, -1.241, -1.139, -0.976, -0.8436, -0.5498, -0.1318, 0.2231, 0.6785, 1.243, 1.716, 2.422, 2.731, 3.276],
+            [-1.597, -1.33, -1.177, -1.063, -0.9048, -0.7659, -0.5208, -0.1994, 0.1276, 0.5681, 0.999, 1.492, 2.039, 2.662, 3.097],
+            [-1.581, -1.202, -1.074, -0.9491, -0.7808, -0.6601, -0.4486, -0.2379, 0.1733, 0.5315, 1.003, 1.619, 1.987, 2.644, 3.578],
+            [-1.598, -1.576, -1.497, -1.201, -1.081, -0.8674, -0.4496, -0.1335, 0.4665, 1.151, 1.71, 2.466, 2.658, 3.358, 3.922]
           ],
-          drift600: 3.491,
-          cases: 3429
+          drift600: 1.402,
+          cases: 3429,
+          origins: 11,
+          priorWeight: 0,
+          driftYoung600: 1.698
         },
         {
-          chance: { intercept: -3.143, recent: [0.002049, 0.0003622, 0.0002753], quality: 0.5512, older: -0.3298, younger: 0.3347 },
-          conditional: { intercept: 239.4, recent: [0.1326, 0.07949, 0.02806], quality: 46.89, older: 26.56, younger: 9.014 },
-          usageSpread: { base: 48.13, slope: 0.7075 },
-          usageTails: { low: 1.014, high: 1.586 },
+          chance: {
+            intercept: -2.867,
+            recent: [0.3757, 0.02446, 0.03119],
+            quality: 0.5825,
+            older: -0.2809,
+            younger: 0.2728
+          },
+          conditional: {
+            intercept: 1.617,
+            recent: [0.1041, 0.08667, 0.0187],
+            quality: 0.1577,
+            older: 0.01309,
+            younger: 0.04863
+          },
+          playSpread: {
+            base: 1.322,
+            slope: 0.01486
+          },
+          usageZ: [-1.916, -1.787, -1.635, -1.473, -1.205, -0.9047, -0.5438, -0.1412, 0.5371, 1.118, 1.372, 1.605, 1.783, 1.951, 2.149],
+          survivor: {
+            intercept: 0.7016,
+            slope: 0.3946,
+            older: -0.1615,
+            younger: 0.05167,
+            usage: -0.03891
+          },
           tails: [
-            { low80: 0, high80: 0.321, low50: 0, high50: 0.2671 },
-            { low80: 0, high80: 0.7166, low50: 0, high50: 0.445 },
-            { low80: 0.3858, high80: 1.318, low50: 0.08617, high50: 0.43 },
-            { low80: 0, high80: 0.1829, low50: 0, high50: 0.1349 },
-            { low80: 0.2548, high80: 0.9809, low50: 0.02063, high50: 0.3049 },
-            { low80: 0.2447, high80: 1.061, low50: 0, high50: 0.3921 },
-            { low80: 0, high80: 0.228, low50: 0, high50: 0.1558 },
-            { low80: 0.2249, high80: 0.955, low50: 0, high50: 0.3418 },
-            { low80: 0.6348, high80: 1.541, low50: 0.3344, high50: 0.6355 }
+            [-1.171, -1.068, -0.9472, -0.8572, -0.7431, -0.6308, -0.4906, -0.37, -0.02585, 0.4098, 0.7168, 1.041, 1.371, 1.64, 1.808],
+            [-1.475, -1.171, -1.025, -0.9277, -0.7472, -0.6509, -0.4967, -0.2751, -0.05351, 0.2812, 0.7511, 1.48, 1.884, 2.337, 3.104],
+            [-1.692, -1.394, -1.239, -1.018, -0.8878, -0.7403, -0.5338, -0.2714, 0.1146, 0.5521, 0.8929, 1.492, 2.218, 2.735, 3.285],
+            [-1.1, -1.021, -0.9306, -0.8496, -0.7475, -0.6368, -0.5011, -0.3726, -0.0337, 0.2486, 0.785, 1.23, 1.418, 1.672, 1.816],
+            [-1.378, -1.167, -1.03, -0.9525, -0.8023, -0.6892, -0.5466, -0.3209, -0.1072, 0.2355, 0.6266, 1.362, 1.845, 2.346, 3.152],
+            [-1.599, -1.32, -1.179, -0.9552, -0.8368, -0.7166, -0.5448, -0.3139, -0.009749, 0.3535, 0.8209, 1.424, 2.139, 2.843, 3.294],
+            [-1.171, -1.068, -0.9472, -0.8572, -0.7431, -0.6308, -0.4906, -0.37, -0.02585, 0.4098, 0.7168, 1.041, 1.371, 1.64, 1.808],
+            [-1.475, -1.171, -1.025, -0.9277, -0.7472, -0.6509, -0.4967, -0.2751, -0.05351, 0.2812, 0.7511, 1.48, 1.884, 2.337, 3.104],
+            [-1.697, -1.496, -1.271, -1.117, -0.9625, -0.7937, -0.4897, -0.03497, 0.4363, 0.7413, 1.046, 1.611, 2.329, 2.724, 2.908],
+            [-1.692, -1.394, -1.239, -1.018, -0.8878, -0.7403, -0.5338, -0.2714, 0.1146, 0.5521, 0.8929, 1.492, 2.218, 2.735, 3.285],
+            [-1.361, -1.213, -1.057, -0.9678, -0.8532, -0.7092, -0.5306, -0.2858, -0.02586, 0.4212, 0.7746, 1.445, 2.06, 2.551, 3.272],
+            [-1.697, -1.496, -1.271, -1.117, -0.9625, -0.7937, -0.4897, -0.03497, 0.4363, 0.7413, 1.046, 1.611, 2.329, 2.724, 2.908]
           ],
-          drift600: 3.61,
-          cases: 3131
+          drift600: 1.475,
+          cases: 3131,
+          origins: 10,
+          priorWeight: 0,
+          driftYoung600: 1.549
         }
       ],
-      usageCuts: [145.3, 448.2],
-      priorWeight: 1,
-      qualityCuts: [0.4155, 2.364]
+      usageCuts: [0.9602, 2.645],
+      ceiling: 6.315,
+      observedSpread600: 1.398,
+      priorWeight: 0,
+      qualityCuts: [0.4374, 2.339]
     },
     reliever: {
-      weights: [1, 0.5, 0.4],
-      stabilization: 400,
-      mean600: 0.8655,
-      noise600: 0.8069,
-      rateScale600: 1,
+      weights: [1, 0.7, 0.6],
+      stabilization: 500,
+      mean600: 0.7776,
+      noise600: 0.8458,
+      rateScale600: 0.9045,
       horizons: [
         {
-          chance: { intercept: -2.516, recent: [0.0146, 0.001288, 0.0004653], quality: 1.452, older: -0.09515, younger: 0.1806 },
-          conditional: { intercept: 51.01, recent: [0.4916, 0.02902, 0.04241], quality: 30.95, older: -0.7695, younger: 6.132 },
-          usageSpread: { base: 31.02, slope: 0.3434 },
-          usageTails: { low: 1.295, high: 1.629 },
+          chance: {
+            intercept: -2.124,
+            recent: [2.057, 0.2952, 0.005162],
+            quality: 1.476,
+            older: -0.1059,
+            younger: 0.1372
+          },
+          conditional: {
+            intercept: 0.3714,
+            recent: [0.4733, 0.005015, 0.02767],
+            quality: 0.2078,
+            older: -0.003988,
+            younger: 0.02388
+          },
+          playSpread: {
+            base: 0.3522,
+            slope: 0.1707
+          },
+          usageZ: [-2.172, -1.878, -1.675, -1.462, -1.19, -0.9216, -0.4986, -0.04618, 0.2981, 0.6631, 1.026, 1.64, 2.188, 3.131, 5.058],
+          survivor: {
+            intercept: -0.3227,
+            slope: 0.9315,
+            older: -0.009948,
+            younger: 0.05271,
+            usage: 0.1402
+          },
           tails: [
-            { low80: 0.01731, high80: 0.07137, low50: 0, high50: 0.0328 },
-            { low80: 0.7383, high80: 0.7663, low50: 0.05505, high50: 0.1306 },
-            { low80: 0.6592, high80: 0.9866, low50: 0.2163, high50: 0.2691 },
-            { low80: 0.09935, high80: 0.0003159, low50: 0.0642, high50: 0 },
-            { low80: 0.8657, high80: 0.8603, low50: 0.2688, high50: 0 },
-            { low80: 0.9505, high80: 1.187, low50: 0.4935, high50: 0.4468 },
-            { low80: 0.09953, high80: 0.008313, low50: 0.06286, high50: 0 },
-            { low80: 0.9768, high80: 1.28, low50: 0.4856, high50: 0.6174 },
-            { low80: 0.9951, high80: 1.172, low50: 0.5982, high50: 0.5796 }
+            [-1.904, -1.53, -1.285, -0.9653, -0.7798, -0.5815, -0.3262, -0.1807, 0.03194, 0.2969, 0.5841, 1.029, 1.304, 2.13, 3.243],
+            [-1.727, -1.42, -0.9268, -0.7471, -0.5818, -0.4415, -0.1885, -0.02905, 0.1262, 0.4254, 0.7536, 1.186, 1.415, 1.619, 2.399],
+            [-1.61, -1.082, -0.8658, -0.7678, -0.5626, -0.3971, -0.2192, -0.09492, 0.05873, 0.3366, 0.6551, 1.021, 1.251, 1.868, 2.978],
+            [-1.922, -1.597, -1.297, -1.007, -0.7946, -0.6509, -0.3945, -0.2096, -0.02058, 0.2965, 0.5754, 1.052, 1.292, 2.029, 2.935],
+            [-1.938, -1.532, -1.231, -0.9831, -0.7378, -0.5837, -0.4015, -0.2277, -0.00697, 0.267, 0.6297, 1.137, 1.55, 2.222, 3.331],
+            [-1.729, -1.45, -1.189, -0.9809, -0.7746, -0.5566, -0.3447, -0.1131, 0.1543, 0.4938, 0.8113, 1.177, 1.524, 1.971, 3.048],
+            [-1.904, -1.53, -1.285, -0.9653, -0.7798, -0.5815, -0.3262, -0.1807, 0.03194, 0.2969, 0.5841, 1.029, 1.304, 2.13, 3.243],
+            [-1.742, -1.185, -1.131, -1.073, -0.8212, -0.687, -0.4673, -0.1977, 0.08054, 0.308, 0.6838, 1.064, 2.007, 2.603, 4.316],
+            [-1.658, -1.455, -1.23, -1.053, -0.7695, -0.5413, -0.3017, -0.01766, 0.2793, 0.6322, 0.8558, 1.168, 1.51, 1.938, 2.8],
+            [-1.61, -1.082, -0.8658, -0.7678, -0.5626, -0.3971, -0.2192, -0.09492, 0.05873, 0.3366, 0.6551, 1.021, 1.251, 1.868, 2.978],
+            [-1.617, -1.267, -1.049, -0.8957, -0.6895, -0.5439, -0.3844, -0.195, 0.04865, 0.4801, 0.8428, 1.376, 1.882, 2.515, 3.516],
+            [-1.41, -1.252, -1.055, -0.8065, -0.6854, -0.5407, -0.3551, -0.0004741, 0.3379, 0.6507, 0.9224, 1.367, 1.734, 2.361, 2.859]
           ],
-          drift600: 1.164,
-          cases: 9155
+          drift600: 1.008,
+          cases: 9159,
+          origins: 13,
+          priorWeight: 0,
+          driftYoung600: 1.574
         },
         {
-          chance: { intercept: -2.28, recent: [0.008856, 0.001333, 0.000631], quality: 1.493, older: -0.1077, younger: 0.1143 },
-          conditional: { intercept: 83.25, recent: [0.3485, 0.06382, 0.01004], quality: 13.37, older: 0.2605, younger: 10.41 },
-          usageSpread: { base: 30.97, slope: 0.5128 },
-          usageTails: { low: 1.16, high: 1.637 },
+          chance: {
+            intercept: -1.964,
+            recent: [1.39, 0.1814, 0.08056],
+            quality: 1.591,
+            older: -0.1102,
+            younger: 0.06276
+          },
+          conditional: {
+            intercept: 0.5238,
+            recent: [0.2176, 0.1269, 0.03218],
+            quality: 0.2003,
+            older: -0.008187,
+            younger: 0.03946
+          },
+          playSpread: {
+            base: 0.3655,
+            slope: 0.2342
+          },
+          usageZ: [-1.877, -1.692, -1.544, -1.4, -1.192, -0.9227, -0.4407, -0.006109, 0.3551, 0.6995, 0.9909, 1.451, 2.128, 3.857, 5.737],
+          survivor: {
+            intercept: -0.1725,
+            slope: 0.7744,
+            older: 0.02352,
+            younger: 0.0875,
+            usage: 0.06107
+          },
           tails: [
-            { low80: 0, high80: 0.1264, low50: 0, high50: 0.08237 },
-            { low80: 0.5227, high80: 0.6777, low50: 0.006265, high50: 0.1892 },
-            { low80: 0.2357, high80: 1.073, low50: 0, high50: 0.3047 },
-            { low80: 0.05115, high80: 0.03491, low50: 0.02469, high50: 0.01737 },
-            { low80: 0.5752, high80: 0.7973, low50: 0.173, high50: 0.009123 },
-            { low80: 0.7119, high80: 1.109, low50: 0.3253, high50: 0.3877 },
-            { low80: 0.05056, high80: 0.04648, low50: 0.02341, high50: 0.02213 },
-            { low80: 0.6137, high80: 2.61, low50: 0.3791, high50: 0.7814 },
-            { low80: 0.8758, high80: 1.217, low50: 0.5257, high50: 0.5739 }
+            [-1.854, -1.697, -1.322, -0.9956, -0.723, -0.4951, -0.3033, -0.1539, 0.03754, 0.3488, 0.8, 1.226, 1.547, 2.332, 3.217],
+            [-1.287, -1.06, -0.8975, -0.7142, -0.5518, -0.4057, -0.257, -0.1287, 0.09371, 0.3839, 0.7265, 1.334, 1.863, 2.595, 4.203],
+            [-1.451, -0.7802, -0.758, -0.6694, -0.5165, -0.3463, -0.234, -0.06728, 0.2836, 0.6697, 0.9672, 1.3, 1.594, 3.235, 4.331],
+            [-1.773, -1.577, -1.174, -0.9743, -0.6894, -0.4936, -0.3096, -0.1539, 0.048, 0.4866, 0.8603, 1.255, 1.489, 2.039, 3.409],
+            [-1.799, -1.379, -1.113, -0.8948, -0.698, -0.561, -0.3905, -0.2093, 0.0003253, 0.346, 0.6977, 1.114, 1.556, 1.968, 3.251],
+            [-1.758, -1.426, -1.174, -0.984, -0.7528, -0.5764, -0.3652, -0.1634, 0.1109, 0.478, 0.7622, 1.159, 1.591, 2.205, 3.263],
+            [-1.854, -1.697, -1.322, -0.9956, -0.723, -0.4951, -0.3033, -0.1539, 0.03754, 0.3488, 0.8, 1.226, 1.547, 2.332, 3.217],
+            [-1.739, -1.325, -1.077, -0.889, -0.6915, -0.5544, -0.3782, -0.192, 0.0209, 0.3733, 0.7158, 1.191, 1.582, 2.045, 3.865],
+            [-1.788, -1.56, -1.292, -1.099, -0.8439, -0.6277, -0.4011, -0.1407, 0.2049, 0.5475, 0.9015, 1.239, 1.555, 1.922, 2.839],
+            [-1.451, -0.7802, -0.758, -0.6694, -0.5165, -0.3463, -0.234, -0.06728, 0.2836, 0.6697, 0.9672, 1.3, 1.594, 3.235, 4.331],
+            [-1.318, -1.002, -0.8377, -0.7387, -0.5436, -0.4475, -0.3158, -0.1744, 0.04191, 0.3733, 0.6824, 1.281, 1.819, 2.82, 3.96],
+            [-1.012, -0.7972, -0.7156, -0.6101, -0.4942, -0.3729, -0.1467, -0.04182, 0.2886, 0.5294, 0.8119, 1.361, 1.856, 1.992, 2.531]
           ],
-          drift600: 1.888,
-          cases: 8320
+          drift600: 0.9044,
+          cases: 8323,
+          origins: 12,
+          priorWeight: 0,
+          driftYoung600: 4.63
         },
         {
-          chance: { intercept: -2.241, recent: [0.007198, 0.001188, 0.0002882], quality: 1.544, older: -0.152, younger: 0.09132 },
-          conditional: { intercept: 98.91, recent: [0.3393, 0, 0], quality: 4.396, older: 1.835, younger: 11.78 },
-          usageSpread: { base: 27.64, slope: 0.6177 },
-          usageTails: { low: 1.066, high: 1.613 },
+          chance: {
+            intercept: -2.104,
+            recent: [1.149, 0.155, 0.09243],
+            quality: 1.214,
+            older: -0.1822,
+            younger: 0.1212
+          },
+          conditional: {
+            intercept: 0.5472,
+            recent: [0.3514, 0, 0],
+            quality: 0.01128,
+            older: 0.005678,
+            younger: 0.06792
+          },
+          playSpread: {
+            base: 0.2695,
+            slope: 0.3292
+          },
+          usageZ: [-1.811, -1.685, -1.564, -1.436, -1.194, -0.9088, -0.3998, 0.02239, 0.3719, 0.6962, 0.9811, 1.487, 2.345, 3.953, 5.496],
+          survivor: {
+            intercept: -0.2579,
+            slope: 0.5832,
+            older: -0.02735,
+            younger: 0.1519,
+            usage: 0.1023
+          },
           tails: [
-            { low80: 0, high80: 0.1531, low50: 0, high50: 0.1178 },
-            { low80: 0.1492, high80: 0.3331, low50: 0, high50: 0.2258 },
-            { low80: 0.3452, high80: 1.118, low50: 0, high50: 0.3348 },
-            { low80: 0.005077, high80: 0.06988, low50: 0, high50: 0.05018 },
-            { low80: 0.3646, high80: 0.5301, low50: 0.1059, high50: 0.05017 },
-            { low80: 0.581, high80: 1.166, low50: 0.2157, high50: 0.2751 },
-            { low80: 0.004233, high80: 0.08381, low50: 0, high50: 0.05567 },
-            { low80: 1.083, high80: 2.983, low50: 0.2715, high50: 0.3938 },
-            { low80: 0.7505, high80: 1.245, low50: 0.4347, high50: 0.4852 }
+            [-1.289, -1.038, -0.8422, -0.6734, -0.535, -0.3775, -0.1679, -0.02619, 0.1336, 0.4089, 0.7877, 1.12, 1.748, 2.291, 2.878],
+            [-1.368, -0.9336, -0.8492, -0.7218, -0.5337, -0.4162, -0.297, -0.1935, -0.01023, 0.1823, 0.7714, 1.624, 2.157, 3.037, 3.377],
+            [-1.444, -1.147, -0.957, -0.6915, -0.5723, -0.4238, -0.284, -0.07429, 0.06122, 0.5433, 0.9388, 1.189, 2.445, 3.379, 4.239],
+            [-1.289, -1.029, -0.8456, -0.6908, -0.5676, -0.3981, -0.1411, -0.01601, 0.2546, 0.5317, 0.7941, 1.11, 1.772, 2.177, 2.897],
+            [-1.502, -1.233, -0.9947, -0.8821, -0.6784, -0.5584, -0.3911, -0.2084, -0.0003458, 0.3556, 0.6401, 1.02, 1.462, 1.95, 3.183],
+            [-1.46, -1.224, -1.031, -0.8895, -0.7194, -0.5488, -0.3695, -0.1713, 0.116, 0.4364, 0.6722, 1.058, 1.389, 1.903, 3.543],
+            [-1.289, -1.038, -0.8422, -0.6734, -0.535, -0.3775, -0.1679, -0.02619, 0.1336, 0.4089, 0.7877, 1.12, 1.748, 2.291, 2.878],
+            [-1.439, -1.255, -1.001, -0.8726, -0.6703, -0.5398, -0.3758, -0.2033, 0.003914, 0.3763, 0.6837, 1.147, 1.577, 2.307, 3.249],
+            [-1.475, -1.237, -1.056, -0.8967, -0.7026, -0.547, -0.3195, -0.1114, 0.1959, 0.556, 0.8159, 1.139, 1.495, 1.883, 2.537],
+            [-1.444, -1.147, -0.957, -0.6915, -0.5723, -0.4238, -0.284, -0.07429, 0.06122, 0.5433, 0.9388, 1.189, 2.445, 3.379, 4.239],
+            [-1.34, -1.148, -0.957, -0.8235, -0.6862, -0.5484, -0.3931, -0.1878, 0.0882, 0.4334, 0.7867, 1.4, 1.78, 2.891, 3.873],
+            [-1.282, -1.051, -1.004, -0.7927, -0.6726, -0.586, -0.3499, -0.1271, 0.2235, 0.5401, 0.8039, 1.013, 1.417, 2.193, 2.552]
           ],
-          drift600: 2.654,
-          cases: 7458
+          drift600: 2.046,
+          cases: 7460,
+          origins: 11,
+          priorWeight: 0,
+          driftYoung600: 3.723
         },
         {
-          chance: { intercept: -2.299, recent: [0.006276, 0.0007622, 0.0003211], quality: 1.4, older: -0.2113, younger: 0.1063 },
-          conditional: { intercept: 97.6, recent: [0.2873, 0.001936, 0], quality: 7.072, older: 6.313, younger: 14.79 },
-          usageSpread: { base: 23.52, slope: 0.7333 },
-          usageTails: { low: 0.9676, high: 1.599 },
+          chance: {
+            intercept: -2.145,
+            recent: [1, 0.07837, 0.08308],
+            quality: 1.052,
+            older: -0.2847,
+            younger: 0.1257
+          },
+          conditional: {
+            intercept: 0.5437,
+            recent: [0.2388, 0.05355, 0],
+            quality: 0.05812,
+            older: 0.02208,
+            younger: 0.09257
+          },
+          playSpread: {
+            base: 0.1876,
+            slope: 0.4028
+          },
+          usageZ: [-1.785, -1.661, -1.575, -1.47, -1.231, -0.9363, -0.422, -0.001817, 0.3473, 0.7073, 0.9832, 1.488, 2.333, 3.871, 5.077],
+          survivor: {
+            intercept: -0.2918,
+            slope: 0.6794,
+            older: 0.01279,
+            younger: 0.1746,
+            usage: 0.000661
+          },
           tails: [
-            { low80: 0, high80: 0.1759, low50: 0, high50: 0.1471 },
-            { low80: 0, high80: 0.3094, low50: 0, high50: 0.2353 },
-            { low80: 0.08952, high80: 1.162, low50: 0, high50: 0.3677 },
-            { low80: 0, high80: 0.09639, low50: 0, high50: 0.07723 },
-            { low80: 0.2013, high80: 0.2363, low50: 0.04719, high50: 0.08537 },
-            { low80: 0.3687, high80: 1.184, low50: 0.1004, high50: 0.2593 },
-            { low80: 0, high80: 0.1134, low50: 0, high50: 0.08316 },
-            { low80: 0.1849, high80: 3.934, low50: 0.1079, high50: 0.4621 },
-            { low80: 0.5746, high80: 1.203, low50: 0.3139, high50: 0.3537 }
+            [-1.416, -1.256, -1.067, -0.7914, -0.6042, -0.4197, -0.18, 0.04746, 0.2881, 0.6761, 0.8535, 1.6, 1.982, 2.362, 3.134],
+            [-1.582, -1.237, -0.9829, -0.8082, -0.5296, -0.3861, -0.2905, -0.1468, -0.04141, 0.4904, 1.173, 1.477, 3.056, 3.68, 4.269],
+            [-1.536, -1.278, -1.158, -0.6028, -0.497, -0.3697, -0.2106, -0.09657, 0.2383, 0.5849, 0.8927, 1.225, 1.351, 1.849, 3.747],
+            [-1.422, -1.263, -1.093, -0.8598, -0.6047, -0.4256, -0.2345, 0.03166, 0.2532, 0.6541, 0.8163, 1.443, 1.851, 2.274, 3.523],
+            [-1.563, -1.251, -1.052, -0.8748, -0.6957, -0.5843, -0.413, -0.2347, -0.06382, 0.2604, 0.6608, 0.9561, 1.393, 2.113, 2.946],
+            [-1.461, -1.182, -0.999, -0.8728, -0.7021, -0.5547, -0.3426, -0.1529, 0.1099, 0.4452, 0.7631, 1.138, 1.422, 2.076, 3.556],
+            [-1.416, -1.256, -1.067, -0.7914, -0.6042, -0.4197, -0.18, 0.04746, 0.2881, 0.6761, 0.8535, 1.6, 1.982, 2.362, 3.134],
+            [-1.593, -1.252, -1.054, -0.8511, -0.6889, -0.5603, -0.3856, -0.2255, -0.0376, 0.295, 0.697, 1.102, 1.563, 2.351, 3.663],
+            [-1.536, -1.305, -1.106, -0.9977, -0.7783, -0.6337, -0.4329, -0.1847, 0.0416, 0.3829, 0.6469, 1.045, 1.424, 1.885, 2.806],
+            [-1.536, -1.278, -1.158, -0.6028, -0.497, -0.3697, -0.2106, -0.09657, 0.2383, 0.5849, 0.8927, 1.225, 1.351, 1.849, 3.747],
+            [-1.373, -1.133, -0.9428, -0.823, -0.7046, -0.5724, -0.4254, -0.2269, 0.05875, 0.3335, 0.8245, 1.468, 2.102, 3.044, 4.304],
+            [-1.226, -1.006, -0.9181, -0.7712, -0.7224, -0.606, -0.5008, -0.2175, 0.08852, 0.3927, 0.7936, 1.213, 1.839, 2.887, 3.213]
           ],
-          drift600: 4.169,
-          cases: 7485
+          drift600: 2.036,
+          cases: 7487,
+          origins: 11,
+          priorWeight: 0,
+          driftYoung600: 3.325
         },
         {
-          chance: { intercept: -2.596, recent: [0.005646, 0.0009626, 0.0002615], quality: 1.096, older: -0.2726, younger: 0.1627 },
-          conditional: { intercept: 100.2, recent: [0.2216, 0, 0.04153], quality: 12.41, older: 11.3, younger: 14.86 },
-          usageSpread: { base: 19.07, slope: 0.8453 },
-          usageTails: { low: 0.8895, high: 1.404 },
+          chance: {
+            intercept: -2.492,
+            recent: [0.8947, 0.1437, 0.07599],
+            quality: 0.6319,
+            older: -0.3839,
+            younger: 0.1947
+          },
+          conditional: {
+            intercept: 0.5793,
+            recent: [0.1987, 0.05949, 0.03108],
+            quality: 0.07459,
+            older: 0.04678,
+            younger: 0.08858
+          },
+          playSpread: {
+            base: 0.1395,
+            slope: 0.4312
+          },
+          usageZ: [-1.816, -1.71, -1.63, -1.545, -1.291, -0.9704, -0.4434, -0.02648, 0.3157, 0.6298, 0.9189, 1.357, 2.405, 4.067, 5.197],
+          survivor: {
+            intercept: -0.05504,
+            slope: 0.5373,
+            older: 0.08438,
+            younger: 0.1416,
+            usage: -0.07689
+          },
           tails: [
-            { low80: 0, high80: 0.1889, low50: 0, high50: 0.1627 },
-            { low80: 0, high80: 0.3253, low50: 0, high50: 0.2549 },
-            { low80: 0, high80: 0.496, low50: 0, high50: 0.3393 },
-            { low80: 0, high80: 0.1165, low50: 0, high50: 0.09625 },
-            { low80: 0.09053, high80: 0.2166, low50: 0, high50: 0.113 },
-            { low80: 0.268, high80: 0.8973, low50: 0.022, high50: 0.2419 },
-            { low80: 0, high80: 0.1298, low50: 0, high50: 0.1015 },
-            { low80: 0.1591, high80: 1.973, low50: 0.06679, high50: 0.07553 },
-            { low80: 0.4738, high80: 1.057, low50: 0.1977, high50: 0.1781 }
+            [-1.995, -1.818, -1.388, -0.9117, -0.6449, -0.5168, -0.2942, -0.08107, 0.3766, 0.8618, 1.23, 1.807, 2.237, 2.481, 2.731],
+            [-1.425, -1.23, -0.9651, -0.8111, -0.6704, -0.5285, -0.3315, -0.1494, 0.1138, 0.4152, 0.6843, 1.074, 1.429, 1.916, 3.814],
+            [-1.566, -1.311, -1.09, -0.9512, -0.754, -0.5883, -0.3749, -0.2184, 0.0366, 0.3687, 0.6838, 1.017, 1.409, 1.823, 3.665],
+            [-1.938, -1.706, -1.363, -0.9231, -0.6917, -0.5306, -0.3282, -0.07225, 0.4014, 0.9229, 1.35, 1.863, 2.177, 2.417, 2.509],
+            [-1.542, -1.23, -0.9841, -0.8453, -0.6966, -0.5464, -0.3585, -0.1663, 0.1044, 0.4203, 0.6841, 1.061, 1.404, 1.746, 3.84],
+            [-1.57, -1.255, -1.084, -0.9193, -0.7234, -0.5641, -0.3549, -0.2142, 0.03715, 0.3565, 0.6563, 1.042, 1.406, 1.793, 3.321],
+            [-1.995, -1.818, -1.388, -0.9117, -0.6449, -0.5168, -0.2942, -0.08107, 0.3766, 0.8618, 1.23, 1.807, 2.237, 2.481, 2.731],
+            [-1.425, -1.23, -0.9651, -0.8111, -0.6704, -0.5285, -0.3315, -0.1494, 0.1138, 0.4152, 0.6843, 1.074, 1.429, 1.916, 3.814],
+            [-1.544, -1.344, -1.115, -0.9888, -0.7893, -0.6859, -0.4605, -0.2353, 0.0288, 0.3677, 0.6661, 0.9127, 1.373, 1.539, 3.957],
+            [-1.566, -1.311, -1.09, -0.9512, -0.754, -0.5883, -0.3749, -0.2184, 0.0366, 0.3687, 0.6838, 1.017, 1.409, 1.823, 3.665],
+            [-1.457, -1.167, -0.966, -0.8422, -0.6895, -0.5669, -0.3987, -0.2313, 0.09511, 0.3846, 0.807, 1.077, 1.652, 3.454, 4.579],
+            [-1.421, -1.213, -1.072, -0.9908, -0.8673, -0.7551, -0.4643, -0.2658, 0.1425, 0.4131, 0.7958, 1.461, 2.459, 3.971, 4.409]
           ],
-          drift600: 6.642,
-          cases: 7526
+          drift600: 1.801,
+          cases: 7528,
+          origins: 11,
+          priorWeight: 0,
+          driftYoung600: 2.879
         },
         {
-          chance: { intercept: -2.937, recent: [0.005058, 0.001067, 0.0001571], quality: 0.9283, older: -0.318, younger: 0.2203 },
-          conditional: { intercept: 111.8, recent: [0.1371, 0.02144, 0.03595], quality: 23.69, older: 17.16, younger: 14.61 },
-          usageSpread: { base: 15.35, slope: 0.9529 },
-          usageTails: { low: 0.8237, high: 1.089 },
+          chance: {
+            intercept: -2.89,
+            recent: [0.8181, 0.1743, 0.04358],
+            quality: 0.3986,
+            older: -0.4054,
+            younger: 0.2506
+          },
+          conditional: {
+            intercept: 0.6008,
+            recent: [0.1943, 0.02818, 0.0267],
+            quality: 0.2296,
+            older: 0.02333,
+            younger: 0.08348
+          },
+          playSpread: {
+            base: 0.1836,
+            slope: 0.4209
+          },
+          usageZ: [-1.751, -1.656, -1.576, -1.469, -1.258, -0.9309, -0.458, -0.04413, 0.2868, 0.6586, 0.9389, 1.424, 2.356, 3.941, 5.483],
+          survivor: {
+            intercept: 0.1589,
+            slope: 0.4201,
+            older: 0.1048,
+            younger: 0.1138,
+            usage: -0.1353
+          },
           tails: [
-            { low80: 0, high80: 0.2072, low50: 0, high50: 0.1876 },
-            { low80: 0, high80: 0.3108, low50: 0, high50: 0.2593 },
-            { low80: 0.009465, high80: 0.417, low50: 0, high50: 0.3366 },
-            { low80: 0, high80: 0.1385, low50: 0, high50: 0.117 },
-            { low80: 0.03083, high80: 0.2103, low50: 0, high50: 0.1351 },
-            { low80: 0.1249, high80: 0.6664, low50: 0, high50: 0.248 },
-            { low80: 0, high80: 0.1504, low50: 0, high50: 0.1234 },
-            { low80: 0.08712, high80: 3.885, low50: 0, high50: 0.1019 },
-            { low80: 0.3274, high80: 0.9605, low50: 0.08731, high50: 0.1644 }
+            [-1.817, -1.626, -1.338, -1.204, -0.975, -0.7377, -0.386, -0.1751, 0.09362, 0.5949, 1.18, 1.699, 2.21, 2.692, 3.183],
+            [-1.613, -1.273, -1.097, -0.909, -0.6809, -0.5585, -0.3902, -0.2105, 0.06473, 0.4471, 0.6998, 1.153, 1.558, 1.879, 2.86],
+            [-1.48, -1.187, -0.9864, -0.8369, -0.6707, -0.5106, -0.3688, -0.1963, 0.0195, 0.332, 0.6198, 0.9833, 1.396, 1.91, 3.44],
+            [-1.817, -1.626, -1.338, -1.204, -0.975, -0.7377, -0.386, -0.1751, 0.09362, 0.5949, 1.18, 1.699, 2.21, 2.692, 3.183],
+            [-1.626, -1.327, -1.096, -0.9183, -0.6821, -0.5512, -0.3879, -0.2004, 0.08046, 0.4819, 0.6866, 1.004, 1.484, 1.727, 2.442],
+            [-1.297, -1.155, -0.9598, -0.8326, -0.6535, -0.51, -0.3535, -0.1767, 0.03777, 0.3353, 0.6446, 0.987, 1.454, 1.923, 3.22],
+            [-1.817, -1.626, -1.338, -1.204, -0.975, -0.7377, -0.386, -0.1751, 0.09362, 0.5949, 1.18, 1.699, 2.21, 2.692, 3.183],
+            [-1.613, -1.273, -1.097, -0.909, -0.6809, -0.5585, -0.3902, -0.2105, 0.06473, 0.4471, 0.6998, 1.153, 1.558, 1.879, 2.86],
+            [-1.546, -1.147, -0.9846, -0.8353, -0.6841, -0.535, -0.3842, -0.2306, 0.005697, 0.3325, 0.5977, 0.9035, 1.306, 1.551, 3.727],
+            [-1.48, -1.187, -0.9864, -0.8369, -0.6707, -0.5106, -0.3688, -0.1963, 0.0195, 0.332, 0.6198, 0.9833, 1.396, 1.91, 3.44],
+            [-1.495, -1.222, -1.035, -0.8904, -0.6811, -0.5849, -0.4175, -0.1993, 0.06923, 0.4905, 0.6967, 1.494, 2.012, 2.889, 3.444],
+            [-1.152, -1.036, -0.9596, -0.8602, -0.7024, -0.536, -0.411, -0.3024, -0.1563, 0.1486, 0.5203, 1.145, 1.344, 3.392, 4.455]
           ],
-          drift600: 8.222,
-          cases: 7552
+          drift600: 2.089,
+          cases: 7554,
+          origins: 11,
+          priorWeight: 0,
+          driftYoung600: 2.887
         },
         {
-          chance: { intercept: -3.341, recent: [0.004559, 0.001131, 0.0001236], quality: 0.9857, older: -0.3578, younger: 0.2648 },
-          conditional: { intercept: 125.7, recent: [0.0553, 0, 0.01417], quality: 19.35, older: 35.57, younger: 15.01 },
-          usageSpread: { base: 11.87, slope: 1.038 },
-          usageTails: { low: 0.7779, high: 0.3531 },
+          chance: {
+            intercept: -3.359,
+            recent: [0.7697, 0.2489, 0],
+            quality: 0.3292,
+            older: -0.4438,
+            younger: 0.2881
+          },
+          conditional: {
+            intercept: 0.7173,
+            recent: [0.09489, 0.01527, 0.009417],
+            quality: 0,
+            older: 0.09634,
+            younger: 0.08847
+          },
+          playSpread: {
+            base: 0.04307,
+            slope: 0.5305
+          },
+          usageZ: [-1.72, -1.666, -1.604, -1.505, -1.25, -0.9205, -0.4466, -0.0232, 0.2906, 0.6335, 0.9302, 1.345, 2.709, 3.919, 5.149],
+          survivor: {
+            intercept: 0.4161,
+            slope: 0.3495,
+            older: 0.06852,
+            younger: 0.05506,
+            usage: -0.2006
+          },
           tails: [
-            { low80: 0, high80: 0.2243, low50: 0, high50: 0.2081 },
-            { low80: 0, high80: 0.312, low50: 0, high50: 0.2681 },
-            { low80: 0, high80: 0.4065, low50: 0, high50: 0.3538 },
-            { low80: 0, high80: 0.1612, low50: 0, high50: 0.1414 },
-            { low80: 0, high80: 0.2171, low50: 0, high50: 0.159 },
-            { low80: 0.06987, high80: 0.4112, low50: 0, high50: 0.2573 },
-            { low80: 0, high80: 0.1698, low50: 0, high50: 0.1457 },
-            { low80: 0, high80: 0.2486, low50: 0, high50: 0.1811 },
-            { low80: 0.2152, high80: 0.7936, low50: 0.02768, high50: 0.1644 }
+            [-2.326, -1.881, -1.555, -1.282, -0.9542, -0.6745, -0.3319, 0, 0.3319, 0.6745, 0.9542, 1.282, 1.555, 1.881, 2.326],
+            [-1.722, -1.586, -1.241, -1, -0.7842, -0.6144, -0.4525, -0.194, 0.1439, 0.506, 0.8115, 1.236, 1.631, 2.133, 2.872],
+            [-1.57, -1.342, -1.118, -0.9531, -0.7318, -0.562, -0.3961, -0.2155, 0.03608, 0.4055, 0.7817, 1.234, 1.584, 2.183, 3.555],
+            [-2.326, -1.881, -1.555, -1.282, -0.9542, -0.6745, -0.3319, 0, 0.3319, 0.6745, 0.9542, 1.282, 1.555, 1.881, 2.326],
+            [-1.736, -1.586, -1.28, -1.015, -0.7944, -0.6512, -0.4727, -0.2059, 0.1261, 0.4958, 0.7265, 1.177, 1.668, 2.132, 2.69],
+            [-1.449, -1.271, -1.069, -0.9587, -0.7563, -0.5623, -0.385, -0.2196, 0.04691, 0.4038, 0.7733, 1.242, 1.59, 2.355, 3.793],
+            [-2.326, -1.881, -1.555, -1.282, -0.9542, -0.6745, -0.3319, 0, 0.3319, 0.6745, 0.9542, 1.282, 1.555, 1.881, 2.326],
+            [-1.722, -1.586, -1.241, -1, -0.7842, -0.6144, -0.4525, -0.194, 0.1439, 0.506, 0.8115, 1.236, 1.631, 2.133, 2.872],
+            [-1.67, -1.45, -1.243, -0.9679, -0.768, -0.5845, -0.4383, -0.2373, 0.005574, 0.4158, 0.7797, 1.19, 1.618, 2.124, 3.058],
+            [-1.57, -1.342, -1.118, -0.9531, -0.7318, -0.562, -0.3961, -0.2155, 0.03608, 0.4055, 0.7817, 1.234, 1.584, 2.183, 3.555],
+            [-1.583, -1.402, -1.159, -0.985, -0.8537, -0.6622, -0.4763, -0.3117, -0.002053, 0.4181, 0.6751, 1.303, 1.679, 3.117, 5.534],
+            [-1.67, -1.45, -1.243, -0.9679, -0.768, -0.5845, -0.4383, -0.2373, 0.005574, 0.4158, 0.7797, 1.19, 1.618, 2.124, 3.058]
           ],
-          drift600: 9.561,
-          cases: 6770
+          drift600: 0.9998,
+          cases: 6771,
+          origins: 10,
+          priorWeight: 0,
+          driftYoung600: 1.557
         }
       ],
-      usageCuts: [22.49, 110.8],
-      priorWeight: 1,
-      qualityCuts: [0.2404, 1.318]
+      usageCuts: [0.1644, 0.6715],
+      ceiling: 3.877,
+      observedSpread600: 1.496,
+      priorWeight: 0,
+      qualityCuts: [0.2055, 1.244]
     }
   },
   aging: {
     firstAge: 19,
-    hitter: [0.1829, 0.1829, 0.1829, 0.1012, 0.02353, -0.05008, -0.1196, -0.1851, -0.2466, -0.3039, -0.3573, -0.4065, -0.4517, -0.4929, -0.53, -0.563, -0.5919, -0.6168, -0.6377, -0.6545, -0.6545, -0.6545, -0.6545, -0.6545, -0.6545, -0.6545],
-    pitcher: [0.1303, 0.1303, 0.1303, 0.1303, 0.06821, 0.008892, -0.04763, -0.1013, -0.1523, -0.2004, -0.2457, -0.2882, -0.328, -0.3649, -0.399, -0.4303, -0.4589, -0.4846, -0.5075, -0.5277, -0.545, -0.545, -0.545, -0.545, -0.545, -0.545]
+    hitter: [0.2379, 0.2379, 0.2379, 0.1387, 0.04411, -0.04581, -0.1311, -0.2117, -0.2876, -0.3589, -0.4255, -0.4874, -0.5447, -0.5973, -0.6453, -0.6886, -0.7272, -0.7612, -0.7905, -0.8152, -0.8152, -0.8152, -0.8152, -0.8152, -0.8152, -0.8152],
+    pitcher: [0.1619, 0.1619, 0.1619, 0.1619, 0.1015, 0.04339, -0.01239, -0.06583, -0.117, -0.1657, -0.2122, -0.2563, -0.2981, -0.3376, -0.3747, -0.4095, -0.442, -0.4721, -0.4999, -0.5254, -0.5486, -0.5486, -0.5486, -0.5486, -0.5486, -0.5486]
   },
   usagePivotAge: 30,
-  proneness: null
+  proneness: {
+    cuts: [56, 75],
+    usage: {
+      hitter: [1, 1, 1],
+      pitcher: [1, 1, 1]
+    },
+    aging: {
+      hitter: [
+        [0, 0],
+        [0, 0],
+        [0, 0]
+      ],
+      pitcher: [
+        [0, 0],
+        [0, 0],
+        [0, 0]
+      ]
+    },
+    ageSplit: 30,
+    findings: ["Hitters, proneness \u2264 56: playing time 100.9% of the league's rate for the same expected usage (\u00b1 1.5, clustered by player: 1070 players, 11843 seasons, horizons 1\u20133) \u2014 not distinguishable from none (Holm), not used.", "Hitters, proneness 56\u201375: playing time 101.0% of the league's rate for the same expected usage (\u00b1 1.7, clustered by player: 635 players, 8452 seasons, horizons 1\u20133) \u2014 not distinguishable from none (Holm), not used.", "Hitters, proneness > 75: playing time 97.9% of the league's rate for the same expected usage (\u00b1 1.7, clustered by player: 634 players, 9954 seasons, horizons 1\u20133) \u2014 not distinguishable from none (Holm), not used.", "Hitters, proneness \u2264 56, under 30: aging -0.024 WAR per 600 a year against the curve (\u00b1 0.062, clustered: 534 players, 1688 pairs) \u2014 not distinguishable from none (Holm), not used.", "Hitters, proneness \u2264 56, 30 and over: aging +0.033 WAR per 600 a year against the curve (\u00b1 0.096, clustered: 199 players, 524 pairs) \u2014 not distinguishable from none (Holm), not used.", "Hitters, proneness 56\u201375, under 30: aging +0.000 WAR per 600 a year against the curve (\u00b1 0.072, clustered: 347 players, 1136 pairs) \u2014 not distinguishable from none (Holm), not used.", "Hitters, proneness 56\u201375, 30 and over: aging -0.014 WAR per 600 a year against the curve (\u00b1 0.095, clustered: 154 players, 529 pairs) \u2014 not distinguishable from none (Holm), not used.", "Hitters, proneness > 75, under 30: aging +0.058 WAR per 600 a year against the curve (\u00b1 0.093, clustered: 295 players, 982 pairs) \u2014 not distinguishable from none (Holm), not used.", "Hitters, proneness > 75, 30 and over: aging -0.003 WAR per 600 a year against the curve (\u00b1 0.128, clustered: 272 players, 960 pairs) \u2014 not distinguishable from none (Holm), not used.", "Pitchers, proneness \u2264 56: playing time 91.8% of the league's rate for the same expected usage (\u00b1 3.1, clustered by player: 760 players, 8259 seasons, horizons 1\u20133) \u2014 not distinguishable from none (Holm), not used.", "Pitchers, proneness 56\u201375: playing time 104.1% of the league's rate for the same expected usage (\u00b1 2.1, clustered by player: 1089 players, 10853 seasons, horizons 1\u20133) \u2014 not distinguishable from none (Holm), not used.", "Pitchers, proneness > 75: playing time 100.4% of the league's rate for the same expected usage (\u00b1 1.7, clustered by player: 1122 players, 15882 seasons, horizons 1\u20133) \u2014 not distinguishable from none (Holm), not used.", "Pitchers, proneness \u2264 56, under 30: aging -0.021 WAR per 600 a year against the curve (\u00b1 0.089, clustered: 286 players, 754 pairs) \u2014 not distinguishable from none (Holm), not used.", "Pitchers, proneness \u2264 56, 30 and over: aging +0.097 WAR per 600 a year against the curve (\u00b1 0.102, clustered: 99 players, 266 pairs) \u2014 not distinguishable from none (Holm), not used.", "Pitchers, proneness 56\u201375, under 30: aging -0.109 WAR per 600 a year against the curve (\u00b1 0.063, clustered: 521 players, 1404 pairs) \u2014 not distinguishable from none (Holm), not used.", "Pitchers, proneness 56\u201375, 30 and over: aging -0.001 WAR per 600 a year against the curve (\u00b1 0.081, clustered: 197 players, 512 pairs) \u2014 not distinguishable from none (Holm), not used.", "Pitchers, proneness > 75, under 30: aging +0.068 WAR per 600 a year against the curve (\u00b1 0.062, clustered: 607 players, 1796 pairs) \u2014 not distinguishable from none (Holm), not used.", "Pitchers, proneness > 75, 30 and over: aging +0.082 WAR per 600 a year against the curve (\u00b1 0.084, clustered: 339 players, 1046 pairs) \u2014 not distinguishable from none (Holm), not used."]
+  },
+  referenceGames: 155
 };
 
 /**
