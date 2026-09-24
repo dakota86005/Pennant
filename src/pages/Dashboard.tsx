@@ -51,7 +51,7 @@ interface DashboardData {
   cold: Array<{ player_id: number; name: string; positionName: string; pa: number; avg: number; ops: number }>;
   injuries: Array<{ player_id: number; name: string; positionName: string; levelName: string; status: string; daysLeft: number | null }>;
   pending: {
-    expiring: number; extensionCandidates: number;
+    expiring: number; arbitration: number;
     /** Minor League Operations' pressing items; an older payload has none. */
     farmAttention?: number;
     /** MLB Operations' open needs; an older payload has none. */
@@ -128,7 +128,7 @@ export function Dashboard({ orgId, onNavigate }: { orgId: number; onNavigate: (p
         <DecisionChip label="Roster issues" count={data.pending.crunchIssues} onClick={() => onNavigate('crunch')} />
         <DecisionChip label="Injured org-wide" count={data.pending.injuredCount} onClick={() => onNavigate('injuries')} />
         <DecisionChip label="Expiring contracts" count={data.pending.expiring} onClick={() => onNavigate('contracts')} />
-        <DecisionChip label="Extension candidates" count={data.pending.extensionCandidates} onClick={() => onNavigate('contracts')} />
+        <DecisionChip label="Heading to arbitration" count={data.pending.arbitration} onClick={() => onNavigate('contracts')} />
         <DecisionChip label="Trade talk" count={data.pending.tradeTalk ?? 0} onClick={() => onNavigate('trades')} />
       </div>
 

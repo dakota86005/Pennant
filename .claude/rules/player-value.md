@@ -4,6 +4,8 @@ paths:
   - "server/posture.ts"
   - "server/playoffs.ts"
   - "src/ValueSection.tsx"
+  - "src/PlayerHeaderValue.tsx"
+  - "src/valueWords.ts"
   - "server/clubFinanceRoutes.ts"
   - "server/ourViewRoutes.ts"
   - "server/leagueRules.ts"
@@ -12,6 +14,7 @@ paths:
   - "server/freeagents.ts"
   - "scripts/player-value-report.ts"
   - "src/pages/Contracts.tsx"
+  - "server/player.ts"
   - "src/pages/Payroll.tsx"
   - "server/trade.ts"
   - "server/tradingblock.ts"
@@ -163,6 +166,14 @@ worktree.
   curve, never dollars (Q-6), never in any value, unknown with its reason where the odds cannot be read (never the deadline
   read's defaults). The card's Value section speaks plainly: "Contract value", "Value of keeping him", "Most likely",
   "could be", "if kept", explanations on hover; the API keeps its names.
+- The consumer migration (phase 6, Part 8): each consumer migrates in the change that deletes its `players_value`
+  reads; nothing runs in parallel. 6a (2026-09-24) moved the player card's header and Contracts: the header shows his
+  contract in a phrase, the Value section's headline (the same totals) and his scouted tools through `scoutedEvidence.ts`,
+  never OOTP's Overall / Potential or a percentile; Contracts shows contract facts, control's end (`controlEndOf`, the
+  cone's reading), next season's cost and the cost path, wins, value and our view, and no recommendation of any kind
+  (the percentile advice, its cut-offs and the dashboard's "Extension candidates" are gone). A consumer that shows value
+  passes the export's freshness as `currentState` and says it (`freshnessCue`, A-20). Its visible words follow AGENTS.md
+  "Writing for the GM" (`contractsPage.test.ts`, `playerCardHeader.test.ts`).
 - The Trade Center (phase 6b; PLAYER_VALUE.md Part 8): `tradeValueOf` is handed each player's neutral valuation as served and,
   optionally, our view computed by the caller; it never recomputes, narrows or re-reads a player's figures and names no
   philosophy. A deal is summed on contract value (the salary moves with the player; the value of keeping him is shown, never
@@ -180,6 +191,7 @@ Checks: `tests/playerValueBoundary.test.ts`, `tests/playerValueControl.test.ts`,
 `tests/playerValueFinances.test.ts`, `tests/playerValueProduction.test.ts`, `tests/playerValueProductionFit.test.ts`,
 `tests/playerValueRatings.test.ts`, `tests/playerValueSignings.test.ts`, `tests/playerValueCrossSave.test.ts`,
 `tests/playerValueSurplus.test.ts`, `tests/playerValueInvariants.test.ts`, `tests/valueSection.test.ts`,
-`tests/playerValueLens.test.ts`, `tests/playerValueWinValue.test.ts`, `tests/playoffs.test.ts`, `tests/playerValueTrade.test.ts`,
-`tests/tradeAnalysis.test.ts`, `tests/tradeCenter.test.ts`, `tests/tradingBlock.test.ts`;
+`tests/playerValueLens.test.ts`, `tests/playerValueWinValue.test.ts`, `tests/playoffs.test.ts`, `tests/contractsPage.test.ts`,
+`tests/playerCardHeader.test.ts`, `tests/playerValueTrade.test.ts`, `tests/tradeAnalysis.test.ts`, `tests/tradeCenter.test.ts`,
+`tests/tradingBlock.test.ts`;
 `npm run value:report` and `npx tsx scripts/calibrate.ts production` against a real import (read-only with `OOTP_FO_DB_READONLY=1`).

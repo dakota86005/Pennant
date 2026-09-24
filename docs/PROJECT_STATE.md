@@ -283,9 +283,9 @@ carry indeterminate results as such (`indeterminate` lists and recommendation),
 never as approval, rejection, protection, or a hold. Philosophy cannot resolve
 an unknown.
 
-Not yet done: scouting snapshots use their own composite; contract,
-franchise, roster, and player-card surfaces still read `players_value` (the
-Trade Center no longer does: Player Value phase 6b); whether
+Not yet done: scouting snapshots use their own composite; free-agent,
+franchise, roster and lineup surfaces still read `players_value` (the player
+card and Contracts stopped in Player Value phase 6a, the Trade Center in 6b); whether
 `players_value.oa`/`pot` are the organization's scouted view is unknowable from
 the repository; the farm workspaces do not yet render operations' indeterminate
 candidates. The provenance of every rating field is tabulated in
@@ -372,7 +372,7 @@ Present on `main` (D-023; research in [RIGHTS_RESEARCH.md](RIGHTS_RESEARCH.md)):
 Not done, by design: rights for IL activation, Rule 5, re-optioning after the
 last option year, rehab returns, claims, refusals, trades (all `indeterminate`).
 
-## Implemented Player Value (phases 1, 2, 3a, 3b, 4a, 4b, 5a and 5b)
+## Implemented Player Value (phases 1, 2, 3a, 3b, 4a, 4b, 5a, 5b and 6a)
 
 D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
 
@@ -668,8 +668,8 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   hover and focus and the calibration line; unknown production shows its
   reason and no cone. Drawn with visx, the charting library adopted in D-054
   (`src/ProductionCone.tsx`, `src/productionConeGeometry.ts`,
-  `src/chartTheme.ts`). No other page reads production yet; the card's own
-  `players_value` reads wait for phase 6. A static site export omits it.
+  `src/chartTheme.ts`). Contracts reads production too since phase 6a; the
+  card's `players_value` reads were deleted in 6a. A static site export omits it.
   Hardening F2 (2026-09-23): the legend states the bands as targets, or as
   reasonable readings under the prior; the hidden table carries every figure the
   detail shows; Escape closes a season's detail before the card; near-zero wins
@@ -705,6 +705,28 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   nearest rival (it had used the last-placed club). The card's Value section is in
   plain words with the explanations on hover (`src/Tip.tsx`, keyboard-reachable),
   our view beside the neutral figures, and the club's value of a win as context.
+- **The card's header and Contracts on Player Value** (phase 6a, 2026-09-24;
+  PLAYER_VALUE.md Part 8): the card's header no longer shows the Value and Talent
+  percentiles or OOTP's Overall / Potential (`players_value`, D-017); it shows his
+  contract in a phrase, the Value section's headline (the same totals the section is
+  served) and his scouted tools now and at their ceiling through `scoutedEvidence.ts`
+  (`src/PlayerHeaderValue.tsx`), with the export's game date. `server/player.ts`
+  reads contract facts through the entry point (its direct `players_contract` query
+  is gone). Contracts (`server/contracts.ts`, `src/pages/Contracts.tsx`) is rebuilt on
+  Player Value: contract facts, what happens after this season, when control ends
+  (`controlEndOf`, the cone's own reading), next season's cost and the cost path, next
+  season's expected wins, contract value, the value of keeping him and our view under
+  the club's philosophy, in groups (free agents, options, arbitration,
+  pre-arbitration, reserve clause, not settled, short-term, long-term), sortable and
+  filterable, a row opening the card and expanding to his seasons. The percentile
+  recommendations (`recommendOnValue`, the 70/75 cut-offs) are deleted, the
+  dashboard's "Extension candidates" chip became "Heading to arbitration", and the
+  briefing and chat prompts say contracts carry no recommendation. A-20: Contracts,
+  the card's header and the one-player value routes read the export's freshness
+  (`freshnessCue`, `server/dataStatus.ts`) and hand it to Player Value as
+  `currentState`; the page and the header say "As of <game date>" and when the
+  export is behind the save or could not be checked. Free Agents keeps its
+  percentiles until its own migration (`TIP_VALUE`/`TIP_TALENT` moved there).
 - **The Trade Center** (phase 6b, 2026-09-24; `server/playerValueTrade.ts`, pure;
   PLAYER_VALUE.md Part 8, consumer 3): a deal is read on Player Value.
   `POST /api/trade/analyze` (`trade.ts` `analyzeTrade`) serves both sides'
@@ -727,6 +749,7 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   awards, reserve-clause renewals, replacement),
   `playerValueFinances`, `playerValueProduction`,
   `playerValueProductionFit`, `playerValueRatings`, `playerValueCone`,
+  `contractsPage` and `playerCardHeader` (phase 6a),
   `productionCone` (geometry, render and theme tokens), `playerValueSurplus`,
   `playerValueInvariants` and `valueSection` (phase 5a), `playerValueLens` and
   `playerValueWinValue` (phase 5b), `playerValueTrade`, `tradeAnalysis`,
@@ -744,8 +767,9 @@ and the arrival chance by potential (they fit themselves once the save's rating
 snapshots allow), a lens that reads the club's value of a win (an owner question), the odds
 model's wild-card route for a division leader, personality's effect on price (it moves no number
 until observed signings are read against it), a per-import store (everything is computed per request; see
-Part 7), and the rest of the consumer migration that deletes `players_value` reads and the
-percentile advice (phase 6; the Trade Center is done, 6b). The calibrated constants of other subsystems are
+Part 7), and the rest of the consumer migration that deletes `players_value` reads
+(phase 6: Free Agents, Org Comparison, the roster's OA/POT and the lineup; the card
+and Contracts are done, 6a, and the Trade Center, 6b). The calibrated constants of other subsystems are
 not yet fitted per save (D-053; ROADMAP). On the Arizona import 6,952 of 8,009 held players have indeterminate later
 seasons because what follows a minor-league contract is not established from
 the export, and 494 meet a free-agency line inside this season's projection.

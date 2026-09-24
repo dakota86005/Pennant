@@ -151,12 +151,13 @@ async function generateBriefing(orgId: number): Promise<void> {
     `lists players for whom Player Development finds a promotion ONE AFFILIATE LEVEL developmentally defensible — ` +
     `never a call-up. 'mlb_ready_discussion' is a discussion, not a call-up. Only a player currently at AAA may be ` +
     `described as an MLB call-up candidate, and do not say a minor-league promotion fills an MLB bench or bullpen ` +
-    `need. Do not rank prospects or invent a top-prospect list. 'Market-dependent' is a recommendation category, not ` +
-    `a contract offer and cannot be accepted or declined. Do not invent extension years or dollar figures. ` +
+    `need. Do not rank prospects or invent a top-prospect list. CONTRACTS: 'contractSituations' describe each contract ` +
+    `(salary, term, what happens after this season, next season's cost, expected wins, contract value and value of keeping ` +
+    `him as ranges with a most-likely figure); they carry no recommendation, so never present one as the app's advice, ` +
+    `and say 'not known' where a figure is null. Do not invent extension years or dollar figures. ` +
     `Only MLB-level injuries directly create major-league roster holes; affiliate injuries affect organizational ` +
     `depth. Respect the game date: before Opening Day, 0-0 standings are not a development and expiring-after-season ` +
-    `contracts generally are not immediate weekly decisions unless the supplied recommendation specifically says ` +
-    `'Extend now'. Do not escape markdown punctuation with backslashes. ` +
+    `contracts generally are not immediate weekly decisions. Do not escape markdown punctuation with backslashes. ` +
     `Structure with short markdown headers (## Status, ## Decisions Needed, ## Watch List, ` +
     `## Recommendation of the Week). Keep it under 500 words. ${VALUE_PERCENTILE_NOTE}`,
     `Today is ${context.gameDate}, ${context.seasonYear} season. Organizational data:\n\n` +

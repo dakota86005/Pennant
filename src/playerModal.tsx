@@ -6,6 +6,7 @@ import { AssignmentBlock } from './AssignmentContext';
 import { RightsBlock } from './PlayerRights';
 import { ProductionConeSection } from './ProductionCone';
 import { ValueSection } from './ValueSection';
+import { HeaderValue } from './PlayerHeaderValue';
 import { Tip } from './Tip';
 import { formatRatingPair, ratingFraction } from './ratingScale';
 
@@ -43,17 +44,6 @@ export const TIP_OA =
   'The two are answering different questions, which is worth remembering before reading a minor ' +
   'leaguer as major-league ready.';
 
-export const TIP_VALUE =
-  "OOTP's evaluation of the player's current worth to a club, shown as a percentile against others " +
-  'in his own role — position players, starters and relievers are ranked separately. 86 means better ' +
-  'right now than 86% of MLB-rostered players doing his job.\n\n' +
-  'The split matters because the underlying number includes playing time: a closer throws around 65 ' +
-  'innings, so ranking him against starters and everyday players would bury even an excellent one.';
-export const TIP_TALENT =
-  'The scouted ceiling (potential), as a percentile against MLB-rostered players in the same role. ' +
-  'Talent well below Value suggests decline risk; well above suggests untapped upside still to develop. ' +
-  'A settled veteran often sits lower here than on Value simply because most of the league still has ' +
-  'projection left and he does not.';
 export const TIP_CURPOT =
   'Current → potential scout ratings (20-80 scale), averaged across the main rating categories. 45→60 means an average-ish player today with above-average upside.';
 
@@ -253,22 +243,9 @@ function Dossier({ d }: { d: PlayerDossier }) {
           <RightsBlock rights={d.rights} />
           <WatchControls playerId={d.player_id} name={d.name} />
         </div>
-        <div className="dossier-pcts">
-          {d.oaRating !== null && (
-            <div className="card">
-              <span className="card-label"><Tip label="OA → POT" tip={TIP_OA} /></span>
-              <span className="card-value">{formatRatingPair(d.oaRating, d.potRating, ' → ')}</span>
-            </div>
-          )}
-          <div className="card">
-            <span className="card-label"><Tip label="Value" tip={TIP_VALUE} /></span>
-            <span className="card-value"><Pct v={d.overallPct} /></span>
-          </div>
-          <div className="card">
-            <span className="card-label"><Tip label="Talent" tip={TIP_TALENT} /></span>
-            <span className="card-value"><Pct v={d.talentPct} /></span>
-          </div>
-        </div>
+        {/* Phase 6a: his contract, the Value section's headline and his scouted tools, with how current the data is.
+            The Value and Talent percentiles and OOTP's Overall / Potential were players_value figures (D-017) and are gone. */}
+        <HeaderValue header={d.header} scouted={d.scouted} />
       </div>
 
       <div className="dossier-columns">
@@ -340,8 +317,11 @@ function Dossier({ d }: { d: PlayerDossier }) {
                 <tbody>
                   {d.contract.salarySchedule.map((s) => (
                     <tr key={s.year}>
-                      <td>{s.year}</td>
-                      <td className="num">{money(s.salary)}</td>
+                      <td>{s.year}{s.extension ? <span className="muted"> · extension</span> : null}</td>
+                      <td className="num">
+                        {s.salary === null ? <span className="muted">not in the export</span> : money(s.salary)}
+                        {s.option ? <span className="muted"> · {s.option} option</span> : null}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -674,11 +654,6 @@ function RatingRows({
       ))}
     </div>
   );
-}
-
-function Pct({ v }: { v: number | null }) {
-  if (v === null) return <span className="muted">—</span>;
-  return <span style={{ color: `hsl(${(v / 100) * 120}, 65%, 55%)` }}>{v}</span>;
 }
 
 /**

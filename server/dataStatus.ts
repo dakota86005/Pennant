@@ -22,7 +22,7 @@ import { readTransactionLog, type LogCoverage, type TransactionKind, type Transa
 import type { LogAvailability } from './assignmentContext.js';
 import {
   assessFreshness, parseGameDate,
-  type FreshnessAssessment, type LogUnavailableReason,
+  type FreshnessAssessment, type LogUnavailableReason, type SourceState,
 } from './dataFreshness.js';
 
 export interface LogSourceStatus {
@@ -235,4 +235,60 @@ export function logAvailability(status: DataStatus = getDataStatus()): LogAvaila
     available: status.transactionLog.readable,
     behind: status.freshness.log.state === 'behind',
   };
+}
+
+/**
+ * How current the figures on a value page are, for the GM (Player Value A-20, phase 6a): the game date the export is
+ * from, and one short line when he should know more. The export's own freshness against the save (D-022) is what
+ * Player Rights reads to state service time and control (D-023): behind the save, those are not established; not
+ * checked against the save, they are read as exported, with Player Rights' limitation. A consumer passes `state` to
+ * Player Value as `currentState`, so the page and the figures agree.
+ */
+export interface FreshnessCue {
+  /** The export's freshness against the save. */
+  state: SourceState;
+  /** The game date of the export (ISO): `leagues.current_date`, the day about to be played. Null when none is imported. */
+  asOf: string | null;
+  /** Days the export is behind the save (0 unless `behind`). */
+  lagDays: number;
+  /** One short visible line, or null when there is nothing to warn about. */
+  line: string | null;
+  /** The explanation, for a hover. */
+  detail: string;
+}
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+/** "May 16, 2026" from an ISO date; the text as given when it is not one. */
+export function gameDateWords(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  return m ? `${MONTHS[Number(m[2]) - 1]} ${Number(m[3])}, ${m[1]}` : iso;
+}
+
+export function freshnessCue(status: DataStatus = getDataStatus()): FreshnessCue {
+  const csv = status.freshness.csv;
+  const asOf = csv.currentDate ?? null;
+  const date = asOf ? gameDateWords(asOf) : 'an unknown date';
+  const days = (n: number) => `${n} day${n === 1 ? '' : 's'}`;
+  switch (csv.state) {
+    case 'behind':
+      return {
+        state: 'behind', asOf, lagDays: csv.lagDays,
+        line: `Data may be out of date: the export is ${days(csv.lagDays)} behind your save`,
+        detail: `Pennant's copy of the league is from ${date}, ${days(csv.lagDays)} before the last day your OOTP save has played. ` +
+          "Service time can't be read from an old export, so control, arbitration and the costs and values that depend on them " +
+          'show as not known until you export the database from OOTP again and re-import it.',
+      };
+    case 'unverified':
+      return {
+        state: 'unverified', asOf, lagDays: 0,
+        line: 'Not checked against your save',
+        detail: `Pennant's copy of the league is from ${date}. It couldn't find your OOTP save to compare dates with, so it can't ` +
+          "tell whether the export is current: service time, control and the figures built on them are read as the export states them.",
+      };
+    case 'unavailable':
+      return { state: 'unavailable', asOf, lagDays: 0, line: 'No league data imported', detail: 'Export your OOTP database and import it to begin.' };
+    default:
+      return { state: 'current', asOf, lagDays: 0, line: null, detail: `Pennant's copy of the league is from ${date} and matches your OOTP save.` };
+  }
 }

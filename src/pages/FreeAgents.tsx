@@ -1,8 +1,31 @@
 import { useEffect, useState } from 'react';
 import { getFreeAgents, type FreeAgentRow, type FreeAgentsResponse } from '../api';
-import { FinanceCards, money, Pct } from './Contracts';
-import { PlayerLink, Tip, TIP_TALENT, TIP_VALUE } from '../playerModal';
+import { FinanceCards, money } from './Contracts';
+import { PlayerLink, Tip } from '../playerModal';
 import { Th } from '../Th';
+
+/*
+ * OOTP's Value and Talent percentiles, which Free Agents still shows until its own Player Value migration (PLAYER_VALUE.md
+ * Part 8, consumer 4). The player card and Contracts dropped them in phase 6a; they live here with their last reader and
+ * go when it migrates.
+ */
+const TIP_VALUE =
+  "OOTP's evaluation of the player's current worth to a club, shown as a percentile against others " +
+  'in his own role — position players, starters and relievers are ranked separately. 86 means better ' +
+  'right now than 86% of MLB-rostered players doing his job.\n\n' +
+  'The split matters because the underlying number includes playing time: a closer throws around 65 ' +
+  'innings, so ranking him against starters and everyday players would bury even an excellent one.';
+const TIP_TALENT =
+  'The scouted ceiling (potential), as a percentile against MLB-rostered players in the same role. ' +
+  'Talent well below Value suggests decline risk; well above suggests untapped upside still to develop. ' +
+  'A settled veteran often sits lower here than on Value simply because most of the league still has ' +
+  'projection left and he does not.';
+
+function Pct({ value }: { value: number | null }) {
+  if (value === null) return <span className="muted">—</span>;
+  const hue = (value / 100) * 120;
+  return <span style={{ color: `hsl(${hue}, 65%, 55%)` }}>{value}</span>;
+}
 
 export function FreeAgents({ orgId }: { orgId: number }) {
   const [data, setData] = useState<FreeAgentsResponse | null>(null);

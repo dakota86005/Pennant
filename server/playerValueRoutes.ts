@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { tableExists } from './db.js';
+import { getDataStatus } from './dataStatus.js';
 import { marketLeagueOfClub, playerProductionCone, playerSurplus, playerValue, playerValues, productionCalibration } from './playerValue.js';
 
 /**
@@ -9,6 +10,12 @@ import { marketLeagueOfClub, playerProductionCone, playerSurplus, playerValue, p
  * Every consumer, the static export and the AI read these same answers; no page computes its own.
  */
 export const playerValueRoutes = Router();
+
+/**
+ * How current the export is, for the one-player reads (A-20, phase 6a): the card's header, its cone and its Value section
+ * are read with the same freshness Contracts reads, so a stale export leaves the same answers not established on each.
+ */
+const current = () => ({ currentState: getDataStatus().freshness.csv.state });
 
 /** The production fit in force for the club's league: window, held-out coverage, when it was refit, the prior's weight. */
 playerValueRoutes.get('/player-value/production-fit/:orgId', (req, res) => {
@@ -36,7 +43,7 @@ playerValueRoutes.get('/player-value/:playerId/cone', (req, res) => {
   const id = Number(req.params.playerId);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Bad player id' });
   if (!tableExists('players')) return res.status(400).json({ error: 'No data imported yet' });
-  const cone = playerProductionCone(id);
+  const cone = playerProductionCone(id, current());
   if (!cone) return res.status(404).json({ error: 'No such active player' });
   res.json(cone);
 });
@@ -49,7 +56,7 @@ playerValueRoutes.get('/player-value/:playerId/surplus', (req, res) => {
   const id = Number(req.params.playerId);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Bad player id' });
   if (!tableExists('players')) return res.status(400).json({ error: 'No data imported yet' });
-  const surplus = playerSurplus(id);
+  const surplus = playerSurplus(id, current());
   if (!surplus) return res.status(404).json({ error: 'No such active player' });
   res.json(surplus);
 });
@@ -58,7 +65,7 @@ playerValueRoutes.get('/player-value/:playerId', (req, res) => {
   const id = Number(req.params.playerId);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Bad player id' });
   if (!tableExists('players')) return res.status(400).json({ error: 'No data imported yet' });
-  const value = playerValue(id);
+  const value = playerValue(id, current());
   if (!value) return res.status(404).json({ error: 'No such active player' });
   res.json(value);
 });

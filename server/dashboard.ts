@@ -291,17 +291,14 @@ dashboardRoutes.get('/dashboard/:orgId', (req, res) => {
     cold = form.slice(-3).filter((f) => f.ops < 0.6).reverse();
   }
 
-  // Pending decisions
+  // Pending decisions: the contracts Contracts itself groups as leaving and heading to arbitration. No
+  // recommendation is counted: Player Value describes and never authorizes (D-052, phase 6a)
   let expiring = 0;
-  let extensionCandidates = 0;
+  let arbitration = 0;
   try {
     const contracts = computeContracts(orgId);
-    for (const p of contracts.players as unknown as Array<{ flags: string[]; recommendation: { action: string } | null }>) {
-      if (p.flags.includes('expiring')) expiring++;
-      if (p.recommendation?.action === 'Extension candidate' || p.recommendation?.action === 'Extend now') {
-        extensionCandidates++;
-      }
-    }
+    expiring = contracts.players.filter((p) => p.group === 'leaving').length;
+    arbitration = contracts.players.filter((p) => p.group === 'arbitration').length;
   } catch { /* contracts table may be absent */ }
   /*
    * What Minor League Operations says needs the GM's attention, not a count of promotion signals.
@@ -371,7 +368,8 @@ dashboardRoutes.get('/dashboard/:orgId', (req, res) => {
     injuries: injuries.slice(0, 8),
     pending: {
       expiring,
-      extensionCandidates,
+      /** Players heading to arbitration next season, as Contracts groups them. */
+      arbitration,
       /** Minor League Operations' pressing items: assignments, affiliate shortages and retention reviews. */
       farmAttention: farm.pressing,
       /** MLB Operations' open needs; an older payload has none. */

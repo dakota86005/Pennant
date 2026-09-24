@@ -299,10 +299,11 @@ export const TOOLS: Anthropic.Tool[] = [
   {
     name: 'get_contracts',
     description:
-      "Every contract on the club: salary, years left, service time, whether he is leaving or " +
-      'still controlled, and a recommendation (extend, re-sign, let walk, hold off) with the ' +
-      "season line behind it. Use this for extensions, who is expiring, and who is worth keeping " +
-      '— get_payroll has the money but not the decisions.',
+      "Every contract on the club: salary, term, service time, what happens after this season and when " +
+      "control ends, next season's cost and the cost of each controlled season, expected wins, contract " +
+      "value and the value of keeping him (ranges with a most-likely figure), our view under the club's " +
+      "philosophy, and this season's line. It carries no recommendation: the GM decides. Use this for " +
+      'extensions, who is expiring and arbitration cases — get_payroll has the committed money.',
     input_schema: {
       type: 'object',
       properties: { team_id: { type: 'number' } },

@@ -315,6 +315,8 @@ h2 {
 /* ── Tables: scoreboard style ─────────────────────────────── */
 
 table { width: 100%; border-collapse: collapse; background: rgba(0,0,0,0.12); border-radius: 8px; }
+/* On pale surfaces the dark tint reads as grey paper: a table sits on the panel colour instead */
+:root[data-theme='light'] table { background: var(--panel); }
 th, td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
 th {
   font-family: var(--font-display);
@@ -1102,7 +1104,24 @@ th:last-child .tip-pop, th:nth-last-child(2) .tip-pop { left: auto; right: 0; }
 }
 .dossier-number { color: var(--accent); margin-right: 4px; }
 .dossier-nick { font-family: var(--font-serif); font-style: italic; color: var(--muted); margin-bottom: 2px; }
-.dossier-pcts { display: flex; gap: 10px; }
+/* The header's right side (Player Value phase 6a): contract, contract value and scouted tools as the card's tiles,
+   with how current the data is beneath; the tiles wrap under the name on a narrow card */
+.dossier-value { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; max-width: 100%; }
+.dossier-tiles { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+.dossier-tile { min-width: 132px; max-width: 220px; gap: 1px; }
+.dossier-tile .card-value { font-size: 16px; line-height: 1.3; }
+.dossier-tile-lead { font-size: 11px; font-weight: 400; color: var(--muted); }
+.dossier-tile-unknown { font-size: 14px; font-weight: 500; }
+.dossier-tile-line { font-size: 12px; line-height: 1.35; }
+.dossier-asof { font-size: 12px; color: var(--muted); }
+.dossier-asof-warn { color: var(--accent); }
+.dossier-asof-bad { color: var(--bad); }
+.dossier-value .tip-pop { left: auto; right: 0; max-width: calc(100vw - 64px); }
+@media (max-width: 640px) {
+  .dossier-value { align-items: flex-start; }
+  .dossier-tiles { justify-content: flex-start; }
+  .dossier-value .tip-pop { left: 0; right: auto; }
+}
 
 .dossier-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 28px; }
 @media (max-width: 640px) { .dossier-columns { grid-template-columns: 1fr; } }
@@ -5369,4 +5388,46 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); cur
   .mlo-attention-detail { margin-left: 4px; }
   .mlo-affiliate-hero { flex-direction: column; }
   .mlo-module table thead, .mlo-module table tbody { width: auto; min-width: 100%; }
+}
+
+/* ── Contracts (Player Value phase 6a) ─────────────────────── */
+
+.contracts-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+.contracts-head h2 { border-bottom: none; margin-bottom: 0; }
+.contracts-asof { font-size: 12px; color: var(--muted); }
+.contracts-asof .tip-pop { left: auto; right: 0; }
+.contracts-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 12px 0 8px; font-size: 13px; }
+.contracts-filters input[type='search'] {
+  background: var(--bg-deep); border: 1px solid var(--border); border-radius: 6px; color: var(--text);
+  padding: 7px 10px; font-size: 13px; flex: 0 1 240px; min-width: 160px;
+}
+.contracts-empty { margin: 16px 0; }
+/* The table scrolls inside its own box; it never widens the page */
+.contracts-table-scroll { max-width: 100%; overflow-x: auto; }
+.contracts-table th.num, .contracts-table td.num { text-align: right; }
+.contracts-table th.num.sortable button { text-align: right; }
+.contracts-table td { vertical-align: top; }
+.contracts-table th:first-child .tip-pop, .contracts-table th:nth-child(2) .tip-pop { left: 0; right: auto; }
+.contracts-table th.num .tip-pop { left: auto; right: 0; }
+.contracts-row { cursor: pointer; }
+.contracts-row.open td { background: rgba(255,255,255,0.03); border-bottom-color: transparent; }
+.contracts-figure { display: block; font-variant-numeric: tabular-nums; }
+.contracts-sub { display: block; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.contracts-toggle { width: 28px; padding-right: 0; }
+.contracts-expand { padding: 0 6px; font-size: 12px; line-height: 1.6; color: var(--muted); background: none; border: 1px solid transparent; }
+.contracts-expand:hover:not(:disabled), .contracts-expand:focus-visible { color: var(--accent); border-color: var(--border); }
+.contracts-detail-row td { background: rgba(255,255,255,0.03); white-space: normal; }
+.contracts-detail { display: flex; flex-wrap: wrap; gap: 8px 32px; align-items: flex-start; padding: 4px 0 8px 28px; }
+.contracts-path { width: auto; min-width: 320px; }
+.contracts-path caption { text-align: left; font-size: 12px; padding-bottom: 4px; }
+.contracts-path th { position: static; cursor: default; }
+.contracts-path th.num, .contracts-path td.num { text-align: right; }
+.contracts-notes { margin: 0; padding-left: 18px; font-size: 12px; color: var(--muted); max-width: 60ch; flex: 1 1 280px; }
+.contracts-notes li { margin: 2px 0; }
+.contracts-detail .link-button { flex-basis: 100%; text-align: left; }
+/* A sortable header's explanation opens from the keyboard too, not only on hover */
+th.sortable button:focus-visible .tip-pop { display: block; }
+@media (max-width: 760px) {
+  .contracts-detail { padding-left: 0; }
+  .contracts-path { min-width: 0; }
 }
