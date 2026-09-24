@@ -219,6 +219,15 @@ describe('expected production from ratings (phase 3b): a prospect', () => {
     expect(two.basis.ability?.status).toBe('unknown');
   });
 
+  it('C-14 (carried forward from the hardening): ability evidence that lists something missing never reads "complete"', () => {
+    expect(hitter().status).toBe('complete');
+    expect(hitter().missing).toEqual([]);
+    for (const [what, ev] of [['no glove', hitter({ glove: null })], ['no running', hitter({ running: null })]] as const) {
+      expect(ev.missing.length, what).toBeGreaterThan(0);
+      expect(ev.status, what).toBe('partial');
+    }
+  });
+
   it('a better scouted line never lowers the central estimate, all else equal', () => {
     for (const [label, make, better] of [
       ['prospect, a current tool', () => prospect(), () => prospect({ ratings: hitter({ tools: { power: 60 } }) })],

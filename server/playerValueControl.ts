@@ -279,7 +279,7 @@ export function composeControlTimeline(input: ControlInput): ControlTimeline {
       ?? (eligibility?.thisSeason.reason ? UNKNOWN_REASON_TEXT[eligibility.thisSeason.reason] : 'the league\'s rules are not available');
     return {
       ...base, standing: 'unknown', thisSeason, seasons: [], controlEnds: null, continuesPastHorizon: false,
-      notes: [...notes, `The current season is not known, so no season can be laid out: ${why}.`],
+      notes: [...notes, `The current season is not known, so no season can be laid out: ${why.replace(/\.$/, '')}.`],
     };
   }
 
