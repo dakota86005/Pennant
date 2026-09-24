@@ -149,8 +149,9 @@ talking, not a methods paper.
   would ("Value of keeping him", "Most likely $X · could be $A to $B"), not by
   the method ("retention margin", "central", "edge against edge").
 - The explanation goes in a hover: the `Tip` component (`src/Tip.tsx`), in the
-  voice of `TIP_OA` and `TIP_VALUE` (`src/playerModal.tsx`). Say what the
-  number is, how to read it and what it leaves out, in plain sentences.
+  voice of `TIP_OA` (`src/playerModal.tsx`) and `TIP_CONTRACT_VALUE`
+  (`src/ValueSection.tsx`). Say what the number is, how to read it and what it
+  leaves out, in plain sentences.
 - No internal jargon, doc IDs (D-, R-, Q-numbers), column names or code terms
   in titles or visible lines. They may appear in a hover or a breakdown where
   they help, never as the headline.

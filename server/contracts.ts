@@ -1,159 +1,30 @@
 import { Router } from 'express';
 import { db, tableExists } from './db.js';
-import { seasonFormByPlayer, type SeasonForm } from './form.js';
+import { freshnessCue, getDataStatus, type DataStatus } from './dataStatus.js';
+import { seasonFormByPlayer } from './form.js';
 import { leagueRulesForLeague } from './leagueRules.js';
-import { clubFinances, playerValues, serviceReading, type ControlSeason, type ControlTimeline } from './playerValue.js';
-import type { Sourced } from './provenance.js';
+import { resolvePhilosophy } from './philosophy.js';
 import {
-  contractsByPlayer, currentGameDate, mlbPercentiler, ON_ROSTER, seasonYear, valuesByPlayer,
-} from './valuation.js';
+  clubFinances, contractSeasonFor, controlEndOf, controlSeasonLabel, lensPhilosophyFrom, ourViewOf, playerValues, serviceReading,
+  type ContractFacts, type ControlEnd, type ControlSeason, type ControlTimeline, type LensPhilosophy, type OurView, type PlayerSurplus,
+  type PlayerValuation, type SurplusTotal,
+} from './playerValue.js';
+import type { Sourced } from './provenance.js';
+import { philosophyForOrg } from './settings.js';
+import { currentGameDate, ON_ROSTER } from './valuation.js';
 
+/**
+ * The Contracts page (Player Value phase 6a, PLAYER_VALUE.md Part 8): each contract the club holds, what happens after
+ * this season and when control ends, next season's cost and his cost path, his expected wins, his contract value and the
+ * value of keeping him, and our view under the club's philosophy, every figure Player Value's answer as the card is
+ * served it. It describes and never authorizes (D-052): no recommendation, no percentile of OOTP's value (the
+ * percentile advice and the `players_value` reads were deleted in this change). The GM decides.
+ */
 export const contractRoutes = Router();
 
 const POSITION_NAMES: Record<number, string> = {
   1: 'P', 2: 'C', 3: '1B', 4: '2B', 5: '3B', 6: 'SS', 7: 'LF', 8: 'CF', 9: 'RF', 10: 'DH',
 };
-
-interface Recommendation {
-  action: string;
-  reasons: string[];
-}
-
-/**
- * The recommendations that amount to "commit to this man".
- *
- * These are the ones that must not rest on the Value figure alone, because
- * that figure counts playing time: a long reliever with an earned run average
- * over six can sit in the top tenth of the reliever pool purely for the number
- * of innings he has soaked up, and the advice was telling its reader to extend
- * him before somebody else did.
- */
-const COMMITTING = new Set([
-  'Core keeper', 'Extension candidate', 'Extend now', 'Re-sign', 'Re-sign short-term',
-]);
-
-/**
- * The value-based reading, before the season is allowed to speak.
- *
- * Kept whole and separate so the two arguments stay legible: this is what a
- * man is worth on paper, and the gate below is what he has actually done.
- */
-function recommendOnValue(args: {
-  age: number;
-  yearsAfterThis: number;
-  /** Null when his control after this season is indeterminate. */
-  reachingFA: boolean | null;
-  /** Null when the league's free-agency rule is not in the export. */
-  hasFreeAgency: boolean | null;
-  overallPct: number | null;
-  talentPct: number | null;
-  salaryNow: number;
-}): Recommendation | null {
-  const { age, yearsAfterThis, reachingFA, hasFreeAgency, overallPct, talentPct, salaryNow } = args;
-  if (overallPct === null) return null;
-  // No advice that turns on control when control itself is not established (D-018)
-  if (hasFreeAgency === null) return null;
-  if (yearsAfterThis === 0 && reachingFA === null) return null;
-  const declining = talentPct !== null && overallPct - talentPct >= 15;
-
-  // Under the reserve clause there is no market to lose a player to, so the
-  // question is never "extend before he walks" — it is whether he is worth
-  // keeping and what he will hold out for.
-  if (!hasFreeAgency) {
-    if (overallPct >= 70 && age <= 29) {
-      return { action: 'Core keeper', reasons: [`top ${100 - overallPct}% value, prime years ahead — renew`] };
-    }
-    if (declining && age >= 32) {
-      return { action: 'Consider moving', reasons: ['talent slipping below production — sell while value holds'] };
-    }
-    if (overallPct < 30) {
-      return { action: 'Release candidate', reasons: [`bottom ${overallPct}% value`] };
-    }
-    return null;
-  }
-
-  if (yearsAfterThis === 0 && !reachingFA) {
-    // Deal ends but the player lacks the service time to leave — auto-renews
-    if (overallPct >= 75 && age <= 28) {
-      return { action: 'Extension candidate', reasons: ['team-controlled — buy out arb/FA years while cheap'] };
-    }
-    return null;
-  }
-
-  if (yearsAfterThis === 0) {
-    // Expiring after this season
-    const reasons: string[] = [];
-    if (declining) reasons.push('scouted talent below current production — decline risk');
-    if (overallPct >= 70 && age <= 29) {
-      return { action: 'Extend now', reasons: [`top ${100 - overallPct}% MLB value, prime years ahead`, ...reasons] };
-    }
-    if (overallPct >= 70 && age <= 33) {
-      return { action: 'Re-sign', reasons: [`top ${100 - overallPct}% MLB value`, ...reasons] };
-    }
-    if (overallPct >= 70) {
-      return { action: 'Re-sign short-term', reasons: [`still productive but age ${age} — limit years`, ...reasons] };
-    }
-    if (overallPct < 40) {
-      return { action: 'Let walk', reasons: [`bottom ${overallPct}% MLB value`, ...reasons] };
-    }
-    return { action: 'Market-dependent', reasons: [`middling value (${overallPct}th pct) — replaceable`, ...reasons] };
-  }
-
-  // Not expiring: surface extension candidates and decline warnings
-  if (yearsAfterThis <= 2 && overallPct >= 75 && age <= 28) {
-    return {
-      action: 'Extension candidate',
-      reasons: [`${yearsAfterThis} yr${yearsAfterThis === 1 ? '' : 's'} left after this one — buy out prime early`],
-    };
-  }
-  if (declining && age >= 32 && salaryNow >= 10_000_000) {
-    return { action: 'Watch decline', reasons: ['expensive veteran with talent slipping below production'] };
-  }
-  return null;
-}
-
-/**
- * The same reading, with this season's results given a veto.
- *
- * A man is not extended on his Value percentile alone. Where he has played
- * enough for the line to mean anything and it is clearly below the league, the
- * recommendation becomes "hold off" and says which two facts disagree — that
- * is a genuinely useful thing to be told, and far better than either advising
- * the extension or silently dropping him from the list.
- *
- * Where he has not played enough, the recommendation stands and says so. A man
- * with nine innings has shown nothing, and treating that as evidence against
- * him would be the same mistake pointing the other way.
- */
-function recommend(
-  args: Parameters<typeof recommendOnValue>[0] & { form: SeasonForm | null }
-): Recommendation | null {
-  const rec = recommendOnValue(args);
-  if (!rec || !COMMITTING.has(rec.action)) return rec;
-
-  const form = args.form;
-  if (!form || form.verdict === 'unknown') {
-    return {
-      ...rec,
-      reasons: [
-        ...rec.reasons,
-        form?.line
-          ? `only ${form.line} so far — too little to judge, this is the value figure alone`
-          : 'no meaningful playing time yet — this is the value figure alone',
-      ],
-    };
-  }
-  if (form.verdict === 'poor') {
-    return {
-      action: 'Hold off',
-      reasons: [
-        `${rec.reasons[0]} — but ${form.line}`,
-        'the value figure counts playing time, not results; the season does not back an extension yet',
-      ],
-    };
-  }
-  return { ...rec, reasons: [...rec.reasons, `${form.line} backs it`] };
-}
 
 /**
  * What happens to a man when his deal runs out.
@@ -359,23 +230,207 @@ export function financeCards(teamId: number): FinanceCards {
   };
 }
 
-export function computeContracts(orgId: number) {
-  const org = db.prepare(`SELECT league_id FROM teams WHERE team_id = ?`).get(orgId) as
-    | { league_id: number }
+// ── the page's reading of one player (shared with the card's header) ───────────
+
+/** Where he stands after this season, in the page's groups: the order a GM works through them. */
+export type ContractGroup = 'leaving' | 'option' | 'arbitration' | 'pre_arbitration' | 'reserve' | 'not_settled' | 'signed' | 'long_term';
+
+/** Signed three seasons or more past this one: a long-term commitment. */
+const LONG_TERM = 3;
+
+/**
+ * His contract in a phrase's parts, from Player Value's contract facts and control (the card's header and each row on
+ * Contracts): this season's salary, how long he is signed, what happens after this season and when control ends. A
+ * salary the export does not state is null with the reason, never $0 (D-018).
+ */
+export interface ContractSummary {
+  standing: ContractFacts['standing'];
+  kind: 'major_league' | 'minor_league' | null;
+  thisSeason: number | null;
+  salaryNow: number | null;
+  /** Why this season's salary is not known; null where it is. */
+  salaryNote: string | null;
+  /** The last season a signed contract (or its extension) covers; null where none does. */
+  signedThrough: number | null;
+  extension: { from: number; to: number } | null;
+  /** The contract's clauses in plain words: options by season, an opt-out, no-trade. */
+  clauses: string[];
+  /** Clauses the export does not state for a season still to come (an option flag it leaves blank), in words. */
+  clauseNotes: string[];
+  /** Next season, in words; null for a player no club holds. */
+  after: { status: ControlStatus; label: string; phrase: string; detail: string | null } | null;
+  controlEnd: ControlEnd;
+}
+
+const OPTION_WORDS: Record<string, string> = { club: 'Club option', player: 'Player option', vesting: 'Vesting option', mutual: 'Mutual option' };
+
+/** Next season in words: a short label for a column and a phrase for the header. */
+function afterWords(control: Control, thisSeason: number, signedThrough: number | null): NonNullable<ContractSummary['after']> {
+  const next = thisSeason + 1;
+  const detail = control.reason;
+  switch (control.status) {
+    case 'leaving': return { status: control.status, label: 'Free agent', phrase: `Free agent after ${thisSeason}`, detail };
+    case 'signed': return { status: control.status, label: 'Signed', phrase: `Signed through ${signedThrough ?? next}`, detail };
+    case 'extended': return { status: control.status, label: 'Extension', phrase: `Extension from ${next}`, detail };
+    case 'option': {
+      const kind = control.option?.kind;
+      if (kind === 'opt_out') return { status: control.status, label: 'Can opt out', phrase: `Can opt out after ${thisSeason}`, detail };
+      const words = OPTION_WORDS[kind ?? ''] ?? 'Option';
+      return { status: control.status, label: words, phrase: `${words} for ${next}`, detail };
+    }
+    case 'arbitration': {
+      const n = control.arbYear === null ? '' : control.arbYearHigh !== null ? ` ${control.arbYear}–${control.arbYearHigh}` : ` ${control.arbYear}`;
+      const two = control.superTwo ? ' (Super Two)' : '';
+      return { status: control.status, label: `Arbitration${n}${two}`, phrase: `Arbitration in ${next}${two}`, detail };
+    }
+    case 'pre-arbitration': return { status: control.status, label: 'Pre-arbitration', phrase: `Pre-arbitration in ${next}`, detail };
+    case 'reserve clause': return { status: control.status, label: 'Reserve clause', phrase: `Reserve clause: stays in ${next}`, detail };
+    default: return { status: control.status, label: 'Not settled', phrase: `${next} not settled yet`, detail };
+  }
+}
+
+export function contractSummaryOf(v: PlayerValuation): ContractSummary {
+  const c = v.contract;
+  const thisSeason = v.control.thisSeason;
+  const seasons = [...(c.term?.seasons ?? []), ...(c.extension?.seasons ?? [])];
+  const signedThrough = seasons.length > 0 ? Math.max(...seasons.map((s) => s.season)) : null;
+  const now = thisSeason === null ? null : contractSeasonFor(c, thisSeason);
+  const salaryNow = now?.salary.value ?? null;
+  const salaryNote = now === null
+    ? (c.standing === 'signed' ? `No season of his contract covers ${thisSeason ?? 'this season'}.` : c.notes[0] ?? "His contract terms aren't in the export.")
+    : salaryNow === null ? (now.salary.note ?? "His salary this season isn't in the export.") : null;
+  const ext = c.extension?.seasons ?? [];
+  const clauses: string[] = [];
+  const clauseNotes: string[] = [];
+  for (const s of seasons) {
+    // The season under way had its option decided before it began (A-03): only a season still to come is open
+    if (thisSeason !== null && s.season <= thisSeason) continue;
+    if (s.option) clauses.push(`${OPTION_WORDS[s.option] ?? 'Option'} ${s.season}`);
+    if (s.optionUnknown) clauseNotes.push(`${s.season}: ${s.optionUnknown}`);
+  }
+  if (c.optOutFrom !== null && (thisSeason === null || c.optOutFrom > thisSeason)) clauses.push(`Can opt out before ${c.optOutFrom}`);
+  if (c.noTrade.value === true) clauses.push('No-trade');
+  const control = controlAfterThisSeason(v.control);
+  return {
+    standing: c.standing,
+    kind: c.kind.value,
+    thisSeason,
+    salaryNow,
+    salaryNote,
+    signedThrough,
+    extension: ext.length > 0 ? { from: Math.min(...ext.map((s) => s.season)), to: Math.max(...ext.map((s) => s.season)) } : null,
+    clauses,
+    clauseNotes,
+    after: control === null || thisSeason === null ? null : afterWords(control, thisSeason, signedThrough),
+    controlEnd: controlEndOf(v.control),
+  };
+}
+
+/** The Value section's headline totals as served (no seasons: the card's section and its breakdown carry those). */
+export interface ValueSummary {
+  status: PlayerSurplus['status'];
+  reason: string | null;
+  unit: PlayerSurplus['unit'];
+  contract: SurplusTotal;
+  retention: SurplusTotal;
+  wins: SurplusTotal;
+}
+
+export function valueSummaryOf(s: PlayerSurplus | undefined): ValueSummary | null {
+  if (!s) return null;
+  return { status: s.status, reason: s.reason, unit: s.unit, contract: s.contract, retention: s.retention, wins: s.wins };
+}
+
+/** Our view as a row shows it: the lens's totals and each lean in a few words with its amount (the full read is the card's). */
+export interface OurViewSummary {
+  status: OurView['status'];
+  leaning: boolean;
+  contract: OurView['contract'];
+  retention: OurView['retention'];
+  wins: OurView['wins'];
+  leans: Array<Pick<OurView['leans'][number], 'id' | 'short' | 'text' | 'by'>>;
+  notes: Array<Pick<OurView['notes'][number], 'id' | 'short' | 'text'>>;
+}
+
+function ourViewSummaryOf(v: OurView): OurViewSummary {
+  return {
+    status: v.status, leaning: v.leaning, contract: v.contract, retention: v.retention, wins: v.wins,
+    leans: v.leans.map((l) => ({ id: l.id, short: l.short, text: l.text, by: l.by })),
+    notes: v.notes.map((n) => ({ id: n.id, short: n.short, text: n.text })),
+  };
+}
+
+/** One season of his path: its control, what it costs this club and what he is expected to produce. */
+export interface PathSeason {
+  season: number;
+  label: string;
+  detail: string;
+  cost: SeasonCost | null;
+  wins: { low: number; central: number; high: number } | null;
+}
+
+/** The seasons after this one through the end of his control (or the last the timeline lays out). */
+function pathOf(v: PlayerValuation, end: ControlEnd): PathSeason[] {
+  const thisSeason = v.control.thisSeason;
+  if (thisSeason === null || v.control.standing !== 'held') return [];
+  const last = end.high ?? v.control.seasons[v.control.seasons.length - 1]?.season ?? thisSeason;
+  return v.control.seasons
+    .filter((s: ControlSeason) => s.season > thisSeason && s.season <= last && s.status !== 'free_agent')
+    .map((s) => {
+      const p = v.production.seasons.find((x) => x.season === s.season);
+      return {
+        season: s.season,
+        label: controlSeasonLabel(s),
+        detail: [s.basis, ...s.reasons].filter(Boolean).join(' '),
+        cost: seasonCost(s),
+        wins: p ? { low: p.wins.low, central: p.wins.central, high: p.wins.high } : null,
+      };
+    });
+}
+
+/** His expected wins next season, or why they are not established. */
+function nextWins(v: PlayerValuation, next: number): { wins: { season: number; low: number; central: number; high: number } | null; reason: string | null } {
+  const p = v.production.seasons.find((x) => x.season === next);
+  if (p) return { wins: { season: next, low: p.wins.low, central: p.wins.central, high: p.wins.high }, reason: null };
+  if (v.production.status !== 'projected') return { wins: null, reason: v.production.reason ?? 'His production is not established.' };
+  const pending = v.production.notEstablished.find((x) => x.season === next);
+  return { wins: null, reason: pending?.reason ?? `His production in ${next} is not projected.` };
+}
+
+function groupOf(control: Control | null, signedThrough: number | null, thisSeason: number): ContractGroup {
+  switch (control?.status) {
+    case 'leaving': return 'leaving';
+    case 'option': return 'option';
+    case 'arbitration': return 'arbitration';
+    case 'pre-arbitration': return 'pre_arbitration';
+    case 'reserve clause': return 'reserve';
+    case 'signed':
+    case 'extended': return signedThrough !== null && signedThrough - thisSeason >= LONG_TERM ? 'long_term' : 'signed';
+    default: return 'not_settled';
+  }
+}
+
+const GROUP_ORDER: ContractGroup[] = ['leaving', 'option', 'arbitration', 'pre_arbitration', 'reserve', 'not_settled', 'signed', 'long_term'];
+
+/**
+ * The page. `status` is how current the export is (D-022): handed to Player Value as `currentState`, so a stale export
+ * leaves service-dependent figures not established (D-023), and said on the page with the game date (A-20).
+ */
+export function computeContracts(orgId: number, status: DataStatus = getDataStatus()) {
+  const org = db.prepare(`SELECT league_id, name, nickname FROM teams WHERE team_id = ?`).get(orgId) as
+    | { league_id: number; name: string | null; nickname: string | null }
     | undefined;
   if (!org) throw new Error('Unknown org');
-  const year = seasonYear(org.league_id);
-
-  const contracts = contractsByPlayer();
-  const values = valuesByPlayer();
-  const { overallPct, talentPct } = mlbPercentiler(values);
-  // What each man has actually done this season, so a percentile built out of
-  // playing time cannot recommend an extension by itself
-  const formByPlayer = seasonFormByPlayer(orgId);
-  // The contract regime, resolved through the parent league; a rule the export
-  // does not state stays unknown (D-052)
+  // The season is the league's own, as exported; never the wall-clock year (D-022)
   const rules = leagueRulesForLeague(org.league_id).contract;
-  const hasFreeAgency = rules.freeAgencyYears.value === null ? null : rules.freeAgencyYears.value > 0;
+  const year = rules.season.value;
+  if (year === null) throw new Error(`The league's current season is not in the export: ${rules.season.note ?? 'no source states it'}`);
+  const cue = freshnessCue(status);
+
+  // What each man has done this season, as a fact beside his value (the assistants read it too)
+  const formByPlayer = seasonFormByPlayer(orgId);
+  // Our view: the club's philosophy, read here and handed to the lens at read time (Part 6); the neutral value never sees it
+  const philosophy: LensPhilosophy = lensPhilosophyFrom(resolvePhilosophy(philosophyForOrg(orgId)));
 
   const players = db
     .prepare(
@@ -388,116 +443,78 @@ export function computeContracts(orgId: number) {
     player_id: number; first_name: string; last_name: string; age: number; position: number;
   }>;
 
-  // Contract facts and the control timeline, from the one Player Value entry point
-  const valuations = playerValues(players.map((p) => p.player_id));
+  // Contract facts, control, production and value, from the one Player Value entry point, as current as the export is
+  const valuations = playerValues(players.map((p) => p.player_id), { currentState: cue.state });
+  const limitations = new Set<string>();
 
-  const rows = players
-    .map((p) => {
-      const c = contracts.get(p.player_id);
-      // Placeholder rows: zero-year deals or ones with no valid end year
-      if (!c || c.totalYears < 1 || c.controlledThrough < year) return null;
-      // A signed extension is the club's real commitment, so it drives both the
-      // years-left column and the recommendation
-      const endYear = c.controlledThrough;
-      const yearsAfterThis = c.extension
-        ? Math.max(c.controlledThrough - year, 0)
-        : c.yearsAfterThis;
-      const timeline = valuations.get(p.player_id)?.control ?? null;
-      /*
-       * Where he lands next winter, as Player Value's timeline states it. The
-       * projection adds only the part of this season still to be played (the
-       * banked days already count what he has earned), and a threshold inside
-       * that band leaves the season indeterminate rather than guessed.
-       */
-      const control = controlAfterThisSeason(timeline);
-      const reachingFA = control === null || control.status === 'indeterminate' ? null : control.status === 'leaving';
-      const arbYear = control?.status === 'arbitration' ? control.arbYear : null;
-      // Service in the league's own service-year length, as years.days; unknown stays unknown, never 0
-      const service = timeline?.eligibility?.service.now ?? null;
-      const perYear = timeline?.eligibility?.serviceDaysPerYear.value ?? null;
-      const serviceRead = serviceReading(service, perYear);
-      const serviceYears = serviceRead.years;
-      const oPct = overallPct(p.player_id);
-      const tPct = talentPct(p.player_id);
-      const form = formByPlayer.get(p.player_id) ?? null;
-      const rec = recommend({
-        age: p.age,
-        yearsAfterThis,
-        reachingFA,
-        hasFreeAgency,
-        overallPct: oPct,
-        talentPct: tPct,
-        salaryNow: c.salaryNow,
-        form,
-      });
-      const flags: string[] = [];
-      if (c.extension) {
-        // Already locked up beyond the current deal — not a decision to make
-        flags.push(`extended thru ${c.extension.endYear}`);
-      } else if (yearsAfterThis === 0 && control) {
-        if (control.status === 'reserve clause') {
-          // The deal ends but he cannot leave — the club simply renews him
-          flags.push('reserve clause');
-        } else if (control.status === 'leaving') flags.push('expiring');
-        else if (control.status === 'arbitration') {
-          // Saying "team control" for an arbitration-eligible player hid the fact
-          // that he still has arbitration years left, which read as "expiring"
-          flags.push(arbitrationLabel(control));
-        } else if (control.status === 'pre-arbitration') flags.push('pre-arbitration');
-        else if (control.status === 'option') flags.push(optionLabel(control));
-        // The export cannot establish which: said, not guessed
-        else if (control.status === 'indeterminate') flags.push('control indeterminate');
-      }
-      if (c.lastYearTeamOption) flags.push('team option');
-      if (c.lastYearPlayerOption) flags.push('player option');
-      if (c.lastYearVestingOption) flags.push('vesting option');
-      if (c.noTrade) flags.push('no-trade');
-      const optOutFrom = valuations.get(p.player_id)?.contract.optOutFrom ?? null;
-      if (optOutFrom !== null && optOutFrom > year) flags.push(`opt-out before ${optOutFrom}`);
-      return {
-        sortKey: yearsAfterThis + (yearsAfterThis === 0 && reachingFA !== true ? 0.5 : 0),
-        player_id: p.player_id,
-        name: `${p.first_name} ${p.last_name}`,
-        age: p.age,
-        positionName: POSITION_NAMES[p.position] ?? '?',
-        salaryNow: c.salaryNow,
-        totalYears: c.totalYears,
-        yearsAfterThis,
-        endYear,
-        extension: c.extension,
-        /** Whole years of service (for sorting); `service` is the years.days text. */
-        serviceYears,
-        service: serviceRead.text,
-        arbYear,
-        /** What happens after this season, with its basis; `indeterminate` names what is missing. */
-        control,
-        /** Next season's cost exactly as the timeline serves it (phase 4a): a band with its basis, or why it is unknown. */
-        nextCost: seasonCost(timeline?.seasons.find((s) => s.season === year + 1)),
-        overallPct: oPct,
-        talentPct: tPct,
-        /*
-         * Sent whether or not it changed the recommendation, because this is
-         * also what the assistants read. Handed a percentile and nothing else,
-         * the GM briefing described a 93rd-percentile Value as a man
-         * "performing at a 93rd-percentile MLB value" — a claim that figure
-         * never made, and one it had nothing in front of it to doubt.
-         */
-        seasonForm: form,
-        flags,
-        recommendation: rec,
-      };
-    })
-    .filter(Boolean) as Array<{ salaryNow: number; sortKey: number }>;
+  const rows = players.flatMap((p) => {
+    const v = valuations.get(p.player_id);
+    if (!v) return [];
+    const summary = contractSummaryOf(v);
+    const control = controlAfterThisSeason(v.control);
+    if (v.control.eligibility?.limitation) limitations.add(v.control.eligibility.limitation);
+    // Service in the league's own service-year length, as years.days; unknown stays unknown, never 0
+    const serviceRead = serviceReading(v.control.eligibility?.service.now ?? null, v.control.eligibility?.serviceDaysPerYear.value ?? null);
+    const yearsAfterThis = summary.signedThrough === null ? null : Math.max(summary.signedThrough - year, 0);
+    const flags: string[] = [];
+    if (summary.extension) flags.push(`extended thru ${summary.extension.to}`);
+    else if (control && (summary.signedThrough === null || summary.signedThrough <= year)) {
+      if (control.status === 'reserve clause') flags.push('reserve clause');
+      else if (control.status === 'leaving') flags.push('expiring');
+      else if (control.status === 'arbitration') flags.push(arbitrationLabel(control));
+      else if (control.status === 'pre-arbitration') flags.push('pre-arbitration');
+      else if (control.status === 'option') flags.push(optionLabel(control));
+      else if (control.status === 'indeterminate') flags.push('control indeterminate');
+    }
+    if (v.contract.noTrade.value === true) flags.push('no-trade');
+    const surplus = v.surplus;
+    const ours = surplus && v.control.standing !== 'unknown'
+      ? ourViewOf({ neutral: surplus, philosophy, ours: v.control.holder.value === orgId })
+      : null;
+    const next = nextWins(v, year + 1);
+    return [{
+      player_id: p.player_id,
+      name: `${p.first_name} ${p.last_name}`,
+      age: p.age,
+      positionName: POSITION_NAMES[p.position] ?? '?',
+      group: groupOf(control, summary.signedThrough, year),
+      ...summary,
+      /** The last season his contract covers (the summary's `signedThrough`), for the assistants' older reading. */
+      endYear: summary.signedThrough,
+      yearsAfterThis,
+      /** Whole years of service (for sorting); `service` is the years.days text. */
+      serviceYears: serviceRead.years,
+      service: serviceRead.text,
+      arbYear: control?.status === 'arbitration' ? control.arbYear : null,
+      /** What happens after this season, with its basis; `indeterminate` names what is missing. */
+      control,
+      /** Next season's cost exactly as the timeline serves it (phase 4a): a band with its basis, or why it is unknown. */
+      nextCost: seasonCost(v.control.seasons.find((s) => s.season === year + 1)),
+      path: pathOf(v, summary.controlEnd),
+      wins: next.wins,
+      winsReason: next.reason,
+      value: valueSummaryOf(surplus),
+      ourView: ours ? ourViewSummaryOf(ours) : null,
+      /** This season's line, a fact beside the value (also what the assistants read). */
+      seasonForm: formByPlayer.get(p.player_id) ?? null,
+      flags,
+    }];
+  });
 
-  rows.sort((a, b) => a.sortKey - b.sortKey || b.salaryNow - a.salaryNow);
+  // The groups in the order a GM works through them, the biggest salary first within each
+  rows.sort((a, b) => GROUP_ORDER.indexOf(a.group) - GROUP_ORDER.indexOf(b.group) || (b.salaryNow ?? -1) - (a.salaryNow ?? -1));
 
+  const priced = rows.map((r) => valuations.get(r.player_id)?.surplus?.price).find((x) => x != null) ?? null;
   return {
     seasonYear: year,
     gameDate: currentGameDate(org.league_id),
-    // Surfaced so the page can explain why it is talking about a reserve
-    // clause instead of free agency
+    freshness: { ...cue, limitations: [...limitations] },
+    organization: { id: orgId, name: [org.name, org.nickname].filter(Boolean).join(' ') || null },
+    // Surfaced so the page can explain why it is talking about a reserve clause instead of free agency
     rules,
     finances: financeCards(orgId),
+    /** The price of a win in force for the club's league, as the surplus reads it: context for the value columns. */
+    price: priced ? { stage: priced.stage, band: priced.band, text: priced.text } : null,
     players: rows,
   };
 }
@@ -508,7 +525,7 @@ contractRoutes.get('/contracts/:orgId', (req, res) => {
     return res.status(400).json({ error: 'No contract data imported yet' });
   }
   try {
-    res.json(computeContracts(Number(req.params.orgId)));
+    res.json(computeContracts(orgId));
   } catch (err) {
     res.status(404).json({ error: (err as Error).message });
   }

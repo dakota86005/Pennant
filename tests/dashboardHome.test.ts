@@ -20,8 +20,16 @@ describe('dashboard attention chips', () => {
 
   it('still carries the farm\'s attention count and the older desk counts', async () => {
     const { pending } = await request(`/api/dashboard/${IDS.mlbTeam}`);
-    for (const key of ['farmAttention', 'expiring', 'extensionCandidates', 'crunchIssues', 'injuredCount', 'tradeTalk']) {
+    for (const key of ['farmAttention', 'expiring', 'arbitration', 'crunchIssues', 'injuredCount', 'tradeTalk']) {
       expect(typeof pending[key], key).toBe('number');
     }
+  });
+
+  it('counts contract decisions as Contracts groups them, and counts no recommendation (Player Value phase 6a)', async () => {
+    const { pending } = await request(`/api/dashboard/${IDS.mlbTeam}`);
+    const { players } = await request(`/api/contracts/${IDS.mlbTeam}`);
+    expect(pending).not.toHaveProperty('extensionCandidates');
+    expect(pending.expiring).toBe(players.filter((p: { group: string }) => p.group === 'leaving').length);
+    expect(pending.arbitration).toBe(players.filter((p: { group: string }) => p.group === 'arbitration').length);
   });
 });

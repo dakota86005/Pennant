@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { db, tableExists } from './db.js';
+import { getDataStatus } from './dataStatus.js';
 import { resolvePhilosophy } from './philosophy.js';
 import { clubWinValue, lensPhilosophyFrom, playerOurView } from './playerValue.js';
 import { loadSettings, philosophyForOrg } from './settings.js';
@@ -50,7 +51,8 @@ ourViewRoutes.get('/player-value/:playerId/our-view', (req, res) => {
   const org = viewingOrganization(req.query.orgId);
   if (!org) return res.status(404).json({ error: 'No organization to view from: choose one, or import a save with a managed club' });
   const philosophy = lensPhilosophyFrom(resolvePhilosophy(philosophyForOrg(org.id)));
-  const read = playerOurView(id, philosophy, org.id);
+  // As current as the export is, like the card's other reads (A-20)
+  const read = playerOurView(id, philosophy, org.id, { currentState: getDataStatus().freshness.csv.state });
   if (!read) return res.status(404).json({ error: 'No such active player' });
   res.json({
     organization: { id: org.id, name: clubName(org.id), source: org.source },

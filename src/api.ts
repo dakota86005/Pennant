@@ -332,11 +332,10 @@ export interface PlayerDossier {
   assignment: AssignmentContext | null;
   /** What may be done with him, and how sure that is. */
   rights: PlayerRights | null;
-  overallPct: number | null;
-  talentPct: number | null;
-  /** OOTP's own Overall / Potential on the 20-80 scale, for cross-reference. */
-  oaRating: number | null;
-  potRating: number | null;
+  /** The header (Player Value phase 6a): how current the data is, his contract in a phrase and the Value section's headline. */
+  header?: PlayerHeader;
+  /** The organization's scouted tools now and at their ceiling (20-80), through the evidence boundary; null parts unknown. */
+  scouted?: ScoutedFigure | null;
   isPitcher: boolean;
   battingRatings: Record<string, [number, number]> | null;
   pitchingRatings: Record<string, [number, number]> | null;
@@ -352,13 +351,14 @@ export interface PlayerDossier {
     experience: number;
     isPrimary: boolean;
   }>;
+  /** His contract from Player Value's contract facts: a salary the export does not state is null, never $0. */
   contract: {
-    salaryNow: number;
-    totalYears: number;
-    yearsAfterThis: number;
-    endYear: number;
-    noTrade: boolean;
-    salarySchedule: Array<{ year: number; salary: number }>;
+    salaryNow: number | null;
+    totalYears: number | null;
+    yearsAfterThis: number | null;
+    endYear: number | null;
+    noTrade: boolean | null;
+    salarySchedule: Array<{ year: number; salary: number | null; option?: string | null; extension?: boolean }>;
   } | null;
   battingYears: Array<Record<string, number | string | null>>;
   pitchingYears: Array<Record<string, number | string | null>>;
@@ -382,6 +382,68 @@ export interface PlayerDossier {
 }
 
 export const getPlayer = (id: number) => json<PlayerDossier>(`/api/player/${id}`);
+
+/**
+ * How current a value page's figures are (server/dataStatus.ts `freshnessCue`, A-20): the game date of the export and one
+ * short line when the GM should know more; `limitations` are Player Rights' own words where it read the export unchecked.
+ */
+export interface FreshnessCue {
+  state: 'current' | 'behind' | 'unverified' | 'unavailable';
+  asOf: string | null;
+  lagDays: number;
+  line: string | null;
+  detail: string;
+  limitations: string[];
+}
+
+/** When his control ends, as the timeline lays it out (server/playerValueCone.ts `controlEndOf`). */
+export interface ControlEnd {
+  low: number | null;
+  high: number | null;
+  pastHorizon: boolean;
+  optOutBefore: number | null;
+  /** Only the earliest end is known: `high` is null and control may run past the last season laid out. */
+  laterUnknown?: boolean;
+  reason: string | null;
+}
+
+/** His contract in a phrase's parts (server/contracts.ts `contractSummaryOf`). */
+export interface ContractSummary {
+  standing: 'signed' | 'unsigned' | 'no_terms' | 'no_contract_row' | 'unavailable';
+  kind: 'major_league' | 'minor_league' | null;
+  thisSeason: number | null;
+  salaryNow: number | null;
+  salaryNote: string | null;
+  signedThrough: number | null;
+  extension: { from: number; to: number } | null;
+  clauses: string[];
+  clauseNotes?: string[];
+  after: { status: string; label: string; phrase: string; detail: string | null } | null;
+  controlEnd: ControlEnd;
+}
+
+/** The Value section's headline totals, as served (server/contracts.ts `valueSummaryOf`). */
+export interface ValueSummary {
+  status: PlayerSurplus['status'];
+  reason: string | null;
+  unit: PlayerSurplus['unit'];
+  contract: SurplusTotal;
+  retention: SurplusTotal;
+  wins: SurplusTotal;
+}
+
+export interface PlayerHeader {
+  freshness: FreshnessCue;
+  contract: ContractSummary | null;
+  value: ValueSummary | null;
+}
+
+export interface ScoutedFigure {
+  now: number | null;
+  ceiling: number | null;
+  status: 'complete' | 'partial' | 'unknown';
+  missing: { now: string[]; ceiling: string[] };
+}
 
 /**
  * The player card's production cone, as Player Value serves it (server/playerValueCone.ts): expected
@@ -690,25 +752,44 @@ export interface ClubFinanceCards {
   sources?: Record<'budget' | 'payroll' | 'payrollNextSeason' | 'cash', string | null>;
 }
 
-export interface ContractRow {
+/** Where he stands after this season, in the page's groups. */
+export type ContractGroup = 'leaving' | 'option' | 'arbitration' | 'pre_arbitration' | 'reserve' | 'not_settled' | 'signed' | 'long_term';
+
+/** One season of his path: its control, what it costs this club and his expected wins. */
+export interface PathSeason {
+  season: number;
+  label: string;
+  detail: string;
+  cost: SeasonCostData | null;
+  wins: { low: number; central: number; high: number } | null;
+}
+
+/** Our view as a Contracts row carries it (server/contracts.ts `OurViewSummary`). */
+export interface OurViewSummary {
+  status: OurView['status'];
+  leaning: boolean;
+  contract: OurTotal;
+  retention: OurTotal;
+  wins: OurTotal;
+  leans: Array<Pick<LensLean, 'id' | 'short' | 'text' | 'by'>>;
+  notes: Array<Pick<LensLean, 'id' | 'short' | 'text'>>;
+}
+
+/** A Contracts row (Player Value phase 6a): facts, control, cost path, production and value; no verdict. */
+export interface ContractRow extends ContractSummary {
   player_id: number;
   name: string;
   age: number;
   positionName: string;
-  salaryNow: number;
-  totalYears: number;
-  yearsAfterThis: number;
-  endYear: number;
+  group: ContractGroup;
+  endYear: number | null;
+  yearsAfterThis: number | null;
   /** Whole years of service. */
   serviceYears: number | null;
   /** Service in years.days ("2.126" is two years 126 days); "2.xxx" when only whole years are exported. */
   service?: string | null;
-  overallPct: number | null;
-  talentPct: number | null;
+  arbYear: number | null;
   flags: string[];
-  /** Present only when a signed extension starts after the current deal. */
-  extension: { years: number; startYear: number; endYear: number; firstSalary: number } | null;
-  recommendation: { action: string; reasons: string[] } | null;
   /** What happens after this season (Player Value's control timeline); `reason` says why, or what is missing. */
   control?: {
     status: string; arbYear: number | null; arbYearHigh: number | null; superTwo?: boolean; between: string[]; reason: string | null;
@@ -717,6 +798,12 @@ export interface ContractRow {
   } | null;
   /** Next season's cost as Player Value's timeline serves it (phase 4a): a band with its basis, or why it is unknown. */
   nextCost?: SeasonCostData | null;
+  path: PathSeason[];
+  wins: { season: number; low: number; central: number; high: number } | null;
+  winsReason: string | null;
+  value: ValueSummary | null;
+  ourView: OurViewSummary | null;
+  seasonForm?: { line: string | null; verdict: string; meaningful: boolean } | null;
 }
 
 /** A season's cost as Player Value's timeline serves it (phase 4a, review): a band, its central, its basis, or why it is unknown. */
@@ -738,7 +825,11 @@ export interface SeasonCostData {
 export interface ContractsResponse {
   seasonYear: number;
   gameDate: string | null;
+  freshness: FreshnessCue;
+  organization: { id: number; name: string | null };
   finances: ClubFinanceCards | null;
+  /** The price of a win in force for the club's league: context for the value columns. */
+  price: { stage: 'opening' | 'measured'; band: { low: number; central: number; high: number }; text: string } | null;
   players: ContractRow[];
 }
 

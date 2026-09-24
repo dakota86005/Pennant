@@ -7,10 +7,10 @@ reality and surplus value. Decision: [D-052](DECISIONS.md) (accepted; owner answ
 **Status: phases 1 to 4b built (contract facts and control; Club Finances, the opening price of a win and the
 per-import market snapshot; expected production in wins from major-league results and scouted ratings, fitted per save
 under D-053; the cost of controlled seasons, measured on each import; the measured price of a win across imports; the
-neutral contract surplus and the retention margin, phase 5a; the philosophy lens and the club's value of a win, phase 5b,
-Part 9); phase 6 is design.** `PROJECT_STATE.md` says
-what exists; this file says what is to be built and why. Every surface that reports value still reads the prohibited
-`players_value` fields for its value figures (Part 8), and they stay as they are until the phase that replaces each
+neutral contract surplus and the retention margin, phase 5a; the philosophy lens and the club's value of a win, phase 5b;
+the player card's header and Contracts migrated, phase 6a; Part 9); the rest of phase 6 is design.** `PROJECT_STATE.md` says
+what exists; this file says what is to be built and why. The surfaces not yet migrated still read the prohibited
+`players_value` fields for their value figures (Part 8), and they stay as they are until the phase that replaces each
 one; since phase 1 their control and contract facts come from Player Value.
 
 ---
@@ -1279,12 +1279,12 @@ keep an invalid one. The order:
 
 | # | Consumer | Reads today (`players_value` and around it) | Becomes |
 |---|---|---|---|
-| 1 | Contracts (`contracts.ts`) | `valuesByPlayer`, `mlbPercentiler`; percentile cut-offs at 70/75 (`recommendOnValue`); `SERVICE_DAYS_PER_YEAR = 172`; `controlAfterThisSeason` with service missing → 0 | Contract facts, control and cost path, production, surplus. `controlAfterThisSeason` and the percentile advice deleted |
+| 1 | Contracts (`contracts.ts`) — **migrated, phase 6a** | Was: `valuesByPlayer`, `mlbPercentiler`; percentile cut-offs at 70/75 (`recommendOnValue`); `contractsByPlayer`. Now: none | Contract facts, control and cost path, production, surplus and our view, as built (below). The percentile advice deleted; `controlAfterThisSeason` stays as the timeline's reading of next season (hardening F2), no service arithmetic |
 | 2 | Payroll (`payroll.ts`) | Facts only; its control column comes from `controlAfterThisSeason` | The control timeline from concern 2, and club finances from concern 4 |
 | 3 | Trade Center (`trade.ts`, `tradingblock.ts`, AI trade context) | `analyze` sums raw `overall_value` | Both sides' value decompositions side by side: surplus bands and control. The difference between the sides is shown as a band with its components (owner, Q-8), never as a point, a single score or a verdict |
 | 4 | Free Agents (`freeagents.ts`) | `players_value` | Expected production and the market price; cost as the market's band |
 | 5 | Org Comparison (`franchise.ts`) | `players_value` | Club finances and aggregated production, each with its basis |
-| 6 | Player card and others (`player.ts:272`, `lineup.ts:288`, `api.ts:462`, `valuation.ts` `rosterHoles`) | `players_value` | Classified in phase 6. A read that is not a value question (a lineup's quality of cover) moves to `scoutedEvidence.ts` under its owner, not to Player Value |
+| 6 | Player card — **migrated, phase 6a** (`player.ts`); others (`lineup.ts:288`, `api.ts:462` the roster's OA/POT, `valuation.ts` `rosterHoles`) | The card: was Value and Talent percentiles, OA/POT from `players_value` and a direct `players_contract` query; now none. Others: `players_value` | The card's header: his contract in a phrase, the Value section's headline, his scouted tools through `scoutedEvidence.ts` (below). The others are classified in phase 6: a read that is not a value question (a lineup's quality of cover) moves to `scoutedEvidence.ts` under its owner, not to Player Value |
 
 The end state: no production module reads `players_value`, `mlbPercentiler` and `VALUE_PERCENTILE_NOTE` are gone,
 and the evidence boundary test's allow-list for `players_value` is empty.
@@ -1338,6 +1338,46 @@ about 3.9 points (now 75%)", on hover: context from the standings, not part of t
 the price of a win. No old term ("central", "retention margin", "edge against edge") is in the section's visible text
 (`valueSection.test.ts`).
 
+**The card's header and Contracts on Player Value (phase 6a, as built, 2026-09-24).** Consumers 1 and 6 (the card)
+migrated in one change that deleted their `players_value` reads (`player.ts` and `contracts.ts` name no
+`valuesByPlayer`, `mlbPercentiler`, `contractsByPlayer`, `oaRating` or percentile; `playerValueBoundary.test.ts` and
+`evidenceBoundary.test.ts` hold it, and the boundary's PENDING list is empty).
+
+- *The card's header* (`src/PlayerHeaderValue.tsx`) shows three tiles and a date: **Contract** ("$18.7M in 2026",
+  "Signed through 2028", then what happens after this season and when control ends: "Arbitration in 2027 · Free agent
+  after 2028 or 2029", options and no-trade where the export records them, "Some terms not in the export" with the
+  unpopulated flags on hover); **Contract value** (the Value section's headline, "Most likely $X" and "could be $A to $B
+  (2026–2030)", or the range of its most likely readings where a season has no single one, or "Not valued yet" with the
+  reason on hover; in a league without dollars, "Wins above replacement"); **Scouted** (his scouted tools averaged now →
+  at their ceiling, 20–80, from `scoutedEvidence.ts`; a missing grade reads "not scouted", never a stand-in); and "As of
+  May 16, 2026", with a warning where the export is behind the save or could not be checked. The Value and Talent
+  percentiles and OOTP's Overall / Potential are gone from the card and its hover (fog of war: nothing establishes they
+  are the organization's view; the Roster's OA/POT column is consumer 6's, not yet migrated). The totals are the ones the
+  Value section is served, from the same valuation read with the same freshness. The card's contract table reads the
+  contract facts: a salary the export does not state is "not in the export", never $0.
+- *Contracts* (`server/contracts.ts` `computeContracts`, `src/pages/Contracts.tsx`) lists the club's rostered players
+  (every one: a blank contract row is shown as "no terms", not dropped) in groups in the order a GM works through them:
+  free agents after this season, options, arbitration, pre-arbitration, reserve clause, not settled, signed short term,
+  long-term deals (three seasons or more). The columns, each sortable from the keyboard with its explanation on hover:
+  this season's salary, signed through (with options and clauses), service, free agent after (`controlEndOf`: the
+  cone's own reading of when control ends, "2028 or 2029" where the later season may itself be free agency, "2031 or
+  later" where the last seasons laid out may each be, "past 2032"), with next season's status under it; next season's
+  cost (most likely over its range, "if kept", "—" for a free agent); next season's wins; contract value; keeping him;
+  and our view (the lens under the club's philosophy, "same" where it leans on nothing, the leans on hover). An unknown
+  is a short word with its reason on hover and sorts after every known figure in either direction. A row opens the card;
+  its disclosure shows his seasons under control (status, cost and wins each season) and what the figures rest on. Group
+  chips, a pitchers / position players filter and a name search filter the table; it scrolls in its own box. No
+  recommendation of any kind: `recommendOnValue`, the 70/75 cut-offs, the "Hold off" veto and the dashboard's
+  "Extension candidates" count are deleted (the dashboard counts "Heading to arbitration" instead); the briefing, the
+  storylines and the chat read the same rows, told they carry no recommendation. `controlAfterThisSeason`,
+  `seasonCost` and the finance cards stay (Payroll, Free Agents and the Trade Center read them).
+- *A-20, for these routes.* `freshnessCue` (`server/dataStatus.ts`) states the export's game date and its freshness
+  against the save; Contracts, the card's route and the one-player value routes (`/api/player-value/:id`, `/cone`,
+  `/surplus`, `/our-view`) hand that state to Player Value as `currentState`, so a stale export leaves service,
+  control and what rests on them not established, on the page and the card alike, and Player Rights' unverified
+  limitation reaches the GM in the date's hover. Payroll, Free Agents and the Trade Center read with the default
+  (`unverified`) until their own migration; on a current export their figures are identical.
+
 **Consumers read the timeline as it is (hardening F2, 2026-09-23).** `controlAfterThisSeason` reports an option or
 opt-out next season as `option`, with whose decision it is and where he falls if it is declined, never "signed";
 "extended" only when next season is the extension's; a player whose control ends this season is leaving. The AI
@@ -1365,7 +1405,19 @@ cards are Club Finances' figures, a missing one "unknown", never $0.
 | **4b** Measured price and observed awards — **done** (2026-09-23; evidence below, 4.2 to 4.4, CALIBRATION.md section 9) | Observed signings and arbitration awards across imports. The measured price replaces the opening one once its band is narrower (Q-4). Observed awards test and then measure the ladder; reserve-clause renewals are measured. Replacement is measured from freely available talent | On an off-season import, signings and awards are identified and counted. While the measured band is still wider, the opening price stays and says why. The price history is visible |
 | **5a** Neutral surplus and the retention margin — **done** (2026-09-24; evidence below and 5.1) | Concern 5: Part 5's two views, season by season with every component, the owner's 5% discount, one level of replacement on both sides; the card's Value section; the invariants for the card and the league-wide read | The surplus and invariant behavior cases pass; sunk money never raises the retention margin on any player of the save; one valuation whichever read asks; the boundary test passes |
 | **5b** The lens and the win curve — **done** (2026-09-24; evidence below, 4.5 and 6.1) | Part 6's lens, Part 4.5's club value of a win | The lens cases pass. Neutral value is identical under every philosophy. Every lean is named |
-| **6** Consumer migration | Part 8, in order, one consumer per change | Each change deletes that consumer's `players_value` reads. Finally, the `players_value` allow-list is empty |
+| **6** Consumer migration — **6a done** (2026-09-24: the player card's header and Contracts, Part 8) | Part 8, in order, one consumer per change | Each change deletes that consumer's `players_value` reads. Finally, the `players_value` allow-list is empty. 6a: `player.ts` and `contracts.ts` read none; the boundary's PENDING list is empty; A-20 met for their routes; the sweep's Contracts and card checks pass on the Arizona import (Part 9, below) |
+
+**Phase 6a exit criteria, as met (2026-09-24).** `player.ts` and `contracts.ts` read no `players_value` figure and no
+contract row of their own (`playerValueBoundary.test.ts`: the phase-6 migrated consumers, the pages' sources and the
+empty PENDING list; `evidenceBoundary.test.ts`: the `valuesByPlayer`/`mlbPercentiler` readers only shrink). The
+full-save sweep on the Arizona import (read-only) ran every club's Contracts page and 50 cards: 30 pages and 901 rows,
+2,963 seasons on the rows' paths, every row's contract value, keeping him and wins equal to the league-wide read's
+totals, next season's cost and every path season's cost equal to the timeline's, wins equal to production's, control's
+end equal to the timeline's (never guessed), our view equal to the lens under each club's philosophy, no verdict word
+in any payload, every rostered player listed; each card's header equal to its Value section, no `players_value` figure,
+the scouted figure on the 20–80 scale or unknown (200 checks, none failing; the 180 of phase 5b unchanged). A club's
+page takes about 220 ms (the first about 600 ms); the card's route and its Value section's together about 230 ms a
+player. `tsc`, `npm test`, the build and the desktop build are clean.
 
 **Phase 1 exit criteria, as met.** Every active player has a control timeline (8,009 laid out, 4,566 unsigned with
 none), every `indeterminate` counted with its reason (Part 7). Payroll's control column and lists read it
@@ -1965,4 +2017,5 @@ The owner answered these on 2026-09-22. Each answer is folded into the part it n
   records the imported export's market and contracts when this build has not yet (Part 7).
 - **Deferred to phase 6 (2026-09-23, hardening).** A-20 (the `unverified` limitation and data freshness reaching the
   GM on consumer routes) and D-26 (pre-fork consumer routes failing on older export shapes) are consumer-migration
-  questions and move with the consumers (Part 8).
+  questions and move with the consumers (Part 8). Phase 6a met A-20 for Contracts, the card and the one-player value
+  routes (Part 8); the other consumers carry it with their own migration. D-26 is still open for them.

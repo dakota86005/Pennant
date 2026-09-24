@@ -310,8 +310,15 @@ const CONTRACT_QUERY = /\b(?:FROM|JOIN)\s+players_contract(?:_extension)?\b/gi;
  * in the same file is not hidden by it. The list only empties.
  */
 const PENDING: Array<{ check: 'service' | 'contract-query'; file: string; matches: string[]; finding: string }> = [
-  { check: 'contract-query', file: 'player.ts', matches: ['FROM players_contract'], finding: 'unassigned (A-16 sweep): the player card reads players_contract directly' },
+  // Emptied in phase 6a (2026-09-24): the player card reads its contract through Player Value's contract facts
 ];
+
+/**
+ * Phase 6 (Part 8): the consumers migrated onto Player Value, with their `players_value` reads deleted in the same
+ * change. None of them names a `players_value` reader or a figure derived from it, in any spelling; the list only grows.
+ */
+const PHASE6_MIGRATED = ['contracts.ts', 'player.ts'];
+const PLAYERS_VALUE_READERS = /players_value|overall_value|talent_value|\boa_rating\b|\bpot_rating\b|\boaRating\b|\bpotRating\b|valuesByPlayer|mlbPercentiler|VALUE_PERCENTILE_NOTE|overallPct|talentPct|contractsByPlayer/;
 
 /** The matches of a check in a consumer, as text; a pending entry is compared with them exactly. */
 function consumerMatches(check: 'service' | 'contract-query', file: string): string[] {
@@ -371,7 +378,9 @@ describe('the Player Value boundary', () => {
       && !(PACKAGE_IMPORTS[file] ?? []).includes(i)
       && !(i === './philosophy.js' && file === LENS)
       && !(i === './posture.js' && file === ODDS_READER)
-      && !(i === './scoutedEvidence.js' && (file === ADAPTER_READER || ADAPTER_TYPES_ONLY.includes(file))));
+      && !(i === './scoutedEvidence.js' && (file === ADAPTER_READER || ADAPTER_TYPES_ONLY.includes(file)))
+      // Phase 6a (A-20): the one-player routes read how current the export is, to hand Player Value its currentState
+      && !(i === './dataStatus.js' && file === 'playerValueRoutes.ts'));
     expect(outside, `${file} imports ${outside.join(', ')}`).toEqual([]);
   });
 
@@ -521,6 +530,20 @@ describe('the Player Value boundary', () => {
         expect(found, `${file} (${check})`).toEqual([]);
       }
     }
+  });
+
+  it.each(PHASE6_MIGRATED)('%s (migrated in phase 6) reads no players_value figure and no contract row of its own: Player Value answers (Part 8)', (file) => {
+    expect(code(file), file).not.toMatch(PLAYERS_VALUE_READERS);
+    expect(importsOf(file), file).toContain('./playerValue.js');
+  });
+
+  it('the pages migrated in phase 6 show no players_value figure: the card, its hover and Contracts (Part 8)', () => {
+    for (const file of ['src/playerModal.tsx', 'src/playerHover.tsx', 'src/pages/Contracts.tsx', 'src/PlayerHeaderValue.tsx']) {
+      const source = fs.readFileSync(path.join(process.cwd(), file), 'utf8');
+      expect(source, file).not.toMatch(/overallPct|talentPct|oaRating|potRating|TIP_VALUE|TIP_TALENT/);
+    }
+    // ...and Contracts carries no recommendation (D-052: it describes, the GM decides)
+    expect(fs.readFileSync(path.join(process.cwd(), 'src/pages/Contracts.tsx'), 'utf8')).not.toMatch(/recommend/i);
   });
 
   it('every pending violation names its finding and a migrated consumer', () => {

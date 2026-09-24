@@ -22,9 +22,7 @@ import { IDS } from './fixture.js';
 
 interface Player {
   name: string;
-  overallPct: number | null;
   seasonForm: { line: string | null; verdict: string; meaningful: boolean } | null;
-  recommendation: { action: string; reasons: string[] } | null;
 }
 
 const players = async (): Promise<Player[]> =>
@@ -96,55 +94,24 @@ describe('the contract payload', () => {
   });
 });
 
-describe('a recommendation to commit to a player', () => {
-  const committing = new Set([
-    'Core keeper', 'Extension candidate', 'Extend now', 'Re-sign', 'Re-sign short-term',
-  ]);
-
-  it('never stands on value alone without saying so', async () => {
+/*
+ * Player Value phase 6a (D-052: value describes, it never authorizes). The recommendation this file used to guard
+ * ("Extend now", "Re-sign", "Hold off", ...) is gone with the percentile it stood on: Contracts now shows the
+ * contract, control, cost, production and value bands, and the GM decides. The reported case is kept as the
+ * invariant that no row tells the GM what to do, however the percentile and the season disagree.
+ */
+describe('a contract row tells the GM nothing to do', () => {
+  it('carries no recommendation and no percentile for anyone', async () => {
     for (const p of await players()) {
-      const rec = p.recommendation;
-      if (!rec || !committing.has(rec.action)) continue;
-      const said = rec.reasons.join(' ');
-      /*
-       * Either the season backs it, or the reader is told the season cannot
-       * yet say. What must not happen is an extension recommended in silence
-       * off a percentile that counts innings.
-       */
-      expect(said, `${p.name} (${rec.action}) said nothing about the season`).toMatch(
-        /backs it|too little to judge|no meaningful playing time/
-      );
+      expect(p, p.name).not.toHaveProperty('recommendation');
+      expect(p, p.name).not.toHaveProperty('overallPct');
     }
   });
 
-  it('is never made for a man whose season is clearly poor', async () => {
-    for (const p of await players()) {
-      const rec = p.recommendation;
-      if (!rec || p.seasonForm?.verdict !== 'poor') continue;
-      expect(
-        committing.has(rec.action),
-        `${p.name} was told to be kept on ${rec.action} while hitting ${p.seasonForm.line}`
-      ).toBe(false);
-    }
-  });
-
-  it('holds off on the reported case rather than urging an extension', async () => {
+  it('shows the reported case his season and his contract, and no advice', async () => {
     const him = (await players()).find((p) => p.name === 'Paper Value');
     expect(him, 'the fixture case never reached the contracts payload').toBeDefined();
-    // Top of the club by value, a full season of hitting nothing, and one year
-    // left on the minimum — every ingredient of the report
-    expect(him!.overallPct).toBeGreaterThanOrEqual(70);
-    expect(him!.seasonForm?.verdict).toBe('poor');
-    expect(him!.recommendation?.action).toBe('Hold off');
-  });
-
-  it('holds off, and names both facts, when value and results disagree', async () => {
-    const held = (await players()).filter((p) => p.recommendation?.action === 'Hold off');
-    for (const p of held) {
-      const said = p.recommendation!.reasons.join(' ');
-      // The number that recommended him, and the season that argues otherwise
-      expect(said).toContain(p.seasonForm!.line as string);
-      expect(said).toMatch(/playing time, not results/);
-    }
+    expect(him!.seasonForm?.line).toMatch(/^\d+ PA/);
+    expect(JSON.stringify(him)).not.toMatch(/extend|re-sign|hold off|let walk|keep him|release/i);
   });
 });

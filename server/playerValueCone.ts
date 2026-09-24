@@ -295,6 +295,71 @@ function calibrationOf(production: PlayerProduction): ProductionCone['calibratio
   return { source: m.source, calibrated, status, detail: m.label };
 }
 
+/** A control season's label, as the card's cone names it ("Arbitration 2", "Club option", "Signed (extension)"). */
+export function controlSeasonLabel(c: ControlSeason): string {
+  return labelsOf(c).label;
+}
+
+/** A status in words, for a sentence ("free agency", "arbitration", "not established"). */
+export function controlStatusWords(status: ControlStatus): string {
+  return STATUS_WORDS[status];
+}
+
+/**
+ * When his control ends, as the timeline lays it out (phase 6a: Contracts and the card's header). The same reading as
+ * the cone's "free agent after": the last season the club may hold him (`controlEnds` − 1), and the earliest where a
+ * season before it may itself be free agency (an unsettled season between arbitration and free agency, or an option
+ * whose other branch is). Never a guess where the timeline cannot say (D-018).
+ */
+export interface ControlEnd {
+  /** The last season the club may hold him: at the earliest and at the latest. Null where not established. */
+  low: number | null;
+  high: number | null;
+  /** Control runs past the last season the timeline lays out; `high` is then that season. */
+  pastHorizon: boolean;
+  /** Where the deal runs past the horizon but he may opt out: the season before which he can. */
+  optOutBefore: number | null;
+  /**
+   * Only the earliest is known: the last seasons laid out may each be free agency, and whether control runs past the
+   * last of them is not in the timeline (`high` is then null, `low` the last season he is surely held).
+   */
+  laterUnknown: boolean;
+  /** Why it is not established (or, with `laterUnknown`, why only the earliest is); null where it is. */
+  reason: string | null;
+}
+
+export function controlEndOf(control: ControlTimeline): ControlEnd {
+  const none = (reason: string): ControlEnd => ({ low: null, high: null, pastHorizon: false, optOutBefore: null, laterUnknown: false, reason });
+  // An unsettled season that may be free agency, or an option (or opt-out) whose other branch is
+  const mayBeFree = (c: ControlSeason | undefined): boolean => c !== undefined && (
+    (c.status === 'indeterminate' && c.between.includes('free_agent'))
+    || (c.declined !== null && (c.declined.status === 'free_agent' || c.declined.between.includes('free_agent'))));
+  if (control.standing === 'unsigned') return none(control.notes[control.notes.length - 1] ?? 'No club holds him.');
+  if (control.standing === 'unknown') return none(control.notes[control.notes.length - 1] ?? 'His control cannot be laid out from the export.');
+  const ends = control.controlEnds;
+  if (ends !== null) {
+    const high = ends - 1;
+    let low = high;
+    for (let y = high; mayBeFree(control.seasons.find((x) => x.season === y)); y -= 1) low = y - 1;
+    return { low, high, pastHorizon: false, optOutBefore: null, laterUnknown: false, reason: null };
+  }
+  const last = control.seasons[control.seasons.length - 1]?.season ?? null;
+  if (control.continuesPastHorizon && last !== null) {
+    const optOut = control.seasons.find((x) => x.status === 'opt_out');
+    return { low: last, high: last, pastHorizon: true, optOutBefore: optOut?.season ?? null, laterUnknown: false, reason: null };
+  }
+  // The last seasons laid out may each be free agency: only the earliest end is known (never a guess at the latest)
+  const tail = control.seasons[control.seasons.length - 1];
+  if (last !== null && mayBeFree(tail)) {
+    let first = last;
+    while (mayBeFree(control.seasons.find((x) => x.season === first - 1))) first -= 1;
+    const why = [tail.basis, ...tail.reasons].filter(Boolean).join(' ');
+    return { low: first - 1, high: null, pastHorizon: false, optOutBefore: null, laterUnknown: true, reason: why || null };
+  }
+  const open = control.seasons.find((x) => x.status === 'indeterminate');
+  return none(open ? [open.basis, ...open.reasons].filter(Boolean).join(' ') : control.notes[control.notes.length - 1] ?? 'When his control ends is not established.');
+}
+
 /**
  * Join a player's expected production with his control timeline for the card. Seasons run from this
  * season through the last one before free agency, within the production horizon; where the end of
@@ -337,17 +402,9 @@ export function productionCone(production: PlayerProduction, control: ControlTim
   if (control.standing === 'unsigned') note = 'No club holds him, so no control is shown.';
   else if (control.standing === 'unknown') note = `Control not established: ${control.notes[control.notes.length - 1] ?? 'the export cannot lay it out.'}`;
   else if (ends !== null && last && last.season === ends - 1) {
-    // Where the last controlled seasons may themselves be free agency, the mark names the earliest too (C-12)
-    let earliest = last.season;
-    for (let y = last.season; ; y -= 1) {
-      const c = control.seasons.find((x) => x.season === y);
-      // An unsettled season that may be free agency, or an option (or opt-out) whose other branch is
-      const mayBeFree = c !== undefined && (
-        (c.status === 'indeterminate' && c.between.includes('free_agent'))
-        || (c.declined !== null && (c.declined.status === 'free_agent' || c.declined.between.includes('free_agent'))));
-      if (!mayBeFree) break;
-      earliest = y - 1;
-    }
+    // Where the last controlled seasons may themselves be free agency, the mark names the earliest too (C-12);
+    // the same reading Contracts and the card's header show (`controlEndOf`)
+    const earliest = controlEndOf(control).low ?? last.season;
     note = earliest < last.season
       ? `Free agent after ${earliest === last.season - 1 ? `${earliest} or ${last.season}` : `${earliest} to ${last.season}`}: ${earliest + 1 === last.season ? `${last.season} may itself be` : `each season from ${earliest + 1} may be`} free agency.`
       : `Free agent after ${last.season}.`;
