@@ -820,3 +820,23 @@ at 150), its band covers the per-realized-win truth 88% (93% at 80 and 150) and 
 10th and 90th percentiles, centred (-8% to +9% at 150). With projected bases alone it is never compared. The low adoption
 is the evidence speaking: Pennant's projection and what the signings produced disagree by 65% on this market, so the
 measured band holds both until the owner rules which one the price should be read in (he ruled on 2026-09-24: per win produced, above).
+
+## 10. Player Value's neutral surplus and the retention margin (phase 5a)
+
+The surplus (PLAYER_VALUE.md 5.1, `server/playerValueSurplus.ts`) fits nothing and measures nothing of its own: it combines
+production (fitted per save, D-053), the cost path (measured per import) and the price of a win in force (opening, or
+measured across imports). Its rules are policy (`SURPLUS_POLICY`, stamped `SURPLUS_POLICY_CALIBRATION`), chosen and stated:
+
+| What | Value | Stamp | Why |
+|---|---|---|---|
+| The discount rate | 5% a season; a season *s* seasons out weighs 1/1.05^*s*, this season's remaining part 1 | policy (owner, 2026-09-24) | A time preference. No backtest can call a discount rate optimal (Q-3) |
+| The price of a win in later seasons | the price in force, held flat, its whole band in every season | policy (owner, 2026-09-24) | No salary inflation is assumed unless the save's own measured price history shows drift |
+| The rest of this season | production's rest-of-season band, and the share of the league's games still to play of his salary and a replacement's minimum | policy | Banked wins and paid salary are sunk for the forward view; how OOTP pays salary within a season is not exported |
+| Money owed whatever the club does | a major-league contract's salary for each season it covers | policy | It cancels in the retention margin; a minor-league deal's is not established |
+| An option's buyout the export does not populate | nothing to the option's salary | policy | A buyout above the salary would make declining dearer than exercising |
+| Production value | the minimum plus wins × the price | mechanism | The price is salary above the minimum per win above the export's replacement level |
+
+On the Arizona import (2026-05-16): 1,048 players have a known sum; contract surplus central median $1.0M (10th to 90th
+percentile −$17.7M to $32.7M); 76 major-league deals read below −$20M in contract surplus with a positive retention
+margin. Re-running: `npm run value:report` is unchanged; the regression sweep (`sweep-c.mts`, supervisor's scratch) holds
+the phase's 31 checks.

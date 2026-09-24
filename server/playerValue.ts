@@ -54,6 +54,7 @@ import {
 import { composeControlTimeline, type ControlTimeline } from './playerValueControl.js';
 import { measureCostLadder, priceControlTimeline, type CostLadder } from './playerValueCost.js';
 import { productionCone, type ProductionCone } from './playerValueCone.js';
+import { surplusOf, type PlayerSurplus, type SurplusMarket } from './playerValueSurplus.js';
 import {
   FINANCE_COLUMNS, clubFinancesOf, openingPriceOfWin, replacementLevelOf, scheduleShareOf,
   type ClubFinances, type FinanceTable, type MarketCandidate, type PriceOfWin, type ReplacementLevel,
@@ -127,6 +128,11 @@ export { ratingsEvidence } from './playerValueRatings.js';
 export { arrivalAdoption, fitRatingsModel } from './playerValueRatingsFit.js';
 export type { ArrivalAdoption, ArrivalHorizonAdoption } from './playerValueRatingsFit.js';
 export { productionTotal } from './playerValueProduction.js';
+export type {
+  NamedCentral, PlayerSurplus, SurplusBranch, SurplusFigure, SurplusInput, SurplusMarket, SurplusSeason, SurplusTotal, SurplusView,
+} from './playerValueSurplus.js';
+/** Phase 5a: the neutral contract surplus and the retention margin (pure; the entry point hands it the market). */
+export { surplusOf } from './playerValueSurplus.js';
 export type { ProductionTotal, UnestablishedSeason } from './playerValueProduction.js';
 export { PRODUCTION_NO_EVIDENCE };
 
@@ -137,6 +143,11 @@ export interface PlayerValuation {
   control: ControlTimeline;
   /** Expected production in wins per season, with its basis; `unknown` with the reason where it cannot be stated. */
   production: PlayerProduction;
+  /**
+   * Phase 5a: the neutral contract surplus and the retention margin, season by season with every component
+   * (`playerValueSurplus.ts`); present wherever production and costs are computed, so every read serves the same one.
+   */
+  surplus?: PlayerSurplus;
 }
 
 export interface ValuationOptions {
@@ -232,6 +243,7 @@ function valuate(states: PlayerState[], ids: number[] | null, options: Valuation
   const superTwo = superTwoCutoffs(serviceClassMembers(), (id) => rules.get(id)?.contract ?? null, clocks, calendars);
 
   const regimeOfPlayer = new Map<number, number | null>();
+  const stateOf = new Map(states.map((st) => [st.playerId, st]));
   for (const state of states) {
     const teamId = state.teamId.value;
     const leagueId = teamId !== null ? leagues.get(teamId) ?? null : null;
@@ -285,6 +297,22 @@ function valuate(states: PlayerState[], ids: number[] | null, options: Valuation
       // Phase 4b: a reserve-clause season, from the renewals observed across imports
       v.control = priceReserveSeasons(v.control, ctx?.reserve ?? null);
     }
+    // Phase 5a: the neutral surplus and the retention margin, from the answers above and the market in force
+    if (options.production !== false) {
+      for (const v of out.values()) {
+        if (!v.production) continue;
+        const regimeId = regimeOfPlayer.get(v.playerId) ?? null;
+        const ctx = regimeId !== null && v.control.standing === 'held' ? costContextOf(regimeId, currentState) : null;
+        const kind = v.contract.kind.value;
+        v.surplus = surplusOf({
+          production: v.production,
+          control: v.control,
+          majorLeagueDeal: kind === null ? null : kind === 'major_league',
+          market: ctx?.market ?? null,
+          fortyMan: stateOf.get(v.playerId)?.fortyMan.value ?? null,
+        });
+      }
+    }
   }
   return out as Map<number, PlayerValuation>;
 }
@@ -297,6 +325,8 @@ interface CostContext {
   reserve: ReserveRenewalSpread;
   /** A player's WAR in a past season of the market league, on its schedule's footing (0 with no line), or null. */
   pastWins: (playerId: number, season: number) => number | null;
+  /** Phase 5a: the price of a win in force and the minimum, as the surplus reads them. */
+  market: SurplusMarket;
 }
 
 /** Measured once per import and market league (cleared with the production caches): the ladder is this import's. */
@@ -311,6 +341,7 @@ function costContextOf(regimeLeagueId: number, currentState: SourceState): CostC
     c = {
       ladder: market.finances.costs,
       reserve: market.finances.observed.reserveClause,
+      market: surplusMarketFrom(market.finances),
       pastWins: (playerId, season) => {
         const war = market.war.get(season);
         const share = market.shares.get(season)?.value ?? null;
@@ -331,6 +362,31 @@ function costContextOf(regimeLeagueId: number, currentState: SourceState): CostC
 export function playerProductionCone(playerId: number, options: ValuationOptions = {}): ProductionCone | null {
   const value = playerValue(playerId, options);
   return value ? productionCone(value.production, value.control) : null;
+}
+
+/**
+ * Phase 5a: the league's market as the surplus reads it, from the league's finances: the price of a win in force
+ * (opening, or measured per win produced), its stage and label, the minimum salary, this season's replacement level and
+ * the replacement measured from freely available talent (shown, never applied).
+ */
+export function surplusMarketFrom(finances: LeagueFinances): SurplusMarket {
+  const now = finances.replacementLevel.find((r) => r.season === finances.season.value) ?? null;
+  return {
+    price: finances.priceOfWin.price,
+    stage: finances.priceOfWin.stage,
+    label: finances.priceOfWin.label,
+    minimumSalary: finances.regime.minimumSalary,
+    replacementLevel: now?.level.value ?? null,
+    measuredReplacement: finances.observed.replacement.text,
+  };
+}
+
+/**
+ * One player's neutral contract surplus and retention margin (phase 5a): the same valuation every read serves (the
+ * player card's route, Payroll's players, the league-wide read). Null when the export has no such active player.
+ */
+export function playerSurplus(playerId: number, options: ValuationOptions = {}): PlayerSurplus | null {
+  return playerValue(playerId, options)?.surplus ?? null;
 }
 
 /** Contract facts and control for the players asked about, keyed by id; retired players are not valued. */

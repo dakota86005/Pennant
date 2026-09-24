@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { tableExists } from './db.js';
-import { marketLeagueOfClub, playerProductionCone, playerValue, playerValues, productionCalibration } from './playerValue.js';
+import { marketLeagueOfClub, playerProductionCone, playerSurplus, playerValue, playerValues, productionCalibration } from './playerValue.js';
 
 /**
  * The domain routes for a player's value (D-008, PLAYER_VALUE.md Part 7): contract facts, the
@@ -39,6 +39,19 @@ playerValueRoutes.get('/player-value/:playerId/cone', (req, res) => {
   const cone = playerProductionCone(id);
   if (!cone) return res.status(404).json({ error: 'No such active player' });
   res.json(cone);
+});
+
+/**
+ * The player card's Value section (phase 5a): the neutral contract surplus and the retention margin, season by season
+ * with every component (wins, price, cost, discount) and the basis; the same valuation the league-wide read serves.
+ */
+playerValueRoutes.get('/player-value/:playerId/surplus', (req, res) => {
+  const id = Number(req.params.playerId);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: 'Bad player id' });
+  if (!tableExists('players')) return res.status(400).json({ error: 'No data imported yet' });
+  const surplus = playerSurplus(id);
+  if (!surplus) return res.status(404).json({ error: 'No such active player' });
+  res.json(surplus);
 });
 
 playerValueRoutes.get('/player-value/:playerId', (req, res) => {

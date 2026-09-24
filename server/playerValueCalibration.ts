@@ -2295,3 +2295,31 @@ export const COST_COMBINATION_POLICY_CALIBRATION: CalibrationStamp = policy(
     'season he may not be held stay at their edges, added. Labelled "players combined as independent; not a calibrated interval"; the edge-to-edge ' +
     "sum is kept in the details, and no player's own band is narrowed."
 );
+
+// ── phase 5a: neutral surplus and the retention margin (PLAYER_VALUE.md Part 5) ─────────────────────────────────────
+
+/**
+ * How the neutral surplus is read (owner, 2026-09-24; Q-3). One stated discount rate, a time preference: a season s
+ * seasons from now weighs 1/(1 + rate)^s, and this season's remaining part weighs 1. The price of a win is held flat
+ * across the seasons (no salary inflation is assumed) unless the save's own measured price history later shows drift.
+ * The rest of this season counts only its part still to be played, read at the share production reads (the league's
+ * games): the wins for the rest of it, and the same share of his salary and of a replacement's minimum. A major-league
+ * contract's salary for a season it covers is read as owed whatever the club does, so it cancels in the retention
+ * margin. A buyout the export does not populate is read from nothing to the option's salary (a buyout above the
+ * salary would make declining dearer than exercising). Policy, not a fit: no backtest can call a discount rate optimal.
+ */
+export const SURPLUS_POLICY = {
+  discountRate: 0.05,
+  price: 'held_flat',
+  restOfSeason: 'share_of_games_still_to_play',
+  guaranteed: 'major_league_contract_seasons',
+  unknownBuyout: 'nothing_to_the_option_salary',
+} as const;
+
+export const SURPLUS_POLICY_CALIBRATION: CalibrationStamp = policy(
+  'Owner decision (2026-09-24): the neutral view discounts at 5% a season, a time preference (a season s seasons from now weighs 1/1.05^s; ' +
+    "this season's remaining part weighs 1), and the price of a win is held flat, with no salary inflation assumed, unless the save's own " +
+    "measured price history later shows drift. The rest of this season counts only its part still to be played (the share of the league's " +
+    "games production reads); a major-league contract's covered salary is owed whatever the club does; a buyout the export does not " +
+    "populate is read from nothing to the option's salary. Chosen and stated, never fitted (Q-3)."
+);

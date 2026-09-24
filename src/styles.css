@@ -1095,6 +1095,21 @@ table.cone-pop-table td:first-child { white-space: nowrap; }
 .cone-foot { font-size: 12px; margin: 4px 0 0; }
 .cone-unknown { margin: 0; }
 
+/* The card's Value section (src/ValueSection.tsx, Player Value phase 5a): two views side by side, the card's own type */
+.value-views { display: flex; flex-wrap: wrap; gap: 8px 24px; margin: 0 0 6px; }
+.value-view { flex: 1 1 220px; min-width: 0; }
+.value-view-title { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.value-view-central { font-size: 20px; font-weight: 600; margin: 2px 0; font-variant-numeric: tabular-nums; }
+.value-view .muted { font-size: 12px; }
+.value-view-gloss { margin-top: 2px; }
+.value-reason { font-size: 12px; margin: 0 0 6px; }
+.value-details { margin: 4px 0 0; }
+.value-details summary { cursor: pointer; color: var(--accent); font-size: 12px; }
+table.value-table td { vertical-align: top; }
+table.value-table td .muted { font-size: 11px; }
+.value-basis { margin: 6px 0 0; padding-left: 18px; font-size: 12px; color: var(--muted); }
+.value-basis li { margin: 2px 0; }
+
 /* Payroll's price of a win: the basis is a disclosure any keyboard can open, laid out as a list (D-25) */
 .price-of-win { margin: 6px 0 12px; }
 .price-basis { display: inline-block; margin-left: 8px; }

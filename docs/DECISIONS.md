@@ -1243,14 +1243,15 @@ contested, as `farmArrivalFor` already did (B-1), so a departure names the man l
 per-import market snapshot; expected production in wins from major-league results and, through `scoutedEvidence.ts`,
 scouted ratings, with playing time conditional on quality, fitted per save under D-053; phase 4a: the cost of
 controlled seasons, measured on each import, `playerValueCost.ts`; phase 4b: the measured price of a win across imports,
-`playerValueSignings.ts` and the third writer `playerValueContractStore.ts`).
+`playerValueSignings.ts` and the third writer `playerValueContractStore.ts`; phase 5a: the neutral contract surplus and the
+retention margin, `playerValueSurplus.ts`, on the player card).
 `server/playerValue.ts` (the entry point), `playerValueContract.ts`, `playerValueControl.ts`,
 `playerValueFinances.ts`, `playerValueHistory.ts`, `playerValueProduction.ts`, `playerValueProductionFit.ts`,
 `playerValueRatings.ts` and `playerValueRatingsFit.ts` (phase 3b), the two writers (`playerValueSnapshot.ts` and
 `playerValueFitStore.ts`, `history.db` only), `playerValueRoutes.ts` and `playerValueCalibration.ts`;
 contract-control eligibility in `playerRights.ts` (`evaluateContractControl`); one `LeagueRules` in `leagueRules.ts`,
-with the financial regime; `tests/playerValueBoundary.test.ts`. Surplus, the lens and the club's
-value of a win (phase 5) and the `players_value` consumer migration (phase 6) are not built. In phase 3b the
+with the financial regime; `tests/playerValueBoundary.test.ts`. The lens and the club's
+value of a win (phase 5b) and the `players_value` consumer migration (phase 6) are not built. In phase 3b the
 development path, the ratings' reliability as a forecast and the arrival chance by potential wait on the save's own
 rating snapshots (one on the imported save) and use the provisional prior, or the kind's K, until then. Design: [PLAYER_VALUE.md](PLAYER_VALUE.md). Research evidence:
 [PLAYER_VALUE_RESEARCH.md](PLAYER_VALUE_RESEARCH.md). Refines D-002 and D-017 for the pre-fork value surfaces and
@@ -1476,6 +1477,32 @@ Part 12; CALIBRATION.md sections 8 and 9).** The owner ruled on the four questio
   `history.db` only, and the boundary test holds it to that one statement. The consequence: a later change of the
   reading's method can re-derive a pair only from the snapshots kept; an in-season pair is read as stored, under its
   own method (`SIGNINGS_POLICY.retention`, policy; method `signings-4b.3`).
+
+**Amended 2026-09-24 (phase 5a: the neutral surplus and the retention margin, owner's discount decision; PLAYER_VALUE.md
+2.5, Part 5 (5.1), Part 7, Part 8, Part 9, Part 11, Part 12).** Concern 5 is built for the neutral view
+(`playerValueSurplus.ts`, pure; served on every valuation that computes production and cost, and by
+`/api/player-value/:playerId/surplus`).
+
+- **The discount rate is 5% a season** (owner, 2026-09-24): a time preference, one stated rate, a season *s* seasons from
+  now weighing 1/1.05^*s* and this season's remaining part 1. The price of a win is held flat (no salary inflation is
+  assumed) unless the save's own measured price history later shows drift. Policy under D-041 (`SURPLUS_POLICY`,
+  stamped `SURPLUS_POLICY_CALIBRATION`).
+- **One level of replacement on both sides.** Production is the export's WAR (wins above its replacement level), the
+  replacement's wins are 0 there, and the price is salary above the minimum per win above that level, so production value
+  is the minimum plus wins × the price. The measured replacement from freely available talent stays shown, never applied.
+- **Contract surplus** per controlled season within the horizon is production value less cost, edge against edge,
+  discounted and summed; the rest of this season counts only its part still to be played (the same share of salary and of
+  the minimum), and what he has banked and the salary paid are sunk: shown, never counted. An option season is the hull
+  of its two ways and chooses no central; a season he may leave in is "if held".
+- **The retention margin** is (his wins − the replacement's 0) × price + the minimum a replacement would cost − the costs
+  that exist only if he is kept (a projected renewal, arbitration or reserve-clause salary; an option's salary less a
+  buyout the export does not populate, read from nothing to the salary). A major-league contract's covered salary is owed
+  whatever the club does and cancels. A 40-man spot is stated, never priced. **Sunk salary never favours keeping a
+  player**: on the Arizona save, doubling every guaranteed salary of each of the 1,054 players with one never changes his
+  retention margin.
+- **Unknown stays unknown**: a season with no established wins or cost has no surplus, and a sum over it names the seasons
+  it cannot include; without dollars the value is in wins only. Neither view is a verdict. No consumer beyond the card is
+  migrated (phase 6), and the lens (phase 5b) is not built.
 
 ## D-053 — Calibration belongs to the save
 

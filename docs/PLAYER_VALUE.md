@@ -6,8 +6,9 @@ reality and surplus value. Decision: [D-052](DECISIONS.md) (accepted; owner answ
 
 **Status: phases 1 to 4b built (contract facts and control; Club Finances, the opening price of a win and the
 per-import market snapshot; expected production in wins from major-league results and scouted ratings, fitted per save
-under D-053; the cost of controlled seasons, measured on each import; the measured price of a win across imports, Part 9);
-phases 5 and 6 are design.** `PROJECT_STATE.md` says
+under D-053; the cost of controlled seasons, measured on each import; the measured price of a win across imports; the
+neutral contract surplus and the retention margin, phase 5a, Part 9); phase 5b (the philosophy lens and the club's value
+of a win) and phase 6 are design.** `PROJECT_STATE.md` says
 what exists; this file says what is to be built and why. Every surface that reports value still reads the prohibited
 `players_value` fields for its value figures (Part 8), and they stay as they are until the phase that replaces each
 one; since phase 1 their control and contract facts come from Player Value.
@@ -553,6 +554,15 @@ Per controlled season: production value (wins × price of a win) less cost, disc
 reported as a band **with every component visible**: the wins band, the price band, the cost band, the discount, and
 the seasons included. Part 5 sets out the arithmetic and the sunk-cost rule.
 
+**As built (phase 5a, 2026-09-24; `playerValueSurplus.ts`, pure).** Every valuation that computes production and cost
+carries `surplus` (`PlayerSurplus`): per controlled season within the horizon (Q-3), the wins band counted, the price of a
+win in force and its stage (the opening price, or the one measured per win produced), the cost band with its basis, what a
+replacement costs, the discount weight, the ways the season can go (an option's two branches, a season he may leave in),
+and both views (contract surplus and retention margin), each a band with its central, before and after discounting; then
+each view summed over the seasons with the seasons it covers, and his wins over a replacement's, summed the same way. The
+entry point hands it the market (`surplusMarketFrom`); every read serves the same answer (the card's route
+`/api/player-value/:playerId/surplus`, `playerSurplus`, Payroll's players and `leaguePlayerValues`). Part 5 has the rules.
+
 ---
 
 ## Part 3 — Units, bands and uncertainty
@@ -926,6 +936,85 @@ can have a deeply negative contract surplus and a positive retention margin: the
 may still be the best use of the roster spot. The converse is shown too. Both views are displayed with their
 components, and neither is a verdict.
 
+### 5.1 As built (phase 5a, 2026-09-24)
+
+`playerValueSurplus.ts` (pure, `surplusOf`) joins Player Value's own answers as the entry point hands them over: expected
+production, the control timeline with its cost path, and the league's market (the price of a win in force, the minimum
+salary, this season's replacement level). It reads no table, no rating, no philosophy and no tier. The rules, each stated
+in the answer's `basis`:
+
+- **Production value, one level of replacement on both sides.** His wins are the export's WAR, wins above its own
+  replacement level; the replacement's wins are 0 there by construction of WAR; the price of a win is salary *above the
+  league minimum* per win above that same level (4.1). So what the market pays for his production is the minimum (what a
+  replacement at 0 WAR costs, the price's own zero) plus his wins × the price. The formula above reads `wins × price −
+  cost` with the price's zero at the minimum; as built, the minimum is written out: **contract surplus = minimum + wins ×
+  price − cost**, and a replacement-level player at the minimum is worth exactly nothing, never −$780K. The measured
+  replacement from freely available talent (4.3) is shown beside it and never applied.
+- **The price in each season** is the price of a win in force today (opening, or measured per win produced), **held flat**
+  (owner, 2026-09-24: no salary inflation is assumed unless the save's own measured price history later shows drift). Its
+  band is carried whole into every season.
+- **The discount** is one stated policy rate, **5% a season** (owner, 2026-09-24; Q-3): a season *s* seasons from now
+  weighs 1/1.05^*s*; this season's remaining part weighs 1 (`SURPLUS_POLICY.discountRate`).
+- **The rest of this season** counts only its part still to be played: his wins for the rest of it (production's
+  `remaining` band), and the same share of his salary and of a replacement's minimum, the share of the league's games not
+  yet played (production's own reading, 72.4% on the Arizona import). What he has banked and the salary for the part
+  played are **sunk for the forward view: shown, never counted** (`banked`, `paid`). Salary is taken to accrue with the
+  schedule; how OOTP pays within a season is not exported, and the basis says so.
+- **Edge against edge** (Part 3): a season's band is the corners of wins × price (wins may be negative) plus the minimum,
+  less the cost edge against the opposite edge; its central is the components' centrals (minimum + central wins × central
+  price − central cost); the sum over seasons adds edge with edge. A season whose cost lies between statuses has no
+  central, and each status's central is named; a season that can go more than one way (an option exercised or declined,
+  a season he may leave in as a free agent) is the hull of its ways, with each way's central named and none chosen. A sum
+  over such a season has no single central and gives the range of its readings' centrals.
+- **The retention margin** is (his wins − the replacement's 0) × price + the minimum a replacement would cost − the costs
+  that exist only if he is kept. **Money owed whatever the club does** is a major-league contract's salary for a season it
+  covers (the current deal or a signed extension; the export does not say otherwise): it is in both futures and cancels,
+  so it enters neither the margin nor its words (`owedEitherWay`). **Money already paid** is in neither. **Costs only if
+  kept**: a projected pre-arbitration, arbitration or reserve-clause salary (the club may decline to tender him), a
+  season between statuses, the salary of a club, vesting or mutual option less the buyout the club would pay to decline
+  (`onlyIfKept`). The export does not populate buyouts, so an option's buyout is read **from nothing to the option's
+  salary** (a buyout above the salary would make declining dearer than exercising), and the margin's central for that
+  season is a range. A player option or an opt-out is the player's decision: the margin is his staying branch, "if held",
+  its salary owed if he stays. The replacement's minimum is subtracted from the costs wherever he holds a major-league
+  place; a minor-league deal's salary, and whether it is owed, are not established, so such a season is unknown. **A
+  40-man spot** is stated (the export's 40-man flag; what the spot allows is Player Rights', on the card's roster rights)
+  and never priced.
+- **Sunk salary never favours keeping a player** (behavior case): raising a past season's salary, this season's salary
+  (its paid part sunk, its unpaid part owed either way) or a guaranteed later season's salary changes neither the
+  retention margin nor its words, and lowers the contract surplus. Where every cost exists only if he is kept, the two
+  views agree season by season.
+- **Unknown stays unknown.** A season whose wins are not established (a prospect past the arrival model's adopted
+  horizon, F6) or whose cost is unknown (a blank contract row, a minor-league $0 salary, a season after a minor-league
+  contract) has no surplus, with its reason; a sum over it is not a number and names the seasons it cannot include (the
+  `productionTotal` pattern), and the leading run of known seasons is given apart, labelled with its seasons. Unknown
+  production leaves both views unknown with its reason; no club holding him leaves nothing to value (`not_held`). With no
+  financials, no price of a win or no minimum the value is **in wins only** (`wins_only`): his wins over a replacement's,
+  discounted, and dollars unknown with the reason.
+- **No verdict.** Neither view says keep, release, trade, extend or sign; the card shows them side by side.
+
+**Worked on the Arizona import** (2026-05-16, the opening price $7.25M a win, band $6.57M–$9.78M, minimum $780K; production
+under the fallback prior, the save's own results fit having failed its gate on hitters at horizons 5 and 6; every figure
+discounted):
+
+| Player | Contract surplus | Retention margin | What it shows |
+|---|---|---|---|
+| Corbin Carroll (signed through 2030, club option 2031) | central $37.1M–$59.0M, range −$56.2M to $262.0M, 2026–2031 | central $139.9M–$161.8M, range $29.8M–$365.2M | A long guarantee: the salaries ($28.6M in 2029–2030) are in the contract view and cancel in the margin. The 2031 option has two ways (exercised −$0.5M central; declined into free agency with an unexported buyout, −$28.0M to $0), so no single central |
+| Gunnar Henderson (first-year arbitration) | central $65.0M–$80.9M, range −$36.8M to $237.2M, 2026–2029 | $87.1M, range −$30.7M to $243.3M (if held) | 2027 arbitration $8.5M–$22.2M, central $8.9M (floored at his 2026 salary, owner's rule); costs only if kept, so both views read $29.7M there. 2029 may be free agency: "if held" |
+| Nick Kurtz (pre-arbitration) | central $170.5M–$198.0M, range $5.4M–$455.3M, 2026–2031 | central $193.4M–$198.6M, range $5.9M–$455.9M | 2027 renewal at about the minimum for 6.8 expected wins: $49.0M ($22.5M–$96.1M) in both views; 2028 between pre-arbitration and arbitration (Super Two), each central named |
+| Mike Trout (a big contract that underperforms) | **−$129.2M**, range −$158.4M to −$50.3M, 2026–2030 | **+$29.3M**, range $0.0M–$108.2M | The sunk-cost rule: $37.1M a season is owed whatever the club does, so it cancels in the margin; his 3.6 expected wins (−0.3 to 10.7) still beat a replacement's 0 at the minimum |
+| Zac Gallen (one-year veteran) | −$2.0M, range −$12.9M to $16.7M, the rest of 2026 | $11.5M, range $0.6M–$30.2M | Only the rest of 2026 counts: $13.5M of his salary still to pay (the $5.2M paid and his 0.8 banked WAR are sunk); free agent from 2027 |
+| Aidan Miller (a prospect) | unknown, all seven seasons named | unknown | 2026 on a blank contract row (salary not exported); 2027–2029 after it, control and cost not established; 2030–2032 production not established (the arrival model is adopted through three seasons out). His wins 2026–2029 are shown |
+| Tyler Austin (unknown production) | unknown | unknown | "His ability is projected, but his major-league playing time is not established": no view is guessed |
+
+76 players under major-league deals have a contract surplus below −$20M and a positive retention margin (among them
+Machado, Bogaerts, Turner, Seager and Bregman); 70 have a negative retention margin central. Across the league's 12,575
+valuations: 7,852 in dollars, 157 unknown production, 4,566 held by no club, none in wins only (Arizona runs
+financials). A sum is a number for 1,048 players, every one on a major-league deal: contract surplus central 10th
+percentile −$17.7M, quartiles −$1.9M, $1.0M and $11.5M, 90th $32.7M, 457 negative; band width median $76.2M, 90th
+percentile $232.3M. The rest are unknown for a stated reason: a blank contract row this season (6,740, the minor
+leaguers), a minor-league $0 salary (50), a season whose control is not established (8), a season whose production is not
+established (6).
+
 ---
 
 ## Part 6 — The philosophy lens
@@ -1002,6 +1091,13 @@ completed season is this season once every club has played its schedule (`team_r
 already fitted is skipped, so a re-import without a newer completed season fits nothing. The same background refit also runs once at server start for a save that is already imported (`bootstrapData`), so a save with no fit for its latest completed season (a new install, or a method version that ignores the stored fit) is fitted without waiting for an import; it does not need the export folder. No timer, no wall-clock
 date. **Served** by `GET /api/player-value/production-fit/:orgId` (the fit in force, the latest attempt, the targets)
 and in every production answer's basis. **Forced** by `npx tsx scripts/calibrate.ts production --refit`.
+
+**Measured in phase 5a** (read-only, the Arizona import, a scratch `history.db`): the surplus is computed with every
+valuation that computes production and cost, from answers already in hand and the market the cost ladder already reads
+(cached per import and market league), so it adds no query. The league-wide pass for all 12,575 players takes 3.24–3.29 s
+warm with it (4.60 s cold) against 2.95–3.05 s on `origin/main` (4.82 s cold); one organization 191–207 ms (186–219 ms
+before); the card's route about 100 ms a player (40 players in 4.06 s over HTTP). **Choice: still computed per request,
+no store.**
 
 **Measured in phase 4b** (read-only, the Arizona import, a scratch `history.db`): the contract snapshot takes about
 **2.5 s** inside the import (one league-wide valuation with production and costs; the market row after it), writes 8,229
@@ -1124,6 +1220,18 @@ then the card, and focus returns to what opened it; it fits the window with a 16
 552px the season detail sits under the chart. A figure the server sends that is not a number draws no cone and says
 so, never blanking the card; near-zero wins print "<0.1", never "0.0" (hardening F2).
 
+**The player card shows value (phase 5a, 2026-09-24), ahead of its phase-6 migration.** A "Value" section below the
+production cone (`src/ValueSection.tsx`, the card's own type and tokens) shows the contract surplus and the retention
+margin side by side, each with its central (or the range of its centrals where a season has none), its range, the seasons
+it covers and "discounted", and a line saying what each view is; then, in a disclosure, the season-by-season table (wins,
+price, cost, discount, contract surplus, retention margin, "rest of season" with its share, "if held") and the basis:
+each unknown season's reason, each open season's named centrals, what is sunk, the price in force, the discount, one
+level of replacement, the 40-man spot stated, the rules. An unknown sum says why and gives the known seasons apart; in
+wins only it says dollars are unknown and why and shows his wins over a replacement's. It is served by
+`/api/player-value/:playerId/surplus` and computes nothing. The card's existing header Value and Talent (`players_value`)
+are untouched until phase 6, and no other consumer (Contracts, the Trade Center, Free Agents, Org Comparison) is
+migrated. A static site export does not carry the route, so its cards omit the section.
+
 **Consumers read the timeline as it is (hardening F2, 2026-09-23).** `controlAfterThisSeason` reports an option or
 opt-out next season as `option`, with whose decision it is and where he falls if it is declined, never "signed";
 "extended" only when next season is the extension's; a player whose control ends this season is leaving. The AI
@@ -1149,7 +1257,8 @@ cards are Club Finances' figures, a missing one "unknown", never $0.
 | **3b** Expected production from ratings — **done** (2026-09-23; evidence below, Part 7, CALIBRATION.md section 6) | Ratings through `scoutedEvidence.ts` for prospects and players with thin or no major-league results, partial-rating widening, a prospect's low edge including producing nothing. Also (supervisor, 2026-09-23): playing time conditional on quality | The 3b behavior cases pass. Removing a rating never narrows a band; no ability evidence leaves that component `unknown` |
 | **4a** The cost of controlled seasons — **done** (2026-09-23; evidence below, 2.2, 4.4, CALIBRATION.md section 8) | The pre-arbitration renewal band and the arbitration ladder measured on each import from the save's own contracts (status and class from Player Rights), priced into every controlled season with the platform seasons' production and the price of a win; the provisional prior below the policy minimum where the regime is MLB's; the ladder in the market snapshot. Payroll, Contracts and the card show the bands | Every pre-arbitration, arbitration and open season is priced or says why. An arbitration season is never assumed to cost the minimum and is never a point (review: every priced band has a central, a thin class no line of its own); a league without arbitration never gets MLB's ladder; thinner evidence never narrows; committed payroll never includes a projected salary |
 | **4b** Measured price and observed awards — **done** (2026-09-23; evidence below, 4.2 to 4.4, CALIBRATION.md section 9) | Observed signings and arbitration awards across imports. The measured price replaces the opening one once its band is narrower (Q-4). Observed awards test and then measure the ladder; reserve-clause renewals are measured. Replacement is measured from freely available talent | On an off-season import, signings and awards are identified and counted. While the measured band is still wider, the opening price stays and says why. The price history is visible |
-| **5** Surplus, the lens and the win curve | Concern 5, Part 5's two views, Part 6's lens, Part 4.5's club value of a win | The Player Value behavior cases pass. Neutral value is identical under every philosophy. Every lean is named |
+| **5a** Neutral surplus and the retention margin — **done** (2026-09-24; evidence below and 5.1) | Concern 5: Part 5's two views, season by season with every component, the owner's 5% discount, one level of replacement on both sides; the card's Value section; the invariants for the card and the league-wide read | The surplus and invariant behavior cases pass; sunk money never raises the retention margin on any player of the save; one valuation whichever read asks; the boundary test passes |
+| **5b** The lens and the win curve | Part 6's lens, Part 4.5's club value of a win | The lens cases pass. Neutral value is identical under every philosophy. Every lean is named |
 | **6** Consumer migration | Part 8, in order, one consumer per change | Each change deletes that consumer's `players_value` reads. Finally, the `players_value` allow-list is empty |
 
 **Phase 1 exit criteria, as met.** Every active player has a control timeline (8,009 laid out, 4,566 unsigned with
@@ -1236,6 +1345,30 @@ before this import's own pair (R3-08, documented rather than priced twice). Left
 2026-09-24 (below): which unit the served price uses, snapshot retention. Still open: an unknown arbitration class priced by observed awards, production at an import
 after the season number moved on (the D-08 guard leaves it unknown, so a signing seen then has no projected reading), the
 re-signing policy as a sensitivity basis, discounting both sides (phase 5).
+
+**Phase 5a exit criteria, as met (2026-09-24).** The behavior cases (BEHAVIOR_CASES.md "Player Value", phase 5a) are in
+`playerValueSurplus.test.ts` (18: sunk salary, every component, the rest of this season, edge against edge, unknowns,
+wins only, the discount, options and "if held", the basis, no verdict), `playerValueInvariants.test.ts` (5: one valuation
+through the route, the one-player read, Payroll and the league-wide read; an unrelated player changes nobody else's; a
+market contract changes another's only through the price, and then by the price alone; value and the tier never read
+each other), `valueSection.test.ts` (6, the card) and `playerValueBoundary.test.ts` (the new module, pure and verdict-free,
+and the new stamp). Each was run before the code and failed for the reason expected (`surplusOf is not a function`, no
+`surplus` on a valuation, `surplusMarketFrom is not a function`, no `src/ValueSection`, the module list and the stamps).
+**On the Arizona save** the worked examples are in 5.1. The regression sweep passes 156 of 156 checks (125, re-run on
+`origin/main` first and unchanged, and 31 for 5a: a surplus on every valuation, no verdict word, finite numbers, the
+discount weights, this season's share, the flat price, ordered bands with a central inside or named, discounted = band ×
+weight, never narrower than the parts, the retention margin never below the contract surplus where one way, a sum unknown
+exactly when a season is and naming it, sums edge with edge, the served surplus equal to the pure one, **the guarantee
+doubled on each of the 1,054 players with a guaranteed season never changing the retention margin** and lowering the
+contract surplus, the one-player read, Payroll's players and the route serving the league-wide answer).
+
+Judgments made in phase 5a beyond the brief: the minimum is written into production value (the price is above the
+minimum, so a replacement-level player at the minimum is worth nothing, not −$780K); an option season's contract surplus
+is the hull of its two ways and chooses no central, while the retention margin is the branch where he is kept; an
+unexported buyout is read from nothing to the option's salary; a minor-league deal's season is unknown in the retention
+margin (whether it is owed is not established); the 40-man spot is the export's flag, with Player Rights' roster rights
+named as where its consequences are read; his wins over a replacement's are discounted like the dollars; the rest of this
+season is read at production's share of the league's games.
 
 **Phase 4 owner decisions (2026-09-24).** The owner ruled on the four open questions of the phase 4a and 4b
 reviews (Part 12); the behavior cases are the "phase 4 owner decisions" row, each written first and failing on
@@ -1485,7 +1618,8 @@ numeric constant. Phase 3a adds `PRODUCTION_POLICY` (policy) and `PRODUCTION_PRI
 `COST_POLICY` (policy) and `COST_PRIOR` (provisional); the numbers the cost ladder serves are measured on each import. Phase
 4b adds `SIGNINGS_POLICY` (policy) and the label `MEASURED_PRICE_LABEL`; the numbers it serves are measured across the
 save's imports. The owner's decisions of 2026-09-24 add `COST_COMBINATION_POLICY` (policy), `SIGNINGS_POLICY.priceUnit` and
-`.retention` (policy), and Player Rights' `ARBITRATION_NO_CUT_CALIBRATION` (policy, owner-attested).
+`.retention` (policy), and Player Rights' `ARBITRATION_NO_CUT_CALIBRATION` (policy, owner-attested). Phase 5a adds
+`SURPLUS_POLICY` (policy, stamped `SURPLUS_POLICY_CALIBRATION`): the owner's 5% discount and how the surplus is read.
 
 | Constant | Stamp | Basis |
 |---|---|---|
@@ -1525,7 +1659,12 @@ save's imports. The owner's decisions of 2026-09-24 add `COST_COMBINATION_POLICY
 | Super Two share (22%), prior-season days (86), MLB's regime (6 / 3 / 172) | **policy** | The game's rule as the owner attested it (2026-09-22; CBA Art. VI(E)(1)(b)). `SUPER_TWO_SHARE`, `SUPER_TWO_PRIOR_SEASON_DAYS`, `MLB_CONTRACT_REGIME` in `playerRights.ts`, stamped `SUPER_TWO_CALIBRATION`. Not fitted and not provisional: changed only by the owner's decision. The regime is compared against, never assumed |
 | Super Two cutoff | **none: computed** | From the export's own class each winter, as a range across the projection readings |
 | Which clause columns are "not populated" | **none: read** | A clause column that is 0 on every contract in the export is unknown, not "none" (R-6); measured per import |
-| Discount rate | **policy** | One stated rate in the neutral view, its value set when phase 5 builds surplus. `competitiveWindow` leans on it only in "our view" (Q-3). No backtest can call it optimal |
+| Discount rate | **policy** | **5% a season** (owner, 2026-09-24; `SURPLUS_POLICY.discountRate`, stamped `SURPLUS_POLICY_CALIBRATION`): a time preference, one stated rate in the neutral view; a season *s* seasons out weighs 1/1.05^*s*, this season's remaining part 1. `competitiveWindow` leans on it only in "our view" (Q-3, phase 5b). No backtest can call it optimal |
+| The price of a win in later seasons | **policy** | Held flat at the price in force (owner, 2026-09-24; `SURPLUS_POLICY.price`): no salary inflation is assumed unless the save's own measured price history later shows drift |
+| How the rest of this season counts | **policy** | Its part still to be played: production's rest-of-season band, and the same share (the league's games not yet played) of his salary and of a replacement's minimum; banked wins and paid salary sunk, shown and never counted (`SURPLUS_POLICY.restOfSeason`) |
+| Money owed whatever the club does | **policy** | A major-league contract's salary for each season it covers, the current deal or a signed extension (`SURPLUS_POLICY.guaranteed`); it cancels in the retention margin. A minor-league deal's is not established |
+| An option's buyout the export does not populate | **policy** | Read from nothing to the option's salary (`SURPLUS_POLICY.unknownBuyout`); a buyout above the salary would make declining dearer than exercising |
+| Production value: the minimum plus wins × price | **none: mechanism** | The price is salary above the minimum per win above the export's replacement level (4.1), so a replacement at 0 WAR costs the minimum; pinned by `playerValueSurplus.test.ts` |
 | Projection horizon | **policy** | To the end of control, capped at 7 seasons (Q-3). Control is what the club owns. `CONTROL_HORIZON_SEASONS` in `playerValueCalibration.ts` (phase 1) |
 | Production coverage targets (80% and 50%), era and hold-out rule, adoption gate and tolerance, minimum samples, prior strength and widening, usage tiers, two-way minimum, starter share, usage pivot age, proneness banding and evidence rule | **policy** | `PRODUCTION_POLICY`, stamped `PRODUCTION_POLICY_CALIBRATION` (phase 3a). Decisions about the method (D-053) |
 | Band widening per horizon season (the tails, per kind and usage tier) | **fitted per save** (D-053) | The save's fit in `value_production_fits`, stamped by its run record; phase 3a |
@@ -1576,7 +1715,8 @@ The owner answered these on 2026-09-22. Each answer is folded into the part it n
 - **Q-2 Other organizations' players.** No widening until evidence exists. The export cannot measure the
   asymmetry, and an unmeasured widening would be an invented constant (2.3, Part 11).
 - **Q-3 Discount and horizon.** The horizon runs to the end of control, capped at 7 seasons. The neutral view uses
-  one stated policy rate, set in phase 5. `competitiveWindow` changes only "our view" (Part 11).
+  one stated policy rate, set in phase 5. `competitiveWindow` changes only "our view" (Part 11). *Set by the owner on
+  2026-09-24 (below): 5% a season.*
 - **Q-4 Measured price.** It replaces the opening price when its band is narrower than the opening band, not after
   a fixed count of signings (4.2). *Phase 4b review (2026-09-24):* the wording is unchanged; the comparison is made like
   for like, only once the measured bases hold the realized reading (the opening's unit) and cover the winter's
@@ -1658,6 +1798,11 @@ The owner answered these on 2026-09-22. Each answer is folded into the part it n
     import; every stored pair and event kept as the durable record; pruned at capture time after the new pair is stored,
     never across save identities, never the latest, never one a pair still needs. A later method change cannot re-derive
     a pair from pruned snapshots (4.2, Part 7).
+- **The neutral discount rate (2026-09-24, phase 5a; D-052 amendment).** The owner decided: **the neutral view's discount
+  rate is 5% a season**, a time preference. The price of a win is held flat (no salary inflation is assumed) unless the
+  save's own measured price history later shows drift. A season *s* seasons from now weighs 1/1.05^*s*; this season's
+  remaining part weighs 1. Stated as policy under D-041 (`SURPLUS_POLICY`, stamped `SURPLUS_POLICY_CALIBRATION`; Part 11)
+  and applied in 5.1.
 - **Deferred to phase 6 (2026-09-23, hardening).** A-20 (the `unverified` limitation and data freshness reaching the
   GM on consumer routes) and D-26 (pre-fork consumer routes failing on older export shapes) are consumer-migration
   questions and move with the consumers (Part 8).
