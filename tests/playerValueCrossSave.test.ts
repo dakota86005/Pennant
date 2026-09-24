@@ -429,7 +429,32 @@ describe('cross-save: league structure', () => {
     expect([...r.finances.keys()]).toEqual(expect.arrayContaining([save.leagueId, 200]));
   }, SLOW);
 
-  it.todo("D-07 (wave 2): in a universe with two top-level leagues, a league's arrival rates are measured on its own affiliates' players, never the other league's farm");
+  it("D-07 (F4): in a universe with two top-level leagues, a league's arrival rates are measured on its own affiliates' players, never the other league's farm, and reaching any top-level league is arriving", () => {
+    const save = buildSave(base);
+    const current = '2040-7-1';
+    insert('leagues', { ...leagueRow(200, 0, 1, 'Other Top League', 143, true, 2040, current, '2040-4-1'), rules_fa_minimum_years: 9, rules_salary_arbitration_minimum_years: 0, rules_min_service_days: 150 });
+    insert('leagues', leagueRow(201, 200, 2, 'Other Farm', 120, false, 2040, current, '2040-4-1'));
+    insert('teams', { team_id: 300, name: 'Other A', level: 1, league_id: 200, parent_team_id: 0, allstar_team: 0 });
+    insert('teams', { team_id: 301, name: 'Other A Farm', level: 2, league_id: 201, parent_team_id: 300, allstar_team: 0 });
+    // The other league's farm: twenty players at level 2, ten of whom reached ITS majors
+    for (let i = 0; i < 20; i += 1) {
+      const id = 90_000 + i;
+      insert('players', { player_id: id, first_name: 'O', last_name: `${id}`, age: 24, position: 5, team_id: 300, organization_id: 300, retired: 0, date_of_birth: '2016-4-1' });
+      for (const y of [2035, 2036]) insert('players_career_batting_stats', { player_id: id, year: y, team_id: 301, league_id: 201, level_id: 2, split_id: 1, pa: 400, war: null });
+      if (i < 10) for (const y of [2037, 2038]) insert('players_career_batting_stats', { player_id: id, year: y, team_id: 300, league_id: 200, level_id: 1, split_id: 1, pa: 500, war: 1.5 });
+    }
+    // One of this league's own farmhands, who reached the other league's majors
+    insert('players', { player_id: 95_000, first_name: 'M', last_name: 'Moved', age: 24, position: 5, team_id: 300, organization_id: 300, retired: 0, date_of_birth: '2016-4-1' });
+    for (const y of [2035, 2036]) insert('players_career_batting_stats', { player_id: 95_000, year: y, team_id: save.farmClubs[0], league_id: save.aaaLeagueId, level_id: 2, split_id: 1, pa: 400, war: null });
+    insert('players_career_batting_stats', { player_id: 95_000, year: 2037, team_id: 300, league_id: 200, level_id: 1, split_id: 1, pa: 450, war: 1.0 });
+    const input = ratingsHistory(save.leagueId, base.season - 1, false);
+    const measured = new Set(input.arrival.map((p) => p.playerId));
+    for (let i = 0; i < 20; i += 1) expect(measured.has(90_000 + i), `other league's farmhand ${90_000 + i}`).toBe(false);
+    const moved = input.arrival.find((p) => p.playerId === 95_000);
+    expect(moved, 'this league\'s own farmhand').toBeDefined();
+    expect(moved!.majors.get(2037) ?? 0).toBeGreaterThan(0);
+    expectInvariants(run(save));
+  }, SLOW);
 });
 
 describe('cross-save: environment and export shape', () => {

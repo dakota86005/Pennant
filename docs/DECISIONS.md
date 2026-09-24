@@ -1462,6 +1462,24 @@ stakes). ROADMAP lists them for an audit and migration.
   injury-prone third 97.9% ± 1.7), so proneness moves nothing on this save; the 94.1% and 94.8% readings treated a
   player's seasons as independent.
 
+**Amended 2026-09-23 (hardening F4: prospects; PLAYER_VALUE.md 2.3, CALIBRATION.md section 6.4).**
+
+- **The ratings fit's arrival gate is tightened, never loosened.** Beside its absolute tolerance (10 points), a
+  held-out arrival chance, or expected playing time per case, biased beyond 10% of what happened AND beyond three
+  standard errors clustered by player fails: the production gate's rule, so a fit predicting three times the observed
+  rate can no longer pass on a rate of a few percent. Every fit the absolute rule failed still fails. On the Arizona
+  import the ratings fit (`ratings-3h.1`) fails it at horizons 3 to 6 (the save's arrival rates rose between the
+  training and the held-out seasons, and the arrival method weighs every season alike): it is not adopted, so a player
+  not in the majors is `unknown` there, with the gate's reason, until a fit passes. Recorded, not tuned away.
+- **The serving rule applies to the arrival model:** served refit through the last completed season, scored on the
+  held-out seasons by the method fitted through the training seasons.
+- **The arrival population is the league's own:** another market league's farm and independent leagues are left out
+  where the export names parents, and reaching any top-level league is arriving.
+- **A fitted effect may be carried from one fit to another, recorded:** the ratings fit reads the results fit's quality
+  coefficients (at the same usage) and locates them on each arrival cell's players now, so the cell keeps its measured
+  chance and playing time; both are stored in its record, and a refit of either refits the arrival's use of them at
+  the next ratings refit.
+
 ## D-054 — Charting library
 
 **Status:** Accepted: owner approved adopting a charting dependency (2026-09-23); library choice per the evaluation.

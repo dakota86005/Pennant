@@ -502,7 +502,8 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   within 1–10% of its own history (was 10–66% short); the gate did **not** adopt
   it (hitters and regulars over-projected at horizons 3–7 out of time, the
   2006–15 to 2016–25 era drift), so the fallback prior is in force there, labelled
-  "not yet calibrated". The ratings model is adopted.
+  "not yet calibrated". The ratings model was adopted then (method `ratings-3b.1`;
+  see hardening F4 below).
 - **Option C (owner, 2026-09-23; method `production-3h.2`;** CALIBRATION.md
   section 6.3, D-053): the backtest is rolling-origin (origins from the window's
   start + 5, at most 8, each scored by the method fitted through it, a horizon
@@ -517,6 +518,22 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   fit never scored or mostly the prior at every horizon is labelled "not yet
   calibrated", a label names the seasons of lines when none is usable, and
   standings beside a season with no lines are not read as that season's.
+- **Hardening F4, prospects (2026-09-23; ratings method `ratings-3h.1`;**
+  CALIBRATION.md section 6.4, PLAYER_VALUE.md 2.3, D-053 amendment): a
+  prospect's arrival chance is read for a player not yet called up at this point
+  of his season (the origin season's call-ups stay in the later seasons' cases,
+  in proportion to the season still to play), his chance and playing time move
+  with his projected quality by the results fit's own effect located on his
+  cell's players now, another market league's farm is left out of a league's
+  arrival cases and any top-level league is arriving, the arrival gate also
+  fails a bias beyond 10% of what happened and three clustered standard errors
+  (a tightening), the arrival model served is refit through the last completed
+  season, and a missing grade widens a thin record's blend across the scale. On
+  the Arizona import the ratings fit **fails** that gate (the held-out chance
+  12–20% low at horizons 3–6: era drift), so the provisional ratings prior is in
+  force and the 6,351 players who were projected from ratings alone are
+  `unknown` production, each with the gate's reason; read as if adopted, their
+  summed central is 102 / 169 / 211 wins for 2027–29 (was 15 / 22 / 24).
 - **Injury proneness** (`server/injuryProneness.ts`): read as an
   owner-attested known fact; 0, blank or missing is unknown. Its effects are
   measured with standard errors clustered by player and Holm's correction; on

@@ -393,6 +393,49 @@ precise: on the same expected playing time (the same usage lines), thinner resul
 band or the wins band; a measured proneness effect moves the band without narrowing it; the wins band may still follow
 his expected playing time down as it fades.
 
+**What hardening F4 changed for prospects (2026-09-23, method `ratings-3h.1`; CALIBRATION.md section 6.4).**
+
+- **The arrival chance is read for a player in his own condition** (C-01). The arrival cases no longer drop a player
+  called up in his origin season from the later seasons: those cases are kept apart, and a player not yet called up at
+  share f of his season is read as one of the players passed over for the whole season or one of those called up
+  later in theirs, the latter in proportion to the season still to play. The export dates no past call-up, so a
+  call-up is taken as equally likely at any point of the season's games (policy); the band reaches none and all of
+  them still to come. The rest of this season is read the same way (of the season's call-ups, those still to come,
+  among the players not yet called up). At the season's start the chance is every case's own rate. On the Arizona
+  import (the fit read as if adopted, below) Aidan Miller's chance reads 0.58 for the rest of 2026, then 0.77, 0.83 and
+  0.90; it read 0.61, then 0.42.
+- **A better prospect is likelier to arrive and plays more** (C-02, the results path's principle). His chance and his
+  playing time when he plays move with his projected quality (his ratings path's rate above replacement, never below
+  zero, as the results path reads it) by the results fit's own effect of quality at the same usage (so a conservative
+  reading), located on each cell's players now (a sample of 20 per cell and season) so that together they keep the
+  cell's measured chance and, weighted by that chance, its playing time. Where the save measures the chance by
+  potential, the chance is that and only the playing time moves. Each band edge takes the playing time its own rate goes
+  with. The basis says `level_age_and_quality`. **What it cannot do:** below replacement the results fit measures no
+  further effect of quality, and under the provisional development prior most of the youngest cells' players are
+  projected below replacement, so a weak teenager keeps about his cell's chance: a few young prospects' centrals stay
+  materially negative (the worst about −1.2 wins a season on the Arizona import). Both wait on the save's rating
+  snapshots (the development path, the chance by potential).
+- **Two top-level leagues** (D-07). Where the export names parents, another market league's farm and independent
+  leagues are left out of a league's arrival cases (a league the export no longer lists, a defunct affiliate, is kept:
+  not known to be another's), and reaching any top-level league is arriving.
+- **The arrival gate reads relative miscalibration** (B-15, a tightening): beside the absolute 10 points, a held-out
+  chance or expected playing time biased beyond 10% of what happened and three standard errors clustered by player
+  fails. The model served is the method refit through the last completed season (the approved serving rule), scored
+  on held-out seasons by the method fitted through the training seasons.
+- **Partial ratings widen the blend** (A-15). A missing glove, running or current pitching grade no longer enters a
+  thin record's blend as its central reading alone: the band reaches the blend re-read with the grade at five stations
+  across the scale (both forms of the mapping's uncertainty), so every complete reading's band lies inside it, with
+  the rate band's half-widths carried forward.
+- **On the Arizona import the ratings fit fails the tightened gate** (`203:2025:ratings-3h.1`): the held-out chance is
+  12–20% below what happened at horizons 3 to 6 (7 to 9 standard errors), because the save's arrival rates rose between
+  the training seasons (2006–2015) and the held-out ones (2016–2025) and the arrival method weighs every season alike.
+  It is not adopted, so the provisional ratings prior is in force and a player not in the majors has no expected
+  playing time (`unknown`, with the gate's reason); the phase 3b fit is not read under the new method. Read as if
+  adopted (a diagnostic), the prospects' summed centrals are 102 / 169 / 211 wins for 2027 / 2028 / 2029 (15 / 22 / 24
+  before), against the save's own history of about 144 / 260 / 362 for a population this size one to three seasons on;
+  what remains short is the prospects' rate when they play (about 0.55–0.6 WAR per 600 against 1.0–1.6 for the save's
+  real arrivals), which is the ratings path's (the same-time mapping and the provisional development prior).
+
 ### 2.4 Club Finances: the save's financial reality
 
 **League (per import):**
@@ -1014,13 +1057,15 @@ numeric constant. Phase 3a adds `PRODUCTION_POLICY` (policy) and `PRODUCTION_PRI
 | Aging curve for production | **fitted per save** | Delta method on the save's consecutive seasons, hitters and pitchers apart. `roleReview.ts`'s `AGING_CURVE` answers another question and is not reused |
 | Injury proneness's effect on usage and aging | **fitted per save**, used only at two standard errors | The save's fit; the prior carries none. Proneness itself is a known fact (`owner_attested`) |
 | The fallback prior | **provisional** | `PRODUCTION_PRIOR`, `PRODUCTION_PRIOR_CALIBRATION`: the same method (`production-3b.1` since phase 3b) on the real history 2006–2025 the Arizona save imports; with `RATINGS_PRIOR`, the only fitted artefacts in code |
-| Ratings → rate mapping (slopes, intercepts by position, forms without the glove, running or one pitching tool), its same-time uncertainty | **fitted per save** (D-053) | `value_production_fits` under `ratings-3b.1`, stamped by its run record: a same-time fit on the save's major leaguers, gated on held-out players (phase 3b) |
+| Ratings → rate mapping (slopes, intercepts by position, forms without the glove, running or one pitching tool), its same-time uncertainty | **fitted per save** (D-053) | `value_production_fits` under `ratings-3h.1` (`ratings-3b.1` before hardening F4), stamped by its run record: a same-time fit on the save's major leaguers, gated on held-out players (phase 3b) |
 | How often each batting hand faces left-handers; the stamina cut for a pitcher with no professional games; the largest scouted development by age | **fitted per save** | The ratings fit (phase 3b) |
-| Arrival rates (chance of any major-league time and the time when he plays, by level, age band and horizon) | **fitted per save**; no prior | The ratings fit, from minor-league usage lines, held out by season; unmeasured is `unknown` (phase 3b) |
+| Arrival rates (chance of any major-league time and the time when he plays, by level, age band and horizon) | **fitted per save**; no prior | The ratings fit, from minor-league usage lines, held out by season; unmeasured is `unknown` (phase 3b). Since hardening F4: the origin season's call-ups kept apart in the later seasons, the league's own farm only (another market league's farm and independent leagues left out), any top-level league is arriving, and the model served refit through the last completed season |
+| A call-up's timing within a past season | **policy** (not measurable) | The export dates no past call-up: a call-up is taken as equally likely at any point of the season's games, so a player not yet called up at share f of his season is read with 1 − f of the season's call-ups still to come; the band reaches none and all (`RATINGS_POLICY.arrival`, hardening F4) |
+| A prospect's chance and playing time by his projected quality | **fitted per save** (the results fit's own effect) and **measured per fit** (the cell's players now) | The results fit's quality coefficients at the same usage (the chance's logistic, playing time per scheduled game), located on 20 of each cell's players now (`RATINGS_POLICY.arrival.populationNodes`, policy) so the cell keeps its measured chance and playing time (hardening F4) |
 | The ratings' reliability as a forecast | **fitted per save once measurable**; until then **policy** (the kind's K) | This season's snapshot against next season's rate, 50 per kind (phase 3b). None on this save yet |
 | Development path (share of the gap to potential closed by age and years) | **provisional** until **fitted per save** | `RATINGS_PRIOR`'s cross-section path until the save holds 300 snapshot pairs a season apart; then the save's own, automatically (phase 3b) |
 | Arrival chance by potential tier | **fitted per save once measurable** | 300 linked snapshot seasons, used at two standard errors (phase 3b). None on this save yet |
-| Widening for partial ratings | **none: interval arithmetic** | A missing grade can be anywhere on the 20-80 scale (`RATINGS_POLICY.unknownGrade`, policy), an unknown potential any development up to the largest the save shows at his age. Never a midpoint (phase 3b) |
+| Widening for partial ratings | **none: interval arithmetic** | A missing grade can be anywhere on the 20-80 scale (`RATINGS_POLICY.unknownGrade`, policy), an unknown potential any development up to the largest the save shows at his age. Never a midpoint (phase 3b). In the blend with results the band reaches the projection re-read with the grade at five stations across the scale (`RATINGS_POLICY.unknownGrade.stations`, policy; hardening F4) |
 | Playing time conditional on quality (attrition logistic, playing time when he plays) and the tails by quality tier | **fitted per save** | The results fit, method `production-3b.1` (supervisor, 2026-09-23); the tiers' edges (tenths) are policy, `PRODUCTION_POLICY.qualityTiers` |
 | The rate of the players who play at each horizon (selection), the playing time per scheduled game, each cell's distribution of wins when he plays, young players' drift | **fitted per save** | Method `production-3h.1` (hardening, 2026-09-23) |
 | The physical ceiling of playing time per scheduled game, per kind | **fitted per save** (a measurement) | The most any player of the kind played in the fit's window; under the prior, the league's own last three seasons |
@@ -1030,6 +1075,7 @@ numeric constant. Phase 3a adds `PRODUCTION_POLICY` (policy) and `PRODUCTION_PRI
 | The gate's tolerances (5 points pooled, 10 per subgroup; bias over 10% of the mean outcome, 0.05 wins and three standard errors clustered by player and origin), the age bands, the tail grid, the injury rules (a lost season under a quarter of his best; a days-out value held by 10 or more injured players over a year and contradicted by their state), the logistic's ridge | **policy** | `PRODUCTION_POLICY`, stamped `PRODUCTION_POLICY_CALIBRATION` (hardening) |
 | The rolling origins (from the window's start + 5 to the season before the last, at most 8; a horizon scored with 200 cases from 3 or more origin cohorts) and the recency half-life (2 seasons) | **policy** | `PRODUCTION_POLICY.rolling`, `PRODUCTION_POLICY.window.recencyHalfLife` (owner's option C, 2026-09-23; method `production-3h.2`) |
 | The ratings method's policy: sample rules, folds, position minimum, prior strength, age-band sizes, nodes, pair rule and minimums, the prior's development range | **policy** | `RATINGS_POLICY`, stamped `RATINGS_POLICY_CALIBRATION` (phase 3b) |
+| The arrival gate: the absolute 10 points, and a bias beyond 10% of what happened and three standard errors clustered by player, on the chance and on the expected playing time | **policy** | `PRODUCTION_POLICY.gate.tolerance` and `RATINGS_POLICY.gate.arrivalBias` (hardening F4, B-15): a tightening of the phase 3b gate, never a loosening (D-053 amendment) |
 | The ratings fallback prior | **provisional** | `RATINGS_PRIOR`, `RATINGS_PRIOR_CALIBRATION`: the ratings method with no prior on the Arizona import; no arrivals (phase 3b) |
 | Widening outside the organization | **none** | Not applied: one rating row per player makes it unmeasurable (R-9, Q-2) |
 | Personality bands (low / normal / high) | **policy** | The central mass at 80–120 on a 1–200 scale (R-8). No claim about OOTP's bands |

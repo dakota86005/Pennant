@@ -62,7 +62,7 @@ import {
 } from './playerValueFitStore.js';
 import {
   affiliatedLevels, ageFacts, firstLeagueSeason, hasSeasonLines, injuredThisSeason, injuryDurationSentinels, inSeasonContinuation,
-  leagueClubs, leagueGameDate, leagueRateFacts, leagueRecord, leagueSeasons, listedFacts, majorLeagueLines, minorLeagueUsage,
+  leagueClubs, leagueGameDate, leagueParentsNamed, leagueRateFacts, leagueRecord, leagueSeasons, listedFacts, majorLeagueLines, minorLeagueUsage,
   platoonExposure, scheduledGames, seasonCalendar, seasonPlayedOf, seasonSchedules, type LevelSeason, type SeasonCalendar,
 } from './playerValueHistory.js';
 import {
@@ -1037,7 +1037,8 @@ export function ratingsHistory(leagueId: number, through: number, current: boole
   const fitSeasons = leagueSeasons(leagueId, through).map((s) => (current && s.season === through ? { ...s, scheduleShare: 1 } : s));
 
   // The active players, their evidence and ages: the mapping's major leaguers and the cross-section
-  const active = allPlayerStates().map((s) => s.playerId);
+  const activeStates = allPlayerStates();
+  const active = activeStates.map((s) => s.playerId);
   const evidence = evidenceOf(active);
   const ages = ageFacts(active);
   const ageNow = (id: number): number | null => {
@@ -1063,11 +1064,16 @@ export function ratingsHistory(leagueId: number, through: number, current: boole
     });
   }
 
-  // Arrival: every player's major-league and minor-league usage over the window, on his side
+  // Arrival: every player's major-league and minor-league usage over the window, on his side. The minor-league
+  // lines are the league's own (where the export names parents), and reaching any top-level league is arriving
+  // (hardening F4, D-07): another league's farm is never counted as players who never arrived
   const levels = affiliatedLevels(leagueId);
+  // Another market league's farm, or an independent league, is left out; a league the export no longer lists
+  // (a defunct affiliate) is not known to be another's and is kept
+  const otherLeagues = leagueParentsNamed() ? [...rules.keys()].filter((id) => marketLeagueOf(id, rules) !== leagueId) : null;
   const from = through - PRODUCTION_POLICY.window.maxSeasons - 3;
-  const minor = minorLeagueUsage(null, levels, from, through);
-  const majors = majorLeagueLines([...minor.keys()], from, through, leagueId);
+  const minor = minorLeagueUsage(null, levels, from, through, otherLeagues);
+  const majors = majorLeagueLines([...minor.keys()], from, through, null);
   const facts = listedFacts([...minor.keys()]);
   const births = ageFacts([...minor.keys()]);
   const arrival: ArrivalPlayer[] = [...minor.entries()].map(([id, rows]) => {
@@ -1095,11 +1101,33 @@ export function ratingsHistory(leagueId: number, through: number, current: boole
     }
   }
 
+  // The arrival cells' players now (hardening F4, C-02): the league's own affiliates' players, their club's level,
+  // whether they have a major-league line in the window, and their professional pitching (a pitcher's kind)
+  const clubLeague = teamLeagues();
+  const levelOf = new Map<number, number>();
+  for (const st of activeStates) {
+    const club = st.teamId.value;
+    const lg = club !== null && club > 0 ? clubLeague.get(club) ?? null : null;
+    const level = st.level.value;
+    if (lg !== null && level !== null && level > 1 && marketLeagueOf(lg, rules) === leagueId) levelOf.set(st.playerId, level);
+  }
+  const recent = minorLeagueUsage([...levelOf.keys()], levels, season - 2, season);
+  const proUsage = (id: number) => {
+    const rows = recent.get(id) ?? [];
+    const games = rows.reduce((t, r) => t + r.games, 0);
+    return games > 0 ? { games, starts: rows.reduce((t, r) => t + r.starts, 0) } : null;
+  };
+
   return {
     leagueId, throughSeason: through, seasons: fitSeasons, production, mapping,
     exposure: platoonExposure(leagueId, season - 3, season),
     levels, arrival,
-    crossSection: active.map((id) => ({ evidence: evidence.get(id)!, age: ageNow(id) })).filter((x) => x.evidence),
+    crossSection: active.map((id) => ({
+      evidence: evidence.get(id)!, age: ageNow(id), level: levelOf.get(id) ?? null,
+      majors: (window.byPlayer.get(id)?.batting.length ?? 0) + (window.byPlayer.get(id)?.pitching.length ?? 0) > 0,
+      proUsage: levelOf.has(id) ? proUsage(id) : null,
+    })).filter((x) => x.evidence),
+    now: f === null ? null : { season, seasonPlayed: f },
     observations,
     forward,
   };

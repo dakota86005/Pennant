@@ -25,9 +25,12 @@
  *                    thin record leans on the ratings and a full one is effectively his results alone.
  *   arrival          a player not in the majors: his expected playing time is how often players at his
  *                    level and age reached the majors on this save, and how much they played when they did
- *                    (measured; when it cannot be measured, unknown). His wins band is that mixture: the
- *                    chance of no playing time at all, or playing time times his rate. Its low edge always
- *                    includes producing nothing.
+ *                    (measured; when it cannot be measured, unknown), read for a player not yet called up at
+ *                    this point of his season (those called up later in theirs count in proportion to the
+ *                    season still to play), and moved by his projected quality by the results fit's own effect,
+ *                    located so the players of his cell now keep its measured chance and playing time
+ *                    (hardening F4). His wins band is that mixture: the chance of no playing time at all, or
+ *                    playing time times his rate. Its low edge always includes producing nothing.
  *
  * Unknown stays unknown (D-018): no ability evidence leaves the ability component unknown and is never
  * replaced by an average; a partial evidence set uses the mapping without what is missing (fitted with
@@ -39,9 +42,9 @@
 import { CONTROL_HORIZON_SEASONS, PRODUCTION_NO_EVIDENCE, PRODUCTION_POLICY, RATINGS_POLICY } from './playerValueCalibration.js';
 import {
   PRODUCTION_UNIT, Z_INNER, Z_OUTER, agingBetween, atHorizon, basisShell, inside, planSides, projectProductionWith,
-  unknownProduction,
+  scheduleOf, unknownProduction,
   type AbilityBasis, type AbilityPrior, type AgingGroup, type ArrivalBasis, type ModelProvenance, type PlayerProduction,
-  type ProductionInput, type ProductionKind, type ProductionModel, type ProductionSeason, type ProductionSide, type WinsBand,
+  type ProductionInput, type ProductionKind, type ProductionModel, type ProductionSeason, type ProductionSide, type SideSeason, type WinsBand,
 } from './playerValueProduction.js';
 import type {
   EvidenceStatus, HitterTool, PitcherTool, ScoutedAbility, ScoutedGloveAtPosition, ScoutedHitterProfile,
@@ -92,8 +95,8 @@ export interface DevelopmentModel {
   pairs: number;
 }
 
-/** How often players at a level and age reached the majors, per horizon (0 = the rest of this season). */
-export interface ArrivalHorizon {
+/** A group of cases' chance of any major-league playing time and how much they played when they did. */
+export interface ArrivalSummary {
   cases: number;
   /** Share with any major-league playing time. */
   chance: number;
@@ -101,6 +104,27 @@ export interface ArrivalHorizon {
   mean: number;
   /** Their opportunities at equal-probability nodes (ascending). */
   nodes: number[];
+}
+
+/**
+ * How often players at a level and age reached the majors, per horizon (0 = the rest of this season). At
+ * horizon 0 the summary is of every case. Beyond it (hardening F4, C-01) the summary is of the cases NOT
+ * called up in their origin season, and those who were are kept apart in `arrived` with their share, so a
+ * player not yet called up part-way through his season is read as one of either in proportion to the season
+ * still to play (`arrivalReading`).
+ */
+export interface ArrivalHorizon extends ArrivalSummary {
+  /** Horizon 1 and later: the cases called up in their origin season; null when there were none. */
+  arrived?: ArrivalSummary | null;
+  /** Horizon 1 and later: the share of this horizon's cases called up in their origin season. */
+  upShare?: number | null;
+  /**
+   * The cell's players now at this horizon, a sample in order of quality (RATINGS_POLICY.arrival.populationNodes):
+   * [the chance's quality term (the results fit's logistic coefficient × his projected rate above replacement),
+   * the playing time's quality term (its coefficient × the same, opportunities per scheduled game)]. Null or
+   * absent: not measured, and the chance and playing time are the cell's for every player in it.
+   */
+  population?: Array<[number, number]> | null;
 }
 
 export interface ArrivalCell {
@@ -122,6 +146,13 @@ export interface ArrivalModel {
     multipliers: Record<AgingGroup, number[][]>;
     linked: number;
   } | null;
+  /**
+   * The results fit's own effect of quality at the same usage, per kind and horizon (0 = the rest of this
+   * season, read at the first season's): on the chance's logit, and on playing time when he plays
+   * (opportunities per scheduled game), per WAR per 600 above replacement, never negative (hardening F4,
+   * C-02). Null or absent: a prospect's chance and playing time are his cell's.
+   */
+  quality?: { chance: Record<ProductionKind, number[]>; perGame: Record<ProductionKind, number[]> } | null;
 }
 
 export interface RatingsModel {
@@ -527,10 +558,9 @@ function abilityBasisOf(
 }
 
 /** A pitcher's kind without a major-league line: his professional starts, else his stamina against the save's cut. */
-function pitcherKind(input: RatingsProductionInput, ev: RatingsEvidence, ratings: RatingsModel): ProductionKind | { reason: string } {
-  const pro = input.proUsage;
+export function pitcherKindWithoutMajors(pro: { games: number; starts: number } | null | undefined, ev: RatingsEvidence, staminaCut: number | null): ProductionKind | { reason: string } {
   if (pro && pro.games > 0) return pro.starts / pro.games >= PRODUCTION_POLICY.starterShare ? 'starter' : 'reliever';
-  if (ev.stamina !== null && ratings.staminaCut !== null) return ev.stamina >= ratings.staminaCut ? 'starter' : 'reliever';
+  if (ev.stamina !== null && staminaCut !== null) return ev.stamina >= staminaCut ? 'starter' : 'reliever';
   return { reason: 'He has no professional games in the window, and his stamina or the save\'s starter cut is not established, so starter or reliever cannot be read.' };
 }
 
@@ -552,6 +582,8 @@ interface Mixture {
 function mixtureQuantile(mix: Mixture, p: number): number {
   const J = mix.parts.length;
   const c = J > 0 ? mix.chance : 0;
+  // No chance of playing: nothing, exactly
+  if (!(c > 0)) return 0;
   const cdf = (w: number): number => {
     let t = (1 - c) * (w >= 0 ? 1 : 0);
     if (J > 0) {
@@ -581,6 +613,122 @@ function usageQuantile(chance: number, nodes: number[], p: number): number {
   if (nodes.length === 0 || p <= 1 - chance) return 0;
   const k = Math.min(nodes.length - 1, Math.max(0, Math.ceil(((p - (1 - chance)) / chance) * nodes.length) - 1));
   return nodes[k];
+}
+
+/** A chance of any major-league playing time, and the opportunities when he plays (mean, equal-probability nodes). */
+export interface ArrivalReading {
+  chance: number;
+  mean: number;
+  nodes: number[];
+}
+
+/** Equal-probability nodes of a weighted mixture of node sets (each set's nodes equally likely within it). */
+function mixNodes(sets: Array<{ nodes: number[]; weight: number }>, J: number): number[] {
+  const points: Array<[number, number]> = [];
+  for (const s of sets) {
+    if (!(s.weight > 0) || s.nodes.length === 0) continue;
+    for (const v of s.nodes) points.push([v, s.weight / s.nodes.length]);
+  }
+  if (points.length === 0 || J <= 0) return [];
+  points.sort((a, b) => a[0] - b[0]);
+  const total = points.reduce((t, p) => t + p[1], 0);
+  const out: number[] = [];
+  let k = 0;
+  let below = 0;
+  for (let j = 0; j < J; j += 1) {
+    const target = ((j + 0.5) / J) * total;
+    while (k < points.length - 1 && below + points[k][1] < target) {
+      below += points[k][1];
+      k += 1;
+    }
+    out.push(points[k][0]);
+  }
+  return out;
+}
+
+/**
+ * A horizon's reading for a player not yet called up part-way through his origin season, with `stillToCome`
+ * the share of that season's call-ups still ahead of him (hardening F4, C-01). The rest of this season: of the
+ * season's call-ups, those still to come, among the players not yet called up. A later season: the players
+ * passed over for the whole origin season and those called up later in theirs, the latter in proportion to the
+ * call-ups still to come. At the season's start (all still to come) it is every case's own rate; with none
+ * still to come, it is the players passed over for the whole season.
+ */
+export function arrivalReading(A: ArrivalHorizon, h: number, stillToCome: number): ArrivalReading {
+  const w = Math.min(Math.max(stillToCome, 0), 1);
+  if (h === 0) {
+    const p = A.chance;
+    const notYet = 1 - p * (1 - w);
+    return { chance: notYet > 0 ? (p * w) / notYet : 0, mean: A.mean, nodes: A.nodes };
+  }
+  const up = A.arrived ?? null;
+  const u = Math.min(Math.max(A.upShare ?? 0, 0), 1);
+  if (!up || !(u > 0)) return { chance: A.chance, mean: A.mean, nodes: A.nodes };
+  const mass = (1 - u) + u * w;
+  if (!(mass > 0)) return { chance: A.chance, mean: A.mean, nodes: A.nodes };
+  const a = (1 - u) * A.chance;
+  const b = u * w * up.chance;
+  if (!(a + b > 0)) return { chance: 0, mean: A.mean, nodes: A.nodes };
+  return {
+    chance: (a + b) / mass,
+    mean: (a * A.mean + b * up.mean) / (a + b),
+    nodes: mixNodes([{ nodes: A.nodes, weight: a }, { nodes: up.nodes, weight: b }], Math.max(A.nodes.length, up.nodes.length)),
+  };
+}
+
+const sigmoid = (t: number): number => 1 / (1 + Math.exp(-Math.min(Math.max(t, -30), 30)));
+
+/** Where the quality effect sits on a cell's players for a chance, remembered per population and chance (the same for every player of the cell). */
+const located = new WeakMap<ReadonlyArray<readonly [number, number]>, Map<number, { alpha: number | null; yBar: number }>>();
+
+/**
+ * The location α at which the cell's players now, with their quality terms, keep the chance `p` together
+ * (their mean of σ(α + z) is p), and their playing-time term weighted by that chance (who arrives from the
+ * cell is weighted by his chance, so the playing time measured is theirs).
+ */
+function locateOn(population: ReadonlyArray<readonly [number, number]>, p: number): { alpha: number | null; yBar: number } {
+  let memo = located.get(population);
+  if (!memo) { memo = new Map(); located.set(population, memo); }
+  const had = memo.get(p);
+  if (had) return had;
+  let alpha: number | null = null;
+  if (p > 0 && p < 1) {
+    let lo = -40;
+    let hi = 40;
+    for (let k = 0; k < 80; k += 1) {
+      const mid = (lo + hi) / 2;
+      const m = population.reduce((t, [zj]) => t + sigmoid(mid + zj), 0) / population.length;
+      if (m < p) lo = mid;
+      else hi = mid;
+    }
+    alpha = (lo + hi) / 2;
+  }
+  const weights = population.map(([zj]) => (alpha === null ? 1 : sigmoid(alpha + zj)));
+  const W = weights.reduce((t, x) => t + x, 0);
+  const yBar = W > 0 ? population.reduce((t, [, yj], j) => t + weights[j] * yj, 0) / W : 0;
+  const out = { alpha, yBar };
+  memo.set(p, out);
+  return out;
+}
+
+/**
+ * His reading moved by his projected quality (hardening F4, C-02): the results fit's effect of quality on the
+ * chance's logit (`z`, his term) and on playing time when he plays (`y`, opportunities per scheduled game),
+ * located on the cell's players now (`population`, their terms) so that together they keep the cell's measured
+ * chance, and, weighted by that chance, its playing time when they play. A better player is likelier to arrive
+ * and plays more; one at replacement or below (a term of zero) is below the cell's average when better players
+ * share his cell. `tiltChance` false keeps the cell's chance (the chance by potential is measured instead).
+ */
+export function qualityReading(
+  base: ArrivalReading, population: ReadonlyArray<readonly [number, number]>, z: number, y: number, games: number | null, tiltChance = true,
+): ArrivalReading {
+  if (population.length === 0) return base;
+  const { alpha, yBar } = locateOn(population, base.chance);
+  const chance = tiltChance && alpha !== null ? sigmoid(alpha + z) : base.chance;
+  if (games === null || !(games > 0) || !(base.mean > 0)) return { ...base, chance };
+  const mean = Math.max(0, base.mean + games * (y - yBar));
+  const r = mean / base.mean;
+  return { chance, mean, nodes: base.nodes.map((u) => u * r) };
 }
 
 /** The arrival cell for his side, level and age: the one whose age band holds him, else the nearest. */
@@ -624,7 +772,7 @@ export function projectFromRatings(input: RatingsProductionInput, production: { 
   const f = Math.min(Math.max(input.seasonPlayed, 0), 1);
   const age = input.age;
   const side: ProductionSide = ev.group === 'hitter' ? 'batting' : 'pitching';
-  const kind = ev.group === 'hitter' ? 'hitter' : pitcherKind(input, ev, ratings.model);
+  const kind = ev.group === 'hitter' ? 'hitter' : pitcherKindWithoutMajors(input.proUsage, ev, ratings.model.staminaCut);
   if (typeof kind !== 'string') return no(kind.reason);
   const path = ratingsPath(ev, kind, { season, f, age, horizon }, ratings.model, production.model);
   if ('reason' in path) return no(path.reason);
@@ -638,7 +786,12 @@ export function projectFromRatings(input: RatingsProductionInput, production: { 
     return unknownArrival('his club\'s level is the majors but he has no major-league line in the window (a signed amateur not yet assigned, or a player yet to appear): how much such a player plays is not measured from the save\'s history.');
   }
   const arrival = ratings.model.arrival;
-  if (!arrival) return unknownArrival('how often players at his level and age reach the majors has not been measured on this save.');
+  if (!arrival) {
+    // Measured but not adopted (the gate failed) is not "not measured": the label says which, and why
+    return unknownArrival(ratings.provenance.source === 'fallback_prior' && /not adopted/.test(ratings.provenance.label)
+      ? `how often players at his level and age reach the majors is not established on this save: ${ratings.provenance.label.replace(/^not yet calibrated on this save: /, '')}`
+      : 'how often players at his level and age reach the majors has not been measured on this save.');
+  }
   if (!arrival.levels.includes(input.level)) return unknownArrival(`the save's history has no measured arrivals from level ${input.level}.`);
   const cell = arrivalCellFor(arrival, side, input.level, age);
   if (!cell) return unknownArrival(`the save's history has no ${side === 'batting' ? 'hitters' : 'pitchers'} at level ${input.level} to measure from.`);
@@ -654,38 +807,79 @@ export function projectFromRatings(input: RatingsProductionInput, production: { 
   // The rate band's half-widths, carried forward: never narrower in a season further out
   const half = { outerLow: 0, outerHigh: 0, innerLow: 0, innerHigh: 0 };
   const notes = new Set<string>();
+  // Playing time when he plays follows his projected quality by the results fit's measured effect, where the
+  // fit measured it and located it on his cell's players (C-02); the chance too, unless the save measured the
+  // chance by potential itself. The effect is per scheduled game: this season's schedule, else the model's
+  const quality = arrival.quality ?? null;
+  const games = scheduleOf(production.model, input.schedule).now;
+  const ceilingPerGame = typeof k.ceiling === 'number' && k.ceiling > 0 ? k.ceiling : null;
+  // Of this season's call-ups, the share still to come: a call-up taken as equally likely at any point of the
+  // season's games (the export dates no past call-up); the band reaches none and all of them still to come (C-01)
+  const stillToCome = 1 - f;
+  const tilted = { chance: false, playingTime: false };
   for (let i = 0; i < horizon; i += 1) {
     const x = path.seasons[i];
     const A = cell.horizons[i] as ArrivalHorizon;
     const share = i === 0 ? 1 - f : 1;
-    const chance = Math.min(1, A.chance * potentialMultiplier(arrival, path.group, ev.composite.potential, i));
-    const nodes = A.nodes.map((u) => u * share);
+    const multiplier = potentialMultiplier(arrival, path.group, ev.composite.potential, i);
+    const population = A.population ?? null;
+    /** His chance and playing time at a projected rate, with a share of this season's call-ups still to come. */
+    const readingAt = (rate600: number, toCome: number): ArrivalReading => {
+      let r = arrivalReading(A, i, toCome);
+      if (quality && population && population.length > 0) {
+        const q = Math.max(0, rate600);
+        const zi = (quality.chance[kind]?.[i] ?? 0) * q;
+        const yi = (quality.perGame[kind]?.[i] ?? 0) * q;
+        const tiltChance = arrival.byPotential === null;
+        r = qualityReading(r, population, zi, yi, games, tiltChance);
+        tilted.chance = tilted.chance || tiltChance;
+        tilted.playingTime = tilted.playingTime || games !== null;
+      }
+      const cap = ceilingPerGame !== null && games !== null ? ceilingPerGame * games * share : Infinity;
+      return {
+        chance: Math.min(1, r.chance * multiplier),
+        mean: Math.min(r.mean * share, cap),
+        nodes: r.nodes.map((u) => Math.min(u * share, cap)),
+      };
+    };
+    const at = readingAt(x.rate, stillToCome);
+    // The band's edges, by interval arithmetic over what is not measured: each edge's rate with the playing time
+    // that rate's quality goes with (playing time follows quality, so a low rate never takes a high rate's playing
+    // time), and none or all of this season's call-ups still to come
+    const distinct = (list: ArrivalReading[]) => list.filter((s, j) => list.findIndex((o) => o.chance === s.chance && o.mean === s.mean && o.nodes.length === s.nodes.length && o.nodes.every((u, k) => u === s.nodes[k])) === j);
+    const lows = distinct([readingAt(x.low, 0), readingAt(x.low, 1)]);
+    const highs = distinct([readingAt(x.high, 0), readingAt(x.high, 1)]);
     const drift = Math.max(0, atHorizon(k.horizons, Math.max(x.years, 1), (row) => row.drift600 ?? 0));
     // What is not known about his true rate this season (the ratings' reliability and talent drift); the
     // development's range enters by interval arithmetic: low edge with the least, high edge with the most
     const sd = Math.sqrt(var600 + drift);
     const rs = sd / PER;
-    const mixAt = (rate600: number): Mixture => ({ chance, parts: nodes.map((u) => ({ m: (u * rate600) / PER, s: Math.sqrt(u * u * rs * rs + u * noise) })) });
-    const expected = chance * A.mean * share;
+    const mixAt = (s: ArrivalReading, rate600: number): Mixture => ({ chance: s.chance, parts: s.nodes.map((u) => ({ m: (u * rate600) / PER, s: Math.sqrt(u * u * rs * rs + u * noise) })) });
+    const chance = at.chance;
+    const expected = at.chance * at.mean;
     const central = (expected * x.rate) / PER;
     const outerLow = (1 - PRODUCTION_POLICY.coverage.outer) / 2;
     const innerLow = (1 - PRODUCTION_POLICY.coverage.inner) / 2;
-    const atLow = mixAt(x.low);
-    const atHigh = mixAt(x.high);
     // The edges hold the expected wins at the range's ends too (when the chance of playing is small, a
     // quantile is exactly zero and the expectation lies above it); the low edge always includes never
     // producing a major-league win: no playing time at all
-    const lowMean = (expected * x.low) / PER;
-    const highMean = (expected * x.high) / PER;
+    const lowMean = Math.min(...lows.map((s) => (s.chance * s.mean * x.low) / PER));
+    const highMean = Math.max(...highs.map((s) => (s.chance * s.mean * x.high) / PER));
+    const lowAt = (p: number) => Math.min(...lows.map((s) => mixtureQuantile(mixAt(s, x.low), p)));
+    const highAt = (p: number) => Math.max(...highs.map((s) => mixtureQuantile(mixAt(s, x.high), p)));
     const wins: WinsBand = {
-      low: Math.min(mixtureQuantile(atLow, outerLow), central, lowMean, 0), central,
-      high: Math.max(mixtureQuantile(atHigh, 1 - outerLow), central, highMean),
+      low: Math.min(lowAt(outerLow), central, lowMean, 0), central,
+      high: Math.max(highAt(1 - outerLow), central, highMean),
     };
     const inner = inside({
-      low: Math.min(mixtureQuantile(atLow, innerLow), central, lowMean), central,
-      high: Math.max(mixtureQuantile(atHigh, 1 - innerLow), central, highMean),
+      low: Math.min(lowAt(innerLow), central, lowMean), central,
+      high: Math.max(highAt(1 - innerLow), central, highMean),
     }, wins);
-    const usage: WinsBand = { low: usageQuantile(chance, nodes, outerLow), central: expected, high: Math.max(usageQuantile(chance, nodes, 1 - outerLow), expected) };
+    const usage: WinsBand = {
+      low: Math.min(...lows.map((s) => usageQuantile(s.chance, s.nodes, outerLow)), expected),
+      central: expected,
+      high: Math.max(...highs.map((s) => usageQuantile(s.chance, s.nodes, 1 - outerLow)), expected),
+    };
     half.outerLow = Math.max(half.outerLow, x.rate - (x.low - Z_OUTER * sd));
     half.outerHigh = Math.max(half.outerHigh, x.high + Z_OUTER * sd - x.rate);
     half.innerLow = Math.max(half.innerLow, x.rate - (x.low - Z_INNER * sd));
@@ -714,10 +908,20 @@ export function projectFromRatings(input: RatingsProductionInput, production: { 
     level: input.level, age,
     band: { ageFrom: cell.ageFrom, ageTo: cell.ageTo, cases: cell.cases },
     seasons: arrivalSeasons,
-    conditioned: arrival.byPotential ? 'level_age_and_potential' : 'level_and_age',
-    note: arrival.byPotential
-      ? 'How often players at his level and age reached the majors on this save, and how much they played, with the chance moved by his potential where the save\'s own rating snapshots measured it.'
-      : 'How often players at his level and age reached the majors on this save, and how much they played: not yet conditioned on his ratings (the save does not hold rating snapshots across seasons).',
+    conditioned: arrival.byPotential
+      ? (tilted.playingTime ? 'level_age_potential_and_quality' : 'level_age_and_potential')
+      : (tilted.chance ? 'level_age_and_quality' : 'level_and_age'),
+    note: [
+      'How often players at his level and age reached the majors on this save, and how much they played, read for a player not yet called up at this point of the season: those called up later in their season count in proportion to the season still to play (the export dates no past call-up, so a call-up is taken as equally likely at any point of the season\'s games; the band reaches none and all of them still to come).',
+      arrival.byPotential
+        ? 'The chance is moved by his potential where the save\'s own rating snapshots measured it.'
+        : tilted.chance
+          ? 'His chance moves with his projected quality by the results fit\'s own effect of quality on keeping major-league playing time (at the same usage, so a conservative reading), located so the players of his level and age now keep the chance the save measured for them; the chance by his potential waits on the save\'s rating snapshots.'
+          : 'Not conditioned on his ratings: the results fit\'s effect of quality was not located on his cell\'s players, and the chance by his potential waits on the save\'s rating snapshots.',
+      tilted.playingTime
+        ? 'His playing time when he plays moves with his projected quality by the same fit\'s effect, against the playing time of the arrivals from his cell.'
+        : '',
+    ].filter((s) => s.length > 0).join(' '),
   };
   basis.sides = [{
     side, kind, seasons: [], opportunities: 0, effectiveSample: 0, observedRate: null,
@@ -743,6 +947,7 @@ export function projectWithRatings(input: RatingsProductionInput, production: { 
   const widen: Partial<Record<ProductionSide, number[]>> = {};
   let used: RatingsPath | null = null;
   let why: string | null = null;
+  const paths: Partial<Record<ProductionSide, RatingsPath>> = {};
   for (const { side, kind } of plan.sides) {
     const group: AgingGroup = side === 'batting' ? 'hitter' : 'pitcher';
     const path = ev && ev.group === group && ev.status !== 'unknown'
@@ -756,10 +961,82 @@ export function projectWithRatings(input: RatingsProductionInput, production: { 
       // Measured as a forecast on the save's snapshots, the ratings pull his rate fully; until then, only for
       // what his results do not already carry (B-06: a historical save's ratings were set from these results)
       priors[side] = { ...abilityPriorOf(path), forecast: typeof ratings.model.reliability?.[kind]?.variance600 === 'number' };
+      paths[side] = path;
       used = used ?? path;
     }
   }
-  const p = projectProductionWith({ ...input, abilityPrior: priors, abilityUnknownWidening: widen }, production.model, production.provenance);
+  const blended = { ...input, abilityPrior: priors, abilityUnknownWidening: widen };
+  const p = projectProductionWith(blended, production.model, production.provenance);
   p.basis.ability = abilityBasisOf(ev, used, used ? null : why, ratings);
+  if (p.status === 'projected') widenForMissingGrades(p, blended, paths, production);
   return p;
+}
+
+/**
+ * Partial ratings in the blend (hardening F4, A-15): a glove, running or current pitching grade the evidence
+ * lacks can be anywhere on the scale, so the ratings-implied rate lies anywhere between its readings at the
+ * scale's ends (`nowLow`, `nowHigh`). The central uses what is known; the band reaches the blend re-read across
+ * that range, with the form of the mapping without the grade and with the full one (a complete reading weighs
+ * the ratings by its own, smaller, uncertainty), so the band of every complete reading consistent with what is
+ * known lies inside it. Interval arithmetic on the target, never a midpoint (D-018).
+ */
+function widenForMissingGrades(
+  p: PlayerProduction, blended: RatingsProductionInput, paths: Partial<Record<ProductionSide, RatingsPath>>,
+  production: { model: ProductionModel; provenance: ModelProvenance },
+): void {
+  const priors = blended.abilityPrior ?? {};
+  for (const side of ['batting', 'pitching'] as const) {
+    const path = paths[side];
+    const prior = priors[side];
+    if (!path || !prior) continue;
+    const { now, nowLow, nowHigh, extra600 } = path.rated;
+    if (!(nowLow < now - 1e-9 || nowHigh > now + 1e-9)) continue;
+    const variances = [...new Set([prior.variance600, Math.max(prior.variance600 - extra600, 1e-9)])];
+    const readings: PlayerProduction[] = [];
+    for (const t of RATINGS_POLICY.unknownGrade.stations) {
+      for (const variance600 of variances) {
+        const r = projectProductionWith({
+          ...blended, abilityPrior: { ...priors, [side]: { ...prior, rate600: nowLow + t * (nowHigh - nowLow), variance600 } },
+        }, production.model, production.provenance);
+        if (r.status === 'projected' && r.seasons.length === p.seasons.length) readings.push(r);
+      }
+    }
+    if (readings.length === 0) continue;
+    const reach = (b: WinsBand, others: WinsBand[]): WinsBand => ({
+      low: Math.min(b.low, ...others.map((o) => o.low)), central: b.central, high: Math.max(b.high, ...others.map((o) => o.high)),
+    });
+    p.seasons.forEach((s, i) => {
+      s.wins = reach(s.wins, readings.map((r) => r.seasons[i].wins));
+      s.inner = inside(reach(s.inner, readings.map((r) => r.seasons[i].inner)), s.wins);
+      if (s.remaining) s.remaining = reach(s.remaining, readings.map((r) => r.seasons[i].remaining ?? s.remaining as WinsBand));
+      s.sides = s.sides.map((x) => {
+        if (x.side !== side) return x;
+        const alt = readings.map((r) => r.seasons[i].sides.find((y) => y.side === side)).filter((y): y is SideSeason => !!y);
+        const wins = reach(x.wins, alt.map((y) => y.wins));
+        return {
+          ...x, wins, inner: inside(reach(x.inner, alt.map((y) => y.inner)), wins),
+          rateBand: reach(x.rateBand, alt.map((y) => y.rateBand)), rateInner: reach(x.rateInner, alt.map((y) => y.rateInner)),
+          usage: reach(x.usage, alt.map((y) => y.usage)),
+        };
+      });
+      const missing = path.rated.variant === null ? 'a current pitching tool' : path.rated.variant === 'bat' ? 'his glove and running' : path.rated.variant === 'noGlove' ? 'his glove at his position' : 'his running';
+      s.notes.push(`His scouted ${missing} is not known: the central uses what is known, and the band reaches the blend with it anywhere from the scale's low end to its high end (never a midpoint).`);
+    });
+    // The rate band is never narrower further out: the reached half-widths are carried forward, as the bands are
+    const half = { outerLow: 0, outerHigh: 0, innerLow: 0, innerHigh: 0 };
+    for (const s of p.seasons) {
+      s.sides = s.sides.map((x) => {
+        if (x.side !== side) return x;
+        half.outerLow = Math.max(half.outerLow, x.rate - x.rateBand.low);
+        half.outerHigh = Math.max(half.outerHigh, x.rateBand.high - x.rate);
+        half.innerLow = Math.max(half.innerLow, x.rate - x.rateInner.low);
+        half.innerHigh = Math.max(half.innerHigh, x.rateInner.high - x.rate);
+        return {
+          ...x,
+          rateBand: { low: x.rate - half.outerLow, central: x.rateBand.central, high: x.rate + half.outerHigh },
+          rateInner: { low: x.rate - Math.min(half.innerLow, half.outerLow), central: x.rateInner.central, high: x.rate + Math.min(half.innerHigh, half.outerHigh) },
+        };
+      });
+    }
+  }
 }

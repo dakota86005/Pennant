@@ -64,8 +64,14 @@ worktree.
   fits are keyed by the save's identity and refitted in a worker thread (D-053 amendments).
 - The rate band is never narrower further out; the wins band is rate × expected playing time and may narrow as
   playing time fades (owner, 2026-09-23). Thinner evidence never narrows either on the same expected playing time;
-  missing ratings widen by interval arithmetic, never a midpoint. Playing time is conditional on quality (a better
-  player keeps more of it). A prospect's low edge includes producing nothing.
+  missing ratings widen by interval arithmetic, never a midpoint (in the blend too: a missing grade is re-read across
+  the scale). Playing time is conditional on quality (a better player keeps more of it); for a prospect too, by the
+  results fit's own effect, located so his cell's players keep its measured chance (hardening F4). A prospect's low
+  edge includes producing nothing.
+- Arrival (hardening F4): read for a player not yet called up at this point of his season (the origin season's
+  call-ups stay in the later cases, kept apart); a league's arrival cases are its own farm's, and any top-level league
+  is arriving (never assume MLB); the arrival gate also fails a material, significant relative bias (a tightening, never
+  loosen it to pass); the model served is refit through the last completed season.
 - Never ask the owner for an OOTP experiment; an unresolved rule stays `indeterminate` and is documented.
 
 Checks: `tests/playerValueBoundary.test.ts`, `tests/playerValueControl.test.ts`, `tests/playerValueCost.test.ts`,

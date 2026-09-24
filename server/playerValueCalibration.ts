@@ -249,7 +249,7 @@ export const PRODUCTION_POLICY_CALIBRATION: CalibrationStamp = policy(
 // stored in the same fit store under its own method, and adopted only through the same gate.
 
 /** The ratings model's method version: stored beside the results fit, refitted when it changes. */
-export const RATINGS_METHOD = 'ratings-3b.1';
+export const RATINGS_METHOD = 'ratings-3h.1';
 
 /** Why a player has no production at all: neither major-league results nor ability evidence to project from. */
 export const PRODUCTION_NO_EVIDENCE = 'no major-league results in the projection window and no usable ability evidence';
@@ -266,7 +266,25 @@ export const PRODUCTION_NO_EVIDENCE = 'no major-league results in the projection
  *                  own lines: an age band is widened until it holds 60 player-seasons; the positive
  *                  playing time is summarised at 10 equal-probability nodes; a horizon with fewer than
  *                  10 arrivals in its band takes the level's own positive nodes at that horizon. The
- *                  levels are those some club of the save plays at, below the majors.
+ *                  levels are those the league's own affiliates play at, below the majors; where the export
+ *                  names parents, the lines of another market league's farm or of an independent league are
+ *                  left out (a league the export no longer lists, a defunct affiliate, is kept: not known to be
+ *                  another's), and reaching any top-level league is arriving (hardening F4, D-07).
+ *                  A player called up in his origin season stays in the later seasons' cases, kept apart
+ *                  (hardening F4, C-01): the export dates no past call-up, so a player not yet called up at
+ *                  share f of his season is read as one of those called up later in theirs in proportion to
+ *                  the season still to play (1 − f, a call-up taken as equally likely at any point of the
+ *                  season's games), and the band reaches none and all of them still to come.
+ *                  A prospect's chance and his playing time when he plays move with his projected quality by
+ *                  the results fit's own effect of quality at the same usage (the chance's logistic and the
+ *                  playing time's coefficient; hardening F4, C-02), located so that the players of his
+ *                  level and age now (`populationNodes` of them sampled per cell and season) together keep
+ *                  the cell's measured chance and playing time.
+ *   gate           the arrival chance and its expected playing time, per horizon with the production gate's
+ *                  minimum cases, fail on a miss beyond the absolute tolerance (10 points), and, since
+ *                  hardening F4 (B-15), on a bias beyond 10% of what happened AND beyond three standard
+ *                  errors clustered by player (the production gate's rule): material, and not noise. A
+ *                  tightening only: every fit the absolute rule failed still fails.
  *   longitudinal   the development path and the arrival rate conditioned on potential are fitted only
  *                  from the save's own rating snapshots: a pair is two snapshots of a player 300 to 430
  *                  days apart (about a season) whose first has a scouted gap of at least 2 points; the
@@ -280,19 +298,26 @@ export const PRODUCTION_NO_EVIDENCE = 'no major-league results in the projection
  *                  the ends hold.
  *   unknownGrade   a glove or running grade the evidence lacks can be anywhere on the 20-80 scale the
  *                  adapter normalizes to: the band runs from its low end to its high end (interval
- *                  arithmetic), never a midpoint.
+ *                  arithmetic), never a midpoint. In the blend with results (hardening F4, A-15) the band
+ *                  reaches the projection re-read with the grade at five stations across that range (its
+ *                  ends, quarters and middle).
  */
 export const RATINGS_POLICY = {
   mapping: { minimumOpportunities: 200, folds: 5, positionMinimum: 15, priorStrength: 150 },
-  arrival: { bandCases: 60, nodes: 10, minimumArrivals: 10 },
+  arrival: { bandCases: 60, nodes: 10, minimumArrivals: 10, populationNodes: 20 },
+  gate: { arrivalBias: { relative: 0.1, standardErrors: 3 } },
   longitudinal: { minimumPairs: 300, pairDays: { from: 300, to: 430 }, minimumGap: 2, bandPairs: 30, minimumLinked: 300, evidence: 2, potentialTiers: 3 },
   development: { priorRangeHigh: 2, ages: { first: 16, last: 40 } },
-  unknownGrade: { low: 20, high: 80 },
+  unknownGrade: { low: 20, high: 80, stations: [0, 0.25, 0.5, 0.75, 1] },
 } as const;
 
 export const RATINGS_POLICY_CALIBRATION: CalibrationStamp = policy(
   'The same-time mapping\'s sample rule, folds, position minimum and prior strength; the arrival age-band size, nodes and arrival minimum; ' +
-    'the longitudinal pair rule and the minimum pairs before the save\'s own development path replaces the prior; the prior\'s development range. ' +
+    'the arrival population (the league\'s own affiliates; any top-level league is arriving), the origin season\'s call-ups kept in the later ' +
+    'seasons\' cases and read in proportion to the season still to play, and the quality effect located on 20 of the cell\'s players now ' +
+    '(hardening F4, 2026-09-23); the arrival gate\'s bias rule (10% of what happened and three standard errors clustered by player, beside the ' +
+    'absolute 10 points; a tightening, D-053); the longitudinal pair rule and the minimum pairs before the save\'s own development path replaces ' +
+    'the prior; the prior\'s development range; an unknown grade\'s scale ends and, in the blend, its five stations across them (hardening F4). ' +
     'Decisions about the ratings method (D-053), not fits.'
 );
 

@@ -429,6 +429,83 @@ automatically when the evidence exists:
 When the snapshots arrive, the refit after an import picks them up by itself (a ratings key that fitted before the
 snapshots were enough is refitted once when they become so), and the record says which parts are the save's.
 
+### 6.4 The ratings model after hardening F4 (method `ratings-3h.1`, 2026-09-23)
+
+Four changes to the arrival part (PLAYER_VALUE.md 2.3, "What hardening F4 changed"), one to the blend, and a tighter
+gate. The method version moved, so the phase 3b fit is not read any more and every save refits once.
+
+- **C-01, the condition.** A player called up in his origin season stays in the later seasons' cases, kept apart
+  with his share; a projected player not yet called up at share f of his season is read with 1 − f of the season's
+  call-ups still to come (a call-up equally likely at any point of the season's games: policy, since the export dates
+  no past call-up), and the band reaches none and all of them. The held-out check is read on the same unconditioned
+  cases, each at the start of its season.
+- **D-07, the population.** Where the export names parents, lines in another market league's farm or an independent
+  league are left out; a league the export no longer lists (the Arizona import's defunct short-season and rookie
+  leagues, 214, 215, 216, 219, 235) is kept as not known to be another's; any top-level league is arriving. On the
+  Arizona import this changes nothing (one market league); the synthetic two-league save
+  (`playerValueCrossSave.test.ts`, D-07) pins it.
+- **C-02, quality.** The fit records the results fit's quality coefficients at the same usage (hitters' chance logit
+  0.20 / 0.20 / 0.32 / 0.66 / 0.89 / 1.00 / 0.91 per WAR per 600 above replacement for the rest of this season and
+  horizons 1 to 6; starters 0.52 to 0.92; relievers 1.42 falling to 0.38; playing time about 0.3 opportunities per
+  scheduled game), and each cell's players now at every horizon (20 sampled in order of quality). On the Arizona import
+  these are the fallback production prior's coefficients, because the results fit (F1's `production-3h.2`) is not
+  adopted on this save.
+- **The serving rule.** The arrival model served is the method refit through the last completed season (it was the
+  training seasons' fit); the held-out seasons are scored by the method fitted through the training seasons.
+- **B-15, the gate.** Beside the absolute 10 points, a held-out chance or expected playing time (opportunities per
+  case) biased beyond 10% of what happened AND beyond three standard errors clustered by player fails, the production
+  gate's rule (`RATINGS_POLICY.gate.arrivalBias`). A tightening only: every fit the absolute rule failed still fails. A
+  synthetic league predicting 12% where 4% happened (an 8-point miss) passed before and fails now
+  (`playerValueRatings.test.ts`).
+- **A-15, the blend.** Covered in PLAYER_VALUE.md; no fitted number.
+
+**The Arizona run** (`203:2025:ratings-3h.1`, `npx tsx scripts/calibrate.ts production --refit`, scratch data dir,
+`league.db` read-only): 42,598 players with minor-league usage, 592,916 player-seasons at levels 2, 3, 4 and 6 (571,079
+before: the origin season's call-ups now stay in the later cases), window 2006–2025, trained through 2015, held out
+2016–2025, 93 level-and-age cells. The mapping is unchanged (84.5% / 58.1% on 1,147). Held out, the chance predicted
+against what happened (± its standard error, clustered by player) and the expected opportunities per case:
+
+| Horizon | Cases | Chance predicted | Happened | Bias / happened | Opportunities predicted | Happened | Bias / happened |
+|---|---|---|---|---|---|---|---|
+| 0 (the same season) | 53,445 | 4.6% | 4.7% (± 0.1) | 0.7% | 5.2 | 5.2 | −0.1% |
+| 1 | 46,503 | 7.5% | 7.9% (± 0.1) | 4.4% | 12.4 | 12.7 | 2.4% |
+| 2 | 41,004 | 9.6% | 10.2% (± 0.2) | 6.2% | 18.9 | 19.0 | 1.0% |
+| 3 | 34,251 | 10.9% | 12.4% (± 0.2) | 12.1% | 23.9 | 24.5 | 2.7% |
+| 4 | 28,739 | 11.1% | 13.1% (± 0.3) | 15.8% | 25.8 | 27.3 | 5.5% |
+| 5 | 22,301 | 10.8% | 13.4% (± 0.3) | 19.4% | 26.8 | 29.3 | 8.4% |
+| 6 | 27,906 | 9.9% | 12.3% (± 0.3) | 19.8% | 25.4 | 28.1 | 9.6% |
+
+Before (method `ratings-3b.1`, which dropped the origin season's call-ups from horizons 1 to 6 in both the fit and the
+check): 4.6 / 4.7, 4.4 / 4.7, 7.2 / 7.7, 8.9 / 10.3, 9.4 / 11.5, 9.4 / 11.9, 8.7 / 11.1, all inside the absolute 10
+points; under the new rule the same numbers would also have failed at horizons 3 to 6.
+
+**Gate: FAILED** at horizons 3 to 6 (the chance 12–20% low, 7 to 9 standard errors). The save's arrival rates rose
+from the training seasons to the held-out ones, and the arrival method weighs every season alike; it is recorded, not
+tuned away. The fit is not adopted: the provisional ratings prior is in force, which measures no arrivals, so on this
+import a player not in the majors has production `unknown`, with the gate's reason in his basis. The results path's
+blend with ratings is unaffected in kind (the prior's mapping is this import's own, fitted with no prior).
+
+**Read as if adopted** (a diagnostic copy of the store with the fit forced in; never the served state):
+
+| Season | Prospects' summed central, before | C-01 alone | C-01 and C-02 | The save's own history, a population this size |
+|---|---|---|---|---|
+| 2027 | 15.2 | 69.2 | 101.6 | about 144 |
+| 2028 | 22.2 | 106.9 | 168.9 | about 260 |
+| 2029 | 23.6 | 116.8 | 211.4 | about 362 |
+| 2030 | 21.4 | 101.2 | 234.8 | about 426 |
+
+The history column is the recent origins' (2016–2025) total major-league WAR one to four seasons on of players at
+levels 2, 3, 4 and 6 with no major-league line in the two seasons before (22.7, 41.0, 57.0 and 67.0 wins per 1,000 such
+players), scaled to the 6,351 players projected from ratings. The prospects' expected playing time is close to that
+history's (17.8 opportunities per prospect one season on against 13.0 per case, the difference being who is in the
+population now); what remains short is their rate when they play, about 0.55–0.6 WAR per 600 against the save's real
+arrivals' 1.0–1.6, which is the ratings path's (the same-time mapping and the provisional development prior), not the
+arrival model's. Negative centrals: 4,480 in 2029 (4,348 before), almost all within a few hundredths of a win; 642
+players have some season below −0.1 wins (750 before), the worst Santiago Pereira (130821, 17, level 4) at −1.19 in 2031.
+Low edges below −1 in some season: 365 (574 before); below −3: 35 (6 before, the youngest weak prospects, whose
+chance C-01 raised). The regression sweep holds: 53 checks pass in the served state and 55 as if adopted, none failing.
+A full valuation of the league takes about 1.9 s as if adopted (1.5 s before), 1.0 s served.
+
 ## 7. Player Value's opening price of a win: policy minimums (hardening, B-13)
 
 The opening price of a win (PLAYER_VALUE.md Part 4.1) is a spread of defensible bases, not a fit, so it has nothing

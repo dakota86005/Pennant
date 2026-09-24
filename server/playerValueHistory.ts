@@ -219,20 +219,26 @@ export interface LevelSeason {
 /**
  * Every line at the levels asked about (the minor levels of the save's affiliated clubs), one per
  * player, season and level, summed over clubs, for the seasons asked about: usage only (MINOR_USAGE_COLUMNS).
+ * `excludeLeagues` leaves out the lines of those leagues (another market league's farm, an independent league:
+ * hardening F4, D-07); a league the export no longer lists (a defunct affiliate) is not known to be another's
+ * and is kept. Null or absent reads every league at those levels.
  */
-export function minorLeagueUsage(ids: number[] | null, levels: number[], fromSeason: number, throughSeason: number): Map<number, LevelSeason[]> {
+export function minorLeagueUsage(ids: number[] | null, levels: number[], fromSeason: number, throughSeason: number, excludeLeagues: number[] | null = null): Map<number, LevelSeason[]> {
   const out = new Map<number, LevelSeason[]>();
   if (levels.length === 0) return out;
+  const excluding = excludeLeagues !== null && excludeLeagues.length > 0 ? excludeLeagues : null;
   const merged = new Map<string, LevelSeason & { player: number }>();
   for (const [table, opp] of [['players_career_batting_stats', 'pa'], ['players_career_pitching_stats', 'bf']] as const) {
     if (!tableExists(table)) continue;
     const present = new Set(tableColumns(table));
     const usable = MINOR_USAGE_COLUMNS.filter((c) => present.has(c));
     if (!['player_id', 'year', 'level_id', 'split_id', opp].every((c) => usable.includes(c as typeof usable[number]))) continue;
+    // Leaving leagues out needs the table's league column; without it the lines cannot be placed, so none are read
+    if (excluding !== null && !present.has('league_id')) continue;
     const games = opp === 'bf' && usable.includes('g') ? 'SUM(g)' : '0';
     const starts = opp === 'bf' && usable.includes('gs') ? 'SUM(gs)' : '0';
     const base = `SELECT player_id, year, level_id, SUM(${opp}) AS opp, ${games} AS games, ${starts} AS starts
-                  FROM ${table} WHERE split_id = 1 AND level_id IN (${levels.map(() => '?').join(',')}) AND year BETWEEN ? AND ?`;
+                  FROM ${table} WHERE split_id = 1 AND level_id IN (${levels.map(() => '?').join(',')}) AND year BETWEEN ? AND ?${excluding !== null ? ` AND league_id NOT IN (${excluding.map(() => '?').join(',')})` : ''}`;
     const take = (rows: Array<Record<string, unknown>>) => {
       for (const r of rows) {
         const player = numberOrNull(r.player_id);
@@ -247,7 +253,7 @@ export function minorLeagueUsage(ids: number[] | null, levels: number[], fromSea
         merged.set(key, had);
       }
     };
-    const params = [...levels, fromSeason, throughSeason];
+    const params = [...levels, fromSeason, throughSeason, ...(excluding ?? [])];
     if (ids === null) take(db.prepare(`${base} GROUP BY player_id, year, level_id`).all(...params) as Array<Record<string, unknown>>);
     else {
       for (let at = 0; at < ids.length; at += 500) {
@@ -278,6 +284,17 @@ export function affiliatedLevels(marketLeagueId: number): number[] {
     ? db.prepare(`SELECT DISTINCT t.level AS level FROM teams t JOIN leagues l ON l.league_id = t.league_id WHERE l.parent_league_id = ?`).all(marketLeagueId)
     : db.prepare(`SELECT DISTINCT level FROM teams WHERE league_id <> ?`).all(marketLeagueId);
   return (rows as Array<{ level: unknown }>).map((r) => numberOrNull(r.level)).filter((l): l is number => l !== null && l > 1).sort((a, b) => a - b);
+}
+
+/**
+ * Whether the export names each league's parent (`leagues.parent_league_id`): only then can a minor league be
+ * told apart as one market league's farm or another's (hardening F4, D-07); otherwise the levels alone place a
+ * minor leaguer, as `affiliatedLevels` does.
+ */
+export function leagueParentsNamed(): boolean {
+  if (!tableExists('leagues')) return false;
+  const columns = tableColumns('leagues');
+  return columns.includes('parent_league_id') && columns.includes('league_id');
 }
 
 /** Objective facts a ratings projection needs about each player: his listed position and the hand he bats with. */

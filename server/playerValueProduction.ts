@@ -440,7 +440,8 @@ export interface ArrivalBasis {
   age: number | null;
   band: { ageFrom: number; ageTo: number; cases: number } | null;
   seasons: Array<{ season: number; chance: number; expected: number }>;
-  conditioned: 'level_and_age' | 'level_age_and_potential';
+  /** What the chance (and, with quality, the playing time) is conditioned on beyond his level and age (hardening F4: quality). */
+  conditioned: 'level_and_age' | 'level_age_and_potential' | 'level_age_and_quality' | 'level_age_potential_and_quality';
   note: string;
 }
 

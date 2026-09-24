@@ -5,7 +5,7 @@ import {
   type ArrivalModel, type Observation, type PlayerProduction, type ProductionLine, type RatingsEvidence, type RatingsFitInput,
   type RatingsModelInForce, type RatingsProductionInput, type WinsBand,
 } from '../server/playerValue.js';
-import { PRODUCTION_PRIOR, RATINGS_PRIOR } from '../server/playerValueCalibration.js';
+import { PRODUCTION_PRIOR, RATINGS_METHOD, RATINGS_PRIOR } from '../server/playerValueCalibration.js';
 import { minorLeagueUsage } from '../server/playerValueHistory.js';
 import { FIELDING_EVIDENCE_PROVENANCE, hitterProfileFromRow, syntheticScoutedAbility } from '../server/scoutedEvidence.js';
 import { IDS } from './fixture';
@@ -323,7 +323,7 @@ describe('the ratings fit on a synthetic save (D-053)', () => {
   it('the ratings mapping is fitted per save on major leaguers with ratings and a meaningful rate, recorded with its run record, the same-time caveat and the gate\'s verdict', () => {
     const run = fitRatingsModel(syntheticSave(), { prior: RATINGS_PRIOR });
     const r = run.record;
-    expect(r.id).toBe('1:2025:ratings-3b.1');
+    expect(r.id).toBe(`1:2025:${RATINGS_METHOD}`);
     expect(r.mapping.cases.hitter).toBeGreaterThanOrEqual(300);
     expect(r.mapping.caveat).toMatch(/Same-time fit/);
     expect(r.mapping.coverage.asFitted.cases).toBeGreaterThan(0);
@@ -377,6 +377,157 @@ describe('the ratings fit on a synthetic save (D-053)', () => {
     expect(m.noGlove.variance600).toBeGreaterThanOrEqual(m.full.variance600);
     expect(m.noRunning.variance600).toBeGreaterThanOrEqual(m.full.variance600);
     expect(m.bat.variance600).toBeGreaterThanOrEqual(Math.max(m.noGlove.variance600, m.noRunning.variance600));
+  });
+
+  describe('hardening F4: arrivals (C-01, B-15)', () => {
+    /**
+     * Minor leaguers at Triple-A at 21, one origin season each: `upNow` of them reach the majors in the origin
+     * season and all of those play the next; of the rest, `later` play the next season. `rate(origin)` can
+     * replace that shape per origin season (a league whose arrivals changed).
+     */
+    function arrivals(n: number, shape: (origin: number) => { upNow: number; later: number }, firstId = 50_000): RatingsFitInput['arrival'] {
+      const rnd = random(23);
+      const out: RatingsFitInput['arrival'] = [];
+      for (let i = 0; i < n; i += 1) {
+        const origin = 2006 + (i % 19);
+        const { upNow, later } = shape(origin);
+        const majors = new Map<number, number>();
+        const u = rnd();
+        if (u < upNow) { majors.set(origin, 150); majors.set(origin + 1, 400); }
+        else if (u < upNow + (1 - upNow) * later) majors.set(origin + 1, 200);
+        out.push({ playerId: firstId + i, birth: { year: origin - 21, month: 3, day: 1 }, side: 'batting', majors, minors: [{ season: origin, level: 2, opportunities: 400 }] });
+      }
+      return out;
+    }
+    const inForce = (model: ReturnType<typeof fitRatingsModel>['model']): RatingsModelInForce => ({ model, provenance: MEASURED.provenance });
+    const aaa = (over: Partial<RatingsProductionInput> = {}) => prospect({ level: 2, age: 21, seasonPlayed: 0, ...over });
+
+    it('C-01: a prospect\'s chance next season counts the players of his level and age who were called up later in their season, not only those passed over for all of it', () => {
+      const input = { ...syntheticSave(), levels: [2], arrival: arrivals(4000, () => ({ upNow: 0.6, later: 0.25 })) };
+      const run = fitRatingsModel(input, { prior: RATINGS_PRIOR });
+      // At the season's start: the rate at which such players played the next season, 0.6 + 0.4 × 0.25
+      const start = projected(projectProduction(aaa(), undefined, inForce(run.model)));
+      expect(start.seasons[1].sides[0].arrival?.chance).toBeGreaterThan(0.62);
+      expect(start.seasons[1].sides[0].arrival?.chance).toBeLessThan(0.78);
+      // Part-way through, not yet called up: never below the players passed over all season, and his chance of
+      // playing next season is not below the chance of being called up in what is left of this one
+      const mid = projected(projectProduction(aaa({ seasonPlayed: 0.5 }), undefined, inForce(run.model)));
+      const next = mid.seasons[1].sides[0].arrival!.chance;
+      expect(next).toBeGreaterThan(0.3);
+      expect(next).toBeGreaterThanOrEqual(mid.seasons[0].sides[0].arrival!.chance);
+      // The held-out check is read on the same, unconditioned players
+      const h1 = run.record.arrival.heldOut[1];
+      expect(h1.cases).toBeGreaterThan(0);
+      expect(h1.observed).toBeGreaterThan(0.6);
+    });
+
+    it('B-15: the arrival gate fails a fit that predicts three times the observed rate, though the miss is under the absolute tolerance', () => {
+      const control = fitRatingsModel({ ...syntheticSave(), levels: [2], arrival: arrivals(6000, () => ({ upNow: 0, later: 0.12 })) }, { prior: RATINGS_PRIOR });
+      // The same league, calibrated: the gate passes (its mapping and its arrivals)
+      expect(control.record.gate.passed, control.record.gate.reason).toBe(true);
+      const drifted = fitRatingsModel({
+        ...syntheticSave(), levels: [2],
+        arrival: arrivals(6000, (origin) => ({ upNow: 0, later: origin < (control.record.arrival.trainingThrough ?? 0) ? 0.12 : 0.04 })),
+      }, { prior: RATINGS_PRIOR });
+      const h1 = drifted.record.arrival.heldOut[1];
+      expect(h1.predicted! - h1.observed!).toBeLessThan(0.1);
+      expect(h1.predicted! / h1.observed!).toBeGreaterThan(2);
+      expect(drifted.record.gate.passed, drifted.record.gate.reason).toBe(false);
+      expect(drifted.record.gate.reason).toMatch(/arrival chance's held-out calibration/i);
+    });
+  });
+});
+
+describe('hardening F4: a prospect\'s playing time follows his projected quality (C-02)', () => {
+  /** The measured effect of quality (per WAR per 600 above replacement) and a cell whose players now range from replacement to good. */
+  function withQuality(): RatingsModelInForce {
+    const model = arrivalModel();
+    const population: Array<[number, number]> = Array.from({ length: 20 }, (_, j) => {
+      const q = j < 10 ? 0 : (j - 9) * 0.4;
+      return [0.5 * q, 0.3 * q];
+    });
+    for (const cell of model.cells) for (const h of cell.horizons) (h as unknown as { population: Array<[number, number]> }).population = population;
+    const effect = { hitter: Array(7).fill(0.5), starter: Array(7).fill(0.5), reliever: Array(7).fill(0.5) };
+    const perGame = { hitter: Array(7).fill(0.3), starter: Array(7).fill(0.3), reliever: Array(7).fill(0.3) };
+    return { ...MEASURED, model: { ...MEASURED.model, arrival: { ...model, quality: { chance: effect, perGame } } as ArrivalModel } };
+  }
+  const QUALITY = withQuality();
+  const cellAt = (i: number) => arrivalModel().cells.find((c) => c.side === 'batting' && c.level === 3)!.horizons[i]!;
+  const at = (over: Partial<RatingsProductionInput>) => prospect({ seasonPlayed: 0, schedule: { games: 162 }, ...over });
+
+  it('a better prospect is likelier to arrive and plays more when he does', () => {
+    const base = projected(projectProduction(at({ ratings: hitter({ cur: 56, pot: 70 }) }), undefined, QUALITY));
+    const better = projected(projectProduction(at({ ratings: hitter({ cur: 66, pot: 70 }) }), undefined, QUALITY));
+    let strictly = 0;
+    base.seasons.forEach((s, i) => {
+      const b = better.seasons[i].sides[0];
+      expect(b.arrival!.chance, `${s.season}`).toBeGreaterThanOrEqual(s.sides[0].arrival!.chance - EPS);
+      expect(b.usage.central, `${s.season}`).toBeGreaterThanOrEqual(s.sides[0].usage.central - EPS);
+      if (b.arrival!.chance > s.sides[0].arrival!.chance + 1e-6 && b.usage.central > s.sides[0].usage.central + 1e-6) strictly += 1;
+      expect(better.seasons[i].wins.central, `${s.season}`).toBeGreaterThanOrEqual(s.wins.central - EPS);
+    });
+    expect(strictly).toBeGreaterThan(0);
+  });
+
+  it('a prospect projected below replacement is not expected to take an average arrival\'s playing time, and his low edge still includes nothing', () => {
+    const weak = projected(projectProduction(at({ ratings: hitter({ cur: 25, pot: 30 }) }), undefined, QUALITY));
+    const plain = projected(projectProduction(at({ ratings: hitter({ cur: 25, pot: 30 }) }), undefined, MEASURED));
+    weak.seasons.forEach((s, i) => {
+      if (i === 0) return;
+      const A = cellAt(i);
+      expect(s.sides[0].rate, `${s.season}`).toBeLessThan(0);
+      expect(s.sides[0].usage.central, `${s.season}`).toBeLessThan(A.chance * A.mean);
+      // The cell's weaker players no longer make his central more negative than his level's average arrival would
+      expect(s.wins.central, `${s.season}`).toBeGreaterThan(plain.seasons[i].wins.central);
+      expect(s.wins.low, `${s.season}`).toBeLessThanOrEqual(0);
+    });
+  });
+
+  it('the players of his level and age together keep the chance and playing time the save measured for them', async () => {
+    const R = await import('../server/playerValueRatings.js') as unknown as {
+      qualityReading: (base: { chance: number; mean: number; nodes: number[] }, population: Array<[number, number]>, z: number, y: number, games: number | null, tiltChance: boolean) => { chance: number; mean: number; nodes: number[] };
+    };
+    const base = { chance: 0.2, mean: 250, nodes: Array.from({ length: 10 }, (_, j) => 50 + 40 * j) };
+    const population: Array<[number, number]> = Array.from({ length: 20 }, (_, j) => [0.1 * j, 0.02 * j]);
+    const readings = population.map(([z, y]) => R.qualityReading(base, population, z, y, 162, true));
+    const chance = readings.reduce((s, r) => s + r.chance, 0) / readings.length;
+    const opportunities = readings.reduce((s, r) => s + r.chance * r.mean, 0) / readings.length;
+    expect(chance).toBeCloseTo(base.chance, 6);
+    expect(opportunities).toBeCloseTo(base.chance * base.mean, 4);
+    // ...and the better of them is likelier to arrive and plays more
+    expect(readings[19].chance).toBeGreaterThan(readings[0].chance);
+    expect(readings[19].mean).toBeGreaterThan(readings[0].mean);
+  });
+});
+
+describe('hardening F4: partial ratings widen a thin record\'s band too (A-15)', () => {
+  const thin = (ratings: RatingsEvidence): RatingsProductionInput => ({
+    playerId: 9, season: SEASON, seasonPlayed: 0.3, age: 33, batting: [bat(2029, 40, 0.1), bat(2030, 20, 0)], pitching: [], ratings, level: 1,
+  });
+
+  it('an unknown glove or running grade spans the scale\'s ends: the band contains every complete reading\'s band', () => {
+    for (const [what, unknown, readings] of [
+      ['glove', hitter({ cur: 50, pot: 50, glove: null }), [20, 41, 80].map((g) => hitter({ cur: 50, pot: 50, glove: g }))],
+      ['running', hitter({ cur: 50, pot: 50, running: null }), [20, 47, 80].map((r) => hitter({ cur: 50, pot: 50, running: r }))],
+    ] as const) {
+      const u = projected(projectProduction(thin(unknown), undefined, PRIOR_ONLY));
+      // Reaching the complete readings never makes the rate band narrower further out
+      for (let i = 1; i < u.seasons.length; i += 1) {
+        expect(width(u.seasons[i].sides[0].rateBand), `${what}, ${u.seasons[i].season}`).toBeGreaterThanOrEqual(width(u.seasons[i - 1].sides[0].rateBand) - EPS);
+        expect(width(u.seasons[i].sides[0].rateInner), `${what}, ${u.seasons[i].season}`).toBeGreaterThanOrEqual(width(u.seasons[i - 1].sides[0].rateInner) - EPS);
+      }
+      for (const ev of readings) {
+        const c = projected(projectProduction(thin(ev), undefined, PRIOR_ONLY));
+        c.seasons.forEach((s, i) => {
+          if (i === 0) return;
+          const x = u.seasons[i];
+          expect(x.wins.low, `${what}, ${s.season}`).toBeLessThanOrEqual(s.wins.low + 1e-6);
+          expect(x.wins.high, `${what}, ${s.season}`).toBeGreaterThanOrEqual(s.wins.high - 1e-6);
+          expect(x.sides[0].rateBand.low, `${what}, ${s.season}`).toBeLessThanOrEqual(s.sides[0].rateBand.low + 1e-6);
+          expect(x.sides[0].rateBand.high, `${what}, ${s.season}`).toBeGreaterThanOrEqual(s.sides[0].rateBand.high - 1e-6);
+        });
+      }
+    }
   });
 });
 
