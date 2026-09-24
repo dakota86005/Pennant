@@ -202,7 +202,7 @@ aiRoutes.post('/briefing/:orgId', (req, res) => {
  * and every reply after it, so the follow-ups do not drift into a different
  * man with different standards halfway down the thread.
  */
-function tradeSystem(voice: Persona, orgLabel: string | undefined, leagueId?: number): string {
+export function tradeSystem(voice: Persona, orgLabel: string | undefined, leagueId?: number): string {
   const who =
     voice.name === 'the front office'
       ? `You are the front office of ${orgLabel ?? 'this club'}`
@@ -221,11 +221,23 @@ function tradeSystem(voice: Persona, orgLabel: string | undefined, leagueId?: nu
     `"weGive" leaves the organisation; "weReceive" joins it.\n\n` +
       `Judge the deal as a roster decision, not an exchange of ratings. In particular:\n` +
       `- Say what each man actually is — his position, his role if he pitches, and the level he is ` +
-      `playing at. A 48-overall reliever and a 48-overall shortstop are not the same asset.\n` +
+      `playing at. A reliever and a shortstop with the same value are not the same asset.\n` +
       `- Use the season line, and read it against the level it was produced at. OPS+ and ERA+ are ` +
       `scaled so 100 is average for that league, so they compare across levels; the raw rates do ` +
       `not. Say when a sample is too small to mean anything.\n` +
-    `- ${VALUE_PERCENTILE_NOTE}\n` +
+    // Player Value phase 6b (D-001, D-052): the desk explains Pennant's reading of the deal and never replaces it
+    `- "value" is Pennant's reading of the deal, the same figures the page shows beside your answer: each side's contract ` +
+    `value (what the players' contracts are worth to whoever holds them: their projected wins at what a win costs on this ` +
+    `league's market, less what they cost, later seasons counting a little less), in "unit", and "difference": what comes in ` +
+    `less what goes out, a most likely figure (or a range of them where an option, a status or whether a man stays is open) ` +
+    `with the range it could be and each player's part. Each man's own "value" gives his contract value and the value of ` +
+    `keeping him (what his club would give up by letting him go; money owed either way does not count). Quote these as ` +
+    `ranges, say what drives the difference, and say plainly when a man is left out because his value is not known. You never ` +
+    `produce a value number of your own: no dollar figure, rating or score for a player or the deal that is not in the data. ` +
+    `"ourView", where present, is the same reading through this club's philosophy, with each lean named.\n` +
+    `- "expectedWins" is each man's projected wins above replacement for the rest of this season (or the whole of it) and ` +
+    `next season, with the likely range. "clubValueOfAWin" is context from the standings (how much one more win moves a club's ` +
+    `playoff odds), never part of any value figure.\n` +
     `- "onTheBlock" names the men in this deal whose own club has listed them for trade. A club ` +
     `that has listed a player wants to move him and the price starts lower; a club that has not ` +
     `is being asked for a favour and will charge for it. Say which of these you are dealing with.\n` +
@@ -248,28 +260,31 @@ function tradeSystem(voice: Persona, orgLabel: string | undefined, leagueId?: nu
     `- A season line covers every club a man played for that year. Where somebody changed hands ` +
     `mid-season, say what he has done since the move as well as across the year — a hot six weeks ` +
     `in a new park is a different fact from a full season, and the reader wants both.\n` +
-    `- A contract ending is not a player leaving. Each man carries a "control" field: "leaving" ` +
-    `reaches free agency, "arbitration" means he is kept and paid more, "pre-arbitration" kept ` +
-    `cheaply, "reserve clause" cannot leave, "indeterminate" means the save cannot yet establish ` +
-    `which (its "between" and "why" say what it lies between and why) — say so, never pick one. ` +
-    `"option" means next season is an option or his opt-out: exercised he is under contract at the ` +
-    `salary, declined (or opted out) he falls to its "ifDeclined" — give both branches and never ` +
-    `call him signed for that season. ` +
+    `- A contract ending is not a player leaving. Each man carries a "control" field: "text" is his control season by ` +
+    `season ("Signed 2026 · arbitration 2027–2028 · free agent from 2029"), and "path" gives each controlled season with what ` +
+    `it costs (a contract's salary, or a projected arbitration or pre-arbitration cost as a range). "arbitration" means he is ` +
+    `kept and paid more, "pre-arb" kept cheaply, "reserve clause" cannot leave; a season named as two statuses ("arbitration ` +
+    `or free agency") is one the save cannot yet settle — say so, never pick one. An option or opt-out season has two ` +
+    `branches: give both and never call him signed for that season. ` +
     `Never call somebody a rental or a walk-year player ` +
     `from years-remaining alone — arbitration years are years of control, and they are worth ` +
     `paying for.\n` +
-      `- "totals" holds the same value, talent and salary figures shown on the page beside your ` +
-    `answer. Quote those if you quote totals at all, so the two never disagree — but a verdict ` +
-    `that is only those totals restated is not worth writing.\n\n` +
-    `Never invent a number that is not in the data you are given.`
+      `- "salaryThisSeason" is the salary each side carries this season, with the men whose salary the export does ` +
+    `not state named.\n` +
+    `- A read that only restates "value" is not worth writing: say what the figures mean for this club's roster.\n\n` +
+    `Never invent a number that is not in the data you are given. The decision is the GM's: you explain the deal, the ` +
+    `figures and the roster; you do not accept or reject it for him.`
   );
 }
 
-/** The opening verdict's shape. Replies are conversation and are left alone. */
-const VERDICT_FORMAT =
-  '\n\nAnswer in short markdown: a one-line **Verdict** (Accept / Reject / Needs a sweetener), ' +
-  'then 4-6 sentences of reasoning that name players and cite figures, then a suggested ' +
-  'adjustment if one would fix it. Under 220 words.';
+/**
+ * The opening read's shape. Replies are conversation and are left alone. No accept-or-reject line: the application
+ * decides nothing here and neither does the desk (D-001, D-004); it explains what the deal does (phase 6b).
+ */
+export const TRADE_ANSWER_FORMAT =
+  '\n\nAnswer in short markdown: a one-line **Read** that says what the deal does for this club in plain words ' +
+  '(no accept or reject: the decision is the GM\'s), then 4-6 sentences that name players and cite figures from the ' +
+  'data (the difference as its range), then what would change the picture, if anything. Under 220 words.';
 
 /**
  * The trade desk, with the run of the organisation.
@@ -357,7 +372,7 @@ aiRoutes.post('/trade/ai-eval', async (req, res) => {
     const { voice, context, leagueId } = tradeSetup(body);
     let notice: FallbackNotice | null = null;
     const verdict = await askTheDesk(
-      tradeSystem(voice, body.orgLabel, leagueId) + VERDICT_FORMAT,
+      tradeSystem(voice, body.orgLabel, leagueId) + TRADE_ANSWER_FORMAT,
       [{ role: 'user', content: JSON.stringify(context, null, 1) }],
       (n) => { notice = n; }
     );
@@ -390,9 +405,9 @@ aiRoutes.post('/trade/ai-reply', async (req, res) => {
       .slice(-12);
     const reply = await askTheDesk(
       tradeSystem(voice, body.orgLabel, leagueId) +
-        '\n\nYou have already given your verdict on this deal and are now being asked about it. ' +
+        '\n\nYou have already given your read of this deal and are now being asked about it. ' +
         'Answer the question actually put to you, in a few sentences — no headings, and do not ' +
-        'restate the verdict unless it has changed. If it has changed, say so plainly.\n\n' +
+        'restate the read unless it has changed. If it has changed, say so plainly.\n\n' +
         'The question may move past the deal — who else could fill the hole, who is close in the ' +
         'system, what the roster looks like without these men. Use your tools and go and read it ' +
         'rather than saying you have not got the data: the roster, the farm and every player in ' +

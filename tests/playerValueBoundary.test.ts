@@ -243,7 +243,7 @@ const ALLOWED_IMPORTS = new Set([
   './playerValueFinances.js', './playerValueHistory.js', './playerValueProduction.js', './playerValueProductionFit.js',
   './playerValueFitStore.js', './injuryProneness.js', './playerValueRatings.js', './playerValueRatingsFit.js', './playerValueCone.js',
   './playerValueCost.js', './playerValueSignings.js', './playerValueContractStore.js', './playerValueSurplus.js',
-  './playerValueLens.js', './playerValueWinValue.js',
+  './playerValueLens.js', './playerValueWinValue.js', './playerValueTrade.js',
 ]);
 
 /**
@@ -286,7 +286,9 @@ const WRITER_IMPORTS = new Set(['./history.js']);
 const PRODUCTION_MODULES = ['playerValueProduction.ts', 'playerValueProductionFit.ts', 'playerValueHistory.ts', 'playerValueFitStore.ts'];
 
 /** Consumers migrated to the entry point, phase by phase (Part 8). Phase 1: control. Phase 2: club finances. */
-const MIGRATED_CONSUMERS = ['contracts.ts', 'payroll.ts', 'trade.ts', 'player.ts', 'freeagents.ts', 'clubFinanceRoutes.ts', 'playerValueRoutes.ts'];
+const MIGRATED_CONSUMERS = ['contracts.ts', 'payroll.ts', 'trade.ts', 'player.ts', 'freeagents.ts', 'clubFinanceRoutes.ts', 'playerValueRoutes.ts',
+  // Phase 6b: the trading block reads Player Value's facts
+  'tradingblock.ts'];
 
 /** Who may call the snapshot writer: the import, and the one route that serves the history. */
 const SNAPSHOT_CALLERS = ['api.ts', 'clubFinanceRoutes.ts'];
@@ -326,7 +328,7 @@ describe('the Player Value boundary', () => {
       'playerValueControl.ts', 'playerValueCost.ts', 'playerValueFinances.ts', 'playerValueFitStore.ts', 'playerValueHistory.ts',
       'playerValueLens.ts', 'playerValueProduction.ts', 'playerValueProductionFit.ts', 'playerValueRatings.ts', 'playerValueRatingsFit.ts',
       'playerValueRefitWorker.ts', 'playerValueRoutes.ts', 'playerValueSignings.ts', 'playerValueSnapshot.ts', 'playerValueSurplus.ts',
-      'playerValueWinValue.ts',
+      'playerValueTrade.ts', 'playerValueWinValue.ts',
     ]);
   });
 
@@ -709,6 +711,20 @@ describe('the Player Value boundary', () => {
     expect(surplus).not.toMatch(/\b(should|recommend\w*|release him|keep him|trade him|extend him|sign him)\b/i);
   });
 
+  it('the trade reading (phase 6b) is pure: it combines the valuations and our views handed to it, opens no table, reads no rating, no philosophy of its own and no club value of a win, and says no verdict', () => {
+    const TRADE = 'playerValueTrade.ts';
+    expect(importsOf(TRADE).filter((i) => !['./calibration.js', './playerValueCalibration.js', './playerValueSurplus.js', './playerValueLens.js', './playerValueControl.js', './playerValueProduction.js'].includes(i))).toEqual([]);
+    // The lens's types only: our view is handed to it, never computed here
+    for (const r of importRecordsOf(TRADE).records.filter((x) => x.spec === './playerValueLens.js')) expect(r.typeOnly).toBe(true);
+    const trade = code(TRADE);
+    expect(trade).not.toMatch(/\bdb\.|prepare\(|scoutedEvidence|players_value|philosophy|settings|surplusOf\(|ourViewOf\(|winValue|posture|playoff|protection/);
+    // No consumer combines a deal's players itself
+    for (const file of SERVER_FILES.filter((f) => !VALUE_MODULES.includes(f))) expect(code(file), file).not.toMatch(/\bcombineTradeFigures\b/);
+    // No verdict in its words
+    expect(trade).not.toMatch(/\b(should|recommend\w*|release him|keep him|trade him|extend him|sign him|accept\w*|reject\w*|fair)\b/i);
+    expect(trade).not.toMatch(/\b(?:win|wins|won|lose|loses|lost)\s+(?:the|this)\s+(?:trade|deal)\b/i);
+  });
+
   it('every constant is declared once, stamped, in the calibration module (8)', () => {
     // A number of its own at module level, whatever its name, keyword or type: a literal, literal arithmetic, or an object or array holding one
     for (const file of VALUE_MODULES.filter((f) => f !== 'playerValueCalibration.ts')) {
@@ -743,6 +759,8 @@ describe('the Player Value boundary', () => {
       ['LENS_POLICY_CALIBRATION', 'policy'],
       ['WIN_VALUE_POLICY_CALIBRATION', 'policy'],
       ['WIN_CURVE_CALIBRATION', 'provisional'],
+      // Phase 6b: how a trade combines its players (the owner's Payroll rule, extended to a deal's sides and their difference)
+      ['TRADE_COMBINATION_POLICY_CALIBRATION', 'policy'],
     ]);
     // Every policy object of numbers in the calibration module is stamped beside it
     for (const name of ownNumbersOf('playerValueCalibration.ts').filter((n) => n !== 'CONTROL_HORIZON_SEASONS')) {

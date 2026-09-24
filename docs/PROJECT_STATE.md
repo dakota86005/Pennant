@@ -283,8 +283,9 @@ carry indeterminate results as such (`indeterminate` lists and recommendation),
 never as approval, rejection, protection, or a hold. Philosophy cannot resolve
 an unknown.
 
-Not yet done: scouting snapshots use their own composite; trade, contract,
-franchise, roster, and player-card surfaces still read `players_value`; whether
+Not yet done: scouting snapshots use their own composite; contract,
+franchise, roster, and player-card surfaces still read `players_value` (the
+Trade Center no longer does: Player Value phase 6b); whether
 `players_value.oa`/`pot` are the organization's scouted view is unknowable from
 the repository; the farm workspaces do not yet render operations' indeterminate
 candidates. The provenance of every rating field is tabulated in
@@ -704,6 +705,23 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   nearest rival (it had used the last-placed club). The card's Value section is in
   plain words with the explanations on hover (`src/Tip.tsx`, keyboard-reachable),
   our view beside the neutral figures, and the club's value of a win as context.
+- **The Trade Center** (phase 6b, 2026-09-24; `server/playerValueTrade.ts`, pure;
+  PLAYER_VALUE.md Part 8, consumer 3): a deal is read on Player Value.
+  `POST /api/trade/analyze` (`trade.ts` `analyzeTrade`) serves both sides'
+  decompositions (each player's contract value and value of keeping him as the
+  card serves them, his control season by season with its cost, his expected
+  wins, his salary this season), each side's total and the difference between
+  the sides (what comes in less what goes out) as a band with each player's
+  part, players combined as independent with an open season at its edges
+  (`TRADE_COMBINATION_POLICY`, the owner's Payroll rule extended; an open owner
+  question); an unknown player is named and left out; our view under the
+  viewing club's philosophy beside it; the clubs' value of a win as context.
+  The page (`src/TradeAnalysis.tsx`) shows the two sides side by side and a bar
+  around zero, weighs the deal as it is built, and carries no jargon or verdict
+  word. Trade fits and the trading block order by expected wins, shown; offers
+  and trade talk read the same analysis; the AI's trade context carries the
+  decomposition, and the desk gives a one-line "Read", no accept-or-reject line.
+  `trade.ts` and `tradingblock.ts` read no `players_value`, rating or percentile.
 - **Tests:** `playerValueControl`, `playerValueCost` (the phase 4a cost bands),
   `playerValueSignings` (phase 4b: observed changes, the measured price, adoption,
   awards, reserve-clause renewals, replacement),
@@ -711,7 +729,8 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   `playerValueProductionFit`, `playerValueRatings`, `playerValueCone`,
   `productionCone` (geometry, render and theme tokens), `playerValueSurplus`,
   `playerValueInvariants` and `valueSection` (phase 5a), `playerValueLens` and
-  `playerValueWinValue` (phase 5b) and `playerValueBoundary`
+  `playerValueWinValue` (phase 5b), `playerValueTrade`, `tradeAnalysis`,
+  `tradeCenter` and `tradingBlock` (phase 6b) and `playerValueBoundary`
   (since the hardening it reads the source through the TypeScript parser, and
   each of its hardened checks was shown to catch a deliberate mutation; a known
   violation owned by another fix is listed with its finding and must still be
@@ -725,8 +744,8 @@ and the arrival chance by potential (they fit themselves once the save's rating
 snapshots allow), a lens that reads the club's value of a win (an owner question), the odds
 model's wild-card route for a division leader, personality's effect on price (it moves no number
 until observed signings are read against it), a per-import store (everything is computed per request; see
-Part 7), and the consumer migration that deletes `players_value` reads and the
-percentile advice (phase 6). The calibrated constants of other subsystems are
+Part 7), and the rest of the consumer migration that deletes `players_value` reads and the
+percentile advice (phase 6; the Trade Center is done, 6b). The calibrated constants of other subsystems are
 not yet fitted per save (D-053; ROADMAP). On the Arizona import 6,952 of 8,009 held players have indeterminate later
 seasons because what follows a minor-league contract is not established from
 the export, and 494 meet a free-agency line inside this season's projection.

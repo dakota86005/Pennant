@@ -1,14 +1,30 @@
 import { Router } from 'express';
-import { db, tableExists } from './db.js';
-import { LEVEL_NAMES, contractsByPlayer, mlbPercentiler, valuesByPlayer, type PlayerValue } from './valuation.js';
-import { controlAfterThisSeason } from './contracts.js';
-import { playerValue } from './playerValue.js';
+import { db, hasColumns, tableExists } from './db.js';
+import { LEVEL_NAMES } from './valuation.js';
+import {
+  clubWinValue, contractSeasonFor, controlSummaryOf, lensPhilosophyFrom, ourViewOf, playerValues, productionHeadlineOf, tradeValueOf,
+  type ClubWinValue, type LensPhilosophy, type PlayerValuation, type TradeControlSummary, type TradeDifference, type TradeEntryInput,
+  type TradePlayerValue, type TradeProduction, type TradeUnit, type TradeValue,
+} from './playerValue.js';
+import { resolvePhilosophy } from './philosophy.js';
+import { philosophyForOrg } from './settings.js';
+import { viewingOrganization } from './ourViewRoutes.js';
 import { padDate } from './rosterops.js';
 import { contactProfiles } from './battedball.js';
 import { POSITION_CODES, glovesLine } from './gloves.js';
 import { computeBatting, computePitching, leagueBaseline } from './stats.js';
 import { blockedIds } from './tradingblock.js';
 
+/**
+ * The Trade Center on Player Value (phase 6b; PLAYER_VALUE.md Part 8, consumer 3; D-052).
+ *
+ * Every figure a deal carries is Player Value's, read through its entry point: each player's contract value and value of
+ * keeping him exactly as the player card serves them, his control season by season with its cost, and his expected
+ * production; both sides and the difference between them (what comes in less what goes out) as a band with its parts,
+ * combined by `tradeValueOf` (owner Q-8: never a point, a single score or a verdict). The viewing club's philosophy is read
+ * here, at read time, and handed to the lens beside the neutral figures, which are the same whoever looks. The club's value
+ * of a win is context from the standings. Nothing here reads `players_value`, a percentile or an OOTP rating (D-017).
+ */
 export const tradeRoutes = Router();
 
 const POSITION_NAMES: Record<number, string> = {
@@ -17,108 +33,299 @@ const POSITION_NAMES: Record<number, string> = {
 const FIELD_SPOTS = [2, 3, 4, 5, 6, 7, 8, 9];
 const teamLabel = `CASE WHEN t.name = t.nickname THEN t.name ELSE t.name || ' ' || t.nickname END`;
 
-interface OrgProfile {
-  orgId: number;
-  label: string;
-  weakest: Array<{ position: number; positionName: string; bestValue: number }>;
-  surplus: Array<{ position: number; positionName: string; players: Array<{ player_id: number; name: string; value: number }> }>;
+// ── who the players are ─────────────────────────────────────────────────────
+
+interface PlayerFacts {
+  player_id: number;
+  name: string;
+  age: number | null;
+  position: number;
+  team: string | null;
+  teamAbbr: string | null;
+  organizationId: number | null;
+  level: number | null;
 }
 
-let mlbMedianCache: number | null = null;
-function mlbMedianValue(values: Map<number, PlayerValue>): number {
-  if (mlbMedianCache !== null) return mlbMedianCache;
-  const ids = db
-    .prepare(
-      `SELECT p.player_id FROM players p JOIN teams t ON t.team_id = p.team_id
-       WHERE t.level = 1 AND t.allstar_team = 0 AND p.retired = 0`
-    )
-    .all() as Array<{ player_id: number }>;
-  const vals = ids
-    .map((r) => values.get(r.player_id)?.overall)
-    .filter((v): v is number => v !== undefined)
-    .sort((a, b) => a - b);
-  mlbMedianCache = vals.length ? vals[Math.floor(vals.length / 2)] : 0;
-  return mlbMedianCache;
+function playerFacts(ids: number[]): Map<number, PlayerFacts> {
+  const out = new Map<number, PlayerFacts>();
+  const unique = [...new Set(ids)].filter((id) => Number.isInteger(id));
+  if (unique.length === 0 || !tableExists('players')) return out;
+  for (let at = 0; at < unique.length; at += 500) {
+    const chunk = unique.slice(at, at + 500);
+    const rows = db
+      .prepare(
+        `SELECT p.player_id, p.first_name || ' ' || p.last_name AS name, p.age, p.position, p.organization_id,
+                ${teamLabel} AS team, t.abbr AS team_abbr, t.level
+         FROM players p LEFT JOIN teams t ON t.team_id = p.team_id
+         WHERE p.player_id IN (${chunk.map(() => '?').join(',')})`
+      )
+      .all(...chunk) as Array<Record<string, unknown>>;
+    for (const r of rows) {
+      out.set(r.player_id as number, {
+        player_id: r.player_id as number,
+        name: String(r.name ?? ''),
+        age: typeof r.age === 'number' ? r.age : null,
+        position: Number(r.position ?? 0),
+        team: (r.team as string | null) ?? null,
+        teamAbbr: (r.team_abbr as string | null) ?? null,
+        organizationId: typeof r.organization_id === 'number' && r.organization_id > 0 ? r.organization_id : null,
+        level: typeof r.level === 'number' ? r.level : null,
+      });
+    }
+  }
+  return out;
+}
+
+/** One player as a trade row shows him: who he is, his control with its cost, his expected production, his pay this season. */
+export interface TradeRow {
+  playerId: number;
+  name: string;
+  age: number | null;
+  position: string;
+  team: string | null;
+  teamAbbr: string | null;
+  organizationId: number | null;
+  level: string;
+  /** His own club has listed him for trade. */
+  listed: boolean;
+  control: TradeControlSummary;
+  production: TradeProduction;
+  /** His salary this season, where the export states it; null where it does not (never $0). */
+  salaryNow: { season: number; amount: number } | null;
+}
+
+const NO_CONTROL: TradeControlSummary = { text: 'Control not established', controlled: null, pastHorizon: false, path: [] };
+const NO_PRODUCTION: TradeProduction = { status: 'unknown', reason: "He isn't an active player in the export.", now: null, next: null, nextReason: null };
+
+function rowOf(id: number, facts: PlayerFacts | undefined, value: PlayerValuation | undefined, listed: Set<number>): TradeRow {
+  const season = value?.control.thisSeason ?? null;
+  const salary = value && season !== null ? contractSeasonFor(value.contract, season)?.salary.value ?? null : null;
+  return {
+    playerId: id,
+    name: facts?.name ?? `Player ${id}`,
+    age: facts?.age ?? null,
+    position: POSITION_NAMES[facts?.position ?? 0] ?? '?',
+    team: facts?.team ?? null,
+    teamAbbr: facts?.teamAbbr ?? null,
+    organizationId: facts?.organizationId ?? null,
+    level: facts?.level ? LEVEL_NAMES[facts.level] ?? `L${facts.level}` : 'unknown',
+    listed: listed.has(id),
+    control: value ? controlSummaryOf(value.control) : NO_CONTROL,
+    production: value ? productionHeadlineOf(value.production) : NO_PRODUCTION,
+    salaryNow: salary !== null && season !== null ? { season, amount: salary } : null,
+  };
+}
+
+// ── the analysis ────────────────────────────────────────────────────────────
+
+/** Whose view, and the philosophy the lens reads; null leaves our view out (the neutral figures stand alone). */
+export interface TradeViewer {
+  orgId: number | null;
+  philosophy: LensPhilosophy | null;
+}
+
+export interface TradeAnalysis {
+  organization: { id: number; name: string | null } | null;
+  /** What the viewing club sends, and receives. */
+  sent: TradeRow[];
+  received: TradeRow[];
+  /** Player Value's reading of the deal: each player's figures, the side totals and the difference as a band with its parts. */
+  value: TradeValue;
+  /** Salary this season on each side: the known sum, and the players whose salary the export does not state. */
+  salary: { sent: SalarySide; received: SalarySide };
+  /** Context from the standings, never part of any figure: the viewing club first, then the other clubs in the deal. */
+  winValues: ClubWinValue[];
+}
+
+interface SalarySide {
+  season: number | null;
+  known: number;
+  unknown: number[];
+}
+
+function salaryOf(rows: TradeRow[]): SalarySide {
+  return {
+    season: rows.find((r) => r.salaryNow)?.salaryNow?.season ?? null,
+    known: rows.reduce((s, r) => s + (r.salaryNow?.amount ?? 0), 0),
+    unknown: rows.filter((r) => !r.salaryNow).map((r) => r.playerId),
+  };
+}
+
+function clubName(teamId: number): string | null {
+  if (!tableExists('teams')) return null;
+  const row = db.prepare(`SELECT name, nickname FROM teams WHERE team_id = ?`).get(teamId) as { name?: unknown; nickname?: unknown } | undefined;
+  if (!row) return null;
+  return [row.name, row.nickname].filter((x, i, all) => typeof x === 'string' && x.length > 0 && all.indexOf(x) === i).join(' ') || null;
 }
 
 /**
- * Positional strength/surplus for one org's MLB club. Surplus requires a
- * quality backup (within 85% of the starter AND above the MLB median) —
- * two equally weak players at a spot is a hole, not depth.
+ * A deal read on Player Value: both sides and the difference between them, neutral, with our view beside it where the
+ * viewer's philosophy is given. The neutral figures never depend on who looks (a contender and a seller read the same).
  */
-function orgProfile(orgId: number, values: Map<number, PlayerValue>): OrgProfile | null {
-  const team = db.prepare(`SELECT ${teamLabel} AS label FROM teams t WHERE team_id = ?`).get(orgId) as
-    | { label: string }
-    | undefined;
-  if (!team) return null;
-  const players = db
-    .prepare(
-      `SELECT player_id, first_name || ' ' || last_name AS name, position
-       FROM players WHERE team_id = ? AND retired = 0 AND position != 1`
-    )
-    .all(orgId) as Array<{ player_id: number; name: string; position: number }>;
+export function analyzeTrade(sentIds: number[], receivedIds: number[], viewer: TradeViewer): TradeAnalysis {
+  const sent = [...new Set(sentIds.map(Number).filter(Number.isInteger))];
+  const received = [...new Set(receivedIds.map(Number).filter(Number.isInteger))].filter((id) => !sent.includes(id));
+  const ids = [...sent, ...received];
+  const values = playerValues(ids);
+  const facts = playerFacts(ids);
+  const listed = blockedIds();
 
-  const byPos = new Map<number, Array<{ player_id: number; name: string; value: number }>>();
-  for (const p of players) {
-    const v = values.get(p.player_id)?.overall ?? 0;
-    if (!byPos.has(p.position)) byPos.set(p.position, []);
-    byPos.get(p.position)!.push({ player_id: p.player_id, name: p.name, value: v });
-  }
-  const strength = FIELD_SPOTS.map((pos) => {
-    const ps = (byPos.get(pos) ?? []).sort((a, b) => b.value - a.value);
-    return { position: pos, positionName: POSITION_NAMES[pos], best: ps[0]?.value ?? 0, players: ps };
-  });
-  const weakest = [...strength]
-    .sort((a, b) => a.best - b.best)
-    .slice(0, 3)
-    .map((s) => ({ position: s.position, positionName: s.positionName, bestValue: s.best }));
-  const median = mlbMedianValue(values);
-  const surplus = strength
-    .filter((s) => s.players.length >= 2 && s.players[1].value >= Math.max(s.best * 0.85, median))
-    .map((s) => ({ position: s.position, positionName: s.positionName, players: s.players.slice(1, 3) }));
-  return { orgId, label: team.label, weakest, surplus };
+  const entry = (id: number): TradeEntryInput => {
+    const v = values.get(id);
+    const surplus = v?.surplus ?? null;
+    if (!surplus || !viewer.philosophy) return { playerId: id, surplus };
+    const holder = v!.control.holder.value;
+    const ours = viewer.orgId === null || v!.control.standing === 'unknown' ? null : holder === viewer.orgId;
+    return { playerId: id, surplus, ourView: ourViewOf({ neutral: surplus, philosophy: viewer.philosophy, ours }) };
+  };
+  const value = tradeValueOf({ sent: sent.map(entry), received: received.map(entry) });
+  const sentRows = sent.map((id) => rowOf(id, facts.get(id), values.get(id), listed));
+  const receivedRows = received.map((id) => rowOf(id, facts.get(id), values.get(id), listed));
+
+  // Context: the viewing club's value of a win, then each other club whose players are in the deal
+  const clubs = [
+    ...(viewer.orgId !== null ? [viewer.orgId] : []),
+    ...[...sentRows, ...receivedRows].map((r) => r.organizationId).filter((o): o is number => o !== null),
+  ].filter((o, i, all) => all.indexOf(o) === i);
+  const winValues = clubs.slice(0, 4).map((c) => clubWinValue(c));
+
+  return {
+    organization: viewer.orgId !== null ? { id: viewer.orgId, name: clubName(viewer.orgId) } : null,
+    sent: sentRows,
+    received: receivedRows,
+    value,
+    salary: { sent: salaryOf(sentRows), received: salaryOf(receivedRows) },
+    winValues,
+  };
 }
 
+/** The viewer for a request: the organization it names (else the configured one, else the managed club) and its philosophy. */
+function viewerFor(requested: unknown): TradeViewer {
+  const org = viewingOrganization(requested);
+  if (!org) return { orgId: null, philosophy: null };
+  return { orgId: org.id, philosophy: lensPhilosophyFrom(resolvePhilosophy(philosophyForOrg(org.id))) };
+}
+
+tradeRoutes.post('/trade/analyze', (req, res) => {
+  const { sideA, sideB, orgId } = req.body as { sideA?: unknown; sideB?: unknown; orgId?: unknown };
+  if (!Array.isArray(sideA) || !Array.isArray(sideB)) {
+    return res.status(400).json({ error: 'sideA and sideB arrays required' });
+  }
+  if (!tableExists('players')) return res.status(400).json({ error: 'No data imported yet' });
+  res.json(analyzeTrade(sideA as number[], sideB as number[], viewerFor(orgId)));
+});
+
+// ── trade fits: expected wins by position ───────────────────────────────────
+
+type FactsWithTeam = PlayerFacts & { teamId: number };
+
+interface PositionDepth {
+  position: number;
+  positionName: string;
+  /** Known expected wins, most first (the shown figure); players whose production is unknown are counted apart. */
+  players: Array<{ player_id: number; name: string; wins: number }>;
+  unknown: number;
+}
+
+/** The part of this season still to be played (or the whole of it), most likely. */
+const winsNow = (v: PlayerValuation | undefined): number | null => {
+  const p = v ? productionHeadlineOf(v.production) : null;
+  return p?.now ? p.now.wins.central : null;
+};
+
+/** One major-league club's position players by position, each with his expected wins this season as Player Value serves them. */
+function clubDepth(teamId: number, values: Map<number, PlayerValuation>, facts: Map<number, FactsWithTeam>): PositionDepth[] {
+  const mine = [...facts.values()].filter((f) => f.teamId === teamId);
+  return FIELD_SPOTS.map((pos) => {
+    const here = mine.filter((f) => f.position === pos);
+    const known = here
+      .map((f) => ({ player_id: f.player_id, name: f.name, wins: winsNow(values.get(f.player_id)) }))
+      .filter((p): p is { player_id: number; name: string; wins: number } => p.wins !== null)
+      .sort((a, b) => b.wins - a.wins || a.name.localeCompare(b.name));
+    return { position: pos, positionName: POSITION_NAMES[pos], players: known, unknown: here.length - known.length };
+  });
+}
+
+/** The three positions whose best player is expected to add the fewest wins; a position with nobody valued is named apart. */
+function weakestOf(depth: PositionDepth[]) {
+  const known = depth.filter((d) => d.players.length > 0);
+  return {
+    weakest: [...known]
+      .sort((a, b) => a.players[0].wins - b.players[0].wins || a.position - b.position)
+      .slice(0, 3)
+      .map((d) => ({ position: d.position, positionName: d.positionName, best: d.players[0] })),
+    notEstablished: depth.filter((d) => d.players.length === 0).map((d) => d.positionName),
+  };
+}
+
+function majorLeagueDepth(): { clubs: Array<{ teamId: number; label: string }>; values: Map<number, PlayerValuation>; facts: Map<number, FactsWithTeam> } {
+  const clubs = (db
+    .prepare(`SELECT t.team_id, ${teamLabel} AS label FROM teams t WHERE t.level = 1 AND t.allstar_team = 0`)
+    .all() as Array<{ team_id: number; label: string }>).map((c) => ({ teamId: c.team_id, label: c.label }));
+  const rows = db
+    .prepare(
+      `SELECT p.player_id, p.team_id FROM players p JOIN teams t ON t.team_id = p.team_id
+       WHERE t.level = 1 AND t.allstar_team = 0 AND p.retired = 0 AND p.position != 1`
+    )
+    .all() as Array<{ player_id: number; team_id: number }>;
+  const ids = rows.map((r) => r.player_id);
+  const base = playerFacts(ids);
+  const facts = new Map<number, FactsWithTeam>();
+  for (const r of rows) {
+    const f = base.get(r.player_id);
+    if (f) facts.set(r.player_id, { ...f, teamId: r.team_id });
+  }
+  return { clubs, values: playerValues(ids), facts };
+}
+
+/**
+ * Trade fits: where another club is weakest, a player of yours who is not your starter there but is expected to add more
+ * wins this season than their best there; and the same the other way. Each match shows both figures (expected wins, the
+ * most likely reading, from Player Value); the clubs are ordered by how many matches they have, a shown count. A lead for
+ * the GM, not a verdict: the bands behind the figures are wide, and roster fit is his judgment.
+ */
 tradeRoutes.get('/trade/fits/:orgId', (req, res) => {
   const orgId = Number(req.params.orgId);
-  if (!tableExists('players_value')) return res.status(400).json({ error: 'No data imported yet' });
-  const values = valuesByPlayer();
-  const mine = orgProfile(orgId, values);
-  if (!mine) return res.status(404).json({ error: 'Unknown org' });
+  if (!tableExists('players') || !tableExists('teams')) return res.status(400).json({ error: 'No data imported yet' });
+  const { clubs, values, facts } = majorLeagueDepth();
+  const me = clubs.find((c) => c.teamId === orgId);
+  if (!me) return res.status(404).json({ error: 'Unknown org' });
+  const myDepth = clubDepth(orgId, values, facts);
+  const mine = weakestOf(myDepth);
 
-  const otherOrgs = (
-    db
-      .prepare(
-        `SELECT team_id FROM teams WHERE level = 1 AND allstar_team = 0 AND team_id != ?`
-      )
-      .all(orgId) as Array<{ team_id: number }>
-  ).map((r) => r.team_id);
-
-  const myWeak = new Set(mine.weakest.map((w) => w.position));
-  const mySurplusPos = new Set(mine.surplus.map((s) => s.position));
-
-  const fits = otherOrgs
-    .map((id) => orgProfile(id, values))
-    .filter((p): p is OrgProfile => p !== null)
-    .map((theirs) => {
-      // They're weak where I have surplus; they have surplus where I'm weak
-      const theyNeed = theirs.weakest.filter((w) => mySurplusPos.has(w.position));
-      const theyOffer = theirs.surplus.filter((s) => myWeak.has(s.position));
-      return {
-        orgId: theirs.orgId,
-        label: theirs.label,
-        score: theyNeed.length + theyOffer.length,
-        theyNeed: theyNeed.map((w) => ({
+  const fits = clubs
+    .filter((c) => c.teamId !== orgId)
+    .map((club) => {
+      const theirDepth = clubDepth(club.teamId, values, facts);
+      const theirs = weakestOf(theirDepth);
+      const theyNeed = theirs.weakest
+        .map((w) => ({
           positionName: w.positionName,
-          myCandidates: mine.surplus.find((s) => s.position === w.position)?.players ?? [],
-        })),
-        theyOffer: theyOffer.map((s) => ({ positionName: s.positionName, players: s.players })),
-      };
+          theirBest: w.best,
+          myCandidates: (myDepth.find((d) => d.position === w.position)?.players ?? []).slice(1).filter((p) => p.wins > w.best.wins),
+        }))
+        .filter((n) => n.myCandidates.length > 0);
+      const theyOffer = mine.weakest
+        .map((w) => ({
+          positionName: w.positionName,
+          myBest: w.best,
+          players: (theirDepth.find((d) => d.position === w.position)?.players ?? []).slice(1).filter((p) => p.wins > w.best.wins),
+        }))
+        .filter((o) => o.players.length > 0);
+      return { orgId: club.teamId, label: club.label, matches: theyNeed.length + theyOffer.length, theyNeed, theyOffer };
     })
-    .filter((f) => f.score > 0)
-    .sort((a, b) => b.score - a.score);
+    .filter((f) => f.matches > 0)
+    .sort((a, b) => b.matches - a.matches || a.label.localeCompare(b.label));
 
-  res.json({ myWeakest: mine.weakest, mySurplus: mine.surplus, fits: fits.slice(0, 10) });
+  res.json({
+    myWeakest: mine.weakest,
+    notEstablished: mine.notEstablished,
+    fits: fits.slice(0, 10),
+    basis:
+      "Expected wins this season (the part still to be played, most likely), from Player Value's production. A match is a player " +
+      "who isn't his club's starter at a position yet is expected to add more wins than the other club's best there. Players whose " +
+      'production is not established are left out and never counted as zero.',
+  });
 });
 
 tradeRoutes.get('/search-players', (req, res) => {
@@ -134,34 +341,9 @@ tradeRoutes.get('/search-players', (req, res) => {
        ORDER BY t.level, p.age LIMIT 20`
     )
     .all(`%${q}%`) as Array<Record<string, unknown>>;
-  const values = valuesByPlayer();
-  res.json(
-    rows.map((r) => ({
-      ...r,
-      positionName: POSITION_NAMES[r.position as number] ?? '?',
-      value: values.get(r.player_id as number)?.overall ?? 0,
-    }))
-  );
+  res.json(rows.map((r) => ({ ...r, positionName: POSITION_NAMES[r.position as number] ?? '?' })));
 });
 
-
-/**
- * The trade talk sitting in your OOTP inbox.
- *
- * Trade traffic reaches a manager as messages, and the export carries the
- * structured part of them: who wrote, which club, and which player. That is
- * enough to list them — "Would it make sense to target Luis Castillo?" is a
- * question the app can already answer better than the message can.
- *
- * `sender_type = 0` with `recipient_id = 1` is mail written to the human
- * manager rather than league news broadcast to everyone; requiring both clubs
- * and a named player then separates the trade talk from the owner's PMs and
- * the waiver notices, which share the same sender.
- *
- * Note these name one player each — the export has no message carrying both
- * sides of a deal, so this is interest in a player rather than an offer with a
- * price on it. The analyser below is where the price gets worked out.
- */
 /**
  * Actual offers sitting in the OOTP inbox.
  *
@@ -181,6 +363,8 @@ tradeRoutes.get('/search-players', (req, res) => {
  *
  * Deliberately structural rather than textual. Reading the subject line would
  * work in English and quietly fail in every other language OOTP ships.
+ *
+ * Each offer carries the same reading the analyser gives (phase 6b): the difference as a band, never a verdict.
  */
 tradeRoutes.get('/trade-proposals/:orgId', (req, res) => {
   const orgId = Number(req.params.orgId);
@@ -200,6 +384,7 @@ tradeRoutes.get('/trade-proposals/:orgId', (req, res) => {
     .all() as Array<Record<string, number | string | null>>;
 
   const orgOf = db.prepare(`SELECT organization_id AS org FROM players WHERE player_id = ?`);
+  const viewer = viewerFor(orgId);
 
   const proposals = msgs
     .map((m) => {
@@ -214,28 +399,45 @@ tradeRoutes.get('/trade-proposals/:orgId', (req, res) => {
       }
       // A message naming players on only one side is not an offer to weigh
       if (theirs.length === 0 || ours.length === 0) return null;
+      // The same reading the analyser gives, so an offer read here and one loaded into the builder never disagree
+      const analysis = analyzeTrade(ours, theirs, { orgId: viewer.orgId ?? orgId, philosophy: null });
+      const brief = (r: TradeRow) => ({ player_id: r.playerId, name: r.name, age: r.age, positionName: r.position, team: r.team });
       return {
         message_id: Number(m.message_id),
         trade_id: Number(m.trade_id),
         subject: String(m.subject ?? ''),
         date: padDate(m.date),
         from: { team_id: sender, label: String(m.sender_label ?? 'Unknown') },
-        theySend: summarizeSide(theirs),
-        weSend: summarizeSide(ours),
+        theySend: { players: analysis.received.map(brief) },
+        weSend: { players: analysis.sent.map(brief) },
+        unit: analysis.value.unit,
+        difference: analysis.value.difference,
+        salary: analysis.salary,
       };
     })
     .filter((p): p is NonNullable<typeof p> => p !== null)
-    .map((p) => ({
-      ...p,
-      // The same figures the analyser reports, so an offer read here and one
-      // pasted into the builder can never disagree
-      valueDiff: p.weSend.totalValue - p.theySend.totalValue,
-      salaryDiff: p.weSend.totalSalary - p.theySend.totalSalary,
-    }))
     .sort((a, b) => String(b.date ?? '').localeCompare(String(a.date ?? '')));
 
   res.json({ proposals });
 });
+
+/** A player's contract value as a talk card or the trading block shows it: most likely and its range, or why it is not known. */
+export interface ValueGlance {
+  status: 'known' | 'unknown';
+  unit: TradeUnit | null;
+  low: number | null;
+  central: number | null;
+  high: number | null;
+  centralRange: { low: number; high: number } | null;
+  reason: string | null;
+}
+
+export function valueGlance(p: TradePlayerValue | undefined, unit: TradeUnit | null): ValueGlance {
+  if (!p || !p.counted || !p.contract) {
+    return { status: 'unknown', unit, low: null, central: null, high: null, centralRange: null, reason: p?.notCounted ?? 'Not valued yet.' };
+  }
+  return { status: 'known', unit, ...p.contract, reason: null };
+}
 
 tradeRoutes.get('/trade-talk/:orgId', (req, res) => {
   const orgId = Number(req.params.orgId);
@@ -243,8 +445,7 @@ tradeRoutes.get('/trade-talk/:orgId', (req, res) => {
   const rows = db
     .prepare(
       `SELECT m.message_id, m.subject, m.date, m.team_id_0 AS other_team, m.player_id_0 AS player_id,
-              p.first_name || ' ' || p.last_name AS name, p.age, p.position,
-              ${teamLabel} AS other_label, t.level
+              ${teamLabel} AS other_label
        FROM messages m
        JOIN players p ON p.player_id = m.player_id_0
        LEFT JOIN teams t ON t.team_id = m.team_id_0
@@ -254,37 +455,36 @@ tradeRoutes.get('/trade-talk/:orgId', (req, res) => {
     )
     .all(orgId) as Array<Record<string, unknown>>;
 
-  const values = valuesByPlayer();
-  const { overallPct, talentPct } = mlbPercentiler(values);
-  const contracts = contractsByPlayer();
   // The same player is asked about more than once as the season goes on; the
   // newest message is the live one, and repeating him is just noise
   const seen = new Set<number>();
-  const items = rows
+  const fresh = rows
     // OOTP writes dates unpadded, so newest-first has to sort on a padded copy
     .sort((a, b) => String(padDate(b.date) ?? '').localeCompare(String(padDate(a.date) ?? '')))
-    .filter((r) => !seen.has(r.player_id as number) && seen.add(r.player_id as number))
-    .map((r) => {
-      const id = r.player_id as number;
-      const c = contracts.get(id);
-      return {
-        message_id: r.message_id as number,
-        subject: r.subject as string,
-        date: r.date as string,
-        otherTeam: { orgId: r.other_team as number, label: (r.other_label as string) ?? 'Unknown' },
-        player: {
-          player_id: id,
-          name: r.name as string,
-          age: r.age as number,
-          positionName: POSITION_NAMES[r.position as number] ?? '?',
-          levelName: LEVEL_NAMES[r.level as number] ?? 'R',
-          overallPct: overallPct(id),
-          talentPct: talentPct(id),
-          salaryNow: c?.salaryNow ?? 0,
-          yearsAfterThis: c?.yearsAfterThis ?? 0,
-        },
-      };
-    });
+    .filter((r) => !seen.has(r.player_id as number) && seen.add(r.player_id as number));
+  const ids = fresh.map((r) => r.player_id as number);
+  // Each target read as the analyser reads a player coming in
+  const analysis = analyzeTrade([], ids, { orgId, philosophy: null });
+  const items = fresh.map((r) => {
+    const id = r.player_id as number;
+    const row = analysis.received.find((x) => x.playerId === id)!;
+    return {
+      message_id: r.message_id as number,
+      subject: r.subject as string,
+      date: r.date as string,
+      otherTeam: { orgId: r.other_team as number, label: (r.other_label as string) ?? 'Unknown' },
+      player: {
+        player_id: id,
+        name: row.name,
+        age: row.age,
+        positionName: row.position,
+        levelName: row.level,
+        value: valueGlance(analysis.value.received.players.find((p) => p.playerId === id), analysis.value.unit),
+        control: row.control.text,
+        salaryNow: row.salaryNow,
+      },
+    };
+  });
   res.json({ items });
 });
 
@@ -295,7 +495,7 @@ tradeRoutes.get('/trade-talk/:orgId', (req, res) => {
  * five searches, and you are copying names off another screen while you do it.
  * An offer already names a club, so this hands back that club's players to
  * click through instead. Prospects are included because they are usually what
- * the other side is asking for.
+ * the other side is asking for. Ordered by level and name: no hidden score.
  */
 tradeRoutes.get('/trade/roster/:teamId', (req, res) => {
   const teamId = Number(req.params.teamId);
@@ -309,7 +509,6 @@ tradeRoutes.get('/trade/roster/:teamId', (req, res) => {
          AND p.player_id IN (SELECT player_id FROM team_roster WHERE list_id = 1)`
     )
     .all(teamId) as Array<Record<string, unknown>>;
-  const values = valuesByPlayer();
   const players = rows
     .map((r) => ({
       player_id: r.player_id as number,
@@ -317,76 +516,12 @@ tradeRoutes.get('/trade/roster/:teamId', (req, res) => {
       age: r.age as number,
       positionName: POSITION_NAMES[r.position as number] ?? '?',
       team: r.team as string,
+      level: (r.level as number | null) ?? 99,
       levelName: LEVEL_NAMES[r.level as number] ?? 'R',
-      value: values.get(r.player_id as number)?.overall ?? 0,
     }))
-    // Best first: the men an offer is actually built around are at the top
-    .sort((a, b) => b.value - a.value);
+    .sort((a, b) => a.level - b.level || a.name.localeCompare(b.name))
+    .map(({ level: _level, ...p }) => p);
   res.json({ players });
-});
-
-export interface TradeSideSummary {
-  players: Array<{
-    player_id: number; name: string; age: number; positionName: string; team: string | null;
-    overallPct: number | null; talentPct: number | null; salaryNow: number; yearsAfterThis: number;
-  }>;
-  totalValue: number;
-  totalTalent: number;
-  totalSalary: number;
-}
-
-export function summarizeSide(ids: number[]): TradeSideSummary {
-  const values = valuesByPlayer();
-  const { overallPct, talentPct } = mlbPercentiler(values);
-  const contracts = contractsByPlayer();
-  let totalValue = 0;
-  let totalTalent = 0;
-  let totalSalary = 0;
-  const players = ids
-    .map((id) => {
-      const p = db
-        .prepare(
-          `SELECT p.player_id, p.first_name || ' ' || p.last_name AS name, p.age, p.position,
-                  ${teamLabel} AS team
-           FROM players p LEFT JOIN teams t ON t.team_id = p.team_id WHERE p.player_id = ?`
-        )
-        .get(id) as Record<string, unknown> | undefined;
-      if (!p) return null;
-      const v = values.get(id);
-      const c = contracts.get(id);
-      totalValue += v?.overall ?? 0;
-      totalTalent += v?.talent ?? 0;
-      totalSalary += c?.salaryNow ?? 0;
-      return {
-        player_id: id,
-        name: p.name as string,
-        age: p.age as number,
-        positionName: POSITION_NAMES[p.position as number] ?? '?',
-        team: (p.team as string) ?? null,
-        overallPct: overallPct(id),
-        talentPct: talentPct(id),
-        salaryNow: c?.salaryNow ?? 0,
-        yearsAfterThis: c?.yearsAfterThis ?? 0,
-      };
-    })
-    .filter(Boolean) as TradeSideSummary['players'];
-  return { players, totalValue, totalTalent, totalSalary };
-}
-
-tradeRoutes.post('/trade/analyze', (req, res) => {
-  const { sideA, sideB } = req.body as { sideA: number[]; sideB: number[] };
-  if (!Array.isArray(sideA) || !Array.isArray(sideB)) {
-    return res.status(400).json({ error: 'sideA and sideB arrays required' });
-  }
-  const a = summarizeSide(sideA);
-  const b = summarizeSide(sideB);
-  res.json({
-    sideA: a,
-    sideB: b,
-    valueDiff: a.totalValue - b.totalValue,
-    talentDiff: a.totalTalent - b.totalTalent,
-    salaryDiff: a.totalSalary - b.totalSalary,
-  });
 });
 
 // ── Context for judging a trade ─────────────────────────────────────────
@@ -394,51 +529,21 @@ tradeRoutes.post('/trade/analyze', (req, res) => {
 const ROLE_NAMES: Record<number, string> = { 11: 'Starter', 12: 'Reliever', 13: 'Closer' };
 
 /**
- * A player as a trade needs him described: what he is, how he is playing, and
- * where he would actually stand on this club.
+ * A player as a trade needs him described: what he is, how he is playing, where he would actually stand on this club,
+ * and Player Value's reading of him (contract value, value of keeping him, control with its cost, expected wins).
  */
-/**
- * Whether a man is leaving, or merely at the end of a contract.
- *
- * Read from Player Value's control timeline (D-052), so the desk and the
- * Payroll and Contracts pages give one answer. A man no club holds says
- * nothing rather than guessing at free agency, which is the very mistake this
- * exists to stop; a minor leaguer's control is read from his parent league's
- * rules, never his own league's zeros; and a status the export cannot
- * establish is `indeterminate` with its reason.
- */
-function controlOf(id: number) {
-  const c = controlAfterThisSeason(playerValue(id)?.control);
-  if (!c) return null;
-  return {
-    status: c.status,
-    arbitrationYear: c.arbYear,
-    ...(c.arbYearHigh !== null ? { arbitrationYearIfHeStaysUp: c.arbYearHigh } : {}),
-    ...(c.superTwo ? { superTwo: true } : {}),
-    ...(c.status === 'indeterminate' ? { between: c.between, why: c.reason } : {}),
-    // An option (or opt-out) next season is both branches, never "signed" (A-04)
-    ...(c.status === 'option' && c.option ? { option: c.option, why: c.reason } : {}),
-  };
-}
-
-function tradePlayer(id: number, statYear: number | null) {
+function tradePlayer(id: number, statYear: number | null, reading: { row: TradeRow; value: TradePlayerValue | null; unit: TradeUnit | null }) {
   const p = db
     .prepare(
       `SELECT p.player_id, p.first_name || ' ' || p.last_name AS name, p.age, p.position, p.role,
-              p.bats, p.throws, ${teamLabel} AS team, t.level, t.league_id, p.organization_id,
-              rs.mlb_service_years AS service_years, rs.mlb_service_days AS service_days
+              p.bats, p.throws, ${teamLabel} AS team, t.level, t.league_id, p.organization_id
        FROM players p
        LEFT JOIN teams t ON t.team_id = p.team_id
-       LEFT JOIN players_roster_status rs ON rs.player_id = p.player_id
        WHERE p.player_id = ?`
     )
     .get(id) as Record<string, number | string | null> | undefined;
   if (!p) return null;
 
-  const values = valuesByPlayer();
-  const contracts = contractsByPlayer();
-  const v = values.get(id);
-  const c = contracts.get(id);
   const level = p.level as number | null;
   const isPitcher = p.position === 1;
 
@@ -452,9 +557,7 @@ function tradePlayer(id: number, statYear: number | null) {
    * whole point of which is to place him.
    */
   let line: Record<string, number | null> | null = null;
-  const league = (db
-    .prepare(`SELECT league_id FROM teams WHERE team_id = (SELECT team_id FROM players WHERE player_id = ?)`)
-    .get(id) as { league_id: number } | undefined)?.league_id;
+  const league = p.league_id as number | null;
   if (statYear !== null && level !== null && league) {
     const baseline = leagueBaseline(league, statYear, level);
     const table = isPitcher ? 'players_career_pitching_stats' : 'players_career_batting_stats';
@@ -465,19 +568,21 @@ function tradePlayer(id: number, statYear: number | null) {
       : `SUM(pa) AS pa, SUM(ab) AS ab, SUM(h) AS h, SUM(d) AS d, SUM(t) AS t3, SUM(hr) AS hr,
          SUM(bb) AS bb, SUM(ibb) AS ibb, SUM(hp) AS hp, SUM(sf) AS sf, SUM(k) AS k,
          SUM(sb) AS sb, SUM(cs) AS cs, SUM(r) AS r, SUM(rbi) AS rbi, SUM(war) AS war`;
-    const row = db
-      .prepare(
-        `SELECT player_id, ${cols} FROM ${table}
-         WHERE player_id = ? AND year = ? AND split_id = 1 AND league_id != 0 GROUP BY player_id`
-      )
-      .get(id, statYear) as Record<string, number> | undefined;
-    if (row) {
-      line = isPitcher
-        ? computePitching(row, baseline, 0)
-        : computeBatting(row, baseline, 0);
+    try {
+      const row = db
+        .prepare(
+          `SELECT player_id, ${cols} FROM ${table}
+           WHERE player_id = ? AND year = ? AND split_id = 1 AND league_id != 0 GROUP BY player_id`
+        )
+        .get(id, statYear) as Record<string, number> | undefined;
+      if (row) line = isPitcher ? computePitching(row, baseline, 0) : computeBatting(row, baseline, 0);
+    } catch {
+      // An export without a column the line needs: the line is unknown, never a guess
+      line = null;
     }
   }
 
+  const v = reading.value;
   return {
     player_id: id,
     name: p.name,
@@ -489,20 +594,33 @@ function tradePlayer(id: number, statYear: number | null) {
     currentClub: p.team,
     level: LEVEL_NAMES[level ?? 0] ?? 'unknown',
     isMajorLeaguer: level === 1,
-    oaRating: v?.oaRating ?? null,
-    potRating: v?.potRating ?? null,
-    salaryNow: c?.salaryNow ?? 0,
-    yearsAfterThis: c?.yearsAfterThis ?? 0,
+    salaryNow: reading.row.salaryNow,
     seasonLine: line,
     /*
-     * What happens to him when the deal ends, not merely that it ends.
-     *
-     * The desk was handed yearsAfterThis and nothing else, so a man with two
-     * arbitration years left read as one about to reach the market — and the
-     * verdict priced him as a rental. A reader spotted it in the prose: talk
-     * of a player being in his last year when arbitration was still to come.
+     * Player Value's reading of him (phase 6b): his contract value (the trade view) and the value of keeping him, each
+     * most likely with its range, in the deal's unit; or, where he is not valued, the reason. The desk quotes these and
+     * never makes up a value of its own.
      */
-    control: controlOf(id),
+    value: v
+      ? {
+        unit: reading.unit,
+        counted: v.counted,
+        contractValue: v.contract,
+        valueOfKeepingHim: v.keeping,
+        seasons: v.seasons,
+        ifKeptOnly: v.ifHeld,
+        dependsOn: v.dependsOn,
+        notValued: v.notCounted,
+        why: v.reason,
+        ourView: v.ours ? { leaning: v.ours.leaning, contractValue: v.ours.contract, valueOfKeepingHim: v.ours.keeping, leans: v.ours.leans.map((l) => l.text), notes: v.ours.notes.map((n) => n.text) } : null,
+      }
+      : null,
+    /*
+     * What happens to him when the deal ends, not merely that it ends: each season of control with what it costs, from
+     * Player Value's control timeline (Player Rights' statuses). A man with two arbitration years left is not a rental.
+     */
+    control: reading.row.control,
+    expectedWins: reading.row.production,
     contact: isPitcher ? null : (contactProfiles([id]).get(id) ?? null),
     /*
      * Where he can play, and how well. Without this the desk was judging men
@@ -525,14 +643,17 @@ function tradePlayer(id: number, statYear: number | null) {
  * which is worth knowing: filtering on split 1 alone returns every year except
  * the one being asked about. Last season is carried too, because a handful of
  * games at a position he no longer plays is the strongest evidence there is
- * that he can — which is the question a trade actually raises.
+ * that he can — which is the question a trade actually raises. An export without
+ * zone rating or double plays reads without them (schema-tolerant).
  */
 function fieldingRecord(id: number, statYear: number | null): string | null {
-  if (statYear === null || !tableExists('players_career_fielding_stats')) return null;
+  const table = 'players_career_fielding_stats';
+  if (statYear === null || !hasColumns(table, 'player_id', 'year', 'position', 'level_id', 'split_id', 'g', 'po', 'a', 'e')) return null;
+  const zr = hasColumns(table, 'zr');
   const rows = db
     .prepare(
       `SELECT year, position, level_id, SUM(g) AS g, SUM(po) AS po, SUM(a) AS a,
-              SUM(e) AS e, SUM(dp) AS dp, AVG(zr) AS zr
+              SUM(e) AS e${zr ? ', AVG(zr) AS zr' : ''}
        FROM players_career_fielding_stats
        -- The season in progress is split 0; the ones behind it are split 1
        --
@@ -552,33 +673,52 @@ function fieldingRecord(id: number, statYear: number | null): string | null {
     .map((r) => {
       const chances = (r.po ?? 0) + (r.a ?? 0) + (r.e ?? 0);
       const pct = chances > 0 ? ((r.po + r.a) / chances).toFixed(3).replace(/^0/, '') : '—';
-      const zr = r.zr ? `, ${r.zr > 0 ? '+' : ''}${r.zr.toFixed(2)} ZR` : '';
+      const zone = r.zr ? `, ${r.zr > 0 ? '+' : ''}${r.zr.toFixed(2)} ZR` : '';
       const when = r.year === statYear ? 'this year' : `${r.year}`;
       // Named, so a Triple-A glove is never read as a major-league one
       const where = LEVEL_NAMES[r.level_id] ?? `L${r.level_id}`;
       return `${POSITION_CODES[(r.position ?? 1) - 1] ?? '?'} ${when} (${where}): ` +
-        `${r.g}g, ${r.e}E, ${pct} fpct${zr}`;
+        `${r.g}g, ${r.e}E, ${pct} fpct${zone}`;
     })
     .join('; ');
+}
+
+/** The difference as the desk reads it: most likely, its range and its parts, or why it is not a number. */
+function differenceForDesk(d: TradeDifference) {
+  return {
+    status: d.status,
+    reason: d.reason,
+    figure: d.figure,
+    everyPlayerAtHisEdge: d.edges,
+    parts: d.components.map((c) => ({ playerId: c.playerId, side: c.side === 'sent' ? 'weGive' : 'weReceive', part: c.part })),
+    leftOut: d.excluded,
+    basis: d.text,
+  };
 }
 
 /**
  * Everything needed to judge a trade rather than merely price it.
  *
- * Value percentiles alone produce a verdict about numbers: this man grades
- * higher than that one, accept. A club does not run on percentiles — it runs on
- * a roster with a fixed number of places, each already occupied by somebody.
- * So the incoming players arrive with their season line at the level they
- * played it, and beside them the men they would actually have to displace,
- * with theirs, plus what the club is short of and what it has spare.
+ * A deal's value alone produces a reading about numbers. A club does not run on numbers alone — it runs on a roster with
+ * a fixed number of places, each already occupied by somebody. So the incoming players arrive with their season line at
+ * the level they played it and Player Value's reading of each, and beside them the men they would actually have to
+ * displace, plus where the club is weakest; the deal itself is Player Value's reading, both sides and the difference as a
+ * band with its parts (the same figures the page shows), which the desk explains and never replaces (D-001).
  */
 export function tradeContext(orgId: number, giveIds: number[], getIds: number[]) {
-  const statYear = tableExists('players_career_batting_stats')
-    ? ((db.prepare(`SELECT MAX(year) AS y FROM players_career_batting_stats`).get() as { y: number }).y ?? null)
+  const statYear = hasColumns('players_career_batting_stats', 'year')
+    ? ((db.prepare(`SELECT MAX(year) AS y FROM players_career_batting_stats`).get() as { y: number | null }).y ?? null)
     : null;
 
-  const give = giveIds.map((id) => tradePlayer(id, statYear)).filter(Boolean);
-  const get = getIds.map((id) => tradePlayer(id, statYear)).filter(Boolean);
+  const viewer = viewerFor(orgId || undefined);
+  const analysis = analyzeTrade(giveIds, getIds, { orgId: orgId || viewer.orgId, philosophy: viewer.philosophy });
+  const readingOf = (id: number) => ({
+    row: [...analysis.sent, ...analysis.received].find((r) => r.playerId === id)!,
+    value: [...analysis.value.sent.players, ...analysis.value.received.players].find((p) => p.playerId === id) ?? null,
+    unit: analysis.value.unit,
+  });
+  const give = analysis.sent.map((r) => tradePlayer(r.playerId, statYear, readingOf(r.playerId))).filter(Boolean);
+  const get = analysis.received.map((r) => tradePlayer(r.playerId, statYear, readingOf(r.playerId))).filter(Boolean);
 
   // Who already holds the jobs the incoming men would want. Only the
   // major-league roster: a prospect is not competing with anybody yet.
@@ -591,34 +731,41 @@ export function tradeContext(orgId: number, giveIds: number[], getIds: number[])
   const incomingPositions = new Set(
     get.filter((p) => p && p.isMajorLeaguer).map((p) => jobOf(p!))
   );
-  const leaving = new Set(giveIds);
+  const leaving = new Set(analysis.sent.map((r) => r.playerId));
   const incumbents: Record<string, unknown[]> = {};
   if (incomingPositions.size > 0 && tableExists('team_roster')) {
-    const roster = db
+    const roster = (db
       .prepare(
         `SELECT p.player_id FROM players p
          WHERE p.organization_id = ? AND p.retired = 0
            AND p.player_id IN (SELECT player_id FROM team_roster WHERE team_id = ? AND list_id = 1)`
       )
-      .all(orgId, orgId) as Array<{ player_id: number }>;
-    for (const { player_id } of roster) {
-      if (leaving.has(player_id)) continue;
-      const man = tradePlayer(player_id, statYear);
+      .all(orgId, orgId) as Array<{ player_id: number }>).map((r) => r.player_id).filter((id) => !leaving.has(id));
+    const held = analyzeTrade(roster, [], { orgId, philosophy: null });
+    for (const row of held.sent) {
+      const man = tradePlayer(row.playerId, statYear, {
+        row, value: held.value.sent.players.find((p) => p.playerId === row.playerId) ?? null, unit: held.value.unit,
+      });
       if (!man || !man.isMajorLeaguer) continue;
       if (!incomingPositions.has(jobOf(man))) continue;
       (incumbents[jobOf(man)] ??= []).push(man);
     }
-    // Best first, so the man actually holding the job leads the list
+    // Most expected wins first (the shown figure), so the man actually holding the job leads; unknown last, never zero
     for (const pos of Object.keys(incumbents)) {
-      (incumbents[pos] as Array<{ oaRating: number | null }>).sort(
-        (a, b) => (b.oaRating ?? 0) - (a.oaRating ?? 0)
-      );
+      const now = (m: unknown) => (m as { expectedWins: TradeProduction }).expectedWins.now?.wins.central ?? null;
+      (incumbents[pos] as unknown[]).sort((a, b) => {
+        const x = now(a);
+        const y = now(b);
+        return x === null ? (y === null ? 0 : 1) : y === null ? -1 : y - x;
+      });
       incumbents[pos] = (incumbents[pos] as unknown[]).slice(0, 4);
     }
   }
 
-  const values = valuesByPlayer();
-  const mine = orgProfile(orgId, values);
+  const needs = tableExists('teams') ? (() => {
+    const { values, facts } = majorLeagueDepth();
+    return weakestOf(clubDepth(orgId, values, facts));
+  })() : null;
 
   /*
    * Whether the men in this deal are actually on the market.
@@ -628,33 +775,35 @@ export function tradeContext(orgId: number, giveIds: number[], getIds: number[])
    * starts lower; a club that has not is being asked for a favour. The save
    * has carried this in the trading block all along.
    */
-  const listed = blockedIds();
   const onTheBlock = {
-    weGive: give.filter((p) => p && listed.has(p.player_id)).map((p) => p!.name),
-    weReceive: get.filter((p) => p && listed.has(p.player_id)).map((p) => p!.name),
+    weGive: analysis.sent.filter((r) => r.listed).map((r) => r.name),
+    weReceive: analysis.received.filter((r) => r.listed).map((r) => r.name),
   };
-
-  // The same totals the Compare cards put on screen, so a verdict citing a
-  // number and the panel beside it can never disagree
-  const giveTotals = summarizeSide(giveIds);
-  const getTotals = summarizeSide(getIds);
 
   return {
     weGive: give,
     weReceive: get,
-    totals: {
-      valueSent: Math.round(giveTotals.totalValue),
-      valueReceived: Math.round(getTotals.totalValue),
-      talentSent: Math.round(giveTotals.totalTalent),
-      talentReceived: Math.round(getTotals.totalTalent),
-      salarySent: giveTotals.totalSalary,
-      salaryReceived: getTotals.totalSalary,
+    /*
+     * Player Value's reading of the deal, the same figures the page shows beside the desk's answer: each side's contract
+     * value and the difference (what comes in less what goes out) as a band with its parts, in `unit`; our view where the
+     * club's philosophy leans. The desk quotes these and never makes up a value of its own.
+     */
+    value: {
+      unit: analysis.value.unit,
+      unitReason: analysis.value.unitReason,
+      weGive: { total: analysis.value.sent.total.figure, everyPlayerAtHisEdge: analysis.value.sent.total.edges, leftOut: analysis.value.sent.total.excluded },
+      weReceive: { total: analysis.value.received.total.figure, everyPlayerAtHisEdge: analysis.value.received.total.edges, leftOut: analysis.value.received.total.excluded },
+      difference: differenceForDesk(analysis.value.difference),
+      ourView: analysis.value.ourView
+        ? { leaning: analysis.value.ourView.leaning, difference: differenceForDesk(analysis.value.ourView.difference) }
+        : null,
+      basis: analysis.value.basis,
     },
+    salaryThisSeason: analysis.salary,
+    clubValueOfAWin: analysis.winValues.map((w) => ({ club: w.club, status: w.status, text: w.text, reason: w.reason })),
     whoTheyWouldDisplace: incumbents,
     /** Named here are the men their own clubs have listed for trade. */
     onTheBlock,
-    clubNeeds: mine
-      ? { weakestPositions: mine.weakest, surplusPositions: mine.surplus }
-      : null,
+    clubNeeds: needs ? { weakestPositions: needs.weakest, positionsNotEstablished: needs.notEstablished } : null,
   };
 }

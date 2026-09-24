@@ -2383,3 +2383,31 @@ export const WIN_CURVE_CALIBRATION: CalibrationStamp = provisional(
   "The deadline read's odds model, not fitted on the save: talent from this season's run differential, the rival a .520 club, the " +
     'gap from the standings, the games left read as a normal difference. In playoff odds only (Q-6).'
 );
+
+// ── phase 6b: a trade's sides and the difference between them (PLAYER_VALUE.md Part 8, consumer 3; owner Q-8) ─────────
+
+/**
+ * POLICY (phase 6b). How a trade combines its players, the owner's Payroll rule (owner decision 2, 2026-09-24) extended to a
+ * deal's two sides and the difference between them: around the sum of the players' most likely readings (contract value,
+ * the trade view: the salary moves with the player), each player's own distance from his most likely reading on each side
+ * is combined as independent across players (root sum of squares, low and high apart); what is not noise (an option's
+ * ways, a status Player Rights leaves open, whether he stays) keeps his most likely a range and stays at its edges, added.
+ * A player going out enters the difference with his figure reversed (his high edge lowers its low edge). The every-player-
+ * at-his-edge sum is kept beside it, the range never passes it, and a player's own band is never narrowed. A range of
+ * reasonable readings, not a calibrated interval: the price of a win, shared by every player on both sides, is read as
+ * independent too (its common part partly cancels in the difference, which the independence reading does not credit).
+ */
+export const TRADE_COMBINATION_POLICY = {
+  method: 'independent_root_sum_of_squares',
+  atEdges: ['open_season_centrals'],
+  view: 'contract_value',
+  label: 'players combined as independent; not a calibrated interval',
+} as const;
+
+export const TRADE_COMBINATION_POLICY_CALIBRATION: CalibrationStamp = policy(
+  "Phase 6b (supervisor, extending the owner's Payroll rule of 2026-09-24 to a trade; an open owner question): a side's contract " +
+    "value and the difference between the sides are the sum of the players' most likely readings, each player's distance from his " +
+    'on each side combined as independent across players (root sum of squares), an open season (option, status, whether he stays) ' +
+    'kept at its edges, added. Labelled "players combined as independent; not a calibrated interval"; the edge-to-edge sum is kept ' +
+    "beside it and no player's own band is narrowed."
+);

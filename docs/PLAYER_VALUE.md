@@ -1281,7 +1281,7 @@ keep an invalid one. The order:
 |---|---|---|---|
 | 1 | Contracts (`contracts.ts`) | `valuesByPlayer`, `mlbPercentiler`; percentile cut-offs at 70/75 (`recommendOnValue`); `SERVICE_DAYS_PER_YEAR = 172`; `controlAfterThisSeason` with service missing → 0 | Contract facts, control and cost path, production, surplus. `controlAfterThisSeason` and the percentile advice deleted |
 | 2 | Payroll (`payroll.ts`) | Facts only; its control column comes from `controlAfterThisSeason` | The control timeline from concern 2, and club finances from concern 4 |
-| 3 | Trade Center (`trade.ts`, `tradingblock.ts`, AI trade context) | `analyze` sums raw `overall_value` | Both sides' value decompositions side by side: surplus bands and control. The difference between the sides is shown as a band with its components (owner, Q-8), never as a point, a single score or a verdict |
+| 3 | Trade Center (`trade.ts`, `tradingblock.ts`, AI trade context) — **done (phase 6b, 2026-09-24; below)** | `analyze` summed raw `overall_value`; fits, trade talk, the roster picker, the trading block and the AI context read `overall_value`, `oa`/`pot` and value percentiles | Both sides' value decompositions side by side: each player's contract value and value of keeping him, control season by season with its cost, expected wins. The difference between the sides is shown as a band with its components (owner, Q-8), never as a point, a single score or a verdict. As built: `playerValueTrade.ts` (`tradeValueOf`), read by `trade.ts` and `tradingblock.ts`; fits and the trading block order by expected wins, shown; the AI context carries the decomposition and the desk gives no accept-or-reject line |
 | 4 | Free Agents (`freeagents.ts`) | `players_value` | Expected production and the market price; cost as the market's band |
 | 5 | Org Comparison (`franchise.ts`) | `players_value` | Club finances and aggregated production, each with its basis |
 | 6 | Player card and others (`player.ts:272`, `lineup.ts:288`, `api.ts:462`, `valuation.ts` `rosterHoles`) | `players_value` | Classified in phase 6. A read that is not a value question (a lineup's quality of cover) moves to `scoutedEvidence.ts` under its owner, not to Player Value |
@@ -1338,6 +1338,52 @@ about 3.9 points (now 75%)", on hover: context from the standings, not part of t
 the price of a win. No old term ("central", "retention margin", "edge against edge") is in the section's visible text
 (`valueSection.test.ts`).
 
+**The Trade Center reads Player Value (phase 6b, 2026-09-24).** `server/playerValueTrade.ts` (pure, `tradeValueOf`) is handed
+each player's neutral valuation exactly as every read serves it and, where the caller has one, our view of him; it returns
+both sides' decompositions, each side's total and the difference between the sides. `trade.ts` (`analyzeTrade`, `POST
+/api/trade/analyze`) resolves the viewing club (the organization the page names, else the configured one, else the managed
+club), reads its philosophy from settings at read time and hands the lens's view beside the neutral figures. The rules:
+
+- **The trade view is contract value.** A trade moves each player's remaining salary with him, so the sides are summed on
+  contract value (the contract surplus, Part 5: what his contract is worth to whoever holds it). The value of keeping him is
+  shown on each row and never summed: its guaranteed money cancels only for the club that already owes it. Each player's
+  figures are the card's, never recomputed, narrowed or re-read.
+- **Players combined as independent** (`TRADE_COMBINATION_POLICY`, policy, the owner's Payroll rule of 2026-09-24 extended
+  here by the supervisor; an open owner question, Part 9): around the sum of the players' most likely readings, each
+  player's own distance from his on each side in root sum of squares; an open season (an option's ways, a status Player
+  Rights leaves open, whether he stays) keeps his most likely a range and stays at its edges, added. The every-player-at-his-
+  edge sum is kept beside every figure; one player's side is his own band exactly. The price of a win, shared by every player
+  on both sides, is read as independent too (its common part partly cancels in the difference, which the reading does not
+  credit), so the range is a reading, not a coverage claim.
+- **The difference is what comes in less what goes out**, a player going out entering with his figure reversed (his high
+  edge lowers the difference's low edge): most likely (or the range of its readings) with the range it could be, each
+  player's signed part named, never a point, a single score or a verdict. **Unknown stays unknown:** a player whose value is
+  not known is listed with one short reason and left out of the sums, which name him; a side with no player valued has no
+  total and the difference is not a number, never a zero. A deal with a player valued in wins only is read in wins
+  throughout.
+- **Context, never a figure:** the viewing club's value of a win (then the other clubs in the deal), salary this season on
+  each side (a salary the export does not state is named, never $0).
+- **The page** (`src/TradeAnalysis.tsx`, `src/pages/TradeCenter.tsx`): the two sides side by side, each player a compact row
+  (name, position, age, club; contract value most likely and "could be"; his control in a line with each season's cost on
+  hover; his expected wins; keeping him; our view where it leans), each side's total ("Together"), then "The difference ·
+  Coming in less going out" with a bar around zero (visx, D-054; the range as a wash, the most likely as a marker or a darker
+  stretch, zero dashed, "More going out" and "More coming in" at the ends, a hover saying what it is and is not, a visually
+  hidden table), the players' parts in a disclosure, our view, salary and the clubs' value of a win. The deal is weighed as
+  it is built; empty, one-side, loading and error states are designed; the rows and figures are keyboard-reachable; no
+  jargon or verdict word is in the visible text (`tradeCenter.test.ts`). Offers on the table and trade talk read the same
+  analysis (the difference line; a target's contract value and control), never a percentile.
+- **Trade fits** read expected wins this season (the part still to be played, most likely): a club's three weakest positions
+  by its best player's figure, and a match where a player who is not his club's starter is expected to add more than the
+  other club's best there, both figures shown; the clubs are ordered by the count of matches, a shown number. **The trading
+  block** carries each player's contract value (or its reason), his expected wins and his control, ordered by expected wins
+  (shown, unknown last, never zero), and says so (`order`). **The AI's trade context** carries each player's `value` (contract
+  value, keeping him, our view), `expectedWins` and `control` (text and cost path), and the deal's `value` (both sides, the
+  difference with its parts and what it leaves out); the desk is told to quote these as ranges, never to produce a value
+  number of its own, and to give no accept-or-reject line (its opening answer is a one-line "Read", D-001, D-004). Deleted:
+  `trade.ts` and `tradingblock.ts` read no `players_value`, `valuesByPlayer`, `mlbPercentiler`, OOTP rating or percentile;
+  the trade desk's prompt no longer carries `VALUE_PERCENTILE_NOTE`; the evidence boundary's `players_value` allow-list is
+  `valuation.ts` and `franchise.ts`.
+
 **Consumers read the timeline as it is (hardening F2, 2026-09-23).** `controlAfterThisSeason` reports an option or
 opt-out next season as `option`, with whose decision it is and where he falls if it is declined, never "signed";
 "extended" only when next season is the extension's; a player whose control ends this season is leaving. The AI
@@ -1366,6 +1412,7 @@ cards are Club Finances' figures, a missing one "unknown", never $0.
 | **5a** Neutral surplus and the retention margin — **done** (2026-09-24; evidence below and 5.1) | Concern 5: Part 5's two views, season by season with every component, the owner's 5% discount, one level of replacement on both sides; the card's Value section; the invariants for the card and the league-wide read | The surplus and invariant behavior cases pass; sunk money never raises the retention margin on any player of the save; one valuation whichever read asks; the boundary test passes |
 | **5b** The lens and the win curve — **done** (2026-09-24; evidence below, 4.5 and 6.1) | Part 6's lens, Part 4.5's club value of a win | The lens cases pass. Neutral value is identical under every philosophy. Every lean is named |
 | **6** Consumer migration | Part 8, in order, one consumer per change | Each change deletes that consumer's `players_value` reads. Finally, the `players_value` allow-list is empty |
+| **6b** The Trade Center — **done** (2026-09-24; evidence below and Part 8) | Consumer 3: the trade analysis, trade fits, offers and trade talk, the trading block and the AI's trade context on Player Value; the difference between the sides as a band with its parts (Q-8) | `trade.ts` and `tradingblock.ts` read no `players_value`; the difference band contains its most likely; an unknown player is named and changes no known sum; the neutral reading is the same under every philosophy and for every viewer |
 
 **Phase 1 exit criteria, as met.** Every active player has a control timeline (8,009 laid out, 4,566 unsigned with
 none), every `indeterminate` counted with its reason (Part 7). Payroll's control column and lists read it
@@ -1515,6 +1562,62 @@ over the first club outside the field, or his division lead if larger), so a cau
 (Arizona, level with San Francisco: 75%, where the division-only reading gave 57% and the old last-place cushion 86%). A
 richer odds model (roster-based team strength from Player Value's projections, the schedule, every rival, simulated
 seasons) is on the roadmap. (4) A club accepting variance leans on nothing (Part 6 forbids reading above the centre).
+
+**Phase 6b exit criteria, as met (2026-09-24): the Trade Center.** The behavior cases (BEHAVIOR_CASES.md "Player Value",
+phase 6b) are in `playerValueTrade.test.ts` (12: each player's figures served unchanged; the difference a band with its signed
+parts, received less sent, never a point or a verdict; players combined as independent, inside the edge-to-edge sum, around
+the most likely, never narrower than any one player's own distance, over 40 random deals; an open season at its edges; an
+unknown player named and never changing the known sum; a side with nothing valued; a league in wins; the neutral reading
+identical under 60 random philosophies with every lean named; the neutral band's our view; the control line and cost path;
+expected wins), `tradeAnalysis.test.ts` (5, on a synthetic save: the card's valuation in every row and the route; the same
+neutral reading for three viewing clubs under three philosophies and none; the unknown player; the AI's context; the desk's
+prompt), `tradeCenter.test.ts` (6: the page's sides, rows, totals, difference, bar and parts; the unknown sentence; our
+view; no jargon or verdict word; the empty, one-side, loading and error states; the bar's geometry),
+`tradingBlock.test.ts` (3 new: no `players_value` field; Player Value's facts; ordered by a shown fact),
+`evidenceBoundary.test.ts` (the `players_value` allow-list is `valuation.ts` and `franchise.ts`; `trade.ts` and
+`tradingblock.ts` name no value field, percentile or OOTP rating) and `playerValueBoundary.test.ts` (the trade reading
+pure, lens types only, no philosophy, no verdict; the trading block a migrated consumer; the new stamp). Each was run
+against `origin/main` (a7f4aef) and failed for the reason expected (`tradeValueOf is not a function`, `analyzeTrade is not
+a function`, no `src/TradeAnalysis`, the trading block's `oa`, the allow-list holding `trade.ts`, the module list and the
+stamps; the AI context also failed on the synthetic save's missing `zr` column, a pre-fork schema gap fixed here).
+
+**The difference band contains the most likely difference, unknown players are excluded and named, and the neutral trade
+value is unchanged under any philosophy:** the regression sweep (Reviewer C's, widened) passes 205 of 205 checks: 5b's 180,
+unchanged, and 25 for 6b over 200 random deals between major-league clubs (mostly valued players, some not, so 76 deals
+carried an unknown player and 11 had a side with nothing valued): each player's figure the league-wide one; every side's
+range inside its edge-to-edge sum and around its most likely; the difference band holding its most likely, inside the
+edge-to-edge sum, equal in its most likely to the sum of the parts and never a point; unknown players named and never moving
+a known sum; the neutral reading the same under a random philosophy and for another viewing club; our view's band holding its
+most likely; the viewer's value of a win the entry point's; no verdict word; no non-finite number; the AI context free of
+value fields and percentiles; the trading block's order stated; for every club, fits whose candidates are each expected to
+add more than the other club's best there and whose counts are their matches; the route resolving the managed club. The
+trading block is empty on this save (no club has listed a player), so its rows are covered by the fixture's cases. Timing: a
+deal analysed in about 0.1 s warm (0.7 s cold), one club's fits in about 0.2 s warm (1.3 s cold).
+
+**Worked on the Arizona import** (2026-05-16; the opening price $7.25M a win; the owner's philosophy, every dimension 50,
+leans on nothing, so our view is the neutral view; every figure contract value, discounted):
+
+| Deal (Arizona sends / receives) | Sending side | Receiving side | Difference: coming in less going out | What it shows |
+|---|---|---|---|---|
+| Prospect for a veteran: Tyler Locklear (1B, 25, Triple-A) and Tommy Troy (2B, 24, Triple-A) / Taylor Ward (LF, 32, BAL, $12.2M, free agent from 2027) | Locklear most likely $6.7M to $7.9M, could be −$41.8M to $80.2M (his 2028–2029 status and 2032 open); Troy not valued: "his pay for 2026–2029 isn't known, and his production is only projected through 2029", left out and named | $3.5M, could be −$8.0M to $27.1M (keeping him $12.3M) | most likely −$4.4M to −$3.3M, could be −$77.6M to +$50.8M (every player at his edge −$88.1M to +$69.0M); leaves out Troy | A controlled bat's long range against a rental's short one; a win-now philosophy reads it −$3.7M to −$2.4M, a rebuild +$7.6M to +$10.3M, the neutral figures unchanged. Arizona's win moves its odds 3.9 points (75%), Baltimore's 2.8 (85%) |
+| Salary dump: Eduardo Rodriguez (P, 33, $21.0M, signed through 2027, club option 2028) / Vince Velasquez (P, 33, CHC, the minimum) | most likely −$40.8M to −$25.4M (depends on the 2028 option), could be −$70.0M to $5.8M; keeping him −$5.1M to $10.3M | $0.0M, could be −$2.9M to $3.3M | most likely +$25.5M to +$40.9M, could be −$5.9M to +$70.2M | Moving a contract worth less than it pays reads positive for the club sending it: his salary goes with him. $21.0M of salary out this season, $0.8M in |
+| Balanced swap: Pavin Smith (1B, 30, arbitration 2027, 2028 arbitration or free agency) / Rhys Hoskins (1B, 33, CLE) and Danny Coulombe (P, 36, BOS), both free agents from 2027 | most likely $5.8M to $7.1M, could be −$32.5M to $61.2M | together most likely $5.1M, could be −$3.9M to $21.8M (every player at his edge −$6.5M to $26.9M) | most likely −$2.1M to −$0.8M, could be −$56.9M to +$41.0M | Near even at the most likely, with a range wide on both sides of zero: two short contracts against a player with control left |
+
+Judgments made in phase 6b beyond the brief: the sides are summed on contract value only (a trade moves the salary; the
+value of keeping him is shown per player); the owner's Payroll combination is extended to a trade's sides and difference
+(policy, an owner question below); a player going out enters reversed; a side with nothing valued makes the difference not a
+number, while a side with some players valued sums those and names the rest (the brief's rule); a deal with any player valued
+in wins only is read in wins; the trading block and the fits order by expected wins for the rest of this season (shown,
+unknown last) and fits compare most likely figures only; the AI desk's opening answer is a one-line "Read" with no
+accept-or-reject verdict (D-001, D-004, AGENTS.md: no LLM in the decision path); the AI context keeps its roster reading
+(season lines, fielding, incumbents, needs, the trading block) and drops OOTP's overall and potential; `fieldingRecord` reads
+zone rating only where the export has the column.
+
+**Phase 6b owner questions (open).** (1) Is the Payroll rule (players combined as independent) right for a trade's sides and
+the difference? The alternative is edge to edge (Part 3's default), shown in the details today; on the worked deals it is 8% to 30%
+wider. (2) Should the AI desk give an accept-or-reject line? It no longer does (D-001); its answer opens with a plain "Read".
+(3) Trade fits compare most likely expected wins only; a match can rest on a difference of a few hundredths of a win. Should a
+match need the candidate's range to clear the other club's best, or stay a shown comparison?
 
 **Phase 4 owner decisions (2026-09-24).** The owner ruled on the four open questions of the phase 4a and 4b
 reviews (Part 12); the behavior cases are the "phase 4 owner decisions" row, each written first and failing on
@@ -1725,6 +1828,10 @@ them.
     none, and the arrival history carries none. The only fitted artefacts in code are `PRODUCTION_PRIOR` and
     `RATINGS_PRIOR`, both stamped provisional, and the ratings prior measures no arrivals. The ratings refit runs once,
     after the results refit, in the same background guard.
+12. **The trade reading (phase 6b).** `playerValueTrade.ts` is pure: it imports the lens's types only (our view arrives
+    computed), opens no table, names no philosophy, settings or club value of a win, and says no verdict; no consumer
+    combines a deal's players itself. The trading block is a migrated consumer. `trade.ts` and `tradingblock.ts` name no
+    `players_value`, value field, OOTP rating or percentile (`evidenceBoundary.test.ts`).
 
 **Hardening (A-16).** Reviewer A showed the test weaker than it looked: a write to `league.db` through the fit store's
 `${verb} INTO` statement, a dynamic or double-quoted import, and `contracts.ts`'s own service division all passed. The test
@@ -1767,7 +1874,8 @@ save's imports. The owner's decisions of 2026-09-24 add `COST_COMBINATION_POLICY
 `.retention` (policy), and Player Rights' `ARBITRATION_NO_CUT_CALIBRATION` (policy, owner-attested). Phase 5a adds
 `SURPLUS_POLICY` (policy, stamped `SURPLUS_POLICY_CALIBRATION`): the owner's 5% discount and how the surplus is read. Phase
 5b adds `LENS_POLICY` (policy, stamped `LENS_POLICY_CALIBRATION`), `WIN_VALUE_POLICY` (policy) and `WIN_CURVE_CALIBRATION`
-(provisional: the deadline read's odds model, whose one number, the .520 rival, is `posture.ts`'s `RIVAL_TALENT`).
+(provisional: the deadline read's odds model, whose one number, the .520 rival, is `posture.ts`'s `RIVAL_TALENT`). Phase
+6b adds `TRADE_COMBINATION_POLICY` (policy, stamped `TRADE_COMBINATION_POLICY_CALIBRATION`).
 
 | Constant | Stamp | Basis |
 |---|---|---|
@@ -1788,6 +1896,7 @@ save's imports. The owner's decisions of 2026-09-24 add `COST_COMBINATION_POLICY
 | Resampling across winters | **policy** | By winter, then by signing within each, once two winters are observed (review R4-05) |
 | The reading's method | **mechanism** | `SIGNINGS_POLICY.method` (`signings-4b.3` since the owner's decisions: an arbitration salary's previous salary recorded): a stored pair is read again from its two snapshots when it changes (review R3-03), where both were kept; otherwise read as stored, under its own method |
 | Which full contract snapshots are kept | **policy** | Owner, 2026-09-24 (`SIGNINGS_POLICY.retention`, `retainedImports`): the imports that bracket a winter and the most recent import; the others pruned at capture after the new pair is stored, never across save identities, never one a pair not yet stored under the current method needs; every pair and event kept |
+| How a trade combines its players (phase 6b) | **policy** | Supervisor, extending the owner's Payroll rule (`TRADE_COMBINATION_POLICY`, stamped `TRADE_COMBINATION_POLICY_CALIBRATION`): each side's contract value and the difference between the sides are the sum of the players' most likely readings, each player's distance from his combined as independent (root sum of squares, low and high apart); an open season stays at its edges, added; a player going out enters reversed; labelled "players combined as independent; not a calibrated interval", the edge-to-edge sum beside it. An open owner question (Part 9) |
 | How Payroll combines players' projected seasons | **policy** | Owner, 2026-09-24 (`COST_COMBINATION_POLICY`, stamped `COST_COMBINATION_POLICY_CALIBRATION`): the sum of centrals, each player's distance from his central combined as independent (root sum of squares, low and high apart); status left open, a range of classes and may-leave at their edges, added; labelled "players combined as independent; not a calibrated interval", the edge-to-edge sum in the details |
 | An arbitration salary is never below the previous season's salary | **policy** (owner-attested) | Owner, 2026-09-24 ("I've never seen a drop"): the game's rule as attested, basis `owner_attested`, stated by Player Rights (`ARBITRATION_NO_CUT_ATTESTATION`, stamped `ARBITRATION_NO_CUT_CALIBRATION`, `arbitrationSalaryFloor`) for every league whose regime as read has arbitration; not MLB's 20% rule. Changed only by the owner |
 | The measured price of a win | **measured across imports** | Per win produced: the ratio of summed first-season salary above the minimum to the WAR the signings produced in that season (4.2; owner, 2026-09-24), with the per-projected-win check beside it; none on Arizona yet (one import) |

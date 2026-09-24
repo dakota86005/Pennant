@@ -1245,7 +1245,8 @@ scouted ratings, with playing time conditional on quality, fitted per save under
 controlled seasons, measured on each import, `playerValueCost.ts`; phase 4b: the measured price of a win across imports,
 `playerValueSignings.ts` and the third writer `playerValueContractStore.ts`; phase 5a: the neutral contract surplus and the
 retention margin, `playerValueSurplus.ts`, on the player card; phase 5b: the philosophy lens, `playerValueLens.ts`, and the
-club's value of a win, `playerValueWinValue.ts`).
+club's value of a win, `playerValueWinValue.ts`; phase 6b, the first consumer of the migration built here: the Trade Center,
+the trading block and the AI's trade context read Player Value, `playerValueTrade.ts`, and no `players_value`).
 `server/playerValue.ts` (the entry point), `playerValueContract.ts`, `playerValueControl.ts`,
 `playerValueFinances.ts`, `playerValueHistory.ts`, `playerValueProduction.ts`, `playerValueProductionFit.ts`,
 `playerValueRatings.ts` and `playerValueRatingsFit.ts` (phase 3b), the two writers (`playerValueSnapshot.ts` and

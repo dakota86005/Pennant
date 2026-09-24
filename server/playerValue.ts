@@ -146,6 +146,12 @@ export type { ClubWinValue, WinValueInput } from './playerValueWinValue.js';
 export { winValueOf } from './playerValueWinValue.js';
 export type { ProductionTotal, UnestablishedSeason } from './playerValueProduction.js';
 export { PRODUCTION_NO_EVIDENCE };
+export type {
+  TradeControlSeason, TradeControlSummary, TradeDifference, TradeEntryInput, TradeExcluded, TradeFigure, TradeOurs, TradePart,
+  TradePlayerValue, TradeProduction, TradeSide, TradeSideName, TradeSideTotal, TradeUnit, TradeValue,
+} from './playerValueTrade.js';
+/** Phase 6b: a trade read on Player Value, both sides and the difference between them as a band with its parts (pure; Part 8). */
+export { combineTradeFigures, controlSummaryOf, productionHeadlineOf, tradeValueOf } from './playerValueTrade.js';
 
 /** A player's value, as far as phase 3 builds it: concerns 1, 2 and 3 (production from major-league results and scouted ratings). */
 export interface PlayerValuation {

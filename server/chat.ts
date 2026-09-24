@@ -337,7 +337,9 @@ export const TOOLS: Anthropic.Tool[] = [
       "The players clubs have actually listed for trade, from the save's own trading block, with " +
       'their season line, contract and age. This is who is genuinely available, as against who ' +
       'might be pried loose — call it before proposing targets, and say when a man you are ' +
-      'suggesting is not on it. Omit team_id for the whole league.',
+      'suggesting is not on it. Omit team_id for the whole league. Each carries Pennant\'s contract value ' +
+      '(most likely with its range, or why it is not known), his expected wins and his control; the list is ' +
+      'ordered by expected wins, as "order" says. Quote those figures; never make up a value of your own.',
     input_schema: {
       type: 'object',
       properties: {
