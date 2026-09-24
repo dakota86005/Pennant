@@ -76,8 +76,35 @@ describe('the trading block', () => {
     expect(all.total).toBeGreaterThanOrEqual(all.listed.length);
   });
 
-  it('honours a limit while keeping the best of them', () => {
+  it('honours a limit', () => {
     expect(tradingBlock({ limit: 1 }).listed.length).toBeLessThanOrEqual(1);
+  });
+
+  // Player Value phase 6b (BEHAVIOR_CASES.md "Player Value"): no hidden score orders the block
+  it('carries no players_value figure: no OOTP overall, potential or value percentile', () => {
+    for (const p of tradingBlock().listed) {
+      for (const key of ['oa', 'pot', 'valuePct', 'overallPct', 'talentPct']) expect(p, key).not.toHaveProperty(key);
+    }
+  });
+
+  it('describes each man with Player Value\'s facts: his contract value, his expected wins and his control, each with its basis or its reason', () => {
+    const him = tradingBlock().listed.find((p) => p.name === 'Block Available')!;
+    expect(him.value).toBeDefined();
+    expect(['known', 'unknown']).toContain(him.value.status);
+    if (him.value.status === 'unknown') expect(him.value.reason).toBeTruthy();
+    expect(him.expectedWins).toBeDefined();
+    if (him.expectedWins.status === 'unknown') expect(him.expectedWins.reason).toBeTruthy();
+    expect(him.control.length).toBeGreaterThan(0);
+  });
+
+  it('orders by a shown, explained fact, unknown last and never read as zero', () => {
+    const block = tradingBlock({ level: 'all' });
+    expect(block.order).toMatch(/expected wins/i);
+    const seen = block.listed.map((p) => (p.expectedWins.status === 'known' ? p.expectedWins.central : null));
+    const firstUnknown = seen.indexOf(null);
+    if (firstUnknown >= 0) expect(seen.slice(firstUnknown).every((x) => x === null)).toBe(true);
+    const known = seen.filter((x): x is number => x !== null);
+    for (let i = 1; i < known.length; i += 1) expect(known[i]).toBeLessThanOrEqual(known[i - 1]);
   });
 });
 

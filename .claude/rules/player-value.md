@@ -16,6 +16,10 @@ paths:
   - "src/pages/Contracts.tsx"
   - "server/player.ts"
   - "src/pages/Payroll.tsx"
+  - "server/trade.ts"
+  - "server/tradingblock.ts"
+  - "src/**/Trade*.tsx"
+  - "tests/trade*.ts"
   - "tests/playerValue*.ts"
   - "tests/payrollControl.test.ts"
 ---
@@ -39,8 +43,9 @@ priced from it), `playerValueSignings.ts` (phase 4b, pure: observed changes betw
 reserve-clause renewals, replacement, adoption), `playerValueCone.ts` (the player card's production cone: production
 joined with control, pure), `playerValueSurplus.ts` (phase 5a, pure: the neutral contract surplus and the retention
 margin), `playerValueLens.ts` (phase 5b, pure: "our view", the one value module that names philosophy),
-`playerValueWinValue.ts` (phase 5b, pure: the club's value of a win) and `playerValueCalibration.ts` (policy and the
-provisional prior, stamped) sit behind it.
+`playerValueWinValue.ts` (phase 5b, pure: the club's value of a win), `playerValueTrade.ts` (phase 6b, pure: a deal's two
+sides and the difference between them) and `playerValueCalibration.ts` (policy and the provisional prior, stamped) sit
+behind it.
 Three writers, `history.db` only: `playerValueSnapshot.ts` (the per-import market snapshot), `playerValueContractStore.ts`
 (phase 4b: the per-import contract snapshot) and `playerValueFitStore.ts` (the per-save production fits, D-053). Which phases are built is in `docs/PROJECT_STATE.md`; check it against the
 worktree.
@@ -169,6 +174,17 @@ worktree.
   (the percentile advice, its cut-offs and the dashboard's "Extension candidates" are gone). A consumer that shows value
   passes the export's freshness as `currentState` and says it (`freshnessCue`, A-20). Its visible words follow AGENTS.md
   "Writing for the GM" (`contractsPage.test.ts`, `playerCardHeader.test.ts`).
+- The Trade Center (phase 6b; PLAYER_VALUE.md Part 8): `tradeValueOf` is handed each player's neutral valuation as served and,
+  optionally, our view computed by the caller; it never recomputes, narrows or re-reads a player's figures and names no
+  philosophy. A deal is summed on contract value (the salary moves with the player; the value of keeping him is shown, never
+  summed); players combined as independent around the sum of most likely readings, an open season at its edges
+  (`TRADE_COMBINATION_POLICY`, the owner's Payroll rule extended; open owner question), the edge-to-edge sum beside it; the
+  difference is what comes in less what goes out, a band with each player's signed part, never a point, a score or a verdict
+  ("win/lose the trade", accept, reject are banned in code and on the page). An unknown player is named with one short reason
+  and left out; a side with nothing valued makes the difference not a number. The neutral reading is the same under every
+  philosophy and for every viewer; the club's value of a win and salary are context. Fits and the trading block order by
+  expected wins, shown; the AI desk quotes the decomposition, produces no value number of its own and gives no
+  accept-or-reject line. `trade.ts` and `tradingblock.ts` read no `players_value`, rating or percentile.
 - Never ask the owner for an OOTP experiment; an unresolved rule stays `indeterminate` and is documented.
 
 Checks: `tests/playerValueBoundary.test.ts`, `tests/playerValueControl.test.ts`, `tests/playerValueCost.test.ts`,
@@ -176,5 +192,6 @@ Checks: `tests/playerValueBoundary.test.ts`, `tests/playerValueControl.test.ts`,
 `tests/playerValueRatings.test.ts`, `tests/playerValueSignings.test.ts`, `tests/playerValueCrossSave.test.ts`,
 `tests/playerValueSurplus.test.ts`, `tests/playerValueInvariants.test.ts`, `tests/valueSection.test.ts`,
 `tests/playerValueLens.test.ts`, `tests/playerValueWinValue.test.ts`, `tests/playoffs.test.ts`, `tests/contractsPage.test.ts`,
-`tests/playerCardHeader.test.ts`;
+`tests/playerCardHeader.test.ts`, `tests/playerValueTrade.test.ts`, `tests/tradeAnalysis.test.ts`, `tests/tradeCenter.test.ts`,
+`tests/tradingBlock.test.ts`;
 `npm run value:report` and `npx tsx scripts/calibrate.ts production` against a real import (read-only with `OOTP_FO_DB_READONLY=1`).

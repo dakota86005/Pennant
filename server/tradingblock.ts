@@ -1,8 +1,7 @@
 import { db, tableExists } from './db.js';
 import { computeBatting, computePitching, leagueBaseline } from './stats.js';
-import {
-  LEVEL_NAMES, contractsByPlayer, mlbPercentiler, valuesByPlayer,
-} from './valuation.js';
+import { LEVEL_NAMES } from './valuation.js';
+import { contractSeasonFor, controlSummaryOf, playerValues, productionHeadlineOf, tradeValueOf, type TradeFigure, type TradeUnit } from './playerValue.js';
 
 /**
  * Who the rest of the league has actually put up for sale.
@@ -19,6 +18,9 @@ import {
  * listing players are the ones out of the race, and the ones listed are aging
  * regulars on expiring money. That is a selling list, and nothing else fits.
  */
+
+/** How the block is ordered: a shown fact, never a hidden score (D-052). */
+const ORDER = 'Ordered by expected wins for the rest of this season (most likely, from Player Value), most first; a player whose production is not known goes last, never counted as zero.';
 
 /** OOTP's value for a player his club has listed. Zero is everybody else. */
 const ON_THE_BLOCK = 2;
@@ -39,16 +41,19 @@ export interface BlockedPlayer {
   teamAbbr: string;
   level: number;
   levelName: string;
-  /** OOTP's own overall and potential, on whatever scale the save uses. */
-  oa: number | null;
-  pot: number | null;
-  salaryNow: number;
-  /** Seasons still owed after this one. Zero means the deal is expiring. */
-  yearsAfterThis: number;
+  /** His salary this season, where the export states it; null where it does not (never $0). */
+  salaryNow: number | null;
+  /** His control, season by season in a line, from Player Value's control timeline (Player Rights' statuses). */
+  control: string;
   /** This season at his own level — the only line that describes him. */
   seasonLine: string | null;
-  /** Percentile of OOTP's Value among comparable major leaguers. */
-  valuePct: number | null;
+  /**
+   * Player Value's contract value (phase 6b): what his contract is worth to whoever holds it, most likely with its range,
+   * in dollars (or wins where the league has no finances); or why it is not known. Never OOTP's own value figure.
+   */
+  value: { status: 'known' | 'unknown'; unit: TradeUnit | null; figure: TradeFigure | null; reason: string | null };
+  /** His expected wins for the rest of this season (or the whole of it), the 80% band; or why they are not known. */
+  expectedWins: { status: 'known' | 'unknown'; season: number | null; part: 'rest_of_season' | 'season' | null; low: number | null; central: number | null; high: number | null; reason: string | null };
 }
 
 /** The player ids the league has listed, for marking men already in a deal. */
@@ -146,8 +151,10 @@ export function tradingBlock(opts: { teamId?: number; level?: number | 'all'; li
   /** How many clubs have listed anybody, which says what kind of market it is. */
   sellingClubs: number;
   total: number;
+  /** What the list is ordered by, in words: a shown fact, never a hidden score. */
+  order: string;
 } {
-  const empty = { listed: [], sellingClubs: 0, total: 0 };
+  const empty = { listed: [], sellingClubs: 0, total: 0, order: ORDER };
   if (!tableExists('players_roster_status') || !tableExists('players')) return empty;
 
   const level = opts.level === undefined ? 1 : opts.level;
@@ -181,13 +188,17 @@ export function tradingBlock(opts: { teamId?: number; level?: number | 'all'; li
   const lines = linesFor(rows.map((r) => ({
     player_id: r.player_id, level: r.level, league_id: r.league_id, position: r.position,
   })));
-  const contracts = contractsByPlayer();
-  const values = valuesByPlayer();
-  const { overallPct } = mlbPercentiler(values);
+  // Player Value's reading of each man, as every read serves it (phase 6b): no players_value, no percentile
+  const ids = rows.map((r) => r.player_id);
+  const values = playerValues(ids);
+  const reading = tradeValueOf({ sent: [], received: ids.map((id) => ({ playerId: id, surplus: values.get(id)?.surplus ?? null })) });
 
   const listed: BlockedPlayer[] = rows.map((r) => {
-    const c = contracts.get(r.player_id);
     const v = values.get(r.player_id);
+    const season = v?.control.thisSeason ?? null;
+    const salary = v && season !== null ? contractSeasonFor(v.contract, season)?.salary.value ?? null : null;
+    const worth = reading.received.players.find((p) => p.playerId === r.player_id);
+    const production = v ? productionHeadlineOf(v.production) : null;
     return {
       player_id: r.player_id,
       name: `${r.first_name} ${r.last_name}`,
@@ -199,19 +210,28 @@ export function tradingBlock(opts: { teamId?: number; level?: number | 'all'; li
       teamAbbr: r.abbr,
       level: r.level,
       levelName: LEVEL_NAMES[r.level] ?? `L${r.level}`,
-      oa: v?.oaRating ?? null,
-      pot: v?.potRating ?? null,
-      salaryNow: c?.salaryNow ?? 0,
-      yearsAfterThis: c?.yearsAfterThis ?? 0,
+      salaryNow: salary,
+      control: v ? controlSummaryOf(v.control).text : 'Control not established',
       seasonLine: lines.get(r.player_id) ?? null,
-      valuePct: overallPct(r.player_id),
+      value: worth?.counted && worth.contract
+        ? { status: 'known', unit: reading.unit, figure: worth.contract, reason: null }
+        : { status: 'unknown', unit: reading.unit, figure: null, reason: worth?.notCounted ?? 'Not valued yet.' },
+      expectedWins: production?.now
+        ? { status: 'known', season: production.now.season, part: production.now.part, ...production.now.wins, reason: null }
+        : { status: 'unknown', season: null, part: null, low: null, central: null, high: null, reason: production?.reason ?? "He isn't an active player in the export." },
     };
   });
 
-  // Best first, so a truncated list is still the useful end of it
-  listed.sort((a, b) => (b.valuePct ?? -1) - (a.valuePct ?? -1));
+  // Ordered by a shown fact, so a truncated list is still the useful end of it: expected wins for the rest of this season
+  // (most likely), most first; a man whose production is not known goes last, never read as zero; then by name
+  listed.sort((a, b) => {
+    const x = a.expectedWins.central;
+    const y = b.expectedWins.central;
+    if (x === null || y === null) return x === null && y === null ? a.name.localeCompare(b.name) : x === null ? 1 : -1;
+    return y - x || a.name.localeCompare(b.name);
+  });
 
   const sellingClubs = new Set(rows.map((r) => r.abbr)).size;
   const limit = opts.limit && opts.limit > 0 ? opts.limit : 40;
-  return { listed: listed.slice(0, limit), sellingClubs, total: listed.length };
+  return { listed: listed.slice(0, limit), sellingClubs, total: listed.length, order: ORDER };
 }

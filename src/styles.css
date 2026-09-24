@@ -604,8 +604,9 @@ th.sortable .tip { cursor: pointer; }
 
 /* ── Trade center ─────────────────────────────────────────── */
 
-.trade-builder { display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: start; margin-bottom: 14px; }
-@media (max-width: 760px) { .trade-builder { grid-template-columns: 1fr; } }
+/* minmax(0, …): a long name or figure wraps inside its side instead of widening the page */
+.trade-builder { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 16px; align-items: start; margin-bottom: 14px; }
+@media (max-width: 760px) { .trade-builder { grid-template-columns: minmax(0, 1fr); } }
 .trade-side {
   background: var(--panel);
   border: 1px solid var(--border);
@@ -633,6 +634,7 @@ th.sortable .tip { cursor: pointer; }
 }
 .trade-results { display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; }
 .trade-results button { text-align: left; font-size: 12.5px; padding: 5px 10px; }
+.trade-results button.active { background: var(--panel-raised); outline: 1px solid var(--accent); }
 .trade-chip {
   display: flex; align-items: center; gap: 6px;
   background: var(--bg-deep);
@@ -644,6 +646,59 @@ th.sortable .tip { cursor: pointer; }
 .chip-x { border: none; background: none; color: var(--muted); padding: 0 2px; margin-left: auto; }
 .chip-x:hover { color: var(--bad); }
 .trade-verdict { margin-top: 4px; }
+
+/* Player Value phase 6b: each player a compact row; the side's total; the difference drawn around zero */
+.trade-side-empty { margin: 4px 0 0; font-size: 12px; }
+.trade-rows-head {
+  display: flex; justify-content: space-between; gap: 8px;
+  padding: 0 30px 4px 0; border-bottom: 1px solid var(--border);
+  font-family: var(--font-display); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+}
+.trade-rows { list-style: none; margin: 0; padding: 0; }
+.trade-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto 20px; column-gap: 10px; row-gap: 1px;
+  align-items: baseline; padding: 7px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+.trade-row-who { grid-column: 1; min-width: 0; overflow-wrap: anywhere; }
+.trade-row-value { grid-column: 2; text-align: right; font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.trade-row-remove { grid-column: 3; justify-self: end; }
+.trade-row-line { grid-column: 1; min-width: 0; font-size: 12px; overflow-wrap: anywhere; }
+.trade-row-range { grid-column: 2 / 4; max-width: 17em; justify-self: end; text-align: right; font-size: 12px; font-variant-numeric: tabular-nums; }
+.trade-row-range .tip-pop { left: auto; right: 0; }
+.trade-row-more, .trade-row-ours { grid-column: 1 / -1; }
+.trade-row-ours { font-size: 12px; }
+.trade-tag {
+  margin-left: 6px; padding: 0 5px; border: 1px solid var(--border); border-radius: 4px;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted);
+}
+.trade-total { margin-top: 8px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.trade-total strong { font-size: 15px; }
+.trade-arrows { font-size: 20px; color: var(--muted); }
+.trade-state {
+  margin: 0 0 14px; padding: 14px 16px; border: 1px dashed var(--border); border-radius: 10px;
+  background: var(--panel); color: var(--muted);
+}
+.trade-state-error { border-style: solid; border-color: var(--bad); color: var(--text); }
+.trade-state-error p { margin: 0 0 8px; }
+.trade-diff {
+  margin-bottom: 14px; padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel);
+}
+.trade-diff-head { font-size: 12px; }
+.trade-diff-title {
+  font-family: var(--font-display); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent);
+}
+.trade-diff-figure { margin: 4px 0 6px; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.trade-diff-range { font-size: 13px; font-weight: 400; }
+.trade-diff-unknown { font-size: 14px; font-weight: 500; }
+.trade-bar { display: block; width: 100%; border-bottom: none; }
+.trade-bar:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.trade-bar svg { display: block; max-width: 100%; }
+.trade-bar-ends { display: flex; justify-content: space-between; gap: 8px; margin-top: 2px; font-size: 11px; }
+.trade-diff-note { margin: 6px 0 0; font-size: 12px; }
+.trade-parts { margin-top: 8px; }
+.trade-ours, .trade-salary { margin: 6px 0 2px; font-size: 13px; }
+.trade-diff .tip-pop, .trade-side .tip-pop { max-width: calc(100vw - 48px); }
 .ai-verdict {
   background: var(--panel);
   border: 1px solid var(--accent);

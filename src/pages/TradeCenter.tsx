@@ -1,54 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { apiGet, apiPost } from '../api';
+import { costMoney } from '../costBand';
 import { FallbackNotice, type FallbackNoticeData } from '../FallbackNotice';
+import { formatWins } from '../productionConeGeometry';
 import { PlayerLink } from '../playerModal';
+import { Tip } from '../Tip';
+import { TradeAnalysisPanel } from '../TradeAnalysis';
+import type { TradeAnalysis, TradeDifference, TradeFits, TradePick, TradeProposal, TradeTalkItem, TradeUnit, ValueGlance } from '../tradeApi';
 
-interface FitPlayer { player_id: number; name: string; value: number }
-interface Fits {
-  myWeakest: Array<{ positionName: string; bestValue: number }>;
-  mySurplus: Array<{ positionName: string; players: FitPlayer[] }>;
-  fits: Array<{
-    orgId: number; label: string; score: number;
-    theyNeed: Array<{ positionName: string; myCandidates: FitPlayer[] }>;
-    theyOffer: Array<{ positionName: string; players: FitPlayer[] }>;
-  }>;
-}
-interface SearchResult { player_id: number; name: string; age: number; positionName: string; team: string; value: number }
-interface SideSummary {
-  players: Array<{
-    player_id: number; name: string; age: number; positionName: string; team: string | null;
-    overallPct: number | null; talentPct: number | null; salaryNow: number; yearsAfterThis: number;
-  }>;
-  totalValue: number; totalTalent: number; totalSalary: number;
-}
-interface Analysis { sideA: SideSummary; sideB: SideSummary; valueDiff: number; talentDiff: number; salaryDiff: number }
-interface ProposalSide {
-  players: Array<{ player_id: number; name: string; age: number; positionName: string; team: string | null }>;
-  totalValue: number;
-  totalSalary: number;
-}
-interface Proposal {
-  message_id: number;
-  trade_id: number;
-  subject: string;
-  date: string | null;
-  from: { team_id: number; label: string };
-  theySend: ProposalSide;
-  weSend: ProposalSide;
-  valueDiff: number;
-  salaryDiff: number;
-}
-
-interface TalkItem {
-  message_id: number;
-  subject: string;
-  date: string;
-  otherTeam: { orgId: number; label: string };
-  player: {
-    player_id: number; name: string; age: number; positionName: string; levelName: string;
-    overallPct: number | null; talentPct: number | null; salaryNow: number; yearsAfterThis: number;
-  };
-}
+interface SearchResult { player_id: number; name: string; age: number | null; positionName: string; team: string | null }
 
 interface Voice {
   name: string;
@@ -63,13 +23,45 @@ interface TradeTurn {
   content: string;
 }
 
-const money = (n: number) => (Math.abs(n) >= 1e6 ? `$${(n / 1e6).toFixed(1)}M` : `$${Math.round(n / 1000)}k`);
+/** Money or wins, signed as the analyser prints them. */
+const amount = (v: number, unit: TradeUnit | null): string =>
+  (unit === 'wins' ? `${formatWins(v)} wins` : v < 0 ? `−${costMoney(-v)}` : costMoney(v));
+const signedAmount = (v: number, unit: TradeUnit | null): string => (v > 0 ? `+${amount(v, unit)}` : amount(v, unit));
+
+/** A difference in one line: most likely and what it could be, or why there is none. */
+function differenceLine(d: TradeDifference, unit: TradeUnit | null): string {
+  if (d.status !== 'known' || !d.figure) return 'Not a number yet: no one on one side could be valued.';
+  const f = d.figure;
+  const likely = f.central !== null ? signedAmount(f.central, unit)
+    : f.centralRange ? `${signedAmount(f.centralRange.low, unit)} to ${signedAmount(f.centralRange.high, unit)}` : '';
+  return `Coming in less going out: most likely ${likely} · could be ${signedAmount(f.low, unit)} to ${signedAmount(f.high, unit)}`;
+}
+
+/** A player's contract value in a few words, or the short reason it is not known. */
+function glance(v: ValueGlance): string {
+  if (v.status !== 'known' || v.low === null || v.high === null) return v.reason ?? 'Not valued yet.';
+  const likely = v.central !== null ? amount(v.central, v.unit)
+    : v.centralRange ? `${amount(v.centralRange.low, v.unit)} to ${amount(v.centralRange.high, v.unit)}` : '';
+  return `Contract value most likely ${likely} (could be ${amount(v.low, v.unit)} to ${amount(v.high, v.unit)})`;
+}
+
+const TIP_OFFER =
+  "The same reading the analyser gives: what you'd receive less what you'd send, each player at his contract value. " +
+  "The sides are worked out from who each player plays for now, since the message doesn't store them. It isn't a verdict.";
+const TIP_FITS =
+  'Expected wins this season (the part still to be played, most likely), from each player\'s projection. A match is a player ' +
+  "who isn't his club's starter at a position yet is expected to add more wins than the other club's best there. Players " +
+  "whose production isn't established are left out. A lead to look into, not a verdict: the ranges behind these figures are wide.";
 
 export function TradeCenter({ orgId, orgLabel }: { orgId: number; orgLabel: string }) {
-  const [fits, setFits] = useState<Fits | null>(null);
-  const [sideA, setSideA] = useState<SearchResult[]>([]);
-  const [sideB, setSideB] = useState<SearchResult[]>([]);
-  const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [fits, setFits] = useState<TradeFits | null>(null);
+  const [fitsError, setFitsError] = useState<string | null>(null);
+  const [sideA, setSideA] = useState<TradePick[]>([]);
+  const [sideB, setSideB] = useState<TradePick[]>([]);
+  const [analysis, setAnalysis] = useState<TradeAnalysis | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   // The conversation about the deal on screen, held here rather than on the
   // server: it belongs to these two lists of players, and they change with
   // every click
@@ -78,10 +70,10 @@ export function TradeCenter({ orgId, orgLabel }: { orgId: number; orgLabel: stri
   const [draft, setDraft] = useState('');
   const [notice, setNotice] = useState<Notice>(null);
   const [aiBusy, setAiBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [talk, setTalk] = useState<TalkItem[]>([]);
-  const [proposals, setProposals] = useState<Proposal[]>([]);
-  const builderRef = useRef<HTMLDivElement | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [talk, setTalk] = useState<TradeTalkItem[]>([]);
+  const [proposals, setProposals] = useState<TradeProposal[]>([]);
+  const builderRef = useRef<HTMLHeadingElement | null>(null);
 
   useEffect(() => {
     // Who answers, so the button can carry his name before he has said anything
@@ -91,43 +83,69 @@ export function TradeCenter({ orgId, orgLabel }: { orgId: number; orgLabel: stri
 
   useEffect(() => {
     setFits(null);
-    apiGet<Fits>(`/api/trade/fits/${orgId}`).then(setFits).catch((e) => setError(e.message));
+    setFitsError(null);
+    apiGet<TradeFits>(`/api/trade/fits/${orgId}`).then(setFits).catch((e) => setFitsError((e as Error).message));
   }, [orgId]);
 
   useEffect(() => {
     setProposals([]);
-    apiGet<{ proposals: Proposal[] }>(`/api/trade-proposals/${orgId}`)
+    apiGet<{ proposals: TradeProposal[] }>(`/api/trade-proposals/${orgId}`)
       .then((r) => setProposals(r.proposals))
       .catch(() => setProposals([]));
   }, [orgId]);
 
   useEffect(() => {
     setTalk([]);
-    apiGet<{ items: TalkItem[] }>(`/api/trade-talk/${orgId}`)
+    apiGet<{ items: TradeTalkItem[] }>(`/api/trade-talk/${orgId}`)
       .then((r) => setTalk(r.items))
       // The inbox is a bonus on top of the analyser, so a save without it
       // should cost the page nothing
       .catch(() => setTalk([]));
   }, [orgId]);
 
-  /** Loads a real offer into the builder, both sides as they were proposed. */
-  const reviewProposal = (p: Proposal) => {
-    setAnalysis(null);
+  /*
+   * The deal is weighed as it is built: every change to either side asks again, and an answer to an older deal is
+   * dropped. Nothing is weighed until both sides have somebody on them.
+   */
+  const ask = useRef(0);
+  useEffect(() => {
+    if (sideA.length === 0 || sideB.length === 0) {
+      setLoading(false);
+      setAnalysisError(null);
+      return;
+    }
+    const mine = ++ask.current;
+    setLoading(true);
+    setAnalysisError(null);
+    const timer = setTimeout(() => {
+      apiPost<TradeAnalysis>('/api/trade/analyze', { sideA: sideA.map((p) => p.player_id), sideB: sideB.map((p) => p.player_id), orgId })
+        .then((a) => { if (ask.current === mine) setAnalysis(a); })
+        .catch((e) => { if (ask.current === mine) setAnalysisError((e as Error).message); })
+        .finally(() => { if (ask.current === mine) setLoading(false); });
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [sideA, sideB, orgId, attempt]);
+
+  const resetDesk = () => {
     setThread([]);
     setDraft('');
-    const toRow = (x: ProposalSide['players'][number], team: string | null) => ({
-      player_id: x.player_id,
-      name: x.name,
-      age: x.age,
-      positionName: x.positionName,
-      team: x.team ?? team ?? '',
-      value: 0,
-    });
-    setSideA(p.weSend.players.map((x) => toRow(x, orgLabel)));
-    setSideB(p.theySend.players.map((x) => toRow(x, p.from.label)));
-    requestAnimationFrame(() =>
-      builderRef.current?.scrollIntoView({ behavior: 'auto', block: 'start' })
-    );
+    setAiError(null);
+  };
+
+  const jumpToBuilder = () =>
+    // After the paint, not before it: loading the players re-renders the builder,
+    // and a scroll begun in the same tick is cancelled by the layout change.
+    // Instant rather than smooth — smooth silently does nothing in some
+    // embedded browsers, and a jump that sometimes fails to happen is worse
+    // than one that always does.
+    requestAnimationFrame(() => builderRef.current?.scrollIntoView({ behavior: 'auto', block: 'start' }));
+
+  /** Loads a real offer into the builder, both sides as they were proposed. */
+  const reviewProposal = (p: TradeProposal) => {
+    resetDesk();
+    setSideA(p.weSend.players.map((x) => ({ ...x, team: x.team ?? orgLabel })));
+    setSideB(p.theySend.players.map((x) => ({ ...x, team: x.team ?? p.from.label })));
+    jumpToBuilder();
   };
 
   /**
@@ -138,65 +156,50 @@ export function TradeCenter({ orgId, orgLabel }: { orgId: number; orgLabel: stri
    * actual offer is different and goes through reviewProposal above, which
    * carries both sides.
    */
-  const review = (item: TalkItem) => {
-    setAnalysis(null);
-    setThread([]);
-    setDraft('');
+  const review = (item: TradeTalkItem) => {
+    resetDesk();
     setSideB([{
-      player_id: item.player.player_id,
-      name: item.player.name,
-      age: item.player.age,
-      positionName: item.player.positionName,
-      team: item.otherTeam.label,
-      value: 0,
+      player_id: item.player.player_id, name: item.player.name, age: item.player.age,
+      positionName: item.player.positionName, team: item.otherTeam.label,
     }]);
-    // After the paint, not before it: loading the player re-renders the builder,
-    // and a scroll begun in the same tick is cancelled by the layout change.
-    // Instant rather than smooth — smooth silently does nothing in some
-    // embedded browsers, and a jump that sometimes fails to happen is worse
-    // than one that always does.
-    requestAnimationFrame(() =>
-      builderRef.current?.scrollIntoView({ behavior: 'auto', block: 'start' })
-    );
+    jumpToBuilder();
   };
 
-  const analyze = async () => {
-    setError(null);
-    setThread([]);
-    try {
-      setAnalysis(
-        await apiPost<Analysis>('/api/trade/analyze', {
-          sideA: sideA.map((p) => p.player_id),
-          sideB: sideB.map((p) => p.player_id),
-        })
-      );
-    } catch (e) {
-      setError((e as Error).message);
-    }
+  const add = (side: 'sent' | 'received', r: SearchResult) => {
+    const set = side === 'sent' ? setSideA : setSideB;
+    const list = side === 'sent' ? sideA : sideB;
+    const other = side === 'sent' ? sideB : sideA;
+    // A player can be on one side only
+    if (list.some((p) => p.player_id === r.player_id) || other.some((p) => p.player_id === r.player_id)) return;
+    resetDesk();
+    set([...list, r]);
+  };
+  const remove = (side: 'sent' | 'received', id: number) => {
+    resetDesk();
+    if (side === 'sent') setSideA(sideA.filter((p) => p.player_id !== id));
+    else setSideB(sideB.filter((p) => p.player_id !== id));
   };
 
   /** The two sides as ids, which every request about this deal needs. */
   const deal = () => ({
     sideA: sideA.map((p) => p.player_id),
     sideB: sideB.map((p) => p.player_id),
-    // The club matters now: the verdict weighs the incoming men against
-    // whoever already holds their jobs here
+    // The club matters: the desk weighs the incoming men against whoever
+    // already holds their jobs here
     orgId,
     orgLabel,
   });
 
   const askAI = async () => {
     setAiBusy(true);
-    setError(null);
+    setAiError(null);
     try {
-      const r = await apiPost<{ verdict: string; voice: Voice; notice: Notice }>(
-        '/api/trade/ai-eval', deal()
-      );
+      const r = await apiPost<{ verdict: string; voice: Voice; notice: Notice }>('/api/trade/ai-eval', deal());
       setVoice(r.voice);
       setNotice(r.notice ?? null);
       setThread([{ role: 'assistant', content: r.verdict }]);
     } catch (e) {
-      setError((e as Error).message);
+      setAiError((e as Error).message);
     } finally {
       setAiBusy(false);
     }
@@ -209,7 +212,7 @@ export function TradeCenter({ orgId, orgLabel }: { orgId: number; orgLabel: stri
     setThread(asked);
     setDraft('');
     setAiBusy(true);
-    setError(null);
+    setAiError(null);
     try {
       // The thread sent is the one without the new line in it — that goes as
       // the question, and sending it twice would have him answer it twice
@@ -219,7 +222,7 @@ export function TradeCenter({ orgId, orgLabel }: { orgId: number; orgLabel: stri
       setNotice(r.notice ?? null);
       setThread([...asked, { role: 'assistant', content: r.reply }]);
     } catch (e) {
-      setError((e as Error).message);
+      setAiError((e as Error).message);
       // Put the question back rather than lose what was typed
       setThread(thread);
       setDraft(message);
@@ -228,17 +231,17 @@ export function TradeCenter({ orgId, orgLabel }: { orgId: number; orgLabel: stri
     }
   };
 
-  return (
-    <div>
-      {error && <div className="banner error">{error}</div>}
+  const retry = useCallback(() => setAttempt((n) => n + 1), []);
+  const both = sideA.length > 0 && sideB.length > 0;
 
+  return (
+    <div className="trade-center">
       {proposals.length > 0 && (
         <>
           <h2>Offers on the Table</h2>
           <p className="muted hint-line">
-            Proposals sitting in your OOTP inbox. Which players go which way is not stored in the
-            message — it is worked out from who each man currently plays for — so check it against
-            the mail before acting on anything. Value is the same figure the analyser below reports.
+            Proposals in your OOTP inbox. The message doesn't store which way each player goes, so the sides are worked out
+            from who each one plays for now: check them against the mail.
           </p>
           <div className="talk-grid">
             {proposals.map((p) => (
@@ -251,7 +254,7 @@ export function TradeCenter({ orgId, orgLabel }: { orgId: number; orgLabel: stri
                     <span key={x.player_id}>
                       {i > 0 && ', '}
                       <PlayerLink id={x.player_id}>{x.name}</PlayerLink>
-                      <span className="muted"> {x.positionName} {x.age}</span>
+                      <span className="muted"> {x.positionName} {x.age ?? ''}</span>
                     </span>
                   ))}
                 </p>
@@ -261,16 +264,14 @@ export function TradeCenter({ orgId, orgLabel }: { orgId: number; orgLabel: stri
                     <span key={x.player_id}>
                       {i > 0 && ', '}
                       <PlayerLink id={x.player_id}>{x.name}</PlayerLink>
-                      <span className="muted"> {x.positionName} {x.age}</span>
+                      <span className="muted"> {x.positionName} {x.age ?? ''}</span>
                     </span>
                   ))}
                 </p>
                 <p className="muted talk-line">
-                  Value {p.valueDiff > 0 ? 'against you' : 'your way'} by{' '}
-                  {Math.abs(Math.round(p.valueDiff))} · salary{' '}
-                  {p.salaryDiff > 0 ? 'off' : 'onto'} your books {money(Math.abs(p.salaryDiff))}
+                  <Tip label={differenceLine(p.difference, p.unit)} tip={TIP_OFFER} focusable />
                 </p>
-                <button onClick={() => reviewProposal(p)}>Review this offer</button>
+                <button type="button" onClick={() => reviewProposal(p)}>Review this offer</button>
               </div>
             ))}
           </div>
@@ -281,9 +282,8 @@ export function TradeCenter({ orgId, orgLabel }: { orgId: number; orgLabel: stri
         <>
           <h2>Trade Talk in Your Inbox</h2>
           <p className="muted hint-line">
-            Targets your staff has raised, newest first. OOTP's messages name the player and the
-            club but never the price, so "Review" loads him as the man you would receive and leaves
-            what you give up to you.
+            Targets your staff has raised, newest first. OOTP's messages name the player and the club but never the price,
+            so "Review" loads him as the player you'd receive and leaves what you give up to you.
           </p>
           <div className="talk-grid">
             {talk.map((t) => (
@@ -293,53 +293,47 @@ export function TradeCenter({ orgId, orgLabel }: { orgId: number; orgLabel: stri
                 <p className="talk-player">
                   <PlayerLink id={t.player.player_id}>{t.player.name}</PlayerLink>{' '}
                   <span className="muted">
-                    {t.player.positionName} · {t.player.age} · {t.otherTeam.label}
+                    {t.player.positionName} · {t.player.age ?? '?'} · {t.otherTeam.label}
                   </span>
                 </p>
+                <p className="muted talk-line">{glance(t.player.value)}</p>
                 <p className="muted talk-line">
-                  Value {t.player.overallPct ?? '—'} · Talent {t.player.talentPct ?? '—'} ·{' '}
-                  {money(t.player.salaryNow)}
-                  {t.player.yearsAfterThis > 0 ? ` · ${t.player.yearsAfterThis}y after this` : ' · expiring'}
+                  {t.player.control}
+                  {t.player.salaryNow ? ` · ${costMoney(t.player.salaryNow.amount)} in ${t.player.salaryNow.season}` : ''}
                 </p>
-                <button onClick={() => review(t)}>Review this target</button>
+                <button type="button" onClick={() => review(t)}>Review this target</button>
               </div>
             ))}
           </div>
         </>
       )}
 
-      <h2>Trade Analyzer</h2>
-      <div className="trade-builder" ref={builderRef}>
-        <TradeSide title={`${orgLabel} send`} players={sideA} setPlayers={setSideA} />
-        <div className="trade-middle">
-          <button className="btn-feature" onClick={analyze} disabled={!sideA.length || !sideB.length}>
-            ⇄ Compare
-          </button>
-          <button onClick={() => void askAI()} disabled={aiBusy || !sideA.length || !sideB.length}>
-            {aiBusy && thread.length === 0
-              ? 'Thinking…'
-              : `🤖 Ask ${voice ? voice.name : 'the front office'}`}
-          </button>
-        </div>
-        <TradeSide title={`${orgLabel} receive`} players={sideB} setPlayers={setSideB} />
+      <h2 ref={builderRef}>Trade Analyzer</h2>
+      <p className="muted hint-line">
+        Add the players you'd send and the ones you'd receive. Each player shows what his contract is worth; below, the
+        difference between the sides.
+      </p>
+      <div>
+        <TradeAnalysisPanel
+          orgLabel={orgLabel}
+          sent={sideA}
+          received={sideB}
+          loading={loading}
+          error={analysisError}
+          analysis={analysis}
+          onRetry={retry}
+          onRemove={remove}
+          searchSent={<PlayerSearch label={`Add a player ${orgLabel} would send`} onPick={(r) => add('sent', r)} />}
+          searchReceived={<PlayerSearch label={`Add a player ${orgLabel} would receive`} onPick={(r) => add('received', r)} />}
+          middle={
+            <button type="button" onClick={() => void askAI()} disabled={aiBusy || !both}>
+              {aiBusy && thread.length === 0 ? 'Thinking…' : `Ask ${voice ? voice.name : 'the front office'}`}
+            </button>
+          }
+        />
       </div>
 
-      {analysis && (
-        <div className="cards trade-verdict">
-          <SummaryCard label="Value sent" value={String(Math.round(analysis.sideA.totalValue))} />
-          <SummaryCard label="Value received" value={String(Math.round(analysis.sideB.totalValue))} />
-          <SummaryCard
-            label="Value swing"
-            value={`${analysis.valueDiff > 0 ? '−' : '+'}${Math.abs(Math.round(analysis.valueDiff))}`}
-            tone={analysis.valueDiff > 0 ? 'bad' : 'good'}
-          />
-          <SummaryCard
-            label="Salary swing"
-            value={`${analysis.salaryDiff > 0 ? '−' : '+'}${money(Math.abs(analysis.salaryDiff))}`}
-            tone={analysis.salaryDiff > 0 ? 'good' : 'bad'}
-          />
-        </div>
-      )}
+      {aiError && <div className="banner error" role="alert">{aiError}</div>}
       {notice && <FallbackNotice notice={notice} />}
       {thread.length > 0 && (
         <div className="ai-verdict">
@@ -355,15 +349,16 @@ export function TradeCenter({ orgId, orgLabel }: { orgId: number; orgLabel: stri
                     {voice.name} · {voice.role}
                   </span>
                 )}
-                {renderVerdict(turn.content)}
+                {renderAnswer(turn.content)}
               </div>
             )
           )}
           {aiBusy && <p className="muted">Thinking…</p>}
-          {/* A verdict you cannot argue with is the less useful half of one */}
+          {/* A read you cannot argue with is the less useful half of one */}
           <div className="trade-reply">
             <input
               value={draft}
+              aria-label="Ask a follow-up"
               placeholder={`Ask ${voice ? voice.name.split(' ')[0] : 'a follow-up'}…`}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => {
@@ -371,7 +366,7 @@ export function TradeCenter({ orgId, orgLabel }: { orgId: number; orgLabel: stri
               }}
               disabled={aiBusy}
             />
-            <button onClick={() => void reply()} disabled={aiBusy || !draft.trim()}>
+            <button type="button" onClick={() => void reply()} disabled={aiBusy || !draft.trim()}>
               Send
             </button>
           </div>
@@ -379,39 +374,41 @@ export function TradeCenter({ orgId, orgLabel }: { orgId: number; orgLabel: stri
       )}
 
       <h2>Trade Fits Around the League</h2>
-      {!fits ? (
-        <p className="muted">Scanning 29 front offices…</p>
+      {fitsError ? (
+        <p className="muted">The league's fits couldn't be read: {fitsError}</p>
+      ) : !fits ? (
+        <p className="muted">Reading every club's depth…</p>
       ) : (
         <>
           <p className="muted hint-line">
-            Your weakest spots: {fits.myWeakest.map((w) => w.positionName).join(', ')}
-            {fits.mySurplus.length > 0 &&
-              ` · your tradable surplus: ${fits.mySurplus.map((s) => s.positionName).join(', ')}`}
-            . Matches below need what you have, or have what you need.
+            Your weakest spots by <Tip label="expected wins" tip={`${TIP_FITS} ${fits.basis}`} focusable />:{' '}
+            {fits.myWeakest.map((w) => `${w.positionName} (${w.best.name}, ${formatWins(w.best.wins)})`).join(', ')}
+            {fits.notEstablished.length > 0 && ` · not established: ${fits.notEstablished.join(', ')}`}.
           </p>
-          {fits.fits.length === 0 && <p className="muted">No obvious complementary partners right now.</p>}
+          {fits.fits.length === 0 && <p className="muted">No club has a match either way right now.</p>}
           <div className="fit-grid">
             {fits.fits.map((f) => (
               <div key={f.orgId} className="fit-card">
                 <h3>{f.label}</h3>
                 {f.theyNeed.map((n, i) => (
                   <p key={`n${i}`}>
-                    They need <strong>{n.positionName}</strong> — you could offer{' '}
+                    They're thin at <strong>{n.positionName}</strong> (best: {n.theirBest.name}, {formatWins(n.theirBest.wins)}); you
+                    have{' '}
                     {n.myCandidates.map((c, j) => (
                       <span key={c.player_id}>
                         {j > 0 && ', '}
-                        <PlayerLink id={c.player_id}>{c.name}</PlayerLink>
+                        <PlayerLink id={c.player_id}>{c.name}</PlayerLink> ({formatWins(c.wins)})
                       </span>
                     ))}
                   </p>
                 ))}
                 {f.theyOffer.map((o, i) => (
                   <p key={`o${i}`}>
-                    They have spare <strong>{o.positionName}</strong>:{' '}
+                    You're thin at <strong>{o.positionName}</strong> ({o.myBest.name}, {formatWins(o.myBest.wins)}); they have{' '}
                     {o.players.map((c, j) => (
                       <span key={c.player_id}>
                         {j > 0 && ', '}
-                        <PlayerLink id={c.player_id}>{c.name}</PlayerLink>
+                        <PlayerLink id={c.player_id}>{c.name}</PlayerLink> ({formatWins(c.wins)})
                       </span>
                     ))}
                   </p>
@@ -425,77 +422,72 @@ export function TradeCenter({ orgId, orgLabel }: { orgId: number; orgLabel: stri
   );
 }
 
-function TradeSide({
-  title, players, setPlayers,
-}: { title: string; players: SearchResult[]; setPlayers: (p: SearchResult[]) => void }) {
+/** The search box for one side: type two letters, pick with the mouse or the keyboard (arrows, Enter, Escape). */
+function PlayerSearch({ label, onPick }: { label: string; onPick: (r: SearchResult) => void }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [active, setActive] = useState(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const search = (q: string) => {
     setQuery(q);
+    setActive(0);
     if (timer.current) clearTimeout(timer.current);
-    if (q.length < 2) {
+    if (q.trim().length < 2) {
       setResults([]);
       return;
     }
     timer.current = setTimeout(() => {
-      apiGet<SearchResult[]>(`/api/search-players?q=${encodeURIComponent(q)}`).then(setResults).catch(() => {});
+      apiGet<SearchResult[]>(`/api/search-players?q=${encodeURIComponent(q.trim())}`).then(setResults).catch(() => setResults([]));
     }, 250);
+  };
+  const pick = (r: SearchResult) => {
+    onPick(r);
+    setQuery('');
+    setResults([]);
+  };
+  const keys = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown' && results.length > 0) { e.preventDefault(); setActive((a) => Math.min(results.length - 1, a + 1)); }
+    else if (e.key === 'ArrowUp' && results.length > 0) { e.preventDefault(); setActive((a) => Math.max(0, a - 1)); }
+    else if (e.key === 'Enter' && results[active]) { e.preventDefault(); pick(results[active]); }
+    else if (e.key === 'Escape') { setResults([]); }
   };
 
   return (
-    <div className="trade-side">
-      <h3>{title}</h3>
+    <>
       <input
         className="trade-search"
         placeholder="Search a player…"
+        aria-label={label}
         value={query}
         onChange={(e) => search(e.target.value)}
+        onKeyDown={keys}
       />
       {results.length > 0 && (
-        <div className="trade-results">
-          {results.map((r) => (
+        <div className="trade-results" role="listbox" aria-label={label}>
+          {results.map((r, i) => (
             <button
+              type="button"
               key={r.player_id}
-              onClick={() => {
-                if (!players.some((p) => p.player_id === r.player_id)) setPlayers([...players, r]);
-                setQuery('');
-                setResults([]);
-              }}
+              role="option"
+              aria-selected={i === active}
+              className={i === active ? 'active' : undefined}
+              onClick={() => pick(r)}
             >
-              {r.name} · {r.positionName} · {r.age} · {r.team}
+              {r.name} · {r.positionName} · {r.age ?? '?'} · {r.team ?? ''}
             </button>
           ))}
         </div>
       )}
-      {players.map((p) => (
-        <div key={p.player_id} className="trade-chip">
-          <PlayerLink id={p.player_id}>{p.name}</PlayerLink>
-          <span className="muted"> {p.positionName} · {p.age}</span>
-          <button className="chip-x" onClick={() => setPlayers(players.filter((x) => x.player_id !== p.player_id))}>
-            ✕
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function SummaryCard({ label, value, tone }: { label: string; value: string; tone?: 'good' | 'bad' }) {
-  return (
-    <div className="card">
-      <span className="card-label">{label}</span>
-      <span className={`card-value ${tone ?? ''}`}>{value}</span>
-    </div>
+    </>
   );
 }
 
 /**
  * The model writes markdown. Only the bold and heading markers ever show up
- * here, and "## Verdict: Accept" was being printed with its hashes on the page.
+ * here, and "## Read" was being printed with its hashes on the page.
  */
-function renderVerdict(text: string) {
+function renderAnswer(text: string) {
   return text
     .split('\n')
     .filter((l) => l.trim())
