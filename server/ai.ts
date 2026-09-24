@@ -9,16 +9,15 @@ import {
   activeProvider, featureModel, featureProvider, providerCredential,
 } from './settings.js';
 import { PROVIDERS, describeError, providerFor, toolLoop, type FallbackNotice } from './providers.js';
-import { TOOLS, runTool } from './chat.js';
+import { TOOLS, VALUE_FIGURES_NOTE, runTool } from './chat.js';
 import { computeProspects } from './org.js';
 import { farmBriefing } from './farmOperations.js';
 import { computeContracts } from './contracts.js';
 import { tradeContext } from './trade.js';
 import { tradingBlock } from './tradingblock.js';
 import { tradeVoice, type Persona } from './staff.js';
-import {
-  VALUE_PERCENTILE_NOTE, calendarBriefing, currentGameDate, rulesBriefing, seasonYear, teamFinances,
-} from './valuation.js';
+import { freshnessCue } from './dataStatus.js';
+import { calendarBriefing, currentGameDate, rulesBriefing, seasonYear, teamFinances } from './valuation.js';
 
 export const aiRoutes = Router();
 
@@ -73,7 +72,7 @@ async function callOpusThread(
 
 const briefingPath = (orgId: number) => path.join(DATA_DIR, `briefing-${orgId}.json`);
 
-function briefingContext(orgId: number) {
+export function briefingContext(orgId: number) {
   const team = db
     .prepare(
       `SELECT name, nickname, league_id, sub_league_id, division_id FROM teams WHERE team_id = ?`
@@ -94,6 +93,7 @@ function briefingContext(orgId: number) {
     contracts = (c.players as unknown[]).slice(0, 15);
   } catch { /* no contract data */ }
   const injuries = orgInjuries(orgId);
+  const cue = freshnessCue();
   return {
     organization: `${team.name} ${team.nickname}`,
     gameDate: currentGameDate(team.league_id as number),
@@ -117,7 +117,39 @@ function briefingContext(orgId: number) {
     leagueRules: rulesBriefing(team.league_id as number, orgId),
     // The briefing is about what needs deciding, and most of that is timing
     keyDates: calendarBriefing(team.league_id as number),
+    /** How current the data is (A-20): the export's game date, and a warning where it is behind the save or unchecked. */
+    dataFreshness: { asOf: cue.asOf, warning: cue.line },
   };
+}
+
+/** The briefing's system prompt: who is writing, the league's rules, and how to read the data (no verdict of the app's). */
+export function briefingSystem(organization: string, leagueRules: string): string {
+  return (
+    `You are the assistant GM of the ${organization} in a saved game of Out of the Park ` +
+    `Baseball, writing the weekly briefing for the GM. Everything below is from that save — the ` +
+    `standings, statistics and contracts are outcomes the simulation generated, and the names come ` +
+    `from the game's database. LEAGUE RULES: ${leagueRules} Everything you advise must fit ` +
+    `these rules rather than the modern game. Be direct and decision-oriented: what happened, what ` +
+    `needs a decision now, what to watch. Ground everything in the provided data with real numbers. ` +
+    `STRICT DATA RULES: Never infer a player's position, role, handedness, injury, contract demand, ` +
+    `salary demand, or roster status from his name or from outside baseball knowledge. Use only fields ` +
+    `explicitly present in the supplied data. If a fact is absent, omit it rather than guess. ` +
+    `FARM: 'farm.attention' is what Minor League Operations says needs a decision (a prospect who cannot ` +
+    `get the work, an affiliate that cannot field a team, a roster spot in question); 'farm.promotionDirection' ` +
+    `lists players for whom Player Development finds a promotion ONE AFFILIATE LEVEL developmentally defensible — ` +
+    `never a call-up. 'mlb_ready_discussion' is a discussion, not a call-up. Only a player currently at AAA may be ` +
+    `described as an MLB call-up candidate, and do not say a minor-league promotion fills an MLB bench or bullpen ` +
+    `need. Do not rank prospects or invent a top-prospect list. CONTRACTS: 'contractSituations' describe each contract ` +
+    `(salary, term, what happens after this season, next season's cost, expected wins, contract value and value of keeping ` +
+    `him as ranges with a most-likely figure); they carry no recommendation, so never present one as the app's advice, ` +
+    `and say 'not known' where a figure is null. Do not invent extension years or dollar figures. ` +
+    `Only MLB-level injuries directly create major-league roster holes; affiliate injuries affect organizational ` +
+    `depth. Respect the game date: before Opening Day, 0-0 standings are not a development and expiring-after-season ` +
+    `contracts generally are not immediate weekly decisions. 'dataFreshness' says how current the data is: where it ` +
+    `carries a warning, say so once. Do not escape markdown punctuation with backslashes. ` +
+    `Structure with short markdown headers (## Status, ## Decisions Needed, ## Watch List, ` +
+    `## Recommendation of the Week). Keep it under 500 words. ${VALUE_FIGURES_NOTE}`
+  );
 }
 
 aiRoutes.get('/briefing/:orgId', (req, res) => {
@@ -137,29 +169,7 @@ async function generateBriefing(orgId: number): Promise<void> {
   // only in a log nobody opens
   let notice: FallbackNotice | null = null;
   const markdown = await callOpus(
-    `You are the assistant GM of the ${context.organization} in a saved game of Out of the Park ` +
-    `Baseball, writing the weekly briefing for the GM. Everything below is from that save — the ` +
-    `standings, statistics and contracts are outcomes the simulation generated, and the names come ` +
-    `from the game's database. LEAGUE RULES: ${context.leagueRules} Everything you advise must fit ` +
-    `these rules rather than the modern game. Be direct and decision-oriented: what happened, what ` +
-    `needs a decision now, what to watch. Ground everything in the provided data with real numbers. ` +
-    `STRICT DATA RULES: Never infer a player's position, role, handedness, injury, contract demand, ` +
-    `salary demand, or roster status from his name or from outside baseball knowledge. Use only fields ` +
-    `explicitly present in the supplied data. If a fact is absent, omit it rather than guess. ` +
-    `FARM: 'farm.attention' is what Minor League Operations says needs a decision (a prospect who cannot ` +
-    `get the work, an affiliate that cannot field a team, a roster spot in question); 'farm.promotionDirection' ` +
-    `lists players for whom Player Development finds a promotion ONE AFFILIATE LEVEL developmentally defensible — ` +
-    `never a call-up. 'mlb_ready_discussion' is a discussion, not a call-up. Only a player currently at AAA may be ` +
-    `described as an MLB call-up candidate, and do not say a minor-league promotion fills an MLB bench or bullpen ` +
-    `need. Do not rank prospects or invent a top-prospect list. CONTRACTS: 'contractSituations' describe each contract ` +
-    `(salary, term, what happens after this season, next season's cost, expected wins, contract value and value of keeping ` +
-    `him as ranges with a most-likely figure); they carry no recommendation, so never present one as the app's advice, ` +
-    `and say 'not known' where a figure is null. Do not invent extension years or dollar figures. ` +
-    `Only MLB-level injuries directly create major-league roster holes; affiliate injuries affect organizational ` +
-    `depth. Respect the game date: before Opening Day, 0-0 standings are not a development and expiring-after-season ` +
-    `contracts generally are not immediate weekly decisions. Do not escape markdown punctuation with backslashes. ` +
-    `Structure with short markdown headers (## Status, ## Decisions Needed, ## Watch List, ` +
-    `## Recommendation of the Week). Keep it under 500 words. ${VALUE_PERCENTILE_NOTE}`,
+    briefingSystem(context.organization, context.leagueRules),
     `Today is ${context.gameDate}, ${context.seasonYear} season. Organizational data:\n\n` +
       JSON.stringify(context, null, 1),
     16000,
@@ -272,6 +282,7 @@ export function tradeSystem(voice: Persona, orgLabel: string | undefined, league
     `paying for.\n` +
       `- "salaryThisSeason" is the salary each side carries this season, with the men whose salary the export does ` +
     `not state named.\n` +
+    `- "dataFreshness" says how current the data is: where it carries a warning, say so once.\n` +
     `- A read that only restates "value" is not worth writing: say what the figures mean for this club's roster.\n\n` +
     `Never invent a number that is not in the data you are given. The decision is the GM's: you explain the deal, the ` +
     `figures and the roster; you do not accept or reject it for him.`

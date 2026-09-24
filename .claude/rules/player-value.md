@@ -22,6 +22,13 @@ paths:
   - "tests/trade*.ts"
   - "tests/playerValue*.ts"
   - "tests/payrollControl.test.ts"
+  - "server/positionNeeds.ts"
+  - "src/pages/FreeAgents.tsx"
+  - "src/freeAgentsApi.ts"
+  - "src/FreshnessCue.tsx"
+  - "tests/freeAgents.test.ts"
+  - "tests/aiValueContext.test.ts"
+  - "tests/pageFreshness.test.ts"
 ---
 
 # Player Value: working reminder
@@ -185,6 +192,15 @@ worktree.
   philosophy and for every viewer; the club's value of a win and salary are context. Fits and the trading block order by
   expected wins, shown; the AI desk quotes the decomposition, produces no value number of its own and gives no
   accept-or-reject line. `trade.ts` and `tradingblock.ts` read no `players_value`, rating or percentile.
+- Free Agents (phase 6c; PLAYER_VALUE.md Part 8): a player no club holds has no contract value (`not_held`); his figure is one
+  season of production at the market, `marketValueOf` (the minimum plus his wins × the price in force, edge against edge, the
+  surplus's own arithmetic, undiscounted), next season, never an asking price and never computed by a consumer (no consumer
+  multiplies wins by a price). Everyone reaching the market is listed (no value cut), ordered by expected wins next season,
+  unknown last; scouted tools through `scoutedEvidence.ts`; no percentile and no signing verdict on the page or in its payload.
+  The club's thinnest positions are `positionNeeds.ts` (best player's expected wins, shown; nobody valued named apart), not
+  `players_value`. The AI prompts carry no percentile note; they are told to quote Pennant's ranges and produce no value of
+  their own. Payroll, Free Agents and the Trade Center pass the export's freshness as `currentState` and show it
+  (`src/FreshnessCue.tsx`).
 - Never ask the owner for an OOTP experiment; an unresolved rule stays `indeterminate` and is documented.
 
 Checks: `tests/playerValueBoundary.test.ts`, `tests/playerValueControl.test.ts`, `tests/playerValueCost.test.ts`,
@@ -193,5 +209,5 @@ Checks: `tests/playerValueBoundary.test.ts`, `tests/playerValueControl.test.ts`,
 `tests/playerValueSurplus.test.ts`, `tests/playerValueInvariants.test.ts`, `tests/valueSection.test.ts`,
 `tests/playerValueLens.test.ts`, `tests/playerValueWinValue.test.ts`, `tests/playoffs.test.ts`, `tests/contractsPage.test.ts`,
 `tests/playerCardHeader.test.ts`, `tests/playerValueTrade.test.ts`, `tests/tradeAnalysis.test.ts`, `tests/tradeCenter.test.ts`,
-`tests/tradingBlock.test.ts`;
+`tests/tradingBlock.test.ts`, `tests/freeAgents.test.ts`, `tests/aiValueContext.test.ts`, `tests/pageFreshness.test.ts`;
 `npm run value:report` and `npx tsx scripts/calibrate.ts production` against a real import (read-only with `OOTP_FO_DB_READONLY=1`).

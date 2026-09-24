@@ -132,8 +132,9 @@ describe('the evidence boundary', () => {
   it('confines the players_value readers to the consumers not yet migrated onto Player Value, and the list only shrinks', () => {
     // valuation.ts's readers (valuesByPlayer, mlbPercentiler) hand players_value to their callers under other names.
     // Player Value phase 6 (PLAYER_VALUE.md Part 8) removes one consumer per change: 6a removed the player card
-    // (player.ts) and Contracts (contracts.ts); 6b removed the Trade Center (trade.ts, tradingblock.ts). A module missing from this set is fine; a module added to it is not.
-    const allowed = new Set(['valuation.ts', 'api.ts', 'freeagents.ts', 'lineup.ts']);
+    // (player.ts) and Contracts (contracts.ts); 6b removed the Trade Center (trade.ts, tradingblock.ts); 6c removed Free Agents
+    // (freeagents.ts). A module missing from this set is fine; a module added to it is not.
+    const allowed = new Set(['valuation.ts', 'api.ts', 'lineup.ts']);
     const readers = fs
       .readdirSync(SERVER)
       .filter((f) => f.endsWith('.ts'))
@@ -143,6 +144,19 @@ describe('the evidence boundary', () => {
     expect(readers).not.toContain('contracts.ts');
     expect(readers).not.toContain('trade.ts');
     expect(readers).not.toContain('tradingblock.ts');
+    expect(readers).not.toContain('freeagents.ts');
+  });
+
+  it.each(['freeagents.ts', 'rosterops.ts', 'positionNeeds.ts', 'ai.ts', 'chat.ts'])('%s, migrated to Player Value (phase 6c), reads no value field, percentile or OOTP rating', (file) => {
+    const source = code(file);
+    for (const pattern of [...PROHIBITED, /\bmlbPercentiler\b/, /\bVALUE_PERCENTILE_NOTE\b/, /\boverallPct\b/, /\btalentPct\b/, /\bvaluePct\b/]) {
+      expect(source, `${file} matches ${pattern}`).not.toMatch(pattern);
+    }
+  });
+
+  it('the club\'s thinnest positions are read on Player Value, not on players_value (phase 6c): valuation.ts no longer ranks them', () => {
+    expect(code('valuation.ts')).not.toMatch(/\brosterHoles\b/);
+    expect(code('valuation.ts')).not.toMatch(/\bVALUE_PERCENTILE_NOTE\b/);
   });
 
   it('requires evidence, not bare numbers, at the development entry points', () => {

@@ -3,6 +3,7 @@ import { db, tableColumns, tableExists } from './db.js';
 import { loadSettings } from './settings.js';
 import { leagueRulesForLeague } from './leagueRules.js';
 import { controlAfterThisSeason, seasonCost, type SeasonCost } from './contracts.js';
+import { freshnessCue, getDataStatus, type DataStatus } from './dataStatus.js';
 import {
   clubFinances, combineProjectedCosts, contractSeasonFor, payrollValuations, serviceReading, type ContractFacts, type PlayerValuation,
 } from './playerValue.js';
@@ -58,24 +59,32 @@ function seasonMoney(contract: ContractFacts, thisSeason: number, year: number):
   return { salary, unstated: salary === null, option: null };
 }
 
-payrollRoutes.get('/payroll/:orgId', (req, res) => {
-  const orgId = Number(req.params.orgId);
-  if (!tableExists('players_contract') || !tableExists('teams')) return res.status(400).json({ error: 'No data imported yet' });
+/** A request the export cannot answer: said with the status the route sends. */
+const refusal = (status: number, message: string) => Object.assign(new Error(message), { status });
+
+/**
+ * The Payroll page. `status` is how current the export is (D-022): handed to Player Value as `currentState`, so a stale
+ * export leaves service, control and the projected costs that rest on them not established (D-023), and said on the page
+ * with the game date (A-20, Player Value phase 6c), as Contracts says it.
+ */
+export function computePayroll(orgId: number, status: DataStatus = getDataStatus()) {
+  if (!tableExists('players_contract') || !tableExists('teams')) throw refusal(400, 'No data imported yet');
   const teamColumns = new Set(tableColumns('teams'));
   if (!teamColumns.has('team_id') || !teamColumns.has('league_id')) {
-    return res.status(400).json({ error: 'The export\'s teams table has no league_id column, so the club\'s league cannot be read.' });
+    throw refusal(400, 'The export\'s teams table has no league_id column, so the club\'s league cannot be read.');
   }
 
   const org = db.prepare(`SELECT league_id FROM teams WHERE team_id = ?`).get(orgId) as
     | { league_id: number }
     | undefined;
-  if (!org) return res.status(404).json({ error: 'Unknown team' });
+  if (!org) throw refusal(404, 'Unknown team');
   // The season is the league's own, as exported; never the wall-clock year (D-022)
   const rules = leagueRulesForLeague(org.league_id).contract;
   const thisSeason = rules.season.value;
   if (thisSeason === null) {
-    return res.status(400).json({ error: `The league's current season is not in the export: ${rules.season.note ?? 'no source states it'}` });
+    throw refusal(400, `The league's current season is not in the export: ${rules.season.note ?? 'no source states it'}`);
   }
+  const cue = freshnessCue(status);
 
   // The finance header is Club Finances' (D-052 phase 2): each figure with its source, a missing
   // one unknown rather than $0, the same answer /api/club-finances gives
@@ -91,7 +100,8 @@ payrollRoutes.get('/payroll/:orgId', (req, res) => {
    * player moves; the contract's `retained` decides, and where the export does not populate it that is
    * not established, never $0 and never "nothing owed".
    */
-  const valuations = payrollValuations(orgId);
+  const valuations = payrollValuations(orgId, { currentState: cue.state });
+  const limitations = [...new Set([...valuations.values()].map((v) => v.control.eligibility?.limitation).filter((x): x is string => !!x))];
   const years = Array.from({ length: HORIZON }, (_, i) => thisSeason + i);
   const major = [...valuations.values()].filter((v) => v.contract.kind.value === 'major_league' && v.contract.term !== null);
   const held = (v: PlayerValuation) => v.control.holder.value === orgId;
@@ -279,8 +289,10 @@ payrollRoutes.get('/payroll/:orgId', (req, res) => {
           + `The export names this club as carrying ${elsewhere.length} contract${elsewhere.length === 1 ? '' : 's'} of players now elsewhere; that is the club of record, not proof it pays.`,
       };
 
-  res.json({
+  return {
     seasonYear: thisSeason,
+    /** How current the export is (A-20): the game date, and a warning where it is behind the save or unchecked. */
+    freshness: { ...cue, limitations },
     years,
     finances,
     deadMoney,
@@ -305,5 +317,14 @@ payrollRoutes.get('/payroll/:orgId', (req, res) => {
     stillControlled: brief(stillControlled),
     controlIndeterminate: brief(controlIndeterminate),
     players,
-  });
+  };
+}
+
+payrollRoutes.get('/payroll/:orgId', (req, res) => {
+  try {
+    res.json(computePayroll(Number(req.params.orgId)));
+  } catch (err) {
+    const e = err as Error & { status?: number };
+    res.status(e.status ?? 500).json({ error: e.message });
+  }
 });

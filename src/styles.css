@@ -5431,3 +5431,20 @@ th.sortable button:focus-visible .tip-pop { display: block; }
   .contracts-detail { padding-left: 0; }
   .contracts-path { min-width: 0; }
 }
+
+/* ── Free Agents, and how current the data is on Payroll and the Trade Center (Player Value phase 6c) ── */
+
+.payroll-asof { display: flex; justify-content: flex-end; margin: 0 0 6px; }
+.trade-diff-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; }
+.trade-diff-head .contracts-asof { margin-left: auto; }
+.fa-tag {
+  margin-left: 6px; padding: 0 5px; border: 1px solid var(--accent); border-radius: 4px;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent);
+}
+.fa-tag .tip-pop { text-transform: none; letter-spacing: normal; font-size: 12px; white-space: normal; }
+.fa-needs strong { color: var(--text); font-weight: 600; }
+.fa-check { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.fa-table td.name { min-width: 11rem; }
+/* A figure's explanation opens toward the table, not past its right edge */
+.fa-table td.num .tip-pop { left: auto; right: 0; }
+.fa-unsettled, .fa-order { margin-top: 6px; }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { apiGet, apiPut, type ClubWinValue, type SeasonCostData } from '../api';
+import { apiGet, apiPut, type ClubWinValue, type FreshnessCue, type SeasonCostData } from '../api';
+import { FreshnessCueLine } from '../FreshnessCue';
 import { ClubWinValueLine } from '../ValueSection';
 import { COST_BAND_WORDS, costBandText, costMoney } from '../costBand';
 import { PlayerLink, Tip } from '../playerModal';
@@ -130,6 +131,8 @@ interface CostLadderData {
 }
 interface PayrollData {
   seasonYear: number;
+  /** How current the export is (A-20, Player Value phase 6c): the game date and a warning where it is behind or unchecked. */
+  freshness?: FreshnessCue;
   years: number[];
   /** Money owed to players who left: `not_established` where the export does not populate retained salary (A-14). */
   deadMoney: {
@@ -406,6 +409,11 @@ export function Payroll({ orgId }: { orgId: number }) {
 
   return (
     <div>
+      {data.freshness && (
+        <div className="payroll-asof">
+          <FreshnessCueLine freshness={data.freshness} />
+        </div>
+      )}
       {f && (
         <div className="finance-grid">
           <div className="finance-card" title={sourceOf(f.budget)}>

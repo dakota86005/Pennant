@@ -6,7 +6,9 @@ import {
   type ClubWinValue, type LensPhilosophy, type PlayerValuation, type TradeControlSummary, type TradeDifference, type TradeEntryInput,
   type TradePlayerValue, type TradeProduction, type TradeUnit, type TradeValue,
 } from './playerValue.js';
+import { freshnessCue, getDataStatus, type DataStatus, type FreshnessCue } from './dataStatus.js';
 import { resolvePhilosophy } from './philosophy.js';
+import { POSITION_NAMES, clubDepth, positionNeeds, weakestOf } from './positionNeeds.js';
 import { philosophyForOrg } from './settings.js';
 import { viewingOrganization } from './ourViewRoutes.js';
 import { padDate } from './rosterops.js';
@@ -27,10 +29,6 @@ import { blockedIds } from './tradingblock.js';
  */
 export const tradeRoutes = Router();
 
-const POSITION_NAMES: Record<number, string> = {
-  1: 'P', 2: 'C', 3: '1B', 4: '2B', 5: '3B', 6: 'SS', 7: 'LF', 8: 'CF', 9: 'RF', 10: 'DH',
-};
-const FIELD_SPOTS = [2, 3, 4, 5, 6, 7, 8, 9];
 const teamLabel = `CASE WHEN t.name = t.nickname THEN t.name ELSE t.name || ' ' || t.nickname END`;
 
 // ── who the players are ─────────────────────────────────────────────────────
@@ -135,6 +133,8 @@ export interface TradeAnalysis {
   salary: { sent: SalarySide; received: SalarySide };
   /** Context from the standings, never part of any figure: the viewing club first, then the other clubs in the deal. */
   winValues: ClubWinValue[];
+  /** How current the export is (A-20): handed to Player Value as `currentState`, and said on the page. */
+  freshness: FreshnessCue & { limitations: string[] };
 }
 
 interface SalarySide {
@@ -162,11 +162,13 @@ function clubName(teamId: number): string | null {
  * A deal read on Player Value: both sides and the difference between them, neutral, with our view beside it where the
  * viewer's philosophy is given. The neutral figures never depend on who looks (a contender and a seller read the same).
  */
-export function analyzeTrade(sentIds: number[], receivedIds: number[], viewer: TradeViewer): TradeAnalysis {
+export function analyzeTrade(sentIds: number[], receivedIds: number[], viewer: TradeViewer, status: DataStatus = getDataStatus()): TradeAnalysis {
   const sent = [...new Set(sentIds.map(Number).filter(Number.isInteger))];
   const received = [...new Set(receivedIds.map(Number).filter(Number.isInteger))].filter((id) => !sent.includes(id));
   const ids = [...sent, ...received];
-  const values = playerValues(ids);
+  // As current as the export is (A-20): a stale export leaves service, control and what rests on them not established
+  const cue = freshnessCue(status);
+  const values = playerValues(ids, { currentState: cue.state });
   const facts = playerFacts(ids);
   const listed = blockedIds();
 
@@ -196,7 +198,13 @@ export function analyzeTrade(sentIds: number[], receivedIds: number[], viewer: T
     value,
     salary: { sent: salaryOf(sentRows), received: salaryOf(receivedRows) },
     winValues,
+    freshness: { ...cue, limitations: limitationsOf(values) },
   };
+}
+
+/** Player Rights' limitations on the players read (the unverified export's, where it could not be checked), once each. */
+function limitationsOf(values: Map<number, PlayerValuation>): string[] {
+  return [...new Set([...values.values()].map((v) => v.control.eligibility?.limitation).filter((x): x is string => !!x))];
 }
 
 /** The viewer for a request: the organization it names (else the configured one, else the managed club) and its philosophy. */
@@ -219,46 +227,7 @@ tradeRoutes.post('/trade/analyze', (req, res) => {
 
 type FactsWithTeam = PlayerFacts & { teamId: number };
 
-interface PositionDepth {
-  position: number;
-  positionName: string;
-  /** Known expected wins, most first (the shown figure); players whose production is unknown are counted apart. */
-  players: Array<{ player_id: number; name: string; wins: number }>;
-  unknown: number;
-}
-
-/** The part of this season still to be played (or the whole of it), most likely. */
-const winsNow = (v: PlayerValuation | undefined): number | null => {
-  const p = v ? productionHeadlineOf(v.production) : null;
-  return p?.now ? p.now.wins.central : null;
-};
-
-/** One major-league club's position players by position, each with his expected wins this season as Player Value serves them. */
-function clubDepth(teamId: number, values: Map<number, PlayerValuation>, facts: Map<number, FactsWithTeam>): PositionDepth[] {
-  const mine = [...facts.values()].filter((f) => f.teamId === teamId);
-  return FIELD_SPOTS.map((pos) => {
-    const here = mine.filter((f) => f.position === pos);
-    const known = here
-      .map((f) => ({ player_id: f.player_id, name: f.name, wins: winsNow(values.get(f.player_id)) }))
-      .filter((p): p is { player_id: number; name: string; wins: number } => p.wins !== null)
-      .sort((a, b) => b.wins - a.wins || a.name.localeCompare(b.name));
-    return { position: pos, positionName: POSITION_NAMES[pos], players: known, unknown: here.length - known.length };
-  });
-}
-
-/** The three positions whose best player is expected to add the fewest wins; a position with nobody valued is named apart. */
-function weakestOf(depth: PositionDepth[]) {
-  const known = depth.filter((d) => d.players.length > 0);
-  return {
-    weakest: [...known]
-      .sort((a, b) => a.players[0].wins - b.players[0].wins || a.position - b.position)
-      .slice(0, 3)
-      .map((d) => ({ position: d.position, positionName: d.positionName, best: d.players[0] })),
-    notEstablished: depth.filter((d) => d.players.length === 0).map((d) => d.positionName),
-  };
-}
-
-function majorLeagueDepth(): { clubs: Array<{ teamId: number; label: string }>; values: Map<number, PlayerValuation>; facts: Map<number, FactsWithTeam> } {
+function majorLeagueDepth(currentState?: FreshnessCue['state']): { clubs: Array<{ teamId: number; label: string }>; values: Map<number, PlayerValuation>; facts: Map<number, FactsWithTeam> } {
   const clubs = (db
     .prepare(`SELECT t.team_id, ${teamLabel} AS label FROM teams t WHERE t.level = 1 AND t.allstar_team = 0`)
     .all() as Array<{ team_id: number; label: string }>).map((c) => ({ teamId: c.team_id, label: c.label }));
@@ -275,7 +244,7 @@ function majorLeagueDepth(): { clubs: Array<{ teamId: number; label: string }>; 
     const f = base.get(r.player_id);
     if (f) facts.set(r.player_id, { ...f, teamId: r.team_id });
   }
-  return { clubs, values: playerValues(ids), facts };
+  return { clubs, values: playerValues(ids, { currentState }), facts };
 }
 
 /**
@@ -287,16 +256,17 @@ function majorLeagueDepth(): { clubs: Array<{ teamId: number; label: string }>; 
 tradeRoutes.get('/trade/fits/:orgId', (req, res) => {
   const orgId = Number(req.params.orgId);
   if (!tableExists('players') || !tableExists('teams')) return res.status(400).json({ error: 'No data imported yet' });
-  const { clubs, values, facts } = majorLeagueDepth();
+  const cue = freshnessCue(getDataStatus());
+  const { clubs, values, facts } = majorLeagueDepth(cue.state);
   const me = clubs.find((c) => c.teamId === orgId);
   if (!me) return res.status(404).json({ error: 'Unknown org' });
-  const myDepth = clubDepth(orgId, values, facts);
+  const myDepth = clubDepth(orgId, values, facts.values());
   const mine = weakestOf(myDepth);
 
   const fits = clubs
     .filter((c) => c.teamId !== orgId)
     .map((club) => {
-      const theirDepth = clubDepth(club.teamId, values, facts);
+      const theirDepth = clubDepth(club.teamId, values, facts.values());
       const theirs = weakestOf(theirDepth);
       const theyNeed = theirs.weakest
         .map((w) => ({
@@ -321,6 +291,7 @@ tradeRoutes.get('/trade/fits/:orgId', (req, res) => {
     myWeakest: mine.weakest,
     notEstablished: mine.notEstablished,
     fits: fits.slice(0, 10),
+    freshness: cue,
     basis:
       "Expected wins this season (the part still to be played, most likely), from Player Value's production. A match is a player " +
       "who isn't his club's starter at a position yet is expected to add more wins than the other club's best there. Players whose " +
@@ -712,6 +683,7 @@ export function tradeContext(orgId: number, giveIds: number[], getIds: number[])
 
   const viewer = viewerFor(orgId || undefined);
   const analysis = analyzeTrade(giveIds, getIds, { orgId: orgId || viewer.orgId, philosophy: viewer.philosophy });
+  const cue = analysis.freshness;
   const readingOf = (id: number) => ({
     row: [...analysis.sent, ...analysis.received].find((r) => r.playerId === id)!,
     value: [...analysis.value.sent.players, ...analysis.value.received.players].find((p) => p.playerId === id) ?? null,
@@ -762,10 +734,8 @@ export function tradeContext(orgId: number, giveIds: number[], getIds: number[])
     }
   }
 
-  const needs = tableExists('teams') ? (() => {
-    const { values, facts } = majorLeagueDepth();
-    return weakestOf(clubDepth(orgId, values, facts));
-  })() : null;
+  // The club's thinnest positions, one reading with Free Agents' and the draft board's (positionNeeds.ts)
+  const needs = tableExists('teams') ? positionNeeds(orgId, { currentState: cue.state }) : null;
 
   /*
    * Whether the men in this deal are actually on the market.
@@ -804,6 +774,10 @@ export function tradeContext(orgId: number, giveIds: number[], getIds: number[])
     whoTheyWouldDisplace: incumbents,
     /** Named here are the men their own clubs have listed for trade. */
     onTheBlock,
-    clubNeeds: needs ? { weakestPositions: needs.weakest, positionsNotEstablished: needs.notEstablished } : null,
+    clubNeeds: needs
+      ? { weakestPositions: needs.positions.filter((p) => p.best !== null).slice(0, 3), positionsNotEstablished: needs.notEstablished }
+      : null,
+    /** How current the data is: the export's game date, and a warning where it is behind the save or could not be checked. */
+    dataFreshness: { asOf: cue.asOf, warning: cue.line },
   };
 }

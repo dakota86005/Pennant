@@ -1,4 +1,4 @@
-import type { ClubWinValue } from './api';
+import type { ClubWinValue, FreshnessCue } from './api';
 
 /**
  * The Trade Center's served shapes (Player Value phase 6b; `server/trade.ts`, `server/playerValueTrade.ts`). The page
@@ -131,6 +131,8 @@ export interface TradeAnalysis {
   value: TradeValue;
   salary: { sent: TradeSalarySide; received: TradeSalarySide };
   winValues: ClubWinValue[];
+  /** How current the export is (A-20, Player Value phase 6c); absent from an older payload. */
+  freshness?: FreshnessCue;
 }
 
 /** A player picked for a side before the analysis answers: enough to show his row while it loads. */
