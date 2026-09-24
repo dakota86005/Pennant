@@ -67,8 +67,11 @@ export interface RosterPlayer {
   ratings: Record<string, number>;
   /** Season fielding, summed across positions. Null when he has not fielded. */
   fielding: Record<string, number | null> | null;
-  oaRating: number | null;
-  potRating: number | null;
+  /**
+   * His scouted tools averaged now and at their ceiling, 20-80 (Player Value phase 6d): the organization's own view,
+   * through the evidence boundary, the card header's "Scouted" figure; a grade that is missing leaves it null.
+   */
+  scouted: ScoutedFigure | null;
   batting: Record<string, number | null> | null;
   pitching: Record<string, number | null> | null;
   /** Batted-ball quality. Null for pitchers and anyone yet to put one in play. */
@@ -838,12 +841,18 @@ export interface LineupSlot {
   player_id: number;
   name: string;
   positionName: string;
-  /** OOTP's 20-80 fielding rating at the position he is assigned. */
+  /** The scouts' 20-80 grade at the position he is assigned. */
   defRating?: number | null;
   bats: string;
   /** Playable but carrying something, so the card flags him rather than deciding. */
   dayToDay?: boolean;
-  off: number;
+  /**
+   * His bat against this hand (phase 6d): what the scouts' hitting grades say, in wOBA points above the league's major-league
+   * hitters; null where no bat was read (the pitcher batting ninth, a man whose bat is not graded).
+   */
+  off: number | null;
+  /** 'vs_hand': his split grades against this hand; 'overall': his overall grades (no split grades in the export). */
+  batBasis?: 'vs_hand' | 'overall' | null;
   why: string;
   pa: number | null;
   ops: number | null;
@@ -869,7 +878,9 @@ export interface LineupResponse {
     evaluations: number; moved: boolean;
   } | null;
   lineup: LineupSlot[];
-  bench: Array<{ player_id: number; name: string; positionName: string; off: number }>;
+  bench: Array<{ player_id: number; name: string; positionName: string; off: number | null; batBasis?: 'vs_hand' | 'overall' | null }>;
+  /** Hitters whose bat the scouts have not graded: named, never ranked (phase 6d). */
+  notScouted?: Array<{ player_id: number; name: string; positionName: string; reason: string }>;
   /** On the roster but out tonight — named so a missing star reads as injured
    *  rather than as a broken card. */
   unavailable: Array<{
@@ -881,7 +892,62 @@ export interface LineupResponse {
   }>;
 }
 
+
+/** A club's sum of one figure over a group of its players (Org Comparison, Player Value phase 6d; server/franchise.ts). */
+export interface OrgSum {
+  unit: 'wins' | 'dollars';
+  /** 'none': nobody in the group has the figure; never a zero. */
+  status: 'known' | 'none';
+  /** Most likely (or the range of its readings where a season is open) with the range it could be. */
+  figure: { low: number; central: number | null; high: number; centralRange: { low: number; high: number } | null } | null;
+  edges: { low: number; high: number } | null;
+  counted: number;
+  playerIds: number[];
+  /** Players left out because their figure isn't known, each with one short reason. */
+  excluded: Array<{ player_id: number; name: string; reason: string }>;
+  text: string;
+}
+
+export interface OrgMoney {
+  value: number | null;
+  source: string | null;
+  note: string | null;
+}
+
+export interface OrgClub {
+  team_id: number;
+  team: string;
+  abbr: string | null;
+  isViewer: boolean;
+  record: { w: number; l: number } | null;
+  roster: { players: number; wins: OrgSum; contract: OrgSum };
+  farm: {
+    players: number;
+    wins: OrgSum;
+    top: { player_id: number; name: string; age: number | null; positionName: string; team: string | null; wins: { low: number; central: number; high: number } } | null;
+  };
+  payroll: OrgMoney;
+  budget: OrgMoney;
+}
+
+export interface OrgComparisonResponse {
+  season: number;
+  nextSeason: number;
+  gameDate: string | null;
+  freshness: FreshnessCue;
+  viewer: number;
+  /** The middle club on each figure: context, never a rank. */
+  league: {
+    rosterWins: { low: number; high: number } | null;
+    farmWins: { low: number; high: number } | null;
+    contract: { low: number; high: number } | null;
+    payroll: number | null;
+  };
+  clubs: OrgClub[];
+}
+
 export const getContracts = (orgId: number) => json<ContractsResponse>(`/api/contracts/${orgId}`);
+export const getOrgComparison = (orgId: number) => json<OrgComparisonResponse>(`/api/org-comparison/${orgId}`);
 export const getLineup = (
   teamId: number,
   vs: 'r' | 'l',

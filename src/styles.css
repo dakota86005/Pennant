@@ -5448,3 +5448,18 @@ th.sortable button:focus-visible .tip-pop { display: block; }
 /* A figure's explanation opens toward the table, not past its right edge */
 .fa-table td.num .tip-pop { left: auto; right: 0; }
 .fa-unsettled, .fa-order { margin-top: 6px; }
+
+/* ── Org Comparison (Player Value phase 6d) ────────────────── */
+
+/* The viewer's club at a glance: four figures, each with the league's middle club beside it */
+.org-cards .org-card { flex: 1 1 170px; }
+.org-card-line { font-size: 11px; font-variant-numeric: tabular-nums; }
+/* The table keeps its columns readable and scrolls inside its own box (.contracts-table-scroll) below its width */
+.org-compare-table { min-width: 880px; }
+.org-compare-table td { white-space: nowrap; }
+.org-compare-table .org-club { font-weight: 600; }
+.org-compare-table tr.row-us td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.org-compare-table th:last-child .tip-pop, .org-compare-table th:nth-last-child(2) .tip-pop { left: auto; right: 0; }
+@media (max-width: 760px) {
+  .org-cards .org-card { flex-basis: 140px; }
+}

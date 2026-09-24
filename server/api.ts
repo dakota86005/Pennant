@@ -22,8 +22,8 @@ import { clearStatCaches, computeBatting, computePitching, leagueBaseline } from
 import { clearResultsCaches } from './resultsEvidence.js';
 import { clearFarmResultsCaches } from './farmResults.js';
 import { clearFarmUsageCaches } from './farmUsage.js';
-import { clearFieldingPopulationCache } from './scoutedEvidence.js';
-import { ratingScaleMax, clearScaleCache, clearValuationCaches, valuesByPlayer } from './valuation.js';
+import { clearFieldingPopulationCache, loadScoutedAbilities } from './scoutedEvidence.js';
+import { ratingScaleMax, clearScaleCache, clearValuationCaches } from './valuation.js';
 import { clearTwoWayCache } from './twoway.js';
 import { dashboardRoutes } from './dashboard.js';
 import { rosterOpsRoutes } from './rosterops.js';
@@ -522,8 +522,13 @@ api.get('/roster/:teamId', (req, res) => {
     }
   }
 
-  // OOTP's own 20-80 grades, for cross-checking against the game's own screens
-  const playerValues = valuesByPlayer();
+  /*
+   * The one scouting figure on a roster row (Player Value phase 6d, PLAYER_VALUE.md Part 8): the organization's scouted
+   * tools averaged now and at their ceiling, 20-80, through the evidence boundary (D-017), the card header's "Scouted"
+   * figure. OOTP's Overall and Potential (players_value) are not the organization's view and are not read. A tool that
+   * has not been graded leaves the average unknown, never a stand-in (D-018).
+   */
+  const abilities = loadScoutedAbilities(rosterIds);
 
   /*
    * Where each man stands: designated, on waivers, on the injured list, or
@@ -639,8 +644,15 @@ api.get('/roster/:teamId', (req, res) => {
       throwsName: THROWS[p.throws as number] ?? String(p.throws ?? '?'),
       ratings: ratingsByPlayer.get(id) ?? {},
       fielding: fieldingByPlayer.get(id) ?? null,
-      oaRating: playerValues.get(id)?.oaRating ?? null,
-      potRating: playerValues.get(id)?.potRating ?? null,
+      scouted: (() => {
+        const a = abilities.for(id);
+        return {
+          now: a.current,
+          ceiling: a.potential,
+          status: a.status,
+          missing: { now: [...a.missing.current], ceiling: [...a.missing.potential] },
+        };
+      })(),
       batting: battingByPlayer.get(id) ?? null,
       pitching: pitchingByPlayer.get(id) ?? null,
       contact: contactByPlayer.get(id) ?? null,

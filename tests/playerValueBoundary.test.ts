@@ -288,7 +288,9 @@ const PRODUCTION_MODULES = ['playerValueProduction.ts', 'playerValueProductionFi
 /** Consumers migrated to the entry point, phase by phase (Part 8). Phase 1: control. Phase 2: club finances. */
 const MIGRATED_CONSUMERS = ['contracts.ts', 'payroll.ts', 'trade.ts', 'player.ts', 'freeagents.ts', 'clubFinanceRoutes.ts', 'playerValueRoutes.ts',
   // Phase 6b: the trading block reads Player Value's facts
-  'tradingblock.ts'];
+  'tradingblock.ts',
+  // Phase 6d: Org Comparison reads Player Value's figures and the export's facts
+  'franchise.ts'];
 
 /** Who may call the snapshot writer: the import, and the one route that serves the history. */
 const SNAPSHOT_CALLERS = ['api.ts', 'clubFinanceRoutes.ts'];
@@ -319,7 +321,7 @@ const PENDING: Array<{ check: 'service' | 'contract-query'; file: string; matche
  * Phase 6 (Part 8): the consumers migrated onto Player Value, with their `players_value` reads deleted in the same
  * change. None of them names a `players_value` reader or a figure derived from it, in any spelling; the list only grows.
  */
-const PHASE6_MIGRATED = ['contracts.ts', 'player.ts', 'freeagents.ts', 'positionNeeds.ts'];
+const PHASE6_MIGRATED = ['contracts.ts', 'player.ts', 'freeagents.ts', 'positionNeeds.ts', 'franchise.ts'];
 const PLAYERS_VALUE_READERS = /players_value|overall_value|talent_value|\boa_rating\b|\bpot_rating\b|\boaRating\b|\bpotRating\b|valuesByPlayer|mlbPercentiler|VALUE_PERCENTILE_NOTE|overallPct|talentPct|contractsByPlayer/;
 
 /** The matches of a check in a consumer, as text; a pending entry is compared with them exactly. */
@@ -540,7 +542,9 @@ describe('the Player Value boundary', () => {
   });
 
   it('the pages migrated in phase 6 show no players_value figure: the card, its hover and Contracts (Part 8)', () => {
-    for (const file of ['src/playerModal.tsx', 'src/playerHover.tsx', 'src/pages/Contracts.tsx', 'src/PlayerHeaderValue.tsx', 'src/pages/FreeAgents.tsx', 'src/freeAgentsApi.ts']) {
+    for (const file of ['src/playerModal.tsx', 'src/playerHover.tsx', 'src/pages/Contracts.tsx', 'src/PlayerHeaderValue.tsx', 'src/pages/FreeAgents.tsx', 'src/freeAgentsApi.ts',
+      // Phase 6d: the Roster's scouting column, the Lineup and Org Comparison
+      'src/pages/Roster.tsx', 'src/pages/Lineup.tsx', 'src/pages/OrgComparison.tsx']) {
       const source = fs.readFileSync(path.join(process.cwd(), file), 'utf8');
       expect(source, file).not.toMatch(/overallPct|talentPct|oaRating|potRating|TIP_VALUE|TIP_TALENT/);
     }

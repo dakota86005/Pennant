@@ -3,7 +3,6 @@ import { getRoster, getTeams, type RosterPlayer, type RosterResponse, type Team 
 import { PlayerLink, Tip, TIP_OA } from '../playerModal';
 import { AssignmentChip } from '../AssignmentContext';
 import { ColumnPicker } from '../ColumnPicker';
-import { formatRatingPair } from '../ratingScale';
 import {
   DEFAULT_BATTING, DEFAULT_PITCHING, findStat, formatStat, isContactStat, isFieldingStat, loadColumns,
   plusColor, saveColumns, type StatGroup,
@@ -96,7 +95,7 @@ export function RosterPage({ orgId }: { orgId: number }) {
   );
 }
 
-function RosterTable({
+export function RosterTable({
   roster, group, columns,
 }: { roster: RosterResponse; group: StatGroup; columns: string[] }) {
   const [sortKey, setSortKey] = useState<string>('position');
@@ -105,7 +104,7 @@ function RosterTable({
   const isPitching = group === 'pitching';
   const players = useMemo(() => {
     const filtered = roster.players.filter((p) => (p.position === 1) === isPitching);
-    return [...filtered].sort((a, b) => sortDir * compareBy(a, b, sortKey, group));
+    return sortRosterPlayers(filtered, sortKey, sortDir, group);
   }, [roster, isPitching, sortKey, sortDir, group]);
 
   const ratingCols = (isPitching ? PITCHER_RATINGS : BATTER_RATINGS).filter((k) =>
@@ -129,8 +128,12 @@ function RosterTable({
           <th onClick={() => setSort('age')}>Age{arrow('age')}</th>
           <th onClick={() => setSort('position')}>Pos{arrow('position')}</th>
           <Th>B/T</Th>
-          <th onClick={() => setSort('oa')}>
-            <Tip label={`OA→POT${arrow('oa')}`} tip={TIP_OA} />
+          {/* A button, so the column sorts from the keyboard and its explanation opens on focus */}
+          <th className={`sortable${sortKey === 'scouted' ? ' sorted' : ''}`}
+            aria-sort={sortKey === 'scouted' ? (sortDir === 1 ? 'ascending' : 'descending') : 'none'}>
+            <button type="button" onClick={() => setSort('scouted')}>
+              <Tip label={`Scouted${arrow('scouted')}`} tip={TIP_OA} />
+            </button>
           </th>
           {ratingCols.map((k) => (
             <th key={k} onClick={() => setSort(`r:${k}`)} title="Scout rating">
@@ -181,10 +184,8 @@ function RosterTable({
               <td>
                 {p.batsName}/{p.throwsName}
               </td>
-              <td className="num muted">
-                {p.oaRating !== null
-                  ? formatRatingPair(p.oaRating, p.potRating)
-                  : ''}
+              <td className="num">
+                <ScoutedCell s={p.scouted} />
               </td>
               {ratingCols.map((k) => (
                 <td key={k}>
@@ -233,14 +234,47 @@ function RatingCell({ value, max }: { value: number | undefined; max: number }) 
   );
 }
 
+/**
+ * His scouted tools now → ceiling, the card header's "Scouted" words: a part that has not been graded reads "not scouted",
+ * never a stand-in, and both missing is one short "Not scouted".
+ */
+function ScoutedCell({ s }: { s: RosterPlayer['scouted'] }) {
+  if (!s || (s.now === null && s.ceiling === null)) return <span className="muted">Not scouted</span>;
+  const part = (v: number | null) => (v === null ? 'not scouted' : `${v}`);
+  return <span>{part(s.now)} → {part(s.ceiling)}</span>;
+}
+
+/** The scouted figure to sort by: now, then the ceiling to break a tie; null when he is not scouted now. */
+function scoutedOrder(p: RosterPlayer): number | null {
+  const s = p.scouted;
+  if (!s || s.now === null) return null;
+  return s.now * 100 + (s.ceiling ?? 0);
+}
+
+/**
+ * The roster in a column's order. A player who is not scouted sorts after every scouted one whichever way the column is
+ * ordered: his grade is unknown, not low (D-018). Ties keep the roster's order.
+ */
+export function sortRosterPlayers(players: RosterPlayer[], key: string, dir: 1 | -1, group: StatGroup): RosterPlayer[] {
+  if (key === 'scouted') {
+    return players
+      .map((p, i) => ({ p, i, v: scoutedOrder(p) }))
+      .sort((a, b) => {
+        if (a.v === null && b.v === null) return a.i - b.i;
+        if (a.v === null) return 1;
+        if (b.v === null) return -1;
+        return dir * (a.v - b.v) || a.i - b.i;
+      })
+      .map((x) => x.p);
+  }
+  return [...players].sort((a, b) => dir * compareBy(a, b, key, group));
+}
+
 function compareBy(a: RosterPlayer, b: RosterPlayer, key: string, group: StatGroup): number {
   const val = (p: RosterPlayer): string | number => {
     if (key === 'name') return `${p.last_name} ${p.first_name}`;
     if (key === 'age') return p.age ?? 0;
     if (key === 'position') return p.position ?? 99;
-    // Ties on the coarse grade are broken by ceiling, so a 60 with room to grow
-    // sorts above a finished 60
-    if (key === 'oa') return (p.oaRating ?? -1) * 100 + (p.potRating ?? 0);
     if (key.startsWith('r:')) return p.ratings[key.slice(2)] ?? -1;
     if (key.startsWith('s:')) {
       const statKey = key.slice(2);

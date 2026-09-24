@@ -194,6 +194,43 @@ export function combineTradeFigures(entries: Array<{ figure: TradeFigure; sign: 
   return { figure, edges: { low: edgeLow, high: edgeHigh } };
 }
 
+// ── a group of players (phase 6d) ────────────────────────────────────────────
+
+/** One player's expected wins handed to a group's sum, as production served them, or the reason there are none. */
+export interface GroupWinsEntry {
+  playerId: number;
+  wins: WinsBand | null;
+  reason: string | null;
+}
+
+export interface GroupWins {
+  /** 'none': no player in the group has a projection (or the group is empty); never a zero. */
+  status: 'known' | 'none';
+  figure: TradeFigure | null;
+  /** Every player at his low edge, summed, to every player at his high edge. */
+  edges: { low: number; high: number } | null;
+  /** The players summed. */
+  counted: number[];
+  /** The players left out, each with his reason. */
+  excluded: Array<{ playerId: number; reason: string }>;
+}
+
+/**
+ * Phase 6d (Org Comparison, Part 8): a group of players' expected wins in one season, combined the way a trade side is
+ * (`TRADE_COMBINATION_POLICY`, the owner's Payroll rule): around the sum of their most likely wins, each player's own distance
+ * from his combined as independent across players, inside the every-player-at-his-edge sum, which is kept beside it. A player
+ * with no projection is left out with his reason, never counted as zero (D-018). Each band is taken exactly as served.
+ */
+export function groupWinsOf(entries: GroupWinsEntry[]): GroupWins {
+  const counted = entries.filter((e): e is GroupWinsEntry & { wins: WinsBand } => e.wins !== null);
+  const excluded = entries.filter((e) => e.wins === null).map((e) => ({ playerId: e.playerId, reason: e.reason ?? 'Not projected.' }));
+  if (counted.length === 0) return { status: 'none', figure: null, edges: null, counted: [], excluded };
+  const { figure, edges } = combineTradeFigures(counted.map((e) => ({
+    figure: { low: e.wins.low, central: e.wins.central, high: e.wins.high, centralRange: null }, sign: 1 as const,
+  })));
+  return { status: 'known', figure, edges, counted: counted.map((e) => e.playerId), excluded };
+}
+
 // ── one player ───────────────────────────────────────────────────────────────
 
 const figureOfTotal = (t: SurplusTotal): TradeFigure | null =>

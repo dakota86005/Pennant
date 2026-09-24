@@ -1582,6 +1582,19 @@ Trade Center; PLAYER_VALUE.md Part 8, Part 9).**
   freshness to Player Value as `currentState` and shows the game date with the warning where the export is behind the save
   or could not be checked. The assistants' contexts carry the date and the warning too.
 
+**Amended 2026-09-24 (phase 6d: Org Comparison, the Roster's scouting column and the Lineup; PLAYER_VALUE.md Part 8, Part 9).**
+
+- **A comparison of clubs ranks nothing.** Org Comparison shows each organization's Player Value figures as each player
+  is served (the major-league roster's expected wins for the rest of the season and its contract value, the farm's
+  expected wins next season) and objective facts (record, OOTP's payroll and budget); each sum combines its players as
+  independent the way Payroll does and names the players it leaves out. No rank is sent; the page orders clubs only by a
+  column it shows, unknown last. OOTP's overall and talent values and the ranks built on them are deleted.
+- **Not every rating read is a value question** (Part 8, row 6). The Roster's scouting column shows the organization's
+  scouted tools (the card header's "Scouted" figure) and the Lineup reads its bats and gloves through `scoutedEvidence.ts`,
+  under their owners, not through Player Value; OOTP's Overall, Potential and offensive value are read by neither. The
+  lineup's bat is the tools model on the split grades (D-035) in a unit chosen so the solver's glove weight keeps its
+  balance; the solver is unchanged.
+
 ## D-053 — Calibration belongs to the save
 
 **Status:** Accepted 2026-09-22 (owner decision). **Implementation:** Partial. Player Value's expected production

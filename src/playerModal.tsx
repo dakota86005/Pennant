@@ -31,18 +31,20 @@ export function PlayerLink({ id, children }: { id: number; children: ReactNode }
 /** Hoverable explainer — dotted underline with a styled popup (its own module, so the card's sections can use it too). */
 export { Tip };
 
+/**
+ * The Roster's scouting column (Player Value phase 6d). It was OOTP's own Overall and Potential, read from players_value,
+ * which nothing establishes is the organization's view (D-017); it is now the card header's "Scouted" figure.
+ */
 export const TIP_OA =
-  "OOTP's own Overall and Potential, on the 20-80 scouting scale — the same numbers printed on the " +
-  "player's page in the game, so you can cross-check the app against it.\n\n" +
-  'Deliberately coarse: it moves in five-point steps and the whole league fits into twelve grades, ' +
-  'so dozens of players share any given number. Value and Talent beside it are continuous and are ' +
-  'compared against others in the same role, which is why those — not this — drive the rankings and ' +
-  'recommendations elsewhere in the app.\n\n' +
-  'It is on ONE major-league scale at every level: a Triple-A regular grades around 30-40 here, not ' +
-  '50. So a prospect can be hitting well for his level and still show a low Overall. The rate stats ' +
-  'on his card — OPS+, wRC+ — are the opposite, measured against the league he actually played in. ' +
-  'The two are answering different questions, which is worth remembering before reading a minor ' +
-  'leaguer as major-league ready.';
+  "Your scouts' grades for his tools, averaged on the 20–80 scale: what he is now, then his ceiling. For a hitter " +
+  'that is contact, gap power, power, eye and avoiding strikeouts; for a pitcher, stuff, movement and control. It is the ' +
+  "same figure as \"Scouted\" on his card.\n\n" +
+  "It's the organization's own view, not OOTP's Overall or Potential: those weigh the tools by position and aren't " +
+  'something your front office can see. A plain average also leaves out defence, speed and a pitcher\'s stamina, so a ' +
+  'glove-first shortstop or a starter who goes deep reads lower here than his value to the club.\n\n' +
+  'The grades sit on one major-league scale at every level, so a good Triple-A regular reads well below 50 here. Where a ' +
+  'tool has not been graded the average says "not scouted" rather than guessing, and those players sort to the bottom ' +
+  'either way.';
 
 export const TIP_CURPOT =
   'Current → potential scout ratings (20-80 scale), averaged across the main rating categories. 45→60 means an average-ish player today with above-average upside.';
