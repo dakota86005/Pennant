@@ -74,7 +74,12 @@ worktree.
   loosen it to pass); the model served is refit through the last completed season. Since F5 (owner, 2026-09-23) the
   arrival model is scored on the results fit's rolling origins, fitted with its 2-season recency half-life
   (`RATINGS_POLICY.backtest`), its gate errors clustered by player and origin, and adopted only where the next season
-  could be checked; a rating snapshot is read at its own point of the season.
+  could be checked; a rating snapshot is read at its own point of the season. Since F6 (owner's option (b),
+  2026-09-23) the arrival model is adopted horizon by horizon (`RATINGS_POLICY.adoption`): a contiguous run of passing
+  horizons from the rest of this season that must reach the next season; a horizon after one that failed or could not
+  be checked is never served. A prospect's later seasons are `notEstablished`, each with the gate's finding, never
+  extrapolated or carried forward; a multi-season total including one is not a number (`productionTotal`); labels say
+  "calibrated through N seasons out". The results fit keeps its all-horizons rule.
 - Never ask the owner for an OOTP experiment; an unresolved rule stays `indeterminate` and is documented.
 
 Checks: `tests/playerValueBoundary.test.ts`, `tests/playerValueControl.test.ts`, `tests/playerValueCost.test.ts`,

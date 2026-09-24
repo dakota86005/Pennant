@@ -158,6 +158,12 @@ function describeRatings(run: RatingsFitRun, ms: { read: number; fit: number }, 
   for (const x of r.arrival.heldOut) {
     console.log(`  ${String(x.horizon).padStart(7)}  ${String(x.cases).padStart(6)}   ${String(x.origins ?? '—').padStart(7)}   ${pctR(x.predicted).padStart(8)}          ${pctR(x.observed).padStart(8)} (± ${x.chanceSe == null ? '—' : pctR(x.chanceSe)})   ${rel(x.observed, x.predicted).padStart(8)}   ${x.predictedMean === null ? '—' : f(x.predictedMean, 1).padStart(8)}             ${x.observedMean === null ? '—' : f(x.observedMean, 1).padStart(8)} (± ${x.meanSe == null ? '—' : f(x.meanSe, 2)})   ${rel(x.observedMean, x.predictedMean).padStart(8)}`);
   }
+  // Adopted horizon by horizon (hardening F6, the owner's option (b)): each horizon's own check, and whether it is served
+  const adoption = r.arrival.adoption;
+  if (adoption) {
+    console.log(`  adoption (horizon by horizon): ${adoption.through === null ? 'nothing adopted' : `adopted through horizon ${adoption.through}`}`);
+    for (const x of adoption.horizons) console.log(`    h${x.horizon}: check ${x.check}, ${x.adopted ? 'served' : `not established — ${x.reason}`}`);
+  }
   const q = m.arrival?.quality;
   if (q) {
     const located = m.arrival!.cells.filter((c) => c.horizons.some((h) => (h?.population?.length ?? 0) > 0)).length;

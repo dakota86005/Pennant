@@ -103,12 +103,15 @@ export type {
   ArrivalCell, ArrivalModel, DevelopmentModel, RatingsEvidence, RatingsModel, RatingsModelInForce, RatingsProductionInput,
 } from './playerValueRatings.js';
 export type { Observation, RatingsFitInput, RatingsFitRecord, RatingsFitRun } from './playerValueRatingsFit.js';
-export type { ConeBand, ConeControl, ConeControlStatus, ConeCoverage, ConeSeason, ProductionCone } from './playerValueCone.js';
+export type { ConeBand, ConeControl, ConeControlStatus, ConeCoverage, ConeSeason, ConeUnestablished, ProductionCone } from './playerValueCone.js';
 export { productionCone } from './playerValueCone.js';
 export { PRODUCTION_UNIT } from './playerValueProduction.js';
 export { fitProductionModel } from './playerValueProductionFit.js';
 export { ratingsEvidence } from './playerValueRatings.js';
-export { fitRatingsModel } from './playerValueRatingsFit.js';
+export { arrivalAdoption, fitRatingsModel } from './playerValueRatingsFit.js';
+export type { ArrivalAdoption, ArrivalHorizonAdoption } from './playerValueRatingsFit.js';
+export { productionTotal } from './playerValueProduction.js';
+export type { ProductionTotal, UnestablishedSeason } from './playerValueProduction.js';
 export { PRODUCTION_NO_EVIDENCE };
 
 /** A player's value, as far as phase 3 builds it: concerns 1, 2 and 3 (production from major-league results and scouted ratings). */
@@ -636,6 +639,16 @@ const FALLBACK: ProductionModelInForce = {
 
 type StoredRatingsFit = StoredFit<RatingsModel, RatingsFitRecord>;
 
+/** How far the arrival model is adopted (hardening F6): ", adopted through 3 seasons out (4–6 not established)". */
+function arrivalAdoptionWords(r: RatingsFitRecord): string {
+  const a = r.arrival.adoption;
+  if (!a || a.through === null) return '';
+  const later = a.horizons.filter((x) => !x.adopted).map((x) => x.horizon);
+  const out = (h: number) => `${h} season${h === 1 ? '' : 's'} out`;
+  return `, adopted horizon by horizon through ${out(a.through)}` +
+    (later.length > 0 ? ` (${later.length === 1 ? out(later[0]) : `${later[0]}–${later[later.length - 1]} seasons out`} not established: a held-out check at or before each did not pass the gate)` : '');
+}
+
 function savedRatingsStamp(fit: StoredRatingsFit): CalibrationStamp {
   const r = fit.record;
   const cov = r.mapping.coverage.served;
@@ -643,7 +656,7 @@ function savedRatingsStamp(fit: StoredRatingsFit): CalibrationStamp {
     status: 'calibrated',
     basis: `Fitted on this save (D-053): ratings → rate on ${cov.cases} major leaguers, held-out coverage (80/50) ` +
       `${cov.outer === null ? '—' : Math.round(cov.outer * 100)}/${cov.inner === null ? '—' : Math.round(cov.inner * 100)}% (same-time); ` +
-      `arrivals ${r.arrival.measured ? `from seasons ${r.arrival.window[0] ?? '—'}–${r.arrival.window[r.arrival.window.length - 1] ?? '—'}` : 'not measured'}; ` +
+      `arrivals ${r.arrival.measured ? `from seasons ${r.arrival.window[0] ?? '—'}–${r.arrival.window[r.arrival.window.length - 1] ?? '—'}${arrivalAdoptionWords(r)}` : 'not measured'}; ` +
       `development ${r.development.source === 'save_fit' ? `from ${r.development.pairs} rating-snapshot pairs` : `not yet calibrated (${r.development.pairs} of ${r.development.minimumPairs} pairs)`}.`,
     run: `value_production_fits ${r.id}, fitted at game date ${fit.gameDate ?? 'unknown'} (${fit.method})`,
   };

@@ -7,7 +7,8 @@
  * carried exactly as production and control state them. It chooses only which seasons the card shows
  * (this season to the last controlled season, capped by the production horizon; the whole horizon where
  * the end of control is not established) and words them. Unknown production stays unknown: no season,
- * the reason stated, never a zero line or an average (D-018).
+ * the reason stated, never a zero line or an average (D-018); a season not established after established ones
+ * (hardening F6) keeps its slot and control, with its reason and no band.
  */
 
 import type { ControlSeason, ControlStatus, ControlTimeline } from './playerValueControl.js';
@@ -59,6 +60,17 @@ export interface ConeSeason {
   notes: string[];
 }
 
+/**
+ * A season of the cone whose production is not established (hardening F6: the arrival model adopted horizon by
+ * horizon). The card keeps its slot and its control, and draws no band and no central there: only why.
+ */
+export interface ConeUnestablished {
+  season: number;
+  age: number;
+  reason: string;
+  control: ConeControl;
+}
+
 export interface ProductionCone {
   playerId: number;
   status: PlayerProduction['status'];
@@ -66,6 +78,8 @@ export interface ProductionCone {
   reason: string | null;
   unit: string;
   seasons: ConeSeason[];
+  /** The seasons after `seasons`, within control and the horizon, whose production is not established (hardening F6). */
+  notEstablished: ConeUnestablished[];
   /** What the projection rests on: the seasons read and their plate appearances or batters faced. */
   basis: string;
   control: { standing: ControlTimeline['standing']; note: string | null };
@@ -193,9 +207,16 @@ function calibrationOf(production: PlayerProduction): ProductionCone['calibratio
   if (production.basis.source === 'ratings') {
     const dev = production.basis.ability?.development?.source ?? 'unknown';
     const mapping = m.source === 'save_fit' ? "ratings → rate fitted on this save (same-time: it describes, it does not forecast)" : 'ratings → rate from the provisional prior';
+    // An arrival model adopted horizon by horizon says how far (hardening F6), never plain "calibrated"
+    const through = production.basis.arrival?.adoptedThrough ?? null;
+    const later = production.notEstablished.map((s) => s.season);
+    const arrival = through === null
+      ? ''
+      : `; arrival calibrated through ${through === 1 ? '1 season' : `${through} seasons`} out` +
+        (later.length > 0 ? ` (${later.length === 1 ? later[0] : `${later[0]}–${later[later.length - 1]}`} not established)` : '');
     return {
       source: m.source, calibrated: false,
-      status: `Not yet calibrated on this save: ${mapping}; ${DEVELOPMENT_WORDS[dev]}; not measured as a forecast`,
+      status: `Not yet calibrated on this save: ${mapping}${arrival}; ${DEVELOPMENT_WORDS[dev]}; not measured as a forecast`,
       detail: m.label,
     };
   }
@@ -228,7 +249,12 @@ export function productionCone(production: PlayerProduction, control: ControlTim
   let rows = production.seasons.filter((s) => ends === null || s.season < ends);
   // Free agent already this season: still show this season, labelled as it is
   if (rows.length === 0 && production.seasons.length > 0) rows = [production.seasons[0]];
-  const last = rows[rows.length - 1];
+  // The seasons not established follow the established ones, within control (hardening F6): slot and control kept, no band
+  const pending = rows.length === production.seasons.length
+    ? production.notEstablished.filter((s) => ends === null || s.season < ends)
+    : [];
+  const lastSeason = pending.length > 0 ? pending[pending.length - 1].season : rows[rows.length - 1]?.season;
+  const last = lastSeason === undefined ? undefined : { season: lastSeason };
 
   const seasons: ConeSeason[] = rows.map((s) => ({
     season: s.season,
@@ -244,6 +270,10 @@ export function productionCone(production: PlayerProduction, control: ControlTim
     coverage: coverageOf(s),
     control: controlOf(s.season, control, ends !== null && s.season === ends - 1),
     notes: s.notes,
+  }));
+  const notEstablished: ConeUnestablished[] = pending.map((s) => ({
+    season: s.season, age: s.age, reason: s.reason,
+    control: controlOf(s.season, control, ends !== null && s.season === ends - 1),
   }));
 
   let note: string | null = null;
@@ -279,6 +309,7 @@ export function productionCone(production: PlayerProduction, control: ControlTim
     reason: production.reason,
     unit: production.unit,
     seasons,
+    notEstablished,
     basis: basisOf(production),
     control: { standing: control.standing, note },
     calibration: calibrationOf(production),

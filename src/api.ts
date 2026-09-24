@@ -401,12 +401,21 @@ export interface ConeSeason {
   control: ConeLabels & { status: string; detail: string; after: ConeLabels | null };
   notes: string[];
 }
+/** A season after the established ones whose production is not established: its control and why, no band (hardening F6). */
+export interface ConeUnestablished {
+  season: number;
+  age: number;
+  reason: string;
+  control: ConeSeason['control'];
+}
 export interface ProductionCone {
   playerId: number;
   status: 'projected' | 'unknown';
   reason: string | null;
   unit: string;
   seasons: ConeSeason[];
+  /** Seasons after `seasons` not established; absent reads as none. */
+  notEstablished?: ConeUnestablished[];
   basis: string;
   control: { standing: 'held' | 'unsigned' | 'unknown'; note: string | null };
   calibration: { source: 'save_fit' | 'fallback_prior'; calibrated: boolean; status: string; detail: string };

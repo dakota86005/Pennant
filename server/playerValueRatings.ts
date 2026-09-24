@@ -44,7 +44,8 @@ import {
   PRODUCTION_UNIT, Z_INNER, Z_OUTER, agingBetween, atHorizon, basisShell, inside, planSides, projectProductionWith,
   scheduleOf, unknownProduction,
   type AbilityBasis, type AbilityPrior, type AgingGroup, type ArrivalBasis, type ModelProvenance, type PlayerProduction,
-  type ProductionInput, type ProductionKind, type ProductionModel, type ProductionSeason, type ProductionSide, type SideSeason, type WinsBand,
+  type ProductionInput, type ProductionKind, type ProductionModel, type ProductionSeason, type ProductionSide, type SideSeason,
+  type UnestablishedSeason, type WinsBand,
 } from './playerValueProduction.js';
 import type {
   EvidenceStatus, HitterTool, PitcherTool, ScoutedAbility, ScoutedGloveAtPosition, ScoutedHitterProfile,
@@ -153,6 +154,13 @@ export interface ArrivalModel {
    * C-02). Null or absent: a prospect's chance and playing time are his cell's.
    */
   quality?: { chance: Record<ProductionKind, number[]>; perGame: Record<ProductionKind, number[]> } | null;
+  /**
+   * The horizons adopted (hardening F6, the owner's option (b)): 0 through `through`, a contiguous run whose held-out
+   * checks each passed the gate; every later horizon is not established, with the gate's finding there (`reason`, which
+   * names the horizon), and the served cells carry nothing past `through`. Null or absent: every horizon the cells
+   * carry is served (a model made outside the gate: a test's, or one fitted with no hold-out).
+   */
+  adopted?: { through: number; notEstablished: Array<{ horizon: number; reason: string }> } | null;
 }
 
 export interface RatingsModel {
@@ -801,7 +809,11 @@ export function projectFromRatings(input: RatingsProductionInput, production: { 
   if (!arrival.levels.includes(input.level)) return unknownArrival(`the save's history has no measured arrivals from level ${input.level}.`);
   const cell = arrivalCellFor(arrival, side, input.level, age);
   if (!cell) return unknownArrival(`the save's history has no ${side === 'batting' ? 'hitters' : 'pitchers'} at level ${input.level} to measure from.`);
-  const missingHorizon = cell.horizons.slice(0, horizon).findIndex((h) => h === null);
+  // The arrival model adopted horizon by horizon (hardening F6): the seasons through the last adopted horizon are served,
+  // and each later one is not established with the gate's finding there, never extrapolated or carried forward
+  const adopted = arrival.adopted ?? null;
+  const served = adopted ? Math.min(horizon, adopted.through + 1) : horizon;
+  const missingHorizon = cell.horizons.slice(0, served).findIndex((h) => h === null);
   if (missingHorizon !== -1) return unknownArrival(`the save's history does not reach ${missingHorizon} season${missingHorizon === 1 ? '' : 's'} ahead from level ${input.level}.`);
 
   const k = production.model.kinds[kind];
@@ -823,7 +835,7 @@ export function projectFromRatings(input: RatingsProductionInput, production: { 
   // season's games (the export dates no past call-up); the band reaches none and all of them still to come (C-01)
   const stillToCome = 1 - f;
   const tilted = { chance: false, playingTime: false };
-  for (let i = 0; i < horizon; i += 1) {
+  for (let i = 0; i < served; i += 1) {
     const x = path.seasons[i];
     const A = cell.horizons[i] as ArrivalHorizon;
     const share = i === 0 ? 1 - f : 1;
@@ -907,10 +919,20 @@ export function projectFromRatings(input: RatingsProductionInput, production: { 
       },
     });
   }
+  const notEstablished: UnestablishedSeason[] = [];
+  for (let i = served; i < horizon && adopted; i += 1) {
+    const x = path.seasons[i];
+    const finding = adopted.notEstablished.find((n) => n.horizon === i)?.reason ?? `${i} seasons out: not adopted`;
+    notEstablished.push({
+      season: x.season, horizon: i + 1 - f, age: x.age,
+      reason: `His expected production in ${x.season} is not established: the save's arrival model is adopted only through ${adopted.through === 1 ? '1 season' : `${adopted.through} seasons`} out, where its held-out check passed the gate; ${finding}.`,
+    });
+  }
   const basis = basisShell(input, production.model, ratings.provenance);
   basis.source = 'ratings';
   basis.ability = abilityBasisOf(ev, path, null, ratings);
   basis.arrival = {
+    adoptedThrough: adopted ? adopted.through : null,
     level: input.level, age,
     band: { ageFrom: cell.ageFrom, ageTo: cell.ageTo, cases: cell.cases },
     seasons: arrivalSeasons,
@@ -934,7 +956,7 @@ export function projectFromRatings(input: RatingsProductionInput, production: { 
     regressedRate: path.rated.now, regressionShare: 1, mean: path.rated.now, rateUncertainty: Math.sqrt(var600), usagePerSeason: [0, 0, 0],
     blend: { results: 0, ratings: 1, reliabilitySample: (k.noise600 * PER) / var600, ratingsRate: path.rated.now, resultsRate: null },
   }];
-  return { playerId: input.playerId, status: 'projected', reason: null, unit: PRODUCTION_UNIT, seasons, basis };
+  return { playerId: input.playerId, status: 'projected', reason: null, unit: PRODUCTION_UNIT, seasons, notEstablished, basis };
 }
 
 /**

@@ -443,6 +443,11 @@ export interface ArrivalBasis {
   /** What the chance (and, with quality, the playing time) is conditioned on beyond his level and age (hardening F4: quality). */
   conditioned: 'level_and_age' | 'level_age_and_potential' | 'level_age_and_quality' | 'level_age_potential_and_quality';
   note: string;
+  /**
+   * The last horizon of the arrival model adopted (hardening F6; 0 is the rest of this season); null or absent where
+   * every horizon is served.
+   */
+  adoptedThrough?: number | null;
 }
 
 export interface ProductionBasis {
@@ -467,13 +472,66 @@ export interface ProductionBasis {
   calibration: CalibrationStamp;
 }
 
+/**
+ * A season inside the horizon whose production is not established (hardening F6: the arrival model adopted horizon by
+ * horizon). It has no band, no central and no zero: only the season and why.
+ */
+export interface UnestablishedSeason {
+  season: number;
+  /** Seasons from the window's end, as a projected season's. */
+  horizon: number;
+  age: number;
+  reason: string;
+}
+
 export interface PlayerProduction {
   playerId: number;
   status: 'projected' | 'unknown';
   reason: string | null;
   unit: string;
+  /** The established seasons, from this season on, consecutive. */
   seasons: ProductionSeason[];
+  /**
+   * The seasons of the horizon after `seasons` whose production is not established, each with its reason (hardening
+   * F6); empty where every season is projected. A total over any of them is not a number (`productionTotal`).
+   */
+  notEstablished: UnestablishedSeason[];
   basis: ProductionBasis;
+}
+
+/** Expected wins over a run of seasons, or why there is no such total. */
+export type ProductionTotal =
+  | { status: 'known'; from: number; to: number; central: number; low: number; high: number }
+  | { status: 'unknown'; from: number; to: number; missing: number[]; reason: string };
+
+/**
+ * A player's expected wins summed over seasons `from` to `to` (hardening F6). A total is a number only where every
+ * season in it is established: a season not established, or outside the horizon, makes it unknown with the seasons it
+ * cannot include named, never a sum that reads them as zero (D-018). The central is the sum of centrals (an expectation
+ * adds); the 80% edges are added edge against edge, a range at least as wide as the total's own (PLAYER_VALUE.md Part 5).
+ */
+export function productionTotal(p: PlayerProduction, from: number, to: number): ProductionTotal {
+  if (p.status !== 'projected') return { status: 'unknown', from, to, missing: [], reason: p.reason ?? 'His production is not established.' };
+  const missing: number[] = [];
+  const reasons: string[] = [];
+  let central = 0;
+  let low = 0;
+  let high = 0;
+  for (let y = from; y <= to; y += 1) {
+    const s = p.seasons.find((x) => x.season === y);
+    if (s) {
+      central += s.wins.central;
+      low += s.wins.low;
+      high += s.wins.high;
+      continue;
+    }
+    missing.push(y);
+    const u = p.notEstablished.find((x) => x.season === y);
+    reasons.push(u ? `${y} is not established (${u.reason})` : `${y} is outside the projection's horizon`);
+  }
+  return missing.length > 0
+    ? { status: 'unknown', from, to, missing, reason: `No total over ${from}–${to}: ${reasons.join('; ')}.` }
+    : { status: 'known', from, to, central, low, high };
 }
 
 export const PRODUCTION_UNIT = "wins above replacement, in the export's own WAR units";
@@ -1305,7 +1363,7 @@ function applyInjury(seasons: SideResult['seasons'], injury: InjuryFacts | null,
 
 export function unknownProduction(input: ProductionInput, reason: string, model: ProductionModel, provenance: ModelProvenance): PlayerProduction {
   return {
-    playerId: input.playerId, status: 'unknown', reason, unit: PRODUCTION_UNIT, seasons: [],
+    playerId: input.playerId, status: 'unknown', reason, unit: PRODUCTION_UNIT, seasons: [], notEstablished: [],
     basis: basisShell(input, model, provenance),
   };
 }
@@ -1583,5 +1641,5 @@ export function projectProductionWith(input: ProductionInput, model: ProductionM
       ? { measured: true, note: input.inSeason?.note ?? 'Measured on this season\'s games.' }
       : { measured: false, note: 'Not measured on this season\'s games: next season\'s attrition, scaled to what is left.' }
     : null;
-  return { playerId: input.playerId, status: 'projected', reason: null, unit: PRODUCTION_UNIT, seasons, basis };
+  return { playerId: input.playerId, status: 'projected', reason: null, unit: PRODUCTION_UNIT, seasons, notEstablished: [], basis };
 }

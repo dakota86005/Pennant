@@ -545,6 +545,18 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   chance 17% low, about 7 SE; 0–3 pass) at every half-life tried, so prospects
   stay `unknown` there; as if adopted their summed central is 111 / 201 / 256 /
   258 wins for 2027–30. The ratings refit takes 4.8 s in the worker.
+- **Hardening F6, the arrival model adopted horizon by horizon (owner's option
+  (b), 2026-09-23; ratings method `ratings-3h.3`;** CALIBRATION.md section 6.4,
+  D-053 amendment): the horizons served are a contiguous run of passing
+  horizons from the rest of this season, which must reach the next season. A
+  prospect's later seasons are not established (`PlayerProduction.notEstablished`),
+  each with the gate's finding at its horizon. A multi-season total that
+  includes one is not a number (`productionTotal`). Labels say "calibrated
+  through N seasons out". The cone keeps a "Production not established" slot for each
+  later season of control. The results fit's all-horizons rule is unchanged.
+  On the Arizona import the ratings fit is **adopted through 3 seasons out**.
+  6,351 prospects are projected for 2026–29, with summed centrals of 111 /
+  201 / 256 wins for 2027–29; 2030–32 are not established.
 - **Injury proneness** (`server/injuryProneness.ts`): read as an
   owner-attested known fact; 0, blank or missing is unknown. Its effects are
   measured with standard errors clustered by player and Holm's correction; on

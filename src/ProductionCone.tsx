@@ -1,8 +1,8 @@
 import { Component, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { Group } from '@visx/group';
 import { Area, Line, LinePath } from '@visx/shape';
-import { getProductionCone, isStaticSite, type ConeSeason, type ProductionCone } from './api';
-import { CHART_COLOR, CHART_MARK, CHART_OPACITY, CHART_TEXT } from './chartTheme';
+import { getProductionCone, isStaticSite, type ConeSeason, type ConeUnestablished, type ProductionCone } from './api';
+import { CHART_COLOR, CHART_MARK, CHART_OPACITY, CHART_TEXT, textWidth } from './chartTheme';
 import {
   REPLACEMENT_LABEL, bandWords, coneGeometry, coneIsDrawable, coneLabel, coneSummary, coverageText, formatWins, type ConeGeometry,
 } from './productionConeGeometry';
@@ -72,6 +72,50 @@ export function SeasonDetail({ season: s, basis }: { season: ConeSeason; basis: 
   );
 }
 
+/** The hover and focus detail for a season whose production is not established: its control and why, no figure. */
+export function UnestablishedDetail({ season: s }: { season: ConeUnestablished }) {
+  return (
+    <>
+      <div className="cone-pop-head">
+        <strong>{s.season}</strong> · age {s.age} · {s.control.label}
+        {s.control.after ? ` · ${s.control.after.label.toLowerCase()}` : ''}
+      </div>
+      <table className="mini cone-pop-table">
+        <tbody>
+          <tr>
+            <td className="muted">Expected</td>
+            <td><strong>Not established</strong></td>
+          </tr>
+        </tbody>
+      </table>
+      <div className="muted">{s.reason}</div>
+      <div className="muted">Control: {s.control.detail || s.control.label}</div>
+    </>
+  );
+}
+
+/** The mark over the seasons not established: a muted, outlined region with its words, and no band or zero in it. */
+function Unestablished({ g }: { g: ConeGeometry }) {
+  const u = g.unestablished;
+  if (!u) return null;
+  const inset = 4;
+  const w = Math.max(0, u.right - u.left - inset * 2);
+  // Production, not control: a season's control label below may itself read "Not established"
+  const words = ['Production not established', 'Not established', 'Not est.', 'N/E'].find((t) => textWidth(t) + 8 <= w) ?? '';
+  return (
+    <>
+      <rect x={u.left + inset} y={g.plot.top} width={w} height={g.plot.bottom - g.plot.top} rx={4}
+        fill={CHART_COLOR.surface} fillOpacity={0.75} stroke={CHART_COLOR.grid} strokeDasharray="4 4" />
+      {words && (
+        <text x={u.left + inset + w / 2} y={(g.plot.top + g.plot.bottom) / 2} dy="0.33em" textAnchor="middle"
+          fill={CHART_COLOR.muted} fontSize={CHART_TEXT.size} fontFamily={CHART_TEXT.family}>
+          {words}
+        </text>
+      )}
+    </>
+  );
+}
+
 function Cone({ g, active }: { g: ConeGeometry; active: number | null }) {
   const band = (spans: ConeGeometry['outer'], opacity: number) =>
     g.shape === 'area'
@@ -99,6 +143,7 @@ function Cone({ g, active }: { g: ConeGeometry; active: number | null }) {
           {REPLACEMENT_LABEL}
         </text>
       )}
+      <Unestablished g={g} />
       {active !== null && (
         <Line from={{ x: g.x[active], y: g.plot.top }} to={{ x: g.x[active], y: g.plot.bottom }} stroke={CHART_COLOR.muted} strokeWidth={1} />
       )}
@@ -145,7 +190,10 @@ export function ProductionConeChart({ cone, width }: { cone: ProductionCone; wid
   }
 
   const active = dismissed ? null : hovered ?? focused;
-  const g = coneGeometry(cone.seasons, width);
+  // The seasons after the established ones whose production is not established keep a slot, no band (hardening F6)
+  const pending = cone.notEstablished ?? [];
+  const known = cone.seasons.length;
+  const g = coneGeometry(cone.seasons, width, pending);
   const words = bandWords(cone);
   const narrow = width < NARROW;
   const side = active !== null && g.x[active] > width / 2 ? 'left' : 'right';
@@ -165,7 +213,9 @@ export function ProductionConeChart({ cone, width }: { cone: ProductionCone; wid
   const detail = active !== null && (
     <div id={tipId} className={`chart-pop${narrow ? ' cone-pop-inline' : ''}`} role="tooltip"
       style={narrow ? undefined : { left: popLeft, top: g.plot.top, width: POP_WIDTH }}>
-      <SeasonDetail season={cone.seasons[active]} basis={cone.basis} />
+      {active < known
+        ? <SeasonDetail season={cone.seasons[active]} basis={cone.basis} />
+        : <UnestablishedDetail season={pending[active - known]} />}
     </div>
   );
 
@@ -194,14 +244,16 @@ export function ProductionConeChart({ cone, width }: { cone: ProductionCone; wid
             <Cone g={g} active={active} />
           </Group>
         </svg>
-        {cone.seasons.map((s, i) => (
+        {[...cone.seasons, ...pending].map((s, i) => (
           <button
             key={s.season}
             type="button"
             className="cone-hit"
             tabIndex={0}
             style={{ left: g.x[i] - g.slot / 2, width: g.slot, top: g.plot.top, height: g.height - g.plot.top }}
-            aria-label={`${s.season}, ${s.control.label}: ${formatWins(s.central)} wins expected, 80% band ${formatWins(s.outer.low)} to ${formatWins(s.outer.high)} (${coverageText(s.coverage.outer)}), 50% band ${formatWins(s.inner.low)} to ${formatWins(s.inner.high)} (${coverageText(s.coverage.inner)})`}
+            aria-label={'central' in s
+              ? `${s.season}, ${s.control.label}: ${formatWins(s.central)} wins expected, 80% band ${formatWins(s.outer.low)} to ${formatWins(s.outer.high)} (${coverageText(s.coverage.outer)}), 50% band ${formatWins(s.inner.low)} to ${formatWins(s.inner.high)} (${coverageText(s.coverage.inner)})`
+              : `${s.season}, ${s.control.label}: expected production not established. ${s.reason}`}
             aria-describedby={active === i ? tipId : undefined}
             aria-expanded={active === i}
             onMouseEnter={() => show(setHovered, i)}
@@ -244,6 +296,19 @@ export function ProductionConeChart({ cone, width }: { cone: ProductionCone; wid
                 <td>{s.toDate === null ? 'none this season' : `${formatWins(s.toDate)} so far`}</td>
                 <td>{s.usage.length > 0 ? s.usage.map(usageText).join('; ') : 'not stated'}</td>
                 <td>{[s.coverage.cases === null ? s.coverage.note : '', ...s.notes].filter(Boolean).join(' ')}</td>
+              </tr>
+            ))}
+            {pending.map((s) => (
+              <tr key={s.season}>
+                <td>{s.season}</td>
+                <td>{s.age}</td>
+                <td>{s.control.label}{s.control.after ? `, ${s.control.after.label.toLowerCase()}` : ''}. {s.control.detail}</td>
+                <td>not established</td>
+                <td>not established</td>
+                <td>not established</td>
+                <td>none this season</td>
+                <td>not established</td>
+                <td>{s.reason}</td>
               </tr>
             ))}
           </tbody>

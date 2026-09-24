@@ -249,7 +249,7 @@ export const PRODUCTION_POLICY_CALIBRATION: CalibrationStamp = policy(
 // stored in the same fit store under its own method, and adopted only through the same gate.
 
 /** The ratings model's method version: stored beside the results fit, refitted when it changes. */
-export const RATINGS_METHOD = 'ratings-3h.2';
+export const RATINGS_METHOD = 'ratings-3h.3';
 
 /** Why a player has no production at all: neither major-league results nor ability evidence to project from. */
 export const PRODUCTION_NO_EVIDENCE = 'no major-league results in the projection window and no usable ability evidence';
@@ -298,7 +298,16 @@ export const PRODUCTION_NO_EVIDENCE = 'no major-league results in the projection
  *                  the absolute rule failed still fails. Since hardening F5 the standard errors are clustered
  *                  by player and by origin (two-way, as the results gate's), the same player-season scored
  *                  under several origins; the tolerances are unchanged.
- *   longitudinal   the development path and the arrival rate conditioned on potential are fitted only
+ *   adoption       the arrival model is adopted horizon by horizon (the owner's option (b), 2026-09-23, hardening
+ *                  F6): the horizons served are a contiguous run from horizon 0 (the rest of this season) through
+ *                  the last horizon k whose held-out check, and the check of every horizon before it, passed the
+ *                  gate above. A horizon after one that failed or could not be checked (fewer than the gate's
+ *                  minimum cases) is never served, even where its own check passes. Nothing is adopted unless
+ *                  horizon `requiredThrough` (1, the next season) is in the run, and the ratings mapping's own gate
+ *                  must still pass. Every tolerance is unchanged. A prospect's seasons after k are not established,
+ *                  each on its own with the gate's finding at that horizon: never extrapolated, carried forward
+ *                  or averaged. `rule` names the rule.
+ *   longitudinal  the development path and the arrival rate conditioned on potential are fitted only
  *                  from the save's own rating snapshots: a pair is two snapshots of a player 300 to 430
  *                  days apart (about a season) whose first has a scouted gap of at least 2 points; the
  *                  save's own path replaces the prior once 300 such pairs exist, an age band is widened
@@ -320,6 +329,7 @@ export const RATINGS_POLICY = {
   arrival: { bandCases: 60, nodes: 10, minimumArrivals: 10, populationNodes: 20 },
   backtest: { origins: PRODUCTION_POLICY.rolling, recencyHalfLife: 2 as number | null },
   gate: { arrivalBias: { relative: 0.1, standardErrors: 3 } },
+  adoption: { rule: 'contiguous_prefix' as const, requiredThrough: 1 },
   longitudinal: { minimumPairs: 300, pairDays: { from: 300, to: 430 }, minimumGap: 2, bandPairs: 30, minimumLinked: 300, evidence: 2, potentialTiers: 3 },
   development: { priorRangeHigh: 2, ages: { first: 16, last: 40 } },
   unknownGrade: { low: 20, high: 80, stations: [0, 0.25, 0.5, 0.75, 1] },
@@ -331,7 +341,9 @@ export const RATINGS_POLICY_CALIBRATION: CalibrationStamp = policy(
     'seasons\' cases and read in proportion to the season still to play, and the quality effect located on 20 of the cell\'s players now ' +
     '(hardening F4, 2026-09-23); the arrival backtest\'s rolling origins (the results fit\'s rule) and its recency half-life of two seasons ' +
     '(the owner\'s option C applied to arrivals, 2026-09-23, hardening F5); the arrival gate\'s bias rule (10% of what happened and three ' +
-    'standard errors clustered by player and by origin, beside the absolute 10 points; a tightening, D-053); the longitudinal pair rule and the minimum pairs before the save\'s own development path replaces ' +
+    'standard errors clustered by player and by origin, beside the absolute 10 points; a tightening, D-053); the arrival model\'s ' +
+    'adoption horizon by horizon, a contiguous run of passing horizons from the rest of this season that must reach the next season ' +
+    '(the owner\'s option (b), 2026-09-23, hardening F6; the gate not loosened); the longitudinal pair rule and the minimum pairs before the save\'s own development path replaces ' +
     'the prior; the prior\'s development range; an unknown grade\'s scale ends and, in the blend, its five stations across them (hardening F4). ' +
     'Decisions about the ratings method (D-053), not fits.'
 );

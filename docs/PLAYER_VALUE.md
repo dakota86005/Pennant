@@ -456,6 +456,32 @@ section 6.4).**
   save's long-horizon arrival rate rose cohort after cohort. Prospects stay `unknown` there. As if adopted (a
   diagnostic) their summed central is 111 / 201 / 256 / 258 wins for 2027–30.
 
+**What hardening F6 changed (2026-09-23, method `ratings-3h.3`, the owner's option (b): the arrival model adopted
+horizon by horizon; CALIBRATION.md section 6.4, Part 12).**
+
+- **Adoption is per horizon, a contiguous run.** Each horizon's held-out check is judged by the unchanged gate. The
+  horizons served run from horizon 0 (the rest of this season) through the last horizon k whose check, and every check
+  before it, passed. A horizon after one that failed, or after one with too few held-out cases to be checked, is never
+  served, even where its own check passes. Nothing is served unless horizon 1 (the next season) is in the run, and the
+  ratings mapping's own gate must still pass (`RATINGS_POLICY.adoption`, policy). No tolerance moved.
+- **A season after k is not established, on its own.** `PlayerProduction.notEstablished` lists each season of the horizon
+  after the established ones, with its reason: the horizon and the gate's finding there ("4 seasons out: the save's
+  held-out arrival chance ran 17% low ..., outside the gate"). It has no band, no central and no zero; nothing is
+  extrapolated, carried forward from the last adopted season or averaged into it. Seasons 0 to k keep their full bands,
+  exactly as a fully adopted model would give them. The served cells carry nothing past k.
+- **A total over seasons is a number only where every season in it is established** (`productionTotal`): otherwise it
+  is unknown and names the seasons it cannot include. The central sums; the 80% edges are added edge against edge.
+- **Labels say how far.** The fit's label reads "calibrated on this save through N seasons out", with the horizons not
+  established; the cone's calibration line reads "arrival calibrated through N seasons out (years not established)";
+  the record carries `arrival.adoption` (each horizon's own check, whether it is served, and why not).
+- **The cone** draws the established seasons and keeps a slot for each later season of control, with its control label,
+  an outlined "Production not established" mark, the reason on hover and in the screen-reader table, and no band or zero there.
+- **Established players are unaffected:** the results path has no season not established, and the results fit keeps its
+  all-horizons rule.
+- **On the Arizona import** the ratings fit is adopted through 3 seasons out (4 to 6 fail, about 17% low): 6,351
+  prospects are projected for 2026 to 2029, with summed centrals of 111 / 201 / 256 wins for 2027 to 2029, and 2030 to
+  2032 not established.
+
 ### 2.4 Club Finances: the save's financial reality
 
 **League (per import):**
@@ -1077,9 +1103,9 @@ numeric constant. Phase 3a adds `PRODUCTION_POLICY` (policy) and `PRODUCTION_PRI
 | Aging curve for production | **fitted per save** | Delta method on the save's consecutive seasons, hitters and pitchers apart. `roleReview.ts`'s `AGING_CURVE` answers another question and is not reused |
 | Injury proneness's effect on usage and aging | **fitted per save**, used only at two standard errors | The save's fit; the prior carries none. Proneness itself is a known fact (`owner_attested`) |
 | The fallback prior | **provisional** | `PRODUCTION_PRIOR`, `PRODUCTION_PRIOR_CALIBRATION`: the same method (`production-3b.1` since phase 3b) on the real history 2006–2025 the Arizona save imports; with `RATINGS_PRIOR`, the only fitted artefacts in code |
-| Ratings → rate mapping (slopes, intercepts by position, forms without the glove, running or one pitching tool), its same-time uncertainty | **fitted per save** (D-053) | `value_production_fits` under `ratings-3h.2` (`ratings-3h.1` in hardening F4, `ratings-3b.1` before), stamped by its run record: a same-time fit on the save's major leaguers, gated on held-out players (phase 3b) |
+| Ratings → rate mapping (slopes, intercepts by position, forms without the glove, running or one pitching tool), its same-time uncertainty | **fitted per save** (D-053) | `value_production_fits` under `ratings-3h.3` (`ratings-3h.2` in hardening F5, `ratings-3h.1` in F4, `ratings-3b.1` before), stamped by its run record: a same-time fit on the save's major leaguers, gated on held-out players (phase 3b) |
 | How often each batting hand faces left-handers; the stamina cut for a pitcher with no professional games; the largest scouted development by age | **fitted per save** | The ratings fit (phase 3b) |
-| Arrival rates (chance of any major-league time and the time when he plays, by level, age band and horizon) | **fitted per save**; no prior | The ratings fit, from minor-league usage lines, held out by season; unmeasured is `unknown` (phase 3b). Since hardening F4: the origin season's call-ups kept apart in the later seasons, the league's own farm only (another market league's farm and independent leagues left out), any top-level league is arriving, and the model served refit through the last completed season. Since hardening F5: scored on rolling origins (the results fit's rule) and fitted with a 2-season recency half-life (`RATINGS_POLICY.backtest`, policy, the owner's option C) |
+| Arrival rates (chance of any major-league time and the time when he plays, by level, age band and horizon) | **fitted per save**; no prior | The ratings fit, from minor-league usage lines, held out by season; unmeasured is `unknown` (phase 3b). Since hardening F4: the origin season's call-ups kept apart in the later seasons, the league's own farm only (another market league's farm and independent leagues left out), any top-level league is arriving, and the model served refit through the last completed season. Since hardening F5: scored on rolling origins (the results fit's rule) and fitted with a 2-season recency half-life (`RATINGS_POLICY.backtest`, policy, the owner's option C). Since hardening F6: adopted horizon by horizon, a contiguous run of passing horizons through at least the next season; later seasons not established |
 | A call-up's timing within a past season | **policy** (not measurable) | The export dates no past call-up: a call-up is taken as equally likely at any point of the season's games, so a player not yet called up at share f of his season is read with 1 − f of the season's call-ups still to come; the band reaches none and all (`RATINGS_POLICY.arrival`, hardening F4) |
 | A prospect's chance and playing time by his projected quality | **fitted per save** (the results fit's own effect) and **measured per fit** (the cell's players now) | The results fit's quality coefficients at the same usage (the chance's logistic, playing time per scheduled game), located on 20 of each cell's players now (`RATINGS_POLICY.arrival.populationNodes`, policy) so the cell keeps its measured chance and playing time (hardening F4) |
 | The ratings' reliability as a forecast | **fitted per save once measurable**; until then **policy** (the kind's K) | This season's snapshot against next season's rate, 50 per kind (phase 3b). None on this save yet |
@@ -1096,6 +1122,7 @@ numeric constant. Phase 3a adds `PRODUCTION_POLICY` (policy) and `PRODUCTION_PRI
 | The rolling origins (from the window's start + 5 to the season before the last, at most 8; a horizon scored with 200 cases from 3 or more origin cohorts) and the recency half-life (2 seasons) | **policy** | `PRODUCTION_POLICY.rolling`, `PRODUCTION_POLICY.window.recencyHalfLife` (owner's option C, 2026-09-23; method `production-3h.2`) |
 | The ratings method's policy: sample rules, folds, position minimum, prior strength, age-band sizes, nodes, pair rule and minimums, the prior's development range | **policy** | `RATINGS_POLICY`, stamped `RATINGS_POLICY_CALIBRATION` (phase 3b) |
 | The arrival gate: the absolute 10 points, and a bias beyond 10% of what happened and three standard errors clustered by player and by origin, on the chance and on the expected playing time; horizon 1 must be checkable | **policy** | `PRODUCTION_POLICY.gate.tolerance` and `RATINGS_POLICY.gate.arrivalBias` (hardening F4, B-15; two-way errors and the horizon-1 rule since F5): a tightening of the phase 3b gate, never a loosening (D-053 amendments) |
+| The arrival model's adoption horizon by horizon: a contiguous run from the rest of this season, stopped by the first horizon that fails or cannot be checked, which must reach the next season | **policy** | `RATINGS_POLICY.adoption` (the owner's option (b), 2026-09-23, hardening F6); the tolerances unchanged |
 | The ratings fallback prior | **provisional** | `RATINGS_PRIOR`, `RATINGS_PRIOR_CALIBRATION`: the ratings method with no prior on the Arizona import; no arrivals (phase 3b) |
 | Widening outside the organization | **none** | Not applied: one rating row per player makes it unmeasurable (R-9, Q-2) |
 | Personality bands (low / normal / high) | **policy** | The central mass at 80–120 on a 1–200 scale (R-8). No claim about OOTP's bands |
@@ -1153,6 +1180,13 @@ The owner answered these on 2026-09-22. Each answer is folded into the part it n
   (tightened) gate; the gate is not loosened." Applied in method `ratings-3h.2` (2.3, CALIBRATION.md section 6.4). On
   the Arizona import the fit still fails at horizons 4 to 6, so prospects stay `unknown` there; the owner question that
   follows is in the hardening notes.
+- **The arrival model adopted horizon by horizon (2026-09-23, hardening F6; D-053).** The owner chose option (b): "The
+  arrival model is adopted horizon by horizon: a horizon whose held-out check passes the (unchanged, tightened) gate is
+  served; later horizons are shown as not established. The gate is not loosened." Applied to the arrival model only, in
+  method `ratings-3h.3` (2.3, CALIBRATION.md section 6.4): the horizons served are a contiguous run from the rest of this
+  season through the last horizon whose check and every earlier one passed; horizon 1 must be in it; a season after it is
+  not established, each with the gate's finding at its horizon. The results fit keeps its all-horizons rule. On the
+  Arizona import the arrival model is served through 3 seasons out.
 - **Super Two margin (2026-09-23, hardening).** The owner approved a policy margin of days around the computed
   cutoff range, within which the answer is `indeterminate`: the cutoff's edges are readings, not bounds. Set at 10
   days (Part 11), stamped policy under D-041 (2.2).

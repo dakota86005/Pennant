@@ -19,7 +19,7 @@
 import { performance } from 'node:perf_hooks';
 import { db, tableExists } from '../server/db.js';
 import {
-  clubFinances, leagueFinances, leaguePlayerValues, marketLeagueOfClub, marketLeagues, playerValues, productionCalibration,
+  clubFinances, leagueFinances, leaguePlayerValues, marketLeagueOfClub, marketLeagues, playerValues, productionCalibration, productionTotal,
   type PlayerValuation,
 } from '../server/playerValue.js';
 import { allLeagueRules } from '../server/leagueRules.js';
@@ -344,15 +344,42 @@ if (process.env.OOTP_FO_VALUE_SNAPSHOT === '1') {
 
   // Median band width per season of the horizon (80% and 50%)
   const projected = [...all.values()].filter((v) => v.production.status === 'projected');
-  const widths = (pop: PlayerValuation[]) => (pop[0]?.production.seasons ?? []).map((s, i) => ({
-    season: s.season,
-    outer: median(pop.map((v) => w(v.production.seasons[i].wins))),
-    inner: median(pop.map((v) => w(v.production.seasons[i].inner))),
-    central: median(pop.map((v) => v.production.seasons[i].wins.central)),
-  }));
+  // Per season of the horizon, over the players whose season is established; a season not established (hardening F6:
+  // the arrival model adopted horizon by horizon) is counted apart, never read as zero
+  const horizonSeasons = (pop: PlayerValuation[]): number[] =>
+    [...new Set(pop.flatMap((v) => [...v.production.seasons, ...v.production.notEstablished].map((s) => s.season)))].sort((a, b) => a - b);
+  const widths = (pop: PlayerValuation[]) => horizonSeasons(pop).map((season) => {
+    const here = pop.map((v) => v.production.seasons.find((s) => s.season === season)).filter((s): s is NonNullable<typeof s> => s !== undefined);
+    return {
+      season,
+      players: here.length,
+      notEstablished: pop.filter((v) => v.production.notEstablished.some((s) => s.season === season)).length,
+      outer: median(here.map((s) => w(s.wins))),
+      inner: median(here.map((s) => w(s.inner))),
+      central: median(here.map((s) => s.wins.central)),
+    };
+  });
   for (const [title, pop] of [['every projected player', projected], ['projected, on a major-league list', projected.filter((v) => rostered.has(v.playerId))]] as Array<[string, PlayerValuation[]]>) {
-    console.log(`\nMedian band width, wins (${title}, ${pop.length} players): season (horizon) — 80% / 50% width, median central`);
-    widths(pop).forEach((x, i) => console.log(`  ${x.season} (${i + 1}${i === 0 ? ', the rest of it plus what is banked' : ''})   ${x.outer?.toFixed(2)} / ${x.inner?.toFixed(2)}   central ${x.central?.toFixed(2)}`));
+    console.log(`\nMedian band width, wins (${title}, ${pop.length} players): season (horizon) — 80% / 50% width, median central, over the players whose season is established`);
+    widths(pop).forEach((x, i) => console.log(`  ${x.season} (${i + 1}${i === 0 ? ', the rest of it plus what is banked' : ''})   ${x.outer?.toFixed(2)} / ${x.inner?.toFixed(2)}   central ${x.central?.toFixed(2)}   (${x.players} established${x.notEstablished > 0 ? `, ${x.notEstablished} not established` : ''})`));
+  }
+
+  // Prospects (projected from ratings alone): per season, the summed central over those whose season is established and
+  // how many are not established; per player, a total over the horizon is a number only where every season is (F6)
+  const prospects = projected.filter((v) => v.production.basis.source === 'ratings');
+  if (prospects.length > 0) {
+    console.log(`\nProspects projected from ratings (${prospects.length}): season — summed central (established), not established`);
+    for (const x of horizonSeasons(prospects)) {
+      const here = prospects.map((v) => v.production.seasons.find((s) => s.season === x)).filter((s): s is NonNullable<typeof s> => s !== undefined);
+      const missing = prospects.filter((v) => v.production.notEstablished.some((s) => s.season === x)).length;
+      console.log(`  ${x}   ${here.length > 0 ? here.reduce((t, s) => t + s.wins.central, 0).toFixed(1) : '—'} over ${here.length}   ${missing > 0 ? `${missing} not established` : ''}`);
+    }
+    const seasonsOf = horizonSeasons(prospects);
+    const totals = prospects.map((v) => productionTotal(v.production, seasonsOf[0], seasonsOf[seasonsOf.length - 1]));
+    const known = totals.filter((t) => t.status === 'known').length;
+    console.log(`  a total over ${seasonsOf[0]}–${seasonsOf[seasonsOf.length - 1]}: a number for ${known}, not a number for ${totals.length - known} (a season not established)`);
+    const adopted = prospects.find((v) => v.production.notEstablished.length > 0);
+    if (adopted) console.log(`  e.g. ${adopted.production.notEstablished[0].reason}`);
   }
 
   // Examples: a star, an average regular, an aging veteran, a reliever (chosen by the numbers, for a sanity check)
@@ -374,7 +401,7 @@ if (process.env.OOTP_FO_VALUE_SNAPSHOT === '1') {
     const side = p.basis.sides[0];
     console.log(`  ${label}: ${name(v.playerId)} (${v.playerId}), age ${p.basis.origin.age}, ${side.kind}; window ${side.seasons.map((s) => `${s.season} ${s.opportunities}/${s.war.toFixed(1)}`).join(', ')}; ` +
       `rate ${side.observedRate?.toFixed(2)} → regressed ${side.regressedRate.toFixed(2)} per 600 (${(side.regressionShare * 100).toFixed(0)}% mean); proneness ${p.basis.proneness.value ?? 'unknown'}`);
-    for (const s of [p.seasons[0], p.seasons[1], p.seasons[4]]) {
+    for (const s of [p.seasons[0], p.seasons[1], p.seasons[4]].filter((x): x is NonNullable<typeof x> => x !== undefined)) {
       console.log(`    ${s.season}: ${band(s.wins)}  50% ${band(s.inner)}${s.toDate !== null ? `  (banked ${s.toDate.toFixed(1)}, rest ${band(s.remaining!)})` : ''}; rate ${s.sides[0].rateBand.central.toFixed(2)} [${s.sides[0].rateBand.low.toFixed(2)}, ${s.sides[0].rateBand.high.toFixed(2)}]/600; usage ${Math.round(s.sides[0].usage.central)} [${Math.round(s.sides[0].usage.low)}–${Math.round(s.sides[0].usage.high)}], age adj ${s.sides[0].aging.toFixed(2)}/600${s.notes.length ? `; ${s.notes.join(' ')}` : ''}`);
     }
   }

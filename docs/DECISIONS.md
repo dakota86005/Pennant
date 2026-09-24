@@ -1498,6 +1498,26 @@ recency weighting approved for the results fit, judged by the same (tightened) g
   pass. Recency cannot reach it: a long horizon can only be fitted on cohorts at least that many seasons old, and on this
   save the long-horizon arrival rate rose cohort after cohort. Recorded, not tuned away; prospects stay `unknown` there.
 
+**Amended 2026-09-23 (owner decision: option (b), the arrival model adopted horizon by horizon; hardening F6;
+PLAYER_VALUE.md 2.3 and Part 12, CALIBRATION.md section 6.4).** The owner decided: "The arrival model is adopted horizon
+by horizon: a horizon whose held-out check passes the (unchanged, tightened) gate is served; later horizons are shown as
+not established. The gate is not loosened."
+
+- **What is adopted is a contiguous run.** The horizons served run from the rest of this season through the last horizon
+  whose held-out check, and every check before it, passed the gate. A horizon after one that failed, or after one with too
+  few held-out cases to be checked, is never served, even where its own check passes. Nothing is adopted unless the run
+  reaches the next season (F5's rule), and the ratings mapping's own gate must still pass. No tolerance moved
+  (`RATINGS_POLICY.adoption`, policy, D-041).
+- **A season beyond the run is not established,** season by season, each with the gate's finding at its horizon; it has no
+  band, central or zero, and nothing is extrapolated, carried forward or averaged into it. A total over seasons that
+  include one is not a number. A label says how far the model is calibrated ("through N seasons out"), never plain
+  "calibrated"; the run record names each horizon's own check and why it is not served.
+- **The arrival model only.** The results fit keeps its rule that every horizon with enough cases must pass; whether it
+  should follow is an open owner question.
+- **Method `ratings-3h.3`:** every save refits its ratings model once. On the Arizona import the arrival model is adopted
+  through 3 seasons out (the held-out figures are F5's): prospects are projected for the rest of 2026 and 2027 to 2029, and
+  2030 to 2032 are not established.
+
 ## D-054 — Charting library
 
 **Status:** Accepted: owner approved adopting a charting dependency (2026-09-23); library choice per the evaluation.

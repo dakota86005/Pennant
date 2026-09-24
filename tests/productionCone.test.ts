@@ -3,12 +3,12 @@ import path from 'node:path';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import type { ConeSeason, ProductionCone } from '../src/api';
+import type { ConeSeason, ConeUnestablished, ProductionCone } from '../src/api';
 import { CHART_COLOR } from '../src/chartTheme';
 import {
-  coneGeometry, coneSummary, coverageText, formatWins, labelModeFor, niceTicks, winsDomain,
+  coneGeometry, coneLabel, coneSummary, coverageText, formatWins, labelModeFor, niceTicks, winsDomain,
 } from '../src/productionConeGeometry';
-import { ProductionConeChart, SeasonDetail } from '../src/ProductionCone';
+import { ProductionConeChart, SeasonDetail, UnestablishedDetail } from '../src/ProductionCone';
 import { derivePalette } from '../src/theme';
 
 /*
@@ -228,6 +228,58 @@ describe('the production cone, hardening (F2)', () => {
     const broken = cone([s(2030, Number.NaN, [1, 2], [1.2, 1.8]), s(2031, 1.5, [0.5, Number.POSITIVE_INFINITY], [1, 2])]);
     expect(() => render(broken)).not.toThrow();
     expect(render(broken)).toMatch(/could not be drawn/);
+  });
+});
+
+/* Hardening F6 (2026-09-23): the arrival model adopted horizon by horizon; later seasons are not established. */
+describe('the production cone, a known-then-unknown path (hardening F6)', () => {
+  const REASON = '4 seasons out: the save\'s held-out arrival chance ran 17% low, outside the gate';
+  const pending = (season: number, over: Partial<ConeUnestablished> = {}): ConeUnestablished => ({
+    season, age: 27 + (season - 2030), reason: REASON.replace('4', String(season - 2030)), control: control('Arbitration 2', 'Arb 2', 'A2'), ...over,
+  });
+  const PENDING = [pending(2032), pending(2033, { control: control('Arbitration 3', 'Arb 3', 'A3', true) })];
+  const KNOWN = REGULAR.slice(0, 2);
+  const partial = () => cone(KNOWN, {
+    notEstablished: PENDING,
+    calibration: { source: 'save_fit', calibrated: false, status: 'Not yet calibrated on this save: arrival calibrated through 1 season out (2032–2036 not established)', detail: 'test' },
+  });
+  const render = (c: ProductionCone, width = 640) => renderToStaticMarkup(createElement(ProductionConeChart, { cone: c, width }));
+
+  it('draws the bands and the central over the established seasons only, and keeps a slot and a label for each season not established', () => {
+    const g = coneGeometry(KNOWN, 640, PENDING);
+    expect(g.x).toHaveLength(4);
+    expect(g.labels.map((l) => l.lines[0])).toEqual(['2030', '2031', '2032', '2033']);
+    expect(g.outer).toHaveLength(2);
+    expect(g.inner).toHaveLength(2);
+    expect(g.path).toHaveLength(2);
+    expect(g.shape).toBe('area');
+    // The axis is the established seasons' own: nothing is drawn, and nothing is scaled, for a season with no figure
+    expect(g.domain).toEqual(winsDomain(KNOWN));
+    expect(g.unestablished).not.toBeNull();
+    expect(g.unestablished!.left).toBeCloseTo(g.x[1] + g.slot / 2, 6);
+    expect(g.unestablished!.right).toBeCloseTo(g.plot.right, 6);
+    expect(g.unestablished!.seasons).toEqual([2032, 2033]);
+    // One established season is still an interval, not an invisible area
+    expect(coneGeometry(KNOWN.slice(0, 1), 640, PENDING).shape).toBe('interval');
+    // Fully established: no region
+    expect(coneGeometry(REGULAR, 640).unestablished).toBeNull();
+  });
+
+  it('marks the later seasons not established, with the reason on hover and in the table, and no band or zero drawn there', () => {
+    const html = render(partial());
+    expect(html).toMatch(/Production not established/);
+    expect(html.match(/tabindex="0"/g)?.length ?? 0).toBe(4);
+    expect(html).toMatch(/aria-label="2032, Arbitration 2: expected production not established/);
+    const table = html.slice(html.indexOf('<table'));
+    expect(table).toMatch(/2032/);
+    expect(table).toMatch(/2 seasons out: the save&#x27;s held-out arrival chance ran 17% low/);
+    expect(coneSummary(partial())).toMatch(/2033, arbitration 3: expected production not established/);
+    expect(coneSummary(partial())).toMatch(/through 1 season out/);
+    expect(coneLabel(partial())).toMatch(/2030 to 2033/);
+    const detail = renderToStaticMarkup(createElement(UnestablishedDetail, { season: PENDING[0] }));
+    expect(detail).toMatch(/not established/i);
+    expect(detail).toMatch(/2 seasons out/);
+    expect(detail).not.toMatch(/80% band/);
   });
 });
 

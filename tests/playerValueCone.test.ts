@@ -275,4 +275,58 @@ describe('the cone states what the projection rests on, and is calibrated only w
     expect(cone.calibration.status).toMatch(/1–3/);
     expect(cone.calibration.status).toMatch(/4–7/);
   });
+
+  describe('hardening F6: an arrival model adopted horizon by horizon', () => {
+    const adoptedThrough = (through: number): RatingsModelInForce => ({
+      ...savedRatings,
+      model: {
+        ...savedRatings.model,
+        arrival: {
+          ...savedRatings.model.arrival!,
+          adopted: {
+            through,
+            notEstablished: Array.from({ length: 6 - through }, (_, i) => through + 1 + i)
+              .map((h) => ({ horizon: h, reason: `${h} seasons out: the save's held-out arrival chance ran 17% low, outside the gate` })),
+          },
+        },
+      },
+    });
+    const prospectOf = (ratings: RatingsModelInForce) =>
+      projectProduction({ playerId: 7, season: SEASON, seasonPlayed: 0.3, age: 20, batting: [], pitching: [], ratings: evidence(), level: 3 }, fitted, ratings);
+
+    it('shows the established seasons and marks each later season of control not established, with its control and the reason', () => {
+      const production = prospectOf(adoptedThrough(1));
+      expect(production.status).toBe('projected');
+      const cone = productionCone(production, controlled());
+      expect(cone.seasons.map((s) => s.season)).toEqual([2030, 2031]);
+      expect(cone.notEstablished.map((s) => s.season)).toEqual([2032, 2033]);
+      expect(cone.notEstablished.map((s) => s.control.label)).toEqual(['Arbitration 2', 'Arbitration 3']);
+      expect(cone.notEstablished[1].control.after?.label).toBe('Free agent after');
+      expect(cone.notEstablished[0].reason).toMatch(/2 seasons out/);
+      expect(cone.notEstablished[0].reason).toMatch(/gate/);
+      // Nothing drawn there: no central, no band
+      for (const s of cone.notEstablished) {
+        expect(s).not.toHaveProperty('central');
+        expect(s).not.toHaveProperty('outer');
+      }
+      expect(cone.control.note).toMatch(/Free agent after 2033/);
+    });
+
+    it('says how far the arrival model is calibrated, never plain "calibrated"', () => {
+      const cone = productionCone(prospectOf(adoptedThrough(1)), controlled());
+      expect(cone.calibration.calibrated).toBe(false);
+      expect(cone.calibration.status).toMatch(/through 1 season out/);
+      expect(cone.calibration.status).toMatch(/2032–2036 not established/);
+      // Served in full, nothing is said to be missing
+      const full = productionCone(prospectOf(savedRatings), controlled());
+      expect(full.notEstablished).toEqual([]);
+      expect(full.calibration.status).not.toMatch(/not established/);
+    });
+
+    it('an established player is unaffected: his cone has no season not established', () => {
+      const cone = productionCone(projectProduction(regular(), fitted, adoptedThrough(1)), controlled());
+      expect(cone.seasons.map((s) => s.season)).toEqual([2030, 2031, 2032, 2033]);
+      expect(cone.notEstablished).toEqual([]);
+    });
+  });
 });

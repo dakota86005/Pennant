@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { db } from '../server/db.js';
 import {
-  PRODUCTION_NO_EVIDENCE, fitRatingsModel, playerValues, projectProduction, ratingsEvidence,
+  PRODUCTION_NO_EVIDENCE, arrivalAdoption, fitRatingsModel, playerValues, productionTotal, projectProduction, ratingsEvidence,
   type ArrivalModel, type Observation, type PlayerProduction, type ProductionLine, type RatingsEvidence, type RatingsFitInput,
   type RatingsModelInForce, type RatingsProductionInput, type WinsBand,
 } from '../server/playerValue.js';
@@ -564,6 +564,144 @@ describe('the ratings fit on a synthetic save (D-053)', () => {
           for (const row of multipliers(run)!) for (const m of row) expect(m).toBe(1);
         }
       });
+    });
+  });
+
+  describe('hardening F6: the arrival model adopted horizon by horizon (the owner\'s option (b), 2026-09-23)', () => {
+    const PHI = 0.6180339887498949;
+    const spread = (j: number) => (j * PHI) % 1;
+    /**
+     * Batting prospects at Triple-A at 21, one origin season each (2006–2024), `perOrigin` of them: `next` of them play the
+     * next season, and `late(origin)` more first play four seasons on (a league whose late arrivals rose class after class).
+     */
+    function cohorts(perOrigin: number, next: (origin: number) => number, late: (origin: number) => number, firstId = 90_000): RatingsFitInput['arrival'] {
+      const out: RatingsFitInput['arrival'] = [];
+      let id = firstId;
+      for (let origin = 2006; origin <= 2024; origin += 1) {
+        for (let j = 0; j < perOrigin; j += 1) {
+          id += 1;
+          const majors = new Map<number, number>();
+          const u = spread(j);
+          if (u < next(origin)) majors.set(origin + 1, 200);
+          else if (u < next(origin) + late(origin)) majors.set(origin + 4, 200);
+          out.push({ playerId: id, birth: { year: origin - 21, month: 3, day: 1 }, side: 'batting', majors, minors: [{ season: origin, level: 2, opportunities: 400 }] });
+        }
+      }
+      return out;
+    }
+    const inForce = (model: ReturnType<typeof fitRatingsModel>['model']): RatingsModelInForce => ({ model, provenance: MEASURED.provenance });
+    const aaa = (over: Partial<RatingsProductionInput> = {}) => prospect({ level: 2, age: 21, seasonPlayed: 0, ...over });
+    const rising = () => fitRatingsModel({ ...syntheticSave(), levels: [2], arrival: cohorts(400, () => 0.12, (o) => 0.02 + 0.012 * (o - 2006)) }, { prior: RATINGS_PRIOR });
+    /** The handmade measured model, adopted through three seasons out. */
+    const partly = (): RatingsModelInForce => ({
+      ...MEASURED,
+      model: {
+        ...MEASURED.model,
+        arrival: { ...MEASURED.model.arrival!, adopted: { through: 3, notEstablished: [4, 5, 6].map((horizon) => ({ horizon, reason: `${horizon} seasons out: outside the gate` })) } },
+      },
+    });
+
+    it('a horizon is served only where it and every horizon before it passed: a pass after a failure is not served, and the gate is not loosened', () => {
+      const run = rising();
+      const a = run.record.arrival;
+      // Four seasons out every origin's fit lags the rising late arrivals: that horizon fails the unchanged gate
+      const h4 = a.heldOut[4];
+      expect(h4.cases).toBeGreaterThanOrEqual(run.record.gate.minimumCases);
+      expect((h4.observed! - h4.predicted!) / h4.observed!).toBeGreaterThan(RATINGS_POLICY.gate.arrivalBias.relative);
+      const adoption = a.adoption!;
+      expect(adoption.through).toBe(3);
+      expect(adoption.horizons.map((x) => x.check).slice(0, 5)).toEqual(['passed', 'passed', 'passed', 'passed', 'failed']);
+      // Five and six seasons out pass their own checks, yet follow a failure: not served
+      for (const h of [5, 6]) {
+        expect(adoption.horizons[h].check, `h${h}`).toBe('passed');
+        expect(adoption.horizons[h].adopted, `h${h}`).toBe(false);
+        expect(adoption.horizons[h].reason, `h${h}`).toMatch(/4 seasons out/);
+      }
+      expect(adoption.horizons.slice(0, 4).every((x) => x.adopted && x.reason === null)).toBe(true);
+      expect(adoption.horizons[4].reason).toMatch(/low/);
+      // Adopted through three seasons out: the gate passed on what it adopts, and says what it did not
+      expect(run.record.gate.passed, run.record.gate.reason).toBe(true);
+      expect(run.record.gate.reason).toMatch(/through 3 seasons out/);
+      // The served model carries nothing past the last adopted horizon
+      expect(run.model.arrival?.adopted?.through).toBe(3);
+      for (const cell of run.model.arrival!.cells) expect(cell.horizons.slice(4).every((h) => h === null)).toBe(true);
+    });
+
+    it('nothing is served unless the next season passes: a failure one season out rejects the arrival model, whatever passes after it', () => {
+      // Arrivals one season on falling every season (the F5 case): every origin's fit lags it the same way
+      const falling = fitRatingsModel({ ...syntheticSave(), levels: [2], arrival: cohorts(300, (o) => 0.2 * (1 - (o - 2006) / 19), () => 0) }, { prior: RATINGS_PRIOR });
+      const adoption = falling.record.arrival.adoption!;
+      expect(adoption.horizons[1].check).toBe('failed');
+      expect(adoption.horizons.slice(2).some((x) => x.check === 'passed')).toBe(true);
+      expect(adoption.through).toBeNull();
+      expect(adoption.horizons.every((x) => !x.adopted)).toBe(true);
+      expect(falling.record.gate.passed, falling.record.gate.reason).toBe(false);
+    });
+
+    it('the adopted horizons are a contiguous run from the rest of this season: a horizon that could not be checked stops it, and so does a failure the season under way', () => {
+      const ok = { cases: 1000, predicted: 0.1, observed: 0.1, predictedMean: 10, observedMean: 10, chanceSe: 0.01, meanSe: 0.5, origins: 5 };
+      const fail = { ...ok, observed: 0.15 };
+      const thin = { ...ok, cases: 50 };
+      const at = (rows: Array<typeof ok>) => arrivalAdoption(rows.map((r, horizon) => ({ ...r, horizon })), 200);
+      expect(at([ok, ok, ok, ok, ok, ok, ok]).through).toBe(6);
+      const unchecked = at([ok, ok, ok, thin, ok, ok, ok]);
+      expect(unchecked.through).toBe(2);
+      expect(unchecked.horizons[3].check).toBe('not_evaluable');
+      expect(unchecked.horizons[3].reason).toMatch(/too few/i);
+      expect(unchecked.horizons[4].adopted).toBe(false);
+      expect(at([ok, ok, fail, ok, ok, ok, ok]).through).toBe(1);
+      expect(at([fail, ok, ok, ok, ok, ok, ok]).through).toBeNull();
+      expect(at([ok, thin, ok, ok, ok, ok, ok]).through).toBeNull();
+      expect(at([ok, fail, ok, ok, ok, ok, ok]).through).toBeNull();
+    });
+
+    it('a season beyond the last adopted horizon is not established on its own, with the gate\'s finding at that horizon; the seasons before keep their bands and nothing is carried forward', () => {
+      const run = rising();
+      const p = projected(projectProduction(aaa(), undefined, inForce(run.model)));
+      expect(p.seasons.map((x) => x.season)).toEqual([SEASON, SEASON + 1, SEASON + 2, SEASON + 3]);
+      expect(p.notEstablished.map((x) => x.season)).toEqual([SEASON + 4, SEASON + 5, SEASON + 6]);
+      expect(p.notEstablished[0].reason).toMatch(/4 seasons out/);
+      expect(p.notEstablished[0].reason).toMatch(/low/);
+      expect(p.notEstablished[0].reason).toMatch(/gate/);
+      expect(p.notEstablished[1].reason).toMatch(/5 seasons out/);
+      expect(p.notEstablished[2].reason).toMatch(/6 seasons out/);
+      // No band, no central, no zero: only the season and why
+      for (const x of p.notEstablished) expect(Object.keys(x).sort()).toEqual(['age', 'horizon', 'reason', 'season']);
+      // The established seasons are exactly those of the same model served in full
+      const a = projected(projectProduction(prospect(), undefined, MEASURED));
+      const b = projected(projectProduction(prospect(), undefined, partly()));
+      expect(b.seasons).toEqual(a.seasons.slice(0, 4));
+      expect(b.notEstablished.map((x) => x.season)).toEqual(a.seasons.slice(4).map((x) => x.season));
+      expect(b.notEstablished.map((x) => x.age)).toEqual(a.seasons.slice(4).map((x) => x.age));
+      expect(b.basis.arrival?.seasons).toEqual(a.basis.arrival?.seasons.slice(0, 4));
+      // A projection served in full has no season not established
+      expect(a.notEstablished).toEqual([]);
+    });
+
+    it('a total over seasons that include one not established is not a number: it names the seasons it cannot include, never reading them as zero', () => {
+      const p = projected(projectProduction(prospect(), undefined, partly()));
+      const all = productionTotal(p, SEASON, SEASON + 6);
+      expect(all.status).toBe('unknown');
+      if (all.status === 'unknown') {
+        expect(all.missing).toEqual([SEASON + 4, SEASON + 5, SEASON + 6]);
+        expect(all.reason).toMatch(/not established/);
+      }
+      const known = productionTotal(p, SEASON, SEASON + 3);
+      expect(known.status).toBe('known');
+      if (known.status === 'known') {
+        expect(known.central).toBeCloseTo(p.seasons.reduce((t, x) => t + x.wins.central, 0), 9);
+        expect(known.low).toBeCloseTo(p.seasons.reduce((t, x) => t + x.wins.low, 0), 9);
+        expect(known.high).toBeCloseTo(p.seasons.reduce((t, x) => t + x.wins.high, 0), 9);
+      }
+      // An unknown projection has no total at all
+      expect(productionTotal(projectProduction(prospect({ ratings: null }), undefined, partly()), SEASON, SEASON + 1).status).toBe('unknown');
+    });
+
+    it('a label never claims more calibration than was measured: a partly adopted arrival model is calibrated through N seasons out, never plain calibrated', () => {
+      const run = rising();
+      expect(run.record.label).toMatch(/through 3 seasons out/);
+      expect(run.record.label).not.toMatch(/^calibrated on this save:/);
+      expect(run.record.label).toMatch(/4–6 seasons out not established/);
     });
   });
 });

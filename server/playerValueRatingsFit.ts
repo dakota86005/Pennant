@@ -35,7 +35,10 @@
  *                 chance's and expected playing time's held-out calibration within the tolerance at every
  *                 horizon with enough cases, and not biased beyond a share of what happened and three standard
  *                 errors clustered by player and by origin (B-15, a tightening; two-way since F5); arrivals, once
- *                 measured, are adopted only where the next season could be checked (F5, a tightening).
+ *                 measured, are adopted only where the next season could be checked (F5, a tightening), and
+ *                 horizon by horizon (F6, the owner's option (b)): a contiguous run of passing horizons from the
+ *                 rest of this season through at least the next season is served, and the later horizons are not
+ *                 established, each with the gate's finding there. The tolerances are unchanged.
  */
 
 import { CONTROL_HORIZON_SEASONS, PRODUCTION_POLICY, RATINGS_METHOD, RATINGS_POLICY } from './playerValueCalibration.js';
@@ -195,6 +198,11 @@ export interface RatingsFitRecord {
     scored?: Array<{ origin: number; through: number; cohort: number; cases: number; horizons: number[] }>;
     /** The recency half-life the arrival fits used, seasons; null for none. */
     recencyHalfLife?: number | null;
+    /**
+     * Which horizons are adopted and why the rest are not (hardening F6, the owner's option (b)); null where arrivals
+     * were not measured or no hold-out was made.
+     */
+    adoption?: ArrivalAdoption | null;
   };
   development: {
     source: DevelopmentModel['source']; groups: Record<AgingGroup, 'save_fit' | 'fallback_prior'>;
@@ -212,6 +220,90 @@ export interface RatingsFitRecord {
 export interface RatingsFitRun {
   model: RatingsModel;
   record: RatingsFitRecord;
+}
+
+/** One horizon's held-out check against the arrival gate, and whether it is served (hardening F6). */
+export interface ArrivalHorizonAdoption {
+  horizon: number;
+  /** Its own check: passed the gate, failed it, or too few held-out cases to be checked. */
+  check: 'passed' | 'failed' | 'not_evaluable';
+  /** Served: it and every horizon before it passed. */
+  adopted: boolean;
+  /** Why it is not served, naming the horizon and the gate's finding; null where it is served. */
+  reason: string | null;
+}
+
+/** The arrival model's adoption, horizon by horizon: `through` is the last served horizon, null when none is. */
+export interface ArrivalAdoption {
+  through: number | null;
+  horizons: ArrivalHorizonAdoption[];
+}
+
+/** A horizon in words: 0 is the rest of this season. */
+export function seasonsOut(h: number): string {
+  return h === 0 ? 'the rest of this season' : `${h} season${h === 1 ? '' : 's'} out`;
+}
+
+/**
+ * The arrival model adopted horizon by horizon (the owner's option (b), 2026-09-23, hardening F6;
+ * RATINGS_POLICY.adoption). Each horizon's held-out check is judged by the unchanged gate: the absolute tolerance, and a
+ * bias beyond a share of what happened and the standard errors (B-15). The horizons served are the contiguous run from
+ * the rest of this season through the last horizon whose check, and every check before it, passed; a horizon after one
+ * that failed, or after one with too few held-out cases to be checked, is never served, whatever its own check says.
+ * Nothing is served unless the run reaches `requiredThrough` (the next season).
+ */
+export function arrivalAdoption(heldOut: ArrivalCheck[], minimumCases: number): ArrivalAdoption {
+  const tol = PRODUCTION_POLICY.gate.tolerance;
+  const bias = RATINGS_POLICY.gate.arrivalBias;
+  const judged = heldOut.map((r): { check: ArrivalHorizonAdoption['check']; finding: string | null } => {
+    if (r.cases < minimumCases || r.observed === null || r.predicted === null) {
+      return { check: 'not_evaluable', finding: `too few held-out cases to check its arrival chance (${r.cases}; ${minimumCases} needed)` };
+    }
+    const findings: string[] = [];
+    const e = r.observed - r.predicted;
+    const material = (err: number, observed: number, se: number | null | undefined) =>
+      Math.abs(err) > bias.relative * Math.abs(observed) && (se === null || se === undefined || Math.abs(err) > bias.standardErrors * se);
+    const ran = (err: number, observed: number) => `${Math.round((Math.abs(err) / Math.abs(observed)) * 100)}% ${err > 0 ? 'low' : 'high'}`;
+    if (Math.abs(e) > tol) {
+      findings.push(`the save's held-out arrival chance missed by ${Math.round(Math.abs(e) * 100)} points (predicted ${pct(r.predicted)}, observed ${pct(r.observed)})`);
+    } else if (material(e, r.observed, r.chanceSe)) {
+      findings.push(`the save's held-out arrival chance ran ${ran(e, r.observed)} (predicted ${pct(r.predicted)}, observed ${pct(r.observed)}${r.chanceSe == null ? '' : ` ± ${pct(r.chanceSe)}`})`);
+    }
+    if (r.observedMean !== null && r.predictedMean !== null) {
+      const m = r.observedMean - r.predictedMean;
+      if (material(m, r.observedMean, r.meanSe)) {
+        findings.push(`its expected playing time ran ${ran(m, r.observedMean)} (predicted ${num(r.predictedMean)}, observed ${num(r.observedMean)} opportunities per player)`);
+      }
+    }
+    return findings.length > 0
+      ? { check: 'failed', finding: `${findings.join('; ')}, outside the gate (${Math.round(tol * 100)} points, or a bias beyond ${Math.round(bias.relative * 100)}% of what happened and ${bias.standardErrors} standard errors)` }
+      : { check: 'passed', finding: null };
+  });
+  let last = -1;
+  while (last + 1 < judged.length && judged[last + 1].check === 'passed') last += 1;
+  const through = last >= RATINGS_POLICY.adoption.requiredThrough ? last : null;
+  const blocker = judged.findIndex((j) => j.check !== 'passed');
+  const horizons = judged.map((j, h): ArrivalHorizonAdoption => {
+    const adopted = through !== null && h <= through;
+    if (adopted) return { horizon: h, check: j.check, adopted, reason: null };
+    let why: string;
+    if (j.check !== 'passed') {
+      why = j.finding as string;
+    } else if (blocker !== -1 && blocker < h) {
+      why = `its own held-out check passed, but ${seasonsOut(blocker)} ${judged[blocker].check === 'failed' ? 'failed the gate' : 'could not be checked'}, and no horizon after one that did not pass is served`;
+    } else {
+      why = `its own held-out check passed, but nothing is served unless every horizon through ${seasonsOut(RATINGS_POLICY.adoption.requiredThrough)} passes the gate`;
+    }
+    return { horizon: h, check: j.check, adopted, reason: `${seasonsOut(h)}: ${why}` };
+  });
+  return { through, horizons };
+}
+
+/** Consecutive horizons in words: "4–6 seasons out", "6 seasons out". */
+function horizonSpan(hs: number[]): string {
+  if (hs.length === 0) return '';
+  if (hs.length === 1) return seasonsOut(hs[0]);
+  return `${hs[0]}–${hs[hs.length - 1]} seasons out`;
 }
 
 const SAME_TIME =
@@ -870,11 +962,17 @@ export function fitRatingsModel(input: RatingsFitInput, options: RatingsFitOptio
     const e = observed - predicted;
     return Math.abs(e) > bias.relative * Math.abs(observed) && (se === null || se === undefined || Math.abs(e) > bias.standardErrors * se);
   };
-  const arrivalOff = heldOut.filter((r) => r.cases >= minimumCases && (
+  // The arrival model is adopted horizon by horizon (the owner's option (b), hardening F6): a contiguous run of passing
+  // horizons from the rest of this season, which must reach the next season; the later horizons are not established
+  const adoption = arrival && useHoldout ? arrivalAdoption(heldOut, minimumCases) : null;
+  const required = RATINGS_POLICY.adoption.requiredThrough;
+  // What keeps anything from being adopted: a failure at or before the next season (the tolerances are unchanged)
+  const arrivalOff = heldOut.filter((r) => r.horizon <= required && r.cases >= minimumCases && (
     off(r.observed, r.predicted ?? 0) > tol
     || biased(r.observed, r.predicted, r.chanceSe)
     || biased(r.observedMean, r.predictedMean, r.meanSe)
   ));
+  const notAdopted = adoption ? adoption.horizons.filter((x) => !x.adopted) : [];
   if (asFitted.cases < minimumCases) {
     passed = false;
     reason = `Too few major leaguers with ratings and ${RATINGS_POLICY.mapping.minimumOpportunities}+ opportunities to validate the ratings mapping (${asFitted.cases} held out; ${minimumCases} needed).`;
@@ -890,13 +988,19 @@ export function fitRatingsModel(input: RatingsFitInput, options: RatingsFitOptio
   } else if (arrivalOff.length > 0) {
     passed = false;
     reason = `The arrival chance's held-out calibration is outside the gate (${Math.round(tol * 100)} points, or a bias beyond ${Math.round(bias.relative * 100)}% of what happened and ${bias.standardErrors} standard errors clustered by player and by origin) at horizon ` +
-      `${arrivalOff.map((r) => `${r.horizon} (chance predicted ${pct(r.predicted)}, observed ${pct(r.observed)}; opportunities per player predicted ${num(r.predictedMean)}, observed ${num(r.observedMean)})`).join(', ')}.`;
+      `${arrivalOff.map((r) => `${r.horizon} (chance predicted ${pct(r.predicted)}, observed ${pct(r.observed)}; opportunities per player predicted ${num(r.predictedMean)}, observed ${num(r.observedMean)})`).join(', ')}` +
+      `; the arrival model is adopted horizon by horizon, and nothing is adopted unless every horizon through ${seasonsOut(required)} passes.`;
+  } else if (adoption && adoption.through === null) {
+    passed = false;
+    reason = `The arrival model cannot be adopted: it is adopted horizon by horizon, and every horizon through ${seasonsOut(required)} must pass; ` +
+      `${adoption.horizons.filter((x) => x.horizon <= required && x.reason !== null).map((x) => x.reason).join('; ')}.`;
   } else {
     passed = true;
     reason = `The ratings mapping's held-out coverage (${pct(asFitted.outer)} / ${pct(asFitted.inner)} on ${asFitted.cases} major leaguers) is within ${Math.round(tol * 100)} points of the targets` +
-      (arrival
-        ? `, and the arrival chance and its expected playing time are within ${Math.round(tol * 100)} points and not biased beyond ${Math.round(bias.relative * 100)}% of what happened and ${bias.standardErrors} standard errors at every horizon with ${minimumCases}+ cases, scored on rolling origins ${rolling[0]}–${rolling[rolling.length - 1]}.`
-        : '; arrivals are not measured on this save.');
+      (arrival && adoption && adoption.through !== null
+        ? `, and the arrival model is adopted horizon by horizon through ${seasonsOut(adoption.through)}: the arrival chance and its expected playing time are within ${Math.round(tol * 100)} points and not biased beyond ${Math.round(bias.relative * 100)}% of what happened and ${bias.standardErrors} standard errors at every horizon to it, scored on rolling origins ${rolling[0]}–${rolling[rolling.length - 1]}` +
+          (notAdopted.length > 0 ? `; ${horizonSpan(notAdopted.map((x) => x.horizon))} not established (${notAdopted.map((x) => x.reason).join('; ')}).` : '.')
+        : arrival ? '.' : '; arrivals are not measured on this save.');
   }
   if (!useHoldout) {
     passed = true;
@@ -992,6 +1096,17 @@ export function fitRatingsModel(input: RatingsFitInput, options: RatingsFitOptio
     arrival = locateQuality(input, { method: RATINGS_METHOD, mapping, leftShare, staminaCut, development, arrival, potentialGap, reliability: reliability.model }, arrival, input.now);
   }
 
+  // ── adopted horizon by horizon (hardening F6): the served cells carry nothing past the last adopted horizon, and
+  // each later horizon carries the gate's finding there, so a prospect's later seasons are not established ──
+  if (arrival && adoption && adoption.through !== null) {
+    const through = adoption.through;
+    arrival = {
+      ...arrival,
+      cells: arrival.cells.map((c) => ({ ...c, horizons: c.horizons.map((A, h) => (h <= through ? A : null)) })),
+      adopted: { through, notEstablished: notAdopted.map((x) => ({ horizon: x.horizon, reason: x.reason as string })) },
+    };
+  }
+
   const model: RatingsModel = { method: RATINGS_METHOD, mapping, leftShare, staminaCut, development, arrival, potentialGap, reliability: reliability.model };
   const nCases = asFitted.cases;
   const overall = prior ? strength / (nCases + strength) : 0;
@@ -1014,7 +1129,7 @@ export function fitRatingsModel(input: RatingsFitInput, options: RatingsFitOptio
         : input.levels.length === 0 ? 'The save names no minor-league levels below this league.' : 'The save holds no minor-league usage history to measure arrivals from.',
       window, trainingThrough, holdout,
       cells: arrival?.cells.length ?? 0, cases: cases.length, heldOut,
-      scored, recencyHalfLife: halfLife,
+      scored, recencyHalfLife: halfLife, adoption,
     },
     development: {
       source: development.source, groups: development.groups ?? { hitter: development.source, pitcher: development.source },
@@ -1026,8 +1141,11 @@ export function fitRatingsModel(input: RatingsFitInput, options: RatingsFitOptio
     leftShare,
     priorWeight: { overall },
     gate: { passed, reason, tolerance: tol, minimumCases },
+    // Calibrated only as far as it was measured (hardening F6): an arrival model adopted through N seasons out says so
     label: passed && useHoldout
-      ? `calibrated on this save: ratings → rate on ${nCases} major leaguers (same-time)${arrival ? `, arrivals from its seasons ${window[0]}–${window[window.length - 1]}` : ''}; development ${development.source === 'save_fit' ? 'from its own rating snapshots' : 'not yet calibrated (provisional prior)'}`
+      ? `calibrated on this save${arrival && adoption?.through != null ? ` through ${seasonsOut(adoption.through)}` : ''}: ratings → rate on ${nCases} major leaguers (same-time)` +
+        `${arrival ? `, arrivals from its seasons ${window[0]}–${window[window.length - 1]}${adoption?.through != null ? ` adopted through ${seasonsOut(adoption.through)}${notAdopted.length > 0 ? ` (${horizonSpan(notAdopted.map((x) => x.horizon))} not established)` : ''}` : ''}` : ''}` +
+        `; development ${development.source === 'save_fit' ? 'from its own rating snapshots' : 'not yet calibrated (provisional prior)'}`
       : `not yet calibrated on this save: ${reason}`,
   };
   return { model, record };

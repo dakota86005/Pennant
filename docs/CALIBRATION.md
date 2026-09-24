@@ -565,6 +565,56 @@ own history for a population this size about 144 / 260 / 362 / 426). 563 players
 55 as if adopted, none failing. The ratings refit takes 4.8 s in the worker (3.1 s before: nine arrival fits where there
 were two); a full league valuation 1.0 s served, 1.8 s as if adopted.
 
+#### The arrival model adopted horizon by horizon (hardening F6, method `ratings-3h.3`, owner 2026-09-23)
+
+The owner chose option (b): "The arrival model is adopted horizon by horizon: a horizon whose held-out check passes the
+(unchanged, tightened) gate is served; later horizons are shown as not established. The gate is not loosened." It applies
+to the arrival model only; the results fit keeps its all-horizons rule. The method version moved, so every save refits
+its ratings model once.
+
+- **The rule** (`RATINGS_POLICY.adoption`, policy). Each horizon's held-out check is judged by F4's tolerances as before.
+  The horizons served are the contiguous run from horizon 0 through the last horizon k whose check, and every check before
+  it, passed. A horizon after one that failed, or after one with fewer than the gate's 200 held-out cases, is never
+  served, even where its own check passes. Nothing is adopted unless the run reaches horizon 1, and the mapping must still
+  pass its own gate.
+- **Serving.** The model served carries nothing past k. A prospect's seasons 0 to k are projected exactly as before; each
+  season after k is not established, with the gate's finding at its horizon as its reason, and has no band, central or
+  zero. A total over seasons that include one is not a number (`productionTotal`). The fit's label and the cone say
+  "calibrated through N seasons out".
+- **A tightening for saves whose later horizons could not be checked.** Before, a horizon with too few held-out cases was
+  not judged and was served. Now it ends the run, so seasons past it are not established.
+
+**The Arizona run** (`203:2025:ratings-3h.3`, `npx tsx scripts/calibrate.ts production --refit`, scratch data dir,
+`league.db` read-only): the held-out figures are F5's to the digit, because the method is unchanged apart from adoption.
+Horizons 0 to 3 pass (bias / happened −1.7%, 0.3%, 0.0% and 7.5%) and 4 to 6 fail (16.7%, 16.8% and 16.9% low, about 7
+standard errors). **Gate: PASSED**, and the arrival model is **adopted through 3 seasons out**. The record reads, for
+example, "4 seasons out: the save's held-out arrival chance ran 17% low (predicted 11.4%, observed 13.7% ± 0.3%),
+outside the gate". The ratings refit takes 4.8 s in the worker. The results fit (`production-3h.2`) still fails its own
+gate (hitters' bias at horizons 5 and 6), so the fallback prior stays in force for results.
+
+Served (the first served state, not a diagnostic): 6,351 prospects are projected. The 149 players on the ratings path
+who stay `unknown` are on a major-league club with no major-league line in the window. All 6,351 are projected for the rest of 2026 and
+2027 to 2029; 2030 to 2032 are not established for every one of them.
+
+| Season | Prospects' summed central | F5 as if adopted | The save's own history, a population this size |
+|---|---|---|---|
+| 2026 (the rest of it) | 24.4 | — | — |
+| 2027 | 111.0 | 111 | about 144 |
+| 2028 | 201.4 | 201 | about 260 |
+| 2029 | 256.0 | 256 | about 362 |
+| 2030 to 2032 | not established | 258 (2030) | about 426 (2030) |
+
+- 262 players have an established season with a central below −0.1 wins (563 over all seven seasons as if adopted under F5).
+- 1 has a low edge below −3 (35).
+- No player's horizon total is a number, because each prospect has seasons that are not established.
+- Aidan Miller (41278, 21, level 2): chance 0.585 / 0.813 / 0.837 / 0.907 for 2026 to 2029, centrals 0.23 / 0.93 / 1.58
+  / 3.04 wins. 2030 to 2032 are not established, each with its horizon's finding.
+
+The regression sweep: 65 checks pass and none fails. These are F5's 53, with "7 seasons" re-read as seven consecutive
+seasons, established and then not established, plus 12 checks for this change. The prospect checks now have subjects:
+25,404 arrival chances.
+A league valuation takes 2.1 s.
+
 ## 7. Player Value's opening price of a win: policy minimums (hardening, B-13)
 
 The opening price of a win (PLAYER_VALUE.md Part 4.1) is a spread of defensible bases, not a fit, so it has nothing
