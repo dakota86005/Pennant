@@ -117,7 +117,7 @@ export function PriceOfWinLine({ price }: { price: ClubFinancesData['league']['p
   const floor = price.floor.value;
   return (
     <div className="muted hint-line price-of-win">
-      {price.label}:{' '}
+      Price of a win ({price.label}):{' '}
       {p
         ? <><strong>{perWin(p.central)}</strong> a win (band {perWin(p.low)}–{perWin(p.high)})</>
         : <><strong>unknown</strong>{price.price.note ? ` (${price.price.note})` : ''}</>}

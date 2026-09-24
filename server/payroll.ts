@@ -211,7 +211,7 @@ payrollRoutes.get('/payroll/:orgId', (req, res) => {
         players: owed.map((p) => ({ player_id: p.player_id, name: p.name, salary: p.salaryNow })),
         candidates: elsewhere.length,
         note: elsewhere.length === 0 && retainedUnread !== null
-          ? `None in the export: it names this club as carrying no contract of a player now elsewhere. Retained salary itself is not exported (${retainedUnread}).`
+          ? `None in the export: it names this club as carrying no contract of a player now elsewhere. Retained salary itself is not exported. ${retainedUnread}`
           : null,
       }
     : {
@@ -219,8 +219,8 @@ payrollRoutes.get('/payroll/:orgId', (req, res) => {
         total: null,
         players: [],
         candidates: elsewhere.length,
-        note: 'Whether this club still pays players it moved is not established: retained salary is not exported '
-          + `(${elsewhere.find((v) => v.contract.retained.value === null)?.contract.retained.note ?? 'the column is blank'}). `
+        note: 'Whether this club still pays players it moved is not established: retained salary is not exported. '
+          + `${elsewhere.find((v) => v.contract.retained.value === null)?.contract.retained.note ?? 'The column is blank.'} `
           + `The export names this club as carrying ${elsewhere.length} contract${elsewhere.length === 1 ? '' : 's'} of players now elsewhere; that is the club of record, not proof it pays.`,
       };
 
