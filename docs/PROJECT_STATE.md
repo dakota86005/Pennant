@@ -627,7 +627,24 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   serves it with every observed change. **On the Arizona save** (one import,
   2026-5-16) no off-season is observed: the measured price, the awards, the
   reserve-clause cost and replacement say so, and the opening price ($7.25M, band
-  $6.57M–$9.78M; with its sampling $5.95M–$11.22M) stays in force.
+  $6.57M–$9.78M; with its sampling $5.95M–$11.22M) stays in force. **Reviewed
+  2026-09-24** (R3, R4; PLAYER_VALUE.md Part 9): a winter is read by the calendar (an
+  import after the season number moved on is inside the winter, and imports across one
+  winter count one); an extension moving with a traded player and a deadline
+  acquisition re-signed are never market prices; two timelines (a save that went back,
+  a date imported again with different play) are never compared; recording an import
+  reads only the import before it and stores the pair (`value_contract_pairs`,
+  `value_contract_events`), so capture time is flat in the number of imports (2.43 s
+  with 29 earlier imports, 3.65 s before). The measured price is a set of bases (per
+  win projected at signing over the deal and in the first season, if he plays, and per
+  win produced in the first season once completed), resampled by winter; it is compared
+  with the opening band only once it holds the realized reading and covers each third
+  of the free-agent class, its central is the realized reading's, and the reason names
+  the unit. Measured replacement is shown, never applied. Awards are scored with their
+  bands' width. Open owner questions: the unit of the price in force once measured, and
+  how long the contract history is kept (about 3.2 MB an import, not pruned). Known
+  limit: production is unknown at an import after the season number moved on (D-08), so
+  a signing first seen then has only the realized reading.
 - **Player card production cone** (PLAYER_VALUE.md Part 8): an "Expected
   production" section draws each season's 80% and 50% bands, the expected
   path, replacement level and control, with target beside observed coverage on

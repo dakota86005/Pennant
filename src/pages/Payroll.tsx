@@ -83,7 +83,11 @@ interface PriceAdoptionData {
   inForce: 'opening' | 'measured';
   reason: string;
   opening: { central: number; low: number; high: number; comparable: { low: number; high: number } | null } | null;
-  measured: { status: string; signings: number; observed: number; text: string; price: Sourced<{ central: number; low: number; high: number }> };
+  measured: {
+    status: string; signings: number; observed: number; text: string; price: Sourced<{ central: number; low: number; high: number }>;
+    /** Phase 4b review: the measured bases, each with its unit (projected at signing, or realized in the first season). */
+    bases?: Array<{ id: string; unit: 'projected' | 'realized'; description: string; status: string; signings: number; central: number | null; low: number | null; high: number | null; text: string }>;
+  };
   rule: string;
 }
 /** One import's reading of the price of a win (phase 4b): opening, measured, which was in force. */
@@ -97,8 +101,10 @@ export interface PriceHistoryEntry {
   note: string | null;
 }
 interface ObservedCostsData {
-  awards: { status: string; text: string };
+  awards: { status: string; text: string; readingsText?: string };
   reserveClause: { status: string; text: string };
+  /** Phase 4b review: imports not compared across a change of timeline (the save went back, or a date played again), in words. */
+  timeline?: { text: string | null; superseded: string[] };
 }
 interface CostLadderData {
   preArbitration: { status: string; cases: number; atMinimum: number; band: Sourced<{ low: number; high: number; central?: number | null }>; text: string };
@@ -223,7 +229,7 @@ const measuredWords = (m: PriceHistoryEntry['measured']): string => {
   return 'unknown';
 };
 
-export function PriceOfWinLine({ price, history }: { price: ClubFinancesData['league']['priceOfWin']; history?: PriceHistoryEntry[] }) {
+export function PriceOfWinLine({ price, history, timeline }: { price: ClubFinancesData['league']['priceOfWin']; history?: PriceHistoryEntry[]; timeline?: string | null }) {
   const p = price.price.value;
   const floor = price.floor.value;
   const a = price.adoption ?? null;
@@ -242,6 +248,7 @@ export function PriceOfWinLine({ price, history }: { price: ClubFinancesData['le
           <li>{price.rules.central}</li>
           <li>{price.rules.band}</li>
           {price.rules.floor && <li>{price.rules.floor}</li>}
+          {price.stage === 'measured' && <li>The opening reading, not in force (kept for comparison):</li>}
           {price.bases.map((b) => (
             <li key={b.id}>
               {b.id}: {b.description}: {b.perWin.value === null ? `unknown (${b.perWin.note ?? 'not stated'})` : perWin(b.perWin.value)}
@@ -253,9 +260,16 @@ export function PriceOfWinLine({ price, history }: { price: ClubFinancesData['le
             <li>Opening band with its sampling (each basis resampled): {perWin(a.opening.comparable.low)}–{perWin(a.opening.comparable.high)}.</li>
           )}
           {a && <li>Measured: {a.measured.price.value ? a.measured.text : (a.measured.price.note ?? a.measured.text)}</li>}
+          {a?.measured.bases?.filter((b) => b.status === 'measured').map((b) => (
+            <li key={`m-${b.id}`}>
+              Measured basis ({b.unit === 'realized' ? 'per realized win' : 'per win projected at signing'}): {b.description}: {perWin(b.central as number)}
+              {b.low !== null && b.high !== null ? ` (${perWin(b.low)}–${perWin(b.high)} resampled)` : ''}, {b.signings} signings.
+            </li>
+          ))}
           {a && <li>{a.rule}</li>}
         </ul>
       </details>
+      {timeline && <div className="muted">{timeline}</div>}
       {history && history.length > 0 && (
         <details className="price-basis">
           <summary>Price history ({history.length} import{history.length === 1 ? '' : 's'})</summary>
@@ -310,7 +324,7 @@ export function CostLadderLine({ costs, observed }: { costs: CostLadderData; obs
           {costs.arbitration.unread?.text && <li>{costs.arbitration.unread.text}</li>}
           {usesPrior && <li>{costs.rules.prior}</li>}
           <li>{costs.rules.reserveClause}</li>
-          {observed && <li>Observed arbitration salaries: {observed.awards.text}</li>}
+          {observed && <li>Observed arbitration salaries: {observed.awards.text}{observed.awards.readingsText ? ` ${observed.awards.readingsText}` : ''}</li>}
           {observed && observed.reserveClause.status === 'measured' && <li>{observed.reserveClause.text}</li>}
         </ul>
       </details>
@@ -396,7 +410,7 @@ export function Payroll({ orgId }: { orgId: number }) {
           </div>
         </div>
       )}
-      {price && <PriceOfWinLine price={price} history={finance?.priceHistory} />}
+      {price && <PriceOfWinLine price={price} history={finance?.priceHistory} timeline={finance?.league.observed?.timeline?.text ?? null} />}
       {finance?.league.costs && <CostLadderLine costs={finance.league.costs} observed={finance.league.observed} />}
 
       <section>

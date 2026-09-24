@@ -1414,6 +1414,31 @@ CALIBRATION.md section 9).**
   apply the same level to both. All of it is measurement across the save's own imports, stamped policy for its rules
   (`SIGNINGS_POLICY`); no number is fitted in code.
 
+**Amended 2026-09-24 (phase 4b review: R3 correctness, R4 method; PLAYER_VALUE.md 4.2 to 4.4 and Part 9, CALIBRATION.md
+section 9).**
+
+- **The measured price never changes what it measures.** It is read like the opening price, as a set of bases each with
+  its sampling: per win projected at signing (over the deal, and in the first season), per win expected in the first
+  season if he plays, and per win produced in the first season once that season is completed (the opening's own unit).
+  It is compared with the opening band with its sampling only once it holds that realized reading, and only when its
+  signings cover each third of the winter's free-agent class (5 each); both are tightenings of Q-4, whose wording is
+  unchanged. Its central is the realized reading's. The reason names the unit and flags a central below the opening
+  floor or outside its band. An opening band whose sampling has no upper edge is wider than any bounded band. Which unit
+  the price in force uses once measured is the owner's question; until then the comparison is like for like.
+- **Replacement from free talent is shown, never applied**, until surplus applies one level to both sides (phase 5); it
+  is measured on each pickup's season with the club that took him and says how many did not play.
+- **A winter is read by the calendar, and a timeline is never crossed.** An import before its season began is inside
+  that winter (never "a season already under way"); several imports across one winter are one winter; a pair a winter
+  or more apart is counted and not measured. Imports are paired in the order recorded: a save that went back, or a date
+  imported again with different play, starts a new timeline, and the abandoned one's observations of the same period
+  are left out.
+- **What changed is named for what the export shows:** an extension that moves with a traded player is not a signing; a
+  free agent signed by an organization his lines show held him during the season before is left out like a re-signing;
+  a term that ends no later than it did is a term changed within its seasons; rows with no term are never "the same
+  terms".
+- **One earlier import is read per import.** The pair a new import forms with the one before it is stored with the
+  reading's method; the market reads the stored pairs. The history is not pruned: retention is the owner's question.
+
 ## D-053 — Calibration belongs to the save
 
 **Status:** Accepted 2026-09-22 (owner decision). **Implementation:** Partial. Player Value's expected production

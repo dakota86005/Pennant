@@ -98,19 +98,26 @@ worktree.
   reading without production prices nothing. Reserve-clause renewals are unknown until observed across imports (4b). A projected cost is never committed
   money: Payroll shows it beside the committed total as a range of reasonable readings with the sum of centrals, never in
   it. Open owner questions (phase 4a review): combining players statistically at Payroll; MLB's 20% maximum cut.
-- The measured price (phase 4b, D-052 amendment): each import records its contracts (keyed by the save's identity,
-  idempotent); two consecutive imports are compared and each change is read through Player Rights' standing AT THE
-  EARLIER import for the new contract's first season. A snapshot difference names what changed, never a transaction type
-  the export does not give (D-020: no "optioned", "recalled", "DFA"); a club change on the same terms moved with him; an
-  ambiguous change (a free agent re-signed by his club, a controlled player's deal elsewhere, an indeterminate standing)
-  is counted and left out. The price is a ratio of sums over free-agent signings (salary above the minimum ÷ expected
-  wins at the earlier import), its band the signings resampled (`SIGNINGS_POLICY.bootstrap`), at least the opening
-  basis's 20 contracts; each opening basis is resampled the same way, and the measured price replaces the opening one
-  only when its band is narrower than the opening band with its sampling (Q-4); otherwise the opening stays and says
-  why. One import, or imports inside one season: "No off-season observed yet". Awards are scored against the earlier
-  import's band and read as a class line at 30; reserve-clause renewals price a reserve-clause season at 30; replacement
-  from freely acquired players at 30 (then the measured price counts wins above it; production stays in the export's
-  WAR). Never the live log.
+- The measured price (phase 4b and its review, D-052 amendments): each import records its contracts (keyed by the save's
+  identity, idempotent) and stores the pair it forms with the import recorded before it (only that one is read; a pair is
+  read again from its snapshots only when `SIGNINGS_POLICY.method` changes; nothing is pruned). Imports are paired in the
+  order recorded; a save that went back, or a date imported again with different play, starts a new timeline, never
+  compared across. A winter is read by the calendar (an import before its season began is inside it; one winter however
+  many imports; a pair a winter or more apart is not measured). Each change is read through Player Rights' standing AT
+  THE EARLIER import for the new contract's first season and named for what changed, never a transaction type the export
+  does not give (D-020: no "optioned", "recalled", "DFA"); a club change on the same terms moved with him; an extension
+  the earlier import held is never a signing, traded or not; an ambiguous change (a free agent re-signed by a club that
+  held him, at the earlier import or during the season before by his lines; a controlled player's deal elsewhere; a term
+  changed within its seasons; rows with no term; an indeterminate standing) is counted and left out. The price is a set
+  of bases like the opening's (per win projected at signing over the deal and in the first season, if he plays, and per
+  win produced in the first season once completed), each a ratio of sums with its resampled band (by winter once two),
+  each on at least 20 signings; it is compared with the opening band with its sampling (Q-4) only once it holds the
+  realized reading and covers each third of the free-agent class, its central is the realized reading's, and the reason
+  names the unit (which unit the price in force uses is an open owner question). An unbounded opening sampling band is
+  wider than any bounded one. One import, or imports inside one season: "No off-season observed yet". Awards are scored
+  against the earlier import's band beside its width, read in the ladder's class, and joined as a class line at 30;
+  reserve-clause renewals price a reserve-clause season at 30; replacement from freely acquired players at 30 is shown,
+  never applied (price, ladder and production stay in the export's WAR until phase 5). Never the live log.
 - Never ask the owner for an OOTP experiment; an unresolved rule stays `indeterminate` and is documented.
 
 Checks: `tests/playerValueBoundary.test.ts`, `tests/playerValueControl.test.ts`, `tests/playerValueCost.test.ts`,

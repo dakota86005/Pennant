@@ -9,7 +9,10 @@
  * ladder: the renewal spread and the arbitration ladder measured on this import. The history is what lets
  * drift be seen. Since phase 4b it also records, first, the import's contracts (`playerValueContractStore.ts`, the
  * third writer), which the next import's signings are observed against, and in the basis which price of a win was in
- * force and why (opening or measured, owner Q-4), so the price's history is visible (`priceHistory`).
+ * force and why (opening or measured, owner Q-4), so the price's history is visible (`priceHistory`). Since the phase 4b
+ * review it also stores the pair the new import forms with the import before it on the save's timeline (reading only
+ * that one earlier import, R3-03), and records a break when a date already recorded is imported again on another
+ * timeline (R3-05).
  *
  *   - Keyed by save, league and game date (the export's `leagues.current_date`, normalised through
  *     `parseGameDate`, so `2026-5-9` and `2026-05-09` are one key). Idempotent per key: a re-run of
@@ -30,8 +33,15 @@ import { db, tableColumns, tableExists } from './db.js';
 import { parseGameDate } from './dataFreshness.js';
 import { historyDb } from './history.js';
 import { saveIdentity } from './playerValueFitStore.js';
-import { contractSnapshotRecorded, recordContractSnapshot } from './playerValueContractStore.js';
-import { contractSnapshotsNow, leagueFinances, marketLeagues, type LeagueFinances, type PriceAdoption } from './playerValue.js';
+import {
+  contractBreaks, contractImports, contractPair, contractSnapshotAt, contractSnapshotRecorded, recordContractPair, recordContractSnapshot,
+  recordTimelineBreak, recordedEvent,
+} from './playerValueContractStore.js';
+import {
+  contractSnapshotsNow, leagueFinances, marketLeagues, observedPairNow, pairContext, seasonPlayDigest, type LeagueFinances, type PriceAdoption,
+} from './playerValue.js';
+import { contractTimeline, type PairContext } from './playerValueSignings.js';
+import { SIGNINGS_POLICY } from './playerValueCalibration.js';
 
 historyDb.exec(`
   CREATE TABLE IF NOT EXISTS value_market_snapshots (
@@ -72,6 +82,8 @@ export interface MarketSnapshot {
   season: number | null;
   priceLabel: string;
   priceUnit: string;
+  /** Which price was in force at the import (phase 4b): the opening reading or the measured one; null before phase 4b recorded it. */
+  stage: 'opening' | 'measured' | null;
   price: { central: number; low: number; high: number } | null;
   floor: { low: number; high: number } | null;
   priceNote: string | null;
@@ -96,8 +108,11 @@ export interface SnapshotResult {
   skipped: string[];
   /** Why the snapshot could not be taken; the import goes on regardless. */
   error: string | null;
-  /** Phase 4b: the import's contract snapshots (per market league): rows written, and keys already recorded. */
-  contracts: { written: number; existing: number; error: string | null };
+  /**
+   * Phase 4b: the import's contract snapshots (per market league): rows written, keys already recorded, pairs of imports
+   * stored, and what the timeline check found (review R3-05).
+   */
+  contracts: { written: number; existing: number; pairs: number; timeline: string[]; error: string | null };
 }
 
 export interface SnapshotOptions {
@@ -121,21 +136,40 @@ function exportedGameDate(leagueId: number): string | null {
  * failure is returned, and the import it runs inside carries on.
  */
 export function captureMarketSnapshot(options: SnapshotOptions = {}): SnapshotResult {
-  const result: SnapshotResult = { written: 0, existing: 0, skipped: [], error: null, contracts: { written: 0, existing: 0, error: null } };
+  const result: SnapshotResult = { written: 0, existing: 0, skipped: [], error: null, contracts: { written: 0, existing: 0, pairs: 0, timeline: [], error: null } };
   // Phase 4b, first: this import's contracts, which the next import's signings are observed against and the market
-  // below is priced from. Idempotent per key; a failure here is returned and the market is still recorded.
+  // below is priced from, and the pair they form with the import before them. Idempotent per key; a failure here is
+  // returned and the market is still recorded.
   try {
     const dates = new Map<number, { iso: string; exported: string | null }>();
     for (const leagueId of marketLeagues()) {
       const exported = exportedGameDate(leagueId);
       const iso = parseGameDate(exported);
       if (iso === null) continue;
-      if (contractSnapshotRecorded(leagueId, iso)) result.contracts.existing += 1;
-      else dates.set(leagueId, { iso, exported });
+      if (contractSnapshotRecorded(leagueId, iso)) {
+        result.contracts.existing += 1;
+        const found = timelineCheck(leagueId, iso);
+        if (found) result.contracts.timeline.push(`League ${leagueId}: ${found}`);
+      } else dates.set(leagueId, { iso, exported });
     }
-    for (const snapshot of contractSnapshotsNow([...dates.keys()], dates)) result.contracts.written += recordContractSnapshot(snapshot);
+    const { snapshots, errors } = contractSnapshotsNow([...dates.keys()], dates);
+    if (errors.length > 0) result.contracts.error = errors.join(' ');
+    let context: PairContext | null = null;
+    for (const snapshot of snapshots) {
+      const leagueId = snapshot.leagueId;
+      const imports = contractImports(leagueId);
+      const previous = imports[imports.length - 1] ?? null;
+      const broken = previous !== null && contractBreaks(leagueId).some((b) => b.afterSeq >= previous.seq);
+      result.contracts.written += recordContractSnapshot(snapshot);
+      // The pair it forms with the import recorded before it, when that one is earlier on the same timeline: only it is read
+      if (previous !== null && !broken && previous.gameDate < snapshot.gameDate) {
+        const earlier = contractSnapshotAt(leagueId, previous.gameDate);
+        if (earlier && recordContractPair(leagueId, observedPairNow(earlier, snapshot, context ??= pairContext()))) result.contracts.pairs += 1;
+      }
+      result.contracts.pairs += storeMissingPairs(leagueId, () => (context ??= pairContext()));
+    }
   } catch (err) {
-    result.contracts.error = (err as Error).message ?? String(err);
+    result.contracts.error = [result.contracts.error, (err as Error).message ?? String(err)].filter(Boolean).join(' ');
   }
   try {
     const compute = options.compute ?? ((id: number) => leagueFinances(id));
@@ -205,6 +239,48 @@ export function captureMarketSnapshot(options: SnapshotOptions = {}): SnapshotRe
   return result;
 }
 
+/**
+ * A date already recorded imported again (review R3-05): where it is not the import recorded last, the save went back to
+ * it; where its season's play differs from the record's, a reloaded save was played again. Either way the next import
+ * starts a new timeline, recorded as a break after the last import. The same play with other contracts is a move made
+ * on the same day, on the same timeline; where the record holds no play (recorded before the review), nothing is said.
+ */
+function timelineCheck(leagueId: number, iso: string): string | null {
+  const imports = contractImports(leagueId);
+  const latest = imports[imports.length - 1];
+  if (!latest) return null;
+  if (latest.gameDate !== iso) {
+    const reason = iso < latest.gameDate
+      ? `the save went back to ${iso}, a date already recorded, after the import of ${latest.gameDate}: the earlier record stands, and the next import is not compared across it`
+      : `the export is dated ${iso}, a date already recorded on a timeline the save has left (the last import was ${latest.gameDate}): the earlier record stands, and the next import is not compared across it`;
+    return recordTimelineBreak(leagueId, latest.seq, iso, reason) ? reason : null;
+  }
+  const recorded = recordedEvent(leagueId, iso);
+  const now = seasonPlayDigest(leagueId);
+  if (!recorded || recorded.playDigest === null || now === null || recorded.playDigest === now) return null;
+  const reason = `the import of ${iso} was taken again with its season's play different (a reloaded save played again): the first record stands, and the next import is not compared with it`;
+  return recordTimelineBreak(leagueId, latest.seq, iso, reason) ? reason : null;
+}
+
+/**
+ * The pairs of the save's timeline not stored under this reading's method (recorded under an earlier one), observed
+ * again from their two snapshots and stored, one pair at a time; none once every pair is stored. Returns how many.
+ */
+function storeMissingPairs(leagueId: number, context: () => PairContext): number {
+  const imports = contractImports(leagueId);
+  const timeline = contractTimeline(imports.map((i) => ({ gameDate: i.gameDate, seq: i.seq })), contractBreaks(leagueId), null);
+  let stored = 0;
+  let last: { date: string; snapshot: ReturnType<typeof contractSnapshotAt> } | null = null;
+  for (const t of timeline.pairs) {
+    if (contractPair(leagueId, t.earlier, t.later, SIGNINGS_POLICY.method)) continue;
+    const earlier = last?.date === t.earlier ? last.snapshot : contractSnapshotAt(leagueId, t.earlier);
+    const later = contractSnapshotAt(leagueId, t.later);
+    last = { date: t.later, snapshot: later };
+    if (earlier && later && recordContractPair(leagueId, observedPairNow(earlier, later, context()))) stored += 1;
+  }
+  return stored;
+}
+
 interface Row {
   save_name: string; league_id: number; game_date: string; game_date_exported: string | null; observed_at: string;
   import_finished_at: string | null; season: number | null; price_label: string; price_unit: string;
@@ -223,6 +299,12 @@ const parse = (text: string): unknown => {
 };
 
 /** The league's recorded market, oldest game date first (ordered through `parseGameDate`). */
+/** Which price was in force at an import, as its basis recorded it (phase 4b); null for a row written before. */
+const stageOf = (basis: unknown): MarketSnapshot['stage'] => {
+  const stage = (basis as { stage?: unknown } | null)?.stage;
+  return stage === 'measured' || stage === 'opening' ? stage : null;
+};
+
 /** The market history of this save (its identity: name and league fingerprint, D-01), oldest first. */
 export function marketSnapshotHistory(leagueId: number, saveName = saveIdentity(leagueId)): MarketSnapshot[] {
   const rows = historyDb.prepare(
@@ -242,6 +324,7 @@ export function marketSnapshotHistory(leagueId: number, saveName = saveIdentity(
       season: r.season,
       priceLabel: r.price_label,
       priceUnit: r.price_unit,
+      stage: stageOf(parse(r.basis_json)),
       price: r.price_central !== null && r.price_low !== null && r.price_high !== null
         ? { central: r.price_central, low: r.price_low, high: r.price_high } : null,
       floor: r.floor_low !== null && r.floor_high !== null ? { low: r.floor_low, high: r.floor_high } : null,

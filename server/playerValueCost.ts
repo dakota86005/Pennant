@@ -730,8 +730,9 @@ function priceArbitration(
   const central = centralClass !== null ? centralByClass.get(centralClass) ?? null : null;
   const centrals = [...centralByClass].map(([k, v]) => ({ status: 'arbitration' as ControlStatus, arbitrationClass: k, central: minimum + v }));
 
+  // A prior class that observed awards joined (phase 4b) is measured in part, never still the prior alone (review R3-10)
   const source: CostBasis['source'] = all.every((c) => c.status === 'measured') ? 'measured'
-    : all.every((c) => c.status === 'prior') ? 'provisional_prior' : 'measured_thin_with_prior';
+    : all.every((c) => c.status === 'prior' && c.readings.every((x) => x.source === 'prior')) ? 'provisional_prior' : 'measured_thin_with_prior';
   const cases = all.reduce((s, c) => s + c.cases, 0);
   const span = (ks: number[]) => (ks.length === 1 ? `${ks[0]}` : `${ks[0]}–${ks[ks.length - 1]}`);
   const tripText = trip === null ? 'which trip is not established, so every class' : `trip ${span(Array.from({ length: trip.high - trip.low + 1 }, (_, i) => trip.low + i))}`;

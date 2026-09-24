@@ -2228,19 +2228,32 @@ export const MEASURED_PRICE_LABEL = 'measured: observed signings';
  *                   the two after it): a contract observed starting later than that is read as not established;
  *   replacement     the fewest players freely acquired (a minor-league deal, or a major-league deal at the minimum,
  *                   from outside the organization, with a major-league record) whose major-league opportunities
- *                   for the club that took them measure replacement, per 600 opportunities; fewer, and the export's
- *                   WAR convention stays (provisional).
+ *                   for the club that took them, in the season he joined it, measure replacement, per 600
+ *                   opportunities; fewer, and the export's WAR convention stays (provisional). Shown, never
+ *                   applied to the price (review R3-06, R4-06): the price, the ladder and production stay in the
+ *                   export's WAR until surplus (phase 5) applies one level to both sides;
+ *   coverage        (review R4-02, a tightening) the fewest priced signings in each third of the winter's
+ *                   free-agent class by expected wins at the earlier import before the measured price may replace
+ *                   the opening one: a winter of cheap deals, or of stars alone, does not set the price of every win;
+ *   method          the reading's version: an observed pair of imports is stored with it when the later import is
+ *                   recorded, and read again from the two snapshots when the method has changed (review R3-03).
  */
 export const SIGNINGS_POLICY = {
   bootstrap: { replicates: 1000, low: 0.1, high: 0.9, seed: 20260924 },
   rightsSeasons: 3,
   replacement: { minimumPlayers: 30, per: 600 },
+  coverage: { perThird: 5 },
+  method: 'signings-4b.2',
 } as const;
 
 export const SIGNINGS_POLICY_CALIBRATION: CalibrationStamp = policy(
-  'Observed signings (phase 4b): a change between two imports is read through Player Rights at the earlier import and never given a transaction type the export ' +
-    'does not carry (D-020); the measured price is the ratio of summed salary above the minimum to summed expected wins at signing over free-agent signings only, ' +
-    'its band the 10th-90th percentile of 1,000 resamples of the signings (each opening basis resampled the same way for the comparison, owner Q-4); ' +
-    'it needs the opening basis\'s 20 contracts, an arbitration class\'s observed salaries and the reserve-clause renewals the ladder\'s 30, and replacement 30 ' +
-    'freely acquired players. A free agent re-signed by the club that held him, and a controlled player\'s new deal elsewhere, are counted and left out. Decisions, not fits.'
+  'Observed signings (phase 4b, review 2026-09-24): a change between two consecutive imports of one timeline is read through Player Rights at the earlier ' +
+    'import and never given a transaction type the export does not carry (D-020); a winter is read by the calendar (an import before Opening Day is inside it). ' +
+    'The measured price is a set of bases over free-agent signings, like the opening one: per win projected at signing (over the deal, and in the first ' +
+    'season), per win expected in the first season if he plays, and per win produced in the first season once it is completed; each basis the ratio of sums ' +
+    'with its 10th-90th percentile of 1,000 resamples (by winter once two are observed), its band the spread of the bases with that sampling. It replaces the ' +
+    "opening price only when it holds the realized reading, 5 priced signings in each third of the winter's free-agent class, and a band narrower than the " +
+    "opening band with its sampling (owner Q-4). Each basis needs the opening basis's 20 contracts; an arbitration class's observed salaries and the " +
+    "reserve-clause renewals the ladder's 30; replacement 30 freely acquired players, shown and never applied. A free agent re-signed by a club that held " +
+    "him, and a controlled player's new deal elsewhere, are counted and left out. Decisions, not fits."
 );

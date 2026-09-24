@@ -96,6 +96,32 @@ describe("Payroll's price of a win", () => {
     expect(html).toMatch(/34 signings/);
   });
 
+  it('with the measured price in force, lists its bases with their unit and labels the opening bases as not in force (phase 4b review, R3-12)', () => {
+    const html = renderToStaticMarkup(createElement(PriceOfWinLine, {
+      price: price({
+        label: 'measured: observed signings',
+        stage: 'measured',
+        adoption: {
+          inForce: 'measured',
+          reason: 'The measured price is in force: 120 free-agent signings observed; per projected win at signing and per realized win.',
+          opening: { central: 7_010_000, low: 6_050_000, high: 9_870_000, comparable: { low: 5_900_000, high: 10_100_000 } },
+          measured: {
+            status: 'measured', signings: 120, observed: 120, text: 'Measured on 120 signings.',
+            price: { value: { central: 6_100_000, low: 5_800_000, high: 6_400_000 }, source: 'signings' },
+            bases: [
+              { id: 'first', unit: 'projected', description: 'First season, per win projected at signing', status: 'measured', signings: 120, central: 6_050_000, low: 5_900_000, high: 6_200_000, text: 'x' },
+              { id: 'realized', unit: 'realized', description: 'First season, per win he produced in it', status: 'measured', signings: 118, central: 6_300_000, low: 6_000_000, high: 6_400_000, text: 'y' },
+            ],
+          },
+          rule: 'The measured price replaces the opening one when its band is narrower (Q-4).',
+        },
+      }),
+    }));
+    expect(html).toMatch(/per win he produced in it/);
+    expect(html).toMatch(/\$6\.30M/);
+    expect(html).toMatch(/opening reading, not in force/i);
+  });
+
   it('shows a known floor even when the price itself is unknown', () => {
     const html = renderToStaticMarkup(createElement(PriceOfWinLine, {
       price: price({ price: { value: null, source: null, note: 'A single reading is not a band.' } }),

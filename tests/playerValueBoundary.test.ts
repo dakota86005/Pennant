@@ -600,6 +600,14 @@ describe('the Player Value boundary', () => {
     // Keyed by the save's identity (name and league fingerprint), never the name alone (D-01)
     expect(contracts).toMatch(/saveIdentity\(/);
     expect(contracts).not.toMatch(/currentSaveName\(/);
+    // Phase 4b review: the stored pairs (with the reading's method) and the timeline's events, additive and idempotent
+    expect(contracts).toMatch(/CREATE TABLE IF NOT EXISTS value_contract_pairs/);
+    expect(contracts).toMatch(/PRIMARY KEY \(save_name, league_id, earlier_date, later_date, method\)/);
+    expect(contracts).toMatch(/CREATE TABLE IF NOT EXISTS value_contract_events/);
+    expect(contracts).toMatch(/INSERT OR IGNORE INTO value_contract_pairs/);
+    expect(contracts).toMatch(/INSERT OR IGNORE INTO value_contract_events/);
+    // Recording an import and reading the market read one import at a time, never the whole history (review R3-03)
+    for (const file of ['playerValue.ts', SNAPSHOT_WRITER]) expect(code(file), file).not.toMatch(/\bcontractSnapshots\(/);
   });
 
   it('the import records the market once, and a failed snapshot cannot fail the import (7)', () => {

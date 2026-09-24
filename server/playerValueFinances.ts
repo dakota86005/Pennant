@@ -286,21 +286,37 @@ function seeded(seed: number): () => number {
 /**
  * The resampled band of a ratio of sums (money over wins): the cases drawn with replacement
  * `SIGNINGS_POLICY.bootstrap.replicates` times, read at its 10th and 90th percentiles (inverted CDF). A resample whose
- * wins sum to nothing prices no win and sorts above every price, so `high` is null where the band has no upper edge.
+ * wins sum to nothing prices no win and sorts above every price, so `high` is null where the band has no upper edge,
+ * and the whole band null where even its low edge has none. With `clusters` naming two or more groups (the winters a
+ * measured price pools, review R4-05) it resamples the groups first and then the cases within each group drawn, so a
+ * price that moved between winters shows as a wide band, never as a precise one.
  */
-export function bootstrapRatio(money: number[], wins: number[]): { low: number; high: number | null } | null {
+export function bootstrapRatio(money: number[], wins: number[], clusters?: Array<number | string>): { low: number; high: number | null } | null {
   const n = money.length;
   if (n === 0 || wins.length !== n) return null;
   const { replicates, low, high, seed } = SIGNINGS_POLICY.bootstrap;
   const rand = seeded(seed + n);
+  const groups = clusters && clusters.length === n ? [...new Set(clusters)] : [];
+  const members = groups.length >= 2 ? groups.map((g) => (clusters as Array<number | string>).map((c, i) => (c === g ? i : -1)).filter((i) => i >= 0)) : null;
   const ratios: number[] = [];
   for (let r = 0; r < replicates; r += 1) {
     let m = 0;
     let w = 0;
-    for (let j = 0; j < n; j += 1) {
-      const k = Math.floor(rand() * n);
-      m += money[k];
-      w += wins[k];
+    if (members) {
+      for (let g = 0; g < members.length; g += 1) {
+        const group = members[Math.floor(rand() * members.length)];
+        for (let j = 0; j < group.length; j += 1) {
+          const k = group[Math.floor(rand() * group.length)];
+          m += money[k];
+          w += wins[k];
+        }
+      }
+    } else {
+      for (let j = 0; j < n; j += 1) {
+        const k = Math.floor(rand() * n);
+        m += money[k];
+        w += wins[k];
+      }
     }
     ratios.push(w > 0 ? m / w : Infinity);
   }
@@ -310,6 +326,17 @@ export function bootstrapRatio(money: number[], wins: number[]): { low: number; 
   const hi = at(high);
   if (!Number.isFinite(lo)) return null;
   return { low: lo, high: Number.isFinite(hi) ? hi : null };
+}
+
+/**
+ * The opening band with its sampling (owner Q-4): the served spread of the bases with each basis's resampled band in
+ * it. A basis whose resampled band has no upper edge, or whose resampling failed altogether (null), makes it unbounded
+ * (null), never narrower (review R3-07, R4-04).
+ */
+export function samplingComparable(served: { low: number; high: number }, bands: Array<{ low: number; high: number | null } | null>): { low: number; high: number } | null {
+  if (bands.some((b) => b === null || b.high === null)) return null;
+  const ok = bands as Array<{ low: number; high: number }>;
+  return { low: Math.min(served.low, ...ok.map((b) => b.low)), high: Math.max(served.high, ...ok.map((b) => b.high)) };
 }
 
 const round = (n: number, digits = 0): string => n.toLocaleString('en-US', { maximumFractionDigits: digits, minimumFractionDigits: digits });
@@ -565,20 +592,19 @@ interface BasisSpec {
  */
 function samplingOf(specs: BasisSpec[], bases: PriceBasis[], minimum: number, served: PriceBand): OpeningSampling | null {
   const out: OpeningSampling['bases'] = [];
+  const bands: Array<{ low: number; high: number | null } | null> = [];
   for (const sp of specs) {
     const b = bases.find((x) => x.id === sp.id);
     if (sp.role !== 'market' || !b || b.perWin.value === null || 'unknown' in (sp.wins as object)) continue;
     const wins = sp.wins as (r: Row) => number;
     const kept = sp.rows.filter((r) => sp.money(r) !== null);
     const band = bootstrapRatio(kept.map((r) => (sp.money(r) as number) - minimum), kept.map(wins));
-    if (band) out.push({ id: sp.id, low: band.low, high: band.high });
+    // A resampling with no low edge either is the most unbounded band, never dropped (review R3-07, R4-04)
+    out.push(band ? { id: sp.id, low: band.low, high: band.high } : { id: sp.id, low: b.perWin.value, high: null });
+    bands.push(band);
   }
   if (out.length === 0) return null;
-  const unbounded = out.some((b) => b.high === null);
-  const comparable = unbounded ? null : {
-    low: Math.min(served.low, ...out.map((b) => b.low)),
-    high: Math.max(served.high, ...out.map((b) => b.high as number)),
-  };
+  const comparable = samplingComparable(served, bands);
   const { replicates, low, high } = SIGNINGS_POLICY.bootstrap;
   return {
     replicates,
