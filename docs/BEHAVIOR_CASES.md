@@ -149,6 +149,13 @@ the integration branch (56a563e) for the reason expected; the output is kept wit
 | `playerValueCone.test.ts` (hardening F2, 2026-09-23) | The cone's control follows the timeline: an opt-out season and an extension season each have their own label and code, never merged with the current deal. "Free agent after" names every season after which he may be free: where the last controlled season lies between arbitration and free agency, the mark names the season before it too. |
 | `playerValueRatings.test.ts`, `playerValueCone.test.ts`, `productionCone.test.ts` (hardening F6, 2026-09-23; the owner's option (b)) | **The arrival model is adopted horizon by horizon.** A horizon is served only when its own held-out check and the check of every horizon before it passed the gate, whose tolerances are unchanged: a horizon that passes after one that failed, or after one that could not be checked, is not served, and nothing is served unless the next season passes. **A season beyond the last served horizon is not established, season by season,** each with a reason naming what the gate found at that horizon; the seasons before it keep their full bands, and nothing is carried forward, extrapolated or averaged into the later ones. **A total over seasons that include one not established is not a number:** it names the seasons it cannot include and is never a sum that reads them as zero. **The cone draws the established seasons and marks the later ones not established,** with no band there and each season's control still shown. **A label never claims more calibration than was measured:** a partly adopted arrival model is "calibrated through N seasons out", never plain "calibrated". |
 
+## Player card
+
+| File | What it protects |
+|---|---|
+| `player.test.ts` (the card header, 2026-09-23) | A position player is labelled by his position, never by a pitcher-assignment code: OOTP writes one (11 starter, 12 reliever, 13 closer) on hitters who have never pitched, so a shortstop is "SS", not "RP". A pitcher is labelled by his pitching role. Whether a man is two-way is read from what he has done this season, on the same test the staff and lineup pages use (`twoway.ts`), never from that code: a position player who has pitched a real amount is marked two-way under his position and given no pitching role, and a pitcher who has batted a real amount is marked two-way and keeps his pitching role. |
+| `storylineLevels.test.ts` (the storyline briefing, 2026-09-23) | The same rule in what the AI is told: a position player among the club's pitching leaders is sent with his position and no pitching role, and a listed pitcher keeps his. |
+
 ## Adding a case
 
 When real-save testing finds a new failure mode, add the case before the fix:

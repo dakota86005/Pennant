@@ -7,6 +7,7 @@ import { controlAfterThisSeason } from './contracts.js';
 import { playerValue } from './playerValue.js';
 import { DATE_KEY } from './dashboard.js';
 import { rightsFor } from './playerContext.js';
+import { twoWayBatters, twoWayPitchers } from './twoway.js';
 
 export const playerRoutes = Router();
 
@@ -394,7 +395,15 @@ playerRoutes.get('/player/:id', (req, res) => {
     bats: HAND[p.bats as number] ?? '?',
     throws: HAND[p.throws as number] ?? '?',
     positionName: POSITION_NAMES[p.position as number] ?? '?',
-    roleName: ROLE_NAMES[p.role as number] ?? null,
+    /*
+     * OOTP's pitcher assignment, which the export also writes on hitters who
+     * have never pitched: a shortstop carrying 12 is not a reliever. Only a
+     * pitcher is labelled by it. A position player who really pitches is
+     * two-way, and that is read from what he has done, never from this code.
+     */
+    roleName: isPitcher ? ROLE_NAMES[p.role as number] ?? null : null,
+    /** Has done a real amount of both this season, on the staff and lineup pages' own test. */
+    twoWay: twoWayPitchers().has(id) || twoWayBatters().has(id),
     uniform: p.uniform_number,
     team: p.team_name
       ? `${p.team_name} ${p.team_nickname}${p.team_level ? ` (${LEVEL_NAMES[p.team_level as number] ?? ''})` : ''}`

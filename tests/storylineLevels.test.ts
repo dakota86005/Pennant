@@ -70,3 +70,49 @@ describe('the season lines Storylines is given', () => {
     expect(Number(him.ip)).toBeLessThan(60);
   });
 });
+
+/**
+ * What Storylines is told about a pitching leader's job.
+ *
+ * OOTP writes a pitcher-assignment code (11 starter, 12 reliever, 13 closer)
+ * on hitters too, including hitters who have never pitched. A position player
+ * who has thrown enough innings to reach the club's pitching leaders would
+ * otherwise reach the model carrying a reliever's or starter's code. The code
+ * is a pitcher's assignment, so only a listed pitcher carries it; a position
+ * player is described by his position.
+ */
+const MOPUP_SHORTSTOP = 8210;
+
+describe('the pitching role Storylines is given', () => {
+  beforeAll(() => {
+    db.prepare(
+      `INSERT INTO players (player_id, first_name, last_name, age, position, role, bats, throws,
+                            uniform_number, team_id, organization_id, retired, hidden,
+                            draft_eligible, college)
+       VALUES (?, 'Mop', 'Up', 27, 6, 12, 1, 1, 72, ?, ?, 0, 0, 0, 0)`
+    ).run(MOPUP_SHORTSTOP, IDS.mlbTeam, IDS.mlbTeam);
+    db.prepare(
+      `INSERT INTO players_career_pitching_stats
+         (player_id, year, team_id, league_id, level_id, split_id, outs, er, ra, ha, bb, k,
+          hra, hp, bf, g, gs, w, l, s, hld, war)
+       VALUES (?, ?, ?, ?, 1, 1, 30, 4, 0, 0, 0, 5, 0, 0, 0, 6, 0, 0, 0, 0, 0, 5.0)`
+    ).run(MOPUP_SHORTSTOP, YEAR, IDS.mlbTeam, IDS.league);
+  });
+
+  const leaders = () =>
+    (assembleContext(IDS.mlbTeam) as { pitchingLeaders: { players: Array<Record<string, unknown>> } })
+      .pitchingLeaders.players;
+
+  it('gives a position player among the pitching leaders no pitching role, and names his position', () => {
+    const him = leaders().find((p) => p.name === 'Mop Up');
+    expect(him, 'the position player who pitched is missing from the leaders').toBeDefined();
+    expect(him!.role).toBeNull();
+    expect(him!.position).toBe(6);
+  });
+
+  it('keeps a listed pitcher’s role', () => {
+    const him = leaders().find((p) => p.name === 'Split Season')!;
+    expect(him.role).toBe(12);
+    expect(him.position).toBe(1);
+  });
+});
