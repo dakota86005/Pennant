@@ -123,8 +123,8 @@ export type {
   ArrivalCell, ArrivalModel, DevelopmentModel, RatingsEvidence, RatingsModel, RatingsModelInForce, RatingsProductionInput,
 } from './playerValueRatings.js';
 export type { Observation, RatingsFitInput, RatingsFitRecord, RatingsFitRun } from './playerValueRatingsFit.js';
-export type { ConeBand, ConeControl, ConeControlStatus, ConeCoverage, ConeSeason, ConeUnestablished, ProductionCone } from './playerValueCone.js';
-export { productionCone } from './playerValueCone.js';
+export type { ConeBand, ConeControl, ConeControlStatus, ConeCoverage, ConeSeason, ConeUnestablished, ControlEnd, ProductionCone } from './playerValueCone.js';
+export { controlEndOf, controlSeasonLabel, controlStatusWords, productionCone } from './playerValueCone.js';
 export { PRODUCTION_UNIT } from './playerValueProduction.js';
 export { fitProductionModel } from './playerValueProductionFit.js';
 export { ratingsEvidence } from './playerValueRatings.js';

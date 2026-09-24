@@ -1535,6 +1535,23 @@ Part 9, Part 11, Part 12).**
 - **The card says it plainly** (owner, 2026-09-24): "Contract value" and "Value of keeping him" (the API keeps "contract
   surplus" and "retention margin"), "Most likely" and "could be", "if kept", the explanations on hover.
 
+**Amended 2026-09-24 (phase 6a: the player card's header and Contracts migrated; PLAYER_VALUE.md Part 8, Part 9, Part 12).**
+
+- **Replace, don't run in parallel, applied.** The card's header and Contracts read Player Value only, and their
+  `players_value` reads were deleted in the same change: the Value and Talent percentiles, OOTP's Overall / Potential on
+  the card and its hover, `valuesByPlayer`, `mlbPercentiler` and `contractsByPlayer` in `player.ts` and `contracts.ts`,
+  and the card's direct `players_contract` query. The one scouting figure the header shows is the organization's scouted
+  tools through `scoutedEvidence.ts` (D-017), labelled as the scouts' view, never OOTP's.
+- **Contracts describes; the GM decides.** Its percentile advice (`recommendOnValue`, the 70/75 cut-offs, the season's
+  "Hold off" veto) is deleted with no replacement verdict: the page shows contract facts, when control ends, the cost
+  path, expected wins, the contract value, the value of keeping him and our view, each with its basis on hover, grouped
+  and sortable. The dashboard counts players heading to arbitration instead of "extension candidates"; the assistants are
+  told the rows carry no recommendation.
+- **Freshness reaches the GM (A-20).** A page or route that shows value passes the export's freshness to Player Value
+  as `currentState` and states the export's game date, and says when it is behind the save or could not be checked
+  (`freshnessCue`); so far Contracts, the card and the one-player value routes. The other consumers carry it with their
+  own migration.
+
 ## D-053 — Calibration belongs to the save
 
 **Status:** Accepted 2026-09-22 (owner decision). **Implementation:** Partial. Player Value's expected production

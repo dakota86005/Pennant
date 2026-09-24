@@ -2,11 +2,12 @@ import { Router } from 'express';
 import { db, tableExists } from './db.js';
 import { gloves } from './gloves.js';
 import { contactLeague, contactProfiles, situationalSplits } from './battedball.js';
-import { contractsByPlayer, mlbPercentiler, seasonYear, valuesByPlayer } from './valuation.js';
-import { controlAfterThisSeason } from './contracts.js';
-import { playerValue } from './playerValue.js';
+import { contractSummaryOf, controlAfterThisSeason, valueSummaryOf } from './contracts.js';
+import { freshnessCue, getDataStatus } from './dataStatus.js';
+import { playerValue, type PlayerValuation } from './playerValue.js';
 import { DATE_KEY } from './dashboard.js';
 import { rightsFor } from './playerContext.js';
+import { loadScoutedAbilities } from './scoutedEvidence.js';
 import { twoWayBatters, twoWayPitchers } from './twoway.js';
 
 export const playerRoutes = Router();
@@ -192,19 +193,23 @@ playerRoutes.get('/player/:id', (req, res) => {
       };
     });
 
-  // Contract with forward salary schedule
-  const contract = contractsByPlayer().get(id) ?? null;
-  const contractRow = db.prepare(`SELECT * FROM players_contract WHERE player_id = ?`).get(id) as
-    | Record<string, number>
-    | undefined;
-  let salarySchedule: Array<{ year: number; salary: number }> = [];
-  if (contractRow && (contractRow.years ?? 0) >= 1) {
-    const completed = contractRow.current_year ?? 0;
-    const currentSeason = seasonYear((p.team_league as number) ?? (contractRow.league_id as number));
-    for (let i = completed; i < contractRow.years && i <= 14; i++) {
-      salarySchedule.push({ year: currentSeason + (i - completed), salary: contractRow[`salary${i}`] ?? 0 });
-    }
-  }
+  /*
+   * His contract, control and value, from the one Player Value entry point (phase 6a, PLAYER_VALUE.md Part 8), as
+   * current as the export is: a stale export leaves service-dependent answers not established (D-023), and the
+   * header says how current it is (A-20). The same valuation the card's Value section is served.
+   */
+  const status = getDataStatus();
+  const cue = freshnessCue(status);
+  const valuation: PlayerValuation | null = playerValue(id, { currentState: cue.state });
+  const summary = valuation ? contractSummaryOf(valuation) : null;
+  // The contract table: every season his contract (and a signed extension) covers from this one on, with its
+  // salary as the export states it; a salary it does not state is null, never $0 (D-018)
+  const thisSeason = valuation?.control.thisSeason ?? null;
+  const salarySchedule = valuation && valuation.contract.standing === 'signed'
+    ? [...(valuation.contract.term?.seasons ?? []), ...(valuation.contract.extension?.seasons ?? [])]
+      .filter((s) => thisSeason === null || s.season >= thisSeason)
+      .map((s) => ({ year: s.season, salary: s.salary.value, option: s.option, extension: s.from === 'extension' }))
+    : [];
 
   // Last 15 game logs (batting and/or pitching), newest first
   let gameLogs: Array<Record<string, unknown>> = [];
@@ -271,8 +276,10 @@ playerRoutes.get('/player/:id', (req, res) => {
         }
       : null;
 
-  const values = valuesByPlayer();
-  const { overallPct, talentPct } = mlbPercentiler(values);
+  // The one scouting figure on the header: the organization's scouted tools, through the evidence boundary (D-017),
+  // never OOTP's Overall or Potential from players_value
+  const ability = loadScoutedAbilities([id]).for(id);
+  const rights = rightsFor([id], status).get(id);
 
   const pitches: Array<{ name: string; rating: number; talent: number }> = [];
   if (pitching) {
@@ -412,13 +419,25 @@ playerRoutes.get('/player/:id', (req, res) => {
     organization: p.org_name ? `${p.org_name} ${p.org_nickname}` : (p.free_agent === 1 ? 'Free Agent' : null),
     serviceYears: rosterStatus?.mlb_service_years ?? null,
     /** Why he is where he is, where the log and export together establish it. */
-    assignment: rightsFor([id]).get(id)?.assignment ?? null,
+    assignment: rights?.assignment ?? null,
     /** What may be done with him, from the state and chronology, with each conclusion's basis. */
-    rights: rightsFor([id]).get(id)?.rights ?? null,
-    overallPct: overallPct(id),
-    talentPct: talentPct(id),
-    oaRating: values.get(id)?.oaRating ?? null,
-    potRating: values.get(id)?.potRating ?? null,
+    rights: rights?.rights ?? null,
+    /**
+     * The header (phase 6a): how current the data is, his contract in a phrase's parts and the Value section's headline
+     * totals, the same valuation the section is served.
+     */
+    header: {
+      freshness: { ...cue, limitations: valuation?.control.eligibility?.limitation ? [valuation.control.eligibility.limitation] : [] },
+      contract: summary,
+      value: valueSummaryOf(valuation?.surplus),
+    },
+    /** His scouted tools now and at their ceiling, 20-80, from `scoutedEvidence.ts`; a missing grade leaves it unknown. */
+    scouted: {
+      now: ability.current,
+      ceiling: ability.potential,
+      status: ability.status,
+      missing: { now: [...ability.missing.current], ceiling: [...ability.missing.potential] },
+    },
     isPitcher,
     battingRatings: batting
       ? {
@@ -460,16 +479,20 @@ playerRoutes.get('/player/:id', (req, res) => {
           catcherAbility: fielding.fielding_ratings_catcher_ability,
         }
       : null,
-    contract: contract
+    contract: valuation && summary && summary.standing === 'signed'
       ? {
-          ...contract,
+          salaryNow: summary.salaryNow,
+          totalYears: valuation.contract.term?.years.value ?? null,
+          yearsAfterThis: summary.signedThrough === null || thisSeason === null ? null : Math.max(summary.signedThrough - thisSeason, 0),
+          endYear: summary.signedThrough,
+          noTrade: valuation.contract.noTrade.value,
           salarySchedule,
           /*
            * Whether he is leaving or merely at the end of a deal. The card and
            * the staff who read it were shown years-remaining alone, so an
            * arbitration case looked like a man about to reach the market.
            */
-          control: controlAfterThisSeason(playerValue(id)?.control),
+          control: controlAfterThisSeason(valuation.control),
         }
       : null,
     battingYears,

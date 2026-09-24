@@ -142,11 +142,8 @@ export function assembleContext(orgId: number) {
     },
     /* The farm as Minor League Operations describes it, not an alphabetical head of the prospect list. */
     farm: farmBriefing(orgId, prospects),
-    contractSituations: (contracts.players as unknown as Array<{ flags: string[]; recommendation: unknown }>)
-      .filter(
-        (p) =>
-          p.flags.includes('expiring') || p.flags.includes('reserve clause') || p.recommendation
-      )
+    contractSituations: contracts.players
+      .filter((p) => p.group === 'leaving' || p.group === 'option' || p.group === 'arbitration' || p.group === 'reserve')
       .slice(0, 12),
     finances: teamFinances(orgId),
     leagueRules: rulesBriefing(team.league_id as number, orgId),

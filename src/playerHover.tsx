@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { getPlayer, type PlayerDossier } from './api';
-import { formatRating } from './ratingScale';
+import { costMoney } from './costBand';
 
 /**
  * The card that appears when you rest on a player's name, the way OOTP shows a
@@ -118,27 +118,16 @@ function Card({ id, anchor }: { id: number; anchor: DOMRect }) {
           {data.team && <div className="muted phover-team">{data.team}</div>}
 
           <div className="phover-grid">
-            {data.oaRating !== null && (
+            {/* The organization's scouted tools (never OOTP's Overall / Potential, D-017) and his deal, as the card's header shows them */}
+            {data.scouted && (data.scouted.now !== null || data.scouted.ceiling !== null) && (
               <span>
-                OA <b>{formatRating(data.oaRating)}</b>
-                {data.potRating !== null && data.potRating !== data.oaRating && (
-                  <>→{formatRating(data.potRating)}</>
-                )}
+                Scouted <b>{data.scouted.now ?? '?'}</b>
+                {data.scouted.ceiling !== null && data.scouted.ceiling !== data.scouted.now && <>→{data.scouted.ceiling}</>}
               </span>
             )}
-            {data.overallPct !== null && (
+            {data.contract && data.contract.salaryNow !== null && (
               <span>
-                Value <b>{data.overallPct}</b>
-              </span>
-            )}
-            {data.talentPct !== null && (
-              <span>
-                Talent <b>{data.talentPct}</b>
-              </span>
-            )}
-            {data.contract && (
-              <span>
-                <b>${(data.contract.salaryNow / 1_000_000).toFixed(1)}M</b> thru {data.contract.endYear}
+                <b>{costMoney(data.contract.salaryNow)}</b>{data.contract.endYear !== null ? ` thru ${data.contract.endYear}` : ''}
               </span>
             )}
           </div>
