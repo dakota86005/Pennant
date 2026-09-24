@@ -185,6 +185,22 @@ export function refitAfterImport(): void {
     .catch((err) => console.error('[value] production refit failed:', err));
 }
 
+/**
+ * The league's market and contracts for the export now imported: price of a win, replacement level, regime and each
+ * contract (PLAYER_VALUE.md Part 7, 4.2). Idempotent per save, league and game date, so the import and the server's
+ * start both call it: a save imported before this build records its current export at the next start instead of
+ * waiting for another import (supervisor, phase 4b). It never throws: like the other snapshots it cannot fail an import.
+ */
+export function recordImportMarket(importFinishedAt: string | null = null): void {
+  try {
+    const market = captureMarketSnapshot({ importFinishedAt });
+    if (market.error) console.error('[history] market snapshot failed:', market.error);
+    if (market.contracts.error) console.error('[history] contract snapshot failed:', market.contracts.error);
+  } catch (err) {
+    console.error('[history] market snapshot failed:', err);
+  }
+}
+
 /** Counts imports, so a refit read across one is never recorded. */
 let importGeneration = 0;
 
@@ -225,14 +241,7 @@ export async function runImport(csvDir: string): Promise<void> {
       // Like scouting history, this must not make an otherwise good import fail
       console.error('[history] roster-state snapshot failed:', err);
     }
-    try {
-      // The league's market this import: price of a win, replacement level, regime (PLAYER_VALUE.md
-      // Part 7). Idempotent per save, league and game date; like the others it never fails an import
-      const market = captureMarketSnapshot({ importFinishedAt: importState.lastImport.finishedAt });
-      if (market.error) console.error('[history] market snapshot failed:', market.error);
-    } catch (err) {
-      console.error('[history] market snapshot failed:', err);
-    }
+    recordImportMarket(importState.lastImport.finishedAt);
     console.log(
       `[import] ${importState.lastImport.tables} tables, ${importState.lastImport.rows} rows imported`
     );

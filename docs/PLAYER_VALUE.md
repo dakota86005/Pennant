@@ -4,9 +4,10 @@ Design record for the Player Value subsystem: contracts, control, cost, expected
 reality and surplus value. Decision: [D-052](DECISIONS.md) (accepted; owner answers in Part 12). Research evidence:
 [PLAYER_VALUE_RESEARCH.md](PLAYER_VALUE_RESEARCH.md) (R-1 to R-11).
 
-**Status: phases 1 to 3b and 4a built (contract facts and control; Club Finances, the opening price of a win and the
+**Status: phases 1 to 4b built (contract facts and control; Club Finances, the opening price of a win and the
 per-import market snapshot; expected production in wins from major-league results and scouted ratings, fitted per save
-under D-053; the cost of controlled seasons, measured on each import, Part 9); phases 4b to 6 are design.** `PROJECT_STATE.md` says
+under D-053; the cost of controlled seasons, measured on each import; the measured price of a win across imports, Part 9);
+phases 5 and 6 are design.** `PROJECT_STATE.md` says
 what exists; this file says what is to be built and why. Every surface that reports value still reads the prohibited
 `players_value` fields for its value figures (Part 8), and they stay as they are until the phase that replaces each
 one; since phase 1 their control and contract facts come from Player Value.
@@ -155,7 +156,7 @@ comes with a **cost band** and its basis:
 | Arbitration year *n* | A band from the save's arbitration ladder at the platform seasons' production (Part 4.4; phase 4a), with its central; never assumed to be the league minimum (it reaches it only where the save paid the class the minimum at such a platform, said) and never a point; a range of trips covers each class, and the class his service puts him in |
 | Indeterminate | Across each status it lies between (a Super Two season: from the renewal's minimum to the arbitration band's high edge), each status's central named and none chosen; a season that may be free agency is what he costs if held, said; unknown where a status it could be is not priced |
 | Free agent | Control ends. What he is worth to others is market data, not cost to this club |
-| Reserve clause | Unknown: renewal pay under a reserve clause is not measured from one export (renewals observed across imports, phase 4b) |
+| Reserve clause | From the league minimum to the save's own reserve-clause renewal pay, measured from the renewals observed across imports once 30 are seen (phase 4b, 4.4); unknown until then, saying how many were seen |
 
 **Service projection** is itself a band. The low edge assumes he is optioned or outrighted from now on; the high edge
 assumes he stays on the major-league roster for the rest of the season, capped by what the schedule has left (none
@@ -624,7 +625,7 @@ season's pace alike, and on at least 20 contracts. Below either it is not comput
 the price is `unknown`. On the Arizona import every basis clears both, and the figures above are unchanged (B2's WAR moves
 from 454.6 to 454.7 for 2024's rain-outs and rounds to the same $7.32M). The pace bases rest on 27.6% of the season, just
 over the quarter. Not done here: a sampling component for the band (a bootstrap over contracts) before the opening band is
-compared with a measured one; that comparison is phase 4's, and the bootstrap belongs with it.
+compared with a measured one; that comparison is phase 4's, and the bootstrap belongs with it. *Built in phase 4b (4.2).*
 
 ### 4.2 How it tightens
 
@@ -634,6 +635,109 @@ set against the signed player's expected wins at the time, is a direct price obs
 replaces the opening one **when its band is narrower than the opening band** (owner, Q-4): the evidence decides,
 not a fixed count of signings. The band narrows only as those observations accumulate. The history of the price stays visible, so drift can be seen.
 Arbitration awards are identified the same way and measure the arbitration ladder (4.4).
+
+**As built (phase 4b, 2026-09-23; `playerValueSignings.ts`, `playerValueContractStore.ts`, CALIBRATION.md section 9).**
+
+- **What each import records.** Before the market snapshot, the import records its contracts in `history.db` (table
+  `value_contract_snapshots`, with a header in `value_contract_imports`), keyed by the save's identity (its name and the
+  league's fingerprint, hardening F1), the market league and the game date, idempotent per key and never able to fail the
+  import: every player the league's clubs hold (term, salaries, club, organization, placement, a signed extension, whether
+  he has a line in the league's statistics) and every unsigned player whose production is established; for a major-league
+  deal, a placed player or an unsigned one also Player Rights' standing for this season and the two after it (standing,
+  the statuses it lies between, the trip) and its reading of his service banked, his expected production per season as the entry point served it (central, 80%
+  edges, expected opportunities, the model's label; since the review also the chance he plays at all, for a player
+  projected on one side) and the cost the timeline priced for the season the coming winter sets (this season when the
+  import is before Opening Day, else the next; review R3-08). A minor-league deal or a row with no term carries its terms
+  only. On the Arizona save: 8,229 players, 1,841 with the full record, about 3.2 MB. **Since the review (2026-09-24)**
+  each import also records whether its season had begun (before Opening Day by the schedule or the league's start date,
+  or no game of the season has a line while earlier seasons do, as when OOTP moves `season_year` on beside last season's
+  standings, D-08: then the share played is recorded as 0) and how much of it had been played (its games, plate
+  appearances and batters faced), and the pair it forms with the import recorded before it is observed once and stored
+  (`value_contract_pairs`, with the reading's method, `SIGNINGS_POLICY.method`): recording an import reads that one
+  earlier import, never the whole history, so capture time stays flat as imports accumulate (review R3-03: 3.65 s with
+  29 earlier imports before, 2.43 s after, the same as with one; a pair is read again from its two snapshots only when
+  the method changes). The history is not pruned; retention is an open owner question.
+- **What changed, and how it is read** (R-6, D-020). Two consecutive imports are compared. A contract whose first season,
+  length or organization changed is an observed change, and it is named for what changed ("first season 2026 → 2027;
+  length 1 → 3; club 4 → 9"). It is then read through Player Rights' standing **at the earlier import** for the new
+  contract's first season: free-agency eligible, with an organization that did not hold him (or when no club held him),
+  a **free-agent market signing**; in arbitration, a one-year deal with his club, an **arbitration salary** ("an award
+  or a settlement; the export does not say which"), and at the league minimum not read as one (4a's rule); before
+  arbitration, a one-year deal a **renewal**; under a reserve clause a **reserve-clause renewal**; a longer deal while
+  controlled, or a new deal over seasons his contract still covered, an **extension**; the extension the earlier import
+  already held taking effect is not a new observation. The same terms with a new organization is the contract **moving
+  with him** ("a trade or a claim; the export does not say which"), never a signing. A controlled player no club holds
+  later **was not tendered or was released; the export does not say which**. Ambiguous changes are named, counted and
+  left out of every measurement: a free agent re-signed by the club that held him (whether he reached the market first
+  is not exported), a controlled player's new deal with another organization, a standing that was indeterminate or not
+  recorded. Nothing reads the live log, and no change is given a transaction type the export does not carry.
+  **Reviewed (2026-09-24):** the extension the earlier import held taking effect is never a signing, whether or not he
+  changed clubs with it (R3-02); a free agent signed by an organization his lines show held him during the season before
+  (a deadline acquisition re-signed) is counted and left out like a re-signing, and where his lines cannot be read he is
+  left out and it says why (R3-04); a term that now ends no later than it did is a **term changed within its seasons**
+  ("an option declined, a buyout, an opt-out or a restructure; the export does not say which"), never an extension; a club
+  change between rows with no exported term says how he moved is not in the export, never "the same terms"; a major-league
+  deal from his own organization after a row with no term is his organization adding him; a controlled player no club in
+  this league holds later "was not tendered, was released, or is held outside this league" (R3-09).
+- **A winter is read by the calendar** (review R3-01, R3-11, R4-12). An import in a season under way comes before the next
+  winter; an import before its season has begun is inside that season's winter. A pair of imports spans the winters
+  between; several imports across one winter count one winter (four pairs across the 2041 winter are one winter, not
+  three), a deal for a season not yet begun at the earlier import is never "already under way", and last season's
+  standings beside a new season number are never games played in it (the market's share played is unknown there, as
+  production reads it, D-08). A pair a winter or more apart says so and is counted, never measured as one winter's
+  signings. Production itself is unknown at an import after the bump (the D-08 guard), so a signing first seen after one
+  enters only the reading that needs no projection (the realized basis, below).
+- **Two timelines are never compared** (review R3-05). Imports are paired in the order they were recorded. An import dated
+  at or before the one recorded before it (the save went back), or a date already recorded imported again with its
+  season's play different (a reloaded save played again; the same play with other contracts is a move made on the same
+  day, on the same timeline), starts a new timeline: no pair is formed across it, what the abandoned timeline observed
+  after the date the new one starts from is left out, and so is any import dated after the export. The observed market
+  says so (`timeline`).
+- **The estimator, as bases** (reviewed 2026-09-24, R4-01, R4-02, R4-03, R4-07). The measured price is read like the
+  opening one: a set of bases over the free-agent signings whose first season had not begun at the earlier import, each a
+  ratio of sums (salary above the later import's minimum, never clipped, as the opening reads it):
+  **over the deal**, per win projected at signing (the deal's seasons the earlier import projected; a deal running past
+  that horizon, or with a season's salary not stated, is left out of this basis and counted, never cut short, and the
+  largest signing's share of its money is shown); **the first season**, per win projected at signing; **the first season
+  if he plays**, his expected wins over his chance of any major-league playing time (one side projected: he produces
+  nothing when he does not play, so this is exact, not invented); and, once the signing's first season is completed in
+  the export, **the first season per win he produced in it**, his WAR that season on its schedule's footing: the opening's
+  own unit, with no projection in it. The projected bases read expected wins that include the chance a player does not
+  play at all; for the players who did sign they sit below what signed players go on to produce, so the price per
+  projected win reads high (on the Arizona market the free-agency class's salaries are $10.60M per projected 2027 win
+  against $6.42M per 2025 win produced). **Each basis's band** is its signings resampled 1,000 times (by winter, then by
+  signing within each, once two winters are observed, so a price that moved between winters shows as a wide band rather
+  than a precise lagging one, R4-05), 10th to 90th percentile; at 20 to 40 signings a percentile bootstrap covers less
+  than its 80% (about 75% in a Monte Carlo on the Arizona market, R4-09) and the text says so. Each basis needs the opening
+  basis's minimum, 20 signings. **The measured band** is the spread of the bases that could be computed with each one's
+  sampling in it; a basis whose band has no upper edge leaves the price not measured. **Its central** is the realized
+  basis, per win produced (the opening's unit), once it exists; before, the median of the projected bases, shown and
+  never in force. Signings are pooled over the winters observed, each in its own winter's dollars, undiscounted.
+- **The opening band, like for like** (B-13's deferred component). Each opening market basis is resampled over its own
+  contracts the same way; **the opening band with its sampling** is the spread of the bases with each basis's resampled
+  band in it. The served opening price, band and floor are unchanged (Arizona $7.25M, $6.57M–$9.78M); the comparison band is
+  $5.95M–$11.22M.
+- **Adoption (owner Q-4, reviewed 2026-09-24).** The measured price replaces the opening one only when its band is narrower,
+  in dollars, than the opening band with its sampling; an opening band whose sampling has no upper edge (or whose
+  resampling failed, which is read as unbounded, never dropped) is wider than any bounded band (R3-07, R4-04). Two
+  conditions come first, as policy tightenings: the measured bases must **hold the realized reading**, so a price per win
+  projected at signing is never swapped in for the opening's price per win produced (R4-01; which unit the price in force
+  should use is an open owner question), and the priced signings must **cover the winter's free-agent class**, at least
+  5 in each third of it by expected wins at the earlier import (`SIGNINGS_POLICY.coverage`), so a winter of cheap deals,
+  or of stars alone, never sets the price of every win (R4-02). The reason names each reading's unit ("per win projected
+  at signing … and per realized win") and flags a measured central below the opening floor or outside the opening band
+  with its sampling (R4-11). Otherwise the opening price stays in force and says why: "The opening price stays: 199
+  free-agent signings observed; the measured band $5.36M–$5.81M ($0.46M wide) is not compared: its bases are per win
+  projected at signing (…); the opening price is per realized win …, and the realized reading … waits for that season to
+  be completed", or "No off-season observed yet: the measured price needs two imports across a winter (one before its
+  signings and one after). This save has 1 import recorded (2026-05-16)." The floor stays the opening's. When the measured
+  price is in force its stamp, band rule and central rule are the measured price's own; the opening bases are shown as
+  the opening reading, not in force (R3-12). Every consumer reads the price in force through the entry point (`priceOfWin`,
+  with `stage` and `adoption`); the arbitration ladder is priced against it.
+- **The history** of the price is recorded with the market snapshot (`basis_json.adoption`: which was in force, both
+  readings, why) and served by `GET /api/club-finances/:orgId/price-history` (with every observed change) and in
+  `/api/club-finances/:orgId` (`priceHistory`); Payroll's price line lists it. A row written before phase 4b reads its
+  price as the opening one and says the measured reading was not recorded.
 
 ### 4.3 Replacement level
 
@@ -646,6 +750,21 @@ Pennant's wins and the game's WAR in the same units. It is stamped **provisional
 measurement of the talent a club can actually get for the minimum. That measurement (the production of waiver
 claims, minor-league free agents and call-ups) is phase 4 work. A change of 0.01 moves every price of a win by about
 5%, and the snapshot records the level used.
+
+**Measured from freely available talent (phase 4b).** A player acquired for nothing is one who joined an organization
+from outside it on a minor-league deal, or on a major-league deal at the league minimum, and has a line in the league's
+own statistics (a newcomer or an amateur is not a measure of freely available major-league talent). The live log is not
+read, so a claim is not separated from a trade (the contract moving with him); only acquisitions the contract snapshots
+identify count. Replacement is their major-league WAR per 600 opportunities (plate appearances and batters faced) for the
+club that took them, in the season they joined it (review R4-06: a pickup who became a regular does not keep adding
+seasons), with its resampled band, once 30 such players have major-league opportunities (`SIGNINGS_POLICY.replacement`).
+Only pickups who played are in it, which pushes it up; it says how many acquired players did not play. Until then the
+export's convention stays, labelled provisional, and says how many were observed (Arizona: none yet). **How it enters
+(reviewed 2026-09-24, R3-06, R4-06): it does not, yet.** The measured replacement is shown and never applied: the
+opening price, the measured price, the cost ladder and production all stay in the export's WAR, because applying a level
+to one side only (as phase 4b first did to the measured price) put the price in a different unit from everything it was
+compared with and multiplied. Surplus (phase 5) applies one level to both sides. A synthetic save measured 0.13 WAR per 600
+(band 0.09–0.16) on 40 players.
 
 ### 4.4 Arbitration
 
@@ -704,6 +823,25 @@ On the Arizona import the three classes are measured on 74, 51 and 47 contracts:
 minimum plus $0.96M, $1.75M and $2.54M per platform win (13%, 24% and 35% of the price's central; least squares had
 read 14%, 26% and 49%, R-6's ratio on the same cases 19%, 40%, 52%, against its own 22%, 42% and 53%). It is never
 assumed to be the league minimum, and never a point.
+
+**Observed awards (phase 4b).** Across a winter, a one-year deal with his club for a player Player Rights had in
+arbitration for its first season is an observed arbitration salary (award or settlement, not said). Each is **scored**
+against the band the earlier import's timeline priced for that season: how many fell inside it, overall and by class,
+reported with its count and never gated (the ladder's bands are ranges of reasonable readings), and, since the review
+(R4-08), beside how wide the bands scored were (their median ratio of top to bottom and width as a share of the salary:
+on Arizona the next-season bands average about 6.5 times as high at the top as at the bottom, so near-full coverage says
+little alone). An award is read in the class the ladder reads the same contract in: the lowest class of his trip (the
+later import's reading for the season where recorded, else the earlier's), a trip beyond the top class in the top class,
+as the ladder reads a later trip; an award whose trip was not recorded is scored in the total and in no class (R3-10). A
+class the ladder does not establish on the import (unknown) is not priced by observed awards yet (open, R4-08). Once a class holds the
+ladder's own minimum of observed salaries (30), pooled over the winters observed, they are **a reading of the class**
+by the ladder's own line (each salary in its own winter's dollars, its platform read from the export), added beside the
+import's cross-section; the season's band covers both, and its cost basis says the class is measured in part (a prior
+class joined by observed awards is no longer "the provisional prior" alone). The cross-section stays: it is this winter's one-year salaries
+in this import's dollars (the same contracts as the latest winter's awards), and the pooled awards add the earlier
+winters. A league without arbitration has none to score and says so. **Reserve-clause renewals** observed across
+imports (a one-year deal with his club under a reserve clause) price a reserve-clause season by the renewal spread's
+method once 30 are seen: from the league minimum to the upper confidence bound of their 90th percentile.
 
 ### 4.5 Two prices of a win
 
@@ -780,11 +918,14 @@ always states the neutral figure it started from.
 - **Market figures snapshotted per import into `history.db`** (D-009): the price of a win (band and basis),
   replacement level, league regime, league payroll, the observed signings counted, and since phase 4a the cost ladder
   (the renewal spread and the arbitration ladder, in `basis_json.costs`; optional on read: a key first written before
-  4a has none, since a key is never rewritten, and the review changed a reading's shape, so a reader checks it). Keyed by save, league and game
+  4a has none, since a key is never rewritten, and the review changed a reading's shape, so a reader checks it); since phase 4b which price was in force and
+  why (`basis_json.adoption`) and what the imports observed (`basis_json.observed`). **The contracts themselves are
+  snapshotted per import** (phase 4b, `playerValueContractStore.ts`, 4.2), before the market row, so the next import's
+  signings are observed against them. Keyed by save, league and game
   date, idempotent per key, so drift is visible across imports. The ladder a valuation prices with is measured once per
   import and market league (a cache cleared with the production caches after an import), from the same population, WAR
   and price as the market.
-- **No periodic timer.** Data changes only on import (D-009).
+- **No periodic timer.** Data changes only on import (D-009). The server's start records the market and contracts of the export already imported when this build has not yet (`recordImportMarket`, the import's own call, idempotent per key): a save imported before phase 4b gets its first contract snapshot at the next start, not at its next import (supervisor, 2026-09-24, pending the owner's review). It reads the imported database only; nothing new is imported.
 - **One domain API** (D-008). Browser, desktop, static export and AI read the same routes. The AI receives the
   decomposition with its basis and never a bare number (the lesson `VALUE_PERCENTILE_NOTE` records).
 
@@ -818,6 +959,19 @@ completed season is this season once every club has played its schedule (`team_r
 already fitted is skipped, so a re-import without a newer completed season fits nothing. The same background refit also runs once at server start for a save that is already imported (`bootstrapData`), so a save with no fit for its latest completed season (a new install, or a method version that ignores the stored fit) is fitted without waiting for an import; it does not need the export folder. No timer, no wall-clock
 date. **Served** by `GET /api/player-value/production-fit/:orgId` (the fit in force, the latest attempt, the targets)
 and in every production answer's basis. **Forced** by `npx tsx scripts/calibrate.ts production --refit`.
+
+**Measured in phase 4b** (read-only, the Arizona import, a scratch `history.db`): the contract snapshot takes about
+**2.5 s** inside the import (one league-wide valuation with production and costs; the market row after it), writes 8,229
+rows (about 3.2 MB with the key index: 2.7 MB of pages, of which 1.72 MB are the 1,841 full rows' data and 0.15 MB the 6,388
+terms-only rows; the production label is stored once per import), and a second capture writes nothing in about 1 ms.
+`leagueFinances` with the observed market and the opening sampling takes about 150 ms (unchanged: the resampling is
+1,000 draws per basis over its own contracts, and the observed market is read once per import and cached). The size is
+bounded per import and grows with the number of imports: a retention rule (keep the imports that bracket each winter)
+is an open owner question. **Since the phase 4b review** (R3-03) the capture reads only the import recorded before it
+and stores the pair the two form (with the reading's method); the market reads the stored pairs. With 29 earlier
+imports of the same size (98 MB of `history.db`) the capture took 3.65 s and loaded every snapshot (217 MB of them by
+R3's count); it now takes 2.43 s, the same as with one earlier import, and `leagueFinances` cold 0.42 s against 0.82 s.
+A same-date re-capture also reads the season's play (one query) to tell a move made that day from a replayed day.
 
 **Measured in phase 3a** (read-only, the same import, a scratch `history.db`): a full refit takes **4.6 s** end to end
 (history read 0.16 s: every major-league line 2002–2025; fit 4.5 s on 5,956 players), in the background after an import. Serving
@@ -948,7 +1102,7 @@ cards are Club Finances' figures, a missing one "unknown", never $0.
 | **3a** Expected production from results — **done** (2026-09-22; evidence below, Part 7, CALIBRATION.md section 6) | Concern 3 for players with a major-league record, in wins, an 80% and a 50% band per season (Part 2.3). Calibrated per save (D-053): the fit and its backtest, the fit store, the refit after an import, the gate, the provisional prior. Injury proneness read as a known fact and its effect measured | A fit is recorded with its run record and adopted through the gate. The band invariants (Behavior cases) pass. Held-out coverage is reported per horizon for both bands. The timing is recorded |
 | **3b** Expected production from ratings — **done** (2026-09-23; evidence below, Part 7, CALIBRATION.md section 6) | Ratings through `scoutedEvidence.ts` for prospects and players with thin or no major-league results, partial-rating widening, a prospect's low edge including producing nothing. Also (supervisor, 2026-09-23): playing time conditional on quality | The 3b behavior cases pass. Removing a rating never narrows a band; no ability evidence leaves that component `unknown` |
 | **4a** The cost of controlled seasons — **done** (2026-09-23; evidence below, 2.2, 4.4, CALIBRATION.md section 8) | The pre-arbitration renewal band and the arbitration ladder measured on each import from the save's own contracts (status and class from Player Rights), priced into every controlled season with the platform seasons' production and the price of a win; the provisional prior below the policy minimum where the regime is MLB's; the ladder in the market snapshot. Payroll, Contracts and the card show the bands | Every pre-arbitration, arbitration and open season is priced or says why. An arbitration season is never assumed to cost the minimum and is never a point (review: every priced band has a central, a thin class no line of its own); a league without arbitration never gets MLB's ladder; thinner evidence never narrows; committed payroll never includes a projected salary |
-| **4b** Measured price and observed awards | Observed signings and arbitration awards across imports. The measured price replaces the opening one once its band is narrower (Q-4). Observed awards test and then measure the ladder; reserve-clause renewals are measured. Replacement is measured from freely available talent | On an off-season import, signings and awards are identified and counted. While the measured band is still wider, the opening price stays and says why. The price history is visible |
+| **4b** Measured price and observed awards — **done** (2026-09-23; evidence below, 4.2 to 4.4, CALIBRATION.md section 9) | Observed signings and arbitration awards across imports. The measured price replaces the opening one once its band is narrower (Q-4). Observed awards test and then measure the ladder; reserve-clause renewals are measured. Replacement is measured from freely available talent | On an off-season import, signings and awards are identified and counted. While the measured band is still wider, the opening price stays and says why. The price history is visible |
 | **5** Surplus, the lens and the win curve | Concern 5, Part 5's two views, Part 6's lens, Part 4.5's club value of a win | The Player Value behavior cases pass. Neutral value is identical under every philosophy. Every lean is named |
 | **6** Consumer migration | Part 8, in order, one consumer per change | Each change deletes that consumer's `players_value` reads. Finally, the `players_value` allow-list is empty |
 
@@ -965,6 +1119,77 @@ Judgments made in phase 1 beyond the text above: consumers that hold no freshnes
 their answers stand with that limitation (a stale export still makes eligibility `indeterminate`, D-023); a minor-league
 contract is held for this season at an unknown cost and what follows it is `indeterminate`; a vesting option is its
 own status beside club and player options; an unsigned player has no timeline rather than a `free_agent` season.
+
+**Phase 4b exit criteria, as met (2026-09-23).** The behavior cases (BEHAVIOR_CASES.md "Player Value", phase 4b) are in
+`playerValueSignings.test.ts` (25: observed changes, the estimator, adoption, awards, reserve-clause renewals,
+replacement), `playerValueCrossSave.test.ts` (9 multi-import sequences through `advanceWinter`), `playerValueFinances.test.ts`
+(2), `playerCard.test.ts` (1, Payroll's price line) and `playerValueBoundary.test.ts` (the two new modules, the third
+writer, the new stamp, Player Rights' answers only and no transaction type the export does not carry). Each was run
+before the code and failed for the reason expected (no `playerValueSignings` or `playerValueContractStore` module, no
+`priceHistory`, no price-history list on Payroll, the module list, the writers and the stamps).
+**On an off-season import, signings and awards are identified and counted:** on a synthetic off-season (16 clubs), 197
+free-agent signings, 2 free agents re-signed by their club (left out), 7 arbitration salaries (7 of 7 inside the band the
+earlier import priced), 2 at the minimum, 2 controlled players no club holds, 2 extensions, 9 renewals and 1 contract
+that moved on the same terms, each named for what changed. **While the measured band is still wider, the opening price
+stays and says why:** 21 signings at wild prices gave a measured band $12.72M–$25.28M against the opening $5.67M–$11.40M
+with its sampling, and the opening stayed; 115 one-year signings at $4.0M a win gave $3.99M–$4.01M, narrower, and the
+measured price took over; 12 signings were not measured. **The price history is visible:** every import's opening and
+measured reading and which was in force, on Payroll's price line and through `/api/club-finances/:orgId/price-history`.
+**On the Arizona save** (one import): no off-season is observed and every 4b reading says so; the opening price is
+unchanged. The regression sweep passes 99 of 99 checks (4a's 81 and 18 for 4b: the snapshot written once per key, the
+store's rows, the honest no-off-season state, the opening price unchanged, the sampling band holding the served one, the
+history and both routes).
+
+Judgments made in phase 4b beyond the brief: a free agent re-signed by the club that held him is left out of the price
+(the export cannot say whether he reached the market first); a signing's price covers the deal's seasons whose
+production was established at the earlier import, not only its first; a deal starting in a season under way at the
+earlier import is left out; the adoption comparison is in dollars against the opening band with its sampling (the
+served opening band is unchanged); pooled winters are not deflated (the history shows drift); observed awards join the
+cross-section as a second reading of the class (a hull), not a replacement of it; replacement, once measured, enters
+the measured price only, with production left in the export's WAR for phase 5 to apply; a reserve-clause renewal is
+measured by the pre-arbitration renewal spread's method; the contract snapshot keeps a minor-league deal's terms only.
+
+**Phase 4b review (2026-09-24).** Two reviews (correctness R3, method R4) were fixed before 4b merged; the behavior cases
+are the "phase 4b review" row, each written first and failing on `feature/player-value-phase-4b` (cf27c0f) for the reason
+expected (23 unit cases in `playerValueSignings.test.ts`, 10 multi-import sequences in `playerValueCrossSave.test.ts`, 1
+in `playerCard.test.ts`; the output is kept with the review notes). What changed: a winter is read by the calendar and
+counted once (R3-01, R3-11, R4-12; a sequence of five imports across one winter, two of them after the season number moved
+on, sees all 132 signings as market prices and one winter, where the pair after the bump had been read as no winter and its signings as "already under way", R3's probe); an extension
+that moves with a traded player and a deadline acquisition re-signed are never market prices (R3-02, R3-04); a term
+changed within its seasons, rows with no term and a call-up from one are named for what the export shows (R3-09); two
+timelines are never compared (R3-05); recording an import reads one earlier import and stores the pair it forms (R3-03:
+with 29 earlier imports on the Arizona scratch copy, 3.65 s before (every snapshot loaded, 217 MB of them by R3's count),
+2.43 s after (one snapshot loaded), the same time as with one earlier import; the market reads its stored pairs in 0.42 s against 0.82 s); the measured price is a set of bases
+read like the opening price, compared only when it holds the realized reading and covers the class, its central in the
+opening's unit (R4-01 to R4-03, R4-05, R4-07, R4-09, R4-11); an unbounded opening sampling band is wider, never narrower
+(R3-07, R4-04); measured replacement is shown and never applied (R3-06, R4-06); awards are scored with the width of their
+bands and read in the ladder's class (R4-08, R3-10). **R4's probes, re-run:** before, 11 of R4's 12 single-winter
+synthetic probes adopted the measured price (a winter of cheap deals, a 30% over-projection with a band $0.00M wide, a
+doubled economy); after, none does (no realized reading after one winter, and the reason names both units). Carried
+one more winter so the first season completes, the $5M-per-expected-win market reads $5.54M per realized win and is
+adopted; a market that pays $5M per win produced reads $4.97M per realized win (its projected bases $7.59M) and is
+adopted at $4.97M; the winter of cheap deals is not (its signings fill 2, 47 and 0 of the class's thirds). On the Arizona
+market (Monte Carlo, 400 draws): at 20 signings adoption falls from 91-93% to 2% (the projected and realized readings
+disagree by 65% there, so the band holds both), the band covers the per-realized-win truth 88% of the time, and the
+central's error is -24% to +32% (10th to 90th percentile), centred; at 150 signings adoption is 18%, coverage 93%. The
+regression sweep passes 112 of 112 checks (re-baselined for the 4a review: 99, and 13 for the review). Arizona is
+unchanged: one import, no off-season observed, the opening price in force.
+
+Judgments made in the phase 4b review beyond the brief: the realized reading is required before any comparison (a price
+per projected win is never compared with, or swapped for, the opening's price per win produced, until the owner rules
+on the unit), and the measured central is the realized reading's; the coverage rule is 5 priced signings in each third
+of the winter's free-agent class (players whose deals end before the winter's season and whom Player Rights has
+free-agency eligible, with expected wins), unsigned players at the earlier import not in the class; a signing with no
+projection at the earlier import still enters the realized reading; an award is read in the ladder's own class (the
+lowest class of his trip, as the cross-section reads a range) rather than left out for a range, since the ladder's
+cross-section classes the same contract that way, and an award with no trip is in no class; a date imported again is
+compared on its season's play (games, plate appearances, batters faced), so moves made on the same day stay on the
+timeline and a replayed day does not; the pair a new import forms is stored when it is recorded (derived data, read
+again from the snapshots when the method changes), and the nextCost recorded is the one priced with the price in force
+before this import's own pair (R3-08, documented rather than priced twice). Left open: which unit the served price uses
+(owner), snapshot retention (owner), an unknown arbitration class priced by observed awards, production at an import
+after the season number moved on (the D-08 guard leaves it unknown, so a signing seen then has no projected reading), the
+re-signing policy as a sensitivity basis, discounting both sides (phase 5).
 
 **Phase 4a exit criteria, as met (2026-09-23).** The behavior cases (BEHAVIOR_CASES.md "Player Value", phase 4a) are
 in `playerValueCost.test.ts` (15 new, the reserve-clause case rewritten), `playerValueCrossSave.test.ts` (6 new cases and cost invariants on
@@ -1196,21 +1421,32 @@ its run record in `history.db`; code holds only policy, provisional values and t
 declared in `playerValueCalibration.ts`, with the label `OPENING_PRICE_LABEL` and `PRICE_NARROWS_WHEN`; it adds no
 numeric constant. Phase 3a adds `PRODUCTION_POLICY` (policy) and `PRODUCTION_PRIOR` (provisional). Phase 3b adds
 `RATINGS_POLICY` (policy), `RATINGS_PRIOR` (provisional) and `PRODUCTION_POLICY.qualityTiers` (policy). Phase 4a adds
-`COST_POLICY` (policy) and `COST_PRIOR` (provisional); the numbers the cost ladder serves are measured on each import.
+`COST_POLICY` (policy) and `COST_PRIOR` (provisional); the numbers the cost ladder serves are measured on each import. Phase
+4b adds `SIGNINGS_POLICY` (policy) and the label `MEASURED_PRICE_LABEL`; the numbers it serves are measured across the
+save's imports.
 
 | Constant | Stamp | Basis |
 |---|---|---|
 | Service-year length | **none: read** | `rules_min_service_days`. Missing → unknown, never 172 (R-3) |
 | FA, arbitration and minimum-salary thresholds | **none: read** | The league's rules via the parent league. Missing → `indeterminate` |
 | Which contracts are "market prices" (FA-eligible service) | **policy** | What the market is taken to mean (4.1): Player Rights' free-agency answer for this season. `MARKET_CONTRACT_CALIBRATION` (phase 2) |
-| Opening replacement level | **provisional** | The export's WAR convention, measured per season from the export (.2877 in 2024, .2933 in 2026 to date; 2025 not measured). `REPLACEMENT_LEVEL_CALIBRATION` (phase 2). Measured from free talent in phase 4 |
+| Opening replacement level | **provisional** | The export's WAR convention, measured per season from the export (.2877 in 2024, .2933 in 2026 to date; 2025 not measured). `REPLACEMENT_LEVEL_CALIBRATION` (phase 2). Measured from free talent in phase 4b once 30 freely acquired players are observed (below) |
+| Replacement from freely available talent (WAR per 600 opportunities, for the club that took him) | **measured across imports** | Players acquired for nothing with a major-league record, identified by the contract snapshots (4.3); 30 players (`SIGNINGS_POLICY.replacement`, policy); none on Arizona yet |
 | Opening price-of-win band (spread of bases) | **provisional** | R-5's bases, computed from each import. `OPENING_PRICE_CALIBRATION` (phase 2). Replaced by observed signings |
 | Central value of the opening price | **policy** | The median of the market bases that could be computed: none is preferred. `OPENING_PRICE_CENTRAL_CALIBRATION` (phase 2) |
 | What a basis of the opening price needs: a quarter of a schedule, 20 contracts | **policy** | `OPENING_PRICE_MINIMUMS`, stamped `OPENING_PRICE_MINIMUMS_CALIBRATION` (hardening, B-13). Below either, the basis is not computed. A season's WAR is put on this season's schedule's footing by the share it covered (a mechanism, no constant). CALIBRATION.md section 7 |
 | This season | **none: read** | The league's own `season_year`, where its row states it; the regime league's only where it does not (hardening, D-14) |
 | Which financial row is authoritative | **policy** | The row that names its season; `team_last_financials` named and never used (R-7). `FINANCE_ROW_CALIBRATION` (phase 2) |
 | A financial row with every money field zero | **policy** | A placeholder: unknown, never $0 (R-1). `PLACEHOLDER_ROW_CALIBRATION` (phase 2) |
-| When the measured price replaces the opening one | **policy** | When the measured band is narrower than the opening band (Q-4). No fixed count |
+| When the measured price replaces the opening one | **policy** | When the measured band is narrower, in dollars, than the opening band with its sampling (Q-4; phase 4b), an unbounded opening sampling band being wider than any bounded one. No fixed count. Compared only when the measured bases hold the realized reading (the opening's unit) and cover the class (review 2026-09-24, tightenings) |
+| The measured bases and their central | **policy** | Over the deal, the first season and the first season if he plays, per win projected at signing; the first season per win produced, once completed. The band is their spread with each one's sampling; the central is the realized reading's (the opening's unit) once it exists (review R4-01 to R4-03, R4-07). CALIBRATION.md section 9 |
+| Coverage of the free-agent class | **policy** | 5 priced signings in each third of the winter's free-agent class by expected wins (`SIGNINGS_POLICY.coverage.perThird`; review R4-02, a tightening) |
+| Resampling across winters | **policy** | By winter, then by signing within each, once two winters are observed (review R4-05) |
+| The reading's method | **mechanism** | `SIGNINGS_POLICY.method` (`signings-4b.2`): a stored pair is read again from its two snapshots when it changes (review R3-03) |
+| The measured price of a win | **measured across imports** | The ratio of summed salary above the minimum to summed expected wins at the earlier import, over the free-agent signings observed (4.2); none on Arizona yet (one import) |
+| How observed changes are read and measured: the bases, the resampling (1,000 draws, 10th–90th percentile, a fixed seed), 3 seasons of rights recorded, a free agent re-signed by a club that held him (at the earlier import, or during the season before by his lines) and a deal under way left out, a winter read by the calendar, replacement's 30 players (shown, never applied); the minimums reused (20 signings a basis, 30 awards a class, 30 reserve-clause renewals) | **policy** | `SIGNINGS_POLICY`, stamped `SIGNINGS_POLICY_CALIBRATION` (phase 4b). CALIBRATION.md section 9 |
+| The opening band's sampling component | **policy** | Each market basis resampled over its own contracts by the same method (B-13's deferred component, phase 4b); the served opening band is unchanged |
+| Observed arbitration salaries (coverage of the ladder's band; a class reading at 30) and reserve-clause renewals (the renewal spread at 30) | **measured across imports** | 4.4; none on Arizona yet |
 | Arbitration ladder (per class: base, pay per platform win, spread, the line's bootstrap error, floor, the at-minimum deals and their platforms, the platforms measured on) | **measured per import** | The save's one-year arbitration contracts this season by Player Rights' class, snapshotted with the market (phase 4a, review method; Arizona $0.38M + $0.96M, $1.04M + $1.75M, $0.65M + $2.54M a platform win, 13 / 24 / 35% of the price's central). R-6's 22 / 42 / 53% is research; its method is the prior's source below. CALIBRATION.md section 8 |
 | Pre-arbitration renewal spread and central | **measured per import** | The save's pre-arbitration one-year renewals this season (phase 4a; Arizona $780K–$790K on 249, central $780K, the median) |
 | The cost ladder's method: the renewal band's 90th percentile and its 90% upper bound, its central the median; the two-season platform; a robust (Theil–Sen) line of a base and a pay per platform win; its uncertainty from 200 bootstrap refits (seed fixed); the 10th–90th spread; 1.28 of the line's standard errors, added to the spread edge against edge; 30 contracts a class (and renewals), and below that no line of its own; which contracts (one-year, set this winter, a contract at the minimum kept out of the line and letting a season whose platform reaches as low reach the minimum); a platform season needs a quarter of its schedule (`OPENING_PRICE_MINIMUMS.seasonShare`, reused) | **policy** | `COST_POLICY`, stamped `COST_POLICY_CALIBRATION` (phase 4a, review 2026-09-23). The platform choice is justified on the Arizona import (R² two seasons 0.715 / 0.300 / 0.626 against one 0.619 / 0.096 / 0.549); the robust line on its outliers (review R2-04); a decision, not a fit |
@@ -1256,7 +1492,7 @@ numeric constant. Phase 3a adds `PRODUCTION_POLICY` (policy) and `PRODUCTION_PRI
 | The ratings fallback prior | **provisional** | `RATINGS_PRIOR`, `RATINGS_PRIOR_CALIBRATION`: the ratings method with no prior on the Arizona import; no arrivals (phase 3b) |
 | Widening outside the organization | **none** | Not applied: one rating row per player makes it unmeasurable (R-9, Q-2) |
 | Personality bands (low / normal / high) | **policy** | The central mass at 80–120 on a 1–200 scale (R-8). No claim about OOTP's bands |
-| Personality effects on price (greed, loyalty, play-for-winner) | **none until measured (phase 4)** | Shown as facts. They move no number until observed signings show their effect |
+| Personality effects on price (greed, loyalty, play-for-winner) | **none until measured** | Shown as facts. They move no number until observed signings show their effect; phase 4b records the signings but does not yet read personality against them |
 | Win curve (playoff odds per win) | **provisional** | `posture.ts` / `playoffs.ts` odds |
 | Lens weights | **policy** | Each shown as a named lean |
 
@@ -1277,7 +1513,10 @@ The owner answered these on 2026-09-22. Each answer is folded into the part it n
 - **Q-3 Discount and horizon.** The horizon runs to the end of control, capped at 7 seasons. The neutral view uses
   one stated policy rate, set in phase 5. `competitiveWindow` changes only "our view" (Part 11).
 - **Q-4 Measured price.** It replaces the opening price when its band is narrower than the opening band, not after
-  a fixed count of signings (4.2).
+  a fixed count of signings (4.2). *Phase 4b review (2026-09-24):* the wording is unchanged; the comparison is made like
+  for like, only once the measured bases hold the realized reading (the opening's unit) and cover the winter's
+  free-agent class, both tightenings. Open for the owner: which unit the price in force uses once measured (per win
+  projected at signing, or per win produced), and how long the per-import contract history is kept.
 - **Q-5 Minor-league $0.** Read as `unknown`, never a cost of zero (2.1).
 - **Q-6 Club value of a win.** In playoff-odds units until the save links odds to revenue (4.5).
 - **Q-7 Personality.** Shown as known fact. It moves no cost band until its effect is observed (Part 11).

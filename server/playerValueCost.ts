@@ -558,7 +558,7 @@ export function measureCostLadder(input: CostLadderInput): CostLadder {
       renewal: RENEWAL_RULE(),
       arbitration: ARBITRATION_RULE(),
       prior: COST_PRIOR_CALIBRATION.basis,
-      reserveClause: 'A reserve-clause renewal is not priced: renewal pay under a reserve clause is not measured from one export (phase 4b).',
+      reserveClause: 'A reserve-clause renewal is not priced from one import: it is measured from the renewals observed across imports once enough are seen (phase 4b), and is unknown until then.',
       band: BAND_RULE,
     },
     stamps: { policy: COST_POLICY_CALIBRATION, prior: COST_PRIOR_CALIBRATION },
@@ -730,8 +730,9 @@ function priceArbitration(
   const central = centralClass !== null ? centralByClass.get(centralClass) ?? null : null;
   const centrals = [...centralByClass].map(([k, v]) => ({ status: 'arbitration' as ControlStatus, arbitrationClass: k, central: minimum + v }));
 
+  // A prior class that observed awards joined (phase 4b) is measured in part, never still the prior alone (review R3-10)
   const source: CostBasis['source'] = all.every((c) => c.status === 'measured') ? 'measured'
-    : all.every((c) => c.status === 'prior') ? 'provisional_prior' : 'measured_thin_with_prior';
+    : all.every((c) => c.status === 'prior' && c.readings.every((x) => x.source === 'prior')) ? 'provisional_prior' : 'measured_thin_with_prior';
   const cases = all.reduce((s, c) => s + c.cases, 0);
   const span = (ks: number[]) => (ks.length === 1 ? `${ks[0]}` : `${ks[0]}–${ks[ks.length - 1]}`);
   const tripText = trip === null ? 'which trip is not established, so every class' : `trip ${span(Array.from({ length: trip.high - trip.low + 1 }, (_, i) => trip.low + i))}`;
@@ -855,3 +856,12 @@ export function priceControlTimeline(input: PriceControlInput): ControlTimeline 
   });
   return { ...control, seasons };
 }
+
+/** The distribution-free upper confidence bound of the q-th quantile of a sorted sample, as the renewal spread reads it. */
+function upperBoundOfQuantile(sorted: number[], q: number, confidence: number): number | null {
+  const k = upperBoundRank(sorted.length, q, confidence);
+  return k === null ? null : sorted[k - 1];
+}
+
+/** The class line and the renewal bound, for the readings observed across imports (phase 4b, `playerValueSignings.ts`): one method. */
+export { lineOf, upperBoundOfQuantile };

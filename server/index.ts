@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import type { AddressInfo } from 'node:net';
-import { api, refitAfterImport, runImport } from './api.js';
+import { api, recordImportMarket, refitAfterImport, runImport } from './api.js';
 import { buildIndexes } from './importer.js';
 import { APP_ROOT, loadConfig } from './config.js';
 import { startWatcher } from './watcher.js';
@@ -94,6 +94,9 @@ function bootstrapData(): void {
   // It reads only the imported database, so it does not depend on the export folder being present.
   // Deferred with setImmediate, so it runs after the synchronous start-up below (indexes included).
   if (tableExists('players')) refitAfterImport();
+  // The export already imported records its market and contracts if this build has not yet (idempotent: a second
+  // start writes nothing). Deferred like the refit, after the synchronous start-up below
+  if (tableExists('players')) setImmediate(() => recordImportMarket());
   const config = loadConfig();
   if (!config.csvDir || !fs.existsSync(config.csvDir)) return;
   if (!tableExists('players')) void runImport(config.csvDir);

@@ -334,9 +334,9 @@ export function buildSave(spec: SaveSpec): BuiltSave {
   };
 }
 
-/** Clears Player Value's history.db tables (fits and market snapshots): a new save starts with none. */
+/** Clears Player Value's history.db tables (fits, market and contract snapshots): a new save starts with none. */
 export function clearPlayerValueHistory(): void {
-  for (const table of ['value_production_fits', 'value_market_snapshots']) {
+  for (const table of ['value_production_fits', 'value_market_snapshots', 'value_contract_imports', 'value_contract_snapshots', 'value_contract_pairs', 'value_contract_events']) {
     const exists = historyDb.prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?`).get(table);
     if (exists) historyDb.exec(`DELETE FROM "${table}"`);
   }
@@ -355,5 +355,203 @@ export function dropColumn(table: string, column: string): void {
 /** Runs SQL against the synthetic save (a case's reshaping), and clears the caches that read it. */
 export function exec(sql: string): void {
   db.exec(sql);
+  clearExportCaches();
+}
+
+/** One player's new contract at a winter (phase 4b): a club and terms, or no club at all. */
+export interface WinterContract {
+  playerId: number;
+  /** The club that holds him after the winter; null: no club holds him (released or not tendered, unsigned). */
+  club: number | null;
+  /** Its organization (default: the club itself for a major-league club, its parent for a farm club). */
+  org?: number;
+  firstSeason?: number;
+  years?: number;
+  /** Each season's salary (default: the last one given for every later season). */
+  salaries?: number[];
+  kind?: 'major' | 'minor';
+}
+
+export interface WinterSpec {
+  /** Share of the NEW season played when the later export is taken (0: before Opening Day). */
+  playedShare: number;
+  contracts: WinterContract[];
+}
+
+/** Where a synthetic save stands in its winter (phase 4b review): the last season completed, and whether the season number moved on. */
+const winterState = new WeakMap<BuiltSave, { completed: number | null; bumped: boolean }>();
+const stateOf = (save: BuiltSave) => {
+  let s = winterState.get(save);
+  if (!s) {
+    s = { completed: null, bumped: false };
+    winterState.set(save, s);
+  }
+  return s;
+};
+
+/** Days a full season banks in service, and calendar days the season spans. */
+function seasonDaysOf(spec: SaveSpec): { full: number; seasonDays: number } {
+  const perYear = typeof spec.rules?.rules_min_service_days === 'number' ? spec.rules.rules_min_service_days : 172;
+  const seasonDays = Math.round((spec.gamesPerTeam * 186) / 162);
+  return { full: Math.min(perYear, seasonDays), seasonDays };
+}
+
+/** The season being played, completed: its lines put on a full season, its standings written to the history and to the table, service banked. Once per season. */
+function completeSeason(save: BuiltSave): void {
+  const spec = save.spec;
+  const st = stateOf(save);
+  const Y = spec.season;
+  if (st.completed === Y || st.bumped) return;
+  const G = spec.gamesPerTeam;
+  const { full } = seasonDaysOf(spec);
+  const clockBefore = spec.clockDays ?? Math.round(full * spec.playedShare);
+  const share = spec.playedShare;
+  if (share > 0 && share < 1) {
+    const k = 1 / share;
+    db.prepare(`UPDATE players_career_batting_stats SET pa = ROUND(pa * ?), ab = ROUND(ab * ?), war = CASE WHEN war IS NULL THEN NULL ELSE ROUND(war * ? * 10) / 10 END WHERE year = ?`).run(k, k, k, Y);
+    db.prepare(`UPDATE players_career_pitching_stats SET bf = ROUND(bf * ?), outs = ROUND(outs * ?), g = ROUND(g * ?), gs = ROUND(gs * ?), war = ROUND(war * ? * 10) / 10 WHERE year = ?`).run(k, k, k, k, k, Y);
+  }
+  for (const club of save.clubs) {
+    const wins = Math.round(G / 2);
+    insert('team_history_record', { team_id: club, year: Y, league_id: save.leagueId, g: G, w: wins, l: G - wins, t: 0, pct: wins / G, pos: 1, gb: 0 });
+    // The table shows the season complete (every game played) until the next one opens
+    db.prepare(`UPDATE team_record SET g = ?, w = ?, l = ?, pct = ? WHERE team_id = ?`).run(G, wins, G - wins, wins / G, club);
+  }
+  // Service for the rest of the season just played, for the men on a major-league club
+  db.prepare(`UPDATE players_roster_status SET mlb_service_days = mlb_service_days + ?, mlb_service_days_this_year = 0
+    WHERE player_id IN (SELECT player_id FROM players WHERE team_id BETWEEN 1 AND 99)`).run(Math.max(0, full - clockBefore));
+  spec.playedShare = 1;
+  spec.clockDays = full;
+  st.completed = Y;
+}
+
+/** The winter's contracts, as given; a deal's first season defaults to the season the winter leads into. */
+function applyContracts(save: BuiltSave, contracts: WinterContract[], next: number): void {
+  for (const c of contracts) {
+    db.prepare(`DELETE FROM players_contract WHERE player_id = ?`).run(c.playerId);
+    db.prepare(`DELETE FROM team_roster WHERE player_id = ?`).run(c.playerId);
+    if (c.club === null) {
+      db.prepare(`UPDATE players SET team_id = 0, organization_id = 0, league_id = 0 WHERE player_id = ?`).run(c.playerId);
+      db.prepare(`UPDATE players_roster_status SET is_active = 0, is_on_secondary = 0 WHERE player_id = ?`).run(c.playerId);
+      continue;
+    }
+    const farm = c.club >= 100;
+    const org = c.org ?? (farm ? c.club - 100 : c.club);
+    const major = (c.kind ?? (farm ? 'minor' : 'major')) === 'major';
+    const years = c.years ?? 1;
+    const salaries = c.salaries ?? [];
+    const pay = (i: number) => (major ? salaries[Math.min(i, salaries.length - 1)] ?? 0 : 0);
+    db.prepare(`UPDATE players SET team_id = ?, organization_id = ?, league_id = ? WHERE player_id = ?`)
+      .run(c.club, org, farm ? save.aaaLeagueId : save.leagueId, c.playerId);
+    insert('players_contract', {
+      player_id: c.playerId, team_id: c.club, contract_team_id: c.club, season_year: c.firstSeason ?? next, years, current_year: 0,
+      is_major: major ? 1 : 0, retained: 0, no_trade: 0, last_year_team_option: 0, last_year_player_option: 0, last_year_vesting_option: 0,
+      ...Object.fromEntries(Array.from({ length: 15 }, (_, i) => [`salary${i}`, i < years ? pay(i) : 0])),
+    });
+    insert('team_roster', { team_id: c.club, player_id: c.playerId, list_id: farm ? 2 : 1 });
+    db.prepare(`UPDATE players_roster_status SET is_active = ?, is_on_secondary = 1 WHERE player_id = ?`).run(farm ? 0 : 1, c.playerId);
+  }
+}
+
+/** OOTP's season-number bump: the league moves to the next season before it is played, last season's standings left beside it (D-08). */
+function bumpSeason(save: BuiltSave, date: string): void {
+  const spec = save.spec;
+  const st = stateOf(save);
+  if (st.bumped) return;
+  const Y1 = spec.season + 1;
+  db.prepare(`UPDATE leagues SET season_year = ?, "current_date" = ?, start_date = ?`).run(Y1, date, `${Y1}-4-1`);
+  spec.season = Y1;
+  spec.playedShare = 0;
+  spec.clockDays = 0;
+  spec.currentDate = date;
+  st.bumped = true;
+}
+
+/** The season the save is in opened and played to the share asked for: its standings, service and lines so far. */
+function openSeason(save: BuiltSave, playedShare: number): void {
+  const spec = save.spec;
+  const st = stateOf(save);
+  const Y1 = spec.season;
+  const Y = Y1 - 1;
+  const G = spec.gamesPerTeam;
+  const { full, seasonDays } = seasonDaysOf(spec);
+  const playedDays = Math.round(playedShare * seasonDays);
+  const d = new Date(Date.UTC(Y1, 3, 1 + playedDays));
+  const current = playedShare === 0 ? `${Y1}-3-1` : `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${d.getUTCDate()}`;
+  db.prepare(`UPDATE leagues SET season_year = ?, "current_date" = ?, start_date = ?`).run(Y1, current, `${Y1}-4-1`);
+  const gNow = Math.round(playedShare * G);
+  for (const club of save.clubs) {
+    const wins = Math.round(gNow / 2);
+    db.prepare(`UPDATE team_record SET g = ?, w = ?, l = ?, pct = ? WHERE team_id = ?`).run(gNow, wins, gNow - wins, gNow > 0 ? wins / gNow : 0, club);
+  }
+  const clockNow = Math.round(full * playedShare);
+  db.prepare(`UPDATE players_roster_status SET mlb_service_days = mlb_service_days + ?, mlb_service_days_this_year = ?
+    WHERE player_id IN (SELECT player_id FROM players WHERE team_id BETWEEN 1 AND 99)`).run(clockNow, clockNow);
+  // Lines for the new season so far, for the men on a major-league club: last season's rate at their club now
+  if (playedShare > 0) {
+    const onClub = db.prepare(`SELECT player_id, team_id FROM players WHERE team_id BETWEEN 1 AND 99`).all() as Array<{ player_id: number; team_id: number }>;
+    const bat = db.prepare(`SELECT pa, war FROM players_career_batting_stats WHERE player_id = ? AND year = ? AND split_id = 1 ORDER BY pa DESC LIMIT 1`);
+    const pit = db.prepare(`SELECT bf, outs, g, gs, war FROM players_career_pitching_stats WHERE player_id = ? AND year = ? AND split_id = 1 ORDER BY bf DESC LIMIT 1`);
+    const f = playedShare;
+    for (const p of onClub) {
+      const b = bat.get(p.player_id, Y) as { pa: number; war: number } | undefined;
+      if (b) {
+        insert('players_career_batting_stats', {
+          player_id: p.player_id, year: Y1, team_id: p.team_id, league_id: save.leagueId, level_id: 1, split_id: 1,
+          pa: Math.max(1, Math.round(b.pa * f)), ab: Math.round(b.pa * f * 0.9), war: Math.round(b.war * f * 10) / 10,
+        });
+      }
+      const q = pit.get(p.player_id, Y) as { bf: number; outs: number; g: number; gs: number; war: number } | undefined;
+      if (q) {
+        insert('players_career_pitching_stats', {
+          player_id: p.player_id, year: Y1, team_id: p.team_id, league_id: save.leagueId, level_id: 1, split_id: 1,
+          bf: Math.max(1, Math.round(q.bf * f)), outs: Math.round(q.outs * f), g: Math.round(q.g * f), gs: Math.round(q.gs * f), war: Math.round(q.war * f * 10) / 10,
+        });
+      }
+    }
+  }
+  spec.playedShare = playedShare;
+  spec.clockDays = clockNow;
+  spec.currentDate = current;
+  st.bumped = false;
+  st.completed = null;
+}
+
+/**
+ * Rolls a synthetic save over a winter, as the next export would find it (phase 4b's multi-import sequences). The
+ * season just played is completed (its lines put on a full season, its standings written to the history), service is
+ * banked for the rest of it, the league moves to the next season at the share asked for, the winter's contracts are
+ * written as given, and players on a major-league club get lines for the new season so far (last season's rate, at
+ * their club now). league.db only (the per-file fixture); history.db is left as it is, so the earlier import's
+ * snapshots stay. After `offseasonImport` it opens the season the winter leads into.
+ */
+export function advanceWinter(save: BuiltSave, w: WinterSpec): void {
+  const st = stateOf(save);
+  completeSeason(save);
+  applyContracts(save, w.contracts, st.bumped ? save.spec.season : save.spec.season + 1);
+  if (!st.bumped) bumpSeason(save, `${save.spec.season + 1}-1-1`);
+  openSeason(save, w.playedShare);
+  clearExportCaches();
+}
+
+/** An export taken during the winter (phase 4b review): the season just played complete and, with `bump`, the league already on the next season number beside last season's standings (D-08). */
+export interface OffseasonSpec {
+  /** The export's game date, before the next season's Opening Day. */
+  date: string;
+  /** OOTP has moved the league to the next season (its `season_year`), with last season's standings left in the table. */
+  bump: boolean;
+  contracts: WinterContract[];
+}
+
+/** Takes a synthetic save into (or further through) its winter: the season completed, the contracts written, the date moved, the season number bumped if asked. */
+export function offseasonImport(save: BuiltSave, o: OffseasonSpec): void {
+  const st = stateOf(save);
+  completeSeason(save);
+  applyContracts(save, o.contracts, st.bumped ? save.spec.season : save.spec.season + 1);
+  if (o.bump && !st.bumped) bumpSeason(save, o.date);
+  else {
+    db.prepare(`UPDATE leagues SET "current_date" = ?`).run(o.date);
+    save.spec.currentDate = o.date;
+  }
   clearExportCaches();
 }

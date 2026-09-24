@@ -242,7 +242,7 @@ const ALLOWED_IMPORTS = new Set([
   './calibration.js', './playerValue.js', './playerValueCalibration.js', './playerValueContract.js', './playerValueControl.js',
   './playerValueFinances.js', './playerValueHistory.js', './playerValueProduction.js', './playerValueProductionFit.js',
   './playerValueFitStore.js', './injuryProneness.js', './playerValueRatings.js', './playerValueRatingsFit.js', './playerValueCone.js',
-  './playerValueCost.js',
+  './playerValueCost.js', './playerValueSignings.js', './playerValueContractStore.js',
 ]);
 
 /** The modules that open league.db at all: the readers, the snapshot writer (its game date) and the route (a table check). The pure modules never do. */
@@ -266,7 +266,9 @@ const RATINGS_MODULES = ['playerValueRatings.ts', 'playerValueRatingsFit.ts'];
 /** The writers, and the one extra import they alone may make: the history store (Part 7, D-009, D-053). */
 const SNAPSHOT_WRITER = 'playerValueSnapshot.ts';
 const FIT_STORE = 'playerValueFitStore.ts';
-const WRITERS = [FIT_STORE, SNAPSHOT_WRITER];
+/** Phase 4b: the per-import contract snapshot, the third writer (history.db only). */
+const CONTRACT_STORE = 'playerValueContractStore.ts';
+const WRITERS = [CONTRACT_STORE, FIT_STORE, SNAPSHOT_WRITER];
 const WRITER_IMPORTS = new Set(['./history.js']);
 
 /** The production modules (phase 3a). */
@@ -309,10 +311,10 @@ function consumerMatches(check: 'service' | 'contract-query', file: string): str
 describe('the Player Value boundary', () => {
   it('finds the value modules', () => {
     expect(VALUE_MODULES).toEqual([
-      'playerValue.ts', 'playerValueCalibration.ts', 'playerValueCone.ts', 'playerValueContract.ts', 'playerValueControl.ts',
-      'playerValueCost.ts', 'playerValueFinances.ts', 'playerValueFitStore.ts', 'playerValueHistory.ts', 'playerValueProduction.ts',
-      'playerValueProductionFit.ts', 'playerValueRatings.ts', 'playerValueRatingsFit.ts', 'playerValueRefitWorker.ts', 'playerValueRoutes.ts',
-      'playerValueSnapshot.ts',
+      'playerValue.ts', 'playerValueCalibration.ts', 'playerValueCone.ts', 'playerValueContract.ts', 'playerValueContractStore.ts',
+      'playerValueControl.ts', 'playerValueCost.ts', 'playerValueFinances.ts', 'playerValueFitStore.ts', 'playerValueHistory.ts',
+      'playerValueProduction.ts', 'playerValueProductionFit.ts', 'playerValueRatings.ts', 'playerValueRatingsFit.ts', 'playerValueRefitWorker.ts',
+      'playerValueRoutes.ts', 'playerValueSignings.ts', 'playerValueSnapshot.ts',
     ]);
   });
 
@@ -403,7 +405,7 @@ describe('the Player Value boundary', () => {
   });
 
   it('Club Finances reads no ratings, no players_value and no scouting at all: it needs none', () => {
-    for (const file of ['playerValueFinances.ts', 'playerValueSnapshot.ts']) {
+    for (const file of ['playerValueFinances.ts', 'playerValueSnapshot.ts', 'playerValueSignings.ts', 'playerValueContractStore.ts']) {
       const source = code(file);
       expect(source, file).not.toMatch(/scoutedEvidence|_ratings_|players_value|overall_value|talent_value|valuesByPlayer|mlbPercentiler/);
     }
@@ -486,7 +488,7 @@ describe('the Player Value boundary', () => {
       // Eligibility is asked of Player Rights by the value reader only; nobody else composes a timeline
       if (file !== 'playerRights.ts') expect(source, file).not.toMatch(/\bevaluateContractControl\b|\bcomposeControlTimeline\b/);
       // Nobody else prices a win, puts a season on a schedule's footing or reads the market's history (named at all, so an alias does not hide it)
-      expect(source, file).not.toMatch(/value_market_snapshots|\bopeningPriceOfWin\b|\breplacementLevelOf\b|\bclubFinancesOf\b|\bscheduleShareOf\b/);
+      expect(source, file).not.toMatch(/value_market_snapshots|value_contract_snapshots|value_contract_imports|\bopeningPriceOfWin\b|\breplacementLevelOf\b|\bclubFinancesOf\b|\bscheduleShareOf\b|\bobserveChanges\b|\bmeasurePriceOfWin\b|\badoptPrice\b/);
     }
     for (const file of MIGRATED_CONSUMERS) {
       const source = code(file);
@@ -587,6 +589,25 @@ describe('the Player Value boundary', () => {
     // Idempotent per key: the key is the primary key and a second write of it is ignored
     expect(source).toMatch(/PRIMARY KEY \(save_name, league_id, game_date\)/);
     expect(source).toMatch(/INSERT OR IGNORE INTO value_market_snapshots/);
+    // Phase 4b: the contract snapshot, additive and idempotent per save identity, league, game date (and player)
+    const contracts = code(CONTRACT_STORE);
+    expect(contracts).toMatch(/CREATE TABLE IF NOT EXISTS value_contract_imports/);
+    expect(contracts).toMatch(/CREATE TABLE IF NOT EXISTS value_contract_snapshots/);
+    expect(contracts).toMatch(/PRIMARY KEY \(save_name, league_id, game_date\)/);
+    expect(contracts).toMatch(/PRIMARY KEY \(save_name, league_id, game_date, player_id\)/);
+    expect(contracts).toMatch(/INSERT OR IGNORE INTO value_contract_imports/);
+    expect(contracts).toMatch(/INSERT OR IGNORE INTO value_contract_snapshots/);
+    // Keyed by the save's identity (name and league fingerprint), never the name alone (D-01)
+    expect(contracts).toMatch(/saveIdentity\(/);
+    expect(contracts).not.toMatch(/currentSaveName\(/);
+    // Phase 4b review: the stored pairs (with the reading's method) and the timeline's events, additive and idempotent
+    expect(contracts).toMatch(/CREATE TABLE IF NOT EXISTS value_contract_pairs/);
+    expect(contracts).toMatch(/PRIMARY KEY \(save_name, league_id, earlier_date, later_date, method\)/);
+    expect(contracts).toMatch(/CREATE TABLE IF NOT EXISTS value_contract_events/);
+    expect(contracts).toMatch(/INSERT OR IGNORE INTO value_contract_pairs/);
+    expect(contracts).toMatch(/INSERT OR IGNORE INTO value_contract_events/);
+    // Recording an import and reading the market read one import at a time, never the whole history (review R3-03)
+    for (const file of ['playerValue.ts', SNAPSHOT_WRITER]) expect(code(file), file).not.toMatch(/\bcontractSnapshots\(/);
   });
 
   it('the import records the market once, and a failed snapshot cannot fail the import (7)', () => {
@@ -596,6 +617,21 @@ describe('the Player Value boundary', () => {
     expect(api).toMatch(/try \{\s*(const \w+ = )?captureMarketSnapshot\(/);
     // No timer anywhere near it: data changes only on import (D-009)
     for (const file of [...VALUE_MODULES, 'clubFinanceRoutes.ts']) expect(code(file), file).not.toMatch(/setInterval|setTimeout/);
+  });
+
+  it('an observed change is read from Player Rights\' answers at the earlier import, never from service time, and names no transaction the export does not carry (phase 4b, D-020)', () => {
+    const signings = code('playerValueSignings.ts');
+    // The standing for the new contract's first season, as Player Rights stated it at the earlier import
+    expect(signings).toMatch(/\.standing\b/);
+    expect(signings).not.toMatch(/serviceDays|\.service\b|endOfSeason|mlbDays|thresholdDays|lineDays|MLB_CONTRACT_REGIME/);
+    // Pure: it opens no database and reads no rating, no players_value, no live log
+    expect(importsOf('playerValueSignings.ts').join(' ')).not.toMatch(/db\.js|history\.js|scoutedEvidence|playerValueRatings|liveLog|transactionLog/);
+    // A snapshot difference never becomes a transaction type the export does not give
+    for (const s of stringsOf('playerValueSignings.ts')) expect(s).not.toMatch(/\boptioned\b|\brecalled\b|\bDFA\b|designated for assignment|\boutright/i);
+    // The import records the contracts once, before the market it prices from them
+    const writer = code(SNAPSHOT_WRITER);
+    expect(writer).toMatch(/recordContractSnapshot\(/);
+    expect(writer.indexOf('recordContractSnapshot(')).toBeLessThan(writer.indexOf('insert.run('));
   });
 
   it('the market is priced from Player Rights\' free-agency answer, never from service time (6)', () => {
@@ -640,6 +676,7 @@ describe('the Player Value boundary', () => {
       ['RATINGS_PRIOR_CALIBRATION', 'provisional'],
       ['COST_POLICY_CALIBRATION', 'policy'],
       ['COST_PRIOR_CALIBRATION', 'provisional'],
+      ['SIGNINGS_POLICY_CALIBRATION', 'policy'],
     ]);
     // Every policy object of numbers in the calibration module is stamped beside it
     for (const name of ownNumbersOf('playerValueCalibration.ts').filter((n) => n !== 'CONTROL_HORIZON_SEASONS')) {

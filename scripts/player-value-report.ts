@@ -277,7 +277,7 @@ if (human !== null) {
  * whose history.db is a scratch copy: importing it creates its table in DATA_DIR's history.db.
  */
 if (process.env.OOTP_FO_VALUE_SNAPSHOT === '1') {
-  const { captureMarketSnapshot, marketSnapshotHistory } = await import('../server/playerValueSnapshot.js');
+  const { captureMarketSnapshot, marketSnapshotHistory, priceHistory } = await import('../server/playerValueSnapshot.js');
   const first = captureMarketSnapshot({ importFinishedAt: 'value:report' });
   const second = captureMarketSnapshot({ importFinishedAt: 'value:report' });
   console.log('\nMarket snapshot (history.db in OOTP_FO_DATA_DIR)');
@@ -287,6 +287,11 @@ if (process.env.OOTP_FO_VALUE_SNAPSHOT === '1') {
   console.log(`  history rows for league ${marketId}: ${history.length}`);
   for (const h of history) {
     console.log(`    ${h.gameDate} (${h.gameDateExported}) ${h.priceLabel}: ${h.price ? `${m(h.price.central)} [${m(h.price.low)}–${m(h.price.high)}]` : 'unknown'}, floor ${h.floor ? `${m(h.floor.low)}–${m(h.floor.high)}` : 'unknown'}, market contracts ${h.marketContracts}, payroll ${m(h.leaguePayroll)}`);
+  }
+  // Phase 4b: the price of a win across imports (opening, measured, which was in force)
+  console.log('\nPrice of a win across imports (phase 4b)');
+  for (const h of priceHistory(marketId)) {
+    console.log(`    ${h.gameDate}: in force ${h.inForce}; opening ${h.opening ? m(h.opening.central) : 'unknown'}; measured ${h.measured?.status ?? 'not recorded'}${h.reason ? `. ${h.reason}` : ''}${h.note ? ` ${h.note}` : ''}`);
   }
 }
 

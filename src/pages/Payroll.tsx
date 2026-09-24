@@ -66,10 +66,45 @@ interface ClubFinancesData {
       population: { market: number };
       rules: { central: string; band: string; floor?: string; market?: string };
       narrowsWhen: string;
+      /** Phase 4b: the opening reading, or the measured one in force; and which is in force and why (owner Q-4). */
+      stage?: 'opening' | 'measured';
+      adoption?: PriceAdoptionData | null;
     };
     /** Phase 4a: the cost ladder measured on this import (the renewal spread and the arbitration ladder). */
     costs?: CostLadderData;
+    /** Phase 4b: what the save's imports observed: arbitration salaries scored against the ladder, reserve-clause renewals. */
+    observed?: ObservedCostsData;
   };
+  /** Phase 4b: the price of a win across the save's imports. */
+  priceHistory?: PriceHistoryEntry[];
+}
+/** Which price of a win is in force and why (phase 4b), as Club Finances serves it. */
+interface PriceAdoptionData {
+  inForce: 'opening' | 'measured';
+  reason: string;
+  opening: { central: number; low: number; high: number; comparable: { low: number; high: number } | null } | null;
+  measured: {
+    status: string; signings: number; observed: number; text: string; price: Sourced<{ central: number; low: number; high: number }>;
+    /** Phase 4b review: the measured bases, each with its unit (projected at signing, or realized in the first season). */
+    bases?: Array<{ id: string; unit: 'projected' | 'realized'; description: string; status: string; signings: number; central: number | null; low: number | null; high: number | null; text: string }>;
+  };
+  rule: string;
+}
+/** One import's reading of the price of a win (phase 4b): opening, measured, which was in force. */
+export interface PriceHistoryEntry {
+  gameDate: string;
+  season: number | null;
+  inForce: 'opening' | 'measured';
+  opening: { central: number; low: number; high: number } | null;
+  measured: { status: string; signings: number; central: number | null; low: number | null; high: number | null; text?: string } | null;
+  reason?: string | null;
+  note: string | null;
+}
+interface ObservedCostsData {
+  awards: { status: string; text: string; readingsText?: string };
+  reserveClause: { status: string; text: string };
+  /** Phase 4b review: imports not compared across a change of timeline (the save went back, or a date played again), in words. */
+  timeline?: { text: string | null; superseded: string[] };
 }
 interface CostLadderData {
   preArbitration: { status: string; cases: number; atMinimum: number; band: Sourced<{ low: number; high: number; central?: number | null }>; text: string };
@@ -183,9 +218,21 @@ const perWin = (v: number): string => `$${(v / 1_000_000).toFixed(2)}M`;
  * as the range it is (shown even when the price itself is unknown), and the basis as a list any
  * keyboard can open, rather than a hover-only paragraph.
  */
-export function PriceOfWinLine({ price }: { price: ClubFinancesData['league']['priceOfWin'] }) {
+/** One import's measured reading, in a few words: the price and its band, or why there is none. */
+const measuredWords = (m: PriceHistoryEntry['measured']): string => {
+  if (!m) return 'not recorded';
+  if (m.status === 'measured' && m.central !== null && m.low !== null && m.high !== null) {
+    return `${perWin(m.central)} (${perWin(m.low)}–${perWin(m.high)}), ${m.signings} signings`;
+  }
+  if (m.status === 'no_off_season') return 'no off-season observed yet';
+  if (m.status === 'not_measured') return `not measured (${m.signings} signings priced)`;
+  return 'unknown';
+};
+
+export function PriceOfWinLine({ price, history, timeline }: { price: ClubFinancesData['league']['priceOfWin']; history?: PriceHistoryEntry[]; timeline?: string | null }) {
   const p = price.price.value;
   const floor = price.floor.value;
+  const a = price.adoption ?? null;
   return (
     <div className="muted hint-line price-of-win">
       Price of a win ({price.label}):{' '}
@@ -201,14 +248,41 @@ export function PriceOfWinLine({ price }: { price: ClubFinancesData['league']['p
           <li>{price.rules.central}</li>
           <li>{price.rules.band}</li>
           {price.rules.floor && <li>{price.rules.floor}</li>}
+          {price.stage === 'measured' && <li>The opening reading, not in force (kept for comparison):</li>}
           {price.bases.map((b) => (
             <li key={b.id}>
               {b.id}: {b.description}: {b.perWin.value === null ? `unknown (${b.perWin.note ?? 'not stated'})` : perWin(b.perWin.value)}
             </li>
           ))}
           <li>{price.narrowsWhen}</li>
+          {a && <li>{a.reason}</li>}
+          {a?.opening?.comparable && (
+            <li>Opening band with its sampling (each basis resampled): {perWin(a.opening.comparable.low)}–{perWin(a.opening.comparable.high)}.</li>
+          )}
+          {a && <li>Measured: {a.measured.price.value ? a.measured.text : (a.measured.price.note ?? a.measured.text)}</li>}
+          {a?.measured.bases?.filter((b) => b.status === 'measured').map((b) => (
+            <li key={`m-${b.id}`}>
+              Measured basis ({b.unit === 'realized' ? 'per realized win' : 'per win projected at signing'}): {b.description}: {perWin(b.central as number)}
+              {b.low !== null && b.high !== null ? ` (${perWin(b.low)}–${perWin(b.high)} resampled)` : ''}, {b.signings} signings.
+            </li>
+          ))}
+          {a && <li>{a.rule}</li>}
         </ul>
       </details>
+      {timeline && <div className="muted">{timeline}</div>}
+      {history && history.length > 0 && (
+        <details className="price-basis">
+          <summary>Price history ({history.length} import{history.length === 1 ? '' : 's'})</summary>
+          <ul>
+            {history.map((h) => (
+              <li key={h.gameDate}>
+                {h.gameDate}: opening {h.opening ? `${perWin(h.opening.central)} (${perWin(h.opening.low)}–${perWin(h.opening.high)})` : 'unknown'};
+                measured {measuredWords(h.measured)}; in force: {h.inForce}.{h.note ? ` ${h.note}` : ''}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </div>
   );
 }
@@ -228,7 +302,7 @@ const TIP_HEADROOM =
  * How a controlled season is priced (phase 4a): the save's own renewal spread and arbitration ladder, with
  * how many contracts each rests on and whether it is measured or the provisional prior. Shown as served.
  */
-export function CostLadderLine({ costs }: { costs: CostLadderData }) {
+export function CostLadderLine({ costs, observed }: { costs: CostLadderData; observed?: ObservedCostsData }) {
   const r = costs.preArbitration;
   const renewal = r.band.value ? costBand(r.band.value.low, r.band.value.high) : 'unknown';
   // The provisional prior's line only where something on this save rests on it (review R2-11)
@@ -250,6 +324,8 @@ export function CostLadderLine({ costs }: { costs: CostLadderData }) {
           {costs.arbitration.unread?.text && <li>{costs.arbitration.unread.text}</li>}
           {usesPrior && <li>{costs.rules.prior}</li>}
           <li>{costs.rules.reserveClause}</li>
+          {observed && <li>Observed arbitration salaries: {observed.awards.text}{observed.awards.readingsText ? ` ${observed.awards.readingsText}` : ''}</li>}
+          {observed && observed.reserveClause.status === 'measured' && <li>{observed.reserveClause.text}</li>}
         </ul>
       </details>
     </div>
@@ -334,8 +410,8 @@ export function Payroll({ orgId }: { orgId: number }) {
           </div>
         </div>
       )}
-      {price && <PriceOfWinLine price={price} />}
-      {finance?.league.costs && <CostLadderLine costs={finance.league.costs} />}
+      {price && <PriceOfWinLine price={price} history={finance?.priceHistory} timeline={finance?.league.observed?.timeline?.text ?? null} />}
+      {finance?.league.costs && <CostLadderLine costs={finance.league.costs} observed={finance.league.observed} />}
 
       <section>
         <h2><Tip label="Committed salary by season" tip={TIP_COMMITTED} /></h2>

@@ -371,7 +371,7 @@ Present on `main` (D-023; research in [RIGHTS_RESEARCH.md](RIGHTS_RESEARCH.md)):
 Not done, by design: rights for IL activation, Rule 5, re-optioning after the
 last option year, rehab returns, claims, refusals, trades (all `indeterminate`).
 
-## Implemented Player Value (phases 1, 2, 3a and 3b)
+## Implemented Player Value (phases 1, 2, 3a, 3b, 4a and 4b)
 
 D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
 
@@ -593,8 +593,8 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   provisional prior (the same method on the imported contracts) widened by the range
   the save paid the class, only where the regime as read is MLB's; a league with no
   arbitration or an unread rule gets no ladder, and in a league with no arbitration
-  Player Rights lists no season as possibly arbitration. Reserve-clause renewals stay
-  unknown (phase 4b). The ladder is snapshotted with the market (`basis_json.costs`;
+  Player Rights lists no season as possibly arbitration. Reserve-clause renewals are
+  priced only from renewals observed across imports (phase 4b). The ladder is snapshotted with the market (`basis_json.costs`;
   a key written before 4a has none, and the shape changed in the review). Payroll
   shows each controlled season's band beside committed money (never in the total or
   the room), summed edge against edge as a range of reasonable readings with the sum
@@ -603,6 +603,49 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   season's cost, its central and an option's declined branch. A reading without
   production (Free Agents) prices nothing. Payroll now computes production for its
   players (about 130 ms a club). Phase 4a review (2026-09-23): PLAYER_VALUE.md Part 9.
+- **The measured price of a win across imports** (phase 4b, 2026-09-23;
+  `server/playerValueSignings.ts` pure, `server/playerValueContractStore.ts` the third
+  writer, PLAYER_VALUE.md 4.2 to 4.4, CALIBRATION.md section 9): each import (and a server start
+  that finds the imported export not yet recorded) records its
+  contracts in `history.db` (table `value_contract_snapshots` with `value_contract_imports`,
+  keyed by the save's identity, league and game date, idempotent; every contract the
+  market league's clubs hold, and unsigned players whose production is established,
+  with Player Rights' standing for three seasons, expected production and next
+  season's cost; about 3.2 MB an import on the Arizona save). Two consecutive imports
+  are compared: each change is named for what changed and read through Player Rights
+  at the earlier import (a free-agent market signing, an arbitration salary, a
+  renewal, a reserve-clause renewal, an extension, a contract that moved, a
+  controlled player no club holds), never given a transaction type the export does
+  not carry (D-020); ambiguous changes are counted and left out. The measured price
+  is the ratio of summed salary above the minimum to summed expected wins at the
+  earlier import over free-agent signings, its band the signings resampled; it
+  replaces the opening price only when narrower than the opening band with its
+  sampling (owner Q-4), and says why either way. Observed arbitration salaries are
+  scored against the band the earlier import priced and become a class reading at
+  30; reserve-clause renewals price a reserve-clause season at 30; replacement is
+  measured from freely acquired players at 30. Payroll's price line names the price
+  in force and why and lists the price history; `/api/club-finances/:orgId/price-history`
+  serves it with every observed change. **On the Arizona save** (one import,
+  2026-5-16) no off-season is observed: the measured price, the awards, the
+  reserve-clause cost and replacement say so, and the opening price ($7.25M, band
+  $6.57M–$9.78M; with its sampling $5.95M–$11.22M) stays in force. **Reviewed
+  2026-09-24** (R3, R4; PLAYER_VALUE.md Part 9): a winter is read by the calendar (an
+  import after the season number moved on is inside the winter, and imports across one
+  winter count one); an extension moving with a traded player and a deadline
+  acquisition re-signed are never market prices; two timelines (a save that went back,
+  a date imported again with different play) are never compared; recording an import
+  reads only the import before it and stores the pair (`value_contract_pairs`,
+  `value_contract_events`), so capture time is flat in the number of imports (2.43 s
+  with 29 earlier imports, 3.65 s before). The measured price is a set of bases (per
+  win projected at signing over the deal and in the first season, if he plays, and per
+  win produced in the first season once completed), resampled by winter; it is compared
+  with the opening band only once it holds the realized reading and covers each third
+  of the free-agent class, its central is the realized reading's, and the reason names
+  the unit. Measured replacement is shown, never applied. Awards are scored with their
+  bands' width. Open owner questions: the unit of the price in force once measured, and
+  how long the contract history is kept (about 3.2 MB an import, not pruned). Known
+  limit: production is unknown at an import after the season number moved on (D-08), so
+  a signing first seen then has only the realized reading.
 - **Player card production cone** (PLAYER_VALUE.md Part 8): an "Expected
   production" section draws each season's 80% and 50% bands, the expected
   path, replacement level and control, with target beside observed coverage on
@@ -618,6 +661,8 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   is a modal dialog with a focus trap (`src/focusTrap.ts`, Escape, focus back to
   the opener) and fits the window at any width (`tests/playerCard.test.ts`).
 - **Tests:** `playerValueControl`, `playerValueCost` (the phase 4a cost bands),
+  `playerValueSignings` (phase 4b: observed changes, the measured price, adoption,
+  awards, reserve-clause renewals, replacement),
   `playerValueFinances`, `playerValueProduction`,
   `playerValueProductionFit`, `playerValueRatings`, `playerValueCone`,
   `productionCone` (geometry, render and theme tokens) and `playerValueBoundary`
@@ -626,14 +671,15 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   violation owned by another fix is listed with its finding and must still be
   there). `playerValueCrossSave` runs every entry point over synthetic saves of
   every shape in Reviewer D's matrix (`tests/syntheticSave.ts`); the gaps other
-  fixes own are `it.todo` by finding ID.
+  fixes own are `it.todo` by finding ID. Since phase 4b it rolls saves over a winter
+  (`advanceWinter`) and checks the observed signings end to end.
 
 Not built: the save's own development path, the ratings' forecast reliability
 and the arrival chance by potential (they fit themselves once the save's rating
 snapshots allow), surplus, the philosophy lens and
-the club's value of a win (phase 5), observed signings, observed arbitration awards and
-reserve-clause renewals, the measured price and replacement from freely available
-talent (phase 4b), a per-import store (everything is computed per request; see
+the club's value of a win (phase 5), personality's effect on price (it moves no number
+until observed signings are read against it), a retention rule for the per-import
+contract snapshot (an owner question), a per-import store (everything is computed per request; see
 Part 7), and the consumer migration that deletes `players_value` reads and the
 percentile advice (phase 6). The calibrated constants of other subsystems are
 not yet fitted per save (D-053; ROADMAP). On the Arizona import 6,952 of 8,009 held players have indeterminate later

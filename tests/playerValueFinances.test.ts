@@ -5,7 +5,7 @@ import {
   clubFinancesOf, leagueFinances, marketStandingOf, openingPriceOfWin, replacementLevelOf,
   type MarketCandidate, type OpeningPriceInput, type SeasonWar,
 } from '../server/playerValue.js';
-import { captureMarketSnapshot, marketSnapshotHistory } from '../server/playerValueSnapshot.js';
+import { captureMarketSnapshot, marketSnapshotHistory, priceHistory } from '../server/playerValueSnapshot.js';
 import { fromExport, unknownBecause } from '../server/provenance.js';
 import request from './request';
 import { IDS, SEASON } from './fixture';
@@ -401,12 +401,26 @@ describe('Player Value: the per-import market snapshot (phase 2)', () => {
     expect(history[0].regime).toBeTruthy();
   });
 
-  it('holding any number of snapshots leaves the price exactly as it was', () => {
+  it('holding any number of snapshots inside one season leaves the price exactly as it was', () => {
     const before = leagueFinances(IDS.league).priceOfWin;
     captureMarketSnapshot();
     db.prepare('UPDATE leagues SET "current_date" = ? WHERE league_id = ?').run('2030-6-20', IDS.league);
     captureMarketSnapshot();
-    expect(leagueFinances(IDS.league).priceOfWin).toEqual(before);
+    const after = leagueFinances(IDS.league).priceOfWin;
+    // The price, its floor, its bases and its stage; only the count of imports held in the reason may move (phase 4b)
+    expect({ ...after, adoption: null }).toEqual({ ...before, adoption: null });
+    expect(after.stage).toBe('opening');
+  });
+
+  it('a market snapshot written before phase 4b (no cost ladder, no adoption) reads back with its opening price, and its measured reading is not recorded', () => {
+    captureMarketSnapshot();
+    historyDb.prepare(`UPDATE value_market_snapshots SET basis_json = '{"bases":[]}', price_central = 7e6, price_low = 6e6, price_high = 9e6`).run();
+    const history = priceHistory(IDS.league);
+    expect(history).toHaveLength(1);
+    expect(history[0].inForce).toBe('opening');
+    expect(history[0].opening).toEqual({ central: 7e6, low: 6e6, high: 9e6 });
+    expect(history[0].measured).toBeNull();
+    expect(history[0].note).toMatch(/not recorded/);
   });
 
   it('a snapshot that cannot be written never fails the import', () => {

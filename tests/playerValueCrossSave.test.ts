@@ -5,12 +5,15 @@ import {
   ratingsHistory, refitProductionIfNeeded, refitRatingsIfNeeded, type PlayerValuation,
 } from '../server/playerValue.js';
 import { db } from '../server/db.js';
+import { recordImportMarket } from '../server/api.js';
 import { historyDb } from '../server/history.js';
 import { PRODUCTION_PRIOR } from '../server/playerValueCalibration.js';
 import { leagueSeasons } from '../server/playerValueHistory.js';
-import { captureMarketSnapshot } from '../server/playerValueSnapshot.js';
-import { COST_POLICY, OPENING_PRICE_MINIMUMS } from '../server/playerValueCalibration.js';
-import { buildSave, dropColumn, dropTable, exec, insert, leagueRow, type BuiltSave, type SaveSpec } from './syntheticSave';
+import { captureMarketSnapshot, marketSnapshotHistory, priceHistory } from '../server/playerValueSnapshot.js';
+import { contractImports, contractSnapshots } from '../server/playerValueContractStore.js';
+import request from './request';
+import { COST_POLICY, OPENING_PRICE_MINIMUMS, SIGNINGS_POLICY } from '../server/playerValueCalibration.js';
+import { advanceWinter, buildSave, dropColumn, dropTable, exec, insert, leagueRow, offseasonImport, type BuiltSave, type SaveSpec, type WinterContract } from './syntheticSave';
 import { majorLeagueRow, minorLeagueRow } from './playerValueFixtures';
 
 /*
@@ -470,6 +473,488 @@ describe('cross-save: the cost of controlled seasons (phase 4a)', () => {
   }, SLOW);
 });
 
+describe('cross-save: observed signings across imports (phase 4b)', () => {
+  const MIN = 700_000;
+  type Standing = 'free_agency' | 'arbitration' | 'pre_arbitration' | 'reserve_clause' | 'indeterminate';
+
+  /** The earlier import: a save whose major-league deals run three seasons, with the players the winter touches expiring now. */
+  function earlierImport(spec: SaveSpec, expiring: (s: Standing, i: number) => boolean) {
+    const save = buildSave(spec);
+    exec(`UPDATE players_contract SET years = 3, salary1 = salary0, salary2 = salary0 WHERE is_major = 1`);
+    const values = leaguePlayerValues({ currentState: 'current' });
+    const by = new Map<Standing, number[]>();
+    for (const v of values.values()) {
+      if (v.control.standing !== 'held' || v.contract.kind.value !== 'major_league') continue;
+      const next = v.control.eligibility?.seasons.find((x) => x.season === spec.season + 1)?.standing as Standing | undefined;
+      if (!next) continue;
+      const list = by.get(next) ?? [];
+      list.push(v.playerId);
+      by.set(next, list);
+    }
+    const expire: number[] = [];
+    for (const [s, ids] of by) ids.forEach((id, i) => { if (expiring(s, i)) expire.push(id); });
+    if (expire.length > 0) exec(`UPDATE players_contract SET years = 1 WHERE player_id IN (${expire.join(',')})`);
+    const first = captureMarketSnapshot();
+    expect(first.error).toBeNull();
+    const ids = (s: Standing) => (by.get(s) ?? []).filter((id) => expire.includes(id));
+    return { save, ids, clubOf: (id: number) => (db.prepare(`SELECT team_id FROM players WHERE player_id = ?`).get(id) as { team_id: number }).team_id };
+  }
+
+  /** What the earlier import expected of a player next season (its stored snapshot), in wins. */
+  const expectedNext = (league: number, id: number, season: number): number => {
+    const earlier = contractSnapshots(league)[0];
+    const p = earlier.rows.find((r) => r.playerId === id)?.production?.seasons.find((x) => x.season === season);
+    return p?.central ?? 0;
+  };
+
+  /** Free agents signing elsewhere at a price per expected win (money above the minimum over the earlier import's expected wins). */
+  function freeAgents(e: ReturnType<typeof earlierImport>, ids: number[], perWin: (i: number) => number, oneYear = false): WinterContract[] {
+    const clubs = e.save.clubs;
+    return ids.map((id, i) => {
+      const from = e.clubOf(id);
+      const to = clubs[(clubs.indexOf(from) + 1 + (i % (clubs.length - 1))) % clubs.length];
+      const years = oneYear ? 1 : 1 + (i % 3);
+      const w = Math.max(0.3, expectedNext(e.save.leagueId, id, e.save.spec.season + 1));
+      return { playerId: id, club: to, years, salaries: [Math.round(MIN + perWin(i) * w)] };
+    });
+  }
+
+  const observed = (league: number) => leagueFinances(league, { currentState: 'current' }).observed;
+  const big: SaveSpec = { ...base, clubs: 16, historySeasons: 8, minors: false };
+
+  it('an off-season sequence: free-agent signings, extensions, arbitration salaries, non-tenders, renewals and a contract that moved are identified and counted, and each import is recorded once', () => {
+    const e = earlierImport(big, (s, i) => s === 'free_agency' || (s === 'arbitration' && i < 12) || (s === 'pre_arbitration' && i < 10));
+    const L = e.save.leagueId;
+    const Y = big.season;
+    const rows = () => (historyDb.prepare(`SELECT COUNT(*) AS n FROM value_contract_snapshots`).get() as { n: number }).n;
+    const once = rows();
+    expect(once).toBeGreaterThan(0);
+    // A second capture of the same import writes nothing and computes nothing
+    expect(captureMarketSnapshot().written).toBe(0);
+    expect(rows()).toBe(once);
+
+    const fa = e.ids('free_agency');
+    const arb = e.ids('arbitration');
+    const pre = e.ids('pre_arbitration');
+    expect(fa.length).toBeGreaterThanOrEqual(4);
+    expect(arb.length).toBeGreaterThanOrEqual(8);
+    const moved = [...(db.prepare(`SELECT player_id FROM players_contract WHERE years = 3 AND is_major = 1 LIMIT 1`).all() as Array<{ player_id: number }>)][0].player_id;
+    const movedTo = e.save.clubs.find((c) => c !== e.clubOf(moved))!;
+    const movedSalary = (db.prepare(`SELECT salary0 FROM players_contract WHERE player_id = ?`).get(moved) as { salary0: number }).salary0;
+    advanceWinter(e.save, {
+      playedShare: 0.2,
+      contracts: [
+        ...freeAgents(e, fa.slice(2), () => 5e6),
+        // Two free agents stay with the club that held them
+        ...fa.slice(0, 2).map((id) => ({ playerId: id, club: e.clubOf(id), years: 2, salaries: [4e6] })),
+        // Arbitration: salaries, two at the minimum, two with no club, one extension
+        ...arb.slice(0, 7).map((id, i) => ({ playerId: id, club: e.clubOf(id), salaries: [MIN + 1e6 + i * 4e5] })),
+        ...arb.slice(7, 9).map((id) => ({ playerId: id, club: e.clubOf(id), salaries: [MIN] })),
+        ...arb.slice(9, 11).map((id) => ({ playerId: id, club: null })),
+        ...arb.slice(11, 12).map((id) => ({ playerId: id, club: e.clubOf(id), years: 4, salaries: [3e6] })),
+        // Renewals before arbitration, one extension
+        ...pre.slice(0, 9).map((id, i) => ({ playerId: id, club: e.clubOf(id), salaries: [MIN + i * 5_000] })),
+        ...pre.slice(9, 10).map((id) => ({ playerId: id, club: e.clubOf(id), years: 5, salaries: [1e6] })),
+        // A contract that moves to another club on the same terms
+        { playerId: moved, club: movedTo, firstSeason: Y, years: 3, salaries: [movedSalary] },
+      ],
+    });
+    const later = captureMarketSnapshot();
+    expect(later.error).toBeNull();
+    expect(contractSnapshots(L)).toHaveLength(2);
+
+    const o = observed(L);
+    expect(o.pairs).toHaveLength(1);
+    const pair = o.pairs[0];
+    expect(pair.spansWinter).toBe(true);
+    expect(pair.counts.free_agent_signing).toBe(fa.length - 2);
+    expect(pair.counts.retained_at_free_agency).toBe(2);
+    expect(pair.counts.arbitration_salary).toBe(7);
+    expect(pair.counts.arbitration_at_minimum).toBe(2);
+    expect(pair.counts.not_retained).toBe(2);
+    expect(pair.counts.extension).toBe(2);
+    expect(pair.counts.renewal).toBe(Math.min(9, pre.length));
+    expect(pair.counts.transferred).toBe(1);
+    // Named for what changed, never a transaction the export does not carry (D-020)
+    for (const c of pair.changes) {
+      expect(c.changed.length).toBeGreaterThan(0);
+      expect(`${c.reading} ${c.left ?? ''}`).not.toMatch(/\boptioned\b|\brecalled\b|\bDFA\b|designated for assignment|outright/i);
+    }
+    // Every observed arbitration salary is scored against the band the earlier import priced for it
+    expect(o.awards.status).toBe('scored');
+    expect(o.awards.scored).toBeGreaterThan(0);
+    expect(o.awards.coverage).not.toBeNull();
+    expectInvariants(run(e.save, { refit: false }));
+  }, SLOW);
+
+  it('a measured band wider than the opening one leaves the opening price in force, naming the signings observed and both bands', () => {
+    const e = earlierImport(big, (s) => s === 'free_agency');
+    const L = e.save.leagueId;
+    const fa = e.ids('free_agency');
+    expect(fa.length).toBeGreaterThanOrEqual(OPENING_PRICE_MINIMUMS.contracts);
+    const opening = leagueFinances(L, { currentState: 'current' }).priceOfWin;
+    // Few signings elsewhere, at prices that have nothing to do with the wins bought (a very wide resampled band); every
+    // other free agent stays with his club at a sensible price, in the opening's market bases and never in the measured one
+    const few = fa.filter((id) => expectedNext(L, id, big.season + 1) >= 0.5).slice(0, OPENING_PRICE_MINIMUMS.contracts + 1);
+    const stay = fa.filter((id) => !few.includes(id)).map((id) => ({
+      playerId: id, club: e.clubOf(id), salaries: [Math.round(MIN + 5e6 * Math.max(0.3, expectedNext(L, id, big.season + 1)))],
+    }));
+    advanceWinter(e.save, { playedShare: 0.2, contracts: [...freeAgents(e, few, (i) => (i % 2 === 0 ? 0.1e6 : 40e6), true), ...stay] });
+    captureMarketSnapshot();
+    const f = leagueFinances(L, { currentState: 'current' });
+    expect(f.observed.measured.status).toBe('measured');
+    expect(f.priceOfWin.stage).toBe('opening');
+    expect(f.priceOfWin.adoption!.inForce).toBe('opening');
+    expect(f.priceOfWin.adoption!.reason).toMatch(new RegExp(`${f.observed.measured.observed} free-agent signings observed`));
+    // One winter holds no realized reading, so the bands are not yet compared like for like (R4-01)
+    expect(f.priceOfWin.adoption!.reason).toMatch(/realized/);
+    // The opening price in force is this import's own opening reading
+    expect(f.priceOfWin.label).toBe(opening.label);
+  }, SLOW);
+
+  it('a league whose signings are too few is not measured: the opening price stays and says how many were observed', () => {
+    const e = earlierImport({ ...base, clubs: 4, minors: false }, (s) => s === 'free_agency');
+    const L = e.save.leagueId;
+    const fa = e.ids('free_agency').slice(0, 12);
+    expect(fa.length).toBeLessThan(OPENING_PRICE_MINIMUMS.contracts);
+    advanceWinter(e.save, { playedShare: 0.2, contracts: freeAgents(e, fa, () => 5e6) });
+    captureMarketSnapshot();
+    const f = leagueFinances(L, { currentState: 'current' });
+    expect(f.observed.measured.status).toBe('not_measured');
+    expect(f.observed.measured.price.note).toMatch(new RegExp(`${fa.length} free-agent signing`));
+    expect(f.priceOfWin.stage).toBe('opening');
+    expect(f.priceOfWin.adoption!.reason).toMatch(/opening price stays/i);
+  }, SLOW);
+
+  it('a fictional league without arbitration observes no arbitration salaries and says it has none to score; its controlled players are renewed', () => {
+    const spec = { ...base, clubs: 8, minors: false, rules: { rules_salary_arbitration_minimum_years: 0 } };
+    const e = earlierImport(spec, (s, i) => s === 'pre_arbitration' && i < 12);
+    const pre = e.ids('pre_arbitration');
+    expect(e.ids('arbitration')).toEqual([]);
+    advanceWinter(e.save, { playedShare: 0.2, contracts: pre.map((id) => ({ playerId: id, club: e.clubOf(id), salaries: [MIN + 10_000] })) });
+    captureMarketSnapshot();
+    const o = observed(e.save.leagueId);
+    expect(o.pairs[0].counts.arbitration_salary ?? 0).toBe(0);
+    expect(o.pairs[0].counts.renewal).toBe(pre.length);
+    expect(o.awards.status).toBe('no_arbitration');
+    expectInvariants(run(e.save, { refit: false }));
+  }, SLOW);
+
+  it('reserve-clause renewals observed across imports price a reserve-clause season; before they are observed it stays unknown', () => {
+    const spec = { ...base, clubs: 8, minors: false, rules: { rules_fa_minimum_years: 0 } };
+    const e = earlierImport(spec, (s, i) => s === 'reserve_clause' && i < 60);
+    const L = e.save.leagueId;
+    const renewed = e.ids('reserve_clause');
+    expect(renewed.length).toBeGreaterThanOrEqual(COST_POLICY.renewal.minimumCases);
+    const reserveSeason = (vals: Map<number, PlayerValuation>) => [...vals.values()].flatMap((v) => v.control.seasons).find((s) => s.status === 'reserve_clause' && s.cost);
+    const before = reserveSeason(leaguePlayerValues({ currentState: 'current' }))!;
+    expect(before.cost!.value).toBeNull();
+    advanceWinter(e.save, { playedShare: 0.2, contracts: renewed.map((id, i) => ({ playerId: id, club: e.clubOf(id), salaries: [MIN + (i % 8) * 150_000] })) });
+    captureMarketSnapshot();
+    const f = leagueFinances(L, { currentState: 'current' });
+    expect(f.observed.pairs[0].counts.reserve_clause_renewal).toBe(renewed.length);
+    expect(f.observed.reserveClause.status).toBe('measured');
+    const after = reserveSeason(leaguePlayerValues({ currentState: 'current' }))!;
+    expect(after.cost!.value!.low).toBe(MIN);
+    expect(after.cost!.value!.high).toBeGreaterThan(MIN);
+    expect(after.cost!.note).toMatch(/reserve-clause renewals/);
+  }, SLOW);
+
+  it("players who joined a club for nothing measure replacement from freely available talent; the measured price stays in the export's WAR and says so (R3-06, R4-06)", () => {
+    const e0 = buildSave(big);
+    exec(`UPDATE players_contract SET years = 3, salary1 = salary0, salary2 = salary0 WHERE is_major = 1`);
+    // Forty major leaguers no club holds at the earlier import, near the export's replacement level (about 0.1 WAR per
+    // 600 plate appearances): their production is established, so it is recorded
+    const free = e0.hitters.filter((_, i) => i % 5 === 0).slice(0, 40);
+    exec(`UPDATE players_career_batting_stats SET war = ROUND(pa / 6000.0, 1) WHERE split_id = 1 AND player_id IN (${free.join(',')});
+      UPDATE players SET team_id = 0, organization_id = 0, league_id = 0 WHERE player_id IN (${free.join(',')});
+      DELETE FROM players_contract WHERE player_id IN (${free.join(',')}); DELETE FROM team_roster WHERE player_id IN (${free.join(',')})`);
+    const values = leaguePlayerValues({ currentState: 'current' });
+    const market = [...values.values()].filter((v) => v.control.standing === 'held' && v.contract.kind.value === 'major_league'
+      && v.control.eligibility?.seasons.find((x) => x.season === big.season + 1)?.standing === 'free_agency').map((v) => v.playerId);
+    exec(`UPDATE players_contract SET years = 1 WHERE player_id IN (${market.join(',')})`);
+    captureMarketSnapshot();
+    const L = e0.leagueId;
+    const clubOf = (id: number) => (db.prepare(`SELECT team_id FROM players WHERE player_id = ?`).get(id) as { team_id: number }).team_id;
+    advanceWinter(e0, {
+      playedShare: 0.3,
+      contracts: [
+        // Signed for nothing: a major-league deal at the minimum with a club that did not hold them
+        ...free.map((id, i) => ({ playerId: id, club: e0.clubs[i % e0.clubs.length], salaries: [MIN] })),
+        // And a market of free agents signing elsewhere
+        ...market.map((id, i) => {
+          const from = clubOf(id);
+          const to = e0.clubs[(e0.clubs.indexOf(from) + 1 + (i % (e0.clubs.length - 1))) % e0.clubs.length];
+          return { playerId: id, club: to, salaries: [Math.round(MIN + 5e6 * Math.max(0.3, expectedNext(L, id, big.season + 1)))] };
+        }),
+      ],
+    });
+    captureMarketSnapshot();
+    const f = leagueFinances(L, { currentState: 'current' });
+    expect(f.observed.replacement.status).toBe('measured');
+    expect(f.observed.replacement.players).toBeGreaterThanOrEqual(SIGNINGS_POLICY.replacement.minimumPlayers);
+    expect(f.observed.replacement.text).toMatch(/freely acquired players/);
+    expect(f.observed.measured.status).toBe('measured');
+    expect(f.observed.measured.replacement).toBe('export_convention');
+    expect(f.observed.measured.text).toMatch(/export's (own )?WAR/);
+    expect(f.observed.replacement.text).toMatch(/who played/);
+    expectInvariants(run(e0, { refit: false }));
+  }, SLOW);
+
+  it('one import: no off-season observed, said precisely, and the opening price stays in force', () => {
+    const save = buildSave(big);
+    captureMarketSnapshot();
+    const f = leagueFinances(save.leagueId, { currentState: 'current' });
+    expect(f.observed.measured.status).toBe('no_off_season');
+    expect(f.observed.measured.price.note).toMatch(/No off-season observed yet: the measured price needs two imports across a winter/);
+    expect(f.observed.measured.price.note).toMatch(/1 import recorded/);
+    expect(f.priceOfWin.stage).toBe('opening');
+    expect(f.priceOfWin.adoption!.reason).toMatch(/No off-season observed yet/);
+    expect(f.observed.replacement.status).toBe('not_measured');
+    expect(f.observed.replacement.text).toMatch(/provisional/);
+  }, SLOW);
+
+  it("a new save under a reused save name and league id never reads the previous save's contracts", () => {
+    const first = buildSave(big);
+    captureMarketSnapshot();
+    const rows = historyDb.prepare(`SELECT * FROM value_contract_snapshots`).all() as Array<Record<string, unknown>>;
+    const imports = historyDb.prepare(`SELECT * FROM value_contract_imports`).all() as Array<Record<string, unknown>>;
+    expect(rows.length).toBeGreaterThan(0);
+    const second = buildSave({ ...big, seed: 2 });
+    for (const [table, list] of [['value_contract_snapshots', rows], ['value_contract_imports', imports]] as const) {
+      for (const row of list) {
+        const cols = Object.keys(row);
+        historyDb.prepare(`INSERT INTO ${table} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`).run(...cols.map((c) => row[c]));
+      }
+    }
+    clearProductionCaches();
+    expect(contractSnapshots(second.leagueId)).toEqual([]);
+    expect(first.leagueId).toBe(second.leagueId);
+  }, SLOW);
+  // ── phase 4b review (2026-09-24): each case written before its fix ──
+
+  it('R3-01: imports across one winter, one of them after the season number moved on, see every signing as a market price and count one winter', () => {
+    const e = earlierImport(big, (s) => s === 'free_agency');
+    const L = e.save.leagueId;
+    const Y = big.season;
+    const fa = e.ids('free_agency').filter((id) => expectedNext(L, id, Y + 1) >= 0.3);
+    const groups = [0, 1, 2].map((k) => fa.filter((_, i) => i % 3 === k));
+    // The season over, before the bump: nothing signed yet
+    offseasonImport(e.save, { date: `${Y}-10-20`, bump: false, contracts: [] });
+    captureMarketSnapshot();
+    // December: the league is on the next season number, last season's standings beside it; the first signings
+    offseasonImport(e.save, { date: `${Y}-12-10`, bump: true, contracts: freeAgents(e, groups[0], () => 5e6, true) });
+    captureMarketSnapshot();
+    // Last season's standings beside the new season number are not games played in it (D-08)
+    expect(leagueFinances(L, { currentState: 'current' }).seasonPlayed.value).toBeNull();
+    // January, still before Opening Day: more signings
+    offseasonImport(e.save, { date: `${Y + 1}-1-20`, bump: true, contracts: freeAgents(e, groups[1], () => 5e6, true) });
+    captureMarketSnapshot();
+    // The season under way: the last of them
+    advanceWinter(e.save, { playedShare: 0.2, contracts: freeAgents(e, groups[2], () => 5e6, true) });
+    captureMarketSnapshot();
+    const o = observed(L);
+    expect(o.imports).toHaveLength(5);
+    expect(o.pairs).toHaveLength(4);
+    const signings = o.pairs.flatMap((p) => p.changes.filter((c) => c.kind === 'free_agent_signing'));
+    expect(signings).toHaveLength(fa.length);
+    for (const c of signings) {
+      expect(c.uses).toContain('price');
+      expect(c.left ?? '').not.toMatch(/under way/);
+    }
+    expect(o.pairs.map((p) => p.winters)).toEqual([[], [Y + 1], [Y + 1], [Y + 1]]);
+    expect(o.measured.winters).toBe(1);
+    expect(o.measured.signings).toBe(fa.length);
+    expectInvariants(run(e.save, { refit: false }));
+  }, SLOW);
+
+  it("R3-04: a free agent re-signed by the club that acquired him during the season is not an open-market price; one signed by a club new to him is", () => {
+    const e = earlierImport(big, (s) => s === 'free_agency');
+    const L = e.save.leagueId;
+    const Y = big.season;
+    const fa = e.ids('free_agency');
+    const [acquired, market] = [fa[0], fa[1]];
+    const from = e.clubOf(acquired);
+    const to = e.save.clubs.find((c) => c !== from)!;
+    // After the earlier import he was traded: the rest of his season is a line with the club that acquired him
+    exec(`UPDATE players SET team_id = ${to}, organization_id = ${to} WHERE player_id = ${acquired};
+      UPDATE players_contract SET team_id = ${to}, contract_team_id = ${to} WHERE player_id = ${acquired}`);
+    insert('players_career_batting_stats', { player_id: acquired, year: Y, team_id: to, league_id: L, level_id: 1, split_id: 1, pa: 120, ab: 108, war: 0.8 });
+    advanceWinter(e.save, { playedShare: 0.2, contracts: [{ playerId: acquired, club: to, years: 3, salaries: [9e6] }, ...freeAgents(e, [market], () => 5e6)] });
+    captureMarketSnapshot();
+    const changes = observed(L).pairs[0].changes;
+    const a = changes.find((x) => x.playerId === acquired)!;
+    expect(a.kind).toBe('retained_at_free_agency');
+    expect(a.uses).toEqual([]);
+    expect(a.reading).toMatch(/lines/);
+    const m = changes.find((x) => x.playerId === market)!;
+    expect(m.kind).toBe('free_agent_signing');
+    expect(m.uses).toContain('price');
+    expect(m.reading).toMatch(/no stint|did not hold/);
+  }, SLOW);
+
+  it('R4-12: imports a winter or more apart say so, and what they show is not priced as one winter', () => {
+    const e = earlierImport(big, (s) => s === 'free_agency');
+    const L = e.save.leagueId;
+    const fa = e.ids('free_agency');
+    // A winter with no import, then the next one's signings
+    advanceWinter(e.save, { playedShare: 0.5, contracts: [] });
+    advanceWinter(e.save, { playedShare: 0.2, contracts: freeAgents(e, fa.slice(0, 30), () => 5e6, true) });
+    captureMarketSnapshot();
+    const o = observed(L);
+    expect(o.pairs).toHaveLength(1);
+    expect(o.pairs[0].winters).toHaveLength(2);
+    expect(o.pairs[0].note).toMatch(/2 winters/);
+    for (const c of o.pairs[0].changes) expect(c.uses).not.toContain('price');
+    expect(o.measured.status).not.toBe('measured');
+    expect(o.measured.text).toMatch(/winters apart/);
+  }, SLOW);
+
+  it('R3-05: a save that went back starts a new timeline: nothing is compared across it, and the superseded import is not read', () => {
+    const e = earlierImport(big, (s) => s === 'free_agency');
+    const L = e.save.leagueId;
+    const Y = big.season;
+    advanceWinter(e.save, { playedShare: 0.2, contracts: freeAgents(e, e.ids('free_agency'), () => 5e6, true) });
+    captureMarketSnapshot();
+    expect(observed(L).pairs).toHaveLength(1);
+    // A backup reloaded: the export is dated before the import already recorded
+    exec(`UPDATE leagues SET "current_date" = '${Y + 1}-4-2'`);
+    const back = captureMarketSnapshot();
+    expect(back.contracts.error).toBeNull();
+    const o = observed(L);
+    expect(o.pairs).toHaveLength(0);
+    expect(o.timeline.text).toMatch(/went back/);
+    expect(o.measured.status).toBe('no_off_season');
+    // Back again, to a date already recorded: nothing new is written, and the break is said
+    const first = contractImports(L)[0].gameDate;
+    const [y, m, d] = first.split('-').map(Number);
+    exec(`UPDATE leagues SET season_year = ${Y}, "current_date" = '${y}-${m}-${d}'`);
+    const again = captureMarketSnapshot();
+    expect(again.contracts.written).toBe(0);
+    expect(again.contracts.timeline.join(' ')).toMatch(/went back/);
+  }, SLOW);
+
+  it('R3-05: a date imported again whose play differs (a reloaded save played again) is not compared with the next import; one with the same play (a move made on the same day) is', () => {
+    for (const replayed of [true, false]) {
+      const e = earlierImport(big, (s) => s === 'free_agency');
+      const L = e.save.leagueId;
+      const Y = big.season;
+      const fa = e.ids('free_agency');
+      if (replayed) exec(`UPDATE players_career_batting_stats SET pa = pa + 3 WHERE year = ${Y}`);
+      // A move made that day either way: one free agent's deal runs a season longer
+      exec(`UPDATE players_contract SET years = 2, salary1 = salary0 WHERE player_id = ${fa[0]}`);
+      const again = captureMarketSnapshot();
+      expect(again.contracts.written).toBe(0);
+      advanceWinter(e.save, { playedShare: 0.2, contracts: freeAgents(e, fa.slice(1), () => 5e6, true) });
+      captureMarketSnapshot();
+      const o = observed(L);
+      if (replayed) {
+        expect(o.pairs).toHaveLength(0);
+        expect(o.timeline.text).toMatch(/played again|differs/);
+      } else {
+        expect(o.pairs).toHaveLength(1);
+        expect(o.timeline.text).toBeNull();
+      }
+    }
+  }, SLOW);
+
+  it('R3-03: recording an import reads only the import before it, and what earlier imports observed is kept as observed', () => {
+    const e = earlierImport(big, (s) => s === 'free_agency');
+    const L = e.save.leagueId;
+    const Y = big.season;
+    advanceWinter(e.save, { playedShare: 0.2, contracts: freeAgents(e, e.ids('free_agency'), () => 5e6, true) });
+    captureMarketSnapshot();
+    const signings = observed(L).measured.observed;
+    expect(signings).toBeGreaterThan(0);
+    // The first import's rows are no longer needed: its pair was observed when the second import was recorded
+    const first = contractImports(L)[0].gameDate;
+    historyDb.prepare(`DELETE FROM value_contract_snapshots WHERE game_date = ?`).run(first);
+    clearProductionCaches();
+    expect(observed(L).measured.observed).toBe(signings);
+    // A third import pairs with the second alone
+    exec(`UPDATE leagues SET "current_date" = '${Y + 1}-6-20'`);
+    const third = captureMarketSnapshot();
+    expect(third.contracts.error).toBeNull();
+    expect(observed(L).pairs).toHaveLength(2);
+  }, SLOW);
+
+  it('R4-01, R4-10: salaries set on what each player goes on to produce are recovered by the realized reading, and the opening price is compared only once that reading exists', async () => {
+    const e = earlierImport(big, (s) => s === 'free_agency');
+    const L = e.save.leagueId;
+    const Y = big.season;
+    // What each will produce next season in this synthetic league: this season's rate over a full season (the builder's continuation)
+    const warOf = (id: number) => (db.prepare(`SELECT COALESCE(SUM(war), 0) AS w FROM (SELECT war FROM players_career_batting_stats WHERE player_id = ? AND year = ? AND split_id = 1
+      UNION ALL SELECT war FROM players_career_pitching_stats WHERE player_id = ? AND year = ? AND split_id = 1)`).get(id, Y, id, Y) as { w: number }).w / big.playedShare;
+    const fa = e.ids('free_agency').filter((id) => warOf(id) > 0);
+    const clubs = e.save.clubs;
+    advanceWinter(e.save, {
+      playedShare: 0.2,
+      contracts: fa.map((id, i) => {
+        const from = e.clubOf(id);
+        return { playerId: id, club: clubs[(clubs.indexOf(from) + 1 + (i % (clubs.length - 1))) % clubs.length], years: 1, salaries: [Math.round(MIN + 5e6 * warOf(id))] };
+      }),
+    });
+    captureMarketSnapshot();
+    let f = leagueFinances(L, { currentState: 'current' });
+    expect(f.observed.measured.status).toBe('measured');
+    expect(f.observed.measured.bases.find((b) => b.id === 'realized')!.status).toBe('not_computed');
+    expect(f.priceOfWin.stage).toBe('opening');
+    expect(f.priceOfWin.adoption!.reason).toMatch(/realized/);
+    // The next winter: the signings' first season is completed (every expired deal renewed with its club, so the league keeps a market)
+    const expired = db.prepare(`SELECT player_id, team_id, salary0 FROM players_contract WHERE is_major = 1 AND season_year + years - 1 < ? AND team_id BETWEEN 1 AND 99`)
+      .all(Y + 2) as Array<{ player_id: number; team_id: number; salary0: number }>;
+    advanceWinter(e.save, { playedShare: 0.2, contracts: expired.map((r) => ({ playerId: r.player_id, club: r.team_id, years: 1, salaries: [r.salary0] })) });
+    captureMarketSnapshot();
+    f = leagueFinances(L, { currentState: 'current' });
+    const realized = f.observed.measured.bases.find((b) => b.id === 'realized')!;
+    expect(realized.status).toBe('measured');
+    // The construction's truth, $5M a win produced, recovered; the projected bases read the same signings higher
+    expect(realized.central!).toBeGreaterThan(4.5e6);
+    expect(realized.central!).toBeLessThan(5.6e6);
+    expect(f.observed.measured.bases.find((b) => b.id === 'first')!.central!).toBeGreaterThan(realized.central!);
+    expect(f.priceOfWin.adoption!.reason).toMatch(/per realized win/);
+    // In force or not, the price never changes unit: in force, its central is the realized reading's
+    if (f.priceOfWin.stage === 'measured') expect(f.priceOfWin.price.value!.central).toBeCloseTo(realized.central!, 0);
+    expect(marketSnapshotHistory(L).map((h) => h.stage)).toEqual(['opening', 'opening', f.priceOfWin.stage]);
+    expect(priceHistory(L)).toHaveLength(3);
+    const served = await request(`/api/club-finances/${e.save.org}/price-history`);
+    expect(served.history).toHaveLength(3);
+    expect(served.observed.measured.bases.length).toBeGreaterThanOrEqual(3);
+  }, SLOW);
+
+  it('R3-14, R4-08: observed arbitration salaries are scored with the width of their bands, and join the ladder once a class holds the minimum', () => {
+    const e = earlierImport(big, (s) => s === 'arbitration');
+    const L = e.save.leagueId;
+    const arb = e.ids('arbitration');
+    expect(arb.length).toBeGreaterThanOrEqual(COST_POLICY.ladder.minimumCases);
+    advanceWinter(e.save, { playedShare: 0.2, contracts: arb.map((id, i) => ({ playerId: id, club: e.clubOf(id), salaries: [MIN + 1e6 + (i % 10) * 3e5] })) });
+    captureMarketSnapshot();
+    const f = leagueFinances(L, { currentState: 'current' });
+    expect(f.observed.awards.status).toBe('scored');
+    expect(f.observed.awards.sharpness.medianRatio).not.toBeNull();
+    expect(f.observed.awards.text).toMatch(/wide/);
+    const joined = f.observed.awards.readings.filter((r) => r.status === 'measured');
+    expect(joined.length).toBeGreaterThan(0);
+    for (const r of joined) {
+      const c = f.costs.arbitration.classes.find((x) => x.arbitrationClass === r.arbitrationClass)!;
+      expect(c.readings.some((x) => x.source === 'save' && x.cases === r.cases)).toBe(true);
+      expect(c.text).toMatch(/observed arbitration salaries/);
+    }
+    expectInvariants(run(e.save, { refit: false }));
+  }, SLOW);
+
+  it('the price-history route answers a bad organization with 400, an unknown club with 404, and a save with nothing imported with 400', async () => {
+    const save = buildSave(big);
+    captureMarketSnapshot();
+    await expect(request('/api/club-finances/abc/price-history')).rejects.toThrow(/400/);
+    await expect(request('/api/club-finances/99999/price-history')).rejects.toThrow(/404/);
+    const ok = await request(`/api/club-finances/${save.org}/price-history`);
+    expect(ok.history).toHaveLength(1);
+    dropTable('teams');
+    await expect(request(`/api/club-finances/${save.org}/price-history`)).rejects.toThrow(/400/);
+  }, SLOW);
+});
+
 describe('cross-save: league structure', () => {
   it('"this season" is read from the league\'s own row; the parent chain is followed only where the row does not state it (D-14)', () => {
     const orphan = minorLeagueRow(204, 555);
@@ -730,6 +1215,19 @@ describe('cross-save: where in the season the export was taken', () => {
 });
 
 describe('cross-save: identity of the save', () => {
+  it('a save imported before this build records its current market and contracts at the next start, once (supervisor, phase 4b)', () => {
+    const save = buildSave(base);
+    const count = (table: string) => (historyDb.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE league_id = ?`).get(save.leagueId) as { n: number }).n;
+    const before = { market: count('value_market_snapshots'), contracts: count('value_contract_imports') };
+    recordImportMarket();
+    expect(count('value_market_snapshots')).toBe(before.market + 1);
+    expect(count('value_contract_imports')).toBe(before.contracts + 1);
+    // A second start writes nothing
+    recordImportMarket();
+    expect(count('value_market_snapshots')).toBe(before.market + 1);
+    expect(count('value_contract_imports')).toBe(before.contracts + 1);
+  }, SLOW);
+
   it("D-01 (F1): a new save under a reused save name and league id never inherits the previous save's adopted fit", () => {
     const first = buildSave(base);
     run(first);
