@@ -181,6 +181,69 @@ describe('the production cone renders', () => {
     expect(prior).toMatch(/50% target · not measured on this save/);
     expect(prior).not.toMatch(/\d+% observed/);
   });
+
+  it("shows each season's cost as served, with its basis, and an unknown cost as not established with its reason (phase 4a)", () => {
+    const arb = s(2032, 2.6, [0.1, 5.2], [1.4, 3.8], {
+      control: { ...control('Arbitration 2–3', 'Arb 2–3', 'A2–3'), cost: { low: 4_100_000, high: 31_700_000 }, costDetail: 'Arbitration class 2–3: the save\'s ladder (class 2 measured on 51 contracts).' },
+    });
+    const html = renderToStaticMarkup(createElement(SeasonDetail, { season: arb, basis: 'x' }));
+    expect(html).toMatch(/Cost/);
+    expect(html).toMatch(/\$4\.1M–\$31\.7M/);
+    expect(html).toMatch(/measured on 51 contracts/);
+    const unknown = s(2033, 2.3, [-0.4, 5.1], [1.0, 3.6], {
+      control: { ...control('Arbitration 3', 'Arb 3', 'A3'), cost: null, costDetail: 'His production in 2032, a platform season, is not established.' },
+    });
+    const u = renderToStaticMarkup(createElement(SeasonDetail, { season: unknown, basis: 'x' }));
+    expect(u).toMatch(/not established/);
+    expect(u).not.toMatch(/\$0/);
+    // Every figure the detail shows is also in the hidden table
+    const table = renderToStaticMarkup(createElement(ProductionConeChart, { cone: cone([REGULAR[0], REGULAR[1], arb]), width: 640 }));
+    expect(table).toMatch(/<th>Cost<\/th>/);
+    expect(table).toMatch(/\$4\.1M–\$31\.7M/);
+  });
+
+  it("says what a cost band is, prints a narrow band as a band, shows 'if held' and the declined branch with the figure (phase 4a review, R2-01, R2-11, R1-12, R1-06)", () => {
+    const renewal = s(2031, 2.8, [0.6, 5.0], [1.8, 3.8], {
+      control: { ...control('Pre-arbitration', 'Pre-arb', 'Pre'), cost: { low: 780_000, high: 790_000, central: 780_000 }, costDetail: 'Pre-arbitration renewal: measured.' },
+    });
+    const r = renderToStaticMarkup(createElement(SeasonDetail, { season: renewal, basis: 'x' }));
+    expect(r).toMatch(/\$780K–\$790K/);
+    expect(r).not.toMatch(/\$0\.8M(?!–)/);
+    expect(r).toMatch(/range of reasonable readings/);
+    expect(r).toMatch(/central \$780K/);
+    const held = s(2032, 2.6, [0.1, 5.2], [1.4, 3.8], {
+      control: { ...control('Arbitration or free agent', 'Arb/FA', 'A/F'), cost: { low: 5_300_000, high: 36_800_000, central: 12_000_000 }, ifHeld: true, costDetail: 'He may instead be a free agent.' },
+    });
+    const h = renderToStaticMarkup(createElement(SeasonDetail, { season: held, basis: 'x' }));
+    expect(h).toMatch(/if held/);
+    const option = s(2033, 2.3, [-0.4, 5.1], [1.0, 3.6], {
+      control: {
+        ...control('Club option', 'Option', 'Opt'), cost: { low: 6_000_000, high: 6_000_000 }, costDetail: "The contract's salary.",
+        declined: { status: 'arbitration', label: 'Arbitration', cost: { low: 2_430_000, high: 16_100_000, central: 6_000_000 }, ifHeld: false, costDetail: 'Arbitration class 2–3.' },
+      },
+    });
+    const o = renderToStaticMarkup(createElement(SeasonDetail, { season: option, basis: 'x' }));
+    expect(o).toMatch(/declined/i);
+    expect(o).toMatch(/\$2\.4M–\$16\.1M/);
+    // The hidden table shows the same, without inlining the whole basis paragraph
+    const table = renderToStaticMarkup(createElement(ProductionConeChart, { cone: cone([REGULAR[0], renewal, held, option]), width: 640 }));
+    expect(table).toMatch(/\$780K–\$790K/);
+    expect(table).toMatch(/if held/);
+    expect(table).toMatch(/declined/i);
+    expect(table).not.toMatch(/Pre-arbitration renewal: measured\./);
+  });
+
+  it("Payroll and Contracts print a band that never reads as a point, and Payroll says what its projected sum is (phase 4a review)", async () => {
+    const { costBand, PROJECTED_TIP } = await import('../src/pages/Payroll');
+    const { band } = await import('../src/pages/Contracts');
+    expect(costBand(780_000, 790_000)).toBe('$780K–$790K');
+    expect(costBand(4_580_000, 25_290_000)).toBe('$4.6M–$25.3M');
+    expect(costBand(9_000_000, 9_000_000)).toBe('$9.0M');
+    expect(band(780_000, 790_000)).toBe('$780K–$790K');
+    expect(PROJECTED_TIP).toMatch(/range of reasonable readings/);
+    expect(PROJECTED_TIP).toMatch(/edge against edge/);
+    expect(PROJECTED_TIP).not.toMatch(/expected/i);
+  });
 });
 
 /* Hardening (F2, 2026-09-23): D-19, D-20, D-22, D-23 and D-24. */

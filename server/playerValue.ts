@@ -33,17 +33,18 @@ import { Worker } from 'node:worker_threads';
 import { db, tableColumns, tableExists } from './db.js';
 import type { SourceState } from './dataFreshness.js';
 import { allLeagueRules, leagueRulesFromRow, type ContractRules, type FinancialRules, type LeagueRules } from './leagueRules.js';
-import { evaluateContractControl, superTwoCutoffs } from './playerRights.js';
+import { arbitrationRegimeOf, evaluateContractControl, superTwoCutoffs } from './playerRights.js';
 import {
   allPlayerStates, organizationPlayerStates, playerStates, seasonServiceCalendars, seasonServiceClocks, serviceClassMembers,
   type PlayerState,
 } from './playerState.js';
-import { CONTROL_HORIZON_SEASONS, PRODUCTION_NO_EVIDENCE } from './playerValueCalibration.js';
+import { CONTROL_HORIZON_SEASONS, OPENING_PRICE_MINIMUMS, PRODUCTION_NO_EVIDENCE } from './playerValueCalibration.js';
 import {
   CLAUSE_COLUMNS, CONTRACT_COLUMNS, EXTENSION_COLUMNS, contractFactsOf,
   type ContractFacts, type ContractRow, type ContractTables,
 } from './playerValueContract.js';
 import { composeControlTimeline, type ControlTimeline } from './playerValueControl.js';
+import { measureCostLadder, priceControlTimeline, type CostLadder } from './playerValueCost.js';
 import { productionCone, type ProductionCone } from './playerValueCone.js';
 import {
   FINANCE_COLUMNS, clubFinancesOf, openingPriceOfWin, replacementLevelOf, scheduleShareOf,
@@ -87,7 +88,8 @@ export type { ContractFacts, ContractSeason, ContractTerm } from './playerValueC
 export { contractSeasonFor } from './playerValueContract.js';
 /** Service as years.days for the pages: Player Rights' arithmetic, so no consumer divides by the year itself. */
 export { serviceReading } from './playerRights.js';
-export type { ControlSeason, ControlStatus, ControlTimeline, CostBand } from './playerValueControl.js';
+export type { ControlSeason, ControlStatus, ControlTimeline, CostBand, CostBasis } from './playerValueControl.js';
+export type { ArbitrationLadder, CostLadder, CostReading, LadderClass, RenewalSpread } from './playerValueCost.js';
 export type {
   ClubFinanceInput, ClubFinances, FinanceSeason, FinanceTable, MarketCandidate, MarketStanding, OpeningPriceInput,
   PriceBand, PriceBasis, PriceOfWin, PricePopulation, ReplacementLevel, ReplacementLevelInput, SeasonRecord, SeasonWar,
@@ -132,6 +134,13 @@ export interface ValuationOptions {
   currentState?: SourceState;
   /** Compute production (default true). The market's own valuation of its population leaves it out. */
   production?: boolean;
+  /**
+   * Price the controlled seasons with the league's cost ladder (phase 4a). By default only where production is
+   * computed (review R1-13): a reading without production could price renewals but not an arbitration season, a
+   * second, different cost for the same seasons that no consumer shows, so it prices none and each season keeps
+   * "not priced in this reading". The market's own valuation, from which the ladder is measured, leaves it out.
+   */
+  costs?: boolean;
 }
 
 const numberOrNull = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
@@ -208,6 +217,7 @@ function valuate(states: PlayerState[], ids: number[] | null, options: Valuation
   // The Super Two cutoff, once per contract regime for the whole pass: it ranks the league's class
   const superTwo = superTwoCutoffs(serviceClassMembers(), (id) => rules.get(id)?.contract ?? null, clocks, calendars);
 
+  const regimeOfPlayer = new Map<number, number | null>();
   for (const state of states) {
     const teamId = state.teamId.value;
     const leagueId = teamId !== null ? leagues.get(teamId) ?? null : null;
@@ -215,6 +225,7 @@ function valuate(states: PlayerState[], ids: number[] | null, options: Valuation
       ? rules.get(leagueId)?.contract ?? noRules
       : noRules;
     const regimeId = regime.regimeLeagueId.value;
+    regimeOfPlayer.set(state.playerId, regimeId);
     const contract = contractFactsOf(
       state.playerId, state.teamId, contracts.get(state.playerId) ?? null, extensions.get(state.playerId) ?? null, tables
     );
@@ -245,7 +256,51 @@ function valuate(states: PlayerState[], ids: number[] | null, options: Valuation
     const productions = productionsOf(states, ids, rules, leagues);
     for (const v of out.values()) v.production = productions.get(v.playerId);
   }
+  // Phase 4a: the controlled seasons no contract covers, priced from the league's cost ladder
+  if (options.costs ?? options.production !== false) {
+    for (const v of out.values()) {
+      const regimeId = regimeOfPlayer.get(v.playerId) ?? null;
+      if (v.control.standing !== 'held' || v.control.seasons.length === 0) continue;
+      const ctx = regimeId !== null ? costContextOf(regimeId, currentState) : null;
+      v.control = priceControlTimeline({
+        control: v.control,
+        production: v.production ?? null,
+        ladder: ctx?.ladder ?? null,
+        pastWins: (season) => ctx?.pastWins(v.playerId, season) ?? null,
+      });
+    }
+  }
   return out as Map<number, PlayerValuation>;
+}
+
+// ── the cost ladder in force (phase 4a) ──────────────────────────────────────
+
+interface CostContext {
+  ladder: CostLadder;
+  /** A player's WAR in a past season of the market league, on its schedule's footing (0 with no line), or null. */
+  pastWins: (playerId: number, season: number) => number | null;
+}
+
+/** Measured once per import and market league (cleared with the production caches): the ladder is this import's. */
+const costContexts = new Map<string, CostContext>();
+
+function costContextOf(regimeLeagueId: number, currentState: SourceState): CostContext {
+  const key = `${regimeLeagueId}:${currentState}`;
+  let c = costContexts.get(key);
+  if (!c) {
+    const market = leagueMarket(regimeLeagueId, { currentState });
+    c = {
+      ladder: market.finances.costs,
+      pastWins: (playerId, season) => {
+        const war = market.war.get(season);
+        const share = market.shares.get(season)?.value ?? null;
+        if (!war || share === null || !(share >= OPENING_PRICE_MINIMUMS.seasonShare)) return null;
+        return (war.byPlayer.get(playerId) ?? 0) / share;
+      },
+    };
+    costContexts.set(key, c);
+  }
+  return c;
 }
 
 /**
@@ -273,7 +328,8 @@ export function playerValue(playerId: number, options: ValuationOptions = {}): P
 /**
  * Payroll's players (A-14): every player the organization holds, and every player the export names this
  * club as carrying the contract of (`players_contract.contract_team_id`) though he is now elsewhere, with
- * their contract facts and control. Production is not computed. The club of record is not verified
+ * their contract facts and control. Production is computed (phase 4a): an arbitration season is priced on
+ * its platform seasons' production, the same answer every consumer gets. The club of record is not verified
  * against payroll: whether it still pays is the contract's `retained`, read by the consumer as stated.
  */
 export function payrollValuations(orgId: number, options: ValuationOptions = {}): Map<number, PlayerValuation> {
@@ -287,7 +343,7 @@ export function payrollValuations(orgId: number, options: ValuationOptions = {})
   }
   const unique = [...ids];
   if (unique.length === 0) return new Map();
-  return valuate([...playerStates(unique).values()], unique, { ...options, production: false });
+  return valuate([...playerStates(unique).values()], unique, options);
 }
 
 /** Every active player in the league, once (PLAYER_VALUE.md Part 7). */
@@ -311,6 +367,8 @@ export interface LeagueFinances {
   replacementLevel: ReplacementLevel[];
   /** OOTP's `team_financials.player_payroll`, summed over the league's clubs. */
   leaguePayroll: Sourced<number>;
+  /** The cost ladder (phase 4a): the renewal spread and the arbitration ladder, measured on this import. */
+  costs: CostLadder;
 }
 
 /** The club's league's rules, or an unknown set when the export does not place the club. */
@@ -431,6 +489,13 @@ export function marketLeagueOfClub(teamId: number): number | null {
  * parent league whose economy its clubs live in. Computed per request (Part 7, phase 2 timing).
  */
 export function leagueFinances(leagueId: number, options: ValuationOptions = {}): LeagueFinances {
+  return leagueMarket(leagueId, options).finances;
+}
+
+/** The league's finances with the WAR and schedule shares they were read on (the cost ladder prices from them). */
+function leagueMarket(leagueId: number, options: ValuationOptions = {}): {
+  finances: LeagueFinances; war: Map<number, SeasonWar>; shares: Map<number, Sourced<number>>;
+} {
   const rules = allLeagueRules();
   const marketId = marketLeagueOf(leagueId, rules);
   const league = rules.get(marketId) ?? leagueRulesFromRow(null, tableExists('leagues') ? new Set() : null);
@@ -445,7 +510,7 @@ export function leagueFinances(leagueId: number, options: ValuationOptions = {})
   ).all(...clubs) as Array<{ player_id: unknown }>).map((r) => numberOrNull(r.player_id)).filter((id): id is number => id !== null);
   const rostered = [...playerStates(onClub).values()].filter((st) =>
     st.activeRoster.value === true || st.injuredList.onIl.value === true || st.injuredList.onIl60.value === true);
-  const values = valuate(rostered, rostered.map((st) => st.playerId), { ...options, production: false });
+  const values = valuate(rostered, rostered.map((st) => st.playerId), { ...options, production: false, costs: false });
   const candidates: MarketCandidate[] = [...values.values()].map((v) => ({ playerId: v.playerId, contract: v.contract, control: v.control }));
 
   const s = season.value;
@@ -459,28 +524,42 @@ export function leagueFinances(leagueId: number, options: ValuationOptions = {})
   // The share of this season's schedule each past season covered: its games per club over this season's games per team (B-13)
   const seasonShares = new Map(seasons.filter((y) => y !== s).map((y) => [y, scheduleShareOf(records.get(y) ?? null, gamesPerTeam)]));
 
-  return {
+  const priceOfWin = openingPriceOfWin({
+    leagueId: marketId,
+    season: s,
+    financials: league.finance.financials,
+    minimumSalary: league.finance.minimumSalary,
+    candidates,
+    war: war.bySeason,
+    seasonFraction: seasonPlayed,
+    seasonShares,
+    warUnavailable: war.unavailable,
+  });
+  const finances: LeagueFinances = {
     leagueId: marketId,
     season,
     regime: league.finance,
     gamesPerTeam,
     seasonPlayed,
-    priceOfWin: openingPriceOfWin({
-      leagueId: marketId,
-      season: s,
-      financials: league.finance.financials,
-      minimumSalary: league.finance.minimumSalary,
-      candidates,
-      war: war.bySeason,
-      seasonFraction: seasonPlayed,
-      seasonShares,
-      warUnavailable: war.unavailable,
-    }),
+    priceOfWin,
     replacementLevel: seasons.map((y) => replacementLevelOf({
       season: y, toDate: y === s, war: war.bySeason.get(y) ?? null, record: records.get(y) ?? null,
     })),
     leaguePayroll: leaguePayrollOf(clubs, rules),
+    // Phase 4a: the cost of controlled seasons, measured on the same population, WAR and price
+    costs: measureCostLadder({
+      leagueId: marketId,
+      season: s,
+      financials: league.finance.financials,
+      minimumSalary: league.finance.minimumSalary,
+      regime: arbitrationRegimeOf(league.contract),
+      price: priceOfWin.price,
+      candidates,
+      war: war.bySeason,
+      seasonShares,
+    }),
   };
+  return { finances, war: war.bySeason, shares: seasonShares };
 }
 
 // ── Expected production (concern 3, phases 3a and 3b; D-053; hardened 2026-09-23) ─────────────
@@ -507,6 +586,7 @@ let sentinelCache: Map<number, string> | null = null;
 /** Forget what was measured about the export: called after an import, and by a test that rebuilds a league. */
 export function clearProductionCaches(): void {
   factsCache.clear();
+  costContexts.clear();
   sentinelCache = null;
   clearFitStoreCaches();
 }

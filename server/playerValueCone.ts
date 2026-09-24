@@ -11,7 +11,7 @@
  * (hardening F6) keeps its slot and control, with its reason and no band.
  */
 
-import type { ControlSeason, ControlStatus, ControlTimeline } from './playerValueControl.js';
+import type { ControlSeason, ControlStatus, ControlTimeline, CostBand } from './playerValueControl.js';
 import type { PlayerProduction, ProductionSeason } from './playerValueProduction.js';
 
 /** A season's control as the card labels it: Player Value's status, or no status where none is stated. */
@@ -20,6 +20,21 @@ export type ConeControlStatus = ControlStatus | 'not_established' | 'unsigned';
 export interface ConeBand {
   low: number;
   high: number;
+}
+
+/** A season's cost on the card: a band with its central (null between statuses), or a contract's point. */
+export interface ConeCost extends ConeBand {
+  central?: number | null;
+}
+
+/** An option or opt-out season's declined branch on the card. */
+export interface ConeDeclined {
+  status: ControlStatus;
+  label: string;
+  cost: ConeCost | null;
+  /** The player decides the branch: what he costs if the club still holds him. */
+  ifHeld: boolean;
+  costDetail: string;
 }
 
 /** A band's coverage target beside what the fit in force observed; observed is null when not measured. */
@@ -39,6 +54,18 @@ export interface ConeControl extends Labels {
   status: ConeControlStatus;
   /** Why this status, in words: the timeline's basis and what is missing. */
   detail: string;
+  /**
+   * What the club would pay that season, exactly as the timeline serves it (phase 4a): the contract's salary, or a
+   * priced renewal or arbitration band (a range of reasonable readings, with its central); null where it is unknown
+   * or where control has ended (no cost to this club).
+   */
+  cost: ConeCost | null;
+  /** The cost's basis in words, or why it is unknown; an option's names its declined branch too. */
+  costDetail: string;
+  /** He may be a free agent instead: the band is what he costs if held (phase 4a review). */
+  ifHeld: boolean;
+  /** An option or opt-out season's declined branch: what he falls to and its cost (review R1-06). */
+  declined: ConeDeclined | null;
   /** Set on the last controlled season when free agency follows it. */
   after: Labels | null;
 }
@@ -131,12 +158,14 @@ function controlOf(season: number, control: ControlTimeline, after: boolean): Co
     return {
       status: 'unsigned', label: 'Unsigned', short: 'Unsigned', code: 'Uns', after: null,
       detail: control.notes[control.notes.length - 1] ?? 'No club holds him.',
+      cost: null, costDetail: 'No club holds him, so no club pays him.', ifHeld: false, declined: null,
     };
   }
   const c = control.seasons.find((x) => x.season === season);
   if (!c) {
     return {
-      status: 'not_established', ...NOT_ESTABLISHED, after: null,
+      status: 'not_established', ...NOT_ESTABLISHED, after: null, cost: null, ifHeld: false, declined: null,
+      costDetail: 'His control that season is not established, so neither is its cost.',
       detail: control.standing === 'unknown'
         ? control.notes[control.notes.length - 1] ?? 'His control cannot be laid out from the export.'
         : `His control in ${season} is not in the timeline.`,
@@ -148,7 +177,35 @@ function controlOf(season: number, control: ControlTimeline, after: boolean): Co
   return {
     status: c.status, ...labelsOf(c), after: after ? FREE_AGENT_AFTER : null,
     detail: [c.basis, c.superTwo ? 'Reached as a Super Two.' : '', between, ...c.reasons].filter(Boolean).join(' '),
+    ...costOf(c),
   };
+}
+
+/** A served band as the card carries it: its edges, and its central where it has one (a contract's point is its own). */
+function coneCost(v: CostBand): ConeCost {
+  return { low: v.low, high: v.high, ...(v.central !== undefined ? { central: v.central } : {}) };
+}
+
+/**
+ * The season's cost as the timeline serves it, and its basis or why it is unknown (phase 4a). Nothing is priced
+ * here. An option or opt-out season carries its declined branch and that branch's cost beside the exercised salary
+ * (an option is shown on both branches; review R1-06).
+ */
+function costOf(c: ControlSeason): Pick<ConeControl, 'cost' | 'costDetail' | 'ifHeld' | 'declined'> {
+  const d = c.declined;
+  const declined: ConeDeclined | null = d === null ? null : {
+    status: d.status,
+    label: STATUS_WORDS[d.status],
+    cost: d.cost?.value ? coneCost(d.cost.value) : null,
+    ifHeld: d.costBasis?.ifHeld ?? false,
+    costDetail: d.cost === null ? 'Control ends: no cost to this club.' : d.cost.note ?? 'Not established.',
+  };
+  const declinedText = declined === null ? '' : ` Declined (${d!.kind === 'opted_out' ? 'he opts out' : 'the option declined'}): the buyout (${d!.buyout.value === null ? 'not in the export' : `$${(d!.buyout.value / 1_000_000).toFixed(2)}M`}) and then ${declined.label}${declined.cost ? ', a range of reasonable readings' : ''}. ${declined.costDetail}`;
+  if (c.cost === null) return { cost: null, costDetail: 'Control ends: no cost to this club.', ifHeld: false, declined };
+  if (c.cost.value === null) return { cost: null, costDetail: `${c.cost.note ?? 'Not established.'}${declinedText}`, ifHeld: false, declined };
+  const detail = c.cost.note
+    ?? (c.cost.value.low === c.cost.value.high ? `The contract's salary${c.cost.source ? ` (${c.cost.source})` : ''}.` : 'A band.');
+  return { cost: coneCost(c.cost.value), costDetail: `${detail}${declinedText}`, ifHeld: c.costBasis?.ifHeld ?? false, declined };
 }
 
 const coverageOf = (s: ProductionSeason): ConeSeason['coverage'] => ({

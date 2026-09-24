@@ -1442,6 +1442,13 @@ button.cta {
 }
 .commit-value { width: 70px; text-align: right; font-weight: 600; }
 .commit-players { width: 78px; font-size: 12px; }
+.commit-projected { width: 250px; font-size: 12px; font-style: italic; line-height: 1.25; }
+/* Narrow: the notes and the projected range drop under the bar instead of squeezing it */
+@media (max-width: 1000px) {
+  .commit-row { flex-wrap: wrap; row-gap: 2px; }
+  .commit-players, .commit-projected { width: auto; flex: 1 1 100%; padding-left: 54px; order: 5; }
+}
+.next-cost { display: block; font-size: 12px; }
 .commit-room { width: 92px; text-align: right; font-size: 12px; }
 .two-col {
   display: grid;
@@ -5236,6 +5243,7 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); cur
 .mlo-unknowns ul { margin: 4px 0 0; padding-left: 18px; font-size: 0.88rem; color: var(--muted); }
 
 .mlo-table-scroll { overflow-x: auto; }
+.payroll-table-scroll { max-width: 100%; overflow-x: auto; }
 .mlo-filters { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-bottom: 10px; font-size: 0.88rem; }
 .mlo-assignment-table th[scope='row'] { white-space: nowrap; }
 

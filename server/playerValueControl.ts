@@ -14,18 +14,23 @@
  *                      its option decided before it began, so it is under contract
  *   opt-out            both branches: he stays (the salary) or walks away (his Player Rights
  *                      standing), for every season from the one the exported count reads
- *   pre-arbitration    unknown until the price of a win exists (phases 2 and 4) — never the minimum
- *   arbitration (n)    unknown likewise — never the minimum, never a point
+ *   pre-arbitration    priced by the cost ladder (`playerValueCost.ts`, phase 4a): from the league
+ *                      minimum to the save's own renewal pay
+ *   arbitration (n)    priced by the cost ladder from the save's arbitration ladder, the platform
+ *                      seasons' production and the price of a win — never the minimum, never a point
  *   free agent         control ends: no cost to this club
- *   reserve clause     unknown until the league's observed pay is read (phase 2)
- *   indeterminate      unknown, with the statuses it lies between
+ *   reserve clause     unknown: renewal pay under a reserve clause is not measured from one export
+ *   indeterminate      priced across the statuses it lies between, where it names them; else unknown
+ *
+ * This module composes the timeline and leaves each such season "not priced"; the entry point hands it
+ * to the cost ladder, which fills the band and its basis (`costBasis`).
  *
  * Nothing here reads a rating, `players_value`, philosophy, the protection tier or defensibility.
  */
 
 import type { ContractFacts, ContractSeason } from './playerValueContract.js';
 import { contractSeasonFor } from './playerValueContract.js';
-import { COST_PENDING_OBSERVED_PAY, COST_PENDING_PRICE_OF_A_WIN } from './playerValueCalibration.js';
+import { COST_NOT_PRICED, COST_PENDING_OBSERVED_PAY } from './playerValueCalibration.js';
 import type { ContractControlEligibility, ControlStanding, SeasonControlEligibility, ThresholdCrossing } from './playerRights.js';
 import { fromExport, unknownBecause, UNKNOWN_REASON_TEXT, type Sourced } from './provenance.js';
 
@@ -49,6 +54,45 @@ export type ControlStatus =
 export interface CostBand {
   low: number;
   high: number;
+  /**
+   * The reading at the centre of each component, inside the band (phase 4a review): a priced season's line at its
+   * platform's central, or the median renewal. Null where the season lies between statuses Player Rights leaves open
+   * (each status's central is named in the basis, none chosen); absent on a contract's point, which is its own central.
+   */
+  central?: number | null;
+}
+
+/**
+ * What a priced season's cost rests on (phase 4a), so a consumer can show the basis without recomputing it:
+ * which method, measured on the save or the provisional prior, the arbitration classes covered, the contracts
+ * read, the platform production, the price of a win's band where the provisional prior's shares multiplied it,
+ * and the central of each status (or class) it covers.
+ */
+export interface CostBasis {
+  /** The renewal spread, the arbitration ladder, or both (a season between them). */
+  method: 'renewal_spread' | 'arbitration_ladder' | 'between';
+  /** Measured on this save, the provisional prior, or a thin class of the save's hulled with the prior. */
+  source: 'measured' | 'provisional_prior' | 'measured_thin_with_prior';
+  /** The arbitration classes (by service) the band covers; empty for a renewal. */
+  classes: number[];
+  /** The save's own contracts the reading rests on. */
+  cases: number;
+  /** The platform seasons and their production (wins: the 80% band's edges and the central, meaned), for an arbitration season. */
+  platform: { seasons: number[]; low: number; central?: number; high: number } | null;
+  /**
+   * The price of a win's band, only where the provisional prior's reading is in the band (its rung is a share of the
+   * price); null where every class is the save's own line, which is in this import's dollars (review R1-02).
+   */
+  price: { low: number; high: number } | null;
+  /** He may be a free agent instead, or the player decides the branch: the band is what he costs if the club holds him. */
+  ifHeld: boolean;
+  /**
+   * The central of each status the season could be (or each arbitration class, where the trip is not counted), so a
+   * season with no single central still names them; one entry where there is a single central.
+   */
+  centrals?: Array<{ status: ControlStatus; central: number; arbitrationClass?: number }> | null;
+  /** One line, in words. */
+  text: string;
 }
 
 export interface DeclinedBranch {
@@ -60,6 +104,8 @@ export interface DeclinedBranch {
   status: ControlStatus;
   between: ControlStatus[];
   cost: Sourced<CostBand> | null;
+  /** What the declined branch's cost rests on, where the cost ladder priced it (phase 4a). */
+  costBasis?: CostBasis | null;
 }
 
 export interface ControlSeason {
@@ -73,6 +119,8 @@ export interface ControlSeason {
   between: ControlStatus[];
   /** The club's cost that season; null only for a free agent (control ends, no cost to this club). */
   cost: Sourced<CostBand> | null;
+  /** What a priced cost rests on (phase 4a); absent or null for a contract season and an unpriced one. */
+  costBasis?: CostBasis | null;
   /** For an option season: the declined branch. The exercised branch is `cost`. */
   declined: DeclinedBranch | null;
   /** Where the status comes from. */
@@ -115,17 +163,29 @@ const statusOfStanding = (s: ControlStanding): ControlStatus => (s === 'indeterm
 
 const pending = (note: string): Sourced<CostBand> => unknownBecause<CostBand>('rule_not_implemented', null, note);
 
-/** The cost that attaches to a status Player Rights decided (not a contract season). */
-function costOfStatus(status: ControlStatus): Sourced<CostBand> | null {
+/**
+ * The cost that attaches to a status Player Rights decided (not a contract season), before the cost ladder
+ * prices it: a season it can price is "not priced" until it does; a reserve-clause renewal and an open season
+ * that names nothing it lies between stay unknown with their own reason.
+ */
+/** A status as the basis text names it (never the code's underscore). */
+const STATUS_NAMES: Partial<Record<ControlStatus, string>> = {
+  pre_arbitration: 'pre-arbitration', arbitration: 'arbitration', free_agent: 'free agency', reserve_clause: 'the reserve clause',
+  under_contract: 'under contract',
+};
+
+function costOfStatus(status: ControlStatus, between: ControlStatus[] = []): Sourced<CostBand> | null {
   switch (status) {
     case 'free_agent':
       return null;
     case 'reserve_clause':
-      return pending(COST_PENDING_OBSERVED_PAY);
+      return unknownBecause<CostBand>('not_exported_by_ootp', null, COST_PENDING_OBSERVED_PAY);
     case 'indeterminate':
-      return pending(`The season's control status is indeterminate; the cost of each status it could be is ${COST_PENDING_PRICE_OF_A_WIN}.`);
+      return between.length > 0
+        ? pending(COST_NOT_PRICED)
+        : unknownBecause<CostBand>('not_exported_by_ootp', null, "The season's control is not established, so neither is its cost.");
     default:
-      return pending(COST_PENDING_PRICE_OF_A_WIN);
+      return pending(COST_NOT_PRICED);
   }
 }
 
@@ -161,13 +221,13 @@ function fromEligibility(e: SeasonControlEligibility | undefined, season: number
     case 'pre_arbitration': basis = e.arbitration.reasons[0]?.message ?? e.freeAgency.reasons[0]?.message ?? 'Short of the arbitration line.'; break;
     case 'reserve_clause': basis = e.freeAgency.reasons[0]?.message ?? 'A reserve clause binds him.'; break;
     default: basis = between.length > 0
-      ? `Between ${between.map((s) => s.replace('_', ' ')).join(' and ')}: which one is not yet established.`
+      ? `Between ${between.map((s) => STATUS_NAMES[s] ?? s).join(' and ')}: which one is not yet established.`
       : 'His control status cannot be stated.';
   }
   return {
     season, status, arbitrationYear: status === 'arbitration' ? e.arbitration.trip : null,
     superTwo: status === 'arbitration' && e.arbitration.superTwo, between,
-    cost: costOfStatus(status), from: 'player_rights', basis, reasons: [...reasonsFor, ...e.crossings.map((c) => c.message)],
+    cost: costOfStatus(status, between), from: 'player_rights', basis, reasons: [...reasonsFor, ...e.crossings.map((c) => c.message)],
     crossings: e.crossings,
   };
 }

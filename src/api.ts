@@ -401,7 +401,17 @@ export interface ConeSeason {
   toDate: number | null;
   usage: Array<{ unit: 'PA' | 'BF'; low: number; central: number; high: number }>;
   coverage: { outer: ConeCoverage; inner: ConeCoverage; cases: number | null; note: string };
-  control: ConeLabels & { status: string; detail: string; after: ConeLabels | null };
+  control: ConeLabels & {
+    status: string; detail: string; after: ConeLabels | null;
+    /** The season's cost as the timeline serves it (phase 4a): a band with its central; null where unknown or control has ended. */
+    cost?: (ConeBand & { central?: number | null }) | null;
+    /** Its basis in words, or why it is unknown. */
+    costDetail?: string;
+    /** He may be a free agent instead: the band is what he costs if held (phase 4a review). */
+    ifHeld?: boolean;
+    /** An option or opt-out season's declined branch and its cost (phase 4a review). */
+    declined?: { status: string; label: string; cost: (ConeBand & { central?: number | null }) | null; ifHeld: boolean; costDetail: string } | null;
+  };
   notes: string[];
 }
 /** A season after the established ones whose production is not established: its control and why, no band (hardening F6). */
@@ -568,6 +578,21 @@ export interface ContractRow {
     /** For an option (or opt-out) next season: whose decision, and where he stands if it is declined. */
     option?: { kind: string; ifDeclined: string; between: string[] } | null;
   } | null;
+  /** Next season's cost as Player Value's timeline serves it (phase 4a): a band with its basis, or why it is unknown. */
+  nextCost?: SeasonCostData | null;
+}
+
+/** A season's cost as Player Value's timeline serves it (phase 4a, review): a band, its central, its basis, or why it is unknown. */
+export interface SeasonCostData {
+  season: number; status: string; low: number | null; high: number | null;
+  /** Null between statuses: `centrals` names each, none chosen. */
+  central: number | null;
+  centrals: Array<{ status: string; central: number; arbitrationClass?: number }> | null;
+  text: string; source: string | null;
+  /** He may be a free agent instead, or the player decides: what he costs if held. */
+  ifHeld: boolean;
+  /** An option or opt-out season's declined branch and its cost. */
+  declined: { kind: string; status: string; cost: SeasonCostData | null } | null;
 }
 
 export interface ContractsResponse {

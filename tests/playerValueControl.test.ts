@@ -3,7 +3,7 @@ import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { db } from '../server/db.js';
 import { playerValue } from '../server/playerValue.js';
-import { evaluateContractControl } from '../server/playerRights.js';
+import { arbitrationRegimeOf, evaluateContractControl } from '../server/playerRights.js';
 import { CONTROL_HORIZON_SEASONS } from '../server/playerValueCalibration.js';
 import { derivedFrom } from '../server/provenance.js';
 import { IDS, SEASON } from './fixture.js';
@@ -371,5 +371,67 @@ describe('Player Value: control, hardening (F2)', () => {
     // Where the schedule is not exported, the basis says what each later season is taken as
     const unread = timelineOf({ state: stateOf({ days: 5 * YEAR + 100, thisYear: 69 }), clock: 69, calendar: null });
     expect(unread.eligibility?.service.basis.join(' ')).toMatch(/schedule is not in the export/);
+  });
+});
+
+/*
+ * Phase 4a: what Player Value prices a season with comes from Player Rights. Value never reads the
+ * arbitration or free-agency rule itself, so the regime's arbitration classes, and which trip a season
+ * the projection leaves open would be, are Player Rights' answers.
+ */
+describe('Player Rights for the cost of controlled seasons (phase 4a)', () => {
+  it("states the league's arbitration regime as read: its classes, whether it is MLB's, or why it is unknown", () => {
+    expect(arbitrationRegimeOf(mlbRules())).toMatchObject({ status: 'arbitration', classes: 3, mlb: true });
+    expect(arbitrationRegimeOf(mlbRules({ rules_fa_minimum_years: 7 }))).toMatchObject({ status: 'arbitration', classes: 4, mlb: false });
+    expect(arbitrationRegimeOf(mlbRules({ rules_salary_arbitration_minimum_years: 0 }))).toMatchObject({ status: 'no_arbitration', classes: null });
+    expect(arbitrationRegimeOf(mlbRules({ rules_fa_minimum_years: 0 }))).toMatchObject({ status: 'reserve_clause', classes: null });
+    const unread = arbitrationRegimeOf(mlbRules({ rules_salary_arbitration_minimum_years: null }));
+    expect(unread).toMatchObject({ status: 'unknown', classes: null, mlb: null });
+    expect(unread.basis).toMatch(/arbitration rule/);
+  });
+
+  it('names the trip an indeterminate season would be if it is arbitration, counted by winter like any other', () => {
+    // 150 days at the winter: pre-arbitration next season, then the Super Two window with no class to rank him
+    const t = timelineOf({ state: stateOf({ days: 150 + 40, thisYear: 40 }), contract: factsOf(contractRow({ years: 1 })), clock: 40 });
+    const window = t.eligibility!.seasons.find((s) => s.season === THIS_SEASON + 2)!;
+    expect(window.standing).toBe('indeterminate');
+    expect(window.between).toEqual(expect.arrayContaining(['pre_arbitration', 'arbitration']));
+    expect(window.arbitration.trip).toBeNull();
+    expect(window.arbitration.tripIfEligible).toEqual({ low: 1, high: 1 });
+    // Straddling the free-agency line, the arbitration branch is itself eligible: its trip is the trip
+    const straddle = timelineOf({ state: stateOf({ days: 5 * YEAR + 100 + 40, thisYear: 40 }), contract: factsOf(contractRow({ years: 1 })), clock: 40 });
+    const next = straddle.eligibility!.seasons.find((s) => s.season === THIS_SEASON + 1)!;
+    expect(next.standing).toBe('indeterminate');
+    expect(next.arbitration.trip).toEqual({ low: 4, high: 4 });
+    expect(next.arbitration.tripIfEligible).toBeNull();
+    // A season that is plainly arbitration keeps its trip, and has no "if"
+    const plain = timelineOf({ state: stateOf({ days: 3 * YEAR + 60 + 40, thisYear: 40 }), contract: factsOf(contractRow({ years: 1 })), clock: 40 });
+    const arb = plain.eligibility!.seasons.find((s) => s.season === THIS_SEASON + 1)!;
+    expect(arb.arbitration.trip).toEqual({ low: 2, high: 3 });
+    expect(arb.arbitration.tripIfEligible).toBeNull();
+  });
+
+  it('in a league with no arbitration, never lists arbitration among the statuses a season could be (phase 4a review, R2-07)', () => {
+    // Straddling the free-agency line in a league with no arbitration (rule 0), or where free agency comes no later than it
+    for (const rules of [mlbRules({ rules_salary_arbitration_minimum_years: 0 }), mlbRules({ rules_fa_minimum_years: 3, rules_salary_arbitration_minimum_years: 3 })]) {
+      const t = timelineOf({ rules, state: stateOf({ days: 2 * YEAR + 100 + 40, thisYear: 40 }), contract: factsOf(contractRow({ years: 1 })), clock: 40 });
+      const seasons = t.eligibility!.seasons;
+      expect(seasons.some((s) => s.standing === 'indeterminate'), JSON.stringify(seasons.map((s) => [s.season, s.standing, s.between]))).toBe(true);
+      for (const s of seasons) {
+        expect(s.between, `${s.season}`).not.toContain('arbitration');
+        expect(s.standing).not.toBe('arbitration');
+        expect(s.arbitration.status).not.toBe('eligible');
+      }
+      const open = seasons.find((s) => s.standing === 'indeterminate')!;
+      expect(open.between).toEqual(['pre_arbitration', 'free_agency']);
+    }
+  });
+
+  it('names the class the ladder measures a season in: the class his service puts him in, beside the trip (phase 4a review, R1-05)', () => {
+    // Three years and 60 days at the winter, 40 banked: optioned from now he is still in class 1 next winter (his second trip)
+    const plain = timelineOf({ state: stateOf({ days: 3 * YEAR + 60 + 40, thisYear: 40 }), contract: factsOf(contractRow({ years: 1 })), clock: 40 });
+    const next = plain.eligibility!.seasons.find((s) => s.season === THIS_SEASON + 1)!;
+    expect(next.arbitration.trip).toEqual({ low: 2, high: 3 });
+    expect(next.arbitration.serviceClass).toEqual({ low: 1, high: 2 });
   });
 });

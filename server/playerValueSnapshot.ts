@@ -5,8 +5,9 @@
  * `league.db` is replaced by every import, so the market it describes today is gone tomorrow. This
  * records, once per import, what the league's market looked like: the opening price of a win (band
  * and basis), the replacement level measured per season, the financial regime as exported, the
- * league's payroll and how many contracts were market prices. The history is what lets drift be
- * seen, and what phase 4 will set observed signings against.
+ * league's payroll and how many contracts were market prices, and (phase 4a, inside the basis) the cost
+ * ladder: the renewal spread and the arbitration ladder measured on this import. The history is what lets
+ * drift be seen, and what phase 4b will set observed signings and arbitration awards against.
  *
  *   - Keyed by save, league and game date (the export's `leagues.current_date`, normalised through
  *     `parseGameDate`, so `2026-5-9` and `2026-05-09` are one key). Idempotent per key: a re-run of
@@ -74,6 +75,11 @@ export interface MarketSnapshot {
   leaguePayroll: number | null;
   replacement: Array<{ season: number; toDate: boolean; level: number | null; note: string | null }>;
   regime: unknown;
+  /**
+   * The price's basis as recorded. Since phase 4a it holds `costs` (the cost ladder), but only for a key first written
+   * after the upgrade (a key is never rewritten), and the phase 4a review changed a reading's shape (a robust line in
+   * dollars, its bootstrap error, the at-minimum deals): a reader treats `costs` as optional and checks its shape.
+   */
   basis: unknown;
 }
 
@@ -155,6 +161,8 @@ export function captureMarketSnapshot(options: SnapshotOptions = {}): SnapshotRe
           bases: price.bases, population: price.population, assumptions: price.assumptions, rules: price.rules,
           notUsed: price.notUsed, stamps: price.stamps, seasonPlayed: market.seasonPlayed,
           leaguePayroll: market.leaguePayroll,
+          // Phase 4a: the cost ladder measured at this import (the renewal spread and the arbitration ladder), so its drift is visible
+          costs: market.costs,
         }),
       ).changes;
       if (changes > 0) result.written += 1;

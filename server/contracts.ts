@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { db, tableExists } from './db.js';
 import { seasonFormByPlayer, type SeasonForm } from './form.js';
 import { leagueRulesForLeague } from './leagueRules.js';
-import { clubFinances, playerValues, serviceReading, type ControlTimeline } from './playerValue.js';
+import { clubFinances, playerValues, serviceReading, type ControlSeason, type ControlTimeline } from './playerValue.js';
 import type { Sourced } from './provenance.js';
 import {
   contractsByPlayer, currentGameDate, mlbPercentiler, ON_ROSTER, seasonYear, valuesByPlayer,
@@ -255,6 +255,66 @@ export function controlAfterThisSeason(timeline: ControlTimeline | null | undefi
   };
 }
 
+/**
+ * A season's cost as Player Value's timeline serves it (phase 4a), for display: the band (a point for a
+ * contract season), its basis in words, and whether it was measured on this save or rests on the
+ * provisional prior. Nothing is priced here; an unknown cost keeps its reason, never $0.
+ */
+export interface SeasonCost {
+  season: number;
+  status: ControlSeason['status'];
+  low: number | null;
+  high: number | null;
+  /**
+   * The reading at the centre of the band (phase 4a review); a contract's salary is its own. Null where the season
+   * lies between statuses Player Rights leaves open: `centrals` then names each status's, and none is chosen.
+   */
+  central: number | null;
+  centrals: Array<{ status: string; central: number; arbitrationClass?: number }> | null;
+  /** The basis in words, or why the cost is unknown. */
+  text: string;
+  /** measured, provisional_prior or measured_thin_with_prior; null for a contract season or an unknown cost. */
+  source: string | null;
+  /** He may be a free agent instead, or the player decides: the band is what he costs if the club holds him. */
+  ifHeld: boolean;
+  /**
+   * For an option or opt-out season: the declined branch, with what he falls to and its cost (null where control
+   * ends there: no cost to this club), so the option is shown on both branches (review R1-06).
+   */
+  declined: { kind: string; status: ControlSeason['status']; cost: SeasonCost | null } | null;
+}
+
+type CostOf = Pick<ControlSeason, 'season' | 'status' | 'cost' | 'costBasis'>;
+
+function costOf(season: CostOf): SeasonCost | null {
+  if (season.cost === null) return null;
+  const v = season.cost.value;
+  const point = v !== null && v.low === v.high && season.costBasis == null;
+  return {
+    season: season.season,
+    status: season.status,
+    low: v?.low ?? null,
+    high: v?.high ?? null,
+    central: v === null ? null : v.central !== undefined ? v.central : point ? v.low : null,
+    centrals: season.costBasis?.centrals ?? null,
+    text: season.cost.note ?? (point ? 'The contract\'s salary.' : 'Not established.'),
+    source: season.costBasis?.source ?? null,
+    ifHeld: season.costBasis?.ifHeld ?? false,
+    declined: null,
+  };
+}
+
+export function seasonCost(season: ControlSeason | undefined | null): SeasonCost | null {
+  if (!season) return null;
+  const own = costOf(season);
+  if (own === null || !season.declined) return own;
+  const d = season.declined;
+  return {
+    ...own,
+    declined: { kind: d.kind, status: d.status, cost: costOf({ season: season.season, status: d.status, cost: d.cost, costBasis: d.costBasis ?? null }) },
+  };
+}
+
 /** "arbitration 2" or "arbitration 2-3" when the rest of the season or an earlier winter leaves it open. */
 export function arbitrationLabel(control: Control): string {
   const n = control.arbYearHigh !== null ? `${control.arbYear}-${control.arbYearHigh}` : `${control.arbYear ?? ''}`;
@@ -405,6 +465,8 @@ export function computeContracts(orgId: number) {
         arbYear,
         /** What happens after this season, with its basis; `indeterminate` names what is missing. */
         control,
+        /** Next season's cost exactly as the timeline serves it (phase 4a): a band with its basis, or why it is unknown. */
+        nextCost: seasonCost(timeline?.seasons.find((s) => s.season === year + 1)),
         overallPct: oPct,
         talentPct: tPct,
         /*

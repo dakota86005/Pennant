@@ -26,7 +26,8 @@ point; `playerValueContract.ts` (contract facts), `playerValueControl.ts` (contr
 `playerValueProduction.ts` (expected production, pure), `playerValueProductionFit.ts` (the per-save fit),
 `playerValueRatings.ts` and `playerValueRatingsFit.ts` (phase 3b: production from scouted ratings, and its per-save fit),
 `playerValueHistory.ts` (the history reader), `playerValueFinances.ts` (Club Finances, the opening price of a win,
-replacement level), `playerValueCone.ts` (the player card's production cone: production joined with control, pure)
+replacement level), `playerValueCost.ts` (phase 4a, pure: the cost ladder measured per import and the controlled seasons
+priced from it), `playerValueCone.ts` (the player card's production cone: production joined with control, pure)
 and `playerValueCalibration.ts` (policy and the provisional prior, stamped) sit behind it. Two
 writers, `history.db` only: `playerValueSnapshot.ts` (the per-import market snapshot) and `playerValueFitStore.ts`
 (the per-save production fits, D-053). Which phases are built is in `docs/PROJECT_STATE.md`; check it against the
@@ -80,6 +81,21 @@ worktree.
   be checked is never served. A prospect's later seasons are `notEstablished`, each with the gate's finding, never
   extrapolated or carried forward; a multi-season total including one is not a number (`productionTotal`); labels say
   "calibrated through N seasons out". The results fit keeps its all-horizons rule.
+- The cost of controlled seasons (phase 4a, D-052 amendment): measured on each import from the save's one-year
+  contracts, snapshotted with the market (never a D-053 fit: no held-out outcome until 4b's observed awards). A renewal
+  runs from the league's minimum to the save's renewal spread; an arbitration season is the minimum plus its class's
+  robust (Theil–Sen) line, a base and a pay per win of the two-season platform in the import's dollars, its error from a
+  bootstrap of the same fit, at the platform seasons' production; only the prior's shares carry (and the basis names) the
+  price band; every corner taken, never a point, never assumed to be the minimum (a contract at the minimum stays out of the
+  line and lets a season whose platform reaches as low reach it, said). Every priced band has a central inside it; between
+  statuses each status's is named and none chosen. Status, class, trip and service class are Player Rights'
+  (`arbitrationRegimeOf`, `trip`, `tripIfEligible`, `serviceClass`); a range covers each class and his service's class, an
+  open season each status, a season that may be free agency or a branch the player decides is "if held". Below 30
+  contracts: no line of its own, the provisional `COST_PRIOR` hulled with the range the save paid the class, only where the
+  regime as read is MLB's; else unknown. No arbitration or an unread rule: no ladder (and no season lists arbitration). A
+  reading without production prices nothing. Reserve-clause renewals stay unknown. A projected cost is never committed
+  money: Payroll shows it beside the committed total as a range of reasonable readings with the sum of centrals, never in
+  it. Open owner questions (phase 4a review): combining players statistically at Payroll; MLB's 20% maximum cut.
 - Never ask the owner for an OOTP experiment; an unresolved rule stays `indeterminate` and is documented.
 
 Checks: `tests/playerValueBoundary.test.ts`, `tests/playerValueControl.test.ts`, `tests/playerValueCost.test.ts`,

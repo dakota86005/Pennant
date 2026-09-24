@@ -635,3 +635,69 @@ and rounds to the same $7.32M. The pace bases stand on 27.6%, just over the quar
 would drop them and price from the four prior-season bases alone. The sampling component B-13 also asks for (a
 bootstrap over contracts before the opening band is compared with a measured one) belongs to phase 4, where that
 comparison is built.
+
+## 8. Player Value's cost of controlled seasons: the renewal spread and the arbitration ladder (phase 4a)
+
+The cost of a pre-arbitration or arbitration season (PLAYER_VALUE.md 2.2 and 4.4, `server/playerValueCost.ts`) is
+**measured on each import** from the save's own contracts, like the opening price of a win (section 7), and snapshotted
+with the market (`value_market_snapshots.basis_json.costs`) so its drift is visible. It is not a D-053 fit with a gate:
+one import holds one cross-section of salaries set last winter and no outcome to hold out, so there is nothing to
+backtest until arbitration awards are observed across an off-season (phase 4b, which tests this ladder against them).
+Code holds the method and its policy (`COST_POLICY`, stamped policy) and a provisional fallback prior (`COST_PRIOR`,
+stamped provisional); the numbers served are the save's. Status and class come from Player Rights
+(`evaluateContractControl`, `arbitrationRegimeOf`), never from service compared with a threshold here.
+
+| What | Value | Stamp | Why |
+|---|---|---|---|
+| The renewal band's high edge | the 90% upper confidence bound (an order statistic) of the 90th percentile of the save's pre-arbitration one-year renewals | policy | Nine renewals in ten stay under it; the bound makes a thinner class read higher, never lower. It is itself one of the renewals: below 38 renewals it is the largest, so there one unusual renewal does set it, and the band's text says which renewal bounds it (review R2-06: the text was fixed, not the number) |
+| The renewal band's central | the median renewal | policy | A band is three numbers (PLAYER_VALUE.md Part 3); on Arizona $780K |
+| The arbitration performance basis | the mean WAR of the two seasons before the arbitration winter, each on its schedule's footing; a season with no line counts 0; a platform season must cover a quarter of its schedule (`OPENING_PRICE_MINIMUMS.seasonShare`, the price of a win's policy, reused: review R1-03) | policy | Arbitration pays for a body of work; on the Arizona import the two-season platform explains each class's pay better than the platform season alone (R² 0.715 against 0.619, 0.300 against 0.096, 0.626 against 0.549 for classes 1–3, least squares). A future season's platform seasons are projections, meaned edge with edge |
+| The ladder's form | per class, a robust (Theil–Sen) line of pay above the minimum on the platform: a base and a pay per platform win, in the import's own dollars | policy | Least squares let one free-agent-market contract Player Rights reads in the class (Imanaga, $22.0M on a 1.6-win platform in class 2; Kim, $20.0M on 1.2 in class 3) and one star (Skubal, $32.0M on 6.6) move a rung: class 3 read $3.54M a win, $2.61M without Skubal (review R2-04). Theil–Sen is the median of the slopes between every two contracts: deterministic, no tuning, and one case moves it no further than it moves a median. R-6's ratio (pay over positive WAR, no base) reads low-WAR players as costing the minimum, which arbitration does not pay. The line is in the import's dollars, so the price of a win's band never applies to it (supervisor, phase 4a) and an unknown price leaves it standing (review R1-10) |
+| The class's spread | the 10th to 90th percentile of its pay around the line (an inverted-CDF quantile, unchanged by duplicating the class) | policy | The same 80% as production's outer band. One pair of dollar figures across the class's platforms, although pay scatters more at a middle platform (review R2-09; a log line fits worse); recorded below, revisited in phase 4b |
+| The line's own uncertainty | the robust line refitted on 200 bootstrap resamples of the class (a fixed seed): the spread of its level at the class's median platform and of its rung, and their correlation; 1.28 of the resulting standard errors on each side, added to the spread edge against edge | policy | The closed form belongs to least squares; the bootstrap reads the same fit's own uncertainty. Added linearly, not in quadrature, so wider. Fewer contracts read wider, never narrower |
+| Its floor | the least the class was paid above the minimum; the league minimum for a season whose platform low edge reaches as low as the class's contracts at the minimum | measured | Pay at the minimum is held at the floor, not set by the platform, so those contracts are kept out of the line; but the save shows them (8–12% of each class on Arizona, all at platforms of −0.3 to +0.3 wins), so a season with such a platform can cost the minimum, and says so (review R1-04) |
+| Which contracts | one-year major-league deals set this winter, held by players Player Rights finds in arbitration, by class (the class his service puts him in); a contract at the minimum is kept out of the line and counted with its platform | policy | Which transaction produced a one-year deal at the minimum (an award, a non-tender re-signed) is not in the export and is never named. One-year deals whose holder's standing this season is open (the Super Two window: 110 on Arizona) are read by neither the renewal spread nor the ladder, and the ladder says how many (review R2-14). Extensions are left out, and they select: in class 2 the extended players' platforms average 3.1 wins (7 of 15 at or above 3) against 1.3 for the one-year deals (2 of 51), so the line above 3 wins rests on few contracts and a season priced there says it is extrapolated (review R2-08) |
+| Minimum sample | 30 contracts a class (30 renewals) | policy | Below it a class has no line of its own: the provisional prior's reading hulled with the range the save paid the class, only where the regime as read is MLB's; elsewhere unknown (review R1-01, R2-02) |
+| The fallback prior | the review's method on the Arizona import's imported real-world contracts, in minimums and shares of the price | provisional | `COST_PRIOR`; never presented as the save's measurement, never used where the regime is not MLB's or the minimum is $0, and the only reading the price of a win's band multiplies |
+
+**The Arizona import (2026-05-16).** Minimum $780,000; price of a win $7.25M (band $6.57M–$9.78M).
+
+- **Renewals:** 249 pre-arbitration one-year renewals, 220 at the minimum; the band is **$780K–$790K**, central $780K
+  (the median). The upper bound is the 19th largest of the 249 renewals, leaving out the 18 largest: the eight above
+  $900K (Sugano $5.1M, Villar $3.36M) look like one-year signings of players with little service rather than renewals.
+- **Arbitration ladder (measured, every class above the minimum sample; the review's robust line):**
+
+| Class | Contracts | At the minimum, kept out (platforms up to) | Base (pay above the minimum at no platform wins) | Per platform win (share of the price's central) | Spread (10th–90th) | Line's bootstrap SD (level; rung) | Least squares (base, per win) |
+|---|---|---|---|---|---|---|---|
+| 1 | 74 | 10 (0.3 wins) | $0.38M | $0.96M (13.3%) | −$0.66M to +$1.25M | $0.14M; $0.09M | $0.44M, $1.04M |
+| 2 | 51 | 6 (0.3) | $1.04M | $1.75M (24.1%) | −$1.23M to +$2.56M | $0.26M; $0.21M | $1.35M, $1.92M |
+| 3 | 47 | 4 (0.2) | $0.65M | $2.54M (35.1%) | −$1.14M to +$5.43M | $0.35M; $0.33M | $0.41M, $3.54M |
+
+  The robust line sits under the market contracts and the star, so they now show in the spread's high edge (class 3's
+  90th percentile rose from +$3.46M to +$5.43M) rather than in the rung. R-6's own figures (one-season platform,
+  service at the winter, the minimum cases in) were about 22%, 42% and 53% of the price; the same statistic on this
+  method's cases reads 19%, 40% and 52%. The line's share is lower than the ratio because the base carries what a class
+  is paid whatever its platform. The class band (line, spread and 1.28 bootstrap standard errors, at a known platform)
+  covers its own contracts 63 of 74, 44 of 51 and 42 of 47, as least squares did; by platform tercile 24/25, 19/25,
+  20/24 (class 1), 15/17, 13/17, 16/17 (class 2), 16/16, 13/16, 13/15 (class 3): over-covered at a low platform,
+  under-covered in the middle (R2-09), recorded for phase 4b.
+- **Worked examples** (80% production band; the save's own lines in this import's dollars): Gunnar Henderson, a
+  first-year arbitration player at $8.5M, 2027 is trip 2–3 and, optioned for the rest of 2026, would be read in class 1:
+  **$2.7M–$22.2M**, central $8.9M (least squares: $4.6M–$25.3M; before the supervisor's fix $4.1M–$31.7M); 2028
+  $3.2M–$27.4M, central $12.7M; 2029 may be free agency, $5.3M–$30.6M if held, central $14.2M. Paul Skenes (Super Two not
+  decided): 2027 between pre-arbitration and arbitration, **$0.78M–$18.3M**, no single central (each status's named).
+  Nick Kurtz (a pre-arbitration star, 6.0 WAR in 2025): 2027 **$780K–$790K**, 2028 open $0.78M–$11.1M, 2029 arbitration
+  1–2 $3.4M–$24.6M, central $7.7M. Trevor Megill, 2027 trip 3–4 (a fourth trip is priced in class 3): $1.24M–$9.9M,
+  central $3.2M. Dane Dunning ($780K now, a platform near 0): 2027 **$780K–$7.4M**, its low edge at the minimum because
+  class 3's four at-minimum deals sit at platforms up to 0.2 wins and his reaches as low (before: $1.2M–$5.7M).
+- **Counts** (the rostered league's controlled seasons): 1,465 arbitration seasons and 359 renewals priced, 1,101 open
+  seasons priced across their statuses; 16 arbitration seasons unknown (the platform's production unknown); 192 priced
+  on a platform beyond the platforms a class was measured on, said. Arizona's Payroll 2027: committed $133.2M; the
+  range $12.9M–$75.8M for 16 controlled players (two may reach free agency), central $22.7M–$27.6M (the two counted
+  as leaving, then as held).
+
+The bands are wide by construction: every corner of the production band, the class's spread and the line's error is
+taken (and the price band, where the provisional prior is in the reading), and a range of trips covers each class and
+the class his service puts him in. They are ranges of reasonable readings, not calibrated intervals, until phase 4b can
+score them against observed awards. Payroll sums them edge against edge; whether to combine players statistically
+instead (R2 simulated 35–56% of the width) is an owner question, and until it is answered the edges are summed.
