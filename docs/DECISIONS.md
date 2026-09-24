@@ -1270,6 +1270,11 @@ surplus exists.
   agency, as three-valued statuses with a cost band each); expected production; Club Finances (the league's regime,
   price of a win and replacement level, and the club's budget, payroll, revenue, market, cash and owner expectation);
   and surplus. Each has its own output and names its own unknowns.
+- **Expected production is the expected wins** (amended 2026-09-23, the hardening): the rate of the players who play at a
+  horizon is fitted apart from the chance he plays, since the players who keep playing are the ones who stayed good;
+  playing time is read per scheduled game and never exceeds the physical ceiling the save's own history shows. Known
+  days out are a fact that moves the central (owner, 2026-09-23), and a season lost to injury is never read as evidence
+  of less future playing time.
 - **A decomposed, stated estimate, never a hidden score.** Value is reported as bands with their basis and every
   component visible. Thinner evidence (fewer results, partial ratings) only widens a band; a longer horizon only widens
   what is not known about a player's rate, while his band in wins follows his expected playing time (owner,
@@ -1410,6 +1415,27 @@ and move toward OOTP's engine as the save's own simulated seasons enter the wind
 `DEFENSE_WEIGHT`), `toolsModel.ts`, `platoon.ts`, `bullpenRoles.ts` (leverage cut-offs), `roleStandards.ts` (role
 standards), `farmCalibration.ts` (Minor League Operations) and `developmentFit.ts` (development and developmental
 stakes). ROADMAP lists them for an audit and migration.
+
+**Amended 2026-09-23 (Player Value hardening; PLAYER_VALUE.md 2.3 and Part 7, CALIBRATION.md section 6.3).**
+
+- **What is measured is what is served.** The held-out seasons are projected in blocks, each by the method refit
+  through the block's first origin, and the model a GM is served is the same method refit through the last completed
+  season. The record's held-out figures are the method's out-of-time performance at each horizon, which is what the
+  served model faces; no widening is chosen on the held-out cases. A projection carries observed coverage only for the
+  estimator that produced it (results only), at its own horizon; the rest of a season under way and a blend with
+  same-time ratings are "not measured".
+- **The gate reads subgroups and bias.** Adoption needs held-out coverage as fitted within the policy's tolerance pooled
+  and in every subgroup the method serves differently (kind, usage third, quality tier, age band) with enough cases, and
+  a central that is not materially and significantly biased in any of them. A fit that fails keeps the previous model
+  in force, however good its pooled figures.
+- **Each horizon's prior weight is its own,** and so is its widening and its label ("horizons 4–7 mostly the fallback
+  prior"). A prior fitted on the save's own held-out seasons (the same history, matched by season totals) is not used.
+  An adopted fit that is still mostly the prior is stamped provisional.
+- **The fit is the save's by identity, not name:** keyed by the save's configured name and a fingerprint of the league's
+  own history, never through a season the league has not completed; a refit that fails the gate never replaces the fit
+  in force; the refit runs off the server's event loop.
+- **Under the prior, the league's own WAR scale:** the kind's mean and the rate spreads come from the league's own recent
+  seasons (a plain measurement, stamped derived); the prior's shape stays.
 
 ## D-054 — Charting library
 

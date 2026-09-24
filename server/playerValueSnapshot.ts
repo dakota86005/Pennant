@@ -24,7 +24,8 @@
 
 import { db, tableColumns, tableExists } from './db.js';
 import { parseGameDate } from './dataFreshness.js';
-import { currentSaveName, historyDb } from './history.js';
+import { historyDb } from './history.js';
+import { saveIdentity } from './playerValueFitStore.js';
 import { leagueFinances, marketLeagues, type LeagueFinances } from './playerValue.js';
 
 historyDb.exec(`
@@ -111,7 +112,6 @@ export function captureMarketSnapshot(options: SnapshotOptions = {}): SnapshotRe
   const result: SnapshotResult = { written: 0, existing: 0, skipped: [], error: null };
   try {
     const compute = options.compute ?? ((id: number) => leagueFinances(id));
-    const saveName = currentSaveName();
     const exists = historyDb.prepare(
       `SELECT 1 FROM value_market_snapshots WHERE save_name = ? AND league_id = ? AND game_date = ?`
     );
@@ -129,6 +129,8 @@ export function captureMarketSnapshot(options: SnapshotOptions = {}): SnapshotRe
         result.skipped.push(`League ${leagueId}: no usable current_date in the export (${exported ?? 'none'}), so there is no key to record it under.`);
         continue;
       }
+      // Keyed by the save's identity, never its name alone: a new save under a reused name records its own (D-01)
+      const saveName = saveIdentity(leagueId);
       if (exists.get(saveName, leagueId, gameDate)) {
         result.existing += 1;
         continue;
@@ -182,7 +184,8 @@ const parse = (text: string): unknown => {
 };
 
 /** The league's recorded market, oldest game date first (ordered through `parseGameDate`). */
-export function marketSnapshotHistory(leagueId: number, saveName = currentSaveName()): MarketSnapshot[] {
+/** The market history of this save (its identity: name and league fingerprint, D-01), oldest first. */
+export function marketSnapshotHistory(leagueId: number, saveName = saveIdentity(leagueId)): MarketSnapshot[] {
   const rows = historyDb.prepare(
     `SELECT save_name, league_id, game_date, game_date_exported, observed_at, import_finished_at, season,
             price_label, price_unit, price_central, price_low, price_high, floor_low, floor_high, price_note,

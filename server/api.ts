@@ -43,7 +43,7 @@ import { scheduleRoutes } from './schedule.js';
 import { payrollRoutes } from './payroll.js';
 import { clubFinanceRoutes } from './clubFinanceRoutes.js';
 import { playerValueRoutes } from './playerValueRoutes.js';
-import { refitProductionIfNeeded, refitRatingsIfNeeded } from './playerValue.js';
+import { clearProductionCaches, computeRefits, refitInWorker, refitOffThread, type PendingRefits } from './playerValue.js';
 import { captureMarketSnapshot } from './playerValueSnapshot.js';
 import { trendsRoutes } from './trends.js';
 import { chatRoutes } from './chat.js';
@@ -165,25 +165,34 @@ function humanOrgId(): number | null {
  * waiting for the next import. It fits nothing when the latest completed season is already fitted.
  */
 export function refitAfterImport(): void {
-  setImmediate(() => {
-    try {
-      for (const r of refitProductionIfNeeded()) {
-        if (r.refit) console.log(`[value] production refit, league ${r.leagueId} through ${r.throughSeason}: ${r.adopted ? 'adopted' : 'not adopted'} (${Math.round(r.ms ?? 0)} ms). ${r.reason}`);
-      }
-      // Phase 3b: the ratings model, after the results model it reads (mapping, arrivals, development)
-      for (const r of refitRatingsIfNeeded()) {
-        if (r.refit) console.log(`[value] ratings refit, league ${r.leagueId} through ${r.throughSeason}: ${r.adopted ? 'adopted' : 'not adopted'} (${Math.round(r.ms ?? 0)} ms). ${r.reason}`);
-      }
-    } catch (err) {
-      console.error('[value] production refit failed:', err);
-    }
+  // In a worker thread (A-17): the fit reads for seconds, and the server keeps answering meanwhile. Its
+  // result is recorded only if no import started while it read, so a fit never spans two exports.
+  const generation = importGeneration;
+  const started = performance.now();
+  const compute = (): Promise<PendingRefits> => refitInWorker().catch((err) => {
+    // No worker (an unusual packaging): the same work in-process, after this turn, logged as such
+    console.error('[value] refit worker unavailable, refitting in-process:', err);
+    return new Promise<PendingRefits>((resolve, reject) => setImmediate(() => {
+      try { resolve(computeRefits()); } catch (e) { reject(e); }
+    }));
   });
+  refitOffThread({ compute, stale: () => importState.importing || generation !== importGeneration })
+    .then((outcomes) => {
+      for (const r of outcomes) {
+        if (r.refit) console.log(`[value] refit, league ${r.leagueId} through ${r.throughSeason}: ${r.adopted ? 'adopted' : 'not adopted'} (${Math.round(r.ms ?? 0)} ms in the worker, ${Math.round(performance.now() - started)} ms end to end). ${r.reason}`);
+      }
+    })
+    .catch((err) => console.error('[value] production refit failed:', err));
 }
+
+/** Counts imports, so a refit read across one is never recorded. */
+let importGeneration = 0;
 
 export async function runImport(csvDir: string): Promise<void> {
   if (importState.importing) return;
   let imported = false;
   importState.importing = true;
+  importGeneration += 1;
   importState.lastError = null;
   importState.progress = null;
   try {
@@ -199,6 +208,7 @@ export async function runImport(csvDir: string): Promise<void> {
     clearFarmUsageCaches(); // and who has been playing where
     clearFieldingPopulationCache();
     clearValuationCaches();
+    clearProductionCaches(); // what Player Value measured about the last export (schedules, rates, identity)
     importedAt.value = importState.lastImport.finishedAt;
     try {
       takeSnapshot(); // development-tracking snapshot, keyed by in-game date

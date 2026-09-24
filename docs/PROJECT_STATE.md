@@ -483,10 +483,31 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   own rating snapshots (one on this save) and use the provisional prior or the
   kind's K until then, labelled. A results refit takes about 5 s, a ratings refit
   about 1.5 s (CALIBRATION.md sections 6.1 and 6.2).
+- **Hardening (2026-09-23, method `production-3h.1`;** CALIBRATION.md section
+  6.3, PLAYER_VALUE.md 2.3 and Part 7): the central is the expected wins (the
+  rate of the players who play is fitted apart from the chance he plays),
+  playing time is read per scheduled game under a physical ceiling measured on
+  the save, the band is the mixture of no playing time and the wins when he
+  plays, a listed pitcher's batting is not a hitter's line, known days out move
+  the central (owner, 2026-09-23) and a season lost to injury is not evidence of
+  less playing time, the rest of this season is measured on this season's games.
+  The gate reads subgroups and bias as fitted; the held-out seasons are projected
+  by refits of the method and the model served is refit through the last
+  completed season; fits are keyed by the save's identity (name and a
+  fingerprint of the league's history), never through a season not completed,
+  never replaced by a failing refit, and refitted in a worker thread (12 s in
+  the worker, the event loop never held over 3 ms). On the Arizona import the
+  method is within 5 points of both coverage targets pooled and in every
+  subgroup, the pooled central within 0.05 wins, and the cohort's summed central
+  within 1–10% of its own history (was 10–66% short); the gate did **not** adopt
+  it (hitters and regulars over-projected at horizons 3–7 out of time, the
+  2006–15 to 2016–25 era drift), so the fallback prior is in force there, labelled
+  "not yet calibrated". The ratings model is adopted.
 - **Injury proneness** (`server/injuryProneness.ts`): read as an
-  owner-attested known fact; 0, blank or missing is unknown. Its measured effect
-  on playing time moves production (hitters in the most injury-prone third play
-  95% of their expected usage on this save); no aging effect was distinguishable.
+  owner-attested known fact; 0, blank or missing is unknown. Its effects are
+  measured with standard errors clustered by player and Holm's correction; on
+  this save none survives (phase 3b's hitters' 95% did not), so proneness moves
+  nothing here.
 - **Routes:** `/api/player-value/:playerId`, `/api/player-value?ids=`,
   `/api/player-value/production-fit/:orgId` (with the ratings model in force and
   its run record since phase 3b), and `/api/player-value/:playerId/cone`

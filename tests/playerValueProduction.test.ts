@@ -5,6 +5,8 @@ import {
   type PlayerProduction, type ProductionInput, type ProductionLine, type ProductionModelInForce, type WinsBand,
 } from '../server/playerValue.js';
 import { PRODUCTION_PRIOR } from '../server/playerValueCalibration.js';
+import { adaptPriorToLeague, projectProductionWith } from '../server/playerValueProduction.js';
+import { injuryDurationSentinels, leagueSeasons, majorLeagueLines, scheduledGames } from '../server/playerValueHistory.js';
 import { readInjuryProneness } from '../server/injuryProneness.js';
 import { IDS } from './fixture';
 
@@ -159,7 +161,8 @@ describe('expected production (phase 3a): the band only widens', () => {
   it('each season carries its coverage target and what the fit in force observed on held-out seasons, side by side', () => {
     const p = projected(regular());
     p.seasons.forEach((s, i) => {
-      expect(s.coverage.horizon).toBe(i + 1);
+      // At the model's own horizon: a third of this season played, 2031 is 1.7 seasons out (B-05)
+      expect(s.coverage.horizon).toBeCloseTo(i + 1 - 0.3, 9);
       expect(s.coverage.target).toEqual({ outer: 0.8, inner: 0.5 });
       // The fallback prior was not measured on held-out seasons of this save: observed is unknown, never the target
       expect(s.coverage.observed).toBeNull();
@@ -285,32 +288,35 @@ describe('expected production (phase 3a): what the evidence says', () => {
     });
   });
 
-  it('a stated injury only widens: it lowers a low edge and never moves the central or the high edge', () => {
+  it('known days out are a fact: they come off expected playing time (the central moves down), and the band keeps the high edge of an earlier return (owner, 2026-09-23)', () => {
     const base = projected(star());
     const hurt = projected(star({
-      injury: { injured: true, daysLeft: 200, careerEnding: false, seasonDaysLeft: 130, seasonDays: 186 },
+      injury: { injured: true, daysLeft: 400, careerEnding: false, seasonDaysLeft: 130, seasonDays: 186, offseasonDays: 179 },
     }));
-    base.seasons.forEach((s, i) => {
-      expect(hurt.seasons[i].wins.central).toBeCloseTo(s.wins.central, 9);
-      expect(hurt.seasons[i].wins.high).toBeCloseTo(s.wins.high, 9);
-      expect(hurt.seasons[i].wins.low).toBeLessThanOrEqual(s.wins.low + EPS);
-    });
-    // Out past the end of this season: this season and the next both widen
-    expect(hurt.seasons[0].wins.low).toBeLessThan(base.seasons[0].wins.low);
-    expect(hurt.seasons[1].wins.low).toBeLessThan(base.seasons[1].wins.low);
-    expect(hurt.seasons[0].notes.join(' ')).toMatch(/injur/i);
+    // This season: the rest of it is lost, so the central falls to what he has banked; the next: 91 of 186 days
+    expect(hurt.seasons[0].wins.central).toBeLessThan(base.seasons[0].wins.central - 0.5);
+    expect(hurt.seasons[0].remaining!.central).toBeCloseTo(0, 6);
+    expect(hurt.seasons[1].wins.central).toBeLessThan(base.seasons[1].wins.central);
+    expect(hurt.seasons[1].sides[0].usage.central).toBeLessThan(base.seasons[1].sides[0].usage.central);
+    for (const i of [0, 1]) {
+      expect(hurt.seasons[i].wins.high, `${hurt.seasons[i].season}`).toBeCloseTo(base.seasons[i].wins.high, 9);
+      expect(hurt.seasons[i].wins.low, `${hurt.seasons[i].season}`).toBeLessThanOrEqual(base.seasons[i].wins.low + EPS);
+      expect(hurt.seasons[i].notes.join(' ')).toMatch(/injur/i);
+    }
+    // Days that end before a season starts touch nothing in it
+    base.seasons.slice(2).forEach((s, i) => expect(hurt.seasons[i + 2].wins).toEqual(s.wins));
     // With no injury stated, nothing moves
     const healthy = projected(star({ injury: { injured: false, daysLeft: 0, careerEnding: false, seasonDaysLeft: 130, seasonDays: 186 } }));
     expect(healthy.seasons).toEqual(base.seasons);
   });
 
-  it('a career-ending injury puts producing nothing at all inside every season\'s band', () => {
+  it('a career-ending injury puts producing nothing at all inside every season\'s band, and every later central is nothing', () => {
     const base = projected(regular());
     const ended = projected(regular({ injury: { injured: true, daysLeft: null, careerEnding: true, seasonDaysLeft: null, seasonDays: null } }));
     ended.seasons.forEach((s, i) => {
       const nothing = i === 0 ? s.toDate ?? 0 : 0;
       expect(s.wins.low).toBeLessThanOrEqual(nothing + EPS);
-      expect(s.wins.central).toBeCloseTo(base.seasons[i].wins.central, 9);
+      expect(s.wins.central).toBeCloseTo(nothing, 9);
       expect(s.wins.high).toBeCloseTo(base.seasons[i].wins.high, 9);
     });
   });
@@ -401,7 +407,9 @@ describe('expected production (phase 3a): two bands and injury proneness', () =>
     const observed = [1, 2, 3, 4, 5, 6, 7].map((horizon) => ({ horizon, cases: 500, outer: 0.8, inner: 0.5, bias: 0 }));
     const using = withProneness();
     const p = projectProduction(regular(), { ...using, provenance: { ...using.provenance, observed } });
-    p.seasons.forEach((s, i) => expect(s.coverage.observed).toEqual({ outer: 0.8, inner: 0.5, cases: 500, horizon: i + 1 }));
+    // The rest of the season under way is not measured; later seasons carry the fit's figure at their own horizon
+    expect(p.seasons[0].coverage.observed).toBeNull();
+    p.seasons.slice(1).forEach((s, i) => expect(s.coverage.observed).toEqual({ outer: 0.8, inner: 0.5, cases: 500, horizon: i + 2 - 0.3 }));
   });
 
   it('the save\'s own fit is stamped with its run record, the prior never is', () => {
@@ -487,5 +495,268 @@ describe('expected production through the reader (fixture league)', () => {
     const starterSeasons = values.get(IDS.starter)!.production;
     expect(starterSeasons.status).toBe('projected');
     expect(starterSeasons.basis.sides.flatMap((s) => s.seasons.map((x) => x.season))).toEqual([2030]);
+  });
+});
+
+describe('expected production (hardening, 2026-09-23): the central, playing time and the calendar', () => {
+  const fullSchedule = { games: 162, bySeason: { 2027: 162, 2028: 162, 2029: 162 } };
+  const ceilingOf = (kind: 'hitter' | 'starter' | 'reliever'): number => {
+    const c = (PRODUCTION_PRIOR.kinds[kind] as { ceiling?: number | null }).ceiling;
+    expect(typeof c === 'number' && Number.isFinite(c) && c > 0, `${kind} ceiling`).toBe(true);
+    return c as number;
+  };
+
+  it.each([['a star', () => star({ schedule: fullSchedule })], ['a starter', () => starter({ schedule: fullSchedule })]] as const)(
+    'no season\'s playing-time high edge exceeds the most the save shows a player playing in a season of that length (%s)',
+    (_, make) => {
+      const input = make();
+      const p = projected(input);
+      const kind = p.basis.sides[0].kind;
+      const perGame = ceilingOf(kind);
+      p.seasons.forEach((s, i) => {
+        const share = i === 0 ? 1 - (input.seasonPlayed ?? 0) : 1;
+        const most = perGame * 162 * share;
+        const side = s.sides[0];
+        expect(side.usage.high, `${s.season}`).toBeLessThanOrEqual(most + EPS);
+        // ...and the wins high edge is at most that ceiling at the high edge of his rate
+        if (side.rateBand.high > 0) expect(s.remaining?.high ?? s.wins.high, `${s.season}`).toBeLessThanOrEqual((most * side.rateBand.high) / 600 + EPS);
+      });
+    },
+  );
+
+  it('playing time is relative to the schedule: in a 60-game league no playing-time band exceeds what 60 games allow', () => {
+    const sixty = { games: 60, bySeason: { 2027: 60, 2028: 60, 2029: 60 } };
+    const p = projected(regular({ schedule: sixty, batting: [bat(2027, 230, 1.2), bat(2028, 240, 1.0), bat(2029, 225, 1.3), bat(2030, 70, 0.4)] }));
+    const most = ceilingOf('hitter') * 60;
+    p.seasons.slice(1).forEach((s) => expect(s.sides[0].usage.high, `${s.season}`).toBeLessThanOrEqual(most + EPS));
+    // ...and a regular there is still a regular: well over half of what 60 games allow
+    expect(p.seasons[1].sides[0].usage.central).toBeGreaterThan(0.5 * most);
+  });
+
+  it('a past short season (60 of 162 games) is read at its own schedule, never as a part-timer\'s season', () => {
+    const lines = [bat(2027, 610, 3.1), bat(2028, 230, 1.1), bat(2029, 600, 3.4), bat(2030, 190, 1.0)];
+    const known = projected(regular({ batting: lines, schedule: { games: 162, bySeason: { 2027: 162, 2028: 60, 2029: 162 } } }));
+    const full = projected(regular({ schedule: fullSchedule }));
+    // Reading 2028 at its own 60 games, he played every day: next season's playing time is a regular's
+    expect(known.seasons[1].sides[0].usage.central).toBeGreaterThan(0.97 * full.seasons[1].sides[0].usage.central);
+  });
+
+  it('seasons before the league existed are unknown, not zero: a first-season regular\'s next-season band holds a regular\'s playing time', () => {
+    const first = projected(regular({
+      seasonPlayed: 0.25, age: 27, batting: [bat(2030, 168, 2.2)],
+      schedule: { games: 162, bySeason: {}, firstSeason: 2030 },
+    }));
+    const next = first.seasons[1].sides[0].usage;
+    expect(next.high).toBeGreaterThanOrEqual(600);
+    // The same line in a league that did exist the seasons before (he did not play): today's answer stands
+    const absent = projected(regular({ seasonPlayed: 0.25, age: 27, batting: [bat(2030, 168, 2.2)], schedule: { games: 162, bySeason: {}, firstSeason: 2000 } }));
+    expect(absent.seasons[1].sides[0].usage.central).toBeLessThan(next.central);
+  });
+
+  it('the rest of this season is in-season: a player at his pace keeps it where this season\'s games show playing time holds, and close to it where they measure a small loss', () => {
+    const relief = reliever({ schedule: fullSchedule, pitching: [arm(2027, 270, 0.9, 66, 0), arm(2028, 270, 0.9, 66, 0), arm(2029, 270, 0.9, 66, 0), arm(2030, 81, 0.27, 20, 0)] });
+    const pace = 270 * 0.7;
+    const holds = projected({ ...relief, inSeason: { continuation: { hitter: 1, starter: 1, reliever: 1 }, measuredShare: 0.15, games: 24, note: 'test' } });
+    // No playing time lost in this season's games so far: the rest of it is his pace, never next season's attrition
+    expect(holds.seasons[0].sides[0].usage.central).toBeGreaterThan(0.97 * pace);
+    expect(holds.seasons[0].sides[0].usage.central).toBeLessThanOrEqual(pace + EPS);
+    const loses = projected({ ...relief, inSeason: { continuation: { hitter: 0.97, starter: 0.97, reliever: 0.97 }, measuredShare: 0.15, games: 24, note: 'test' } });
+    // Losing 3% of playing time per 15% of a season: about 87% of pace holds over the 70% left
+    expect(loses.seasons[0].sides[0].usage.central).toBeGreaterThan(0.8 * pace);
+    // Not measured: keeping his pace stays inside the band, and the season says so
+    const unmeasured = projected(relief);
+    expect(unmeasured.seasons[0].sides[0].usage.high).toBeGreaterThanOrEqual(0.95 * pace);
+    expect(unmeasured.seasons[0].coverage.observed).toBeNull();
+    expect(unmeasured.seasons[0].coverage.note).toMatch(/not measured/i);
+  });
+
+  it('a season lost to injury is never read as evidence of less playing time: the central reads his healthy playing time, the band reaches the lost season\'s reading (owner, 2026-09-23)', () => {
+    const lines = [arm(2027, 800, 4.0, 32, 32), arm(2028, 790, 3.6, 32, 32), arm(2030, 10, 0.1, 1, 1)];
+    const healthyLines = [arm(2027, 800, 4.0, 32, 32), arm(2028, 790, 3.6, 32, 32), arm(2029, 780, 3.8, 32, 32), arm(2030, 240, 1.1, 10, 10)];
+    const injury = { injured: true, daysLeft: 20, careerEnding: false, seasonDaysLeft: 130, seasonDays: 186, offseasonDays: 179, injuredThisSeason: true };
+    const lost = projected(starter({ pitching: lines, injury, schedule: fullSchedule }));
+    const healthy = projected(starter({ pitching: healthyLines, injury, schedule: fullSchedule }));
+    const read = projected(starter({ pitching: lines, injury: { ...injury, injured: false, daysLeft: 0, injuredThisSeason: false }, schedule: fullSchedule }));
+    // Next season: close to the healthy reading, well above the reading that takes the lost season as evidence
+    const next = (p: PlayerProduction) => p.seasons[1].sides[0].usage.central;
+    expect(next(lost)).toBeGreaterThan(0.85 * next(healthy));
+    expect(next(lost)).toBeGreaterThan(next(read));
+    // ...while the band still reaches the reading with the lost season
+    expect(lost.seasons[1].wins.low).toBeLessThanOrEqual(read.seasons[1].wins.low + EPS);
+    expect(lost.seasons[1].notes.join(' ')).toMatch(/lost to injury/i);
+  });
+
+  it('days out that end before Opening Day cost nothing; after the last game they fall in the next season (the calendar\'s edges)', () => {
+    const spring = projected(star({ seasonPlayed: 0, injury: { injured: true, daysLeft: 2, careerEnding: false, seasonDaysLeft: 186, seasonDays: 186, daysToOpening: 20, offseasonDays: 179 } }));
+    const base0 = projected(star({ seasonPlayed: 0 }));
+    expect(spring.seasons[0].wins).toEqual(base0.seasons[0].wins);
+    expect(spring.seasons[0].notes.join(' ')).toMatch(/injur/i);
+    const done = projected(star({ seasonPlayed: 1, injury: { injured: true, daysLeft: 300, careerEnding: false, seasonDaysLeft: 0, seasonDays: 186, daysToOpening: 0, offseasonDays: 150 } }));
+    const base1 = projected(star({ seasonPlayed: 1 }));
+    // 150 days of off-season, then 150 of next season's 186
+    expect(done.seasons[1].wins.central).toBeLessThan(base1.seasons[1].wins.central);
+    expect(done.seasons[1].notes.join(' ')).toMatch(/injur/i);
+  });
+
+  it('a stated injury is always named in the basis, even where it moved no number', () => {
+    const p = projected(thin({ injury: { injured: true, daysLeft: null, careerEnding: true, seasonDaysLeft: null, seasonDays: null } }));
+    for (const s of p.seasons) expect(s.notes.join(' '), `${s.season}`).toMatch(/career-ending/i);
+    const unknown = projected(star({ injury: { injured: true, daysLeft: null, careerEnding: false, seasonDaysLeft: 130, seasonDays: 186, durationNote: 'injury_left 1000 is held by 54 injured players' } }));
+    expect(unknown.seasons[0].notes.join(' ')).toMatch(/not established/);
+    expect(unknown.seasons[0].notes.join(' ')).toContain('injury_left 1000');
+    // An unestablished duration moves no central
+    const base = projected(star());
+    expect(unknown.seasons[0].wins.central).toBeCloseTo(base.seasons[0].wins.central, 9);
+  });
+
+  it('a listed pitcher\'s batting is not a hitter\'s line: it is never projected as a side', () => {
+    const p = projected(starter({ batting: [bat(2027, 70, -0.6), bat(2028, 65, -0.5), bat(2029, 55, -0.4)], listed: { position: 1, role: 11 } }));
+    expect(p.basis.sides.map((s) => s.side)).toEqual(['pitching']);
+    expect(p.basis.notProjected.map((s) => s.side)).toEqual(['batting']);
+    expect(p.basis.notProjected[0].reason).toMatch(/listed pitcher/i);
+    // A listed two-way player (a field position with a pitching role) keeps both sides
+    const twoWay = projected(starter({ batting: regular().batting, listed: { position: 10, role: 11 } }));
+    expect(twoWay.basis.sides.map((s) => s.side).sort()).toEqual(['batting', 'pitching']);
+  });
+
+  it('the same-time ratings never undo the results regression: a player whose ratings imply exactly his results gets (almost) the results-only rate', () => {
+    const input = regular();
+    const results = projected(input);
+    const observed = results.basis.sides[0].observedRate!;
+    const k = PRODUCTION_PRIOR.kinds.hitter;
+    const blended = projectProductionWith({ ...input, abilityPrior: { batting: { rate600: observed, variance600: (k.noise600 * 600) / k.stabilization, path600: [0, 0, 0, 0, 0, 0, 0], pathVariance600: [0, 0, 0, 0, 0, 0, 0] } } }, PRODUCTION_PRIOR, results.basis.model);
+    expect(blended.basis.source).toBe('results_and_ratings');
+    expect(Math.abs(blended.basis.sides[0].regressedRate - results.basis.sides[0].regressedRate)).toBeLessThan(0.05);
+  });
+
+  it('observed coverage belongs to the estimator served: a projection that leans on ratings, and the rest of a season under way, are not measured', () => {
+    const observed = [1, 2, 3, 4, 5, 6, 7].map((horizon) => ({ horizon, cases: 500, outer: 0.81, inner: 0.52 }));
+    const using: ProductionModelInForce = {
+      model: PRODUCTION_PRIOR,
+      provenance: { source: 'save_fit', label: 'test fit', stamp: { status: 'calibrated', basis: 'test', run: 'test' }, fitId: 'test', priorWeight: 0, observed },
+    };
+    const k = PRODUCTION_PRIOR.kinds.hitter;
+    const blended = projectProductionWith({ ...regular(), abilityPrior: { batting: { rate600: 2.5, variance600: (k.noise600 * 600) / k.stabilization, path600: [0, 0, 0, 0, 0, 0, 0], pathVariance600: [0, 0, 0, 0, 0, 0, 0] } } }, using.model, using.provenance);
+    expect(blended.basis.source).toBe('results_and_ratings');
+    for (const s of blended.seasons) {
+      expect(s.coverage.observed, `${s.season}`).toBeNull();
+      expect(s.coverage.note, `${s.season}`).toMatch(/not measured/i);
+    }
+    expect(blended.seasons[2].coverage.note).toMatch(/results-only/i);
+    // Results alone: the season under way is not measured; later seasons carry the fit's figure at their own horizon
+    const results = projectProduction(regular(), using);
+    expect(results.seasons[0].coverage.observed).toBeNull();
+    expect(results.seasons[1].coverage.observed).not.toBeNull();
+    expect(results.seasons[1].coverage.note).toMatch(/1\.7|interpolated/);
+  });
+
+  it('a proneness playing-time effect applies only at the horizons it was measured at (1 to 3)', () => {
+    const prone: ProductionModelInForce = {
+      model: { ...PRODUCTION_PRIOR, proneness: { cuts: [59, 86], usage: { hitter: [1, 1, 0.8], pitcher: [1, 1, 1] }, aging: { hitter: [[0, 0], [0, 0], [0, 0]], pitcher: [[0, 0], [0, 0], [0, 0]] }, ageSplit: 30, findings: [] } },
+      provenance: { source: 'save_fit', label: 'test fit', stamp: { status: 'calibrated', basis: 'test', run: 'test' }, fitId: 'test', priorWeight: 0 },
+    };
+    const none: ProductionModelInForce = { ...prone, model: { ...PRODUCTION_PRIOR, proneness: null } };
+    const a = projectProduction({ ...regular(), proneness: 120 }, prone);
+    const b = projectProduction({ ...regular(), proneness: 120 }, none);
+    expect(a.seasons[1].wins.central).toBeLessThan(b.seasons[1].wins.central);
+    expect(a.seasons[5].wins.central).toBeCloseTo(b.seasons[5].wins.central, 9);
+  });
+});
+
+describe('expected production through the reader (hardening, 2026-09-23): the export as it varies', () => {
+  const BATTER = 9101;
+  const PITCHER = 9102;
+  const LINE = `INSERT INTO players_career_batting_stats (player_id, year, team_id, league_id, level_id, split_id, pa, war) VALUES (?, ?, ?, ?, ?, 1, ?, ?)`;
+
+  afterAll(() => {
+    db.prepare(`DELETE FROM players_career_batting_stats WHERE player_id IN (${BATTER}, ${PITCHER})`).run();
+    db.prepare(`DELETE FROM players_career_pitching_stats WHERE player_id IN (${BATTER}, ${PITCHER})`).run();
+    db.prepare(`DELETE FROM team_history_record WHERE year BETWEEN 2011 AND 2019`).run();
+    db.prepare(`DELETE FROM leagues WHERE league_id = 300`).run();
+  });
+
+  it('a season is measured against its neighbours\' schedules, never today\'s: a league that lengthened its schedule keeps its history, and a short season is still short', () => {
+    const line = db.prepare(LINE);
+    for (let y = 2011; y <= 2019; y += 1) {
+      line.run(BATTER, y, IDS.mlbTeam, IDS.league, 1, 400, 2);
+      for (const team of [IDS.mlbTeam, IDS.otherMlbTeam]) {
+        db.prepare(`INSERT INTO team_history_record (team_id, year, g, w, l, pct, pos, gb) VALUES (?, ?, ?, 50, 50, .5, 1, 0)`).run(team, y, y === 2015 ? 40 : 100);
+      }
+    }
+    const seasons = leagueSeasons(IDS.league, 2019, 162).filter((s) => s.season >= 2011 && s.season <= 2019);
+    for (const s of seasons.filter((x) => x.season !== 2015)) expect(s.scheduleShare, `${s.season}`).toBeGreaterThan(0.9);
+    expect(seasons.find((s) => s.season === 2015)!.scheduleShare).toBeLessThan(0.5);
+    expect(seasons.find((s) => s.season === 2012)!.games).toBe(100);
+  });
+
+  it('one missing column fails one side only: the hitters are still read when the pitching table lacks a column', () => {
+    db.prepare(LINE).run(BATTER, 2029, IDS.mlbTeam, IDS.league, 1, 600, 3);
+    db.prepare(`INSERT INTO players_career_pitching_stats (player_id, year, team_id, league_id, level_id, split_id, bf, g, gs, war) VALUES (?, 2029, ?, ?, 1, 1, 700, 30, 30, 3)`).run(PITCHER, IDS.mlbTeam, IDS.league);
+    db.exec(`ALTER TABLE players_career_pitching_stats RENAME COLUMN bf TO bf_hidden`);
+    try {
+      const lines = majorLeagueLines([BATTER, PITCHER], 2027, 2030, null);
+      expect(lines.unavailable).toBeNull();
+      expect(lines.sides.pitching).toMatch(/bf/);
+      expect(lines.sides.batting).toBeNull();
+      expect(lines.byPlayer.get(BATTER)?.batting.length).toBeGreaterThan(0);
+    } finally {
+      db.exec(`ALTER TABLE players_career_pitching_stats RENAME COLUMN bf_hidden TO bf`);
+    }
+  });
+
+  it('an independent top-level league whose level is not 1 has its majors at its own level', () => {
+    db.prepare(`INSERT INTO leagues (league_id, name, abbr, parent_league_id, league_level, season_year) VALUES (300, 'Independent', 'IND', 0, 2, 2030)`).run();
+    db.prepare(LINE).run(BATTER, 2030, IDS.mlbTeam, 300, 2, 300, 1.5);
+    const lines = majorLeagueLines([BATTER], 2030, 2030, null);
+    expect(lines.byPlayer.get(BATTER)?.batting.find((l) => l.season === 2030)?.opportunities).toBe(300);
+    const own = majorLeagueLines([BATTER], 2030, 2030, 300);
+    expect(own.byPlayer.get(BATTER)?.batting[0]?.opportunities).toBe(300);
+  });
+
+  it('the schedule itself states the season\'s length where the rules row does not', () => {
+    const insert = db.prepare(`INSERT INTO games (game_id, home_team, away_team, date, played, league_id) VALUES (?, ?, ?, ?, ?, ?)`);
+    for (let g = 0; g < 8; g += 1) insert.run(990_000 + g, IDS.mlbTeam, IDS.otherMlbTeam, `2030-4-${g + 1}`, g < 3 ? 1 : 0, IDS.league);
+    try {
+      const s = scheduledGames(IDS.league, 2);
+      expect(s).not.toBeNull();
+      expect(s!.perClub).toBe(8);
+      expect(s!.played).toBe(3);
+    } finally {
+      db.prepare(`DELETE FROM games WHERE game_id >= 990000 AND game_id < 990008`).run();
+    }
+  });
+
+  it('a days-out figure the export holds for many injured players at one value, contradicted by their own state, is not read as days', () => {
+    const had = new Set((db.prepare(`PRAGMA table_info(players)`).all() as Array<{ name: string }>).map((c) => c.name));
+    const added = ['injury_is_injured', 'injury_left', 'injury_dtd_injury'].filter((c) => !had.has(c));
+    for (const c of added) db.exec(`ALTER TABLE players ADD COLUMN ${c} INTEGER`);
+    const insert = db.prepare(`INSERT INTO players (player_id, first_name, last_name, age, position, role, retired, injury_is_injured, injury_left, injury_dtd_injury) VALUES (?, 'In', 'Jured', 28, 6, 0, 0, 1, ?, ?)`);
+    try {
+      for (let i = 0; i < 12; i += 1) insert.run(95_000 + i, 1000, i < 4 ? 1 : 0);
+      // A long, real injury held by one player is days
+      insert.run(95_100, 400, 0);
+      const sentinels = injuryDurationSentinels(10, 366);
+      expect([...sentinels.keys()]).toEqual([1000]);
+      expect(sentinels.get(1000)).toMatch(/12 injured players, 4 of them day-to-day/);
+    } finally {
+      db.prepare(`DELETE FROM players WHERE player_id >= 95000 AND player_id < 95200`).run();
+      for (const c of added) db.exec(`ALTER TABLE players DROP COLUMN ${c}`);
+    }
+  });
+});
+
+describe('expected production (hardening, 2026-09-23): the fallback prior in another WAR environment', () => {
+  it('under the prior, a thin record in a league with a different WAR scale is regressed toward that league\'s own mean', () => {
+    const league = { kinds: { hitter: { mean600: 0.8, spread600: PRODUCTION_PRIOR.kinds.hitter.rateScale600 * 0.4, opportunities: 50_000, ceiling: null } } };
+    const adapted = adaptPriorToLeague(PRODUCTION_PRIOR, league, { hitter: PRODUCTION_PRIOR.kinds.hitter.rateScale600 });
+    const using: ProductionModelInForce = { model: adapted.model, provenance: { source: 'fallback_prior', label: adapted.note ?? '', stamp: { status: 'provisional', basis: 'test', run: null }, fitId: null, priorWeight: 1 } };
+    const low = (war: number) => thin({ batting: [bat(2029, 70, war * 0.4), bat(2030, 45, 0.04)] });
+    const p = projectProduction(low(0.4), using);
+    const unadapted = projectProduction(low(0.4));
+    expect(Math.abs(p.basis.sides[0].regressedRate - 0.8)).toBeLessThan(Math.abs(unadapted.basis.sides[0].regressedRate - 0.8));
+    expect(Math.abs(p.basis.sides[0].regressedRate - 0.8)).toBeLessThan(0.6);
+    expect(adapted.note).toMatch(/league's own mean/);
+    // ...and its noise shrinks with its WAR scale: the band is narrower in a league whose wins are fewer
+    expect(adapted.model.kinds.hitter.noise600).toBeLessThan(PRODUCTION_PRIOR.kinds.hitter.noise600);
   });
 });
