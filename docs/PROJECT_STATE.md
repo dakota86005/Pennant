@@ -283,11 +283,12 @@ carry indeterminate results as such (`indeterminate` lists and recommendation),
 never as approval, rejection, protection, or a hold. Philosophy cannot resolve
 an unknown.
 
-Not yet done: scouting snapshots use their own composite; the free-agent
-surface still reads `players_value` (the player
-card and Contracts stopped in Player Value phase 6a, the Trade Center in 6b, and
-Org Comparison, the Roster's scouting column and the Lineup in 6d; the Roster's
-rating bars still read the rating columns directly, outside the adapter); whether
+Not yet done: scouting snapshots use their own composite; no product surface
+reads `players_value` any longer (the player card and Contracts stopped in
+Player Value phase 6a, the Trade Center in 6b, Free Agents and the AI's value
+context in 6c, and Org Comparison, the Roster's scouting column and the Lineup in
+6d; `valuation.ts` still holds the unused readers until the cleanup, and the
+Roster's rating bars still read the rating columns directly, outside the adapter); whether
 `players_value.oa`/`pot` are the organization's scouted view is unknowable from
 the repository; the farm workspaces do not yet render operations' indeterminate
 candidates. The provenance of every rating field is tabulated in
@@ -374,7 +375,7 @@ Present on `main` (D-023; research in [RIGHTS_RESEARCH.md](RIGHTS_RESEARCH.md)):
 Not done, by design: rights for IL activation, Rule 5, re-optioning after the
 last option year, rehab returns, claims, refusals, trades (all `indeterminate`).
 
-## Implemented Player Value (phases 1, 2, 3a, 3b, 4a, 4b, 5a, 5b and 6a)
+## Implemented Player Value (phases 1, 2, 3a, 3b, 4a, 4b, 5a, 5b, 6a, 6b and 6c)
 
 D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
 
@@ -727,8 +728,8 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   the card's header and the one-player value routes read the export's freshness
   (`freshnessCue`, `server/dataStatus.ts`) and hand it to Player Value as
   `currentState`; the page and the header say "As of <game date>" and when the
-  export is behind the save or could not be checked. Free Agents keeps its
-  percentiles until its own migration (`TIP_VALUE`/`TIP_TALENT` moved there).
+  export is behind the save or could not be checked. Free Agents kept its
+  percentiles until its own migration (6c, below).
 - **The Trade Center** (phase 6b, 2026-09-24; `server/playerValueTrade.ts`, pure;
   PLAYER_VALUE.md Part 8, consumer 3): a deal is read on Player Value.
   `POST /api/trade/analyze` (`trade.ts` `analyzeTrade`) serves both sides'
@@ -746,6 +747,26 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   and trade talk read the same analysis; the AI's trade context carries the
   decomposition, and the desk gives a one-line "Read", no accept-or-reject line.
   `trade.ts` and `tradingblock.ts` read no `players_value`, rating or percentile.
+- **Free Agents and the AI's value context** (phase 6c, 2026-09-24; PLAYER_VALUE.md
+  Part 8, consumer 4): `GET /api/free-agents/:orgId` (`freeagents.ts`
+  `computeFreeAgents`) lists the players no club holds in the league and everyone
+  the control timeline finds reaching free agency after this season (no value cut),
+  each with his age, scouted tools (now → ceiling, through `scoutedEvidence.ts`),
+  expected wins this season and next, and a season of his production next season at
+  the league's market (`marketValueOf` in `playerValueSurplus.ts`: the minimum plus his
+  wins × the price of a win in force, a band; not an asking price), ordered by expected
+  wins next season, unknown last. The Value and Talent percentiles, the 40th-percentile
+  cut and "fills hole" on OOTP's value are gone. The club's thinnest positions are
+  `server/positionNeeds.ts` (each position's best player by expected wins, shown),
+  replacing `valuation.ts`'s `rosterHoles` for Free Agents, the draft board and the
+  trade desk. The page (`src/pages/FreeAgents.tsx`) follows Contracts: list chips,
+  filters (side, position, age, thin spots, name), sortable headers with hovers, a
+  scrolling table, designed states. The percentile note is gone from the briefing and
+  chat prompts (and from `valuation.ts`); they are told what Pennant's figures are and
+  to produce no value of their own; the free-agents tool is trimmed in its stated
+  order. A-20: Payroll (`computePayroll`), Free Agents and the Trade Center
+  (`analyzeTrade`, the fits, the desk) pass the export's freshness to Player Value and
+  show "As of <game date>" with the warning (`src/FreshnessCue.tsx`).
 - **Org Comparison, the Roster's scouting column and the Lineup** (phase 6d,
   2026-09-24; PLAYER_VALUE.md Part 8, consumers 5 and 6): Org Comparison
   (`franchise.ts` `computeOrgComparison`, `src/pages/OrgComparison.tsx`) shows
@@ -772,8 +793,9 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   `productionCone` (geometry, render and theme tokens), `playerValueSurplus`,
   `playerValueInvariants` and `valueSection` (phase 5a), `playerValueLens` and
   `playerValueWinValue` (phase 5b), `playerValueTrade`, `tradeAnalysis`,
-  `tradeCenter` and `tradingBlock` (phase 6b), `rosterScouted`, `lineupEvidence`
-  and `orgComparison` (phase 6d) and `playerValueBoundary`
+  `tradeCenter` and `tradingBlock` (phase 6b), `freeAgents`, `aiValueContext` and
+  `pageFreshness` (phase 6c), `rosterScouted`, `lineupEvidence` and `orgComparison`
+  (phase 6d) and `playerValueBoundary`
   (since the hardening it reads the source through the TypeScript parser, and
   each of its hardened checks was shown to catch a deliberate mutation; a known
   violation owned by another fix is listed with its finding and must still be
@@ -788,9 +810,9 @@ snapshots allow), a lens that reads the club's value of a win (an owner question
 model's wild-card route for a division leader, personality's effect on price (it moves no number
 until observed signings are read against it), a per-import store (everything is computed per request; see
 Part 7), and the rest of the consumer migration that deletes `players_value` reads
-(phase 6: Free Agents; the card
-and Contracts are done, 6a, the Trade Center, 6b, and Org Comparison, the Roster's
-scouting column and the Lineup, 6d). The calibrated constants of other subsystems are
+(phase 6 is done: the card and Contracts, 6a, the Trade Center, 6b, Free Agents with
+the AI's value context, 6c, and Org Comparison, the Roster's scouting column and the
+Lineup, 6d; `valuesByPlayer` and `mlbPercentiler` are deleted in the cleanup). The calibrated constants of other subsystems are
 not yet fitted per save (D-053; ROADMAP). On the Arizona import 6,952 of 8,009 held players have indeterminate later
 seasons because what follows a minor-league contract is not established from
 the export, and 494 meet a free-agency line inside this season's projection.

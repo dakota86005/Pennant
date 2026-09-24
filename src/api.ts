@@ -836,30 +836,6 @@ export interface ContractsResponse {
   players: ContractRow[];
 }
 
-export interface FreeAgentRow {
-  player_id: number;
-  name: string;
-  age: number;
-  positionName: string;
-  team: string | null;
-  overallPct: number | null;
-  talentPct: number | null;
-  lastSalary: number | null;
-}
-
-export interface FreeAgentsResponse {
-  finances: ClubFinanceCards | null;
-  holes: Array<{ position: number; positionName: string; bestValue: number | null }>;
-  currentFAs: FreeAgentRow[];
-  upcomingFAs: FreeAgentRow[];
-  /** Expiring deals whose control after this season the export cannot establish. */
-  upcomingIndeterminate?: number;
-  /** Contracts whose next season is an option or an opt-out: whether he reaches the market is still to be decided. */
-  upcomingUndecided?: number;
-  /** Everyone reaching free agency after this season, before the value cut the list applies. */
-  upcomingLeaving?: number;
-}
-
 export interface LineupSlot {
   slot: number;
   player_id: number;
@@ -972,7 +948,6 @@ export interface OrgComparisonResponse {
 
 export const getContracts = (orgId: number) => json<ContractsResponse>(`/api/contracts/${orgId}`);
 export const getOrgComparison = (orgId: number) => json<OrgComparisonResponse>(`/api/org-comparison/${orgId}`);
-export const getFreeAgents = (orgId: number) => json<FreeAgentsResponse>(`/api/free-agents/${orgId}`);
 export const getLineup = (
   teamId: number,
   vs: 'r' | 'l',

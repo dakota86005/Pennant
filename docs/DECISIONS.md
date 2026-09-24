@@ -1246,7 +1246,10 @@ controlled seasons, measured on each import, `playerValueCost.ts`; phase 4b: the
 `playerValueSignings.ts` and the third writer `playerValueContractStore.ts`; phase 5a: the neutral contract surplus and the
 retention margin, `playerValueSurplus.ts`, on the player card; phase 5b: the philosophy lens, `playerValueLens.ts`, and the
 club's value of a win, `playerValueWinValue.ts`; phase 6b, the first consumer of the migration built here: the Trade Center,
-the trading block and the AI's trade context read Player Value, `playerValueTrade.ts`, and no `players_value`).
+the trading block and the AI's trade context read Player Value, `playerValueTrade.ts`, and no `players_value`; phase 6c:
+Free Agents, the club's thinnest positions (`positionNeeds.ts`) and the AI's value context read Player Value, a free agent's
+figure is his production at the market (`marketValueOf`), and Payroll, Free Agents and the Trade Center say how current the
+export is).
 `server/playerValue.ts` (the entry point), `playerValueContract.ts`, `playerValueControl.ts`,
 `playerValueFinances.ts`, `playerValueHistory.ts`, `playerValueProduction.ts`, `playerValueProductionFit.ts`,
 `playerValueRatings.ts` and `playerValueRatingsFit.ts` (phase 3b), the two writers (`playerValueSnapshot.ts` and
@@ -1552,6 +1555,32 @@ Part 9, Part 11, Part 12).**
   as `currentState` and states the export's game date, and says when it is behind the save or could not be checked
   (`freshnessCue`); so far Contracts, the card and the one-player value routes. The other consumers carry it with their
   own migration.
+
+**Amended 2026-09-24 (phase 6c: Free Agents and the AI's value context migrated; freshness on Payroll, Free Agents and the
+Trade Center; PLAYER_VALUE.md Part 8, Part 9).**
+
+- **A player no club holds is valued as his production at the market.** He has no contract and no control, so no
+  contract value and no value of keeping him (the surplus is `not_held`). What Player Value serves for him is one season's
+  production value, the same figure the contract surplus is built on (Part 5): the league minimum (what a replacement at
+  0 WAR costs, the price's own zero) plus his expected wins that season × the price of a win in force, held flat, edge
+  against edge, its central from the components' centrals, undiscounted (one season). Free Agents shows it for next season
+  (`marketValueOf`, in `playerValueSurplus.ts`, served through the entry point with the league's market,
+  `surplusMarketOf`). It is not an asking price, an offer or his worth to any one club, and no consumer computes it:
+  a consumer multiplying wins by a price is a boundary failure (`playerValueBoundary.test.ts`). Unknown production, or a
+  league with no price or minimum, leaves it unknown with the reason, never $0; a low edge below the minimum is shown, never
+  clamped (his production may be below a replacement's).
+- **No hidden cut, no hidden score.** Free Agents lists every player the control timeline finds reaching free agency after
+  this season (the old `overallPct >= 40` cut and the value percentiles are deleted), ordered by expected wins next season,
+  a shown figure, unknown last. The club's thinnest positions (`positionNeeds.ts`, replacing `valuation.ts`'s
+  `rosterHoles`, which ranked by OOTP's overall value) are read by each position's best player's expected wins this
+  season, each figure shown, a position with nobody valued named apart; one reading for Free Agents, the draft board and
+  the trade desk.
+- **The AI explains the same figures.** The note that explained OOTP's value percentiles to the prompts is deleted (no
+  context carries one); the briefing and the staff chat are told what Pennant's value figures are, to quote them as ranges,
+  to produce no value number of their own and that they recommend nothing (D-001).
+- **Freshness reaches the GM on Payroll, Free Agents and the Trade Center** (A-20), as on Contracts: each hands the export's
+  freshness to Player Value as `currentState` and shows the game date with the warning where the export is behind the save
+  or could not be checked. The assistants' contexts carry the date and the warning too.
 
 **Amended 2026-09-24 (phase 6d: Org Comparison, the Roster's scouting column and the Lineup; PLAYER_VALUE.md Part 8, Part 9).**
 

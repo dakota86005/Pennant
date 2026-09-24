@@ -32,7 +32,8 @@ interface DraftData {
    * own school competitions and eligibility has to be read from the year group.
    */
   poolRule?: 'flag' | 'class';
-  needs: Array<{ position: number; positionName: string; bestValue: number | null }>;
+  /** Every fielding position, thinnest first by its best player's expected wins (Player Value); nobody valued: `best` null, last. */
+  needs: Array<{ position: number; positionName: string; best: { player_id: number; name: string; wins: number } | null }>;
   prospects: DraftProspect[];
 }
 
@@ -169,7 +170,7 @@ export function Draft({ orgId }: { orgId: number }) {
   const shortlist = useMemo(() => {
     if (!data) return { best: [] as DraftProspect[], fits: [] as DraftProspect[] };
     const best = data.prospects.slice(0, 5);
-    const thin = new Set(data.needs.slice(0, 3).map((h) => h.positionName));
+    const thin = new Set(data.needs.filter((h) => h.best !== null).slice(0, 3).map((h) => h.positionName));
     const chosen = new Set(best.map((p) => p.player_id));
     const fits = data.prospects
       .filter((p) => thin.has(p.positionName) && !chosen.has(p.player_id))
@@ -244,7 +245,7 @@ export function Draft({ orgId }: { orgId: number }) {
           {shortlist.fits.length > 0 && (
             <div>
               <strong className="muted">
-                Best at your thinnest spots ({data.needs.slice(0, 3).map((h) => h.positionName).join(', ')})
+                Best at your thinnest spots ({data.needs.filter((h) => h.best !== null).slice(0, 3).map((h) => h.positionName).join(', ')})
               </strong>
               <table className="mini">
                 <tbody>

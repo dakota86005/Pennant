@@ -582,3 +582,52 @@ export function surplusOf(input: SurplusInput): PlayerSurplus {
     excluded,
   };
 }
+
+// ── a season of production at the market (phase 6c) ──────────────────────────
+
+/**
+ * What a season of a player's production costs at the league's market (phase 6c; PLAYER_VALUE.md Part 8, consumer 4): the
+ * production value the contract surplus is built on, for one season and undiscounted. A player no club holds has no contract
+ * and no control, so no contract value (`not_held`); what can be said is what the market pays for the wins he is expected to
+ * produce: the league minimum (what a replacement at 0 WAR costs, the price's own zero) plus his wins × the price of a win in
+ * force, held flat (owner, 2026-09-24), edge against edge, its central from the components' centrals. It is not what he would
+ * ask, what a club would offer or what he is worth to any one club: none of those is in the export. Unknown stays unknown: a
+ * season with no production, or a league with no price or minimum, has no figure and says why, never $0.
+ */
+export interface MarketValue {
+  status: 'known' | 'unknown';
+  season: number | null;
+  low: number | null;
+  central: number | null;
+  high: number | null;
+  /** Why there is no figure; null where there is one. */
+  reason: string | null;
+  /** How it was read, in words (the basis), or the reason where unknown. */
+  text: string;
+}
+
+export function marketValueOf(input: { production: PlayerProduction; market: SurplusMarket | null; season: number | null }): MarketValue {
+  const { production, market, season } = input;
+  const unknown = (reason: string): MarketValue => ({ status: 'unknown', season, low: null, central: null, high: null, reason, text: reason });
+  if (season === null) return unknown("The league's season is not established, so no season can be priced.");
+  if (production.status !== 'projected') return unknown(production.reason ?? 'His production is not established.');
+  const p = production.seasons.find((s) => s.season === season);
+  if (!p) {
+    const pending = production.notEstablished.find((s) => s.season === season);
+    return unknown(pending?.reason ?? `His production in ${season} is not projected.`);
+  }
+  if (market === null) return unknown("His league's contract regime is unknown, so neither the price of a win nor the minimum salary can be read.");
+  const price = market.price.value;
+  if (price === null) return unknown(`No price of a win: ${reasonOf(market.price).replace(/\.$/, '')}.`);
+  const minimum = market.minimumSalary.value;
+  if (minimum === null) return unknown(`The league minimum salary is not established (${reasonOf(market.minimumSalary).replace(/\.$/, '')}).`);
+  const W = p.wins;
+  const figure = plus(point(minimum), { ...times(W, price), central: W.central * price.central });
+  return {
+    status: 'known', season, low: figure.low, central: figure.central, high: figure.high, reason: null,
+    text: `${season}: the league minimum (${money(minimum)}, what a replacement at 0 WAR costs) plus his projected wins ` +
+      `(${wins(W.central)}, could be ${wins(W.low)} to ${wins(W.high)}) × the price of a win in force (${market.label}, ` +
+      `${money(price.central)} a win, band ${money(price.low)} to ${money(price.high)}, held flat), edge against edge. What this ` +
+      "league's market pays for that production: not an asking price, not an offer, and not his worth to any one club.",
+  };
+}

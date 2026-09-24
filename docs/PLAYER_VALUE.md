@@ -8,7 +8,8 @@ reality and surplus value. Decision: [D-052](DECISIONS.md) (accepted; owner answ
 per-import market snapshot; expected production in wins from major-league results and scouted ratings, fitted per save
 under D-053; the cost of controlled seasons, measured on each import; the measured price of a win across imports; the
 neutral contract surplus and the retention margin, phase 5a; the philosophy lens and the club's value of a win, phase 5b;
-the player card's header and Contracts migrated, phase 6a; Part 9); the rest of phase 6 is design.** `PROJECT_STATE.md` says
+the player card's header and Contracts migrated, phase 6a; the Trade Center, phase 6b; Free Agents and the AI's value
+context, phase 6c; Part 9); the rest of phase 6 is design.** `PROJECT_STATE.md` says
 what exists; this file says what is to be built and why. The surfaces not yet migrated still read the prohibited
 `players_value` fields for their value figures (Part 8), and they stay as they are until the phase that replaces each
 one; since phase 1 their control and contract facts come from Player Value.
@@ -1282,9 +1283,9 @@ keep an invalid one. The order:
 | 1 | Contracts (`contracts.ts`) — **migrated, phase 6a** | Was: `valuesByPlayer`, `mlbPercentiler`; percentile cut-offs at 70/75 (`recommendOnValue`); `contractsByPlayer`. Now: none | Contract facts, control and cost path, production, surplus and our view, as built (below). The percentile advice deleted; `controlAfterThisSeason` stays as the timeline's reading of next season (hardening F2), no service arithmetic |
 | 2 | Payroll (`payroll.ts`) | Facts only; its control column comes from `controlAfterThisSeason` | The control timeline from concern 2, and club finances from concern 4 |
 | 3 | Trade Center (`trade.ts`, `tradingblock.ts`, AI trade context) — **done (phase 6b, 2026-09-24; below)** | `analyze` summed raw `overall_value`; fits, trade talk, the roster picker, the trading block and the AI context read `overall_value`, `oa`/`pot` and value percentiles | Both sides' value decompositions side by side: each player's contract value and value of keeping him, control season by season with its cost, expected wins. The difference between the sides is shown as a band with its components (owner, Q-8), never as a point, a single score or a verdict. As built: `playerValueTrade.ts` (`tradeValueOf`), read by `trade.ts` and `tradingblock.ts`; fits and the trading block order by expected wins, shown; the AI context carries the decomposition and the desk gives no accept-or-reject line |
-| 4 | Free Agents (`freeagents.ts`) | `players_value` | Expected production and the market price; cost as the market's band |
+| 4 | Free Agents (`freeagents.ts`) — **migrated, phase 6c (2026-09-24; below)** | Was: `valuesByPlayer`, `mlbPercentiler` (Value and Talent percentiles, a 40th-percentile cut on who is listed, the order), `contractsByPlayer` (last salary), `rosterHoles` (OOTP's overall value). Now: none | Expected production and the market price; cost as the market's band. As built: each free agent's expected wins, his scouted tools and a season of his production at the market (`marketValueOf`: the minimum plus his wins × the price of a win in force), everyone reaching the market listed, ordered by expected wins; the thinnest positions by expected wins (`positionNeeds.ts`) |
 | 5 | Org Comparison (`franchise.ts`) — **migrated, phase 6d** | Was: `players_value` joined directly (`overall_value` summed for the roster, `talent_value` for the farm and the under-22s, ranks by each). Now: none | Each club's record, the roster's expected wins for the rest of the season and its contract value, the farm's expected wins next season and its top contributor, OOTP's payroll and budget; each sum its players' served figures combined as independent, unknowns named; no rank (below) |
-| 6 | Player card — **migrated, phase 6a** (`player.ts`); the roster's OA/POT (`api.ts`) and the lineup (`lineup.ts`) — **moved to `scoutedEvidence.ts`, phase 6d**; others (`valuation.ts` `rosterHoles`) | The card: was Value and Talent percentiles, OA/POT from `players_value` and a direct `players_contract` query; now none. Others: `players_value` | The card's header: his contract in a phrase, the Value section's headline, his scouted tools through `scoutedEvidence.ts` (below). The others are classified in phase 6: a read that is not a value question (a lineup's quality of cover) moves to `scoutedEvidence.ts` under its owner, not to Player Value |
+| 6 | Player card — **migrated, phase 6a** (`player.ts`); the roster's OA/POT (`api.ts`) and the lineup (`lineup.ts`) — **moved to `scoutedEvidence.ts`, phase 6d**; `valuation.ts` `rosterHoles` — **replaced, phase 6c** (`positionNeeds.ts`, expected wins) | The card: was Value and Talent percentiles, OA/POT from `players_value` and a direct `players_contract` query; now none. Others: `players_value` | The card's header: his contract in a phrase, the Value section's headline, his scouted tools through `scoutedEvidence.ts` (below). The others are classified in phase 6: a read that is not a value question (a lineup's quality of cover) moves to `scoutedEvidence.ts` under its owner, not to Player Value |
 
 The end state: no production module reads `players_value`, `mlbPercentiler` and `VALUE_PERCENTILE_NOTE` are gone,
 and the evidence boundary test's allow-list for `players_value` is empty.
@@ -1376,7 +1377,8 @@ migrated in one change that deleted their `players_value` reads (`player.ts` and
   `/surplus`, `/our-view`) hand that state to Player Value as `currentState`, so a stale export leaves service,
   control and what rests on them not established, on the page and the card alike, and Player Rights' unverified
   limitation reaches the GM in the date's hover. Payroll, Free Agents and the Trade Center read with the default
-  (`unverified`) until their own migration; on a current export their figures are identical.
+  (`unverified`) until their own migration; on a current export their figures are identical. *Since phase 6c they pass
+  the export's freshness too (below).*
 
 **The Trade Center reads Player Value (phase 6b, 2026-09-24).** `server/playerValueTrade.ts` (pure, `tradeValueOf`) is handed
 each player's neutral valuation exactly as every read serves it and, where the caller has one, our view of him; it returns
@@ -1423,6 +1425,63 @@ club), reads its philosophy from settings at read time and hands the lens's view
   `trade.ts` and `tradingblock.ts` read no `players_value`, `valuesByPlayer`, `mlbPercentiler`, OOTP rating or percentile;
   the trade desk's prompt no longer carries `VALUE_PERCENTILE_NOTE`; the evidence boundary's `players_value` allow-list is
   `valuation.ts` and `franchise.ts`.
+
+**Free Agents and the AI's value context on Player Value (phase 6c, as built, 2026-09-24).** Consumer 4 and the AI's
+value context migrated in one change that deleted their reads: `freeagents.ts`, `rosterops.ts`, `ai.ts` and `chat.ts` name
+no `valuesByPlayer`, `mlbPercentiler`, `contractsByPlayer`, percentile or percentile note; `valuation.ts`'s `rosterHoles`
+and the note are deleted. `valuesByPlayer` and `mlbPercentiler` stay in `valuation.ts` for `api.ts` and `lineup.ts`, which
+migrate separately (phase 6d), and go in the final cleanup (the evidence boundary's indirect-reader list is `valuation.ts`,
+`api.ts`, `lineup.ts`).
+
+- **What a free agent's value means.** A player no club holds has no contract and no control: no contract value and no
+  value of keeping him (his surplus is `not_held`). What can be said, and what a GM weighing a signing needs, is what the
+  market pays for the play he is expected to give: **one season of production value**, the same figure the contract value
+  is built on (5.1), the league minimum (what a replacement at 0 WAR costs, the price's own zero) plus his expected wins ×
+  the price of a win in force, held flat, edge against edge, its central from the components' centrals, undiscounted
+  (`marketValueOf`, pure, in `playerValueSurplus.ts`; the league's market through `surplusMarketOf`, the same market every
+  held player's contract value is read in). Free Agents shows it for **next season**, the first season a signing covers in
+  full, for both lists; the rest of this season is shown as his expected wins only. It is not an asking price, an offer or
+  his worth to any one club (none of those is in the export), and the page's hover says so in one plain paragraph ("What
+  this league's market pays for a season of his expected play in 2027: the league minimum plus his projected wins × what a
+  win costs here…"). Production value against the minimum was chosen over wins × price alone because it is what the price
+  itself measures (salary above the minimum per win) and what the card's contract value already uses, so a free agent's
+  figure and a held player's production value are the same arithmetic; a low edge below the minimum is shown, not clamped
+  (his expected play may be below a replacement's). Unknown production, or a league with no price or minimum, leaves it
+  "not known" with the reason, never $0; in a league without dollars it is not known and says why.
+- **The page** (`src/pages/FreeAgents.tsx`, types in `src/freeAgentsApi.ts`) follows Contracts: the finance cards; "Free
+  agents" with the export's date (`FreshnessCueLine`); one line saying what the figures are and what a win costs here (the
+  price on hover); the club's thinnest positions with each best player and his expected wins; two chips, "Available now"
+  and "Free agents after 2026", switching one table; filters for pitchers or position players, position, age (27 and under,
+  28 to 31, 32 and over), "only our thin spots" and a name search, with a count and "Show everyone"; a table scrolling in
+  its own box, each header a keyboard-reachable sort button with its explanation on hover: player (position, club, a "Thin
+  spot" tag with its reason on hover), age, scouted (now → ceiling, the organization's grades through `scoutedEvidence.ts`,
+  "not scouted" where a grade is missing), this season's wins, next season's wins, next season at the market, and for the
+  second list his salary this season. An unknown is "not known" with its reason on hover and sorts after every known figure
+  in either direction; the default order is the server's (expected wins next season, most first, not known last), said
+  under the table. Players whose reaching the market could go either way, or who have an option or opt-out next season,
+  are counted in one line with the reason on hover. Loading, empty ("No free agents are available in this league right
+  now."), no-match and error (with "Try again") states are designed. No percentile, no signing advice and no method word is
+  in the visible text (`freeAgents.test.ts`).
+- **No hidden cut, no hidden score.** Every player the control timeline finds reaching free agency after this season is
+  listed (the old page kept those above OOTP's 40th value percentile, capped at 80); both lists are ordered by expected wins
+  next season, a shown figure. **The thinnest positions** (`server/positionNeeds.ts`, `positionNeeds`) are each fielding
+  position's best major-league player by his expected wins for the rest of this season, most likely, each figure shown,
+  thinnest first; a position with nobody valued (nobody listed there, or no one whose production is established) is named
+  apart and never read as zero. One reading for Free Agents, the draft board (its "thinnest spots", which now sends each
+  position's best player instead of OOTP's value) and the trade desk's `clubNeeds`; the Trade Center's fits share its
+  depth and weakest-position helpers.
+- **The AI's value context.** The prompts' note on OOTP's value percentiles is deleted (no context carries a percentile
+  any more); the briefing (`briefingSystem`) and the staff chat (`systemPrompt`) carry one plain note instead: Pennant's
+  value figures are its own readings, most likely with a range, a null is not known; quote them as ranges, never produce a
+  value number of your own, and they recommend nothing (D-001, D-052). The free-agents tool describes its figures and hands
+  the model each list in its stated order, trimmed to 40 with "shown" saying how many of how many. The briefing's context
+  and the trade desk's carry the export's date and warning (`dataFreshness`). The roster tool (`get_roster`) still carries
+  the roster's OA/POT until `api.ts` migrates (6d).
+- **A-20 on Payroll, Free Agents and the Trade Center.** `computePayroll`, `computeFreeAgents` and `analyzeTrade` take the
+  data status (default: read now), hand its freshness to Player Value as `currentState` and return it with Player Rights'
+  limitations; each page shows "As of May 16, 2026" and the warning in the same component (`src/FreshnessCue.tsx`), on
+  Payroll above the finance cards and on the Trade Center beside "The difference". The trade fits and the trade desk read
+  with the same state. On a current export every figure is the one the league-wide read serves.
 
 **The Roster's scouting column, the Lineup and Org Comparison (phase 6d, as built, 2026-09-24).** Consumer 5 and the rest of
 consumer 6 migrated in one change that deleted their `players_value` reads: `api.ts` and `lineup.ts` no longer call
@@ -1491,8 +1550,9 @@ cards are Club Finances' figures, a missing one "unknown", never $0.
 | **4b** Measured price and observed awards — **done** (2026-09-23; evidence below, 4.2 to 4.4, CALIBRATION.md section 9) | Observed signings and arbitration awards across imports. The measured price replaces the opening one once its band is narrower (Q-4). Observed awards test and then measure the ladder; reserve-clause renewals are measured. Replacement is measured from freely available talent | On an off-season import, signings and awards are identified and counted. While the measured band is still wider, the opening price stays and says why. The price history is visible |
 | **5a** Neutral surplus and the retention margin — **done** (2026-09-24; evidence below and 5.1) | Concern 5: Part 5's two views, season by season with every component, the owner's 5% discount, one level of replacement on both sides; the card's Value section; the invariants for the card and the league-wide read | The surplus and invariant behavior cases pass; sunk money never raises the retention margin on any player of the save; one valuation whichever read asks; the boundary test passes |
 | **5b** The lens and the win curve — **done** (2026-09-24; evidence below, 4.5 and 6.1) | Part 6's lens, Part 4.5's club value of a win | The lens cases pass. Neutral value is identical under every philosophy. Every lean is named |
-| **6** Consumer migration — **6a done** (2026-09-24: the player card's header and Contracts, Part 8) | Part 8, in order, one consumer per change | Each change deletes that consumer's `players_value` reads. Finally, the `players_value` allow-list is empty. 6a: `player.ts` and `contracts.ts` read none; the boundary's PENDING list is empty; A-20 met for their routes; the sweep's Contracts and card checks pass on the Arizona import (Part 9, below) |
+| **6** Consumer migration — **6a, 6b and 6c done** (2026-09-24: the player card's header and Contracts; the Trade Center; Free Agents and the AI's value context, Part 8) | Part 8, in order, one consumer per change | Each change deletes that consumer's `players_value` reads. Finally, the `players_value` allow-list is empty. 6a: `player.ts` and `contracts.ts` read none; the boundary's PENDING list is empty; A-20 met for their routes; the sweep's Contracts and card checks pass on the Arizona import (Part 9, below) |
 | **6b** The Trade Center — **done** (2026-09-24; evidence below and Part 8) | Consumer 3: the trade analysis, trade fits, offers and trade talk, the trading block and the AI's trade context on Player Value; the difference between the sides as a band with its parts (Q-8) | `trade.ts` and `tradingblock.ts` read no `players_value`; the difference band contains its most likely; an unknown player is named and changes no known sum; the neutral reading is the same under every philosophy and for every viewer |
+| **6c** Free Agents and the AI's value context — **done** (2026-09-24; evidence below and Part 8) | Consumer 4, the club's thinnest positions (`rosterHoles` → `positionNeeds.ts`) and the AI's value context on Player Value; a free agent's production at the market (`marketValueOf`); A-20 on Payroll, Free Agents and the Trade Center | `freeagents.ts`, `rosterops.ts`, `ai.ts` and `chat.ts` read no `players_value` figure or percentile; every listed free agent's wins are production's and his market figure the entry point's; unknowns last; the GM told how current the export is on the three pages |
 | **6d** The Roster's scouting column, the Lineup and Org Comparison — **done** (2026-09-24; evidence below and Part 8) | Consumer 5 and the rest of consumer 6: the Roster shows the scouts' view; the lineup reads every rating through `scoutedEvidence.ts`; Org Comparison on Player Value and objective facts, no hidden score | `api.ts`, `lineup.ts` and `franchise.ts` read no `players_value`; the lineup's choices unchanged where the evidence is the same, every other difference explained; every club's sums equal its players' served figures, unknowns named |
 
 **Phase 6a exit criteria, as met (2026-09-24).** `player.ts` and `contracts.ts` read no `players_value` figure and no
@@ -1783,6 +1843,67 @@ the difference? The alternative is edge to edge (Part 3's default), shown in the
 wider. (2) Should the AI desk give an accept-or-reject line? It no longer does (D-001); its answer opens with a plain "Read".
 (3) Trade fits compare most likely expected wins only; a match can rest on a difference of a few hundredths of a win. Should a
 match need the candidate's range to clear the other club's best, or stay a shown comparison?
+
+**Phase 6c exit criteria, as met (2026-09-24): Free Agents and the AI's value context.** The behavior cases (BEHAVIOR_CASES.md
+"Player Value", phase 6c) are in `freeAgents.test.ts` (14, on a synthetic save with free agents made the way the export writes
+them: both lists and no value cut; wins as production serves them; the market figure the entry point's, the minimum plus wins
+× the price, a band around its most likely; the scouted tools the evidence boundary's; an unknown free agent shown with his
+reason and last in every sort; the thinnest positions by expected wins; no percentile, cut or verdict; the page's visible
+text, sortable headers, scroll box, unknowns, empty, loading and error states; the date and a stale export),
+`aiValueContext.test.ts` (6: the percentile note gone from the server; the briefing's context carrying the card's totals and
+the date; the briefing's and every chat voice's prompt; the free-agents tool's payload and description),
+`pageFreshness.test.ts` (8: Payroll's and the Trade Center's date, a stale export's statuses and the unchecked limitation, the
+panel's and the shared cue's words), `evidenceBoundary.test.ts` (`freeagents.ts` off the indirect-reader list; `freeagents.ts`,
+`rosterops.ts`, `positionNeeds.ts`, `ai.ts` and `chat.ts` name no value field, percentile or note; `valuation.ts` no longer
+holds `rosterHoles` or the note) and `playerValueBoundary.test.ts` (Free Agents and `positionNeeds.ts` migrated consumers; the
+page and its types show no `players_value` figure; `marketValueOf` in the surplus module and no consumer multiplying wins by a
+price). Each was run against `origin/main` (51bbbc8) and failed for the reason expected (no `positionNeeds` module, no
+`FreshnessCue` component, no `briefingContext` or `briefingSystem` export, the note in `ai.ts` and `chat.ts`, `freeagents.ts`
+still reading `valuesByPlayer`, `rosterHoles` in `valuation.ts`, the Free Agents page's percentiles, no `marketValueOf`); one
+case's own reading of who reaches the market was wrong (it missed a timeline that lays out the free-agent season) and was
+corrected after the code ran.
+
+**Every listed free agent's wins are production's, and no payload carries a percentile or a verdict:** the regression sweep
+passes 250 of 250 checks (6b's 205 with 6a's 20 folded back in, and 25 for 6c): every club's Free Agents page (30 pages, 3,491
+rows, 3,462 priced at the market and 29 not known with their reason) lists exactly the players the timeline finds reaching the
+market, in order of expected wins next season with unknowns last; each row's wins this season and next are production's, its
+market figure the entry point's and the minimum plus wins × the price within a dollar, its scouted tools the evidence
+boundary's on the 20–80 scale; no percentile, `players_value` field or verdict word in any payload; each club's thinnest
+positions are `positionNeeds`' with each best player's figure production's; Payroll, Free Agents and the Trade Center say the
+export's date and state; the briefing's context for every club carries the card's totals and the date and no value
+percentile, the trade desk's context none either, and neither the briefing's prompt nor any chat voice's names a percentile.
+On this current export the pages' reading (`current`) serves every player the same figures as the league-wide read. The
+sweep's first run flagged the briefing's context for "percentile": a cost band's basis naming the 90th percentile of the
+save's renewals, a statistic of salaries and not a value percentile; the check was narrowed to value percentiles. Timing: a
+club's Free Agents page about 0.52–0.58 s warm (2.8 s cold, production for the league's 870 major leaguers elsewhere and the
+free agents); Payroll 0.35 s.
+
+**Worked on the Arizona import** (2026-05-16, current; the opening price $7.25M a win, $6.57M–$9.78M; the minimum $780K):
+Arizona's thinnest positions are CF (Jordan Lawlar, 0.5 wins the rest of 2026), 3B (Nolan Arenado, 0.5) and 1B (Pavin Smith,
+0.7). Eleven players are available now, the most productive Tommy Pham (LF, 38; 0.3 wins the rest of 2026, 0.1 in 2027; 2027
+at the market $1.4M, could be −$1.6M to $5.4M) and Gary Sanchez (C, 33; $1.2M, $0.8M to $1.8M); Walker Buehler (P, 31) reads
+$0.4M, could be −$5.1M to $8.2M: a wide range around an expected level just below replacement. 101 players reach free agency
+after 2026 (282 more could go either way, 64 have an option or opt-out next season); the first are Kris Bubic (P, 28, KC; 2.7
+wins in 2027, $20.2M at the market, could be $2.1M to $52.2M), Ian Happ (LF, 31, CHC; 2.6, $19.5M) and Gleyber Torres (2B, 29,
+DET; 2.4, $17.9M); the last, Tyler Austin (1B, 34, CHC), is not known: his club is a major-league one but he has no
+major-league line in the window, so his playing time is not established.
+
+Judgments made in phase 6c beyond the brief: a free agent's figure is production value at the market (minimum plus wins ×
+price), one season, next season, undiscounted, for both lists (the rest of this season as wins only); a low edge below the
+minimum is shown, not clamped; the thinnest positions keep the Trade Center's reading (the rest of this season) so the two
+pages agree; the free-agents tool trims each list to 40 in its stated order and says so; the briefing's and the trade desk's
+contexts carry the export's date; the draft board's "thinnest spots" now come from `positionNeeds` (its page type moved from
+`bestValue` to each position's best player); an export without `free_agent` or `last_league_id` lists no available players
+and says why (the old page failed). `valuesByPlayer` and `mlbPercentiler` stay in `valuation.ts` (the parallel 6d migration
+still needs the first; `mlbPercentiler` now has no production caller) and go in the final cleanup.
+
+**Phase 6c owner questions (open).** (1) A free agent is shown with one season at the market. Should the page also show a
+multi-season reading (say the three seasons a typical deal covers, discounted like contract value)? Recommendation: not yet;
+one season is the clearest reading and multi-year terms are the GM's to set. (2) On this import 282 players "could go either
+way" about reaching the market and are counted, not listed. Should they be listed as a third group ("might reach the market")
+with the reason on each? Recommendation: yes, as its own chip, never mixed into the free agents after 2026. (3) The briefing
+prompt still asks the assistant for a "Recommendation of the Week" heading, older than Player Value. Should it become "Worth a
+look this week" to keep the AI explaining rather than recommending (D-001)? Recommendation: yes.
 
 **Phase 4 owner decisions (2026-09-24).** The owner ruled on the four open questions of the phase 4a and 4b
 reviews (Part 12); the behavior cases are the "phase 4 owner decisions" row, each written first and failing on
@@ -2240,4 +2361,6 @@ The owner answered these on 2026-09-22. Each answer is folded into the part it n
 - **Deferred to phase 6 (2026-09-23, hardening).** A-20 (the `unverified` limitation and data freshness reaching the
   GM on consumer routes) and D-26 (pre-fork consumer routes failing on older export shapes) are consumer-migration
   questions and move with the consumers (Part 8). Phase 6a met A-20 for Contracts, the card and the one-player value
-  routes (Part 8); the other consumers carry it with their own migration. D-26 is still open for them.
+  routes (Part 8); phase 6c for Payroll, Free Agents and the Trade Center; the other consumers carry it with their own
+  migration. D-26 is still open for them (Free Agents now lists no available players, and says why, where the export lacks
+  `free_agent` or `last_league_id`).

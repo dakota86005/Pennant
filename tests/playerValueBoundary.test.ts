@@ -321,7 +321,7 @@ const PENDING: Array<{ check: 'service' | 'contract-query'; file: string; matche
  * Phase 6 (Part 8): the consumers migrated onto Player Value, with their `players_value` reads deleted in the same
  * change. None of them names a `players_value` reader or a figure derived from it, in any spelling; the list only grows.
  */
-const PHASE6_MIGRATED = ['contracts.ts', 'player.ts', 'franchise.ts'];
+const PHASE6_MIGRATED = ['contracts.ts', 'player.ts', 'freeagents.ts', 'positionNeeds.ts', 'franchise.ts'];
 const PLAYERS_VALUE_READERS = /players_value|overall_value|talent_value|\boa_rating\b|\bpot_rating\b|\boaRating\b|\bpotRating\b|valuesByPlayer|mlbPercentiler|VALUE_PERCENTILE_NOTE|overallPct|talentPct|contractsByPlayer/;
 
 /** The matches of a check in a consumer, as text; a pending entry is compared with them exactly. */
@@ -542,7 +542,7 @@ describe('the Player Value boundary', () => {
   });
 
   it('the pages migrated in phase 6 show no players_value figure: the card, its hover and Contracts (Part 8)', () => {
-    for (const file of ['src/playerModal.tsx', 'src/playerHover.tsx', 'src/pages/Contracts.tsx', 'src/PlayerHeaderValue.tsx',
+    for (const file of ['src/playerModal.tsx', 'src/playerHover.tsx', 'src/pages/Contracts.tsx', 'src/PlayerHeaderValue.tsx', 'src/pages/FreeAgents.tsx', 'src/freeAgentsApi.ts',
       // Phase 6d: the Roster's scouting column, the Lineup and Org Comparison
       'src/pages/Roster.tsx', 'src/pages/Lineup.tsx', 'src/pages/OrgComparison.tsx']) {
       const source = fs.readFileSync(path.join(process.cwd(), file), 'utf8');
@@ -550,6 +550,17 @@ describe('the Player Value boundary', () => {
     }
     // ...and Contracts carries no recommendation (D-052: it describes, the GM decides)
     expect(fs.readFileSync(path.join(process.cwd(), 'src/pages/Contracts.tsx'), 'utf8')).not.toMatch(/recommend/i);
+  });
+
+  it('a free agent\'s market figure is Player Value\'s (phase 6c): the surplus module composes it, and no consumer multiplies wins by a price itself', () => {
+    const surplus = code('playerValueSurplus.ts');
+    expect(surplus).toMatch(/export function marketValueOf\(/);
+    for (const file of SERVER_FILES.filter((f) => !VALUE_MODULES.includes(f))) {
+      expect(code(file), file).not.toMatch(/wins?\w*(?:\.\w+)*\s*\*\s*\w*[pP]rice|[pP]rice\w*(?:\.\w+)*\s*\*\s*\w*[wW]ins?\b/);
+    }
+    // ...and it is no asking price and no verdict
+    const fa = code('freeagents.ts');
+    expect(fa).not.toMatch(/\b(should|recommend\w*|sign him|target\w*|asking price)\b/i);
   });
 
   it('every pending violation names its finding and a migrated consumer', () => {
