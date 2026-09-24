@@ -394,7 +394,18 @@ describe('cross-save: league structure', () => {
     expect(priceOf(r, save.leagueId).price.note).toMatch(/financials/i);
   }, SLOW);
 
-  it.todo('D-14 (F2): the control note for a club with no leagues row ends in one full stop, not two ("No leagues row for this club..")');
+  it('D-14 (F2): a note about a club with no leagues row never ends in a doubled full stop', () => {
+    const save = buildSave(base);
+    exec(`DELETE FROM leagues WHERE league_id = ${save.aaaLeagueId}`);
+    const r = run(save);
+    const texts: string[] = [];
+    for (const v of r.values.values()) {
+      for (const s of v.control.seasons) texts.push(s.basis, ...s.reasons, s.cost?.note ?? '', s.cost?.reason ?? '');
+      texts.push(...(v.control.notes ?? []), v.production.reason ?? '');
+    }
+    expect(texts.some((t) => /No leagues row/.test(t)), 'the case is exercised').toBe(true);
+    expect(texts.filter((t) => /[^.]\.\.(\s|$)/.test(t))).toEqual([]);
+  }, SLOW);
 
   it('a minor-league-only universe (an independent level-2 league, no major league)', () => {
     const save = buildSave({ ...base, minors: false });
