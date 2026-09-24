@@ -1,6 +1,7 @@
 ---
 paths:
   - "server/playerValue*.ts"
+  - "server/clubFinanceRoutes.ts"
   - "server/leagueRules.ts"
   - "server/contracts.ts"
   - "server/payroll.ts"
@@ -27,10 +28,11 @@ point; `playerValueContract.ts` (contract facts), `playerValueControl.ts` (contr
 `playerValueRatings.ts` and `playerValueRatingsFit.ts` (phase 3b: production from scouted ratings, and its per-save fit),
 `playerValueHistory.ts` (the history reader), `playerValueFinances.ts` (Club Finances, the opening price of a win,
 replacement level), `playerValueCost.ts` (phase 4a, pure: the cost ladder measured per import and the controlled seasons
-priced from it), `playerValueCone.ts` (the player card's production cone: production joined with control, pure)
-and `playerValueCalibration.ts` (policy and the provisional prior, stamped) sit behind it. Two
-writers, `history.db` only: `playerValueSnapshot.ts` (the per-import market snapshot) and `playerValueFitStore.ts`
-(the per-save production fits, D-053). Which phases are built is in `docs/PROJECT_STATE.md`; check it against the
+priced from it), `playerValueSignings.ts` (phase 4b, pure: observed changes between imports, the measured price, awards,
+reserve-clause renewals, replacement, adoption), `playerValueCone.ts` (the player card's production cone: production
+joined with control, pure) and `playerValueCalibration.ts` (policy and the provisional prior, stamped) sit behind it.
+Three writers, `history.db` only: `playerValueSnapshot.ts` (the per-import market snapshot), `playerValueContractStore.ts`
+(phase 4b: the per-import contract snapshot) and `playerValueFitStore.ts` (the per-save production fits, D-053). Which phases are built is in `docs/PROJECT_STATE.md`; check it against the
 worktree.
 
 - No verdict, rank or single score: never trade, release, extend, sign or promote (D-052, D-004).
@@ -88,11 +90,24 @@ worktree.
   line in this import's dollars; only the prior's shares carry the price band), every corner taken, floored above the minimum, never a point. Status, class and trip are Player Rights'
   (`arbitrationRegimeOf`, `trip`, `tripIfEligible`); a range covers each class, an open season each status, a season that
   may be free agency is "if held". Below 30 contracts: the provisional `COST_PRIOR` hulled with the save's line, only where
-  the regime as read is MLB's; else unknown. No arbitration or an unread rule: no ladder. Reserve-clause renewals stay
-  unknown. A projected cost is never committed money: Payroll shows it beside the committed total, never in it.
+  the regime as read is MLB's; else unknown. No arbitration or an unread rule: no ladder. Reserve-clause renewals are
+  unknown until observed across imports (4b). A projected cost is never committed money: Payroll shows it beside the committed total, never in it.
+- The measured price (phase 4b, D-052 amendment): each import records its contracts (keyed by the save's identity,
+  idempotent); two consecutive imports are compared and each change is read through Player Rights' standing AT THE
+  EARLIER import for the new contract's first season. A snapshot difference names what changed, never a transaction type
+  the export does not give (D-020: no "optioned", "recalled", "DFA"); a club change on the same terms moved with him; an
+  ambiguous change (a free agent re-signed by his club, a controlled player's deal elsewhere, an indeterminate standing)
+  is counted and left out. The price is a ratio of sums over free-agent signings (salary above the minimum ÷ expected
+  wins at the earlier import), its band the signings resampled (`SIGNINGS_POLICY.bootstrap`), at least the opening
+  basis's 20 contracts; each opening basis is resampled the same way, and the measured price replaces the opening one
+  only when its band is narrower than the opening band with its sampling (Q-4); otherwise the opening stays and says
+  why. One import, or imports inside one season: "No off-season observed yet". Awards are scored against the earlier
+  import's band and read as a class line at 30; reserve-clause renewals price a reserve-clause season at 30; replacement
+  from freely acquired players at 30 (then the measured price counts wins above it; production stays in the export's
+  WAR). Never the live log.
 - Never ask the owner for an OOTP experiment; an unresolved rule stays `indeterminate` and is documented.
 
 Checks: `tests/playerValueBoundary.test.ts`, `tests/playerValueControl.test.ts`, `tests/playerValueCost.test.ts`,
 `tests/playerValueFinances.test.ts`, `tests/playerValueProduction.test.ts`, `tests/playerValueProductionFit.test.ts`,
-`tests/playerValueRatings.test.ts`;
+`tests/playerValueRatings.test.ts`, `tests/playerValueSignings.test.ts`, `tests/playerValueCrossSave.test.ts`;
 `npm run value:report` and `npx tsx scripts/calibrate.ts production` against a real import (read-only with `OOTP_FO_DB_READONLY=1`).

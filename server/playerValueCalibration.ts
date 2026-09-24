@@ -46,7 +46,7 @@ export const COST_NOT_PRICED =
  * needs renewals observed across imports (phase 4b). Unknown, never the minimum.
  */
 export const COST_PENDING_OBSERVED_PAY =
-  'Under a reserve clause the club renews him at a salary no rule ties to service or production; what a renewal costs is not measured from one export (renewals observed across imports, phase 4b), so it is unknown, never the minimum.';
+  'Under a reserve clause the club renews him at a salary no rule ties to service or production; what a renewal costs is not measured from one export: it is measured from the renewals observed across imports (phase 4b) once enough are seen, and until then it is unknown, never the minimum.';
 
 // ── phase 2: Club Finances and the opening price of a win (PLAYER_VALUE.md Parts 2.4, 4.1, 4.3) ──
 
@@ -2179,4 +2179,41 @@ export const COST_PRIOR_CALIBRATION: CalibrationStamp = provisional(
   'The cost ladder on the imported real-world contracts (R-6: the Arizona import, 2026-05-16): the renewal spread and the arbitration ladder by class, ' +
     "in minimums and shares of the price of a win. Used only where a save's own class is below the policy minimum and its regime as read is MLB's, " +
     "hulled with the save's own cases, and always labelled provisional; replaced by the save's measurement as its classes fill, and by observed awards (phase 4b)."
+);
+
+// ── phase 4b: the measured price of a win across imports (PLAYER_VALUE.md 4.2 to 4.4) ────────────────
+
+/** What the measured price is, in its own words: OOTP's own signings, observed between imports. */
+export const MEASURED_PRICE_LABEL = 'measured: observed signings';
+
+/**
+ * How observed signings, awards and renewals are read and measured (`playerValueSignings.ts`). Chosen, not fitted
+ * (D-041): what the method is asked to do and when it may be trusted. Every number it serves is measured on the
+ * save's own snapshots (D-053); the fewest cases each measurement rests on are the existing minimums, reused:
+ * the measured price the opening basis's 20 contracts (`OPENING_PRICE_MINIMUMS.contracts`, B-13), an arbitration
+ * class's observed salaries and the reserve-clause renewals the cost ladder's 30 (`COST_POLICY`).
+ *
+ *   bootstrap       a measured price's band, and each opening basis's sampling band beside it (so the two are
+ *                   compared like for like, B-13): the signings (or the basis's contracts) resampled with
+ *                   replacement 1,000 times and the ratio of sums read at its 10th and 90th percentiles (an 80%
+ *                   band, production's outer band), from a fixed seed so one import always reads the same;
+ *   rightsSeasons   how many seasons of Player Rights' standing each import records per player (this season and
+ *                   the two after it): a contract observed starting later than that is read as not established;
+ *   replacement     the fewest players freely acquired (a minor-league deal, or a major-league deal at the minimum,
+ *                   from outside the organization, with a major-league record) whose major-league opportunities
+ *                   for the club that took them measure replacement, per 600 opportunities; fewer, and the export's
+ *                   WAR convention stays (provisional).
+ */
+export const SIGNINGS_POLICY = {
+  bootstrap: { replicates: 1000, low: 0.1, high: 0.9, seed: 20260924 },
+  rightsSeasons: 3,
+  replacement: { minimumPlayers: 30, per: 600 },
+} as const;
+
+export const SIGNINGS_POLICY_CALIBRATION: CalibrationStamp = policy(
+  'Observed signings (phase 4b): a change between two imports is read through Player Rights at the earlier import and never given a transaction type the export ' +
+    'does not carry (D-020); the measured price is the ratio of summed salary above the minimum to summed expected wins at signing over free-agent signings only, ' +
+    'its band the 10th-90th percentile of 1,000 resamples of the signings (each opening basis resampled the same way for the comparison, owner Q-4); ' +
+    'it needs the opening basis\'s 20 contracts, an arbitration class\'s observed salaries and the reserve-clause renewals the ladder\'s 30, and replacement 30 ' +
+    'freely acquired players. A free agent re-signed by the club that held him, and a controlled player\'s new deal elsewhere, are counted and left out. Decisions, not fits.'
 );

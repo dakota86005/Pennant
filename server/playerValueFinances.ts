@@ -22,7 +22,9 @@
  *                            league games, per season (Part 4.3), stamped provisional.
  *
  * Nothing here reads a rating, `players_value`, philosophy, the protection tier or defensibility,
- * and nothing in one import narrows the price: it has no input from earlier imports at all.
+ * and nothing in one import narrows the opening price: it has no input from earlier imports at all.
+ * Since phase 4b each market basis also carries its resampled band (`sampling`), the band a measured
+ * price is compared with; which price is in force is `playerValueSignings.ts`'s `adoptPrice` (owner Q-4).
  */
 
 import type { CalibrationStamp } from './calibration.js';
@@ -32,8 +34,9 @@ import type { ControlTimeline } from './playerValueControl.js';
 import {
   FINANCE_ROW_CALIBRATION, MARKET_CONTRACT_CALIBRATION, OPENING_PRICE_CALIBRATION, OPENING_PRICE_CENTRAL_CALIBRATION,
   OPENING_PRICE_LABEL, OPENING_PRICE_MINIMUMS, OPENING_PRICE_MINIMUMS_CALIBRATION, PLACEHOLDER_ROW_CALIBRATION,
-  PRICE_NARROWS_WHEN, REPLACEMENT_LEVEL_CALIBRATION,
+  PRICE_NARROWS_WHEN, REPLACEMENT_LEVEL_CALIBRATION, SIGNINGS_POLICY,
 } from './playerValueCalibration.js';
+import type { MeasuredPrice } from './playerValueSignings.js';
 import { derivedFrom, fromExport, uninterpreted, unknownBecause, type Sourced, type Uninterpreted } from './provenance.js';
 
 // ── the market: which contracts are market prices ────────────────────────────
@@ -216,11 +219,38 @@ export interface PricePopulation {
   marketStartingThisSeason: number;
 }
 
+/**
+ * The opening price's sampling component (B-13, phase 4b): each market basis's contracts resampled with replacement,
+ * read at the 10th and 90th percentiles (`SIGNINGS_POLICY.bootstrap`), so the opening band can be set against a
+ * measured one like for like. The served opening band (the spread of the bases) is unchanged; `comparable` is that
+ * spread with each basis's own sampling in it, the band a measured price must be narrower than (owner, Q-4).
+ */
+export interface OpeningSampling {
+  replicates: number;
+  bases: Array<{ id: PriceBasisId; low: number; high: number | null }>;
+  /** Null where a basis's resampled band has no upper edge (too many resamples price no positive win). */
+  comparable: { low: number; high: number } | null;
+  text: string;
+}
+
+/**
+ * Which price of a win is in force, and why (owner Q-4, phase 4b): the opening price, or the measured one once its
+ * band is narrower than the opening band with its sampling. Always names both readings.
+ */
+export interface PriceAdoption {
+  inForce: 'opening' | 'measured';
+  reason: string;
+  opening: { central: number; low: number; high: number; comparable: { low: number; high: number } | null } | null;
+  measured: MeasuredPrice;
+  rule: string;
+}
+
 export interface PriceOfWin {
   leagueId: number;
   season: number | null;
   label: string;
-  stage: 'opening';
+  /** Which reading this is: the opening (the imported market), or the measured one in force (phase 4b). */
+  stage: 'opening' | 'measured';
   /** Dollars per win, or wins only when dollars are unknown. */
   unit: 'dollars_per_win' | 'wins';
   price: Sourced<PriceBand>;
@@ -233,6 +263,53 @@ export interface PriceOfWin {
   rules: { market: string; band: string; central: string; floor: string; minimums: string };
   narrowsWhen: string;
   stamps: { market: CalibrationStamp; bases: CalibrationStamp; central: CalibrationStamp; minimums: CalibrationStamp };
+  /** The opening bases' sampling band (phase 4b); null where no market basis could be computed. */
+  sampling: OpeningSampling | null;
+  /** Which price is in force and why (phase 4b); null on the opening reading before it is set against a measured one. */
+  adoption: PriceAdoption | null;
+}
+
+// ── resampling (phase 4b): one method for the opening bases and the measured price ──
+
+/** A small seeded generator (mulberry32), so one import always reads the same band. */
+function seeded(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * The resampled band of a ratio of sums (money over wins): the cases drawn with replacement
+ * `SIGNINGS_POLICY.bootstrap.replicates` times, read at its 10th and 90th percentiles (inverted CDF). A resample whose
+ * wins sum to nothing prices no win and sorts above every price, so `high` is null where the band has no upper edge.
+ */
+export function bootstrapRatio(money: number[], wins: number[]): { low: number; high: number | null } | null {
+  const n = money.length;
+  if (n === 0 || wins.length !== n) return null;
+  const { replicates, low, high, seed } = SIGNINGS_POLICY.bootstrap;
+  const rand = seeded(seed + n);
+  const ratios: number[] = [];
+  for (let r = 0; r < replicates; r += 1) {
+    let m = 0;
+    let w = 0;
+    for (let j = 0; j < n; j += 1) {
+      const k = Math.floor(rand() * n);
+      m += money[k];
+      w += wins[k];
+    }
+    ratios.push(w > 0 ? m / w : Infinity);
+  }
+  ratios.sort((a, b) => a - b);
+  const at = (p: number) => ratios[Math.min(replicates, Math.max(1, Math.ceil(p * replicates))) - 1];
+  const lo = at(low);
+  const hi = at(high);
+  if (!Number.isFinite(lo)) return null;
+  return { low: lo, high: Number.isFinite(hi) ? hi : null };
 }
 
 const round = (n: number, digits = 0): string => n.toLocaleString('en-US', { maximumFractionDigits: digits, minimumFractionDigits: digits });
@@ -352,6 +429,8 @@ export function openingPriceOfWin(input: OpeningPriceInput): PriceOfWin {
       market: MARKET_CONTRACT_CALIBRATION, bases: OPENING_PRICE_CALIBRATION, central: OPENING_PRICE_CENTRAL_CALIBRATION,
       minimums: OPENING_PRICE_MINIMUMS_CALIBRATION,
     },
+    sampling: null,
+    adoption: null,
   });
 
   // Dollars exist only where the league runs finances, states its minimum and its season
@@ -426,18 +505,19 @@ export function openingPriceOfWin(input: OpeningPriceInput): PriceOfWin {
   const salaryNow = (r: Row) => r.salary;
   const market = rows.filter((r) => r.standing === 'market');
   const signed = market.filter((r) => r.startsThisSeason);
-  const bases: PriceBasis[] = [
-    basisOf('A', 'floor', `Every major leaguer on the league's active or injured lists, ${priorLabel}`, rows, minimum, salaryNow, priorWins),
+  const specs: BasisSpec[] = [
+    { id: 'A', role: 'floor', description: `Every major leaguer on the league's active or injured lists, ${priorLabel}`, rows, money: salaryNow, wins: priorWins },
     leaguePriorWins !== null
-      ? basisOf('A2', 'floor', `The same salaries, over the league's whole ${priorLabel}`, rows, minimum, salaryNow, () => 0, leaguePriorWins)
-      : basisOf('A2', 'floor', `The same salaries, over the league's whole ${priorLabel}`, rows, minimum, salaryNow, priorWins),
-    basisOf('B', 'market', `Free-agency eligible this season, ${priorLabel}`, market, minimum, salaryNow, priorWins),
-    basisOf('B2', 'market', `Free-agency eligible this season, ${twoSeasonLabel}`, market, minimum, salaryNow, twoSeasonWins),
-    basisOf('B3', 'market', `Free-agency eligible this season, ${season} pace (to date ÷ share of season played)`, market, minimum, salaryNow, paceWins),
-    basisOf('C', 'market', `Free-agency eligible, contracts starting ${season}: this season's salary, ${priorLabel}`, signed, minimum, salaryNow, priorWins),
-    basisOf('C2', 'market', `Free-agency eligible, contracts starting ${season}: average annual value, ${priorLabel}`, signed, minimum, (r) => r.averageAnnual, priorWins),
-    basisOf('C3', 'market', `Free-agency eligible, contracts starting ${season}: this season's salary, ${season} pace`, signed, minimum, salaryNow, paceWins),
+      ? { id: 'A2', role: 'floor', description: `The same salaries, over the league's whole ${priorLabel}`, rows, money: salaryNow, wins: () => 0, league: leaguePriorWins }
+      : { id: 'A2', role: 'floor', description: `The same salaries, over the league's whole ${priorLabel}`, rows, money: salaryNow, wins: priorWins },
+    { id: 'B', role: 'market', description: `Free-agency eligible this season, ${priorLabel}`, rows: market, money: salaryNow, wins: priorWins },
+    { id: 'B2', role: 'market', description: `Free-agency eligible this season, ${twoSeasonLabel}`, rows: market, money: salaryNow, wins: twoSeasonWins },
+    { id: 'B3', role: 'market', description: `Free-agency eligible this season, ${season} pace (to date ÷ share of season played)`, rows: market, money: salaryNow, wins: paceWins },
+    { id: 'C', role: 'market', description: `Free-agency eligible, contracts starting ${season}: this season's salary, ${priorLabel}`, rows: signed, money: salaryNow, wins: priorWins },
+    { id: 'C2', role: 'market', description: `Free-agency eligible, contracts starting ${season}: average annual value, ${priorLabel}`, rows: signed, money: (r) => r.averageAnnual, wins: priorWins },
+    { id: 'C3', role: 'market', description: `Free-agency eligible, contracts starting ${season}: this season's salary, ${season} pace`, rows: signed, money: salaryNow, wins: paceWins },
   ];
+  const bases: PriceBasis[] = specs.map((sp) => basisOf(sp.id, sp.role, sp.description, sp.rows, minimum, sp.money, sp.wins, sp.league));
 
   const floors = bases.filter((b) => b.role === 'floor' && b.perWin.value !== null).map((b) => b.perWin.value as number);
   const floor: Sourced<{ low: number; high: number }> = floors.length > 0
@@ -463,7 +543,52 @@ export function openingPriceOfWin(input: OpeningPriceInput): PriceOfWin {
       `Median of ${readings.length} market bases, band from the lowest to the highest (${millions(band.low)} to ${millions(band.high)}); ${population.market} market contracts.`);
   }
   const dollarsKnown = price.value !== null || floor.value !== null;
-  return result(price, floor, bases, dollarsKnown ? 'dollars_per_win' : 'wins');
+  const out = result(price, floor, bases, dollarsKnown ? 'dollars_per_win' : 'wins');
+  return { ...out, sampling: price.value !== null ? samplingOf(specs, bases, minimum, price.value) : null };
+}
+
+/** One basis of the opening price: who is in it, what money it reads and what wins it divides by. */
+interface BasisSpec {
+  id: PriceBasisId;
+  role: PriceBasis['role'];
+  description: string;
+  rows: Row[];
+  money: (r: Row) => number | null;
+  wins: ((r: Row) => number) | { unknown: string };
+  /** The league's whole WAR, for the second floor. */
+  league?: number;
+}
+
+/**
+ * Each computed market basis resampled over its own contracts (phase 4b, B-13's deferred sampling component): the band
+ * a measured price is compared with is the served spread of the bases with each basis's sampling band in it.
+ */
+function samplingOf(specs: BasisSpec[], bases: PriceBasis[], minimum: number, served: PriceBand): OpeningSampling | null {
+  const out: OpeningSampling['bases'] = [];
+  for (const sp of specs) {
+    const b = bases.find((x) => x.id === sp.id);
+    if (sp.role !== 'market' || !b || b.perWin.value === null || 'unknown' in (sp.wins as object)) continue;
+    const wins = sp.wins as (r: Row) => number;
+    const kept = sp.rows.filter((r) => sp.money(r) !== null);
+    const band = bootstrapRatio(kept.map((r) => (sp.money(r) as number) - minimum), kept.map(wins));
+    if (band) out.push({ id: sp.id, low: band.low, high: band.high });
+  }
+  if (out.length === 0) return null;
+  const unbounded = out.some((b) => b.high === null);
+  const comparable = unbounded ? null : {
+    low: Math.min(served.low, ...out.map((b) => b.low)),
+    high: Math.max(served.high, ...out.map((b) => b.high as number)),
+  };
+  const { replicates, low, high } = SIGNINGS_POLICY.bootstrap;
+  return {
+    replicates,
+    bases: out,
+    comparable,
+    text: comparable
+      ? `Each market basis resampled over its own contracts ${replicates} times (${Math.round(low * 100)}th to ${Math.round(high * 100)}th percentile); ` +
+        `the spread of the bases with that sampling in it is ${millions(comparable.low)} to ${millions(comparable.high)}, the band a measured price must be narrower than (Q-4).`
+      : `Each market basis resampled over its own contracts ${replicates} times; at least one has no upper edge (too many resamples price no positive win), so the opening band with its sampling is unbounded.`,
+  };
 }
 
 // ── the club's finances ──────────────────────────────────────────────────────

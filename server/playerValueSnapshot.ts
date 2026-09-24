@@ -7,7 +7,9 @@
  * and basis), the replacement level measured per season, the financial regime as exported, the
  * league's payroll and how many contracts were market prices, and (phase 4a, inside the basis) the cost
  * ladder: the renewal spread and the arbitration ladder measured on this import. The history is what lets
- * drift be seen, and what phase 4b will set observed signings and arbitration awards against.
+ * drift be seen. Since phase 4b it also records, first, the import's contracts (`playerValueContractStore.ts`, the
+ * third writer), which the next import's signings are observed against, and in the basis which price of a win was in
+ * force and why (opening or measured, owner Q-4), so the price's history is visible (`priceHistory`).
  *
  *   - Keyed by save, league and game date (the export's `leagues.current_date`, normalised through
  *     `parseGameDate`, so `2026-5-9` and `2026-05-09` are one key). Idempotent per key: a re-run of
@@ -18,16 +20,18 @@
  *   - The table is created with CREATE TABLE IF NOT EXISTS, as every history.db table is: additive,
  *     and safe for an existing user's file. Nothing here alters or drops anything.
  *
- * It reads the market through the entry point, and it is the only Player Value module that writes
- * anything, and only to `history.db` (`tests/playerValueBoundary.test.ts`). The price itself never
- * reads this history: nothing in one import, or in any number of snapshots of it, narrows it.
+ * It reads the market through the entry point and writes only to `history.db` (one of Player Value's three
+ * writers, `tests/playerValueBoundary.test.ts`). The opening price never reads this history: nothing in one
+ * import, or in any number of snapshots of it, narrows it. Only the measured price (phase 4b) reads the save's
+ * recorded contracts, and it replaces the opening one only when its band is narrower (owner Q-4).
  */
 
 import { db, tableColumns, tableExists } from './db.js';
 import { parseGameDate } from './dataFreshness.js';
 import { historyDb } from './history.js';
 import { saveIdentity } from './playerValueFitStore.js';
-import { leagueFinances, marketLeagues, type LeagueFinances } from './playerValue.js';
+import { contractSnapshotRecorded, recordContractSnapshot } from './playerValueContractStore.js';
+import { contractSnapshotsNow, leagueFinances, marketLeagues, type LeagueFinances, type PriceAdoption } from './playerValue.js';
 
 historyDb.exec(`
   CREATE TABLE IF NOT EXISTS value_market_snapshots (
@@ -87,6 +91,8 @@ export interface SnapshotResult {
   skipped: string[];
   /** Why the snapshot could not be taken; the import goes on regardless. */
   error: string | null;
+  /** Phase 4b: the import's contract snapshots (per market league): rows written, and keys already recorded. */
+  contracts: { written: number; existing: number; error: string | null };
 }
 
 export interface SnapshotOptions {
@@ -110,7 +116,22 @@ function exportedGameDate(leagueId: number): string | null {
  * failure is returned, and the import it runs inside carries on.
  */
 export function captureMarketSnapshot(options: SnapshotOptions = {}): SnapshotResult {
-  const result: SnapshotResult = { written: 0, existing: 0, skipped: [], error: null };
+  const result: SnapshotResult = { written: 0, existing: 0, skipped: [], error: null, contracts: { written: 0, existing: 0, error: null } };
+  // Phase 4b, first: this import's contracts, which the next import's signings are observed against and the market
+  // below is priced from. Idempotent per key; a failure here is returned and the market is still recorded.
+  try {
+    const dates = new Map<number, { iso: string; exported: string | null }>();
+    for (const leagueId of marketLeagues()) {
+      const exported = exportedGameDate(leagueId);
+      const iso = parseGameDate(exported);
+      if (iso === null) continue;
+      if (contractSnapshotRecorded(leagueId, iso)) result.contracts.existing += 1;
+      else dates.set(leagueId, { iso, exported });
+    }
+    for (const snapshot of contractSnapshotsNow([...dates.keys()], dates)) result.contracts.written += recordContractSnapshot(snapshot);
+  } catch (err) {
+    result.contracts.error = (err as Error).message ?? String(err);
+  }
   try {
     const compute = options.compute ?? ((id: number) => leagueFinances(id));
     const exists = historyDb.prepare(
@@ -158,6 +179,16 @@ export function captureMarketSnapshot(options: SnapshotOptions = {}): SnapshotRe
           leaguePayroll: market.leaguePayroll,
           // Phase 4a: the cost ladder measured at this import (the renewal spread and the arbitration ladder), so its drift is visible
           costs: market.costs,
+          // Phase 4b: which price was in force and why, the measured reading beside the opening one, and what was observed
+          adoption: price.adoption,
+          stage: price.stage,
+          observed: {
+            imports: market.observed.imports.length,
+            pairs: market.observed.pairs.map((p) => ({ earlier: p.earlier, later: p.later, spansWinter: p.spansWinter, counts: p.counts })),
+            awards: { ...market.observed.awards, readings: market.observed.awards.readings.map((r) => ({ arbitrationClass: r.arbitrationClass, cases: r.cases, status: r.status })) },
+            reserveClause: market.observed.reserveClause,
+            replacement: market.observed.replacement,
+          },
         }),
       ).changes;
       if (changes > 0) result.written += 1;
@@ -217,4 +248,63 @@ export function marketSnapshotHistory(leagueId: number, saveName = saveIdentity(
       basis: parse(r.basis_json),
     }))
     .sort((a, b) => (parseGameDate(a.gameDate) ?? a.gameDate).localeCompare(parseGameDate(b.gameDate) ?? b.gameDate));
+}
+
+/** One import's reading of the price of a win: the opening and measured readings, and which was in force (phase 4b). */
+export interface PriceHistoryEntry {
+  gameDate: string;
+  season: number | null;
+  inForce: 'opening' | 'measured';
+  opening: { central: number; low: number; high: number } | null;
+  measured: { status: string; signings: number; central: number | null; low: number | null; high: number | null; text: string } | null;
+  /** Why the price in force was in force at that import, where recorded. */
+  reason: string | null;
+  /** What the row does not record (a row written before phase 4b). */
+  note: string | null;
+}
+
+/**
+ * The price of a win's history across this save's imports, oldest first (PLAYER_VALUE.md 4.2): each import's opening
+ * reading, its measured reading and which was in force. A row written before phase 4b (no adoption in its basis, and
+ * before phase 4a no cost ladder either) reads its recorded price as the opening one and says the measured reading was
+ * not recorded; nothing is read as zero.
+ */
+export function priceHistory(leagueId: number): PriceHistoryEntry[] {
+  return marketSnapshotHistory(leagueId).map((h): PriceHistoryEntry => {
+    const basis = (h.basis ?? {}) as { adoption?: PriceAdoption | null };
+    const a = basis.adoption ?? null;
+    if (!a) {
+      return {
+        gameDate: h.gameDate, season: h.season, inForce: 'opening', opening: h.price, measured: null, reason: null,
+        note: 'The measured reading was not recorded at this import (written before phase 4b): its price is the opening one.',
+      };
+    }
+    const m = a.measured;
+    return {
+      gameDate: h.gameDate, season: h.season, inForce: a.inForce,
+      opening: a.opening ? { central: a.opening.central, low: a.opening.low, high: a.opening.high } : null,
+      measured: m ? {
+        status: m.status, signings: m.signings, central: m.price?.value?.central ?? null, low: m.price?.value?.low ?? null,
+        high: m.price?.value?.high ?? null, text: m.price?.note ?? m.text,
+      } : null,
+      reason: a.reason, note: null,
+    };
+  });
+}
+
+/**
+ * What the price-history route serves (phase 4b): which price of a win is in force now and why (owner Q-4), the opening
+ * price's sampling, what the save's imports observed (every change, named for what changed and how it is read: the
+ * basis of every measurement) and each import's recorded readings.
+ */
+export function priceHistoryReport(leagueId: number) {
+  const league = leagueFinances(leagueId);
+  return {
+    leagueId,
+    inForce: league.priceOfWin.adoption,
+    price: { label: league.priceOfWin.label, stage: league.priceOfWin.stage, value: league.priceOfWin.price },
+    opening: { sampling: league.priceOfWin.sampling },
+    observed: league.observed,
+    history: priceHistory(leagueId),
+  };
 }

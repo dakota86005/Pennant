@@ -390,7 +390,7 @@ export function measureCostLadder(input: CostLadderInput): CostLadder {
       renewal: RENEWAL_RULE(),
       arbitration: ARBITRATION_RULE(),
       prior: COST_PRIOR_CALIBRATION.basis,
-      reserveClause: 'A reserve-clause renewal is not priced: renewal pay under a reserve clause is not measured from one export (phase 4b).',
+      reserveClause: 'A reserve-clause renewal is not priced from one import: it is measured from the renewals observed across imports once enough are seen (phase 4b), and is unknown until then.',
     },
     stamps: { policy: COST_POLICY_CALIBRATION, prior: COST_PRIOR_CALIBRATION },
   };
@@ -587,3 +587,6 @@ export function priceControlTimeline(input: PriceControlInput): ControlTimeline 
   });
   return { ...control, seasons };
 }
+
+/** The class line and the renewal bound, for the readings observed across imports (phase 4b, `playerValueSignings.ts`): one method. */
+export { lineOf, upperBoundOfQuantile };

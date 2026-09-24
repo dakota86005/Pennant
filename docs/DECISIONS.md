@@ -1242,13 +1242,14 @@ contested, as `farmArrivalFor` already did (B-1), so a departure names the man l
 (phases 1–3: contract facts and control; Club Finances, the opening price of a win, the replacement level and the
 per-import market snapshot; expected production in wins from major-league results and, through `scoutedEvidence.ts`,
 scouted ratings, with playing time conditional on quality, fitted per save under D-053; phase 4a: the cost of
-controlled seasons, measured on each import, `playerValueCost.ts`).
+controlled seasons, measured on each import, `playerValueCost.ts`; phase 4b: the measured price of a win across imports,
+`playerValueSignings.ts` and the third writer `playerValueContractStore.ts`).
 `server/playerValue.ts` (the entry point), `playerValueContract.ts`, `playerValueControl.ts`,
 `playerValueFinances.ts`, `playerValueHistory.ts`, `playerValueProduction.ts`, `playerValueProductionFit.ts`,
 `playerValueRatings.ts` and `playerValueRatingsFit.ts` (phase 3b), the two writers (`playerValueSnapshot.ts` and
 `playerValueFitStore.ts`, `history.db` only), `playerValueRoutes.ts` and `playerValueCalibration.ts`;
 contract-control eligibility in `playerRights.ts` (`evaluateContractControl`); one `LeagueRules` in `leagueRules.ts`,
-with the financial regime; `tests/playerValueBoundary.test.ts`. The measured price and observed awards (phase 4b), surplus, the lens and the club's
+with the financial regime; `tests/playerValueBoundary.test.ts`. Surplus, the lens and the club's
 value of a win (phase 5) and the `players_value` consumer migration (phase 6) are not built. In phase 3b the
 development path, the ratings' reliability as a forecast and the arrival chance by potential wait on the save's own
 rating snapshots (one on the imported save) and use the provisional prior, or the kind's K, until then. Design: [PLAYER_VALUE.md](PLAYER_VALUE.md). Research evidence:
@@ -1325,7 +1326,8 @@ architecture, pinned by tests.
 - Arbitration and free-agency eligibility live in Player Rights; the cost for each status lives in Player Value.
 - No widening for other organizations' players until it can be measured.
 - The horizon runs to the end of control, capped at 7 seasons, with one stated policy discount rate.
-- The measured price replaces the opening one when its band is narrower.
+- The measured price replaces the opening one when its band is narrower (phase 4b: narrower than the opening band with
+  its sampling, in dollars).
 - A minor-league $0 salary is `unknown`.
 - The club's value of a win is in playoff odds for now.
 - Personality prices nothing until its effect is observed.
@@ -1362,6 +1364,38 @@ and phase 4b tests it against observed awards. R-6's imported-contract ladder is
 the policy minimum and only where the regime as read is MLB's; a league without arbitration, or whose rule is not read,
 never gets it. Status, class and trip are Player Rights' (`arbitrationRegimeOf`, `tripIfEligible`). A projected cost is
 never committed money: consumers show it beside guaranteed commitments, never in their totals.
+
+**Amended 2026-09-23 (phase 4b: the measured price of a win across imports; PLAYER_VALUE.md 4.1 to 4.4, Part 7,
+CALIBRATION.md section 9).**
+
+- **Each import records its contracts** in `history.db` (a third writer, `playerValueContractStore.ts`, keyed by the save's
+  identity, league and game date, additive and idempotent, never able to fail the import): every contract the market
+  league's clubs hold and every unsigned player whose production is established, with Player Rights' standing for three
+  seasons, his expected production and next season's cost as the entry point served them then.
+- **A change between two imports is named, then read through Player Rights at the earlier one** (D-020, D-023): a new
+  deal for a player free-agency eligible for its first season, with an organization that did not hold him (or none), is a
+  market signing; a one-year deal with his club in arbitration is an arbitration salary (award or settlement, not said);
+  a one-year deal before arbitration a renewal, under a reserve clause a reserve-clause renewal; a longer deal while
+  controlled, or one over seasons still covered, an extension; the same terms with a new club moved with him; a
+  controlled player no club holds was not tendered or released, the export not saying which. Nothing is given a
+  transaction type the export does not carry, and an ambiguous change is counted and left out of every measurement (a
+  free agent re-signed by the club that held him is one: whether he reached the market is not exported; policy).
+- **The measured price** is the ratio of summed salary above the minimum to summed expected wins at the earlier import,
+  over free-agent signings whose first season had not begun then, pooled over the save's winters; its band is the
+  signings resampled (80%). It needs the opening basis's minimum (20 contracts). **Adoption (Q-4):** it replaces the
+  opening price only when its band is narrower than the opening band **with its sampling** (B-13's deferred component:
+  each opening basis resampled over its own contracts the same way), compared in dollars; otherwise the opening price
+  stays in force and says why, naming the signings and both bands. The price's history (each import's opening and
+  measured readings, which was in force) is recorded and served.
+- **Observed arbitration salaries** are scored against the band the earlier import priced (reported, not gated) and, at
+  the ladder's minimum per class (30, pooled over winters), become a reading of the class beside the import's
+  cross-section, the band covering both. **Reserve-clause renewals** observed across imports price a reserve-clause season
+  by the renewal spread's method at 30. **Replacement** is measured from freely acquired players (a minor-league deal, or
+  a major-league deal at the minimum, from outside the organization, with a major-league record) by their WAR per 600
+  opportunities for the club that took them, at 30 players; until then the export's convention stays, provisional. Once
+  measured, the measured price counts wins above it; production stays in the export's WAR, and surplus (phase 5) must
+  apply the same level to both. All of it is measurement across the save's own imports, stamped policy for its rules
+  (`SIGNINGS_POLICY`); no number is fitted in code.
 
 ## D-053 — Calibration belongs to the save
 

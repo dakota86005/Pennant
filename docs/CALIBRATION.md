@@ -689,3 +689,56 @@ stamped provisional); the numbers served are the save's. Status and class come f
 The bands are wide by construction: every corner of the production band, the class's spread and the line's error is
 taken (and the price band, where the provisional prior is in the reading), and a range of arbitration years covers each. They are ranges of reasonable readings, not
 calibrated intervals, until phase 4b can score them against observed awards.
+
+## 9. Player Value's measured price of a win across imports (phase 4b)
+
+The measured price (PLAYER_VALUE.md 4.2 to 4.4, `server/playerValueSignings.ts`) is **measured across the save's own
+imports**, never fitted in code: each import records its contracts (`playerValueContractStore.ts`, table
+`value_contract_snapshots`, keyed by the save's identity), and two consecutive imports are compared. Every rule is
+policy (`SIGNINGS_POLICY`, stamped `SIGNINGS_POLICY_CALIBRATION`); each minimum is an existing one, reused. It is not a
+D-053 fit with a gate either: it is a ratio read on what the save's clubs did, and its band says how much the signings
+observed support it.
+
+| What | Value | Stamp | Why |
+|---|---|---|---|
+| Which changes are read | a contract whose first season, length or club changed between two consecutive imports | mechanism | R-6. A snapshot difference proves the contract changed, never which transaction did it (D-020) |
+| How a change is read | Player Rights' standing at the EARLIER import for the new contract's first season | mechanism | The standing the salary was set under; nothing compares service with a threshold here |
+| A free agent re-signed by the club that held him | counted, left out of the price | policy | Whether he re-signed before or after he reached the market is not exported |
+| A deal whose first season was under way at the earlier import | left out of the price | policy | Its salary pays for part of a season the export does not date |
+| The estimator | Σ(salary above the minimum over the deal's seasons) ÷ Σ(expected wins over the same seasons, the earlier import's central) | policy | A ratio of sums does not blow up on a signing expected to produce nearly nothing, as a mean of each deal's price would; seasons are priced only where the earlier import established his production |
+| Its band | the signings resampled with replacement 1,000 times, 10th to 90th percentile | policy | The sampling uncertainty of the ratio: how far another draw of the same market's signings would move it. The same 80% as production's outer band. A fixed seed, so an import always reads the same |
+| The fewest signings | 20 (`OPENING_PRICE_MINIMUMS.contracts`) | policy (reused) | The opening basis's minimum (B-13) |
+| The opening band compared | the spread of the bases with each market basis resampled over its own contracts the same way (1,000, 10th–90th) | policy | B-13's deferred sampling component, so the two bands are compared like for like; the served opening band is unchanged |
+| Adoption | the measured band narrower, in dollars, than the opening band with its sampling | policy (owner Q-4) | The evidence decides, no fixed count |
+| Observed arbitration salaries | scored against the band the earlier import priced; a class reading at 30 (`COST_POLICY.ladder.minimumCases`) | policy (reused) | The ladder's own method and minimum; the cross-section stays (this winter's salaries in this import's dollars) and the band covers both |
+| Reserve-clause renewals | the renewal spread's method at 30 (`COST_POLICY.renewal`) | policy (reused) | One method for a renewal |
+| Replacement from freely available talent | WAR per 600 opportunities, for the club that took him, from the season he joined it, of players acquired for nothing with a major-league record; 30 players | policy | Below it the export's convention stays (provisional). Once measured, the measured price counts wins above it; production stays in the export's WAR |
+| Rights recorded per import | 3 seasons (this one and the two after it) | policy | A deal starting later than that is read as not established |
+
+**The Arizona save (one import, 2026-05-16).** The import records 8,229 players (1,841 with standing, production and next
+season's cost: 1,057 major-league deals, placed players on other rows, and 220 unsigned players whose production is
+established; 6,388 minor-league deals or rows with no term, their terms only), about 3.2 MB in `history.db` (2.7 MB of
+rows and 0.5 MB of key index). The capture takes about 2.5 s inside the import (a league-wide valuation with production);
+a second capture writes nothing. No off-season is observed: the measured price says "No off-season observed yet: the
+measured price needs two imports across a winter (one before its signings and one after). This save has 1 import recorded
+(2026-05-16)", and the opening price stays in force: **$7.25M, band $6.57M–$9.78M, floor $4.22M–$4.33M** (unchanged).
+Its bases resampled: B $7.02M–$8.03M, B2 $6.90M–$7.80M, B3 $8.59M–$11.22M, C $5.95M–$7.23M, C2 $6.28M–$7.59M, C3
+$6.10M–$8.53M, so **the opening band with its sampling is $5.95M–$11.22M ($5.27M wide)**: the band a measured price must
+beat. No arbitration salary, reserve-clause renewal or freely acquired player is observed yet, and each says so.
+
+**Synthetic sequences** (`tests/playerValueCrossSave.test.ts`, 16 clubs and 8 seasons unless noted; one winter between an
+import at mid-season and one a fifth into the next):
+
+| Sequence | What was observed | Reading |
+|---|---|---|
+| A full off-season | 197 free-agent signings, 2 free agents re-signed by their club, 7 arbitration salaries, 2 at the minimum, 2 controlled players no club holds, 2 extensions, 9 renewals, 1 contract moved | Measured $6.37M, band $6.17M–$6.60M on 197; 7 of 7 arbitration salaries inside the band priced for them; the measured price in force (narrower than $4.40M–$6.67M) |
+| A narrower measured band | 115 one-year signings at $4.0M a win (±2%) | Measured $4.00M, band $3.99M–$4.01M; in force (the opening band with its sampling $2.79M–$3.90M) |
+| A wider measured band | 21 signings at $0.1M or $40M a win; every other free agent re-signed by his club | Measured band $12.72M–$25.28M ($12.56M wide) wider than the opening $5.67M–$11.40M ($5.73M wide): the opening stays and says so |
+| Too few signings | 12 signings (4 clubs) | "Not measured: 12 free-agent signings observed over 1 winter, 12 priced; a measured reading rests on at least 20"; the opening stays |
+| No arbitration | 12 renewals | No arbitration salary observed; "This league has no salary arbitration" |
+| A reserve clause | 60 reserve-clause renewals | $0.70M–$1.75M; a reserve-clause season priced from it, unknown before |
+| Freely available talent | 40 players signed at the minimum from no club | 0.13 WAR per 600 opportunities (band 0.09–0.16) on 6,012 opportunities; the measured price, now in wins above it, $5.63M on 220 signings |
+
+The bands are sampling bands of what was observed, not calibrated intervals: nothing held out checks them, and a price
+that drifts from winter to winter is pooled across them (each signing in its own winter's dollars), which the price
+history shows.
