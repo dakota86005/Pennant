@@ -10,7 +10,7 @@ import { historyDb } from '../server/history.js';
 import { PRODUCTION_PRIOR } from '../server/playerValueCalibration.js';
 import { leagueSeasons } from '../server/playerValueHistory.js';
 import { captureMarketSnapshot, marketSnapshotHistory, priceHistory } from '../server/playerValueSnapshot.js';
-import { contractImports, contractSnapshots } from '../server/playerValueContractStore.js';
+import { contractImports, contractSnapshotAt, contractSnapshots, pruneContractSnapshots } from '../server/playerValueContractStore.js';
 import request from './request';
 import { COST_POLICY, OPENING_PRICE_MINIMUMS, SIGNINGS_POLICY } from '../server/playerValueCalibration.js';
 import { advanceWinter, buildSave, dropColumn, dropTable, exec, insert, leagueRow, offseasonImport, type BuiltSave, type SaveSpec, type WinterContract } from './syntheticSave';
@@ -602,12 +602,14 @@ describe('cross-save: observed signings across imports (phase 4b)', () => {
     advanceWinter(e.save, { playedShare: 0.2, contracts: [...freeAgents(e, few, (i) => (i % 2 === 0 ? 0.1e6 : 40e6), true), ...stay] });
     captureMarketSnapshot();
     const f = leagueFinances(L, { currentState: 'current' });
-    expect(f.observed.measured.status).toBe('measured');
+    // Owner, 2026-09-24: the price is per win produced; one winter holds no such reading, so it is not measured, and the
+    // readings per win projected at signing are its check
+    expect(f.observed.measured.status).toBe('not_measured');
+    expect(f.observed.measured.check!.status).toBe('measured');
     expect(f.priceOfWin.stage).toBe('opening');
     expect(f.priceOfWin.adoption!.inForce).toBe('opening');
     expect(f.priceOfWin.adoption!.reason).toMatch(new RegExp(`${f.observed.measured.observed} free-agent signings observed`));
-    // One winter holds no realized reading, so the bands are not yet compared like for like (R4-01)
-    expect(f.priceOfWin.adoption!.reason).toMatch(/realized/);
+    expect(f.priceOfWin.adoption!.reason).toMatch(/per win produced/);
     // The opening price in force is this import's own opening reading
     expect(f.priceOfWin.label).toBe(opening.label);
   }, SLOW);
@@ -694,7 +696,8 @@ describe('cross-save: observed signings across imports (phase 4b)', () => {
     expect(f.observed.replacement.status).toBe('measured');
     expect(f.observed.replacement.players).toBeGreaterThanOrEqual(SIGNINGS_POLICY.replacement.minimumPlayers);
     expect(f.observed.replacement.text).toMatch(/freely acquired players/);
-    expect(f.observed.measured.status).toBe('measured');
+    // One winter: not measured per win produced yet (owner, 2026-09-24), and in the export's WAR either way
+    expect(f.observed.measured.status).toBe('not_measured');
     expect(f.observed.measured.replacement).toBe('export_convention');
     expect(f.observed.measured.text).toMatch(/export's (own )?WAR/);
     expect(f.observed.replacement.text).toMatch(/who played/);
@@ -896,10 +899,13 @@ describe('cross-save: observed signings across imports (phase 4b)', () => {
     });
     captureMarketSnapshot();
     let f = leagueFinances(L, { currentState: 'current' });
-    expect(f.observed.measured.status).toBe('measured');
+    // Owner, 2026-09-24: the price is per win produced, so before that reading exists it is not measured; the projected
+    // reading is its check
+    expect(f.observed.measured.status).toBe('not_measured');
+    expect(f.observed.measured.check!.status).toBe('measured');
     expect(f.observed.measured.bases.find((b) => b.id === 'realized')!.status).toBe('not_computed');
     expect(f.priceOfWin.stage).toBe('opening');
-    expect(f.priceOfWin.adoption!.reason).toMatch(/realized/);
+    expect(f.priceOfWin.adoption!.reason).toMatch(/per win produced/);
     // The next winter: the signings' first season is completed (every expired deal renewed with its club, so the league keeps a market)
     const expired = db.prepare(`SELECT player_id, team_id, salary0 FROM players_contract WHERE is_major = 1 AND season_year + years - 1 < ? AND team_id BETWEEN 1 AND 99`)
       .all(Y + 2) as Array<{ player_id: number; team_id: number; salary0: number }>;
@@ -912,9 +918,11 @@ describe('cross-save: observed signings across imports (phase 4b)', () => {
     expect(realized.central!).toBeGreaterThan(4.5e6);
     expect(realized.central!).toBeLessThan(5.6e6);
     expect(f.observed.measured.bases.find((b) => b.id === 'first')!.central!).toBeGreaterThan(realized.central!);
-    expect(f.priceOfWin.adoption!.reason).toMatch(/per realized win/);
-    // In force or not, the price never changes unit: in force, its central is the realized reading's
-    if (f.priceOfWin.stage === 'measured') expect(f.priceOfWin.price.value!.central).toBeCloseTo(realized.central!, 0);
+    expect(f.priceOfWin.adoption!.reason).toMatch(/per win produced/);
+    // The measured price is the realized reading, its band too; the projected reading is its check
+    expect(f.observed.measured.price.value).toEqual({ central: realized.central, low: realized.low, high: realized.high });
+    expect(f.observed.measured.check!.ratio!).toBeGreaterThan(1);
+    if (f.priceOfWin.stage === 'measured') expect(f.priceOfWin.price.value).toEqual(f.observed.measured.price.value);
     expect(marketSnapshotHistory(L).map((h) => h.stage)).toEqual(['opening', 'opening', f.priceOfWin.stage]);
     expect(priceHistory(L)).toHaveLength(3);
     const served = await request(`/api/club-finances/${e.save.org}/price-history`);
@@ -941,6 +949,87 @@ describe('cross-save: observed signings across imports (phase 4b)', () => {
       expect(c.text).toMatch(/observed arbitration salaries/);
     }
     expectInvariants(run(e.save, { refit: false }));
+  }, SLOW);
+
+  // ── phase 4 owner decisions (2026-09-24): written before the code ──
+
+  it('owner decision 4: full snapshots are kept only at the winters and for the latest import; every pair is kept, and what the market reads is unchanged', () => {
+    const e = earlierImport(big, (s) => s === 'free_agency');
+    const L = e.save.leagueId;
+    const Y = big.season;
+    const rowsAt = (date: string) => (historyDb.prepare(`SELECT COUNT(*) AS n FROM value_contract_snapshots WHERE league_id = ? AND game_date = ?`).get(L, date) as { n: number }).n;
+    // Two more imports in the same season, then the winter's signings, then two in the next season: none pruned yet
+    exec(`UPDATE leagues SET "current_date" = '${Y}-8-15'`);
+    captureMarketSnapshot({ prune: false });
+    exec(`UPDATE leagues SET "current_date" = '${Y}-9-20'`);
+    captureMarketSnapshot({ prune: false });
+    advanceWinter(e.save, { playedShare: 0.2, contracts: freeAgents(e, e.ids('free_agency'), () => 5e6, true) });
+    captureMarketSnapshot({ prune: false });
+    exec(`UPDATE leagues SET "current_date" = '${Y + 1}-6-20'`);
+    captureMarketSnapshot({ prune: false });
+    const dates = contractImports(L).map((i) => i.gameDate);
+    expect(dates).toHaveLength(5);
+    for (const d of dates) expect(rowsAt(d)).toBeGreaterThan(0);
+    const before = observed(L);
+    expect(before.pairs).toHaveLength(4);
+    expect(before.measured.observed).toBeGreaterThan(0);
+
+    // Pruned: the two in-season imports before the last one of the season go; the winter's brackets and the latest stay
+    const pruned = pruneContractSnapshots(L);
+    expect(pruned.pruned.sort()).toEqual([dates[0], dates[1]].sort());
+    expect(rowsAt(dates[0])).toBe(0);
+    expect(rowsAt(dates[1])).toBe(0);
+    for (const d of dates.slice(2)) expect(rowsAt(d)).toBeGreaterThan(0);
+    // The imports' headers and every stored pair and event stay; a pruned import is never read as one with no contracts
+    expect(contractImports(L)).toHaveLength(5);
+    expect(contractSnapshotAt(L, dates[0])).toBeNull();
+    const pairs = (historyDb.prepare(`SELECT COUNT(*) AS n FROM value_contract_pairs WHERE league_id = ?`).get(L) as { n: number }).n;
+    expect(pairs).toBe(4);
+    clearProductionCaches();
+    const after = observed(L);
+    expect(after.pairs).toHaveLength(4);
+    expect(after.measured.price).toEqual(before.measured.price);
+    expect(after.measured.observed).toBe(before.measured.observed);
+    expect(after.measured.signings).toBe(before.measured.signings);
+    expect(after.awards.status).toBe(before.awards.status);
+    expect(after.replacement.acquired).toBe(before.replacement.acquired);
+    // Pruning again removes nothing
+    expect(pruneContractSnapshots(L).pruned).toEqual([]);
+
+    // The next import prunes at capture time, after its pair is stored: the import before it, in season, goes; the latest stays
+    exec(`UPDATE leagues SET "current_date" = '${Y + 1}-7-20'`);
+    const next = captureMarketSnapshot();
+    expect(next.contracts.error).toBeNull();
+    const all = contractImports(L).map((i) => i.gameDate);
+    expect(all).toHaveLength(6);
+    expect(rowsAt(all[4])).toBe(0);
+    expect(rowsAt(all[5])).toBeGreaterThan(0);
+    expect(rowsAt(all[2])).toBeGreaterThan(0);
+    expect(rowsAt(all[3])).toBeGreaterThan(0);
+    expect(observed(L).pairs).toHaveLength(5);
+    expect(observed(L).measured.price).toEqual(before.measured.price);
+
+    // Never across save identities: another save's captures leave this save's rows as they were
+    const tables = ['value_contract_imports', 'value_contract_snapshots', 'value_contract_pairs', 'value_contract_events'] as const;
+    const copies = tables.map((t) => [t, historyDb.prepare(`SELECT * FROM ${t}`).all() as Array<Record<string, unknown>>] as const);
+    const second = buildSave({ ...big, seed: 2 });
+    for (const [table, list] of copies) {
+      for (const row of list) {
+        const cols = Object.keys(row);
+        historyDb.prepare(`INSERT OR IGNORE INTO ${table} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`).run(...cols.map((c) => row[c]));
+      }
+    }
+    const theirs = (historyDb.prepare(`SELECT COUNT(*) AS n FROM value_contract_snapshots`).get() as { n: number }).n;
+    captureMarketSnapshot();
+    exec(`UPDATE leagues SET "current_date" = '${Y}-8-30'`);
+    captureMarketSnapshot();
+    exec(`UPDATE leagues SET "current_date" = '${Y}-9-25'`);
+    captureMarketSnapshot();
+    const firstSave = copies.find(([t]) => t === 'value_contract_snapshots')![1];
+    const saveName = firstSave[0].save_name as string;
+    expect((historyDb.prepare(`SELECT COUNT(*) AS n FROM value_contract_snapshots WHERE save_name = ?`).get(saveName) as { n: number }).n).toBe(firstSave.length);
+    expect((historyDb.prepare(`SELECT COUNT(*) AS n FROM value_contract_snapshots`).get() as { n: number }).n).toBeGreaterThan(theirs);
+    expect(second.leagueId).toBe(L);
   }, SLOW);
 
   it('the price-history route answers a bad organization with 400, an unknown club with 404, and a save with nothing imported with 400', async () => {

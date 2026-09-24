@@ -12,7 +12,8 @@
  * force and why (opening or measured, owner Q-4), so the price's history is visible (`priceHistory`). Since the phase 4b
  * review it also stores the pair the new import forms with the import before it on the save's timeline (reading only
  * that one earlier import, R3-03), and records a break when a date already recorded is imported again on another
- * timeline (R3-05).
+ * timeline (R3-05). Since the owner's decision 4 (2026-09-24) it then prunes the full contract snapshots the retention
+ * policy does not keep (`pruneContractSnapshots`: the winters' brackets and the latest import stay; every pair stays).
  *
  *   - Keyed by save, league and game date (the export's `leagues.current_date`, normalised through
  *     `parseGameDate`, so `2026-5-9` and `2026-05-09` are one key). Idempotent per key: a re-run of
@@ -34,8 +35,8 @@ import { parseGameDate } from './dataFreshness.js';
 import { historyDb } from './history.js';
 import { saveIdentity } from './playerValueFitStore.js';
 import {
-  contractBreaks, contractImports, contractPair, contractSnapshotAt, contractSnapshotRecorded, recordContractPair, recordContractSnapshot,
-  recordTimelineBreak, recordedEvent,
+  contractBreaks, contractImports, contractPair, contractSnapshotAt, contractSnapshotRecorded, pruneContractSnapshots, recordContractPair,
+  recordContractSnapshot, recordTimelineBreak, recordedEvent,
 } from './playerValueContractStore.js';
 import {
   contractSnapshotsNow, leagueFinances, marketLeagues, observedPairNow, pairContext, seasonPlayDigest, type LeagueFinances, type PriceAdoption,
@@ -112,7 +113,7 @@ export interface SnapshotResult {
    * Phase 4b: the import's contract snapshots (per market league): rows written, keys already recorded, pairs of imports
    * stored, and what the timeline check found (review R3-05).
    */
-  contracts: { written: number; existing: number; pairs: number; timeline: string[]; error: string | null };
+  contracts: { written: number; existing: number; pairs: number; timeline: string[]; error: string | null; pruned: number };
 }
 
 export interface SnapshotOptions {
@@ -120,6 +121,8 @@ export interface SnapshotOptions {
   importFinishedAt?: string | null;
   /** How a league's market is computed; the entry point's `leagueFinances` unless a test says otherwise. */
   compute?: (leagueId: number) => LeagueFinances;
+  /** Whether to prune the full contract snapshots the retention policy does not keep (owner decision 4); true unless a test says otherwise. */
+  prune?: boolean;
 }
 
 /** The league's game date as exported, or null when the export has none. */
@@ -136,7 +139,7 @@ function exportedGameDate(leagueId: number): string | null {
  * failure is returned, and the import it runs inside carries on.
  */
 export function captureMarketSnapshot(options: SnapshotOptions = {}): SnapshotResult {
-  const result: SnapshotResult = { written: 0, existing: 0, skipped: [], error: null, contracts: { written: 0, existing: 0, pairs: 0, timeline: [], error: null } };
+  const result: SnapshotResult = { written: 0, existing: 0, skipped: [], error: null, contracts: { written: 0, existing: 0, pairs: 0, timeline: [], error: null, pruned: 0 } };
   // Phase 4b, first: this import's contracts, which the next import's signings are observed against and the market
   // below is priced from, and the pair they form with the import before them. Idempotent per key; a failure here is
   // returned and the market is still recorded.
@@ -167,6 +170,8 @@ export function captureMarketSnapshot(options: SnapshotOptions = {}): SnapshotRe
         if (earlier && recordContractPair(leagueId, observedPairNow(earlier, snapshot, context ??= pairContext()))) result.contracts.pairs += 1;
       }
       result.contracts.pairs += storeMissingPairs(leagueId, () => (context ??= pairContext()));
+      // Owner decision 4 (2026-09-24): after the pair is stored, only the winters' brackets and the latest keep their snapshot
+      if (options.prune !== false) result.contracts.pruned += pruneContractSnapshots(leagueId).pruned.length;
     }
   } catch (err) {
     result.contracts.error = [result.contracts.error, (err as Error).message ?? String(err)].filter(Boolean).join(' ');
@@ -344,7 +349,11 @@ export interface PriceHistoryEntry {
   season: number | null;
   inForce: 'opening' | 'measured';
   opening: { central: number; low: number; high: number } | null;
-  measured: { status: string; signings: number; central: number | null; low: number | null; high: number | null; text: string } | null;
+  measured: {
+    status: string; signings: number; central: number | null; low: number | null; high: number | null; text: string;
+    /** The check per win projected at signing (owner decision 1): its central and its ratio to the price per win produced; null where not recorded. */
+    check: { central: number; ratio: number | null } | null;
+  } | null;
   /** Why the price in force was in force at that import, where recorded. */
   reason: string | null;
   /** What the row does not record (a row written before phase 4b). */
@@ -374,6 +383,7 @@ export function priceHistory(leagueId: number): PriceHistoryEntry[] {
       measured: m ? {
         status: m.status, signings: m.signings, central: m.price?.value?.central ?? null, low: m.price?.value?.low ?? null,
         high: m.price?.value?.high ?? null, text: m.price?.note ?? m.text,
+        check: m.check ? { central: m.check.central, ratio: m.check.ratio } : null,
       } : null,
       reason: a.reason, note: null,
     };

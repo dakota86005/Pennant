@@ -2236,14 +2236,28 @@ export const MEASURED_PRICE_LABEL = 'measured: observed signings';
  *                   free-agent class by expected wins at the earlier import before the measured price may replace
  *                   the opening one: a winter of cheap deals, or of stars alone, does not set the price of every win;
  *   method          the reading's version: an observed pair of imports is stored with it when the later import is
- *                   recorded, and read again from the two snapshots when the method has changed (review R3-03).
+ *                   recorded, and read again from the two snapshots when the method has changed (review R3-03);
+ *                   `signings-4b.3` (owner decisions, 2026-09-24) records an arbitration salary's previous salary. A
+ *                   pair whose snapshots were pruned is read as stored, under the method it was stored with, and says so;
+ *   priceUnit       (owner decision 1, 2026-09-24) the price in force, once measured, is per win produced in the first
+ *                   season (the realized reading, the opening's own unit): its central and band are that basis's; the
+ *                   readings per win projected at signing are shown beside it as a check on the projection, never in it;
+ *   retention       (owner decision 4, 2026-09-24) which full contract snapshots are kept: the imports that bracket a
+ *                   winter (each endpoint of a pair of imports across one: the last before it, any inside it and the
+ *                   first after it) and the most recent import (the next pair needs it); every other import's snapshot
+ *                   is removed when a later import is recorded, after its pair is stored, within the writer's transaction,
+ *                   never across save identities, never one a pair not stored under the current method still needs.
+ *                   Every stored pair and timeline event is kept: they are the durable record, so a later method can
+ *                   re-read a pair only where both its snapshots were kept.
  */
 export const SIGNINGS_POLICY = {
   bootstrap: { replicates: 1000, low: 0.1, high: 0.9, seed: 20260924 },
   rightsSeasons: 3,
   replacement: { minimumPlayers: 30, per: 600 },
   coverage: { perThird: 5 },
-  method: 'signings-4b.2',
+  method: 'signings-4b.3',
+  priceUnit: 'per_win_produced',
+  retention: 'winter_brackets_and_latest',
 } as const;
 
 export const SIGNINGS_POLICY_CALIBRATION: CalibrationStamp = policy(
@@ -2255,5 +2269,29 @@ export const SIGNINGS_POLICY_CALIBRATION: CalibrationStamp = policy(
     "opening price only when it holds the realized reading, 5 priced signings in each third of the winter's free-agent class, and a band narrower than the " +
     "opening band with its sampling (owner Q-4). Each basis needs the opening basis's 20 contracts; an arbitration class's observed salaries and the " +
     "reserve-clause renewals the ladder's 30; replacement 30 freely acquired players, shown and never applied. A free agent re-signed by a club that held " +
-    "him, and a controlled player's new deal elsewhere, are counted and left out. Decisions, not fits."
+    "him, and a controlled player's new deal elsewhere, are counted and left out. Owner decisions (2026-09-24): the price in force is per win produced, " +
+    'its central and band the realized reading, the per-projected-win readings its check beside it; an observed arbitration salary below the previous ' +
+    'salary is flagged against the owner-attested rule; full contract snapshots are kept only for the imports that bracket a winter and the latest, every ' +
+    'stored pair and event kept. Decisions, not fits.'
+);
+
+/**
+ * How Payroll sums its players' projected seasons (owner decision 2, 2026-09-24; `combineProjectedCosts`). Chosen, not
+ * fitted (D-041): the sum of centrals, each player's distance from his central on the low side and on the high side
+ * combined as independent across players (the root of the sum of squares), low and high apart; what is not random
+ * noise stays at its edges and is added, never combined: a season between statuses Player Rights leaves open, a band
+ * over a range of arbitration classes, a season he may not be held. Never narrows a player's own band; the
+ * edge-to-edge sum is kept beside it. Not a calibrated interval (phase 5 may calibrate it once coverage is measured).
+ */
+export const COST_COMBINATION_POLICY = {
+  method: 'independent_root_sum_of_squares',
+  atEdges: ['between_statuses', 'arbitration_class_range', 'if_held'],
+  label: 'players combined as independent; not a calibrated interval',
+} as const;
+
+export const COST_COMBINATION_POLICY_CALIBRATION: CalibrationStamp = policy(
+  "Owner-approved (owner, 2026-09-24): Payroll's club range is the sum of centrals with each player's distance from his central combined as " +
+    'independent across players (root sum of squares, low and high sides apart); a season between statuses, a range of arbitration classes and a ' +
+    'season he may not be held stay at their edges, added. Labelled "players combined as independent; not a calibrated interval"; the edge-to-edge ' +
+    "sum is kept in the details, and no player's own band is narrowed."
 );

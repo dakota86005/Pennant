@@ -1340,6 +1340,8 @@ architecture, pinned by tests.
 - Super Two margin (2026-09-23, hardening): the cutoff's edges are readings, not bounds, so within a policy margin
   of either edge (`SUPER_TWO_MARGIN_DAYS`, 10 days, stamped policy under D-041, owner-approved) the year before the
   arbitration line is `indeterminate`.
+- Phase 4 (2026-09-24): the price in force is per win produced; Payroll combines players as independent; an arbitration
+  salary never falls (owner-attested); contract snapshots are kept at the winters (the amendment of that date, below).
 
 **Hardening, contracts and control (2026-09-23).** An option is both branches only for a future season: the season
 under way is under contract, its option decided before it began. An **opt-out** makes every season from the one the
@@ -1373,14 +1375,14 @@ provisional prior's reading hulled with the range the save paid the class, so th
 a handful of them never set a slope; where no prior applies it stays unknown. Every priced band carries a **central**
 inside it (the line at the platform's central); a season between statuses Player Rights leaves open names each status's
 central and chooses none. A band is a range of reasonable readings, edge against edge, and every surface says so;
-Payroll sums the players' edges (their statistical combination is an owner question) with the sum of centrals beside
-them. A contract at the league minimum is kept out of the line and is never named a transaction; a season whose
+Payroll sums the players' edges (their statistical combination was an owner question) with the sum of centrals beside
+them (combined as independent since the owner's decision of 2026-09-24, below). A contract at the league minimum is kept out of the line and is never named a transaction; a season whose
 platform reaches as low as such deals in its class reaches the minimum, said. A branch the player decides (a player or
 mutual option declined, an opt-out) is priced only as what he costs if held. Player Rights states each season's
 **service class** (`serviceClass`), where one import's cross-section reads a player of that service, and prices cover it
 beside the trip; in a regime with no arbitration Player Rights lists no season as possibly arbitration. A reading
 computed without production prices no controlled season. MLB's 20% maximum salary cut is not applied: it is not
-owner-attested for OOTP (an open owner question).
+owner-attested for OOTP (the owner attested a different rule on 2026-09-24, below: an arbitration salary never falls).
 
 **Amended 2026-09-23 (phase 4b: the measured price of a win across imports; PLAYER_VALUE.md 4.1 to 4.4, Part 7,
 CALIBRATION.md section 9).**
@@ -1437,7 +1439,43 @@ section 9).**
   a term that ends no later than it did is a term changed within its seasons; rows with no term are never "the same
   terms".
 - **One earlier import is read per import.** The pair a new import forms with the one before it is stored with the
-  reading's method; the market reads the stored pairs. The history is not pruned: retention is the owner's question.
+  reading's method; the market reads the stored pairs. The history is not pruned: retention is the owner's question
+  (decided 2026-09-24, below).
+
+**Amended 2026-09-24 (phase 4 owner decisions, owner-approved; PLAYER_VALUE.md 2.2, Part 3, 4.2, 4.4, Part 7, Part 11,
+Part 12; CALIBRATION.md sections 8 and 9).** The owner ruled on the four questions the phase 4a and 4b reviews left open.
+
+- **The price in force, once measured, is per win produced.** The measured price is the realized reading (first-season
+  salary above the minimum over the WAR the signings produced in that season, the opening's own unit): its central and
+  its band are that basis's own. The readings per win projected at signing are shown beside it as a check on the
+  projection, with their ratio to the price, and are never the price in force, never in its band and never its central.
+  Until the realized reading exists nothing is measured in the price's unit. The adoption reason, Payroll's price line
+  and the price's history follow it (`SIGNINGS_POLICY.priceUnit`, policy).
+- **Payroll combines players as independent.** A club's projected cost is the sum of centrals with each player's
+  distance from his central, low and high sides apart, combined across players as the root of the sum of squares; what
+  is not random noise stays at its edges and is added: which status a season Player Rights leaves open is, which class a
+  range of arbitration classes is, and whether a player who may leave is held. Stated as policy under D-041
+  (`COST_COMBINATION_POLICY`), labelled "players combined as independent; not a calibrated interval", the edge-to-edge
+  sum kept in the details; no player's own band is narrowed, and the interval arithmetic of Part 3 stays for everything
+  else. This is the one place Player Value reads players as independent; phase 5 may calibrate it.
+- **An arbitration salary is never below the player's previous season's salary** (owner-attested, "I've never seen a
+  drop"). A rule of the game as the owner attests it, basis `owner_attested` like Super Two (D-018, D-023), stated once
+  by Player Rights (`ARBITRATION_NO_CUT_ATTESTATION`, `arbitrationSalaryFloor`, stamped policy) for every league whose
+  regime as read has arbitration, and consumed by the cost ladder; never an MLB assumption, and not the CBA's cap on a
+  cut. Every season priced as arbitration, the arbitration branch of a season between statuses included, has its low
+  edge and central at least the previous season's salary where it is known (the contract's salary for next season; the
+  season before's low edge after that, so a held player's arbitration low edges never fall); where it is not known the
+  rule cannot bind and says so. It is what he costs if tendered: a non-tender stays possible, and is said. Phase 4b
+  tests it: an observed arbitration salary below the player's previous salary is flagged as contradicting the rule,
+  counted and named, never silently absorbed.
+- **Contract snapshots are kept at the winters.** Full contract snapshots are kept only for the imports that bracket a
+  winter (the last before it, any inside it, the first after it) and for the most recent import; every stored pair and
+  timeline event is kept as the durable record. The contract store prunes at capture time, after the new pair is
+  stored, in one transaction that records the pruning as an event; never across save identities, never the latest,
+  never a snapshot a pair not yet stored under the current method needs. It is the only deletion Player Value makes,
+  `history.db` only, and the boundary test holds it to that one statement. The consequence: a later change of the
+  reading's method can re-derive a pair only from the snapshots kept; an in-season pair is read as stored, under its
+  own method (`SIGNINGS_POLICY.retention`, policy; method `signings-4b.3`).
 
 ## D-053 — Calibration belongs to the save
 

@@ -955,6 +955,12 @@ export interface ArbitrationRegime {
   classes: number | null;
   mlb: boolean | null;
   basis: string;
+  /**
+   * The owner-attested floor on an arbitration salary (owner, 2026-09-24): never below the player's previous
+   * season's salary. Stated wherever the league has arbitration; null where it has none (or its rule is not read).
+   * Consumers apply it through `arbitrationSalaryFloor`, never by rebuilding it.
+   */
+  salaryFloor?: { rule: 'previous_salary'; basis: 'owner_attested'; text: string } | null;
 }
 
 export function arbitrationRegimeOf(rules: ContractRules): ArbitrationRegime {
@@ -962,26 +968,71 @@ export function arbitrationRegimeOf(rules: ContractRules): ArbitrationRegime {
   const arb = rules.arbitrationYears.value;
   const perYear = rules.serviceDaysPerYear.value;
   if (fa === 0) {
-    return { status: 'reserve_clause', classes: null, mlb: false, basis: 'This league has no free agency (its free-agency rule is 0): a reserve clause binds every player, and no season is an arbitration year.' };
+    return { status: 'reserve_clause', classes: null, mlb: false, basis: 'This league has no free agency (its free-agency rule is 0): a reserve clause binds every player, and no season is an arbitration year.', salaryFloor: null };
   }
   if (arb === null) {
-    return { status: 'unknown', classes: null, mlb: null, basis: `The league's arbitration rule is not available: ${rules.arbitrationYears.note ?? 'no source states it'}.` };
+    return { status: 'unknown', classes: null, mlb: null, basis: `The league's arbitration rule is not available: ${rules.arbitrationYears.note ?? 'no source states it'}.`, salaryFloor: null };
   }
   if (arb === 0) {
-    return { status: 'no_arbitration', classes: null, mlb: false, basis: 'This league has no salary arbitration (its arbitration rule is 0): a player is renewed until free agency.' };
+    return { status: 'no_arbitration', classes: null, mlb: false, basis: 'This league has no salary arbitration (its arbitration rule is 0): a player is renewed until free agency.', salaryFloor: null };
   }
   if (fa === null) {
-    return { status: 'unknown', classes: null, mlb: null, basis: `The league's free-agency rule is not available, so how many arbitration years a player has is not stated: ${rules.freeAgencyYears.note ?? 'no source states it'}.` };
+    return { status: 'unknown', classes: null, mlb: null, basis: `The league's free-agency rule is not available, so how many arbitration years a player has is not stated: ${rules.freeAgencyYears.note ?? 'no source states it'}.`, salaryFloor: null };
   }
   if (fa <= arb) {
-    return { status: 'no_arbitration', classes: null, mlb: false, basis: `Free agency (${fa} years) comes no later than the arbitration line (${arb}): no season is an arbitration year.` };
+    return { status: 'no_arbitration', classes: null, mlb: false, basis: `Free agency (${fa} years) comes no later than the arbitration line (${arb}): no season is an arbitration year.`, salaryFloor: null };
   }
   const mlb = perYear === null ? null
     : fa === MLB_CONTRACT_REGIME.freeAgencyYears && arb === MLB_CONTRACT_REGIME.arbitrationYears && perYear === MLB_CONTRACT_REGIME.serviceDaysPerYear;
   return {
     status: 'arbitration', classes: fa - arb, mlb,
     basis: `Arbitration from ${arb} years to free agency at ${fa}: ${fa - arb} arbitration years by service${mlb === true ? ", MLB's regime as read" : mlb === false ? ", not MLB's regime" : ''}.`,
+    salaryFloor: { rule: 'previous_salary', basis: 'owner_attested', text: ARBITRATION_NO_CUT_ATTESTATION },
   };
+}
+
+// ── an arbitration salary never falls (owner, 2026-09-24) ────────────────────
+
+/**
+ * How OOTP sets an arbitration salary against the one before it, as the owner attested on 2026-09-24 ("I've never
+ * seen a drop"): an arbitration salary is never below the player's previous season's salary. A stated basis for a
+ * rule of the game (D-018, D-023; `owner_attested`, like Super Two), never a guess from MLB's rules: it is not the
+ * collective bargaining agreement's cap on a cut (to 80% of the salary), and nothing here applies that. It is stated
+ * for every league whose regime as read has arbitration, since it is how OOTP's arbitration sets a salary rather than
+ * one of MLB's thresholds; a league without arbitration has no such salary. It binds a salary the club tenders: a
+ * non-tender (the club not keeping him at all) is still possible, and the rule says nothing about it.
+ */
+export const ARBITRATION_NO_CUT_ATTESTATION =
+  "An arbitration salary is never below the player's previous season's salary (owner-attested, 2026-09-24: \"I've never seen a drop\"); " +
+  'it binds a salary the club tenders, and a non-tender stays possible. Not MLB\'s cap on a cut.';
+
+/** Policy, not fitted: the game's rule as the owner attested it, changed only by the owner's decision (D-041). */
+export const ARBITRATION_NO_CUT_CALIBRATION: CalibrationStamp = policy(
+  `${ARBITRATION_NO_CUT_ATTESTATION} Stated by Player Rights for every league whose regime as read has arbitration, and applied by ` +
+    'Player Value to every season it prices as arbitration where the previous salary is known.'
+);
+
+/** What the rule says about one arbitration season, given the salary of the season before it (null where not known). */
+export interface ArbitrationSalaryFloor {
+  status: 'binds' | 'unknown' | 'not_applicable';
+  floor: number | null;
+  basis: 'owner_attested' | null;
+  text: string;
+}
+
+/**
+ * The floor an arbitration salary has from the previous season's salary (owner, 2026-09-24): that salary itself,
+ * where it is known; where it is not, the rule cannot bind and says so; a league without arbitration has none.
+ */
+export function arbitrationSalaryFloor(regime: Pick<ArbitrationRegime, 'status' | 'salaryFloor'>, previous: number | null): ArbitrationSalaryFloor {
+  const rule = regime.salaryFloor ?? null;
+  if (regime.status !== 'arbitration' || rule === null) {
+    return { status: 'not_applicable', floor: null, basis: null, text: 'This league has no salary arbitration as read, so no arbitration salary floor applies.' };
+  }
+  if (previous === null || !Number.isFinite(previous)) {
+    return { status: 'unknown', floor: null, basis: 'owner_attested', text: `His previous season's salary is not known, so the rule that an arbitration salary never falls cannot bind here. ${rule.text}` };
+  }
+  return { status: 'binds', floor: previous, basis: 'owner_attested', text: rule.text };
 }
 
 /**

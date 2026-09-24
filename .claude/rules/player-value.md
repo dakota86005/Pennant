@@ -97,10 +97,20 @@ worktree.
   regime as read is MLB's; else unknown. No arbitration or an unread rule: no ladder (and no season lists arbitration). A
   reading without production prices nothing. Reserve-clause renewals are unknown until observed across imports (4b). A projected cost is never committed
   money: Payroll shows it beside the committed total as a range of reasonable readings with the sum of centrals, never in
-  it. Open owner questions (phase 4a review): combining players statistically at Payroll; MLB's 20% maximum cut.
+  it. Owner decisions (2026-09-24, D-052 amendment): an arbitration salary is never below the previous season's salary
+  (owner-attested; Player Rights' `arbitrationSalaryFloor`, never MLB's 20% rule): every arbitration-priced season's low
+  edge and central are at least the previous salary where known, chained year to year, "if held" with the non-tender
+  said, unknown where it is not; Payroll's club range combines players as independent (`combineProjectedCosts`,
+  `COST_COMBINATION_POLICY`): around the sum of centrals, each player's distance beyond his non-noise edges (which status,
+  which class of a range, whether held) in root sum of squares, labelled "players combined as independent; not a
+  calibrated interval", the edge-to-edge sum in the details, no player's own band narrowed.
 - The measured price (phase 4b and its review, D-052 amendments): each import records its contracts (keyed by the save's
   identity, idempotent) and stores the pair it forms with the import recorded before it (only that one is read; a pair is
-  read again from its snapshots only when `SIGNINGS_POLICY.method` changes; nothing is pruned). Imports are paired in the
+  read again from its snapshots only when `SIGNINGS_POLICY.method` changes, where both were kept). Retention (owner,
+  2026-09-24): full snapshots only for the imports that bracket a winter and the latest, pruned at capture after the pair
+  is stored (`pruneContractSnapshots`, one transaction, a `pruned` event; the store's one DELETE, history.db only, never
+  across save identities, never the latest, never one a pair still needs); every pair and event kept; a pruned import
+  reads as not recorded. Imports are paired in the
   order recorded; a save that went back, or a date imported again with different play, starts a new timeline, never
   compared across. A winter is read by the calendar (an import before its season began is inside it; one winter however
   many imports; a pair a winter or more apart is not measured). Each change is read through Player Rights' standing AT
@@ -112,8 +122,10 @@ worktree.
   of bases like the opening's (per win projected at signing over the deal and in the first season, if he plays, and per
   win produced in the first season once completed), each a ratio of sums with its resampled band (by winter once two),
   each on at least 20 signings; it is compared with the opening band with its sampling (Q-4) only once it holds the
-  realized reading and covers each third of the free-agent class, its central is the realized reading's, and the reason
-  names the unit (which unit the price in force uses is an open owner question). An unbounded opening sampling band is
+  realized reading and covers each third of the free-agent class. The price in force is per win produced (owner,
+  2026-09-24): its central and band are the realized basis's; the per-projected-win readings are its check (with their
+  ratio), never the price; before the realized reading it is not measured. An observed arbitration salary below the
+  previous salary is flagged against the owner-attested rule, counted and named. An unbounded opening sampling band is
   wider than any bounded one. One import, or imports inside one season: "No off-season observed yet". Awards are scored
   against the earlier import's band beside its width, read in the ladder's class, and joined as a class line at 30;
   reserve-clause renewals price a reserve-clause season at 30; replacement from freely acquired players at 30 is shown,

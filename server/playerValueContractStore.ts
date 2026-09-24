@@ -12,8 +12,14 @@
  *     the league and the game date (`parseGameDate`), and the player: a new save under a reused name never reads
  *     another's contracts. Idempotent per key: a second capture of the same import finds its header and writes nothing.
  *   - Bounded per import: one row per player the market league's clubs hold, and per unsigned player whose production
- *     is established; a minor-league deal carries only its terms. The history is not pruned (about 3.2 MB an import on
- *     the Arizona save; retention is an owner question, review R3-03).
+ *     is established; a minor-league deal carries only its terms (about 3.2 MB an import on the Arizona save).
+ *   - Kept at the winters (owner decision 4, 2026-09-24; `SIGNINGS_POLICY.retention`, `retainedImports`): a full snapshot
+ *     is kept only for the imports that bracket a winter and the most recent import. The others' rows are removed when a
+ *     later import is recorded, after its pair is stored, in one transaction that also records a 'pruned' event; never
+ *     across save identities, never the latest, never a snapshot a pair not yet stored under the current method still
+ *     needs. The import's header, every stored pair and every event stay: they are the durable record. A pruned import
+ *     reads as not recorded (never as an import with no contracts), and a later method re-reads a pair only where both
+ *     its snapshots were kept; elsewhere the pair is read as stored, under its own method.
  *   - Read one import at a time (review R3-03): when an import is recorded, the pair it forms with the import before it
  *     on the save's timeline is observed once and stored (`value_contract_pairs`, with the reading's method); the
  *     market is read from the stored pairs, and a pair is observed again from its two snapshots only when the method
@@ -21,14 +27,16 @@
  *   - The timeline (review R3-05): the order imports were recorded in (`seq`), and the breaks found when a date already
  *     recorded is imported again (`value_contract_events`): the save went back to it, or its season's play differs from
  *     the record's (a reloaded save played again).
- *   - Additive: CREATE TABLE IF NOT EXISTS, INSERT OR IGNORE; nothing alters, replaces or drops a row. Never league.db,
- *     never a timer. The rows are computed by the entry point and handed here; this module stores and reads them.
+ *   - Additive: CREATE TABLE IF NOT EXISTS, INSERT OR IGNORE; nothing alters or replaces a row, and the only rows ever
+ *     removed are pruned snapshot rows (above). Never league.db, never a timer. The rows are computed by the entry point
+ *     and handed here; this module stores and reads them.
  */
 
 import { parseGameDate } from './dataFreshness.js';
 import { historyDb } from './history.js';
+import { SIGNINGS_POLICY } from './playerValueCalibration.js';
 import { saveIdentity } from './playerValueFitStore.js';
-import type { ContractSnapshot, ContractSnapshotRow, TimelineBreak, WinterPair } from './playerValueSignings.js';
+import { retainedImports, type ContractSnapshot, type ContractSnapshotRow, type TimelineBreak, type WinterPair } from './playerValueSignings.js';
 
 historyDb.exec(`
   CREATE TABLE IF NOT EXISTS value_contract_imports (
@@ -101,6 +109,8 @@ export interface ContractImport {
   population: string;
   /** The order it was recorded in (the timeline's order, review R3-05). */
   seq: number;
+  /** Its full snapshot was removed under the retention policy (owner decision 4): the header stays, its rows do not. */
+  pruned: boolean;
 }
 
 export interface ContractSnapshotInput extends ContractSnapshot {
@@ -191,13 +201,22 @@ const HEADER_COLUMNS = 'rowid AS seq, league_id, game_date, game_date_exported, 
 
 /** This save's recorded imports for the league, in the order they were recorded (headers only). */
 export function contractImports(leagueId: number): ContractImport[] {
+  const save = saveIdentity(leagueId);
   const rows = historyDb.prepare(
     `SELECT ${HEADER_COLUMNS} FROM value_contract_imports WHERE save_name = ? AND league_id = ? ORDER BY rowid`
-  ).all(saveIdentity(leagueId), leagueId) as HeaderRow[];
+  ).all(save, leagueId) as HeaderRow[];
+  const pruned = prunedDates(save, leagueId);
   return rows.map((r) => ({
     leagueId: r.league_id, gameDate: r.game_date, gameDateExported: r.game_date_exported, season: r.season,
-    seasonPlayed: r.season_played, rows: r.row_count, population: r.population, seq: r.seq,
+    seasonPlayed: r.season_played, rows: r.row_count, population: r.population, seq: r.seq, pruned: pruned.has(r.game_date),
   }));
+}
+
+/** The game dates whose full snapshot this save pruned (owner decision 4). */
+function prunedDates(save: string, leagueId: number): Set<string> {
+  const rows = historyDb.prepare(`SELECT game_date FROM value_contract_events WHERE save_name = ? AND league_id = ? AND event = 'pruned'`)
+    .all(save, leagueId) as Array<{ game_date: string }>;
+  return new Set(rows.map((r) => r.game_date));
 }
 
 const parse = <T>(text: string, fallback: T): T => {
@@ -244,7 +263,9 @@ export function contractSnapshotAt(leagueId: number, gameDate: string): Contract
   const save = saveIdentity(leagueId);
   const h = historyDb.prepare(`SELECT ${HEADER_COLUMNS} FROM value_contract_imports WHERE save_name = ? AND league_id = ? AND game_date = ?`)
     .get(save, leagueId, keyOf(gameDate)) as HeaderRow | undefined;
-  return h ? snapshotOf(save, h) : null;
+  // A pruned import's snapshot is gone, never an import with no contracts (owner decision 4)
+  if (!h || prunedDates(save, leagueId).has(h.game_date)) return null;
+  return snapshotOf(save, h);
 }
 
 /**
@@ -253,7 +274,9 @@ export function contractSnapshotAt(leagueId: number, gameDate: string): Contract
  */
 export function contractSnapshots(leagueId: number): ContractSnapshot[] {
   const save = saveIdentity(leagueId);
-  const headers = historyDb.prepare(`SELECT ${HEADER_COLUMNS} FROM value_contract_imports WHERE save_name = ? AND league_id = ?`).all(save, leagueId) as HeaderRow[];
+  const pruned = prunedDates(save, leagueId);
+  const headers = (historyDb.prepare(`SELECT ${HEADER_COLUMNS} FROM value_contract_imports WHERE save_name = ? AND league_id = ?`).all(save, leagueId) as HeaderRow[])
+    .filter((h) => !pruned.has(h.game_date));
   return headers.map((h) => snapshotOf(save, h)).sort((a, b) => keyOf(a.gameDate).localeCompare(keyOf(b.gameDate)));
 }
 
@@ -296,4 +319,59 @@ export function contractPair(leagueId: number, earlier: string, later: string, m
   const r = historyDb.prepare(`SELECT pair_json FROM value_contract_pairs WHERE save_name = ? AND league_id = ? AND earlier_date = ? AND later_date = ? AND method = ?`)
     .get(saveIdentity(leagueId), leagueId, keyOf(earlier), keyOf(later), method) as { pair_json: string } | undefined;
   return r ? parse<WinterPair | null>(r.pair_json, null) : null;
+}
+
+/**
+ * The pair of two imports as last stored under any method, or null (owner decision 4): the durable record, read where a
+ * pair cannot be read again under the current method because a snapshot of it was pruned. It carries its own `method`.
+ */
+export function storedPairAnyMethod(leagueId: number, earlier: string, later: string): WinterPair | null {
+  const r = historyDb.prepare(`SELECT pair_json FROM value_contract_pairs WHERE save_name = ? AND league_id = ? AND earlier_date = ? AND later_date = ? ORDER BY observed_at DESC, rowid DESC LIMIT 1`)
+    .get(saveIdentity(leagueId), leagueId, keyOf(earlier), keyOf(later)) as { pair_json: string } | undefined;
+  return r ? parse<WinterPair | null>(r.pair_json, null) : null;
+}
+
+export interface PruneResult {
+  /** Imports whose full snapshot this call removed, the snapshot rows removed, and the imports kept with why. */
+  pruned: string[];
+  rows: number;
+  kept: Array<{ gameDate: string; why: string }>;
+}
+
+/**
+ * Remove the full contract snapshots the retention policy does not keep (owner decision 4, 2026-09-24): every import of
+ * this save and league but the ones that bracket a winter, the most recent, and those a pair not yet stored under the
+ * current method still needs (`retainedImports`). Called at capture time, after the new import's pair is stored. One
+ * transaction removes an import's rows and records its 'pruned' event (the header, the pairs and the events stay).
+ * Keyed by the save's identity: never another save's rows. Idempotent: an import already pruned is not pruned again.
+ */
+export function pruneContractSnapshots(leagueId: number): PruneResult {
+  const save = saveIdentity(leagueId);
+  const imports = contractImports(leagueId);
+  const method = SIGNINGS_POLICY.method;
+  const decision = retainedImports(
+    imports.map((i) => ({ gameDate: i.gameDate, seq: i.seq, season: i.season, seasonPlayed: i.seasonPlayed, pruned: i.pruned })),
+    contractBreaks(leagueId),
+    (earlier, later) => contractPair(leagueId, earlier, later, method) !== null,
+  );
+  const kept = decision.keep.map((d) => ({ gameDate: d, why: decision.reasons[d] }));
+  if (decision.prune.length === 0) return { pruned: [], rows: 0, kept };
+  const seqOf = new Map(imports.map((i) => [keyOf(i.gameDate), i.seq]));
+  const remove = historyDb.prepare(`DELETE FROM value_contract_snapshots WHERE save_name = ? AND league_id = ? AND game_date = ?`);
+  const event = historyDb.prepare(
+    `INSERT OR IGNORE INTO value_contract_events (save_name, league_id, seq, event, game_date, observed_at, detail_json) VALUES (?, ?, ?, 'pruned', ?, ?, ?)`
+  );
+  const run = historyDb.transaction(() => {
+    let rows = 0;
+    const now = new Date().toISOString();
+    for (const date of decision.prune) {
+      const n = remove.run(save, leagueId, date).changes;
+      rows += n;
+      event.run(save, leagueId, seqOf.get(date) as number, date, now, JSON.stringify({ rows: n, policy: SIGNINGS_POLICY.retention, method }));
+    }
+    return rows;
+  });
+  const rows = run();
+  writes.version += 1;
+  return { pruned: decision.prune, rows, kept };
 }

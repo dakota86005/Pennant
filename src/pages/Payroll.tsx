@@ -10,12 +10,14 @@ interface Commitment {
   /** Club, vesting and mutual option seasons: not guaranteed, counted apart from the total. */
   options?: { total: number; players: number; unstated: number };
   /**
-   * Phase 4a: what the controlled seasons no contract covers could cost (pre-arbitration and arbitration), summed
-   * edge against edge (a range of reasonable readings), with the sum of their centrals beside it. Never in the
-   * total or the headroom.
+   * Phase 4a: what the controlled seasons no contract covers could cost (pre-arbitration and arbitration), with the sum
+   * of their centrals beside it. Since the owner's decision (2026-09-24) the range combines players as independent (what
+   * is not noise at its edges); the edge-to-edge sum is `edges`. Never in the total or the headroom.
    */
   projected?: {
     low: number | null; high: number | null; central?: { low: number; high: number } | null;
+    edges?: { low: number; high: number } | null;
+    combination?: { combined: number; atEdges: number; text: string } | null;
     players: number; unpriced: number; mayLeave: number; provisional: number;
   };
   /** Covered seasons whose salary the export does not state. */
@@ -87,6 +89,8 @@ interface PriceAdoptionData {
     status: string; signings: number; observed: number; text: string; price: Sourced<{ central: number; low: number; high: number }>;
     /** Phase 4b review: the measured bases, each with its unit (projected at signing, or realized in the first season). */
     bases?: Array<{ id: string; unit: 'projected' | 'realized'; description: string; status: string; signings: number; central: number | null; low: number | null; high: number | null; text: string }>;
+    /** Owner decision 1 (2026-09-24): the check per win projected at signing, beside the price per win produced, never in it. */
+    check?: { status: string; unit: 'projected'; central: number; low: number; high: number; ratio: number | null; text: string } | null;
   };
   rule: string;
 }
@@ -96,7 +100,11 @@ export interface PriceHistoryEntry {
   season: number | null;
   inForce: 'opening' | 'measured';
   opening: { central: number; low: number; high: number } | null;
-  measured: { status: string; signings: number; central: number | null; low: number | null; high: number | null; text?: string } | null;
+  measured: {
+    status: string; signings: number; central: number | null; low: number | null; high: number | null; text?: string;
+    /** Owner decision 1: the check per win projected at signing, and its ratio to the price per win produced. */
+    check?: { central: number; ratio: number | null } | null;
+  } | null;
   reason?: string | null;
   note: string | null;
 }
@@ -105,6 +113,8 @@ interface ObservedCostsData {
   reserveClause: { status: string; text: string };
   /** Phase 4b review: imports not compared across a change of timeline (the save went back, or a date played again), in words. */
   timeline?: { text: string | null; superseded: string[] };
+  /** Owner decision 4 (2026-09-24): which imports keep their full contract snapshot, in words. */
+  retention?: { kept: number; pruned: number; olderMethod: number; text: string };
 }
 interface CostLadderData {
   preArbitration: { status: string; cases: number; atMinimum: number; band: Sourced<{ low: number; high: number; central?: number | null }>; text: string };
@@ -200,15 +210,21 @@ const optionTitle = (o: OptionYear): string => {
   return `A ${o.kind === 'opt_out' ? 'season he may opt out before' : `${o.kind} option`}: not guaranteed, and not in the committed total.${declined}`;
 };
 
+/** How Payroll labels the club's projected range (owner decision 2, 2026-09-24): what it is, in the page's words. */
+export const COMBINED_LABEL = 'players combined as independent; not a calibrated interval';
+
 /**
- * What the projected band beside each committed season is (phase 4a review, R2-01): a sum of every player's edges,
- * not an interval and not an expectation. Whether to combine players' readings statistically is the owner's decision.
+ * What the projected band beside each committed season is (owner decision 2, 2026-09-24): the sum of centrals with
+ * each player's distance from his central combined as independent, what is not noise at its edges; the edge-to-edge
+ * sum beside it in the details. Not an interval with a stated chance and not an expectation.
  */
 export const PROJECTED_TIP =
-  'What pre-arbitration renewals and arbitration seasons no contract covers could cost: every player at his low edge, summed, to every player ' +
-  `at his high edge, summed. Each player's band is ${COST_BAND_WORDS}; summed edge against edge, the total is wider still, a range of reasonable ` +
-  'readings for the club and never a forecast. The central beside it sums each season\'s central (a player who may leave counted as leaving ' +
-  'to as held; a season between statuses at its lowest to its highest status). Not committed, and never in the total or the room.';
+  'What pre-arbitration renewals and arbitration seasons no contract covers could cost, as a range of reasonable readings for the club, never a ' +
+  `forecast: ${COMBINED_LABEL}. Around the sum of centrals, each player's distance from his central is combined as independent across players ` +
+  '(so every player is not at his edge at once); a season between statuses, a range of arbitration classes and a player who may leave stay at ' +
+  `their edges, added. Each player's own band is ${COST_BAND_WORDS}, never narrowed; the sum edge against edge (every player at his low edge to ` +
+  'every player at his high edge) is in the details. The central sums each season\'s central (a player who may leave counted as leaving to as ' +
+  'held; a season between statuses at its lowest to its highest status). Not committed, and never in the total or the room.';
 
 /** Dollars per win to the hundredth of a million, so a floor of $4.22M–$4.33M is not printed as "$4.2M". */
 const perWin = (v: number): string => `$${(v / 1_000_000).toFixed(2)}M`;
@@ -222,14 +238,15 @@ const perWin = (v: number): string => `$${(v / 1_000_000).toFixed(2)}M`;
 const measuredWords = (m: PriceHistoryEntry['measured']): string => {
   if (!m) return 'not recorded';
   if (m.status === 'measured' && m.central !== null && m.low !== null && m.high !== null) {
-    return `${perWin(m.central)} (${perWin(m.low)}–${perWin(m.high)}), ${m.signings} signings`;
+    const check = m.check ? `; check per win projected at signing ${perWin(m.check.central)}${m.check.ratio !== null ? ` (${m.check.ratio.toFixed(2)} times)` : ''}` : '';
+    return `${perWin(m.central)} per win produced (${perWin(m.low)}–${perWin(m.high)}), ${m.signings} signings${check}`;
   }
   if (m.status === 'no_off_season') return 'no off-season observed yet';
   if (m.status === 'not_measured') return `not measured (${m.signings} signings priced)`;
   return 'unknown';
 };
 
-export function PriceOfWinLine({ price, history, timeline }: { price: ClubFinancesData['league']['priceOfWin']; history?: PriceHistoryEntry[]; timeline?: string | null }) {
+export function PriceOfWinLine({ price, history, timeline, retention }: { price: ClubFinancesData['league']['priceOfWin']; history?: PriceHistoryEntry[]; timeline?: string | null; retention?: string | null }) {
   const p = price.price.value;
   const floor = price.floor.value;
   const a = price.adoption ?? null;
@@ -260,13 +277,20 @@ export function PriceOfWinLine({ price, history, timeline }: { price: ClubFinanc
             <li>Opening band with its sampling (each basis resampled): {perWin(a.opening.comparable.low)}–{perWin(a.opening.comparable.high)}.</li>
           )}
           {a && <li>Measured: {a.measured.price.value ? a.measured.text : (a.measured.price.note ?? a.measured.text)}</li>}
+          {a?.measured.check && (
+            <li>
+              Check on the projection, per win projected at signing (never the price): {perWin(a.measured.check.central)} ({perWin(a.measured.check.low)}–{perWin(a.measured.check.high)})
+              {a.measured.check.ratio !== null ? `, ${a.measured.check.ratio.toFixed(2)} times the price per win produced` : ', beside no price per win produced yet'}.
+            </li>
+          )}
           {a?.measured.bases?.filter((b) => b.status === 'measured').map((b) => (
             <li key={`m-${b.id}`}>
-              Measured basis ({b.unit === 'realized' ? 'per realized win' : 'per win projected at signing'}): {b.description}: {perWin(b.central as number)}
+              Measured basis ({b.unit === 'realized' ? 'per win produced: the price' : 'per win projected at signing: the check'}): {b.description}: {perWin(b.central as number)}
               {b.low !== null && b.high !== null ? ` (${perWin(b.low)}–${perWin(b.high)} resampled)` : ''}, {b.signings} signings.
             </li>
           ))}
           {a && <li>{a.rule}</li>}
+          {retention && <li>{retention}</li>}
         </ul>
       </details>
       {timeline && <div className="muted">{timeline}</div>}
@@ -410,7 +434,7 @@ export function Payroll({ orgId }: { orgId: number }) {
           </div>
         </div>
       )}
-      {price && <PriceOfWinLine price={price} history={finance?.priceHistory} timeline={finance?.league.observed?.timeline?.text ?? null} />}
+      {price && <PriceOfWinLine price={price} history={finance?.priceHistory} timeline={finance?.league.observed?.timeline?.text ?? null} retention={finance?.league.observed?.retention?.text ?? null} />}
       {finance?.league.costs && <CostLadderLine costs={finance.league.costs} observed={finance.league.observed} />}
 
       <section>
@@ -437,6 +461,7 @@ export function Payroll({ orgId }: { orgId: number }) {
                 className="muted commit-projected"
                 title={c.projected && (c.projected.players > 0 || c.projected.unpriced > 0)
                   ? PROJECTED_TIP +
+                    (c.projected.combination ? ` ${c.projected.combination.text}` : '') +
                     (c.projected.mayLeave > 0 ? ` ${c.projected.mayLeave} may reach free agency instead (if held): they add nothing to the low edge.` : '') +
                     (c.projected.provisional > 0 ? ` ${c.projected.provisional} rest on the provisional prior.` : '') +
                     (c.projected.unpriced > 0 ? ` ${c.projected.unpriced} not priced (their cost is not established), never counted as $0.` : '')
@@ -444,7 +469,7 @@ export function Payroll({ orgId }: { orgId: number }) {
               >
                 {c.projected && c.projected.players > 0 && (
                   <>
-                    +{costBand(c.projected.low, c.projected.high)} range
+                    +{costBand(c.projected.low, c.projected.high)} range ({COMBINED_LABEL})
                     {c.projected.central && <>, central {c.projected.central.low === c.projected.central.high ? costMoney(c.projected.central.low) : costBand(c.projected.central.low, c.projected.central.high)}</>}
                     {' '}({c.projected.players}{c.projected.mayLeave > 0 ? `, ${c.projected.mayLeave} if held` : ''})
                   </>
@@ -483,10 +508,24 @@ export function Payroll({ orgId }: { orgId: number }) {
           The dashed line is today&rsquo;s budget. <Tip label="Headroom" tip={TIP_HEADROOM} /> in later
           seasons is wide because only guaranteed deals are counted — arbitration and replacements
           will fill much of it. The <Tip label="range beside each season" tip={PROJECTED_TIP} /> is what
-          pre-arbitration and arbitration seasons could cost, every player at his low edge to every player at his
-          high edge (a range of reasonable readings, not a forecast), with the sum of their centrals; it is never in
-          the total or the room.
+          pre-arbitration and arbitration seasons could cost ({COMBINED_LABEL}: around the sum of their centrals, each
+          player&rsquo;s distance from his central combined as independent, a season between statuses, a range of
+          arbitration classes or a player who may leave at its edges); a range of reasonable readings, not a forecast,
+          and never in the total or the room.
         </p>
+        {data.commitments.some((c) => c.projected?.edges) && (
+          <details className="price-basis">
+            <summary>Every player at his edge, summed (edge against edge)</summary>
+            <ul>
+              {data.commitments.filter((c) => c.projected?.edges).map((c) => (
+                <li key={c.year}>
+                  {c.year}: {costBand(c.projected!.edges!.low, c.projected!.edges!.high)} edge against edge, against {costBand(c.projected!.low, c.projected!.high)} with players
+                  combined as independent ({c.projected!.combination?.combined ?? 0} combined, {c.projected!.combination?.atEdges ?? 0} at their edges).
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
       </section>
 
       <div className="two-col">

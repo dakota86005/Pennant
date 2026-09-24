@@ -597,8 +597,9 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   priced only from renewals observed across imports (phase 4b). The ladder is snapshotted with the market (`basis_json.costs`;
   a key written before 4a has none, and the shape changed in the review). Payroll
   shows each controlled season's band beside committed money (never in the total or
-  the room), summed edge against edge as a range of reasonable readings with the sum
-  of centrals beside it, and the ladder's basis; Contracts shows next season's band
+  the room), as a range of reasonable readings with the sum of centrals beside it
+  (players combined as independent since the owner's decision of 2026-09-24, below), and
+  the ladder's basis; Contracts shows next season's band
   (and an option's declined branch) under the flags; the card's cone shows each
   season's cost, its central and an option's declined branch. A reading without
   production (Free Agents) prices nothing. Payroll now computes production for its
@@ -642,10 +643,24 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   with the opening band only once it holds the realized reading and covers each third
   of the free-agent class, its central is the realized reading's, and the reason names
   the unit. Measured replacement is shown, never applied. Awards are scored with their
-  bands' width. Open owner questions: the unit of the price in force once measured, and
-  how long the contract history is kept (about 3.2 MB an import, not pruned). Known
-  limit: production is unknown at an import after the season number moved on (D-08), so
-  a signing first seen then has only the realized reading.
+  bands' width. Known limit: production is unknown at an import after the season number
+  moved on (D-08), so a signing first seen then has only the realized reading.
+- **Phase 4 owner decisions** (2026-09-24; D-052 amendment, PLAYER_VALUE.md Part 12):
+  the price of a win in force, once measured, is **per win produced** (the realized
+  reading's central and band; the per-projected-win readings are its check, with their
+  ratio, never the price); Payroll's club range **combines players as independent**
+  around the sum of centrals (`combineProjectedCosts`, `COST_COMBINATION_POLICY`), what is
+  not noise (a status left open, a range of classes, may leave) at its edges, labelled
+  "players combined as independent; not a calibrated interval", the edge-to-edge sum in
+  its details (Arizona 2027 $16.4M–$49.0M against $15.8M–$75.8M edge to edge); an
+  **arbitration salary is never below the previous season's salary** (owner-attested,
+  stated by Player Rights' `arbitrationSalaryFloor`, applied to every arbitration-priced
+  season where the previous salary is known, low edges chained; 526 of 2,566 arbitration
+  seasons on the save move), and an observed award below it is flagged on Payroll's
+  awards line; **full contract snapshots are kept only at the winters and for the latest
+  import** (`pruneContractSnapshots` at capture, one transaction, a `pruned` event; every
+  pair and event kept; method `signings-4b.3`), so R3's 30-import probe holds 2.9 MB of
+  snapshots instead of 86.1 MB.
 - **Player card production cone** (PLAYER_VALUE.md Part 8): an "Expected
   production" section draws each season's 80% and 50% bands, the expected
   path, replacement level and control, with target beside observed coverage on
@@ -678,8 +693,7 @@ Not built: the save's own development path, the ratings' forecast reliability
 and the arrival chance by potential (they fit themselves once the save's rating
 snapshots allow), surplus, the philosophy lens and
 the club's value of a win (phase 5), personality's effect on price (it moves no number
-until observed signings are read against it), a retention rule for the per-import
-contract snapshot (an owner question), a per-import store (everything is computed per request; see
+until observed signings are read against it), a per-import store (everything is computed per request; see
 Part 7), and the consumer migration that deletes `players_value` reads and the
 percentile advice (phase 6). The calibrated constants of other subsystems are
 not yet fitted per save (D-053; ROADMAP). On the Arizona import 6,952 of 8,009 held players have indeterminate later

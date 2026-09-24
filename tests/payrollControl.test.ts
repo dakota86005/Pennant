@@ -255,8 +255,14 @@ describe('the pages read Player Value (hardening F2)', () => {
       if (known.length === 0) { expect(c.projected.low, `${years[i]}`).toBeNull(); continue; }
       checked += 1;
       expect(c.projected.players).toBe(known.length);
-      expect(c.projected.low).toBeCloseTo(known.reduce((s, x) => s + (x.ifHeld ? 0 : x.low!), 0), 0);
-      expect(c.projected.high).toBeCloseTo(known.reduce((s, x) => s + x.high!, 0), 0);
+      // Owner, 2026-09-24: the edge-to-edge sum stays in the details; the range shown combines players as independent
+      expect(c.projected.edges.low).toBeCloseTo(known.reduce((s, x) => s + (x.ifHeld ? 0 : x.low!), 0), 0);
+      expect(c.projected.edges.high).toBeCloseTo(known.reduce((s, x) => s + x.high!, 0), 0);
+      expect(c.projected.low).toBeGreaterThanOrEqual(c.projected.edges.low - 1);
+      expect(c.projected.high).toBeLessThanOrEqual(c.projected.edges.high + 1);
+      expect(c.projected.combination.text).toMatch(/independent/);
+      expect(c.projected.combination.text).toMatch(/not a calibrated interval/);
+      expect(c.projected.combination.combined + c.projected.combination.atEdges).toBe(known.length);
       // The centrals: each season's own; one that may be free agency adds its held central only to the upper sum;
       // a season between statuses adds its lowest and highest status's central
       const centralLow = known.reduce((s, x) => s + (x.ifHeld ? 0 : x.central ?? Math.min(...x.centrals!.map((k) => k.central))), 0);
