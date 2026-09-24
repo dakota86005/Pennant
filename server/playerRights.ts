@@ -855,6 +855,12 @@ export interface SeasonControlEligibility {
     trip: { low: number; high: number } | null;
     /** Why the trip is a range, when it is: an earlier winter the export does not show, or one the projection leaves open. */
     tripNote: string | null;
+    /**
+     * For a season whose arbitration answer is indeterminate (the Super Two window, or the arbitration line inside
+     * the projection): which trip it would be if he is in arbitration, counted by winter like any other; null
+     * otherwise, and where an earlier winter is not established. What a cost band covers, never an eligibility.
+     */
+    tripIfEligible: { low: number; high: number } | null;
     /** Eligible as a Super Two on at least one edge: from the year before the arbitration line. */
     superTwo: boolean;
   };
@@ -927,6 +933,48 @@ export const SUPER_TWO_PRIOR_SEASON_DAYS = 86;
  * keeps the window indeterminate. It is compared against, never assumed for a league.
  */
 export const MLB_CONTRACT_REGIME = { freeAgencyYears: 6, arbitrationYears: 3, serviceDaysPerYear: 172 } as const;
+
+/**
+ * The league's arbitration regime as read (phase 4a): what Player Value prices an arbitration season
+ * with, stated here because the rules and their thresholds are Player Rights' (D-023) and Value never
+ * reads them. `classes` is how many arbitration years a player has by service (free agency less the
+ * arbitration line); a Super Two's extra trip is inside the last of them, since his service puts him
+ * there. `mlb` says whether the regime as read is MLB's (the comparison Super Two makes), so a prior
+ * drawn from real major-league contracts is used only where it describes the same rules.
+ */
+export interface ArbitrationRegime {
+  status: 'arbitration' | 'no_arbitration' | 'reserve_clause' | 'unknown';
+  classes: number | null;
+  mlb: boolean | null;
+  basis: string;
+}
+
+export function arbitrationRegimeOf(rules: ContractRules): ArbitrationRegime {
+  const fa = rules.freeAgencyYears.value;
+  const arb = rules.arbitrationYears.value;
+  const perYear = rules.serviceDaysPerYear.value;
+  if (fa === 0) {
+    return { status: 'reserve_clause', classes: null, mlb: false, basis: 'This league has no free agency (its free-agency rule is 0): a reserve clause binds every player, and no season is an arbitration year.' };
+  }
+  if (arb === null) {
+    return { status: 'unknown', classes: null, mlb: null, basis: `The league's arbitration rule is not available: ${rules.arbitrationYears.note ?? 'no source states it'}.` };
+  }
+  if (arb === 0) {
+    return { status: 'no_arbitration', classes: null, mlb: false, basis: 'This league has no salary arbitration (its arbitration rule is 0): a player is renewed until free agency.' };
+  }
+  if (fa === null) {
+    return { status: 'unknown', classes: null, mlb: null, basis: `The league's free-agency rule is not available, so how many arbitration years a player has is not stated: ${rules.freeAgencyYears.note ?? 'no source states it'}.` };
+  }
+  if (fa <= arb) {
+    return { status: 'no_arbitration', classes: null, mlb: false, basis: `Free agency (${fa} years) comes no later than the arbitration line (${arb}): no season is an arbitration year.` };
+  }
+  const mlb = perYear === null ? null
+    : fa === MLB_CONTRACT_REGIME.freeAgencyYears && arb === MLB_CONTRACT_REGIME.arbitrationYears && perYear === MLB_CONTRACT_REGIME.serviceDaysPerYear;
+  return {
+    status: 'arbitration', classes: fa - arb, mlb,
+    basis: `Arbitration from ${arb} years to free agency at ${fa}: ${fa - arb} arbitration years by service${mlb === true ? ", MLB's regime as read" : mlb === false ? ", not MLB's regime" : ''}.`,
+  };
+}
 
 /**
  * Policy, not calibrated or provisional: these are not model parameters to be fitted (one import
@@ -1176,7 +1224,7 @@ function seasonEligibility(
   const arb = rules.arbitrationYears.value;
   const unknownSeason = (missing: MissingEvidence[]): SeasonControlEligibility => ({
     season, serviceDays: band, freeAgency: answer('indeterminate', [], missing),
-    arbitration: { ...answer('indeterminate', [], missing), trip: null, tripNote: null, superTwo: false },
+    arbitration: { ...answer('indeterminate', [], missing), trip: null, tripNote: null, tripIfEligible: null, superTwo: false },
     standing: 'indeterminate', between: [], crossings: [],
   });
   if (blocking.length > 0) return unknownSeason(blocking);
@@ -1195,6 +1243,7 @@ function seasonEligibility(
         ),
         trip: null,
         tripNote: null,
+        tripIfEligible: null,
         superTwo: false,
       },
       standing: 'reserve_clause', between: [], crossings: [],
@@ -1244,7 +1293,7 @@ function seasonEligibility(
 
   // ── arbitration (moot once he is certainly free to leave) ──
   let arbitration: SeasonControlEligibility['arbitration'];
-  const none = { trip: null, tripNote: null, superTwo: false };
+  const none = { trip: null, tripNote: null, tripIfEligible: null, superTwo: false };
   if (freeAgency.status === 'eligible') {
     arbitration = { ...answer('ineligible', [reason('free_agent_instead', 'He is past the free-agency line, so arbitration does not arise.', 'export_state', FA_SOURCE)]), ...none };
   } else if (arb === null) {
@@ -1286,6 +1335,7 @@ function seasonEligibility(
           ? { low: trip(band.low), high: trip(topOfArbitration) }
           : { low: 1, high: 1 },
         tripNote: null,
+        tripIfEligible: null,
         superTwo: band.low < arbLine,
       };
     } else if (low === 'pre_arbitration' && high === 'pre_arbitration') {
@@ -1383,6 +1433,8 @@ function countTripsByWinter(seasons: SeasonControlEligibility[], rules: Contract
         : null;
       taken = { ...a.trip };
     } else if (taken !== null && s.standing === 'indeterminate') {
+      // Which trip it would be if he is in arbitration (a cost covers it; it decides nothing)
+      if (a.status === 'indeterminate' && s.between.includes('arbitration')) a.tripIfEligible = { low: cap(taken.low + 1), high: cap(taken.high + 1) };
       // A winter the projection leaves open may or may not have been an arbitration year
       taken = { low: taken.low, high: cap(taken.high + 1) };
     } else if (s.standing !== 'pre_arbitration') {

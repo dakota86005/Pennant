@@ -242,6 +242,7 @@ const ALLOWED_IMPORTS = new Set([
   './calibration.js', './playerValue.js', './playerValueCalibration.js', './playerValueContract.js', './playerValueControl.js',
   './playerValueFinances.js', './playerValueHistory.js', './playerValueProduction.js', './playerValueProductionFit.js',
   './playerValueFitStore.js', './injuryProneness.js', './playerValueRatings.js', './playerValueRatingsFit.js', './playerValueCone.js',
+  './playerValueCost.js',
 ]);
 
 /** The modules that open league.db at all: the readers, the snapshot writer (its game date) and the route (a table check). The pure modules never do. */
@@ -309,7 +310,7 @@ describe('the Player Value boundary', () => {
   it('finds the value modules', () => {
     expect(VALUE_MODULES).toEqual([
       'playerValue.ts', 'playerValueCalibration.ts', 'playerValueCone.ts', 'playerValueContract.ts', 'playerValueControl.ts',
-      'playerValueFinances.ts', 'playerValueFitStore.ts', 'playerValueHistory.ts', 'playerValueProduction.ts',
+      'playerValueCost.ts', 'playerValueFinances.ts', 'playerValueFitStore.ts', 'playerValueHistory.ts', 'playerValueProduction.ts',
       'playerValueProductionFit.ts', 'playerValueRatings.ts', 'playerValueRatingsFit.ts', 'playerValueRefitWorker.ts', 'playerValueRoutes.ts',
       'playerValueSnapshot.ts',
     ]);
@@ -603,6 +604,17 @@ describe('the Player Value boundary', () => {
     expect(finances).not.toMatch(/serviceDays|\.service\b|endOfSeason|mlbDays|thresholdDays|lineDays/);
   });
 
+  it('the cost of a controlled season is priced from Player Rights\' answers, never from service time (phase 4a)', () => {
+    const cost = code('playerValueCost.ts');
+    // The status, the arbitration trip and the regime's classes are Player Rights' (the standing, trip and arbitrationRegimeOf)
+    expect(cost).toMatch(/\.standing\b/);
+    expect(cost).toMatch(/\.trip\b/);
+    expect(cost).toMatch(/tripIfEligible/);
+    expect(cost).not.toMatch(/serviceDays|\.service\b|endOfSeason|mlbDays|thresholdDays|lineDays|MLB_CONTRACT_REGIME/);
+    // It reads no rating and no players_value: production arrives as the production answer
+    expect(importsOf('playerValueCost.ts').join(' ')).not.toMatch(/scoutedEvidence|playerValueRatings|db\.js/);
+  });
+
   it('every constant is declared once, stamped, in the calibration module (8)', () => {
     // A number of its own at module level, whatever its name, keyword or type: a literal, literal arithmetic, or an object or array holding one
     for (const file of VALUE_MODULES.filter((f) => f !== 'playerValueCalibration.ts')) {
@@ -626,6 +638,8 @@ describe('the Player Value boundary', () => {
       ['PRODUCTION_PRIOR_CALIBRATION', 'provisional'],
       ['PRODUCTION_PRIOR_SOURCE_CALIBRATION', 'provisional'],
       ['RATINGS_PRIOR_CALIBRATION', 'provisional'],
+      ['COST_POLICY_CALIBRATION', 'policy'],
+      ['COST_PRIOR_CALIBRATION', 'provisional'],
     ]);
     // Every policy object of numbers in the calibration module is stamped beside it
     for (const name of ownNumbersOf('playerValueCalibration.ts').filter((n) => n !== 'CONTROL_HORIZON_SEASONS')) {

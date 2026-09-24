@@ -4,9 +4,9 @@ Design record for the Player Value subsystem: contracts, control, cost, expected
 reality and surplus value. Decision: [D-052](DECISIONS.md) (accepted; owner answers in Part 12). Research evidence:
 [PLAYER_VALUE_RESEARCH.md](PLAYER_VALUE_RESEARCH.md) (R-1 to R-11).
 
-**Status: phases 1, 2 and 3a built (contract facts and control; Club Finances, the opening price of a win and the
-per-import market snapshot; expected production in wins from major-league results, fitted per save under D-053,
-Part 9); phases 3b to 6 are design.** `PROJECT_STATE.md` says
+**Status: phases 1 to 3b and 4a built (contract facts and control; Club Finances, the opening price of a win and the
+per-import market snapshot; expected production in wins from major-league results and scouted ratings, fitted per save
+under D-053; the cost of controlled seasons, measured on each import, Part 9); phases 4b to 6 are design.** `PROJECT_STATE.md` says
 what exists; this file says what is to be built and why. Every surface that reports value still reads the prohibited
 `players_value` fields for its value figures (Part 8), and they stay as they are until the phase that replaces each
 one; since phase 1 their control and contract facts come from Player Value.
@@ -151,10 +151,11 @@ comes with a **cost band** and its basis:
 | Option (club, player, vesting, mutual) | Both branches shown: exercised (the salary) and declined (the buyout, which is `unknown` here, and the status he falls to). Only a future season: the season under way had its option decided before it began, so it is under contract at its salary |
 | Opt-out (`opt_out`) | Every season from the one the exported count reads: both branches, staying (the salary) or opting out (his Player Rights standing), with the reading named |
 | After a blank contract row | For a player the export places on a major-league club with major-league service: his Player Rights standing, the blank row named; a free-agency answer is `indeterminate` between under contract and free agent, since a deal the export does not carry could still hold him. Otherwise `indeterminate` |
-| Pre-arbitration renewal | From the league minimum up to the observed renewal spread (a band, never simply the minimum) |
-| Arbitration year *n* | A band from the arbitration ladder (Part 4.4), never the league minimum |
+| Pre-arbitration renewal | From the league minimum up to the save's observed renewal spread, measured on this import (a band, never assumed to be the minimum; phase 4a) |
+| Arbitration year *n* | A band from the save's arbitration ladder, the platform seasons' production and the price of a win (Part 4.4; phase 4a), never the league minimum and never a point; a range of years covers each |
+| Indeterminate | Across each status it lies between (a Super Two season: from the renewal's minimum to the arbitration band's high edge); a season that may be free agency is what he costs if held, said; unknown where a status it could be is not priced |
 | Free agent | Control ends. What he is worth to others is market data, not cost to this club |
-| Reserve clause | Renewal cost from the league's observed pay (a band) |
+| Reserve clause | Unknown: renewal pay under a reserve clause is not measured from one export (renewals observed across imports, phase 4b) |
 
 **Service projection** is itself a band. The low edge assumes he is optioned or outrighted from now on; the high edge
 assumes he stays on the major-league roster for the rest of the season, capped by what the schedule has left (none
@@ -189,6 +190,22 @@ service year (a shorter one leaves the 86 days not established). Any other regim
 `indeterminate`, as does last winter's class (last season's days are not exported) and any later winter's (that
 class does not exist yet). **`has_received_arbitration`** is 0 for every player on this save and carries no information
 (R-3). It is not read until an import shows it set.
+
+**The cost of controlled seasons (phase 4a, 2026-09-23).** The timeline is composed first and each season no contract
+covers is then priced by the league's cost ladder (`playerValueCost.ts`), measured on each import from the market's
+population (the league's major leaguers on its active and injured lists, as for the price of a win) and snapshotted with
+the market. A **pre-arbitration renewal** costs from the league minimum to the 90% upper confidence bound of the 90th
+percentile of the save's pre-arbitration one-year renewals (Player Rights' pre-arbitration answer this season); below
+30 renewals, the provisional prior widened by the save's own renewals where the regime as read is MLB's, else unknown.
+On the Arizona import: 249 renewals, 220 at the minimum, **$780K–$790K**. An **arbitration** season is Part 4.4's.
+An option's or opt-out's declined branch is priced the same way. The status, the class and the trip are Player
+Rights' (`standing`, `trip`, and `tripIfEligible` for a season whose arbitration is open; `arbitrationRegimeOf` for the
+regime's classes and whether it is MLB's); nothing here compares service with a threshold. A reading computed without
+production (the market's own population, Free Agents' status list) prices renewals but leaves an arbitration season
+unknown, saying so. **Consumers:** Payroll shows each controlled season's projected band beside the committed money,
+summed edge against edge (a season that may be free agency adds nothing to the low edge), never in the committed total
+or the headroom, with the ladder's basis under the price of a win; Contracts shows next season's band under the flags;
+the card's cone shows each season's cost with its basis. Every figure is the timeline's, as served.
 
 ### 2.3 Expected production
 
@@ -628,10 +645,38 @@ claims, minor-league free agents and call-ups) is phase 4 work. A change of 0.01
 
 ### 4.4 Arbitration
 
-Until arbitration outcomes are observed across an off-season, an arbitration-year cost is a band from the
-cross-sectional ladder on the imported contracts (R-6): about 22%, 42% and 53% of the FA-eligible price per win in
-the first three arbitration years, with a wide spread. **Provisional**, from imported real-world contracts. It is
-never the league minimum, and never a point.
+**As built (phase 4a, 2026-09-23; `playerValueCost.ts`, CALIBRATION.md section 8).** Until arbitration awards are
+observed across an off-season (phase 4b), an arbitration season's cost comes from the save's own cross-section at each
+import, measured, never assumed:
+
+- **The ladder, by class.** Player Rights says who is in arbitration this season and his class (the trip counted from
+  his service class; a Super Two's hidden earlier trip sits in the class his service puts him in, and a fourth trip in
+  the last class). Over the class's one-year major-league contracts set this winter (a contract at the league minimum is
+  left out and counted: it reads as a non-tender re-signed, not an award), pay above the minimum is read against the
+  **platform**: the mean WAR of the two seasons before the arbitration winter, each on its schedule's footing. The line
+  is a **base** (the class's pay at no platform wins) and a **share of the price of a win per platform win** (the rung);
+  its spread is the 10th to 90th percentile of the class's pay around it, and the line's own standard error widens it.
+  The two-season platform is policy, chosen because arbitration pays for a body of work and, on the Arizona import,
+  explains every class's pay better than the platform season alone.
+- **The season's band.** The minimum plus the class's line at the platform seasons' production (the export's WAR for a
+  past season; the 80% production band for a future one, meaned edge with edge), every
+  corner taken (interval arithmetic, Part 3), never below the least the class was paid above the minimum. Where the
+  arbitration year is a range the band covers every class in it; where it is not counted, every class. A line
+  measured on the save's own contracts is in this import's dollars (read at the price's central), so the price of a
+  win's band is not applied to it a second time; the prior, stated in shares of the price, carries the whole price band
+  (supervisor, phase 4a review: the double count had widened Henderson's 2027 band by about a third).
+- **Thin classes.** Below 30 contracts a class is the provisional prior (the same method on the imported real-world
+  contracts, R-6, in minimums and shares of the price) hulled with the save's own line, and says provisional; only where
+  the regime as read is MLB's (the comparison Super Two makes). Elsewhere a thin class is unknown with the reason.
+- **Never MLB's ladder where it does not apply.** A league with no arbitration has no ladder (its players are renewed
+  to free agency at its own renewal spread); an arbitration rule the export does not state leaves the season
+  indeterminate and its cost unknown.
+- **Unknown stays unknown.** A platform season whose production is unknown or not established, an unknown price of a
+  win or a league without financials leaves the cost unknown with its reason.
+
+On the Arizona import the three classes are measured on 74, 51 and 47 contracts: 14%, 26% and 49% of the price per
+platform win on bases of $0.44M, $1.35M and $0.41M (R-6's ratio on the same cases 19%, 40%, 52%, against its own 22%,
+42% and 53%). It is never the league minimum, and never a point.
 
 ### 4.5 Two prices of a win
 
@@ -706,8 +751,11 @@ always states the neutral figure it started from.
   where `clearValuationCaches()` is called today and can be deleted at any time without loss. It is not `history.db`.
 - **The philosophy lens at read time**, so a philosophy edit never recomputes anything.
 - **Market figures snapshotted per import into `history.db`** (D-009): the price of a win (band and basis),
-  replacement level, league regime, league payroll, the observed signings counted. Keyed by save, league and game
-  date, idempotent per key, so drift is visible across imports.
+  replacement level, league regime, league payroll, the observed signings counted, and since phase 4a the cost ladder
+  (the renewal spread and the arbitration ladder, in `basis_json.costs`). Keyed by save, league and game
+  date, idempotent per key, so drift is visible across imports. The ladder a valuation prices with is measured once per
+  import and market league (a cache cleared with the production caches after an import), from the same population, WAR
+  and price as the market.
 - **No periodic timer.** Data changes only on import (D-009).
 - **One domain API** (D-008). Browser, desktop, static export and AI read the same routes. The AI receives the
   decomposition with its basis and never a bare number (the lesson `VALUE_PERCENTILE_NOTE` records).
@@ -871,7 +919,8 @@ cards are Club Finances' figures, a missing one "unknown", never $0.
 | **2** Club Finances and the opening price — **done** (2026-09-22; evidence in 2.4, 4.1, 4.3, Part 7 and below) | Concern 4. The per-import market snapshot in `history.db`. The opening price of a win and the replacement level with their bases | This save's opening price reproduces R-5's band from code. A snapshot is written once per import key. A league without financials yields wins and dollars `unknown`. No timer |
 | **3a** Expected production from results — **done** (2026-09-22; evidence below, Part 7, CALIBRATION.md section 6) | Concern 3 for players with a major-league record, in wins, an 80% and a 50% band per season (Part 2.3). Calibrated per save (D-053): the fit and its backtest, the fit store, the refit after an import, the gate, the provisional prior. Injury proneness read as a known fact and its effect measured | A fit is recorded with its run record and adopted through the gate. The band invariants (Behavior cases) pass. Held-out coverage is reported per horizon for both bands. The timing is recorded |
 | **3b** Expected production from ratings — **done** (2026-09-23; evidence below, Part 7, CALIBRATION.md section 6) | Ratings through `scoutedEvidence.ts` for prospects and players with thin or no major-league results, partial-rating widening, a prospect's low edge including producing nothing. Also (supervisor, 2026-09-23): playing time conditional on quality | The 3b behavior cases pass. Removing a rating never narrows a band; no ability evidence leaves that component `unknown` |
-| **4** Measured price and arbitration | Observed signings and arbitration awards across imports. The measured price replaces the opening one once its band is narrower (Q-4). The arbitration ladder is measured. Replacement is measured from freely available talent | On an off-season import, signings are identified and counted. While the measured band is still wider, the opening price stays and says why. The price history is visible |
+| **4a** The cost of controlled seasons — **done** (2026-09-23; evidence below, 2.2, 4.4, CALIBRATION.md section 8) | The pre-arbitration renewal band and the arbitration ladder measured on each import from the save's own contracts (status and class from Player Rights), priced into every controlled season with the platform seasons' production and the price of a win; the provisional prior below the policy minimum where the regime is MLB's; the ladder in the market snapshot. Payroll, Contracts and the card show the bands | Every pre-arbitration, arbitration and open season is priced or says why. An arbitration season never costs the minimum and is never a point; a league without arbitration never gets MLB's ladder; thinner evidence never narrows; committed payroll never includes a projected salary |
+| **4b** Measured price and observed awards | Observed signings and arbitration awards across imports. The measured price replaces the opening one once its band is narrower (Q-4). Observed awards test and then measure the ladder; reserve-clause renewals are measured. Replacement is measured from freely available talent | On an off-season import, signings and awards are identified and counted. While the measured band is still wider, the opening price stays and says why. The price history is visible |
 | **5** Surplus, the lens and the win curve | Concern 5, Part 5's two views, Part 6's lens, Part 4.5's club value of a win | The Player Value behavior cases pass. Neutral value is identical under every philosophy. Every lean is named |
 | **6** Consumer migration | Part 8, in order, one consumer per change | Each change deletes that consumer's `players_value` reads. Finally, the `players_value` allow-list is empty |
 
@@ -888,6 +937,30 @@ Judgments made in phase 1 beyond the text above: consumers that hold no freshnes
 their answers stand with that limitation (a stale export still makes eligibility `indeterminate`, D-023); a minor-league
 contract is held for this season at an unknown cost and what follows it is `indeterminate`; a vesting option is its
 own status beside club and player options; an unsigned player has no timeline rather than a `free_agent` season.
+
+**Phase 4a exit criteria, as met (2026-09-23).** The behavior cases (BEHAVIOR_CASES.md "Player Value", phase 4a) are
+in `playerValueCost.test.ts` (15 new, the reserve-clause case rewritten), `playerValueCrossSave.test.ts` (6 new cases and cost invariants on
+every save), `playerValueControl.test.ts` (2, Player Rights' regime and open-season trip), `payrollControl.test.ts` (2),
+`playerValueCone.test.ts` and `productionCone.test.ts` (1 each), and `playerValueBoundary.test.ts` (the new module, its
+stamps, and its reading of Player Rights' answers only). Each was run before the code and failed for the reason expected
+(no `playerValueCost` module, no `arbitrationRegimeOf`, no `tripIfEligible`, no `costs` on a league's finances, no
+projected money on Payroll, no `nextCost` on Contracts, no cost on the cone, the module list and stamps). On the Arizona
+import (scratch `history.db`, read-only league): the renewal band $780K–$790K on 249 renewals; the arbitration ladder
+measured in all three classes (74, 51 and 47 contracts; 14%, 26% and 49% of the price per platform win on bases of
+$0.44M, $1.35M and $0.41M); 1,465 arbitration seasons, 359 renewals and 1,101 open seasons priced among the rostered
+league's players, 16 arbitration seasons unknown (the platform's production unknown). Worked examples are in CALIBRATION.md
+section 8. The regression sweep passes 81 of 81 checks (the 65 of F6 and 16 for the cost bands: ordered bands, no
+arbitration season at the minimum, the classes covering each arbitration year, open seasons covering their statuses,
+the prior only where the regime is MLB's, and, through Payroll's own route for all 30 clubs, committed totals holding
+guaranteed money only). The league-wide pass takes about 1.5 s as before; the first valuation after an import measures
+the ladder once (about 0.15 s warm); Payroll, which now computes production, about 130–150 ms a club.
+
+Judgments made in phase 4a beyond the brief: the ladder is a per-import measurement snapshotted with the market, not a
+D-053 fit (one cross-section has no held-out outcome to gate on; phase 4b scores it against observed awards); the
+performance basis is the two-season platform with a base, rather than R-6's one-season ratio; a contract at the minimum
+in the arbitration class is left out as a non-tender; a Super Two's fourth trip is priced in the last class, where his
+service puts him; a season that may be free agency is priced as if held and adds nothing to Payroll's low edge;
+reserve-clause renewals stay unknown (phase 4b).
 
 **Phase 3b exit criteria, as met.** The 3b behavior cases pass (`playerValueRatings.test.ts`, 19; the widened
 production, fit and boundary files); each failed on the pre-3b code for the expected reason. Removing a rating never
@@ -995,7 +1068,8 @@ while his salary stays in (R-5's arithmetic, stated as an assumption); the reser
 `leagueRules.ts` (`finance.reserveClause`); `valuation.teamFinances()` stays, because Contracts, Free Agents, the AI
 briefing context and Storylines still read it (their migration is phase 6). Two phase-1 `it.todo`s in
 `playerValueCost.test.ts` are labelled phase 2 (the pre-arbitration renewal band, the arbitration ladder band); they
-price costs, not the market, and are left for the phase that builds cost bands (4.4), not pulled forward.
+price costs, not the market, and are left for the phase that builds cost bands (4.4), not pulled forward. Phase 4a built
+them.
 
 ---
 
@@ -1070,7 +1144,8 @@ Stamps per D-041, amended by D-053: a **fitted per save** value is computed from
 its run record in `history.db`; code holds only policy, provisional values and the fallback prior. Phase 2's stamps are
 declared in `playerValueCalibration.ts`, with the label `OPENING_PRICE_LABEL` and `PRICE_NARROWS_WHEN`; it adds no
 numeric constant. Phase 3a adds `PRODUCTION_POLICY` (policy) and `PRODUCTION_PRIOR` (provisional). Phase 3b adds
-`RATINGS_POLICY` (policy), `RATINGS_PRIOR` (provisional) and `PRODUCTION_POLICY.qualityTiers` (policy).
+`RATINGS_POLICY` (policy), `RATINGS_PRIOR` (provisional) and `PRODUCTION_POLICY.qualityTiers` (policy). Phase 4a adds
+`COST_POLICY` (policy) and `COST_PRIOR` (provisional); the numbers the cost ladder serves are measured on each import.
 
 | Constant | Stamp | Basis |
 |---|---|---|
@@ -1085,8 +1160,11 @@ numeric constant. Phase 3a adds `PRODUCTION_POLICY` (policy) and `PRODUCTION_PRI
 | Which financial row is authoritative | **policy** | The row that names its season; `team_last_financials` named and never used (R-7). `FINANCE_ROW_CALIBRATION` (phase 2) |
 | A financial row with every money field zero | **policy** | A placeholder: unknown, never $0 (R-1). `PLACEHOLDER_ROW_CALIBRATION` (phase 2) |
 | When the measured price replaces the opening one | **policy** | When the measured band is narrower than the opening band (Q-4). No fixed count |
-| Arbitration ladder shares (about 22 / 42 / 53%) and their spread | **provisional** | Cross-section of imported contracts (R-6) |
-| Pre-arbitration renewal spread | **provisional** | Observed pre-arbitration pay above the minimum (R-5) |
+| Arbitration ladder (per class: base, share of the price per platform win, spread, the line's error, floor) | **measured per import** | The save's one-year arbitration contracts this season by Player Rights' class, snapshotted with the market (phase 4a; Arizona 14 / 26 / 49% on bases $0.44M / $1.35M / $0.41M). R-6's 22 / 42 / 53% is research; its method is the prior's source below. CALIBRATION.md section 8 |
+| Pre-arbitration renewal spread | **measured per import** | The save's pre-arbitration one-year renewals this season (phase 4a; Arizona $780K–$790K on 249) |
+| The cost ladder's method: the renewal band's 90th percentile and its 90% upper bound; the two-season platform; a base and a share per platform win; the 10th–90th spread; 1.28 of the line's standard errors; 30 contracts a class (and renewals), 3 for a line; which contracts (one-year, set this winter, a contract at the minimum left out) | **policy** | `COST_POLICY`, stamped `COST_POLICY_CALIBRATION` (phase 4a). The platform choice is justified on the Arizona import (R² two seasons 0.715 / 0.300 / 0.626 against one 0.619 / 0.096 / 0.549), a decision, not a fit |
+| The cost ladder's fallback prior (renewal and three arbitration classes, in minimums and shares of the price) | **provisional** | `COST_PRIOR`, stamped `COST_PRIOR_CALIBRATION`: the same method on the Arizona import's imported real-world contracts. Used only below 30 contracts and only where the regime as read is MLB's, hulled with the save's own line and labelled provisional |
+| A Super Two's fourth arbitration trip | **none: read** | Priced in the last arbitration class, where his service puts him (the export cannot separate it); Player Rights' `arbitrationRegimeOf` states the classes |
 | Service projection edges (optioned against stays up) | **provisional** | This season's remaining days, from the season's service clock and capped by the schedule's days left, on the high edge; on the low edge only the days left on a major-league injured-list stint; each later season what the league's schedule banks (its calendar span, never more than the service year), a full service year where the export carries no schedule. Declared once as `SERVICE_PROJECTION_BASIS` in `playerRights.ts` (phase 1; schedule and injured list, hardening F2) |
 | A season's bankable service | **none: read** | The export's `games` dates (regular season, `game_type` 0) and `leagues.current_date`, `seasonServiceCalendars` in `playerState.ts`; missing → the convention above, said |
 | Super Two cutoff margin (10 days) | **policy** | Owner-approved, 2026-09-23: the cutoff's edges are readings, not bounds. Within 10 days of either edge the year is `indeterminate`. Chosen, not fitted: neighbours at the qualifying rank sit 0 to 5 days apart on the imported save, so it covers two or more single roster moves among the class. `SUPER_TWO_MARGIN_DAYS`, stamped `SUPER_TWO_MARGIN_CALIBRATION` in `playerRights.ts` |

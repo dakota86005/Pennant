@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { db, tableExists } from './db.js';
 import { seasonFormByPlayer, type SeasonForm } from './form.js';
 import { leagueRulesForLeague } from './leagueRules.js';
-import { clubFinances, playerValues, serviceReading, type ControlTimeline } from './playerValue.js';
+import { clubFinances, playerValues, serviceReading, type ControlSeason, type ControlTimeline } from './playerValue.js';
 import type { Sourced } from './provenance.js';
 import {
   contractsByPlayer, currentGameDate, mlbPercentiler, ON_ROSTER, seasonYear, valuesByPlayer,
@@ -255,6 +255,39 @@ export function controlAfterThisSeason(timeline: ControlTimeline | null | undefi
   };
 }
 
+/**
+ * A season's cost as Player Value's timeline serves it (phase 4a), for display: the band (a point for a
+ * contract season), its basis in words, and whether it was measured on this save or rests on the
+ * provisional prior. Nothing is priced here; an unknown cost keeps its reason, never $0.
+ */
+export interface SeasonCost {
+  season: number;
+  status: ControlSeason['status'];
+  low: number | null;
+  high: number | null;
+  /** The basis in words, or why the cost is unknown. */
+  text: string;
+  /** measured, provisional_prior or measured_thin_with_prior; null for a contract season or an unknown cost. */
+  source: string | null;
+  /** He may be a free agent instead: the band is what he costs if the club holds him. */
+  ifHeld: boolean;
+}
+
+export function seasonCost(season: ControlSeason | undefined | null): SeasonCost | null {
+  if (!season) return null;
+  if (season.cost === null) return null;
+  const v = season.cost.value;
+  return {
+    season: season.season,
+    status: season.status,
+    low: v?.low ?? null,
+    high: v?.high ?? null,
+    text: season.cost.note ?? (v !== null && v.low === v.high ? 'The contract\'s salary.' : 'Not established.'),
+    source: season.costBasis?.source ?? null,
+    ifHeld: season.costBasis?.ifHeld ?? false,
+  };
+}
+
 /** "arbitration 2" or "arbitration 2-3" when the rest of the season or an earlier winter leaves it open. */
 export function arbitrationLabel(control: Control): string {
   const n = control.arbYearHigh !== null ? `${control.arbYear}-${control.arbYearHigh}` : `${control.arbYear ?? ''}`;
@@ -405,6 +438,8 @@ export function computeContracts(orgId: number) {
         arbYear,
         /** What happens after this season, with its basis; `indeterminate` names what is missing. */
         control,
+        /** Next season's cost exactly as the timeline serves it (phase 4a): a band with its basis, or why it is unknown. */
+        nextCost: seasonCost(timeline?.seasons.find((s) => s.season === year + 1)),
         overallPct: oPct,
         talentPct: tPct,
         /*

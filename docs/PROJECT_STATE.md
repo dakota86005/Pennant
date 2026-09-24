@@ -386,8 +386,8 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   option (club, player, vesting, mutual), `opt_out`, `pre_arbitration`,
   `arbitration`, `free_agent`, `reserve_clause`, `indeterminate` with what it lies
   between) and a cost band: the salary under contract, both branches of a future
-  option or an opt-out, and `unknown` ("pending price of a win (phase 2/4)") for
-  pre-arbitration and arbitration seasons. **Hardening F2 (2026-09-23):** the
+  option or an opt-out, and since phase 4a a priced band for pre-arbitration,
+  arbitration and open seasons (below). **Hardening F2 (2026-09-23):** the
   season under way is never an open option (19 were on the Arizona import); the
   58 exported opt-outs are named, and 28 seasons after one (Soto, Witt, Yamamoto,
   Bellinger and others) show both branches; the export's blank contract row (6,894
@@ -571,6 +571,27 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   `npm run value:report` (no per-import store yet, PLAYER_VALUE.md Part 7).
   `npm run value:report` prints production bands, counts by status and source
   and the median band width per horizon.
+- **The cost of controlled seasons** (phase 4a, 2026-09-23; `server/playerValueCost.ts`,
+  PLAYER_VALUE.md 2.2 and 4.4, CALIBRATION.md section 8): measured on each import from
+  the save's own one-year contracts, with status and class from Player Rights. A
+  pre-arbitration renewal costs from the league minimum to the 90% upper bound of
+  the 90th percentile of the save's renewals (Arizona: 249 renewals, $780K–$790K).
+  An arbitration season costs the minimum plus its class's line (a base and a share
+  of the price of a win per win of the two-season platform, with its 10th–90th
+  percentile spread and the line's standard error) at the platform seasons'
+  projected production and the price's band, edge against edge (Arizona: classes 1–3
+  on 74, 51 and 47 contracts; shares 14%, 26%, 49% of the price per platform win on
+  bases of $0.44M, $1.35M and $0.41M; R-6's statistic on the same cases 19%, 40%,
+  52%). A range of years covers each year; an open season covers each status; a
+  season that may be free agency is what he costs if held, said. Below 30 contracts
+  a class is the provisional prior (the same method on the imported contracts)
+  hulled with its own line, only where the regime as read is MLB's; a league with no
+  arbitration or an unread rule gets no ladder. Reserve-clause renewals stay unknown
+  (phase 4b). The ladder is snapshotted with the market (`basis_json.costs`).
+  Payroll shows each controlled season's projected band beside committed money
+  (never in the total or the room) with the ladder's basis; Contracts shows next
+  season's band under the flags; the card's cone shows each season's cost.
+  Payroll now computes production for its players (about 130 ms a club).
 - **Player card production cone** (PLAYER_VALUE.md Part 8): an "Expected
   production" section draws each season's 80% and 50% bands, the expected
   path, replacement level and control, with target beside observed coverage on
@@ -585,8 +606,8 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   print "<0.1"; a non-number draws no cone instead of blanking the app. The card
   is a modal dialog with a focus trap (`src/focusTrap.ts`, Escape, focus back to
   the opener) and fits the window at any width (`tests/playerCard.test.ts`).
-- **Tests:** `playerValueControl`, `playerValueCost` (cost-band halves as
-  `it.todo`), `playerValueFinances`, `playerValueProduction`,
+- **Tests:** `playerValueControl`, `playerValueCost` (the phase 4a cost bands),
+  `playerValueFinances`, `playerValueProduction`,
   `playerValueProductionFit`, `playerValueRatings`, `playerValueCone`,
   `productionCone` (geometry, render and theme tokens) and `playerValueBoundary`
   (since the hardening it reads the source through the TypeScript parser, and
@@ -598,9 +619,10 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
 
 Not built: the save's own development path, the ratings' forecast reliability
 and the arrival chance by potential (they fit themselves once the save's rating
-snapshots allow), the arbitration and pre-arbitration cost bands, surplus, the philosophy lens and
-the club's value of a win (phases 4 and 5), observed signings and the measured
-price (phase 4), a per-import store (everything is computed per request; see
+snapshots allow), surplus, the philosophy lens and
+the club's value of a win (phase 5), observed signings, observed arbitration awards and
+reserve-clause renewals, the measured price and replacement from freely available
+talent (phase 4b), a per-import store (everything is computed per request; see
 Part 7), and the consumer migration that deletes `players_value` reads and the
 percentile advice (phase 6). The calibrated constants of other subsystems are
 not yet fitted per save (D-053; ROADMAP). On the Arizona import 6,952 of 8,009 held players have indeterminate later

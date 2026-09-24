@@ -63,6 +63,12 @@ const STATUS_LABEL: Record<Status, string> = {
   signed: 'Under contract',
 };
 
+/** The seasons whose cost is projected rather than contracted (phase 4a). */
+const CONTROLLED = new Set(['pre_arbitration', 'arbitration', 'indeterminate']);
+
+/** "$0.8M", or "$4.1M–$31.7M" where the edges print apart. */
+const band = (low: number, high: number): string => (money(low) === money(high) ? money(low) : `${money(low)}–${money(high)}`);
+
 /** Same precedence the flags use, so the two can never disagree. */
 function statusOf(p: ContractsResponse['players'][number]): Status {
   if (p.flags.some((f: string) => f.startsWith('extended thru'))) return 'signed';
@@ -125,7 +131,8 @@ export function Contracts({ orgId }: { orgId: number }) {
         <p className="muted hint-line">
           Free agency means he can leave; arbitration and pre-arbitration mean the club keeps him
           whether he likes it or not, at a price the process sets. Money shown is this season&rsquo;s
-          salary, not what re-signing him would cost. &ldquo;Not yet established&rdquo; means the save cannot
+          salary; under the flags, &ldquo;next&rdquo; is what next season is projected to cost where no
+          contract covers it (a band; hover for its basis), never committed money. &ldquo;Not yet established&rdquo; means the save cannot
           say which: his service will cross a line only if he stays up, or the league&rsquo;s rule is not in
           the export. Hover the flag for why.
         </p>
@@ -178,6 +185,12 @@ export function Contracts({ orgId }: { orgId: number }) {
                     {f}
                   </span>
                 ))}
+                {/* Phase 4a: next season's projected cost where no contract covers it, as the timeline serves it */}
+                {p.nextCost && CONTROLLED.has(p.nextCost.status) && (
+                  <span className="muted next-cost" title={`Projected, not committed. ${p.nextCost.text}`}>
+                    <em>next: {p.nextCost.low === null || p.nextCost.high === null ? 'cost unknown' : band(p.nextCost.low, p.nextCost.high)}</em>
+                  </span>
+                )}
               </td>
               <td className="reasons">
                 {p.recommendation && (

@@ -635,3 +635,57 @@ and rounds to the same $7.32M. The pace bases stand on 27.6%, just over the quar
 would drop them and price from the four prior-season bases alone. The sampling component B-13 also asks for (a
 bootstrap over contracts before the opening band is compared with a measured one) belongs to phase 4, where that
 comparison is built.
+
+## 8. Player Value's cost of controlled seasons: the renewal spread and the arbitration ladder (phase 4a)
+
+The cost of a pre-arbitration or arbitration season (PLAYER_VALUE.md 2.2 and 4.4, `server/playerValueCost.ts`) is
+**measured on each import** from the save's own contracts, like the opening price of a win (section 7), and snapshotted
+with the market (`value_market_snapshots.basis_json.costs`) so its drift is visible. It is not a D-053 fit with a gate:
+one import holds one cross-section of salaries set last winter and no outcome to hold out, so there is nothing to
+backtest until arbitration awards are observed across an off-season (phase 4b, which tests this ladder against them).
+Code holds the method and its policy (`COST_POLICY`, stamped policy) and a provisional fallback prior (`COST_PRIOR`,
+stamped provisional); the numbers served are the save's. Status and class come from Player Rights
+(`evaluateContractControl`, `arbitrationRegimeOf`), never from service compared with a threshold here.
+
+| What | Value | Stamp | Why |
+|---|---|---|---|
+| The renewal band's high edge | the 90% upper confidence bound (an order statistic) of the 90th percentile of the save's pre-arbitration one-year renewals | policy | Nine renewals in ten stay under it, so a foreign signing or a non-tender on a one-year deal does not set it; the bound makes a thinner class read higher, never lower |
+| The arbitration performance basis | the mean WAR of the two seasons before the arbitration winter, each on its schedule's footing; a season with no line counts 0 | policy | Arbitration pays for a body of work; on the Arizona import the two-season platform explains each class's pay better than the platform season alone (R² 0.715 against 0.619, 0.300 against 0.096, 0.626 against 0.549 for classes 1–3). A future season's platform seasons are projections, meaned edge with edge |
+| The ladder's form | per class, least squares of pay above the minimum on the platform: a base and a share of the price of a win per platform win | policy | The rung is a share of the price, so the price's band carries into the cost. R-6's ratio (pay over positive WAR, no base) reads low-WAR players as costing the minimum, which arbitration does not pay |
+| The class's spread | the 10th to 90th percentile of its pay around the line (an inverted-CDF quantile, unchanged by duplicating the class) | policy | The same 80% as production's outer band |
+| The line's own uncertainty | 1.28 standard errors of the fitted line on each side | policy | So fewer contracts read wider, never narrower |
+| Its floor | the least the class was paid above the minimum | measured | An arbitration season never costs the minimum |
+| Which contracts | one-year major-league deals set this winter, held by players Player Rights finds in arbitration, by class; a contract at the minimum is left out and counted | policy | A one-year deal at the minimum in the arbitration class is read as a non-tender re-signed, not an arbitration award |
+| Minimum sample | 30 contracts a class (30 renewals); a line needs 3 | policy | Below it a class is the provisional prior hulled with the save's own line, only where the regime as read is MLB's; elsewhere unknown |
+| The fallback prior | the same method on the Arizona import's imported real-world contracts, in minimums and shares of the price | provisional | `COST_PRIOR`; never presented as the save's measurement, and never used where the regime is not MLB's |
+
+**The Arizona import (2026-05-16).** Minimum $780,000; price of a win $7.25M (band $6.57M–$9.78M).
+
+- **Renewals:** 249 pre-arbitration one-year renewals, 220 at the minimum; the band is **$780K–$790K** (the 90th
+  percentile is $790K and so is its upper bound). The eight above $900K (Sugano $5.1M, Villar $3.36M) look like one-year signings of players with little service rather than renewals; the 90th percentile leaves them out.
+- **Arbitration ladder (measured, every class above the minimum sample):**
+
+| Class | Contracts | At the minimum, left out | Base (pay above the minimum at no platform wins) | Share of the price per platform win | Spread (10th–90th) | R-6's statistic on the same cases |
+|---|---|---|---|---|---|---|
+| 1 | 74 | 10 | $0.44M | 14.3% ($1.04M a win) | −$0.79M to +$1.09M | 19.1% |
+| 2 | 51 | 6 | $1.35M | 26.4% ($1.92M) | −$1.74M to +$1.78M | 40.4% |
+| 3 | 47 | 4 | $0.41M | 48.8% ($3.54M) | −$3.21M to +$3.46M | 52.5% |
+
+  R-6's own figures (one-season platform, service at the winter, the minimum cases in) were about 22%, 42% and 53%; the
+  same statistic on this method's cases reads 19%, 40% and 52%. The line's share is lower than the ratio because the
+  base carries what a class is paid whatever its platform.
+- **Worked examples** (80% production band; the save's own lines in this import's dollars, at the price's central
+  $7.25M): Gunnar Henderson, a first-year arbitration player at $8.5M, 2027 is arbitration 2–3: **$4.6M–$25.3M**; 2028
+  (3–4, class 3) $3.2M–$32.5M; 2029 may be free agency, $5.3M–$36.8M if held. Paul Skenes (Super Two not decided): 2027
+  between pre-arbitration and arbitration, **$0.78M–$20.3M**. Nick Kurtz (a pre-arbitration star, 6.0 WAR in 2025):
+  2027 **$0.78M–$0.79M**, 2028 open $0.78M–$11.4M, 2029 arbitration 1–2 $3.7M–$27.9M. Trevor Megill, 2027 arbitration
+  3–4 (a fourth trip sits inside class 3): $1.2M–$9.0M. As first built the price of a win's band was also applied to
+  the save's own lines, counting the market's uncertainty twice (Henderson 2027 was $4.1M–$31.7M); the supervisor's
+  review removed it: a line read on this import's salaries is already in this import's dollars.
+- **Counts** (the rostered league's controlled seasons): 1,465 arbitration seasons and 359 renewals priced, 1,101 open
+  seasons priced across their statuses; 16 arbitration seasons unknown (the platform's production unknown). Arizona's
+  Payroll: 2027 committed $133.2M, projected $13.7M–$71.4M for 16 controlled players (two may reach free agency).
+
+The bands are wide by construction: every corner of the production band, the class's spread and the line's error is
+taken (and the price band, where the provisional prior is in the reading), and a range of arbitration years covers each. They are ranges of reasonable readings, not
+calibrated intervals, until phase 4b can score them against observed awards.

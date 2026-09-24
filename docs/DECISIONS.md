@@ -1241,14 +1241,15 @@ contested, as `farmArrivalFor` already did (B-1), so a departure names the man l
 **Status:** Accepted 2026-09-22, with the owner's answers in PLAYER_VALUE.md Part 12. **Implementation:** Partial
 (phases 1–3: contract facts and control; Club Finances, the opening price of a win, the replacement level and the
 per-import market snapshot; expected production in wins from major-league results and, through `scoutedEvidence.ts`,
-scouted ratings, with playing time conditional on quality, fitted per save under D-053).
+scouted ratings, with playing time conditional on quality, fitted per save under D-053; phase 4a: the cost of
+controlled seasons, measured on each import, `playerValueCost.ts`).
 `server/playerValue.ts` (the entry point), `playerValueContract.ts`, `playerValueControl.ts`,
 `playerValueFinances.ts`, `playerValueHistory.ts`, `playerValueProduction.ts`, `playerValueProductionFit.ts`,
 `playerValueRatings.ts` and `playerValueRatingsFit.ts` (phase 3b), the two writers (`playerValueSnapshot.ts` and
 `playerValueFitStore.ts`, `history.db` only), `playerValueRoutes.ts` and `playerValueCalibration.ts`;
 contract-control eligibility in `playerRights.ts` (`evaluateContractControl`); one `LeagueRules` in `leagueRules.ts`,
-with the financial regime; `tests/playerValueBoundary.test.ts`. The measured price, surplus, the lens and the club's
-value of a win (phases 4 and 5) and the `players_value` consumer migration (phase 6) are not built. In phase 3b the
+with the financial regime; `tests/playerValueBoundary.test.ts`. The measured price and observed awards (phase 4b), surplus, the lens and the club's
+value of a win (phase 5) and the `players_value` consumer migration (phase 6) are not built. In phase 3b the
 development path, the ratings' reliability as a forecast and the arrival chance by potential wait on the save's own
 rating snapshots (one on the imported save) and use the provisional prior, or the kind's K, until then. Design: [PLAYER_VALUE.md](PLAYER_VALUE.md). Research evidence:
 [PLAYER_VALUE_RESEARCH.md](PLAYER_VALUE_RESEARCH.md). Refines D-002 and D-017 for the pre-fork value surfaces and
@@ -1312,8 +1313,8 @@ resolved through the parent league (phase 1). `SERVICE_DAYS_PER_YEAR` becomes th
 `tests/playerValueBoundary.test.ts` enforces the boundary from phase 1. New baseball behavior starts in
 BEHAVIOR_CASES.md "Player Value".
 
-**Stamps.** Every constant is registered in PLAYER_VALUE.md Part 11. The opening replacement level, the opening
-price band and the arbitration ladder are **provisional**. What counts as a market contract, the discount rate, the
+**Stamps.** Every constant is registered in PLAYER_VALUE.md Part 11. The opening replacement level and the opening
+price band are **provisional**; the arbitration ladder was, until phase 4a measured it per import (below). What counts as a market contract, the discount rate, the
 horizon, the evidence needed to replace the opening price, the personality bands and the lens weights are
 **policy**. Production is fitted on each save's own history and stored per save (D-053): its policy is in code, its
 fitted numbers are the save's, and only the fallback prior is in code (provisional). Bands only
@@ -1350,6 +1351,17 @@ never "signed", and Payroll reads these contract facts through the entry point. 
 trips by winter, caps this season's remaining service by the schedule, projects later seasons from the schedule's
 calendar, and gives a player on the major-league injured list the days left on his stint (the list accrues
 service), all in PLAYER_VALUE.md 2.1 and 2.2.
+
+**Amended 2026-09-23 (phase 4a: the cost of controlled seasons; PLAYER_VALUE.md 2.2 and 4.4, CALIBRATION.md section 8).**
+A pre-arbitration renewal and an arbitration season are priced from the save's own contracts, **measured on each import**
+and snapshotted with the market, never assumed: the renewal from the league minimum to the save's renewal spread; an
+arbitration season from the save's arbitration ladder by class (a base and a share of the price of a win per win of the
+two-season platform, with the class's spread and the line's error) at the platform seasons' production and the price
+of a win's band, edge against edge. It is a measurement, not a D-053 fit: one import has no held-out outcome to gate on,
+and phase 4b tests it against observed awards. R-6's imported-contract ladder is only the provisional prior, used below
+the policy minimum and only where the regime as read is MLB's; a league without arbitration, or whose rule is not read,
+never gets it. Status, class and trip are Player Rights' (`arbitrationRegimeOf`, `tripIfEligible`). A projected cost is
+never committed money: consumers show it beside guaranteed commitments, never in their totals.
 
 ## D-053 — Calibration belongs to the save
 

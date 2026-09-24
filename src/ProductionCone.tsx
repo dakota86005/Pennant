@@ -18,6 +18,13 @@ const POP_WIDTH = 260;
 /** Below this width the detail sits in the flow under the chart rather than beside a season. */
 const NARROW = POP_WIDTH * 2 + 32;
 
+/** A season's cost as served (phase 4a): "$8.5M", "$4.1M–$31.7M", or "not established". */
+const costText = (c: ConeSeason['control']): string => {
+  if (!c.cost) return c.costDetail && /^Control ends/.test(c.costDetail) ? 'none (control ends)' : 'not established';
+  const m = (v: number) => `$${(v / 1_000_000).toFixed(1)}M`;
+  return m(c.cost.low) === m(c.cost.high) ? m(c.cost.low) : `${m(c.cost.low)}–${m(c.cost.high)}`;
+};
+
 /** Expected playing time for a season, per side: "about 560 PA (400–650)". */
 const usageText = (u: ConeSeason['usage'][number]): string =>
   `about ${Math.round(u.central).toLocaleString('en-US')} ${u.unit} (${Math.round(u.low).toLocaleString('en-US')}–${Math.round(u.high).toLocaleString('en-US')})`;
@@ -62,10 +69,17 @@ export function SeasonDetail({ season: s, basis }: { season: ConeSeason; basis: 
               <td>{s.usage.map(usageText).join('; ')}</td>
             </tr>
           )}
+          {s.control.costDetail !== undefined && (
+            <tr>
+              <td className="muted">Cost</td>
+              <td>{costText(s.control)}</td>
+            </tr>
+          )}
         </tbody>
       </table>
       {basis && <div className="muted">Rests on: {basis}.</div>}
       <div className="muted">Control: {s.control.detail || s.control.label}</div>
+      {s.control.costDetail && !(s.control.cost && s.control.cost.low === s.control.cost.high) && <div className="muted">Cost: {s.control.costDetail}</div>}
       {s.coverage.cases === null && <div className="muted">{s.coverage.note}</div>}
       {s.notes.map((n) => <div key={n} className="muted">{n}</div>)}
     </>
@@ -86,10 +100,17 @@ export function UnestablishedDetail({ season: s }: { season: ConeUnestablished }
             <td className="muted">Expected</td>
             <td><strong>Not established</strong></td>
           </tr>
+          {s.control.costDetail !== undefined && (
+            <tr>
+              <td className="muted">Cost</td>
+              <td>{costText(s.control)}</td>
+            </tr>
+          )}
         </tbody>
       </table>
       <div className="muted">{s.reason}</div>
       <div className="muted">Control: {s.control.detail || s.control.label}</div>
+      {s.control.costDetail && <div className="muted">Cost: {s.control.costDetail}</div>}
     </>
   );
 }
@@ -280,7 +301,7 @@ export function ProductionConeChart({ cone, width }: { cone: ProductionCone; wid
           <caption>Expected wins above replacement per season. {cone.basis ? `Rests on: ${cone.basis}.` : ''} {cone.calibration.status}.</caption>
           <thead>
             <tr>
-              <th>Season</th><th>Age</th><th>Control</th><th>Expected</th><th>50% band</th><th>80% band</th>
+              <th>Season</th><th>Age</th><th>Control</th><th>Cost</th><th>Expected</th><th>50% band</th><th>80% band</th>
               <th>Banked</th><th>Playing time</th><th>Notes</th>
             </tr>
           </thead>
@@ -290,6 +311,7 @@ export function ProductionConeChart({ cone, width }: { cone: ProductionCone; wid
                 <td>{s.season}</td>
                 <td>{s.age}</td>
                 <td>{s.control.label}{s.control.after ? `, ${s.control.after.label.toLowerCase()}` : ''}. {s.control.detail}</td>
+                <td>{costText(s.control)}{s.control.costDetail ? `. ${s.control.costDetail}` : ''}</td>
                 <td>{formatWins(s.central)}</td>
                 <td>{formatWins(s.inner.low)} to {formatWins(s.inner.high)} ({coverageText(s.coverage.inner)})</td>
                 <td>{formatWins(s.outer.low)} to {formatWins(s.outer.high)} ({coverageText(s.coverage.outer)})</td>
@@ -303,6 +325,7 @@ export function ProductionConeChart({ cone, width }: { cone: ProductionCone; wid
                 <td>{s.season}</td>
                 <td>{s.age}</td>
                 <td>{s.control.label}{s.control.after ? `, ${s.control.after.label.toLowerCase()}` : ''}. {s.control.detail}</td>
+                <td>{costText(s.control)}{s.control.costDetail ? `. ${s.control.costDetail}` : ''}</td>
                 <td>not established</td>
                 <td>not established</td>
                 <td>not established</td>

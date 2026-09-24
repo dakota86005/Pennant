@@ -398,7 +398,13 @@ export interface ConeSeason {
   toDate: number | null;
   usage: Array<{ unit: 'PA' | 'BF'; low: number; central: number; high: number }>;
   coverage: { outer: ConeCoverage; inner: ConeCoverage; cases: number | null; note: string };
-  control: ConeLabels & { status: string; detail: string; after: ConeLabels | null };
+  control: ConeLabels & {
+    status: string; detail: string; after: ConeLabels | null;
+    /** The season's cost as the timeline serves it (phase 4a); null where unknown or control has ended. */
+    cost?: ConeBand | null;
+    /** Its basis in words, or why it is unknown. */
+    costDetail?: string;
+  };
   notes: string[];
 }
 /** A season after the established ones whose production is not established: its control and why, no band (hardening F6). */
@@ -564,6 +570,10 @@ export interface ContractRow {
     status: string; arbYear: number | null; arbYearHigh: number | null; superTwo?: boolean; between: string[]; reason: string | null;
     /** For an option (or opt-out) next season: whose decision, and where he stands if it is declined. */
     option?: { kind: string; ifDeclined: string; between: string[] } | null;
+  } | null;
+  /** Next season's cost as Player Value's timeline serves it (phase 4a): a band with its basis, or why it is unknown. */
+  nextCost?: {
+    season: number; status: string; low: number | null; high: number | null; text: string; source: string | null; ifHeld: boolean;
   } | null;
 }
 

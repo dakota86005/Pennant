@@ -199,6 +199,43 @@ describe('the pages read Player Value (hardening F2)', () => {
     expect(market.finances.budget).toBeNull();
   });
 
+  it('never counts a projected pre-arbitration or arbitration salary in committed money: it is a band beside it (phase 4a)', async () => {
+    const { players, commitments, years } = await request(`/api/payroll/${IDS.mlbTeam}`);
+    for (const [i, c] of commitments.entries()) {
+      // Committed is guaranteed contract money only, exactly as before
+      const owed = players.reduce((sum: number, p: { byYear: Array<number | null> }) => sum + ((p.byYear[i] ?? 0) > 0 ? p.byYear[i]! : 0), 0);
+      expect(c.total, `${years[i]}`).toBe(owed);
+      expect(c.projected, `${years[i]}`).toBeDefined();
+    }
+    type Projected = { season: number; status: string; low: number | null; high: number | null; text: string } | null;
+    const projected = players.filter((p: { projected?: Projected[] }) => p.projected?.some((x) => x !== null));
+    expect(projected.length).toBeGreaterThan(0);
+    for (const p of projected as Array<{ byYear: Array<number | null>; projected: Projected[] }>) {
+      for (const [i, x] of p.projected.entries()) {
+        if (!x) continue;
+        // A projected season is one no contract covers: it has no committed money
+        expect(p.byYear[i]).toBeNull();
+        if (x.low !== null && x.high !== null) expect(x.low).toBeLessThanOrEqual(x.high);
+        expect(x.text.length).toBeGreaterThan(0);
+      }
+    }
+    // The projected band sums the players' bands edge against edge, and is never added to the total
+    const next = years.indexOf(SEASON + 1);
+    const lows = projected.map((p: { projected: Projected[] }) => p.projected[next]).filter((x: Projected) => x && x.low !== null);
+    if (lows.length > 0) expect(commitments[next].projected.players).toBeGreaterThan(0);
+  });
+
+  it("shows each season's cost on Contracts exactly as the timeline serves it (phase 4a)", async () => {
+    const { players, seasonYear } = await request(`/api/contracts/${IDS.mlbTeam}`);
+    const value = await request(`/api/player-value/${IDS.boundary}`);
+    const row = players.find((p: { player_id: number }) => p.player_id === IDS.boundary);
+    expect(row).toBeDefined();
+    const next = value.control.seasons.find((s: { season: number }) => s.season === seasonYear + 1);
+    expect(row.nextCost).toBeDefined();
+    expect(row.nextCost?.low ?? null).toBe(next?.cost?.value?.low ?? null);
+    expect(row.nextCost?.high ?? null).toBe(next?.cost?.value?.high ?? null);
+  });
+
   it('counts a contract whose next season is an option as undecided on the upcoming market, never dropping it', async () => {
     const market = await request(`/api/free-agents/${IDS.mlbTeam}`);
     expect(market.upcomingUndecided).toBeGreaterThanOrEqual(1);

@@ -213,6 +213,15 @@ for (const b of p.bases) {
 console.log(`  PRICE  ${p.price.value ? `central ${m(p.price.value.central)}, band ${m(p.price.value.low)}–${m(p.price.value.high)}` : `unknown: ${p.price.note}`}`);
 console.log(`  FLOOR  ${p.floor.value ? `${m(p.floor.value.low)}–${m(p.floor.value.high)}` : `unknown: ${p.floor.note}`}`);
 
+// Phase 4a: the cost ladder measured on this import
+const costs = league.costs;
+console.log(`\nThe cost of controlled seasons (phase 4a; minimum ${m(costs.minimum.value)})`);
+console.log(`  renewal spread   ${costs.preArbitration.status}: ${costs.preArbitration.text}`);
+console.log(`  arbitration      ${costs.arbitration.status}${costs.arbitration.reason ? `: ${costs.arbitration.reason}` : ''} — platform: ${costs.arbitration.platform}`);
+for (const c of costs.arbitration.classes) {
+  console.log(`    ${c.text}${c.ratioShare !== null ? ` (R-6's statistic: ${(c.ratioShare * 100).toFixed(1)}% of the price per positive platform win)` : ''}`);
+}
+
 console.log('\nReplacement level, per season (the level the export\'s WAR implies)');
 for (const x of league.replacementLevel) {
   console.log(`  ${x.season}${x.toDate ? ' (to date)' : ''}: ${x.level.value === null ? `unknown — ${x.level.note}` : `${x.level.value.toFixed(4)} — ${x.level.note}`} [${x.stamp.status}]`);

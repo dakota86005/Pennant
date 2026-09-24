@@ -9,7 +9,7 @@ import { historyDb } from '../server/history.js';
 import { PRODUCTION_PRIOR } from '../server/playerValueCalibration.js';
 import { leagueSeasons } from '../server/playerValueHistory.js';
 import { captureMarketSnapshot } from '../server/playerValueSnapshot.js';
-import { OPENING_PRICE_MINIMUMS } from '../server/playerValueCalibration.js';
+import { COST_POLICY, OPENING_PRICE_MINIMUMS } from '../server/playerValueCalibration.js';
 import { buildSave, dropColumn, dropTable, exec, insert, leagueRow, type BuiltSave, type SaveSpec } from './syntheticSave';
 import { majorLeagueRow, minorLeagueRow } from './playerValueFixtures';
 
@@ -139,6 +139,26 @@ function expectInvariants(r: Run): void {
   for (const cone of r.cones) {
     if (cone.calibration.calibrated) expect(cone.calibration.source).toBe('save_fit');
     if (cone.status !== 'projected') expect((cone.reason ?? '').length).toBeGreaterThan(0);
+  }
+  // The cost of controlled seasons (phase 4a): ordered bands, never an arbitration season at the minimum,
+  // the prior only where the regime is MLB's, and an unknown cost with its reason
+  const minimumOf = new Map([...r.finances].map(([id, f]) => [id, f.costs.minimum.value]));
+  const minimum = minimumOf.size === 1 ? [...minimumOf.values()][0] : null;
+  for (const v of r.values.values()) {
+    for (const s of v.control.seasons) {
+      for (const [cost, basis, status] of [[s.cost, s.costBasis, s.status], [s.declined?.cost ?? null, s.declined?.costBasis, s.declined?.status]] as const) {
+        if (!cost) continue;
+        if (cost.value === null) {
+          expect((cost.note ?? '').length, `player ${v.playerId} ${s.season}: an unknown cost without its reason`).toBeGreaterThan(0);
+          continue;
+        }
+        expect(cost.value.low, `player ${v.playerId} ${s.season}`).toBeLessThanOrEqual(cost.value.high);
+        if (status === 'arbitration' && minimum !== null) {
+          expect(cost.value.low, `player ${v.playerId} ${s.season}: an arbitration season at the minimum`).toBeGreaterThan(minimum);
+        }
+        if (basis && basis.source !== 'measured') expect(cost.note, `player ${v.playerId} ${s.season}`).toMatch(/provisional/i);
+      }
+    }
   }
   for (const [id, f] of r.finances) {
     const price = f.priceOfWin;
@@ -337,6 +357,80 @@ describe('cross-save: contract and financial regimes', () => {
       ...base, rules: { rules_fa_minimum_years: 4, rules_salary_arbitration_minimum_years: 2, rules_min_service_days: 150, rules_salary_cap: 120_000_000 },
     });
     expectInvariants(run(save));
+  }, SLOW);
+});
+
+describe('cross-save: the cost of controlled seasons (phase 4a)', () => {
+  const seasonsOf = (r: Run) => [...r.values.values()].flatMap((v) => v.control.seasons);
+  const priced = (r: Run, method: string) => seasonsOf(r).filter((s) => s.costBasis?.method === method && s.cost?.value);
+
+  it('a fictional league without arbitration: no season is priced from an arbitration ladder, and the ladder says the league has none', () => {
+    const save = buildSave({ ...base, rules: { rules_salary_arbitration_minimum_years: 0 } });
+    const r = run(save);
+    expectInvariants(r);
+    const costs = r.finances.get(save.leagueId)!.costs;
+    expect(costs.arbitration.status).toBe('no_arbitration');
+    expect(costs.arbitration.classes).toEqual([]);
+    expect(seasonsOf(r).filter((s) => s.status === 'arbitration')).toEqual([]);
+    expect(priced(r, 'arbitration_ladder')).toEqual([]);
+  }, SLOW);
+
+  it('a league with its own minimum salary: a renewal starts at that minimum, never MLB\'s', () => {
+    const save = buildSave({ ...base, rules: { rules_minimum_salary: 300_000 } });
+    const r = run(save);
+    expectInvariants(r);
+    const costs = r.finances.get(save.leagueId)!.costs;
+    expect(costs.minimum.value).toBe(300_000);
+    expect(priced(r, 'renewal_spread').length).toBeGreaterThan(0);
+    for (const s of priced(r, 'renewal_spread')) expect(s.cost!.value!.low).toBe(300_000);
+    for (const s of priced(r, 'arbitration_ladder')) expect(s.cost!.value!.low).toBeGreaterThan(300_000);
+  }, SLOW);
+
+  it('a thin arbitration class in MLB\'s regime is the provisional prior widened by its own cases, and says so', () => {
+    const save = buildSave({ ...base, clubs: 4 });
+    const r = run(save);
+    expectInvariants(r);
+    const classes = r.finances.get(save.leagueId)!.costs.arbitration.classes;
+    expect(classes.length).toBeGreaterThan(0);
+    for (const c of classes) {
+      if (c.cases >= COST_POLICY.ladder.minimumCases) continue;
+      expect(['thin', 'prior']).toContain(c.status);
+      expect(c.readings.some((x) => x.source === 'prior')).toBe(true);
+    }
+    expect(priced(r, 'arbitration_ladder').length).toBeGreaterThan(0);
+    for (const s of priced(r, 'arbitration_ladder')) {
+      if (s.costBasis!.source !== 'measured') expect(s.cost!.note).toMatch(/provisional/i);
+    }
+  }, SLOW);
+
+  it("a regime that is not MLB's never borrows MLB's ladder: a thin class leaves the arbitration cost unknown with the reason", () => {
+    const save = buildSave({ ...base, rules: { rules_fa_minimum_years: 7 } });
+    const r = run(save);
+    expectInvariants(r);
+    const classes = r.finances.get(save.leagueId)!.costs.arbitration.classes;
+    for (const c of classes) expect(c.readings.some((x) => x.source === 'prior'), `class ${c.arbitrationClass}`).toBe(false);
+    for (const s of seasonsOf(r).filter((x) => x.status === 'arbitration' && x.cost && x.cost.value === null)) {
+      expect(s.cost!.note).toMatch(/not MLB's|fewer than|production|not established|price of a win/);
+    }
+    for (const s of priced(r, 'arbitration_ladder')) expect(s.costBasis!.source).toBe('measured');
+  }, SLOW);
+
+  it('an arbitration rule the export does not state: no season is priced from any ladder, and the cost is unknown with the reason', () => {
+    const save = buildSave({ ...base, rules: { rules_salary_arbitration_minimum_years: null } });
+    const r = run(save);
+    expectInvariants(r);
+    expect(r.finances.get(save.leagueId)!.costs.arbitration.status).toBe('unknown');
+    expect(priced(r, 'arbitration_ladder')).toEqual([]);
+  }, SLOW);
+
+  it('the market snapshot records the cost ladder beside the price', () => {
+    const save = buildSave(base);
+    const r = run(save);
+    expectInvariants(r);
+    const basisJson = historyDb.prepare(`SELECT basis_json FROM value_market_snapshots WHERE league_id = ?`).get(save.leagueId) as { basis_json: string };
+    const recorded = JSON.parse(basisJson.basis_json);
+    expect(recorded.costs.preArbitration.cases).toBe(r.finances.get(save.leagueId)!.costs.preArbitration.cases);
+    expect(recorded.costs.arbitration.status).toBe(r.finances.get(save.leagueId)!.costs.arbitration.status);
   }, SLOW);
 });
 

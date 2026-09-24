@@ -204,6 +204,34 @@ describe('the production cone, hardening (F2)', () => {
     ]));
     expect(cone.control.note).toMatch(/2031 or 2032/);
   });
+
+  it("carries each season's cost exactly as the timeline serves it, with its basis, and says so where it is unknown (phase 4a)", () => {
+    const measured = { low: 4_200_000, high: 9_800_000 };
+    const cone = productionCone(projectProduction(regular()), timeline([
+      season(2030, 'under_contract', { cost: { value: { low: 5_000_000, high: 5_000_000 }, provenance: 'explicit_export', source: 'players_contract.salary0' } }),
+      season(2031, 'arbitration', {
+        arbitrationYear: { low: 2, high: 3 },
+        cost: { value: measured, provenance: 'derived', source: 'test', note: 'Arbitration 2–3: the save\'s own ladder (measured on 60 contracts).' },
+        costBasis: {
+          method: 'arbitration_ladder', source: 'measured', classes: [2, 3], cases: 120, platform: { seasons: [2029, 2030], low: 2, high: 4 },
+          price: { low: 6_000_000, high: 9_000_000 }, ifHeld: false, text: 'measured on 120 contracts',
+        },
+      }),
+      season(2032, 'arbitration', {
+        arbitrationYear: { low: 3, high: 4 },
+        cost: { value: null, provenance: 'unknown', source: null, reason: 'not_exported_by_ootp', note: 'Its platform production is not established.' },
+      }),
+      season(2033, 'free_agent'),
+    ]));
+    const [now, next, after] = cone.seasons.map((s) => s.control);
+    expect(now.cost).toEqual({ low: 5_000_000, high: 5_000_000 });
+    expect(next.cost).toEqual(measured);
+    expect(next.costDetail).toMatch(/measured on 60 contracts/);
+    expect(after.cost).toBeNull();
+    expect(after.costDetail).toMatch(/not established/);
+    // Never a cost where the timeline states none, and never a zero
+    expect(cone.seasons.every((s) => s.control.cost === null || s.control.cost.high > 0)).toBe(true);
+  });
 });
 
 describe('the cone states what the projection rests on, and is calibrated only where every part is (hardening, 2026-09-23)', () => {

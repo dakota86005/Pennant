@@ -181,6 +181,26 @@ describe('the production cone renders', () => {
     expect(prior).toMatch(/50% target · not measured on this save/);
     expect(prior).not.toMatch(/\d+% observed/);
   });
+
+  it("shows each season's cost as served, with its basis, and an unknown cost as not established with its reason (phase 4a)", () => {
+    const arb = s(2032, 2.6, [0.1, 5.2], [1.4, 3.8], {
+      control: { ...control('Arbitration 2–3', 'Arb 2–3', 'A2–3'), cost: { low: 4_100_000, high: 31_700_000 }, costDetail: 'Arbitration class 2–3: the save\'s ladder (class 2 measured on 51 contracts).' },
+    });
+    const html = renderToStaticMarkup(createElement(SeasonDetail, { season: arb, basis: 'x' }));
+    expect(html).toMatch(/Cost/);
+    expect(html).toMatch(/\$4\.1M–\$31\.7M/);
+    expect(html).toMatch(/measured on 51 contracts/);
+    const unknown = s(2033, 2.3, [-0.4, 5.1], [1.0, 3.6], {
+      control: { ...control('Arbitration 3', 'Arb 3', 'A3'), cost: null, costDetail: 'His production in 2032, a platform season, is not established.' },
+    });
+    const u = renderToStaticMarkup(createElement(SeasonDetail, { season: unknown, basis: 'x' }));
+    expect(u).toMatch(/not established/);
+    expect(u).not.toMatch(/\$0/);
+    // Every figure the detail shows is also in the hidden table
+    const table = renderToStaticMarkup(createElement(ProductionConeChart, { cone: cone([REGULAR[0], REGULAR[1], arb]), width: 640 }));
+    expect(table).toMatch(/<th>Cost<\/th>/);
+    expect(table).toMatch(/\$4\.1M–\$31\.7M/);
+  });
 });
 
 /* Hardening (F2, 2026-09-23): D-19, D-20, D-22, D-23 and D-24. */

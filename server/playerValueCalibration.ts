@@ -31,14 +31,22 @@ export const CONTROL_HORIZON_CALIBRATION: CalibrationStamp = policy(
 );
 
 /**
- * Why a pre-arbitration or arbitration season has no cost band yet. Both bands are priced in wins
- * against the league's price of a win (PLAYER_VALUE.md Part 4.4, R-5, R-6), which phases 2 and 4
- * build. Until then the cost is unknown: never the league minimum, never a point.
+ * What a pre-arbitration, arbitration or open season's cost says before it is priced. The control
+ * timeline is composed first (`playerValueControl.ts`); the cost ladder (`playerValueCost.ts`) then
+ * prices each such season from the league's measured renewal spread and arbitration ladder, the platform
+ * seasons' production and the price of a win (phase 4a). A reading that never runs the ladder (a
+ * timeline composed on its own) keeps this note: unknown, never the league minimum, never a point.
  */
-export const COST_PENDING_PRICE_OF_A_WIN = 'pending price of a win (phase 2/4)';
+export const COST_NOT_PRICED =
+  "not priced in this reading: a controlled season is priced by the league's cost ladder (the renewal spread or the arbitration ladder), which was not run here";
 
-/** Why a reserve-clause renewal has no cost band yet: it is read from the league's observed pay (phase 2). */
-export const COST_PENDING_OBSERVED_PAY = "pending the league's observed pay (phase 2)";
+/**
+ * Why a reserve-clause renewal has no cost band. Under a reserve clause the club renews him at a
+ * salary no rule ties to service or production, and one import cannot say what a renewal costs: that
+ * needs renewals observed across imports (phase 4b). Unknown, never the minimum.
+ */
+export const COST_PENDING_OBSERVED_PAY =
+  'Under a reserve clause the club renews him at a salary no rule ties to service or production; what a renewal costs is not measured from one export (renewals observed across imports, phase 4b), so it is unknown, never the minimum.';
 
 // ── phase 2: Club Finances and the opening price of a win (PLAYER_VALUE.md Parts 2.4, 4.1, 4.3) ──
 
@@ -2093,3 +2101,82 @@ export const RATINGS_PRIOR: RatingsModel = {
     reliever: { variance600: null, cases: 0 }
   }
 };
+
+// ── phase 4a: the cost of controlled seasons (PLAYER_VALUE.md Parts 2.2 and 4.4) ─────────────────────
+
+/**
+ * How the cost ladder is measured and served (`playerValueCost.ts`). Chosen, not fitted (D-041): what the
+ * method is asked to achieve and when it may be trusted. The numbers it measures are the save's, per import.
+ *
+ *   renewal.quantile       the renewal band's high edge is the 90th percentile of the save's pre-arbitration
+ *                          one-year renewals: the pay nine renewals in ten stay under, so one foreign signing
+ *                          or non-tender on a one-year deal does not set it;
+ *   renewal.confidence     read as its distribution-free upper confidence bound at 90% (an order statistic), so
+ *                          a thinner class reads a higher edge, never a lower one;
+ *   renewal.minimumCases   30 renewals before the band is the save's own; fewer, and it is the provisional prior
+ *                          widened by the save's cases (only where the regime as read is MLB's), else unknown;
+ *   ladder.platformSeasons an arbitration salary is read against the mean WAR of the two seasons before the
+ *                          arbitration winter (the platform season and the one before it). Arbitration pays for
+ *                          a body of work, not one season; on the Arizona import the two-season platform explains
+ *                          each class's pay better than the platform season alone (CALIBRATION.md section 8). For
+ *                          a future season the platform seasons are projections;
+ *   ladder.spread          the class's pay around its line: the 10th and 90th percentiles of what the class was
+ *                          paid against what the line gives (an inverted-CDF quantile, unchanged by duplicating
+ *                          the class), the same 80% as production's outer band;
+ *   ladder.lineErrors      the line's own uncertainty added on each side, 1.28 standard errors (the same 80%), so
+ *                          fewer contracts read wider;
+ *   ladder.minimumCases    30 contracts in a class before its line is the save's own; fewer, and it is the
+ *                          provisional prior hulled with the save's own line (read from `fitCases`, three, the
+ *                          fewest a line can be read on), only where the regime as read is MLB's; else unknown.
+ */
+export const COST_POLICY = {
+  renewal: { quantile: 0.9, confidence: 0.9, minimumCases: 30 },
+  ladder: { platformSeasons: 2, spread: { low: 0.1, high: 0.9 }, lineErrors: 1.2816, minimumCases: 30, fitCases: 3 },
+} as const;
+
+export const COST_POLICY_CALIBRATION: CalibrationStamp = policy(
+  "The cost ladder's method (phase 4a): a pre-arbitration renewal from the league minimum to the 90% upper confidence bound of the 90th percentile of the save's " +
+    "one-year renewals; an arbitration season from its class's line (pay above the minimum against the two-season platform WAR: a base and a share of the " +
+    "price of a win per platform win), with its 10th-90th percentile spread and 1.28 of the line's standard errors each side; 30 cases before a class is the " +
+    "save's own. Decisions about the method (D-041), not fits: the numbers themselves are measured on each import."
+);
+
+/** One arbitration class of the provisional prior, in the league minimum's units so it carries to another save's money. */
+export interface CostPriorClass {
+  arbitrationClass: number;
+  cases: number;
+  /** Pay above the minimum at no platform wins, in minimums. */
+  baseOverMinimum: number;
+  /** Per platform win, as a share of the price of a win's central (the rung). */
+  share: number;
+  /** The class's pay around its line, in minimums. */
+  spreadOverMinimum: { low: number; high: number };
+  /** The line's residual standard deviation, in minimums; its mean platform and sum of squares (wins). */
+  sigmaOverMinimum: number;
+  meanPlatform: number;
+  sumSquares: number;
+  /** The least pay above the minimum the class showed, in minimums. */
+  floorOverMinimum: number;
+}
+
+/**
+ * The provisional prior (D-053): the same method run on the Arizona import's imported real-world contracts (R-6),
+ * used only where a save's own class is thinner than the policy minimum AND its regime as read is MLB's. Never
+ * presented as the save's own measurement: every cost priced from it says "provisional".
+ */
+export const COST_PRIOR: { source: string; renewal: { cases: number; highOverMinimum: number }; ladder: CostPriorClass[] } = {
+  source: 'the cost ladder measured on the imported real-world 2026 contracts of the Arizona save (2026-05-16; R-6)',
+  renewal: { cases: 249, highOverMinimum: 1.0128 },
+  ladder: [
+    // Measured by `measureCostLadder` on that import (2026-05-16): 74, 51 and 47 contracts; 10, 6 and 4 at the minimum left out
+    { arbitrationClass: 1, cases: 74, baseOverMinimum: 0.5668, share: 0.1427, spreadOverMinimum: { low: -1.0176, high: 1.4033 }, sigmaOverMinimum: 1.0203, meanPlatform: 1.206, sumSquares: 106.747, floorOverMinimum: 0.0256 },
+    { arbitrationClass: 2, cases: 51, baseOverMinimum: 1.7265, share: 0.264, spreadOverMinimum: { low: -2.2308, high: 2.2876 }, sigmaOverMinimum: 3.6211, meanPlatform: 1.3245, sumSquares: 45.721, floorOverMinimum: 0.1538 },
+    { arbitrationClass: 3, cases: 47, baseOverMinimum: 0.5218, share: 0.4876, spreadOverMinimum: { low: -4.1182, high: 4.4303 }, sigmaOverMinimum: 4.4155, meanPlatform: 1.3682, sumSquares: 71.258, floorOverMinimum: 0.5385 },
+  ],
+};
+
+export const COST_PRIOR_CALIBRATION: CalibrationStamp = provisional(
+  'The cost ladder on the imported real-world contracts (R-6: the Arizona import, 2026-05-16): the renewal spread and the arbitration ladder by class, ' +
+    "in minimums and shares of the price of a win. Used only where a save's own class is below the policy minimum and its regime as read is MLB's, " +
+    "hulled with the save's own cases, and always labelled provisional; replaced by the save's measurement as its classes fill, and by observed awards (phase 4b)."
+);

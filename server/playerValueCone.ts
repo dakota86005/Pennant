@@ -39,6 +39,13 @@ export interface ConeControl extends Labels {
   status: ConeControlStatus;
   /** Why this status, in words: the timeline's basis and what is missing. */
   detail: string;
+  /**
+   * What the club would pay that season, exactly as the timeline serves it (phase 4a): the contract's salary, or a
+   * priced renewal or arbitration band; null where it is unknown or where control has ended (no cost to this club).
+   */
+  cost: ConeBand | null;
+  /** The cost's basis in words, or why it is unknown. */
+  costDetail: string;
   /** Set on the last controlled season when free agency follows it. */
   after: Labels | null;
 }
@@ -131,12 +138,14 @@ function controlOf(season: number, control: ControlTimeline, after: boolean): Co
     return {
       status: 'unsigned', label: 'Unsigned', short: 'Unsigned', code: 'Uns', after: null,
       detail: control.notes[control.notes.length - 1] ?? 'No club holds him.',
+      cost: null, costDetail: 'No club holds him, so no club pays him.',
     };
   }
   const c = control.seasons.find((x) => x.season === season);
   if (!c) {
     return {
-      status: 'not_established', ...NOT_ESTABLISHED, after: null,
+      status: 'not_established', ...NOT_ESTABLISHED, after: null, cost: null,
+      costDetail: 'His control that season is not established, so neither is its cost.',
       detail: control.standing === 'unknown'
         ? control.notes[control.notes.length - 1] ?? 'His control cannot be laid out from the export.'
         : `His control in ${season} is not in the timeline.`,
@@ -148,7 +157,17 @@ function controlOf(season: number, control: ControlTimeline, after: boolean): Co
   return {
     status: c.status, ...labelsOf(c), after: after ? FREE_AGENT_AFTER : null,
     detail: [c.basis, c.superTwo ? 'Reached as a Super Two.' : '', between, ...c.reasons].filter(Boolean).join(' '),
+    ...costOf(c),
   };
+}
+
+/** The season's cost as the timeline serves it, and its basis or why it is unknown (phase 4a). Nothing is priced here. */
+function costOf(c: ControlSeason): { cost: ConeBand | null; costDetail: string } {
+  if (c.cost === null) return { cost: null, costDetail: 'Control ends: no cost to this club.' };
+  if (c.cost.value === null) return { cost: null, costDetail: c.cost.note ?? 'Not established.' };
+  const detail = c.cost.note
+    ?? (c.cost.value.low === c.cost.value.high ? `The contract's salary${c.cost.source ? ` (${c.cost.source})` : ''}.` : 'A band.');
+  return { cost: { low: c.cost.value.low, high: c.cost.value.high }, costDetail: detail };
 }
 
 const coverageOf = (s: ProductionSeason): ConeSeason['coverage'] => ({
