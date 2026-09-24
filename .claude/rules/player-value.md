@@ -1,6 +1,9 @@
 ---
 paths:
   - "server/playerValue*.ts"
+  - "server/posture.ts"
+  - "server/playoffs.ts"
+  - "src/ValueSection.tsx"
   - "server/clubFinanceRoutes.ts"
   - "server/leagueRules.ts"
   - "server/contracts.ts"
@@ -31,7 +34,9 @@ replacement level), `playerValueCost.ts` (phase 4a, pure: the cost ladder measur
 priced from it), `playerValueSignings.ts` (phase 4b, pure: observed changes between imports, the measured price, awards,
 reserve-clause renewals, replacement, adoption), `playerValueCone.ts` (the player card's production cone: production
 joined with control, pure), `playerValueSurplus.ts` (phase 5a, pure: the neutral contract surplus and the retention
-margin) and `playerValueCalibration.ts` (policy and the provisional prior, stamped) sit behind it.
+margin), `playerValueLens.ts` (phase 5b, pure: "our view", the one value module that names philosophy),
+`playerValueWinValue.ts` (phase 5b, pure: the club's value of a win) and `playerValueCalibration.ts` (policy and the
+provisional prior, stamped) sit behind it.
 Three writers, `history.db` only: `playerValueSnapshot.ts` (the per-import market snapshot), `playerValueContractStore.ts`
 (phase 4b: the per-import contract snapshot) and `playerValueFitStore.ts` (the per-save production fits, D-053). Which phases are built is in `docs/PROJECT_STATE.md`; check it against the
 worktree.
@@ -141,11 +146,22 @@ worktree.
   never priced. An option season is the hull of its ways with no central chosen; "if held" where the player decides or
   he may leave. An unknown season is named and never summed as zero; without dollars, wins only. No verdict words. One
   valuation for every read (`surplusOf` only through the entry point; the card's route, Payroll and the league-wide read
-  agree). The lens and the club's value of a win are phase 5b; consumers other than the card migrate in phase 6.
+  agree). Consumers other than the card migrate in phase 6.
+- The lens (phase 5b, D-052 amendment; PLAYER_VALUE.md 6.1): `ourViewOf` runs at read time on the neutral valuation as served,
+  handed the viewing organization's philosophy by `ourViewRoutes.ts` (settings are read there, never in a value module); it
+  never changes a neutral figure or unknown, names every lean with its amount, leans on nothing inside 40–60 with the default
+  policies, keeps guaranteed money out of the retention margin under every philosophy, words the policies only, and reads no
+  production, cost, fit, table, tier, defensibility or club value of a win. Its weights are `LENS_POLICY` (policy).
+- The club's value of a win (phase 5b; 4.5): `clubWinValue` reads the deadline read's odds model (`posture.ts`
+  `oddsModelOf`/`oddsAt`, the only value-module import of posture, in the entry point); points of playoff odds per win and the
+  curve, never dollars (Q-6), never in any value, unknown with its reason where the odds cannot be read (never the deadline
+  read's defaults). The card's Value section speaks plainly: "Contract value", "Value of keeping him", "Most likely",
+  "could be", "if kept", explanations on hover; the API keeps its names.
 - Never ask the owner for an OOTP experiment; an unresolved rule stays `indeterminate` and is documented.
 
 Checks: `tests/playerValueBoundary.test.ts`, `tests/playerValueControl.test.ts`, `tests/playerValueCost.test.ts`,
 `tests/playerValueFinances.test.ts`, `tests/playerValueProduction.test.ts`, `tests/playerValueProductionFit.test.ts`,
 `tests/playerValueRatings.test.ts`, `tests/playerValueSignings.test.ts`, `tests/playerValueCrossSave.test.ts`,
-`tests/playerValueSurplus.test.ts`, `tests/playerValueInvariants.test.ts`, `tests/valueSection.test.ts`;
+`tests/playerValueSurplus.test.ts`, `tests/playerValueInvariants.test.ts`, `tests/valueSection.test.ts`,
+`tests/playerValueLens.test.ts`, `tests/playerValueWinValue.test.ts`, `tests/playoffs.test.ts`;
 `npm run value:report` and `npx tsx scripts/calibrate.ts production` against a real import (read-only with `OOTP_FO_DB_READONLY=1`).

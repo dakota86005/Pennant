@@ -45,7 +45,7 @@ research are evidence and rationale, not current implementation truth.
 | MLB Operations | D-024 (then D-025 to D-043 by topic); ARCHITECTURE "MLB Operations"; MLB_OPERATIONS.md §10, §11; ROSTER_REVIEW.md §2, §4; CALIBRATION.md; BEHAVIOR_CASES.md "MLB Operations"; historical rationale: MLB_OPERATIONS_HARDENING.md | `.claude/rules/mlb-operations.md` |
 | Developmental stakes | D-050; ARCHITECTURE "Developmental stakes: the protection tier"; DEVELOPMENTAL_STAKES.md Parts 3, 4, 9 | `.claude/rules/developmental-stakes.md` |
 | Roster evidence and rights | D-020 to D-023, D-026; ARCHITECTURE "Roster evidence: state, chronology, and how current they are"; research evidence: RIGHTS_RESEARCH.md §2, §3 | `.claude/rules/roster-evidence.md` |
-| Player Value | D-052 (with D-018, D-023, D-041), D-053 (calibration belongs to the save); ARCHITECTURE "Subsystem responsibilities" (Player Value), "Player Rights (`playerRights.ts`, `leagueRules.ts`)"; PLAYER_VALUE.md Parts 1, 2, 7 to 11; BEHAVIOR_CASES.md "Player Value"; research evidence: PLAYER_VALUE_RESEARCH.md R-2, R-3, R-6, R-10 | `.claude/rules/player-value.md` |
+| Player Value | D-052 (with D-018, D-023, D-041), D-053 (calibration belongs to the save); ARCHITECTURE "Subsystem responsibilities" (Player Value), "Player Rights (`playerRights.ts`, `leagueRules.ts`)", "Organizational Philosophy owns preferences" (the lens); PLAYER_VALUE.md Parts 1, 2, 4.5, 6, 7 to 11; BEHAVIOR_CASES.md "Player Value"; research evidence: PLAYER_VALUE_RESEARCH.md R-2, R-3, R-6, R-10 | `.claude/rules/player-value.md` |
 | Project identity and releases | D-049; ARCHITECTURE "Subsystem responsibilities" (Identity and version); DEVELOPMENT.md "Versions", "Release tags", "Releases", "Application id and compatibility holds" | `.claude/rules/release-identity.md` |
 
 ## Non-negotiable boundaries
@@ -138,6 +138,28 @@ research are evidence and rationale, not current implementation truth.
 - Never commit credentials, API keys, environment files, live OOTP saves,
   generated databases, AI caches, local settings, or machine-specific private
   data.
+
+## Writing for the GM (UI copy)
+
+The owner's rule (2026-09-24): what a page says should read like a front office
+talking, not a methods paper.
+
+- Visible text is short and plain: a title and one line saying what the number
+  means ("What he's worth beyond what he's paid"). Name things the way a GM
+  would ("Value of keeping him", "Most likely $X · could be $A to $B"), not by
+  the method ("retention margin", "central", "edge against edge").
+- The explanation goes in a hover: the `Tip` component (`src/Tip.tsx`), in the
+  voice of `TIP_OA` and `TIP_VALUE` (`src/playerModal.tsx`). Say what the
+  number is, how to read it and what it leaves out, in plain sentences.
+- No internal jargon, doc IDs (D-, R-, Q-numbers), column names or code terms
+  in titles or visible lines. They may appear in a hover or a breakdown where
+  they help, never as the headline.
+- Something unknown gets one short sentence on screen ("Not valued yet: his
+  contract terms aren't in the export"). The full reasons go in the hover or
+  the breakdown, never a wall of text.
+- "Show the basis" still holds: the basis moves into hovers and breakdowns; it
+  does not disappear. Where it is practical, a test keeps banned jargon out of
+  visible text.
 
 ## Working safely
 

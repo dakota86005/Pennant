@@ -840,3 +840,24 @@ On the Arizona import (2026-05-16): 1,048 players have a known sum; contract sur
 percentile −$17.7M to $32.7M); 76 major-league deals read below −$20M in contract surplus with a positive retention
 margin. Re-running: `npm run value:report` is unchanged; the regression sweep (`sweep-c.mts`, supervisor's scratch) holds
 the phase's 31 checks.
+
+## 11. Player Value's philosophy lens and the club's value of a win (phase 5b)
+
+Neither fits anything. The lens (PLAYER_VALUE.md 6.1, `server/playerValueLens.ts`) is policy: how far a stated preference
+leans "our view", shown with every lean and the neutral figure it started from (`LENS_POLICY`, stamped
+`LENS_POLICY_CALIBRATION`). The club's value of a win (4.5, `server/playerValueWinValue.ts`) reads the deadline read's odds
+model, which is provisional and not fitted on the save (`WIN_CURVE_CALIBRATION`).
+
+| What | Value | Stamp | Why |
+|---|---|---|---|
+| Where a dimension leans | outside 40–60, linearly to its limit at 0 or 100 | policy | D-036's lean thresholds: a middling preference is not a lean |
+| The competitive window's discount | 0% (building) to 15% (win-now) a season, against the neutral 5% | policy | A time preference stated by the organization (Q-3); this season's part weighs 1 |
+| Risk tolerance | up to half way from each range's centre to its low edge; never above the centre | policy | Part 6: the band may be read nearer its low edge or its centre, never beyond |
+| Team control, cost efficiency, payroll flexibility | ±20% on their part | policy | A lean, not a verdict; payroll flexibility in the contract view only |
+| An aging season | 33 or older (words only) | policy | Moves no number |
+| The win curve | three wins fewer to five more | policy | A display choice |
+| The odds model | Pythagorean talent from this season's runs, a .520 rival, a normal difference over the games left | provisional | The deadline read's model; not fitted on the save. In playoff odds only (Q-6) |
+
+On the Arizona import (2026-05-16) the owner's configured philosophy leans on nothing for any player (every dimension 50,
+the default policies). One more win moves Arizona's odds by 5.0 points (57% now); the tightest races about 5.1 to 5.2; the
+clubs far out under 0.1. The regression sweep holds the phase's 24 checks.

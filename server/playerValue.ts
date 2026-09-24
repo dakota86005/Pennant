@@ -55,6 +55,9 @@ import { composeControlTimeline, type ControlTimeline } from './playerValueContr
 import { measureCostLadder, priceControlTimeline, type CostLadder } from './playerValueCost.js';
 import { productionCone, type ProductionCone } from './playerValueCone.js';
 import { surplusOf, type PlayerSurplus, type SurplusMarket } from './playerValueSurplus.js';
+import { ourViewOf, type LensPhilosophy, type OurView } from './playerValueLens.js';
+import { curveWins, winValueOf, type ClubWinValue } from './playerValueWinValue.js';
+import { oddsAt, oddsModelOf, shownOdds } from './posture.js';
 import {
   FINANCE_COLUMNS, clubFinancesOf, openingPriceOfWin, replacementLevelOf, scheduleShareOf,
   type ClubFinances, type FinanceTable, type MarketCandidate, type PriceOfWin, type ReplacementLevel,
@@ -133,6 +136,14 @@ export type {
 } from './playerValueSurplus.js';
 /** Phase 5a: the neutral contract surplus and the retention margin (pure; the entry point hands it the market). */
 export { surplusOf } from './playerValueSurplus.js';
+export type {
+  LensDelta, LensDimension, LensFigure, LensInput, LensLean, LensPhilosophy, LensPolicy, LensRead, LensSeason, OurTotal, OurView,
+} from './playerValueLens.js';
+/** Phase 5b: the philosophy lens, at read time on a neutral valuation (pure; Part 6). */
+export { lensPhilosophyFrom, ourViewOf } from './playerValueLens.js';
+export type { ClubWinValue, WinValueInput } from './playerValueWinValue.js';
+/** Phase 5b: the club's value of a win, from the deadline read's odds model (pure; Part 4.5). */
+export { winValueOf } from './playerValueWinValue.js';
 export type { ProductionTotal, UnestablishedSeason } from './playerValueProduction.js';
 export { PRODUCTION_NO_EVIDENCE };
 
@@ -387,6 +398,43 @@ export function surplusMarketFrom(finances: LeagueFinances): SurplusMarket {
  */
 export function playerSurplus(playerId: number, options: ValuationOptions = {}): PlayerSurplus | null {
   return playerValue(playerId, options)?.surplus ?? null;
+}
+
+/**
+ * Phase 5b: "our view" of one player (PLAYER_VALUE.md Part 6): his neutral valuation, as every read serves it, read at
+ * read time through the philosophy handed in (the viewing organization's; the caller reads it from settings). The neutral
+ * valuation is computed without it and is not changed by it. Null when the export has no such active player or no surplus.
+ */
+export function playerOurView(
+  playerId: number, philosophy: LensPhilosophy, viewerOrgId: number | null, options: ValuationOptions = {},
+): { neutral: PlayerSurplus; ourView: OurView } | null {
+  const value = playerValue(playerId, options);
+  if (!value?.surplus) return null;
+  const holder = value.control.holder.value;
+  const ours = viewerOrgId === null || value.control.standing === 'unknown' ? null : holder === viewerOrgId;
+  return { neutral: value.surplus, ourView: ourViewOf({ neutral: value.surplus, philosophy, ours }) };
+}
+
+/**
+ * Phase 5b: this club's value of a win now (PLAYER_VALUE.md Part 4.5): how much one more win moves its chance of the
+ * postseason, and the curve over the rest of the season, on the deadline read's odds model, in playoff odds (Q-6). A club
+ * fact from the standings, runs and schedule; the same for every organization that reads it, and never part of a
+ * player's value.
+ */
+export function clubWinValue(teamId: number): ClubWinValue {
+  const read = oddsModelOf(teamId);
+  const clubRow = tableExists('teams') ? db.prepare(`SELECT name, nickname FROM teams WHERE team_id = ?`).get(teamId) as { name?: unknown; nickname?: unknown } | undefined : undefined;
+  const club = clubRow ? [clubRow.name, clubRow.nickname].filter((x) => typeof x === 'string' && x.length > 0).join(' ') || null : null;
+  if (!read.model) return winValueOf({ teamId, club, reading: null, reason: read.reason });
+  const m = read.model;
+  return winValueOf({
+    teamId, club, reason: null,
+    reading: {
+      w: m.w, l: m.l, gamesPlayed: m.gamesPlayed, gamesLeft: m.gamesLeft, rs: m.rs, ra: m.ra, talent: m.talent, rival: m.rival,
+      gap: m.gap, gapRead: m.gapRead, summary: m.picture?.summary ?? null, route: m.picture?.route ?? null, wildCards: m.picture?.spots ?? null,
+      shown: shownOdds(m), curve: curveWins().map((k) => ({ wins: k, odds: oddsAt(m, k) })),
+    },
+  });
 }
 
 /** Contract facts and control for the players asked about, keyed by id; retired players are not valued. */

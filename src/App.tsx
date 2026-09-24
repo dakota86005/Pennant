@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { setRatingRounding, setRatingScaleMax } from './ratingScale';
+import { setViewerOrg } from './viewerOrg';
 import {
   getOrgs, getSaves, getStatus, isStaticSite, setConfig, setStaticSite, triggerImport,
   type Org, type SaveInfo, type Status,
@@ -172,6 +173,8 @@ export function App() {
   // Set during render rather than in an effect: the player card and hover card
   // read it as they draw, and an effect would land a paint too late
   setRatingRounding(appSettings?.roundRatingsToFive === true);
+  // The card's "our view" reads the selected organization's philosophy (Player Value phase 5b)
+  setViewerOrg(orgId);
   const [chatOpen, setChatOpen] = useState(false);
   // Once opened, the panel stays mounted for the rest of the session
   const [chatUsed, setChatUsed] = useState(false);

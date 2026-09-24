@@ -371,7 +371,7 @@ Present on `main` (D-023; research in [RIGHTS_RESEARCH.md](RIGHTS_RESEARCH.md)):
 Not done, by design: rights for IL activation, Rule 5, re-optioning after the
 last option year, rehab returns, claims, refusals, trades (all `indeterminate`).
 
-## Implemented Player Value (phases 1, 2, 3a, 3b, 4a, 4b and 5a)
+## Implemented Player Value (phases 1, 2, 3a, 3b, 4a, 4b, 5a and 5b)
 
 D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
 
@@ -689,14 +689,29 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   summed as zero; without dollars the value is in wins. The player card shows a
   "Value" section below the production cone (`src/ValueSection.tsx`): both views
   side by side, then season by season with the basis. No other consumer is
-  migrated (phase 6); the lens and the club's value of a win are phase 5b.
+  migrated (phase 6).
+- **The philosophy lens and the club's value of a win** (phase 5b, 2026-09-24;
+  `server/playerValueLens.ts` and `server/playerValueWinValue.ts`, pure;
+  PLAYER_VALUE.md 4.5 and 6.1): "our view" is the neutral value read through the
+  viewing organization's philosophy at read time (`/api/player-value/:playerId/our-view`,
+  `server/ourViewRoutes.ts`), every lean named with its amount, the neutral
+  figures unchanged beside it; the default philosophy (the owner's configured
+  one on this save) leans on nothing. The club's value of a win is points of
+  playoff odds per win and its curve over the rest of the season, from the
+  deadline read's odds model (`posture.ts` exports it), never dollars and never in
+  the value; served on Club Finances (Payroll's line under the price of a win) and
+  on the card. `playoffs.ts` now measures a division leader's cushion against its
+  nearest rival (it had used the last-placed club). The card's Value section is in
+  plain words with the explanations on hover (`src/Tip.tsx`, keyboard-reachable),
+  our view beside the neutral figures, and the club's value of a win as context.
 - **Tests:** `playerValueControl`, `playerValueCost` (the phase 4a cost bands),
   `playerValueSignings` (phase 4b: observed changes, the measured price, adoption,
   awards, reserve-clause renewals, replacement),
   `playerValueFinances`, `playerValueProduction`,
   `playerValueProductionFit`, `playerValueRatings`, `playerValueCone`,
   `productionCone` (geometry, render and theme tokens), `playerValueSurplus`,
-  `playerValueInvariants` and `valueSection` (phase 5a) and `playerValueBoundary`
+  `playerValueInvariants` and `valueSection` (phase 5a), `playerValueLens` and
+  `playerValueWinValue` (phase 5b) and `playerValueBoundary`
   (since the hardening it reads the source through the TypeScript parser, and
   each of its hardened checks was shown to catch a deliberate mutation; a known
   violation owned by another fix is listed with its finding and must still be
@@ -707,8 +722,8 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
 
 Not built: the save's own development path, the ratings' forecast reliability
 and the arrival chance by potential (they fit themselves once the save's rating
-snapshots allow), the philosophy lens and
-the club's value of a win (phase 5b), personality's effect on price (it moves no number
+snapshots allow), a lens that reads the club's value of a win (an owner question), the odds
+model's wild-card route for a division leader, personality's effect on price (it moves no number
 until observed signings are read against it), a per-import store (everything is computed per request; see
 Part 7), and the consumer migration that deletes `players_value` reads and the
 percentile advice (phase 6). The calibrated constants of other subsystems are

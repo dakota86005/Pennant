@@ -108,7 +108,9 @@ export function playoffPicture(teamId: number): PlayoffPicture | null {
   const divisionCushion = (): number | null => {
     const rivals = rows.filter((r) => r.division_id === mine.division_id && r.team_id !== teamId);
     if (rivals.length === 0) return null;
-    const nearest = rivals.reduce((a, b) => (gamesBack(a, b) <= 0 ? a : b));
+    // The rival furthest up the division: keep `a` while it is level with or ahead of `b` (it had kept the
+    // club furthest behind, so a leader read as clear of its last-placed rival, not of the club that would take the place)
+    const nearest = rivals.reduce((a, b) => (gamesBack(a, b) >= 0 ? a : b));
     return gamesBack(mine, nearest);
   };
 

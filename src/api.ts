@@ -458,6 +458,8 @@ export interface SurplusSeason {
   share: number | null;
   weight: number;
   status: string;
+  /** Where Player Rights leaves the season between statuses, each it may be. */
+  between: string[];
   control: string;
   ifHeld: boolean;
   wins: { low: number; central: number; high: number } | null;
@@ -505,6 +507,70 @@ export interface PlayerSurplus {
   stamp: { status: string; basis: string };
 }
 export const getPlayerSurplus = (id: number) => json<PlayerSurplus>(`/api/player-value/${id}/surplus`);
+/**
+ * Phase 5b: "our view" of the player's value (server/playerValueLens.ts, PLAYER_VALUE.md Part 6), the neutral value read
+ * through the viewing organization's philosophy, with every lean named and the neutral figure it started from; and that
+ * club's value of a win now (server/playerValueWinValue.ts, Part 4.5), in playoff odds, context beside the value.
+ */
+export interface LensFigure { low: number; central: number | null; high: number; centralRange: { low: number; high: number } | null }
+export interface OurTotal {
+  status: 'known' | 'unknown';
+  reason: string | null;
+  from: number | null;
+  to: number | null;
+  neutral: LensFigure | null;
+  ours: LensFigure | null;
+  established: { from: number; to: number; neutral: LensFigure; ours: LensFigure } | null;
+}
+export interface LensLean {
+  kind: 'dimension' | 'policy';
+  id: string;
+  label: string;
+  value: number | string;
+  short: string;
+  text: string;
+  seasons: number[];
+  by: { contract: { low: number; high: number } | null; retention: { low: number; high: number } | null; wins: { low: number; high: number } | null };
+}
+export interface OurView {
+  playerId: number;
+  status: 'valued' | 'wins_only' | 'unknown' | 'not_held';
+  unit: 'dollars' | 'wins';
+  leaning: boolean;
+  contract: OurTotal;
+  retention: OurTotal;
+  wins: OurTotal;
+  leans: LensLean[];
+  notes: LensLean[];
+  read: Array<{ kind: 'dimension' | 'policy'; id: string; label: string; value: number | string; leaning: boolean; text: string }>;
+  seasons: Array<{ season: number; part: 'rest_of_season' | 'season'; neutralWeight: number; weight: number; readAt: number; costWeight: { contract: number; retention: number } }>;
+  discount: { neutral: number; ours: number; text: string };
+  basis: string[];
+  stamp: { status: string; basis: string };
+}
+export interface ClubWinValue {
+  teamId: number;
+  club: string | null;
+  status: 'known' | 'decided' | 'no_games_left' | 'unknown';
+  reason: string | null;
+  unit: 'playoff odds';
+  odds: number | null;
+  perWin: number | null;
+  curve: Array<{ wins: number; odds: number }>;
+  gamesLeft: number | null;
+  gamesPlayed: number | null;
+  text: string;
+  basis: string[];
+  stamp: { status: string; basis: string };
+}
+export interface OurViewResponse {
+  organization: { id: number; name: string | null; source: 'requested' | 'configured' | 'human' };
+  ourView: OurView;
+  winValue: ClubWinValue;
+}
+export const getOurView = (id: number, orgId: number | null) =>
+  json<OurViewResponse>(`/api/player-value/${id}/our-view${orgId !== null ? `?orgId=${orgId}` : ''}`);
+
 export const getStorylines = (orgId: number) => json<StorylineCache | null>(`/api/storylines/${orgId}`);
 export const generateStorylines = (orgId: number) =>
   json<StorylineCache>(`/api/storylines/${orgId}`, { method: 'POST' });

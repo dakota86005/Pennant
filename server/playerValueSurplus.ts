@@ -79,6 +79,8 @@ export interface SurplusSeason {
   /** The discount weight, 1/(1 + rate)^s. */
   weight: number;
   status: ControlStatus;
+  /** Where Player Rights leaves the season between statuses, each it may be (else empty). */
+  between: ControlStatus[];
   /** His control that season, in words. */
   control: string;
   /** The player decides, or he may leave: the held reading is "if held". */
@@ -413,7 +415,7 @@ function seasonOf(s: ControlSeason, ctx: SeasonContext): SurplusSeason {
   }
 
   return {
-    season: s.season, age, part: now ? 'rest_of_season' : 'season', share, weight, status: s.status,
+    season: s.season, age, part: now ? 'rest_of_season' : 'season', share, weight, status: s.status, between: [...s.between],
     control: s.basis, ifHeld, wins: W, banked, price: P, cost: C,
     costText: s.cost?.value ? (s.costBasis?.text ?? s.cost.note ?? s.basis) : (C === null ? held.reason ?? 'Not established.' : s.basis),
     paid, replacement: M, owedEitherWay, onlyIfKept, branches, contract, retention,
