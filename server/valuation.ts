@@ -461,23 +461,6 @@ interface Percentiler {
 let percentilerCache: Percentiler | null = null;
 
 /**
- * What these percentiles are, for every prompt that sends them.
- *
- * The GM briefing described a reliever with a 6.51 earned run average as
- * "performing at a 93rd-percentile MLB value" — a claim that figure never
- * made. It was handed the percentile, labelled value, with no statistics
- * beside it, and narrated the only number it had. The fix is both halves: the
- * season line now travels with it, and the prompt says plainly what the number
- * is. Shared because the trade desk sends the same fields.
- */
-export const VALUE_PERCENTILE_NOTE =
-  'NOTE ON overallPct AND talentPct: these are percentile ranks of OOTP\'s own Value and Talent ' +
-  'figures against comparable major leaguers. They are NOT measures of performance. OOTP\'s value ' +
-  'counts playing time, so a pitcher who has soaked up innings badly can rank high while pitching ' +
-  'poorly. Never describe them as how a player is performing or producing. When a seasonForm is ' +
-  'given, that is the performance — quote it, and say so if the two disagree.';
-
-/**
  * Percentile ranks against the players a man actually competes with. Built once
  * per import: it queries every MLB roster and sorts three pools, which is not
  * work repeating for each player card.
@@ -597,32 +580,4 @@ export function teamFinances(teamId: number): TeamFinances | null {
     market: r.market ?? 0,
     fanInterest: r.fan_interest ?? 0,
   };
-}
-
-const HOLE_POSITION_NAMES: Record<number, string> = {
-  2: 'C', 3: '1B', 4: '2B', 5: '3B', 6: 'SS', 7: 'LF', 8: 'CF', 9: 'RF',
-};
-
-/**
- * The org's weakest positions, thinnest first, measured by the best player it
- * currently has at each spot. Used to flag free agents and draft prospects who
- * address a genuine gap.
- */
-export function rosterHoles(orgId: number): Array<{ position: number; positionName: string; bestValue: number | null }> {
-  const players = db
-    .prepare(
-      `SELECT p.player_id, p.position FROM players p WHERE p.team_id = ? AND p.retired = 0`
-    )
-    .all(orgId) as Array<{ player_id: number; position: number }>;
-  const values = valuesByPlayer();
-  const bestByPos = new Map<number, number>();
-  for (const p of players) {
-    const v = values.get(p.player_id)?.overall;
-    if (v === undefined) continue;
-    if (v > (bestByPos.get(p.position) ?? -Infinity)) bestByPos.set(p.position, v);
-  }
-  const spots = [2, 3, 4, 5, 6, 7, 8, 9];
-  return spots
-    .map((pos) => ({ position: pos, positionName: HOLE_POSITION_NAMES[pos], bestValue: bestByPos.get(pos) ?? null }))
-    .sort((a, b) => (a.bestValue ?? 0) - (b.bestValue ?? 0));
 }

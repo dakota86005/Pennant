@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db, tableExists } from './db.js';
-import { LEVEL_NAMES, rosterHoles, seasonYear } from './valuation.js';
+import { LEVEL_NAMES, seasonYear } from './valuation.js';
+import { positionNeeds } from './positionNeeds.js';
 import { leagueRulesForOrganization } from './leagueRules.js';
 import { rightsFor } from './playerContext.js';
 import { rosterCounts } from './playerRights.js';
@@ -641,8 +642,9 @@ rosterOpsRoutes.get('/draft/:orgId', (req, res) => {
     .filter((p) => p.pot !== null)
     .sort((a, b) => (b.pot ?? 0) - (a.pot ?? 0) || (b.cur ?? 0) - (a.cur ?? 0));
 
-  const needs = rosterHoles(Number(req.params.orgId));
-  const thin = new Set(needs.slice(0, 3).map((h): string => h.positionName));
+  // The club's thinnest positions by its best player's expected wins, each figure shown (Player Value, phase 6c)
+  const needs = positionNeeds(Number(req.params.orgId));
+  const thin = new Set(needs.thinnest);
 
   const withAdvice = prospects.map((p, i) => ({
     ...p,
@@ -675,7 +677,9 @@ rosterOpsRoutes.get('/draft/:orgId', (req, res) => {
   res.json({
     ...league,
     total: prospects.length,
-    needs,
+    /** Every fielding position, thinnest first by its best player's expected wins; one with nobody valued last. */
+    needs: needs.positions,
+    needsBasis: needs.basis,
     excluded: {
       alreadyPicked: excluded.alreadyPicked ?? 0,
       /*

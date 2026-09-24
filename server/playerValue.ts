@@ -136,6 +136,9 @@ export type {
 } from './playerValueSurplus.js';
 /** Phase 5a: the neutral contract surplus and the retention margin (pure; the entry point hands it the market). */
 export { surplusOf } from './playerValueSurplus.js';
+/** Phase 6c: a season of a player's production at the league's market (a free agent's figure; pure; Part 8, consumer 4). */
+export type { MarketValue } from './playerValueSurplus.js';
+export { marketValueOf } from './playerValueSurplus.js';
 export type {
   LensDelta, LensDimension, LensFigure, LensInput, LensLean, LensPhilosophy, LensPolicy, LensRead, LensSeason, OurTotal, OurView,
 } from './playerValueLens.js';
@@ -396,6 +399,16 @@ export function surplusMarketFrom(finances: LeagueFinances): SurplusMarket {
     replacementLevel: now?.level.value ?? null,
     measuredReplacement: finances.observed.replacement.text,
   };
+}
+
+/**
+ * Phase 6c: a league's market as the surplus reads it (the price of a win in force and the minimum salary), for its contract
+ * regime and as current as the export is: the same market every held player's contract value is read in, measured once per
+ * import. Free Agents prices a player no club holds in it (`marketValueOf`). Null where the league's contract regime is unknown.
+ */
+export function surplusMarketOf(leagueId: number, options: ValuationOptions = {}): SurplusMarket | null {
+  const regimeId = allLeagueRules().get(leagueId)?.contract.regimeLeagueId.value ?? null;
+  return regimeId === null ? null : costContextOf(regimeId, options.currentState ?? 'unverified').market;
 }
 
 /**

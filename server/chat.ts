@@ -7,13 +7,22 @@ import { DATA_DIR } from './config.js';
 import { featureModel, featureProvider, providerCredential } from './settings.js';
 import { describeError, stripProviderExtras, toolLoopFor, type ProviderId } from './providers.js';
 import { supportsAdaptiveThinking } from './models.js';
-import {
-  VALUE_PERCENTILE_NOTE, calendarBriefing, currentGameDate, orgBriefing, seasonYear,
-} from './valuation.js';
+import { calendarBriefing, currentGameDate, orgBriefing, seasonYear } from './valuation.js';
 import { tradingBlock } from './tradingblock.js';
 import { personaBrief, personaById, personasFor, type Persona } from './staff.js';
 
 export const chatRoutes = Router();
+
+/**
+ * What the assistants are told about Pennant's value figures (Player Value phase 6c, D-001, D-052), in place of the old
+ * note on OOTP's value percentiles, which no context carries any more. Shared by the briefing and the staff chat.
+ */
+export const VALUE_FIGURES_NOTE =
+  "VALUE FIGURES: expected wins, a season's cost, contract value, the value of keeping him and a free agent's cost at the " +
+  "market are Pennant's own readings (Player Value), each a most likely figure with the range it could be; a null means " +
+  'not known, and its reason says why. Quote them as ranges and say when one is not known. You never produce a value ' +
+  'number of your own: no dollar figure, rating, rank or score for a player that is not in the data. They describe; they ' +
+  'recommend nothing, so never present one as advice to sign, keep, trade or release anyone: the GM decides.';
 
 /**
  * The conversation lives on disk beside the rest of the app's data.
@@ -313,8 +322,12 @@ export const TOOLS: Anthropic.Tool[] = [
   {
     name: 'get_free_agents',
     description:
-      'Who can be signed now, who reaches free agency after this season, the club’s holes, and ' +
-      'what money there is to spend.',
+      'Who can be signed now and who reaches free agency after this season, each with his age, scouted tools (now and ' +
+      'ceiling, 20-80), expected wins (the rest of this season and next, most likely with the range) and "market": what a ' +
+      "season of his production next season costs at this league's market (the league minimum plus his expected wins × the " +
+      'price of a win), a range, never an asking price. Also the club’s thinnest positions by its best player’s expected ' +
+      'wins, and what money there is to spend. Each list is ordered by expected wins next season, as "order" says, and ' +
+      'trimmed to the first 40; "shown" gives how many of how many. It carries no recommendation: the GM decides.',
     input_schema: {
       type: 'object',
       properties: { team_id: { type: 'number' } },
@@ -443,8 +456,23 @@ export async function runTool(name: string, input: Record<string, unknown>): Pro
       return cap(await callOwnApi(`dashboard/${Number(input.team_id) || defaultOrgId()}`));
     case 'get_contracts':
       return cap(await callOwnApi(`contracts/${Number(input.team_id) || defaultOrgId()}`));
-    case 'get_free_agents':
-      return cap(await callOwnApi(`free-agents/${Number(input.team_id) || defaultOrgId()}`));
+    case 'get_free_agents': {
+      const market = (await callOwnApi(`free-agents/${Number(input.team_id) || defaultOrgId()}`)) as {
+        currentFAs?: unknown[]; upcomingFAs?: unknown[];
+      };
+      // A whole off-season market does not fit a tool result: each list in its stated order, trimmed, and said so
+      const current = market.currentFAs ?? [];
+      const upcoming = market.upcomingFAs ?? [];
+      return cap({
+        ...market,
+        currentFAs: current.slice(0, FREE_AGENTS_SHOWN),
+        upcomingFAs: upcoming.slice(0, FREE_AGENTS_SHOWN),
+        shown: {
+          currentFAs: `${Math.min(current.length, FREE_AGENTS_SHOWN)} of ${current.length}`,
+          upcomingFAs: `${Math.min(upcoming.length, FREE_AGENTS_SHOWN)} of ${upcoming.length}`,
+        },
+      });
+    }
     case 'get_roster_crunch':
       return cap(await callOwnApi(`roster-crunch/${Number(input.team_id) || defaultOrgId()}`));
     case 'get_trading_block': {
@@ -461,6 +489,9 @@ export async function runTool(name: string, input: Record<string, unknown>): Pro
       throw new Error(`Unknown tool: ${name}`);
   }
 }
+
+/** How many of each free-agent list a tool result carries, in the list's stated order. */
+const FREE_AGENTS_SHOWN = 40;
 
 function defaultOrgId(): number {
   const row = db.prepare(`SELECT team_id FROM teams WHERE human_team = 1 LIMIT 1`).get() as
@@ -479,7 +510,7 @@ function defaultOrgId(): number {
  * below the brief is shared: the rules about only trusting the tools, and what
  * the numbers mean, are true no matter who is talking.
  */
-function systemPrompt(orgId: number, persona: Persona): string {
+export function systemPrompt(orgId: number, persona: Persona): string {
   const team = db
     .prepare(
       `SELECT name, nickname, league_id FROM teams WHERE team_id = ?`
@@ -572,9 +603,8 @@ function systemPrompt(orgId: number, persona: Persona): string {
     'are park- and league-adjusted, so they compare players across teams and levels fairly.',
     'Minor-league stat lines are much weaker evidence than major-league ones.',
     '',
-    // The same warning the briefing and the trade desk carry. The chat reads
-    // the same fields and can make the same claim
-    VALUE_PERCENTILE_NOTE,
+    // What Pennant's value figures are, as the briefing is told (Player Value phase 6c): the chat reads the same ones
+    VALUE_FIGURES_NOTE,
     '',
     'Name a player in full — first name and surname — the first time you mention him in a reply.',
     'After that, talk about him however you like. The app links names to their cards and files your',

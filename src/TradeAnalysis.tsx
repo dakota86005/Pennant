@@ -3,6 +3,7 @@ import { Group } from '@visx/group';
 import { Bar, Line } from '@visx/shape';
 import { CHART_COLOR, CHART_MARK, CHART_OPACITY, CHART_TEXT } from './chartTheme';
 import { costMoney } from './costBand';
+import { FreshnessCueLine } from './FreshnessCue';
 import { formatWins } from './productionConeGeometry';
 import { PlayerLink } from './playerModal';
 import { Tip } from './Tip';
@@ -263,6 +264,7 @@ function DifferenceView({ analysis }: { analysis: TradeAnalysis }) {
       <div className="trade-diff-head">
         <span className="trade-diff-title"><Tip label="The difference" tip={TIP_DIFFERENCE} focusable /></span>
         <span className="muted"> Coming in less going out{v.unit === 'wins' ? ', in wins' : ''}</span>
+        <FreshnessCueLine freshness={analysis.freshness} />
       </div>
       {d.status === 'known' && d.figure ? (
         <>
