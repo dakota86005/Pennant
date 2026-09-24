@@ -4,6 +4,8 @@ paths:
   - "server/posture.ts"
   - "server/playoffs.ts"
   - "src/ValueSection.tsx"
+  - "src/PlayerHeaderValue.tsx"
+  - "src/valueWords.ts"
   - "server/clubFinanceRoutes.ts"
   - "server/ourViewRoutes.ts"
   - "server/leagueRules.ts"
