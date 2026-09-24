@@ -5,6 +5,7 @@ import {
   ratingsHistory, refitProductionIfNeeded, refitRatingsIfNeeded, type PlayerValuation,
 } from '../server/playerValue.js';
 import { db } from '../server/db.js';
+import { recordImportMarket } from '../server/api.js';
 import { historyDb } from '../server/history.js';
 import { PRODUCTION_PRIOR } from '../server/playerValueCalibration.js';
 import { leagueSeasons } from '../server/playerValueHistory.js';
@@ -1214,6 +1215,19 @@ describe('cross-save: where in the season the export was taken', () => {
 });
 
 describe('cross-save: identity of the save', () => {
+  it('a save imported before this build records its current market and contracts at the next start, once (supervisor, phase 4b)', () => {
+    const save = buildSave(base);
+    const count = (table: string) => (historyDb.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE league_id = ?`).get(save.leagueId) as { n: number }).n;
+    const before = { market: count('value_market_snapshots'), contracts: count('value_contract_imports') };
+    recordImportMarket();
+    expect(count('value_market_snapshots')).toBe(before.market + 1);
+    expect(count('value_contract_imports')).toBe(before.contracts + 1);
+    // A second start writes nothing
+    recordImportMarket();
+    expect(count('value_market_snapshots')).toBe(before.market + 1);
+    expect(count('value_contract_imports')).toBe(before.contracts + 1);
+  }, SLOW);
+
   it("D-01 (F1): a new save under a reused save name and league id never inherits the previous save's adopted fit", () => {
     const first = buildSave(base);
     run(first);

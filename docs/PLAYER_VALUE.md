@@ -925,7 +925,7 @@ always states the neutral figure it started from.
   date, idempotent per key, so drift is visible across imports. The ladder a valuation prices with is measured once per
   import and market league (a cache cleared with the production caches after an import), from the same population, WAR
   and price as the market.
-- **No periodic timer.** Data changes only on import (D-009).
+- **No periodic timer.** Data changes only on import (D-009). The server's start records the market and contracts of the export already imported when this build has not yet (`recordImportMarket`, the import's own call, idempotent per key): a save imported before phase 4b gets its first contract snapshot at the next start, not at its next import (supervisor, 2026-09-24, pending the owner's review). It reads the imported database only; nothing new is imported.
 - **One domain API** (D-008). Browser, desktop, static export and AI read the same routes. The AI receives the
   decomposition with its basis and never a bare number (the lesson `VALUE_PERCENTILE_NOTE` records).
 

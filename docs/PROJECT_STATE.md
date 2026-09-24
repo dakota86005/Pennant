@@ -605,7 +605,8 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   players (about 130 ms a club). Phase 4a review (2026-09-23): PLAYER_VALUE.md Part 9.
 - **The measured price of a win across imports** (phase 4b, 2026-09-23;
   `server/playerValueSignings.ts` pure, `server/playerValueContractStore.ts` the third
-  writer, PLAYER_VALUE.md 4.2 to 4.4, CALIBRATION.md section 9): each import records its
+  writer, PLAYER_VALUE.md 4.2 to 4.4, CALIBRATION.md section 9): each import (and a server start
+  that finds the imported export not yet recorded) records its
   contracts in `history.db` (table `value_contract_snapshots` with `value_contract_imports`,
   keyed by the save's identity, league and game date, idempotent; every contract the
   market league's clubs hold, and unsigned players whose production is established,
