@@ -36,10 +36,33 @@ These are implementation baselines, not roadmap promises:
   exchange consequences across one contract (D-044 to D-046).
 - Read-only recommendations with explicit safeguards and no OOTP transaction
   writeback.
+- Player Value (D-052, D-053; [PLAYER_VALUE.md](PLAYER_VALUE.md)): what a player
+  costs, how long the club controls him, what he is expected to produce and what
+  his contract is worth beyond what he is paid, each a range with its basis and
+  never a verdict. Its fitted numbers are the save's own (refitted after an
+  import, adopted through a gate), and every consumer (the player card,
+  Contracts, Payroll, the Trade Center, Free Agents, Org Comparison, the AI's
+  context) reads it; no module reads OOTP's hidden `players_value` any longer.
 - A project identity of its own: the name Pennant, a version lineage starting at 0.1.0, a changelog, a single
   development command, pull-request CI, and documented compatibility holds (D-049).
 
 ## Next: make the organizational model dependable
+
+**Suggested order from here (supervisor, 2026-09-24, after Player Value).** Each
+is independent of the others unless it says so:
+
+1. Settle the two open Player Value questions (§9); both are small.
+2. Playoff odds from the roster ("Then" below). It is the owner's stated wish, and
+   Player Value now serves every player's expected wins, which it needs. It feeds
+   the deadline read, the dashboard and the club's value of a win.
+3. Centralize organization context (§2): cross-cutting, and every new consumer
+   would otherwise repeat the resolution.
+4. Move the other subsystems' calibrated constants to per-save fits (D-053,
+   "Later" below), starting with the MLB Operations constants the roster review
+   leans on hardest.
+5. The remaining Minor League Operations and rights edges (§5, §6), and
+   staff-informed philosophy ("Then").
+6. Release readiness (§8) whenever the owner is ready; it is not baseball work.
 
 ### 1. Test the new domain boundaries directly
 
@@ -234,6 +257,40 @@ Nothing here is baseball work; each item needs the owner.
 - The first tagged release (`pennant-v0.1.0`), once the above are settled. The application id
   (`com.dakotawise.pennant`) and the tag convention are already decided (D-049).
 
+### 9. Player Value — built; what remains
+
+Built 2026-09-23 to 2026-09-24 (D-052, D-053; [PLAYER_VALUE.md](PLAYER_VALUE.md)
+Part 9; PRs #10 to #30): control timelines from Player Rights; the cost of every
+controlled season (renewals and an arbitration ladder measured on each import);
+Club Finances and the price of a win, first from the opening market and then
+measured from the save's own signings; expected production in wins from results
+and from scouted ratings, fitted on the save's own history and adopted only
+through a gate; contract value and the value of keeping him; "our view" through
+the organization's philosophy; the club's value of a win in playoff odds; and the
+consumer migration (6a to 6e) that moved every page and the AI's context onto it,
+deleted OOTP's percentiles and closed the `players_value` boundary. Every visible
+line follows AGENTS.md "Writing for the GM".
+
+Remaining:
+
+- **Owner questions (phase 6e):** may the Roster's rating bars read through the
+  scouting adapter (a grade of 0 would then show as not scouted)? And do the 142
+  "not settled" players stay on Free Agents' "Might reach the market" list
+  (recommended: yes)?
+- **Prospects read low.** When a prospect's arrival is projected, his rate when
+  he plays is about half what the save's real arrivals produced, because the
+  ratings path's development prior is provisional; it tightens once the save's
+  own rating snapshots are enough to fit the development path.
+- **Time, not work:** the measured price of a win, observed arbitration awards
+  and the snapshot pairs sharpen as imports accumulate across winters.
+- **Still open from phase 4:** an unknown arbitration class priced by observed
+  awards; production at an import taken after the season number moved on; the
+  re-signing policy as a sensitivity reading.
+- **Declined for now (owner):** a multi-season market reading for free agents;
+  fitting the results model horizon by horizon.
+- **Polish:** a few hover texts still carry an internal reference ("(R-6)") or a
+  raw column name ("opt_out 1"); the production cone's axis keeps its short codes.
+
 ## Then: deepen organizational identity
 
 ### Staff-informed philosophy
@@ -249,8 +306,10 @@ Extend philosophy only where the underlying option set is already defensible:
 trade alternative ranking, contract posture, free-agent fit, roster depth, and
 competitive-window planning. Each consumer must expose the exact dimensions
 that affected it and retain hard transaction/development guardrails. For
-contracts, trades and free agency the planned route is Player Value's
-philosophy lens, applied after a neutral valuation (PLAYER_VALUE.md Part 6).
+contracts, trades and free agency this is built as Player Value's philosophy
+lens ("our view"), applied after a neutral valuation (PLAYER_VALUE.md Part 6):
+the card, Contracts and the Trade Center show it beside the neutral figure, with
+every lean named. Still to extend: free-agent fit and roster depth.
 
 ### AI as staff interface to domain work
 
@@ -270,7 +329,8 @@ Value's projected wins per player, injuries, playing time), early-season
 regression, the real schedule, every rival in the division and wild-card
 races, and simulated seasons. It feeds the deadline read, the dashboard and
 the club's value of a win (PLAYER_VALUE.md 4.5). Likely an MLB Operations
-milestone that consumes Player Value.
+milestone that consumes Player Value; with Player Value built, its input (each
+player's expected wins with a range) is available now.
 
 ## Later: calibration and longitudinal management
 
