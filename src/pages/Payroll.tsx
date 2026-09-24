@@ -4,14 +4,23 @@ import { PlayerLink, Tip } from '../playerModal';
 import { Sparkline } from '../Chart';
 import { Th } from '../Th';
 
-interface Commitment { year: number; total: number; players: number; headroom: number | null; budgetUsed?: 'expected' | 'flat' }
+interface Commitment {
+  year: number; total: number; players: number; headroom: number | null; budgetUsed?: 'expected' | 'flat';
+  /** Club, vesting and mutual option seasons: not guaranteed, counted apart from the total. */
+  options?: { total: number; players: number; unstated: number };
+  /** Covered seasons whose salary the export does not state. */
+  unstated?: number;
+}
+interface OptionYear { season: number; kind: 'club' | 'player' | 'vesting' | 'mutual' | 'opt_out'; salary: number | null; committed: boolean }
 interface PayrollPlayer {
   player_id: number;
   name: string;
-  age: number;
+  age: number | null;
   positionName: string;
-  salaryNow: number;
+  salaryNow: number | null;
   byYear: Array<number | null>;
+  unstatedYears?: number[];
+  optionYears?: OptionYear[];
   yearsAfterThis: number;
   endYear: number;
   expiring: boolean;
@@ -37,7 +46,7 @@ interface ClubFinancesData {
       floor: Sourced<{ low: number; high: number }>;
       bases: Array<{ id: string; description: string; perWin: Sourced<number> }>;
       population: { market: number };
-      rules: { central: string; band: string };
+      rules: { central: string; band: string; floor?: string; market?: string };
       narrowsWhen: string;
     };
   };
@@ -45,7 +54,14 @@ interface ClubFinancesData {
 interface PayrollData {
   seasonYear: number;
   years: number[];
-  deadMoney: { total: number; players: Array<{ player_id: number; name: string; salary: number }> };
+  /** Money owed to players who left: `not_established` where the export does not populate retained salary (A-14). */
+  deadMoney: {
+    status?: 'known' | 'not_established';
+    total: number | null;
+    players: Array<{ player_id: number; name: string; salary: number | null }>;
+    candidates?: number;
+    note?: string | null;
+  };
   commitments: Commitment[];
   /** What you told the app to expect next season, or null to assume flat. */
   nextSeasonBudget: number | null;
@@ -69,7 +85,7 @@ interface OffTheBooks {
   count: number;
   money: number;
   players: Array<{
-    player_id: number; name: string; age: number; salary: number;
+    player_id: number; name: string; age: number | null; salary: number | null;
     status?: string | null; arbYear?: number | null; arbYearHigh?: number | null; superTwo?: boolean;
     between?: string[]; reason?: string | null;
   }>;
@@ -77,7 +93,8 @@ interface OffTheBooks {
 
 const money = (v: number | null | undefined): string => {
   if (v === null || v === undefined) return '';
-  if (v === 0) return '—';
+  // Zero is a figure, and prints as one: the dash is never both zero and unknown (D-25)
+  if (v === 0) return '$0';
   if (Math.abs(v) >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
   return `$${Math.round(v / 1000)}K`;
 };
@@ -87,15 +104,42 @@ const figure = (s: Sourced<number> | undefined): string => (s?.value === null ||
 const sourceOf = (s: Sourced<unknown> | undefined): string | undefined =>
   s ? [s.source, s.note].filter(Boolean).join(' — ') || undefined : undefined;
 
-/** The basis of the league price of a win, for its hover: every reading, the rules and what is assumed. */
-function priceBasis(p: ClubFinancesData['league']['priceOfWin']): string {
-  const lines = p.bases
-    .map((b) => `${b.id}: ${b.description} — ${b.perWin.value === null ? `unknown (${b.perWin.note ?? 'not stated'})` : money(b.perWin.value)}`);
-  return [
-    `Salary above the league minimum ÷ WAR, over ${p.population.market} market contracts. ${p.rules.central} ${p.rules.band}`,
-    ...lines,
-    p.narrowsWhen,
-  ].join('\n');
+/** Dollars per win to the hundredth of a million, so a floor of $4.22M–$4.33M is not printed as "$4.2M". */
+const perWin = (v: number): string => `$${(v / 1_000_000).toFixed(2)}M`;
+
+/**
+ * The league price of a win (D-25, S-03): the server's own label, the price and its band, the floor
+ * as the range it is (shown even when the price itself is unknown), and the basis as a list any
+ * keyboard can open, rather than a hover-only paragraph.
+ */
+export function PriceOfWinLine({ price }: { price: ClubFinancesData['league']['priceOfWin'] }) {
+  const p = price.price.value;
+  const floor = price.floor.value;
+  return (
+    <div className="muted hint-line price-of-win">
+      {price.label}:{' '}
+      {p
+        ? <><strong>{perWin(p.central)}</strong> a win (band {perWin(p.low)}–{perWin(p.high)})</>
+        : <><strong>unknown</strong>{price.price.note ? ` (${price.price.note})` : ''}</>}
+      {floor ? <>; floor {perWin(floor.low)}–{perWin(floor.high)}</> : null}
+      <details className="price-basis">
+        <summary>How it is measured</summary>
+        <ul>
+          <li>Salary above the league minimum ÷ WAR, over {price.population.market} market contracts.</li>
+          {price.rules.market && <li>{price.rules.market}</li>}
+          <li>{price.rules.central}</li>
+          <li>{price.rules.band}</li>
+          {price.rules.floor && <li>{price.rules.floor}</li>}
+          {price.bases.map((b) => (
+            <li key={b.id}>
+              {b.id}: {b.description}: {b.perWin.value === null ? `unknown (${b.perWin.note ?? 'not stated'})` : perWin(b.perWin.value)}
+            </li>
+          ))}
+          <li>{price.narrowsWhen}</li>
+        </ul>
+      </details>
+    </div>
+  );
 }
 
 const TIP_COMMITTED =
@@ -186,20 +230,7 @@ export function Payroll({ orgId }: { orgId: number }) {
           </div>
         </div>
       )}
-      {price && (
-        <p className="muted hint-line">
-          League price of a win:{' '}
-          {price.price.value ? (
-            <>
-              <Tip label={<strong>{money(price.price.value.central)}</strong>} tip={priceBasis(price)} /> (band{' '}
-              {money(price.price.value.low)}–{money(price.price.value.high)}
-              {price.floor.value ? `, floor ${money(price.floor.value.low)}` : ''}) — opening (imported market)
-            </>
-          ) : (
-            <Tip label={<strong>unknown</strong>} tip={price.price.note ?? priceBasis(price)} />
-          )}
-        </p>
-      )}
+      {price && <PriceOfWinLine price={price} />}
 
       <section>
         <h2><Tip label="Committed salary by season" tip={TIP_COMMITTED} /></h2>
@@ -214,7 +245,13 @@ export function Payroll({ orgId }: { orgId: number }) {
                 )}
               </div>
               <span className="commit-value">{money(c.total)}</span>
-              <span className="muted commit-players">{c.players} player{c.players === 1 ? '' : 's'}</span>
+              <span className="muted commit-players">
+                {c.players} player{c.players === 1 ? '' : 's'}
+                {c.options && c.options.players > 0 && (
+                  <> · +{money(c.options.total)} in {c.options.players} club option{c.options.players === 1 ? '' : 's'}, not counted</>
+                )}
+                {(c.unstated ?? 0) > 0 && <> · {c.unstated} salar{c.unstated === 1 ? 'y' : 'ies'} not exported</>}
+              </span>
               <span className={`commit-room ${(c.headroom ?? 0) >= 0 ? 'good-text' : 'bad-text'}`}>
                 {c.headroom === null ? '' : `${money(c.headroom)} free`}
                 {c.budgetUsed === 'expected' && <span className="muted"> *</span>}
@@ -340,6 +377,26 @@ export function Payroll({ orgId }: { orgId: number }) {
           </section>
         )}
 
+        {data.deadMoney.status !== 'not_established' && data.deadMoney.players.length === 0 && data.deadMoney.note && (
+          <section>
+            <h2>
+              Dead money{' '}
+              <span className="muted subtle-count">— none in the export</span>
+            </h2>
+            <p className="muted hint-line">{data.deadMoney.note}</p>
+          </section>
+        )}
+
+        {data.deadMoney.status === 'not_established' && (
+          <section>
+            <h2>
+              Dead money{' '}
+              <span className="muted subtle-count">— not established</span>
+            </h2>
+            <p className="muted hint-line">{data.deadMoney.note}</p>
+          </section>
+        )}
+
         {data.deadMoney.players.length > 0 && (
           <section>
             <h2>
@@ -399,9 +456,21 @@ export function Payroll({ orgId }: { orgId: number }) {
                 </td>
                 <td>{p.positionName}</td>
                 <td className="num">{p.age}</td>
-                {p.byYear.map((v, i) => (
-                  <td key={data.years[i]} className="num">{v ? money(v) : ''}</td>
-                ))}
+                {p.byYear.map((v, i) => {
+                  const year = data.years[i];
+                  const option = p.optionYears?.find((o) => o.season === year && !o.committed);
+                  if (option) {
+                    return (
+                      <td key={year} className="num muted" title={`A ${option.kind} option: not guaranteed, and not in the committed total`}>
+                        <em>{option.salary === null ? 'option' : `opt ${money(option.salary)}`}</em>
+                      </td>
+                    );
+                  }
+                  if (p.unstatedYears?.includes(year)) {
+                    return <td key={year} className="num muted" title="The contract covers this season but the export does not state its salary: unknown, never $0">?</td>;
+                  }
+                  return <td key={year} className="num">{v ? money(v) : ''}</td>;
+                })}
                 <td className="num">{p.endYear}</td>
                 <td>
                   {/* Backloaded vs frontloaded deals are obvious as a shape and

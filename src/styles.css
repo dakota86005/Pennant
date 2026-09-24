@@ -1006,7 +1006,19 @@ th:last-child .tip-pop, th:nth-last-child(2) .tip-pop { left: auto; right: 0; }
   border-radius: 12px;
   padding: 22px 26px;
   width: min(820px, 100%);
+  /* Fits the window at any width with a 16px gutter each side (S-02): the card never keeps 820px in a
+     narrower window, and nothing inside it can hold it wider than the screen */
+  max-width: calc(100vw - 32px);
+  min-width: 0;
+  overflow-wrap: break-word;
   box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+}
+.modal:focus { outline: none; }
+.modal:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.modal .dossier-columns > * { min-width: 0; }
+@media (max-width: 560px) {
+  .modal-backdrop { padding: 16px; }
+  .modal { padding: 18px 14px; }
 }
 .modal-close {
   position: absolute;
@@ -1037,7 +1049,7 @@ th:last-child .tip-pop, th:nth-last-child(2) .tip-pop { left: auto; right: 0; }
 .dossier-nick { font-family: var(--font-serif); font-style: italic; color: var(--muted); margin-bottom: 2px; }
 .dossier-pcts { display: flex; gap: 10px; }
 
-.dossier-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; }
+.dossier-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 28px; }
 @media (max-width: 640px) { .dossier-columns { grid-template-columns: 1fr; } }
 
 .rating-rows { display: flex; flex-direction: column; gap: 4px; }
@@ -1073,13 +1085,22 @@ table.mini th, table.mini td { padding: 3px 8px; font-size: 12.5px; }
   cursor: default;
 }
 .cone-hit:hover:not(:disabled) { border-color: transparent; }
-.cone-hit:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
+.cone-hit:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* Below twice the popup's width the season detail sits in the flow under the chart, never over the calibration line */
+.chart-pop.cone-pop-inline { position: static; width: auto; margin: 6px 0 0; pointer-events: auto; box-shadow: none; }
 .cone-pop-head { margin-bottom: 4px; }
 .cone-pop-table { width: 100%; margin: 0 0 4px; }
 table.cone-pop-table td { padding: 2px 8px 2px 0; font-size: 12px; vertical-align: top; white-space: normal; border-bottom: 0; }
 table.cone-pop-table td:first-child { white-space: nowrap; }
 .cone-foot { font-size: 12px; margin: 4px 0 0; }
 .cone-unknown { margin: 0; }
+
+/* Payroll's price of a win: the basis is a disclosure any keyboard can open, laid out as a list (D-25) */
+.price-of-win { margin: 6px 0 12px; }
+.price-basis { display: inline-block; margin-left: 8px; }
+.price-basis[open] { display: block; margin: 4px 0 0; }
+.price-basis summary { cursor: pointer; color: var(--accent); }
+.price-basis ul { margin: 4px 0 0; padding-left: 18px; }
 
 .visually-hidden {
   position: absolute;

@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
@@ -146,8 +148,10 @@ describe('the production cone renders', () => {
     const html = renderToStaticMarkup(createElement(ProductionConeChart, { cone: cone(REGULAR), width: 640 }));
     expect(html).toMatch(/role="img"/);
     expect(html).toMatch(/aria-label="[^"]*2030/);
-    expect(html).toMatch(/80% of outcomes fall inside/);
-    expect(html).toMatch(/50% of outcomes fall inside/);
+    // A band is stated as its target (hardening F2, D-19): "80% of outcomes fall inside" is a claim
+    // the calibration line and each season's observed coverage qualify
+    expect(html).toMatch(/80% band \(target\)/);
+    expect(html).toMatch(/50% band \(target\)/);
     expect(html).toMatch(/Replacement/);
     expect(html).toMatch(/Calibrated on this save: 2006–2025, refit after the 2025 season/);
     // A focusable control per season, for the hover detail by keyboard
@@ -176,6 +180,54 @@ describe('the production cone renders', () => {
     expect(prior).toMatch(/80% target · not measured on this save/);
     expect(prior).toMatch(/50% target · not measured on this save/);
     expect(prior).not.toMatch(/\d+% observed/);
+  });
+});
+
+/* Hardening (F2, 2026-09-23): D-19, D-20, D-22, D-23 and D-24. */
+describe('the production cone, hardening (F2)', () => {
+  const prior = (seasons: ConeSeason[]) => cone(seasons, {
+    calibration: { source: 'fallback_prior', calibrated: false, status: 'Not yet calibrated on this save (0 seasons)', detail: 'the fallback prior' },
+  });
+  const render = (c: ProductionCone, width = 640) => renderToStaticMarkup(createElement(ProductionConeChart, { cone: c, width }));
+
+  it('never says "80% of outcomes fall inside" while the prior is in force: the bands are reasonable readings', () => {
+    const html = render(prior(REGULAR));
+    expect(html).not.toMatch(/of outcomes fall inside/);
+    expect(html).toMatch(/reasonable readings/);
+    expect(coneSummary(prior(REGULAR))).not.toMatch(/of outcomes/);
+  });
+
+  it('carries every value the detail shows in the table for screen readers, and keeps the image\'s name short', () => {
+    const html = render(cone(REGULAR));
+    const table = html.slice(html.indexOf('<table'));
+    for (const heading of ['Age', 'Banked', 'Playing time', 'Control']) expect(table).toMatch(new RegExp(`<th[^>]*>${heading}`));
+    expect(table).toMatch(/0\.6/);
+    expect(table).toMatch(/about 560 PA/);
+    expect(table).toMatch(/Under contract\./);
+    expect(table).toMatch(/Rests on: Major-league results/);
+    const label = /<svg[^>]*aria-label="([^"]*)"/.exec(html)?.[1] ?? '';
+    expect(label.length).toBeGreaterThan(0);
+    expect(label.length).toBeLessThan(200);
+  });
+
+  it('gives the season controls a visible focus ring', () => {
+    const css = fs.readFileSync(path.join(process.cwd(), 'src', 'styles.css'), 'utf8');
+    expect(css).toMatch(/\.cone-hit:focus-visible\s*\{[^}]*outline:\s*2px/);
+  });
+
+  it('never prints a near-zero edge as "0.0"', () => {
+    expect(formatWins(0.04)).toBe('<0.1');
+    expect(formatWins(-0.04)).toBe('−<0.1');
+    expect(formatWins(0)).toBe('0.0');
+    expect(formatWins(0.05)).toBe('0.1');
+  });
+
+  it('never lets a non-finite number blank the card', () => {
+    expect(formatWins(Number.NaN)).toBe('—');
+    expect(formatWins(null as unknown as number)).toBe('—');
+    const broken = cone([s(2030, Number.NaN, [1, 2], [1.2, 1.8]), s(2031, 1.5, [0.5, Number.POSITIVE_INFINITY], [1, 2])]);
+    expect(() => render(broken)).not.toThrow();
+    expect(render(broken)).toMatch(/could not be drawn/);
   });
 });
 

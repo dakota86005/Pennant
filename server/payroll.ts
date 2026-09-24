@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { db, tableExists } from './db.js';
+import { db, tableColumns, tableExists } from './db.js';
 import { loadSettings } from './settings.js';
-import { seasonYear } from './valuation.js';
-import { controlAfterThisSeason } from './contracts.js';
-import { clubFinances, playerValues } from './playerValue.js';
+import { leagueRulesForLeague } from './leagueRules.js';
+import { controlAfterThisSeason, serviceText } from './contracts.js';
+import { clubFinances, contractSeasonFor, payrollValuations, type ContractFacts, type PlayerValuation } from './playerValue.js';
 
 export const payrollRoutes = Router();
 
@@ -14,168 +14,153 @@ const POSITION_NAMES: Record<number, string> = {
 /** How many future seasons the commitment curve covers. */
 const HORIZON = 6;
 
-interface ContractRow extends Record<string, number> {
-  player_id: number;
-  years: number;
-  current_year: number;
-  season_year: number;
-}
-
-/** A signed extension that has not started yet; same salary0..14 shape. */
-interface ExtensionRow extends Record<string, number> {
-  player_id: number;
-  years: number;
-  season_year: number;
+/** A season the contract covers but whose salary is a decision: the club's (or either side's) option, or his opt-out. */
+interface OptionYear {
+  season: number;
+  kind: 'club' | 'player' | 'vesting' | 'mutual' | 'opt_out';
+  /** The salary if the option is exercised (or he stays); null when the export does not state it. */
+  salary: number | null;
+  /**
+   * Whether the club is bound to it: a player option or an opt-out is his decision, so the club owes it
+   * unless he leaves (counted in committed money, flagged); a club, vesting or mutual option is not
+   * guaranteed money and is counted apart.
+   */
+  committed: boolean;
 }
 
 /**
- * Salary for a given calendar year. `current_year` counts COMPLETED contract
- * years, so this season sits at salary{current_year} and each future season
- * walks one index further — the same indexing valuation.ts established and
- * verified against real deals.
+ * What the contract says for one season, from Player Value's contract facts (A-14): the salary
+ * owed, or null where no contract season covers it; an option season the club decides is not
+ * committed money. A covered season whose salary the export does not state is `unstated`, never $0.
  */
-function salaryForYear(
-  c: ContractRow,
-  thisSeason: number,
-  year: number,
-  extension?: ExtensionRow
-): number | null {
-  const completed = c.current_year ?? 0;
-  const offset = year - thisSeason;
-  const idx = completed + offset;
-  const years = c.years ?? 0;
-  if (offset < 0 || idx < 0 || idx > 14) return null;
-  // Past the final year of the deal the current contract pays nothing more —
-  // but a signed extension picks up from its own start year, and leaving it
-  // out understated every future season by the whole value of the new deal.
-  if (idx > years - 1) {
-    if (!extension) return null;
-    const extIdx = year - extension.season_year;
-    if (extIdx < 0 || extIdx > 14 || extIdx > (extension.years ?? 0) - 1) return null;
-    return extension[`salary${extIdx}`] ?? 0;
+function seasonMoney(contract: ContractFacts, thisSeason: number, year: number):
+  { salary: number | null; unstated: boolean; option: OptionYear | null } {
+  const cover = contractSeasonFor(contract, year);
+  if (!cover) return { salary: null, unstated: false, option: null };
+  const salary = cover.salary.value;
+  // The season under way had its option decided before it began: he is playing it under contract (A-03)
+  if (cover.option && year > thisSeason) {
+    const committed = cover.option === 'player';
+    return {
+      salary: committed ? salary : null, unstated: committed && salary === null,
+      option: { season: year, kind: cover.option, salary, committed },
+    };
   }
-  return c[`salary${idx}`] ?? 0;
+  const optOutFrom = contract.optOutFrom;
+  if (optOutFrom !== null && optOutFrom > thisSeason && year >= optOutFrom) {
+    return { salary, unstated: salary === null, option: { season: year, kind: 'opt_out', salary, committed: true } };
+  }
+  return { salary, unstated: salary === null, option: null };
 }
 
 payrollRoutes.get('/payroll/:orgId', (req, res) => {
   const orgId = Number(req.params.orgId);
-  if (!tableExists('players_contract')) return res.status(400).json({ error: 'No data imported yet' });
+  if (!tableExists('players_contract') || !tableExists('teams')) return res.status(400).json({ error: 'No data imported yet' });
+  const teamColumns = new Set(tableColumns('teams'));
+  if (!teamColumns.has('team_id') || !teamColumns.has('league_id')) {
+    return res.status(400).json({ error: 'The export\'s teams table has no league_id column, so the club\'s league cannot be read.' });
+  }
 
   const org = db.prepare(`SELECT league_id FROM teams WHERE team_id = ?`).get(orgId) as
     | { league_id: number }
     | undefined;
   if (!org) return res.status(404).json({ error: 'Unknown team' });
-  const thisSeason = seasonYear(org.league_id);
+  // The season is the league's own, as exported; never the wall-clock year (D-022)
+  const rules = leagueRulesForLeague(org.league_id).contract;
+  const thisSeason = rules.season.value;
+  if (thisSeason === null) {
+    return res.status(400).json({ error: `The league's current season is not in the export: ${rules.season.note ?? 'no source states it'}` });
+  }
 
   // The finance header is Club Finances' (D-052 phase 2): each figure with its source, a missing
   // one unknown rather than $0, the same answer /api/club-finances gives
   const finances = clubFinances(orgId);
 
-  // Payroll means major-league contracts, which is what OOTP's own figure
-  // counts and how the money actually works: a man on the 40-man optioned to
-  // Triple-A is still paid his major-league salary, while a minor-league deal
-  // is not payroll at all. Counting every contract in the organization put the
-  // total consistently above OOTP's own number.
-  //
-  // Players in the organization, PLUS anyone this club still pays after a trade
-  // or release.
-  //
-  // Membership is judged on organization_id, NOT team_id: a player optioned to
-  // the affiliate keeps the organization but takes the affiliate's team_id, so
-  // comparing team_id billed the club's own farmhands as money owed to men who
-  // had left.
-  //
-  // A contract_team_id pointing at another club does NOT by itself mean that
-  // club is paying. It is the club of record, and OOTP leaves it behind when a
-  // player moves: in the sample save Chase Silseth is charged to the Angels
-  // while playing in the Yankees system with nothing retained. Trading a player
-  // away without retaining salary hands the whole remaining deal to the club
-  // acquiring him, and the old club owes nothing — so the retained flag, not
-  // contract_team_id, decides whether money is really owed.
-  const rows = db
-    .prepare(
-      `SELECT c.*, p.first_name, p.last_name, p.age, p.position, p.retired,
-              p.team_id AS current_team_id, p.organization_id AS current_org,
-              c.retained AS retained,
-              rs.mlb_service_years AS service_years, rs.mlb_service_days AS service_days
-       FROM players_contract c
-       JOIN players p ON p.player_id = c.player_id
-       LEFT JOIN players_roster_status rs ON rs.player_id = c.player_id
-       WHERE p.retired = 0 AND c.years >= 1 AND c.is_major = 1
-         AND (p.organization_id = ? OR (c.contract_team_id = ? AND c.retained != 0))`
-    )
-    .all(orgId, orgId) as Array<ContractRow & {
-    first_name: string; last_name: string; age: number; position: number;
-    no_trade: number; last_year_team_option: number; last_year_player_option: number;
-    last_year_vesting_option: number; service_years: number | null; service_days: number | null;
-    current_team_id: number; current_org: number | null; retained: number | null;
-  }>;
+  /*
+   * Contract facts are Player Value's (A-14): one reading of players_contract for every consumer, with
+   * its unknowns. Payroll means major-league contracts, which is what OOTP's own figure counts: a man on
+   * the 40-man optioned to Triple-A is still paid his major-league salary, while a minor-league deal is
+   * not payroll at all. Membership is the organization (a player optioned to the affiliate keeps it),
+   * plus anyone the export names this club as carrying the contract of. A contract_team_id pointing at
+   * this club does NOT by itself mean it pays: it is the club of record, which OOTP leaves behind when a
+   * player moves; the contract's `retained` decides, and where the export does not populate it that is
+   * not established, never $0 and never "nothing owed".
+   */
+  const valuations = payrollValuations(orgId);
+  const years = Array.from({ length: HORIZON }, (_, i) => thisSeason + i);
+  const major = [...valuations.values()].filter((v) => v.contract.kind.value === 'major_league' && v.contract.term !== null);
+  const held = (v: PlayerValuation) => v.control.holder.value === orgId;
+  const elsewhere = major.filter((v) => !held(v) && v.contract.payingClub.value === orgId);
+  const retainedKnown = elsewhere.every((v) => v.contract.retained.value !== null);
+  const counted = major.filter((v) => held(v) || v.contract.retained.value === true);
 
-  // Signed extensions that begin after the current deal expires
-  const extensions = new Map<number, ExtensionRow>();
-  if (tableExists('players_contract_extension')) {
-    const extRows = db
-      .prepare(`SELECT * FROM players_contract_extension WHERE years > 0`)
-      .all() as ExtensionRow[];
-    for (const e of extRows) extensions.set(e.player_id, e);
+  const names = new Map<number, { first_name: string; last_name: string; age: number; position: number }>();
+  const playerColumns = new Set(tableColumns('players'));
+  if (counted.length > 0 && ['player_id', 'first_name', 'last_name', 'age', 'position'].every((c) => playerColumns.has(c))) {
+    const ids = counted.map((v) => v.playerId);
+    for (const r of db.prepare(`SELECT player_id, first_name, last_name, age, position FROM players WHERE player_id IN (${ids.map(() => '?').join(',')})`)
+      .all(...ids) as Array<{ player_id: number; first_name: string; last_name: string; age: number; position: number }>) {
+      names.set(r.player_id, r);
+    }
   }
 
-  const years = Array.from({ length: HORIZON }, (_, i) => thisSeason + i);
-  // The control column reads Player Value's timeline (D-052): one answer per player, shared with
-  // Contracts and the Trade Center, never a service-time sum of this page's own
-  const valuations = playerValues(rows.map((c) => c.player_id));
-
-  const players = rows
-    .map((c) => {
-      const extension = extensions.get(c.player_id);
-      const byYear = years.map((y) => salaryForYear(c, thisSeason, y, extension));
-      const completed = c.current_year ?? 0;
-      const contractEnd = (c.season_year ?? thisSeason) + (c.years ?? 0) - 1;
-      // An extension keeps him on the books, so he is neither expiring nor
-      // "coming off after this season"
-      const endYear = extension
-        ? Math.max(contractEnd, extension.season_year + extension.years - 1)
-        : contractEnd;
-      const yearsAfterThis = extension
-        ? Math.max(endYear - thisSeason, 0)
-        : Math.max((c.years ?? 0) - completed - 1, 0);
+  const players = counted
+    .map((v) => {
+      const c = v.contract;
+      const who = names.get(v.playerId);
+      const money = years.map((y) => seasonMoney(c, thisSeason, y));
+      const byYear = money.map((m) => m.salary);
+      const covered = [...(c.term?.seasons ?? []), ...(c.extension?.seasons ?? [])].map((s) => s.season);
+      const endYear = covered.length > 0 ? Math.max(...covered) : thisSeason;
+      const yearsAfterThis = Math.max(endYear - thisSeason, 0);
       const options: string[] = [];
-      if (c.last_year_team_option === 1) options.push('team option');
-      if (c.last_year_player_option === 1) options.push('player option');
-      if (c.last_year_vesting_option === 1) options.push('vesting option');
-      if (c.no_trade === 1) options.push('no-trade');
+      const lastOption = c.term?.seasons[c.term.seasons.length - 1]?.option ?? null;
+      if (lastOption) options.push(`${lastOption === 'club' ? 'team' : lastOption} option`);
+      if (c.noTrade.value === true) options.push('no-trade');
+      if (c.optOutFrom !== null && c.optOutFrom > thisSeason) options.push(`opt-out before ${c.optOutFrom}`);
+      const service = v.control.eligibility?.service.now ?? null;
+      const perYear = v.control.eligibility?.serviceDaysPerYear.value ?? null;
       return {
-        player_id: c.player_id,
-        name: `${c.first_name} ${c.last_name}`,
+        player_id: v.playerId,
+        name: who ? `${who.first_name} ${who.last_name}` : `Player ${v.playerId}`,
         // Owed to someone who has left AND whose salary this club retained
-        deadMoney: c.current_org !== orgId && (c.retained ?? 0) !== 0,
-        age: c.age,
-        positionName: POSITION_NAMES[c.position] ?? '?',
-        salaryNow: byYear[0] ?? 0,
+        deadMoney: !held(v) && c.retained.value === true,
+        age: who?.age ?? null,
+        positionName: who ? POSITION_NAMES[who.position] ?? '?' : '?',
+        salaryNow: byYear[0],
         byYear,
+        /** Seasons the contract covers whose salary the export does not state: unknown, never $0. */
+        unstatedYears: years.filter((_, i) => money[i].unstated),
+        /** Option and opt-out seasons, with the salary if exercised and whether the club is bound to it. */
+        optionYears: money.map((m) => m.option).filter((o): o is OptionYear => o !== null),
         yearsAfterThis,
         endYear,
         expiring: yearsAfterThis === 0,
         /*
-         * What actually happens to him, rather than merely that his deal ends.
-         * Arbitration years left is not money coming off the books — the club
-         * still holds him and the salary is about to rise, not vanish. Null for
-         * a man no club holds (a released player whose salary is retained).
+         * What actually happens to him, rather than merely that his deal ends. Arbitration years left is
+         * not money coming off the books — the club still holds him and the salary is about to rise, not
+         * vanish. Null for a man no club holds (a released player whose salary is retained).
          */
-        control: controlAfterThisSeason(valuations.get(c.player_id)?.control),
+        control: controlAfterThisSeason(v.control),
         options,
-        serviceYears: c.service_years,
+        serviceYears: service === null || perYear === null ? null : Math.floor(service.low / perYear),
+        service: serviceText(service, perYear),
       };
     })
     .sort((a, b) => (b.salaryNow ?? 0) - (a.salaryNow ?? 0));
 
-  // Committed money per season, and how many players it covers
+  // Committed money per season, how many players it covers, and the option money counted apart
   const commitments = years.map((year, i) => {
     const withMoney = players.filter((p) => (p.byYear[i] ?? 0) > 0);
+    const optional = players.flatMap((p) => p.optionYears.filter((o) => o.season === year && !o.committed));
     return {
       year,
       total: withMoney.reduce((sum, p) => sum + (p.byYear[i] ?? 0), 0),
       players: withMoney.length,
+      /** Club, vesting and mutual option seasons: not guaranteed money, and not in the total. */
+      options: { total: optional.reduce((sum, o) => sum + (o.salary ?? 0), 0), players: optional.length, unstated: optional.filter((o) => o.salary === null).length },
+      /** Covered seasons whose salary the export does not state: not in the total, never $0. */
+      unstated: players.filter((p) => p.unstatedYears.includes(year)).length,
     };
   });
 
@@ -198,7 +183,7 @@ payrollRoutes.get('/payroll/:orgId', (req, res) => {
     money: list.reduce((sum, p) => sum + (p.salaryNow ?? 0), 0),
     players: list
       .slice()
-      .sort((a, b) => b.salaryNow - a.salaryNow)
+      .sort((a, b) => (b.salaryNow ?? 0) - (a.salaryNow ?? 0))
       // Every player counted is listed: the count shown equals the rows (owner, phase 2)
       .map((p) => ({
         player_id: p.player_id,
@@ -214,22 +199,36 @@ payrollRoutes.get('/payroll/:orgId', (req, res) => {
       })),
   });
 
+  // Money still owed to players who left: only where the export states the club retained it
+  const owed = players.filter((p) => p.deadMoney && p.byYear.some((v) => (v ?? 0) > 0));
+  // Retained salary unpopulated in the export (every held contract reads it as unknown): said, even when no
+  // contract names this club for a player now elsewhere, so an empty list is never silent (A-14)
+  const retainedUnread = major.find((v) => v.contract.retained.value === null)?.contract.retained.note ?? null;
+  const deadMoney = retainedKnown
+    ? {
+        status: 'known' as const,
+        total: owed.reduce((sum, p) => sum + (p.salaryNow ?? 0), 0),
+        players: owed.map((p) => ({ player_id: p.player_id, name: p.name, salary: p.salaryNow })),
+        candidates: elsewhere.length,
+        note: elsewhere.length === 0 && retainedUnread !== null
+          ? `None in the export: it names this club as carrying no contract of a player now elsewhere. Retained salary itself is not exported (${retainedUnread}).`
+          : null,
+      }
+    : {
+        status: 'not_established' as const,
+        total: null,
+        players: [],
+        candidates: elsewhere.length,
+        note: 'Whether this club still pays players it moved is not established: retained salary is not exported '
+          + `(${elsewhere.find((v) => v.contract.retained.value === null)?.contract.retained.note ?? 'the column is blank'}). `
+          + `The export names this club as carrying ${elsewhere.length} contract${elsewhere.length === 1 ? '' : 's'} of players now elsewhere; that is the club of record, not proof it pays.`,
+      };
+
   res.json({
     seasonYear: thisSeason,
     years,
     finances,
-    deadMoney: (() => {
-      // Only men the club is genuinely still paying. A departed player whose
-      // contract has already run out owes nothing and simply is not dead money,
-      // however long his old deal lingers in the export.
-      const owed = players.filter(
-        (p) => p.deadMoney && p.byYear.some((v) => (v ?? 0) > 0)
-      );
-      return {
-        total: owed.reduce((sum, p) => sum + (p.salaryNow ?? 0), 0),
-        players: owed.map((p) => ({ player_id: p.player_id, name: p.name, salary: p.salaryNow })),
-      };
-    })(),
+    deadMoney,
     nextSeasonBudget: nextBudget,
     commitments: commitments.map((c) => ({
       ...c,

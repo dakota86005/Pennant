@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getContracts, type ContractsResponse, type TeamFinances } from '../api';
+import { getContracts, type ClubFinanceCards, type ContractsResponse } from '../api';
 import { PlayerLink, Tip, TIP_TALENT, TIP_VALUE } from '../playerModal';
 import { Th } from '../Th';
 
@@ -10,24 +10,30 @@ export const money = (n: number | null | undefined): string => {
   return `$${n}`;
 };
 
-export function FinanceCards({ finances }: { finances: TeamFinances | null }) {
+/**
+ * Club Finances' figures (D-052), the same Payroll shows: a figure the export does not state reads
+ * "unknown", never $0, and room is only worked out from two known figures (D-18).
+ */
+export function FinanceCards({ finances }: { finances: ClubFinanceCards | null }) {
   if (!finances) return null;
-  const room = finances.budget - finances.payroll;
-  const roomNext = finances.budget - finances.payrollNextSeason;
-  const cards: Array<[string, string, string?]> = [
-    ['Budget', money(finances.budget)],
-    ['Payroll', money(finances.payroll)],
-    ['Room now', money(room), room < 0 ? 'bad' : 'good'],
-    ['Committed next yr', money(finances.payrollNextSeason)],
-    ['Room next yr', money(roomNext), roomNext < 0 ? 'bad' : 'good'],
-    ['Cash', money(finances.cash)],
+  const figure = (v: number | null) => (v === null ? 'unknown' : money(v));
+  const room = finances.budget !== null && finances.payroll !== null ? finances.budget - finances.payroll : null;
+  const roomNext = finances.budget !== null && finances.payrollNextSeason !== null ? finances.budget - finances.payrollNextSeason : null;
+  const tone = (v: number | null) => (v === null ? undefined : v < 0 ? 'bad' : 'good');
+  const cards: Array<[string, string, string | undefined, string | null | undefined]> = [
+    ['Budget', figure(finances.budget), undefined, finances.sources?.budget],
+    ['Payroll now', figure(finances.payroll), undefined, finances.sources?.payroll],
+    ['Room now', figure(room), tone(room), null],
+    ['Payroll next season (OOTP estimate)', figure(finances.payrollNextSeason), undefined, finances.sources?.payrollNextSeason],
+    ['Room next season', figure(roomNext), tone(roomNext), null],
+    ['Cash for trades', figure(finances.cash), undefined, finances.sources?.cash],
   ];
   return (
     <div className="cards">
-      {cards.map(([label, value, tone]) => (
-        <div key={label} className="card">
+      {cards.map(([label, value, t, source]) => (
+        <div key={label} className="card" title={source ?? undefined}>
           <span className="card-label">{label}</span>
-          <span className={`card-value ${tone ?? ''}`}>{value}</span>
+          <span className={`card-value ${t ?? ''}`}>{value}</span>
         </div>
       ))}
     </div>
@@ -141,7 +147,7 @@ export function Contracts({ orgId }: { orgId: number }) {
             <Th>Salary</Th>
             <Th>Thru</Th>
             <Th>Yrs left</Th>
-            <Th>Svc</Th>
+            <Th tip="Major-league service in years.days: 2.126 is two years and 126 days of a service year, not 2.1 years. 2.xxx means only whole years are exported.">Svc</Th>
             <th><Tip label="Value" tip={TIP_VALUE} /></th>
             <th><Tip label="Talent" tip={TIP_TALENT} /></th>
             <Th>Flags</Th>
@@ -157,7 +163,7 @@ export function Contracts({ orgId }: { orgId: number }) {
               <td className="num">{money(p.salaryNow)}</td>
               <td className="num">{p.endYear}</td>
               <td className="num">{p.yearsAfterThis}</td>
-              <td className="num">{p.serviceYears ?? '—'}</td>
+              <td className="num">{p.service ?? '—'}</td>
               <td className="num"><Pct value={p.overallPct} /></td>
               <td className="num"><Pct value={p.talentPct} /></td>
               <td>
@@ -167,7 +173,7 @@ export function Contracts({ orgId }: { orgId: number }) {
                     className={`flag ${f === 'expiring' ? 'flag-hot' : ''}${
                       f.startsWith('extended thru') ? 'flag-locked' : ''
                     }`}
-                    title={f === 'control indeterminate' ? (p.control?.reason ?? undefined) : undefined}
+                    title={f === 'control indeterminate' || f.endsWith('option') || f.startsWith('opt-out') ? (p.control?.reason ?? undefined) : undefined}
                   >
                     {f}
                   </span>

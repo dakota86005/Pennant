@@ -17,7 +17,9 @@ describe('contract status', () => {
     // this season reaches 5.87, and he still owes the club an arbitration year.
     const { players } = await request(`/api/contracts/${IDS.mlbTeam}`);
     const near = players.find((p: { name: string }) => p.name === 'Near Boundary');
-    expect(near.serviceYears).toBeCloseTo(5.1, 1);
+    // Service is shown as years.days, never a decimal of years (hardening F2, A-22)
+    expect(near.serviceYears).toBe(5);
+    expect(near.service).toMatch(/^5\.\d{3}$/);
     expect(near.yearsAfterThis).toBe(0);
     expect(near.arbYear).not.toBeNull();
     expect(near.flags).not.toContain('expiring');

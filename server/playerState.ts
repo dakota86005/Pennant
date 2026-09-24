@@ -20,6 +20,7 @@
  * state layer reports what the export says.
  */
 
+import { daysBetween, parseGameDate } from './dataFreshness.js';
 import { db, tableColumns, tableExists } from './db.js';
 import { healthOf, standingOf, type Health, type Standing } from './health.js';
 import {
@@ -361,6 +362,68 @@ export function seasonServiceClocks(): (leagueId: number) => Sourced<number> {
   }
   return (leagueId: number) =>
     byLeague.get(leagueId) ?? unknownBecause<number>('not_exported_by_ootp', source, `League ${leagueId} has no major-league club with a roster-status row.`);
+}
+
+/** A league's regular-season schedule on the calendar: what a season of it can bank in service days. */
+export interface ServiceCalendar {
+  /** Calendar days from the first scheduled regular-season game to the last, both counted. */
+  scheduleDays: number;
+  /** Calendar days from the league's current date to its last scheduled game, both counted; 0 once every game is played. */
+  daysLeft: number;
+}
+
+/**
+ * Each league's regular-season schedule on the calendar, read from the export's own `games` table:
+ * the first and last scheduled dates (game_type 0, the type every scheduled game of a league carries on
+ * the imported save, where the column exists) and the league's current date. Service is banked by the
+ * day on the major-league roster (the clock ran 52 days from a 3-25 opener to 5-16 on the imported
+ * save), so a season can bank no more days than its schedule spans, and none once its last game is
+ * played. Dates are compared only through `parseGameDate` (OOTP writes them unpadded). Unknown, with
+ * why, where the export does not carry the schedule.
+ */
+export function seasonServiceCalendars(): (leagueId: number) => Sourced<ServiceCalendar> {
+  const source = 'games.date (regular season) + leagues.current_date';
+  const unavailable = (note: string) => {
+    const u = unknownBecause<ServiceCalendar>('not_exported_by_ootp', source, note);
+    return () => u;
+  };
+  if (!tableExists('games') || !tableExists('leagues')) return unavailable('The games or leagues table is not in the export.');
+  const games = new Set(tableColumns('games'));
+  const leagues = new Set(tableColumns('leagues'));
+  if (!games.has('league_id') || !games.has('date')) return unavailable('games has no league_id or date column.');
+  if (!leagues.has('league_id') || !leagues.has('current_date')) return unavailable('leagues has no current_date column.');
+  const played = games.has('played') ? 'played' : 'NULL';
+  const where = games.has('game_type') ? 'WHERE game_type = 0' : '';
+  const span = new Map<number, { first: string; last: string; unplayed: boolean; unknownPlayed: boolean }>();
+  for (const r of db.prepare(`SELECT league_id, date, ${played} AS played FROM games ${where}`).all() as Array<{ league_id: unknown; date: unknown; played: unknown }>) {
+    const league = numberOrNull(r.league_id);
+    const date = parseGameDate(r.date);
+    if (league === null || date === null) continue;
+    const s = span.get(league) ?? { first: date, last: date, unplayed: false, unknownPlayed: false };
+    if (date < s.first) s.first = date;
+    if (date > s.last) s.last = date;
+    const p = numberOrNull(r.played);
+    if (p === null) s.unknownPlayed = true;
+    else if (p === 0) s.unplayed = true;
+    span.set(league, s);
+  }
+  const today = new Map<number, string | null>();
+  for (const r of db.prepare(`SELECT league_id, "current_date" AS d FROM leagues`).all() as Array<{ league_id: unknown; d: unknown }>) {
+    const id = numberOrNull(r.league_id);
+    if (id !== null) today.set(id, parseGameDate(r.d));
+  }
+  return (leagueId: number) => {
+    const s = span.get(leagueId);
+    if (!s) return unknownBecause<ServiceCalendar>('not_exported_by_ootp', source, `League ${leagueId} has no scheduled games in the export.`);
+    const scheduleDays = daysBetween(s.first, s.last) + 1;
+    const now = today.get(leagueId) ?? null;
+    let daysLeft: number;
+    if (!s.unplayed && !s.unknownPlayed) daysLeft = 0;
+    else if (now === null) return unknownBecause<ServiceCalendar>('not_exported_by_ootp', source, `League ${leagueId}'s current date is not exported, so the days left in its schedule are unknown.`);
+    else daysLeft = Math.min(scheduleDays, Math.max(0, daysBetween(now, s.last) + 1));
+    return derivedFrom({ scheduleDays, daysLeft }, source,
+      `Scheduled ${s.first} to ${s.last} (${scheduleDays} days); ${daysLeft} left from ${now ?? 'the end of the schedule'}.`);
+  };
 }
 
 /** One held player's place in the league's service class (for the Super Two cutoff). */

@@ -256,3 +256,118 @@ describe('Player Value: control through the entry point, against the database', 
     expect(seasonOf(v.control, SEASON + 1).status).toBe('indeterminate');
   });
 });
+
+/*
+ * Hardening (F2, 2026-09-23): the reviewers' findings on contract facts and control (A-03, A-05/C-06,
+ * A-06, C-07, C-13, D-03, D-04). Each case is the invariant as BEHAVIOR_CASES.md states it, built from
+ * synthetic evidence; none names a player.
+ */
+describe('Player Value: control, hardening (F2)', () => {
+  it('plays the season under way under contract: its option was decided before it began, and only a future option shows both branches', () => {
+    // A two-year deal in its second season, whose last season (this one) carries a club option
+    const now = timelineOf({
+      state: stateOf({ days: 8 * YEAR }),
+      contract: factsOf(contractRow({ firstSeason: THIS_SEASON - 1, years: 2, currentYear: 1, teamOption: 1, salary: [4_000_000, 6_000_000] })),
+    });
+    const season = seasonOf(now, THIS_SEASON);
+    expect(season.status).toBe('under_contract');
+    expect(season.declined).toBeNull();
+    expect(season.cost?.value).toEqual({ low: 6_000_000, high: 6_000_000 });
+    expect(season.basis).toMatch(/decided before/);
+    // Next season's option is still both branches
+    const future = timelineOf({ state: stateOf({ days: 8 * YEAR }), contract: factsOf(contractRow({ years: 2, teamOption: 1 })) });
+    expect(seasonOf(future, NEXT).status).toBe('club_option');
+    expect(seasonOf(future, NEXT).declined?.status).toBe('free_agent');
+  });
+
+  it('never shows the seasons after an opt-out as certain: each carries both branches and names the opt-out', () => {
+    // Six seasons from this one; the export's count reads the opt-out after contract year 3
+    const t = timelineOf({ state: stateOf({ days: 8 * YEAR }), contract: factsOf(contractRow({ years: 6, optOut: 3, salary: 20_000_000 })) });
+    for (const y of [THIS_SEASON, THIS_SEASON + 1, THIS_SEASON + 2]) expect(seasonOf(t, y).status).toBe('under_contract');
+    for (const y of [THIS_SEASON + 3, THIS_SEASON + 4, THIS_SEASON + 5]) {
+      const s = seasonOf(t, y);
+      expect(s.status, `${y}`).toBe('opt_out');
+      // Staying: the salary; leaving: his Player Rights standing
+      expect(s.cost?.value).toEqual({ low: 20_000_000, high: 20_000_000 });
+      expect(s.declined?.status).toBe('free_agent');
+      expect(s.basis).toMatch(/opts? out/i);
+      expect(s.reasons.join(' ')).toMatch(/read, not established/);
+    }
+    expect(t.notes.join(' ')).toMatch(/opt-out/i);
+  });
+
+  it('names an opt-out whose reading has passed or lies past the deal, and changes no season', () => {
+    const veteran = stateOf({ days: 8 * YEAR });
+    const past = timelineOf({
+      state: veteran,
+      contract: factsOf(contractRow({ firstSeason: THIS_SEASON - 3, years: 6, currentYear: 3, optOut: 2 })),
+    });
+    for (const y of [THIS_SEASON, THIS_SEASON + 1, THIS_SEASON + 2]) expect(seasonOf(past, y).status).toBe('under_contract');
+    expect(past.notes.join(' ')).toMatch(/opt-out.*passed/i);
+    const beyond = timelineOf({ state: veteran, contract: factsOf(contractRow({ years: 1, optOut: 2 })) });
+    expect(seasonOf(beyond, NEXT).status).toBe('free_agent');
+    expect(beyond.notes.join(' ')).toMatch(/opt-out.*past the seasons/i);
+  });
+
+  it('reads an unpopulated option flag as unknown on the last season, and a club and player option together as mutual', () => {
+    // The default export populates the club and player flags, not the vesting one (R-6)
+    const t = timelineOf({ state: stateOf({ days: 8 * YEAR }), contract: factsOf(contractRow({ years: 2 })) });
+    expect(seasonOf(t, NEXT).status).toBe('under_contract');
+    expect(seasonOf(t, NEXT).reasons.join(' ')).toMatch(/vesting option is not exported/);
+    expect(seasonOf(t, THIS_SEASON).reasons.join(' ')).not.toMatch(/vesting/);
+    const mutual = timelineOf({ state: stateOf({ days: 8 * YEAR }), contract: factsOf(contractRow({ years: 2, teamOption: 1, playerOption: 1 })) });
+    expect(seasonOf(mutual, NEXT).status).toBe('mutual_option');
+    expect(seasonOf(mutual, NEXT).declined).not.toBeNull();
+  });
+
+  it("reads a blank contract row as no kind, and takes Player Rights' standing for a major leaguer it places on a major-league club", () => {
+    // The export's blank row: no term, no first season, no paying club, is_major 0, every salary 0
+    const facts = factsOf(contractRow({ firstSeason: 0, years: 0, isMajor: 0, salary: 0, contractTeam: 0 }));
+    expect(facts.standing).toBe('no_terms');
+    expect(facts.kind.value).toBeNull();
+    expect(facts.notes.join(' ')).not.toMatch(/minor-league/);
+    // On the 60-day injured list with a year and 28 days of service
+    const injured = timelineOf({ state: stateOf({ days: 200, thisYear: 52, onIl60: true }), contract: facts, clock: 52 });
+    expect(seasonOf(injured, THIS_SEASON).cost?.value).toBeNull();
+    expect(seasonOf(injured, NEXT).status).toBe('pre_arbitration');
+    expect(seasonOf(injured, NEXT).reasons.join(' ')).toMatch(/blank/);
+    expect(injured.seasons.map((s) => s.basis).join(' ')).not.toMatch(/minor-league contract/);
+    // At free agency a deal the export does not carry could still hold him: indeterminate, both named
+    const veteran = timelineOf({ state: stateOf({ days: 9 * YEAR, thisYear: 52, onIl60: true }), contract: facts, clock: 52 });
+    expect(seasonOf(veteran, NEXT).status).toBe('indeterminate');
+    expect(seasonOf(veteran, NEXT).between).toEqual(['under_contract', 'free_agent']);
+    // In the minors with no major-league service it stays not established, and is not called a minor-league deal
+    const farm = timelineOf({ state: stateOf({ days: 0, thisYear: 0, level: 3 }), contract: facts, clock: 52 });
+    expect(seasonOf(farm, NEXT).status).toBe('indeterminate');
+    expect(seasonOf(farm, NEXT).basis).not.toMatch(/minor-league contract/);
+  });
+
+  it('never assumes a player on the major-league injured list banks nothing: the list accrues service', () => {
+    // Five years 150 days now, 40 days into the season, 30 days left on his stint: 22 short of six years
+    const hurt = timelineOf({ state: stateOf({ days: 5 * YEAR + 150, thisYear: 40, onIl: true, ilDaysLeft: 30 }), clock: 40 });
+    expect(hurt.eligibility?.service.endOfSeason?.low).toBe(5 * YEAR + 150 + 30);
+    expect(hurt.eligibility?.service.basis.join(' ')).toMatch(/injured list/);
+    expect(hurt.eligibility?.service.basis.join(' ')).not.toMatch(/hurt/);
+    expect(seasonOf(hurt, NEXT).status).toBe('free_agent');
+    // An active player as far short could still be optioned: indeterminate, and "hurt" is never the reason
+    const active = timelineOf({ state: stateOf({ days: 5 * YEAR + 150, thisYear: 40 }), clock: 40 });
+    expect(seasonOf(active, NEXT).status).toBe('indeterminate');
+    expect([...active.eligibility!.service.basis, ...seasonOf(active, NEXT).reasons].join(' ')).not.toMatch(/hurt/);
+  });
+
+  it("caps a season's service by its schedule: nothing remains once it is played, and a later season banks what its schedule can", () => {
+    // A 60-game league: the schedule spans 69 days, all played; the clock stopped at 69 of 172
+    const calendar = { scheduleDays: 69, daysLeft: 0 };
+    const t = timelineOf({ state: stateOf({ days: 5 * YEAR + 100, thisYear: 69 }), clock: 69, calendar });
+    expect(t.eligibility?.service.endOfSeason).toEqual({ low: 5 * YEAR + 100, high: 5 * YEAR + 100 });
+    expect(t.seasons.flatMap((s) => s.reasons).join(' ')).not.toMatch(/remain this season/);
+    // 72 days short of six years at 68 or 69 days a season: free agency two seasons later than a full year would say
+    expect(seasonOf(t, NEXT).status).toBe('arbitration');
+    expect(seasonOf(t, NEXT + 1).status).toBe('arbitration');
+    expect(t.controlEnds).toBe(THIS_SEASON + 3);
+    expect(t.eligibility?.service.basis.join(' ')).toMatch(/schedule/);
+    // Where the schedule is not exported, the basis says what each later season is taken as
+    const unread = timelineOf({ state: stateOf({ days: 5 * YEAR + 100, thisYear: 69 }), clock: 69, calendar: null });
+    expect(unread.eligibility?.service.basis.join(' ')).toMatch(/schedule is not in the export/);
+  });
+});
