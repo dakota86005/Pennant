@@ -519,6 +519,18 @@ export interface TeamFinances {
   fanInterest: number;
 }
 
+/**
+ * The club finance cards on Contracts and Free Agents: Club Finances' figures, the same answer Payroll
+ * gives; a figure the export does not state is null, never $0 (D-18).
+ */
+export interface ClubFinanceCards {
+  budget: number | null;
+  payroll: number | null;
+  payrollNextSeason: number | null;
+  cash: number | null;
+  sources?: Record<'budget' | 'payroll' | 'payrollNextSeason' | 'cash', string | null>;
+}
+
 export interface ContractRow {
   player_id: number;
   name: string;
@@ -528,7 +540,10 @@ export interface ContractRow {
   totalYears: number;
   yearsAfterThis: number;
   endYear: number;
+  /** Whole years of service. */
   serviceYears: number | null;
+  /** Service in years.days ("2.126" is two years 126 days); "2.xxx" when only whole years are exported. */
+  service?: string | null;
   overallPct: number | null;
   talentPct: number | null;
   flags: string[];
@@ -538,13 +553,15 @@ export interface ContractRow {
   /** What happens after this season (Player Value's control timeline); `reason` says why, or what is missing. */
   control?: {
     status: string; arbYear: number | null; arbYearHigh: number | null; superTwo?: boolean; between: string[]; reason: string | null;
+    /** For an option (or opt-out) next season: whose decision, and where he stands if it is declined. */
+    option?: { kind: string; ifDeclined: string; between: string[] } | null;
   } | null;
 }
 
 export interface ContractsResponse {
   seasonYear: number;
   gameDate: string | null;
-  finances: TeamFinances | null;
+  finances: ClubFinanceCards | null;
   players: ContractRow[];
 }
 
@@ -560,12 +577,16 @@ export interface FreeAgentRow {
 }
 
 export interface FreeAgentsResponse {
-  finances: TeamFinances | null;
+  finances: ClubFinanceCards | null;
   holes: Array<{ position: number; positionName: string; bestValue: number | null }>;
   currentFAs: FreeAgentRow[];
   upcomingFAs: FreeAgentRow[];
   /** Expiring deals whose control after this season the export cannot establish. */
   upcomingIndeterminate?: number;
+  /** Contracts whose next season is an option or an opt-out: whether he reaches the market is still to be decided. */
+  upcomingUndecided?: number;
+  /** Everyone reaching free agency after this season, before the value cut the list applies. */
+  upcomingLeaving?: number;
 }
 
 export interface LineupSlot {

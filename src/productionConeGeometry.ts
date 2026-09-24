@@ -167,14 +167,43 @@ export function coverageText(c: ConeCoverage): string {
   return `${pct(c.target)} target · ${c.observed === null ? 'not measured on this save' : `${pct(c.observed)} observed`}`;
 }
 
-/** The whole cone in words, for the image's accessible name. */
+/**
+ * What the bands are, in words (D-19). With the save's own fit in force a band is stated as its
+ * target, which each season's observed coverage then qualifies; with the fallback prior it is a range
+ * of reasonable readings, never a claim that 80% of outcomes fall inside.
+ */
+export function bandWords(cone: ProductionCone): { outer: string; inner: string } {
+  return cone.calibration.calibrated
+    ? { outer: '80% band (target)', inner: '50% band (target)' }
+    : { outer: '80% range of reasonable readings (not yet calibrated)', inner: '50% range of reasonable readings' };
+}
+
+/** Every figure a season carries is a finite number: otherwise the cone is not drawn (D-24). */
+export function coneIsDrawable(cone: ProductionCone): boolean {
+  const finite = (v: unknown) => typeof v === 'number' && Number.isFinite(v);
+  return cone.seasons.every((s) =>
+    [s.central, s.outer.low, s.outer.high, s.inner.low, s.inner.high].every(finite)
+    && (s.toDate === null || finite(s.toDate))
+    && s.usage.every((u) => [u.low, u.central, u.high].every(finite)));
+}
+
+/** The image's accessible name: short, the seasons it spans; the figures are in the table beside it. */
+export function coneLabel(cone: ProductionCone): string {
+  const s = cone.seasons;
+  if (s.length === 0) return 'Expected production not yet established.';
+  const range = s.length === 1 ? `${s[0].season}` : `${s[0].season} to ${s[s.length - 1].season}`;
+  return `Expected wins above replacement per season, ${range}. Each season's figures are in the table that follows.`;
+}
+
+/** The whole cone in words, for a screen reader: every season's central, both bands and control. */
 export function coneSummary(cone: ProductionCone): string {
   const s = cone.seasons;
   if (s.length === 0) return `Expected production not yet established: ${cone.reason ?? 'no reason stated'}.`;
   const range = s.length === 1 ? `${s[0].season}` : `${s[0].season} to ${s[s.length - 1].season}`;
+  const words = cone.calibration.calibrated ? { outer: '80% band', inner: '50% band' } : { outer: '80% readings', inner: '50% readings' };
   const each = s.map((x) =>
     `${x.season}, ${x.control.label.toLowerCase()}: ${formatWins(x.central)} wins expected; ` +
-    `80% of outcomes ${formatWins(x.outer.low)} to ${formatWins(x.outer.high)}, 50% ${formatWins(x.inner.low)} to ${formatWins(x.inner.high)}` +
+    `${words.outer} ${formatWins(x.outer.low)} to ${formatWins(x.outer.high)}, ${words.inner} ${formatWins(x.inner.low)} to ${formatWins(x.inner.high)}` +
     (x.control.after ? `; ${x.control.after.label.toLowerCase()} ${x.season}` : ''));
   return `Expected wins above replacement per season, ${range}. ${each.join('. ')}. ${cone.calibration.status}.`;
 }

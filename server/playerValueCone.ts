@@ -81,7 +81,8 @@ export interface ProductionCone {
 
 const STATUS_WORDS: Record<ControlStatus, string> = {
   under_contract: 'under contract', club_option: 'club option', player_option: 'player option',
-  vesting_option: 'vesting option', pre_arbitration: 'pre-arbitration', arbitration: 'arbitration',
+  vesting_option: 'vesting option', mutual_option: 'mutual option', opt_out: 'under contract unless he opts out',
+  pre_arbitration: 'pre-arbitration', arbitration: 'arbitration',
   free_agent: 'free agency', reserve_clause: 'reserve clause', indeterminate: 'not established',
 };
 
@@ -90,7 +91,12 @@ const FREE_AGENT_AFTER: Labels = { label: 'Free agent after', short: 'FA after',
 
 function labelsOf(c: ControlSeason): Labels {
   switch (c.status) {
-    case 'under_contract': return { label: c.from === 'extension' ? 'Signed (extension)' : 'Signed', short: 'Signed', code: 'Sgn' };
+    // An extension season has its own short label and code, so the narrow key never merges it with the current deal (D-21)
+    case 'under_contract': return c.from === 'extension'
+      ? { label: 'Signed (extension)', short: 'Extension', code: 'Ext' }
+      : { label: 'Signed', short: 'Signed', code: 'Sgn' };
+    case 'opt_out': return { label: 'Signed, opt-out', short: 'Opt-out', code: 'OO' };
+    case 'mutual_option': return { label: 'Mutual option', short: 'Mutual opt.', code: 'MO' };
     case 'club_option': return { label: 'Club option', short: 'Club opt.', code: 'CO' };
     case 'player_option': return { label: 'Player option', short: 'Plyr opt.', code: 'PO' };
     case 'vesting_option': return { label: 'Vesting option', short: 'Vest opt.', code: 'VO' };
@@ -196,8 +202,29 @@ export function productionCone(production: PlayerProduction, control: ControlTim
   let note: string | null = null;
   if (control.standing === 'unsigned') note = 'No club holds him, so no control is shown.';
   else if (control.standing === 'unknown') note = `Control not established: ${control.notes[control.notes.length - 1] ?? 'the export cannot lay it out.'}`;
-  else if (ends !== null && last && last.season === ends - 1) note = `Free agent after ${last.season}.`;
-  else if (control.continuesPastHorizon && last) note = `Control continues past ${last.season}, the last season projected.`;
+  else if (ends !== null && last && last.season === ends - 1) {
+    // Where the last controlled seasons may themselves be free agency, the mark names the earliest too (C-12)
+    let earliest = last.season;
+    for (let y = last.season; ; y -= 1) {
+      const c = control.seasons.find((x) => x.season === y);
+      // An unsettled season that may be free agency, or an option (or opt-out) whose other branch is
+      const mayBeFree = c !== undefined && (
+        (c.status === 'indeterminate' && c.between.includes('free_agent'))
+        || (c.declined !== null && (c.declined.status === 'free_agent' || c.declined.between.includes('free_agent'))));
+      if (!mayBeFree) break;
+      earliest = y - 1;
+    }
+    note = earliest < last.season
+      ? `Free agent after ${earliest === last.season - 1 ? `${earliest} or ${last.season}` : `${earliest} to ${last.season}`}: ${earliest + 1 === last.season ? `${last.season} may itself be` : `each season from ${earliest + 1} may be`} free agency.`
+      : `Free agent after ${last.season}.`;
+  }
+  else if (control.continuesPastHorizon && last) {
+    // A deal he can walk away from does not simply continue (A-05)
+    const optOut = control.seasons.find((x) => x.status === 'opt_out');
+    note = optOut
+      ? `Under contract past ${last.season}, the last season projected, unless he opts out before ${optOut.season}.`
+      : `Control continues past ${last.season}, the last season projected.`;
+  }
 
   return {
     playerId: production.playerId,

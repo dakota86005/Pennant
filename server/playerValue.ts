@@ -33,7 +33,10 @@ import { db, tableColumns, tableExists } from './db.js';
 import type { SourceState } from './dataFreshness.js';
 import { allLeagueRules, leagueRulesFromRow, type ContractRules, type FinancialRules, type LeagueRules } from './leagueRules.js';
 import { evaluateContractControl, superTwoCutoffs } from './playerRights.js';
-import { allPlayerStates, playerStates, seasonServiceClocks, serviceClassMembers, type PlayerState } from './playerState.js';
+import {
+  allPlayerStates, organizationPlayerStates, playerStates, seasonServiceCalendars, seasonServiceClocks, serviceClassMembers,
+  type PlayerState,
+} from './playerState.js';
 import { CONTROL_HORIZON_SEASONS, PRODUCTION_NO_EVIDENCE } from './playerValueCalibration.js';
 import {
   CLAUSE_COLUMNS, CONTRACT_COLUMNS, EXTENSION_COLUMNS, contractFactsOf,
@@ -77,6 +80,7 @@ import {
 } from './scoutedEvidence.js';
 
 export type { ContractFacts, ContractSeason, ContractTerm } from './playerValueContract.js';
+export { contractSeasonFor } from './playerValueContract.js';
 export type { ControlSeason, ControlStatus, ControlTimeline, CostBand } from './playerValueControl.js';
 export type {
   ClubFinanceInput, ClubFinances, FinanceSeason, FinanceTable, MarketCandidate, MarketStanding, OpeningPriceInput,
@@ -189,10 +193,11 @@ function valuate(states: PlayerState[], ids: number[] | null, options: Valuation
   const rules = allLeagueRules();
   const leagues = teamLeagues();
   const clocks = seasonServiceClocks();
+  const calendars = seasonServiceCalendars();
   // A player whose club or league the export does not name has no regime to read
   const noRules = leagueRulesFromRow(null, new Set()).contract;
   // The Super Two cutoff, once per contract regime for the whole pass: it ranks the league's class
-  const superTwo = superTwoCutoffs(serviceClassMembers(), (id) => rules.get(id)?.contract ?? null, clocks);
+  const superTwo = superTwoCutoffs(serviceClassMembers(), (id) => rules.get(id)?.contract ?? null, clocks, calendars);
 
   for (const state of states) {
     const teamId = state.teamId.value;
@@ -210,6 +215,9 @@ function valuate(states: PlayerState[], ids: number[] | null, options: Valuation
       serviceClock: regimeId !== null
         ? clocks(regimeId)
         : unknownBecause('not_exported_by_ootp', null, 'His league\'s contract regime is unknown, so its season clock is too.'),
+      serviceCalendar: regimeId !== null
+        ? calendars(regimeId)
+        : unknownBecause('not_exported_by_ootp', null, 'His league\'s contract regime is unknown, so its schedule is too.'),
       currentState,
       seasons: CONTROL_HORIZON_SEASONS,
       superTwo: regimeId !== null ? superTwo.get(regimeId) ?? null : null,
@@ -220,6 +228,7 @@ function valuate(states: PlayerState[], ids: number[] | null, options: Valuation
       contract,
       eligibility,
       horizon: CONTROL_HORIZON_SEASONS,
+      majorLeagueClub: state.level.value === null ? null : state.level.value === 1,
     });
     out.set(state.playerId, { playerId: state.playerId, contract, control });
   }
@@ -250,6 +259,26 @@ export function playerValues(playerIds: number[], options: ValuationOptions = {}
 /** One player's contract facts and control, or null when the export has no such active player. */
 export function playerValue(playerId: number, options: ValuationOptions = {}): PlayerValuation | null {
   return playerValues([playerId], options).get(playerId) ?? null;
+}
+
+/**
+ * Payroll's players (A-14): every player the organization holds, and every player the export names this
+ * club as carrying the contract of (`players_contract.contract_team_id`) though he is now elsewhere, with
+ * their contract facts and control. Production is not computed. The club of record is not verified
+ * against payroll: whether it still pays is the contract's `retained`, read by the consumer as stated.
+ */
+export function payrollValuations(orgId: number, options: ValuationOptions = {}): Map<number, PlayerValuation> {
+  const ids = new Set(organizationPlayerStates(orgId).map((st) => st.playerId));
+  const columns = tableExists('players_contract') ? new Set(tableColumns('players_contract')) : new Set<string>();
+  if (columns.has('player_id') && columns.has('contract_team_id')) {
+    for (const r of db.prepare(`SELECT player_id FROM players_contract WHERE contract_team_id = ?`).all(orgId) as Array<{ player_id: unknown }>) {
+      const id = numberOrNull(r.player_id);
+      if (id !== null) ids.add(id);
+    }
+  }
+  const unique = [...ids];
+  if (unique.length === 0) return new Map();
+  return valuate([...playerStates(unique).values()], unique, { ...options, production: false });
 }
 
 /** Every active player in the league, once (PLAYER_VALUE.md Part 7). */

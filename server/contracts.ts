@@ -2,10 +2,10 @@ import { Router } from 'express';
 import { db, tableExists } from './db.js';
 import { seasonFormByPlayer, type SeasonForm } from './form.js';
 import { leagueRulesForLeague } from './leagueRules.js';
-import { playerValues, type ControlTimeline } from './playerValue.js';
+import { clubFinances, playerValues, type ControlTimeline } from './playerValue.js';
+import type { Sourced } from './provenance.js';
 import {
-  contractsByPlayer, currentGameDate, mlbPercentiler, ON_ROSTER, seasonYear,
-  teamFinances, valuesByPlayer,
+  contractsByPlayer, currentGameDate, mlbPercentiler, ON_ROSTER, seasonYear, valuesByPlayer,
 } from './valuation.js';
 
 export const contractRoutes = Router();
@@ -173,7 +173,8 @@ function recommend(
  */
 export type ControlStatus =
   | 'signed'          // still under contract next season
-  | 'extended'        // an extension already picks him up
+  | 'extended'        // next season is a signed extension's
+  | 'option'          // next season is an option (or an opt-out): both branches, see `option`
   | 'leaving'         // reaches free agency — the money genuinely comes off
   | 'arbitration'     // still controlled, and about to cost more
   | 'pre-arbitration' // still controlled, renewed by the club
@@ -190,15 +191,26 @@ export interface Control {
   superTwo: boolean;
   /** For an indeterminate status: the statuses it lies between. */
   between: ControlStatus[];
+  /**
+   * For an option season: whose decision it is, and where he stands if it is declined (or he opts
+   * out). Exercised, he is under contract at the salary. Never collapsed into "signed" (A-04).
+   */
+  option: { kind: 'club' | 'player' | 'vesting' | 'mutual' | 'opt_out'; ifDeclined: ControlStatus; between: ControlStatus[] } | null;
   /** Why, in a line: the basis, or what is missing. */
   reason: string | null;
 }
 
+const OPTION_KIND: Partial<Record<ControlTimeline['seasons'][number]['status'], NonNullable<Control['option']>['kind']>> = {
+  club_option: 'club', player_option: 'player', vesting_option: 'vesting', mutual_option: 'mutual', opt_out: 'opt_out',
+};
+
 const LEGACY: Record<ControlTimeline['seasons'][number]['status'], ControlStatus> = {
   under_contract: 'signed',
-  club_option: 'signed',
-  player_option: 'signed',
-  vesting_option: 'signed',
+  club_option: 'option',
+  player_option: 'option',
+  vesting_option: 'option',
+  mutual_option: 'option',
+  opt_out: 'option',
   pre_arbitration: 'pre-arbitration',
   arbitration: 'arbitration',
   free_agent: 'leaving',
@@ -211,33 +223,84 @@ const LEGACY: Record<ControlTimeline['seasons'][number]['status'], ControlStatus
  * Null for a player no club holds.
  */
 export function controlAfterThisSeason(timeline: ControlTimeline | null | undefined): Control | null {
-  const unknown = (reason: string): Control => ({ status: 'indeterminate', arbYear: null, arbYearHigh: null, superTwo: false, between: [], reason });
+  const unknown = (reason: string): Control => ({ status: 'indeterminate', arbYear: null, arbYearHigh: null, superTwo: false, between: [], option: null, reason });
   if (!timeline) return unknown('His contract and control could not be read from the export.');
   if (timeline.standing === 'unsigned') return null;
   if (timeline.thisSeason === null) return unknown(timeline.notes[timeline.notes.length - 1] ?? 'The current season is not known.');
   const next = timeline.seasons.find((s) => s.season === timeline.thisSeason! + 1);
   if (!next) {
-    return unknown(timeline.controlEnds !== null && timeline.controlEnds <= timeline.thisSeason
-      ? 'He is already past the free-agency line and nothing holds him beyond this season.'
-      : 'His control after this season could not be stated.');
+    // Control ends this season: nothing holds him beyond it (A-19)
+    if (timeline.controlEnds !== null && timeline.controlEnds <= timeline.thisSeason) {
+      const now = timeline.seasons.find((s) => s.season === timeline.thisSeason);
+      return {
+        status: 'leaving', arbYear: null, arbYearHigh: null, superTwo: false, between: [], option: null,
+        reason: now?.basis ?? 'He is past the free-agency line and nothing holds him beyond this season.',
+      };
+    }
+    return unknown('His control after this season could not be stated.');
   }
-  // An extension already picks him up: the club holds him under a deal signed beyond the current one
-  const extended = (next.from === 'contract' || next.from === 'extension') && timeline.extensionSigned;
-  const status: ControlStatus = extended ? 'extended' : LEGACY[next.status];
+  // "Extended" only when next season is the extension's, never while the current deal runs on (A-18)
+  const status: ControlStatus = next.status === 'under_contract' && next.from === 'extension' ? 'extended' : LEGACY[next.status];
+  const optionKind = OPTION_KIND[next.status];
   return {
     status,
     arbYear: next.arbitrationYear?.low ?? null,
     arbYearHigh: next.arbitrationYear && next.arbitrationYear.high !== next.arbitrationYear.low ? next.arbitrationYear.high : null,
     superTwo: next.superTwo,
     between: [...new Set(next.between.map((b) => LEGACY[b]))],
+    option: optionKind && next.declined
+      ? { kind: optionKind, ifDeclined: LEGACY[next.declined.status], between: [...new Set(next.declined.between.map((b) => LEGACY[b]))] }
+      : null,
     reason: status === 'indeterminate' ? (next.reasons[0] ?? next.basis) : next.basis,
   };
 }
 
-/** "arbitration 2" or "arbitration 2-3" when the rest of the season decides which. */
+/** "arbitration 2" or "arbitration 2-3" when the rest of the season or an earlier winter leaves it open. */
 export function arbitrationLabel(control: Control): string {
-  if (control.superTwo && control.arbYear === null) return 'arbitration (Super Two)';
-  return control.arbYearHigh !== null ? `arbitration ${control.arbYear}-${control.arbYearHigh}` : `arbitration ${control.arbYear ?? ''}`.trim();
+  const n = control.arbYearHigh !== null ? `${control.arbYear}-${control.arbYearHigh}` : `${control.arbYear ?? ''}`;
+  return `arbitration ${n}`.trim() + (control.superTwo ? ' (Super Two)' : '');
+}
+
+/** "club option" or "opt-out", for a flag. */
+export function optionLabel(control: Control): string {
+  const kind = control.option?.kind;
+  return kind === 'opt_out' ? 'opt-out' : kind ? `${kind} option` : 'option';
+}
+
+/**
+ * Service in baseball's years.days notation ("2.126" is two years and 126 days), never a decimal of
+ * years (A-22); a band from whole years alone reads "2.xxx".
+ */
+export function serviceText(service: { low: number; high: number } | null, perYear: number | null): string | null {
+  if (service === null || perYear === null) return null;
+  const years = Math.floor(service.low / perYear);
+  if (service.low !== service.high) return `${years}.xxx`;
+  return `${years}.${String(Math.round(service.low - years * perYear)).padStart(3, '0')}`;
+}
+
+/**
+ * The club finance cards on Contracts and Free Agents, from Club Finances (D-052): the same figure
+ * Payroll shows, and a figure the export does not state is null, never $0 (D-18).
+ */
+export interface FinanceCards {
+  budget: number | null;
+  payroll: number | null;
+  payrollNextSeason: number | null;
+  cash: number | null;
+  /** Where each figure comes from, or why it is unknown. */
+  sources: Record<'budget' | 'payroll' | 'payrollNextSeason' | 'cash', string | null>;
+}
+
+export function financeCards(teamId: number): FinanceCards {
+  const f = clubFinances(teamId);
+  const why = (s: Sourced<number>) => [s.source, s.note].filter(Boolean).join(' — ') || null;
+  return {
+    budget: f.budget.value,
+    payroll: f.payroll.now.value,
+    payrollNextSeason: f.payroll.nextSeason.value,
+    cash: f.cashForTrades.value,
+    sources: { budget: why(f.budget), payroll: why(f.payroll.now), payrollNextSeason: why(f.payroll.nextSeason), cash: why(f.cashForTrades) },
+  };
 }
 
 export function computeContracts(orgId: number) {
@@ -293,14 +356,10 @@ export function computeContracts(orgId: number) {
       const control = controlAfterThisSeason(timeline);
       const reachingFA = control === null || control.status === 'indeterminate' ? null : control.status === 'leaving';
       const arbYear = control?.status === 'arbitration' ? control.arbYear : null;
-      // Service in the league's own service-year length; unknown stays unknown, never 0
+      // Service in the league's own service-year length, as years.days; unknown stays unknown, never 0
       const service = timeline?.eligibility?.service.now ?? null;
       const perYear = timeline?.eligibility?.serviceDaysPerYear.value ?? null;
-      const serviceYears = service === null || perYear === null
-        ? null
-        : service.low === service.high
-          ? Number((service.low / perYear).toFixed(2))
-          : Math.floor(service.low / perYear);
+      const serviceYears = service === null || perYear === null ? null : Math.floor(service.low / perYear);
       const oPct = overallPct(p.player_id);
       const tPct = talentPct(p.player_id);
       const form = formByPlayer.get(p.player_id) ?? null;
@@ -328,6 +387,7 @@ export function computeContracts(orgId: number) {
           // that he still has arbitration years left, which read as "expiring"
           flags.push(arbitrationLabel(control));
         } else if (control.status === 'pre-arbitration') flags.push('pre-arbitration');
+        else if (control.status === 'option') flags.push(optionLabel(control));
         // The export cannot establish which: said, not guessed
         else if (control.status === 'indeterminate') flags.push('control indeterminate');
       }
@@ -335,6 +395,8 @@ export function computeContracts(orgId: number) {
       if (c.lastYearPlayerOption) flags.push('player option');
       if (c.lastYearVestingOption) flags.push('vesting option');
       if (c.noTrade) flags.push('no-trade');
+      const optOutFrom = valuations.get(p.player_id)?.contract.optOutFrom ?? null;
+      if (optOutFrom !== null && optOutFrom > year) flags.push(`opt-out before ${optOutFrom}`);
       return {
         sortKey: yearsAfterThis + (yearsAfterThis === 0 && reachingFA !== true ? 0.5 : 0),
         player_id: p.player_id,
@@ -346,7 +408,9 @@ export function computeContracts(orgId: number) {
         yearsAfterThis,
         endYear,
         extension: c.extension,
+        /** Whole years of service (for sorting); `service` is the years.days text. */
         serviceYears,
+        service: serviceText(service, perYear),
         arbYear,
         /** What happens after this season, with its basis; `indeterminate` names what is missing. */
         control,
@@ -374,7 +438,7 @@ export function computeContracts(orgId: number) {
     // Surfaced so the page can explain why it is talking about a reserve
     // clause instead of free agency
     rules,
-    finances: teamFinances(orgId),
+    finances: financeCards(orgId),
     players: rows,
   };
 }

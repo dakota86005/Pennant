@@ -120,6 +120,20 @@ incentives as stated; the club carrying the money; the extension that follows.
 They are `unknown`, not "none". A minor-league contract's $0 salary is `unknown`, not a cost of zero. The club
 carrying the money (`contract_team_id` against `team_id`) is not verified against payroll.
 
+**Read, not established (hardening F2, 2026-09-23).** The vesting-option flag is zero on every contract, so the
+last season of a deal says whether it is a vesting option is not exported, rather than reading as a plain
+guaranteed season. A club and a player flag on the same season is a **mutual option**. **Opt-outs:** `opt_out`
+is a count; the first season he may walk away from is read as the term's first season plus the count
+(`optOutFrom`, after contract year N). The reading matches the real deals it could be checked against (a 2025 deal
+with 5, a 2024 deal with 7 and 6) but stays a reading (R-6); an opt-out whose reading has passed or lies past the
+seasons the deal covers is named and changes no season. **The blank row:** a row with no term (`years` 0 or no
+first season) and `is_major` 0, no salary and no paying club is the row the export writes for 6,894 held players
+it carries no terms for (every minor leaguer without a written deal, unassigned amateurs, and 24 major leaguers on
+the 60-day injured list). Its `is_major` 0 is the blank's, not a minor-league contract: the row has no kind. The
+24 carry major-league service and are placed on a major-league club's 60-day list, which only a 40-man player
+reaches; the export does not say why their row is blank (their deals may have lapsed on the list), so nothing is
+invented for them: this season is held at an unknown cost, and later seasons read his Player Rights standing.
+
 ### 2.2 Control and cost path
 
 **Reads:** contract facts; the pre-arbitration, arbitration and free-agency eligibility statuses from Player Rights
@@ -134,15 +148,28 @@ comes with a **cost band** and its basis:
 | Status | Cost |
 |---|---|
 | Under contract | The contract's salary (a point) |
-| Option | Both branches shown: exercised (the salary) and declined (the buyout, which is `unknown` here) |
+| Option (club, player, vesting, mutual) | Both branches shown: exercised (the salary) and declined (the buyout, which is `unknown` here, and the status he falls to). Only a future season: the season under way had its option decided before it began, so it is under contract at its salary |
+| Opt-out (`opt_out`) | Every season from the one the exported count reads: both branches, staying (the salary) or opting out (his Player Rights standing), with the reading named |
+| After a blank contract row | For a player the export places on a major-league club with major-league service: his Player Rights standing, the blank row named; a free-agency answer is `indeterminate` between under contract and free agent, since a deal the export does not carry could still hold him. Otherwise `indeterminate` |
 | Pre-arbitration renewal | From the league minimum up to the observed renewal spread (a band, never simply the minimum) |
 | Arbitration year *n* | A band from the arbitration ladder (Part 4.4), never the league minimum |
 | Free agent | Control ends. What he is worth to others is market data, not cost to this club |
 | Reserve clause | Renewal cost from the league's observed pay (a band) |
 
-**Service projection** is itself a band. The low edge assumes he is optioned or hurt; the high edge assumes he stays
-on the active list for the rest of the season. When the free-agency or arbitration line falls inside that band, the
-season's status is `indeterminate`, and the dates on either side are stated.
+**Service projection** is itself a band. The low edge assumes he is optioned or outrighted from now on; the high edge
+assumes he stays on the major-league roster for the rest of the season, capped by what the schedule has left (none
+once its last game is played). The major-league injured list accrues service (every player on it has banked the
+season's clock on the imported save) and a player on it cannot be optioned (observed), so his low edge adds the days
+left on his stint (`injury_dl_left`), never "nothing because he is hurt". Each later season adds what the league's
+schedule banks, read from the export's `games` dates (the calendar from the first scheduled game to the last, never
+more than the service year): a 162-game schedule spans 187 days and banks a full year, a 60-game one about 69. Where
+the export carries no schedule, a later season is a full service year and the basis says it is the convention, not a
+reading. When the free-agency or arbitration line falls inside that band, the season's status is `indeterminate`,
+and the dates on either side are stated. **Arbitration trips count winters**, not service classes: this season's
+trip is a floor from his service class, and one higher where a year reached early as a Super Two (which the export
+cannot show) is possible; each later arbitration season is one more trip than the one before, a range where the
+projection leaves a winter open. A Super Two's next arbitration year is his second, and a player already in
+arbitration is never numbered a trip he has taken.
 
 **Unknowns:** a missing rule (FA years, arbitration years, service-year length) makes the dependent status
 `indeterminate`. It never becomes 6 / 3 / 172 (R-10). **Super Two** is OOTP's rule under MLB rules (owner, 2026-09-22;
@@ -153,8 +180,12 @@ to every member banking it. A reading in which nobody banks another day is exclu
 and its roster spots are filled; in May it would also leave nobody with 86 days and no class at all. A player above
 the cutoff's high edge with his 86 days is arbitration-eligible (basis `owner_attested`). A player below its low
 edge, or short of 86 days, is pre-arbitration. A player whose own range overlaps it is `indeterminate`, naming both
-edges. It applies only where the league's regime as read is MLB's: no export column names a rule set or Super Two,
-so it is detected by free agency 6, arbitration 3 and a 172-day service year. Any other regime keeps the window
+edges. **The cutoff's edges are readings, not bounds** (owner, 2026-09-23): the two readings
+leave out single roster moves among the class, so within `SUPER_TWO_MARGIN_DAYS` (10, policy) of either edge the
+year is `indeterminate`, a tie with the cutoff included; only beyond it is he definitely eligible or definitely
+not. It applies only where the league's regime as read is MLB's: no export column names a rule set or Super Two,
+so it is detected by free agency 6, arbitration 3 and a 172-day service year, and a schedule that banks the full
+service year (a shorter one leaves the 86 days not established). Any other regime keeps the window
 `indeterminate`, as does last winter's class (last season's days are not exported) and any later winter's (that
 class does not exist yet). **`has_received_arbitration`** is 0 for every player on this save and carries no information
 (R-3). It is not read until an import shows it set.
@@ -642,10 +673,13 @@ and the evidence boundary test's allow-list for `players_value` is empty.
 section draws the production cone (`src/ProductionCone.tsx`, visx, D-054): wins per season with the 80% and 50% bands
 as nested washes, the expected path as a dotted line with a marker per season, replacement level (0) as a labelled
 dashed baseline, and each season's control beneath it (signed, an option, pre-arbitration, arbitration *n*, reserve,
-not established, and "free agent after" on the last controlled season). Seasons run from this one to the last
+not established, an opt-out, an extension, and "free agent after" on the last controlled season, naming the season
+before too where the last may itself be free agency). Seasons run from this one to the last
 controlled season, capped by the production horizon; where the end of control is not established (unsigned, unknown,
-or past the horizon) the whole horizon is drawn and each season says so. The legend says what the bands mean ("80%
-of outcomes fall inside"); hover or keyboard focus on a season shows its central and both bands, each band's
+or past the horizon) the whole horizon is drawn and each season says so. The legend says what the bands are: with
+the save's own fit in force, "80% band (target)", which each season's observed coverage qualifies; with the fallback
+prior, "80% range of reasonable readings (not yet calibrated)", never "80% of outcomes fall inside" (hardening F2,
+D-19). Hover or keyboard focus on a season shows its central and both bands, each band's
 "target · observed" coverage ("not measured on this save" when the fit did not measure it, never the target), the
 seasons and plate appearances or batters faced it rests on, playing time and control. One line under the chart states
 calibration: "Calibrated on this save: 2006–2025, refit after the 2025 season", or "Not yet calibrated on this save
@@ -653,6 +687,22 @@ calibration: "Calibrated on this save: 2006–2025, refit after the 2025 season"
 time), and negative wins stay on the axis. The join is Player Value's (`playerValueCone.ts`, `productionCone`, served
 at `/api/player-value/:playerId/cone`); the card computes nothing. The card's existing `players_value` reads (Value,
 Talent) are untouched until phase 6. A static site export does not carry the route, so its cards omit the section.
+The card is a modal dialog: focus moves into it, Tab stays inside it, Escape closes a season's detail first and
+then the card, and focus returns to what opened it; it fits the window with a 16px gutter at any width, and below
+552px the season detail sits under the chart. A figure the server sends that is not a number draws no cone and says
+so, never blanking the card; near-zero wins print "<0.1", never "0.0" (hardening F2).
+
+**Consumers read the timeline as it is (hardening F2, 2026-09-23).** `controlAfterThisSeason` reports an option or
+opt-out next season as `option`, with whose decision it is and where he falls if it is declined, never "signed";
+"extended" only when next season is the extension's; a player whose control ends this season is leaving. The AI
+prompts say what `option` means. **Payroll** reads Player Value's contract facts through `payrollValuations`, not
+raw columns: where the export does not populate `retained`, dead money is "not established" (with the contracts the
+club is of record for), never $0; a club, vesting or mutual option season is counted apart from committed money
+(a player option or opt-out season is committed, flagged); a covered salary the export does not state is "?", never
+$0; the season is the league's, never the wall-clock year; the price of a win shows its floor as a range, the
+server's label and its basis as a keyboard-reachable list. **Contracts** shows service as years.days. **Free Agents**
+asks the timeline about every major leaguer elsewhere and counts option seasons as undecided. Both pages' finance
+cards are Club Finances' figures, a missing one "unknown", never $0.
 
 ---
 
@@ -855,7 +905,10 @@ numeric constant. Phase 3a adds `PRODUCTION_POLICY` (policy) and `PRODUCTION_PRI
 | When the measured price replaces the opening one | **policy** | When the measured band is narrower than the opening band (Q-4). No fixed count |
 | Arbitration ladder shares (about 22 / 42 / 53%) and their spread | **provisional** | Cross-section of imported contracts (R-6) |
 | Pre-arbitration renewal spread | **provisional** | Observed pre-arbitration pay above the minimum (R-5) |
-| Service projection edges (optioned against stays up) | **provisional** | This season's remaining days, from the season's service clock, on the high edge only; each later season a full service year on both edges. Declared once as `SERVICE_PROJECTION_BASIS` in `playerRights.ts` (phase 1) |
+| Service projection edges (optioned against stays up) | **provisional** | This season's remaining days, from the season's service clock and capped by the schedule's days left, on the high edge; on the low edge only the days left on a major-league injured-list stint; each later season what the league's schedule banks (its calendar span, never more than the service year), a full service year where the export carries no schedule. Declared once as `SERVICE_PROJECTION_BASIS` in `playerRights.ts` (phase 1; schedule and injured list, hardening F2) |
+| A season's bankable service | **none: read** | The export's `games` dates (regular season, `game_type` 0) and `leagues.current_date`, `seasonServiceCalendars` in `playerState.ts`; missing → the convention above, said |
+| Super Two cutoff margin (10 days) | **policy** | Owner-approved, 2026-09-23: the cutoff's edges are readings, not bounds. Within 10 days of either edge the year is `indeterminate`. Chosen, not fitted: neighbours at the qualifying rank sit 0 to 5 days apart on the imported save, so it covers two or more single roster moves among the class. `SUPER_TWO_MARGIN_DAYS`, stamped `SUPER_TWO_MARGIN_CALIBRATION` in `playerRights.ts` |
+| Opt-out timing (after contract year N) | **none: read** | `season_year + opt_out`; the reading, not established (R-6), and said on every season it touches |
 | Super Two share (22%), prior-season days (86), MLB's regime (6 / 3 / 172) | **policy** | The game's rule as the owner attested it (2026-09-22; CBA Art. VI(E)(1)(b)). `SUPER_TWO_SHARE`, `SUPER_TWO_PRIOR_SEASON_DAYS`, `MLB_CONTRACT_REGIME` in `playerRights.ts`, stamped `SUPER_TWO_CALIBRATION`. Not fitted and not provisional: changed only by the owner's decision. The regime is compared against, never assumed |
 | Super Two cutoff | **none: computed** | From the export's own class each winter, as a range across the projection readings |
 | Which clause columns are "not populated" | **none: read** | A clause column that is 0 on every contract in the export is unknown, not "none" (R-6); measured per import |
@@ -913,3 +966,6 @@ The owner answered these on 2026-09-22. Each answer is folded into the part it n
 - **Super Two (ruled 2026-09-22, after phase 1).** OOTP implements Super Two under MLB rules, and Pennant follows
   the real rule: a player with at least two but fewer than three years of service is arbitration-eligible if he banked at least 86 days in the season just ending and ranks in the top 22% (rounded to the nearest whole number) by total service of the class of players with two to three years and those 86 days (CBA Art. VI(E)(1)(b)); the cutoff therefore moves every winter (in the real world about 2.115 to 2.140 years.days). This is the owner's statement of how OOTP behaves, a basis under D-018 and D-023
   (`owner_attested`), not a guess from MLB rules (2.2).
+- **Super Two margin (2026-09-23, hardening).** The owner approved a policy margin of days around the computed
+  cutoff range, within which the answer is `indeterminate`: the cutoff's edges are readings, not bounds. Set at 10
+  days (Part 11), stamped policy under D-041 (2.2).

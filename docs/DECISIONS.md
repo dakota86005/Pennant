@@ -1329,6 +1329,22 @@ architecture, pinned by tests.
 - Super Two (2026-09-22): OOTP applies Super Two under MLB rules, and Pennant follows the real rule. This is the
   owner's statement of how OOTP behaves, a basis under D-018 and D-023 (`owner_attested`), not a guess from MLB
   rules. The cutoff is computed from the export's own class as a range, in leagues whose regime as read is MLB's.
+- Super Two margin (2026-09-23, hardening): the cutoff's edges are readings, not bounds, so within a policy margin
+  of either edge (`SUPER_TWO_MARGIN_DAYS`, 10 days, stamped policy under D-041, owner-approved) the year before the
+  arbitration line is `indeterminate`.
+
+**Hardening, contracts and control (2026-09-23).** An option is both branches only for a future season: the season
+under way is under contract, its option decided before it began. An **opt-out** makes every season from the one the
+exported count reads (the term's first season plus the count, a reading and not established, R-6) show both
+branches, staying under the deal or leaving on his Player Rights standing; it is never a certain season at a point
+cost. A club and a player option on one season is mutual; an option flag the export does not populate is unknown on
+the term's last season. The export's blank contract row (no term, kind, salary or paying club) is not a
+minor-league contract: it has no kind, and a player the export places on a major-league club with major-league
+service reads his Player Rights standing after this season. Consumers see an option next season as an option,
+never "signed", and Payroll reads these contract facts through the entry point. Player Rights counts arbitration
+trips by winter, caps this season's remaining service by the schedule, projects later seasons from the schedule's
+calendar, and gives a player on the major-league injured list the days left on his stint (the list accrues
+service), all in PLAYER_VALUE.md 2.1 and 2.2.
 
 ## D-053 — Calibration belongs to the save
 

@@ -47,10 +47,16 @@ export function FreeAgents({ orgId }: { orgId: number }) {
       <p className="muted hint-line">
         Players around the league on expiring deals with enough service time to reach free agency — your
         offseason shopping list. Team-controlled players (pre-arb/arb) are excluded.
+        {data.upcomingLeaving !== undefined && <> {data.upcomingLeaving} reach free agency in all; the list shows those above the value cut.</>}
         {(data.upcomingIndeterminate ?? 0) > 0 && (
           <> {data.upcomingIndeterminate} more expiring deal{data.upcomingIndeterminate === 1 ? '' : 's'} could
             go either way: the save cannot yet establish whether {data.upcomingIndeterminate === 1 ? 'he reaches' : 'they reach'} free
             agency, so {data.upcomingIndeterminate === 1 ? 'he is' : 'they are'} not listed.</>
+        )}
+        {(data.upcomingUndecided ?? 0) > 0 && (
+          <> {data.upcomingUndecided} more {data.upcomingUndecided === 1 ? 'player has' : 'players have'} an option or an opt-out
+            on next season: whether {data.upcomingUndecided === 1 ? 'he reaches' : 'they reach'} the market is a decision still to be
+            made, so {data.upcomingUndecided === 1 ? 'he is' : 'they are'} not listed.</>
         )}
       </p>
       <FATable rows={filter(data.upcomingFAs)} holes={data.holes} />

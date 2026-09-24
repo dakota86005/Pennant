@@ -71,6 +71,13 @@ export interface ServiceSpec {
   /** mlb_service_days_this_year; null when not exported. */
   thisYear?: number | null;
   teamId?: number;
+  /** `teams.level` of his club (1 is the majors). */
+  level?: number;
+  /** On the major-league injured list (`is_on_dl`), and on its 60-day list (`is_on_dl60`). */
+  onIl?: boolean;
+  onIl60?: boolean;
+  /** `injury_dl_left`: days left on his injured-list stint; null when not exported. */
+  ilDaysLeft?: number | null;
 }
 
 export function stateOf(spec: ServiceSpec = {}): PlayerState {
@@ -80,11 +87,14 @@ export function stateOf(spec: ServiceSpec = {}): PlayerState {
   const years = spec.years === undefined ? (days === null ? null : Math.floor(days / YEAR)) : spec.years;
   return {
     playerId: 1, name: 'Test Player', age: 27,
-    organizationId: known(1), teamId: known(spec.teamId ?? 1), level: known(1),
+    organizationId: known(1), teamId: known(spec.teamId ?? 1), level: known(spec.level ?? 1),
     position: known(6), role: known(0),
-    activeRoster: known(true), fortyMan: known(true),
-    injuredList: { onIl: known(false), onIl60: known(false) },
-    injury: { injured: known(false), dayToDay: known(false), daysLeft: known(0) },
+    activeRoster: known(!(spec.onIl || spec.onIl60) && (spec.level ?? 1) === 1), fortyMan: known(!spec.onIl60),
+    injuredList: { onIl: known(!!(spec.onIl || spec.onIl60)), onIl60: known(!!spec.onIl60) },
+    injury: {
+      injured: known(!!(spec.onIl || spec.onIl60)), dayToDay: known(false), daysLeft: known(0),
+      ilDaysLeft: pick(spec.ilDaysLeft, 0), careerEnding: known(false),
+    },
     dfa: {
       designated: known(false), daysLeft: known(0), onWaivers: known(false), waiverDaysLeft: known(0),
       irrevocableWaivers: known(false),
@@ -114,16 +124,23 @@ export interface ContractSpec {
   noTrade?: 0 | 1;
   retained?: 0 | 1;
   teamId?: number;
+  /** `contract_team_id` when it differs from the club (0: the blank row's). */
+  contractTeam?: number;
+  /** `current_year`: contract years completed. */
+  currentYear?: number;
+  /** `opt_out`: exported as a count. */
+  optOut?: number;
 }
 
 export function contractRow(spec: ContractSpec = {}): ContractRow {
   const years = spec.years ?? 1;
+  // Only `undefined` takes the default: a blank row writes 0 years
   const row: ContractRow = {
-    player_id: 1, team_id: spec.teamId ?? 1, contract_team_id: spec.teamId ?? 1, is_major: spec.isMajor ?? 1,
-    season_year: spec.firstSeason ?? THIS_SEASON, years, current_year: 0,
+    player_id: 1, team_id: spec.teamId ?? 1, contract_team_id: spec.contractTeam ?? spec.teamId ?? 1, is_major: spec.isMajor ?? 1,
+    season_year: spec.firstSeason ?? THIS_SEASON, years, current_year: spec.currentYear ?? 0,
     no_trade: spec.noTrade ?? 0, last_year_team_option: spec.teamOption ?? 0,
     last_year_player_option: spec.playerOption ?? 0, last_year_vesting_option: spec.vestingOption ?? 0,
-    last_year_option_buyout: spec.buyout ?? 0, retained: spec.retained ?? 0, opt_out: 0,
+    last_year_option_buyout: spec.buyout ?? 0, retained: spec.retained ?? 0, opt_out: spec.optOut ?? 0,
     minimum_pa: 0, minimum_pa_bonus: 0, minimum_ip: 0, minimum_ip_bonus: 0, mvp_bonus: 0, cyyoung_bonus: 0, allstar_bonus: 0,
   };
   for (let i = 0; i < 15; i += 1) {
@@ -161,6 +178,13 @@ export interface TimelineSpec {
    * himself is not added; include him when he belongs to it.
    */
   superTwoClass?: ClassMemberSpec[];
+  /**
+   * The season's schedule as the export's calendar gives it (`seasonServiceCalendars`): the days from
+   * the first scheduled game to the last, and the days left to the last. Defaults to a major-league
+   * schedule of 187 days (longer than the service year), with the days left following the clock;
+   * null when the export does not carry the schedule.
+   */
+  calendar?: { scheduleDays: number; daysLeft: number } | null;
 }
 
 export interface ClassMemberSpec {
@@ -174,12 +198,25 @@ export function classOf(count: number, from: number, step: number, thisYear = 10
   return Array.from({ length: count }, (_, i) => ({ days: from + i * step, thisYear, onRoster: true }));
 }
 
+/** A major-league schedule of 187 days, with the days left following the clock (the season over at the service year). */
+export const MLB_SCHEDULE_DAYS = 187;
+export function calendarFor(clock: number | null, spec?: { scheduleDays: number; daysLeft: number } | null): Sourced<{ scheduleDays: number; daysLeft: number }> {
+  if (spec === null) return blank();
+  if (spec) return derivedFrom(spec, 'test');
+  const daysLeft = clock === null ? MLB_SCHEDULE_DAYS - 40 : clock >= YEAR ? 0 : MLB_SCHEDULE_DAYS - clock;
+  return derivedFrom({ scheduleDays: MLB_SCHEDULE_DAYS, daysLeft }, 'test');
+}
+
 /** The Super Two cutoff for the synthetic major league's class, as Player Rights computes it. */
-export function superTwoFor(members: ClassMemberSpec[], rules: ContractRules, clock: number | null): SuperTwoCutoff | undefined {
+export function superTwoFor(
+  members: ClassMemberSpec[], rules: ContractRules, clock: number | null, calendar?: { scheduleDays: number; daysLeft: number } | null
+): SuperTwoCutoff | undefined {
   const classMembers = members.map((m, i) => ({
     playerId: 10_000 + i, leagueId: MLB, mlbDays: m.days, mlbDaysThisSeason: m.thisYear, onMajorLeagueRoster: m.onRoster ?? true,
   }));
-  return superTwoCutoffs(classMembers, () => rules, () => (clock === null ? blank<number>() : derivedFrom(clock, 'test'))).get(MLB);
+  return superTwoCutoffs(
+    classMembers, () => rules, () => (clock === null ? blank<number>() : derivedFrom(clock, 'test')), () => calendarFor(clock, calendar)
+  ).get(MLB);
 }
 
 /** The whole path: Player Rights' eligibility, composed with the contract into a timeline. */
@@ -188,17 +225,19 @@ export function timelineOf(spec: TimelineSpec = {}): ControlTimeline {
   const contract = spec.contract ?? factsOf(contractRow());
   const clock = spec.clock === undefined ? 40 : spec.clock;
   const rules = spec.rules ?? mlbRules();
-  const superTwo = spec.superTwoClass ? superTwoFor(spec.superTwoClass, rules, clock) : undefined;
+  const superTwo = spec.superTwoClass ? superTwoFor(spec.superTwoClass, rules, clock, spec.calendar) : undefined;
   const eligibility = contract.standing === 'unsigned' ? null : evaluateContractControl({
     state,
     rules,
     serviceClock: clock === null ? blank<number>() : derivedFrom(clock, 'test'),
+    serviceCalendar: calendarFor(clock, spec.calendar),
     currentState: spec.currentState ?? 'current',
     seasons: CONTROL_HORIZON_SEASONS,
     superTwo: superTwo ?? null,
   });
   return composeControlTimeline({
     playerId: state.playerId, holder: state.organizationId, contract, eligibility, horizon: CONTROL_HORIZON_SEASONS,
+    majorLeagueClub: state.level.value === null ? null : state.level.value === 1,
   });
 }
 

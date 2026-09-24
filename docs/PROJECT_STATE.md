@@ -383,10 +383,22 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   never "none".
 - **Control timeline** (`server/playerValueControl.ts`): for each season to the
   end of control, capped at seven (policy, Q-3), a status (`under_contract`, an
-  option, `pre_arbitration`, `arbitration`, `free_agent`, `reserve_clause`,
-  `indeterminate` with what it lies between) and a cost band: the salary under
-  contract, both branches of an option, and `unknown` ("pending price of a win
-  (phase 2/4)") for pre-arbitration and arbitration seasons.
+  option (club, player, vesting, mutual), `opt_out`, `pre_arbitration`,
+  `arbitration`, `free_agent`, `reserve_clause`, `indeterminate` with what it lies
+  between) and a cost band: the salary under contract, both branches of a future
+  option or an opt-out, and `unknown` ("pending price of a win (phase 2/4)") for
+  pre-arbitration and arbitration seasons. **Hardening F2 (2026-09-23):** the
+  season under way is never an open option (19 were on the Arizona import); the
+  58 exported opt-outs are named, and 28 seasons after one (Soto, Witt, Yamamoto,
+  Bellinger and others) show both branches; the export's blank contract row (6,894
+  held players) has no kind, and the 24 major leaguers on the 60-day list with one
+  read their Player Rights standing; an unpopulated vesting flag is said on the
+  last season. Player Rights counts arbitration trips by winter (a Super Two's next
+  year is his second; 2027 for a player already in arbitration is never his first
+  again), keeps a 10-day policy margin around the Super Two cutoff (owner,
+  2026-09-23), gives an injured-list player the days left on his stint, and reads
+  the schedule's calendar (`seasonServiceCalendars`: 187 days, 135 left on the
+  import) so a short schedule never brings free agency early.
 - **Entry point** (`server/playerValue.ts`): per request for the players asked
   about, or league-wide (`leaguePlayerValues`, about 0.2-0.3 s for all 12,575
   active players on the Arizona import; `npm run value:report`).
@@ -396,6 +408,12 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   market" list share one answer. A status the save cannot establish shows as
   "Not yet established" (Contracts), a third Payroll list, or a count on Free
   Agents. `SERVICE_DAYS_PER_YEAR` and `serviceRemainingThisSeason` are deleted.
+  Since hardening F2 an option next season reaches every consumer (and the AI
+  prompts) as `option` with both branches, never "signed"; Payroll reads Player
+  Value's contract facts (`payrollValuations`), so dead money is "not
+  established" where `retained` is not populated (it is not on the import), club
+  option money is counted apart, and the season is the league's; Contracts shows
+  service as years.days; Free Agents counts option contracts as undecided.
 - **Club Finances** (phase 2, `server/playerValueFinances.ts`, read by
   `playerValue.ts`: `clubFinances`, `leagueFinances`): the league's financial
   regime as `LeagueRules.finance` (through the parent league; values whose
@@ -422,8 +440,9 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
 - **Route and Payroll:** `/api/club-finances/:orgId` (club, league market,
   snapshot history). Payroll's finance header reads it, with one "league price
   of a win" line, and its three lists are no longer capped at 12 rows.
-  `valuation.teamFinances()` remains for Contracts, Free Agents, the AI context
-  and Storylines.
+  Contracts and Free Agents read Club Finances too (`financeCards`, hardening
+  F2), a missing figure "unknown"; `valuation.teamFinances()` remains for the AI
+  context and Storylines.
 - **Expected production** (phases 3a and 3b, `server/playerValueProduction.ts`
   and `server/playerValueRatings.ts`, served as `PlayerValuation.production`):
   wins per season from this season through seven, each an 80% and a 50% band in
@@ -485,6 +504,12 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   (`src/ProductionCone.tsx`, `src/productionConeGeometry.ts`,
   `src/chartTheme.ts`). No other page reads production yet; the card's own
   `players_value` reads wait for phase 6. A static site export omits it.
+  Hardening F2 (2026-09-23): the legend states the bands as targets, or as
+  reasonable readings under the prior; the hidden table carries every figure the
+  detail shows; Escape closes a season's detail before the card; near-zero wins
+  print "<0.1"; a non-number draws no cone instead of blanking the app. The card
+  is a modal dialog with a focus trap (`src/focusTrap.ts`, Escape, focus back to
+  the opener) and fits the window at any width (`tests/playerCard.test.ts`).
 - **Tests:** `playerValueControl`, `playerValueCost` (cost-band halves as
   `it.todo`), `playerValueFinances`, `playerValueProduction`,
   `playerValueProductionFit`, `playerValueRatings`, `playerValueCone`,

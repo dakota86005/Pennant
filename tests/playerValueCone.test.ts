@@ -173,3 +173,31 @@ describe('the production cone joins production with control, season by season', 
     expect(playerProductionCone(999_999)).toBeNull();
   });
 });
+
+/* Hardening (F2, 2026-09-23): opt-outs and extensions labelled apart (A-05, D-21); free agency after either season (C-12). */
+describe('the production cone, hardening (F2)', () => {
+  it('labels an opt-out season and an extension season apart from the current deal, each with its own code', () => {
+    const cone = productionCone(projectProduction(regular()), timeline([
+      season(2030, 'under_contract'),
+      season(2031, 'under_contract', { from: 'extension' }),
+      season(2032, 'opt_out' as ControlStatus, { from: 'extension' }),
+      season(2033, 'arbitration', { arbitrationYear: { low: 3, high: 3 } }),
+      season(2034, 'free_agent'),
+    ]));
+    const [signed, extension, optOut] = cone.seasons.map((s) => s.control);
+    expect(new Set([signed.code, extension.code, optOut.code]).size).toBe(3);
+    expect(new Set([signed.short, extension.short, optOut.short]).size).toBe(3);
+    expect(extension.label).toMatch(/extension/i);
+    expect(optOut.label).toMatch(/opt-out/i);
+  });
+
+  it('names the season before as well when the last controlled season may itself be free agency', () => {
+    const cone = productionCone(projectProduction(regular()), timeline([
+      season(2030, 'under_contract'),
+      season(2031, 'arbitration', { arbitrationYear: { low: 2, high: 2 } }),
+      season(2032, 'indeterminate', { between: ['arbitration', 'free_agent'] }),
+      season(2033, 'free_agent'),
+    ]));
+    expect(cone.control.note).toMatch(/2031 or 2032/);
+  });
+});
