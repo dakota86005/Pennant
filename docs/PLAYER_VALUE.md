@@ -1809,9 +1809,9 @@ save's imports. The owner's decisions of 2026-09-24 add `COST_COMBINATION_POLICY
 | Which clause columns are "not populated" | **none: read** | A clause column that is 0 on every contract in the export is unknown, not "none" (R-6); measured per import |
 | Discount rate | **policy** | **5% a season** (owner, 2026-09-24; `SURPLUS_POLICY.discountRate`, stamped `SURPLUS_POLICY_CALIBRATION`): a time preference, one stated rate in the neutral view; a season *s* seasons out weighs 1/1.05^*s*, this season's remaining part 1. `competitiveWindow` leans on it only in "our view" (Q-3; as built in 5b, from 0% to 15%, `LENS_POLICY.window`). No backtest can call it optimal |
 | The price of a win in later seasons | **policy** | Held flat at the price in force (owner, 2026-09-24; `SURPLUS_POLICY.price`): no salary inflation is assumed unless the save's own measured price history later shows drift |
-| How the rest of this season counts | **policy** | Its part still to be played: production's rest-of-season band, and the same share (the league's games not yet played) of his salary and of a replacement's minimum; banked wins and paid salary sunk, shown and never counted (`SURPLUS_POLICY.restOfSeason`) |
+| How the rest of this season counts | **policy** | Its part still to be played: production's rest-of-season band, and the same share (the league's games not yet played) of his salary and of a replacement's minimum; banked wins and paid salary sunk, shown and never counted (`SURPLUS_POLICY.restOfSeason`). Salary paid in step with the schedule: owner-attested, 2026-09-24 |
 | Money owed whatever the club does | **policy** | A major-league contract's salary for each season it covers, the current deal or a signed extension (`SURPLUS_POLICY.guaranteed`); it cancels in the retention margin. A minor-league deal's is not established |
-| An option's buyout the export does not populate | **policy** | Read from nothing to the option's salary (`SURPLUS_POLICY.unknownBuyout`); a buyout above the salary would make declining dearer than exercising |
+| An option's buyout the export does not populate | **policy** | Read from nothing to the option's salary (`SURPLUS_POLICY.unknownBuyout`, owner-approved 2026-09-24); a buyout above the salary would make declining dearer than exercising. Declined options observed across imports can narrow it later |
 | Production value: the minimum plus wins × price | **none: mechanism** | The price is salary above the minimum per win above the export's replacement level (4.1), so a replacement at 0 WAR costs the minimum; pinned by `playerValueSurplus.test.ts` |
 | Projection horizon | **policy** | To the end of control, capped at 7 seasons (Q-3). Control is what the club owns. `CONTROL_HORIZON_SEASONS` in `playerValueCalibration.ts` (phase 1) |
 | Production coverage targets (80% and 50%), era and hold-out rule, adoption gate and tolerance, minimum samples, prior strength and widening, usage tiers, two-way minimum, starter share, usage pivot age, proneness banding and evidence rule | **policy** | `PRODUCTION_POLICY`, stamped `PRODUCTION_POLICY_CALIBRATION` (phase 3a). Decisions about the method (D-053) |
@@ -1954,6 +1954,13 @@ The owner answered these on 2026-09-22. Each answer is folded into the part it n
   save's own measured price history later shows drift. A season *s* seasons from now weighs 1/1.05^*s*; this season's
   remaining part weighs 1. Stated as policy under D-041 (`SURPLUS_POLICY`, stamped `SURPLUS_POLICY_CALIBRATION`; Part 11)
   and applied in 5.1.
+- **Phase 5a's readings (2026-09-24).** The owner approved the four readings the supervisor had applied provisionally in
+  5a (5.1, Part 11): (1) production value is the league minimum plus wins × price, so a replacement at 0 WAR paid the
+  minimum is worth nothing, not less; (2) an option's buyout the export does not populate is read from nothing to the
+  option's salary. The owner left room for a better method: once the save observes declined options across imports
+  (4b), their buyouts can narrow it. (3) Salary is paid in step with the schedule when this season's remaining part is
+  split off; the owner believes that is how OOTP pays (`owner_attested`). (4) In a league without financials, the wins
+  total is discounted at the same 5%.
 - **Deferred to phase 6 (2026-09-23, hardening).** A-20 (the `unverified` limitation and data freshness reaching the
   GM on consumer routes) and D-26 (pre-fork consumer routes failing on older export shapes) are consumer-migration
   questions and move with the consumers (Part 8).
