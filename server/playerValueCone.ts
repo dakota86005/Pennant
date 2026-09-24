@@ -100,7 +100,7 @@ const STATUS_WORDS: Record<ControlStatus, string> = {
   free_agent: 'free agency', reserve_clause: 'reserve clause', indeterminate: 'not established',
 };
 
-const NOT_ESTABLISHED: Labels = { label: 'Not established', short: 'Not est.', code: 'N/E' };
+const NOT_ESTABLISHED: Labels = { label: 'Control not established', short: 'Not est.', code: 'N/E' };
 const FREE_AGENT_AFTER: Labels = { label: 'Free agent after', short: 'FA after', code: 'FA›' };
 
 function labelsOf(c: ControlSeason): Labels {

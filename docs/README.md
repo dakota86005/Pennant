@@ -27,6 +27,7 @@ later code.
 | Document | Why it stays |
 |---|---|
 | [MLB_OPERATIONS_HARDENING.md](MLB_OPERATIONS_HARDENING.md) | The MLB Operations hardening phase (D-039 to D-043). |
+| [PLAYER_VALUE_HARDENING.md](PLAYER_VALUE_HARDENING.md) | The Player Value hardening cycle (phases 1 to 3b): every review finding and its outcome, and the owner decisions it produced (D-052, D-053 amendments). |
 | [RIGHTS_RESEARCH.md](RIGHTS_RESEARCH.md) | The experiments and OOTP documentation behind Player Rights (D-023). |
 | [PLAYER_VALUE_RESEARCH.md](PLAYER_VALUE_RESEARCH.md) | Research evidence behind Player Value (D-052): what the import establishes about contracts, service time, WAR and club finances, and what it leaves unresolved. |
 | [CALIBRATION_RUN.txt](CALIBRATION_RUN.txt) | Raw output of the calibration run that `server/calibration.ts` stamps point at. |

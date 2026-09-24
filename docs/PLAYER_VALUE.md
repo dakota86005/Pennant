@@ -1190,3 +1190,18 @@ The owner answered these on 2026-09-22. Each answer is folded into the part it n
 - **Super Two margin (2026-09-23, hardening).** The owner approved a policy margin of days around the computed
   cutoff range, within which the answer is `indeterminate`: the cutoff's edges are readings, not bounds. Set at 10
   days (Part 11), stamped policy under D-041 (2.2).
+- **Contract and money readings (2026-09-23, hardening F2 and F3).** The owner approved these, applied
+  provisionally during the hardening (the record is `docs/PLAYER_VALUE_HARDENING.md`):
+  - **Arbitration trips as ranges.** Where the service projection cannot say which arbitration year a season is, the
+    label is the range ("Arbitration 1–2"), never a single guessed count.
+  - **Options outside committed payroll.** Club, vesting and mutual option years are not counted in committed totals;
+    they are shown beside them as optional money ("+$23.0M in 2 club options, not counted").
+  - **The opt-out reading inside extensions.** The exported opt-out count is read as after that contract year in an
+    extension's seasons as in the current deal's, and stays a reading, not an established date (R-6).
+  - **Price-of-win minimums.** A season (or this season's pace) covering under a quarter of the schedule, or a market of
+    fewer than 20 contracts, is not used for the opening price (`OPENING_PRICE_MINIMUMS`, Part 11).
+  - **Short seasons.** A season's salaries are taken to scale with its schedule, so a short season's WAR is priced in
+    proportion to the schedule it covered, never as a full season (4.1).
+- **Deferred to phase 6 (2026-09-23, hardening).** A-20 (the `unverified` limitation and data freshness reaching the
+  GM on consumer routes) and D-26 (pre-fork consumer routes failing on older export shapes) are consumer-migration
+  questions and move with the consumers (Part 8).

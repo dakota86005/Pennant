@@ -82,14 +82,14 @@ describe('the production cone joins production with control, season by season', 
     const unknownControl = timeline([], { standing: 'unknown', thisSeason: null, notes: ['The current season is not known.'] });
     const cone = productionCone(projectProduction(regular()), unknownControl);
     expect(cone.seasons.length).toBeGreaterThan(0);
-    expect(new Set(cone.seasons.map((s) => s.control.label))).toEqual(new Set(['Not established']));
+    expect(new Set(cone.seasons.map((s) => s.control.label))).toEqual(new Set(['Control not established']));
     expect(cone.seasons.every((s) => s.control.after === null)).toBe(true);
 
     const straddling = productionCone(projectProduction(regular()), timeline([
       season(2030, 'pre_arbitration'), season(2031, 'indeterminate', { between: ['pre_arbitration', 'arbitration'] }),
     ]));
     expect(straddling.seasons[1].control.status).toBe('indeterminate');
-    expect(straddling.seasons[1].control.label).toBe('Not established');
+    expect(straddling.seasons[1].control.label).toBe('Control not established');
     expect(straddling.seasons[1].control.detail).toMatch(/pre-arbitration and arbitration/);
   });
 
