@@ -265,26 +265,53 @@ export interface SeasonCost {
   status: ControlSeason['status'];
   low: number | null;
   high: number | null;
+  /**
+   * The reading at the centre of the band (phase 4a review); a contract's salary is its own. Null where the season
+   * lies between statuses Player Rights leaves open: `centrals` then names each status's, and none is chosen.
+   */
+  central: number | null;
+  centrals: Array<{ status: string; central: number; arbitrationClass?: number }> | null;
   /** The basis in words, or why the cost is unknown. */
   text: string;
   /** measured, provisional_prior or measured_thin_with_prior; null for a contract season or an unknown cost. */
   source: string | null;
-  /** He may be a free agent instead: the band is what he costs if the club holds him. */
+  /** He may be a free agent instead, or the player decides: the band is what he costs if the club holds him. */
   ifHeld: boolean;
+  /**
+   * For an option or opt-out season: the declined branch, with what he falls to and its cost (null where control
+   * ends there: no cost to this club), so the option is shown on both branches (review R1-06).
+   */
+  declined: { kind: string; status: ControlSeason['status']; cost: SeasonCost | null } | null;
 }
 
-export function seasonCost(season: ControlSeason | undefined | null): SeasonCost | null {
-  if (!season) return null;
+type CostOf = Pick<ControlSeason, 'season' | 'status' | 'cost' | 'costBasis'>;
+
+function costOf(season: CostOf): SeasonCost | null {
   if (season.cost === null) return null;
   const v = season.cost.value;
+  const point = v !== null && v.low === v.high && season.costBasis == null;
   return {
     season: season.season,
     status: season.status,
     low: v?.low ?? null,
     high: v?.high ?? null,
-    text: season.cost.note ?? (v !== null && v.low === v.high ? 'The contract\'s salary.' : 'Not established.'),
+    central: v === null ? null : v.central !== undefined ? v.central : point ? v.low : null,
+    centrals: season.costBasis?.centrals ?? null,
+    text: season.cost.note ?? (point ? 'The contract\'s salary.' : 'Not established.'),
     source: season.costBasis?.source ?? null,
     ifHeld: season.costBasis?.ifHeld ?? false,
+    declined: null,
+  };
+}
+
+export function seasonCost(season: ControlSeason | undefined | null): SeasonCost | null {
+  if (!season) return null;
+  const own = costOf(season);
+  if (own === null || !season.declined) return own;
+  const d = season.declined;
+  return {
+    ...own,
+    declined: { kind: d.kind, status: d.status, cost: costOf({ season: season.season, status: d.status, cost: d.cost, costBasis: d.costBasis ?? null }) },
   };
 }
 

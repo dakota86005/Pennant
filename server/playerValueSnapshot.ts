@@ -79,6 +79,11 @@ export interface MarketSnapshot {
   leaguePayroll: number | null;
   replacement: Array<{ season: number; toDate: boolean; level: number | null; note: string | null }>;
   regime: unknown;
+  /**
+   * The price's basis as recorded. Since phase 4a it holds `costs` (the cost ladder), but only for a key first written
+   * after the upgrade (a key is never rewritten), and the phase 4a review changed a reading's shape (a robust line in
+   * dollars, its bootstrap error, the at-minimum deals): a reader treats `costs` as optional and checks its shape.
+   */
   basis: unknown;
 }
 

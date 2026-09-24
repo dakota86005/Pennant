@@ -56,6 +56,24 @@ function seasonMoney(contract: ContractFacts, thisSeason: number, year: number):
   return { salary, unstated: salary === null, option: null };
 }
 
+/**
+ * The sum of the projected seasons' centrals (phase 4a review): low counts a season that may be free agency as
+ * leaving and a season between statuses at its lowest status's central; high counts him held and the highest.
+ */
+function centralSum(known: SeasonCost[]): { low: number; high: number } {
+  let low = 0;
+  let high = 0;
+  for (const x of known) {
+    const options = x.central !== null ? [x.central] : (x.centrals ?? []).map((c) => c.central);
+    // A priced band always names a central or its statuses'; were neither there, its own edges bound it
+    const lo = options.length > 0 ? Math.min(...options) : (x.low as number);
+    const hi = options.length > 0 ? Math.max(...options) : (x.high as number);
+    low += x.ifHeld ? 0 : lo;
+    high += hi;
+  }
+  return { low, high };
+}
+
 payrollRoutes.get('/payroll/:orgId', (req, res) => {
   const orgId = Number(req.params.orgId);
   if (!tableExists('players_contract') || !tableExists('teams')) return res.status(400).json({ error: 'No data imported yet' });
@@ -134,8 +152,14 @@ payrollRoutes.get('/payroll/:orgId', (req, res) => {
         byYear,
         /** Seasons the contract covers whose salary the export does not state: unknown, never $0. */
         unstatedYears: years.filter((_, i) => money[i].unstated),
-        /** Option and opt-out seasons, with the salary if exercised and whether the club is bound to it. */
-        optionYears: money.map((m) => m.option).filter((o): o is OptionYear => o !== null),
+        /**
+         * Option and opt-out seasons, with the salary if exercised, whether the club is bound to it, and (phase 4a
+         * review, R1-06) the declined branch as the timeline serves it: what he falls to and its cost, never in a total.
+         */
+        optionYears: money.map((m) => m.option).filter((o): o is OptionYear => o !== null).map((o) => ({
+          ...o,
+          declined: seasonCost(v.control.seasons.find((x) => x.season === o.season))?.declined ?? null,
+        })),
         /*
          * Phase 4a: a controlled season no contract covers (pre-arbitration, arbitration, or open between
          * them), with its projected cost exactly as Player Value's timeline serves it. Never committed money:
@@ -176,13 +200,20 @@ payrollRoutes.get('/payroll/:orgId', (req, res) => {
       players: withMoney.length,
       /*
        * Phase 4a: what the controlled seasons no contract covers are projected to cost, summed edge against
-       * edge. Beside the committed total, never in it or in the headroom. A season that may be free agency
-       * adds nothing to the low edge (he may leave) and what he costs if held to the high edge; a season whose
-       * cost is not established is counted apart, never as $0.
+       * edge: a range of reasonable readings (every player at his low edge, every player at his high edge), not an
+       * interval and not an expectation. Beside the committed total, never in it or in the headroom. A season that
+       * may be free agency adds nothing to the low edge (he may leave) and what he costs if held to the high edge;
+       * a season whose cost is not established is counted apart, never as $0. Whether players' readings should be
+       * combined statistically rather than edge to edge is an owner question (review R2-01), so edges stay summed.
+       *
+       * The centrals (review R2-03) are summed beside it: each season's own; a season that may be free agency adds
+       * its central if held to the upper sum only; a season between statuses (no single central) adds its lowest
+       * and highest status's central. Where nothing is open the two are one figure.
        */
       projected: {
         low: known.length > 0 ? known.reduce((sum, x) => sum + (x.ifHeld ? 0 : (x.low as number)), 0) : null,
         high: known.length > 0 ? known.reduce((sum, x) => sum + (x.high as number), 0) : null,
+        central: known.length > 0 ? centralSum(known) : null,
         players: known.length,
         unpriced: projected.length - known.length,
         mayLeave: known.filter((x) => x.ifHeld).length,

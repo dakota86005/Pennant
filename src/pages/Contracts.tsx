@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { getContracts, type ClubFinanceCards, type ContractsResponse } from '../api';
+import { getContracts, type ClubFinanceCards, type ContractsResponse, type SeasonCostData } from '../api';
+import { COST_BAND_WORDS, costBandText, costMoney } from '../costBand';
 import { PlayerLink, Tip, TIP_TALENT, TIP_VALUE } from '../playerModal';
 import { Th } from '../Th';
 
@@ -66,8 +67,19 @@ const STATUS_LABEL: Record<Status, string> = {
 /** The seasons whose cost is projected rather than contracted (phase 4a). */
 const CONTROLLED = new Set(['pre_arbitration', 'arbitration', 'indeterminate']);
 
-/** "$0.8M", or "$4.1M–$31.7M" where the edges print apart. */
-const band = (low: number, high: number): string => (money(low) === money(high) ? money(low) : `${money(low)}–${money(high)}`);
+/** The seasons whose declined branch Contracts shows beside next season's option (phase 4a review, R1-06). */
+const OPTION = new Set(['club_option', 'player_option', 'vesting_option', 'mutual_option', 'opt_out']);
+
+/** "$4.6M–$25.3M", or "$780K–$790K" where the edges round alike: a band never reads as a point (phase 4a review). */
+export const band = (low: number, high: number): string => costBandText(low, high);
+
+/** Next season's cost as the row shows it: the band, "if held" beside it, never only on hover. */
+const nextText = (c: SeasonCostData): string =>
+  c.low === null || c.high === null ? 'cost unknown' : `${band(c.low, c.high)}${c.ifHeld ? ' if held' : ''}`;
+
+/** Its hover: what the band is, its central, and its basis. */
+const nextTitle = (c: SeasonCostData): string =>
+  `Projected, not committed: ${COST_BAND_WORDS}.${c.central !== null ? ` Central ${costMoney(c.central)}.` : ''} ${c.text}`;
 
 /** Same precedence the flags use, so the two can never disagree. */
 function statusOf(p: ContractsResponse['players'][number]): Status {
@@ -132,7 +144,8 @@ export function Contracts({ orgId }: { orgId: number }) {
           Free agency means he can leave; arbitration and pre-arbitration mean the club keeps him
           whether he likes it or not, at a price the process sets. Money shown is this season&rsquo;s
           salary; under the flags, &ldquo;next&rdquo; is what next season is projected to cost where no
-          contract covers it (a band; hover for its basis), never committed money. &ldquo;Not yet established&rdquo; means the save cannot
+          contract covers it: a range of reasonable readings, not an interval and not a forecast (hover for its central and
+          basis; &ldquo;if held&rdquo; means he may leave instead), never committed money. &ldquo;Not yet established&rdquo; means the save cannot
           say which: his service will cross a line only if he stays up, or the league&rsquo;s rule is not in
           the export. Hover the flag for why.
         </p>
@@ -187,8 +200,14 @@ export function Contracts({ orgId }: { orgId: number }) {
                 ))}
                 {/* Phase 4a: next season's projected cost where no contract covers it, as the timeline serves it */}
                 {p.nextCost && CONTROLLED.has(p.nextCost.status) && (
-                  <span className="muted next-cost" title={`Projected, not committed. ${p.nextCost.text}`}>
-                    <em>next: {p.nextCost.low === null || p.nextCost.high === null ? 'cost unknown' : band(p.nextCost.low, p.nextCost.high)}</em>
+                  <span className="muted next-cost" title={nextTitle(p.nextCost)}>
+                    <em>next: {nextText(p.nextCost)}</em>
+                  </span>
+                )}
+                {/* An option next season: its declined branch and that branch's cost, beside the option flag */}
+                {p.nextCost && OPTION.has(p.nextCost.status) && p.nextCost.declined?.cost && (
+                  <span className="muted next-cost" title={nextTitle(p.nextCost.declined.cost)}>
+                    <em>if declined: {p.nextCost.declined.status.replace(/_/g, ' ')}, {nextText(p.nextCost.declined.cost)}</em>
                   </span>
                 )}
               </td>

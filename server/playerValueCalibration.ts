@@ -2113,6 +2113,8 @@ export const RATINGS_PRIOR: RatingsModel = {
  *                          or non-tender on a one-year deal does not set it;
  *   renewal.confidence     read as its distribution-free upper confidence bound at 90% (an order statistic), so
  *                          a thinner class reads a higher edge, never a lower one;
+ *                          (The bound is itself one of the renewals: below 38 renewals it is the largest, so there
+ *                          one unusual renewal does set it, and the band's text says so; review R2-06.)
  *   renewal.minimumCases   30 renewals before the band is the save's own; fewer, and it is the provisional prior
  *                          widened by the save's cases (only where the regime as read is MLB's), else unknown;
  *   ladder.platformSeasons an arbitration salary is read against the mean WAR of the two seasons before the
@@ -2120,25 +2122,44 @@ export const RATINGS_PRIOR: RatingsModel = {
  *                          a body of work, not one season; on the Arizona import the two-season platform explains
  *                          each class's pay better than the platform season alone (CALIBRATION.md section 8). For
  *                          a future season the platform seasons are projections;
+ *   ladder.line            the class's line is read robustly: Theil–Sen (the median of the slopes between every two
+ *                          contracts, and the median intercept). One star, or one free-agent-market contract that
+ *                          Player Rights reads in the class (the Arizona import's Imanaga and Kim), moves it no
+ *                          further than one case moves a median; least squares let either move a rung by a fifth
+ *                          (review R2-04). Deterministic, no tuning; its breakdown point is about 29%;
+ *   ladder.bootstrap       the line's own uncertainty is read from the same fit: the class's contracts resampled and
+ *                          the robust line refitted 200 times (a fixed seed, so an import always reads the same line),
+ *                          the spread of its level at the class's median platform and of its rung, and their
+ *                          correlation. The closed form of least squares does not apply to a Theil–Sen line;
  *   ladder.spread          the class's pay around its line: the 10th and 90th percentiles of what the class was
  *                          paid against what the line gives (an inverted-CDF quantile, unchanged by duplicating
- *                          the class), the same 80% as production's outer band;
- *   ladder.lineErrors      the line's own uncertainty added on each side, 1.28 standard errors (the same 80%), so
- *                          fewer contracts read wider;
- *   ladder.minimumCases    30 contracts in a class before its line is the save's own; fewer, and it is the
- *                          provisional prior hulled with the save's own line (read from `fitCases`, three, the
- *                          fewest a line can be read on), only where the regime as read is MLB's; else unknown.
+ *                          the class), the same 80% as production's outer band. The spread is one pair of dollar
+ *                          figures across the class's platforms, although pay scatters more at a middle platform
+ *                          than a low one (review R2-09: a log line fits worse); recorded, revisited in phase 4b;
+ *   ladder.lineErrors      the line's own uncertainty added on each side, 1.28 of its standard errors (the same 80%),
+ *                          added to the spread edge against edge rather than in quadrature (wider), so fewer
+ *                          contracts read wider;
+ *   ladder.minimumCases    30 contracts in a class before its line is the save's own. Fewer, and no line is read on
+ *                          them (a handful of contracts cannot carry a slope, and extrapolating one set bands at five
+ *                          times a small league's largest salary: review R2-02): the class is the provisional prior's
+ *                          line hulled with the range the save paid the class above the minimum, so its own
+ *                          contracts only widen it, only where the regime as read is MLB's; else unknown.
  */
 export const COST_POLICY = {
   renewal: { quantile: 0.9, confidence: 0.9, minimumCases: 30 },
-  ladder: { platformSeasons: 2, spread: { low: 0.1, high: 0.9 }, lineErrors: 1.2816, minimumCases: 30, fitCases: 3 },
+  ladder: {
+    platformSeasons: 2, spread: { low: 0.1, high: 0.9 }, lineErrors: 1.2816, minimumCases: 30,
+    line: 'theil_sen', bootstrap: { replicates: 200, seed: 20260923 },
+  },
 } as const;
 
 export const COST_POLICY_CALIBRATION: CalibrationStamp = policy(
-  "The cost ladder's method (phase 4a): a pre-arbitration renewal from the league minimum to the 90% upper confidence bound of the 90th percentile of the save's " +
-    "one-year renewals; an arbitration season from its class's line (pay above the minimum against the two-season platform WAR: a base and a share of the " +
-    "price of a win per platform win), with its 10th-90th percentile spread and 1.28 of the line's standard errors each side; 30 cases before a class is the " +
-    "save's own. Decisions about the method (D-041), not fits: the numbers themselves are measured on each import."
+  "The cost ladder's method (phase 4a, review 2026-09-23): a pre-arbitration renewal from the league minimum to the 90% upper confidence bound of the 90th " +
+    "percentile of the save's one-year renewals, its central the median renewal; an arbitration season from its class's robust (Theil–Sen) line of pay above " +
+    'the minimum against the two-season platform WAR (a base and a pay per platform win, in the import\'s dollars), with its 10th-90th percentile spread and ' +
+    "1.28 of the line's standard errors each side from 200 bootstrap refits of the same line; 30 contracts before a class is the save's own, and below that no " +
+    "line of its own: the prior's line widened by the save's range. A contract at the minimum is kept out of the line and lets a season whose platform " +
+    'reaches as low reach the minimum. Decisions about the method (D-041), not fits: the numbers themselves are measured on each import.'
 );
 
 /** One arbitration class of the provisional prior, in the league minimum's units so it carries to another save's money. */
@@ -2147,16 +2168,19 @@ export interface CostPriorClass {
   cases: number;
   /** Pay above the minimum at no platform wins, in minimums. */
   baseOverMinimum: number;
-  /** Per platform win, as a share of the price of a win's central (the rung). */
+  /** Per platform win, as a share of the price of a win's central (the rung), and its bootstrap standard deviation. */
   share: number;
+  shareSd: number;
   /** The class's pay around its line, in minimums. */
   spreadOverMinimum: { low: number; high: number };
-  /** The line's residual standard deviation, in minimums; its mean platform and sum of squares (wins). */
-  sigmaOverMinimum: number;
-  meanPlatform: number;
-  sumSquares: number;
+  /** The line's own uncertainty: its level's standard deviation at `center` (wins), in minimums, and its correlation with the rung. */
+  center: number;
+  levelSdOverMinimum: number;
+  correlation: number;
   /** The least pay above the minimum the class showed, in minimums. */
   floorOverMinimum: number;
+  /** The platforms (wins) it was measured on. */
+  platforms: { low: number; high: number };
 }
 
 /**
@@ -2164,21 +2188,24 @@ export interface CostPriorClass {
  * used only where a save's own class is thinner than the policy minimum AND its regime as read is MLB's. Never
  * presented as the save's own measurement: every cost priced from it says "provisional".
  */
-export const COST_PRIOR: { source: string; renewal: { cases: number; highOverMinimum: number }; ladder: CostPriorClass[] } = {
+export const COST_PRIOR: { source: string; renewal: { cases: number; highOverMinimum: number; medianOverMinimum: number }; ladder: CostPriorClass[] } = {
   source: 'the cost ladder measured on the imported real-world 2026 contracts of the Arizona save (2026-05-16; R-6)',
-  renewal: { cases: 249, highOverMinimum: 1.0128 },
+  renewal: { cases: 249, highOverMinimum: 1.0128, medianOverMinimum: 1 },
   ladder: [
-    // Measured by `measureCostLadder` on that import (2026-05-16): 74, 51 and 47 contracts; 10, 6 and 4 at the minimum left out
-    { arbitrationClass: 1, cases: 74, baseOverMinimum: 0.5668, share: 0.1427, spreadOverMinimum: { low: -1.0176, high: 1.4033 }, sigmaOverMinimum: 1.0203, meanPlatform: 1.206, sumSquares: 106.747, floorOverMinimum: 0.0256 },
-    { arbitrationClass: 2, cases: 51, baseOverMinimum: 1.7265, share: 0.264, spreadOverMinimum: { low: -2.2308, high: 2.2876 }, sigmaOverMinimum: 3.6211, meanPlatform: 1.3245, sumSquares: 45.721, floorOverMinimum: 0.1538 },
-    { arbitrationClass: 3, cases: 47, baseOverMinimum: 0.5218, share: 0.4876, spreadOverMinimum: { low: -4.1182, high: 4.4303 }, sigmaOverMinimum: 4.4155, meanPlatform: 1.3682, sumSquares: 71.258, floorOverMinimum: 0.5385 },
+    // Measured by `measureCostLadder` (the review's method: Theil–Sen with a bootstrap) on that import (2026-05-16): 74, 51
+    // and 47 contracts above the minimum; 10, 6 and 4 at the minimum kept out of the line. In its dollars: $0.38M + $0.96M a
+    // platform win, $1.04M + $1.75M, $0.65M + $2.54M (the least-squares lines were $0.44M + $1.04M, $1.35M + $1.92M, $0.41M + $3.54M)
+    { arbitrationClass: 1, cases: 74, baseOverMinimum: 0.4808, share: 0.133, shareSd: 0.0123, spreadOverMinimum: { low: -0.8441, high: 1.597 }, center: 0.7799, levelSdOverMinimum: 0.1803, correlation: 0.1479, floorOverMinimum: 0.0256, platforms: { low: -0.4042, high: 6.1912 } },
+    { arbitrationClass: 2, cases: 51, baseOverMinimum: 1.3372, share: 0.2412, shareSd: 0.0295, spreadOverMinimum: { low: -1.5742, high: 3.2855 }, center: 1.4704, levelSdOverMinimum: 0.3378, correlation: 0.6041, floorOverMinimum: 0.1538, platforms: { low: -0.042, high: 3.9036 } },
+    { arbitrationClass: 3, cases: 47, baseOverMinimum: 0.8275, share: 0.3505, shareSd: 0.0458, spreadOverMinimum: { low: -1.4611, high: 6.9625 }, center: 1.0675, levelSdOverMinimum: 0.4477, correlation: 0.384, floorOverMinimum: 0.5385, platforms: { low: -0.4681, high: 6.5683 } },
   ],
 };
 
 export const COST_PRIOR_CALIBRATION: CalibrationStamp = provisional(
-  'The cost ladder on the imported real-world contracts (R-6: the Arizona import, 2026-05-16): the renewal spread and the arbitration ladder by class, ' +
-    "in minimums and shares of the price of a win. Used only where a save's own class is below the policy minimum and its regime as read is MLB's, " +
-    "hulled with the save's own cases, and always labelled provisional; replaced by the save's measurement as its classes fill, and by observed awards (phase 4b)."
+  'The cost ladder on the imported real-world contracts (R-6: the Arizona import, 2026-05-16), by the review\'s method (a robust line and its bootstrap): ' +
+    "the renewal spread and median and the arbitration ladder by class, in minimums and shares of the price of a win. Used only where a save's own class is " +
+    "below the policy minimum and its regime as read is MLB's, widened by the range the save paid the class, and always labelled provisional; replaced by the " +
+    "save's measurement as its classes fill, and by observed awards (phase 4b)."
 );
 
 // ── phase 4b: the measured price of a win across imports (PLAYER_VALUE.md 4.2 to 4.4) ────────────────

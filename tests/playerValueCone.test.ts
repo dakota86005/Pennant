@@ -232,6 +232,33 @@ describe('the production cone, hardening (F2)', () => {
     // Never a cost where the timeline states none, and never a zero
     expect(cone.seasons.every((s) => s.control.cost === null || s.control.cost.high > 0)).toBe(true);
   });
+
+  it("shows an option's declined branch and its cost beside the exercised salary, and carries the central and 'if held' (phase 4a review, R1-06, R2-03)", () => {
+    const declinedBand = { low: 2_430_000, high: 16_100_000, central: 6_000_000 };
+    const cone = productionCone(projectProduction(regular()), timeline([
+      season(2030, 'under_contract', { cost: { value: { low: 5_000_000, high: 5_000_000 }, provenance: 'explicit_export', source: 'players_contract.salary0' } }),
+      season(2031, 'club_option', {
+        from: 'contract',
+        cost: { value: { low: 6_000_000, high: 6_000_000 }, provenance: 'explicit_export', source: 'players_contract.salary1' },
+        declined: {
+          kind: 'option_declined', buyout: { value: null, provenance: 'unknown', source: null, reason: 'not_exported_by_ootp' }, status: 'arbitration', between: [],
+          cost: { value: declinedBand, provenance: 'derived', source: 'test', note: 'Arbitration class 2–3: measured.' },
+          costBasis: { method: 'arbitration_ladder', source: 'measured', classes: [2, 3], cases: 98, platform: null, price: null, ifHeld: false, text: 'measured' },
+        },
+      }),
+      season(2032, 'indeterminate', {
+        between: ['arbitration', 'free_agent'],
+        cost: { value: { low: 5_300_000, high: 36_800_000, central: 12_000_000 }, provenance: 'derived', source: 'test', note: 'Between arbitration and free agent.' },
+        costBasis: { method: 'arbitration_ladder', source: 'measured', classes: [3], cases: 47, platform: null, price: null, ifHeld: true, text: 'if held' },
+      }),
+      season(2033, 'free_agent'),
+    ]));
+    const [, option, open] = cone.seasons.map((s) => s.control);
+    expect(option.declined).toMatchObject({ status: 'arbitration', cost: { low: 2_430_000, high: 16_100_000 } });
+    expect(option.costDetail).toMatch(/declined/i);
+    expect(open.ifHeld).toBe(true);
+    expect(open.cost!.central).toBe(12_000_000);
+  });
 });
 
 describe('the cone states what the projection rests on, and is calibrated only where every part is (hardening, 2026-09-23)', () => {

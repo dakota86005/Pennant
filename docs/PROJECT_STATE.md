@@ -576,23 +576,33 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   the save's own one-year contracts, with status and class from Player Rights. A
   pre-arbitration renewal costs from the league minimum to the 90% upper bound of
   the 90th percentile of the save's renewals (Arizona: 249 renewals, $780K–$790K).
-  An arbitration season costs the minimum plus its class's line (a base and a share
-  of the price of a win per win of the two-season platform, with its 10th–90th
-  percentile spread and the line's standard error) at the platform seasons'
-  projected production and the price's band, edge against edge (Arizona: classes 1–3
-  on 74, 51 and 47 contracts; shares 14%, 26%, 49% of the price per platform win on
-  bases of $0.44M, $1.35M and $0.41M; R-6's statistic on the same cases 19%, 40%,
-  52%). A range of years covers each year; an open season covers each status; a
-  season that may be free agency is what he costs if held, said. Below 30 contracts
-  a class is the provisional prior (the same method on the imported contracts)
-  hulled with its own line, only where the regime as read is MLB's; a league with no
-  arbitration or an unread rule gets no ladder. Reserve-clause renewals are priced
-  only from renewals observed across imports (phase 4b). The ladder is snapshotted
-  with the market (`basis_json.costs`).
-  Payroll shows each controlled season's projected band beside committed money
-  (never in the total or the room) with the ladder's basis; Contracts shows next
-  season's band under the flags; the card's cone shows each season's cost.
-  Payroll now computes production for its players (about 130 ms a club).
+  An arbitration season costs the minimum plus its class's robust (Theil–Sen) line
+  (a base and a pay per win of the two-season platform, in the import's own dollars,
+  with its 10th–90th percentile spread and the line's error from a bootstrap of the
+  same fit) at the platform seasons' projected production, edge against edge; only
+  the provisional prior's shares carry the price of a win's band (Arizona: classes
+  1–3 on 74, 51 and 47 contracts; $0.38M + $0.96M, $1.04M + $1.75M and $0.65M +
+  $2.54M a platform win; least squares had read $1.04M, $1.92M and $3.54M). Every
+  priced season carries a central inside its band (none chosen between statuses,
+  each named). A range of trips covers each class, and the class his service puts him
+  in (where the ladder reads a player of that service); an open season covers each
+  status; a season that may be free agency, or a branch the player decides, is what
+  he costs if held, said. A contract at the minimum is kept out of the line; a
+  season whose platform reaches as low as the save's at-minimum deals in its class
+  reaches the minimum, said. Below 30 contracts a class has no line of its own: the
+  provisional prior (the same method on the imported contracts) widened by the range
+  the save paid the class, only where the regime as read is MLB's; a league with no
+  arbitration or an unread rule gets no ladder, and in a league with no arbitration
+  Player Rights lists no season as possibly arbitration. Reserve-clause renewals are
+  priced only from renewals observed across imports (phase 4b). The ladder is snapshotted with the market (`basis_json.costs`;
+  a key written before 4a has none, and the shape changed in the review). Payroll
+  shows each controlled season's band beside committed money (never in the total or
+  the room), summed edge against edge as a range of reasonable readings with the sum
+  of centrals beside it, and the ladder's basis; Contracts shows next season's band
+  (and an option's declined branch) under the flags; the card's cone shows each
+  season's cost, its central and an option's declined branch. A reading without
+  production (Free Agents) prices nothing. Payroll now computes production for its
+  players (about 130 ms a club). Phase 4a review (2026-09-23): PLAYER_VALUE.md Part 9.
 - **The measured price of a win across imports** (phase 4b, 2026-09-23;
   `server/playerValueSignings.ts` pure, `server/playerValueContractStore.ts` the third
   writer, PLAYER_VALUE.md 4.2 to 4.4, CALIBRATION.md section 9): each import records its

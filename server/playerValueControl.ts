@@ -54,12 +54,19 @@ export type ControlStatus =
 export interface CostBand {
   low: number;
   high: number;
+  /**
+   * The reading at the centre of each component, inside the band (phase 4a review): a priced season's line at its
+   * platform's central, or the median renewal. Null where the season lies between statuses Player Rights leaves open
+   * (each status's central is named in the basis, none chosen); absent on a contract's point, which is its own central.
+   */
+  central?: number | null;
 }
 
 /**
  * What a priced season's cost rests on (phase 4a), so a consumer can show the basis without recomputing it:
  * which method, measured on the save or the provisional prior, the arbitration classes covered, the contracts
- * read, the platform production and the price of a win it multiplied.
+ * read, the platform production, the price of a win's band where the provisional prior's shares multiplied it,
+ * and the central of each status (or class) it covers.
  */
 export interface CostBasis {
   /** The renewal spread, the arbitration ladder, or both (a season between them). */
@@ -70,12 +77,20 @@ export interface CostBasis {
   classes: number[];
   /** The save's own contracts the reading rests on. */
   cases: number;
-  /** The platform seasons and their production (wins, the 80% band's edges, meaned), for an arbitration season. */
-  platform: { seasons: number[]; low: number; high: number } | null;
-  /** The price of a win's band it multiplied, for an arbitration season. */
+  /** The platform seasons and their production (wins: the 80% band's edges and the central, meaned), for an arbitration season. */
+  platform: { seasons: number[]; low: number; central?: number; high: number } | null;
+  /**
+   * The price of a win's band, only where the provisional prior's reading is in the band (its rung is a share of the
+   * price); null where every class is the save's own line, which is in this import's dollars (review R1-02).
+   */
   price: { low: number; high: number } | null;
-  /** He may be a free agent instead: the band is what he costs if the club holds him. */
+  /** He may be a free agent instead, or the player decides the branch: the band is what he costs if the club holds him. */
   ifHeld: boolean;
+  /**
+   * The central of each status the season could be (or each arbitration class, where the trip is not counted), so a
+   * season with no single central still names them; one entry where there is a single central.
+   */
+  centrals?: Array<{ status: ControlStatus; central: number; arbitrationClass?: number }> | null;
   /** One line, in words. */
   text: string;
 }
@@ -153,6 +168,12 @@ const pending = (note: string): Sourced<CostBand> => unknownBecause<CostBand>('r
  * prices it: a season it can price is "not priced" until it does; a reserve-clause renewal and an open season
  * that names nothing it lies between stay unknown with their own reason.
  */
+/** A status as the basis text names it (never the code's underscore). */
+const STATUS_NAMES: Partial<Record<ControlStatus, string>> = {
+  pre_arbitration: 'pre-arbitration', arbitration: 'arbitration', free_agent: 'free agency', reserve_clause: 'the reserve clause',
+  under_contract: 'under contract',
+};
+
 function costOfStatus(status: ControlStatus, between: ControlStatus[] = []): Sourced<CostBand> | null {
   switch (status) {
     case 'free_agent':
@@ -200,7 +221,7 @@ function fromEligibility(e: SeasonControlEligibility | undefined, season: number
     case 'pre_arbitration': basis = e.arbitration.reasons[0]?.message ?? e.freeAgency.reasons[0]?.message ?? 'Short of the arbitration line.'; break;
     case 'reserve_clause': basis = e.freeAgency.reasons[0]?.message ?? 'A reserve clause binds him.'; break;
     default: basis = between.length > 0
-      ? `Between ${between.map((s) => s.replace('_', ' ')).join(' and ')}: which one is not yet established.`
+      ? `Between ${between.map((s) => STATUS_NAMES[s] ?? s).join(' and ')}: which one is not yet established.`
       : 'His control status cannot be stated.';
   }
   return {
