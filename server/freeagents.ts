@@ -100,14 +100,19 @@ export function computeFreeAgents(orgId: number, status: DataStatus = getDataSta
   const valuations = playerValues([...available, ...elsewhere].map((p) => p.player_id), options);
   const afterThisSeason = (id: number) => controlAfterThisSeason(valuations.get(id)?.control)?.status ?? null;
   // Whether these reach the market is not established (a threshold inside the projection, a rule the export does not
-  // state, an export behind the save): counted and said, not listed as if they were coming
+  // state, an export behind the save): counted, never listed as if they were coming
   const upcomingIndeterminate = elsewhere.filter((p) => afterThisSeason(p.player_id) === 'indeterminate').length;
   // Next season is an option or an opt-out: whether he reaches the market is a decision still to be made
   const upcomingUndecided = elsewhere.filter((p) => afterThisSeason(p.player_id) === 'option').length;
   const reaching = elsewhere.filter((p) => afterThisSeason(p.player_id) === 'leaving');
+  // Phase 6e (owner, 2026-09-24): of those, the ones free agency is one of the ways it can go are listed apart, each with
+  // why; a player the club controls whichever way the open question goes (between pre-arbitration and arbitration, an
+  // option declined into arbitration) is not
+  const openness = new Map(elsewhere.map((p) => [p.player_id, marketOpenness(controlAfterThisSeason(valuations.get(p.player_id)?.control))]));
+  const mayReach = elsewhere.filter((p) => openness.get(p.player_id) !== null);
 
   const market = surplusMarketOf(org.league_id, options);
-  const scouting = loadScoutedAbilities([...available, ...reaching].map((p) => p.player_id));
+  const scouting = loadScoutedAbilities([...available, ...reaching, ...mayReach].map((p) => p.player_id));
   const limitations = new Set<string>();
 
   const rowOf = (p: Listed): FreeAgentRow => {
@@ -141,6 +146,7 @@ export function computeFreeAgents(orgId: number, status: DataStatus = getDataSta
 
   const currentFAs = available.map(rowOf).sort(byExpectedWins);
   const upcomingFAs = reaching.map(rowOf).sort(byExpectedWins);
+  const mightReach: MightReachRow[] = mayReach.map((p) => ({ ...rowOf(p), why: openness.get(p.player_id)! })).sort(byExpectedWins);
   const needs: PositionNeeds = positionNeeds(orgId, options);
   const priced = market?.price.value ?? null;
 
@@ -159,9 +165,48 @@ export function computeFreeAgents(orgId: number, status: DataStatus = getDataSta
     /** Why the available list could not be read from this export; null where it could. */
     currentNote: canList ? null : "This export doesn't say which league a free agent last played in, so the players available now can't be listed.",
     upcomingFAs,
+    /**
+     * Phase 6e: the players the control timeline leaves between staying and free agency after this season (an option or
+     * opt-out declined into free agency, a season not settled that may be free agency), each with why; same figures and
+     * order as the other lists, never mixed into `upcomingFAs`, never a verdict.
+     */
+    mightReach,
+    /** Every major leaguer elsewhere whose next season is not settled (the listed ones and those who stay either way). */
     upcomingIndeterminate,
+    /** Every major leaguer elsewhere whose next season is an option or opt-out (listed or not). */
     upcomingUndecided,
   };
+}
+
+/** A player who might reach the market, with why: a short word for the page and the timeline's reason for the hover. */
+export interface MightReachRow extends FreeAgentRow {
+  why: { kind: 'option' | 'unsettled'; label: string; reason: string };
+}
+
+const OPTION_LABEL: Record<string, string> = {
+  club: 'Club option', player: 'Player option', vesting: 'Vesting option', mutual: 'Mutual option', opt_out: 'Can opt out',
+};
+
+/** Whether free agency is one of the ways a status can go: it is free agency, or it is not settled and may be (or names nothing). */
+const mayBeFreeAgency = (status: string, between: string[]): boolean =>
+  status === 'leaving' || (status === 'indeterminate' && (between.length === 0 || between.includes('leaving')));
+
+/**
+ * Whether he might reach the market after this season, read from the control timeline's answer (`controlAfterThisSeason`):
+ * an option or opt-out whose declined branch is (or may be) free agency, or a next season not settled that may be free
+ * agency. Null where he reaches it for certain, stays for certain, or no club holds him. The reason is the timeline's own.
+ */
+export function marketOpenness(control: ReturnType<typeof controlAfterThisSeason>): MightReachRow['why'] | null {
+  if (!control) return null;
+  if (control.status === 'option') {
+    if (!control.option || !mayBeFreeAgency(control.option.ifDeclined, control.option.between)) return null;
+    return { kind: 'option', label: OPTION_LABEL[control.option.kind] ?? 'Option', reason: control.reason ?? 'Whether the option is taken decides whether he reaches the market.' };
+  }
+  if (control.status === 'indeterminate' && mayBeFreeAgency(control.status, control.between)) {
+    const label = control.between.includes('leaving') ? 'Close to free agency' : 'Not settled';
+    return { kind: 'unsettled', label, reason: control.reason ?? 'Whether he reaches the market after this season is not established from the export.' };
+  }
+  return null;
 }
 
 const pick = (w: { low: number; central: number; high: number }) => ({ low: w.low, central: w.central, high: w.high });

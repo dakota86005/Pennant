@@ -29,8 +29,9 @@ across all features remains ongoing.
 
 **Status:** Accepted. **Implementation:** Enforced for Player Development and
 Minor League Operations through the scouted-evidence adapter (D-017); scouting
-history is present; pre-fork trade, contract, franchise, and roster surfaces
-still read `players_value` and are not yet audited.
+history is present; since Player Value phase 6 (D-052) no module reads
+`players_value`: the pre-fork trade, contract, franchise and roster surfaces read
+Player Value or the adapter, and the boundary test has no allow-list (phase 6e).
 
 Subjective player-ability judgments must use the organization's/scouting
 director's observed ratings and development history. Hidden OOTP true-talent
@@ -230,8 +231,12 @@ Consequences:
   roster status, assignments, transactions) are unaffected and remain known.
 
 **Remaining gaps:** scouting snapshots keep their own non-strict, native-scale
-composite. Pre-fork surfaces (trade, contracts, franchise, roster/player
-displays) still read `players_value`. Fielding-position grades are assumed to
+composite. The Roster's rating bars (`api.ts` `RATING_SPECS`) read the approved
+tool-rating columns directly rather than through the adapter: the adapter does not
+expose a pitcher's batting grades or a hitter's pitching grades, and reads a 0 as
+unknown, so routing them is an owner question (PLAYER_VALUE.md Part 9, phase 6e).
+No module reads `players_value` any longer (D-052, phase 6; the boundary test's
+allow-list is empty since phase 6e). Fielding-position grades are assumed to
 share the tool ratings' scale. Unknown ratings no longer enter any development
 arithmetic; see D-018.
 
@@ -1249,14 +1254,16 @@ club's value of a win, `playerValueWinValue.ts`; phase 6b, the first consumer of
 the trading block and the AI's trade context read Player Value, `playerValueTrade.ts`, and no `players_value`; phase 6c:
 Free Agents, the club's thinnest positions (`positionNeeds.ts`) and the AI's value context read Player Value, a free agent's
 figure is his production at the market (`marketValueOf`), and Payroll, Free Agents and the Trade Center say how current the
-export is).
+export is; phase 6d: Org Comparison on Player Value, the Roster's scouting column and the Lineup on `scoutedEvidence.ts`;
+phase 6e: the last `players_value` readers deleted from `valuation.ts` and the boundary's allow-list empty, Payroll in plain
+words, the trading block on the export's freshness, Free Agents' "Might reach the market").
 `server/playerValue.ts` (the entry point), `playerValueContract.ts`, `playerValueControl.ts`,
 `playerValueFinances.ts`, `playerValueHistory.ts`, `playerValueProduction.ts`, `playerValueProductionFit.ts`,
 `playerValueRatings.ts` and `playerValueRatingsFit.ts` (phase 3b), the two writers (`playerValueSnapshot.ts` and
 `playerValueFitStore.ts`, `history.db` only), `playerValueRoutes.ts` and `playerValueCalibration.ts`;
 contract-control eligibility in `playerRights.ts` (`evaluateContractControl`); one `LeagueRules` in `leagueRules.ts`,
 with the financial regime; `tests/playerValueBoundary.test.ts`. The `players_value` consumer migration (phase 6) is
-not built. In phase 3b the
+built: no module reads `players_value` (6a to 6e). In phase 3b the
 development path, the ratings' reliability as a forecast and the arrival chance by potential wait on the save's own
 rating snapshots (one on the imported save) and use the provisional prior, or the kind's K, until then. Design: [PLAYER_VALUE.md](PLAYER_VALUE.md). Research evidence:
 [PLAYER_VALUE_RESEARCH.md](PLAYER_VALUE_RESEARCH.md). Refines D-002 and D-017 for the pre-fork value surfaces and
@@ -1594,6 +1601,40 @@ Trade Center; PLAYER_VALUE.md Part 8, Part 9).**
   under their owners, not through Player Value; OOTP's Overall, Potential and offensive value are read by neither. The
   lineup's bat is the tools model on the split grades (D-035) in a unit chosen so the solver's glove weight keeps its
   balance; the solver is unchanged.
+
+**Amended 2026-09-24 (phase 6e: the migration's cleanup, Payroll in plain words, and the owner's answers on phases 6a to 6d;
+PLAYER_VALUE.md Part 8, Part 9, Part 12).**
+
+- **The migration is finished.** `valuation.ts`'s last `players_value` readers (`valuesByPlayer`, `mlbPercentiler` and its
+  percentile type), the unused `contractsByPlayer` and their caches (`clearValuationCaches`) are deleted. No server, client,
+  script or desktop module reads `players_value` or names one of its figures, and `tests/evidenceBoundary.test.ts` holds no
+  allow-list: a module that starts reading it fails, never joins a list (D-017).
+- **Payroll speaks plainly** (AGENTS.md "Writing for the GM"). What a controlled season could cost reads "most likely $X ·
+  could be $A to $B", a season he may leave "if kept"; the price of a win "A win costs about $X here · could be $A to $B";
+  what a controlled season costs is said as a renewal's range and the contracts each arbitration year is read from. The owner's
+  label "players combined as independent; not a calibrated interval", the method (sum of most likely costs, each player's
+  distance combined as independent, what is not chance at its ends), the every-player-at-his-edge sum, whether a cost is
+  measured or rests on the provisional prior, and the floor under the price move into the hovers and breakdowns, never
+  dropped. Every figure is still on the page. The card's production cone says its bands and its calibration line plainly the
+  same way ("80% range (not yet checked on this save)", "Not yet checked against this save's own seasons"), the calibration
+  statement itself on hover.
+- **The trading block reads on the export's freshness** (A-20), like the Trade Center: `tradingBlock` hands it to Player
+  Value as `currentState` and returns it with Player Rights' limitations.
+- **The owner's answers (2026-09-24), all approved as recommended.** 6a: the card header's "Some terms not in the export"
+  stays, muted; the dashboard counts "Heading to arbitration"; the header shows contract value only. 6b: a trade combines
+  players as independent (`TRADE_COMBINATION_POLICY` confirmed); the AI desk gives no accept-or-reject line; trade fits order
+  by most likely wins. 6c: a free agent gets one season at the market (no multi-season reading for now); Free Agents lists the
+  players who might reach the market as a third list; the briefing's "Recommendation of the Week" becomes "Worth a look this
+  week", worded as something to look at, never an instruction (D-001). 6d: a bat with no split grades is read on his overall
+  grades, labelled; Org Comparison keeps its contract-value column as a range; the farm column keeps established players sent
+  down ("nearest help").
+- **Might reach the market.** Free Agents' third list is every major leaguer elsewhere whom the control timeline leaves
+  between staying and free agency after this season (`controlAfterThisSeason`): an option or opt-out whose declined branch is,
+  or may be, free agency, and a next season not settled that may be free agency (or names nothing it lies between). Each shows
+  a short word for why ("Club option", "Can opt out", "Close to free agency", "Not settled") with the timeline's reason on
+  hover, the same columns and order as the other lists, unknown last, never mixed into the free agents after this season and
+  never a verdict. A player the club controls whichever way an open question goes (between pre-arbitration and arbitration, an
+  option declined into arbitration) is not listed.
 
 ## D-053 — Calibration belongs to the save
 

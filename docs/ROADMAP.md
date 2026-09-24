@@ -86,14 +86,14 @@ static guard. Remaining:
 - Route scouting snapshots (`rating_snapshots.cur`/`pot`) through the same
   composite, or record their aggregation method, so history and current level
   share one definition.
-- Audit trade, contract, free-agent, franchise, roster, and player-card
-  surfaces, which still read `players_value`. Each is a subjective judgment or a
-  display that must be either moved to approved evidence or labelled. The
-  contract, payroll, trade, free-agent and organization-comparison surfaces are
-  to be replaced by the Player Value specialist, one consumer per change:
-  design, research and phase plan in [PLAYER_VALUE.md](PLAYER_VALUE.md)
-  (D-052). Phase 1 (contract facts, the control timeline, one `LeagueRules`)
-  is built; no consumer's `players_value` read is removed yet (phase 6).
+- Done (Player Value phase 6, 2026-09-24; D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md)
+  Part 8): the trade, contract, payroll, free-agent, organization-comparison,
+  roster and player-card surfaces no longer read `players_value`; each moved to
+  Player Value or, where it is not a value question, to the scouted-evidence
+  adapter, one consumer per change (6a to 6d), and phase 6e deleted the last
+  readers and emptied the boundary test's allow-list. Still open: the Roster's
+  rating bars read the approved tool-rating columns directly rather than
+  through the adapter (an owner question, PLAYER_VALUE.md Part 9, phase 6e).
 - Establish, or keep declining to assume, whether `players_value.oa`/`pot` are
   the organization's scouted view. That needs an export from a save at
   imperfect scouting compared with the in-game card; the repository cannot

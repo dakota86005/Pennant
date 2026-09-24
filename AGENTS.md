@@ -56,8 +56,9 @@ research are evidence and rationale, not current implementation truth.
   and operations code reads ratings only through `server/scoutedEvidence.ts`
   (`tests/evidenceBoundary.test.ts`), never a rating column or `players_value`
   (`oa`, `pot`, `overall_value`, `talent_value`, ...), and never falls back to
-  them. Pre-fork surfaces (trade, contracts, franchise) still read
-  `players_value` and are unaudited; do not extend it to any new judgment.
+  them. No module reads `players_value` any longer (Player Value phase 6
+  moved every consumer off it); the boundary test has no allow-list, and a
+  module that starts reading it fails.
   Objective save facts (statistics, contracts, service time, injuries, roster
   status, age, transactions) are known where the export provides them.
 - **Unknown stays unknown** (D-018). Missing evidence is never replaced by a

@@ -61,10 +61,20 @@ export interface FreeAgentsResponse {
   currentFAs: FreeAgentRow[];
   currentNote: string | null;
   upcomingFAs: FreeAgentRow[];
-  /** Expiring deals whose control after this season the export cannot establish. */
+  /**
+   * Phase 6e: the players who might reach the market after this season (an option or opt-out declined into free agency, a
+   * season not settled that may be free agency), each with why. Never mixed into `upcomingFAs`.
+   */
+  mightReach: MightReachRow[];
+  /** Major leaguers elsewhere whose next season is not settled (listed in `mightReach` or staying either way). */
   upcomingIndeterminate: number;
-  /** Contracts whose next season is an option or an opt-out: whether he reaches the market is still to be decided. */
+  /** Major leaguers elsewhere whose next season is an option or an opt-out (listed in `mightReach` or not). */
   upcomingUndecided: number;
+}
+
+/** A player who might reach the market: a short word for why, and the control timeline's reason for the hover. */
+export interface MightReachRow extends FreeAgentRow {
+  why: { kind: 'option' | 'unsettled'; label: string; reason: string };
 }
 
 export const getFreeAgents = (orgId: number) => apiGet<FreeAgentsResponse>(`/api/free-agents/${orgId}`);

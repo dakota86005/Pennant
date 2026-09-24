@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { getFreeAgents, type FreeAgentRow, type FreeAgentsResponse, type MarketFigure } from '../freeAgentsApi';
+import { getFreeAgents, type FreeAgentRow, type FreeAgentsResponse, type MarketFigure, type MightReachRow } from '../freeAgentsApi';
 import { costMoney } from '../costBand';
 import { FreshnessCueLine } from '../FreshnessCue';
 import { TIP_SCOUTED } from '../PlayerHeaderValue';
@@ -87,7 +87,7 @@ function columnsFor(list: List, season: number | null, next: number | null, pric
     { key: 'winsNow', label: `${y} wins`, tip: tipWinsNow(y), num: true, first: 'desc' },
     { key: 'winsNext', label: `${n} wins`, tip: tipWinsNext(n), num: true, first: 'desc' },
     { key: 'market', label: `${n} at the market`, tip: tipMarket(n, price), num: true, first: 'desc' },
-    ...(list === 'upcoming' ? [{ key: 'salary' as const, label: `${y} salary`, tip: TIP_SALARY, num: true, first: 'desc' as const }] : []),
+    ...(list !== 'available' ? [{ key: 'salary' as const, label: `${y} salary`, tip: TIP_SALARY, num: true, first: 'desc' as const }] : []),
   ];
 }
 
@@ -138,8 +138,9 @@ function SortHeader({ col, sort, onSort }: { col: Column; sort: { key: SortKey |
   );
 }
 
-function Row({ r, list, thin }: { r: FreeAgentRow; list: List; thin: FreeAgentsResponse['needs']['positions'][number] | null }) {
+function Row({ r, list, thin }: { r: FreeAgentRow | MightReachRow; list: List; thin: FreeAgentsResponse['needs']['positions'][number] | null }) {
   const salary = r.salaryNow !== null ? <Figure main={costMoney(r.salaryNow)} /> : <Figure main="not known" unknown reason={r.salaryNote} />;
+  const why = 'why' in r ? r.why : null;
   return (
     <tr>
       <td className="name">
@@ -147,6 +148,11 @@ function Row({ r, list, thin }: { r: FreeAgentRow; list: List; thin: FreeAgentsR
         <span className="contracts-sub">
           {r.positionName}
           {r.team ? ` · ${r.team}` : ''}
+          {why && (
+            <span className="fa-tag fa-why">
+              <Tip label={why.label} tip={why.reason} />
+            </span>
+          )}
           {thin?.best && (
             <span className="fa-tag">
               <Tip label="Thin spot" tip={`${r.positionName} is one of your thinnest positions: your best there, ${thin.best.name}, is expected to add ${formatWins(thin.best.wins)} wins the rest of this season.`} />
@@ -159,14 +165,14 @@ function Row({ r, list, thin }: { r: FreeAgentRow; list: List; thin: FreeAgentsR
       <td className="num"><WinsCell w={r.winsNow} reason={r.winsReason} /></td>
       <td className="num"><WinsCell w={r.winsNext} reason={r.winsReason} /></td>
       <td className="num"><MarketCell m={r.market} /></td>
-      {list === 'upcoming' && <td className="num">{salary}</td>}
+      {list !== 'available' && <td className="num">{salary}</td>}
     </tr>
   );
 }
 
 // ── the page ──────────────────────────────────────────────────────────────────
 
-type List = 'available' | 'upcoming';
+type List = 'available' | 'upcoming' | 'mightReach';
 type Side = 'all' | 'pitchers' | 'hitters';
 type Ages = 'any' | 'young' | 'prime' | 'veteran';
 const AGE_BANDS: Record<Ages, { label: string; test: (age: number | null) => boolean }> = {
@@ -195,9 +201,9 @@ function NeedsLine({ needs }: { needs: FreeAgentsResponse['needs'] }) {
   );
 }
 
-/** The page's body: pure, renders what it is given (the tests render it straight from the route). */
-export function FreeAgentsView({ data }: { data: FreeAgentsResponse }) {
-  const [list, setList] = useState<List>(data.currentFAs.length > 0 || data.upcomingFAs.length === 0 ? 'available' : 'upcoming');
+/** The page's body: pure, renders what it is given (the tests render it straight from the route, on any of the lists). */
+export function FreeAgentsView({ data, initialList }: { data: FreeAgentsResponse; initialList?: List }) {
+  const [list, setList] = useState<List>(initialList ?? (data.currentFAs.length > 0 || data.upcomingFAs.length === 0 ? 'available' : 'upcoming'));
   const [side, setSide] = useState<Side>('all');
   const [pos, setPos] = useState('');
   const [ages, setAges] = useState<Ages>('any');
@@ -206,7 +212,8 @@ export function FreeAgentsView({ data }: { data: FreeAgentsResponse }) {
   const [sort, setSort] = useState<{ key: SortKey | null; dir: Dir }>({ key: null, dir: 'desc' });
   const season = data.seasonYear;
   const next = data.nextSeason;
-  const rows = list === 'available' ? data.currentFAs : data.upcomingFAs;
+  const mightReach = data.mightReach ?? [];
+  const rows: Array<FreeAgentRow | MightReachRow> = list === 'available' ? data.currentFAs : list === 'upcoming' ? data.upcomingFAs : mightReach;
   const columns = columnsFor(list, season, next, data.price);
   const thinBy = new Map(data.needs.positions.filter((p) => p.best !== null).slice(0, 3).map((p) => [p.positionName, p]));
   const positions = [...new Set(rows.map((r) => r.positionName))].sort();
@@ -235,6 +242,12 @@ export function FreeAgentsView({ data }: { data: FreeAgentsResponse }) {
       key: 'upcoming', count: data.upcomingFAs.length, label: `Free agents after ${season ?? 'this season'}`,
       tip: "Players around the league whose club's control ends after this season: they reach the market this winter. Players the club still controls through arbitration or renewal aren't here.",
     },
+    {
+      key: 'mightReach', count: mightReach.length, label: 'Might reach the market',
+      tip: "Players around the league who could reach the market after this season or stay: an option or opt-out that would make "
+        + "him a free agent if it's declined, or a season the save can't settle yet. Hover the tag beside a name for why. They "
+        + "aren't counted with the free agents, and a player his club keeps whichever way it goes isn't here.",
+    },
   ];
 
   let body: ReactNode;
@@ -242,7 +255,11 @@ export function FreeAgentsView({ data }: { data: FreeAgentsResponse }) {
   else if (rows.length === 0) {
     body = (
       <p className="muted contracts-empty">
-        {list === 'available' ? 'No free agents are available in this league right now.' : `No free agents are set to reach the market after ${season ?? 'this season'}.`}
+        {list === 'available'
+          ? 'No free agents are available in this league right now.'
+          : list === 'upcoming'
+            ? `No free agents are set to reach the market after ${season ?? 'this season'}.`
+            : `Nobody else could reach the market after ${season ?? 'this season'}.`}
       </p>
     );
   } else if (shown.length === 0) body = <p className="muted contracts-empty">No players match these filters.</p>;
@@ -260,9 +277,6 @@ export function FreeAgentsView({ data }: { data: FreeAgentsResponse }) {
       </div>
     );
   }
-
-  const indeterminate = data.upcomingIndeterminate ?? 0;
-  const undecided = data.upcomingUndecided ?? 0;
 
   return (
     <div className="contracts-page fa-page">
@@ -292,15 +306,9 @@ export function FreeAgentsView({ data }: { data: FreeAgentsResponse }) {
           ))}
         </div>
 
-        {list === 'upcoming' && (indeterminate > 0 || undecided > 0) && (
+        {list === 'mightReach' && mightReach.length > 0 && (
           <p className="muted hint-line fa-unsettled">
-            {indeterminate > 0 && (
-              <Tip label={`${indeterminate} more could go either way`} tip="The save can't yet say whether these players reach free agency: their service may cross the line only if they stay up, a rule isn't in the export, or the export is behind your save. They aren't listed as if they were coming." />
-            )}
-            {indeterminate > 0 && undecided > 0 && ' · '}
-            {undecided > 0 && (
-              <Tip label={`${undecided} more ${undecided === 1 ? 'has' : 'have'} an option or opt-out for next season`} tip="Whether they reach the market is a decision still to be made (the club's, the player's, or both), so they aren't listed." />
-            )}
+            Each could stay or reach the market; <Tip label="the tag beside his name" tip="An option or opt-out: whether it's taken decides whether he's a free agent. Not settled: the save can't yet say, because his service may cross the line only if he stays up, a rule isn't in the export, or the export is behind your save." /> says why.
           </p>
         )}
 

@@ -173,6 +173,7 @@ interface OffTheBooks {
   }>;
 }
 
+
 const money = (v: number | null | undefined): string => {
   if (v === null || v === undefined) return '';
   // Zero is a figure, and prints as one: the dash is never both zero and unknown (D-25)
@@ -195,52 +196,92 @@ export const costBand = (low: number | null | undefined, high: number | null | u
   return costBandText(low, high);
 };
 
-/** A season's cost as a cell shows it: the band, and "if held" beside it (never only on hover). */
-const costCell = (c: SeasonCost): string =>
-  c.low === null ? '?' : `${costBand(c.low, c.high)}${c.ifHeld ? ' if held' : ''}`;
+/**
+ * A range the way the page says it (phase 6e, AGENTS.md "Writing for the GM"): "$4.6M to $25.3M", at the same precision
+ * as `costBand` (a range never reads as a point), or one figure where the ends meet.
+ */
+export const rangeWords = (low: number, high: number): string => costBandText(low, high).replace('–', ' to ');
 
-/** A season cost's hover text: what the band is, its central, its basis, and whether it rests on the provisional prior. */
-const costTitle = (c: SeasonCost): string => {
-  const central = c.central !== null ? ` Central ${costMoney(c.central)}.` : c.centrals && c.centrals.length > 0
-    ? ` No single central (${c.centrals.map((k) => `${k.status.replace(/_/g, ' ')}${k.arbitrationClass ? ` class ${k.arbitrationClass}` : ''} ${costMoney(k.central)}`).join(', ')}).`
-    : '';
-  return `Projected, not committed: ${COST_BAND_WORDS}.${central} ${c.text}${c.source && c.source !== 'measured' ? ' (provisional)' : ''}`;
+/** The status of a season in plain words, for the hovers. */
+const STATUS_WORDS: Record<string, string> = {
+  pre_arbitration: 'pre-arbitration', arbitration: 'arbitration', free_agent: 'free agency', reserve_clause: 'reserve clause',
+  indeterminate: 'not settled', under_contract: 'under contract',
 };
+const statusWords = (s: string): string => STATUS_WORDS[s] ?? s.replace(/_/g, ' ');
+
+/** Where a projected cost comes from, in plain words (the hover says so; the page never prints "provisional"). */
+const sourceWords = (source: string | null): string =>
+  !source || source === 'measured' ? '' : ' It rests partly on a starting estimate, not yet measured on this save (provisional).';
+
+/**
+ * A season cost's hover: what it is (projected, not committed), its most likely figure (or each status's where it lies
+ * between statuses, none chosen), what the range is and its basis as the timeline served it.
+ */
+const costTitle = (c: SeasonCost): string => {
+  const likely = c.central !== null ? ` Most likely ${costMoney(c.central)}.` : c.centrals && c.centrals.length > 0
+    ? ` No single most likely figure: it lies between statuses (${c.centrals.map((k) => `${statusWords(k.status)}${k.arbitrationClass ? `, arbitration class ${k.arbitrationClass}` : ''} ${costMoney(k.central)}`).join('; ')}).`
+    : '';
+  const range = c.low !== null && c.high !== null ? ` Could be ${rangeWords(c.low, c.high)}: ${COST_BAND_WORDS}.` : '';
+  const kept = c.ifHeld ? ' "If kept": he may leave instead, or the choice is his; this is what he costs if the club keeps him.' : '';
+  return `Projected, not committed.${likely}${range}${kept} ${c.text}${sourceWords(c.source)}`;
+};
+
+/** A season's cost as a compact cell: the most likely figure (or the range of them) over the range, "if kept"; its basis on hover. */
+function CostWords({ c, lead = '' }: { c: SeasonCost; lead?: string }) {
+  if (c.low === null || c.high === null) return <span className="muted"><Tip label={`${lead}not known`} tip={costTitle(c)} /></span>;
+  const kept = c.ifHeld ? ' if kept' : '';
+  const main = c.central !== null ? costMoney(c.central) : c.low === c.high ? costMoney(c.low) : rangeWords(c.low, c.high);
+  return (
+    <>
+      <span className="contracts-figure"><Tip label={`${lead}${main}${kept}`} tip={costTitle(c)} /></span>
+      {c.low !== c.high && c.central !== null && <span className="contracts-sub">{rangeWords(c.low, c.high)}</span>}
+    </>
+  );
+}
 
 /** An option's hover text: not guaranteed, and its declined branch with its cost (an option is shown on both branches). */
 const optionTitle = (o: OptionYear): string => {
   const d = o.declined;
   const declined = !d ? '' : d.cost === null
-    ? ` Declined: the buyout (not in the export) and then ${d.status.replace(/_/g, ' ')}${d.status === 'free_agent' ? ': no cost to this club' : ''}.`
-    : ` Declined: the buyout (not in the export) and then ${d.status.replace(/_/g, ' ')}, ${costCell(d.cost)} (${COST_BAND_WORDS}). ${d.cost.text}`;
+    ? ` Declined: the buyout (not in the export) and then ${statusWords(d.status)}${d.status === 'free_agent' ? ': no cost to this club' : ''}.`
+    : ` Declined: the buyout (not in the export) and then ${statusWords(d.status)}. ${costTitle(d.cost)}`;
   return `A ${o.kind === 'opt_out' ? 'season he may opt out before' : `${o.kind} option`}: not guaranteed, and not in the committed total.${declined}`;
 };
 
-/** How Payroll labels the club's projected range (owner decision 2, 2026-09-24): what it is, in the page's words. */
+/** How Payroll labels the club's projected range (owner decision 2, 2026-09-24): what it is, said in the hover. */
 export const COMBINED_LABEL = 'players combined as independent; not a calibrated interval';
 
 /**
- * What the projected band beside each committed season is (owner decision 2, 2026-09-24): the sum of centrals with
- * each player's distance from his central combined as independent, what is not noise at its edges; the edge-to-edge
- * sum beside it in the details. Not an interval with a stated chance and not an expectation.
+ * What the projected figures beside each committed season are (owner decision 2, 2026-09-24), in the hover since phase 6e:
+ * the sum of the players' most likely costs, and a range around it with each player's distance combined as independent,
+ * what is not chance at its ends; every player at the same end is in the details. Not a forecast, never committed.
  */
 export const PROJECTED_TIP =
-  'What pre-arbitration renewals and arbitration seasons no contract covers could cost, as a range of reasonable readings for the club, never a ' +
-  `forecast: ${COMBINED_LABEL}. Around the sum of centrals, each player's distance from his central is combined as independent across players ` +
-  '(so every player is not at his edge at once); a season between statuses, a range of arbitration classes and a player who may leave stay at ' +
-  `their edges, added. Each player's own band is ${COST_BAND_WORDS}, never narrowed; the sum edge against edge (every player at his low edge to ` +
-  'every player at his high edge) is in the details. The central sums each season\'s central (a player who may leave counted as leaving to as ' +
-  'held; a season between statuses at its lowest to its highest status). Not committed, and never in the total or the room.';
+  'What the seasons the club still controls could cost where no contract covers them yet: pre-arbitration renewals and ' +
+  'arbitration years. "Most likely" adds up each player\'s most likely cost; where a season could go more than one way ' +
+  '(which status, which arbitration year, whether he stays) it is a range, from the lowest way to the highest. "Could be" ' +
+  `is a range of reasonable readings for the club, not a forecast: ${COMBINED_LABEL}. Each player's distance from his most ` +
+  'likely cost is combined as independent across players, so not every player lands at his high or low end at once; what ' +
+  'isn\'t chance (a status still open, a range of arbitration years, a player who may leave) stays at its ends, added, and a ' +
+  `player who may leave adds nothing to the low end. Each player's own range is ${COST_BAND_WORDS}, never narrowed; every ` +
+  'player at the same end (edge against edge) is in the details below. Not committed, and never in the total or the room.';
 
-/** Dollars per win to the hundredth of a million, so a floor of $4.22M–$4.33M is not printed as "$4.2M". */
+/** A club's projected season, in its hover: what it is, how it was combined and what it leaves out. */
+const projectedTip = (p: NonNullable<Commitment['projected']>): string =>
+  PROJECTED_TIP +
+  (p.combination ? ` ${p.combination.text}` : '') +
+  (p.mayLeave > 0 ? ` ${p.mayLeave} may reach free agency instead ("if kept"): they add nothing to the low end.` : '') +
+  (p.provisional > 0 ? ` ${p.provisional} rest partly on a starting estimate, not yet measured on this save (provisional).` : '') +
+  (p.unpriced > 0 ? ` ${p.unpriced} not priced: their cost is not established, never counted as $0.` : '');
+
+/** Dollars per win to the hundredth of a million, so a floor of $4.22M to $4.33M is not printed as "$4.2M". */
 const perWin = (v: number): string => `$${(v / 1_000_000).toFixed(2)}M`;
 
-/**
- * The league price of a win (D-25, S-03): the server's own label, the price and its band, the floor
- * as the range it is (shown even when the price itself is unknown), and the basis as a list any
- * keyboard can open, rather than a hover-only paragraph.
- */
-/** One import's measured reading, in a few words: the price and its band, or why there is none. */
+/** "$6.57M to $9.78M", or one figure where the two ends print alike. */
+export const perWinRange = (low: number, high: number): string =>
+  (perWin(low) === perWin(high) ? perWin(low) : `${perWin(low)} to ${perWin(high)}`);
+
+/** One import's measured reading, in a few words: the price and its range, or why there is none. */
 const measuredWords = (m: PriceHistoryEntry['measured']): string => {
   if (!m) return 'not recorded';
   if (m.status === 'measured' && m.central !== null && m.low !== null && m.high !== null) {
@@ -252,19 +293,35 @@ const measuredWords = (m: PriceHistoryEntry['measured']): string => {
   return 'unknown';
 };
 
+/** The price of a win's hover: what it is, the server's own label, and the floor as the range it is. */
+function priceTip(price: ClubFinancesData['league']['priceOfWin']): string {
+  const floor = price.floor.value;
+  const label = price.label.charAt(0).toUpperCase() + price.label.slice(1);
+  return (
+    `${label}. What clubs in this league pay above the minimum salary for each win a player adds, read from ` +
+    `${price.population.market} market contracts: most likely, with the range it could be.` +
+    (floor ? ` Across every major leaguer, including those paid below the market by rule, a win costs less: ${perWinRange(floor.low, floor.high)}, ` +
+      `a floor under the price. ${price.floor.note ?? ''}` : '') +
+    (price.price.note ? ` ${price.price.note}` : '') +
+    ' "How it\'s measured" below lists every basis.'
+  );
+}
+
+/**
+ * The league price of a win (D-25, S-03), in plain words since phase 6e: "A win costs about $7.25M here · could be $6.57M to
+ * $9.78M", the server's own label and the floor as the range it is on hover (shown even when the price itself is unknown),
+ * and the basis as a list any keyboard can open, rather than a hover-only paragraph.
+ */
 export function PriceOfWinLine({ price, history, timeline, retention }: { price: ClubFinancesData['league']['priceOfWin']; history?: PriceHistoryEntry[]; timeline?: string | null; retention?: string | null }) {
   const p = price.price.value;
-  const floor = price.floor.value;
   const a = price.adoption ?? null;
   return (
     <div className="muted hint-line price-of-win">
-      Price of a win ({price.label}):{' '}
       {p
-        ? <><strong>{perWin(p.central)}</strong> a win (band {perWin(p.low)}–{perWin(p.high)})</>
-        : <><strong>unknown</strong>{price.price.note ? ` (${price.price.note})` : ''}</>}
-      {floor ? <>; floor {perWin(floor.low)}–{perWin(floor.high)}</> : null}
+        ? <><Tip label={<>A win costs about <strong>{perWin(p.central)}</strong> here</>} tip={priceTip(price)} focusable /> · could be {perWinRange(p.low, p.high)}</>
+        : <><Tip label="What a win costs here isn't known" tip={priceTip(price)} focusable />{price.price.note ? `: ${price.price.note}` : ''}</>}
       <details className="price-basis">
-        <summary>How it is measured</summary>
+        <summary>How it&rsquo;s measured</summary>
         <ul>
           <li>Salary above the league minimum ÷ WAR, over {price.population.market} market contracts.</li>
           {price.rules.market && <li>{price.rules.market}</li>}
@@ -322,36 +379,64 @@ const TIP_COMMITTED =
   'including money still owed to players who were traded or released. It is NOT a payroll ' +
   'projection: arbitration raises and yet-to-be-signed players are not in it, which is why ' +
   'future seasons look so light. What pre-arbitration renewals and arbitration seasons could cost is ' +
-  'shown beside it as a range of reasonable readings with its central, never added to it.';
+  'shown beside it, most likely with the range it could be, never added to it.';
 const TIP_HEADROOM =
   'Budget minus committed salary. OOTP never publishes a future budget — the owner does not set ' +
   'one until the offseason — so seasons after this one assume today\'s budget holds flat unless ' +
   'you enter what you expect. Either way, treat the later years as a shape, not a forecast.';
 
+/** How a controlled season's cost was read, in plain words (the hover says it; the page never prints the status code). */
+const HOW_READ: Record<string, string> = {
+  measured: 'measured on this save',
+  provisional: 'a starting estimate until this save has enough renewals of its own (provisional)',
+  thin: "too few of this save's contracts for a line of its own: a starting estimate, widened by what this save paid (the provisional prior)",
+  prior: 'a starting estimate (the provisional prior)',
+  unknown: 'not known',
+  no_arbitration: 'this league has no salary arbitration',
+};
+const howRead = (status: string): string => HOW_READ[status] ?? status.replace(/_/g, ' ');
+
+/** "1st", "2nd", "3rd", "4th". */
+const ordinal = (n: number): string => `${n}${n % 10 === 1 && n % 100 !== 11 ? 'st' : n % 10 === 2 && n % 100 !== 12 ? 'nd' : n % 10 === 3 && n % 100 !== 13 ? 'rd' : 'th'}`;
+
 /**
- * How a controlled season is priced (phase 4a): the save's own renewal spread and arbitration ladder, with
- * how many contracts each rests on and whether it is measured or the provisional prior. Shown as served.
+ * What a controlled season costs (phase 4a), in plain words since phase 6e: a renewal's range and how many renewals it
+ * rests on, and how many contracts each arbitration year is read from. Whether each is measured on this save or rests on
+ * the provisional prior, and the rules, are on hover and in "How they're priced".
  */
 export function CostLadderLine({ costs, observed }: { costs: CostLadderData; observed?: ObservedCostsData }) {
   const r = costs.preArbitration;
-  const renewal = r.band.value ? costBand(r.band.value.low, r.band.value.high) : 'unknown';
+  const renewal = r.band.value;
+  const arb = costs.arbitration;
   // The provisional prior's line only where something on this save rests on it (review R2-11)
-  const usesPrior = r.status === 'provisional' || costs.arbitration.classes.some((c) => c.status === 'thin' || c.status === 'prior');
+  const usesPrior = r.status === 'provisional' || arb.classes.some((c) => c.status === 'thin' || c.status === 'prior');
+  const renewalTip = `A pre-arbitration renewal: ${howRead(r.status)}. ${r.text}`;
+  const arbTip = `An arbitration year: ${howRead(arb.status)}.${arb.reason ? ` ${arb.reason}` : ''} ` +
+    arb.classes.map((c) => `Year ${c.arbitrationClass}: ${howRead(c.status)}. ${c.text}`).join(' ');
+  const arbCases = arb.classes.reduce((n, c) => n + c.cases, 0);
   return (
     <div className="muted hint-line price-of-win">
-      Controlled seasons: pre-arbitration renewal <strong>{renewal}</strong> ({r.status}, {r.cases} renewals);
-      arbitration ladder {costs.arbitration.status.replace(/_/g, ' ')}
-      {costs.arbitration.classes.length > 0 && <> ({costs.arbitration.classes.map((c) => `class ${c.arbitrationClass}: ${c.cases}`).join(', ')} contracts)</>}.
+      What a season the club controls costs:{' '}
+      <Tip label="a renewal" tip={renewalTip} focusable />{' '}
+      {renewal ? <>costs <strong>{rangeWords(renewal.low, renewal.high)}</strong> ({r.cases} renewals this season)</> : <>isn&rsquo;t known yet</>}
+      {' · '}
+      <Tip label="an arbitration year" tip={arbTip} focusable />{' '}
+      {arb.status === 'no_arbitration'
+        ? <>doesn&rsquo;t exist in this league</>
+        : arb.classes.length > 0
+          ? <>is read from {arbCases} contracts ({arb.classes.map((c) => `${c.cases} in the ${ordinal(c.arbitrationClass)} year`).join(', ')})</>
+          : <>isn&rsquo;t known yet</>}
+      .
       <details className="price-basis">
-        <summary>How they are priced</summary>
+        <summary>How they&rsquo;re priced</summary>
         <ul>
           {costs.rules.band && <li>{costs.rules.band}</li>}
           <li>{costs.rules.renewal}</li>
           <li>{r.text}</li>
           <li>{costs.rules.arbitration}</li>
-          {costs.arbitration.reason && <li>{costs.arbitration.reason}</li>}
-          {costs.arbitration.classes.map((c) => <li key={c.arbitrationClass}>{c.text}</li>)}
-          {costs.arbitration.unread?.text && <li>{costs.arbitration.unread.text}</li>}
+          {arb.reason && <li>{arb.reason}</li>}
+          {arb.classes.map((c) => <li key={c.arbitrationClass}>{c.text}</li>)}
+          {arb.unread?.text && <li>{arb.unread.text}</li>}
           {usesPrior && <li>{costs.rules.prior}</li>}
           <li>{costs.rules.reserveClause}</li>
           {observed && <li>Observed arbitration salaries: {observed.awards.text}{observed.awards.readingsText ? ` ${observed.awards.readingsText}` : ''}</li>}
@@ -362,42 +447,37 @@ export function CostLadderLine({ costs, observed }: { costs: CostLadderData; obs
   );
 }
 
-export function Payroll({ orgId }: { orgId: number }) {
-  const [data, setData] = useState<PayrollData | null>(null);
-  const [finance, setFinance] = useState<ClubFinancesData | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [budgetDraft, setBudgetDraft] = useState('');
+/** Where a player stands next season, in words: "arbitration, year 2", "pre-arbitration". */
+function standingWords(p: OffTheBooks['players'][number]): string {
+  if (p.status === 'arbitration') {
+    if (p.superTwo && p.arbYear == null) return 'arbitration (Super Two)';
+    if (p.arbYear != null && p.arbYearHigh != null) return `arbitration, year ${p.arbYear} ${p.arbYearHigh - p.arbYear === 1 ? 'or' : 'to'} ${p.arbYearHigh}`;
+    return p.arbYear != null ? `arbitration, year ${p.arbYear}` : 'arbitration';
+  }
+  return p.status === 'reserve clause' ? 'reserve clause' : 'pre-arbitration';
+}
+
+/** What a season still open could be, in words: "arbitration or free agency". */
+const BETWEEN_WORDS: Record<string, string> = { leaving: 'free agency', signed: 'under contract', indeterminate: 'not known' };
+const betweenWords = (between: string[]): string => between.map((b) => BETWEEN_WORDS[b] ?? b).join(' or ');
+
+/**
+ * The Payroll page's body: pure, renders what it is given (Player Value phase 6e; `tests/payrollPage.test.ts` renders it
+ * straight from the routes). Every figure is the server's, as served; the words follow AGENTS.md "Writing for the GM".
+ */
+export function PayrollView({ data, finance, onSaveBudget }: {
+  data: PayrollData;
+  finance: ClubFinancesData | null;
+  /** Saves the budget the GM expects next season (null: assume today's holds flat). */
+  onSaveBudget: (amount: number | null) => void;
+}) {
+  const [budgetDraft, setBudgetDraft] = useState(data.nextSeasonBudget ? String(data.nextSeasonBudget / 1_000_000) : '');
 
   /** Entered in millions, which is how a budget is actually talked about. */
-  const saveNextBudget = async () => {
+  const saveNextBudget = () => {
     const millions = Number(budgetDraft);
-    const amount = budgetDraft.trim() === '' || !Number.isFinite(millions) || millions <= 0
-      ? null
-      : millions * 1_000_000;
-    try {
-      await apiPut(`/api/next-season-budget/${orgId}`, { amount });
-      setData(await apiGet<PayrollData>(`/api/payroll/${orgId}`));
-    } catch (e) {
-      setError((e as Error).message);
-    }
+    onSaveBudget(budgetDraft.trim() === '' || !Number.isFinite(millions) || millions <= 0 ? null : millions * 1_000_000);
   };
-
-  useEffect(() => {
-    setData(null);
-    setError(null);
-    apiGet<PayrollData>(`/api/payroll/${orgId}`)
-      .then((d) => {
-        setData(d);
-        setBudgetDraft(d.nextSeasonBudget ? String(d.nextSeasonBudget / 1_000_000) : '');
-      })
-      .catch((e) => setError(e.message));
-    // The header and the price of a win are Club Finances'; the page stands without them
-    setFinance(null);
-    apiGet<ClubFinancesData>(`/api/club-finances/${orgId}`).then(setFinance).catch(() => setFinance(null));
-  }, [orgId]);
-
-  if (error) return <div className="banner error">{error}</div>;
-  if (!data) return <p className="muted">Adding up the books…</p>;
 
   const f = finance?.club ?? null;
   const budget = f?.budget.value ?? null;
@@ -452,48 +532,48 @@ export function Payroll({ orgId }: { orgId: number }) {
       <section>
         <h2><Tip label="Committed salary by season" tip={TIP_COMMITTED} /></h2>
         <div className="commit-chart">
-          {data.commitments.map((c) => (
-            <div key={c.year} className="commit-row">
-              <span className="commit-year">{c.year}</span>
-              <div className="commit-track">
-                <div className="commit-bar" style={{ width: `${(c.total / peak) * 100}%` }} />
-                {budget !== null && (
-                  <div className="commit-budget" style={{ left: `${(budget / peak) * 100}%` }} title={`Budget ${money(budget)}`} />
-                )}
+          {data.commitments.map((c) => {
+            const p = c.projected;
+            const shown = p && p.players > 0 && p.low !== null && p.high !== null;
+            return (
+              <div key={c.year} className="commit-row">
+                <span className="commit-year">{c.year}</span>
+                <div className="commit-track">
+                  <div className="commit-bar" style={{ width: `${(c.total / peak) * 100}%` }} />
+                  {budget !== null && (
+                    <div className="commit-budget" style={{ left: `${(budget / peak) * 100}%` }} title={`Budget ${money(budget)}`} />
+                  )}
+                </div>
+                <span className="commit-value">{money(c.total)}</span>
+                <span className="muted commit-players">
+                  {c.players} player{c.players === 1 ? '' : 's'}
+                  {c.options && c.options.players > 0 && (
+                    <> · +{money(c.options.total)} in {c.options.players} club option{c.options.players === 1 ? '' : 's'}, not counted</>
+                  )}
+                  {(c.unstated ?? 0) > 0 && <> · {c.unstated} salar{c.unstated === 1 ? 'y' : 'ies'} not in the export</>}
+                </span>
+                <span className="muted commit-projected">
+                  {shown && (
+                    <>
+                      <Tip
+                        label={p.central
+                          ? `+ most likely ${p.central.low === p.central.high ? costMoney(p.central.low) : rangeWords(p.central.low, p.central.high)}`
+                          : '+ controlled seasons'}
+                        tip={projectedTip(p)}
+                      />
+                      {' · '}could be {rangeWords(p.low as number, p.high as number)}
+                      {' '}({p.players} player{p.players === 1 ? '' : 's'}{p.mayLeave > 0 ? `, ${p.mayLeave} if kept` : ''})
+                    </>
+                  )}
+                  {p && p.unpriced > 0 && <>{shown ? ' · ' : ''}{p.unpriced} not priced yet</>}
+                </span>
+                <span className={`commit-room ${(c.headroom ?? 0) >= 0 ? 'good-text' : 'bad-text'}`}>
+                  {c.headroom === null ? '' : `${money(c.headroom)} free`}
+                  {c.budgetUsed === 'expected' && <span className="muted"> *</span>}
+                </span>
               </div>
-              <span className="commit-value">{money(c.total)}</span>
-              <span className="muted commit-players">
-                {c.players} player{c.players === 1 ? '' : 's'}
-                {c.options && c.options.players > 0 && (
-                  <> · +{money(c.options.total)} in {c.options.players} club option{c.options.players === 1 ? '' : 's'}, not counted</>
-                )}
-                {(c.unstated ?? 0) > 0 && <> · {c.unstated} salar{c.unstated === 1 ? 'y' : 'ies'} not exported</>}
-              </span>
-              <span
-                className="muted commit-projected"
-                title={c.projected && (c.projected.players > 0 || c.projected.unpriced > 0)
-                  ? PROJECTED_TIP +
-                    (c.projected.combination ? ` ${c.projected.combination.text}` : '') +
-                    (c.projected.mayLeave > 0 ? ` ${c.projected.mayLeave} may reach free agency instead (if held): they add nothing to the low edge.` : '') +
-                    (c.projected.provisional > 0 ? ` ${c.projected.provisional} rest on the provisional prior.` : '') +
-                    (c.projected.unpriced > 0 ? ` ${c.projected.unpriced} not priced (their cost is not established), never counted as $0.` : '')
-                  : undefined}
-              >
-                {c.projected && c.projected.players > 0 && (
-                  <>
-                    +{costBand(c.projected.low, c.projected.high)} range ({COMBINED_LABEL})
-                    {c.projected.central && <>, central {c.projected.central.low === c.projected.central.high ? costMoney(c.projected.central.low) : costBand(c.projected.central.low, c.projected.central.high)}</>}
-                    {' '}({c.projected.players}{c.projected.mayLeave > 0 ? `, ${c.projected.mayLeave} if held` : ''})
-                  </>
-                )}
-                {c.projected && c.projected.unpriced > 0 && <>{c.projected.players > 0 ? ', ' : ''}{c.projected.unpriced} not priced</>}
-              </span>
-              <span className={`commit-room ${(c.headroom ?? 0) >= 0 ? 'good-text' : 'bad-text'}`}>
-                {c.headroom === null ? '' : `${money(c.headroom)} free`}
-                {c.budgetUsed === 'expected' && <span className="muted"> *</span>}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <div className="next-budget">
           <label htmlFor="next-budget">Budget you expect next season</label>
@@ -513,26 +593,24 @@ export function Payroll({ orgId }: { orgId: number }) {
           <span className="muted">
             {data.nextSeasonBudget
               ? 'Seasons after this one are measured against it, marked *.'
-              : 'Leave it empty to assume this year\u2019s budget holds flat.'}
+              : 'Leave it empty to assume this year’s budget holds flat.'}
           </span>
         </div>
         <p className="muted hint-line">
           The dashed line is today&rsquo;s budget. <Tip label="Headroom" tip={TIP_HEADROOM} /> in later
-          seasons is wide because only guaranteed deals are counted — arbitration and replacements
-          will fill much of it. The <Tip label="range beside each season" tip={PROJECTED_TIP} /> is what
-          pre-arbitration and arbitration seasons could cost ({COMBINED_LABEL}: around the sum of their centrals, each
-          player&rsquo;s distance from his central combined as independent, a season between statuses, a range of
-          arbitration classes or a player who may leave at its edges); a range of reasonable readings, not a forecast,
-          and never in the total or the room.
+          seasons looks wide because only guaranteed deals are counted: arbitration raises and replacements
+          will fill much of it. Beside each season is <Tip label="what the players you still control could cost" tip={PROJECTED_TIP} />:
+          most likely, and the range it could be. It&rsquo;s never added to the total or the room.
         </p>
         {data.commitments.some((c) => c.projected?.edges) && (
           <details className="price-basis">
-            <summary>Every player at his edge, summed (edge against edge)</summary>
+            <summary>If every player landed at the same end of his range</summary>
             <ul>
               {data.commitments.filter((c) => c.projected?.edges).map((c) => (
                 <li key={c.year}>
-                  {c.year}: {costBand(c.projected!.edges!.low, c.projected!.edges!.high)} edge against edge, against {costBand(c.projected!.low, c.projected!.high)} with players
-                  combined as independent ({c.projected!.combination?.combined ?? 0} combined, {c.projected!.combination?.atEdges ?? 0} at their edges).
+                  {c.year}: {rangeWords(c.projected!.edges!.low, c.projected!.edges!.high)} with every player at the same end (edge against edge),
+                  against {c.projected!.low !== null && c.projected!.high !== null ? rangeWords(c.projected!.low, c.projected!.high) : 'unknown'} as shown,
+                  with players combined as independent ({c.projected!.combination?.combined ?? 0} combined, {c.projected!.combination?.atEdges ?? 0} kept at their ends).
                 </li>
               ))}
             </ul>
@@ -579,8 +657,8 @@ export function Payroll({ orgId }: { orgId: number }) {
             </h2>
             <p className="muted hint-line">
               Arbitration and pre-arbitration. You keep them, and these salaries are more likely to
-              rise than to disappear — so do not count this against next year's payroll. The arrow is
-              next season&rsquo;s projected cost (a range of reasonable readings; hover for its central and basis).
+              rise than to disappear — so do not count this against next year&rsquo;s payroll. The arrow is
+              what next season could cost him: most likely, with the range it could be under it; hover for why.
             </p>
             <table className="mini">
               <tbody>
@@ -588,15 +666,9 @@ export function Payroll({ orgId }: { orgId: number }) {
                   <tr key={p.player_id}>
                     <td className="name"><PlayerLink id={p.player_id}>{p.name}</PlayerLink></td>
                     <td className="num">{p.age}</td>
-                    <td className="muted">
-                      {p.status === 'arbitration'
-                        ? p.superTwo && p.arbYear == null ? 'arb (Super Two)' : p.arbYearHigh != null ? `arb ${p.arbYear}-${p.arbYearHigh}` : `arb ${p.arbYear ?? ''}`.trim()
-                        : p.status === 'reserve clause' ? 'reserve' : 'pre-arb'}
-                    </td>
+                    <td className="muted">{standingWords(p)}</td>
                     <td className="num">{money(p.salary)}</td>
-                    <td className="num muted" title={p.nextCost ? costTitle(p.nextCost) : undefined}>
-                      {p.nextCost ? <em>→ {costCell(p.nextCost)}</em> : ''}
-                    </td>
+                    <td className="num muted">{p.nextCost ? <em><CostWords c={p.nextCost} lead="→ " /></em> : ''}</td>
                   </tr>
                 ))}
               </tbody>
@@ -608,14 +680,14 @@ export function Payroll({ orgId }: { orgId: number }) {
         {data.controlIndeterminate && data.controlIndeterminate.count > 0 && (
           <section>
             <h2>
-              Deals ending, outcome not yet established{' '}
+              Deals ending, outcome not known yet{' '}
               <span className="muted subtle-count">
                 — {data.controlIndeterminate.count} players, {money(data.controlIndeterminate.money)}
               </span>
             </h2>
             <p className="muted hint-line">
-              The save cannot yet say whether these men leave or stay: their service crosses a line only
-              if they stay up, or a league rule is not in the export. Each says what it lies between.
+              The save can&rsquo;t yet say whether these players leave or stay: their service crosses a line only
+              if they stay up, or a league rule isn&rsquo;t in the export. Each says what it lies between; hover for why.
             </p>
             <table className="mini">
               <tbody>
@@ -623,13 +695,11 @@ export function Payroll({ orgId }: { orgId: number }) {
                   <tr key={p.player_id}>
                     <td className="name"><PlayerLink id={p.player_id}>{p.name}</PlayerLink></td>
                     <td className="num">{p.age}</td>
-                    <td className="muted" title={p.reason ?? undefined}>
-                      {p.between && p.between.length > 0 ? p.between.join(' or ') : 'unknown'}
+                    <td className="muted">
+                      <Tip label={p.between && p.between.length > 0 ? betweenWords(p.between) : 'not known'} tip={p.reason ?? 'Not established from the export.'} />
                     </td>
                     <td className="num">{money(p.salary)}</td>
-                    <td className="num muted" title={p.nextCost ? costTitle(p.nextCost) : undefined}>
-                      {p.nextCost ? <em>→ {costCell(p.nextCost)}</em> : ''}
-                    </td>
+                    <td className="num muted">{p.nextCost ? <em><CostWords c={p.nextCost} lead="→ " /></em> : ''}</td>
                   </tr>
                 ))}
               </tbody>
@@ -643,7 +713,9 @@ export function Payroll({ orgId }: { orgId: number }) {
               Dead money{' '}
               <span className="muted subtle-count">— none in the export</span>
             </h2>
-            <p className="muted hint-line">{data.deadMoney.note}</p>
+            <p className="muted hint-line">
+              No contract of a player now elsewhere is on this club&rsquo;s books. <Tip label="Retained salary isn't in the export" tip={data.deadMoney.note} />.
+            </p>
           </section>
         )}
 
@@ -651,9 +723,11 @@ export function Payroll({ orgId }: { orgId: number }) {
           <section>
             <h2>
               Dead money{' '}
-              <span className="muted subtle-count">— not established</span>
+              <span className="muted subtle-count">— not known</span>
             </h2>
-            <p className="muted hint-line">{data.deadMoney.note}</p>
+            <p className="muted hint-line">
+              <Tip label="Retained salary isn't in the export" tip={data.deadMoney.note ?? 'Retained salary is not exported.'} />, so whether the club still pays players it moved can&rsquo;t be told.
+            </p>
           </section>
         )}
 
@@ -683,7 +757,7 @@ export function Payroll({ orgId }: { orgId: number }) {
 
       <section>
         <h2>Every contract</h2>
-        {/* Projected bands widen the season columns: the table scrolls in its own box, never the page */}
+        {/* Projected figures widen the season columns: the table scrolls in its own box, never the page */}
         <div className="payroll-table-scroll">
         <table>
           <thead>
@@ -698,7 +772,7 @@ export function Payroll({ orgId }: { orgId: number }) {
                   tip={
                     y === data.seasonYear
                       ? `Guaranteed salary owed in ${y}, the current season.`
-                      : `Guaranteed salary already committed for ${y}. Blank means the contract has ended by then — it does not mean the player is gone, only that he is no longer under contract. An italic band is a controlled season's projected cost (pre-arbitration or arbitration): a range of reasonable readings, not committed; "if held" means he may leave instead.`
+                      : `Guaranteed salary already committed for ${y}. Blank means the contract has ended by then — it does not mean the player is gone, only that he is no longer under contract. An italic figure is what a season the club still controls could cost (a pre-arbitration renewal or an arbitration year): most likely, with the range it could be under it, projected and not committed. "If kept" means he may leave instead.`
                   }
                 >
                   {String(y)}
@@ -722,11 +796,14 @@ export function Payroll({ orgId }: { orgId: number }) {
                   const year = data.years[i];
                   const option = p.optionYears?.find((o) => o.season === year && !o.committed);
                   if (option) {
+                    const declined = option.declined?.cost ?? null;
                     return (
-                      <td key={year} className="num muted" title={optionTitle(option)}>
-                        <em>{option.salary === null ? 'option' : `opt ${money(option.salary)}`}</em>
-                        {option.declined?.cost && option.declined.cost.low !== null && (
-                          <div className="muted">or {costCell(option.declined.cost)}</div>
+                      <td key={year} className="num muted">
+                        <em><Tip label={option.salary === null ? 'option' : `option ${money(option.salary)}`} tip={optionTitle(option)} /></em>
+                        {declined && declined.low !== null && declined.high !== null && (
+                          <div className="muted">
+                            or {declined.central !== null ? costMoney(declined.central) : rangeWords(declined.low, declined.high)}{declined.ifHeld ? ' if kept' : ''} if declined
+                          </div>
                         )}
                       </td>
                     );
@@ -738,8 +815,8 @@ export function Payroll({ orgId }: { orgId: number }) {
                   const projected = p.projected?.[i] ?? null;
                   if (projected) {
                     return (
-                      <td key={year} className="num muted" title={costTitle(projected)}>
-                        <em>{costCell(projected)}</em>
+                      <td key={year} className="num muted">
+                        <em><CostWords c={projected} /></em>
                       </td>
                     );
                   }
@@ -760,4 +837,34 @@ export function Payroll({ orgId }: { orgId: number }) {
       </section>
     </div>
   );
+}
+
+export function Payroll({ orgId }: { orgId: number }) {
+  const [data, setData] = useState<PayrollData | null>(null);
+  const [finance, setFinance] = useState<ClubFinancesData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const saveNextBudget = async (amount: number | null) => {
+    try {
+      await apiPut(`/api/next-season-budget/${orgId}`, { amount });
+      setData(await apiGet<PayrollData>(`/api/payroll/${orgId}`));
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  useEffect(() => {
+    setData(null);
+    setError(null);
+    apiGet<PayrollData>(`/api/payroll/${orgId}`)
+      .then(setData)
+      .catch((e) => setError(e.message));
+    // The header and the price of a win are Club Finances'; the page stands without them
+    setFinance(null);
+    apiGet<ClubFinancesData>(`/api/club-finances/${orgId}`).then(setFinance).catch(() => setFinance(null));
+  }, [orgId]);
+
+  if (error) return <div className="banner error">{error}</div>;
+  if (!data) return <p className="muted">Adding up the books…</p>;
+  return <PayrollView key={orgId} data={data} finance={finance} onSaveBudget={saveNextBudget} />;
 }

@@ -1,4 +1,5 @@
 import { db, tableExists } from './db.js';
+import { freshnessCue, getDataStatus, type DataStatus, type FreshnessCue } from './dataStatus.js';
 import { computeBatting, computePitching, leagueBaseline } from './stats.js';
 import { LEVEL_NAMES } from './valuation.js';
 import { contractSeasonFor, controlSummaryOf, playerValues, productionHeadlineOf, tradeValueOf, type TradeFigure, type TradeUnit } from './playerValue.js';
@@ -145,16 +146,23 @@ function linesFor(players: Array<{ player_id: number; level: number; league_id: 
  * `teamId` narrows it to one club — the natural question when a deal with
  * somebody specific is being weighed. `level` defaults to the majors, because
  * a listed Single-A arm is rarely the point, but every level is available.
+ *
+ * `status` is how current the export is (D-022; Player Value phase 6e): handed to Player Value as `currentState`, as the
+ * Trade Center does, so an export behind the save leaves what turns on service time (control, the cost of controlled
+ * seasons, contract value) not established, and it is said (A-20).
  */
-export function tradingBlock(opts: { teamId?: number; level?: number | 'all'; limit?: number } = {}): {
+export function tradingBlock(opts: { teamId?: number; level?: number | 'all'; limit?: number } = {}, status: DataStatus = getDataStatus()): {
   listed: BlockedPlayer[];
   /** How many clubs have listed anybody, which says what kind of market it is. */
   sellingClubs: number;
   total: number;
   /** What the list is ordered by, in words: a shown fact, never a hidden score. */
   order: string;
+  /** How current the export it was read on is, with Player Rights' limitations on the players read. */
+  freshness: FreshnessCue & { limitations: string[] };
 } {
-  const empty = { listed: [], sellingClubs: 0, total: 0, order: ORDER };
+  const cue = freshnessCue(status);
+  const empty = { listed: [], sellingClubs: 0, total: 0, order: ORDER, freshness: { ...cue, limitations: [] } };
   if (!tableExists('players_roster_status') || !tableExists('players')) return empty;
 
   const level = opts.level === undefined ? 1 : opts.level;
@@ -190,7 +198,7 @@ export function tradingBlock(opts: { teamId?: number; level?: number | 'all'; li
   })));
   // Player Value's reading of each man, as every read serves it (phase 6b): no players_value, no percentile
   const ids = rows.map((r) => r.player_id);
-  const values = playerValues(ids);
+  const values = playerValues(ids, { currentState: cue.state });
   const reading = tradeValueOf({ sent: [], received: ids.map((id) => ({ playerId: id, surplus: values.get(id)?.surplus ?? null })) });
 
   const listed: BlockedPlayer[] = rows.map((r) => {
@@ -233,5 +241,6 @@ export function tradingBlock(opts: { teamId?: number; level?: number | 'all'; li
 
   const sellingClubs = new Set(rows.map((r) => r.abbr)).size;
   const limit = opts.limit && opts.limit > 0 ? opts.limit : 40;
-  return { listed: listed.slice(0, limit), sellingClubs, total: listed.length, order: ORDER };
+  const limitations = [...new Set([...values.values()].map((v) => v.control.eligibility?.limitation).filter((x): x is string => !!x))];
+  return { listed: listed.slice(0, limit), sellingClubs, total: listed.length, order: ORDER, freshness: { ...cue, limitations } };
 }

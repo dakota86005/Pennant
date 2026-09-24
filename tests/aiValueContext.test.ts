@@ -53,6 +53,15 @@ describe('the AI\'s value context carries Player Value\'s figures and no players
     expect(system).toMatch(/never (?:produce|give|state|make up) a (?:value|valuation) (?:number|figure) of your own/i);
   });
 
+  it('the briefing\'s last section points at something worth a look, never a recommendation or an instruction (phase 6e, D-001)', () => {
+    const system = briefingSystem('Club 1', 'Free agency requires 6 years of major-league service.');
+    expect(system).toMatch(/## Worth a look this week/);
+    expect(system).not.toMatch(/Recommendation of the Week/i);
+    // Worded as something to look at, never an instruction or a decision made for the GM
+    expect(system).toMatch(/Worth a look this week[^.]*(?:something to look at|to look at)/i);
+    expect(system).toMatch(/never (?:as )?an instruction/i);
+  });
+
   it('the staff chat is told the same, in every voice', () => {
     for (const persona of personasFor(IDS.mlbTeam)) {
       const system = systemPrompt(IDS.mlbTeam, persona);

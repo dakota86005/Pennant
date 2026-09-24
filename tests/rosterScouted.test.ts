@@ -3,7 +3,6 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { db } from '../server/db.js';
 import { loadScoutedAbilities } from '../server/scoutedEvidence.js';
-import { clearValuationCaches } from '../server/valuation.js';
 import { RosterTable, sortRosterPlayers } from '../src/pages/Roster';
 import type { RosterPlayer, RosterResponse } from '../src/api';
 import request from './request';
@@ -25,8 +24,7 @@ let roster: RosterResponse;
 function plantValues(seed: number): void {
   db.prepare(`UPDATE players_value SET overall_value = ?, talent_value = ?, oa = ?, pot = ?, oa_rating = ?, pot_rating = ?`)
     .run(4000 + seed, 4100 + seed, 77 + (seed % 3), 79 + (seed % 2), 75, 80);
-  // An import clears the valuation caches; so does this, so a reader of OOTP's figures would see the new ones
-  clearValuationCaches();
+  // No module caches OOTP's figures (phase 6e deleted the last reader), so a reader of them would see the new ones at once
 }
 
 beforeAll(async () => {
