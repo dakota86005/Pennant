@@ -81,6 +81,8 @@ import {
 
 export type { ContractFacts, ContractSeason, ContractTerm } from './playerValueContract.js';
 export { contractSeasonFor } from './playerValueContract.js';
+/** Service as years.days for the pages: Player Rights' arithmetic, so no consumer divides by the year itself. */
+export { serviceReading } from './playerRights.js';
 export type { ControlSeason, ControlStatus, ControlTimeline, CostBand } from './playerValueControl.js';
 export type {
   ClubFinanceInput, ClubFinances, FinanceSeason, FinanceTable, MarketCandidate, MarketStanding, OpeningPriceInput,

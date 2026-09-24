@@ -2,8 +2,8 @@ import { Router } from 'express';
 import { db, tableColumns, tableExists } from './db.js';
 import { loadSettings } from './settings.js';
 import { leagueRulesForLeague } from './leagueRules.js';
-import { controlAfterThisSeason, serviceText } from './contracts.js';
-import { clubFinances, contractSeasonFor, payrollValuations, type ContractFacts, type PlayerValuation } from './playerValue.js';
+import { controlAfterThisSeason } from './contracts.js';
+import { clubFinances, contractSeasonFor, payrollValuations, serviceReading, type ContractFacts, type PlayerValuation } from './playerValue.js';
 
 export const payrollRoutes = Router();
 
@@ -143,8 +143,8 @@ payrollRoutes.get('/payroll/:orgId', (req, res) => {
          */
         control: controlAfterThisSeason(v.control),
         options,
-        serviceYears: service === null || perYear === null ? null : Math.floor(service.low / perYear),
-        service: serviceText(service, perYear),
+        serviceYears: serviceReading(service, perYear).years,
+        service: serviceReading(service, perYear).text,
       };
     })
     .sort((a, b) => (b.salaryNow ?? 0) - (a.salaryNow ?? 0));

@@ -291,8 +291,6 @@ const CONTRACT_QUERY = /\b(?:FROM|JOIN)\s+players_contract(?:_extension)?\b/gi;
  * in the same file is not hidden by it. The list only empties.
  */
 const PENDING: Array<{ check: 'service' | 'contract-query'; file: string; matches: string[]; finding: string }> = [
-  { check: 'service', file: 'contracts.ts', matches: ['service.low /', 'service.low /'], finding: 'A-22 (F2): the Svc column divides service by the year length itself' },
-  { check: 'contract-query', file: 'payroll.ts', matches: ['FROM players_contract', 'FROM players_contract_extension'], finding: 'A-14 (F2): Payroll rebuilds contract facts from raw columns' },
   { check: 'contract-query', file: 'player.ts', matches: ['FROM players_contract'], finding: 'unassigned (A-16 sweep): the player card reads players_contract directly' },
 ];
 

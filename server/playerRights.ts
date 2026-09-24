@@ -1115,6 +1115,22 @@ const answer = (status: RightsStatus, reasons: RightsReason[] = [], missing: Mis
   status, reasons, missing,
 });
 
+/**
+ * Service as the GM reads it, in the league's own service-year length: whole years, and baseball's
+ * years.days notation ("2.126" is two years and 126 days), never a decimal of years (A-22). A band reads
+ * "2.xxx". Service arithmetic lives here, with the rights it decides, so no consumer divides by the year
+ * length itself (the Player Value boundary test enforces it); unknown stays unknown, never 0.
+ */
+export function serviceReading(
+  service: { low: number; high: number } | null,
+  perYear: number | null
+): { years: number | null; text: string | null } {
+  if (service === null || perYear === null || perYear <= 0) return { years: null, text: null };
+  const years = Math.floor(service.low / perYear);
+  if (service.low !== service.high) return { years, text: `${years}.xxx` };
+  return { years, text: `${years}.${String(Math.round(service.low - years * perYear)).padStart(3, '0')}` };
+}
+
 /** "5 years 87 days" in the league's own service-year length. */
 function spoken(days: number, perYear: number): string {
   const years = Math.floor(days / perYear);

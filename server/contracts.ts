@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { db, tableExists } from './db.js';
 import { seasonFormByPlayer, type SeasonForm } from './form.js';
 import { leagueRulesForLeague } from './leagueRules.js';
-import { clubFinances, playerValues, type ControlTimeline } from './playerValue.js';
+import { clubFinances, playerValues, serviceReading, type ControlTimeline } from './playerValue.js';
 import type { Sourced } from './provenance.js';
 import {
   contractsByPlayer, currentGameDate, mlbPercentiler, ON_ROSTER, seasonYear, valuesByPlayer,
@@ -267,16 +267,6 @@ export function optionLabel(control: Control): string {
   return kind === 'opt_out' ? 'opt-out' : kind ? `${kind} option` : 'option';
 }
 
-/**
- * Service in baseball's years.days notation ("2.126" is two years and 126 days), never a decimal of
- * years (A-22); a band from whole years alone reads "2.xxx".
- */
-export function serviceText(service: { low: number; high: number } | null, perYear: number | null): string | null {
-  if (service === null || perYear === null) return null;
-  const years = Math.floor(service.low / perYear);
-  if (service.low !== service.high) return `${years}.xxx`;
-  return `${years}.${String(Math.round(service.low - years * perYear)).padStart(3, '0')}`;
-}
 
 /**
  * The club finance cards on Contracts and Free Agents, from Club Finances (D-052): the same figure
@@ -359,7 +349,8 @@ export function computeContracts(orgId: number) {
       // Service in the league's own service-year length, as years.days; unknown stays unknown, never 0
       const service = timeline?.eligibility?.service.now ?? null;
       const perYear = timeline?.eligibility?.serviceDaysPerYear.value ?? null;
-      const serviceYears = service === null || perYear === null ? null : Math.floor(service.low / perYear);
+      const serviceRead = serviceReading(service, perYear);
+      const serviceYears = serviceRead.years;
       const oPct = overallPct(p.player_id);
       const tPct = talentPct(p.player_id);
       const form = formByPlayer.get(p.player_id) ?? null;
@@ -410,7 +401,7 @@ export function computeContracts(orgId: number) {
         extension: c.extension,
         /** Whole years of service (for sorting); `service` is the years.days text. */
         serviceYears,
-        service: serviceText(service, perYear),
+        service: serviceRead.text,
         arbYear,
         /** What happens after this season, with its basis; `indeterminate` names what is missing. */
         control,
