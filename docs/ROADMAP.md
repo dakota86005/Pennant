@@ -68,7 +68,10 @@ is independent of the others unless it says so:
    running ratings, and Player Development's ceiling lines are measured at each
    import. Left: the development path and the ages (need snapshot pairs a season
    apart), the pitchers' tools weight and the running slopes (forward fits not
-   built), and the farm's sample constants (fittable now; below).
+   built), the farm's sample constants (fittable now; below), and two recorded
+   limits of `tools-1`: its tools population is the snapshot's major-league
+   hitters (not exactly the served peer set), and a past season's first game is
+   the policy date March 20 (the export keeps only the current schedule).
 5. The remaining Minor League Operations and rights edges (§5, §6), and
    staff-informed philosophy ("Then").
 6. Release readiness (§8) whenever the owner is ready; it is not baseball work.

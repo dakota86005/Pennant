@@ -1957,8 +1957,9 @@ Every item is the supervisor's call, pending owner review.
   points the wrong way. It is now K × a tools weight of at least 1 (`ResultsParams.toolsWeight`; `DEFENSE_TOOLS_WEIGHT` and
   `RUNNING_TOOLS_WEIGHT` for the glove and running). The starting weight is 1, K alone: Player Value's owner-approved rule that
   same-time ratings pull only by their own weight. `TOOLS_INFORMATION`, `DEFENSE_INFORMATION` and `RUNNING_INFORMATION` are gone.
-- **"Too early to judge" reads the results' own trust, never the blend.** Its line keeps the sample it meant before (0.244 hitters,
-  0.301 pitchers, against the results' own K).
+- **"Too early to judge" and "a firm read" read the results' own trust, never the blend.** Each keeps the sample it meant before
+  (too early under 161.5 PA / 301.5 BF / 215.4 BF; firm from 450 PA / 840 BF / 600 BF), through one named line each; nothing
+  compares trust with a bare number (review finding B1).
 - **Ratings are checked as a forecast only on forward cases.** A forward case is the ratings stored before a season against that
   season (`ratingsForward.ts`, neutral). The tools model's bat slopes and the hitters' tools weight are fitted per save (`tools-1`),
   judged by the detector unchanged, and passed as the params in force (`ToolsParams`, one reader for MLB Operations and the Lineup

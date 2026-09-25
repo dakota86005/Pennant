@@ -1356,7 +1356,8 @@ the ratings from those results, so the test describes and does not forecast.
 | Number | Was | Now | Why |
 |---|---|---|---|
 | `TOOLS_INFORMATION` (0.4 / 0.2 / 0.2) used as K × (1 − I) | provisional | **Deleted.** `ResultsParams.toolsWeight` is a multiplier of at least 1, with K_blend = K × weight; the starting value is 1 (K alone). | The old form pointed the wrong way: the more the tools explained, the more the results counted. The Bayesian blend is K ÷ (1 − I). On the engine season, a hitter's 2023–25 record predicting his 2026 line held out: 300 PA (the old form) did worst of the three candidates (MSE ×10⁻⁴ 19.89, against 19.29 for K alone and 18.75 for K ÷ 0.6), and the tools alone did best (17.24; best in 286 of 300 bootstraps). K alone is Player Value's owner-approved rule for same-time ratings. |
-| "Too early" (`CONCERN.minReliability` 0.35 against the blend) | provisional | **`CONCERN.tooEarly`**: hitters 0.244, pitchers 0.301, read against the results' OWN trust, reliability(n, K), never the blend | Decoupled so that how much the tools hold results back never decides whether there is enough sample. The values keep the sample the line meant before (about 162 PA, 302 BF for starters, 215 for relievers). Rounding to 0.25 moved one strong case for nothing but the rounding. |
+| "Too early" (`CONCERN.minReliability` 0.35 against the blend) | provisional | **`CONCERN.tooEarly`**: hitters 105/430 (0.244), pitchers 196/651 (0.301), read against the results' OWN trust, reliability(n, K), never the blend | Decoupled so that how much the tools hold results back never decides whether there is enough sample. The values keep the sample the line meant before (about 162 PA, 302 BF for starters, 215 for relievers). Rounding to 0.25 moved one strong case for nothing but the rounding. |
+| The "firm read" (0.6 against the blend, in the staff report's confidence and "monitor or respond", the explanation and "more sample would firm it up") | provisional | **`CONCERN.firmRead`**: hitters 9/19, pitchers 6/11, against the results' own trust (`isFirmRead`) | Review finding B1: these lines moved with the blend (a hitter needed 750 PA instead of 450). They keep the sample they meant: 450 PA for a hitter, 840 BF for a starter, 600 BF for a reliever. A test pins every sample line and bans comparing trust with a bare number. |
 | `DEFENSE_INFORMATION` 0.4, `RUNNING_INFORMATION` 0.43 | provisional | **`DEFENSE_TOOLS_WEIGHT`, `RUNNING_TOOLS_WEIGHT`**, multipliers of at least 1, starting at 1 | The same inverted blend in `roleReview.blendDimension`. |
 | `HITTER_TOOL_SLOPES`, `RUNNING_SLOPES` | calibrated (run 1) | **Provisional starting values**, passed as `ToolsParams` through one reader (`toolsCalibration.ts`); the bat slopes are fitted per save by `tools-1` on forward seasons | Run 1 was a same-time fit on this save. On the engine season a refit is no better than these slopes on held-out players (1.2% more error). Their scale on 2026 results is 1.29, which moves no percentile; it is left to the forward fit (supervisor's call). |
 | `PROFILE_MIN_POINTS` 9 | policy | **Derived**: `PROFILE_SHARE` (0.5, policy) × the standard deviation of the tools' total among the league's peer hitters under the slopes in force; no words with fewer than 30 peers | 18.44 points on this save, so the line is 9.22 and no hitter's words change. |
@@ -1428,6 +1429,33 @@ the ratings from those results, so the test describes and does not forecast.
   45.0–54.1% and 88.4–91.0% for hitters, and 4.4–15.9%, 34.5–56.4% and 85.0–91.6% for pitchers; stability is 97–100%. No tier moves.
 - **Authority chain.** The lines read no result, usage, philosophy, Player Value or MLB Operations answer
   (`tests/stakesLines.test.ts`), and Player Development's defensibility judgments do not read them.
+
+### 15.4a The independent review, and what changed after it (2026-09-25)
+
+- **B1, the firm read** (above). Every reader of the results' trust used as a threshold is now a named line on the results' own K.
+- **B2, "the lines moved".** Said only when his tier at the same ratings, age and context differs under the replaced lines, and only on
+  the export the move was measured on (the reader drops the replaced lines afterwards, since his own ratings may have moved since). A
+  band move that changes no tier says nothing. The league's own lines are named as his organization's major league's.
+- **B3, the tools reason.** A part that could not be judged says why: no forward season, fewer than judging needs, or enough seasons
+  with too few hitters; one part judged and the other not says so. Each state is pinned in the copy test.
+- **B4, checked is served.** The tools fit is registered before the standards; the standards are measured under the hitters' tools
+  weight and the slopes that will serve beside them (this refit's verdict, else the one in force).
+- **D1, dating.** A snapshot stands for a season when taken before its first game: the export's own date where it holds the season's
+  schedule (the current season only), else March 20 (policy: before any opening day in the imported history). An offseason or spring
+  import therefore stands for the season about to start. Each case records its gap in days; the record states their spread.
+- **D2, the blend and the scale.** The blend is checked under the slopes that serve beside it (each origin's own where the bat part
+  serves the league's) and ranks in the lens's populations: the league's major-league hitters in the snapshot that stood for the season
+  (the snapshot's level 1), its hitters with a qualifying sample before the season, and its hitters in the season. The served bat
+  slopes carry the scale fitted on the forward seasons, and the backtest scores them as served against the starting slopes as served
+  (scale 1), so the scale reaching the Lineup page, the platoon read and "his tools imply +N points" is checked with the direction.
+  Limit, recorded: the tools population is the snapshot's major-league hitters, not exactly the served peer set (which excludes
+  amateurs and reads the current export); the difference is small and one-directional in no known way.
+- **D3.** An affiliate club's Lineup page reads its organization's major league's slopes. **D4.** A tools store that cannot be read
+  logs why and serves the starting values.
+- **Nits.** A league too thin to measure keeps its lines with its own reason (never "did not hold up"); the farm table shows lines and
+  dates plainly and its stamps carry no cycle, decision number or file name; the engine check states one standard error; the stakes
+  report uses the served measurement's rule. Not changed: hand-built test evidence whose `reliability` is not the one its `sample`
+  would give under the results' own K (it tests the review's logic, which takes reliability as given).
 
 ### 15.4 The run on the Arizona import (before and after: `scratchpad/cycle4/report.txt`; each step measured alone)
 
