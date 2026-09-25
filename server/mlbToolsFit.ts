@@ -4,13 +4,16 @@
  * its run record out. The reads are `mlbCalibrationRefit.ts`'s, from the neutral `ratingsForward.ts`.
  *
  *   bat      the slopes of the five bat tools. Fitted inside each rolling origin on the forward seasons up to it (non-negative least
- *            squares on wOBA above the season's own mean), scored on the next forward season against the starting slopes, both given a
- *            scale fitted on the same training seasons, so the comparison is of what reaches the percentile (the direction), paired on
- *            the same hitters, unshrunk and as served.
+ *            squares on wOBA above the season's own mean), shrunk toward the starting slopes and given the scale that fits the same
+ *            training seasons: what serves is the scaled slopes, so the scale is checked with the direction (the Lineup page, the
+ *            platoon read and "his tools imply +N points" read it). Scored on the next forward season against the starting slopes as
+ *            they serve (scale 1), paired on the same hitters, unshrunk and as served.
  *   blend    how much the tools hold a hitter's results back (`ResultsParams.toolsWeight.hitter`, at least 1): his working estimate,
  *            w × results percentile + (1 − w) × tools percentile with w = r ÷ (r + weight × (1 − r)), r his results' own trust, predicting
- *            his target season's percentile; percentiles among the season's forward cases. The weight is chosen on a grid inside each
- *            origin and scored against the starting 1.
+ *            his target season's results percentile. The percentiles are among the populations the lens ranks in (the league's
+ *            major-league hitters in the snapshot for the tools, its qualified hitters before the season for the results, its hitters in
+ *            the season for the target), and the tools under the slopes that serve beside it (the league's own where the bat part
+ *            serves them, each origin's own in the backtest). The weight is chosen on a grid inside each origin and scored against 1.
  *
  * Each part is served only where clearly better, by cycle 2's detector (`calibrationDetector.ts`, unchanged): at least 4 held-out forward
  * seasons of 50 hitters, each scored by a fit that saw only the seasons before it, so a save needs 5 forward seasons before anything is
@@ -62,6 +65,8 @@ export type ToolsFitPolicy = typeof TOOLS_FIT_POLICY;
 export interface ToolsCase {
   playerId: number;
   target: number;
+  /** Days from the snapshot to the start of the target season (how old the ratings were when it began). */
+  gapDays: number;
   /** His five bat tools from the snapshot (contact, gap, power, eye, avoid-K), 20-80. */
   x: number[];
   /** His recency-weighted results before the target (wOBA above the league) and their effective plate appearances; null with none. */
@@ -84,7 +89,15 @@ export interface ToolsInputCases {
   resultsK: number;
   /** The same-season engine check's cases (the season under way), or null when it cannot be run. */
   engine: { season: number; snapshot: string; cases: EngineCase[] } | null;
+  /**
+   * Per forward season, the populations the lens ranks in: the tools of the league's major-league hitters in the snapshot that stood for
+   * it, the recency-weighted results before it of the league's hitters with a qualifying sample, and the target values of its hitters in
+   * it. A season with no population has no blend rows (never ranked among the cases alone).
+   */
+  populations: Record<number, SeasonPopulation>;
 }
+
+export interface SeasonPopulation { tools: number[][]; past: number[]; target: number[] }
 
 export interface ToolsPart<V> {
   source: ServedSource;
@@ -94,8 +107,11 @@ export interface ToolsPart<V> {
   cases: number;
   priorWeight: number;
   decision: DetectorDecision | null;
-  /** Why the starting value serves, when it does. */
-  reason: 'kept' | 'confirming' | 'returned' | 'forward' | null;
+  /**
+   * Why the starting value serves, when it does: kept, confirming or returned (judged), or why it could not be judged: `forward` no
+   * season has come after a snapshot, `few_forward` fewer than judging needs, `thin` enough seasons but too few hitters in them.
+   */
+  reason: 'kept' | 'confirming' | 'returned' | 'forward' | 'few_forward' | 'thin' | null;
 }
 
 export interface ToolsModel {
@@ -183,30 +199,37 @@ function shrinkWeight(fitted: number, cases: number, strength: number): { v: num
   return { v: Math.max(1, Math.exp(w * Math.log(fitted))), weight: w };
 }
 
-/** Percentile (0 to 100) of each value among the list's own values (mid-rank for ties). */
-function percentiles(values: number[]): number[] {
-  const sorted = [...values].sort((a, b) => a - b);
-  return values.map((v) => {
-    let lo = 0; let hi = 0;
-    for (const s of sorted) { if (s < v) lo += 1; else if (s === v) hi += 1; }
-    return ((lo + hi / 2) / sorted.length) * 100;
-  });
+/** Percentile (0 to 100) of a value among a population (mid-rank for ties). */
+function pctAmong(sorted: number[], v: number): number {
+  let lo = 0; let hi = 0;
+  for (const x of sorted) { if (x < v) lo += 1; else if (x === v) hi += 1; }
+  return ((lo + hi / 2) / sorted.length) * 100;
 }
 
-/** The blend's cases: hitters with results before the target and tools, their percentiles within their target season. */
-function blendRows(cases: ToolsCase[], k: number): Array<{ playerId: number; target: number; r: number; P: number; T: number; Y: number; weight: number }> {
+type BlendRow = { playerId: number; target: number; r: number; P: number; T: number; Y: number; weight: number };
+
+/**
+ * The blend's rows: hitters with results before the target and tools, their percentiles among the season's own populations, the tools
+ * read under `slopesFor(target)` (the slopes that serve beside the blend). A season with no population gives no rows.
+ */
+function blendRows(cases: ToolsCase[], k: number, pops: ToolsInputCases['populations'], slopesFor: (target: number) => number[]): BlendRow[] {
+  const out: BlendRow[] = [];
   const bySeason = new Map<number, ToolsCase[]>();
   for (const c of cases) if (c.past && c.past.sample > 0) bySeason.set(c.target, [...(bySeason.get(c.target) ?? []), c]);
-  const out: Array<{ playerId: number; target: number; r: number; P: number; T: number; Y: number; weight: number }> = [];
-  const p = priorSlopes();
   for (const [target, list] of bySeason) {
-    const P = percentiles(list.map((c) => (c.past as { value: number }).value));
-    const T = percentiles(list.map((c) => dot(p, c.x)));
-    const Y = percentiles(list.map((c) => c.y));
-    list.forEach((c, i) => {
+    const pop = pops[target];
+    if (!pop || pop.tools.length === 0 || pop.past.length === 0 || pop.target.length === 0) continue;
+    const v = slopesFor(target);
+    const tools = pop.tools.map((x) => dot(v, x)).sort((a, b) => a - b);
+    const past = [...pop.past].sort((a, b) => a - b);
+    const tgt = [...pop.target].sort((a, b) => a - b);
+    for (const c of list) {
       const n = (c.past as { sample: number }).sample;
-      out.push({ playerId: c.playerId, target, r: n / (n + k), P: P[i], T: T[i], Y: Y[i], weight: c.weight });
-    });
+      out.push({
+        playerId: c.playerId, target, r: n / (n + k), weight: c.weight,
+        P: pctAmong(past, (c.past as { value: number }).value), T: pctAmong(tools, dot(v, c.x)), Y: pctAmong(tgt, c.y),
+      });
+    }
   }
   return out;
 }
@@ -216,7 +239,7 @@ const blendLoss = (row: { r: number; P: number; T: number; Y: number }, m: numbe
   return (row.Y - (w * row.P + (1 - w) * row.T)) ** 2;
 };
 
-function fitWeight(rows: ReturnType<typeof blendRows>, grid: readonly number[]): number | null {
+function fitWeight(rows: BlendRow[], grid: readonly number[]): number | null {
   if (rows.length === 0) return null;
   let best: { m: number; loss: number } | null = null;
   for (const m of grid) {
@@ -226,45 +249,54 @@ function fitWeight(rows: ReturnType<typeof blendRows>, grid: readonly number[]):
   return best?.m ?? null;
 }
 
+const scaled = (v: number[], b: number) => v.map((x) => Math.max(0, b) * x);
+
 // ── the backtest ─────────────────────────────────────────────────────────────
 
 interface Backtest { bat: { unshrunk: HeldOutCase[]; served: HeldOutCase[] }; blend: { unshrunk: HeldOutCase[]; served: HeldOutCase[] }; perOrigin: string[] }
 
-/** Nested rolling origins over the forward seasons: each origin fitted on the seasons up to it, scored on the next forward season. */
-export function backtestTools(input: ToolsInputCases, policyIn: ToolsFitPolicy = TOOLS_FIT_POLICY): Backtest {
+/**
+ * Nested rolling origins over the forward seasons: each origin fitted on the seasons up to it, scored on the next forward season. The
+ * bat's candidate is each origin's slopes as they would serve (shrunk and scaled on its own training seasons); the rival is the starting
+ * slopes as they serve. The blend reads the tools under `batServes`: the starting slopes, or each origin's own where the bat part serves
+ * the league's (what would have served beside the blend at that origin).
+ */
+export function backtestTools(input: ToolsInputCases, policyIn: ToolsFitPolicy = TOOLS_FIT_POLICY, batServes: ServedSource = 'starting'): Backtest {
   const seasons = input.forwardSeasons;
   const next = (t: number) => seasons[seasons.indexOf(t) + 1];
   const origins = seasons.filter((t) => next(t) !== undefined).slice(-policyIn.maxOrigins);
   const out: Backtest = { bat: { unshrunk: [], served: [] }, blend: { unshrunk: [], served: [] }, perOrigin: [] };
   const all = centred(input.cases);
-  const rowsAll = blendRows(input.cases, input.resultsK);
+  const rival = priorSlopes();
   for (const t of origins) {
     const train = all.filter((c) => c.target <= t);
     if (train.length < policyIn.minTraining) continue;
     const fitted = nonNegativeSlopes(train.map((c) => ({ x: c.xc, y: c.yc, w: c.weight })));
     if (!fitted) continue;
-    const served = shrinkSlopes(fitted, train.length, policyIn.shrinkCases).v;
-    const rival = priorSlopes();
-    const [bF, bS, bR] = [fitted, served, rival].map((v) => scaleOn(v, train));
+    const shrunk = shrinkSlopes(fitted, train.length, policyIn.shrinkCases).v;
+    const unshrunkServed = scaled(fitted, scaleOn(fitted, train));
+    const served = scaled(shrunk, scaleOn(shrunk, train));
     for (const c of all) {
       if (c.target !== next(t)) continue;
-      const loss = (v: number[], b: number) => (c.yc - b * dot(v, c.xc)) ** 2;
-      const rl = loss(rival, bR);
-      out.bat.unshrunk.push({ cluster: c.playerId, origin: t, weight: c.weight, candidate: loss(fitted, bF), rival: rl });
-      out.bat.served.push({ cluster: c.playerId, origin: t, weight: c.weight, candidate: loss(served, bS), rival: rl });
+      const loss = (v: number[]) => (c.yc - dot(v, c.xc)) ** 2;
+      const rl = loss(rival);
+      out.bat.unshrunk.push({ cluster: c.playerId, origin: t, weight: c.weight, candidate: loss(unshrunkServed), rival: rl });
+      out.bat.served.push({ cluster: c.playerId, origin: t, weight: c.weight, candidate: loss(served), rival: rl });
     }
-    const rowsTrain = rowsAll.filter((r) => r.target <= t);
+    const slopes = batServes === 'save' ? served : rival;
+    const rows = blendRows(input.cases.filter((c) => c.target <= next(t)), input.resultsK, input.populations, () => slopes);
+    const rowsTrain = rows.filter((r) => r.target <= t);
     const m = rowsTrain.length >= policyIn.minTraining ? fitWeight(rowsTrain, policyIn.weightGrid) : null;
     if (m !== null) {
       const mS = shrinkWeight(m, rowsTrain.length, policyIn.shrinkCases).v;
-      for (const r of rowsAll) {
+      for (const r of rows) {
         if (r.target !== next(t)) continue;
         const rl = blendLoss(r, 1);
         out.blend.unshrunk.push({ cluster: r.playerId, origin: t, weight: r.weight, candidate: blendLoss(r, m), rival: rl });
         out.blend.served.push({ cluster: r.playerId, origin: t, weight: r.weight, candidate: blendLoss(r, mS), rival: rl });
       }
     }
-    out.perOrigin.push(`Origin ${t}: slopes ${fitted.map((v) => v.toFixed(5)).join(' ')} on ${train.length} hitter-seasons${m !== null ? `; tools weight ${m}` : ''}.`);
+    out.perOrigin.push(`Origin ${t}: slopes ${fitted.map((v) => v.toFixed(5)).join(' ')} (as served ${served.map((v) => v.toFixed(5)).join(' ')}) on ${train.length} hitter-seasons${m !== null ? `; tools weight ${m}` : ''}.`);
   }
   return out;
 }
@@ -277,6 +309,7 @@ export function engineCheck(engine: ToolsInputCases['engine'], policyIn: ToolsFi
   if (!engine || engine.cases.length < policyIn.minTraining) return null;
   const all = centred(engine.cases.map((c) => ({ ...c, target: engine.season })));
   let prior = 0; let refit = 0; let W = 0;
+  const diffs: number[] = [];
   for (let f = 0; f < policyIn.engineFolds; f += 1) {
     const train = all.filter((c) => c.playerId % policyIn.engineFolds !== f);
     const test = all.filter((c) => c.playerId % policyIn.engineFolds === f);
@@ -285,15 +318,19 @@ export function engineCheck(engine: ToolsInputCases['engine'], policyIn: ToolsFi
     const bP = scaleOn(priorSlopes(), train);
     const bF = scaleOn(fitted, train);
     for (const c of test) {
-      prior += c.weight * (c.yc - bP * dot(priorSlopes(), c.xc)) ** 2;
-      refit += c.weight * (c.yc - bF * dot(fitted, c.xc)) ** 2;
-      W += c.weight;
+      const p = c.weight * (c.yc - bP * dot(priorSlopes(), c.xc)) ** 2;
+      const q = c.weight * (c.yc - bF * dot(fitted, c.xc)) ** 2;
+      prior += p; refit += q; W += c.weight;
+      diffs.push(q - p);
     }
   }
   const scale = scaleOn(priorSlopes(), all);
+  // One standard error of the difference across hitters (each hitter one case), as a share of the starting slopes' error
+  const mean = diffs.reduce((s, d) => s + d, 0) / diffs.length;
+  const se = Math.sqrt(diffs.reduce((s, d) => s + (d - mean) ** 2, 0) / Math.max(1, diffs.length - 1) * diffs.length) / prior;
   return {
     kind: 'engine_check', part: 'bat', n: all.length, expected: prior / W, observed: refit / W, prior: prior / W, passed: null,
-    note: `Same-season engine check (reported, never decides; not a forecast): on ${engine.season} to date, the ratings seen on ${engine.snapshot} against the results the game has produced from them, ${all.length} hitters with ${policyIn.engineMinPa}+ PA, ${policyIn.engineFolds} folds of players. A refit had ${(((refit - prior) / prior) * 100).toFixed(1)}% ${refit > prior ? 'more' : 'less'} error than the starting slopes; the starting slopes' scale on these results is ${scale.toFixed(2)} (1 is exact).`,
+    note: `Same-season engine check (reported, never decides; not a forecast): on ${engine.season} to date, the ratings seen on ${engine.snapshot} against the results the game has produced from them, ${all.length} hitters with ${policyIn.engineMinPa}+ PA, ${policyIn.engineFolds} folds of players. A refit had ${(((refit - prior) / prior) * 100).toFixed(1)}% ${refit > prior ? 'more' : 'less'} error than the starting slopes (± ${(se * 100).toFixed(1)}%, one standard error across hitters: one season cannot tell them apart); the starting slopes' scale on these results is ${scale.toFixed(2)} (1 is exact).`,
   };
 }
 
@@ -301,13 +338,13 @@ export function engineCheck(engine: ToolsInputCases['engine'], policyIn: ToolsFi
 
 export interface ToolsFitBasis { leagueId: number; throughSeason: number | null; gameDate: string | null }
 
-function part<V>(bt: { unshrunk: HeldOutCase[]; served: HeldOutCase[] }, previous: ToolsPart<V> | null, fitted: V | null, fittedServed: { v: V; weight: number } | null, starting: V, cases: number, detector: DetectorPolicy): ToolsPart<V> {
+function part<V>(bt: { unshrunk: HeldOutCase[]; served: HeldOutCase[] }, previous: ToolsPart<V> | null, fitted: V | null, fittedServed: { v: V; weight: number } | null, starting: V, cases: number, detector: DetectorPolicy, undecided: 'forward' | 'few_forward' | 'thin'): ToolsPart<V> {
   const prev: ServedSource = previous?.source ?? 'starting';
   const decision = decide({ unshrunk: bt.unshrunk, served: bt.served, previous: prev, streak: previous?.decision?.streak ?? 0 }, detector);
   if (!decision.decided || fitted === null || fittedServed === null) {
     return {
       source: prev, served: prev === 'save' ? previous?.served ?? starting : starting, fitted, fittedServed: fittedServed?.v ?? null, cases,
-      priorWeight: prev === 'save' ? previous?.priorWeight ?? 1 : 1, decision, reason: prev === 'save' ? null : 'forward',
+      priorWeight: prev === 'save' ? previous?.priorWeight ?? 1 : 1, decision, reason: prev === 'save' ? null : undecided,
     };
   }
   const source = decision.serve;
@@ -327,17 +364,27 @@ export function fitTools(input: ToolsInputCases, basis: ToolsFitBasis, previous:
   const cases = input.cases.filter((c) => c.target <= through);
   const seasons = input.forwardSeasons.filter((s) => s <= through);
   const scoped = { ...input, cases, forwardSeasons: seasons };
+  const needed = detector.minOrigins + 1;
+  // Why a part could not be judged, truly: no forward season, fewer than judging needs, or enough seasons with too few hitters in them
+  const undecided = seasons.length === 0 ? 'forward' as const : seasons.length < needed ? 'few_forward' as const : 'thin' as const;
   const bt = backtestTools(scoped, policyIn);
   const all = centred(cases);
   const fittedSlopes = all.length >= policyIn.minTraining ? nonNegativeSlopes(all.map((c) => ({ x: c.xc, y: c.yc, w: c.weight }))) : null;
-  const rows = blendRows(cases, input.resultsK);
+  const shrunk = fittedSlopes ? shrinkSlopes(fittedSlopes, all.length, policyIn.shrinkCases) : null;
+  // What serves is the scaled slopes: the scale that fits the forward seasons, checked with the direction in the backtest
+  const unshrunkScaled = fittedSlopes ? scaled(fittedSlopes, scaleOn(fittedSlopes, all)) : null;
+  const servedScaled = shrunk ? { v: scaled(shrunk.v, scaleOn(shrunk.v, all)), weight: shrunk.weight } : null;
+  const bat = part<number[]>(bt.bat, previous?.bat ?? null, unshrunkScaled, servedScaled, priorSlopes(), all.length, detector, undecided);
+  // The blend is checked, fitted and served under the slopes that serve beside it
+  const btBlend = bat.source === 'save' ? backtestTools(scoped, policyIn, 'save').blend : bt.blend;
+  const rows = blendRows(cases, input.resultsK, input.populations, () => bat.served);
   const fittedWeight = rows.length >= policyIn.minTraining ? fitWeight(rows, policyIn.weightGrid) : null;
-  const bat = part<number[]>(bt.bat, previous?.bat ?? null, fittedSlopes, fittedSlopes ? shrinkSlopes(fittedSlopes, all.length, policyIn.shrinkCases) : null, priorSlopes(), all.length, detector);
-  const blend = part<number>(bt.blend, previous?.blend ?? null, fittedWeight, fittedWeight !== null ? shrinkWeight(fittedWeight, rows.length, policyIn.shrinkCases) : null, 1, rows.length, detector);
+  const blend = part<number>(btBlend, previous?.blend ?? null, fittedWeight, fittedWeight !== null ? shrinkWeight(fittedWeight, rows.length, policyIn.shrinkCases) : null, 1, rows.length, detector, undecided);
   const model: ToolsModel = { bat, blend, forwardSeasons: seasons.length };
-  const needed = detector.minOrigins + 1;
+  const gaps = cases.map((c) => c.gapDays).sort((x, y) => x - y);
   const notes: string[] = [
-    `Forward cases only: the ratings a hitter carried into a season (his latest snapshot from an earlier season, at most 430 days before it) against what he did in it. The save holds ${input.snapshots.length} snapshot date${input.snapshots.length === 1 ? '' : 's'}${input.snapshots.length ? ` (${input.snapshots.join(', ')})` : ''} and ${seasons.length} forward season${seasons.length === 1 ? '' : 's'} with cases; judging needs ${needed} (${detector.minOrigins} held out, each after one to fit on).`,
+    `Forward cases only: the ratings a hitter carried into a season (his latest snapshot taken before the season began, at most ${430} days before it) against what he did in it. The save holds ${input.snapshots.length} snapshot date${input.snapshots.length === 1 ? '' : 's'}${input.snapshots.length ? ` (${input.snapshots.join(', ')})` : ''} and ${seasons.length} forward season${seasons.length === 1 ? '' : 's'} with cases; judging needs ${needed} (${detector.minOrigins} held out, each after one to fit on).`,
+    gaps.length ? `How old the ratings were when each season began: ${gaps[0]} to ${gaps[gaps.length - 1]} days (median ${gaps[Math.floor(gaps.length / 2)]}).` : 'No forward case, so no gap between a snapshot and a season.',
     `Each part serves only where clearly better (${ruleText(detector)}).`,
     'Not built: the pitchers\' tools weight (starters and relievers keep the starting 1) and the running slopes (their forward cases need baserunning and stealing ratings stored before a season: snapshots keep them from cycle 4 on).',
     ...bt.perOrigin,
@@ -358,9 +405,18 @@ export function fitTools(input: ToolsInputCases, basis: ToolsFitBasis, previous:
   if (engine) heldOut.push(engine);
   else notes.push('The same-season engine check could not be run (too few hitters with ratings and plate appearances in the season under way).');
   const decided = [bat, blend].some((p) => p.decision?.decided);
+  const judged = [bat, blend].filter((p) => p.decision?.decided).length;
   const gate: CalibrationRecord['gate'] = decided
-    ? { passed: true, failures: [], reason: bat.source === 'save' || blend.source === 'save' ? 'Checked on forward seasons: the league\'s own serves where clearly better.' : 'Checked on forward seasons: the starting values held up, so they serve.' }
-    : { passed: false, failures: [`forward: ${seasons.length} of ${needed} forward seasons`], reason: `Not decided: ${seasons.length} forward season${seasons.length === 1 ? '' : 's'} with ratings stored before it, ${needed} needed. The starting values serve.` };
+    ? {
+      passed: true, failures: [],
+      reason: bat.source === 'save' || blend.source === 'save'
+        ? 'Checked on forward seasons: the league\'s own serves where clearly better.'
+        : judged === 2 ? 'Checked on forward seasons: the starting values held up, so they serve.'
+          : 'Checked on forward seasons where it could be: the starting values held up there, and the rest could not be judged yet.',
+    }
+    : undecided === 'thin'
+      ? { passed: false, failures: [`thin: ${seasons.length} forward seasons, too few hitters in them to judge`], reason: `Not decided: the ${seasons.length} forward seasons have too few hitters (${detector.minCasesPerOrigin} a season held out, ${policyIn.minTraining} to fit on) to judge. The starting values serve.` }
+      : { passed: false, failures: [`forward: ${seasons.length} of ${needed} forward seasons`], reason: `Not decided: ${seasons.length} forward season${seasons.length === 1 ? '' : 's'} with ratings stored before it, ${needed} needed. The starting values serve.` };
   const priorWeight = (bat.priorWeight + blend.priorWeight) / 2;
   return {
     model,

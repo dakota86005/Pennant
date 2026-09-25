@@ -37,29 +37,45 @@ function forwardLeague(opts: { seasons: number; per?: number; slopes?: number[];
       const talent = slopes.reduce((t, b, j) => t + b * (x[j] - 50), 0) + unseen * r.n();
       const pa = 300 + Math.floor(r.u() * 350);
       const noise = (n: number) => 0.52 * r.n() / Math.sqrt(n);
-      cases.push({ playerId: id, target: s, x, y: talent + noise(pa), weight: pa, past: { value: talent + pastNoise * noise(pastPa), sample: pastPa } });
+      cases.push({ playerId: id, target: s, gapDays: 300, x, y: talent + noise(pa), weight: pa, past: { value: talent + pastNoise * noise(pastPa), sample: pastPa } });
       id += 1;
     }
   }
-  return { cases, forwardSeasons, snapshots: ['2026-05-16'], resultsK: 500, engine: null };
+  // The populations the lens ranks in: here, the season's own hitters
+  const populations: ToolsInputCases['populations'] = {};
+  for (const s of forwardSeasons) {
+    const list = cases.filter((c) => c.target === s);
+    populations[s] = { tools: list.map((c) => c.x), past: list.map((c) => (c.past as { value: number }).value), target: list.map((c) => c.y) };
+  }
+  return { cases, forwardSeasons, snapshots: ['2026-05-16'], resultsK: 500, engine: null, populations };
 }
 
 const basis = (through: number) => ({ leagueId: 1, throughSeason: through, gameDate: `${through + 1}-04-01` });
 
 describe('the tools fit judges only on seasons that came after the ratings', () => {
   it('a save with no rating saved before a season decides nothing: the starting values serve, and it says why', () => {
-    const run = fitTools({ cases: [], forwardSeasons: [], snapshots: ['2026-05-16'], resultsK: 500, engine: null }, basis(2025), null);
+    const run = fitTools({ cases: [], forwardSeasons: [], snapshots: ['2026-05-16'], resultsK: 500, engine: null, populations: {} }, basis(2025), null);
     expect(run.record.gate.passed).toBe(false);
     expect(run.record.gate.failures[0]).toMatch(/^forward: 0 of 5/);
     expect(run.model.bat).toMatchObject({ source: 'starting', reason: 'forward', served: PRIOR });
     expect(run.model.blend).toMatchObject({ source: 'starting', reason: 'forward', served: 1 });
   });
 
-  it('a snapshot taken during a season never stands for the ratings before it, nor one older than the window', () => {
+  it('a snapshot taken once a season is under way never stands for it, nor one older than the window; the gap is recorded', () => {
     const at = (gameDate: string) => ({ gameDate } as ScoutedObservation);
     expect(snapshotBefore([at('2027-04-10')], 2027)).toBeNull();
     expect(snapshotBefore([at('2025-06-01')], 2027)).toBeNull();
-    expect(snapshotBefore([at('2026-05-16'), at('2026-09-20')], 2027)?.gameDate).toBe('2026-09-20');
+    expect(snapshotBefore([at('2026-05-16'), at('2026-09-20')], 2027)).toMatchObject({ observation: { gameDate: '2026-09-20' }, gapDays: 181 });
+  });
+
+  it('an offseason or spring import stands for the season about to start, not the one after it', () => {
+    const at = (gameDate: string) => ({ gameDate } as ScoutedObservation);
+    expect(snapshotBefore([at('2026-09-20'), at('2027-02-15')], 2027)).toMatchObject({ observation: { gameDate: '2027-02-15' }, gapDays: 33 });
+    // with the export's own first game, the line is that day: a snapshot after it is already in the season
+    expect(snapshotBefore([at('2027-03-24')], 2027, '2027-03-25')).toMatchObject({ gapDays: 1 });
+    expect(snapshotBefore([at('2027-03-26')], 2027, '2027-03-25')).toBeNull();
+    // without it, the stated policy date (March 20)
+    expect(snapshotBefore([at('2027-03-22')], 2027)).toBeNull();
   });
 
   it('a held-out season never takes part in choosing what it judges', () => {
@@ -114,6 +130,33 @@ describe('the detector decides', () => {
     expect(check?.note).toMatch(/not a forecast/);
     expect(run.record.gate.passed).toBe(false);
     expect(run.model.bat.source).toBe('starting');
+  });
+
+  it('the reason is true in every state: no forward season, too few, enough but thin, one part judged and the other not', () => {
+    const none = fitTools({ cases: [], forwardSeasons: [], snapshots: [], resultsK: 500, engine: null, populations: {} }, basis(2025), null);
+    expect([none.model.bat.reason, none.record.gate.failures[0]]).toEqual(['forward', 'forward: 0 of 5 forward seasons']);
+    const few = fitTools(forwardLeague({ seasons: 3, seed: 4 }), basis(2029), null);
+    expect([few.model.bat.reason, few.record.gate.failures[0]]).toEqual(['few_forward', 'forward: 3 of 5 forward seasons']);
+    const thin = fitTools(forwardLeague({ seasons: 6, per: 40, seed: 4 }), basis(2032), null);
+    expect(thin.model.bat.reason).toBe('thin');
+    expect(thin.record.gate.failures[0]).toMatch(/^thin: 6 forward seasons/);
+    expect(thin.record.gate.reason).not.toMatch(/needed/);
+    // the bat judged, the blend not (no hitter has results before the season)
+    const noPast = forwardLeague({ seasons: 6, seed: 4 });
+    const batOnly = fitTools({ ...noPast, cases: noPast.cases.map((c) => ({ ...c, past: null })) }, basis(2032), null);
+    expect(batOnly.model.bat.reason).toBe('kept');
+    expect(batOnly.model.blend.reason).toBe('thin');
+    expect(batOnly.record.gate.reason).toMatch(/the rest could not be judged yet/);
+  });
+
+  it('the served slopes are scaled as checked: a league whose tools spread results twice as far adopts slopes about twice the size', () => {
+    const doubled = PRIOR.map((b) => 2 * b);
+    const first = fitTools(forwardLeague({ seasons: 6, slopes: doubled, seed: 8 }), basis(2032), null);
+    const second = fitTools(forwardLeague({ seasons: 7, slopes: doubled, seed: 8 }), basis(2033), first.model);
+    expect(second.model.bat.source).toBe('save');
+    const ratio = second.model.bat.served.reduce((s, v) => s + v, 0) / PRIOR.reduce((s, v) => s + v, 0);
+    expect(ratio).toBeGreaterThan(1.6);
+    expect(ratio).toBeLessThan(2.4);
   });
 
   it('its minimums are the detector\'s: 4 held-out forward seasons, each after one to fit on', () => {

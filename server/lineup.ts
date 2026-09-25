@@ -7,7 +7,7 @@ import {
   loadScoutedHitterProfiles, scoutedGloves, scoutedHitterPopulation, type HitterSide, type ScoutedHitterProfile,
 } from './scoutedEvidence.js';
 import { expectedWobaRaw, type ToolsParams } from './toolsModel.js';
-import { toolsParamsFor } from './toolsCalibration.js';
+import { majorLeagueOfClub, toolsParamsFor } from './toolsCalibration.js';
 import { computeBatting, leagueBaseline } from './stats.js';
 import { climb, expectedRuns, outcomesFrom, type BattingLine } from './runs.js';
 
@@ -385,8 +385,9 @@ lineupRoutes.get('/lineup/:teamId', (req, res) => {
    * the same for every man, so it moves nobody.
    */
   const side: HitterSide = vs === 'r' ? 'vsRight' : 'vsLeft';
-  // The tools model's slopes in force for the league: the same reader MLB Operations uses, so one league has one set (cycle 4)
-  const tools = toolsParamsFor(teamRow ? teamRow.league_id : null);
+  // The tools model's slopes in force for the club's organization's major league (an affiliate's included): the same reader MLB
+  // Operations uses, so one league has one set (cycle 4)
+  const tools = toolsParamsFor(majorLeagueOfClub(teamId));
   const available = raw.filter((p) => !sidelined.has(p.player_id));
   const profiles = loadScoutedHitterProfiles(available.map((p) => p.player_id));
   const league = teamRow ? scoutedHitterPopulation(teamRow.league_id).map((p) => batOf(p, side, tools)).filter((b): b is Bat => b !== null) : [];

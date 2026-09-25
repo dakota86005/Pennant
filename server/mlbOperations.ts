@@ -8,6 +8,7 @@
  * docs/MLB_OPERATIONS.md.
  */
 
+import type { ToolsParams } from './toolsModel.js';
 import { Router } from 'express';
 import { db, tableExists } from './db.js';
 import { getDataStatus } from './dataStatus.js';
@@ -88,18 +89,19 @@ function realPorts(orgId: number, floors: CoverageFloors = DEFAULT_COVERAGE_FLOO
 }
 
 /** The scouting review's evidence, through the same specialists: lenses, usage, splits. */
-export function reviewPorts(orgId: number, override?: { results?: ResultsParams; bullpen?: BullpenLines }): ReviewPorts {
+export function reviewPorts(orgId: number, override?: { results?: ResultsParams; bullpen?: BullpenLines; tools?: ToolsParams }): ReviewPorts {
   const yardsticks = yardsticksFor(orgId);
   // The refit may measure the standards under the results params and the bullpen lines about to be recorded (what is checked is what
   // is served)
   const results = override?.results ?? yardsticks.results;
   const bullpen = override?.bullpen ?? yardsticks.bullpen;
+  const tools = override?.tools ?? yardsticks.tools;
   return {
     calibration: { standards: yardsticks.standards, review: yardsticks.review },
     bullpen,
-    holderEvidence: (ids, role) => holderEvidence(orgId, ids, role, {}, results, bullpen, yardsticks.tools),
+    holderEvidence: (ids, role) => holderEvidence(orgId, ids, role, {}, results, bullpen, tools),
     hitterUsage: (ids) => hitterUsage(orgId, ids),
-    platoon: (ids) => platoonInputs(orgId, ids, results, yardsticks.platoon, yardsticks.tools),
+    platoon: (ids) => platoonInputs(orgId, ids, results, yardsticks.platoon, tools),
     teamGames: () => teamGamesPlayed(orgId),
     covers: (ids) => playableCovers(ids),
     coverReads: (ids) => coverReads(orgId, ids),

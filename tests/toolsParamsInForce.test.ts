@@ -52,3 +52,13 @@ describe('the API serves the tools params in force', () => {
     expect(body.groups.map((g: { key: string }) => g.key)).toContain('tools');
   });
 });
+
+describe('an affiliate club reads its organization\'s slopes (review D3)', () => {
+  it('the Lineup page resolves a minor-league club to its organization\'s major league, whose fit is the one recorded', async () => {
+    const { majorLeagueOfClub } = await import('../server/toolsCalibration');
+    const { IDS } = await import('./fixture');
+    expect(majorLeagueOfClub(IDS.mlbTeam)).toBe(IDS.league);
+    expect(majorLeagueOfClub(IDS.aaaTeam)).toBe(IDS.league);
+    expect(code('lineup.ts')).toMatch(/toolsParamsFor\(majorLeagueOfClub\(teamId\)\)/);
+  });
+});

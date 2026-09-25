@@ -90,7 +90,7 @@ const pct = (x: number | null | undefined) => (x === null || x === undefined ? '
 /** Why a group serves the starting values: each reason is one the line may give, and only when it is the true one. */
 export type StartingReason =
   | 'not_measured' | 'no_league' | 'games' | 'games_unknown' | 'clubs' | 'seasons' | 'no_zone_rating' | 'no_later_season' | 'check_failed'
-  | 'kept' | 'confirming' | 'returned' | 'no_splits' | 'relievers' | 'rarely_long' | 'next_import' | 'no_forward_ratings';
+  | 'kept' | 'confirming' | 'returned' | 'no_splits' | 'relievers' | 'rarely_long' | 'next_import' | 'no_forward_ratings' | 'few_forward_ratings' | 'thin_forward' | 'kept_part';
 
 /** Each reason in a GM's words (the record's reasons are for the API). */
 export const REASON_TEXT: Record<StartingReason, string> = {
@@ -111,6 +111,9 @@ export const REASON_TEXT: Record<StartingReason, string> = {
   rarely_long: `this league's relievers rarely work multiple innings, so the line stays at ${LONG_LINE_PRIOR} innings`,
   next_import: 'the long-man line is first measured at the next import',
   no_forward_ratings: 'this league has no ratings saved before a season to check them against yet',
+  few_forward_ratings: 'too few seasons have been played since this league\'s ratings were first saved to check them yet',
+  thin_forward: 'the seasons played since this league\'s ratings were saved have too few hitters to check them on',
+  kept_part: 'they held up where they could be checked on this league\'s seasons, and the rest could not be checked yet',
 };
 
 /**
@@ -148,9 +151,15 @@ function keptReason(key: YardstickKey, stored: StoredCalibration): StartingReaso
     return r === 'returned' || r === 'confirming' ? r : 'kept';
   }
   if (key === 'tools') {
+    // True in every state (review finding B3): a judged part's verdict first; a part that could not be judged says why
     const m = stored.model as ToolsModel | null;
-    const reasons = [m?.bat?.reason, m?.blend?.reason];
-    return reasons.includes('returned') ? 'returned' : reasons.includes('confirming') ? 'confirming' : reasons.includes('forward') ? 'no_forward_ratings' : 'kept';
+    const reasons = [m?.bat?.reason ?? null, m?.blend?.reason ?? null];
+    if (reasons.includes('returned')) return 'returned';
+    if (reasons.includes('confirming')) return 'confirming';
+    const undecided = reasons.filter((r) => r === 'forward' || r === 'few_forward' || r === 'thin');
+    if (reasons.includes('kept')) return undecided.length ? 'kept_part' : 'kept';
+    const first = undecided[0];
+    return first === 'forward' ? 'no_forward_ratings' : first === 'few_forward' ? 'few_forward_ratings' : first === 'thin' ? 'thin_forward' : 'kept';
   }
   if (key === 'bullpen') {
     // The standards in force were measured under the starting line: because the line did not hold up, or too few relievers to measure it
@@ -173,7 +182,8 @@ export function reasonOf(stored: StoredCalibration | null): StartingReason {
   if (first === 'no_zone_rating_pairs') return 'no_zone_rating';
   if (first.startsWith('no_splits')) return 'no_splits';
   if (first.startsWith('no_later_season')) return 'no_later_season';
-  if (first.startsWith('forward:')) return 'no_forward_ratings';
+  if (first.startsWith('forward:')) return /^forward: 0 of/.test(first) ? 'no_forward_ratings' : 'few_forward_ratings';
+  if (first.startsWith('thin:')) return 'thin_forward';
   return 'check_failed';
 }
 

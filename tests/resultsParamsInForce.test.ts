@@ -107,8 +107,8 @@ describe('no reader holds a default (static)', () => {
     const src = code('mlbOperations.ts');
     expect(src).toMatch(/holderEvidence\(orgId, ids, role, opts \?\? \{\}, yardsticks\.results, yardsticks\.bullpen, yardsticks\.tools\)/);
     expect(src).toMatch(/platoonInputs\(orgId, ids, yardsticks\.results, yardsticks\.platoon, yardsticks\.tools\)/);
-    expect(src).toMatch(/holderEvidence\(orgId, ids, role, \{\}, results, bullpen, yardsticks\.tools\)/);
-    expect(src).toMatch(/platoonInputs\(orgId, ids, results, yardsticks\.platoon, yardsticks\.tools\)/);
+    expect(src).toMatch(/holderEvidence\(orgId, ids, role, \{\}, results, bullpen, tools\)/);
+    expect(src).toMatch(/platoonInputs\(orgId, ids, results, yardsticks\.platoon, tools\)/);
     // plans, scenarios and the report reach evidence only through these ports
     for (const f of ['mlbPlans.ts', 'mlbReport.ts', 'mlbResponses.ts', 'mlbReview.ts', 'rosterScenario.ts']) {
       expect(code(f), f).not.toMatch(/\b(loadHitterResults|loadPitcherResults|loadDefenseResults|platoonInputs)\(/);

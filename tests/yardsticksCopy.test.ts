@@ -194,10 +194,60 @@ describe('what the tools say (cycle 4)', () => {
   });
 });
 
+describe('the tools group gives the true reason in every state (review finding B3)', () => {
+  const SLOPES = [0.00155, 0.00033, 0.00122, 0.00086, 0];
+  const fit = (bat: [string, string | null], blend: [string, string | null], passed: boolean, failures: string[] = [], seasons = 6) => () => recordCalibration({
+    model: { bat: toolsPart(bat[0] as 'save' | 'starting', bat[1], SLOPES), blend: toolsPart(blend[0] as 'save' | 'starting', blend[1], 1), forwardSeasons: seasons },
+    record: rec('tools', TOOLS_METHOD, passed, { throughSeason: 1991 }, failures),
+  }, { fitMs: 1 });
+  const CASES: Array<[string, () => unknown, string, RegExp]> = [
+    ['no forward season', fit(['starting', 'forward'], ['starting', 'forward'], false, ['forward: 0 of 5 forward seasons'], 0), 'no_forward_ratings', /no ratings saved before a season/],
+    ['fewer forward seasons than judging needs', fit(['starting', 'few_forward'], ['starting', 'few_forward'], false, ['forward: 3 of 5 forward seasons'], 3), 'few_forward_ratings', /too few seasons have been played since/],
+    ['enough seasons, too few hitters in them', fit(['starting', 'thin'], ['starting', 'thin'], false, ['thin: 6 forward seasons, too few hitters in them to judge']), 'thin_forward', /too few hitters to check them on/],
+    ['the bat judged and held up, the blend not judged', fit(['starting', 'kept'], ['starting', 'thin'], true), 'kept_part', /held up where they could be checked/],
+    ['both judged and held up', fit(['starting', 'kept'], ['starting', 'kept'], true), 'kept', /checked on this league's seasons and held up/],
+    ['one confirming', fit(['starting', 'confirming'], ['starting', 'kept'], true), 'confirming', /must do so once more/],
+  ];
+  it.each(CASES)('%s', (_name, setup, reason, text) => {
+    const y = state([setup]);
+    const g = y.groups.find((x) => x.key === 'tools');
+    expect(g).toMatchObject({ source: 'starting', reason });
+    expect(g?.text).toMatch(text);
+    expect(y.tip).not.toMatch(BANNED);
+  });
+});
+
 describe('the tools weight in force reaches the results params', () => {
   it('where the league\'s own tools weight serves, every working estimate is blended with it; otherwise the starting 1', () => {
     const ownWeight = () => recordCalibration({ model: { bat: toolsPart('starting', 'kept', [0.00155, 0.00033, 0.00122, 0.00086, 0]), blend: toolsPart('save', null, 1.5), forwardSeasons: 6 }, record: rec('tools', TOOLS_METHOD, true, { throughSeason: 1991 }) }, { fitMs: 1 });
     expect(state([ownWeight]).results.toolsWeight).toEqual({ hitter: 1.5, starter: 1, reliever: 1 });
     expect(state([noForward]).results.toolsWeight).toEqual({ hitter: 1, starter: 1, reliever: 1 });
+  });
+});
+
+describe('the standards are measured under the tools weight and slopes that serve beside them (review finding B4)', () => {
+  it('in force: the refit reads the same tools weight and slopes the review serves', async () => {
+    const { resultsParamsFor, toolsParamsForRefit } = await import('../server/mlbCalibrationRefit');
+    const ownWeight = () => recordCalibration({ model: { bat: toolsPart('save', null, [0.0016, 0.0003, 0.0013, 0.0009, 0]), blend: toolsPart('save', null, 1.5), forwardSeasons: 6 }, record: rec('tools', TOOLS_METHOD, true, { throughSeason: 1991 }) }, { fitMs: 1 });
+    historyDb.exec(`DELETE FROM save_calibration_fits`);
+    ownWeight();
+    clearRosterReviewCalibrationCache();
+    const y = rosterReviewCalibration(L);
+    const refit = { results: resultsParamsFor(L, 1991), tools: toolsParamsForRefit(L, 1991) };
+    historyDb.exec(`DELETE FROM save_calibration_fits`);
+    clearRosterReviewCalibrationCache();
+    expect(y.results.toolsWeight.hitter).toBe(1.5);
+    expect(refit.results.toolsWeight).toEqual(y.results.toolsWeight);
+    expect(refit.tools).toEqual(y.tools);
+  });
+
+  it('in the same refit: a tools verdict just decided is what the standards are measured under', async () => {
+    const { rememberToolsVerdict, resultsParamsFor, toolsParamsForRefit } = await import('../server/mlbCalibrationRefit');
+    historyDb.exec(`DELETE FROM save_calibration_fits`);
+    clearRosterReviewCalibrationCache();
+    rememberToolsVerdict(L, 1992, { bat: toolsPart('save', null, [0.002, 0.0003, 0.0013, 0.0009, 0]), blend: toolsPart('save', null, 2), forwardSeasons: 6 } as never);
+    expect(resultsParamsFor(L, 1992).toolsWeight.hitter).toBe(2);
+    expect(toolsParamsForRefit(L, 1992)).toMatchObject({ source: 'save', slopes: { contact: 0.002 } });
+    expect(resultsParamsFor(L, 1991).toolsWeight.hitter).toBe(1);
   });
 });

@@ -121,7 +121,7 @@ describe('no reader holds a default (static)', () => {
     }
     // the refit names the starting lines only to run the one review whose tiers it then re-reads under the measured lines
     const refit = code('mlbCalibrationRefit.ts');
-    expect(refit).toMatch(/standardsSample\(b\.leagueId, results, BULLPEN_PRIOR\);/);
+    expect(refit).toMatch(/standardsSample\(b\.leagueId, results, BULLPEN_PRIOR, toolsParamsForRefit\(b\.leagueId, b\.throughSeason\)\);/);
     expect(refit).toMatch(/return measureStandards\(rekeyRelievers\(sample, record\.lines\)/);
     expect(refit.match(/\bBULLPEN_PRIOR\b/g)).toHaveLength(2); // the import and that one review
   });
