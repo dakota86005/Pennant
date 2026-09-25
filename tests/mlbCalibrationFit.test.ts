@@ -125,14 +125,35 @@ describe('aging: the league\'s own curve, checked on seasons it did not see', ()
   const pitchDecline = (age: number) => (age < 27 ? 0 : 0.02 * (age - 27));
   const input = (h: AgingPair[], p: AgingPair[]) => ({ hitter: h, pitcher: p, seasons: Array.from({ length: 21 }, (_, i) => 2005 + i), skipped: [] });
 
-  it('a steady league\'s curve is adopted, never improves with age, and holds the starting curve where pairs are thin', () => {
+  it('a steady league\'s curve passes its checks, never improves with age, and holds the starting curve where pairs are thin', () => {
     const run = fitAging(input(agingPairs(3, decline, 6000, [2005, 2025]), agingPairs(4, pitchDecline, 4000, [2005, 2025])), basis);
     expect(run.record.gate.passed).toBe(true);
-    const t = run.model!.table;
+    const t = run.model!.fitted;
     for (let i = 1; i < t.hitter.length; i += 1) expect(t.hitter[i]).toBeLessThanOrEqual(t.hitter[i - 1] + 1e-12);
     for (let i = 1; i < t.pitcher.length; i += 1) expect(t.pitcher[i]).toBeGreaterThanOrEqual(t.pitcher[i - 1] - 1e-12);
     expect(expectedAnnualChange(34, false, t)).toBeLessThan(-0.004);
     expect(run.record.heldOut.filter((c) => c.kind === 'age_band').length).toBeGreaterThan(0);
+  });
+
+  it('a league that ages like the starting curve keeps it: checked on held-out seasons, it held up', () => {
+    const like = (age: number) => expectedAnnualChange(age, false);
+    const likeP = (age: number) => expectedAnnualChange(age, true);
+    const run = fitAging(input(agingPairs(8, like, 6000, [2005, 2025]), agingPairs(9, likeP, 4000, [2005, 2025])), basis);
+    expect(run.record.gate.passed).toBe(true);
+    expect(run.model!.serve).toEqual({ hitter: 'starting', pitcher: 'starting' });
+    // the served table is empty for both kinds: the starting rows serve, and the review never calls them the league's own
+    expect(run.model!.table.hitter).toEqual([]);
+    expect(run.record.gate.reason).toMatch(/starting curve held up/);
+  });
+
+  it('a league that ages clearly faster adopts its own curve, and once serving keeps it unless the starting curve is clearly better', () => {
+    const steep = (age: number) => (age < 26 ? 0 : -0.004 * (age - 26));
+    const run = fitAging(input(agingPairs(10, steep, 6000, [2005, 2025]), agingPairs(11, pitchDecline, 4000, [2005, 2025])), basis);
+    expect(run.model!.serve.hitter).toBe('save');
+    expect(expectedAnnualChange(34, false, run.model!.table)).toBeLessThan(-0.02);
+    const next = fitAging(input(agingPairs(12, steep, 6000, [2005, 2025]), agingPairs(13, pitchDecline, 4000, [2005, 2025])), basis, undefined, run.model);
+    expect(next.model!.decisions.hitter?.rule).toBe('return_if_fallback_clearly_better');
+    expect(next.model!.serve.hitter).toBe('save');
   });
 
   it('the curve fitted without the starting curve is checked too, and must pass', () => {
