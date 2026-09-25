@@ -17,7 +17,7 @@
 import { db, tableColumns, tableExists } from './db.js';
 import { leagueBaseline } from './stats.js';
 import {
-  blendStabilization, defenseResult, percentileAmong, POPULATION_MINIMUM, reliability, RESULTS_CALIBRATION, resultsParamsKey, weightedBaserunning,
+  defenseResult, percentileAmong, POPULATION_MINIMUM, reliability, RESULTS_CALIBRATION, resultsParamsKey, weightedBaserunning,
   weightedBatting, weightedPitching, wobaOf, type ResultsParams,
   type BaserunningResult, type BattingLine, type DefenseLine, type DefenseResult, type PitchingLine, type SeasonEnvironment, type WeightedResult,
 } from './resultsMetrics.js';
@@ -247,7 +247,7 @@ export interface PitcherResults {
   /** Percentile among the league's pitchers used the same way; higher is better. Null without a qualifying sample. */
   skillsPercentile: number | null;
   runsPercentile: number | null;
-  /** Effective sample (batters faced) behind the multi-season read, and how far to trust it against his tools. */
+  /** Effective sample (batters faced) behind the multi-season read, and how far to trust it as his level on its own (the results' own K). */
   sample: number;
   reliability: number;
   /** Innings per start across the weighted seasons, for a starter. */
@@ -274,7 +274,7 @@ export function loadPitcherResults(playerIds: number[], leagueId: number, usage:
       playerId: id, usage, seasons: [...lines].sort((a, b) => b.year - a.year), current, skills: w.skills, runs: w.runs,
       skillsPercentile: w.skills.value !== null && w.skills.sample >= POPULATION_MINIMUM.pitcher ? percentileAmong(skillsPop, w.skills.value, false) : null,
       runsPercentile: w.runs.value !== null && w.runs.sample >= POPULATION_MINIMUM.pitcher ? percentileAmong(runsPop, w.runs.value, false) : null,
-      sample: w.skills.sample, reliability: reliability(w.skills.sample, blendStabilization(usage, params)),
+      sample: w.skills.sample, reliability: reliability(w.skills.sample, params.stabilization[usage]),
       inningsPerStart: gs > 0 ? outs / 3 / gs : null,
       leverage: current && current.bf > 0 && current.li > 0 ? current.li / current.bf : null,
       calibration: params.stamp,
@@ -292,7 +292,7 @@ export interface HitterResults {
   /** Percentile among the league's hitters; higher is better. */
   percentile: number | null;
   sample: number;
-  /** How far to trust the batting results against his tools (0 to 1). */
+  /** How far to trust the batting results as his level on their own (0 to 1; the results' own K, never the blend with his tools). */
   reliability: number;
   /** Baserunning runs per 600 PA (UBR and stolen-base runs), recency weighted, and where that ranks among hitters. */
   baserunning: BaserunningResult & { percentile: number | null };
@@ -311,7 +311,7 @@ export function loadHitterResults(playerIds: number[], leagueId: number, params:
     out.set(id, {
       playerId: id, seasons: [...lines].sort((a, b) => b.year - a.year), current: lines.find((l) => l.year === year) ?? null, woba: w,
       percentile: w.value !== null && w.sample >= POPULATION_MINIMUM.hitter ? percentileAmong(pop.hitters, w.value, true) : null,
-      sample: w.sample, reliability: reliability(w.sample, blendStabilization('hitter', params)),
+      sample: w.sample, reliability: reliability(w.sample, params.stabilization.hitter),
       baserunning: { ...run, percentile: run.perSixHundred !== null && run.sample >= POPULATION_MINIMUM.hitter ? percentileAmong(pop.baserunning, run.perSixHundred, true) : null },
       calibration: params.stamp,
     });

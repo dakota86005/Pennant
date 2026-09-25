@@ -25,7 +25,7 @@ for (const pos of [2, 3, 4, 5, 6, 7, 8, 9]) {
   if (first) regularIds.add(first.id);
 }
 const ev = (bat: number, results: number | null, glove: number | null, position: number, reliability = 0.7): LensEvidence => ({
-  position, ratingsPct: bat, ratingsEvidence: 'complete', skillsPct: results, runsPct: null, sample: 500, sampleUnit: 'PA', reliability, currentSample: 150,
+  position, ratingsPct: bat, ratingsEvidence: 'complete', skillsPct: results, runsPct: null, sample: 500, sampleUnit: 'PA', toolsWeight: 1, reliability, currentSample: 150,
   defense: { stabilization: 1000, pct: glove, grade: glove === null ? null : 55, visible: glove !== null }, usage: [],
 });
 const ports: ReviewPorts = {

@@ -43,7 +43,7 @@ describe('GOLDEN bullpen: roles for extreme profiles', () => {
 });
 
 describe('GOLDEN bullpen: the same weak line means different things in different jobs', () => {
-  const ev = (pct: number): LensEvidence => ({ ratingsPct: pct, ratingsEvidence: 'complete', skillsPct: pct, runsPct: pct, sample: 400, sampleUnit: 'BF', reliability: 0.7, currentSample: 120, usage: [] });
+  const ev = (pct: number): LensEvidence => ({ ratingsPct: pct, ratingsEvidence: 'complete', skillsPct: pct, runsPct: pct, sample: 400, sampleUnit: 'BF', toolsWeight: 1, reliability: 0.7, currentSample: 120, usage: [] });
   const review = (pct: number, tier: BullpenTier) => reviewGroup([{ playerId: 1, name: 'R', age: 28, ...ev(pct) } as ReviewSubject], { pitcher: true, role: 'relief pitcher', standard: () => relieverStandard(tier) })[0];
 
   it('a 30th-percentile arm is a concern as a closer and not as a long man', () => {

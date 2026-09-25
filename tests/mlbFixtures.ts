@@ -186,7 +186,7 @@ export function fakePorts(opts: PortOptions): ResponsePorts {
       const override = opts.holderEvidence?.(id, role, o);
       const base: LensEvidence = {
         ratingsPct: fit && 'compositePercentile' in fit ? (fit.compositePercentile as number | null) : 50, ratingsEvidence: 'complete',
-        skillsPct: null, runsPct: null, sample: 0, sampleUnit: 'BF', reliability: 0, currentSample: null,
+        skillsPct: null, runsPct: null, sample: 0, sampleUnit: 'BF', toolsWeight: 1, reliability: 0, currentSample: null,
       };
       return [id, { ...base, ...(override ?? {}) }] as const;
     })),

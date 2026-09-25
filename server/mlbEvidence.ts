@@ -333,11 +333,12 @@ export function holderEvidence(orgId: number, playerIds: number[], role: RoleRef
   const out = new Map<number, LensEvidence>();
   if (playerIds.length === 0) return out;
   const pitcher = role.kind === 'starting_pitcher' || role.kind === 'relief_pitcher';
+  const usageKind = role.kind === 'starting_pitcher' ? 'starter' : 'reliever';
   const league = majorLeagueId(orgId);
   if (!pitcher) return hitterEvidence(orgId, playerIds, role, league, opts, params);
   // A pitcher asked about in a role he does not fill has no results in it; only his tools speak (ignoreResults).
   const results = pitcher && league !== null && !opts.ignoreResults
-    ? loadPitcherResults(playerIds, league, role.kind === 'starting_pitcher' ? 'starter' : 'reliever', params)
+    ? loadPitcherResults(playerIds, league, usageKind, params)
     : new Map<number, ReturnType<typeof loadPitcherResults> extends Map<number, infer V> ? V : never>();
   for (const id of playerIds) {
     const fit = roleFitEvidence(id, orgId, role);
@@ -345,7 +346,7 @@ export function holderEvidence(orgId: number, playerIds: number[], role: RoleRef
     out.set(id, {
       ratingsPct: fit.compositePercentile, ratingsEvidence: fit.evidenceStatus,
       skillsPct: r?.skillsPercentile ?? null, runsPct: r?.runsPercentile ?? null,
-      sample: r?.sample ?? 0, sampleUnit: pitcher ? 'BF' : 'PA', reliability: r?.reliability ?? 0,
+      sample: r?.sample ?? 0, sampleUnit: pitcher ? 'BF' : 'PA', reliability: r?.reliability ?? 0, toolsWeight: params.toolsWeight[usageKind],
       currentSample: r?.current ? r.current.bf : null,
       usage: usageNotes(r, role, bullpen),
       ...(role.kind === 'relief_pitcher' && r?.current ? { bullpen: { g: r.current.g, ip: r.current.outs / 3, sv: r.current.sv, hld: r.current.hld, leverage: r.leverage } } : {}),
@@ -436,7 +437,7 @@ function hitterEvidence(orgId: number, playerIds: number[], role: RoleRef, leagu
       toolsProfile: profile ? (() => { const c = toolContributions(profile.tools); const d = describeBat(c); return c && d ? { contributions: c, ...d } : null; })() : null,
       ratingsPct: toolsPct ?? fit.compositePercentile, ratingsEvidence: fit.evidenceStatus,
       skillsPct: r?.percentile ?? null, runsPct: null,
-      sample: r?.sample ?? 0, sampleUnit: 'PA', reliability: r?.reliability ?? 0, currentSample: r?.current ? r.current.pa : null,
+      sample: r?.sample ?? 0, sampleUnit: 'PA', reliability: r?.reliability ?? 0, toolsWeight: params.toolsWeight.hitter, currentSample: r?.current ? r.current.pa : null,
       usage: notes,
     });
   }

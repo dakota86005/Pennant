@@ -5,7 +5,7 @@ import { standardsFrom, STARTING_STANDARDS, type ServedStandards } from '../serv
 /** A first baseman whose working estimate is under the floor, with tools and results both lowish. */
 const subject = (over: Partial<LensEvidence> = {}): ReviewSubject => ({
   playerId: 1, name: 'First Base', age: 29, position: 3, ratingsPct: 40, ratingsEvidence: 'complete', skillsPct: 50, runsPct: null,
-  sample: 1200, sampleUnit: 'PA', reliability: 0.7, currentSample: 150, ...over,
+  sample: 1200, sampleUnit: 'PA', toolsWeight: 1, reliability: 0.7, currentSample: 150, ...over,
 });
 const review = (s: ReviewSubject, set = standardsFrom(), aging: import('../server/roleReview').AgingTable | null = null) =>
   reviewGroup([s], { pitcher: false, role: 'lineup regular', standard: (h) => set.hitter(h.position), calibration: { aging } })[0];

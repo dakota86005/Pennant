@@ -145,7 +145,7 @@ describe('GOLDEN bench: what is an attention item and what is a finding', () => 
     for (const pos of [2, 3, 4, 5, 6, 7, 8, 9]) { const f = hitters.find((h) => h.position === pos && !regular.has(h.id)); if (f) regular.add(f.id); }
     const usage = (id: number) => { const s = hitters.find((h) => h.id === id)!; const r = regular.has(id); return { bats: 'R' as const, gs: r ? 38 : 4, pa: r ? 160 : 20, fielding: [{ position: s.position, gs: r ? 38 : 4, ip: r ? 330 : 36 }] }; };
     const base = {
-      holderEvidence: (ids: number[]) => new Map(ids.map((id) => [id, { ratingsPct: 60, ratingsEvidence: 'complete' as const, skillsPct: 60, runsPct: null, sample: 500, sampleUnit: 'PA' as const, reliability: 0.7, currentSample: 150, usage: [] }] as const)),
+      holderEvidence: (ids: number[]) => new Map(ids.map((id) => [id, { ratingsPct: 60, ratingsEvidence: 'complete' as const, skillsPct: 60, runsPct: null, sample: 500, sampleUnit: 'PA' as const, toolsWeight: 1, reliability: 0.7, currentSample: 150, usage: [] }] as const)),
       hitterUsage: (ids: number[]) => new Map(ids.map((id) => [id, usage(id)] as const)), teamGames: () => 40,
     };
     // the bench can play catcher and middle infield well, and center field only as an emergency

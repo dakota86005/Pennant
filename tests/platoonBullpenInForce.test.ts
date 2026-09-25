@@ -93,7 +93,7 @@ describe('every consumer reads the platoon weights and bullpen lines in force', 
   it('the review reads every reliever\'s role and the pen-wide findings under the lines it is given', () => {
     // RP1..RP8 = 105..112: three work 1.7 innings an appearance in low leverage (long men at 1.6), the rest one inning
     const ev = (id: number): LensEvidence => ({
-      ratingsPct: 50, ratingsEvidence: 'complete', skillsPct: 50, runsPct: 50, sample: 600, sampleUnit: 'BF', reliability: 0.6, currentSample: 150, usage: [],
+      ratingsPct: 50, ratingsEvidence: 'complete', skillsPct: 50, runsPct: 50, sample: 600, sampleUnit: 'BF', toolsWeight: 1, reliability: 0.6, currentSample: 150, usage: [],
       ...(id >= 105 ? { bullpen: { g: 20, ip: id <= 107 ? 34 : 20, sv: id === 112 ? 10 : 0, hld: 0, leverage: id === 112 ? 2.0 : 0.8 } } : {}),
     });
     const ports = (bullpen: BullpenLines): ReviewPorts => ({ holderEvidence: (ids) => new Map(ids.map((id) => [id, ev(id)] as const)), bullpen });

@@ -11,7 +11,7 @@ import { fakePorts, healthy26, mkState, viewOf, type PortOptions, type Spec } fr
  */
 
 const ev = (ratingsPct: number | null, skillsPct: number | null, runsPct: number | null, reliability = 0.75): LensEvidence => ({
-  ratingsPct, ratingsEvidence: 'complete', skillsPct, runsPct, sample: 900, sampleUnit: 'BF', reliability, currentSample: 180, usage: [],
+  ratingsPct, ratingsEvidence: 'complete', skillsPct, runsPct, sample: 900, sampleUnit: 'BF', toolsWeight: 1, reliability, currentSample: 180, usage: [],
 });
 // SP1..SP5 = 100..104 (SP5 is weak); RP1..RP8 = 105..112 (RP8 is the weakest arm); Reno arms = 500..503
 const lens: Record<number, LensEvidence> = {

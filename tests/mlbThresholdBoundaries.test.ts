@@ -18,7 +18,7 @@ import { healthy26, viewOf } from './mlbFixtures';
  */
 
 describe('role floors: the line between a concern and none, and between moderate and strong', () => {
-  const at = (estimate: number): LensEvidence => ({ ratingsPct: estimate, ratingsEvidence: 'complete', skillsPct: estimate, runsPct: estimate, sample: 500, sampleUnit: 'BF', reliability: 1, currentSample: 200, usage: [] });
+  const at = (estimate: number): LensEvidence => ({ ratingsPct: estimate, ratingsEvidence: 'complete', skillsPct: estimate, runsPct: estimate, sample: 500, sampleUnit: 'BF', toolsWeight: 1, reliability: 1, currentSample: 200, usage: [] });
   const run = (estimate: number) => reviewGroup([{ playerId: 1, name: 'S', age: 28, ...at(estimate) } as ReviewSubject], { pitcher: true, role: 'starting pitcher', standard: () => starterStandard() })[0];
   const s = starterStandard();
 
@@ -163,5 +163,30 @@ describe('the club\'s context: the window and the season cut-offs', () => {
     expect(read(50, SEASON.inIt - 0.01)?.season.read).toBe('on_the_fence');
     expect(read(50, SEASON.outOfIt)?.season.read).toBe('out_of_it');
     expect(read(50, SEASON.outOfIt + 0.01)?.season.read).toBe('on_the_fence');
+  });
+});
+
+describe('the "too early" line: trust in his results as his level, never the blend with his tools (cycle 4)', () => {
+  const s = starterStandard();
+  // A weak starter on both lenses, so only the sample can make the read "too early"
+  const weak = (reliability: number, toolsWeight: number): LensEvidence => ({ ratingsPct: s.deepFloor - 10, ratingsEvidence: 'complete', skillsPct: s.deepFloor - 10, runsPct: s.deepFloor - 10, sample: 300, sampleUnit: 'BF', toolsWeight, reliability, currentSample: 100, usage: [] });
+  const run = (e: LensEvidence, pitcher = true) => reviewGroup([{ playerId: 1, name: 'S', age: 28, ...e } as ReviewSubject], { pitcher, role: 'starting pitcher', standard: () => starterStandard() })[0];
+
+  it('a pitcher a hair under 0.30 of his own K is too early to judge; a hair over is judged', () => {
+    expect(run(weak(0.299, 1)).kind).toBe('too_early');
+    expect(run(weak(0.301, 1)).kind).not.toBe('too_early');
+  });
+
+  it('how much his tools hold his results back never decides whether there is enough sample to judge', () => {
+    for (const trust of [0.2, 0.299, 0.301, 0.5, 0.8]) {
+      const kinds = [1, 1.5, 3, 10].map((w) => run(weak(trust, w)).kind === 'too_early');
+      expect(new Set(kinds).size, `trust ${trust}`).toBe(1);
+    }
+  });
+
+  it('a working estimate built without the tools weight in force is refused, never given a default', () => {
+    const missing = { ...weak(0.5, 1) } as Partial<LensEvidence>;
+    delete missing.toolsWeight;
+    expect(() => run(missing as LensEvidence)).toThrow(/tools weight/);
   });
 });

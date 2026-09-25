@@ -8,10 +8,10 @@ import { hitterStandard, relieverStandard, starterStandard, type RoleStandard } 
  */
 
 const hitter = (position: number, bat: number, glove: number | null): LensEvidence => ({
-  position, ratingsPct: bat, ratingsEvidence: 'complete', skillsPct: bat, runsPct: null, sample: 900, sampleUnit: 'PA', reliability: 0.75, currentSample: 150,
+  position, ratingsPct: bat, ratingsEvidence: 'complete', skillsPct: bat, runsPct: null, sample: 900, sampleUnit: 'PA', toolsWeight: 1, reliability: 0.75, currentSample: 150,
   defense: { stabilization: 1000, pct: glove, grade: glove === null ? null : 50, visible: glove !== null }, usage: [],
 });
-const pitcher = (pct: number): LensEvidence => ({ ratingsPct: pct, ratingsEvidence: 'complete', skillsPct: pct, runsPct: pct, sample: 500, sampleUnit: 'BF', reliability: 0.7, currentSample: 120, usage: [] });
+const pitcher = (pct: number): LensEvidence => ({ ratingsPct: pct, ratingsEvidence: 'complete', skillsPct: pct, runsPct: pct, sample: 500, sampleUnit: 'BF', toolsWeight: 1, reliability: 0.7, currentSample: 120, usage: [] });
 const subject = (id: number, e: LensEvidence, age = 28): ReviewSubject => ({ playerId: id, name: `P${id}`, age, ...e });
 
 const lineupStandard = (h: ReviewSubject): RoleStandard | null => hitterStandard(h.position);
