@@ -65,6 +65,13 @@ const GUARDED = [
   'farmUsage.ts',
   // Phase 6d (PLAYER_VALUE.md Part 8): the lineup reads its bats and gloves through the adapter
   'lineup.ts',
+  // Per-save calibration, cycle 1: the roster review's fits and the neutral identity read objective facts only
+  'mlbCalibration.ts',
+  'mlbCalibrationFit.ts',
+  'mlbCalibrationRefit.ts',
+  'saveIdentity.ts',
+  'saveCalibration.ts',
+  'saveCalibrationStore.ts',
 ];
 
 /** Every way of naming a continuous OOTP value/ability field that is not approved evidence. */

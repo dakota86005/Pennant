@@ -333,7 +333,9 @@ function shiftPlans(deps: PlanDeps): Plan[] {
 /** A working-estimate function backed by the evidence port, cached so each (player, role) is asked once. */
 export function estimatorFrom(
   evidence: (playerIds: number[], role: RoleRef, opts?: { ignoreResults?: boolean }) => Map<number, LensEvidence>,
-  currentRole: (playerId: number) => RoleRef | null = () => null
+  currentRole: (playerId: number) => RoleRef | null = () => null,
+  /** The glove weights in force for the save (D-053): the fitted ones once adopted; absent, the built-in starting values. */
+  defenseWeights?: Record<number, number>
 ): { estimate: EstimateOf; prefetch(ids: number[], role: RoleRef): void } {
   const cache = new Map<string, number | null>();
   const key = (id: number, role: RoleRef) => `${id}:${role.kind}:${role.position}`;
@@ -349,7 +351,7 @@ export function estimatorFrom(
     if (away.length) for (const [id, e] of evidence(away, role, { ignoreResults: true })) got.set(id, e);
     for (const id of missing) {
       const e = got.get(id);
-      cache.set(key(id, role), e ? workingEstimate(e, pitcher).value : null);
+      cache.set(key(id, role), e ? workingEstimate(e, pitcher, defenseWeights).value : null);
     }
   };
   return {

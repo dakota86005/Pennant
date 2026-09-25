@@ -44,3 +44,42 @@ describe('per-save calibration boundary', () => {
     expect(s).not.toMatch(/players_value|fielding_rating|batting_ratings|pitching_ratings|running_ratings|players_fielding\b|players_batting\b|players_pitching\b/);
   });
 });
+
+describe('the glove weights in force reach every working estimate', () => {
+  /** Every call of roleReview's `estimateOf` (by its local name) or `compareReplacement` in a server module, with its argument count. */
+  function calls(file: string): Array<{ name: string; args: number; text: string }> {
+    const src = code(file);
+    const names: Array<{ local: string; min: number }> = [];
+    const imp = /import\s*\{([^}]*)\}\s*from\s*'\.\/roleReview\.js'/g;
+    for (const m of src.matchAll(imp)) {
+      for (const part of m[1].split(',')) {
+        const [orig, alias] = part.replace(/\btype\b/, '').trim().split(/\s+as\s+/);
+        if (orig === 'estimateOf') names.push({ local: (alias ?? orig).trim(), min: 3 });
+        if (orig === 'compareReplacement') names.push({ local: (alias ?? orig).trim(), min: 4 });
+      }
+    }
+    const out: Array<{ name: string; args: number; text: string }> = [];
+    for (const { local, min } of names) {
+      for (const m of src.matchAll(new RegExp(`\\b${local}\\(`, 'g'))) {
+        let depth = 1; let i = (m.index as number) + m[0].length; let commas = 0; const start = i;
+        for (; i < src.length && depth > 0; i += 1) {
+          const c = src[i];
+          if ('([{'.includes(c)) depth += 1;
+          else if (')]}'.includes(c)) depth -= 1;
+          else if (c === ',' && depth === 1) commas += 1;
+        }
+        const text = src.slice(start, i - 1);
+        if (/^\s*[a-z]+\s*:/.test(text)) continue; // a declaration, not a call
+        out.push({ name: `${local}/${min}`, args: text.trim() === '' ? 0 : commas + 1, text });
+      }
+    }
+    return out;
+  }
+
+  it.each(['mlbReview.ts', 'mlbResponses.ts', 'mlbReport.ts', 'mlbPlans.ts', 'rosterScenario.ts', 'mlbOperations.ts', 'mlbExplain.ts', 'benchReview.ts'])('%s passes the glove weights to every working estimate and comparison', (file) => {
+    for (const c of calls(file)) {
+      const min = Number(c.name.split('/')[1]);
+      expect(c.args, `${file}: ${c.name.split('/')[0]}(${c.text.slice(0, 80)})`).toBeGreaterThanOrEqual(min);
+    }
+  });
+});

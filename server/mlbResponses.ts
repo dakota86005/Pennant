@@ -1090,7 +1090,8 @@ function replacementLayer(
   const affiliate = ports.optionAffiliateTeamId();
   const est = estimatorFrom(
     (ids, r, o) => ports.holderEvidence(ids, r, o),
-    (id) => view.members.find((m) => m.playerId === id)?.role ?? null
+    (id) => view.members.find((m) => m.playerId === id)?.role ?? null,
+    ports.reviewCalibration?.defenseWeights ?? undefined
   );
   for (const kind of ['starting_pitcher', 'relief_pitcher'] as const) {
     const members = active.filter((m) => m.role?.kind === kind);
