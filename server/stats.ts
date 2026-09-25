@@ -1,4 +1,5 @@
-import { db, tableExists } from './db.js';
+import { db, tableColumns, tableExists } from './db.js';
+import { provisional, type CalibrationStamp } from './calibration.js';
 
 /**
  * League-relative statistics (OPS+, wRC+, ERA+) need a league baseline and a
@@ -6,9 +7,96 @@ import { db, tableExists } from './db.js';
  * so they stay correct for any league setup, run environment, or era.
  */
 
-/** wOBA linear weights. wOBAScale is the run-conversion implied by these same weights. */
+/** wOBA linear weights. The wOBA scale is the run conversion these same weights imply in each league-season (`wobaScaleFrom`). */
 const W = { bb: 0.69, hbp: 0.72, single: 0.88, double: 1.25, triple: 1.58, hr: 2.03 };
-const WOBA_SCALE = 1.2;
+
+/**
+ * PROVISIONAL (the fallback only). The conventional wOBA scale, used for a league-season whose own totals cannot give one (a total
+ * the export does not record, too few plate appearances). Every served scale is derived from the league-season's own totals
+ * (cycle 2, D-053: a derivation of the run environment, like the league's wOBA itself).
+ */
+export const WOBA_SCALE_FALLBACK = 1.2;
+/** PROVISIONAL (the fallback only). The run value of a stolen base (the convention's constant) and of a caught stealing. */
+export const STEAL_RUNS_FALLBACK = { sb: 0.2, cs: -0.4 } as const;
+/** POLICY. Fewest plate appearances in a league-season before its own run environment is derived. */
+export const RUN_ENVIRONMENT_MIN_PA = 10000;
+
+// The derivation itself is a mechanism (like the league's wOBA): it carries no stamp. Only the fallback does.
+export const RUN_ENVIRONMENT_FALLBACK_STAMP: CalibrationStamp = provisional(
+  'The conventional wOBA scale (1.2) and steal values (+0.2, -0.4), for a league-season whose totals cannot give its own.'
+);
+
+/** The totals a league-season's run environment is derived from (batting side). Absent columns are undefined, never zero. */
+export interface RunTotals {
+  pa: number; ab: number; h: number; d: number; t: number; hr: number; bb: number; ibb?: number; hp?: number; sf?: number;
+  sh?: number; sb?: number; cs?: number; gdp?: number; r: number;
+}
+
+export interface DerivedValue {
+  value: number;
+  basis: 'derived' | 'fallback';
+  /** Why the fallback serves (null when derived). */
+  reason: string | null;
+}
+
+/** Why a league-season's totals cannot give its run environment; null when they can. */
+function missingTotals(x: RunTotals): string | null {
+  if (!(x.pa >= RUN_ENVIRONMENT_MIN_PA)) return `fewer than ${RUN_ENVIRONMENT_MIN_PA.toLocaleString('en-US')} plate appearances`;
+  // A zero league total of these is not recorded, never a true zero (D-018): no league-season has none
+  for (const k of ['sf', 'cs', 'gdp', 'ibb', 'hp', 'sb'] as const) if (!(x[k] !== undefined && x[k]! > 0)) return `the export does not record ${k.toUpperCase()} for the season`;
+  if (!(x.r > 0)) return 'the export does not record runs for the season';
+  return null;
+}
+
+/** Outs made by the batting side: at-bats without a hit, sacrifices, caught stealing and double plays (their second out). */
+const battingOuts = (x: RunTotals) => x.ab - x.h + (x.sf ?? 0) + (x.sh ?? 0) + (x.cs ?? 0) + (x.gdp ?? 0);
+
+/**
+ * The wOBA scale a league-season's own totals imply for the fixed weights `W` (BaseRuns, Smyth/Tango: A = H + BB + HBP - HR - IBB/2,
+ * B = m (1.4 TB - 0.6 H - 3 HR + 0.1 (BB + HBP - IBB) + 0.9 (SB - CS - GDP)), C = AB - H + SF + CS + GDP, D = HR, with m set so the
+ * formula reproduces the league's runs). Each event's run value is the formula's partial derivative; an out's value relative to average
+ * is its derivative less the league's runs per out. The scale is the league's fixed-weight wOBA numerator over its run-value numerator
+ * (each event less an out): the runs one point of wOBA is worth in this environment.
+ */
+export function wobaScaleFrom(x: RunTotals): DerivedValue {
+  const missing = missingTotals(x);
+  if (missing) return { value: WOBA_SCALE_FALLBACK, basis: 'fallback', reason: missing };
+  const ibb = x.ibb as number;
+  const hp = x.hp as number;
+  const singles = x.h - x.d - x.t - x.hr;
+  const tb = singles + 2 * x.d + 3 * x.t + 4 * x.hr;
+  const A = x.h + x.bb + hp - x.hr - 0.5 * ibb;
+  const B0 = 1.4 * tb - 0.6 * x.h - 3 * x.hr + 0.1 * (x.bb + hp - ibb) + 0.9 * ((x.sb as number) - (x.cs as number) - (x.gdp as number));
+  const C = x.ab - x.h + (x.sf as number) + (x.cs as number) + (x.gdp as number);
+  const RD = x.r - x.hr;
+  const m = (RD * C) / (B0 * (A - RD));
+  if (!Number.isFinite(m) || m < 0.5 || m > 2) return { value: WOBA_SCALE_FALLBACK, basis: 'fallback', reason: "the season's totals do not fit the run formula" };
+  const B = m * B0;
+  const dA = B / (B + C);
+  const dB = (A * C) / (B + C) ** 2;
+  const dC = -(A * B) / (B + C) ** 2;
+  const outs = battingOuts(x);
+  const out = dC - x.r / outs;
+  const rv = {
+    bb: dA + dB * m * 0.1 - out, hbp: dA + dB * m * 0.1 - out, single: dA + dB * m * 0.8 - out,
+    double: dA + dB * m * 2.2 - out, triple: dA + dB * m * 3.6 - out, hr: 1 + dB * m * 2.0 - out,
+  };
+  const n = { bb: x.bb - ibb, hbp: hp, single: singles, double: x.d, triple: x.t, hr: x.hr };
+  const keys = Object.keys(n) as Array<keyof typeof n>;
+  const fixed = keys.reduce((s, k) => s + W[k] * n[k], 0);
+  const runs = keys.reduce((s, k) => s + rv[k] * n[k], 0);
+  const scale = fixed / runs;
+  if (!Number.isFinite(scale) || scale < 0.8 || scale > 2) return { value: WOBA_SCALE_FALLBACK, basis: 'fallback', reason: "the season's totals do not fit the run formula" };
+  return { value: scale, basis: 'derived', reason: null };
+}
+
+/** A caught stealing's run value from the league-season's runs per out (the standard wSB form, -(2 x R/O + 0.075)); the fallback when unknown. */
+export function caughtStealingRunsFrom(x: RunTotals): DerivedValue {
+  const missing = missingTotals(x);
+  const outs = battingOuts(x);
+  if (missing || !(outs > 0)) return { value: STEAL_RUNS_FALLBACK.cs, basis: 'fallback', reason: missing ?? 'the export does not record outs for the season' };
+  return { value: -(2 * (x.r / outs) + 0.075), basis: 'derived', reason: null };
+}
 
 export interface LeagueBaseline {
   year: number;
@@ -19,6 +107,10 @@ export interface LeagueBaseline {
   lgERA: number;
   /** League's raw FIP numerator per inning; lgERA minus this is the FIP constant. */
   lgFIPRaw: number;
+  /** Runs per point of wOBA in this league-season, derived from its own totals (`wobaScaleFrom`), else the labelled fallback. */
+  wobaScale: DerivedValue;
+  /** A caught stealing's run value in this league-season (`caughtStealingRunsFrom`), else the labelled fallback. */
+  caughtStealingRuns: DerivedValue;
   /** team_id → park run factor, already halved for a half-home schedule. */
   parkFactor: Map<number, number>;
 }
@@ -56,11 +148,14 @@ export function leagueBaseline(leagueId: number, year: number, level = 1): Leagu
   const hit = baselineCache.get(key);
   if (hit) return hit;
 
+  // The run environment's extra totals are read only where the export has the column (D-007); an absent one is unknown
+  const cols = new Set(tableColumns('players_career_batting_stats'));
+  const extra = ['sh', 'sb', 'cs', 'gdp'].map((c) => (cols.has(c) ? `SUM(s.${c}) AS ${c}` : `NULL AS ${c}`)).join(', ');
   const bat = db
     .prepare(
       `SELECT SUM(s.pa) AS pa, SUM(s.ab) AS ab, SUM(s.h) AS h, SUM(s.d) AS d, SUM(s.t) AS t3,
               SUM(s.hr) AS hr, SUM(s.bb) AS bb, SUM(s.ibb) AS ibb, SUM(s.hp) AS hp,
-              SUM(s.sf) AS sf, SUM(s.r) AS r
+              SUM(s.sf) AS sf, SUM(s.r) AS r, ${extra}
        FROM players_career_batting_stats s
        WHERE s.year = ? AND s.split_id = 1 AND s.level_id = ? AND s.league_id = ?`
     )
@@ -82,6 +177,11 @@ export function leagueBaseline(leagueId: number, year: number, level = 1): Leagu
   const obpDen = ab + n(bat.bb) + n(bat.hp) + n(bat.sf);
   const wobaDen = ab + (n(bat.bb) - n(bat.ibb)) + n(bat.sf) + n(bat.hp);
   const lgInnings = n(pit.outs) / 3;
+  const opt = (v: number | null | undefined) => (v === null || v === undefined ? undefined : v);
+  const totals: RunTotals = {
+    pa: n(bat.pa), ab, h, d: n(bat.d), t: n(bat.t3), hr: n(bat.hr), bb: n(bat.bb), ibb: opt(bat.ibb), hp: opt(bat.hp), sf: opt(bat.sf),
+    sh: opt(bat.sh), sb: opt(bat.sb), cs: opt(bat.cs), gdp: opt(bat.gdp), r: n(bat.r),
+  };
 
   const baseline: LeagueBaseline = {
     year,
@@ -96,6 +196,8 @@ export function leagueBaseline(leagueId: number, year: number, level = 1): Leagu
     lgFIPRaw: lgInnings
       ? (13 * n(pit.hra) + 3 * (n(pit.bb) + n(pit.hp)) - 2 * n(pit.k)) / lgInnings
       : 0,
+    wobaScale: wobaScaleFrom(totals),
+    caughtStealingRuns: caughtStealingRunsFrom(totals),
     parkFactor: parkFactors(leagueId),
   };
   baselineCache.set(key, baseline);
@@ -152,7 +254,7 @@ export function computeBatting(
   // wRC+ : runs created per PA relative to league, park-adjusted
   const wrcPlus =
     woba !== null && base.lgRperPA > 0
-      ? (100 * ((woba - base.lgWOBA) / WOBA_SCALE + base.lgRperPA)) / (base.lgRperPA * pf)
+      ? (100 * ((woba - base.lgWOBA) / base.wobaScale.value + base.lgRperPA)) / (base.lgRperPA * pf)
       : null;
 
   return {

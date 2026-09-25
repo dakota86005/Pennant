@@ -31,8 +31,6 @@ import {
 
 const has = (table: string, cols: string[]) => tableExists(table) && cols.every((c) => new Set(tableColumns(table)).has(c));
 const levelOf = (leagueId: number) => marketLevels().get(leagueId) ?? 1;
-/** The conventional wOBA scale (runs per point of wOBA above the league), as the harness uses. NOT fitted to the league: it sets the glove-to-bat ratio in the defense fit, so on a league far from it that fit would be off by its ratio (inactive until the save has zone-rating seasons; cycle 2 measures it with the results metrics). */
-const WOBA_SCALE = 1.2;
 
 /** The league's completed full seasons up to `through` (a season under the policy's share of its schedule is skipped, with why). */
 export function fullSeasons(leagueId: number, through: number, minShare: number): { seasons: number[]; skipped: Array<{ season: number; reason: string }> } {
@@ -242,7 +240,10 @@ export function defenseSeasons(leagueId: number, through: number): DefenseSeason
     GROUP BY year HAVING SUM(ABS(zr)) > 0 ORDER BY year`).all(level, leagueId, through) as Array<{ year: number }>).map((r) => r.year);
   const out: DefenseSeason[] = [];
   for (const year of years) {
-    const lgWoba = leagueBaseline(leagueId, year, level).lgWOBA;
+    // The season's own wOBA scale (`leagueBaseline`, derived from its totals; the labelled fallback where they cannot give one)
+    const base = leagueBaseline(leagueId, year, level);
+    const lgWoba = base.lgWOBA;
+    const scale = base.wobaScale.value;
     const fielding = db.prepare(`SELECT player_id id, position pos, SUM(ip) ip, SUM(zr) zr, ${framing} fr FROM players_career_fielding_stats
       WHERE level_id = ? AND league_id = ? AND year = ? AND position BETWEEN 2 AND 9 GROUP BY 1, 2`).all(level, leagueId, year) as Array<{ id: number; pos: number; ip: number; zr: number; fr: number }>;
     const main = new Map<number, { pos: number; ip: number; runs: number }>();
@@ -257,7 +258,7 @@ export function defenseSeasons(leagueId: number, through: number): DefenseSeason
       const m = main.get(r.id);
       const w = wobaOf(r as never);
       if (!m || w === null || r.pa <= 0 || m.ip <= 0 || lgWoba <= 0) continue;
-      lines.push({ playerId: r.id, position: m.pos, pa: r.pa, batRuns600: ((w - lgWoba) / WOBA_SCALE) * 600, innings: m.ip, fieldRuns1300: (m.runs / m.ip) * 1300 });
+      lines.push({ playerId: r.id, position: m.pos, pa: r.pa, batRuns600: ((w - lgWoba) / scale) * 600, innings: m.ip, fieldRuns1300: (m.runs / m.ip) * 1300 });
     }
     out.push({ season: year, lines });
   }
