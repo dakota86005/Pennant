@@ -14,7 +14,10 @@
  * role floors that move, and the age explanations whose stated decline changes. Then, each separately (cycle 2): the season weights
  * and stabilization (the detector's verdict, and what the league's own values would have changed had they served), the aging rule
  * change (cycle 1 served the league's own curve; the "clearly better" rule may keep the starting one), and the wOBA scale (derived per
- * league-season: the wRC+ shifts by level, and the farm-facing form reads that change).
+ * league-season: the wRC+ shifts by level, and the farm-facing form reads that change). Then (cycle 3) the long-man line on its own:
+ * C with the standards measured under the starting line and the starting lines (C0), against C (the standards measured under the
+ * league's own line, served with it): long-man labels, flags and crowded-bullpen reads per club and league-wide; and the platoon
+ * weight's verdict and what it moves.
  */
 
 import { db } from '../server/db.js';
@@ -33,6 +36,13 @@ import { RESULTS_PRIOR, type ResultsParams } from '../server/resultsMetrics.js';
 import { paramsOf, type ResultsModel } from '../server/mlbResultsFit.js';
 import { describeComparison, ruleText, type Comparison } from '../server/calibrationDetector.js';
 import { computeBatting, leagueBaseline, WOBA_SCALE_FALLBACK } from '../server/stats.js';
+import { BULLPEN_PRIOR, type BullpenLines } from '../server/bullpenRoles.js';
+import { measureStandards, rekeyRelievers } from '../server/mlbCalibrationFit.js';
+import { resultsLensHistory, standardsSample } from '../server/mlbCalibrationRefit.js';
+import { PLATOON_PRIOR } from '../server/platoon.js';
+import { completedThrough } from '../server/saveIdentity.js';
+import type { PlatoonModel } from '../server/mlbPlatoonFit.js';
+import { evaluatePlatoon } from '../server/platoon.js';
 
 const arg = (name: string) => { const i = process.argv.indexOf(name); return i >= 0 ? process.argv[i + 1] : undefined; };
 const human = (db.prepare(`SELECT team_id FROM teams WHERE human_team = 1 LIMIT 1`).get() as { team_id: number } | undefined)?.team_id ?? null;
@@ -87,34 +97,55 @@ console.log(`\nGlove weights (${defense?.record.gate.passed ? 'would be ADOPTED'
 if (!defenseModel) console.log(`  ${defense?.record.gate.reason ?? 'not fitted'}`);
 
 // ── the review three ways ────────────────────────────────────────────────────
-const A: { standards: RoleStandardsSet; review: ReviewCalibration } = { standards: standardsFrom(), review: {} };
-const B: { standards: RoleStandardsSet; review: ReviewCalibration } = {
-  standards: standardsFrom(stdModel ? { ...STARTING_STANDARDS, lenses: stdModel.served.lenses } : STARTING_STANDARDS), review: {},
+type Yard = { standards: RoleStandardsSet; review: ReviewCalibration; bullpen: BullpenLines };
+// The standards as cycles 1 and 2 measured them: under the starting bullpen lines (the same review, the tiers read at 1.6)
+const servedResultsEarly = results?.record.gate.passed && results.model ? paramsOf(results.model as ResultsModel, String(results.record.basis.throughSeason)) : RESULTS_PRIOR;
+const t2 = performance.now();
+const sampleAtStart = standardsSample(league, servedResultsEarly, BULLPEN_PRIOR);
+const hist = resultsLensHistory(league, completedThrough(league).season, servedResultsEarly);
+const stdAtStart = measureStandards(rekeyRelievers(sampleAtStart, BULLPEN_PRIOR), hist.seasons, { leagueId: league, throughSeason: completedThrough(league).season, gameDate: leagueDate ?? null }, undefined, undefined, hist.skipped);
+const stdAtStartModel = stdAtStart.record.gate.passed ? (stdAtStart.model as StandardsModel) : null;
+console.log(`\n(the standards re-measured under the starting line for the comparison: ${stdAtStart.record.gate.passed ? 'would pass' : 'would not pass'}, ${Math.round(performance.now() - t2)} ms)`);
+const linesServed: BullpenLines = stdModel?.bullpen?.lines ?? BULLPEN_PRIOR;
+const A: Yard = { standards: standardsFrom(), review: {}, bullpen: BULLPEN_PRIOR };
+const B: Yard = {
+  standards: standardsFrom(stdModel ? { ...STARTING_STANDARDS, lenses: stdModel.served.lenses } : STARTING_STANDARDS), review: {}, bullpen: BULLPEN_PRIOR,
 };
-const C: { standards: RoleStandardsSet; review: ReviewCalibration } = {
+// C0: everything the save serves except the long-man line (standards measured under the starting line, the starting lines)
+const C0: Yard = {
+  standards: standardsFrom(stdAtStartModel?.served ?? STARTING_STANDARDS),
+  review: { aging: agingModel?.table ?? null, defenseWeights: defenseModel?.weights ?? null }, bullpen: BULLPEN_PRIOR,
+};
+const C: Yard = {
   standards: standardsFrom(stdModel?.served ?? STARTING_STANDARDS),
-  review: { aging: agingModel?.table ?? null, defenseWeights: defenseModel?.weights ?? null },
+  review: { aging: agingModel?.table ?? null, defenseWeights: defenseModel?.weights ?? null }, bullpen: linesServed,
 };
 
-type Row = { club: number; playerId: number; name: string; group: string; kind: string; strength: string; floor: number | null; explanations: string };
+type Row = { club: number; playerId: number; name: string; group: string; kind: string; strength: string; floor: number | null; explanations: string; tier: string | null };
+const penKinds = new Map<string, Map<number, string[]>>();
 const teams = db.prepare(`SELECT team_id, abbr FROM teams WHERE league_id = ? AND level = 1 ORDER BY team_id`).all(league) as Array<{ team_id: number; abbr: string }>;
 const abbr = new Map(teams.map((t) => [t.team_id, t.abbr]));
-function reviewAll(y: typeof A, resultsParams: ResultsParams = RESULTS_PRIOR): Map<string, Row> {
+function reviewAll(y: Yard, resultsParams: ResultsParams = RESULTS_PRIOR, label = ''): Map<string, Row> {
   const out = new Map<string, Row>();
+  const pens = new Map<number, string[]>();
   for (const t of teams) {
-    const ports = { ...reviewPorts(t.team_id, { results: resultsParams }), calibration: y };
+    const ports = { ...reviewPorts(t.team_id, { results: resultsParams, bullpen: y.bullpen }), calibration: { standards: y.standards, review: y.review } };
     let groups: RoleGroupReview[];
     try { groups = reviewClub(loadClubView(t.team_id), ports); } catch { continue; }
-    for (const g of groups) for (const h of g.holders) {
-      out.set(`${t.team_id}:${g.role}:${h.playerId}`, { club: t.team_id, playerId: h.playerId, name: h.name, group: g.role, kind: h.kind, strength: h.strength, floor: h.standard?.floor ?? null, explanations: h.explanations.join(' | ') });
+    for (const g of groups) {
+      if (g.kind === 'relief_pitcher') pens.set(t.team_id, (g.pen ?? []).map((f) => (f.kind === 'crowded_role' ? `crowded:${f.players[0]?.tier}` : f.kind)));
+      for (const h of g.holders) {
+        out.set(`${t.team_id}:${g.role}:${h.playerId}`, { club: t.team_id, playerId: h.playerId, name: h.name, group: g.role, kind: h.kind, strength: h.strength, floor: h.standard?.floor ?? null, explanations: h.explanations.join(' | '), tier: (h as { tier?: string | null }).tier ?? null });
+      }
     }
   }
+  if (label) penKinds.set(label, pens);
   return out;
 }
 const t1 = performance.now();
 // What the save serves for the results lens: its own only where the detector found them clearly better
-const servedResults = results?.record.gate.passed && results.model ? paramsOf(results.model as ResultsModel, String(results.record.basis.throughSeason)) : RESULTS_PRIOR;
-const [ra, rb, rc] = [reviewAll(A), reviewAll(B), reviewAll(C, servedResults)];
+const servedResults = servedResultsEarly;
+const [ra, rb, rc0, rc] = [reviewAll(A), reviewAll(B), reviewAll(C0, servedResults, 'C0'), reviewAll(C, servedResults, 'C')];
 console.log(`\n(${new Set([...ra.values()].map((r) => r.club)).size} clubs with a reviewed roster, each reviewed three ways, in ${Math.round(performance.now() - t1)} ms)`);
 
 const isFlag = (s: string) => s === 'strong' || s === 'moderate';
@@ -142,7 +173,7 @@ function compare(title: string, before: Map<string, Row>, after: Map<string, Row
   }
 }
 compare('3. THE LENS CHANGE ALONE (A -> B): each lens read against its own line, nothing else changed', ra, rb);
-compare('4. EVERYTHING ELSE (B -> C): the save\'s role standards, aging curve and glove weights, where adopted', rb, rc);
+compare('4. EVERYTHING ELSE BUT THE LONG-MAN LINE (B -> C0): the save\'s role standards (measured under the starting line), aging curve and glove weights, where adopted', rb, rc0);
 
 // floors
 console.log(`\n${'='.repeat(78)}\n5. ROLE FLOORS: built-in against the save's (C); each lens's own line (B and C)\n${'='.repeat(78)}`);
@@ -161,8 +192,8 @@ for (const [k, get] of roleLines) {
 // aging explanations
 // The stated size of the decline (the wording also changes, from the starting curve's "usually lose" to "this league's history")
 const declineOf = (s: string) => (s.split(' | ').find((x) => /decline/.test(x)) ?? '').match(/about ([\d.]+)|no measurable decline/)?.[0] ?? null;
-const changedText = [...rc.entries()].filter(([k, r]) => declineOf(rb.get(k)?.explanations ?? '') !== declineOf(r.explanations) && declineOf(r.explanations) !== null);
-console.log(`\n${'='.repeat(78)}\n6. AGE EXPLANATIONS whose stated decline changes (B -> C): ${changedText.length} league-wide, ${changedText.filter(([, r]) => r.club === org).length} on your club\n${'='.repeat(78)}`);
+const changedText = [...rc0.entries()].filter(([k, r]) => declineOf(rb.get(k)?.explanations ?? '') !== declineOf(r.explanations) && declineOf(r.explanations) !== null);
+console.log(`\n${'='.repeat(78)}\n6. AGE EXPLANATIONS whose stated decline changes (B -> C0): ${changedText.length} league-wide, ${changedText.filter(([, r]) => r.club === org).length} on your club\n${'='.repeat(78)}`);
 for (const [k, r] of changedText.filter(([, r]) => r.club === org).slice(0, 10)) {
   const pick = (s: string) => s.split(' | ').find((x) => /decline/.test(x)) ?? '';
   console.log(`  ${r.name}: "${pick(rb.get(k)!.explanations)}"\n    -> "${pick(r.explanations)}"`);
@@ -207,7 +238,7 @@ else {
   console.log(`  verdict: ${aging.record.gate.reason}`);
   for (const c of aging.record.heldOut.filter((x) => x.kind === 'detector')) console.log(`    ${c.part.padEnd(18)} n ${c.n}: ${c.note}`);
   // Cycle 1's behaviour: the league's fitted curve (as served) whenever its checks passed
-  const cycle1: typeof A = { standards: C.standards, review: { ...C.review, aging: am.fitted } };
+  const cycle1: Yard = { standards: C.standards, review: { ...C.review, aging: am.fitted }, bullpen: C.bullpen };
   const re = reviewAll(cycle1, servedResults);
   compare("8b. CYCLE 1 (the league's own curve served) -> NOW (the curve the rule serves)", re, rc);
   const wording = (m: Map<string, Row>) => [...m.values()].filter((r) => /in this league's history/.test(r.explanations)).length;
@@ -254,3 +285,67 @@ for (const { league: lg, level } of leagues) {
 }
 console.log(`\n  your organization's clubs (majors and affiliates): ${orgChanged} hitters' wRC+ moves by 3 or more; ${orgVerdicts} form verdicts change.`);
 console.log('  Farm-facing displays that read wRC+: the roster and stats tables of an affiliate, the team form read (hot, fair, cold), league leaders and trade screens. Minor League Operations\' own results lens ranks wOBA within the league and does not read wRC+: it does not change.');
+
+
+// ── 10. the long-man line (cycle 3) ─────────────────────────────────────────────
+console.log(`\n${'='.repeat(78)}\n10. THE LONG-MAN LINE (C0 -> C): the standards measured under the league's own line and served with it, against both at the starting line\n${'='.repeat(78)}`);
+const sb = stdModel?.bullpen;
+console.log(`  line in force after this refit: ${linesServed.long} innings an appearance (${linesServed.source === 'save' ? "the league's own" : 'the starting value'}); measured ${sb?.measured?.toFixed(3) ?? '—'} on ${sb?.relievers ?? 0} relievers, as served ${sb?.asServed?.toFixed(3) ?? '—'}; checks: ${(std?.record.heldOut ?? []).filter((c) => c.part === 'long_line').map((c) => `${c.kind} ${c.observed === null ? 'not measured' : `${(c.observed * 100).toFixed(1)}%`} (aim ${((c.expected ?? 0) * 100).toFixed(0)}%) ${c.passed === null ? '' : c.passed ? 'pass' : 'FAIL'}`).join('; ')}`);
+console.log(`  leverage lines: ${JSON.stringify(linesServed.leverage)}; the league's mean leverage ${linesServed.leagueLeverage?.toFixed(4) ?? '—'} (${linesServed.rescaled ? 'rescaled' : 'within the tolerance: as written'})`);
+const relievers = (m: Map<string, Row>) => [...m.values()].filter((r) => r.group === 'relief pitcher');
+const longs = (m: Map<string, Row>, club?: number) => relievers(m).filter((r) => r.tier === 'long' && (club === undefined || r.club === club)).length;
+const flagsRel = (m: Map<string, Row>, club?: number) => relievers(m).filter((r) => isFlag(r.strength) && (club === undefined || r.club === club)).length;
+const penOf = (label: string, club: number) => penKinds.get(label)?.get(club) ?? [];
+const tiersOf = (m: Map<string, Row>) => relievers(m).reduce((acc, r) => ({ ...acc, [r.tier ?? 'none']: (acc[r.tier ?? 'none'] ?? 0) + 1 }), {} as Record<string, number>);
+console.log(`\n  League-wide: relievers by role ${JSON.stringify(tiersOf(rc0))} -> ${JSON.stringify(tiersOf(rc))}`);
+console.log(`  long men ${longs(rc0)} -> ${longs(rc)}; reliever flags (strong or moderate) ${flagsRel(rc0)} -> ${flagsRel(rc)}; all flags ${[...rc0.values()].filter((r) => isFlag(r.strength)).length} -> ${[...rc.values()].filter((r) => isFlag(r.strength)).length}`);
+const kinds = (label: string) => teams.flatMap((t) => penOf(label, t.team_id)).reduce((acc, k) => ({ ...acc, [k]: (acc[k] ?? 0) + 1 }), {} as Record<string, number>);
+console.log(`  pen-wide findings ${JSON.stringify(kinds('C0'))} -> ${JSON.stringify(kinds('C'))}`);
+console.log('\n  Per club: long men, reliever flags, "crowded: long men", "nobody throws multiple innings" (starting line -> league\'s own)');
+for (const t of teams) {
+  if (!relievers(rc).some((r) => r.club === t.team_id)) continue; // an all-star side, or a club with no pen reviewed
+  const c0 = penOf('C0', t.team_id);
+  const c = penOf('C', t.team_id);
+  const same = longs(rc0, t.team_id) === longs(rc, t.team_id) && flagsRel(rc0, t.team_id) === flagsRel(rc, t.team_id) && c0.join() === c.join();
+  console.log(`    ${(t.team_id === org ? '*' : ' ')}${String(t.abbr).padEnd(4)} long men ${longs(rc0, t.team_id)} -> ${longs(rc, t.team_id)}; flags ${flagsRel(rc0, t.team_id)} -> ${flagsRel(rc, t.team_id)}; crowded ${c0.includes('crowded:long') ? 'yes' : 'no'} -> ${c.includes('crowded:long') ? 'yes' : 'no'}; multi-inning gap ${c0.includes('no_multi_inning') ? 'yes' : 'no'} -> ${c.includes('no_multi_inning') ? 'yes' : 'no'}${same ? '' : '   (changes)'}`);
+}
+compare('10b. THE LONG-MAN LINE: findings that change (C0 -> C)', rc0, rc);
+const moved = relievers(rc).filter((r) => rc0.get(`${r.club}:${r.group}:${r.playerId}`)?.tier !== r.tier);
+console.log(`\n  Relievers whose role moves (${moved.length}):`);
+for (const r of moved) console.log(`    ${(r.club === org ? '*' : ' ')}${String(abbr.get(r.club)).padEnd(4)} ${r.name.padEnd(24)} ${rc0.get(`${r.club}:${r.group}:${r.playerId}`)?.tier} -> ${r.tier}`);
+console.log(`\n  Your organization (${abbr.get(org as number) ?? org}): long men ${longs(rc0, org as number)} -> ${longs(rc, org as number)}; pen findings ${JSON.stringify(penOf('C0', org as number))} -> ${JSON.stringify(penOf('C', org as number))}`);
+
+// ── 11. the platoon weight (cycle 3) ────────────────────────────────────────────
+console.log(`\n${'='.repeat(78)}\n11. HOW MUCH A HITTER'S OWN SPLIT COUNTS: the verdict, and what it moves\n${'='.repeat(78)}`);
+const pl = run<PlatoonModel>('platoon');
+const pm = pl?.model as PlatoonModel | null;
+if (!pl) console.log('  not fitted');
+else {
+  console.log(`  verdict: ${pl.record.gate.reason}`);
+  console.log(`  starting K ${PLATOON_PRIOR.shrinkAroundLeague}; the league's own ${pm?.fitted ?? '—'} (as it would serve ${pm?.fittedServed ?? '—'}); SERVES ${pm?.source === 'save' ? "the league's own" : 'the starting value'}${pm?.reason ? ` (${pm.reason})` : ''}`);
+  for (const c of pl.record.heldOut) console.log(`    ${c.part.padEnd(36)} n ${c.n}: ${c.note ?? ''}`);
+  // What the league's own K would move, had it served: every lineup regular's platoon read (it applies only where his ratings are hidden)
+  const own = { ...PLATOON_PRIOR, shrinkAroundLeague: pm?.fitted ?? PLATOON_PRIOR.shrinkAroundLeague, source: 'save' as const };
+  let regulars = 0;
+  let aroundLeague = 0;
+  const changes: string[] = [];
+  for (const t of teams) {
+    const ports = reviewPorts(t.team_id, { results: servedResults });
+    let groups: RoleGroupReview[];
+    try { groups = reviewClub(loadClubView(t.team_id), ports); } catch { continue; }
+    const lineup = groups.find((g) => g.role === 'lineup regular');
+    if (!lineup || !ports.platoon) continue;
+    const inputs = ports.platoon(lineup.holders.map((h) => h.playerId));
+    for (const h of lineup.holders) {
+      const input = inputs.get(h.playerId);
+      if (!input) continue;
+      regulars += 1;
+      const a = evaluatePlatoon(input);
+      const b = evaluatePlatoon({ ...input, platoon: own });
+      if (a.basis === 'splits') aroundLeague += 1;
+      if (a.verdict !== b.verdict) changes.push(`${abbr.get(t.team_id)} ${h.name}: ${a.verdict} -> ${b.verdict}`);
+    }
+  }
+  console.log(`\n  ${regulars} lineup regulars; ${aroundLeague} read around the league norm alone (his platoon ratings not visible), where the league's own K would apply`);
+  console.log(`  platoon verdicts that would change had the league's own K served: ${changes.length}${changes.length ? `: ${changes.join('; ')}` : ''}`);
+}
