@@ -109,6 +109,8 @@ export function measureCeilingLines(
   policy: typeof STAKES_LINES_POLICY = STAKES_LINES_POLICY
 ): { model: StakesLinesModel; record: CalibrationRecord } {
   const clubs = [...new Set(players.map((p) => p.clubId))];
+  // Dates are kept as ISO (OOTP writes them unpadded), so they compare and read as dates
+  const measuredOn = basis.gameDate === null ? null : parseGameDate(basis.gameDate) ?? basis.gameDate;
   const byKind = (k: LineKind) => players.filter((p) => p.kind === k && Number.isFinite(p.composite));
   const counts = { hitter: byKind('hitter').length, pitcher: byKind('pitcher').length };
   const measured = { hitter: linesOf(byKind('hitter').map((p) => p.composite)), pitcher: linesOf(byKind('pitcher').map((p) => p.composite)) };
@@ -177,8 +179,8 @@ export function measureCeilingLines(
     // Lines that did not move keep the earlier move's record (when it happened); lines that moved record this import as the move
     const before = sameLines(lines, previous.lines)
       ? previous.previous
-      : { lines: previous.lines, source: previous.source, measuredOn: previous.measuredOn, replacedOn: basis.gameDate };
-    inForce = { lines, source: 'save', reason: 'measured', measuredOn: basis.gameDate, previous: before };
+      : { lines: previous.lines, source: previous.source, measuredOn: previous.measuredOn, replacedOn: measuredOn };
+    inForce = { lines, source: 'save', reason: 'measured', measuredOn, previous: before };
     notes.push(`Measured and served: hitters ${lines.hitter.fringe} / ${lines.hitter.regular} / ${lines.hitter.impact}, pitchers ${lines.pitcher.fringe} / ${lines.pitcher.regular} / ${lines.pitcher.impact} (${counts.hitter} and ${counts.pitcher} major leaguers, ${clubs.length} clubs).`);
   } else if (previous.source === 'save') {
     // The true reason: a thin league was not measured at all; it did not fail a check

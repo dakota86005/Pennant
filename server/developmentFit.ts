@@ -245,6 +245,11 @@ export interface DevelopmentProtectionInput {
   lines: CeilingLinesInForce;
 
   /**
+   * His reading at the import before the lines moved, where the reader has it (see `LastImportReading`). Absent: no line-move sentence.
+   */
+  lastImport?: LastImportReading | null;
+
+  /**
    * Where he is and how old his league is. null or absent when the caller cannot say: his level's
    * schedule is then not read and nothing is discounted for it.
    */
@@ -426,22 +431,44 @@ function ceilingReason(ceiling: StakesReading['ceiling'], inForce: CeilingLinesI
 }
 
 /**
- * The lines moved and that alone changed his tier: said only then (review finding B2). His tier is computed at his CURRENT potential,
- * age and context under the lines in force and under the lines they replaced; the sentence is given only when the two tiers differ and
- * the move happened at the import these lines were measured on (`previous.replacedOn === measuredOn`), which the reader serves only on
- * that import's own export. At a later export his potential may have moved too, so the reader drops `previous` and the ordinary reason
- * is all he gets. Null otherwise.
+ * His own reading at the import before the lines moved: his organization-visible current and potential composites, his age and his
+ * level as that import's rating snapshot kept them (`developmentalContext.ts` supplies it, from the save's own snapshots, only on the
+ * export where the lines moved). Null or absent when there is no such snapshot: then no line-move sentence is ever given.
  */
-function lineMoveReason(kind: ScoutedAbility['kind'], potential: number, ceiling: StakesReading['ceiling'], state: DevelopmentRemaining, tier: DevelopmentProtectionTier, inForce: CeilingLinesInForce): string | null {
+export interface LastImportReading {
+  current: number | null;
+  potential: number | null;
+  age: number | null;
+  level: number | null;
+}
+
+/**
+ * "The lines moved, not anything about him": said ONLY when all of these hold (review findings B2 and R1), and never otherwise:
+ *
+ *   - the lines moved at the import these lines were measured on, and this is that import's export (the reader serves `previous` only
+ *     then);
+ *   - nothing about him that the tier reads changed since the import before: his current and potential composites, his age and his
+ *     level are the ones that import's snapshot kept, so his tier then was his tier under the old lines at today's reading (the one
+ *     input a snapshot does not keep is his league's rostered average age; with the same level and age, a move of that average across
+ *     a schedule line between two imports is the only way this could differ, and it is stated here rather than hidden);
+ *   - his tier now differs from that tier.
+ *
+ * A player whose own ratings moved too (a potential falling from 51 to 49 while the regular line moved from 50 to 49) gets no sentence:
+ * his ordinary reasons say what his tier rests on. Null otherwise.
+ */
+function lineMoveReason(kind: ScoutedAbility['kind'], current: number, potential: number, age: number, context: DevelopmentalContext | null | undefined, ceiling: StakesReading['ceiling'], state: DevelopmentRemaining, tier: DevelopmentProtectionTier, inForce: CeilingLinesInForce, last: LastImportReading | null | undefined): string | null {
   const before = inForce.previous;
   if (!before || inForce.source !== 'save' || before.replacedOn === undefined || before.replacedOn === null || before.replacedOn !== inForce.measuredOn) return null;
+  // Nothing about him changed since the import before: otherwise the lines cannot be said to be what moved him
+  if (!last || last.current !== current || last.potential !== potential || last.age !== age) return null;
+  if (last.level === null || !context || last.level !== context.level) return null;
   const earlier = ceilingOf(kind, potential, before.lines);
   const earlierTier = tierFor(earlier.band, state);
   if (earlierTier === tier) return null;
   const from = before.lines[ceiling.kind];
   const to = inForce.lines[ceiling.kind];
   const moved = (['fringe', 'regular', 'impact'] as const).filter((n) => from[n] !== to[n]).map((n) => `${n === 'fringe' ? 'a fringe major leaguer' : n === 'regular' ? 'a regular' : 'an impact player'}: ${from[n]} to ${to[n]}`);
-  return `The ceiling lines moved when his organization's major leaguers were measured on ${dateWords(inForce.measuredOn)} (${moved.join('; ')}). Under the earlier lines, with the same ratings, his stakes would read ${TIER_WORDS[earlierTier]}: the lines moved, not anything about him.`;
+  return `The ceiling lines moved when his organization's major leaguers were measured on ${dateWords(inForce.measuredOn)} (${moved.join('; ')}). His ratings, age and level are what they were at the import before, when his stakes read ${TIER_WORDS[earlierTier]}: the lines moved, not anything about him.`;
 }
 
 function ageReason(age: number, byAge: DevelopmentRemaining): string {
@@ -639,7 +666,7 @@ export function evaluateDevelopmentProtection(
     );
   }
   reasons.push(compositionReason(tier, ceiling.band, remaining.state));
-  const moved = lineMoveReason(input.ability.kind, potentialRating, ceiling, remaining.state, tier, input.lines);
+  const moved = lineMoveReason(input.ability.kind, current, potentialRating, age, input.context, ceiling, remaining.state, tier, input.lines, input.lastImport);
   if (moved) reasons.push(moved);
 
   const superseded = supersededCompositeTier(age, current, potentialRating);

@@ -32,6 +32,7 @@ import type { CalibrationCheck, CalibrationRecord } from './saveCalibrationStore
 import type { CalibrationRun } from './saveCalibration.js';
 import { decide, describeComparison, DETECTOR_POLICY, ruleText, type DetectorDecision, type DetectorPolicy, type HeldOutCase, type ServedSource } from './calibrationDetector.js';
 import { HITTER_TOOL_SLOPES, TOOLS_PRIOR } from './toolsModel.js';
+import { POPULATION_MINIMUM } from './resultsMetrics.js';
 import { MLB_CALIBRATION_SUBSYSTEM } from './mlbCalibrationFit.js';
 
 export const TOOLS_METHOD = 'tools-1';
@@ -215,7 +216,9 @@ type BlendRow = { playerId: number; target: number; r: number; P: number; T: num
 function blendRows(cases: ToolsCase[], k: number, pops: ToolsInputCases['populations'], slopesFor: (target: number) => number[]): BlendRow[] {
   const out: BlendRow[] = [];
   const bySeason = new Map<number, ToolsCase[]>();
-  for (const c of cases) if (c.past && c.past.sample > 0) bySeason.set(c.target, [...(bySeason.get(c.target) ?? []), c]);
+  // Only hitters the lens gives a results percentile (a qualifying sample); below it the served estimate is his tools alone, which no
+  // weight changes, so such a hitter has no row (checked is served)
+  for (const c of cases) if (c.past && c.past.sample >= POPULATION_MINIMUM.hitter) bySeason.set(c.target, [...(bySeason.get(c.target) ?? []), c]);
   for (const [target, list] of bySeason) {
     const pop = pops[target];
     if (!pop || pop.tools.length === 0 || pop.past.length === 0 || pop.target.length === 0) continue;
@@ -330,7 +333,7 @@ export function engineCheck(engine: ToolsInputCases['engine'], policyIn: ToolsFi
   const se = Math.sqrt(diffs.reduce((s, d) => s + (d - mean) ** 2, 0) / Math.max(1, diffs.length - 1) * diffs.length) / prior;
   return {
     kind: 'engine_check', part: 'bat', n: all.length, expected: prior / W, observed: refit / W, prior: prior / W, passed: null,
-    note: `Same-season engine check (reported, never decides; not a forecast): on ${engine.season} to date, the ratings seen on ${engine.snapshot} against the results the game has produced from them, ${all.length} hitters with ${policyIn.engineMinPa}+ PA, ${policyIn.engineFolds} folds of players. A refit had ${(((refit - prior) / prior) * 100).toFixed(1)}% ${refit > prior ? 'more' : 'less'} error than the starting slopes (± ${(se * 100).toFixed(1)}%, one standard error across hitters: one season cannot tell them apart); the starting slopes' scale on these results is ${scale.toFixed(2)} (1 is exact).`,
+    note: `Same-season engine check (reported, never decides; not a forecast): on ${engine.season} to date, the ratings seen on ${engine.snapshot} against the results the game has produced from them, ${all.length} hitters with ${policyIn.engineMinPa}+ PA, ${policyIn.engineFolds} folds of players. A refit had ${(((refit - prior) / prior) * 100).toFixed(1)}% ${refit > prior ? 'more' : 'less'} error than the starting slopes (± ${(se * 100).toFixed(1)}%, one standard error across hitters: ${Math.abs(refit - prior) / prior <= 2 * se ? 'within two standard errors, so this season cannot tell them apart' : `more than two standard errors, so on this season the ${refit < prior ? 'refit' : 'starting slopes'} did better`}); the starting slopes' scale on these results is ${scale.toFixed(2)} (1 is exact).`,
   };
 }
 

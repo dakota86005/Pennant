@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { CEILING_LINES, evaluateDevelopmentProtection, startingLines, type CeilingLinesInForce } from '../server/developmentFit.js';
+import { CEILING_LINES, evaluateDevelopmentProtection, startingLines, type CeilingLinesInForce, type DevelopmentalContext, type LastImportReading } from '../server/developmentFit.js';
 import { historyDb } from '../server/history.js';
 import { syntheticScoutedAbility } from '../server/scoutedEvidence.js';
 import { recordCalibration } from '../server/saveCalibrationStore.js';
@@ -102,28 +102,43 @@ describe('what a tier says about the lines', () => {
     expect(r).not.toMatch(/this league's/);
   });
 
-  const movedAt = (date: string): CeilingLinesInForce => ({
-    lines: { ...CEILING_LINES, hitter: { fringe: 45, regular: 52, impact: 58 } }, source: 'save', reason: 'measured', measuredOn: date,
+  const movedAt = (date: string, regular = 52): CeilingLinesInForce => ({
+    lines: { ...CEILING_LINES, hitter: { fringe: 45, regular, impact: 58 } }, source: 'save', reason: 'measured', measuredOn: date,
     previous: { lines: CEILING_LINES, source: 'starting', measuredOn: null, replacedOn: '2031-05-01' },
   });
+  const AT_A: DevelopmentalContext = { level: 4, levelName: 'A', leagueName: 'Test League', ageRelativeToLevel: 0, ageProfile: { scope: 'league', players: 200, averageAge: 20 } };
+  const read = (current: number, potential: number, lines: CeilingLinesInForce, lastImport: LastImportReading | null, age = 20) =>
+    evaluateDevelopmentProtection({ age, ability: syntheticScoutedAbility({ current, potential }), lines, context: AT_A, lastImport }).reasons.join(' ');
 
-  it('a tier the move alone changed (same ratings, the tier differs under the old lines) says the lines moved, at the import that moved them', () => {
-    const reasons = tier(movedAt('2031-05-01')).reasons.join(' ');
+  it('the lines moved and nothing about him did (same ratings, age and level as at the import before), and his tier changed: said so', () => {
+    const reasons = read(40, 51, movedAt('2031-05-01'), { current: 40, potential: 51, age: 20, level: 4 });
     expect(reasons).toMatch(/The ceiling lines moved when his organization's major leaguers were measured on May 1, 2031 \(a regular: 50 to 52; an impact player: 56 to 58\)/);
-    expect(reasons).toMatch(/Under the earlier lines, with the same ratings, his stakes would read/);
+    expect(reasons).toMatch(/His ratings, age and level are what they were at the import before, when his stakes read/);
     expect(reasons).toMatch(/not anything about him/);
   });
 
+  it('the lines moved but his own potential moved too (the regular line 50 to 49 while his potential fell 51 to 49): no line-move sentence', () => {
+    const lines = movedAt('2031-05-01', 49);
+    expect(read(40, 49, lines, { current: 40, potential: 51, age: 20, level: 4 })).not.toMatch(/moved|not anything about him/);
+  });
+
+  it('no sentence either when his age, his level or his current rating changed, or when the import before is not known', () => {
+    const lines = movedAt('2031-05-01');
+    expect(read(40, 51, lines, { current: 40, potential: 51, age: 19, level: 4 })).not.toMatch(/moved/);
+    expect(read(40, 51, lines, { current: 40, potential: 51, age: 20, level: 5 })).not.toMatch(/moved/);
+    expect(read(40, 51, lines, { current: 39, potential: 51, age: 20, level: 4 })).not.toMatch(/moved/);
+    expect(read(40, 51, lines, null)).not.toMatch(/moved/);
+  });
+
   it('a tier the move did not change says nothing about it, even where his ceiling band moved (the tier is what is compared)', () => {
-    const untouched = evaluateDevelopmentProtection({ age: 20, ability: syntheticScoutedAbility({ current: 40, potential: 60 }), lines: movedAt('2031-05-01'), context: null });
-    expect(untouched.reasons.join(' ')).not.toMatch(/moved/);
+    expect(read(40, 60, movedAt('2031-05-01'), { current: 40, potential: 60, age: 20, level: 4 })).not.toMatch(/moved/);
     // at 29 his development is behind him: fringe and below both set the lowest tier, so a band move there changes no tier
-    const old = evaluateDevelopmentProtection({ age: 29, ability: syntheticScoutedAbility({ current: 45, potential: 45 }), lines: { ...movedAt('2031-05-01'), lines: { ...CEILING_LINES, hitter: { fringe: 46, regular: 52, impact: 58 } } }, context: null });
-    expect(old.reasons.join(' ')).not.toMatch(/moved/);
+    const lines = { ...movedAt('2031-05-01'), lines: { ...CEILING_LINES, hitter: { fringe: 46, regular: 52, impact: 58 } } };
+    expect(read(45, 45, lines, { current: 45, potential: 45, age: 29, level: 4 }, 29)).not.toMatch(/moved/);
   });
 
   it('after the import that moved the lines, the sentence is not given: his own ratings may have moved since', () => {
-    expect(tier(movedAt('2031-06-01')).reasons.join(' ')).not.toMatch(/moved/);
+    expect(read(40, 51, movedAt('2031-06-01'), { current: 40, potential: 51, age: 20, level: 4 })).not.toMatch(/moved/);
   });
 
   it('the evaluator refuses to tier without the lines in force (never a default)', () => {

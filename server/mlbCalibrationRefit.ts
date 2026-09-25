@@ -689,6 +689,7 @@ export function toolsInput(leagueId: number, through: number): ToolsInputCases {
   const obs = forwardObservations();
   const snapshots = snapshotDates(obs);
   const opening = firstGames(leagueId);
+  const clubs = leagueClubs(leagueId);
   const cases: ToolsCase[] = [];
   const forwardSeasons: number[] = [];
   const populations: ToolsInputCases['populations'] = {};
@@ -699,11 +700,11 @@ export function toolsInput(leagueId: number, through: number): ToolsInputCases {
   };
   const first = snapshots.length ? Number(snapshots[0].slice(0, 4)) : null;
   for (let s = first === null ? through + 1 : first; s <= through; s += 1) {
-    const carried = new Map<number, { x: number[]; gap: number; level: number | null }>();
+    const carried = new Map<number, { x: number[]; gap: number; level: number | null; teamId: number | null }>();
     for (const [id, list] of obs) {
       const before = snapshotBefore(list, s, opening.get(s) ?? null);
       const x = toolsOf(before?.observation.hitter?.tools);
-      if (x && before) carried.set(id, { x, gap: before.gapDays, level: before.observation.level });
+      if (x && before) carried.set(id, { x, gap: before.gapDays, level: before.observation.level, teamId: before.observation.teamId });
     }
     if (carried.size === 0) continue;
     const env = seasonEnvironments(leagueId, s);
@@ -730,7 +731,8 @@ export function toolsInput(leagueId: number, through: number): ToolsInputCases {
     cases.push(...seasonCases);
     forwardSeasons.push(s);
     // The tools the lens ranks among: the league's major-league hitters in the snapshots that stood for this season
-    populations[s] = { tools: [...carried.values()].filter((c) => c.level === 1).map((c) => c.x), past, target };
+    // (this league's clubs only: the lens ranks a hitter within his organization's own major league)
+    populations[s] = { tools: [...carried.values()].filter((c) => c.level === 1 && c.teamId !== null && clubs.has(c.teamId)).map((c) => c.x), past, target };
   }
   // The same-season engine check: the ratings seen during the season under way against what the game has produced from them so far
   let engine: ToolsInputCases['engine'] = null;

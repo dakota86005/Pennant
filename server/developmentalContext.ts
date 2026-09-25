@@ -40,11 +40,13 @@ import {
   evaluateDevelopmentProtection,
   knownAge,
   type CeilingLinesInForce,
+  type LastImportReading,
   type DevelopmentProtection,
   type DevelopmentalContext,
 } from './developmentFit.js';
 import { stakesLinesFor } from './stakesLines.js';
-import type { ScoutedAbility } from './scoutedEvidence.js';
+import { loadScoutedObservations, type ScoutedAbility } from './scoutedEvidence.js';
+import { parseGameDate } from './dataFreshness.js';
 
 interface AgeProfile {
   players: number;
@@ -201,6 +203,28 @@ export function openDevelopmentalContext(): DevelopmentalContextReader {
     return hit;
   };
 
+  /*
+   * His own reading at the import before the lines moved: only on the export where they moved (the lines then carry `previous`), read
+   * once per reader from the save's rating snapshots through the adapter, the latest snapshot taken before that import. Elsewhere none
+   * is read, and no line-move sentence is given.
+   */
+  const lastImports = new Map<string, Map<number, LastImportReading>>();
+  const lastImportOf = (playerId: number, lines: CeilingLinesInForce): LastImportReading | null => {
+    const at = lines.previous?.replacedOn ? parseGameDate(lines.previous.replacedOn) : null;
+    if (!at) return null;
+    let byPlayer = lastImports.get(at);
+    if (!byPlayer) {
+      byPlayer = new Map();
+      for (const [id, list] of loadScoutedObservations(null)) {
+        const before = list.filter((o) => o.gameDate < at);
+        const o = before[before.length - 1];
+        if (o) byPlayer.set(id, { current: o.ability.current, potential: o.ability.potential, age: o.age, level: o.level });
+      }
+      lastImports.set(at, byPlayer);
+    }
+    return byPlayer.get(playerId) ?? null;
+  };
+
   const forClub = (age: number | null | undefined, teamId: number): DevelopmentalContext | null => {
     clubs ??= readClubs();
     const club = clubs.get(teamId);
@@ -213,7 +237,11 @@ export function openDevelopmentalContext(): DevelopmentalContextReader {
     forClub,
     profile: profileOf,
     lines: linesOf,
-    protect: ({ age, teamId, ability, manuallyProtected }) =>
-      evaluateDevelopmentProtection({ age: knownAge(age), ability, lines: linesOf(teamId), context: forClub(age, teamId), manuallyProtected }),
+    protect: ({ age, teamId, ability, manuallyProtected }) => {
+      const lines = linesOf(teamId);
+      return evaluateDevelopmentProtection({
+        age: knownAge(age), ability, lines, context: forClub(age, teamId), manuallyProtected, lastImport: lastImportOf(ability.playerId, lines),
+      });
+    },
   };
 }

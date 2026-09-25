@@ -1433,9 +1433,13 @@ the ratings from those results, so the test describes and does not forecast.
 ### 15.4a The independent review, and what changed after it (2026-09-25)
 
 - **B1, the firm read** (above). Every reader of the results' trust used as a threshold is now a named line on the results' own K.
-- **B2, "the lines moved".** Said only when his tier at the same ratings, age and context differs under the replaced lines, and only on
-  the export the move was measured on (the reader drops the replaced lines afterwards, since his own ratings may have moved since). A
-  band move that changes no tier says nothing. The league's own lines are named as his organization's major league's.
+- **B2 and R1, "the lines moved".** Said only on the export the move was measured on, only when his current and potential composites,
+  age and level are what his rating snapshot at the import before kept (read through the adapter by the context reader), and only when
+  his tier under the old lines at that reading differs from his tier now. A player whose own potential moved too gets no such
+  sentence. The one input a snapshot does not keep is his league's rostered average age, stated in the code. The league's own lines
+  are named as his organization's major league's.
+- **Re-review nits.** The engine check says whether its difference is within two standard errors; the blend check scores only hitters
+  the lens gives a results percentile (a qualifying past sample); the tools population is the fitted league's own clubs' hitters.
 - **B3, the tools reason.** A part that could not be judged says why: no forward season, fewer than judging needs, or enough seasons
   with too few hitters; one part judged and the other not says so. Each state is pinned in the copy test.
 - **B4, checked is served.** The tools fit is registered before the standards; the standards are measured under the hitters' tools

@@ -726,6 +726,8 @@ export interface ScoutedObservation {
   readonly gameDate: string;
   /** The club's level and the player's age as the snapshot recorded them (objective facts at that date). */
   readonly level: number | null;
+  /** The club he was on when the snapshot was taken (an objective fact at that date); null where the snapshot did not keep it. */
+  readonly teamId: number | null;
   readonly age: number | null;
   readonly ability: ScoutedAbility;
   /**
@@ -770,6 +772,7 @@ export function loadScoutedObservations(playerIds: Iterable<number> | null = nul
   const select = [
     'player_id', 'game_date', 'position',
     present.has('level') ? 'level' : 'NULL AS level',
+    present.has('team_id') ? 'team_id' : 'NULL AS team_id',
     present.has('age') ? 'age' : 'NULL AS age',
     ...columns.map((c) => (present.has(c) ? `"${c}"` : `NULL AS "${c}"`)),
   ].join(', ');
@@ -795,6 +798,7 @@ export function loadScoutedObservations(playerIds: Iterable<number> | null = nul
       list.push({
         playerId, gameDate,
         level: row.level === null || !Number.isFinite(level) ? null : level,
+        teamId: row.team_id === null || row.team_id === undefined || !Number.isFinite(Number(row.team_id)) ? null : Number(row.team_id),
         age: row.age === null || !Number.isFinite(age) ? null : age,
         ability: buildAbility({ playerId, kind, current, potential, stamina: null, pitches: [] }, scale, viewer),
         hitter: kind === 'hitter'
