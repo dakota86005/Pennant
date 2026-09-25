@@ -128,7 +128,7 @@ export function battingHistory(playerIds: number[], leagueId: number, currentYea
   return out;
 }
 
-export function pitchingHistory(playerIds: number[], leagueId: number, currentYear: number): Map<number, PitchingLine[]> {
+export function pitchingHistory(playerIds: number[], leagueId: number, currentYear: number, back = SEASONS_BACK): Map<number, PitchingLine[]> {
   const out = new Map<number, PitchingLine[]>();
   if (!tableExists('players_career_pitching_stats') || playerIds.length === 0) return out;
   const c = has('players_career_pitching_stats');
@@ -144,7 +144,7 @@ export function pitchingHistory(playerIds: number[], leagueId: number, currentYe
        FROM players_career_pitching_stats
        WHERE player_id IN (${ids.map(() => '?').join(',')}) AND level_id = 1 AND split_id = 1 ${league} AND year BETWEEN ? AND ?
        GROUP BY player_id, year, team_id`
-    ).all(...ids, ...(league ? [leagueId] : []), currentYear - SEASONS_BACK, currentYear) as Array<PitchingLine & { player_id: number; team_id: number }>;
+    ).all(...ids, ...(league ? [leagueId] : []), currentYear - back, currentYear) as Array<PitchingLine & { player_id: number; team_id: number }>;
     const byPlayer = new Map<number, Array<PitchingLine & { player_id: number; team_id: number }>>();
     for (const r of rows) byPlayer.set(r.player_id, [...(byPlayer.get(r.player_id) ?? []), r]);
     for (const [id, list] of byPlayer) {
@@ -381,7 +381,7 @@ export function fieldingUsage(playerIds: number[], leagueId: number, currentYear
  * Fielding lines that carry a defensive result: zone-rating runs or framing. A season whose export has neither (older
  * seasons mostly do not) is left out rather than read as zero, so a missing measure is never a measured average.
  */
-function fieldingResultLines(playerIds: number[], leagueId: number, currentYear: number): Map<number, DefenseLine[]> {
+export function fieldingResultLines(playerIds: number[], leagueId: number, currentYear: number, back = SEASONS_BACK): Map<number, DefenseLine[]> {
   const out = new Map<number, DefenseLine[]>();
   if (!tableExists('players_career_fielding_stats') || playerIds.length === 0) return out;
   const c = has('players_career_fielding_stats');
@@ -394,7 +394,7 @@ function fieldingResultLines(playerIds: number[], leagueId: number, currentYear:
        FROM players_career_fielding_stats
        WHERE player_id IN (${ids.map(() => '?').join(',')}) AND level_id = 1 ${league} AND year BETWEEN ? AND ?
        GROUP BY player_id, year, position`
-    ).all(...ids, ...(league ? [leagueId] : []), currentYear - SEASONS_BACK, currentYear) as Array<DefenseLine & { player_id: number }>;
+    ).all(...ids, ...(league ? [leagueId] : []), currentYear - back, currentYear) as Array<DefenseLine & { player_id: number }>;
     for (const r of rows) {
       if (r.zr === 0 && r.framing === 0) continue;
       const { player_id, ...line } = r;

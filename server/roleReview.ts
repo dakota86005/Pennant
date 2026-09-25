@@ -441,14 +441,16 @@ export function reviewGroup(holders: ReviewSubject[], opts: { pitcher: boolean; 
     }
     if (h.age !== null && h.age >= CONCERN.agingAge) {
       const signed = expectedAnnualChange(h.age, opts.pitcher, aging);
+      // "This league's history" only where the league's own curve serves for his kind (D-053: the starting values are never the league's own)
+      const ownCurve = aging !== null && (opts.pitcher ? aging.pitcher : aging.hitter).length > 0;
       const change = Math.abs(signed);
       // A league whose history shows no decline at his age is said so, never "lost about 0" (the save's own fit can show it)
       const declines = opts.pitcher ? signed > 0.005 : signed < -0.0005;
       // "In this league's history" only when the save's own curve is in force; the starting curve is a general expectation
       const who = opts.pitcher ? 'pitchers' : 'hitters';
       const loss = opts.pitcher ? `${change.toFixed(2)} runs per nine a year on peripherals` : `${Math.round(change * 1000)} points of wOBA a year`;
-      if (!declines) explanations.push(`At ${h.age}, age is a risk the ratings and past results may not yet show, though ${aging ? `in this league's history ${who} his age have shown` : `${who} his age usually show`} no measurable decline from one season to the next.`);
-      else explanations.push(`At ${h.age}, decline is a risk that the ratings and past results may not yet show: ${aging ? `in this league's history ${who} his age have lost about ${loss}` : `${who} his age usually lose about ${loss}`}.`);
+      if (!declines) explanations.push(`At ${h.age}, age is a risk the ratings and past results may not yet show, though ${ownCurve ? `in this league's history ${who} his age have shown` : `${who} his age usually show`} no measurable decline from one season to the next.`);
+      else explanations.push(`At ${h.age}, decline is a risk that the ratings and past results may not yet show: ${ownCurve ? `in this league's history ${who} his age have lost about ${loss}` : `${who} his age usually lose about ${loss}`}.`);
     }
     if (h.ratingsEvidence !== 'complete' && h.ratingsPct !== null) {
       explanations.push('His visible tool ratings are incomplete, so the tools lens rests on part of the picture.');

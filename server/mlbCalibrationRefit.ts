@@ -14,9 +14,12 @@
 
 import { db, tableColumns, tableExists } from './db.js';
 import { leagueBaseline } from './stats.js';
-import { battingHistory, pitchingHistory, seasonEnvironments } from './resultsEvidence.js';
-import { percentileAmong, POPULATION_MINIMUM, weightedBatting, weightedPitching, wobaOf, type ResultsParams } from './resultsMetrics.js';
+import { battingHistory, fieldingResultLines, pitchingHistory, seasonEnvironments } from './resultsEvidence.js';
+import { baserunningRuns, PARK_WOBA_SHARE, percentileAmong, POPULATION_MINIMUM, weightedBatting, weightedPitching, wobaOf, type BattingLine, type PitchingLine, type ResultsParams } from './resultsMetrics.js';
+import { fitResults, paramsOf, RESULTS_FIT_POLICY, RESULTS_METHOD, type ResultsCase, type ResultsInput, type ResultsModel } from './mlbResultsFit.js';
+import { adoptedCalibration } from './saveCalibrationStore.js';
 import { rosterReviewCalibration } from './mlbCalibration.js';
+
 import { PITCHER_RESULTS_MIX } from './roleReview.js';
 import { REGULAR_SHARE } from './lineupPicture.js';
 import { hitterKey, relieverKey, STARTER_KEY } from './roleStandards.js';
@@ -27,7 +30,7 @@ import { loadClubView } from './mlbRoster.js';
 import { reviewPorts } from './mlbOperations.js';
 import {
   AGING_METHOD, DEFENSE_METHOD, fitAging, fitDefense, measureStandards, MLB_CALIBRATION_SUBSYSTEM, ROSTER_REVIEW_FIT_POLICY, STANDARDS_METHOD,
-  type AgingInput, type AgingPair, type DefenseSeason, type ResultsLensSeason, type StandardHolder, type StandardsSample,
+  type AgingInput, type AgingModel, type AgingPair, type DefenseSeason, type ResultsLensSeason, type StandardHolder, type StandardsSample,
 } from './mlbCalibrationFit.js';
 
 const has = (table: string, cols: string[]) => tableExists(table) && cols.every((c) => new Set(tableColumns(table)).has(c));
@@ -266,14 +269,172 @@ export function defenseSeasons(leagueId: number, through: number): DefenseSeason
   return out;
 }
 
+
+// ── results lens: season weights and stabilization (cycle 2) ────────────────
+
+type Valued = { year: number; v: number; n: number };
+
+/** Centre each season's values on their opportunity-weighted mean (a kind is ranked among its own that season). */
+function centred(byPlayer: Map<number, Valued[]>): Map<number, Valued[]> {
+  const sums = new Map<number, { s: number; w: number }>();
+  for (const lines of byPlayer.values()) for (const l of lines) { const a = sums.get(l.year) ?? { s: 0, w: 0 }; a.s += l.v * l.n; a.w += l.n; sums.set(l.year, a); }
+  const mean = new Map([...sums].map(([y, a]) => [y, a.w > 0 ? a.s / a.w : 0]));
+  return new Map([...byPlayer].map(([id, lines]) => [id, lines.map((l) => ({ ...l, v: l.v - (mean.get(l.year) ?? 0) }))]));
+}
+
+/** Target cases from centred values: a target season with enough opportunities and at least one of the three seasons before it. */
+function casesFrom(byPlayer: Map<number, Valued[]>, targets: number[], minTarget: number, runs?: Map<number, Valued[]>, allowLag: (y: number) => boolean = () => true): ResultsCase[] {
+  const out: ResultsCase[] = [];
+  for (const [id, lines] of byPlayer) {
+    const at = new Map(lines.map((l) => [l.year, l]));
+    const runsAt = runs ? new Map((runs.get(id) ?? []).map((l) => [l.year, l])) : null;
+    for (const t of targets) {
+      const target = runsAt ? runsAt.get(t) : at.get(t);
+      if (!target || target.n < minTarget) continue;
+      const lag = (m: Map<number, Valued>, k: number) => { const l = m.get(t - k); return l && l.n > 0 && allowLag(t - k) ? { v: l.v, n: l.n } : null; };
+      const lags = [1, 2, 3].map((k) => lag(at, k));
+      if (lags.every((l) => l === null)) continue;
+      out.push({ playerId: id, target: t, y: target.v, n: target.n, lags, ...(runsAt ? { runs: [1, 2, 3].map((k) => lag(runsAt, k)) } : {}) });
+    }
+  }
+  return out;
+}
+
+/**
+ * The results fit's cases from the league's own completed seasons (objective lines only): hitters' park-adjusted wOBA relative to
+ * the league; starters' and relievers' peripherals and park-adjusted runs relative to the league, a pitcher's kind read from his
+ * seasons before the target and required again in the target; and, only for seasons whose export carries them, baserunning runs
+ * (UBR and steals) per PA and zone-rating runs per inning at a position. A short season is never a target; its lines still count as a
+ * season before one, as they do in the review.
+ */
+export function resultsInput(leagueId: number, through: number): ResultsInput {
+  const pol = RESULTS_FIT_POLICY;
+  const { seasons, skipped } = fullSeasons(leagueId, through, pol.minShare);
+  const targets = seasons.filter((t) => t <= through).slice(-pol.windowSeasons);
+  const input: ResultsInput = {
+    cases: { hitter: [], starter: [], reliever: [], baserunning: [], defense: [] }, seasons: targets, skipped, mix: PITCHER_RESULTS_MIX.skills,
+    carries: { baserunning: [], defense: [] },
+  };
+  if (targets.length === 0) return input;
+  const first = targets[0] - 3;
+  const level = levelOf(leagueId);
+  const env = new Map<number, { woba: number; fipRaw: number; era: number; cs: number }>();
+  for (let y = first; y <= through; y += 1) {
+    const b = leagueBaseline(leagueId, y, level);
+    if (b.lgWOBA > 0) env.set(y, { woba: b.lgWOBA, fipRaw: b.lgFIPRaw, era: b.lgERA, cs: b.caughtStealingRuns.value });
+  }
+  const ids = (table: string) => (has(table, ['player_id', 'year', 'level_id', 'league_id', 'split_id'])
+    ? (db.prepare(`SELECT DISTINCT player_id id FROM ${table} WHERE level_id = ? AND split_id = 1 AND league_id = ? AND year BETWEEN ? AND ?`).all(level, leagueId, first, through) as Array<{ id: number }>).map((r) => r.id)
+    : []);
+  // Hitters and their baserunning
+  const hitterIds = ids('players_career_batting_stats');
+  const bat = battingHistory(hitterIds, leagueId, through, 1, through - first);
+  const woba = new Map<number, Valued[]>();
+  const running = new Map<number, Valued[]>();
+  const ubrBySeason = new Map<number, number>();
+  for (const [id, lines] of bat) {
+    const w: Valued[] = [];
+    const r: Valued[] = [];
+    for (const l of lines as BattingLine[]) {
+      const e = env.get(l.year);
+      const x = wobaOf(l);
+      if (!e || x === null || l.pa <= 0) continue;
+      w.push({ year: l.year, v: x - e.woba - (l.park !== undefined ? PARK_WOBA_SHARE * (l.park - 1) * e.woba : 0), n: l.pa });
+      r.push({ year: l.year, v: baserunningRuns(l, e.cs) / l.pa, n: l.pa });
+      ubrBySeason.set(l.year, (ubrBySeason.get(l.year) ?? 0) + Math.abs(l.ubr));
+    }
+    woba.set(id, w);
+    running.set(id, r);
+  }
+  input.cases.hitter = casesFrom(centred(woba), targets, pol.minTarget.hitter);
+  // Baserunning only where the export carries UBR for the season (a season it leaves at zero measured steals alone)
+  const carriesUbr = new Set([...ubrBySeason].filter(([, v]) => v > 0).map(([y]) => y));
+  input.carries.baserunning = targets.filter((t) => carriesUbr.has(t));
+  input.cases.baserunning = casesFrom(centred(running), input.carries.baserunning, pol.minTarget.baserunning, undefined, (y) => carriesUbr.has(y));
+  // Pitchers: each season's kind from its own line; a case's kind from the seasons before the target, and the same kind in the target
+  const pitch = pitchingHistory(ids('players_career_pitching_stats'), leagueId, through, through - first);
+  const usageOf = (ls: PitchingLine[]) => { const g = ls.reduce((a, l) => a + l.g, 0); const gs = ls.reduce((a, l) => a + l.gs, 0); return g > 0 && gs / g >= 0.5 ? 'starter' : 'reliever'; };
+  const pitchValues = new Map<number, Array<{ year: number; sk: number; ru: number; n: number; kind: 'starter' | 'reliever' }>>();
+  for (const [id, lines] of pitch) {
+    const vals: Array<{ year: number; sk: number; ru: number; n: number; kind: 'starter' | 'reliever' }> = [];
+    for (const l of lines as PitchingLine[]) {
+      const e = env.get(l.year);
+      if (!e || l.bf <= 0 || l.outs <= 0) continue;
+      const ip = l.outs / 3;
+      vals.push({ year: l.year, sk: (13 * l.hra + 3 * (l.bb + l.hp) - 2 * l.k) / ip - e.fipRaw, ru: (l.er * 9) / ip / (l.park ?? 1) - e.era, n: l.bf, kind: usageOf([l]) });
+    }
+    pitchValues.set(id, vals);
+  }
+  // Each kind's season means (its own lines), then the cases
+  const meanOf = (kind: 'starter' | 'reliever', pick: 'sk' | 'ru') => {
+    const acc = new Map<number, { s: number; w: number }>();
+    for (const vals of pitchValues.values()) for (const v of vals) if (v.kind === kind) { const a = acc.get(v.year) ?? { s: 0, w: 0 }; a.s += v[pick] * v.n; a.w += v.n; acc.set(v.year, a); }
+    return new Map([...acc].map(([y, a]) => [y, a.w > 0 ? a.s / a.w : 0]));
+  };
+  const means = { starter: { sk: meanOf('starter', 'sk'), ru: meanOf('starter', 'ru') }, reliever: { sk: meanOf('reliever', 'sk'), ru: meanOf('reliever', 'ru') } };
+  for (const [id, lines] of pitch) {
+    const vals = pitchValues.get(id) ?? [];
+    for (const t of targets) {
+      const target = vals.find((v) => v.year === t);
+      const before = (lines as PitchingLine[]).filter((l) => l.year < t && l.year >= t - 3);
+      if (!target || before.length === 0) continue;
+      const kind = usageOf(before);
+      if (target.kind !== kind || target.n < pol.minTarget[kind]) continue;
+      const m = means[kind];
+      const lag = (k: number, pick: 'sk' | 'ru') => { const v = vals.find((x) => x.year === t - k); return v ? { v: v[pick] - (m[pick].get(t - k) ?? 0), n: v.n } : null; };
+      const lags = [1, 2, 3].map((k) => lag(k, 'sk'));
+      if (lags.every((l) => l === null)) continue;
+      input.cases[kind].push({ playerId: id, target: t, y: target.ru - (m.ru.get(t) ?? 0), n: target.n, lags, runs: [1, 2, 3].map((k) => lag(k, 'ru')) });
+    }
+  }
+  // Defense: zone-rating runs per inning at a position, only for seasons whose export carries zone rating
+  const fielding = fieldingResultLines(hitterIds, leagueId, through, through - first);
+  const zrBySeason = new Map<number, number>();
+  for (const lines of fielding.values()) for (const l of lines) if (l.position >= 3) zrBySeason.set(l.year, (zrBySeason.get(l.year) ?? 0) + Math.abs(l.zr));
+  const carriesZr = new Set([...zrBySeason].filter(([, v]) => v > 0).map(([y]) => y));
+  input.carries.defense = targets.filter((t) => carriesZr.has(t));
+  if (input.carries.defense.length > 0) {
+    for (let pos = 2; pos <= 9; pos += 1) {
+      const at = new Map<number, Valued[]>();
+      for (const [id, lines] of fielding) {
+        const here = lines.filter((l) => l.position === pos && l.ip > 0 && carriesZr.has(l.year)).map((l) => ({ year: l.year, v: (l.zr + (pos === 2 ? l.framing : 0)) / l.ip, n: l.ip }));
+        if (here.length) at.set(id, here);
+      }
+      input.cases.defense.push(...casesFrom(centred(at), input.carries.defense, pol.minTarget.defense, undefined, (y) => carriesZr.has(y)));
+    }
+  }
+  return input;
+}
+
+/** The results params the refit has just decided, per league, for the standards measured after it in the same refit. */
+const pendingResults = new Map<number, ResultsParams>();
+
+
 // ── registration ─────────────────────────────────────────────────────────────
 
 const need = (b: CalibrationBasis) => b.throughSeason;
 
-/** The results params the standards are measured under: the ones in force for the league. */
+/**
+ * The results params the standards are measured under: the ones this refit has just decided (recorded with it), else the ones in force.
+ * What is checked is what is served.
+ */
 function resultsParamsFor(leagueId: number): ResultsParams {
-  return rosterReviewCalibration(leagueId).results;
+  return pendingResults.get(leagueId) ?? rosterReviewCalibration(leagueId).results;
 }
+
+// The results fit is registered FIRST: the standards measured in the same refit are measured under its verdict
+registerCalibration({
+  subsystem: MLB_CALIBRATION_SUBSYSTEM, component: 'results', method: RESULTS_METHOD, trigger: 'completed_season',
+  compute: (b) => {
+    if (need(b) === null) return { skip: 'No completed season.' };
+    const through = b.throughSeason as number;
+    // Hysteresis: what served before this refit (the adopted fit of an earlier season)
+    const previous = adoptedCalibration<ResultsModel>(b.leagueId, MLB_CALIBRATION_SUBSYSTEM, 'results', RESULTS_METHOD, { throughMax: through - 1 });
+    const run = fitResults(resultsInput(b.leagueId, through), b, previous?.model ?? null);
+    if (run.model && run.record.gate.passed) pendingResults.set(b.leagueId, paramsOf(run.model, String(through)));
+    return run;
+  },
+});
 
 registerCalibration({
   subsystem: MLB_CALIBRATION_SUBSYSTEM, component: 'standards', method: STANDARDS_METHOD, trigger: 'each_import',
@@ -286,7 +447,13 @@ registerCalibration({
 
 registerCalibration({
   subsystem: MLB_CALIBRATION_SUBSYSTEM, component: 'aging', method: AGING_METHOD, trigger: 'completed_season',
-  compute: (b) => (need(b) === null ? { skip: 'No completed season.' } : fitAging(agingInput(b.leagueId, b.throughSeason as number), b)),
+  compute: (b) => {
+    if (need(b) === null) return { skip: 'No completed season.' };
+    const through = b.throughSeason as number;
+    // Hysteresis: what served before this refit (the adopted curve of an earlier season)
+    const previous = adoptedCalibration<AgingModel>(b.leagueId, MLB_CALIBRATION_SUBSYSTEM, 'aging', AGING_METHOD, { throughMax: through - 1 });
+    return fitAging(agingInput(b.leagueId, through), b, undefined, previous?.model ?? null);
+  },
 });
 
 registerCalibration({

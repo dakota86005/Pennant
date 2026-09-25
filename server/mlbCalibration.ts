@@ -14,12 +14,13 @@ import { completedThrough, leagueGameDate } from './saveIdentity.js';
 import { standardsFrom, type RoleStandardsSet } from './roleStandards.js';
 import type { ReviewCalibration } from './roleReview.js';
 import { RESULTS_PRIOR, type ResultsParams } from './resultsMetrics.js';
+import { paramsOf, REQUIRED_PARTS, RESULTS_METHOD, type ResultsModel } from './mlbResultsFit.js';
 import {
   AGING_METHOD, DEFENSE_METHOD, MLB_CALIBRATION_SUBSYSTEM, STANDARDS_METHOD,
   type AgingModel, type DefenseModel, type StandardsModel,
 } from './mlbCalibrationFit.js';
 
-export type YardstickKey = 'standards' | 'aging' | 'defense';
+export type YardstickKey = 'standards' | 'aging' | 'defense' | 'results';
 
 export interface YardstickGroup {
   key: YardstickKey;
@@ -60,13 +61,15 @@ const WHAT: Record<YardstickKey, string> = {
   standards: 'The line for each job',
   aging: 'How players age',
   defense: 'How much the glove counts at each position',
+  results: 'How much recent seasons count',
 };
 
 const pct = (x: number | null | undefined) => (x === null || x === undefined ? '?' : `${Math.round(x * 100)}`);
 
 /** Why a group serves the starting values: each reason is one the line may give, and only when it is the true one. */
 export type StartingReason =
-  | 'not_measured' | 'no_league' | 'games' | 'games_unknown' | 'clubs' | 'seasons' | 'no_zone_rating' | 'no_later_season' | 'check_failed';
+  | 'not_measured' | 'no_league' | 'games' | 'games_unknown' | 'clubs' | 'seasons' | 'no_zone_rating' | 'no_later_season' | 'check_failed'
+  | 'kept' | 'returned';
 
 /** Each reason in a GM's words (the record's reasons are for the API). */
 export const REASON_TEXT: Record<StartingReason, string> = {
@@ -79,7 +82,36 @@ export const REASON_TEXT: Record<StartingReason, string> = {
   no_zone_rating: "this league's past seasons have no fielding runs to measure the glove on",
   no_later_season: 'there is no later season to check them on yet',
   check_failed: "the league's own ones did not hold up when checked",
+  kept: "they were checked on this league's seasons and held up",
+  returned: "they did better than this league's own when checked again",
 };
+
+/**
+ * Whether an adopted fit serves the save's own values. A fitted tuning value (the aging curve, the season weights) is adopted with its
+ * verdict, and the verdict may be that the starting values held up (D-053 amendment, 2026-09-25); a measurement serves when adopted.
+ */
+export function servesOwn(key: YardstickKey, stored: StoredCalibration | null): boolean {
+  if (!stored?.adopted) return false;
+  if (key === 'aging') {
+    const m = stored.model as AgingModel;
+    return m.serve?.hitter === 'save' || m.serve?.pitcher === 'save';
+  }
+  if (key === 'results') {
+    const m = stored.model as ResultsModel;
+    return REQUIRED_PARTS.some((p) => m.parts?.[p]?.source === 'save');
+  }
+  return true;
+}
+
+/** Why an adopted verdict serves the starting values: they held up, or they did better when checked again. */
+function keptReason(key: YardstickKey, stored: StoredCalibration): StartingReason {
+  if (key === 'aging') {
+    const m = stored.model as AgingModel;
+    return m.decisions?.hitter?.previous === 'save' || m.decisions?.pitcher?.previous === 'save' ? 'returned' : 'kept';
+  }
+  if (key === 'results') return REQUIRED_PARTS.some((p) => (stored.model as ResultsModel).parts?.[p]?.reason === 'returned') ? 'returned' : 'kept';
+  return 'kept';
+}
 
 /** Why the last attempt was not adopted (or that there was none), from its record's first failure. */
 export function reasonOf(stored: StoredCalibration | null): StartingReason {
@@ -113,8 +145,21 @@ function describeStandards(s: StoredCalibration<StandardsModel>): string {
 function describeAging(s: StoredCalibration<AgingModel>): string {
   const seasons = s.record.window.seasons;
   const bands = s.record.heldOut.filter((c) => c.kind === 'age_band' && c.passed !== null && !c.part.startsWith('unshrunk:'));
+  const kept = (['hitter', 'pitcher'] as const).filter((k) => s.model.serve?.[k] !== 'save');
   return `From ${s.record.window.sample} pairs of back-to-back seasons in this league${seasons.length ? ` (${seasons[0]}–${seasons[seasons.length - 1]})` : ''}. `
-    + `Checked one season at a time on seasons it had not seen: close to what actually happened in each of ${bands.length} age group${bands.length === 1 ? '' : 's'} with enough players.`;
+    + `Checked one season at a time on seasons it had not seen: close to what actually happened in each of ${bands.length} age group${bands.length === 1 ? '' : 's'} with enough players, and clearly better than the starting curve`
+    + `${kept.length ? `. For ${kept.map((k) => `${k}s`).join(' and ')} the starting curve held up and still serves` : ''}.`;
+}
+
+function describeResults(s: StoredCalibration<ResultsModel>): string {
+  const seasons = s.record.window.seasons;
+  const label: Record<string, string> = { hitter: 'hitters', starter: 'starting pitchers', reliever: 'relievers' };
+  const own = REQUIRED_PARTS.filter((p) => s.model.parts[p]?.source === 'save').map((p) => label[p]);
+  const kept = REQUIRED_PARTS.filter((p) => s.model.parts[p]?.source !== 'save').map((p) => label[p]);
+  return `How much a player's last three seasons count, and how many games it takes before his results count as much as his tools. `
+    + `From ${s.record.window.sample.toLocaleString('en-US')} player-seasons in this league${seasons.length ? ` (${seasons[0]}–${seasons[seasons.length - 1]})` : ''}, `
+    + `checked one season at a time on seasons they had not seen: this league's own were clearly better for ${own.join(' and ')}`
+    + `${kept.length ? `; for ${kept.join(' and ')} the starting values held up and still serve` : ''}.`;
 }
 
 function describeDefense(s: StoredCalibration<DefenseModel>): string {
@@ -140,7 +185,7 @@ export function rosterReviewCalibration(leagueId: number | null): RosterReviewCa
 }
 
 function compute(leagueId: number | null): RosterReviewCalibration {
-  if (leagueId === null) return assemble(null, null, null, null, [null, null, null]);
+  if (leagueId === null) return assemble(null, null, null, null, null, [null, null, null, null]);
   let through: number | null = null;
   let today: string | null = null;
   try {
@@ -164,40 +209,46 @@ function compute(leagueId: number | null): RosterReviewCalibration {
   const standards = read<StandardsModel>('standards', STANDARDS_METHOD);
   const aging = read<AgingModel>('aging', AGING_METHOD);
   const defense = read<DefenseModel>('defense', DEFENSE_METHOD);
-  return assemble(leagueId, standards.adopted, aging.adopted, defense.adopted, [standards.latest, aging.latest, defense.latest]);
+  const results = read<ResultsModel>('results', RESULTS_METHOD);
+  return assemble(leagueId, standards.adopted, aging.adopted, defense.adopted, results.adopted, [standards.latest, aging.latest, defense.latest, results.latest]);
 }
 
 function group(key: YardstickKey, adopted: StoredCalibration | null, latest: StoredCalibration | null, describe: (s: never) => string, noLeague = false): YardstickGroup {
-  const shown = adopted ?? null;
-  const reason: StartingReason = noLeague ? 'no_league' : reasonOf(latest);
+  // A verdict that the starting values held up is adopted too: it serves them, and says they were checked on this league
+  const own = servesOwn(key, adopted);
+  const shown = own ? adopted : null;
+  // The verdict in force gives the reason (a later attempt that could not decide is the API's `lastAttempt`, never the reason)
+  const reason: StartingReason | null = own ? null : noLeague ? 'no_league' : adopted ? keptReason(key, adopted) : reasonOf(latest);
+  const current = adopted ?? latest;
   const failedLater = latest && !latest.adopted && (!adopted || latest.basis !== adopted.basis) ? { basis: latest.basis, reason: latest.reason } : null;
   return {
-    key, what: WHAT[key], source: shown ? 'save' : 'starting',
-    text: shown ? `${WHAT[key]}: ${describe(shown as never)}` : `${WHAT[key]}: the starting values, because ${REASON_TEXT[reason]}.`,
-    reason: shown ? null : reason,
-    method: (shown ?? latest)?.method ?? '',
-    basis: shown ? shown.record.basis : null,
-    window: shown ? { seasons: shown.record.window.seasons, sample: shown.record.window.sample, unit: shown.record.window.unit } : null,
-    heldOut: shown?.record.heldOut ?? latest?.record.heldOut ?? [],
-    priorWeight: shown ? shown.record.priorWeight.overall : null,
-    gate: (shown ?? latest) ? { passed: (shown ?? latest)!.record.gate.passed, reason: (shown ?? latest)!.record.gate.reason } : null,
-    refittedOn: shown?.gameDate ?? null,
+    key, what: WHAT[key], source: own ? 'save' : 'starting',
+    text: own ? `${WHAT[key]}: ${describe(shown as never)}` : `${WHAT[key]}: the starting values, because ${REASON_TEXT[reason as StartingReason]}.`,
+    reason,
+    method: current?.method ?? '',
+    basis: adopted ? adopted.record.basis : null,
+    window: adopted ? { seasons: adopted.record.window.seasons, sample: adopted.record.window.sample, unit: adopted.record.window.unit } : null,
+    heldOut: current?.record.heldOut ?? [],
+    priorWeight: adopted ? adopted.record.priorWeight.overall : null,
+    gate: current ? { passed: current.record.gate.passed, reason: current.record.gate.reason } : null,
+    refittedOn: adopted?.gameDate ?? null,
     lastAttempt: failedLater,
   };
 }
 
 function assemble(
   leagueId: number | null, standards: StoredCalibration<StandardsModel> | null, aging: StoredCalibration<AgingModel> | null, defense: StoredCalibration<DefenseModel> | null,
-  latest: Array<StoredCalibration | null>,
+  results: StoredCalibration<ResultsModel> | null, latest: Array<StoredCalibration | null>,
 ): RosterReviewCalibration {
   const noLeague = leagueId === null;
   const groups = [
     group('standards', standards, latest[0], describeStandards, noLeague),
     group('aging', aging, latest[1], describeAging, noLeague),
     group('defense', defense, latest[2], describeDefense, noLeague),
+    group('results', results, latest[3], describeResults, noLeague),
   ];
   const own = groups.filter((g) => g.source === 'save');
-  const through = aging?.throughSeason ?? defense?.throughSeason ?? (standards ? standards.record.basis.throughSeason : null);
+  const through = aging?.throughSeason ?? results?.throughSeason ?? defense?.throughSeason ?? (standards ? standards.record.basis.throughSeason : null);
   let line: string;
   if (own.length === groups.length) line = `Yardsticks set from this league's own seasons${through !== null ? ` (through ${through})` : ''}`;
   else if (own.length > 0) line = "Some yardsticks are this league's own; others are starting values";
@@ -209,15 +260,15 @@ function assemble(
     line = `Using starting yardsticks: ${REASON_TEXT[first.reason as StartingReason]}`;
   }
   const tip = [
-    'The roster review judges each player against yardsticks: what a regular at his job typically looks like, how players his age tend to change, and how much the glove counts at his position.',
+    'The roster review judges each player against yardsticks: what a regular at his job typically looks like, how players his age tend to change, how much the glove counts at his position, and how much his recent seasons count against his tools.',
     ...groups.map((g) => g.text),
-    'Starting values are the ones Pennant ships with. They are replaced by this league\'s own only after those have been checked against players and seasons they were not drawn from.',
+    'Starting values are the ones Pennant ships with. They are replaced by this league\'s own only after those have been checked against players and seasons they were not drawn from, and, for how players age and how much recent seasons count, only where this league\'s own did clearly better than the starting values there.',
   ].join('\n\n');
   return {
     leagueId,
     standards: standardsFrom(standards?.model.served),
-    review: { aging: aging?.model.table ?? null, defenseWeights: defense?.model.weights ?? null },
-    results: RESULTS_PRIOR,
+    review: { aging: servesOwn('aging', aging) ? (aging as StoredCalibration<AgingModel>).model.table : null, defenseWeights: defense?.model.weights ?? null },
+    results: servesOwn('results', results) ? paramsOf((results as StoredCalibration<ResultsModel>).model, (results as StoredCalibration<ResultsModel>).basis) : RESULTS_PRIOR,
     groups, line, tip,
   };
 }
