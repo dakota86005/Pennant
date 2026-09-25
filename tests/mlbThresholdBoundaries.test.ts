@@ -5,7 +5,7 @@ import { buildLineupPicture, PARTNER_SHARE, REGULAR_SHARE, type HitterUsageInput
 import { COMPLEMENT_MARGIN, complementFit, evaluatePlatoon, MIN_SPLIT_PA, PROBLEM_EXCESS, type PlatoonInput, type PlatoonRead } from '../server/platoon';
 import { CREDIBLE_HIGH_LEVERAGE, DEPLOYMENT_GAP, deploymentFindings, LEVERAGE, MIN_APPEARANCES, penFindings, roleOf, type PenArm } from '../server/bullpenRoles';
 import { BULLPEN_PRIOR } from '../server/bullpenRoles';
-import { reviewGroup, type LensEvidence, type ReviewSubject } from '../server/roleReview';
+import { CONCERN, reviewGroup, type LensEvidence, type ReviewSubject } from '../server/roleReview';
 import { hitterStandard, relieverStandard, starterStandard } from '../server/roleStandards';
 import { readContext, SEASON, WINDOW } from '../server/staffPreference';
 import { shiftOptions, SHIFT_MIN_EDGE, SHIFT_MIN_GAIN } from '../server/lineupShifts';
@@ -172,13 +172,14 @@ describe('the "too early" line: trust in his results as his level, never the ble
   const weak = (reliability: number, toolsWeight: number): LensEvidence => ({ ratingsPct: s.deepFloor - 10, ratingsEvidence: 'complete', skillsPct: s.deepFloor - 10, runsPct: s.deepFloor - 10, sample: 300, sampleUnit: 'BF', toolsWeight, reliability, currentSample: 100, usage: [] });
   const run = (e: LensEvidence, pitcher = true) => reviewGroup([{ playerId: 1, name: 'S', age: 28, ...e } as ReviewSubject], { pitcher, role: 'starting pitcher', standard: () => starterStandard() })[0];
 
-  it('a pitcher a hair under 0.30 of his own K is too early to judge; a hair over is judged', () => {
-    expect(run(weak(0.299, 1)).kind).toBe('too_early');
-    expect(run(weak(0.301, 1)).kind).not.toBe('too_early');
+  it('a pitcher a hair under the line (0.301 of his own K) is too early to judge; a hair over is judged', () => {
+    expect(CONCERN.tooEarly.pitcher).toBe(0.301);
+    expect(run(weak(0.3, 1)).kind).toBe('too_early');
+    expect(run(weak(0.302, 1)).kind).not.toBe('too_early');
   });
 
   it('how much his tools hold his results back never decides whether there is enough sample to judge', () => {
-    for (const trust of [0.2, 0.299, 0.301, 0.5, 0.8]) {
+    for (const trust of [0.2, 0.3, 0.302, 0.5, 0.8]) {
       const kinds = [1, 1.5, 3, 10].map((w) => run(weak(trust, w)).kind === 'too_early');
       expect(new Set(kinds).size, `trust ${trust}`).toBe(1);
     }

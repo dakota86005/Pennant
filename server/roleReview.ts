@@ -94,10 +94,11 @@ export const CONCERN = {
    * Below this trust in his results AS HIS LEVEL (the results' own K, never the blend with his tools) the read is "too early", not a
    * finding. Decoupled from the tools weight in cycle 4 (supervisor's call, pending owner review): how much the tools hold results back
    * must not decide when there is enough sample to judge. Set so the line keeps the sample it meant before cycle 4 (0.35 of the old
-   * blend: about 160 PA for a hitter, 300 BF for a starter and 215 for a reliever under the starting K), rounded: hitters 0.25 and
-   * pitchers 0.30 of their own K. Policy.
+   * blend at K × 0.6 for hitters and K × 0.8 for pitchers: 162 PA for a hitter, 302 BF for a starter and 215 for a reliever under the
+   * starting K), which against the results' own K is 0.244 for hitters and 0.301 for pitchers. Not rounded: rounding to 0.25 moved a
+   * strong case to "too early" on the Arizona import for nothing but the rounding. Policy.
    */
-  tooEarly: { hitter: 0.25, pitcher: 0.3 },
+  tooEarly: { hitter: 0.244, pitcher: 0.301 },
   /** Results-to-peripherals gap (percentile points) large enough to call luck a competing explanation. */
   luckGap: 20,
   /** Tools-to-results gap (percentile points) large enough to say results are ahead of or behind the tools. */
