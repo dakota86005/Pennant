@@ -5,7 +5,8 @@ import { buildLineupPicture, PARTNER_SHARE, REGULAR_SHARE, type HitterUsageInput
 import { COMPLEMENT_MARGIN, complementFit, evaluatePlatoon, MIN_SPLIT_PA, PROBLEM_EXCESS, type PlatoonInput, type PlatoonRead } from '../server/platoon';
 import { CREDIBLE_HIGH_LEVERAGE, DEPLOYMENT_GAP, deploymentFindings, LEVERAGE, MIN_APPEARANCES, penFindings, roleOf, type PenArm } from '../server/bullpenRoles';
 import { BULLPEN_PRIOR } from '../server/bullpenRoles';
-import { CONCERN, reviewGroup, type LensEvidence, type ReviewSubject } from '../server/roleReview';
+import { CONCERN, isFirmRead, reviewGroup, type LensEvidence, type ReviewSubject } from '../server/roleReview';
+import { reliability, RESULTS_PRIOR } from '../server/resultsMetrics';
 import { hitterStandard, relieverStandard, starterStandard } from '../server/roleStandards';
 import { readContext, SEASON, WINDOW } from '../server/staffPreference';
 import { shiftOptions, SHIFT_MIN_EDGE, SHIFT_MIN_GAIN } from '../server/lineupShifts';
@@ -172,8 +173,8 @@ describe('the "too early" line: trust in his results as his level, never the ble
   const weak = (reliability: number, toolsWeight: number): LensEvidence => ({ ratingsPct: s.deepFloor - 10, ratingsEvidence: 'complete', skillsPct: s.deepFloor - 10, runsPct: s.deepFloor - 10, sample: 300, sampleUnit: 'BF', toolsWeight, reliability, currentSample: 100, usage: [] });
   const run = (e: LensEvidence, pitcher = true) => reviewGroup([{ playerId: 1, name: 'S', age: 28, ...e } as ReviewSubject], { pitcher, role: 'starting pitcher', standard: () => starterStandard() })[0];
 
-  it('a pitcher a hair under the line (0.301 of his own K) is too early to judge; a hair over is judged', () => {
-    expect(CONCERN.tooEarly.pitcher).toBe(0.301);
+  it('a pitcher a hair under the line (196/651 of his own K) is too early to judge; a hair over is judged', () => {
+    expect(CONCERN.tooEarly.pitcher).toBe(196 / 651);
     expect(run(weak(0.3, 1)).kind).toBe('too_early');
     expect(run(weak(0.302, 1)).kind).not.toBe('too_early');
   });
@@ -189,5 +190,47 @@ describe('the "too early" line: trust in his results as his level, never the ble
     const missing = { ...weak(0.5, 1) } as Partial<LensEvidence>;
     delete missing.toolsWeight;
     expect(() => run(missing as LensEvidence)).toThrow(/tools weight/);
+  });
+});
+
+describe('the sample-based lines keep the sample they meant before cycle 4 (review finding B1)', () => {
+  // Before cycle 4 each line read the blend's trust at K × 0.6 (hitters) and K × 0.8 (pitchers); now each reads the results' own trust
+  const K = RESULTS_PRIOR.stabilization;
+  const sampleAt = (line: number, k: number) => (line * k) / (1 - line);
+  it('"too early" is under 161.5 PA for a hitter, 301.5 BF for a starter and 215.4 BF for a reliever', () => {
+    expect(sampleAt(CONCERN.tooEarly.hitter, K.hitter)).toBeCloseTo((0.35 * K.hitter * 0.6) / 0.65, 6);
+    expect(sampleAt(CONCERN.tooEarly.pitcher, K.starter)).toBeCloseTo((0.35 * K.starter * 0.8) / 0.65, 6);
+    expect(sampleAt(CONCERN.tooEarly.pitcher, K.reliever)).toBeCloseTo((0.35 * K.reliever * 0.8) / 0.65, 6);
+    expect(sampleAt(CONCERN.tooEarly.hitter, K.hitter)).toBeCloseTo(161.54, 1);
+  });
+
+  it('a firm read needs 450 PA for a hitter, 840 BF for a starter and 600 BF for a reliever', () => {
+    expect(sampleAt(CONCERN.firmRead.hitter, K.hitter)).toBeCloseTo(450, 6);
+    expect(sampleAt(CONCERN.firmRead.pitcher, K.starter)).toBeCloseTo(840, 6);
+    expect(sampleAt(CONCERN.firmRead.pitcher, K.reliever)).toBeCloseTo(600, 6);
+    const firm = (n: number, k: number, unit: 'PA' | 'BF') => isFirmRead({ reliability: reliability(n, k), sampleUnit: unit });
+    expect([firm(449, K.hitter, 'PA'), firm(451, K.hitter, 'PA')]).toEqual([false, true]);
+    expect([firm(839, K.starter, 'BF'), firm(841, K.starter, 'BF')]).toEqual([false, true]);
+    expect([firm(599, K.reliever, 'BF'), firm(601, K.reliever, 'BF')]).toEqual([false, true]);
+  });
+
+  it('"more sample would firm up the read" is said under the firm line and not over it, whatever the tools weight', () => {
+    const s = starterStandard();
+    const at = (n: number, w: number): LensEvidence => ({ ratingsPct: s.floor + 20, ratingsEvidence: 'complete', skillsPct: s.floor + 20, runsPct: s.floor + 20, sample: n, sampleUnit: 'BF', toolsWeight: w, reliability: reliability(n, K.starter), currentSample: 100, usage: [] });
+    const said = (n: number, w: number) => reviewGroup([{ playerId: 1, name: 'S', age: 28, ...at(n, w) } as ReviewSubject], { pitcher: true, role: 'starting pitcher', standard: () => starterStandard() })[0].wouldChange.join(' ');
+    for (const w of [1, 1.67, 5]) {
+      expect(said(839, w)).toMatch(/larger sample/);
+      expect(said(841, w)).not.toMatch(/larger sample/);
+    }
+  });
+
+  it('no reader compares his results\' trust with a bare number: every sample line is named', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const dir = path.join(process.cwd(), 'server');
+    for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.ts'))) {
+      const src = fs.readFileSync(path.join(dir, f), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+      expect(src, f).not.toMatch(/(reliability|weightOnResults)\s*(<|>|<=|>=)\s*[0-9.]+/);
+    }
   });
 });

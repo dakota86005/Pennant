@@ -9,7 +9,7 @@
  * Pure: a review and a context in, an explanation out.
  */
 
-import type { HolderReview } from './roleReview.js';
+import { isFirmRead, type HolderReview } from './roleReview.js';
 import { flagShading, type ContextRead, type ShadeReason } from './staffPreference.js';
 
 /** What shading never changes, whoever the club is. Each is enforced by a test (`tests/mlbGoldenContext.test.ts`, `tests/mlbInvariants.test.ts`). */
@@ -82,7 +82,7 @@ export function explainFlag(r: HolderReview, context: ContextRead | null): FlagE
   const unknown: string[] = [];
   if (r.evidence.ratingsEvidence !== 'complete') unknown.push('His visible tool ratings are incomplete.');
   if (e.resultsPct === null) unknown.push('He has no qualifying major-league results.');
-  else if (r.evidence.reliability < 0.6) unknown.push(`His results are only trusted ${Math.round(r.evidence.reliability * 100)}% as his level so far.`);
+  else if (!isFirmRead(r.evidence)) unknown.push(`His results are only trusted ${Math.round(r.evidence.reliability * 100)}% as his level so far.`);
   if (hitter && r.evidence.position !== undefined && (e.weightOnDefense ?? 0) === 0 && r.evidence.defense && !r.evidence.defense.visible && r.evidence.position !== 10) unknown.push('His glove at the position is not visible.');
   const neutral = flagShading(null, { strength: r.strength, subjectAge: r.age, stakes: r.stakes ?? null });
   const shaded = flagShading(context, { strength: r.strength, subjectAge: r.age, stakes: r.stakes ?? null });

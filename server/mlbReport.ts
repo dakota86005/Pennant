@@ -21,7 +21,7 @@
 import type { MlbNeed } from './mlbNeeds.js';
 import type { LensEvidence } from './roleReview.js';
 import type { Plan } from './mlbPlans.js';
-import { estimateOf as workingEstimate, type ReplacementComparison } from './roleReview.js';
+import { estimateOf as workingEstimate, isFirmRead, type ReplacementComparison } from './roleReview.js';
 
 /** The glove weights in force for the save (D-053): the fitted ones once adopted; undefined leaves the review's built-in starting values. */
 const gloveWeights = (ports: Pick<ResponsePorts, 'reviewCalibration'>): Record<number, number> | undefined => ports.reviewCalibration?.defenseWeights ?? undefined;
@@ -502,14 +502,14 @@ function coreRecommendation(
   if (moderateAllowed && bar?.why.allowModerate) shading.push(bar.why.allowModerate);
   if (bar?.patient && review.strength === 'moderate' && bar.why.patient) shading.push(bar.why.patient);
   if (older && bar?.why.older) shading.push(bar.why.older);
-  const reliable = review.evidence.reliability >= 0.6;
+  const reliable = isFirmRead(review.evidence);
   const cmp = lead?.comparison ?? null;
   const clear = cmp?.verdict === 'clear_upgrade';
   const ready = !!lead && (lead.group === 'open' || lead.group === 'open_requires_clearing') && (lead.path.status === 'open' || lead.path.status === 'open_with_requirements');
   const cleanPlan = plans.find((p) => p.id !== 'designate' && (p.certainty === 'open' || p.certainty === 'open_with_requirements'));
   const wouldChange = [
     'A change in his tools or a sustained change in his results.',
-    ...(review.evidence.reliability < 0.6 ? ['More major-league sample: the results lens is still being built.'] : []),
+    ...(!reliable ? ['More major-league sample: the results lens is still being built.'] : []),
   ];
   const basis = RECOMMENDATION_BASIS;
   const delta = (c: ResponseCandidate | null) => (c?.comparison?.delta ?? null) === null ? '' : ` (${(c!.comparison!.delta as number) >= 0 ? '+' : ''}${Math.round(c!.comparison!.delta as number)})`;

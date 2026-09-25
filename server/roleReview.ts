@@ -95,10 +95,19 @@ export const CONCERN = {
    * finding. Decoupled from the tools weight in cycle 4 (supervisor's call, pending owner review): how much the tools hold results back
    * must not decide when there is enough sample to judge. Set so the line keeps the sample it meant before cycle 4 (0.35 of the old
    * blend at K × 0.6 for hitters and K × 0.8 for pitchers: 162 PA for a hitter, 302 BF for a starter and 215 for a reliever under the
-   * starting K), which against the results' own K is 0.244 for hitters and 0.301 for pitchers. Not rounded: rounding to 0.25 moved a
-   * strong case to "too early" on the Arizona import for nothing but the rounding. Policy.
+   * starting K), which against the results' own K is exactly 105/430 for hitters (161.5 PA at K 500) and 196/651 for pitchers (301.5 BF
+   * for a starter at K 700, 215.4 for a reliever at K 500). Not rounded: rounding to 0.25 moved a strong case to "too early" on the
+   * Arizona import for nothing but the rounding. Policy.
    */
-  tooEarly: { hitter: 0.244, pitcher: 0.301 },
+  tooEarly: { hitter: 105 / 430, pitcher: 196 / 651 },
+  /**
+   * At or above this trust in his results AS HIS LEVEL the read is FIRM: a recommendation can be given high confidence, a strong case
+   * goes to a response rather than to "keep watching", and "more sample would firm it up" is no longer said. Decoupled from the tools
+   * weight in cycle 4 exactly as `tooEarly` was (review finding B1, supervisor's call, pending owner review): it keeps the sample it
+   * meant before (0.6 of the old blend: 450 PA for a hitter, 840 BF for a starter, 600 BF for a reliever under the starting K), which
+   * against the results' own K is 9/19 for hitters and 6/11 for pitchers. Policy.
+   */
+  firmRead: { hitter: 9 / 19, pitcher: 6 / 11 },
   /** Results-to-peripherals gap (percentile points) large enough to call luck a competing explanation. */
   luckGap: 20,
   /** Tools-to-results gap (percentile points) large enough to say results are ahead of or behind the tools. */
@@ -291,6 +300,15 @@ export function blendWeight(trust: number, toolsWeight: number): number {
 
 /** The "too early" line for a pitcher or a hitter (`CONCERN.tooEarly`). */
 export const tooEarlyLine = (pitcher: boolean): number => (pitcher ? CONCERN.tooEarly.pitcher : CONCERN.tooEarly.hitter);
+
+/** The "firm read" line for a pitcher or a hitter (`CONCERN.firmRead`). */
+export const firmReadLine = (pitcher: boolean): number => (pitcher ? CONCERN.firmRead.pitcher : CONCERN.firmRead.hitter);
+
+/**
+ * Whether the results behind a read are firm: his results' own trust at or above the firm-read line for his kind. Every reader that asks
+ * "is the sample behind his results big enough?" asks it here, so none can drift with the blend again (the kind is read from the unit).
+ */
+export const isFirmRead = (e: Pick<LensEvidence, 'reliability' | 'sampleUnit'>): boolean => e.reliability >= firmReadLine(e.sampleUnit === 'BF');
 
 function batOrPitchEstimate(e: LensEvidence, pitcher: boolean): Estimate {
   const results = resultsPercentile(e, pitcher);
@@ -500,7 +518,7 @@ export function reviewGroup(holders: ReviewSubject[], opts: { pitcher: boolean; 
       }
     }
     wouldChange.push(
-      h.reliability < 0.6 ? 'A larger sample of major-league results would firm up the read.' : 'A change in his visible tools or a sustained change in results.',
+      !isFirmRead(h) ? 'A larger sample of major-league results would firm up the read.' : 'A change in his visible tools or a sustained change in results.',
     );
 
     let kind: FindingKind = 'no_concern';
