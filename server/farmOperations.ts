@@ -28,7 +28,29 @@ import {
   type AffiliateRosterHealth,
   type RosterHealthScenario,
 } from './minorLeagueRoster.js';
-import { STAKES_CALIBRATION, type DevelopmentProtection } from './developmentFit.js';
+import { STAKES_CALIBRATION, type CeilingLines, type CeilingLinesInForce, type DevelopmentProtection, type StakesLinesReason } from './developmentFit.js';
+
+/** Ceiling lines as a GM reads them: "hitters 45 / 50 / 56 · pitchers 45 / 48 / 53". */
+const linesText = (l: CeilingLines): string =>
+  `hitters ${l.hitter.fringe} / ${l.hitter.regular} / ${l.hitter.impact} · pitchers ${l.pitcher.fringe} / ${l.pitcher.regular} / ${l.pitcher.impact}`;
+
+/** An ISO date as a GM reads it ("May 16, 2026"); the raw value where it cannot be read. */
+function dateText(iso: string | null): string {
+  const m = iso ? /^(\d{4})-(\d{2})-(\d{2})/.exec(iso) : null;
+  if (!m) return iso ?? 'an earlier import';
+  return `${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][Number(m[2]) - 1]} ${Number(m[3])}, ${m[1]}`;
+}
+
+/** Why the starting ceiling lines serve, in plain words (the farm's thresholds table). */
+const STARTING_LINES_WHY: Record<StakesLinesReason, string> = {
+  measured: 'this league\'s own were measured',
+  carried: 'this league\'s own were measured earlier',
+  carried_unmeasured: 'this league\'s own were measured earlier',
+  players: 'the league has too few major leaguers (or clubs) to measure its own',
+  check_failed: 'the league\'s own did not hold up when checked',
+  not_measured: 'this league has not been measured yet',
+  no_league: 'the organization\'s major league is not in the export',
+};
 import { openDevelopmentalContext, type DevelopmentalContextReader } from './developmentalContext.js';
 import { evaluatePitcherDevelopmentalRole } from './destinationFit.js';
 import { computeProspects } from './org.js';
@@ -1085,7 +1107,7 @@ export function computeFarmSystem(orgId: number, session: FarmSession = openFarm
     assignments: reviews.sort((a, b) => a.name.localeCompare(b.name)),
     retention: retention.sort((a, b) => a.name.localeCompare(b.name)),
     attention,
-    calibration: farmCalibrationReport(),
+    calibration: farmCalibrationReport(session.stakes().lines(orgId)),
     unknowns,
   };
 }
@@ -1170,8 +1192,8 @@ export function affiliateOperationalUnder(
 }
 
 /** Every constant this response could have used, with its stamp: the reader sees what is decided and what is provisional. */
-function farmCalibrationReport(): FarmSystemView['calibration'] {
-  const stamp = (name: string, value: unknown, status: 'policy' | 'provisional', basis: string) => ({
+function farmCalibrationReport(lines: CeilingLinesInForce): FarmSystemView['calibration'] {
+  const stamp = (name: string, value: unknown, status: 'policy' | 'provisional' | 'measured', basis: string) => ({
     name,
     value: typeof value === 'object' ? JSON.stringify(value) : String(value),
     status,
@@ -1204,7 +1226,11 @@ function farmCalibrationReport(): FarmSystemView['calibration'] {
     stamp('RUNWAY_CLOSING_AGE', calibration.RUNWAY_CLOSING_AGE, 'policy', 'Age at which an ordinary developmental runway at a level is treated as closing.'),
     stamp('RUNWAY_SERVICE_LIMIT', calibration.RUNWAY_SERVICE_LIMIT, 'policy', 'Professional seasons past which a player at a low level has had his developmental look.'),
     /* Player Development's stakes constants: declared once in developmentFit.ts, reported here because they decide who can be squeezed. */
-    ...STAKES_CALIBRATION.map((c) => stamp(c.name, c.value, c.stamp.status === 'policy' ? 'policy' : 'provisional', c.stamp.basis)),
+    /* The ceiling lines the tiers were read against: the league's own where measured, else the starting lines, said so. */
+    stamp('Ceiling lines in force', linesText(lines.lines), lines.source === 'save' ? 'measured' : 'provisional', lines.source === 'save'
+      ? `Measured on the organization's major leaguers on ${dateText(lines.measuredOn)}${lines.reason === 'carried' ? ' (the latest measurement did not hold up, so these stay)' : lines.reason === 'carried_unmeasured' ? ' (the latest import had too few major leaguers to measure, so these stay)' : ''}: the weakest tenth, the median and the best tenth of their visible ratings, for hitters and for pitchers.`
+      : `Pennant's starting lines: ${STARTING_LINES_WHY[lines.reason]}.`),
+    ...STAKES_CALIBRATION.map((c) => stamp(c.name, typeof c.value === 'object' && c.value !== null && 'hitter' in c.value ? linesText(c.value as CeilingLines) : c.value, c.stamp.status === 'policy' ? 'policy' : 'provisional', c.stamp.basis)),
   ];
 }
 

@@ -726,9 +726,28 @@ export interface ScoutedObservation {
   readonly gameDate: string;
   /** The club's level and the player's age as the snapshot recorded them (objective facts at that date). */
   readonly level: number | null;
+  /** The club he was on when the snapshot was taken (an objective fact at that date); null where the snapshot did not keep it. */
+  readonly teamId: number | null;
   readonly age: number | null;
   readonly ability: ScoutedAbility;
+  /**
+   * A hitter's splits and running as the snapshot kept them (cycle 4: snapshots before it kept no split tools and no baserunning or
+   * stealing rating, so those read unknown there). Null for a pitcher or a player of unknown kind.
+   */
+  readonly hitter: ScoutedHitterProfile | null;
 }
+
+const SNAPSHOT_TOOL_COLUMN: Record<HitterTool, string> = { contact: 'con', gap: 'gap', power: 'pow', eye: 'eye', avoidK: 'avk' };
+
+/** The snapshot's columns for a hitter's splits and running, under the export's own column names (so one builder reads both). */
+const SNAPSHOT_HITTER_COLUMNS: Record<string, string> = {
+  ...Object.fromEntries(HITTER_TOOLS.map((t) => [t.current, SNAPSHOT_TOOL_COLUMN[t.key]])),
+  ...Object.fromEntries((['vsLeft', 'vsRight'] as const).flatMap((side) => HITTER_TOOL_KEYS.map((k) =>
+    [`${SPLIT_PREFIX[side]}${SPLIT_SUFFIX[k]}`, `${side === 'vsLeft' ? 'l' : 'r'}${SNAPSHOT_TOOL_COLUMN[k]}`]))),
+  [RUNNING_COLUMN.speed]: 'spd',
+  [RUNNING_COLUMN.baserunning]: 'brn',
+  [RUNNING_COLUMN.stealing]: 'stl',
+};
 
 const SNAPSHOT_TOOLS: Record<ToolKey, { current: string; potential: string }> = {
   contact: { current: 'con', potential: 'conP' },
@@ -749,10 +768,11 @@ export function loadScoutedObservations(playerIds: Iterable<number> | null = nul
   const out = new Map<number, ScoutedObservation[]>();
   const present = new Set((historyDb.prepare(`PRAGMA table_info(rating_snapshots)`).all() as Array<{ name: string }>).map((c) => c.name));
   if (!['save_name', 'game_date', 'player_id', 'position'].every((c) => present.has(c))) return out;
-  const columns = Object.values(SNAPSHOT_TOOLS).flatMap((t) => [t.current, t.potential]);
+  const columns = [...new Set([...Object.values(SNAPSHOT_TOOLS).flatMap((t) => [t.current, t.potential]), ...Object.values(SNAPSHOT_HITTER_COLUMNS)])];
   const select = [
     'player_id', 'game_date', 'position',
     present.has('level') ? 'level' : 'NULL AS level',
+    present.has('team_id') ? 'team_id' : 'NULL AS team_id',
     present.has('age') ? 'age' : 'NULL AS age',
     ...columns.map((c) => (present.has(c) ? `"${c}"` : `NULL AS "${c}"`)),
   ].join(', ');
@@ -778,8 +798,12 @@ export function loadScoutedObservations(playerIds: Iterable<number> | null = nul
       list.push({
         playerId, gameDate,
         level: row.level === null || !Number.isFinite(level) ? null : level,
+        teamId: row.team_id === null || row.team_id === undefined || !Number.isFinite(Number(row.team_id)) ? null : Number(row.team_id),
         age: row.age === null || !Number.isFinite(age) ? null : age,
         ability: buildAbility({ playerId, kind, current, potential, stamina: null, pitches: [] }, scale, viewer),
+        hitter: kind === 'hitter'
+          ? hitterProfileFromRow(playerId, Object.fromEntries(Object.entries(SNAPSHOT_HITTER_COLUMNS).map(([exported, kept]) => [exported, row[kept]])), scale)
+          : null,
       });
       out.set(playerId, list);
     }

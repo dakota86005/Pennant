@@ -93,7 +93,7 @@ describe('every consumer reads the platoon weights and bullpen lines in force', 
   it('the review reads every reliever\'s role and the pen-wide findings under the lines it is given', () => {
     // RP1..RP8 = 105..112: three work 1.7 innings an appearance in low leverage (long men at 1.6), the rest one inning
     const ev = (id: number): LensEvidence => ({
-      ratingsPct: 50, ratingsEvidence: 'complete', skillsPct: 50, runsPct: 50, sample: 600, sampleUnit: 'BF', reliability: 0.6, currentSample: 150, usage: [],
+      ratingsPct: 50, ratingsEvidence: 'complete', skillsPct: 50, runsPct: 50, sample: 600, sampleUnit: 'BF', toolsWeight: 1, reliability: 0.6, currentSample: 150, usage: [],
       ...(id >= 105 ? { bullpen: { g: 20, ip: id <= 107 ? 34 : 20, sv: id === 112 ? 10 : 0, hld: 0, leverage: id === 112 ? 2.0 : 0.8 } } : {}),
     });
     const ports = (bullpen: BullpenLines): ReviewPorts => ({ holderEvidence: (ids) => new Map(ids.map((id) => [id, ev(id)] as const)), bullpen });
@@ -121,7 +121,7 @@ describe('no reader holds a default (static)', () => {
     }
     // the refit names the starting lines only to run the one review whose tiers it then re-reads under the measured lines
     const refit = code('mlbCalibrationRefit.ts');
-    expect(refit).toMatch(/standardsSample\(b\.leagueId, results, BULLPEN_PRIOR\);/);
+    expect(refit).toMatch(/standardsSample\(b\.leagueId, results, BULLPEN_PRIOR, toolsParamsForRefit\(b\.leagueId, b\.throughSeason\)\);/);
     expect(refit).toMatch(/return measureStandards\(rekeyRelievers\(sample, record\.lines\)/);
     expect(refit.match(/\bBULLPEN_PRIOR\b/g)).toHaveLength(2); // the import and that one review
   });
@@ -139,8 +139,8 @@ describe('no reader holds a default (static)', () => {
     expect(code('mlbReview.ts')).toMatch(/leverage: b\.leverage \}, ports\.bullpen\)/);
     expect(code('mlbReview.ts')).toMatch(/\}\), ports\.bullpen\),/);
     const ops = code('mlbOperations.ts');
-    expect(ops).toMatch(/holderEvidence\(orgId, ids, role, opts \?\? \{\}, yardsticks\.results, yardsticks\.bullpen\)/);
-    expect(ops).toMatch(/platoonInputs\(orgId, ids, yardsticks\.results, yardsticks\.platoon\)/);
+    expect(ops).toMatch(/holderEvidence\(orgId, ids, role, opts \?\? \{\}, yardsticks\.results, yardsticks\.bullpen, yardsticks\.tools\)/);
+    expect(ops).toMatch(/platoonInputs\(orgId, ids, yardsticks\.results, yardsticks\.platoon, yardsticks\.tools\)/);
     expect(ops).toMatch(/const bullpen = override\?\.bullpen \?\? yardsticks\.bullpen;/);
     // the only callers of the tier and the pen findings pass the lines they were handed
     const users = files.filter((f) => /import \{[^}]*\b(roleOf|penFindings)\b[^}]*\} from '\.\/bullpenRoles\.js'/.test(code(f)));

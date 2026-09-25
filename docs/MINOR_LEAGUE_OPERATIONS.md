@@ -962,8 +962,10 @@ view.
 Every farm constant is declared once in `server/farmCalibration.ts` and stamped.
 **None is `calibrated`**, and that is stated rather than implied: the MLB results
 model is backtested against 23 seasons of real major-league history
-([CALIBRATION.md](CALIBRATION.md)), and the export contains no equivalent
-minor-league history to fit against.
+([CALIBRATION.md](CALIBRATION.md)). The farm's constants have not been fitted
+against the save's own minor-league history yet. That history is in the export
+(corrected 2026-09-25, cycle 4: the export DOES hold minor-league stat lines, every affiliated level back to about 1920 on the Arizona import; what it lacks is minor-league ratings history. No farm constant is fitted yet: that is unbuilt work, ROADMAP "Calibrate what can be calibrated"); the sample minimums and stabilization are fittable per save by
+cycle 2's method, and the rest are policy.
 
 | Stamp | Constants |
 |---|---|
@@ -1043,8 +1045,8 @@ policy.
 
 ## 6.3 Known limitations
 
-* No farm constant is calibrated against outcomes; the export has no
-  minor-league history to fit against.
+* No farm constant is calibrated against outcomes yet. The export does hold the
+  minor-league stat lines to fit the sample constants against (corrected 2026-09-25, cycle 4: the export DOES hold minor-league stat lines, every affiliated level back to about 1920 on the Arizona import; what it lacks is minor-league ratings history. No farm constant is fitted yet: that is unbuilt work, ROADMAP "Calibrate what can be calibrated").
 * Cross-affiliate Rookie-level *movement* remains deferred: eligibility and
   geography between an Arizona Complex League club and a Dominican one are not
   modelled. Rookie-level affiliates are otherwise fully covered (health,
@@ -1297,7 +1299,7 @@ and the findings-derived status; cascade termination including the unevaluated p
 three owners; the MLB ↔ farm contract in both directions through one adapter and one session; the
 boundary guards.
 
-**Provisional:** every farm constant (no minor-league history to fit against); the departed-innings
+**Provisional:** every farm constant (not yet fitted on the save's own minor-league lines, which the export does hold; corrected in cycle 4); the departed-innings
 note as a stand-in for a windowed usage read; the absolute-scale protection tier.
 
 **Missing, recorded:** cross-affiliate Rookie movement; recency in usage; repeat-level and

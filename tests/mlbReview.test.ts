@@ -10,7 +10,7 @@ import { healthy26, viewOf } from './mlbFixtures';
 
 // SP1..SP5 = 100..104, RP1..RP8 = 105..112
 const ev = (ratingsPct: number | null, skillsPct: number | null, runsPct: number | null, reliability = 0.75): LensEvidence => ({
-  ratingsPct, ratingsEvidence: 'complete', skillsPct, runsPct, sample: 900, sampleUnit: 'BF', reliability, currentSample: 180, usage: [],
+  ratingsPct, ratingsEvidence: 'complete', skillsPct, runsPct, sample: 900, sampleUnit: 'BF', toolsWeight: 1, reliability, currentSample: 180, usage: [],
 });
 const table: Record<number, LensEvidence> = {
   100: ev(60, 68, 60), 101: ev(55, 73, 77), 102: ev(50, 58, 36), 103: ev(47, 60, 40),

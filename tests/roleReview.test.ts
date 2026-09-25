@@ -10,7 +10,7 @@ import {
 
 const sp = (id: number, over: Partial<ReviewSubject> = {}): ReviewSubject => ({
   playerId: id, name: `P${id}`, age: 28, ratingsPct: 55, ratingsEvidence: 'complete', skillsPct: 55, runsPct: 55,
-  sample: 900, sampleUnit: 'BF', reliability: 0.75, currentSample: 180, ...over,
+  sample: 900, sampleUnit: 'BF', toolsWeight: 1, reliability: 0.75, currentSample: 180, ...over,
 });
 const rotation = (soroka: Partial<ReviewSubject> = {}): ReviewSubject[] => [
   sp(1, { ratingsPct: 60, skillsPct: 68, runsPct: 60 }),

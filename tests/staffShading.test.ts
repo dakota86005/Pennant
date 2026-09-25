@@ -11,7 +11,7 @@ import { fakePorts, healthy26, mkState, viewOf, type Spec } from './mlbFixtures'
  */
 
 const ev = (ratingsPct: number | null, skillsPct: number | null, runsPct: number | null, reliability = 0.75): LensEvidence => ({
-  ratingsPct, ratingsEvidence: 'complete', skillsPct, runsPct, sample: 900, sampleUnit: 'BF', reliability, currentSample: 180, usage: [],
+  ratingsPct, ratingsEvidence: 'complete', skillsPct, runsPct, sample: 900, sampleUnit: 'BF', toolsWeight: 1, reliability, currentSample: 180, usage: [],
 });
 // SP5 (104) is a MODERATE case: unusually weak for a rotation (under its floor) on both lenses, but not far enough under it to be strong.
 const lens: Record<number, LensEvidence> = {

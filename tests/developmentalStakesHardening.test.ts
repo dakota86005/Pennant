@@ -9,6 +9,8 @@ import {
   type DevelopmentProtection,
   type DevelopmentProtectionTier,
 } from '../server/developmentFit.js';
+import { startingLines } from '../server/developmentFit.js';
+const STARTING = startingLines('not_measured');
 import { AGE_LEVEL_DEVELOPMENT_LIMIT, OLD_FOR_LEVEL, PROTECTED_TIERS } from '../server/farmCalibration.js';
 import { evaluateMlbAssignmentContext, LOW_STAKES_WEIGHT } from '../server/mlbAssignmentContext.js';
 import { hasDevelopmentalStakes, positionConflict, readOpportunity } from '../server/playingTime.js';
@@ -37,7 +39,7 @@ const league = (averageAge: number | null, age: number, players = 300): Developm
 });
 
 const stakes = (age: number | null, current: number | null, potential: number | null, averageAge: number | null = null, kind: 'hitter' | 'pitcher' = 'hitter') =>
-  evaluateDevelopmentProtection({ age, ability: syntheticScoutedAbility({ current, potential, kind }), context: averageAge === null && age !== null ? null : league(averageAge, age ?? 0) });
+  evaluateDevelopmentProtection({ lines: STARTING,  age, ability: syntheticScoutedAbility({ current, potential, kind }), context: averageAge === null && age !== null ? null : league(averageAge, age ?? 0) });
 
 /* The composites are integers (the adapter rounds), so every potential a real man can have is here. */
 const POTENTIALS = Array.from({ length: 61 }, (_, i) => 20 + i);
@@ -225,10 +227,10 @@ describe('the schedule line: exact values, floating point and a moving league', 
 
   it('a level pool stands in for a thin league and is named as such; an unavailable one is named and discounts nothing', () => {
     const pooled: DevelopmentalContext = { ...league(19, 22), ageProfile: { scope: 'level', players: 400, averageAge: 19 } };
-    const p = evaluateDevelopmentProtection({ age: 22, ability: syntheticScoutedAbility({ current: 40, potential: 50 }), context: pooled });
+    const p = evaluateDevelopmentProtection({ lines: STARTING,  age: 22, ability: syntheticScoutedAbility({ current: 40, potential: 50 }), context: pooled });
     expect(p.reading!.remaining.schedule).toBe('far_behind');
     expect(p.reasons.join(' ')).toMatch(/its own league is too thin to describe itself/);
-    const none = evaluateDevelopmentProtection({ age: 22, ability: syntheticScoutedAbility({ current: 40, potential: 50 }), context: league(null, 22) });
+    const none = evaluateDevelopmentProtection({ lines: STARTING,  age: 22, ability: syntheticScoutedAbility({ current: 40, potential: 50 }), context: league(null, 22) });
     expect(none.tier).toBe(stakes(22, 40, 50).tier);
     expect(none.reasons.join(' ')).toMatch(/could not be established, so whether he is behind his level's schedule was not read and nothing was discounted/);
   });
@@ -243,7 +245,7 @@ describe('unknown stays unknown, in every consumer', () => {
     expect(stakes(22, null, 50).tier).toBeNull();
     expect(stakes(22, 40, null).tier).toBeNull();
     expect(stakes(22, 40, 50, null).tier).toBe(stakes(22, 40, 50, 22).tier);
-    expect(evaluateDevelopmentProtection({ age: 22, ability: syntheticScoutedAbility({ current: 40, potential: 50 }), context: undefined }).tier).toBe('protected_prospect');
+    expect(evaluateDevelopmentProtection({ lines: STARTING,  age: 22, ability: syntheticScoutedAbility({ current: 40, potential: 50 }), context: undefined }).tier).toBe('protected_prospect');
   });
 
   it('playing time: an unknown tier is never squeezed and never "no stakes"', () => {

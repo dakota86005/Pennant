@@ -12,7 +12,7 @@ import { fakePorts, healthy26, mkState, viewOf, type Spec } from './mlbFixtures'
  */
 
 const ev = (ratingsPct: number | null, skillsPct: number | null, runsPct: number | null, reliability = 0.75): LensEvidence => ({
-  ratingsPct, ratingsEvidence: 'complete', skillsPct, runsPct, sample: 900, sampleUnit: 'BF', reliability, currentSample: 180, usage: [],
+  ratingsPct, ratingsEvidence: 'complete', skillsPct, runsPct, sample: 900, sampleUnit: 'BF', toolsWeight: 1, reliability, currentSample: 180, usage: [],
 });
 const lens: Record<number, LensEvidence> = {
   100: ev(60, 68, 60), 101: ev(55, 73, 77), 102: ev(50, 58, 36), 103: ev(47, 60, 40), 104: ev(20, 14, 15),
@@ -118,7 +118,7 @@ describe('GOLDEN plans: a second move must earn its keep', () => {
   }
   const LF = [...regularIds][5];
   const ev2 = (bat: number, glove: number, position: number): LensEvidence => ({
-    position, ratingsPct: bat, ratingsEvidence: 'complete', skillsPct: bat, runsPct: null, sample: 500, sampleUnit: 'PA', reliability: 0.7, currentSample: 150,
+    position, ratingsPct: bat, ratingsEvidence: 'complete', skillsPct: bat, runsPct: null, sample: 500, sampleUnit: 'PA', toolsWeight: 1, reliability: 0.7, currentSample: 150,
     defense: { stabilization: 1000, pct: glove, grade: 55, visible: true }, usage: [],
   });
   const holderEvidence = (ids: number[], role: { position: number }) => new Map(ids.map((id) => [id, id === LF ? ev2(30, 50, role.position) : ev2(60, 55, role.position)] as const));

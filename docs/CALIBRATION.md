@@ -48,7 +48,7 @@ predictive skill), not the newest (which is flattered).
 | Reliever weights / stabilization (BF) | 5 / 4 / 3, 300 | **5 / 3 / 2, 500** | rmse 1.2544 against 1.2629 |
 | Pitcher results mix (peripherals / runs) | 0.7 / 0.3 | **0.85 / 0.15** | peripherals predict NEXT season's runs allowed at least as well as past runs (best share 0.9 to 1.0 for both roles) |
 | Tools lens for hitters | unweighted mean of five tools | **calibrated tools model** (expected wOBA) | R2 .40 to .45 at lag against .35 to .37 for the flat mean; pooled slopes contact .00155, power .00122, eye .00086, gap .00033, strikeout avoidance 0 |
-| Weight of results against tools | n / (n + K) with K alone | **K x (1 - information)**: hitters 300, starters 560, relievers 400 | when tools are known, results are shrunk toward the tools, not the league average; the tools explain .40 (hitters) and .20 (pitchers) of true talent at lag |
+| Weight of results against tools | n / (n + K) with K alone | **K x (1 - information)**: hitters 300, starters 560, relievers 400 (**replaced in cycle 4, section 15**: that form pointed the wrong way; now K x a tools weight of at least 1, starting at 1) | when tools are known, results are shrunk toward the tools, not the league average; the tools explain .40 (hitters) and .20 (pitchers) of true talent at lag |
 | Platoon prior | league norm for the hand | **league norm + the hitter's rating-implied departure (weight 1.0)** | slope 1.06 against 2023 to 2025 results (1.0 is exact); beats the league norm alone (rmse .03651 against .03757) |
 | Platoon shrinkage of a hitter's own split | K 1,500 | **K 5,000** | his own past split adds almost nothing beyond ratings and the league (best K 5,000; combined coefficient 0.10) |
 | Aging | one age (34) | **an aging curve** from the data | hitters lose about 3 points of wOBA a year from 26, 6.5 from 30, 9.5 from 34; pitchers gain about 0.12 runs per nine of FIP from 28 and 0.20 from 35 |
@@ -1204,7 +1204,7 @@ under the asymmetric return too.
 ### 13.6 The rest of the results lens
 
 - **Tools information** (`TOOLS_INFORMATION`): deferred to cycle 4 with the tools model it describes. The save has one rating
-  snapshot, and a same-time fit is contaminated.
+  snapshot, and a same-time fit is contaminated. (Cycle 4 found the blend it fed pointed the wrong way and replaced it: section 15.)
 - **The park share** (`PARK_WOBA_SHARE`): stays provisional. Club runs give an elasticity of 1.92 ± 0.03 (a share of 0.52), but the
   park factor it multiplies is today's park ratings applied to every season. Minor League Operations shares the value.
 - **The peer-population minimums** (`POPULATION_MINIMUM`, `DEFENSE_POPULATION_MINIMUM`): policy.
@@ -1336,3 +1336,153 @@ Stage A investigation behind them is on this save (league 203, through 2025, gam
   should lapse after a season is for the owner (supervisor's call: left as is).
 - The season split needs 50 relievers with 4 or more appearances in each half (policy); with fewer it is "not measured", with that
   reason.
+
+## 15. The tools model, the blend and the ceiling lines (D-053, cycle 4, 2026-09-25)
+
+Every decision below is the **supervisor's call, pending owner review** (the owner was away and authorized best judgment). The Stage A
+investigation and the before-and-after report were run on this save (league 203, through 2025, game date 2026-5-16).
+
+**What the export can and cannot say.** Ratings exist for one date. `history.db` holds one snapshot, 2026-5-16, which is also the
+export's game date, so no season follows it. Every test of ratings against results on this save is therefore same-time: OOTP formed
+the ratings from those results, so the test describes and does not forecast.
+
+- **Player Value's 84.5% / 58.1% (section 6.2).** This is that kind of test: current ratings against 2023–2026 rates, cross-validated
+  over 5 folds of players. It generalises across players, not across time.
+- **The one honest evidence: 2026 to date.** This is the only season the game has simulated from these ratings: 671 games, 50,705
+  PA. It can check a prior; one season can adopt nothing under the detector.
+- **Minor-league history.** The export holds minor-league stat lines for every affiliated level (back to about 1920 on this import).
+  What it lacks is minor-league ratings history. The farm's own stamps said otherwise and are corrected (ROADMAP).
+
+| Number | Was | Now | Why |
+|---|---|---|---|
+| `TOOLS_INFORMATION` (0.4 / 0.2 / 0.2) used as K × (1 − I) | provisional | **Deleted.** `ResultsParams.toolsWeight` is a multiplier of at least 1, with K_blend = K × weight; the starting value is 1 (K alone). | The old form pointed the wrong way: the more the tools explained, the more the results counted. The Bayesian blend is K ÷ (1 − I). On the engine season, a hitter's 2023–25 record predicting his 2026 line held out: 300 PA (the old form) did worst of the three candidates (MSE ×10⁻⁴ 19.89, against 19.29 for K alone and 18.75 for K ÷ 0.6), and the tools alone did best (17.24; best in 286 of 300 bootstraps). K alone is Player Value's owner-approved rule for same-time ratings. |
+| "Too early" (`CONCERN.minReliability` 0.35 against the blend) | provisional | **`CONCERN.tooEarly`**: hitters 105/430 (0.244), pitchers 196/651 (0.301), read against the results' OWN trust, reliability(n, K), never the blend | Decoupled so that how much the tools hold results back never decides whether there is enough sample. The values keep the sample the line meant before (about 162 PA, 302 BF for starters, 215 for relievers). Rounding to 0.25 moved one strong case for nothing but the rounding. |
+| The "firm read" (0.6 against the blend, in the staff report's confidence and "monitor or respond", the explanation and "more sample would firm it up") | provisional | **`CONCERN.firmRead`**: hitters 9/19, pitchers 6/11, against the results' own trust (`isFirmRead`) | Review finding B1: these lines moved with the blend (a hitter needed 750 PA instead of 450). They keep the sample they meant: 450 PA for a hitter, 840 BF for a starter, 600 BF for a reliever. A test pins every sample line and bans comparing trust with a bare number. |
+| `DEFENSE_INFORMATION` 0.4, `RUNNING_INFORMATION` 0.43 | provisional | **`DEFENSE_TOOLS_WEIGHT`, `RUNNING_TOOLS_WEIGHT`**, multipliers of at least 1, starting at 1 | The same inverted blend in `roleReview.blendDimension`. |
+| `HITTER_TOOL_SLOPES`, `RUNNING_SLOPES` | calibrated (run 1) | **Provisional starting values**, passed as `ToolsParams` through one reader (`toolsCalibration.ts`); the bat slopes are fitted per save by `tools-1` on forward seasons | Run 1 was a same-time fit on this save. On the engine season a refit is no better than these slopes on held-out players (1.2% more error). Their scale on 2026 results is 1.29, which moves no percentile; it is left to the forward fit (supervisor's call). |
+| `PROFILE_MIN_POINTS` 9 | policy | **Derived**: `PROFILE_SHARE` (0.5, policy) × the standard deviation of the tools' total among the league's peer hitters under the slopes in force; no words with fewer than 30 peers | 18.44 points on this save, so the line is 9.22 and no hitter's words change. |
+| `RATING_PRIOR_WEIGHT`, platoon K around the ratings (cycle 3's `PLATOON_PRIOR`) | provisional | **Unchanged** | Not fittable while snapshots keep no split tools. They keep them from this cycle on. |
+| `CEILING_LINES` (hitters 45 / 50 / 56, pitchers 45 / 48 / 53) | provisional | **A measurement at each import** (`stakes-lines-1`, `stakesLines.ts`); the constants are Pennant's starting lines | They describe the league's major leaguers as they stand (below). |
+| `CEILING_QUANTILES`, `PROJECTION_REALIZED_UNDER` | policy / provisional | Unchanged (the projection stamp's wording corrected: a gap under 3 is at most two grades in five for a hitter and one in three for a pitcher) | Policy. |
+| `DEVELOPMENT_AGE` (22 / 24 / 26) | provisional | Unchanged, and the stamp names the missing evidence | A development path needs 300 snapshot pairs a season apart; the save has 0. The cross-section agrees with the bands' end: the scouted gap closes between 24 and 26. |
+
+### 15.1 The blend fix, and "too early"
+
+- **The weight on results.** It is `blendWeight(r, toolsWeight) = r ÷ (r + toolsWeight × (1 − r))`, with r = n ÷ (n + K), the
+  results' own trust. `LensEvidence` carries r (`reliability`) and the tools weight in force (`toolsWeight`, required). A working
+  estimate built without the weight is refused, never defaulted, and so are results params without it (`blendStabilization`).
+- **The results fit does not fit the weight.** `paramsOf` gives the starting 1, and `rosterReviewCalibration` puts in the tools
+  fit's weight where it serves.
+- **Platoon.** The overall level blends his record with his ratings at `blendStabilization` (K × weight).
+- **Tests.** `toolsBlend.test.ts`: knowing the tools never makes results count more. `mlbThresholdBoundaries.test.ts`: the "too early"
+  line either side, and the tools weight never decides it.
+
+### 15.2 The forward fit (`server/ratingsForward.ts`, neutral; `server/mlbToolsFit.ts`, `tools-1`, trigger: a new completed season)
+
+- **Forward cases only.** A case is the ratings a hitter carried into a season against what he did in it. They come from his latest
+  snapshot taken in an EARLIER season, at most 430 days before its first day; a snapshot taken during the season never stands for
+  it. Ratings come through the adapter, with the identity guard (a snapshot whose age disagrees with the date of birth is another
+  man). Player Value keeps its own reader of the same snapshots, which is not migrated.
+- **Bat slopes.** Non-negative least squares on wOBA above each target season's own mean, fitted inside each rolling origin on the
+  forward seasons up to it. Each origin is scored on the next forward season against the starting slopes, both given a scale fitted
+  on the same training seasons, so what is compared is the direction that reaches the percentile. Scoring is paired on the same
+  hitters, unshrunk and as served; the served slopes are shrunk toward the starting ones by n ÷ (n + 400).
+- **Hitters' tools weight.** The working estimate's blend of the results percentile and the tools percentile, predicting the target
+  season's percentile (percentiles among the season's forward cases). The weight is chosen on a grid (1 to 10) inside each origin,
+  shrunk on the log scale, and never under 1.
+- **The gate.** Cycle 2's detector, unchanged: 4 held-out forward seasons of 50 hitters, the two-bound test, the 1% minimum, two
+  confirmations, and the easy return. A save needs 5 forward seasons before anything is judged; this save has 0. The yardsticks
+  hover says "the starting values, because this league has no ratings saved before a season to check them against yet".
+- **Reported, never gated: the same-season engine check.** On the season under way, the ratings seen in it against the results
+  the game has produced so far. It is not a forecast: the ratings may have been revised during the season, and whether OOTP's
+  scouting reads statistics is not established by the export.
+- **Tests.** `mlbToolsFit.test.ts` runs synthetic forward leagues:
+  - the starting truth is kept over a lifetime of refits;
+  - a very different truth is adopted at the second confirming refit, moved the right way;
+  - a noisy record gives a weight over 1;
+  - a held-out season never takes part in choosing what it judges.
+  No dedicated false-adoption simulation was run for `tools-1`; the detector's rates are those measured in section 13.3.
+- **Not built:**
+  - the pitchers' tools weight: starters and relievers keep 1;
+  - the running slopes and the platoon rating parts, whose forward cases need the split and running ratings that snapshots store
+    only from this cycle on (`rating_snapshots` gained 12 nullable columns, added when absent; an older snapshot reads them as
+    unknown).
+
+### 15.3 The ceiling lines (`server/stakesLines.ts`, `stakes-lines-1`, trigger: each import)
+
+- **The measurement.** The nearest-rank tenth, median and best tenth of the current visible composite of the organization's major
+  league's active major leaguers, by kind. These are actual composite values, served as measured, with no pull toward the starting
+  lines (cycle 3's lesson).
+- **The check.** 400 seeded club halvings. The lines drawn from half the clubs must bracket the policy share of the other half:
+  strictly under the line at most q + 5 points, at or under it at least q − 5, pooled over the halvings. In at least 90% of the
+  halvings the same must hold within 10 points. The check is tie-aware because composites are integers: 22% of this league's pitchers
+  sit exactly on 48, and a strict-only check put 35% under the median.
+- **Minimums.** 10 clubs and 100 major leaguers per kind. A small or fictional league keeps "Pennant's starting line", labelled
+  as such.
+- **When a measurement does not hold up.** It keeps the lines in force: the league's own from an earlier import, else the starting
+  lines. A reverted save serves the measurement at or before its game date.
+- **Served** through the context reader (`developmentalContext.ts`, `lines(teamId)`, by the organization's major league) as a required
+  argument of the evaluator. A tier whose ceiling changed because a line moved says so, dated at the
+  import where the line moved, and that it was the lines and not the player.
+  The farm's thresholds table shows the lines in force and their source.
+- **On this save:** hitters 45 / 50 / 56 and pitchers 45 / 48 / 53, equal to the starting lines. The club split is 7.8–12.8%,
+  45.0–54.1% and 88.4–91.0% for hitters, and 4.4–15.9%, 34.5–56.4% and 85.0–91.6% for pitchers; stability is 97–100%. No tier moves.
+- **Authority chain.** The lines read no result, usage, philosophy, Player Value or MLB Operations answer
+  (`tests/stakesLines.test.ts`), and Player Development's defensibility judgments do not read them.
+
+### 15.4a The independent review, and what changed after it (2026-09-25)
+
+- **B1, the firm read** (above). Every reader of the results' trust used as a threshold is now a named line on the results' own K.
+- **B2 and R1, "the lines moved".** Said only on the export the move was measured on, only when his current and potential composites,
+  age and level are what his rating snapshot at the import before kept (read through the adapter by the context reader), and only when
+  his tier under the old lines at that reading differs from his tier now. A player whose own potential moved too gets no such
+  sentence. The one input a snapshot does not keep is his league's rostered average age, stated in the code. The league's own lines
+  are named as his organization's major league's.
+- **Re-review nits.** The engine check says whether its difference is within two standard errors; the blend check scores only hitters
+  the lens gives a results percentile (a qualifying past sample); the tools population is the fitted league's own clubs' hitters.
+- **B3, the tools reason.** A part that could not be judged says why: no forward season, fewer than judging needs, or enough seasons
+  with too few hitters; one part judged and the other not says so. Each state is pinned in the copy test.
+- **B4, checked is served.** The tools fit is registered before the standards; the standards are measured under the hitters' tools
+  weight and the slopes that will serve beside them (this refit's verdict, else the one in force).
+- **D1, dating.** A snapshot stands for a season when taken before its first game: the export's own date where it holds the season's
+  schedule (the current season only), else March 20 (policy: before any opening day in the imported history). An offseason or spring
+  import therefore stands for the season about to start. Each case records its gap in days; the record states their spread.
+- **D2, the blend and the scale.** The blend is checked under the slopes that serve beside it (each origin's own where the bat part
+  serves the league's) and ranks in the lens's populations: the league's major-league hitters in the snapshot that stood for the season
+  (the snapshot's level 1), its hitters with a qualifying sample before the season, and its hitters in the season. The served bat
+  slopes carry the scale fitted on the forward seasons, and the backtest scores them as served against the starting slopes as served
+  (scale 1), so the scale reaching the Lineup page, the platoon read and "his tools imply +N points" is checked with the direction.
+  Limit, recorded: the tools population is the snapshot's major-league hitters, not exactly the served peer set (which excludes
+  amateurs and reads the current export); the difference is small and one-directional in no known way.
+- **D3.** An affiliate club's Lineup page reads its organization's major league's slopes. **D4.** A tools store that cannot be read
+  logs why and serves the starting values.
+- **Nits.** A league too thin to measure keeps its lines with its own reason (never "did not hold up"); the farm table shows lines and
+  dates plainly and its stamps carry no cycle, decision number or file name; the engine check states one standard error; the stakes
+  report uses the served measurement's rule. Not changed: hand-built test evidence whose `reliability` is not the one its `sample`
+  would give under the results' own K (it tests the review's logic, which takes reliability as given).
+
+### 15.4 The run on the Arizona import (before and after: `scratchpad/cycle4/report.txt`; each step measured alone)
+
+| Step | Roster review, league-wide (30 clubs, 640 holders) | Arizona | Stakes tiers (6,411) | Arizona's farm |
+|---|---|---|---|---|
+| 1. The blend fix | flags 21 → 18; 22 holders change; weight on results −0.11 hitters, −0.04 to −0.05 pitchers; 9 become "too early" because the old line read the blend | no change | 0 | 0 |
+| 2. "Too early" decoupled | flags 18 → 22: exactly those 9 return | no change | 0 | 0 |
+| 3. Glove and running blend | flags 22 → 21 (CWS Quero gains a watch; TB Lux moderate → watch) | no change | 0 | 0 |
+| 4. Ceiling lines measured | 0 | no change | 0 (6,406 reasons now say "this league's") | 0 |
+| 5. Tools params, derived profile line | 0 | no change | 0 | 0 |
+| All together | flags 21 → 21; 15 holders change (Simpson TB appears moderate; Martinez CLE and McCarthy COL moderate → strong; Lux TB moderate → watch; 11 watch-level changes) | no change | 0 | 0 |
+
+The role standards were held as served. They are measured on the working estimate, so the next import's measurement moves them a
+little under the new blend; that is not in these numbers.
+
+**Recommendations and confidence** (re-run after the review: every need of every club through MLB Operations' responses, 75 needs):
+- **The blend fix alone.** It turned two holds into "keep watching" at low confidence (DET Baez, TEX Burger), because their samples
+  stopped counting as firm: review finding B1. The firm-read fix restores both.
+- **All steps together:**
+  - CLE Martinez goes from monitor/low to hold/moderate (his case is now strong and his sample firm);
+  - COL McCarthy goes from monitor/low to explore/moderate;
+  - TB Lux's need goes;
+  - TB Simpson's need appears (monitor/low);
+  - no recommendation reaches or loses high confidence.
+- **Arizona:** nothing changes in any step. The step-by-step record is `scratchpad/cycle4/report.txt`.
+

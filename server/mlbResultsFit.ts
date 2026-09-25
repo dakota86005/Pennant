@@ -110,7 +110,7 @@ export interface PartFit {
 export interface ResultsModel {
   parts: Record<ResultsPart, PartFit>;
   /** The params the review is served under. */
-  params: Omit<ResultsParams, 'stamp'>;
+  params: Omit<ResultsParams, 'stamp' | 'toolsWeight'>;
 }
 
 /** Defense sums a fielder's seasons evenly in production (`defenseResult`): its weights are even, never the hitters'. */
@@ -424,6 +424,8 @@ export function paramsOf(model: ResultsModel, basis: string): ResultsParams {
   const own = RESULTS_PARTS.filter((p) => model.parts[p]?.source === 'save');
   return {
     ...model.params,
+    // The results fit does not fit the tools weight: the starting value, until the tools fit serves the save's own (cycle 4)
+    toolsWeight: RESULTS_PRIOR.toolsWeight,
     stamp: own.length
       ? { status: 'calibrated', basis: `The save's own season weights and stabilization for ${own.join(', ')} (clearly better on its held-out seasons); the starting values for the rest.`, run: `save_calibration_fits ${RESULTS_METHOD} through ${basis}` }
       : RESULTS_PRIOR.stamp,

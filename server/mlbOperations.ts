@@ -8,6 +8,7 @@
  * docs/MLB_OPERATIONS.md.
  */
 
+import type { ToolsParams } from './toolsModel.js';
 import { Router } from 'express';
 import { db, tableExists } from './db.js';
 import { getDataStatus } from './dataStatus.js';
@@ -68,10 +69,10 @@ function realPorts(orgId: number, floors: CoverageFloors = DEFAULT_COVERAGE_FLOO
     development: (ids, context) => mlbAssignmentAssessments(orgId, context, ids),
     crossRole: crossRoleSupport,
     roleFit: (id) => roleFitEvidence(id, orgId),
-    holderEvidence: (ids, role, opts) => holderEvidence(orgId, ids, role, opts ?? {}, yardsticks.results, yardsticks.bullpen),
+    holderEvidence: (ids, role, opts) => holderEvidence(orgId, ids, role, opts ?? {}, yardsticks.results, yardsticks.bullpen, yardsticks.tools),
     hitterUsage: (ids) => hitterUsage(orgId, ids),
     teamGames: () => teamGamesPlayed(orgId),
-    platoon: (ids) => platoonInputs(orgId, ids, yardsticks.results, yardsticks.platoon),
+    platoon: (ids) => platoonInputs(orgId, ids, yardsticks.results, yardsticks.platoon, yardsticks.tools),
     performance: performanceLine,
     // A failure inside Minor League Operations' evaluator leaves the farm consequence unknown; it never fails the packet.
     // One farm session per request: the organization is read once however many candidates are asked about.
@@ -88,18 +89,19 @@ function realPorts(orgId: number, floors: CoverageFloors = DEFAULT_COVERAGE_FLOO
 }
 
 /** The scouting review's evidence, through the same specialists: lenses, usage, splits. */
-export function reviewPorts(orgId: number, override?: { results?: ResultsParams; bullpen?: BullpenLines }): ReviewPorts {
+export function reviewPorts(orgId: number, override?: { results?: ResultsParams; bullpen?: BullpenLines; tools?: ToolsParams }): ReviewPorts {
   const yardsticks = yardsticksFor(orgId);
   // The refit may measure the standards under the results params and the bullpen lines about to be recorded (what is checked is what
   // is served)
   const results = override?.results ?? yardsticks.results;
   const bullpen = override?.bullpen ?? yardsticks.bullpen;
+  const tools = override?.tools ?? yardsticks.tools;
   return {
     calibration: { standards: yardsticks.standards, review: yardsticks.review },
     bullpen,
-    holderEvidence: (ids, role) => holderEvidence(orgId, ids, role, {}, results, bullpen),
+    holderEvidence: (ids, role) => holderEvidence(orgId, ids, role, {}, results, bullpen, tools),
     hitterUsage: (ids) => hitterUsage(orgId, ids),
-    platoon: (ids) => platoonInputs(orgId, ids, results, yardsticks.platoon),
+    platoon: (ids) => platoonInputs(orgId, ids, results, yardsticks.platoon, tools),
     teamGames: () => teamGamesPlayed(orgId),
     covers: (ids) => playableCovers(ids),
     coverReads: (ids) => coverReads(orgId, ids),
@@ -251,8 +253,9 @@ function calibrationRoute(req: { params: { orgId: string } }, res: import('expre
   if (id === null) return res.status(400).json({ error: 'A valid organization is required.' });
   if (!tableExists('players')) return res.status(400).json({ error: 'No data imported yet' });
   const y = yardsticksFor(id);
-  // The values in force beside the groups' records: the platoon weights and the bullpen lines (cycle 3)
-  return res.json({ leagueId: y.leagueId, line: y.line, tip: y.tip, groups: y.groups, inForce: { platoon: y.platoon, bullpen: y.bullpen } });
+  // The values in force beside the groups' records: the platoon weights and the bullpen lines (cycle 3), the tools model's slopes and
+  // the tools weight (cycle 4)
+  return res.json({ leagueId: y.leagueId, line: y.line, tip: y.tip, groups: y.groups, inForce: { platoon: y.platoon, bullpen: y.bullpen, tools: y.tools, toolsWeight: y.results.toolsWeight } });
 }
 mlbOperationsRoutes.get('/mlb-operations/:orgId/calibration', calibrationRoute);
 mlbOperationsRoutes.get('/mlb/calibration/:orgId', calibrationRoute);

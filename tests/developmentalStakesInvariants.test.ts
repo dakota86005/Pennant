@@ -11,6 +11,8 @@ import {
   type DevelopmentalContext,
   type DevelopmentProtectionTier,
 } from '../server/developmentFit.js';
+import { startingLines } from '../server/developmentFit.js';
+const STARTING = startingLines('not_measured');
 import { AGE_LEVEL_DEVELOPMENT_LIMIT, OLD_FOR_LEVEL } from '../server/farmCalibration.js';
 import { evaluateMlbAssignmentContext, STAKES_WEIGHT } from '../server/mlbAssignmentContext.js';
 import { hasDevelopmentalStakes } from '../server/playingTime.js';
@@ -31,7 +33,7 @@ const context = (relative: number | null, players = 300): DevelopmentalContext =
 });
 
 const tierOf = (age: number, current: number | null, potential: number | null, relative: number | null = 0, kind: 'hitter' | 'pitcher' = 'hitter') =>
-  evaluateDevelopmentProtection({ age, ability: syntheticScoutedAbility({ current, potential, kind }), context: context(relative) }).tier;
+  evaluateDevelopmentProtection({ lines: STARTING,  age, ability: syntheticScoutedAbility({ current, potential, kind }), context: context(relative) }).tier;
 
 const rank = (tier: DevelopmentProtectionTier | null): number => (tier === null ? -1 : TIER_ORDER.indexOf(tier));
 
@@ -113,7 +115,7 @@ describe('unknown is never firmer than known, and never lower for being unknown'
   it('removing his level context never lowers the tier', () => {
     for (const age of AGES) for (const current of RATINGS) for (const potential of RATINGS.filter((p) => p >= current)) for (const relative of RELATIVES) {
       const withContext = rank(tierOf(age, current, potential, relative));
-      const without = rank(evaluateDevelopmentProtection({ age, ability: syntheticScoutedAbility({ current, potential }) }).tier);
+      const without = rank(evaluateDevelopmentProtection({ lines: STARTING,  age, ability: syntheticScoutedAbility({ current, potential }) }).tier);
       expect(without).toBeGreaterThanOrEqual(withContext);
       expect(rank(tierOf(age, current, potential, null))).toBe(without);
     }
@@ -121,15 +123,15 @@ describe('unknown is never firmer than known, and never lower for being unknown'
 });
 
 describe('the tier belongs to the man, not to the men around him', () => {
-  it('is a function of his own ratings, his age and his league\'s age profile: nothing else can be handed to it', () => {
-    const a = evaluateDevelopmentProtection({ age: 20, ability: syntheticScoutedAbility({ current: 38, potential: 52, playerId: 1 }), context: context(1) });
-    const b = evaluateDevelopmentProtection({ age: 20, ability: syntheticScoutedAbility({ current: 38, potential: 52, playerId: 2 }), context: context(1) });
+  it('within one set of ceiling lines, is a function of his own ratings, his age and his league\'s age profile: nothing else can be handed to it', () => {
+    const a = evaluateDevelopmentProtection({ lines: STARTING,  age: 20, ability: syntheticScoutedAbility({ current: 38, potential: 52, playerId: 1 }), context: context(1) });
+    const b = evaluateDevelopmentProtection({ lines: STARTING,  age: 20, ability: syntheticScoutedAbility({ current: 38, potential: 52, playerId: 2 }), context: context(1) });
     expect(a).toEqual(b);
   });
 
   it('does not move when the size or the strength of his league does, only when its AGE does', () => {
-    const thinner = evaluateDevelopmentProtection({ age: 21, ability: syntheticScoutedAbility({ current: 30, potential: 47 }), context: context(-1, 26) });
-    const thicker = evaluateDevelopmentProtection({ age: 21, ability: syntheticScoutedAbility({ current: 30, potential: 47 }), context: context(-1, 1800) });
+    const thinner = evaluateDevelopmentProtection({ lines: STARTING,  age: 21, ability: syntheticScoutedAbility({ current: 30, potential: 47 }), context: context(-1, 26) });
+    const thicker = evaluateDevelopmentProtection({ lines: STARTING,  age: 21, ability: syntheticScoutedAbility({ current: 30, potential: 47 }), context: context(-1, 1800) });
     expect(thinner.tier).toBe(thicker.tier);
     expect(thinner.reading!.ceiling).toEqual(thicker.reading!.ceiling);
   });
@@ -158,9 +160,9 @@ describe('the same tier means the same thing to everyone who reads it', () => {
   it('gives MLB Operations the tier the farm reads, for every player and every contemplated role', () => {
     for (const age of [19, 22, 24, 26, 29]) for (const potential of [44, 47, 50, 53, 57]) {
       const ability = syntheticScoutedAbility({ current: potential - 6, potential, kind: 'pitcher' });
-      const own = evaluateDevelopmentProtection({ age, ability, context: context(0) }).tier;
+      const own = evaluateDevelopmentProtection({ lines: STARTING,  age, ability, context: context(0) }).tier;
       for (const role of ['temporary_depth', 'short_bullpen', 'spot_start'] as const) {
-        const a = evaluateMlbAssignmentContext({ context: role, kind: 'pitcher', protection: evaluateDevelopmentProtection({ age, ability, context: context(0) }), experience: null, currentLevel: null });
+        const a = evaluateMlbAssignmentContext({ context: role, kind: 'pitcher', protection: evaluateDevelopmentProtection({ lines: STARTING,  age, ability, context: context(0) }), experience: null, currentLevel: null });
         expect(a.stakes.tier).toBe(own);
       }
     }
@@ -172,20 +174,20 @@ describe('the lines', () => {
     for (const kind of KINDS) {
       const lines = CEILING_LINES[kind];
       const band = (potential: number) =>
-        evaluateDevelopmentProtection({ age: 20, ability: syntheticScoutedAbility({ current: 20, potential, kind }) }).reading!.ceiling.band;
+        evaluateDevelopmentProtection({ lines: STARTING,  age: 20, ability: syntheticScoutedAbility({ current: 20, potential, kind }) }).reading!.ceiling.band;
       expect([band(lines.fringe - 1), band(lines.fringe)]).toEqual(['below_major_league', 'fringe']);
       expect([band(lines.regular - 1), band(lines.regular)]).toEqual(['fringe', 'regular']);
       expect([band(lines.impact - 1), band(lines.impact)]).toEqual(['regular', 'impact']);
     }
-    const byAge = (age: number) => evaluateDevelopmentProtection({ age, ability: syntheticScoutedAbility({ current: 30, potential: 52 }) }).reading!.remaining.byAge;
+    const byAge = (age: number) => evaluateDevelopmentProtection({ lines: STARTING,  age, ability: syntheticScoutedAbility({ current: 30, potential: 52 }) }).reading!.remaining.byAge;
     expect([byAge(DEVELOPMENT_AGE.most), byAge(DEVELOPMENT_AGE.most + 1)]).toEqual(['most', 'some']);
     expect([byAge(DEVELOPMENT_AGE.some), byAge(DEVELOPMENT_AGE.some + 1)]).toEqual(['some', 'little']);
     expect([byAge(DEVELOPMENT_AGE.little), byAge(DEVELOPMENT_AGE.little + 1)]).toEqual(['little', 'none']);
 
-    const realized = (gap: number) => evaluateDevelopmentProtection({ age: 20, ability: syntheticScoutedAbility({ current: 52 - gap, potential: 52 }) }).reading!.remaining.projection.realized;
+    const realized = (gap: number) => evaluateDevelopmentProtection({ lines: STARTING,  age: 20, ability: syntheticScoutedAbility({ current: 52 - gap, potential: 52 }) }).reading!.remaining.projection.realized;
     expect([realized(PROJECTION_REALIZED_UNDER - 1), realized(PROJECTION_REALIZED_UNDER)]).toEqual([true, false]);
 
-    const schedule = (relative: number) => evaluateDevelopmentProtection({ age: 20, ability: syntheticScoutedAbility({ current: 30, potential: 52 }), context: context(relative) }).reading!.remaining.schedule;
+    const schedule = (relative: number) => evaluateDevelopmentProtection({ lines: STARTING,  age: 20, ability: syntheticScoutedAbility({ current: 30, potential: 52 }), context: context(relative) }).reading!.remaining.schedule;
     expect([schedule(-(OLD_FOR_LEVEL - 0.1)), schedule(-OLD_FOR_LEVEL)]).toEqual(['on_schedule', 'behind']);
     expect([schedule(-(AGE_LEVEL_DEVELOPMENT_LIMIT - 0.1)), schedule(-AGE_LEVEL_DEVELOPMENT_LIMIT)]).toEqual(['behind', 'far_behind']);
   });

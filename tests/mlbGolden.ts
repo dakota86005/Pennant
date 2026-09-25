@@ -11,7 +11,7 @@ import { fakePorts, healthy26, mkState, viewOf, type PortOptions, type Spec } fr
  */
 
 export const ev = (ratingsPct: number | null, skillsPct: number | null, runsPct: number | null, reliability = 0.75): LensEvidence => ({
-  ratingsPct, ratingsEvidence: 'complete', skillsPct, runsPct, sample: 900, sampleUnit: 'BF', reliability, currentSample: 180, usage: [],
+  ratingsPct, ratingsEvidence: 'complete', skillsPct, runsPct, sample: 900, sampleUnit: 'BF', toolsWeight: 1, reliability, currentSample: 180, usage: [],
 });
 
 export const LENS: Record<number, LensEvidence> = {

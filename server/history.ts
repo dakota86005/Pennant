@@ -64,6 +64,21 @@ historyDb.exec(`
   CREATE INDEX IF NOT EXISTS idx_notes_player ON player_notes (save_name, player_id);
 `);
 
+/**
+ * Tools a snapshot keeps since cycle 4 of the per-save calibration (D-053): a hitter's tools against left- and right-handed pitching and
+ * his baserunning and stealing ratings. A per-save check of the platoon read's rating weight and of the running model needs them as they
+ * stood BEFORE a season, and nothing else in the export keeps them, so every import without them is evidence lost for good. Additive and
+ * nullable: added to an existing table when absent; a snapshot taken before they existed reads them as unknown, never as zero.
+ */
+export const SNAPSHOT_SPLIT_COLUMNS = ['lcon', 'lgap', 'lpow', 'leye', 'lavk', 'rcon', 'rgap', 'rpow', 'reye', 'ravk'] as const;
+export const SNAPSHOT_RUNNING_COLUMNS = ['brn', 'stl'] as const;
+{
+  const present = new Set((historyDb.prepare(`PRAGMA table_info(rating_snapshots)`).all() as Array<{ name: string }>).map((c) => c.name));
+  for (const column of [...SNAPSHOT_SPLIT_COLUMNS, ...SNAPSHOT_RUNNING_COLUMNS]) {
+    if (!present.has(column)) historyDb.exec(`ALTER TABLE rating_snapshots ADD COLUMN ${column} REAL`);
+  }
+}
+
 export function currentSaveName(): string {
   return loadConfig().saveName ?? 'unknown';
 }
@@ -89,6 +104,12 @@ export function takeSnapshot(): { gameDate: string; players: number } | null {
   if (!gameDate) return null;
   const saveName = currentSaveName();
 
+  // The split and running columns are read where the export has them; a missing one is stored as unknown (NULL), never guessed
+  const battingColumns = new Set(tableExists('players_batting') ? (leagueDb.prepare(`PRAGMA table_info(players_batting)`).all() as Array<{ name: string }>).map((c) => c.name) : []);
+  const optional = (column: string, as: string) => (battingColumns.has(column) ? `b.${column} AS ${as}` : `NULL AS ${as}`);
+  const splitSelect = (['l', 'r'] as const).flatMap((side) => (['contact', 'gap', 'power', 'eye', 'strikeouts'] as const).map((tool, i) =>
+    optional(`batting_ratings_vs${side}_${tool}`, `${side}${['con', 'gap', 'pow', 'eye', 'avk'][i]}`)));
+  const runningSelect = [optional('running_ratings_baserunning', 'brn'), optional('running_ratings_stealing', 'stl')];
   const rows = leagueDb
     .prepare(
       `SELECT p.player_id, p.first_name || ' ' || p.last_name AS name, p.team_id,
@@ -102,7 +123,8 @@ export function takeSnapshot(): { gameDate: string; players: number } | null {
               pi.pitching_ratings_overall_stuff AS stu, pi.pitching_ratings_overall_movement AS mov,
               pi.pitching_ratings_overall_control AS ctl,
               pi.pitching_ratings_talent_stuff AS stuP, pi.pitching_ratings_talent_movement AS movP,
-              pi.pitching_ratings_talent_control AS ctlP
+              pi.pitching_ratings_talent_control AS ctlP,
+              ${[...splitSelect, ...runningSelect].join(', ')}
        FROM players p
        JOIN teams t ON t.team_id = p.team_id
        LEFT JOIN players_batting b ON b.player_id = p.player_id
@@ -115,8 +137,9 @@ export function takeSnapshot(): { gameDate: string; players: number } | null {
     `INSERT OR REPLACE INTO rating_snapshots
      (save_name, game_date, player_id, name, team_id, org_id, level, position, age,
       con, gap, pow, eye, avk, spd, conP, gapP, powP, eyeP, avkP,
-      stu, mov, ctl, stuP, movP, ctlP, cur, pot)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      stu, mov, ctl, stuP, movP, ctlP, cur, pot,
+      ${[...SNAPSHOT_SPLIT_COLUMNS, ...SNAPSHOT_RUNNING_COLUMNS].join(', ')})
+     VALUES (${new Array(28 + SNAPSHOT_SPLIT_COLUMNS.length + SNAPSHOT_RUNNING_COLUMNS.length).fill('?').join(', ')})`
   );
   const avg = (vals: Array<number | string | null>): number | null => {
     const nums = vals.filter((v): v is number => typeof v === 'number');
@@ -132,7 +155,8 @@ export function takeSnapshot(): { gameDate: string; players: number } | null {
       insert.run(
         saveName, gameDate, r.player_id, r.name, r.team_id, r.org_id, r.level, r.position, r.age,
         r.con, r.gap, r.pow, r.eye, r.avk, r.spd, r.conP, r.gapP, r.powP, r.eyeP, r.avkP,
-        r.stu, r.mov, r.ctl, r.stuP, r.movP, r.ctlP, cur, pot
+        r.stu, r.mov, r.ctl, r.stuP, r.movP, r.ctlP, cur, pot,
+        ...[...SNAPSHOT_SPLIT_COLUMNS, ...SNAPSHOT_RUNNING_COLUMNS].map((c) => r[c] ?? null)
       );
     }
   });

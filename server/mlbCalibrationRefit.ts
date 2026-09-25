@@ -22,6 +22,10 @@ import { lineInForce, measureLongLine, type LongLineMeasurement, type RelieverUs
 import { parseGameDate } from './dataFreshness.js';
 import { consecutivePlatoon, fitPlatoon, PLATOON_FIT_POLICY, PLATOON_METHOD, type PlatoonCase, type PlatoonInputCases, type PlatoonModel } from './mlbPlatoonFit.js';
 import { adoptedCalibration } from './saveCalibrationStore.js';
+import { consecutiveTools, fitTools, TOOLS_FIT_POLICY, TOOLS_METHOD, type EngineCase, type ToolsCase, type ToolsInputCases, type ToolsModel } from './mlbToolsFit.js';
+import { firstGames, forwardObservations, snapshotBefore, snapshotDates } from './ratingsForward.js';
+import { hitterWeightOf, toolsParamsOf } from './toolsCalibration.js';
+import type { ToolsParams } from './toolsModel.js';
 import { rosterReviewCalibration } from './mlbCalibration.js';
 
 import { PITCHER_RESULTS_MIX } from './roleReview.js';
@@ -68,7 +72,7 @@ function gamesPlayed(teamId: number): number | null {
  * Every club of the league reviewed as it stands, under the results params and bullpen lines given: each holder's role, working estimate,
  * bat and lenses, and each reliever's usage this season (so his tier can be re-read under the lines measured with the standards).
  */
-export function standardsSample(leagueId: number, results: ResultsParams, bullpen: BullpenLines): StandardsSample {
+export function standardsSample(leagueId: number, results: ResultsParams, bullpen: BullpenLines, tools?: ToolsParams): StandardsSample {
   if (!has('teams', ['team_id', 'league_id', 'level'])) return { clubs: [] };
   // The league's own clubs (all-star sides excluded, as everywhere), at its top level
   const own = leagueClubs(leagueId);
@@ -76,7 +80,7 @@ export function standardsSample(leagueId: number, results: ResultsParams, bullpe
     .filter((t) => own.has(t.team_id));
   const clubs: StandardsSample['clubs'] = [];
   for (const t of teams) {
-    const ports = reviewPorts(t.team_id, { results, bullpen });
+    const ports = reviewPorts(t.team_id, { results, bullpen, ...(tools ? { tools } : {}) });
     const groups = reviewClub(loadClubView(t.team_id), ports);
     const pen = groups.find((g) => g.kind === 'relief_pitcher');
     const penRole = pen?.holders.find((h) => h.role)?.role ?? null;
@@ -607,6 +611,8 @@ export function consecutiveAging(model: AgingModel, consecutive: boolean): Aging
  * the league and the completed season, so a later run (another save, another season) never reads them.
  */
 const pendingResults = new Map<string, ResultsParams>();
+/** The same for the tools fit's verdict: the hitters' tools weight and the slopes that serve after it (cycle 4). */
+const pendingTools = new Map<string, { weight: number; params: ToolsParams }>();
 const pendingKey = (leagueId: number, through: number | null) => `${saveIdentity(leagueId)}|${leagueId}|${through ?? 'none'}`;
 
 
@@ -618,8 +624,19 @@ const need = (b: CalibrationBasis) => b.throughSeason;
  * The results params the standards are measured under: the ones this refit has just decided (recorded with it), else the ones in force.
  * What is checked is what is served.
  */
-function resultsParamsFor(leagueId: number, through: number | null): ResultsParams {
-  return pendingResults.get(pendingKey(leagueId, through)) ?? rosterReviewCalibration(leagueId).results;
+export function resultsParamsFor(leagueId: number, through: number | null): ResultsParams {
+  const key = pendingKey(leagueId, through);
+  const inForce = rosterReviewCalibration(leagueId);
+  const base = pendingResults.get(key) ?? inForce.results;
+  // The hitters' tools weight that will serve beside the standards: this refit's tools verdict where it recorded one, else the one in
+  // force (the results fit never fits it) (review finding B4: checked is served)
+  const hitter = pendingTools.get(key)?.weight ?? inForce.results.toolsWeight.hitter;
+  return hitter === base.toolsWeight.hitter ? base : { ...base, toolsWeight: { ...base.toolsWeight, hitter } };
+}
+
+/** The tools slopes the standards are measured under: this refit's tools verdict where it recorded one, else the ones in force. */
+export function toolsParamsForRefit(leagueId: number, through: number | null): ToolsParams {
+  return pendingTools.get(pendingKey(leagueId, through))?.params ?? rosterReviewCalibration(leagueId).tools;
 }
 
 // The results fit is registered FIRST: the standards measured in the same refit are measured under its verdict
@@ -647,6 +664,123 @@ registerCalibration({
   },
 });
 
+// ── the tools lens: forward cases (cycle 4) ─────────────────────────────────
+
+const BAT = ['contact', 'gap', 'power', 'eye', 'avoidK'] as const;
+
+/** Every hitter with a major-league line in the league in these seasons (the populations the lens ranks in). */
+function leagueHitters(leagueId: number, from: number, to: number): number[] {
+  if (!tableExists('players_career_batting_stats')) return [];
+  const c = new Set(tableColumns('players_career_batting_stats'));
+  if (!c.has('player_id') || !c.has('year') || !c.has('level_id')) return [];
+  const league = c.has('league_id') ? ' AND league_id = ?' : '';
+  return (db.prepare(`SELECT DISTINCT player_id AS id FROM players_career_batting_stats WHERE level_id = 1 AND year BETWEEN ? AND ?${league}`)
+    .all(...[from, to, ...(league ? [leagueId] : [])]) as Array<{ id: number }>).map((r) => Number(r.id));
+}
+
+/**
+ * The tools fit's cases: for each completed season after the save's first snapshot, the hitters who carried a snapshot into it (the
+ * neutral `ratingsForward.ts` rule: taken before the season's first game) with the days between, their results before it under the
+ * results params in force, and what they did in it; the populations the lens ranks in for that season; and, for the same-season engine
+ * check, the season under way against the ratings seen in it. Ratings only through the adapter.
+ */
+export function toolsInput(leagueId: number, through: number): ToolsInputCases {
+  const results = resultsParamsFor(leagueId, through);
+  const obs = forwardObservations();
+  const snapshots = snapshotDates(obs);
+  const opening = firstGames(leagueId);
+  const clubs = leagueClubs(leagueId);
+  const cases: ToolsCase[] = [];
+  const forwardSeasons: number[] = [];
+  const populations: ToolsInputCases['populations'] = {};
+  const toolsOf = (tools: Readonly<Record<string, number | null>> | undefined): number[] | null => {
+    if (!tools) return null;
+    const x = BAT.map((t) => tools[t]);
+    return x.every((v): v is number => typeof v === 'number') ? x : null;
+  };
+  const first = snapshots.length ? Number(snapshots[0].slice(0, 4)) : null;
+  for (let s = first === null ? through + 1 : first; s <= through; s += 1) {
+    const carried = new Map<number, { x: number[]; gap: number; level: number | null; teamId: number | null }>();
+    for (const [id, list] of obs) {
+      const before = snapshotBefore(list, s, opening.get(s) ?? null);
+      const x = toolsOf(before?.observation.hitter?.tools);
+      if (x && before) carried.set(id, { x, gap: before.gapDays, level: before.observation.level, teamId: before.observation.teamId });
+    }
+    if (carried.size === 0) continue;
+    const env = seasonEnvironments(leagueId, s);
+    const everyone = leagueHitters(leagueId, s - 3, s);
+    const history = battingHistory([...new Set([...everyone, ...carried.keys()])], leagueId, s);
+    const past: number[] = [];
+    const target: number[] = [];
+    const seasonCases: ToolsCase[] = [];
+    for (const [id, lines] of history) {
+      const inSeason = lines.filter((l) => l.year === s);
+      const pa = inSeason.reduce((n, l) => n + l.pa, 0);
+      const y = pa >= TOOLS_FIT_POLICY.minTargetPa ? weightedBatting(inSeason, env, s, [1]).value : null;
+      const before = weightedBatting(lines.filter((l) => l.year < s), env, s - 1, results.weights.hitter);
+      if (y !== null) target.push(y);
+      if (before.value !== null && before.sample >= POPULATION_MINIMUM.hitter) past.push(before.value);
+      const c = carried.get(id);
+      if (!c || y === null) continue;
+      seasonCases.push({
+        playerId: id, target: s, gapDays: c.gap, x: c.x, y, weight: pa,
+        past: before.value !== null && before.sample > 0 ? { value: before.value, sample: before.sample } : null,
+      });
+    }
+    if (seasonCases.length === 0) continue;
+    cases.push(...seasonCases);
+    forwardSeasons.push(s);
+    // The tools the lens ranks among: the league's major-league hitters in the snapshots that stood for this season
+    // (this league's clubs only: the lens ranks a hitter within his organization's own major league)
+    populations[s] = { tools: [...carried.values()].filter((c) => c.level === 1 && c.teamId !== null && clubs.has(c.teamId)).map((c) => c.x), past, target };
+  }
+  // The same-season engine check: the ratings seen during the season under way against what the game has produced from them so far
+  let engine: ToolsInputCases['engine'] = null;
+  const now = currentSeason(leagueId);
+  if (now !== null) {
+    const seen = new Map<number, { x: number[]; date: string }>();
+    for (const [id, list] of obs) {
+      const inSeason = list.filter((o) => Number(o.gameDate.slice(0, 4)) === now);
+      const last = inSeason[inSeason.length - 1];
+      const x = toolsOf(last?.hitter?.tools);
+      if (x && last) seen.set(id, { x, date: last.gameDate });
+    }
+    if (seen.size > 0) {
+      const env = seasonEnvironments(leagueId, now);
+      const ecases: EngineCase[] = [];
+      for (const [id, lines] of battingHistory([...seen.keys()], leagueId, now, 1, 0)) {
+        const pa = lines.reduce((n, l) => n + l.pa, 0);
+        if (pa < TOOLS_FIT_POLICY.engineMinPa) continue;
+        const y = weightedBatting(lines, env, now, [1]).value;
+        if (y !== null) ecases.push({ playerId: id, x: (seen.get(id) as { x: number[] }).x, y, weight: pa });
+      }
+      const dates = [...new Set([...seen.values()].map((v) => v.date))].sort();
+      engine = { season: now, snapshot: dates[dates.length - 1], cases: ecases };
+    }
+  }
+  return { cases, forwardSeasons, snapshots, resultsK: results.stabilization.hitter, engine, populations };
+}
+
+/** Hold a tools verdict this refit recorded, so the standards measured after it in the same refit are measured under what will serve. */
+export function rememberToolsVerdict(leagueId: number, through: number, model: ToolsModel): void {
+  pendingTools.set(pendingKey(leagueId, through), { weight: hitterWeightOf(model), params: toolsParamsOf(model, String(through)) });
+}
+
+// Registered BEFORE the standards: the standards measured in the same refit are measured under its verdict (the slopes and the hitters'
+// tools weight that will serve beside them)
+registerCalibration({
+  subsystem: MLB_CALIBRATION_SUBSYSTEM, component: 'tools', method: TOOLS_METHOD, trigger: 'completed_season',
+  compute: (b) => {
+    if (need(b) === null) return { skip: 'No completed season.' };
+    const through = b.throughSeason as number;
+    // Hysteresis: what served before this refit (the adopted fit of an earlier season), its confirmation counts only from the season before
+    const previous = adoptedCalibration<ToolsModel>(b.leagueId, MLB_CALIBRATION_SUBSYSTEM, 'tools', TOOLS_METHOD, { throughMax: through - 1 });
+    const run = fitTools(toolsInput(b.leagueId, through), b, previous?.model ? consecutiveTools(previous.model, previous.throughSeason === through - 1) : null);
+    if (run.record.gate.passed) rememberToolsVerdict(b.leagueId, through, run.model);
+    return run;
+  },
+});
+
 registerCalibration({
   subsystem: MLB_CALIBRATION_SUBSYSTEM, component: 'standards', method: STANDARDS_METHOD, trigger: 'each_import',
   compute: (b) => {
@@ -654,7 +788,7 @@ registerCalibration({
     const history = resultsLensHistory(b.leagueId, b.throughSeason, results);
     // The bullpen lines are measured on the same review of every club, and the reliever standards on the tiers they give: the two are
     // recorded (and so served) together (standards-2). The review runs once, under the starting lines; only the tiers are re-read.
-    const sample = standardsSample(b.leagueId, results, BULLPEN_PRIOR);
+    const sample = standardsSample(b.leagueId, results, BULLPEN_PRIOR, toolsParamsForRefit(b.leagueId, b.throughSeason));
     const measurement = bullpenMeasurement(b.leagueId, sample);
     // A measurement that does not hold up keeps the league's own line in force (and the standards are measured under it), never a flip
     // back to the starting line on one failed import (supervisor's call)

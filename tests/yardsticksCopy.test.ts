@@ -10,6 +10,7 @@ import { RESULTS_PRIOR } from '../server/resultsMetrics';
 import { DEFENSE_WEIGHT } from '../server/roleReview';
 import { STARTING_STANDARDS } from '../server/roleStandards';
 import { PLATOON_METHOD } from '../server/mlbPlatoonFit';
+import { TOOLS_METHOD } from '../server/mlbToolsFit';
 import { BULLPEN_PRIOR } from '../server/bullpenRoles';
 import { PLATOON_PRIOR } from '../server/platoon';
 
@@ -48,6 +49,9 @@ const ownResults = () => recordCalibration({ model: resultsModel('save'), record
 const keptResults = () => recordCalibration({ model: resultsModel('starting'), record: rec('results', RESULTS_METHOD, true, { throughSeason: 1991 }) }, { fitMs: 1 });
 const platoonModel = (source: 'save' | 'starting', reason: string | null) => ({ source, served: source === 'save' ? 2500 : 5000, fitted: 2500, fittedServed: 2500, cases: 6614, priorWeight: 0.1, decision: null, reason });
 const ownPlatoon = () => recordCalibration({ model: platoonModel('save', null), record: rec('platoon', PLATOON_METHOD, true, { throughSeason: 1991 }) }, { fitMs: 1 });
+const toolsPart = (source: 'save' | 'starting', reason: string | null, served: unknown) => ({ source, served, fitted: served, fittedServed: served, cases: 1500, priorWeight: 0.2, decision: null, reason });
+const ownTools = () => recordCalibration({ model: { bat: toolsPart('save', null, [0.0016, 0.0003, 0.0013, 0.0009, 0]), blend: toolsPart('starting', 'kept', 1), forwardSeasons: 6 }, record: rec('tools', TOOLS_METHOD, true, { throughSeason: 1991 }) }, { fitMs: 1 });
+const noForward = () => recordCalibration({ model: { bat: toolsPart('starting', 'forward', [0.00155, 0.00033, 0.00122, 0.00086, 0]), blend: toolsPart('starting', 'forward', 1), forwardSeasons: 0 }, record: rec('tools', TOOLS_METHOD, false, { throughSeason: 1991 }, ['forward: 0 of 5 forward seasons']) }, { fitMs: 1 });
 const keptPlatoon = () => recordCalibration({ model: platoonModel('starting', 'kept'), record: rec('platoon', PLATOON_METHOD, true, { throughSeason: 1991 }) }, { fitMs: 1 });
 const noSplits = () => recordCalibration({ model: null, record: rec('platoon', PLATOON_METHOD, false, { throughSeason: 1991 }, ['no_splits: The export carries no batting lines against left- and right-handed pitching.']) }, { fitMs: 1 });
 const linesModel = (source: 'save' | 'starting', reason: 'relievers' | 'check_failed' | null) => ({
@@ -81,7 +85,7 @@ const STATES: Array<[string, Array<() => unknown>, number | null, string]> = [
   ['not enough seasons', [standardsFailing("seasons: the league's own past seasons could not be checked")], L, 'Using starting yardsticks: not enough seasons in this league yet'],
   ['a check failed', [standardsFailing('club_split estimate:hitter:floor: 0.200 against 0.100')], L, "Using starting yardsticks: the league's own ones did not hold up when checked"],
   ['some own', [ownStandards], L, "Some yardsticks are this league's own; others are starting values"],
-  ['all own', [ownStandardsWithLine, ownAging, ownDefense, ownResults, ownPlatoon], L, "Yardsticks set from this league's own seasons (through 1991)"],
+  ['all own', [ownStandardsWithLine, ownAging, ownDefense, ownResults, ownPlatoon, ownTools], L, "Yardsticks set from this league's own seasons (through 1991)"],
   ['own standards measured before the long-man line was (the line not yet measured)', [ownStandards, ownAging, ownDefense, ownResults, ownPlatoon], L, "Some yardsticks are this league's own; others are starting values"],
   ['own standards; aging and recent seasons checked and held up', [ownStandards, keptAging, keptResults], L, "Some yardsticks are this league's own; others are starting values"],
   ['nothing of the league\'s own serves, the first one held up', [keptAging, keptResults, standardsFailing('games')], L, 'Using starting yardsticks: it is too early in the season to tell who the regulars are'],
@@ -163,5 +167,87 @@ describe('the yardsticks line gives the true reason, plainly', () => {
     const src = fs.readFileSync(path.join(process.cwd(), 'src/pages/mlb/Yardsticks.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
     const jsxText = [...src.matchAll(/>([^<>{}]+)</g)].map((m) => m[1].trim()).filter(Boolean);
     expect(jsxText).toEqual([]);
+  });
+});
+
+describe('what the tools say (cycle 4)', () => {
+  it('a league with no ratings saved before a season says so in the hover, never "not measured", and serves the starting values', () => {
+    const y = state([noForward]);
+    const g = y.groups.find((x) => x.key === 'tools');
+    expect(g).toMatchObject({ source: 'starting', reason: 'no_forward_ratings' });
+    expect(y.tip).toMatch(/What a hitter's tools say, and how much they hold his results back: the starting values, because this league has no ratings saved before a season to check them against yet/);
+    expect(y.tip).not.toMatch(BANNED);
+  });
+
+  it('the league\'s own slopes serve where adopted, and the Lineup page reads the same ones', async () => {
+    const { toolsParamsFor } = await import('../server/toolsCalibration');
+    historyDb.exec(`DELETE FROM save_calibration_fits`);
+    ownTools();
+    clearRosterReviewCalibrationCache();
+    const y = rosterReviewCalibration(L);
+    const lineup = toolsParamsFor(L);
+    historyDb.exec(`DELETE FROM save_calibration_fits`);
+    clearRosterReviewCalibrationCache();
+    expect(y.groups.find((x) => x.key === 'tools')?.source).toBe('save');
+    expect(y.tools.source).toBe('save');
+    expect(lineup).toEqual(y.tools);
+  });
+});
+
+describe('the tools group gives the true reason in every state (review finding B3)', () => {
+  const SLOPES = [0.00155, 0.00033, 0.00122, 0.00086, 0];
+  const fit = (bat: [string, string | null], blend: [string, string | null], passed: boolean, failures: string[] = [], seasons = 6) => () => recordCalibration({
+    model: { bat: toolsPart(bat[0] as 'save' | 'starting', bat[1], SLOPES), blend: toolsPart(blend[0] as 'save' | 'starting', blend[1], 1), forwardSeasons: seasons },
+    record: rec('tools', TOOLS_METHOD, passed, { throughSeason: 1991 }, failures),
+  }, { fitMs: 1 });
+  const CASES: Array<[string, () => unknown, string, RegExp]> = [
+    ['no forward season', fit(['starting', 'forward'], ['starting', 'forward'], false, ['forward: 0 of 5 forward seasons'], 0), 'no_forward_ratings', /no ratings saved before a season/],
+    ['fewer forward seasons than judging needs', fit(['starting', 'few_forward'], ['starting', 'few_forward'], false, ['forward: 3 of 5 forward seasons'], 3), 'few_forward_ratings', /too few seasons have been played since/],
+    ['enough seasons, too few hitters in them', fit(['starting', 'thin'], ['starting', 'thin'], false, ['thin: 6 forward seasons, too few hitters in them to judge']), 'thin_forward', /too few hitters to check them on/],
+    ['the bat judged and held up, the blend not judged', fit(['starting', 'kept'], ['starting', 'thin'], true), 'kept_part', /held up where they could be checked/],
+    ['both judged and held up', fit(['starting', 'kept'], ['starting', 'kept'], true), 'kept', /checked on this league's seasons and held up/],
+    ['one confirming', fit(['starting', 'confirming'], ['starting', 'kept'], true), 'confirming', /must do so once more/],
+  ];
+  it.each(CASES)('%s', (_name, setup, reason, text) => {
+    const y = state([setup]);
+    const g = y.groups.find((x) => x.key === 'tools');
+    expect(g).toMatchObject({ source: 'starting', reason });
+    expect(g?.text).toMatch(text);
+    expect(y.tip).not.toMatch(BANNED);
+  });
+});
+
+describe('the tools weight in force reaches the results params', () => {
+  it('where the league\'s own tools weight serves, every working estimate is blended with it; otherwise the starting 1', () => {
+    const ownWeight = () => recordCalibration({ model: { bat: toolsPart('starting', 'kept', [0.00155, 0.00033, 0.00122, 0.00086, 0]), blend: toolsPart('save', null, 1.5), forwardSeasons: 6 }, record: rec('tools', TOOLS_METHOD, true, { throughSeason: 1991 }) }, { fitMs: 1 });
+    expect(state([ownWeight]).results.toolsWeight).toEqual({ hitter: 1.5, starter: 1, reliever: 1 });
+    expect(state([noForward]).results.toolsWeight).toEqual({ hitter: 1, starter: 1, reliever: 1 });
+  });
+});
+
+describe('the standards are measured under the tools weight and slopes that serve beside them (review finding B4)', () => {
+  it('in force: the refit reads the same tools weight and slopes the review serves', async () => {
+    const { resultsParamsFor, toolsParamsForRefit } = await import('../server/mlbCalibrationRefit');
+    const ownWeight = () => recordCalibration({ model: { bat: toolsPart('save', null, [0.0016, 0.0003, 0.0013, 0.0009, 0]), blend: toolsPart('save', null, 1.5), forwardSeasons: 6 }, record: rec('tools', TOOLS_METHOD, true, { throughSeason: 1991 }) }, { fitMs: 1 });
+    historyDb.exec(`DELETE FROM save_calibration_fits`);
+    ownWeight();
+    clearRosterReviewCalibrationCache();
+    const y = rosterReviewCalibration(L);
+    const refit = { results: resultsParamsFor(L, 1991), tools: toolsParamsForRefit(L, 1991) };
+    historyDb.exec(`DELETE FROM save_calibration_fits`);
+    clearRosterReviewCalibrationCache();
+    expect(y.results.toolsWeight.hitter).toBe(1.5);
+    expect(refit.results.toolsWeight).toEqual(y.results.toolsWeight);
+    expect(refit.tools).toEqual(y.tools);
+  });
+
+  it('in the same refit: a tools verdict just decided is what the standards are measured under', async () => {
+    const { rememberToolsVerdict, resultsParamsFor, toolsParamsForRefit } = await import('../server/mlbCalibrationRefit');
+    historyDb.exec(`DELETE FROM save_calibration_fits`);
+    clearRosterReviewCalibrationCache();
+    rememberToolsVerdict(L, 1992, { bat: toolsPart('save', null, [0.002, 0.0003, 0.0013, 0.0009, 0]), blend: toolsPart('save', null, 2), forwardSeasons: 6 } as never);
+    expect(resultsParamsFor(L, 1992).toolsWeight.hitter).toBe(2);
+    expect(toolsParamsForRefit(L, 1992)).toMatchObject({ source: 'save', slopes: { contact: 0.002 } });
+    expect(resultsParamsFor(L, 1991).toolsWeight.hitter).toBe(1);
   });
 });

@@ -3,6 +3,8 @@ import { db } from '../server/db.js';
 import { clearScaleCache } from '../server/valuation.js';
 import { loadScoutedAbilities, ratingScale, scoutedGloves } from '../server/scoutedEvidence.js';
 import { evaluateDevelopmentProtection } from '../server/developmentFit.js';
+import { startingLines } from '../server/developmentFit.js';
+const STARTING = startingLines('not_measured');
 import { IDS } from './fixture.js';
 
 /**
@@ -101,12 +103,12 @@ describe('rating scale', () => {
   it('gives a player the same protection wherever the save puts the scale', () => {
     useScale(80, 20);
     setTools([80, 50, 80, 50, 50], [65, 65, 65, 65, 65]);
-    const on2080 = evaluateDevelopmentProtection({ age: 20, ability: loadScoutedAbilities([PLAYER]).for(PLAYER) });
+    const on2080 = evaluateDevelopmentProtection({ lines: STARTING,  age: 20, ability: loadScoutedAbilities([PLAYER]).for(PLAYER) });
 
     // The same halfway/three-quarters ability on a 1-10 save
     useScale(10, 1);
     setTools([10, 5.5, 10, 5.5, 5.5], [7.75, 7.75, 7.75, 7.75, 7.75]);
-    const on110 = evaluateDevelopmentProtection({ age: 20, ability: loadScoutedAbilities([PLAYER]).for(PLAYER) });
+    const on110 = evaluateDevelopmentProtection({ lines: STARTING,  age: 20, ability: loadScoutedAbilities([PLAYER]).for(PLAYER) });
 
     expect(on110.score).toBe(on2080.score);
     expect(on110.tier).toBe(on2080.tier);

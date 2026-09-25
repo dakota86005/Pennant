@@ -26,8 +26,9 @@ use the answer and own none of it.
 
 - Stakes, never authorization: not promote, demote, start, call up, trade or release; not a rank, trade value
   or readiness read. `prospectDecision`, `prospectAssignments` and `destinationFit` do not read it (D-050).
-- The ceiling is absolute: the organization-visible potential against fixed lines, never a percentile among
-  the players around him (Part 4.1).
+- The ceiling is absolute: the organization-visible potential against lines set once per import from his
+  organization's major leaguers (else Pennant's starting lines), never a percentile among the players around
+  him (Part 4.1; D-050 amendment).
 - Development remaining comes from age, shortened by being behind the league's schedule or a projection
   already realized. Context may only lower the tier; youth is not talent (Part 4.2).
 - The one peer population is the ROSTERED players of his own league, for their age (Part 4.3).
@@ -37,8 +38,10 @@ use the answer and own none of it.
 - No score: the output is the tier, its reasons and the two readings; nothing ranks players by it (Part 4.6).
 - One reader per request; a pure consumer (`mlbAssignmentContext.ts`) is handed a `DevelopmentProtection`,
   never the ratings; only the reader calls `evaluateDevelopmentProtection` (Part 4.7).
-- Constants are declared once in `developmentFit.ts`, stamped provisional or policy, none calibrated; the
-  farm's age-for-level lines stay in `farmCalibration.ts` (Part 4.8).
+- Constants are declared once in `developmentFit.ts`, stamped provisional or policy; the farm's age-for-level
+  lines stay in `farmCalibration.ts` (Part 4.8). Since cycle 4 of the per-save calibration the ceiling lines are
+  a MEASUREMENT of the organization's major league at each import (`stakesLines.ts`, D-050 amendment, D-053),
+  handed to the evaluator by the reader (required, never defaulted); `CEILING_LINES` is Pennant's starting lines.
 - Consumers read the tier through their own vocabulary (`hasDevelopmentalStakes` in `playingTime.ts`,
   `PROTECTED_TIERS` in `farmCalibration.ts`, `STAKES_WEIGHT` in `mlbAssignmentContext.ts`); keep it stable (D-050).
 

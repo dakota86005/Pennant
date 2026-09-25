@@ -90,8 +90,24 @@ export const CONCERN = {
   absoluteEstimate: 35,
   /** Or: the weakest of his group and at least this many points under the group's median. */
   groupGap: MEANINGFUL_GAP,
-  /** Below this trust in results the read is "too early", not a finding. */
-  minReliability: 0.35,
+  /**
+   * Below this trust in his results AS HIS LEVEL (the results' own K, never the blend with his tools) the read is "too early", not a
+   * finding. Decoupled from the tools weight in cycle 4 (supervisor's call, pending owner review): how much the tools hold results back
+   * must not decide when there is enough sample to judge. Set so the line keeps the sample it meant before cycle 4 (0.35 of the old
+   * blend at K × 0.6 for hitters and K × 0.8 for pitchers: 162 PA for a hitter, 302 BF for a starter and 215 for a reliever under the
+   * starting K), which against the results' own K is exactly 105/430 for hitters (161.5 PA at K 500) and 196/651 for pitchers (301.5 BF
+   * for a starter at K 700, 215.4 for a reliever at K 500). Not rounded: rounding to 0.25 moved a strong case to "too early" on the
+   * Arizona import for nothing but the rounding. Policy.
+   */
+  tooEarly: { hitter: 105 / 430, pitcher: 196 / 651 },
+  /**
+   * At or above this trust in his results AS HIS LEVEL the read is FIRM: a recommendation can be given high confidence, a strong case
+   * goes to a response rather than to "keep watching", and "more sample would firm it up" is no longer said. Decoupled from the tools
+   * weight in cycle 4 exactly as `tooEarly` was (review finding B1, supervisor's call, pending owner review): it keeps the sample it
+   * meant before (0.6 of the old blend: 450 PA for a hitter, 840 BF for a starter, 600 BF for a reliever under the starting K), which
+   * against the results' own K is 9/19 for hitters and 6/11 for pitchers. Policy.
+   */
+  firmRead: { hitter: 9 / 19, pitcher: 6 / 11 },
   /** Results-to-peripherals gap (percentile points) large enough to call luck a competing explanation. */
   luckGap: 20,
   /** Tools-to-results gap (percentile points) large enough to say results are ahead of or behind the tools. */
@@ -125,10 +141,16 @@ export const GLOVE_MATTERS = 0.2;
  */
 export const RUNNING_WEIGHT = 0.05;
 
-/** The sample at which a glove's results and its visible grade count equally: results are shrunk toward the grade (r^2 about .4, section 7). */
-export const DEFENSE_INFORMATION = 0.4;
-/** The same for baserunning: the running ratings explain .43 of baserunning runs (section 6). */
-export const RUNNING_INFORMATION = 0.43;
+/**
+ * PROVISIONAL (cycle 4; supervisor's call, pending owner review). How much a visible glove grade, or visible running ratings, hold the
+ * results back when both are known: the sample at which results and grade count equally is the results' own stabilization times this
+ * weight, at least 1. Before cycle 4 these were an "information" share used as `K × (1 − information)` (glove 0.4, running 0.43), which
+ * made the results count MORE the more the grade explained: the wrong direction (the Bayesian blend is `K ÷ (1 − information)`). The
+ * starting value is 1, K alone, the rule the bat's tools follow: until a save checks the grades as a forecast (which needs them stored
+ * before a season; the snapshots keep running ratings since cycle 4 and no glove grade), they pull only by the results' own weight.
+ */
+export const DEFENSE_TOOLS_WEIGHT = 1;
+export const RUNNING_TOOLS_WEIGHT = 1;
 
 export interface DefenseLens {
   /** His visible fielding grade at the position against MLB peers listed there (a percentile); null when the grade is not revealed. */
@@ -179,10 +201,18 @@ export interface LensEvidence {
   skillsPct: number | null;
   /** Runs-allowed percentile among peers (pitchers only). */
   runsPct: number | null;
-  /** Effective sample behind the multi-season results, and how far to trust it as his level (0 to 1). */
+  /**
+   * Effective sample behind the multi-season results, and how far to trust it AS HIS LEVEL on its own (0 to 1): the results' own K
+   * under the params in force, never the blend with his tools. The "too early" line reads this.
+   */
   sample: number;
   sampleUnit: 'PA' | 'BF';
   reliability: number;
+  /**
+   * How much his visible tools hold his results back when both are known (at least 1; the params in force, `ResultsParams.toolsWeight`
+   * for his kind). Required: no reader defaults it. The working estimate's weight on results is `blendWeight(reliability, toolsWeight)`.
+   */
+  toolsWeight: number;
   /** This season's sample in the same unit, when he has one. */
   currentSample: number | null;
   /** How he is used (innings per start, leverage, saves and holds): facts that say how much the role matters, not lenses. */
@@ -215,28 +245,28 @@ export function resultsPercentile(e: Pick<LensEvidence, 'skillsPct' | 'runsPct'>
 
 /**
  * A dimension of a hitter (his glove, his running) formed from the tools view and the results view: results count by how far the
- * sample can be trusted against the tools (`information` is the share of the truth the tools explain, so less sample is needed).
- * With results alone the value is pulled toward the middle by the sample, so a thin glove result never reads as certain.
+ * sample can be trusted, held back by the visible grade's weight (at least 1: a grade never makes the results count more than they
+ * would alone). With results alone the value is pulled toward the middle by the sample, so a thin glove result never reads as certain.
  */
-function blendDimension(tools: number | null, results: number | null, sample: number, stabilization: number, information: number): { value: number; weightOnResults: number } | null {
+function blendDimension(tools: number | null, results: number | null, sample: number, stabilization: number, toolsWeight: number): { value: number; weightOnResults: number } | null {
   if (tools === null && results === null) return null;
   if (results === null) return { value: tools as number, weightOnResults: 0 };
   if (tools === null) {
     const w = reliability(sample, stabilization);
     return { value: 50 + w * (results - 50), weightOnResults: w };
   }
-  const w = reliability(sample, stabilization * (1 - information));
+  const w = reliability(sample, stabilization * Math.max(1, toolsWeight));
   return { value: w * results + (1 - w) * tools, weightOnResults: w };
 }
 
 export function defenseValue(d: DefenseLens | undefined): { value: number; weightOnResults: number } | null {
   if (!d) return null;
-  return blendDimension(d.visible ? d.pct : null, d.resultsPct ?? null, d.resultsInnings ?? 0, d.stabilization, DEFENSE_INFORMATION);
+  return blendDimension(d.visible ? d.pct : null, d.resultsPct ?? null, d.resultsInnings ?? 0, d.stabilization, DEFENSE_TOOLS_WEIGHT);
 }
 
 export function runningValue(r: RunningLens | undefined): { value: number; weightOnResults: number } | null {
   if (!r) return null;
-  return blendDimension(r.toolsPct, r.resultsPct, r.sample, r.stabilization, RUNNING_INFORMATION);
+  return blendDimension(r.toolsPct, r.resultsPct, r.sample, r.stabilization, RUNNING_TOOLS_WEIGHT);
 }
 
 /**
@@ -255,13 +285,38 @@ export function estimateOf(e: LensEvidence, pitcher = true, defenseWeights: Reco
   return { ...core, batValue: core.value, defensePct: def?.value ?? null, runningPct: run?.value ?? null, weightOnDefense: wd, weightOnRunning: wr, value };
 }
 
+/**
+ * The weight a working estimate puts on results when the tools are known too: the results' own trust r = n / (n + K), re-read at the
+ * blend's K × toolsWeight, which is r / (r + toolsWeight × (1 − r)). A tools weight under 1 is read as 1 (the tools never push the
+ * results forward).
+ */
+export function blendWeight(trust: number, toolsWeight: number): number {
+  // No silent default: evidence built without the tools weight in force is a bug, never read as some weight
+  if (!Number.isFinite(toolsWeight)) throw new Error('A working estimate needs the tools weight in force (LensEvidence.toolsWeight).');
+  const r = Math.max(0, Math.min(1, trust));
+  if (r === 0 || r === 1) return r;
+  return r / (r + Math.max(1, toolsWeight) * (1 - r));
+}
+
+/** The "too early" line for a pitcher or a hitter (`CONCERN.tooEarly`). */
+export const tooEarlyLine = (pitcher: boolean): number => (pitcher ? CONCERN.tooEarly.pitcher : CONCERN.tooEarly.hitter);
+
+/** The "firm read" line for a pitcher or a hitter (`CONCERN.firmRead`). */
+export const firmReadLine = (pitcher: boolean): number => (pitcher ? CONCERN.firmRead.pitcher : CONCERN.firmRead.hitter);
+
+/**
+ * Whether the results behind a read are firm: his results' own trust at or above the firm-read line for his kind. Every reader that asks
+ * "is the sample behind his results big enough?" asks it here, so none can drift with the blend again (the kind is read from the unit).
+ */
+export const isFirmRead = (e: Pick<LensEvidence, 'reliability' | 'sampleUnit'>): boolean => e.reliability >= firmReadLine(e.sampleUnit === 'BF');
+
 function batOrPitchEstimate(e: LensEvidence, pitcher: boolean): Estimate {
   const results = resultsPercentile(e, pitcher);
   const ratings = e.ratingsPct;
   if (ratings === null && results === null) return { value: null, ratingsPct: null, resultsPct: null, weightOnResults: 0, basis: 'none' };
   if (ratings === null) return { value: results, ratingsPct: null, resultsPct: results, weightOnResults: 1, basis: 'results_only' };
   if (results === null) return { value: ratings, ratingsPct: ratings, resultsPct: null, weightOnResults: 0, basis: 'ratings_only' };
-  const w = Math.max(0, Math.min(1, e.reliability));
+  const w = blendWeight(e.reliability, e.toolsWeight);
   return { value: w * results + (1 - w) * ratings, ratingsPct: ratings, resultsPct: results, weightOnResults: w, basis: 'ratings_and_results' };
 }
 
@@ -463,13 +518,13 @@ export function reviewGroup(holders: ReviewSubject[], opts: { pitcher: boolean; 
       }
     }
     wouldChange.push(
-      h.reliability < 0.6 ? 'A larger sample of major-league results would firm up the read.' : 'A change in his visible tools or a sustained change in results.',
+      !isFirmRead(h) ? 'A larger sample of major-league results would firm up the read.' : 'A change in his visible tools or a sustained change in results.',
     );
 
     let kind: FindingKind = 'no_concern';
     let strength: CaseStrength = 'none';
     if (concerned) {
-      if (h.reliability < CONCERN.minReliability) { kind = 'too_early'; strength = 'watch'; }
+      if (h.reliability < tooEarlyLine(opts.pitcher)) { kind = 'too_early'; strength = 'watch'; }
       else if (ratingsLow && resultsLow) { kind = 'ratings_and_results_weak'; strength = std ? (belowDeep ? 'strong' : 'moderate') : lowAbs && isWeakest ? 'strong' : 'moderate'; }
       else if (ratingsLow && !resultsLow) { kind = 'tools_weak_results_fine'; strength = 'watch'; }
       else if (!ratingsLow && resultsLow) { kind = 'results_weak_tools_fine'; strength = 'watch'; }
@@ -514,7 +569,7 @@ export function compareReplacement(candidate: ReviewSubject, incumbent: ReviewSu
   const unseen = [candidate, incumbent].filter(gloveUnseen);
   const certainty: ReplacementComparison['certainty'] = incompleteTools
     ? 'thin'
-    : c.basis === 'ratings_and_results' && candidate.reliability >= CONCERN.minReliability && unseen.length === 0 ? 'adequate' : 'limited';
+    : c.basis === 'ratings_and_results' && candidate.reliability >= tooEarlyLine(pitcher) && unseen.length === 0 ? 'adequate' : 'limited';
 
   let verdict: ReplacementVerdict;
   if (delta >= MEANINGFUL_GAP) verdict = certainty === 'adequate' ? 'clear_upgrade' : 'upgrade_uncertain';

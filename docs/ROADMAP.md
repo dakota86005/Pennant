@@ -62,8 +62,16 @@ is independent of the others unless it says so:
    standards (each lens with its own line), aging curve and glove weights, on the
    neutral store and refit registry (CALIBRATION.md section 12). Cycle 2 (the
    results lens, section 13) and cycle 3 (platoon and the bullpen's long-man line,
-   section 14) are done. Cycle 4: the tools model and development fits, with the
-   platoon rating weight and the K around ratings deferred to it.
+   section 14) are done. Cycle 4 is done (section 15): the inverted tools blend is
+   fixed, the tools model is judged on forward seasons only (`tools-1`, which needs
+   five of them; none exists yet on the Arizona import), snapshots keep split and
+   running ratings, and Player Development's ceiling lines are measured at each
+   import. Left: the development path and the ages (need snapshot pairs a season
+   apart), the pitchers' tools weight and the running slopes (forward fits not
+   built), the farm's sample constants (fittable now; below), and two recorded
+   limits of `tools-1`: its tools population is the snapshot's major-league
+   hitters (not exactly the served peer set), and a past season's first game is
+   the policy date March 20 (the export keeps only the current schedule).
 5. The remaining Minor League Operations and rights edges (§5, §6), and
    staff-informed philosophy ("Then").
 6. Release readiness (§8) whenever the owner is ready; it is not baseball work.
@@ -168,9 +176,16 @@ Remaining, in dependency order:
     depth-chart table, so only a rotation has an exported present.
   - A man OOTP has just DROPPED from its next five still reads as a rotation
     regular until the window catches up; only the other direction is handled.
-- **Calibrate what can be calibrated.** No farm constant is fitted, because the
-  export holds no minor-league history. Candidates if a longer record becomes
-  available: the sample minimums, the level-standing lines,
+- **Calibrate what can be calibrated.** No farm constant is fitted yet. (Corrected
+  in cycle 4 of the per-save calibration: this item used to say the export holds no
+  minor-league history. It does: minor-league stat lines for every affiliated level,
+  back to about 1920 on the Arizona import, which Player Value's arrival fit already
+  reads. It holds no minor-league ratings history.) **Fittable per save now, with
+  cycle 2's method** (rolling origins, `calibrationDetector.ts`, the starting values
+  as the rival): the farm's stabilization and mature-sample constants
+  (`MINIMUM_SAMPLE`, `MATURE_SAMPLE`, the farm results' K), predicting a minor
+  leaguer's next line at the same level from his earlier ones. Policy, not fitted:
+  the level-standing lines,
   `AGE_LEVEL_DEVELOPMENT_LIMIT` (the constant with the largest effect on how many
   players read as an organizational rather than a developmental question), and
   the injured-days line.
@@ -350,11 +365,16 @@ player's expected wins with a range) is available now.
   the platoon weight around the league norm and the bullpen's long-man line (section
   14; the leverage cut-offs are policy on the league's own scale). Not yet migrated,
   each a code-declared `calibrated` or fittable `provisional` constant today:
-  `resultsMetrics.ts` tools information (with the tools model, cycle 4), `toolsModel.ts` (the tools model),
-  `platoon.ts` (the rating weight and the K around ratings: cycle 4, once a save can
-  check ratings as a forecast), `farmCalibration.ts`
-  (Minor League Operations: recent usage, farm results) and `developmentFit.ts`
-  (ceiling lines, development age, projection; developmental stakes). For each:
+  `platoon.ts` (the rating weight and the K around ratings: forward cases need the
+  split ratings snapshots keep since cycle 4), `toolsModel.ts` running slopes (the
+  same), the pitchers' tools weight (a forward fit not built), `farmCalibration.ts`
+  (Minor League Operations: recent usage, farm results; the sample constants are
+  fittable on the save's minor-league lines) and `developmentFit.ts` (development age
+  and projection: a development path needs snapshot pairs a season apart; when they
+  exist, Player Value's path fit should move to the neutral `ratingsForward.ts` so
+  both read one path). Done in cycle 4: the tools blend, the bat slopes and the
+  hitters' tools weight (`tools-1`, forward cases), the derived profile line and the
+  ceiling lines (a measurement at each import). For each:
   say which values are fittable on a save's history and which are policy, write
   the method and its gate, and keep the current values as the provisional prior.
 - Move Player Value's own fits (`value_production_fits`) onto the neutral store

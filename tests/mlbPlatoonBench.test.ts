@@ -24,7 +24,7 @@ const benchIds = hitters.filter((h) => !regularIds.has(h.id)).map((h) => h.id);
 const PARTNER = benchIds[0];
 
 const ev = (bat: number, glove: number | null, position: number): LensEvidence => ({
-  position, ratingsPct: bat, ratingsEvidence: 'complete', skillsPct: bat, runsPct: null, sample: 500, sampleUnit: 'PA', reliability: 0.7, currentSample: 150,
+  position, ratingsPct: bat, ratingsEvidence: 'complete', skillsPct: bat, runsPct: null, sample: 500, sampleUnit: 'PA', toolsWeight: 1, reliability: 0.7, currentSample: 150,
   defense: { stabilization: 1000, pct: glove, grade: glove === null ? null : 55, visible: glove !== null }, usage: [],
 });
 const usage = (id: number) => {

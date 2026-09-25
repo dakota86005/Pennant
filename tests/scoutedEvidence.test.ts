@@ -8,6 +8,8 @@ import {
   viewerContext,
 } from '../server/scoutedEvidence.js';
 import { evaluateDevelopmentProtection, TIER_ORDER } from '../server/developmentFit.js';
+import { startingLines } from '../server/developmentFit.js';
+const STARTING = startingLines('not_measured');
 import request from './request.js';
 import { IDS } from './fixture.js';
 
@@ -341,9 +343,9 @@ describe('the boundary holds end to end', () => {
   });
 
   it('protects a development prospect by his scouted ceiling, not by players_value', () => {
-    const high = evaluateDevelopmentProtection({ age: 21, ability: abilityOf(HIGH) });
-    const low = evaluateDevelopmentProtection({ age: 21, ability: abilityOf(LOW) });
-    const blank = evaluateDevelopmentProtection({ age: 21, ability: abilityOf(BLANK) });
+    const high = evaluateDevelopmentProtection({ lines: STARTING,  age: 21, ability: abilityOf(HIGH) });
+    const low = evaluateDevelopmentProtection({ lines: STARTING,  age: 21, ability: abilityOf(LOW) });
+    const blank = evaluateDevelopmentProtection({ lines: STARTING,  age: 21, ability: abilityOf(BLANK) });
     // HIGH's scouted ceiling (72) is an impact major leaguer's and LOW's (32) is none: the tiers follow the scouted tools
     expect(TIER_ORDER.indexOf(high.tier!)).toBeGreaterThan(TIER_ORDER.indexOf(low.tier!));
     expect(high.reading!.ceiling.band).toBe('impact');

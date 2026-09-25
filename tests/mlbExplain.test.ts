@@ -28,7 +28,7 @@ for (const pos of [2, 3, 4, 5, 6, 7, 8, 9]) {
 }
 const LF = [...regularIds][5];
 const hev = (bat: number, glove: number | null, position: number, over: Partial<LensEvidence> = {}): LensEvidence => ({
-  position, ratingsPct: bat, ratingsEvidence: 'complete', skillsPct: bat, runsPct: null, sample: 500, sampleUnit: 'PA', reliability: 0.7, currentSample: 150,
+  position, ratingsPct: bat, ratingsEvidence: 'complete', skillsPct: bat, runsPct: null, sample: 500, sampleUnit: 'PA', toolsWeight: 1, reliability: 0.7, currentSample: 150,
   defense: { stabilization: 1000, pct: glove, grade: glove === null ? null : 55, visible: glove !== null }, usage: [], ...over,
 });
 const usage = (id: number) => {

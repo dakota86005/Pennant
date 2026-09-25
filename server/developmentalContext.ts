@@ -39,10 +39,14 @@ import { LEAGUE_POPULATION_MINIMUM } from './farmCalibration.js';
 import {
   evaluateDevelopmentProtection,
   knownAge,
+  type CeilingLinesInForce,
+  type LastImportReading,
   type DevelopmentProtection,
   type DevelopmentalContext,
 } from './developmentFit.js';
-import type { ScoutedAbility } from './scoutedEvidence.js';
+import { stakesLinesFor } from './stakesLines.js';
+import { loadScoutedObservations, type ScoutedAbility } from './scoutedEvidence.js';
+import { parseGameDate } from './dataFreshness.js';
 
 interface AgeProfile {
   players: number;
@@ -53,6 +57,8 @@ interface Club {
   level: number;
   leagueId: number;
   leagueName: string | null;
+  /** The club it is an affiliate of, where the export says (null for a major-league club or when the column is absent). */
+  parent: number | null;
 }
 
 export interface DevelopmentalContextReader {
@@ -70,6 +76,12 @@ export interface DevelopmentalContextReader {
 
   /** The age profile a league's context rests on, for a report. */
   profile(level: number, leagueId: number): DevelopmentalContext['ageProfile'];
+
+  /**
+   * The ceiling lines a man on this club is read against: his organization's major league's own (measured at an import and checked,
+   * `stakesLines.ts`), else Pennant's starting lines with the true reason. One set per league per reader.
+   */
+  lines(teamId: number): CeilingLinesInForce;
 }
 
 const key = (level: number, leagueId: number): string => `${level}:${leagueId}`;
@@ -116,21 +128,37 @@ function readClubs(): Map<number, Club> {
   const columns = new Set(tableColumns('teams'));
   if (!columns.has('level') || !columns.has('league_id')) return out;
   const named = tableExists('leagues') && tableColumns('leagues').includes('name');
+  const parent = columns.has('parent_team_id') ? 't.parent_team_id' : 'NULL';
   const rows = db
     .prepare(
       named
-        ? `SELECT t.team_id, t.level, t.league_id, l.name AS league_name FROM teams t LEFT JOIN leagues l ON l.league_id = t.league_id`
-        : `SELECT t.team_id, t.level, t.league_id, NULL AS league_name FROM teams t`
+        ? `SELECT t.team_id, t.level, t.league_id, ${parent} AS parent, l.name AS league_name FROM teams t LEFT JOIN leagues l ON l.league_id = t.league_id`
+        : `SELECT t.team_id, t.level, t.league_id, ${parent} AS parent, NULL AS league_name FROM teams t`
     )
-    .all() as Array<{ team_id: number; level: number; league_id: number; league_name: string | null }>;
+    .all() as Array<{ team_id: number; level: number; league_id: number; parent: number | null; league_name: string | null }>;
   for (const row of rows) {
+    const p = Number(row.parent);
     out.set(Number(row.team_id), {
       level: Number(row.level),
       leagueId: Number(row.league_id),
       leagueName: row.league_name ? String(row.league_name) : null,
+      parent: row.parent !== null && Number.isFinite(p) && p > 0 ? p : null,
     });
   }
   return out;
+}
+
+/**
+ * The major league of a club's organization: follow the affiliate chain to its major-league club. Null when the chain does not reach
+ * one (a club the export names no parent for, a loop): the ceiling lines are then Pennant's starting lines, said so.
+ */
+function majorLeagueOf(teamId: number, clubs: Map<number, Club>): number | null {
+  let at = clubs.get(teamId);
+  for (let step = 0; at && step < 8; step += 1) {
+    if (at.level === 1) return Number.isFinite(at.leagueId) ? at.leagueId : null;
+    at = at.parent !== null ? clubs.get(at.parent) : undefined;
+  }
+  return null;
 }
 
 /** Open a reader for one request. Two small queries; nothing is kept past the request. */
@@ -163,6 +191,40 @@ export function openDevelopmentalContext(): DevelopmentalContextReader {
     };
   };
 
+  const linesByLeague = new Map<number | null, CeilingLinesInForce>();
+  const linesOf = (teamId: number): CeilingLinesInForce => {
+    clubs ??= readClubs();
+    const league = majorLeagueOf(teamId, clubs);
+    let hit = linesByLeague.get(league);
+    if (!hit) {
+      hit = stakesLinesFor(league);
+      linesByLeague.set(league, hit);
+    }
+    return hit;
+  };
+
+  /*
+   * His own reading at the import before the lines moved: only on the export where they moved (the lines then carry `previous`), read
+   * once per reader from the save's rating snapshots through the adapter, the latest snapshot taken before that import. Elsewhere none
+   * is read, and no line-move sentence is given.
+   */
+  const lastImports = new Map<string, Map<number, LastImportReading>>();
+  const lastImportOf = (playerId: number, lines: CeilingLinesInForce): LastImportReading | null => {
+    const at = lines.previous?.replacedOn ? parseGameDate(lines.previous.replacedOn) : null;
+    if (!at) return null;
+    let byPlayer = lastImports.get(at);
+    if (!byPlayer) {
+      byPlayer = new Map();
+      for (const [id, list] of loadScoutedObservations(null)) {
+        const before = list.filter((o) => o.gameDate < at);
+        const o = before[before.length - 1];
+        if (o) byPlayer.set(id, { current: o.ability.current, potential: o.ability.potential, age: o.age, level: o.level });
+      }
+      lastImports.set(at, byPlayer);
+    }
+    return byPlayer.get(playerId) ?? null;
+  };
+
   const forClub = (age: number | null | undefined, teamId: number): DevelopmentalContext | null => {
     clubs ??= readClubs();
     const club = clubs.get(teamId);
@@ -174,7 +236,12 @@ export function openDevelopmentalContext(): DevelopmentalContextReader {
     forLevel,
     forClub,
     profile: profileOf,
-    protect: ({ age, teamId, ability, manuallyProtected }) =>
-      evaluateDevelopmentProtection({ age: knownAge(age), ability, context: forClub(age, teamId), manuallyProtected }),
+    lines: linesOf,
+    protect: ({ age, teamId, ability, manuallyProtected }) => {
+      const lines = linesOf(teamId);
+      return evaluateDevelopmentProtection({
+        age: knownAge(age), ability, lines, context: forClub(age, teamId), manuallyProtected, lastImport: lastImportOf(ability.playerId, lines),
+      });
+    },
   };
 }

@@ -899,6 +899,20 @@ Present on `main` (D-024; design and audit in
   - Every holder and platoon read receives the params in force (`ResultsParams`, no defaults).
   - The wOBA scale and a caught stealing's value are derived per league-season in `leagueBaseline` (1.2 and -0.4 only as the
     labelled fallback), so minor-league wRC+ is on its own run environment.
+- **The tools model, the blend and the ceiling lines, per save (D-053 amendment, cycle 4, 2026-09-25; CALIBRATION.md section 15;
+  supervisor's calls pending owner review):**
+  - The results-against-tools blend pointed the wrong way (K × (1 − information)); it is K × a tools weight of at least 1, starting
+    at 1, for the bat, the glove and running. "Too early to judge" reads the results' own trust (0.244 hitters, 0.301 pitchers).
+  - The tools model's slopes are passed as the params in force (one reader for MLB Operations and the Lineup page); the bat slopes and
+    the hitters' tools weight are fitted per save on forward cases only (`tools-1`), which need 5 forward seasons: the Arizona
+    import has 0, so the starting values serve and the yardsticks hover says why. A same-season engine check is recorded, never
+    gated. Not built: the pitchers' tools weight and the running slopes' forward fit.
+  - Rating snapshots keep a hitter's split and running ratings (12 nullable columns).
+  - The profile line (when a tool is named) is derived: half the league's peers' spread (9.22 here, was 9).
+  - Player Development's ceiling lines are measured at each import (`stakesLines.ts`); on the Arizona import they equal the starting
+    lines and no tier moves. The farm's thresholds table shows the lines in force.
+  - On the Arizona import: roster-review flags 21 → 21 with 15 holders changing; Arizona's findings unchanged; no stakes tier, farm
+    verdict or retention conclusion moves.
 - **Platoon and the bullpen, per save (D-053 amendment, cycle 3, 2026-09-25; CALIBRATION.md section 14; supervisor's calls
   pending owner review):**
   - How much a hitter's own split counts is fitted per save around the league norm (`mlbPlatoonFit.ts`, `platoon-1`) and served
@@ -967,9 +981,10 @@ resolution across all organization-specific features is future work.
   retention no longer folds a philosophy adjustment into a development score
   (D-044, D-045). The superseded solvers that carried the old philosophy-weighted
   plan costs are deleted (D-047).
-- No farm constant is calibrated against outcomes: the export holds no
-  minor-league history to fit against, and every one is stamped `policy` or
-  `provisional`.
+- No farm constant is calibrated against outcomes yet, and every one is stamped
+  `policy` or `provisional`. (Corrected in cycle 4: the export does hold
+  minor-league stat lines; the sample constants are fittable per save and not
+  fitted yet. It holds no minor-league ratings history.)
 - Cross-affiliate Rookie-level MOVEMENT remains deferred (eligibility and
   geography between a complex league and a Dominican one are unmodelled);
   Rookie affiliates are otherwise fully covered rather than skipped.

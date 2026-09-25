@@ -22,6 +22,7 @@
 import { db, tableExists } from '../server/db.js';
 import { loadScoutedAbilities } from '../server/scoutedEvidence.js';
 import { openDevelopmentalContext } from '../server/developmentalContext.js';
+import { nearestRank } from '../server/stakesLines.js';
 import { CEILING_LINES, TIER_ORDER, type DevelopmentProtection, type DevelopmentProtectionTier } from '../server/developmentFit.js';
 
 if (!tableExists('teams') || !tableExists('players') || !tableExists('team_roster')) {
@@ -31,13 +32,8 @@ if (!tableExists('teams') || !tableExists('players') || !tableExists('team_roste
 const ACTIVE_LIST = 2;
 const SHORT: Record<string, string> = { core_prospect: 'core', protected_prospect: 'prot', development_priority: 'prio', normal: 'norm', organizational_depth: 'depth' };
 
-const quantile = (values: number[], q: number): number => {
-  const xs = [...values].sort((a, b) => a - b);
-  const at = (xs.length - 1) * q;
-  const lo = Math.floor(at);
-  const hi = Math.min(xs.length - 1, lo + 1);
-  return xs[lo] + (xs[hi] - xs[lo]) * (at - lo);
-};
+// The served measurement's own rule (nearest rank: an actual composite value), so the report never shows a drift the lines do not have
+const quantile = (values: number[], q: number): number => nearestRank(values, q) as number;
 
 /* ── 1. the reference the ceiling lines stand for ────────────────────────────────────────────── */
 
@@ -52,10 +48,11 @@ const majorLeaguers = db
 const mlbAbilities = loadScoutedAbilities(majorLeaguers.map((m) => m.id));
 
 console.log('1. The reference: current composite of active major leaguers, by kind');
-console.log('   (the ceiling lines are meant to be its tenth, median and best tenth)\n');
+console.log('   (the ceiling lines are its tenth, median and best tenth: measured per save at each import since cycle 4, stakesLines.ts; compared here with Pennant\'s starting lines)\n');
 for (const kind of ['hitter', 'pitcher'] as const) {
+  // The adapter's kind, as the served measurement reads it
   const composites = majorLeaguers
-    .filter((m) => (Number(m.position) === 1) === (kind === 'pitcher'))
+    .filter((m) => mlbAbilities.for(m.id).kind === kind)
     .map((m) => mlbAbilities.for(m.id).current)
     .filter((c): c is number => c !== null);
   const lines = CEILING_LINES[kind];
@@ -64,10 +61,10 @@ for (const kind of ['hitter', 'pitcher'] as const) {
     continue;
   }
   const measured = { fringe: quantile(composites, 0.1), regular: quantile(composites, 0.5), impact: quantile(composites, 0.9) };
-  const drift = (Object.keys(lines) as Array<keyof typeof lines>).filter((k) => Math.abs(measured[k] - lines[k]) >= 2);
+  const drift = (Object.keys(lines) as Array<keyof typeof lines>).filter((k) => measured[k] !== lines[k]);
   console.log(
     `   ${kind.padEnd(8)} n=${String(composites.length).padStart(4)}  p10 ${measured.fringe.toFixed(0)}  p50 ${measured.regular.toFixed(0)}  p90 ${measured.impact.toFixed(0)}` +
-      `   declared ${lines.fringe} / ${lines.regular} / ${lines.impact}   ${drift.length ? `DRIFTED: ${drift.join(', ')}` : 'in line'}`
+      `   starting ${lines.fringe} / ${lines.regular} / ${lines.impact}   ${drift.length ? `DRIFTED: ${drift.join(', ')}` : 'in line'}`
   );
 }
 
