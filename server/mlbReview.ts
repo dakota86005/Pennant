@@ -17,9 +17,9 @@ import { buildLineupPicture, POSITION_LABELS, type HitterUsageInput, type Lineup
 import { activeMembers, roleOf, type ClubView, type RoleKind, type RoleRef, type RosterMember } from './mlbRoster.js';
 import { evaluatePlatoon, type PlatoonInput, type PlatoonRead } from './platoon.js';
 import { ordinal } from './roleStanding.js';
-import { estimateOf, reviewGroup, type HolderReview, type LensEvidence, type ReviewSubject } from './roleReview.js';
+import { estimateOf, reviewGroup, type HolderReview, type LensEvidence, type ReviewCalibration, type ReviewSubject } from './roleReview.js';
 import { flagShading, readContext, type ContextRead, type OrganizationContext } from './staffPreference.js';
-import { hitterStandard, relieverStandard, starterStandard } from './roleStandards.js';
+import { standardsFrom, type RoleStandardsSet } from './roleStandards.js';
 import { explainFlag } from './mlbExplain.js';
 import { deploymentFindings, penFindings, roleOf as bullpenRoleOf, starterConflicts, type DeploymentFinding, type PenFinding } from './bullpenRoles.js';
 import { reviewBench, type BenchReview, type CoverRead } from './benchReview.js';
@@ -40,7 +40,15 @@ export interface ReviewPorts {
   coverReads?(playerIds: number[]): Map<number, CoverRead[]>;
   /** The organization's philosophy and the season's standing: shades how urgently a flag is raised, never whether it is (D-036). */
   organization?: OrganizationContext | null;
+  /**
+   * The yardsticks in force for this save (D-053): the role standards, the aging curve and the glove weights the save has measured
+   * and checked, else the built-in starting values. Absent, the starting values.
+   */
+  calibration?: { standards: RoleStandardsSet; review: ReviewCalibration } | null;
 }
+
+const STARTING_SET = standardsFrom();
+const standardsOf = (ports: Pick<ReviewPorts, 'calibration'>): RoleStandardsSet => ports.calibration?.standards ?? STARTING_SET;
 
 export interface RoleGroupReview {
   kind: RoleKind;
@@ -79,8 +87,9 @@ export function reviewClub(view: ClubView, ports: ReviewPorts): RoleGroupReview[
       return [m.playerId, kind === 'relief_pitcher' && b ? bullpenRoleOf({ playerId: m.playerId, name: m.name, g: b.g, ip: b.ip, sv: b.sv, hld: b.hld, leverage: b.leverage }) : null] as const;
     }));
     // ...and the standard a pitcher is judged against is his job's: any rotation member, or a reliever of the tier his usage shows.
-    const standard = kind === 'starting_pitcher' ? () => starterStandard() : (h: ReviewSubject) => relieverStandard(roles.get(h.playerId)?.tier);
-    const reviews = reviewGroup(reviewed.map((m) => subjectOf(m, evidence.get(m.playerId) as LensEvidence)), { pitcher: true, role: role.label, standard });
+    const set = standardsOf(ports);
+    const standard = kind === 'starting_pitcher' ? () => set.starter() : (h: ReviewSubject) => set.reliever(roles.get(h.playerId)?.tier);
+    const reviews = reviewGroup(reviewed.map((m) => subjectOf(m, evidence.get(m.playerId) as LensEvidence)), { pitcher: true, role: role.label, standard, calibration: ports.calibration?.review ?? null });
     out.push({
       kind, role: role.label, notReviewed: members.length - reviewed.length,
       holders: reviews
@@ -127,7 +136,7 @@ function benchGroup(view: ClubView, ports: ReviewPorts, picture: LineupPicture):
     const listed = m.role?.position ?? null;
     const role = roleOf(listed ?? 10, 0);
     const e = role ? ports.holderEvidence([m.playerId], role).get(m.playerId) : undefined;
-    const est = e ? estimateOf(e, false) : null;
+    const est = e ? estimateOf(e, false, ports.calibration?.review.defenseWeights ?? undefined) : null;
     return {
       playerId: m.playerId, name: m.name, bats: b?.bats ?? null, pa: b?.pa ?? 0, covers: covers.get(m.playerId) ?? [], coverReads: reads?.get(m.playerId),
       batValue: est?.batValue ?? null, runningPct: est?.runningPct ?? null, listed, ...(b?.partnerAt !== undefined ? { partnerAt: b.partnerAt } : {}),
@@ -222,7 +231,8 @@ export function reviewLineup(view: ClubView, ports: ReviewPorts): RoleGroupRevie
   }
   if (subjects.length === 0) return { kind: 'position_player', role: 'lineup regular', holders: [], notReviewed: regulars.length, lineup: picture };
   const platoons = ports.platoon ? ports.platoon(subjects.map((x) => x.member.playerId)) : new Map<number, PlatoonInput>();
-  const reviews = reviewGroup(subjects.map((x) => x.subject), { pitcher: false, role: 'lineup regular', standard: (h) => hitterStandard(h.position) });
+  const set = standardsOf(ports);
+  const reviews = reviewGroup(subjects.map((x) => x.subject), { pitcher: false, role: 'lineup regular', standard: (h) => set.hitter(h.position), calibration: ports.calibration?.review ?? null });
   return {
     kind: 'position_player', role: 'lineup regular', notReviewed: regulars.length - subjects.length, lineup: picture,
     holders: reviews.map((r) => {

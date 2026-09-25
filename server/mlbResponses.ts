@@ -33,7 +33,7 @@ import {
 import { buildStaffReport, type StaffReport } from './mlbReport.js';
 import { buildComplementPlans, buildReplacementPlans, estimatorFrom } from './mlbPlans.js';
 import { lineupPictureFor } from './mlbReview.js';
-import { compareReplacement, estimateOf as workingEstimate, type ReviewSubject } from './roleReview.js';
+import { compareReplacement, estimateOf as workingEstimate, type ReviewCalibration, type ReviewSubject } from './roleReview.js';
 import { planLean, preferenceFor, readContext, tieBucket, type ContextRead, type OrganizationContext, type ShadeReason } from './staffPreference.js';
 import { complementFit, evaluatePlatoon, type ComplementFit, type PlatoonInput, type PlatoonRead } from './platoon.js';
 import { activeMembers, sameRole, type ClubView, type RoleRef, type RosterMember } from './mlbRoster.js';
@@ -50,6 +50,8 @@ export interface PhilosophyValues {
 }
 
 export interface ResponsePorts {
+  /** The save's fitted review numbers where in force (the glove weights a comparison uses); absent, the built-in starting values. */
+  reviewCalibration?: ReviewCalibration | null;
   rights(playerIds: number[]): Map<number, { assignment: AssignmentContext | null; rights: PlayerRights }>;
   /**
    * Player Development's assessment of the contemplated kind of MLB assignment;
@@ -1056,14 +1058,14 @@ function replacementLayer(
   const incumbent = subjectOf(subject.playerId, subject.name, subject.age);
   for (const c of comparable) {
     const cand = subjectOf(c.playerId, c.name, c.age);
-    c.comparison = cand && incumbent ? compareReplacement(cand, incumbent, pitcher) : null;
+    c.comparison = cand && incumbent ? compareReplacement(cand, incumbent, pitcher, ports.reviewCalibration?.defenseWeights ?? undefined) : null;
   }
 
   // How the organization's philosophy leans between replacements (named reasons; ordering only, D-036).
-  const subjectEstimate = evidence.get(subject.playerId) ? workingEstimate(evidence.get(subject.playerId) as LensEvidence, pitcher) : null;
+  const subjectEstimate = evidence.get(subject.playerId) ? workingEstimate(evidence.get(subject.playerId) as LensEvidence, pitcher, ports.reviewCalibration?.defenseWeights ?? undefined) : null;
   for (const c of comparable) {
     const e = evidence.get(c.playerId);
-    const est = e ? workingEstimate(e, pitcher) : null;
+    const est = e ? workingEstimate(e, pitcher, ports.reviewCalibration?.defenseWeights ?? undefined) : null;
     c.preference = c.comparison && ports.organization
       ? preferenceFor(ports.organization, {
         age: c.age, certainty: c.comparison.certainty, toolsPct: est?.ratingsPct ?? null, resultsPct: est?.resultsPct ?? null,
