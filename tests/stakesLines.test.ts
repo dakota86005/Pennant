@@ -164,3 +164,14 @@ describe('boundaries', () => {
     expect(files.filter((f) => /from '\.\/stakesLinesRefit\.js'|import '\.\/stakesLinesRefit\.js'/.test(code(f)))).toEqual(['calibrationRefitWorker.ts']);
   });
 });
+
+describe('a line move is dated when it happened', () => {
+  it('a later import that measures the same lines keeps the move\'s own date, not its own', () => {
+    const moved = measureCeilingLines(league(30, 13, { hitter: 55, pitcher: 52 }), { ...basis, gameDate: '2031-05-01' }, START).model.inForce;
+    const again = measureCeilingLines(league(30, 13, { hitter: 55, pitcher: 52 }), { ...basis, gameDate: '2031-06-01' }, moved).model.inForce;
+    expect(again.measuredOn).toBe('2031-06-01');
+    expect(again.previous).toMatchObject({ source: 'starting', replacedOn: '2031-05-01' });
+    const r = evaluateDevelopmentProtection({ age: 20, ability: syntheticScoutedAbility({ current: 40, potential: 51 }), lines: again, context: null }).reasons.join(' ');
+    expect(r).toMatch(/measured on May 1, 2031/);
+  });
+});

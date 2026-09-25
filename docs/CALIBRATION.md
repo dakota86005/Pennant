@@ -1369,7 +1369,7 @@ the ratings from those results, so the test describes and does not forecast.
 
 - **The weight on results.** It is `blendWeight(r, toolsWeight) = r ÷ (r + toolsWeight × (1 − r))`, with r = n ÷ (n + K), the
   results' own trust. `LensEvidence` carries r (`reliability`) and the tools weight in force (`toolsWeight`, required). A working
-  estimate built without the weight is refused, never defaulted.
+  estimate built without the weight is refused, never defaulted, and so are results params without it (`blendStabilization`).
 - **The results fit does not fit the weight.** `paramsOf` gives the starting 1, and `rosterReviewCalibration` puts in the tools
   fit's weight where it serves.
 - **Platoon.** The overall level blends his record with his ratings at `blendStabilization` (K × weight).
@@ -1421,7 +1421,8 @@ the ratings from those results, so the test describes and does not forecast.
 - **When a measurement does not hold up.** It keeps the lines in force: the league's own from an earlier import, else the starting
   lines. A reverted save serves the measurement at or before its game date.
 - **Served** through the context reader (`developmentalContext.ts`, `lines(teamId)`, by the organization's major league) as a required
-  argument of the evaluator. A tier whose ceiling changed because a line moved says so, and that it was the lines and not the player.
+  argument of the evaluator. A tier whose ceiling changed because a line moved says so, dated at the
+  import where the line moved, and that it was the lines and not the player.
   The farm's thresholds table shows the lines in force and their source.
 - **On this save:** hitters 45 / 50 / 56 and pitchers 45 / 48 / 53, equal to the starting lines. The club split is 7.8–12.8%,
   45.0–54.1% and 88.4–91.0% for hitters, and 4.4–15.9%, 34.5–56.4% and 85.0–91.6% for pitchers; stability is 97–100%. No tier moves.

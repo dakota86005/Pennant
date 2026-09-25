@@ -90,7 +90,12 @@ export const resultsParamsKey = (p: ResultsParams): string => JSON.stringify([p.
  * direction to get wrong. On the one season OOTP simulated from the Arizona import's ratings, the tools alone predicted a hitter's
  * results best, and the old 300 plate appearances did worst of the three choices tried (docs/CALIBRATION.md section 15).
  */
-export const blendStabilization = (kind: ResultsKind, params: ResultsParams): number => params.stabilization[kind] * Math.max(1, params.toolsWeight[kind]);
+export const blendStabilization = (kind: ResultsKind, params: ResultsParams): number => {
+  const weight = params.toolsWeight?.[kind];
+  // No silent default: params without the tools weight in force are a bug, never read as some weight
+  if (typeof weight !== 'number' || !Number.isFinite(weight)) throw new Error('The results params need the tools weight in force (ResultsParams.toolsWeight).');
+  return params.stabilization[kind] * Math.max(1, weight);
+};
 
 /** PROVISIONAL. The share of a park's run-factor deviation that reaches a hitter's wOBA. Runs scale roughly with the square of on-base and slugging, so about half. */
 export const PARK_WOBA_SHARE = 0.5;

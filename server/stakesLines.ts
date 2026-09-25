@@ -173,7 +173,10 @@ export function measureCeilingLines(
   let inForce: CeilingLinesInForce;
   if (passed) {
     const lines: CeilingLines = { hitter: measured.hitter as CeilingLines['hitter'], pitcher: measured.pitcher as CeilingLines['pitcher'] };
-    const before = sameLines(lines, previous.lines) ? previous.previous : { lines: previous.lines, source: previous.source, measuredOn: previous.measuredOn };
+    // Lines that did not move keep the earlier move's record (when it happened); lines that moved record this import as the move
+    const before = sameLines(lines, previous.lines)
+      ? previous.previous
+      : { lines: previous.lines, source: previous.source, measuredOn: previous.measuredOn, replacedOn: basis.gameDate };
     inForce = { lines, source: 'save', reason: 'measured', measuredOn: basis.gameDate, previous: before };
     notes.push(`Measured and served: hitters ${lines.hitter.fringe} / ${lines.hitter.regular} / ${lines.hitter.impact}, pitchers ${lines.pitcher.fringe} / ${lines.pitcher.regular} / ${lines.pitcher.impact} (${counts.hitter} and ${counts.pitcher} major leaguers, ${clubs.length} clubs).`);
   } else if (previous.source === 'save') {

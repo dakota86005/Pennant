@@ -52,7 +52,7 @@ const majorLeaguers = db
 const mlbAbilities = loadScoutedAbilities(majorLeaguers.map((m) => m.id));
 
 console.log('1. The reference: current composite of active major leaguers, by kind');
-console.log('   (the ceiling lines are meant to be its tenth, median and best tenth)\n');
+console.log('   (the ceiling lines are its tenth, median and best tenth: measured per save at each import since cycle 4, stakesLines.ts; compared here with Pennant\'s starting lines)\n');
 for (const kind of ['hitter', 'pitcher'] as const) {
   const composites = majorLeaguers
     .filter((m) => (Number(m.position) === 1) === (kind === 'pitcher'))
@@ -67,7 +67,7 @@ for (const kind of ['hitter', 'pitcher'] as const) {
   const drift = (Object.keys(lines) as Array<keyof typeof lines>).filter((k) => Math.abs(measured[k] - lines[k]) >= 2);
   console.log(
     `   ${kind.padEnd(8)} n=${String(composites.length).padStart(4)}  p10 ${measured.fringe.toFixed(0)}  p50 ${measured.regular.toFixed(0)}  p90 ${measured.impact.toFixed(0)}` +
-      `   declared ${lines.fringe} / ${lines.regular} / ${lines.impact}   ${drift.length ? `DRIFTED: ${drift.join(', ')}` : 'in line'}`
+      `   starting ${lines.fringe} / ${lines.regular} / ${lines.impact}   ${drift.length ? `DRIFTED: ${drift.join(', ')}` : 'in line'}`
   );
 }
 

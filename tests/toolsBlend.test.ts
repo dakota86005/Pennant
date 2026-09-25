@@ -71,3 +71,10 @@ describe('a visible glove grade or running ratings hold the results back too (cy
     expect(running(60, 20, 550)?.weightOnResults).toBeCloseTo(0.5, 10);
   });
 });
+
+describe('no silent default', () => {
+  it('results params without the tools weight in force are refused, never read as some weight', () => {
+    const { toolsWeight: _omit, ...without } = RESULTS_PRIOR;
+    expect(() => blendStabilization('hitter', without as unknown as ResultsParams)).toThrow(/tools weight/);
+  });
+});

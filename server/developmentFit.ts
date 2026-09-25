@@ -102,8 +102,11 @@ export interface CeilingLinesInForce {
   reason: StakesLinesReason;
   /** The game date of the export the league's own lines were measured on (ISO); null for the starting lines. */
   measuredOn: string | null;
-  /** The lines in force before these, when they differed, so a tier that changed because a line moved can say so. */
-  previous: { lines: CeilingLines; source: 'save' | 'starting'; measuredOn: string | null } | null;
+  /**
+   * The lines in force before these, when they differed, and the game date of the import at which they were replaced, so a tier that
+   * changed because a line moved can say so (and when), at that import and after it until the lines move again.
+   */
+  previous: { lines: CeilingLines; source: 'save' | 'starting'; measuredOn: string | null; replacedOn?: string | null } | null;
 }
 
 /** Pennant's starting lines, with the true reason they serve. */
@@ -434,7 +437,7 @@ function lineMoveReason(kind: ScoutedAbility['kind'], potential: number, ceiling
   const from = before.lines[ceiling.kind];
   const to = inForce.lines[ceiling.kind];
   const moved = (['fringe', 'regular', 'impact'] as const).filter((n) => from[n] !== to[n]).map((n) => `${n === 'fringe' ? 'a fringe major leaguer' : n === 'regular' ? 'a regular' : 'an impact player'}: ${from[n]} to ${to[n]}`);
-  const when = inForce.source === 'save' ? `when this league's major leaguers were measured on ${dateWords(inForce.measuredOn)}` : 'when the league\'s own lines stopped serving';
+  const when = inForce.source === 'save' ? `when this league's major leaguers were measured on ${dateWords(before.replacedOn ?? inForce.measuredOn)}` : 'when the league\'s own lines stopped serving';
   return `The ceiling lines moved ${when} (${moved.join('; ')}). Under the earlier lines his ceiling read as ${BAND_WORDS[earlier.band]}. The lines moved, not anything about him.`;
 }
 
