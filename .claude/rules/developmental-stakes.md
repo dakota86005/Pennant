@@ -26,8 +26,9 @@ use the answer and own none of it.
 
 - Stakes, never authorization: not promote, demote, start, call up, trade or release; not a rank, trade value
   or readiness read. `prospectDecision`, `prospectAssignments` and `destinationFit` do not read it (D-050).
-- The ceiling is absolute: the organization-visible potential against fixed lines, never a percentile among
-  the players around him (Part 4.1).
+- The ceiling is absolute: the organization-visible potential against lines set once per import from his
+  organization's major leaguers (else Pennant's starting lines), never a percentile among the players around
+  him (Part 4.1; D-050 amendment).
 - Development remaining comes from age, shortened by being behind the league's schedule or a projection
   already realized. Context may only lower the tier; youth is not talent (Part 4.2).
 - The one peer population is the ROSTERED players of his own league, for their age (Part 4.3).

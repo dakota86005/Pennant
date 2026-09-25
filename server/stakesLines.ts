@@ -181,8 +181,11 @@ export function measureCeilingLines(
     inForce = { lines, source: 'save', reason: 'measured', measuredOn: basis.gameDate, previous: before };
     notes.push(`Measured and served: hitters ${lines.hitter.fringe} / ${lines.hitter.regular} / ${lines.hitter.impact}, pitchers ${lines.pitcher.fringe} / ${lines.pitcher.regular} / ${lines.pitcher.impact} (${counts.hitter} and ${counts.pitcher} major leaguers, ${clubs.length} clubs).`);
   } else if (previous.source === 'save') {
-    inForce = { ...previous, reason: 'carried' };
-    notes.push(`This import's measurement did not hold up; the league's own lines measured on ${previous.measuredOn} stay in force.`);
+    // The true reason: a thin league was not measured at all; it did not fail a check
+    inForce = { ...previous, reason: thin ? 'carried_unmeasured' : 'carried' };
+    notes.push(thin
+      ? `This import had too few major leaguers to measure; the league's own lines measured on ${previous.measuredOn} stay in force.`
+      : `This import's measurement did not hold up; the league's own lines measured on ${previous.measuredOn} stay in force.`);
   } else {
     inForce = startingLines(thin ? 'players' : 'check_failed');
     notes.push(thin ? 'Pennant\'s starting lines serve.' : 'The measurement did not hold up; Pennant\'s starting lines serve.');

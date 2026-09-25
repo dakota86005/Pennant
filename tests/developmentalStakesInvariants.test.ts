@@ -123,7 +123,7 @@ describe('unknown is never firmer than known, and never lower for being unknown'
 });
 
 describe('the tier belongs to the man, not to the men around him', () => {
-  it('is a function of his own ratings, his age and his league\'s age profile: nothing else can be handed to it', () => {
+  it('within one set of ceiling lines, is a function of his own ratings, his age and his league\'s age profile: nothing else can be handed to it', () => {
     const a = evaluateDevelopmentProtection({ lines: STARTING,  age: 20, ability: syntheticScoutedAbility({ current: 38, potential: 52, playerId: 1 }), context: context(1) });
     const b = evaluateDevelopmentProtection({ lines: STARTING,  age: 20, ability: syntheticScoutedAbility({ current: 38, potential: 52, playerId: 2 }), context: context(1) });
     expect(a).toEqual(b);

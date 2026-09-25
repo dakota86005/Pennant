@@ -201,3 +201,18 @@ describe('a line move is dated when it happened', () => {
     expect(r).not.toMatch(/moved/);
   });
 });
+
+describe('plain and true words', () => {
+  it('a league too thin to measure keeps its own earlier lines and says it was not measured, never that it failed a check', () => {
+    const own = measureCeilingLines(league(30, 13, { hitter: 55, pitcher: 52 }), basis, START).model.inForce;
+    const thin = measureCeilingLines(league(8, 13, { hitter: 50, pitcher: 48 }), { ...basis, gameDate: '2031-06-01' }, own);
+    expect(thin.model.inForce).toMatchObject({ source: 'save', reason: 'carried_unmeasured', lines: own.lines });
+    expect(thin.record.notes.join(' ')).toMatch(/too few major leaguers to measure/);
+    expect(thin.record.notes.join(' ')).not.toMatch(/did not hold up/);
+  });
+
+  it('the stakes stamps shown on the farm\'s thresholds table carry no cycle, decision number or file name', async () => {
+    const { STAKES_CALIBRATION } = await import('../server/developmentFit.js');
+    for (const c of STAKES_CALIBRATION) expect(c.stamp.basis, c.name).not.toMatch(/cycle \d|D-0\d\d|\.ts\b|`/);
+  });
+});

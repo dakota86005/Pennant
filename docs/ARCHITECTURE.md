@@ -452,9 +452,10 @@ organization mishandles this player? — and authorizes nothing (D-050,
 
 ```text
 ScoutedAbility (potential, by kind) ──► CEILING   impact · regular · fringe · below the major leagues
-                                        the ABSOLUTE anchor: against fixed lines (what the weakest tenth,
-                                        the median and the best tenth of major leaguers are), never
-                                        against the players around him
+                                        the ABSOLUTE anchor: against lines set once per import (what the
+                                        weakest tenth, the median and the best tenth of his organization's
+                                        major leaguers are; Pennant's starting lines where they cannot be
+                                        measured), never against the players around him
 
 age ────────────────────────────────┐
 league's ROSTERED age profile ──────┼─► DEVELOPMENT REMAINING   most · some · little · none

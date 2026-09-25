@@ -26,7 +26,9 @@
  *     organization's major league's own, measured at the import from its major leaguers, else Pennant's starting
  *     lines; `stakesLines.ts`, handed in, never read here) is read. No result,
  *     no usage, no roster need, no philosophy (D-019) — so a hot month cannot raise a tier and a cold
- *     one cannot lower it — and no other player's rating.
+ *     one cannot lower it — and no rating of the players around him: the lines are set once per import
+ *     from his organization's major leaguers, the same for everyone, and nobody's tier moves between
+ *     imports because of anyone else.
  *   * Unknown stays unknown (D-018). A missing rating or age leaves the tier null; a missing age
  *     profile leaves the schedule unread and discounts nothing, because missing context may never
  *     lower a man's stakes.
@@ -63,9 +65,8 @@ export const CEILING_LINES_CALIBRATION: CalibrationStamp = provisional(
   'Pennant\'s starting lines: where a visible potential composite stops projecting as a major leaguer of each kind. ' +
     'The composite (the unweighted mean of the visible tools) of the weakest tenth, the median and the best tenth of ' +
     'the active major leaguers of one import (Arizona, 2026-5-16): hitters 45 / 50 / 56, pitchers 45 / 48 / 53. Kind-aware ' +
-    'because the composite is. Since cycle 4 (D-053) each league\'s own lines are measured from its major leaguers at each ' +
-    'import and served once checked (`stakesLines.ts`); these serve only where that has not happened or cannot (a small or ' +
-    'fictional league), and say so.'
+    'because the composite is. Each league\'s own lines are measured from its major leaguers at every import and used once ' +
+    'they hold up; these are used only where that has not happened or cannot (a small or fictional league), and say so.'
 );
 
 export const CEILING_QUANTILES_CALIBRATION: CalibrationStamp = policy(
@@ -90,6 +91,7 @@ export const CEILING_LINES: CeilingLines = {
 export type StakesLinesReason =
   | 'measured'       // this league's own, measured at an import and checked
   | 'carried'        // the latest measurement did not hold up: the league's own from an earlier import stays
+  | 'carried_unmeasured' // the latest import had too few major leaguers (or clubs) to measure: the league's own from an earlier import stays
   | 'players'        // too few major leaguers of a kind (or clubs) to measure: the starting lines
   | 'check_failed'   // measured, did not hold up, and no line of the league's own was in force: the starting lines
   | 'not_measured'   // nothing measured yet for this league: the starting lines
@@ -118,9 +120,9 @@ export const DEVELOPMENT_AGE_CALIBRATION: CalibrationStamp = provisional(
   'The age through which most, some and little of a player\'s development is still ahead of him. The ' +
     'bands of the youth curve the absolute composite used (72 or more through 22, 45 to 60 at 23-24, ' +
     '18 to 30 at 25-26, 5 from 27), so the historical judgment about youth is kept and only its use ' +
-    'changed. Not fitted: a development path needs the same players\' ratings a season apart (300 snapshot ' +
-    'pairs, as Player Value\'s path does), and the Arizona save holds one snapshot. Its cross-section agrees ' +
-    'with the bands\' end: the scouted gap closes between 24 and 26.'
+    'changed. Not fitted: how players develop can only be measured from the same players\' ratings a season ' +
+    'apart, and the save does not hold those yet. Today\'s ratings agree with where the bands end: the gap ' +
+    'between current and potential closes between 24 and 26.'
 );
 
 /** Through this age, inclusive. From `little` + 1 on, none of it is ahead of him. */
@@ -320,8 +322,9 @@ const oneStepLess = (state: DevelopmentRemaining): DevelopmentRemaining =>
 /**
  * What a visible potential composite would be among major leaguers of his kind.
  *
- * Read from his own rating against fixed lines, never against the players around him, so no other
- * player's rating — a weak league, a strong one, a man promoted past him — can move it.
+ * Read from his own rating against the lines in force, never against the players around him: the lines are measured once per
+ * import on his organization's major leaguers (or are Pennant's starting lines), the same for every player of that organization, so
+ * no player around him — a weak cohort, a strong one, a man promoted past him — can move it, and between imports nothing does.
  */
 export function ceilingOf(kind: ScoutedAbility['kind'], potential: number, inForce: CeilingLines): StakesReading['ceiling'] {
   const lineKind: 'hitter' | 'pitcher' = kind === 'pitcher' ? 'pitcher' : 'hitter';
