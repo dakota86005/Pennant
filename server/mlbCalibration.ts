@@ -156,7 +156,7 @@ function describeResults(s: StoredCalibration<ResultsModel>): string {
   const label: Record<string, string> = { hitter: 'hitters', starter: 'starting pitchers', reliever: 'relievers' };
   const own = REQUIRED_PARTS.filter((p) => s.model.parts[p]?.source === 'save').map((p) => label[p]);
   const kept = REQUIRED_PARTS.filter((p) => s.model.parts[p]?.source !== 'save').map((p) => label[p]);
-  return `How much a player's last three seasons count, and how many games it takes before his results count as much as his tools. `
+  return `How much a player's last three seasons count, and how much playing time it takes before his results count as much as his tools. `
     + `From ${s.record.window.sample.toLocaleString('en-US')} player-seasons in this league${seasons.length ? ` (${seasons[0]}–${seasons[seasons.length - 1]})` : ''}, `
     + `checked one season at a time on seasons they had not seen: this league's own were clearly better for ${own.join(' and ')}`
     + `${kept.length ? `; for ${kept.join(' and ')} the starting values held up and still serve` : ''}.`;
