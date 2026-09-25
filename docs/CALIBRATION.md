@@ -10,14 +10,15 @@ See D-037 in [DECISIONS.md](DECISIONS.md).
 **Amended by D-053 (2026-09-22): calibration belongs to the save.** New work is fitted on each save's own outcomes,
 automatically, stored per save with its run record as the stamp; code holds the method, the policy and a
 provisional fallback prior. Player Value's expected production is the first subsystem built this way (section 6).
-The scouting constants in sections 1 to 5 keep their run-1 stamps until they are migrated (ROADMAP).
+The scouting constants in sections 1 to 5 keep their run-1 stamps until they are migrated (ROADMAP). Since cycle 2 (section 13) the
+results lens's season weights and stabilization are per save, and run 1's values are their provisional fallback.
 
 ```bash
 OOTP_FO_DATA_DIR=<dir containing league.db> npm run calibrate               # every section
 OOTP_FO_DATA_DIR=<dir containing league.db> npx tsx scripts/calibrate.ts tools platoon
 ```
 
-Sections: `results pitchers tools platoon aging running defense leverage standards production` (production: section 6), and `roster-review` when named (section 12). The harness reads objective statistics
+Sections: `results pitchers tools platoon aging running defense leverage standards production` (production: section 6), `roster-review` when named (section 12), and `detector` when named (section 13: the "clearly better" rule's error rates, measured on simulated leagues). The harness reads objective statistics
 directly and ratings only through `scoutedEvidence.ts` (D-017, D-035). It never writes to `league.db`. Its sections 1 to 9 change
 no behavior by themselves: a person reads the output, edits the one declaration, and records the run here. `production --refit` and
 `roster-review --refit` are the exception: they record a per-save fit in `history.db`, which changes what the application serves
@@ -65,8 +66,8 @@ the source, with the test that pins the ERA scale.
 |---|---|
 | Position glove weights (`DEFENSE_WEIGHT`) | Derived shares (C .42, 1B .18, 2B .38, 3B .31, SS .42, LF .38, CF .51, RF .40) come from one partial season of zone ratings. The stated weights average them with the earlier priors (.40, .05, .30, .25, .35, .10, .30, .20) so one season does not move them all the way. The slope of zone-rating runs on the visible glove grade is solid (r .37 to .82 by position); the bat spread it is compared with is the tools model's, which is attenuated. |
 | Defensive stabilization (1,000 innings) | Zone rating exists for the current season only (and for catchers' history), so its repeatability cannot be measured. |
-| Baserunning weight (.05) and the run value of a steal | Derived from a spread of about 1.4 runs per 600 PA against the bat's 10 to 15, so it is small in this game; the steal weights are the standard ones. |
-| Park share of a run factor (.5) | The park factor is the app's existing one (`stats.ts`); the share that reaches wOBA is not fitted. |
+| Baserunning weight (.05) and the run value of a steal | Derived from a spread of about 1.4 runs per 600 PA against the bat's 10 to 15, so it is small in this game; the steal weights are the standard ones. Since cycle 2 a caught stealing is valued at each league-season's own runs per out (section 13.5); a stolen base stays +0.2. |
+| Park share of a run factor (.5) | The park factor is the app's existing one (`stats.ts`); the share that reaches wOBA is not fitted. Cycle 2 measured the elasticity of club runs on wOBA at 1.92 ± 0.03 (a share of 0.52) and kept 0.5: the park factor it multiplies is not per season (section 13.6). |
 | Concern thresholds (`CONCERN`, `MEANINGFUL_GAP`), platoon problem and complement margins, regular share, lineup and shift thresholds, bench cover policy, and every philosophy threshold | These are policy: they say when to raise something, not how baseball works. The platoon margins are set against the measured spread of the effect (sd .0087): a problem is about 1.4 sd, a complement about 3 sd. |
 
 ## 4. Re-running
@@ -900,7 +901,7 @@ results) has its own line on its own scale; relievers are checked against the le
   standards are right; the club split is the check that bears on the served values. A league with too few past seasons to check
   fails (2) and keeps the starting values, and says so. The key is the export's game date: a re-import at the same game date after
   roster moves is not re-measured (accepted; the next game date is).
-- *Aging (`aging-1`).* The delta method of section 5, per completed season: a weighted mean change per age over the fit ages
+- *Aging (`aging-1`; since cycle 2 `aging-2`, section 13).* The delta method of section 5, per completed season: a weighted mean change per age over the fit ages
   (22–40), a weighted quadratic in age, each age shrunk toward the prior by its pairs, then made monotone over the fit ages; ages
   20–21 and 41–42 hold the end values (they are never pooled with the prior's zeros). The window is the last 20 completed seasons
   (a pair's first season from the window's first). Rolling-origin backtest: each origin fitted only on pairs it could have seen,
@@ -910,8 +911,7 @@ results) has its own line on its own scale; relievers are checked against the le
   record says so. A backtest in which no age band has enough held-out pairs fails ("not enough seasons").
 - *Glove weights (`defense-1`).* On consecutive completed seasons whose fielding rows carry zone-rating runs (detected from the
   data): the repeatable spread of fielding runs per 1,300 innings (year-to-year covariance) against the repeatable spread of
-  batting runs per 600 PA, weight = sd(glove) / (sd(glove) + sd(bat)). Batting runs use the conventional wOBA scale (1.2), which is
-  not fitted to the league and sets the glove-to-bat ratio (inactive on this save; cycle 2 measures it). Checked on the next
+  batting runs per 600 PA, weight = sd(glove) / (sd(glove) + sd(bat)). Batting runs use each season's own wOBA scale (derived from its totals since cycle 2, section 13.5; 1.2 only where the totals cannot give one), which sets the glove-to-bat ratio. Checked on the next
   season: among a position's regulars, (1 − w) × bat percentile + w × glove percentile (both from results) is rank-correlated with
   what they produced the season after. Results only on both sides: no rating is read.
 
@@ -946,7 +946,7 @@ aging check; the league's own schedules). The headline did not change.
   11.9%; results lens 12.6 / 12.1 / 13.0%). History, origins 2015→16 … 2024→25 (8; 2020 left out, a short season): hitters 12.1% /
   7.1% (n 1,677), starters 11.6% / 6.8% (n 1,200), relievers 11.5% / 6.7% (n 2,166). Each lens's own gap is far wider than the
   estimate's: tools −33.1 (hitters), −16.6 (starters), −12.4 (relievers); results −34.9, −33.8, −30.4.
-- **Aging: adopted.** 5,594 pairs of back-to-back seasons (2006–2025). Hitters −2.4 wOBA points a year at 26 (built-in −3.0),
+- **Aging: adopted** under cycle 1's rule; under cycle 2's "clearly better" rule (section 13.4) the starting curve held up and serves. 5,594 pairs of back-to-back seasons (2006–2025). Hitters −2.4 wOBA points a year at 26 (built-in −3.0),
   −6.1 at 30 (−6.5), −8.9 at 34 (−9.5); pitchers +0.10 FIP at 28 (+0.12), +0.14 at 34 (+0.12), +0.20 at 35 (+0.20). Share still the
   starting curve 0.44. Backtest on 2016–2024 (1,410 hitter and 851 pitcher held-out pairs), as served and unshrunk: every scored band
   unbiased (largest: hitters 34–37 −2.2 points shrunk, −2.8 unshrunk, se 2.6; pitchers within 0.03 runs, se 0.035 to 0.07); both
@@ -961,3 +961,161 @@ aging check; the league's own schedules). The headline did not change.
   stated size of the decline in 31 age explanations league-wide (2 on Arizona) by about a point; while the starting curve serves,
   the explanation says "players his age usually lose about ...", and "in this league's history" only once the save's own curve is in
   force.
+
+
+## 13. How much recent seasons count, the "clearly better" rule, and the wOBA scale (D-053, cycle 2, 2026-09-25)
+
+**Owner decision, 2026-09-25:** a save's own fitted tuning value replaces the starting value only if it is CLEARLY better on held-out
+seasons; otherwise the starting value stays, and the page says it was checked on this league and held up. The owner's focus was
+whether the system that decides this is robust enough, so the detector is the centrepiece and its error rates are measured
+(13.3). A MEASUREMENT of the league as it stands (the role standards) has no rival value set and keeps its measure-and-check rule
+(section 12).
+
+### 13.1 The detector (`server/calibrationDetector.ts`, `detector-1`, policy `DETECTOR_POLICY`)
+
+The caller hands it paired held-out cases: each held-out player-season (or aging pair) scored under the save's values and under
+the starting values. The save's values are **clearly better** when all four hold:
+
+1. **Enough:** at least 4 held-out seasons, each with at least 50 cases.
+2. **Significant:** the pooled weighted mean loss difference is at least 2 standard errors below zero, clustered by player (a
+   player's seasons are one piece of evidence) and pooled over the held-out seasons.
+3. **Consistent:** the save's values have the lower loss in at least two-thirds of the held-out seasons, and in at least 3.
+4. **Worth it:** the pooled gain is at least 1% of the starting values' loss (a practical minimum: a very large sample cannot adopt
+   a trivially small gain).
+
+- **No selection optimism.** The caller chooses every free parameter (the grid point) inside each rolling origin, on seasons up to
+  it only, and scores that choice on the next season. A season never takes part in choosing what it judges (pinned by a test that
+  scrambles a held-out season and finds the choice unchanged).
+- **Unshrunk and as served, both.** Unshrunk is out of sample on every league. As served (shrunk toward the starting values) is not
+  out of sample on the Arizona import, where the starting values were fitted on these seasons. That can only make the save's values
+  look worse there, never better.
+- **Hysteresis.** Once the save's values serve, a later refit returns to the starting values only when THEY are clearly better
+  than the save's values as served, by the same rule. The record carries the previous state and the rule applied.
+
+### 13.2 The results lens's season weights and stabilization (`server/mlbResultsFit.ts`, `results-1`, trigger: a new completed season)
+
+- **Cases.** Every player-season in the last 20 completed full seasons (a season under 90% of its schedule is not a target; its
+  lines still count as a prior season, as in the review), predicted from his three seasons before it by the production arithmetic
+  (`weightedBatting` + `reliability`). Hitters predict park-adjusted wOBA relative to the league (250 PA or more). Starters (350 BF)
+  and relievers (150 BF) predict park-adjusted ERA relative to the league from `PITCHER_RESULTS_MIX` of peripherals and runs; a
+  pitcher's kind is read from his prior seasons and must hold in the target. Both sides are centred on the kind's own mean that
+  season, because the review ranks a player among his kind.
+- **The fit.** A grid (policy): the season before at 0.1–1 of this one, the one before that at 0–1 and never above it, and K from 100
+  to 3,000. It chooses the least opportunity-weighted squared error, and is shrunk toward the starting values by n/(n+500) training
+  cases.
+- **The backtest.** Rolling origins (at most 8, from the window's start + 5), nested, judged by the detector per kind. Too few
+  seasons to judge, for any of the three kinds, is not a verdict: nothing is recorded as adopted, and the values in force stay.
+- **Baserunning and defensive stabilization** (K only; baserunning at the hitters' weights, defense evenly, as `defenseResult` sums
+  a fielder's seasons) are judged only on seasons whose export carries UBR or zone rating. They need at least 7 such seasons. On
+  this save UBR and zone rating exist only for 2026, so both are inactive, and the record says so.
+- **Reported, not gated:** the error against assuming every player is his kind's average, and the calibration slope (next season on
+  the prediction).
+- **Served** through `rosterReviewCalibration(...).results` into every holder read. It reaches the review, responses, plans,
+  scenarios, the report and the platoon record weight, through one set of ports per request (`tests/resultsParamsInForce.test.ts`).
+  The standards measured in the same refit are measured under the results verdict just made (the results component is registered
+  first).
+
+### 13.3 The detector's measured error rates (`npm run calibrate detector`, 2026-09-25, 200 leagues a cell, 400 for a null)
+
+- **The simulated leagues.** They are sized like the Arizona import's majors: about 300 hitter, 120 starter and 190 reliever target
+  seasons a year, with careers, part-timers and turnover.
+  - A player's true level is a permanent part plus a part that drifts from season to season (first order). A season's result is
+    his level plus noise that shrinks with his opportunities.
+  - For each null, the talent structure was chosen so that the method's best values on an unlimited sample are the starting
+    values. The starting values' excess error there is 0.0% for hitters, 0.1% for starters and 0.0% for relievers.
+- **Seasons of history.** This is the number of target seasons in the window. With 10 seasons the backtest has 4 origins; from
+  about 13 seasons it has the full 8.
+
+**False adoption** (the league's truth is the starting values; target at most 5%):
+
+| Kind | 10 seasons | 12 | 16 | 20 |
+|---|---|---|---|---|
+| Hitters | 0.0% | 0.0% | 0.0% | 0.3% |
+| Starters | 0.3% | 0.0% | 0.3% | 0.0% |
+| Relievers | 0.0% | 0.0% | 0.0% | 0.0% |
+
+**Power** (the league's truth differs; the starting values' excess error on an unlimited sample is in brackets):
+
+| Scenario | 10 seasons | 12 | 16 | 20 |
+|---|---|---|---|---|
+| Hitters: recent seasons count far more (best 5/1.5/1, K 1,000) [4.7%] | 94.5% | 100% | 100% | 100% |
+| Hitters: results much noisier (best 5/3.5/3.5, K 1,250) [3.3%] | 84.5% | 97.5% | 98.5% | 100% |
+| Hitters: a fictional-league-sized shift (best 5/2.5/2, K 1,500) [5.4%] | 97.5% | 100% | 100% | 100% |
+| Hitters: results noisier (K 1,000) [2.1%] | 66.5% | 82.5% | 88.5% | 92.5% |
+| Hitters: results much steadier (K 300) [1.9%] | 58.0% | 72.5% | 82.5% | 83.0% |
+| Hitters: recent seasons count more (5/2.5/1.5, K 700) [1.2%] | 35.0% | 39.5% | 45.0% | 43.0% |
+| Starters: a fictional-league-sized shift (5/2.5/1, K 2,000) [2.1%] | 30.5% | 40.5% | 57.0% | 55.5% |
+| Relievers: a fictional-league-sized shift (5/2.5/0, K 1,500) [1.5%] | 25.0% | 36.0% | 49.5% | 48.0% |
+
+**A wrong return** (once the save's values serve, a refit sends them back although they are right): 0.0% in every power scenario.
+
+**Reading the rates.**
+- The rule is conservative: false adoption is well under the 5% target.
+- A difference that costs 2% or more of prediction error is found most of the time with 12 or more seasons, and nearly always at
+  3% or more.
+- A difference near the 1% practical minimum is found about half the time. That is the intended trade: such a difference moves few
+  reads.
+- The prediction error is flat in the weights, so even large differences in the weights cost little. Pitchers' shifts cost less
+  than hitters' because their results are noisier.
+- Power stops rising after about 16 seasons, because the backtest holds at most 8 origins.
+- The aging curve uses the same rule, but its own error rates are not simulated.
+
+### 13.4 The run on the Arizona import (through 2025)
+
+- **Season weights and stabilization: the starting values held up.**
+  - Fitted: hitters 5/3.5/3 K 500, starters 5/3.5/1 K 600, relievers 5/3/2.5 K 400. The starting values are 5/3/3 K 500, 5/3/1 K 700
+    and 5/3/2 K 500.
+  - Held out (8 seasons, 2016→17 … 2024→25; 2,391, 947 and 1,552 player-seasons):
+    - hitters: the save's own had 0.17% MORE error (z +0.81, better in 4 of 8 seasons);
+    - starters: 0.20% less (z −0.79, 5 of 8);
+    - relievers: 0.33% less (z −1.42, 5 of 8).
+  - None is clearly better, as served or unshrunk, so the starting values serve, labelled "checked on this league's seasons and held
+    up".
+  - Had the league's own values served, 21 reads league-wide would have moved on noise: 2 strong flags appear and 3 disappear
+    (`npm run review:calibration-report` section 7b).
+- **Aging: the starting curve held up.**
+  - Hitters: the save's curve had 0.13% more error as served (z +1.11, better in 3 of 7 seasons). Pitchers: 0.00% (z 0.02).
+  - Cycle 1 served the league's own curve here. Now the starting curve serves, and no flag changes.
+  - 78 age explanations league-wide change from "in this league's history hitters his age have lost about 9 points" to "hitters his
+    age usually lose about 10 points". 31 of them change the stated size by about a point, 2 of those on Arizona.
+- **Reported, not gated:**
+  - Relievers' next-season runs follow the prediction with a slope of 0.65 (0.74 under the starting values). A reliever predicted a
+    run better turned out about two thirds of a run better: the record is trusted too much.
+  - No weight or K fixes it: the mix, centring and recency were all tried in Stage A.
+  - It is a model-form question for `PITCHER_RESULTS_MIX` and the bullpen roles (ROADMAP finding). Supervisor's call: record it, do
+    not gate on it.
+- **Refit time in the worker:** results 2.3 s, standards 6.6 s, aging 1.0 s.
+
+### 13.5 The run environment: the wOBA scale and a caught stealing (`server/stats.ts`, supervisor's call: app-wide, one source)
+
+- **The derivation.** `leagueBaseline(league, year, level)` derives each league-season's wOBA scale from its own totals: BaseRuns
+  linear weights, with the formula's multiplier set to reproduce the league's runs. An out is valued relative to average by
+  subtracting the league's runs per out, counting batting outs as AB − H + SF + SH + CS + GDP. The scale is the fixed-weight wOBA
+  numerator over the run-value numerator.
+- **Where it is read.** wRC+ (roster and stats tables, the team form read, league leaders, the Lineup page, trade screens) and cycle
+  1's glove-weight fit read it. Neither holds a literal any longer.
+- **A caught stealing** is −(2 × runs per out + 0.075), the wSB form. A stolen base stays +0.2, the convention's constant
+  (provisional: deriving it needs play-by-play).
+- **The fallback.** 1.2 and −0.4 serve, labelled, where the totals cannot give a value:
+  - SF, CS, GDP, IBB, HBP or SB is unrecorded (a zero league total is unknown, never zero);
+  - there are fewer than 10,000 PA (policy);
+  - the formula does not fit.
+- **Validation (Stage A).**
+  - On MLB 2025 the derived run values above an out, times 1.207, are .70/.70/.88/1.24/1.59/2.02 against the fixed
+    .69/.72/.88/1.25/1.58/2.03.
+  - Club runs follow them with a slope of 0.84 over club seasons 2005–2025.
+- **On this save:**
+  - MLB 2026: 1.209 (2025: 1.207). wRC+ moves by at most 1.
+  - The minors range from 1.16 to 1.26 in 2026 (their 2025 real-history seasons: 1.01 to 1.17; the simulated 2026 minors score
+    fewer runs per PA). wRC+ moves by up to 5 points, 0.1 to 1.5 on average by league.
+  - 5 form verdicts change league-wide, none on Arizona's clubs.
+  - One level-4 league has fewer than 10,000 PA so far in 2026, so the fallback serves there, labelled.
+  - Minor League Operations' own results lens ranks wOBA within the league and does not change.
+
+### 13.6 The rest of the results lens
+
+- **Tools information** (`TOOLS_INFORMATION`): deferred to cycle 4 with the tools model it describes. The save has one rating
+  snapshot, and a same-time fit is contaminated.
+- **The park share** (`PARK_WOBA_SHARE`): stays provisional. Club runs give an elasticity of 1.92 ± 0.03 (a share of 0.52), but the
+  park factor it multiplies is today's park ratings applied to every season. Minor League Operations shares the value.
+- **The peer-population minimums** (`POPULATION_MINIMUM`, `DEFENSE_POPULATION_MINIMUM`): policy.

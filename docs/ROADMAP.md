@@ -344,9 +344,10 @@ player's expected wins with a range) is available now.
   3a). MLB Operations' roster review does it since cycle 1 (`roleStandards.ts`
   role standards, `roleReview.ts` `AGING_CURVE` and `DEFENSE_WEIGHT`, on the
   neutral `saveIdentity.ts`, `saveCalibrationStore.ts` and `saveCalibration.ts`;
-  CALIBRATION.md section 12). Not yet migrated, each a code-declared `calibrated`
-  or fittable `provisional` constant today: `resultsMetrics.ts` (season weights,
-  stabilization, tools information), `toolsModel.ts` (the tools model),
+  CALIBRATION.md section 12), and since cycle 2 the results lens's season weights
+  and stabilization, under the "clearly better" rule (section 13). Not yet migrated,
+  each a code-declared `calibrated` or fittable `provisional` constant today:
+  `resultsMetrics.ts` tools information (with the tools model, cycle 4), `toolsModel.ts` (the tools model),
   `platoon.ts` (platoon prior and shrinkage), `bullpenRoles.ts` (leverage
   cut-offs), `farmCalibration.ts`
   (Minor League Operations: recent usage, farm results) and `developmentFit.ts`
@@ -362,8 +363,12 @@ player's expected wins with a range) is available now.
   themselves once two seasons in a row carry it and a third checks them.
 - Per-save calibration follow-ups from cycle 1 (CALIBRATION.md section 12, "Not built"): score the previous
   import's standards on the current holders once two measurements exist; the glove weights' paired-bootstrap
-  condition; cache the results-lens history check per completed season; retention for `save_calibration_fits`;
-  measure the wOBA scale per league (cycle 2).
+  condition; cache the results-lens history check per completed season; retention for `save_calibration_fits`.
+- Finding (cycle 2, CALIBRATION.md 13.4): relievers' results are trusted too much. Next season's runs follow the results lens's
+  prediction with a slope of about 0.65 (0.74 under the starting values) on the Arizona import. No weight or stabilization fixes
+  it, so it is a model-form question for `PITCHER_RESULTS_MIX` and the bullpen roles. It is reported in the run record, not gated.
+- The "clearly better" rule's error rates are simulated for the results lens only. Simulate them for the aging curve too, and
+  consider whether Player Value's results fit should follow the same rule (it keeps its coverage gate).
 - Validate thresholds across synthetic fixtures and diverse voluntarily
   described save shapes without collecting live private saves.
 - Track how past GM decisions and observed outcomes inform future review while

@@ -617,9 +617,22 @@ Calibration belongs to the save. Three subsystem-neutral modules carry every sub
   started meanwhile, is skipped with a logged reason when no worker thread can start (never on the event loop), and can never block
   or fail the import. A measurement keyed by game date is served only from an export no later than today's.
 
-MLB Operations is the first registrant (the roster review's role standards, aging curve and glove weights); it imports no
-Player Value file (`tests/saveCalibrationBoundary.test.ts`). The method and policy stay in the subsystem's code, with the
-built-in values as the provisional fallback prior (CALIBRATION.md section 12).
+MLB Operations is the first registrant (the roster review's role standards, aging curve and glove weights; since cycle 2 the
+results lens's season weights and stabilization, registered ahead of the standards so they are measured under its verdict); it
+imports no Player Value file (`tests/saveCalibrationBoundary.test.ts`). The method and policy stay in the subsystem's code, with
+the built-in values as the provisional fallback prior (CALIBRATION.md sections 12 and 13).
+
+- `calibrationDetector.ts` (cycle 2, neutral and pure): whether a save's fitted tuning value is CLEARLY better than its fallback on
+  paired, nested held-out cases (significant with player-clustered errors, consistent across seasons, above a practical minimum,
+  unshrunk and as served), with hysteresis once the save's value serves. Its error rates are measured on simulated leagues
+  (`scripts/lib/resultsDetectorSimulation.ts`, `npm run calibrate detector`). A measurement with no rival value set (the role
+  standards) is not judged by it.
+- The results lens's params (`ResultsParams`: season weights and stabilization) are passed as arguments through `resultsMetrics.ts`
+  and `resultsEvidence.ts`. No reader holds a default. MLB Operations resolves the yardsticks once per request and passes
+  `yardsticks.results` into every holder read and platoon read (`tests/resultsParamsInForce.test.ts`).
+- The league's run environment: `stats.ts` `leagueBaseline` derives each league-season's wOBA scale and a caught stealing's run
+  value from its own totals (the labelled fallback 1.2 and -0.4 where the totals cannot give them), the one source for wRC+
+  app-wide and the glove-weight fit.
 
 ## MLB Operations
 
