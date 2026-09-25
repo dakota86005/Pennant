@@ -19,7 +19,7 @@ import { percentileAmong, POPULATION_MINIMUM, SEASON_WEIGHTS, weightedBatting, w
 import { PITCHER_RESULTS_MIX } from './roleReview.js';
 import { REGULAR_SHARE } from './lineupPicture.js';
 import { hitterKey, relieverKey, STARTER_KEY } from './roleStandards.js';
-import { leagueSeasons, marketLevels } from './saveIdentity.js';
+import { leagueClubs, leagueSeasons, marketLevels, seasonSchedules } from './saveIdentity.js';
 import { registerCalibration, type CalibrationBasis } from './saveCalibration.js';
 import { reviewClub } from './mlbReview.js';
 import { loadClubView } from './mlbRoster.js';
@@ -47,10 +47,24 @@ export function fullSeasons(leagueId: number, through: number, minShare: number)
 
 // ── standards ────────────────────────────────────────────────────────────────
 
+/** A club's games played this season from its standings; null when the export does not say (unknown, never zero). */
+function gamesPlayed(teamId: number): number | null {
+  if (!tableExists('team_record')) return null;
+  const cols = new Set(tableColumns('team_record'));
+  if (!cols.has('team_id')) return null;
+  const expr = cols.has('g') ? 'g' : cols.has('w') && cols.has('l') ? 'w + l' : null;
+  if (expr === null) return null;
+  const row = db.prepare(`SELECT ${expr} AS g FROM team_record WHERE team_id = ?`).get(teamId) as { g: unknown } | undefined;
+  return typeof row?.g === 'number' && Number.isFinite(row.g) ? row.g : null;
+}
+
 /** Every club of the league reviewed as it stands: each holder's role, working estimate, bat and lenses. */
 export function standardsSample(leagueId: number): StandardsSample {
   if (!has('teams', ['team_id', 'league_id', 'level'])) return { clubs: [] };
-  const teams = db.prepare(`SELECT team_id FROM teams WHERE league_id = ? AND level = ? ORDER BY team_id`).all(leagueId, levelOf(leagueId)) as Array<{ team_id: number }>;
+  // The league's own clubs (all-star sides excluded, as everywhere), at its top level
+  const own = leagueClubs(leagueId);
+  const teams = (db.prepare(`SELECT team_id FROM teams WHERE league_id = ? AND level = ? ORDER BY team_id`).all(leagueId, levelOf(leagueId)) as Array<{ team_id: number }>)
+    .filter((t) => own.has(t.team_id));
   const clubs: StandardsSample['clubs'] = [];
   for (const t of teams) {
     const ports = reviewPorts(t.team_id);
@@ -67,7 +81,7 @@ export function standardsSample(leagueId: number): StandardsSample {
       if (g.kind === 'starting_pitcher') for (const h of g.holders) add(STARTER_KEY, h);
       if (g.kind === 'relief_pitcher') for (const h of g.holders) add(relieverKey(h.tier ?? 'unknown'), h);
     }
-    clubs.push({ clubId: t.team_id, gamesPlayed: ports.teamGames?.() ?? null, holders });
+    clubs.push({ clubId: t.team_id, gamesPlayed: gamesPlayed(t.team_id), holders });
   }
   return { clubs };
 }
@@ -80,9 +94,12 @@ export const HISTORY_RELIEVER_POOL = 'rel:pool';
  * designated-hitter starts are batting starts less fielding starts), each club's rotation (top five by starts, 8 or more) and its
  * relievers (20 or more games, starts at most a fifth of them), each ranked as the review ranks results at a season's end.
  */
-export function resultsLensSeason(leagueId: number, t: number): ResultsLensSeason {
+export function resultsLensSeason(leagueId: number, t: number): ResultsLensSeason | { skip: string } {
   const level = levelOf(leagueId);
   const holders: ResultsLensSeason['holders'] = [];
+  // The season's schedule, games per club (the standings, else the lines): never an assumed length (D-018)
+  const schedule = seasonSchedules(leagueId, t).get(t) ?? null;
+  if (schedule === null) return { skip: "its schedule is not established in the export" };
   if (!has('players_career_fielding_stats', ['player_id', 'team_id', 'year', 'position', 'gs', 'level_id', 'league_id'])
     || !has('players_career_batting_stats', ['player_id', 'team_id', 'year', 'gs', 'level_id', 'league_id', 'split_id'])) return { season: t, holders };
   const env = seasonEnvironments(leagueId, t);
@@ -91,7 +108,6 @@ export function resultsLensSeason(leagueId: number, t: number): ResultsLensSeaso
     const byLeague = new Set(tableColumns('team_history_record')).has('league_id') ? ' AND league_id = ?' : '';
     for (const r of db.prepare(`SELECT team_id, g FROM team_history_record WHERE year = ?${byLeague}`).all(t, ...(byLeague ? [leagueId] : [])) as Array<{ team_id: number; g: number }>) games.set(r.team_id, r.g);
   }
-  const schedule = [...games.values()].sort((a, b) => a - b)[Math.floor(games.size / 2)] ?? 162;
   const f = db.prepare(`SELECT player_id id, team_id team, position pos, SUM(gs) gs FROM players_career_fielding_stats WHERE level_id = ? AND league_id = ? AND year = ? AND position BETWEEN 2 AND 9 GROUP BY 1, 2, 3`).all(level, leagueId, t) as Array<{ id: number; team: number; pos: number; gs: number }>;
   const b = db.prepare(`SELECT player_id id, team_id team, SUM(gs) gs FROM players_career_batting_stats WHERE level_id = ? AND split_id = 1 AND league_id = ? AND year = ? GROUP BY 1, 2`).all(level, leagueId, t) as Array<{ id: number; team: number; gs: number }>;
   const fielded = new Map<string, number>();
@@ -143,11 +159,19 @@ export function resultsLensSeason(leagueId: number, t: number): ResultsLensSeaso
 }
 
 /** The league's last completed full seasons on the results lens: enough for the history check's origins and the season after each. */
-export function resultsLensHistory(leagueId: number, through: number | null): ResultsLensSeason[] {
-  if (through === null) return [];
+export function resultsLensHistory(leagueId: number, through: number | null): { seasons: ResultsLensSeason[]; skipped: Array<{ season: number; reason: string }> } {
+  if (through === null) return { seasons: [], skipped: [] };
   const policy = ROSTER_REVIEW_FIT_POLICY.standards;
-  const { seasons } = fullSeasons(leagueId, through, policy.history.minShare);
-  return seasons.slice(-(policy.history.maxOrigins + 2)).map((t) => resultsLensSeason(leagueId, t)).filter((s) => s.holders.length > 0);
+  const full = fullSeasons(leagueId, through, policy.history.minShare);
+  const out: ResultsLensSeason[] = [];
+  const skipped = full.skipped.slice(-(policy.history.maxOrigins + 2));
+  for (const t of full.seasons.slice(-(policy.history.maxOrigins + 2))) {
+    const s = resultsLensSeason(leagueId, t);
+    if ('skip' in s) skipped.push({ season: t, reason: s.skip });
+    else if (s.holders.length === 0) skipped.push({ season: t, reason: 'no holders could be read from its lines' });
+    else out.push(s);
+  }
+  return { seasons: out, skipped: skipped.sort((a, b) => a.season - b.season) };
 }
 
 // ── aging ────────────────────────────────────────────────────────────────────
@@ -244,7 +268,10 @@ const need = (b: CalibrationBasis) => b.throughSeason;
 
 registerCalibration({
   subsystem: MLB_CALIBRATION_SUBSYSTEM, component: 'standards', method: STANDARDS_METHOD, trigger: 'each_import',
-  compute: (b) => measureStandards(standardsSample(b.leagueId), resultsLensHistory(b.leagueId, b.throughSeason), b),
+  compute: (b) => {
+    const history = resultsLensHistory(b.leagueId, b.throughSeason);
+    return measureStandards(standardsSample(b.leagueId), history.seasons, b, undefined, undefined, history.skipped);
+  },
 });
 
 registerCalibration({

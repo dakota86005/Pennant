@@ -45,7 +45,7 @@ import { clubFinanceRoutes } from './clubFinanceRoutes.js';
 import { playerValueRoutes } from './playerValueRoutes.js';
 import { ourViewRoutes } from './ourViewRoutes.js';
 import { clearProductionCaches, computeRefits, refitInWorker, refitOffThread, type PendingRefits } from './playerValue.js';
-import { calibrationRefitInWorker, calibrationRefitOffThread, computeCalibrationRefits, type PendingCalibration } from './saveCalibration.js';
+import { calibrationRefitInWorker, calibrationRefitOffThread, type CalibrationOutcome, type PendingCalibration } from './saveCalibration.js';
 import { clearSaveIdentityCache } from './saveIdentity.js';
 import { clearRosterReviewCalibrationCache } from './mlbCalibration.js';
 import { captureMarketSnapshot } from './playerValueSnapshot.js';
@@ -189,30 +189,37 @@ export function refitAfterImport(): void {
     })
     .catch((err) => console.error('[value] production refit failed:', err))
     // Then every subsystem's per-save calibration (D-053, cycle 1: MLB Operations' roster review), in its own worker, the same way
-    .finally(() => refitCalibrationsAfterImport(generation));
+    .finally(() => { void refitCalibrationsAfterImport(generation); });
 }
 
 /**
  * After an import: the per-save calibrations every subsystem registered (`saveCalibration.ts`), computed in a worker thread and
  * recorded only if no import started meanwhile. Never blocks or fails the import: every error is caught and logged.
  */
-function refitCalibrationsAfterImport(generation: number): void {
+export function refitCalibrationsAfterImport(generation: number, worker: () => Promise<PendingCalibration[]> = calibrationRefitInWorker): Promise<CalibrationOutcome[]> {
+  // The import this was for is already superseded: its reads would be of neither export, and nothing would be recorded
+  if (importState.importing || generation !== importGeneration) return Promise.resolve([]);
   const started = performance.now();
-  const compute = (): Promise<PendingCalibration[]> => calibrationRefitInWorker().catch(async (err) => {
-    console.error('[calibration] refit worker unavailable, refitting in-process:', err);
-    await import('./mlbCalibrationRefit.js');
-    return new Promise<PendingCalibration[]>((resolve, reject) => setImmediate(() => {
-      try { resolve(computeCalibrationRefits()); } catch (e) { reject(e); }
-    }));
+  // No worker: the refit is skipped, never run on the server's event loop (it reviews every club); the fits in force stay
+  const compute = (): Promise<PendingCalibration[]> => worker().catch((err) => {
+    console.error('[calibration] refit worker unavailable; the refit is skipped and the fits in force stay:', err);
+    return [];
   });
-  calibrationRefitOffThread({ compute, stale: () => importState.importing || generation !== importGeneration })
+  return calibrationRefitOffThread({ compute, stale: () => importState.importing || generation !== importGeneration })
     .then((outcomes) => {
       for (const r of outcomes) {
         if (r.refit) console.log(`[calibration] ${r.subsystem}/${r.component}, league ${r.leagueId} (${r.basis}): ${r.adopted ? 'adopted' : 'not adopted'} (${Math.round(r.ms ?? 0)} ms, ${Math.round(performance.now() - started)} ms end to end). ${r.reason}`);
       }
+      return outcomes;
     })
-    .catch((err) => console.error('[calibration] refit failed:', err));
+    .catch((err) => {
+      console.error('[calibration] refit failed:', err);
+      return [];
+    });
 }
+
+/** The current import generation (a refit is recorded only for the export it read). */
+export const currentImportGeneration = (): number => importGeneration;
 
 /**
  * The league's market and contracts for the export now imported: price of a win, replacement level, regime and each
