@@ -1232,7 +1232,7 @@ dead position-assignment fit and tier-strictness helpers are gone; every reading
 made the tier. Adversarial sweeps found no discontinuity: one birthday or one potential point moves the tier at
 most one step and never up. Record: DEVELOPMENTAL_STAKES.md Part 9.
 
-**Amended 2026-09-25 (D-053, cycle 4; supervisor's call, pending owner review).**
+**Amended 2026-09-25 (D-053, cycle 4; supervisor's call, approved by the owner 2026-09-25).**
 
 - **The ceiling lines are a MEASUREMENT of the organization's major league at each import** (`stakesLines.ts`, `stakes-lines-1`).
   They are no longer held as constants. The measurement is the nearest-rank tenth, median and best tenth of its active major
@@ -1872,6 +1872,8 @@ not established. The gate is not loosened."
   league's 21 flags (none of Arizona's) and changes 8 more between kinds of watch.
 
 **Amended 2026-09-25 (per-save calibration, cycle 2: the results lens and the wOBA scale; CALIBRATION.md section 13).**
+The supervisor's calls in this amendment (the lifetime target, the asymmetric return, the accepted break case, the aging curve under
+the rule and the app-wide wOBA scale) were approved by the owner 2026-09-25.
 
 - **A fitted tuning value replaces its fallback only when clearly better; a measurement is served when its checks pass** (owner
   decision 2026-09-25). A tuning value with a rival value set (the results lens's season weights and stabilization, the aging
@@ -1921,7 +1923,7 @@ not established. The gate is not loosened."
   - the peer-population minimums are policy.
 
 **Amended 2026-09-25 (per-save calibration, cycle 3: platoon and the bullpen; CALIBRATION.md section 14).** Every item is the
-supervisor's call, pending owner review (the owner was away and authorized best judgment).
+supervisor's call, approved by the owner 2026-09-25 (the owner was away and authorized best judgment).
 
 - **How much a hitter's own platoon split counts is fitted per save, only around the league norm** (`platoon-1`): where his platoon
   ratings are not visible, his split is shrunk toward the league's split for his hand by a K chosen inside each rolling origin and
@@ -1951,7 +1953,7 @@ supervisor's call, pending owner review (the owner was away and authorized best 
   and the crowding counts stay policy.
 
 **Amended 2026-09-25 (per-save calibration, cycle 4: the tools model, the blend and the ceiling lines; CALIBRATION.md section 15).**
-Every item is the supervisor's call, pending owner review.
+Every item is the supervisor's call, approved by the owner 2026-09-25.
 
 - **Knowing a player's tools never makes his results count more.** The results-against-tools blend was K × (1 − information), which
   points the wrong way. It is now K × a tools weight of at least 1 (`ResultsParams.toolsWeight`; `DEFENSE_TOOLS_WEIGHT` and
