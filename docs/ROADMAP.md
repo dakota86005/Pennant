@@ -58,8 +58,11 @@ is independent of the others unless it says so:
 3. Centralize organization context (§2): cross-cutting, and every new consumer
    would otherwise repeat the resolution.
 4. Move the other subsystems' calibrated constants to per-save fits (D-053,
-   "Later" below), starting with the MLB Operations constants the roster review
-   leans on hardest.
+   "Later" below). Cycle 1 is done (2026-09-24): the roster review's role
+   standards (each lens with its own line), aging curve and glove weights, on the
+   neutral store and refit registry (CALIBRATION.md section 12). Cycles 2 to 4:
+   `resultsMetrics.ts`; platoon and bullpen leverage; the tools model and
+   development fits.
 5. The remaining Minor League Operations and rights edges (§5, §6), and
    staff-informed philosophy ("Then").
 6. Release readiness (§8) whenever the owner is ready; it is not baseball work.
@@ -338,16 +341,25 @@ player's expected wins with a range) is available now.
   belongs to the save: fitted per save from its own history, stored with a run
   record, refitted after an import, adopted through a gate, with a provisional
   fallback prior in code. Player Value's expected production does this (phase
-  3a). Not yet migrated, each a code-declared `calibrated` or fittable
-  `provisional` constant today: `resultsMetrics.ts` (season weights,
-  stabilization, tools information), `roleReview.ts` (`AGING_CURVE`,
-  `DEFENSE_WEIGHT`), `toolsModel.ts` (the tools model), `platoon.ts` (platoon
-  prior and shrinkage), `bullpenRoles.ts` (leverage cut-offs),
-  `roleStandards.ts` (MLB Operations role standards), `farmCalibration.ts`
+  3a). MLB Operations' roster review does it since cycle 1 (`roleStandards.ts`
+  role standards, `roleReview.ts` `AGING_CURVE` and `DEFENSE_WEIGHT`, on the
+  neutral `saveIdentity.ts`, `saveCalibrationStore.ts` and `saveCalibration.ts`;
+  CALIBRATION.md section 12). Not yet migrated, each a code-declared `calibrated`
+  or fittable `provisional` constant today: `resultsMetrics.ts` (season weights,
+  stabilization, tools information), `toolsModel.ts` (the tools model),
+  `platoon.ts` (platoon prior and shrinkage), `bullpenRoles.ts` (leverage
+  cut-offs), `farmCalibration.ts`
   (Minor League Operations: recent usage, farm results) and `developmentFit.ts`
   (ceiling lines, development age, projection; developmental stakes). For each:
   say which values are fittable on a save's history and which are policy, write
   the method and its gate, and keep the current values as the provisional prior.
+- Move Player Value's own fits (`value_production_fits`) onto the neutral store
+  (`save_calibration_fits`), with a migration that keeps each save's rows; not
+  done in cycle 1 on purpose.
+- The roster review's glove weights are built but inactive on a save whose past
+  seasons carry no zone rating; whether OOTP keeps a simulated season's zone
+  rating in later exports is not known (indeterminate). They switch on by
+  themselves once two seasons in a row carry it and a third checks them.
 - Validate thresholds across synthetic fixtures and diverse voluntarily
   described save shapes without collecting live private saves.
 - Track how past GM decisions and observed outcomes inform future review while

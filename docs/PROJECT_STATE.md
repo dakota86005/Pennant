@@ -867,6 +867,18 @@ Present on `main` (D-024; design and audit in
   `bench_coverage` needs; `shift` and `platoon` plans; bullpen leverage roles and deployment findings; and
   `staffPreference.ts` lets the club's window and season shade urgency, the bar for "recommend", tie-breaks and plan order,
   every lean shown (D-036).
+- **The save's own yardsticks (D-053, per-save calibration cycle 1, 2026-09-24; CALIBRATION.md section 12):** the roster
+  review's role standards, aging curve and glove weights are fitted or measured per save (`mlbCalibrationFit.ts` method and
+  policy; `mlbCalibrationRefit.ts` reads and registration; `mlbCalibration.ts` the fit in force), stored in `history.db`
+  `save_calibration_fits` through the neutral `saveCalibrationStore.ts`, refitted after an import in their own worker
+  (`calibrationRefitWorker.ts`, `saveCalibration.ts` registry), and served only once they pass their checks; the built-in
+  values are the provisional fallback prior. Owner decisions 2026-09-24: the standards are re-measured at each import (keyed by
+  game date, 15 games per club first); each lens (tools, results) has its own line; relievers are checked against history as
+  one pool. The save's identity, seasons and completed-season check moved unchanged to the neutral `saveIdentity.ts`. On the
+  Arizona import the standards and the aging curve pass and the glove weights stay the starting values (no zone rating in past
+  seasons); the lens change removes 6 of 21 league-wide flags (none of Arizona's). `GET /api/mlb/calibration/:orgId` (also
+  `/api/mlb-operations/:orgId/calibration`, and `yardsticks` on the overview); one plain line under the MLB Operations tabs with
+  a hover; `npm run calibrate roster-review [--refit]`; `npm run review:calibration-report`.
 - **Staff report (D-030):** `mlbReport.ts` + `roleStanding.ts` turn a packet into a briefing: situation, the role
   picture (current holders vs the player, on visible ratings with season lines as context), the read, and
   named pathways with chains and consequences; the workspace is laid out that way and the clearing

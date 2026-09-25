@@ -17,7 +17,7 @@ OOTP_FO_DATA_DIR=<dir containing league.db> npm run calibrate               # ev
 OOTP_FO_DATA_DIR=<dir containing league.db> npx tsx scripts/calibrate.ts tools platoon
 ```
 
-Sections: `results pitchers tools platoon aging running defense leverage standards production` (production: section 6). The harness reads objective statistics
+Sections: `results pitchers tools platoon aging running defense leverage standards production` (production: section 6), and `roster-review` when named (section 12). The harness reads objective statistics
 directly and ratings only through `scoutedEvidence.ts` (D-017, D-035). It never writes to the database and changes
 no behavior by itself: a person reads the output, edits the one declaration, and records the run here.
 
@@ -861,3 +861,71 @@ model, which is provisional and not fitted on the save (`WIN_CURVE_CALIBRATION`)
 On the Arizona import (2026-05-16) the owner's configured philosophy leans on nothing for any player (every dimension 50,
 the default policies). One more win moves Arizona's odds by 3.9 points (75% now, with the leader's wild-card route); the tightest races about 5.1 to 5.2; the
 clubs far out under 0.1. The regression sweep holds the phase's 24 checks.
+
+## 12. The roster review's yardsticks, per save (D-053, cycle 1, 2026-09-24)
+
+MLB Operations' roster review judges each holder against three groups of numbers. Since this cycle each group is the save's own
+once it has passed its checks, and the built-in values are the provisional fallback prior (`ROSTER_REVIEW_PRIOR` in
+`server/mlbCalibrationFit.ts`), never presented as a save's calibration. The plumbing is subsystem-neutral and serves cycles 2 to 4
+(`saveIdentity.ts`, `saveCalibrationStore.ts`, `saveCalibration.ts`; ARCHITECTURE "Per-save calibration").
+
+**Owner decisions, 2026-09-24:** the role standards are re-measured from the current export at each import; each lens (tools,
+results) has its own line on its own scale; relievers are checked against the league's history as one pool.
+
+| Group | What is fitted | Policy (stays in code, `ROSTER_REVIEW_FIT_POLICY`) | Fallback prior |
+|---|---|---|---|
+| Role standards (`roleStandards.ts`) | each role's typical estimate and a hitter position's typical bat; the pooled 10th/5th percentile gaps by group; each lens's own typical and gap | FLOOR_QUANTILE 0.10 and DEEP_QUANTILE 0.05 (unchanged); 20 clubs; 15 games per club (median club) first; a role joins its group's gap with 10 holders; shrinkage 10 holders (a role), 30 (a gap); club split 400 fixed-seed halvings; tolerance 5 points (floor), 4 (deep); history check: at most 8 origins t→t+1 over completed full seasons (90% of a schedule), 100 held-out holders per group | The Arizona import's measurement (2026-05-16) |
+| Aging (`roleReview.ts` `AGING_CURVE`) | the expected annual change by age, hitters (league-relative wOBA) and pitchers (league-relative FIP), ages 20–42 | pairs of consecutive full seasons with 300+ PA/BF in both; the last 20 completed seasons; ages 22–40 fitted; shrinkage 150 pairs per age; 1,000 pairs per kind; rolling origin (at most 8, from the window's start + 5); bands 22–25 … 38+ scored with 50+ pairs; a band fails beyond 3 wOBA points (hitters) or 0.08 runs (pitchers) AND 3 standard errors clustered by player; must beat "no aging". `concernAge` (34) is policy | The piecewise rows (harness section 5, 2000–2025) |
+| Glove weights (`roleReview.ts` `DEFENSE_WEIGHT`) | each position's share of a hitter's estimate that is glove; DH 0 by definition | fielding results only: 300 innings and 300 PA; 20 fielders per position; shrinkage 60 pairs; the fitted weight's next-season rank correlation may trail the built-in weight's by 0.02. GLOVE_MATTERS stays policy | Run-1 figures (section 3) |
+
+**The methods.**
+
+- *Standards (`standards-1`).* At each import the production review is run on every club of the league (the same ports as the
+  page) and each holder's role, working estimate, bat, tools lens and results lens are taken. Each role's median and each group's
+  pooled 10th and 5th percentile deviation are measured on the estimate scale, and each lens's median and pooled 10th percentile
+  deviation on its own scale; each is shrunk toward the prior by its holders. Two checks, both required:
+  (1) *club split*: the standards measured on half the clubs, 400 times, must put 10% ± 5 (5% ± 4 for the deep line) of the other
+  half's holders under them, per group and per lens; (2) *history*: the same method run on the league's own past seasons on the
+  results lens (the one lens the history holds: regulars by starts at a position, rotations, relievers as one pool, ranked as the
+  review ranks results at a season's end) must put 10% ± 5 (5% ± 4) of the next season's holders under a line set on this one.
+  A league with too few past seasons to check fails (2) and keeps the starting values, and says so.
+- *Aging (`aging-1`).* The delta method of section 5, per completed season: a weighted mean change per age, a weighted quadratic in
+  age, each age shrunk toward the prior by its pairs, then made monotone. Rolling-origin backtest: each origin fitted only on pairs
+  it could have seen, scored on the pair (t, t+1).
+- *Glove weights (`defense-1`).* On consecutive completed seasons whose fielding rows carry zone-rating runs (detected from the
+  data): the repeatable spread of fielding runs per 1,300 innings (year-to-year covariance) against the repeatable spread of
+  batting runs per 600 PA, weight = sd(glove) / (sd(glove) + sd(bat)). Checked on the next season: among a position's regulars,
+  (1 − w) × bat percentile + w × glove percentile (both from results) is rank-correlated with what they produced the season after.
+
+**The record** (`CalibrationRecord`, `save_calibration_fits.record_json`): basis (completed season or game date), window and
+sample, every check with its expected and observed values (and the prior's, where it can be scored), the share still the prior
+(overall and by part), the gate's verdict and reason, the prior's source, and notes on what could not be measured.
+
+**Re-running.** Automatic after an import (in `calibrationRefitWorker.ts`). A developer can force it:
+
+```bash
+OOTP_FO_DATA_DIR=<dir with league.db and a scratch history.db> OOTP_FO_DB_READONLY=1 npm run calibrate roster-review            # fit and print, write nothing
+... roster-review --refit                                   # record the fits in history.db (a failing refit never replaces an adopted one)
+OOTP_FO_DATA_DIR=<dir> OOTP_FO_DB_READONLY=1 npm run review:calibration-report   # before and after, for the organization and league-wide
+```
+
+### 12.1 The run on the Arizona import (2026-05-16, through 2025)
+
+- **Standards: adopted.** Measured from 30 clubs (e.g. first base 77.0 against 77 built-in, 28 holders, weight 0.74; starters 53.0,
+  150 holders, 0.94); gaps −20.2/−25.7 (hitters), −22.3/−25.0 (starters), −18.2/−21.2 (relievers), against −20/−26, −22/−25, −18/−21.
+  The same snapshot the built-in values were measured on, so they agree within half a point. Club split: hitters 12.1% / 6.3%,
+  starters 11.5% / 5.3%, relievers 12.4% / 6.7% (tools lens 11.7 / 10.9 / 11.7%; results lens 11.5 / 10.4 / 12.7%). History,
+  origins 2015→16 … 2024→25 (8): hitters 12.6% / 6.6% (n 1,677), starters 10.3% / 5.4% (n 1,200), relievers 9.5% / 4.5% (n 2,166).
+  Each lens's own gap is far wider than the estimate's: tools −33.1 (hitters), −16.6 (starters), −12.4 (relievers); results −34.9,
+  −33.8, −30.4.
+- **Aging: adopted.** 3,643 hitter and 2,310 pitcher pairs (2005–2025). Hitters −2.2 wOBA points a year at 26 (built-in −3.0),
+  −6.1 at 30 (−6.5), −9.0 at 34 (−9.5); pitchers +0.10 FIP at 28 (+0.12), +0.14 at 34 (+0.12), +0.19 at 35 (+0.20). Backtest on
+  2016–2024 (1,410 and 851 held-out pairs): every scored band unbiased (largest hitters −2.3 points at 34–37, z −0.9; pitchers
+  within |z| 0.7); both beat "no aging". The built-in's own held-out score is flattered (it was fitted on these seasons).
+- **Glove weights: not fitted.** No two seasons in a row with zone rating (only 2026, which is not complete; historical WAR carries
+  no fielding runs). The built-in weights serve, and the page says why.
+- **Effect on the roster review** (`npm run review:calibration-report`): the lens change alone (each lens against its own line)
+  removes 6 of the league's 21 flags (4 moderate, 2 strong; e.g. regulars whose results were ordinary for their position) and moves
+  8 more between kinds of watch; Arizona's one flag is unchanged. Everything else (the measured standards and the aging curve)
+  moves findings only at the margin (1 flag appears at a line that moved by a fraction of a point, 6 watches change) and changes the
+  stated decline in 50 age explanations league-wide (2 on Arizona) by about a point.

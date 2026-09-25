@@ -817,6 +817,10 @@ The typical levels are descriptive and provisional (the median of the production
 the quantiles are policy. After the change a lineup regular is flagged on 13 of 30 clubs, a starter on about 1 in 15, a
 reliever on about 1 in 8, and every flag is one of the league's lowest-twentieth-or-tenth holders of that job.
 
+**Amended 2026-09-24 (owner decision; D-053 cycle 1).** The typical levels and gaps are measured per save at each import and served
+once checked (D-053). Each lens has its own line: a holder's tools, or his results, are weak for the role when they sit in the lowest
+tenth of the league's holders on that lens, measured on its own scale, not against the estimate's typical bat less the estimate's gap.
+
 ## D-041 — Every constant is calibrated, provisional or policy, and the three are never confused
 
 **Status:** Accepted. **Implementation:** Present (`server/calibration.ts`; stamps across `server/`). **Amended by D-053:** a
@@ -1645,8 +1649,10 @@ rates and, from the save's own rating snapshots once enough exist, the developme
 `server/playerValueFitStore.ts` (table `value_production_fits` in `history.db`, both models), `PRODUCTION_POLICY`,
 `RATINGS_POLICY` and the provisional `PRODUCTION_PRIOR` and `RATINGS_PRIOR` in `server/playerValueCalibration.ts`, the
 refit after an import (`api.ts` `refitAfterImport`), `GET /api/player-value/production-fit/:orgId`, and `npm run
-calibrate production` for a developer's forced refit. Amends D-037 and D-041. The calibrated constants of other subsystems are not migrated
-yet (ROADMAP "Later: calibration and longitudinal management").
+calibrate production` for a developer's forced refit. Amends D-037 and D-041. MLB Operations' roster review follows since cycle 1
+(2026-09-24, amendment below): role standards, aging curve and glove weights, on the neutral `saveIdentity.ts`,
+`saveCalibrationStore.ts` and `saveCalibration.ts`. The other subsystems' calibrated constants are not migrated yet (ROADMAP
+"Later: calibration and longitudinal management").
 
 Pennant has to work across very different saves, including fictional leagues whose ecosystems look nothing like
 modern major-league baseball. A number fitted on one save's history and written into the code is that save's
@@ -1802,6 +1808,38 @@ not established. The gate is not loosened."
 - **Method `ratings-3h.3`:** every save refits its ratings model once. On the Arizona import the arrival model is adopted
   through 3 seasons out (the held-out figures are F5's): prospects are projected for the rest of 2026 and 2027 to 2029, and
   2030 to 2032 are not established.
+
+**Amended 2026-09-24 (per-save calibration, cycle 1: MLB Operations' roster review; CALIBRATION.md section 12).**
+
+- **Neutral plumbing.** The save's identity, the league's seasons and the completed-season check moved unchanged (byte-identical)
+  from Player Value to `saveIdentity.ts`; every subsystem other than Player Value keeps its fits in `save_calibration_fits`
+  (`saveCalibrationStore.ts`), keyed by save identity, league, subsystem, component, method and basis, and registers its refits
+  with `saveCalibration.ts`, which runs them after an import in a worker thread and records them only through each component's
+  gate. MLB Operations imports no Player Value file. Player Value's own table is not migrated.
+- **A description of the league now may be measured at each import** (owner decision 2026-09-24). The roster review's role
+  standards describe the league's current holders of each job, and their tools lens exists only now, so they are measured from
+  the current export at each import (keyed by its game date; clubs must have played 15 games first), shrunk toward the built-in
+  values by the holders behind each role, and adopted only if two checks pass: standards measured on half the clubs put about a
+  tenth (a twentieth for the deep line) of the other half's holders under them, and the same method run on the league's own past
+  seasons on the results lens puts about a tenth of the NEXT season's holders under a line set on this one. A league without
+  enough past seasons to check keeps the built-in values and says so.
+- **Each lens has its own line** (owner decision 2026-09-24; amends D-040). "Weak for the role on this lens" is the lowest tenth
+  of the league's holders ON THAT LENS (tools, results), each measured on its own scale and checked by the club split; the
+  built-in lens floor serves until then. On the Arizona import the built-in lens floor had called a holder's results weak 15% to
+  33% of the time, not a tenth.
+- **Relievers are checked against history as one pool** (owner decision 2026-09-24): the export carries no leverage for past
+  seasons, so their usage roles cannot be rebuilt; the record says so.
+- **Aging** is fitted per completed season on the league's own consecutive seasons, monotone (a hitter's change never improves with
+  age, a pitcher's never falls), shrunk toward the built-in curve by the pairs at each age, and adopted only if a rolling-origin
+  backtest finds no age band biased beyond both a tolerance and three standard errors and the curve beats "no aging". `concernAge`
+  stays policy (when a decline is raised); a league whose curve shows no decline at an age says so, never "lost about 0".
+- **Glove weights** are fitted from fielding RESULTS only (the repeatable spread of zone-rating runs against the bat's, on
+  consecutive seasons that carry zone rating) and checked on the next season; without two such seasons and a third to check them
+  the built-in weights serve, with that reason. Whether OOTP keeps a simulated season's zone rating in later exports is not known
+  and is left to the data.
+- **On the Arizona import** the standards and the aging curve pass and would be adopted (the standards equal the built-in values
+  within half a point, being the same snapshot); the glove weights are not fitted; the lens change alone removes 6 of the
+  league's 21 flags (none of Arizona's) and changes 8 more between kinds of watch.
 
 ## D-054 — Charting library
 
