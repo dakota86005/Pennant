@@ -31,7 +31,7 @@ import { decide, describeComparison, DETECTOR_POLICY, ruleText, type DetectorDec
 import { AGING_CURVE, DEFENSE_WEIGHT, expectedAnnualChange, type AgingTable } from './roleReview.js';
 import { DEEP_QUANTILE, FLOOR_QUANTILE, groupOfRole, relieverKey, STARTING_STANDARDS, type ServedLens, type ServedStandards, type StandardGroup } from './roleStandards.js';
 import { roleOf, type BullpenLines, type BullpenUsage } from './bullpenRoles.js';
-import { LONG_LINE_POLICY, type LongLineMeasurement } from './mlbBullpenLines.js';
+import type { BullpenRecord, LongLineMeasurement } from './mlbBullpenLines.js';
 
 export const MLB_CALIBRATION_SUBSYSTEM = 'mlb_operations';
 /**
@@ -167,7 +167,7 @@ export interface StandardsModel {
    * The bullpen lines the reliever standards were measured under, and so served with (`standards-2`). Absent on a `standards-1` row: the
    * starting lines.
    */
-  bullpen?: { lines: BullpenLines; measured: number | null; asServed: number | null; relievers: number; passed: boolean; reason: LongLineMeasurement['reason'] };
+  bullpen?: BullpenRecord;
 }
 
 /** Each reliever's role key re-read under the lines given (his usage is the same; only the lines move his tier). */
@@ -340,7 +340,7 @@ const gateOf = (checks: CalibrationCheck[], extra: string[] = []): CalibrationRe
 export function measureStandards(
   sample: StandardsSample, history: ResultsLensSeason[], basis: FitBasis, prior: ServedStandards = STARTING_STANDARDS,
   policyIn: StandardsPolicy = ROSTER_REVIEW_FIT_POLICY.standards, historySkipped: Array<{ season: number; reason: string }> = [],
-  bullpen: LongLineMeasurement | null = null,
+  bullpen: { record: BullpenRecord; measurement: LongLineMeasurement } | null = null,
 ): CalibrationRun<StandardsModel | null> {
   const clubs = sample.clubs.filter((c) => c.holders.length > 0);
   const known = clubs.map((c) => c.gamesPlayed).filter((g): g is number => g !== null);
@@ -351,9 +351,10 @@ export function measureStandards(
     model,
     record: { leagueId: basis.leagueId, subsystem: MLB_CALIBRATION_SUBSYSTEM, component: 'standards', method: STANDARDS_METHOD, basis: { throughSeason: null, gameDate: basis.gameDate }, window, heldOut, priorWeight, gate, priorSource: PRIOR_SOURCE.standards, notes },
   });
-  const notes = ['Relievers are checked against the league\'s history as one pool: the export carries no leverage for past seasons, so their usage roles cannot be rebuilt.', ...(bullpen?.notes ?? [])];
-  const lineChecks = bullpen?.checks ?? [];
-  const bullpenModel = bullpen ? { lines: bullpen.lines, measured: bullpen.measured, asServed: bullpen.asServed, relievers: bullpen.relievers, passed: bullpen.passed, reason: bullpen.reason } : undefined;
+  const notes = ['Relievers are checked against the league\'s history as one pool: the export carries no leverage for past seasons, so their usage roles cannot be rebuilt.', ...(bullpen?.measurement.notes ?? []),
+    ...(bullpen?.record.basis === 'carried' ? [`This export's long-man line did not hold up (${bullpen.record.attempt.reason === 'relievers' ? 'too few relievers' : 'its checks failed'}): the line in force, measured ${bullpen.record.measuredOn ?? 'earlier'} at ${bullpen.record.lines.long.toFixed(2)}, stays, and the standards are measured under it.`] : [])];
+  const lineChecks = bullpen?.measurement.checks ?? [];
+  const bullpenModel = bullpen?.record;
   const none = (failure: string, reason: string) => record(null, [], { passed: false, reason, failures: [failure] }, { overall: 1, byPart: {} }, notes);
   if (clubs.length < policyIn.minClubs) return none('clubs', `Not measured: ${clubs.length} clubs have a reviewed lineup, fewer than ${policyIn.minClubs}.`);
   if (games === null) return none('games_unknown', "Not measured: the export does not say how many games the clubs have played this season.");
@@ -418,7 +419,7 @@ export function measureStandards(
   if (hist.origins.length) notes.push(`The history check used ${hist.origins.length} season${hist.origins.length === 1 ? '' : 's'} (${hist.origins[0]}–${hist.origins[hist.origins.length - 1]}), each scored on the next. It ranks past holders within their own season, so it mostly asks that the league has enough steady past seasons.`);
   if (historySkipped.length) notes.push(`Past seasons left out of the history check: ${historySkipped.map((s) => `${s.season} (${s.reason})`).join('; ')}.`);
   // The long line's own checks decide which line the standards were measured under, never whether the standards are adopted
-  return record({ served, roles, ...(bullpenModel ? { bullpen: bullpenModel } : {}) }, [...heldOut, ...lineChecks], gateOf(heldOut, extra), { overall, byPart: { ...byPart, ...(bullpen ? { long_line: bullpen.passed ? 1 - bullpen.relievers / (bullpen.relievers + LONG_LINE_POLICY.shrinkRelievers) : 1 } : {}) } }, notes);
+  return record({ served, roles, ...(bullpenModel ? { bullpen: bullpenModel } : {}) }, [...heldOut, ...lineChecks], gateOf(heldOut, extra), { overall, byPart: { ...byPart, ...(bullpen ? { long_line: bullpen.record.lines.source === 'save' ? 0 : 1 } : {}) } }, notes);
 }
 
 // ── aging ────────────────────────────────────────────────────────────────────

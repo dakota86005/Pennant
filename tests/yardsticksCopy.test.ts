@@ -52,7 +52,11 @@ const keptPlatoon = () => recordCalibration({ model: platoonModel('starting', 'k
 const noSplits = () => recordCalibration({ model: null, record: rec('platoon', PLATOON_METHOD, false, { throughSeason: 1991 }, ['no_splits: The export carries no batting lines against left- and right-handed pitching.']) }, { fitMs: 1 });
 const linesModel = (source: 'save' | 'starting', reason: 'relievers' | 'check_failed' | null) => ({
   served: { ...STARTING_STANDARDS, source: 'save' }, roles: {},
-  bullpen: { lines: { ...BULLPEN_PRIOR, long: source === 'save' ? 1.705 : 1.6, source, leagueLeverage: 1.02 }, measured: 1.73, asServed: 1.705, relievers: 219, passed: source === 'save', reason },
+  bullpen: {
+    lines: { ...BULLPEN_PRIOR, long: source === 'save' ? 1.733 : 1.6, source, leagueLeverage: 1.02 }, basis: source === 'save' ? 'measured' : 'starting',
+    measuredOn: '2026-5-16', measured: 1.733, relievers: 219, seasonSplit: 'passed', seasonSplitWhy: null,
+    attempt: { gameDate: '2026-5-16', measured: 1.733, relievers: 219, reason: reason ?? 'measured' },
+  },
 });
 const ownStandardsWithLine = () => recordCalibration({ model: linesModel('save', null), record: rec('standards', 'standards-2', true, { gameDate: '2000-01-02' }) }, { fitMs: 1 });
 const standardsTooFewRelievers = () => recordCalibration({ model: linesModel('starting', 'relievers'), record: rec('standards', 'standards-2', true, { gameDate: '2000-01-02' }) }, { fitMs: 1 });
@@ -133,10 +137,10 @@ describe('the yardsticks line gives the true reason, plainly', () => {
     const own = state([ownStandardsWithLine, ownPlatoon]);
     expect(own.tip).toMatch(/How much a hitter's own split counts: From 700 hitter-seasons in this league/);
     expect(own.tip).toMatch(/It applies where his platoon ratings are not visible\./);
-    expect(own.tip).toMatch(/Who counts as a long man: A reliever who averages 1\.7 or more innings an appearance, about the longest-working 15 in 100 of this league's relievers this season \(219 relievers/);
-    expect(own.tip).toMatch(/half the clubs, and from the first half of the season/);
+    expect(own.tip).toMatch(/Who counts as a long man: A reliever who averages 1\.7 or more innings an appearance, about the longest-working 15 in 100 of this league's relievers \(219 relievers, as of May 16, 2026\)/);
+    expect(own.tip).toMatch(/half the clubs picked out about the same share of the rest, and so did a line drawn from the first half of the season/);
     expect(own.platoon).toMatchObject({ shrinkAroundLeague: 2500, source: 'save' });
-    expect(own.bullpen.long).toBe(1.705);
+    expect(own.bullpen.long).toBe(1.733);
     const kept = state([keptPlatoon, standardsTooFewRelievers]);
     expect(kept.tip).toMatch(/How much a hitter's own split counts: the starting values, because they were checked on this league's seasons and held up\./);
     expect(kept.tip).toMatch(/Who counts as a long man: the starting value \(a reliever who averages 1\.6 or more innings an appearance\), because too few relievers have pitched enough to measure\./);
@@ -145,7 +149,7 @@ describe('the yardsticks line gives the true reason, plainly', () => {
     const missing = state([noSplits]);
     expect(missing.tip).toMatch(/How much a hitter's own split counts: the starting values, because this league's export has no batting records against left- and right-handed pitchers\./);
     // the Pitching Staff page's hover on how long a reliever throws says what a long man is here, and whose line it is
-    expect(own.longMan).toMatch(/averages 1\.7 or more innings an appearance: about the longest-working 15 in 100 of this league's relievers this season/);
+    expect(own.longMan).toMatch(/averages 1\.7 or more innings an appearance: about the longest-working 15 in 100 of this league's relievers\./);
     expect(kept.longMan).toMatch(/1\.6 or more innings an appearance: Pennant's starting line, because too few relievers have pitched enough to measure/);
     expect(state([]).longMan).toMatch(/because this league has not been measured yet/);
     for (const y of [own, kept, missing]) {

@@ -18,7 +18,7 @@ import { battingHistory, currentSeason, fieldingResultLines, pitchingHistory, se
 import { baserunningRuns, PARK_WOBA_SHARE, percentileAmong, POPULATION_MINIMUM, weightedBatting, weightedPitching, wobaOf, type BattingLine, type PitchingLine, type ResultsParams } from './resultsMetrics.js';
 import { fitResults, paramsOf, RESULTS_FIT_POLICY, RESULTS_METHOD, type ResultsCase, type ResultsInput, type ResultsModel } from './mlbResultsFit.js';
 import { BULLPEN_PRIOR, type BullpenLines, type BullpenUsage } from './bullpenRoles.js';
-import { measureLongLine, type LongLineMeasurement, type RelieverUsage } from './mlbBullpenLines.js';
+import { lineInForce, measureLongLine, type LongLineMeasurement, type RelieverUsage } from './mlbBullpenLines.js';
 import { parseGameDate } from './dataFreshness.js';
 import { consecutivePlatoon, fitPlatoon, PLATOON_FIT_POLICY, PLATOON_METHOD, type PlatoonCase, type PlatoonInputCases, type PlatoonModel } from './mlbPlatoonFit.js';
 import { adoptedCalibration } from './saveCalibrationStore.js';
@@ -423,7 +423,11 @@ export function resultsInput(leagueId: number, through: number): ResultsInput {
 
 // ── the bullpen's lines (cycle 3) ────────────────────────────────────────────
 
-/** The league's mean leverage per batter faced this season, over every pitcher the export gives leverage for; null when it gives none. */
+/**
+ * The league's mean leverage per batter faced this season, over every pitcher the export gives leverage for; null when it gives none.
+ * It has no sample minimum of its own: the lines it rescales are served only through adopted standards, which need a median of 15
+ * games per club (well over 15,000 batters faced, a standard error of about 0.01 against a 5% tolerance).
+ */
 export function leagueLeverage(leagueId: number): number | null {
   if (!has('players_career_pitching_stats', ['league_id', 'level_id', 'split_id', 'year', 'li', 'bf'])) return null;
   const year = currentSeason(leagueId);
@@ -434,21 +438,33 @@ export function leagueLeverage(leagueId: number): number | null {
   return row && row.li && row.bf ? row.li / row.bf : null;
 }
 
+/** The share of a season's appearances the game logs must hold before they can split it in halves (policy). */
+const MIN_LOG_COVERAGE = 0.9;
+
 /**
- * Each reliever's relief appearances and innings in the first and second half of the season's game dates, from the game logs; null
- * when the export has none for the season (the season split is then not measured). Dates are compared only through `parseGameDate`.
+ * Each reliever's appearances and innings (all of them, starts included, as his tier counts them) in the first and second half of the
+ * season's game dates, from the game logs; null, with why in plain words, when the export cannot split the season: the logs or a column
+ * are missing, or they hold too little of the season's appearances. Dates are compared only through `parseGameDate`.
  */
-export function relieverHalves(leagueId: number, playerIds: number[]): Map<number, NonNullable<RelieverUsage['halves']>> | null {
-  if (playerIds.length === 0) return null;
-  if (!has('players_game_pitching_stats', ['player_id', 'game_id', 'league_id', 'level_id', 'split_id', 'year', 'gs', 'outs']) || !has('games', ['game_id', 'date'])) return null;
+export function relieverHalves(leagueId: number, usage: Array<{ playerId: number; g: number }>): { halves: Map<number, NonNullable<RelieverUsage['halves']>> | null; why: string | null } {
+  if (usage.length === 0) return { halves: null, why: 'there are no relievers to split' };
+  if (!tableExists('players_game_pitching_stats') || !tableExists('games')) return { halves: null, why: 'the export has no game logs' };
+  if (!has('players_game_pitching_stats', ['player_id', 'game_id', 'league_id', 'level_id', 'split_id', 'year', 'outs']) || !has('games', ['game_id', 'date'])) {
+    return { halves: null, why: "the export's game logs lack the dates or innings needed" };
+  }
   const year = currentSeason(leagueId);
-  if (year === null) return null;
+  if (year === null) return { halves: null, why: 'the season is not established' };
+  const ids = usage.map((u) => u.playerId);
   const rows = db.prepare(
-    `SELECT p.player_id AS id, g.date AS date, p.gs AS gs, p.outs AS outs FROM players_game_pitching_stats p JOIN games g ON g.game_id = p.game_id
-     WHERE p.league_id = ? AND p.level_id = ? AND p.split_id = 1 AND p.year = ? AND p.player_id IN (${playerIds.map(() => '?').join(',')})`
-  ).all(leagueId, levelOf(leagueId), year, ...playerIds) as Array<{ id: number; date: unknown; gs: number; outs: number }>;
-  const dated = rows.map((r) => ({ ...r, day: parseGameDate(r.date) })).filter((r): r is typeof r & { day: string } => r.day !== null && !(r.gs > 0));
-  if (dated.length === 0) return null;
+    `SELECT p.player_id AS id, g.date AS date, p.outs AS outs FROM players_game_pitching_stats p JOIN games g ON g.game_id = p.game_id
+     WHERE p.league_id = ? AND p.level_id = ? AND p.split_id = 1 AND p.year = ? AND p.player_id IN (${ids.map(() => '?').join(',')})`
+  ).all(leagueId, levelOf(leagueId), year, ...ids) as Array<{ id: number; date: unknown; outs: number }>;
+  const dated = rows.map((r) => ({ ...r, day: parseGameDate(r.date) })).filter((r): r is typeof r & { day: string } => r.day !== null);
+  const seasonApps = usage.reduce((n, u) => n + u.g, 0);
+  if (dated.length === 0) return { halves: null, why: 'the export has no game logs for this season' };
+  if (seasonApps > 0 && dated.length / seasonApps < MIN_LOG_COVERAGE) {
+    return { halves: null, why: `the export's game logs hold only ${Math.round((dated.length / seasonApps) * 100)}% of this season's appearances` };
+  }
   const days = [...new Set(dated.map((r) => r.day))].sort();
   const mid = days[Math.floor(days.length / 2)];
   const out = new Map<number, NonNullable<RelieverUsage['halves']>>();
@@ -459,15 +475,18 @@ export function relieverHalves(leagueId: number, playerIds: number[]): Map<numbe
     half.ip += (Number(r.outs) || 0) / 3;
     out.set(r.id, h);
   }
-  return out;
+  return { halves: out, why: null };
 }
 
-/** The long-man line and the leverage lines measured on the league's active pens (the sample's relievers with their usage). */
+/**
+ * The long-man line and the leverage lines measured on the league's active pens: the sample's relievers with their usage (those the
+ * standards sample reviews: a club with fewer than 5 lineup regulars reviewed, or a reliever with no working estimate, is not in it).
+ */
 export function bullpenMeasurement(leagueId: number, sample: StandardsSample): LongLineMeasurement {
   const relievers = sample.clubs.flatMap((c) => c.holders.filter((h) => h.usage).map((h) => ({ clubId: c.clubId, usage: h.usage as BullpenUsage })));
-  const halves = relieverHalves(leagueId, relievers.map((r) => r.usage.playerId));
-  const usage: RelieverUsage[] = relievers.map((r) => ({ playerId: r.usage.playerId, clubId: r.clubId, g: r.usage.g, ip: r.usage.ip, halves: halves ? halves.get(r.usage.playerId) ?? { first: { g: 0, ip: 0 }, second: { g: 0, ip: 0 } } : null }));
-  return measureLongLine(usage, leagueLeverage(leagueId));
+  const split = relieverHalves(leagueId, relievers.map((r) => ({ playerId: r.usage.playerId, g: r.usage.g })));
+  const usage: RelieverUsage[] = relievers.map((r) => ({ playerId: r.usage.playerId, clubId: r.clubId, g: r.usage.g, ip: r.usage.ip, halves: split.halves ? split.halves.get(r.usage.playerId) ?? { first: { g: 0, ip: 0 }, second: { g: 0, ip: 0 } } : null }));
+  return measureLongLine(usage, leagueLeverage(leagueId), undefined, split.why);
 }
 
 // ── platoon: how much a hitter's own split counts (cycle 3) ─────────────────
@@ -491,10 +510,12 @@ export function platoonInput(leagueId: number, through: number): PlatoonInputCas
   const pol = PLATOON_FIT_POLICY;
   const { seasons, skipped } = fullSeasons(leagueId, through, pol.minShare);
   const out: PlatoonInputCases = { cases: [], seasons, skipped, missing: null };
-  if (!has('players_career_batting_stats', ['player_id', 'year', 'league_id', 'level_id', 'split_id', ...SPLIT_COLS])) {
+  // As production's league split reads them: the core columns are required, a missing optional one (doubles, walks, ...) counts as none
+  if (!has('players_career_batting_stats', ['player_id', 'year', 'league_id', 'level_id', 'split_id', 'ab', 'h', 'pa'])) {
     out.missing = 'The export carries no batting lines against left- and right-handed pitching.';
     return out;
   }
+  const present = new Set(tableColumns('players_career_batting_stats'));
   if (!has('players', ['player_id', 'bats'])) {
     out.missing = "The export does not say which side the league's hitters bat from.";
     return out;
@@ -503,7 +524,7 @@ export function platoonInput(leagueId: number, through: number): PlatoonInputCas
   if (targets.length === 0) return out;
   const first = targets[0] - pol.inputSeasons;
   const rows = db.prepare(
-    `SELECT s.player_id AS id, s.year AS year, s.split_id AS split, p.bats AS bats, ${SPLIT_COLS.map((c) => `SUM(s."${c}") AS ${c}`).join(', ')}
+    `SELECT s.player_id AS id, s.year AS year, s.split_id AS split, p.bats AS bats, ${SPLIT_COLS.map((c) => (present.has(c) ? `SUM(s."${c}") AS ${c}` : `0 AS ${c}`)).join(', ')}
      FROM players_career_batting_stats s JOIN players p ON p.player_id = s.player_id
      WHERE s.league_id = ? AND s.level_id = ? AND s.split_id IN (2, 3) AND s.year BETWEEN ? AND ?
      GROUP BY s.player_id, s.year, s.split_id`
@@ -634,8 +655,11 @@ registerCalibration({
     // The bullpen lines are measured on the same review of every club, and the reliever standards on the tiers they give: the two are
     // recorded (and so served) together (standards-2). The review runs once, under the starting lines; only the tiers are re-read.
     const sample = standardsSample(b.leagueId, results, BULLPEN_PRIOR);
-    const bullpen = bullpenMeasurement(b.leagueId, sample);
-    return measureStandards(rekeyRelievers(sample, bullpen.lines), history.seasons, b, undefined, undefined, history.skipped, bullpen);
+    const measurement = bullpenMeasurement(b.leagueId, sample);
+    // A measurement that does not hold up keeps the league's own line in force (and the standards are measured under it), never a flip
+    // back to the starting line on one failed import (supervisor's call)
+    const record = lineInForce(measurement, rosterReviewCalibration(b.leagueId).bullpenRecord, b.gameDate);
+    return measureStandards(rekeyRelievers(sample, record.lines), history.seasons, b, undefined, undefined, history.skipped, { record, measurement });
   },
 });
 

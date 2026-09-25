@@ -120,7 +120,10 @@ describe('no reader holds a default (static)', () => {
       if (!bullpenAllowed.has(f)) expect(code(f), f).not.toMatch(/\b(BULLPEN_PRIOR|LONG_LINE_PRIOR)\b/);
     }
     // the refit names the starting lines only to run the one review whose tiers it then re-reads under the measured lines
-    expect(code('mlbCalibrationRefit.ts')).toMatch(/standardsSample\(b\.leagueId, results, BULLPEN_PRIOR\);\n[^\n]*\n\s*return measureStandards\(rekeyRelievers\(sample, bullpen\.lines\)/);
+    const refit = code('mlbCalibrationRefit.ts');
+    expect(refit).toMatch(/standardsSample\(b\.leagueId, results, BULLPEN_PRIOR\);/);
+    expect(refit).toMatch(/return measureStandards\(rekeyRelievers\(sample, record\.lines\)/);
+    expect(refit.match(/\bBULLPEN_PRIOR\b/g)).toHaveLength(2); // the import and that one review
   });
 
   it('the old constants are gone', () => {

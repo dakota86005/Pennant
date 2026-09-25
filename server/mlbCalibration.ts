@@ -17,7 +17,8 @@ import { RESULTS_PRIOR, type ResultsParams } from './resultsMetrics.js';
 import { PLATOON_PRIOR, type PlatoonParams } from './platoon.js';
 import { BULLPEN_PRIOR, LONG_LINE_PRIOR, type BullpenLines } from './bullpenRoles.js';
 import { PLATOON_METHOD, type PlatoonModel } from './mlbPlatoonFit.js';
-import { LONG_LINE_POLICY } from './mlbBullpenLines.js';
+import { LONG_LINE_POLICY, type BullpenRecord } from './mlbBullpenLines.js';
+import { parseGameDate } from './dataFreshness.js';
 import { paramsOf, REQUIRED_PARTS, RESULTS_METHOD, RESULTS_PARTS, servesSaveOwn, type ResultsModel } from './mlbResultsFit.js';
 import {
   AGING_METHOD, DEFENSE_METHOD, MLB_CALIBRATION_SUBSYSTEM, STANDARDS_METHOD, STANDARDS_METHOD_BEFORE_LINES,
@@ -58,6 +59,8 @@ export interface RosterReviewCalibration {
   platoon: PlatoonParams;
   /** The bullpen's lines: the leverage cut-offs on the league's own scale and the long-man line the reliever standards in force were measured under. */
   bullpen: BullpenLines;
+  /** How the long-man line in force came about (the standards in force's record), for the refit that decides the next one. */
+  bullpenRecord: BullpenRecord | null;
   groups: YardstickGroup[];
   /** The one visible line. */
   line: string;
@@ -81,7 +84,7 @@ const pct = (x: number | null | undefined) => (x === null || x === undefined ? '
 /** Why a group serves the starting values: each reason is one the line may give, and only when it is the true one. */
 export type StartingReason =
   | 'not_measured' | 'no_league' | 'games' | 'games_unknown' | 'clubs' | 'seasons' | 'no_zone_rating' | 'no_later_season' | 'check_failed'
-  | 'kept' | 'confirming' | 'returned' | 'no_splits' | 'relievers';
+  | 'kept' | 'confirming' | 'returned' | 'no_splits' | 'relievers' | 'rarely_long' | 'next_import';
 
 /** Each reason in a GM's words (the record's reasons are for the API). */
 export const REASON_TEXT: Record<StartingReason, string> = {
@@ -99,6 +102,8 @@ export const REASON_TEXT: Record<StartingReason, string> = {
   returned: "they did better than this league's own when checked again",
   no_splits: "this league's export has no batting records against left- and right-handed pitchers",
   relievers: 'too few relievers have pitched enough to measure',
+  rarely_long: `this league's relievers rarely work multiple innings, so the line stays at ${LONG_LINE_PRIOR} innings`,
+  next_import: 'the long-man line is first measured at the next import',
 };
 
 /**
@@ -137,7 +142,9 @@ function keptReason(key: YardstickKey, stored: StoredCalibration): StartingReaso
   if (key === 'bullpen') {
     // The standards in force were measured under the starting line: because the line did not hold up, or too few relievers to measure it
     const b = (stored.model as StandardsModel | null)?.bullpen;
-    return !b ? 'not_measured' : b.reason === 'relievers' ? 'relievers' : 'check_failed';
+    if (!b) return 'next_import'; // a standards-1 row, measured before the line was
+    if (b.basis === 'rarely_long') return 'rarely_long';
+    return b.attempt.reason === 'relievers' ? 'relievers' : 'check_failed';
   }
   return 'kept';
 }
@@ -200,11 +207,24 @@ function describePlatoon(s: StoredCalibration<PlatoonModel>): string {
     + 'It applies where his platoon ratings are not visible.';
 }
 
-function describeBullpen(s: StoredCalibration<StandardsModel>): string {
-  const b = s.model.bullpen as NonNullable<StandardsModel['bullpen']>;
+/** An export's game date in plain words ("May 16, 2026"); the raw date where it cannot be read. */
+function plainDate(raw: string | null): string {
+  const d = raw === null ? null : parseGameDate(raw);
+  if (!d || raw === null) return raw ?? 'this export';
+  const [y, m, day] = d.split('-').map(Number);
+  return `${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][m - 1]} ${day}, ${y}`;
+}
+
+function describeBullpen(b: BullpenRecord): string {
   const share = Math.round((1 - LONG_LINE_POLICY.quantile) * 100);
-  return `A reliever who averages ${b.lines.long.toFixed(1)} or more innings an appearance, about the longest-working ${share} in 100 of this league's relievers this season (${b.relievers} relievers, as of ${s.gameDate ?? 'this export'}). `
-    + 'Lines drawn from half the clubs, and from the first half of the season, picked out about the same share of the rest. '
+  const season = b.seasonSplit === 'passed'
+    ? ', and so did a line drawn from the first half of the season'
+    : `; the season could not be split in halves to check it (${b.seasonSplitWhy ?? 'not measured'})`;
+  const carried = b.basis === 'carried'
+    ? ` The latest measurement (${plainDate(b.attempt.gameDate)}) ${b.attempt.reason === 'relievers' ? 'had too few relievers to measure' : 'did not hold up'}, so this line stays.`
+    : '';
+  return `A reliever who averages ${(b.lines.long).toFixed(1)} or more innings an appearance, about the longest-working ${share} in 100 of this league's relievers (${b.relievers} relievers, as of ${plainDate(b.measuredOn)}). `
+    + `Lines drawn from half the clubs picked out about the same share of the rest${season}.${carried} `
     + leverageSentence(b.lines);
 }
 
@@ -298,26 +318,30 @@ function group(key: YardstickKey, adopted: StoredCalibration | null, latest: Sto
  * force; its reason is the line's own (too few relievers, did not hold up) or, before any standards-2 row, the standards' latest attempt.
  */
 function bullpenGroup(standards: StoredCalibration<StandardsModel> | null, latest: StoredCalibration | null, noLeague: boolean): YardstickGroup {
-  const lines = standards?.model?.bullpen?.lines ?? null;
+  const record = standards?.model?.bullpen ?? null;
   const own = servesOwn('bullpen', standards);
   const reason: StartingReason | null = own ? null : noLeague ? 'no_league'
     : standards?.model?.bullpen ? keptReason('bullpen', standards)
-      : latest && !latest.adopted ? reasonOf(latest) : 'not_measured';
+      // no line measured yet: the latest attempt's reason where it failed, else it comes with the next import (or nothing is measured)
+      : latest && !latest.adopted ? reasonOf(latest) : standards ? 'next_import' : 'not_measured';
   const lineChecks = (standards ?? latest)?.record.heldOut.filter((c) => c.part === 'long_line') ?? [];
+  const failedLater = latest && !latest.adopted && (!standards || latest.basis !== standards.basis) ? { basis: latest.basis, reason: latest.reason } : null;
   return {
     key: 'bullpen', what: WHAT.bullpen, source: own ? 'save' : 'starting',
     text: own
-      ? `${WHAT.bullpen}: ${describeBullpen(standards as StoredCalibration<StandardsModel>)}`
-      : `${WHAT.bullpen}: the starting value (a reliever who averages ${LONG_LINE_PRIOR} or more innings an appearance), because ${REASON_TEXT[reason as StartingReason]}. ${leverageSentence(lines ?? BULLPEN_PRIOR)}`,
+      ? `${WHAT.bullpen}: ${describeBullpen(record as BullpenRecord)}`
+      : reason === 'rarely_long'
+        ? `${WHAT.bullpen}: a reliever who averages ${LONG_LINE_PRIOR} or more innings an appearance, because ${REASON_TEXT.rarely_long}. ${leverageSentence(record?.lines ?? BULLPEN_PRIOR)}`
+        : `${WHAT.bullpen}: the starting value (a reliever who averages ${LONG_LINE_PRIOR} or more innings an appearance), because ${REASON_TEXT[reason as StartingReason]}. ${leverageSentence(record?.lines ?? BULLPEN_PRIOR)}`,
     reason,
     method: standards?.method ?? latest?.method ?? '',
     basis: standards ? standards.record.basis : null,
-    window: own && standards?.model?.bullpen ? { seasons: [], sample: standards.model.bullpen.relievers, unit: 'relievers' } : null,
+    window: own && record ? { seasons: [], sample: record.relievers, unit: 'relievers' } : null,
     heldOut: lineChecks,
-    priorWeight: own ? standards?.record.priorWeight.byPart.long_line ?? null : null,
-    gate: standards ? { passed: own, reason: own ? 'Every check passed.' : `The starting line serves: ${REASON_TEXT[reason as StartingReason]}.` } : null,
-    refittedOn: own ? standards?.gameDate ?? null : null,
-    lastAttempt: null,
+    priorWeight: standards ? standards.record.priorWeight.byPart.long_line ?? null : null,
+    gate: standards ? { passed: own, reason: own ? 'The long-man line in force held up when checked.' : `The long-man line is not the league's own: ${REASON_TEXT[reason as StartingReason]}.` } : null,
+    refittedOn: own ? record?.measuredOn ?? null : null,
+    lastAttempt: failedLater,
   };
 }
 
@@ -361,6 +385,7 @@ function assemble(
       : PLATOON_PRIOR,
     // The bullpen lines are the ones the standards in force were measured under (a standards-1 row, or none: the starting lines)
     bullpen: standards?.model?.bullpen?.lines ?? BULLPEN_PRIOR,
+    bullpenRecord: standards?.model?.bullpen ?? null,
     groups, line, tip, longMan: longManTip(groups.find((g) => g.key === 'bullpen') as YardstickGroup, standards?.model?.bullpen?.lines ?? BULLPEN_PRIOR),
   };
 }
@@ -368,7 +393,8 @@ function assemble(
 /** What a long man is in this league, for the hover where the page names how long a reliever throws. */
 function longManTip(group: YardstickGroup, lines: BullpenLines): string {
   const share = Math.round((1 - LONG_LINE_POLICY.quantile) * 100);
+  if (group.reason === 'rarely_long') return `A long man is a reliever outside the high-leverage spots who averages ${LONG_LINE_PRIOR} or more innings an appearance: ${REASON_TEXT.rarely_long}.`;
   return group.source === 'save'
-    ? `A long man is a reliever outside the high-leverage spots who averages ${lines.long.toFixed(1)} or more innings an appearance: about the longest-working ${share} in 100 of this league's relievers this season. Leagues differ in how long their relievers work, so the line is this league's own.`
+    ? `A long man is a reliever outside the high-leverage spots who averages ${lines.long.toFixed(1)} or more innings an appearance: about the longest-working ${share} in 100 of this league's relievers. Leagues differ in how long their relievers work, so the line is this league's own.`
     : `A long man is a reliever outside the high-leverage spots who averages ${LONG_LINE_PRIOR} or more innings an appearance: Pennant's starting line, because ${REASON_TEXT[group.reason as StartingReason]}. It is replaced by this league's own once its relievers can be measured.`;
 }
