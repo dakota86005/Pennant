@@ -22,6 +22,9 @@ import type { MlbNeed } from './mlbNeeds.js';
 import type { LensEvidence } from './roleReview.js';
 import type { Plan } from './mlbPlans.js';
 import { estimateOf as workingEstimate, type ReplacementComparison } from './roleReview.js';
+
+/** The glove weights in force for the save (D-053): the fitted ones once adopted; undefined leaves the review's built-in starting values. */
+const gloveWeights = (ports: Pick<ResponsePorts, 'reviewCalibration'>): Record<number, number> | undefined => ports.reviewCalibration?.defenseWeights ?? undefined;
 import type { PerformanceLine } from './mlbEvidence.js';
 import { activeMembers, sameRole, type ClubView, type RoleRef, type RosterMember } from './mlbRoster.js';
 import { lineupPictureFor } from './mlbReview.js';
@@ -149,7 +152,7 @@ function rowFor(
 ): RoleRow {
   const fit = ports.roleFit(m.playerId);
   const e = evidence?.get(m.playerId) ?? (m.role ? ports.holderEvidence([m.playerId], m.role).get(m.playerId) : undefined);
-  const est = e ? workingEstimate(e, isPitcher(m.role)) : null;
+  const est = e ? workingEstimate(e, isPitcher(m.role), gloveWeights(ports)) : null;
   return {
     playerId: m.playerId, name: m.name, age: m.age, relation,
     status: relation === 'incumbent' ? (m.availability.label ?? 'Active') : (m.availability.label ?? 'Injured list'),
@@ -373,7 +376,7 @@ function fillReport(need: MlbNeed, view: ClubView, ports: ResponsePorts, candida
   const rows: RoleRow[] = viable.map((c) => {
     const fit = c.roleFit?.evidence;
     const e = evidence.get(c.playerId);
-    const est = e ? workingEstimate(e, isPitcher(role)) : null;
+    const est = e ? workingEstimate(e, isPitcher(role), gloveWeights(ports)) : null;
     const row: RoleRow = {
       playerId: c.playerId, name: c.name, age: c.age, relation: 'subject',
       status: `${c.pathKind === 'recall' ? 'Recall' : 'Add to 40-man'}, level ${c.level ?? '?'}`,
@@ -620,7 +623,7 @@ function replaceReport(
   const incumbentRows = incumbents.map((m) => ({ ...rowFor(m, 'incumbent', ports, null, null, evidence), underReview: m.playerId === subject.playerId }));
   const candidateRows: RoleRow[] = compared.map((c) => {
     const e = evidence.get(c.playerId);
-    const est = e ? workingEstimate(e, isPitcher(role)) : null;
+    const est = e ? workingEstimate(e, isPitcher(role), gloveWeights(ports)) : null;
     return {
       playerId: c.playerId, name: c.name, age: c.age, relation: 'subject' as const,
       status: c.pathKind === 'role_change' ? 'On the bench' : `${c.pathKind === 'recall' ? 'Recall' : 'Add to 40-man'}, level ${c.level ?? '?'}`,
@@ -727,7 +730,7 @@ function complementReport(
       complement: { weakSide: regular.weakSide, expected: regular.weakSide === 'L' ? regular.vsLeft.expected : regular.vsRight.expected, advantage: null, fits: false } },
     ...compared.map((c): RoleRow => {
       const e = evidence.get(c.playerId);
-      const est = e ? workingEstimate(e, false) : null;
+      const est = e ? workingEstimate(e, false, gloveWeights(ports)) : null;
       const cr = c.complement!;
       return {
         playerId: c.playerId, name: c.name, age: c.age, relation: 'subject',

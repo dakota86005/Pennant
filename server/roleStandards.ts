@@ -15,10 +15,14 @@
  *
  * Three kinds of number live here and the stamps say which:
  *
- *   the typical levels   DESCRIPTIVE and PROVISIONAL. The median estimate of each role across the 30 clubs' production review
- *                        (`scripts/calibrate.ts standards`), one snapshot (43 games) of one league. They will move with the
- *                        season and the roster pool, so re-run the harness and edit them here.
- *   the spread           the pooled 10th-percentile deviation from each role's median. Stable, because it is pooled.
+ *   the typical levels   DESCRIPTIVE. Since per-save calibration (D-053, cycle 1; owner decision 2026-09-24) each save MEASURES them
+ *                        from its own export at each import (`mlbCalibrationFit.ts measureStandards`): the median estimate of each
+ *                        role across every club's review, shrunk toward the values below by the holders behind it, served only once
+ *                        they pass their checks (a club split, and the league's own past seasons on the results lens). The values
+ *                        below are the FALLBACK PRIOR, stamped provisional: one snapshot (43 games) of the Arizona import.
+ *   the spread           the pooled 10th- and 5th-percentile deviation from each role's median, measured the same way.
+ *   each lens's line     since the same decision, a tools lens and a results lens each have their own typical level and gap on their
+ *                        own scale where the save has measured them; until then both read against the built-in `lensFloor`.
  *   the quantile         POLICY. That "unusually weak" means the lowest tenth is a decision, not a fact about baseball.
  *
  * Pure data and lookups: no table, no rating.
@@ -28,7 +32,7 @@ import type { BullpenTier } from './bullpenRoles.js';
 import { policy, provisional, type CalibrationStamp } from './calibration.js';
 
 export const ROLE_STANDARDS_CALIBRATION: CalibrationStamp = provisional(
-  'The typical estimate of each role is the median of the production review across the 30 clubs (2026-05-16, about 43 games; scripts/calibrate.ts standards): descriptive, one snapshot of one league, expected to move as the season and the rosters do. The pooled spread is stable.'
+  'The fallback prior (D-053): the typical estimate of each role is the median of the production review across the 30 clubs of the Arizona import (2026-05-16, about 43 games; scripts/calibrate.ts standards), descriptive, one snapshot of one league. A save serves its own measurement once it has passed its checks (mlbCalibrationFit.ts); these values serve until then and are never presented as the save\'s own.'
 );
 
 export const ROLE_FLOOR_POLICY: CalibrationStamp = policy(
@@ -60,17 +64,48 @@ export interface RoleStandard {
   /**
    * The level under which ONE lens (his tools, or his results) is itself unusually weak for the role: the role's typical lens level
    * less the same gap. For a hitter the lens is his bat's percentile, so a first baseman's tools read as weak below 66 and a
-   * shortstop's below 35; for a pitcher it is the estimate's own scale. A finding needs the two lenses to agree.
+   * shortstop's below 35; for a pitcher it is the estimate's own scale. A finding needs the two lenses to agree. The built-in
+   * starting value, and the line for any lens the save has not measured.
    */
   lensFloor: number;
+  /**
+   * Each lens's own line (owner decision 2026-09-24): where the save has measured a lens on its own scale, "weak for the role on this
+   * lens" is the lowest tenth of the league's holders ON THAT LENS. Absent a measurement, both are `lensFloor`.
+   */
+  lensFloors: { tools: number; results: number };
+  /** Where the numbers come from: the save's own measurement or the built-in starting values. */
+  source: 'save' | 'starting';
 }
 
-const standard = (label: string, typical: number, group: keyof typeof FLOOR_GAP, lensTypical = typical): RoleStandard => ({
-  label, typical, floor: typical + FLOOR_GAP[group], deepFloor: typical + DEEP_GAP[group], lensFloor: lensTypical + FLOOR_GAP[group],
-});
+/** A group whose roles share one pooled gap. */
+export type StandardGroup = keyof typeof FLOOR_GAP;
 
-/** DESCRIPTIVE, PROVISIONAL. Median estimate and median bat of the league's regulars at each position (2 catcher ... 9 right field, 10 DH). */
-const HITTER: Record<number, { label: string; typical: number; bat: number }> = {
+/** The role keys a standard is measured and served under: `pos2` ... `pos10`, `starter`, `rel:<tier>`. */
+export const hitterKey = (position: number): string => `pos${position}`;
+export const relieverKey = (tier: BullpenTier): string => `rel:${tier}`;
+export const STARTER_KEY = 'starter';
+export const groupOfRole = (key: string): StandardGroup => (key.startsWith('pos') ? 'hitter' : key === STARTER_KEY ? 'starter' : 'reliever');
+
+/**
+ * The standards as served: each role's typical level (and a hitter's typical bat), each group's pooled gaps, and, where measured, each
+ * lens's own typical level and gap. The built-in values below are one such set (the fallback prior); a save's measurement is another
+ * (`mlbCalibrationFit.ts`), used only once it has passed its checks.
+ */
+export interface ServedStandards {
+  source: 'save' | 'starting';
+  roles: Record<string, { typical: number; bat?: number }>;
+  gaps: Record<StandardGroup, { floor: number; deep: number }>;
+  /** Each lens's own typical per role and floor gap per group; null for a lens not measured. */
+  lenses: { tools: ServedLens | null; results: ServedLens | null };
+}
+
+export interface ServedLens {
+  typical: Record<string, number>;
+  gap: Partial<Record<StandardGroup, number>>;
+}
+
+/** DESCRIPTIVE, PROVISIONAL (the fallback prior). Median estimate and median bat of the league's regulars at each position (2 catcher ... 9 right field, 10 DH). */
+export const HITTER_STANDARD_PRIOR: Record<number, { label: string; typical: number; bat: number }> = {
   2: { label: 'regular catchers', typical: 57, bat: 65 },
   3: { label: 'regular first basemen', typical: 77, bat: 86 },
   4: { label: 'regular second basemen', typical: 51, bat: 55 },
@@ -82,21 +117,11 @@ const HITTER: Record<number, { label: string; typical: number; bat: number }> = 
   10: { label: 'regular designated hitters', typical: 73, bat: 76 },
 };
 
-/** The standard for a lineup regular at a position; null for a position with none (it is then judged by the fallback rule). */
-export function hitterStandard(position: number | undefined): RoleStandard | null {
-  const h = position === undefined ? undefined : HITTER[position];
-  return h ? standard(h.label, h.typical, 'hitter', h.bat) : null;
-}
-
-/** DESCRIPTIVE, PROVISIONAL. Median estimate of the league's rotation members. */
+/** DESCRIPTIVE, PROVISIONAL (the fallback prior). Median estimate of the league's rotation members. */
 export const STARTER_TYPICAL = 53;
 
-export function starterStandard(): RoleStandard {
-  return standard('starters in a rotation', STARTER_TYPICAL, 'starter');
-}
-
-/** DESCRIPTIVE, PROVISIONAL. Median estimate of the league's relievers by the role their usage shows. */
-const RELIEVER: Record<BullpenTier, { label: string; typical: number }> = {
+/** DESCRIPTIVE, PROVISIONAL (the fallback prior). Median estimate of the league's relievers by the role their usage shows. */
+export const RELIEVER_STANDARD_PRIOR: Record<BullpenTier, { label: string; typical: number }> = {
   closer: { label: 'closers', typical: 71 },
   high_leverage: { label: 'high-leverage arms', typical: 63 },
   middle: { label: 'middle relievers', typical: 51 },
@@ -105,7 +130,75 @@ const RELIEVER: Record<BullpenTier, { label: string; typical: number }> = {
   unknown: { label: 'relievers whose role is not yet clear', typical: 38 },
 };
 
+/** The built-in standards as a served set: the fallback prior, stamped provisional (ROLE_STANDARDS_CALIBRATION). */
+export const STARTING_STANDARDS: ServedStandards = {
+  source: 'starting',
+  roles: {
+    ...Object.fromEntries(Object.entries(HITTER_STANDARD_PRIOR).map(([p, h]) => [hitterKey(Number(p)), { typical: h.typical, bat: h.bat }])),
+    [STARTER_KEY]: { typical: STARTER_TYPICAL },
+    ...Object.fromEntries(Object.entries(RELIEVER_STANDARD_PRIOR).map(([t, r]) => [relieverKey(t as BullpenTier), { typical: r.typical }])),
+  },
+  gaps: {
+    hitter: { floor: FLOOR_GAP.hitter, deep: DEEP_GAP.hitter },
+    starter: { floor: FLOOR_GAP.starter, deep: DEEP_GAP.starter },
+    reliever: { floor: FLOOR_GAP.reliever, deep: DEEP_GAP.reliever },
+  },
+  lenses: { tools: null, results: null },
+};
+
+/** The standards a review is judged against: one lookup per kind of role. */
+export interface RoleStandardsSet {
+  source: 'save' | 'starting';
+  hitter(position: number | undefined): RoleStandard | null;
+  starter(): RoleStandard;
+  reliever(tier: BullpenTier | null | undefined): RoleStandard;
+}
+
+/** Build the lookups from a served set (the save's measurement once adopted, else the built-in starting values). */
+export function standardsFrom(served: ServedStandards = STARTING_STANDARDS): RoleStandardsSet {
+  const make = (label: string, key: string, fallback: { typical: number; bat?: number }): RoleStandard => {
+    const role = served.roles[key] ?? fallback;
+    const group = groupOfRole(key);
+    const gap = served.gaps[group] ?? STARTING_STANDARDS.gaps[group];
+    const lensTypical = key.startsWith('pos') ? role.bat ?? fallback.bat ?? role.typical : role.typical;
+    const lensFloor = lensTypical + gap.floor;
+    const lensLine = (lens: ServedLens | null): number => {
+      const t = lens?.typical[key];
+      const g = lens?.gap[group];
+      return t === undefined || g === undefined ? lensFloor : t + g;
+    };
+    return {
+      label, typical: role.typical, floor: role.typical + gap.floor, deepFloor: role.typical + gap.deep, lensFloor,
+      lensFloors: { tools: lensLine(served.lenses.tools), results: lensLine(served.lenses.results) }, source: served.source,
+    };
+  };
+  return {
+    source: served.source,
+    hitter: (position) => {
+      const h = position === undefined ? undefined : HITTER_STANDARD_PRIOR[position];
+      return h ? make(h.label, hitterKey(position as number), { typical: h.typical, bat: h.bat }) : null;
+    },
+    starter: () => make('starters in a rotation', STARTER_KEY, { typical: STARTER_TYPICAL }),
+    reliever: (tier) => {
+      const t = tier ?? 'unknown';
+      return make(RELIEVER_STANDARD_PRIOR[t].label, relieverKey(t), { typical: RELIEVER_STANDARD_PRIOR[t].typical });
+    },
+  };
+}
+
+const STARTING = standardsFrom(STARTING_STANDARDS);
+
+/** The built-in standard for a lineup regular at a position; null for a position with none (it is then judged by the fallback rule). */
+export function hitterStandard(position: number | undefined): RoleStandard | null {
+  return STARTING.hitter(position);
+}
+
+/** The built-in standard for a rotation member. */
+export function starterStandard(): RoleStandard {
+  return STARTING.starter();
+}
+
+/** The built-in standard for a reliever of the tier his usage shows. */
 export function relieverStandard(tier: BullpenTier | null | undefined): RoleStandard {
-  const r = RELIEVER[tier ?? 'unknown'];
-  return standard(r.label, r.typical, 'reliever');
+  return STARTING.reliever(tier);
 }

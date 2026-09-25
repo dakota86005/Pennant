@@ -1,0 +1,83 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { historyDb } from '../server/history';
+import { recordCalibration, type CalibrationRecord } from '../server/saveCalibrationStore';
+import { clearRosterReviewCalibrationCache, rosterReviewCalibration } from '../server/mlbCalibration';
+import { priorAgingTable } from '../server/mlbCalibrationFit';
+import { DEFENSE_WEIGHT } from '../server/roleReview';
+import { STARTING_STANDARDS } from '../server/roleStandards';
+
+/**
+ * The roster review's yardsticks line is written for a GM (AGENTS.md "Writing for the GM"): short, plain, and its reason is always the
+ * true one. The record behind it (checks, windows, verdicts) is the API's.
+ */
+const BANNED = /\bprior\b|\bgate\b|held-out|coverage|calibrat|\bcentral\b|quantile|D-0\d/i;
+const L = 100;
+
+const rec = (component: string, method: string, passed: boolean, basis: Partial<CalibrationRecord['basis']> = {}, failures: string[] = []): CalibrationRecord => ({
+  leagueId: L, subsystem: 'mlb_operations', component, method,
+  basis: { throughSeason: basis.throughSeason ?? null, gameDate: basis.gameDate ?? null },
+  window: { seasons: [2016, 2017, 2018], skipped: [], sample: 700, unit: 'pairs' },
+  heldOut: [{ kind: 'club_split', part: 'estimate:hitter:floor', n: 120, expected: 0.1, observed: 0.12, passed: true },
+    { kind: 'history', part: 'results:hitter:floor', n: 1600, expected: 0.1, observed: 0.126, passed: true },
+    { kind: 'age_band', part: 'hitter:30-33', n: 400, expected: 0, observed: -0.002, passed: true }],
+  priorWeight: { overall: 0.4, byPart: {} },
+  gate: { passed, reason: passed ? 'Every check passed.' : 'Not adopted.', failures: passed ? [] : failures },
+  priorSource: 'test', notes: [],
+});
+const standardsFailing = (failure: string) => () => recordCalibration({ model: null, record: rec('standards', 'standards-1', false, { gameDate: '2000-01-01' }, [failure]) }, { fitMs: 1 });
+const ownStandards = () => recordCalibration({ model: { served: { ...STARTING_STANDARDS, source: 'save' }, roles: {} }, record: rec('standards', 'standards-1', true, { gameDate: '2000-01-02' }) }, { fitMs: 1 });
+const ownAging = () => recordCalibration({ model: { table: priorAgingTable(), cells: { hitter: [], pitcher: [] } }, record: rec('aging', 'aging-1', true, { throughSeason: 1991 }) }, { fitMs: 1 });
+const ownDefense = () => recordCalibration({ model: { weights: DEFENSE_WEIGHT, positions: {} }, record: rec('defense', 'defense-1', true, { throughSeason: 1991 }) }, { fitMs: 1 });
+
+function state(setup: Array<() => unknown>, league: number | null = L) {
+  historyDb.exec(`DELETE FROM save_calibration_fits`);
+  for (const s of setup) s();
+  clearRosterReviewCalibrationCache();
+  const y = rosterReviewCalibration(league);
+  historyDb.exec(`DELETE FROM save_calibration_fits`);
+  clearRosterReviewCalibrationCache();
+  return y;
+}
+
+const STATES: Array<[string, Array<() => unknown>, number | null, string]> = [
+  ['a club with no major league', [], null, 'Using starting yardsticks: this club has no major league in the export'],
+  ['nothing measured yet (a first start, a refit still running)', [], L, 'Using starting yardsticks for now: this league has not been measured yet'],
+  ['too early in the season', [standardsFailing('games')], L, 'Using starting yardsticks: it is too early in the season to tell who the regulars are'],
+  ['games played not in the export', [standardsFailing('games_unknown')], L, 'Using starting yardsticks: the export does not say how many games the clubs have played'],
+  ['too few clubs', [standardsFailing('clubs')], L, 'Using starting yardsticks: too few clubs have a settled lineup to measure'],
+  ['not enough seasons', [standardsFailing("seasons: the league's own past seasons could not be checked")], L, 'Using starting yardsticks: not enough seasons in this league yet'],
+  ['a check failed', [standardsFailing('club_split estimate:hitter:floor: 0.200 against 0.100')], L, "Using starting yardsticks: the league's own ones did not hold up when checked"],
+  ['some own', [ownStandards], L, "Some yardsticks are this league's own; others are starting values"],
+  ['all own', [ownStandards, ownAging, ownDefense], L, "Yardsticks set from this league's own seasons (through 1991)"],
+];
+
+describe('the yardsticks line gives the true reason, plainly', () => {
+  it.each(STATES)('%s', (_name, setup, league, line) => {
+    const y = state(setup, league);
+    expect(y.line).toBe(line);
+    expect(y.line.length).toBeLessThan(90);
+    expect(y.line).not.toMatch(BANNED);
+    expect(y.tip).not.toMatch(BANNED);
+  });
+
+  it('the hover says how the league\'s own yardsticks were checked, in plain words', () => {
+    const y = state([ownStandards, ownAging, ownDefense]);
+    expect(y.tip).toMatch(/half the clubs/);
+    expect(y.tip).toMatch(/next season/);
+    expect(y.tip).toMatch(/seasons it had not seen/);
+  });
+
+  it('the hover gives each starting yardstick its own reason', () => {
+    const y = state([standardsFailing('games')]);
+    expect(y.tip).toMatch(/The line for each job: the starting values, because it is too early in the season/);
+    expect(y.tip).toMatch(/How players age: the starting values, because this league has not been measured yet/);
+  });
+
+  it('the page component adds no visible words of its own', () => {
+    const src = fs.readFileSync(path.join(process.cwd(), 'src/pages/mlb/Yardsticks.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    const jsxText = [...src.matchAll(/>([^<>{}]+)</g)].map((m) => m[1].trim()).filter(Boolean);
+    expect(jsxText).toEqual([]);
+  });
+});

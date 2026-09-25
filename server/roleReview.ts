@@ -28,14 +28,14 @@
  */
 
 import type { BullpenTier } from './bullpenRoles.js';
-import { calibrated, policy, provisional, type CalibrationStamp } from './calibration.js';
+import { policy, provisional, type CalibrationStamp } from './calibration.js';
 import { reliability, STABILIZATION } from './resultsMetrics.js';
 import type { RoleStandard } from './roleStandards.js';
 import type { ToolContribution } from './toolsModel.js';
 import { MEANINGFUL_GAP, ordinal } from './roleStanding.js';
 
 export const REVIEW_CALIBRATION: CalibrationStamp = policy(
-  'The concern thresholds (how low is a concern, how large a gap is a divergence) are policy judgments, not fitted; the pitcher results mix, the aging curve and the defensive and running blends are calibrated or derived (see each declaration).'
+  'The concern thresholds (how low is a concern, how large a gap is a divergence) are policy judgments, not fitted; the pitcher results mix and the running blend are calibrated or derived; the aging curve and the glove weights are the save\'s own once they pass their checks, else provisional fallback priors (see each declaration).'
 );
 
 /**
@@ -46,19 +46,39 @@ export const REVIEW_CALIBRATION: CalibrationStamp = policy(
 export const PITCHER_RESULTS_MIX = { skills: 0.85, runs: 0.15 } as const;
 
 /**
- * CALIBRATED. What aging does, from the league's own history (section 5): the mean change in league-relative production
+ * THE FALLBACK PRIOR (provisional since D-053, cycle 1). A save fits its own curve on its own history (`mlbCalibrationFit.ts
+ * fitAging`, served as an `AgingTable` once it passes its held-out check); these rows serve until then. `concernAge` is POLICY: when a
+ * decline is raised as a risk, not how aging works. Originally: what aging does, from the league's own history (section 5): the mean change in league-relative production
  * from one season to the next, by age. Hitters, in wOBA points a year; pitchers, in runs per nine of FIP (positive is
  * worse). Piecewise: the first row whose age the player has reached applies.
  */
 export const AGING_CURVE: CalibrationStamp & { concernAge: number; hitter: ReadonlyArray<readonly [number, number]>; pitcher: ReadonlyArray<readonly [number, number]> } = {
-  ...calibrated('Delta method on consecutive seasons of 300+ PA/BF, ages 22-40, weighted by the smaller sample.'),
+  ...provisional('The fallback prior (D-053, cycle 1): the delta method on consecutive seasons of 300+ PA/BF, ages 22-40, weighted by the smaller sample, on the Arizona import\'s 2000-2025 history (harness section 5). A save serves its own curve once it passes its check; this is never presented as the save\'s own.'),
   concernAge: 34,
   hitter: [[34, -0.0095], [30, -0.0065], [26, -0.003]],
   pitcher: [[35, 0.2], [28, 0.12]],
 };
 
-/** The expected annual change at an age (hitters: wOBA a year, negative is decline; pitchers: FIP runs per nine, positive is decline); 0 below the first row. */
-export function expectedAnnualChange(age: number, pitcher: boolean): number {
+/**
+ * An aging curve as a table: the expected annual change at each age from `firstAge` (hitters in wOBA, pitchers in FIP runs per nine),
+ * the end values holding beyond it. The save's own fit is served this way (`mlbCalibrationFit.ts`); `AGING_CURVE` above is the
+ * fallback prior.
+ */
+export interface AgingTable {
+  firstAge: number;
+  hitter: number[];
+  pitcher: number[];
+}
+
+/**
+ * The expected annual change at an age (hitters: wOBA a year, negative is decline; pitchers: FIP runs per nine, positive is decline):
+ * from the save's fitted table when one is in force, else the built-in rows (0 below the first row).
+ */
+export function expectedAnnualChange(age: number, pitcher: boolean, table: AgingTable | null = null): number {
+  if (table) {
+    const values = pitcher ? table.pitcher : table.hitter;
+    if (values.length > 0) return values[Math.min(Math.max(Math.round(age) - table.firstAge, 0), values.length - 1)];
+  }
   const rows = pitcher ? AGING_CURVE.pitcher : AGING_CURVE.hitter;
   for (const [from, change] of rows) if (age >= from) return change;
   return 0;
@@ -81,7 +101,7 @@ export const CONCERN = {
 } as const;
 
 export const DEFENSE_CALIBRATION: CalibrationStamp = provisional(
-  'Each weight is the average of a data-derived share and the earlier first-pass figure. The derived share is the position\'s defensive talent spread (the slope of zone-rating runs on the visible glove grade, times the spread of grades) over that plus the bat\'s, from one partial season; averaging with the prior keeps one season from moving it all the way.'
+  'The fallback prior (D-053, cycle 1): a save fits its own weights from the repeatable spread of fielding results once two seasons in a row carry zone rating and a later season checks them (mlbCalibrationFit.ts fitDefense). Each weight is the average of a data-derived share and the earlier first-pass figure. The derived share is the position\'s defensive talent spread (the slope of zone-rating runs on the visible glove grade, times the spread of grades) over that plus the bat\'s, from one partial season; averaging with the prior keeps one season from moving it all the way.'
 );
 
 /**
@@ -215,12 +235,16 @@ export function runningValue(r: RunningLens | undefined): { value: number; weigh
   return blendDimension(r.toolsPct, r.resultsPct, r.sample, STABILIZATION.baserunning, RUNNING_INFORMATION);
 }
 
-export function estimateOf(e: LensEvidence, pitcher = true): Estimate {
+/**
+ * A hitter's working estimate: bat, glove at his position and running, blended by the position's glove weight. `defenseWeights` is
+ * the save's fitted set when one is in force, else the built-in `DEFENSE_WEIGHT` (the fallback prior).
+ */
+export function estimateOf(e: LensEvidence, pitcher = true, defenseWeights: Record<number, number> = DEFENSE_WEIGHT): Estimate {
   const core = batOrPitchEstimate(e, pitcher);
   if (pitcher || e.position === undefined) return core;
   const def = defenseValue(e.defense);
   const run = runningValue(e.running);
-  const wd = def && core.value !== null ? DEFENSE_WEIGHT[e.position] ?? 0 : 0;
+  const wd = def && core.value !== null ? defenseWeights[e.position] ?? 0 : 0;
   const wr = run && core.value !== null ? RUNNING_WEIGHT : 0;
   if (core.value === null) return { ...core, batValue: null, defensePct: def?.value ?? null, runningPct: run?.value ?? null, weightOnDefense: 0, weightOnRunning: 0 };
   const value = (1 - wd - wr) * core.value + wd * (def?.value ?? 0) + wr * (run?.value ?? 0);
@@ -312,8 +336,16 @@ const median = (values: number[]): number | null => {
 const r0 = (n: number) => Math.round(n);
 const POSITION_NAME: Record<number, string> = { 2: 'catcher', 3: 'first base', 4: 'second base', 5: 'third base', 6: 'shortstop', 7: 'left field', 8: 'center field', 9: 'right field', 10: 'designated hitter' };
 
-export function reviewGroup(holders: ReviewSubject[], opts: { pitcher: boolean; role: string; standard?: (h: ReviewSubject) => RoleStandard | null }): HolderReview[] {
-  const estimates = new Map(holders.map((h) => [h.playerId, estimateOf(h, opts.pitcher)]));
+/** The save's fitted numbers a review uses where they are in force (else the built-in fallback priors). */
+export interface ReviewCalibration {
+  aging?: AgingTable | null;
+  defenseWeights?: Record<number, number> | null;
+}
+
+export function reviewGroup(holders: ReviewSubject[], opts: { pitcher: boolean; role: string; standard?: (h: ReviewSubject) => RoleStandard | null; calibration?: ReviewCalibration | null }): HolderReview[] {
+  const weights = opts.calibration?.defenseWeights ?? DEFENSE_WEIGHT;
+  const aging = opts.calibration?.aging ?? null;
+  const estimates = new Map(holders.map((h) => [h.playerId, estimateOf(h, opts.pitcher, weights)]));
   const known = holders.filter((h) => estimates.get(h.playerId)!.value !== null);
   const values = known.map((h) => estimates.get(h.playerId)!.value as number);
   const groupMedian = median(values);
@@ -343,9 +375,10 @@ export function reviewGroup(holders: ReviewSubject[], opts: { pitcher: boolean; 
     // of nine, or under one absolute line, says nothing about a first baseman that it does not also say about a shortstop.
     const std = opts.standard?.(h) ?? null;
     const margin = std ? value - std.floor : null;
-    const lensLow = (pct: number | null, groupMed: number | null) => pct !== null && (std ? pct < std.lensFloor : groupMed !== null && pct < groupMed);
-    const ratingsLow = lensLow(h.ratingsPct, ratingsMedian);
-    const resultsLow = lensLow(est.resultsPct, resultsMedian);
+    // Each lens against its own line for the role (owner decision 2026-09-24): the built-in line until the save has measured the lens
+    const lensLow = (pct: number | null, line: number | undefined, groupMed: number | null) => pct !== null && (std ? pct < (line ?? std.lensFloor) : groupMed !== null && pct < groupMed);
+    const ratingsLow = lensLow(h.ratingsPct, std?.lensFloors?.tools, ratingsMedian);
+    const resultsLow = lensLow(est.resultsPct, std?.lensFloors?.results, resultsMedian);
     const lowAbs = value < CONCERN.absoluteEstimate;
     const lowRel = isWeakest && belowMedian !== null && belowMedian >= CONCERN.groupGap;
     const belowFloor = margin !== null && margin < 0;
@@ -375,7 +408,11 @@ export function reviewGroup(holders: ReviewSubject[], opts: { pitcher: boolean; 
       reasons.push(`${parts.join('; ')}.`);
     }
     if (std && margin !== null) {
-      reasons.push(`For ${std.label} the league's typical working estimate is about ${r0(std.typical)}; below ${r0(std.floor)} is unusually weak and below ${r0(std.deepFloor)} well below what the job takes. He is at ${ordinal(value)}, ${margin < 0 ? `${r0(-margin)} under the first line` : `${r0(margin)} above it`}.`);
+      // "This league's" only when the save's own standards are in force; otherwise the starting yardstick is named as such
+      const typicalText = std.source === 'save'
+        ? `For ${std.label} in this league the typical working estimate is about ${r0(std.typical)}`
+        : `For ${std.label} a typical working estimate is about ${r0(std.typical)} (Pennant's starting yardstick)`;
+      reasons.push(`${typicalText}; below ${r0(std.floor)} is unusually weak and below ${r0(std.deepFloor)} well below what the job takes. He is at ${ordinal(value)}, ${margin < 0 ? `${r0(-margin)} under the first line` : `${r0(margin)} above it`}.`);
     }
     if (groupMedian !== null) reasons.push(`Working estimate ${ordinal(value)} percentile of MLB ${opts.role}s${est.basis === 'ratings_and_results' ? ` (${r0(est.weightOnResults * 100)}% results, ${r0((1 - est.weightOnResults) * 100)}% tools)` : est.basis === 'ratings_only' ? ' (tools only: no results to weigh)' : ' (results only: no visible tools)'}; ${isWeakest ? 'the weakest' : `number ${rank}`} of ${known.length} in the group.`);
 
@@ -396,15 +433,20 @@ export function reviewGroup(holders: ReviewSubject[], opts: { pitcher: boolean; 
       explanations.push(`This season is ${r0(h.currentSample)} ${h.sampleUnit} old: too early to read the year on its own, so the read leans on prior seasons.`);
     }
     if (h.age !== null && h.age >= CONCERN.agingAge) {
-      const change = Math.abs(expectedAnnualChange(h.age, opts.pitcher));
-      explanations.push(opts.pitcher
-        ? `At ${h.age}, decline is a risk that the ratings and past results may not yet show: in this league's history pitchers his age have lost about ${change.toFixed(2)} runs per nine a year on peripherals.`
-        : `At ${h.age}, decline is a risk that the ratings and past results may not yet show: in this league's history hitters his age have lost about ${Math.round(change * 1000)} points of wOBA a year.`);
+      const signed = expectedAnnualChange(h.age, opts.pitcher, aging);
+      const change = Math.abs(signed);
+      // A league whose history shows no decline at his age is said so, never "lost about 0" (the save's own fit can show it)
+      const declines = opts.pitcher ? signed > 0.005 : signed < -0.0005;
+      // "In this league's history" only when the save's own curve is in force; the starting curve is a general expectation
+      const who = opts.pitcher ? 'pitchers' : 'hitters';
+      const loss = opts.pitcher ? `${change.toFixed(2)} runs per nine a year on peripherals` : `${Math.round(change * 1000)} points of wOBA a year`;
+      if (!declines) explanations.push(`At ${h.age}, age is a risk the ratings and past results may not yet show, though ${aging ? `in this league's history ${who} his age have shown` : `${who} his age usually show`} no measurable decline from one season to the next.`);
+      else explanations.push(`At ${h.age}, decline is a risk that the ratings and past results may not yet show: ${aging ? `in this league's history ${who} his age have lost about ${loss}` : `${who} his age usually lose about ${loss}`}.`);
     }
     if (h.ratingsEvidence !== 'complete' && h.ratingsPct !== null) {
       explanations.push('His visible tool ratings are incomplete, so the tools lens rests on part of the picture.');
     }
-    if (!opts.pitcher && h.position !== undefined && (DEFENSE_WEIGHT[h.position] ?? 0) > 0) {
+    if (!opts.pitcher && h.position !== undefined && (weights[h.position] ?? 0) > 0) {
       const d = h.defense;
       if (!d || !d.visible || d.pct === null) {
         explanations.push(`His defense at ${POSITION_NAME[h.position] ?? 'the position'} is not visible, so the estimate is his bat alone and may miss what he gives with the glove.`);
@@ -450,9 +492,9 @@ export interface ReplacementComparison {
   calibration: typeof REVIEW_CALIBRATION;
 }
 
-export function compareReplacement(candidate: ReviewSubject, incumbent: ReviewSubject, pitcher = true): ReplacementComparison {
-  const c = estimateOf(candidate, pitcher);
-  const i = estimateOf(incumbent, pitcher);
+export function compareReplacement(candidate: ReviewSubject, incumbent: ReviewSubject, pitcher = true, defenseWeights: Record<number, number> = DEFENSE_WEIGHT): ReplacementComparison {
+  const c = estimateOf(candidate, pitcher, defenseWeights);
+  const i = estimateOf(incumbent, pitcher, defenseWeights);
   const base = { calibration: REVIEW_CALIBRATION };
   if (c.value === null || i.value === null) {
     return { ...base, verdict: 'cannot_judge', delta: null, candidateEstimate: c.value, incumbentEstimate: i.value, toolsDelta: null, resultsDelta: null, certainty: 'thin', reasons: [c.value === null ? `${candidate.name} has no evidence on either lens.` : `${incumbent.name} has no evidence on either lens.`] };
@@ -462,7 +504,7 @@ export function compareReplacement(candidate: ReviewSubject, incumbent: ReviewSu
   const resultsDelta = c.resultsPct !== null && i.resultsPct !== null ? c.resultsPct - i.resultsPct : null;
   const incompleteTools = candidate.ratingsEvidence === 'partial' || (candidate.ratingsEvidence === 'unknown' && c.basis !== 'results_only');
   // A glove that is not visible at a position that is largely glove leaves part of the job unread on that side of the comparison.
-  const gloveUnseen = (s: ReviewSubject) => !pitcher && s.position !== undefined && (DEFENSE_WEIGHT[s.position] ?? 0) >= GLOVE_MATTERS && defenseValue(s.defense) === null;
+  const gloveUnseen = (s: ReviewSubject) => !pitcher && s.position !== undefined && (defenseWeights[s.position] ?? 0) >= GLOVE_MATTERS && defenseValue(s.defense) === null;
   const unseen = [candidate, incumbent].filter(gloveUnseen);
   const certainty: ReplacementComparison['certainty'] = incompleteTools
     ? 'thin'
@@ -478,7 +520,7 @@ export function compareReplacement(candidate: ReviewSubject, incumbent: ReviewSu
     `${candidate.name}: working estimate ${ordinal(c.value)} percentile${c.basis === 'ratings_only' ? ' on tools alone' : c.basis === 'results_only' ? ' on results alone' : ''}; ${incumbent.name}: ${ordinal(i.value)} (${delta >= 0 ? '+' : ''}${r0(delta)}).`,
     ...(toolsDelta !== null ? [`Tools: ${ordinal(c.ratingsPct as number)} against ${ordinal(i.ratingsPct as number)}.`] : []),
     ...(resultsDelta !== null ? [`Results: ${ordinal(c.resultsPct as number)} against ${ordinal(i.resultsPct as number)}.`] : c.resultsPct === null ? [`${candidate.name} has no qualifying major-league results, so this rests on his tools.`] : []),
-    ...unseen.map((s) => `${s.name}'s glove at ${POSITION_NAME[s.position as number] ?? 'the position'} is not visible, and that position is about ${Math.round((DEFENSE_WEIGHT[s.position as number] ?? 0) * 100)}% glove: that side of the comparison is his bat alone.`),
+    ...unseen.map((s) => `${s.name}'s glove at ${POSITION_NAME[s.position as number] ?? 'the position'} is not visible, and that position is about ${Math.round((defenseWeights[s.position as number] ?? 0) * 100)}% glove: that side of the comparison is his bat alone.`),
     ...(verdict === 'upgrade_uncertain' ? [`The gain is real on paper but the read on ${candidate.name} rests on ${certainty === 'thin' ? 'incomplete tools' : unseen.length ? 'a bat with no glove to weigh against it' : 'one lens'}, so it is not firm.`] : []),
   ];
   return { ...base, verdict, delta, candidateEstimate: c.value, incumbentEstimate: i.value, toolsDelta, resultsDelta, certainty, reasons };

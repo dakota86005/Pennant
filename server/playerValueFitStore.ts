@@ -24,8 +24,8 @@
  *     method (`RATINGS_METHOD`), with its own run record and gate verdict.
  */
 
-import { currentSaveName, historyDb } from './history.js';
-import { leagueFingerprint } from './playerValueHistory.js';
+import { historyDb } from './history.js';
+import { clearSaveIdentityCache, saveIdentity as neutralSaveIdentity } from './saveIdentity.js';
 import type { ProductionModel } from './playerValueProduction.js';
 import type { FitRecord } from './playerValueProductionFit.js';
 
@@ -95,21 +95,12 @@ function parse<M, R>(row: Row | undefined): StoredFit<M, R> | null {
   }
 }
 
-const identities = new Map<number, string>();
-
-/** The save's identity for a league: its configured name and the league's fingerprint (cached until an import). */
-export function saveIdentity(leagueId: number): string {
-  let id = identities.get(leagueId);
-  if (id === undefined) {
-    id = `${currentSaveName()}|${leagueFingerprint(leagueId)}`;
-    identities.set(leagueId, id);
-  }
-  return id;
-}
+/** The save's identity for a league (the neutral `saveIdentity.ts`): its configured name and the league's fingerprint. */
+export const saveIdentity = neutralSaveIdentity;
 
 /** Forget the cached identities: the export changed (an import), or a test rebuilt the league. */
 export function clearFitStoreCaches(): void {
-  identities.clear();
+  clearSaveIdentityCache();
 }
 
 /** Whether a fit for this save, league, last completed season and method has been made (adopted or not). */

@@ -244,6 +244,8 @@ const ALLOWED_IMPORTS = new Set([
   './playerValueFitStore.js', './injuryProneness.js', './playerValueRatings.js', './playerValueRatingsFit.js', './playerValueCone.js',
   './playerValueCost.js', './playerValueSignings.js', './playerValueContractStore.js', './playerValueSurplus.js',
   './playerValueLens.js', './playerValueWinValue.js', './playerValueTrade.js',
+  // Per-save calibration, cycle 1: the save's identity and the league's seasons moved, unchanged, to a neutral module
+  './saveIdentity.js',
 ]);
 
 /**

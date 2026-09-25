@@ -61,3 +61,20 @@ await build({
   },
   define: { 'import.meta.url': 'import_meta_url' },
 });
+
+// The per-save calibration refit (D-053, cycle 1) runs in its own worker thread the same way: ./calibration-refit-worker.cjs.
+await build({
+  entryPoints: ['server/calibrationRefitWorker.ts'],
+  outfile: 'build/calibration-refit-worker.cjs',
+  bundle: true,
+  platform: 'node',
+  target: 'node20',
+  format: 'cjs',
+  external,
+  sourcemap: true,
+  logLevel: 'info',
+  banner: {
+    js: "const import_meta_url = require('url').pathToFileURL(__filename).href;",
+  },
+  define: { 'import.meta.url': 'import_meta_url' },
+});

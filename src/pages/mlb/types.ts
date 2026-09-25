@@ -106,6 +106,8 @@ export interface Overview {
   review: ReviewGroup[];
   activePlayers: Array<{ playerId: number; name: string; role: string | null; available: boolean }>;
   unknowns: string[];
+  /** Where the review's yardsticks come from: one plain line and its hover (the groups' records are for the API). */
+  yardsticks?: { line: string; tip: string; groups: Array<{ key: string; source: 'save' | 'starting' }> };
 }
 
 export interface Step {

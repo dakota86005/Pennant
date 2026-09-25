@@ -32,6 +32,7 @@
 import { Worker } from 'node:worker_threads';
 import { db, tableColumns, tableExists } from './db.js';
 import { parseGameDate, type SourceState } from './dataFreshness.js';
+import { completedThrough as neutralCompletedThrough, gamesThisSeason as neutralGamesThisSeason } from './saveIdentity.js';
 import { allLeagueRules, leagueRulesFromRow, type ContractRules, type FinancialRules, type LeagueRules } from './leagueRules.js';
 import { arbitrationRegimeOf, evaluateContractControl, superTwoCutoffs } from './playerRights.js';
 import {
@@ -1371,9 +1372,7 @@ interface LeagueContext {
 
 /** This season's schedule length: the rules' figure, else the schedule itself (`games`, D-15). */
 function gamesThisSeason(leagueId: number, league: LeagueRules | undefined, clubs: Set<number>): number | null {
-  const rule = league?.gamesPerTeam.value ?? null;
-  if (rule !== null && rule > 0) return rule;
-  return scheduledGames(leagueId, clubs.size)?.perClub ?? null;
+  return neutralGamesThisSeason(leagueId, league, clubs);
 }
 
 function leagueContext(leagueId: number, rules: Map<number, LeagueRules>): LeagueContext {
@@ -1529,21 +1528,9 @@ export interface RefitOutcome {
   ms: number | null;
 }
 
-/**
- * The last completed season in a league: this season once every game is played AND the league has its
- * major-league lines (a season number bumped over last season's standings is not complete, D-08), else the
- * one before.
- */
+/** The last completed season in a league (the neutral `saveIdentity.ts`, shared with every per-save fit). */
 function completedThrough(leagueId: number, rules: Map<number, LeagueRules>): { season: number | null; current: boolean } {
-  const league = rules.get(leagueId);
-  const season = league?.contract.season.value ?? null;
-  if (!league || season === null) return { season: null, current: false };
-  const clubs = leagueClubs(leagueId);
-  const games = gamesThisSeason(leagueId, league, clubs);
-  const played = seasonPlayedOf(leagueRecord(leagueId, clubs, season, true), games === null ? league.gamesPerTeam : derivedFrom(games, 'games', 'The schedule.')).value;
-  const schedule = scheduledGames(leagueId, clubs.size);
-  const allPlayed = played !== null && played >= 1 && (schedule === null || schedule.unplayed === 0);
-  return allPlayed && hasSeasonLines(leagueId, season) ? { season, current: true } : { season: season - 1, current: false };
+  return neutralCompletedThrough(leagueId, rules);
 }
 
 /** The history a fit reads: the league's major-league lines over the window, with each player's birth date, proneness and listed position. */

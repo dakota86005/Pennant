@@ -5470,3 +5470,7 @@ th.sortable button:focus-visible .tip-pop { display: block; }
 @media (max-width: 760px) {
   .org-cards .org-card { flex-basis: 140px; }
 }
+
+/* MLB Operations: where the roster review's yardsticks come from (one line, the detail in its hover) */
+.mlb-yardsticks { margin: 4px 0 10px; font-size: 12px; }
+.mlb-yardsticks .tip-pop { width: 420px; max-width: calc(100vw - 48px); white-space: pre-line; }

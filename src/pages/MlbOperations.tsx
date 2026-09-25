@@ -7,6 +7,7 @@ import { PitchingStaff } from './mlb/PitchingStaff';
 import { PositionPlayers } from './mlb/PositionPlayers';
 import { OVERVIEW, parseRoute, routeHash, type Route, type View } from './mlb/route';
 import type { Overview } from './mlb/types';
+import { Yardsticks } from './mlb/Yardsticks';
 
 /*
  * Major League Operations: a workspace, not a report. It answers, in order, what needs my attention (Overview), what does the staff make of
@@ -81,6 +82,7 @@ export function MlbOperations({ orgId }: { orgId: number }) {
         ))}
         {route.view === 'decision' && <button className="active" aria-current="page">Decision</button>}
       </nav>
+      {route.view !== 'decision' && <Yardsticks data={data} />}
       <ViewBoundary view={`${route.view}:${route.needId ?? ''}`}>
         {route.view === 'overview' && <OverviewView data={data} go={go} whatIf={whatIf} setWhatIf={setWhatIf} />}
         {route.view === 'players' && <PositionPlayers data={data} go={go} />}
