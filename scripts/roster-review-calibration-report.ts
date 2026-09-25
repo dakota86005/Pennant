@@ -31,7 +31,7 @@ import { DEFENSE_WEIGHT, expectedAnnualChange } from '../server/roleReview.js';
 import { printPending } from './lib/rosterReviewCalibration.js';
 import { RESULTS_PRIOR, type ResultsParams } from '../server/resultsMetrics.js';
 import { paramsOf, type ResultsModel } from '../server/mlbResultsFit.js';
-import type { Comparison } from '../server/calibrationDetector.js';
+import { describeComparison, ruleText, type Comparison } from '../server/calibrationDetector.js';
 import { computeBatting, leagueBaseline, WOBA_SCALE_FALLBACK } from '../server/stats.js';
 
 const arg = (name: string) => { const i = process.argv.indexOf(name); return i >= 0 ? process.argv[i + 1] : undefined; };
@@ -175,6 +175,7 @@ const rm = results?.model as ResultsModel | null;
 if (!results || !rm) console.log('  not fitted');
 else {
   console.log(`  verdict: ${results.record.gate.reason}`);
+  console.log(`  rule: ${ruleText()}`);
   for (const part of ['hitter', 'starter', 'reliever', 'baserunning', 'defense'] as const) {
     const pf = rm.parts[part];
     const start = part === 'baserunning' || part === 'defense' ? `K ${RESULTS_PRIOR.stabilization[part]}` : `${RESULTS_PRIOR.weights[part].join('/')}, K ${RESULTS_PRIOR.stabilization[part]}`;
@@ -182,7 +183,7 @@ else {
     const d = pf.decision;
     const rows: Array<[string, Comparison]> = d ? [['unshrunk', d.unshrunk], ['as served', d.served], ...(d.reverse ? [['starting vs own', d.reverse] as [string, Comparison]] : [])] : [];
     for (const [label, c] of rows) {
-      console.log(`    ${label.padEnd(16)} held-out ${c.cases} player-seasons: error ${c.candidateLoss?.toExponential(4)} vs starting ${c.rivalLoss?.toExponential(4)}; ${((c.relativeGain ?? 0) * 100).toFixed(2)}% lower, z ${c.z?.toFixed(2)}, better in ${c.originsWon} of ${c.originsScored} seasons${c.failures.length ? `; not clearly better: ${c.failures.join(', ')}` : '; CLEARLY BETTER'}`);
+      console.log(`    ${label.padEnd(16)} held-out ${c.cases} player-seasons: ${describeComparison(c)}${c.failures.length ? `; not clearly better: ${c.failures.join(', ')}` : '; CLEARLY BETTER'}`);
     }
     const slope = results.record.heldOut.find((c) => c.kind === 'slope' && c.part === part);
     if (slope) console.log(`    reported: next season against the prediction, slope ${slope.observed?.toFixed(3)} (starting values ${slope.prior?.toFixed(3)}; 1 is exact, below 1 the record is trusted too much)`);

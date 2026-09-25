@@ -27,7 +27,7 @@
 import { policy, provisional, type CalibrationStamp } from './calibration.js';
 import type { CalibrationCheck, CalibrationRecord } from './saveCalibrationStore.js';
 import type { CalibrationRun } from './saveCalibration.js';
-import { decide, DETECTOR_METHOD, DETECTOR_POLICY, type DetectorDecision, type DetectorPolicy, type HeldOutCase, type ServedSource } from './calibrationDetector.js';
+import { decide, describeComparison, DETECTOR_POLICY, ruleText, type DetectorDecision, type DetectorPolicy, type HeldOutCase, type ServedSource } from './calibrationDetector.js';
 import { AGING_CURVE, DEFENSE_WEIGHT, expectedAnnualChange, type AgingTable } from './roleReview.js';
 import { DEEP_QUANTILE, FLOOR_QUANTILE, groupOfRole, STARTING_STANDARDS, type ServedLens, type ServedStandards, type StandardGroup } from './roleStandards.js';
 
@@ -616,8 +616,8 @@ export function fitAging(input: AgingInput, basis: FitBasis, policyIn = ROSTER_R
   // and as served, with hysteresis per kind (D-053 amendment, 2026-09-25). A tuning value replaces its fallback only when clearly better.
   const paired = (hs: Held[]): HeldOutCase[] => hs.map((x) => ({ cluster: x.playerId, origin: x.season, weight: x.weight, candidate: (x.change - x.predicted) ** 2, rival: (x.change - x.prior) ** 2 }));
   const decisions = {
-    hitter: decide({ unshrunk: paired(heldRaw.hitter), served: paired(held.hitter), previous: previous?.serve.hitter ?? 'starting' }, detector),
-    pitcher: decide({ unshrunk: paired(heldRaw.pitcher), served: paired(held.pitcher), previous: previous?.serve.pitcher ?? 'starting' }, detector),
+    hitter: decide({ unshrunk: paired(heldRaw.hitter), served: paired(held.hitter), previous: previous?.serve.hitter ?? 'starting', streak: previous?.decisions.hitter?.streak ?? 0 }, detector),
+    pitcher: decide({ unshrunk: paired(heldRaw.pitcher), served: paired(held.pitcher), previous: previous?.serve.pitcher ?? 'starting', streak: previous?.decisions.pitcher?.streak ?? 0 }, detector),
   };
   for (const kind of ['hitter', 'pitcher'] as const) {
     const d = decisions[kind];
@@ -625,7 +625,7 @@ export function fitAging(input: AgingInput, basis: FitBasis, policyIn = ROSTER_R
       heldOut.push({
         kind: 'detector', part: `${kind}:${label}`, n: c.cases, expected: c.rivalLoss, observed: c.candidateLoss, se: c.se, prior: c.rivalLoss,
         passed: c.failures.includes('origins') ? null : c.clearlyBetter,
-        note: `z ${c.z === null ? '—' : c.z.toFixed(2)}, ${c.relativeGain === null ? '—' : (c.relativeGain * 100).toFixed(2)}% lower error than the starting curve, better in ${c.originsWon} of ${c.originsScored} seasons${c.failures.length ? ` (not clearly better: ${c.failures.join(', ')})` : ''}`,
+        note: `against the starting curve: ${describeComparison(c)}${c.failures.length ? ` (not clearly better: ${c.failures.join(', ')})` : ''}`,
       });
     }
     if (!d.decided) extra.push(`seasons: ${kind}s: ${d.reason}`);
@@ -641,7 +641,9 @@ export function fitAging(input: AgingInput, basis: FitBasis, policyIn = ROSTER_R
     ? {
       ...gate,
       reason: serve.hitter === 'starting' && serve.pitcher === 'starting'
-        ? 'Checked on held-out seasons: the starting curve held up (this league\'s own was not clearly better), so it serves.'
+        ? (decisions.hitter.streak > 0 || decisions.pitcher.streak > 0
+          ? 'Checked on held-out seasons: this league\'s own curve was clearly better at this refit; the starting curve serves until the next refit confirms it.'
+          : 'Checked on held-out seasons: the starting curve held up (this league\'s own was not clearly better), so it serves.')
         : `Checked on held-out seasons: this league's own curve serves for ${[serve.hitter === 'save' ? 'hitters' : null, serve.pitcher === 'save' ? 'pitchers' : null].filter(Boolean).join(' and ')}.`,
     }
     : gate;
@@ -654,7 +656,7 @@ export function fitAging(input: AgingInput, basis: FitBasis, policyIn = ROSTER_R
       notes: [
         `Checked on ${origins.length} season${origins.length === 1 ? '' : 's'}${origins.length ? ` (${origins[0]}–${origins[origins.length - 1]})` : ''}, each fitted only on the seasons before it.`,
         'The starting curve was fitted on the Arizona import\'s 2000–2025 history. On that league the check of the curve as served (shrunk toward the starting curve) is not out-of-sample, so the curve fitted without the starting curve is checked too, and both must pass.',
-        `A curve replaces the starting one only when clearly better on the held-out pairs (${DETECTOR_METHOD}: paired, clustered by player, z at most -${detector.zClear}, better in at least ${Math.round(detector.minOriginShare * 100)}% of the seasons, at least ${(detector.minRelativeGain * 100).toFixed(1)}% lower error), unshrunk and as served; once serving, it gives way only when the starting curve is clearly better in turn. Hitters: ${decisions.hitter.reason} Pitchers: ${decisions.pitcher.reason}`,
+        `A curve replaces the starting one only when clearly better on the held-out pairs (${ruleText(detector)}); once serving, it gives way only when the starting curve is clearly better in turn. Hitters: ${decisions.hitter.reason} Pitchers: ${decisions.pitcher.reason}`,
       ] },
   };
 }

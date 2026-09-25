@@ -56,7 +56,7 @@ describe('platoon: the minimum split, the problem margin, the complement margin'
   const line = (pa: number, woba: 'good' | 'poor'): BattingLine => ({
     year: 2030, g: 0, gs: 0, pa, ab: Math.round(pa * 0.9), h: Math.round(pa * 0.9 * (woba === 'good' ? 0.34 : 0.19)), d: 0, t: 0, hr: 0, bb: 0, ibb: 0, hp: 0, sf: 0, k: 0, sb: 0, cs: 0, gdp: 0, war: 0, ubr: 0,
   });
-  const input = (over: Partial<PlatoonInput>): PlatoonInput => ({ bats: 'L', vsLeft: [], vsRight: [], leagueEffect: 0.015, leagueWoba: 0.32, ...over });
+  const input = (over: Partial<PlatoonInput>): PlatoonInput => ({ recordStabilization: 300, bats: 'L', vsLeft: [], vsRight: [], leagueEffect: 0.015, leagueWoba: 0.32, ...over });
 
   it('a record is read only when the less-faced hand has at least the minimum plate appearances', () => {
     const reads = (n: number) => evaluatePlatoon(input({ vsLeft: [line(n, 'poor')], vsRight: [line(400, 'good')], ratings: { vsLeft: -0.0075, vsRight: 0.0075, norm: 0.015 } })).basis;

@@ -14,7 +14,7 @@ import { completedThrough, leagueGameDate } from './saveIdentity.js';
 import { standardsFrom, type RoleStandardsSet } from './roleStandards.js';
 import type { ReviewCalibration } from './roleReview.js';
 import { RESULTS_PRIOR, type ResultsParams } from './resultsMetrics.js';
-import { paramsOf, REQUIRED_PARTS, RESULTS_METHOD, type ResultsModel } from './mlbResultsFit.js';
+import { paramsOf, REQUIRED_PARTS, RESULTS_METHOD, RESULTS_PARTS, servesSaveOwn, type ResultsModel } from './mlbResultsFit.js';
 import {
   AGING_METHOD, DEFENSE_METHOD, MLB_CALIBRATION_SUBSYSTEM, STANDARDS_METHOD,
   type AgingModel, type DefenseModel, type StandardsModel,
@@ -69,7 +69,7 @@ const pct = (x: number | null | undefined) => (x === null || x === undefined ? '
 /** Why a group serves the starting values: each reason is one the line may give, and only when it is the true one. */
 export type StartingReason =
   | 'not_measured' | 'no_league' | 'games' | 'games_unknown' | 'clubs' | 'seasons' | 'no_zone_rating' | 'no_later_season' | 'check_failed'
-  | 'kept' | 'returned';
+  | 'kept' | 'confirming' | 'returned';
 
 /** Each reason in a GM's words (the record's reasons are for the API). */
 export const REASON_TEXT: Record<StartingReason, string> = {
@@ -83,6 +83,7 @@ export const REASON_TEXT: Record<StartingReason, string> = {
   no_later_season: 'there is no later season to check them on yet',
   check_failed: "the league's own ones did not hold up when checked",
   kept: "they were checked on this league's seasons and held up",
+  confirming: "this league's own did better at the last check and must do so once more before they are used",
   returned: "they did better than this league's own when checked again",
 };
 
@@ -97,8 +98,7 @@ export function servesOwn(key: YardstickKey, stored: StoredCalibration | null): 
     return m.serve?.hitter === 'save' || m.serve?.pitcher === 'save';
   }
   if (key === 'results') {
-    const m = stored.model as ResultsModel;
-    return REQUIRED_PARTS.some((p) => m.parts?.[p]?.source === 'save');
+    return servesSaveOwn(stored.model as ResultsModel);
   }
   return true;
 }
@@ -107,9 +107,13 @@ export function servesOwn(key: YardstickKey, stored: StoredCalibration | null): 
 function keptReason(key: YardstickKey, stored: StoredCalibration): StartingReason {
   if (key === 'aging') {
     const m = stored.model as AgingModel;
-    return m.decisions?.hitter?.previous === 'save' || m.decisions?.pitcher?.previous === 'save' ? 'returned' : 'kept';
+    if (m.decisions?.hitter?.previous === 'save' || m.decisions?.pitcher?.previous === 'save') return 'returned';
+    return (m.decisions?.hitter?.streak ?? 0) > 0 || (m.decisions?.pitcher?.streak ?? 0) > 0 ? 'confirming' : 'kept';
   }
-  if (key === 'results') return REQUIRED_PARTS.some((p) => (stored.model as ResultsModel).parts?.[p]?.reason === 'returned') ? 'returned' : 'kept';
+  if (key === 'results') {
+    const parts = REQUIRED_PARTS.map((p) => (stored.model as ResultsModel).parts?.[p]?.reason);
+    return parts.includes('returned') ? 'returned' : parts.includes('confirming') ? 'confirming' : 'kept';
+  }
   return 'kept';
 }
 
@@ -153,10 +157,11 @@ function describeAging(s: StoredCalibration<AgingModel>): string {
 
 function describeResults(s: StoredCalibration<ResultsModel>): string {
   const seasons = s.record.window.seasons;
-  const label: Record<string, string> = { hitter: 'hitters', starter: 'starting pitchers', reliever: 'relievers' };
-  const own = REQUIRED_PARTS.filter((p) => s.model.parts[p]?.source === 'save').map((p) => label[p]);
-  const kept = REQUIRED_PARTS.filter((p) => s.model.parts[p]?.source !== 'save').map((p) => label[p]);
-  return `How much a player's last three seasons count, and how much playing time it takes before his results count as much as his tools. `
+  const label: Record<string, string> = { hitter: 'hitters', starter: 'starting pitchers', reliever: 'relievers', baserunning: 'baserunning', defense: 'fielding' };
+  const judged = RESULTS_PARTS.filter((p) => REQUIRED_PARTS.includes(p as never) || s.model.parts[p]?.source === 'save');
+  const own = judged.filter((p) => s.model.parts[p]?.source === 'save').map((p) => label[p]);
+  const kept = judged.filter((p) => s.model.parts[p]?.source !== 'save').map((p) => label[p]);
+  return `How much a player's last three seasons count, and how much playing time it takes before his results are trusted as his level. `
     + `From ${s.record.window.sample.toLocaleString('en-US')} player-seasons in this league${seasons.length ? ` (${seasons[0]}–${seasons[seasons.length - 1]})` : ''}, `
     + `checked one season at a time on seasons they had not seen: this league's own were clearly better for ${own.join(' and ')}`
     + `${kept.length ? `; for ${kept.join(' and ')} the starting values held up and still serve` : ''}.`;

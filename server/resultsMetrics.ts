@@ -41,7 +41,7 @@ export const RESULTS_CALIBRATION: CalibrationStamp = provisional(
 
 /** What in this module is NOT yet tuned against outcomes, so no stamp overstates it. */
 export const PROVISIONAL_PARTS: CalibrationStamp = provisional(
-  'The share of true talent the tools explain (one rating snapshot: it needs ratings a completed season before the results, cycle 4), the share of a park run factor that reaches wOBA (measured about 0.52 on the Arizona import from club runs, but the park factor it multiplies is not per season), and the run value of a stolen base (the convention\'s constant). Baserunning and defensive stabilization are fitted only once the export carries UBR or zone rating for three seasons in a row.'
+  'The share of true talent the tools explain (one rating snapshot: it needs ratings a completed season before the results, cycle 4), the share of a park run factor that reaches wOBA (measured about 0.52 on the Arizona import from club runs, but the park factor it multiplies is not per season), and the run value of a stolen base (the convention\'s constant). Baserunning and defensive stabilization are judged only once the export carries UBR or zone rating for 10 completed seasons (the first held-out season comes 5 seasons into the window, and the detector needs 4 held-out seasons, each with the season after it).'
 );
 
 export type ResultsKind = 'hitter' | 'starter' | 'reliever';

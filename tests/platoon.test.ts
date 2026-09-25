@@ -24,7 +24,7 @@ const line = (pa: number, hit: 'good' | 'ok' | 'poor'): BattingLine => {
 
 /** Ratings that say he is `gap` wOBA points better against right-handers than left-handers, against a norm for his hand. */
 const ratings = (gap: number, norm = 0.015): PlatoonRatings => ({ vsLeft: -gap / 2, vsRight: gap / 2, norm });
-const input = (over: Partial<PlatoonInput>): PlatoonInput => ({ bats: 'L', vsLeft: [], vsRight: [], leagueEffect: 0.015, leagueWoba: 0.32, ...over });
+const input = (over: Partial<PlatoonInput>): PlatoonInput => ({ recordStabilization: 300, bats: 'L', vsLeft: [], vsRight: [], leagueEffect: 0.015, leagueWoba: 0.32, ...over });
 
 describe('reading a platoon split honestly', () => {
   it('nothing to go on (no ratings, no league norm, too thin a record) is not read at all', () => {

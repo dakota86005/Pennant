@@ -92,7 +92,7 @@ describe('sample size is an uncertainty, never a confidence', () => {
   it('with the same results percentile, less sample moves the estimate less from the tools, never more', () => {
     const ev = (reliabilityValue: number): LensEvidence => ({
       position: 10, ratingsPct: 50, ratingsEvidence: 'complete', skillsPct: 90, runsPct: null, sample: 1, sampleUnit: 'PA', reliability: reliabilityValue, currentSample: 50,
-      defense: { pct: null, grade: null, visible: false }, usage: [],
+      defense: { stabilization: 1000, pct: null, grade: null, visible: false }, usage: [],
     });
     let last = 50;
     for (const n of [0, 20, 100, 300, 800, 2000]) {
@@ -106,7 +106,7 @@ describe('sample size is an uncertainty, never a confidence', () => {
   it('when only results exist the estimate is pulled toward the middle by how little sample stands behind them', () => {
     const resultsOnly = (r: number): LensEvidence => ({
       position: 10, ratingsPct: null, ratingsEvidence: 'unknown', skillsPct: 95, runsPct: null, sample: 30, sampleUnit: 'PA', reliability: r, currentSample: 30,
-      defense: { pct: null, grade: null, visible: false }, usage: [],
+      defense: { stabilization: 1000, pct: null, grade: null, visible: false }, usage: [],
     });
     const thin = estimateOf(resultsOnly(0.05), false);
     // results-only: the estimate is the results percentile itself (there is nothing to shrink toward but the league); it is labelled so and carries its weight

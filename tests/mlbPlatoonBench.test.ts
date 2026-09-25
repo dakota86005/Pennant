@@ -24,7 +24,7 @@ const PARTNER = benchIds[0];
 
 const ev = (bat: number, glove: number | null, position: number): LensEvidence => ({
   position, ratingsPct: bat, ratingsEvidence: 'complete', skillsPct: bat, runsPct: null, sample: 500, sampleUnit: 'PA', reliability: 0.7, currentSample: 150,
-  defense: { pct: glove, grade: glove === null ? null : 55, visible: glove !== null }, usage: [],
+  defense: { stabilization: 1000, pct: glove, grade: glove === null ? null : 55, visible: glove !== null }, usage: [],
 });
 const usage = (id: number) => {
   const s = hitters.find((h) => h.id === id) as Spec;
@@ -35,9 +35,9 @@ const usage = (id: number) => {
 const NORM = 0.015;
 const platoonFor = (id: number): PlatoonInput => {
   // the left fielder: ratings far outside the norm for a left-handed bat (much better against right-handers); the partner is the reverse
-  if (id === LF) return { bats: 'L', vsLeft: [], vsRight: [], leagueEffect: NORM, leagueWoba: 0.32, ratings: { vsLeft: -0.03, vsRight: 0.03, norm: NORM } };
-  if (id === PARTNER) return { bats: 'R', vsLeft: [], vsRight: [], leagueEffect: -0.01, leagueWoba: 0.32, ratings: { vsLeft: 0.03, vsRight: 0.0, norm: -0.01 } };
-  return { bats: 'R', vsLeft: [], vsRight: [], leagueEffect: -0.01, leagueWoba: 0.32, ratings: { vsLeft: 0.0, vsRight: 0.0, norm: 0.0 } };
+  if (id === LF) return { recordStabilization: 300, bats: 'L', vsLeft: [], vsRight: [], leagueEffect: NORM, leagueWoba: 0.32, ratings: { vsLeft: -0.03, vsRight: 0.03, norm: NORM } };
+  if (id === PARTNER) return { recordStabilization: 300, bats: 'R', vsLeft: [], vsRight: [], leagueEffect: -0.01, leagueWoba: 0.32, ratings: { vsLeft: 0.03, vsRight: 0.0, norm: -0.01 } };
+  return { recordStabilization: 300, bats: 'R', vsLeft: [], vsRight: [], leagueEffect: -0.01, leagueWoba: 0.32, ratings: { vsLeft: 0.0, vsRight: 0.0, norm: 0.0 } };
 };
 
 const holderEvidence = (ids: number[], role: { position: number }) => new Map(ids.map((id) => [id, id === LF ? ev(50, 50, role.position) : ev(60, 55, role.position)] as const));

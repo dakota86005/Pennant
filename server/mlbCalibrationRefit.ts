@@ -23,7 +23,7 @@ import { rosterReviewCalibration } from './mlbCalibration.js';
 import { PITCHER_RESULTS_MIX } from './roleReview.js';
 import { REGULAR_SHARE } from './lineupPicture.js';
 import { hitterKey, relieverKey, STARTER_KEY } from './roleStandards.js';
-import { leagueClubs, leagueSeasons, marketLevels, seasonSchedules } from './saveIdentity.js';
+import { leagueClubs, leagueSeasons, marketLevels, saveIdentity, seasonSchedules } from './saveIdentity.js';
 import { registerCalibration, type CalibrationBasis } from './saveCalibration.js';
 import { reviewClub } from './mlbReview.js';
 import { loadClubView } from './mlbRoster.js';
@@ -406,8 +406,12 @@ export function resultsInput(leagueId: number, through: number): ResultsInput {
   return input;
 }
 
-/** The results params the refit has just decided, per league, for the standards measured after it in the same refit. */
-const pendingResults = new Map<number, ResultsParams>();
+/**
+ * The results params the refit has just decided, for the standards measured after it in the same refit: keyed by the save's identity,
+ * the league and the completed season, so a later run (another save, another season) never reads them.
+ */
+const pendingResults = new Map<string, ResultsParams>();
+const pendingKey = (leagueId: number, through: number | null) => `${saveIdentity(leagueId)}|${leagueId}|${through ?? 'none'}`;
 
 
 // ── registration ─────────────────────────────────────────────────────────────
@@ -418,8 +422,8 @@ const need = (b: CalibrationBasis) => b.throughSeason;
  * The results params the standards are measured under: the ones this refit has just decided (recorded with it), else the ones in force.
  * What is checked is what is served.
  */
-function resultsParamsFor(leagueId: number): ResultsParams {
-  return pendingResults.get(leagueId) ?? rosterReviewCalibration(leagueId).results;
+function resultsParamsFor(leagueId: number, through: number | null): ResultsParams {
+  return pendingResults.get(pendingKey(leagueId, through)) ?? rosterReviewCalibration(leagueId).results;
 }
 
 // The results fit is registered FIRST: the standards measured in the same refit are measured under its verdict
@@ -431,7 +435,7 @@ registerCalibration({
     // Hysteresis: what served before this refit (the adopted fit of an earlier season)
     const previous = adoptedCalibration<ResultsModel>(b.leagueId, MLB_CALIBRATION_SUBSYSTEM, 'results', RESULTS_METHOD, { throughMax: through - 1 });
     const run = fitResults(resultsInput(b.leagueId, through), b, previous?.model ?? null);
-    if (run.model && run.record.gate.passed) pendingResults.set(b.leagueId, paramsOf(run.model, String(through)));
+    if (run.model && run.record.gate.passed) pendingResults.set(pendingKey(b.leagueId, through), paramsOf(run.model, String(through)));
     return run;
   },
 });
@@ -439,7 +443,7 @@ registerCalibration({
 registerCalibration({
   subsystem: MLB_CALIBRATION_SUBSYSTEM, component: 'standards', method: STANDARDS_METHOD, trigger: 'each_import',
   compute: (b) => {
-    const results = resultsParamsFor(b.leagueId);
+    const results = resultsParamsFor(b.leagueId, b.throughSeason);
     const history = resultsLensHistory(b.leagueId, b.throughSeason, results);
     return measureStandards(standardsSample(b.leagueId, results), history.seasons, b, undefined, undefined, history.skipped);
   },

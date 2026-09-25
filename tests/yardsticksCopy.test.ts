@@ -101,6 +101,9 @@ describe('the yardsticks line gives the true reason, plainly', () => {
     // the review is served the starting values, never the league's own under another name
     expect(y.review.aging).toBeNull();
     expect(y.results).toBe(RESULTS_PRIOR);
+    const waiting = state([() => recordCalibration({ model: { ...agingModel('starting'), decisions: { hitter: { previous: 'starting', streak: 1 }, pitcher: { previous: 'starting', streak: 0 } } }, record: rec('aging', AGING_METHOD, true, { throughSeason: 1991 }) }, { fitMs: 1 })]);
+    expect(waiting.tip).toMatch(/How players age: the starting values, because this league's own did better at the last check and must do so once more before they are used\./);
+    expect(waiting.tip).not.toMatch(BANNED);
     const back = state([returnedAging]);
     expect(back.tip).toMatch(/How players age: the starting values, because they did better than this league's own when checked again\./);
   });

@@ -21,7 +21,7 @@ const line = (pa: number, woba: 'good' | 'ok' | 'poor'): BattingLine => {
   };
 };
 const ratings = (gap: number, norm = 0.015): PlatoonRatings => ({ vsLeft: -gap / 2, vsRight: gap / 2, norm });
-const input = (over: Partial<PlatoonInput>): PlatoonInput => ({ bats: 'L', vsLeft: [], vsRight: [], leagueEffect: 0.015, leagueWoba: 0.32, ...over });
+const input = (over: Partial<PlatoonInput>): PlatoonInput => ({ recordStabilization: 300, bats: 'L', vsLeft: [], vsRight: [], leagueEffect: 0.015, leagueWoba: 0.32, ...over });
 
 describe('GOLDEN platoon: unknown stays unknown', () => {
   it('no ratings and no usable record is "not enough", never "no issue", even when the league norm is known', () => {
@@ -85,8 +85,8 @@ describe('GOLDEN platoon: thin observed splits do not overwhelm ratings and the 
 describe('GOLDEN platoon: symmetry between the hands', () => {
   it('mirroring a hitter (his hand, his ratings, his split) mirrors the weak side and the size of the read', () => {
     // Mirroring reflects the pitchers too: a left-handed batter faces left-handers about 30% of the time, so his mirror faces right-handers 30%.
-    const lefty = evaluatePlatoon({ bats: 'L', vsLeft: [], vsRight: [], leagueEffect: 0.015, leagueLeftShare: 0.3, leagueWoba: 0.32, ratings: { vsLeft: -0.03, vsRight: 0.03, norm: 0.015 } });
-    const righty = evaluatePlatoon({ bats: 'R', vsLeft: [], vsRight: [], leagueEffect: -0.015, leagueLeftShare: 0.7, leagueWoba: 0.32, ratings: { vsLeft: 0.03, vsRight: -0.03, norm: -0.015 } });
+    const lefty = evaluatePlatoon({ recordStabilization: 300, bats: 'L', vsLeft: [], vsRight: [], leagueEffect: 0.015, leagueLeftShare: 0.3, leagueWoba: 0.32, ratings: { vsLeft: -0.03, vsRight: 0.03, norm: 0.015 } });
+    const righty = evaluatePlatoon({ recordStabilization: 300, bats: 'R', vsLeft: [], vsRight: [], leagueEffect: -0.015, leagueLeftShare: 0.7, leagueWoba: 0.32, ratings: { vsLeft: 0.03, vsRight: -0.03, norm: -0.015 } });
     expect(lefty.weakSide).toBe('L');
     expect(righty.weakSide).toBe('R');
     expect(lefty.weakBy).toBeCloseTo(righty.weakBy as number, 6);
@@ -96,7 +96,7 @@ describe('GOLDEN platoon: symmetry between the hands', () => {
 
   it('a hitter who is normal for his hand is not a problem, whichever hand it is', () => {
     for (const [bats, norm] of [['L', 0.015], ['R', -0.015]] as const) {
-      const r = evaluatePlatoon({ bats, vsLeft: [], vsRight: [], leagueEffect: norm, leagueWoba: 0.32, ratings: { vsLeft: -norm / 2, vsRight: norm / 2, norm } });
+      const r = evaluatePlatoon({ recordStabilization: 300, bats, vsLeft: [], vsRight: [], leagueEffect: norm, leagueWoba: 0.32, ratings: { vsLeft: -norm / 2, vsRight: norm / 2, norm } });
       expect(r.verdict).toBe('no_issue');
     }
   });

@@ -40,16 +40,18 @@ export interface DerivedValue {
 }
 
 /** Why a league-season's totals cannot give its run environment; null when they can. */
-function missingTotals(x: RunTotals): string | null {
+function missingTotals(x: RunTotals, need: ReadonlyArray<'sf' | 'cs' | 'gdp' | 'ibb' | 'hp' | 'sb'>): string | null {
   if (!(x.pa >= RUN_ENVIRONMENT_MIN_PA)) return `fewer than ${RUN_ENVIRONMENT_MIN_PA.toLocaleString('en-US')} plate appearances`;
   // A zero league total of these is not recorded, never a true zero (D-018): no league-season has none
-  for (const k of ['sf', 'cs', 'gdp', 'ibb', 'hp', 'sb'] as const) if (!(x[k] !== undefined && x[k]! > 0)) return `the export does not record ${k.toUpperCase()} for the season`;
+  for (const k of need) if (!(x[k] !== undefined && x[k]! > 0)) return `the export does not record ${k.toUpperCase()} for the season`;
+  // Sacrifice bunts can truly be few, so a zero is read as zero; an absent column is unknown, never zero
+  if (x.sh === undefined) return 'the export does not record SH for the season';
   if (!(x.r > 0)) return 'the export does not record runs for the season';
   return null;
 }
 
 /** Outs made by the batting side: at-bats without a hit, sacrifices, caught stealing and double plays (their second out). */
-const battingOuts = (x: RunTotals) => x.ab - x.h + (x.sf ?? 0) + (x.sh ?? 0) + (x.cs ?? 0) + (x.gdp ?? 0);
+const battingOuts = (x: RunTotals) => x.ab - x.h + (x.sf as number) + (x.sh as number) + (x.cs as number) + (x.gdp as number);
 
 /**
  * The wOBA scale a league-season's own totals imply for the fixed weights `W` (BaseRuns, Smyth/Tango: A = H + BB + HBP - HR - IBB/2,
@@ -59,7 +61,7 @@ const battingOuts = (x: RunTotals) => x.ab - x.h + (x.sf ?? 0) + (x.sh ?? 0) + (
  * (each event less an out): the runs one point of wOBA is worth in this environment.
  */
 export function wobaScaleFrom(x: RunTotals): DerivedValue {
-  const missing = missingTotals(x);
+  const missing = missingTotals(x, ['sf', 'cs', 'gdp', 'ibb', 'hp', 'sb']);
   if (missing) return { value: WOBA_SCALE_FALLBACK, basis: 'fallback', reason: missing };
   const ibb = x.ibb as number;
   const hp = x.hp as number;
@@ -92,7 +94,8 @@ export function wobaScaleFrom(x: RunTotals): DerivedValue {
 
 /** A caught stealing's run value from the league-season's runs per out (the standard wSB form, -(2 x R/O + 0.075)); the fallback when unknown. */
 export function caughtStealingRunsFrom(x: RunTotals): DerivedValue {
-  const missing = missingTotals(x);
+  // Needs only the runs and the outs (the totals the outs are counted from)
+  const missing = missingTotals(x, ['sf', 'cs', 'gdp']);
   const outs = battingOuts(x);
   if (missing || !(outs > 0)) return { value: STEAL_RUNS_FALLBACK.cs, basis: 'fallback', reason: missing ?? 'the export does not record outs for the season' };
   return { value: -(2 * (x.r / outs) + 0.075), basis: 'derived', reason: null };

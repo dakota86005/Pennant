@@ -30,6 +30,14 @@ describe('the wOBA scale is the league-season\'s own (cycle 2, D-053)', () => {
       expect(wobaScaleFrom({ ...MODERN, [k]: 0 }).basis).toBe('fallback');
     }
     expect(wobaScaleFrom({ ...MODERN, pa: 5000 }).reason).toMatch(/fewer than/);
+    // sacrifice bunts can truly be few (zero is zero), but an unrecorded column is unknown
+    expect(wobaScaleFrom({ ...MODERN, sh: 0 }).basis).toBe('derived');
+    expect(wobaScaleFrom({ ...MODERN, sh: undefined }).reason).toMatch(/SH/);
+  });
+
+  it('a caught stealing needs only the runs and the outs: an unrecorded walk or steal total does not stop it', () => {
+    expect(caughtStealingRunsFrom({ ...MODERN, ibb: undefined, hp: undefined, sb: undefined }).basis).toBe('derived');
+    expect(caughtStealingRunsFrom({ ...MODERN, gdp: undefined }).basis).toBe('fallback');
   });
 
   it('a caught stealing costs about -(2 x runs per out + 0.075), else the fallback', () => {

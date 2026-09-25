@@ -89,12 +89,14 @@ describe('no reader holds a default (static)', () => {
   const files = fs.readdirSync(SERVER).filter((f) => f.endsWith('.ts'));
   const code = (f: string) => fs.readFileSync(path.join(SERVER, f), 'utf8');
 
-  it('the starting values are named only where they are declared, the fallback is chosen, or a hand-built case lacks its field', () => {
-    const allowed = new Set(['resultsMetrics.ts', 'mlbCalibration.ts', 'mlbResultsFit.ts', 'roleReview.ts', 'platoon.ts']);
+  it('the starting values are named only where they are declared or where the fallback is chosen, and no reader falls back to them', () => {
+    const allowed = new Set(['resultsMetrics.ts', 'mlbCalibration.ts', 'mlbResultsFit.ts']);
     for (const f of files) if (!allowed.has(f)) expect(code(f), f).not.toMatch(/\bRESULTS_PRIOR\b/);
-    // the two hand-built fallbacks read it only for an absent field, never in place of a supplied one
-    expect(code('roleReview.ts')).toMatch(/d\.stabilization \?\? RESULTS_PRIOR/);
-    expect(code('platoon.ts')).toMatch(/input\.recordStabilization \?\? blendStabilization/);
+    // the fields the evidence carries are required: a lens builder that forgets one fails to compile, never serves the starting values
+    expect(code('roleReview.ts')).toMatch(/\n  stabilization: number;/);
+    expect(code('platoon.ts')).toMatch(/\n  recordStabilization: number;/);
+    expect(code('roleReview.ts')).not.toMatch(/stabilization \?\?/);
+    expect(code('platoon.ts')).not.toMatch(/recordStabilization \?\?/);
   });
 
   it('the old constants are gone: nothing can read a season weight or stabilization but through the params', () => {

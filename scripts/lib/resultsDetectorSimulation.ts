@@ -19,7 +19,7 @@
  */
 
 import { backtestPart, fitPart, RESULTS_FIT_POLICY, type PartValues, type ResultsCase, type ResultsPart } from '../../server/mlbResultsFit.js';
-import { decide, DETECTOR_POLICY, type DetectorDecision, type ServedSource } from '../../server/calibrationDetector.js';
+import { decide, DETECTOR_METHOD, DETECTOR_POLICY, ruleText, type DetectorDecision, type DetectorPolicy, type ServedSource } from '../../server/calibrationDetector.js';
 import { RESULTS_PRIOR } from '../../server/resultsMetrics.js';
 
 export interface SimSpec {
@@ -41,6 +41,12 @@ export interface SimSpec {
   part: [number, number];
   regularShare: number;
   minTarget: number;
+  /**
+   * Season-to-season heterogeneity: a season's noise is scaled by exp(this x a standard normal) (0.25 is about +/-25%), and its drift
+   * carry-over is `rho` plus a uniform draw within +/- `rhoSpread`. Everything a season shares moves all its players together.
+   */
+  seasonNoiseSd?: number;
+  rhoSpread?: number;
   seed: number;
 }
 
@@ -74,6 +80,12 @@ export function simulateLeague(spec: SimSpec): { cases: ResultsCase[]; targets: 
   const players: P[] = [];
   let active: P[] = [];
   let next = 1;
+  const mult: number[] = [];
+  const rhos: number[] = [];
+  for (let s = 0; s < total; s += 1) {
+    mult.push(Math.exp((spec.seasonNoiseSd ?? 0) * z()));
+    rhos.push(Math.min(0.95, Math.max(0, spec.rho + (spec.rhoSpread ?? 0) * (2 * r() - 1))));
+  }
   for (let s = 0; s < total; s += 1) {
     active = active.filter(() => r() < 0.85);
     while (active.length < roster) {
@@ -82,10 +94,10 @@ export function simulateLeague(spec: SimSpec): { cases: ResultsCase[]; targets: 
       active.push(p);
     }
     for (const p of active) {
-      if (p.seasons.size > 0) p.u = spec.rho * p.u + Math.sqrt(1 - spec.rho * spec.rho) * sdT * z();
+      if (p.seasons.size > 0) p.u = rhos[s] * p.u + Math.sqrt(1 - rhos[s] * rhos[s]) * sdT * z();
       const n = r() < spec.regularShare ? spec.regular[0] + r() * (spec.regular[1] - spec.regular[0]) : spec.part[0] + r() * (spec.part[1] - spec.part[0]);
       const theta = p.mu + p.u;
-      p.seasons.set(s, { x: theta + (spec.noise / Math.sqrt(n)) * z(), runs: pitcher ? theta + ((spec.runsNoise as number) / Math.sqrt(n)) * z() : 0, n: Math.round(n) });
+      p.seasons.set(s, { x: theta + mult[s] * (spec.noise / Math.sqrt(n)) * z(), runs: pitcher ? theta + mult[s] * ((spec.runsNoise as number) / Math.sqrt(n)) * z() : 0, n: Math.round(n) });
     }
   }
   // Centre each season on its opportunity-weighted mean
@@ -116,16 +128,49 @@ export function simulateLeague(spec: SimSpec): { cases: ResultsCase[]; targets: 
 
 const MIX = 0.85;
 
-/** One simulated league put through the refit's backtest and the detector. */
-export function trial(spec: SimSpec, part: ResultsPart, previous: ServedSource = 'starting'): DetectorDecision {
+/** One simulated league put through the refit's backtest and the detector, at one refit. */
+export function trial(spec: SimSpec, part: ResultsPart, previous: ServedSource = 'starting', policy: DetectorPolicy = DETECTOR_POLICY): DetectorDecision {
   const { cases, targets } = simulateLeague(spec);
-  const bt = backtestPart(cases, part, targets, MIX);
-  return decide({ unshrunk: bt.unshrunk, served: bt.served, previous });
+  const bt = backtestPart(cases, part, targets.slice(-RESULTS_FIT_POLICY.windowSeasons), MIX);
+  return decide({ unshrunk: bt.unshrunk, served: bt.served, previous }, policy);
 }
 
-/** What the method finds on an unlimited sample of a spec (a very large league), and how much worse the starting values do there. */
+/**
+ * A save's lifetime: one league refitted after every completed season, from `from` to `to` seasons of history (the window the refit
+ * uses, the last 20), each refit carrying what served before it and the confirmation count (hysteresis), as the refit does.
+ */
+export function lifetime(
+  spec: SimSpec, part: ResultsPart, from = 10, to = 22, policy: DetectorPolicy = DETECTOR_POLICY,
+  onRefit?: (seasons: number, decision: DetectorDecision) => void, start: ServedSource = 'starting',
+): { ever: boolean; atEnd: ServedSource; firstAt: number | null; returned: boolean } {
+  const { cases, targets } = simulateLeague({ ...spec, seasons: to });
+  let previous: ServedSource = start;
+  let streak = 0;
+  let ever = false;
+  let returned = false;
+  let firstAt: number | null = null;
+  for (let n = from; n <= to; n += 1) {
+    const window = targets.slice(0, n).slice(-RESULTS_FIT_POLICY.windowSeasons);
+    const inWindow = new Set(window);
+    const bt = backtestPart(cases.filter((c) => inWindow.has(c.target)), part, window, MIX);
+    const d = decide({ unshrunk: bt.unshrunk, served: bt.served, previous, streak }, policy);
+    onRefit?.(n, d);
+    if (d.decided) {
+      if (previous === 'save' && d.serve === 'starting') returned = true;
+      previous = d.serve;
+      streak = d.streak;
+    }
+    if (start === 'starting' && previous === 'save' && !ever) { ever = true; firstAt = n; }
+  }
+  return { ever, atEnd: previous, firstAt, returned };
+}
+
+/**
+ * What the method finds on an unlimited sample of a spec (a very large league over many seasons, so season-to-season draws average
+ * out), and how much more error the starting values make there: the league's TRUE excess of the starting values.
+ */
 export function population(spec: SimSpec, part: ResultsPart): { optimum: PartValues; startingRegret: number } {
-  const big = simulateLeague({ ...spec, perSeason: spec.perSeason * 25, seasons: 12 });
+  const big = simulateLeague({ ...spec, perSeason: spec.perSeason * 10, seasons: 40 });
   const fit = fitPart(big.cases, part, MIX);
   const start: PartValues = { weights: [...RESULTS_PRIOR.weights[part === 'starter' || part === 'reliever' ? part : 'hitter']], k: RESULTS_PRIOR.stabilization[part] };
   const at = fitPart(big.cases, part, MIX, { fixed: start, policy: { ...RESULTS_FIT_POLICY, grid: { ...RESULTS_FIT_POLICY.grid, k: { ...RESULTS_FIT_POLICY.grid.k, [part]: [start.k] } } } });
@@ -153,20 +198,37 @@ export interface Scenario {
   name: string;
   part: ResultsPart;
   spec: Omit<SimSpec, 'seed' | 'seasons'>;
-  /** True when the starting values are the right answer (a false-adoption scenario). */
+  /** A false-adoption scenario (the starting values are right, or within the practical minimum of the best), or a power one. */
   isNull: boolean;
 }
 
+/** Season-to-season heterogeneity at the level the lifetime target is set for: a season's noise +/-25%, its drift carry-over +/-0.3. */
+export const HETEROGENEOUS = { seasonNoiseSd: 0.25, rhoSpread: 0.3 } as const;
+const het = (spec: Omit<SimSpec, 'seed' | 'seasons'>) => ({ ...spec, ...HETEROGENEOUS });
+
+/**
+ * The nulls: the starting values exactly right, and the least-favourable ones inside the practical minimum, where the starting
+ * values make about 0.5% and 0.9% to 1.0% more error than the best (results noisier than the starting K assumes), each stationary and
+ * with season-to-season heterogeneity. Then the power scenarios.
+ */
 export const SCENARIOS: Scenario[] = [
-  { name: 'hitters: true dynamics = the starting values', part: 'hitter', spec: HITTER_BASE, isNull: true },
-  { name: 'starters: true dynamics = the starting values', part: 'starter', spec: STARTER_BASE, isNull: true },
-  { name: 'relievers: true dynamics = the starting values', part: 'reliever', spec: RELIEVER_BASE, isNull: true },
-  { name: 'hitters: recent seasons count more (talent drifts faster)', part: 'hitter', spec: { ...HITTER_BASE, permanentShare: 0.3, rho: 0.6 }, isNull: false },
+  { name: 'hitters: the starting values exactly right', part: 'hitter', spec: HITTER_BASE, isNull: true },
+  { name: 'hitters: the starting values exactly right, seasons differ', part: 'hitter', spec: het(HITTER_BASE), isNull: true },
+  { name: 'hitters: the starting values about 0.5% worse', part: 'hitter', spec: { ...HITTER_BASE, talentSd: 0.022 }, isNull: true },
+  { name: 'hitters: the starting values about 0.5% worse, seasons differ', part: 'hitter', spec: het({ ...HITTER_BASE, talentSd: 0.0232 }), isNull: true },
+  { name: 'hitters: the starting values about 0.9% worse', part: 'hitter', spec: { ...HITTER_BASE, talentSd: 0.0205 }, isNull: true },
+  { name: 'hitters: the starting values about 0.9% worse, seasons differ', part: 'hitter', spec: het({ ...HITTER_BASE, talentSd: 0.0215 }), isNull: true },
+  { name: 'starters: the starting values exactly right, seasons differ', part: 'starter', spec: het(STARTER_BASE), isNull: true },
+  { name: 'starters: the starting values about 0.9% worse, seasons differ', part: 'starter', spec: het({ ...STARTER_BASE, talentSd: 0.345 }), isNull: true },
+  { name: 'relievers: the starting values exactly right, seasons differ', part: 'reliever', spec: het(RELIEVER_BASE), isNull: true },
+  { name: 'relievers: the starting values about 0.9% worse, seasons differ', part: 'reliever', spec: het({ ...RELIEVER_BASE, talentSd: 0.305 }), isNull: true },
+  { name: 'hitters: results noisier (about 2% worse)', part: 'hitter', spec: { ...HITTER_BASE, talentSd: 0.018 }, isNull: false },
+  { name: 'hitters: results noisier (about 2% worse), seasons differ', part: 'hitter', spec: het({ ...HITTER_BASE, talentSd: 0.018 }), isNull: false },
+  { name: 'hitters: results much noisier (about 3% worse)', part: 'hitter', spec: { ...HITTER_BASE, talentSd: 0.016 }, isNull: false },
+  { name: 'hitters: results much steadier', part: 'hitter', spec: { ...HITTER_BASE, talentSd: 0.04 }, isNull: false },
   { name: 'hitters: recent seasons count far more', part: 'hitter', spec: { ...HITTER_BASE, permanentShare: 0.1, rho: 0.5 }, isNull: false },
-  { name: 'hitters: results noisier (talent spread 0.018)', part: 'hitter', spec: { ...HITTER_BASE, talentSd: 0.018 }, isNull: false },
-  { name: 'hitters: results much noisier (talent spread 0.016)', part: 'hitter', spec: { ...HITTER_BASE, talentSd: 0.016 }, isNull: false },
-  { name: 'hitters: results much steadier (talent spread 0.040)', part: 'hitter', spec: { ...HITTER_BASE, talentSd: 0.04 }, isNull: false },
   { name: 'hitters: a fictional-league-sized shift (faster drift, noisier)', part: 'hitter', spec: { ...HITTER_BASE, permanentShare: 0.3, rho: 0.5, talentSd: 0.017 }, isNull: false },
+  { name: 'hitters: a fictional-league-sized shift, seasons differ', part: 'hitter', spec: het({ ...HITTER_BASE, permanentShare: 0.3, rho: 0.5, talentSd: 0.017 }), isNull: false },
   { name: 'starters: a fictional-league-sized shift', part: 'starter', spec: { ...STARTER_BASE, permanentShare: 0.1, rho: 0.5, talentSd: 0.35 }, isNull: false },
   { name: 'relievers: a fictional-league-sized shift', part: 'reliever', spec: { ...RELIEVER_BASE, permanentShare: 0.1, rho: 0.5, talentSd: 0.35 }, isNull: false },
 ];
@@ -174,33 +236,45 @@ export const SCENARIOS: Scenario[] = [
 const pct = (x: number) => `${(x * 100).toFixed(1)}%`;
 
 /**
- * The harness section: each scenario's optimum on an unlimited sample and the starting values' excess error there, then how often
- * the save's values are adopted by seasons of history (false adoption for a null, power otherwise) and, where the save's values are
- * right, how often a later refit wrongly returns to the starting values once they serve (hysteresis).
+ * The harness section. For each scenario: the league's TRUE excess of the starting values (on an unlimited sample), then a save's
+ * lifetime, refitted after every completed season from 10 to 22 seasons of history with hysteresis and confirmation as the refit does:
+ * how often the save's values are ever adopted (false adoption for a null, power otherwise), the season of the first adoption, and how
+ * often a single refit finds them clearly better at 12, 16 and 20 seasons. For a power scenario, also how often a refit wrongly
+ * returns to the starting values once the save's values serve. `--reps N` leagues a scenario (twice that for a null); `--only i,j`
+ * runs those scenarios (the harness runs them in parallel processes).
  */
 export function detectorSection(argv: string[]): void {
   const at = argv.indexOf('--reps');
   const reps = at >= 0 ? Number(argv[at + 1]) : 200;
-  const seasonsList = [10, 12, 16, 20];
-  console.log(`\n${'='.repeat(78)}\n13. The detector's error rates (simulated leagues; ${reps} leagues per cell, ${2 * reps} for a null)\n${'='.repeat(78)}`);
-  console.log(`rule: z <= -${DETECTOR_POLICY.zClear}, better in >= ${Math.round(DETECTOR_POLICY.minOriginShare * 100)}% of seasons checked (and >= ${DETECTOR_POLICY.minOriginsWon}), >= ${pct(DETECTOR_POLICY.minRelativeGain)} lower error; unshrunk AND as served`);
-  const rate = (n: number, of: number) => `${pct(n / of)} (se ${pct(Math.sqrt((n / of) * (1 - n / of) / of))})`;
-  for (const sc of SCENARIOS) {
-    const pop = population({ ...sc.spec, seasons: 12, seed: 7 }, sc.part);
-    const start = RESULTS_PRIOR.weights[sc.part === 'starter' || sc.part === 'reliever' ? sc.part : 'hitter'].join('/');
-    console.log(`\n${sc.name}\n  unlimited sample: best ${pop.optimum.weights.join('/')}, K ${pop.optimum.k} (starting ${start}, K ${RESULTS_PRIOR.stabilization[sc.part]}); the starting values' excess error there ${pct(pop.startingRegret)}`);
+  const only = argv.indexOf('--only') >= 0 ? new Set(argv[argv.indexOf('--only') + 1].split(',').map(Number)) : null;
+  console.log(`\n${'='.repeat(78)}\n13. The detector's error rates (${DETECTOR_METHOD}; simulated leagues; ${reps} leagues a scenario, ${2 * reps} for a null)\n${'='.repeat(78)}`);
+  console.log(`rule: ${ruleText()}`);
+  const rate = (n: number, of: number) => `${pct(n / of)} (se ${pct(Math.sqrt(Math.max(n, 0.5) / of * (1 - n / of) / of))})`;
+  SCENARIOS.forEach((sc, idx) => {
+    if (only && !only.has(idx)) return;
+    const excess = [7, 8].map((seed) => population({ ...sc.spec, seasons: 12, seed }, sc.part));
+    const trueExcess = (excess[0].startingRegret + excess[1].startingRegret) / 2;
     const n = sc.isNull ? 2 * reps : reps;
-    const row: string[] = [];
-    for (const seasons of seasonsList) {
-      let adopted = 0;
-      for (let i = 0; i < n; i += 1) if (trial({ ...sc.spec, seasons, seed: 1000 * seasons + i + 1 }, sc.part).serve === 'save') adopted += 1;
-      row.push(`${seasons} seasons ${rate(adopted, n)}`);
+    let ever = 0;
+    const firsts: number[] = [];
+    const signal = new Map<number, number>([[12, 0], [16, 0], [20, 0]]);
+    for (let i = 0; i < n; i += 1) {
+      const life = lifetime({ ...sc.spec, seasons: 22, seed: 50000 + 1000 * idx + i }, sc.part, 10, 22, DETECTOR_POLICY, (seasons, d) => {
+        if (signal.has(seasons) && d.unshrunk.clearlyBetter && d.served.clearlyBetter) signal.set(seasons, (signal.get(seasons) as number) + 1);
+      });
+      if (life.ever) { ever += 1; firsts.push(life.firstAt as number); }
     }
-    console.log(`  ${sc.isNull ? 'FALSE ADOPTION' : 'adopted (power)'}: ${row.join('; ')}`);
+    firsts.sort((a, b) => a - b);
+    console.log(`\n[${idx}] ${sc.name}\n  true excess of the starting values ${pct(trueExcess)} (unlimited sample: best ${excess[0].optimum.weights.join('/')}, K ${excess[0].optimum.k})`);
+    console.log(`  ${sc.isNull ? 'LIFETIME FALSE ADOPTION' : 'LIFETIME ADOPTION (power)'} (refits at 10..22 seasons): ${rate(ever, n)}${firsts.length ? `; first adopted at ${firsts[0]}-${firsts[firsts.length - 1]} seasons (median ${firsts[Math.floor(firsts.length / 2)]})` : ''}`);
+    console.log(`  clearly better at a single refit: ${[...signal].map(([s, k]) => `${s} seasons ${rate(k, n)}`).join('; ')}`);
     if (!sc.isNull) {
       let back = 0;
-      for (let i = 0; i < reps; i += 1) if (trial({ ...sc.spec, seasons: 20, seed: 777000 + i }, sc.part, 'save').serve === 'starting') back += 1;
-      console.log(`  once the save's values serve, a refit wrongly returns to the starting values (20 seasons): ${rate(back, reps)}`);
+      for (let i = 0; i < reps; i += 1) {
+        const life = lifetime({ ...sc.spec, seasons: 22, seed: 90000 + 1000 * idx + i }, sc.part, 10, 22, DETECTOR_POLICY, undefined, 'save');
+        if (life.returned) back += 1;
+      }
+      console.log(`  once the save's values serve, a refit wrongly returns to the starting values (over 10..22 seasons): ${rate(back, reps)}`);
     }
-  }
+  });
 }

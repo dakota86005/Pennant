@@ -19,8 +19,8 @@ const DH = 10;
 function hitter(position: number, bat: number, glove: number | null, run: number | null = null, over: Partial<LensEvidence> = {}): LensEvidence {
   return {
     position, ratingsPct: bat, ratingsEvidence: 'complete', skillsPct: bat, runsPct: null, sample: 900, sampleUnit: 'PA', reliability: 0.75, currentSample: 150,
-    defense: { pct: glove, grade: glove === null ? null : 50, visible: glove !== null },
-    running: run === null ? undefined : { ability: 50, toolsPct: run, resultsPct: run, perSixHundred: 0, sample: 900 },
+    defense: { stabilization: 1000, pct: glove, grade: glove === null ? null : 50, visible: glove !== null },
+    running: run === null ? undefined : { stabilization: 550, ability: 50, toolsPct: run, resultsPct: run, perSixHundred: 0, sample: 900 },
     usage: [], ...over,
   };
 }

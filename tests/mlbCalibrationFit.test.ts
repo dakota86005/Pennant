@@ -146,9 +146,13 @@ describe('aging: the league\'s own curve, checked on seasons it did not see', ()
     expect(run.record.gate.reason).toMatch(/starting curve held up/);
   });
 
-  it('a league that ages clearly faster adopts its own curve, and once serving keeps it unless the starting curve is clearly better', () => {
+  it('a league that ages clearly faster adopts its own curve once a second refit confirms it, and once serving keeps it unless the starting curve is clearly better', () => {
     const steep = (age: number) => (age < 26 ? 0 : -0.004 * (age - 26));
-    const run = fitAging(input(agingPairs(10, steep, 6000, [2005, 2025]), agingPairs(11, pitchDecline, 4000, [2005, 2025])), basis);
+    const once = fitAging(input(agingPairs(10, steep, 6000, [2005, 2025]), agingPairs(11, pitchDecline, 4000, [2005, 2025])), basis);
+    // clearly better once: the starting curve serves until the next refit confirms it
+    expect(once.model!.serve.hitter).toBe('starting');
+    expect(once.model!.decisions.hitter?.streak).toBe(1);
+    const run = fitAging(input(agingPairs(14, steep, 6000, [2005, 2025]), agingPairs(15, pitchDecline, 4000, [2005, 2025])), basis, undefined, once.model);
     expect(run.model!.serve.hitter).toBe('save');
     expect(expectedAnnualChange(34, false, run.model!.table)).toBeLessThan(-0.02);
     const next = fitAging(input(agingPairs(12, steep, 6000, [2005, 2025]), agingPairs(13, pitchDecline, 4000, [2005, 2025])), basis, undefined, run.model);

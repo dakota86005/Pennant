@@ -20,7 +20,7 @@
 import { policy, type CalibrationStamp } from './calibration.js';
 import type { CalibrationCheck, CalibrationRecord } from './saveCalibrationStore.js';
 import type { CalibrationRun } from './saveCalibration.js';
-import { decide, DETECTOR_METHOD, DETECTOR_POLICY, type DetectorDecision, type DetectorPolicy, type HeldOutCase, type ServedSource } from './calibrationDetector.js';
+import { decide, describeComparison, DETECTOR_POLICY, ruleText, type DetectorDecision, type DetectorPolicy, type HeldOutCase, type ServedSource } from './calibrationDetector.js';
 import { RESULTS_PRIOR, type ResultsKind, type ResultsParams } from './resultsMetrics.js';
 import { MLB_CALIBRATION_SUBSYSTEM } from './mlbCalibrationFit.js';
 
@@ -104,7 +104,7 @@ export interface PartFit {
   priorWeight: number;
   decision: DetectorDecision | null;
   /** Why the starting values serve, when they do: 'kept' (checked and held up), or why it could not be judged. */
-  reason: 'kept' | 'returned' | 'seasons' | 'no_runs' | null;
+  reason: 'kept' | 'confirming' | 'returned' | 'seasons' | 'no_runs' | null;
 }
 
 export interface ResultsModel {
@@ -113,7 +113,12 @@ export interface ResultsModel {
   params: Omit<ResultsParams, 'stamp'>;
 }
 
-const priorValues = (part: ResultsPart): PartValues => {
+/** Defense sums a fielder's seasons evenly in production (`defenseResult`): its weights are even, never the hitters'. */
+export const DEFENSE_WEIGHTS = [5, 5, 5];
+
+/** The starting values of a part, weighted as production weighs it. */
+export const priorValues = (part: ResultsPart): PartValues => {
+  if (part === 'defense') return { weights: [...DEFENSE_WEIGHTS], k: RESULTS_PRIOR.stabilization.defense };
   const kind: ResultsKind = part === 'starter' || part === 'reliever' ? part : 'hitter';
   return { weights: [...RESULTS_PRIOR.weights[kind]], k: RESULTS_PRIOR.stabilization[part] };
 };
@@ -215,7 +220,7 @@ export interface Backtest {
   /** Per held-out case, the no-information loss (the kind's mean) and the predictions, for the reported checks. */
   none: number[];
   predicted: { unshrunk: number[]; served: number[]; prior: number[]; actual: number[]; weight: number[] };
-  perOrigin: Array<{ origin: number; fitted: PartValues; training: number }>;
+  perOrigin: Array<{ origin: number; fitted: PartValues; served: PartValues; training: number }>;
 }
 
 /** The nested rolling-origin backtest of one part: each origin's grid point chosen on targets up to it, scored on the next target season. */
@@ -229,20 +234,23 @@ export function backtestPart(cases: ResultsCase[], part: ResultsPart, targets: n
   for (const t of origins) {
     const train = cases.filter((c) => c.target <= t && c.target >= targets[0]);
     if (train.length < pol.minTraining[part]) continue;
-    const fit = fitPart(train, part, mix, { fixed: options.fixed?.(t), policy: pol });
+    const fixedAt = options.fixed?.(t);
+    const fit = fitPart(train, part, mix, { fixed: fixedAt, policy: pol });
     if (!fit) continue;
-    const shrunk = shrinkValues(fit.values, prior, train.length, pol.shrinkCases).values;
+    // With fixed weights (K only) the rival is the SAME weights at the starting K: the comparison is of K alone
+    const rivalAt: PartValues = fixedAt ? { weights: [...fixedAt.weights], k: prior.k } : prior;
+    const shrunk = shrinkValues(fit.values, rivalAt, train.length, pol.shrinkCases).values;
     const held = cases.filter((c) => c.target === next(t));
     const p = pack(held, part === 'starter' || part === 'reliever');
     out.origins.push(t);
-    out.perOrigin.push({ origin: t, fitted: fit.values, training: train.length });
+    out.perOrigin.push({ origin: t, fitted: fit.values, served: shrunk, training: train.length });
     for (let i = 0; i < p.n; i += 1) {
-      const rival = lossOf(p, i, prior, mix);
+      const rival = lossOf(p, i, rivalAt, mix);
       out.unshrunk.push({ cluster: p.player[i], origin: t, weight: p.w[i], candidate: lossOf(p, i, fit.values, mix), rival });
       out.served.push({ cluster: p.player[i], origin: t, weight: p.w[i], candidate: lossOf(p, i, shrunk, mix), rival });
       out.none.push(p.y[i] * p.y[i]);
       const at = (v: PartValues) => { const r = relative(v); return predictOne(p, i, r.a, r.b, v.k, mix); };
-      out.predicted.unshrunk.push(at(fit.values)); out.predicted.served.push(at(shrunk)); out.predicted.prior.push(at(prior));
+      out.predicted.unshrunk.push(at(fit.values)); out.predicted.served.push(at(shrunk)); out.predicted.prior.push(at(rivalAt));
       out.predicted.actual.push(p.y[i]); out.predicted.weight.push(p.w[i]);
     }
   }
@@ -267,6 +275,13 @@ export function calibrationSlope(predicted: number[], actual: number[], weight: 
 }
 
 // ── the refit ────────────────────────────────────────────────────────────────
+
+/**
+ * Completed seasons that must carry a part's runs before it can be judged: a first origin at the window's start + `originStart`, then
+ * the detector's minimum of held-out seasons, each with the season after it.
+ */
+export const minCarriedSeasons = (policyIn: ResultsFitPolicy = RESULTS_FIT_POLICY, detector: DetectorPolicy = DETECTOR_POLICY): number =>
+  policyIn.originStart + detector.minOrigins + 1;
 
 export interface ResultsFitBasis {
   leagueId: number;
@@ -297,12 +312,13 @@ export function fitResults(input: ResultsInput, basis: ResultsFitBasis, previous
   const heldOut: CalibrationCheck[] = [];
   const parts = {} as Record<ResultsPart, PartFit>;
   const notes: string[] = [
-    `Each held-out season is predicted by values chosen only on the seasons before it (nested), and compared with the starting values on the same players (paired, standard errors clustered by player). The save's values serve only where clearly better (${DETECTOR_METHOD}: z at most -${detector.zClear}, better in at least ${Math.round(detector.minOriginShare * 100)}% of the seasons checked and at least ${detector.minOriginsWon}, and at least ${(detector.minRelativeGain * 100).toFixed(1)}% lower error), both unshrunk and as served; once serving, they give way only when the starting values are clearly better in turn.`,
-    'The starting values were fitted by run 1 on the Arizona import\'s 2003-2025 history: on that league their held-out scores are in sample, which can only make the save\'s values look worse, never better; the unshrunk scoring owes nothing to them.',
+    `Each held-out season is predicted by values chosen only on the seasons before it (nested), and compared with the starting values on the same players (paired). The save's values serve only where clearly better (${ruleText(detector)}); once serving, they give way only when the starting values are clearly better in turn.`,
+    'The starting values were fitted by run 1 on the Arizona import\'s 2003-2025 history. On that league the as-served comparison (shrunk toward them) is not out of sample; adoption also needs the unshrunk comparison, which owes nothing to them.',
     DETECTOR_ERROR_RATES_NOTE,
   ];
   const failures: string[] = [];
   let totalCases = 0;
+  let hitterBacktest: Backtest | null = null;
   for (const part of RESULTS_PARTS) {
     const prior = priorValues(part);
     const was = previous?.parts[part] ?? null;
@@ -314,23 +330,32 @@ export function fitResults(input: ResultsInput, basis: ResultsFitBasis, previous
     const optional = part === 'baserunning' || part === 'defense';
     const carried = optional ? new Set(input.carries[part]) : null;
     const pool = (input.cases[part] ?? []).filter((c) => targets.includes(c.target) && (!carried || carried.has(c.target)));
-    if (optional && (carried as Set<number>).size < policyIn.originStart + 2) {
+    if (optional && (carried as Set<number>).size < minCarriedSeasons(policyIn, detector)) {
       parts[part] = keep('no_runs');
-      notes.push(`${part === 'baserunning' ? 'Baserunning' : 'Defensive'} stabilization is not fitted: the export carries ${part === 'baserunning' ? 'baserunning runs (UBR)' : 'zone rating'} for ${carried?.size ?? 0} completed season${carried?.size === 1 ? '' : 's'} in the window, too few to fit and check it. Whether OOTP keeps them for simulated seasons is left to the data.`);
+      notes.push(`${part === 'baserunning' ? 'Baserunning' : 'Defensive'} stabilization is not fitted: the export carries ${part === 'baserunning' ? 'baserunning runs (UBR)' : 'zone rating'} for ${carried?.size ?? 0} completed season${carried?.size === 1 ? '' : 's'} in the window; judging it needs ${minCarriedSeasons(policyIn, detector)}. Whether OOTP keeps them for simulated seasons is left to the data.`);
       continue;
     }
-    // Baserunning and defense fit K only, weighted as production weighs them: baserunning at the hitters' weights in force,
-    // defense evenly (`defenseResult` sums a fielder's seasons)
-    const fixed = part === 'baserunning' ? () => parts.hitter.served : part === 'defense' ? () => ({ weights: [5, 5, 5], k: RESULTS_PRIOR.stabilization.defense }) : undefined;
+    // Baserunning and defense fit K only, weighted as production weighs them, and are judged against the SAME weights at the starting
+    // K. Baserunning: at each origin the hitters' weights as they would have served then (the save's own chosen inside that origin
+    // where the hitters serve the save's own, else the starting ones), never the final ones that saw the held-out seasons. Defense:
+    // evenly (`defenseResult` sums a fielder's seasons).
+    const hitterAt = (t: number): PartValues => {
+      if (parts.hitter.source !== 'save') return priorValues('hitter');
+      return hitterBacktest?.perOrigin.find((o) => o.origin === t)?.served ?? priorValues('hitter');
+    };
+    const fixed = part === 'baserunning' ? hitterAt : part === 'defense' ? () => priorValues('defense') : undefined;
+    const finalFixed = part === 'baserunning' ? parts.hitter.served : part === 'defense' ? priorValues('defense') : undefined;
     const bt = backtestPart(pool, part, targets.filter((t) => !carried || carried.has(t)), input.mix, { fixed, policy: policyIn });
-    const fit = pool.length >= policyIn.minTraining[part] ? fitPart(pool, part, input.mix, { fixed: fixed?.(), policy: policyIn }) : null;
+    if (part === 'hitter') hitterBacktest = bt;
+    const fit = pool.length >= policyIn.minTraining[part] ? fitPart(pool, part, input.mix, { fixed: finalFixed, policy: policyIn }) : null;
+    const rivalFinal: PartValues = finalFixed ? { weights: [...finalFixed.weights], k: prior.k } : prior;
     totalCases += pool.length;
-    const decision = decide({ unshrunk: bt.unshrunk, served: bt.served, previous: prevSource }, detector);
+    const decision = decide({ unshrunk: bt.unshrunk, served: bt.served, previous: prevSource, streak: was?.decision?.streak ?? 0 }, detector);
     for (const [label, c] of [['unshrunk', decision.unshrunk], ['served', decision.served]] as const) {
       heldOut.push({
         kind: 'detector', part: `${part}:${label}`, n: c.cases, expected: c.rivalLoss, observed: c.candidateLoss, se: c.se, prior: c.rivalLoss,
         passed: c.failures.includes('origins') ? null : c.clearlyBetter,
-        note: `z ${c.z === null ? '—' : c.z.toFixed(2)}, ${c.relativeGain === null ? '—' : (c.relativeGain * 100).toFixed(2)}% lower error than the starting values, better in ${c.originsWon} of ${c.originsScored} seasons${c.failures.length ? ` (not clearly better: ${c.failures.join(', ')})` : ''}`,
+        note: `against the starting values: ${describeComparison(c)}${c.failures.length ? ` (not clearly better: ${c.failures.join(', ')})` : ''}`,
       });
     }
     if (decision.reverse) {
@@ -345,7 +370,7 @@ export function fitResults(input: ResultsInput, basis: ResultsFitBasis, previous
       const sPrior = calibrationSlope(bt.predicted.prior, bt.predicted.actual, bt.predicted.weight);
       heldOut.push({ kind: 'slope', part, n: bt.none.length, expected: 1, observed: sServed?.slope ?? null, se: sServed?.se ?? null, prior: sPrior?.slope ?? null, passed: null, note: 'Reported, not gated: what happened against what was predicted (1 is exact; below 1, the record is trusted too much).' });
     }
-    const shrunk = fit ? shrinkValues(fit.values, prior, pool.length, policyIn.shrinkCases) : null;
+    const shrunk = fit ? shrinkValues(fit.values, rivalFinal, pool.length, policyIn.shrinkCases) : null;
     if (!decision.decided || !fit || !shrunk) {
       if (!optional) failures.push(`seasons: ${part}: ${decision.reason}`);
       parts[part] = { ...keep('seasons'), fitted: fit?.values ?? null, fittedServed: shrunk?.values ?? null, cases: pool.length, decision };
@@ -355,7 +380,7 @@ export function fitResults(input: ResultsInput, basis: ResultsFitBasis, previous
     parts[part] = {
       part, source, served: source === 'save' ? shrunk.values : prior, fitted: fit.values, fittedServed: shrunk.values, cases: pool.length,
       priorWeight: source === 'save' ? 1 - shrunk.weight : 1, decision,
-      reason: source === 'save' ? null : prevSource === 'save' ? 'returned' : 'kept',
+      reason: source === 'save' ? null : prevSource === 'save' ? 'returned' : decision.streak > 0 ? 'confirming' : 'kept',
     };
     notes.push(`${part}: fitted ${describeValues(fit.values)} (as served ${describeValues(shrunk.values)}) against the starting ${describeValues(prior)}; ${decision.reason}`);
   }
@@ -366,12 +391,15 @@ export function fitResults(input: ResultsInput, basis: ResultsFitBasis, previous
   };
   const byPart = Object.fromEntries(RESULTS_PARTS.map((p) => [p, parts[p].priorWeight]));
   const window = { seasons: targets, skipped: input.skipped.filter((s) => targets.length > 0 && s.season >= targets[0] && s.season <= through), sample: totalCases, unit: 'player-seasons' };
+  if (failures.length) notes.push(`Not decided: ${failures.map((f) => f.split(':')[1]?.trim()).filter(Boolean).join(', ')} could not be judged, and every kind waits for them (one verdict per refit).`);
   const gate: CalibrationRecord['gate'] = failures.length
     ? { passed: false, reason: `Not decided: ${failures[0]}. The values in force stay.`, failures }
     : {
       passed: true, failures: [],
       reason: REQUIRED_PARTS.every((p) => parts[p].source === 'starting')
-        ? 'Checked on held-out seasons: the starting values held up, so they serve.'
+        ? (REQUIRED_PARTS.some((p) => parts[p].reason === 'confirming')
+          ? `Checked on held-out seasons: the save's own were clearly better at this refit for ${REQUIRED_PARTS.filter((p) => parts[p].reason === 'confirming').join(', ')}; the starting values serve until the next refit confirms it.`
+          : 'Checked on held-out seasons: the starting values held up, so they serve.')
         : `Checked on held-out seasons: the save's own serve for ${REQUIRED_PARTS.filter((p) => parts[p].source === 'save').join(', ')}.`,
     };
   return {
@@ -383,9 +411,12 @@ export function fitResults(input: ResultsInput, basis: ResultsFitBasis, previous
   };
 }
 
+/** Whether a results model serves the save's own values for any part (the one predicate the params and the page both use). */
+export const servesSaveOwn = (model: ResultsModel): boolean => RESULTS_PARTS.some((p) => model.parts?.[p]?.source === 'save');
+
 /** The params a results model serves, with its stamp (the save's own where any part serves it, else the starting values'). */
 export function paramsOf(model: ResultsModel, basis: string): ResultsParams {
-  const own = (Object.keys(model.parts) as ResultsPart[]).filter((p) => model.parts[p].source === 'save');
+  const own = RESULTS_PARTS.filter((p) => model.parts[p]?.source === 'save');
   return {
     ...model.params,
     stamp: own.length
