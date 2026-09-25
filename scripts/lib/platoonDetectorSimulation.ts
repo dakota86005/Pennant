@@ -93,16 +93,18 @@ export function trueExcess(trueK: number): number {
 export function lifetime(trueK: number, seed: number, from = 10, to = 22): { ever: boolean; firstAt: number | null; atEnd: 'save' | 'starting'; single: Map<number, boolean> } {
   const league = simulatedLeague(trueK, to, seed);
   let previous: PlatoonModel | null = null;
+  let previousAt: number | null = null;
   let ever = false;
   let firstAt: number | null = null;
   const single = new Map<number, boolean>();
   for (let s = from; s <= to; s += 1) {
     const through = league.seasons[s - 1];
-    const run = fitPlatoon(league, { leagueId: 1, throughSeason: through, gameDate: null }, previous ? consecutivePlatoon(previous, true) : null);
+    // As the refit carries it: the confirmation count only from a verdict adopted at the season just before
+    const run = fitPlatoon(league, { leagueId: 1, throughSeason: through, gameDate: null }, previous ? consecutivePlatoon(previous, previousAt === s - 1) : null);
     const d = run.model?.decision;
     if (d) single.set(s, d.unshrunk.clearlyBetter && d.served.clearlyBetter);
     // a refit that could not decide keeps the model in force (never recorded as adopted)
-    if (run.record.gate.passed && run.model) previous = run.model;
+    if (run.record.gate.passed && run.model) { previous = run.model; previousAt = s; }
     if (previous?.source === 'save' && !ever) { ever = true; firstAt = s; }
   }
   return { ever, firstAt, atEnd: previous?.source ?? 'starting', single };

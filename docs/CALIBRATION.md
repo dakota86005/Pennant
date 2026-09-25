@@ -1262,17 +1262,29 @@ Stage A investigation behind them is on this save (league 203, through 2025, gam
 ### 14.2 The long-man line (`server/mlbBullpenLines.ts`, measured with the reliever standards, `standards-2`)
 
 - **The measurement.** The innings per appearance of the league's longest-working 15% of relievers this season (`LONG_LINE_POLICY`:
-  the 85th percentile; the clubs' active relievers with 8 or more appearances, the population the review reads), shrunk toward 1.6 by
-  n/(n+60) relievers, and never below `MULTI_INNING` (a long man throws multiple innings by definition). The 85th percentile is where
-  the league's real seasons 2019–2025 put 1.6.
-- **Checks** (both scored on the line as it would serve):
+  the 85th percentile). The population is the clubs' active relievers with 8 or more appearances as the standards sample reviews them:
+  a club with fewer than 5 lineup regulars reviewed, or a reliever with no working estimate, is not in it. Appearances and innings are
+  all of them, starts included, as his tier counts them. The 85th percentile is where the league's real seasons 2019–2025 put 1.6.
+- **Served as measured** (review finding A1, supervisor's call). Nothing sits between the check and the served line: with 150 or
+  more relievers the quantile serves as measured; below that the starting 1.6 serves, labelled as the starting line with that reason.
+  (The first build shrank the line toward 1.6 and checked a shrunk half-line against the unshrunk 15%, which failed leagues far
+  from 1.6: exactly the ones the measurement is for.)
+- **Never below multiple innings.** A measurement under `MULTI_INNING` (1.6) serves 1.6 with its own reason: "this league's relievers
+  rarely work multiple innings, so the line stays at 1.6 innings". It is never described as the league's longest-working 15 in 100.
+- **Checks** (each draws the same quantile on part of the league and asks that it leave 15% of the rest at or above it):
   1. *Minimums:* 150 relievers; the standards' own minimums (20 clubs, 15 games) apply to the measurement they travel with.
-  2. *Club split:* 400 seeded halvings; the line drawn from half the clubs leaves 15% ± 5 of the other half's relievers at or above it
-     (pooled).
-  3. *Season split:* from the game logs, the line drawn from the first half of the season's game dates (4 or more relief appearances
-     in the half) leaves 15% ± 6 of the second half's at or above it. Where the export has no game logs for the season it is "not
-     measured" and not required.
-  A line that fails a check, or too few relievers, leaves the starting 1.6, with its reason.
+  2. *Club split:* 400 seeded halvings; pooled over them, the line drawn from half the clubs leaves 15% ± 5 of the other half's
+     relievers at or above it (bias).
+  3. *Stability:* in at least 90% of the halvings that share is within 15% ± 10, so a line that swings with which clubs drew it
+     (clubs using their pens very differently, or too few relievers) fails.
+  4. *Season split:* from the game logs, the line drawn from the first half of the season's game dates leaves 15% ± 6 of the second
+     half's relievers at or above it, each with 4 or more appearances in the half (half the 8 the tiers need; the same appearances,
+     starts included). It runs only where the logs hold at least 90% of the season's appearances; otherwise it is "not measured",
+     with why, and not required, and the hover says the season could not be split.
+- **When a measurement does not hold up** (a failed check, or too few relievers), the line in force stays (supervisor's call, as
+  Stage A said): the league's own line from an earlier measurement, with the standards measured under it (the record's basis
+  `carried`, and the hover says the latest measurement did not hold up); else the starting line and the standards measured under it.
+  One failed import never flips the tiers back to 1.6.
 - **In force together with the standards.** The reliever standards (`rel:<tier>`) are measured on tiers, so the line changes whom each
   describes. The standards refit reviews every club once under the starting lines, measures the lines on the same review, re-reads
   each reliever's tier under them, measures the standards on those tiers and records the lines in the standards' model
@@ -1293,12 +1305,14 @@ Stage A investigation behind them is on this save (league 203, through 2025, gam
   Reported: a hitter's own past split predicts his next season's split no better than the league norm for his hand (the starting
   K against the norm alone: −0.04%, z −0.32), as run 1 found. No lineup regular's read moves: all 250 have visible platoon ratings,
   so none is read around the league norm alone, where the league's K would apply.
-- **The long-man line: measured and served, 1.71** (1.733 on 219 active relievers, as served 1.705). Club split 17.2% (aim 15 ± 5),
-  season split 14.3% (aim 15 ± 6; the first half's line 1.65 on 195 relievers). The leverage lines serve as written (the league's mean
-  1.0225).
+- **The long-man line: measured and served, 1.73** (the 85th percentile of 219 active relievers, served as measured). Club split
+  15.6% (aim 15 ± 5); stability 96% of halvings within 15% ± 10 (the other half's share 8–24% at the 5th to 95th percentile);
+  season split 13.4% (aim 15 ± 6; the first half's line 1.74 on 205 relievers, all appearances counted). The leverage lines serve as
+  written (the league's mean 1.0225). (The first build served 1.705, shrunk toward 1.6; see 14.2.)
 - **Effect** (`npm run review:calibration-report`, section 10: everything the save serves, with the standards measured under the
   starting line and the starting lines, against the standards measured under the league's line and served with it):
-  - 13 relievers move from long man to low-leverage arm (11) or middle reliever (2); long men 47 → 34 of 238.
+  - 15 relievers move from long man to low-leverage arm (13) or middle reliever (2); long men 47 → 32 of 238. (The first build's
+    shrunk line, 1.705, moved 13.)
   - Two strong flags appear (Senzatela, COL; Falter, KC: former long men now measured against low-leverage arms, whose standard is
     higher) and one disappears (Fedde, CWS, low-leverage arm: the low-leverage standard fell once the weaker former long men joined
     it). Eight watches change. League-wide flags 16 → 17.
@@ -1307,6 +1321,9 @@ Stage A investigation behind them is on this save (league 203, through 2025, gam
   - Arizona: Joe Ross (1.63 innings an appearance, leverage 0.60) moves from long man to low-leverage arm and from no concern to
     "tools lag his results" (watch). Arizona's pen has no pen-wide finding under either line.
 - **Refit time in the worker:** platoon under 1 s; the standards measurement (with the lines) about 7 s, as before.
+- **Also fixed after the review:** a platoon read whose hand has no league split is not established (never a prior of zero, never
+  the save's K, never a problem); the platoon fit tolerates a missing optional batting column as production's league split does; the
+  simulation carries the confirmation count only from a verdict adopted the season before, as the refit does (its rates did not move).
 
 ### 14.4 Not done, and why
 

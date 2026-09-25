@@ -1918,12 +1918,16 @@ supervisor's call, pending owner review (the owner was away and authorized best 
   distribution" and their `calibrated` stamp): rescaled only when the league's mean leverage is off 1.0 by more than 5%.
 - **"Throws multiple innings" and "a long man" are two numbers** (amends D-038, D-042). The first stays policy (1.6 innings an
   appearance). The long-man line is a MEASUREMENT of the league as it stands: the innings per appearance of its longest-working 15%
-  of relievers this season, shrunk toward 1.6 and never below it, served when lines drawn from half the clubs and from the first
-  half of the season leave about 15% of the rest at or above them. It is measured with the reliever standards and recorded with them
+  of relievers this season, served as measured (no pull toward 1.6, so what is checked is what is served) when the same quantile
+  drawn from half the clubs, steadily across halvings, and from the first half of the season leaves about 15% of the rest at or above
+  it; under 1.6 it stays 1.6 with its own reason ("this league's relievers rarely work multiple innings"). A measurement that does
+  not hold up keeps the line in force and the standards measured under it (never a flip back to 1.6 on one import). The season
+  split counts the same appearances as the line, starts included. It is measured with the reliever standards and recorded with them
   (`standards-2`), so the tiers and the standards measured on them are in force together or not at all; a `standards-1` row reads as
   measured under 1.6 until a `standards-2` row exists. On the Arizona import (whose game works relievers about a quarter longer than
-  the real seasons it imported) it is 1.71: 13 relievers stop being long men, two strong flags appear and one disappears, "crowded:
+  the real seasons it imported) it is 1.73: 15 relievers stop being long men, two strong flags appear and one disappears, "crowded:
   long men" fires on 3 clubs instead of 6, and Arizona's Joe Ross becomes a low-leverage arm on watch.
+- **An unknown usual split for his hand is never zero** (review, D-018): the read states it is not established and draws no verdict.
 - **No reader holds a default:** the platoon weights and the bullpen lines are required arguments, resolved once per request with
   the other yardsticks (`tests/platoonBullpenInForce.test.ts`). The minimum appearances, the deployment gap, the credible-arm line
   and the crowding counts stay policy.
