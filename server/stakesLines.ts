@@ -29,6 +29,7 @@
 import { startingLines, type CeilingLines, type CeilingLinesInForce } from './developmentFit.js';
 import { adoptedCalibration, latestCalibrationAttempt, type CalibrationCheck, type CalibrationRecord } from './saveCalibrationStore.js';
 import { leagueGameDate } from './saveIdentity.js';
+import { parseGameDate } from './dataFreshness.js';
 
 export { startingLines };
 export type { CeilingLinesInForce };
@@ -206,11 +207,16 @@ export function measureCeilingLines(
  */
 export function stakesLinesFor(leagueId: number | null): CeilingLinesInForce {
   if (leagueId === null) return startingLines('no_league');
-  const bound = { gameDateMax: leagueGameDate(leagueId) };
+  const today = leagueGameDate(leagueId);
+  const bound = { gameDateMax: today };
   const adopted = adoptedCalibration<StakesLinesModel>(leagueId, STAKES_SUBSYSTEM, STAKES_LINES_COMPONENT, STAKES_LINES_METHOD, bound);
   const latest = latestCalibrationAttempt<StakesLinesModel>(leagueId, STAKES_SUBSYSTEM, STAKES_LINES_COMPONENT, STAKES_LINES_METHOD, bound);
-  if (adopted?.model?.inForce && latest?.basis === adopted.basis) return adopted.model.inForce;
-  // The latest attempt did not hold up: it recorded what stayed in force (the league's own carried, or the starting lines)
-  if (latest?.model?.inForce) return latest.model.inForce;
-  return adopted?.model?.inForce ?? startingLines('not_measured');
+  const inForce = adopted?.model?.inForce && latest?.basis === adopted.basis
+    ? adopted.model.inForce
+    // The latest attempt did not hold up: it recorded what stayed in force (the league's own carried, or the starting lines)
+    : latest?.model?.inForce ?? adopted?.model?.inForce ?? startingLines('not_measured');
+  // The lines they replaced are served only on the export the move was measured on: later, his own ratings may have moved too, so a
+  // tier can no longer be said to have changed because of the lines alone (review finding B2)
+  const onThisExport = inForce.measuredOn !== null && today !== null && parseGameDate(today) === parseGameDate(inForce.measuredOn);
+  return onThisExport && inForce.previous?.replacedOn === inForce.measuredOn ? inForce : { ...inForce, previous: null };
 }

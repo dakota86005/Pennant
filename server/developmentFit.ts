@@ -405,9 +405,10 @@ function dateWords(iso: string | null): string {
 
 function ceilingReason(ceiling: StakesReading['ceiling'], inForce: CeilingLinesInForce): string {
   const lines = inForce.lines[ceiling.kind];
-  // "this league's" only where the league's own lines serve; otherwise the starting line, named as such (never the league's)
+  // The league's own lines are named as his organization's major league's; otherwise the starting line, named as such (never the league's)
   const own = inForce.source === 'save';
-  const peers = own ? `this league's major-league ${ceiling.kind}s` : `major-league ${ceiling.kind}s`;
+  // Measured on his organization's major league, not the league he plays in: said so, for a minor leaguer above all
+  const peers = own ? `${ceiling.kind}s in his organization's major league` : `major-league ${ceiling.kind}s`;
   const at = (value: number) => (own ? `${value}` : `${value}, Pennant's starting line`);
   switch (ceiling.band) {
     case 'impact':
@@ -421,24 +422,23 @@ function ceilingReason(ceiling: StakesReading['ceiling'], inForce: CeilingLinesI
   }
 }
 
-const BAND_WORDS: Record<CeilingBand, string> = {
-  impact: 'an impact major leaguer', regular: 'a major-league regular', fringe: 'a fringe major leaguer', below_major_league: 'no major-league projection',
-};
-
 /**
- * When his ceiling differs under the lines in force before these (a line moved at an import), say so: the move, not anything about
- * him, is what changed it. Null when the lines did not move or his ceiling reads the same under both.
+ * The lines moved and that alone changed his tier: said only then (review finding B2). His tier is computed at his CURRENT potential,
+ * age and context under the lines in force and under the lines they replaced; the sentence is given only when the two tiers differ and
+ * the move happened at the import these lines were measured on (`previous.replacedOn === measuredOn`), which the reader serves only on
+ * that import's own export. At a later export his potential may have moved too, so the reader drops `previous` and the ordinary reason
+ * is all he gets. Null otherwise.
  */
-function lineMoveReason(kind: ScoutedAbility['kind'], potential: number, ceiling: StakesReading['ceiling'], inForce: CeilingLinesInForce): string | null {
+function lineMoveReason(kind: ScoutedAbility['kind'], potential: number, ceiling: StakesReading['ceiling'], state: DevelopmentRemaining, tier: DevelopmentProtectionTier, inForce: CeilingLinesInForce): string | null {
   const before = inForce.previous;
-  if (!before) return null;
+  if (!before || inForce.source !== 'save' || before.replacedOn === undefined || before.replacedOn === null || before.replacedOn !== inForce.measuredOn) return null;
   const earlier = ceilingOf(kind, potential, before.lines);
-  if (earlier.band === ceiling.band) return null;
+  const earlierTier = tierFor(earlier.band, state);
+  if (earlierTier === tier) return null;
   const from = before.lines[ceiling.kind];
   const to = inForce.lines[ceiling.kind];
   const moved = (['fringe', 'regular', 'impact'] as const).filter((n) => from[n] !== to[n]).map((n) => `${n === 'fringe' ? 'a fringe major leaguer' : n === 'regular' ? 'a regular' : 'an impact player'}: ${from[n]} to ${to[n]}`);
-  const when = inForce.source === 'save' ? `when this league's major leaguers were measured on ${dateWords(before.replacedOn ?? inForce.measuredOn)}` : 'when the league\'s own lines stopped serving';
-  return `The ceiling lines moved ${when} (${moved.join('; ')}). Under the earlier lines his ceiling read as ${BAND_WORDS[earlier.band]}. The lines moved, not anything about him.`;
+  return `The ceiling lines moved when his organization's major leaguers were measured on ${dateWords(inForce.measuredOn)} (${moved.join('; ')}). Under the earlier lines, with the same ratings, his stakes would read ${TIER_WORDS[earlierTier]}: the lines moved, not anything about him.`;
 }
 
 function ageReason(age: number, byAge: DevelopmentRemaining): string {
@@ -600,8 +600,6 @@ export function evaluateDevelopmentProtection(
   const reasons: string[] = [];
   const ceiling = potentialRating !== null ? ceilingOf(input.ability.kind, potentialRating, input.lines.lines) : null;
   if (ceiling) reasons.push(ceilingReason(ceiling, input.lines));
-  const moved = ceiling && potentialRating !== null ? lineMoveReason(input.ability.kind, potentialRating, ceiling, input.lines) : null;
-  if (moved) reasons.push(moved);
   if (age !== null) reasons.push(ageReason(age, developmentRemainingByAge(age)));
 
   /*
@@ -638,6 +636,8 @@ export function evaluateDevelopmentProtection(
     );
   }
   reasons.push(compositionReason(tier, ceiling.band, remaining.state));
+  const moved = lineMoveReason(input.ability.kind, potentialRating, ceiling, remaining.state, tier, input.lines);
+  if (moved) reasons.push(moved);
 
   const superseded = supersededCompositeTier(age, current, potentialRating);
 

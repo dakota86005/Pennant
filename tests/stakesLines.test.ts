@@ -89,27 +89,41 @@ describe('what a tier says about the lines', () => {
   const ability = syntheticScoutedAbility({ current: 40, potential: 51 });
   const tier = (lines: CeilingLinesInForce) => evaluateDevelopmentProtection({ age: 20, ability, lines, context: null });
 
-  it('the starting lines are named as Pennant\'s, never as this league\'s', () => {
+  it('the starting lines are named as Pennant\'s, never as the league\'s', () => {
     const r = tier(START).reasons.join(' ');
     expect(r).toMatch(/Pennant's starting line/);
+    expect(r).not.toMatch(/this league's|organization's major league/);
+  });
+
+  it('the league\'s own lines are named as his organization\'s major league\'s (a minor leaguer plays in another league)', () => {
+    const own: CeilingLinesInForce = { lines: CEILING_LINES, source: 'save', reason: 'measured', measuredOn: '2031-05-01', previous: null };
+    const r = tier(own).reasons.join(' ');
+    expect(r).toMatch(/hitters in his organization's major league/);
     expect(r).not.toMatch(/this league's/);
   });
 
-  it('the league\'s own lines are named as this league\'s', () => {
-    const own: CeilingLinesInForce = { lines: CEILING_LINES, source: 'save', reason: 'measured', measuredOn: '2031-05-01', previous: null };
-    expect(tier(own).reasons.join(' ')).toMatch(/this league's major-league hitters/);
+  const movedAt = (date: string): CeilingLinesInForce => ({
+    lines: { ...CEILING_LINES, hitter: { fringe: 45, regular: 52, impact: 58 } }, source: 'save', reason: 'measured', measuredOn: date,
+    previous: { lines: CEILING_LINES, source: 'starting', measuredOn: null, replacedOn: '2031-05-01' },
   });
 
-  it('a tier that changed because a line moved says so; one the move did not touch says nothing about it', () => {
-    const moved: CeilingLinesInForce = {
-      lines: { ...CEILING_LINES, hitter: { fringe: 45, regular: 52, impact: 58 } }, source: 'save', reason: 'measured', measuredOn: '2031-05-01',
-      previous: { lines: CEILING_LINES, source: 'starting', measuredOn: null },
-    };
-    const reasons = tier(moved).reasons.join(' ');
-    expect(reasons).toMatch(/The ceiling lines moved when this league's major leaguers were measured on May 1, 2031 \(a regular: 50 to 52; an impact player: 56 to 58\)/);
+  it('a tier the move alone changed (same ratings, the tier differs under the old lines) says the lines moved, at the import that moved them', () => {
+    const reasons = tier(movedAt('2031-05-01')).reasons.join(' ');
+    expect(reasons).toMatch(/The ceiling lines moved when his organization's major leaguers were measured on May 1, 2031 \(a regular: 50 to 52; an impact player: 56 to 58\)/);
+    expect(reasons).toMatch(/Under the earlier lines, with the same ratings, his stakes would read/);
     expect(reasons).toMatch(/not anything about him/);
-    const untouched = evaluateDevelopmentProtection({ age: 20, ability: syntheticScoutedAbility({ current: 40, potential: 60 }), lines: moved, context: null });
+  });
+
+  it('a tier the move did not change says nothing about it, even where his ceiling band moved (the tier is what is compared)', () => {
+    const untouched = evaluateDevelopmentProtection({ age: 20, ability: syntheticScoutedAbility({ current: 40, potential: 60 }), lines: movedAt('2031-05-01'), context: null });
     expect(untouched.reasons.join(' ')).not.toMatch(/moved/);
+    // at 29 his development is behind him: fringe and below both set the lowest tier, so a band move there changes no tier
+    const old = evaluateDevelopmentProtection({ age: 29, ability: syntheticScoutedAbility({ current: 45, potential: 45 }), lines: { ...movedAt('2031-05-01'), lines: { ...CEILING_LINES, hitter: { fringe: 46, regular: 52, impact: 58 } } }, context: null });
+    expect(old.reasons.join(' ')).not.toMatch(/moved/);
+  });
+
+  it('after the import that moved the lines, the sentence is not given: his own ratings may have moved since', () => {
+    expect(tier(movedAt('2031-06-01')).reasons.join(' ')).not.toMatch(/moved/);
   });
 
   it('the evaluator refuses to tier without the lines in force (never a default)', () => {
@@ -137,6 +151,17 @@ describe('the lines in force for a save', () => {
     expect(failed.record.gate.passed).toBe(false);
     recordCalibration(failed, { fitMs: 1 });
     expect(stakesLinesFor(IDS.league)).toMatchObject({ source: 'save', reason: 'carried', lines: first.model.inForce.lines });
+  });
+
+  it('the lines a move replaced are served only on the export the move was measured on', () => {
+    historyDb.prepare(`DELETE FROM save_calibration_fits WHERE subsystem = ?`).run(STAKES_SUBSYSTEM);
+    const today = run('2030-06-01', 58);
+    expect(today.model.inForce.previous).toMatchObject({ replacedOn: '2030-06-01' });
+    recordCalibration(today, { fitMs: 1 });
+    expect(stakesLinesFor(IDS.league).previous).toMatchObject({ source: 'starting', replacedOn: '2030-06-01' });
+    historyDb.prepare(`DELETE FROM save_calibration_fits WHERE subsystem = ?`).run(STAKES_SUBSYSTEM);
+    recordCalibration(run('2030-05-01', 58), { fitMs: 1 });
+    expect(stakesLinesFor(IDS.league)).toMatchObject({ source: 'save', previous: null });
   });
 
   it('the context reader hands a club\'s tiers its organization\'s major league\'s lines, an affiliate\'s included', () => {
@@ -171,7 +196,8 @@ describe('a line move is dated when it happened', () => {
     const again = measureCeilingLines(league(30, 13, { hitter: 55, pitcher: 52 }), { ...basis, gameDate: '2031-06-01' }, moved).model.inForce;
     expect(again.measuredOn).toBe('2031-06-01');
     expect(again.previous).toMatchObject({ source: 'starting', replacedOn: '2031-05-01' });
+    // At the later import the move is recorded but not claimed: his own ratings may have changed since
     const r = evaluateDevelopmentProtection({ age: 20, ability: syntheticScoutedAbility({ current: 40, potential: 51 }), lines: again, context: null }).reasons.join(' ');
-    expect(r).toMatch(/measured on May 1, 2031/);
+    expect(r).not.toMatch(/moved/);
   });
 });
