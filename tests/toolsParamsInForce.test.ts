@@ -33,4 +33,11 @@ describe('the tools params in force', () => {
       expect(code(file), file).not.toMatch(/expectedWobaRaw\([^,()]*\)|expectedRunningRaw\([^,()]*\)|ratingPlatoon\([^,()]*,[^,()]*\)|toolContributions\([^,()]*\)/);
     }
   });
+
+  it('the forward cases are neutral: no subsystem\'s answers, no rating column, and no Player Value fit read by MLB Operations', () => {
+    const forward = code('ratingsForward.ts');
+    expect(forward).not.toMatch(/from '\.\/(playerValue[A-Za-z]*|mlb[A-Za-z]*|farm[A-Za-z]*|philosophy|settings|developmentFit|developmentalContext)\.js'/);
+    expect(forward).not.toMatch(/batting_ratings_|pitching_ratings_|players_value/);
+    for (const file of ['mlbToolsFit.ts', 'toolsCalibration.ts']) expect(code(file), file).not.toMatch(/from '\.\/playerValue[A-Za-z]*\.js'/);
+  });
 });

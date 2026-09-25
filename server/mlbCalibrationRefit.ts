@@ -22,6 +22,8 @@ import { lineInForce, measureLongLine, type LongLineMeasurement, type RelieverUs
 import { parseGameDate } from './dataFreshness.js';
 import { consecutivePlatoon, fitPlatoon, PLATOON_FIT_POLICY, PLATOON_METHOD, type PlatoonCase, type PlatoonInputCases, type PlatoonModel } from './mlbPlatoonFit.js';
 import { adoptedCalibration } from './saveCalibrationStore.js';
+import { consecutiveTools, fitTools, TOOLS_FIT_POLICY, TOOLS_METHOD, type EngineCase, type ToolsCase, type ToolsInputCases, type ToolsModel } from './mlbToolsFit.js';
+import { forwardObservations, snapshotBefore, snapshotDates } from './ratingsForward.js';
 import { rosterReviewCalibration } from './mlbCalibration.js';
 
 import { PITCHER_RESULTS_MIX } from './roleReview.js';
@@ -677,6 +679,89 @@ registerCalibration({
 registerCalibration({
   subsystem: MLB_CALIBRATION_SUBSYSTEM, component: 'defense', method: DEFENSE_METHOD, trigger: 'completed_season',
   compute: (b) => (need(b) === null ? { skip: 'No completed season.' } : fitDefense(defenseSeasons(b.leagueId, b.throughSeason as number), b)),
+});
+
+// ── the tools lens: forward cases (cycle 4) ─────────────────────────────────
+
+const BAT = ['contact', 'gap', 'power', 'eye', 'avoidK'] as const;
+
+/**
+ * The tools fit's cases: for each completed season after the save's first snapshot, the hitters who carried a snapshot into it (the
+ * neutral `ratingsForward.ts` rule) with their results before it, under the results params in force, and what they did in it; and, for
+ * the same-season engine check, the season under way against the ratings seen in it. Ratings only through the adapter.
+ */
+export function toolsInput(leagueId: number, through: number): ToolsInputCases {
+  const results = resultsParamsFor(leagueId, through);
+  const obs = forwardObservations();
+  const snapshots = snapshotDates(obs);
+  const cases: ToolsCase[] = [];
+  const forwardSeasons: number[] = [];
+  const toolsOf = (tools: Readonly<Record<string, number | null>> | undefined): number[] | null => {
+    if (!tools) return null;
+    const x = BAT.map((t) => tools[t]);
+    return x.every((v): v is number => typeof v === 'number') ? x : null;
+  };
+  const first = snapshots.length ? Number(snapshots[0].slice(0, 4)) : null;
+  for (let s = first === null ? through + 1 : first + 1; s <= through; s += 1) {
+    const carried = new Map<number, number[]>();
+    for (const [id, list] of obs) {
+      const x = toolsOf(snapshotBefore(list, s)?.hitter?.tools);
+      if (x) carried.set(id, x);
+    }
+    if (carried.size === 0) continue;
+    const env = seasonEnvironments(leagueId, s);
+    let any = false;
+    for (const [id, lines] of battingHistory([...carried.keys()], leagueId, s)) {
+      const target = lines.filter((l) => l.year === s);
+      const pa = target.reduce((n, l) => n + l.pa, 0);
+      if (pa < TOOLS_FIT_POLICY.minTargetPa) continue;
+      const y = weightedBatting(target, env, s, [1]).value;
+      if (y === null) continue;
+      const before = weightedBatting(lines.filter((l) => l.year < s), env, s - 1, results.weights.hitter);
+      cases.push({
+        playerId: id, target: s, x: carried.get(id) as number[], y, weight: pa,
+        past: before.value !== null && before.sample > 0 ? { value: before.value, sample: before.sample } : null,
+      });
+      any = true;
+    }
+    if (any) forwardSeasons.push(s);
+  }
+  // The same-season engine check: the ratings seen during the season under way against what the game has produced from them so far
+  let engine: ToolsInputCases['engine'] = null;
+  const now = currentSeason(leagueId);
+  if (now !== null) {
+    const seen = new Map<number, { x: number[]; date: string }>();
+    for (const [id, list] of obs) {
+      const inSeason = list.filter((o) => Number(o.gameDate.slice(0, 4)) === now);
+      const last = inSeason[inSeason.length - 1];
+      const x = toolsOf(last?.hitter?.tools);
+      if (x && last) seen.set(id, { x, date: last.gameDate });
+    }
+    if (seen.size > 0) {
+      const env = seasonEnvironments(leagueId, now);
+      const ecases: EngineCase[] = [];
+      for (const [id, lines] of battingHistory([...seen.keys()], leagueId, now, 1, 0)) {
+        const pa = lines.reduce((n, l) => n + l.pa, 0);
+        if (pa < TOOLS_FIT_POLICY.engineMinPa) continue;
+        const y = weightedBatting(lines, env, now, [1]).value;
+        if (y !== null) ecases.push({ playerId: id, x: (seen.get(id) as { x: number[] }).x, y, weight: pa });
+      }
+      const dates = [...new Set([...seen.values()].map((v) => v.date))].sort();
+      engine = { season: now, snapshot: dates[dates.length - 1], cases: ecases };
+    }
+  }
+  return { cases, forwardSeasons, snapshots, resultsK: results.stabilization.hitter, engine };
+}
+
+registerCalibration({
+  subsystem: MLB_CALIBRATION_SUBSYSTEM, component: 'tools', method: TOOLS_METHOD, trigger: 'completed_season',
+  compute: (b) => {
+    if (need(b) === null) return { skip: 'No completed season.' };
+    const through = b.throughSeason as number;
+    // Hysteresis: what served before this refit (the adopted fit of an earlier season), its confirmation counts only from the season before
+    const previous = adoptedCalibration<ToolsModel>(b.leagueId, MLB_CALIBRATION_SUBSYSTEM, 'tools', TOOLS_METHOD, { throughMax: through - 1 });
+    return fitTools(toolsInput(b.leagueId, through), b, previous?.model ? consecutiveTools(previous.model, previous.throughSeason === through - 1) : null);
+  },
 });
 
 /** Loaded for its registrations; the worker and the harness import it. */
