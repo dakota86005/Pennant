@@ -136,7 +136,7 @@ export interface PlatoonRead {
    * hand, his ratings' departure from it, and how far his own record moved it. They sum to `difference`; a part that does not apply is null.
    */
   difference: number | null;
-  drivers: { league: number; ratings: number | null; record: number | null };
+  drivers: { league: number | null; ratings: number | null; record: number | null };
   verdict: PlatoonVerdict;
   reasons: string[];
   calibration: typeof PLATOON_CALIBRATION;
@@ -164,7 +164,7 @@ export function evaluatePlatoon(input: PlatoonInput): PlatoonRead {
   const haveObserved = wl !== null && wr !== null && Math.min(l.pa, r.pa) >= MIN_SPLIT_PA;
   const base = {
     bats: input.bats, calibration: PLATOON_CALIBRATION, ratingDeparture, difference: null as number | null,
-    drivers: { league: input.leagueEffect ?? 0, ratings: null as number | null, record: null as number | null },
+    drivers: { league: input.leagueEffect as number | null, ratings: null as number | null, record: null as number | null },
     vsLeft: { pa: l.pa, observed: wl, expected: null as number | null }, vsRight: { pa: r.pa, observed: wr, expected: null as number | null },
     overall: null as number | null, weakSide: null as PitcherHand | null, weakBy: null as number | null, excessOverLeague: null as number | null, reliability: 0,
   };
@@ -174,7 +174,18 @@ export function evaluatePlatoon(input: PlatoonInput): PlatoonRead {
       reasons: [`Not enough to read a platoon split: ${l.pa} plate appearances against left-handers, ${r.pa} against right-handers (${MIN_SPLIT_PA} needed against the less-faced hand), and no visible platoon ratings.`],
     };
   }
-  const league = input.leagueEffect ?? 0;
+  // The usual split for his hand is the prior everything else is measured from (his ratings' departure, his record's pull, the excess
+  // that makes a problem). Unknown, it is never taken as zero: what his own record shows is said, and no verdict is drawn (D-018).
+  if (input.leagueEffect === null) {
+    const what = haveObserved
+      ? `Against left-handers he has hit ${fmt(wl as number)} wOBA in ${l.pa} PA; against right-handers ${fmt(wr as number)} in ${r.pa} PA.`
+      : `His own record is too thin to read a split (${l.pa} PA against left-handers, ${r.pa} against right-handers).`;
+    return {
+      ...base, verdict: 'insufficient', basis: haveObserved && ratingDeparture !== null ? 'ratings_and_splits' : ratingDeparture !== null ? 'ratings' : haveObserved ? 'splits' : 'none',
+      reasons: [what, `The usual split for hitters of his hand${input.bats ? '' : ' (his batting hand is not in the export)'} is not established in this league's export, so how his split compares with it, and whether it is a platoon problem, cannot be judged.`],
+    };
+  }
+  const league = input.leagueEffect;
   const tuning = input.platoon;
   const prior = league + (ratingDeparture !== null ? tuning.ratingWeight * ratingDeparture : 0);
   // The effective sample for a DIFFERENCE between two sides is the harmonic-style combination of both. Around the league norm alone the
@@ -189,7 +200,7 @@ export function evaluatePlatoon(input: PlatoonInput): PlatoonRead {
   const share = haveObserved ? l.pa / (l.pa + r.pa) : input.leagueLeftShare;
   if (share === null) {
     return {
-      ...base, verdict: 'insufficient', basis: ratingDeparture !== null ? 'ratings' : 'league_norm', ratingDeparture,
+      ...base, verdict: 'insufficient', basis: ratingDeparture !== null ? 'ratings' : 'league_norm', ratingDeparture, difference: diff, drivers,
       reasons: [`His own record is too thin to read a split (${l.pa} PA against left-handers, ${r.pa} against right-handers) and the export does not say how often hitters of his hand face left-handers, so what a split would cost him cannot be stated.`],
     };
   }
@@ -207,7 +218,7 @@ export function evaluatePlatoon(input: PlatoonInput): PlatoonRead {
   // Weak side: where his expected wOBA is lower. Without a level the difference alone says which side and by how much (weighted by his share of that side).
   const weakSide: PitcherHand = diff > 0 ? 'L' : 'R';
   const weakBy = weakSide === 'L' ? pr * diff : pl * -diff;
-  const leagueWeak = input.leagueEffect === null ? 0 : (weakSide === 'L' ? Math.max(0, league) : Math.max(0, -league)) * (weakSide === 'L' ? pr : pl);
+  const leagueWeak = (weakSide === 'L' ? Math.max(0, league) : Math.max(0, -league)) * (weakSide === 'L' ? pr : pl);
   const excess = weakBy - leagueWeak;
   const problem = excess >= PROBLEM_EXCESS;
   const basis: PlatoonBasis = haveObserved && ratingDeparture !== null ? 'ratings_and_splits' : ratingDeparture !== null ? 'ratings' : haveObserved ? 'splits' : 'league_norm';

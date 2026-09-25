@@ -45,7 +45,7 @@ export interface Need {
 
 export interface PlatoonRead {
   verdict: string; weakSide: string | null; weakBy: number | null; reliability: number; reasons: string[]; basis?: string; ratingDeparture?: number | null;
-  difference?: number | null; drivers?: { league: number; ratings: number | null; record: number | null };
+  difference?: number | null; drivers?: { league: number | null; ratings: number | null; record: number | null };
   vsLeft: { pa: number; observed: number | null; expected: number | null }; vsRight: { pa: number; observed: number | null; expected: number | null };
 }
 

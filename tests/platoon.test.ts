@@ -109,6 +109,21 @@ describe('reading a platoon split honestly', () => {
     expect(starting.reasons.join(' ')).not.toMatch(/this league/);
   });
 
+  it('an unknown usual split for his hand is never taken as zero: no problem is found, the save\'s weight is not applied, and the read says why', () => {
+    const own = { ...PLATOON_PRIOR, shrinkAroundLeague: 500, source: 'save' as const };
+    // a big observed split that, measured from zero with the league's own weight, would read as a problem
+    const r = evaluatePlatoon(input({ bats: 'S', leagueEffect: null, vsLeft: [line(200, 'poor')], vsRight: [line(400, 'good')], platoon: own }));
+    expect(r.verdict).toBe('insufficient');
+    expect(r.excessOverLeague).toBeNull();
+    expect(r.difference).toBeNull();
+    expect(r.drivers.league).toBeNull();
+    expect(r.vsLeft.observed).not.toBeNull(); // what his record shows is still said
+    expect(r.reasons.join(' ')).toMatch(/usual split for hitters of his hand is not established/);
+    expect(r.reasons.join(' ')).not.toMatch(/this league's past seasons/);
+    // his ratings alone do not stand in for the league's split either
+    expect(evaluatePlatoon(input({ leagueEffect: null, ratings: ratings(0.06, 0.015) })).verdict).toBe('insufficient');
+  });
+
   it('an unknown share of plate appearances against left-handers states no cost, never an assumed share', () => {
     const r = evaluatePlatoon(input({ leagueLeftShare: null, ratings: ratings(0.06, 0.015) }));
     expect(r.verdict).toBe('insufficient');
