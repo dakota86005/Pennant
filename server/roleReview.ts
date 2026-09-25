@@ -410,8 +410,8 @@ export function reviewGroup(holders: ReviewSubject[], opts: { pitcher: boolean; 
     if (std && margin !== null) {
       // "This league's" only when the save's own standards are in force; otherwise the starting yardstick is named as such
       const typicalText = std.source === 'save'
-        ? `In this league, ${std.label} typically work at a working estimate of about ${r0(std.typical)}`
-        : `${std.label.charAt(0).toUpperCase()}${std.label.slice(1)} typically work at a working estimate of about ${r0(std.typical)} (Pennant's starting yardstick)`;
+        ? `For ${std.label} in this league the typical working estimate is about ${r0(std.typical)}`
+        : `For ${std.label} a typical working estimate is about ${r0(std.typical)} (Pennant's starting yardstick)`;
       reasons.push(`${typicalText}; below ${r0(std.floor)} is unusually weak and below ${r0(std.deepFloor)} well below what the job takes. He is at ${ordinal(value)}, ${margin < 0 ? `${r0(-margin)} under the first line` : `${r0(margin)} above it`}.`);
     }
     if (groupMedian !== null) reasons.push(`Working estimate ${ordinal(value)} percentile of MLB ${opts.role}s${est.basis === 'ratings_and_results' ? ` (${r0(est.weightOnResults * 100)}% results, ${r0((1 - est.weightOnResults) * 100)}% tools)` : est.basis === 'ratings_only' ? ' (tools only: no results to weigh)' : ' (results only: no visible tools)'}; ${isWeakest ? 'the weakest' : `number ${rank}`} of ${known.length} in the group.`);

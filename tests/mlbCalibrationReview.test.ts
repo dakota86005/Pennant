@@ -35,7 +35,7 @@ describe('the roster review consumes the yardsticks in force', () => {
     const r = review(subject(), standardsFrom(served));
     expect(r.standard!.typical).toBe(60);
     expect(r.standard!.source).toBe('save');
-    expect(r.reasons.join(' ')).toMatch(/In this league, regular first basemen typically work at a working estimate of about 60/);
+    expect(r.reasons.join(' ')).toMatch(/For regular first basemen in this league the typical working estimate is about 60/);
   });
 
   it('the fitted aging curve sets the stated decline, and a league with no decline says so', () => {
@@ -65,7 +65,7 @@ describe('the starting values are never presented as this league\'s own', () => 
     const served: ServedStandards = { ...STARTING_STANDARDS, source: 'save' };
     const table = { firstAge: 20, hitter: new Array(23).fill(-0.009), pitcher: new Array(23).fill(0.2) };
     const own = review(old, standardsFrom(served), table);
-    expect(own.reasons.join(' ')).toMatch(/In this league, regular first basemen typically/);
+    expect(own.reasons.join(' ')).toMatch(/For regular first basemen in this league the typical working estimate/);
     expect(own.explanations.join(' ')).toMatch(/in this league's history hitters his age have lost about 9 points/);
     // the save's standards with the starting curve: the curve is not called the league's
     const mixed = review(old, standardsFrom(served), null);

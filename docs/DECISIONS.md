@@ -1837,8 +1837,8 @@ not established. The gate is not loosened."
   curve as served and for the curve fitted without the prior (on the league the prior came from, the shrunk check is not
   out-of-sample; the record says so). `concernAge`
   stays policy (when a decline is raised); a league whose curve shows no decline at an age says so, never "lost about 0".
-- **The starting values are never the league's own.** While they serve, a finding says "regular first basemen typically work at
-  about 77 (Pennant's starting yardstick)" and "hitters his age usually lose about ..."; "this league's" only where the save's own
+- **The starting values are never the league's own.** While they serve, a finding says "for regular first basemen a typical working
+  estimate is about 77 (Pennant's starting yardstick)" and "hitters his age usually lose about ..."; "this league's" only where the save's own
   fit is in force. The built-in aging rows are stamped provisional.
 - **Checked as served.** The standards' checks score the lines shrunk exactly as they would be served. A reverted save serves its
   latest measurement at or before its game date.
