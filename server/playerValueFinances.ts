@@ -73,14 +73,9 @@ export interface SeasonWar {
   source: string;
 }
 
-/** One season of the league's standings. */
-export interface SeasonRecord {
-  season: number;
-  clubs: Set<number>;
-  wins: number;
-  games: number;
-  source: string;
-}
+/** One season of the league's standings (declared in the neutral `saveIdentity.ts`). */
+export type { SeasonRecord } from './saveIdentity.js';
+import type { SeasonRecord } from './saveIdentity.js';
 
 /**
  * The share of this season's schedule a past season covered, for the price of a win (B-13): its games
