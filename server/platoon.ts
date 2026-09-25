@@ -182,7 +182,9 @@ export function evaluatePlatoon(input: PlatoonInput): PlatoonRead {
       : `His own record is too thin to read a split (${l.pa} PA against left-handers, ${r.pa} against right-handers).`;
     return {
       ...base, verdict: 'insufficient', basis: haveObserved && ratingDeparture !== null ? 'ratings_and_splits' : ratingDeparture !== null ? 'ratings' : haveObserved ? 'splits' : 'none',
-      reasons: [what, `The usual split for hitters of his hand${input.bats ? '' : ' (his batting hand is not in the export)'} is not established in this league's export, so how his split compares with it, and whether it is a platoon problem, cannot be judged.`],
+      reasons: [what, ...(ratingDeparture !== null && ratings
+        ? [`His visible ratings imply ${pts(ratings.vsRight! - ratings.vsLeft!)} points of wOBA better against right-handers; they are read against the same usual split, so they cannot settle it either.`]
+        : []), `The usual split for hitters of his hand${input.bats ? '' : ' (his batting hand is not in the export)'} is not established in this league's export, so how his split compares with it, and whether it is a platoon problem, cannot be judged.`],
     };
   }
   const league = input.leagueEffect;

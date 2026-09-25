@@ -1331,3 +1331,8 @@ Stage A investigation behind them is on this save (league 203, through 2025, gam
 - The leverage cut-offs are not measured per save (a policy on the league's own scale; the quantile alternative is in Stage A).
 - Relievers' over-trusted results (13.4) are untouched: the leverage lines do not enter the results lens.
 - Tiers at 8 appearances are noisy (above); `MIN_APPEARANCES` is policy, and changing it is the owner's call.
+- A carried long-man line has no age limit: it can be carried into a later season (while early-season imports have too few relievers
+  to measure, say) until a measurement holds up. The hover dates it ("as of May 16, 2026"), so the GM sees how old it is; whether it
+  should lapse after a season is for the owner (supervisor's call: left as is).
+- The season split needs 50 relievers with 4 or more appearances in each half (policy); with fewer it is "not measured", with that
+  reason.

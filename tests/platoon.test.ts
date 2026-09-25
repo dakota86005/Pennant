@@ -4,6 +4,7 @@ import {
   type PlatoonInput, type PlatoonRatings,
 } from '../server/platoon';
 import type { BattingLine } from '../server/resultsMetrics';
+import { platoonHeadline } from '../src/pages/mlb/platoonCopy';
 
 /*
  * Platoon is the league's effect for a hitter's handedness, adjusted by his visible platoon ratings (D-035), with his own
@@ -120,8 +121,13 @@ describe('reading a platoon split honestly', () => {
     expect(r.vsLeft.observed).not.toBeNull(); // what his record shows is still said
     expect(r.reasons.join(' ')).toMatch(/usual split for hitters of his hand is not established/);
     expect(r.reasons.join(' ')).not.toMatch(/this league's past seasons/);
-    // his ratings alone do not stand in for the league's split either
-    expect(evaluatePlatoon(input({ leagueEffect: null, ratings: ratings(0.06, 0.015) })).verdict).toBe('insufficient');
+    // his ratings alone do not stand in for the league's split either, and the read says they were seen
+    const withRatings = evaluatePlatoon(input({ leagueEffect: null, ratings: ratings(0.06, 0.015) }));
+    expect(withRatings.verdict).toBe('insufficient');
+    expect(withRatings.reasons.join(' ')).toMatch(/His visible ratings imply/);
+    // the page's one line gives that reason, not "not enough to read"
+    expect(platoonHeadline(r)).toBe("Can't judge a platoon split: the usual split for his hand isn't known in this league.");
+    expect(platoonHeadline(evaluatePlatoon(input({ vsLeft: [line(10, 'poor')], vsRight: [line(30, 'good')] })))).toBe('Not enough to read a platoon split.');
   });
 
   it('an unknown share of plate appearances against left-handers states no cost, never an assumed share', () => {

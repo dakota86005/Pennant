@@ -1,6 +1,7 @@
 import { Fragment, useState } from 'react';
 import { PlayerLink } from '../../playerModal';
 import { Chip, FINDING_TEXT, ord, signed, STRENGTH_CLASS } from './common';
+import { platoonHeadline } from './platoonCopy';
 import type { Route } from './route';
 import type { LineupSpot, Overview, ReviewGroup, ReviewHolder } from './types';
 
@@ -47,7 +48,7 @@ function Detail({ h, spot, go }: { h: ReviewHolder; spot: LineupSpot; go: (r: Ro
         <h4>Platoon</h4>
         {p ? (
           <>
-            <div>{p.verdict === 'problem' ? `Weak against ${p.weakSide === 'L' ? 'left' : 'right'}-handers.` : p.verdict === 'no_issue' ? 'No platoon problem.' : 'Not enough to read a platoon split.'} <span className="muted">Basis: {(p.basis ?? 'none').replace(/_/g, ' ')}.</span></div>
+            <div>{platoonHeadline(p)} <span className="muted">Basis: {(p.basis ?? 'none').replace(/_/g, ' ')}.</span></div>
             {p.drivers && p.drivers.league !== null && p.difference != null && (
               <div className="muted mlb-option-line">Against right minus left, {signed(p.difference * 1000)} points: league norm {signed((p.drivers.league as number) * 1000)}{p.drivers.ratings !== null ? `, his ratings ${signed(p.drivers.ratings * 1000)}` : ''}{p.drivers.record !== null ? `, his record ${signed(p.drivers.record * 1000)}` : ''}.</div>
             )}

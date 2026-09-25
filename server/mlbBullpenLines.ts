@@ -35,6 +35,8 @@ export const LONG_LINE_POLICY = {
   stableShare: 0.9,
   /** The season split: appearances in each half of the season's game dates (half the minimum the tiers need), and its tolerance. */
   minHalfAppearances: MIN_APPEARANCES / 2,
+  /** Relievers with those appearances needed in each half for the season split to be read at all. */
+  minHalfRelievers: 50,
   timeTolerance: 0.06,
 } as const;
 
@@ -159,8 +161,12 @@ export function measureLongLine(usage: RelieverUsage[], leagueLeverage: number |
   const firstLine = quantile(first, policyIn.quantile);
   let seasonSplit: LongLineMeasurement['seasonSplit'] = 'not_measured';
   let seasonSplitWhy: string | null = null;
-  if (halves.length === 0 || firstLine === null || second.length === 0) {
-    seasonSplitWhy = halvesWhy ?? 'the export does not split this season\'s appearances by game';
+  // The true reason when it cannot run: the export cannot split the season, or it can but a half has too few relievers to read
+  const thin = ([['first', first.length], ['second', second.length]] as const).find(([, k]) => k < policyIn.minHalfRelievers);
+  if (halves.length === 0 || firstLine === null || thin) {
+    seasonSplitWhy = halves.length === 0
+      ? halvesWhy ?? 'the export does not split this season\'s appearances by game'
+      : `only ${thin ? thin[1] : 0} relievers have ${policyIn.minHalfAppearances} or more appearances in the ${thin ? thin[0] : 'first'} half of the season, fewer than ${policyIn.minHalfRelievers}`;
     checks.push({ kind: 'season_split', part: 'long_line', n: 0, expected, observed: null, passed: null, note: `Not measured: ${seasonSplitWhy}.` });
   } else {
     const share = atOrAbove(second, firstLine) / second.length;

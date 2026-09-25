@@ -100,6 +100,15 @@ describe('the long-man line is the league\'s own', () => {
     expect(m.passed).toBe(true);
   });
 
+  it('with game logs but too few relievers in a half, the season split is not measured and says that, not that the logs are missing', () => {
+    // every reliever pitched all but two of his appearances in the second half
+    const usage = pens(1.3).map((r) => ({ ...r, halves: { first: { g: 2, ip: 2 * (r.ip / r.g) }, second: { g: r.g - 2, ip: (r.g - 2) * (r.ip / r.g) } } }));
+    const m = measureLongLine(usage, 1.0, undefined, null);
+    expect(m.seasonSplit).toBe('not_measured');
+    expect(m.seasonSplitWhy).toMatch(/^only 0 relievers have 4 or more appearances in the first half of the season, fewer than 50$/);
+    expect(m.seasonSplitWhy).not.toMatch(/does not split/);
+  });
+
   it('a measurement that does not hold up keeps the league\'s own line in force, never a flip back to the starting line', () => {
     const own = lineInForce(measureLongLine(pens(1.4), 1.0), null, '2026-5-1');
     expect(own.basis).toBe('measured');
