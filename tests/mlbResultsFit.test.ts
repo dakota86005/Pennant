@@ -62,6 +62,17 @@ describe('over a save\'s lifetime of refits (one refit a season, hysteresis and 
     expect(life.ever).toBe(false);
   });
 
+  it('after a break (imported seasons, then the game\'s own), values adopted on the old regime give way once the starting values are surely better', () => {
+    // noisier before the break at the 11th target season, the starting values exactly right after it: leagues that adopted at the
+    // break (these seeds do) and return by 22 seasons
+    for (const seed of [48, 113, 119]) {
+      const life = lifetime(league({ ...HITTER_BASE, breakAt: 13, preNoise: 1.4 }, 22, 700 + seed), 'hitter', 10, 22);
+      expect(life.ever).toBe(true);
+      expect(life.returned).toBe(true);
+      expect(life.atEnd).toBe('starting');
+    }
+  });
+
   it('a league that clearly differs adopts its own, and not before a second refit confirms it', () => {
     const life = lifetime(league(SHIFTED, 14, 11), 'hitter', 10, 14);
     expect(life.ever).toBe(true);
@@ -163,5 +174,18 @@ describe('the refit\'s verdict and its hysteresis', () => {
     expect(m.parts.baserunning.reason).not.toBe('no_runs');
     // K only: the weights are the hitters' in force
     expect(m.parts.baserunning.fitted?.weights).toEqual(m.parts.hitter.served.weights);
+  });
+});
+
+describe('the confirmation counts consecutive completed-season refits', () => {
+  it('a verdict from a season not just before this one carries no count: a failed or skipped refit in between starts it again', async () => {
+    const { consecutiveOnly, consecutiveAging } = await import('../server/mlbCalibrationRefit');
+    const { cases, targets } = simulateLeague(league(SHIFTED, 14, 1));
+    const once = fitResults(input(cases, targets), { leagueId: 1, throughSeason: targets[targets.length - 1], gameDate: null }, null).model as ResultsModel;
+    expect(once.parts.hitter.decision?.streak).toBe(1);
+    expect(consecutiveOnly(once, true).parts.hitter.decision?.streak).toBe(1);
+    expect(consecutiveOnly(once, false).parts.hitter.decision?.streak).toBe(0);
+    const aging = { decisions: { hitter: { streak: 1 }, pitcher: null } } as never;
+    expect((consecutiveAging(aging, false) as { decisions: { hitter: { streak: number } } }).decisions.hitter.streak).toBe(0);
   });
 });

@@ -18,7 +18,7 @@
  * save or writes anything.
  */
 
-import { backtestPart, fitPart, RESULTS_FIT_POLICY, type PartValues, type ResultsCase, type ResultsPart } from '../../server/mlbResultsFit.js';
+import { backtestPart, fitPart, priorValues, RESULTS_FIT_POLICY, shrinkValues, type PartValues, type ResultsCase, type ResultsPart } from '../../server/mlbResultsFit.js';
 import { decide, DETECTOR_METHOD, DETECTOR_POLICY, ruleText, type DetectorDecision, type DetectorPolicy, type ServedSource } from '../../server/calibrationDetector.js';
 import { RESULTS_PRIOR } from '../../server/resultsMetrics.js';
 
@@ -47,6 +47,14 @@ export interface SimSpec {
    */
   seasonNoiseSd?: number;
   rhoSpread?: number;
+  /**
+   * A structural break (the owner's save shape: imported real-history seasons, then the game's own engine): seasons before this index
+   * (0 is the first of the three seasons before the first target) have their noise scaled by `preNoise` and their drift carry-over set
+   * to `preRho`; from it on, the spec as given.
+   */
+  breakAt?: number;
+  preNoise?: number;
+  preRho?: number;
   seed: number;
 }
 
@@ -83,8 +91,9 @@ export function simulateLeague(spec: SimSpec): { cases: ResultsCase[]; targets: 
   const mult: number[] = [];
   const rhos: number[] = [];
   for (let s = 0; s < total; s += 1) {
-    mult.push(Math.exp((spec.seasonNoiseSd ?? 0) * z()));
-    rhos.push(Math.min(0.95, Math.max(0, spec.rho + (spec.rhoSpread ?? 0) * (2 * r() - 1))));
+    const pre = spec.breakAt !== undefined && s < spec.breakAt;
+    mult.push(Math.exp((spec.seasonNoiseSd ?? 0) * z()) * (pre ? spec.preNoise ?? 1 : 1));
+    rhos.push(Math.min(0.95, Math.max(0, (pre ? spec.preRho ?? spec.rho : spec.rho) + (spec.rhoSpread ?? 0) * (2 * r() - 1))));
   }
   for (let s = 0; s < total; s += 1) {
     active = active.filter(() => r() < 0.85);
@@ -142,7 +151,7 @@ export function trial(spec: SimSpec, part: ResultsPart, previous: ServedSource =
 export function lifetime(
   spec: SimSpec, part: ResultsPart, from = 10, to = 22, policy: DetectorPolicy = DETECTOR_POLICY,
   onRefit?: (seasons: number, decision: DetectorDecision) => void, start: ServedSource = 'starting',
-): { ever: boolean; atEnd: ServedSource; firstAt: number | null; returned: boolean } {
+): { ever: boolean; atEnd: ServedSource; firstAt: number | null; returned: boolean; servedAtEnd: PartValues | null } {
   const { cases, targets } = simulateLeague({ ...spec, seasons: to });
   let previous: ServedSource = start;
   let streak = 0;
@@ -162,7 +171,22 @@ export function lifetime(
     }
     if (start === 'starting' && previous === 'save' && !ever) { ever = true; firstAt = n; }
   }
-  return { ever, atEnd: previous, firstAt, returned };
+  // What the save serves at the end when its own: the method fitted through the last season, shrunk as the refit serves it
+  let servedAtEnd: PartValues | null = null;
+  if (previous === 'save') {
+    const window = new Set(targets.slice(0, to).slice(-RESULTS_FIT_POLICY.windowSeasons));
+    const pool = cases.filter((c) => window.has(c.target));
+    const fit = fitPart(pool, part, MIX);
+    if (fit) servedAtEnd = shrinkValues(fit.values, priorValues(part), pool.length, RESULTS_FIT_POLICY.shrinkCases).values;
+  }
+  return { ever, atEnd: previous, firstAt, returned, servedAtEnd };
+}
+
+/** How much more error a set of values makes than the starting values on an unlimited sample of a spec (the new regime after a break). */
+export function excessOver(spec: SimSpec, part: ResultsPart, values: PartValues): number {
+  const big = simulateLeague({ ...spec, breakAt: undefined, perSeason: spec.perSeason * 10, seasons: 40 });
+  const only = (v: PartValues) => fitPart(big.cases, part, MIX, { fixed: v, policy: { ...RESULTS_FIT_POLICY, grid: { ...RESULTS_FIT_POLICY.grid, k: { ...RESULTS_FIT_POLICY.grid.k, [part]: [v.k] } } } })!.loss;
+  return only(values) / only(priorValues(part)) - 1;
 }
 
 /**
@@ -170,7 +194,8 @@ export function lifetime(
  * out), and how much more error the starting values make there: the league's TRUE excess of the starting values.
  */
 export function population(spec: SimSpec, part: ResultsPart): { optimum: PartValues; startingRegret: number } {
-  const big = simulateLeague({ ...spec, perSeason: spec.perSeason * 10, seasons: 40 });
+  // After a break, the truth that matters is the new regime's
+  const big = simulateLeague({ ...spec, breakAt: undefined, perSeason: spec.perSeason * 10, seasons: 40 });
   const fit = fitPart(big.cases, part, MIX);
   const start: PartValues = { weights: [...RESULTS_PRIOR.weights[part === 'starter' || part === 'reliever' ? part : 'hitter']], k: RESULTS_PRIOR.stabilization[part] };
   const at = fitPart(big.cases, part, MIX, { fixed: start, policy: { ...RESULTS_FIT_POLICY, grid: { ...RESULTS_FIT_POLICY.grid, k: { ...RESULTS_FIT_POLICY.grid.k, [part]: [start.k] } } } });
@@ -209,7 +234,8 @@ const het = (spec: Omit<SimSpec, 'seed' | 'seasons'>) => ({ ...spec, ...HETEROGE
 /**
  * The nulls: the starting values exactly right, and the least-favourable ones inside the practical minimum, where the starting
  * values make about 0.5% and 0.9% to 1.0% more error than the best (results noisier than the starting K assumes), each stationary and
- * with season-to-season heterogeneity. Then the power scenarios.
+ * with season-to-season heterogeneity; and a structural break at the 11th target season (the owner's save shape), where values fitted
+ * on the old regime would be stale. Then the power scenarios.
  */
 export const SCENARIOS: Scenario[] = [
   { name: 'hitters: the starting values exactly right', part: 'hitter', spec: HITTER_BASE, isNull: true },
@@ -222,6 +248,8 @@ export const SCENARIOS: Scenario[] = [
   { name: 'starters: the starting values about 0.9% worse, seasons differ', part: 'starter', spec: het({ ...STARTER_BASE, talentSd: 0.345 }), isNull: true },
   { name: 'relievers: the starting values exactly right, seasons differ', part: 'reliever', spec: het(RELIEVER_BASE), isNull: true },
   { name: 'relievers: the starting values about 0.9% worse, seasons differ', part: 'reliever', spec: het({ ...RELIEVER_BASE, talentSd: 0.305 }), isNull: true },
+  { name: 'hitters: a break (noisier before it, x1.4), the starting values exactly right after it', part: 'hitter', spec: { ...HITTER_BASE, breakAt: 13, preNoise: 1.4 }, isNull: true },
+  { name: 'hitters: a break (noisier before it, x1.3), about 0.9% worse after it, seasons differ', part: 'hitter', spec: het({ ...HITTER_BASE, talentSd: 0.0215, breakAt: 13, preNoise: 1.3 }), isNull: true },
   { name: 'hitters: results noisier (about 2% worse)', part: 'hitter', spec: { ...HITTER_BASE, talentSd: 0.018 }, isNull: false },
   { name: 'hitters: results noisier (about 2% worse), seasons differ', part: 'hitter', spec: het({ ...HITTER_BASE, talentSd: 0.018 }), isNull: false },
   { name: 'hitters: results much noisier (about 3% worse)', part: 'hitter', spec: { ...HITTER_BASE, talentSd: 0.016 }, isNull: false },
@@ -256,6 +284,8 @@ export function detectorSection(argv: string[]): void {
     const trueExcess = (excess[0].startingRegret + excess[1].startingRegret) / 2;
     const n = sc.isNull ? 2 * reps : reps;
     let ever = 0;
+    let atEnd = 0;
+    const costs: number[] = [];
     const firsts: number[] = [];
     const signal = new Map<number, number>([[12, 0], [16, 0], [20, 0]]);
     for (let i = 0; i < n; i += 1) {
@@ -263,10 +293,12 @@ export function detectorSection(argv: string[]): void {
         if (signal.has(seasons) && d.unshrunk.clearlyBetter && d.served.clearlyBetter) signal.set(seasons, (signal.get(seasons) as number) + 1);
       });
       if (life.ever) { ever += 1; firsts.push(life.firstAt as number); }
+      if (life.atEnd === 'save') { atEnd += 1; if (life.servedAtEnd && sc.spec.breakAt !== undefined) costs.push(excessOver({ ...sc.spec, seasons: 12, seed: 7 }, sc.part, life.servedAtEnd)); }
     }
     firsts.sort((a, b) => a - b);
     console.log(`\n[${idx}] ${sc.name}\n  true excess of the starting values ${pct(trueExcess)} (unlimited sample: best ${excess[0].optimum.weights.join('/')}, K ${excess[0].optimum.k})`);
     console.log(`  ${sc.isNull ? 'LIFETIME FALSE ADOPTION' : 'LIFETIME ADOPTION (power)'} (refits at 10..22 seasons): ${rate(ever, n)}${firsts.length ? `; first adopted at ${firsts[0]}-${firsts[firsts.length - 1]} seasons (median ${firsts[Math.floor(firsts.length / 2)]})` : ''}`);
+    if (sc.isNull) console.log(`  still serving the save's values at the end (22 seasons): ${rate(atEnd, n)}${costs.length ? `; what they serve then makes ${pct(Math.min(...costs))} to ${pct(Math.max(...costs))} (median ${pct([...costs].sort((a, b) => a - b)[Math.floor(costs.length / 2)])}) more error than the starting values in the league as it now plays` : ''}`);
     console.log(`  clearly better at a single refit: ${[...signal].map(([s, k]) => `${s} seasons ${rate(k, n)}`).join('; ')}`);
     if (!sc.isNull) {
       let back = 0;

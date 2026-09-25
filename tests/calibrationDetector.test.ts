@@ -132,12 +132,22 @@ describe('deciding what serves: unshrunk and as served, with hysteresis', () => 
   });
 
   it('once the save\'s own serve, noise does not send them back: only a clearly better starting set does', () => {
-    const noise = decide({ unshrunk: cases({ gain: 0 }), served: cases({ gain: -0.003, noise: 0.2 }), previous: 'save' });
+    const noise = decide({ unshrunk: cases({ gain: 0 }), served: cases({ gain: 0, noise: 0.2 }), previous: 'save' });
     expect(noise).toMatchObject({ decided: true, serve: 'save', rule: 'return_if_fallback_clearly_better' });
     expect(noise.reverse?.clearlyBetter).toBe(false);
     const worse = decide({ unshrunk: cases({ gain: -0.04 }), served: cases({ gain: -0.04 }), previous: 'save' });
     expect(worse.serve).toBe('starting');
     expect(worse.reverse?.clearlyBetter).toBe(true);
+  });
+
+  it('giving up is easy: the starting values return when surely better at all, below the bar it takes to adopt', () => {
+    // the starting values 0.8% better, steadily: not enough to adopt the other way round, enough to return
+    const c = cases({ gain: -0.008, noise: 0.01 });
+    const back = decide({ unshrunk: c, served: c, previous: 'save' });
+    expect(back.serve).toBe('starting');
+    expect(back.reverse?.lowerBound as number).toBeGreaterThan(0);
+    expect(back.reverse?.lowerBound as number).toBeLessThan(DETECTOR_POLICY.minRelativeGain);
+    expect(DETECTOR_POLICY.returnMinRelativeGain).toBe(0);
   });
 
   it('the same noise that would not adopt the save\'s values does not return them either (no flip-flop)', () => {

@@ -24,7 +24,7 @@ import { decide, describeComparison, DETECTOR_METHOD, DETECTOR_POLICY, ruleText,
 import { RESULTS_PRIOR, type ResultsKind, type ResultsParams } from './resultsMetrics.js';
 import { MLB_CALIBRATION_SUBSYSTEM } from './mlbCalibrationFit.js';
 
-export const RESULTS_METHOD = 'results-1';
+export const RESULTS_METHOD = 'results-2';
 
 export const RESULTS_FIT_STAMP: CalibrationStamp = policy(
   'The results fit\'s window, grid, minimums and shrinkage, and the detector\'s "clearly better" rule it is judged by. Chosen and stated (D-041); the values chosen on the grid are the save\'s.'
@@ -340,8 +340,13 @@ export function fitResults(input: ResultsInput, basis: ResultsFitBasis, previous
     // where the hitters serve the save's own, else the starting ones), never the final ones that saw the held-out seasons. Defense:
     // evenly (`defenseResult` sums a fielder's seasons).
     const hitterAt = (t: number): PartValues => {
-      if (parts.hitter.source !== 'save') return priorValues('hitter');
-      return hitterBacktest?.perOrigin.find((o) => o.origin === t)?.served ?? priorValues('hitter');
+      // The hitters' verdict as it would have stood at origin t: the detector on the hitters' held-out seasons before t only (never
+      // the final verdict, which saw every season)
+      const bt = hitterBacktest;
+      if (!bt) return priorValues('hitter');
+      const before = (cs: HeldOutCase[]) => cs.filter((c) => c.origin < t);
+      const then = decide({ unshrunk: before(bt.unshrunk), served: before(bt.served), previous: 'starting' }, { ...detector, confirmations: 1 });
+      return then.serve === 'save' ? bt.perOrigin.find((o) => o.origin === t)?.served ?? priorValues('hitter') : priorValues('hitter');
     };
     const fixed = part === 'baserunning' ? hitterAt : part === 'defense' ? () => priorValues('defense') : undefined;
     const finalFixed = part === 'baserunning' ? parts.hitter.served : part === 'defense' ? priorValues('defense') : undefined;

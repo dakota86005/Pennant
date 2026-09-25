@@ -25,9 +25,10 @@
  *                   (3) consistent: the candidate has the lower loss in at least `minOriginShare` of the origins (and at least
  *                       `minOriginsWon`), so one season's luck cannot carry it.
  *   decide          the save's values replace the fallback only when clearly better both UNSHRUNK (out of sample on every league) and
- *                   AS SERVED (shrunk toward the fallback), `confirmations` refits in a row. Hysteresis: once the save's values serve,
- *                   a later refit returns to the fallback only when the fallback is clearly better than the save's values as served,
- *                   by the same rule. No flip-flopping on noise between imports; the record carries the previous state, the
+ *                   AS SERVED (shrunk toward the fallback), at `confirmations` consecutive refits. Hysteresis, asymmetric: once the
+ *                   save's values serve, a later refit returns to the fallback when the fallback is better than them as served by the
+ *                   same two-bound test and consistency, with the minimum at `returnMinRelativeGain` (0): adopting is hard, giving up
+ *                   is easy. No flip-flopping on noise between imports; the record carries the previous state, the
  *                   confirmation count and the rule applied.
  *
  * Where the fallback was itself fitted on the league's own seasons (the Arizona import), the as-served comparison can be flattered
@@ -41,7 +42,7 @@
 
 import { policy, type CalibrationStamp } from './calibration.js';
 
-export const DETECTOR_METHOD = 'detector-2';
+export const DETECTOR_METHOD = 'detector-3';
 
 export const DETECTOR_STAMP: CalibrationStamp = policy(
   'When a save\'s own fitted values are clearly better than the fallback on held-out seasons: significance, consistency across seasons and a practical minimum gain, judged unshrunk and as served, with hysteresis. Chosen so that the measured false adoption stays at or below 5% (docs/CALIBRATION.md section 13).'
@@ -63,8 +64,17 @@ export const DETECTOR_POLICY = {
   /** Origins needed to judge at all, each with at least this many held-out cases. */
   minOrigins: 4,
   minCasesPerOrigin: 50,
-  /** Refits in a row at which the save's values must be clearly better before they first replace the fallback. */
+  /**
+   * Consecutive completed-season refits at which the save's values must be clearly better before they first replace the fallback. A
+   * refit that is not clearly better, or that fails, resets the count (the caller carries it only from the season just before).
+   */
   confirmations: 2,
+  /**
+   * The minimum the FALLBACK's lower confidence bound must reach to return once the save's values serve: 0, not the adoption bar.
+   * Adopting is hard, giving up is easy (supervisor's call, 2026-09-25): values that stopped helping, after a break in how the league
+   * plays (imported real seasons, then the game's own), give way as soon as the fallback is surely better at all.
+   */
+  returnMinRelativeGain: 0,
 } as const;
 
 export type DetectorPolicy = { [K in keyof typeof DETECTOR_POLICY]: number };
@@ -282,7 +292,7 @@ export const describeComparison = (c: Comparison): string =>
 
 /** The rule in words, for a run record's notes. */
 export function ruleText(policyIn: DetectorPolicy = DETECTOR_POLICY): string {
-  return `${DETECTOR_METHOD}: the lower ${+((1 - policyIn.alpha) * 100).toFixed(1)}% confidence bound of the gain, across players (clustered by player) and across seasons (Student's t), at least ${(policyIn.minRelativeGain * 100).toFixed(1)}% of the starting values' error; better in at least ${Math.round(policyIn.minOriginShare * 100)}% of the seasons checked and at least ${policyIn.minOriginsWon}; at least ${policyIn.minOrigins} seasons of ${policyIn.minCasesPerOrigin} cases; unshrunk and as served${policyIn.confirmations > 1 ? `; at ${policyIn.confirmations} refits in a row before first adopted` : ''}`;
+  return `${DETECTOR_METHOD}: to adopt, the lower ${+((1 - policyIn.alpha) * 100).toFixed(1)}% confidence bound of the gain, across players (clustered by player) and across seasons (Student's t), at least ${(policyIn.minRelativeGain * 100).toFixed(1)}% of the starting values' error; better in at least ${Math.round(policyIn.minOriginShare * 100)}% of the seasons checked and at least ${policyIn.minOriginsWon}; at least ${policyIn.minOrigins} seasons of ${policyIn.minCasesPerOrigin} cases; unshrunk and as served${policyIn.confirmations > 1 ? `; at ${policyIn.confirmations} consecutive completed-season refits` : ''}; to return, the same test with the minimum at ${(policyIn.returnMinRelativeGain * 100).toFixed(1)}%`;
 }
 
 /**
@@ -314,12 +324,13 @@ export function decide(input: { unshrunk: HeldOutCase[]; served: HeldOutCase[]; 
           : `The starting values held up: the save's own were not clearly better (as served: ${describeComparison(served)}; failing ${[...new Set([...served.failures, ...unshrunk.failures])].join(', ')}).`,
     };
   }
-  const reverse = compareHeldOut(swapped(input.served), policyIn);
+  // Giving up is easy: the same two-bound test and consistency, with the minimum at zero
+  const reverse = compareHeldOut(swapped(input.served), { ...policyIn, minRelativeGain: policyIn.returnMinRelativeGain });
   const back = reverse.clearlyBetter;
   return {
     ...base, decided: true, serve: back ? 'starting' : 'save', reverse, rule: 'return_if_fallback_clearly_better', streak: 0,
     reason: back
-      ? `The starting values are now clearly better than the save's own as served (${describeComparison(reverse)}); they serve again.`
-      : `The save's own values stay: the starting values are not clearly better than them (${describeComparison(reverse)}).`,
+      ? `The starting values are now surely better than the save's own as served (${describeComparison(reverse)}); they serve again.`
+      : `The save's own values stay: the starting values are not surely better than them (${describeComparison(reverse)}).`,
   };
 }

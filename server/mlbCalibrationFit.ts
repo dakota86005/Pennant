@@ -33,7 +33,7 @@ import { DEEP_QUANTILE, FLOOR_QUANTILE, groupOfRole, STARTING_STANDARDS, type Se
 
 export const MLB_CALIBRATION_SUBSYSTEM = 'mlb_operations';
 export const STANDARDS_METHOD = 'standards-1';
-export const AGING_METHOD = 'aging-2';
+export const AGING_METHOD = 'aging-3';
 export const DEFENSE_METHOD = 'defense-1';
 
 export const ROSTER_REVIEW_FIT_STAMP: CalibrationStamp = policy(

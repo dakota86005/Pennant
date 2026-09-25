@@ -407,6 +407,22 @@ export function resultsInput(leagueId: number, through: number): ResultsInput {
 }
 
 /**
+ * The confirmation count counts CONSECUTIVE completed-season refits: carried only from the adopted verdict of the season just before.
+ * A refit that failed or was not adopted in between leaves an older verdict in force, and the count starts again.
+ */
+export function consecutiveOnly(model: ResultsModel, consecutive: boolean): ResultsModel {
+  if (consecutive) return model;
+  const parts = Object.fromEntries(Object.entries(model.parts).map(([k, p]) => [k, p.decision ? { ...p, decision: { ...p.decision, streak: 0 } } : p])) as ResultsModel['parts'];
+  return { ...model, parts };
+}
+
+export function consecutiveAging(model: AgingModel, consecutive: boolean): AgingModel {
+  if (consecutive) return model;
+  const reset = (d: AgingModel['decisions']['hitter']) => (d ? { ...d, streak: 0 } : d);
+  return { ...model, decisions: { hitter: reset(model.decisions.hitter), pitcher: reset(model.decisions.pitcher) } };
+}
+
+/**
  * The results params the refit has just decided, for the standards measured after it in the same refit: keyed by the save's identity,
  * the league and the completed season, so a later run (another save, another season) never reads them.
  */
@@ -434,7 +450,7 @@ registerCalibration({
     const through = b.throughSeason as number;
     // Hysteresis: what served before this refit (the adopted fit of an earlier season)
     const previous = adoptedCalibration<ResultsModel>(b.leagueId, MLB_CALIBRATION_SUBSYSTEM, 'results', RESULTS_METHOD, { throughMax: through - 1 });
-    const run = fitResults(resultsInput(b.leagueId, through), b, previous?.model ?? null);
+    const run = fitResults(resultsInput(b.leagueId, through), b, previous ? consecutiveOnly(previous.model, previous.throughSeason === through - 1) : null);
     if (run.model && run.record.gate.passed) pendingResults.set(pendingKey(b.leagueId, through), paramsOf(run.model, String(through)));
     return run;
   },
@@ -456,7 +472,7 @@ registerCalibration({
     const through = b.throughSeason as number;
     // Hysteresis: what served before this refit (the adopted curve of an earlier season)
     const previous = adoptedCalibration<AgingModel>(b.leagueId, MLB_CALIBRATION_SUBSYSTEM, 'aging', AGING_METHOD, { throughMax: through - 1 });
-    return fitAging(agingInput(b.leagueId, through), b, undefined, previous?.model ?? null);
+    return fitAging(agingInput(b.leagueId, through), b, undefined, previous ? consecutiveAging(previous.model, previous.throughSeason === through - 1) : null);
   },
 });
 
