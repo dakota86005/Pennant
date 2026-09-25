@@ -899,6 +899,21 @@ Present on `main` (D-024; design and audit in
   - Every holder and platoon read receives the params in force (`ResultsParams`, no defaults).
   - The wOBA scale and a caught stealing's value are derived per league-season in `leagueBaseline` (1.2 and -0.4 only as the
     labelled fallback), so minor-league wRC+ is on its own run environment.
+- **Platoon and the bullpen, per save (D-053 amendment, cycle 3, 2026-09-25; CALIBRATION.md section 14; supervisor's calls
+  pending owner review):**
+  - How much a hitter's own split counts is fitted per save around the league norm (`mlbPlatoonFit.ts`, `platoon-1`) and served
+    only where the detector finds it clearly better; around his ratings the starting K and rating weight serve (cycle 4). On the
+    Arizona import the starting K held up; no read moves (every regular's platoon ratings are visible).
+  - `DEFAULT_LEFT_SHARE` is gone: the league's own share per batting hand, and no stated cost without one. An unknown usual split
+    for his hand is never zero: the read says it is not established and gives no verdict.
+  - The leverage cut-offs are policy on the league's own scale, with a 5% unit check (1.0225 on the Arizona import: as written).
+  - The long-man line is measured on the league's active relievers with the reliever standards (`mlbBullpenLines.ts`,
+    `standards-2`): served as measured, 1.73 on the Arizona import, checked on half the clubs (and its steadiness across halvings)
+    and on the season's second half; a measurement that does not hold up keeps the line in force. 15 relievers stop being long men; "crowded: long men" on 3 clubs instead of 6; two strong flags appear and one disappears; Joe Ross (AZ) is a
+    low-leverage arm on watch. "Nobody throws multiple innings" keeps 1.6 (policy).
+  - The yardsticks hover gains "How much a hitter's own split counts" and "Who counts as a long man"; the Pitching Staff page's
+    "how long he throws" gains a hover with the line in force. `npm run calibrate platoon-detector` measures the platoon fit's
+    error rates (lifetime false adoption at most 1.0%).
 - **Staff report (D-030):** `mlbReport.ts` + `roleStanding.ts` turn a packet into a briefing: situation, the role
   picture (current holders vs the player, on visible ratings with season lines as context), the read, and
   named pathways with chains and consequences; the workspace is laid out that way and the clearing

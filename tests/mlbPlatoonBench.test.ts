@@ -1,3 +1,4 @@
+import { PLATOON_PRIOR } from '../server/platoon';
 import { describe, expect, it } from 'vitest';
 import { reviewClub, reviewNeedById, reviewNeeds, type ReviewPorts } from '../server/mlbReview';
 import { buildResponsePacket, type ResponsePorts } from '../server/mlbResponses';
@@ -35,9 +36,9 @@ const usage = (id: number) => {
 const NORM = 0.015;
 const platoonFor = (id: number): PlatoonInput => {
   // the left fielder: ratings far outside the norm for a left-handed bat (much better against right-handers); the partner is the reverse
-  if (id === LF) return { recordStabilization: 300, bats: 'L', vsLeft: [], vsRight: [], leagueEffect: NORM, leagueWoba: 0.32, ratings: { vsLeft: -0.03, vsRight: 0.03, norm: NORM } };
-  if (id === PARTNER) return { recordStabilization: 300, bats: 'R', vsLeft: [], vsRight: [], leagueEffect: -0.01, leagueWoba: 0.32, ratings: { vsLeft: 0.03, vsRight: 0.0, norm: -0.01 } };
-  return { recordStabilization: 300, bats: 'R', vsLeft: [], vsRight: [], leagueEffect: -0.01, leagueWoba: 0.32, ratings: { vsLeft: 0.0, vsRight: 0.0, norm: 0.0 } };
+  if (id === LF) return { recordStabilization: 300, platoon: PLATOON_PRIOR, leagueLeftShare: 0.3, bats: 'L', vsLeft: [], vsRight: [], leagueEffect: NORM, leagueWoba: 0.32, ratings: { vsLeft: -0.03, vsRight: 0.03, norm: NORM } };
+  if (id === PARTNER) return { recordStabilization: 300, platoon: PLATOON_PRIOR, leagueLeftShare: 0.3, bats: 'R', vsLeft: [], vsRight: [], leagueEffect: -0.01, leagueWoba: 0.32, ratings: { vsLeft: 0.03, vsRight: 0.0, norm: -0.01 } };
+  return { recordStabilization: 300, platoon: PLATOON_PRIOR, leagueLeftShare: 0.3, bats: 'R', vsLeft: [], vsRight: [], leagueEffect: -0.01, leagueWoba: 0.32, ratings: { vsLeft: 0.0, vsRight: 0.0, norm: 0.0 } };
 };
 
 const holderEvidence = (ids: number[], role: { position: number }) => new Map(ids.map((id) => [id, id === LF ? ev(50, 50, role.position) : ev(60, 55, role.position)] as const));

@@ -1,8 +1,10 @@
+import { PLATOON_PRIOR } from '../server/platoon';
 import { describe, expect, it } from 'vitest';
 import { detectNeeds, IL_RETURN_WINDOW_DAYS } from '../server/mlbNeeds';
 import { buildLineupPicture, PARTNER_SHARE, REGULAR_SHARE, type HitterUsageInput } from '../server/lineupPicture';
 import { COMPLEMENT_MARGIN, complementFit, evaluatePlatoon, MIN_SPLIT_PA, PROBLEM_EXCESS, type PlatoonInput, type PlatoonRead } from '../server/platoon';
 import { CREDIBLE_HIGH_LEVERAGE, DEPLOYMENT_GAP, deploymentFindings, LEVERAGE, MIN_APPEARANCES, penFindings, roleOf, type PenArm } from '../server/bullpenRoles';
+import { BULLPEN_PRIOR } from '../server/bullpenRoles';
 import { reviewGroup, type LensEvidence, type ReviewSubject } from '../server/roleReview';
 import { hitterStandard, relieverStandard, starterStandard } from '../server/roleStandards';
 import { readContext, SEASON, WINDOW } from '../server/staffPreference';
@@ -56,7 +58,7 @@ describe('platoon: the minimum split, the problem margin, the complement margin'
   const line = (pa: number, woba: 'good' | 'poor'): BattingLine => ({
     year: 2030, g: 0, gs: 0, pa, ab: Math.round(pa * 0.9), h: Math.round(pa * 0.9 * (woba === 'good' ? 0.34 : 0.19)), d: 0, t: 0, hr: 0, bb: 0, ibb: 0, hp: 0, sf: 0, k: 0, sb: 0, cs: 0, gdp: 0, war: 0, ubr: 0,
   });
-  const input = (over: Partial<PlatoonInput>): PlatoonInput => ({ recordStabilization: 300, bats: 'L', vsLeft: [], vsRight: [], leagueEffect: 0.015, leagueWoba: 0.32, ...over });
+  const input = (over: Partial<PlatoonInput>): PlatoonInput => ({ recordStabilization: 300, platoon: PLATOON_PRIOR, leagueLeftShare: 0.3, bats: 'L', vsLeft: [], vsRight: [], leagueEffect: 0.015, leagueWoba: 0.32, ...over });
 
   it('a record is read only when the less-faced hand has at least the minimum plate appearances', () => {
     const reads = (n: number) => evaluatePlatoon(input({ vsLeft: [line(n, 'poor')], vsRight: [line(400, 'good')], ratings: { vsLeft: -0.0075, vsRight: 0.0075, norm: 0.015 } })).basis;
@@ -84,7 +86,7 @@ describe('platoon: the minimum split, the problem margin, the complement margin'
 });
 
 describe('the bullpen: appearances, leverage cut-offs, the deployment gap, the credible arm', () => {
-  const use = (over: Partial<Parameters<typeof roleOf>[0]>) => roleOf({ playerId: 1, name: 'R', g: 30, ip: 30, sv: 0, hld: 0, leverage: 1.0, ...over }).tier;
+  const use = (over: Partial<Parameters<typeof roleOf>[0]>) => roleOf({ playerId: 1, name: 'R', g: 30, ip: 30, sv: 0, hld: 0, leverage: 1.0, ...over }, BULLPEN_PRIOR).tier;
   it('a role is read from the minimum appearances on', () => {
     expect(use({ g: MIN_APPEARANCES, leverage: 2, sv: 3 })).toBe('closer');
     expect(use({ g: MIN_APPEARANCES - 1, leverage: 2, sv: 3 })).toBe('unknown');
@@ -107,8 +109,8 @@ describe('the bullpen: appearances, leverage cut-offs, the deployment gap, the c
       { playerId: 1, name: 'A1', tier: 'closer', estimate: best }, { playerId: 2, name: 'A2', tier: 'high_leverage', estimate: best - 5 }, { playerId: 3, name: 'A3', tier: 'middle', estimate: best - 8 },
       { playerId: 4, name: 'A4', tier: 'middle', estimate: best - 9 }, { playerId: 5, name: 'A5', tier: 'long', estimate: best - 12, ipPerAppearance: 2 },
     ];
-    expect(penFindings(pen(CREDIBLE_HIGH_LEVERAGE)).some((f) => f.kind === 'no_credible_high_leverage')).toBe(false);
-    expect(penFindings(pen(CREDIBLE_HIGH_LEVERAGE - 0.5)).some((f) => f.kind === 'no_credible_high_leverage')).toBe(true);
+    expect(penFindings(pen(CREDIBLE_HIGH_LEVERAGE), BULLPEN_PRIOR).some((f) => f.kind === 'no_credible_high_leverage')).toBe(false);
+    expect(penFindings(pen(CREDIBLE_HIGH_LEVERAGE - 0.5), BULLPEN_PRIOR).some((f) => f.kind === 'no_credible_high_leverage')).toBe(true);
   });
   it('the reliever standards are ordered with their roles', () => {
     expect(relieverStandard('closer').floor).toBeGreaterThan(relieverStandard('long').floor);

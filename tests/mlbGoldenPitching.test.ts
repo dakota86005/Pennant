@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
-  CREDIBLE_HIGH_LEVERAGE, deploymentFindings, LEVERAGE, LONG_INNINGS, MIN_APPEARANCES, penFindings, roleOf, starterConflicts, type BullpenTier, type PenArm,
+  CREDIBLE_HIGH_LEVERAGE, deploymentFindings, LEVERAGE, MULTI_INNING, MIN_APPEARANCES, penFindings, roleOf, starterConflicts, type BullpenTier, type PenArm,
 } from '../server/bullpenRoles';
+import { BULLPEN_PRIOR } from '../server/bullpenRoles';
 import { reviewGroup, type LensEvidence, type ReviewSubject } from '../server/roleReview';
 import { relieverStandard, starterStandard } from '../server/roleStandards';
 
@@ -9,7 +10,7 @@ import { relieverStandard, starterStandard } from '../server/roleStandards';
  * GOLDEN CASES: pitching. What a reliever's usage says about his job, and what a weak line means in each job.
  */
 
-const usage = (over: Partial<Parameters<typeof roleOf>[0]>) => roleOf({ playerId: 1, name: 'R', g: 30, ip: 30, sv: 0, hld: 0, leverage: 1.0, ...over });
+const usage = (over: Partial<Parameters<typeof roleOf>[0]>) => roleOf({ playerId: 1, name: 'R', g: 30, ip: 30, sv: 0, hld: 0, leverage: 1.0, ...over }, BULLPEN_PRIOR);
 
 describe('GOLDEN bullpen: roles for extreme profiles', () => {
   it('a save-getter at high leverage is the closer; the same leverage without saves is a high-leverage arm', () => {
@@ -37,7 +38,7 @@ describe('GOLDEN bullpen: roles for extreme profiles', () => {
   it('what a role is worth differs: a long man is a low-stakes role and a closer a high-stakes one', () => {
     expect(usage({ leverage: 0.8, g: 20, ip: 44 }).stakes).toBe('low');
     expect(usage({ leverage: 2.0, sv: 8 }).stakes).toBe('high');
-    expect(LONG_INNINGS).toBeGreaterThan(1);
+    expect(MULTI_INNING).toBeGreaterThan(1);
   });
 });
 
@@ -81,12 +82,12 @@ describe('GOLDEN bullpen: what the pen as a whole is missing', () => {
   const base = (): PenArm[] => [arm(1, 'closer', 70), arm(2, 'high_leverage', 62), arm(3, 'middle', 55), arm(4, 'middle', 50), arm(5, 'low_leverage', 45), arm(6, 'long', 40, 2.1)];
 
   it('a healthy pen has no pen-wide finding', () => {
-    expect(penFindings(base())).toEqual([]);
+    expect(penFindings(base(), BULLPEN_PRIOR)).toEqual([]);
   });
 
   it('no arm anywhere above the credible line is a pen with no credible high-leverage arm, wherever he is used', () => {
     const weak = base().map((a) => ({ ...a, estimate: (a.estimate as number) - 25 }));
-    const f = penFindings(weak).find((x) => x.kind === 'no_credible_high_leverage')!;
+    const f = penFindings(weak, BULLPEN_PRIOR).find((x) => x.kind === 'no_credible_high_leverage')!;
     expect(f).toBeDefined();
     expect(f.supported).toMatch(new RegExp(`${CREDIBLE_HIGH_LEVERAGE}th percentile`));
     expect(f.why).toMatch(/leverage/);
@@ -94,17 +95,17 @@ describe('GOLDEN bullpen: what the pen as a whole is missing', () => {
 
   it('nobody throwing multiple innings is a finding once enough roles are read', () => {
     const noLong = base().map((a) => (a.tier === 'long' ? { ...a, tier: 'middle' as BullpenTier, ipPerAppearance: 1.0 } : a));
-    expect(penFindings(noLong).some((f) => f.kind === 'no_multi_inning')).toBe(true);
-    expect(penFindings(base()).some((f) => f.kind === 'no_multi_inning')).toBe(false);
+    expect(penFindings(noLong, BULLPEN_PRIOR).some((f) => f.kind === 'no_multi_inning')).toBe(true);
+    expect(penFindings(base(), BULLPEN_PRIOR).some((f) => f.kind === 'no_multi_inning')).toBe(false);
   });
 
   it('early in a season, with few roles read, it asserts nothing about the pen as a whole', () => {
-    expect(penFindings([arm(1, 'unknown', 50), arm(2, 'unknown', 40), arm(3, 'closer', 20)])).toEqual([]);
+    expect(penFindings([arm(1, 'unknown', 50), arm(2, 'unknown', 40), arm(3, 'closer', 20)], BULLPEN_PRIOR)).toEqual([]);
   });
 
   it('three long men is a crowded role', () => {
     const crowded = [...base().slice(0, 5), arm(6, 'long', 40, 2), arm(7, 'long', 38, 2), arm(8, 'long', 36, 2)];
-    expect(penFindings(crowded).some((f) => f.kind === 'crowded_role')).toBe(true);
+    expect(penFindings(crowded, BULLPEN_PRIOR).some((f) => f.kind === 'crowded_role')).toBe(true);
   });
 });
 

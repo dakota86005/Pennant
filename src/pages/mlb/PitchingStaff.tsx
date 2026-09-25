@@ -1,5 +1,6 @@
 import { Fragment, useState } from 'react';
 import { PlayerLink } from '../../playerModal';
+import { Tip } from '../../Tip';
 import { Chip, FINDING_TEXT, ord, STRENGTH_CLASS, TIER_TEXT } from './common';
 import type { Route } from './route';
 import type { Overview, PenFinding, ReviewGroup, ReviewHolder } from './types';
@@ -88,7 +89,7 @@ export function PitchingStaff({ data, go }: { data: Overview; go: (r: Route) => 
           {findings.length > 0 && <div className="mlb-findings">{findings.map((f) => <Finding key={`${f.heading}:${f.current}`} f={f} />)}</div>}
           {findings.length === 0 && <p className="muted">No deployment notes: the arms are used about where the evidence puts them.</p>}
           <ArmTable g={pen} relief go={go} />
-          <p className="muted">A reliever's role is what his usage shows this season: the leverage of the innings he is given, how long he throws, and saves and holds. Too few appearances, or no exported leverage, is "not yet clear", never a guess.</p>
+          <p className="muted">A reliever's role is what his usage shows this season: the leverage of the innings he is given, {data.yardsticks?.longMan ? <Tip label="how long he throws" tip={data.yardsticks.longMan} focusable /> : 'how long he throws'}, and saves and holds. Too few appearances, or no exported leverage, is "not yet clear", never a guess.</p>
         </section>
       )}
     </div>

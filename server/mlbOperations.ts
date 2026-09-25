@@ -27,6 +27,7 @@ import { readContext, type ContextRead, type OrganizationContext } from './staff
 import { rightsFor } from './playerContext.js';
 import { philosophyForOrg } from './settings.js';
 import type { ResultsParams } from './resultsMetrics.js';
+import type { BullpenLines } from './bullpenRoles.js';
 import { rosterReviewCalibration, type RosterReviewCalibration, type YardstickGroup } from './mlbCalibration.js';
 import { majorLeagueId } from './resultsEvidence.js';
 
@@ -67,10 +68,10 @@ function realPorts(orgId: number, floors: CoverageFloors = DEFAULT_COVERAGE_FLOO
     development: (ids, context) => mlbAssignmentAssessments(orgId, context, ids),
     crossRole: crossRoleSupport,
     roleFit: (id) => roleFitEvidence(id, orgId),
-    holderEvidence: (ids, role, opts) => holderEvidence(orgId, ids, role, opts ?? {}, yardsticks.results),
+    holderEvidence: (ids, role, opts) => holderEvidence(orgId, ids, role, opts ?? {}, yardsticks.results, yardsticks.bullpen),
     hitterUsage: (ids) => hitterUsage(orgId, ids),
     teamGames: () => teamGamesPlayed(orgId),
-    platoon: (ids) => platoonInputs(orgId, ids, yardsticks.results),
+    platoon: (ids) => platoonInputs(orgId, ids, yardsticks.results, yardsticks.platoon),
     performance: performanceLine,
     // A failure inside Minor League Operations' evaluator leaves the farm consequence unknown; it never fails the packet.
     // One farm session per request: the organization is read once however many candidates are asked about.
@@ -87,15 +88,18 @@ function realPorts(orgId: number, floors: CoverageFloors = DEFAULT_COVERAGE_FLOO
 }
 
 /** The scouting review's evidence, through the same specialists: lenses, usage, splits. */
-export function reviewPorts(orgId: number, override?: { results?: ResultsParams }): ReviewPorts {
+export function reviewPorts(orgId: number, override?: { results?: ResultsParams; bullpen?: BullpenLines }): ReviewPorts {
   const yardsticks = yardsticksFor(orgId);
-  // The refit may measure the standards under the results params about to be recorded (what is checked is what is served)
+  // The refit may measure the standards under the results params and the bullpen lines about to be recorded (what is checked is what
+  // is served)
   const results = override?.results ?? yardsticks.results;
+  const bullpen = override?.bullpen ?? yardsticks.bullpen;
   return {
     calibration: { standards: yardsticks.standards, review: yardsticks.review },
-    holderEvidence: (ids, role) => holderEvidence(orgId, ids, role, {}, results),
+    bullpen,
+    holderEvidence: (ids, role) => holderEvidence(orgId, ids, role, {}, results, bullpen),
     hitterUsage: (ids) => hitterUsage(orgId, ids),
-    platoon: (ids) => platoonInputs(orgId, ids, results),
+    platoon: (ids) => platoonInputs(orgId, ids, results, yardsticks.platoon),
     teamGames: () => teamGamesPlayed(orgId),
     covers: (ids) => playableCovers(ids),
     coverReads: (ids) => coverReads(orgId, ids),
@@ -141,7 +145,7 @@ export interface MlbOverview {
    * Where the review's yardsticks come from (D-053): one plain line for the page, the detail for its hover, and per group the fit in
    * force with its record (the same object `GET /api/mlb/calibration/:orgId` serves).
    */
-  yardsticks: { line: string; tip: string; groups: YardstickGroup[] };
+  yardsticks: { line: string; tip: string; groups: YardstickGroup[]; longMan: string };
 }
 
 export function mlbOverview(orgId: number, view: ClubView = loadClubView(orgId)): MlbOverview {
@@ -247,7 +251,8 @@ function calibrationRoute(req: { params: { orgId: string } }, res: import('expre
   if (id === null) return res.status(400).json({ error: 'A valid organization is required.' });
   if (!tableExists('players')) return res.status(400).json({ error: 'No data imported yet' });
   const y = yardsticksFor(id);
-  return res.json({ leagueId: y.leagueId, line: y.line, tip: y.tip, groups: y.groups });
+  // The values in force beside the groups' records: the platoon weights and the bullpen lines (cycle 3)
+  return res.json({ leagueId: y.leagueId, line: y.line, tip: y.tip, groups: y.groups, inForce: { platoon: y.platoon, bullpen: y.bullpen } });
 }
 mlbOperationsRoutes.get('/mlb-operations/:orgId/calibration', calibrationRoute);
 mlbOperationsRoutes.get('/mlb/calibration/:orgId', calibrationRoute);
@@ -273,5 +278,5 @@ mlbOperationsRoutes.get('/mlb-operations/:orgId/responses', (req, res) => {
 /** The yardsticks' account for a club, for the page and the API. */
 export function yardsticksOf(orgId: number): MlbOverview['yardsticks'] {
   const y = yardsticksFor(orgId);
-  return { line: y.line, tip: y.tip, groups: y.groups };
+  return { line: y.line, tip: y.tip, groups: y.groups, longMan: y.longMan };
 }

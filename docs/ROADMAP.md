@@ -60,9 +60,10 @@ is independent of the others unless it says so:
 4. Move the other subsystems' calibrated constants to per-save fits (D-053,
    "Later" below). Cycle 1 is done (2026-09-24): the roster review's role
    standards (each lens with its own line), aging curve and glove weights, on the
-   neutral store and refit registry (CALIBRATION.md section 12). Cycles 2 to 4:
-   `resultsMetrics.ts`; platoon and bullpen leverage; the tools model and
-   development fits.
+   neutral store and refit registry (CALIBRATION.md section 12). Cycle 2 (the
+   results lens, section 13) and cycle 3 (platoon and the bullpen's long-man line,
+   section 14) are done. Cycle 4: the tools model and development fits, with the
+   platoon rating weight and the K around ratings deferred to it.
 5. The remaining Minor League Operations and rights edges (§5, §6), and
    staff-informed philosophy ("Then").
 6. Release readiness (§8) whenever the owner is ready; it is not baseball work.
@@ -345,11 +346,13 @@ player's expected wins with a range) is available now.
   role standards, `roleReview.ts` `AGING_CURVE` and `DEFENSE_WEIGHT`, on the
   neutral `saveIdentity.ts`, `saveCalibrationStore.ts` and `saveCalibration.ts`;
   CALIBRATION.md section 12), and since cycle 2 the results lens's season weights
-  and stabilization, under the "clearly better" rule (section 13). Not yet migrated,
+  and stabilization, under the "clearly better" rule (section 13), and since cycle 3
+  the platoon weight around the league norm and the bullpen's long-man line (section
+  14; the leverage cut-offs are policy on the league's own scale). Not yet migrated,
   each a code-declared `calibrated` or fittable `provisional` constant today:
   `resultsMetrics.ts` tools information (with the tools model, cycle 4), `toolsModel.ts` (the tools model),
-  `platoon.ts` (platoon prior and shrinkage), `bullpenRoles.ts` (leverage
-  cut-offs), `farmCalibration.ts`
+  `platoon.ts` (the rating weight and the K around ratings: cycle 4, once a save can
+  check ratings as a forecast), `farmCalibration.ts`
   (Minor League Operations: recent usage, farm results) and `developmentFit.ts`
   (ceiling lines, development age, projection; developmental stakes). For each:
   say which values are fittable on a save's history and which are policy, write
@@ -367,7 +370,11 @@ player's expected wins with a range) is available now.
 - Finding (cycle 2, CALIBRATION.md 13.4): relievers' results are trusted too much. Next season's runs follow the results lens's
   prediction with a slope of about 0.65 (0.74 under the starting values) on the Arizona import. No weight or stabilization fixes
   it, so it is a model-form question for `PITCHER_RESULTS_MIX` and the bullpen roles. It is reported in the run record, not gated.
-- The "clearly better" rule's error rates are simulated for the results lens only. Simulate them for the aging curve too, and
+- Cycle 3 follow-ups (CALIBRATION.md 14.4): a reliever's tier at 8 appearances is noisy (only about half read the same leverage
+  band from both halves of their appearances), so consider a tier that says how settled it is, or a higher minimum (owner's call,
+  `MIN_APPEARANCES` is policy). Whether OOTP keeps past seasons' game logs in later exports is unknown; the long line's season
+  split is "not measured" without them.
+- The "clearly better" rule's error rates are simulated for the results lens and the platoon fit only. Simulate them for the aging curve too, and
   consider whether Player Value's results fit should follow the same rule (it keeps its coverage gate).
 - Validate thresholds across synthetic fixtures and diverse voluntarily
   described save shapes without collecting live private saves.

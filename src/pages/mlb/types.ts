@@ -45,7 +45,7 @@ export interface Need {
 
 export interface PlatoonRead {
   verdict: string; weakSide: string | null; weakBy: number | null; reliability: number; reasons: string[]; basis?: string; ratingDeparture?: number | null;
-  difference?: number | null; drivers?: { league: number; ratings: number | null; record: number | null };
+  difference?: number | null; drivers?: { league: number | null; ratings: number | null; record: number | null };
   vsLeft: { pa: number; observed: number | null; expected: number | null }; vsRight: { pa: number; observed: number | null; expected: number | null };
 }
 
@@ -107,7 +107,7 @@ export interface Overview {
   activePlayers: Array<{ playerId: number; name: string; role: string | null; available: boolean }>;
   unknowns: string[];
   /** Where the review's yardsticks come from: one plain line and its hover (the groups' records are for the API). */
-  yardsticks?: { line: string; tip: string; groups: Array<{ key: string; source: 'save' | 'starting' }> };
+  yardsticks?: { line: string; tip: string; groups: Array<{ key: string; source: 'save' | 'starting' }>; longMan?: string };
 }
 
 export interface Step {

@@ -5,8 +5,10 @@
  *
  *   OOTP_FO_DATA_DIR=<dir with league.db> npx tsx scripts/calibrate.ts [section ...]
  *
- * Sections: results pitchers tools platoon aging running defense leverage standards production (default: all), and roster-review
- * (only when named): the roster review's per-save yardsticks (D-053, cycle 1), `--refit` to record them in history.db.
+ * Sections: results pitchers tools platoon aging running defense leverage standards production (default: all), and, only when named:
+ * roster-review (the roster review's per-save yardsticks, D-053 cycles 1 to 3, including the platoon fit and the long-man line;
+ * `--refit` to record them in history.db), detector (the detector's error rates, cycle 2) and platoon-detector (the platoon fit's
+ * error rates under the detector, cycle 3).
  *
  * `production` runs Player Value's per-save production fit (D-053; scripts/lib/productionCalibration.ts):
  * `production --prior` also prints the fallback prior, `production --refit` forces a refit into history.db.
@@ -35,6 +37,10 @@ import { bestOf, correlation, grid, mean, weightedRmse, wls } from './lib/fit.js
 import { productionSection } from './lib/productionCalibration.js';
 import { rosterReviewSection } from './lib/rosterReviewCalibration.js';
 import { detectorSection } from './lib/resultsDetectorSimulation.js';
+import { platoonDetectorSection } from './lib/platoonDetectorSimulation.js';
+import { leagueLeverage } from '../server/mlbCalibrationRefit.js';
+import { leverageLines, LEVERAGE_UNIT_TOLERANCE } from '../server/bullpenRoles.js';
+import { LONG_LINE_POLICY } from '../server/mlbBullpenLines.js';
 
 const LEAGUE = Number(process.env.CALIBRATION_LEAGUE ?? 203);
 const FIRST = 2003;
@@ -563,6 +569,12 @@ function leverageSection(): void {
   console.log(`  relievers with 3+ saves: ${closers.length}, mean leverage ${f(mean(closers), 2)}`);
   const holds = rows.filter((r) => r.hld >= 3 && r.sv < 3 && r.bf > 0).map((r) => r.li / r.bf);
   console.log(`  setup men (3+ holds, under 3 saves): ${holds.length}, mean leverage ${f(mean(holds), 2)}`);
+  // Cycle 3 (D-053; CALIBRATION.md section 14): the cut-offs are policy on the league's own scale, checked against its mean leverage;
+  // the long-man line is measured per save with the reliever standards (`roster-review` prints the measurement and its checks)
+  const unit = leagueLeverage(LEAGUE);
+  const lines = leverageLines(unit);
+  console.log(`  the league's mean leverage per batter faced (every pitcher): ${f(unit, 4)}; the cut-offs ${lines.rescaled ? `are rescaled to it: ${JSON.stringify(lines.leverage)}` : `serve as written (within ${LEVERAGE_UNIT_TOLERANCE * 100}% of 1.0)`}`);
+  console.log(`  innings per appearance at the long-man quantile (${LONG_LINE_POLICY.quantile}) over these relievers: ${f(ipg[Math.floor(ipg.length * LONG_LINE_POLICY.quantile)], 2)} (the per-save line is measured on the clubs' active relievers: npm run calibrate roster-review)`);
 }
 
 
@@ -635,3 +647,4 @@ if (want('standards')) standardsSection();
 if (want('production')) productionSection(LEAGUE, process.argv.slice(2));
 if (sections.includes('roster-review')) rosterReviewSection(LEAGUE, process.argv.slice(2));
 if (sections.includes('detector')) detectorSection(process.argv.slice(2));
+if (sections.includes('platoon-detector')) platoonDetectorSection(process.argv.slice(2));

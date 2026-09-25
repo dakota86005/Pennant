@@ -9,6 +9,9 @@ import { RESULTS_METHOD } from '../server/mlbResultsFit';
 import { RESULTS_PRIOR } from '../server/resultsMetrics';
 import { DEFENSE_WEIGHT } from '../server/roleReview';
 import { STARTING_STANDARDS } from '../server/roleStandards';
+import { PLATOON_METHOD } from '../server/mlbPlatoonFit';
+import { BULLPEN_PRIOR } from '../server/bullpenRoles';
+import { PLATOON_PRIOR } from '../server/platoon';
 
 /**
  * The roster review's yardsticks line is written for a GM (AGENTS.md "Writing for the GM"): short, plain, and its reason is always the
@@ -43,6 +46,20 @@ const resultsModel = (source: 'save' | 'starting') => ({
 });
 const ownResults = () => recordCalibration({ model: resultsModel('save'), record: rec('results', RESULTS_METHOD, true, { throughSeason: 1991 }) }, { fitMs: 1 });
 const keptResults = () => recordCalibration({ model: resultsModel('starting'), record: rec('results', RESULTS_METHOD, true, { throughSeason: 1991 }) }, { fitMs: 1 });
+const platoonModel = (source: 'save' | 'starting', reason: string | null) => ({ source, served: source === 'save' ? 2500 : 5000, fitted: 2500, fittedServed: 2500, cases: 6614, priorWeight: 0.1, decision: null, reason });
+const ownPlatoon = () => recordCalibration({ model: platoonModel('save', null), record: rec('platoon', PLATOON_METHOD, true, { throughSeason: 1991 }) }, { fitMs: 1 });
+const keptPlatoon = () => recordCalibration({ model: platoonModel('starting', 'kept'), record: rec('platoon', PLATOON_METHOD, true, { throughSeason: 1991 }) }, { fitMs: 1 });
+const noSplits = () => recordCalibration({ model: null, record: rec('platoon', PLATOON_METHOD, false, { throughSeason: 1991 }, ['no_splits: The export carries no batting lines against left- and right-handed pitching.']) }, { fitMs: 1 });
+const linesModel = (source: 'save' | 'starting', reason: 'relievers' | 'check_failed' | null) => ({
+  served: { ...STARTING_STANDARDS, source: 'save' }, roles: {},
+  bullpen: {
+    lines: { ...BULLPEN_PRIOR, long: source === 'save' ? 1.733 : 1.6, source, leagueLeverage: 1.02 }, basis: source === 'save' ? 'measured' : 'starting',
+    measuredOn: '2026-5-16', measured: 1.733, relievers: 219, seasonSplit: 'passed', seasonSplitWhy: null,
+    attempt: { gameDate: '2026-5-16', measured: 1.733, relievers: 219, reason: reason ?? 'measured' },
+  },
+});
+const ownStandardsWithLine = () => recordCalibration({ model: linesModel('save', null), record: rec('standards', 'standards-2', true, { gameDate: '2000-01-02' }) }, { fitMs: 1 });
+const standardsTooFewRelievers = () => recordCalibration({ model: linesModel('starting', 'relievers'), record: rec('standards', 'standards-2', true, { gameDate: '2000-01-02' }) }, { fitMs: 1 });
 const ownDefense = () => recordCalibration({ model: { weights: DEFENSE_WEIGHT, positions: {} }, record: rec('defense', 'defense-1', true, { throughSeason: 1991 }) }, { fitMs: 1 });
 
 function state(setup: Array<() => unknown>, league: number | null = L) {
@@ -64,7 +81,8 @@ const STATES: Array<[string, Array<() => unknown>, number | null, string]> = [
   ['not enough seasons', [standardsFailing("seasons: the league's own past seasons could not be checked")], L, 'Using starting yardsticks: not enough seasons in this league yet'],
   ['a check failed', [standardsFailing('club_split estimate:hitter:floor: 0.200 against 0.100')], L, "Using starting yardsticks: the league's own ones did not hold up when checked"],
   ['some own', [ownStandards], L, "Some yardsticks are this league's own; others are starting values"],
-  ['all own', [ownStandards, ownAging, ownDefense, ownResults], L, "Yardsticks set from this league's own seasons (through 1991)"],
+  ['all own', [ownStandardsWithLine, ownAging, ownDefense, ownResults, ownPlatoon], L, "Yardsticks set from this league's own seasons (through 1991)"],
+  ['own standards measured before the long-man line was (the line not yet measured)', [ownStandards, ownAging, ownDefense, ownResults, ownPlatoon], L, "Some yardsticks are this league's own; others are starting values"],
   ['own standards; aging and recent seasons checked and held up', [ownStandards, keptAging, keptResults], L, "Some yardsticks are this league's own; others are starting values"],
   ['nothing of the league\'s own serves, the first one held up', [keptAging, keptResults, standardsFailing('games')], L, 'Using starting yardsticks: it is too early in the season to tell who the regulars are'],
 ];
@@ -113,6 +131,32 @@ describe('the yardsticks line gives the true reason, plainly', () => {
     expect(y.results.stabilization.hitter).toBe(900);
     expect(y.results.stamp.status).toBe('calibrated');
     expect(y.review.aging).not.toBeNull();
+  });
+
+  it('how much a hitter\'s own split counts, and who counts as a long man, are said plainly with their true reason', () => {
+    const own = state([ownStandardsWithLine, ownPlatoon]);
+    expect(own.tip).toMatch(/How much a hitter's own split counts: From 700 hitter-seasons in this league/);
+    expect(own.tip).toMatch(/It applies where his platoon ratings are not visible\./);
+    expect(own.tip).toMatch(/Who counts as a long man: A reliever who averages 1\.7 or more innings an appearance, about the longest-working 15 in 100 of this league's relievers \(219 relievers, as of May 16, 2026\)/);
+    expect(own.tip).toMatch(/half the clubs picked out about the same share of the rest, and so did a line drawn from the first half of the season/);
+    expect(own.platoon).toMatchObject({ shrinkAroundLeague: 2500, source: 'save' });
+    expect(own.bullpen.long).toBe(1.733);
+    const kept = state([keptPlatoon, standardsTooFewRelievers]);
+    expect(kept.tip).toMatch(/How much a hitter's own split counts: the starting values, because they were checked on this league's seasons and held up\./);
+    expect(kept.tip).toMatch(/Who counts as a long man: the starting value \(a reliever who averages 1\.6 or more innings an appearance\), because too few relievers have pitched enough to measure\./);
+    expect(kept.platoon).toBe(PLATOON_PRIOR);
+    expect(kept.bullpen.long).toBe(1.6);
+    const missing = state([noSplits]);
+    expect(missing.tip).toMatch(/How much a hitter's own split counts: the starting values, because this league's export has no batting records against left- and right-handed pitchers\./);
+    // the Pitching Staff page's hover on how long a reliever throws says what a long man is here, and whose line it is
+    expect(own.longMan).toMatch(/averages 1\.7 or more innings an appearance: about the longest-working 15 in 100 of this league's relievers\./);
+    expect(kept.longMan).toMatch(/1\.6 or more innings an appearance: Pennant's starting line, because too few relievers have pitched enough to measure/);
+    expect(state([]).longMan).toMatch(/because this league has not been measured yet/);
+    for (const y of [own, kept, missing]) {
+      expect(y.tip).not.toMatch(BANNED);
+      expect(y.line).not.toMatch(BANNED);
+      expect(y.longMan).not.toMatch(BANNED);
+    }
   });
 
   it('the page component adds no visible words of its own', () => {

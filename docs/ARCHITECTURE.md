@@ -618,7 +618,9 @@ Calibration belongs to the save. Three subsystem-neutral modules carry every sub
   or fail the import. A measurement keyed by game date is served only from an export no later than today's.
 
 MLB Operations is the first registrant (the roster review's role standards, aging curve and glove weights; since cycle 2 the
-results lens's season weights and stabilization, registered ahead of the standards so they are measured under its verdict); it
+results lens's season weights and stabilization, registered ahead of the standards so they are measured under its verdict; since
+cycle 3 the platoon weight around the league norm, `platoon-1`, and the bullpen's long-man line, measured with the reliever
+standards and recorded in them, `standards-2`); it
 imports no Player Value file (`tests/saveCalibrationBoundary.test.ts`). The method and policy stay in the subsystem's code, with
 the built-in values as the provisional fallback prior (CALIBRATION.md sections 12 and 13).
 
@@ -632,6 +634,11 @@ the built-in values as the provisional fallback prior (CALIBRATION.md sections 1
 - The results lens's params (`ResultsParams`: season weights and stabilization) are passed as arguments through `resultsMetrics.ts`
   and `resultsEvidence.ts`. No reader holds a default. MLB Operations resolves the yardsticks once per request and passes
   `yardsticks.results` into every holder read and platoon read (`tests/resultsParamsInForce.test.ts`).
+- The platoon weights (`PlatoonParams`) and the bullpen lines (`BullpenLines`: the leverage cut-offs on the league's own scale, the
+  long-man line, the multi-inning line) are passed the same way (cycle 3): `PlatoonInput.platoon`, `ReviewPorts.bullpen`, `roleOf`
+  and `penFindings` require them, and the ports pass `yardsticks.platoon` and `yardsticks.bullpen`
+  (`tests/platoonBullpenInForce.test.ts`). The lines in force are the ones the standards in force were measured under
+  (`mlbBullpenLines.ts`), so tiers and the reliever standards never disagree.
 - The league's run environment: `stats.ts` `leagueBaseline` derives each league-season's wOBA scale and a caught stealing's run
   value from its own totals (the labelled fallback 1.2 and -0.4 where the totals cannot give them), the one source for wRC+
   app-wide and the glove-weight fit.

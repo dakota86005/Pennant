@@ -126,14 +126,14 @@ describe('MLB Operations boundary', () => {
   it('the evaluation calibration is declared once, in its own module, and repeated nowhere else', () => {
     const owners: Record<string, RegExp> = {
       'roleReview.ts': /\b(PITCHER_RESULTS_MIX|DEFENSE_WEIGHT|CONCERN)\b/,
-      'platoon.ts': /\b(PLATOON_SHRINK_K|MIN_SPLIT_PA|PROBLEM_EXCESS|COMPLEMENT_MARGIN)\b/,
+      'platoon.ts': /\b(PLATOON_PRIOR|MIN_SPLIT_PA|PROBLEM_EXCESS|COMPLEMENT_MARGIN)\b/,
       'lineupPicture.ts': /\bREGULAR_SHARE\b/,
       'resultsMetrics.ts': /\b(RESULTS_PRIOR|TOOLS_INFORMATION|POPULATION_MINIMUM)\b/,
       'roleStanding.ts': /\b(MEANINGFUL_GAP|RESULTS_SAMPLE_MINIMUM)\b/,
       'toolsModel.ts': /\b(HITTER_TOOL_SLOPES|RUNNING_SLOPES)\b/,
       'staffPreference.ts': /\b(TIE_BAND|AGE_GAP_YEARS|UPSIDE_GAP|SKILL_GAP|DEVELOPING_AGE)\b/,
       'lineupShifts.ts': /\bSHIFT_MIN_GAIN\b/,
-      'bullpenRoles.ts': /\b(DEPLOYMENT_GAP|LONG_INNINGS|MIN_APPEARANCES)\b/,
+      'bullpenRoles.ts': /\b(DEPLOYMENT_GAP|MULTI_INNING|LONG_LINE_PRIOR|MIN_APPEARANCES|LEVERAGE_UNIT_TOLERANCE)\b/,
       'benchReview.ts': /\bREQUIRED_COVER\b/,
     };
     const files = fs.readdirSync(SERVER).filter((f) => f.endsWith('.ts'));

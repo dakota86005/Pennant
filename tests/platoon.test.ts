@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
-  complementFit, COMPLEMENT_MARGIN, evaluatePlatoon, MIN_SPLIT_PA, PLATOON_CALIBRATION, PLATOON_SHRINK_K, PROBLEM_EXCESS, RATING_PRIOR_WEIGHT,
+  complementFit, COMPLEMENT_MARGIN, evaluatePlatoon, MIN_SPLIT_PA, PLATOON_CALIBRATION, PLATOON_PRIOR, PROBLEM_EXCESS,
   type PlatoonInput, type PlatoonRatings,
 } from '../server/platoon';
 import type { BattingLine } from '../server/resultsMetrics';
+import { platoonHeadline } from '../src/pages/mlb/platoonCopy';
 
 /*
  * Platoon is the league's effect for a hitter's handedness, adjusted by his visible platoon ratings (D-035), with his own
@@ -24,7 +25,7 @@ const line = (pa: number, hit: 'good' | 'ok' | 'poor'): BattingLine => {
 
 /** Ratings that say he is `gap` wOBA points better against right-handers than left-handers, against a norm for his hand. */
 const ratings = (gap: number, norm = 0.015): PlatoonRatings => ({ vsLeft: -gap / 2, vsRight: gap / 2, norm });
-const input = (over: Partial<PlatoonInput>): PlatoonInput => ({ recordStabilization: 300, bats: 'L', vsLeft: [], vsRight: [], leagueEffect: 0.015, leagueWoba: 0.32, ...over });
+const input = (over: Partial<PlatoonInput>): PlatoonInput => ({ recordStabilization: 300, platoon: PLATOON_PRIOR, leagueLeftShare: 0.3, bats: 'L', vsLeft: [], vsRight: [], leagueEffect: 0.015, leagueWoba: 0.32, ...over });
 
 describe('reading a platoon split honestly', () => {
   it('nothing to go on (no ratings, no league norm, too thin a record) is not read at all', () => {
@@ -65,7 +66,7 @@ describe('reading a platoon split honestly', () => {
     expect(r.verdict).toBe('no_issue');
     // and the weight shrinks as the constant says: half at K effective plate appearances
     const effective = (700 * 1800) / 2500;
-    expect(r.reliability).toBeCloseTo(effective / (effective + PLATOON_SHRINK_K), 6);
+    expect(r.reliability).toBeCloseTo(effective / (effective + PLATOON_PRIOR.shrinkAroundRatings), 6);
   });
 
   it('with no ratings the record still counts, shrunk toward the league', () => {
@@ -90,10 +91,52 @@ describe('reading a platoon split honestly', () => {
     expect(noLevel.weakSide).not.toBeNull();
   });
 
-  it('declares its calibration: tuned constants and policy thresholds are both stamped', () => {
+  it('declares its calibration: the starting values are provisional, the margins policy', () => {
     expect(evaluatePlatoon(input({})).calibration).toBe(PLATOON_CALIBRATION);
-    expect(PLATOON_CALIBRATION.status).toBe('calibrated');
-    expect(RATING_PRIOR_WEIGHT).toBe(1);
+    expect(PLATOON_CALIBRATION.status).toBe('provisional');
+    expect(PLATOON_PRIOR.ratingWeight).toBe(1);
+  });
+
+  it('his own split is weighed by the value in force: around the league norm the save\'s own, around his ratings the starting value', () => {
+    const own = { ...PLATOON_PRIOR, shrinkAroundLeague: 500, source: 'save' as const };
+    const splitsOnly = evaluatePlatoon(input({ vsLeft: [line(700, 'poor')], vsRight: [line(1800, 'good')], platoon: own }));
+    const effective = (700 * 1800) / 2500;
+    expect(splitsOnly.basis).toBe('splits');
+    expect(splitsOnly.reliability).toBeCloseTo(effective / (effective + 500), 6);
+    expect(splitsOnly.reasons.join(' ')).toMatch(/this league's past seasons/);
+    const withRatings = evaluatePlatoon(input({ vsLeft: [line(700, 'poor')], vsRight: [line(1800, 'good')], ratings: ratings(0.015, 0.015), platoon: own }));
+    expect(withRatings.reliability).toBeCloseTo(effective / (effective + PLATOON_PRIOR.shrinkAroundRatings), 6);
+    const starting = evaluatePlatoon(input({ vsLeft: [line(700, 'poor')], vsRight: [line(1800, 'good')] }));
+    expect(starting.reasons.join(' ')).not.toMatch(/this league/);
+  });
+
+  it('an unknown usual split for his hand is never taken as zero: no problem is found, the save\'s weight is not applied, and the read says why', () => {
+    const own = { ...PLATOON_PRIOR, shrinkAroundLeague: 500, source: 'save' as const };
+    // a big observed split that, measured from zero with the league's own weight, would read as a problem
+    const r = evaluatePlatoon(input({ bats: 'S', leagueEffect: null, vsLeft: [line(200, 'poor')], vsRight: [line(400, 'good')], platoon: own }));
+    expect(r.verdict).toBe('insufficient');
+    expect(r.excessOverLeague).toBeNull();
+    expect(r.difference).toBeNull();
+    expect(r.drivers.league).toBeNull();
+    expect(r.vsLeft.observed).not.toBeNull(); // what his record shows is still said
+    expect(r.reasons.join(' ')).toMatch(/usual split for hitters of his hand is not established/);
+    expect(r.reasons.join(' ')).not.toMatch(/this league's past seasons/);
+    // his ratings alone do not stand in for the league's split either, and the read says they were seen
+    const withRatings = evaluatePlatoon(input({ leagueEffect: null, ratings: ratings(0.06, 0.015) }));
+    expect(withRatings.verdict).toBe('insufficient');
+    expect(withRatings.reasons.join(' ')).toMatch(/His visible ratings imply/);
+    // the page's one line gives that reason, not "not enough to read"
+    expect(platoonHeadline(r)).toBe("Can't judge a platoon split: the usual split for his hand isn't known in this league.");
+    expect(platoonHeadline(evaluatePlatoon(input({ vsLeft: [line(10, 'poor')], vsRight: [line(30, 'good')] })))).toBe('Not enough to read a platoon split.');
+  });
+
+  it('an unknown share of plate appearances against left-handers states no cost, never an assumed share', () => {
+    const r = evaluatePlatoon(input({ leagueLeftShare: null, ratings: ratings(0.06, 0.015) }));
+    expect(r.verdict).toBe('insufficient');
+    expect(r.weakBy).toBeNull();
+    expect(r.reasons.join(' ')).toMatch(/does not say how often/);
+    // his own record gives his share: then the read stands
+    expect(evaluatePlatoon(input({ leagueLeftShare: null, vsLeft: [line(300, 'poor')], vsRight: [line(700, 'good')], ratings: ratings(0.06, 0.015) })).verdict).not.toBe('insufficient');
   });
 });
 
