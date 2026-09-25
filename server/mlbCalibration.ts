@@ -8,6 +8,8 @@
  * detail (what each group is, where it comes from, how it held up on seasons or clubs it had not seen) is the hover's, in plain words.
  */
 
+import { toolsParamsFor } from './toolsCalibration.js';
+import type { ToolsParams } from './toolsModel.js';
 import { adoptedCalibration, latestCalibrationAttempt, type CalibrationCheck, type StoredCalibration } from './saveCalibrationStore.js';
 import { onCalibrationRecorded } from './saveCalibration.js';
 import { completedThrough, leagueGameDate } from './saveIdentity.js';
@@ -57,6 +59,8 @@ export interface RosterReviewCalibration {
   results: ResultsParams;
   /** How much a hitter's own split and his ratings count in a platoon read: the save's own where clearly better, else the starting values. */
   platoon: PlatoonParams;
+  /** The tools model's slopes in force (cycle 4): the league's own where clearly better on its forward seasons, else the starting values. */
+  tools: ToolsParams;
   /** The bullpen's lines: the leverage cut-offs on the league's own scale and the long-man line the reliever standards in force were measured under. */
   bullpen: BullpenLines;
   /** How the long-man line in force came about (the standards in force's record), for the refit that decides the next one. */
@@ -386,6 +390,7 @@ function assemble(
     // The bullpen lines are the ones the standards in force were measured under (a standards-1 row, or none: the starting lines)
     bullpen: standards?.model?.bullpen?.lines ?? BULLPEN_PRIOR,
     bullpenRecord: standards?.model?.bullpen ?? null,
+    tools: toolsParamsFor(leagueId),
     groups, line, tip, longMan: longManTip(groups.find((g) => g.key === 'bullpen') as YardstickGroup, standards?.model?.bullpen?.lines ?? BULLPEN_PRIOR),
   };
 }

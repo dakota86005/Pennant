@@ -6,7 +6,8 @@ import { ON_ROSTER, usesDH } from './valuation.js';
 import {
   loadScoutedHitterProfiles, scoutedGloves, scoutedHitterPopulation, type HitterSide, type ScoutedHitterProfile,
 } from './scoutedEvidence.js';
-import { expectedWobaRaw } from './toolsModel.js';
+import { expectedWobaRaw, type ToolsParams } from './toolsModel.js';
+import { toolsParamsFor } from './toolsCalibration.js';
 import { computeBatting, leagueBaseline } from './stats.js';
 import { climb, expectedRuns, outcomesFrom, type BattingLine } from './runs.js';
 
@@ -198,11 +199,11 @@ interface Bat {
  * his overall grades where the export has no split grades for him (said, `basis: 'overall'`). Null when neither set is
  * fully graded: a missing tool is never averaged around (D-018).
  */
-function batOf(profile: ScoutedHitterProfile | undefined, side: HitterSide): Bat | null {
+function batOf(profile: ScoutedHitterProfile | undefined, side: HitterSide, tools: ToolsParams): Bat | null {
   if (!profile) return null;
-  const split = expectedWobaRaw(profile[side]);
+  const split = expectedWobaRaw(profile[side], tools);
   if (split !== null) return { raw: split, basis: 'vs_hand' };
-  const overall = expectedWobaRaw(profile.tools);
+  const overall = expectedWobaRaw(profile.tools, tools);
   return overall !== null ? { raw: overall, basis: 'overall' } : null;
 }
 
@@ -384,9 +385,11 @@ lineupRoutes.get('/lineup/:teamId', (req, res) => {
    * the same for every man, so it moves nobody.
    */
   const side: HitterSide = vs === 'r' ? 'vsRight' : 'vsLeft';
+  // The tools model's slopes in force for the league: the same reader MLB Operations uses, so one league has one set (cycle 4)
+  const tools = toolsParamsFor(teamRow ? teamRow.league_id : null);
   const available = raw.filter((p) => !sidelined.has(p.player_id));
   const profiles = loadScoutedHitterProfiles(available.map((p) => p.player_id));
-  const league = teamRow ? scoutedHitterPopulation(teamRow.league_id).map((p) => batOf(p, side)).filter((b): b is Bat => b !== null) : [];
+  const league = teamRow ? scoutedHitterPopulation(teamRow.league_id).map((p) => batOf(p, side, tools)).filter((b): b is Bat => b !== null) : [];
   const centre = league.length > 0 ? league.reduce((sum, b) => sum + b.raw, 0) / league.length : null;
 
   const toCandidate = (p: (typeof raw)[number], bat: Bat): Candidate => {
@@ -424,7 +427,7 @@ lineupRoutes.get('/lineup/:teamId', (req, res) => {
    */
   const ungraded: Array<(typeof raw)[number]> = [];
   for (const p of available) {
-    const bat = batOf(profiles.get(p.player_id), side);
+    const bat = batOf(profiles.get(p.player_id), side, tools);
     if (bat) candidates.push(toCandidate(p, bat));
     else ungraded.push(p);
   }

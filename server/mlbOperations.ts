@@ -68,10 +68,10 @@ function realPorts(orgId: number, floors: CoverageFloors = DEFAULT_COVERAGE_FLOO
     development: (ids, context) => mlbAssignmentAssessments(orgId, context, ids),
     crossRole: crossRoleSupport,
     roleFit: (id) => roleFitEvidence(id, orgId),
-    holderEvidence: (ids, role, opts) => holderEvidence(orgId, ids, role, opts ?? {}, yardsticks.results, yardsticks.bullpen),
+    holderEvidence: (ids, role, opts) => holderEvidence(orgId, ids, role, opts ?? {}, yardsticks.results, yardsticks.bullpen, yardsticks.tools),
     hitterUsage: (ids) => hitterUsage(orgId, ids),
     teamGames: () => teamGamesPlayed(orgId),
-    platoon: (ids) => platoonInputs(orgId, ids, yardsticks.results, yardsticks.platoon),
+    platoon: (ids) => platoonInputs(orgId, ids, yardsticks.results, yardsticks.platoon, yardsticks.tools),
     performance: performanceLine,
     // A failure inside Minor League Operations' evaluator leaves the farm consequence unknown; it never fails the packet.
     // One farm session per request: the organization is read once however many candidates are asked about.
@@ -97,9 +97,9 @@ export function reviewPorts(orgId: number, override?: { results?: ResultsParams;
   return {
     calibration: { standards: yardsticks.standards, review: yardsticks.review },
     bullpen,
-    holderEvidence: (ids, role) => holderEvidence(orgId, ids, role, {}, results, bullpen),
+    holderEvidence: (ids, role) => holderEvidence(orgId, ids, role, {}, results, bullpen, yardsticks.tools),
     hitterUsage: (ids) => hitterUsage(orgId, ids),
-    platoon: (ids) => platoonInputs(orgId, ids, results, yardsticks.platoon),
+    platoon: (ids) => platoonInputs(orgId, ids, results, yardsticks.platoon, yardsticks.tools),
     teamGames: () => teamGamesPlayed(orgId),
     covers: (ids) => playableCovers(ids),
     coverReads: (ids) => coverReads(orgId, ids),

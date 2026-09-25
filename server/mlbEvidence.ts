@@ -35,7 +35,7 @@ import {
   battingHistory, currentSeason, fieldingUsage, handedness, leaguePlatoon, loadDefenseResults, loadHitterResults, loadPitcherResults, majorLeagueId, platoonSplits,
 } from './resultsEvidence.js';
 import { blendStabilization, percentileAmong, type ResultsParams } from './resultsMetrics.js';
-import { describeBat, expectedRunningRaw, expectedWobaRaw, ratingPlatoon, toolContributions } from './toolsModel.js';
+import { describeBat, expectedRunningRaw, expectedWobaRaw, profileMinPoints, ratingPlatoon, toolContributions, toolsParamsKey, type ToolsParams } from './toolsModel.js';
 import { roleOf as bullpenRoleOf, type BullpenLines } from './bullpenRoles.js';
 import { coverQuality, type CoverRead } from './benchReview.js';
 import { seasonEnvironments } from './resultsEvidence.js';
@@ -329,13 +329,13 @@ export function topAffiliateTeamId(orgId: number): number | null {
  * recency-weighted results with the sample behind them). A pitcher with no rows
  * has no results lens, which is different from a bad one.
  */
-export function holderEvidence(orgId: number, playerIds: number[], role: RoleRef, opts: { ignoreResults?: boolean }, params: ResultsParams, bullpen: BullpenLines): Map<number, LensEvidence> {
+export function holderEvidence(orgId: number, playerIds: number[], role: RoleRef, opts: { ignoreResults?: boolean }, params: ResultsParams, bullpen: BullpenLines, tools: ToolsParams): Map<number, LensEvidence> {
   const out = new Map<number, LensEvidence>();
   if (playerIds.length === 0) return out;
   const pitcher = role.kind === 'starting_pitcher' || role.kind === 'relief_pitcher';
   const usageKind = role.kind === 'starting_pitcher' ? 'starter' : 'reliever';
   const league = majorLeagueId(orgId);
-  if (!pitcher) return hitterEvidence(orgId, playerIds, role, league, opts, params);
+  if (!pitcher) return hitterEvidence(orgId, playerIds, role, league, opts, params, tools);
   // A pitcher asked about in a role he does not fill has no results in it; only his tools speak (ignoreResults).
   const results = pitcher && league !== null && !opts.ignoreResults
     ? loadPitcherResults(playerIds, league, usageKind, params)
@@ -365,23 +365,29 @@ function usageNotes(r: ReturnType<typeof loadPitcherResults> extends Map<number,
   return notes;
 }
 
-/** The league's hitters' expected bat and running values from their visible tools, ranked against to place one hitter. Rebuilt whenever the cached population is. */
-const toolsPopulations = new WeakMap<ScoutedHitterProfile[], { bat: number[]; running: number[] }>();
+/**
+ * The league's hitters' expected bat and running values from their visible tools, ranked against to place one hitter. Rebuilt whenever
+ * the cached population is, and kept per set of tools params (one set's population is never served under another's).
+ */
+const toolsPopulations = new WeakMap<ScoutedHitterProfile[], Map<string, { bat: number[]; running: number[]; profileMin: number | null }>>();
 
-function toolsPopulation(league: number): { bat: number[]; running: number[] } {
+function toolsPopulation(league: number, tools: ToolsParams): { bat: number[]; running: number[]; profileMin: number | null } {
   const profiles = scoutedHitterPopulation(league);
-  const hit = toolsPopulations.get(profiles);
+  const byParams = toolsPopulations.get(profiles) ?? new Map<string, { bat: number[]; running: number[]; profileMin: number | null }>();
+  toolsPopulations.set(profiles, byParams);
+  const hit = byParams.get(toolsParamsKey(tools));
   if (hit) return hit;
   const bat: number[] = [];
   const running: number[] = [];
   for (const p of profiles) {
-    const b = expectedWobaRaw(p.tools);
+    const b = expectedWobaRaw(p.tools, tools);
     if (b !== null) bat.push(b);
-    const r = expectedRunningRaw(p.running);
+    const r = expectedRunningRaw(p.running, tools);
     if (r !== null) running.push(r);
   }
-  const out = { bat, running };
-  toolsPopulations.set(profiles, out);
+  // The line a tool must move to be named is derived from these peers' spread (PROFILE_SHARE of it, cycle 4)
+  const out = { bat, running, profileMin: profileMinPoints(bat) };
+  byParams.set(toolsParamsKey(tools), out);
   return out;
 }
 
@@ -392,7 +398,7 @@ function toolsPopulation(league: number): { bat: number[]; running: number[] } {
  * there; running is his running ratings and his baserunning runs. A grade the game does not show is not read, and a position with no
  * grade leaves that part unknown, not bad.
  */
-function hitterEvidence(orgId: number, playerIds: number[], role: RoleRef, league: number | null, opts: { ignoreResults?: boolean }, params: ResultsParams): Map<number, LensEvidence> {
+function hitterEvidence(orgId: number, playerIds: number[], role: RoleRef, league: number | null, opts: { ignoreResults?: boolean }, params: ResultsParams, tools: ToolsParams): Map<number, LensEvidence> {
   const out = new Map<number, LensEvidence>();
   const results = league !== null && !opts.ignoreResults ? loadHitterResults(playerIds, league, params) : new Map<number, ReturnType<typeof loadHitterResults> extends Map<number, infer V> ? V : never>();
   const year = league === null ? null : currentSeason(league);
@@ -401,15 +407,15 @@ function hitterEvidence(orgId: number, playerIds: number[], role: RoleRef, leagu
   const peers = league !== null && fielderPosition ? scoutedFieldingPopulation(league, role.position) : [];
   const defense = league !== null && fielderPosition && !opts.ignoreResults ? loadDefenseResults(playerIds, league, role.position, params) : new Map();
   const profiles = loadScoutedHitterProfiles(playerIds);
-  const pop = league !== null ? toolsPopulation(league) : { bat: [], running: [] };
+  const pop = league !== null ? toolsPopulation(league, tools) : { bat: [], running: [], profileMin: null };
   const meanBat = pop.bat.length ? pop.bat.reduce((n, v) => n + v, 0) / pop.bat.length : 0;
   for (const id of playerIds) {
     const fit = roleFitEvidence(id, orgId, role);
     const r = results.get(id);
     const profile = profiles.get(id);
-    const batRaw = profile ? expectedWobaRaw(profile.tools) : null;
+    const batRaw = profile ? expectedWobaRaw(profile.tools, tools) : null;
     const toolsPct = batRaw !== null && pop.bat.length ? percentileAmong(pop.bat, batRaw, true) : null;
-    const runRaw = profile ? expectedRunningRaw(profile.running) : null;
+    const runRaw = profile ? expectedRunningRaw(profile.running, tools) : null;
     const grade = fielderPosition
       ? scoutedGloves(id)?.positions.find((p) => p.position === role.position && p.current > 0)?.current ?? null
       : null;
@@ -434,7 +440,7 @@ function hitterEvidence(orgId: number, playerIds: number[], role: RoleRef, leagu
       },
       toolsBasis: toolsPct !== null ? 'model' : 'composite',
       toolsExpected: batRaw !== null ? batRaw - meanBat : null,
-      toolsProfile: profile ? (() => { const c = toolContributions(profile.tools); const d = describeBat(c); return c && d ? { contributions: c, ...d } : null; })() : null,
+      toolsProfile: profile ? (() => { const c = toolContributions(profile.tools, tools); const d = describeBat(c, pop.profileMin); return c && d ? { contributions: c, ...d } : null; })() : null,
       ratingsPct: toolsPct ?? fit.compositePercentile, ratingsEvidence: fit.evidenceStatus,
       skillsPct: r?.percentile ?? null, runsPct: null,
       sample: r?.sample ?? 0, sampleUnit: 'PA', reliability: r?.reliability ?? 0, toolsWeight: params.toolsWeight.hitter, currentSample: r?.current ? r.current.pa : null,
@@ -477,27 +483,29 @@ export function teamGamesPlayed(orgId: number): number {
  * The norm a hitter's platoon ratings are measured against: the mean rating-implied platoon effect (vs right minus vs left, in wOBA
  * points) among the league's hitters of each handedness. Rebuilt whenever the cached population is.
  */
-const platoonNorms = new WeakMap<ScoutedHitterProfile[], { L: number | null; R: number | null; S: number | null }>();
+const platoonNorms = new WeakMap<ScoutedHitterProfile[], Map<string, { L: number | null; R: number | null; S: number | null }>>();
 
-function platoonNormFor(league: number): { L: number | null; R: number | null; S: number | null } {
+function platoonNormFor(league: number, tools: ToolsParams): { L: number | null; R: number | null; S: number | null } {
   const profiles = scoutedHitterPopulation(league);
-  const hit = platoonNorms.get(profiles);
+  const byParams = platoonNorms.get(profiles) ?? new Map<string, { L: number | null; R: number | null; S: number | null }>();
+  platoonNorms.set(profiles, byParams);
+  const hit = byParams.get(toolsParamsKey(tools));
   if (hit) return hit;
   const hands = handedness(profiles.map((p) => p.playerId));
   const sums: Record<'L' | 'R' | 'S', number[]> = { L: [], R: [], S: [] };
   for (const p of profiles) {
     const hand = hands.get(p.playerId)?.bats;
-    const e = ratingPlatoon(p.vsLeft, p.vsRight).effect;
+    const e = ratingPlatoon(p.vsLeft, p.vsRight, tools).effect;
     if (hand && e !== null) sums[hand].push(e);
   }
   const avg = (xs: number[]) => (xs.length ? xs.reduce((n, v) => n + v, 0) / xs.length : null);
   const out = { L: avg(sums.L), R: avg(sums.R), S: avg(sums.S) };
-  platoonNorms.set(profiles, out);
+  byParams.set(toolsParamsKey(tools), out);
   return out;
 }
 
 /** Observed splits, the league's own platoon effect, and (D-035) each hitter's visible platoon ratings, for each hitter. */
-export function platoonInputs(orgId: number, playerIds: number[], params: ResultsParams, platoon: PlatoonParams): Map<number, PlatoonInput> {
+export function platoonInputs(orgId: number, playerIds: number[], params: ResultsParams, platoon: PlatoonParams, tools: ToolsParams): Map<number, PlatoonInput> {
   const out = new Map<number, PlatoonInput>();
   const league = majorLeagueId(orgId);
   if (league === null) return out;
@@ -506,15 +514,15 @@ export function platoonInputs(orgId: number, playerIds: number[], params: Result
   const splits = platoonSplits(playerIds, league);
   const lp = leaguePlatoon(league);
   const profiles = loadScoutedHitterProfiles(playerIds);
-  const pop = toolsPopulation(league);
+  const pop = toolsPopulation(league, tools);
   const meanBat = pop.bat.length ? pop.bat.reduce((n, v) => n + v, 0) / pop.bat.length : 0;
-  const norms = platoonNormFor(league);
+  const norms = platoonNormFor(league, tools);
   const leagueWoba = year === null ? null : seasonEnvironments(league, year).get(year)?.woba ?? null;
   for (const id of playerIds) {
     const bats = hands.get(id)?.bats ?? null;
     const s = splits.get(id);
     const profile = profiles.get(id);
-    const rp = profile ? ratingPlatoon(profile.vsLeft, profile.vsRight) : null;
+    const rp = profile ? ratingPlatoon(profile.vsLeft, profile.vsRight, tools) : null;
     out.set(id, {
       bats, vsLeft: s?.vsLeft ?? [], vsRight: s?.vsRight ?? [],
       leagueEffect: bats ? lp.effect[bats] : null, leagueLeftShare: bats ? lp.leftShare[bats] : null, leagueWoba,

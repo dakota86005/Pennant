@@ -139,8 +139,8 @@ describe('no reader holds a default (static)', () => {
     expect(code('mlbReview.ts')).toMatch(/leverage: b\.leverage \}, ports\.bullpen\)/);
     expect(code('mlbReview.ts')).toMatch(/\}\), ports\.bullpen\),/);
     const ops = code('mlbOperations.ts');
-    expect(ops).toMatch(/holderEvidence\(orgId, ids, role, opts \?\? \{\}, yardsticks\.results, yardsticks\.bullpen\)/);
-    expect(ops).toMatch(/platoonInputs\(orgId, ids, yardsticks\.results, yardsticks\.platoon\)/);
+    expect(ops).toMatch(/holderEvidence\(orgId, ids, role, opts \?\? \{\}, yardsticks\.results, yardsticks\.bullpen, yardsticks\.tools\)/);
+    expect(ops).toMatch(/platoonInputs\(orgId, ids, yardsticks\.results, yardsticks\.platoon, yardsticks\.tools\)/);
     expect(ops).toMatch(/const bullpen = override\?\.bullpen \?\? yardsticks\.bullpen;/);
     // the only callers of the tier and the pen findings pass the lines they were handed
     const users = files.filter((f) => /import \{[^}]*\b(roleOf|penFindings)\b[^}]*\} from '\.\/bullpenRoles\.js'/.test(code(f)));

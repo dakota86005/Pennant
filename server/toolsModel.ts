@@ -50,27 +50,46 @@ export const HITTER_TOOL_SLOPES = { contact: 0.00155, gap: 0.00033, power: 0.001
 export const RUNNING_SLOPES = { speed: 0.0354, baserunning: 0.0237, stealing: 0.0241 } as const;
 
 /**
+ * The tools model's tuning in force for a save (D-053, cycle 4): the slopes of the bat and of running. Always passed in, never read from a
+ * default: `TOOLS_PRIOR` (the starting values) until a save's own ratings, stored before a season, are clearly better at forecasting
+ * that season (`mlbToolsFit.ts`, `tools-1`); the reader in force is `toolsCalibration.ts` `toolsParamsFor`.
+ */
+export interface ToolsParams {
+  slopes: Readonly<Record<keyof typeof HITTER_TOOL_SLOPES, number>>;
+  running: Readonly<Record<keyof typeof RUNNING_SLOPES, number>>;
+  /** Whether the bat's slopes are the save's own (clearly better on its forward seasons) or the starting values. */
+  source: 'save' | 'starting';
+  stamp: CalibrationStamp;
+}
+
+/** PROVISIONAL (the fallback prior): run 1's slopes. */
+export const TOOLS_PRIOR: ToolsParams = { slopes: HITTER_TOOL_SLOPES, running: RUNNING_SLOPES, source: 'starting', stamp: TOOLS_MODEL_CALIBRATION };
+
+/** A stable key for a set of tools params (caches keyed by it never serve one set's populations under another). */
+export const toolsParamsKey = (p: ToolsParams): string => JSON.stringify([p.slopes, p.running]);
+
+/**
  * Expected wOBA above the league from the five tools, up to a constant that drops out when a hitter is
  * ranked against peers (rank the raw value, or centre it on the population mean). Null unless all five
  * tools are known.
  */
-export function expectedWobaRaw(tools: ToolValues): number | null {
+export function expectedWobaRaw(tools: ToolValues, params: ToolsParams): number | null {
   let total = 0;
   for (const key of Object.keys(HITTER_TOOL_SLOPES) as Array<keyof typeof HITTER_TOOL_SLOPES>) {
     const value = tools[key];
     if (value === null || value === undefined) return null;
-    total += HITTER_TOOL_SLOPES[key] * value;
+    total += params.slopes[key] * value;
   }
   return total;
 }
 
 /** Expected baserunning runs per 600 PA, up to a constant; null unless speed, baserunning and stealing are all known. */
-export function expectedRunningRaw(running: RunningValues): number | null {
+export function expectedRunningRaw(running: RunningValues, params: ToolsParams): number | null {
   let total = 0;
   for (const key of Object.keys(RUNNING_SLOPES) as Array<keyof typeof RUNNING_SLOPES>) {
     const value = running[key];
     if (value === null || value === undefined) return null;
-    total += RUNNING_SLOPES[key] * value;
+    total += params.running[key] * value;
   }
   return total;
 }
@@ -83,9 +102,9 @@ export interface RatingPlatoon {
   effect: number | null;
 }
 
-export function ratingPlatoon(vsLeft: ToolValues, vsRight: ToolValues): RatingPlatoon {
-  const l = expectedWobaRaw(vsLeft);
-  const r = expectedWobaRaw(vsRight);
+export function ratingPlatoon(vsLeft: ToolValues, vsRight: ToolValues, params: ToolsParams): RatingPlatoon {
+  const l = expectedWobaRaw(vsLeft, params);
+  const r = expectedWobaRaw(vsRight, params);
   return { vsLeft: l, vsRight: r, effect: l !== null && r !== null ? r - l : null };
 }
 
@@ -109,18 +128,35 @@ export interface ToolContribution {
  * they explain it completely: a contact-first hitter and a power-first hitter with the same total are different players, and this is
  * how the difference is shown. Null unless every tool is visible (a missing tool is never averaged around, D-018).
  */
-export function toolContributions(tools: ToolValues): ToolContribution[] | null {
+export function toolContributions(tools: ToolValues, params: ToolsParams): ToolContribution[] | null {
   const out: ToolContribution[] = [];
   for (const tool of Object.keys(HITTER_TOOL_SLOPES) as BatTool[]) {
     const rating = tools[tool];
     if (rating === null || rating === undefined) return null;
-    out.push({ tool, rating, points: Math.round(HITTER_TOOL_SLOPES[tool] * (rating - 50) * 1000 * 10) / 10 });
+    out.push({ tool, rating, points: Math.round(params.slopes[tool] * (rating - 50) * 1000 * 10) / 10 });
   }
   return out;
 }
 
-/** POLICY. wOBA points a tool must add (or take) before it is named as what a hitter is built on (or lacks). About half a standard deviation of the tools' total among hitters. */
-export const PROFILE_MIN_POINTS = 9;
+/**
+ * POLICY (cycle 4: the share is policy, the spread is the league's). A tool is named as what a hitter is built on (or lacks) when it adds
+ * (or takes) at least this share of a standard deviation of the tools' total among the league's major-league hitters. Run 1 wrote 9
+ * points; on the Arizona import the spread is 18.4 points, so the derived line is 9.2 and no hitter's words change.
+ */
+export const PROFILE_SHARE = 0.5;
+/** POLICY. Peer hitters with every tool visible needed before the spread is read; with fewer, no profile words are given (unknown). */
+export const PROFILE_MIN_PEERS = 30;
+
+/**
+ * The wOBA points (tenths kept) a tool must move to be named, derived from the peers' spread of the tools' total under the params in
+ * force: `PROFILE_SHARE` of its standard deviation. Null (no profile words, never "no standout") when too few peers can be read.
+ */
+export function profileMinPoints(peerRaws: readonly number[]): number | null {
+  if (peerRaws.length < PROFILE_MIN_PEERS) return null;
+  const mean = peerRaws.reduce((n, v) => n + v, 0) / peerRaws.length;
+  const sd = Math.sqrt(peerRaws.reduce((n, v) => n + (v - mean) ** 2, 0) / peerRaws.length);
+  return Math.round(PROFILE_SHARE * sd * 1000 * 10) / 10;
+}
 
 const TOOL_WORD: Record<BatTool, string> = { contact: 'contact', gap: 'gap power', power: 'power', eye: 'plate discipline', avoidK: 'strikeout avoidance' };
 
@@ -128,11 +164,13 @@ const TOOL_WORD: Record<BatTool, string> = { contact: 'contact', gap: 'gap power
  * A plain-words profile of the bat from its contributions: what it leans on and what it lacks. It names only tools that move the expectation
  * (strikeout avoidance never does), and says "no standout" rather than inventing a description for an ordinary bat.
  */
-export function describeBat(contributions: ToolContribution[] | null): { leans: string[]; lacks: string[]; text: string } | null {
-  if (!contributions) return null;
-  const movers = contributions.filter((c) => HITTER_TOOL_SLOPES[c.tool] > 0);
-  const leans = movers.filter((c) => c.points >= PROFILE_MIN_POINTS).sort((a, b) => b.points - a.points).map((c) => TOOL_WORD[c.tool]);
-  const lacks = movers.filter((c) => c.points <= -PROFILE_MIN_POINTS).sort((a, b) => a.points - b.points).map((c) => TOOL_WORD[c.tool]);
+export function describeBat(contributions: ToolContribution[] | null, minPoints: number | null): { leans: string[]; lacks: string[]; text: string } | null {
+  // No spread among the peers (or none read) says nothing about what stands out: no words, never "no standout"
+  if (!contributions || minPoints === null || !(minPoints > 0)) return null;
+  // A tool the model in force gives no weight contributes 0 points and so is never named (strikeout avoidance, under the starting slopes)
+  const movers = contributions;
+  const leans = movers.filter((c) => c.points >= minPoints).sort((a, b) => b.points - a.points).map((c) => TOOL_WORD[c.tool]);
+  const lacks = movers.filter((c) => c.points <= -minPoints).sort((a, b) => a.points - b.points).map((c) => TOOL_WORD[c.tool]);
   const text = leans.length === 0 && lacks.length === 0
     ? 'No tool stands out either way.'
     : `${leans.length ? `Built on ${leans.join(' and ')}` : 'No tool carries the bat'}${lacks.length ? `${leans.length ? ', ' : '; '}short on ${lacks.join(' and ')}` : ''}.`;

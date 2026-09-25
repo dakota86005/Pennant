@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { describeBat, expectedRunningRaw, expectedWobaRaw, HITTER_TOOL_SLOPES, PROFILE_MIN_POINTS, RUNNING_SLOPES, toolContributions, type ToolValues } from '../server/toolsModel';
+import { describeBat as describeWith, expectedRunningRaw as runningWith, expectedWobaRaw as wobaWith, HITTER_TOOL_SLOPES, profileMinPoints, PROFILE_MIN_PEERS, PROFILE_SHARE, RUNNING_SLOPES, toolContributions as contributionsWith, TOOLS_PRIOR, type ToolContribution, type ToolValues, type RunningValues } from '../server/toolsModel';
+
+/** The starting slopes, and the profile line the Arizona import's peers derive (half a standard deviation of 18.4 points). */
+const MIN = 9.2;
+const expectedWobaRaw = (t: ToolValues) => wobaWith(t, TOOLS_PRIOR);
+const expectedRunningRaw = (r: RunningValues) => runningWith(r, TOOLS_PRIOR);
+const toolContributions = (t: ToolValues) => contributionsWith(t, TOOLS_PRIOR);
+const describeBat = (c: ToolContribution[] | null) => describeWith(c, MIN);
 
 /*
  * The tools model on unusual players. The model is a straight sum, so it can be inspected completely: these cases check that the sum
@@ -95,7 +102,15 @@ describe('the tools model at the corners', () => {
 
   it('an ordinary bat is not given a description it does not deserve', () => {
     expect(describeBat(toolContributions(tools(52, 48, 51, 50, 50)))!.text).toBe('No tool stands out either way.');
-    expect(PROFILE_MIN_POINTS).toBeGreaterThan(0);
+  });
+
+  it('the line a tool must move to be named is half the peers\' spread, and with too few peers (or none spread) no words are given', () => {
+    expect(PROFILE_SHARE).toBe(0.5);
+    const peers = Array.from({ length: 40 }, (_, i) => (i % 2 === 0 ? -0.0184 : 0.0184));
+    expect(profileMinPoints(peers)).toBeCloseTo(9.2, 1);
+    expect(profileMinPoints(peers.slice(0, PROFILE_MIN_PEERS - 1))).toBeNull();
+    expect(describeWith(toolContributions(PROFILES['huge power, poor contact']), null)).toBeNull();
+    expect(describeWith(toolContributions(PROFILES['huge power, poor contact']), 0)).toBeNull();
   });
 });
 
