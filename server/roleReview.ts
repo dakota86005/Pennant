@@ -132,10 +132,16 @@ export const GLOVE_MATTERS = 0.2;
  */
 export const RUNNING_WEIGHT = 0.05;
 
-/** The sample at which a glove's results and its visible grade count equally: results are shrunk toward the grade (r^2 about .4, section 7). */
-export const DEFENSE_INFORMATION = 0.4;
-/** The same for baserunning: the running ratings explain .43 of baserunning runs (section 6). */
-export const RUNNING_INFORMATION = 0.43;
+/**
+ * PROVISIONAL (cycle 4; supervisor's call, pending owner review). How much a visible glove grade, or visible running ratings, hold the
+ * results back when both are known: the sample at which results and grade count equally is the results' own stabilization times this
+ * weight, at least 1. Before cycle 4 these were an "information" share used as `K × (1 − information)` (glove 0.4, running 0.43), which
+ * made the results count MORE the more the grade explained: the wrong direction (the Bayesian blend is `K ÷ (1 − information)`). The
+ * starting value is 1, K alone, the rule the bat's tools follow: until a save checks the grades as a forecast (which needs them stored
+ * before a season; the snapshots keep running ratings since cycle 4 and no glove grade), they pull only by the results' own weight.
+ */
+export const DEFENSE_TOOLS_WEIGHT = 1;
+export const RUNNING_TOOLS_WEIGHT = 1;
 
 export interface DefenseLens {
   /** His visible fielding grade at the position against MLB peers listed there (a percentile); null when the grade is not revealed. */
@@ -230,28 +236,28 @@ export function resultsPercentile(e: Pick<LensEvidence, 'skillsPct' | 'runsPct'>
 
 /**
  * A dimension of a hitter (his glove, his running) formed from the tools view and the results view: results count by how far the
- * sample can be trusted against the tools (`information` is the share of the truth the tools explain, so less sample is needed).
- * With results alone the value is pulled toward the middle by the sample, so a thin glove result never reads as certain.
+ * sample can be trusted, held back by the visible grade's weight (at least 1: a grade never makes the results count more than they
+ * would alone). With results alone the value is pulled toward the middle by the sample, so a thin glove result never reads as certain.
  */
-function blendDimension(tools: number | null, results: number | null, sample: number, stabilization: number, information: number): { value: number; weightOnResults: number } | null {
+function blendDimension(tools: number | null, results: number | null, sample: number, stabilization: number, toolsWeight: number): { value: number; weightOnResults: number } | null {
   if (tools === null && results === null) return null;
   if (results === null) return { value: tools as number, weightOnResults: 0 };
   if (tools === null) {
     const w = reliability(sample, stabilization);
     return { value: 50 + w * (results - 50), weightOnResults: w };
   }
-  const w = reliability(sample, stabilization * (1 - information));
+  const w = reliability(sample, stabilization * Math.max(1, toolsWeight));
   return { value: w * results + (1 - w) * tools, weightOnResults: w };
 }
 
 export function defenseValue(d: DefenseLens | undefined): { value: number; weightOnResults: number } | null {
   if (!d) return null;
-  return blendDimension(d.visible ? d.pct : null, d.resultsPct ?? null, d.resultsInnings ?? 0, d.stabilization, DEFENSE_INFORMATION);
+  return blendDimension(d.visible ? d.pct : null, d.resultsPct ?? null, d.resultsInnings ?? 0, d.stabilization, DEFENSE_TOOLS_WEIGHT);
 }
 
 export function runningValue(r: RunningLens | undefined): { value: number; weightOnResults: number } | null {
   if (!r) return null;
-  return blendDimension(r.toolsPct, r.resultsPct, r.sample, r.stabilization, RUNNING_INFORMATION);
+  return blendDimension(r.toolsPct, r.resultsPct, r.sample, r.stabilization, RUNNING_TOOLS_WEIGHT);
 }
 
 /**
