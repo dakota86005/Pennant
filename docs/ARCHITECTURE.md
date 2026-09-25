@@ -620,7 +620,9 @@ Calibration belongs to the save. Three subsystem-neutral modules carry every sub
 MLB Operations is the first registrant (the roster review's role standards, aging curve and glove weights; since cycle 2 the
 results lens's season weights and stabilization, registered ahead of the standards so they are measured under its verdict; since
 cycle 3 the platoon weight around the league norm, `platoon-1`, and the bullpen's long-man line, measured with the reliever
-standards and recorded in them, `standards-2`); it
+standards and recorded in them, `standards-2`; since cycle 4 the tools lens, `tools-1`, on forward cases only). Player Development
+is the second (cycle 4: its ceiling lines, `stakesLines.ts` `stakes-lines-1`, measured at each import from the organization's
+major league's active major leaguers and handed to the stakes evaluator by the one context reader); it
 imports no Player Value file (`tests/saveCalibrationBoundary.test.ts`). The method and policy stay in the subsystem's code, with
 the built-in values as the provisional fallback prior (CALIBRATION.md sections 12 and 13).
 
@@ -639,6 +641,11 @@ the built-in values as the provisional fallback prior (CALIBRATION.md sections 1
   and `penFindings` require them, and the ports pass `yardsticks.platoon` and `yardsticks.bullpen`
   (`tests/platoonBullpenInForce.test.ts`). The lines in force are the ones the standards in force were measured under
   (`mlbBullpenLines.ts`), so tiers and the reliever standards never disagree.
+- The tools model's slopes (`ToolsParams`) are passed the same way (cycle 4): one reader, `toolsCalibration.ts`, serves MLB
+  Operations (`yardsticks.tools`) and the Lineup page, and the hitters' tools weight (`ResultsParams.toolsWeight`, at least 1: the
+  tools hold results back and never push them forward) reaches every working estimate (`tests/toolsParamsInForce.test.ts`). Whether
+  ratings forecast results is checked only on forward cases (ratings stored before a season against it), through the neutral
+  `ratingsForward.ts`, which reads the save's rating snapshots through the adapter and imports no subsystem.
 - The league's run environment: `stats.ts` `leagueBaseline` derives each league-season's wOBA scale and a caught stealing's run
   value from its own totals (the labelled fallback 1.2 and -0.4 where the totals cannot give them), the one source for wRC+
   app-wide and the glove-weight fit.

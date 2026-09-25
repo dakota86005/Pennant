@@ -1232,6 +1232,21 @@ dead position-assignment fit and tier-strictness helpers are gone; every reading
 made the tier. Adversarial sweeps found no discontinuity: one birthday or one potential point moves the tier at
 most one step and never up. Record: DEVELOPMENTAL_STAKES.md Part 9.
 
+**Amended 2026-09-25 (D-053, cycle 4; supervisor's call, pending owner review).**
+
+- **The ceiling lines are a MEASUREMENT of the organization's major league at each import** (`stakesLines.ts`, `stakes-lines-1`).
+  They are no longer held as constants. The measurement is the nearest-rank tenth, median and best tenth of its active major
+  leaguers' visible composite, by kind.
+  - It is served as measured once a tie-aware club split holds steadily.
+  - A league under 10 clubs or 100 major leaguers of a kind keeps "Pennant's starting line", said so.
+  - A measurement that does not hold up keeps the lines in force.
+- **The anchor is still absolute for the player.** The lines read his league's major leaguers at the import (never the players
+  around him, never his results, usage, philosophy, Player Value or MLB Operations). So a man's tier can move at an import only
+  because the league's major leaguers moved, for everyone alike, and his reasons then say so.
+- **Wording.** The starting lines are never called "this league's".
+- **How the evaluator gets them.** It is handed the lines by the one context reader (required, never defaulted).
+- **On the Arizona import** the lines equal the starting lines, and no tier moves.
+
 ## D-051 — "Short of developmental work" is one line, drawn once, and the club and the man read it together
 
 **Decision.** A man is short of his job when he is `not_used` or `occasional` at it — `shortOfWork` in
@@ -1658,7 +1673,8 @@ refit after an import (`api.ts` `refitAfterImport`), `GET /api/player-value/prod
 calibrate production` for a developer's forced refit. Amends D-037 and D-041. MLB Operations' roster review follows since cycle 1
 (2026-09-24, amendment below; cycle 2 the results lens, cycle 3 platoon and the long-man line): role standards, aging curve and glove weights, on the neutral `saveIdentity.ts`,
 `saveCalibrationStore.ts` and `saveCalibration.ts`; since cycle 2 (2026-09-25, amendment below) the results lens's season weights
-and stabilization (`mlbResultsFit.ts`), judged by the neutral detector (`calibrationDetector.ts`), and the league's own wOBA scale.
+and stabilization (`mlbResultsFit.ts`), judged by the neutral detector (`calibrationDetector.ts`), and the league's own wOBA scale. Since cycle 3 the platoon weight around the league norm and the long-man line; since cycle 4 (2026-09-25) the tools lens on forward
+cases (`mlbToolsFit.ts`, through the neutral `ratingsForward.ts`) and Player Development's ceiling lines (`stakesLines.ts`).
 The other subsystems' calibrated constants are not migrated yet (ROADMAP "Later: calibration and longitudinal management").
 
 Pennant has to work across very different saves, including fictional leagues whose ecosystems look nothing like
@@ -1933,6 +1949,39 @@ supervisor's call, pending owner review (the owner was away and authorized best 
 - **No reader holds a default:** the platoon weights and the bullpen lines are required arguments, resolved once per request with
   the other yardsticks (`tests/platoonBullpenInForce.test.ts`). The minimum appearances, the deployment gap, the credible-arm line
   and the crowding counts stay policy.
+
+**Amended 2026-09-25 (per-save calibration, cycle 4: the tools model, the blend and the ceiling lines; CALIBRATION.md section 15).**
+Every item is the supervisor's call, pending owner review.
+
+- **Knowing a player's tools never makes his results count more.** The results-against-tools blend was K × (1 − information), which
+  points the wrong way. It is now K × a tools weight of at least 1 (`ResultsParams.toolsWeight`; `DEFENSE_TOOLS_WEIGHT` and
+  `RUNNING_TOOLS_WEIGHT` for the glove and running). The starting weight is 1, K alone: Player Value's owner-approved rule that
+  same-time ratings pull only by their own weight. `TOOLS_INFORMATION`, `DEFENSE_INFORMATION` and `RUNNING_INFORMATION` are gone.
+- **"Too early to judge" reads the results' own trust, never the blend.** Its line keeps the sample it meant before (0.244 hitters,
+  0.301 pitchers, against the results' own K).
+- **Ratings are checked as a forecast only on forward cases.** A forward case is the ratings stored before a season against that
+  season (`ratingsForward.ts`, neutral). The tools model's bat slopes and the hitters' tools weight are fitted per save (`tools-1`),
+  judged by the detector unchanged, and passed as the params in force (`ToolsParams`, one reader for MLB Operations and the Lineup
+  page).
+  - A save needs 5 forward seasons. The Arizona import has 0 (its one snapshot is dated at its own export), so the starting values
+    serve and say why.
+  - A same-season engine check is reported and never decides.
+  - Player Value's same-time mapping is not reused (a different target, and MLB Operations does not import Player Value); the METHOD
+    is shared through the neutral layer and the detector.
+- **Rating snapshots keep a hitter's split and running ratings** (12 nullable columns, added when absent). Without them the platoon
+  rating weight, the K around the ratings and the running slopes could never be checked; they stay the provisional starting values
+  until forward seasons exist.
+- **The line a tool must move to be named is derived:** half the league's peers' spread (policy share × the league's spread).
+- **Player Development's ceiling lines are a measurement of the league at each import** (D-050 amendment below). This is the first
+  per-save calibration of Player Development: the fit changes a number it uses and nothing its judgments depend on.
+- **Minor-league stat history is in the export** (a correction). The farm's sample constants are fittable per save and not yet
+  fitted (ROADMAP). `DEVELOPMENT_AGE` and `PROJECTION_REALIZED_UNDER` stay provisional: a development path needs snapshot pairs a
+  season apart, and the save has none.
+- **On the Arizona import:**
+  - Roster-review flags are unchanged in number (21), but 15 holders change: the working estimate leans less on results, by 0.11 for
+    position players and 0.04 to 0.05 for pitchers.
+  - Arizona's findings are unchanged.
+  - The ceiling lines measure equal to the starting lines, so no tier moves.
 
 ## D-054 — Charting library
 

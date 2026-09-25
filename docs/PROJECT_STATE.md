@@ -899,6 +899,20 @@ Present on `main` (D-024; design and audit in
   - Every holder and platoon read receives the params in force (`ResultsParams`, no defaults).
   - The wOBA scale and a caught stealing's value are derived per league-season in `leagueBaseline` (1.2 and -0.4 only as the
     labelled fallback), so minor-league wRC+ is on its own run environment.
+- **The tools model, the blend and the ceiling lines, per save (D-053 amendment, cycle 4, 2026-09-25; CALIBRATION.md section 15;
+  supervisor's calls pending owner review):**
+  - The results-against-tools blend pointed the wrong way (K × (1 − information)); it is K × a tools weight of at least 1, starting
+    at 1, for the bat, the glove and running. "Too early to judge" reads the results' own trust (0.244 hitters, 0.301 pitchers).
+  - The tools model's slopes are passed as the params in force (one reader for MLB Operations and the Lineup page); the bat slopes and
+    the hitters' tools weight are fitted per save on forward cases only (`tools-1`), which need 5 forward seasons: the Arizona
+    import has 0, so the starting values serve and the yardsticks hover says why. A same-season engine check is recorded, never
+    gated. Not built: the pitchers' tools weight and the running slopes' forward fit.
+  - Rating snapshots keep a hitter's split and running ratings (12 nullable columns).
+  - The profile line (when a tool is named) is derived: half the league's peers' spread (9.22 here, was 9).
+  - Player Development's ceiling lines are measured at each import (`stakesLines.ts`); on the Arizona import they equal the starting
+    lines and no tier moves. The farm's thresholds table shows the lines in force.
+  - On the Arizona import: roster-review flags 21 → 21 with 15 holders changing; Arizona's findings unchanged; no stakes tier, farm
+    verdict or retention conclusion moves.
 - **Platoon and the bullpen, per save (D-053 amendment, cycle 3, 2026-09-25; CALIBRATION.md section 14; supervisor's calls
   pending owner review):**
   - How much a hitter's own split counts is fitted per save around the league norm (`mlbPlatoonFit.ts`, `platoon-1`) and served

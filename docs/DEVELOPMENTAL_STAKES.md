@@ -301,16 +301,19 @@ his stakes cannot disagree about it.
 
 | Constant | Stamp | Basis |
 |---|---|---|
-| `CEILING_LINES` (hitters 45 / 50 / 56, pitchers 45 / 48 / 53) | **provisional** | The p10 / p50 / p90 of one import's active major leaguers. A model parameter that ought to be re-estimated across saves |
+| `CEILING_LINES` (hitters 45 / 50 / 56, pitchers 45 / 48 / 53) | **provisional** (Pennant's starting lines) | The p10 / p50 / p90 of one import's active major leaguers. Since cycle 4 of the per-save calibration (D-050 amendment) each league's own lines are MEASURED at each import from its active major leaguers and served once checked (`stakesLines.ts`); these serve only where that has not happened or cannot, labelled as Pennant's |
 | The quantiles those lines stand for (tenth, median, best tenth) | **policy** | What "a major leaguer", "a regular" and "an impact player" are taken to mean |
 | `DEVELOPMENT_AGE` (22 / 24 / 26) | **provisional** | The old youth curve's bands. No longitudinal rating history exists to fit a development curve against |
-| `PROJECTION_REALIZED_UNDER` (3) | **provisional** | One tool grade in three for a pitcher, three in five for a hitter |
+| `PROJECTION_REALIZED_UNDER` (3) | **provisional** | With tools graded in fives: at most one grade in three for a pitcher, at most two in five for a hitter (corrected in cycle 4) |
 | `OLD_FOR_LEVEL`, `AGE_LEVEL_DEVELOPMENT_LIMIT` | policy (D-044, unchanged) | Declared in `farmCalibration.ts`; read here, not redeclared |
 | `LEAGUE_POPULATION_MINIMUM` | provisional (unchanged) | The same 25 the farm's production read uses |
 | The lookup table, "context may only lower", unknown → unknown, no philosophy, no production | **architecture** | Pinned by tests, carry no stamp |
 
 None is calibrated. The export holds one snapshot of ratings, so no constant about how players
-develop can be fitted, and saying otherwise because Arizona's list looks right would be false.
+develop can be fitted, and saying otherwise because Arizona's list looks right would be false. The
+ceiling lines are not about development: they describe the league's major leaguers, so since cycle 4
+they are measured at each import (CALIBRATION.md section 15.3). On the Arizona import they equal the
+starting lines.
 
 ---
 
@@ -456,8 +459,9 @@ whole-league report runs in about a second.
 
 ## Part 7 — Known limitations
 
-* **No constant is calibrated**, and none can be from this export (§4.8). The lines rest on one
-  import's major leaguers; the age bands are inherited; the projection line is a first pass.
+* **No development constant is calibrated**, and none can be from this export (§4.8): the age bands
+  are inherited and the projection line is a first pass. The ceiling lines are measured on each
+  save's own major leaguers at each import (cycle 4).
 * **The composite is coarse.** It is the unweighted mean of three or five tools graded in fives, so a
   pitcher's can only be 45, 47, 48, 50, 52, 53…, and one tool grade moves him across a line. MLB
   Operations' calibrated tools model describes a hitter better (R² .40–.45 against .35–.37); it predicts
