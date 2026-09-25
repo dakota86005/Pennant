@@ -882,14 +882,17 @@ Present on `main` (D-024; design and audit in
 - **How much recent seasons count, per save, and the "clearly better" rule (D-053 amendment, cycle 2, 2026-09-25; CALIBRATION.md
   section 13):**
   - The results lens's season weights and stabilization (hitters, starters, relievers) are fitted per save
-    (`mlbResultsFit.ts`, `results-1`), with baserunning and defense built but inactive until the export carries UBR or zone
+    (`mlbResultsFit.ts`, `results-2`), with baserunning and defense built but inactive until the export carries UBR or zone
     rating for enough seasons. They are served only where the neutral detector (`calibrationDetector.ts`) finds them clearly
     better than the starting values on nested, paired held-out seasons, unshrunk and as served, with hysteresis.
-  - The aging curve follows the same rule (`aging-2`). The role standards, a measurement, keep their measure-and-check rule.
-  - The detector (`detector-2`) bounds the gain across players and across seasons, requires the lower bound to reach 1%, and
-    needs two refits in a row. Its lifetime false adoption is at most 3.0% over refits from 10 to 22 seasons, including
-    least-favourable nulls and season heterogeneity (target 5%). Its lifetime power is 92% to 100% at a 3% to 6% true gain and 27%
-    to 51% at about 2% (`npm run calibrate detector`, CALIBRATION.md 13.3).
+  - The aging curve follows the same rule (`aging-3`). The role standards, a measurement, keep their measure-and-check rule.
+  - The detector (`detector-3`) bounds the gain across players and across seasons, and requires the lower bound to reach 1% at
+    two consecutive completed-season refits. It returns to the starting values once they are surely better at all (asymmetric).
+  - Lifetime false adoption over refits from 10 to 22 seasons: at most 3.0%, including least-favourable nulls and season
+    heterogeneity (target 5%). After a break (imported seasons, then the game's own), 5.3% ever adopt and 2.3% still serve at the
+    end, at a cost under 1%.
+  - Lifetime power: 92% to 100% at a 3% to 6% true gain, 29% to 48% at about 2% (`npm run calibrate detector`, CALIBRATION.md
+    13.3).
   - On the Arizona import both the season weights and the aging curve are "checked on this league and held up": the starting
     values serve, and the age explanations say "usually lose" again.
   - The yardsticks gain "How much recent seasons count".

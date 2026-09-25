@@ -901,7 +901,7 @@ results) has its own line on its own scale; relievers are checked against the le
   standards are right; the club split is the check that bears on the served values. A league with too few past seasons to check
   fails (2) and keeps the starting values, and says so. The key is the export's game date: a re-import at the same game date after
   roster moves is not re-measured (accepted; the next game date is).
-- *Aging (`aging-1`; since cycle 2 `aging-2`, section 13).* The delta method of section 5, per completed season: a weighted mean change per age over the fit ages
+- *Aging (`aging-1`; since cycle 2 `aging-3`, section 13).* The delta method of section 5, per completed season: a weighted mean change per age over the fit ages
   (22–40), a weighted quadratic in age, each age shrunk toward the prior by its pairs, then made monotone over the fit ages; ages
   20–21 and 41–42 hold the end values (they are never pooled with the prior's zeros). The window is the last 20 completed seasons
   (a pair's first season from the window's first). Rolling-origin backtest: each origin fitted only on pairs it could have seen,
@@ -971,7 +971,7 @@ whether the system that decides this is robust enough, so the detector is the ce
 (13.3). A MEASUREMENT of the league as it stands (the role standards) has no rival value set and keeps its measure-and-check rule
 (section 12).
 
-### 13.1 The detector (`server/calibrationDetector.ts`, `detector-2`, policy `DETECTOR_POLICY`)
+### 13.1 The detector (`server/calibrationDetector.ts`, `detector-3`, policy `DETECTOR_POLICY`)
 
 The caller hands it paired held-out cases: each held-out player-season (or aging pair) scored under the save's values and under
 the starting values. The save's values are **clearly better** when all three hold:
@@ -989,7 +989,9 @@ the starting values. The save's values are **clearly better** when all three hol
    (finding 2). Both z and t are also reported.
 3. **Consistent:** the save's values have the lower loss in at least two-thirds of the held-out seasons, and in at least 3.
 
-- **Confirmed.** The save's values first replace the starting ones only when clearly better at **two refits in a row**.
+- **Confirmed.** The save's values first replace the starting ones only when clearly better at **two consecutive completed-season
+  refits**. The count is carried only from the adopted verdict of the season just before. A refit that is not clearly better, or that
+  fails and leaves an older verdict in force, starts the count again.
   - The decision carries the confirmation count.
   - Until confirmed, the page says: "this league's own did better at the last check and must do so once more before they are
     used".
@@ -999,10 +1001,16 @@ the starting values. The save's values are **clearly better** when all three hol
 - **Unshrunk and as served, both.** Unshrunk is out of sample on every league. As served (shrunk toward the starting values) is not
   out of sample on the Arizona import, where the starting values were fitted on these seasons, and it can be flattered either way
   there. What keeps adoption honest is that it also needs the unshrunk comparison, which owes nothing to the starting values.
-- **Hysteresis.** Once the save's values serve, a later refit returns to the starting values only when THEY are clearly better than
-  the save's values as served, by the same rule. The record carries the previous state, the confirmation count and the rule
-  applied.
+- **Hysteresis, asymmetric** (supervisor's call after the re-review: adopting is hard, giving up is easy).
+  - Once the save's values serve, a later refit returns to the starting values when THEY are better than the save's values as
+    served. It uses the same two-bound test and consistency, with the minimum at **0**: the lower bound of the starting values' gain
+    above zero, not the 1% adoption bar.
+  - Values that stopped helping (after a break between imported real seasons and the game's own engine, say) give way as soon as
+    the starting values are surely better at all.
+  - The record carries the previous state, the confirmation count and the rule applied.
 - **Fails closed.** A comparison with no measured spread is not evidence (no infinite z).
+
+- **Method versions.** The rule is `detector-3`; the fits are `results-2` and `aging-3`, so every save refits once under it.
 
 **The target** (supervisor's call, 2026-09-25): over a save's LIFETIME (sequential yearly refits of a growing league, from 10 to 22
 seasons of history, with hysteresis), the rate of adopting the save's values when their TRUE gain is under the 1% practical minimum
@@ -1023,7 +1031,7 @@ leagues each (hitters at a true 1.0% excess, stationary and heterogeneous; relie
 
 The chosen rule meets the target with a margin and keeps more power than the 1%-level rule that also meets it.
 
-### 13.2 The results lens's season weights and stabilization (`server/mlbResultsFit.ts`, `results-1`, trigger: a new completed season)
+### 13.2 The results lens's season weights and stabilization (`server/mlbResultsFit.ts`, `results-2`, trigger: a new completed season)
 
 - **Cases.** Every player-season in the last 20 completed full seasons (a season under 90% of its schedule is not a target; its
   lines still count as a prior season, as in the review), predicted from his three seasons before it by the production arithmetic
@@ -1045,9 +1053,9 @@ The chosen rule meets the target with a margin and keeps more power than the 1%-
     the kind that blocked.
 - **Baserunning and defensive stabilization** fit K only. Each is judged against a rival with the SAME fixed weights at the starting
   K, so the comparison is of K alone (`tests/mlbResultsFit.test.ts`).
-  - Baserunning is weighted at each origin by the hitters' weights as they would have served then: the save's own chosen inside
-    that origin where the hitters serve their own, else the starting ones. It never uses the final weights, which saw the held-out
-    seasons.
+  - Baserunning is weighted at each origin by the hitters' weights as they would have served then. That is the save's own chosen
+    inside that origin if the detector, run on the hitters' held-out seasons before it, finds them clearly better; else the
+    starting ones. It never uses the final weights or the final verdict, which saw the held-out seasons.
   - Defense is weighted evenly, as `defenseResult` sums a fielder's seasons.
   - Both are judged only on seasons whose export carries UBR or zone rating, and need **10** such completed seasons (the same
     count).
@@ -1060,7 +1068,7 @@ The chosen rule meets the target with a margin and keeps more power than the 1%-
   The standards measured in the same refit are measured under the results verdict just made (the results component is registered
   first).
 
-### 13.3 The detector's measured error rates (`npm run calibrate detector`, `detector-2`, 2026-09-25)
+### 13.3 The detector's measured error rates (`npm run calibrate detector`, `detector-3`, 2026-09-25)
 
 **The simulated leagues.** They are sized like the Arizona import's majors: about 300 hitter, 120 starter and 190 reliever target
 seasons a year, with careers, part-timers and turnover.
@@ -1072,6 +1080,9 @@ seasons a year, with careers, part-timers and turnover.
   two seeds) is the stated amount.
 - **A lifetime** is one league refitted after every completed season from 10 to 22 seasons of history (the refit's 20-season
   window), with hysteresis and confirmation exactly as the refit carries them.
+- **A break** has the owner's save shape: imported real-history seasons, then the game's own engine. The seasons before the 11th
+  target season are noisier (×1.4, or ×1.3 with seasons differing), and the league is as stated from then on. Its true excess is
+  that of the new regime.
 - Runs: 400 leagues for a null and 200 for a power scenario. The worst standard error is about 1%.
 
 **False adoption over a save's lifetime** (the target: at most 5% under every null):
@@ -1084,27 +1095,46 @@ seasons a year, with careers, part-timers and turnover.
 | Starters: exactly right / about 0.9% worse | 0.1% / 0.9% | — | 0.0% / 1.3% |
 | Relievers: exactly right / about 1.0% worse | 0.0% / 1.0% | — | 0.0% / 2.3% |
 
-At a single refit, a null was found clearly better at most 1.5% of the time (relievers, 20 seasons).
+At a single refit, a null was found clearly better at most 1.5% of the time (relievers, 20 seasons). Under every null above, what is
+adopted is still serving at 22 seasons.
+
+**After a break** (hitters; 400 leagues each):
+
+| Scenario | True excess in the new regime | Ever adopted | Still serving the save's values at 22 seasons | What they serve then costs in the new regime |
+|---|---|---|---|---|
+| Noisier before the break (×1.4); the starting values exactly right after it | 0.0% | 5.3% | **2.3%** | 0.2% to 0.9% more error (median 0.7%) |
+| Noisier before the break (×1.3), seasons differ; the starting values about 0.9% worse after it | 0.9% | 10.3% | 10.3% | −1.0% to +0.4% (median −0.4%: better than the starting values) |
+
+- **First row (the review's R1 case).** Adoptions come at the break, from the old regime's seasons: at 11 to 12 seasons, while the
+  held-out seasons are still pre-break.
+  - Under `detector-2` they never went back. Under the asymmetric return, more than half of them do (5.3% down to 2.3%).
+  - What is still served at the end is refitted on a window mostly of the new regime. It costs less than the 1% practical minimum.
+- **Second row.** The adoption is not stale: what serves at the end is, on median, better than the starting values in the league as
+  it now plays. It still counts as adoption under a null, and at 10.3% it is above the 5% target, which covers only the leagues
+  without a break.
+  - Adoptions come early (median 13 seasons), when the pre-break seasons made the gain look larger.
+  - This is reported, not tuned away: tightening the rule further would cost power everywhere else.
 
 **Power over a lifetime** (the save's values ever adopted by 22 seasons), with the median season of first adoption:
 
 | Scenario | True excess | Lifetime adoption | Median first adopted | Clearly better at one refit (12 / 16 / 20 seasons) |
 |---|---|---|---|---|
-| Hitters: a fictional-league-sized shift (best 5/3/2, K 1,500) | 5.1% | 100% | 12 seasons | 87% / 98% / 98% |
-| Hitters: the same, seasons differ | 5.7% | 92.5% | 14 | 44% / 73% / 70% |
-| Hitters: recent seasons count far more (5/1.5/1, K 1,000) | 4.4% | 100% | 12 | 73% / 93% / 93% |
-| Hitters: results much noisier (K 1,250) | 3.1% | 92.0% | 13 | 51% / 75% / 72% |
-| Hitters: results much steadier (K 300) | 2.1% | 40.5% | 15 | 14% / 19% / 18% |
-| Hitters: results noisier (K 1,000) | 1.9% | 51.0% | 16 | 17% / 20% / 24% |
-| Hitters: the same, seasons differ | 2.4% | 26.5% | 16 | 6% / 14% / 10% |
-| Starters: a fictional-league-sized shift (5/2/1, K 2,000) | 2.1% | 29.5% | 17 | 8% / 14% / 13% |
-| Relievers: a fictional-league-sized shift (5/2.5/1, K 1,500) | 1.3% | 9.5% | 16 | 2% / 4% / 4% |
+| Hitters: a fictional-league-sized shift (best 5/3/2, K 1,500) | 5.1% | 100% | 12 seasons | 91% / 98% / 98% |
+| Hitters: the same, seasons differ | 5.7% | 92.5% | 13 | 48% / 71% / 71% |
+| Hitters: recent seasons count far more (5/1.5/1, K 1,000) | 4.4% | 100% | 12 | 74% / 94% / 92% |
+| Hitters: results much noisier (K 1,250) | 3.1% | 92.5% | 13 | 49% / 66% / 74% |
+| Hitters: results much steadier (K 300) | 2.1% | 38.5% | 16 | 8% / 18% / 19% |
+| Hitters: results noisier (K 1,000) | 1.9% | 48.0% | 16 | 13% / 27% / 27% |
+| Hitters: the same, seasons differ | 2.4% | 29.5% | 16 | 6% / 11% / 17% |
+| Starters: a fictional-league-sized shift (5/2/1, K 2,000) | 2.1% | 26.0% | 17 | 6% / 13% / 14% |
+| Relievers: a fictional-league-sized shift (5/2.5/1, K 1,500) | 1.3% | 6.5% | 18 | 2% / 1% / 4% |
 
-**A wrong return** (once the save's values serve, a refit sends them back although they are right): 0.0% in every power scenario.
+**A wrong return** (once the save's values serve, a refit sends them back although they are right): 0.0% in every power scenario,
+under the asymmetric return too.
 
 **Reading the rates.**
 - **The target is met with a margin.** The worst lifetime false adoption is 3.0% (hitters with a true 0.9% excess, seasons
-  differing). It is 0.0% at every exact null.
+  differing). It is 0.0% at every exact null. After a break, see the table above.
 - **Power is where it drops.**
   - A shift that costs 4% to 6% of prediction error is adopted in 92% to 100% of lifetimes, typically by 12 to 14 seasons.
   - At 2% to 3% it is adopted in 27% to 92% of lifetimes, typically at 13 to 16 seasons.
@@ -1120,7 +1150,7 @@ At a single refit, a null was found clearly better at most 1.5% of the time (rel
 
 ### 13.4 The run on the Arizona import (through 2025)
 
-- **Season weights and stabilization: the starting values held up** (re-run under `detector-2`: the lower bounds of the gain are
+- **Season weights and stabilization: the starting values held up** (re-run under `detector-3`: the lower bounds of the gain are
   −0.52% to −0.21% as served, far from the 1% minimum).
   - Fitted: hitters 5/3.5/3 K 500, starters 5/3.5/1 K 600, relievers 5/3/2.5 K 400. The starting values are 5/3/3 K 500, 5/3/1 K 700
     and 5/3/2 K 500.
