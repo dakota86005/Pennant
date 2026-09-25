@@ -27,7 +27,7 @@
 
 import { db } from '../server/db.js';
 import { leagueBaseline } from '../server/stats.js';
-import { loadScoutedHitterProfiles, type ScoutedHitterProfile } from '../server/scoutedEvidence.js';
+import { loadScoutedAbilities, loadScoutedHitterProfiles, type ScoutedHitterProfile } from '../server/scoutedEvidence.js';
 import {
   reliability, weightedBatting, weightedPitching, wobaOf,
   type BattingLine, type PitchingLine, type SeasonEnvironment,
@@ -319,8 +319,13 @@ function pitcherToolsSection(): void {
   heading('3c. Pitcher tools: how well do the three visible tools (stuff, movement, control) track peripherals?');
   const pitching = loadPitching();
   const ids = [...pitching.keys()];
-  const rows = db.prepare(`SELECT player_id, pitching_ratings_overall_stuff s, pitching_ratings_overall_movement m, pitching_ratings_overall_control c FROM players_pitching WHERE player_id IN (${ids.map(() => '?').join(',')})`).all(...ids) as Array<{ player_id: number; s: number; m: number; c: number }>;
-  const tools = new Map(rows.map((r) => [r.player_id, r]));
+  // Ratings only through the adapter (D-017, D-035): a tool the organization cannot see is unknown, never read from the column
+  const abilities = loadScoutedAbilities(ids);
+  const tools = new Map<number, { s: number; m: number; c: number }>();
+  for (const id of ids) {
+    const t = abilities.for(id).currentTools;
+    if (typeof t.stuff === 'number' && typeof t.movement === 'number' && typeof t.control === 'number') tools.set(id, { s: t.stuff, m: t.movement, c: t.control });
+  }
   for (const [label, window] of [['2023-2025', [2023, 2025]], ['2021-2022', [2021, 2022]], ['2018-2019', [2018, 2019]]] as Array<[string, [number, number]]>) {
     const X: number[][] = [];
     const Y: number[] = [];

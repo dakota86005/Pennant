@@ -183,8 +183,9 @@ export const MINIMUM_CLUB_GAMES = 20;
 
 export const FARM_RESULTS_CALIBRATION: CalibrationStamp = provisional(
   'Sample thresholds for reading a minor leaguer\'s line. The MLB results model is calibrated ' +
-    'against 23 seasons of real major-league history (docs/CALIBRATION.md); no equivalent ' +
-    'minor-league history exists in the export, so the stabilization constants here are the ' +
+    'against 23 seasons of real major-league history (docs/CALIBRATION.md). The export holds the ' +
+    'minor-league stat lines to fit these against (every affiliated level; no minor-league ratings ' +
+    'history), but no per-save fit is built yet (ROADMAP), so the stabilization constants here are the ' +
     'major-league ones and the qualifying minimums are first-pass. They are expected to move.'
 );
 

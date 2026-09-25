@@ -915,7 +915,9 @@ Consequences:
 - A conclusion is one of eight descriptive states and never a promote/hold/demote trichotomy; most of the
   organization is `current_assignment_defensible` and the module says so rather than inventing a question.
 - Every farm constant is declared once in `server/farmCalibration.ts` and stamped `policy` or `provisional`;
-  none is `calibrated`, because the export holds no minor-league history to fit against, and that is stated.
+  none is `calibrated`, and that is stated. (Corrected 2026-09-25, cycle 4: the reason given here, "the export holds no
+  minor-league history to fit against", was wrong. The export holds minor-league stat lines for every affiliated level; it
+  holds no minor-league ratings history. The sample constants are fittable per save and are not fitted yet: ROADMAP.)
 - Every player on an affiliate's active list is reasoned about. One with no readable line is reported as
   not assessable WITH THE REASON, never omitted: the old sample gates silently hid 172 of 247 minor leaguers,
   including all 125 on the three complex affiliates.

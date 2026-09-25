@@ -22,19 +22,31 @@
  * runs per 600 plate appearances.
  */
 
-import { calibrated, type CalibrationStamp } from './calibration.js';
+import { provisional, type CalibrationStamp } from './calibration.js';
 
-export const TOOLS_MODEL_CALIBRATION: CalibrationStamp = calibrated(
-  'Slopes fitted by weighted least squares on major-league wOBA over three result windows (2018-2019, 2021-2022, 2023-2025) with a per-window intercept; the split and running models fitted separately.'
+/**
+ * PROVISIONAL (the fallback prior; D-053, cycle 4). Run 1 fitted these slopes on the Arizona import by weighted least squares on
+ * major-league wOBA over three result windows (2018-2019, 2021-2022, 2023-2025) with a per-window intercept, the split and running
+ * models separately. That was a SAME-TIME fit (ratings observed now against results from before them, which OOTP formed the ratings
+ * from), on one save, so under D-053 it is the starting value, not a calibration. Whether visible tools forecast results needs ratings
+ * stored before a season and that season's results (`mlbToolsFit.ts`, `tools-1`); cycle 4's same-season engine check on the one
+ * season OOTP simulated from these ratings (2026 to date) found a refit no better than these slopes on held-out players.
+ */
+export const TOOLS_MODEL_CALIBRATION: CalibrationStamp = provisional(
+  'Run 1\'s same-time fit on the Arizona import (slopes by weighted least squares on major-league wOBA, 2018-2025, per-window intercepts; the split and running models separately): the starting value until a save\'s own ratings are checked as a forecast (`tools-1`).'
 );
 
 export type ToolValues = Readonly<Record<'contact' | 'gap' | 'power' | 'eye' | 'avoidK', number | null>>;
 export type RunningValues = Readonly<Record<'speed' | 'baserunning' | 'stealing', number | null>>;
 
-/** CALIBRATED. wOBA points per rating point (20-80 scale). Strikeout avoidance is zero: it adds nothing once the others are known. */
+/** PROVISIONAL (run 1's same-time fit). wOBA points per rating point (20-80 scale). Strikeout avoidance is zero: it added nothing once the others were known. */
 export const HITTER_TOOL_SLOPES = { contact: 0.00155, gap: 0.00033, power: 0.00122, eye: 0.00086, avoidK: 0 } as const;
 
-/** CALIBRATED. Runs per 600 plate appearances per rating point of speed, baserunning and stealing ability. */
+/**
+ * PROVISIONAL (run 1's same-time fit, on stolen-base runs alone: past seasons carry no UBR). Runs per 600 plate appearances per rating
+ * point of speed, baserunning and stealing ability. On 2026, the one season with UBR, these slopes under-state the spread about 2.7 times;
+ * not fittable per save until ratings of baserunning and stealing are stored before a season (`rating_snapshots`, cycle 4).
+ */
 export const RUNNING_SLOPES = { speed: 0.0354, baserunning: 0.0237, stealing: 0.0241 } as const;
 
 /**

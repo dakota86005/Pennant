@@ -967,9 +967,10 @@ resolution across all organization-specific features is future work.
   retention no longer folds a philosophy adjustment into a development score
   (D-044, D-045). The superseded solvers that carried the old philosophy-weighted
   plan costs are deleted (D-047).
-- No farm constant is calibrated against outcomes: the export holds no
-  minor-league history to fit against, and every one is stamped `policy` or
-  `provisional`.
+- No farm constant is calibrated against outcomes yet, and every one is stamped
+  `policy` or `provisional`. (Corrected in cycle 4: the export does hold
+  minor-league stat lines; the sample constants are fittable per save and not
+  fitted yet. It holds no minor-league ratings history.)
 - Cross-affiliate Rookie-level MOVEMENT remains deferred (eligibility and
   geography between a complex league and a Dominican one are unmodelled);
   Rookie affiliates are otherwise fully covered rather than skipped.

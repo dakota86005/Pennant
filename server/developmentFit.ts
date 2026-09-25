@@ -81,7 +81,9 @@ export const DEVELOPMENT_AGE_CALIBRATION: CalibrationStamp = provisional(
   'The age through which most, some and little of a player\'s development is still ahead of him. The ' +
     'bands of the youth curve the absolute composite used (72 or more through 22, 45 to 60 at 23-24, ' +
     '18 to 30 at 25-26, 5 from 27), so the historical judgment about youth is kept and only its use ' +
-    'changed. Not fitted: the export holds one snapshot of ratings, so no development curve can be.'
+    'changed. Not fitted: a development path needs the same players\' ratings a season apart (300 snapshot ' +
+    'pairs, as Player Value\'s path does), and the Arizona save holds one snapshot. Its cross-section agrees ' +
+    'with the bands\' end: the scouted gap closes between 24 and 26.'
 );
 
 /** Through this age, inclusive. From `little` + 1 on, none of it is ahead of him. */
@@ -89,7 +91,8 @@ export const DEVELOPMENT_AGE = { most: 22, some: 24, little: 26 } as const;
 
 export const PROJECTION_CALIBRATION: CalibrationStamp = provisional(
   'Points of potential over current under which what the scouts project has, in effect, happened. ' +
-    'Under three composite points is one tool grade in three for a pitcher and three in five for a hitter.'
+    'With tools graded in steps of five, a gap under three composite points is at most two tool grades in five for a hitter ' +
+    'and at most one in three for a pitcher. How much projection counts as none is a policy line; not fitted.'
 );
 
 export const PROJECTION_REALIZED_UNDER = 3;

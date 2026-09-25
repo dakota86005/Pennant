@@ -168,9 +168,16 @@ Remaining, in dependency order:
     depth-chart table, so only a rotation has an exported present.
   - A man OOTP has just DROPPED from its next five still reads as a rotation
     regular until the window catches up; only the other direction is handled.
-- **Calibrate what can be calibrated.** No farm constant is fitted, because the
-  export holds no minor-league history. Candidates if a longer record becomes
-  available: the sample minimums, the level-standing lines,
+- **Calibrate what can be calibrated.** No farm constant is fitted yet. (Corrected
+  in cycle 4 of the per-save calibration: this item used to say the export holds no
+  minor-league history. It does: minor-league stat lines for every affiliated level,
+  back to about 1920 on the Arizona import, which Player Value's arrival fit already
+  reads. It holds no minor-league ratings history.) **Fittable per save now, with
+  cycle 2's method** (rolling origins, `calibrationDetector.ts`, the starting values
+  as the rival): the farm's stabilization and mature-sample constants
+  (`MINIMUM_SAMPLE`, `MATURE_SAMPLE`, the farm results' K), predicting a minor
+  leaguer's next line at the same level from his earlier ones. Policy, not fitted:
+  the level-standing lines,
   `AGE_LEVEL_DEVELOPMENT_LIMIT` (the constant with the largest effect on how many
   players read as an organizational rather than a developmental question), and
   the injured-days line.
