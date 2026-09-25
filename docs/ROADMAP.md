@@ -360,6 +360,10 @@ player's expected wins with a range) is available now.
   seasons carry no zone rating; whether OOTP keeps a simulated season's zone
   rating in later exports is not known (indeterminate). They switch on by
   themselves once two seasons in a row carry it and a third checks them.
+- Per-save calibration follow-ups from cycle 1 (CALIBRATION.md section 12, "Not built"): score the previous
+  import's standards on the current holders once two measurements exist; the glove weights' paired-bootstrap
+  condition; cache the results-lens history check per completed season; retention for `save_calibration_fits`;
+  measure the wOBA scale per league (cycle 2).
 - Validate thresholds across synthetic fixtures and diverse voluntarily
   described save shapes without collecting live private saves.
 - Track how past GM decisions and observed outcomes inform future review while

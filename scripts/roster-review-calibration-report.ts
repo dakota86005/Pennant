@@ -148,7 +148,9 @@ for (const [k, get] of roleLines) {
 }
 
 // aging explanations
-const changedText = [...rc.entries()].filter(([k, r]) => (rb.get(k)?.explanations ?? '') !== r.explanations && /decline/.test(r.explanations));
+// The stated size of the decline (the wording also changes, from the starting curve's "usually lose" to "this league's history")
+const declineOf = (s: string) => (s.split(' | ').find((x) => /decline/.test(x)) ?? '').match(/about ([\d.]+)|no measurable decline/)?.[0] ?? null;
+const changedText = [...rc.entries()].filter(([k, r]) => declineOf(rb.get(k)?.explanations ?? '') !== declineOf(r.explanations) && declineOf(r.explanations) !== null);
 console.log(`\n${'='.repeat(78)}\n6. AGE EXPLANATIONS whose stated decline changes (B -> C): ${changedText.length} league-wide, ${changedText.filter(([, r]) => r.club === org).length} on your club\n${'='.repeat(78)}`);
 for (const [k, r] of changedText.filter(([, r]) => r.club === org).slice(0, 10)) {
   const pick = (s: string) => s.split(' | ').find((x) => /decline/.test(x)) ?? '';

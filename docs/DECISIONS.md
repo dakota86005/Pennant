@@ -818,8 +818,10 @@ the quantiles are policy. After the change a lineup regular is flagged on 13 of 
 reliever on about 1 in 8, and every flag is one of the league's lowest-twentieth-or-tenth holders of that job.
 
 **Amended 2026-09-24 (owner decision; D-053 cycle 1).** The typical levels and gaps are measured per save at each import and served
-once checked (D-053). Each lens has its own line: a holder's tools, or his results, are weak for the role when they sit in the lowest
-tenth of the league's holders on that lens, measured on its own scale, not against the estimate's typical bat less the estimate's gap.
+once checked (D-053). Each lens has its own line: a holder's tools, or his results, are weak for the role when they sit under the
+role's median on that lens less the group's pooled lens gap (the 10th percentile deviation, pooled across the group's roles as the
+estimate's is: roughly the lowest tenth of the role's holders on that lens), measured on its own scale, not against the estimate's
+typical bat less the estimate's gap.
 
 ## D-041 — Every constant is calibrated, provisional or policy, and the three are never confused
 
@@ -1823,16 +1825,23 @@ not established. The gate is not loosened."
   tenth (a twentieth for the deep line) of the other half's holders under them, and the same method run on the league's own past
   seasons on the results lens puts about a tenth of the NEXT season's holders under a line set on this one. A league without
   enough past seasons to check keeps the built-in values and says so.
-- **Each lens has its own line** (owner decision 2026-09-24; amends D-040). "Weak for the role on this lens" is the lowest tenth
-  of the league's holders ON THAT LENS (tools, results), each measured on its own scale and checked by the club split; the
-  built-in lens floor serves until then. On the Arizona import the built-in lens floor had called a holder's results weak 15% to
+- **Each lens has its own line** (owner decision 2026-09-24; amends D-040). "Weak for the role on this lens" is under the role's
+  median ON THAT LENS (tools, results) less the group's pooled lens gap, roughly its lowest tenth, each measured on its own scale and
+  checked by the club split; the built-in lens floor serves until then. On the Arizona import the built-in lens floor had called a holder's results weak 15% to
   33% of the time, not a tenth.
 - **Relievers are checked against history as one pool** (owner decision 2026-09-24): the export carries no leverage for past
   seasons, so their usage roles cannot be rebuilt; the record says so.
 - **Aging** is fitted per completed season on the league's own consecutive seasons, monotone (a hitter's change never improves with
   age, a pitcher's never falls), shrunk toward the built-in curve by the pairs at each age, and adopted only if a rolling-origin
-  backtest finds no age band biased beyond both a tolerance and three standard errors and the curve beats "no aging". `concernAge`
+  backtest finds no age band biased beyond both a tolerance and three standard errors and the curve beats "no aging", both for the
+  curve as served and for the curve fitted without the prior (on the league the prior came from, the shrunk check is not
+  out-of-sample; the record says so). `concernAge`
   stays policy (when a decline is raised); a league whose curve shows no decline at an age says so, never "lost about 0".
+- **The starting values are never the league's own.** While they serve, a finding says "regular first basemen typically work at
+  about 77 (Pennant's starting yardstick)" and "hitters his age usually lose about ..."; "this league's" only where the save's own
+  fit is in force. The built-in aging rows are stamped provisional.
+- **Checked as served.** The standards' checks score the lines shrunk exactly as they would be served. A reverted save serves its
+  latest measurement at or before its game date.
 - **Glove weights** are fitted from fielding RESULTS only (the repeatable spread of zone-rating runs against the bat's, on
   consecutive seasons that carry zone rating) and checked on the next season; without two such seasons and a third to check them
   the built-in weights serve, with that reason. Whether OOTP keeps a simulated season's zone rating in later exports is not known

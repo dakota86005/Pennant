@@ -613,8 +613,9 @@ Calibration belongs to the save. Three subsystem-neutral modules carry every sub
   not completed is never served.
 - `saveCalibration.ts`: the registry (each subsystem registers its components, their method version, their trigger:
   `completed_season` or `each_import`, and their compute) and the refit, which runs after an import in its own worker thread
-  (`calibrationRefitWorker.ts`, after Player Value's), records only if no import started meanwhile, and can never block or fail
-  the import.
+  (`calibrationRefitWorker.ts`, after Player Value's), never starts for an import already superseded, records only if no import
+  started meanwhile, is skipped with a logged reason when no worker thread can start (never on the event loop), and can never block
+  or fail the import. A measurement keyed by game date is served only from an export no later than today's.
 
 MLB Operations is the first registrant (the roster review's role standards, aging curve and glove weights); it imports no
 Player Value file (`tests/saveCalibrationBoundary.test.ts`). The method and policy stay in the subsystem's code, with the

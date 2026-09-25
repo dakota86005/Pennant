@@ -31,7 +31,7 @@ import {
 
 const has = (table: string, cols: string[]) => tableExists(table) && cols.every((c) => new Set(tableColumns(table)).has(c));
 const levelOf = (leagueId: number) => marketLevels().get(leagueId) ?? 1;
-/** A unit, not a fit: runs per point of wOBA above the league, the conventional wOBA scale (the harness uses the same). */
+/** The conventional wOBA scale (runs per point of wOBA above the league), as the harness uses. NOT fitted to the league: it sets the glove-to-bat ratio in the defense fit, so on a league far from it that fit would be off by its ratio (inactive until the save has zone-rating seasons; cycle 2 measures it with the results metrics). */
 const WOBA_SCALE = 1.2;
 
 /** The league's completed full seasons up to `through` (a season under the policy's share of its schedule is skipped, with why). */
@@ -164,8 +164,10 @@ export function resultsLensHistory(leagueId: number, through: number | null): { 
   const policy = ROSTER_REVIEW_FIT_POLICY.standards;
   const full = fullSeasons(leagueId, through, policy.history.minShare);
   const out: ResultsLensSeason[] = [];
-  const skipped = full.skipped.slice(-(policy.history.maxOrigins + 2));
-  for (const t of full.seasons.slice(-(policy.history.maxOrigins + 2))) {
+  const considered = full.seasons.slice(-(policy.history.maxOrigins + 2));
+  // Only the short seasons inside the span read are named (the league's whole history is not the check's)
+  const skipped = full.skipped.filter((x) => considered.length > 0 && x.season >= considered[0]);
+  for (const t of considered) {
     const s = resultsLensSeason(leagueId, t);
     if ('skip' in s) skipped.push({ season: t, reason: s.skip });
     else if (s.holders.length === 0) skipped.push({ season: t, reason: 'no holders could be read from its lines' });
