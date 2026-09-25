@@ -14,9 +14,13 @@
 
 import { db, tableColumns, tableExists } from './db.js';
 import { leagueBaseline } from './stats.js';
-import { battingHistory, fieldingResultLines, pitchingHistory, seasonEnvironments } from './resultsEvidence.js';
+import { battingHistory, currentSeason, fieldingResultLines, pitchingHistory, seasonEnvironments } from './resultsEvidence.js';
 import { baserunningRuns, PARK_WOBA_SHARE, percentileAmong, POPULATION_MINIMUM, weightedBatting, weightedPitching, wobaOf, type BattingLine, type PitchingLine, type ResultsParams } from './resultsMetrics.js';
 import { fitResults, paramsOf, RESULTS_FIT_POLICY, RESULTS_METHOD, type ResultsCase, type ResultsInput, type ResultsModel } from './mlbResultsFit.js';
+import { BULLPEN_PRIOR, type BullpenLines, type BullpenUsage } from './bullpenRoles.js';
+import { measureLongLine, type LongLineMeasurement, type RelieverUsage } from './mlbBullpenLines.js';
+import { parseGameDate } from './dataFreshness.js';
+import { consecutivePlatoon, fitPlatoon, PLATOON_FIT_POLICY, PLATOON_METHOD, type PlatoonCase, type PlatoonInputCases, type PlatoonModel } from './mlbPlatoonFit.js';
 import { adoptedCalibration } from './saveCalibrationStore.js';
 import { rosterReviewCalibration } from './mlbCalibration.js';
 
@@ -29,7 +33,7 @@ import { reviewClub } from './mlbReview.js';
 import { loadClubView } from './mlbRoster.js';
 import { reviewPorts } from './mlbOperations.js';
 import {
-  AGING_METHOD, DEFENSE_METHOD, fitAging, fitDefense, measureStandards, MLB_CALIBRATION_SUBSYSTEM, ROSTER_REVIEW_FIT_POLICY, STANDARDS_METHOD,
+  AGING_METHOD, DEFENSE_METHOD, fitAging, fitDefense, measureStandards, rekeyRelievers, MLB_CALIBRATION_SUBSYSTEM, ROSTER_REVIEW_FIT_POLICY, STANDARDS_METHOD,
   type AgingInput, type AgingModel, type AgingPair, type DefenseSeason, type ResultsLensSeason, type StandardHolder, type StandardsSample,
 } from './mlbCalibrationFit.js';
 
@@ -60,8 +64,11 @@ function gamesPlayed(teamId: number): number | null {
   return typeof row?.g === 'number' && Number.isFinite(row.g) ? row.g : null;
 }
 
-/** Every club of the league reviewed as it stands, under the results params given: each holder's role, working estimate, bat and lenses. */
-export function standardsSample(leagueId: number, results: ResultsParams): StandardsSample {
+/**
+ * Every club of the league reviewed as it stands, under the results params and bullpen lines given: each holder's role, working estimate,
+ * bat and lenses, and each reliever's usage this season (so his tier can be re-read under the lines measured with the standards).
+ */
+export function standardsSample(leagueId: number, results: ResultsParams, bullpen: BullpenLines): StandardsSample {
   if (!has('teams', ['team_id', 'league_id', 'level'])) return { clubs: [] };
   // The league's own clubs (all-star sides excluded, as everywhere), at its top level
   const own = leagueClubs(leagueId);
@@ -69,19 +76,27 @@ export function standardsSample(leagueId: number, results: ResultsParams): Stand
     .filter((t) => own.has(t.team_id));
   const clubs: StandardsSample['clubs'] = [];
   for (const t of teams) {
-    const ports = reviewPorts(t.team_id, { results });
+    const ports = reviewPorts(t.team_id, { results, bullpen });
     const groups = reviewClub(loadClubView(t.team_id), ports);
+    const pen = groups.find((g) => g.kind === 'relief_pitcher');
+    const penRole = pen?.holders.find((h) => h.role)?.role ?? null;
+    const penEvidence = pen && penRole ? ports.holderEvidence(pen.holders.map((h) => h.playerId), penRole) : new Map();
     const lineup = groups.find((g) => g.role === 'lineup regular');
     if (!lineup || lineup.holders.length < 5) continue;
     const holders: StandardHolder[] = [];
-    const add = (role: string, h: (typeof lineup.holders)[number]) => {
+    const add = (role: string, h: (typeof lineup.holders)[number], usage?: BullpenUsage) => {
       if (h.estimate.value === null) return;
-      holders.push({ role, estimate: h.estimate.value, bat: h.estimate.batValue ?? null, tools: h.estimate.ratingsPct, results: h.estimate.resultsPct });
+      holders.push({ role, estimate: h.estimate.value, bat: h.estimate.batValue ?? null, tools: h.estimate.ratingsPct, results: h.estimate.resultsPct, ...(usage ? { usage } : {}) });
     };
     for (const h of lineup.holders) if (h.position !== undefined) add(hitterKey(h.position), h);
     for (const g of groups) {
       if (g.kind === 'starting_pitcher') for (const h of g.holders) add(STARTER_KEY, h);
-      if (g.kind === 'relief_pitcher') for (const h of g.holders) add(relieverKey(h.tier ?? 'unknown'), h);
+      if (g.kind === 'relief_pitcher') {
+        for (const h of g.holders) {
+          const b = penEvidence.get(h.playerId)?.bullpen;
+          add(relieverKey(h.tier ?? 'unknown'), h, b ? { playerId: h.playerId, name: h.name, g: b.g, ip: b.ip, sv: b.sv, hld: b.hld, leverage: b.leverage } : undefined);
+        }
+      }
     }
     clubs.push({ clubId: t.team_id, gamesPlayed: gamesPlayed(t.team_id), holders });
   }
@@ -406,6 +421,150 @@ export function resultsInput(leagueId: number, through: number): ResultsInput {
   return input;
 }
 
+// ── the bullpen's lines (cycle 3) ────────────────────────────────────────────
+
+/** The league's mean leverage per batter faced this season, over every pitcher the export gives leverage for; null when it gives none. */
+export function leagueLeverage(leagueId: number): number | null {
+  if (!has('players_career_pitching_stats', ['league_id', 'level_id', 'split_id', 'year', 'li', 'bf'])) return null;
+  const year = currentSeason(leagueId);
+  if (year === null) return null;
+  const row = db.prepare(
+    `SELECT SUM(li) AS li, SUM(bf) AS bf FROM players_career_pitching_stats WHERE league_id = ? AND level_id = ? AND split_id = 1 AND year = ? AND li > 0 AND bf > 0`
+  ).get(leagueId, levelOf(leagueId), year) as { li: number | null; bf: number | null } | undefined;
+  return row && row.li && row.bf ? row.li / row.bf : null;
+}
+
+/**
+ * Each reliever's relief appearances and innings in the first and second half of the season's game dates, from the game logs; null
+ * when the export has none for the season (the season split is then not measured). Dates are compared only through `parseGameDate`.
+ */
+export function relieverHalves(leagueId: number, playerIds: number[]): Map<number, NonNullable<RelieverUsage['halves']>> | null {
+  if (playerIds.length === 0) return null;
+  if (!has('players_game_pitching_stats', ['player_id', 'game_id', 'league_id', 'level_id', 'split_id', 'year', 'gs', 'outs']) || !has('games', ['game_id', 'date'])) return null;
+  const year = currentSeason(leagueId);
+  if (year === null) return null;
+  const rows = db.prepare(
+    `SELECT p.player_id AS id, g.date AS date, p.gs AS gs, p.outs AS outs FROM players_game_pitching_stats p JOIN games g ON g.game_id = p.game_id
+     WHERE p.league_id = ? AND p.level_id = ? AND p.split_id = 1 AND p.year = ? AND p.player_id IN (${playerIds.map(() => '?').join(',')})`
+  ).all(leagueId, levelOf(leagueId), year, ...playerIds) as Array<{ id: number; date: unknown; gs: number; outs: number }>;
+  const dated = rows.map((r) => ({ ...r, day: parseGameDate(r.date) })).filter((r): r is typeof r & { day: string } => r.day !== null && !(r.gs > 0));
+  if (dated.length === 0) return null;
+  const days = [...new Set(dated.map((r) => r.day))].sort();
+  const mid = days[Math.floor(days.length / 2)];
+  const out = new Map<number, NonNullable<RelieverUsage['halves']>>();
+  for (const r of dated) {
+    const h = out.get(r.id) ?? { first: { g: 0, ip: 0 }, second: { g: 0, ip: 0 } };
+    const half = r.day < mid ? h.first : h.second;
+    half.g += 1;
+    half.ip += (Number(r.outs) || 0) / 3;
+    out.set(r.id, h);
+  }
+  return out;
+}
+
+/** The long-man line and the leverage lines measured on the league's active pens (the sample's relievers with their usage). */
+export function bullpenMeasurement(leagueId: number, sample: StandardsSample): LongLineMeasurement {
+  const relievers = sample.clubs.flatMap((c) => c.holders.filter((h) => h.usage).map((h) => ({ clubId: c.clubId, usage: h.usage as BullpenUsage })));
+  const halves = relieverHalves(leagueId, relievers.map((r) => r.usage.playerId));
+  const usage: RelieverUsage[] = relievers.map((r) => ({ playerId: r.usage.playerId, clubId: r.clubId, g: r.usage.g, ip: r.usage.ip, halves: halves ? halves.get(r.usage.playerId) ?? { first: { g: 0, ip: 0 }, second: { g: 0, ip: 0 } } : null }));
+  return measureLongLine(usage, leagueLeverage(leagueId));
+}
+
+// ── platoon: how much a hitter's own split counts (cycle 3) ─────────────────
+
+const SPLIT_COLS = ['ab', 'h', 'd', 't', 'hr', 'bb', 'ibb', 'hp', 'sf', 'pa'] as const;
+type SplitLine = Pick<BattingLine, (typeof SPLIT_COLS)[number]>;
+const emptyLine = (): SplitLine => ({ ab: 0, h: 0, d: 0, t: 0, hr: 0, bb: 0, ibb: 0, hp: 0, sf: 0, pa: 0 });
+const addLine = (a: SplitLine, b: SplitLine) => { for (const k of SPLIT_COLS) a[k] += b[k]; return a; };
+const effectiveOf = (l: SplitLine, r: SplitLine) => (l.pa * r.pa) / (l.pa + r.pa);
+/** A split (wOBA against right-handers minus against left-handers); null when either side has no denominator. */
+const splitOf = (l: SplitLine, r: SplitLine): number | null => { const a = wobaOf(l); const b = wobaOf(r); return a === null || b === null ? null : b - a; };
+
+/**
+ * The platoon fit's cases from the league's own completed seasons (objective lines only: batting against left- and right-handed
+ * pitching, `split_id` 2 and 3, and each hitter's batting hand). For a target season: his five seasons before it make his split (at least
+ * the minimum against each hand, as production reads it), the league's hitters of his hand over the same seasons make the norm, and the
+ * target season's split (at least the minimum against each hand) is what is predicted. A short season is never a target; its lines still
+ * count as a season before one. A missing column or table is named, never read as zero.
+ */
+export function platoonInput(leagueId: number, through: number): PlatoonInputCases {
+  const pol = PLATOON_FIT_POLICY;
+  const { seasons, skipped } = fullSeasons(leagueId, through, pol.minShare);
+  const out: PlatoonInputCases = { cases: [], seasons, skipped, missing: null };
+  if (!has('players_career_batting_stats', ['player_id', 'year', 'league_id', 'level_id', 'split_id', ...SPLIT_COLS])) {
+    out.missing = 'The export carries no batting lines against left- and right-handed pitching.';
+    return out;
+  }
+  if (!has('players', ['player_id', 'bats'])) {
+    out.missing = "The export does not say which side the league's hitters bat from.";
+    return out;
+  }
+  const targets = seasons.slice(-pol.windowSeasons);
+  if (targets.length === 0) return out;
+  const first = targets[0] - pol.inputSeasons;
+  const rows = db.prepare(
+    `SELECT s.player_id AS id, s.year AS year, s.split_id AS split, p.bats AS bats, ${SPLIT_COLS.map((c) => `SUM(s."${c}") AS ${c}`).join(', ')}
+     FROM players_career_batting_stats s JOIN players p ON p.player_id = s.player_id
+     WHERE s.league_id = ? AND s.level_id = ? AND s.split_id IN (2, 3) AND s.year BETWEEN ? AND ?
+     GROUP BY s.player_id, s.year, s.split_id`
+  ).all(leagueId, levelOf(leagueId), first, through) as Array<SplitLine & { id: number; year: number; split: number; bats: number | null }>;
+  if (rows.length === 0) {
+    out.missing = "The export carries no batting lines against left- and right-handed pitching for this league's seasons.";
+    return out;
+  }
+  const byPlayer = new Map<number, { bats: number; years: Map<number, { l: SplitLine; r: SplitLine }> }>();
+  const league = new Map<string, SplitLine>(); // `${bats}:${year}:${split}`
+  for (const row of rows) {
+    const bats = Number(row.bats);
+    if (!(bats === 1 || bats === 2 || bats === 3)) continue; // an unknown batting hand has no norm: never assumed
+    const line: SplitLine = emptyLine();
+    for (const c of SPLIT_COLS) line[c] = Number(row[c]) || 0;
+    const p = byPlayer.get(row.id) ?? { bats, years: new Map() };
+    byPlayer.set(row.id, p);
+    const y = p.years.get(row.year) ?? { l: emptyLine(), r: emptyLine() };
+    p.years.set(row.year, y);
+    addLine(row.split === 2 ? y.l : y.r, line);
+    const key = `${bats}:${row.year}:${row.split}`;
+    league.set(key, addLine(league.get(key) ?? emptyLine(), line));
+  }
+  const normCache = new Map<string, number | null>();
+  const normOf = (bats: number, from: number, to: number) => {
+    const key = `${bats}:${from}`;
+    if (!normCache.has(key)) {
+      const l = emptyLine();
+      const r = emptyLine();
+      for (let y = from; y <= to; y += 1) {
+        const a = league.get(`${bats}:${y}:2`);
+        const b = league.get(`${bats}:${y}:3`);
+        if (a) addLine(l, a);
+        if (b) addLine(r, b);
+      }
+      normCache.set(key, l.pa > 0 && r.pa > 0 ? splitOf(l, r) : null);
+    }
+    return normCache.get(key) as number | null;
+  };
+  for (const [id, p] of byPlayer) {
+    for (const t of targets) {
+      const tgt = p.years.get(t);
+      if (!tgt || tgt.l.pa < pol.minTargetPa || tgt.r.pa < pol.minTargetPa) continue;
+      const l = emptyLine();
+      const r = emptyLine();
+      for (let y = t - pol.inputSeasons; y < t; y += 1) {
+        const e = p.years.get(y);
+        if (e) { addLine(l, e.l); addLine(r, e.r); }
+      }
+      if (Math.min(l.pa, r.pa) < pol.minInputPa) continue;
+      const norm = normOf(p.bats, t - pol.inputSeasons, t - 1);
+      if (norm === null) continue;
+      const observed = splitOf(l, r);
+      const y = splitOf(tgt.l, tgt.r);
+      if (observed === null || y === null) continue;
+      out.cases.push({ playerId: id, target: t, observed, effective: effectiveOf(l, r), norm, y, weight: effectiveOf(tgt.l, tgt.r) });
+    }
+  }
+  return out;
+}
+
 /**
  * The confirmation count counts CONSECUTIVE completed-season refits: carried only from the adopted verdict of the season just before.
  * A refit that failed or was not adopted in between leaves an older verdict in force, and the count starts again.
@@ -457,11 +616,26 @@ registerCalibration({
 });
 
 registerCalibration({
+  subsystem: MLB_CALIBRATION_SUBSYSTEM, component: 'platoon', method: PLATOON_METHOD, trigger: 'completed_season',
+  compute: (b) => {
+    if (need(b) === null) return { skip: 'No completed season.' };
+    const through = b.throughSeason as number;
+    // Hysteresis: what served before this refit (the adopted fit of an earlier season), its confirmation count only from the season before
+    const previous = adoptedCalibration<PlatoonModel>(b.leagueId, MLB_CALIBRATION_SUBSYSTEM, 'platoon', PLATOON_METHOD, { throughMax: through - 1 });
+    return fitPlatoon(platoonInput(b.leagueId, through), b, previous?.model ? consecutivePlatoon(previous.model, previous.throughSeason === through - 1) : null);
+  },
+});
+
+registerCalibration({
   subsystem: MLB_CALIBRATION_SUBSYSTEM, component: 'standards', method: STANDARDS_METHOD, trigger: 'each_import',
   compute: (b) => {
     const results = resultsParamsFor(b.leagueId, b.throughSeason);
     const history = resultsLensHistory(b.leagueId, b.throughSeason, results);
-    return measureStandards(standardsSample(b.leagueId, results), history.seasons, b, undefined, undefined, history.skipped);
+    // The bullpen lines are measured on the same review of every club, and the reliever standards on the tiers they give: the two are
+    // recorded (and so served) together (standards-2). The review runs once, under the starting lines; only the tiers are re-read.
+    const sample = standardsSample(b.leagueId, results, BULLPEN_PRIOR);
+    const bullpen = bullpenMeasurement(b.leagueId, sample);
+    return measureStandards(rekeyRelievers(sample, bullpen.lines), history.seasons, b, undefined, undefined, history.skipped, bullpen);
   },
 });
 

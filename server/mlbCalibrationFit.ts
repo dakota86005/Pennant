@@ -29,10 +29,18 @@ import type { CalibrationCheck, CalibrationRecord } from './saveCalibrationStore
 import type { CalibrationRun } from './saveCalibration.js';
 import { decide, describeComparison, DETECTOR_POLICY, ruleText, type DetectorDecision, type DetectorPolicy, type HeldOutCase, type ServedSource } from './calibrationDetector.js';
 import { AGING_CURVE, DEFENSE_WEIGHT, expectedAnnualChange, type AgingTable } from './roleReview.js';
-import { DEEP_QUANTILE, FLOOR_QUANTILE, groupOfRole, STARTING_STANDARDS, type ServedLens, type ServedStandards, type StandardGroup } from './roleStandards.js';
+import { DEEP_QUANTILE, FLOOR_QUANTILE, groupOfRole, relieverKey, STARTING_STANDARDS, type ServedLens, type ServedStandards, type StandardGroup } from './roleStandards.js';
+import { roleOf, type BullpenLines, type BullpenUsage } from './bullpenRoles.js';
+import { LONG_LINE_POLICY, type LongLineMeasurement } from './mlbBullpenLines.js';
 
 export const MLB_CALIBRATION_SUBSYSTEM = 'mlb_operations';
-export const STANDARDS_METHOD = 'standards-1';
+/**
+ * `standards-2` (cycle 3): the reliever standards are measured on the tiers of the bullpen lines measured with them (`mlbBullpenLines.ts`),
+ * recorded in the model, so the lines and the standards are in force together. A `standards-1` row is read as measured under the starting
+ * lines until a `standards-2` row exists.
+ */
+export const STANDARDS_METHOD = 'standards-2';
+export const STANDARDS_METHOD_BEFORE_LINES = 'standards-1';
 export const AGING_METHOD = 'aging-3';
 export const DEFENSE_METHOD = 'defense-1';
 
@@ -136,6 +144,8 @@ export interface StandardHolder {
   bat: number | null;
   tools: number | null;
   results: number | null;
+  /** A reliever's usage this season: his role key is his tier under the bullpen lines the standards are measured under. */
+  usage?: BullpenUsage;
 }
 
 export interface StandardsSample {
@@ -153,6 +163,18 @@ export interface StandardsModel {
   served: ServedStandards;
   /** Per role: holders measured and the weight the measurement carries against the starting value. */
   roles: Record<string, { n: number; weight: number; typical: number; bat: number | null; tools: number | null; results: number | null }>;
+  /**
+   * The bullpen lines the reliever standards were measured under, and so served with (`standards-2`). Absent on a `standards-1` row: the
+   * starting lines.
+   */
+  bullpen?: { lines: BullpenLines; measured: number | null; asServed: number | null; relievers: number; passed: boolean; reason: LongLineMeasurement['reason'] };
+}
+
+/** Each reliever's role key re-read under the lines given (his usage is the same; only the lines move his tier). */
+export function rekeyRelievers(sample: StandardsSample, lines: BullpenLines): StandardsSample {
+  return {
+    clubs: sample.clubs.map((c) => ({ ...c, holders: c.holders.map((h) => (h.usage ? { ...h, role: relieverKey(roleOf(h.usage, lines).tier) } : h)) })),
+  };
 }
 
 type Scale = 'estimate' | 'tools' | 'results';
@@ -318,6 +340,7 @@ const gateOf = (checks: CalibrationCheck[], extra: string[] = []): CalibrationRe
 export function measureStandards(
   sample: StandardsSample, history: ResultsLensSeason[], basis: FitBasis, prior: ServedStandards = STARTING_STANDARDS,
   policyIn: StandardsPolicy = ROSTER_REVIEW_FIT_POLICY.standards, historySkipped: Array<{ season: number; reason: string }> = [],
+  bullpen: LongLineMeasurement | null = null,
 ): CalibrationRun<StandardsModel | null> {
   const clubs = sample.clubs.filter((c) => c.holders.length > 0);
   const known = clubs.map((c) => c.gamesPlayed).filter((g): g is number => g !== null);
@@ -328,7 +351,9 @@ export function measureStandards(
     model,
     record: { leagueId: basis.leagueId, subsystem: MLB_CALIBRATION_SUBSYSTEM, component: 'standards', method: STANDARDS_METHOD, basis: { throughSeason: null, gameDate: basis.gameDate }, window, heldOut, priorWeight, gate, priorSource: PRIOR_SOURCE.standards, notes },
   });
-  const notes = ['Relievers are checked against the league\'s history as one pool: the export carries no leverage for past seasons, so their usage roles cannot be rebuilt.'];
+  const notes = ['Relievers are checked against the league\'s history as one pool: the export carries no leverage for past seasons, so their usage roles cannot be rebuilt.', ...(bullpen?.notes ?? [])];
+  const lineChecks = bullpen?.checks ?? [];
+  const bullpenModel = bullpen ? { lines: bullpen.lines, measured: bullpen.measured, asServed: bullpen.asServed, relievers: bullpen.relievers, passed: bullpen.passed, reason: bullpen.reason } : undefined;
   const none = (failure: string, reason: string) => record(null, [], { passed: false, reason, failures: [failure] }, { overall: 1, byPart: {} }, notes);
   if (clubs.length < policyIn.minClubs) return none('clubs', `Not measured: ${clubs.length} clubs have a reviewed lineup, fewer than ${policyIn.minClubs}.`);
   if (games === null) return none('games_unknown', "Not measured: the export does not say how many games the clubs have played this season.");
@@ -392,7 +417,8 @@ export function measureStandards(
   ]);
   if (hist.origins.length) notes.push(`The history check used ${hist.origins.length} season${hist.origins.length === 1 ? '' : 's'} (${hist.origins[0]}–${hist.origins[hist.origins.length - 1]}), each scored on the next. It ranks past holders within their own season, so it mostly asks that the league has enough steady past seasons.`);
   if (historySkipped.length) notes.push(`Past seasons left out of the history check: ${historySkipped.map((s) => `${s.season} (${s.reason})`).join('; ')}.`);
-  return record({ served, roles }, heldOut, gateOf(heldOut, extra), { overall, byPart }, notes);
+  // The long line's own checks decide which line the standards were measured under, never whether the standards are adopted
+  return record({ served, roles, ...(bullpenModel ? { bullpen: bullpenModel } : {}) }, [...heldOut, ...lineChecks], gateOf(heldOut, extra), { overall, byPart: { ...byPart, ...(bullpen ? { long_line: bullpen.passed ? 1 - bullpen.relievers / (bullpen.relievers + LONG_LINE_POLICY.shrinkRelievers) : 1 } : {}) } }, notes);
 }
 
 // ── aging ────────────────────────────────────────────────────────────────────

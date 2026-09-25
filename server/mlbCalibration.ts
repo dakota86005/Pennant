@@ -15,14 +15,16 @@ import { standardsFrom, type RoleStandardsSet } from './roleStandards.js';
 import type { ReviewCalibration } from './roleReview.js';
 import { RESULTS_PRIOR, type ResultsParams } from './resultsMetrics.js';
 import { PLATOON_PRIOR, type PlatoonParams } from './platoon.js';
-import { BULLPEN_PRIOR, type BullpenLines } from './bullpenRoles.js';
+import { BULLPEN_PRIOR, LONG_LINE_PRIOR, type BullpenLines } from './bullpenRoles.js';
+import { PLATOON_METHOD, type PlatoonModel } from './mlbPlatoonFit.js';
+import { LONG_LINE_POLICY } from './mlbBullpenLines.js';
 import { paramsOf, REQUIRED_PARTS, RESULTS_METHOD, RESULTS_PARTS, servesSaveOwn, type ResultsModel } from './mlbResultsFit.js';
 import {
-  AGING_METHOD, DEFENSE_METHOD, MLB_CALIBRATION_SUBSYSTEM, STANDARDS_METHOD,
+  AGING_METHOD, DEFENSE_METHOD, MLB_CALIBRATION_SUBSYSTEM, STANDARDS_METHOD, STANDARDS_METHOD_BEFORE_LINES,
   type AgingModel, type DefenseModel, type StandardsModel,
 } from './mlbCalibrationFit.js';
 
-export type YardstickKey = 'standards' | 'aging' | 'defense' | 'results';
+export type YardstickKey = 'standards' | 'aging' | 'defense' | 'results' | 'platoon' | 'bullpen';
 
 export interface YardstickGroup {
   key: YardstickKey;
@@ -59,6 +61,8 @@ export interface RosterReviewCalibration {
   groups: YardstickGroup[];
   /** The one visible line. */
   line: string;
+  /** The Pitching Staff page's hover on how long a reliever throws: what a long man is in this league, in plain words. */
+  longMan: string;
   /** The hover: one plain sentence per group, then what the line means. */
   tip: string;
 }
@@ -68,6 +72,8 @@ const WHAT: Record<YardstickKey, string> = {
   aging: 'How players age',
   defense: 'How much the glove counts at each position',
   results: 'How much recent seasons count',
+  platoon: "How much a hitter's own split counts",
+  bullpen: 'Who counts as a long man',
 };
 
 const pct = (x: number | null | undefined) => (x === null || x === undefined ? '?' : `${Math.round(x * 100)}`);
@@ -75,7 +81,7 @@ const pct = (x: number | null | undefined) => (x === null || x === undefined ? '
 /** Why a group serves the starting values: each reason is one the line may give, and only when it is the true one. */
 export type StartingReason =
   | 'not_measured' | 'no_league' | 'games' | 'games_unknown' | 'clubs' | 'seasons' | 'no_zone_rating' | 'no_later_season' | 'check_failed'
-  | 'kept' | 'confirming' | 'returned';
+  | 'kept' | 'confirming' | 'returned' | 'no_splits' | 'relievers';
 
 /** Each reason in a GM's words (the record's reasons are for the API). */
 export const REASON_TEXT: Record<StartingReason, string> = {
@@ -91,6 +97,8 @@ export const REASON_TEXT: Record<StartingReason, string> = {
   kept: "they were checked on this league's seasons and held up",
   confirming: "this league's own did better at the last check and must do so once more before they are used",
   returned: "they did better than this league's own when checked again",
+  no_splits: "this league's export has no batting records against left- and right-handed pitchers",
+  relievers: 'too few relievers have pitched enough to measure',
 };
 
 /**
@@ -106,6 +114,8 @@ export function servesOwn(key: YardstickKey, stored: StoredCalibration | null): 
   if (key === 'results') {
     return servesSaveOwn(stored.model as ResultsModel);
   }
+  if (key === 'platoon') return (stored.model as PlatoonModel | null)?.source === 'save';
+  if (key === 'bullpen') return (stored.model as StandardsModel | null)?.bullpen?.lines.source === 'save';
   return true;
 }
 
@@ -120,6 +130,15 @@ function keptReason(key: YardstickKey, stored: StoredCalibration): StartingReaso
     const parts = REQUIRED_PARTS.map((p) => (stored.model as ResultsModel).parts?.[p]?.reason);
     return parts.includes('returned') ? 'returned' : parts.includes('confirming') ? 'confirming' : 'kept';
   }
+  if (key === 'platoon') {
+    const r = (stored.model as PlatoonModel | null)?.reason;
+    return r === 'returned' || r === 'confirming' ? r : 'kept';
+  }
+  if (key === 'bullpen') {
+    // The standards in force were measured under the starting line: because the line did not hold up, or too few relievers to measure it
+    const b = (stored.model as StandardsModel | null)?.bullpen;
+    return !b ? 'not_measured' : b.reason === 'relievers' ? 'relievers' : 'check_failed';
+  }
   return 'kept';
 }
 
@@ -132,6 +151,7 @@ export function reasonOf(stored: StoredCalibration | null): StartingReason {
   if (first === 'games_unknown') return 'games_unknown';
   if (first === 'sample' || first.startsWith('seasons:')) return 'seasons';
   if (first === 'no_zone_rating_pairs') return 'no_zone_rating';
+  if (first.startsWith('no_splits')) return 'no_splits';
   if (first.startsWith('no_later_season')) return 'no_later_season';
   return 'check_failed';
 }
@@ -173,6 +193,28 @@ function describeResults(s: StoredCalibration<ResultsModel>): string {
     + `${kept.length ? `; for ${kept.join(' and ')} the starting values held up and still serve` : ''}.`;
 }
 
+function describePlatoon(s: StoredCalibration<PlatoonModel>): string {
+  const seasons = s.record.window.seasons;
+  return `From ${s.record.window.sample.toLocaleString('en-US')} hitter-seasons in this league${seasons.length ? ` (${seasons[0]}–${seasons[seasons.length - 1]})` : ''}. `
+    + 'Checked one season at a time on seasons it had not seen, it predicted the next season\'s splits against left- and right-handers clearly better than the starting value. '
+    + 'It applies where his platoon ratings are not visible.';
+}
+
+function describeBullpen(s: StoredCalibration<StandardsModel>): string {
+  const b = s.model.bullpen as NonNullable<StandardsModel['bullpen']>;
+  const share = Math.round((1 - LONG_LINE_POLICY.quantile) * 100);
+  return `A reliever who averages ${b.lines.long.toFixed(1)} or more innings an appearance, about the longest-working ${share} in 100 of this league's relievers this season (${b.relievers} relievers, as of ${s.gameDate ?? 'this export'}). `
+    + 'Lines drawn from half the clubs, and from the first half of the season, picked out about the same share of the rest. '
+    + leverageSentence(b.lines);
+}
+
+/** How much a reliever's innings matter is read on the league's own scale: said once, plainly. */
+function leverageSentence(lines: BullpenLines): string {
+  return lines.rescaled && lines.leagueLeverage !== null
+    ? `How much his innings matter is read on this league's own scale: the export puts an average plate appearance at ${lines.leagueLeverage.toFixed(2)}, so the lines for closers and high- and low-leverage arms were scaled to it.`
+    : "How much his innings matter (closers, high- and low-leverage arms) is read on Pennant's fixed lines, on a scale where 1.0 is an average plate appearance in this league.";
+}
+
 function describeDefense(s: StoredCalibration<DefenseModel>): string {
   return `From how steady each position's fielding runs were from one season to the next in this league (${s.record.window.seasons.join(', ')}), checked on the season after.`;
 }
@@ -196,7 +238,7 @@ export function rosterReviewCalibration(leagueId: number | null): RosterReviewCa
 }
 
 function compute(leagueId: number | null): RosterReviewCalibration {
-  if (leagueId === null) return assemble(null, null, null, null, null, [null, null, null, null]);
+  if (leagueId === null) return assemble(null, null, null, null, null, null, [null, null, null, null, null]);
   let through: number | null = null;
   let today: string | null = null;
   try {
@@ -217,11 +259,15 @@ function compute(leagueId: number | null): RosterReviewCalibration {
       return { adopted: null, latest: null };
     }
   };
-  const standards = read<StandardsModel>('standards', STANDARDS_METHOD);
+  // A standards-1 row (measured before the bullpen lines were) serves, read as measured under the starting lines, until a standards-2 exists
+  const current = read<StandardsModel>('standards', STANDARDS_METHOD);
+  const before = current.adopted ? { adopted: null, latest: null } : read<StandardsModel>('standards', STANDARDS_METHOD_BEFORE_LINES);
+  const standards = { adopted: current.adopted ?? before.adopted, latest: current.latest ?? before.latest };
+  const platoon = read<PlatoonModel>('platoon', PLATOON_METHOD);
   const aging = read<AgingModel>('aging', AGING_METHOD);
   const defense = read<DefenseModel>('defense', DEFENSE_METHOD);
   const results = read<ResultsModel>('results', RESULTS_METHOD);
-  return assemble(leagueId, standards.adopted, aging.adopted, defense.adopted, results.adopted, [standards.latest, aging.latest, defense.latest, results.latest]);
+  return assemble(leagueId, standards.adopted, aging.adopted, defense.adopted, results.adopted, platoon.adopted, [standards.latest, aging.latest, defense.latest, results.latest, platoon.latest]);
 }
 
 function group(key: YardstickKey, adopted: StoredCalibration | null, latest: StoredCalibration | null, describe: (s: never) => string, noLeague = false): YardstickGroup {
@@ -247,9 +293,37 @@ function group(key: YardstickKey, adopted: StoredCalibration | null, latest: Sto
   };
 }
 
+/**
+ * The long-man line's group: it is in force with the standards (the lines they were measured under), so it is read from the standards in
+ * force; its reason is the line's own (too few relievers, did not hold up) or, before any standards-2 row, the standards' latest attempt.
+ */
+function bullpenGroup(standards: StoredCalibration<StandardsModel> | null, latest: StoredCalibration | null, noLeague: boolean): YardstickGroup {
+  const lines = standards?.model?.bullpen?.lines ?? null;
+  const own = servesOwn('bullpen', standards);
+  const reason: StartingReason | null = own ? null : noLeague ? 'no_league'
+    : standards?.model?.bullpen ? keptReason('bullpen', standards)
+      : latest && !latest.adopted ? reasonOf(latest) : 'not_measured';
+  const lineChecks = (standards ?? latest)?.record.heldOut.filter((c) => c.part === 'long_line') ?? [];
+  return {
+    key: 'bullpen', what: WHAT.bullpen, source: own ? 'save' : 'starting',
+    text: own
+      ? `${WHAT.bullpen}: ${describeBullpen(standards as StoredCalibration<StandardsModel>)}`
+      : `${WHAT.bullpen}: the starting value (a reliever who averages ${LONG_LINE_PRIOR} or more innings an appearance), because ${REASON_TEXT[reason as StartingReason]}. ${leverageSentence(lines ?? BULLPEN_PRIOR)}`,
+    reason,
+    method: standards?.method ?? latest?.method ?? '',
+    basis: standards ? standards.record.basis : null,
+    window: own && standards?.model?.bullpen ? { seasons: [], sample: standards.model.bullpen.relievers, unit: 'relievers' } : null,
+    heldOut: lineChecks,
+    priorWeight: own ? standards?.record.priorWeight.byPart.long_line ?? null : null,
+    gate: standards ? { passed: own, reason: own ? 'Every check passed.' : `The starting line serves: ${REASON_TEXT[reason as StartingReason]}.` } : null,
+    refittedOn: own ? standards?.gameDate ?? null : null,
+    lastAttempt: null,
+  };
+}
+
 function assemble(
   leagueId: number | null, standards: StoredCalibration<StandardsModel> | null, aging: StoredCalibration<AgingModel> | null, defense: StoredCalibration<DefenseModel> | null,
-  results: StoredCalibration<ResultsModel> | null, latest: Array<StoredCalibration | null>,
+  results: StoredCalibration<ResultsModel> | null, platoon: StoredCalibration<PlatoonModel> | null, latest: Array<StoredCalibration | null>,
 ): RosterReviewCalibration {
   const noLeague = leagueId === null;
   const groups = [
@@ -257,6 +331,8 @@ function assemble(
     group('aging', aging, latest[1], describeAging, noLeague),
     group('defense', defense, latest[2], describeDefense, noLeague),
     group('results', results, latest[3], describeResults, noLeague),
+    group('platoon', platoon, latest[4], describePlatoon, noLeague),
+    bullpenGroup(standards, latest[0], noLeague),
   ];
   const own = groups.filter((g) => g.source === 'save');
   const through = aging?.throughSeason ?? results?.throughSeason ?? defense?.throughSeason ?? (standards ? standards.record.basis.throughSeason : null);
@@ -271,17 +347,28 @@ function assemble(
     line = `Using starting yardsticks: ${REASON_TEXT[first.reason as StartingReason]}`;
   }
   const tip = [
-    'The roster review judges each player against yardsticks: what a regular at his job typically looks like, how players his age tend to change, how much the glove counts at his position, and how much his recent seasons count against his tools.',
+    'The roster review judges each player against yardsticks: what a regular at his job typically looks like, how players his age tend to change, how much the glove counts at his position, how much his recent seasons count against his tools, how much a hitter\'s own record against left- and right-handers counts, and how long a reliever has to work to count as a long man.',
     ...groups.map((g) => g.text),
-    'Starting values are the ones Pennant ships with. They are replaced by this league\'s own only after those have been checked against players and seasons they were not drawn from, and, for how players age and how much recent seasons count, only where this league\'s own did clearly better than the starting values there.',
+    'Starting values are the ones Pennant ships with. They are replaced by this league\'s own only after those have been checked against players and seasons they were not drawn from, and, for how players age, how much recent seasons count and how much a hitter\'s own split counts, only where this league\'s own did clearly better than the starting values there.',
   ].join('\n\n');
   return {
     leagueId,
     standards: standardsFrom(standards?.model.served),
     review: { aging: servesOwn('aging', aging) ? (aging as StoredCalibration<AgingModel>).model.table : null, defenseWeights: defense?.model.weights ?? null },
     results: servesOwn('results', results) ? paramsOf((results as StoredCalibration<ResultsModel>).model, (results as StoredCalibration<ResultsModel>).basis) : RESULTS_PRIOR,
-    platoon: PLATOON_PRIOR,
-    bullpen: BULLPEN_PRIOR,
-    groups, line, tip,
+    platoon: servesOwn('platoon', platoon)
+      ? { ...PLATOON_PRIOR, shrinkAroundLeague: (platoon as StoredCalibration<PlatoonModel>).model.served, source: 'save' }
+      : PLATOON_PRIOR,
+    // The bullpen lines are the ones the standards in force were measured under (a standards-1 row, or none: the starting lines)
+    bullpen: standards?.model?.bullpen?.lines ?? BULLPEN_PRIOR,
+    groups, line, tip, longMan: longManTip(groups.find((g) => g.key === 'bullpen') as YardstickGroup, standards?.model?.bullpen?.lines ?? BULLPEN_PRIOR),
   };
+}
+
+/** What a long man is in this league, for the hover where the page names how long a reliever throws. */
+function longManTip(group: YardstickGroup, lines: BullpenLines): string {
+  const share = Math.round((1 - LONG_LINE_POLICY.quantile) * 100);
+  return group.source === 'save'
+    ? `A long man is a reliever outside the high-leverage spots who averages ${lines.long.toFixed(1)} or more innings an appearance: about the longest-working ${share} in 100 of this league's relievers this season. Leagues differ in how long their relievers work, so the line is this league's own.`
+    : `A long man is a reliever outside the high-leverage spots who averages ${LONG_LINE_PRIOR} or more innings an appearance: Pennant's starting line, because ${REASON_TEXT[group.reason as StartingReason]}. It is replaced by this league's own once its relievers can be measured.`;
 }

@@ -145,7 +145,7 @@ export interface MlbOverview {
    * Where the review's yardsticks come from (D-053): one plain line for the page, the detail for its hover, and per group the fit in
    * force with its record (the same object `GET /api/mlb/calibration/:orgId` serves).
    */
-  yardsticks: { line: string; tip: string; groups: YardstickGroup[] };
+  yardsticks: { line: string; tip: string; groups: YardstickGroup[]; longMan: string };
 }
 
 export function mlbOverview(orgId: number, view: ClubView = loadClubView(orgId)): MlbOverview {
@@ -277,5 +277,5 @@ mlbOperationsRoutes.get('/mlb-operations/:orgId/responses', (req, res) => {
 /** The yardsticks' account for a club, for the page and the API. */
 export function yardsticksOf(orgId: number): MlbOverview['yardsticks'] {
   const y = yardsticksFor(orgId);
-  return { line: y.line, tip: y.tip, groups: y.groups };
+  return { line: y.line, tip: y.tip, groups: y.groups, longMan: y.longMan };
 }
