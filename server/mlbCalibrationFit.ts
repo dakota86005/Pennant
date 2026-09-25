@@ -657,6 +657,7 @@ export function fitAging(input: AgingInput, basis: FitBasis, policyIn = ROSTER_R
         `Checked on ${origins.length} season${origins.length === 1 ? '' : 's'}${origins.length ? ` (${origins[0]}–${origins[origins.length - 1]})` : ''}, each fitted only on the seasons before it.`,
         'The starting curve was fitted on the Arizona import\'s 2000–2025 history. On that league the check of the curve as served (shrunk toward the starting curve) is not out-of-sample, so the curve fitted without the starting curve is checked too, and both must pass.',
         `A curve replaces the starting one only when clearly better on the held-out pairs (${ruleText(detector)}); once serving, it gives way only when the starting curve is clearly better in turn. Hitters: ${decisions.hitter.reason} Pitchers: ${decisions.pitcher.reason}`,
+        'The rule\'s error rates were measured by simulation for the results lens only (docs/CALIBRATION.md section 13.3); the aging curve\'s own are not simulated.',
       ] },
   };
 }

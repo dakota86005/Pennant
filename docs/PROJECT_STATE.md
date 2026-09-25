@@ -886,8 +886,10 @@ Present on `main` (D-024; design and audit in
     rating for enough seasons. They are served only where the neutral detector (`calibrationDetector.ts`) finds them clearly
     better than the starting values on nested, paired held-out seasons, unshrunk and as served, with hysteresis.
   - The aging curve follows the same rule (`aging-2`). The role standards, a measurement, keep their measure-and-check rule.
-  - Measured error rates on simulated leagues: false adoption 0.0% to 0.3%; power 83% to 100% with 16 or more seasons where the
-    starting values cost 2% to 5% more error (`npm run calibrate detector`).
+  - The detector (`detector-2`) bounds the gain across players and across seasons, requires the lower bound to reach 1%, and
+    needs two refits in a row. Its lifetime false adoption is at most 3.0% over refits from 10 to 22 seasons, including
+    least-favourable nulls and season heterogeneity (target 5%). Its lifetime power is 92% to 100% at a 3% to 6% true gain and 27%
+    to 51% at about 2% (`npm run calibrate detector`, CALIBRATION.md 13.3).
   - On the Arizona import both the season weights and the aging curve are "checked on this league and held up": the starting
     values serve, and the age explanations say "usually lose" again.
   - The yardsticks gain "How much recent seasons count".

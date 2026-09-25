@@ -20,7 +20,7 @@
 import { policy, type CalibrationStamp } from './calibration.js';
 import type { CalibrationCheck, CalibrationRecord } from './saveCalibrationStore.js';
 import type { CalibrationRun } from './saveCalibration.js';
-import { decide, describeComparison, DETECTOR_POLICY, ruleText, type DetectorDecision, type DetectorPolicy, type HeldOutCase, type ServedSource } from './calibrationDetector.js';
+import { decide, describeComparison, DETECTOR_METHOD, DETECTOR_POLICY, ruleText, type DetectorDecision, type DetectorPolicy, type HeldOutCase, type ServedSource } from './calibrationDetector.js';
 import { RESULTS_PRIOR, type ResultsKind, type ResultsParams } from './resultsMetrics.js';
 import { MLB_CALIBRATION_SUBSYSTEM } from './mlbCalibrationFit.js';
 
@@ -293,7 +293,7 @@ export interface ResultsFitBasis {
  * The measured error rates of the detector on this method, from the simulation (`npm run calibrate detector`, docs/CALIBRATION.md
  * section 13): quoted in every run record's notes so the verdict carries how far it can be trusted.
  */
-export const DETECTOR_ERROR_RATES_NOTE = 'The rule\'s measured error rates on this method (simulated leagues sized like the Arizona import, 200 to 400 leagues a cell, docs/CALIBRATION.md section 13): false adoption 0.0% to 0.3% for hitters, starters and relievers with 10 to 20 seasons of history (target at most 5%); adoption where the starting values\' error is 2% to 5% above the best (much noisier, much steadier or fast-changing results, a fictional-league-sized shift): 58% to 98% with 10 seasons, 83% to 100% with 16 or more; where it is only 1% to 2% above (near the 1% practical minimum): 25% to 57%; once the save\'s own serve, a wrong return to the starting values: 0%.';
+export const DETECTOR_ERROR_RATES_NOTE = `How far the rule can be trusted: measured for ${DETECTOR_METHOD} on 2026-09-25 by \`npm run calibrate detector\` on SIMULATED leagues sized like the Arizona import's majors (not this league), refitted every season from 10 to 22 seasons with hysteresis. Lifetime false adoption (a true gain under the 1% minimum: the starting values exactly right, 0.5% and 0.9% worse, stationary and with seasons differing) at most 3.0%; lifetime adoption of a 3% to 6% true gain 92% to 100%, of about 2% 27% to 51%. A league of another size or make is not covered by these figures: docs/CALIBRATION.md section 13.3.`;
 
 const describeValues = (v: PartValues | null) => (v ? `${v.weights.join('/')}, K ${Math.round(v.k)}` : '—');
 

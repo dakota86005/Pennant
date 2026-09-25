@@ -1856,20 +1856,28 @@ not established. The gate is not loosened."
 - **A fitted tuning value replaces its fallback only when clearly better; a measurement is served when its checks pass** (owner
   decision 2026-09-25). A tuning value with a rival value set (the results lens's season weights and stabilization, the aging
   curve) is adopted only where it beats the starting values on held-out seasons by the detector's rule (`calibrationDetector.ts`).
-  - The rule has four parts: significant (2 standard errors clustered by player), consistent (better in two-thirds of the held-out
-    seasons, at least 3), worth it (at least 1% lower error), and enough (4 held-out seasons of 50 cases).
+  - The rule (`detector-2`, after an independent review found `detector-1` overconfident):
+    - worth it at a confidence: the lower one-sided 97.5% bound of the gain is at least 1% of the starting values' error, both
+      across players (clustered by player) and across seasons (Student's t on the held-out seasons);
+    - consistent: better in two-thirds of the held-out seasons, and at least 3;
+    - enough: 4 held-out seasons of 50 cases, so at least 10 seasons of history;
+    - confirmed: clearly better at two refits in a row before the save's values first serve.
   - The rule is applied twice, unshrunk and as served, and every free parameter is chosen inside each rolling origin (nested), so
     no selection optimism reaches the verdict.
   - Otherwise the starting values serve, and the page says they were checked on this league and held up. That verdict is adopted
     as such, never shown as "not measured".
   - **Hysteresis:** once the save's values serve, a refit returns to the starting values only when they are clearly better in
-    turn. The record carries the previous state and the rule applied.
+    turn. The record carries the previous state, the confirmation count and the rule applied.
   - A measurement of the league as it stands, with no rival value set (the role standards), keeps cycle 1's measure-and-check rule.
-- **The rule's error rates are measured and recorded,** on simulated leagues sized like the Arizona import
-  (`npm run calibrate detector`):
-  - false adoption 0.0% to 0.3% (target at most 5%);
-  - power 58% to 98% with 10 seasons where the starting values cost 2% to 5% more error, and 83% to 100% with 16 or more;
-  - about half where they cost 1% to 2%;
+- **The target is a lifetime rate** (supervisor's call, 2026-09-25). Over a save's lifetime of yearly refits (10 to 22 seasons of
+  history, with hysteresis), the rate of adopting the save's values when their true gain is under the 1% practical minimum must be
+  at most 5%. This holds at the exact null and at the least-favourable nulls (a true excess of 0.5% and 0.9%), stationary and with
+  season-to-season heterogeneity (noise ±25%, drift ±0.3). Power is secondary. The level, the minimum and the confirmations were
+  tuned by simulation to this target.
+- **Measured** (`npm run calibrate detector`, 2026-09-25, simulated leagues sized like the Arizona import; CALIBRATION.md 13.3):
+  - lifetime false adoption at most 3.0% (0.0% at every exact null);
+  - lifetime adoption of 92% to 100% where the starting values cost 3% to 6% more error, and 27% to 51% at about 2%;
+  - pitchers' fictional-league shifts (1.3% to 2.1%): 10% to 30%;
   - no wrong return once the save's values serve.
 - **On the Arizona import** neither the season weights and stabilization nor the aging curve is clearly better. The starting values
   serve for both. The aging curve cycle 1 had served gives way (method `aging-2`), and the age explanations say "hitters his age

@@ -623,8 +623,9 @@ imports no Player Value file (`tests/saveCalibrationBoundary.test.ts`). The meth
 the built-in values as the provisional fallback prior (CALIBRATION.md sections 12 and 13).
 
 - `calibrationDetector.ts` (cycle 2, neutral and pure): whether a save's fitted tuning value is CLEARLY better than its fallback on
-  paired, nested held-out cases (significant with player-clustered errors, consistent across seasons, above a practical minimum,
-  unshrunk and as served), with hysteresis once the save's value serves. Its error rates are measured on simulated leagues
+  paired, nested held-out cases: the lower confidence bound of the gain, across players (clustered by player) and across seasons
+  (Student's t), reaches a practical minimum; the gain is consistent across seasons; it holds unshrunk and as served, at two
+  refits in a row. Hysteresis applies once the save's value serves. Tuned to a lifetime false-adoption target of at most 5%. Its error rates are measured on simulated leagues
   (`scripts/lib/resultsDetectorSimulation.ts`, `npm run calibrate detector`). A measurement with no rival value set (the role
   standards) is not judged by it.
 - The results lens's params (`ResultsParams`: season weights and stabilization) are passed as arguments through `resultsMetrics.ts`
