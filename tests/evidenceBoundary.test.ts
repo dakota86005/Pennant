@@ -50,6 +50,8 @@ const GUARDED = [
   'resultsMetrics.ts',
   'resultsEvidence.ts',
   'mlbResultsFit.ts',
+  'mlbPlatoonFit.ts',
+  'mlbBullpenLines.ts',
   'calibrationDetector.ts',
   'mlbCalibration.ts',
   'mlbCalibrationFit.ts',
