@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evaluatePlatoon, MIN_SPLIT_PA, PLATOON_SHRINK_K, type PlatoonInput, type PlatoonRatings } from '../server/platoon';
+import { evaluatePlatoon, MIN_SPLIT_PA, PLATOON_PRIOR, type PlatoonInput, type PlatoonRatings } from '../server/platoon';
 import type { BattingLine } from '../server/resultsMetrics';
 
 /*
@@ -21,7 +21,7 @@ const line = (pa: number, woba: 'good' | 'ok' | 'poor'): BattingLine => {
   };
 };
 const ratings = (gap: number, norm = 0.015): PlatoonRatings => ({ vsLeft: -gap / 2, vsRight: gap / 2, norm });
-const input = (over: Partial<PlatoonInput>): PlatoonInput => ({ recordStabilization: 300, bats: 'L', vsLeft: [], vsRight: [], leagueEffect: 0.015, leagueWoba: 0.32, ...over });
+const input = (over: Partial<PlatoonInput>): PlatoonInput => ({ recordStabilization: 300, platoon: PLATOON_PRIOR, leagueLeftShare: 0.3, bats: 'L', vsLeft: [], vsRight: [], leagueEffect: 0.015, leagueWoba: 0.32, ...over });
 
 describe('GOLDEN platoon: unknown stays unknown', () => {
   it('no ratings and no usable record is "not enough", never "no issue", even when the league norm is known', () => {
@@ -65,7 +65,7 @@ describe('GOLDEN platoon: thin observed splits do not overwhelm ratings and the 
     expect(large.reliability).toBeGreaterThan(small.reliability);
     expect(large.reliability).toBeLessThan(1);
     // the effective sample for a difference is the harmonic combination of both sides, so it needs a lot of both to count for much
-    expect(PLATOON_SHRINK_K).toBeGreaterThanOrEqual(1000);
+    expect(PLATOON_PRIOR.shrinkAroundRatings).toBeGreaterThanOrEqual(1000);
   });
 
   it('a rating-supported platoon difference survives a weak observed sample', () => {
@@ -85,8 +85,8 @@ describe('GOLDEN platoon: thin observed splits do not overwhelm ratings and the 
 describe('GOLDEN platoon: symmetry between the hands', () => {
   it('mirroring a hitter (his hand, his ratings, his split) mirrors the weak side and the size of the read', () => {
     // Mirroring reflects the pitchers too: a left-handed batter faces left-handers about 30% of the time, so his mirror faces right-handers 30%.
-    const lefty = evaluatePlatoon({ recordStabilization: 300, bats: 'L', vsLeft: [], vsRight: [], leagueEffect: 0.015, leagueLeftShare: 0.3, leagueWoba: 0.32, ratings: { vsLeft: -0.03, vsRight: 0.03, norm: 0.015 } });
-    const righty = evaluatePlatoon({ recordStabilization: 300, bats: 'R', vsLeft: [], vsRight: [], leagueEffect: -0.015, leagueLeftShare: 0.7, leagueWoba: 0.32, ratings: { vsLeft: 0.03, vsRight: -0.03, norm: -0.015 } });
+    const lefty = evaluatePlatoon({ recordStabilization: 300, platoon: PLATOON_PRIOR, leagueLeftShare: 0.3, bats: 'L', vsLeft: [], vsRight: [], leagueEffect: 0.015, leagueWoba: 0.32, ratings: { vsLeft: -0.03, vsRight: 0.03, norm: 0.015 } });
+    const righty = evaluatePlatoon({ recordStabilization: 300, platoon: PLATOON_PRIOR, leagueLeftShare: 0.7, bats: 'R', vsLeft: [], vsRight: [], leagueEffect: -0.015, leagueWoba: 0.32, ratings: { vsLeft: 0.03, vsRight: -0.03, norm: -0.015 } });
     expect(lefty.weakSide).toBe('L');
     expect(righty.weakSide).toBe('R');
     expect(lefty.weakBy).toBeCloseTo(righty.weakBy as number, 6);
@@ -96,7 +96,7 @@ describe('GOLDEN platoon: symmetry between the hands', () => {
 
   it('a hitter who is normal for his hand is not a problem, whichever hand it is', () => {
     for (const [bats, norm] of [['L', 0.015], ['R', -0.015]] as const) {
-      const r = evaluatePlatoon({ recordStabilization: 300, bats, vsLeft: [], vsRight: [], leagueEffect: norm, leagueWoba: 0.32, ratings: { vsLeft: -norm / 2, vsRight: norm / 2, norm } });
+      const r = evaluatePlatoon({ recordStabilization: 300, platoon: PLATOON_PRIOR, leagueLeftShare: 0.3, bats, vsLeft: [], vsRight: [], leagueEffect: norm, leagueWoba: 0.32, ratings: { vsLeft: -norm / 2, vsRight: norm / 2, norm } });
       expect(r.verdict).toBe('no_issue');
     }
   });

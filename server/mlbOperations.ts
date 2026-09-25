@@ -27,6 +27,7 @@ import { readContext, type ContextRead, type OrganizationContext } from './staff
 import { rightsFor } from './playerContext.js';
 import { philosophyForOrg } from './settings.js';
 import type { ResultsParams } from './resultsMetrics.js';
+import type { BullpenLines } from './bullpenRoles.js';
 import { rosterReviewCalibration, type RosterReviewCalibration, type YardstickGroup } from './mlbCalibration.js';
 import { majorLeagueId } from './resultsEvidence.js';
 
@@ -67,10 +68,10 @@ function realPorts(orgId: number, floors: CoverageFloors = DEFAULT_COVERAGE_FLOO
     development: (ids, context) => mlbAssignmentAssessments(orgId, context, ids),
     crossRole: crossRoleSupport,
     roleFit: (id) => roleFitEvidence(id, orgId),
-    holderEvidence: (ids, role, opts) => holderEvidence(orgId, ids, role, opts ?? {}, yardsticks.results),
+    holderEvidence: (ids, role, opts) => holderEvidence(orgId, ids, role, opts ?? {}, yardsticks.results, yardsticks.bullpen),
     hitterUsage: (ids) => hitterUsage(orgId, ids),
     teamGames: () => teamGamesPlayed(orgId),
-    platoon: (ids) => platoonInputs(orgId, ids, yardsticks.results),
+    platoon: (ids) => platoonInputs(orgId, ids, yardsticks.results, yardsticks.platoon),
     performance: performanceLine,
     // A failure inside Minor League Operations' evaluator leaves the farm consequence unknown; it never fails the packet.
     // One farm session per request: the organization is read once however many candidates are asked about.
@@ -87,15 +88,18 @@ function realPorts(orgId: number, floors: CoverageFloors = DEFAULT_COVERAGE_FLOO
 }
 
 /** The scouting review's evidence, through the same specialists: lenses, usage, splits. */
-export function reviewPorts(orgId: number, override?: { results?: ResultsParams }): ReviewPorts {
+export function reviewPorts(orgId: number, override?: { results?: ResultsParams; bullpen?: BullpenLines }): ReviewPorts {
   const yardsticks = yardsticksFor(orgId);
-  // The refit may measure the standards under the results params about to be recorded (what is checked is what is served)
+  // The refit may measure the standards under the results params and the bullpen lines about to be recorded (what is checked is what
+  // is served)
   const results = override?.results ?? yardsticks.results;
+  const bullpen = override?.bullpen ?? yardsticks.bullpen;
   return {
     calibration: { standards: yardsticks.standards, review: yardsticks.review },
-    holderEvidence: (ids, role) => holderEvidence(orgId, ids, role, {}, results),
+    bullpen,
+    holderEvidence: (ids, role) => holderEvidence(orgId, ids, role, {}, results, bullpen),
     hitterUsage: (ids) => hitterUsage(orgId, ids),
-    platoon: (ids) => platoonInputs(orgId, ids, results),
+    platoon: (ids) => platoonInputs(orgId, ids, results, yardsticks.platoon),
     teamGames: () => teamGamesPlayed(orgId),
     covers: (ids) => playableCovers(ids),
     coverReads: (ids) => coverReads(orgId, ids),

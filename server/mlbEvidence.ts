@@ -36,11 +36,11 @@ import {
 } from './resultsEvidence.js';
 import { blendStabilization, percentileAmong, type ResultsParams } from './resultsMetrics.js';
 import { describeBat, expectedRunningRaw, expectedWobaRaw, ratingPlatoon, toolContributions } from './toolsModel.js';
-import { roleOf as bullpenRoleOf } from './bullpenRoles.js';
+import { roleOf as bullpenRoleOf, type BullpenLines } from './bullpenRoles.js';
 import { coverQuality, type CoverRead } from './benchReview.js';
 import { seasonEnvironments } from './resultsEvidence.js';
 import type { HitterUsageInput } from './lineupPicture.js';
-import type { PlatoonInput } from './platoon.js';
+import type { PlatoonInput, PlatoonParams } from './platoon.js';
 import type { LensEvidence } from './roleReview.js';
 import type { RoleRef } from './mlbRoster.js';
 
@@ -329,7 +329,7 @@ export function topAffiliateTeamId(orgId: number): number | null {
  * recency-weighted results with the sample behind them). A pitcher with no rows
  * has no results lens, which is different from a bad one.
  */
-export function holderEvidence(orgId: number, playerIds: number[], role: RoleRef, opts: { ignoreResults?: boolean }, params: ResultsParams): Map<number, LensEvidence> {
+export function holderEvidence(orgId: number, playerIds: number[], role: RoleRef, opts: { ignoreResults?: boolean }, params: ResultsParams, bullpen: BullpenLines): Map<number, LensEvidence> {
   const out = new Map<number, LensEvidence>();
   if (playerIds.length === 0) return out;
   const pitcher = role.kind === 'starting_pitcher' || role.kind === 'relief_pitcher';
@@ -347,19 +347,19 @@ export function holderEvidence(orgId: number, playerIds: number[], role: RoleRef
       skillsPct: r?.skillsPercentile ?? null, runsPct: r?.runsPercentile ?? null,
       sample: r?.sample ?? 0, sampleUnit: pitcher ? 'BF' : 'PA', reliability: r?.reliability ?? 0,
       currentSample: r?.current ? r.current.bf : null,
-      usage: usageNotes(r, role),
+      usage: usageNotes(r, role, bullpen),
       ...(role.kind === 'relief_pitcher' && r?.current ? { bullpen: { g: r.current.g, ip: r.current.outs / 3, sv: r.current.sv, hld: r.current.hld, leverage: r.leverage } } : {}),
     });
   }
   return out;
 }
 
-function usageNotes(r: ReturnType<typeof loadPitcherResults> extends Map<number, infer V> ? V | undefined : never, role: RoleRef): string[] {
+function usageNotes(r: ReturnType<typeof loadPitcherResults> extends Map<number, infer V> ? V | undefined : never, role: RoleRef, bullpen: BullpenLines): string[] {
   if (!r) return [];
   const notes: string[] = [];
   if (role.kind === 'starting_pitcher' && r.inningsPerStart !== null) notes.push(`Averages ${r.inningsPerStart.toFixed(1)} innings per start.`);
   if (role.kind === 'relief_pitcher' && r.current) {
-    notes.push(bullpenRoleOf({ playerId: r.playerId, name: '', g: r.current.g, ip: r.current.outs / 3, sv: r.current.sv, hld: r.current.hld, leverage: r.leverage }).text);
+    notes.push(bullpenRoleOf({ playerId: r.playerId, name: '', g: r.current.g, ip: r.current.outs / 3, sv: r.current.sv, hld: r.current.hld, leverage: r.leverage }, bullpen).text);
   }
   return notes;
 }
@@ -496,7 +496,7 @@ function platoonNormFor(league: number): { L: number | null; R: number | null; S
 }
 
 /** Observed splits, the league's own platoon effect, and (D-035) each hitter's visible platoon ratings, for each hitter. */
-export function platoonInputs(orgId: number, playerIds: number[], params: ResultsParams): Map<number, PlatoonInput> {
+export function platoonInputs(orgId: number, playerIds: number[], params: ResultsParams, platoon: PlatoonParams): Map<number, PlatoonInput> {
   const out = new Map<number, PlatoonInput>();
   const league = majorLeagueId(orgId);
   if (league === null) return out;
@@ -519,6 +519,7 @@ export function platoonInputs(orgId: number, playerIds: number[], params: Result
       leagueEffect: bats ? lp.effect[bats] : null, leagueLeftShare: bats ? lp.leftShare[bats] : null, leagueWoba,
       ratings: rp && bats ? { vsLeft: rp.vsLeft === null ? null : rp.vsLeft - meanBat, vsRight: rp.vsRight === null ? null : rp.vsRight - meanBat, norm: norms[bats] } : null,
       recordStabilization: blendStabilization('hitter', params),
+      platoon,
     });
   }
   return out;

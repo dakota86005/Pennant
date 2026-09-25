@@ -14,6 +14,8 @@ import { completedThrough, leagueGameDate } from './saveIdentity.js';
 import { standardsFrom, type RoleStandardsSet } from './roleStandards.js';
 import type { ReviewCalibration } from './roleReview.js';
 import { RESULTS_PRIOR, type ResultsParams } from './resultsMetrics.js';
+import { PLATOON_PRIOR, type PlatoonParams } from './platoon.js';
+import { BULLPEN_PRIOR, type BullpenLines } from './bullpenRoles.js';
 import { paramsOf, REQUIRED_PARTS, RESULTS_METHOD, RESULTS_PARTS, servesSaveOwn, type ResultsModel } from './mlbResultsFit.js';
 import {
   AGING_METHOD, DEFENSE_METHOD, MLB_CALIBRATION_SUBSYSTEM, STANDARDS_METHOD,
@@ -50,6 +52,10 @@ export interface RosterReviewCalibration {
   review: ReviewCalibration;
   /** The results lens's season weights and stabilization in force: the save's own where adopted, else the starting values. */
   results: ResultsParams;
+  /** How much a hitter's own split and his ratings count in a platoon read: the save's own where clearly better, else the starting values. */
+  platoon: PlatoonParams;
+  /** The bullpen's lines: the leverage cut-offs on the league's own scale and the long-man line the reliever standards in force were measured under. */
+  bullpen: BullpenLines;
   groups: YardstickGroup[];
   /** The one visible line. */
   line: string;
@@ -274,6 +280,8 @@ function assemble(
     standards: standardsFrom(standards?.model.served),
     review: { aging: servesOwn('aging', aging) ? (aging as StoredCalibration<AgingModel>).model.table : null, defenseWeights: defense?.model.weights ?? null },
     results: servesOwn('results', results) ? paramsOf((results as StoredCalibration<ResultsModel>).model, (results as StoredCalibration<ResultsModel>).basis) : RESULTS_PRIOR,
+    platoon: PLATOON_PRIOR,
+    bullpen: BULLPEN_PRIOR,
     groups, line, tip,
   };
 }

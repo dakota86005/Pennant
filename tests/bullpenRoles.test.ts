@@ -1,34 +1,51 @@
 import { describe, expect, it } from 'vitest';
-import { BULLPEN_CALIBRATION, deploymentFindings, DEPLOYMENT_GAP, LEVERAGE, MIN_APPEARANCES, roleOf, type BullpenUsage } from '../server/bullpenRoles';
+import { BULLPEN_CALIBRATION, BULLPEN_PRIOR, deploymentFindings, DEPLOYMENT_GAP, LEVERAGE, leverageLines, MIN_APPEARANCES, roleOf, type BullpenUsage } from '../server/bullpenRoles';
 
 const u = (over: Partial<BullpenUsage> = {}): BullpenUsage => ({ playerId: 1, name: 'Arm', g: 20, ip: 20, sv: 0, hld: 0, leverage: 1.0, ...over });
 
 describe('a reliever\'s role, read from how he is used', () => {
   it('a save-getter in the highest leverage is the closer; a high-leverage arm without saves is not', () => {
-    expect(roleOf(u({ leverage: 2.1, sv: 8 })).tier).toBe('closer');
-    expect(roleOf(u({ leverage: 2.1, sv: 0, hld: 6 })).tier).toBe('high_leverage');
-    expect(roleOf(u({ leverage: LEVERAGE.high })).tier).toBe('high_leverage');
-    expect(roleOf(u({ leverage: 2.1, sv: 8 })).stakes).toBe('high');
+    expect(roleOf(u({ leverage: 2.1, sv: 8 }), BULLPEN_PRIOR).tier).toBe('closer');
+    expect(roleOf(u({ leverage: 2.1, sv: 0, hld: 6 }), BULLPEN_PRIOR).tier).toBe('high_leverage');
+    expect(roleOf(u({ leverage: LEVERAGE.high }), BULLPEN_PRIOR).tier).toBe('high_leverage');
+    expect(roleOf(u({ leverage: 2.1, sv: 8 }), BULLPEN_PRIOR).stakes).toBe('high');
   });
 
   it('ordinary spots are the middle; garbage time is low; a multi-inning arm below high leverage is a long man', () => {
-    expect(roleOf(u({ leverage: 1.1 })).tier).toBe('middle');
-    expect(roleOf(u({ leverage: 0.6 })).tier).toBe('low_leverage');
-    expect(roleOf(u({ leverage: 0.6 })).stakes).toBe('low');
-    expect(roleOf(u({ leverage: 1.0, ip: 40, g: 20 })).tier).toBe('long');
+    expect(roleOf(u({ leverage: 1.1 }), BULLPEN_PRIOR).tier).toBe('middle');
+    expect(roleOf(u({ leverage: 0.6 }), BULLPEN_PRIOR).tier).toBe('low_leverage');
+    expect(roleOf(u({ leverage: 0.6 }), BULLPEN_PRIOR).stakes).toBe('low');
+    expect(roleOf(u({ leverage: 1.0, ip: 40, g: 20 }), BULLPEN_PRIOR).tier).toBe('long');
   });
 
   it('too few appearances, or no leverage in the export, is not a role: unknown stays unknown', () => {
-    const early = roleOf(u({ g: MIN_APPEARANCES - 1, leverage: 2 }));
+    const early = roleOf(u({ g: MIN_APPEARANCES - 1, leverage: 2 }), BULLPEN_PRIOR);
     expect(early).toMatchObject({ tier: 'unknown', stakes: null });
     expect(early.text).toMatch(/too few/);
-    expect(roleOf(u({ leverage: null })).tier).toBe('unknown');
+    expect(roleOf(u({ leverage: null }), BULLPEN_PRIOR).tier).toBe('unknown');
   });
 
   it('is stamped, and the leverage cut-offs order sensibly', () => {
-    expect(BULLPEN_CALIBRATION.status).toBe('calibrated');
+    expect(BULLPEN_CALIBRATION.status).toBe('policy');
     expect(LEVERAGE.closer).toBeGreaterThan(LEVERAGE.high);
     expect(LEVERAGE.high).toBeGreaterThan(LEVERAGE.low);
+  });
+
+  it('the leverage lines are on the league\'s own scale: a season\'s wobble moves no tier; a league off the scale is rescaled to it', () => {
+    expect(leverageLines(1.0225)).toEqual({ leverage: { ...LEVERAGE }, rescaled: false });
+    expect(leverageLines(null)).toEqual({ leverage: { ...LEVERAGE }, rescaled: false });
+    const off = leverageLines(1.2);
+    expect(off.rescaled).toBe(true);
+    expect(off.leverage.high).toBeCloseTo(1.56, 6);
+    // the same usage, relative to its league, is the same role
+    const inOwnUnits = { ...BULLPEN_PRIOR, leverage: off.leverage };
+    expect(roleOf(u({ leverage: 1.3 * 1.2 }), inOwnUnits).tier).toBe(roleOf(u({ leverage: 1.3 }), BULLPEN_PRIOR).tier);
+  });
+
+  it('a long man is judged against the line in force: the same arm is a long man in a league whose relievers work one inning, not in one whose relievers work two', () => {
+    const arm = u({ leverage: 0.8, ip: 34, g: 20 }); // 1.7 innings an appearance, low leverage
+    expect(roleOf(arm, BULLPEN_PRIOR).tier).toBe('long');
+    expect(roleOf(arm, { ...BULLPEN_PRIOR, long: 1.9, source: 'save' }).tier).toBe('low_leverage');
   });
 });
 

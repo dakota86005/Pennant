@@ -12,25 +12,41 @@
  *                leverage than a clearly better one, that is a finding for the manager, not a roster
  *                move: it costs nothing to fix
  *
- * Pure: usage in, tiers and findings out. The thresholds come from the league's own distribution of
- * relievers' leverage (docs/CALIBRATION.md section 8): median 1.10, top quartile 1.39, closers (three
- * or more saves) 2.09 on average, setup men (three or more holds) 1.23.
+ * Pure: usage in, tiers and findings out, under the lines in force (`BullpenLines`, from `rosterReviewCalibration(...).bullpen`; no
+ * reader holds a default). The leverage cut-offs are policy on the leverage scale, where 1.0 is an average plate appearance in the
+ * league itself; the long-man line is a measurement of how long the league's own relievers work (D-053, cycle 3; docs/CALIBRATION.md
+ * section 14), because leagues differ: this save's game works its relievers about a quarter longer than the real seasons it imported.
  */
 
-import { calibrated, policy, type CalibrationStamp } from './calibration.js';
+import { policy, provisional, type CalibrationStamp } from './calibration.js';
 
-export const BULLPEN_CALIBRATION: CalibrationStamp = calibrated(
-  'The leverage cut-offs sit on the league\'s own distribution of relievers (2026 to date: median 1.10, top quartile 1.39, closers 2.09 on average); the deployment gap and the minimum appearances are policy thresholds.'
+export const BULLPEN_CALIBRATION: CalibrationStamp = policy(
+  'The leverage cut-offs are policy on the league\'s own leverage scale (1.0 is an average plate appearance there; rescaled only when the league\'s mean is off 1.0 by more than the tolerance). The long-man line is measured on the league\'s own relievers where its checks pass (docs/CALIBRATION.md section 14), else the starting value. The deployment gap, the minimum appearances and the multi-inning line are policy.'
 );
-export const BULLPEN_POLICY: CalibrationStamp = policy('The minimum appearances, the long-man innings and the deployment gap are policy thresholds.');
+export const BULLPEN_POLICY: CalibrationStamp = policy('The minimum appearances, the multi-inning line, the deployment gap, the credible-arm line and the crowding counts are policy thresholds.');
 
-/** CALIBRATED. Average leverage per batter faced at which a reliever is used as a closer (with a save), as a high-leverage arm, and below which he is in low-leverage spots. */
+/**
+ * POLICY (on the league's own leverage scale). Average leverage per batter faced at which a reliever is used as a closer (with a save),
+ * as a high-leverage arm, and below which he is in low-leverage spots: 60%, 30% more and 10% less at stake than an average plate
+ * appearance. On the Arizona import (2026 to date) they sit at the 85th, 68th and 34th percentile of relievers (median 1.07, top quartile
+ * 1.36; relievers with three or more saves average 2.07); that is evidence, not what sets them.
+ */
 export const LEVERAGE = { closer: 1.6, high: 1.3, low: 0.9 } as const;
-/** PROVISIONAL (policy). Fewest appearances before a role is read from usage. */
+/**
+ * POLICY. How far the league's mean leverage per batter faced may sit from 1.0 before the cut-offs are rescaled to it (a guard against an
+ * export whose leverage is not normalized to its league). Within it the cut-offs serve as written, so a season's wobble moves no tier.
+ */
+export const LEVERAGE_UNIT_TOLERANCE = 0.05;
+/** POLICY. Fewest appearances before a role is read from usage. */
 export const MIN_APPEARANCES = 8;
-/** PROVISIONAL (policy). Innings per appearance at or above which a reliever below high leverage is a long man. */
-export const LONG_INNINGS = 1.6;
-/** PROVISIONAL (policy). Points of working estimate by which a lower-leverage arm must beat a higher-leverage one to call the deployment backwards. */
+/** POLICY. Innings per appearance at or above which a reliever "throws multiple innings" (the pen-wide finding): a baseball meaning, not a league's. */
+export const MULTI_INNING = 1.6;
+/**
+ * PROVISIONAL (the fallback prior). Innings per appearance at or above which a reliever below high leverage is a long man, until the
+ * league's own is measured: where the real seasons 2019-2025 of the Arizona import put it (their 84th to 88th percentile).
+ */
+export const LONG_LINE_PRIOR = 1.6;
+/** POLICY. Points of working estimate by which a lower-leverage arm must beat a higher-leverage one to call the deployment backwards. */
 export const DEPLOYMENT_GAP = 15;
 
 /** POLICY. Working estimate (percentile of MLB relievers) at or above which an arm is credible for high-leverage innings: about the median reliever. */
@@ -39,6 +55,38 @@ export const CREDIBLE_HIGH_LEVERAGE = 50;
 export const CROWDED = { long: 3, closer: 3 } as const;
 /** POLICY. Fewest relievers with a read role before a pen-wide finding ("nobody throws multiple innings") is made: early in a season most roles are not yet read. */
 export const MIN_READ_ARMS = 5;
+
+export const LONG_LINE_STAMP: CalibrationStamp = provisional('The starting long-man line (1.6 innings an appearance), until the league\'s own relievers are measured.');
+
+/** The lines a pen is read under: the ones in force for the save (required everywhere; `BULLPEN_PRIOR` only where the fallback is chosen). */
+export interface BullpenLines {
+  /** The leverage cut-offs as served: the policy values, rescaled to the league's mean only beyond the tolerance. */
+  leverage: { closer: number; high: number; low: number };
+  /** Innings per appearance at or above which a reliever below high leverage is a long man. */
+  long: number;
+  /** Innings per appearance that count as "multiple innings" in the pen-wide finding (policy). */
+  multiInning: number;
+  /** Whether the long-man line is the league's own measurement or the starting value. */
+  source: 'save' | 'starting';
+  /** The league's mean leverage per batter faced the cut-offs were checked against (null: not read), and whether they were rescaled. */
+  leagueLeverage: number | null;
+  rescaled: boolean;
+}
+
+/** The starting lines: the policy cut-offs as written, the starting long-man line. */
+export const BULLPEN_PRIOR: BullpenLines = {
+  leverage: { ...LEVERAGE }, long: LONG_LINE_PRIOR, multiInning: MULTI_INNING, source: 'starting', leagueLeverage: null, rescaled: false,
+};
+
+/**
+ * The leverage cut-offs on the league's own scale: as written while the league's mean leverage per batter faced is within the tolerance
+ * of 1.0 (or unknown), else multiplied by it. A derivation, not a fit.
+ */
+export function leverageLines(leagueMean: number | null, tolerance = LEVERAGE_UNIT_TOLERANCE): { leverage: BullpenLines['leverage']; rescaled: boolean } {
+  if (leagueMean === null || !(leagueMean > 0) || Math.abs(leagueMean - 1) <= tolerance) return { leverage: { ...LEVERAGE }, rescaled: false };
+  const r = (x: number) => Math.round(x * leagueMean * 1000) / 1000;
+  return { leverage: { closer: r(LEVERAGE.closer), high: r(LEVERAGE.high), low: r(LEVERAGE.low) }, rescaled: true };
+}
 
 export type BullpenTier = 'closer' | 'high_leverage' | 'middle' | 'low_leverage' | 'long' | 'unknown';
 export type Stakes = 'high' | 'medium' | 'low';
@@ -67,16 +115,16 @@ const TIER_WORD: Record<BullpenTier, string> = {
 };
 const STAKES: Record<BullpenTier, Stakes | null> = { closer: 'high', high_leverage: 'high', middle: 'medium', low_leverage: 'low', long: 'low', unknown: null };
 
-export function roleOf(u: BullpenUsage): BullpenRole {
+export function roleOf(u: BullpenUsage, lines: BullpenLines): BullpenRole {
   if (u.g < MIN_APPEARANCES || u.leverage === null) {
     return { tier: 'unknown', stakes: null, text: u.g < MIN_APPEARANCES ? `Only ${u.g} appearances, too few to read a role from usage.` : 'The export carries no leverage for him.' };
   }
   const perApp = u.g > 0 ? u.ip / u.g : 0;
   let tier: BullpenTier;
-  if (u.leverage >= LEVERAGE.closer && u.sv > 0) tier = 'closer';
-  else if (u.leverage >= LEVERAGE.high) tier = 'high_leverage';
-  else if (perApp >= LONG_INNINGS) tier = 'long';
-  else if (u.leverage < LEVERAGE.low) tier = 'low_leverage';
+  if (u.leverage >= lines.leverage.closer && u.sv > 0) tier = 'closer';
+  else if (u.leverage >= lines.leverage.high) tier = 'high_leverage';
+  else if (perApp >= lines.long) tier = 'long';
+  else if (u.leverage < lines.leverage.low) tier = 'low_leverage';
   else tier = 'middle';
   const bits = [`leverage ${u.leverage.toFixed(2)}`, `${perApp.toFixed(1)} innings per appearance`, ...(u.sv > 0 ? [`${u.sv} save${u.sv === 1 ? '' : 's'}`] : []), ...(u.hld > 0 ? [`${u.hld} hold${u.hld === 1 ? '' : 's'}`] : [])];
   return { tier, stakes: STAKES[tier], text: `Used as a ${TIER_WORD[tier]} (${bits.join(', ')}).` };
@@ -142,7 +190,7 @@ export interface PenFinding {
 
 export interface PenArm { playerId: number; name: string; tier: BullpenTier; estimate: number | null; ipPerAppearance?: number | null }
 
-export function penFindings(arms: PenArm[]): PenFinding[] {
+export function penFindings(arms: PenArm[], lines: BullpenLines): PenFinding[] {
   const read = arms.filter((a) => a.tier !== 'unknown');
   if (read.length < MIN_READ_ARMS) return [];
   const out: PenFinding[] = [];
@@ -163,12 +211,12 @@ export function penFindings(arms: PenArm[]): PenFinding[] {
   }
 
   // Multi-inning coverage: with enough roles read, does anybody actually work multiple innings?
-  const multi = read.filter((a) => a.tier === 'long' || (a.ipPerAppearance ?? 0) >= LONG_INNINGS);
+  const multi = read.filter((a) => a.tier === 'long' || (a.ipPerAppearance ?? 0) >= lines.multiInning);
   if (multi.length === 0) {
     const top = [...read].filter((a) => a.ipPerAppearance != null).sort((a, b) => (b.ipPerAppearance as number) - (a.ipPerAppearance as number))[0];
     out.push({
       kind: 'no_multi_inning',
-      current: `No reliever works ${LONG_INNINGS} or more innings an appearance${top ? ` (the most is ${top.name}, ${(top.ipPerAppearance as number).toFixed(1)})` : ''}.`,
+      current: `No reliever works ${lines.multiInning} or more innings an appearance${top ? ` (the most is ${top.name}, ${(top.ipPerAppearance as number).toFixed(1)})` : ''}.`,
       supported: 'A pen usually has one arm who takes the innings after a short start or in extra innings.',
       why: 'When a starter leaves early, the innings fall on the arms who pitch one inning at a time: the same few, on consecutive days.',
       players: top ? [brief(top)] : [],

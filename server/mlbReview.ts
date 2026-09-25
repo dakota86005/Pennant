@@ -21,7 +21,7 @@ import { estimateOf, reviewGroup, type HolderReview, type LensEvidence, type Rev
 import { flagShading, readContext, type ContextRead, type OrganizationContext } from './staffPreference.js';
 import { standardsFrom, type RoleStandardsSet } from './roleStandards.js';
 import { explainFlag } from './mlbExplain.js';
-import { deploymentFindings, penFindings, roleOf as bullpenRoleOf, starterConflicts, type DeploymentFinding, type PenFinding } from './bullpenRoles.js';
+import { deploymentFindings, penFindings, roleOf as bullpenRoleOf, starterConflicts, type BullpenLines, type DeploymentFinding, type PenFinding } from './bullpenRoles.js';
 import { reviewBench, type BenchReview, type CoverRead } from './benchReview.js';
 
 export interface ReviewPorts {
@@ -45,6 +45,11 @@ export interface ReviewPorts {
    * and checked, else the built-in starting values. Absent, the starting values.
    */
   calibration?: { standards: RoleStandardsSet; review: ReviewCalibration } | null;
+  /**
+   * The bullpen's lines in force for this save (D-053, cycle 3): the leverage cut-offs on the league's own scale and the long-man line,
+   * the same ones the reliever standards were measured under. Required: the review never reads a reliever's role under a default.
+   */
+  bullpen: BullpenLines;
 }
 
 const STARTING_SET = standardsFrom();
@@ -84,7 +89,7 @@ export function reviewClub(view: ClubView, ports: ReviewPorts): RoleGroupReview[
     // A reliever's role is what his usage shows: it says how much a weak line costs, and whether the arms are where the estimates say they belong.
     const roles = new Map(reviewed.map((m) => {
       const b = evidence.get(m.playerId)?.bullpen;
-      return [m.playerId, kind === 'relief_pitcher' && b ? bullpenRoleOf({ playerId: m.playerId, name: m.name, g: b.g, ip: b.ip, sv: b.sv, hld: b.hld, leverage: b.leverage }) : null] as const;
+      return [m.playerId, kind === 'relief_pitcher' && b ? bullpenRoleOf({ playerId: m.playerId, name: m.name, g: b.g, ip: b.ip, sv: b.sv, hld: b.hld, leverage: b.leverage }, ports.bullpen) : null] as const;
     }));
     // ...and the standard a pitcher is judged against is his job's: any rotation member, or a reliever of the tier his usage shows.
     const set = standardsOf(ports);
@@ -100,7 +105,7 @@ export function reviewClub(view: ClubView, ports: ReviewPorts): RoleGroupReview[
         pen: penFindings(reviews.map((r) => {
           const b = evidence.get(r.playerId)?.bullpen;
           return { playerId: r.playerId, name: r.name, tier: roles.get(r.playerId)?.tier ?? 'unknown', estimate: r.estimate.value, ipPerAppearance: b && b.g > 0 ? b.ip / b.g : null };
-        })),
+        }), ports.bullpen),
       } : {}),
     });
   }
