@@ -13,6 +13,7 @@ import { onCalibrationRecorded } from './saveCalibration.js';
 import { completedThrough, leagueGameDate } from './saveIdentity.js';
 import { standardsFrom, type RoleStandardsSet } from './roleStandards.js';
 import type { ReviewCalibration } from './roleReview.js';
+import { RESULTS_PRIOR, type ResultsParams } from './resultsMetrics.js';
 import {
   AGING_METHOD, DEFENSE_METHOD, MLB_CALIBRATION_SUBSYSTEM, STANDARDS_METHOD,
   type AgingModel, type DefenseModel, type StandardsModel,
@@ -46,6 +47,8 @@ export interface RosterReviewCalibration {
   leagueId: number | null;
   standards: RoleStandardsSet;
   review: ReviewCalibration;
+  /** The results lens's season weights and stabilization in force: the save's own where adopted, else the starting values. */
+  results: ResultsParams;
   groups: YardstickGroup[];
   /** The one visible line. */
   line: string;
@@ -214,6 +217,7 @@ function assemble(
     leagueId,
     standards: standardsFrom(standards?.model.served),
     review: { aging: aging?.model.table ?? null, defenseWeights: defense?.model.weights ?? null },
+    results: RESULTS_PRIOR,
     groups, line, tip,
   };
 }

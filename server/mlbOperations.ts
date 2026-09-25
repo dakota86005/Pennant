@@ -26,6 +26,7 @@ import { deadlineRead } from './posture.js';
 import { readContext, type ContextRead, type OrganizationContext } from './staffPreference.js';
 import { rightsFor } from './playerContext.js';
 import { philosophyForOrg } from './settings.js';
+import type { ResultsParams } from './resultsMetrics.js';
 import { rosterReviewCalibration, type RosterReviewCalibration, type YardstickGroup } from './mlbCalibration.js';
 import { majorLeagueId } from './resultsEvidence.js';
 
@@ -56,17 +57,20 @@ function realPorts(orgId: number, floors: CoverageFloors = DEFAULT_COVERAGE_FLOO
   const philosophy = resolvePhilosophy(philosophyForOrg(orgId));
   const status = getDataStatus();
   let farm: FarmSession | null = null;
+  // One set of yardsticks per request: every holder read (review, responses, plans, scenarios, report) and every platoon read uses
+  // the same results params in force (D-053, cycle 2)
+  const yardsticks = yardsticksFor(orgId);
   return {
     floors,
-    reviewCalibration: yardsticksFor(orgId).review,
+    reviewCalibration: yardsticks.review,
     rights: (ids) => rightsFor(ids, status),
     development: (ids, context) => mlbAssignmentAssessments(orgId, context, ids),
     crossRole: crossRoleSupport,
     roleFit: (id) => roleFitEvidence(id, orgId),
-    holderEvidence: (ids, role, opts) => holderEvidence(orgId, ids, role, opts),
+    holderEvidence: (ids, role, opts) => holderEvidence(orgId, ids, role, opts ?? {}, yardsticks.results),
     hitterUsage: (ids) => hitterUsage(orgId, ids),
     teamGames: () => teamGamesPlayed(orgId),
-    platoon: (ids) => platoonInputs(orgId, ids),
+    platoon: (ids) => platoonInputs(orgId, ids, yardsticks.results),
     performance: performanceLine,
     // A failure inside Minor League Operations' evaluator leaves the farm consequence unknown; it never fails the packet.
     // One farm session per request: the organization is read once however many candidates are asked about.
@@ -83,13 +87,15 @@ function realPorts(orgId: number, floors: CoverageFloors = DEFAULT_COVERAGE_FLOO
 }
 
 /** The scouting review's evidence, through the same specialists: lenses, usage, splits. */
-export function reviewPorts(orgId: number): ReviewPorts {
+export function reviewPorts(orgId: number, override?: { results?: ResultsParams }): ReviewPorts {
   const yardsticks = yardsticksFor(orgId);
+  // The refit may measure the standards under the results params about to be recorded (what is checked is what is served)
+  const results = override?.results ?? yardsticks.results;
   return {
     calibration: { standards: yardsticks.standards, review: yardsticks.review },
-    holderEvidence: (ids, role) => holderEvidence(orgId, ids, role),
+    holderEvidence: (ids, role) => holderEvidence(orgId, ids, role, {}, results),
     hitterUsage: (ids) => hitterUsage(orgId, ids),
-    platoon: (ids) => platoonInputs(orgId, ids),
+    platoon: (ids) => platoonInputs(orgId, ids, results),
     teamGames: () => teamGamesPlayed(orgId),
     covers: (ids) => playableCovers(ids),
     coverReads: (ids) => coverReads(orgId, ids),

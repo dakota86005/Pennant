@@ -1,5 +1,6 @@
 import { db, tableColumns, tableExists } from './db.js';
 import { provisional, type CalibrationStamp } from './calibration.js';
+import { STEAL_RUNS_FALLBACK } from './resultsMetrics.js';
 
 /**
  * League-relative statistics (OPS+, wRC+, ERA+) need a league baseline and a
@@ -16,8 +17,7 @@ const W = { bb: 0.69, hbp: 0.72, single: 0.88, double: 1.25, triple: 1.58, hr: 2
  * (cycle 2, D-053: a derivation of the run environment, like the league's wOBA itself).
  */
 export const WOBA_SCALE_FALLBACK = 1.2;
-/** PROVISIONAL (the fallback only). The run value of a stolen base (the convention's constant) and of a caught stealing. */
-export const STEAL_RUNS_FALLBACK = { sb: 0.2, cs: -0.4 } as const;
+export { STEAL_RUNS_FALLBACK };
 /** POLICY. Fewest plate appearances in a league-season before its own run environment is derived. */
 export const RUN_ENVIRONMENT_MIN_PA = 10000;
 

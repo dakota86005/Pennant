@@ -24,7 +24,8 @@ describe('the calibration refit after an import', () => {
 describe('the roster review refit reads no assumed schedule', () => {
   it('a past season whose schedule is not established is skipped with its reason, never held to 162 games', async () => {
     const { resultsLensSeason } = await import('../server/mlbCalibrationRefit');
-    const s = resultsLensSeason(100, 1901);
+    const { RESULTS_PRIOR } = await import('../server/resultsMetrics');
+    const s = resultsLensSeason(100, 1901, RESULTS_PRIOR);
     expect('skip' in s && s.skip).toMatch(/schedule is not established/);
   });
 });

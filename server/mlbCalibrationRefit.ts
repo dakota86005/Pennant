@@ -15,7 +15,8 @@
 import { db, tableColumns, tableExists } from './db.js';
 import { leagueBaseline } from './stats.js';
 import { battingHistory, pitchingHistory, seasonEnvironments } from './resultsEvidence.js';
-import { percentileAmong, POPULATION_MINIMUM, SEASON_WEIGHTS, weightedBatting, weightedPitching, wobaOf } from './resultsMetrics.js';
+import { percentileAmong, POPULATION_MINIMUM, weightedBatting, weightedPitching, wobaOf, type ResultsParams } from './resultsMetrics.js';
+import { rosterReviewCalibration } from './mlbCalibration.js';
 import { PITCHER_RESULTS_MIX } from './roleReview.js';
 import { REGULAR_SHARE } from './lineupPicture.js';
 import { hitterKey, relieverKey, STARTER_KEY } from './roleStandards.js';
@@ -56,8 +57,8 @@ function gamesPlayed(teamId: number): number | null {
   return typeof row?.g === 'number' && Number.isFinite(row.g) ? row.g : null;
 }
 
-/** Every club of the league reviewed as it stands: each holder's role, working estimate, bat and lenses. */
-export function standardsSample(leagueId: number): StandardsSample {
+/** Every club of the league reviewed as it stands, under the results params given: each holder's role, working estimate, bat and lenses. */
+export function standardsSample(leagueId: number, results: ResultsParams): StandardsSample {
   if (!has('teams', ['team_id', 'league_id', 'level'])) return { clubs: [] };
   // The league's own clubs (all-star sides excluded, as everywhere), at its top level
   const own = leagueClubs(leagueId);
@@ -65,7 +66,7 @@ export function standardsSample(leagueId: number): StandardsSample {
     .filter((t) => own.has(t.team_id));
   const clubs: StandardsSample['clubs'] = [];
   for (const t of teams) {
-    const ports = reviewPorts(t.team_id);
+    const ports = reviewPorts(t.team_id, { results });
     const groups = reviewClub(loadClubView(t.team_id), ports);
     const lineup = groups.find((g) => g.role === 'lineup regular');
     if (!lineup || lineup.holders.length < 5) continue;
@@ -92,7 +93,7 @@ export const HISTORY_RELIEVER_POOL = 'rel:pool';
  * designated-hitter starts are batting starts less fielding starts), each club's rotation (top five by starts, 8 or more) and its
  * relievers (20 or more games, starts at most a fifth of them), each ranked as the review ranks results at a season's end.
  */
-export function resultsLensSeason(leagueId: number, t: number): ResultsLensSeason | { skip: string } {
+export function resultsLensSeason(leagueId: number, t: number, results: ResultsParams): ResultsLensSeason | { skip: string } {
   const level = levelOf(leagueId);
   const holders: ResultsLensSeason['holders'] = [];
   // The season's schedule, games per club (the standings, else the lines): never an assumed length (D-018)
@@ -118,7 +119,7 @@ export function resultsLensSeason(leagueId: number, t: number): ResultsLensSeaso
   const values = new Map<number, number>();
   const population: number[] = [];
   for (const [id, lines] of battingHistory(ids, leagueId, t)) {
-    const w = weightedBatting(lines, env, t);
+    const w = weightedBatting(lines, env, t, results.weights.hitter);
     if (w.value !== null && w.sample >= POPULATION_MINIMUM.hitter) { values.set(id, w.value); population.push(w.value); }
   }
   for (const [key, v] of slots) {
@@ -134,14 +135,14 @@ export function resultsLensSeason(leagueId: number, t: number): ResultsLensSeaso
     const g = lines.reduce((n, l) => n + l.g, 0);
     const gs = lines.reduce((n, l) => n + l.gs, 0);
     const usage = g > 0 && gs / g >= 0.5 ? 'starter' : 'reliever';
-    const w = weightedPitching(lines, env, t, SEASON_WEIGHTS[usage]);
+    const w = weightedPitching(lines, env, t, results.weights[usage]);
     if (w.skills.value === null || w.runs.value === null || w.skills.sample < POPULATION_MINIMUM.pitcher) continue;
     pops[usage].sk.push(w.skills.value); pops[usage].ru.push(w.runs.value);
   }
   const lens = (id: number, usage: 'starter' | 'reliever'): number | null => {
     const lines = history.get(id);
     if (!lines) return null;
-    const w = weightedPitching(lines, env, t, SEASON_WEIGHTS[usage]);
+    const w = weightedPitching(lines, env, t, results.weights[usage]);
     if (w.skills.value === null || w.runs.value === null || w.skills.sample < POPULATION_MINIMUM.pitcher) return null;
     const p = pops[usage];
     return PITCHER_RESULTS_MIX.skills * (percentileAmong(p.sk, w.skills.value, false) as number) + PITCHER_RESULTS_MIX.runs * (percentileAmong(p.ru, w.runs.value, false) as number);
@@ -157,7 +158,7 @@ export function resultsLensSeason(leagueId: number, t: number): ResultsLensSeaso
 }
 
 /** The league's last completed full seasons on the results lens: enough for the history check's origins and the season after each. */
-export function resultsLensHistory(leagueId: number, through: number | null): { seasons: ResultsLensSeason[]; skipped: Array<{ season: number; reason: string }> } {
+export function resultsLensHistory(leagueId: number, through: number | null, results: ResultsParams): { seasons: ResultsLensSeason[]; skipped: Array<{ season: number; reason: string }> } {
   if (through === null) return { seasons: [], skipped: [] };
   const policy = ROSTER_REVIEW_FIT_POLICY.standards;
   const full = fullSeasons(leagueId, through, policy.history.minShare);
@@ -166,7 +167,7 @@ export function resultsLensHistory(leagueId: number, through: number | null): { 
   // Only the short seasons inside the span read are named (the league's whole history is not the check's)
   const skipped = full.skipped.filter((x) => considered.length > 0 && x.season >= considered[0]);
   for (const t of considered) {
-    const s = resultsLensSeason(leagueId, t);
+    const s = resultsLensSeason(leagueId, t, results);
     if ('skip' in s) skipped.push({ season: t, reason: s.skip });
     else if (s.holders.length === 0) skipped.push({ season: t, reason: 'no holders could be read from its lines' });
     else out.push(s);
@@ -269,11 +270,17 @@ export function defenseSeasons(leagueId: number, through: number): DefenseSeason
 
 const need = (b: CalibrationBasis) => b.throughSeason;
 
+/** The results params the standards are measured under: the ones in force for the league. */
+function resultsParamsFor(leagueId: number): ResultsParams {
+  return rosterReviewCalibration(leagueId).results;
+}
+
 registerCalibration({
   subsystem: MLB_CALIBRATION_SUBSYSTEM, component: 'standards', method: STANDARDS_METHOD, trigger: 'each_import',
   compute: (b) => {
-    const history = resultsLensHistory(b.leagueId, b.throughSeason);
-    return measureStandards(standardsSample(b.leagueId), history.seasons, b, undefined, undefined, history.skipped);
+    const results = resultsParamsFor(b.leagueId);
+    const history = resultsLensHistory(b.leagueId, b.throughSeason, results);
+    return measureStandards(standardsSample(b.leagueId, results), history.seasons, b, undefined, undefined, history.skipped);
   },
 });
 

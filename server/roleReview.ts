@@ -29,7 +29,7 @@
 
 import type { BullpenTier } from './bullpenRoles.js';
 import { policy, provisional, type CalibrationStamp } from './calibration.js';
-import { reliability, STABILIZATION } from './resultsMetrics.js';
+import { reliability, RESULTS_PRIOR } from './resultsMetrics.js';
 import type { RoleStandard } from './roleStandards.js';
 import type { ToolContribution } from './toolsModel.js';
 import { MEANINGFUL_GAP, ordinal } from './roleStanding.js';
@@ -142,6 +142,11 @@ export interface DefenseLens {
   /** Runs per 1300 innings behind that percentile, and the innings it rests on. */
   resultsPer1300?: number | null;
   resultsInnings?: number;
+  /**
+   * Innings at which his fielding results are half-reliable, under the params in force (D-053; `mlbEvidence` always sets it). Absent
+   * only in a hand-built case, where the starting value serves.
+   */
+  stabilization?: number;
 }
 
 /** A hitter's baserunning: what his running ratings imply and what he has done. */
@@ -154,6 +159,8 @@ export interface RunningLens {
   resultsPct: number | null;
   perSixHundred: number | null;
   sample: number;
+  /** Plate appearances at which his baserunning results are half-reliable, under the params in force (as `DefenseLens.stabilization`). */
+  stabilization?: number;
 }
 
 export interface LensEvidence {
@@ -227,12 +234,12 @@ function blendDimension(tools: number | null, results: number | null, sample: nu
 
 export function defenseValue(d: DefenseLens | undefined): { value: number; weightOnResults: number } | null {
   if (!d) return null;
-  return blendDimension(d.visible ? d.pct : null, d.resultsPct ?? null, d.resultsInnings ?? 0, STABILIZATION.defense, DEFENSE_INFORMATION);
+  return blendDimension(d.visible ? d.pct : null, d.resultsPct ?? null, d.resultsInnings ?? 0, d.stabilization ?? RESULTS_PRIOR.stabilization.defense, DEFENSE_INFORMATION);
 }
 
 export function runningValue(r: RunningLens | undefined): { value: number; weightOnResults: number } | null {
   if (!r) return null;
-  return blendDimension(r.toolsPct, r.resultsPct, r.sample, STABILIZATION.baserunning, RUNNING_INFORMATION);
+  return blendDimension(r.toolsPct, r.resultsPct, r.sample, r.stabilization ?? RESULTS_PRIOR.stabilization.baserunning, RUNNING_INFORMATION);
 }
 
 /**
