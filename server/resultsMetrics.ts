@@ -29,19 +29,19 @@
  * on the league's own seasons (`mlbResultsFit.ts`) and serves them only where they are clearly better than the starting values on
  * held-out seasons (`calibrationDetector.ts`); otherwise the starting values below serve, and say so. They arrive here as ARGUMENTS
  * (`ResultsParams`): no function reads a default, so no consumer can silently use the starting values. `RESULTS_PRIOR` is the
- * provisional fallback (run 1, the Arizona import's 2003-2025). The tools information, the park share and the value of a stolen base
- * stay provisional; the peer-population minimum is policy. Every result carries `calibration`.
+ * provisional fallback (run 1, the Arizona import's 2003-2025). The tools weight (how much the tools hold the results back, cycle 4), the park
+ * share and the value of a stolen base stay provisional; the peer-population minimum is policy. Every result carries `calibration`.
  */
 
 import { provisional, type CalibrationStamp } from './calibration.js';
 
 export const RESULTS_CALIBRATION: CalibrationStamp = provisional(
-  'Season weights and stabilization: the save\'s own where they were clearly better on its held-out seasons (the roster review\'s yardsticks say which), else the starting values fitted by run 1 on the Arizona import\'s 2003-2025 history. The tools information, the park share and a stolen base\'s value are provisional (see PROVISIONAL_PARTS).'
+  'Season weights and stabilization: the save\'s own where they were clearly better on its held-out seasons (the roster review\'s yardsticks say which), else the starting values fitted by run 1 on the Arizona import\'s 2003-2025 history. The tools weight, the park share and a stolen base\'s value are provisional (see PROVISIONAL_PARTS).'
 );
 
 /** What in this module is NOT yet tuned against outcomes, so no stamp overstates it. */
 export const PROVISIONAL_PARTS: CalibrationStamp = provisional(
-  'The share of true talent the tools explain (one rating snapshot: it needs ratings a completed season before the results, cycle 4), the share of a park run factor that reaches wOBA (measured about 0.52 on the Arizona import from club runs, but the park factor it multiplies is not per season), and the run value of a stolen base (the convention\'s constant). Baserunning and defensive stabilization are judged only once the export carries UBR or zone rating for 10 completed seasons (the first held-out season comes 5 seasons into the window, and the detector needs 4 held-out seasons, each with the season after it).'
+  'How much the visible tools hold a player\'s results back (the tools weight: K alone until a save checks its ratings as a forecast, which needs ratings stored before a season and that season\'s results, `tools-1`), the share of a park run factor that reaches wOBA (measured about 0.52 on the Arizona import from club runs, but the park factor it multiplies is not per season), and the run value of a stolen base (the convention\'s constant). Baserunning and defensive stabilization are judged only once the export carries UBR or zone rating for 10 completed seasons (the first held-out season comes 5 seasons into the window, and the detector needs 4 held-out seasons, each with the season after it).'
 );
 
 export type ResultsKind = 'hitter' | 'starter' | 'reliever';
@@ -54,6 +54,13 @@ export type ResultsKind = 'hitter' | 'starter' | 'reliever';
 export interface ResultsParams {
   weights: Record<ResultsKind, readonly number[]>;
   stabilization: Record<ResultsKind | 'baserunning' | 'defense', number>;
+  /**
+   * How much the visible tools hold the results back when both are known: the sample at which results and tools count equally is
+   * `stabilization[kind] × toolsWeight[kind]` (`blendStabilization`). At least 1: knowing a player's tools can only make his results
+   * count LESS against them, never more (cycle 4 fixed a blend that pointed the other way). 1 is the starting value (the tools pull only by
+   * the results' own K, Player Value's owner-approved rule for same-time ratings) until a save's own ratings are checked as a forecast.
+   */
+  toolsWeight: Record<ResultsKind, number>;
   /** What these values are: `provisional` for the starting values, `calibrated` with the save's run record for its own (D-041). */
   stamp: CalibrationStamp;
 }
@@ -66,24 +73,24 @@ export interface ResultsParams {
 export const RESULTS_PRIOR: ResultsParams = {
   weights: { hitter: [5, 3, 3], starter: [5, 3, 1], reliever: [5, 3, 2] },
   stabilization: { hitter: 500, starter: 700, reliever: 500, baserunning: 550, defense: 1000 },
+  toolsWeight: { hitter: 1, starter: 1, reliever: 1 },
   stamp: provisional('The starting season weights and stabilization: run 1\'s backtest on the Arizona import\'s 2003-2025 history (docs/CALIBRATION.md sections 1-2), the fallback wherever a save\'s own are not clearly better.'),
 };
 
 /** A stable key for a set of params (caches keyed by it never serve one set's populations under another). */
-export const resultsParamsKey = (p: ResultsParams): string => JSON.stringify([p.weights.hitter, p.weights.starter, p.weights.reliever, p.stabilization]);
+export const resultsParamsKey = (p: ResultsParams): string => JSON.stringify([p.weights.hitter, p.weights.starter, p.weights.reliever, p.stabilization, p.toolsWeight]);
 
 /**
- * PROVISIONAL. How much of the true-talent variance the visible tools explain, measured against results from seasons
- * before the ratings were formed (hitters 0.30 to 0.45 depending on the window, pitchers 0.16 to 0.27). When tools are
- * known too, results are shrunk toward what the tools imply, not toward the league average, so the sample needed to
- * trust the results is smaller by this share: `K * (1 - information)`. Not fittable on a save with one rating snapshot; it
- * describes the tools model, and is fitted with it (cycle 4).
+ * The sample at which results and tools count equally when BOTH are known, under the params in force: the results' own K times the
+ * tools weight (at least 1).
+ *
+ * Before cycle 4 this was `K × (1 − information)`, information being the share of true talent the tools explain (0.4 hitters, 0.2
+ * pitchers). That points the wrong way: the more the tools explain, the less is left for the results to find, so the results should
+ * count LESS (the Bayesian blend is `K ÷ (1 − information)`), and the old form made them count more. A weight of at least 1 has no
+ * direction to get wrong. On the one season OOTP simulated from the Arizona import's ratings, the tools alone predicted a hitter's
+ * results best, and the old 300 plate appearances did worst of the three choices tried (docs/CALIBRATION.md section 15).
  */
-export const TOOLS_INFORMATION = { hitter: 0.4, starter: 0.2, reliever: 0.2 } as const;
-
-
-/** The sample at which results and tools count equally when BOTH are known, under the params in force. */
-export const blendStabilization = (kind: ResultsKind, params: ResultsParams): number => params.stabilization[kind] * (1 - TOOLS_INFORMATION[kind]);
+export const blendStabilization = (kind: ResultsKind, params: ResultsParams): number => params.stabilization[kind] * Math.max(1, params.toolsWeight[kind]);
 
 /** PROVISIONAL. The share of a park's run-factor deviation that reaches a hitter's wOBA. Runs scale roughly with the square of on-base and slugging, so about half. */
 export const PARK_WOBA_SHARE = 0.5;

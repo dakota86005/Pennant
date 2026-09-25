@@ -224,6 +224,7 @@ else {
   const counter: ResultsParams = {
     weights: { hitter: own('hitter').weights, starter: own('starter').weights, reliever: own('reliever').weights },
     stabilization: { ...RESULTS_PRIOR.stabilization, hitter: own('hitter').k, starter: own('starter').k, reliever: own('reliever').k },
+    toolsWeight: RESULTS_PRIOR.toolsWeight,
     stamp: RESULTS_PRIOR.stamp,
   };
   const rd = reviewAll(C, counter);
