@@ -92,7 +92,7 @@ export const CONCERN = {
   groupGap: MEANINGFUL_GAP,
   /**
    * Below this trust in his results AS HIS LEVEL (the results' own K, never the blend with his tools) the read is "too early", not a
-   * finding. Decoupled from the tools weight in cycle 4 (supervisor's call, pending owner review): how much the tools hold results back
+   * finding. Decoupled from the tools weight in cycle 4 (supervisor's call, approved by the owner 2026-09-25): how much the tools hold results back
    * must not decide when there is enough sample to judge. Set so the line keeps the sample it meant before cycle 4 (0.35 of the old
    * blend at K × 0.6 for hitters and K × 0.8 for pitchers: 162 PA for a hitter, 302 BF for a starter and 215 for a reliever under the
    * starting K), which against the results' own K is exactly 105/430 for hitters (161.5 PA at K 500) and 196/651 for pitchers (301.5 BF
@@ -103,7 +103,7 @@ export const CONCERN = {
   /**
    * At or above this trust in his results AS HIS LEVEL the read is FIRM: a recommendation can be given high confidence, a strong case
    * goes to a response rather than to "keep watching", and "more sample would firm it up" is no longer said. Decoupled from the tools
-   * weight in cycle 4 exactly as `tooEarly` was (review finding B1, supervisor's call, pending owner review): it keeps the sample it
+   * weight in cycle 4 exactly as `tooEarly` was (review finding B1, supervisor's call, approved by the owner 2026-09-25): it keeps the sample it
    * meant before (0.6 of the old blend: 450 PA for a hitter, 840 BF for a starter, 600 BF for a reliever under the starting K), which
    * against the results' own K is 9/19 for hitters and 6/11 for pitchers. Policy.
    */
@@ -142,7 +142,7 @@ export const GLOVE_MATTERS = 0.2;
 export const RUNNING_WEIGHT = 0.05;
 
 /**
- * PROVISIONAL (cycle 4; supervisor's call, pending owner review). How much a visible glove grade, or visible running ratings, hold the
+ * PROVISIONAL (cycle 4; supervisor's call, approved by the owner 2026-09-25). How much a visible glove grade, or visible running ratings, hold the
  * results back when both are known: the sample at which results and grade count equally is the results' own stabilization times this
  * weight, at least 1. Before cycle 4 these were an "information" share used as `K × (1 − information)` (glove 0.4, running 0.43), which
  * made the results count MORE the more the grade explained: the wrong direction (the Bayesian blend is `K ÷ (1 − information)`). The

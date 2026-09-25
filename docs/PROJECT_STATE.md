@@ -900,7 +900,7 @@ Present on `main` (D-024; design and audit in
   - The wOBA scale and a caught stealing's value are derived per league-season in `leagueBaseline` (1.2 and -0.4 only as the
     labelled fallback), so minor-league wRC+ is on its own run environment.
 - **The tools model, the blend and the ceiling lines, per save (D-053 amendment, cycle 4, 2026-09-25; CALIBRATION.md section 15;
-  supervisor's calls pending owner review):**
+  supervisor's calls, approved by the owner 2026-09-25):**
   - The results-against-tools blend pointed the wrong way (K × (1 − information)); it is K × a tools weight of at least 1, starting
     at 1, for the bat, the glove and running. "Too early to judge" reads the results' own trust (0.244 hitters, 0.301 pitchers).
   - The tools model's slopes are passed as the params in force (one reader for MLB Operations and the Lineup page); the bat slopes and
@@ -913,8 +913,8 @@ Present on `main` (D-024; design and audit in
     lines and no tier moves. The farm's thresholds table shows the lines in force.
   - On the Arizona import: roster-review flags 21 → 21 with 15 holders changing; Arizona's findings unchanged; no stakes tier, farm
     verdict or retention conclusion moves.
-- **Platoon and the bullpen, per save (D-053 amendment, cycle 3, 2026-09-25; CALIBRATION.md section 14; supervisor's calls
-  pending owner review):**
+- **Platoon and the bullpen, per save (D-053 amendment, cycle 3, 2026-09-25; CALIBRATION.md section 14; supervisor's calls,
+  approved by the owner 2026-09-25):**
   - How much a hitter's own split counts is fitted per save around the league norm (`mlbPlatoonFit.ts`, `platoon-1`) and served
     only where the detector finds it clearly better; around his ratings the starting K and rating weight serve (cycle 4). On the
     Arizona import the starting K held up; no read moves (every regular's platoon ratings are visible).

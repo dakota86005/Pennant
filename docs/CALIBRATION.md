@@ -1211,7 +1211,7 @@ under the asymmetric return too.
 
 ## 14. Platoon and the bullpen, per save (D-053, cycle 3, 2026-09-25)
 
-Every decision below is the **supervisor's call, pending owner review** (the owner was away and authorized best judgment). The
+Every decision below is the **supervisor's call, approved by the owner 2026-09-25** (the owner was away and authorized best judgment). The
 Stage A investigation behind them is on this save (league 203, through 2025, game date 2026-5-16).
 
 | Number | Was | Now | Why |
@@ -1339,7 +1339,7 @@ Stage A investigation behind them is on this save (league 203, through 2025, gam
 
 ## 15. The tools model, the blend and the ceiling lines (D-053, cycle 4, 2026-09-25)
 
-Every decision below is the **supervisor's call, pending owner review** (the owner was away and authorized best judgment). The Stage A
+Every decision below is the **supervisor's call, approved by the owner 2026-09-25** (the owner was away and authorized best judgment). The Stage A
 investigation and the before-and-after report were run on this save (league 203, through 2025, game date 2026-5-16).
 
 **What the export can and cannot say.** Ratings exist for one date. `history.db` holds one snapshot, 2026-5-16, which is also the
