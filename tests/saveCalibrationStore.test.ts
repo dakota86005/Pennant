@@ -51,7 +51,7 @@ describe('the per-save calibration store', () => {
   it('never serves a fit through a season the league has not completed', () => {
     clear();
     recordCalibration({ model: {}, record: record({ passed: true, season: 2030 }) }, { fitMs: 1 });
-    expect(adoptedCalibration(L, 'test', 'thing', 'm-1', 2025)).toBeNull();
+    expect(adoptedCalibration(L, 'test', 'thing', 'm-1', { throughMax: 2025 })).toBeNull();
   });
 
   it('a measurement keyed by game date serves the latest one', () => {
@@ -59,6 +59,26 @@ describe('the per-save calibration store', () => {
     recordCalibration({ model: { d: 'may' }, record: record({ passed: true, season: null, date: '2026-05-16' }) }, { fitMs: 1 });
     recordCalibration({ model: { d: 'june' }, record: record({ passed: true, season: null, date: '2026-06-02' }) }, { fitMs: 1 });
     expect(adoptedCalibration<{ d: string }>(L, 'test', 'thing', 'm-1')!.model.d).toBe('june');
+  });
+
+  it('a reverted save serves its latest measurement at or before its game date, compared as dates', () => {
+    clear();
+    const at = (date: string, passed = true) => recordCalibration({ model: { d: date }, record: record({ passed, season: null, date }) }, { fitMs: 1 });
+    at('2026-5-20');
+    at('2026-6-10');
+    // the save reverted to 2026-5-20 (OOTP writes dates unpadded): the June measurement is later and never served; May's is
+    expect(adoptedCalibration<{ d: string }>(L, 'test', 'thing', 'm-1', { gameDateMax: '2026-5-20' })!.model.d).toBe('2026-5-20');
+    // a date between them, never measured: still May's, not the starting values
+    expect(adoptedCalibration<{ d: string }>(L, 'test', 'thing', 'm-1', { gameDateMax: '2026-6-9' })!.model.d).toBe('2026-5-20');
+    // unpadded dates compare as dates: 2026-6-9 is before 2026-6-10
+    at('2026-6-9');
+    expect(adoptedCalibration<{ d: string }>(L, 'test', 'thing', 'm-1', { gameDateMax: '2026-6-10' })!.model.d).toBe('2026-6-10');
+    // before any measurement, or an unreadable date today: nothing dated is served
+    expect(adoptedCalibration(L, 'test', 'thing', 'm-1', { gameDateMax: '2026-4-1' })).toBeNull();
+    expect(adoptedCalibration(L, 'test', 'thing', 'm-1', { gameDateMax: 'not established' })).toBeNull();
+    // the last attempt shown is never a later export's
+    at('2026-7-1', false);
+    expect(latestCalibrationAttempt(L, 'test', 'thing', 'm-1', { gameDateMax: '2026-6-10' })!.adopted).toBe(true);
   });
 
   it('recording refits computed elsewhere keeps the outcomes and never throws', () => {
@@ -97,7 +117,7 @@ describe('the roster review reads the yardsticks in force', () => {
     const y = rosterReviewCalibration(L);
     expect(y.standards.hitter(3)!.typical).toBe(60);
     expect(y.groups.find((g) => g.key === 'standards')!.source).toBe('save');
-    expect(y.line).toMatch(/Some yardsticks set from this league's own seasons/);
+    expect(y.line).toBe("Some yardsticks are this league's own; others are starting values");
     clear();
     clearRosterReviewCalibrationCache();
   });

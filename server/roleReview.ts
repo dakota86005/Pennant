@@ -28,14 +28,14 @@
  */
 
 import type { BullpenTier } from './bullpenRoles.js';
-import { calibrated, policy, provisional, type CalibrationStamp } from './calibration.js';
+import { policy, provisional, type CalibrationStamp } from './calibration.js';
 import { reliability, STABILIZATION } from './resultsMetrics.js';
 import type { RoleStandard } from './roleStandards.js';
 import type { ToolContribution } from './toolsModel.js';
 import { MEANINGFUL_GAP, ordinal } from './roleStanding.js';
 
 export const REVIEW_CALIBRATION: CalibrationStamp = policy(
-  'The concern thresholds (how low is a concern, how large a gap is a divergence) are policy judgments, not fitted; the pitcher results mix, the aging curve and the defensive and running blends are calibrated or derived (see each declaration).'
+  'The concern thresholds (how low is a concern, how large a gap is a divergence) are policy judgments, not fitted; the pitcher results mix and the running blend are calibrated or derived; the aging curve and the glove weights are the save\'s own once they pass their checks, else provisional fallback priors (see each declaration).'
 );
 
 /**
@@ -53,7 +53,7 @@ export const PITCHER_RESULTS_MIX = { skills: 0.85, runs: 0.15 } as const;
  * worse). Piecewise: the first row whose age the player has reached applies.
  */
 export const AGING_CURVE: CalibrationStamp & { concernAge: number; hitter: ReadonlyArray<readonly [number, number]>; pitcher: ReadonlyArray<readonly [number, number]> } = {
-  ...calibrated('Delta method on consecutive seasons of 300+ PA/BF, ages 22-40, weighted by the smaller sample.'),
+  ...provisional('The fallback prior (D-053, cycle 1): the delta method on consecutive seasons of 300+ PA/BF, ages 22-40, weighted by the smaller sample, on the Arizona import\'s 2000-2025 history (harness section 5). A save serves its own curve once it passes its check; this is never presented as the save\'s own.'),
   concernAge: 34,
   hitter: [[34, -0.0095], [30, -0.0065], [26, -0.003]],
   pitcher: [[35, 0.2], [28, 0.12]],
@@ -408,7 +408,11 @@ export function reviewGroup(holders: ReviewSubject[], opts: { pitcher: boolean; 
       reasons.push(`${parts.join('; ')}.`);
     }
     if (std && margin !== null) {
-      reasons.push(`For ${std.label} the league's typical working estimate is about ${r0(std.typical)}; below ${r0(std.floor)} is unusually weak and below ${r0(std.deepFloor)} well below what the job takes. He is at ${ordinal(value)}, ${margin < 0 ? `${r0(-margin)} under the first line` : `${r0(margin)} above it`}.`);
+      // "This league's" only when the save's own standards are in force; otherwise the starting yardstick is named as such
+      const typicalText = std.source === 'save'
+        ? `In this league, ${std.label} typically work at a working estimate of about ${r0(std.typical)}`
+        : `${std.label.charAt(0).toUpperCase()}${std.label.slice(1)} typically work at a working estimate of about ${r0(std.typical)} (Pennant's starting yardstick)`;
+      reasons.push(`${typicalText}; below ${r0(std.floor)} is unusually weak and below ${r0(std.deepFloor)} well below what the job takes. He is at ${ordinal(value)}, ${margin < 0 ? `${r0(-margin)} under the first line` : `${r0(margin)} above it`}.`);
     }
     if (groupMedian !== null) reasons.push(`Working estimate ${ordinal(value)} percentile of MLB ${opts.role}s${est.basis === 'ratings_and_results' ? ` (${r0(est.weightOnResults * 100)}% results, ${r0((1 - est.weightOnResults) * 100)}% tools)` : est.basis === 'ratings_only' ? ' (tools only: no results to weigh)' : ' (results only: no visible tools)'}; ${isWeakest ? 'the weakest' : `number ${rank}`} of ${known.length} in the group.`);
 
@@ -433,10 +437,11 @@ export function reviewGroup(holders: ReviewSubject[], opts: { pitcher: boolean; 
       const change = Math.abs(signed);
       // A league whose history shows no decline at his age is said so, never "lost about 0" (the save's own fit can show it)
       const declines = opts.pitcher ? signed > 0.005 : signed < -0.0005;
-      if (!declines) explanations.push(`At ${h.age}, age is a risk the ratings and past results may not yet show, though in this league's history ${opts.pitcher ? 'pitchers' : 'hitters'} his age have shown no measurable decline from one season to the next.`);
-      else explanations.push(opts.pitcher
-        ? `At ${h.age}, decline is a risk that the ratings and past results may not yet show: in this league's history pitchers his age have lost about ${change.toFixed(2)} runs per nine a year on peripherals.`
-        : `At ${h.age}, decline is a risk that the ratings and past results may not yet show: in this league's history hitters his age have lost about ${Math.round(change * 1000)} points of wOBA a year.`);
+      // "In this league's history" only when the save's own curve is in force; the starting curve is a general expectation
+      const who = opts.pitcher ? 'pitchers' : 'hitters';
+      const loss = opts.pitcher ? `${change.toFixed(2)} runs per nine a year on peripherals` : `${Math.round(change * 1000)} points of wOBA a year`;
+      if (!declines) explanations.push(`At ${h.age}, age is a risk the ratings and past results may not yet show, though ${aging ? `in this league's history ${who} his age have shown` : `${who} his age usually show`} no measurable decline from one season to the next.`);
+      else explanations.push(`At ${h.age}, decline is a risk that the ratings and past results may not yet show: ${aging ? `in this league's history ${who} his age have lost about ${loss}` : `${who} his age usually lose about ${loss}`}.`);
     }
     if (h.ratingsEvidence !== 'complete' && h.ratingsPct !== null) {
       explanations.push('His visible tool ratings are incomplete, so the tools lens rests on part of the picture.');

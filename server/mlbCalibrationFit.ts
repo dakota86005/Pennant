@@ -194,17 +194,48 @@ function coverageOn(lines: Map<string, { floor: number; deep: number }>, holders
   return out;
 }
 
-function linesOf(m: ReturnType<typeof measureScale>): Map<string, { floor: number; deep: number }> {
+/** The starting value a role's line on a scale is shrunk toward: its typical estimate, or on a lens its typical bat (a hitter) or typical. */
+function startOn(role: string, scale: Scale, prior: ServedStandards): number | null {
+  const p = prior.roles[role];
+  if (!p) return null;
+  return scale === 'estimate' ? p.typical : role.startsWith('pos') ? p.bat ?? p.typical : p.typical;
+}
+
+/** A role's typical on a scale as SERVED: its median shrunk toward the starting value by the holders behind it. */
+function shrunkTypical(m: ReturnType<typeof measureScale>, role: string, scale: Scale, prior: ServedStandards, policyIn: StandardsPolicy): { value: number; weight: number } {
+  const measured = m.typical.get(role) as number;
+  const start = startOn(role, scale, prior);
+  return start === null ? { value: measured, weight: 1 } : shrink(measured, start, m.byRole.get(role)?.length ?? 0, policyIn.shrinkHolders);
+}
+
+/** A group's gaps as SERVED: the pooled deviations shrunk toward the starting gaps by the pooled holders. */
+function shrunkGap(m: ReturnType<typeof measureScale>, g: StandardGroup, prior: ServedStandards, policyIn: StandardsPolicy): { floor: number; deep: number; weight: number } | null {
+  const v = m.gaps.get(g);
+  if (!v) return null;
+  const f = shrink(v.floor, prior.gaps[g].floor, v.n, policyIn.shrinkPooled);
+  return { floor: f.value, deep: shrink(v.deep, prior.gaps[g].deep, v.n, policyIn.shrinkPooled).value, weight: f.weight };
+}
+
+/** The lines a measurement would serve on a scale, shrunk exactly as served, so what is checked is what is served. */
+function servedLines(m: ReturnType<typeof measureScale>, scale: Scale, prior: ServedStandards, policyIn: StandardsPolicy): Map<string, { floor: number; deep: number }> {
   const out = new Map<string, { floor: number; deep: number }>();
-  for (const [role, t] of m.typical) {
-    const gap = m.gaps.get(groupOfRole(role));
-    if (gap) out.set(role, { floor: t + gap.floor, deep: t + gap.deep });
+  for (const role of m.byRole.keys()) {
+    const gap = shrunkGap(m, groupOfRole(role), prior, policyIn);
+    if (!gap) continue;
+    const t = shrunkTypical(m, role, scale, prior, policyIn).value;
+    out.set(role, { floor: t + gap.floor, deep: t + gap.deep });
   }
   return out;
 }
 
-/** The club-split check on one scale: standards measured on half the clubs, shares of the other half's holders under them. */
-export function clubSplitCheck(sample: StandardsSample, scale: Scale, policyIn = ROSTER_REVIEW_FIT_POLICY.standards): CalibrationCheck[] {
+type StandardsPolicy = typeof ROSTER_REVIEW_FIT_POLICY.standards;
+
+/**
+ * The club-split check on one scale: the lines measured on half the clubs, shrunk as they would be served with that half's own
+ * holders, and the shares of the other half's holders under them. The deep line is checked on the estimate scale only (a lens has
+ * no deep line).
+ */
+export function clubSplitCheck(sample: StandardsSample, scale: Scale, policyIn: StandardsPolicy = ROSTER_REVIEW_FIT_POLICY.standards, prior: ServedStandards = STARTING_STANDARDS): CalibrationCheck[] {
   const rnd = generator(policyIn.seed);
   const clubs = sample.clubs;
   const pooled = new Map<StandardGroup, { n: number; floor: number; deep: number }>();
@@ -213,7 +244,7 @@ export function clubSplitCheck(sample: StandardsSample, scale: Scale, policyIn =
     const half = Math.floor(order.length / 2);
     const train = measureScale(order.slice(0, half).flatMap((c) => c.holders), scale, policyIn.minRoleHolders);
     const held = order.slice(half).flatMap((c) => c.holders.map((h) => ({ role: h.role, value: valueOn(h, scale) })));
-    for (const [g, c] of coverageOn(linesOf(train), held)) {
+    for (const [g, c] of coverageOn(servedLines(train, scale, prior, policyIn), held)) {
       const p = pooled.get(g) ?? { n: 0, floor: 0, deep: 0 };
       p.n += c.n; p.floor += c.floor; p.deep += c.deep;
       pooled.set(g, p);
@@ -231,10 +262,12 @@ export function clubSplitCheck(sample: StandardsSample, scale: Scale, policyIn =
 }
 
 /**
- * The history check (results lens): the method run on each past season, scored on the next season's holders. Origins are the last
- * `maxOrigins` seasons with a following season in the list; relievers are one pool (their past roles cannot be rebuilt).
+ * The history check (results lens): the method run on each past season, its lines shrunk as the results lens's are served, scored on
+ * the next season's holders. Origins are the last `maxOrigins` seasons with a following season in the list; relievers are one pool
+ * (their past roles cannot be rebuilt). Past holders are ranked within their own season, so wherever the league's holders are
+ * steady this check is close to guaranteed: in practice it asks that the league has enough past seasons, and that they are steady.
  */
-export function historyCheck(seasons: ResultsLensSeason[], policyIn = ROSTER_REVIEW_FIT_POLICY.standards): { checks: CalibrationCheck[]; origins: number[] } {
+export function historyCheck(seasons: ResultsLensSeason[], policyIn: StandardsPolicy = ROSTER_REVIEW_FIT_POLICY.standards, prior: ServedStandards = STARTING_STANDARDS): { checks: CalibrationCheck[]; origins: number[] } {
   const by = new Map(seasons.map((s) => [s.season, s]));
   const origins = seasons.map((s) => s.season).filter((y) => by.has(y + 1)).sort((a, b) => a - b).slice(-policyIn.history.maxOrigins);
   const pooled = new Map<StandardGroup, { n: number; floor: number; deep: number }>();
@@ -242,7 +275,7 @@ export function historyCheck(seasons: ResultsLensSeason[], policyIn = ROSTER_REV
   for (const t of origins) {
     const train = measureScale(asHolders(by.get(t) as ResultsLensSeason), 'results', policyIn.minRoleHolders);
     const held = (by.get(t + 1) as ResultsLensSeason).holders.map((h) => ({ role: h.role, value: h.value }));
-    for (const [g, c] of coverageOn(linesOf(train), held)) {
+    for (const [g, c] of coverageOn(servedLines(train, 'results', prior, policyIn), held)) {
       const p = pooled.get(g) ?? { n: 0, floor: 0, deep: 0 };
       p.n += c.n; p.floor += c.floor; p.deep += c.deep;
       pooled.set(g, p);
@@ -265,6 +298,10 @@ export interface FitBasis {
   gameDate: string | null;
 }
 
+/**
+ * The gate's verdict. A failure names its kind first (`seasons:`, `no_later_season:`, `clubs`, `games`, ...) so the page can give
+ * the true reason in plain words; a failed check is named by its part.
+ */
 const gateOf = (checks: CalibrationCheck[], extra: string[] = []): CalibrationRecord['gate'] => {
   const failures = [...extra, ...checks.filter((c) => c.passed === false).map((c) => `${c.kind} ${c.part}: ${c.observed === null ? '—' : c.observed.toFixed(3)} against ${c.expected === null ? '—' : c.expected.toFixed(3)}`)];
   return failures.length === 0
@@ -274,72 +311,86 @@ const gateOf = (checks: CalibrationCheck[], extra: string[] = []): CalibrationRe
 
 /**
  * Measure the role standards from the current export's review of every club (`sample`), check them (club split on each scale, the
- * league's history on the results lens) and shrink them toward the starting values by the holders behind each role.
+ * league's history on the results lens, each on the lines as they would be served) and shrink them toward the starting values by
+ * the holders behind each role.
  */
-export function measureStandards(sample: StandardsSample, history: ResultsLensSeason[], basis: FitBasis, prior: ServedStandards = STARTING_STANDARDS, policyIn = ROSTER_REVIEW_FIT_POLICY.standards): CalibrationRun<StandardsModel | null> {
+export function measureStandards(
+  sample: StandardsSample, history: ResultsLensSeason[], basis: FitBasis, prior: ServedStandards = STARTING_STANDARDS,
+  policyIn: StandardsPolicy = ROSTER_REVIEW_FIT_POLICY.standards, historySkipped: Array<{ season: number; reason: string }> = [],
+): CalibrationRun<StandardsModel | null> {
   const clubs = sample.clubs.filter((c) => c.holders.length > 0);
-  const games = median(clubs.map((c) => c.gamesPlayed).filter((g): g is number => g !== null));
+  const known = clubs.map((c) => c.gamesPlayed).filter((g): g is number => g !== null);
+  const games = median(known);
   const holders = clubs.flatMap((c) => c.holders);
-  const window = { seasons: history.map((s) => s.season), skipped: [], sample: holders.length, unit: 'holders' };
+  const window = { seasons: history.map((s) => s.season), skipped: historySkipped, sample: holders.length, unit: 'holders' };
   const record = (model: StandardsModel | null, heldOut: CalibrationCheck[], gate: CalibrationRecord['gate'], priorWeight: CalibrationRecord['priorWeight'], notes: string[]): CalibrationRun<StandardsModel | null> => ({
     model,
     record: { leagueId: basis.leagueId, subsystem: MLB_CALIBRATION_SUBSYSTEM, component: 'standards', method: STANDARDS_METHOD, basis: { throughSeason: null, gameDate: basis.gameDate }, window, heldOut, priorWeight, gate, priorSource: PRIOR_SOURCE.standards, notes },
   });
   const notes = ['Relievers are checked against the league\'s history as one pool: the export carries no leverage for past seasons, so their usage roles cannot be rebuilt.'];
-  if (clubs.length < policyIn.minClubs) {
-    return record(null, [], { passed: false, reason: `Not measured: ${clubs.length} clubs have a reviewed lineup, fewer than ${policyIn.minClubs}.`, failures: ['clubs'] }, { overall: 1, byPart: {} }, notes);
-  }
-  if (games === null || games < policyIn.minGamesPerClub) {
-    return record(null, [], { passed: false, reason: `Not measured: clubs have played ${games ?? 'no'} games this season, fewer than ${policyIn.minGamesPerClub}, too few for usage to name the regulars.`, failures: ['games'] }, { overall: 1, byPart: {} }, notes);
-  }
+  const none = (failure: string, reason: string) => record(null, [], { passed: false, reason, failures: [failure] }, { overall: 1, byPart: {} }, notes);
+  if (clubs.length < policyIn.minClubs) return none('clubs', `Not measured: ${clubs.length} clubs have a reviewed lineup, fewer than ${policyIn.minClubs}.`);
+  if (games === null) return none('games_unknown', "Not measured: the export does not say how many games the clubs have played this season.");
+  if (games < policyIn.minGamesPerClub) return none('games', `Not measured: clubs have played ${games} games this season, fewer than ${policyIn.minGamesPerClub}, too few for usage to name the regulars.`);
+
   const est = measureScale(holders, 'estimate', policyIn.minRoleHolders);
   const bat = measureScale(holders.map((h) => ({ ...h, estimate: h.bat ?? NaN })).filter((h) => Number.isFinite(h.estimate)), 'estimate', policyIn.minRoleHolders);
   const lens = { tools: measureScale(holders, 'tools', policyIn.minRoleHolders), results: measureScale(holders, 'results', policyIn.minRoleHolders) };
 
   const roles: StandardsModel['roles'] = {};
   const servedRoles: ServedStandards['roles'] = {};
-  let weighted = 0;
-  let count = 0;
+  const priorShare = { roles: { w: 0, n: 0 }, tools: { w: 0, n: 0 }, results: { w: 0, n: 0 } };
   for (const [role, xs] of est.byRole) {
+    const t = shrunkTypical(est, role, 'estimate', prior, policyIn);
     const p = prior.roles[role];
-    const n = xs.length;
-    const t = p ? shrink(est.typical.get(role) as number, p.typical, n, policyIn.shrinkHolders) : { value: est.typical.get(role) as number, weight: 1 };
     const b = bat.typical.get(role);
     const bShrunk = b === undefined ? p?.bat : p?.bat !== undefined ? shrink(b, p.bat, bat.byRole.get(role)?.length ?? 0, policyIn.shrinkHolders).value : b;
     servedRoles[role] = { typical: t.value, ...(bShrunk !== undefined ? { bat: bShrunk } : {}) };
-    roles[role] = { n, weight: t.weight, typical: est.typical.get(role) as number, bat: b ?? null, tools: lens.tools.typical.get(role) ?? null, results: lens.results.typical.get(role) ?? null };
-    weighted += (1 - t.weight) * n;
-    count += n;
+    roles[role] = { n: xs.length, weight: t.weight, typical: est.typical.get(role) as number, bat: b ?? null, tools: lens.tools.typical.get(role) ?? null, results: lens.results.typical.get(role) ?? null };
+    priorShare.roles.w += (1 - t.weight) * xs.length;
+    priorShare.roles.n += xs.length;
   }
   for (const [role, p] of Object.entries(prior.roles)) if (!servedRoles[role]) servedRoles[role] = p;
   const gaps = { ...prior.gaps };
   const byPart: Record<string, number> = {};
   for (const g of ['hitter', 'starter', 'reliever'] as StandardGroup[]) {
-    const m = est.gaps.get(g);
-    if (!m) { byPart[`gap:${g}`] = 1; continue; }
-    const f = shrink(m.floor, prior.gaps[g].floor, m.n, policyIn.shrinkPooled);
-    gaps[g] = { floor: f.value, deep: shrink(m.deep, prior.gaps[g].deep, m.n, policyIn.shrinkPooled).value };
-    byPart[`gap:${g}`] = 1 - f.weight;
+    const s = shrunkGap(est, g, prior, policyIn);
+    if (!s) { byPart[`gap:${g}`] = 1; continue; }
+    gaps[g] = { floor: s.floor, deep: s.deep };
+    byPart[`gap:${g}`] = 1 - s.weight;
   }
-  const lensOf = (m: ReturnType<typeof measureScale>): ServedLens => {
+  const lensOf = (m: ReturnType<typeof measureScale>, scale: 'tools' | 'results'): ServedLens => {
     const typical: Record<string, number> = {};
     for (const [role, xs] of m.byRole) {
-      const p = prior.roles[role];
-      const start = p ? (role.startsWith('pos') ? p.bat ?? p.typical : p.typical) : (m.typical.get(role) as number);
-      typical[role] = shrink(m.typical.get(role) as number, start, xs.length, policyIn.shrinkHolders).value;
+      const t = shrunkTypical(m, role, scale, prior, policyIn);
+      typical[role] = t.value;
+      priorShare[scale].w += (1 - t.weight) * xs.length;
+      priorShare[scale].n += xs.length;
     }
     const gap: ServedLens['gap'] = {};
-    for (const [g, v] of m.gaps) gap[g] = shrink(v.floor, prior.gaps[g].floor, v.n, policyIn.shrinkPooled).value;
+    for (const g of m.gaps.keys()) {
+      const s = shrunkGap(m, g, prior, policyIn) as { floor: number; weight: number };
+      gap[g] = s.floor;
+      byPart[`${scale}:gap:${g}`] = 1 - s.weight;
+    }
     return { typical, gap };
   };
-  const served: ServedStandards = { source: 'save', roles: servedRoles, gaps, lenses: { tools: lensOf(lens.tools), results: lensOf(lens.results) } };
+  const served: ServedStandards = { source: 'save', roles: servedRoles, gaps, lenses: { tools: lensOf(lens.tools, 'tools'), results: lensOf(lens.results, 'results') } };
 
-  const hist = historyCheck(history, policyIn);
-  const heldOut = [...clubSplitCheck(sample, 'estimate', policyIn), ...clubSplitCheck(sample, 'tools', policyIn), ...clubSplitCheck(sample, 'results', policyIn), ...hist.checks];
-  const extra = hist.checks.every((c) => c.passed === null) ? ["history: the league's own past seasons could not be checked (too few seasons with results)"] : [];
-  byPart.roles = count > 0 ? weighted / count : 1;
-  const overall = byPart.roles;
-  if (hist.origins.length) notes.push(`The history check used ${hist.origins.length} season${hist.origins.length === 1 ? '' : 's'} (${hist.origins[0]}–${hist.origins[hist.origins.length - 1]}), each scored on the next.`);
+  const hist = historyCheck(history, policyIn, prior);
+  const heldOut = [...clubSplitCheck(sample, 'estimate', policyIn, prior), ...clubSplitCheck(sample, 'tools', policyIn, prior), ...clubSplitCheck(sample, 'results', policyIn, prior), ...hist.checks];
+  const extra = hist.checks.every((c) => c.passed === null) ? ["seasons: the league's own past seasons could not be checked (too few seasons with results)"] : [];
+  for (const k of ['roles', 'tools', 'results'] as const) byPart[k === 'roles' ? 'roles' : `${k}:roles`] = priorShare[k].n > 0 ? priorShare[k].w / priorShare[k].n : 1;
+  // Overall: the typicals, the gaps and each lens's lines alike (each group's share averaged within its kind)
+  const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 1);
+  const overall = avg([
+    byPart.roles,
+    avg(['hitter', 'starter', 'reliever'].map((g) => byPart[`gap:${g}`])),
+    avg([byPart['tools:roles'], ...Object.entries(byPart).filter(([k]) => k.startsWith('tools:gap')).map(([, v]) => v)]),
+    avg([byPart['results:roles'], ...Object.entries(byPart).filter(([k]) => k.startsWith('results:gap')).map(([, v]) => v)]),
+  ]);
+  if (hist.origins.length) notes.push(`The history check used ${hist.origins.length} season${hist.origins.length === 1 ? '' : 's'} (${hist.origins[0]}–${hist.origins[hist.origins.length - 1]}), each scored on the next. It ranks past holders within their own season, so it mostly asks that the league has enough steady past seasons.`);
+  if (historySkipped.length) notes.push(`Past seasons left out of the history check: ${historySkipped.map((s) => `${s.season} (${s.reason})`).join('; ')}.`);
   return record({ served, roles }, heldOut, gateOf(heldOut, extra), { overall, byPart }, notes);
 }
 
@@ -410,8 +461,9 @@ function nonIncreasing(y: number[]): number[] {
  * One kind's curve: the weighted mean change at each age, smoothed by a weighted quadratic in age, shrunk toward the built-in curve by
  * the pairs at each age, and made monotone (a hitter's change never improves with age; a pitcher's never falls).
  */
-export function fitAgingKind(pairs: AgingPair[], pitcher: boolean, policyIn = ROSTER_REVIEW_FIT_POLICY.aging): { values: number[]; cells: Array<{ age: number; n: number; weight: number }> } {
+export function fitAgingKind(pairs: AgingPair[], pitcher: boolean, policyIn = ROSTER_REVIEW_FIT_POLICY.aging, options: { shrink?: boolean } = {}): { values: number[]; cells: Array<{ age: number; n: number; weight: number }> } {
   const { fitAges, tableAges, priorStrength } = policyIn;
+  const shrinkToPrior = options.shrink !== false;
   const cells = new Map<number, { s: number; w: number; n: number }>();
   for (const p of pairs) {
     if (p.age < fitAges.from || p.age > fitAges.to) continue;
@@ -430,20 +482,29 @@ export function fitAgingKind(pairs: AgingPair[], pitcher: boolean, policyIn = RO
     }
   }
   const beta = cells.size >= 3 ? solve(A, B) : null;
-  const ages: number[] = [];
-  for (let a = tableAges.from; a <= tableAges.to; a += 1) ages.push(a);
-  const out = ages.map((age) => {
+  // Fitted over the fit ages only (the monotone projection never pools an age the data does not reach); beyond them the end values hold
+  const fitted: number[] = [];
+  for (let a = fitAges.from; a <= fitAges.to; a += 1) fitted.push(a);
+  const out = fitted.map((age) => {
     const prior = expectedAnnualChange(age, pitcher);
     if (!beta) return { age, value: prior, n: 0, weight: 0 };
-    const x = Math.min(Math.max(age, fitAges.from), fitAges.to) - 30;
+    const x = age - 30;
     const raw = beta[0] + beta[1] * x + beta[2] * x * x;
     const n = cells.get(age)?.n ?? 0;
-    const w = n / (n + priorStrength);
+    // Unshrunk (the backtest's out-of-sample curve): the league's own quadratic at every fitted age
+    const w = shrinkToPrior ? n / (n + priorStrength) : 1;
     return { age, value: w * raw + (1 - w) * prior, n, weight: w };
   });
   const oriented = out.map((o) => (pitcher ? -o.value : o.value));
   const mono = nonIncreasing(oriented).map((v) => (pitcher ? -v : v));
-  return { values: mono, cells: out.map((o) => ({ age: o.age, n: o.n, weight: o.weight })) };
+  const values: number[] = [];
+  const cellsOut: Array<{ age: number; n: number; weight: number }> = [];
+  for (let a = tableAges.from; a <= tableAges.to; a += 1) {
+    const i = Math.min(Math.max(a, fitAges.from), fitAges.to) - fitAges.from;
+    values.push(mono[i]);
+    cellsOut.push(a >= fitAges.from && a <= fitAges.to ? { age: a, n: out[i].n, weight: out[i].weight } : { age: a, n: 0, weight: out[i].weight });
+  }
+  return { values, cells: cellsOut };
 }
 
 /** The built-in curve as a table (the fallback prior, and what a held-out check compares with). */
@@ -456,8 +517,8 @@ export function priorAgingTable(policyIn = ROSTER_REVIEW_FIT_POLICY.aging): Agin
 const tableAt = (t: AgingTable, age: number, pitcher: boolean) => expectedAnnualChange(age, pitcher, t);
 
 /** Held-out bias of a curve on pairs, per age band, with its standard error clustered by player. */
-function bandChecks(held: Array<AgingPair & { predicted: number; prior: number }>, pitcher: boolean, policyIn = ROSTER_REVIEW_FIT_POLICY.aging): CalibrationCheck[] {
-  const kind = pitcher ? 'pitcher' : 'hitter';
+function bandChecks(held: Array<AgingPair & { predicted: number; prior: number }>, pitcher: boolean, policyIn = ROSTER_REVIEW_FIT_POLICY.aging, prefix = ''): CalibrationCheck[] {
+  const kind = `${prefix}${pitcher ? 'pitcher' : 'hitter'}`;
   const tol = pitcher ? policyIn.tolerance.pitcher : policyIn.tolerance.hitter;
   const checks: CalibrationCheck[] = [];
   const biasOf = (hs: typeof held, pick: (p: (typeof held)[number]) => number) => {
@@ -493,12 +554,14 @@ function bandChecks(held: Array<AgingPair & { predicted: number; prior: number }
  */
 export function fitAging(input: AgingInput, basis: FitBasis, policyIn = ROSTER_REVIEW_FIT_POLICY.aging): CalibrationRun<AgingModel | null> {
   const through = basis.throughSeason as number;
-  const inWindow = (p: AgingPair, t: number) => p.season + 1 <= t && p.season >= t - policyIn.windowSeasons;
+  // The window is the last `windowSeasons` completed seasons (t - windowSeasons + 1 ... t): a pair's first season from its start, its second by t
+  const firstOf = (t: number) => t - policyIn.windowSeasons + 1;
+  const inWindow = (p: AgingPair, t: number) => p.season + 1 <= t && p.season >= firstOf(t);
   const served = { hitter: input.hitter.filter((p) => inWindow(p, through)), pitcher: input.pitcher.filter((p) => inWindow(p, through)) };
-  const windowSeasons = input.seasons.filter((s) => s <= through && s >= through - policyIn.windowSeasons);
+  const windowSeasons = input.seasons.filter((s) => s <= through && s >= firstOf(through));
   const sampleN = served.hitter.length + served.pitcher.length;
   const base = { leagueId: basis.leagueId, subsystem: MLB_CALIBRATION_SUBSYSTEM, component: 'aging', method: AGING_METHOD, basis: { throughSeason: through, gameDate: basis.gameDate }, priorSource: PRIOR_SOURCE.aging };
-  const window = { seasons: windowSeasons, skipped: input.skipped.filter((s) => s.season <= through && s.season >= through - policyIn.windowSeasons), sample: sampleN, unit: 'season pairs' };
+  const window = { seasons: windowSeasons, skipped: input.skipped.filter((s) => s.season <= through && s.season >= firstOf(through)), sample: sampleN, unit: 'season pairs' };
   if (served.hitter.length < policyIn.minPairs || served.pitcher.length < policyIn.minPairs) {
     return {
       model: null,
@@ -509,21 +572,36 @@ export function fitAging(input: AgingInput, basis: FitBasis, policyIn = ROSTER_R
   const h = fitAgingKind(served.hitter, false, policyIn);
   const p = fitAgingKind(served.pitcher, true, policyIn);
   const table: AgingTable = { firstAge: policyIn.tableAges.from, hitter: h.values, pitcher: p.values };
-  // rolling origins
-  const candidates = windowSeasons.filter((t) => t >= through - policyIn.windowSeasons + policyIn.originStart && t <= through - 1);
+  // Rolling origins. Each origin's curve is scored twice: as served (shrunk toward the starting curve) and unshrunk. The starting curve
+  // was fitted on one league's history (the Arizona import, 2000-2025); on that league the shrunk curve has already seen the held-out
+  // seasons through it, so its check is not out-of-sample there. The unshrunk curve's check is, and both must pass.
+  const candidates = windowSeasons.filter((t) => t >= firstOf(through) + policyIn.originStart && t <= through - 1);
   const origins = candidates.slice(-policyIn.maxOrigins);
   const prior = priorAgingTable(policyIn);
-  const held = { hitter: [] as Array<AgingPair & { predicted: number; prior: number }>, pitcher: [] as Array<AgingPair & { predicted: number; prior: number }> };
+  type Held = AgingPair & { predicted: number; prior: number };
+  const held = { hitter: [] as Held[], pitcher: [] as Held[] };
+  const heldRaw = { hitter: [] as Held[], pitcher: [] as Held[] };
   for (const t of origins) {
     for (const kind of ['hitter', 'pitcher'] as const) {
       const pitcher = kind === 'pitcher';
-      const fit = fitAgingKind(input[kind].filter((x) => inWindow(x, t)), pitcher, policyIn);
-      const tt: AgingTable = { firstAge: policyIn.tableAges.from, hitter: pitcher ? [] : fit.values, pitcher: pitcher ? fit.values : [] };
-      for (const x of input[kind].filter((q) => q.season === t)) held[kind].push({ ...x, predicted: tableAt(tt, x.age, pitcher), prior: tableAt(prior, x.age, pitcher) });
+      const train = input[kind].filter((x) => inWindow(x, t));
+      const asTable = (values: number[]): AgingTable => ({ firstAge: policyIn.tableAges.from, hitter: pitcher ? [] : values, pitcher: pitcher ? values : [] });
+      const shrunk = asTable(fitAgingKind(train, pitcher, policyIn).values);
+      const raw = asTable(fitAgingKind(train, pitcher, policyIn, { shrink: false }).values);
+      for (const x of input[kind].filter((q) => q.season === t)) {
+        const pr = tableAt(prior, x.age, pitcher);
+        held[kind].push({ ...x, predicted: tableAt(shrunk, x.age, pitcher), prior: pr });
+        heldRaw[kind].push({ ...x, predicted: tableAt(raw, x.age, pitcher), prior: pr });
+      }
     }
   }
-  const heldOut = [...bandChecks(held.hitter, false, policyIn), ...bandChecks(held.pitcher, true, policyIn)];
-  const extra = origins.length === 0 ? ['no season could be held out to check the curve'] : [];
+  const heldOut = [
+    ...bandChecks(held.hitter, false, policyIn), ...bandChecks(held.pitcher, true, policyIn),
+    ...bandChecks(heldRaw.hitter, false, policyIn, 'unshrunk:'), ...bandChecks(heldRaw.pitcher, true, policyIn, 'unshrunk:'),
+  ];
+  const extra: string[] = [];
+  if (origins.length === 0) extra.push('seasons: no season could be held out to check the curve');
+  else if (!heldOut.some((c) => c.kind === 'age_band' && c.passed !== null)) extra.push('seasons: no age group had enough held-out players to check the curve');
   const priorShare = (cells: Array<{ n: number; weight: number }>) => {
     const n = cells.reduce((s, c) => s + c.n, 0);
     return n > 0 ? cells.reduce((s, c) => s + c.n * (1 - c.weight), 0) / n : 1;
@@ -532,7 +610,10 @@ export function fitAging(input: AgingInput, basis: FitBasis, policyIn = ROSTER_R
   return {
     model: { table, cells: { hitter: h.cells, pitcher: p.cells } },
     record: { ...base, window, heldOut, gate: gateOf(heldOut, extra), priorWeight: { overall: (byPart.hitter + byPart.pitcher) / 2, byPart },
-      notes: [`Checked on ${origins.length} season${origins.length === 1 ? '' : 's'}${origins.length ? ` (${origins[0]}–${origins[origins.length - 1]})` : ''}, each fitted only on the seasons before it.`] },
+      notes: [
+        `Checked on ${origins.length} season${origins.length === 1 ? '' : 's'}${origins.length ? ` (${origins[0]}–${origins[origins.length - 1]})` : ''}, each fitted only on the seasons before it.`,
+        'The starting curve was fitted on the Arizona import\'s 2000–2025 history. On that league the check of the curve as served (shrunk toward the starting curve) is not out-of-sample, so the curve fitted without the starting curve (the "unshrunk" checks) must pass the same checks too.',
+      ] },
   };
 }
 
@@ -669,7 +750,7 @@ export function fitDefense(seasons: DefenseSeason[], basis: FitBasis, prior: Rec
     const trained = fitDefenseWeights(sorted.slice(0, i + 1), prior, policyIn);
     heldOut.push(...defenseCheck(sorted[i], sorted[i + 1], trained.weights, prior, policyIn));
   }
-  const extra = heldOut.every((c) => c.passed === null) ? ['no later season to check the glove weights on yet'] : [];
+  const extra = heldOut.every((c) => c.passed === null) ? ['no_later_season: no later season to check the glove weights on yet'] : [];
   const byPart: Record<string, number> = {};
   for (const [pos, v] of Object.entries(model.positions)) byPart[`position:${pos}`] = 1 - v.weight;
   const parts = Object.values(byPart);

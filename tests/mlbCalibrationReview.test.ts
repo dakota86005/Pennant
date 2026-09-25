@@ -35,7 +35,7 @@ describe('the roster review consumes the yardsticks in force', () => {
     const r = review(subject(), standardsFrom(served));
     expect(r.standard!.typical).toBe(60);
     expect(r.standard!.source).toBe('save');
-    expect(r.reasons.join(' ')).toMatch(/typical working estimate is about 60/);
+    expect(r.reasons.join(' ')).toMatch(/In this league, regular first basemen typically work at a working estimate of about 60/);
   });
 
   it('the fitted aging curve sets the stated decline, and a league with no decline says so', () => {
@@ -48,5 +48,27 @@ describe('the roster review consumes the yardsticks in force', () => {
     expect(noDecline.explanations.join(' ')).toMatch(/no measurable decline/);
     expect(noDecline.explanations.join(' ')).not.toMatch(/lost about 0/);
     expect(expectedAnnualChange(35, false)).toBe(-0.0095);
+  });
+});
+
+describe('the starting values are never presented as this league\'s own', () => {
+  const old = subject({ age: 36 });
+  it('with the starting standards and curve, no text says "this league"', () => {
+    const r = review(old);
+    const text = [...r.reasons, ...r.explanations].join(' ');
+    expect(text).not.toMatch(/this league|the league's typical/i);
+    expect(text).toMatch(/Pennant's starting yardstick/);
+    expect(text).toMatch(/hitters his age usually lose about 10 points of wOBA a year/);
+  });
+
+  it('"this league\'s" appears only where the save\'s own fit is in force', () => {
+    const served: ServedStandards = { ...STARTING_STANDARDS, source: 'save' };
+    const table = { firstAge: 20, hitter: new Array(23).fill(-0.009), pitcher: new Array(23).fill(0.2) };
+    const own = review(old, standardsFrom(served), table);
+    expect(own.reasons.join(' ')).toMatch(/In this league, regular first basemen typically/);
+    expect(own.explanations.join(' ')).toMatch(/in this league's history hitters his age have lost about 9 points/);
+    // the save's standards with the starting curve: the curve is not called the league's
+    const mixed = review(old, standardsFrom(served), null);
+    expect(mixed.explanations.join(' ')).not.toMatch(/this league/);
   });
 });

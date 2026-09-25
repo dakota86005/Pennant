@@ -87,6 +87,21 @@ describe('role standards: measured from the league as it stands, checked, shrunk
     expect(run.record.gate.failures.some((f) => f.startsWith('history'))).toBe(true);
   });
 
+  it('what is checked is what is served: a league far from the starting values fails the club split on its shrunk lines', () => {
+    // every regular's estimate 17 points under the starting typicals: the served lines, pulled toward the starting values by the
+    // holders behind them, sit above the league's own and leave far more than a tenth under them
+    const run = measureStandards(league(1, { shift: -17 }), history(2, 10), basis);
+    expect(run.record.gate.passed).toBe(false);
+    expect(run.record.gate.failures.some((f) => f.startsWith('club_split estimate:hitter'))).toBe(true);
+  });
+
+  it('the share still the starting values counts the gaps and each lens, not only the typicals', () => {
+    const run = measureStandards(league(1), history(2, 10), basis);
+    const parts = Object.keys(run.record.priorWeight.byPart);
+    expect(parts).toEqual(expect.arrayContaining(['roles', 'gap:hitter', 'tools:roles', 'results:roles', 'tools:gap:hitter', 'results:gap:hitter']));
+    expect(run.record.priorWeight.overall).toBeGreaterThan(run.record.priorWeight.byPart.roles * 0.5);
+  });
+
   it('the measurement is repeatable: the same export gives the same record', () => {
     const a = measureStandards(league(1), history(2, 10), basis);
     const b = measureStandards(league(1), history(2, 10), basis);
@@ -118,6 +133,21 @@ describe('aging: the league\'s own curve, checked on seasons it did not see', ()
     for (let i = 1; i < t.pitcher.length; i += 1) expect(t.pitcher[i]).toBeGreaterThanOrEqual(t.pitcher[i - 1] - 1e-12);
     expect(expectedAnnualChange(34, false, t)).toBeLessThan(-0.004);
     expect(run.record.heldOut.filter((c) => c.kind === 'age_band').length).toBeGreaterThan(0);
+  });
+
+  it('the curve fitted without the starting curve is checked too, and must pass', () => {
+    const run = fitAging(input(agingPairs(3, decline, 6000, [2005, 2025]), agingPairs(4, pitchDecline, 4000, [2005, 2025])), basis);
+    const raw = run.record.heldOut.filter((c) => c.part.startsWith('unshrunk:'));
+    expect(raw.some((c) => c.kind === 'age_band')).toBe(true);
+    expect(raw.some((c) => c.kind === 'error')).toBe(true);
+    expect(run.record.notes.join(' ')).toMatch(/not out-of-sample/);
+  });
+
+  it('ages the league does not reach hold the end values of the fitted ages, never a pool with the starting curve', () => {
+    const fit = fitAgingKind(agingPairs(3, decline, 6000, [2005, 2025]), false);
+    expect(fit.values[0]).toBe(fit.values[2]);
+    expect(fit.values[1]).toBe(fit.values[2]);
+    expect(fit.values[fit.values.length - 1]).toBe(fit.values[fit.values.length - 3]);
   });
 
   it('thin history keeps the starting curve and says how thin', () => {

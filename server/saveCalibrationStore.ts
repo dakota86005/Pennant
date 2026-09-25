@@ -19,6 +19,7 @@
  */
 
 import { historyDb } from './history.js';
+import { parseGameDate } from './dataFreshness.js';
 import { saveIdentity } from './saveIdentity.js';
 
 historyDb.exec(`
@@ -120,9 +121,12 @@ function parse<M>(row: Row | undefined): StoredCalibration<M> | null {
   }
 }
 
-/** The key a record is stored under: the completed season, else the game date. */
+/**
+ * The key a record is stored under: the completed season, else the game date, normalized (`parseGameDate`: zero-padded ISO, so the
+ * stored dates order as dates; OOTP writes them unpadded).
+ */
 export function basisKey(record: Pick<CalibrationRecord, 'basis'>): string {
-  return record.basis.throughSeason !== null ? String(record.basis.throughSeason) : record.basis.gameDate ?? 'unknown';
+  return record.basis.throughSeason !== null ? String(record.basis.throughSeason) : parseGameDate(record.basis.gameDate) ?? 'unknown';
 }
 
 /** Whether a fit for this save, league, component, method and basis has been made (adopted or not). */
@@ -150,27 +154,47 @@ export function recordCalibration(run: { model: unknown; record: CalibrationReco
   return historyDb.prepare(
     `${verb} INTO save_calibration_fits (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
-    save, r.leagueId, r.subsystem, r.component, r.method, basis, r.basis.throughSeason, r.basis.gameDate, new Date().toISOString(),
+    save, r.leagueId, r.subsystem, r.component, r.method, basis, r.basis.throughSeason, parseGameDate(r.basis.gameDate), new Date().toISOString(),
     r.gate.passed ? 1 : 0, r.gate.reason, r.priorWeight.overall, meta.fitMs, JSON.stringify(run.model), JSON.stringify(r),
   ).changes;
 }
 
-/**
- * The fit in force for this save, league, component and method: the adopted one resting on the latest basis, never one through
- * a season the league has not completed (`throughMax`), or null. A measurement keyed by game date is ordered by that date.
- */
-export function adoptedCalibration<M = unknown>(leagueId: number, subsystem: string, component: string, method: string, throughMax: number | null = null): StoredCalibration<M> | null {
-  return parse<M>(historyDb.prepare(
-    `SELECT ${COLUMNS} FROM save_calibration_fits WHERE save_name = ? AND league_id = ? AND subsystem = ? AND component = ? AND method = ? AND adopted = 1
-       AND (through_season IS NULL OR through_season <= ?)
-     ORDER BY COALESCE(through_season, 0) DESC, COALESCE(game_date, '') DESC LIMIT 1`
-  ).get(saveIdentity(leagueId), leagueId, subsystem, component, method, throughMax ?? Number.MAX_SAFE_INTEGER) as Row | undefined);
+/** What a served fit may rest on: a season the league has completed, and (a measurement of the league as it stood) an export no later than today's. */
+export interface CalibrationBound {
+  throughMax?: number | null;
+  /** The export's game date now; a measurement from a later export (a reverted save) is never served. Any OOTP date form. */
+  gameDateMax?: string | null;
 }
 
-/** The most recent attempt for this save, league, component and method, adopted or not (so a rejection's reason is visible). */
-export function latestCalibrationAttempt<M = unknown>(leagueId: number, subsystem: string, component: string, method: string): StoredCalibration<M> | null {
+/** Normalize a bound: a date that cannot be read admits no dated measurement (never a guess); an absent one admits all. */
+function bounds(b: CalibrationBound): { through: number; date: string | null; noDated: boolean } {
+  const date = b.gameDateMax === undefined || b.gameDateMax === null ? null : parseGameDate(b.gameDateMax);
+  return { through: b.throughMax ?? Number.MAX_SAFE_INTEGER, date, noDated: b.gameDateMax !== undefined && b.gameDateMax !== null && date === null };
+}
+
+// A season-keyed fit is bounded by the season; a date-keyed measurement (through_season NULL) by its export's date. Dates are stored
+// normalized by `parseGameDate` (zero-padded ISO), so SQL orders and compares them as dates.
+const WITHIN = `AND (through_season IS NULL OR through_season <= ?)
+  AND (through_season IS NOT NULL OR (? = 0 AND (? IS NULL OR (game_date IS NOT NULL AND game_date <= ?))))`;
+const ORDER = `ORDER BY COALESCE(through_season, 0) DESC, COALESCE(game_date, '') DESC`;
+
+/**
+ * The fit in force for this save, league, component and method: the adopted one resting on the latest usable basis, never one
+ * through a season the league has not completed nor one measured on a later export than today's (`bound`), or null.
+ */
+export function adoptedCalibration<M = unknown>(leagueId: number, subsystem: string, component: string, method: string, bound: CalibrationBound = {}): StoredCalibration<M> | null {
+  const b = bounds(bound);
+  return parse<M>(historyDb.prepare(
+    `SELECT ${COLUMNS} FROM save_calibration_fits WHERE save_name = ? AND league_id = ? AND subsystem = ? AND component = ? AND method = ? AND adopted = 1
+       ${WITHIN} ${ORDER} LIMIT 1`
+  ).get(saveIdentity(leagueId), leagueId, subsystem, component, method, b.through, b.noDated ? 1 : 0, b.date, b.date) as Row | undefined);
+}
+
+/** The most recent attempt within the same bound, adopted or not (so a rejection's reason is visible, never a later export's). */
+export function latestCalibrationAttempt<M = unknown>(leagueId: number, subsystem: string, component: string, method: string, bound: CalibrationBound = {}): StoredCalibration<M> | null {
+  const b = bounds(bound);
   return parse<M>(historyDb.prepare(
     `SELECT ${COLUMNS} FROM save_calibration_fits WHERE save_name = ? AND league_id = ? AND subsystem = ? AND component = ? AND method = ?
-     ORDER BY COALESCE(through_season, 0) DESC, COALESCE(game_date, '') DESC, fitted_at DESC LIMIT 1`
-  ).get(saveIdentity(leagueId), leagueId, subsystem, component, method) as Row | undefined);
+       ${WITHIN} ${ORDER}, fitted_at DESC LIMIT 1`
+  ).get(saveIdentity(leagueId), leagueId, subsystem, component, method, b.through, b.noDated ? 1 : 0, b.date, b.date) as Row | undefined);
 }
