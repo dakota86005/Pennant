@@ -766,7 +766,8 @@ FIP surrogate (percentiles were unaffected).
 ## D-038 — Bench, bullpen roles, position shifts and platoon partners are flags and plans, never transactions
 
 **Status:** Accepted. **Implementation:** Present (`server/benchReview.ts`, `bullpenRoles.ts`, `lineupShifts.ts`,
-`platoon.ts`; composed in `mlbReview`, `mlbPlans`, `mlbResponses`, `mlbReport`).
+`platoon.ts`; composed in `mlbReview`, `mlbPlans`, `mlbResponses`, `mlbReport`). **Amended by D-053 (cycle 3, 2026-09-25):** the
+leverage cut-offs are policy on the league's own leverage scale; the long-man line is measured per save.
 
 A **bullpen role** is what usage shows (closer, high-leverage arm, middle, long man, low-leverage), from leverage cut-offs
 on the league's own distribution; it sets the stakes of a weak arm, and a clearly better arm in a lower-leverage role than
@@ -827,7 +828,8 @@ typical bat less the estimate's gap.
 
 **Status:** Accepted. **Implementation:** Present (`server/calibration.ts`; stamps across `server/`). **Amended by D-053:** a
 `calibrated` value is fitted per save and stamped by its run record; code keeps the method, the policy and a
-provisional fallback prior.
+provisional fallback prior. Cycle 3 (2026-09-25) restamps the platoon margins and the leverage cut-offs as policy, and splits
+"multiple innings" (policy) from the long-man line (a per-save measurement).
 
 `calibrated` is estimated from historical evidence and can be right or wrong; `provisional` is a MODEL parameter that ought to
 be estimated and has not been (one partial season of zone ratings); `policy` is a product decision about when to raise
@@ -1652,7 +1654,7 @@ rates and, from the save's own rating snapshots once enough exist, the developme
 `RATINGS_POLICY` and the provisional `PRODUCTION_PRIOR` and `RATINGS_PRIOR` in `server/playerValueCalibration.ts`, the
 refit after an import (`api.ts` `refitAfterImport`), `GET /api/player-value/production-fit/:orgId`, and `npm run
 calibrate production` for a developer's forced refit. Amends D-037 and D-041. MLB Operations' roster review follows since cycle 1
-(2026-09-24, amendment below): role standards, aging curve and glove weights, on the neutral `saveIdentity.ts`,
+(2026-09-24, amendment below; cycle 2 the results lens, cycle 3 platoon and the long-man line): role standards, aging curve and glove weights, on the neutral `saveIdentity.ts`,
 `saveCalibrationStore.ts` and `saveCalibration.ts`; since cycle 2 (2026-09-25, amendment below) the results lens's season weights
 and stabilization (`mlbResultsFit.ts`), judged by the neutral detector (`calibrationDetector.ts`), and the league's own wOBA scale.
 The other subsystems' calibrated constants are not migrated yet (ROADMAP "Later: calibration and longitudinal management").
@@ -1899,6 +1901,32 @@ not established. The gate is not loosened."
   - baserunning and defensive stabilization are built but inactive until the export carries UBR or zone rating for enough seasons;
   - the park share stays provisional;
   - the peer-population minimums are policy.
+
+**Amended 2026-09-25 (per-save calibration, cycle 3: platoon and the bullpen; CALIBRATION.md section 14).** Every item is the
+supervisor's call, pending owner review (the owner was away and authorized best judgment).
+
+- **How much a hitter's own platoon split counts is fitted per save, only around the league norm** (`platoon-1`): where his platoon
+  ratings are not visible, his split is shrunk toward the league's split for his hand by a K chosen inside each rolling origin and
+  judged by the detector with its policy unchanged (the 1% minimum suits it: false adoption at most 1.0% over a simulated lifetime,
+  including a true excess of 0.97%; a league twice as individual as assumed is adopted 99.5% of the time). Around his ratings, the
+  K and the rating weight stay the provisional starting values until a save can check ratings as a forecast (cycle 4). On the
+  Arizona import the starting K held up; a hitter's own past split predicts his next one no better than the league norm.
+- **The league's own left-handed share is derived, never assumed.** `DEFAULT_LEFT_SHARE` is deleted; without the share and without
+  his own record, a read states no cost (D-018).
+- **The platoon margins are policy on a cost scale**, not "standard deviations of the effect" (their old rationale).
+- **The leverage cut-offs are policy on the league's own leverage scale** (amends D-038's "cut-offs on the league's own
+  distribution" and their `calibrated` stamp): rescaled only when the league's mean leverage is off 1.0 by more than 5%.
+- **"Throws multiple innings" and "a long man" are two numbers** (amends D-038, D-042). The first stays policy (1.6 innings an
+  appearance). The long-man line is a MEASUREMENT of the league as it stands: the innings per appearance of its longest-working 15%
+  of relievers this season, shrunk toward 1.6 and never below it, served when lines drawn from half the clubs and from the first
+  half of the season leave about 15% of the rest at or above them. It is measured with the reliever standards and recorded with them
+  (`standards-2`), so the tiers and the standards measured on them are in force together or not at all; a `standards-1` row reads as
+  measured under 1.6 until a `standards-2` row exists. On the Arizona import (whose game works relievers about a quarter longer than
+  the real seasons it imported) it is 1.71: 13 relievers stop being long men, two strong flags appear and one disappears, "crowded:
+  long men" fires on 3 clubs instead of 6, and Arizona's Joe Ross becomes a low-leverage arm on watch.
+- **No reader holds a default:** the platoon weights and the bullpen lines are required arguments, resolved once per request with
+  the other yardsticks (`tests/platoonBullpenInForce.test.ts`). The minimum appearances, the deployment gap, the credible-arm line
+  and the crowding counts stay policy.
 
 ## D-054 — Charting library
 

@@ -18,7 +18,7 @@ OOTP_FO_DATA_DIR=<dir containing league.db> npm run calibrate               # ev
 OOTP_FO_DATA_DIR=<dir containing league.db> npx tsx scripts/calibrate.ts tools platoon
 ```
 
-Sections: `results pitchers tools platoon aging running defense leverage standards production` (production: section 6), `roster-review` when named (section 12), and `detector` when named (section 13: the "clearly better" rule's error rates, measured on simulated leagues). The harness reads objective statistics
+Sections: `results pitchers tools platoon aging running defense leverage standards production` (production: section 6), `roster-review` when named (sections 12 to 14: every per-save yardstick of the roster review, including the platoon fit and the long-man line), `detector` when named (section 13: the "clearly better" rule's error rates, measured on simulated leagues), and `platoon-detector` when named (section 14: the platoon fit's error rates under the same rule). The harness reads objective statistics
 directly and ratings only through `scoutedEvidence.ts` (D-017, D-035). It never writes to `league.db`. Its sections 1 to 9 change
 no behavior by themselves: a person reads the output, edits the one declaration, and records the run here. `production --refit` and
 `roster-review --refit` are the exception: they record a per-save fit in `history.db`, which changes what the application serves
@@ -1208,3 +1208,109 @@ under the asymmetric return too.
 - **The park share** (`PARK_WOBA_SHARE`): stays provisional. Club runs give an elasticity of 1.92 ± 0.03 (a share of 0.52), but the
   park factor it multiplies is today's park ratings applied to every season. Minor League Operations shares the value.
 - **The peer-population minimums** (`POPULATION_MINIMUM`, `DEFENSE_POPULATION_MINIMUM`): policy.
+
+## 14. Platoon and the bullpen, per save (D-053, cycle 3, 2026-09-25)
+
+Every decision below is the **supervisor's call, pending owner review** (the owner was away and authorized best judgment). The
+Stage A investigation behind them is on this save (league 203, through 2025, game date 2026-5-16).
+
+| Number | Was | Now | Why |
+|---|---|---|---|
+| `PLATOON_SHRINK_K` (5,000) | calibrated (run 1) | Around the league norm (his platoon ratings not visible): **fitted per save** (`platoon-1`), served only where clearly better. Around his ratings: the provisional starting value (`PLATOON_PRIOR.shrinkAroundRatings`) | A hitter's future split can be predicted from his past one on held-out seasons (batting splits by hand exist in every season), but only with the league norm as the prior. Around his ratings the right K is larger (a better prior leaves less for his record to find), and whether ratings forecast splits cannot be checked on a save whose one rating snapshot is dated at its own export (cycle 4) |
+| `RATING_PRIOR_WEIGHT` (1.0) | calibrated (run 1) | Provisional starting value (`PLATOON_PRIOR.ratingWeight`), deferred to cycle 4 | Same-time ratings against past splits: slopes 0.43 ± .14 (2006–10), 0.67 ± .13, 0.64 ± .16, 0.83 ± .19 (2021–25); the error is flat from 0.5 to 1.0. Contaminated (OOTP formed the ratings from those results): evidence, not a fit |
+| `DEFAULT_LEFT_SHARE` (0.3) | provisional | **Deleted** | `leaguePlatoon` already derives each batting hand's share from the league's own splits (R .323, L .200, S .284, 2022–2026). The constant was unreachable from production. An unknown share now states no cost (never 0.3) |
+| `MIN_SPLIT_PA`, `PROBLEM_EXCESS`, `COMPLEMENT_MARGIN` | "provisional (policy)" | **Policy**, rationale corrected | The margins are costs worth raising, not rarities. The stamps claimed "1.4 sd" and "3 sd" of run 1's spread (.0087); the current league measures .0075. A margin in standard deviations would flag the same share of hitters in every league, whatever it cost them |
+| `LEVERAGE` (closer 1.6 with a save, high 1.3, low 0.9) | calibrated | **Policy on the league's own leverage scale**, with a unit check (`LEVERAGE_UNIT_TOLERANCE` 5%, policy) | Leverage is already the league's own unit (1.0 is an average plate appearance there). The cut-offs are rescaled only when the league's mean leverage per batter faced is off 1.0 by more than 5%. This save: 1.0225, so they serve as written; a 2% rescale would have moved 12 tiers on nothing but the season's wobble. A quantile form was rejected: it would always call a third of relievers high-leverage, and its club split spans 24–40% |
+| `LONG_INNINGS` (1.6) | "provisional (policy)" | Split: `MULTI_INNING` 1.6 (**policy**: what "throws multiple innings" means, in the pen-wide finding) and the **long-man line** (a **measurement** of the league, `LONG_LINE_PRIOR` 1.6 the provisional fallback) | The game works this save's relievers about a quarter longer than the real seasons it imported (1.28 innings a relief appearance in 2026, in both halves of the season, against 1.04 in 2025). 1.6 sat at the 84th–88th percentile of relievers in 2019–2025 and at the 78th now |
+| `CREDIBLE_HIGH_LEVERAGE`, `MIN_APPEARANCES`, `DEPLOYMENT_GAP`, `CROWDED`, `MIN_READ_ARMS` | policy / provisional (policy) | **Policy** | On the percentile scale or counts of pen construction. Evidence for `MIN_APPEARANCES`: from the game logs, a reliever's leverage over his first 8 appearances has split-half reliability 0.65, and only 49% of relievers read the same band (high, middle, low) from both halves (56% at 16) |
+
+### 14.1 How much a hitter's own split counts (`server/mlbPlatoonFit.ts`, `platoon-1`, trigger: a new completed season)
+
+- **Cases.** Every hitter-season in the last 20 completed full seasons (a season under 90% of its schedule is not a target; its lines
+  still count as a season before one). His split (wOBA against right-handers minus against left-handers) over his five seasons before
+  the target, with at least `MIN_SPLIT_PA` against each hand (below it production does not read his split, so K cannot matter),
+  predicts the target season's split (30 PA or more against each hand), weighted by its effective PA (l·r/(l+r)). The prior is the
+  league's split for his hand over the same five seasons, as production pools it. Objective lines only; no rating is read.
+- **The fit.** K on a grid (policy: 250 to 50,000; the top means "his own split barely moves the read"), least weighted squared
+  error; served shrunk toward the starting 5,000 by n/(n+1,000) training cases on the log scale.
+- **The backtest and the verdict.** Rolling origins (at most 8, from the window's start + 5), nested: at each origin K is chosen on
+  targets up to it and scored on the next season, paired with the starting K on the same hitter-seasons, unshrunk and as served.
+  Cycle 2's detector decides, **with its policy unchanged** (`detector-3`: the lower bound of the gain at least 1% across players and
+  across seasons, consistent, two consecutive refits, the easy return). Reported, not gated: the error of the league norm alone.
+- **Served** through `rosterReviewCalibration(...).platoon` into every platoon read (`PlatoonInput.platoon` is required): the save's
+  K replaces `shrinkAroundLeague` only; `shrinkAroundRatings` and `ratingWeight` stay the starting values. A read that uses the
+  save's K says "checked on this league's past seasons"; otherwise it says what a hitter's own split usually says, and never claims
+  the league's history.
+- **Does the 1% minimum suit platoon K?** Yes: the minimum was kept (`npm run calibrate platoon-detector`). A split's noise dwarfs the
+  skill, so K moves the error little, and the simulation shows the rule still separates what matters from what does not. Simulated
+  leagues shaped like the Arizona import (about 330 hitter-seasons a year, careers, five seasons of split), refitted from 10 to 22
+  seasons with hysteresis; the true excess of the starting K is computed exactly on the case mix:
+
+| True K (what the league's hitters' splits are like) | True excess of the starting K | Lifetime adoption | Median first adopted |
+|---|---|---|---|
+| 5,000 (the starting value exactly right) | 0.00% | **0.0%** (400 leagues) | — |
+| 20,000 (less individual than assumed) | 0.08% | **0.0%** | — |
+| 2,000 (somewhat more individual) | 0.25% | **0.0%** | — |
+| 1,200 (just under the practical minimum: the least favourable null) | 0.97% | **1.0%** (se 0.5%) | 15 seasons |
+| 1,000 (just over it) | 1.46% | 14.5% (200 leagues) | 17 |
+| 500 (much more individual) | 5.51% | 99.5% | 11 |
+| 250 (far more individual) | 16.3% | 100% | 11 |
+
+  False adoption is at most 1.0% (target 5%); a league whose splits are twice as individual as the starting value assumes (K 500 or
+  less) is adopted almost always, from the first refit that can decide.
+
+### 14.2 The long-man line (`server/mlbBullpenLines.ts`, measured with the reliever standards, `standards-2`)
+
+- **The measurement.** The innings per appearance of the league's longest-working 15% of relievers this season (`LONG_LINE_POLICY`:
+  the 85th percentile; the clubs' active relievers with 8 or more appearances, the population the review reads), shrunk toward 1.6 by
+  n/(n+60) relievers, and never below `MULTI_INNING` (a long man throws multiple innings by definition). The 85th percentile is where
+  the league's real seasons 2019–2025 put 1.6.
+- **Checks** (both scored on the line as it would serve):
+  1. *Minimums:* 150 relievers; the standards' own minimums (20 clubs, 15 games) apply to the measurement they travel with.
+  2. *Club split:* 400 seeded halvings; the line drawn from half the clubs leaves 15% ± 5 of the other half's relievers at or above it
+     (pooled).
+  3. *Season split:* from the game logs, the line drawn from the first half of the season's game dates (4 or more relief appearances
+     in the half) leaves 15% ± 6 of the second half's at or above it. Where the export has no game logs for the season it is "not
+     measured" and not required.
+  A line that fails a check, or too few relievers, leaves the starting 1.6, with its reason.
+- **In force together with the standards.** The reliever standards (`rel:<tier>`) are measured on tiers, so the line changes whom each
+  describes. The standards refit reviews every club once under the starting lines, measures the lines on the same review, re-reads
+  each reliever's tier under them, measures the standards on those tiers and records the lines in the standards' model
+  (`standards-2`). The yardsticks serve the lines of the standards in force: never one line for the tiers and another for the
+  standards. The line's own checks never decide whether the standards are adopted. A `standards-1` row (measured before the lines
+  were) is read as measured under the starting lines until a `standards-2` row exists (supervisor's call). The leverage unit check
+  travels with them the same way.
+- **Served** through `rosterReviewCalibration(...).bullpen` (`BullpenLines`) into the review's tiers and pen-wide findings
+  (`ReviewPorts.bullpen`, required), a reliever's usage notes (which responses, plans and the report read), and the standards refit
+  (`reviewPorts(..., { bullpen })`). `roleOf` and `penFindings` take the lines as a required argument
+  (`tests/platoonBullpenInForce.test.ts`).
+
+### 14.3 The run on the Arizona import (through 2025; 2026-5-16)
+
+- **Platoon K: the starting value held up.** Fitted K 3,000 (as served 3,208; every origin chose 3,000 except the first, 2,000).
+  Held out (8 seasons, 2016→17 … 2024→25; 2,633 hitter-seasons, 814 hitters): the league's own had 0.11% MORE error unshrunk (z +1.17,
+  t +1.10, better in 2 of 8 seasons) and 0.07% more as served. The starting K serves, "checked on this league's seasons and held up".
+  Reported: a hitter's own past split predicts his next season's split no better than the league norm for his hand (the starting
+  K against the norm alone: −0.04%, z −0.32), as run 1 found. No lineup regular's read moves: all 250 have visible platoon ratings,
+  so none is read around the league norm alone, where the league's K would apply.
+- **The long-man line: measured and served, 1.71** (1.733 on 219 active relievers, as served 1.705). Club split 17.2% (aim 15 ± 5),
+  season split 14.3% (aim 15 ± 6; the first half's line 1.65 on 195 relievers). The leverage lines serve as written (the league's mean
+  1.0225).
+- **Effect** (`npm run review:calibration-report`, section 10: everything the save serves, with the standards measured under the
+  starting line and the starting lines, against the standards measured under the league's line and served with it):
+  - 13 relievers move from long man to low-leverage arm (11) or middle reliever (2); long men 47 → 34 of 238.
+  - Two strong flags appear (Senzatela, COL; Falter, KC: former long men now measured against low-leverage arms, whose standard is
+    higher) and one disappears (Fedde, CWS, low-leverage arm: the low-leverage standard fell once the weaker former long men joined
+    it). Eight watches change. League-wide flags 16 → 17.
+  - "Crowded: long men" fires on 3 clubs instead of 6 (BOS, CHC, NYM leave it). "Nobody throws multiple innings" is unchanged (4
+    clubs): it keeps its absolute line.
+  - Arizona: Joe Ross (1.63 innings an appearance, leverage 0.60) moves from long man to low-leverage arm and from no concern to
+    "tools lag his results" (watch). Arizona's pen has no pen-wide finding under either line.
+- **Refit time in the worker:** platoon under 1 s; the standards measurement (with the lines) about 7 s, as before.
+
+### 14.4 Not done, and why
+
+- The ratings-anchored K and the rating weight (cycle 4, with the tools model): no forecast check exists on a one-snapshot save.
+- The leverage cut-offs are not measured per save (a policy on the league's own scale; the quantile alternative is in Stage A).
+- Relievers' over-trusted results (13.4) are untouched: the leverage lines do not enter the results lens.
+- Tiers at 8 appearances are noisy (above); `MIN_APPEARANCES` is policy, and changing it is the owner's call.

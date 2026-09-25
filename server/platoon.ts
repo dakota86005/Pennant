@@ -1,15 +1,16 @@
 /**
  * Platoon: how a hitter fares against left- and right-handed pitching, read honestly.
  *
- * Two kinds of evidence, and calibration (docs/CALIBRATION.md section 4) says which to trust:
+ * Two kinds of evidence, and calibration (docs/CALIBRATION.md sections 2 and 14) says which to trust:
  *
  *   ratings   his visible tools against left-handers and against right-handers (D-035), turned into
- *             wOBA points by the tools model. Against what actually happened in 2023-2025 the
- *             rating-implied platoon effect is well calibrated (slope 1.06) and beats every other
- *             predictor tried.
- *   observed  his own splits over five seasons. A hitter's own past split adds almost nothing beyond
- *             the league norm for his handedness (best shrinkage constant about 5,000 effective plate
- *             appearances; he does not have that many), so observed splits move the read only a little.
+ *             wOBA points by the tools model. Run 1 found the rating-implied platoon effect well
+ *             calibrated against 2023-2025 (slope 1.06), a same-time test; whether ratings forecast
+ *             splits cannot yet be checked on a save (cycle 4), so its weight is the starting value.
+ *   observed  his own splits over five seasons. On the Arizona import a hitter's own past split adds
+ *             almost nothing beyond the league norm for his handedness, so observed splits move the read
+ *             only a little. How much they count around the league norm is fitted per save and served
+ *             only where clearly better (`mlbPlatoonFit.ts`); the values in force arrive as `platoon`.
  *
  * The read is therefore: the league's platoon effect for a hitter of his handedness, adjusted by his
  * ratings (their departure from the norm for his hand), with his observed split pulled toward that.
