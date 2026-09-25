@@ -7,6 +7,8 @@ import {
   type DevelopmentalContext,
   type DevelopmentProtectionTier,
 } from '../server/developmentFit.js';
+import { startingLines } from '../server/developmentFit.js';
+const STARTING = startingLines('not_measured');
 import { evaluateMlbAssignmentContext, STAKES_WEIGHT, type ContextInput } from '../server/mlbAssignmentContext.js';
 import { evaluateCurrentAssignment } from '../server/currentAssignment.js';
 import { positionConflict } from '../server/playingTime.js';
@@ -46,7 +48,7 @@ const stakes = (
   potential: number | null,
   context: DevelopmentalContext | null = null,
   kind: 'hitter' | 'pitcher' = 'hitter'
-) => evaluateDevelopmentProtection({ age, ability: syntheticScoutedAbility({ current, potential, kind }), context });
+) => evaluateDevelopmentProtection({ lines: STARTING,  age, ability: syntheticScoutedAbility({ current, potential, kind }), context });
 
 const rank = (tier: DevelopmentProtectionTier | null): number => (tier === null ? -1 : TIER_ORDER.indexOf(tier));
 const why = (p: { reasons: string[] }): string => p.reasons.join(' ');
@@ -206,8 +208,8 @@ describe('what the tier is not', () => {
       .replace(/(^|[^:])\/\/.*$/gm, '$1');
     expect(source).not.toMatch(/from '\.\/(philosophy|settings|assignmentPreference|staffPreference)\.js'/);
     expect(source).not.toMatch(/prospectPreservation|promotionAggressiveness|competitiveWindow|upsidePreference|dimensions\./);
-    /* ...and its whole input is ability, age, context and the manual control. */
-    const input = { age: 20, ability: syntheticScoutedAbility({ current: 38, potential: 52 }), context: LOW_A(20) };
+    /* ...and its whole input is ability, age, the ceiling lines in force, context and the manual control. */
+    const input = { age: 20, ability: syntheticScoutedAbility({ current: 38, potential: 52 }), lines: STARTING, context: LOW_A(20) };
     const smuggled = { ...input, philosophy: { prospectPreservation: 100 }, promotionAggressiveness: 0 };
     expect(evaluateDevelopmentProtection(smuggled)).toEqual(evaluateDevelopmentProtection(input));
   });
@@ -241,7 +243,7 @@ describe('what the tier is not', () => {
     /* A core prospect whose production clears the durable bar is defensible even with no relief at all. */
     const ready = evaluateMlbAssignmentContext({
       context: 'temporary_depth', kind: 'hitter',
-      protection: evaluateDevelopmentProtection({ age: 20, ability: syntheticScoutedAbility({ current: 50, potential: 58 }), context: AAA(20) }),
+      protection: evaluateDevelopmentProtection({ lines: STARTING,  age: 20, ability: syntheticScoutedAbility({ current: 50, potential: 58 }), context: AAA(20) }),
       experience: null,
       currentLevel: { readiness: 90, readinessRange: { min: 90, max: 90 }, sampleConfidence: 70, promotionThreshold: 80 },
     });
@@ -254,12 +256,12 @@ describe('what the tier is not', () => {
 describe('downstream: the tier is read, never rewritten', () => {
   const ability = syntheticScoutedAbility({ current: 40, potential: 54, kind: 'pitcher' });
   const mlb = (over: Partial<ContextInput>): ContextInput => ({
-    context: 'temporary_depth', kind: 'pitcher', protection: evaluateDevelopmentProtection({ age: 22, ability, context: AAA(22) }),
+    context: 'temporary_depth', kind: 'pitcher', protection: evaluateDevelopmentProtection({ lines: STARTING,  age: 22, ability, context: AAA(22) }),
     experience: { plateAppearances: 0, inningsPitched: 300 }, currentLevel: null, ...over,
   });
 
   it('15. a contemplated major-league role reads his stakes and cannot change them', () => {
-    const own = evaluateDevelopmentProtection({ age: 22, ability, context: AAA(22) });
+    const own = evaluateDevelopmentProtection({ lines: STARTING,  age: 22, ability, context: AAA(22) });
     expect(own.tier).toBe('core_prospect');
     for (const context of ['temporary_depth', 'short_bullpen', 'spot_start'] as const) {
       const a = evaluateMlbAssignmentContext(mlb({ context }));
@@ -274,7 +276,7 @@ describe('downstream: the tier is read, never rewritten', () => {
     const line = { readiness: 70, readinessRange: { min: 70, max: 70 }, sampleConfidence: 60, promotionThreshold: 80 };
     const prospect = evaluateMlbAssignmentContext(mlb({ currentLevel: line }));
     const veteran = evaluateMlbAssignmentContext(
-      mlb({ protection: evaluateDevelopmentProtection({ age: 31, ability: syntheticScoutedAbility({ current: 47, potential: 47, kind: 'pitcher' }), context: AAA(31) }), currentLevel: line })
+      mlb({ protection: evaluateDevelopmentProtection({ lines: STARTING,  age: 31, ability: syntheticScoutedAbility({ current: 47, potential: 47, kind: 'pitcher' }), context: AAA(31) }), currentLevel: line })
     );
     expect(veteran.stakes.tier).toBe('organizational_depth');
     expect(prospect.readiness.required!).toBeGreaterThan(veteran.readiness.required!);

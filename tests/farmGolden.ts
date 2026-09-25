@@ -8,6 +8,8 @@
 
 import { syntheticScoutedAbility } from '../server/scoutedEvidence.js';
 import { evaluateDevelopmentProtection, type DevelopmentProtection } from '../server/developmentFit.js';
+import { startingLines } from '../server/developmentFit.js';
+const STARTING = startingLines('not_measured');
 import type { CurrentAssignmentInput } from '../server/currentAssignment.js';
 import type { JobWindow, UsageFacts } from '../server/playingTime.js';
 import type { Absence, ClubGameLog, GameLine } from '../server/farmUsage.js';
@@ -22,7 +24,7 @@ export const ability = (current: number | null, potential: number | null) =>
 
 /** Player Development's protection, from the real evaluator so the tiers are the real ones. */
 export const protectionOf = (age: number, current: number | null, potential: number | null): DevelopmentProtection =>
-  evaluateDevelopmentProtection({ age, ability: ability(current, potential) });
+  evaluateDevelopmentProtection({ lines: STARTING,  age, ability: ability(current, potential) });
 
 /** A tier by name, for a case that is about the tier rather than about the ratings behind it. */
 export const tierOf = (tier: DevelopmentProtection['tier']): DevelopmentProtection => ({

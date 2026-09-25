@@ -59,6 +59,8 @@ const GUARDED = [
   'saveIdentity.ts',
   'rosterScenario.ts',
   'toolsModel.ts',
+  'stakesLines.ts',
+  'stakesLinesRefit.ts',
   'calibration.ts',
   'staffPreference.ts',
   'bullpenRoles.ts',

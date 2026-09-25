@@ -37,8 +37,10 @@ use the answer and own none of it.
 - No score: the output is the tier, its reasons and the two readings; nothing ranks players by it (Part 4.6).
 - One reader per request; a pure consumer (`mlbAssignmentContext.ts`) is handed a `DevelopmentProtection`,
   never the ratings; only the reader calls `evaluateDevelopmentProtection` (Part 4.7).
-- Constants are declared once in `developmentFit.ts`, stamped provisional or policy, none calibrated; the
-  farm's age-for-level lines stay in `farmCalibration.ts` (Part 4.8).
+- Constants are declared once in `developmentFit.ts`, stamped provisional or policy; the farm's age-for-level
+  lines stay in `farmCalibration.ts` (Part 4.8). Since cycle 4 of the per-save calibration the ceiling lines are
+  a MEASUREMENT of the organization's major league at each import (`stakesLines.ts`, D-050 amendment, D-053),
+  handed to the evaluator by the reader (required, never defaulted); `CEILING_LINES` is Pennant's starting lines.
 - Consumers read the tier through their own vocabulary (`hasDevelopmentalStakes` in `playingTime.ts`,
   `PROTECTED_TIERS` in `farmCalibration.ts`, `STAKES_WEIGHT` in `mlbAssignmentContext.ts`); keep it stable (D-050).
 

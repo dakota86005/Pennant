@@ -22,7 +22,9 @@
  *
  *   * Context may only LOWER what the ceiling allows. Nothing here can raise a ceiling: a weak
  *     cohort cannot manufacture a prospect, a strong one cannot erase one, and youth is not talent.
- *   * Nothing but his own visible ratings, his age and his league's AGE profile is read. No result,
+ *   * Nothing but his own visible ratings, his age, his league's AGE profile and the ceiling lines in force (his
+ *     organization's major league's own, measured at the import from its major leaguers, else Pennant's starting
+ *     lines; `stakesLines.ts`, handed in, never read here) is read. No result,
  *     no usage, no roster need, no philosophy (D-019) — so a hot month cannot raise a tier and a cold
  *     one cannot lower it — and no other player's rating.
  *   * Unknown stays unknown (D-018). A missing rating or age leaves the tier null; a missing age
@@ -58,11 +60,12 @@ export const TIER_ORDER: readonly DevelopmentProtectionTier[] = [
 /* ── calibration: every number in the stakes model, declared once ────────────────────────────── */
 
 export const CEILING_LINES_CALIBRATION: CalibrationStamp = provisional(
-  'Where a visible potential composite stops projecting as a major leaguer of each kind. The composite ' +
-    '(the unweighted mean of the visible tools) of the weakest tenth, the median and the best tenth of ' +
-    'the active major leaguers of one import: hitters 45 / 50 / 56, pitchers 45 / 48 / 53. Kind-aware ' +
-    'because the composite is: with the hitters\' lines no pitcher in that league was a core prospect. A ' +
-    'model parameter that ought to be re-estimated across saves; `npm run stakes:report` re-measures it.'
+  'Pennant\'s starting lines: where a visible potential composite stops projecting as a major leaguer of each kind. ' +
+    'The composite (the unweighted mean of the visible tools) of the weakest tenth, the median and the best tenth of ' +
+    'the active major leaguers of one import (Arizona, 2026-5-16): hitters 45 / 50 / 56, pitchers 45 / 48 / 53. Kind-aware ' +
+    'because the composite is. Since cycle 4 (D-053) each league\'s own lines are measured from its major leaguers at each ' +
+    'import and served once checked (`stakesLines.ts`); these serve only where that has not happened or cannot (a small or ' +
+    'fictional league), and say so.'
 );
 
 export const CEILING_QUANTILES_CALIBRATION: CalibrationStamp = policy(
@@ -72,10 +75,41 @@ export const CEILING_QUANTILES_CALIBRATION: CalibrationStamp = policy(
 );
 
 /** The potential composite (20-80) at which each ceiling begins, by kind. */
-export const CEILING_LINES = {
+export interface CeilingLines {
+  hitter: { fringe: number; regular: number; impact: number };
+  pitcher: { fringe: number; regular: number; impact: number };
+}
+
+/** PROVISIONAL. Pennant's starting lines (see the stamp): the fallback where a league's own are not in force. */
+export const CEILING_LINES: CeilingLines = {
   hitter: { fringe: 45, regular: 50, impact: 56 },
   pitcher: { fringe: 45, regular: 48, impact: 53 },
-} as const;
+};
+
+/** Why the lines in force are what they are (the reasons a tier may give, and the measurement's record). */
+export type StakesLinesReason =
+  | 'measured'       // this league's own, measured at an import and checked
+  | 'carried'        // the latest measurement did not hold up: the league's own from an earlier import stays
+  | 'players'        // too few major leaguers of a kind (or clubs) to measure: the starting lines
+  | 'check_failed'   // measured, did not hold up, and no line of the league's own was in force: the starting lines
+  | 'not_measured'   // nothing measured yet for this league: the starting lines
+  | 'no_league';     // his organization's major league is not established in the export: the starting lines
+
+/** The lines a tier is read against, with where they came from. Required by the evaluator: never a default. */
+export interface CeilingLinesInForce {
+  lines: CeilingLines;
+  source: 'save' | 'starting';
+  reason: StakesLinesReason;
+  /** The game date of the export the league's own lines were measured on (ISO); null for the starting lines. */
+  measuredOn: string | null;
+  /** The lines in force before these, when they differed, so a tier that changed because a line moved can say so. */
+  previous: { lines: CeilingLines; source: 'save' | 'starting'; measuredOn: string | null } | null;
+}
+
+/** Pennant's starting lines, with the true reason they serve. */
+export function startingLines(reason: StakesLinesReason): CeilingLinesInForce {
+  return { lines: CEILING_LINES, source: 'starting', reason, measuredOn: null, previous: null };
+}
 
 export const DEVELOPMENT_AGE_CALIBRATION: CalibrationStamp = provisional(
   'The age through which most, some and little of a player\'s development is still ahead of him. The ' +
@@ -99,7 +133,7 @@ export const PROJECTION_REALIZED_UNDER = 3;
 
 /** Every stakes constant with its stamp, for a response that reports what it used. */
 export const STAKES_CALIBRATION: ReadonlyArray<{ name: string; value: unknown; stamp: CalibrationStamp }> = [
-  { name: 'CEILING_LINES', value: CEILING_LINES, stamp: CEILING_LINES_CALIBRATION },
+  { name: 'CEILING_LINES (Pennant\'s starting lines)', value: CEILING_LINES, stamp: CEILING_LINES_CALIBRATION },
   { name: 'CEILING_LINES (the quantiles they stand for)', value: 'p10 / p50 / p90 of major leaguers of his kind', stamp: CEILING_QUANTILES_CALIBRATION },
   { name: 'DEVELOPMENT_AGE', value: DEVELOPMENT_AGE, stamp: DEVELOPMENT_AGE_CALIBRATION },
   { name: 'PROJECTION_REALIZED_UNDER', value: PROJECTION_REALIZED_UNDER, stamp: PROJECTION_CALIBRATION },
@@ -200,6 +234,12 @@ export interface DevelopmentProtectionInput {
   ability: ScoutedAbility;
 
   /**
+   * The ceiling lines in force for his organization's major league (`developmentalContext.ts` resolves them through
+   * `stakesLines.ts`). Required: the evaluator never picks lines for itself.
+   */
+  lines: CeilingLinesInForce;
+
+  /**
    * Where he is and how old his league is. null or absent when the caller cannot say: his level's
    * schedule is then not read and nothing is discounted for it.
    */
@@ -280,9 +320,9 @@ const oneStepLess = (state: DevelopmentRemaining): DevelopmentRemaining =>
  * Read from his own rating against fixed lines, never against the players around him, so no other
  * player's rating — a weak league, a strong one, a man promoted past him — can move it.
  */
-export function ceilingOf(kind: ScoutedAbility['kind'], potential: number): StakesReading['ceiling'] {
+export function ceilingOf(kind: ScoutedAbility['kind'], potential: number, inForce: CeilingLines): StakesReading['ceiling'] {
   const lineKind: 'hitter' | 'pitcher' = kind === 'pitcher' ? 'pitcher' : 'hitter';
-  const lines = CEILING_LINES[lineKind];
+  const lines = inForce[lineKind];
   if (potential >= lines.impact) return { band: 'impact', kind: lineKind, potential, cleared: lines.impact, next: null };
   if (potential >= lines.regular) return { band: 'regular', kind: lineKind, potential, cleared: lines.regular, next: lines.impact };
   if (potential >= lines.fringe) return { band: 'fringe', kind: lineKind, potential, cleared: lines.fringe, next: lines.regular };
@@ -352,19 +392,50 @@ export function tierFor(ceiling: CeilingBand, remaining: DevelopmentRemaining): 
 
 const LINE_WORDS = { fringe: 'the weakest tenth', regular: 'the median', impact: 'the best tenth' } as const;
 
-function ceilingReason(ceiling: StakesReading['ceiling']): string {
-  const lines = CEILING_LINES[ceiling.kind];
-  const peers = `major-league ${ceiling.kind}s`;
+/** A date as a GM reads it ("May 16, 2026"), from the ISO the store keeps; the ISO itself when it cannot be read. */
+function dateWords(iso: string | null): string {
+  const m = iso ? /^(\d{4})-(\d{2})-(\d{2})/.exec(iso) : null;
+  if (!m) return iso ?? 'an earlier import';
+  const month = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][Number(m[2]) - 1];
+  return `${month} ${Number(m[3])}, ${m[1]}`;
+}
+
+function ceilingReason(ceiling: StakesReading['ceiling'], inForce: CeilingLinesInForce): string {
+  const lines = inForce.lines[ceiling.kind];
+  // "this league's" only where the league's own lines serve; otherwise the starting line, named as such (never the league's)
+  const own = inForce.source === 'save';
+  const peers = own ? `this league's major-league ${ceiling.kind}s` : `major-league ${ceiling.kind}s`;
+  const at = (value: number) => (own ? `${value}` : `${value}, Pennant's starting line`);
   switch (ceiling.band) {
     case 'impact':
-      return `Visible ceiling of an impact major leaguer: a potential of ${ceiling.potential} is among ${LINE_WORDS.impact} of ${peers} (${lines.impact}).`;
+      return `Visible ceiling of an impact major leaguer: a potential of ${ceiling.potential} is among ${LINE_WORDS.impact} of ${peers} (${at(lines.impact)}).`;
     case 'regular':
-      return `Visible ceiling of a major-league regular: a potential of ${ceiling.potential} is at ${LINE_WORDS.regular} of ${peers} (${lines.regular}) or above it.`;
+      return `Visible ceiling of a major-league regular: a potential of ${ceiling.potential} is at ${LINE_WORDS.regular} of ${peers} (${at(lines.regular)}) or above it.`;
     case 'fringe':
-      return `Visible ceiling of a fringe major leaguer: a potential of ${ceiling.potential} clears ${LINE_WORDS.fringe} of ${peers} (${lines.fringe}) and not ${LINE_WORDS.regular} (${lines.regular}).`;
+      return `Visible ceiling of a fringe major leaguer: a potential of ${ceiling.potential} clears ${LINE_WORDS.fringe} of ${peers} (${at(lines.fringe)}) and not ${LINE_WORDS.regular} (${at(lines.regular)}).`;
     case 'below_major_league':
-      return `No major-league projection is visible: a potential of ${ceiling.potential} is under ${LINE_WORDS.fringe} of ${peers} (${lines.fringe}).`;
+      return `No major-league projection is visible: a potential of ${ceiling.potential} is under ${LINE_WORDS.fringe} of ${peers} (${at(lines.fringe)}).`;
   }
+}
+
+const BAND_WORDS: Record<CeilingBand, string> = {
+  impact: 'an impact major leaguer', regular: 'a major-league regular', fringe: 'a fringe major leaguer', below_major_league: 'no major-league projection',
+};
+
+/**
+ * When his ceiling differs under the lines in force before these (a line moved at an import), say so: the move, not anything about
+ * him, is what changed it. Null when the lines did not move or his ceiling reads the same under both.
+ */
+function lineMoveReason(kind: ScoutedAbility['kind'], potential: number, ceiling: StakesReading['ceiling'], inForce: CeilingLinesInForce): string | null {
+  const before = inForce.previous;
+  if (!before) return null;
+  const earlier = ceilingOf(kind, potential, before.lines);
+  if (earlier.band === ceiling.band) return null;
+  const from = before.lines[ceiling.kind];
+  const to = inForce.lines[ceiling.kind];
+  const moved = (['fringe', 'regular', 'impact'] as const).filter((n) => from[n] !== to[n]).map((n) => `${n === 'fringe' ? 'a fringe major leaguer' : n === 'regular' ? 'a regular' : 'an impact player'}: ${from[n]} to ${to[n]}`);
+  const when = inForce.source === 'save' ? `when this league's major leaguers were measured on ${dateWords(inForce.measuredOn)}` : 'when the league\'s own lines stopped serving';
+  return `The ceiling lines moved ${when} (${moved.join('; ')}). Under the earlier lines his ceiling read as ${BAND_WORDS[earlier.band]}. The lines moved, not anything about him.`;
 }
 
 function ageReason(age: number, byAge: DevelopmentRemaining): string {
@@ -498,6 +569,8 @@ function differenceFromSuperseded(
 export function evaluateDevelopmentProtection(
   input: DevelopmentProtectionInput
 ): DevelopmentProtection {
+  // No silent default: the lines a tier is read against are handed in (the reader's), never picked here
+  if (!input.lines?.lines) throw new Error('Developmental stakes need the ceiling lines in force (developmentalContext.ts resolves them).');
   const ratingEvidence = input.ability.status;
   const current = input.ability.current;
   const potentialRating = input.ability.potential;
@@ -522,8 +595,10 @@ export function evaluateDevelopmentProtection(
    * not the rest is: a known ceiling or a known age is still worth showing.
    */
   const reasons: string[] = [];
-  const ceiling = potentialRating !== null ? ceilingOf(input.ability.kind, potentialRating) : null;
-  if (ceiling) reasons.push(ceilingReason(ceiling));
+  const ceiling = potentialRating !== null ? ceilingOf(input.ability.kind, potentialRating, input.lines.lines) : null;
+  if (ceiling) reasons.push(ceilingReason(ceiling, input.lines));
+  const moved = ceiling && potentialRating !== null ? lineMoveReason(input.ability.kind, potentialRating, ceiling, input.lines) : null;
+  if (moved) reasons.push(moved);
   if (age !== null) reasons.push(ageReason(age, developmentRemainingByAge(age)));
 
   /*

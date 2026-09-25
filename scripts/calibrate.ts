@@ -7,8 +7,9 @@
  *
  * Sections: results pitchers tools platoon aging running defense leverage standards production (default: all), and, only when named:
  * roster-review (the roster review's per-save yardsticks, D-053 cycles 1 to 3, including the platoon fit and the long-man line;
- * `--refit` to record them in history.db), detector (the detector's error rates, cycle 2) and platoon-detector (the platoon fit's
- * error rates under the detector, cycle 3).
+ * `--refit` to record them in history.db), detector (the detector's error rates, cycle 2), platoon-detector (the platoon fit's
+ * error rates under the detector, cycle 3) and stakes-lines (Player Development's ceiling lines measured on the league's major leaguers,
+ * cycle 4; `--refit` to record the measurement).
  *
  * `production` runs Player Value's per-save production fit (D-053; scripts/lib/productionCalibration.ts):
  * `production --prior` also prints the fallback prior, `production --refit` forces a refit into history.db.
@@ -653,3 +654,23 @@ if (want('production')) productionSection(LEAGUE, process.argv.slice(2));
 if (sections.includes('roster-review')) rosterReviewSection(LEAGUE, process.argv.slice(2));
 if (sections.includes('detector')) detectorSection(process.argv.slice(2));
 if (sections.includes('platoon-detector')) platoonDetectorSection(process.argv.slice(2));
+if (sections.includes('stakes-lines')) await stakesLinesSection(LEAGUE, process.argv.slice(2));
+
+// ── Player Development's ceiling lines, measured on the league's major leaguers (D-053, cycle 4) ─────────────
+
+async function stakesLinesSection(league: number, argv: string[]): Promise<void> {
+  heading('15. Developmental stakes: the ceiling lines, measured on this league\'s major leaguers');
+  // Loaded here only, so the other sections' refits never include it
+  await import('../server/stakesLinesRefit.js');
+  const { computeCalibrationRefits, recordCalibrationRefits } = await import('../server/saveCalibration.js');
+  const pending = computeCalibrationRefits({ leagues: [league], force: true, components: ['ceiling_lines'] });
+  for (const p of pending) {
+    console.log(`${p.outcome.component} (${p.outcome.method}), basis ${p.outcome.basis ?? '—'}: ${p.outcome.refit ? (p.outcome.adopted ? 'SERVED' : 'NOT SERVED') : 'not measured'}; ${p.outcome.reason}`);
+    for (const c of p.run?.record.heldOut ?? []) console.log(`  ${c.kind} ${c.part}: ${c.note}`);
+    for (const n of p.run?.record.notes ?? []) console.log(`  ${n}`);
+  }
+  if (argv.includes('--refit')) {
+    const out = recordCalibrationRefits(pending);
+    console.log(`recorded: ${out.filter((o) => o.refit).map((o) => `${o.component} ${o.adopted ? 'served' : 'not served'}`).join(', ')}`);
+  } else console.log('(nothing written; --refit records the measurement in history.db)');
+}

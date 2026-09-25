@@ -5,6 +5,8 @@ import {
   requireKnownProtection,
   TIER_ORDER,
 } from '../server/developmentFit.js';
+import { startingLines } from '../server/developmentFit.js';
+const STARTING = startingLines('not_measured');
 import { syntheticScoutedAbility } from '../server/scoutedEvidence.js';
 
 /**
@@ -19,7 +21,7 @@ import { syntheticScoutedAbility } from '../server/scoutedEvidence.js';
  */
 
 const protect = (age: number, current: number | null, potential: number | null) =>
-  evaluateDevelopmentProtection({ age, ability: syntheticScoutedAbility({ current, potential }) });
+  evaluateDevelopmentProtection({ lines: STARTING,  age, ability: syntheticScoutedAbility({ current, potential }) });
 
 describe('development protection', () => {
   it('protects a young high-ceiling player as a core prospect', () => {
@@ -69,7 +71,7 @@ describe('development protection', () => {
   });
 
   it('is total protection when manually protected, whatever the ratings', () => {
-    const p = evaluateDevelopmentProtection({ age: 33, ability: syntheticScoutedAbility({ current: 25, potential: 25 }), manuallyProtected: true });
+    const p = evaluateDevelopmentProtection({ lines: STARTING,  age: 33, ability: syntheticScoutedAbility({ current: 25, potential: 25 }), manuallyProtected: true });
     expect(p).toMatchObject({ tier: 'core_prospect', manuallyProtected: true, reading: null });
   });
 });
@@ -121,7 +123,7 @@ describe('missing rating evidence', () => {
   });
 
   it('is total protection when manually protected, whatever the ratings are', () => {
-    const p = evaluateDevelopmentProtection({
+    const p = evaluateDevelopmentProtection({ lines: STARTING, 
       age: 30,
       ability: syntheticScoutedAbility({ current: null, potential: null }),
       manuallyProtected: true,

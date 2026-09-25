@@ -6,6 +6,7 @@
 
 import { parentPort } from 'node:worker_threads';
 import './mlbCalibrationRefit.js';
+import './stakesLinesRefit.js';
 import { computeCalibrationRefits } from './saveCalibration.js';
 
 try {
