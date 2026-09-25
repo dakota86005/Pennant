@@ -46,7 +46,9 @@ export const REVIEW_CALIBRATION: CalibrationStamp = policy(
 export const PITCHER_RESULTS_MIX = { skills: 0.85, runs: 0.15 } as const;
 
 /**
- * CALIBRATED. What aging does, from the league's own history (section 5): the mean change in league-relative production
+ * THE FALLBACK PRIOR (provisional since D-053, cycle 1). A save fits its own curve on its own history (`mlbCalibrationFit.ts
+ * fitAging`, served as an `AgingTable` once it passes its held-out check); these rows serve until then. `concernAge` is POLICY: when a
+ * decline is raised as a risk, not how aging works. Originally: what aging does, from the league's own history (section 5): the mean change in league-relative production
  * from one season to the next, by age. Hitters, in wOBA points a year; pitchers, in runs per nine of FIP (positive is
  * worse). Piecewise: the first row whose age the player has reached applies.
  */
@@ -99,7 +101,7 @@ export const CONCERN = {
 } as const;
 
 export const DEFENSE_CALIBRATION: CalibrationStamp = provisional(
-  'Each weight is the average of a data-derived share and the earlier first-pass figure. The derived share is the position\'s defensive talent spread (the slope of zone-rating runs on the visible glove grade, times the spread of grades) over that plus the bat\'s, from one partial season; averaging with the prior keeps one season from moving it all the way.'
+  'The fallback prior (D-053, cycle 1): a save fits its own weights from the repeatable spread of fielding results once two seasons in a row carry zone rating and a later season checks them (mlbCalibrationFit.ts fitDefense). Each weight is the average of a data-derived share and the earlier first-pass figure. The derived share is the position\'s defensive talent spread (the slope of zone-rating runs on the visible glove grade, times the spread of grades) over that plus the bat\'s, from one partial season; averaging with the prior keeps one season from moving it all the way.'
 );
 
 /**

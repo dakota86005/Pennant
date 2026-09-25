@@ -15,10 +15,14 @@
  *
  * Three kinds of number live here and the stamps say which:
  *
- *   the typical levels   DESCRIPTIVE and PROVISIONAL. The median estimate of each role across the 30 clubs' production review
- *                        (`scripts/calibrate.ts standards`), one snapshot (43 games) of one league. They will move with the
- *                        season and the roster pool, so re-run the harness and edit them here.
- *   the spread           the pooled 10th-percentile deviation from each role's median. Stable, because it is pooled.
+ *   the typical levels   DESCRIPTIVE. Since per-save calibration (D-053, cycle 1; owner decision 2026-09-24) each save MEASURES them
+ *                        from its own export at each import (`mlbCalibrationFit.ts measureStandards`): the median estimate of each
+ *                        role across every club's review, shrunk toward the values below by the holders behind it, served only once
+ *                        they pass their checks (a club split, and the league's own past seasons on the results lens). The values
+ *                        below are the FALLBACK PRIOR, stamped provisional: one snapshot (43 games) of the Arizona import.
+ *   the spread           the pooled 10th- and 5th-percentile deviation from each role's median, measured the same way.
+ *   each lens's line     since the same decision, a tools lens and a results lens each have their own typical level and gap on their
+ *                        own scale where the save has measured them; until then both read against the built-in `lensFloor`.
  *   the quantile         POLICY. That "unusually weak" means the lowest tenth is a decision, not a fact about baseball.
  *
  * Pure data and lookups: no table, no rating.
@@ -28,7 +32,7 @@ import type { BullpenTier } from './bullpenRoles.js';
 import { policy, provisional, type CalibrationStamp } from './calibration.js';
 
 export const ROLE_STANDARDS_CALIBRATION: CalibrationStamp = provisional(
-  'The typical estimate of each role is the median of the production review across the 30 clubs (2026-05-16, about 43 games; scripts/calibrate.ts standards): descriptive, one snapshot of one league, expected to move as the season and the rosters do. The pooled spread is stable.'
+  'The fallback prior (D-053): the typical estimate of each role is the median of the production review across the 30 clubs of the Arizona import (2026-05-16, about 43 games; scripts/calibrate.ts standards), descriptive, one snapshot of one league. A save serves its own measurement once it has passed its checks (mlbCalibrationFit.ts); these values serve until then and are never presented as the save\'s own.'
 );
 
 export const ROLE_FLOOR_POLICY: CalibrationStamp = policy(

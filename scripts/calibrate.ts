@@ -5,7 +5,8 @@
  *
  *   OOTP_FO_DATA_DIR=<dir with league.db> npx tsx scripts/calibrate.ts [section ...]
  *
- * Sections: results pitchers tools platoon aging running defense leverage standards production (default: all).
+ * Sections: results pitchers tools platoon aging running defense leverage standards production (default: all), and roster-review
+ * (only when named): the roster review's per-save yardsticks (D-053, cycle 1), `--refit` to record them in history.db.
  *
  * `production` runs Player Value's per-save production fit (D-053; scripts/lib/productionCalibration.ts):
  * `production --prior` also prints the fallback prior, `production --refit` forces a refit into history.db.
@@ -32,6 +33,7 @@ import {
 import { mlbOverview } from '../server/mlbOperations.js';
 import { bestOf, correlation, grid, mean, weightedRmse, wls } from './lib/fit.js';
 import { productionSection } from './lib/productionCalibration.js';
+import { rosterReviewSection } from './lib/rosterReviewCalibration.js';
 
 const LEAGUE = Number(process.env.CALIBRATION_LEAGUE ?? 203);
 const FIRST = 2003;
@@ -630,3 +632,4 @@ if (want('defense')) defenseSection();
 if (want('leverage')) leverageSection();
 if (want('standards')) standardsSection();
 if (want('production')) productionSection(LEAGUE, process.argv.slice(2));
+if (sections.includes('roster-review')) rosterReviewSection(LEAGUE, process.argv.slice(2));
