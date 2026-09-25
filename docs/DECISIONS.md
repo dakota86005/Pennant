@@ -1653,8 +1653,9 @@ rates and, from the save's own rating snapshots once enough exist, the developme
 refit after an import (`api.ts` `refitAfterImport`), `GET /api/player-value/production-fit/:orgId`, and `npm run
 calibrate production` for a developer's forced refit. Amends D-037 and D-041. MLB Operations' roster review follows since cycle 1
 (2026-09-24, amendment below): role standards, aging curve and glove weights, on the neutral `saveIdentity.ts`,
-`saveCalibrationStore.ts` and `saveCalibration.ts`. The other subsystems' calibrated constants are not migrated yet (ROADMAP
-"Later: calibration and longitudinal management").
+`saveCalibrationStore.ts` and `saveCalibration.ts`; since cycle 2 (2026-09-25, amendment below) the results lens's season weights
+and stabilization (`mlbResultsFit.ts`), judged by the neutral detector (`calibrationDetector.ts`), and the league's own wOBA scale.
+The other subsystems' calibrated constants are not migrated yet (ROADMAP "Later: calibration and longitudinal management").
 
 Pennant has to work across very different saves, including fictional leagues whose ecosystems look nothing like
 modern major-league baseball. A number fitted on one save's history and written into the code is that save's
@@ -1849,6 +1850,55 @@ not established. The gate is not loosened."
 - **On the Arizona import** the standards and the aging curve pass and would be adopted (the standards equal the built-in values
   within half a point, being the same snapshot); the glove weights are not fitted; the lens change alone removes 6 of the
   league's 21 flags (none of Arizona's) and changes 8 more between kinds of watch.
+
+**Amended 2026-09-25 (per-save calibration, cycle 2: the results lens and the wOBA scale; CALIBRATION.md section 13).**
+
+- **A fitted tuning value replaces its fallback only when clearly better; a measurement is served when its checks pass** (owner
+  decision 2026-09-25). A tuning value with a rival value set (the results lens's season weights and stabilization, the aging
+  curve) is adopted only where it beats the starting values on held-out seasons by the detector's rule (`calibrationDetector.ts`).
+  - The rule (`detector-3`; independent reviews found `detector-1` overconfident and `detector-2`'s return too hard):
+    - worth it at a confidence: the lower one-sided 97.5% bound of the gain is at least 1% of the starting values' error, both
+      across players (clustered by player) and across seasons (Student's t on the held-out seasons);
+    - consistent: better in two-thirds of the held-out seasons, and at least 3;
+    - enough: 4 held-out seasons of 50 cases, so at least 10 seasons of history;
+    - confirmed: clearly better at two consecutive completed-season refits before the save's values first serve (a refit that is
+      not clearly better, or fails, starts the count again).
+  - The rule is applied twice, unshrunk and as served, and every free parameter is chosen inside each rolling origin (nested), so
+    no selection optimism reaches the verdict.
+  - Otherwise the starting values serve, and the page says they were checked on this league and held up. That verdict is adopted
+    as such, never shown as "not measured".
+  - **Hysteresis, asymmetric** (supervisor's call: adopting is hard, giving up is easy). Once the save's values serve, a refit
+    returns to the starting values when their lower bound on the gain is above zero (the same two-bound test and consistency, not
+    the 1% bar). Values adopted on imported seasons therefore give way after a break in how the league plays. The record carries the
+    previous state, the confirmation count and the rule applied. Methods `results-2` and `aging-3`.
+  - A measurement of the league as it stands, with no rival value set (the role standards), keeps cycle 1's measure-and-check rule.
+- **The target is a lifetime rate** (supervisor's call, 2026-09-25). Over a save's lifetime of yearly refits (10 to 22 seasons of
+  history, with hysteresis), the rate of adopting the save's values when their true gain is under the 1% practical minimum must be
+  at most 5%. This holds at the exact null and at the least-favourable nulls (a true excess of 0.5% and 0.9%), stationary and with
+  season-to-season heterogeneity (noise ±25%, drift ±0.3). Power is secondary. The level, the minimum and the confirmations were
+  tuned by simulation to this target.
+- **Measured** (`npm run calibrate detector`, 2026-09-25, simulated leagues sized like the Arizona import; CALIBRATION.md 13.3):
+  - lifetime false adoption at most 3.0% (0.0% at every exact null);
+  - lifetime adoption of 92% to 100% where the starting values cost 3% to 6% more error, and 29% to 48% at about 2%;
+  - pitchers' fictional-league shifts (1.3% to 2.1%): 7% to 26%;
+  - no wrong return once the save's values serve;
+  - after a break (the owner's save shape: noisier imported seasons, then the starting values exactly right), 5.3% ever adopt and
+    2.3% still serve at 22 seasons, at a cost under the 1% minimum in the new regime.
+  - With the break plus seasons differing plus a true 0.9% excess after it, 10.3% adopt. That is above the target, which covers
+    leagues without a break, but what serves is on median better than the starting values in the new regime. It is recorded, not
+    tuned away (CALIBRATION.md 13.3).
+- **On the Arizona import** neither the season weights and stabilization nor the aging curve is clearly better. The starting values
+  serve for both. The aging curve cycle 1 had served gives way (method `aging-3`), and the age explanations say "hitters his age
+  usually lose about ..." again. No flag changes.
+- **The wOBA scale is the league-season's own** (supervisor's call): derived from its totals in `leagueBaseline` (BaseRuns), read by
+  wRC+ app-wide and by the glove-weight fit. 1.2 remains only as the labelled fallback where the totals cannot give one (an
+  unrecorded total is unknown, never zero). A caught stealing's run value is derived the same way.
+- **Supervisor's calls, recorded:**
+  - relievers' over-trust (held-out slope 0.65) is reported in the run record and is a ROADMAP finding, not gated;
+  - the tools information is deferred to cycle 4;
+  - baserunning and defensive stabilization are built but inactive until the export carries UBR or zone rating for enough seasons;
+  - the park share stays provisional;
+  - the peer-population minimums are policy.
 
 ## D-054 — Charting library
 

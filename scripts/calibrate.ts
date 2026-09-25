@@ -34,6 +34,7 @@ import { mlbOverview } from '../server/mlbOperations.js';
 import { bestOf, correlation, grid, mean, weightedRmse, wls } from './lib/fit.js';
 import { productionSection } from './lib/productionCalibration.js';
 import { rosterReviewSection } from './lib/rosterReviewCalibration.js';
+import { detectorSection } from './lib/resultsDetectorSimulation.js';
 
 const LEAGUE = Number(process.env.CALIBRATION_LEAGUE ?? 203);
 const FIRST = 2003;
@@ -633,3 +634,4 @@ if (want('leverage')) leverageSection();
 if (want('standards')) standardsSection();
 if (want('production')) productionSection(LEAGUE, process.argv.slice(2));
 if (sections.includes('roster-review')) rosterReviewSection(LEAGUE, process.argv.slice(2));
+if (sections.includes('detector')) detectorSection(process.argv.slice(2));

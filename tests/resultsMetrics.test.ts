@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
-  hitterRates, percentileAmong, pitcherRates, reliability, RESULTS_CALIBRATION, SEASON_WEIGHTS, STABILIZATION,
+  hitterRates, percentileAmong, pitcherRates, reliability, RESULTS_CALIBRATION, RESULTS_PRIOR,
   weightedBatting, weightedPitching, wobaOf, type BattingLine, type PitchingLine, type SeasonEnvironment,
 } from '../server/resultsMetrics';
+
+const SEASON_WEIGHTS = RESULTS_PRIOR.weights;
+const STABILIZATION = RESULTS_PRIOR.stabilization;
 
 /*
  * Results are arithmetic on facts: league-relative, recency weighted, and honest about sample.
@@ -53,7 +56,7 @@ describe('wOBA and rates', () => {
     const e = env([2030]).get(2030) as SeasonEnvironment; // league raw 0.9, league ERA 4.2
     expect(pitcherRates(line, e).fip as number).toBeCloseTo(4.2 + (1.3 - 0.9), 6);
     // and the relative measure the ranking uses is the same difference, in runs on the ERA scale
-    const w = weightedPitching([line], env([2030]), 2030);
+    const w = weightedPitching([line], env([2030]), 2030, SEASON_WEIGHTS.starter);
     expect(w.skills.value as number).toBeCloseTo(1.3 - 0.9, 6);
   });
 });
@@ -61,42 +64,42 @@ describe('wOBA and rates', () => {
 describe('weighting seasons', () => {
   it('measures each season against ITS league before combining', () => {
     const lines = [bat(2030), bat(2029)];
-    const hot = weightedBatting(lines, new Map([[2030, { year: 2030, woba: 0.300, fipRaw: 0, era: 4 }], [2029, { year: 2029, woba: 0.340, fipRaw: 0, era: 4 }]]), 2030);
-    const flat = weightedBatting(lines, env([2030, 2029]), 2030);
+    const hot = weightedBatting(lines, new Map([[2030, { year: 2030, woba: 0.300, fipRaw: 0, era: 4 }], [2029, { year: 2029, woba: 0.340, fipRaw: 0, era: 4 }]]), 2030, SEASON_WEIGHTS.hitter);
+    const flat = weightedBatting(lines, env([2030, 2029]), 2030, SEASON_WEIGHTS.hitter);
     expect(Math.abs((hot.value as number) - (flat.value as number))).toBeGreaterThan(0.001);
     expect(hot.seasons.map((s) => s.year).sort()).toEqual([2029, 2030]);
   });
 
   it('uses only the last three seasons, and weights the recent ones more', () => {
     const lines = [bat(2030, { h: 200, hr: 40 }), bat(2029), bat(2028), bat(2027, { h: 250, hr: 60 })];
-    const w = weightedBatting(lines, env([2030, 2029, 2028, 2027]), 2030);
+    const w = weightedBatting(lines, env([2030, 2029, 2028, 2027]), 2030, SEASON_WEIGHTS.hitter);
     expect(w.seasons.map((s) => s.year).sort()).toEqual([2028, 2029, 2030]);
     expect(SEASON_WEIGHTS.hitter).toEqual([5, 3, 3]);
     expect(SEASON_WEIGHTS.starter).toEqual([5, 3, 1]);
     expect(SEASON_WEIGHTS.reliever).toEqual([5, 3, 2]);
     // the current season is the best by far, so a weighted value sits above the older two alone
-    const older = weightedBatting([bat(2029), bat(2028)], env([2029, 2028]), 2030);
+    const older = weightedBatting([bat(2029), bat(2028)], env([2029, 2028]), 2030, SEASON_WEIGHTS.hitter);
     expect(w.value as number).toBeGreaterThan(older.value as number);
   });
 
   it('a short current season cannot dominate, and the effective sample says so', () => {
-    const w = weightedBatting([bat(2030, { pa: 100, ab: 90, h: 40, hr: 8, d: 8, t: 0, bb: 8, hp: 1, sf: 1 }), bat(2029), bat(2028)], env([2030, 2029, 2028]), 2030);
+    const w = weightedBatting([bat(2030, { pa: 100, ab: 90, h: 40, hr: 8, d: 8, t: 0, bb: 8, hp: 1, sf: 1 }), bat(2029), bat(2028)], env([2030, 2029, 2028]), 2030, SEASON_WEIGHTS.hitter);
     expect(w.rawSample).toBe(1300);
     expect(w.sample).toBeCloseTo(100 + 600 * 0.6 + 600 * 0.6);
     // the same hot rates over a full season would pull the value up much more
-    const full = weightedBatting([bat(2030, { pa: 600, ab: 540, h: 240, hr: 48, d: 48, t: 0, bb: 48, hp: 6, sf: 6 }), bat(2029), bat(2028)], env([2030, 2029, 2028]), 2030);
+    const full = weightedBatting([bat(2030, { pa: 600, ab: 540, h: 240, hr: 48, d: 48, t: 0, bb: 48, hp: 6, sf: 6 }), bat(2029), bat(2028)], env([2030, 2029, 2028]), 2030, SEASON_WEIGHTS.hitter);
     expect(full.value as number).toBeGreaterThan(w.value as number + 0.02);
   });
 
   it('no qualifying season means no value, not zero', () => {
-    const w = weightedBatting([bat(2020)], env([2020]), 2030);
+    const w = weightedBatting([bat(2020)], env([2020]), 2030, SEASON_WEIGHTS.hitter);
     expect(w).toMatchObject({ value: null, sample: 0 });
     expect(w.calibration).toBe(RESULTS_CALIBRATION);
   });
 
   it('keeps pitcher skills and runs apart: a lucky ERA does not hide the peripherals', () => {
     const lucky = pit(2030, { er: 40, k: 120, bb: 90, hra: 30 });
-    const w = weightedPitching([lucky], env([2030]), 2030);
+    const w = weightedPitching([lucky], env([2030]), 2030, SEASON_WEIGHTS.starter);
     expect(w.runs.value as number).toBeLessThan(0);   // ERA better than the league
     expect(w.skills.value as number).toBeGreaterThan(0); // peripherals worse than the league
   });

@@ -17,8 +17,8 @@
 import { db, tableColumns, tableExists } from './db.js';
 import { leagueBaseline } from './stats.js';
 import {
-  blendStabilization, defenseResult, percentileAmong, POPULATION_MINIMUM, reliability, RESULTS_CALIBRATION, SEASON_WEIGHTS, weightedBaserunning,
-  weightedBatting, weightedPitching, wobaOf,
+  blendStabilization, defenseResult, percentileAmong, POPULATION_MINIMUM, reliability, RESULTS_CALIBRATION, resultsParamsKey, weightedBaserunning,
+  weightedBatting, weightedPitching, wobaOf, type ResultsParams,
   type BaserunningResult, type BattingLine, type DefenseLine, type DefenseResult, type PitchingLine, type SeasonEnvironment, type WeightedResult,
 } from './resultsMetrics.js';
 
@@ -65,7 +65,7 @@ export function seasonEnvironments(leagueId: number, currentYear: number): Map<n
   const out = new Map<number, SeasonEnvironment>();
   for (let year = currentYear - SEASONS_BACK; year <= currentYear; year += 1) {
     const b = leagueBaseline(leagueId, year, 1);
-    if (b.lgWOBA > 0 || b.lgERA > 0) out.set(year, { year, woba: b.lgWOBA, fipRaw: b.lgFIPRaw, era: b.lgERA });
+    if (b.lgWOBA > 0 || b.lgERA > 0) out.set(year, { year, woba: b.lgWOBA, fipRaw: b.lgFIPRaw, era: b.lgERA, caughtStealingRuns: b.caughtStealingRuns.value });
   }
   envCache.set(key, out);
   return out;
@@ -128,7 +128,7 @@ export function battingHistory(playerIds: number[], leagueId: number, currentYea
   return out;
 }
 
-export function pitchingHistory(playerIds: number[], leagueId: number, currentYear: number): Map<number, PitchingLine[]> {
+export function pitchingHistory(playerIds: number[], leagueId: number, currentYear: number, back = SEASONS_BACK): Map<number, PitchingLine[]> {
   const out = new Map<number, PitchingLine[]>();
   if (!tableExists('players_career_pitching_stats') || playerIds.length === 0) return out;
   const c = has('players_career_pitching_stats');
@@ -144,7 +144,7 @@ export function pitchingHistory(playerIds: number[], leagueId: number, currentYe
        FROM players_career_pitching_stats
        WHERE player_id IN (${ids.map(() => '?').join(',')}) AND level_id = 1 AND split_id = 1 ${league} AND year BETWEEN ? AND ?
        GROUP BY player_id, year, team_id`
-    ).all(...ids, ...(league ? [leagueId] : []), currentYear - SEASONS_BACK, currentYear) as Array<PitchingLine & { player_id: number; team_id: number }>;
+    ).all(...ids, ...(league ? [leagueId] : []), currentYear - back, currentYear) as Array<PitchingLine & { player_id: number; team_id: number }>;
     const byPlayer = new Map<number, Array<PitchingLine & { player_id: number; team_id: number }>>();
     for (const r of rows) byPlayer.set(r.player_id, [...(byPlayer.get(r.player_id) ?? []), r]);
     for (const [id, list] of byPlayer) {
@@ -186,11 +186,12 @@ interface Population {
   inningsPerStart: number[];
 }
 
-/** Fewest innings at a position, this season, before a fielder's zone-rating rate joins the peer population. */
+/** POLICY. Fewest innings at a position, this season, before a fielder's zone-rating rate joins the peer population (D-041). */
 const DEFENSE_POPULATION_MINIMUM = 150;
 
-function population(leagueId: number, currentYear: number): Population {
-  const key = `${leagueId}:${currentYear}`;
+/** The league's peer populations under a set of params (the params in force: a population weighted one way never ranks a player weighted another). */
+function population(leagueId: number, currentYear: number, params: ResultsParams): Population {
+  const key = `${leagueId}:${currentYear}:${resultsParamsKey(params)}`;
   const hit = populationCache.get(key);
   if (hit) return hit;
   const env = seasonEnvironments(leagueId, currentYear);
@@ -204,14 +205,14 @@ function population(leagueId: number, currentYear: number): Population {
   const batterIds = ids('players_career_batting_stats');
   const batters = battingHistory(batterIds, leagueId, currentYear);
   for (const lines of batters.values()) {
-    const w = weightedBatting(lines, env, currentYear);
+    const w = weightedBatting(lines, env, currentYear, params.weights.hitter);
     if (w.value !== null && w.sample >= POPULATION_MINIMUM.hitter) pop.hitters.push(w.value);
-    const run = weightedBaserunning(lines, currentYear);
+    const run = weightedBaserunning(lines, env, currentYear, params.weights.hitter, params.stabilization.baserunning);
     if (run.perSixHundred !== null && run.sample >= POPULATION_MINIMUM.hitter) pop.baserunning.push(run.perSixHundred);
   }
   for (const rows of fieldingResultLines(batterIds, leagueId, currentYear).values()) {
     for (const position of new Set(rows.map((r) => r.position))) {
-      const d = defenseResult(rows, position);
+      const d = defenseResult(rows, position, params.stabilization.defense);
       if (d.per1300 !== null && d.innings >= DEFENSE_POPULATION_MINIMUM) (pop.defense[position] ??= []).push(d.per1300);
     }
   }
@@ -220,7 +221,7 @@ function population(leagueId: number, currentYear: number): Population {
     const g = lines.reduce((n, l) => n + l.g, 0);
     const gs = lines.reduce((n, l) => n + l.gs, 0);
     const starter = g > 0 && gs / g >= 0.5;
-    const w = weightedPitching(lines, env, currentYear, starter ? SEASON_WEIGHTS.starter : SEASON_WEIGHTS.reliever);
+    const w = weightedPitching(lines, env, currentYear, starter ? params.weights.starter : params.weights.reliever);
     if (w.skills.value === null || w.runs.value === null || w.skills.sample < POPULATION_MINIMUM.pitcher) continue;
     if (starter) {
       pop.starterSkills.push(w.skills.value); pop.starterRuns.push(w.runs.value);
@@ -256,16 +257,16 @@ export interface PitcherResults {
   calibration: typeof RESULTS_CALIBRATION;
 }
 
-export function loadPitcherResults(playerIds: number[], leagueId: number, usage: 'starter' | 'reliever'): Map<number, PitcherResults> {
+export function loadPitcherResults(playerIds: number[], leagueId: number, usage: 'starter' | 'reliever', params: ResultsParams): Map<number, PitcherResults> {
   const out = new Map<number, PitcherResults>();
   const year = currentSeason(leagueId);
   if (year === null) return out;
   const env = seasonEnvironments(leagueId, year);
-  const pop = population(leagueId, year);
+  const pop = population(leagueId, year, params);
   const skillsPop = usage === 'starter' ? pop.starterSkills : pop.relieverSkills;
   const runsPop = usage === 'starter' ? pop.starterRuns : pop.relieverRuns;
   for (const [id, lines] of pitchingHistory(playerIds, leagueId, year)) {
-    const w = weightedPitching(lines, env, year, SEASON_WEIGHTS[usage]);
+    const w = weightedPitching(lines, env, year, params.weights[usage]);
     const current = lines.find((l) => l.year === year) ?? null;
     const gs = lines.reduce((n, l) => n + l.gs, 0);
     const outs = lines.reduce((n, l) => n + l.outs, 0);
@@ -273,10 +274,10 @@ export function loadPitcherResults(playerIds: number[], leagueId: number, usage:
       playerId: id, usage, seasons: [...lines].sort((a, b) => b.year - a.year), current, skills: w.skills, runs: w.runs,
       skillsPercentile: w.skills.value !== null && w.skills.sample >= POPULATION_MINIMUM.pitcher ? percentileAmong(skillsPop, w.skills.value, false) : null,
       runsPercentile: w.runs.value !== null && w.runs.sample >= POPULATION_MINIMUM.pitcher ? percentileAmong(runsPop, w.runs.value, false) : null,
-      sample: w.skills.sample, reliability: reliability(w.skills.sample, blendStabilization(usage)),
+      sample: w.skills.sample, reliability: reliability(w.skills.sample, blendStabilization(usage, params)),
       inningsPerStart: gs > 0 ? outs / 3 / gs : null,
       leverage: current && current.bf > 0 && current.li > 0 ? current.li / current.bf : null,
-      calibration: RESULTS_CALIBRATION,
+      calibration: params.stamp,
     });
   }
   return out;
@@ -298,21 +299,21 @@ export interface HitterResults {
   calibration: typeof RESULTS_CALIBRATION;
 }
 
-export function loadHitterResults(playerIds: number[], leagueId: number): Map<number, HitterResults> {
+export function loadHitterResults(playerIds: number[], leagueId: number, params: ResultsParams): Map<number, HitterResults> {
   const out = new Map<number, HitterResults>();
   const year = currentSeason(leagueId);
   if (year === null) return out;
   const env = seasonEnvironments(leagueId, year);
-  const pop = population(leagueId, year);
+  const pop = population(leagueId, year, params);
   for (const [id, lines] of battingHistory(playerIds, leagueId, year)) {
-    const w = weightedBatting(lines, env, year);
-    const run = weightedBaserunning(lines, year);
+    const w = weightedBatting(lines, env, year, params.weights.hitter);
+    const run = weightedBaserunning(lines, env, year, params.weights.hitter, params.stabilization.baserunning);
     out.set(id, {
       playerId: id, seasons: [...lines].sort((a, b) => b.year - a.year), current: lines.find((l) => l.year === year) ?? null, woba: w,
       percentile: w.value !== null && w.sample >= POPULATION_MINIMUM.hitter ? percentileAmong(pop.hitters, w.value, true) : null,
-      sample: w.sample, reliability: reliability(w.sample, blendStabilization('hitter')),
+      sample: w.sample, reliability: reliability(w.sample, blendStabilization('hitter', params)),
       baserunning: { ...run, percentile: run.perSixHundred !== null && run.sample >= POPULATION_MINIMUM.hitter ? percentileAmong(pop.baserunning, run.perSixHundred, true) : null },
-      calibration: RESULTS_CALIBRATION,
+      calibration: params.stamp,
     });
   }
   return out;
@@ -330,13 +331,13 @@ export interface HitterDefenseResults extends DefenseResult {
  * the league's fielders there. The export carries zone rating for the current season (and catchers' history), so the
  * sample is short and the reliability low; that is stated by `reliability`, not hidden.
  */
-export function loadDefenseResults(playerIds: number[], leagueId: number, position: number): Map<number, HitterDefenseResults> {
+export function loadDefenseResults(playerIds: number[], leagueId: number, position: number, params: ResultsParams): Map<number, HitterDefenseResults> {
   const out = new Map<number, HitterDefenseResults>();
   const year = currentSeason(leagueId);
   if (year === null || position < 2 || position > 9) return out;
-  const peers = population(leagueId, year).defense[position] ?? [];
+  const peers = population(leagueId, year, params).defense[position] ?? [];
   for (const [id, lines] of fieldingResultLines(playerIds, leagueId, year)) {
-    const d = defenseResult(lines, position);
+    const d = defenseResult(lines, position, params.stabilization.defense);
     out.set(id, { ...d, playerId: id, position, percentile: d.per1300 !== null && d.innings >= DEFENSE_POPULATION_MINIMUM && peers.length > 0 ? percentileAmong(peers, d.per1300, true) : null });
   }
   return out;
@@ -380,7 +381,7 @@ export function fieldingUsage(playerIds: number[], leagueId: number, currentYear
  * Fielding lines that carry a defensive result: zone-rating runs or framing. A season whose export has neither (older
  * seasons mostly do not) is left out rather than read as zero, so a missing measure is never a measured average.
  */
-function fieldingResultLines(playerIds: number[], leagueId: number, currentYear: number): Map<number, DefenseLine[]> {
+export function fieldingResultLines(playerIds: number[], leagueId: number, currentYear: number, back = SEASONS_BACK): Map<number, DefenseLine[]> {
   const out = new Map<number, DefenseLine[]>();
   if (!tableExists('players_career_fielding_stats') || playerIds.length === 0) return out;
   const c = has('players_career_fielding_stats');
@@ -393,7 +394,7 @@ function fieldingResultLines(playerIds: number[], leagueId: number, currentYear:
        FROM players_career_fielding_stats
        WHERE player_id IN (${ids.map(() => '?').join(',')}) AND level_id = 1 ${league} AND year BETWEEN ? AND ?
        GROUP BY player_id, year, position`
-    ).all(...ids, ...(league ? [leagueId] : []), currentYear - SEASONS_BACK, currentYear) as Array<DefenseLine & { player_id: number }>;
+    ).all(...ids, ...(league ? [leagueId] : []), currentYear - back, currentYear) as Array<DefenseLine & { player_id: number }>;
     for (const r of rows) {
       if (r.zr === 0 && r.framing === 0) continue;
       const { player_id, ...line } = r;

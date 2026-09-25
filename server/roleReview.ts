@@ -29,7 +29,7 @@
 
 import type { BullpenTier } from './bullpenRoles.js';
 import { policy, provisional, type CalibrationStamp } from './calibration.js';
-import { reliability, STABILIZATION } from './resultsMetrics.js';
+import { reliability } from './resultsMetrics.js';
 import type { RoleStandard } from './roleStandards.js';
 import type { ToolContribution } from './toolsModel.js';
 import { MEANINGFUL_GAP, ordinal } from './roleStanding.js';
@@ -142,6 +142,8 @@ export interface DefenseLens {
   /** Runs per 1300 innings behind that percentile, and the innings it rests on. */
   resultsPer1300?: number | null;
   resultsInnings?: number;
+  /** Innings at which his fielding results are half-reliable, under the results params in force (D-053; required: no default). */
+  stabilization: number;
 }
 
 /** A hitter's baserunning: what his running ratings imply and what he has done. */
@@ -154,6 +156,8 @@ export interface RunningLens {
   resultsPct: number | null;
   perSixHundred: number | null;
   sample: number;
+  /** Plate appearances at which his baserunning results are half-reliable, under the results params in force (required: no default). */
+  stabilization: number;
 }
 
 export interface LensEvidence {
@@ -227,12 +231,12 @@ function blendDimension(tools: number | null, results: number | null, sample: nu
 
 export function defenseValue(d: DefenseLens | undefined): { value: number; weightOnResults: number } | null {
   if (!d) return null;
-  return blendDimension(d.visible ? d.pct : null, d.resultsPct ?? null, d.resultsInnings ?? 0, STABILIZATION.defense, DEFENSE_INFORMATION);
+  return blendDimension(d.visible ? d.pct : null, d.resultsPct ?? null, d.resultsInnings ?? 0, d.stabilization, DEFENSE_INFORMATION);
 }
 
 export function runningValue(r: RunningLens | undefined): { value: number; weightOnResults: number } | null {
   if (!r) return null;
-  return blendDimension(r.toolsPct, r.resultsPct, r.sample, STABILIZATION.baserunning, RUNNING_INFORMATION);
+  return blendDimension(r.toolsPct, r.resultsPct, r.sample, r.stabilization, RUNNING_INFORMATION);
 }
 
 /**
@@ -434,14 +438,16 @@ export function reviewGroup(holders: ReviewSubject[], opts: { pitcher: boolean; 
     }
     if (h.age !== null && h.age >= CONCERN.agingAge) {
       const signed = expectedAnnualChange(h.age, opts.pitcher, aging);
+      // "This league's history" only where the league's own curve serves for his kind (D-053: the starting values are never the league's own)
+      const ownCurve = aging !== null && (opts.pitcher ? aging.pitcher : aging.hitter).length > 0;
       const change = Math.abs(signed);
       // A league whose history shows no decline at his age is said so, never "lost about 0" (the save's own fit can show it)
       const declines = opts.pitcher ? signed > 0.005 : signed < -0.0005;
       // "In this league's history" only when the save's own curve is in force; the starting curve is a general expectation
       const who = opts.pitcher ? 'pitchers' : 'hitters';
       const loss = opts.pitcher ? `${change.toFixed(2)} runs per nine a year on peripherals` : `${Math.round(change * 1000)} points of wOBA a year`;
-      if (!declines) explanations.push(`At ${h.age}, age is a risk the ratings and past results may not yet show, though ${aging ? `in this league's history ${who} his age have shown` : `${who} his age usually show`} no measurable decline from one season to the next.`);
-      else explanations.push(`At ${h.age}, decline is a risk that the ratings and past results may not yet show: ${aging ? `in this league's history ${who} his age have lost about ${loss}` : `${who} his age usually lose about ${loss}`}.`);
+      if (!declines) explanations.push(`At ${h.age}, age is a risk the ratings and past results may not yet show, though ${ownCurve ? `in this league's history ${who} his age have shown` : `${who} his age usually show`} no measurable decline from one season to the next.`);
+      else explanations.push(`At ${h.age}, decline is a risk that the ratings and past results may not yet show: ${ownCurve ? `in this league's history ${who} his age have lost about ${loss}` : `${who} his age usually lose about ${loss}`}.`);
     }
     if (h.ratingsEvidence !== 'complete' && h.ratingsPct !== null) {
       explanations.push('His visible tool ratings are incomplete, so the tools lens rests on part of the picture.');

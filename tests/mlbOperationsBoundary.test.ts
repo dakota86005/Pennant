@@ -128,7 +128,7 @@ describe('MLB Operations boundary', () => {
       'roleReview.ts': /\b(PITCHER_RESULTS_MIX|DEFENSE_WEIGHT|CONCERN)\b/,
       'platoon.ts': /\b(PLATOON_SHRINK_K|MIN_SPLIT_PA|PROBLEM_EXCESS|COMPLEMENT_MARGIN)\b/,
       'lineupPicture.ts': /\bREGULAR_SHARE\b/,
-      'resultsMetrics.ts': /\b(SEASON_WEIGHTS|STABILIZATION|POPULATION_MINIMUM)\b/,
+      'resultsMetrics.ts': /\b(RESULTS_PRIOR|TOOLS_INFORMATION|POPULATION_MINIMUM)\b/,
       'roleStanding.ts': /\b(MEANINGFUL_GAP|RESULTS_SAMPLE_MINIMUM)\b/,
       'toolsModel.ts': /\b(HITTER_TOOL_SLOPES|RUNNING_SLOPES)\b/,
       'staffPreference.ts': /\b(TIE_BAND|AGE_GAP_YEARS|UPSIDE_GAP|SKILL_GAP|DEVELOPING_AGE)\b/,

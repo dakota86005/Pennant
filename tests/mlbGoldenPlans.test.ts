@@ -119,7 +119,7 @@ describe('GOLDEN plans: a second move must earn its keep', () => {
   const LF = [...regularIds][5];
   const ev2 = (bat: number, glove: number, position: number): LensEvidence => ({
     position, ratingsPct: bat, ratingsEvidence: 'complete', skillsPct: bat, runsPct: null, sample: 500, sampleUnit: 'PA', reliability: 0.7, currentSample: 150,
-    defense: { pct: glove, grade: 55, visible: true }, usage: [],
+    defense: { stabilization: 1000, pct: glove, grade: 55, visible: true }, usage: [],
   });
   const holderEvidence = (ids: number[], role: { position: number }) => new Map(ids.map((id) => [id, id === LF ? ev2(30, 50, role.position) : ev2(60, 55, role.position)] as const));
   const usage = (id: number) => {

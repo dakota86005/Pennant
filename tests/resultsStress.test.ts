@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
-  blendStabilization, PARK_WOBA_SHARE, reliability, SEASON_WEIGHTS, weightedBatting, weightedBaserunning, type BattingLine, type SeasonEnvironment,
+  blendStabilization, PARK_WOBA_SHARE, reliability, RESULTS_PRIOR, weightedBatting, weightedBaserunning, type BattingLine, type SeasonEnvironment,
 } from '../server/resultsMetrics';
 import { estimateOf, type LensEvidence } from '../server/roleReview';
+
+const SEASON_WEIGHTS = RESULTS_PRIOR.weights;
 
 /*
  * The results lens under stress. The question is never "what was his wOBA", it is "how much should what he has done change what we
@@ -25,7 +27,7 @@ function line(year: number, pa: number, woba: number, over: Partial<BattingLine>
   const bb = Math.round(pa * 0.085 * scale);
   return { year, g: Math.round(pa / 4), gs: Math.round(pa / 4), pa, ab, h: singles + d + t + hr, d, t, hr, bb, ibb: 0, hp: 2, sf: 2, k: Math.round(pa * 0.2), sb: 0, cs: 0, gdp: 0, war: 0, ubr: 0, ...over };
 }
-const value = (lines: BattingLine[]) => weightedBatting(lines, env, YEAR).value as number;
+const value = (lines: BattingLine[]) => weightedBatting(lines, env, YEAR, SEASON_WEIGHTS.hitter).value as number;
 const pts = (n: number) => Math.round(n * 1000);
 
 describe('how much current performance should move the level', () => {
@@ -70,8 +72,8 @@ describe('how much current performance should move the level', () => {
   });
 
   it('a hitter with no history at all has no results value, not a bad one', () => {
-    expect(weightedBatting([], env, YEAR).value).toBeNull();
-    expect(weightedBatting([line(YEAR, 0, 0.3)], env, YEAR).value).toBeNull();
+    expect(weightedBatting([], env, YEAR, SEASON_WEIGHTS.hitter).value).toBeNull();
+    expect(weightedBatting([line(YEAR, 0, 0.3)], env, YEAR, SEASON_WEIGHTS.hitter).value).toBeNull();
   });
 });
 
@@ -79,7 +81,7 @@ describe('sample size is an uncertainty, never a confidence', () => {
   it('trust in results grows with the sample and stays between nothing and everything', () => {
     let last = 0;
     for (const n of [0, 10, 50, 150, 300, 600, 1200, 5000]) {
-      const r = reliability(n, blendStabilization('hitter'));
+      const r = reliability(n, blendStabilization('hitter', RESULTS_PRIOR));
       expect(r).toBeGreaterThanOrEqual(last);
       expect(r).toBeLessThan(1);
       last = r;
@@ -90,11 +92,11 @@ describe('sample size is an uncertainty, never a confidence', () => {
   it('with the same results percentile, less sample moves the estimate less from the tools, never more', () => {
     const ev = (reliabilityValue: number): LensEvidence => ({
       position: 10, ratingsPct: 50, ratingsEvidence: 'complete', skillsPct: 90, runsPct: null, sample: 1, sampleUnit: 'PA', reliability: reliabilityValue, currentSample: 50,
-      defense: { pct: null, grade: null, visible: false }, usage: [],
+      defense: { stabilization: 1000, pct: null, grade: null, visible: false }, usage: [],
     });
     let last = 50;
     for (const n of [0, 20, 100, 300, 800, 2000]) {
-      const est = estimateOf(ev(reliability(n, blendStabilization('hitter'))), false).value as number;
+      const est = estimateOf(ev(reliability(n, blendStabilization('hitter', RESULTS_PRIOR))), false).value as number;
       expect(est).toBeGreaterThanOrEqual(last);
       expect(est).toBeLessThan(90);
       last = est;
@@ -104,7 +106,7 @@ describe('sample size is an uncertainty, never a confidence', () => {
   it('when only results exist the estimate is pulled toward the middle by how little sample stands behind them', () => {
     const resultsOnly = (r: number): LensEvidence => ({
       position: 10, ratingsPct: null, ratingsEvidence: 'unknown', skillsPct: 95, runsPct: null, sample: 30, sampleUnit: 'PA', reliability: r, currentSample: 30,
-      defense: { pct: null, grade: null, visible: false }, usage: [],
+      defense: { stabilization: 1000, pct: null, grade: null, visible: false }, usage: [],
     });
     const thin = estimateOf(resultsOnly(0.05), false);
     // results-only: the estimate is the results percentile itself (there is nothing to shrink toward but the league); it is labelled so and carries its weight
@@ -116,9 +118,9 @@ describe('sample size is an uncertainty, never a confidence', () => {
 describe('park effects', () => {
   it('the same raw line reads lower in a hitter\'s park than in a pitcher\'s park', () => {
     const raw = line(YEAR, 600, 0.36);
-    const coors = weightedBatting([{ ...raw, park: 1.15 }], env, YEAR).value as number;
-    const petco = weightedBatting([{ ...raw, park: 0.9 }], env, YEAR).value as number;
-    const neutral = weightedBatting([{ ...raw, park: 1 }], env, YEAR).value as number;
+    const coors = weightedBatting([{ ...raw, park: 1.15 }], env, YEAR, SEASON_WEIGHTS.hitter).value as number;
+    const petco = weightedBatting([{ ...raw, park: 0.9 }], env, YEAR, SEASON_WEIGHTS.hitter).value as number;
+    const neutral = weightedBatting([{ ...raw, park: 1 }], env, YEAR, SEASON_WEIGHTS.hitter).value as number;
     expect(coors).toBeLessThan(neutral);
     expect(petco).toBeGreaterThan(neutral);
     expect(pts(neutral - coors)).toBeLessThan(25); // adjusted by a share of the park's run effect, not all of it
@@ -127,12 +129,12 @@ describe('park effects', () => {
 
   it('a missing park factor is no adjustment, not a guess', () => {
     const raw = line(YEAR, 600, 0.36);
-    expect(weightedBatting([raw], env, YEAR).value).toBe(weightedBatting([{ ...raw, park: 1 }], env, YEAR).value);
+    expect(weightedBatting([raw], env, YEAR, SEASON_WEIGHTS.hitter).value).toBe(weightedBatting([{ ...raw, park: 1 }], env, YEAR, SEASON_WEIGHTS.hitter).value);
   });
 });
 
 describe('baserunning stays small and visible', () => {
-  const runs = (ubr: number, sb: number, cs: number, pa = 600) => weightedBaserunning([line(YEAR, pa, 0.32, { ubr, sb, cs })], YEAR);
+  const runs = (ubr: number, sb: number, cs: number, pa = 600) => weightedBaserunning([line(YEAR, pa, 0.32, { ubr, sb, cs })], env, YEAR, SEASON_WEIGHTS.hitter, RESULTS_PRIOR.stabilization.baserunning);
 
   it('a caught stealing costs more than a steal earns, so a reckless runner is not a good one', () => {
     expect(runs(0, 10, 10).perSixHundred as number).toBeLessThan(0);
@@ -144,6 +146,6 @@ describe('baserunning stays small and visible', () => {
   });
 
   it('no baserunning record at all is unknown, not zero', () => {
-    expect(weightedBaserunning([], YEAR).perSixHundred).toBeNull();
+    expect(weightedBaserunning([], env, YEAR, SEASON_WEIGHTS.hitter, RESULTS_PRIOR.stabilization.baserunning).perSixHundred).toBeNull();
   });
 });

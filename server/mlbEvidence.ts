@@ -34,7 +34,7 @@ import {
 import {
   battingHistory, currentSeason, fieldingUsage, handedness, leaguePlatoon, loadDefenseResults, loadHitterResults, loadPitcherResults, majorLeagueId, platoonSplits,
 } from './resultsEvidence.js';
-import { percentileAmong } from './resultsMetrics.js';
+import { blendStabilization, percentileAmong, type ResultsParams } from './resultsMetrics.js';
 import { describeBat, expectedRunningRaw, expectedWobaRaw, ratingPlatoon, toolContributions } from './toolsModel.js';
 import { roleOf as bullpenRoleOf } from './bullpenRoles.js';
 import { coverQuality, type CoverRead } from './benchReview.js';
@@ -329,15 +329,15 @@ export function topAffiliateTeamId(orgId: number): number | null {
  * recency-weighted results with the sample behind them). A pitcher with no rows
  * has no results lens, which is different from a bad one.
  */
-export function holderEvidence(orgId: number, playerIds: number[], role: RoleRef, opts: { ignoreResults?: boolean } = {}): Map<number, LensEvidence> {
+export function holderEvidence(orgId: number, playerIds: number[], role: RoleRef, opts: { ignoreResults?: boolean }, params: ResultsParams): Map<number, LensEvidence> {
   const out = new Map<number, LensEvidence>();
   if (playerIds.length === 0) return out;
   const pitcher = role.kind === 'starting_pitcher' || role.kind === 'relief_pitcher';
   const league = majorLeagueId(orgId);
-  if (!pitcher) return hitterEvidence(orgId, playerIds, role, league, opts);
+  if (!pitcher) return hitterEvidence(orgId, playerIds, role, league, opts, params);
   // A pitcher asked about in a role he does not fill has no results in it; only his tools speak (ignoreResults).
   const results = pitcher && league !== null && !opts.ignoreResults
-    ? loadPitcherResults(playerIds, league, role.kind === 'starting_pitcher' ? 'starter' : 'reliever')
+    ? loadPitcherResults(playerIds, league, role.kind === 'starting_pitcher' ? 'starter' : 'reliever', params)
     : new Map<number, ReturnType<typeof loadPitcherResults> extends Map<number, infer V> ? V : never>();
   for (const id of playerIds) {
     const fit = roleFitEvidence(id, orgId, role);
@@ -391,14 +391,14 @@ function toolsPopulation(league: number): { bat: number[]; running: number[] } {
  * there; running is his running ratings and his baserunning runs. A grade the game does not show is not read, and a position with no
  * grade leaves that part unknown, not bad.
  */
-function hitterEvidence(orgId: number, playerIds: number[], role: RoleRef, league: number | null, opts: { ignoreResults?: boolean }): Map<number, LensEvidence> {
+function hitterEvidence(orgId: number, playerIds: number[], role: RoleRef, league: number | null, opts: { ignoreResults?: boolean }, params: ResultsParams): Map<number, LensEvidence> {
   const out = new Map<number, LensEvidence>();
-  const results = league !== null && !opts.ignoreResults ? loadHitterResults(playerIds, league) : new Map<number, ReturnType<typeof loadHitterResults> extends Map<number, infer V> ? V : never>();
+  const results = league !== null && !opts.ignoreResults ? loadHitterResults(playerIds, league, params) : new Map<number, ReturnType<typeof loadHitterResults> extends Map<number, infer V> ? V : never>();
   const year = league === null ? null : currentSeason(league);
   const usage = league !== null && year !== null ? fieldingUsage(playerIds, league, year) : new Map();
   const fielderPosition = role.position >= 2 && role.position <= 9;
   const peers = league !== null && fielderPosition ? scoutedFieldingPopulation(league, role.position) : [];
-  const defense = league !== null && fielderPosition && !opts.ignoreResults ? loadDefenseResults(playerIds, league, role.position) : new Map();
+  const defense = league !== null && fielderPosition && !opts.ignoreResults ? loadDefenseResults(playerIds, league, role.position, params) : new Map();
   const profiles = loadScoutedHitterProfiles(playerIds);
   const pop = league !== null ? toolsPopulation(league) : { bat: [], running: [] };
   const meanBat = pop.bat.length ? pop.bat.reduce((n, v) => n + v, 0) / pop.bat.length : 0;
@@ -423,11 +423,13 @@ function hitterEvidence(orgId: number, playerIds: number[], role: RoleRef, leagu
       defense: {
         pct: grade !== null && peers.length ? percentileAmong(peers, grade, true) : null, grade, visible: grade !== null,
         resultsPct: d?.percentile ?? null, resultsPer1300: d?.per1300 ?? null, resultsInnings: d?.innings ?? 0,
+        stabilization: params.stabilization.defense,
       },
       running: {
         ability: profile?.runningAbility ?? null,
         toolsPct: runRaw !== null && pop.running.length ? percentileAmong(pop.running, runRaw, true) : null,
         resultsPct: r?.baserunning.percentile ?? null, perSixHundred: r?.baserunning.perSixHundred ?? null, sample: r?.baserunning.sample ?? 0,
+        stabilization: params.stabilization.baserunning,
       },
       toolsBasis: toolsPct !== null ? 'model' : 'composite',
       toolsExpected: batRaw !== null ? batRaw - meanBat : null,
@@ -494,7 +496,7 @@ function platoonNormFor(league: number): { L: number | null; R: number | null; S
 }
 
 /** Observed splits, the league's own platoon effect, and (D-035) each hitter's visible platoon ratings, for each hitter. */
-export function platoonInputs(orgId: number, playerIds: number[]): Map<number, PlatoonInput> {
+export function platoonInputs(orgId: number, playerIds: number[], params: ResultsParams): Map<number, PlatoonInput> {
   const out = new Map<number, PlatoonInput>();
   const league = majorLeagueId(orgId);
   if (league === null) return out;
@@ -516,6 +518,7 @@ export function platoonInputs(orgId: number, playerIds: number[]): Map<number, P
       bats, vsLeft: s?.vsLeft ?? [], vsRight: s?.vsRight ?? [],
       leagueEffect: bats ? lp.effect[bats] : null, leagueLeftShare: bats ? lp.leftShare[bats] : null, leagueWoba,
       ratings: rp && bats ? { vsLeft: rp.vsLeft === null ? null : rp.vsLeft - meanBat, vsRight: rp.vsRight === null ? null : rp.vsRight - meanBat, norm: norms[bats] } : null,
+      recordStabilization: blendStabilization('hitter', params),
     });
   }
   return out;

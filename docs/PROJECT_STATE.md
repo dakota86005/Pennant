@@ -879,6 +879,26 @@ Present on `main` (D-024; design and audit in
   seasons); the lens change removes 6 of 21 league-wide flags (none of Arizona's). `GET /api/mlb/calibration/:orgId` (also
   `/api/mlb-operations/:orgId/calibration`, and `yardsticks` on the overview); one plain line under the MLB Operations tabs with
   a hover; `npm run calibrate roster-review [--refit]`; `npm run review:calibration-report`.
+- **How much recent seasons count, per save, and the "clearly better" rule (D-053 amendment, cycle 2, 2026-09-25; CALIBRATION.md
+  section 13):**
+  - The results lens's season weights and stabilization (hitters, starters, relievers) are fitted per save
+    (`mlbResultsFit.ts`, `results-2`), with baserunning and defense built but inactive until the export carries UBR or zone
+    rating for enough seasons. They are served only where the neutral detector (`calibrationDetector.ts`) finds them clearly
+    better than the starting values on nested, paired held-out seasons, unshrunk and as served, with hysteresis.
+  - The aging curve follows the same rule (`aging-3`). The role standards, a measurement, keep their measure-and-check rule.
+  - The detector (`detector-3`) bounds the gain across players and across seasons, and requires the lower bound to reach 1% at
+    two consecutive completed-season refits. It returns to the starting values once they are surely better at all (asymmetric).
+  - Lifetime false adoption over refits from 10 to 22 seasons: at most 3.0%, including least-favourable nulls and season
+    heterogeneity (target 5%). After a break (imported seasons, then the game's own), 5.3% ever adopt and 2.3% still serve at the
+    end, at a cost under 1%.
+  - Lifetime power: 92% to 100% at a 3% to 6% true gain, 29% to 48% at about 2% (`npm run calibrate detector`, CALIBRATION.md
+    13.3).
+  - On the Arizona import both the season weights and the aging curve are "checked on this league and held up": the starting
+    values serve, and the age explanations say "usually lose" again.
+  - The yardsticks gain "How much recent seasons count".
+  - Every holder and platoon read receives the params in force (`ResultsParams`, no defaults).
+  - The wOBA scale and a caught stealing's value are derived per league-season in `leagueBaseline` (1.2 and -0.4 only as the
+    labelled fallback), so minor-league wRC+ is on its own run environment.
 - **Staff report (D-030):** `mlbReport.ts` + `roleStanding.ts` turn a packet into a briefing: situation, the role
   picture (current holders vs the player, on visible ratings with season lines as context), the read, and
   named pathways with chains and consequences; the workspace is laid out that way and the clearing

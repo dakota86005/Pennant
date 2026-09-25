@@ -4,6 +4,7 @@ import {
   battingHistory, clearResultsCaches, currentSeason, fieldingUsage, handedness, loadPitcherResults, pitchingHistory,
 } from '../server/resultsEvidence';
 import { clearStatCaches } from '../server/stats';
+import { RESULTS_PRIOR } from '../server/resultsMetrics';
 import { IDS } from './fixture';
 
 /*
@@ -69,17 +70,17 @@ describe('reading results from the export', () => {
   });
 
   it('ranks a starter against the league\'s own starters, better peripherals higher, and says how much to trust it', () => {
-    const r = loadPitcherResults(P, LEAGUE, 'starter');
+    const r = loadPitcherResults(P, LEAGUE, 'starter', RESULTS_PRIOR);
     const pct = (id: number) => r.get(id)!.skillsPercentile;
     expect(pct(9001)!).toBeGreaterThan(pct(9002)!);
     expect(pct(9002)!).toBeGreaterThan(pct(9004)!);
     expect(r.get(9001)!.reliability).toBeGreaterThan(0.5);
     expect(r.get(9001)!.inningsPerStart).toBeCloseTo((830 / 3) / 41, 1);
-    expect(r.get(9001)!.calibration.status).toBe('calibrated');
+    expect(r.get(9001)!.calibration).toBe(RESULTS_PRIOR.stamp); // the params' own stamp: the starting values are provisional
   });
 
   it('a player with no rows has no result, which is different from a bad one', () => {
-    expect(loadPitcherResults([987654], LEAGUE, 'starter').has(987654)).toBe(false);
+    expect(loadPitcherResults([987654], LEAGUE, 'starter', RESULTS_PRIOR).has(987654)).toBe(false);
   });
 
   it('reads handedness and fielding usage as facts, and empty inputs as nothing', () => {

@@ -13,9 +13,9 @@ const code = (file: string): string =>
   fs.readFileSync(path.join(SERVER, file), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 const imports = (file: string): string[] => [...code(file).matchAll(/(?:from|import)\s*\(?\s*['"]([^'"]+)['"]/g)].map((m) => m[1]);
 
-const NEUTRAL = ['saveIdentity.ts', 'saveCalibrationStore.ts', 'saveCalibration.ts'];
+const NEUTRAL = ['saveIdentity.ts', 'saveCalibrationStore.ts', 'saveCalibration.ts', 'calibrationDetector.ts'];
 const MLB = ['mlbRoster.ts', 'mlbNeeds.ts', 'mlbResponses.ts', 'mlbReport.ts', 'mlbReview.ts', 'mlbPlans.ts', 'rosterScenario.ts', 'mlbEvidence.ts',
-  'mlbOperations.ts', 'mlbExplain.ts', 'mlbCalibration.ts', 'mlbCalibrationFit.ts', 'mlbCalibrationRefit.ts', 'roleReview.ts', 'roleStandards.ts'];
+  'mlbOperations.ts', 'mlbExplain.ts', 'mlbCalibration.ts', 'mlbCalibrationFit.ts', 'mlbCalibrationRefit.ts', 'mlbResultsFit.ts', 'roleReview.ts', 'roleStandards.ts'];
 
 describe('per-save calibration boundary', () => {
   it.each([...NEUTRAL, ...MLB])('%s imports no Player Value file', (file) => {

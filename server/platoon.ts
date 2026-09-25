@@ -21,7 +21,7 @@
  */
 
 import { calibrated, policy, type CalibrationStamp } from './calibration.js';
-import { blendStabilization, reliability, wobaOf, type BattingLine } from './resultsMetrics.js';
+import { reliability, wobaOf, type BattingLine } from './resultsMetrics.js';
 
 export const PLATOON_CALIBRATION: CalibrationStamp = calibrated(
   'The shrinkage constant and the weight on the rating-implied effect were tuned by backtest (best shrink K about 5,000; best rating weight 1.0). The margins for a problem and for a complement are policy thresholds set against the measured spread of the effect (sd about 9 points); see each declaration.'
@@ -65,6 +65,8 @@ export interface PlatoonInput {
   /** Share of a hitter of this hand's plate appearances that come against left-handers, league-wide. */
   leagueLeftShare?: number | null;
   ratings?: PlatoonRatings | null;
+  /** The sample at which his overall record counts as much as his ratings, under the results params in force (D-053; required: no default). */
+  recordStabilization: number;
 }
 
 export interface SideRead {
@@ -153,7 +155,7 @@ export function evaluatePlatoon(input: PlatoonInput): PlatoonRead {
     ? input.leagueWoba + pl * ratings.vsLeft + pr * ratings.vsRight
     : null;
   const recordLevel = observedOverall !== null && all.pa >= MIN_SPLIT_PA ? observedOverall : null;
-  const wRecord = recordLevel !== null ? reliability(all.pa, blendStabilization('hitter')) : 0;
+  const wRecord = recordLevel !== null ? reliability(all.pa, input.recordStabilization) : 0;
   const overall = recordLevel !== null && ratingLevel !== null ? wRecord * recordLevel + (1 - wRecord) * ratingLevel : recordLevel ?? ratingLevel;
   const expectedL = overall === null ? null : overall - pr * diff;
   const expectedR = overall === null ? null : overall + pl * diff;

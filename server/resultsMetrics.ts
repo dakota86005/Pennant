@@ -12,9 +12,10 @@
  *   - **League-relative per season.** A wOBA of .330 or an FIP of 4.10 means
  *     different things in different run environments, so each season is measured
  *     against that season's league before seasons are combined.
- *   - **Recency weighted (Marcel style).** The last three seasons, weighted 5/4/3
- *     by plate appearances (or batters faced): the current partial season counts
- *     most per opportunity but cannot dominate on 43 games.
+ *   - **Recency weighted (Marcel style).** The last three seasons, weighted (the
+ *     params in force; 5/3/3 for hitters under the starting values) by plate
+ *     appearances (or batters faced): the current partial season counts most per
+ *     opportunity but cannot dominate on 43 games.
  *   - **A sample that says how much to trust it.** `reliability = sample / (sample
  *     + k)`. A pitcher with 35 innings this year and two full prior seasons is
  *     read on the whole, and the current-season line alone is never mistaken for
@@ -24,57 +25,73 @@
  *     and defense luck. Both are reported, and a gap between them is a stated
  *     explanation, not something averaged away.
  *
- * CALIBRATION (declared here and nowhere else): the season weights, the stabilization
- * constants and the minimum sample for a peer population. The season weights and
- * stabilization constants were tuned by backtest on the league's own history
- * (`scripts/calibrate.ts`, docs/CALIBRATION.md): each was chosen to minimize the error in
- * predicting a later season from earlier ones. The defensive stabilization, the park share and the
- * baserunning value of an out are still provisional (one partial season of zone ratings; no fitted
- * park elasticity), and say so. Every result carries `calibration`.
+ * CALIBRATION (D-053, cycle 2). The season weights and the stabilization constants belong to the save: MLB Operations fits them
+ * on the league's own seasons (`mlbResultsFit.ts`) and serves them only where they are clearly better than the starting values on
+ * held-out seasons (`calibrationDetector.ts`); otherwise the starting values below serve, and say so. They arrive here as ARGUMENTS
+ * (`ResultsParams`): no function reads a default, so no consumer can silently use the starting values. `RESULTS_PRIOR` is the
+ * provisional fallback (run 1, the Arizona import's 2003-2025). The tools information, the park share and the value of a stolen base
+ * stay provisional; the peer-population minimum is policy. Every result carries `calibration`.
  */
 
-import { calibrated, provisional, type CalibrationStamp } from './calibration.js';
+import { provisional, type CalibrationStamp } from './calibration.js';
 
-export const RESULTS_CALIBRATION: CalibrationStamp = calibrated(
-  'Season weights and stabilization tuned by backtest on the league\'s major-league history 2003-2025 (weighted RMSE predicting the next season); defensive stabilization, the park share and baserunning weights are provisional (see PROVISIONAL_PARTS).'
+export const RESULTS_CALIBRATION: CalibrationStamp = provisional(
+  'Season weights and stabilization: the save\'s own where they were clearly better on its held-out seasons (the roster review\'s yardsticks say which), else the starting values fitted by run 1 on the Arizona import\'s 2003-2025 history. The tools information, the park share and a stolen base\'s value are provisional (see PROVISIONAL_PARTS).'
 );
 
 /** What in this module is NOT yet tuned against outcomes, so no stamp overstates it. */
 export const PROVISIONAL_PARTS: CalibrationStamp = provisional(
-  'Defensive stabilization (zone ratings exist for the current season only, so repeatability cannot be measured), the share of a park run factor that reaches wOBA, and the run value of a stolen base and a caught stealing.'
+  'The share of true talent the tools explain (one rating snapshot: it needs ratings a completed season before the results, cycle 4), the share of a park run factor that reaches wOBA (measured about 0.52 on the Arizona import from club runs, but the park factor it multiplies is not per season), and the run value of a stolen base (the convention\'s constant). Baserunning and defensive stabilization are judged only once the export carries UBR or zone rating for 10 completed seasons (the first held-out season comes 5 seasons into the window, and the detector needs 4 held-out seasons, each with the season after it).'
 );
-
-/**
- * CALIBRATED. Recency weights for the season being read, the one before, and the one before that. Tuned by backtest: for
- * hitters the older seasons count nearly as much as each other (5/3/3); pitchers' recent seasons say more than older ones
- * (starters 5/3/1, relievers 5/3/2). The production values of 5/4/3 were close to best for hitters and too generous to
- * old pitching seasons.
- */
-export const SEASON_WEIGHTS = { hitter: [5, 3, 3], starter: [5, 3, 1], reliever: [5, 3, 2] } as const;
-
-/**
- * CALIBRATED. Sample at which a rate is half-reliable as a level (plate appearances for hitters, batters faced for pitchers;
- * baserunning in PA from the year-to-year correlation of baserunning runs, r = 0.50). `defense` (innings) is PROVISIONAL.
- */
-export const STABILIZATION = { hitter: 500, starter: 700, reliever: 500, baserunning: 550, defense: 1000 } as const;
-
-/**
- * CALIBRATED. How much of the true-talent variance the visible tools explain, measured against results from seasons
- * before the ratings were formed (hitters 0.30 to 0.45 depending on the window, pitchers 0.16 to 0.27). When tools are
- * known too, results are shrunk toward what the tools imply, not toward the league average, so the sample needed to
- * trust the results is smaller by this share: `K * (1 - information)`.
- */
-export const TOOLS_INFORMATION = { hitter: 0.4, starter: 0.2, reliever: 0.2 } as const;
 
 export type ResultsKind = 'hitter' | 'starter' | 'reliever';
 
-/** The sample at which results and tools count equally when BOTH are known. */
-export const blendStabilization = (kind: ResultsKind): number => STABILIZATION[kind] * (1 - TOOLS_INFORMATION[kind]);
+/**
+ * The results lens's tuning: recency weights for the season being read, the one before and the one before that (relative; the first
+ * is the scale), and the sample at which a rate is half-reliable as a level (plate appearances for hitters and baserunning, batters
+ * faced for pitchers, innings for defense). Always passed in: the save's own where adopted, else `RESULTS_PRIOR`.
+ */
+export interface ResultsParams {
+  weights: Record<ResultsKind, readonly number[]>;
+  stabilization: Record<ResultsKind | 'baserunning' | 'defense', number>;
+  /** What these values are: `provisional` for the starting values, `calibrated` with the save's run record for its own (D-041). */
+  stamp: CalibrationStamp;
+}
+
+/**
+ * PROVISIONAL (the fallback prior). Run 1's backtest on the Arizona import (docs/CALIBRATION.md sections 1-2): hitters 5/3/3 and
+ * 500 PA; starters 5/3/1 and 700 BF; relievers 5/3/2 and 500 BF; baserunning 550 PA (stolen-base runs only: the export carried no
+ * UBR for past seasons); defense 1,000 innings (a first pass: zone rating exists for the current season only).
+ */
+export const RESULTS_PRIOR: ResultsParams = {
+  weights: { hitter: [5, 3, 3], starter: [5, 3, 1], reliever: [5, 3, 2] },
+  stabilization: { hitter: 500, starter: 700, reliever: 500, baserunning: 550, defense: 1000 },
+  stamp: provisional('The starting season weights and stabilization: run 1\'s backtest on the Arizona import\'s 2003-2025 history (docs/CALIBRATION.md sections 1-2), the fallback wherever a save\'s own are not clearly better.'),
+};
+
+/** A stable key for a set of params (caches keyed by it never serve one set's populations under another). */
+export const resultsParamsKey = (p: ResultsParams): string => JSON.stringify([p.weights.hitter, p.weights.starter, p.weights.reliever, p.stabilization]);
+
+/**
+ * PROVISIONAL. How much of the true-talent variance the visible tools explain, measured against results from seasons
+ * before the ratings were formed (hitters 0.30 to 0.45 depending on the window, pitchers 0.16 to 0.27). When tools are
+ * known too, results are shrunk toward what the tools imply, not toward the league average, so the sample needed to
+ * trust the results is smaller by this share: `K * (1 - information)`. Not fittable on a save with one rating snapshot; it
+ * describes the tools model, and is fitted with it (cycle 4).
+ */
+export const TOOLS_INFORMATION = { hitter: 0.4, starter: 0.2, reliever: 0.2 } as const;
+
+
+/** The sample at which results and tools count equally when BOTH are known, under the params in force. */
+export const blendStabilization = (kind: ResultsKind, params: ResultsParams): number => params.stabilization[kind] * (1 - TOOLS_INFORMATION[kind]);
 
 /** PROVISIONAL. The share of a park's run-factor deviation that reaches a hitter's wOBA. Runs scale roughly with the square of on-base and slugging, so about half. */
 export const PARK_WOBA_SHARE = 0.5;
 
-/** PROVISIONAL CALIBRATION. Fewest (weighted) plate appearances or batters faced for a player to belong to a peer population. */
+/**
+ * POLICY. Fewest (weighted) plate appearances or batters faced for a player to belong to a peer population: who counts as a peer
+ * trades coverage against noise, a product choice no outcome can call optimal (D-041).
+ */
 export const POPULATION_MINIMUM = { hitter: 150, pitcher: 150 } as const;
 
 // ── counting lines ──────────────────────────────────────────────────────────
@@ -107,6 +124,8 @@ export interface SeasonEnvironment {
   fipRaw: number;
   /** League ERA. */
   era: number;
+  /** A caught stealing's run value this season (derived from the season's runs per out); absent, the fallback. */
+  caughtStealingRuns?: number;
 }
 
 // wOBA linear weights, the same ones `stats.ts` uses so the two agree.
@@ -181,7 +200,7 @@ export interface WeightedResult {
   calibration: typeof RESULTS_CALIBRATION;
 }
 
-function weighted(seasons: WeightedSeason[], currentYear: number, weights: readonly number[] = SEASON_WEIGHTS.hitter): WeightedResult {
+function weighted(seasons: WeightedSeason[], currentYear: number, weights: readonly number[]): WeightedResult {
   const kept = seasons.filter((s) => s.sample > 0 && (weights[currentYear - s.year] ?? 0) > 0);
   if (kept.length === 0) return { value: null, sample: 0, rawSample: 0, seasons: [], calibration: RESULTS_CALIBRATION };
   const w0 = weights[0];
@@ -201,7 +220,7 @@ function weighted(seasons: WeightedSeason[], currentYear: number, weights: reado
 }
 
 /** Batting: wOBA above (positive) or below the league's, weighted across seasons. */
-export function weightedBatting(lines: BattingLine[], env: Map<number, SeasonEnvironment>, currentYear: number, weights: readonly number[] = SEASON_WEIGHTS.hitter): WeightedResult {
+export function weightedBatting(lines: BattingLine[], env: Map<number, SeasonEnvironment>, currentYear: number, weights: readonly number[]): WeightedResult {
   const seasons: WeightedSeason[] = [];
   for (const l of lines) {
     const e = env.get(l.year);
@@ -219,7 +238,7 @@ export interface WeightedPitching {
   runs: WeightedResult;
 }
 
-export function weightedPitching(lines: PitchingLine[], env: Map<number, SeasonEnvironment>, currentYear: number, weights: readonly number[] = SEASON_WEIGHTS.starter): WeightedPitching {
+export function weightedPitching(lines: PitchingLine[], env: Map<number, SeasonEnvironment>, currentYear: number, weights: readonly number[]): WeightedPitching {
   const skills: WeightedSeason[] = [];
   const runs: WeightedSeason[] = [];
   for (const l of lines) {
@@ -255,11 +274,14 @@ export function percentileAmong(population: number[], value: number, higherIsBet
 
 // ── baserunning ─────────────────────────────────────────────────────────────
 
-/** PROVISIONAL. Runs a stolen base is worth and a caught stealing costs; the game's own UBR is added as exported. */
-export const STEAL_RUNS = { sb: 0.2, cs: -0.4 } as const;
+/**
+ * PROVISIONAL (the fallback only). Runs a stolen base is worth (the convention's constant, served) and a caught stealing costs (served
+ * only where the season's own runs per out cannot give it: `SeasonEnvironment.caughtStealingRuns`, from `stats.ts`).
+ */
+export const STEAL_RUNS_FALLBACK = { sb: 0.2, cs: -0.4 } as const;
 
-/** Baserunning runs in a season: the game's UBR plus stolen-base runs. */
-export const baserunningRuns = (l: Pick<BattingLine, 'ubr' | 'sb' | 'cs'>): number => l.ubr + STEAL_RUNS.sb * l.sb + STEAL_RUNS.cs * l.cs;
+/** Baserunning runs in a season: the game's UBR plus stolen-base runs, a caught stealing at the season's own value. */
+export const baserunningRuns = (l: Pick<BattingLine, 'ubr' | 'sb' | 'cs'>, csRuns: number = STEAL_RUNS_FALLBACK.cs): number => l.ubr + STEAL_RUNS_FALLBACK.sb * l.sb + csRuns * l.cs;
 
 export interface BaserunningResult {
   /** Runs per 600 plate appearances across the weighted seasons; null when there is no sample. */
@@ -268,18 +290,18 @@ export interface BaserunningResult {
   reliability: number;
 }
 
-export function weightedBaserunning(lines: BattingLine[], currentYear: number, weights: readonly number[] = SEASON_WEIGHTS.hitter): BaserunningResult {
+export function weightedBaserunning(lines: BattingLine[], env: Map<number, SeasonEnvironment>, currentYear: number, weights: readonly number[], stabilization: number): BaserunningResult {
   let runs = 0;
   let pa = 0;
   let sample = 0;
   for (const l of lines) {
     const w = weights[currentYear - l.year] ?? 0;
     if (w <= 0 || l.pa <= 0) continue;
-    runs += baserunningRuns(l) * w;
+    runs += baserunningRuns(l, env.get(l.year)?.caughtStealingRuns ?? STEAL_RUNS_FALLBACK.cs) * w;
     pa += l.pa * w;
     sample += l.pa * (w / weights[0]);
   }
-  return { perSixHundred: pa > 0 ? (runs / pa) * 600 : null, sample: Math.round(sample * 10) / 10, reliability: reliability(sample, STABILIZATION.baserunning) };
+  return { perSixHundred: pa > 0 ? (runs / pa) * 600 : null, sample: Math.round(sample * 10) / 10, reliability: reliability(sample, stabilization) };
 }
 
 // ── defensive results ───────────────────────────────────────────────────────
@@ -302,10 +324,10 @@ export interface DefenseResult {
 }
 
 /** A player's defensive results at one position, across the lines given. */
-export function defenseResult(lines: DefenseLine[], position: number): DefenseResult {
+export function defenseResult(lines: DefenseLine[], position: number, stabilization: number): DefenseResult {
   const here = lines.filter((l) => l.position === position && l.ip > 0);
   const innings = here.reduce((n, l) => n + l.ip, 0);
   if (innings <= 0) return { per1300: null, innings: 0, reliability: 0 };
   const runs = here.reduce((n, l) => n + l.zr + (position === 2 ? l.framing : 0), 0);
-  return { per1300: (runs / innings) * 1300, innings, reliability: reliability(innings, STABILIZATION.defense) };
+  return { per1300: (runs / innings) * 1300, innings, reliability: reliability(innings, stabilization) };
 }

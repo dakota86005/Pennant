@@ -27,12 +27,13 @@
 import { policy, provisional, type CalibrationStamp } from './calibration.js';
 import type { CalibrationCheck, CalibrationRecord } from './saveCalibrationStore.js';
 import type { CalibrationRun } from './saveCalibration.js';
+import { decide, describeComparison, DETECTOR_POLICY, ruleText, type DetectorDecision, type DetectorPolicy, type HeldOutCase, type ServedSource } from './calibrationDetector.js';
 import { AGING_CURVE, DEFENSE_WEIGHT, expectedAnnualChange, type AgingTable } from './roleReview.js';
 import { DEEP_QUANTILE, FLOOR_QUANTILE, groupOfRole, STARTING_STANDARDS, type ServedLens, type ServedStandards, type StandardGroup } from './roleStandards.js';
 
 export const MLB_CALIBRATION_SUBSYSTEM = 'mlb_operations';
 export const STANDARDS_METHOD = 'standards-1';
-export const AGING_METHOD = 'aging-1';
+export const AGING_METHOD = 'aging-3';
 export const DEFENSE_METHOD = 'defense-1';
 
 export const ROSTER_REVIEW_FIT_STAMP: CalibrationStamp = policy(
@@ -415,7 +416,16 @@ export interface AgingInput {
 }
 
 export interface AgingModel {
+  /**
+   * The curve served: for each kind the save's own where it was clearly better than the starting curve on held-out seasons (D-053
+   * amendment, 2026-09-25), else an empty row (the starting curve serves: `expectedAnnualChange` falls back to it).
+   */
   table: AgingTable;
+  /** The save's fitted curve (as it would serve), whether or not it serves. */
+  fitted: AgingTable;
+  /** What serves for each kind, and the detector's verdict behind it. */
+  serve: { hitter: ServedSource; pitcher: ServedSource };
+  decisions: { hitter: DetectorDecision | null; pitcher: DetectorDecision | null };
   /** Per age and kind: the pairs behind it and the weight the fit carries against the built-in curve. */
   cells: { hitter: Array<{ age: number; n: number; weight: number }>; pitcher: Array<{ age: number; n: number; weight: number }> };
 }
@@ -552,7 +562,7 @@ function bandChecks(held: Array<AgingPair & { predicted: number; prior: number }
  * start + `originStart`, at most `maxOrigins`, the last being the season before the last) is fitted on the pairs it could have seen
  * and scored on the pair (t, t+1).
  */
-export function fitAging(input: AgingInput, basis: FitBasis, policyIn = ROSTER_REVIEW_FIT_POLICY.aging): CalibrationRun<AgingModel | null> {
+export function fitAging(input: AgingInput, basis: FitBasis, policyIn = ROSTER_REVIEW_FIT_POLICY.aging, previous: AgingModel | null = null, detector: DetectorPolicy = DETECTOR_POLICY): CalibrationRun<AgingModel | null> {
   const through = basis.throughSeason as number;
   // The window is the last `windowSeasons` completed seasons (t - windowSeasons + 1 ... t): a pair's first season from its start, its second by t
   const firstOf = (t: number) => t - policyIn.windowSeasons + 1;
@@ -602,17 +612,52 @@ export function fitAging(input: AgingInput, basis: FitBasis, policyIn = ROSTER_R
   const extra: string[] = [];
   if (origins.length === 0) extra.push('seasons: no season could be held out to check the curve');
   else if (!heldOut.some((c) => c.kind === 'age_band' && c.passed !== null)) extra.push('seasons: no age group had enough held-out players to check the curve');
+  // Clearly better than the starting curve? Paired on the same held-out pairs, nested (each origin's curve fitted before it), unshrunk
+  // and as served, with hysteresis per kind (D-053 amendment, 2026-09-25). A tuning value replaces its fallback only when clearly better.
+  const paired = (hs: Held[]): HeldOutCase[] => hs.map((x) => ({ cluster: x.playerId, origin: x.season, weight: x.weight, candidate: (x.change - x.predicted) ** 2, rival: (x.change - x.prior) ** 2 }));
+  const decisions = {
+    hitter: decide({ unshrunk: paired(heldRaw.hitter), served: paired(held.hitter), previous: previous?.serve.hitter ?? 'starting', streak: previous?.decisions.hitter?.streak ?? 0 }, detector),
+    pitcher: decide({ unshrunk: paired(heldRaw.pitcher), served: paired(held.pitcher), previous: previous?.serve.pitcher ?? 'starting', streak: previous?.decisions.pitcher?.streak ?? 0 }, detector),
+  };
+  for (const kind of ['hitter', 'pitcher'] as const) {
+    const d = decisions[kind];
+    for (const [label, c] of [['unshrunk', d.unshrunk], ['served', d.served]] as const) {
+      heldOut.push({
+        kind: 'detector', part: `${kind}:${label}`, n: c.cases, expected: c.rivalLoss, observed: c.candidateLoss, se: c.se, prior: c.rivalLoss,
+        passed: c.failures.includes('origins') ? null : c.clearlyBetter,
+        note: `against the starting curve: ${describeComparison(c)}${c.failures.length ? ` (not clearly better: ${c.failures.join(', ')})` : ''}`,
+      });
+    }
+    if (!d.decided) extra.push(`seasons: ${kind}s: ${d.reason}`);
+  }
+  const serve = { hitter: decisions.hitter.serve, pitcher: decisions.pitcher.serve };
   const priorShare = (cells: Array<{ n: number; weight: number }>) => {
     const n = cells.reduce((s, c) => s + c.n, 0);
     return n > 0 ? cells.reduce((s, c) => s + c.n * (1 - c.weight), 0) / n : 1;
   };
-  const byPart = { hitter: priorShare(h.cells), pitcher: priorShare(p.cells) };
+  const byPart = { hitter: serve.hitter === 'save' ? priorShare(h.cells) : 1, pitcher: serve.pitcher === 'save' ? priorShare(p.cells) : 1 };
+  const gate = gateOf(heldOut.filter((c) => c.kind !== 'detector'), extra);
+  const verdict = gate.passed
+    ? {
+      ...gate,
+      reason: serve.hitter === 'starting' && serve.pitcher === 'starting'
+        ? (decisions.hitter.streak > 0 || decisions.pitcher.streak > 0
+          ? 'Checked on held-out seasons: this league\'s own curve was clearly better at this refit; the starting curve serves until the next refit confirms it.'
+          : 'Checked on held-out seasons: the starting curve held up (this league\'s own was not clearly better), so it serves.')
+        : `Checked on held-out seasons: this league's own curve serves for ${[serve.hitter === 'save' ? 'hitters' : null, serve.pitcher === 'save' ? 'pitchers' : null].filter(Boolean).join(' and ')}.`,
+    }
+    : gate;
   return {
-    model: { table, cells: { hitter: h.cells, pitcher: p.cells } },
-    record: { ...base, window, heldOut, gate: gateOf(heldOut, extra), priorWeight: { overall: (byPart.hitter + byPart.pitcher) / 2, byPart },
+    model: {
+      table: { firstAge: table.firstAge, hitter: serve.hitter === 'save' ? table.hitter : [], pitcher: serve.pitcher === 'save' ? table.pitcher : [] },
+      fitted: table, serve, decisions, cells: { hitter: h.cells, pitcher: p.cells },
+    },
+    record: { ...base, window, heldOut, gate: verdict, priorWeight: { overall: (byPart.hitter + byPart.pitcher) / 2, byPart },
       notes: [
         `Checked on ${origins.length} season${origins.length === 1 ? '' : 's'}${origins.length ? ` (${origins[0]}–${origins[origins.length - 1]})` : ''}, each fitted only on the seasons before it.`,
-        'The starting curve was fitted on the Arizona import\'s 2000–2025 history. On that league the check of the curve as served (shrunk toward the starting curve) is not out-of-sample, so the curve fitted without the starting curve (the "unshrunk" checks) must pass the same checks too.',
+        'The starting curve was fitted on the Arizona import\'s 2000–2025 history. On that league the check of the curve as served (shrunk toward the starting curve) is not out-of-sample, so the curve fitted without the starting curve is checked too, and both must pass.',
+        `A curve replaces the starting one only when clearly better on the held-out pairs (${ruleText(detector)}); once serving, it gives way only when the starting curve is clearly better in turn. Hitters: ${decisions.hitter.reason} Pitchers: ${decisions.pitcher.reason}`,
+        'The rule\'s error rates were measured by simulation for the results lens only (docs/CALIBRATION.md section 13.3); the aging curve\'s own are not simulated.',
       ] },
   };
 }

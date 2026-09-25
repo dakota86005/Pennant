@@ -4,7 +4,9 @@ import { describe, expect, it } from 'vitest';
 import { historyDb } from '../server/history';
 import { recordCalibration, type CalibrationRecord } from '../server/saveCalibrationStore';
 import { clearRosterReviewCalibrationCache, rosterReviewCalibration } from '../server/mlbCalibration';
-import { priorAgingTable } from '../server/mlbCalibrationFit';
+import { AGING_METHOD, priorAgingTable } from '../server/mlbCalibrationFit';
+import { RESULTS_METHOD } from '../server/mlbResultsFit';
+import { RESULTS_PRIOR } from '../server/resultsMetrics';
 import { DEFENSE_WEIGHT } from '../server/roleReview';
 import { STARTING_STANDARDS } from '../server/roleStandards';
 
@@ -28,7 +30,19 @@ const rec = (component: string, method: string, passed: boolean, basis: Partial<
 });
 const standardsFailing = (failure: string) => () => recordCalibration({ model: null, record: rec('standards', 'standards-1', false, { gameDate: '2000-01-01' }, [failure]) }, { fitMs: 1 });
 const ownStandards = () => recordCalibration({ model: { served: { ...STARTING_STANDARDS, source: 'save' }, roles: {} }, record: rec('standards', 'standards-1', true, { gameDate: '2000-01-02' }) }, { fitMs: 1 });
-const ownAging = () => recordCalibration({ model: { table: priorAgingTable(), cells: { hitter: [], pitcher: [] } }, record: rec('aging', 'aging-1', true, { throughSeason: 1991 }) }, { fitMs: 1 });
+const agingModel = (serve: 'save' | 'starting', previous: 'save' | 'starting' = 'starting') => ({
+  table: serve === 'save' ? priorAgingTable() : { firstAge: 20, hitter: [], pitcher: [] }, fitted: priorAgingTable(), cells: { hitter: [], pitcher: [] },
+  serve: { hitter: serve, pitcher: serve }, decisions: { hitter: { previous }, pitcher: { previous } },
+});
+const ownAging = () => recordCalibration({ model: agingModel('save'), record: rec('aging', AGING_METHOD, true, { throughSeason: 1991 }) }, { fitMs: 1 });
+const keptAging = () => recordCalibration({ model: agingModel('starting'), record: rec('aging', AGING_METHOD, true, { throughSeason: 1991 }) }, { fitMs: 1 });
+const returnedAging = () => recordCalibration({ model: agingModel('starting', 'save'), record: rec('aging', AGING_METHOD, true, { throughSeason: 1991 }) }, { fitMs: 1 });
+const resultsModel = (source: 'save' | 'starting') => ({
+  parts: Object.fromEntries(['hitter', 'starter', 'reliever', 'baserunning', 'defense'].map((p) => [p, { part: p, source: ['baserunning', 'defense'].includes(p) ? 'starting' : source, reason: source === 'save' ? null : 'kept', served: { weights: [5, 3, 3], k: 500 } }])),
+  params: { weights: RESULTS_PRIOR.weights, stabilization: { ...RESULTS_PRIOR.stabilization, hitter: source === 'save' ? 900 : 500 } },
+});
+const ownResults = () => recordCalibration({ model: resultsModel('save'), record: rec('results', RESULTS_METHOD, true, { throughSeason: 1991 }) }, { fitMs: 1 });
+const keptResults = () => recordCalibration({ model: resultsModel('starting'), record: rec('results', RESULTS_METHOD, true, { throughSeason: 1991 }) }, { fitMs: 1 });
 const ownDefense = () => recordCalibration({ model: { weights: DEFENSE_WEIGHT, positions: {} }, record: rec('defense', 'defense-1', true, { throughSeason: 1991 }) }, { fitMs: 1 });
 
 function state(setup: Array<() => unknown>, league: number | null = L) {
@@ -50,7 +64,9 @@ const STATES: Array<[string, Array<() => unknown>, number | null, string]> = [
   ['not enough seasons', [standardsFailing("seasons: the league's own past seasons could not be checked")], L, 'Using starting yardsticks: not enough seasons in this league yet'],
   ['a check failed', [standardsFailing('club_split estimate:hitter:floor: 0.200 against 0.100')], L, "Using starting yardsticks: the league's own ones did not hold up when checked"],
   ['some own', [ownStandards], L, "Some yardsticks are this league's own; others are starting values"],
-  ['all own', [ownStandards, ownAging, ownDefense], L, "Yardsticks set from this league's own seasons (through 1991)"],
+  ['all own', [ownStandards, ownAging, ownDefense, ownResults], L, "Yardsticks set from this league's own seasons (through 1991)"],
+  ['own standards; aging and recent seasons checked and held up', [ownStandards, keptAging, keptResults], L, "Some yardsticks are this league's own; others are starting values"],
+  ['nothing of the league\'s own serves, the first one held up', [keptAging, keptResults, standardsFailing('games')], L, 'Using starting yardsticks: it is too early in the season to tell who the regulars are'],
 ];
 
 describe('the yardsticks line gives the true reason, plainly', () => {
@@ -63,8 +79,10 @@ describe('the yardsticks line gives the true reason, plainly', () => {
   });
 
   it('the hover says how the league\'s own yardsticks were checked, in plain words', () => {
-    const y = state([ownStandards, ownAging, ownDefense]);
+    const y = state([ownStandards, ownAging, ownDefense, ownResults]);
     expect(y.tip).toMatch(/half the clubs/);
+    expect(y.tip).toMatch(/How much recent seasons count: How much a player's last three seasons count/);
+    expect(y.tip).toMatch(/clearly better for hitters and starting pitchers and relievers/);
     expect(y.tip).toMatch(/next season/);
     expect(y.tip).toMatch(/seasons it had not seen/);
   });
@@ -73,6 +91,28 @@ describe('the yardsticks line gives the true reason, plainly', () => {
     const y = state([standardsFailing('games')]);
     expect(y.tip).toMatch(/The line for each job: the starting values, because it is too early in the season/);
     expect(y.tip).toMatch(/How players age: the starting values, because this league has not been measured yet/);
+  });
+
+  it('a starting value the league was checked against says so: it held up, it is not "not measured"', () => {
+    const y = state([ownStandards, keptAging, keptResults]);
+    expect(y.tip).toMatch(/How players age: the starting values, because they were checked on this league's seasons and held up\./);
+    expect(y.tip).toMatch(/How much recent seasons count: the starting values, because they were checked on this league's seasons and held up\./);
+    expect(y.groups.find((g) => g.key === 'results')).toMatchObject({ source: 'starting', reason: 'kept' });
+    // the review is served the starting values, never the league's own under another name
+    expect(y.review.aging).toBeNull();
+    expect(y.results).toBe(RESULTS_PRIOR);
+    const waiting = state([() => recordCalibration({ model: { ...agingModel('starting'), decisions: { hitter: { previous: 'starting', streak: 1 }, pitcher: { previous: 'starting', streak: 0 } } }, record: rec('aging', AGING_METHOD, true, { throughSeason: 1991 }) }, { fitMs: 1 })]);
+    expect(waiting.tip).toMatch(/How players age: the starting values, because this league's own did better at the last check and must do so once more before they are used\./);
+    expect(waiting.tip).not.toMatch(BANNED);
+    const back = state([returnedAging]);
+    expect(back.tip).toMatch(/How players age: the starting values, because they did better than this league's own when checked again\./);
+  });
+
+  it('the league\'s own serve the review only where they were clearly better', () => {
+    const y = state([ownResults, ownAging]);
+    expect(y.results.stabilization.hitter).toBe(900);
+    expect(y.results.stamp.status).toBe('calibrated');
+    expect(y.review.aging).not.toBeNull();
   });
 
   it('the page component adds no visible words of its own', () => {
