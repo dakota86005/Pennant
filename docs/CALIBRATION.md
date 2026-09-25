@@ -1471,3 +1471,14 @@ the ratings from those results, so the test describes and does not forecast.
 The role standards were held as served. They are measured on the working estimate, so the next import's measurement moves them a
 little under the new blend; that is not in these numbers.
 
+**Recommendations and confidence** (re-run after the review: every need of every club through MLB Operations' responses, 75 needs):
+- **The blend fix alone.** It turned two holds into "keep watching" at low confidence (DET Baez, TEX Burger), because their samples
+  stopped counting as firm: review finding B1. The firm-read fix restores both.
+- **All steps together:**
+  - CLE Martinez goes from monitor/low to hold/moderate (his case is now strong and his sample firm);
+  - COL McCarthy goes from monitor/low to explore/moderate;
+  - TB Lux's need goes;
+  - TB Simpson's need appears (monitor/low);
+  - no recommendation reaches or loses high confidence.
+- **Arizona:** nothing changes in any step. The step-by-step record is `scratchpad/cycle4/report.txt`.
+
