@@ -251,8 +251,9 @@ function calibrationRoute(req: { params: { orgId: string } }, res: import('expre
   if (id === null) return res.status(400).json({ error: 'A valid organization is required.' });
   if (!tableExists('players')) return res.status(400).json({ error: 'No data imported yet' });
   const y = yardsticksFor(id);
-  // The values in force beside the groups' records: the platoon weights and the bullpen lines (cycle 3)
-  return res.json({ leagueId: y.leagueId, line: y.line, tip: y.tip, groups: y.groups, inForce: { platoon: y.platoon, bullpen: y.bullpen } });
+  // The values in force beside the groups' records: the platoon weights and the bullpen lines (cycle 3), the tools model's slopes and
+  // the tools weight (cycle 4)
+  return res.json({ leagueId: y.leagueId, line: y.line, tip: y.tip, groups: y.groups, inForce: { platoon: y.platoon, bullpen: y.bullpen, tools: y.tools, toolsWeight: y.results.toolsWeight } });
 }
 mlbOperationsRoutes.get('/mlb-operations/:orgId/calibration', calibrationRoute);
 mlbOperationsRoutes.get('/mlb/calibration/:orgId', calibrationRoute);

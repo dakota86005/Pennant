@@ -41,3 +41,14 @@ describe('the tools params in force', () => {
     for (const file of ['mlbToolsFit.ts', 'toolsCalibration.ts']) expect(code(file), file).not.toMatch(/from '\.\/playerValue[A-Za-z]*\.js'/);
   });
 });
+
+describe('the API serves the tools params in force', () => {
+  it('the roster review\'s calibration route gives the slopes, their source and the tools weight beside the yardsticks', async () => {
+    const { default: request } = await import('./request');
+    const { IDS } = await import('./fixture');
+    const body = await request(`/api/mlb-operations/${IDS.mlbTeam}/calibration`);
+    expect(body.inForce.tools).toMatchObject({ source: 'starting', slopes: TOOLS_PRIOR.slopes });
+    expect(body.inForce.toolsWeight).toEqual({ hitter: 1, starter: 1, reliever: 1 });
+    expect(body.groups.map((g: { key: string }) => g.key)).toContain('tools');
+  });
+});
