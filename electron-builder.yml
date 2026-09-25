@@ -39,6 +39,8 @@ files:
   - build/preload.cjs
   - build/value-refit-worker.cjs
   - build/value-refit-worker.cjs.map
+  - build/calibration-refit-worker.cjs
+  - build/calibration-refit-worker.cjs.map
   - package.json
 
 # The built frontend lives outside the asar archive so Express can serve it

@@ -13,6 +13,7 @@
  * components here without a schema change.
  */
 
+import { Worker } from 'node:worker_threads';
 import { completedThrough, leagueGameDate, topLeagues } from './saveIdentity.js';
 import { calibrationAttempted, recordCalibration, basisKey, type CalibrationRecord } from './saveCalibrationStore.js';
 
@@ -140,4 +141,44 @@ const listeners: Array<() => void> = [];
 /** Called after refits are recorded, so a subsystem can drop its cached fit in force. */
 export function onCalibrationRecorded(listener: () => void): void {
   listeners.push(listener);
+}
+
+// ── off the server's event loop ──────────────────────────────────────────────
+
+
+/** The worker thread's entry file: the bundled desktop build ships it beside the bundle; the source runs it through tsx. */
+function calibrationWorkerUrl(): URL {
+  const here = new URL(import.meta.url);
+  return here.pathname.endsWith('.cjs') ? new URL('./calibration-refit-worker.cjs', here) : new URL('./calibrationRefitWorker.ts', here);
+}
+
+/** Compute every registered refit in a worker thread (better-sqlite3 opens its own connections there); rejects if the worker fails. */
+export function calibrationRefitInWorker(): Promise<PendingCalibration[]> {
+  return new Promise((resolve, reject) => {
+    let worker: Worker;
+    try {
+      worker = new Worker(calibrationWorkerUrl());
+    } catch (err) {
+      reject(err);
+      return;
+    }
+    worker.once('message', (m: { ok: boolean; pending?: PendingCalibration[]; error?: string }) => {
+      if (m.ok && m.pending) resolve(m.pending);
+      else reject(new Error(m.error ?? 'the calibration refit worker failed'));
+      void worker.terminate();
+    });
+    worker.once('error', reject);
+    worker.once('exit', (code) => { if (code !== 0) reject(new Error(`the calibration refit worker exited with ${code}`)); });
+  });
+}
+
+/**
+ * The refit, off the server's event loop: `compute` computes elsewhere (a worker thread) and the results are recorded here only if no
+ * import started while they were read (`stale`). Never throws into its caller's turn; resolves with the outcomes.
+ */
+export async function calibrationRefitOffThread(options: { compute: () => Promise<PendingCalibration[]>; stale: () => boolean }): Promise<CalibrationOutcome[]> {
+  await Promise.resolve();
+  const pending = await options.compute();
+  if (options.stale()) return [];
+  return recordCalibrationRefits(pending);
 }

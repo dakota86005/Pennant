@@ -45,6 +45,9 @@ import { clubFinanceRoutes } from './clubFinanceRoutes.js';
 import { playerValueRoutes } from './playerValueRoutes.js';
 import { ourViewRoutes } from './ourViewRoutes.js';
 import { clearProductionCaches, computeRefits, refitInWorker, refitOffThread, type PendingRefits } from './playerValue.js';
+import { calibrationRefitInWorker, calibrationRefitOffThread, computeCalibrationRefits, type PendingCalibration } from './saveCalibration.js';
+import { clearSaveIdentityCache } from './saveIdentity.js';
+import { clearRosterReviewCalibrationCache } from './mlbCalibration.js';
 import { captureMarketSnapshot } from './playerValueSnapshot.js';
 import { trendsRoutes } from './trends.js';
 import { chatRoutes } from './chat.js';
@@ -184,7 +187,31 @@ export function refitAfterImport(): void {
         if (r.refit) console.log(`[value] refit, league ${r.leagueId} through ${r.throughSeason}: ${r.adopted ? 'adopted' : 'not adopted'} (${Math.round(r.ms ?? 0)} ms in the worker, ${Math.round(performance.now() - started)} ms end to end). ${r.reason}`);
       }
     })
-    .catch((err) => console.error('[value] production refit failed:', err));
+    .catch((err) => console.error('[value] production refit failed:', err))
+    // Then every subsystem's per-save calibration (D-053, cycle 1: MLB Operations' roster review), in its own worker, the same way
+    .finally(() => refitCalibrationsAfterImport(generation));
+}
+
+/**
+ * After an import: the per-save calibrations every subsystem registered (`saveCalibration.ts`), computed in a worker thread and
+ * recorded only if no import started meanwhile. Never blocks or fails the import: every error is caught and logged.
+ */
+function refitCalibrationsAfterImport(generation: number): void {
+  const started = performance.now();
+  const compute = (): Promise<PendingCalibration[]> => calibrationRefitInWorker().catch(async (err) => {
+    console.error('[calibration] refit worker unavailable, refitting in-process:', err);
+    await import('./mlbCalibrationRefit.js');
+    return new Promise<PendingCalibration[]>((resolve, reject) => setImmediate(() => {
+      try { resolve(computeCalibrationRefits()); } catch (e) { reject(e); }
+    }));
+  });
+  calibrationRefitOffThread({ compute, stale: () => importState.importing || generation !== importGeneration })
+    .then((outcomes) => {
+      for (const r of outcomes) {
+        if (r.refit) console.log(`[calibration] ${r.subsystem}/${r.component}, league ${r.leagueId} (${r.basis}): ${r.adopted ? 'adopted' : 'not adopted'} (${Math.round(r.ms ?? 0)} ms, ${Math.round(performance.now() - started)} ms end to end). ${r.reason}`);
+      }
+    })
+    .catch((err) => console.error('[calibration] refit failed:', err));
 }
 
 /**
@@ -226,6 +253,8 @@ export async function runImport(csvDir: string): Promise<void> {
     clearFarmUsageCaches(); // and who has been playing where
     clearFieldingPopulationCache();
     clearProductionCaches(); // what Player Value measured about the last export (schedules, rates, identity)
+    clearSaveIdentityCache(); // the save's identity is re-read from the new export
+    clearRosterReviewCalibrationCache(); // the roster review's yardsticks in force are re-read
     importedAt.value = importState.lastImport.finishedAt;
     try {
       takeSnapshot(); // development-tracking snapshot, keyed by in-game date

@@ -26,6 +26,8 @@ import { deadlineRead } from './posture.js';
 import { readContext, type ContextRead, type OrganizationContext } from './staffPreference.js';
 import { rightsFor } from './playerContext.js';
 import { philosophyForOrg } from './settings.js';
+import { rosterReviewCalibration, type RosterReviewCalibration, type YardstickGroup } from './mlbCalibration.js';
+import { majorLeagueId } from './resultsEvidence.js';
 
 export const mlbOperationsRoutes = Router();
 
@@ -43,12 +45,20 @@ export function organizationContext(orgId: number): OrganizationContext {
   };
 }
 
+/** The review's yardsticks for a club: its major league's fit in force (D-053), else the built-in starting values. */
+export function yardsticksFor(orgId: number): RosterReviewCalibration {
+  let league: number | null = null;
+  try { league = majorLeagueId(orgId); } catch { league = null; }
+  return rosterReviewCalibration(league);
+}
+
 function realPorts(orgId: number, floors: CoverageFloors = DEFAULT_COVERAGE_FLOORS): ResponsePorts {
   const philosophy = resolvePhilosophy(philosophyForOrg(orgId));
   const status = getDataStatus();
   let farm: FarmSession | null = null;
   return {
     floors,
+    reviewCalibration: yardsticksFor(orgId).review,
     rights: (ids) => rightsFor(ids, status),
     development: (ids, context) => mlbAssignmentAssessments(orgId, context, ids),
     crossRole: crossRoleSupport,
@@ -73,8 +83,10 @@ function realPorts(orgId: number, floors: CoverageFloors = DEFAULT_COVERAGE_FLOO
 }
 
 /** The scouting review's evidence, through the same specialists: lenses, usage, splits. */
-function reviewPorts(orgId: number): ReviewPorts {
+export function reviewPorts(orgId: number): ReviewPorts {
+  const yardsticks = yardsticksFor(orgId);
   return {
+    calibration: { standards: yardsticks.standards, review: yardsticks.review },
     holderEvidence: (ids, role) => holderEvidence(orgId, ids, role),
     hitterUsage: (ids) => hitterUsage(orgId, ids),
     platoon: (ids) => platoonInputs(orgId, ids),
@@ -119,6 +131,11 @@ export interface MlbOverview {
   /** Active players a GM can ask "what if he is out?" about. */
   activePlayers: Array<{ playerId: number; name: string; role: string | null; available: boolean }>;
   unknowns: string[];
+  /**
+   * Where the review's yardsticks come from (D-053): one plain line for the page, the detail for its hover, and per group the fit in
+   * force with its record (the same object `GET /api/mlb/calibration/:orgId` serves).
+   */
+  yardsticks: { line: string; tip: string; groups: YardstickGroup[] };
 }
 
 export function mlbOverview(orgId: number, view: ClubView = loadClubView(orgId)): MlbOverview {
@@ -160,6 +177,7 @@ export function mlbOverview(orgId: number, view: ClubView = loadClubView(orgId))
       .map((m) => ({ playerId: m.playerId, name: m.name, role: m.role?.label ?? null, available: m.availability.status === 'available' }))
       .sort((a, b) => (a.role ?? '').localeCompare(b.role ?? '') || a.name.localeCompare(b.name)),
     unknowns,
+    yardsticks: yardsticksOf(orgId),
   };
 }
 
@@ -213,6 +231,21 @@ mlbOperationsRoutes.get('/mlb-operations/:orgId', (req, res) => {
   return res.json(mlbOverview(id));
 });
 
+/**
+ * Where the roster review's yardsticks come from for a club (D-053): per group (the line for each job, how players age, how much the
+ * glove counts) the fit in force with its window, its checks on clubs and seasons it did not see, when it was refitted, how much is
+ * still the starting values and the verdict; the last attempt's reason when it was not adopted. Also attached to the overview.
+ */
+function calibrationRoute(req: { params: { orgId: string } }, res: import('express').Response) {
+  const id = orgId(req.params.orgId);
+  if (id === null) return res.status(400).json({ error: 'A valid organization is required.' });
+  if (!tableExists('players')) return res.status(400).json({ error: 'No data imported yet' });
+  const y = yardsticksFor(id);
+  return res.json({ leagueId: y.leagueId, line: y.line, tip: y.tip, groups: y.groups });
+}
+mlbOperationsRoutes.get('/mlb-operations/:orgId/calibration', calibrationRoute);
+mlbOperationsRoutes.get('/mlb/calibration/:orgId', calibrationRoute);
+
 /** The responses to one need. `needId` is an observed need's id or `mlb:what_if:<playerId>`. */
 mlbOperationsRoutes.get('/mlb-operations/:orgId/responses', (req, res) => {
   const id = orgId(req.params.orgId);
@@ -230,3 +263,9 @@ mlbOperationsRoutes.get('/mlb-operations/:orgId/responses', (req, res) => {
   return res.json(packet);
 });
 
+
+/** The yardsticks' account for a club, for the page and the API. */
+export function yardsticksOf(orgId: number): MlbOverview['yardsticks'] {
+  const y = yardsticksFor(orgId);
+  return { line: y.line, tip: y.tip, groups: y.groups };
+}
