@@ -54,6 +54,26 @@ nonisolated public enum PreviewFixtures {
         decode(Components.Schemas.ProvidersResponse.self, "getProviders")
     }
 
+    /// The departments whose reports were captured (`getDepartmentReport-<id>`).
+    public static let reportedDepartments = [
+        "frontOffice", "majorLeague", "farm", "scouting", "trades", "finance", "medical", "league", "philosophy",
+    ]
+
+    /// The captured Front Office: the desk and cards, every department's report and an evidence trail.
+    @MainActor
+    public static var frontOffice: FrontOfficeStore {
+        let reports = Dictionary(uniqueKeysWithValues: reportedDepartments.compactMap { id in
+            decode(Components.Schemas.DepartmentReport.self, "getDepartmentReport-\(id)").map { (id, $0) }
+        })
+        let trail = decode(Components.Schemas.ClaimTrail.self, "getClaimTrail")
+        return .preview(
+            summary: decode(Components.Schemas.FrontOfficeSummary.self, "getFrontOffice"),
+            reports: reports,
+            trails: trail.map { [$0.key: $0] } ?? [:],
+            key: nil
+        )
+    }
+
     /// A model with the server ready and the captured payloads.
     @MainActor
     public static func ready(
@@ -77,7 +97,8 @@ nonisolated public enum PreviewFixtures {
             orgs: orgs,
             dataStatus: dataStatus(configured: configured),
             catalog: catalog,
-            importRequestProblem: importRequestProblem
+            importRequestProblem: importRequestProblem,
+            frontOffice: configured ? frontOffice : nil
         )
     }
 

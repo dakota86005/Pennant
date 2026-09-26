@@ -45,6 +45,8 @@ public final class AppModel {
     public private(set) var lastRequestError: String?
     /// The client for the running server; nil while it is not ready.
     public private(set) var client: Client?
+    /// The Front Office's desk, cards and department reports (`FrontOfficeStore`), loaded on `storeKey`.
+    public private(set) var frontOffice: FrontOfficeStore
 
     /// How many event problems are kept (the log has them all).
     public static let keptEventProblems = 20
@@ -73,6 +75,8 @@ public final class AppModel {
         self.controller = controller
         self.backups = controller.backups
         self.makeClient = makeClient
+        let log = controller.log
+        frontOffice = FrontOfficeStore { line in log.write(line, source: "app") }
     }
 
     #if DEBUG
@@ -85,7 +89,8 @@ public final class AppModel {
         orgs: [Components.Schemas.Org] = [],
         dataStatus: Components.Schemas.DataStatusView? = nil,
         catalog: Components.Schemas.Catalog? = nil,
-        importRequestProblem: RequestProblem? = nil
+        importRequestProblem: RequestProblem? = nil,
+        frontOffice: FrontOfficeStore? = nil
     ) -> AppModel {
         let model = AppModel(configuration: configuration)
         model.serverState = state
@@ -96,6 +101,7 @@ public final class AppModel {
         model.catalog = catalog
         model.importRequestProblem = importRequestProblem
         model.club = CurrentClub.from(served: settings?.organization, orgs: orgs)
+        if let frontOffice { model.frontOffice = frontOffice }
         return model
     }
     #endif
@@ -108,6 +114,12 @@ public final class AppModel {
         public var importStamp: String
         public var club: ClubRef?
         public var restores: Int
+
+        public init(importStamp: String, club: ClubRef?, restores: Int) {
+            self.importStamp = importStamp
+            self.club = club
+            self.restores = restores
+        }
     }
 
     /// Nil until the server is ready and its settings (with the served club) are read, so a store loads once at
@@ -263,6 +275,21 @@ public final class AppModel {
     public func servedFile(_ path: String) async -> Data? {
         guard let connection = serverState.connection else { return nil }
         return await PennantClient.data(path: path, port: connection.port, token: connection.token)
+    }
+
+    /// Loads the Morning Report's desk and cards for the current key (a view calls it in `.task(id: storeKey)`).
+    public func loadFrontOffice() async {
+        await frontOffice.loadSummary(client: client, key: storeKey)
+    }
+
+    /// Loads one department's report for the current key.
+    public func loadReport(_ department: DeptID) async {
+        await frontOffice.loadReport(department.rawValue, client: client, key: storeKey)
+    }
+
+    /// Fetches the evidence trail behind an item, on demand.
+    public func loadTrail(_ evidence: String) async {
+        await frontOffice.loadTrail(evidence, client: client, key: storeKey)
     }
 
     /// Writes a line to the server's log (a raw error a window shows only as a kind).

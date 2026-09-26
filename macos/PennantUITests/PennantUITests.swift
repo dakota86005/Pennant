@@ -167,6 +167,14 @@ final class PennantUITests: XCTestCase {
             ("8", "league", "wire", "franchiseHistory"),
             ("9", "philosophy", "organizationalPhilosophy", "coachingStaff"),
         ]
+        // The Morning Report shows the served desk and cards, and a department's report its served anatomy
+        app.typeKey("1", modifierFlags: .command)
+        XCTAssertTrue(element(app, "morningReport.desk").waitForExistence(timeout: 20), "the Morning Report's desk did not load")
+        keep(app.windows.firstMatch.screenshot(), named: "morning-report")
+        app.typeKey("2", modifierFlags: .command)
+        XCTAssertTrue(element(app, "report.content").waitForExistence(timeout: 20), "Major League Ops' report did not load")
+        keep(app.windows.firstMatch.screenshot(), named: "major-league-report")
+
         for department in departments {
             app.typeKey(department.key, modifierFlags: .command)
             XCTAssertTrue(element(app, "detail.\(department.id).\(department.first)").waitForExistence(timeout: 5),

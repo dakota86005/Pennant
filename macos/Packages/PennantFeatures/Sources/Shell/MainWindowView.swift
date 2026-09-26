@@ -139,6 +139,7 @@ struct DetailView: View {
             }
         }
         .id(window.route)
+        .environment(\.openRoute) { route in window.go(to: route) }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(.background)
         .accessibilityIdentifier("detail.\(window.route.department.rawValue).\(window.route.view)")

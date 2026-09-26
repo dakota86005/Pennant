@@ -1,5 +1,6 @@
 import AppKit
 import FeatureCore
+import FrontOffice
 import Foundation
 import PennantAPI
 import PennantKit
@@ -160,6 +161,41 @@ struct SnapshotTests {
         let model = PreviewFixtures.ready(importRequestProblem: .served("CSV directory not found: /Users/gm/OOTP/Test League.lg/import_export/csv"))
         let window = MainWindowModel(registry: registry)
         try drawMainWindow(model: model, window: window, dark: dark, name: "main-window-import-problem")
+    }
+
+    // MARK: The Front Office
+
+    @Test("the Morning Report: the desk and every department's card, at full length", arguments: [false, true])
+    func morningReport(dark: Bool) throws {
+        let model = PreviewFixtures.ready()
+        let summary = try #require(model.frontOffice.summary)
+        let view = ScrollView { MorningReportContent(summary: summary).padding(24) }.environment(model).environment(AppRouting())
+        try draw(view, size: CGSize(width: 1000, height: 2200), dark: dark, name: "morning-report-full")
+    }
+
+    nonisolated static let reports = ["frontOffice", "majorLeague", "farm", "finance", "medical", "scouting"]
+
+    @Test("each department's report", arguments: reports, [false, true])
+    func report(department: String, dark: Bool) throws {
+        let model = PreviewFixtures.ready()
+        let report = try #require(model.frontOffice.reports[department])
+        let view = ScrollView { DepartmentReportContent(report: report).padding(24) }.environment(model).environment(AppRouting())
+        try draw(view, size: CGSize(width: 900, height: department == "frontOffice" || department == "farm" ? 1700 : 900), dark: dark, name: "report-\(department)")
+    }
+
+    @Test("a report as the main window shows it", arguments: [false, true])
+    func reportWindow(dark: Bool) throws {
+        let model = PreviewFixtures.ready()
+        let window = MainWindowModel(registry: registry, expanded: ["majorLeague"])
+        window.go(to: AppRoute(department: "majorLeague", view: "report"))
+        try drawMainWindow(model: model, window: window, dark: dark, name: "main-window-major-league-report")
+    }
+
+    @Test("an item's staff options (the evidence trail)", arguments: [false, true])
+    func trail(dark: Bool) throws {
+        let model = PreviewFixtures.ready()
+        let key = try #require(model.frontOffice.trails.keys.first)
+        try draw(TrailContent(evidence: key).padding().environment(model), size: CGSize(width: 420, height: 260), dark: dark, name: "staff-options")
     }
 
     // MARK: Drawing

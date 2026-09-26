@@ -4,7 +4,7 @@ import PennantKit
 import SwiftUI
 
 /// The sidebar (SWIFTUI_REBUILD.md section 3.2): the club card, then every department from the registry disclosing its
-/// views (two levels, the HIG's most), with SF Symbols and a badge when a department serves a count (from N7).
+/// views (two levels, the HIG's most), with SF Symbols and a badge with the count its card serves to decide.
 public struct SidebarView: View {
     @Environment(AppModel.self) private var model
     @Bindable var window: MainWindowModel
@@ -59,6 +59,8 @@ public struct SidebarView: View {
             }
         }
         .listStyle(.sidebar)
+        // The departments' counts to decide come from the Front Office's served cards (a cached read on the server)
+        .task(id: model.storeKey) { await model.loadFrontOffice() }
         .accessibilityIdentifier("sidebar")
     }
 }

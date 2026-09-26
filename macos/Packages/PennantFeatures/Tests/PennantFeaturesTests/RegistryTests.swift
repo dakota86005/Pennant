@@ -9,6 +9,7 @@ import Medical
 import PennantKit
 import Philosophy
 import Scouting
+import Shell
 import Testing
 import Trades
 
@@ -111,5 +112,20 @@ struct RegistryTests {
     func noBadges() {
         let model = AppModel.preview(configuration: .bundled(in: .main), state: .idle)
         #expect(registry.departments.allSatisfy { $0.badge(from: model) == nil })
+    }
+
+    @MainActor
+    @Test("badges a department with the count its served card has to decide; none for nothing, unread or no report yet")
+    func servedBadges() throws {
+        let model = PreviewFixtures.ready()
+        let cards = try #require(model.frontOffice.summary?.departments)
+        for department in registry.departments {
+            let card = cards.first { $0.department.rawValue == department.id.rawValue }
+            let expected = card?.toDecide.flatMap { $0 > 0 ? $0 : nil }
+            #expect(department.badge(from: model) == expected, "\(department.id.rawValue)")
+        }
+        // The captured save's farm has items to decide; Scouting has no report yet, so no count
+        #expect(registry.department("farm")?.badge(from: model) ?? 0 > 0)
+        #expect(registry.department("scouting")?.badge(from: model) == nil)
     }
 }
