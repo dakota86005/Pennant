@@ -214,6 +214,25 @@ export function setSecretCrypto(impl: SecretCrypto): void {
   crypto = impl;
 }
 
+/**
+ * Keys handed over by the Mac app (D-055), which keeps them in the macOS Keychain and passes them to the sidecar
+ * on stdin (`server/sidecar.ts`), never in an environment variable another process could read. Once set, this
+ * server never writes a key to disk: a key saved in Settings is held here in memory, and the app stores it in the
+ * Keychain itself. `null` (the Electron build and `npm run dev`) keeps the `credentials.json` file as before.
+ */
+let injected: Partial<Record<ProviderId, string>> | null = null;
+let injectedLabel = 'your macOS Keychain';
+
+/** Replaces every injected key at once (a provider left out has none). Called by the sidecar only. */
+export function setInjectedKeys(keys: Partial<Record<string, unknown>>, label = injectedLabel): void {
+  const next: Partial<Record<ProviderId, string>> = {};
+  for (const [id, value] of Object.entries(keys)) {
+    if (isProviderId(id) && typeof value === 'string' && value.trim()) next[id] = value.trim();
+  }
+  injected = next;
+  injectedLabel = label;
+}
+
 /** Resolves the crypto only when there is a secret to protect. */
 function activeCrypto(): SecretCrypto | null {
   if (!crypto) return null;
@@ -267,6 +286,10 @@ function writeKeyFile(next: KeyFile): void {
 
 export function saveApiKey(key: string, provider: ProviderId = 'anthropic'): void {
   const trimmed = key.trim();
+  if (injected) {
+    injected = { ...injected, [provider]: trimmed };
+    return;
+  }
   const active = activeCrypto();
   const record: StoredKey = active
     ? { encrypted: true, value: active.encrypt(trimmed), hint: trimmed.slice(-4) }
@@ -275,6 +298,11 @@ export function saveApiKey(key: string, provider: ProviderId = 'anthropic'): voi
 }
 
 export function clearApiKey(provider: ProviderId = 'anthropic'): void {
+  if (injected) {
+    const { [provider]: _removed, ...rest } = injected;
+    injected = rest;
+    return;
+  }
   const next = readKeyFile();
   delete next[provider];
   writeKeyFile(next);
@@ -299,6 +327,7 @@ export function getApiKey(provider: ProviderId = activeProvider()): string | nul
   const envVar = ENV_VAR[provider];
   const fromEnv = envVar ? process.env[envVar] : undefined;
   if (fromEnv) return fromEnv;
+  if (injected) return injected[provider] ?? null;
   const stored = readKeyFile()[provider];
   return stored ? decrypt(stored) : null;
 }
@@ -319,13 +348,14 @@ export function providerCredential(
 
 export interface KeyStatus {
   configured: boolean;
-  source: 'env' | 'stored' | null;
+  /** `keychain`: handed over by the Mac app from the macOS Keychain. */
+  source: 'env' | 'stored' | 'keychain' | null;
   hint: string | null;
   encrypted: boolean;
 }
 
 export function apiKeyStatus(provider: ProviderId = activeProvider()): KeyStatus & { storageLabel: string } {
-  const storageLabel = crypto ? crypto.label : 'a permission-restricted file (no OS keychain available)';
+  const storageLabel = injected ? injectedLabel : crypto ? crypto.label : 'a permission-restricted file (no OS keychain available)';
   return { ...statusOf(provider), storageLabel };
 }
 
@@ -334,6 +364,12 @@ function statusOf(provider: ProviderId): KeyStatus {
   const fromEnv = envVar ? process.env[envVar] : undefined;
   if (fromEnv) {
     return { configured: true, source: 'env', hint: fromEnv.slice(-4), encrypted: false };
+  }
+  if (injected) {
+    const key = injected[provider];
+    return key
+      ? { configured: true, source: 'keychain', hint: key.slice(-4), encrypted: true }
+      : { configured: false, source: null, hint: null, encrypted: false };
   }
   const stored = readKeyFile()[provider];
   if (stored) {

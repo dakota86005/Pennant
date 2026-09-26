@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { APP_ROOT, DATA_DIR } from './config.js';
 import { db, tableExists } from './db.js';
+import { ownApiHeaders, ownApiUrl } from './apiToken.js';
 
 /**
  * Writes the app out as a static website.
@@ -35,7 +36,7 @@ interface ExportResult {
 }
 
 async function fetchApi(port: string, url: string): Promise<{ ok: boolean; buf: Buffer }> {
-  const res = await fetch(`http://127.0.0.1:${port}/api/${url.replace(/^\//, '')}`);
+  const res = await fetch(ownApiUrl(port, url), { headers: ownApiHeaders() });
   const buf = Buffer.from(await res.arrayBuffer());
   return { ok: res.ok, buf };
 }

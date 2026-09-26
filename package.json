@@ -25,6 +25,8 @@
     "rights:candidates": "tsx scripts/rights-experiment.ts candidates",
     "calibrate": "tsx scripts/calibrate.ts",
     "desktop:build": "npm run build && node scripts/build-desktop.mjs",
+    "build:sidecar": "node scripts/build-sidecar.mjs",
+    "sidecar:node": "node scripts/fetch-node-runtime.mjs",
     "desktop": "npm run abi:electron && npm run desktop:build && electron .",
     "dist": "npm run abi:electron && npm run desktop:build && electron-builder",
     "dist:mac": "npm run abi:electron && npm run desktop:build && electron-builder --mac",

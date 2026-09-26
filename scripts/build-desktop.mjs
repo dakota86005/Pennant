@@ -1,17 +1,9 @@
 /**
  * Bundles the Electron main process and the Express server into a single CJS
- * file for packaging.
- *
- * Only our own source is bundled — every runtime dependency stays external so
- * electron-builder ships them from node_modules. That avoids bundling surprises
- * with packages that use dynamic requires, and is required for better-sqlite3,
- * which is a native module that cannot be inlined.
+ * file for packaging (the shared options are in `lib/serverBundle.mjs`).
  */
 import { build } from 'esbuild';
-import { readFileSync } from 'node:fs';
-
-const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
-const external = ['electron', ...Object.keys(pkg.dependencies ?? {})];
+import { bundleRefitWorkers, bundleServerEntry } from './lib/serverBundle.mjs';
 
 // The preload bridge is a separate entry: it runs in the renderer's isolated
 // context, not the main process.
@@ -26,55 +18,8 @@ await build({
   logLevel: 'info',
 });
 
-await build({
-  entryPoints: ['electron/main.ts'],
-  outfile: 'build/main.cjs',
-  bundle: true,
-  platform: 'node',
-  target: 'node20',
-  format: 'cjs',
-  external,
-  sourcemap: true,
-  logLevel: 'info',
-  // The server modules are ESM and read import.meta.url; CJS output has no
-  // import.meta, so shim it from __filename.
-  banner: {
-    js: "const import_meta_url = require('url').pathToFileURL(__filename).href;",
-  },
-  define: { 'import.meta.url': 'import_meta_url' },
-});
+await bundleServerEntry('electron/main.ts', 'build/main.cjs');
 
-// Player Value's refit runs in a worker thread (A-17): its entry ships beside the bundle, which finds it
-// as ./value-refit-worker.cjs next to itself.
-await build({
-  entryPoints: ['server/playerValueRefitWorker.ts'],
-  outfile: 'build/value-refit-worker.cjs',
-  bundle: true,
-  platform: 'node',
-  target: 'node20',
-  format: 'cjs',
-  external,
-  sourcemap: true,
-  logLevel: 'info',
-  banner: {
-    js: "const import_meta_url = require('url').pathToFileURL(__filename).href;",
-  },
-  define: { 'import.meta.url': 'import_meta_url' },
-});
-
-// The per-save calibration refit (D-053, cycle 1) runs in its own worker thread the same way: ./calibration-refit-worker.cjs.
-await build({
-  entryPoints: ['server/calibrationRefitWorker.ts'],
-  outfile: 'build/calibration-refit-worker.cjs',
-  bundle: true,
-  platform: 'node',
-  target: 'node20',
-  format: 'cjs',
-  external,
-  sourcemap: true,
-  logLevel: 'info',
-  banner: {
-    js: "const import_meta_url = require('url').pathToFileURL(__filename).href;",
-  },
-  define: { 'import.meta.url': 'import_meta_url' },
-});
+// The refit workers ship beside the bundle, which finds them as ./value-refit-worker.cjs and
+// ./calibration-refit-worker.cjs next to itself.
+await bundleRefitWorkers('build');

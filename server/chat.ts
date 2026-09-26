@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { db, tableExists } from './db.js';
 import { DATA_DIR } from './config.js';
+import { ownApiHeaders, ownApiUrl } from './apiToken.js';
 import { featureModel, featureProvider, providerCredential } from './settings.js';
 import { describeError, stripProviderExtras, toolLoopFor, type ProviderId } from './providers.js';
 import { supportsAdaptiveThinking } from './models.js';
@@ -98,7 +99,7 @@ const NO_KEY_MESSAGE =
 async function callOwnApi(path: string): Promise<unknown> {
   const port = process.env.OOTP_FO_PORT;
   if (!port) throw new Error('Server port unknown');
-  const res = await fetch(`http://127.0.0.1:${port}/api/${path.replace(/^\//, '')}`);
+  const res = await fetch(ownApiUrl(port, path), { headers: ownApiHeaders() });
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(body.error ?? `${res.status} ${res.statusText}`);

@@ -14,6 +14,8 @@
  * article, which both features already write to the data directory.
  */
 
+import { publish } from './serverEvents.js';
+
 export type JobState = 'idle' | 'running' | 'done' | 'error';
 
 export interface JobStatus {
@@ -67,6 +69,7 @@ export function startJob(
     promise: null,
   };
   jobs.set(key, job);
+  const announce = (): void => publish({ type: 'job', kind, orgId, status: jobStatus(kind, orgId) });
 
   /*
    * Deferred to the next tick so the response is already on its way.
@@ -81,15 +84,18 @@ export function startJob(
     .then(() => {
       job.state = 'done';
       job.finishedAt = new Date().toISOString();
+      announce();
     })
     .catch((err: Error) => {
       job.state = 'error';
       job.finishedAt = new Date().toISOString();
       job.error = err.message;
+      announce();
       // The page may not be watching when this lands, so it goes to the log too
       console.error(`[job:${kind}]`, err);
     });
 
+  announce();
   return { started: true, status: jobStatus(kind, orgId) };
 }
 

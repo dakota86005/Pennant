@@ -319,8 +319,8 @@ The server writes every visible sentence through a generated contract, so the
 Swift app renders and never judges. Work is on `feature/swiftui` in milestones N0
 to N15; the restore point is the tag `pre-swiftui` and the branch
 `archive/electron-react` (DEVELOPMENT.md). N0 (restore point, decisions, behaviour
-cases, ground rules) is done; N1, the sidecar server, is next. It absorbs item 8's
-signing work: Developer ID is needed by N14.
+cases, ground rules) and N1 (the sidecar server) are done; N2, the contract
+pipeline, is next. It absorbs item 8's signing work: Developer ID is needed by N14.
 
 ## Then: deepen organizational identity
 

@@ -80,6 +80,13 @@ The desktop application embeds the Express server on a local port and loads the
 same built React application that a browser uses. Electron is a shell, not a
 second application implementation.
 
+Pennant for Mac (the SwiftUI rebuild, D-055) runs the same server as a sidecar:
+`server/sidecar.ts` is its entry, started by the Swift app with a per-launch
+token and any AI keys on stdin, answering on 127.0.0.1 at a random port, and
+stopping when told to or when its parent goes. Every server start takes the
+data-folder lock (`server/dataLock.ts`), so the Electron app and the Mac app,
+which share one data folder, never run against it together.
+
 ## Data and persistence
 
 ### Imported league database
@@ -134,6 +141,7 @@ artifact, not an alternative application backend.
 | AI features | `providers.ts`, `models.ts`, `chat.ts`, `ai.ts`, and `storylines.ts` provide staff chat, briefings, trade discussion, and storylines through configurable providers. | AI consumes computed save-grounded facts, calls the same API as the UI, and supports the front-office experience. It does not become a parallel recommendation engine. |
 | Web UI | React pages in `src/` render domain results, evidence, alternatives, and local interactions. `src/App.tsx` owns selected-save and selected-organization UI context. Charts are SVG drawn with visx (D-054): a pure geometry module per chart and the shared conventions in `src/chartTheme.ts` (theme CSS variables only, `role="img"` summaries, focusable detail). | React may shape presentation but should not silently reimplement baseball rules. A chart draws what the API served and computes nothing about a player. |
 | Desktop shell | `electron/main.ts`, `preload.ts`, and `updater.ts` embed the local server, expose a minimal IPC bridge, protect navigation, store secrets, and manage consent-first updates. | Keep Node access out of the renderer and keep IPC narrow. |
+| Mac sidecar (N1 of the rebuild) | `server/sidecar.ts` (the entry: stdin handshake, `PENNANT_READY` / `PENNANT_FAILED`, clean stop), `apiToken.ts` (the per-launch bearer token on `/api`, and the self-calls' header), `dataLock.ts` (`server.lock`), `serverEvents.ts` (`/api/v2/events`), `settings.ts` `setInjectedKeys` (keys from the Keychain, held in memory only); `scripts/build-sidecar.mjs` and `scripts/fetch-node-runtime.mjs` (the bundle and the pinned Node). | The same server, unchanged in doctrine (D-055). Server changes stay additive while the React app lives; secrets arrive on stdin, never in the environment; the sidecar binds 127.0.0.1 whatever a `.env` says. |
 | Identity and version | `server/project.ts` (product name, the repository addresses and the release-tag prefix, import-free so the shell can load it first) and `server/appInfo.ts` (the version, read from `package.json` from source or handed over by Electron when packaged); served on `/api/status`, shown in the header. `scripts/devPorts.ts` decides the dev page and API ports for both halves of `npm run dev`. | One source per fact (D-049). The npm `name` is held for compatibility (it names the desktop user-data folder); the Electron `appId` (`com.dakotawise.pennant`), the author and the `pennant-v<version>` tag prefix are pinned by `tests/projectIdentity.test.ts`. |
 | Tests and checks | Vitest uses a hand-built temporary league; release CI runs type-checking and tests. Manual stat/theme checks use real imported data. | Fixtures must be synthetic and contain no live-save or private data. |
 
@@ -771,6 +779,9 @@ credential.
 - The server binds to loopback by default and validates the `Host` header to
   mitigate DNS rebinding. LAN mode has no authentication and must remain an
   explicit user choice.
+- The Mac sidecar also requires a per-launch bearer token on every `/api`
+  request (constant-time comparison), always binds 127.0.0.1, and never writes
+  an AI key to disk.
 - Electron disables renderer Node integration, enables context isolation,
   filters external navigation, and restricts path-opening IPC to `DATA_DIR`.
 - Updates are consent-first: checking may be automatic, but download/install is

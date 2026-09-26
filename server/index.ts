@@ -3,13 +3,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import type { AddressInfo } from 'node:net';
-import { api, recordImportMarket, refitAfterImport, runImport } from './api.js';
+import type { Server } from 'node:http';
+import { api, recordImportMarket, recoverInterruptedImport, refitAfterImport, runImport } from './api.js';
 import { buildIndexes } from './importer.js';
-import { APP_ROOT, loadConfig } from './config.js';
-import { startWatcher } from './watcher.js';
-import { tableExists } from './db.js';
-import { snapshotDates, takeSnapshot } from './history.js';
+import { APP_ROOT, DATA_DIR, loadConfig } from './config.js';
+import { startWatcher, stopWatcher } from './watcher.js';
+import { db, tableExists } from './db.js';
+import { historyDb, snapshotDates, takeSnapshot } from './history.js';
 import { loadSettings } from './settings.js';
+import { requireApiToken } from './apiToken.js';
+import { acquireDataLock, releaseDataLock } from './dataLock.js';
 
 /**
  * Rejects requests whose Host header is not a loopback name.
@@ -89,6 +92,13 @@ function requireLocalHost(
 
 /** Import on boot if needed, then watch for fresh OOTP exports. */
 function bootstrapData(): void {
+  // An import the last run never finished left a database that is neither export: import it again, which also
+  // refits and records the market once it is done (api.ts). Nothing else below needs doing until then.
+  if (recoverInterruptedImport()) {
+    const { csvDir } = loadConfig();
+    if (csvDir && loadSettings().autoImport) startWatcher(csvDir);
+    return;
+  }
   // A save that is already imported but has no fit for its latest completed season gets one now,
   // in the background, instead of waiting for the next import (D-053: nothing for the user to do).
   // It reads only the imported database, so it does not depend on the export folder being present.
@@ -115,14 +125,44 @@ function bootstrapData(): void {
 }
 
 /**
+ * The port `PORT` asks for. `0` is a real request (any free port), which `Number(PORT) || 5178` used to turn
+ * back into 5178; only a missing or malformed value falls back.
+ */
+export function portFromEnv(value: string | undefined, fallback = 5178): number {
+  const trimmed = value?.trim();
+  if (!trimmed || !/^\d+$/.test(trimmed)) return fallback;
+  const port = Number(trimmed);
+  return port <= 65_535 ? port : fallback;
+}
+
+/** Which program is running this server, for the data-folder lock's refusal message. */
+function lockLabel(): string {
+  if (process.env.OOTP_FO_SIDECAR === '1') return 'Pennant for Mac';
+  if (process.versions.electron) return 'Pennant (Electron)';
+  return 'the development server';
+}
+
+let httpServer: Server | null = null;
+
+/**
  * Starts the API (and, when built, the frontend) and resolves with the port.
  * Pass port 0 to let the OS pick a free one — the desktop app does this so it
  * never collides with another copy or an unrelated service.
+ *
+ * Takes the data-folder lock first (`dataLock.ts`) and rejects with
+ * `DataFolderLocked` when another copy of Pennant is using the folder.
  */
 export function startServer(port = 5178): Promise<number> {
+  try {
+    acquireDataLock(DATA_DIR, lockLabel());
+  } catch (err) {
+    return Promise.reject(err);
+  }
   const app = express();
   app.use(requireLocalHost);
   app.use(express.json());
+  // After the Host check: a request that fails both is told about the Host. No-op unless a token is set (sidecar)
+  app.use('/api', requireApiToken);
   app.use('/api', api);
 
   const dist = path.join(APP_ROOT, 'dist');
@@ -135,6 +175,7 @@ export function startServer(port = 5178): Promise<number> {
     const server = app.listen(port, BIND_ADDRESS);
     server.once('error', reject);
     server.once('listening', () => {
+      httpServer = server;
       const actual = (server.address() as AddressInfo).port;
       // The chat tools read the app's own endpoints so the assistant sees
       // exactly what the UI shows, rather than a second implementation.
@@ -160,9 +201,34 @@ export function startServer(port = 5178): Promise<number> {
   });
 }
 
-// Running directly (npm run dev / npm start) rather than embedded in Electron
+/**
+ * Stops cleanly (the sidecar's SIGTERM and stdin close): stops listening and drops open connections (event streams
+ * would otherwise hold the close open forever), stops the export watcher, closes both databases and releases the
+ * data-folder lock. An import still running is abandoned; its marker stays, and the next start imports again.
+ */
+export async function shutdownServer(): Promise<void> {
+  const server = httpServer;
+  httpServer = null;
+  if (server) {
+    await new Promise<void>((resolve) => {
+      server.close(() => resolve());
+      server.closeAllConnections();
+    });
+  }
+  stopWatcher();
+  for (const [name, handle] of [['league', db], ['history', historyDb]] as const) {
+    try {
+      if (handle.open) handle.close();
+    } catch (err) {
+      console.error(`[server] closing the ${name} database failed:`, err);
+    }
+  }
+  releaseDataLock();
+}
+
+// Running directly (npm run dev / npm start) rather than embedded in Electron or the Mac sidecar
 if (!process.env.OOTP_FO_EMBEDDED) {
-  startServer(Number(process.env.PORT) || 5178).catch((err) => {
+  startServer(portFromEnv(process.env.PORT)).catch((err) => {
     console.error('[server] failed to start:', err);
     process.exit(1);
   });
