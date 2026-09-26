@@ -61,7 +61,7 @@ describe('needs from the review', () => {
 
   it('says it is a flag for attention, not a recommendation, and does not assume how long a replacement would be needed', () => {
     const n = needs.find((x) => x.subject?.playerId === 104)!;
-    expect(n.unknowns.join(' ')).toMatch(/flag for your attention, not a recommendation to move him/);
+    expect(n.unknowns.join(' ')).toMatch(/flag for your attention; whether to move him is your call/);
     expect(n.horizon.kind).toBe('unknown');
     expect(n.title).toMatch(/SP5: well below the line for starters in a rotation/);
     expect(n.facts.map((f) => f.label)).toEqual(expect.arrayContaining(['Working estimate', 'Tools', 'Results']));
