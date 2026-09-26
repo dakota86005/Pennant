@@ -13,12 +13,12 @@ import { PLATOON_METHOD } from '../server/mlbPlatoonFit';
 import { TOOLS_METHOD } from '../server/mlbToolsFit';
 import { BULLPEN_PRIOR } from '../server/bullpenRoles';
 import { PLATOON_PRIOR } from '../server/platoon';
+import { bannedIn } from './bannedJargon';
 
 /**
  * The roster review's yardsticks line is written for a GM (AGENTS.md "Writing for the GM"): short, plain, and its reason is always the
  * true one. The record behind it (checks, windows, verdicts) is the API's.
  */
-const BANNED = /\bprior\b|\bgate\b|held-out|coverage|calibrat|\bcentral\b|quantile|D-0\d/i;
 const L = 100;
 
 const rec = (component: string, method: string, passed: boolean, basis: Partial<CalibrationRecord['basis']> = {}, failures: string[] = []): CalibrationRecord => ({
@@ -96,8 +96,8 @@ describe('the yardsticks line gives the true reason, plainly', () => {
     const y = state(setup, league);
     expect(y.line).toBe(line);
     expect(y.line.length).toBeLessThan(90);
-    expect(y.line).not.toMatch(BANNED);
-    expect(y.tip).not.toMatch(BANNED);
+    expect(bannedIn(y.line)).toEqual([]);
+    expect(bannedIn(y.tip)).toEqual([]);
   });
 
   it('the hover says how the league\'s own yardsticks were checked, in plain words', () => {
@@ -125,7 +125,7 @@ describe('the yardsticks line gives the true reason, plainly', () => {
     expect(y.results).toBe(RESULTS_PRIOR);
     const waiting = state([() => recordCalibration({ model: { ...agingModel('starting'), decisions: { hitter: { previous: 'starting', streak: 1 }, pitcher: { previous: 'starting', streak: 0 } } }, record: rec('aging', AGING_METHOD, true, { throughSeason: 1991 }) }, { fitMs: 1 })]);
     expect(waiting.tip).toMatch(/How players age: the starting values, because this league's own did better at the last check and must do so once more before they are used\./);
-    expect(waiting.tip).not.toMatch(BANNED);
+    expect(bannedIn(waiting.tip)).toEqual([]);
     const back = state([returnedAging]);
     expect(back.tip).toMatch(/How players age: the starting values, because they did better than this league's own when checked again\./);
   });
@@ -157,9 +157,9 @@ describe('the yardsticks line gives the true reason, plainly', () => {
     expect(kept.longMan).toMatch(/1\.6 or more innings an appearance: Pennant's starting line, because too few relievers have pitched enough to measure/);
     expect(state([]).longMan).toMatch(/because this league has not been measured yet/);
     for (const y of [own, kept, missing]) {
-      expect(y.tip).not.toMatch(BANNED);
-      expect(y.line).not.toMatch(BANNED);
-      expect(y.longMan).not.toMatch(BANNED);
+      expect(bannedIn(y.tip)).toEqual([]);
+      expect(bannedIn(y.line)).toEqual([]);
+      expect(bannedIn(y.longMan)).toEqual([]);
     }
   });
 
@@ -176,7 +176,7 @@ describe('what the tools say (cycle 4)', () => {
     const g = y.groups.find((x) => x.key === 'tools');
     expect(g).toMatchObject({ source: 'starting', reason: 'no_forward_ratings' });
     expect(y.tip).toMatch(/What a hitter's tools say, and how much they hold his results back: the starting values, because this league has no ratings saved before a season to check them against yet/);
-    expect(y.tip).not.toMatch(BANNED);
+    expect(bannedIn(y.tip)).toEqual([]);
   });
 
   it('the league\'s own slopes serve where adopted, and the Lineup page reads the same ones', async () => {
@@ -213,7 +213,7 @@ describe('the tools group gives the true reason in every state (review finding B
     const g = y.groups.find((x) => x.key === 'tools');
     expect(g).toMatchObject({ source: 'starting', reason });
     expect(g?.text).toMatch(text);
-    expect(y.tip).not.toMatch(BANNED);
+    expect(bannedIn(y.tip)).toEqual([]);
   });
 });
 

@@ -183,10 +183,13 @@ async function createWindow(): Promise<void> {
       // First run, or the file was removed
     }
 
+    const { DataFolderLocked } = await import('../server/dataLock.js');
     let port: number;
     try {
       port = await startServer(preferred);
-    } catch {
+    } catch (err) {
+      // The Mac app (or another server) holds the data folder: another port would not help
+      if (err instanceof DataFolderLocked) throw err;
       console.warn(`[server] port ${preferred} unavailable, taking another`);
       port = await startServer(0);
     }

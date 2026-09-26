@@ -8,6 +8,7 @@ import { OrgComparisonPanel, sortClubs } from '../src/pages/OrgComparison';
 import { buildSave, type BuiltSave, type SaveSpec } from './syntheticSave';
 import request from './request';
 import { visibleText } from './visibleText';
+import { bannedIn } from './bannedJargon';
 
 /*
  * Player Value phase 6d: Org Comparison rebuilt on Player Value and objective facts (BEHAVIOR_CASES.md "Player Value", phase
@@ -198,7 +199,9 @@ describe('the Org Comparison page (phase 6d)', () => {
     expect(markup).toMatch(/class="[^"]*row-us[^"]*"/);
     const text = visibleText(markup);
     expect(text).toMatch(/Club 1/);
-    expect(text).not.toMatch(/#\d|\brank|\btalent\b|players_value|percentile|\bcentral\b|\bsurplus\b|OOTP's own valuation|indeterminate|\bD-\d{3}\b/i);
+    expect(bannedIn(text)).toEqual([]);
+    // No rank or place number: the page states no rank
+    expect(text).not.toMatch(/#\d|\brank/i);
   });
 
   it('says in one short line who a sum leaves out', () => {

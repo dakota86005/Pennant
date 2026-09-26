@@ -7,6 +7,7 @@ import { costBandText, costMoney } from '../src/costBand';
 import { buildSave, type BuiltSave, type SaveSpec } from './syntheticSave';
 import request from './request';
 import { visibleText } from './visibleText';
+import { bannedIn } from './bannedJargon';
 
 /*
  * Player Value phase 6e: Payroll in plain words (BEHAVIOR_CASES.md "Player Value", phase 6e row; AGENTS.md "Writing for the
@@ -25,12 +26,6 @@ let save: BuiltSave;
 let data: Any;
 let finance: Any;
 
-/** Method words the GM never reads on Payroll's face; they may stand in a hover or a breakdown. */
-const JARGON = [
-  /\bcentrals?\b/i, /edge against edge/i, /\bedges?\b/i, /combined as independent/i, /calibrat/i, /\bband\b/i, /\bladder\b/i,
-  /\bclass \d/i, /\bprovisional\b/i, /\bprior\b/i, /if held/i, /\bindeterminate\b/i, /\bpre-arb\b/i, /\barb\b/i,
-  /range of reasonable readings/i, /players_value/, /\b[DQRA]-\d/, /\bnull\b/, /\bundefined\b/, /\bNaN\b/,
-];
 
 /** What the GM reads without opening anything: hovers' popups and the bodies of closed breakdowns taken out. */
 const face = (html: string): string =>
@@ -75,7 +70,7 @@ describe('Payroll talks like a front office (phase 6e)', () => {
 
   it('carries no method word in what the GM reads', async () => {
     const text = face(await render());
-    for (const jargon of JARGON) expect(text, String(jargon)).not.toMatch(jargon);
+    expect(bannedIn(text)).toEqual([]);
   }, SLOW);
 
   it('reads a controlled season\'s cost the way the other pages do: most likely, what it could be, "if kept"', async () => {

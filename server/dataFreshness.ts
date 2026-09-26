@@ -20,7 +20,16 @@
  * that: a log dated the CSV's own current date is not "ahead" of the CSV.
  */
 
+import type { Integer } from './contract/primitives.js';
+
 export type RosterEvidenceLevel = 'current' | 'partial' | 'stale' | 'unavailable';
+
+/**
+ * An in-game date as the server serves it. A string, never a date type: OOTP writes dates unpadded (`2026-5-9`), and
+ * although the fields that pass through `parseGameDate` are padded, a client compares or orders game dates only as the
+ * server does (D-056). The contract (`contract/openapi.json`) names it `GameDate`, with no format.
+ */
+export type GameDate = string;
 
 export type SourceState =
   | 'current'
@@ -47,14 +56,14 @@ export interface FreshnessInputs {
 export interface SourceFreshness {
   state: SourceState;
   /** Simulated-through date on the common basis, ISO. */
-  through: string | null;
-  lagDays: number;
+  through: GameDate | null;
+  lagDays: Integer;
 }
 
 export interface FreshnessAssessment {
   level: RosterEvidenceLevel;
-  save: { simulatedThrough: string | null };
-  csv: SourceFreshness & { currentDate: string | null };
+  save: { simulatedThrough: GameDate | null };
+  csv: SourceFreshness & { currentDate: GameDate | null };
   log: SourceFreshness & { unavailableReason: LogUnavailableReason | null };
   /** One line, e.g. "Partial — transaction log 1 day behind". */
   headline: string;

@@ -20,13 +20,16 @@ import { isUnusable, markUnusable } from './unusable.js';
 
 export type ProviderId = 'anthropic' | 'openai' | 'gemini' | 'opencode' | 'ollama';
 
-export const PROVIDERS: Array<{
+/** One AI service the app can talk to, as the Settings screen lists it. */
+export interface ProviderInfo {
   id: ProviderId;
   label: string;
   keyLabel: string;
   console: string;
   requiresKey: boolean;
-}> = [
+}
+
+export const PROVIDERS: ProviderInfo[] = [
   { id: 'anthropic', label: 'Anthropic (Claude)', keyLabel: 'Anthropic API key', console: 'console.claude.com', requiresKey: true },
   { id: 'openai', label: 'OpenAI', keyLabel: 'OpenAI API key', console: 'platform.openai.com', requiresKey: true },
   { id: 'gemini', label: 'Google Gemini', keyLabel: 'Gemini API key', console: 'aistudio.google.com', requiresKey: true },

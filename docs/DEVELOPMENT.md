@@ -131,6 +131,114 @@ path>`: the first isolates the league data, the second Chromium's profile, and w
 Packaging is configured in `electron-builder.yml`. Artifacts are named `Pennant-<version>-<arch>.<ext>`; the name is a
 literal, never built from `${name}`, so the compatibility-held package name cannot leak into release assets.
 
+## The SwiftUI rebuild: restore point and rollback
+
+Pennant for Mac is being rebuilt as a native SwiftUI app over the same server ([SWIFTUI_REBUILD.md](SWIFTUI_REBUILD.md),
+D-055). The work happens on `feature/swiftui`, with one PR per milestone into it; `main` is untouched until the owner
+approves the final merge. The Electron and React app keeps working on the branch until the cutover PR, the last one,
+which deletes it and is a single revert away.
+
+**The restore point** (created 2026-09-25 with the owner's approval, pushed to `origin`):
+
+| Ref | Points at | What it is |
+|---|---|---|
+| tag `pre-swiftui` (annotated) | `87934cf` | `main` before the rebuild: the Electron + React app |
+| branch `archive/electron-react` | `87934cf` | the same commit, as a branch to build from |
+
+Do not move or delete either.
+
+**Rolling back to the Electron app:**
+
+```bash
+git switch archive/electron-react
+```
+
+```bash
+npm ci && npm run desktop
+```
+
+Both apps use the same data folder, and every server change on the branch is additive (new tables and files only), so
+the Electron app reads the folder as it was. If the Mac app has run on that folder, its first run left a backup of the
+irreplaceable files in `backups/pre-swiftui-<date>/` (`history.db`, `settings.json`, `config.json`,
+`credentials.json`; `league.db` is re-imported, not backed up). To return to that state, quit both apps and restore it,
+either with the Mac app's Settings ▸ Restore backup or by copying the files back into the data folder. A key saved only
+in the Mac app's Keychain item is not in the Electron app; enter it again there.
+
+Undoing the cutover after it merges is `git revert` of that one PR.
+
+### The sidecar
+
+The Mac app runs this server as a child process (`server/sidecar.ts`, SWIFTUI_REBUILD.md section 5). Until the Swift
+app exists (N3), build and run it by hand:
+
+```bash
+npm run build:sidecar
+```
+
+```bash
+npm run sidecar:node
+```
+
+The first writes `build/sidecar/` (the bundled server and its two refit workers); the second fetches Node 24.21.0 for
+Apple Silicon into `build/node-runtime/pennant-server`, checked against a pinned SHA-256. Both folders are ignored by
+Git. To run the bundle, point it at a scratch data folder and send the handshake on stdin; it answers with a
+`PENNANT_READY` line holding the port, and every request needs `Authorization: Bearer <token>`:
+
+```bash
+echo '{"token":"0123456789abcdef0123456789abcdef"}' | OOTP_FO_DATA_DIR=/tmp/pennant-scratch build/node-runtime/pennant-server build/sidecar/server.cjs
+```
+
+That example stops at once, because stdin closes after the one line; the app keeps stdin open for as long as it wants
+the server. The bundle loads better-sqlite3 from the repository's `node_modules`, so it needs the Node build of the
+native module (`npm run abi:node`), not Electron's.
+
+**The data-folder lock.** Every server start, `npm run dev` included, takes `server.lock` in its data folder. A second
+server on the same folder refuses to start and names the one holding it. A lock left by a process that has gone is
+taken over on the next start; one held by a live process that is not Pennant (a reused process id) needs the file
+deleting by hand, as the refusal says.
+
+### The contract and the Swift client
+
+The Mac app's client is generated, never hand-written (SWIFTUI_REBUILD.md section 4.3, D-056). After changing a type
+the contract names (anything exported from `server/contract/index.ts`, or an operation in `server/contract/routes.ts`),
+rebuild the spec and commit it:
+
+```bash
+npm run contract:build
+```
+
+Two conventions: a whole number (an id, a count) is typed `Integer` (`server/contract/primitives.ts`), so the Mac app
+reads an `Int`; and a generic type is never exported from the contract, only a concrete alias of it
+(`export type ClaimRow = Row<Claim>`). The build refuses an exported generic and two different types with one name.
+
+`tests/contract.test.ts` (part of `npm test`) fails when:
+- `contract/openapi.json` differs from a fresh build (run the command above and commit the result);
+- a `/api/v2` route is registered (on any router, a mounted one included) but not listed in `routes.ts`, or a listed
+  operation is not registered (add it, or fix its method or path). Reused legacy routes are checked one way only: a
+  listed one must exist, an unlisted one is simply not described;
+- a JSON GET's live answer against the synthetic save has a field the type does not describe, or a code its union does
+  not list (describe it in the TypeScript type; the spec is checked in its strict form, with enums closed). POSTs are
+  checked in the answers that are safe in a temporary data folder (their 400s, and the 200s of `resolve-folder` and
+  `save-source`); the 200s of `config` and `import` are not, since they start an import;
+- a captured answer or event differs from `contract/fixtures/`, which the Swift tests decode: when the change is
+  intended, run `npm run contract:fixtures` and commit the fixtures;
+- a `text`, `hint` or `display` string in a `/v2` payload carries a word from `tests/bannedJargon.ts`. The list applies to
+  all `/v2` text; before department copy moves (N8) it needs a scoped exception for plain words it would reject.
+
+The Swift package reads the spec through a link (`macos/Packages/PennantAPI/Sources/PennantAPI/openapi.json`), so there
+is no second copy to update. `contract:build` also writes the tests' shape contract (`tests/contractShapes/`) into the
+package's `ContractShapesTests`. Build and test it on a Mac with Xcode 26 or later:
+
+```bash
+cd macos/Packages/PennantAPI && swift build && swift test
+```
+
+CI runs the same on `macos-26` (with `--force-resolved-versions`, so a stale `Package.resolved` fails), so a change that
+breaks the generated client fails the pull request.
+
+**An interrupted import.** If the server stops while importing, or the import fails partway, `import-in-progress.json` stays in the data folder,
+`/api/status` reports `importInterruptedSince`, and the next start imports the export again.
+
 ## Versions
 
 Pennant has its own version lineage starting at **0.1.0** (D-049); it is unrelated to upstream's numbers.

@@ -1,0 +1,22 @@
+{
+  "app": {
+    "name": "Pennant",
+    "version": "0.0.0",
+    "projectUrl": "https://github.com/dakota86005/ootp-front-office",
+    "upstreamUrl": "https://github.com/lsukev/ootp-front-office"
+  },
+  "csvExportedAt": null,
+  "configured": false,
+  "saveName": null,
+  "csvDir": null,
+  "csvDirExists": false,
+  "importing": false,
+  "importProgress": null,
+  "lastImport": null,
+  "lastError": null,
+  "importInterruptedSince": null,
+  "hasData": true,
+  "exportPending": null,
+  "logoToken": "none",
+  "ratingScaleMax": 80
+}

@@ -1661,6 +1661,22 @@ PLAYER_VALUE.md Part 8, Part 9, Part 12).**
   never a verdict. A player the club controls whichever way an open question goes (between pre-arbitration and arbitration, an
   option declined into arbitration) is not listed.
 
+**Amended 2026-09-25 (owner decision for the SwiftUI rebuild; D-057, SWIFTUI_REBUILD.md section 3.4).** A comparison at one
+position may name a **league place**. The owner: "OOTP itself shows rankings for club positions." This narrows phase 6d's
+"a comparison of clubs ranks nothing" and does not repeal it:
+
+- The place is a count of clubs, never a score: "7th of 30 at shortstop", from each club's holder at the position valued
+  the way Player Value already serves him, the same figure for every club and under the same fog of war (our scouts' view
+  of their players).
+- It is stated with **how many clubs' ranges overlap** it and its basis. Two holders whose ranges overlap are not said to
+  differ, and a place with a wide overlap says so on screen.
+- A club whose holder is **not valued** is never ranked, never placed last, and is named as left out; "of N" counts only
+  the clubs placed.
+- The whole-organization comparison (Org Comparison) still sends no rank and sums nothing into a composite. Nothing is
+  combined across positions into a club score.
+
+Not built: the first consumer is the Club Profile's roster map (milestone N6).
+
 ## D-053 — Calibration belongs to the save
 
 **Status:** Accepted 2026-09-22 (owner decision). **Implementation:** Partial. Player Value's expected production
@@ -2038,3 +2054,127 @@ the allowed licenses and draws to canvas; Nivo's releases stopped in May 2025 an
 
 Consequences: `@visx/group` and `@visx/shape` are dev dependencies (the frontend is bundled, like React). The
 production bundle grew by 18.7 kB (6.4 kB gzip: 518.4 to 537.1 kB, 149.7 to 156.1 kB gzip) for the cone, its geometry, the theme module and their styles.
+
+## D-055 — Pennant for Mac: a native SwiftUI client over the same server, run as a sidecar
+
+**Status:** Accepted in direction by the owner (2026-09-25); drafted at milestone N0, and its details settle in the milestone
+that builds each part. **Implementation:** N1, the sidecar server (2026-09-25): `server/sidecar.ts`, the per-launch token,
+the data-folder lock, injected keys, `/api/v2/events`, the sidecar bundle and the pinned Node runtime. No Swift code yet.
+Design: [SWIFTUI_REBUILD.md](SWIFTUI_REBUILD.md). Refines D-008
+("Electron embeds the same server and UI") for the Mac app; D-054 governs the React UI until cutover.
+
+The owner asked for Pennant to feel like a native Mac app, deep but approachable, and chose a full SwiftUI rebuild over
+restyling the web UI. The server is Pennant's judgment (every doctrine boundary, every specialist, the calibration work), so
+only the part the GM sees is rebuilt.
+
+- **One domain server; the Swift app renders and never judges.** The existing TypeScript server runs unchanged in doctrine
+  as a Node sidecar inside the app bundle (`Contents/Helpers`, `Contents/Resources/server`), on `127.0.0.1` at a random
+  port with a bearer token per launch. The Swift app lays out, formats served numbers, sorts, charts and integrates with
+  macOS. It holds no baseball threshold, computes no ranking and writes no sentence beyond structural labels (D-001, D-008,
+  D-056). A number it shows is a number the server served.
+- **Liquid Glass on the controls layer only**: sidebar, toolbar, inspector, popovers, sheets and menus. Content is opaque.
+  Never glass on glass or on content. Colour is never the only signal.
+- **macOS 26 is the minimum**, Apple Silicon only. An API new in macOS 27 is used only behind `#available`, with a macOS 26
+  path that still reads well. Distribution is Developer ID with notarization, **without the App Sandbox** (a sandboxed Node
+  child could not read arbitrary OOTP save folders).
+- **The same data folder as the Electron app** (`~/Library/Application Support/ootp-front-office`, the D-049 hold). Server
+  changes during the rebuild are **additive only**: new tables and files, nothing existing altered. A data-folder lock
+  (`server.lock`), taken by both the Electron build and the sidecar, stops the two apps writing the same databases at once.
+  The first run of the Mac app on a data folder backs up `history.db`, `settings.json`, `config.json` and
+  `credentials.json` to `backups/pre-swiftui-<date>/`.
+- **Identities.** Development builds are `com.dakotawise.pennant.dev`; the release app keeps D-049's
+  `com.dakotawise.pennant` (no Electron installer was ever published). The npm `name`, `OOTP_FO_*` and `data/` holds are
+  unchanged.
+- **The restore point** is the annotated tag `pre-swiftui` and the branch `archive/electron-react`, both at `87934cf` and
+  pushed to `origin` (created 2026-09-25 with the owner's approval). All work is on `feature/swiftui`, with milestone PRs
+  into it; `main` keeps taking server-only work. The rollback procedure is in DEVELOPMENT.md.
+- **Retirement at cutover.** The React UI and Electron keep working on the branch until the last PR, which deletes `src/`,
+  `electron/`, the web tests and the web dependencies, and is a single revert away. It merges to `main` only with the
+  owner's approval.
+
+## D-056 — The presentation contract: the server writes every sentence
+
+**Status:** Accepted in direction by the owner (2026-09-25); drafted at N0. **Implementation:** N2, the pipeline
+(2026-09-25): `server/contract/`, `npm run contract:build` and the committed `contract/openapi.json`, the drift, coverage,
+live-shape (ajv) and banned-jargon tests (`tests/contract.test.ts`, `tests/bannedJargon.ts`), and the generated Swift
+client `macos/Packages/PennantAPI`, built in CI. The spec describes `/api/v2/events` and the reused routes the app
+skeleton needs. `Claim`, `Row` and `Cell` arrive at N4, then per department. Design: SWIFTUI_REBUILD.md section 4.
+
+About a quarter of the prose the GM reads is authored in React today (label maps, word builders, the glossary, the stat
+catalog). Two clients cannot be allowed to disagree, and the plain-language rule (AGENTS.md "Writing for the GM") must be
+enforced once.
+
+- **Every visible sentence is authored on the server**, as a `Claim` (the line, a help tag of at most about 75
+  characters, an optional served value with its range and display string, a tone, an optional stated league place, and its
+  basis: because, source, not known, would change if, the philosophy's lean beside the neutral reading, and how the number
+  is called: calibrated, provisional, policy or unknown, D-041), a `Row` of `Cell`s for tables, and `Target` links.
+- **Show the basis moves into the payload.** A claim with no basis is a defect, and "not known" is a list of sentences,
+  never an empty field read as "nothing missing" (D-018). The lean is explicit or `null`, never implied by absence.
+- **Tables arrive ready to show**: display strings, raw sort keys (null is unknown and sorts last in both directions), and
+  claims where a cell has a basis. The client ports only the unknown-last comparator (its cases shared in
+  `contract/fixtures/sort-cases.json`, run by Vitest and Swift Testing), number formatting and chart geometry.
+- **Everything new is under `/api/v2/`**; the old routes serve the React app until cutover.
+- **The schema is generated from the TypeScript types** into a committed `contract/openapi.json` (OpenAPI 3.1), and the
+  Swift client is generated from it. Closed string unions become **open enums**, so an older app never fails on a new
+  code. OOTP game dates are a `GameDate` string with no date format, because they are unpadded (compare them only through
+  `parseGameDate`).
+- **Tests hold it**: the committed spec equals a fresh build; every route is in the spec and back; every v2 response
+  against the synthetic save validates; and every `text`, `hint` and `display` string passes one consolidated banned-jargon
+  list (`tests/bannedJargon.ts`, replacing the per-page copies).
+
+## D-057 — The Club Profile, the roster map and the horizon: stated places, no composite score
+
+**Status:** Accepted in direction by the owner (2026-09-25); drafted at N0. **Implementation:** Not started (milestone N6).
+Design: SWIFTUI_REBUILD.md sections 3.4 and 3.6.
+
+The Morning Report answers "where are we, what are we good at, what are we bad at, what needs me" with facts and stated
+places, never a thin prediction.
+
+- **Objective league places.** Each dimension (scoring runs, preventing runs, on base, power, rotation, bullpen, defensive
+  efficiency, baserunning, recent against season) is a place among the league's clubs from objective team statistics,
+  with ties stated. A club missing the statistic is not placed and is not counted in "of N".
+- **Policy lines, stamped as policy (D-041).** A strength is the top fifth and a weakness the bottom fifth. Before 20 games
+  a dimension reads "too early" instead of a strength or weakness.
+- **Player Value positional places** on the roster map follow the D-052 amendment of 2026-09-25: a place, its overlap
+  count and its basis; an unvalued holder is never placed.
+- **No composite score.** Dimensions are never summed or weighted into a club grade, and positions are never combined into
+  one.
+- **The horizon** (position × the next three seasons) shows who is controlled and how, from Player Rights and Player Value.
+  A prospect sits in a pipeline lane with his readiness range from Player Development and is **never placed in a season**:
+  no arrival year is invented.
+
+## D-058 — Pennant remembers: snapshots, the GM's desk and follows record attention, never transactions
+
+**Status:** Accepted in direction by the owner (2026-09-25); drafted at N0. **Implementation:** Not started (milestone N7).
+
+- **Report and standings snapshots** are kept per import in `history.db` (new tables, D-009 and D-055's additive rule), so
+  "what changed since the last export" compares two exports' served figures. A difference says what changed, never which
+  transaction did it (D-020).
+- **The GM's desk** gathers the items to decide from every department, each naming the department and the staff member who
+  raised it, ordered by the department's stated severity. Its statuses (Open, Reviewed, Deferred until…, Handled in OOTP)
+  record the GM's attention. "Handled in OOTP" asserts nothing about the save: Pennant never writes to OOTP (D-004), and the
+  next export is what says whether anything changed.
+- **Following** covers clubs and players. The watchlist is **copied** into it, not moved, so the Electron app keeps its own.
+
+## D-059 — Around the League: a wire in the log's own words, and club reports under the same fog of war
+
+**Status:** Accepted in direction by the owner (2026-09-25); drafted at N0. **Implementation:** Not started (milestone N7).
+
+- **Wire sources and wording (D-020).** An entry from OOTP's transaction log says what the log says. An entry from a
+  snapshot difference says the state changed ("now on the injured list", "no longer on the 40-man") and never names a
+  transaction it cannot see.
+- **Stated ordering.** The wire orders by date, followed clubs first when asked; it is never ranked by a hidden importance.
+- **A club report for any club** uses the same specialists and the same fog of war as our own: another club's players are
+  read through our organization's scouting (`scoutedEvidence.ts`), never OOTP's true ratings, and what our scouts cannot see
+  about them is said.
+
+## D-060 — The landing page shows no postseason odds, deadline posture or window labels
+
+**Status:** Accepted (owner, 2026-09-25). **Implementation:** Not started (milestones N4 and N6).
+
+The owner found the postseason odds and the buy/hold/sell posture (`server/posture.ts`, a two-club Pythagorean race against
+a provisional rival) weak and off-mission. The Morning Report, the Club Profile and the department cards answer "where are
+we" with objective facts only: record, standings place and games back, run differential, streak, next game and the
+deadline date. Neither the odds, the posture nor the season-window labels are headlined there, and the landing payload
+does not import them (a boundary test). They appear only in League Office standings, labelled with their basis, until
+ROADMAP "Playoff odds from the roster" replaces them.

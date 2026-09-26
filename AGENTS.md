@@ -47,6 +47,7 @@ research are evidence and rationale, not current implementation truth.
 | Roster evidence and rights | D-020 to D-023, D-026; ARCHITECTURE "Roster evidence: state, chronology, and how current they are"; research evidence: RIGHTS_RESEARCH.md §2, §3 | `.claude/rules/roster-evidence.md` |
 | Player Value | D-052 (with D-018, D-023, D-041), D-053 (calibration belongs to the save); ARCHITECTURE "Subsystem responsibilities" (Player Value), "Player Rights (`playerRights.ts`, `leagueRules.ts`)", "Organizational Philosophy owns preferences" (the lens); PLAYER_VALUE.md Parts 1, 2, 4.5, 6, 7 to 11; BEHAVIOR_CASES.md "Player Value"; research evidence: PLAYER_VALUE_RESEARCH.md R-2, R-3, R-6, R-10 | `.claude/rules/player-value.md` |
 | Project identity and releases | D-049; ARCHITECTURE "Subsystem responsibilities" (Identity and version); DEVELOPMENT.md "Versions", "Release tags", "Releases", "Application id and compatibility holds" | `.claude/rules/release-identity.md` |
+| Pennant for Mac (SwiftUI rebuild) | D-055 to D-060, D-052 amendment of 2026-09-25; SWIFTUI_REBUILD.md sections 1, 4 to 7; BEHAVIOR_CASES.md "Pennant for Mac"; DEVELOPMENT.md "The SwiftUI rebuild" | `.claude/rules/macos.md` |
 
 ## Non-negotiable boundaries
 

@@ -8,6 +8,7 @@ import type { RosterPlayer, RosterResponse } from '../src/api';
 import request from './request';
 import { IDS } from './fixture';
 import { visibleText } from './visibleText';
+import { bannedIn } from './bannedJargon';
 
 /*
  * Player Value phase 6d: the Roster's scouting column (BEHAVIOR_CASES.md "Player Value", phase 6d row; PLAYER_VALUE.md
@@ -87,6 +88,6 @@ describe('the Roster shows the organization\'s scouted view, never OOTP\'s Overa
     const text = visibleText(renderToStaticMarkup(createElement(RosterTable, { roster, group: 'batting', columns: [] })));
     expect(text).toMatch(/\bScouted\b/);
     expect(text).toMatch(/\b50 → 55\b/);
-    expect(text).not.toMatch(/\bOA\b|\bPOT\b|Overall|Potential|players_value|OA→POT/);
+    expect(bannedIn(text)).toEqual([]);
   });
 });

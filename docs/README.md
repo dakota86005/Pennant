@@ -18,6 +18,7 @@ Start with the four durable documents, then the subsystem document for the area 
 | [CALIBRATION.md](CALIBRATION.md) | How scouting constants are tuned and stamped calibrated, provisional or policy. |
 | [BEHAVIOR_CASES.md](BEHAVIOR_CASES.md) | The behavioral corpus: where new baseball behavior gets its case first. |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Running, testing, building and releasing Pennant. |
+| [SWIFTUI_REBUILD.md](SWIFTUI_REBUILD.md) | Pennant for Mac: the native SwiftUI rebuild over the same server (D-055 to D-060), its milestones and the way back. Design; built milestone by milestone on `feature/swiftui`. |
 
 ## Historical design records
 

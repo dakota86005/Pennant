@@ -244,6 +244,28 @@ before its code and failed on `origin/main` (38cd361) for the reason expected; t
 | `playerCardHeader.test.ts` (the header's contract and value, Player Value phase 6a, 2026-09-24) | The header never shows a figure the organization cannot see: no Value or Talent percentile and no Overall or Potential from `players_value`, even when one is planted there; its scouting figure is the scouts' own tools through the evidence boundary, and a missing grade reads "not scouted". His contract is read from the contract facts (a salary the export does not state is unknown, never $0), and his contract value is the Value section's own total. It says the game date the data is from, and when that data may be out of date. |
 | `storylineLevels.test.ts` (the storyline briefing, 2026-09-23) | The same rule in what the AI is told: a position player among the club's pitching leaders is sent with his position and no pitching role, and a listed pitcher keeps his. |
 
+## Pennant for Mac: the presentation layer
+
+Written at milestone N0 of the SwiftUI rebuild, before any code (D-055 to D-060, the D-052 amendment of 2026-09-25,
+[SWIFTUI_REBUILD.md](SWIFTUI_REBUILD.md)). Nothing here is built yet. Each invariant becomes an `it` in the named file in
+the milestone that builds its concern, is built from the synthetic save (`tests/syntheticSave.ts`) or synthetic evidence,
+and must fail first for the reason expected. The presentation layer only says what the specialists already decided, so no
+case here is a new baseball judgment: each keeps an existing doctrine true once the server writes every sentence.
+
+| File (milestone) | What it protects |
+|---|---|
+| `v2Contract.test.ts` (N2, N4) | Every visible string a v2 response carries (`text`, `hint`, `display`) passes the one banned-jargon list, and a help tag is at most about 75 characters. A claim always carries its basis; "not known" is a list of sentences, and an empty list means nothing is missing, never "not checked". A philosophy lean is stated beside the neutral reading or is `null`. An OOTP game date is served as the export wrote it, never re-typed as a calendar date. |
+| `v2Sort.test.ts` (N2, shared with Swift Testing through `contract/fixtures/sort-cases.json`) | An unknown sorts last whether the column is sorted up or down; an unknown is never read as zero or as the worst value. |
+| `clubProfile.test.ts` (N6) | A club's place on a dimension counts only clubs that have the statistic, and ties are stated, not broken silently. A club missing the statistic is left out of "of N", never placed last. Before 20 games a dimension reads "too early" and is neither a strength nor a weakness. A strength is the top fifth and a weakness the bottom fifth, stamped as policy. No dimension is combined into a club grade. |
+| `rosterMap.test.ts` (N6) | A holder's place at his position is stated with how many clubs' ranges overlap it; two holders whose ranges overlap are not said to differ. A club whose holder is not valued is not placed and is named as left out. The farm's next man and his readiness are Player Development's and Minor League Operations' answers as served, and control is Player Rights' answer; the map adds no judgment of its own. |
+| `horizon.test.ts` (N6) | A prospect sits in the pipeline lane with his readiness range and is never placed in a season. A season whose control is unknown reads unknown, never "free agent" and never "controlled". |
+| `frontOfficeLanding.test.ts` (N4, N6) | The landing payload carries no postseason odds, deadline posture or season-window label, and imports neither `posture` nor the playoff odds (D-060). Its masthead is objective facts only. |
+| `reportSnapshots.test.ts` (N7) | "What changed since the last export" says what changed between two exports' served figures and never names the transaction behind it (D-020). An item with no earlier snapshot reads as new, never as changed. |
+| `desk.test.ts` (N7) | A desk status records the GM's attention and changes nothing else: marking an item handled in OOTP neither resolves the department's finding nor asserts anything happened in the save. Each item names the department and staff member who raised it, and the desk orders by the stated severity it was given. |
+| `leagueWire.test.ts` (N7) | A wire entry from OOTP's log says what the log says; an entry from a snapshot difference says the state changed and names no transaction. The wire is ordered by date (followed clubs first when asked), never by a hidden importance. |
+| `clubReport.test.ts` (N7) | Another club's players are read through our organization's scouting, the same fog of war as our own; where our scouts have no report, the report says so and fills nothing in. |
+| `following.test.ts` (N7) | Following copies the watchlist and leaves it in place. |
+
 ## Adding a case
 
 When real-save testing finds a new failure mode, add the case before the fix:

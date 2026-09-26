@@ -1,0 +1,55 @@
+{
+  "generatedAt": "2040-07-01T12:00:00.000Z",
+  "configured": false,
+  "save": {
+    "found": false,
+    "name": null,
+    "lgPath": null,
+    "discovery": "not_found",
+    "discoveryNotes": [
+      "No CSV export is configured."
+    ],
+    "simulatedThrough": null,
+    "dateSource": null
+  },
+  "csv": {
+    "currentDate": "2040-05-06",
+    "simulatedThrough": "2040-05-05",
+    "exportedAt": null,
+    "importedAt": null
+  },
+  "transactionLog": {
+    "found": false,
+    "readable": false,
+    "error": null,
+    "unavailableReason": "save_not_found",
+    "files": null,
+    "snapshot": null,
+    "coverage": null,
+    "counts": null,
+    "unsupportedSamples": []
+  },
+  "freshness": {
+    "level": "partial",
+    "save": {
+      "simulatedThrough": null
+    },
+    "csv": {
+      "state": "unverified",
+      "through": "2040-05-05",
+      "currentDate": "2040-05-06",
+      "lagDays": 0
+    },
+    "log": {
+      "state": "unavailable",
+      "through": null,
+      "lagDays": 0,
+      "unavailableReason": "save_not_found"
+    },
+    "headline": "Partial — transaction log unavailable",
+    "reasons": [
+      "The OOTP save folder could not be found. Current league state is available, but reasoning that depends on transaction history is limited."
+    ],
+    "action": null
+  }
+}

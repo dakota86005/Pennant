@@ -1,9 +1,9 @@
-import { Router } from 'express';
+import { Router, type Response } from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
 import { DATA_DIR, loadConfig } from './config.js';
 import {
-  DEFAULT_MODEL, PROVIDERS, isProviderId, providerFor, type ProviderId,
+  DEFAULT_MODEL, PROVIDERS, isProviderId, providerFor, type ProviderId, type ProviderInfo,
 } from './providers.js';
 import { forgetUnusable } from './unusable.js';
 import { startWatcher, stopWatcher } from './watcher.js';
@@ -15,6 +15,7 @@ import {
   resolvePhilosophy,
   type PhilosophyProfile,
 } from './philosophy.js';
+import type { Integer } from './contract/primitives.js';
 
 export const AI_FEATURES = ['briefing', 'trade', 'storylines', 'chat'] as const;
 export type AiFeatureId = (typeof AI_FEATURES)[number];
@@ -46,7 +47,7 @@ export function isAiFeatureId(value: unknown): value is AiFeatureId {
 export interface Settings {
   autoImport: boolean;
   useTeamColors: boolean;
-  defaultOrgId: number | null;
+  defaultOrgId: Integer | null;
   /** 'system' follows the OS setting and changes with it. */
   theme: 'system' | 'dark' | 'light';
   /** Model id used by every AI feature. See models.ts for the picker's list. */
@@ -214,6 +215,25 @@ export function setSecretCrypto(impl: SecretCrypto): void {
   crypto = impl;
 }
 
+/**
+ * Keys handed over by the Mac app (D-055), which keeps them in the macOS Keychain and passes them to the sidecar
+ * on stdin (`server/sidecar.ts`), never in an environment variable another process could read. Once set, this
+ * server never writes a key to disk: a key saved in Settings is held here in memory, and the app stores it in the
+ * Keychain itself. `null` (the Electron build and `npm run dev`) keeps the `credentials.json` file as before.
+ */
+let injected: Partial<Record<ProviderId, string>> | null = null;
+let injectedLabel = 'your macOS Keychain';
+
+/** Replaces every injected key at once (a provider left out has none). Called by the sidecar only. */
+export function setInjectedKeys(keys: Partial<Record<string, unknown>>, label = injectedLabel): void {
+  const next: Partial<Record<ProviderId, string>> = {};
+  for (const [id, value] of Object.entries(keys)) {
+    if (isProviderId(id) && typeof value === 'string' && value.trim()) next[id] = value.trim();
+  }
+  injected = next;
+  injectedLabel = label;
+}
+
 /** Resolves the crypto only when there is a secret to protect. */
 function activeCrypto(): SecretCrypto | null {
   if (!crypto) return null;
@@ -267,6 +287,10 @@ function writeKeyFile(next: KeyFile): void {
 
 export function saveApiKey(key: string, provider: ProviderId = 'anthropic'): void {
   const trimmed = key.trim();
+  if (injected) {
+    injected = { ...injected, [provider]: trimmed };
+    return;
+  }
   const active = activeCrypto();
   const record: StoredKey = active
     ? { encrypted: true, value: active.encrypt(trimmed), hint: trimmed.slice(-4) }
@@ -275,6 +299,11 @@ export function saveApiKey(key: string, provider: ProviderId = 'anthropic'): voi
 }
 
 export function clearApiKey(provider: ProviderId = 'anthropic'): void {
+  if (injected) {
+    const { [provider]: _removed, ...rest } = injected;
+    injected = rest;
+    return;
+  }
   const next = readKeyFile();
   delete next[provider];
   writeKeyFile(next);
@@ -299,6 +328,7 @@ export function getApiKey(provider: ProviderId = activeProvider()): string | nul
   const envVar = ENV_VAR[provider];
   const fromEnv = envVar ? process.env[envVar] : undefined;
   if (fromEnv) return fromEnv;
+  if (injected) return injected[provider] ?? null;
   const stored = readKeyFile()[provider];
   return stored ? decrypt(stored) : null;
 }
@@ -319,13 +349,19 @@ export function providerCredential(
 
 export interface KeyStatus {
   configured: boolean;
-  source: 'env' | 'stored' | null;
+  /** `keychain`: handed over by the Mac app from the macOS Keychain. */
+  source: 'env' | 'stored' | 'keychain' | null;
   hint: string | null;
   encrypted: boolean;
 }
 
-export function apiKeyStatus(provider: ProviderId = activeProvider()): KeyStatus & { storageLabel: string } {
-  const storageLabel = crypto ? crypto.label : 'a permission-restricted file (no OS keychain available)';
+/** The active provider's key state, with where keys are kept (`GET /api/settings`). */
+export interface ApiKeyStatus extends KeyStatus {
+  storageLabel: string;
+}
+
+export function apiKeyStatus(provider: ProviderId = activeProvider()): ApiKeyStatus {
+  const storageLabel = injected ? injectedLabel : crypto ? crypto.label : 'a permission-restricted file (no OS keychain available)';
   return { ...statusOf(provider), storageLabel };
 }
 
@@ -334,6 +370,12 @@ function statusOf(provider: ProviderId): KeyStatus {
   const fromEnv = envVar ? process.env[envVar] : undefined;
   if (fromEnv) {
     return { configured: true, source: 'env', hint: fromEnv.slice(-4), encrypted: false };
+  }
+  if (injected) {
+    const key = injected[provider];
+    return key
+      ? { configured: true, source: 'keychain', hint: key.slice(-4), encrypted: true }
+      : { configured: false, source: null, hint: null, encrypted: false };
   }
   const stored = readKeyFile()[provider];
   if (stored) {
@@ -349,9 +391,27 @@ export function allKeyStatus(): Record<ProviderId, KeyStatus> {
 
 // ── Routes ──────────────────────────────────────────────────────────────
 
+/** What `GET /api/settings` serves. */
+export interface SettingsResponse {
+  settings: Settings;
+  apiKey: ApiKeyStatus;
+  dataDir: string;
+}
+
+/** A provider on offer, with the model it would use (`GET /api/settings/providers`). */
+export interface ProviderChoice extends ProviderInfo {
+  model: string;
+}
+
+/** What `GET /api/settings/providers` serves: the providers on offer and every provider's key state. */
+export interface ProvidersResponse {
+  providers: ProviderChoice[];
+  keys: Record<ProviderId, KeyStatus>;
+}
+
 export const settingsRoutes = Router();
 
-settingsRoutes.get('/settings', (_req, res) => {
+settingsRoutes.get('/settings', (_req, res: Response<SettingsResponse>) => {
   res.json({ settings: loadSettings(), apiKey: apiKeyStatus(), dataDir: DATA_DIR });
 });
 
@@ -597,7 +657,7 @@ settingsRoutes.delete('/settings/api-key', (req, res) => {
 });
 
 /** The choice on offer, so the Settings screen does not hard-code the list. */
-settingsRoutes.get('/settings/providers', (_req, res) => {
+settingsRoutes.get('/settings/providers', (_req, res: Response<ProvidersResponse>) => {
   res.json({
     // Each provider's resolved model travels with it, so a provider that has
     // never been chosen still shows what it would use rather than a blank

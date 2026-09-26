@@ -2,7 +2,7 @@ import { Router, type NextFunction, type Request, type Response } from 'express'
 import fs from 'node:fs';
 import path from 'node:path';
 import { db, tableExists, tableColumns, locateColumn } from './db.js';
-import { detectSaves, resolveChosenFolder, searchLocations } from './paths.js';
+import { detectSaves, resolveChosenFolder, searchLocations, type ResolveResult, type SaveInfo, type SearchLocation } from './paths.js';
 import { DATA_DIR, loadConfig, saveConfig } from './config.js';
 import { importCsvDir, type ImportProgress, type ImportResult } from './importer.js';
 import { clearPendingExport, pendingExport, startWatcher } from './watcher.js';
@@ -53,8 +53,10 @@ import { trendsRoutes } from './trends.js';
 import { chatRoutes } from './chat.js';
 import { mlbOperationsRoutes } from './mlbOperations.js';
 import { farmRoutes } from './farmRoutes.js';
-import { appInfo } from './appInfo.js';
+import { appInfo, type AppInfo } from './appInfo.js';
 import { scoutedDevelopmentRoutes } from './scoutedDevelopment.js';
+import { eventStream, progressThrottle, publish } from './serverEvents.js';
+import type { Integer } from './contract/primitives.js';
 
 export const api = Router();
 api.use(logoRoutes);
@@ -104,8 +106,52 @@ export const importState: {
   lastError: string | null;
   /** Where the running import has got to, so the page can show a bar. */
   progress: ImportProgress | null;
-} = { importing: false, lastImport: loadImportMeta(), lastError: null, progress: null };
+  /** When an import that never finished had started (the server stopped partway), until a later import completes. */
+  interruptedSince: string | null;
+} = { importing: false, lastImport: loadImportMeta(), lastError: null, progress: null, interruptedSince: null };
 importedAt.value = importState.lastImport?.finishedAt ?? null;
+
+/**
+ * Written as an import starts and removed only when it completes (N1's kill-mid-import check).
+ *
+ * The importer replaces one table per file: it drops the table and creates the new one outside the file's
+ * transaction, then writes the rows inside it. SQLite keeps the database file sound whatever stops the process
+ * (the write-ahead log rolls back the open transaction), but a server killed partway leaves the files before it
+ * replaced, the one it was on empty, and the files after it still the previous export's: a database that is
+ * neither export, with `last-import.json` still describing the old one. Nothing else records that, so this file
+ * does, and the next start imports the export again (`recoverInterruptedImport`). An import that fails partway
+ * leaves the same mix, so it keeps the marker too; its error is on `/api/status` meanwhile.
+ */
+const IMPORT_MARKER_PATH = path.join(DATA_DIR, 'import-in-progress.json');
+
+function readImportMarker(): { startedAt: string; csvDir: string | null } | null {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(IMPORT_MARKER_PATH, 'utf8')) as { startedAt?: unknown; csvDir?: unknown };
+    return { startedAt: String(parsed.startedAt ?? 'unknown'), csvDir: typeof parsed.csvDir === 'string' ? parsed.csvDir : null };
+  } catch (err) {
+    // No marker is the normal case; an unreadable one still means an import never finished
+    return (err as NodeJS.ErrnoException).code === 'ENOENT' ? null : { startedAt: 'unknown', csvDir: null };
+  }
+}
+
+/**
+ * At start-up: if the last import never finished, say so on `/api/status` and import the export again, so the
+ * database is one export rather than two. Returns whether a re-import was started. Without the export folder the
+ * mixed state is reported and left for the user to re-import once the folder is back; nothing is guessed.
+ */
+export function recoverInterruptedImport(): boolean {
+  const marker = readImportMarker();
+  if (!marker) return false;
+  importState.interruptedSince = marker.startedAt;
+  const { csvDir } = loadConfig();
+  if (!csvDir || !fs.existsSync(csvDir)) {
+    console.warn(`[import] the import started ${marker.startedAt} never finished, and the export folder is not available to repeat it`);
+    return false;
+  }
+  console.warn(`[import] the import started ${marker.startedAt} never finished; importing the export again`);
+  void runImport(csvDir);
+  return true;
+}
 
 /**
  * Kicks off the storylines and the briefing after an import, when the club has
@@ -247,9 +293,19 @@ export async function runImport(csvDir: string): Promise<void> {
   importGeneration += 1;
   importState.lastError = null;
   importState.progress = null;
+  const startedAt = new Date().toISOString();
+  try {
+    fs.writeFileSync(IMPORT_MARKER_PATH, JSON.stringify({ startedAt, csvDir }));
+  } catch (err) {
+    // Only the recovery after a crash depends on it; the import itself goes ahead
+    console.error('[import] could not write the in-progress marker:', err);
+  }
+  publish({ type: 'import-started', startedAt });
+  const announceProgress = progressThrottle((progress) => publish({ type: 'import-progress', progress }));
   try {
     importState.lastImport = await importCsvDir(csvDir, (p) => {
       importState.progress = p;
+      announceProgress(p);
     });
     // Whatever was waiting on disk has now been read
     clearPendingExport();
@@ -286,35 +342,98 @@ export async function runImport(csvDir: string): Promise<void> {
     clearTwoWayCache();
     autoGenerate();
     imported = true;
+    importState.interruptedSince = null;
+    fs.rmSync(IMPORT_MARKER_PATH, { force: true });
   } catch (err) {
     importState.lastError = (err as Error).message;
     console.error('[import] failed:', err);
   } finally {
     importState.importing = false;
     importState.progress = null;
+    publish({ type: 'import-finished', lastImport: importState.lastImport, error: importState.lastError });
   }
   if (imported) refitAfterImport();
 }
 
-api.get('/saves', (_req, res) => {
+api.get('/saves', (_req, res: Response<SaveInfo[]>) => {
   res.json(detectSaves());
 });
 
 /** Where we looked, so the user can see why auto-detection came up empty. */
-api.get('/search-locations', (_req, res) => {
+api.get('/search-locations', (_req, res: Response<SearchLocations>) => {
   res.json({ platform: process.platform, locations: searchLocations() });
 });
 
 /** Checks a folder the user picked or typed, before committing to it. */
-api.post('/resolve-folder', (req, res) => {
-  const { path: chosen } = req.body as { path?: string };
+api.post('/resolve-folder', (req, res: Response<ResolveResult>) => {
+  const { path: chosen } = req.body as Partial<ResolveFolderRequest>;
   if (!chosen?.trim()) return res.status(400).json({ ok: false, error: 'No folder given.' });
   res.json(resolveChosenFolder(chosen));
 });
 
-api.get('/status', (_req, res) => {
+/** What `/api/status` serves, and the snapshot `/api/v2/events` opens with (described in `contract/openapi.json`). */
+export interface ServerStatus {
+  /** Product name and version, from package.json (see appInfo.ts). */
+  app: AppInfo;
+  csvExportedAt: string | null;
+  configured: boolean;
+  saveName: string | null;
+  csvDir: string | null;
+  csvDirExists: boolean;
+  importing: boolean;
+  /** Where a running import has got to; null when nothing is importing. */
+  importProgress: ImportProgress | null;
+  lastImport: ImportResult | null;
+  lastError: string | null;
+  /** Set when an import stopped partway (the server was stopped or crashed); cleared by the next completed import. */
+  importInterruptedSince: string | null;
+  hasData: boolean;
+  /** Set when OOTP has written a fresh export the app has not imported yet. */
+  exportPending: string | null;
+  /** Changes with the save, and rides along on every logo URL. */
+  logoToken: string;
+  /** The top of the rating scale the save shows ratings on. */
+  ratingScaleMax: Integer;
+}
+
+/** A request the server accepted, with nothing more to say. */
+export interface Ok {
+  ok: true;
+}
+
+/** What a route answers when it cannot do what was asked (a 400). */
+export interface ApiError {
+  error: string;
+}
+
+/** What `POST /api/import` answers: the import has started; its progress and result arrive on `/api/status` and the event stream. */
+export interface ImportAccepted {
+  ok: true;
+  lastImport: ImportResult | null;
+  lastError: string | null;
+}
+
+/** The folder the user picked or typed (`POST /api/resolve-folder`). */
+export interface ResolveFolderRequest {
+  path: string;
+}
+
+/** The save to use (`POST /api/config`): its CSV export folder and its name. */
+export interface ConfigRequest {
+  csvDir: string;
+  saveName?: string | null;
+}
+
+/** Where `GET /api/search-locations` looked for saves, so the user can see why auto-detection came up empty. */
+export interface SearchLocations {
+  platform: string;
+  locations: SearchLocation[];
+}
+
+/** What `/api/status` serves, and the snapshot `/api/v2/events` opens with. */
+export function statusSnapshot(): ServerStatus {
   const config = loadConfig();
-  res.json({
+  return {
     /** Product name and version, from package.json (see appInfo.ts). */
     app: appInfo(),
     csvExportedAt: config.csvDir ? csvExportedAt(config.csvDir) : null,
@@ -331,6 +450,8 @@ api.get('/status', (_req, res) => {
     importProgress: importState.progress,
     lastImport: importState.lastImport,
     lastError: importState.lastError,
+    /** Set when an import stopped partway (the server was stopped or crashed); cleared by the next completed import. */
+    importInterruptedSince: importState.interruptedSince,
     hasData: tableExists('players') && tableExists('teams'),
     /** Set when OOTP has written a fresh export the app has not imported yet. */
     exportPending: pendingExport(),
@@ -346,11 +467,18 @@ api.get('/status', (_req, res) => {
      * per cent of the width.
      */
     ratingScaleMax: tableExists('players') ? ratingScaleMax() : 80,
-  });
+  };
+}
+
+api.get('/status', (_req, res: Response<ServerStatus>) => {
+  res.json(statusSnapshot());
 });
 
-api.post('/config', (req, res) => {
-  const { csvDir, saveName } = req.body as { csvDir?: string; saveName?: string };
+/** Server-sent events for the Mac app: import, job and fresh-export news as it happens (`serverEvents.ts`). */
+api.get('/v2/events', eventStream(statusSnapshot));
+
+api.post('/config', (req, res: Response<Ok | ApiError>) => {
+  const { csvDir, saveName } = req.body as Partial<ConfigRequest>;
   if (!csvDir) return res.status(400).json({ error: 'csvDir is required' });
   // A hand-picked .lg folder belongs to the save it was picked for
   const previous = loadConfig();
@@ -367,7 +495,7 @@ api.post('/config', (req, res) => {
   res.json({ ok: true });
 });
 
-api.post('/import', (_req, res) => {
+api.post('/import', (_req, res: Response<ImportAccepted | ApiError>) => {
   const config = loadConfig();
   if (!config.csvDir) return res.status(400).json({ error: 'No save configured' });
   if (!fs.existsSync(config.csvDir)) {
