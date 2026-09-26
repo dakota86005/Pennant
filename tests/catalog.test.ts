@@ -214,7 +214,7 @@ describe('the departments\' names and views, served to the sidebar (review N11)'
         const id = /static let id: DeptID = "([^"]+)"/.exec(swift)?.[1];
         const title = /static let title: LocalizedStringResource = "([^"]+)"/.exec(swift)?.[1];
         if (!id || !title) continue;
-        registry[id] = { title, views: [...swift.matchAll(/placeholder\(id: "([^"]+)", title: "([^"]+)"/g)].map((m) => ({ id: m[1], name: m[2] })) };
+        registry[id] = { title, views: [...swift.matchAll(/(?:placeholder|DepartmentViewDescriptor)\(id: "([^"]+)", title: "([^"]+)"/g)].map((m) => ({ id: m[1], name: m[2] })) };
       }
     }
     const served = servedDepartments(null);

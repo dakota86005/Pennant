@@ -2105,7 +2105,10 @@ skeleton needs. N4, Stage A (2026-09-26): `Claim`, `Row`, `Cell` and `Target` (`
 `Certainty` gaining `fact` for an objective export fact), the builder that makes a basis required
 (`server/presentation/claim.ts`), `server/presentation/` as the home of every v2 word, `GET /api/v2/catalog` and
 `GET /api/v2/data-status`, the N3 shell's gaps served as words, scoped jargon exceptions, and the presentation boundary
-test; the Front Office adapters follow in Stage B, then each department. Design: SWIFTUI_REBUILD.md section 4.
+test. N4, Stage B (2026-09-26): the Front Office contract (`FoItem`, `DepartmentReport`, `DepartmentCard`,
+`FrontOfficeSummary`, `ClaimTrail`), its pure adapters in `server/presentation/frontOffice/`, the cached service
+(`server/frontOfficeService.ts`) and `GET /api/v2/front-office/:org`, `/departments/:org/:dept` and `/claims/:key`; each
+department's copy moves with its milestone. Design: SWIFTUI_REBUILD.md section 4.
 
 About a quarter of the prose the GM reads is authored in React today (label maps, word builders, the glossary, the stat
 catalog). Two clients cannot be allowed to disagree, and the plain-language rule (AGENTS.md "Writing for the GM") must be
@@ -2152,7 +2155,9 @@ places, never a thin prediction.
 
 ## D-058 — Pennant remembers: snapshots, the GM's desk and follows record attention, never transactions
 
-**Status:** Accepted in direction by the owner (2026-09-25); drafted at N0. **Implementation:** Not started (milestone N7).
+**Status:** Accepted in direction by the owner (2026-09-25); drafted at N0. **Implementation:** Partial: N4, Stage B
+serves the desk itself (every department's items to decide, each naming the department and who raised it, in the stated
+severity order, `FrontOfficeSummary.desk`); the snapshots, the statuses and follows are N7.
 
 - **Report and standings snapshots** are kept per import in `history.db` (new tables, D-009 and D-055's additive rule), so
   "what changed since the last export" compares two exports' served figures. A difference says what changed, never which
@@ -2178,8 +2183,11 @@ places, never a thin prediction.
 ## D-060 — The landing page shows no postseason odds, deadline posture or window labels
 
 **Status:** Accepted (owner, 2026-09-25). **Implementation:** Partial: N4, Stage A holds the boundary
-(`tests/presentationBoundary.test.ts`: nothing in `server/presentation/` imports `posture` or `playoffs`); the landing
-payload itself arrives with N4's Stage B and N6.
+(`tests/presentationBoundary.test.ts`: nothing in the landing folders reaches `posture` or `playoffs` by any chain of
+imports); N4, Stage B serves the desk and the department cards and holds their payloads free of odds, posture and window
+labels (`tests/frontOfficeLanding.test.ts`); the masthead arrives with N6. Major League Ops' own urgency still leans on
+the season (D-036): the desk shows the severity it stated with the philosophy-free severity beside it, and the season's
+read itself is never copied into the payload.
 
 The owner found the postseason odds and the buy/hold/sell posture (`server/posture.ts`, a two-club Pythagorean race against
 a provisional rival) weak and off-mission. The Morning Report, the Club Profile and the department cards answer "where are

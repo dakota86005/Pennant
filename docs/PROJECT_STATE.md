@@ -49,12 +49,17 @@ material implementation state changes.
   types, `npm run contract:build` writes `contract/openapi.json`, and `macos/Packages/PennantAPI` generates the Swift
   client from it (built and tested in CI on `macos-26`). It describes `/api/v2/events` and the reused status, import,
   setup and settings routes the app skeleton needs (N3 added saving the settings); `tests/contract.test.ts` holds drift, coverage and live shapes, and
-  `tests/bannedJargon.ts` is the one banned-jargon list. No Claims yet (N4).
+  `tests/bannedJargon.ts` is the one banned-jargon list. N4 added the presentation layer (`server/presentation/`:
+  `Claim`, `Row`, `Cell` and their builder, severity normalization, `/api/v2/catalog`, `/api/v2/data-status`) and the
+  Front Office (`/api/v2/front-office/:org`, `/departments/:org/:dept`, `/claims/:key`: the desk, the department cards
+  and reports, cached per club and import, warmed after each import).
 - Pennant for Mac, the app skeleton (SwiftUI rebuild N3, D-055): `macos/Pennant.xcodeproj` and its packages. The app
   carries the server and starts it as its sidecar (after a one-time backup of the data folder), and has the window shell:
   the sidebar from the department registry with the served club card, the toolbar, the inspector, the Go, View and Club
-  menus, the Setup window (find the save, import it, pick the club) and Settings. Every department view is still a
-  placeholder; the React app remains the product until cutover.
+  menus, the Setup window (find the save, import it, pick the club) and Settings. The Morning Report shows the served
+  desk and department cards, and Major League Ops', the farm's, Finance's and Medical's Report views their served
+  reports (N4, plain until N5's design system); every other view is still a placeholder. The React app remains the
+  product until cutover.
 - A data-folder lock (`server.lock`, `server/dataLock.ts`) is taken by every server start (Electron, the
   sidecar, `npm run dev`), so two copies never write the same databases; a lock whose process has gone is
   taken over.

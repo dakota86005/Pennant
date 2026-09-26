@@ -6,9 +6,11 @@ server, section 5; "As built" below). Milestone N2 is done (2026-09-25: the cont
 there). Milestone N3 is done (2026-09-26: the Xcode project and packages, the server inside the app, `ServerController`,
 `AppModel`, the event client, routes, the comparator, backups and the test script; then the window shell from the
 department registry, the commands, Setup and Settings; "As built at N3" in sections 3.1, 3.2, 3.6, 5.2, 5.3, 6, 7 and 8).
-Milestone N4, Stage A is built (2026-09-26: the presentation types and builder, `server/presentation/`, the route
-extractions, severity normalization, `/api/v2/catalog`, the N3 gaps served as words; "As built at N4 (Stage A)" in
-sections 4.1, 4.2 and 8); its Stage B (the Front Office adapters, their cache and the claims endpoint) follows.
+Milestone N4 is done (2026-09-26). Stage A: the presentation types and builder, `server/presentation/`, the route
+extractions, severity normalization, `/api/v2/catalog`, the N3 gaps served as words ("As built at N4 (Stage A)" in
+sections 4.1, 4.2 and 8). Stage B: the Front Office contract, its department adapters, their cache, the desk, department
+and claims endpoints, and the Mac app's first plain Morning Report and department reports ("As built at N4 (Stage B)" in
+sections 3.4, 3.5, 4.2 and 6).
 Nothing else in this document is implemented yet. It supersedes the UI parts of the
 V2 web plan (`~/.claude/plans/okay-can-we-please-effervescent-cherny.md`, sections 3 and 4). The server-side
 parts of that plan (the Front Office contract, the Club Profile, the roster map, the horizon board, the league
@@ -220,6 +222,22 @@ content (`accessibilityCustomContent`), so the depth is there without a mouse.
 7. **Around the league.** The top wire entries since the last export, with followed clubs first.
 8. **Game day** (collapsible) and the **GM Briefing** (existing AI, collapsed).
 
+**As built at N4 (Stage B), 2026-09-26.** Items 5 and 6 are served and drawn plainly; the masthead, the "since the last
+export" chips, the club profile, the roster map, the wire and game day are N6 and N7.
+- **The desk** (`FrontOfficeSummary.desk`): every department's items to decide (its urgent and needs-attention items),
+  merged in a stated order: the severity each department gave, then the nearest deadline (an item with no clock after
+  those with one), then the sidebar's order, then the department's own order. The order is said on the face ("Most
+  urgent first", the rule in its help tag). Each item names who raised it ("Raised by Rafael Dunn, bench coach", or "the
+  minor league staff" where the save names no one seat) and carries its urgency as a claim whose basis is the policy
+  line that placed it and, when the club's philosophy or season shaded a Major League Ops flag, the lean with the
+  philosophy-free reading as its neutral. Statuses (Reviewed, Deferred, Handled in OOTP) are N7. A department that could
+  not be read makes the desk say it may be missing items; the desk is "Nothing to decide" only when every department was
+  read.
+- **The cards** (`DepartmentCard`): one per department but the Front Office (which is the report itself): name, "Prepared
+  by", the one-sentence summary, two or three key figures, the first three items, the counts to decide and to watch
+  (null, not zero, when the department could not be read or has no report yet), the way into its report, and an empty
+  staff-memo slot. The sidebar badges each department with its card's count to decide.
+
 ### 3.5 One anatomy for every department report
 
 Every report reads the same way:
@@ -244,6 +262,25 @@ The department's views sit beneath it in the sidebar.
 | **Medical** (head trainer) | Report · Injury report |
 | **League Office** | Wire · Club reports · Us vs them · Standings (odds and posture live only here, with their basis) · Leaders · Org comparison · Franchise history |
 | **Philosophy & Staff** | Organizational philosophy · Coaching staff |
+
+**As built at N4 (Stage B), 2026-09-26.** `DepartmentReport` is this anatomy: `preparedBy` and `head`, `asOf` ("Through
+May 5, 2040", from the export's game date), a summary claim assembled from the counts ("Two to decide; three to
+watch."), key figures, `toDecide` (urgent and needs attention) and `watching` (noted) as titled sections with their empty
+line, `unknowns` ("What we can't see"), `changes` (null until N7 keeps each import's reports: never an empty list, which
+would read as "nothing changed") and `memo` (null until the AI pass). `status` is `ready`, `unavailable` (its reason a
+sentence, its counts unknown) or `notYet`. What each department reports today:
+
+| Department | Reads (through the specialist's public module) | Items | Key figures | What it can't answer yet |
+|---|---|---|---|---|
+| Major League Ops | `mlbOverview` (needs), `computeRosterCrunchIssues` (the 40-man's clocks and option notes, from Player State and Player Rights) | every need, every designation or waiver clock (urgent, days left), every option note (noted) | active roster, 40-man, injured list | the 40-man when the export has no roster status (said in "What we can't see") |
+| Farm & Development | `computeFarmSystem` (its attention list) | every item on it, its own words and scale | players in the system, affiliates (and how many are short), assignments read | Player Development's prospect ladder (the Prospects view, N10) |
+| Finance | `computeContracts`, `computePayroll` | every contract ending, holding an option or headed to arbitration (noted; never a recommendation) | payroll this season, room under the budget, contracts ending | a decision date (the export has none, so no clock) |
+| Medical | the injury report (`orgInjuries`) | every injured player, less a return Major League Ops has on its desk | injured, with the major league club, day-to-day | — |
+| Scouting, Trades, League Office, Philosophy & Staff | — | — | — | no report yet, said plainly ("No scouting report yet.") |
+| Front Office | the other eight | the whole desk: everything to decide and to watch, each under its department | departments reporting | which departments could not be read |
+
+The Mac app draws a report plainly (`DepartmentReportView`): the header, the summary, the figures, the sections, "What
+we can't see"; an item with an evidence trail has a Staff's Options button that fetches it.
 
 ### 3.6 Signature interactions
 
@@ -440,6 +477,41 @@ is the raw message (for the log and a help tag); an unknown `/v2` route answers 
 - Measured on the synthetic save (30 requests each after one warm-up): the catalog about 2 ms at 4 clubs and 3 ms at 30
   (it grows with the club count: a palette, a record and a logo check per club, 45 kB at 30 clubs); the data status
   0.3 ms (a real save's first read copies the transaction log, cached against the files' size and time after that).
+
+**As built at N4 (Stage B), 2026-09-26.**
+- `GET /api/v2/front-office/:org` (`FrontOfficeSummary`: the desk and the cards), `GET /api/v2/departments/:org/:dept`
+  (`DepartmentReport`) and `GET /api/v2/claims/:key` (`ClaimTrail`). `:org` is a team id or `automatic` (the club the app
+  follows: configured, else the human's). A refusal is a 404 with a sentence: nothing imported, no club, an unknown club,
+  department or evidence key. The types are in `server/presentation/frontOffice/types.ts` (`FoItem`, `DepartmentReport`,
+  `DepartmentCard`, `Desk`, `FrontOfficeSummary`, `ClaimTrail`), through the pipeline.
+- **Adapters** (`server/presentation/frontOffice/`: `majorLeague.ts`, `farm.ts`, `finance.ts`, `medical.ts`, `desk.ts`,
+  `claims.ts`) are pure: they word what the service hands them, read no table and load no specialist by value (a
+  boundary test), and keep each item at its department's severity through `severity.ts` (never raised). An item's key is
+  its department, kind and subject (`majorLeague:need:mlb:il_return_crunch:412`, `majorLeague:fortyMan:88:designated`,
+  `finance:contract:17:leaving`, `medical:injury:9`); the farm's items have no id, so theirs add a hash of the headline
+  with its numbers taken out.
+- **The service** (`server/frontOfficeService.ts`, outside the landing folders) reads each department through its public
+  module and caches the result. The key is the club, the import stamp (`importedAt`, the last import's finish time: what
+  the Mac app's `storeKey` carries, and what every payload serves as `importStamp`), the settings and configuration files'
+  size and time (the philosophy, the budget, the save folder), the live log's files, and a revision moved when a per-save
+  calibration is recorded. A request whose key moved builds; one that arrives during a build waits on it; four builds and
+  32 evidence trails are kept, oldest dropped first. `warmFrontOffice(org)` builds in the background: after every
+  import (called from `runImport`; N3.5's post-import hook list registers it) and after a calibration is recorded. The
+  build yields to the event loop between departments. The evidence trail (an MLB need's responses) is built on demand
+  and kept with its club's build.
+- Why the service is outside `presentation/`: Major League Ops' urgency leans on the season (D-036), so its module reaches
+  `posture.ts`. The landing folders never import it (the transitive boundary holds), the season's read and odds are not
+  copied into any payload, and `tests/frontOfficeLanding.test.ts` holds the payloads, basis included, free of odds and
+  posture, and their face free of window labels (D-060).
+- **Measured on the synthetic save** (M4, over HTTP, 50 requests after the build; `scratchpad` bench): warm `front-office`
+  median 0.4 ms, p95 0.5 to 1.1 ms; warm `departments` median 0.2 to 0.4 ms, p95 under 1 ms, at 4 or 30 clubs, with or
+  without a farm (the payload is 27 to 44 kB). The cold build: 60 to 150 ms (Major League Ops 20 to 57 ms, Finance 32 to
+  72 ms, the farm 3 to 14 ms, Medical and the words under 1 ms); a cold MLB need's trail 5 to 21 ms, warm 0.2 ms. On a real
+  save the N3.5 measurements put the farm at about 0.9 s and Major League Ops and contracts at 0.1 to 0.2 s, so a cold
+  build is about 1.5 s there, and each department runs as one piece on the event loop (see section 12's open problem);
+  the need's full responses take about 2.6 s. Warm reads do not grow with the league: they are a map lookup and a JSON
+  write of one club's payload. `tests/frontOffice.test.ts` holds "served from the cache after a warm-up" by counting
+  builds, never by the clock.
 
 ### 4.3 The typed pipeline (no hand-written models)
 
@@ -743,6 +815,16 @@ with scripted processes, and `ServerIntegrationTests` with the real staged serve
   Contrast; no served colour means the accent) and `ClubCard`. Tone colours wait for N5, which first needs them.
 - Contract: `POST /api/settings` (`saveSettings`: `SettingsUpdate` in, `SettingsSaved` out, typed beside the handler).
 
+**As built at N4 (Stage B), 2026-09-26.** `FrontOfficeStore` (PennantKit), owned by `AppModel`: the desk and cards, each
+department's report and the evidence trails, loaded on `storeKey` (`.task(id:)`), once per key, keeping the last good
+payload while a reload runs; a late answer to an older key is dropped, and a payload whose `importStamp` is not the key's
+is kept but shown as refreshing, never as current. FeatureCore draws the served claims (`ClaimLine`, `FigureTile`,
+`DeskItemRow`, `DepartmentCardView`, `DepartmentReportView`, the Staff's Options popover); the FrontOffice target's
+`MorningReportView` replaces the Morning Report's placeholder, and Major League Ops', the farm's, Finance's and Medical's
+Report views show their served reports. `DepartmentModule.badge(from:)` reads the served card's count to decide.
+Snapshots: `morning-report-full`, `main-window-morning-report`, `main-window-major-league-report`, `report-<department>`
+and `staff-options`, light and dark.
+
 ---
 
 ## 7. Coexistence and the way back
@@ -991,12 +1073,18 @@ Clearing an optional field needs an explicit request field (for example `clubCho
 (section 4.3). *At N4:* `SettingsUpdate.clubChoice: "automatic"` is that field; Settings offers Automatic, and Setup saves
 the club the save's human manages as Automatic.
 
-**N4, Stage A is built (2026-09-26)** on `feature/swiftui-n4-presentation` (sections 4.1, 4.2 and 8, "As built at N4
-(Stage A)"); Stage B (the Front Office adapters, their cache and the claims endpoint) follows on the same branch.
+**N4 is done (2026-09-26)** on `feature/swiftui-n4-presentation`: Stage A (sections 4.1, 4.2 and 8, "As built at N4
+(Stage A)") and Stage B, the Front Office (sections 3.4, 3.5, 4.2 and 6, "As built at N4 (Stage B)"). Left open:
+- A cold Front Office build runs on the server's event loop, one department at a time: on a real save the farm's piece
+  (about 0.9 s) holds every other request that long once per import. The warm-up after an import runs it before the GM
+  asks, but a worker thread (or N3.5's per-import caches of league populations) is what removes it.
+- The Front Office keys on the live log's files, so a sim in OOTP with no new export rebuilds it on the next request
+  (the answer can change: Player State reads the log).
+- A Player Value refit recorded after an import does not move the cache's key; Finance's items read contract groups,
+  not values, so nothing shown depends on it today.
 
-**Next: N4, Stage B** (the Front Office adapters, their cache and the claims endpoint; section 9), on
-`feature/swiftui-n4-presentation`, whose PR goes into `feature/swiftui`. After N4, N5 (the design system) opens a fresh
-session on `feature/swiftui`.
+**Next: N5** (the design system, section 9). Continue the SwiftUI rebuild at N5 (docs/SWIFTUI_REBUILD.md): open a fresh
+session on `feature/swiftui` once N4's PR is merged.
 
 Read first: AGENTS.md, this document, D-001, D-008, D-018, D-020, D-043, D-046, D-049, D-052 (with its
 amendments), D-054 and D-055 to D-060.
