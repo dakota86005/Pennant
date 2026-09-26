@@ -44,6 +44,12 @@ export interface Operation {
   reused: boolean;
 }
 
+/** A club in a `/v2` path: its team id, or `automatic` for the club the app follows (configured, else the human's). */
+const ORG_PARAM: OperationParam = {
+  name: 'org', in: 'path', schema: 'string', required: true,
+  description: 'A team id, or `automatic` for the club the app follows (the configured club, else the one the save\'s human runs).',
+};
+
 export const operations: Operation[] = [
   // ── The Mac app's own API (/api/v2) ─────────────────────────────────────
   {
@@ -69,6 +75,40 @@ export const operations: Operation[] = [
     path: '/api/v2/data-status',
     summary: 'How current the data is, in words: the headline with its basis, each source\'s line, the dates and places.',
     response: 'DataStatusView',
+    reused: false,
+  },
+
+  {
+    operationId: 'getFrontOffice',
+    method: 'get',
+    path: '/api/v2/front-office/:org',
+    summary: 'The Morning Report\'s desk (every department\'s items to decide, in a stated order) and one card per department.',
+    params: [ORG_PARAM],
+    response: 'FrontOfficeSummary',
+    errors: { 404: 'ApiError' },
+    reused: false,
+  },
+  {
+    operationId: 'getDepartmentReport',
+    method: 'get',
+    path: '/api/v2/departments/:org/:dept',
+    summary: 'One department\'s full report: prepared by, key figures, to decide, watching, what changed, what we can\'t see.',
+    params: [
+      ORG_PARAM,
+      { name: 'dept', in: 'path', schema: 'string', required: true, description: 'The department\'s id (`majorLeague`, `farm`, ...).' },
+    ],
+    response: 'DepartmentReport',
+    errors: { 404: 'ApiError' },
+    reused: false,
+  },
+  {
+    operationId: 'getClaimTrail',
+    method: 'get',
+    path: '/api/v2/claims/:key',
+    summary: 'The evidence trail behind an item, built on demand (an MLB need\'s responses); the key is the item\'s `evidence`.',
+    params: [{ name: 'key', in: 'path', schema: 'string', required: true, description: 'An item\'s `evidence` key.' }],
+    response: 'ClaimTrail',
+    errors: { 404: 'ApiError' },
     reused: false,
   },
 

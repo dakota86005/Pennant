@@ -1,0 +1,164 @@
+{
+  "department": "medical",
+  "name": "Medical",
+  "importStamp": null,
+  "preparedBy": {
+    "display": "Prepared by Ana Frey, team doctor",
+    "hint": "From the club's staff in the save"
+  },
+  "head": {
+    "name": "Ana Frey",
+    "role": "Team Doctor",
+    "coachId": 5014
+  },
+  "asOf": {
+    "display": "Through May 5, 2040",
+    "hint": "The last game day in the imported export"
+  },
+  "changes": null,
+  "memo": null,
+  "status": "ready",
+  "summary": {
+    "text": "Nothing to decide or watch.",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "To decide",
+          "value": "0"
+        },
+        {
+          "label": "To watch",
+          "value": "0"
+        }
+      ],
+      "source": {
+        "department": "medical",
+        "specialist": "The injury report",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [
+        "A new export."
+      ],
+      "lean": null,
+      "certainty": "fact"
+    },
+    "links": []
+  },
+  "figures": [
+    {
+      "text": "Injured",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Injured in the organization",
+            "value": "0"
+          }
+        ],
+        "source": {
+          "department": "medical",
+          "specialist": "The injury report",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact"
+      },
+      "links": [],
+      "value": {
+        "n": 0,
+        "unit": "count",
+        "display": "0"
+      }
+    },
+    {
+      "text": "With the major league club",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Injured major leaguers",
+            "value": "0"
+          }
+        ],
+        "source": {
+          "department": "medical",
+          "specialist": "The injury report",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact"
+      },
+      "links": [],
+      "value": {
+        "n": 0,
+        "unit": "count",
+        "display": "0"
+      }
+    },
+    {
+      "text": "Day-to-day",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Playing through it or day-to-day",
+            "value": "0"
+          }
+        ],
+        "source": {
+          "department": "medical",
+          "specialist": "The injury report",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact"
+      },
+      "links": [],
+      "value": {
+        "n": 0,
+        "unit": "count",
+        "display": "0"
+      }
+    }
+  ],
+  "toDecide": {
+    "title": {
+      "display": "To decide"
+    },
+    "items": [],
+    "empty": {
+      "display": "Nothing to decide"
+    }
+  },
+  "watching": {
+    "title": {
+      "display": "Watching"
+    },
+    "items": [],
+    "empty": {
+      "display": "Nothing to watch"
+    }
+  },
+  "unknowns": {
+    "title": {
+      "display": "What we can't see"
+    },
+    "lines": [
+      {
+        "display": "Nothing missing that we know of"
+      }
+    ]
+  }
+}

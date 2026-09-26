@@ -57,6 +57,7 @@ import { appInfo, type AppInfo } from './appInfo.js';
 import { scoutedDevelopmentRoutes } from './scoutedDevelopment.js';
 import { eventStream, progressThrottle, publish } from './serverEvents.js';
 import { v2Routes } from './v2Routes.js';
+import { warmFrontOffice } from './frontOfficeService.js';
 import { EXPORT_NOT_FOUND, importNote, importWords, type ImportNote } from './presentation/importWords.js';
 import type { Integer } from './contract/primitives.js';
 
@@ -356,6 +357,8 @@ export async function runImport(csvDir: string): Promise<void> {
     publish({ type: 'import-finished', lastImport: importState.lastImport, error: importState.lastError, note: currentImportNote() });
   }
   if (imported) refitAfterImport();
+  // The GM's first look after an import is a cached read (N3.5's post-import hook list will call it from there)
+  if (imported) void warmFrontOffice();
 }
 
 api.get('/saves', (_req, res: Response<SaveInfo[]>) => {

@@ -140,6 +140,11 @@ const DEPARTMENTS: ReadonlyArray<{ id: DeptId; name: string; seat: StaffSeat | n
   ] },
 ];
 
+/** Who a department's work comes from when the save names no one person ("the major league staff"). */
+export function departmentOffice(id: DeptId): string {
+  return DEPARTMENTS.find((d) => d.id === id)?.office ?? 'the front office';
+}
+
 /** The glossary as served: every term but those only the React app's pages use. */
 export function servedGlossary(): GlossaryEntry[] {
   const hidden = new Set(REACT_ONLY_TERMS);

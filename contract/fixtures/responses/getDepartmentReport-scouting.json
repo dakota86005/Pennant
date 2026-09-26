@@ -1,0 +1,67 @@
+{
+  "department": "scouting",
+  "name": "Scouting",
+  "importStamp": null,
+  "preparedBy": {
+    "display": "Prepared by Terry Ellis, head scout",
+    "hint": "From the club's staff in the save"
+  },
+  "head": {
+    "name": "Terry Ellis",
+    "role": "Head Scout",
+    "coachId": 5013
+  },
+  "asOf": {
+    "display": "Through May 5, 2040",
+    "hint": "The last game day in the imported export"
+  },
+  "changes": null,
+  "memo": null,
+  "status": "notYet",
+  "summary": {
+    "text": "No scouting report yet.",
+    "tone": "neutral",
+    "basis": {
+      "because": [],
+      "source": {
+        "department": "scouting",
+        "specialist": "Scouting",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [
+        "No scouting report yet."
+      ],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "unknown"
+    },
+    "links": [],
+    "hint": "The draft board and player search come in a later version"
+  },
+  "figures": [],
+  "toDecide": {
+    "title": {
+      "display": "To decide"
+    },
+    "items": [],
+    "empty": null
+  },
+  "watching": {
+    "title": {
+      "display": "Watching"
+    },
+    "items": [],
+    "empty": null
+  },
+  "unknowns": {
+    "title": {
+      "display": "What we can't see"
+    },
+    "lines": [
+      {
+        "display": "No scouting report yet."
+      }
+    ]
+  }
+}

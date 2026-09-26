@@ -1,0 +1,49 @@
+{
+  "key": "1.majorLeague:need:mlb:role_below_standard:catcher",
+  "importStamp": null,
+  "title": {
+    "display": "The staff's options"
+  },
+  "headline": {
+    "text": "Short of healthy catchers",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Players found",
+          "value": "0"
+        },
+        {
+          "label": "Not considered",
+          "value": "12 players: Active players whose visible evidence does not support the role"
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "Major League Ops' responses",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [
+        "No injured or unavailable player in this role explains the shortfall; Pennant cannot say how the roster came to be this way.",
+        "No internal player was found who could take this role."
+      ],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact"
+    },
+    "links": [],
+    "hint": "Fewer healthy on the active roster than the club's minimum"
+  },
+  "sections": [
+    {
+      "title": {
+        "display": "Responses"
+      },
+      "claims": [],
+      "empty": {
+        "display": "Nobody in the organization fits this yet"
+      }
+    }
+  ]
+}

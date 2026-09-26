@@ -10,6 +10,7 @@ import { Router } from 'express';
 import { SHAPES_SPEC_PATH, SPEC_PATH, buildShapesSpec, buildSpec, serializeSpec, transform } from '../scripts/lib/contractSpec.js';
 import { operations } from '../server/contract/routes.js';
 import { basisProblems } from '../server/presentation/claim.js';
+import { departmentReport } from '../server/frontOfficeService.js';
 import type { Basis } from '../server/contract/presentation.js';
 import { api, importState, runImport } from '../server/api.js';
 import { loadConfig, saveConfig } from '../server/config.js';
@@ -126,16 +127,16 @@ describe('every /v2 route is in the contract and back; every reused route listed
   it('sees a /v2 route on a router mounted at a prefix, and refuses a prefix it cannot read', () => {
     const outer = Router();
     const inner = Router();
-    inner.get('/front-office/:org', (_req, res) => res.json({}));
+    inner.get('/pretend-desk/:org', (_req, res) => res.json({}));
     const deeper = Router();
     deeper.get('/:dept', (_req, res) => res.json({}));
-    inner.use('/departments', deeper);
+    inner.use('/pretend-sections', deeper);
     outer.use('/v2', inner);
     expect(registeredRoutes(outer)).toEqual([
-      { method: 'GET', path: '/v2/front-office/:org' },
-      { method: 'GET', path: '/v2/departments/:dept' },
+      { method: 'GET', path: '/v2/pretend-desk/:org' },
+      { method: 'GET', path: '/v2/pretend-sections/:dept' },
     ]);
-    expect(unlistedV2(registeredRoutes(outer))).toEqual(['GET /v2/front-office/:org', 'GET /v2/departments/:dept']);
+    expect(unlistedV2(registeredRoutes(outer))).toEqual(['GET /v2/pretend-desk/:org', 'GET /v2/pretend-sections/:dept']);
     const withParam = Router();
     withParam.use('/v2/views/:org', inner);
     expect(() => registeredRoutes(withParam)).toThrow(/plain path prefix/);
@@ -297,7 +298,20 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
   const reads = operations.filter((op) => op.method === 'get' && !op.stream);
   /** The scoped jargon exceptions the live payloads lean on; one none of them uses is stale. */
   const exceptionsInUse = new Set<JargonException>();
-  const SAMPLE_PARAMS: Record<string, () => string> = { orgId: () => String(save.org) };
+  /** An item's evidence key on the synthetic save (a Major League Ops need), found once the save is built. */
+  let evidenceKey = '';
+  const SAMPLE_PARAMS: Record<string, () => string> = {
+    orgId: () => String(save.org),
+    org: () => String(save.org),
+    dept: () => 'majorLeague',
+    key: () => evidenceKey,
+  };
+
+  it('has an item with an evidence trail on the synthetic save, for the claims route', async () => {
+    const report = await departmentReport(save.org, 'majorLeague');
+    evidenceKey = [...report.toDecide.items, ...report.watching.items].find((it) => it.evidence)?.evidence ?? '';
+    expect(evidenceKey).not.toBe('');
+  });
 
   it('has JSON GETs to check, so the check cannot pass vacuously', () => {
     expect(reads.length).toBeGreaterThan(5);
@@ -326,6 +340,19 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     }
     // Where the server looked for saves depends on the platform, so it is no fixture
     if (op.operationId !== 'getSearchLocations') fixture(`responses/${op.operationId}.json`, json(body));
+  }, SLOW);
+
+  it('serves every department\'s report in the contract\'s shape, plain, with every basis sound (captured for the previews)', async () => {
+    const validate = validator('DepartmentReport');
+    for (const dept of ['frontOffice', 'majorLeague', 'farm', 'scouting', 'trades', 'finance', 'medical', 'league', 'philosophy']) {
+      const res = await fetch(`${base}/api/v2/departments/automatic/${dept}`);
+      expect(res.status, dept).toBe(200);
+      const body = await res.json();
+      expect(validate(body) ? [] : validate.errors, dept).toEqual([]);
+      expect(bannedInPayload(body, 'getDepartmentReport', JARGON_EXCEPTIONS, { org: String(save.org), dept })).toEqual([]);
+      expect(servedBasisProblems(body)).toEqual([]);
+      fixture(`responses/getDepartmentReport-${dept}.json`, json(body));
+    }
   }, SLOW);
 
   it('uses every scoped jargon exception in force, so a stale one is found', () => {
