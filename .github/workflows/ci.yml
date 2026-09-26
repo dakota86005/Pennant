@@ -44,5 +44,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: swift --version
-      - run: swift build
-      - run: swift test
+      # The packages and the generator plugin's build, kept between runs; a new Package.resolved starts afresh
+      - uses: actions/cache@v4
+        with:
+          path: macos/Packages/PennantAPI/.build
+          key: pennant-api-${{ runner.os }}-${{ hashFiles('macos/Packages/PennantAPI/Package.resolved') }}
+      # Only the versions Package.resolved names: a stale resolved file fails here instead of quietly re-resolving
+      - run: swift build --force-resolved-versions
+      - run: swift test --force-resolved-versions
