@@ -1,7 +1,7 @@
 /**
  * What a reader sees of rendered markup: the hovers' popups taken out (they are read on hover, not on the page), then
  * the tags, the entities decoded and the spaces collapsed. For the tests that keep jargon out of visible text
- * (AGENTS.md "Writing for the GM").
+ * (AGENTS.md "Writing for the GM"), which check it against the one list in `bannedJargon.ts`.
  */
 export function visibleText(html: string): string {
   return html

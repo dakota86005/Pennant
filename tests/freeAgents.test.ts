@@ -13,6 +13,10 @@ import { loadScoutedAbilities } from '../server/scoutedEvidence.js';
 import { buildSave, type BuiltSave, type SaveSpec } from './syntheticSave';
 import request from './request';
 import { visibleText } from './visibleText';
+import { BANNED_JARGON, BANNED_VERDICTS, bannedIn } from './bannedJargon';
+
+/** A signing verdict on this page only (the Trade Center loads OOTP's trade targets); the rest are in `bannedJargon.ts`. */
+const TARGET = /\btarget\w*/i;
 
 /*
  * Player Value phase 6c: Free Agents on Player Value (BEHAVIOR_CASES.md "Player Value", phase 6c row; PLAYER_VALUE.md
@@ -33,9 +37,6 @@ let page: Any;
 let freeAgents: { veterans: number[]; unknown: number };
 
 /** Words that tell the GM what to do with a free agent (D-052: the page describes, the GM decides). */
-const VERDICT = /\b(sign(?:ing)? (?:him|now|them)|should|must|target\w*|recommend\w*|pass on|avoid him|a steal|bargain|overpa(?:y|id)|priority)\b/i;
-/** Percentile and method words the GM never reads (AGENTS.md "Writing for the GM"). */
-const JARGON = /percentile|\bpct\b|\bcentral\b|retention margin|\bsurplus\b|edge against edge|\bTalent\b|\bOA\b|\bPOT\b|indeterminate|players_value|\bD-\d{3}\b|\bA-\d+\b|\bnull\b|\bundefined\b|\bNaN\b/i;
 
 /** Makes a player a free agent the way the export writes one: no club, no organization, a blank contract row, his last league named. */
 function release(id: number): void {
@@ -265,8 +266,8 @@ describe('Free Agents lists the players who might reach the market (phase 6e, th
     expect(text).toContain(planted.why.label);
     expect(html).toContain(`class="tip-pop">${planted.why.reason.replace(/'/g, '&#x27;').replace(/"/g, '&quot;')}`);
     expect(text).toMatch(/salary/i);
-    expect(text).not.toMatch(JARGON);
-    expect(text).not.toMatch(VERDICT);
+    expect(bannedIn(text, [BANNED_JARGON, BANNED_VERDICTS])).toEqual([]);
+    expect(text).not.toMatch(TARGET);
     // The count line that stood in for the list is gone: the players are listed now
     expect(text).not.toMatch(/could go either way/);
   });
@@ -278,7 +279,8 @@ describe('Free Agents shows no percentile and no signing verdict (D-052, D-017)'
       for (const key of ['overallPct', 'talentPct', 'recommendation', 'lastSalary']) expect(row, `${row.name} ${key}`).not.toHaveProperty(key);
     }
     expect(page).not.toHaveProperty('holes');
-    expect(JSON.stringify(page)).not.toMatch(VERDICT);
+    expect(bannedIn(JSON.stringify(page), [BANNED_VERDICTS])).toEqual([]);
+    expect(JSON.stringify(page)).not.toMatch(TARGET);
   });
 
   it('the server reads no players_value figure and builds no cut-off', () => {
@@ -294,8 +296,8 @@ describe('the Free Agents page, as the GM reads it', () => {
     expect(text).toMatch(/Available now/);
     expect(text).toMatch(/at the market/i);
     expect(text).toMatch(/As of/);
-    expect(text).not.toMatch(JARGON);
-    expect(text).not.toMatch(VERDICT);
+    expect(bannedIn(text, [BANNED_JARGON, BANNED_VERDICTS])).toEqual([]);
+    expect(text).not.toMatch(TARGET);
   });
 
   it('has keyboard-sortable headers with their explanations, and the table scrolls in its own box', async () => {

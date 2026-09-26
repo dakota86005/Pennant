@@ -9,6 +9,7 @@ import { TradeAnalysisPanel } from '../src/TradeAnalysis';
 import type { TradeAnalysis, TradePick } from '../src/tradeApi';
 import { differenceGeometry } from '../src/tradeDifferenceGeometry';
 import { buildSave, type SaveSpec } from './syntheticSave';
+import { BANNED_JARGON, BANNED_VERDICTS, bannedIn } from './bannedJargon';
 
 /*
  * The Trade Center's analysis (phase 6b; BEHAVIOR_CASES.md "Player Value", phase 6b; AGENTS.md "Writing for the GM"):
@@ -57,15 +58,6 @@ const visible = (markup: string) => markup
   .replace(/&#x27;|&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&')
   .replace(/\s+/g, ' ');
 
-const JARGON = [
-  /\bcentrals?\b/i, /retention margin/i, /edge against edge/i, /\bsurplus\b/i, /\bindependent\b/i, /\bcalibrat/i,
-  /\b[DQR]-\d/, /players_value/, /overall_value/, /percentile/i, /\bband\b/i, /\bnull\b/, /\bundefined\b/, /\bNaN\b/,
-];
-const VERDICT = [
-  /\b(?:win|wins|won|lose|loses|lost|winning|losing)\s+(?:the|this)\s+(?:trade|deal)\b/i, /\baccept/i, /\breject/i, /\bshould\b/i,
-  /\brecommend/i, /\bfair\b/i, /\bsteal\b/i, /\bfleec/i, /\brip-?off\b/i, /\bgood deal\b/i, /\bbad deal\b/i,
-];
-
 describe('the Trade Center\'s analysis', () => {
   it('shows the two sides side by side, each player a compact row, the side totals and the difference as a band with its parts', () => {
     const a = analyses().deal;
@@ -104,11 +96,11 @@ describe('the Trade Center\'s analysis', () => {
   it('carries no jargon and no verdict in its visible text', () => {
     for (const a of Object.values(analyses())) {
       const text = visible(html({ analysis: a }));
-      for (const w of [...JARGON, ...VERDICT]) expect(text, String(w)).not.toMatch(w);
+      expect(bannedIn(text, [BANNED_JARGON, BANNED_VERDICTS])).toEqual([]);
     }
     for (const state of [html({ sent: [], received: [] }), html({ loading: true, sent: [pick(1)], received: [pick(2)] }), html({ error: 'The server could not be reached.', sent: [pick(1)], received: [pick(2)] })]) {
       const text = visible(state);
-      for (const w of [...JARGON, ...VERDICT]) expect(text, String(w)).not.toMatch(w);
+      expect(bannedIn(text, [BANNED_JARGON, BANNED_VERDICTS])).toEqual([]);
     }
   }, SLOW);
 

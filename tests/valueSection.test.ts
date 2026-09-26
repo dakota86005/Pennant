@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { ClubWinValue, OurView, OurViewResponse, PlayerSurplus, SurplusSeason } from '../src/api';
 import { ValueView } from '../src/ValueSection';
+import { bannedIn } from './bannedJargon';
 
 /*
  * The player card's Value section (Player Value phases 5a and 5b, BEHAVIOR_CASES.md "Player Value"): the contract value
@@ -160,9 +161,7 @@ describe('the card\'s Value section', () => {
     ];
     for (const out of cases) {
       const text = visible(out);
-      for (const jargon of [/\bcentrals?\b/i, /retention margin/i, /edge against edge/i, /export's replacement level/i, /discounted like the dollars/i]) {
-        expect(text).not.toMatch(jargon);
-      }
+      expect(bannedIn(text)).toEqual([]);
     }
   });
 
