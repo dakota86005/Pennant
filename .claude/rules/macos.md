@@ -13,6 +13,9 @@ paths:
   - "contract/**"
   - "server/contract/**"
   - "tests/bannedJargon.ts"
+  - "tests/contract.test.ts"
+  - "tests/apiRoutes.ts"
+  - "tests/contractShapes/**"
 ---
 
 # Pennant for Mac (the SwiftUI rebuild): working reminder
@@ -47,5 +50,7 @@ and those documents differ, they win. The presentation cases are in `docs/BEHAVI
 - **The contract pipeline (N2):** `npm run contract:build` writes `contract/openapi.json`; `tests/contract.test.ts` fails
   on drift, on a `/v2` route missing from `server/contract/routes.ts`, and on a live response outside its schema.
   PennantAPI reads the spec through a link, never a copy; `swift build && swift test` in `macos/Packages/PennantAPI`.
+  Ids and counts are `Integer`; export a concrete alias of a generic, never the generic; read events through
+  `ServerEventReading` (a known type that did not decode is `malformed`, never ignored).
 - Verify with `macos/scripts/test.sh` plus the server baseline; visual checks come from XCUITest and
   `ImageRenderer` PNGs, not from asking the owner to look.

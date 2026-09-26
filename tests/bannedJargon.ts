@@ -7,6 +7,12 @@
  * the lineup, the player card, Org Comparison and the yardsticks line); each page now checks all of it. A word added
  * here is banned everywhere at once. A page's own rule that is not about jargon (Org Comparison states no rank) stays
  * in its test. The String Catalog check in the Mac app reads the same list (N3).
+ *
+ * Three patterns are marginally narrower than a page's old copy, accepted at N2: "pays for talent" (the philosophy's
+ * lean) is allowed, `\bOff Value\b` no longer matches "Off Values", and a doc id needs a word boundary ("AD-012" passes).
+ * The list was tuned on Player Value's pages and now applies to every `/v2` string; before department copy moves (N8),
+ * plain words it would reject ("Win Pct", "prior season", "waiver priority") need a scoped exception, not a weaker
+ * pattern.
  */
 
 /** Method words, internal names and rendering leaks. */
