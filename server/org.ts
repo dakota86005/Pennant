@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db, tableExists } from './db.js';
+import { db, tableColumns, tableExists } from './db.js';
 import { loadScoutedAbilities, summarizeEvidence } from './scoutedEvidence.js';
 import { LEVEL_NAMES } from './valuation.js';
 import { resolvePhilosophy } from './philosophy.js';
@@ -30,14 +30,28 @@ import { openDevelopmentalContext } from './developmentalContext.js';
 export const orgRoutes = Router();
 
 
-/** MLB parent clubs, with the human-controlled org flagged and team colors. */
+/** Where each team colour lives in the export's `teams` table. */
+const TEAM_COLOR_COLUMNS = {
+  bg: 'background_color_id',
+  fg: 'text_color_id',
+  secondary: 'jersey_secondary_color_id',
+  cap: 'ballcaps_main_color_id',
+} as const;
+
+/**
+ * MLB parent clubs, with the human-controlled org flagged and team colors.
+ * Not every export carries the colour columns: a colour the export lacks is
+ * served as null (unknown), never a stand-in colour.
+ */
 orgRoutes.get('/orgs', (_req, res) => {
   if (!tableExists('teams')) return res.json([]);
+  const present = new Set(tableColumns('teams'));
+  const colors = Object.entries(TEAM_COLOR_COLUMNS)
+    .map(([key, column]) => (present.has(column) ? `${column} AS ${key}` : `NULL AS ${key}`))
+    .join(', ');
   const rows = db
     .prepare(
-      `SELECT team_id, name, nickname, human_team,
-              background_color_id AS bg, text_color_id AS fg,
-              jersey_secondary_color_id AS secondary, ballcaps_main_color_id AS cap
+      `SELECT team_id, name, nickname, human_team, ${colors}
        FROM teams WHERE level = 1 AND allstar_team = 0 ORDER BY name`
     )
     .all() as Array<{
