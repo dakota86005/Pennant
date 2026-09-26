@@ -7,6 +7,12 @@ paths:
   - "server/serverEvents.ts"
   - "scripts/build-sidecar.mjs"
   - "scripts/fetch-node-runtime.mjs"
+  - "scripts/contract-build.ts"
+  - "scripts/lib/contractSpec.ts"
+  - "macos/**"
+  - "contract/**"
+  - "server/contract/**"
+  - "tests/bannedJargon.ts"
 ---
 
 # Pennant for Mac (the SwiftUI rebuild): working reminder
@@ -36,8 +42,10 @@ and those documents differ, they win. The presentation cases are in `docs/BEHAVI
 - **The sidecar (N1)** is the same server started by the app: token and keys on stdin, never in the environment;
   `PENNANT_READY` / `PENNANT_FAILED` on stdout; a clean stop on SIGTERM or stdin closing; the data-folder lock
   (`server.lock`) on every server start. SWIFTUI_REBUILD.md section 5.1 "As built" has the protocol and exit codes.
-- **Widen `paths:` as the rebuild lands.** Add `macos/**`, `contract/**`, `server/contract/**`,
-  `server/presentation/**` and `tests/bannedJargon.ts` in the milestone that creates the first tracked file under
-  each; `tests/agentInstructions.test.ts` rejects a path that matches nothing yet.
+- **Widen `paths:` as the rebuild lands.** Add `server/presentation/**` in the milestone that creates its first tracked
+  file (N4); `tests/agentInstructions.test.ts` rejects a path that matches nothing yet.
+- **The contract pipeline (N2):** `npm run contract:build` writes `contract/openapi.json`; `tests/contract.test.ts` fails
+  on drift, on a `/v2` route missing from `server/contract/routes.ts`, and on a live response outside its schema.
+  PennantAPI reads the spec through a link, never a copy; `swift build && swift test` in `macos/Packages/PennantAPI`.
 - Verify with `macos/scripts/test.sh` plus the server baseline; visual checks come from XCUITest and
   `ImageRenderer` PNGs, not from asking the owner to look.

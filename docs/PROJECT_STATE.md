@@ -45,6 +45,11 @@ material implementation state changes.
   `PENNANT_READY` line, a clean stop on SIGTERM or when stdin closes, and `/api/v2/events` (server-sent
   import, job and fresh-export events). `npm run build:sidecar` bundles it; `npm run sidecar:node` fetches
   the pinned Node 24 runtime. No Swift app uses it yet (N3).
+- The presentation contract's pipeline (SwiftUI rebuild N2, D-056): `server/contract/` names the operations and
+  types, `npm run contract:build` writes `contract/openapi.json`, and `macos/Packages/PennantAPI` generates the Swift
+  client from it (built and tested in CI on `macos-26`). It describes `/api/v2/events` and the reused status, import,
+  setup and settings routes the app skeleton needs; `tests/contract.test.ts` holds drift, coverage and live shapes, and
+  `tests/bannedJargon.ts` is the one banned-jargon list. No Claims yet (N4).
 - A data-folder lock (`server.lock`, `server/dataLock.ts`) is taken by every server start (Electron, the
   sidecar, `npm run dev`), so two copies never write the same databases; a lock whose process has gone is
   taken over.

@@ -197,6 +197,33 @@ server on the same folder refuses to start and names the one holding it. A lock 
 taken over on the next start; one held by a live process that is not Pennant (a reused process id) needs the file
 deleting by hand, as the refusal says.
 
+### The contract and the Swift client
+
+The Mac app's client is generated, never hand-written (SWIFTUI_REBUILD.md section 4.3, D-056). After changing a type
+the contract names (anything exported from `server/contract/index.ts`, or an operation in `server/contract/routes.ts`),
+rebuild the spec and commit it:
+
+```bash
+npm run contract:build
+```
+
+`tests/contract.test.ts` (part of `npm test`) fails when:
+- `contract/openapi.json` differs from a fresh build (run the command above and commit the result);
+- a `/api/v2` route is registered but not listed in `routes.ts`, or a listed operation is not registered (add it, or
+  fix its method or path);
+- a JSON GET's live answer against the synthetic save has a field the type does not describe, or a code its union does
+  not list (describe it in the TypeScript type; the spec is checked in its strict form, with enums closed);
+- a `text`, `hint` or `display` string in a `/v2` payload carries a word from `tests/bannedJargon.ts`.
+
+The Swift package reads the spec through a link (`macos/Packages/PennantAPI/Sources/PennantAPI/openapi.json`), so there
+is no second copy to update. Build and test it on a Mac with Xcode 26 or later:
+
+```bash
+cd macos/Packages/PennantAPI && swift build && swift test
+```
+
+CI runs the same on `macos-26`, so a change that breaks the generated client fails the pull request.
+
 **An interrupted import.** If the server stops while importing, or the import fails partway, `import-in-progress.json` stays in the data folder,
 `/api/status` reports `importInterruptedSince`, and the next start imports the export again.
 
