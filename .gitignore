@@ -55,6 +55,10 @@ chat-*.json
 *.pfx
 *.pem
 
+# Swift packages' build output and Xcode's per-user state (macos/)
+.build/
+xcuserdata/
+
 # OS
 .DS_Store
 
