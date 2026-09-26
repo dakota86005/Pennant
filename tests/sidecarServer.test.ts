@@ -9,6 +9,7 @@ import { DataFolderLocked, acquireDataLock, lockPathFor, releaseDataLock } from 
 import { eventStream, progressThrottle, publish, listenerCount, PROGRESS_INTERVAL_MS } from '../server/serverEvents.js';
 import { apiKeyStatus, getApiKey, saveApiKey, clearApiKey, setInjectedKeys } from '../server/settings.js';
 import type { ImportProgress } from '../server/importer.js';
+import type { ServerStatus } from '../server/api.js';
 
 /**
  * The pieces the Mac app's sidecar adds to the server (D-055, SWIFTUI_REBUILD.md section 5.1), in process. The
@@ -140,7 +141,12 @@ describe('server events', () => {
 
   it('opens a stream with the current status, then relays each event, and forgets a closed stream', async () => {
     const app = express();
-    app.get('/events', eventStream(() => ({ importing: false, marker: 'snapshot' })));
+    const snapshot: ServerStatus = {
+      app: { name: 'Pennant', version: '0.0.0', projectUrl: 'p', upstreamUrl: 'u' }, csvExportedAt: null, configured: false,
+      saveName: null, csvDir: null, csvDirExists: false, importing: false, importProgress: null, lastImport: null, lastError: null,
+      importInterruptedSince: null, hasData: false, exportPending: null, logoToken: 'snapshot', ratingScaleMax: 80,
+    };
+    app.get('/events', eventStream(() => snapshot));
     const { base, close } = await listen(app);
     const controller = new AbortController();
     try {
@@ -157,7 +163,7 @@ describe('server events', () => {
         }
       };
       await until('\n\n');
-      expect(text).toMatch(/^event: hello\ndata: \{"type":"hello","status":\{"importing":false,"marker":"snapshot"\}\}\n\n/);
+      expect(text.startsWith(`event: hello\ndata: ${JSON.stringify({ type: 'hello', status: snapshot })}\n\n`)).toBe(true);
       publish({ type: 'export-pending', since: '2026-09-25T12:00:00.000Z' });
       await until('export-pending');
       await until('\n\n');

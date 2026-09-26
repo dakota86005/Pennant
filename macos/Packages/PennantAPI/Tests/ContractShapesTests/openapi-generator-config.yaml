@@ -1,0 +1,5 @@
+# swift-openapi-generator: the types of the tests' shape contract (generated from tests/contractShapes/).
+generate:
+  - types
+accessModifier: internal
+namingStrategy: idiomatic

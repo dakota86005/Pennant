@@ -28,15 +28,26 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 export const CONTRACT_INDEX = path.join(ROOT, 'server', 'contract', 'index.ts');
 export const SPEC_PATH = path.join(ROOT, 'contract', 'openapi.json');
 
+/** The tests' shape contract (`tests/contractShapes/`) and where its spec goes: the Swift package's shape tests. */
+export const SHAPES_INDEX = path.join(ROOT, 'tests', 'contractShapes', 'index.ts');
+export const SHAPES_SPEC_PATH = path.join(ROOT, 'macos', 'Packages', 'PennantAPI', 'Tests', 'ContractShapesTests', 'openapi.json');
+
+/** The shape contract's spec: no operations and no open unions, only its types. */
+export const buildShapesSpec = (): Schema => buildSpec({ index: SHAPES_INDEX, operations: [], openUnions: {} });
+
 /** Unions a newer server may extend with a new member, and the catch-all an older client decodes such a member as. */
 export const OPEN_UNIONS: Record<string, string> = { ServerEvent: 'UnknownServerEvent' };
 
 const COMPONENT_NAME = /^[A-Za-z0-9._-]+$/;
 const METHOD_ORDER = ['get', 'put', 'post', 'delete'];
 
-/** The names `server/contract/index.ts` exports (types and interfaces, including re-exports). */
-export function contractTypeNames(): string[] {
-  const program = ts.createProgram([CONTRACT_INDEX], {
+/**
+ * The names a contract index exports (types and interfaces, including re-exports). A generic type cannot be a
+ * component (ts-json-schema-generator has no name for `Row<T>` itself), so exporting one is an error that says what to
+ * do instead: export a concrete alias (`export type ClaimRow = Row<Claim>`), which becomes one named component.
+ */
+export function contractTypeNames(index: string = CONTRACT_INDEX): string[] {
+  const program = ts.createProgram([index], {
     target: ts.ScriptTarget.ES2022,
     module: ts.ModuleKind.ESNext,
     moduleResolution: ts.ModuleResolutionKind.Bundler,
@@ -46,16 +57,32 @@ export function contractTypeNames(): string[] {
     types: ['node'],
   });
   const checker = program.getTypeChecker();
-  const source = program.getSourceFile(CONTRACT_INDEX);
+  const source = program.getSourceFile(index);
   const module = source && checker.getSymbolAtLocation(source);
-  if (!module) throw new Error(`Could not read ${CONTRACT_INDEX}`);
-  return checker.getExportsOfModule(module).map((s) => s.getName()).sort();
+  if (!module) throw new Error(`Could not read ${index}`);
+  const exports = checker.getExportsOfModule(module);
+  for (const exported of exports) {
+    const symbol = exported.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(exported) : exported;
+    const generic = (symbol.declarations ?? []).some(
+      (d) => (ts.isInterfaceDeclaration(d) || ts.isTypeAliasDeclaration(d) || ts.isClassDeclaration(d)) && (d.typeParameters?.length ?? 0) > 0,
+    );
+    if (generic) {
+      throw new Error(
+        `The contract exports the generic type "${exported.getName()}", which cannot be a schema by itself. Leave it unexported and export a concrete alias instead, e.g. \`export type ClaimRow = ${exported.getName()}<Claim>\`.`,
+      );
+    }
+  }
+  return exports.map((s) => s.getName()).sort();
 }
 
-/** The schema of every exported contract type, as JSON Schema definitions keyed by type name. */
-function generateDefinitions(names: string[]): Record<string, Schema> {
+/**
+ * The schema of every exported contract type, as JSON Schema definitions keyed by type name. Types are named by their
+ * TypeScript name alone, so two different types with one name (an `Info` in two modules) would silently share a
+ * schema: that is an error.
+ */
+function generateDefinitions(names: string[], index: string): Record<string, Schema> {
   const config: Config = {
-    path: CONTRACT_INDEX,
+    path: index,
     tsconfig: path.join(ROOT, 'tsconfig.json'),
     type: '*',
     expose: 'export',
@@ -71,7 +98,12 @@ function generateDefinitions(names: string[]): Record<string, Schema> {
   const definitions: Record<string, Schema> = {};
   for (const name of names) {
     const schema = generator.createSchema(name) as unknown as { definitions?: Record<string, Schema> };
-    Object.assign(definitions, schema.definitions ?? {});
+    for (const [key, definition] of Object.entries(schema.definitions ?? {})) {
+      if (definitions[key] && JSON.stringify(definitions[key]) !== JSON.stringify(definition)) {
+        throw new Error(`Two different types are named "${key}"; export one of them under another name from the contract index`);
+      }
+      definitions[key] = definition;
+    }
   }
   return definitions;
 }
@@ -105,8 +137,29 @@ function liftNull(schema: Json): { schema: Json; optional: boolean } {
   return { schema: isObject(only) ? { ...only, ...outer } : only, optional: true };
 }
 
-/** Rewrites one schema node (recursively): component references, open enums, closed tags, and nullability. */
-function transform(node: Json, open: boolean): Json {
+/** Keywords that may sit beside a multi-type `type` (they say nothing about one member's shape). */
+const ANNOTATIONS = new Set(['description', 'title', 'examples', 'deprecated']);
+
+/**
+ * A `type` array with two or more non-null types (`number | string | null`, as `Row.sort`'s values will be): the Swift
+ * generator reads only the first type and throws on the others at run time, so it becomes an `anyOf` of one member per
+ * type, `"null"` joining the last member's `type` (the nullable form the generator reads). Exact in JSON Schema, so it
+ * applies to both forms. Anything beyond annotations beside such a `type` cannot be split per member: an error.
+ */
+function splitTypes(node: Schema): Schema {
+  if (!Array.isArray(node.type)) return node;
+  const types = node.type.filter((t) => t !== 'null');
+  if (types.length < 2) return node;
+  const nullable = node.type.includes('null');
+  const extra = Object.keys(node).filter((k) => k !== 'type' && !ANNOTATIONS.has(k));
+  if (extra.length) throw new Error(`A union of ${types.join(', ')} beside ${extra.join(', ')} cannot be written for the Swift generator; give the union a simpler shape`);
+  const annotations = Object.fromEntries(Object.entries(node).filter(([k]) => ANNOTATIONS.has(k)));
+  const members: Json[] = types.map((t, i) => ({ type: nullable && i === types.length - 1 ? [t as Json, 'null'] : t }));
+  return { ...annotations, anyOf: members };
+}
+
+/** Rewrites one schema node (recursively): component references, open enums, closed tags, mixed types and nullability. */
+export function transform(node: Json, open: boolean): Json {
   if (Array.isArray(node)) return node.map((n) => transform(n, open));
   if (!isObject(node)) return node;
   const out: Schema = {};
@@ -121,6 +174,7 @@ function transform(node: Json, open: boolean): Json {
       out[key] = transform(value, open);
     }
   }
+  if (Array.isArray(out.type) && out.type.filter((t) => t !== 'null').length > 1) return splitTypes(out);
   // A string literal is a tag and stays closed; swift-openapi-generator reads a one-value enum, not `const`
   if (typeof out.const === 'string') {
     out.enum = [out.const];
@@ -206,20 +260,26 @@ function operationObject(op: Operation): Schema {
 export interface BuildOptions {
   /** false: enums stay closed and `ServerEvent` has no catch-all (what the drift test validates live responses with). */
   open?: boolean;
+  /** Another contract index and its operations (the tests' shape contract); the default is the server's. */
+  index?: string;
+  operations?: Operation[];
+  openUnions?: Record<string, string>;
 }
 
 /** The OpenAPI 3.1 document, as a plain object. */
 export function buildSpec(options: BuildOptions = {}): Schema {
   const open = options.open ?? true;
-  const names = contractTypeNames();
-  const definitions = generateDefinitions(names);
+  const index = options.index ?? CONTRACT_INDEX;
+  const operationList = options.operations ?? operations;
+  const names = contractTypeNames(index);
+  const definitions = generateDefinitions(names, index);
   const schemas: Record<string, Schema> = {};
   for (const [name, schema] of Object.entries(definitions)) {
     if (!COMPONENT_NAME.test(name)) throw new Error(`Type "${name}" cannot be a component name`);
     schemas[name] = transform(schema, open) as Schema;
     if (open) assertNoNullMembers(schemas[name], `#/components/schemas/${name}`);
   }
-  for (const [union, catchAll] of Object.entries(OPEN_UNIONS)) {
+  for (const [union, catchAll] of Object.entries(options.openUnions ?? OPEN_UNIONS)) {
     const schema = schemas[union];
     const members = schema?.anyOf ?? schema?.oneOf;
     if (!schema || !Array.isArray(members) || !schemas[catchAll]) throw new Error(`Open union ${union} or its catch-all ${catchAll} is missing`);
@@ -229,7 +289,7 @@ export function buildSpec(options: BuildOptions = {}): Schema {
 
   const paths: Record<string, Schema> = {};
   const seen = new Set<string>();
-  for (const op of operations) {
+  for (const op of operationList) {
     if (seen.has(op.operationId)) throw new Error(`Duplicate operationId ${op.operationId}`);
     seen.add(op.operationId);
     for (const type of [op.response, op.request, ...Object.values(op.errors ?? {})]) {

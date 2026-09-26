@@ -1,0 +1,25 @@
+{
+  "settings": {
+    "provider": "anthropic",
+    "models": {},
+    "aiFeatures": {},
+    "autoImport": true,
+    "useTeamColors": true,
+    "nextSeasonBudget": {},
+    "organizationPhilosophies": {},
+    "roundRatingsToFive": false,
+    "showUnavailablePitchers": false,
+    "autoGenerateAfterImport": false,
+    "defaultOrgId": null,
+    "theme": "system",
+    "model": "claude-opus-5"
+  },
+  "apiKey": {
+    "configured": false,
+    "source": null,
+    "hint": null,
+    "encrypted": false,
+    "storageLabel": "a permission-restricted file (no OS keychain available)"
+  },
+  "dataDir": "/tmp/ootp-fo-test"
+}

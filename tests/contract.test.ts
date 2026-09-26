@@ -6,11 +6,12 @@ import path from 'node:path';
 import type { AddressInfo } from 'node:net';
 import Ajv2020, { type ValidateFunction } from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
-import { SPEC_PATH, buildSpec, serializeSpec } from '../scripts/lib/contractSpec.js';
+import { Router } from 'express';
+import { SHAPES_SPEC_PATH, SPEC_PATH, buildShapesSpec, buildSpec, serializeSpec, transform } from '../scripts/lib/contractSpec.js';
 import { operations } from '../server/contract/routes.js';
 import { api, runImport } from '../server/api.js';
 import { startJob } from '../server/jobs.js';
-import { registeredRoutes } from './apiRoutes';
+import { registeredRoutes, type RegisteredRoute } from './apiRoutes';
 import { BANNED_JARGON, BANNED_VERDICTS, bannedIn, bannedInPayload, shownStrings } from './bannedJargon';
 import { buildSave, type BuiltSave } from './syntheticSave';
 
@@ -20,6 +21,8 @@ import { buildSave, type BuiltSave } from './syntheticSave';
  * save, the event stream's events are `ServerEvent`s, and what the Mac app shows passes the one banned-jargon list.
  *
  * A failure here after a server type changed means: run `npm run contract:build` and commit `contract/openapi.json`.
+ * The captured payloads in `contract/fixtures/` (which the Swift tests decode) are compared too; after a change that
+ * alters them, run `npm run contract:fixtures` and commit them.
  */
 
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
@@ -27,11 +30,18 @@ type Any = any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 const SLOW = 120_000;
 const SWIFT_SPEC = path.join(process.cwd(), 'macos', 'Packages', 'PennantAPI', 'Sources', 'PennantAPI', 'openapi.json');
+const FIXTURES = path.join(process.cwd(), 'contract', 'fixtures');
+const WRITE_FIXTURES = process.env.CONTRACT_FIXTURES === 'write';
+const SHAPES = path.join(process.cwd(), 'tests', 'contractShapes');
 
 describe('the committed contract', () => {
   it('equals a fresh build of the server\'s types (run `npm run contract:build` if not)', () => {
     const committed = fs.readFileSync(SPEC_PATH, 'utf8');
     expect(committed).toBe(serializeSpec(buildSpec()));
+  }, SLOW);
+
+  it('builds the tests\' shape contract into the Swift shape tests unchanged (run `npm run contract:build` if not)', () => {
+    expect(fs.readFileSync(SHAPES_SPEC_PATH, 'utf8')).toBe(serializeSpec(buildShapesSpec()));
   }, SLOW);
 
   it('is the very file the Swift package generates from (a link, not a second copy)', () => {
@@ -80,6 +90,13 @@ describe('the contract\'s shape', () => {
     expect(JSON.stringify(spec)).not.toMatch(/"additionalProperties":false/);
   });
 
+  it('writes ids and counts as integers, so the app reads an Int', () => {
+    expect(schemas.Integer).toMatchObject({ type: 'integer' });
+    for (const [type, field] of [['Org', 'team_id'], ['JobEvent', 'orgId'], ['ImportProgress', 'fileIndex'], ['Settings', 'defaultOrgId']]) {
+      expect(schemas[type].properties[field], `${type}.${field}`).toMatchObject({ $ref: '#/components/schemas/Integer' });
+    }
+  });
+
   it('asks for the bearer token, and serves the event stream as server-sent events', () => {
     expect(spec.openapi).toBe('3.1.0');
     expect(spec.components.securitySchemes.bearer).toMatchObject({ type: 'http', scheme: 'bearer' });
@@ -88,15 +105,34 @@ describe('the contract\'s shape', () => {
   });
 });
 
-describe('every route is in the contract, and back', () => {
+describe('every /v2 route is in the contract and back; every reused route listed is registered', () => {
   const byKey = (method: string, p: string) => `${method.toUpperCase()} ${p}`;
   const listed = new Set(operations.map((op) => byKey(op.method, op.path.replace(/^\/api/, ''))));
   const registered = registeredRoutes();
+  const unlistedV2 = (routes: RegisteredRoute[]) =>
+    routes.filter((r) => r.path.startsWith('/v2/')).map((r) => byKey(r.method, r.path)).filter((k) => !listed.has(k));
 
   it('lists every registered /v2 route', () => {
-    const v2 = registered.filter((r) => r.path.startsWith('/v2/'));
-    expect(v2.length).toBeGreaterThan(0);
-    expect(v2.map((r) => byKey(r.method, r.path)).filter((k) => !listed.has(k))).toEqual([]);
+    expect(registered.filter((r) => r.path.startsWith('/v2/')).length).toBeGreaterThan(0);
+    expect(unlistedV2(registered)).toEqual([]);
+  });
+
+  it('sees a /v2 route on a router mounted at a prefix, and refuses a prefix it cannot read', () => {
+    const outer = Router();
+    const inner = Router();
+    inner.get('/front-office/:org', (_req, res) => res.json({}));
+    const deeper = Router();
+    deeper.get('/:dept', (_req, res) => res.json({}));
+    inner.use('/departments', deeper);
+    outer.use('/v2', inner);
+    expect(registeredRoutes(outer)).toEqual([
+      { method: 'GET', path: '/v2/front-office/:org' },
+      { method: 'GET', path: '/v2/departments/:dept' },
+    ]);
+    expect(unlistedV2(registeredRoutes(outer))).toEqual(['GET /v2/front-office/:org', 'GET /v2/departments/:dept']);
+    const withParam = Router();
+    withParam.use('/v2/views/:org', inner);
+    expect(() => registeredRoutes(withParam)).toThrow(/plain path prefix/);
   });
 
   it('describes only routes the router really registers, method and path', () => {
@@ -114,6 +150,28 @@ describe('every route is in the contract, and back', () => {
     }
     const expected = operations.map((op) => `${byKey(op.method, op.path.replace(/:([A-Za-z0-9_]+)/g, '{$1}'))} ${op.operationId}`);
     expect(inSpec.sort()).toEqual(expected.sort());
+  }, SLOW);
+});
+
+describe('the builder refuses what the Swift client could not read', () => {
+  it('splits a number-or-string type into one member per type, null on the last', () => {
+    expect(transform({ type: ['number', 'string', 'null'] }, true)).toEqual({ anyOf: [{ type: 'number' }, { type: ['string', 'null'] }] });
+    expect(transform({ type: ['number', 'string'], description: 'd' }, false)).toEqual({ description: 'd', anyOf: [{ type: 'number' }, { type: 'string' }] });
+    // One type with null is already what the generator reads
+    expect(transform({ type: ['string', 'null'] }, true)).toEqual({ type: ['string', 'null'] });
+    // As a record's values (Row.sort) too
+    expect(transform({ type: 'object', additionalProperties: { type: ['number', 'string', 'null'] } }, true)).toEqual({
+      type: 'object', additionalProperties: { anyOf: [{ type: 'number' }, { type: ['string', 'null'] }] },
+    });
+    expect(() => transform({ type: ['number', 'string'], minimum: 1 }, true)).toThrow(/cannot be written for the Swift generator/);
+  });
+
+  it('refuses two different types with one name', () => {
+    expect(() => buildSpec({ index: path.join(SHAPES, 'collision', 'index.ts'), operations: [], openUnions: {} })).toThrow(/Two different types are named "Info"/);
+  }, SLOW);
+
+  it('refuses an exported generic, and says to export a concrete alias', () => {
+    expect(() => buildSpec({ index: path.join(SHAPES, 'generic', 'index.ts'), operations: [], openUnions: {} })).toThrow(/export type ClaimRow = Row<Claim>/);
   }, SLOW);
 });
 
@@ -140,6 +198,39 @@ function strictValidator(): (type: string) => ValidateFunction {
   };
 }
 
+/** Temporary folders' random names, the host's clock and the app's version, made stable so fixtures compare. */
+function stable(value: unknown): unknown {
+  const roots = [...new Set([os.tmpdir(), fs.realpathSync(os.tmpdir())])];
+  const iso = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
+  const walk = (node: unknown, key: string): unknown => {
+    if (Array.isArray(node)) return node.map((n) => walk(n, key));
+    if (node && typeof node === 'object') return Object.fromEntries(Object.entries(node).map(([k, v]) => [k, walk(v, k)]));
+    if (typeof node !== 'string') return node;
+    if (iso.test(node)) return '2040-07-01T12:00:00.000Z';
+    if (key === 'version') return '0.0.0';
+    let text = node;
+    for (const root of roots) {
+      text = text.split(root).join('/tmp');
+    }
+    return text.replace(/\/(ootp-fo-test|pennant-contract-home|pennant-contract-export)-[A-Za-z0-9]+/g, '/$1');
+  };
+  return walk(value, '');
+}
+
+/** Compares a captured payload with its committed fixture, or writes it (`npm run contract:fixtures`). */
+function fixture(name: string, content: string): void {
+  const file = path.join(FIXTURES, name);
+  if (WRITE_FIXTURES) {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, content);
+    return;
+  }
+  expect(fs.existsSync(file), `${name} is missing: run npm run contract:fixtures`).toBe(true);
+  expect(fs.readFileSync(file, 'utf8'), `${name} differs: run npm run contract:fixtures`).toBe(content);
+}
+
+const json = (value: unknown): string => `${JSON.stringify(stable(value), null, 2)}\n`;
+
 describe('the server answers in the contract\'s shape (the synthetic save)', () => {
   let base = '';
   let close = (): void => {};
@@ -147,6 +238,9 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
   let home = '';
   const realHome = process.env.HOME;
   let validator: (type: string) => ValidateFunction;
+  // A key in the environment would show up in key status (and in a fixture); none is read here
+  const KEY_VARS = ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'GEMINI_API_KEY', 'OPENCODE_API_KEY'];
+  const realKeys = Object.fromEntries(KEY_VARS.map((k) => [k, process.env[k]]));
 
   beforeAll(async () => {
     save = buildSave({ season: 2040, historySeasons: 1, gamesPerTeam: 60, playedShare: 0.5, clubs: 4, seed: 11 });
@@ -156,6 +250,7 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     fs.mkdirSync(csv, { recursive: true });
     fs.writeFileSync(path.join(csv, 'players.csv'), 'player_id\n1\n');
     process.env.HOME = home;
+    for (const k of KEY_VARS) delete process.env[k];
     const app = express();
     app.use(express.json());
     app.use('/api', api);
@@ -172,6 +267,7 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
   afterAll(() => {
     close();
     process.env.HOME = realHome;
+    for (const [k, v] of Object.entries(realKeys)) if (v !== undefined) process.env[k] = v;
     if (home) fs.rmSync(home, { recursive: true, force: true });
   });
 
@@ -197,6 +293,48 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     if (Array.isArray(body)) expect(body.length, op.operationId).toBeGreaterThan(0);
     // What the Mac app shows from a /v2 payload passes the banned-jargon list
     if (op.path.startsWith('/api/v2/')) expect(bannedInPayload(body)).toEqual([]);
+    // Where the server looked for saves depends on the platform, so it is no fixture
+    if (op.operationId !== 'getSearchLocations') fixture(`responses/${op.operationId}.json`, json(body));
+  }, SLOW);
+
+  /**
+   * The POSTs, in the answers that are safe to cause here (the synthetic data folder is a temporary one). Setting a
+   * save and starting an import (their 200s) would start an import; their 400s are checked, their 200s are not.
+   */
+  const POSTS: Record<string, Array<{ body: unknown; status: number; name: string }>> = {
+    resolveFolder: [
+      { name: 'no-folder', body: { path: '' }, status: 400 },
+      { name: 'saves', body: { path: '$HOME/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games' }, status: 200 },
+      { name: 'export', body: { path: '$HOME/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games/Test League.lg' }, status: 200 },
+    ],
+    setSaveSource: [
+      { name: 'cleared', body: { lgPath: '' }, status: 200 },
+      { name: 'not-a-save', body: { lgPath: '/nowhere/Not A Save.lg' }, status: 400 },
+    ],
+    setSave: [{ name: 'no-folder', body: {}, status: 400 }],
+    startImport: [{ name: 'no-save', body: undefined, status: 400 }],
+  };
+
+  it('answers every POST in the contract\'s shape, for each answer it is safe to cause here', async () => {
+    const posts = operations.filter((op) => op.method === 'post');
+    expect(posts.map((op) => op.operationId).sort()).toEqual(Object.keys(POSTS).sort());
+    for (const op of posts) {
+      for (const c of POSTS[op.operationId]) {
+        const body = c.body === undefined ? undefined : JSON.parse(JSON.stringify(c.body).split('$HOME').join(home));
+        const res = await fetch(`${base}${op.path}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: body === undefined ? undefined : JSON.stringify(body),
+        });
+        expect(res.status, `${op.operationId} ${c.name}`).toBe(c.status);
+        const type = c.status === 200 ? op.response : op.errors?.[c.status];
+        expect(type, `${op.operationId} documents ${c.status}`).toBeDefined();
+        const answer = await res.json();
+        const validate = validator(type!);
+        expect(validate(answer) ? [] : validate.errors, `${op.operationId} ${c.name} against ${type}`).toEqual([]);
+        fixture(`responses/${op.operationId}-${c.name}.json`, json(answer));
+      }
+    }
   }, SLOW);
 
   it('streams events that are ServerEvents: the hello, an import from start to finish, and a job', async () => {
@@ -241,6 +379,10 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
       expect(validate(event.data) ? [] : validate.errors, event.name).toEqual([]);
       expect(bannedInPayload(event.data)).toEqual([]);
     }
+    // The first of each kind (the last job, which is done), as the stream sends them
+    const kept = ['hello', 'import-started', 'import-progress', 'import-finished'].map((name) => events.find((e) => e.name === name)!);
+    kept.push(events.filter((e) => e.name === 'job').at(-1)!);
+    fixture('events.sse', kept.map((e) => `event: ${e.name}\ndata: ${JSON.stringify(stable(e.data))}\n\n`).join(''));
   }, SLOW);
 
   it('holds the server to the strict form: an undescribed field or an unlisted code fails', () => {

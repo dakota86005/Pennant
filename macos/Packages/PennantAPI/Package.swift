@@ -29,6 +29,17 @@ let package = Package(
             name: "PennantAPITests",
             dependencies: ["PennantAPI"]
         ),
+        // Shapes the contract will need before any operation serves them (tests/contractShapes/, built into this
+        // target's openapi.json by `npm run contract:build`), proven to decode in Swift
+        .testTarget(
+            name: "ContractShapesTests",
+            dependencies: [
+                .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),
+            ],
+            plugins: [
+                .plugin(name: "OpenAPIGenerator", package: "swift-openapi-generator"),
+            ]
+        ),
     ],
     swiftLanguageModes: [.v6]
 )

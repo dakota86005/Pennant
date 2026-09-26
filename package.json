@@ -40,7 +40,8 @@
     "stakes:report": "tsx scripts/stakes-report.ts",
     "value:report": "tsx scripts/player-value-report.ts",
     "review:calibration-report": "tsx scripts/roster-review-calibration-report.ts",
-    "contract:build": "tsx scripts/contract-build.ts"
+    "contract:build": "tsx scripts/contract-build.ts",
+    "contract:fixtures": "CONTRACT_FIXTURES=write vitest run tests/contract.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
