@@ -1,7 +1,8 @@
-import { Router } from 'express';
+import { Router, type Response } from 'express';
+import type { ApiError } from './api.js';
 import fs from 'node:fs';
 import { loadConfig, saveConfig } from './config.js';
-import { getDataStatus, resetTransactionLogCache } from './dataStatus.js';
+import { getDataStatus, resetTransactionLogCache, type DataStatus } from './dataStatus.js';
 import { locateSave } from './ootpSave.js';
 import { playerPicture } from './playerContext.js';
 
@@ -15,7 +16,7 @@ export const importedAt: { value: string | null } = { value: null };
  * database were found. The save is derived from the CSV export's location;
  * nothing here needs configuring in normal use.
  */
-playerStateRoutes.get('/data-status', (_req, res) => {
+playerStateRoutes.get('/data-status', (_req, res: Response<DataStatus>) => {
   res.json(getDataStatus({ importedAt: importedAt.value }));
 });
 
@@ -26,12 +27,23 @@ playerStateRoutes.get('/player-state/:playerId', (req, res) => {
   res.json(picture);
 });
 
+/** The `<save>.lg` folder named by hand (`POST /api/save-source`); empty or null returns to automatic. */
+export interface SaveSourceRequest {
+  lgPath?: string | null;
+}
+
+/** What `POST /api/save-source` answers once the save folder is set or cleared. */
+export interface SaveSourceResult {
+  ok: true;
+  status: DataStatus;
+}
+
 /**
  * Fallback only: names the `<save>.lg` folder by hand when it cannot be derived
  * from the export's location. Clearing it (empty path) returns to automatic.
  */
-playerStateRoutes.post('/save-source', (req, res) => {
-  const { lgPath } = req.body as { lgPath?: string | null };
+playerStateRoutes.post('/save-source', (req, res: Response<SaveSourceResult | ApiError>) => {
+  const { lgPath } = req.body as SaveSourceRequest;
   const config = loadConfig();
   if (!lgPath?.trim()) {
     saveConfig({ ...config, lgPath: null });

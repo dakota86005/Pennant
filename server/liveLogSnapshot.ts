@@ -27,6 +27,7 @@ import os from 'node:os';
 import path from 'node:path';
 import Database from 'better-sqlite3';
 import { LIVE_DB_NAME, type LiveDatabaseFiles } from './ootpSave.js';
+import type { Integer } from './contract/primitives.js';
 
 export type LiveLogFailure =
   /** The database file is not there. */
@@ -50,12 +51,12 @@ export class LiveLogError extends Error {
 }
 
 export interface SnapshotMeta {
-  attempts: number;
+  attempts: Integer;
   walCopied: boolean;
   /** Whether the source had a `-shm` file. It is never copied. */
   shmPresent: boolean;
-  dbBytes: number;
-  walBytes: number;
+  dbBytes: Integer;
+  walBytes: Integer;
   /** Modification times of the source files when copied. */
   sourceModified: { db: string | null; wal: string | null };
   copiedAt: string;

@@ -2,13 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { parse } from 'csv-parse/sync';
 import { db } from './db.js';
+import type { Integer } from './contract/primitives.js';
 
 export interface ImportResult {
-  tables: number;
-  rows: number;
+  tables: Integer;
+  rows: Integer;
   startedAt: string;
   finishedAt: string;
-  files: Array<{ table: string; rows: number }>;
+  files: Array<{ table: string; rows: Integer }>;
 }
 
 /** Where the import has got to, for a page that would rather not look frozen. */
@@ -16,10 +17,10 @@ export interface ImportProgress {
   /** The table being written, as OOTP names the file. */
   table: string;
   /** 1-based, so it reads as "12 of 70" without arithmetic. */
-  fileIndex: number;
-  files: number;
+  fileIndex: Integer;
+  files: Integer;
   /** Rows written so far, across every table. */
-  rows: number;
+  rows: Integer;
   phase: 'reading' | 'writing' | 'indexing';
 }
 

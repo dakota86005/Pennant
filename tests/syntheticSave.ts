@@ -101,6 +101,8 @@ const EXTRA_COLUMNS: Record<string, string[]> = {
     ...Array.from({ length: 8 }, (_, i) => `rules_player_salary${i} REAL`),
   ],
   players: ['date_of_birth TEXT', 'prone_overall INTEGER', 'prone_leg INTEGER', 'prone_back INTEGER', 'prone_arm INTEGER'],
+  // The club colours `/api/orgs` reads (hex strings in a current export)
+  teams: ['background_color_id TEXT', 'text_color_id TEXT', 'jersey_secondary_color_id TEXT', 'ballcaps_main_color_id TEXT'],
   team_history_record: ['league_id INTEGER', 't INTEGER'],
   players_contract: [
     'last_year_option_buyout REAL', 'opt_out INTEGER', 'minimum_pa INTEGER', 'minimum_pa_bonus REAL',
@@ -213,7 +215,7 @@ export function buildSave(spec: SaveSpec): BuiltSave {
   for (let c = 0; c < clubsN; c += 1) {
     const id = c + 1;
     clubs.push(id);
-    insert('teams', { team_id: id, name: `Club ${id}`, nickname: 'N', abbr: `C${id}`, level: 1, league_id: L, sub_league_id: 0, division_id: 0, parent_team_id: 0, allstar_team: 0, human_team: id === 1 ? 1 : 0, human_id: id === 1 ? 1 : 0 });
+    insert('teams', { team_id: id, name: `Club ${id}`, nickname: 'N', abbr: `C${id}`, level: 1, league_id: L, sub_league_id: 0, division_id: 0, parent_team_id: 0, allstar_team: 0, human_team: id === 1 ? 1 : 0, human_id: id === 1 ? 1 : 0, background_color_id: '#1d2d44', text_color_id: '#f0ebd8', jersey_secondary_color_id: '#748cab', ballcaps_main_color_id: null });
     if (AAA !== null) {
       const f = 100 + id;
       farm.push(f);

@@ -8,6 +8,7 @@ import { TRADE_COMBINATION_POLICY, TRADE_COMBINATION_POLICY_CALIBRATION } from '
 import { DEFAULT_PHILOSOPHY_POLICIES, DEFAULT_PHILOSOPHY_VALUES, PHILOSOPHY_DIMENSIONS, type PhilosophyPolicies } from '../server/philosophy.js';
 import { derivedFrom, fromExport, unknownBecause } from '../server/provenance.js';
 import { THIS_SEASON, YEAR, contractRow, factsOf, stateOf, timelineOf } from './playerValueFixtures';
+import { BANNED_VERDICTS, bannedIn } from './bannedJargon';
 
 /*
  * Player Value phase 6b: a trade read on Player Value (PLAYER_VALUE.md Part 8, consumer 3; owner Q-8; BEHAVIOR_CASES.md
@@ -106,8 +107,6 @@ function randomPhilosophies(n: number, seed = 11): LensPhilosophy[] {
   }));
 }
 
-/** Words that would make a reading a verdict. "wins" alone is the unit, so only the verdict phrases are banned. */
-const VERDICT = /\b(?:win|wins|won|lose|loses|lost|winning|losing)\s+(?:the|this)\s+(?:trade|deal)\b|\baccept\w*|\breject\w*|\bshould\b|\brecommend\w*|\bfair\b|\bunfair\b|\bsteal\b|\bfleec\w*|\brip-?off\b|\boverpa(?:y|id)\s+for\b/i;
 
 describe('a trade read on Player Value', () => {
   it('each player carries the contract value and the value of keeping him as every read serves them, never narrowed', () => {
@@ -151,7 +150,7 @@ describe('a trade read on Player Value', () => {
     expect(f.central).toBeNull();
     expect(f.centralRange).not.toBeNull();
     // No verdict anywhere in what it says
-    expect(JSON.stringify(t)).not.toMatch(VERDICT);
+    expect(bannedIn(JSON.stringify(t), [BANNED_VERDICTS])).toEqual([]);
   });
 
   it('players are combined as independent, and it says so: inside the every-player-at-his-edge sum, around the sum of most likely readings, never narrower than any one player\'s own distance', () => {

@@ -39,7 +39,9 @@
     "farm:usage-window": "tsx scripts/farm-usage-window.ts",
     "stakes:report": "tsx scripts/stakes-report.ts",
     "value:report": "tsx scripts/player-value-report.ts",
-    "review:calibration-report": "tsx scripts/roster-review-calibration-report.ts"
+    "review:calibration-report": "tsx scripts/roster-review-calibration-report.ts",
+    "contract:build": "tsx scripts/contract-build.ts",
+    "contract:fixtures": "CONTRACT_FIXTURES=write vitest run tests/contract.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
@@ -60,12 +62,15 @@
     "@visx/group": "^4.0.0",
     "@visx/shape": "^4.0.0",
     "@vitejs/plugin-react": "^4.3.4",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
     "concurrently": "^9.1.2",
     "electron": "^41.10.4",
     "electron-builder": "^26.15.3",
     "esbuild": "^0.28.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "ts-json-schema-generator": "^2.9.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "vite": "^6.0.7",

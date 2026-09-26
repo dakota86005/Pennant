@@ -2,7 +2,7 @@ import { Router, type NextFunction, type Request, type Response } from 'express'
 import fs from 'node:fs';
 import path from 'node:path';
 import { db, tableExists, tableColumns, locateColumn } from './db.js';
-import { detectSaves, resolveChosenFolder, searchLocations } from './paths.js';
+import { detectSaves, resolveChosenFolder, searchLocations, type ResolveResult, type SaveInfo, type SearchLocation } from './paths.js';
 import { DATA_DIR, loadConfig, saveConfig } from './config.js';
 import { importCsvDir, type ImportProgress, type ImportResult } from './importer.js';
 import { clearPendingExport, pendingExport, startWatcher } from './watcher.js';
@@ -53,9 +53,10 @@ import { trendsRoutes } from './trends.js';
 import { chatRoutes } from './chat.js';
 import { mlbOperationsRoutes } from './mlbOperations.js';
 import { farmRoutes } from './farmRoutes.js';
-import { appInfo } from './appInfo.js';
+import { appInfo, type AppInfo } from './appInfo.js';
 import { scoutedDevelopmentRoutes } from './scoutedDevelopment.js';
 import { eventStream, progressThrottle, publish } from './serverEvents.js';
+import type { Integer } from './contract/primitives.js';
 
 export const api = Router();
 api.use(logoRoutes);
@@ -354,24 +355,83 @@ export async function runImport(csvDir: string): Promise<void> {
   if (imported) refitAfterImport();
 }
 
-api.get('/saves', (_req, res) => {
+api.get('/saves', (_req, res: Response<SaveInfo[]>) => {
   res.json(detectSaves());
 });
 
 /** Where we looked, so the user can see why auto-detection came up empty. */
-api.get('/search-locations', (_req, res) => {
+api.get('/search-locations', (_req, res: Response<SearchLocations>) => {
   res.json({ platform: process.platform, locations: searchLocations() });
 });
 
 /** Checks a folder the user picked or typed, before committing to it. */
-api.post('/resolve-folder', (req, res) => {
-  const { path: chosen } = req.body as { path?: string };
+api.post('/resolve-folder', (req, res: Response<ResolveResult>) => {
+  const { path: chosen } = req.body as Partial<ResolveFolderRequest>;
   if (!chosen?.trim()) return res.status(400).json({ ok: false, error: 'No folder given.' });
   res.json(resolveChosenFolder(chosen));
 });
 
+/** What `/api/status` serves, and the snapshot `/api/v2/events` opens with (described in `contract/openapi.json`). */
+export interface ServerStatus {
+  /** Product name and version, from package.json (see appInfo.ts). */
+  app: AppInfo;
+  csvExportedAt: string | null;
+  configured: boolean;
+  saveName: string | null;
+  csvDir: string | null;
+  csvDirExists: boolean;
+  importing: boolean;
+  /** Where a running import has got to; null when nothing is importing. */
+  importProgress: ImportProgress | null;
+  lastImport: ImportResult | null;
+  lastError: string | null;
+  /** Set when an import stopped partway (the server was stopped or crashed); cleared by the next completed import. */
+  importInterruptedSince: string | null;
+  hasData: boolean;
+  /** Set when OOTP has written a fresh export the app has not imported yet. */
+  exportPending: string | null;
+  /** Changes with the save, and rides along on every logo URL. */
+  logoToken: string;
+  /** The top of the rating scale the save shows ratings on. */
+  ratingScaleMax: Integer;
+}
+
+/** A request the server accepted, with nothing more to say. */
+export interface Ok {
+  ok: true;
+}
+
+/** What a route answers when it cannot do what was asked (a 400). */
+export interface ApiError {
+  error: string;
+}
+
+/** What `POST /api/import` answers: the import has started; its progress and result arrive on `/api/status` and the event stream. */
+export interface ImportAccepted {
+  ok: true;
+  lastImport: ImportResult | null;
+  lastError: string | null;
+}
+
+/** The folder the user picked or typed (`POST /api/resolve-folder`). */
+export interface ResolveFolderRequest {
+  path: string;
+}
+
+/** The save to use (`POST /api/config`): its CSV export folder and its name. */
+export interface ConfigRequest {
+  csvDir: string;
+  saveName?: string | null;
+}
+
+/** Where `GET /api/search-locations` looked for saves, so the user can see why auto-detection came up empty. */
+export interface SearchLocations {
+  platform: string;
+  locations: SearchLocation[];
+}
+
 /** What `/api/status` serves, and the snapshot `/api/v2/events` opens with. */
-export function statusSnapshot() {
+export function statusSnapshot(): ServerStatus {
   const config = loadConfig();
   return {
     /** Product name and version, from package.json (see appInfo.ts). */
@@ -410,15 +470,15 @@ export function statusSnapshot() {
   };
 }
 
-api.get('/status', (_req, res) => {
+api.get('/status', (_req, res: Response<ServerStatus>) => {
   res.json(statusSnapshot());
 });
 
 /** Server-sent events for the Mac app: import, job and fresh-export news as it happens (`serverEvents.ts`). */
 api.get('/v2/events', eventStream(statusSnapshot));
 
-api.post('/config', (req, res) => {
-  const { csvDir, saveName } = req.body as { csvDir?: string; saveName?: string };
+api.post('/config', (req, res: Response<Ok | ApiError>) => {
+  const { csvDir, saveName } = req.body as Partial<ConfigRequest>;
   if (!csvDir) return res.status(400).json({ error: 'csvDir is required' });
   // A hand-picked .lg folder belongs to the save it was picked for
   const previous = loadConfig();
@@ -435,7 +495,7 @@ api.post('/config', (req, res) => {
   res.json({ ok: true });
 });
 
-api.post('/import', (_req, res) => {
+api.post('/import', (_req, res: Response<ImportAccepted | ApiError>) => {
   const config = loadConfig();
   if (!config.csvDir) return res.status(400).json({ error: 'No save configured' });
   if (!fs.existsSync(config.csvDir)) {

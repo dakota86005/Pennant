@@ -7,6 +7,7 @@ import { loadScoutedAbilities } from '../server/scoutedEvidence.js';
 import request from './request';
 import { IDS } from './fixture';
 import { visibleText } from './visibleText';
+import { bannedIn } from './bannedJargon';
 
 /*
  * Player Value phase 6a: the player card's header (BEHAVIOR_CASES.md "Player Value", phase 6a row; PLAYER_VALUE.md
@@ -109,7 +110,7 @@ describe('the header, as the GM reads it', () => {
     expect(text).toMatch(/Contract value/);
     expect(text).toMatch(/Most likely \$28\.0M/);
     expect(text).toMatch(/52/);
-    expect(text).not.toMatch(/percentile|\bTalent\b|\bOA\b|\bPOT\b|\bcentral\b|surplus|retention|indeterminate/i);
+    expect(bannedIn(text)).toEqual([]);
     // Each figure explains itself on hover, and a keyboard reaches the explanation
     expect((html.match(/class="tip" tabindex="0"/g) ?? []).length).toBeGreaterThanOrEqual(3);
   });

@@ -1,0 +1,46 @@
+[
+  {
+    "team_id": 1,
+    "label": "Club 1 N",
+    "isHuman": true,
+    "colors": {
+      "bg": "#1d2d44",
+      "fg": "#f0ebd8",
+      "secondary": "#748cab",
+      "cap": null
+    }
+  },
+  {
+    "team_id": 2,
+    "label": "Club 2 N",
+    "isHuman": false,
+    "colors": {
+      "bg": "#1d2d44",
+      "fg": "#f0ebd8",
+      "secondary": "#748cab",
+      "cap": null
+    }
+  },
+  {
+    "team_id": 3,
+    "label": "Club 3 N",
+    "isHuman": false,
+    "colors": {
+      "bg": "#1d2d44",
+      "fg": "#f0ebd8",
+      "secondary": "#748cab",
+      "cap": null
+    }
+  },
+  {
+    "team_id": 4,
+    "label": "Club 4 N",
+    "isHuman": false,
+    "colors": {
+      "bg": "#1d2d44",
+      "fg": "#f0ebd8",
+      "secondary": "#748cab",
+      "cap": null
+    }
+  }
+]

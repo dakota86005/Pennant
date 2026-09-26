@@ -197,6 +197,45 @@ server on the same folder refuses to start and names the one holding it. A lock 
 taken over on the next start; one held by a live process that is not Pennant (a reused process id) needs the file
 deleting by hand, as the refusal says.
 
+### The contract and the Swift client
+
+The Mac app's client is generated, never hand-written (SWIFTUI_REBUILD.md section 4.3, D-056). After changing a type
+the contract names (anything exported from `server/contract/index.ts`, or an operation in `server/contract/routes.ts`),
+rebuild the spec and commit it:
+
+```bash
+npm run contract:build
+```
+
+Two conventions: a whole number (an id, a count) is typed `Integer` (`server/contract/primitives.ts`), so the Mac app
+reads an `Int`; and a generic type is never exported from the contract, only a concrete alias of it
+(`export type ClaimRow = Row<Claim>`). The build refuses an exported generic and two different types with one name.
+
+`tests/contract.test.ts` (part of `npm test`) fails when:
+- `contract/openapi.json` differs from a fresh build (run the command above and commit the result);
+- a `/api/v2` route is registered (on any router, a mounted one included) but not listed in `routes.ts`, or a listed
+  operation is not registered (add it, or fix its method or path). Reused legacy routes are checked one way only: a
+  listed one must exist, an unlisted one is simply not described;
+- a JSON GET's live answer against the synthetic save has a field the type does not describe, or a code its union does
+  not list (describe it in the TypeScript type; the spec is checked in its strict form, with enums closed). POSTs are
+  checked in the answers that are safe in a temporary data folder (their 400s, and the 200s of `resolve-folder` and
+  `save-source`); the 200s of `config` and `import` are not, since they start an import;
+- a captured answer or event differs from `contract/fixtures/`, which the Swift tests decode: when the change is
+  intended, run `npm run contract:fixtures` and commit the fixtures;
+- a `text`, `hint` or `display` string in a `/v2` payload carries a word from `tests/bannedJargon.ts`. The list applies to
+  all `/v2` text; before department copy moves (N8) it needs a scoped exception for plain words it would reject.
+
+The Swift package reads the spec through a link (`macos/Packages/PennantAPI/Sources/PennantAPI/openapi.json`), so there
+is no second copy to update. `contract:build` also writes the tests' shape contract (`tests/contractShapes/`) into the
+package's `ContractShapesTests`. Build and test it on a Mac with Xcode 26 or later:
+
+```bash
+cd macos/Packages/PennantAPI && swift build && swift test
+```
+
+CI runs the same on `macos-26` (with `--force-resolved-versions`, so a stale `Package.resolved` fails), so a change that
+breaks the generated client fails the pull request.
+
 **An interrupted import.** If the server stops while importing, or the import fails partway, `import-in-progress.json` stays in the data folder,
 `/api/status` reports `importInterruptedSince`, and the next start imports the export again.
 

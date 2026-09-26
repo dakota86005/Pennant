@@ -1,0 +1,6 @@
+# swift-openapi-generator: the types and the client, public, from openapi.json (a link to contract/openapi.json).
+generate:
+  - types
+  - client
+accessModifier: public
+namingStrategy: idiomatic

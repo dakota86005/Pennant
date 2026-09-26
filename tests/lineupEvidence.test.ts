@@ -8,6 +8,7 @@ import type { LineupResponse } from '../src/api';
 import request from './request';
 import { IDS } from './fixture';
 import { visibleText } from './visibleText';
+import { bannedIn } from './bannedJargon';
 
 /*
  * Player Value phase 6d: the lineup reads every rating through the scouted-evidence adapter (BEHAVIOR_CASES.md "Player
@@ -140,7 +141,7 @@ describe('the Lineup page talks like a front office (phase 6d)', () => {
     const data = await card('r');
     const text = visibleText(renderToStaticMarkup(createElement(LineupView, { data, vs: 'r', style: 'saber', sort: 'talent' })));
     expect(text).toMatch(/Bat vs RHP/);
-    expect(text).not.toMatch(/players_value|offensive value|Off Value|OOTP's own/i);
+    expect(bannedIn(text)).toEqual([]);
     // A hitter the scouts have not graded is named, in one short line
     expect(text).toMatch(/Not scouted:/);
   });

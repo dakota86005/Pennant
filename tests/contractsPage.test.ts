@@ -6,6 +6,7 @@ import { freshnessCue, getDataStatus, type DataStatus } from '../server/dataStat
 import { buildSave, type BuiltSave, type SaveSpec } from './syntheticSave';
 import request from './request';
 import { visibleText } from './visibleText';
+import { BANNED_JARGON, BANNED_VERDICTS, bannedIn } from './bannedJargon';
 
 /*
  * Player Value phase 6a: the Contracts page rebuilt on Player Value (BEHAVIOR_CASES.md "Player Value", phase 6a row;
@@ -25,10 +26,7 @@ let save: BuiltSave;
 let page: Any;
 
 /** Words that are a verdict on a player: the page describes, it never tells the GM what to do (D-052). */
-const VERDICT = /\b(extend (him|now)|extension candidate|re-sign|let (him )?walk|release candidate|core keeper|hold off|consider moving|watch decline|market-dependent|should (keep|extend|sign|trade|release)|recommend\w*)\b/i;
 
-/** The old page's percentile and method words, which never appear in what the GM reads. */
-const JARGON = /percentile|\bpct\b|\bcentral\b|retention margin|\bsurplus\b|edge against edge|\bTalent\b|\bOA\b|\bPOT\b|indeterminate|players_value|\bD-\d{3}\b|\bA-\d+\b/i;
 
 beforeAll(async () => {
   save = buildSave(spec);
@@ -126,7 +124,7 @@ describe('Contracts shows no verdict (D-052: describes, never authorizes)', () =
       expect(row, row.name).not.toHaveProperty('talentPct');
     }
     const strings = JSON.stringify(page);
-    expect(strings).not.toMatch(VERDICT);
+    expect(bannedIn(strings, [BANNED_VERDICTS])).toEqual([]);
   });
 
   it('the server builds no advice: no percentile cut-off and no recommendation function survive', async () => {
@@ -185,8 +183,7 @@ describe('the Contracts page, as the GM reads it', () => {
     const text = visibleText(html);
     expect(text).toMatch(/Contract value/);
     expect(text).toMatch(/Keeping him/);
-    expect(text).not.toMatch(JARGON);
-    expect(text).not.toMatch(VERDICT);
+    expect(bannedIn(text, [BANNED_JARGON, BANNED_VERDICTS])).toEqual([]);
   });
 
   it('shows an unknown as a short word with its reason on hover, never $0', async () => {

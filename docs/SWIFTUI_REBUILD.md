@@ -2,7 +2,8 @@
 
 **Status:** design, 2026-09-25. Milestone N0 is done (2026-09-25: the restore point, the decisions D-055 to D-060 and
 the D-052 amendment, the behaviour cases, the ground rules; section 12). Milestone N1 is done (2026-09-25: the sidecar
-server, section 5; "As built" below). Nothing else in this document is implemented yet. It supersedes the UI parts of the
+server, section 5; "As built" below). Milestone N2 is done (2026-09-25: the contract pipeline, section 4.3; "As built"
+there). Nothing else in this document is implemented yet. It supersedes the UI parts of the
 V2 web plan (`~/.claude/plans/okay-can-we-please-effervescent-cherny.md`, sections 3 and 4). The server-side
 parts of that plan (the Front Office contract, the Club Profile, the roster map, the horizon board, the league
 wire, snapshots and the GM's desk) carry over unchanged in intent and are scheduled here.
@@ -310,7 +311,7 @@ Everything new lives under `/api/v2/`, so the React app keeps working on the old
 | `GET /api/v2/wire/:org?since&club&kind&followed` | Around the league |
 | `GET /api/v2/catalog` | Glossary, stat catalog, theme tokens per club, department list and staff heads |
 | `GET /api/v2/events` (SSE) | Import progress and finished, job progress, desk changes, freshness. This replaces 8-second polling |
-| existing chat SSE, jobs, settings, import, trade analyze | Reused, and described in the spec |
+| existing chat SSE, jobs, settings, import, trade analyze | Reused, and described in the spec by the milestone that first uses each: status, import, setup and settings at N2 (for N3), trade analyze at N12, chat SSE and jobs at N13 |
 
 ### 4.3 The typed pipeline (no hand-written models)
 
@@ -331,6 +332,17 @@ Everything new lives under `/api/v2/`, so the React app keeps working on the old
      (`tests/bannedJargon.ts`, replacing the per-page copies).
 
    `swift build` of PennantAPI in CI fails on any breaking change.
+
+**As built at N2 (2026-09-25).** `tests/contract.test.ts` and the package's Swift tests hold each point.
+
+| Piece | Where | What it does |
+|---|---|---|
+| Types | `server/contract/index.ts` | Re-exports the server's own types; a reused route that answered an untyped object now has an exported type beside its handler, which is typed against it (`ServerStatus`, `ImportAccepted`, `Ok`, `ApiError`, `SearchLocations`, `SaveSourceResult`, `SettingsResponse`, `ProvidersResponse`, `Org`, the request bodies). Payloads unchanged. `GameDate` lives beside `parseGameDate` and types the data status's game dates. `Integer` (`server/contract/primitives.ts`, `@asType integer`) types ids and counts, so Swift reads `Int`; a true decimal stays `number`. |
+| Operations | `server/contract/routes.ts` | `GET /api/v2/events` (stream), and the reused `GET /api/status`, `POST /api/import`, `GET /api/saves`, `GET /api/search-locations`, `POST /api/resolve-folder`, `POST /api/config`, `GET /api/data-status`, `POST /api/save-source`, `GET /api/settings`, `GET /api/settings/providers`, `GET /api/orgs`. The other legacy routes are not described. |
+| Build | `npm run contract:build` (`scripts/lib/contractSpec.ts`) → `contract/openapi.json` | OpenAPI 3.1, deterministic. A string union of two or more values becomes `anyOf: [{type: string, enum}, {type: string}]`; a single literal (an event's `type`) stays a one-value enum. A union of types (`number \| string \| null`, as `Row.sort` will be) becomes one `anyOf` member per type, `"null"` on the last (the generator reads only a `type` array's first type). `X \| null` is written the way swift-openapi-generator reads it: `type: [T, "null"]` inline, or the reference alone with the property left out of `required` (a `{type: "null"}` member makes the generator drop the property). So the published spec is looser than the server there (the strict form the tests use keeps `required`), and Swift cannot tell a missing field from a null one: a future request body (the desk's PUT, N7) must not give "absent" and "null" different meanings. No `additionalProperties: false`. Bearer security. The build refuses two different types with one name, and an exported generic: export a concrete alias instead (`export type ClaimRow = Row<Claim>`), which becomes one named component. |
+| Events | `ServerEvent` in the spec; `ServerEventReading` in PennantAPI | Each event is a named component, and `ServerEvent` is their `anyOf` with `UnknownServerEvent` (`{type: string}`) last. The generator makes a struct of optionals, one per shape, and never throws: a known event fills its own and the catch-all; an unknown one, or a known one whose payload did not decode, fills only the catch-all. `event.reading` tells them apart from the generated types: `known`, `unknown(type:)` (ignore it) or `malformed(type:)` (a type this build knows that did not decode: the N3 event client reports it and re-reads `/api/status`, never ignores it). The stream's response is `text/event-stream` with no schema (the generator's pattern); the client decodes with `asDecodedServerSentEventsWithJSONData(of: Components.Schemas.ServerEvent.self)`. |
+| Tests | `tests/contract.test.ts`, `tests/bannedJargon.ts`, `tests/apiRoutes.ts`, `tests/contractShapes/` | The committed spec equals a fresh build. Every `/v2` route (a sub-router's mount path included) is in `routes.ts` and every listed operation is registered and in the spec, both ways; a reused route is described only when listed. Every JSON GET answers the synthetic save in its strict shape (ajv 2020, enums closed, `unevaluatedProperties: false`); each POST is checked in the answers safe to cause in a temporary data folder (its 400s; `resolve-folder` and `save-source` also 200), but not the 200s of `config` and `import`, which would start an import. The hello, an import and a job on the live stream validate. The answers and events are captured, made stable, into `contract/fixtures/` (`npm run contract:fixtures` rewrites them; the test fails while they differ), and the Swift tests decode those same bytes. The banned-jargon list applies to every `/v2` `text`, `hint` and `display`; it was tuned on Player Value's pages, so before department copy moves (N8) it needs a scoped exception (per field or department) for plain words it would reject ("Win Pct", "prior season", "waiver priority"), never a weakened pattern. |
+| Swift | `macos/Packages/PennantAPI` | swift-openapi-generator 1.13.1 as a build plugin (types and client, public, idiomatic names) over a link to `contract/openapi.json`; runtime 1.12.1, URLSession transport 1.3.1; `BearerTokenMiddleware`, `ServerEventReading`. A second test target, `ContractShapesTests`, generates types from the tests' shape contract (`tests/contractShapes/`) to prove shapes the contract will need (a number-or-string sort key, an `Int`, a concrete alias of a generic). macOS 26, swift-tools-version 6.2. CI builds and tests it on `macos-26` with `--force-resolved-versions`, caching `.build`. The package imports `HTTPTypes` and `OpenAPIRuntime` through the approved packages without declaring swift-http-types. |
 
 ---
 
@@ -668,10 +680,13 @@ then-current release in the same major version.
 **N1 is done (2026-09-25):** the sidecar server, on `feature/swiftui-n1-sidecar` with its PR into `feature/swiftui`
 (section 5.1, "As built"; the kill-mid-import check in section 5.3).
 
-**Next: N2, the contract pipeline** (section 4.3). Open a fresh session on `feature/swiftui` (after the N1 PR merges)
-and say **"Continue the SwiftUI rebuild at N2 (docs/SWIFTUI_REBUILD.md)."** Branch `feature/swiftui-n2-contract` from
-`feature/swiftui` and open its PR into `feature/swiftui`. N2 describes the N1 event names (`ServerEvent` in
-`server/serverEvents.ts`) in the spec and adds the approved npm dev dependencies and Swift packages (section 9).
+**N2 is done (2026-09-25):** the contract pipeline, on `feature/swiftui-n2-contract` with its PR into `feature/swiftui`
+(section 4.3, "As built").
+
+**Next: N3, the app skeleton** (sections 6 and 9). Open a fresh session on `feature/swiftui` (after the N2 PR merges)
+and say **"Continue the SwiftUI rebuild at N3 (docs/SWIFTUI_REBUILD.md)."** Branch `feature/swiftui-n3-skeleton` from
+`feature/swiftui` and open its PR into `feature/swiftui`. N3 builds on PennantAPI and the operations N2 described; a
+route the skeleton needs that is not in `server/contract/routes.ts` is added there first, then `npm run contract:build`.
 
 Read first: AGENTS.md, this document, D-001, D-008, D-018, D-020, D-043, D-046, D-049, D-052 (with its
 amendments), D-054 and D-055 to D-060.

@@ -1,6 +1,8 @@
 import type { Request, Response } from 'express';
 import type { ImportProgress, ImportResult } from './importer.js';
 import type { JobStatus } from './jobs.js';
+import type { ServerStatus } from './api.js';
+import type { Integer } from './contract/primitives.js';
 
 /**
  * What the server tells a connected app as it happens, over `GET /api/v2/events` (server-sent events, D-055).
@@ -14,12 +16,22 @@ import type { JobStatus } from './jobs.js';
  * know, so new events can be added without breaking an older app.
  */
 export type ServerEvent =
-  | { type: 'hello'; status: unknown }
-  | { type: 'import-started'; startedAt: string }
-  | { type: 'import-progress'; progress: ImportProgress }
-  | { type: 'import-finished'; lastImport: ImportResult | null; error: string | null }
-  | { type: 'export-pending'; since: string }
-  | { type: 'job'; kind: string; orgId: number; status: JobStatus };
+  | HelloEvent
+  | ImportStartedEvent
+  | ImportProgressEvent
+  | ImportFinishedEvent
+  | ExportPendingEvent
+  | JobEvent;
+
+/** The first event on every stream: the `/api/status` snapshot, so nothing is missed between loading and listening. */
+export interface HelloEvent { type: 'hello'; status: ServerStatus }
+export interface ImportStartedEvent { type: 'import-started'; startedAt: string }
+export interface ImportProgressEvent { type: 'import-progress'; progress: ImportProgress }
+export interface ImportFinishedEvent { type: 'import-finished'; lastImport: ImportResult | null; error: string | null }
+/** OOTP has written a fresh export the server has not imported yet. */
+export interface ExportPendingEvent { type: 'export-pending'; since: string }
+/** A background job (storylines, the briefing) changed state for one club. */
+export interface JobEvent { type: 'job'; kind: string; orgId: Integer; status: JobStatus }
 
 type Listener = (event: ServerEvent) => void;
 const listeners = new Set<Listener>();
@@ -65,7 +77,7 @@ export function progressThrottle(send: (p: ImportProgress) => void, now: () => n
 const HEARTBEAT_MS = 15_000;
 
 /** The `GET /api/v2/events` handler: a `hello` with the current status, then every event as it happens. */
-export function eventStream(snapshot: () => unknown) {
+export function eventStream(snapshot: () => ServerStatus) {
   return (req: Request, res: Response): void => {
     res.status(200).set({
       'content-type': 'text/event-stream; charset=utf-8',

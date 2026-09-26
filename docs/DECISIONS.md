@@ -2094,8 +2094,11 @@ only the part the GM sees is rebuilt.
 
 ## D-056 — The presentation contract: the server writes every sentence
 
-**Status:** Accepted in direction by the owner (2026-09-25); drafted at N0. **Implementation:** Not started (milestones N2
-and N4, then per department). Design: SWIFTUI_REBUILD.md section 4.
+**Status:** Accepted in direction by the owner (2026-09-25); drafted at N0. **Implementation:** N2, the pipeline
+(2026-09-25): `server/contract/`, `npm run contract:build` and the committed `contract/openapi.json`, the drift, coverage,
+live-shape (ajv) and banned-jargon tests (`tests/contract.test.ts`, `tests/bannedJargon.ts`), and the generated Swift
+client `macos/Packages/PennantAPI`, built in CI. The spec describes `/api/v2/events` and the reused routes the app
+skeleton needs. `Claim`, `Row` and `Cell` arrive at N4, then per department. Design: SWIFTUI_REBUILD.md section 4.
 
 About a quarter of the prose the GM reads is authored in React today (label maps, word builders, the glossary, the stat
 catalog). Two clients cannot be allowed to disagree, and the plain-language rule (AGENTS.md "Writing for the GM") must be
