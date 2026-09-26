@@ -13,6 +13,7 @@
 
 // Primitives
 export type { GameDate } from '../dataFreshness.js';
+export type { Integer } from './primitives.js';
 
 // Errors
 export type { ApiError, Ok } from '../api.js';

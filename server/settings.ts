@@ -15,6 +15,7 @@ import {
   resolvePhilosophy,
   type PhilosophyProfile,
 } from './philosophy.js';
+import type { Integer } from './contract/primitives.js';
 
 export const AI_FEATURES = ['briefing', 'trade', 'storylines', 'chat'] as const;
 export type AiFeatureId = (typeof AI_FEATURES)[number];
@@ -46,7 +47,7 @@ export function isAiFeatureId(value: unknown): value is AiFeatureId {
 export interface Settings {
   autoImport: boolean;
   useTeamColors: boolean;
-  defaultOrgId: number | null;
+  defaultOrgId: Integer | null;
   /** 'system' follows the OS setting and changes with it. */
   theme: 'system' | 'dark' | 'light';
   /** Model id used by every AI feature. See models.ts for the picker's list. */

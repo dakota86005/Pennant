@@ -56,6 +56,7 @@ import { farmRoutes } from './farmRoutes.js';
 import { appInfo, type AppInfo } from './appInfo.js';
 import { scoutedDevelopmentRoutes } from './scoutedDevelopment.js';
 import { eventStream, progressThrottle, publish } from './serverEvents.js';
+import type { Integer } from './contract/primitives.js';
 
 export const api = Router();
 api.use(logoRoutes);
@@ -392,7 +393,7 @@ export interface ServerStatus {
   /** Changes with the save, and rides along on every logo URL. */
   logoToken: string;
   /** The top of the rating scale the save shows ratings on. */
-  ratingScaleMax: number;
+  ratingScaleMax: Integer;
 }
 
 /** A request the server accepted, with nothing more to say. */

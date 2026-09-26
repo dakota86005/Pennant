@@ -20,6 +20,8 @@
  * that: a log dated the CSV's own current date is not "ahead" of the CSV.
  */
 
+import type { Integer } from './contract/primitives.js';
+
 export type RosterEvidenceLevel = 'current' | 'partial' | 'stale' | 'unavailable';
 
 /**
@@ -55,7 +57,7 @@ export interface SourceFreshness {
   state: SourceState;
   /** Simulated-through date on the common basis, ISO. */
   through: GameDate | null;
-  lagDays: number;
+  lagDays: Integer;
 }
 
 export interface FreshnessAssessment {

@@ -612,7 +612,7 @@
                 "description": "Simulated-through date on the common basis, ISO."
               },
               "lagDays": {
-                "type": "number"
+                "$ref": "#/components/schemas/Integer"
               }
             },
             "required": [
@@ -634,7 +634,7 @@
                 "description": "Simulated-through date on the common basis, ISO."
               },
               "lagDays": {
-                "type": "number"
+                "$ref": "#/components/schemas/Integer"
               }
             },
             "required": [
@@ -748,14 +748,14 @@
             "description": "The table being written, as OOTP names the file."
           },
           "fileIndex": {
-            "type": "number",
+            "$ref": "#/components/schemas/Integer",
             "description": "1-based, so it reads as \"12 of 70\" without arithmetic."
           },
           "files": {
-            "type": "number"
+            "$ref": "#/components/schemas/Integer"
           },
           "rows": {
-            "type": "number",
+            "$ref": "#/components/schemas/Integer",
             "description": "Rows written so far, across every table."
           },
           "phase": {
@@ -805,10 +805,10 @@
         "type": "object",
         "properties": {
           "tables": {
-            "type": "number"
+            "$ref": "#/components/schemas/Integer"
           },
           "rows": {
-            "type": "number"
+            "$ref": "#/components/schemas/Integer"
           },
           "startedAt": {
             "type": "string"
@@ -825,7 +825,7 @@
                   "type": "string"
                 },
                 "rows": {
-                  "type": "number"
+                  "$ref": "#/components/schemas/Integer"
                 }
               },
               "required": [
@@ -861,6 +861,10 @@
           "startedAt"
         ]
       },
+      "Integer": {
+        "type": "integer",
+        "description": "A whole number: an id, a count, a season, a number of days. The spec says `type: integer`, so the Mac app reads an `Int`, not a `Double`. A true decimal (a rate, a slider, dollars) stays `number`. Named `Integer`, never `Int`, which the Swift generator would rename."
+      },
       "JobEvent": {
         "type": "object",
         "properties": {
@@ -874,7 +878,7 @@
             "type": "string"
           },
           "orgId": {
-            "type": "number"
+            "$ref": "#/components/schemas/Integer"
           },
           "status": {
             "$ref": "#/components/schemas/JobStatus"
@@ -1013,15 +1017,9 @@
             "description": "How far the database has demonstrably been written. Days with no transactions (off-season, an off-day) leave `lastTransactionDate` behind without the log being behind, so this takes the newest of everything."
           },
           "season": {
-            "type": [
-              "number",
-              "null"
-            ]
+            "$ref": "#/components/schemas/Integer"
           }
-        },
-        "required": [
-          "season"
-        ]
+        }
       },
       "LogSourceStatus": {
         "type": "object",
@@ -1099,58 +1097,58 @@
             ],
             "properties": {
               "events": {
-                "type": "number"
+                "$ref": "#/components/schemas/Integer"
               },
               "unsupported": {
-                "type": "number"
+                "$ref": "#/components/schemas/Integer"
               },
               "byKind": {
                 "type": "object",
                 "properties": {
                   "optioned": {
-                    "type": "number"
+                    "$ref": "#/components/schemas/Integer"
                   },
                   "recalled": {
-                    "type": "number"
+                    "$ref": "#/components/schemas/Integer"
                   },
                   "purchased_contract": {
-                    "type": "number"
+                    "$ref": "#/components/schemas/Integer"
                   },
                   "designated_for_assignment": {
-                    "type": "number"
+                    "$ref": "#/components/schemas/Integer"
                   },
                   "il_placed": {
-                    "type": "number"
+                    "$ref": "#/components/schemas/Integer"
                   },
                   "il_activated": {
-                    "type": "number"
+                    "$ref": "#/components/schemas/Integer"
                   },
                   "restricted_list_placed": {
-                    "type": "number"
+                    "$ref": "#/components/schemas/Integer"
                   },
                   "restricted_list_activated": {
-                    "type": "number"
+                    "$ref": "#/components/schemas/Integer"
                   },
                   "released": {
-                    "type": "number"
+                    "$ref": "#/components/schemas/Integer"
                   },
                   "rule5_return": {
-                    "type": "number"
+                    "$ref": "#/components/schemas/Integer"
                   },
                   "rehab_assigned": {
-                    "type": "number"
+                    "$ref": "#/components/schemas/Integer"
                   },
                   "rehab_received": {
-                    "type": "number"
+                    "$ref": "#/components/schemas/Integer"
                   },
                   "rehab_returned": {
-                    "type": "number"
+                    "$ref": "#/components/schemas/Integer"
                   },
                   "minor_league_assignment": {
-                    "type": "number"
+                    "$ref": "#/components/schemas/Integer"
                   },
                   "unsupported": {
-                    "type": "number"
+                    "$ref": "#/components/schemas/Integer"
                   }
                 }
               }
@@ -1209,7 +1207,7 @@
         "type": "object",
         "properties": {
           "team_id": {
-            "type": "number"
+            "$ref": "#/components/schemas/Integer"
           },
           "label": {
             "type": "string"
@@ -1630,7 +1628,7 @@
             "type": "string"
           },
           "csvCount": {
-            "type": "number"
+            "$ref": "#/components/schemas/Integer"
           },
           "saves": {
             "type": "array",
@@ -1648,7 +1646,6 @@
         ]
       },
       "RosterEvidenceLevel": {
-        "description": "How current Pennant's roster evidence is.\n\nThree sources each describe the game at some moment, and all are compared on one basis: the last in-game day whose games have been simulated.\n\n  OOTP save        `settings/last_date_simulated.dat`, read directly.   CSV export       `leagues.current_date` names the day about to be played,                    so the export reflects the day before it. Checked on a                    real save: current_date 2026-5-16, last played game                    2026-5-15, last_date_simulated 15 May.   Transaction log  how far the database has been written (see                    `LogCoverage`), not merely its newest transaction row.\n\nWall-clock file times are never used to judge freshness. They are shown as diagnostics only.\n\nMoves made on the current, not-yet-simulated day are dated that day in the log and are in an export taken afterwards. The comparisons below allow for that: a log dated the CSV's own current date is not \"ahead\" of the CSV.",
         "anyOf": [
           {
             "type": "string",
@@ -1694,7 +1691,7 @@
             "type": "string"
           },
           "csvCount": {
-            "type": "number"
+            "$ref": "#/components/schemas/Integer"
           },
           "csvLastModified": {
             "type": [
@@ -1765,7 +1762,7 @@
           "path",
           "exists"
         ],
-        "description": "The locations we scan, with a human label and whether each exists here. Shown to the user when auto-detection finds nothing, so they know where we looked before being asked to browse for the folder themselves."
+        "description": "One place the server looks for saves: a human label, the folder, and whether it exists here."
       },
       "SearchLocations": {
         "type": "object",
@@ -1881,7 +1878,7 @@
             "description": "Changes with the save, and rides along on every logo URL."
           },
           "ratingScaleMax": {
-            "type": "number",
+            "$ref": "#/components/schemas/Integer",
             "description": "The top of the rating scale the save shows ratings on."
           }
         },
@@ -1912,10 +1909,7 @@
             "type": "boolean"
           },
           "defaultOrgId": {
-            "type": [
-              "number",
-              "null"
-            ]
+            "$ref": "#/components/schemas/Integer"
           },
           "theme": {
             "description": "'system' follows the OS setting and changes with it.",
@@ -2010,7 +2004,6 @@
         "required": [
           "autoImport",
           "useTeamColors",
-          "defaultOrgId",
           "theme",
           "model",
           "provider",
@@ -2048,7 +2041,7 @@
         "type": "object",
         "properties": {
           "attempts": {
-            "type": "number"
+            "$ref": "#/components/schemas/Integer"
           },
           "walCopied": {
             "type": "boolean"
@@ -2058,10 +2051,10 @@
             "description": "Whether the source had a `-shm` file. It is never copied."
           },
           "dbBytes": {
-            "type": "number"
+            "$ref": "#/components/schemas/Integer"
           },
           "walBytes": {
-            "type": "number"
+            "$ref": "#/components/schemas/Integer"
           },
           "sourceModified": {
             "type": "object",

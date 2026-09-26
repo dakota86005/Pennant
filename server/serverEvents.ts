@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import type { ImportProgress, ImportResult } from './importer.js';
 import type { JobStatus } from './jobs.js';
 import type { ServerStatus } from './api.js';
+import type { Integer } from './contract/primitives.js';
 
 /**
  * What the server tells a connected app as it happens, over `GET /api/v2/events` (server-sent events, D-055).
@@ -30,7 +31,7 @@ export interface ImportFinishedEvent { type: 'import-finished'; lastImport: Impo
 /** OOTP has written a fresh export the server has not imported yet. */
 export interface ExportPendingEvent { type: 'export-pending'; since: string }
 /** A background job (storylines, the briefing) changed state for one club. */
-export interface JobEvent { type: 'job'; kind: string; orgId: number; status: JobStatus }
+export interface JobEvent { type: 'job'; kind: string; orgId: Integer; status: JobStatus }
 
 type Listener = (event: ServerEvent) => void;
 const listeners = new Set<Listener>();

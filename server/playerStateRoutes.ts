@@ -27,10 +27,6 @@ playerStateRoutes.get('/player-state/:playerId', (req, res) => {
   res.json(picture);
 });
 
-/**
- * Fallback only: names the `<save>.lg` folder by hand when it cannot be derived
- * from the export's location. Clearing it (empty path) returns to automatic.
- */
 /** The `<save>.lg` folder named by hand (`POST /api/save-source`); empty or null returns to automatic. */
 export interface SaveSourceRequest {
   lgPath?: string | null;
@@ -42,6 +38,10 @@ export interface SaveSourceResult {
   status: DataStatus;
 }
 
+/**
+ * Fallback only: names the `<save>.lg` folder by hand when it cannot be derived
+ * from the export's location. Clearing it (empty path) returns to automatic.
+ */
 playerStateRoutes.post('/save-source', (req, res: Response<SaveSourceResult | ApiError>) => {
   const { lgPath } = req.body as SaveSourceRequest;
   const config = loadConfig();

@@ -1,12 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import type { Integer } from './contract/primitives.js';
 
 export interface SaveInfo {
   name: string;
   lgPath: string;
   csvDir: string;
-  csvCount: number;
+  csvCount: Integer;
   csvLastModified: string | null;
 }
 
@@ -30,17 +31,18 @@ function saveGameRoots(): string[] {
   return roots.filter((r) => fs.existsSync(r));
 }
 
-/**
- * The locations we scan, with a human label and whether each exists here.
- * Shown to the user when auto-detection finds nothing, so they know where we
- * looked before being asked to browse for the folder themselves.
- */
+/** One place the server looks for saves: a human label, the folder, and whether it exists here. */
 export interface SearchLocation {
   label: string;
   path: string;
   exists: boolean;
 }
 
+/**
+ * The locations we scan, with a human label and whether each exists here.
+ * Shown to the user when auto-detection finds nothing, so they know where we
+ * looked before being asked to browse for the folder themselves.
+ */
 export function searchLocations(): SearchLocation[] {
   const home = os.homedir();
   const mac = [
@@ -71,7 +73,7 @@ export interface ResolveResult {
   ok: boolean;
   csvDir?: string;
   saveName?: string;
-  csvCount?: number;
+  csvCount?: Integer;
   /** Saves found inside the chosen folder, when it holds several. */
   saves?: SaveInfo[];
   error?: string;

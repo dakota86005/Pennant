@@ -25,6 +25,7 @@ import type { LiveDatabaseFiles } from './ootpSave.js';
 import { withLiveSnapshot, type SnapshotMeta, type SnapshotOptions } from './liveLogSnapshot.js';
 import type { Provenance, UnknownReason } from './provenance.js';
 import type { GameDate } from './dataFreshness.js';
+import type { Integer } from './contract/primitives.js';
 
 export type TransactionKind =
   | 'optioned'
@@ -322,7 +323,7 @@ export interface LogCoverage {
    * without the log being behind, so this takes the newest of everything.
    */
   coveredThrough: GameDate | null;
-  season: number | null;
+  season: Integer | null;
 }
 
 export interface TransactionLog {

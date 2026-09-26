@@ -24,6 +24,7 @@ import {
   assessFreshness, parseGameDate,
   type FreshnessAssessment, type GameDate, type LogUnavailableReason, type SourceState,
 } from './dataFreshness.js';
+import type { Integer } from './contract/primitives.js';
 
 export interface LogSourceStatus {
   /** The live transaction database exists in the save's temp folder. */
@@ -34,7 +35,7 @@ export interface LogSourceStatus {
   files: { db: boolean; wal: boolean; shm: boolean } | null;
   snapshot: SnapshotMeta | null;
   coverage: LogCoverage | null;
-  counts: { events: number; unsupported: number; byKind: Partial<Record<TransactionKind, number>> } | null;
+  counts: { events: Integer; unsupported: Integer; byKind: Partial<Record<TransactionKind, Integer>> } | null;
   unsupportedSamples: string[];
 }
 

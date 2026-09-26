@@ -26,13 +26,14 @@ import {
   expressAssignmentPreference,
 } from './assignmentPreference.js';
 import { openDevelopmentalContext } from './developmentalContext.js';
+import type { Integer } from './contract/primitives.js';
 
 export const orgRoutes = Router();
 
 
 /** A major-league club as `GET /api/orgs` lists it. */
 export interface Org {
-  team_id: number;
+  team_id: Integer;
   label: string;
   isHuman: boolean;
   colors: { bg: string | null; fg: string | null; secondary: string | null; cap: string | null };
