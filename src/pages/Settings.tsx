@@ -44,7 +44,7 @@ const AI_FEATURE_OPTIONS: Array<{
 
 interface ApiKeyStatus {
   configured: boolean;
-  source: 'env' | 'stored' | null;
+  source: 'env' | 'stored' | 'keychain' | null;
   hint: string | null;
   encrypted: boolean;
   storageLabel?: string;

@@ -11,6 +11,9 @@ build/value-refit-worker.cjs
 build/value-refit-worker.cjs.map
 build/calibration-refit-worker.cjs
 build/calibration-refit-worker.cjs.map
+# The Mac app's server bundle and its pinned Node runtime (npm run build:sidecar, npm run sidecar:node)
+build/sidecar/
+build/node-runtime/
 release/
 
 # Local data — imported league database, rating history, AI caches

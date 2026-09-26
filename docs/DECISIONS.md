@@ -2058,7 +2058,9 @@ production bundle grew by 18.7 kB (6.4 kB gzip: 518.4 to 537.1 kB, 149.7 to 156.
 ## D-055 — Pennant for Mac: a native SwiftUI client over the same server, run as a sidecar
 
 **Status:** Accepted in direction by the owner (2026-09-25); drafted at milestone N0, and its details settle in the milestone
-that builds each part. **Implementation:** Not started. Design: [SWIFTUI_REBUILD.md](SWIFTUI_REBUILD.md). Refines D-008
+that builds each part. **Implementation:** N1, the sidecar server (2026-09-25): `server/sidecar.ts`, the per-launch token,
+the data-folder lock, injected keys, `/api/v2/events`, the sidecar bundle and the pinned Node runtime. No Swift code yet.
+Design: [SWIFTUI_REBUILD.md](SWIFTUI_REBUILD.md). Refines D-008
 ("Electron embeds the same server and UI") for the Mac app; D-054 governs the React UI until cutover.
 
 The owner asked for Pennant to feel like a native Mac app, deep but approachable, and chose a full SwiftUI rebuild over

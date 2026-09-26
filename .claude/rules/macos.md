@@ -1,6 +1,12 @@
 ---
 paths:
   - "docs/SWIFTUI_REBUILD.md"
+  - "server/sidecar.ts"
+  - "server/apiToken.ts"
+  - "server/dataLock.ts"
+  - "server/serverEvents.ts"
+  - "scripts/build-sidecar.mjs"
+  - "scripts/fetch-node-runtime.mjs"
 ---
 
 # Pennant for Mac (the SwiftUI rebuild): working reminder
@@ -27,8 +33,11 @@ and those documents differ, they win. The presentation cases are in `docs/BEHAVI
 - **Never commit** save data, fixtures from a private save (fixtures come from `tests/syntheticSave.ts`), signing
   material, provisioning profiles, team secrets or `xcuserdata`.
 - New Swift or npm dependencies need the owner's approval (SWIFTUI_REBUILD.md section 9 lists the approved set).
+- **The sidecar (N1)** is the same server started by the app: token and keys on stdin, never in the environment;
+  `PENNANT_READY` / `PENNANT_FAILED` on stdout; a clean stop on SIGTERM or stdin closing; the data-folder lock
+  (`server.lock`) on every server start. SWIFTUI_REBUILD.md section 5.1 "As built" has the protocol and exit codes.
 - **Widen `paths:` as the rebuild lands.** Add `macos/**`, `contract/**`, `server/contract/**`,
-  `server/presentation/**`, `server/sidecar.ts` and `tests/bannedJargon.ts` in the milestone that creates the first
-  tracked file under each; `tests/agentInstructions.test.ts` rejects a path that matches nothing yet.
+  `server/presentation/**` and `tests/bannedJargon.ts` in the milestone that creates the first tracked file under
+  each; `tests/agentInstructions.test.ts` rejects a path that matches nothing yet.
 - Verify with `macos/scripts/test.sh` plus the server baseline; visual checks come from XCUITest and
   `ImageRenderer` PNGs, not from asking the owner to look.

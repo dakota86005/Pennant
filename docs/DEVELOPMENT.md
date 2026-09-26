@@ -166,6 +166,40 @@ in the Mac app's Keychain item is not in the Electron app; enter it again there.
 
 Undoing the cutover after it merges is `git revert` of that one PR.
 
+### The sidecar
+
+The Mac app runs this server as a child process (`server/sidecar.ts`, SWIFTUI_REBUILD.md section 5). Until the Swift
+app exists (N3), build and run it by hand:
+
+```bash
+npm run build:sidecar
+```
+
+```bash
+npm run sidecar:node
+```
+
+The first writes `build/sidecar/` (the bundled server and its two refit workers); the second fetches Node 24.21.0 for
+Apple Silicon into `build/node-runtime/pennant-server`, checked against a pinned SHA-256. Both folders are ignored by
+Git. To run the bundle, point it at a scratch data folder and send the handshake on stdin; it answers with a
+`PENNANT_READY` line holding the port, and every request needs `Authorization: Bearer <token>`:
+
+```bash
+echo '{"token":"0123456789abcdef0123456789abcdef"}' | OOTP_FO_DATA_DIR=/tmp/pennant-scratch build/node-runtime/pennant-server build/sidecar/server.cjs
+```
+
+That example stops at once, because stdin closes after the one line; the app keeps stdin open for as long as it wants
+the server. The bundle loads better-sqlite3 from the repository's `node_modules`, so it needs the Node build of the
+native module (`npm run abi:node`), not Electron's.
+
+**The data-folder lock.** Every server start, `npm run dev` included, takes `server.lock` in its data folder. A second
+server on the same folder refuses to start and names the one holding it. A lock left by a process that has gone is
+taken over on the next start; one held by a live process that is not Pennant (a reused process id) needs the file
+deleting by hand, as the refusal says.
+
+**An interrupted import.** If the server stops while importing, or the import fails partway, `import-in-progress.json` stays in the data folder,
+`/api/status` reports `importInterruptedSince`, and the next start imports the export again.
+
 ## Versions
 
 Pennant has its own version lineage starting at **0.1.0** (D-049); it is unrelated to upstream's numbers.

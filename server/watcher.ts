@@ -1,4 +1,5 @@
 import chokidar, { type FSWatcher } from 'chokidar';
+import { publish } from './serverEvents.js';
 
 let watcher: FSWatcher | null = null;
 let debounce: ReturnType<typeof setTimeout> | null = null;
@@ -51,6 +52,7 @@ export function startWatcher(csvDir: string): void {
     if (debounce) clearTimeout(debounce);
     debounce = setTimeout(() => {
       pendingSince = new Date().toISOString();
+      publish({ type: 'export-pending', since: pendingSince });
       console.log('[watch] fresh CSV export detected — offering a refresh');
     }, 3000);
   });

@@ -1,7 +1,8 @@
 # Pennant for Mac: the SwiftUI rebuild
 
 **Status:** design, 2026-09-25. Milestone N0 is done (2026-09-25: the restore point, the decisions D-055 to D-060 and
-the D-052 amendment, the behaviour cases, the ground rules; section 12). Nothing else in this document is implemented yet. It supersedes the UI parts of the
+the D-052 amendment, the behaviour cases, the ground rules; section 12). Milestone N1 is done (2026-09-25: the sidecar
+server, section 5; "As built" below). Nothing else in this document is implemented yet. It supersedes the UI parts of the
 V2 web plan (`~/.claude/plans/okay-can-we-please-effervescent-cherny.md`, sections 3 and 4). The server-side
 parts of that plan (the Front Office contract, the Club Profile, the roster map, the horizon board, the league
 wire, snapshots and the GM's desk) carry over unchanged in intent and are scheduled here.
@@ -355,6 +356,26 @@ Everything new lives under `/api/v2/`, so the React app keeps working on the old
 - **Injected keys:** a key source beside `setSecretCrypto`. Keys live in the Mac Keychain and are handed over on
   stdin, never through environment variables (another process run by the same user could read those).
 
+**As built at N1 (2026-09-25).** `tests/sidecarServer.test.ts` (in process) and `tests/sidecarProcess.test.ts` (the
+real process under tsx) hold each point.
+
+| Piece | Where | What it does |
+|---|---|---|
+| Entry | `server/sidecar.ts` | Sets `OOTP_FO_EMBEDDED`, `OOTP_FO_SIDECAR`, `OOTP_FO_BIND=127.0.0.1` and an empty `OOTP_FO_ALLOWED_HOSTS` before any server module loads (the `.env` loader fills only unset variables, so a `.env` cannot widen them). Requires `OOTP_FO_DATA_DIR`; never falls back to a folder inside the app. |
+| Handshake | stdin, first line | `{"token":"…","keys":{"anthropic":"…"}}` within 30 s; a token under 32 characters, bad JSON or stdin closing first fails. Later lines `{"keys":{…}}` replace the keys without a restart (the GM changed a key in Settings). |
+| Ready and failure lines | stdout | `PENNANT_READY {"port","pid","version"}`, or `PENNANT_FAILED {"reason","message"}` before exiting. Exit codes: 0 stopped cleanly, 1 could not start, 2 no usable handshake, 3 the data folder is in use (`reason: "locked"`, which `ServerController` shows instead of retrying). |
+| Stopping | `shutdownServer()` in `server/index.ts` | SIGTERM, SIGINT, stdin closing, or the parent gone (`ppid === 1`, checked every 2 s) stop listening, drop open connections (event streams), stop the watcher, close both databases and release the lock; exit 0, or exit anyway after 4 s. |
+| Port | `portFromEnv` in `server/index.ts` | `PORT=0` now means any free port; the sidecar calls `startServer(0)`. |
+| Token | `server/apiToken.ts` | Bearer token on `/api`, after the Host check, compared as SHA-256 digests with `timingSafeEqual`. No token set (Electron, `npm run dev`): no check. The assistant's tools and the site export send it (`ownApiHeaders`). |
+| Lock | `server/dataLock.ts` | `server.lock` (`pid`, `startedAt`, which app) taken by `startServer`, so by Electron, the sidecar and `npm run dev` alike. A lock whose process has gone, or that cannot be read, is taken over; a running holder is refused by name. Electron shows the refusal instead of retrying another port. |
+| Keys | `setInjectedKeys` in `server/settings.ts` | Once set, keys come from the hand-over (an environment variable still wins, as before), key status says `source: "keychain"`, and saving or clearing a key in Settings changes only the in-memory set: the sidecar never writes `credentials.json`. The app stores a newly saved key in the Keychain itself (N13). |
+| Events | `server/serverEvents.ts`, `GET /api/v2/events` | Server-sent events: `hello` (the `/api/status` snapshot), `import-started`, `import-progress` (at most every 200 ms, but always on a new file or phase), `import-finished`, `export-pending`, `job`. A 15 s comment keeps the stream alive. Desk changes and freshness beyond the pending export arrive with N7. |
+| Bundle | `npm run build:sidecar` → `build/sidecar/` | `server.cjs`, both refit workers beside it, and a `package.json` with the version and the runtime dependencies (not `electron-updater`). Shares its esbuild settings with the Electron build (`scripts/lib/serverBundle.mjs`). |
+| Node runtime | `npm run sidecar:node` → `build/node-runtime/` | Node 24.21.0 darwin-arm64, the archive checked against a pinned SHA-256 before extraction and the binary against the pinned version after, renamed `pennant-server`, with Node's licence beside it. |
+
+The bundled `server.cjs` under the pinned binary was run against the test league with a real hand-over: every route
+answered, better-sqlite3 loaded, and the calibration refit worker ran from beside the bundle.
+
 ### 5.2 Inside the bundle (arm64)
 
 | Path | Contents |
@@ -393,7 +414,20 @@ A stable Developer ID signature means these prompts and Keychain prompts appear 
 2. **Crash:** detected via `terminationHandler`. Restart with backoff (1, 2, 4 … 30 s). After 5 crashes in 2
    minutes, stop and show a `ContentUnavailableView` naming the data folder, with "Show Log" and "Try Again".
 3. **Quit:** `applicationShouldTerminate` returns `.terminateLater`, then SIGTERM, a wait of up to 5 s, SIGKILL,
-   and then reply. Whether an import killed halfway is transactionally safe must be verified in N1.
+   and then reply.
+
+   **The kill-mid-import check (N1, 2026-09-25).** An import killed partway is safe for the *file* and was not safe
+   for the *data*. The importer replaces one table per file, dropping and creating it outside the file's
+   transaction; SQLite's write-ahead log rolls back the open transaction, so the database always opens and passes
+   `integrity_check`, but it is left as neither export: the files already replaced are the new export's, the one
+   being written is incomplete, the rest are the old export's, and `last-import.json` still describes the old one.
+   N1 records the interruption instead of changing the importer: `import-in-progress.json` is written as an import
+   starts and removed only when it completes (an import that throws partway leaves the same mix, so it keeps the
+   marker too), `/api/status` reports `importInterruptedSince`, and the next start imports the export again (without
+   the export folder, it reports and waits). A clean stop during an import
+   abandons it the same way. `tests/sidecarProcess.test.ts` kills a real sidecar while it writes a 400,000-row table
+   and checks all of it. Making the import itself all-or-nothing (one transaction, or staging tables swapped in at
+   the end) remains possible later; it was not needed for safety.
 4. **Logs:** captured to `~/Library/Logs/Pennant/server.log` (rotated), viewable from Help ▸ Server Log.
 
 ---
@@ -631,9 +665,13 @@ then-current release in the same major version.
    certificates on the paid team, and Xcode knows the team, so N3 can sign development builds and use the App Group.
    The five release secrets (DEVELOPMENT.md "macOS signing") are still to be added before N14.
 
-**Next: N1, the sidecar server** (section 5.1). Open a fresh session on `feature/swiftui` and say **"Continue the
-SwiftUI rebuild at N1 (docs/SWIFTUI_REBUILD.md)."** Branch `feature/swiftui-n1-sidecar` from `feature/swiftui` and open
-its PR into `feature/swiftui`.
+**N1 is done (2026-09-25):** the sidecar server, on `feature/swiftui-n1-sidecar` with its PR into `feature/swiftui`
+(section 5.1, "As built"; the kill-mid-import check in section 5.3).
+
+**Next: N2, the contract pipeline** (section 4.3). Open a fresh session on `feature/swiftui` (after the N1 PR merges)
+and say **"Continue the SwiftUI rebuild at N2 (docs/SWIFTUI_REBUILD.md)."** Branch `feature/swiftui-n2-contract` from
+`feature/swiftui` and open its PR into `feature/swiftui`. N2 describes the N1 event names (`ServerEvent` in
+`server/serverEvents.ts`) in the spec and adds the approved npm dev dependencies and Swift packages (section 9).
 
 Read first: AGENTS.md, this document, D-001, D-008, D-018, D-020, D-043, D-046, D-049, D-052 (with its
 amendments), D-054 and D-055 to D-060.
