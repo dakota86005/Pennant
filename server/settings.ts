@@ -1,9 +1,9 @@
-import { Router } from 'express';
+import { Router, type Response } from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
 import { DATA_DIR, loadConfig } from './config.js';
 import {
-  DEFAULT_MODEL, PROVIDERS, isProviderId, providerFor, type ProviderId,
+  DEFAULT_MODEL, PROVIDERS, isProviderId, providerFor, type ProviderId, type ProviderInfo,
 } from './providers.js';
 import { forgetUnusable } from './unusable.js';
 import { startWatcher, stopWatcher } from './watcher.js';
@@ -354,7 +354,12 @@ export interface KeyStatus {
   encrypted: boolean;
 }
 
-export function apiKeyStatus(provider: ProviderId = activeProvider()): KeyStatus & { storageLabel: string } {
+/** The active provider's key state, with where keys are kept (`GET /api/settings`). */
+export interface ApiKeyStatus extends KeyStatus {
+  storageLabel: string;
+}
+
+export function apiKeyStatus(provider: ProviderId = activeProvider()): ApiKeyStatus {
   const storageLabel = injected ? injectedLabel : crypto ? crypto.label : 'a permission-restricted file (no OS keychain available)';
   return { ...statusOf(provider), storageLabel };
 }
@@ -385,9 +390,27 @@ export function allKeyStatus(): Record<ProviderId, KeyStatus> {
 
 // ── Routes ──────────────────────────────────────────────────────────────
 
+/** What `GET /api/settings` serves. */
+export interface SettingsResponse {
+  settings: Settings;
+  apiKey: ApiKeyStatus;
+  dataDir: string;
+}
+
+/** A provider on offer, with the model it would use (`GET /api/settings/providers`). */
+export interface ProviderChoice extends ProviderInfo {
+  model: string;
+}
+
+/** What `GET /api/settings/providers` serves: the providers on offer and every provider's key state. */
+export interface ProvidersResponse {
+  providers: ProviderChoice[];
+  keys: Record<ProviderId, KeyStatus>;
+}
+
 export const settingsRoutes = Router();
 
-settingsRoutes.get('/settings', (_req, res) => {
+settingsRoutes.get('/settings', (_req, res: Response<SettingsResponse>) => {
   res.json({ settings: loadSettings(), apiKey: apiKeyStatus(), dataDir: DATA_DIR });
 });
 
@@ -633,7 +656,7 @@ settingsRoutes.delete('/settings/api-key', (req, res) => {
 });
 
 /** The choice on offer, so the Settings screen does not hard-code the list. */
-settingsRoutes.get('/settings/providers', (_req, res) => {
+settingsRoutes.get('/settings/providers', (_req, res: Response<ProvidersResponse>) => {
   res.json({
     // Each provider's resolved model travels with it, so a provider that has
     // never been chosen still shows what it would use rather than a blank

@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Response } from 'express';
 import { db, tableExists } from './db.js';
 import { loadScoutedAbilities, summarizeEvidence } from './scoutedEvidence.js';
 import { LEVEL_NAMES } from './valuation.js';
@@ -30,8 +30,16 @@ import { openDevelopmentalContext } from './developmentalContext.js';
 export const orgRoutes = Router();
 
 
+/** A major-league club as `GET /api/orgs` lists it. */
+export interface Org {
+  team_id: number;
+  label: string;
+  isHuman: boolean;
+  colors: { bg: string | null; fg: string | null; secondary: string | null; cap: string | null };
+}
+
 /** MLB parent clubs, with the human-controlled org flagged and team colors. */
-orgRoutes.get('/orgs', (_req, res) => {
+orgRoutes.get('/orgs', (_req, res: Response<Org[]>) => {
   if (!tableExists('teams')) return res.json([]);
   const rows = db
     .prepare(

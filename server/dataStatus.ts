@@ -22,7 +22,7 @@ import { readTransactionLog, type LogCoverage, type TransactionKind, type Transa
 import type { LogAvailability } from './assignmentContext.js';
 import {
   assessFreshness, parseGameDate,
-  type FreshnessAssessment, type LogUnavailableReason, type SourceState,
+  type FreshnessAssessment, type GameDate, type LogUnavailableReason, type SourceState,
 } from './dataFreshness.js';
 
 export interface LogSourceStatus {
@@ -49,14 +49,14 @@ export interface DataStatus {
     discovery: SaveDiscoveryMethod;
     discoveryNotes: string[];
     /** Last simulated in-game date (ISO), from the save itself. */
-    simulatedThrough: string | null;
+    simulatedThrough: GameDate | null;
     dateSource: string | null;
   };
   csv: {
     /** `leagues.current_date` of the imported export (ISO): the day about to be played. */
-    currentDate: string | null;
+    currentDate: GameDate | null;
     /** The last day the imported data reflects. */
-    simulatedThrough: string | null;
+    simulatedThrough: GameDate | null;
     exportedAt: string | null;
     importedAt: string | null;
   };

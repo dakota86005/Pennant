@@ -24,6 +24,7 @@ import type Database from 'better-sqlite3';
 import type { LiveDatabaseFiles } from './ootpSave.js';
 import { withLiveSnapshot, type SnapshotMeta, type SnapshotOptions } from './liveLogSnapshot.js';
 import type { Provenance, UnknownReason } from './provenance.js';
+import type { GameDate } from './dataFreshness.js';
 
 export type TransactionKind =
   | 'optioned'
@@ -310,17 +311,17 @@ function coalesce(events: TransactionEvent[]): TransactionEvent[] {
 }
 
 export interface LogCoverage {
-  firstTransactionDate: string | null;
+  firstTransactionDate: GameDate | null;
   /** The newest date on any transaction row. */
-  lastTransactionDate: string | null;
+  lastTransactionDate: GameDate | null;
   /** The newest date on any day-stamped table in the database. */
-  activityThrough: string | null;
+  activityThrough: GameDate | null;
   /**
    * How far the database has demonstrably been written. Days with no
    * transactions (off-season, an off-day) leave `lastTransactionDate` behind
    * without the log being behind, so this takes the newest of everything.
    */
-  coveredThrough: string | null;
+  coveredThrough: GameDate | null;
   season: number | null;
 }
 

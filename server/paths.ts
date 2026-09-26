@@ -35,7 +35,13 @@ function saveGameRoots(): string[] {
  * Shown to the user when auto-detection finds nothing, so they know where we
  * looked before being asked to browse for the folder themselves.
  */
-export function searchLocations(): Array<{ label: string; path: string; exists: boolean }> {
+export interface SearchLocation {
+  label: string;
+  path: string;
+  exists: boolean;
+}
+
+export function searchLocations(): SearchLocation[] {
   const home = os.homedir();
   const mac = [
     ['OOTP 27 (Mac App Store version)', 'Library/Containers/com.ootpdevelopments.ootp27macqlm/Data/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games'],
