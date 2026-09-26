@@ -67,6 +67,20 @@ private func decodedEvents(from body: String) async throws -> [Components.Schema
     return events
 }
 
+/// The payloads the real server sent on the synthetic save, captured by `tests/contract.test.ts` (`contract/fixtures/`).
+private let fixtures = URL(fileURLWithPath: #filePath)
+    .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+    .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+    .appending(path: "contract/fixtures")
+
+private func fixture(_ name: String) throws -> String {
+    try String(contentsOf: fixtures.appending(path: name), encoding: .utf8)
+}
+
+private func jsonClient(_ name: String) throws -> Client {
+    client(CannedTransport(contentType: "application/json", body: try fixture("responses/\(name).json")))
+}
+
 @Suite("PennantAPI")
 struct PennantAPITests {
     @Test("the middleware puts the bearer token on every request")
@@ -159,6 +173,70 @@ struct PennantAPITests {
         #expect(keys[0].source == nil)
         #expect(keys[1].source?.value1 == nil && keys[1].source?.value2 == "cloud")
         #expect(keys[2].source?.value1 == .keychain)
+    }
+
+    @Test("what the server sent on the synthetic save decodes through the generated client")
+    func capturedResponses() async throws {
+        #expect(try await jsonClient("getStatus").getStatus().ok.body.json.ratingScaleMax == 80)
+        #expect(try await jsonClient("listSaves").listSaves().ok.body.json.first?.name == "Test League")
+        let dataStatus = try await jsonClient("getDataStatus").getDataStatus().ok.body.json
+        #expect(dataStatus.csv.currentDate == "2040-05-06")
+        #expect(dataStatus.transactionLog.unavailableReason?.value1 == .saveNotFound)
+        #expect(try await jsonClient("getSettings").getSettings().ok.body.json.settings.theme.value1 == .system)
+        #expect(try await jsonClient("getProviders").getProviders().ok.body.json.providers.isEmpty == false)
+        let orgs = try await jsonClient("listOrgs").listOrgs().ok.body.json
+        let teamID: Int = try #require(orgs.first).teamId
+        #expect(teamID > 0)
+        #expect(orgs.contains { $0.isHuman })
+        // The POST answers, decoded as the types the spec names for them
+        let decoder = JSONDecoder()
+        for name in ["resolveFolder-export", "resolveFolder-saves", "resolveFolder-no-folder"] {
+            _ = try decoder.decode(Components.Schemas.ResolveResult.self, from: Data(try fixture("responses/\(name).json").utf8))
+        }
+        #expect(try decoder.decode(Components.Schemas.SaveSourceResult.self, from: Data(try fixture("responses/setSaveSource-cleared.json").utf8)).ok)
+        for name in ["setSaveSource-not-a-save", "setSave-no-folder", "startImport-no-save"] {
+            _ = try decoder.decode(Components.Schemas.ApiError.self, from: Data(try fixture("responses/\(name).json").utf8))
+        }
+    }
+
+    @Test("the events the server streamed on the synthetic save decode, each to its own shape")
+    func capturedEvents() async throws {
+        let events = try await decodedEvents(from: try fixture("events.sse"))
+        #expect(events.map(\.typeName) == ["hello", "import-started", "import-progress", "import-finished", "job"])
+        for event in events {
+            guard case .known = event.reading else {
+                Issue.record("\(event.typeName ?? "?") did not read as known")
+                continue
+            }
+        }
+        #expect(events[4].value6?.status.state.value1 == .done)
+        let orgID: Int? = events[4].value6?.orgId
+        #expect(orgID == 1)
+    }
+
+    @Test("an event reads as known, unknown, or known but malformed, never malformed as unknown")
+    func eventReading() async throws {
+        let events = try await decodedEvents(from: sse([
+            ("hello", #"{"type":"hello","status":\#(status)}"#),
+            ("desk-changed", #"{"type":"desk-changed","count":3}"#),
+            // A hello whose status lost a field this build requires
+            ("hello", #"{"type":"hello","status":{"app":null}}"#),
+            ("import-progress", #"{"type":"import-progress","progress":"half"}"#),
+        ]))
+        #expect(events.count == 4)
+        guard case .known(let hello) = events[0].reading else { Issue.record("hello"); return }
+        #expect(hello.value1?.status.saveName == "Test League")
+        #expect(events[1].reading == .unknown(type: "desk-changed"))
+        #expect(events[2].reading == .malformed(type: "hello"))
+        #expect(events[2].value1 == nil)
+        #expect(events[3].reading == .malformed(type: "import-progress"))
+    }
+
+    @Test("the reading knows every event shape the generated union has")
+    func readingCoversEveryShape() {
+        let names = Components.Schemas.ServerEvent.knownTypeNames
+        #expect(names.count == Components.Schemas.ServerEvent.shapeCount)
+        #expect(names == ["hello", "import-started", "import-progress", "import-finished", "export-pending", "job"])
     }
 
     @Test("a game date stays the string the server sent, unpadded")
