@@ -12,8 +12,8 @@ export interface ImportResult {
   files: Array<{ table: string; rows: Integer }>;
 }
 
-/** Where the import has got to, for a page that would rather not look frozen. */
-export interface ImportProgress {
+/** Where the import has got to, as the importer reports it. */
+export interface ImportStep {
   /** The table being written, as OOTP names the file. */
   table: string;
   /** 1-based, so it reads as "12 of 70" without arithmetic. */
@@ -22,6 +22,21 @@ export interface ImportProgress {
   /** Rows written so far, across every table. */
   rows: Integer;
   phase: 'reading' | 'writing' | 'indexing';
+}
+
+/** An import step in words (`server/presentation/importWords.ts`), for a window that shows it. */
+export interface ImportWords {
+  /** What the import is doing ("Reading the export"). */
+  phase: string;
+  /** The table being written, named for a person ("Standings"); its OOTP file name stays in `table`. */
+  table: string;
+  /** The line a progress bar shows ("Writing standings · 12 of 70"). */
+  display: string;
+}
+
+/** Where the import has got to, for a page that would rather not look frozen: the step, and the step in words. */
+export interface ImportProgress extends ImportStep {
+  words: ImportWords;
 }
 
 /**
@@ -103,7 +118,7 @@ function detectDelimiter(text: string): string {
  */
 export async function importCsvDir(
   csvDir: string,
-  onProgress?: (p: ImportProgress) => void
+  onProgress?: (p: ImportStep) => void
 ): Promise<ImportResult> {
   const startedAt = new Date().toISOString();
   const files = fs
@@ -117,7 +132,7 @@ export async function importCsvDir(
 
   for (const [index, file] of files.entries()) {
     const tableName = sanitizeIdent(file.replace(/\.csv$/, ''));
-    const say = (phase: ImportProgress['phase']) =>
+    const say = (phase: ImportStep['phase']) =>
       onProgress?.({ table: tableName, fileIndex: index + 1, files: files.length, rows: totalRows, phase });
     say('reading');
     // Reading and parsing a sixty-megabyte file is itself a second of work, so

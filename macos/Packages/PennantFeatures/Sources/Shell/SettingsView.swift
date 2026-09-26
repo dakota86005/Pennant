@@ -98,8 +98,8 @@ struct GeneralSettings: View {
             }
             if let problem = model.importRequestProblem {
                 ProblemLine(problem)
-            } else if let error = model.lastImportError {
-                ProblemLine(Text(verbatim: error))
+            } else if let note = model.importNote {
+                ProblemLine(served: note.text, detail: note.detail)
             }
             HStack {
                 Button("Choose Save…") {
@@ -122,17 +122,22 @@ struct GeneralSettings: View {
         }
     }
 
+    /// The club the app is about: Automatic (the club the save's human manages, the server's rule) or one chosen here.
+    /// Automatic is the explicit `clubChoice` the server takes, never a null the client cannot send.
     @ViewBuilder
     private var clubSection: some View {
         if !model.orgs.isEmpty {
-            Section("Club") {
+            Section {
                 Picker("Your club", selection: Binding(
-                    get: { model.club?.ref.id },
+                    get: { model.club?.source == .configured ? model.club?.ref.id : nil },
                     set: { id in
-                        guard let id else { return }
                         Task {
                             do {
-                                try await model.saveSettings(.init(defaultOrgId: id))
+                                if let id {
+                                    try await model.saveSettings(.init(defaultOrgId: id))
+                                } else {
+                                    try await model.chooseClubAutomatically()
+                                }
                                 clubProblem = nil
                             } catch {
                                 clubProblem = RequestProblem.from(error)
@@ -140,12 +145,26 @@ struct GeneralSettings: View {
                         }
                     }
                 )) {
+                    // Automatic follows the club the save's human manages; with none, it would leave the app with no club
+                    if (model.settings?.organization?.humanClubs ?? 0) > 0 {
+                        Text("Automatic").tag(Int?.none)
+                        Divider()
+                    }
                     ForEach(model.orgs, id: \.teamId) { org in
                         Text(verbatim: org.label).tag(Optional(org.teamId))
                     }
                 }
                 .accessibilityIdentifier("settings.club")
+                if let note = model.settings?.organization?.note {
+                    Label { Text(verbatim: note) } icon: { Image(systemName: "info.circle") }
+                        .foregroundStyle(.secondary)
+                }
                 if let clubProblem { ProblemLine(clubProblem) }
+            } header: {
+                Text("Club")
+            } footer: {
+                Text("Automatic follows the club you manage in the save.")
+                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -238,8 +257,8 @@ struct GeneralSettings: View {
                 await model.reloadAll()
             case .badRequest(let refused):
                 saveFolderProblem = .served(try refused.body.json.error)
-            case .undocumented(let code, _):
-                saveFolderProblem = .undocumented(code, operation: "setSaveSource")
+            case .undocumented(let code, let payload):
+                saveFolderProblem = await .undocumented(code, body: payload.body, operation: "setSaveSource", fromV2: false)
             }
         } catch {
             let problem = RequestProblem.from(error)
@@ -249,34 +268,54 @@ struct GeneralSettings: View {
     }
 }
 
-/// The data status as served (`/api/data-status`): the server's own headline, reasons and suggested action, and the
-/// dates and places it reports. Only served values; a value the server did not send is left out, and the status
-/// codes are not put into words here (the server will serve them, N4).
+/// The data status as the server words it (`/api/v2/data-status`): the headline with a symbol for its tone and its
+/// basis one click away (the reasons are the breakdown, not the face), each source's line (why the log is unavailable in
+/// its help tag), the dates and places (a missing one saying why), and what to do. Every word is served; the labels are
+/// the served row labels.
 struct DataStatusSection: View {
-    let dataStatus: Components.Schemas.DataStatus?
+    let dataStatus: Components.Schemas.DataStatusView?
 
     var body: some View {
         Section("Data status") {
             if let status = dataStatus {
-                Text(verbatim: status.freshness.headline)
-                    .font(.headline)
-                if !status.freshness.reasons.isEmpty {
-                    lines(status.freshness.reasons)
+                HStack {
+                    Label {
+                        Text(verbatim: status.headline.text).font(.headline)
+                    } icon: {
+                        ToneSymbol(tone: status.headline.tone)
+                    }
+                    .help(detail: status.headline.hint)
+                    Spacer()
+                    // The reasons, where the save was found and what the log reader said: the breakdown, one click away
+                    BasisButton(basis: status.headline.basis)
                 }
-                if let action = status.freshness.action {
-                    Label { Text(verbatim: action) } icon: { Image(systemName: "arrow.forward.circle") }
+                if let action = status.action {
+                    Label { Text(verbatim: action.display) } icon: { Image(systemName: "arrow.forward.circle") }
                 }
-                row("Game date", status.csv.currentDate)
-                row("Imported data through", status.csv.simulatedThrough)
-                row("Save through", status.save.simulatedThrough)
-                row("Exported", ServedText.timestamp(status.csv.exportedAt))
-                row("Imported", ServedText.timestamp(status.csv.importedAt))
-                row("Save folder", status.save.lgPath)
-                if !status.save.discoveryNotes.isEmpty {
-                    lines(status.save.discoveryNotes).font(.callout)
+                ForEach(status.sources, id: \.id) { row in
+                    LabeledContent {
+                        Label {
+                            Text(verbatim: row.cells.state.display)
+                        } icon: {
+                            ToneSymbol(tone: row.cells.state.tone)
+                        }
+                        .labelStyle(.titleAndIcon)
+                        .help(detail: row.cells.state.hint)
+                    } label: {
+                        Text(verbatim: row.cells.source.display)
+                    }
                 }
-                if let error = status.transactionLog.error?.message {
-                    LabeledContent("Transaction log") { Text(verbatim: error) }
+                ForEach(status.facts, id: \.id) { row in
+                    LabeledContent {
+                        Text(verbatim: row.cells.value.display)
+                            .foregroundStyle(row.cells.value.tone?.value1 == .unknown ? .secondary : .primary)
+                            .textSelection(.enabled)
+                            .lineLimit(2)
+                            .truncationMode(.middle)
+                            .help(detail: row.cells.value.hint)
+                    } label: {
+                        Text(verbatim: row.cells.label.display)
+                    }
                 }
             } else {
                 ProgressView()
@@ -285,22 +324,6 @@ struct DataStatusSection: View {
         .accessibilityIdentifier("settings.dataStatus")
     }
 
-    /// Served sentences, one row (a list's rows need identities of their own, and sentences can repeat).
-    private func lines(_ texts: [String]) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            ForEach(Array(texts.enumerated()), id: \.offset) { _, text in
-                Text(verbatim: text)
-            }
-        }
-        .foregroundStyle(.secondary)
-    }
-
-    @ViewBuilder
-    private func row(_ label: LocalizedStringKey, _ value: String?) -> some View {
-        if let value, !value.isEmpty {
-            LabeledContent(label) { Text(verbatim: value).textSelection(.enabled) }
-        }
-    }
 }
 
 // MARK: Appearance
@@ -439,12 +462,7 @@ private struct ProviderRow: View {
         } else if let key, key.configured {
             HStack(spacing: 4) {
                 if let hint = key.hint { Text(verbatim: hint).monospaced() }
-                switch key.source?.value1 {
-                case .keychain: Text("From the Keychain").foregroundStyle(.secondary)
-                case .env: Text("From the environment").foregroundStyle(.secondary)
-                case .stored: Text("Saved in the data folder").foregroundStyle(.secondary)
-                case nil: EmptyView()
-                }
+                if let source = key.sourceText { Text(verbatim: source).foregroundStyle(.secondary) }
             }
         } else {
             Text("No key")

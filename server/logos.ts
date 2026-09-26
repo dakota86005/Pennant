@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
-import { db, tableExists } from './db.js';
+import { db, tableColumns, tableExists } from './db.js';
 import { loadConfig } from './config.js';
 
 export const logoRoutes = Router();
@@ -45,27 +45,41 @@ function safeJoin(dir: string, name: string): string | null {
   return resolved.startsWith(path.resolve(dir) + path.sep) ? resolved : null;
 }
 
-logoRoutes.get('/logo/:teamId', (req, res) => {
+/** The logo file the save holds for a club (a size variant first when one is asked for), or null. */
+function logoFile(teamId: number, size: string): string | null {
   const dir = logoDir();
-  if (!dir || !tableExists('teams')) return res.status(404).end();
+  if (!dir || !tableExists('teams')) return null;
 
-  const row = db.prepare(`SELECT logo_file_name FROM teams WHERE team_id = ?`).get(Number(req.params.teamId)) as
+  const row = db.prepare(`SELECT logo_file_name FROM teams WHERE team_id = ?`).get(teamId) as
     | { logo_file_name: string | null }
     | undefined;
-  if (!row?.logo_file_name) return res.status(404).end();
+  if (!row?.logo_file_name) return null;
 
   // Optional size variant: OOTP ships <name>_50.png, _110.png, etc.
-  const size = String(req.query.size ?? '');
   const base = row.logo_file_name.replace(/\.png$/i, '');
   const candidates = size ? [`${base}_${size}.png`, row.logo_file_name] : [row.logo_file_name];
 
   for (const candidate of candidates) {
     const file = safeJoin(dir, candidate);
-    if (file && fs.existsSync(file)) {
-      res.setHeader('Content-Type', 'image/png');
-      res.setHeader('Cache-Control', 'public, max-age=86400');
-      return res.sendFile(file);
-    }
+    if (file && fs.existsSync(file)) return file;
   }
-  res.status(404).end();
+  return null;
+}
+
+/**
+ * Where the Mac app fetches a club's logo (`GET /api/logo/:teamId`, with the save's token so a new save never shows an
+ * old one's art), or null when the save holds none for the club.
+ */
+export function logoReference(teamId: number): string | null {
+  // An export without the column has no logos to point at (the route itself answers as it always has)
+  if (!tableExists('teams') || !tableColumns('teams').includes('logo_file_name')) return null;
+  return logoFile(teamId, '') ? `/api/logo/${teamId}?v=${logoToken()}` : null;
+}
+
+logoRoutes.get('/logo/:teamId', (req, res) => {
+  const file = logoFile(Number(req.params.teamId), String(req.query.size ?? ''));
+  if (!file) return res.status(404).end();
+  res.setHeader('Content-Type', 'image/png');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.sendFile(file);
 });

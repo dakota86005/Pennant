@@ -53,7 +53,12 @@ const TEAM_COLOR_COLUMNS = {
  * served as null (unknown), never a stand-in colour.
  */
 orgRoutes.get('/orgs', (_req, res: Response<Org[]>) => {
-  if (!tableExists('teams')) return res.json([]);
+  res.json(majorLeagueClubs());
+});
+
+/** The major-league clubs as `GET /api/orgs` lists them (the Mac app's catalog reads the same list). */
+export function majorLeagueClubs(): Org[] {
+  if (!tableExists('teams')) return [];
   const present = new Set(tableColumns('teams'));
   const colors = Object.entries(TEAM_COLOR_COLUMNS)
     .map(([key, column]) => (present.has(column) ? `${column} AS ${key}` : `NULL AS ${key}`))
@@ -67,15 +72,48 @@ orgRoutes.get('/orgs', (_req, res: Response<Org[]>) => {
     team_id: number; name: string; nickname: string; human_team: number;
     bg: string | null; fg: string | null; secondary: string | null; cap: string | null;
   }>;
-  res.json(
-    rows.map((r) => ({
-      team_id: r.team_id,
-      label: r.name === r.nickname ? r.name : `${r.name} ${r.nickname}`,
-      isHuman: r.human_team === 1,
-      colors: { bg: r.bg, fg: r.fg, secondary: r.secondary, cap: r.cap },
-    }))
-  );
-});
+  return rows.map((r) => ({
+    team_id: r.team_id,
+    label: r.name === r.nickname ? r.name : `${r.name} ${r.nickname}`,
+    isHuman: r.human_team === 1,
+    colors: { bg: r.bg, fg: r.fg, secondary: r.secondary, cap: r.cap },
+  }));
+}
+
+/** A major-league club as the Mac app's catalog reads it: whether the save's human runs it is unknown (null) when the
+ * export has no such column. */
+export interface CatalogClubSource {
+  team_id: Integer;
+  label: string;
+  isHuman: boolean | null;
+  colors: Org['colors'];
+}
+
+/**
+ * The major-league clubs for the catalog, read without assuming a column: a name without its nickname is the name, a
+ * club list without the level or all-star columns is not filtered on them, and an export without `human_team` says
+ * nothing about who runs a club (null, never false). `/api/orgs` keeps its own read.
+ */
+export function catalogClubs(): CatalogClubSource[] {
+  if (!tableExists('teams')) return [];
+  const present = new Set(tableColumns('teams'));
+  if (!present.has('team_id') || !present.has('name')) return [];
+  const pick = (column: string, as: string) => (present.has(column) ? `${column} AS ${as}` : `NULL AS ${as}`);
+  const colors = Object.entries(TEAM_COLOR_COLUMNS).map(([key, column]) => pick(column, key)).join(', ');
+  const where = [present.has('level') ? 'level = 1' : null, present.has('allstar_team') ? 'allstar_team = 0' : null].filter(Boolean);
+  const rows = db
+    .prepare(
+      `SELECT team_id, name, ${pick('nickname', 'nickname')}, ${pick('human_team', 'human')}, ${colors}
+       FROM teams ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY name`
+    )
+    .all() as Array<{ team_id: number; name: string; nickname: string | null; human: number | null; bg: string | null; fg: string | null; secondary: string | null; cap: string | null }>;
+  return rows.map((r) => ({
+    team_id: r.team_id,
+    label: !r.nickname || r.name === r.nickname ? r.name : `${r.name} ${r.nickname}`,
+    isHuman: r.human === null ? null : r.human === 1,
+    colors: { bg: r.bg, fg: r.fg, secondary: r.secondary, cap: r.cap },
+  }));
+}
 
 /** The column signings nobody has assigned yet are gathered under. */
 const UNASSIGNED_TEAM = -1;

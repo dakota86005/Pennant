@@ -1,0 +1,219 @@
+{
+  "level": "partial",
+  "headline": {
+    "text": "Transaction history unavailable",
+    "tone": "caution",
+    "basis": {
+      "because": [
+        {
+          "label": "League data",
+          "value": "Not checked against the save"
+        },
+        {
+          "label": "Transactions",
+          "value": "Unavailable: save not found"
+        },
+        {
+          "label": "OOTP save",
+          "value": "Not found"
+        },
+        {
+          "label": "Roster evidence",
+          "value": "Transaction history unavailable"
+        },
+        {
+          "label": "How the save was found",
+          "value": "Not found"
+        },
+        {
+          "label": "Where Pennant looked",
+          "value": "No CSV export is configured."
+        }
+      ],
+      "source": {
+        "department": "frontOffice",
+        "specialist": "Data status",
+        "asOf": null,
+        "gameDate": "2040-05-06"
+      },
+      "unknown": [
+        "The OOTP save folder could not be found. Current league state is available, but reasoning that depends on transaction history is limited."
+      ],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact"
+    },
+    "links": [],
+    "hint": "How current Pennant's copy of the league is against your OOTP save"
+  },
+  "subtitle": "May 6, 2040 · No log",
+  "subtitleHint": "May 6, 2040 · Transaction history unavailable",
+  "gameDate": {
+    "served": "2040-05-06",
+    "display": "May 6, 2040"
+  },
+  "sources": [
+    {
+      "id": "league",
+      "cells": {
+        "source": {
+          "display": "League data"
+        },
+        "state": {
+          "display": "Not checked against the save",
+          "tone": "caution"
+        }
+      },
+      "sort": {
+        "source": "League data",
+        "state": -2
+      }
+    },
+    {
+      "id": "transactions",
+      "cells": {
+        "source": {
+          "display": "Transactions"
+        },
+        "state": {
+          "display": "Unavailable: save not found",
+          "tone": "caution",
+          "hint": "The save's folder wasn't found"
+        }
+      },
+      "sort": {
+        "source": "Transactions",
+        "state": -1
+      }
+    },
+    {
+      "id": "save",
+      "cells": {
+        "source": {
+          "display": "OOTP save"
+        },
+        "state": {
+          "display": "Not found",
+          "tone": "caution"
+        }
+      },
+      "sort": {
+        "source": "OOTP save",
+        "state": 0
+      }
+    },
+    {
+      "id": "evidence",
+      "cells": {
+        "source": {
+          "display": "Roster evidence"
+        },
+        "state": {
+          "display": "Transaction history unavailable",
+          "tone": "caution"
+        }
+      },
+      "sort": {
+        "source": "Roster evidence",
+        "state": 0
+      }
+    }
+  ],
+  "facts": [
+    {
+      "id": "gameDate",
+      "cells": {
+        "label": {
+          "display": "Game date"
+        },
+        "value": {
+          "display": "May 6, 2040"
+        }
+      },
+      "sort": {
+        "label": "Game date",
+        "value": "2040-05-06"
+      }
+    },
+    {
+      "id": "importedThrough",
+      "cells": {
+        "label": {
+          "display": "Imported data through"
+        },
+        "value": {
+          "display": "May 5, 2040"
+        }
+      },
+      "sort": {
+        "label": "Imported data through",
+        "value": "2040-05-05"
+      }
+    },
+    {
+      "id": "saveThrough",
+      "cells": {
+        "label": {
+          "display": "Save through"
+        },
+        "value": {
+          "display": "Save not found",
+          "tone": "unknown"
+        }
+      },
+      "sort": {
+        "label": "Save through",
+        "value": null
+      }
+    },
+    {
+      "id": "exported",
+      "cells": {
+        "label": {
+          "display": "Exported"
+        },
+        "value": {
+          "display": "No save chosen",
+          "tone": "unknown"
+        }
+      },
+      "sort": {
+        "label": "Exported",
+        "value": null
+      }
+    },
+    {
+      "id": "imported",
+      "cells": {
+        "label": {
+          "display": "Imported"
+        },
+        "value": {
+          "display": "Not imported yet",
+          "tone": "unknown"
+        }
+      },
+      "sort": {
+        "label": "Imported",
+        "value": null
+      }
+    },
+    {
+      "id": "saveFolder",
+      "cells": {
+        "label": {
+          "display": "Save folder"
+        },
+        "value": {
+          "display": "Not found",
+          "tone": "unknown"
+        }
+      },
+      "sort": {
+        "label": "Save folder",
+        "value": null
+      }
+    }
+  ],
+  "action": null
+}

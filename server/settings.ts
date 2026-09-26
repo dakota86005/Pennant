@@ -352,9 +352,26 @@ export interface KeyStatus {
   configured: boolean;
   /** `keychain`: handed over by the Mac app from the macOS Keychain. */
   source: 'env' | 'stored' | 'keychain' | null;
+  /** Where the key comes from, in words ("From the Keychain"); null when there is no key. */
+  sourceText: string | null;
   hint: string | null;
   encrypted: boolean;
 }
+
+/** Where a key comes from, in words (the Mac app's Settings shows it). */
+const KEY_SOURCE_WORDS: Record<NonNullable<KeyStatus['source']>, string> = {
+  keychain: 'From the Keychain',
+  env: 'From the environment',
+  stored: 'Saved in the data folder',
+};
+
+const keyStatus = (status: Omit<KeyStatus, 'sourceText'>): KeyStatus => ({
+  configured: status.configured,
+  source: status.source,
+  sourceText: status.source ? KEY_SOURCE_WORDS[status.source] : null,
+  hint: status.hint,
+  encrypted: status.encrypted,
+});
 
 /** The active provider's key state, with where keys are kept (`GET /api/settings`). */
 export interface ApiKeyStatus extends KeyStatus {
@@ -370,19 +387,19 @@ function statusOf(provider: ProviderId): KeyStatus {
   const envVar = ENV_VAR[provider];
   const fromEnv = envVar ? process.env[envVar] : undefined;
   if (fromEnv) {
-    return { configured: true, source: 'env', hint: fromEnv.slice(-4), encrypted: false };
+    return keyStatus({ configured: true, source: 'env', hint: fromEnv.slice(-4), encrypted: false });
   }
   if (injected) {
     const key = injected[provider];
     return key
-      ? { configured: true, source: 'keychain', hint: key.slice(-4), encrypted: true }
-      : { configured: false, source: null, hint: null, encrypted: false };
+      ? keyStatus({ configured: true, source: 'keychain', hint: key.slice(-4), encrypted: true })
+      : keyStatus({ configured: false, source: null, hint: null, encrypted: false });
   }
   const stored = readKeyFile()[provider];
   if (stored) {
-    return { configured: true, source: 'stored', hint: stored.hint, encrypted: stored.encrypted };
+    return keyStatus({ configured: true, source: 'stored', hint: stored.hint, encrypted: stored.encrypted });
   }
-  return { configured: false, source: null, hint: null, encrypted: false };
+  return keyStatus({ configured: false, source: null, hint: null, encrypted: false });
 }
 
 /** Every provider's key state at once, for the Settings screen. */
@@ -515,8 +532,17 @@ settingsRoutes.put('/next-season-budget/:orgId', (req, res) => {
 /**
  * What `POST /api/settings` takes: the preferences to change. A field left out keeps its value, and a value the
  * handler cannot use is ignored. (Philosophy and next season's budget have routes of their own.)
+ *
+ * `clubChoice: 'automatic'` forgets the chosen club, so the app follows the club the save's human manages
+ * (`viewingOrganization.ts`). It is the Mac app's way back to automatic: its generated client never sends an explicit
+ * null, so it cannot clear `defaultOrgId` by sending one (SWIFTUI_REBUILD.md section 4.3). It wins over a `defaultOrgId`
+ * sent beside it.
  */
-export type SettingsUpdate = Partial<
+export type SettingsUpdate = SettingsFields & {
+  clubChoice?: 'automatic';
+};
+
+type SettingsFields = Partial<
   Pick<
     Settings,
     | 'autoImport'
@@ -561,6 +587,7 @@ settingsRoutes.post('/settings', (req, res: Response<SettingsSaved>) => {
   if (body.defaultOrgId === null || typeof body.defaultOrgId === 'number') {
     next.defaultOrgId = body.defaultOrgId;
   }
+  if (body.clubChoice === 'automatic') next.defaultOrgId = null;
   if (body.theme === 'system' || body.theme === 'dark' || body.theme === 'light') {
     next.theme = body.theme;
   }

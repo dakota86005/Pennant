@@ -45,30 +45,35 @@
     "anthropic": {
       "configured": false,
       "source": null,
+      "sourceText": null,
       "hint": null,
       "encrypted": false
     },
     "openai": {
       "configured": false,
       "source": null,
+      "sourceText": null,
       "hint": null,
       "encrypted": false
     },
     "gemini": {
       "configured": false,
       "source": null,
+      "sourceText": null,
       "hint": null,
       "encrypted": false
     },
     "opencode": {
       "configured": false,
       "source": null,
+      "sourceText": null,
       "hint": null,
       "encrypted": false
     },
     "ollama": {
       "configured": false,
       "source": null,
+      "sourceText": null,
       "hint": null,
       "encrypted": false
     }

@@ -74,14 +74,20 @@ public struct PlaceholderView: View {
     }
 
     public var body: some View {
-        ContentUnavailableView {
-            Label {
-                Text(title)
-            } icon: {
-                Image(systemName: symbol)
-            }
-        } description: {
+        // Drawn by hand rather than with ContentUnavailableView, whose dimmed title and line failed the accessibility
+        // audit's contrast check: the symbol is decorative, and both lines are primary text
+        VStack(spacing: 10) {
+            Image(systemName: symbol)
+                .font(.system(size: 40))
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+            Text(title)
+                .font(.title2.weight(.semibold))
             Text("Arrives in a later build")
+                .font(.body)
         }
+        .foregroundStyle(.primary)
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

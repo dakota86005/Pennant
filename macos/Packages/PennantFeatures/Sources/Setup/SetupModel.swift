@@ -9,9 +9,9 @@ import PennantKit
 /// import), follow the import from the served status until it lands, then pick the club (the clubs as served, the one
 /// the save's human manages first) and save it (`POST /api/settings`).
 ///
-/// Every sentence it holds is the server's (`error` from a refusal, `lastError` from a failed import); a request that
-/// failed otherwise is a `RequestProblem` kind, its raw detail logged. It never decides which save or club is right:
-/// the GM does.
+/// Every sentence it holds is the server's (`error` from a refusal, `why` when a chosen save's import did not start,
+/// the status's `importNote` when an import failed, stopped partway or has no export); a request that failed otherwise
+/// is a `RequestProblem` kind, its raw detail logged. It never decides which save or club is right: the GM does.
 ///
 /// The import has landed only when the served last import's finish time moves past the one before the save was
 /// chosen. An import that stops without that (an error, or an interruption the server reports) is a problem with Try
@@ -28,13 +28,15 @@ public final class SetupModel {
 
     /// Why an import did not land.
     public enum ImportProblem: Hashable, Sendable {
-        /// The server's sentence (the import's `lastError`, or a refusal's `error`).
-        case served(String)
-        /// The server took the save but no import began (its export folder was not there).
-        case didNotStart
-        /// The import stopped without finishing (the server reports it interrupted, or it ended with no new import);
-        /// `since` is when it started, as served.
-        case didNotFinish(since: String?)
+        /// The server's sentence (the status's `importNote`, the chosen save's `why`, or a refusal's `error`), with the
+        /// raw message behind it when the server sent one.
+        case served(String, detail: String? = nil)
+        /// The save was chosen but its import did not start, and the server said nothing about why (an older server):
+        /// a structural line.
+        case notStarted
+        /// The import ended with no new import and the server said nothing about why (an older server): a structural
+        /// line.
+        case unexplained
         /// The request itself failed.
         case request(RequestProblem)
     }
@@ -93,8 +95,9 @@ public final class SetupModel {
         return problem
     }
 
-    private func undocumented(_ code: Int, _ what: String) -> RequestProblem {
-        let problem = RequestProblem.undocumented(code, operation: what)
+    private func undocumented(_ code: Int, _ what: String, body: HTTPBody? = nil) async -> RequestProblem {
+        // Setup's requests are all reused routes: an undocumented answer's text is never shown as the server's sentence
+        let problem = await RequestProblem.undocumented(code, body: body, operation: what, fromV2: false)
         if let detail = problem.detail { log("setup: \(detail)") }
         return problem
     }
@@ -154,8 +157,8 @@ public final class SetupModel {
             switch try await client.resolveFolder(body: .json(.init(path: path))) {
             case .ok(let ok): result = try ok.body.json
             case .badRequest(let refused): result = try refused.body.json
-            case .undocumented(let code, _):
-                folderProblem = undocumented(code, "resolveFolder")
+            case .undocumented(let code, let payload):
+                folderProblem = await undocumented(code, "resolveFolder", body: payload.body)
                 return
             }
         } catch {
@@ -168,7 +171,8 @@ public final class SetupModel {
                 lgPath: path,
                 csvDir: csvDir,
                 csvCount: result.csvCount ?? 0,
-                csvLastModified: nil
+                csvLastModified: nil,
+                csvLastModifiedText: nil
             )
             busy = false
             await choose(save, status: status)
@@ -177,7 +181,7 @@ public final class SetupModel {
         } else if let error = result.error {
             folderProblem = .served(error)
         } else {
-            folderProblem = undocumented(200, "resolveFolder without a save or a sentence")
+            folderProblem = await undocumented(200, "resolveFolder without a save or a sentence")
         }
     }
 
@@ -193,18 +197,19 @@ public final class SetupModel {
         folderProblem = nil
         defer { busy = false }
         startStamp = status?.lastImport?.finishedAt
+        let accepted: Components.Schemas.ConfigAccepted
         do {
             switch try await client.setSave(body: .json(.init(csvDir: save.csvDir, saveName: save.name))) {
-            case .ok:
-                break
+            case .ok(let ok):
+                accepted = try ok.body.json
             case .badRequest(let refused):
                 folderProblem = .served(try refused.body.json.error)
                 return
             case .conflict(let refused):
                 folderProblem = .served(try refused.body.json.error)
                 return
-            case .undocumented(let code, _):
-                folderProblem = undocumented(code, "setSave")
+            case .undocumented(let code, let payload):
+                folderProblem = await undocumented(code, "setSave", body: payload.body)
                 return
             }
         } catch {
@@ -216,6 +221,11 @@ public final class SetupModel {
         importProblem = nil
         sawImportRunning = false
         step = .importing
+        // The save is chosen, but its import did not start: the server says why
+        guard accepted.importStarted else {
+            importProblem = accepted.why.map { .served($0) } ?? .notStarted
+            return
+        }
         await readStatus(client)
     }
 
@@ -237,14 +247,13 @@ public final class SetupModel {
             await importLanded()
             return
         }
-        // Not importing, and no new import: it failed, stopped partway, or never began
+        // Not importing, and no new import: it failed, stopped partway, or never began; the server says which
         guard sawImportRunning || fresh else { return }
-        if let error = status.lastError, !error.isEmpty {
-            importProblem = .served(error)
-        } else if !status.csvDirExists {
-            importProblem = .didNotStart
+        if let note = status.importNote {
+            importProblem = .served(note.text, detail: note.detail)
+            if let detail = note.detail { log("setup: the import did not finish: \(detail)") }
         } else {
-            importProblem = .didNotFinish(since: status.importInterruptedSince)
+            importProblem = .unexplained
         }
         progress = nil
     }
@@ -271,8 +280,8 @@ public final class SetupModel {
             case .conflict(let refused):
                 importProblem = .served(try refused.body.json.error)
                 return
-            case .undocumented(let code, _):
-                importProblem = .request(undocumented(code, "startImport"))
+            case .undocumented(let code, let payload):
+                importProblem = .request(await undocumented(code, "startImport", body: payload.body))
                 return
             }
         } catch {
@@ -322,9 +331,14 @@ public final class SetupModel {
         selectedClub = clubs.first { $0.teamId == served }?.teamId ?? clubs.first?.teamId
     }
 
-    /// Saves the chosen club as the configured one (`POST /api/settings`), then closes the window.
+    /// Saves the chosen club (`POST /api/settings`), then closes the window. When the save's human manages exactly one
+    /// club and that is the one chosen, it is saved as Automatic (`clubChoice`), so the app follows him if he takes
+    /// another job in the save. With several human clubs, Automatic would follow only the first, so any choice there
+    /// (and any other club) is saved by its id.
     public func saveClub() async {
         guard let club = selectedClub else { return }
+        let human = clubs.filter(\.isHuman)
+        let automatic = human.count == 1 && human.first?.teamId == club
         guard let client = client() else {
             clubProblem = .notRunning
             return
@@ -333,7 +347,7 @@ public final class SetupModel {
         clubProblem = nil
         defer { busy = false }
         do {
-            _ = try await client.saveSettings(body: .json(.init(defaultOrgId: club))).ok
+            _ = try await client.saveSettings(body: .json(automatic ? .init(clubChoice: .automatic) : .init(defaultOrgId: club))).ok
         } catch {
             clubProblem = problem(error, "saving the club")
             return

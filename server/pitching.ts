@@ -5,6 +5,7 @@ import { healthOf, type Health } from './health.js';
 import { computePitching, leagueBaseline } from './stats.js';
 import { ON_ROSTER } from './valuation.js';
 import { DATE_KEY } from './dashboard.js';
+import { answer, refuse, type Computed } from './computed.js';
 
 export const pitchingRoutes = Router();
 
@@ -91,14 +92,21 @@ function bullpenStatus(
   return { label: `Rested ${daysBetween(todayKey, last.dateKey)}d`, tone: 'ok' };
 }
 
-pitchingRoutes.get('/pitching/:teamId', (req, res) => {
-  const teamId = Number(req.params.teamId);
-  if (!tableExists('players')) return res.status(400).json({ error: 'No data imported yet' });
+/** A club's pitching staff (`GET /api/pitching/:teamId`): rotation, depth and bullpen with rest and workload. */
+export type PitchingStaff = { rotation: never[]; bullpen: never[]; today: null } | Exclude<ReturnType<typeof staffOf>, null>;
+
+/** A club's pitching staff, or why it cannot be read (the route's own answer). */
+export function computePitchingStaff(teamId: number): Computed<PitchingStaff> {
+  if (!tableExists('players')) return refuse(400, 'No data imported yet');
 
   const team = db.prepare(`SELECT league_id, level FROM teams WHERE team_id = ?`).get(teamId) as
     | { league_id: number; level: number }
     | undefined;
-  if (!team) return res.status(404).json({ error: 'Unknown team' });
+  if (!team) return refuse(404, 'Unknown team');
+  return answer(staffOf(teamId, team) ?? { rotation: [], bullpen: [], today: null });
+}
+
+function staffOf(teamId: number, team: { league_id: number; level: number }) {
 
   const todayKey = currentDateKey(team.league_id);
 
@@ -125,7 +133,7 @@ pitchingRoutes.get('/pitching/:teamId', (req, res) => {
     injury_is_injured: number | null; injury_dtd_injury: number | null; injury_left: number | null;
     is_on_dl: number | null; is_on_dl60: number | null; is_active: number | null;
   }>;
-  if (roster.length === 0) return res.json({ rotation: [], bullpen: [], today: null });
+  if (roster.length === 0) return null;
 
   const ids = roster.map((r) => r.player_id);
   const holes = ids.map(() => '?').join(',');
@@ -277,12 +285,18 @@ pitchingRoutes.get('/pitching/:teamId', (req, res) => {
       return (b.stats?.eraPlus ?? 0) - (a.stats?.eraPlus ?? 0);
     });
 
-  res.json({
+  return {
     today: todayKey,
     rotation: activeRotation,
     starterDepth,
     bullpen,
     tired: bullpen.filter((b) => b.tone !== 'ok').length,
     injured: [...activeRotation, ...starterDepth, ...bullpen].filter((p) => p.injury !== null).length,
-  });
+  };
+}
+
+pitchingRoutes.get('/pitching/:teamId', (req, res) => {
+  const staff = computePitchingStaff(Number(req.params.teamId));
+  if (!staff.ok) return res.status(staff.status).json({ error: staff.error });
+  res.json(staff.body);
 });

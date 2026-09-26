@@ -24,7 +24,7 @@
     "/api/config": {
       "post": {
         "operationId": "setSave",
-        "summary": "Use this save's export folder, and import it. Refused (409) while an import runs.",
+        "summary": "Use this save's export folder, and import it (or say why the import did not start). Refused (409) while an import runs.",
         "tags": [
           "reused"
         ],
@@ -44,7 +44,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Ok"
+                  "$ref": "#/components/schemas/ConfigAccepted"
                 }
               }
             }
@@ -371,6 +371,48 @@
         }
       }
     },
+    "/api/v2/catalog": {
+      "get": {
+        "operationId": "getCatalog",
+        "summary": "The glossary, the stat catalog, each club's palette, logo and record, and the departments with their heads.",
+        "tags": [
+          "v2"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Catalog"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/data-status": {
+      "get": {
+        "operationId": "getDataStatusWords",
+        "summary": "How current the data is, in words: the headline with its basis, each source's line, the dates and places.",
+        "tags": [
+          "v2"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataStatusView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v2/events": {
       "get": {
         "operationId": "streamEvents",
@@ -415,7 +457,12 @@
         "type": "object",
         "properties": {
           "error": {
-            "type": "string"
+            "type": "string",
+            "description": "What went wrong, as a sentence."
+          },
+          "detail": {
+            "type": "string",
+            "description": "The raw message behind it, for the log and a help tag (a `/v2` route's failure); never the visible line."
           }
         },
         "required": [
@@ -448,6 +495,13 @@
               }
             ]
           },
+          "sourceText": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Where the key comes from, in words (\"From the Keychain\"); null when there is no key."
+          },
           "hint": {
             "type": [
               "string",
@@ -466,6 +520,7 @@
           "encrypted",
           "hint",
           "source",
+          "sourceText",
           "storageLabel"
         ],
         "description": "The active provider's key state, with where keys are kept (`GET /api/settings`)."
@@ -493,6 +548,427 @@
           "projectUrl",
           "upstreamUrl"
         ]
+      },
+      "Basis": {
+        "type": "object",
+        "properties": {
+          "because": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BasisLine"
+            }
+          },
+          "source": {
+            "$ref": "#/components/schemas/BasisSource"
+          },
+          "unknown": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What is not known, as sentences. An empty list means nothing is missing, never \"not checked\"."
+          },
+          "wouldChange": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What would change the reading, as sentences."
+          },
+          "lean": {
+            "$ref": "#/components/schemas/Lean"
+          },
+          "certainty": {
+            "$ref": "#/components/schemas/Certainty"
+          },
+          "stamp": {
+            "type": "string",
+            "description": "The D-041 stamp shown in the evidence view (a breakdown, where a method word may help)."
+          }
+        },
+        "required": [
+          "because",
+          "source",
+          "unknown",
+          "wouldChange",
+          "certainty"
+        ],
+        "description": "Why a claim says what it says (D-018, D-023, D-031, D-044: show the basis)."
+      },
+      "BasisLine": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ],
+        "description": "One line of a claim's evidence: what was read and what it said."
+      },
+      "BasisSource": {
+        "type": "object",
+        "properties": {
+          "department": {
+            "$ref": "#/components/schemas/DeptId"
+          },
+          "specialist": {
+            "type": "string",
+            "description": "The specialist, in words (\"Data status\", \"Player Value\")."
+          },
+          "asOf": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "When the evidence was read (an import's time, ISO 8601), or null when it has not been."
+          },
+          "gameDate": {
+            "$ref": "#/components/schemas/GameDate",
+            "description": "The game date the evidence reflects, as the export wrote it, or null."
+          },
+          "sample": {
+            "type": "string",
+            "description": "How much evidence there is, in words (\"30 games\"), when that matters."
+          }
+        },
+        "required": [
+          "department",
+          "specialist",
+          "asOf"
+        ],
+        "description": "Who answered: the department and its specialist, and how current the evidence is."
+      },
+      "Catalog": {
+        "type": "object",
+        "properties": {
+          "glossary": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GlossaryEntry"
+            }
+          },
+          "stats": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatEntry"
+            }
+          },
+          "clubs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogClub"
+            }
+          },
+          "departments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogDepartment"
+            }
+          },
+          "phrases": {
+            "$ref": "#/components/schemas/CatalogPhrases"
+          }
+        },
+        "required": [
+          "glossary",
+          "stats",
+          "clubs",
+          "departments",
+          "phrases"
+        ]
+      },
+      "CatalogClub": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "isHuman": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "The save's human runs the club; null when the export does not say."
+          },
+          "palette": {
+            "$ref": "#/components/schemas/ClubPalettes"
+          },
+          "logo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Where to fetch the logo (`/api/logo/:teamId?v=…`), or null when the save holds none."
+          },
+          "record": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Wins and losses (\"45–38\"), or the sentence for a record the export does not have."
+          }
+        },
+        "required": [
+          "teamId",
+          "name",
+          "isHuman",
+          "palette",
+          "logo",
+          "record"
+        ],
+        "description": "A major-league club: its palette, where its logo is, and its record as the export has it."
+      },
+      "CatalogDepartment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/DeptId"
+          },
+          "name": {
+            "type": "string"
+          },
+          "views": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogView"
+            },
+            "description": "Its views in the sidebar's order (SWIFTUI_REBUILD.md section 3.5)."
+          },
+          "head": {
+            "$ref": "#/components/schemas/DepartmentHead",
+            "description": "The person in the department's seat; null when the save names nobody there or the department has no one seat."
+          },
+          "preparedBy": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The masthead line (\"Prepared by Jeff Banister, bench coach\"), or what the save does not say."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "views",
+          "preparedBy"
+        ]
+      },
+      "CatalogPhrases": {
+        "type": "object",
+        "properties": {
+          "missingValue": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "missingValue"
+        ],
+        "description": "Sentences the app shows wherever a served value is missing and no line of its own says why."
+      },
+      "CatalogView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The view's id inside its department (`fortyManOptions`), the Mac app's route."
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "description": "One view of a department, as the sidebar lists it."
+      },
+      "Cell": {
+        "type": "object",
+        "properties": {
+          "display": {
+            "type": "string"
+          },
+          "tone": {
+            "$ref": "#/components/schemas/Tone"
+          },
+          "hint": {
+            "type": "string"
+          },
+          "claimRef": {
+            "type": "string",
+            "description": "A claim elsewhere in the payload that explains this cell."
+          }
+        },
+        "required": [
+          "display"
+        ],
+        "description": "One cell of a served table: what it shows, and its tone and help tag when it has them."
+      },
+      "Certainty": {
+        "description": "How a claim's number or line is called (D-041): `calibrated` (fitted on the save's own history), `provisional` (a model parameter that ought to be fitted and has not been), `policy` (a line chosen and stated, never fitted), `unknown` (the basis cannot say), and `fact`: an objective fact read from the export or the save (a record, a date, how many days one source is behind another), which no fitted number and no chosen line decided. Section 4.1 listed the first four; `fact` was added at N4 so a plain fact is never stamped as policy.",
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "fact",
+              "calibrated",
+              "provisional",
+              "policy",
+              "unknown"
+            ]
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "Claim": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "The visible line."
+          },
+          "hint": {
+            "type": "string",
+            "description": "The help tag: one line, at most about 75 characters."
+          },
+          "value": {
+            "$ref": "#/components/schemas/ServedValue"
+          },
+          "tone": {
+            "$ref": "#/components/schemas/Tone"
+          },
+          "place": {
+            "$ref": "#/components/schemas/Place"
+          },
+          "basis": {
+            "$ref": "#/components/schemas/Basis"
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Target"
+            }
+          }
+        },
+        "required": [
+          "text",
+          "tone",
+          "basis",
+          "links"
+        ],
+        "description": "One visible line, in the GM's voice, with its basis."
+      },
+      "ClubPalette": {
+        "type": "object",
+        "properties": {
+          "team": {
+            "type": "string",
+            "description": "The club's plate (its primary colour, adjusted until its text reads) and the text on it."
+          },
+          "teamText": {
+            "type": "string"
+          },
+          "background": {
+            "type": "string"
+          },
+          "backgroundDeep": {
+            "type": "string"
+          },
+          "backgroundGlow": {
+            "type": "string"
+          },
+          "panel": {
+            "type": "string"
+          },
+          "panelRaised": {
+            "type": "string"
+          },
+          "border": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "muted": {
+            "type": "string"
+          },
+          "accent": {
+            "type": "string"
+          },
+          "accentText": {
+            "type": "string",
+            "description": "Text on the accent."
+          },
+          "good": {
+            "type": "string"
+          },
+          "bad": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "team",
+          "teamText",
+          "background",
+          "backgroundDeep",
+          "backgroundGlow",
+          "panel",
+          "panelRaised",
+          "border",
+          "text",
+          "muted",
+          "accent",
+          "accentText",
+          "good",
+          "bad"
+        ],
+        "description": "A club's palette in one mode, as the Mac app is served it: every token as `#rrggbb`."
+      },
+      "ClubPalettes": {
+        "type": "object",
+        "properties": {
+          "light": {
+            "$ref": "#/components/schemas/ClubPalette"
+          },
+          "dark": {
+            "$ref": "#/components/schemas/ClubPalette"
+          }
+        },
+        "required": [
+          "light",
+          "dark"
+        ],
+        "description": "A club's palette in both modes."
+      },
+      "ConfigAccepted": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true
+          },
+          "importStarted": {
+            "type": "boolean"
+          },
+          "why": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Why the import did not start; null when it did."
+          }
+        },
+        "required": [
+          "ok",
+          "importStarted",
+          "why"
+        ],
+        "description": "What `POST /api/config` answers: the save is chosen, and whether its import began. A save whose export folder is not there yet is chosen all the same, and `why` says what to do in a sentence."
       },
       "ConfigRequest": {
         "type": "object",
@@ -531,11 +1007,24 @@
                 "type": "string"
               }
             ]
+          },
+          "humanClubs": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "How many clubs the save's human manages (automatic follows the first, by team id)."
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "When automatic had to pick among several human clubs, which one it follows and why, in a sentence; else null."
           }
         },
         "required": [
           "id",
-          "source"
+          "source",
+          "humanClubs",
+          "note"
         ],
         "description": "The club the app is about when nothing names one: the configured organization, else the one the save's human manages; null when neither is known. A configured id is taken as configured even when the club list no longer has it (the server's rule for every view), so a client shows that club as not found rather than quietly switching clubs."
       },
@@ -639,6 +1128,234 @@
           "csv",
           "transactionLog",
           "freshness"
+        ]
+      },
+      "DataStatusFact": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cells": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "value": {
+                "$ref": "#/components/schemas/Cell"
+              }
+            },
+            "required": [
+              "label",
+              "value"
+            ]
+          },
+          "sort": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "label",
+              "value"
+            ]
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          }
+        },
+        "required": [
+          "cells",
+          "id",
+          "sort"
+        ],
+        "description": "One fact of the data status: what it is (\"Game date\") and its value (\"May 15, 2026\"), or why it is missing."
+      },
+      "DataStatusRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cells": {
+            "type": "object",
+            "properties": {
+              "source": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "state": {
+                "$ref": "#/components/schemas/Cell"
+              }
+            },
+            "required": [
+              "source",
+              "state"
+            ]
+          },
+          "sort": {
+            "type": "object",
+            "properties": {
+              "source": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "state": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "source",
+              "state"
+            ]
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          }
+        },
+        "required": [
+          "cells",
+          "id",
+          "sort"
+        ],
+        "description": "One line of the data status: a source (\"League data\") and its state (\"Behind by 2 days\")."
+      },
+      "DataStatusView": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "$ref": "#/components/schemas/RosterEvidenceLevel",
+            "description": "The freshness model's level, for the symbol beside the headline (`current`, `partial`, `stale`, `unavailable`)."
+          },
+          "headline": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "The headline, with the reasons and what would change it in its basis."
+          },
+          "subtitle": {
+            "type": "string",
+            "description": "The window's subtitle, short enough for the title bar: the game date and a word or two (\"May 15, 2026 · Log behind\")."
+          },
+          "subtitleHint": {
+            "type": "string",
+            "description": "The subtitle in full, for its help tag: the game date and the headline (\"May 15, 2026 · Transactions 2 days behind\")."
+          },
+          "gameDate": {
+            "$ref": "#/components/schemas/GameDateText"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DataStatusRow"
+            },
+            "description": "League data, transactions, the OOTP save and roster evidence."
+          },
+          "facts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DataStatusFact"
+            },
+            "description": "Dates and places, every one present: a missing value says why."
+          },
+          "action": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "What to do about it, when there is something to do."
+          }
+        },
+        "required": [
+          "level",
+          "headline",
+          "subtitle",
+          "subtitleHint",
+          "gameDate",
+          "sources",
+          "facts"
+        ]
+      },
+      "DepartmentHead": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "description": "The seat, as the save's staff page names it (\"Bench Coach\", \"Team Doctor\")."
+          },
+          "coachId": {
+            "$ref": "#/components/schemas/Integer"
+          }
+        },
+        "required": [
+          "name",
+          "role",
+          "coachId"
+        ],
+        "description": "Who heads a department, as the save's staff has it."
+      },
+      "DeptId": {
+        "description": "A department of the club, as the Mac app's sidebar has them (SWIFTUI_REBUILD.md section 3.5). An open enum in the spec: a newer server may name a department an older app does not know.",
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "frontOffice",
+              "majorLeague",
+              "farm",
+              "scouting",
+              "trades",
+              "finance",
+              "medical",
+              "league",
+              "philosophy"
+            ]
+          },
+          {
+            "type": "string"
+          }
         ]
       },
       "ExportPendingEvent": {
@@ -750,6 +1467,39 @@
         "type": "string",
         "description": "An in-game date as the server serves it. A string, never a date type: OOTP writes dates unpadded (`2026-5-9`), and although the fields that pass through `parseGameDate` are padded, a client compares or orders game dates only as the server does (D-056). The contract (`contract/openapi.json`) names it `GameDate`, with no format."
       },
+      "GameDateText": {
+        "type": "object",
+        "properties": {
+          "served": {
+            "$ref": "#/components/schemas/GameDate"
+          },
+          "display": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "display"
+        ],
+        "description": "A game date as served (unpadded, as OOTP writes it, or null) and as the app shows it."
+      },
+      "GlossaryEntry": {
+        "type": "object",
+        "properties": {
+          "display": {
+            "type": "string",
+            "description": "The term as a column shows it (\"OPS+\", \"GB\")."
+          },
+          "text": {
+            "type": "string",
+            "description": "What it means, in sentences: the help the app shows for the column."
+          }
+        },
+        "required": [
+          "display",
+          "text"
+        ],
+        "description": "A term and what it means (a column label and its explanation)."
+      },
       "HelloEvent": {
         "type": "object",
         "properties": {
@@ -808,13 +1558,55 @@
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "description": "The raw error, for the log; `note` says it in words."
+          },
+          "note": {
+            "$ref": "#/components/schemas/ImportNote",
+            "description": "Why the import did not finish, in a sentence; null when it did."
           }
         },
         "required": [
           "type",
           "error"
         ]
+      },
+      "ImportNote": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "description": "What happened: `failed` (it stopped on an error), `interrupted` (the server stopped partway), `exportMissing`.",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "failed",
+                  "interrupted",
+                  "exportMissing"
+                ]
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "text": {
+            "type": "string"
+          },
+          "detail": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The raw message behind it, for the log and a help tag; never the visible line."
+          }
+        },
+        "required": [
+          "kind",
+          "text",
+          "detail"
+        ],
+        "description": "Why an import is not where the GM expects it, in a sentence, with the raw message kept for the log."
       },
       "ImportProgress": {
         "type": "object",
@@ -848,16 +1640,20 @@
                 "type": "string"
               }
             ]
+          },
+          "words": {
+            "$ref": "#/components/schemas/ImportWords"
           }
         },
         "required": [
-          "table",
           "fileIndex",
           "files",
+          "phase",
           "rows",
-          "phase"
+          "table",
+          "words"
         ],
-        "description": "Where the import has got to, for a page that would rather not look frozen."
+        "description": "Where the import has got to, for a page that would rather not look frozen: the step, and the step in words."
       },
       "ImportProgressEvent": {
         "type": "object",
@@ -936,6 +1732,29 @@
           "type",
           "startedAt"
         ]
+      },
+      "ImportWords": {
+        "type": "object",
+        "properties": {
+          "phase": {
+            "type": "string",
+            "description": "What the import is doing (\"Reading the export\")."
+          },
+          "table": {
+            "type": "string",
+            "description": "The table being written, named for a person (\"Standings\"); its OOTP file name stays in `table`."
+          },
+          "display": {
+            "type": "string",
+            "description": "The line a progress bar shows (\"Writing standings · 12 of 70\")."
+          }
+        },
+        "required": [
+          "phase",
+          "table",
+          "display"
+        ],
+        "description": "An import step in words (`server/presentation/importWords.ts`), for a window that shows it."
       },
       "Integer": {
         "type": "integer",
@@ -1041,6 +1860,13 @@
               }
             ]
           },
+          "sourceText": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Where the key comes from, in words (\"From the Keychain\"); null when there is no key."
+          },
           "hint": {
             "type": [
               "string",
@@ -1054,9 +1880,29 @@
         "required": [
           "configured",
           "source",
+          "sourceText",
           "hint",
           "encrypted"
         ]
+      },
+      "Lean": {
+        "type": "object",
+        "properties": {
+          "neutral": {
+            "type": "string"
+          },
+          "why": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "neutral",
+          "why"
+        ],
+        "description": "The organization's philosophy leaning on a reading (D-052's lens): the neutral reading beside the reasons for the lean. A claim with no lean says so with `null`; an absent lean is never read as \"neutral\"."
       },
       "LiveLogFailure": {
         "anyOf": [
@@ -1558,6 +2404,29 @@
           "versatility"
         ]
       },
+      "Place": {
+        "type": "object",
+        "properties": {
+          "rank": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "of": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "tiedWith": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "overlap": {
+            "$ref": "#/components/schemas/Integer"
+          }
+        },
+        "required": [
+          "rank",
+          "of",
+          "tiedWith"
+        ],
+        "description": "A league place, stated (D-057): `rank` among `of` clubs that have the figure, `tiedWith` the number of other clubs on the same figure, and, for a Player Value place, `overlap`: how many clubs' ranges overlap this one."
+      },
       "ProviderChoice": {
         "type": "object",
         "properties": {
@@ -1774,6 +2643,13 @@
               "string",
               "null"
             ]
+          },
+          "csvLastModifiedText": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`csvLastModified` in words (`timeWords.ts`); null with it."
           }
         },
         "required": [
@@ -1781,7 +2657,8 @@
           "lgPath",
           "csvDir",
           "csvCount",
-          "csvLastModified"
+          "csvLastModified",
+          "csvLastModifiedText"
         ]
       },
       "SaveList": {
@@ -1858,6 +2735,37 @@
           "locations"
         ],
         "description": "Where `GET /api/search-locations` looked for saves, so the user can see why auto-detection came up empty."
+      },
+      "ServedValue": {
+        "type": "object",
+        "properties": {
+          "n": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "unit": {
+            "$ref": "#/components/schemas/Unit"
+          },
+          "low": {
+            "type": "number",
+            "description": "The low end of the range, when the value is a range (the most likely value is `n`)."
+          },
+          "high": {
+            "type": "number"
+          },
+          "display": {
+            "type": "string",
+            "description": "The value as the app shows it (\"4.8 runs a game\", \"Not known yet\")."
+          }
+        },
+        "required": [
+          "n",
+          "unit",
+          "display"
+        ],
+        "description": "A number a claim shows, with its range when it has one. `n` null is a value the evidence cannot give; `display` always says something (the sentence for a missing value, never a zero or a dash)."
       },
       "ServerEvent": {
         "anyOf": [
@@ -1938,6 +2846,10 @@
               "null"
             ],
             "description": "Set when an import stopped partway (the server was stopped or crashed); cleared by the next completed import."
+          },
+          "importNote": {
+            "$ref": "#/components/schemas/ImportNote",
+            "description": "Why the import is not where it should be, in a sentence (a failure, an interruption, a missing export); null when it is."
           },
           "hasData": {
             "type": "boolean"
@@ -2137,6 +3049,12 @@
       "SettingsUpdate": {
         "type": "object",
         "properties": {
+          "clubChoice": {
+            "type": "string",
+            "enum": [
+              "automatic"
+            ]
+          },
           "autoImport": {
             "type": "boolean"
           },
@@ -2222,7 +3140,7 @@
             "description": "Optional provider/model overrides for individual AI workloads.\n\nMissing entries inherit the global provider and that provider's selected model, preserving the behaviour of existing settings files."
           }
         },
-        "description": "What `POST /api/settings` takes: the preferences to change. A field left out keeps its value, and a value the handler cannot use is ignored. (Philosophy and next season's budget have routes of their own.)"
+        "description": "What `POST /api/settings` takes: the preferences to change. A field left out keeps its value, and a value the handler cannot use is ignored. (Philosophy and next season's budget have routes of their own.)\n\n`clubChoice: 'automatic'` forgets the chosen club, so the app follows the club the save's human manages (`viewingOrganization.ts`). It is the Mac app's way back to automatic: its generated client never sends an explicit null, so it cannot clear `defaultOrgId` by sending one (SWIFTUI_REBUILD.md section 4.3). It wins over a `defaultOrgId` sent beside it."
       },
       "SnapshotMeta": {
         "type": "object",
@@ -2288,6 +3206,186 @@
               "behind",
               "unverified",
               "unavailable"
+            ]
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "StatCatalogGroup": {
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "batting",
+              "pitching",
+              "fielding",
+              "contact"
+            ]
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "StatEntry": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "The key of the stat in a served stat block."
+          },
+          "group": {
+            "$ref": "#/components/schemas/StatCatalogGroup"
+          },
+          "display": {
+            "type": "string",
+            "description": "Its column label."
+          },
+          "text": {
+            "type": "string",
+            "description": "What it means."
+          },
+          "format": {
+            "$ref": "#/components/schemas/StatFormat",
+            "description": "How a value is written: `int`, `avg3` (.312), `dec1`, `dec2`, `pct` (a share), `plus` (100 is league average)."
+          },
+          "section": {
+            "$ref": "#/components/schemas/StatSection"
+          },
+          "lowerIsBetter": {
+            "type": "boolean",
+            "description": "Lower is better (an ERA, a strikeout rate for a hitter)."
+          }
+        },
+        "required": [
+          "key",
+          "group",
+          "display",
+          "text",
+          "format",
+          "section",
+          "lowerIsBetter"
+        ],
+        "description": "One statistic the app can show."
+      },
+      "StatFormat": {
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "int",
+              "avg3",
+              "dec1",
+              "dec2",
+              "pct",
+              "plus"
+            ]
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "StatSection": {
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "Counting",
+              "Rate",
+              "Advanced",
+              "Fielding",
+              "Contact"
+            ]
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "Target": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/TargetKind"
+          },
+          "department": {
+            "$ref": "#/components/schemas/DeptId"
+          },
+          "view": {
+            "type": "string",
+            "description": "A view's id inside its department (`fortyManOptions`)."
+          },
+          "playerId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "teamId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "key": {
+            "type": "string",
+            "description": "A decision's key inside its department."
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "description": "Where a claim or a row leads: a department, one of its views, a player, a club or a decision. Flat, with the fields its kind needs, so the app reads one shape."
+      },
+      "TargetKind": {
+        "description": "What a target opens.",
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "department",
+              "view",
+              "player",
+              "club",
+              "decision"
+            ]
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "Tone": {
+        "description": "How a line reads at a glance. Colour is never the only signal: the app pairs a tone with a symbol and a word.",
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "good",
+              "bad",
+              "caution",
+              "neutral",
+              "unknown"
+            ]
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "Unit": {
+        "description": "What a served number counts, so the app formats it (a share as a percentage, dollars as money).",
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "count",
+              "share",
+              "rate",
+              "dollars",
+              "wins",
+              "runs",
+              "games",
+              "days",
+              "years",
+              "place"
             ]
           },
           {

@@ -25,22 +25,33 @@ public struct SidebarView: View {
 
     public var body: some View {
         List(selection: $window.selection) {
+            // The club card is the list's first row (no tag, so it is never selected): it scrolls with the departments
+            // and nothing ever draws beneath it
+            SidebarClubCard()
+                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 6, trailing: 0))
+                .listRowSeparator(.hidden)
             ForEach(window.registry.departments) { department in
+                let served = model.catalog?.departments.first { $0.id.value2 == department.id.rawValue || $0.id.value1?.rawValue == department.id.rawValue }
                 DisclosureGroup(isExpanded: window.isExpanded(department.id)) {
                     ForEach(department.views) { view in
                         Label {
-                            Text(view.title)
+                            // The served name; the structural title only while the catalog is not there
+                            if let name = served?.views.first(where: { $0.id == view.id })?.name {
+                                Text(verbatim: name)
+                            } else {
+                                Text(view.title)
+                            }
                         } icon: {
-                            Image(systemName: view.symbol)
+                            SidebarSymbol(name: view.symbol)
                         }
                         .tag(department.route(to: view))
                         .accessibilityIdentifier("sidebar.\(department.id.rawValue).\(view.id)")
                     }
                 } label: {
                     Label {
-                        Text(department.title)
+                        if let name = served?.name { Text(verbatim: name) } else { Text(department.title) }
                     } icon: {
-                        Image(systemName: department.symbol)
+                        SidebarSymbol(name: department.symbol)
                     }
                     .badge(department.badge(from: model) ?? 0)
                     .accessibilityIdentifier("sidebar.\(department.id.rawValue)")
@@ -48,27 +59,42 @@ public struct SidebarView: View {
             }
         }
         .listStyle(.sidebar)
-        .safeAreaInset(edge: .top, spacing: 0) {
-            SidebarClubCard()
-                .padding(.horizontal, 10)
-                .padding(.bottom, 6)
-        }
         .accessibilityIdentifier("sidebar")
     }
 }
 
+/// A sidebar row's symbol in a fixed box, scaled to fit it, so a wide symbol (three people, a diamond) never runs into
+/// its title.
+struct SidebarSymbol: View {
+    let name: String
+
+    var body: some View {
+        Image(systemName: name)
+            .resizable()
+            .scaledToFit()
+            .frame(width: 18, height: 16)
+            .frame(width: 22)
+            .accessibilityHidden(true)
+    }
+}
+
 /// The club card for the served current club: its served name and colours (unless the GM turned team colours off, the
-/// served `useTeamColors`), and which club it is. A configured club
-/// the club list does not have is named as not found; with no club served there is no card.
+/// served `useTeamColors`), its record and logo from the catalog, and which club it is. A configured club the club
+/// list does not have is named as not found; with no club served there is no card.
 struct SidebarClubCard: View {
     @Environment(AppModel.self) private var model
+    @State private var logo: Image?
 
     var body: some View {
         if let club = model.club {
             if let org = club.org {
+                let served = model.catalogClub
                 ClubCard(
                     name: org.label,
                     detail: club.source.label,
+                    record: served?.record.display,
+                    recordHint: served?.record.hint,
+                    logo: logo,
                     tint: ClubTint(
                         background: org.colors.bg,
                         foreground: org.colors.fg,
@@ -76,6 +102,7 @@ struct SidebarClubCard: View {
                         useTeamColors: model.settings?.settings.useTeamColors ?? true
                     )
                 )
+                .task(id: served?.logo) { await loadLogo(served?.logo) }
             } else {
                 Label("Club not in this save", systemImage: "questionmark.circle")
                     .font(.callout)
@@ -84,6 +111,17 @@ struct SidebarClubCard: View {
                     .accessibilityIdentifier("club.card")
             }
         }
+    }
+}
+
+extension SidebarClubCard {
+    /// The club's logo from the path the catalog serves (the save's own art); none when the save holds none.
+    private func loadLogo(_ path: String?) async {
+        guard let path, let data = await model.servedFile(path), let image = NSImage(data: data) else {
+            logo = nil
+            return
+        }
+        logo = Image(nsImage: image)
     }
 }
 

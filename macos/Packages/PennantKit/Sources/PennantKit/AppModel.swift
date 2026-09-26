@@ -23,8 +23,10 @@ public final class AppModel {
     public private(set) var orgs: [Components.Schemas.Org] = []
     /// The club the app is about, as the server resolved it (configured, else human-managed).
     public private(set) var club: CurrentClub?
-    /// `/api/data-status`: how current the save, the export and the log are.
-    public private(set) var dataStatus: Components.Schemas.DataStatus?
+    /// `/api/v2/data-status`: how current the save, the export and the log are, in the server's words.
+    public private(set) var dataStatus: Components.Schemas.DataStatusView?
+    /// `/api/v2/catalog`: the glossary, the stat catalog, each club's palette, logo and record, the departments and heads.
+    public private(set) var catalog: Components.Schemas.Catalog?
     /// The last import's finish time as the server reported it; changes only when a new import lands.
     public private(set) var importStamp = ""
     /// Counts successful backup restores; part of `storeKey`, so stores reload after one.
@@ -81,7 +83,8 @@ public final class AppModel {
         status: Components.Schemas.ServerStatus? = nil,
         settings: Components.Schemas.SettingsResponse? = nil,
         orgs: [Components.Schemas.Org] = [],
-        dataStatus: Components.Schemas.DataStatus? = nil,
+        dataStatus: Components.Schemas.DataStatusView? = nil,
+        catalog: Components.Schemas.Catalog? = nil,
         importRequestProblem: RequestProblem? = nil
     ) -> AppModel {
         let model = AppModel(configuration: configuration)
@@ -90,6 +93,7 @@ public final class AppModel {
         model.settings = settings
         model.orgs = orgs
         model.dataStatus = dataStatus
+        model.catalog = catalog
         model.importRequestProblem = importRequestProblem
         model.club = CurrentClub.from(served: settings?.organization, orgs: orgs)
         return model
@@ -118,8 +122,13 @@ public final class AppModel {
     public var isImporting: Bool { status?.importing ?? false }
     public var importProgress: Components.Schemas.ImportProgress? { status?.importProgress }
     public var lastImport: Components.Schemas.ImportResult? { status?.lastImport }
-    /// The server's own sentence about the last failed import.
-    public var lastImportError: String? { status?.lastError }
+    /// Why the import is not where it should be, in the server's words (a failure, an interruption, a missing export).
+    public var importNote: Components.Schemas.ImportNote? { status?.importNote }
+    /// The catalog's entry for the current club: its palette, logo and record, as served.
+    public var catalogClub: Components.Schemas.CatalogClub? {
+        guard let id = club?.ref.id else { return nil }
+        return catalog?.clubs.first { $0.teamId == id }
+    }
     /// When OOTP wrote the export that is imported (as served).
     public var exportedAt: String? { status?.csvExportedAt }
     /// Since when a fresh export has waited to be imported (as served).
@@ -217,8 +226,8 @@ public final class AppModel {
                 return .served(try refused.body.json.error)
             case .conflict(let refused):
                 return .served(try refused.body.json.error)
-            case .undocumented(let code, _):
-                return .undocumented(code, operation: "startImport")
+            case .undocumented(let code, let payload):
+                return await .undocumented(code, body: payload.body, operation: "startImport", fromV2: false)
             }
         } catch {
             return .from(error)
@@ -241,6 +250,19 @@ public final class AppModel {
             throw problem
         }
         await reloadAll()
+    }
+
+    /// Settings ▸ Club ▸ Automatic: forget the chosen club, so the app follows the club the save's human manages (the
+    /// explicit `clubChoice` field; the generated client cannot send a null to clear `defaultOrgId`).
+    public func chooseClubAutomatically() async throws(RequestProblem) {
+        try await saveSettings(.init(clubChoice: .automatic))
+    }
+
+    /// A served file the API names by path (a club's logo, `/api/logo/…`), fetched with the launch's token; nil when the
+    /// server is not running or the file is not there.
+    public func servedFile(_ path: String) async -> Data? {
+        guard let connection = serverState.connection else { return nil }
+        return await PennantClient.data(path: path, port: connection.port, token: connection.token)
     }
 
     /// Writes a line to the server's log (a raw error a window shows only as a kind).
@@ -300,6 +322,7 @@ public final class AppModel {
             status?.importing = true
             status?.importProgress = nil
             status?.lastError = nil
+            status?.importNote = nil
         } else if let progress = event.value3 {
             status?.importing = true
             status?.importProgress = progress.progress
@@ -308,6 +331,7 @@ public final class AppModel {
                 next.importing = false
                 next.importProgress = nil
                 next.lastError = finished.error
+                next.importNote = finished.note
                 if let lastImport = finished.lastImport { next.lastImport = lastImport }
                 apply(status: next, reload: true)
             }
@@ -337,12 +361,13 @@ public final class AppModel {
         }
     }
 
-    /// Re-reads the settings, the clubs and the data status, and resolves the current club again.
+    /// Re-reads the settings, the clubs, the data status and the catalog, and resolves the current club again.
     public func reloadAll() async {
         guard let client else { return }
         async let settingsAnswer = client.getSettings()
         async let orgsAnswer = client.listOrgs()
-        async let dataStatusAnswer = client.getDataStatus()
+        async let dataStatusAnswer = client.getDataStatusWords()
+        async let catalogAnswer = client.getCatalog()
         do {
             settings = try await settingsAnswer.ok.body.json
         } catch {
@@ -357,6 +382,11 @@ public final class AppModel {
             dataStatus = try await dataStatusAnswer.ok.body.json
         } catch {
             note(error, reading: "data status")
+        }
+        do {
+            catalog = try await catalogAnswer.ok.body.json
+        } catch {
+            note(error, reading: "catalog")
         }
         club = CurrentClub.from(served: settings?.organization, orgs: orgs)
     }

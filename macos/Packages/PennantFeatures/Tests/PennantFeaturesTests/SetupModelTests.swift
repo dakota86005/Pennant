@@ -58,7 +58,8 @@ private func status(
     finishedAt: String? = nil,
     lastError: String? = nil,
     csvDirExists: Bool = true,
-    interruptedSince: String? = nil
+    interruptedSince: String? = nil,
+    note: Components.Schemas.ImportNote? = nil
 ) throws -> Components.Schemas.ServerStatus {
     var status = try #require(PreviewFixtures.status(configured: true))
     status.importing = importing
@@ -66,11 +67,21 @@ private func status(
     status.lastError = lastError
     status.csvDirExists = csvDirExists
     status.importInterruptedSince = interruptedSince
+    status.importNote = note
     status.lastImport = finishedAt.map {
         .init(tables: 1, rows: 3, startedAt: "2040-07-01T11:59:00.000Z", finishedAt: $0, files: [])
     }
     return status
 }
+
+/// An import note as the server writes it (`server/presentation/importWords.ts`).
+private func note(_ kind: String, _ text: String, detail: String? = nil) throws -> Components.Schemas.ImportNote {
+    let body: [String: Any?] = ["kind": kind, "text": text, "detail": detail]
+    let data = try JSONSerialization.data(withJSONObject: body.mapValues { $0 ?? NSNull() })
+    return try JSONDecoder().decode(Components.Schemas.ImportNote.self, from: data)
+}
+
+private let failedNote = "The import stopped before it finished. Import again; the details are in the server log."
 
 private func json(_ status: Components.Schemas.ServerStatus) throws -> String {
     String(decoding: try JSONEncoder().encode(status), as: UTF8.self)
@@ -86,7 +97,7 @@ struct SetupModelTests {
         client = PennantClient.make(port: 1, token: String(repeating: "t", count: 64), transport: server)
         try server.answer("listSaves", fixture: "listSaves")
         server.answer("getSearchLocations", (200, #"{"platform":"darwin","locations":[{"label":"OOTP 27","path":"/tmp/saved_games","exists":true}]}"#))
-        server.answer("setSave", (200, #"{"ok":true}"#))
+        server.answer("setSave", (200, #"{"ok":true,"importStarted":true,"why":null}"#))
         try server.answer("listOrgs", fixture: "listOrgs")
         try server.answer("getSettings", fixture: "getSettings")
         server.answer("saveSettings", (200, try String(contentsOf: PreviewFixtures.responses.appending(path: "saveSettings-club.json"), encoding: .utf8)))
@@ -119,7 +130,10 @@ struct SetupModelTests {
         #expect(body["csvDir"] as? String == model.saves[0].csvDir)
         #expect(body["saveName"] as? String == "Test League")
 
-        let progress = Components.Schemas.ImportProgress(table: "players", fileIndex: 3, files: 10, rows: 1200, phase: .init(value1: .writing))
+        let progress = Components.Schemas.ImportProgress(
+            table: "players", fileIndex: 3, files: 10, rows: 1200, phase: .init(value1: .writing),
+            words: .init(phase: "Writing the league", table: "Players", display: "Writing players · 3 of 10")
+        )
         await model.observe(try status(importing: true, progress: progress, finishedAt: "2040-07-01T10:00:00.000Z"))
         #expect(model.progress == progress)
         #expect(model.step == .importing)
@@ -132,8 +146,37 @@ struct SetupModelTests {
         model.selectedClub = 3
         await model.saveClub()
         #expect(server.bodies(of: "saveSettings").first?["defaultOrgId"] as? Int == 3)
+        #expect(server.bodies(of: "saveSettings").first?["clubChoice"] == nil)
         #expect(saved)
         #expect(model.step == .done)
+    }
+
+    @Test("with several human clubs, the chosen one is saved by its id: Automatic would follow only the first")
+    func severalHumanClubs() async throws {
+        let orgs = try String(contentsOf: PreviewFixtures.responses.appending(path: "listOrgs.json"), encoding: .utf8)
+        // Every club in the captured list, made human
+        server.answer("listOrgs", (200, orgs.replacingOccurrences(of: "\"isHuman\": false", with: "\"isHuman\": true")))
+        let model = makeModel()
+        await model.loadClubs()
+        #expect(model.clubs.filter(\.isHuman).count > 1)
+        let second = try #require(model.clubs.filter(\.isHuman).last)
+        model.selectedClub = second.teamId
+        await model.saveClub()
+        let body = try #require(server.bodies(of: "saveSettings").first)
+        #expect(body["defaultOrgId"] as? Int == second.teamId)
+        #expect(body["clubChoice"] == nil)
+    }
+
+    @Test("the club the save's human manages is saved as Automatic, so the app follows him; any other by its id")
+    func humanClubIsAutomatic() async throws {
+        let model = makeModel()
+        await model.loadClubs()
+        let human = try #require(model.clubs.first { $0.isHuman })
+        model.selectedClub = human.teamId
+        await model.saveClub()
+        let body = try #require(server.bodies(of: "saveSettings").first)
+        #expect(body["clubChoice"] as? String == "automatic")
+        #expect(body["defaultOrgId"] == nil)
     }
 
     @Test("an import that fails shows the server's sentence, and Try Again imports again")
@@ -141,8 +184,8 @@ struct SetupModelTests {
         let model = makeModel()
         server.answer("getStatus", (200, try json(status(importing: true))))
         await model.choose(PreviewFixtures.saves[0], status: try status())
-        await model.observe(try status(lastError: "players.csv could not be read"))
-        #expect(model.importProblem == .served("players.csv could not be read"))
+        await model.observe(try status(lastError: "players.csv could not be read", note: note("failed", failedNote, detail: "players.csv could not be read")))
+        #expect(model.importProblem == .served(failedNote, detail: "players.csv could not be read"))
         #expect(model.step == .importing)
 
         server.answer("startImport", (200, #"{"ok":true,"lastImport":null,"lastError":null}"#))
@@ -152,15 +195,29 @@ struct SetupModelTests {
         #expect(model.step == .pickClub)
     }
 
-    @Test("a save whose export folder is gone never starts importing, and says so without inventing a reason")
+    @Test("a save whose export folder is not there never starts importing, and says why in the server's words")
     func importDoesNotStart() async throws {
         let model = makeModel()
-        server.answer("getStatus", (200, try json(status(csvDirExists: false))))
+        try server.answer("setSave", fixture: "setSave-no-export")
         await model.choose(PreviewFixtures.saves[0], status: try status())
-        #expect(model.importProblem == .didNotStart)
+        #expect(model.step == .importing)
+        guard case .served(let why, _) = model.importProblem else {
+            Issue.record("expected the server's sentence, got \(String(describing: model.importProblem))")
+            return
+        }
+        #expect(why.contains("no export yet"))
+        #expect(server.requests.filter { $0.operation == "getStatus" }.isEmpty)
         model.restart()
         #expect(model.step == .findSave)
         #expect(model.importProblem == nil)
+    }
+
+    @Test("a save whose import did not start, with no word from the server, says it did not start (never \"finish\")")
+    func notStartedWithoutWords() async throws {
+        let model = makeModel()
+        server.answer("setSave", (200, #"{"ok":true,"importStarted":false,"why":null}"#))
+        await model.choose(PreviewFixtures.saves[0], status: try status())
+        #expect(model.importProblem == .notStarted)
     }
 
     @Test("a refused save shows the server's sentence and stays on the first step")
@@ -215,10 +272,13 @@ struct SetupModelTests {
     func fastFailure() async throws {
         let model = makeModel()
         // The fresh read after choosing: the import already ended, the stamp unmoved, the server's sentence set
-        server.answer("getStatus", (200, try json(status(finishedAt: "2040-07-01T10:00:00.000Z", lastError: "players.csv could not be parsed"))))
+        server.answer("getStatus", (200, try json(status(
+            finishedAt: "2040-07-01T10:00:00.000Z", lastError: "players.csv could not be parsed",
+            note: note("failed", failedNote, detail: "players.csv could not be parsed")
+        ))))
         await model.choose(PreviewFixtures.saves[0], status: try status(finishedAt: "2040-07-01T10:00:00.000Z"))
         #expect(model.step == .importing)
-        #expect(model.importProblem == .served("players.csv could not be parsed"))
+        #expect(model.importProblem == .served(failedNote, detail: "players.csv could not be parsed"))
     }
 
     @Test("an import that stopped partway is a problem, never a reason to go on to the club")
@@ -226,18 +286,19 @@ struct SetupModelTests {
         let model = makeModel()
         server.answer("getStatus", (200, try json(status(importing: true, finishedAt: "2040-07-01T10:00:00.000Z"))))
         await model.choose(PreviewFixtures.saves[0], status: try status(finishedAt: "2040-07-01T10:00:00.000Z"))
-        await model.observe(try status(finishedAt: "2040-07-01T10:00:00.000Z", interruptedSince: "2040-07-01T11:00:00.000Z"))
-        #expect(model.importProblem == .didNotFinish(since: "2040-07-01T11:00:00.000Z"))
+        let stopped = "The last import stopped before it finished. Import again to finish it."
+        await model.observe(try status(finishedAt: "2040-07-01T10:00:00.000Z", interruptedSince: "2040-07-01T11:00:00.000Z", note: note("interrupted", stopped)))
+        #expect(model.importProblem == .served(stopped))
         #expect(model.step == .importing)
     }
 
-    @Test("an import that ended with no new import and no sentence did not finish; the club step waits for a new import")
+    @Test("an import that ended with no new import and no sentence from the server did not finish; the club step waits")
     func endedWithoutLanding() async throws {
         let model = makeModel()
         server.answer("getStatus", (200, try json(status(importing: true, finishedAt: "2040-07-01T10:00:00.000Z"))))
         await model.choose(PreviewFixtures.saves[0], status: try status(finishedAt: "2040-07-01T10:00:00.000Z"))
         await model.observe(try status(finishedAt: "2040-07-01T10:00:00.000Z"))
-        #expect(model.importProblem == .didNotFinish(since: nil))
+        #expect(model.importProblem == .unexplained)
         #expect(model.step == .importing)
     }
 

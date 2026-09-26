@@ -13,6 +13,7 @@ paths:
   - "macos/**"
   - "contract/**"
   - "server/contract/**"
+  - "server/presentation/**"
   - "tests/bannedJargon.ts"
   - "tests/contract.test.ts"
   - "tests/apiRoutes.ts"

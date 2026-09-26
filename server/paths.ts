@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import type { Integer } from './contract/primitives.js';
+import { timestampWords } from './timeWords.js';
 
 export interface SaveInfo {
   name: string;
@@ -9,6 +10,8 @@ export interface SaveInfo {
   csvDir: string;
   csvCount: Integer;
   csvLastModified: string | null;
+  /** `csvLastModified` in words (`timeWords.ts`); null with it. */
+  csvLastModifiedText: string | null;
 }
 
 /** Known locations for OOTP 27 saved_games folders, per platform. */
@@ -156,7 +159,7 @@ function describeSave(lgPath: string): SaveInfo {
     }
     if (latest > 0) csvLastModified = new Date(latest).toISOString();
   }
-  return { name: path.basename(lgPath).replace(/\.lg$/i, ''), lgPath, csvDir, csvCount, csvLastModified };
+  return { name: path.basename(lgPath).replace(/\.lg$/i, ''), lgPath, csvDir, csvCount, csvLastModified, csvLastModifiedText: timestampWords(csvLastModified) };
 }
 
 export function detectSaves(): SaveInfo[] {
@@ -185,7 +188,7 @@ export function detectSaves(): SaveInfo[] {
         }
         if (latest > 0) csvLastModified = new Date(latest).toISOString();
       }
-      saves.push({ name: entry.replace(/\.lg$/, ''), lgPath, csvDir, csvCount, csvLastModified });
+      saves.push({ name: entry.replace(/\.lg$/, ''), lgPath, csvDir, csvCount, csvLastModified, csvLastModifiedText: timestampWords(csvLastModified) });
     }
   }
   return saves;

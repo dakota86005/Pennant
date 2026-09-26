@@ -19,6 +19,17 @@ public enum PennantClient {
         )
     }
 
+    /// A file the server serves outside the contract (a club's logo), by its served path, with the launch's token; nil on
+    /// anything but a 200.
+    public static func data(path: String, port: Int, token: String) async -> Data? {
+        guard let url = URL(string: path, relativeTo: baseURL(port: port)) else { return nil }
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        guard let (data, response) = try? await session.data(for: request),
+              (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
+        return data
+    }
+
     /// One session for every client: no cookies or cache (every answer is live), and a request that goes quiet
     /// for a minute fails. The event stream sends a comment every 15 seconds, so it is never idle that long.
     private static let session: URLSession = {

@@ -13,6 +13,11 @@ import { describe, expect, it } from 'vitest';
 
 const SERVER = path.join(process.cwd(), 'server');
 
+/** Every .ts file under server/, recursively (the presentation and contract folders included), relative to server/. */
+const serverSources = (dir: string = SERVER, prefix = ''): string[] =>
+  fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? serverSources(path.join(dir, e.name), `${prefix}${e.name}/`) : e.name.endsWith('.ts') ? [`${prefix}${e.name}`] : []);
+
 const code = (file: string): string =>
   fs
     .readFileSync(path.join(SERVER, file), 'utf8')
@@ -136,7 +141,7 @@ describe('MLB Operations boundary', () => {
       'bullpenRoles.ts': /\b(DEPLOYMENT_GAP|MULTI_INNING|LONG_LINE_PRIOR|MIN_APPEARANCES|LEVERAGE_UNIT_TOLERANCE)\b/,
       'benchReview.ts': /\bREQUIRED_COVER\b/,
     };
-    const files = fs.readdirSync(SERVER).filter((f) => f.endsWith('.ts'));
+    const files = serverSources();
     for (const [owner, pattern] of Object.entries(owners)) {
       const users = files.filter((f) => f !== owner && pattern.test(fs.readFileSync(path.join(SERVER, f), 'utf8')));
       // other evaluation modules may IMPORT a constant (roleReview uses MEANINGFUL_GAP); none may define one

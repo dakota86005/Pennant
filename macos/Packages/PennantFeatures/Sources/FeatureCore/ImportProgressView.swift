@@ -3,9 +3,8 @@ import PennantKit
 import SwiftUI
 
 /// An import under way, as the server reports it (`importProgress` on the status and the event stream): when the
-/// served counts allow it, a determinate bar with the share done, and the table being written in the help tag. Before the first
-/// progress arrives it is an indeterminate bar. The phase code is not put into words here (the server will serve
-/// them).
+/// served counts allow it, a determinate bar with the served line under it ("Writing standings · 12 of 70"), and the
+/// table's OOTP file name in the help tag. Before the first progress arrives it is an indeterminate bar.
 public struct ImportProgressView: View {
     let progress: Components.Schemas.ImportProgress?
 
@@ -19,9 +18,7 @@ public struct ImportProgressView: View {
                 ProgressView(value: Double(min(progress.fileIndex, progress.files)), total: Double(progress.files)) {
                     Text("Importing…")
                 } currentValueLabel: {
-                    if let share = ServedFormat.share(progress.fileIndex, of: progress.files) {
-                        Text(verbatim: share).monospacedDigit()
-                    }
+                    Text(verbatim: progress.words.display).monospacedDigit()
                 }
             } else {
                 ProgressView {
@@ -29,8 +26,7 @@ public struct ImportProgressView: View {
                 }
             }
         }
-        // The table being written is OOTP's file name, not words for the GM: it is in the help tag until the server
-        // serves a name for it (N4)
+        // The table as OOTP names its file, for whoever wants it; the line above names it for a person
         .help(detail: progress?.table)
         .accessibilityIdentifier("import.progress")
     }

@@ -420,7 +420,9 @@ describe('the evaluator depends only on the shared layers', () => {
 
   it('roster crunch no longer reconstructs rights from raw columns', () => {
     const source = read('rosterops.ts');
-    const crunch = source.slice(source.indexOf("'/roster-crunch/:orgId'"), source.indexOf('// ── Leaderboards'));
+    // The whole section: computeRosterCrunch and the route that sends it (the logic sits before the route since N4)
+    const crunch = source.slice(source.indexOf('export function computeRosterCrunch'), source.indexOf("rosterOpsRoutes.get('/leaderboards"));
+    expect(crunch).toMatch(/'\/roster-crunch\/:orgId'/);
     expect(crunch).not.toMatch(/options_used|years_protected_from_rule_5|is_on_secondary|days_on_dfa_left|\brs\./);
     expect(crunch).toMatch(/rightsFor\(/);
   });

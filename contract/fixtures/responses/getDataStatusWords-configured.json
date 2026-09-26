@@ -1,0 +1,218 @@
+{
+  "level": "partial",
+  "headline": {
+    "text": "Transaction history unavailable",
+    "tone": "caution",
+    "basis": {
+      "because": [
+        {
+          "label": "League data",
+          "value": "Not checked against the save"
+        },
+        {
+          "label": "Transactions",
+          "value": "Unavailable"
+        },
+        {
+          "label": "OOTP save",
+          "value": "Date unreadable"
+        },
+        {
+          "label": "Roster evidence",
+          "value": "Transaction history unavailable"
+        },
+        {
+          "label": "How the save was found",
+          "value": "Found from the export's folder"
+        },
+        {
+          "label": "What the log reader said",
+          "value": "No /tmp/pennant-contract-home/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games/Test League.lg/temp/text_data.sqlite3 in the save's temp folder."
+        }
+      ],
+      "source": {
+        "department": "frontOffice",
+        "specialist": "Data status",
+        "asOf": null,
+        "gameDate": "2040-05-06"
+      },
+      "unknown": [
+        "The save has no live transaction database. Current league state is available, but reasoning that depends on transaction history is limited."
+      ],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact"
+    },
+    "links": [],
+    "hint": "How current Pennant's copy of the league is against your OOTP save"
+  },
+  "subtitle": "May 6, 2040 · No log",
+  "subtitleHint": "May 6, 2040 · Transaction history unavailable",
+  "gameDate": {
+    "served": "2040-05-06",
+    "display": "May 6, 2040"
+  },
+  "sources": [
+    {
+      "id": "league",
+      "cells": {
+        "source": {
+          "display": "League data"
+        },
+        "state": {
+          "display": "Not checked against the save",
+          "tone": "caution"
+        }
+      },
+      "sort": {
+        "source": "League data",
+        "state": -2
+      }
+    },
+    {
+      "id": "transactions",
+      "cells": {
+        "source": {
+          "display": "Transactions"
+        },
+        "state": {
+          "display": "Unavailable",
+          "tone": "caution",
+          "hint": "The save has no transaction log yet"
+        }
+      },
+      "sort": {
+        "source": "Transactions",
+        "state": -1
+      }
+    },
+    {
+      "id": "save",
+      "cells": {
+        "source": {
+          "display": "OOTP save"
+        },
+        "state": {
+          "display": "Date unreadable",
+          "tone": "caution"
+        }
+      },
+      "sort": {
+        "source": "OOTP save",
+        "state": 0
+      }
+    },
+    {
+      "id": "evidence",
+      "cells": {
+        "source": {
+          "display": "Roster evidence"
+        },
+        "state": {
+          "display": "Transaction history unavailable",
+          "tone": "caution"
+        }
+      },
+      "sort": {
+        "source": "Roster evidence",
+        "state": 0
+      }
+    }
+  ],
+  "facts": [
+    {
+      "id": "gameDate",
+      "cells": {
+        "label": {
+          "display": "Game date"
+        },
+        "value": {
+          "display": "May 6, 2040"
+        }
+      },
+      "sort": {
+        "label": "Game date",
+        "value": "2040-05-06"
+      }
+    },
+    {
+      "id": "importedThrough",
+      "cells": {
+        "label": {
+          "display": "Imported data through"
+        },
+        "value": {
+          "display": "May 5, 2040"
+        }
+      },
+      "sort": {
+        "label": "Imported data through",
+        "value": "2040-05-05"
+      }
+    },
+    {
+      "id": "saveThrough",
+      "cells": {
+        "label": {
+          "display": "Save through"
+        },
+        "value": {
+          "display": "Date unreadable",
+          "tone": "unknown"
+        }
+      },
+      "sort": {
+        "label": "Save through",
+        "value": null
+      }
+    },
+    {
+      "id": "exported",
+      "cells": {
+        "label": {
+          "display": "Exported"
+        },
+        "value": {
+          "display": "Jul 1, 2040, 12:00 PM"
+        }
+      },
+      "sort": {
+        "label": "Exported",
+        "value": "2040-07-01T12:00:00.000Z"
+      }
+    },
+    {
+      "id": "imported",
+      "cells": {
+        "label": {
+          "display": "Imported"
+        },
+        "value": {
+          "display": "Not imported yet",
+          "tone": "unknown"
+        }
+      },
+      "sort": {
+        "label": "Imported",
+        "value": null
+      }
+    },
+    {
+      "id": "saveFolder",
+      "cells": {
+        "label": {
+          "display": "Save folder"
+        },
+        "value": {
+          "display": "/tmp/pennant-contract-home/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games/Test League.lg",
+          "hint": "Found from the export's folder"
+        }
+      },
+      "sort": {
+        "label": "Save folder",
+        "value": "/tmp/pennant-contract-home/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games/Test League.lg"
+      }
+    }
+  ],
+  "action": null
+}

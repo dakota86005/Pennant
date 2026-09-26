@@ -8,7 +8,7 @@ import { ownApiHeaders, requireApiToken, setApiToken } from '../server/apiToken.
 import { DataFolderLocked, acquireDataLock, lockPathFor, releaseDataLock } from '../server/dataLock.js';
 import { eventStream, progressThrottle, publish, listenerCount, PROGRESS_INTERVAL_MS } from '../server/serverEvents.js';
 import { apiKeyStatus, getApiKey, saveApiKey, clearApiKey, setInjectedKeys } from '../server/settings.js';
-import type { ImportProgress } from '../server/importer.js';
+import type { ImportStep as ImportProgress } from '../server/importer.js';
 import type { ServerStatus } from '../server/api.js';
 
 /**

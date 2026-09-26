@@ -1,10 +1,15 @@
+/**
+ * Checks every club's palette for contrast (WCAG AA on every pair a page draws), in both modes, as both clients draw it:
+ * the React app's CSS values and the hex tokens the Mac app is served (`GET /api/v2/catalog`), both from the server's
+ * `server/presentation/palette.ts`.
+ *
+ *   npm run check:theme              the imported league in ./data
+ *   npm run check:theme -- <db>      another league database (a scratch copy, the synthetic league)
+ */
 import Database from 'better-sqlite3';
-import { derivePalette } from '../src/theme.js';
+import { clubPalette, derivePalette } from '../server/presentation/palette.js';
 
-const db = new Database(
-  './data/league.db',
-  { readonly: true }
-);
+const db = new Database(process.argv[2] ?? './data/league.db', { readonly: true });
 
 function hslToRgb(css: string): [number, number, number] {
   const m = /hsl\((-?[\d.]+),\s*([\d.]+)%,\s*([\d.]+)%\)/.exec(css);
@@ -81,8 +86,15 @@ const MODES = ['dark', 'light'] as const;
 for (const mode of MODES) {
 console.log(`\n── ${mode} mode ──`);
 for (const t of teams) {
-  const p = derivePalette(t, mode);
-  const checks: Record<string, number> = {
+  // The React app's CSS values and the Mac app's served hex tokens: the worse of the two is what counts
+  const css = derivePalette(t, mode);
+  const served = clubPalette(t, mode);
+  const hex: Record<string, string> = {
+    '--text': served.text, '--bg': served.background, '--muted': served.muted, '--accent': served.accent,
+    '--panel': served.panel, '--accent-ink': served.accentText, '--team-fg': served.teamText, '--team': served.team,
+    '--good': served.good, '--bad': served.bad,
+  };
+  const checksOf = (p: Record<string, string>): Record<string, number> => ({
     text: ratio(p['--text'], p['--bg']),
     muted: ratio(p['--muted'], p['--bg']),
     accentBg: ratio(p['--accent'], p['--bg']),
@@ -97,7 +109,11 @@ for (const t of teams) {
     // And at full strength, which is what an outlier gets
     statGoodMax: ratio(statMix(p['--good'], p['--text'], 100), p['--bg']),
     statBadMax: ratio(statMix(p['--bad'], p['--text'], 100), p['--bg']),
-  };
+  });
+  const cssChecks = checksOf(css);
+  const hexChecks = checksOf(hex);
+  const checks = Object.fromEntries(Object.keys(cssChecks).map((k) => [k, Math.min(cssChecks[k], hexChecks[k])]));
+  const p = css;
   const bad = Object.entries(checks).filter(([, v]) => v < AA);
   if (bad.length) failures++;
   const flag = bad.length ? '❌' : '✓';

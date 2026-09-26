@@ -17,6 +17,7 @@
   "apiKey": {
     "configured": false,
     "source": null,
+    "sourceText": null,
     "hint": null,
     "encrypted": false,
     "storageLabel": "a permission-restricted file (no OS keychain available)"
@@ -24,6 +25,8 @@
   "dataDir": "/tmp/ootp-fo-test",
   "organization": {
     "id": 1,
-    "source": "human"
+    "source": "human",
+    "humanClubs": 1,
+    "note": null
   }
 }

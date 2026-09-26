@@ -12,6 +12,11 @@ import { describe, expect, it } from 'vitest';
  */
 
 const SERVER = path.join(process.cwd(), 'server');
+
+/** Every .ts file under server/, recursively (the presentation and contract folders included), relative to server/. */
+const serverSources = (dir: string = SERVER, prefix = ''): string[] =>
+  fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? serverSources(path.join(dir, e.name), `${prefix}${e.name}/`) : e.name.endsWith('.ts') ? [`${prefix}${e.name}`] : []);
 const code = (file: string): string => fs.readFileSync(path.join(SERVER, file), 'utf8');
 
 /** Every module this phase added or owns. */
@@ -138,7 +143,7 @@ describe('Minor League Operations boundary', () => {
 
   it('every farm threshold is declared once, in farmCalibration.ts', () => {
     const owned = /\b(BODY_COUNT|ROTATION_SPOTS|RELIEF_CORPS|CRITICAL_POSITIONS|PLAYABLE_GRADE|STRONG_GRADE|POSITION_CAPACITY|REGULAR_PLAY_SHARE|PART_TIME_SHARE|ROTATION_SHARE|RELIEF_EVEN_SHARE_PART_TIME|DEPARTED_SHARE_NOTED|RECENT_WINDOW_GAMES|RECENT_MINIMUM_GAMES|RECENT_ROTATION_SHARE|STARTER_CAPACITY|RELIEF_CAPACITY|MINIMUM_CLUB_GAMES|MINIMUM_SAMPLE|MATURE_SAMPLE|LEAGUE_POPULATION_MINIMUM|YOUNG_FOR_LEVEL|OLD_FOR_LEVEL|AGE_LEVEL_DEVELOPMENT_LIMIT|UPPER_MINORS_DEPTH_FLOOR|UPPER_MINORS_LEVELS|PRIORITY_CONGESTION_AT|CASCADE_MAX_STEPS|RUNWAY_CLOSING_AGE|RUNWAY_SERVICE_LIMIT|PROTECTED_TIERS)\b/;
-    const files = fs.readdirSync(SERVER).filter((f) => f.endsWith('.ts') && f !== 'farmCalibration.ts');
+    const files = serverSources().filter((f) => f !== 'farmCalibration.ts');
     for (const file of files) {
       const source = code(file);
       if (!owned.test(source)) continue;

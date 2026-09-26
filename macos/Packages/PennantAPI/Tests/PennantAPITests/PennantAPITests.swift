@@ -111,7 +111,7 @@ struct PennantAPITests {
         let events = try await decodedEvents(from: sse([
             ("hello", #"{"type":"hello","status":\#(status)}"#),
             ("import-started", #"{"type":"import-started","startedAt":"2026-09-25T12:00:00.000Z"}"#),
-            ("import-progress", #"{"type":"import-progress","progress":{"table":"players","fileIndex":1,"files":70,"rows":1200,"phase":"writing"}}"#),
+            ("import-progress", #"{"type":"import-progress","progress":{"table":"players","fileIndex":1,"files":70,"rows":1200,"phase":"writing","words":{"phase":"Writing the league","table":"Players","display":"Writing players · 1 of 70"}}}"#),
             ("import-finished", #"{"type":"import-finished","lastImport":null,"error":"No .csv files"}"#),
             ("export-pending", #"{"type":"export-pending","since":"2026-09-25T12:05:00.000Z"}"#),
             ("job", #"{"type":"job","kind":"storylines","orgId":1,"status":{"state":"running","startedAt":"2026-09-25T12:06:00.000Z","finishedAt":null,"error":null}}"#),
@@ -151,14 +151,14 @@ struct PennantAPITests {
     func unknownEnumValue() throws {
         let progress = try JSONDecoder().decode(
             Components.Schemas.ImportProgress.self,
-            from: Data(#"{"table":"players","fileIndex":1,"files":2,"rows":3,"phase":"verifying","addedLater":true}"#.utf8)
+            from: Data(#"{"table":"players","fileIndex":1,"files":2,"rows":3,"phase":"verifying","words":{"phase":"Writing the league","table":"Players","display":"Writing players · 1 of 70"},"addedLater":true}"#.utf8)
         )
         #expect(progress.phase.value1 == nil)
         #expect(progress.phase.value2 == "verifying")
         // A known code still reads as the known case
         let known = try JSONDecoder().decode(
             Components.Schemas.ImportProgress.self,
-            from: Data(#"{"table":"players","fileIndex":1,"files":2,"rows":3,"phase":"indexing"}"#.utf8)
+            from: Data(#"{"table":"players","fileIndex":1,"files":2,"rows":3,"phase":"indexing","words":{"phase":"Writing the league","table":"Players","display":"Writing players · 1 of 70"}}"#.utf8)
         )
         #expect(known.phase.value1 == .indexing)
         // A nullable code reads null as nil and a new code as its string
@@ -173,6 +173,50 @@ struct PennantAPITests {
         #expect(keys[0].source == nil)
         #expect(keys[1].source?.value1 == nil && keys[1].source?.value2 == "cloud")
         #expect(keys[2].source?.value1 == .keychain)
+    }
+
+    @Test("a served Claim decodes with its basis: the line, its tone, what is not known, no lean, how it is called")
+    func servedClaim() async throws {
+        let view = try await jsonClient("getDataStatusWords").getDataStatusWords().ok.body.json
+        let claim = view.headline
+        #expect(claim.text == "Transaction history unavailable")
+        #expect(claim.tone.value1 == .caution)
+        #expect(claim.hint?.count ?? 0 <= 75)
+        #expect(claim.basis.certainty.value1 == .fact)
+        #expect(claim.basis.source.department.value1 == .frontOffice)
+        #expect(claim.basis.source.gameDate == "2040-05-06")
+        #expect(claim.basis.unknown.isEmpty == false)
+        #expect(claim.basis.lean == nil)
+        #expect(Array(claim.basis.because.map(\.label).prefix(5)) == ["League data", "Transactions", "OOTP save", "Roster evidence", "How the save was found"])
+        #expect(claim.links.isEmpty)
+        // A row's sort keys: a string and a number, each read as served
+        let league = try #require(view.sources.first)
+        #expect(league.sort.source?.value2 == "League data")
+        #expect(league.sort.state?.value1 == -2)
+        #expect(league.cells.state.tone?.value1 == .caution)
+        // A missing value is its sentence, and its sort key is unknown
+        let imported = try #require(view.facts.first { $0.id == "imported" })
+        #expect(imported.cells.value.display == "Not imported yet")
+        #expect(imported.sort.value?.value1 == nil && imported.sort.value?.value2 == nil)
+        #expect(view.gameDate.served == "2040-05-06")
+        #expect(view.gameDate.display == "May 6, 2040")
+    }
+
+    @Test("the catalog decodes: glossary, stats, each club's palette and record, the departments and their heads")
+    func catalog() async throws {
+        let catalog = try await jsonClient("getCatalog").getCatalog().ok.body.json
+        #expect(catalog.glossary.contains { $0.display == "OPS+" })
+        #expect(catalog.stats.contains { $0.key == "era" && $0.lowerIsBetter && $0.format.value1 == .dec2 })
+        let club = try #require(catalog.clubs.first { $0.isHuman == true })
+        #expect(club.palette.dark.accent.hasPrefix("#"))
+        #expect(club.record.display == "15–15")
+        #expect(club.logo == nil)
+        #expect(catalog.departments.map(\.id.value1) == [.frontOffice, .majorLeague, .farm, .scouting, .trades, .finance, .medical, .league, .philosophy])
+        let medical = try #require(catalog.departments.first { $0.id.value1 == .medical })
+        #expect(medical.head?.role == "Team Doctor")
+        #expect(medical.preparedBy.display.hasPrefix("Prepared by "))
+        #expect(catalog.departments.first { $0.id.value1 == .farm }?.head == nil)
+        #expect(catalog.phrases.missingValue.display == "Not known yet")
     }
 
     @Test("what the server sent on the synthetic save decodes through the generated client")
@@ -194,6 +238,9 @@ struct PennantAPITests {
             _ = try decoder.decode(Components.Schemas.ResolveResult.self, from: Data(try fixture("responses/\(name).json").utf8))
         }
         #expect(try decoder.decode(Components.Schemas.SaveSourceResult.self, from: Data(try fixture("responses/setSaveSource-cleared.json").utf8)).ok)
+        let notStarted = try decoder.decode(Components.Schemas.ConfigAccepted.self, from: Data(try fixture("responses/setSave-no-export.json").utf8))
+        #expect(notStarted.importStarted == false && notStarted.why != nil)
+        #expect(try decoder.decode(Components.Schemas.SettingsSaved.self, from: Data(try fixture("responses/saveSettings-automatic.json").utf8)).settings.defaultOrgId == nil)
         for name in ["setSaveSource-not-a-save", "setSave-no-folder", "startImport-no-save"] {
             _ = try decoder.decode(Components.Schemas.ApiError.self, from: Data(try fixture("responses/\(name).json").utf8))
         }

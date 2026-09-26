@@ -15,6 +15,11 @@ import { describe, expect, it } from 'vitest';
 
 const SERVER = path.join(process.cwd(), 'server');
 
+/** Every .ts file under server/, recursively (the presentation and contract folders included), relative to server/. */
+const serverSources = (dir: string = SERVER, prefix = ''): string[] =>
+  fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? serverSources(path.join(dir, e.name), `${prefix}${e.name}/`) : e.name.endsWith('.ts') ? [`${prefix}${e.name}`] : []);
+
 const code = (file: string): string =>
   fs
     .readFileSync(path.join(SERVER, file), 'utf8')
@@ -150,9 +155,7 @@ describe('the evidence boundary', () => {
     // Player Value phase 6 (PLAYER_VALUE.md Part 8) moved every consumer off OOTP's hidden value figures, one per change;
     // phase 6e deleted the last readers (valuation.ts's valuesByPlayer and mlbPercentiler). There is no allow-list any
     // more: a module that starts reading players_value is a failure here, never an addition to a list (D-017).
-    const readers = fs
-      .readdirSync(SERVER)
-      .filter((f) => f.endsWith('.ts'))
+    const readers = serverSources()
       .filter((f) => /players_value/.test(code(f)));
     expect(readers).toEqual([]);
   });
@@ -168,9 +171,7 @@ describe('the evidence boundary', () => {
     // valuation.ts's valuesByPlayer and mlbPercentiler handed players_value to their callers under other names. Player
     // Value phase 6 moved their callers one per change (6a the card and Contracts, 6b the Trade Center, 6c Free Agents, 6d
     // the Roster and the lineup); phase 6e deleted them with contractsByPlayer. Nothing may name them again.
-    const readers = fs
-      .readdirSync(SERVER)
-      .filter((f) => f.endsWith('.ts'))
+    const readers = serverSources()
       .filter((f) => INDIRECT.test(code(f)));
     expect(readers).toEqual([]);
     expect(code('valuation.ts')).not.toMatch(/\bPercentiler\b|\bPlayerValue\b|\bContractInfo\b|\bcontractsByPlayer\b/);
@@ -204,6 +205,22 @@ describe('the evidence boundary', () => {
   it('the club\'s thinnest positions are read on Player Value, not on players_value (phase 6c): valuation.ts no longer ranks them', () => {
     expect(code('valuation.ts')).not.toMatch(/\brosterHoles\b/);
     expect(code('valuation.ts')).not.toMatch(/\bVALUE_PERCENTILE_NOTE\b/);
+  });
+
+  it('no deterministic module imports an AI module by value: the application decides, AI explains (D-001)', () => {
+    // The AI modules themselves, the model catalogue and the settings that hold their keys, and the API that wires them
+    // up. Everything else computes facts, findings and words without a model; a type-only import is erased and allowed.
+    const AI = new Set(['providers', 'ai', 'chat', 'storylines']);
+    const allowed = new Set(['ai.ts', 'chat.ts', 'storylines.ts', 'providers.ts', 'models.ts', 'settings.ts', 'api.ts']);
+    const offenders: string[] = [];
+    for (const file of serverSources().filter((f) => !allowed.has(f))) {
+      for (const m of code(file).matchAll(/(?:^|\n)\s*(?:import|export)\s+(type\s+)?([^;]*?)\s+from\s+'([^']+)'/g)) {
+        const typeOnly = !!m[1] || m[2].replace(/^\{|\}$/g, '').split(',').map((s) => s.trim()).filter(Boolean).every((n) => n.startsWith('type '));
+        const name = path.basename(m[3]).replace(/\.(js|ts)$/, '');
+        if (!typeOnly && AI.has(name)) offenders.push(`${file} imports ${m[3]}`);
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 
   it('requires evidence, not bare numbers, at the development entry points', () => {

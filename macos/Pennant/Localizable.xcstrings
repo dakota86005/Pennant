@@ -31,6 +31,12 @@
     "Assignments": {
       "extractionState": "manual"
     },
+    "Automatic": {
+      "extractionState": "manual"
+    },
+    "Automatic follows the club you manage in the save.": {
+      "extractionState": "manual"
+    },
     "Back": {
       "extractionState": "manual"
     },
@@ -105,9 +111,6 @@
     "Export folder": {
       "extractionState": "manual"
     },
-    "Exported": {
-      "extractionState": "manual"
-    },
     "Farm & Development": {
       "extractionState": "manual"
     },
@@ -135,19 +138,10 @@
     "Free Agents": {
       "extractionState": "manual"
     },
-    "From the Keychain": {
-      "extractionState": "manual"
-    },
-    "From the environment": {
-      "extractionState": "manual"
-    },
     "Front Office": {
       "extractionState": "manual"
     },
     "GM Briefing": {
-      "extractionState": "manual"
-    },
-    "Game date": {
       "extractionState": "manual"
     },
     "General": {
@@ -167,12 +161,6 @@
       "extractionState": "manual"
     },
     "Import Now": {
-      "extractionState": "manual"
-    },
-    "Imported": {
-      "extractionState": "manual"
-    },
-    "Imported data through": {
       "extractionState": "manual"
     },
     "Importing the export": {
@@ -240,6 +228,9 @@
       "extractionState": "manual"
     },
     "Not found": {
+      "extractionState": "manual"
+    },
+    "Not known": {
       "extractionState": "manual"
     },
     "Nothing selected": {
@@ -328,12 +319,6 @@
     "Save folder": {
       "extractionState": "manual"
     },
-    "Save through": {
-      "extractionState": "manual"
-    },
-    "Saved in the data folder": {
-      "extractionState": "manual"
-    },
     "Saves Pennant found": {
       "extractionState": "manual"
     },
@@ -366,10 +351,10 @@
     "Show in Finder": {
       "extractionState": "manual"
     },
-    "Standings": {
+    "Show why": {
       "extractionState": "manual"
     },
-    "Started": {
+    "Standings": {
       "extractionState": "manual"
     },
     "Starting…": {},
@@ -427,7 +412,13 @@
     "Use This Save": {
       "extractionState": "manual"
     },
+    "What would change it": {
+      "extractionState": "manual"
+    },
     "Where Pennant looked": {
+      "extractionState": "manual"
+    },
+    "Why": {
       "extractionState": "manual"
     },
     "Wire": {

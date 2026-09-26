@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db, tableExists } from './db.js';
 import { LEVEL_NAMES } from './valuation.js';
 import { computeBatting, computePitching, leagueBaseline } from './stats.js';
+import { answer, refuse, type Computed } from './computed.js';
 
 export const leagueRoutes = Router();
 
@@ -17,13 +18,37 @@ const streakLabel = (streak: number | null): string => {
   return streak > 0 ? `W${streak}` : `L${Math.abs(streak)}`;
 };
 
-leagueRoutes.get('/standings/:orgId', (req, res) => {
-  const orgId = Number(req.params.orgId);
-  if (!tableExists('team_record')) return res.status(400).json({ error: 'No data imported yet' });
+/** One club's line in the standings (`GET /api/standings/:orgId`). */
+export interface StandingsTeam {
+  team_id: number;
+  team: string;
+  abbr: string | null;
+  w: number | null;
+  l: number | null;
+  pct: number | null;
+  gb: number | null;
+  g: number | null;
+  streak: string;
+  magicNumber: number | null;
+  rs: number | null;
+  ra: number | null;
+  diff: number | null;
+  isOrg: boolean;
+}
+
+/** The league's standings, grouped sub-league then division, as `GET /api/standings/:orgId` serves them. */
+export interface Standings {
+  scheduledGames: number | null;
+  subLeagues: Array<{ name: string; divisions: Array<{ name: string; teams: StandingsTeam[] }> }>;
+}
+
+/** The standings of the organization's league, or why they cannot be read (the route's own answer). */
+export function computeStandings(orgId: number): Computed<Standings> {
+  if (!tableExists('team_record')) return refuse(400, 'No data imported yet');
   const org = db.prepare(`SELECT league_id FROM teams WHERE team_id = ?`).get(orgId) as
     | { league_id: number }
     | undefined;
-  if (!org) return res.status(404).json({ error: 'Unknown org' });
+  if (!org) return refuse(404, 'Unknown org');
 
   // Runs scored and allowed aren't in team_record. The team stat tables hold
   // exactly one row per team, but batting and pitching disagree on which
@@ -63,7 +88,7 @@ leagueRoutes.get('/standings/:orgId', (req, res) => {
     .all(org.league_id) as Array<Record<string, number | string | null>>;
 
   // Group into sub-league → division, the shape a standings page reads in
-  const groups = new Map<string, { subLeague: string; divisions: Map<string, unknown[]> }>();
+  const groups = new Map<string, { subLeague: string; divisions: Map<string, StandingsTeam[]> }>();
   for (const r of rows) {
     const sub = (r.sub_league as string) ?? 'League';
     const div = (r.division as string) ?? 'Division';
@@ -73,16 +98,16 @@ leagueRoutes.get('/standings/:orgId', (req, res) => {
     const rs = runsFor.get(r.team_id as number) ?? null;
     const ra = runsAgainst.get(r.team_id as number) ?? null;
     g.divisions.get(div)!.push({
-      team_id: r.team_id,
-      team: r.team,
-      abbr: r.abbr,
-      w: r.w,
-      l: r.l,
-      pct: r.pct,
-      gb: r.gb,
-      g: r.g,
+      team_id: r.team_id as number,
+      team: r.team as string,
+      abbr: r.abbr as string | null,
+      w: r.w as number | null,
+      l: r.l as number | null,
+      pct: r.pct as number | null,
+      gb: r.gb as number | null,
+      g: r.g as number | null,
       streak: streakLabel(r.streak as number | null),
-      magicNumber: r.magic_number === 1000 ? null : r.magic_number,
+      magicNumber: r.magic_number === 1000 ? null : (r.magic_number as number | null),
       rs,
       ra,
       diff: rs !== null && ra !== null ? rs - ra : null,
@@ -94,14 +119,42 @@ leagueRoutes.get('/standings/:orgId', (req, res) => {
     (db.prepare(`SELECT rules_schedule_games_per_team AS n FROM leagues WHERE league_id = ?`)
       .get(org.league_id) as { n: number | null } | undefined)?.n ?? null;
 
-  res.json({
+  return answer({
     scheduledGames: scheduled,
     subLeagues: [...groups.values()].map((g) => ({
       name: g.subLeague,
       divisions: [...g.divisions.entries()].map(([name, teams]) => ({ name, teams })),
     })),
   });
+}
+
+leagueRoutes.get('/standings/:orgId', (req, res) => {
+  const standings = computeStandings(Number(req.params.orgId));
+  if (!standings.ok) return res.status(standings.status).json({ error: standings.error });
+  res.json(standings.body);
 });
+
+/** A club's season record as the export's standings table has it; null when the export has none for the club. */
+export interface ClubRecord {
+  w: number;
+  l: number;
+  g: number | null;
+  /** Place in the division (1 is first), when the export states one. */
+  pos: number | null;
+  gb: number | null;
+}
+
+/** A club's record from the export's `team_record`, read as exported (an objective fact), or null. */
+export function clubRecord(teamId: number): ClubRecord | null {
+  if (!tableExists('team_record')) return null;
+  const row = db.prepare(`SELECT * FROM team_record WHERE team_id = ?`).get(teamId) as Record<string, unknown> | undefined;
+  if (!row) return null;
+  const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+  const w = num(row.w);
+  const l = num(row.l);
+  if (w === null || l === null) return null;
+  return { w, l, g: num(row.g), pos: num(row.pos) !== null && num(row.pos)! > 0 ? num(row.pos) : null, gb: num(row.gb) };
+}
 
 /**
  * League-wide player browser. Filters run in SQL so only the returned page has

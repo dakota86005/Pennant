@@ -37,6 +37,12 @@ public struct ProblemLine: View {
         detail = nil
     }
 
+    /// A served sentence, with the raw message behind it (when the server sent one) in the help tag.
+    public init(served sentence: String, detail: String?) {
+        text = Text(verbatim: sentence)
+        self.detail = detail
+    }
+
     public var body: some View {
         Label {
             text.foregroundStyle(.primary)

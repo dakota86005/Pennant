@@ -6,6 +6,9 @@ server, section 5; "As built" below). Milestone N2 is done (2026-09-25: the cont
 there). Milestone N3 is done (2026-09-26: the Xcode project and packages, the server inside the app, `ServerController`,
 `AppModel`, the event client, routes, the comparator, backups and the test script; then the window shell from the
 department registry, the commands, Setup and Settings; "As built at N3" in sections 3.1, 3.2, 3.6, 5.2, 5.3, 6, 7 and 8).
+Milestone N4, Stage A is built (2026-09-26: the presentation types and builder, `server/presentation/`, the route
+extractions, severity normalization, `/api/v2/catalog`, the N3 gaps served as words; "As built at N4 (Stage A)" in
+sections 4.1, 4.2 and 8); its Stage B (the Front Office adapters, their cache and the claims endpoint) follows.
 Nothing else in this document is implemented yet. It supersedes the UI parts of the
 V2 web plan (`~/.claude/plans/okay-can-we-please-effervescent-cherny.md`, sections 3 and 4). The server-side
 parts of that plan (the Front Office contract, the Club Profile, the roster map, the horizon board, the league
@@ -338,6 +341,51 @@ interface Cell { display: string; tone?: Tone; hint?: string; claimRef?: string 
   geometry. The comparator's cases live in `contract/fixtures/sort-cases.json` and run in both Vitest and Swift
   Testing.
 
+**As built at N4 (Stage A), 2026-09-26.**
+- The types are in `server/contract/presentation.ts`, as sketched above, with four changes: `Certainty` gains `fact` (an
+  objective fact read from the export, which no fitted number and no chosen line decided, so a plain fact is never
+  stamped policy); `Target` is one flat shape (`kind` plus the fields a kind needs: `department`, `view`, `playerId`,
+  `teamId`, `key`), so Swift reads one struct; `DeptId` is the Mac app's own ids (`frontOffice`, `majorLeague`, ...);
+  `Unit` is `count | share | rate | dollars | wins | runs | games | days | years | place`. `Row<K>` is generic over its
+  columns (`cells: Record<K, Cell>`, `sort: Record<K, number | string | null>`) and is never exported: a payload exports
+  an interface extending it (`export interface DataStatusRow extends Row<'source' | 'state'> {}`), which becomes one
+  component. (A type alias of an exported generic would be named by its instantiation, `Row<…>`, which the build refuses.)
+- `server/presentation/claim.ts` is the one way to author them. `claim()` takes only a basis made by `basis()` (a
+  branded type, so a claim with no basis does not type-check; `tests/v2Contract.test.ts` compiles the attempt with the
+  real compiler). `basis()` asks for "not known", "would change if" and the lean every time, with no default; `[]` and
+  `null` are said on purpose. Every shown string is checked as it is built (none empty, a help tag at most 75 characters,
+  a range that holds its value, a place inside its "of N"); a breach throws as an authoring defect. `cell()`, `row()`,
+  `servedValue()` and `unknownValue()` build the rest.
+- `server/presentation/` holds every v2 word: the claim builder, severity normalization (`severity.ts`, below), the
+  catalog (`catalog.ts`, with the glossary, the stat catalog and the club palette moved here from `src/`), the data
+  status in words (`dataStatusWords.ts`) and the import in words (`importWords.ts`). The React app reads the moved
+  glossary, stat catalog and palette from there (`src/glossary.ts`, `src/stats.ts`, `src/theme.ts` re-export), so the two
+  clients cannot drift; `tests/catalog.test.ts` holds them to the same entries.
+- **Severity normalization** (`server/presentation/severity.ts`, V2 plan section 4.4): Major League Ops' critical,
+  elevated and watch read critical, attention and noted, with the philosophy-free severity kept beside a shaded flag;
+  the farm's scale passes unchanged; a running designation or waiver clock is critical with its days left; an option
+  note, a contract date and an injury are noted. Each mapping carries a `policy()` stamp; a mapping never ranks above
+  its specialist's own code, and an unknown code throws. `readDepartment()` turns a failed read into `unavailable` with a
+  sentence (the raw error to the log): its count is unknown (null), never zero, and it is never all clear.
+- **Route extractions (R7):** `computeStandings` (`league.ts`), `computeTrends` (`trends.ts`), `computeRosterCrunch`
+  (`rosterops.ts`) and `computePitchingStaff` (`pitching.ts`) return the body or the route's refusal
+  (`server/computed.ts`); each old route sends exactly that, proved byte-identical (status, content type, body) on the
+  fixture league and two synthetic saves before and after, and pinned by `tests/routeExtractions.test.ts`.
+- **Scoped jargon exceptions:** `JARGON_EXCEPTIONS` in `tests/bannedJargon.ts`: one phrase allowed on one department's
+  view (optionally one shown field), its case stated, with a one-line reason. A `/v2` operation places each shown
+  string on its surface (`SURFACES`: the catalog's parts, the data status; the per-view endpoint will read its path
+  parameters); an operation with no surface gets no exception. The phrase is taken out only before the jargon list;
+  verdict words are always read on the whole string, so no exception can allow one ("waiver priority" stays out). The
+  contract test fails on an exception no live payload uses. A claim's basis is the breakdown (the ⓘ popover), held to
+  the verdicts and rendering leaks rather than the jargon list.
+- **Review fixes (2026-09-26).** The basis guarantee holds at run time: `basis()` freezes and registers what it makes,
+  `claim()` refuses any other basis (a spread is a new object) and validates it again, a basis needs an evidence line
+  unless its certainty is unknown, its stamp goes with its certainty (required for calibrated, provisional and policy,
+  refused for a fact), `assertAuthored()` checks every `/v2` payload before it is sent, and the static rule catches
+  spreads, casts, annotated values and arrays, and return types. `target()` builds links. The landing folders
+  (`presentation/`, `presentation/frontOffice/`, `frontOffice/`) may reach neither `posture` nor `playoffs` nor an AI
+  module by any chain of imports.
+
 ### 4.2 Endpoints
 
 Everything new lives under `/api/v2/`, so the React app keeps working on the old routes until cutover.
@@ -354,6 +402,44 @@ Everything new lives under `/api/v2/`, so the React app keeps working on the old
 | `GET /api/v2/catalog` | Glossary, stat catalog, theme tokens per club, department list and staff heads |
 | `GET /api/v2/events` (SSE) | Import progress and finished, job progress, desk changes, freshness. This replaces 8-second polling |
 | existing chat SSE, jobs, settings, import, trade analyze | Reused, and described in the spec by the milestone that first uses each: status, import, setup and settings at N2 (for N3), trade analyze at N12, chat SSE and jobs at N13 |
+
+**As built at N4 (Stage A), 2026-09-26.** The `/v2` routes other than the event stream live in `server/v2Routes.ts`,
+mounted at `/api/v2`. A `/v2` failure answers an `ApiError` whose `error` is a sentence and whose new optional `detail`
+is the raw message (for the log and a help tag); an unknown `/v2` route answers a sentence.
+- `GET /api/v2/catalog` (`Catalog`): the glossary (every term the React app defines but the two only its pages use),
+  the stat catalog (key, group, label, meaning, format, section, direction), each major-league club's palette as hex
+  tokens in both modes (`derivePalette` moved to `server/presentation/palette.ts`; `npm run check:theme` checks the CSS
+  values and the served tokens), its logo reference when the save holds one (`/api/logo/:id?v=<token>`), its record as
+  the export's standings have it ("45–38", the place in the help tag) or a sentence, the nine departments with each
+  head from the club's staff table (`team_roster_staff`, the source and the names `GET /api/staff` uses: General
+  Manager for Front Office, Bench Coach for Major League Ops, Head Scout for Scouting, Team Doctor for Medical; Trades,
+  Farm, Finance, League Office and Philosophy have no seat there and are "prepared by" their staff; a provisional call
+  pending the owner) and a sentence where the save names nobody, never a made-up name, and the sentence for a missing value.
+- `GET /api/v2/data-status` (`DataStatusView`): the level; the headline as a `Claim` (the four source lines, how the
+  save was found, where Pennant looked and what the log reader said as its evidence, the freshness reasons as "not
+  known", an action in the GM's words as "would change if", certainty `fact`), shown in Settings with its basis behind
+  an ⓘ popover; the subtitle short enough for the title bar (the game date and a word or two) with the full one as
+  `subtitleHint` (the Data Status toolbar button's help tag); the game date as served and written; the four source lines as rows (why the
+  log is unavailable in the help tag); every date and place as a row, a missing one saying why; the action.
+- The N3 gaps, served additively on reused routes: `ImportProgress.words` (the phase, the table named for a person, the
+  progress line); `ServerStatus.importNote` and the import-finished event's `note` (why an import failed, as a sentence
+  to act on with the raw message as its detail, was interrupted, or has no export folder); `POST /api/config` answers
+  `ConfigAccepted` (whether the import started, and why not); `KeyStatus.sourceText`; `SaveInfo.csvLastModifiedText` (every
+  served time is written one way, `server/timeWords.ts`, and Swift formats none); and the clearing rule,
+  `SettingsUpdate.clubChoice: "automatic"`, which forgets the chosen club and wins over a `defaultOrgId` beside it.
+  Automatic follows the first human club by team id, and the served `organization` says how many there are and, when
+  it had to pick, which (`note`); Setup saves Automatic only when exactly one club is human.
+- A `/v2` failure's sentence is shown as the server's; a reused route's undocumented answer (a legacy 500 carries the
+  raw exception) is a failure kind in Swift, its text only in the log and the help tag.
+- The catalog serves each department's views (id and name); the sidebar shows the served names, its structural titles
+  only until the catalog arrives, and a test holds the served list to the Swift registry. The catalog reads its clubs
+  whatever columns the export has (`catalogClubs()`): without `human_team`, who runs a club is unknown (null).
+- *For N3.5:* `/api/v2/data-status` reuses `getDataStatus`, whose first read after OOTP writes the log copies
+  `text_data.sqlite3` on the request path (cached by size and time afterwards). Stage B's cache or N3.5's import work
+  should move it off the request.
+- Measured on the synthetic save (30 requests each after one warm-up): the catalog about 2 ms at 4 clubs and 3 ms at 30
+  (it grows with the club count: a palette, a record and a logo check per club, 45 kB at 30 clubs); the data status
+  0.3 ms (a real save's first read copies the transaction log, cached against the files' size and time after that).
 
 ### 4.3 The typed pipeline (no hand-written models)
 
@@ -746,6 +832,14 @@ The rebuild is one big rewrite, but it is built so that *any* point can be aband
   which draws the AppKit-backed controls `ImageRenderer` cannot; the split view's floating glass sidebar does not draw that
   way, so the main window's pictures lay the sidebar, drawn on its own, over its column, and a selected row's highlight
   draws black. A real-server test runs the Setup flow end to end.
+- *As built at N4 (Stage A):* the XCUITest runner is sandboxed and cannot create folders, so `macos/scripts/test.sh`
+  prepares a folder per UI test under the scratch root (its data folder with the synthetic league, a pretend OOTP save,
+  and the save already chosen where the test wants one: `prepare_ui_test <method> configured|new`) and passes only the
+  root; each test hands its folder to the app in `launchEnvironment`, and the runner writes nothing. The boundary tests
+  walk `server/` recursively, so `server/presentation/` and `server/contract/` are inside every one of them;
+  `tests/presentationBoundary.test.ts` adds the presentation rules (no rating reads or `players_value`, no AI module by
+  value, no `posture` or `playoffs`, claims only through the builder, no writes, no specialist imports presentation),
+  and `evidenceBoundary` keeps every deterministic module off the AI modules (D-001).
 - **Manual matrix per milestone:**
   - light and dark; Reduce Transparency; Increase Contrast; Reduce Motion; VoiceOver spot check;
   - window widths 900, 1280 and 1728+;
@@ -883,14 +977,26 @@ serve yet waits for N4:
 - a display form of the game date in the subtitle (it is shown as served, unpadded as OOTP writes it);
 - the sentences for failed requests: the app shows three structural lines, and the server could say more.
 
+*Served at N4, Stage A:* the data status in words, a sentence for a missing value (the data status's rows and the
+catalog's `missingValue`), the import's phase and table in words, why a chosen save did not start importing
+(`ConfigAccepted.why`) and why an import did not finish (`importNote`), where a key comes from (`sourceText`), the club
+card's record and logo (the catalog), the game date's display form (the data status's `subtitle` and `gameDate`), and a
+failed `/v2` request's sentence (`ApiError.error`, with `detail`); the shell shows each. What remains is a structural line
+where the server cannot be asked (not running, unreachable) and Setup's line for an import that ended with no word from
+the server.
+
 A contract rule found at N3: the generated client never sends an explicit `null` (an optional field left nil is left
 out), so a request cannot clear a field by sending null. `defaultOrgId` cannot go back to "automatic" from the Mac app.
 Clearing an optional field needs an explicit request field (for example `clubChoice: "automatic"`) or a `/v2` route
-(section 4.3).
+(section 4.3). *At N4:* `SettingsUpdate.clubChoice: "automatic"` is that field; Settings offers Automatic, and Setup saves
+the club the save's human manages as Automatic.
 
-**Next: N4, the presentation foundation (server)** (section 9). Open a fresh session on `feature/swiftui` (after the N3
-PR merges) and say **"Continue the SwiftUI rebuild at N4 (docs/SWIFTUI_REBUILD.md)."** Branch `feature/swiftui-n4-presentation`
-from `feature/swiftui` and open its PR into `feature/swiftui`.
+**N4, Stage A is built (2026-09-26)** on `feature/swiftui-n4-presentation` (sections 4.1, 4.2 and 8, "As built at N4
+(Stage A)"); Stage B (the Front Office adapters, their cache and the claims endpoint) follows on the same branch.
+
+**Next: N4, Stage B** (the Front Office adapters, their cache and the claims endpoint; section 9), on
+`feature/swiftui-n4-presentation`, whose PR goes into `feature/swiftui`. After N4, N5 (the design system) opens a fresh
+session on `feature/swiftui`.
 
 Read first: AGENTS.md, this document, D-001, D-008, D-018, D-020, D-043, D-046, D-049, D-052 (with its
 amendments), D-054 and D-055 to D-060.

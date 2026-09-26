@@ -31,10 +31,15 @@ nonisolated public enum PreviewFixtures {
         decode(Components.Schemas.ServerStatus.self, "getStatus" + (configured ? Self.chosen : ""))
     }
 
-    /// The captured data status, of the chosen save or of a server with none, so a preview never pairs one with the
-    /// other.
-    public static func dataStatus(configured: Bool) -> Components.Schemas.DataStatus? {
-        decode(Components.Schemas.DataStatus.self, "getDataStatus" + (configured ? Self.chosen : ""))
+    /// The captured data status in words, of the chosen save or of a server with none, so a preview never pairs one
+    /// with the other.
+    public static func dataStatus(configured: Bool) -> Components.Schemas.DataStatusView? {
+        decode(Components.Schemas.DataStatusView.self, "getDataStatusWords" + (configured ? Self.chosen : ""))
+    }
+
+    /// The captured catalog (the synthetic save's clubs, records and departments).
+    public static var catalog: Components.Schemas.Catalog? {
+        decode(Components.Schemas.Catalog.self, "getCatalog")
     }
 
     public static var saves: [Components.Schemas.SaveInfo] {
@@ -71,6 +76,7 @@ nonisolated public enum PreviewFixtures {
             },
             orgs: orgs,
             dataStatus: dataStatus(configured: configured),
+            catalog: catalog,
             importRequestProblem: importRequestProblem
         )
     }

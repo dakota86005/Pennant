@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { importCsvDir, type ImportProgress } from '../server/importer.js';
+import { importCsvDir, type ImportStep as ImportProgress } from '../server/importer.js';
 
 /**
  * An import that reports where it has got to, and answers while it does.

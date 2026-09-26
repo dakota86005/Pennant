@@ -36,4 +36,24 @@ public enum RequestProblem: Error, Hashable, Sendable {
     public static func undocumented(_ code: Int, operation: String) -> RequestProblem {
         .failed(detail: "\(operation): undocumented HTTP \(code)")
     }
+
+    /// An answer with a status code the contract does not document, read for what the server said. Only a `/v2` route
+    /// answers a failure in words (`{ "error": sentence, "detail": raw }`, `server/v2Routes.ts`), so only there is
+    /// `error` shown as the server's sentence. A reused route's undocumented answer (a legacy 500 carries the raw
+    /// exception message as its `error`) is a failure kind: its body goes to the log and the help tag, never the face.
+    public static func undocumented(_ code: Int, body: HTTPBody?, operation: String, fromV2: Bool) async -> RequestProblem {
+        var answer: ServedError?
+        if let body, let data = try? await Data(collecting: body, upTo: 64 * 1024) {
+            answer = try? JSONDecoder().decode(ServedError.self, from: data)
+        }
+        if fromV2, let answer, !answer.error.isEmpty { return .served(answer.error) }
+        guard let answer else { return undocumented(code, operation: operation) }
+        let raw = [answer.error, answer.detail].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ": ")
+        return .failed(detail: "\(operation): undocumented HTTP \(code): \(raw)")
+    }
+
+    private struct ServedError: Decodable {
+        let error: String
+        let detail: String?
+    }
 }

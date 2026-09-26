@@ -1,4 +1,4 @@
-import { db, tableExists } from './db.js';
+import { db, tableColumns, tableExists } from './db.js';
 
 /**
  * The people you can talk to, read out of the save rather than invented.
@@ -495,4 +495,38 @@ export function personaBrief(p: Persona, orgId: number): string {
     );
   }
   return lines.join('\n');
+}
+
+/**
+ * The seats of the club's staff table (`team_roster_staff`), with the names the staff page shows them under
+ * (`GET /api/staff`). The Mac app's department heads read the same table and the same names, so one person never has two
+ * titles.
+ */
+export const STAFF_ROLE_LABELS: Record<string, string> = {
+  manager: 'Manager', general_manager: 'General Manager', pitching_coach: 'Pitching Coach',
+  hitting_coach: 'Hitting Coach', bench_coach: 'Bench Coach', head_scout: 'Head Scout', doctor: 'Team Doctor',
+};
+
+export type StaffSeat = keyof typeof STAFF_ROLE_LABELS;
+
+/** What the save says about one seat of the club's staff. */
+export type SeatReading =
+  | { status: 'filled'; coachId: number; name: string; role: string }
+  /** The staff table has the seat and it is empty (0), or names a coach the export does not have. */
+  | { status: 'empty'; role: string }
+  /** The export has no staff table, no such seat in it, or no row for the club: nothing is known. */
+  | { status: 'unknown'; role: string };
+
+/** Who sits in a seat of the organization's staff, as the save's staff table records it. */
+export function seatHolder(orgId: number, seat: StaffSeat): SeatReading {
+  const role = STAFF_ROLE_LABELS[seat];
+  if (!tableExists('team_roster_staff') || !tableColumns('team_roster_staff').includes(seat)) return { status: 'unknown', role };
+  const row = db.prepare(`SELECT "${seat}" AS id FROM team_roster_staff WHERE team_id = ?`).get(orgId) as { id: number | null } | undefined;
+  if (!row) return { status: 'unknown', role };
+  if (!row.id) return { status: 'empty', role };
+  const coach = tableExists('coaches')
+    ? (db.prepare(`SELECT * FROM coaches WHERE coach_id = ?`).get(row.id) as Coach | undefined)
+    : undefined;
+  const name = coach ? `${coach.first_name ?? ''} ${coach.last_name ?? ''}`.trim() : '';
+  return name ? { status: 'filled', coachId: row.id, name, role } : { status: 'empty', role };
 }

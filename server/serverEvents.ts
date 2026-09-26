@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
-import type { ImportProgress, ImportResult } from './importer.js';
+import type { ImportProgress, ImportResult, ImportStep } from './importer.js';
+import type { ImportNote } from './presentation/importWords.js';
 import type { JobStatus } from './jobs.js';
 import type { ServerStatus } from './api.js';
 import type { Integer } from './contract/primitives.js';
@@ -27,7 +28,14 @@ export type ServerEvent =
 export interface HelloEvent { type: 'hello'; status: ServerStatus }
 export interface ImportStartedEvent { type: 'import-started'; startedAt: string }
 export interface ImportProgressEvent { type: 'import-progress'; progress: ImportProgress }
-export interface ImportFinishedEvent { type: 'import-finished'; lastImport: ImportResult | null; error: string | null }
+export interface ImportFinishedEvent {
+  type: 'import-finished';
+  lastImport: ImportResult | null;
+  /** The raw error, for the log; `note` says it in words. */
+  error: string | null;
+  /** Why the import did not finish, in a sentence; null when it did. */
+  note: ImportNote | null;
+}
 /** OOTP has written a fresh export the server has not imported yet. */
 export interface ExportPendingEvent { type: 'export-pending'; since: string }
 /** A background job (storylines, the briefing) changed state for one club. */
@@ -60,7 +68,7 @@ export const listenerCount = (): number => listeners.size;
  */
 export const PROGRESS_INTERVAL_MS = 200;
 
-export function progressThrottle(send: (p: ImportProgress) => void, now: () => number = Date.now): (p: ImportProgress) => void {
+export function progressThrottle<P extends ImportStep>(send: (p: P) => void, now: () => number = Date.now): (p: P) => void {
   let last = -Infinity;
   let lastKey = '';
   return (p) => {

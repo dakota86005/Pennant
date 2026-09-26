@@ -28,7 +28,8 @@ export type {
   ExportPendingEvent,
   JobEvent,
 } from '../serverEvents.js';
-export type { ImportProgress, ImportResult } from '../importer.js';
+export type { ImportProgress, ImportResult, ImportWords } from '../importer.js';
+export type { ImportNote } from '../presentation/importWords.js';
 export type { JobStatus, JobState } from '../jobs.js';
 
 /**
@@ -46,7 +47,7 @@ export type { AppInfo } from '../appInfo.js';
 // Setup: finding and choosing the save
 import type { SaveInfo } from '../paths.js';
 export type { SaveInfo, ResolveResult, SearchLocation } from '../paths.js';
-export type { SearchLocations, ResolveFolderRequest, ConfigRequest } from '../api.js';
+export type { SearchLocations, ResolveFolderRequest, ConfigRequest, ConfigAccepted } from '../api.js';
 /** The saves found in the usual places (`GET /api/saves`). */
 export type SaveList = SaveInfo[];
 
@@ -62,3 +63,20 @@ import type { Org } from '../org.js';
 export type { Org } from '../org.js';
 /** The major-league clubs (`GET /api/orgs`). */
 export type OrgList = Org[];
+
+// Presentation: every sentence the Mac app shows (section 4.1). `Row` is generic; a payload exports a concrete interface extending it.
+export type {
+  DeptId, Certainty, Tone, Unit, ServedValue, Place, BasisLine, BasisSource, Lean, Basis, TargetKind, Target, Claim, Cell,
+} from './presentation.js';
+
+// The catalog (`GET /api/v2/catalog`)
+export type {
+  Catalog, GlossaryEntry, StatEntry, StatCatalogGroup, StatSection, ClubPalettes, CatalogClub, DepartmentHead,
+  CatalogDepartment, CatalogView, CatalogPhrases,
+} from '../presentation/catalog.js';
+export type { StatFormat } from '../presentation/statCatalog.js';
+export type { ClubPalette } from '../presentation/palette.js';
+
+// The data status in words (`GET /api/v2/data-status`)
+export type { DataStatusView, DataStatusRow, DataStatusFact, GameDateText } from '../presentation/dataStatusWords.js';
+export type { RosterEvidenceLevel } from '../dataFreshness.js';

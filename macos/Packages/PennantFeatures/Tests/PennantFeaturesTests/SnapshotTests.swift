@@ -88,7 +88,10 @@ struct SnapshotTests {
 
     static func setupModel(_ name: String) -> SetupModel {
         let saves = PreviewFixtures.saves
-        let progress = Components.Schemas.ImportProgress(table: "players_career_batting_stats", fileIndex: 23, files: 71, rows: 184_220, phase: .init(value1: .writing))
+        let progress = Components.Schemas.ImportProgress(
+            table: "players_career_batting_stats", fileIndex: 23, files: 71, rows: 184_220, phase: .init(value1: .writing),
+            words: .init(phase: "Writing the league", table: "Career hitting", display: "Writing career hitting · 23 of 71")
+        )
         switch name {
         case "find-save-problem":
             return .preview(step: .findSave, saves: [], locations: locations, folderProblem: .served("That folder is not an OOTP save, a folder of saves, or an export."))
@@ -97,11 +100,11 @@ struct SnapshotTests {
         case "find-save-unreachable":
             return .preview(step: .findSave, loadProblem: .unreachable(detail: "URLError(.timedOut)"))
         case "import-interrupted":
-            return .preview(step: .importing, chosen: saves.first, importProblem: .didNotFinish(since: "2040-07-01T12:00:00.000Z"))
+            return .preview(step: .importing, chosen: saves.first, importProblem: .served("The last import stopped before it finished. Import again to finish it."))
         case "pick-club-failed":
             return .preview(step: .pickClub, clubProblem: .failed(detail: "HTTP 500"))
         case "import-failed":
-            return .preview(step: .importing, chosen: saves.first, importProblem: .served("players.csv could not be read."))
+            return .preview(step: .importing, chosen: saves.first, importProblem: .served("A file in the export went missing while it was read. Export the league from OOTP again, then import.", detail: "ENOENT: players.csv"))
         case "pick-club":
             return .preview(step: .pickClub, clubs: PreviewFixtures.orgs)
         default:

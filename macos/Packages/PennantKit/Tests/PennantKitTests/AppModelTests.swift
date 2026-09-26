@@ -15,7 +15,8 @@ struct AppModelTests {
             "/api/status": try RoutedTransport.json("getStatus"),
             "/api/settings": try RoutedTransport.json("getSettings"),
             "/api/orgs": try RoutedTransport.json("listOrgs"),
-            "/api/data-status": try RoutedTransport.json("getDataStatus"),
+            "/api/v2/data-status": try RoutedTransport.json("getDataStatusWords"),
+            "/api/v2/catalog": try RoutedTransport.json("getCatalog"),
             "/api/v2/events": RoutedTransport.sse(sse),
         ])
         let configuration = try fakeConfiguration()
@@ -37,7 +38,7 @@ struct AppModelTests {
         let status = try fixtureStatus()
         let (model, transport) = try model(events: "", status: status)
         await model.start()
-        #expect(await eventually { model.club != nil && model.dataStatus != nil })
+        #expect(await eventually { model.club != nil && model.dataStatus != nil && model.catalog != nil })
         #expect(model.serverState.connection != nil)
         #expect(model.status == status)
         #expect(model.settings?.dataDir == "/tmp/ootp-fo-test")
@@ -46,6 +47,8 @@ struct AppModelTests {
         #expect(model.club?.ref == ClubRef(id: 1))
         #expect(model.club?.org?.label == "Club 1 N")
         #expect(model.club?.source == .humanManaged)
+        #expect(model.dataStatus?.subtitle == "May 6, 2040 · No log")
+        #expect(model.catalogClub?.record.display == "15–15")
         #expect(transport.paths.contains("/api/v2/events"))
         await model.shutdown()
         #expect(model.serverState == .stopped)
@@ -60,14 +63,15 @@ struct AppModelTests {
         #expect(await eventually { model.club != nil })
 
         let progress = try JSONDecoder().decode(Components.Schemas.ServerEvent.self, from: Data(
-            #"{"type":"import-progress","progress":{"table":"players","fileIndex":2,"files":70,"rows":1200,"phase":"writing"}}"#.utf8
+            #"{"type":"import-progress","progress":{"table":"players","fileIndex":2,"files":70,"rows":1200,"phase":"writing","words":{"phase":"Writing the league","table":"Players","display":"Writing players · 2 of 70"}}}"#.utf8
         ))
         await model.handle(.event(progress))
         #expect(model.isImporting)
         #expect(model.importProgress?.table == "players")
+        #expect(model.importProgress?.words.display == "Writing players · 2 of 70")
 
         let finished = try JSONDecoder().decode(Components.Schemas.ServerEvent.self, from: Data(
-            #"{"type":"import-finished","lastImport":{"tables":70,"rows":9000,"startedAt":"2040-07-02T10:00:00.000Z","finishedAt":"2040-07-02T10:01:00.000Z","files":[]},"error":null}"#.utf8
+            #"{"type":"import-finished","lastImport":{"tables":70,"rows":9000,"startedAt":"2040-07-02T10:00:00.000Z","finishedAt":"2040-07-02T10:01:00.000Z","files":[]},"error":null,"note":null}"#.utf8
         ))
         let before = transport.paths.filter { $0 == "/api/status" }.count
         await model.handle(.event(finished))
@@ -161,7 +165,7 @@ struct CurrentClubTests {
 
     @Test("a configured club the list does not have stays the served club, never swapped for the human-managed one")
     func configuredNotInList() throws {
-        let club = CurrentClub.from(served: try served(#"{"id":999,"source":"configured"}"#), orgs: try orgs())
+        let club = CurrentClub.from(served: try served(#"{"id":999,"source":"configured","humanClubs":1,"note":null}"#), orgs: try orgs())
         #expect(club?.ref == ClubRef(id: 999))
         #expect(club?.source == .configured)
         #expect(club?.org == nil)
@@ -169,14 +173,14 @@ struct CurrentClubTests {
 
     @Test("a configured club in the list is found there")
     func configured() throws {
-        let club = CurrentClub.from(served: try served(#"{"id":3,"source":"configured"}"#), orgs: try orgs())
+        let club = CurrentClub.from(served: try served(#"{"id":3,"source":"configured","humanClubs":1,"note":null}"#), orgs: try orgs())
         #expect(club?.org?.label == "Club 3 N")
     }
 
     @Test("no served club is no club, never a guess; a newer source is kept as it came")
     func noneOrNewer() throws {
         #expect(CurrentClub.from(served: nil, orgs: try orgs()) == nil)
-        let club = CurrentClub.from(served: try served(#"{"id":2,"source":"commissioner"}"#), orgs: try orgs())
+        let club = CurrentClub.from(served: try served(#"{"id":2,"source":"commissioner","humanClubs":0,"note":null}"#), orgs: try orgs())
         #expect(club?.source == .other("commissioner"))
     }
 }
@@ -203,7 +207,8 @@ struct AppModelRequestTests {
             "/api/status": RoutedTransport.json("getStatus"),
             "/api/settings": RoutedTransport.json("getSettings"),
             "/api/orgs": RoutedTransport.json("listOrgs"),
-            "/api/data-status": RoutedTransport.json("getDataStatus"),
+            "/api/v2/data-status": RoutedTransport.json("getDataStatusWords"),
+            "/api/v2/catalog": RoutedTransport.json("getCatalog"),
         ].merging(extra) { $1 }
     }
 
@@ -329,7 +334,8 @@ struct StoreKeyTests {
             "/api/status": try RoutedTransport.json("getStatus"),
             "/api/settings": try RoutedTransport.json("getSettings"),
             "/api/orgs": try RoutedTransport.json("listOrgs"),
-            "/api/data-status": try RoutedTransport.json("getDataStatus"),
+            "/api/v2/data-status": try RoutedTransport.json("getDataStatusWords"),
+            "/api/v2/catalog": try RoutedTransport.json("getCatalog"),
         ])
         let controller = ServerController(
             configuration: configuration, launcher: FakeLauncher { process, _ in process.ready() }, keySource: NoKeys(),

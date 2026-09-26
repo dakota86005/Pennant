@@ -43,6 +43,8 @@ public struct SetupView: View {
         .onChange(of: model.step) { _, step in
             if step == .done { dismissWindow(id: SceneID.setup) }
         }
+        // A container, so the window's id does not replace its controls' own (the Save Club button's, in the inset)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("setup")
     }
 }
@@ -194,7 +196,7 @@ private struct SaveList: View {
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(verbatim: save.name).font(.headline)
-                        if let written = ServedText.timestamp(save.csvLastModified) {
+                        if let written = save.csvLastModifiedText {
                             Text(verbatim: written).font(.caption).foregroundStyle(.secondary)
                         }
                     }
@@ -234,14 +236,10 @@ private struct ImportStep: View {
                 }
                 if let problem = model.importProblem {
                     switch problem {
-                    case .served(let text): ProblemLine(Text(verbatim: text))
+                    case .served(let text, let detail): ProblemLine(served: text, detail: detail)
                     case .request(let request): ProblemLine(request)
-                    case .didNotStart: ProblemLine(Text("The import did not start"))
-                    case .didNotFinish(let since):
-                        ProblemLine(Text("The import did not finish"))
-                        if let started = ServedText.timestamp(since) {
-                            LabeledContent("Started") { Text(verbatim: started) }
-                        }
+                    case .notStarted: ProblemLine(Text("The import did not start"))
+                    case .unexplained: ProblemLine(Text("The import did not finish"))
                     }
                     HStack {
                         Button("Choose Another Save") { model.restart() }
@@ -329,7 +327,10 @@ private struct PickClubStep: View {
 
 #Preview("Setup: importing") {
     SetupView(
-        model: .preview(step: .importing, progress: .init(table: "players", fileIndex: 12, files: 71, rows: 50_000, phase: .init(value1: .writing))),
+        model: .preview(step: .importing, progress: .init(
+            table: "players", fileIndex: 12, files: 71, rows: 50_000, phase: .init(value1: .writing),
+            words: .init(phase: "Writing the league", table: "Players", display: "Writing players · 12 of 71")
+        )),
         status: nil
     )
     .frame(width: SetupView.size.width, height: SetupView.size.height)

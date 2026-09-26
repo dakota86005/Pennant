@@ -71,27 +71,16 @@ struct CommandAvailabilityTests {
 
 @Suite("The toolbar's subtitle")
 struct SubtitleTests {
-    @Test("joins the served game date and the data status's own headline")
+    @Test("is the server's own subtitle: the game date in words and the headline, never a date parsed here")
     func served() throws {
-        let data = try Data(contentsOf: PreviewFixtures.responses.appending(path: "getDataStatus.json"))
-        let status = try JSONDecoder().decode(Components.Schemas.DataStatus.self, from: data)
-        #expect(ServedText.subtitle(dataStatus: status, status: nil) == "2040-05-06 · Partial — transaction log unavailable")
+        let data = try Data(contentsOf: PreviewFixtures.responses.appending(path: "getDataStatusWords.json"))
+        let status = try JSONDecoder().decode(Components.Schemas.DataStatusView.self, from: data)
+        #expect(ServedText.subtitle(dataStatus: status) == "May 6, 2040 · No log")
+        #expect(status.subtitleHint == "May 6, 2040 · Transaction history unavailable")
     }
 
-    @Test("without a data status, the last import's time; without either, nothing")
-    func fallback() throws {
-        var status = try #require(PreviewFixtures.status(configured: true))
-        #expect(ServedText.subtitle(dataStatus: nil, status: status) == nil)
-        status.lastImport = .init(tables: 1, rows: 2, startedAt: "2040-07-01T12:00:00.000Z", finishedAt: "2040-07-01T12:00:05.000Z", files: [])
-        let utc = TimeZone(identifier: "UTC")!
-        let text = ServedText.subtitle(dataStatus: nil, status: status, locale: Locale(identifier: "en_US"), timeZone: utc)
-        #expect(text?.contains("2040") == true)
-        #expect(text?.contains("12:00") == true)
-    }
-
-    @Test("a served time that is not ISO 8601 is shown as served")
-    func verbatim() {
-        #expect(ServedText.timestamp("yesterday") == "yesterday")
-        #expect(ServedText.timestamp(nil) == nil)
+    @Test("is nothing before the data status arrives")
+    func none() {
+        #expect(ServedText.subtitle(dataStatus: nil) == nil)
     }
 }

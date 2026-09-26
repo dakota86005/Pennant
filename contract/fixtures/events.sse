@@ -1,14 +1,14 @@
 event: hello
-data: {"type":"hello","status":{"app":{"name":"Pennant","version":"0.0.0","projectUrl":"https://github.com/dakota86005/ootp-front-office","upstreamUrl":"https://github.com/lsukev/ootp-front-office"},"csvExportedAt":null,"configured":false,"saveName":null,"csvDir":null,"csvDirExists":false,"importing":false,"importProgress":null,"lastImport":null,"lastError":null,"importInterruptedSince":null,"hasData":true,"exportPending":null,"logoToken":"none","ratingScaleMax":80}}
+data: {"type":"hello","status":{"app":{"name":"Pennant","version":"0.0.0","projectUrl":"https://github.com/dakota86005/ootp-front-office","upstreamUrl":"https://github.com/lsukev/ootp-front-office"},"csvExportedAt":null,"configured":false,"saveName":null,"csvDir":null,"csvDirExists":false,"importing":false,"importProgress":null,"lastImport":null,"lastError":null,"importInterruptedSince":null,"importNote":null,"hasData":true,"exportPending":null,"logoToken":"none","ratingScaleMax":80}}
 
 event: import-started
 data: {"type":"import-started","startedAt":"2040-07-01T12:00:00.000Z"}
 
 event: import-progress
-data: {"type":"import-progress","progress":{"table":"zz_contract","fileIndex":1,"files":1,"rows":0,"phase":"reading"}}
+data: {"type":"import-progress","progress":{"table":"zz_contract","fileIndex":1,"files":1,"rows":0,"phase":"reading","words":{"phase":"Reading the export","table":"The export","display":"Reading the export · 1 of 1"}}}
 
 event: import-finished
-data: {"type":"import-finished","lastImport":{"tables":1,"rows":2,"startedAt":"2040-07-01T12:00:00.000Z","finishedAt":"2040-07-01T12:00:00.000Z","files":[{"table":"zz_contract","rows":2}]},"error":null}
+data: {"type":"import-finished","lastImport":{"tables":1,"rows":2,"startedAt":"2040-07-01T12:00:00.000Z","finishedAt":"2040-07-01T12:00:00.000Z","files":[{"table":"zz_contract","rows":2}]},"error":null,"note":null}
 
 event: job
 data: {"type":"job","kind":"contract-check","orgId":1,"status":{"state":"done","startedAt":"2040-07-01T12:00:00.000Z","finishedAt":"2040-07-01T12:00:00.000Z","error":null}}

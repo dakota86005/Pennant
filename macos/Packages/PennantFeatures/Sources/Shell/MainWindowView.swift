@@ -52,7 +52,7 @@ struct ShellSplitView: View {
             DetailView(window: window)
                 .safeAreaInset(edge: .top, spacing: 0) { ImportRequestBanner() }
                 .navigationTitle(Text(window.descriptor?.title ?? "Pennant"))
-                .navigationSubtitle(ServedText.subtitle(dataStatus: model.dataStatus, status: model.status) ?? "")
+                .navigationSubtitle(ServedText.subtitle(dataStatus: model.dataStatus) ?? "")
                 .toolbar { WindowToolbar(window: window) }
                 .inspector(isPresented: $window.inspectorPresented) {
                     InspectorView()
@@ -79,6 +79,9 @@ struct WindowToolbar: ToolbarContent {
                 .accessibilityIdentifier("toolbar.forward")
         }
         ToolbarItem(placement: .primaryAction) {
+            DataStatusButton()
+        }
+        ToolbarItem(placement: .primaryAction) {
             Button("Ask Staff", systemImage: "bubble.left.and.text.bubble.right") {}
                 .disabled(true)
                 .help(Text("Ask Staff arrives in a later build"))
@@ -93,6 +96,30 @@ struct WindowToolbar: ToolbarContent {
             .help(window.inspectorPresented ? Text("Hide Inspector") : Text("Show Inspector"))
             .accessibilityIdentifier("toolbar.inspector")
         }
+    }
+}
+
+/// How current the data is, at a glance: the served headline's tone as a symbol, the full served subtitle in the help
+/// tag (the title bar shows the short one), and a click opens Settings at the data status.
+struct DataStatusButton: View {
+    @Environment(AppModel.self) private var model
+    @Environment(AppRouting.self) private var routing
+    @Environment(\.openSettings) private var openSettings
+
+    var body: some View {
+        Button {
+            routing.showDataStatus()
+            openSettings()
+        } label: {
+            Label {
+                Text("Data Status")
+            } icon: {
+                ToneSymbol(tone: model.dataStatus?.headline.tone)
+            }
+        }
+        .help(model.dataStatus.map { Text(verbatim: $0.subtitleHint) } ?? Text("Data Status"))
+        .disabled(model.dataStatus == nil)
+        .accessibilityIdentifier("toolbar.dataStatus")
     }
 }
 

@@ -2101,7 +2101,11 @@ only the part the GM sees is rebuilt.
 (2026-09-25): `server/contract/`, `npm run contract:build` and the committed `contract/openapi.json`, the drift, coverage,
 live-shape (ajv) and banned-jargon tests (`tests/contract.test.ts`, `tests/bannedJargon.ts`), and the generated Swift
 client `macos/Packages/PennantAPI`, built in CI. The spec describes `/api/v2/events` and the reused routes the app
-skeleton needs. `Claim`, `Row` and `Cell` arrive at N4, then per department. Design: SWIFTUI_REBUILD.md section 4.
+skeleton needs. N4, Stage A (2026-09-26): `Claim`, `Row`, `Cell` and `Target` (`server/contract/presentation.ts`, with
+`Certainty` gaining `fact` for an objective export fact), the builder that makes a basis required
+(`server/presentation/claim.ts`), `server/presentation/` as the home of every v2 word, `GET /api/v2/catalog` and
+`GET /api/v2/data-status`, the N3 shell's gaps served as words, scoped jargon exceptions, and the presentation boundary
+test; the Front Office adapters follow in Stage B, then each department. Design: SWIFTUI_REBUILD.md section 4.
 
 About a quarter of the prose the GM reads is authored in React today (label maps, word builders, the glossary, the stat
 catalog). Two clients cannot be allowed to disagree, and the plain-language rule (AGENTS.md "Writing for the GM") must be
@@ -2173,7 +2177,9 @@ places, never a thin prediction.
 
 ## D-060 — The landing page shows no postseason odds, deadline posture or window labels
 
-**Status:** Accepted (owner, 2026-09-25). **Implementation:** Not started (milestones N4 and N6).
+**Status:** Accepted (owner, 2026-09-25). **Implementation:** Partial: N4, Stage A holds the boundary
+(`tests/presentationBoundary.test.ts`: nothing in `server/presentation/` imports `posture` or `playoffs`); the landing
+payload itself arrives with N4's Stage B and N6.
 
 The owner found the postseason odds and the buy/hold/sell posture (`server/posture.ts`, a two-club Pythagorean race against
 a provisional rival) weak and off-mission. The Morning Report, the Club Profile and the department cards answer "where are

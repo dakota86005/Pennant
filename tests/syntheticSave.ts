@@ -133,6 +133,19 @@ function restoreDropped(): void {
   }
 }
 
+/** The club's staff table as an export carries it: each seat holds a coach id (0 when the seat is empty). */
+const STAFF_TABLE = 'team_id INTEGER, manager INTEGER, general_manager INTEGER, pitching_coach INTEGER, hitting_coach INTEGER, bench_coach INTEGER, head_scout INTEGER, doctor INTEGER';
+
+/** The seats a club's staff row fills in the synthetic save, with the occupation code OOTP gives each (0: none known). */
+const STAFF_SEATS: Array<{ seat: string; occupation: number; first: string }> = [
+  { seat: 'general_manager', occupation: 1, first: 'Morgan' },
+  { seat: 'manager', occupation: 2, first: 'Dale' },
+  { seat: 'bench_coach', occupation: 0, first: 'Rafael' },
+  { seat: 'head_scout', occupation: 6, first: 'Terry' },
+  { seat: 'doctor', occupation: 12, first: 'Ana' },
+];
+const STAFF_SURNAMES = ['Ames', 'Brock', 'Cole', 'Dunn', 'Ellis', 'Frey', 'Grant', 'Hale', 'Irwin', 'Joyce'];
+
 /** Empty every table and bring the schema up to what a current export carries. */
 function resetSchema(): void {
   const tables = (db.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`).all() as Array<{ name: string }>).map((r) => r.name);
@@ -142,6 +155,7 @@ function resetSchema(): void {
     const have = new Set(tableColumns(table));
     for (const c of cols) if (!have.has(c.split(' ')[0])) db.exec(`ALTER TABLE "${table}" ADD COLUMN ${c}`);
   }
+  if (!tableExists('team_roster_staff')) db.exec(`CREATE TABLE team_roster_staff (${STAFF_TABLE})`);
   if (!tableExists('team_last_financials')) db.exec(`CREATE TABLE team_last_financials (${FINANCE_TABLE})`);
   if (!tableExists('team_history_financials')) db.exec(`CREATE TABLE team_history_financials (${FINANCE_TABLE}, year INTEGER)`);
 }
@@ -228,6 +242,14 @@ export function buildSave(spec: SaveSpec): BuiltSave {
       const w = Math.round(pastG / 2 + (rnd() - 0.5) * 20);
       insert('team_history_record', { team_id: id, year: s, league_id: L, g: pastG, w, l: pastG - w, t: 0, pct: w / pastG, pos: 1, gb: 0 });
     }
+    // The club's staff: a coach in each seat, and the seat table naming them (the Mac app's department heads)
+    const staffRow: Record<string, unknown> = { team_id: id, pitching_coach: 0, hitting_coach: 0 };
+    STAFF_SEATS.forEach((s, k) => {
+      const coachId = 5000 + id * 10 + k;
+      insert('coaches', { coach_id: coachId, first_name: s.first, last_name: STAFF_SURNAMES[(id + k) % STAFF_SURNAMES.length], age: 45 + k, occupation: s.occupation, team_id: id, experience: 5 + k });
+      staffRow[s.seat] = coachId;
+    });
+    insert('team_roster_staff', staffRow);
     if (spec.financeRows !== false) {
       insert('team_financials', { team_id: id, budget: 150e6, player_payroll: spec.salaries === false ? 0 : 90e6, player_payroll_next_season: 60e6, cash: 0, market: 3, owner_expectation: 2, total_revenue: 160e6, total_expenses: 140e6, budget_balance: 0, cash_trades_available: 5e6, fan_interest: 50 });
     }

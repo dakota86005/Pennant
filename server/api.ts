@@ -56,6 +56,8 @@ import { farmRoutes } from './farmRoutes.js';
 import { appInfo, type AppInfo } from './appInfo.js';
 import { scoutedDevelopmentRoutes } from './scoutedDevelopment.js';
 import { eventStream, progressThrottle, publish } from './serverEvents.js';
+import { v2Routes } from './v2Routes.js';
+import { EXPORT_NOT_FOUND, importNote, importWords, type ImportNote } from './presentation/importWords.js';
 import type { Integer } from './contract/primitives.js';
 
 export const api = Router();
@@ -301,11 +303,12 @@ export async function runImport(csvDir: string): Promise<void> {
     console.error('[import] could not write the in-progress marker:', err);
   }
   publish({ type: 'import-started', startedAt });
-  const announceProgress = progressThrottle((progress) => publish({ type: 'import-progress', progress }));
+  const announceProgress = progressThrottle<ImportProgress>((progress) => publish({ type: 'import-progress', progress }));
   try {
-    importState.lastImport = await importCsvDir(csvDir, (p) => {
-      importState.progress = p;
-      announceProgress(p);
+    importState.lastImport = await importCsvDir(csvDir, (step) => {
+      const progress: ImportProgress = { ...step, words: importWords(step) };
+      importState.progress = progress;
+      announceProgress(progress);
     });
     // Whatever was waiting on disk has now been read
     clearPendingExport();
@@ -350,7 +353,7 @@ export async function runImport(csvDir: string): Promise<void> {
   } finally {
     importState.importing = false;
     importState.progress = null;
-    publish({ type: 'import-finished', lastImport: importState.lastImport, error: importState.lastError });
+    publish({ type: 'import-finished', lastImport: importState.lastImport, error: importState.lastError, note: currentImportNote() });
   }
   if (imported) refitAfterImport();
 }
@@ -387,6 +390,8 @@ export interface ServerStatus {
   lastError: string | null;
   /** Set when an import stopped partway (the server was stopped or crashed); cleared by the next completed import. */
   importInterruptedSince: string | null;
+  /** Why the import is not where it should be, in a sentence (a failure, an interruption, a missing export); null when it is. */
+  importNote: ImportNote | null;
   hasData: boolean;
   /** Set when OOTP has written a fresh export the app has not imported yet. */
   exportPending: string | null;
@@ -403,7 +408,10 @@ export interface Ok {
 
 /** What a route answers when it cannot do what was asked (a 400). */
 export interface ApiError {
+  /** What went wrong, as a sentence. */
   error: string;
+  /** The raw message behind it, for the log and a help tag (a `/v2` route's failure); never the visible line. */
+  detail?: string;
 }
 
 /** What `POST /api/import` answers: the import has started; its progress and result arrive on `/api/status` and the event stream. */
@@ -418,6 +426,17 @@ export interface ResolveFolderRequest {
   path: string;
 }
 
+/**
+ * What `POST /api/config` answers: the save is chosen, and whether its import began. A save whose export folder is not
+ * there yet is chosen all the same, and `why` says what to do in a sentence.
+ */
+export interface ConfigAccepted {
+  ok: true;
+  importStarted: boolean;
+  /** Why the import did not start; null when it did. */
+  why: string | null;
+}
+
 /** The save to use (`POST /api/config`): its CSV export folder and its name. */
 export interface ConfigRequest {
   csvDir: string;
@@ -428,6 +447,17 @@ export interface ConfigRequest {
 export interface SearchLocations {
   platform: string;
   locations: SearchLocation[];
+}
+
+/** The import's note (`presentation/importWords.ts`) for the save configured now. */
+function currentImportNote(csvDir: string | null = loadConfig().csvDir): ImportNote | null {
+  return importNote({
+    importing: importState.importing,
+    lastError: importState.lastError,
+    interruptedSince: importState.interruptedSince,
+    configured: !!csvDir,
+    csvDirExists: csvDir ? fs.existsSync(csvDir) : false,
+  });
 }
 
 /** What `/api/status` serves, and the snapshot `/api/v2/events` opens with. */
@@ -452,6 +482,7 @@ export function statusSnapshot(): ServerStatus {
     lastError: importState.lastError,
     /** Set when an import stopped partway (the server was stopped or crashed); cleared by the next completed import. */
     importInterruptedSince: importState.interruptedSince,
+    importNote: currentImportNote(config.csvDir),
     hasData: tableExists('players') && tableExists('teams'),
     /** Set when OOTP has written a fresh export the app has not imported yet. */
     exportPending: pendingExport(),
@@ -477,6 +508,9 @@ api.get('/status', (_req, res: Response<ServerStatus>) => {
 /** Server-sent events for the Mac app: import, job and fresh-export news as it happens (`serverEvents.ts`). */
 api.get('/v2/events', eventStream(statusSnapshot));
 
+/** The rest of the Mac app's own API (`v2Routes.ts`), after the event stream so its unknown-route answer is last. */
+api.use('/v2', v2Routes);
+
 /**
  * What `POST /api/config` and `POST /api/import` answer (409) while an import is running. Choosing a save used to clear
  * the running flag and start a second import writing the same database at the same time; now nothing starts, and the
@@ -484,7 +518,7 @@ api.get('/v2/events', eventStream(statusSnapshot));
  */
 export const IMPORT_RUNNING = 'An import is already running. Wait for it to finish, then try again.';
 
-api.post('/config', (req, res: Response<Ok | ApiError>) => {
+api.post('/config', (req, res: Response<ConfigAccepted | ApiError>) => {
   const { csvDir, saveName } = req.body as Partial<ConfigRequest>;
   if (!csvDir) return res.status(400).json({ error: 'csvDir is required' });
   if (importState.importing) return res.status(409).json({ error: IMPORT_RUNNING });
@@ -499,8 +533,9 @@ api.post('/config', (req, res: Response<Ok | ApiError>) => {
       void runImport(csvDir);
     });
     startWatcher(csvDir);
+    return res.json({ ok: true, importStarted: true, why: null });
   }
-  res.json({ ok: true });
+  res.json({ ok: true, importStarted: false, why: EXPORT_NOT_FOUND });
 });
 
 api.post('/import', (_req, res: Response<ImportAccepted | ApiError>) => {

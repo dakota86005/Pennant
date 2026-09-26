@@ -55,6 +55,22 @@ export const operations: Operation[] = [
     stream: true,
     reused: false,
   },
+  {
+    operationId: 'getCatalog',
+    method: 'get',
+    path: '/api/v2/catalog',
+    summary: 'The glossary, the stat catalog, each club\'s palette, logo and record, and the departments with their heads.',
+    response: 'Catalog',
+    reused: false,
+  },
+  {
+    operationId: 'getDataStatusWords',
+    method: 'get',
+    path: '/api/v2/data-status',
+    summary: 'How current the data is, in words: the headline with its basis, each source\'s line, the dates and places.',
+    response: 'DataStatusView',
+    reused: false,
+  },
 
   // ── Status and import (reused) ──────────────────────────────────────────
   {
@@ -106,9 +122,9 @@ export const operations: Operation[] = [
     operationId: 'setSave',
     method: 'post',
     path: '/api/config',
-    summary: 'Use this save\'s export folder, and import it. Refused (409) while an import runs.',
+    summary: 'Use this save\'s export folder, and import it (or say why the import did not start). Refused (409) while an import runs.',
     request: 'ConfigRequest',
-    response: 'Ok',
+    response: 'ConfigAccepted',
     errors: { 400: 'ApiError', 409: 'ApiError' },
     reused: true,
   },

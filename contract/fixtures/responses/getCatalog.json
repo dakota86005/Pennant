@@ -1,0 +1,1467 @@
+{
+  "glossary": [
+    {
+      "display": "2B",
+      "text": "Doubles"
+    },
+    {
+      "display": "3B",
+      "text": "Triples"
+    },
+    {
+      "display": "AB",
+      "text": "At bats"
+    },
+    {
+      "display": "Age",
+      "text": "The player's age as of this point in the season. OOTP ages players on their real birthday, so a 'Age 27' season may end at 28."
+    },
+    {
+      "display": "App",
+      "text": "Appearances in the last three days — today, yesterday, and the day before."
+    },
+    {
+      "display": "Availability tonight",
+      "text": "Whether this reliever can realistically be used in the next game, based on his recent pitch counts and consecutive appearances rather than on his season stats."
+    },
+    {
+      "display": "AVG",
+      "text": "Batting average — hits per at bat"
+    },
+    {
+      "display": "B",
+      "text": "Which side he bats from. L = left, R = right, S = switch hitter."
+    },
+    {
+      "display": "B/T",
+      "text": "Bats / Throws. L = left, R = right, S = switch hitter. The batting hand drives the platoon advantage: hitters generally do better against the opposite hand."
+    },
+    {
+      "display": "BABIP",
+      "text": "Batting average on balls in play. Far from league average (~.300) often signals luck that will regress."
+    },
+    {
+      "display": "BB",
+      "text": "Walks"
+    },
+    {
+      "display": "BB/9",
+      "text": "Walks per nine innings"
+    },
+    {
+      "display": "BB%",
+      "text": "Walk rate — walks per plate appearance"
+    },
+    {
+      "display": "Control",
+      "text": "Command of the strike zone on the 1-100 scale. Low control shows up as walks."
+    },
+    {
+      "display": "CS",
+      "text": "Caught stealing"
+    },
+    {
+      "display": "Cur Δ",
+      "text": "Change in current ability since the previous import. Positive means he has genuinely improved, not just performed better."
+    },
+    {
+      "display": "Current salary",
+      "text": "What the player earned in the most recent season, a rough anchor for what he will ask for next."
+    },
+    {
+      "display": "DIFF",
+      "text": "Run differential — runs scored minus runs allowed. Over a full season it predicts future record better than the current record does, so a good team with a bad record usually improves."
+    },
+    {
+      "display": "ER",
+      "text": "Earned runs allowed"
+    },
+    {
+      "display": "ERA",
+      "text": "Earned run average per nine innings"
+    },
+    {
+      "display": "ERA+",
+      "text": "ERA adjusted for league run environment and ballpark, scaled so 100 = league average. 130 means 30% better than average."
+    },
+    {
+      "display": "Est. return",
+      "text": "Estimated days until the player is back. OOTP revises this as the injury progresses."
+    },
+    {
+      "display": "FIP",
+      "text": "Fielding Independent Pitching — what ERA would be based only on strikeouts, walks, and home runs, with defense and batted-ball luck removed. Scaled to the league ERA."
+    },
+    {
+      "display": "Fit",
+      "text": "How well this free agent addresses a hole on your roster, comparing his value to what you currently have at that position."
+    },
+    {
+      "display": "Flags",
+      "text": "Quick contract markers — expiring, still under team control, options, and no-trade clauses."
+    },
+    {
+      "display": "G",
+      "text": "Games pitched"
+    },
+    {
+      "display": "GB",
+      "text": "Games behind the division leader. One game back means winning one more and having the leader lose one would tie it."
+    },
+    {
+      "display": "GS",
+      "text": "Games started"
+    },
+    {
+      "display": "H",
+      "text": "Hits"
+    },
+    {
+      "display": "Handle Rookies",
+      "text": "How well the coach develops young and inexperienced players specifically."
+    },
+    {
+      "display": "HLD",
+      "text": "Holds"
+    },
+    {
+      "display": "HR",
+      "text": "Home runs"
+    },
+    {
+      "display": "HR/9",
+      "text": "Home runs per nine innings"
+    },
+    {
+      "display": "IL days this yr",
+      "text": "Days spent on the injured list this season."
+    },
+    {
+      "display": "IP",
+      "text": "Innings pitched"
+    },
+    {
+      "display": "ISO",
+      "text": "Isolated power (SLG − AVG) — extra-base ability with singles stripped out"
+    },
+    {
+      "display": "Issues",
+      "text": "Roster problems needing a decision — out of options, Rule 5 exposure, or a designation clock running."
+    },
+    {
+      "display": "K",
+      "text": "Strikeouts"
+    },
+    {
+      "display": "K/9",
+      "text": "Strikeouts per nine innings"
+    },
+    {
+      "display": "K/BB",
+      "text": "Strikeout-to-walk ratio. Around 3.0 is excellent command."
+    },
+    {
+      "display": "K%",
+      "text": "Strikeout rate — strikeouts per plate appearance"
+    },
+    {
+      "display": "L",
+      "text": "Losses."
+    },
+    {
+      "display": "Level",
+      "text": "The level he is playing at: MLB, AAA, AA, A, or Rookie ball."
+    },
+    {
+      "display": "Lvl",
+      "text": "The level the stat line was compiled at. Numbers from different levels are not directly comparable — a .900 OPS in A-ball is a far weaker signal than the same mark in the majors."
+    },
+    {
+      "display": "Manager",
+      "text": "The person in the role. Coach ratings feed player development and in-game decisions."
+    },
+    {
+      "display": "Missed",
+      "text": "Games missed from this injury."
+    },
+    {
+      "display": "Movement",
+      "text": "How much the ball moves, on the 1-100 scale. It mostly suppresses home runs and hard contact."
+    },
+    {
+      "display": "Next start",
+      "text": "How many days until this starter is next in line, assuming a normal five-man rotation."
+    },
+    {
+      "display": "Notes",
+      "text": "Contract clauses: team, player, and vesting options, plus no-trade protection."
+    },
+    {
+      "display": "OBP",
+      "text": "On-base percentage. The single best simple measure of a hitter avoiding outs."
+    },
+    {
+      "display": "Opp",
+      "text": "The opposing team in that game."
+    },
+    {
+      "display": "OPS",
+      "text": "On-base plus slugging. A quick read of a hitter's whole offense, but unadjusted for league or park."
+    },
+    {
+      "display": "OPS+",
+      "text": "OPS adjusted for league run environment and ballpark, scaled so 100 = league average. 130 means 30% better than average."
+    },
+    {
+      "display": "Options used",
+      "text": "Option years already burned. A player normally has three; once they are gone he cannot be sent down without clearing waivers first."
+    },
+    {
+      "display": "P/3d",
+      "text": "Pitches thrown across the last three days. This is what actually decides whether an arm is available tonight, no matter how good the season line looks."
+    },
+    {
+      "display": "PA",
+      "text": "Plate appearances"
+    },
+    {
+      "display": "PCT",
+      "text": "Winning percentage: wins divided by games played."
+    },
+    {
+      "display": "Pitcher",
+      "text": "Click the name to open the full player card, including his pitch arsenal and velocity."
+    },
+    {
+      "display": "Player",
+      "text": "Click any name to open the full player card: ratings, contract, career history, game logs, and injuries."
+    },
+    {
+      "display": "Pos",
+      "text": "Primary fielding position, the one OOTP lists him at. Many players are rated at several — open the player card to see every position he can cover."
+    },
+    {
+      "display": "R",
+      "text": "Runs scored"
+    },
+    {
+      "display": "RA",
+      "text": "Runs allowed across the season so far."
+    },
+    {
+      "display": "RBI",
+      "text": "Runs batted in"
+    },
+    {
+      "display": "Rest",
+      "text": "Days since this pitcher last appeared in a game."
+    },
+    {
+      "display": "Rk",
+      "text": "Rank within this list."
+    },
+    {
+      "display": "RS",
+      "text": "Runs scored across the season so far."
+    },
+    {
+      "display": "Salary",
+      "text": "What he is paid this season."
+    },
+    {
+      "display": "SB",
+      "text": "Stolen bases"
+    },
+    {
+      "display": "SB%",
+      "text": "Stolen base success rate. Below ~70% costs more runs than it creates."
+    },
+    {
+      "display": "Shape",
+      "text": "The salary curve across the life of the deal. A rising line is a backloaded contract; a falling one is frontloaded. Hard to see in a row of numbers, obvious as a shape."
+    },
+    {
+      "display": "SLG",
+      "text": "Slugging percentage — total bases per at bat"
+    },
+    {
+      "display": "Stam",
+      "text": "Stamina, on the 1-100 rating scale. It governs how deep a starter can go before tiring and whether a reliever can handle more than one inning."
+    },
+    {
+      "display": "Status",
+      "text": "Roster status — active, on an option to the minors, on the injured list, or exposed to waivers."
+    },
+    {
+      "display": "STRK",
+      "text": "Current streak. W3 means three straight wins, L2 two straight losses."
+    },
+    {
+      "display": "Stuff",
+      "text": "Raw swing-and-miss ability on the 1-100 scale — the rating most associated with strikeouts."
+    },
+    {
+      "display": "SV",
+      "text": "Saves"
+    },
+    {
+      "display": "Svc",
+      "text": "Major-league service years. Six years of service normally brings free agency, and three brings arbitration — the two dates that shape every contract decision."
+    },
+    {
+      "display": "T",
+      "text": "Which hand he throws with."
+    },
+    {
+      "display": "Teach Hitting",
+      "text": "The coach's ability to develop hitters, on the 1-100 scale. It compounds over a full season of instruction."
+    },
+    {
+      "display": "Teach Pitching",
+      "text": "The coach's ability to develop pitchers, on the 1-100 scale."
+    },
+    {
+      "display": "Team",
+      "text": "The club. On roster and search views this is the player’s current team — for minor leaguers that is the affiliate, not the parent club."
+    },
+    {
+      "display": "Through",
+      "text": "The final season covered by the contract."
+    },
+    {
+      "display": "Thru",
+      "text": "The final season covered by the contract."
+    },
+    {
+      "display": "Type",
+      "text": "The kind of injury."
+    },
+    {
+      "display": "Velocity",
+      "text": "Fastball velocity. Useful context for Stuff — the same Stuff rating plays differently at 91 mph than at 98."
+    },
+    {
+      "display": "W",
+      "text": "Wins."
+    },
+    {
+      "display": "W-L",
+      "text": "The pitcher's won-lost record. It depends heavily on run support and bullpen work, so it says more about the team than the pitcher — ERA+ and FIP are far better measures."
+    },
+    {
+      "display": "WAR",
+      "text": "Wins Above Replacement, as calculated by OOTP"
+    },
+    {
+      "display": "What changed",
+      "text": "Which individual ratings moved, so a change in the overall number can be traced to a cause."
+    },
+    {
+      "display": "WHIP",
+      "text": "Walks and hits per inning pitched — baserunners allowed"
+    },
+    {
+      "display": "Why",
+      "text": "What drove this ranking."
+    },
+    {
+      "display": "Why here",
+      "text": "The reason this player landed in this lineup slot."
+    },
+    {
+      "display": "wOBA",
+      "text": "Weighted on-base average. Like OBP, but each way of reaching base is weighted by how many runs it actually produces. Scaled so league average matches league OBP."
+    },
+    {
+      "display": "wRC+",
+      "text": "Weighted Runs Created Plus — the most complete rate stat here. Total offense per plate appearance, park- and league-adjusted, where 100 = league average."
+    },
+    {
+      "display": "XBH",
+      "text": "Extra-base hits (2B + 3B + HR)"
+    },
+    {
+      "display": "Your notes",
+      "text": "Your own scouting notes. They are stored locally and never leave your machine."
+    },
+    {
+      "display": "Yrs left",
+      "text": "Seasons still guaranteed after this one. Zero means the deal expires at the end of this season."
+    }
+  ],
+  "stats": [
+    {
+      "key": "pa",
+      "group": "batting",
+      "display": "PA",
+      "text": "Plate appearances",
+      "format": "int",
+      "section": "Counting",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "ab",
+      "group": "batting",
+      "display": "AB",
+      "text": "At bats",
+      "format": "int",
+      "section": "Counting",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "h",
+      "group": "batting",
+      "display": "H",
+      "text": "Hits",
+      "format": "int",
+      "section": "Counting",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "d",
+      "group": "batting",
+      "display": "2B",
+      "text": "Doubles",
+      "format": "int",
+      "section": "Counting",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "t3",
+      "group": "batting",
+      "display": "3B",
+      "text": "Triples",
+      "format": "int",
+      "section": "Counting",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "hr",
+      "group": "batting",
+      "display": "HR",
+      "text": "Home runs",
+      "format": "int",
+      "section": "Counting",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "xbh",
+      "group": "batting",
+      "display": "XBH",
+      "text": "Extra-base hits (2B + 3B + HR)",
+      "format": "int",
+      "section": "Counting",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "r",
+      "group": "batting",
+      "display": "R",
+      "text": "Runs scored",
+      "format": "int",
+      "section": "Counting",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "rbi",
+      "group": "batting",
+      "display": "RBI",
+      "text": "Runs batted in",
+      "format": "int",
+      "section": "Counting",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "bb",
+      "group": "batting",
+      "display": "BB",
+      "text": "Walks",
+      "format": "int",
+      "section": "Counting",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "k",
+      "group": "batting",
+      "display": "K",
+      "text": "Strikeouts",
+      "format": "int",
+      "section": "Counting",
+      "lowerIsBetter": true
+    },
+    {
+      "key": "sb",
+      "group": "batting",
+      "display": "SB",
+      "text": "Stolen bases",
+      "format": "int",
+      "section": "Counting",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "cs",
+      "group": "batting",
+      "display": "CS",
+      "text": "Caught stealing",
+      "format": "int",
+      "section": "Counting",
+      "lowerIsBetter": true
+    },
+    {
+      "key": "avg",
+      "group": "batting",
+      "display": "AVG",
+      "text": "Batting average — hits per at bat",
+      "format": "avg3",
+      "section": "Rate",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "obp",
+      "group": "batting",
+      "display": "OBP",
+      "text": "On-base percentage. The single best simple measure of a hitter avoiding outs.",
+      "format": "avg3",
+      "section": "Rate",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "slg",
+      "group": "batting",
+      "display": "SLG",
+      "text": "Slugging percentage — total bases per at bat",
+      "format": "avg3",
+      "section": "Rate",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "ops",
+      "group": "batting",
+      "display": "OPS",
+      "text": "On-base plus slugging. A quick read of a hitter's whole offense, but unadjusted for league or park.",
+      "format": "avg3",
+      "section": "Rate",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "iso",
+      "group": "batting",
+      "display": "ISO",
+      "text": "Isolated power (SLG − AVG) — extra-base ability with singles stripped out",
+      "format": "avg3",
+      "section": "Rate",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "babip",
+      "group": "batting",
+      "display": "BABIP",
+      "text": "Batting average on balls in play. Far from league average (~.300) often signals luck that will regress.",
+      "format": "avg3",
+      "section": "Rate",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "bbPct",
+      "group": "batting",
+      "display": "BB%",
+      "text": "Walk rate — walks per plate appearance",
+      "format": "pct",
+      "section": "Rate",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "kPct",
+      "group": "batting",
+      "display": "K%",
+      "text": "Strikeout rate — strikeouts per plate appearance",
+      "format": "pct",
+      "section": "Rate",
+      "lowerIsBetter": true
+    },
+    {
+      "key": "sbPct",
+      "group": "batting",
+      "display": "SB%",
+      "text": "Stolen base success rate. Below ~70% costs more runs than it creates.",
+      "format": "pct",
+      "section": "Rate",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "woba",
+      "group": "batting",
+      "display": "wOBA",
+      "text": "Weighted on-base average. Like OBP, but each way of reaching base is weighted by how many runs it actually produces. Scaled so league average matches league OBP.",
+      "format": "avg3",
+      "section": "Advanced",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "opsPlus",
+      "group": "batting",
+      "display": "OPS+",
+      "text": "OPS adjusted for league run environment and ballpark, scaled so 100 = league average. 130 means 30% better than average.",
+      "format": "plus",
+      "section": "Advanced",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "wrcPlus",
+      "group": "batting",
+      "display": "wRC+",
+      "text": "Weighted Runs Created Plus — the most complete rate stat here. Total offense per plate appearance, park- and league-adjusted, where 100 = league average.",
+      "format": "plus",
+      "section": "Advanced",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "war",
+      "group": "batting",
+      "display": "WAR",
+      "text": "Wins Above Replacement, as calculated by OOTP",
+      "format": "dec1",
+      "section": "Advanced",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "g",
+      "group": "pitching",
+      "display": "G",
+      "text": "Games pitched",
+      "format": "int",
+      "section": "Counting",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "gs",
+      "group": "pitching",
+      "display": "GS",
+      "text": "Games started",
+      "format": "int",
+      "section": "Counting",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "w",
+      "group": "pitching",
+      "display": "W",
+      "text": "Wins",
+      "format": "int",
+      "section": "Counting",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "l",
+      "group": "pitching",
+      "display": "L",
+      "text": "Losses",
+      "format": "int",
+      "section": "Counting",
+      "lowerIsBetter": true
+    },
+    {
+      "key": "sv",
+      "group": "pitching",
+      "display": "SV",
+      "text": "Saves",
+      "format": "int",
+      "section": "Counting",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "hld",
+      "group": "pitching",
+      "display": "HLD",
+      "text": "Holds",
+      "format": "int",
+      "section": "Counting",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "ip",
+      "group": "pitching",
+      "display": "IP",
+      "text": "Innings pitched",
+      "format": "dec1",
+      "section": "Counting",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "h",
+      "group": "pitching",
+      "display": "H",
+      "text": "Hits allowed",
+      "format": "int",
+      "section": "Counting",
+      "lowerIsBetter": true
+    },
+    {
+      "key": "er",
+      "group": "pitching",
+      "display": "ER",
+      "text": "Earned runs allowed",
+      "format": "int",
+      "section": "Counting",
+      "lowerIsBetter": true
+    },
+    {
+      "key": "hr",
+      "group": "pitching",
+      "display": "HR",
+      "text": "Home runs allowed",
+      "format": "int",
+      "section": "Counting",
+      "lowerIsBetter": true
+    },
+    {
+      "key": "bb",
+      "group": "pitching",
+      "display": "BB",
+      "text": "Walks allowed",
+      "format": "int",
+      "section": "Counting",
+      "lowerIsBetter": true
+    },
+    {
+      "key": "k",
+      "group": "pitching",
+      "display": "K",
+      "text": "Strikeouts",
+      "format": "int",
+      "section": "Counting",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "era",
+      "group": "pitching",
+      "display": "ERA",
+      "text": "Earned run average per nine innings",
+      "format": "dec2",
+      "section": "Rate",
+      "lowerIsBetter": true
+    },
+    {
+      "key": "whip",
+      "group": "pitching",
+      "display": "WHIP",
+      "text": "Walks and hits per inning pitched — baserunners allowed",
+      "format": "dec2",
+      "section": "Rate",
+      "lowerIsBetter": true
+    },
+    {
+      "key": "k9",
+      "group": "pitching",
+      "display": "K/9",
+      "text": "Strikeouts per nine innings",
+      "format": "dec1",
+      "section": "Rate",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "bb9",
+      "group": "pitching",
+      "display": "BB/9",
+      "text": "Walks per nine innings",
+      "format": "dec1",
+      "section": "Rate",
+      "lowerIsBetter": true
+    },
+    {
+      "key": "hr9",
+      "group": "pitching",
+      "display": "HR/9",
+      "text": "Home runs per nine innings",
+      "format": "dec1",
+      "section": "Rate",
+      "lowerIsBetter": true
+    },
+    {
+      "key": "kbb",
+      "group": "pitching",
+      "display": "K/BB",
+      "text": "Strikeout-to-walk ratio. Around 3.0 is excellent command.",
+      "format": "dec2",
+      "section": "Rate",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "kPct",
+      "group": "pitching",
+      "display": "K%",
+      "text": "Strikeouts per batter faced",
+      "format": "pct",
+      "section": "Rate",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "bbPct",
+      "group": "pitching",
+      "display": "BB%",
+      "text": "Walks per batter faced",
+      "format": "pct",
+      "section": "Rate",
+      "lowerIsBetter": true
+    },
+    {
+      "key": "fip",
+      "group": "pitching",
+      "display": "FIP",
+      "text": "Fielding Independent Pitching — what ERA would be based only on strikeouts, walks, and home runs, with defense and batted-ball luck removed. Scaled to the league ERA.",
+      "format": "dec2",
+      "section": "Advanced",
+      "lowerIsBetter": true
+    },
+    {
+      "key": "eraPlus",
+      "group": "pitching",
+      "display": "ERA+",
+      "text": "ERA adjusted for league run environment and ballpark, scaled so 100 = league average. 130 means 30% better than average.",
+      "format": "plus",
+      "section": "Advanced",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "war",
+      "group": "pitching",
+      "display": "WAR",
+      "text": "Wins Above Replacement, as calculated by OOTP",
+      "format": "dec1",
+      "section": "Advanced",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "fg",
+      "group": "fielding",
+      "display": "G",
+      "text": "Games played in the field",
+      "format": "int",
+      "section": "Fielding",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "fgs",
+      "group": "fielding",
+      "display": "GS",
+      "text": "Games started in the field",
+      "format": "int",
+      "section": "Fielding",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "finn",
+      "group": "fielding",
+      "display": "Inn",
+      "text": "Innings played in the field",
+      "format": "int",
+      "section": "Fielding",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "po",
+      "group": "fielding",
+      "display": "PO",
+      "text": "Putouts",
+      "format": "int",
+      "section": "Fielding",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "a",
+      "group": "fielding",
+      "display": "A",
+      "text": "Assists",
+      "format": "int",
+      "section": "Fielding",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "e",
+      "group": "fielding",
+      "display": "E",
+      "text": "Errors",
+      "format": "int",
+      "section": "Fielding",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "dp",
+      "group": "fielding",
+      "display": "DP",
+      "text": "Double plays turned",
+      "format": "int",
+      "section": "Fielding",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "fpct",
+      "group": "fielding",
+      "display": "FPCT",
+      "text": "Fielding percentage — putouts plus assists over total chances. It says how often a player handled what he reached, and nothing about how much he reached, so a statue with safe hands can lead the league in it.",
+      "format": "avg3",
+      "section": "Fielding",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "rf9",
+      "group": "fielding",
+      "display": "RF/9",
+      "text": "Range factor — putouts plus assists per nine innings. It measures how much a fielder is involved, which is the part fielding percentage misses. Compare it only within a position: a first baseman handles far more chances than a left fielder.",
+      "format": "dec2",
+      "section": "Fielding",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "avgExitVelo",
+      "group": "contact",
+      "display": "EV",
+      "text": "Average exit velocity in mph across every batted ball. League average is around 86-87; 92 and up is genuine thump.",
+      "format": "dec1",
+      "section": "Contact",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "maxExitVelo",
+      "group": "contact",
+      "display": "Max EV",
+      "text": "His hardest-hit ball of the season, in mph. A high peak with a modest average means the power is real but intermittent.",
+      "format": "dec1",
+      "section": "Contact",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "hardHitPct",
+      "group": "contact",
+      "display": "Hard%",
+      "text": "Share of batted balls struck at 95 mph or more. The most stable contact-quality number there is — it settles long before batting average does.",
+      "format": "dec1",
+      "section": "Contact",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "barrelPct",
+      "group": "contact",
+      "display": "Brl%",
+      "text": "Share of batted balls hit hard enough, at an angle good enough, to be near-certain damage. The window opens at 98 mph and widens as the ball is hit harder.",
+      "format": "dec1",
+      "section": "Contact",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "sweetSpotPct",
+      "group": "contact",
+      "display": "Sweet%",
+      "text": "Share of batted balls launched between 8 and 32 degrees, the angles that produce line drives rather than choppers and popups.",
+      "format": "dec1",
+      "section": "Contact",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "gbPct",
+      "group": "contact",
+      "display": "GB%",
+      "text": "Share of batted balls hit on the ground (under 10 degrees).",
+      "format": "dec1",
+      "section": "Contact",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "fbPct",
+      "group": "contact",
+      "display": "FB%",
+      "text": "Share of batted balls hit in the air (25 to 50 degrees).",
+      "format": "dec1",
+      "section": "Contact",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "sprintSpeed",
+      "group": "contact",
+      "display": "Sprint",
+      "text": "Measured speed on the bases, averaged across his batted balls — what he actually does, rather than the scouted speed rating.",
+      "format": "dec1",
+      "section": "Contact",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "xslg",
+      "group": "contact",
+      "display": "xSLG",
+      "text": "What his contact usually produces: every batted ball scored by how balls of that speed and angle actually fared at his level this season.",
+      "format": "avg3",
+      "section": "Contact",
+      "lowerIsBetter": false
+    },
+    {
+      "key": "slgLuck",
+      "group": "contact",
+      "display": "SLG±",
+      "text": "Actual slugging on batted balls minus expected. Strongly negative means he has hit the ball well and been robbed; strongly positive means the results have outrun the contact.",
+      "format": "avg3",
+      "section": "Contact",
+      "lowerIsBetter": false
+    }
+  ],
+  "clubs": [
+    {
+      "teamId": 1,
+      "name": "Club 1 N",
+      "isHuman": true,
+      "palette": {
+        "light": {
+          "team": "#1d2d44",
+          "teamText": "#f0ebd8",
+          "background": "#f3f5f6",
+          "backgroundDeep": "#e8eaed",
+          "backgroundGlow": "#fcfcfd",
+          "panel": "#ffffff",
+          "panelRaised": "#f7f7f8",
+          "border": "#c1c6cd",
+          "text": "#1f252d",
+          "muted": "#535f6e",
+          "accent": "#336fc1",
+          "accentText": "#f7f9fd",
+          "good": "#206f41",
+          "bad": "#ae2d29"
+        },
+        "dark": {
+          "team": "#1d2d44",
+          "teamText": "#f0ebd8",
+          "background": "#101419",
+          "backgroundDeep": "#0c0f13",
+          "backgroundGlow": "#1a2028",
+          "panel": "#1b2027",
+          "panelRaised": "#242a33",
+          "border": "#363e49",
+          "text": "#e9ecf1",
+          "muted": "#9ca6b4",
+          "accent": "#6695d6",
+          "accentText": "#0d1c30",
+          "good": "#7ec87e",
+          "bad": "#ff9d94"
+        }
+      },
+      "logo": null,
+      "record": {
+        "display": "15–15",
+        "hint": "15 wins, 15 losses, first in the division"
+      }
+    },
+    {
+      "teamId": 2,
+      "name": "Club 2 N",
+      "isHuman": false,
+      "palette": {
+        "light": {
+          "team": "#1d2d44",
+          "teamText": "#f0ebd8",
+          "background": "#f3f5f6",
+          "backgroundDeep": "#e8eaed",
+          "backgroundGlow": "#fcfcfd",
+          "panel": "#ffffff",
+          "panelRaised": "#f7f7f8",
+          "border": "#c1c6cd",
+          "text": "#1f252d",
+          "muted": "#535f6e",
+          "accent": "#336fc1",
+          "accentText": "#f7f9fd",
+          "good": "#206f41",
+          "bad": "#ae2d29"
+        },
+        "dark": {
+          "team": "#1d2d44",
+          "teamText": "#f0ebd8",
+          "background": "#101419",
+          "backgroundDeep": "#0c0f13",
+          "backgroundGlow": "#1a2028",
+          "panel": "#1b2027",
+          "panelRaised": "#242a33",
+          "border": "#363e49",
+          "text": "#e9ecf1",
+          "muted": "#9ca6b4",
+          "accent": "#6695d6",
+          "accentText": "#0d1c30",
+          "good": "#7ec87e",
+          "bad": "#ff9d94"
+        }
+      },
+      "logo": null,
+      "record": {
+        "display": "15–15",
+        "hint": "15 wins, 15 losses, first in the division"
+      }
+    },
+    {
+      "teamId": 3,
+      "name": "Club 3 N",
+      "isHuman": false,
+      "palette": {
+        "light": {
+          "team": "#1d2d44",
+          "teamText": "#f0ebd8",
+          "background": "#f3f5f6",
+          "backgroundDeep": "#e8eaed",
+          "backgroundGlow": "#fcfcfd",
+          "panel": "#ffffff",
+          "panelRaised": "#f7f7f8",
+          "border": "#c1c6cd",
+          "text": "#1f252d",
+          "muted": "#535f6e",
+          "accent": "#336fc1",
+          "accentText": "#f7f9fd",
+          "good": "#206f41",
+          "bad": "#ae2d29"
+        },
+        "dark": {
+          "team": "#1d2d44",
+          "teamText": "#f0ebd8",
+          "background": "#101419",
+          "backgroundDeep": "#0c0f13",
+          "backgroundGlow": "#1a2028",
+          "panel": "#1b2027",
+          "panelRaised": "#242a33",
+          "border": "#363e49",
+          "text": "#e9ecf1",
+          "muted": "#9ca6b4",
+          "accent": "#6695d6",
+          "accentText": "#0d1c30",
+          "good": "#7ec87e",
+          "bad": "#ff9d94"
+        }
+      },
+      "logo": null,
+      "record": {
+        "display": "15–15",
+        "hint": "15 wins, 15 losses, first in the division"
+      }
+    },
+    {
+      "teamId": 4,
+      "name": "Club 4 N",
+      "isHuman": false,
+      "palette": {
+        "light": {
+          "team": "#1d2d44",
+          "teamText": "#f0ebd8",
+          "background": "#f3f5f6",
+          "backgroundDeep": "#e8eaed",
+          "backgroundGlow": "#fcfcfd",
+          "panel": "#ffffff",
+          "panelRaised": "#f7f7f8",
+          "border": "#c1c6cd",
+          "text": "#1f252d",
+          "muted": "#535f6e",
+          "accent": "#336fc1",
+          "accentText": "#f7f9fd",
+          "good": "#206f41",
+          "bad": "#ae2d29"
+        },
+        "dark": {
+          "team": "#1d2d44",
+          "teamText": "#f0ebd8",
+          "background": "#101419",
+          "backgroundDeep": "#0c0f13",
+          "backgroundGlow": "#1a2028",
+          "panel": "#1b2027",
+          "panelRaised": "#242a33",
+          "border": "#363e49",
+          "text": "#e9ecf1",
+          "muted": "#9ca6b4",
+          "accent": "#6695d6",
+          "accentText": "#0d1c30",
+          "good": "#7ec87e",
+          "bad": "#ff9d94"
+        }
+      },
+      "logo": null,
+      "record": {
+        "display": "15–15",
+        "hint": "15 wins, 15 losses, first in the division"
+      }
+    }
+  ],
+  "departments": [
+    {
+      "id": "frontOffice",
+      "name": "Front Office",
+      "views": [
+        {
+          "id": "morningReport",
+          "name": "Morning Report"
+        },
+        {
+          "id": "storylines",
+          "name": "Storylines"
+        },
+        {
+          "id": "briefing",
+          "name": "GM Briefing"
+        }
+      ],
+      "head": {
+        "name": "Morgan Brock",
+        "role": "General Manager",
+        "coachId": 5010
+      },
+      "preparedBy": {
+        "display": "Prepared by Morgan Brock, general manager",
+        "hint": "From the club's staff in the save"
+      }
+    },
+    {
+      "id": "majorLeague",
+      "name": "Major League Ops",
+      "views": [
+        {
+          "id": "report",
+          "name": "Report"
+        },
+        {
+          "id": "positionPlayers",
+          "name": "Position Players"
+        },
+        {
+          "id": "pitchingStaff",
+          "name": "Pitching Staff"
+        },
+        {
+          "id": "benchCoverage",
+          "name": "Bench & Backups"
+        },
+        {
+          "id": "decision",
+          "name": "Decision"
+        },
+        {
+          "id": "lineup",
+          "name": "Lineup"
+        },
+        {
+          "id": "pitchingAvailability",
+          "name": "Pitching Availability"
+        },
+        {
+          "id": "scheduleGamePlans",
+          "name": "Schedule & Game Plans"
+        },
+        {
+          "id": "depthChart",
+          "name": "Depth Chart"
+        },
+        {
+          "id": "fortyManOptions",
+          "name": "40-Man & Options"
+        },
+        {
+          "id": "rosters",
+          "name": "Rosters"
+        },
+        {
+          "id": "seasonTrends",
+          "name": "Season Trends"
+        }
+      ],
+      "head": {
+        "name": "Rafael Dunn",
+        "role": "Bench Coach",
+        "coachId": 5012
+      },
+      "preparedBy": {
+        "display": "Prepared by Rafael Dunn, bench coach",
+        "hint": "From the club's staff in the save"
+      }
+    },
+    {
+      "id": "farm",
+      "name": "Farm & Development",
+      "views": [
+        {
+          "id": "report",
+          "name": "Report"
+        },
+        {
+          "id": "organization",
+          "name": "Organization"
+        },
+        {
+          "id": "affiliates",
+          "name": "Affiliates"
+        },
+        {
+          "id": "assignments",
+          "name": "Assignments"
+        },
+        {
+          "id": "prospects",
+          "name": "Prospects"
+        },
+        {
+          "id": "developmentTracking",
+          "name": "Development Tracking"
+        },
+        {
+          "id": "decision",
+          "name": "Decision"
+        }
+      ],
+      "head": null,
+      "preparedBy": {
+        "display": "Prepared by the minor league staff"
+      }
+    },
+    {
+      "id": "scouting",
+      "name": "Scouting",
+      "views": [
+        {
+          "id": "draftBoard",
+          "name": "Draft Board"
+        },
+        {
+          "id": "playerSearch",
+          "name": "Player Search"
+        }
+      ],
+      "head": {
+        "name": "Terry Ellis",
+        "role": "Head Scout",
+        "coachId": 5013
+      },
+      "preparedBy": {
+        "display": "Prepared by Terry Ellis, head scout",
+        "hint": "From the club's staff in the save"
+      }
+    },
+    {
+      "id": "trades",
+      "name": "Trades",
+      "views": [
+        {
+          "id": "tradeDesk",
+          "name": "Trade Desk"
+        }
+      ],
+      "head": null,
+      "preparedBy": {
+        "display": "Prepared by the front office"
+      }
+    },
+    {
+      "id": "finance",
+      "name": "Finance",
+      "views": [
+        {
+          "id": "report",
+          "name": "Report"
+        },
+        {
+          "id": "payrollBudget",
+          "name": "Payroll & Budget"
+        },
+        {
+          "id": "contracts",
+          "name": "Contracts"
+        },
+        {
+          "id": "freeAgents",
+          "name": "Free Agents"
+        },
+        {
+          "id": "horizonBoard",
+          "name": "Horizon Board"
+        }
+      ],
+      "head": null,
+      "preparedBy": {
+        "display": "Prepared by the front office"
+      }
+    },
+    {
+      "id": "medical",
+      "name": "Medical",
+      "views": [
+        {
+          "id": "report",
+          "name": "Report"
+        },
+        {
+          "id": "injuryReport",
+          "name": "Injury Report"
+        }
+      ],
+      "head": {
+        "name": "Ana Frey",
+        "role": "Team Doctor",
+        "coachId": 5014
+      },
+      "preparedBy": {
+        "display": "Prepared by Ana Frey, team doctor",
+        "hint": "From the club's staff in the save"
+      }
+    },
+    {
+      "id": "league",
+      "name": "League Office",
+      "views": [
+        {
+          "id": "wire",
+          "name": "Wire"
+        },
+        {
+          "id": "clubReports",
+          "name": "Club Reports"
+        },
+        {
+          "id": "usVsThem",
+          "name": "Us vs Them"
+        },
+        {
+          "id": "standings",
+          "name": "Standings"
+        },
+        {
+          "id": "leaders",
+          "name": "Leaders"
+        },
+        {
+          "id": "orgComparison",
+          "name": "Org Comparison"
+        },
+        {
+          "id": "franchiseHistory",
+          "name": "Franchise History"
+        }
+      ],
+      "head": null,
+      "preparedBy": {
+        "display": "Prepared by the front office"
+      }
+    },
+    {
+      "id": "philosophy",
+      "name": "Philosophy & Staff",
+      "views": [
+        {
+          "id": "organizationalPhilosophy",
+          "name": "Organizational Philosophy"
+        },
+        {
+          "id": "coachingStaff",
+          "name": "Coaching Staff"
+        }
+      ],
+      "head": null,
+      "preparedBy": {
+        "display": "Prepared by the front office"
+      }
+    }
+  ],
+  "phrases": {
+    "missingValue": {
+      "display": "Not known yet",
+      "tone": "unknown",
+      "hint": "The export does not include this yet"
+    }
+  }
+}
