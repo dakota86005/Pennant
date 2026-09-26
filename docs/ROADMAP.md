@@ -270,7 +270,8 @@ Next, in dependency order:
 
 Nothing here is baseball work; each item needs the owner.
 
-- Apple Developer ID and the five signing secrets (DEVELOPMENT.md), so a macOS release can be signed and notarized.
+- The five signing secrets (DEVELOPMENT.md), so a macOS release can be signed and notarized. The owner enrolled in
+  the Apple Developer Program on 2026-09-25; the Developer ID certificates exist.
 - Vector brand masters and a macOS icon variant.
 - Whether to rename the GitHub repository (D-049).
 - The first tagged release (`pennant-v0.1.0`), once the above are settled. The application id
@@ -309,6 +310,17 @@ Remaining:
   fitting the results model horizon by horizon.
 - **Polish:** a few hover texts still carry an internal reference ("(R-6)") or a
   raw column name ("opt_out 1"); the production cone's axis keeps its short codes.
+
+### 10. Pennant for Mac — the SwiftUI rebuild (in progress)
+
+A native SwiftUI app over the same server, run as a sidecar, replacing the React UI
+and Electron at cutover (D-055 to D-060; [SWIFTUI_REBUILD.md](SWIFTUI_REBUILD.md)).
+The server writes every visible sentence through a generated contract, so the
+Swift app renders and never judges. Work is on `feature/swiftui` in milestones N0
+to N15; the restore point is the tag `pre-swiftui` and the branch
+`archive/electron-react` (DEVELOPMENT.md). N0 (restore point, decisions, behaviour
+cases, ground rules) is done; N1, the sidecar server, is next. It absorbs item 8's
+signing work: Developer ID is needed by N14.
 
 ## Then: deepen organizational identity
 

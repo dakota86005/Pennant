@@ -131,6 +131,41 @@ path>`: the first isolates the league data, the second Chromium's profile, and w
 Packaging is configured in `electron-builder.yml`. Artifacts are named `Pennant-<version>-<arch>.<ext>`; the name is a
 literal, never built from `${name}`, so the compatibility-held package name cannot leak into release assets.
 
+## The SwiftUI rebuild: restore point and rollback
+
+Pennant for Mac is being rebuilt as a native SwiftUI app over the same server ([SWIFTUI_REBUILD.md](SWIFTUI_REBUILD.md),
+D-055). The work happens on `feature/swiftui`, with one PR per milestone into it; `main` is untouched until the owner
+approves the final merge. The Electron and React app keeps working on the branch until the cutover PR, the last one,
+which deletes it and is a single revert away.
+
+**The restore point** (created 2026-09-25 with the owner's approval, pushed to `origin`):
+
+| Ref | Points at | What it is |
+|---|---|---|
+| tag `pre-swiftui` (annotated) | `87934cf` | `main` before the rebuild: the Electron + React app |
+| branch `archive/electron-react` | `87934cf` | the same commit, as a branch to build from |
+
+Do not move or delete either.
+
+**Rolling back to the Electron app:**
+
+```bash
+git switch archive/electron-react
+```
+
+```bash
+npm ci && npm run desktop
+```
+
+Both apps use the same data folder, and every server change on the branch is additive (new tables and files only), so
+the Electron app reads the folder as it was. If the Mac app has run on that folder, its first run left a backup of the
+irreplaceable files in `backups/pre-swiftui-<date>/` (`history.db`, `settings.json`, `config.json`,
+`credentials.json`; `league.db` is re-imported, not backed up). To return to that state, quit both apps and restore it,
+either with the Mac app's Settings ▸ Restore backup or by copying the files back into the data folder. A key saved only
+in the Mac app's Keychain item is not in the Electron app; enter it again there.
+
+Undoing the cutover after it merges is `git revert` of that one PR.
+
 ## Versions
 
 Pennant has its own version lineage starting at **0.1.0** (D-049); it is unrelated to upstream's numbers.
