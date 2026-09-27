@@ -49,7 +49,8 @@ interface Started {
 
 function start(dataDir: string, handshake: string | null): Started {
   const child = spawn(process.execPath, ['--import', 'tsx', 'server/sidecar.ts'], {
-    env: { PATH: process.env.PATH, HOME: process.env.HOME, OOTP_FO_DATA_DIR: dataDir, OOTP_FO_APP_ROOT: process.cwd() },
+    // An export a case has just written imports at once (the quiet period is the importer's own tests')
+    env: { PATH: process.env.PATH, HOME: process.env.HOME, OOTP_FO_DATA_DIR: dataDir, OOTP_FO_APP_ROOT: process.cwd(), OOTP_FO_EXPORT_QUIET_MS: '0' },
     stdio: ['pipe', 'pipe', 'pipe'],
   });
   running.add(child);
@@ -200,10 +201,11 @@ describe('starting the sidecar', () => {
 });
 
 /**
- * N1's kill-mid-import check (SWIFTUI_REBUILD.md section 5.3). The importer replaces one table per file, so a
- * process killed partway leaves a database that is sound as a file but neither export. What must hold: SQLite's
- * file is intact; the interruption is recorded; the next start says so and imports the export again, after which
- * the database is exactly the new export.
+ * N1's kill-mid-import check (SWIFTUI_REBUILD.md section 5.3), as N3.5 made it (D-061): the import builds a new file
+ * and swaps it in with one rename, so a process killed in the middle of an import leaves the previous import whole
+ * (never a mix of two exports) and an unfinished `league.next.db`. What must hold: the served database is exactly the
+ * previous export; the interruption is recorded; the next start removes the leftover, says so and imports the export
+ * again, after which the database is exactly the new export.
  */
 describe('a sidecar killed in the middle of an import', () => {
   const BIG = 400_000;
@@ -232,6 +234,13 @@ describe('a sidecar killed in the middle of an import', () => {
       db.close();
     }
   }
+
+  const whole = (version: number) => ({
+    a_first: { rows: 2, versions: [version] },
+    b_big: { rows: BIG, versions: [version] },
+    c_last: { rows: 1, versions: [version] },
+    players: { rows: 1, versions: [version] },
+  });
 
   it('leaves a sound database, records the interruption, and the next start imports the export again', async () => {
     const dataDir = scratch('pennant-sidecar-');
@@ -262,15 +271,12 @@ describe('a sidecar killed in the middle of an import', () => {
     side.child.kill('SIGKILL');
     expect((await side.exited).signal).toBe('SIGKILL');
 
-    // The file is sound (SQLite rolled the open transaction back) ...
-    const db = new Database(path.join(dataDir, 'league.db'));
+    // The league is sound and exactly the first export: the kill hit the new file, never the one the app reads
+    const db = new Database(path.join(dataDir, 'league.db'), { readonly: true });
     expect(db.pragma('integrity_check', { simple: true })).toBe('ok');
     db.close();
-    // ... but it is neither export: the first file is the new one's, the big table is not whole, and the record of
-    // the last import still describes the old one. Only the marker says so.
-    const mixed = tables(dataDir);
-    expect(mixed.a_first.versions).toEqual([2]);
-    expect(mixed.b_big.rows).toBeLessThan(BIG);
+    expect(tables(dataDir)).toEqual(whole(1));
+    expect(fs.existsSync(path.join(dataDir, 'league.next.db')), 'the unfinished build is left for the next start to remove').toBe(true);
     expect(JSON.parse(fs.readFileSync(path.join(dataDir, 'last-import.json'), 'utf8')).startedAt).toBe(firstImport.startedAt);
     const marker = JSON.parse(fs.readFileSync(path.join(dataDir, 'import-in-progress.json'), 'utf8')) as { csvDir: string };
     expect(marker.csvDir).toBe(csvDir);
@@ -286,12 +292,8 @@ describe('a sidecar killed in the middle of an import', () => {
     expect(done.importInterruptedSince).toBeNull();
     expect(done.lastError).toBeNull();
     expect(fs.existsSync(path.join(dataDir, 'import-in-progress.json'))).toBe(false);
-    expect(tables(dataDir)).toEqual({
-      a_first: { rows: 2, versions: [2] },
-      b_big: { rows: BIG, versions: [2] },
-      c_last: { rows: 1, versions: [2] },
-      players: { rows: 1, versions: [2] },
-    });
+    expect(fs.existsSync(path.join(dataDir, 'league.next.db'))).toBe(false);
+    expect(tables(dataDir)).toEqual(whole(2));
     side.child.kill('SIGTERM');
     expect(await side.exited).toEqual({ code: 0, signal: null });
   }, 120_000);

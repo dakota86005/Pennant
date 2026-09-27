@@ -294,8 +294,8 @@ const MIGRATED_CONSUMERS = ['contracts.ts', 'payroll.ts', 'trade.ts', 'player.ts
   // Phase 6d: Org Comparison reads Player Value's figures and the export's facts
   'franchise.ts'];
 
-/** Who may call the snapshot writer: the import, and the one route that serves the history. */
-const SNAPSHOT_CALLERS = ['api.ts', 'clubFinanceRoutes.ts'];
+/** Who may call the snapshot writer: the import (its snapshots, `importSnapshots.ts`; the start-up's market record, `api.ts`), and the one route that serves the history. */
+const SNAPSHOT_CALLERS = ['api.ts', 'clubFinanceRoutes.ts', 'importSnapshots.ts'];
 
 /** Who may mount the Player Value routes. */
 const ROUTE_MOUNTERS = ['api.ts'];
@@ -487,8 +487,9 @@ describe('the Player Value boundary', () => {
     // The worker computes both refits (the ratings after the results model they read) and records nothing
     expect(code('playerValueRefitWorker.ts')).toMatch(/computeRefits\(\)/);
     expect(code('playerValue.ts')).toMatch(/const production = computeProductionRefits\(\);[\s\S]*?const ratings = computeRatingsRefits\(/);
-    // After the import has finished, only when it succeeded
-    expect(api).toMatch(/\} finally \{[\s\S]*?importState\.importing = false;[\s\S]*?\}\s*if \(imported\) refitAfterImport\(\);/);
+    // After the import has finished, only when it succeeded: a post-import hook (N3.5), run once the import is over
+    expect(api).toMatch(/\} finally \{[\s\S]*?importState\.importing = false;[\s\S]*?\}\s*if \(imported\) void runPostImportHooks\(/);
+    expect(api).toMatch(/registerPostImportHook\('refits', \(context\) => \{\s*if \(context\.generation !== importGeneration\) return;\s*void refitAfterImport\(\);/);
   });
 
   it.each(VALUE_MODULES)('%s reads ratings only through the adapter: no rating column or ratings table (1)', (file) => {

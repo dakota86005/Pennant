@@ -1,15 +1,58 @@
 import fs from 'node:fs';
-import path from 'node:path';
-import { parse } from 'csv-parse/sync';
-import { db } from './db.js';
+import os from 'node:os';
+import { DATA_DIR } from './config.js';
+import { LEAGUE_DB_PATH, NEXT_DB_PATH, importRecord, swapInLeagueDatabase } from './db.js';
+import { assessExport, BURST_WINDOW_MS, exportTiming, REQUIRED_TABLES, staleRequired, type ExportAssessment, type ExportFile } from './exportFiles.js';
+import { buildLeagueDatabase, BuildError, type BuildResult } from './importBuild.js';
+import type { RatingModeRecord } from './ratingMode.js';
 import type { Integer } from './contract/primitives.js';
 
+/**
+ * The import (N3.5, D-061): all or nothing, off the server's thread.
+ *
+ * 1. The export must be whole: quiet for `QUIET_MS` (OOTP has finished writing) and every file from one burst. A file
+ *    older than the rest was not rewritten this time (a table switched off in OOTP's export settings): it is left out
+ *    and named, and its table keeps the previous import's rows, marked stale, when that import was of the same export
+ *    folder; otherwise the table is absent. A stale `players`, `teams` or `leagues` refuses the import.
+ * 2. There must be room: the new database is built beside the old one (about 4.5 times the export's size).
+ * 3. A worker thread builds `league.next.db` (`importBuild.ts`), checking each file again after reading it.
+ * 4. One rename swaps it in (`swapInLeagueDatabase`). Until then the app reads the previous import, whole; any failure
+ *    before it leaves the previous import in place and removes the unfinished file.
+ */
 export interface ImportResult {
   tables: Integer;
   rows: Integer;
   startedAt: string;
   finishedAt: string;
   files: Array<{ table: string; rows: Integer }>;
+  /** The export folder this import read (N3.5). */
+  csvDir?: string | null;
+  /** The export's fingerprint (its files' names, sizes and times), to tell a new export from this one (N3.5). */
+  exportFingerprint?: string | null;
+  /** When OOTP wrote the newest file of the export this import read (N3.5). */
+  exportWrittenAt?: string | null;
+  /** Files of the export the import left out, each with why and what the database holds for its table (N3.5). */
+  leftOut?: LeftOutFile[];
+  /** The files left out, in a sentence for the GM; null when none was (N3.5). */
+  leftOutNote?: string | null;
+  /** Which kind of ratings the export carries, from OOTP's export settings, read at this import (N3.5, D-061). */
+  ratingMode?: RatingModeRecord | null;
+  /** How long the import took, in milliseconds, from the build's start to the swap (N3.5). */
+  durationMs?: Integer | null;
+}
+
+/** A file the import left out (N3.5). */
+export interface LeftOutFile {
+  table: string;
+  file: string;
+  /** `stale`: older than the rest of the export (not rewritten); `unreadable`: it could not be parsed. */
+  reason: 'stale' | 'unreadable';
+  /** When OOTP last wrote it. */
+  writtenAt: string | null;
+  /** Whether the database keeps the previous import's rows for this table (stale files only, same export folder). */
+  kept: boolean;
+  /** When the kept rows were imported; null when nothing is kept. */
+  keptFrom: string | null;
 }
 
 /** Where the import has got to, as the importer reports it. */
@@ -21,7 +64,8 @@ export interface ImportStep {
   files: Integer;
   /** Rows written so far, across every table. */
   rows: Integer;
-  phase: 'reading' | 'writing' | 'indexing';
+  /** `waiting` (N3.5): OOTP is still writing the export, and the import waits for it to finish. */
+  phase: 'reading' | 'writing' | 'indexing' | 'waiting';
 }
 
 /** An import step in words (`server/presentation/importWords.ts`), for a window that shows it. */
@@ -39,223 +83,209 @@ export interface ImportProgress extends ImportStep {
   words: ImportWords;
 }
 
-/**
- * Hands the event loop back.
- *
- * The import used to be one synchronous run of seventy files and three hundred
- * megabytes, which on a single-threaded server meant nothing else was answered
- * for its whole duration — around thirty seconds. The page could poll for
- * progress all it liked; the reply was queued behind the very work it was
- * asking about. So a reader pressing Refresh saw the app hang and then simply
- * come back, with no way to tell the difference between working and broken.
- *
- * Yielding between chunks costs a few milliseconds in total and makes the
- * difference between a frozen window and a progress bar.
- */
-const breathe = () => new Promise<void>((resolve) => setImmediate(resolve));
-
-/**
- * Rows written between breaths.
- *
- * The largest file in a real export is sixty-six megabytes and some seven
- * hundred thousand rows; per-FILE yielding alone would still hold the server
- * for the ten seconds that one takes. Twenty thousand keeps each stretch to a
- * couple of hundred milliseconds, which a poll every half second cannot notice.
- */
-const CHUNK = 20_000;
-
-const NUMERIC = /^-?\d+(\.\d+)?$/;
-
-function sanitizeIdent(name: string): string {
-  return name.replace(/[^a-zA-Z0-9_]/g, '_');
+/** The previous import, as far as the new one needs it (to carry a stale table's rows over). */
+export interface PreviousImport {
+  /** When it ran. */
+  importedAt: string | null;
+  /** The export folder it read. */
+  csvDir: string | null;
+  /** For each table it carried over from an import before it, when those rows were imported. */
+  keptFrom: Record<string, string>;
 }
 
-function decodeCsv(filePath: string): string {
-  const buf = fs.readFileSync(filePath);
-  let text = buf.toString('utf8');
-  // OOTP exports can be Latin-1; fall back if UTF-8 decoding produced
-  // replacement characters (accented player names, etc.)
-  if (text.includes('�')) text = buf.toString('latin1');
-  return text;
+export interface ImportOptions {
+  onProgress?: (p: ImportStep) => void;
+  /** The previous import (the stale-table carry-over reads it); by default what the served database records. */
+  previous?: PreviousImport | null;
+  /** The export's rating mode, read by the caller from the save's export settings. */
+  ratingMode?: RatingModeRecord | null;
+  /** Says the files left out in a sentence (`presentation/importWords.ts`). */
+  leftOutNote?: (leftOut: LeftOutFile[]) => string | null;
+  /** Called between judging the export and reading it, on every attempt (the tests' seam for a file OOTP rewrites then). */
+  beforeBuild?: (attempt: number) => void;
+  /** Called in the same turn as the swap, before anything else runs (the caller's state and cache clearing). */
+  afterSwap?: (result: ImportResult) => void;
 }
 
-/**
- * Works out which character separates the fields.
- *
- * OOTP has an "Export Field Delimiter" setting, and it is not always a comma —
- * semicolon is common on European locales, where a comma is the decimal
- * separator. Reading a semicolon file as comma-delimited produces one giant
- * column per row, so the table ends up with a single column named
- * `team_id;name;abbr;...` and every query fails with "no such column: team_id".
- *
- * The header row decides it: whichever candidate appears most often outside
- * quotes is the separator. A one-column file legitimately has none of them, in
- * which case the choice does not matter and comma is as good as any.
- */
-function detectDelimiter(text: string): string {
-  const header = text.slice(0, text.indexOf('\n') === -1 ? undefined : text.indexOf('\n'));
-  let best = ',';
-  let bestCount = 0;
-  for (const candidate of [',', ';', '\t', '|']) {
-    let count = 0;
-    let inQuotes = false;
-    for (const ch of header) {
-      if (ch === '"') inQuotes = !inQuotes;
-      else if (ch === candidate && !inQuotes) count += 1;
-    }
-    if (count > bestCount) {
-      best = candidate;
-      bestCount = count;
-    }
+/** A refusal the GM can act on; its message is the log's, `failedImportText` turns it into words. */
+export class ImportRefused extends Error {
+  constructor(message: string, readonly code: 'export_changing' | 'stale_required' | 'disk_space' | 'no_files') {
+    super(message);
+    this.name = 'ImportRefused';
   }
-  return best;
 }
 
-/**
- * Import every CSV in the export directory into SQLite, one table per file,
- * columns taken from each file's header row. Values that look numeric are
- * stored as numbers so comparisons and math work in SQL.
- */
-export async function importCsvDir(
-  csvDir: string,
-  onProgress?: (p: ImportStep) => void
-): Promise<ImportResult> {
-  const startedAt = new Date().toISOString();
-  const files = fs
-    .readdirSync(csvDir)
-    .filter((f) => f.endsWith('.csv'))
-    .sort();
-  if (files.length === 0) throw new Error(`No .csv files found in ${csvDir}`);
+/** Settings a test can shorten (the quiet period); the defaults are the measured rule. */
+export const importTiming = {
+  /** How long an import waits for OOTP to finish writing before it gives up (the watcher starts it again later). */
+  settleTimeoutMs: 120_000,
+  /** Attempts when a file changes while it is read. */
+  attempts: 3,
+};
 
-  const result: ImportResult['files'] = [];
-  let totalRows = 0;
-
-  for (const [index, file] of files.entries()) {
-    const tableName = sanitizeIdent(file.replace(/\.csv$/, ''));
-    const say = (phase: ImportStep['phase']) =>
-      onProgress?.({ table: tableName, fileIndex: index + 1, files: files.length, rows: totalRows, phase });
-    say('reading');
-    // Reading and parsing a sixty-megabyte file is itself a second of work, so
-    // the breath comes before it rather than after
-    await breathe();
-    const text = decodeCsv(path.join(csvDir, file));
-    let records: string[][];
+/** Free bytes where the data folder lives; a test replaces it. */
+export const diskSpace = {
+  free(dir: string): number | null {
     try {
-      records = parse(text, {
-        delimiter: detectDelimiter(text),
-        relax_column_count: true,
-        relax_quotes: true,
-        skip_empty_lines: true,
-      }) as string[][];
-    } catch (err) {
-      console.warn(`[import] Skipping ${file}: parse error — ${(err as Error).message}`);
-      continue;
+      const s = fs.statfsSync(dir);
+      return s.bavail * s.bsize;
+    } catch {
+      return null;
     }
-    if (records.length < 1) continue;
+  },
+};
 
-    const header = records[0].map((h, i) => sanitizeIdent(h.trim() || `col_${i}`));
-    const dataRows = records.slice(1);
+/** The new database is about four times the export's size (numbers stored as REAL, plus indexes); with room to spare. */
+export const DISK_FACTOR = 4.5;
 
-    const columnDefs = header.map((h) => `"${h}"`).join(', ');
-    const placeholders = header.map(() => '?').join(', ');
+const gb = (bytes: number): string => `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+const iso = (ms: number | null): string | null => (ms === null ? null : new Date(ms).toISOString());
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
-    db.exec(`DROP TABLE IF EXISTS "${tableName}"`);
-    db.exec(`CREATE TABLE "${tableName}" (${columnDefs})`);
-    const insert = db.prepare(`INSERT INTO "${tableName}" VALUES (${placeholders})`);
-
-    /*
-     * One transaction per file still, but driven by hand so the loop can
-     * breathe inside it. better-sqlite3's transaction() wrapper is synchronous
-     * by design and cannot be awaited across, and committing per chunk instead
-     * would leave a half-written table behind any failure. Readers are
-     * unaffected either way — the database is in write-ahead mode, so the
-     * pages the app queries stay available while this transaction is open.
-     */
-    say('writing');
-    db.exec('BEGIN');
-    try {
-      const writeChunk = db.transaction((rows: string[][]) => {
-        for (const row of rows) {
-          const values = header.map((_, i) => {
-            const v = row[i];
-            if (v === undefined || v === '') return null;
-            return NUMERIC.test(v) ? Number(v) : v;
-          });
-          insert.run(values);
-        }
-      });
-      for (let at = 0; at < dataRows.length; at += CHUNK) {
-        writeChunk(dataRows.slice(at, at + CHUNK));
-        totalRows += Math.min(CHUNK, dataRows.length - at);
-        say('writing');
-        await breathe();
-      }
-      db.exec('COMMIT');
-    } catch (err) {
-      db.exec('ROLLBACK');
-      throw err;
-    }
-
-    result.push({ table: tableName, rows: dataRows.length });
-  }
-
-  onProgress?.({
-    table: 'indexes', fileIndex: files.length, files: files.length, rows: totalRows, phase: 'indexing',
-  });
-  await breathe();
-  buildIndexes();
-
+/** The previous import, read from the served database's own record. */
+export function previousFromDatabase(): PreviousImport | null {
+  const record = importRecord();
+  if (!record) return null;
+  const carried = new Set(
+    (Array.isArray(record.tables) ? (record.tables as Array<{ table?: unknown; source?: unknown }>) : [])
+      .filter((t) => t.source === 'carried' && typeof t.table === 'string').map((t) => t.table as string),
+  );
+  const keptFrom = record.keptFrom && typeof record.keptFrom === 'object' ? (record.keptFrom as Record<string, unknown>) : {};
   return {
-    tables: result.length,
-    rows: totalRows,
-    startedAt,
-    finishedAt: new Date().toISOString(),
-    files: result,
+    importedAt: typeof record.startedAt === 'string' ? record.startedAt : null,
+    csvDir: typeof record.csvDir === 'string' ? record.csvDir : null,
+    keptFrom: Object.fromEntries(Object.entries(keptFrom).filter(([t, at]) => carried.has(t) && typeof at === 'string')) as Record<string, string>,
   };
 }
 
-/**
- * Indexes the columns every page actually filters on.
- *
- * The import creates plain tables with no indexes, so a lookup like "this
- * player's career stats" scanned all 679,000 rows of players_career_batting_stats.
- * Nothing was obviously broken — the app just did far more work than it needed
- * to on every page, and a player card cost about 0.4s of that.
- *
- * Columns are discovered rather than listed, because the importer is
- * deliberately schema-tolerant: OOTP adds and renames fields between versions,
- * and a hardcoded list would quietly stop covering new tables.
- */
-export function buildIndexes(): void {
+/** Waits until the export is quiet (OOTP has finished writing), reporting `waiting`; refuses after the timeout. */
+async function settledExport(csvDir: string, onProgress?: (p: ImportStep) => void): Promise<ExportAssessment> {
   const started = Date.now();
-  // Startup calls this on every launch; once the indexes exist there is nothing
-  // to do and the check costs a single query
-  const existing = (
-    db.prepare(`SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'index' AND name LIKE 'idx_%'`)
-      .get() as { n: number }
-  ).n;
-  if (existing > 0) return;
-  const tables = (
-    db.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`).all() as Array<{ name: string }>
-  ).map((t) => t.name);
-
-  let made = 0;
-  for (const table of tables) {
-    const columns = new Set(
-      (db.prepare(`PRAGMA table_info("${table}")`).all() as Array<{ name: string }>).map((c) => c.name)
-    );
-    for (const column of ['player_id', 'team_id', 'game_id', 'league_id']) {
-      if (!columns.has(column)) continue;
-      try {
-        db.exec(`CREATE INDEX IF NOT EXISTS "idx_${table}_${column}" ON "${table}" ("${column}")`);
-        made += 1;
-      } catch (err) {
-        // A malformed table should not fail the whole import
-        console.warn(`[import] index on ${table}.${column} failed:`, (err as Error).message);
-      }
+  for (;;) {
+    const now = Date.now();
+    const a = assessExport(csvDir, now);
+    if (a.files.length === 0) throw new ImportRefused(`No .csv files found in ${csvDir}`, 'no_files');
+    if (a.settled) return a;
+    if (now - started >= importTiming.settleTimeoutMs) {
+      throw new ImportRefused('EXPORT_CHANGING: OOTP was still writing the export when the import gave up waiting', 'export_changing');
     }
+    onProgress?.({ table: 'export', fileIndex: 1, files: a.files.length, rows: 0, phase: 'waiting' });
+    await sleep(Math.min(1000, Math.max(50, exportTiming.quietMs - (a.quietForMs ?? 0))));
   }
-  // Lets SQLite pick between the indexes it now has rather than guessing
-  db.exec('ANALYZE');
-  console.log(`[import] ${made} indexes in ${((Date.now() - started) / 1000).toFixed(1)}s`);
 }
+
+/**
+ * Imports the export at `csvDir` into a new database and swaps it in. Resolves with the import's record once the new
+ * database is the league; rejects (the previous import untouched) when the export is not whole, there is no room,
+ * or a required table cannot be read.
+ */
+export async function importCsvDir(csvDir: string, onProgressOrOptions?: ((p: ImportStep) => void) | ImportOptions): Promise<ImportResult> {
+  const options: ImportOptions = typeof onProgressOrOptions === 'function' ? { onProgress: onProgressOrOptions } : onProgressOrOptions ?? {};
+  const startedAt = new Date().toISOString();
+  const started = performance.now();
+  const previous = options.previous === undefined ? previousFromDatabase() : options.previous;
+
+  for (let attempt = 1; ; attempt++) {
+    const assessment = await settledExport(csvDir, options.onProgress);
+    const staleRequiredTables = staleRequired(assessment);
+    if (staleRequiredTables.length > 0) {
+      throw new ImportRefused(`STALE_REQUIRED: ${staleRequiredTables.join(', ')} not rewritten with the rest of the export`, 'stale_required');
+    }
+
+    // Room for the new database beside the old one
+    const exportBytes = assessment.current.reduce((n, f) => n + f.size, 0);
+    const needed = Math.round(exportBytes * DISK_FACTOR);
+    const free = diskSpace.free(DATA_DIR);
+    if (free !== null && free < needed) {
+      throw new ImportRefused(`Not enough free disk space to import: about ${gb(needed)} is needed and ${gb(free)} is free`, 'disk_space');
+    }
+
+    // A stale table keeps the previous import's rows only when that import read this same export folder
+    const sameFolder = !!previous?.csvDir && previous.csvDir === csvDir;
+    const carryOver = sameFolder ? assessment.stale.map((f) => f.table) : [];
+    // When the rows a stale table keeps were imported: the import that first read them, however many imports ago
+    const keptFrom: Record<string, string> = {};
+    for (const table of carryOver) {
+      const at = previous?.keptFrom[table] ?? previous?.importedAt ?? null;
+      if (at) keptFrom[table] = at;
+    }
+    const leftOutStale = (kept: Set<string>): LeftOutFile[] =>
+      assessment.stale.map((f) => ({
+        table: f.table, file: f.file, reason: 'stale', writtenAt: iso(f.mtimeMs),
+        kept: kept.has(f.table),
+        keptFrom: kept.has(f.table) ? keptFrom[f.table] ?? null : null,
+      }));
+
+    let build: BuildResult;
+    options.beforeBuild?.(attempt);
+    try {
+      build = await buildLeagueDatabase({
+        csvDir,
+        outPath: NEXT_DB_PATH,
+        previousPath: fs.existsSync(LEAGUE_DB_PATH) ? LEAGUE_DB_PATH : null,
+        files: assessment.current,
+        carryOver,
+        required: [...REQUIRED_TABLES],
+        parseWorkers: parseWorkerCount(),
+        meta: {
+          startedAt,
+          csvDir,
+          exportFingerprint: assessment.fingerprint,
+          exportWrittenAt: iso(assessment.newestMs),
+          ratingMode: options.ratingMode ?? null,
+          keptFrom,
+          stale: assessment.stale.map((f: ExportFile) => ({ file: f.file, table: f.table, writtenAt: iso(f.mtimeMs) })),
+          files: assessment.current.map((f: ExportFile) => ({ file: f.file, table: f.table, size: f.size, writtenAt: iso(f.mtimeMs) })),
+        },
+      }, options.onProgress);
+    } catch (err) {
+      fs.rmSync(NEXT_DB_PATH, { force: true });
+      if (err instanceof BuildError && err.code === 'export_changed' && attempt < importTiming.attempts) {
+        console.warn(`[import] ${err.message}; waiting for OOTP to finish, then reading it again`);
+        continue;
+      }
+      if (err instanceof BuildError && err.code === 'export_changed') throw new ImportRefused(`EXPORT_CHANGING: ${err.message}`, 'export_changing');
+      throw err;
+    }
+
+    const carried = new Set(build.tables.filter((t) => t.source === 'carried').map((t) => t.table));
+    const leftOut: LeftOutFile[] = [
+      ...leftOutStale(carried),
+      ...build.unreadable.map((u): LeftOutFile => ({
+        table: u.table, file: u.file, reason: 'unreadable',
+        writtenAt: iso(assessment.current.find((f) => f.file === u.file)?.mtimeMs ?? null), kept: false, keptFrom: null,
+      })),
+    ];
+    const exported = build.tables.filter((t) => t.source === 'export').sort((a, b) => (a.file < b.file ? -1 : 1));
+    const result: ImportResult = {
+      tables: exported.length,
+      rows: build.rows,
+      startedAt,
+      finishedAt: new Date().toISOString(),
+      files: exported.map((t) => ({ table: t.table, rows: t.rows })),
+      csvDir,
+      exportFingerprint: assessment.fingerprint,
+      exportWrittenAt: iso(assessment.newestMs),
+      leftOut,
+      leftOutNote: options.leftOutNote?.(leftOut) ?? null,
+      ratingMode: options.ratingMode ?? null,
+      durationMs: Math.round(performance.now() - started),
+    };
+    // The swap: from here the app reads the new import
+    swapInLeagueDatabase(NEXT_DB_PATH);
+    options.afterSwap?.(result);
+    console.log(`[import] ${result.tables} tables, ${result.rows} rows in ${(result.durationMs! / 1000).toFixed(1)}s ` +
+      `(parse and write ${build.timings.parseAndWriteMs} ms, indexes ${build.timings.indexMs} ms, ${build.indexes} indexes)` +
+      (leftOut.length ? `; left out: ${leftOut.map((l) => `${l.file} (${l.reason})`).join(', ')}` : ''));
+    return result;
+  }
+}
+
+/** Three parse workers were the measured best on a ten-core M4 (a fourth adds nothing: one writer is the floor). */
+function parseWorkerCount(): number {
+  const cores = typeof os.availableParallelism === 'function' ? os.availableParallelism() : os.cpus().length;
+  return Math.max(1, Math.min(3, cores - 1));
+}
+
+/** For the watcher and the status: the stale-file window and quiet period in force. */
+export const EXPORT_RULES = { burstWindowMs: BURST_WINDOW_MS, quietMs: () => exportTiming.quietMs };

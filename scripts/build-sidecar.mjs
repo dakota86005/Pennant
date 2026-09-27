@@ -4,6 +4,8 @@
  *   server.cjs                      the sidecar entry (`server/sidecar.ts`) and the whole server
  *   value-refit-worker.cjs          Player Value's refit worker, found beside server.cjs
  *   calibration-refit-worker.cjs    the per-save calibration worker, found the same way
+ *   import-worker.cjs               the import's build and parse workers (N3.5), found the same way
+ *   snapshot-worker.cjs             the import's snapshots, after the swap, found the same way
  *   package.json                    the version, and the runtime dependencies the bundle leaves external
  *
  * The Xcode build (N3) copies this folder into `Contents/Resources/server/` with a production `node_modules`

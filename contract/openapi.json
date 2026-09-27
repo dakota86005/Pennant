@@ -1627,13 +1627,15 @@
             "description": "Rows written so far, across every table."
           },
           "phase": {
+            "description": "`waiting` (N3.5): OOTP is still writing the export, and the import waits for it to finish.",
             "anyOf": [
               {
                 "type": "string",
                 "enum": [
                   "reading",
                   "writing",
-                  "indexing"
+                  "indexing",
+                  "waiting"
                 ]
               },
               {
@@ -1705,6 +1707,49 @@
                 "rows"
               ]
             }
+          },
+          "csvDir": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The export folder this import read (N3.5)."
+          },
+          "exportFingerprint": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The export's fingerprint (its files' names, sizes and times), to tell a new export from this one (N3.5)."
+          },
+          "exportWrittenAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "When OOTP wrote the newest file of the export this import read (N3.5)."
+          },
+          "leftOut": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeftOutFile"
+            },
+            "description": "Files of the export the import left out, each with why and what the database holds for its table (N3.5)."
+          },
+          "leftOutNote": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The files left out, in a sentence for the GM; null when none was (N3.5)."
+          },
+          "ratingMode": {
+            "$ref": "#/components/schemas/RatingModeRecord",
+            "description": "Which kind of ratings the export carries, from OOTP's export settings, read at this import (N3.5, D-061)."
+          },
+          "durationMs": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "How long the import took, in milliseconds, from the build's start to the swap (N3.5)."
           }
         },
         "required": [
@@ -1713,7 +1758,8 @@
           "startedAt",
           "finishedAt",
           "files"
-        ]
+        ],
+        "description": "The import (N3.5, D-061): all or nothing, off the server's thread.\n\n1. The export must be whole: quiet for `QUIET_MS` (OOTP has finished writing) and every file from one burst. A file    older than the rest was not rewritten this time (a table switched off in OOTP's export settings): it is left out    and named, and its table keeps the previous import's rows, marked stale, when that import was of the same export    folder; otherwise the table is absent. A stale `players`, `teams` or `leagues` refuses the import. 2. There must be room: the new database is built beside the old one (about 4.5 times the export's size). 3. A worker thread builds `league.next.db` (`importBuild.ts`), checking each file again after reading it. 4. One rename swaps it in (`swapInLeagueDatabase`). Until then the app reads the previous import, whole; any failure    before it leaves the previous import in place and removes the unfinished file."
       },
       "ImportStartedEvent": {
         "type": "object",
@@ -1903,6 +1949,59 @@
           "why"
         ],
         "description": "The organization's philosophy leaning on a reading (D-052's lens): the neutral reading beside the reasons for the lean. A claim with no lean says so with `null`; an absent lean is never read as \"neutral\"."
+      },
+      "LeftOutFile": {
+        "type": "object",
+        "properties": {
+          "table": {
+            "type": "string"
+          },
+          "file": {
+            "type": "string"
+          },
+          "reason": {
+            "description": "`stale`: older than the rest of the export (not rewritten); `unreadable`: it could not be parsed.",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "stale",
+                  "unreadable"
+                ]
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "writtenAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "When OOTP last wrote it."
+          },
+          "kept": {
+            "type": "boolean",
+            "description": "Whether the database keeps the previous import's rows for this table (stale files only, same export folder)."
+          },
+          "keptFrom": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "When the kept rows were imported; null when nothing is kept."
+          }
+        },
+        "required": [
+          "table",
+          "file",
+          "reason",
+          "writtenAt",
+          "kept",
+          "keptFrom"
+        ],
+        "description": "A file the import left out (N3.5)."
       },
       "LiveLogFailure": {
         "anyOf": [
@@ -2548,6 +2647,69 @@
         ],
         "description": "What `GET /api/settings/providers` serves: the providers on offer and every provider's key state."
       },
+      "RatingMode": {
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "scouted",
+              "real",
+              "osa",
+              "none",
+              "unknown"
+            ]
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "RatingModeRecord": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/RatingMode"
+          },
+          "additionalScouted": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "\"Additional complete scouted ratings\" (OOTP's option), when the file says; null when it does not."
+          },
+          "source": {
+            "description": "Where the mode came from: the save's export settings, or why they could not be read.",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "export_settings",
+                  "settings_missing",
+                  "settings_unreadable",
+                  "save_not_found"
+                ]
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Why the mode is unknown, in a sentence; null when it is known."
+          }
+        },
+        "required": [
+          "mode",
+          "additionalScouted",
+          "source",
+          "reason"
+        ],
+        "description": "The export's rating mode as the import recorded it, with how it was read."
+      },
       "ResolveFolderRequest": {
         "type": "object",
         "properties": {
@@ -2891,7 +3053,12 @@
         "type": "object",
         "properties": {
           "autoImport": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Watch the save's export folder for a new export (the React label: \"Watch for new exports\")."
+          },
+          "importAutomatically": {
+            "type": "boolean",
+            "description": "Import a new export in the background as soon as OOTP has finished writing it (N3.5, the owner's decision 1, 2026-09-26: on by default). Needs `autoImport` (the watch); off, a new export is only offered, as before."
           },
           "useTeamColors": {
             "type": "boolean"
@@ -2991,6 +3158,7 @@
         },
         "required": [
           "autoImport",
+          "importAutomatically",
           "useTeamColors",
           "theme",
           "model",
@@ -3056,7 +3224,12 @@
             ]
           },
           "autoImport": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Watch the save's export folder for a new export (the React label: \"Watch for new exports\")."
+          },
+          "importAutomatically": {
+            "type": "boolean",
+            "description": "Import a new export in the background as soon as OOTP has finished writing it (N3.5, the owner's decision 1, 2026-09-26: on by default). Needs `autoImport` (the watch); off, a new export is only offered, as before."
           },
           "useTeamColors": {
             "type": "boolean"

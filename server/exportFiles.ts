@@ -1,0 +1,119 @@
+/**
+ * The OOTP export on disk, as the importer and the watcher judge it (N3.5, D-061).
+ *
+ * OOTP writes an export as some seventy CSV files over 35 to 41 seconds, each created fresh, in the same order every
+ * time (measured in four exports, SWIFTUI_REBUILD.md "N3.5"). The folder is therefore not atomic: for most of a minute
+ * it holds a mix of the new export and the old. Two rules decide when it is whole:
+ *
+ *   quiet      no CSV has been written for `QUIET_MS` (the longest single file took 7.7 s; the gap between files is
+ *              under 0.03 s), so OOTP has finished writing
+ *   one burst  a file written more than `BURST_WINDOW_MS` before the newest was not rewritten this time: a table
+ *              switched off in OOTP's export settings leaves its old file behind. It is STALE, left out of the import
+ *              and named (the owner's decision 5, 2026-09-26)
+ *
+ * The importer also checks each file again after reading it (`importBuild.ts`): a file that changed while it was read
+ * fails the import, so an early start costs a retry, never a mixed database. Only file names, sizes and times are read.
+ */
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+
+/** How long the export must go unwritten before it counts as finished. */
+export const QUIET_MS = 10_000;
+/** How far behind the newest file a file may be and still belong to the same export (observed span 35 to 41 s). */
+export const BURST_WINDOW_MS = 10 * 60_000;
+/**
+ * The quiet period in force: `QUIET_MS`, or `OOTP_FO_EXPORT_QUIET_MS` (the tests set it to 0, so an export they have
+ * just written imports at once; a test of the rule sets its own). Mutable for the same reason.
+ */
+export const exportTiming = {
+  quietMs: process.env.OOTP_FO_EXPORT_QUIET_MS !== undefined && Number.isFinite(Number(process.env.OOTP_FO_EXPORT_QUIET_MS))
+    ? Number(process.env.OOTP_FO_EXPORT_QUIET_MS)
+    : QUIET_MS,
+};
+
+/** Tables without which an export is not one: stale or unreadable, they fail the import and the previous import stays. */
+export const REQUIRED_TABLES = ['players', 'teams', 'leagues'] as const;
+
+/** One CSV of the export, as `stat` saw it. */
+export interface ExportFile {
+  /** The file's name ("players.csv"). */
+  file: string;
+  /** The table it becomes ("players"). */
+  table: string;
+  size: number;
+  mtimeMs: number;
+}
+
+/** The export folder, judged at one moment. */
+export interface ExportAssessment {
+  files: ExportFile[];
+  /** The newest file's modification time, or null for an empty folder. */
+  newestMs: number | null;
+  /** How long since the newest file was written. */
+  quietForMs: number | null;
+  /** Quiet for `QUIET_MS` or more: OOTP has finished writing. */
+  settled: boolean;
+  /** The files written in the newest burst: what an import reads. */
+  current: ExportFile[];
+  /** Files older than the burst: not rewritten this time. */
+  stale: ExportFile[];
+  /** A fingerprint of the current files (name, size, time), to tell a new export from one already imported. */
+  fingerprint: string | null;
+}
+
+/** A file name as a table name: what the importer has always done. */
+export function tableForFile(file: string): string {
+  return file.replace(/\.csv$/, '').replace(/[^a-zA-Z0-9_]/g, '_');
+}
+
+/** Every CSV in the folder with its size and time; an unreadable folder is an empty list. */
+export function listExport(csvDir: string): ExportFile[] {
+  let names: string[];
+  try {
+    names = fs.readdirSync(csvDir);
+  } catch {
+    return [];
+  }
+  const out: ExportFile[] = [];
+  for (const file of names) {
+    if (!file.endsWith('.csv')) continue;
+    try {
+      const st = fs.statSync(path.join(csvDir, file));
+      if (!st.isFile()) continue;
+      out.push({ file, table: tableForFile(file), size: st.size, mtimeMs: st.mtimeMs });
+    } catch {
+      // Gone between listing and stat: OOTP is writing, and the next look sees it
+    }
+  }
+  return out.sort((a, b) => (a.file < b.file ? -1 : a.file > b.file ? 1 : 0));
+}
+
+/** The fingerprint of a set of files: their names, sizes and times. */
+export function fingerprintOf(files: readonly ExportFile[]): string | null {
+  if (files.length === 0) return null;
+  const hash = crypto.createHash('sha256');
+  for (const f of [...files].sort((a, b) => (a.file < b.file ? -1 : 1))) hash.update(`${f.file}\0${f.size}\0${Math.round(f.mtimeMs)}\n`);
+  return hash.digest('hex').slice(0, 32);
+}
+
+/** Judges a listing at `now`: quiet, the current burst, the stale files, the fingerprint. */
+export function assessFiles(files: ExportFile[], now: number): ExportAssessment {
+  if (files.length === 0) return { files, newestMs: null, quietForMs: null, settled: false, current: [], stale: [], fingerprint: null };
+  const newestMs = Math.max(...files.map((f) => f.mtimeMs));
+  const current = files.filter((f) => f.mtimeMs >= newestMs - BURST_WINDOW_MS);
+  const stale = files.filter((f) => f.mtimeMs < newestMs - BURST_WINDOW_MS);
+  const quietForMs = Math.max(0, now - newestMs);
+  return { files, newestMs, quietForMs, settled: quietForMs >= exportTiming.quietMs, current, stale, fingerprint: fingerprintOf(current) };
+}
+
+/** The export folder judged now. */
+export function assessExport(csvDir: string, now: number = Date.now()): ExportAssessment {
+  return assessFiles(listExport(csvDir), now);
+}
+
+/** The required tables among the stale files (an export without them fresh is not imported). */
+export function staleRequired(assessment: ExportAssessment): string[] {
+  const required = new Set<string>(REQUIRED_TABLES);
+  return assessment.stale.filter((f) => required.has(f.table)).map((f) => f.table);
+}

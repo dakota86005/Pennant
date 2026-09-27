@@ -30,6 +30,8 @@ const { buildFixture } = await import('../tests/fixture.js');
 const scratch = buildFixture();
 process.env.OOTP_FO_DATA_DIR = scratch;
 process.env.OOTP_FO_APP_ROOT = process.cwd();
+// The rewrite goes through the server's connection, which the app itself opens read-only
+process.env.OOTP_FO_DB_WRITABLE = '1';
 
 const { buildSave } = await import('../tests/syntheticSave.js');
 const { db } = await import('../server/db.js');

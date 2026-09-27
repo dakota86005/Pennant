@@ -20,6 +20,6 @@ await build({
 
 await bundleServerEntry('electron/main.ts', 'build/main.cjs');
 
-// The refit workers ship beside the bundle, which finds them as ./value-refit-worker.cjs and
-// ./calibration-refit-worker.cjs next to itself.
+// The worker threads ship beside the bundle, which finds them next to itself: ./value-refit-worker.cjs,
+// ./calibration-refit-worker.cjs, ./import-worker.cjs and ./snapshot-worker.cjs.
 await bundleRefitWorkers('build');

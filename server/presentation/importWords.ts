@@ -3,7 +3,8 @@
  * named for a person rather than by OOTP's file name; why an import did not finish; why a chosen save did not start
  * importing. The importer and the status decide nothing here: these are sentences about what they reported.
  */
-import type { ImportStep, ImportWords } from '../importer.js';
+import type { ImportStep, ImportWords, LeftOutFile } from '../importer.js';
+import { timestampWords } from '../timeWords.js';
 
 /** OOTP's export files a GM would recognize, named in words (lower case: the name sits inside a sentence). */
 const TABLE_NAMES: Record<string, string> = {
@@ -55,6 +56,9 @@ const capitalize = (text: string): string => text.charAt(0).toUpperCase() + text
 
 /** An import step in words; a file with no name for a person reads as the export. */
 export function importWords(step: ImportStep): ImportWords {
+  if (step.phase === 'waiting') {
+    return { phase: 'Waiting for OOTP', table: 'The export', display: 'Waiting for OOTP to finish writing the export' };
+  }
   if (step.phase === 'indexing') {
     return { phase: 'Getting the league ready', table: 'The league', display: 'Getting the league ready' };
   }
@@ -78,6 +82,13 @@ export interface ImportNote {
 
 /** A failed import's message as a sentence the GM can act on. */
 export function failedImportText(message: string): string {
+  if (/^EXPORT_CHANGING/.test(message)) return 'OOTP was still writing the export. Pennant imports it once OOTP has finished; or import again in a minute.';
+  if (/^STALE_REQUIRED: (.+?) not rewritten/.test(message)) {
+    const tables = /^STALE_REQUIRED: (.+?) not rewritten/.exec(message)![1].split(', ').map((t) => tableName(t) ?? t);
+    return `The export has an old copy of ${listWords(tables)}: OOTP didn't write ${tables.length === 1 ? 'it' : 'them'} this time. Export the league from OOTP again, then import.`;
+  }
+  const space = /^Not enough free disk space to import: about (\S+ GB) is needed and (\S+ GB) is free/.exec(message);
+  if (space) return `There isn't room on the disk to import: Pennant needs about ${space[1]} free and ${space[2]} is. Free some space, then import again.`;
   if (/No \.csv files found/i.test(message)) return 'The export folder has no files to import. Export the league from OOTP again, then import.';
   if (/SQLITE_BUSY|database is locked/i.test(message)) return 'Another program was using Pennant\'s league file. Import again in a moment.';
   if (/EACCES|EPERM|permission/i.test(message)) return 'Pennant wasn\'t allowed to read the export. Check the folder\'s permissions, then import again.';
@@ -99,8 +110,8 @@ export function importNote(state: {
     return {
       kind: 'interrupted',
       text: state.importing
-        ? 'The last import stopped before it finished, so Pennant is importing the export again.'
-        : 'The last import stopped before it finished. Import again to finish it.',
+        ? 'The last import stopped before it finished, so Pennant is importing the export again. Until then it shows the import before it.'
+        : 'The last import stopped before it finished, so Pennant still shows the import before it. Import again to finish it.',
       detail: null,
     };
   }
@@ -117,3 +128,44 @@ export function importNote(state: {
 /** Why a chosen save did not start importing: its export folder is not there yet. */
 export const EXPORT_NOT_FOUND =
   'That save has no export yet. In OOTP, export the league\'s database, then choose the save again.';
+
+/** "a", "a and b", "a, b and c". */
+export function listWords(items: readonly string[]): string {
+  if (items.length <= 1) return items[0] ?? '';
+  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}
+
+/** The files an import left out, in a sentence or two (the owner's decision 5); null when nothing was left out. */
+export function leftOutNote(leftOut: readonly LeftOutFile[]): string | null {
+  if (leftOut.length === 0) return null;
+  const named = (files: readonly LeftOutFile[]): string => {
+    const names = files.map((f) => tableName(f.table)).filter((n): n is string => !!n);
+    const others = files.length - names.length;
+    const parts = [...names, ...(others > 0 ? [`${others} other file${others === 1 ? '' : 's'}`] : [])];
+    return listWords(parts);
+  };
+  const sentences: string[] = [];
+  const kept = leftOut.filter((f) => f.reason === 'stale' && f.kept);
+  const notKept = leftOut.filter((f) => f.reason === 'stale' && !f.kept);
+  const unreadable = leftOut.filter((f) => f.reason === 'unreadable');
+  if (kept.length > 0) {
+    const from = [...new Set(kept.map((f) => f.keptFrom).filter((d): d is string => !!d))].sort()[0];
+    const when = timestampWords(from);
+    sentences.push(`OOTP didn't write ${named(kept)} this time, so Pennant kept the figures from ${when ? `the import of ${when}` : 'an earlier import'}, marked as older.`);
+  }
+  if (notKept.length > 0) sentences.push(`OOTP didn't write ${named(notKept)} this time, so Pennant has none for now.`);
+  if (unreadable.length > 0) sentences.push(`Pennant couldn't read ${named(unreadable)} in this export, so it has none for now.`);
+  return sentences.join(' ');
+}
+
+/** The files left out, one per line, for the hover under the sentence: each file's name and why. */
+export function leftOutDetail(leftOut: readonly LeftOutFile[]): string | null {
+  if (leftOut.length === 0) return null;
+  return leftOut
+    .map((f) => {
+      const written = timestampWords(f.writtenAt);
+      const why = f.reason === 'stale' ? `not rewritten${written ? ` (last written ${written})` : ''}` : 'could not be read';
+      return `${f.file}: ${why}${f.kept && f.keptFrom ? `; figures kept from the import of ${timestampWords(f.keptFrom) ?? f.keptFrom}` : ''}`;
+    })
+    .join('\n');
+}

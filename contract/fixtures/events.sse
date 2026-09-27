@@ -8,7 +8,7 @@ event: import-progress
 data: {"type":"import-progress","progress":{"table":"zz_contract","fileIndex":1,"files":1,"rows":0,"phase":"reading","words":{"phase":"Reading the export","table":"The export","display":"Reading the export · 1 of 1"}}}
 
 event: import-finished
-data: {"type":"import-finished","lastImport":{"tables":1,"rows":2,"startedAt":"2040-07-01T12:00:00.000Z","finishedAt":"2040-07-01T12:00:00.000Z","files":[{"table":"zz_contract","rows":2}]},"error":null,"note":null}
+data: {"type":"import-finished","lastImport":{"tables":1,"rows":2,"startedAt":"2040-07-01T12:00:00.000Z","finishedAt":"2040-07-01T12:00:00.000Z","files":[{"table":"zz_contract","rows":2}],"csvDir":"/tmp/pennant-contract-export","exportFingerprint":"fingerprint","exportWrittenAt":"2040-07-01T12:00:00.000Z","leftOut":[],"leftOutNote":null,"ratingMode":{"mode":"unknown","additionalScouted":null,"source":"save_not_found","reason":"Pennant couldn't find the save, so it couldn't read its export settings."},"durationMs":0},"error":null,"note":null}
 
 event: job
 data: {"type":"job","kind":"contract-check","orgId":1,"status":{"state":"done","startedAt":"2040-07-01T12:00:00.000Z","finishedAt":"2040-07-01T12:00:00.000Z","error":null}}

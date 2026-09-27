@@ -46,7 +46,13 @@ export function isAiFeatureId(value: unknown): value is AiFeatureId {
  */
 
 export interface Settings {
+  /** Watch the save's export folder for a new export (the React label: "Watch for new exports"). */
   autoImport: boolean;
+  /**
+   * Import a new export in the background as soon as OOTP has finished writing it (N3.5, the owner's decision 1,
+   * 2026-09-26: on by default). Needs `autoImport` (the watch); off, a new export is only offered, as before.
+   */
+  importAutomatically: boolean;
   useTeamColors: boolean;
   defaultOrgId: Integer | null;
   /** 'system' follows the OS setting and changes with it. */
@@ -114,6 +120,7 @@ const DEFAULTS: Settings = {
   models: {},
   aiFeatures: {},
   autoImport: true,
+  importAutomatically: true,
   useTeamColors: true,
   nextSeasonBudget: {},
   organizationPhilosophies: {},
@@ -546,6 +553,7 @@ type SettingsFields = Partial<
   Pick<
     Settings,
     | 'autoImport'
+    | 'importAutomatically'
     | 'useTeamColors'
     | 'roundRatingsToFive'
     | 'showUnavailablePitchers'
