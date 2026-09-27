@@ -12,9 +12,23 @@ func servedLine(_ parts: [String?]) -> String {
     parts.compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
 }
 
+/// What can open a route in the window a view is in (the Shell's window model): whether this build has the route, and
+/// going there. A reference, so the environment does not change on every update.
+@MainActor
+public protocol RouteOpening: AnyObject {
+    func canOpen(_ route: AppRoute) -> Bool
+    func open(_ route: AppRoute)
+}
+
 extension EnvironmentValues {
-    /// Opens a route in this window (the Shell sets it to the window's navigation); nothing where no window hosts the view.
-    @Entry public var openRoute: @MainActor (AppRoute) -> Void = { _ in }
+    /// The window's route opener (set by the Shell); nil where no window hosts the view, and nothing opens.
+    @Entry public var routeOpener: (any RouteOpening)? = nil
+}
+
+/// A served target as a route in this build, when it names a department's view.
+func route(_ target: Components.Schemas.Target?) -> AppRoute? {
+    guard let target, let view = target.view, let department = target.department else { return nil }
+    return AppRoute(department: DeptID(rawValue: department.rawValue), view: view)
 }
 
 /// A served claim as one line: its tone's symbol, its text, its help tag, and its basis one click away.
@@ -89,11 +103,17 @@ public struct DeskItemRow: View {
                         .help(detail: item.headline.hint)
                     BasisButton(basis: item.headline.basis)
                 }
-                Text(verbatim: servedLine([item.urgency.text, item.due?.display, showsDepartment ? item.raisedBy.display : nil]))
-                    .font(.callout)
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-                    .help(detail: item.urgency.hint)
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(verbatim: servedLine([item.urgency.text, item.due?.display, showsDepartment ? item.raisedBy.display : nil]))
+                        .font(.callout)
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                        .help(detail: item.urgency.hint)
+                    // Why it sits where it does on the desk: the line that placed it, and any lean beside the plain reading
+                    BasisButton(basis: item.urgency.basis)
+                        .controlSize(.small)
+                        .accessibilityIdentifier("item.urgency.basis")
+                }
                 if let detail = item.detail {
                     Text(verbatim: detail.display)
                         .font(.callout)
@@ -151,6 +171,8 @@ public struct TrailContent: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text(verbatim: trail.title.display).font(.headline)
                     ClaimLine(trail.headline)
+                    // The need's own basis (why, not known), above the responses
+                    BasisContent(basis: trail.headline.basis)
                     ForEach(Array(trail.sections.enumerated()), id: \.offset) { _, section in
                         VStack(alignment: .leading, spacing: 4) {
                             Text(verbatim: section.title.display).font(.subheadline.weight(.semibold))
@@ -163,6 +185,7 @@ public struct TrailContent: View {
                         }
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .frame(maxHeight: 480)
         } else if let problem = store.trailProblems[evidence] {
@@ -176,7 +199,7 @@ public struct TrailContent: View {
 /// A department's card on the Morning Report: its name and who prepared it, its summary, two or three key figures and
 /// its first items, and the way into its report.
 public struct DepartmentCardView: View {
-    @Environment(\.openRoute) private var openRoute
+    @Environment(\.routeOpener) private var opener
     let card: Components.Schemas.DepartmentCard
 
     public init(_ card: Components.Schemas.DepartmentCard) {
@@ -207,10 +230,11 @@ public struct DepartmentCardView: View {
                     }
                 }
             }
-            if let open = card.open, let view = open.view, let department = open.department {
-                Button("Open Report") { openRoute(AppRoute(department: DeptID(rawValue: department.rawValue), view: view)) }
+            // Only a report this build can open: a card with none has no button
+            if let route = route(card.open), let opener, opener.canOpen(route) {
+                Button("Open Report") { opener.open(route) }
                     .controlSize(.small)
-                    .accessibilityIdentifier("card.open.\(department.rawValue)")
+                    .accessibilityIdentifier("card.open.\(route.department.rawValue)")
             }
         }
         .padding(14)
@@ -242,10 +266,18 @@ public struct DepartmentReportView: View {
         Group {
             if let report = store.reports[department.rawValue] {
                 ScrollView {
-                    DepartmentReportContent(report: report, refreshing: model.storeKey.map { !store.reportIsCurrent(department.rawValue, for: $0) } ?? false)
-                        .padding(24)
-                        .frame(maxWidth: 900, alignment: .leading)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    VStack(alignment: .leading, spacing: 12) {
+                        // A reload that failed says so above what is kept, never "refreshing" for ever
+                        if let problem = store.reportProblems[department.rawValue] { ProblemLine(problem) }
+                        DepartmentReportContent(
+                            report: report,
+                            refreshing: store.loadingReports.contains(department.rawValue)
+                                || (store.reportProblems[department.rawValue] == nil && model.storeKey.map { !store.reportIsCurrent(department.rawValue, for: $0) } ?? false)
+                        )
+                    }
+                    .padding(24)
+                    .frame(maxWidth: 900, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             } else if let problem = store.reportProblems[department.rawValue] {
                 ProblemLine(problem).frame(maxWidth: .infinity, maxHeight: .infinity)

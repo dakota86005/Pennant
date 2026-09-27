@@ -17,9 +17,11 @@ public struct ToneSymbol: View {
         case .bad: ("exclamationmark.octagon.fill", .red)
         case .caution: ("exclamationmark.triangle.fill", .orange)
         case .unknown: ("questionmark.circle", .secondary)
-        case .neutral, nil: ("circle", .secondary)
+        case .neutral, nil: ("circle.fill", .secondary)
         }
         Image(systemName: name)
+            // A neutral line is marked by a small dot, never an empty ring that reads as a radio button
+            .imageScale(tone?.value1 == .neutral || tone == nil ? .small : .medium)
             .foregroundStyle(style)
             .accessibilityHidden(true)
     }

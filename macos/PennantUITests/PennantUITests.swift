@@ -83,7 +83,7 @@ final class PennantUITests: XCTestCase {
     /// draw and no SwiftUI modifier reaches; labelling a SwiftUI container above them made the sidebar's rows stop
     /// scrolling into view for a click), and on the Touch Bar the system draws. Anything else fails the test.
     @MainActor
-    private func audit(_ app: XCUIApplication) throws {
+    private func audit(_ app: XCUIApplication, named name: String = "accessibility-audit") throws {
         var issues: [String] = []
         var setAside: [String] = []
         let windows = app.windows.allElementsBoundByIndex.map(\.frame)
@@ -99,7 +99,7 @@ final class PennantUITests: XCTestCase {
             return true
         }
         let attachment = XCTAttachment(string: (["Findings:"] + issues + ["", "Set aside (the system's own containers):"] + setAside).joined(separator: "\n"))
-        attachment.name = "accessibility-audit"
+        attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
         XCTAssertEqual(issues, [], "the accessibility audit found issues")
@@ -171,6 +171,8 @@ final class PennantUITests: XCTestCase {
         app.typeKey("1", modifierFlags: .command)
         XCTAssertTrue(element(app, "morningReport.desk").waitForExistence(timeout: 20), "the Morning Report's desk did not load")
         keep(app.windows.firstMatch.screenshot(), named: "morning-report")
+        // The served desk and cards pass the audit too
+        try audit(app, named: "accessibility-audit-morning-report")
         app.typeKey("2", modifierFlags: .command)
         XCTAssertTrue(element(app, "report.content").waitForExistence(timeout: 20), "Major League Ops' report did not load")
         keep(app.windows.firstMatch.screenshot(), named: "major-league-report")

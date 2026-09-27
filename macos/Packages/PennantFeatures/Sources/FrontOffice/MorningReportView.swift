@@ -16,10 +16,18 @@ public struct MorningReportView: View {
         Group {
             if let summary = store.summary {
                 ScrollView {
-                    MorningReportContent(summary: summary, refreshing: model.storeKey.map { !store.summaryIsCurrent(for: $0) } ?? false)
-                        .padding(24)
-                        .frame(maxWidth: 1100, alignment: .leading)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    VStack(alignment: .leading, spacing: 12) {
+                        // A reload that failed says so above what is kept, never "refreshing" for ever
+                        if let problem = store.summaryProblem { ProblemLine(problem) }
+                        MorningReportContent(
+                            summary: summary,
+                            refreshing: store.loadingSummary
+                                || (store.summaryProblem == nil && model.storeKey.map { !store.summaryIsCurrent(for: $0) } ?? false)
+                        )
+                    }
+                    .padding(24)
+                    .frame(maxWidth: 1100, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             } else if let problem = store.summaryProblem {
                 ProblemLine(problem).frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -69,6 +77,10 @@ public struct MorningReportContent: View {
                         Divider()
                     }
                 }
+                // The rest of a department's items to decide are in its report
+                ForEach(summary.desk.more, id: \.department.rawValue) { more in
+                    MoreLine(more: more)
+                }
             }
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("morningReport.desk")
@@ -78,6 +90,23 @@ public struct MorningReportContent: View {
                 }
             }
             .accessibilityIdentifier("morningReport.cards")
+        }
+    }
+}
+
+/// "And 4 more in Farm & Development": a link to the department's report when this build has it, else the line alone.
+struct MoreLine: View {
+    @Environment(\.routeOpener) private var opener
+    let more: Components.Schemas.DeskMore
+
+    var body: some View {
+        let target = AppRoute(department: DeptID(rawValue: more.department.rawValue), view: more.open.view ?? "report")
+        if let opener, opener.canOpen(target) {
+            Button { opener.open(target) } label: { Text(verbatim: more.line.display) }
+                .buttonStyle(.link)
+                .accessibilityIdentifier("desk.more.\(more.department.rawValue)")
+        } else {
+            Text(verbatim: more.line.display).foregroundStyle(.secondary)
         }
     }
 }

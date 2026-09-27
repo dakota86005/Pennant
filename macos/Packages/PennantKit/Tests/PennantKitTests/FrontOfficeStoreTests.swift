@@ -1,4 +1,6 @@
 import Foundation
+import HTTPTypes
+import OpenAPIRuntime
 import PennantAPI
 @testable import PennantKit
 import Testing
@@ -13,7 +15,7 @@ struct FrontOfficeStoreTests {
         AppModel.StoreKey(importStamp: stamp, club: club, restores: restores)
     }
 
-    private func client(_ transport: RoutedTransport) -> Client {
+    private func client(_ transport: any ClientTransport) -> Client {
         PennantClient.make(port: 5178, token: String(repeating: "t", count: 64), transport: transport)
     }
 
@@ -60,9 +62,49 @@ struct FrontOfficeStoreTests {
         // The fixture was served before any import was on record (no stamp): not the import the key names
         #expect(store.summary != nil)
         #expect(!store.summaryIsCurrent(for: key("2040-07-02T12:00:00.000Z")))
-        #expect(FrontOfficeStore.isCurrent(stamp: "2040-07-02T12:00:00.000Z", for: key("2040-07-02T12:00:00.000Z")))
-        #expect(!FrontOfficeStore.isCurrent(stamp: "2040-07-01T12:00:00.000Z", for: key("2040-07-02T12:00:00.000Z")))
-        #expect(!FrontOfficeStore.isCurrent(stamp: nil, for: nil))
+        #expect(FrontOfficeStore.isCurrent(importStamp: "2040-07-02T12:00:00.000Z", reportStamp: "r1", orgId: 1, for: key("2040-07-02T12:00:00.000Z")))
+        #expect(!FrontOfficeStore.isCurrent(importStamp: "2040-07-01T12:00:00.000Z", reportStamp: "r1", orgId: 1, for: key("2040-07-02T12:00:00.000Z")))
+        #expect(!FrontOfficeStore.isCurrent(importStamp: nil, reportStamp: nil, orgId: nil, for: nil))
+    }
+
+    @Test("a payload for another club, or from an earlier build of the server, is not current (review S-10, S-3)")
+    func otherClubOrBuild() async throws {
+        let store = FrontOfficeStore()
+        await store.loadSummary(client: client(try transport()), key: key())
+        let served = try #require(store.summary?.reportStamp)
+        #expect(store.summaryIsCurrent(for: key()))
+        #expect(!store.summaryIsCurrent(for: key(club: ClubRef(id: 2))))
+        #expect(store.summaryIsCurrent(for: AppModel.StoreKey(importStamp: "", club: club, restores: 0, reportStamp: served)))
+        #expect(!store.summaryIsCurrent(for: AppModel.StoreKey(importStamp: "", club: club, restores: 0, reportStamp: "r-newer")))
+    }
+
+    @Test("reloads when the server's build moves, and not when the key only catches up with what it already has")
+    func followsTheBuild() async throws {
+        let transport = try transport()
+        let store = FrontOfficeStore()
+        let client = client(transport)
+        await store.loadSummary(client: client, key: key())
+        let served = try #require(store.summary?.reportStamp)
+        // The event names the build the store already has: no second request
+        await store.loadSummary(client: client, key: AppModel.StoreKey(importStamp: "", club: club, restores: 0, reportStamp: served))
+        #expect(transport.paths.count == 1)
+        // A newer build: asked again
+        await store.loadSummary(client: client, key: AppModel.StoreKey(importStamp: "", club: club, restores: 0, reportStamp: "r-newer"))
+        #expect(transport.paths.count == 2)
+    }
+
+    @Test("keeps no trail that arrives after the key moved (review N-3)")
+    func lateTrail() async throws {
+        let gate = GatedTransport(try RoutedTransport.json("getClaimTrail"))
+        let store = FrontOfficeStore()
+        let gated = client(gate)
+        let other = client(try transport())
+        let early = Task { await store.loadTrail(Self.trailKey, client: gated, key: key()) }
+        await gate.waitUntilAsked()
+        await store.loadTrail("other", client: other, key: key(restores: 1))
+        gate.open()
+        await early.value
+        #expect(store.trails[Self.trailKey] == nil)
     }
 
     @Test("says what the server said when it refuses, and keeps the last good payload")
@@ -132,5 +174,29 @@ struct FrontOfficeStoreTests {
         await store.loadReport("farm", client: nil, key: nil)
         #expect(store.summary == nil)
         #expect(store.summaryProblem == nil)
+    }
+}
+
+/// A transport whose one answer waits until the test opens it, so a request can be overtaken.
+final class GatedTransport: ClientTransport, @unchecked Sendable {
+    private let answer: (contentType: String, body: Data)
+    private let lock = NSLock()
+    private var asked = false
+    private var opened = false
+
+    init(_ answer: (contentType: String, body: Data)) { self.answer = answer }
+
+    func open() { lock.withLock { opened = true } }
+
+    func waitUntilAsked() async {
+        while !lock.withLock({ asked }) { try? await Task.sleep(for: .milliseconds(5)) }
+    }
+
+    func send(_ request: HTTPRequest, body: HTTPBody?, baseURL _: URL, operationID _: String) async throws -> (HTTPResponse, HTTPBody?) {
+        lock.withLock { asked = true }
+        while !lock.withLock({ opened }) { try await Task.sleep(for: .milliseconds(5)) }
+        var response = HTTPResponse(status: .ok)
+        response.headerFields[.contentType] = answer.contentType
+        return (response, HTTPBody(answer.body))
     }
 }

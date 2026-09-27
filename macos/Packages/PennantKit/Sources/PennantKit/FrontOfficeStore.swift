@@ -42,11 +42,19 @@ public final class FrontOfficeStore {
         self.log = log
     }
 
-    /// Whether a served payload describes the import the key names. The server always builds from its current import;
-    /// a payload read just before the app heard of a new import is kept, and shown as refreshing, never as current.
-    public nonisolated static func isCurrent(stamp: String?, for key: AppModel.StoreKey?) -> Bool {
+    /// Whether a payload was built from what the key names: the same import, the same club, and (once the server has
+    /// kept a build) the same build. The server always builds from its current inputs; a payload read just before the app
+    /// heard of a change is kept, and shown as refreshing, never as current.
+    public nonisolated static func isCurrent(importStamp: String?, reportStamp: String?, orgId: Int?, for key: AppModel.StoreKey?) -> Bool {
         guard let key else { return false }
-        return (stamp ?? "") == key.importStamp
+        guard (importStamp ?? "") == key.importStamp else { return false }
+        if let club = key.club, let orgId, club.id != orgId { return false }
+        return key.reportStamp.isEmpty || reportStamp == key.reportStamp
+    }
+
+    /// Two keys that differ in nothing but the server's build stamp.
+    nonisolated static func onlyTheBuildMoved(_ a: AppModel.StoreKey, _ b: AppModel.StoreKey) -> Bool {
+        a.importStamp == b.importStamp && a.club == b.club && a.restores == b.restores
     }
 
     /// The club a request names: the served current club's id, or `automatic` (the server resolves it the same way).
@@ -55,11 +63,15 @@ public final class FrontOfficeStore {
     }
 
     public func summaryIsCurrent(for key: AppModel.StoreKey?) -> Bool {
-        Self.isCurrent(stamp: summary?.importStamp, for: key)
+        guard let summary else { return false }
+        return Self.isCurrent(importStamp: summary.importStamp, reportStamp: summary.reportStamp, orgId: summary.orgId, for: key)
     }
 
     public func reportIsCurrent(_ department: String, for key: AppModel.StoreKey?) -> Bool {
-        Self.isCurrent(stamp: reports[department]?.importStamp, for: key)
+        guard let report = reports[department], let loaded = reportKeys[department] else { return false }
+        // A report names no club: it is the loaded key's club that must be the key's
+        return loaded.club == key?.club
+            && Self.isCurrent(importStamp: report.importStamp, reportStamp: report.reportStamp, orgId: nil, for: key)
     }
 
     // MARK: Loading
@@ -67,6 +79,11 @@ public final class FrontOfficeStore {
     /// Loads the desk and cards for the key, once per key; nothing without a server or a key.
     public func loadSummary(client: Client?, key: AppModel.StoreKey?) async {
         guard let client, let key, summaryKey != key || summary == nil else { return }
+        // Only the build stamp moved, to the build the store already has (read just before the event): nothing to ask
+        if let loaded = summaryKey, Self.onlyTheBuildMoved(loaded, key), summary?.reportStamp == key.reportStamp {
+            summaryKey = key
+            return
+        }
         summaryAsked = key
         loadingSummary = true
         defer { if summaryAsked == key { loadingSummary = false } }
@@ -96,6 +113,10 @@ public final class FrontOfficeStore {
     /// Loads one department's report for the key, once per key.
     public func loadReport(_ department: String, client: Client?, key: AppModel.StoreKey?) async {
         guard let client, let key, reportKeys[department] != key || reports[department] == nil else { return }
+        if let loaded = reportKeys[department], Self.onlyTheBuildMoved(loaded, key), reports[department]?.reportStamp == key.reportStamp {
+            reportKeys[department] = key
+            return
+        }
         reportAsked[department] = key
         loadingReports.insert(department)
         defer { if reportAsked[department] == key { loadingReports.remove(department) } }
@@ -133,11 +154,12 @@ public final class FrontOfficeStore {
         guard trails[evidence] == nil, !loadingTrails.contains(evidence) else { return }
         loadingTrails.insert(evidence)
         defer { loadingTrails.remove(evidence) }
+        var served: Components.Schemas.ClaimTrail?
         var problem: RequestProblem?
         do {
             switch try await client.getClaimTrail(path: .init(key: evidence)) {
             case .ok(let answer):
-                trails[evidence] = try answer.body.json
+                served = try answer.body.json
             case .notFound(let refused):
                 problem = .served(try refused.body.json.error)
             case .undocumented(let code, let payload):
@@ -146,6 +168,9 @@ public final class FrontOfficeStore {
         } catch {
             problem = .from(error)
         }
+        // The key moved while it was fetched: an earlier build's trail is never kept as the current one's
+        guard trailsKey == key else { return }
+        if let served { trails[evidence] = served }
         trailProblems[evidence] = problem
         if let detail = problem?.detail { log("could not read an evidence trail: \(detail)") }
     }

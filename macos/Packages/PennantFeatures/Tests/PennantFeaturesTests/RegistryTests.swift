@@ -6,6 +6,7 @@ import FrontOffice
 import League
 import MajorLeague
 import Medical
+import PennantAPI
 import PennantKit
 import Philosophy
 import Scouting
@@ -56,7 +57,7 @@ struct RegistryTests {
 
     /// SWIFTUI_REBUILD.md section 3.5, department by department.
     nonisolated static let section35: [(DeptID, String, [String])] = [
-        ("frontOffice", "Front Office", ["Morning Report", "Storylines", "GM Briefing"]),
+        ("frontOffice", "Front Office", ["Morning Report", "Report", "Storylines", "GM Briefing"]),
         ("majorLeague", "Major League Ops", [
             "Report", "Position Players", "Pitching Staff", "Bench & Backups", "Decision", "Lineup",
             "Pitching Availability", "Schedule & Game Plans", "Depth Chart", "40-Man & Options", "Rosters",
@@ -127,5 +128,23 @@ struct RegistryTests {
         // The captured save's farm has items to decide; Scouting has no report yet, so no count
         #expect(registry.department("farm")?.badge(from: model) ?? 0 > 0)
         #expect(registry.department("scouting")?.badge(from: model) == nil)
+    }
+
+    @MainActor
+    @Test("every report a card or the desk opens is a view this build has; a card with no report has no way in (review S-9)")
+    func servedTargetsOpen() throws {
+        let model = PreviewFixtures.ready()
+        let summary = try #require(model.frontOffice.summary)
+        let window = MainWindowModel(registry: registry)
+        for card in summary.departments {
+            if let open = card.open {
+                let route = AppRoute(department: DeptID(rawValue: card.department.rawValue), view: try #require(open.view))
+                #expect(window.canOpen(route), "\(card.department.rawValue)")
+            } else {
+                #expect(card.status.value1 == .notYet)
+            }
+        }
+        // The Front Office's own report, the whole desk, has a route
+        #expect(window.canOpen(AppRoute(department: "frontOffice", view: "report")))
     }
 }

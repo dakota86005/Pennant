@@ -348,7 +348,17 @@ struct StoreKeyTests {
         await model.start()
         #expect(await eventually { model.storeKey != nil })
         let first = try #require(model.storeKey)
-        #expect(first == AppModel.StoreKey(importStamp: "", club: ClubRef(id: 1), restores: 0))
+        // The captured status serves the Front Office's build stamp (the contract test fixes it to "rstamp")
+        #expect(first == AppModel.StoreKey(importStamp: "", club: ClubRef(id: 1), restores: 0, reportStamp: "rstamp"))
+
+        // A front-office-updated event for the club moves the key; one for another club does not
+        let event = { (org: Int, stamp: String) in
+            try JSONDecoder().decode(Components.Schemas.ServerEvent.self, from: Data(#"{"type":"front-office-updated","orgId":\#(org),"reportStamp":"\#(stamp)"}"#.utf8))
+        }
+        await model.handle(.event(try event(2, "r-other")))
+        #expect(model.storeKey?.reportStamp == "rstamp")
+        await model.handle(.event(try event(1, "r-next")))
+        #expect(model.storeKey?.reportStamp == "r-next")
 
         _ = try await model.restoreBackup()
         #expect(await eventually { model.storeKey?.restores == 1 })

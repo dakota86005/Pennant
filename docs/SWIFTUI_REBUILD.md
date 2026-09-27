@@ -253,7 +253,7 @@ The department's views sit beneath it in the sidebar.
 
 | Department (head from the save) | Views |
 |---|---|
-| **Front Office** (GM) | Morning Report · Storylines (AI) · GM Briefing (AI) |
+| **Front Office** (GM) | Morning Report · Report (the whole desk, added at N4) · Storylines (AI) · GM Briefing (AI) |
 | **Major League Ops** (bench coach) | Report · Position players · Pitching staff · Bench & backups (named "Bench & coverage" until N3: "coverage" is on the banned-jargon list, meant for interval coverage; the owner decides the name) · Decision · Lineup · Pitching availability · Schedule & game plans · Depth chart · 40-man & options · Rosters · Season trends |
 | **Farm & Development** (minor league staff) | Report · Organization · Affiliates · Assignments · Prospects · Development tracking · Decision |
 | **Scouting** (scouting director) | Draft board · Player search |

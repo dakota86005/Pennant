@@ -110,7 +110,7 @@ export interface Catalog {
  */
 const DEPARTMENTS: ReadonlyArray<{ id: DeptId; name: string; seat: StaffSeat | null; office: string; views: ReadonlyArray<[string, string]> }> = [
   { id: 'frontOffice', name: 'Front Office', seat: 'general_manager', office: 'the front office', views: [
-    ['morningReport', 'Morning Report'], ['storylines', 'Storylines'], ['briefing', 'GM Briefing'],
+    ['morningReport', 'Morning Report'], ['report', 'Report'], ['storylines', 'Storylines'], ['briefing', 'GM Briefing'],
   ] },
   { id: 'majorLeague', name: 'Major League Ops', seat: 'bench_coach', office: 'the major league staff', views: [
     ['report', 'Report'], ['positionPlayers', 'Position Players'], ['pitchingStaff', 'Pitching Staff'],
