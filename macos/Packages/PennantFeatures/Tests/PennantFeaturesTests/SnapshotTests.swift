@@ -195,7 +195,7 @@ struct SnapshotTests {
     func trail(dark: Bool) throws {
         let model = PreviewFixtures.ready()
         let key = try #require(model.frontOffice.trails.keys.first)
-        try draw(TrailContent(evidence: key).padding().environment(model), size: CGSize(width: 420, height: 260), dark: dark, name: "staff-options")
+        try draw(TrailContent(evidence: key).padding().environment(model), size: CGSize(width: 420, height: 480), dark: dark, name: "staff-options")
     }
 
     // MARK: Drawing
