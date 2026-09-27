@@ -2287,7 +2287,9 @@ Mac can hold saves under several OOTP versions and locations.
   folders seen on disk or named by earlier builds are listed; no Steam folder is, since none could be observed.
 - **When a save was last played** is the newer file time of `<save>.lg/players.dat` and `flag_save_completed.dat`, both
   written by OOTP on every save. Only file times are read; neither file's format is parsed. A folder with neither has
-  never been saved by OOTP and is never the save being played.
+  never been saved by OOTP and is never the save being played. A time more than five minutes in the future (a wrong
+  clock, a copied file) is not known, and a folder Pennant couldn't look inside is said so; while either holds, nothing
+  is picked (D-018).
 - **The pick.** A save clearly stands out when it is the save played most recently across every version and location,
   it has an export, and no other save was played in the two days before it (`STANDOUT_WINDOW_MS`, a policy line, not a
   fit). Then it is served as the save you're playing, with its reason and basis, and a first run (no save chosen)
