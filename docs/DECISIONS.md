@@ -2188,7 +2188,7 @@ imports); N4, Stage B serves the desk and the department cards and holds their p
 labels (`tests/frontOfficeLanding.test.ts`); the masthead arrives with N6. The desk's membership and order use each
 department's philosophy-free, season-free severity (Major League Ops states it beside its own); the season- and
 philosophy-shaded severity and its lean are shown beside it in the basis and the hover, never deciding what appears or
-its order (the supervisor's call, pending the owner's confirmation).
+its order (confirmed by the owner, 2026-09-26).
 
 The owner found the postseason odds and the buy/hold/sell posture (`server/posture.ts`, a two-club Pythagorean race against
 a provisional rival) weak and off-mission. The Morning Report, the Club Profile and the department cards answer "where are

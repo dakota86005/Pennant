@@ -226,7 +226,7 @@ content (`accessibilityCustomContent`), so the depth is there without a mouse.
 export" chips, the club profile, the roster map, the wire and game day are N6 and N7.
 - **The desk** (`FrontOfficeSummary.desk`): each department's items to decide, by its **plain reading** (the severity it
   states with no philosophy and no season to weigh: the season's odds never decide what reaches the desk or its order,
-  D-060; the supervisor's call, pending the owner), at most five rows from each department (`DESK_SHARE`, a stated line)
+  D-060; confirmed by the owner, 2026-09-26), at most five rows from each department (`DESK_SHARE`, a stated line)
   with "And 4 more in Farm & Development" (`desk.more`) for the rest, merged in a stated order: urgent, then needs
   attention, then the nearest deadline (no clock after a clock), then the sidebar's order, then the department's own
   order. The order and the share are said on the face ("Most urgent first", the rule in its help tag). The same kind of
