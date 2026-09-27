@@ -12,7 +12,6 @@ import path from 'node:path';
 import { loadConfig } from './config.js';
 import { locateSave } from './ootpSave.js';
 import { describeSave, detectSaves, saveId, versionFromPath, type SaveInfo } from './paths.js';
-import { publish } from './serverEvents.js';
 import { timestampWords } from './timeWords.js';
 
 /**
@@ -62,7 +61,10 @@ export function pickSave(saves: readonly SaveInfo[]): SavePick {
 
 // ── "played since": another save played after the chosen one ──────────────────────────────────────────────────────
 
-/** Another save played since the one chosen (on `/api/status` and the `save-played-elsewhere` event). */
+/**
+ * Another save played since the one chosen, on `/api/status` (and so on the event stream's `hello`). No event of its own
+ * yet: a new member of the event union moves the Swift tests' positional reads, so it waits for the Mac stage.
+ */
 export interface SavePlayedElsewhere {
   /** `otherSave`: another save of the same (or an unknown) OOTP version; `newerOotp`: a save in a newer OOTP version. */
   kind: 'otherSave' | 'newerOotp';
@@ -142,11 +144,9 @@ let lastScan: { at: number; saves: SaveInfo[]; notice: SavePlayedElsewhere | nul
 let scanTimer: ReturnType<typeof setTimeout> | null = null;
 let scanning = false;
 
-const noticeKey = (n: SavePlayedElsewhere | null): string => (n ? `${n.kind}:${n.save.id}:${n.save.lastPlayedAt}` : 'none');
-
 /**
  * Looks at the saves now (a few hundred `stat` calls; never on a request's path: `/api/status` serves the last look),
- * keeps the notice, publishes `save-played-elsewhere` when it changed, and looks again when a save played since would
+ * keeps the notice, and looks again when a save played since would
  * have settled, else after `SCAN_EVERY_MS`.
  */
 export function scanSaves(): SavePlayedElsewhere | null {
@@ -168,9 +168,7 @@ export function scanSaves(): SavePlayedElsewhere | null {
         next = Math.min(next, PLAYED_SETTLE_MS - (now - at) + 50);
       }
     }
-    const before = noticeKey(lastScan?.notice ?? null);
     lastScan = { at: now, saves, notice };
-    if (noticeKey(notice) !== before) publish({ type: 'save-played-elsewhere', notice });
   } catch (err) {
     console.error('[saves] could not look at the saves:', err);
   } finally {
@@ -201,9 +199,7 @@ export function currentPlayedElsewhere(): SavePlayedElsewhere | null {
 
 /** Forgets the last look (the chosen save changed): the next look decides afresh, soon. */
 export function forgetSaveScan(): void {
-  const had = lastScan?.notice ?? null;
   lastScan = null;
-  if (had) publish({ type: 'save-played-elsewhere', notice: null });
   if (watching && !scanning) {
     if (scanTimer) discoveryClock.clearTimeout(scanTimer);
     scanTimer = discoveryClock.setTimeout(() => void scanSaves(), 0);

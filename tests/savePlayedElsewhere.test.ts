@@ -2,7 +2,6 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { loadConfig, saveConfig, type AppConfig } from '../server/config.js';
 import { detectSaves } from '../server/paths.js';
 import { currentPlayedElsewhere, discoveryClock, resetSaveDiscovery, scanSaves, startSaveWatch } from '../server/saveDiscovery.js';
-import { subscribe, type ServerEvent } from '../server/serverEvents.js';
 import { APP_STORE_27, DIRECT_28, PretendHome } from './saveHomeFixture';
 import request from './request';
 
@@ -13,18 +12,14 @@ import request from './request';
 let before: AppConfig;
 const homes: PretendHome[] = [];
 const original = { ...discoveryClock };
-const events: ServerEvent[] = [];
-const unsubscribe = subscribe((e) => { if (e.type === 'save-played-elsewhere') events.push(e); });
 
 beforeAll(() => { before = loadConfig(); });
 afterAll(() => {
   saveConfig(before);
-  unsubscribe();
 });
 afterEach(() => {
   Object.assign(discoveryClock, original);
   resetSaveDiscovery();
-  events.length = 0;
   for (const h of homes.splice(0)) h.cleanup();
 });
 
@@ -47,7 +42,6 @@ describe('a save played since the chosen one', () => {
 
     // OOTP may still be writing it: nothing yet, and nothing flickers
     expect(scanSaves()).toBeNull();
-    expect(events).toEqual([]);
     at(45_000); // 65 s after its last save
     const notice = scanSaves()!;
     expect(notice).toMatchObject({
@@ -58,10 +52,8 @@ describe('a save played since the chosen one', () => {
     });
     expect(notice.text).toMatch(/^You've played RIGHTS-EXP since this save, last on .+\.$/);
     expect(notice.save.id).toBeTruthy();
-    expect(events).toEqual([{ type: 'save-played-elsewhere', notice }]);
-    // A second look with nothing new publishes nothing, and the choice is untouched
-    scanSaves();
-    expect(events).toHaveLength(1);
+    // A second look finds the same, and the choice is untouched
+    expect(scanSaves()).toEqual(notice);
     expect(loadConfig().csvDir).toBe(chosen.csvDir);
     // Served on the status, from the last look (no scan on the request's path)
     const status = await request('/api/status');
@@ -91,7 +83,6 @@ describe('a save played since the chosen one', () => {
     const unknown = home.save(APP_STORE_27, 'Never saved', { playedHoursAgo: null, exportedHoursAgo: 1 });
     saveConfig({ csvDir: unknown.csvDir, saveName: 'Never saved' });
     expect(scanSaves()).toBeNull();
-    expect(events).toEqual([]);
   });
 
   it('looks again by itself once a save played since would have settled', () => {

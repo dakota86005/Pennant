@@ -3750,25 +3750,7 @@
           "save",
           "chosenLastPlayedAt"
         ],
-        "description": "Another save played since the one chosen (on `/api/status` and the `save-played-elsewhere` event)."
-      },
-      "SavePlayedElsewhereEvent": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "save-played-elsewhere"
-            ]
-          },
-          "notice": {
-            "$ref": "#/components/schemas/SavePlayedElsewhere"
-          }
-        },
-        "required": [
-          "type"
-        ],
-        "description": "Whether another save has been played since the one chosen changed (N3.5 Stage B2, D-062): the notice now, or null when there is none any more. The same value as `/api/status`'s `savePlayedElsewhere`."
+        "description": "Another save played since the one chosen, on `/api/status` (and so on the event stream's `hello`). No event of its own yet: a new member of the event union moves the Swift tests' positional reads, so it waits for the Mac stage."
       },
       "SaveSourceRequest": {
         "type": "object",
@@ -3891,9 +3873,6 @@
           },
           {
             "$ref": "#/components/schemas/FrontOfficeUpdatedEvent"
-          },
-          {
-            "$ref": "#/components/schemas/SavePlayedElsewhereEvent"
           },
           {
             "$ref": "#/components/schemas/UnknownServerEvent"
