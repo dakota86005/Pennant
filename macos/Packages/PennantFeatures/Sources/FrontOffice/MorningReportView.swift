@@ -5,12 +5,16 @@ import PennantKit
 import SwiftUI
 
 /// The Morning Report (SWIFTUI_REBUILD.md section 3.4) in the design language (section 3.7, R2): the magazine
-/// masthead, then the lead column and the side column (stacked below 1080 points). Today the server serves the desk
-/// and the department cards (N4), the club's record and how current the report is; the scoreboard's places, run
-/// differential, last five, streak, tonight and deadline, the lede, the "since the last export" chips, "How we win
-/// and lose", the roster diagram and the wire arrive with N6 and are drawn then. Until then those slots show nothing
-/// in the running app; the previews and the snapshots draw them from `DesignFixtures`, so the page can be seen whole.
-/// "Whole Desk" (the Front Office's report, where every item waits) is a toolbar item, so nothing floats over content.
+/// masthead, then the lead column and the side column (stacked below 1080 points). The server serves the desk and the
+/// department cards (N4), the masthead's box score, the lede, "How we win and lose" and the roster map with its staff
+/// (N6, Stage A), each mapped into the design's shapes by `MorningReportDesign(served:)` (Stage B1); the "since the last
+/// export" chips and the wire arrive with N7 and show nothing until then. The previews and the snapshots may draw the
+/// slots from `DesignFixtures` instead (`\.morningReportDesign`).
+///
+/// At launch the report the app kept from the last launch for this save and club is drawn at once and said to be
+/// updating in the kicker (its own served kicker says how current it is); the fresh one replaces it in place, without
+/// a flash (the rows keep their identity, the figures roll unless Reduce Motion is on). "Whole Desk" (the Front
+/// Office's report, where every item waits) is a toolbar item, so nothing floats over content.
 public struct MorningReportView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.routeOpener) private var opener
@@ -24,20 +28,19 @@ public struct MorningReportView: View {
         let store = model.frontOffice
         Group {
             if let summary = store.summary {
+                let updating = store.summaryIsKept || store.loadingSummary
+                    || (store.summaryProblem == nil && model.storeKey.map { !store.summaryIsCurrent(for: $0) } ?? false)
                 MastheadScrollView {
-                    MorningReportMasthead(summary: summary, record: model.catalogClub?.record, headline: headline)
+                    MorningReportMasthead(summary: summary, record: model.catalogClub?.record, headline: headline, updating: updating)
                 } content: {
                     VStack(alignment: .leading, spacing: 12) {
-                        // A reload that failed says so above what is kept, never "refreshing" for ever
+                        // A reload that failed says so above what is kept, never "updating" for ever
                         if let problem = store.summaryProblem { ProblemLine(problem) }
-                        MorningReportPage(
-                            summary: summary,
-                            refreshing: store.loadingSummary
-                                || (store.summaryProblem == nil && model.storeKey.map { !store.summaryIsCurrent(for: $0) } ?? false)
-                        )
+                        MorningReportPage(summary: summary)
                     }
                     .padding(.horizontal, 28).padding(.top, 24).padding(.bottom, 12)
                 }
+                .onAppear { model.noteMorningReportDrawn(kept: store.summaryIsKept) }
             } else if let problem = store.summaryProblem {
                 ProblemLine(problem).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -64,93 +67,97 @@ public struct MorningReportView: View {
     }
 }
 
-/// The slots of the Morning Report the server does not serve yet (N6), for the previews and the snapshots only: the
-/// scoreboard and the lede, the chips, "How we win and lose", the roster diagram with its staff, and the wire. The
-/// running app never makes one of these; an adapter from the served payload replaces it when N6 serves the slots.
-public struct MorningReportDesign {
-    public var scoreboard: Scoreboard?
-    public var lede: String?
-    public var ledeHint: String?
-    public var chips: [Chip]?
-    public var dimensions: [PlaceDimension]?
-    public var placeLines: [PlaceDimension.Group: String]
-    /// The note beside "How we win and lose" ("Through July 13 · 89 games"), as served.
-    public var placesNote: String?
-    public var positions: [RosterPosition]?
-    /// The scale the diagram's range bars share, served with the positions; no diagram without it.
-    public var valueScale: ValueScale?
-    public var rotation: [StaffPitcher]
-    public var bullpen: [StaffPitcher]
-    public var wire: [WireItem]?
-
-    public init(
-        scoreboard: Scoreboard? = nil, lede: String? = nil, ledeHint: String? = nil, chips: [Chip]? = nil,
-        dimensions: [PlaceDimension]? = nil, placeLines: [PlaceDimension.Group: String] = [:], placesNote: String? = nil,
-        positions: [RosterPosition]? = nil, valueScale: ValueScale? = nil, rotation: [StaffPitcher] = [], bullpen: [StaffPitcher] = [],
-        wire: [WireItem]? = nil
-    ) {
-        self.scoreboard = scoreboard
-        self.lede = lede
-        self.ledeHint = ledeHint
-        self.chips = chips
-        self.dimensions = dimensions
-        self.placeLines = placeLines
-        self.placesNote = placesNote
-        self.positions = positions
-        self.valueScale = valueScale
-        self.rotation = rotation
-        self.bullpen = bullpen
-        self.wire = wire
+/// The slots a view draws: the ones a preview or a snapshot put in the environment, else the served payload mapped.
+extension MorningReportDesign {
+    static func shown(_ override: MorningReportDesign?, for summary: Components.Schemas.FrontOfficeSummary) -> MorningReportDesign {
+        override ?? MorningReportDesign(served: summary)
     }
 }
 
-extension EnvironmentValues {
-    /// The unserved slots, drawn only where a preview or a snapshot sets them.
-    @Entry public var morningReportDesign: MorningReportDesign? = nil
-}
-
-/// The Morning Report's masthead: the club and how current the report is in the kicker, the served headline, the lede
-/// once it is served, and the box score: today the served record alone; the places, the run differential, the last
-/// five and tonight when N6 serves them.
+/// The Morning Report's masthead: the kicker (the club, the league's day and how current the report is, as the
+/// season's facts serve them; the summary's "as of" until they are), "Updating" after it while the report shown is the
+/// kept one or a fresh one is on its way, the served headline, the lede as the deck (its basis a click away), and the
+/// box score: the record with its place, the run differential with its trend, the last five, tonight's game with the
+/// deadline; each part the export could not give says why, where it would be.
 public struct MorningReportMasthead: View {
     let summary: Components.Schemas.FrontOfficeSummary
     let record: Components.Schemas.Cell?
     let headline: Text
-    @Environment(\.morningReportDesign) private var design
+    let updating: Bool
+    @Environment(\.morningReportDesign) private var override
+    @Environment(\.routeOpener) private var opener
 
-    public init(summary: Components.Schemas.FrontOfficeSummary, record: Components.Schemas.Cell?, headline: Text) {
+    public init(summary: Components.Schemas.FrontOfficeSummary, record: Components.Schemas.Cell?, headline: Text, updating: Bool = false) {
         self.summary = summary
         self.record = record
         self.headline = headline
+        self.updating = updating
     }
 
     public var body: some View {
+        let design = MorningReportDesign.shown(override, for: summary)
         ClubMagazineMasthead(
-            kicker: [summary.asOf.display],
-            kickerHint: summary.asOf.hint,
+            club: design.kicker == nil ? nil : .some(design.club),
+            kicker: design.kicker ?? [summary.asOf.display],
+            kickerHint: design.kickerHint ?? summary.asOf.hint,
+            kickerStatus: updating ? Text("Updating") : nil,
             headline: headline,
-            deckText: design?.lede,
-            deckHint: design?.ledeHint
+            deck: design.ledeClaim,
+            deckText: design.lede,
+            deckHint: design.ledeHint
         ) {
-            if let scoreboard = design?.scoreboard {
+            if let scoreboard = design.scoreboard {
                 ScoreboardFigures(scoreboard: scoreboard)
             } else if let record {
-                BoxFigure(value: record.display, label: "")
-                    .help(record.hint.map { Text(verbatim: $0) } ?? Text(verbatim: record.display))
-                    .accessibilityLabel(Text(verbatim: record.hint ?? record.display))
-                    .accessibilityIdentifier("masthead.record")
+                VStack(alignment: .leading, spacing: 8) {
+                    BoxFigure(value: record.display, label: "")
+                        .help(record.hint.map { Text(verbatim: $0) } ?? Text(verbatim: record.display))
+                        .accessibilityLabel(Text(verbatim: record.hint ?? record.display))
+                        .accessibilityIdentifier("masthead.record")
+                    MissingLines(design.mastheadMissing)
+                }
+            } else if !design.mastheadMissing.isEmpty {
+                MissingLines(design.mastheadMissing)
             }
         } control: {
-            if let scoreboard = design?.scoreboard, let tonight = scoreboard.tonight {
-                TonightControl(tonight: tonight, deadline: scoreboard.deadline) {}
+            if let scoreboard = design.scoreboard, let tonight = scoreboard.tonight {
+                let route = route(tonight.open)
+                let canOpen = route.map { opener?.canOpen($0) ?? false } ?? false
+                TonightControl(tonight: tonight, deadline: scoreboard.deadline, action: canOpen ? { if let route { opener?.open(route) } } : nil)
             }
         }
     }
 }
 
-/// The scoreboard as the box score: the record with its place, the run differential with its trend, the last five.
+/// The served lines for the parts of the box score the export could not give, where the parts would be.
+struct MissingLines: View {
+    let lines: [ServedLine]
+
+    init(_ lines: [ServedLine]) {
+        self.lines = lines
+    }
+
+    var body: some View {
+        if !lines.isEmpty {
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(lines) { line in
+                    Text(verbatim: line.text).font(.caption).fixedSize(horizontal: false, vertical: true)
+                        .help(Text(verbatim: line.hint ?? line.text))
+                }
+            }
+            .opacity(0.85)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("masthead.missing")
+        }
+    }
+}
+
+/// The scoreboard as the box score: the record with its place (its own claim), the run differential with its trend,
+/// the last five with the streak, and the served lines for the parts the export could not give. The figures roll when
+/// a fresh report replaces the kept one, unless Reduce Motion is on.
 public struct ScoreboardFigures: View {
     let scoreboard: Scoreboard
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(scoreboard: Scoreboard) {
         self.scoreboard = scoreboard
@@ -158,85 +165,109 @@ public struct ScoreboardFigures: View {
 
     public var body: some View {
         let s = scoreboard
-        HStack(alignment: .bottom, spacing: 22) {
-            ClaimText(s.record) { BoxFigure(value: s.record.value?.display ?? s.record.text, label: s.recordLine) }
-            if let runs = s.runs {
-                BoxRule()
-                ClaimText(runs) {
-                    BoxFigure(value: runs.value?.display ?? runs.text, label: s.runsLine ?? runs.text) {
-                        if let trend = s.trend { Sparkline(values: trend, label: runs.hint ?? runs.text, height: 30).frame(width: 90) }
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .bottom, spacing: 22) {
+                VStack(alignment: .leading, spacing: 3) {
+                    ClaimText(s.record) { BoxFigure(value: s.record.value?.display ?? s.record.text, label: "") }
+                    if let place = s.placeClaim {
+                        ClaimText(place) { Kicker(s.recordLine, size: .small).fixedSize() }.accessibilityIdentifier("masthead.place")
+                    } else if !s.recordLine.isEmpty {
+                        Kicker(s.recordLine, size: .small).fixedSize()
+                    }
+                }
+                if let runs = s.runs {
+                    BoxRule()
+                    ClaimText(runs) {
+                        BoxFigure(value: runs.value?.display ?? runs.text, label: s.runsLine ?? runs.text) {
+                            if let trend = s.trend { Sparkline(values: trend, label: runs.hint ?? runs.text, height: 30).frame(width: 90) }
+                        }
+                    }
+                }
+                if let five = s.lastFive, let line = s.lastFiveLine {
+                    BoxRule()
+                    VStack(alignment: .leading, spacing: 5) {
+                        LastFiveDots(results: five, label: line)
+                        Kicker(line, size: .small).fixedSize()
+                            .help(Text(verbatim: s.streakHint ?? line))
                     }
                 }
             }
-            if let five = s.lastFive, let line = s.lastFiveLine {
-                BoxRule()
-                VStack(alignment: .leading, spacing: 5) {
-                    LastFiveDots(results: five, label: line)
-                    Kicker(line, size: .small).fixedSize()
-                }
-            }
+            MissingLines(s.missing)
         }
+        .animation(reduceMotion ? nil : .default, value: s)
     }
 }
 
-/// The page under the masthead: the lead and side columns. With the unserved slots in the environment (a preview or a
-/// snapshot) the lead carries the club and the roster and the wire, and the desk sits in the side column as designed;
-/// in the running app today the desk leads and the department reports sit beside it.
+/// The page under the masthead: the lead and side columns. With the served slots (or the fixtures in a preview or a
+/// snapshot) the lead carries the club and the roster, and the desk sits in the side column as designed; with only the
+/// desk and the cards served, the desk leads and the department reports sit beside it.
 public struct MorningReportPage: View {
     let summary: Components.Schemas.FrontOfficeSummary
-    let refreshing: Bool
     @Environment(AppModel.self) private var model
     @Environment(\.contentWidth) private var contentWidth
-    @Environment(\.morningReportDesign) private var design
+    @Environment(\.morningReportDesign) private var override
 
-    public init(summary: Components.Schemas.FrontOfficeSummary, refreshing: Bool = false) {
+    public init(summary: Components.Schemas.FrontOfficeSummary) {
         self.summary = summary
-        self.refreshing = refreshing
     }
 
     /// Below this width the two columns stack.
     public static let twoColumns: CGFloat = 1080
 
     public var body: some View {
-        let designed = design?.dimensions != nil || design?.positions != nil || design?.wire != nil
+        let design = MorningReportDesign.shown(override, for: summary)
+        let designed = design.dimensions != nil || design.positions != nil || design.wire != nil
         VStack(alignment: .leading, spacing: 32) {
-            if let chips = design?.chips {
+            if let chips = design.chips {
                 ChipRow(label: Text("Since the last export"), chips: chips)
             }
             if contentWidth >= Self.twoColumns {
                 HStack(alignment: .top, spacing: 40) {
-                    lead(designed: designed).frame(maxWidth: .infinity, alignment: .leading)
+                    lead(design, designed: designed).frame(maxWidth: .infinity, alignment: .leading)
                     side(designed: designed).frame(width: 340)
                 }
             } else {
-                lead(designed: designed)
+                lead(design, designed: designed)
                 side(designed: designed)
             }
         }
     }
 
     @ViewBuilder
-    private func lead(designed: Bool) -> some View {
+    private func lead(_ design: MorningReportDesign, designed: Bool) -> some View {
         VStack(alignment: .leading, spacing: 36) {
-            if let dimensions = design?.dimensions {
+            if let dimensions = design.dimensions {
                 VStack(alignment: .leading, spacing: 8) {
-                    MagazineSection(kicker: Text("The club"), title: Text("How we win and lose"), trailing: design?.placesNote)
-                    PlaceStrips(dimensions, lines: design?.placeLines ?? [:], legend: model.catalog?.phrases.placeLegend, wide: false)
+                    MagazineSection(kicker: Text("The club"), title: Text("How we win and lose"), trailing: design.placesNote)
+                    if let unavailable = design.placesUnavailable {
+                        ProblemLine(served: unavailable.text, detail: unavailable.hint)
+                    }
+                    PlaceStrips(dimensions, lines: design.placeLines, legend: model.catalog?.phrases.placeLegend, wide: false)
                 }
             }
-            if let positions = design?.positions, let scale = design?.valueScale {
+            if let positions = design.positions {
                 VStack(alignment: .leading, spacing: 12) {
                     MagazineSection(kicker: Text("The roster"), title: Text("Who we have"))
-                    RosterDiagram(positions, scale: scale).frame(height: 540)
-                    if let legend = model.catalog?.phrases.rosterLegend { RosterLegend(legend) }
-                    HStack(alignment: .top, spacing: 24) {
-                        Card { StaffColumn(title: Text("Rotation"), pitchers: design?.rotation ?? [], scale: scale) }
-                        Card { StaffColumn(title: Text("Bullpen"), pitchers: design?.bullpen ?? [], scale: scale) }
+                    if let unavailable = design.rosterUnavailable {
+                        ProblemLine(served: unavailable.text, detail: unavailable.hint)
+                    }
+                    if let scale = design.valueScale {
+                        RosterDiagram(positions, scale: scale).frame(height: 540)
+                        if let legend = model.catalog?.phrases.rosterLegend { RosterLegend(legend, notes: design.rosterNotes) }
+                        HStack(alignment: .top, spacing: 24) {
+                            Card { StaffColumn(title: Text("Rotation"), pitchers: design.rotation, scale: scale, needs: design.rotationNeeds) }
+                            Card { StaffColumn(title: Text("Bullpen"), pitchers: design.bullpen, scale: scale, needs: design.bullpenNeeds) }
+                        }
+                    } else {
+                        // No scale: nothing on the map is valued, and the map's own notes say what it can say
+                        ForEach(design.rosterNotes) { note in
+                            Text(verbatim: note.text).foregroundStyle(.secondary).help(Text(verbatim: note.hint ?? note.text))
+                        }
                     }
                 }
             }
             if !designed { desk(compact: false) }
-            if let wire = design?.wire {
+            if let wire = design.wire {
                 VStack(alignment: .leading, spacing: 8) {
                     MagazineSection(kicker: Text("The league"), title: Text("Around the league"))
                     RowGroup {
@@ -263,7 +294,6 @@ public struct MorningReportPage: View {
         VStack(alignment: .leading, spacing: 8) {
             MagazineSection(kicker: Text("To decide"), title: Text(verbatim: summary.desk.title.display), trailing: summary.desk.order.display)
                 .help(detail: summary.desk.order.hint)
-            if refreshing { ProgressView { Text("Refreshing") }.controlSize(.small) }
             if let incomplete = summary.desk.incomplete {
                 ProblemLine(served: incomplete.display, detail: incomplete.hint)
             }
@@ -329,14 +359,3 @@ struct MoreLine: View {
         }
     }
 }
-
-#if DEBUG
-extension MorningReportDesign {
-    /// The unserved slots filled from the made-up fixtures, for the previews and the snapshots.
-    public static let fixture = MorningReportDesign(
-        scoreboard: DesignFixtures.scoreboard, lede: DesignFixtures.lede, ledeHint: DesignFixtures.ledeHint, chips: DesignFixtures.chips,
-        dimensions: DesignFixtures.dimensions, placeLines: DesignFixtures.placeLines, placesNote: DesignFixtures.served("Through July 13 · 89 games"),
-        positions: DesignFixtures.positions, valueScale: DesignFixtures.valueScale, rotation: DesignFixtures.rotation, bullpen: DesignFixtures.bullpen, wire: DesignFixtures.wire
-    )
-}
-#endif

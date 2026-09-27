@@ -22,7 +22,8 @@ nonisolated public enum PreviewFixtures {
     }
 
     public static var configuration: ServerConfiguration {
-        .bundled(in: .main, dataFolder: URL(fileURLWithPath: "/tmp/ootp-fo-test", isDirectory: true))
+        .bundled(in: .main, dataFolder: URL(fileURLWithPath: "/tmp/ootp-fo-test", isDirectory: true),
+                 cachesFolder: URL(fileURLWithPath: "/tmp/ootp-fo-test/caches", isDirectory: true))
     }
 
     /// The suffix of the responses captured with a save chosen.

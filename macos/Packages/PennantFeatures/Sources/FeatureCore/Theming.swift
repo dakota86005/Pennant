@@ -51,14 +51,17 @@ public enum ServedImages {
 }
 
 /// A view's masthead for the current club, set like a magazine (SWIFTUI_REBUILD.md sections 3.4 and 3.7): the club's
-/// served name leads the kicker, then the caller's served parts (the game date, how current, who prepared it); the
+/// served name leads the kicker (the catalog's, or the one the caller's payload serves), then the caller's served parts
+/// (the game date, how current, who prepared it) and a structural status ("Updating") while the caller has one; the
 /// served headline; a served claim as the deck; the caller's box score and control; the theme's art. Nothing on it is
 /// written here; with no club served the kicker is the caller's parts alone.
 public struct ClubMagazineMasthead<Figures: View, Control: View>: View {
     @Environment(AppModel.self) private var model
     @Environment(\.theme) private var theme
+    private let club: String??
     private let kicker: [String?]
     private let kickerHint: String?
+    private let kickerStatus: Text?
     private let headline: Text
     private let deck: Components.Schemas.Claim?
     private let deckText: String?
@@ -67,48 +70,41 @@ public struct ClubMagazineMasthead<Figures: View, Control: View>: View {
     private let control: () -> Control
     @State private var art: Image?
 
+    /// - Parameters:
+    ///   - club: the club's name as the caller's payload serves it (`.some(name)`, or `.some(nil)` for none); leave
+    ///     it out for the catalog's.
+    ///   - kickerStatus: a structural word after the kicker ("Updating"), or nil.
+    ///   - deck: a served claim as the deck (its basis a click away); else `deckText` with its help tag, a served lede
+    ///     that is not a claim of its own; nil draws none.
     public init(
+        club: String?? = nil,
         kicker: [String?],
         kickerHint: String? = nil,
+        kickerStatus: Text? = nil,
         headline: Text,
         deck: Components.Schemas.Claim? = nil,
+        deckText: String? = nil,
+        deckHint: String? = nil,
         @ViewBuilder figures: @escaping () -> Figures,
         @ViewBuilder control: @escaping () -> Control = { EmptyView() }
     ) {
+        self.club = club
         self.kicker = kicker
         self.kickerHint = kickerHint
+        self.kickerStatus = kickerStatus
         self.headline = headline
         self.deck = deck
-        deckText = deck?.text
-        deckHint = deck?.hint
-        self.figures = figures
-        self.control = control
-    }
-
-    /// With a served lede that is not a claim of its own (its help tag says where it comes from).
-    public init(
-        kicker: [String?],
-        kickerHint: String? = nil,
-        headline: Text,
-        deckText: String?,
-        deckHint: String?,
-        @ViewBuilder figures: @escaping () -> Figures,
-        @ViewBuilder control: @escaping () -> Control = { EmptyView() }
-    ) {
-        self.kicker = kicker
-        self.kickerHint = kickerHint
-        self.headline = headline
-        deck = nil
-        self.deckText = deckText
-        self.deckHint = deckHint
+        self.deckText = deck?.text ?? deckText
+        self.deckHint = deck?.hint ?? deckHint
         self.figures = figures
         self.control = control
     }
 
     public var body: some View {
         MagazineMasthead(
-            kicker: [model.catalogClub?.name] + kicker,
+            kicker: [club ?? model.catalogClub?.name] + kicker,
             kickerHint: kickerHint,
+            kickerStatus: kickerStatus,
             headline: headline,
             deck: deckText,
             deckHint: deckHint,

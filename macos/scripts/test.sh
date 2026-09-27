@@ -106,6 +106,8 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   prepare_ui_test testDesignPaletteBasisAndInspector configured '{"theme":"light"}'
   prepare_ui_test testDesignArtPackLight configured '{"theme":"light","themePacks":{"1":"aurora-nights"}}' aurora-nights
   prepare_ui_test testDesignArtPackDark configured '{"theme":"dark","themePacks":{"1":"aurora-nights"}}' aurora-nights
+  # The Morning Report kept across launches (N6, Stage B1): two launches on one folder; the app's caches go in it too
+  prepare_ui_test testLaunchWithKeptPayload configured '{"theme":"light"}'
   signing=()
   if [ "${PENNANT_TEST_UNSIGNED:-0}" = "1" ]; then signing=(CODE_SIGNING_ALLOWED=NO); fi
   if [ -n "${PENNANT_TEST_ONLY:-}" ]; then signing+=("-only-testing:$PENNANT_TEST_ONLY"); fi
@@ -139,7 +141,7 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
         const fs = require("fs"), path = require("path");
         const dir = process.argv[1];
         const manifest = JSON.parse(fs.readFileSync(path.join(dir, "manifest.json"), "utf8"));
-        const keep = /^(main-window|setup-|department-|inspector-open|settings-|morning-report|major-league-report|accessibility-audit|glass-|design-)/;
+        const keep = /^(main-window|setup-|department-|inspector-open|settings-|morning-report|major-league-report|accessibility-audit|glass-|design-|launch-)/;
         const kept = new Set();
         for (const test of manifest) for (const a of test.attachments ?? []) {
           const name = a.suggestedHumanReadableName ?? "";

@@ -332,6 +332,59 @@ struct SnapshotTests {
         try draw(view, size: CGSize(width: width, height: name == "roster" ? 900 : 700), look: look, name: "design-component-\(name)")
     }
 
+    // MARK: The Morning Report as served (N6, Stage B1)
+
+    /// The looks the served report is drawn in: light and dark, and each at the largest text size the Mac offers.
+    nonisolated static let servedLooks: [(Look, Bool)] = [(.light, false), (.dark, false), (.light, true), (.dark, true)]
+
+    /// The Morning Report from the committed payload through the adapters, as the running app draws it: the kicker
+    /// from the season's facts, the box score, the lede, "How we win and lose", the roster diagram with its staff, the
+    /// desk in the side column.
+    @Test("the Morning Report as served, through the adapters, light and dark and at the largest text size", arguments: servedLooks)
+    func servedMorningReport(served: (Look, Bool)) throws {
+        let (look, largeText) = served
+        let model = PreviewFixtures.ready()
+        let summary = try #require(model.frontOffice.summary)
+        let view = ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                MorningReportMasthead(summary: summary, record: model.catalogClub?.record, headline: Text(verbatim: DesignFixtures.served("Morning Report")), updating: largeText)
+                    .environment(\.mastheadTopInset, 52)
+                MorningReportPage(summary: summary).padding(.horizontal, 28).padding(.vertical, 24)
+            }
+        }
+        .environment(model).environment(AppRouting()).environment(\.theme, model.theme).environment(\.contentWidth, 1160)
+        .environment(\.claimActions, ClaimActions(pin: { _ in }, detach: { _ in }, canOpen: { _ in true }, open: { _ in }, departmentName: { _ in "Major League Ops" }))
+        .environment(\.routeOpener, MainWindowModel(registry: registry))
+        .dynamicTypeSize(largeText ? .accessibility5 : .large)
+        try draw(view, size: CGSize(width: 1160, height: largeText ? 3400 : 2600), look: look, name: "served-morning-report\(largeText ? "-largest-text" : "")")
+    }
+
+    /// The Morning Report as served in the main window (the fixture store holds a served payload, never a kept one, so
+    /// the kicker has no "Updating"; the masthead component's edge sheet shows that word).
+    @Test("the Morning Report as served in the window", arguments: [Look.light, .dark])
+    func servedMorningReportWindow(look: Look) throws {
+        let model = PreviewFixtures.ready()
+        let window = MainWindowModel(registry: registry, expanded: ["frontOffice"])
+        window.go(to: AppRoute(department: "frontOffice", view: "morningReport"))
+        try drawMainWindow(model: model, window: window, look: look, name: "served-morning-report-window", size: Self.designWindow)
+    }
+
+    nonisolated static let edgeComponents = ["masthead-edges", "places-edges", "roster-edges", "staff-edges", "farm-bar"]
+
+    /// The mismatches Stage B closed, each drawn from the fixtures: a tie and the missing parts on the masthead, a
+    /// dimension not placed, a listed holder and the overlap line on a node, the staff's needs, the farm's bar in the
+    /// popover. Light, dark, and at the largest text size.
+    @Test("each changed component, from the fixtures, light and dark and at the largest text size", arguments: edgeComponents, servedLooks)
+    func changedComponent(name: String, served: (Look, Bool)) throws {
+        let (look, largeText) = served
+        let model = PreviewFixtures.ready(themePack: "aurora-nights")
+        let view = ComponentSheet(name: name).environment(model).environment(AppRouting()).environment(\.theme, model.theme)
+            .environment(\.claimActions, ClaimActions(pin: { _ in }, detach: { _ in }, canOpen: { _ in true }, open: { _ in }, departmentName: { _ in "Major League Ops" }))
+            .dynamicTypeSize(largeText ? .accessibility5 : .large)
+        let height: CGFloat = name == "roster-edges" ? (largeText ? 1100 : 900) : (largeText ? 900 : 600)
+        try draw(view, size: CGSize(width: 1160, height: height), look: look, name: "design-component-\(name)\(largeText ? "-largest-text" : "")")
+    }
+
     // MARK: Drawing
 
     private func sidebarView(model: AppModel, window: MainWindowModel) -> some View {
@@ -421,6 +474,42 @@ private struct ComponentSheet: View {
                     MorningReportMasthead(summary: summary, record: model.catalogClub?.record, headline: Text(verbatim: DesignFixtures.served("Morning Report")))
                         .environment(\.morningReportDesign, .fixture)
                         .environment(\.mastheadTopInset, 52)
+                }
+            case "masthead-edges":
+                // A tie in the last five, the parts the export could not give, and the kept report said to be updating
+                if let summary = model.frontOffice.summary {
+                    MorningReportMasthead(summary: summary, record: model.catalogClub?.record, headline: Text(verbatim: DesignFixtures.served("Morning Report")), updating: true)
+                        .environment(\.morningReportDesign, .fixtureEdges)
+                        .environment(\.mastheadTopInset, 52)
+                }
+            case "places-edges":
+                PlaceStrips(DesignFixtures.dimensions + [DesignFixtures.tooEarly, DesignFixtures.notPlaced], lines: DesignFixtures.placeLines, legend: DesignFixtures.placeLegend)
+            case "roster-edges":
+                // A listed holder (LF), a need (C, DH), nobody valued (DH), each plate's hover lines shown
+                RosterDiagram(DesignFixtures.positions, scale: DesignFixtures.valueScale).frame(height: 540)
+                RosterLegend(DesignFixtures.rosterLegend, notes: DesignFixtures.rosterNotes)
+                HStack(alignment: .top, spacing: 16) {
+                    ForEach(DesignFixtures.positions.filter { ["C", "LF", "DH"].contains($0.id) }) { position in
+                        PositionPlate(position, scale: DesignFixtures.valueScale, showsDetail: true)
+                    }
+                }
+            case "staff-edges":
+                HStack(alignment: .top, spacing: 24) {
+                    Card { StaffColumn(title: Text(verbatim: DesignFixtures.served("Rotation")), pitchers: DesignFixtures.rotation, scale: DesignFixtures.valueScale, needs: DesignFixtures.rotationNeeds) }
+                    Card { StaffColumn(title: Text(verbatim: DesignFixtures.served("Bullpen")), pitchers: DesignFixtures.bullpen, scale: DesignFixtures.valueScale, needs: DesignFixtures.bullpenNeeds) }
+                }
+            case "farm-bar":
+                // The node's popover with the farm's next man's bar beneath the basis
+                let node = DesignFixtures.positions[0]
+                HStack(alignment: .top, spacing: 24) {
+                    BasisPopover(claim: node.claim) { if let bar = node.farmBar { FarmBarView(bar, name: node.farmNext) } }
+                        .background(.background, in: .rect(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color(nsColor: .separatorColor)))
+                    VStack(alignment: .leading, spacing: 12) {
+                        FarmBarView(FarmBar(readiness: 62, required: 55, text: DesignFixtures.served("Ready for a look")), name: DesignFixtures.served("P. Quinlan · Triple-A · ready for a look"))
+                        FarmBarView(FarmBar(readiness: 20, required: 55, text: DesignFixtures.served("Not ready yet"), hint: DesignFixtures.served("Two of three bars are not met")), name: DesignFixtures.served("I. Novak · Triple-A · not ready yet"))
+                    }
+                    .frame(width: 320)
                 }
             case "sections":
                 ChipRow(label: Text(verbatim: DesignFixtures.served("Since the last export")), chips: DesignFixtures.chips)

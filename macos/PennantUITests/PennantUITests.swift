@@ -39,10 +39,13 @@ final class PennantUITests: XCTestCase {
     }
 
     @MainActor
-    private func launch(arguments: [String] = []) -> XCUIApplication {
+    private func launch(arguments: [String] = [], environment: [String: String] = [:]) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["PENNANT_DEV_DATA_DIR"] = dataFolder.path(percentEncoded: false)
         app.launchEnvironment["PENNANT_DEV_LOG_DIR"] = scratch.appending(path: "logs").path(percentEncoded: false)
+        // The app's own caches (the Morning Report kept across launches) in the test's folder, never the Mac's
+        app.launchEnvironment["PENNANT_DEV_CACHES_DIR"] = scratch.appending(path: "caches").path(percentEncoded: false)
+        for (name, value) in environment { app.launchEnvironment[name] = value }
         // A fresh window each time: no restored route from an earlier run
         app.launchArguments += ["-ApplePersistenceIgnoreState", "YES"] + arguments
         app.launch()
@@ -300,6 +303,60 @@ final class PennantUITests: XCTestCase {
         quitCleanly(app)
         app = launch(arguments: ["-PennantDebugAppearance", "increasedContrastDark"])
         try shellFlow(app, look: "sunset-series-dark-increased-contrast")
+        quitCleanly(app)
+    }
+
+    // MARK: The Morning Report kept across launches (N6, Stage B1)
+
+    /// The first launch fetches the Morning Report and keeps it in the app's own caches (the test's folder); the second
+    /// launch draws it at once, said to be updating in the kicker, then swaps the fresh one in place. The time from
+    /// launch to the first drawn report is recorded against the one-second budget (SWIFTUI_REBUILD.md "The speed
+    /// budgets"): the app's own measure, from its log, and the test's wall clock, which includes the runner's launch.
+    @MainActor
+    func testLaunchWithKeptPayload() throws {
+        let kept = scratch.appending(path: "caches/front-office", directoryHint: .isDirectory)
+        var app = launch()
+        waitForShell(app)
+        XCTAssertTrue(element(app, "morningReport.desk").waitForExistence(timeout: 60), "the Morning Report did not load")
+        XCTAssertTrue(element(app, "masthead.kicker").waitForExistence(timeout: 10))
+        // The fresh payload is kept once it lands
+        let deadline = Date.now.addingTimeInterval(20)
+        var keptFiles: [String] = []
+        while keptFiles.isEmpty && Date.now < deadline {
+            keptFiles = ((try? FileManager.default.contentsOfDirectory(atPath: kept.path(percentEncoded: false))) ?? []).filter { $0.hasSuffix(".json") }
+            if keptFiles.isEmpty { RunLoop.current.run(until: Date.now.addingTimeInterval(0.25)) }
+        }
+        XCTAssertEqual(keptFiles.count, 1, "the Morning Report was not kept in \(kept.path)")
+        keep(app.windows.firstMatch.screenshot(), named: "launch-fresh")
+        quitCleanly(app)
+
+        // The next launch: the kept report at once, updating
+        let started = Date.now
+        app = launch()
+        let desk = element(app, "morningReport.desk")
+        XCTAssertTrue(desk.waitForExistence(timeout: 60), "the kept Morning Report was not drawn")
+        let wallMs = Int(Date.now.timeIntervalSince(started) * 1000)
+        keep(app.windows.firstMatch.screenshot(), named: "launch-kept-payload")
+        // The app's own measure, in its log, says the kept payload was drawn and how long after launch
+        let log = scratch.appending(path: "logs/server.log")
+        var line: String?
+        let logDeadline = Date.now.addingTimeInterval(20)
+        while line == nil && Date.now < logDeadline {
+            line = (try? String(contentsOf: log, encoding: .utf8))?
+                .split(separator: "\n").last { $0.contains("first Morning Report drawn") }.map(String.init)
+            if line == nil { RunLoop.current.run(until: Date.now.addingTimeInterval(0.25)) }
+        }
+        XCTAssertTrue(line?.contains("from the kept payload") == true, "the second launch did not draw the kept payload: \(line ?? "no line")")
+        let record = XCTAttachment(string: "launch to the first drawn Morning Report: \(wallMs) ms by the test's clock (with the runner's launch); the app: \(line ?? "not recorded")")
+        record.name = "launch-timing"
+        record.lifetime = .keepAlways
+        add(record)
+        // The fresh one lands and the kicker stops saying it is updating
+        let kicker = element(app, "masthead.kicker")
+        let updated = Date.now.addingTimeInterval(60)
+        while kicker.label.contains("Updating") && Date.now < updated { RunLoop.current.run(until: Date.now.addingTimeInterval(0.5)) }
+        XCTAssertFalse(kicker.label.contains("Updating"), "the fresh Morning Report did not replace the kept one")
+        keep(app.windows.firstMatch.screenshot(), named: "launch-kept-payload-updated")
         quitCleanly(app)
     }
 
