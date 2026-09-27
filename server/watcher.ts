@@ -25,13 +25,28 @@ let timer: ReturnType<typeof setTimeout> | null = null;
 let pendingSince: string | null = null;
 let handler: SettledExportHandler | null = null;
 
+/**
+ * How often the folder is judged again while it is watched, whatever the watch reports (N3.5 Stage B2): a file watch
+ * can drop without a word (the operating system interrupted it, chokidar gave up after an error), and this look heals
+ * it: a new export is still noticed within a minute. A look is a listing and one `stat` per file.
+ */
+export const PERIODIC_CHECK_MS = 60_000;
+
 /** The clock and the quiet period, which a test replaces. */
 export const watchClock = {
   now: (): number => Date.now(),
   quietMs: (): number => exportTiming.quietMs,
   setTimeout: (fn: () => void, ms: number): ReturnType<typeof setTimeout> => setTimeout(fn, ms),
   clearTimeout: (t: ReturnType<typeof setTimeout>): void => clearTimeout(t),
+  setInterval: (fn: () => void, ms: number): ReturnType<typeof setInterval> => {
+    const t = setInterval(fn, ms);
+    t.unref?.();
+    return t;
+  },
+  clearInterval: (t: ReturnType<typeof setInterval>): void => clearInterval(t),
 };
+
+let periodic: ReturnType<typeof setInterval> | null = null;
 
 export function pendingExport(): string | null {
   return pendingSince;
@@ -73,6 +88,8 @@ export function checkExport(csvDir: string = watchedDir ?? ''): void {
 export function stopWatcher(): void {
   if (timer) watchClock.clearTimeout(timer);
   timer = null;
+  if (periodic) watchClock.clearInterval(periodic);
+  periodic = null;
   void watcher?.close();
   watcher = null;
   watchedDir = null;
@@ -85,6 +102,11 @@ export function startWatcher(csvDir: string): void {
   if (timer) watchClock.clearTimeout(timer);
   timer = null;
   watchedDir = csvDir;
+  if (periodic) watchClock.clearInterval(periodic);
+  // The look every minute, beside the watch: a dropped watch heals itself (a look while one is settling re-arms it)
+  periodic = watchClock.setInterval(() => {
+    if (watchedDir === csvDir) checkExport(csvDir);
+  }, PERIODIC_CHECK_MS);
   watcher = chokidar
     .watch(csvDir, { ignoreInitial: true, depth: 0 })
     /*
