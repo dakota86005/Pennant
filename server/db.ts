@@ -133,22 +133,6 @@ function fsyncDirectory(dir: string): void {
   }
 }
 
-function renameWithRetry(from: string, to: string): void {
-  // Windows refuses to rename over a file another handle holds open (a refit still reading the old import): wait a little
-  const deadline = Date.now() + (process.platform === 'win32' ? 30_000 : 0);
-  for (;;) {
-    try {
-      fs.renameSync(from, to);
-      return;
-    } catch (err) {
-      const code = (err as NodeJS.ErrnoException).code;
-      if (Date.now() >= deadline || (code !== 'EPERM' && code !== 'EBUSY' && code !== 'EACCES')) throw err;
-      const until = Date.now() + 200;
-      while (Date.now() < until) { /* a short synchronous wait: the swap is one step */ }
-    }
-  }
-}
-
 /**
  * Makes a finished build the league: one rename over `league.db`, the directory flushed, the served connection
  * reopened on the new file and the old one retired. Synchronous, so no request runs between the old database and
@@ -163,7 +147,7 @@ export function swapInLeagueDatabase(nextPath: string = NEXT_DB_PATH): void {
   // No journal of the replaced file may ever meet the new one (a hot one would be rolled back into it)
   for (const suffix of ['-journal', '-wal', '-shm']) fs.rmSync(LEAGUE_DB_PATH + suffix, { force: true });
   try {
-    renameWithRetry(nextPath, LEAGUE_DB_PATH);
+    fs.renameSync(nextPath, LEAGUE_DB_PATH);
   } catch (err) {
     // The previous import stays the league: on Windows its connection was closed for the rename, so it is reopened
     if (!old.open) db = openServing(LEAGUE_DB_PATH);
@@ -173,6 +157,29 @@ export function swapInLeagueDatabase(nextPath: string = NEXT_DB_PATH): void {
   db = openServing(LEAGUE_DB_PATH);
   generation += 1;
   if (process.platform !== 'win32') retire(old);
+}
+
+/** Rename failures Windows gives while another handle (a refit worker still reading the old import) holds the file. */
+const HELD = new Set(['EPERM', 'EBUSY', 'EACCES']);
+
+/**
+ * The swap, waiting without blocking when the old file is held open. Only Windows refuses to rename over an open file
+ * (the Electron build there; Pennant for Mac is macOS only, where the first try succeeds): each refused try reopens the
+ * previous import, which is served meanwhile, and the next try comes half a second later, for up to a minute (a refit
+ * reading the old file finishes within that). `then` runs in the same turn as the successful swap, before any request.
+ */
+export async function swapWhenFree(nextPath: string, then: () => void, tries = 120): Promise<void> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      swapInLeagueDatabase(nextPath);
+      then();
+      return;
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code ?? '';
+      if (process.platform !== 'win32' || !HELD.has(code) || attempt >= tries) throw err;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
 }
 
 /**

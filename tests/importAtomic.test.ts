@@ -1,4 +1,4 @@
-import { afterAll, afterEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -405,5 +405,47 @@ describe('the database\'s own record of its import (N3.5 review, finding 3)', ()
     forgetImportRecord();
     expect(importRecord()).toBeNull();
     expect(previousFromDatabase()).toBeNull();
+  });
+});
+
+describe('a swap whose rename is refused while another handle holds the file (Windows; N3.5 review, finding 8)', () => {
+  it('waits without blocking the server, serving the previous import meanwhile, then swaps', async () => {
+    const { swapWhenFree } = await import('../server/db.js');
+    await importCsvDir(writeExport(110));
+    const next = path.join(DATA_DIR, 'league.held.db');
+    fs.rmSync(next, { force: true });
+    db.exec(`VACUUM INTO '${next.replaceAll("'", "''")}'`);
+    const platform = Object.getOwnPropertyDescriptor(process, 'platform')!;
+    Object.defineProperty(process, 'platform', { value: 'win32' });
+    const realRename = fs.renameSync;
+    let refused = 0;
+    const spy = vi.spyOn(fs, 'renameSync').mockImplementation((from, to) => {
+      if (refused < 3) {
+        refused += 1;
+        throw Object.assign(new Error('resource busy'), { code: 'EBUSY' });
+      }
+      realRename(from, to);
+    });
+    let ticks = 0;
+    let servedMeanwhile = 0;
+    const timer = setInterval(() => {
+      ticks += 1;
+      if ((db.prepare('SELECT COUNT(*) AS n FROM players').get() as { n: number }).n === 2) servedMeanwhile += 1;
+    }, 20);
+    const generation = databaseGeneration();
+    let thenRan = false;
+    try {
+      await swapWhenFree(next, () => { thenRan = true; });
+    } finally {
+      clearInterval(timer);
+      spy.mockRestore();
+      Object.defineProperty(process, 'platform', platform);
+    }
+    expect(refused).toBe(3);
+    expect(thenRan).toBe(true);
+    expect(databaseGeneration()).toBe(generation + 1);
+    // About 1.5 s of waiting, with the server's thread free and the previous import served throughout
+    expect(ticks).toBeGreaterThan(20);
+    expect(servedMeanwhile).toBeGreaterThan(20);
   });
 });
