@@ -23,6 +23,7 @@ paths:
   - "tests/contractShapes/**"
   - "tests/sortCases.test.ts"
   - "tests/stringCatalog.test.ts"
+  - "tests/swiftDesignRules.test.ts"
 ---
 
 # Pennant for Mac (the SwiftUI rebuild): working reminder

@@ -382,12 +382,13 @@ public struct LastFiveDots: View {
         HStack(spacing: 6) {
             ForEach(Array(results.enumerated()), id: \.offset) { _, result in
                 ZStack {
+                    // Each letter in a served, checked pair as served (the masthead's text and its colour), never faded
                     if result == .win {
-                        Circle().fill(palette.mastheadText.opacity(0.92))
+                        Circle().fill(palette.mastheadText)
                         Text("W").font(.system(size: size * 0.55, weight: .bold)).foregroundStyle(palette.masthead.first ?? palette.mastheadTop)
                     } else {
                         Circle().strokeBorder(palette.mastheadText.opacity(0.7), lineWidth: 1.5)
-                        Text("L").font(.system(size: size * 0.55, weight: .semibold)).foregroundStyle(palette.mastheadText.opacity(0.85))
+                        Text("L").font(.system(size: size * 0.55, weight: .semibold)).foregroundStyle(palette.mastheadText)
                     }
                 }
                 .frame(width: size, height: size)

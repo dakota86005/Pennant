@@ -162,7 +162,7 @@ public struct MagazineMasthead<Figures: View, Control: View>: View {
             if let deck {
                 let text = Text(verbatim: deck)
                     .font(.system(size: 20, weight: .regular, design: .serif)).lineSpacing(3)
-                    .foregroundStyle(palette.mastheadText.opacity(0.94))
+                    .foregroundStyle(palette.mastheadText)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true).frame(maxWidth: 640, alignment: .leading)
                 if let deckClaim {
