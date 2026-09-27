@@ -276,12 +276,13 @@ nonisolated public struct Figure: Identifiable, Sendable, Hashable {
         self.fraction = fraction
     }
 
-    /// A served figure: its `value.display` is the figure, its `text` the label. A ring only when the served value
-    /// has a whole to be a share of (`value.high`).
+    /// A served figure: its `value.display` is the figure, its `text` the label. A ring only when the server serves
+    /// the whole it is a count of (`value.whole`, a real "x of y"); a range's `high` is the end of a range, never a
+    /// whole, so a range draws no ring.
     public init(_ claim: Components.Schemas.Claim, id: String) {
         self.id = id
         self.claim = claim
-        if let n = claim.value?.n, let whole = claim.value?.high, whole > 0 {
+        if let n = claim.value?.n, let whole = claim.value?.whole, whole > 0 {
             fraction = n / whole
         } else {
             fraction = nil

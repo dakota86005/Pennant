@@ -169,11 +169,18 @@ function valueOf(value: ServedValue | undefined): ServedValue | undefined {
     if (!Number.isFinite(low) || !Number.isFinite(high) || low > high) throw new AuthoringError(`range ${low} to ${high} is not a range`);
     if (n !== null && (n < low || n > high)) throw new AuthoringError(`the most likely value ${n} is outside its range ${low} to ${high}`);
   }
+  const total = value.whole;
+  if (total !== undefined) {
+    if (low !== undefined) throw new AuthoringError('a value is a range or a share of a whole, not both');
+    if (!Number.isFinite(total) || total <= 0) throw new AuthoringError(`a whole of ${total} is nothing to be a share of`);
+    if (n !== null && n < 0) throw new AuthoringError(`${n} is no count of a whole`);
+  }
   const out: ServedValue = { n, unit: value.unit, display: value.display };
   if (low !== undefined && high !== undefined) {
     out.low = low;
     out.high = high;
   }
+  if (total !== undefined) out.whole = total;
   return out;
 }
 
@@ -275,9 +282,17 @@ export function target(input: TargetInput): Target {
   }
 }
 
-/** A served number. */
-export function servedValue(n: number, unit: Unit, display: string, range?: { low: number; high: number }): ServedValue {
-  return valueOf({ n, unit, display, ...(range ?? {}) })!;
+/**
+ * A served number: plain, a range around it (`{ low, high }`), or a count of a whole (`{ whole }`, a real "x of y",
+ * which the app may draw as a share).
+ */
+export function servedValue(
+  n: number,
+  unit: Unit,
+  display: string,
+  shape?: { low: number; high: number } | { whole: number },
+): ServedValue {
+  return valueOf({ n, unit, display, ...(shape ?? {}) })!;
 }
 
 /** A value the evidence cannot give: null, with the sentence the app shows in its place (never a zero or a dash). */

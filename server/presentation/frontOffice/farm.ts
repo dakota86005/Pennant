@@ -164,7 +164,7 @@ export function farmMaterial(ctx: DepartmentContext, view: FarmInput): Departmen
     claim({
       text: 'Players we have a read on',
       tone: 'neutral',
-      value: servedValue(scope.assessed, 'count', `${scope.assessed} of ${scope.players}`),
+      value: servedValue(scope.assessed, 'count', `${scope.assessed} of ${scope.players}`, scope.players > 0 ? { whole: scope.players } : undefined),
       basis: fact(
         [{ label: 'Read', value: String(scope.assessed) }, { label: 'Players', value: String(scope.players) }],
         scope.players > scope.assessed ? [`${scope.players - scope.assessed} players could not be read on the evidence there is.`] : [],

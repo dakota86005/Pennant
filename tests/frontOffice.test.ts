@@ -98,6 +98,15 @@ describe('an adapter never raises its specialist\'s severity (case 9)', () => {
     expect(it.headline.basis.wouldChange).toEqual(['A month of results.']);
   });
 
+  it('serves the roster counts against their limits as a count of a whole, and the injured list as a plain count', () => {
+    const { figures } = majorLeagueMaterial(ctxOf('majorLeague'), { overview: overview([]), fortyMan: NO_CRUNCH });
+    expect(figures.map((f) => f.value)).toEqual([
+      { n: 26, unit: 'count', display: '26 of 26', whole: 26 },
+      { n: 40, unit: 'count', display: '40 of 40', whole: 40 },
+      { n: 1, unit: 'count', display: '1' },
+    ]);
+  });
+
   it('states no lean when only the role\'s usage moved a flag (usage is part of the plain reading)', () => {
     const usage = { dimension: 'usage', value: null, effect: 'raises', text: 'He is used in high-leverage spots.' };
     const flag = need({ severity: 'elevated', explanation: { neutralSeverity: 'elevated', wouldChange: [], context: { changed: [usage], notChanged: [] } }, shading: [usage] });
@@ -264,6 +273,7 @@ describe('unavailable is never all clear (case 12)', () => {
     expect(report.toDecide.empty).toBeNull();
     expect(report.unknowns.lines.map((l) => l.display)).toEqual(['The farm couldn\'t be read this time.']);
     expect(reports.get('frontOffice')!.figures[0].text).toBe('3 of 8 departments reporting');
+    expect(reports.get('frontOffice')!.figures[0].value).toMatchObject({ n: 3, display: '3 of 8', whole: 8 });
   });
 
   it('says plainly when a department has no report yet, never "nothing to decide"', () => {

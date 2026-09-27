@@ -386,7 +386,7 @@ export function frontOfficeReport(ctx: DepartmentContext, reports: readonly Depa
     claim({
       text: `${readable.length} of ${reports.length} departments reporting`,
       tone: missing.length ? 'caution' : 'neutral',
-      value: { n: readable.length, unit: 'count', display: `${readable.length} of ${reports.length}` },
+      value: { n: readable.length, unit: 'count', display: `${readable.length} of ${reports.length}`, ...(reports.length > 0 ? { whole: reports.length } : {}) },
       hint: missing.length ? `${listWords(missing.map((r) => r.name))} couldn't be read` : undefined,
       basis: basis({
         because: reports.map((r) => ({ label: r.name, value: r.status === 'ready' ? 'Reported' : r.status === 'unavailable' ? 'Could not be read' : 'No report yet' })),

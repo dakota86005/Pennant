@@ -261,8 +261,10 @@ nothing until the payload carries the field. `positions[].control` is served str
   placeText, place, overlap, behind, farmNext {name, readiness} | null, control: {through: year, seasonsLeft} |
   {clock: "arbitration" | "free agent after season", text} | {unknown, text}, need: bool, basis}`; `StaffColumn`:
   `rotation[]`, `bullpen[] {role, name, line, value | null, note | null, hint}`.
-- `MetricTile`: `figures[] {label, value, hint, fraction?, basis?}` (the department cards' key figures, served since N4;
-  a ring only where `value.high` gives the whole).
+- `MetricTile`: `figures[] {label, value, hint, basis}` (the department cards' key figures, served since N4). A ring
+  only where the server serves the whole the figure counts (`value.whole`, a real "x of y": the active and 40-man
+  rosters against their limits, the farm's players read, the departments reporting; served since the N5 review); a
+  range's `high` is the end of a range and never read as a whole.
 - `WireRow`: `wire[] {club {name, abbreviation, followed}, text, when}`.
 - `BasisPopover`: `Basis {because[] {label, value}, source, certainty, stamp, unknown[], wouldChange[], lean |
   null}` (served since N4) and an open-in `Target`.

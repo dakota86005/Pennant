@@ -202,8 +202,8 @@ public enum DesignFixtures {
         preparedBy: .init(display: "Prepared by Rafael Dunn, bench coach", hint: "From the club's staff in the save"),
         summary: claim("Two to decide, four to watch.", tone: .init(value1: .caution), basis: basis([("To decide", "2"), ("To watch", "4")], from: "Major League Ops' roster review")),
         figures: [
-            .init(text: "Active", hint: "Players on the active roster today", value: .init(n: 26, unit: .init(value1: .count), high: 26, display: "26 of 26"), tone: .init(value1: .neutral), basis: basis([("Players", "26"), ("Limit", "26")]), links: []),
-            .init(text: "40-man", hint: "Players on the 40-man roster", value: .init(n: 39, unit: .init(value1: .count), high: 40, display: "39 of 40"), tone: .init(value1: .neutral), basis: basis([("Players", "39"), ("Limit", "40")]), links: []),
+            .init(text: "Active", hint: "Players on the active roster today", value: .init(n: 26, unit: .init(value1: .count), whole: 26, display: "26 of 26"), tone: .init(value1: .neutral), basis: basis([("Players", "26"), ("Limit", "26")]), links: []),
+            .init(text: "40-man", hint: "Players on the 40-man roster", value: .init(n: 39, unit: .init(value1: .count), whole: 40, display: "39 of 40"), tone: .init(value1: .neutral), basis: basis([("Players", "39"), ("Limit", "40")]), links: []),
             .init(text: "Injured", hint: "Players on the injured list", value: .init(n: 3, unit: .init(value1: .count), display: "3"), tone: .init(value1: .neutral), basis: basis([("On the injured list", "3")]), links: []),
         ],
         top: [deskItem], toDecide: 2, watching: 4, open: mlbView, memo: nil

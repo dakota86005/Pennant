@@ -36,6 +36,10 @@ struct DesignLanguageTests {
         #expect(injured.fraction == nil)
         let notKnown = Figure(DesignFixtures.claim("Free agents", value: "At least 4", basis: DesignFixtures.basis([])), id: "fa")
         #expect(notKnown.fraction == nil)
+        // A range's high end is the end of a range, never a whole: no ring (review B1)
+        var ranged = card.figures[2]
+        ranged.value = .init(n: 8, unit: .init(value1: .dollars), low: 4, high: 11, display: "$8M")
+        #expect(Figure(ranged, id: "ranged").fraction == nil)
     }
 
     @Test("a served tone maps to a distinct symbol and reads neutral when unknown to this build")
