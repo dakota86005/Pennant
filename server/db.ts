@@ -81,6 +81,15 @@ function openServing(file: string): Database.Database {
   if (WRITABLE) {
     const conn = new Database(file);
     for (const p of SERVING_PRAGMAS) conn.pragma(p);
+    /*
+     * The tests and the synthetic-league script write their leagues through this connection, statement by statement.
+     * In the rollback-journal mode the app serves, each of those commits syncs the journal and the file to disk, which
+     * on Linux (CI) made the suite four times slower; before N3.5 this connection was in write-ahead-log mode. A
+     * journal in memory and no syncs: nothing here needs to survive a crash, and there is no journal or log file for a
+     * swap to leave beside a new database.
+     */
+    conn.pragma('journal_mode = MEMORY');
+    conn.pragma('synchronous = OFF');
     return conn;
   }
   if (!fs.existsSync(file)) new Database(file).close();
