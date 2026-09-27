@@ -12,6 +12,7 @@ import { closeLeagueDatabase, prepareLeagueDatabase, tableExists } from './db.js
 import { currentRatingMode, historyDb, snapshotDates, stampSnapshotMode, takeSnapshot } from './history.js';
 import { loadSettings } from './settings.js';
 import { startSaveWatch, stopSaveWatch } from './saveDiscovery.js';
+import { warmTransactionLog } from './dataStatus.js';
 import { requireApiToken } from './apiToken.js';
 import { acquireDataLock, releaseDataLock } from './dataLock.js';
 
@@ -99,6 +100,8 @@ function bootstrapData(): void {
   // The saves on this Mac, looked at now and every minute: whether another has been played since the chosen one
   // (D-062). After this turn, so the start-up answers first
   setImmediate(() => startSaveWatch());
+  // The save's live transaction log, copied in the background so no request makes the first copy
+  setImmediate(() => warmTransactionLog());
   try {
     needsUpgrade = prepareLeagueDatabase().needsUpgrade;
   } catch (err) {

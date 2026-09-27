@@ -24,7 +24,7 @@ import { lineupRoutes } from './lineup.js';
 import { storylineRoutes, startStorylineJob } from './storylines.js';
 import { playerRoutes } from './player.js';
 import { historyRoutes } from './history.js';
-import { csvExportedAt, resetTransactionLogCache } from './dataStatus.js';
+import { csvExportedAt, resetTransactionLogCache, warmTransactionLog } from './dataStatus.js';
 import { importedAt, playerStateRoutes } from './playerStateRoutes.js';
 import { assignmentContextsFor } from './playerContext.js';
 import { clearStatCaches, computeBatting, computePitching, leagueBaseline } from './stats.js';
@@ -324,7 +324,8 @@ function clearLeagueCaches(): void {
   clearRosterReviewCalibrationCache(); // the roster review's yardsticks in force are re-read
   clearScaleCache();
   clearTwoWayCache();
-  resetTransactionLogCache();
+  // Not the live transaction log: it is OOTP's, not the import's, and is read again only when OOTP writes it (so the
+  // first page after an import never waits on a copy of it)
 }
 
 /**
@@ -732,6 +733,7 @@ function chooseSave(csvDir: string, saveName: string | null): boolean {
   const previous = loadConfig();
   saveConfig({ csvDir, saveName, lgPath: previous.csvDir === csvDir ? previous.lgPath ?? null : null });
   resetTransactionLogCache();
+  warmTransactionLog();
   forgetSaveScan();
   if (!fs.existsSync(csvDir)) return false;
   importState.importing = true; // visible to /status before the import starts
