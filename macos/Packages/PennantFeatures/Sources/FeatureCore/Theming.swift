@@ -13,9 +13,13 @@ extension AppModel {
 }
 
 extension AppModel {
-    /// A view's name as the catalog serves it (`Morning Report`), or nil while the catalog is not there.
+    /// A view's name as the catalog serves it (`Morning Report`); the Morning Report's as kept with the report shown
+    /// until the catalog arrives; else nil.
     public func servedViewName(department: DeptID, view: String) -> String? {
-        catalog?.departments.first { ($0.id.value1?.rawValue ?? $0.id.value2) == department.rawValue }?
+        guard let catalog else {
+            return department.rawValue == "frontOffice" && view == "morningReport" ? frontOffice.keptCatalog?.viewName : nil
+        }
+        return catalog.departments.first { ($0.id.value1?.rawValue ?? $0.id.value2) == department.rawValue }?
             .views.first { $0.id == view }?.name
     }
 }

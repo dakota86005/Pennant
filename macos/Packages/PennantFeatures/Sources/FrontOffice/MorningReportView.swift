@@ -28,8 +28,8 @@ public struct MorningReportView: View {
         let store = model.frontOffice
         Group {
             if let summary = store.summary {
-                let updating = store.summaryIsKept || store.loadingSummary
-                    || (store.summaryProblem == nil && model.storeKey.map { !store.summaryIsCurrent(for: $0) } ?? false)
+                // Never "Updating" while a reload has failed: the problem line says so instead
+                let updating = store.showsUpdating(for: model.storeKey)
                 MastheadScrollView {
                     MorningReportMasthead(summary: summary, record: model.catalogClub?.record, headline: headline, updating: updating)
                 } content: {
@@ -40,7 +40,12 @@ public struct MorningReportView: View {
                     }
                     .padding(.horizontal, 28).padding(.top, 24).padding(.bottom, 12)
                 }
-                .onAppear { model.noteMorningReportDrawn(kept: store.summaryIsKept) }
+                .onAppear {
+                    // Timed once the frame holding it is committed to the screen, not when the view is made
+                    let kept = store.summaryIsKept
+                    AfterNextFrame.run { model.noteMorningReportDrawn(kept: kept) }
+                }
+                .onChange(of: updating, initial: true) { _, now in if now { model.noteMorningReportUpdating() } }
             } else if let problem = store.summaryProblem {
                 ProblemLine(problem).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -120,6 +125,7 @@ public struct MorningReportMasthead: View {
                 MissingLines(design.mastheadMissing)
             }
         } control: {
+            // Tonight's game with the deadline beside it; with no game served, the deadline stands in the box score
             if let scoreboard = design.scoreboard, let tonight = scoreboard.tonight {
                 let route = route(tonight.open)
                 let canOpen = route.map { opener?.canOpen($0) ?? false } ?? false
@@ -153,11 +159,15 @@ struct MissingLines: View {
 }
 
 /// The scoreboard as the box score: the record with its place (its own claim), the run differential with its trend,
-/// the last five with the streak, and the served lines for the parts the export could not give. The figures roll when
-/// a fresh report replaces the kept one, unless Reduce Motion is on.
+/// the last five with the streak (the served line alone when a letter is one this build does not draw), the deadline
+/// when no game is served to stand beside, and the served lines for the parts the export could not give. The figures
+/// roll when a fresh report replaces the kept one, unless Reduce Motion is on.
 public struct ScoreboardFigures: View {
     let scoreboard: Scoreboard
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.theme) private var theme
+    @Environment(\.colorScheme) private var colorScheme
+    @EffectiveContrast private var contrast
 
     public init(scoreboard: Scoreboard) {
         self.scoreboard = scoreboard
@@ -183,13 +193,19 @@ public struct ScoreboardFigures: View {
                         }
                     }
                 }
-                if let five = s.lastFive, let line = s.lastFiveLine {
+                if let line = s.lastFiveLine {
                     BoxRule()
                     VStack(alignment: .leading, spacing: 5) {
-                        LastFiveDots(results: five, label: line)
+                        if let five = s.lastFive { LastFiveDots(results: five, label: line) }
                         Kicker(line, size: .small).fixedSize()
                             .help(Text(verbatim: s.streakHint ?? line))
                     }
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("masthead.lastFive")
+                }
+                if s.tonight == nil, let deadline = s.deadline {
+                    BoxRule()
+                    DeadlineFigures(deadline: deadline, palette: theme.palette(colorScheme: colorScheme, contrast: contrast))
                 }
             }
             MissingLines(s.missing)
@@ -242,7 +258,7 @@ public struct MorningReportPage: View {
                     if let unavailable = design.placesUnavailable {
                         ProblemLine(served: unavailable.text, detail: unavailable.hint)
                     }
-                    PlaceStrips(dimensions, lines: design.placeLines, legend: model.catalog?.phrases.placeLegend, wide: false)
+                    PlaceStrips(dimensions, headings: design.placeHeadings, legend: design.placeLegend, wide: false)
                 }
             }
             if let positions = design.positions {
@@ -253,7 +269,7 @@ public struct MorningReportPage: View {
                     }
                     if let scale = design.valueScale {
                         RosterDiagram(positions, scale: scale).frame(height: 540)
-                        if let legend = model.catalog?.phrases.rosterLegend { RosterLegend(legend, notes: design.rosterNotes) }
+                        if let legend = model.phrases?.rosterLegend { RosterLegend(legend, notes: design.rosterNotes) }
                         HStack(alignment: .top, spacing: 24) {
                             Card { StaffColumn(title: Text("Rotation"), pitchers: design.rotation, scale: scale, needs: design.rotationNeeds) }
                             Card { StaffColumn(title: Text("Bullpen"), pitchers: design.bullpen, scale: scale, needs: design.bullpenNeeds) }
@@ -357,5 +373,19 @@ struct MoreLine: View {
         } else {
             Text(verbatim: more.line.display).foregroundStyle(.secondary)
         }
+    }
+}
+
+/// Runs a closure once the run loop has finished its current pass, after Core Animation has committed the frame the
+/// pass laid out (an observer before the loop waits, ordered after Core Animation's commit): when a view's first frame
+/// is on the screen, as near as the app can tell.
+@MainActor
+enum AfterNextFrame {
+    static func run(_ body: @escaping @MainActor () -> Void) {
+        let observer = CFRunLoopObserverCreateWithHandler(nil, CFRunLoopActivity.beforeWaiting.rawValue, false, CFIndex.max) { observer, _ in
+            if let observer { CFRunLoopRemoveObserver(CFRunLoopGetMain(), observer, .commonModes) }
+            MainActor.assumeIsolated { body() }
+        }
+        CFRunLoopAddObserver(CFRunLoopGetMain(), observer, .commonModes)
     }
 }

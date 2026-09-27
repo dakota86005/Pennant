@@ -91,13 +91,18 @@ public enum DesignFixtures {
 
     // MARK: How we win and lose
 
-    public static let placeLines: [PlaceDimension.Group: String] = [
-        .strength: "Top fifth of the league", .weakness: "Bottom fifth", .rest: "The rest", .tooEarly: "Fewer than 20 games", .notPlaced: "Not placed",
+    /// Each group's heading as the club profile serves it (`groups`): a title, and a line only where it adds to it.
+    public static let placeHeadings: [PlaceDimension.Group: PlaceDimension.Heading] = [
+        .strength: .init(title: "Strengths", line: "Top fifth of the league", lineHint: "A place in the top fifth of the clubs that have the figure"),
+        .weakness: .init(title: "Weaknesses", line: "Bottom fifth of the league", lineHint: "A place in the bottom fifth of the clubs that have the figure"),
+        .rest: .init(title: "The rest", titleHint: "Neither a strength nor a weakness"),
+        .tooEarly: .init(title: "Too early to call", line: "Fewer than 20 games", lineHint: "Too early to call a strength or a weakness"),
+        .notPlaced: .init(title: "Not placed", titleHint: "The export lacks the figure for the club, which says nothing about it"),
     ]
 
     static func dimension(_ id: String, _ name: String, _ symbol: String, place: Int?, tiedWith: Int = 0, recent: Int?, placeText: String, recentText: String, group: PlaceDimension.Group, hint: String, because: [(String, String)], called: String, unknown: [String] = [], wouldChange: [String] = [], lean: Components.Schemas.Lean? = nil) -> PlaceDimension {
         PlaceDimension(
-            id: id, name: name, symbol: symbol, place: place, of: 30, tiedWith: tiedWith, recentPlace: recent,
+            id: id, name: name, symbol: symbol, place: place, of: 30, strengthThrough: 6, weaknessFrom: 25, tiedWith: tiedWith, recentPlace: recent,
             placeText: placeText, recentText: recentText, group: group,
             claim: claim(placeText, hint: hint, basis: basis(because, from: "Team totals in the export", called: policy, unknown: unknown, wouldChange: wouldChange, lean: lean, stamp: called), links: [mlbView])
         )
@@ -171,6 +176,12 @@ public enum DesignFixtures {
         )
     }
 
+    /// The farm's next man against his bar as the map serves it: on the 0 to 100 scale, with its labelled line.
+    public static func farmBar(_ readiness: Int, _ required: Int, text: String, hint: String? = nil) -> FarmBar {
+        FarmBar(readiness: readiness, required: required, scaleLow: 0, scaleHigh: 100, line: "Readiness \(readiness) · his bar \(required)",
+                lineHint: "Readiness runs 0 to 100; his bar is what a look asks of him", text: text, hint: hint)
+    }
+
     static func fmt(_ v: Double) -> String { v == v.rounded() ? String(Int(v)) : String(format: "%.1f", v) }
 
     /// The served words for how a holder was chosen: by his starts, or listed there.
@@ -186,10 +197,11 @@ public enum DesignFixtures {
         return words[2]
     }
 
-    /// The legends as the catalog serves them (`phrases.placeLegend`, `phrases.rosterLegend`).
-    public static let placeLegend = Components.Schemas.PlaceLegend(
-        season: .init(display: "Filled dot: this season"), recent: .init(display: "Ring: the last 15 games"),
-        fifths: .init(display: "Shaded: the top and bottom fifths", hint: "A strength is the top fifth of the league, a weakness the bottom fifth")
+    /// The legends as served: the club profile's (`legend`, its fifths only where a strip shows them) and the
+    /// catalog's (`phrases.rosterLegend`).
+    public static let placeLegend = Components.Schemas.ProfileLegend(
+        dot: .init(display: "Filled dot: this season"), ring: .init(display: "Ring: the last 15 games"),
+        shading: .init(display: "Shaded: the top and bottom fifths", hint: "A strength is the top fifth of the league, a weakness the bottom fifth")
     )
     public static let rosterLegend = Components.Schemas.RosterLegend(
         range: .init(display: "Range: his expected wins this season, most likely marked · hatched: not valued yet", hint: "Where he lands four times in five; clubs are told apart on half the time"),
@@ -202,11 +214,11 @@ public enum DesignFixtures {
     public static let valueScale = ValueScale(low: -1, high: 5)!
 
     public static let positions: [RosterPosition] = [
-        position("C", "M. Okafor", value: (0.4, 1.1, 1.8), placeText: "12th of 30", overlap: "Clearly ahead of 6 · not separable from 18 · clearly behind 5", behind: "Nobody healthy", farmNext: "L. Moreau · Triple-A · not ready yet", farmBar: FarmBar(readiness: 41, required: 55, text: "Not ready yet", hint: "Player Development: his bat is behind the bar for Triple-A"), control: .seasons(3, text: "Through 2043"), need: true),
+        position("C", "M. Okafor", value: (0.4, 1.1, 1.8), placeText: "12th of 30", overlap: "Clearly ahead of 6 · not separable from 18 · clearly behind 5", behind: "Nobody healthy", farmNext: "L. Moreau · Triple-A · not ready yet", farmBar: farmBar(41, 55, text: "Not ready yet", hint: "Player Development: his bat is behind the bar for Triple-A"), control: .seasons(3, text: "Through 2043"), need: true),
         position("1B", "D. Whitfield", value: (-0.2, 0.6, 1.3), placeText: "19th of 30", overlap: "Clearly ahead of 2 · not separable from 24 · clearly behind 3", behind: "S. Petrov", farmNext: nil, control: .seasons(2, text: "Through 2042"), need: false),
         position("2B", "T. Brennan", value: (1.2, 2.0, 2.9), placeText: "5th of 30", overlap: "Clearly ahead of 14 · not separable from 15", behind: "A. Delgado", farmNext: "H. Sato · Double-A · can't tell yet", control: .clock("Arbitration this winter"), need: false),
         position("3B", "K. Nakamura", value: (0.7, 1.5, 2.2), placeText: "8th of 30", overlap: "Clearly ahead of 9 · not separable from 20", behind: "S. Petrov", farmNext: "I. Novak · Triple-A · not ready yet", control: .seasons(4, text: "Through 2044"), need: false),
-        position("SS", "J. Alvarez", value: (2.1, 3.2, 4.4), placeText: "2nd of 30", overlap: "Clearly ahead of 22 · not separable from 7", behind: "A. Delgado", farmNext: "P. Quinlan · Triple-A · ready for a look", farmBar: FarmBar(readiness: 62, required: 55, text: "Ready for a look"), control: .seasons(6, text: "Through 2046"), need: false),
+        position("SS", "J. Alvarez", value: (2.1, 3.2, 4.4), placeText: "2nd of 30", overlap: "Clearly ahead of 22 · not separable from 7", behind: "A. Delgado", farmNext: "P. Quinlan · Triple-A · ready for a look", farmBar: farmBar(62, 55, text: "Ready for a look"), control: .seasons(6, text: "Through 2046"), need: false),
         position("LF", "C. Ashford", value: (0.1, 0.8, 1.5), placeText: "16th of 30", overlap: "Not separable from the other 29", behind: "B. Holloway", farmNext: "N. Barros · Triple-A · ready for a look", control: .clock("Free agent after this season"), need: false, listed: true),
         position("CF", "E. Lindqvist", value: (1.4, 2.3, 3.3), placeText: "4th of 30", overlap: "Clearly ahead of 16 · not separable from 13", behind: "C. Ashford", farmNext: nil, control: .seasons(5, text: "Through 2045"), need: false),
         position("RF", "F. Ortega", value: (0.3, 0.9, 1.6), placeText: "15th of 30", overlap: "Not separable from the other 29", behind: "B. Holloway", farmNext: "V. Reyes · Double-A · not assessed", control: .seasons(2, text: "Through 2042"), need: false),
@@ -219,6 +231,21 @@ public enum DesignFixtures {
         return StaffPitcher(id: id, role: role, name: name, line: line, value: range, note: note, hint: hint, need: need,
                             claim: claim("\(name), \(roleWord(role))", hint: hint,
                                          basis: basis([("Expected wins, the rest of this season", range?.text ?? "Not valued"), ("His line", line)], from: "Player Value", called: .init(value1: .calibrated)), links: [mlbView]))
+    }
+
+    /// The positions at their edges (N6 B1 review): the catcher listed there with a need and the longest name the
+    /// fixtures hold (the badge and both words keep their size; the name gives way), the DH's seasons with no served
+    /// count (hatched, never none).
+    public static let positionsEdges: [RosterPosition] = positions.map { position in
+        var edged = position
+        if position.id == "C" {
+            edged = Self.position("C", "M. Okafor-Whitlock", value: (0.4, 1.1, 1.8), placeText: "12th of 30", overlap: "Clearly ahead of 6 · not separable from 18 · clearly behind 5",
+                                  behind: "Nobody healthy", farmNext: "L. Moreau · Triple-A · not ready yet",
+                                  farmBar: farmBar(41, 55, text: "Not ready yet", hint: "Player Development: his bat is behind the bar for Triple-A"),
+                                  control: .seasons(3, text: "Through 2043"), need: true, listed: true)
+        }
+        if position.id == "DH" { edged.control = .seasons(nil, text: "Through 2041 at least") }
+        return edged
     }
 
     public static let rotation: [StaffPitcher] = [

@@ -11,6 +11,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { loadConfig } from './config.js';
+import { databaseGeneration, importRecord, tableExists } from './db.js';
+import { servedLeagueCertain, servedSave } from './historyIdentity.js';
 import { locateSave } from './ootpSave.js';
 import { describeSave, detectSaves, saveId, versionFromPath, type SaveInfo } from './paths.js';
 import { publish } from './serverEvents.js';
@@ -204,38 +206,80 @@ let lastScan: { at: number; saves: SaveInfo[]; notice: SavePlayedElsewhere | nul
 let scanTimer: ReturnType<typeof setTimeout> | null = null;
 let scanning = false;
 /**
- * What the notice said when it was last announced on the event stream (`save-played-elsewhere`): its kind and the save
- * it names, or nothing. Kept apart from the last look, so a look after the chosen save changed still announces a
+ * What the notice said when it was last announced on the event stream (`save-played-elsewhere`): its kind, the save it
+ * names and when that save was last played, or nothing. Kept apart from the last look, so a look after the chosen save changed still announces a
  * notice that cleared. A look that finds the same notice announces nothing.
  */
 let announced = '';
 
-/** What tells one notice from another: the kind and the save it names; nothing for none. */
-function noticeKey(notice: SavePlayedElsewhere | null): string {
-  return notice ? `${notice.kind}:${notice.save.id}` : '';
+/**
+ * What tells one notice from another: the kind, the save it names and when that save was last played (the sentence
+ * says when, so a save played again is a new sentence to announce); nothing for none.
+ */
+export function noticeKey(notice: SavePlayedElsewhere | null): string {
+  return notice ? `${notice.kind}:${notice.save.id}:${notice.save.lastPlayedAt ?? ''}` : '';
 }
 
 /**
- * The configured save's id (D-063: the `<save>.lg` folder's real path, hashed, as the save list identifies it; the
- * export folder when no save folder encloses it), or null with no save chosen. Memoized on the configuration, so the
- * status can serve it on every poll without locating the save again; the Mac app keys the payload it keeps across
- * launches on it, so a payload from another save is never drawn.
+ * The id of the save the imported data came from (D-063: its `<save>.lg` folder's real path, hashed, as the save list
+ * identifies it), for `/api/status`: the Mac app keys the Morning Report it keeps across launches on it, so another
+ * save's report is never drawn, and the report of a save being left is never kept under the new one's id.
+ *
+ * Tied to the last import: worked out off every request's path (at start, at the minute's look, when the configuration
+ * is saved and when an import lands) and served only while the import, the database and the configuration it was
+ * worked out for are still the served ones. Null with nothing imported, while a save chosen but not yet imported is
+ * configured (`servedLeagueCertain`), or until it has been worked out. A save whose folder could not be found is
+ * worked out again at the next look, never kept for good.
  */
-let configuredId: { signature: string; id: string | null } | null = null;
-export function configuredSaveId(config = loadConfig()): string | null {
-  const signature = `${config.csvDir ?? ''}|${config.saveName ?? ''}|${config.lgPath ?? ''}`;
-  if (configuredId?.signature === signature) return configuredId.id;
-  let id: string | null = null;
-  if (config.csvDir) {
-    const location = locateSave({ csvDir: config.csvDir, saveName: config.saveName, manualLgPath: config.lgPath ?? null });
-    // A save folder that can't be seen just now keeps its identity: OOTP's layout names it
-    const csv = path.resolve(config.csvDir);
-    const byLayout = path.basename(csv).toLowerCase() === 'csv' && path.basename(path.dirname(csv)).toLowerCase() === 'import_export'
-      && path.dirname(path.dirname(csv)).toLowerCase().endsWith('.lg') ? path.dirname(path.dirname(csv)) : null;
-    id = saveId(location.lgPath ?? byLayout ?? csv);
+let servedId: { signature: string; id: string | null; located: boolean } | null = null;
+
+/** What the served save's id depends on: the database, its import, and the configuration. Cheap (no file is read). */
+function servedSignature(): string {
+  const config = loadConfig();
+  const record = importRecord();
+  return JSON.stringify([databaseGeneration(), record?.startedAt ?? null, record?.csvDir ?? null, config.csvDir, config.saveName]);
+}
+
+/** Works out the served save's id now (a few `stat` calls; never on a request's path). */
+export function refreshServedSaveId(): string | null {
+  const signature = servedSignature();
+  if (servedId?.signature === signature && servedId.located) return servedId.id;
+  try {
+    const save = tableExists('players') && servedLeagueCertain() ? servedSave() : null;
+    servedId = { signature, id: save?.folderId || null, located: save === null || save.located };
+  } catch (err) {
+    console.error('[saves] could not work out the served save:', err);
+    servedId = { signature, id: null, located: false };
   }
-  configuredId = { signature, id };
-  return id;
+  return servedId.id;
+}
+
+/** What else is worked out about the served save off the request path, beside its id (the live log's files). */
+const servedSaveLooks: Array<() => void> = [];
+
+/** Adds a look at the served save that runs with `lookAtTheServedSave` (a module registers it once, at load). */
+export function onLookAtTheServedSave(look: () => void): void {
+  servedSaveLooks.push(look);
+}
+
+/**
+ * Works out everything a request reads about the served save, off every request's path: at start, at the minute's look,
+ * when a save is chosen and when an import lands. The status, and the Front Office's stamp on it, only read the result.
+ */
+export function lookAtTheServedSave(): void {
+  refreshServedSaveId();
+  for (const look of servedSaveLooks) {
+    try {
+      look();
+    } catch (err) {
+      console.error('[saves] a look at the served save failed:', err);
+    }
+  }
+}
+
+/** The served save's id as last worked out, while it is still the served one's; null otherwise. Never locates a save. */
+export function servedSaveId(): string | null {
+  return servedId && servedId.signature === servedSignature() ? servedId.id : null;
 }
 
 /**
@@ -264,6 +308,8 @@ export function scanSaves(): SavePlayedElsewhere | null {
       }
     }
     lastScan = { at: now, saves, notice };
+    // The served save's id and its live log, worked out again (off every request's path)
+    lookAtTheServedSave();
     // Announced only when it changes: first seen, another save, the chosen one gone or back, or cleared
     const key = noticeKey(notice);
     if (key !== announced) {
@@ -393,7 +439,7 @@ export function resetSaveDiscovery(): void {
   stopSaveWatch();
   lastScan = null;
   announced = '';
-  configuredId = null;
+  servedId = null;
 }
 
 /** When a save was last played, in words, for a sentence ("Sep 22, 2026, 4:52 PM"). */

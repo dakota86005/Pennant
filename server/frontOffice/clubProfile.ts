@@ -212,6 +212,17 @@ export function groupOf(place: StatedPlace): 'strength' | 'weakness' | 'rest' {
   return 'rest';
 }
 
+/**
+ * Where the stated lines fall among `of` clubs placed, in the arithmetic `groupOf` uses: a place at or above
+ * `strengthThrough` is a strength, at or below `weaknessFrom` a weakness. Null in a league too small to have a top or
+ * bottom fifth (then no place is either).
+ */
+export function bandsOf(of: number): { strengthThrough: number; weaknessFrom: number } | null {
+  const fifths = Math.round(1 / CLUB_PROFILE_POLICY.fifth);
+  const through = Math.floor(of / fifths);
+  return through >= 1 ? { strengthThrough: through, weaknessFrom: of - through + 1 } : null;
+}
+
 export interface DimensionReading {
   id: DimensionId;
   better: 'higher' | 'lower';
@@ -227,6 +238,8 @@ export interface DimensionReading {
   /** Clubs not placed, by name, each with why. */
   leftOut: Array<{ club: string; why: string }>;
   recent: { figure: Figure; place: StatedPlace | null; why: string | null };
+  /** The clubs that have the figure (the strip's clubs), and where the stated lines fall among them (`bandsOf`). */
+  strip: { of: number; strengthThrough: number | null; weaknessFrom: number | null };
 }
 
 export interface ClubProfileReading {
@@ -319,6 +332,8 @@ export function clubProfileOf(facts: TeamSeasonFacts): ClubProfileReading {
     for (const [id, w] of windows) recentFigures.set(id, 'why' in w ? none(w.why) : spec.recent(w));
     const recentPlaces = placesOf(new Map([...recentFigures].map(([id, f]) => [id, f.value])), spec.better, spec.digits);
     const recentMine = me ? recentFigures.get(me.teamId) ?? none('No recent games.') : none('No recent games.');
+    const of = places.size;
+    const bands = bandsOf(of);
     return {
       id: spec.id, better: spec.better, digits: spec.digits,
       group: tooEarly ? 'tooEarly' : place === null ? 'notPlaced' : groupOf(place),
@@ -334,6 +349,7 @@ export function clubProfileOf(facts: TeamSeasonFacts): ClubProfileReading {
         place: me ? recentPlaces.get(me.teamId) ?? null : null,
         why: recentMine.value === null ? recentMine.why : null,
       },
+      strip: { of, strengthThrough: bands?.strengthThrough ?? null, weaknessFrom: bands?.weaknessFrom ?? null },
     };
   });
   return { policy: CLUB_PROFILE_POLICY, games, tooEarly, clubs: facts.clubs.length, dimensions };

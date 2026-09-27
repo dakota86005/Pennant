@@ -14,8 +14,9 @@ import PennantAPI
 /// every sentence and order is the server's.
 ///
 /// At launch (N6, Stage B1) the Morning Report the app last received for the key's save and club is read from the
-/// app's own caches (`KeptReports`) and shown at once, said to be updating, while the server's fresh one is fetched
-/// and swapped in place; every fresh payload is kept for the next launch.
+/// app's own caches (`KeptReports`) and shown at once, with the club's catalog entry it was kept with, said to be
+/// updating, while the server's fresh one is fetched and swapped in place. A fresh payload is kept for the next launch
+/// once it is current for its key and the catalog it is drawn with is in hand (`keep`).
 @Observable @MainActor
 public final class FrontOfficeStore {
     /// The Morning Report's desk and cards, as last served.
@@ -25,6 +26,9 @@ public final class FrontOfficeStore {
     /// The shown summary is the one kept from an earlier launch, not yet replaced by the server's (the view says it
     /// is updating; the payload's own served kicker says how current it is).
     public private(set) var summaryIsKept = false
+    /// The catalog entry the kept summary was kept with (the club's theme and name, the phrases): drawn until the live
+    /// catalog arrives (`AppModel.catalogClub`, `AppModel.phrases`). Nil when nothing kept was read.
+    public private(set) var keptCatalog: KeptReports.Catalog?
     /// Each department's report, as last served, by department id.
     public private(set) var reports: [String: Components.Schemas.DepartmentReport] = [:]
     public private(set) var reportProblems: [String: RequestProblem] = [:]
@@ -46,27 +50,39 @@ public final class FrontOfficeStore {
     private let log: @MainActor (String) -> Void
     /// Where the Morning Report is kept across launches; nil keeps nothing (a preview).
     private let kept: KeptReports?
-    /// The contract this build was made against, part of every kept payload's key.
-    private let contractVersion: String
+    /// The contract this build was generated from (`contractDigest`), part of every kept payload's key.
+    private let contract: String
 
-    /// Every payload kept in the folder, read at the store's making (the launch) off the main actor, so the one for
-    /// the key is in hand when the key is known; nil with nowhere to keep.
-    private let preloaded: Task<[KeptReports.Key: Components.Schemas.FrontOfficeSummary], Never>?
+    /// The payload kept last, read at the store's making (the launch) off the main actor, so it is decoded when the key
+    /// is known; nil with nowhere to keep. Only the index's one file is decoded.
+    private let preloaded: Task<(key: KeptReports.Key, kept: KeptReports.Kept)?, Never>?
     /// When the store was made, for the launch's log line.
     private let made = ContinuousClock.now
+    /// Orders the writes of kept payloads: a later one always wins (`KeptReports.write`).
+    private var keepSequence: UInt64 = 0
+    /// What was last kept (its key, its build and the catalog), so the same payload is not written twice.
+    private var lastKept: (key: KeptReports.Key, stamp: String, catalog: KeptReports.Catalog)?
 
-    public init(kept: KeptReports? = nil, contractVersion: String = "", log: @escaping @MainActor (String) -> Void = { _ in }) {
+    public init(kept: KeptReports? = nil, contract: String = contractDigest, log: @escaping @MainActor (String) -> Void = { _ in }) {
         self.kept = kept
-        self.contractVersion = contractVersion
+        self.contract = contract
         self.log = log
-        preloaded = kept.map { kept in Task.detached(priority: .userInitiated) { kept.readAll() } }
+        preloaded = kept.map { kept in Task.detached(priority: .userInitiated) { await kept.readLast() } }
     }
 
-    /// What a kept payload is for, from a store key: the save the status names and the club the app shows; nil while
-    /// either is not known (nothing kept is read or written then).
-    nonisolated static func keptKey(_ key: AppModel.StoreKey, contractVersion: String) -> KeptReports.Key? {
+    /// What a kept payload is for, from a store key: the save the imported data came from and the club the app shows;
+    /// nil while either is not known (nothing kept is read or written then).
+    nonisolated static func keptKey(_ key: AppModel.StoreKey, contract: String) -> KeptReports.Key? {
         guard let saveId = key.saveId, !saveId.isEmpty, let club = key.club else { return nil }
-        return KeptReports.Key(saveId: saveId, clubId: club.id, contractVersion: contractVersion)
+        return KeptReports.Key(saveId: saveId, clubId: club.id, contract: contract)
+    }
+
+    /// Whether the view says the report is updating: the kept one is shown, a fresh one is on its way, or the shown one
+    /// is not the key's; never while the last request failed (the problem line says so instead, and "Updating" would
+    /// otherwise stay on for good).
+    public func showsUpdating(for key: AppModel.StoreKey?) -> Bool {
+        guard summary != nil, summaryProblem == nil else { return false }
+        return summaryIsKept || loadingSummary || !summaryIsCurrent(for: key)
     }
 
     /// Whether a payload was built from what the key names: the same import, the same club, and (once the server has
@@ -115,13 +131,15 @@ public final class FrontOfficeStore {
         summaryAsked = key
         loadingSummary = true
         defer { if summaryAsked == key { loadingSummary = false } }
-        let keptKey = Self.keptKey(key, contractVersion: contractVersion)
-        if summary == nil, let preloaded, let keptKey {
-            // Read and decoded at launch, off the main actor; shown only if nothing arrived meanwhile
-            let stored = await preloaded.value[keptKey]
+        let keptKey = Self.keptKey(key, contract: contract)
+        if summary == nil, let kept, let keptKey {
+            // Read and decoded at launch, off the main actor (the index's one file); another key's is read now, off it
+            let last = await preloaded?.value
+            let stored = last?.key == keptKey ? last?.kept : await kept.read(keptKey)
             guard summaryAsked == key else { return }
             if let stored, summary == nil {
-                summary = stored
+                summary = stored.summary
+                keptCatalog = stored.catalog
                 summaryIsKept = true
                 log("showing the kept Morning Report \(Int((ContinuousClock.now - made) / .milliseconds(1))) ms after the store was made")
             }
@@ -146,16 +164,38 @@ public final class FrontOfficeStore {
             summary = served
             summaryKey = key
             summaryIsKept = false
-            // Kept for the next launch, atomically, off the main actor; a write that fails is logged and costs nothing
-            if let kept, let keptKey {
-                let log = log
-                Task.detached(priority: .utility) {
-                    do { try kept.write(served, for: keptKey) } catch { await log("could not keep the Morning Report: \(error)") }
-                }
-            }
         }
         summaryProblem = problem
         if let detail = problem?.detail { log("could not read the Front Office: \(detail)") }
+    }
+
+    /// Keeps the shown payload for the next launch with the catalog it is drawn with, when it is the server's (not the
+    /// kept one), current for the key (the same import, club and build: never another save's report under this save's
+    /// id) and not kept already. Awaited: it returns once the file is written (off the main actor, in the order asked).
+    /// A write that fails is logged and costs nothing. The app calls it when a fresh payload lands and when the catalog
+    /// arrives or changes.
+    public func keep(catalog: KeptReports.Catalog?, for key: AppModel.StoreKey?) async {
+        guard let kept, let key, let summary, !summaryIsKept, let catalog, catalog.club != nil,
+              let keptKey = Self.keptKey(key, contract: contract),
+              summary.orgId == keptKey.clubId,
+              Self.isCurrent(importStamp: summary.importStamp, reportStamp: summary.reportStamp, orgId: summary.orgId, for: key)
+        else { return }
+        let stamp = "\(summary.importStamp ?? "")|\(summary.reportStamp)"
+        if let last = lastKept, last.key == keptKey, last.stamp == stamp, last.catalog == catalog { return }
+        lastKept = (keptKey, stamp, catalog)
+        keepSequence += 1
+        do {
+            try await kept.write(summary, catalog: catalog, for: keptKey, sequence: keepSequence)
+        } catch {
+            lastKept = nil
+            log("could not keep the Morning Report: \(error)")
+        }
+    }
+
+    /// Forgets every kept payload (a data-folder restore).
+    public func forgetKept() async {
+        lastKept = nil
+        await kept?.removeAll()
     }
 
     /// Loads one department's report for the key, once per key.

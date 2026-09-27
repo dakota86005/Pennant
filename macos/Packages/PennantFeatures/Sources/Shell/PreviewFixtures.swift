@@ -21,9 +21,13 @@ nonisolated public enum PreviewFixtures {
         return try? JSONDecoder().decode(type, from: data)
     }
 
+    /// A caches folder of this run's own, in the temporary folder: a preview's or a snapshot's model never reads or
+    /// writes a kept report another run (or another test process) left, and never the app's real caches.
+    public static let cachesFolder = FileManager.default.temporaryDirectory
+        .appending(path: "pennant-previews-\(ProcessInfo.processInfo.processIdentifier)-\(UUID().uuidString.prefix(8))", directoryHint: .isDirectory)
+
     public static var configuration: ServerConfiguration {
-        .bundled(in: .main, dataFolder: URL(fileURLWithPath: "/tmp/ootp-fo-test", isDirectory: true),
-                 cachesFolder: URL(fileURLWithPath: "/tmp/ootp-fo-test/caches", isDirectory: true))
+        .bundled(in: .main, dataFolder: URL(fileURLWithPath: "/tmp/ootp-fo-test", isDirectory: true), cachesFolder: cachesFolder)
     }
 
     /// The suffix of the responses captured with a save chosen.

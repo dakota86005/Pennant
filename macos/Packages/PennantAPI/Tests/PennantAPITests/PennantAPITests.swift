@@ -326,7 +326,8 @@ struct PennantAPITests {
         #expect(status.savePlayedElsewhere == nil)
         #expect(status.saveId == nil)
         let configured = try await jsonClient("getStatus-configured").getStatus().ok.body.json
-        #expect(configured.saveId == "saveid")
+        // Chosen but not imported: the imported data is not that save's, so no id is served (N6 B1 review M4)
+        #expect(configured.configured && configured.saveId == nil)
         let decoder = JSONDecoder()
         let nothing = try decoder.decode(Components.Schemas.AutomaticSetup.self, from: Data(try fixture("responses/setUpAutomatically-nothing-stands-out.json").utf8))
         #expect(nothing.outcome.value1 == .nothingStandsOut)

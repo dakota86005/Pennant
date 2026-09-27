@@ -6,7 +6,7 @@ import { clubGames, readTeamSeason } from '../server/frontOffice/teamSeason.js';
 import { farmNextByPosition } from '../server/mlbEvidence.js';
 import { readMorning, type ControlReading } from '../server/morningReport.js';
 import type { BuildContext } from '../server/presentation/frontOffice/desk.js';
-import { controlTerm, rosterMapWords, separationWords } from '../server/presentation/frontOffice/morning.js';
+import { barOf, controlTerm, rosterMapWords, separationWords } from '../server/presentation/frontOffice/morning.js';
 import { buildSave, exec, type BuiltSave } from './syntheticSave';
 
 /**
@@ -249,7 +249,13 @@ describe('the farm\'s next man is Player Development\'s answer as served', () =>
       expect(p.claim.basis.because.find((b) => b.label === 'How the farm\'s next man is chosen')?.value).toMatch(/readiest/);
       const man = p.farmNext && listed.find((x) => x.playerId === p.farmNext!.playerId);
       const a = man ? man.assessment : null;
-      expect(p.farmNext?.bar ?? null).toEqual(a && a.readiness !== null && a.required !== null ? { readiness: Math.round(a.readiness), required: Math.round(a.required) } : null);
+      const bar = p.farmNext?.bar ?? null;
+      expect(bar && { readiness: bar.readiness, required: bar.required }).toEqual(a && a.readiness !== null && a.required !== null ? { readiness: Math.round(a.readiness), required: Math.round(a.required) } : null);
+      // On the scale readiness is read on, with a line that labels both numbers: the app joins and scales nothing
+      if (bar) {
+        expect(bar.scale).toEqual({ low: 0, high: 100 });
+        expect(bar.line.display).toBe(`Readiness ${bar.readiness} · his bar ${bar.required}`);
+      }
     }
   });
 });
@@ -261,14 +267,14 @@ describe('the farm\'s readiness against its bar', () => {
     const blocker = 'Current-level evidence confidence 30 is below the minimum of 45.';
     m.map.positions[0] = {
       ...m.map.positions[0],
-      farmNext: { playerId: 99, name: 'Adrian Castle', level: 2, assessment: { judgment: 'indefensible', readiness: 98, required: 76, reasons: [], blockers: [blocker], missing: [] } },
+      farmNext: { playerId: 99, name: 'Adrian Castle', level: 2, assessment: { judgment: 'indefensible', readiness: 98, required: 76, scale: { low: 0, high: 100 }, reasons: [], blockers: [blocker], missing: [] } },
     } as never;
     const node = rosterMapWords(build, m).positions[0];
     expect(node.farmNext).toMatchObject({ state: 'notYet', bar: { readiness: 98, required: 76 } });
     expect(node.farmNext!.readiness.hint).toBe('Player Development: not yet; readiness 98 clears its bar, another isn\'t met');
     expect(node.claim.basis.because.find((b) => b.label === 'The farm\'s next man')!.value).toContain(blocker);
     // A ready man's hover keeps his readiness and its bar whole, never cut mid-figure
-    m.map.positions[0] = { ...m.map.positions[0], farmNext: { playerId: 99, name: 'Adrian Castle', level: 2, assessment: { judgment: 'defensible', readiness: 96, required: 81, reasons: [], blockers: [], missing: [] } } } as never;
+    m.map.positions[0] = { ...m.map.positions[0], farmNext: { playerId: 99, name: 'Adrian Castle', level: 2, assessment: { judgment: 'defensible', readiness: 96, required: 81, scale: { low: 0, high: 100 }, reasons: [], blockers: [], missing: [] } } } as never;
     expect(rosterMapWords(build, m).positions[0].farmNext!.readiness.hint).toBe('Player Development: a look is defensible now (readiness 96, bar 81)');
   });
 });
@@ -343,3 +349,15 @@ function mapMaterial(r: ReturnType<typeof positionReadings>[number]) {
     },
   };
 }
+
+describe('the farm\'s next man against his bar (N6 B1 review)', () => {
+  it('serves the scale and a labelled line, so a man past his bar is past the line, never a full bar', () => {
+    const scale = { low: 0, high: 100 };
+    const past = barOf({ assessment: { readiness: 88.4, required: 76, judgment: 'defensible', scale } } as never)!;
+    expect(past).toMatchObject({ readiness: 88, required: 76, scale: { low: 0, high: 100 } });
+    expect(past.readiness).toBeLessThan(past.scale.high);
+    expect(past.line.display).toBe('Readiness 88 · his bar 76');
+    expect(barOf({ assessment: { readiness: null, required: 76, judgment: 'indeterminate', scale } } as never)).toBeNull();
+    expect(barOf({ assessment: null } as never)).toBeNull();
+  });
+});

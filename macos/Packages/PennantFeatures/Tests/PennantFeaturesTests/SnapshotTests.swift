@@ -334,20 +334,24 @@ struct SnapshotTests {
 
     // MARK: The Morning Report as served (N6, Stage B1)
 
-    /// The looks the served report is drawn in: light and dark, and each at the largest text size the Mac offers.
+    /// The served report's variants: light and dark, each as the fresh report and as the kept one said to be updating.
+    ///
+    /// There is no largest-text variant (N6 B1 review M10): macOS does not honour SwiftUI's `dynamicTypeSize` for the
+    /// fixed-size fonts these views use, so a variant drawn at `.accessibility5` was the same picture under another name.
+    /// The layout's tolerance of long words is shown instead by the served fixture's longest names and lines.
     nonisolated static let servedLooks: [(Look, Bool)] = [(.light, false), (.dark, false), (.light, true), (.dark, true)]
 
     /// The Morning Report from the committed payload through the adapters, as the running app draws it: the kicker
     /// from the season's facts, the box score, the lede, "How we win and lose", the roster diagram with its staff, the
     /// desk in the side column.
-    @Test("the Morning Report as served, through the adapters, light and dark and at the largest text size", arguments: servedLooks)
+    @Test("the Morning Report as served, through the adapters, light and dark, fresh and updating", arguments: servedLooks)
     func servedMorningReport(served: (Look, Bool)) throws {
-        let (look, largeText) = served
+        let (look, updating) = served
         let model = PreviewFixtures.ready()
         let summary = try #require(model.frontOffice.summary)
         let view = ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                MorningReportMasthead(summary: summary, record: model.catalogClub?.record, headline: Text(verbatim: DesignFixtures.served("Morning Report")), updating: largeText)
+                MorningReportMasthead(summary: summary, record: model.catalogClub?.record, headline: Text(verbatim: DesignFixtures.served("Morning Report")), updating: updating)
                     .environment(\.mastheadTopInset, 52)
                 MorningReportPage(summary: summary).padding(.horizontal, 28).padding(.vertical, 24)
             }
@@ -355,8 +359,7 @@ struct SnapshotTests {
         .environment(model).environment(AppRouting()).environment(\.theme, model.theme).environment(\.contentWidth, 1160)
         .environment(\.claimActions, ClaimActions(pin: { _ in }, detach: { _ in }, canOpen: { _ in true }, open: { _ in }, departmentName: { _ in "Major League Ops" }))
         .environment(\.routeOpener, MainWindowModel(registry: registry))
-        .dynamicTypeSize(largeText ? .accessibility5 : .large)
-        try draw(view, size: CGSize(width: 1160, height: largeText ? 3400 : 2600), look: look, name: "served-morning-report\(largeText ? "-largest-text" : "")")
+        try draw(view, size: CGSize(width: 1160, height: 2600), look: look, name: "served-morning-report\(updating ? "-updating" : "")")
     }
 
     /// The Morning Report as served in the main window (the fixture store holds a served payload, never a kept one, so
@@ -369,20 +372,20 @@ struct SnapshotTests {
         try drawMainWindow(model: model, window: window, look: look, name: "served-morning-report-window", size: Self.designWindow)
     }
 
-    nonisolated static let edgeComponents = ["masthead-edges", "places-edges", "roster-edges", "staff-edges", "farm-bar"]
+    nonisolated static let edgeComponents = ["masthead-edges", "masthead-no-game", "places-edges", "roster-edges", "staff-edges", "farm-bar"]
 
-    /// The mismatches Stage B closed, each drawn from the fixtures: a tie and the missing parts on the masthead, a
-    /// dimension not placed, a listed holder and the overlap line on a node, the staff's needs, the farm's bar in the
-    /// popover. Light, dark, and at the largest text size.
-    @Test("each changed component, from the fixtures, light and dark and at the largest text size", arguments: edgeComponents, servedLooks)
-    func changedComponent(name: String, served: (Look, Bool)) throws {
-        let (look, largeText) = served
+    /// The mismatches Stage B closed and the review's fixes, each drawn from the fixtures: a tie and the missing parts
+    /// on the masthead, updating; the deadline alone with no game, and a last five whose letters this build does not
+    /// draw (the served line alone); the served headings and a dimension not placed; a listed holder with a need and
+    /// the overlap line on a node; the staff's needs; the farm's bar on its served scale in the popover. Light, dark,
+    /// and with Increase Contrast and Reduce Transparency (the Tonight card's opaque surface).
+    @Test("each changed component, from the fixtures, in each look", arguments: edgeComponents, [Look.light, .dark, .lightReduceTransparency])
+    func changedComponent(name: String, look: Look) throws {
         let model = PreviewFixtures.ready(themePack: "aurora-nights")
         let view = ComponentSheet(name: name).environment(model).environment(AppRouting()).environment(\.theme, model.theme)
             .environment(\.claimActions, ClaimActions(pin: { _ in }, detach: { _ in }, canOpen: { _ in true }, open: { _ in }, departmentName: { _ in "Major League Ops" }))
-            .dynamicTypeSize(largeText ? .accessibility5 : .large)
-        let height: CGFloat = name == "roster-edges" ? (largeText ? 1100 : 900) : (largeText ? 900 : 600)
-        try draw(view, size: CGSize(width: 1160, height: height), look: look, name: "design-component-\(name)\(largeText ? "-largest-text" : "")")
+        let height: CGFloat = name == "roster-edges" ? 1000 : 600
+        try draw(view, size: CGSize(width: 1160, height: height), look: look, name: "design-component-\(name)")
     }
 
     // MARK: Drawing
@@ -476,20 +479,31 @@ private struct ComponentSheet: View {
                         .environment(\.mastheadTopInset, 52)
                 }
             case "masthead-edges":
-                // A tie in the last five, the parts the export could not give, and the kept report said to be updating
+                // A tie in the last five, the parts the export could not give, and the kept report said to be updating;
+                // no route to open the game here, so it is drawn as content (never a disabled control)
                 if let summary = model.frontOffice.summary {
                     MorningReportMasthead(summary: summary, record: model.catalogClub?.record, headline: Text(verbatim: DesignFixtures.served("Morning Report")), updating: true)
                         .environment(\.morningReportDesign, .fixtureEdges)
                         .environment(\.mastheadTopInset, 52)
                 }
+            case "masthead-no-game":
+                // No game served: the deadline stands alone in the box score; the last five's letters are ones this build
+                // does not draw, so the served line stands without dots
+                if let summary = model.frontOffice.summary {
+                    MorningReportMasthead(summary: summary, record: model.catalogClub?.record, headline: Text(verbatim: DesignFixtures.served("Morning Report")))
+                        .environment(\.morningReportDesign, .fixtureNoGame)
+                        .environment(\.mastheadTopInset, 52)
+                }
             case "places-edges":
-                PlaceStrips(DesignFixtures.dimensions + [DesignFixtures.tooEarly, DesignFixtures.notPlaced], lines: DesignFixtures.placeLines, legend: DesignFixtures.placeLegend)
+                PlaceStrips(DesignFixtures.dimensions + [DesignFixtures.tooEarly, DesignFixtures.notPlaced], headings: DesignFixtures.placeHeadings, legend: DesignFixtures.placeLegend)
             case "roster-edges":
-                // A listed holder (LF), a need (C, DH), nobody valued (DH), each plate's hover lines shown
-                RosterDiagram(DesignFixtures.positions, scale: DesignFixtures.valueScale).frame(height: 540)
+                // A listed holder (LF; and C, listed with a need and the fixtures' longest name, so both words and the
+                // badge keep their size and the name gives way), a need (C, DH), nobody valued (DH), and seasons with no
+                // served count (DH, hatched); each plate's hover lines shown in full
+                RosterDiagram(DesignFixtures.positionsEdges, scale: DesignFixtures.valueScale).frame(height: 540)
                 RosterLegend(DesignFixtures.rosterLegend, notes: DesignFixtures.rosterNotes)
                 HStack(alignment: .top, spacing: 16) {
-                    ForEach(DesignFixtures.positions.filter { ["C", "LF", "DH"].contains($0.id) }) { position in
+                    ForEach(DesignFixtures.positionsEdges.filter { ["C", "LF", "DH", "SS"].contains($0.id) }) { position in
                         PositionPlate(position, scale: DesignFixtures.valueScale, showsDetail: true)
                     }
                 }
@@ -506,8 +520,10 @@ private struct ComponentSheet: View {
                         .background(.background, in: .rect(cornerRadius: 12))
                         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color(nsColor: .separatorColor)))
                     VStack(alignment: .leading, spacing: 12) {
-                        FarmBarView(FarmBar(readiness: 62, required: 55, text: DesignFixtures.served("Ready for a look")), name: DesignFixtures.served("P. Quinlan · Triple-A · ready for a look"))
-                        FarmBarView(FarmBar(readiness: 20, required: 55, text: DesignFixtures.served("Not ready yet"), hint: DesignFixtures.served("Two of three bars are not met")), name: DesignFixtures.served("I. Novak · Triple-A · not ready yet"))
+                        FarmBarView(DesignFixtures.farmBar(62, 55, text: DesignFixtures.served("Ready for a look")), name: DesignFixtures.served("P. Quinlan · Triple-A · ready for a look"))
+                        FarmBarView(DesignFixtures.farmBar(20, 55, text: DesignFixtures.served("Not ready yet"), hint: DesignFixtures.served("Two of three bars are not met")), name: DesignFixtures.served("I. Novak · Triple-A · not ready yet"))
+                        // Past his bar: past the line on the 0 to 100 scale, never a full bar
+                        FarmBarView(DesignFixtures.farmBar(88, 76, text: DesignFixtures.served("Not ready yet"), hint: DesignFixtures.served("Readiness clears its bar; another isn't met")), name: DesignFixtures.served("A. Castle · Triple-A · not ready yet"))
                     }
                     .frame(width: 320)
                 }
@@ -531,7 +547,7 @@ private struct ComponentSheet: View {
                     RangeBar(range: nil, label: DesignFixtures.served("Not valued yet"), scale: DesignFixtures.valueScale).frame(width: 120)
                 }
             case "places":
-                PlaceStrips(DesignFixtures.dimensions + [DesignFixtures.tooEarly], lines: DesignFixtures.placeLines, legend: DesignFixtures.placeLegend)
+                PlaceStrips(DesignFixtures.dimensions + [DesignFixtures.tooEarly], headings: DesignFixtures.placeHeadings, legend: DesignFixtures.placeLegend)
             case "roster":
                 RosterDiagram(DesignFixtures.positions, scale: DesignFixtures.valueScale).frame(height: 540)
                 RosterLegend(DesignFixtures.rosterLegend)

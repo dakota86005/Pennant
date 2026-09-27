@@ -88,30 +88,27 @@ const statKey = (file: string | null | undefined): string => {
 };
 
 /**
- * The save's live-log files, re-found when the configuration file changes, and, while the save has not been found,
- * at most every 15 seconds (a drive mounted later is noticed; a found save costs a few stats per request).
+ * The save's live-log files, found off every request's path: at start, at the minute's look at the saves, when a save
+ * is chosen and when an import lands (`lookAtTheServedSave`). A request only reads what was last found: `/api/status`
+ * serves the stamp and never locates a save (N6 B1 review M3). A save not found is looked for again at the next look.
  */
-let located: { config: string; at: number; live: { db: string; wal: string } | null } | null = null;
-const RELOCATE_MS = 15_000;
-function liveLogFiles(configKey: string): { db: string; wal: string } | null {
-  const stale = !located || located.config !== configKey || (located.live === null && Date.now() - located.at > RELOCATE_MS);
-  if (stale) {
-    let live: { db: string; wal: string } | null = null;
-    try {
-      const where = currentSaveLocation();
-      live = where.found && where.live ? { db: where.live.db, wal: where.live.wal } : null;
-    } catch {
-      live = null;
-    }
-    located = { config: configKey, at: Date.now(), live };
+let located: { live: { db: string; wal: string } | null } | null = null;
+export function relocateLiveLog(): void {
+  let live: { db: string; wal: string } | null = null;
+  try {
+    const where = currentSaveLocation();
+    live = where.found && where.live ? { db: where.live.db, wal: where.live.wal } : null;
+  } catch {
+    live = null;
   }
-  return located!.live;
+  located = { live };
 }
+const liveLogFiles = (): { db: string; wal: string } | null => located?.live ?? null;
 
 /** Everything the answer for this club depends on, as one string. */
 function inputsKey(orgId: number): string {
   const config = statKey(path.join(DATA_DIR, 'config.json'));
-  const live = liveLogFiles(config);
+  const live = liveLogFiles();
   return [
     orgId,
     importedAt.value ?? 'none',

@@ -1751,18 +1751,6 @@
       "tone": "unknown",
       "hint": "The export does not include this yet"
     },
-    "placeLegend": {
-      "season": {
-        "display": "Filled dot: this season"
-      },
-      "recent": {
-        "display": "Ring: the last 15 games"
-      },
-      "fifths": {
-        "display": "Shaded: the top and bottom fifths",
-        "hint": "A strength is the top fifth of the league, a weakness the bottom fifth"
-      }
-    },
     "rosterLegend": {
       "range": {
         "display": "Range: his expected wins this season, most likely marked · hatched: not valued yet",

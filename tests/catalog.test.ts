@@ -227,11 +227,11 @@ describe('the departments\' names and views, served to the sidebar (review N11)'
 });
 
 describe('the words the app shows in more than one place are served (review S5)', () => {
-  it('serves the legends under the place strips and the roster diagram, every line a sentence of the server\'s', () => {
+  it('serves the legend under the roster diagram, every line a sentence of the server\'s (the place strips\' is the profile\'s)', () => {
     const { phrases } = buildCatalog(majorLeagueClubs(), IDS.mlbTeam);
-    expect(Object.keys(phrases.placeLegend)).toEqual(['season', 'recent', 'fifths']);
+    expect(Object.keys(phrases)).not.toContain('placeLegend');
     expect(Object.keys(phrases.rosterLegend)).toEqual(['range', 'control', 'need', 'more']);
-    for (const line of [...Object.values(phrases.placeLegend), ...Object.values(phrases.rosterLegend)]) {
+    for (const line of Object.values(phrases.rosterLegend)) {
       expect(line.display.trim().length).toBeGreaterThan(0);
     }
   });

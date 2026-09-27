@@ -24,6 +24,11 @@ import type { ExportFile } from './exportFiles.js';
 import type { ImportStep } from './importer.js';
 
 const NUMERIC = /^-?\d+(\.\d+)?$/;
+/**
+ * Columns that hold a name are kept as the export wrote them, never read as a number: a last name of "1013" stored as
+ * a number came back as "1013.0" in every sentence that names him (N6 B1 review).
+ */
+export const NAME_COLUMN = /^(first_name|last_name|middle_name|nick_name|nickname|name|short_name|abbr)$/i;
 /** Rows per message from a parser to the writer. */
 const BATCH = 5000;
 /** Batches a parser may have in flight before it waits for the writer. */
@@ -176,6 +181,8 @@ function runParser(): void {
     const end = buf.length;
     // A later part is told its header; part 0 (or a whole file) reads it as its first record
     let header: string[] | null = req.range && part > 0 ? req.range.header : null;
+    /** Which of the header's columns hold a name (kept as text). */
+    let names: boolean[] | null = null;
     if (header) post({ kind: 'header', file, part, header });
     let batch: unknown[] = [];
     let batchRows = 0;
@@ -189,10 +196,11 @@ function runParser(): void {
         return;
       }
       const cols = header.length;
+      if (!names || names.length !== cols) names = header.map((h) => NAME_COLUMN.test(h));
       if (withRowid) batch.push(rowidBase + rows + 1);
       for (let i = 0; i < cols; i++) {
         const v = record[i];
-        batch.push(v === undefined || v === '' ? null : NUMERIC.test(v) ? Number(v) : v);
+        batch.push(v === undefined || v === '' ? null : !names[i] && NUMERIC.test(v) ? Number(v) : v);
       }
       batchRows += 1;
       rows += 1;

@@ -1,7 +1,11 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { loadConfig, saveConfig, type AppConfig } from '../server/config.js';
 import { detectSaves, saveId } from '../server/paths.js';
-import { configuredSaveId, currentPlayedElsewhere, discoveryClock, resetSaveDiscovery, scanSaves, startSaveWatch } from '../server/saveDiscovery.js';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { db, forgetImportRecord, LAST_IMPORT_PATH } from '../server/db.js';
+import { currentPlayedElsewhere, discoveryClock, noticeKey, refreshServedSaveId, resetSaveDiscovery, scanSaves, servedSaveId, startSaveWatch } from '../server/saveDiscovery.js';
 import { subscribe, type ServerEvent } from '../server/serverEvents.js';
 import { APP_STORE_27, DIRECT_28, HOME_APP_SUPPORT_27, PretendHome } from './saveHomeFixture';
 import request from './request';
@@ -107,22 +111,72 @@ describe('a save played since the chosen one', () => {
       at(150_000);
       scanSaves();
       expect(heard).toHaveLength(1);
+      // Played again: the sentence says when, so the new time is announced (N6 B1 review)
+      home.save(APP_STORE_27, 'RIGHTS-EXP', { playedHoursAgo: 0, now: Date.now() + 150_000 });
+      at(215_000);
+      const again = scanSaves()!;
+      expect(noticeKey(again)).not.toBe(noticeKey(notice));
+      expect(heard).toHaveLength(2);
+      expect(heard[1]).toEqual({ type: 'save-played-elsewhere', savePlayedElsewhere: again });
+      at(275_000);
+      scanSaves();
+      expect(heard).toHaveLength(2);
       // The GM switched to it: the notice clears, and the clearing is announced (null, as the status serves it)
       saveConfig({ csvDir: other.csvDir, saveName: 'RIGHTS-EXP' });
       expect(scanSaves()).toBeNull();
-      expect(heard).toHaveLength(2);
-      expect(heard[1]).toEqual({ type: 'save-played-elsewhere', savePlayedElsewhere: null });
-      // The status serves the chosen save's id (D-063), the same on every poll, and it follows the choice
-      const status = await request('/api/status');
-      expect(status.saveId).toMatch(/^[0-9a-f]{16}$/);
-      expect(status.saveId).toBe(saveId(other.lg));
-      expect(notice.save.id).toBe(saveId(other.lg));
-      expect((await request('/api/status')).saveId).toBe(status.saveId);
-      expect(configuredSaveId()).toBe(saveId(other.lg));
-      saveConfig({ csvDir: null, saveName: null });
-      expect((await request('/api/status')).saveId).toBeNull();
+      expect(heard).toHaveLength(3);
+      expect(heard[2]).toEqual({ type: 'save-played-elsewhere', savePlayedElsewhere: null });
     } finally {
       unsubscribe();
+    }
+  });
+
+  it('serves the id of the save the imported data came from, worked out off the status\'s path (N6 B1 review M3, M4)', async () => {
+    const { home } = world();
+    const chosen = home.save(APP_STORE_27, 'Chosen', { playedHoursAgo: 10 });
+    const other = home.save(APP_STORE_27, 'RIGHTS-EXP', { playedHoursAgo: 1 });
+    const late = fs.mkdtempSync(path.join(os.tmpdir(), 'pennant-late-'));
+    const lateLg = path.join(late, 'Late.lg');
+    const lateCsv = path.join(lateLg, 'exports', 'late');
+    fs.mkdirSync(lateCsv, { recursive: true });
+    const lastImport = fs.existsSync(LAST_IMPORT_PATH) ? fs.readFileSync(LAST_IMPORT_PATH) : null;
+    const imported = (csvDir: string) => {
+      const startedAt = new Date().toISOString();
+      db.exec('CREATE TABLE IF NOT EXISTS pennant_import (key TEXT PRIMARY KEY, value TEXT)');
+      db.prepare(`INSERT OR REPLACE INTO pennant_import (key, value) VALUES ('import', ?)`).run(JSON.stringify({ startedAt, csvDir }));
+      fs.writeFileSync(LAST_IMPORT_PATH, JSON.stringify({ startedAt }));
+      forgetImportRecord();
+    };
+    try {
+      saveConfig({ csvDir: chosen.csvDir, saveName: 'Chosen' });
+      imported(chosen.csvDir);
+      // Not worked out yet: the status says nothing rather than working it out on its path
+      expect((await request('/api/status')).saveId).toBeNull();
+      refreshServedSaveId();
+      expect((await request('/api/status')).saveId).toBe(saveId(chosen.lg));
+      // Another save chosen, not yet imported: the data is still the chosen one's, and so is the id (never the new one's)
+      saveConfig({ csvDir: other.csvDir, saveName: 'RIGHTS-EXP' });
+      expect(servedSaveId()).toBeNull();
+      refreshServedSaveId();
+      expect((await request('/api/status')).saveId).toBe(saveId(chosen.lg));
+      // Its import lands: the id moves with it
+      imported(other.csvDir);
+      refreshServedSaveId();
+      expect((await request('/api/status')).saveId).toBe(saveId(other.lg));
+      // A save whose folder can't be found is worked out again at the next look, never kept for good
+      saveConfig({ csvDir: lateCsv, saveName: 'Late' });
+      imported(lateCsv);
+      refreshServedSaveId();
+      expect(servedSaveId()).toBe(saveId(lateCsv));
+      fs.mkdirSync(path.join(lateLg, 'settings'));
+      scanSaves();
+      expect(servedSaveId()).toBe(saveId(lateLg));
+    } finally {
+      db.prepare(`DELETE FROM pennant_import WHERE key = 'import'`).run();
+      if (lastImport) fs.writeFileSync(LAST_IMPORT_PATH, lastImport);
+      else fs.rmSync(LAST_IMPORT_PATH, { force: true });
+      forgetImportRecord();
+      fs.rmSync(late, { recursive: true, force: true });
     }
   });
 

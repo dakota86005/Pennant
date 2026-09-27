@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getDataStatus } from '../server/dataStatus.js';
-import { CLUB_PROFILE_POLICY, DIMENSIONS, clubProfileOf, groupOf, placesOf } from '../server/frontOffice/clubProfile.js';
+import { CLUB_PROFILE_POLICY, DIMENSIONS, bandsOf, clubProfileOf, groupOf, placesOf } from '../server/frontOffice/clubProfile.js';
 import { readTeamSeason, type ClubFacts, type TeamSeasonFacts } from '../server/frontOffice/teamSeason.js';
 import { readMorning } from '../server/morningReport.js';
 import { clubProfileWords } from '../server/presentation/frontOffice/morning.js';
@@ -119,8 +119,50 @@ describe('the policy lines: fifths and "too early", stamped as policy', () => {
       expect(d.claim.basis.certainty).toBe('policy');
       expect(d.claim.basis.stamp).toBe(CLUB_PROFILE_POLICY.stamp);
     }
-    expect(words.lines.strength.display).toBe('Top fifth of the league');
+    expect(words.groups.strength.line?.display).toBe('Top fifth of the league');
     expect(words.note.hint).toBe('Places among the league\'s 6 clubs');
+    expect(words.clubs).toBe(6);
+  });
+
+  it('serves each group\'s title and its line, never the same words twice, each with its hint (N6 B1 review H1a)', () => {
+    const save = buildSave({ season: 2040, historySeasons: 1, gamesPerTeam: 60, playedShare: 0.5, clubs: 6, seed: 11, teamSeason: true });
+    const words = clubProfileWords({ orgId: save.org, club: null, importStamp: null, reportStamp: 'r', gameDate: '2040-5-5' }, readMorning(save.org, getDataStatus(), null));
+    expect(Object.keys(words.groups)).toEqual(['strength', 'weakness', 'rest', 'tooEarly', 'notPlaced']);
+    for (const heading of Object.values(words.groups)) {
+      expect(heading.title.display.length).toBeGreaterThan(0);
+      if (heading.line) expect(heading.line.display.toLowerCase()).not.toBe(heading.title.display.toLowerCase());
+      expect(heading.line?.hint ?? heading.title.hint).toBeTruthy();
+    }
+    // Where the title says it all, no line repeats it
+    expect(words.groups.rest.line).toBeNull();
+    expect(words.groups.notPlaced.line).toBeNull();
+    expect(words.groups.tooEarly.line?.display).toBe(`Fewer than ${CLUB_PROFILE_POLICY.minGames} games`);
+  });
+
+  it('serves each strip\'s clubs and where its stated lines fall, in the arithmetic that groups it (N6 B1 review M1)', () => {
+    for (let of = 1; of <= 40; of++) {
+      const bands = bandsOf(of);
+      for (let rank = 1; rank <= of; rank++) {
+        const byBands = bands === null ? 'rest' : rank <= bands.strengthThrough ? 'strength' : rank >= bands.weaknessFrom ? 'weakness' : 'rest';
+        expect(byBands, `${rank} of ${of}`).toBe(groupOf({ rank, of, tiedWith: 0 }));
+      }
+    }
+    expect(bandsOf(4)).toBeNull();
+    expect(bandsOf(30)).toEqual({ strengthThrough: 6, weaknessFrom: 25 });
+    const ctx = { orgId: 0, club: null, importStamp: null, reportStamp: 'r', gameDate: '2040-5-5' };
+    for (const clubs of [4, 6]) {
+      const save = buildSave({ season: 2040, historySeasons: 1, gamesPerTeam: 60, playedShare: 0.5, clubs, seed: 11, teamSeason: true });
+      const words = clubProfileWords({ ...ctx, orgId: save.org }, readMorning(save.org, getDataStatus(), null));
+      for (const d of words.dimensions) {
+        if (d.place) expect(d.strip.of).toBe(d.place.of);
+        const bands = bandsOf(d.strip.of);
+        expect(d.strip.strengthThrough).toBe(bands?.strengthThrough ?? null);
+        expect(d.strip.weaknessFrom).toBe(bands?.weaknessFrom ?? null);
+      }
+      // Four clubs have no fifths: no shading, and no legend line for it; six do
+      expect(words.legend.shading === null).toBe(clubs === 4);
+      expect(words.legend.dot.display).toBeTruthy();
+    }
   });
 
   it('shows the league\'s middle only where at least five clubs are placed', () => {

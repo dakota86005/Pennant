@@ -311,6 +311,19 @@ describe('a large file split across the parse workers', () => {
     expect(split[4999]).toMatchObject({ id: 4999 });
   });
 
+  it('keeps a name as the export wrote it, never as a number, whole or split (N6 B1 review: "P. 1013.0")', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pennant-names-'));
+    scratch.push(dir);
+    const rows = Array.from({ length: 3000 }, (_, i) => `${1000 + i},P,${1000 + i},${i % 30}`).join('\n');
+    fs.writeFileSync(path.join(dir, 'big.csv'), `player_id,first_name,last_name,age\n${rows}\n`);
+    for (const split of [undefined, 4096]) {
+      const read = await build(dir, split);
+      expect(read).toHaveLength(3000);
+      expect(read[13]).toEqual({ player_id: 1013, first_name: 'P', last_name: '1013', age: 13 });
+      expect(`${read[13].first_name} ${read[13].last_name}`).toBe('P 1013');
+    }
+  });
+
   it('is cut only at line breaks, the header in the first part', () => {
     const buf = Buffer.from(`a,b\n${Array.from({ length: 100 }, (_, i) => `${i},${i}`).join('\n')}\n`);
     const parts = splitPoints(buf, 3)!;

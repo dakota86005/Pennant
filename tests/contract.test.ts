@@ -7,7 +7,7 @@ import type { AddressInfo } from 'node:net';
 import Ajv2020, { type ValidateFunction } from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 import { Router } from 'express';
-import { SHAPES_SPEC_PATH, SPEC_PATH, buildShapesSpec, buildSpec, serializeSpec, transform } from '../scripts/lib/contractSpec.js';
+import { DIGEST_SWIFT_PATH, SHAPES_SPEC_PATH, SPEC_PATH, buildShapesSpec, buildSpec, digestSwift, serializeSpec, transform } from '../scripts/lib/contractSpec.js';
 import { operations } from '../server/contract/routes.js';
 import { basisProblems } from '../server/presentation/claim.js';
 import { departmentReport } from '../server/frontOfficeService.js';
@@ -57,6 +57,12 @@ describe('the committed contract', () => {
   it('builds the tests\' shape contract into the Swift shape tests unchanged (run `npm run contract:build` if not)', () => {
     expect(fs.readFileSync(SHAPES_SPEC_PATH, 'utf8')).toBe(serializeSpec(buildShapesSpec()));
   }, SLOW);
+
+  it('states its digest to the Mac app, current with the committed contract (run `npm run contract:build` if not; N6 B1 review M8)', () => {
+    const committed = fs.readFileSync(SPEC_PATH, 'utf8');
+    expect(fs.readFileSync(DIGEST_SWIFT_PATH, 'utf8')).toBe(digestSwift(committed));
+    expect(digestSwift(`${committed} `)).not.toBe(digestSwift(committed));
+  });
 
   it('is the very file the Swift package generates from (a link, not a second copy)', () => {
     expect(fs.lstatSync(SWIFT_SPEC).isSymbolicLink()).toBe(true);

@@ -20,7 +20,7 @@ import { needText, type MajorLeagueInput } from './majorLeague.js';
 import type { MlbNeed } from '../../mlbNeeds.js';
 import type {
   ClubProfile, ControlTerm, DeadlineNote, FarmNextMan, GameLetter, LastFive, MissingPart, MorningParts, PlayerRef, ProbableStarter,
-  ProfileDimension, ReadinessState, RosterMap, RosterNode, RunsFigure, StaffPitcher, StandingLine, TeamSeason, TonightGame, WinsValue,
+  ProfileDimension, ProfileGroups, ProfileLegend, ReadinessState, RosterMap, RosterNode, RunsFigure, StaffPitcher, StandingLine, TeamSeason, TonightGame, WinsValue,
 } from './morningTypes.js';
 
 // ── words ────────────────────────────────────────────────────────────────────
@@ -65,6 +65,19 @@ const signed = (n: number, digits = 0) => (n > 0 ? `+${n.toFixed(digits)}` : n <
 const rate3 = (v: number) => v.toFixed(3).replace(/^0(?=\.)/, '').replace(/^-0(?=\.)/, '-');
 
 /** "Ketel Marte" to "K. Marte"; a one-word name stays as it is. */
+/**
+ * The line under the last five: the streak, then the record over them, with the ties where there are any ("Won 2 ·
+ * last five 3–2", "last five 3–1–1").
+ */
+export function lastFiveWords(streak: string | null, results: readonly GameLetter[]): string {
+  const won = results.filter((x) => x === 'W').length;
+  const lost = results.filter((x) => x === 'L').length;
+  const tied = results.filter((x) => x === 'T').length;
+  const count = results.length === 5 ? 'five' : numberWord(results.length);
+  const record = `last ${count} ${won}–${lost}${tied ? `–${tied}` : ''}`;
+  return [streak, record].filter(Boolean).join(' · ').replace(/^last/, 'Last');
+}
+
 export function shortName(name: string): string {
   const parts = name.trim().split(/\s+/);
   return parts.length < 2 ? name.trim() : `${parts[0].charAt(0)}. ${parts.slice(1).join(' ')}`;
@@ -399,12 +412,7 @@ export function teamSeasonWords(build: BuildContext, m: MorningMaterial): TeamSe
   if (games.length) {
     const five = games.slice(-5);
     const results: GameLetter[] = five.map((x) => (x.scored > x.allowed ? 'W' : x.scored < x.allowed ? 'L' : 'T'));
-    const won = results.filter((x) => x === 'W').length;
-    const lost = results.filter((x) => x === 'L').length;
-    lastFive = {
-      results,
-      line: cell([streak?.display, `last ${five.length === 5 ? 'five' : numberWord(five.length)} ${won}–${lost}`].filter(Boolean).join(' · ').replace(/^last/, 'Last')),
-    };
+    lastFive = { results, line: cell(lastFiveWords(streak?.display ?? null, results)) };
   } else miss('lastFive', facts.gamesWhy ?? 'The club hasn\'t played a game yet.');
   if (!streak) miss('streak', streakN === 0 || games.length === 0 ? 'No streak yet.' : 'The standings don\'t give the club\'s streak.');
 
@@ -543,6 +551,7 @@ function dimensionWords(build: BuildContext, d: DimensionReading, reading: ClubP
     symbol: w.symbol,
     place,
     placeText,
+    strip: { ...d.strip },
     recent: { place: recentPlace, text: recentText, why: recentPlace ? null : d.recent.why },
     detail,
     group: reading.tooEarly ? 'tooEarly' : d.group,
@@ -559,28 +568,61 @@ function dimensionWords(build: BuildContext, d: DimensionReading, reading: ClubP
   };
 }
 
-export function clubProfileWords(build: BuildContext, m: MorningMaterial): ClubProfile {
-  const lines = {
-    strength: cell('Top fifth of the league', { hint: 'A place in the top fifth of the clubs that have the figure' }),
-    weakness: cell('Bottom fifth', { hint: 'A place in the bottom fifth of the clubs that have the figure' }),
-    rest: cell('The rest', { hint: 'Neither a strength nor a weakness' }),
-    tooEarly: cell('Fewer than 20 games', { hint: 'Too early to call a strength or a weakness' }),
-    notPlaced: cell('Not placed', { hint: 'The export lacks the figure for the club' }),
+/**
+ * Each group's heading: its title and the stated policy line beside it (none where the title says it all, and none for
+ * too early where the profile could not be read, so its sample is not in hand).
+ */
+export function profileGroups(minGames: number | null): ProfileGroups {
+  return {
+    strength: {
+      title: cell('Strengths'),
+      line: cell('Top fifth of the league', { hint: 'A place in the top fifth of the clubs that have the figure' }),
+    },
+    weakness: {
+      title: cell('Weaknesses'),
+      line: cell('Bottom fifth of the league', { hint: 'A place in the bottom fifth of the clubs that have the figure' }),
+    },
+    rest: { title: cell('The rest', { hint: 'Neither a strength nor a weakness' }), line: null },
+    tooEarly: {
+      title: cell('Too early to call', { hint: 'Too early to call a strength or a weakness' }),
+      line: minGames === null ? null : cell(`Fewer than ${minGames} games`, { hint: 'Too early to call a strength or a weakness' }),
+    },
+    notPlaced: { title: cell('Not placed', { hint: 'The export lacks the figure for the club, which says nothing about it' }), line: null },
   };
+}
+
+/** The strip's legend; the shaded ends only where a strip shows them. */
+export function profileLegend(fifths: boolean): ProfileLegend {
+  return {
+    dot: cell('Filled dot: this season'),
+    ring: cell('Ring: the last 15 games'),
+    shading: fifths
+      ? cell('Shaded: the top and bottom fifths', { hint: 'A strength is the top fifth of the league, a weakness the bottom fifth' })
+      : null,
+  };
+}
+
+export function clubProfileWords(build: BuildContext, m: MorningMaterial): ClubProfile {
   const through = asOfCell(build).display;
   if ('why' in m.profile) {
-    return { note: cell(through), lines, dimensions: [], unavailable: cell(m.profile.why, { tone: 'unknown' }) };
+    return {
+      note: cell(through), clubs: 0, groups: profileGroups(null), legend: profileLegend(false),
+      dimensions: [], unavailable: cell(m.profile.why, { tone: 'unknown' }),
+    };
   }
   const reading = m.profile;
   const small = reading.clubs < Math.round(1 / reading.policy.fifth);
+  const dimensions = reading.dimensions.map((d) => dimensionWords(build, d, reading, reading.clubs));
   return {
     note: cell(`${through}${reading.games !== null ? ` · ${plural(reading.games, 'game')}` : ''}`, {
       hint: small
         ? `With ${reading.clubs} clubs the league has no top or bottom fifth`
         : `Places among the league's ${reading.clubs} clubs`,
     }),
-    lines,
-    dimensions: reading.dimensions.map((d) => dimensionWords(build, d, reading, reading.clubs)),
+    clubs: reading.clubs,
+    groups: profileGroups(reading.policy.minGames),
+    legend: profileLegend(dimensions.some((d) => d.strip.strengthThrough !== null)),
+    dimensions,
     unavailable: null,
   };
 }
@@ -615,10 +657,21 @@ function winsValue(w: WinsRange | null): WinsValue | null {
 
 const ref = (p: { playerId: number; name: string }): PlayerRef => ({ playerId: p.playerId, name: p.name, short: shortName(p.name) });
 
-/** Player Development's readiness against its bar, as it serves them (whole points); null where either is not known. */
-function barOf(f: FarmNext): FarmNextMan['bar'] {
+/**
+ * Player Development's readiness against its bar, as it serves them (whole points), on the scale readiness is read on,
+ * with the line that labels the two; null where either is not known.
+ */
+export function barOf(f: Pick<FarmNext, 'assessment'>): FarmNextMan['bar'] {
   const a = f.assessment;
-  return a && a.readiness !== null && a.required !== null ? { readiness: Math.round(a.readiness), required: Math.round(a.required) } : null;
+  if (!a || a.readiness === null || a.required === null) return null;
+  const readiness = Math.round(a.readiness);
+  const required = Math.round(a.required);
+  return {
+    readiness, required, scale: { low: a.scale.low, high: a.scale.high },
+    line: cell(`Readiness ${readiness} · his bar ${required}`, {
+      hint: `Readiness runs ${a.scale.low} to ${a.scale.high}; his bar is what a look asks of him`,
+    }),
+  };
 }
 
 function farmMan(f: FarmNext): FarmNextMan {
@@ -913,10 +966,9 @@ export function morningUnavailable(build: BuildContext, why: string): MorningPar
     lede: null,
     clubProfile: {
       note: asOfCell(build),
-      lines: {
-        strength: cell('Top fifth of the league'), weakness: cell('Bottom fifth'), rest: cell('The rest'),
-        tooEarly: cell('Fewer than 20 games'), notPlaced: cell('Not placed'),
-      },
+      clubs: 0,
+      groups: profileGroups(null),
+      legend: profileLegend(false),
       dimensions: [],
       unavailable: line,
     },

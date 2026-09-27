@@ -89,7 +89,7 @@ private struct PreviewFrame<Content: View>: View {
 
 #Preview("Place strips") {
     PreviewFrame {
-        PlaceStrips(DesignFixtures.dimensions + [DesignFixtures.tooEarly], lines: DesignFixtures.placeLines, legend: DesignFixtures.placeLegend)
+        PlaceStrips(DesignFixtures.dimensions + [DesignFixtures.tooEarly], headings: DesignFixtures.placeHeadings, legend: DesignFixtures.placeLegend)
     }
     .frame(width: 1000)
 }

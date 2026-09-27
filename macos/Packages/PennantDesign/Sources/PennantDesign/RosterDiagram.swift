@@ -245,36 +245,38 @@ public struct PositionPlate: View {
         ClaimText(position.claim) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    // The badge is filled for the regular the game log shows, hollow for the man merely listed there
+                    // The badge is filled for the regular the game log shows, hollow for the man merely listed there.
+                    // The badges and the words keep their size; the holder's name gives way (truncates), never a word
                     Text(verbatim: position.id).font(.system(size: 10, weight: .bold)).foregroundStyle(listed ? accent : accentText)
+                        .lineLimit(1).fixedSize()
                         .padding(.horizontal, 4).padding(.vertical, 1)
                         .background(listed ? Color.clear : accent, in: .rect(cornerRadius: 3))
                         .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(accent, lineWidth: listed ? 1 : 0))
-                    Text(verbatim: position.holder).font(.system(size: 13, weight: .semibold)).lineLimit(1).layoutPriority(1)
-                    if listed { Text("Listed").font(.system(size: 9, weight: .semibold)).foregroundStyle(.secondary) }
-                    if position.need { Text("Need").font(.system(size: 9, weight: .bold)).foregroundStyle(Tone.caution.color) }
+                    Text(verbatim: position.holder).font(.system(size: 13, weight: .semibold)).lineLimit(1).truncationMode(.tail)
+                        .layoutPriority(-1)
+                    if listed { Text("Listed").font(.system(size: 9, weight: .semibold)).foregroundStyle(.secondary).lineLimit(1).fixedSize() }
+                    if position.need { Text("Need").font(.system(size: 9, weight: .bold)).foregroundStyle(Tone.caution.color).lineLimit(1).fixedSize() }
                     Spacer(minLength: 0)
-                    ControlPips(position.control)
+                    ControlPips(position.control).fixedSize()
                 }
                 PositionFigures(position, scale: scale)
                 if hovering || showsDetail {
-                    VStack(alignment: .leading, spacing: 1) {
+                    // Each served line under its structural label, wrapping in full (never cut short)
+                    VStack(alignment: .leading, spacing: 3) {
                         if let overlap = position.overlapText {
-                            LabeledContent("Against the other clubs") { Text(verbatim: overlap) }
+                            DetailLine(label: Text("Against the other clubs"), value: overlap)
                                 .help(Text(verbatim: position.overlapHint ?? overlap))
                         }
-                        LabeledContent("Behind him") { Text(verbatim: position.behind) }
+                        DetailLine(label: Text("Behind him"), value: position.behind)
                         if let farmNext = position.farmNext {
-                            LabeledContent("Farm's next man") { Text(verbatim: farmNext) }
+                            DetailLine(label: Text("Farm's next man"), value: farmNext)
                         }
                     }
-                    .font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
                     .transition(.opacity)
                 }
             }
             .padding(.horizontal, 9).padding(.vertical, 7)
-            .frame(width: 202, alignment: .leading)
+            .frame(width: 224, alignment: .leading)
             .background(Color(nsColor: .windowBackgroundColor), in: .rect(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(accent.opacity(position.need ? 0 : 0.25), lineWidth: contrast == .increased ? 1.5 : 1))
             .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Tone.caution.color.opacity(position.need ? 0.9 : 0), lineWidth: 1.5))
@@ -294,9 +296,25 @@ public struct PositionPlate: View {
     }
 }
 
+/// A plate's hover line: its structural label over the served value, the value wrapping in full rather than cut short.
+struct DetailLine: View {
+    let label: Text
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            label.font(.system(size: 9, weight: .semibold)).foregroundStyle(.tertiary).textCase(.uppercase).kerning(0.4)
+            Text(verbatim: value).font(.system(size: 10)).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
 /// The farm's next man's readiness against the bar Player Development asks for (two served numbers, drawn as a mark
-/// on a track with the bar as a line across it; never a share of a whole), with the served words beside it. The
-/// numbers are on the track's own axis (its right end at the larger of the two, so the bar is always in view).
+/// on a track with the bar as a line across it; never a share of a whole), with the served words beside it and the
+/// served line that labels the two. The track is the served scale readiness is read on, so a man past his bar is past
+/// the line, never a full bar.
 public struct FarmBarView: View {
     let bar: FarmBar
     let name: String?
@@ -309,9 +327,6 @@ public struct FarmBarView: View {
         self.name = name
     }
 
-    /// The two served numbers, the readiness before the bar it is read against.
-    private var figures: String { [String(bar.readiness), String(bar.required)].joined(separator: " · ") }
-
     public var body: some View {
         let palette = theme.palette(colorScheme: colorScheme, contrast: contrast)
         let accent = palette.isNeutral ? Color.accentColor : palette.accent
@@ -320,8 +335,7 @@ public struct FarmBarView: View {
             if let name { Text(verbatim: name).font(.callout) }
             HStack(spacing: 10) {
                 GeometryReader { g in
-                    let top = Double(max(bar.readiness, bar.required, 1))
-                    let x = { (v: Int) -> CGFloat in CGFloat(Double(v) / top) * g.size.width }
+                    let x = { (v: Int) -> CGFloat in CGFloat(bar.position(of: v)) * g.size.width }
                     ZStack(alignment: .leading) {
                         Capsule().fill(Color(nsColor: .quaternaryLabelColor).opacity(0.5))
                         Capsule().fill(accent.opacity(0.35)).frame(width: max(2, x(bar.readiness)))
@@ -333,10 +347,11 @@ public struct FarmBarView: View {
                 Text(verbatim: bar.text).font(.caption.weight(.medium)).lineLimit(2).fixedSize(horizontal: false, vertical: true)
             }
             .help(Text(verbatim: bar.hint ?? bar.text))
-            Text(verbatim: figures).font(.caption2).monospacedDigit().foregroundStyle(.secondary)
+            Text(verbatim: bar.line).font(.caption2).monospacedDigit().foregroundStyle(.secondary)
+                .help(Text(verbatim: bar.lineHint ?? bar.line))
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text(verbatim: [name, bar.text].compactMap { $0 }.joined(separator: " · ")))
+        .accessibilityLabel(Text(verbatim: [name, bar.text, bar.line].compactMap { $0 }.joined(separator: " · ")))
         .accessibilityIdentifier("position.farmBar")
     }
 }

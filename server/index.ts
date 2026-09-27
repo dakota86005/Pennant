@@ -11,7 +11,7 @@ import { checkExport, startWatcher, stopWatcher } from './watcher.js';
 import { closeLeagueDatabase, prepareLeagueDatabase, tableExists } from './db.js';
 import { baselineSnapshot, historyDb } from './history.js';
 import { loadSettings } from './settings.js';
-import { startSaveWatch, stopSaveWatch } from './saveDiscovery.js';
+import { lookAtTheServedSave, startSaveWatch, stopSaveWatch } from './saveDiscovery.js';
 import { warmTransactionLog } from './dataStatus.js';
 import { requireApiToken } from './apiToken.js';
 import { acquireDataLock, releaseDataLock } from './dataLock.js';
@@ -107,6 +107,8 @@ function bootstrapData(): void {
   } catch (err) {
     console.error('[import] could not tidy the league database:', err);
   }
+  // The imported data's save and its live log, worked out before the first request (the status only reads them)
+  lookAtTheServedSave();
   // An import the last run never finished: import it again (the previous import is whole; this is a retry, and its
   // new file needs no upgrade)
   if (recoverInterruptedImport()) {

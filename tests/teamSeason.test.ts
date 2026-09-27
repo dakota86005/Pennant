@@ -3,7 +3,7 @@ import { getDataStatus } from '../server/dataStatus.js';
 import { divisionPlace, readTeamSeason, type TeamSeasonFacts } from '../server/frontOffice/teamSeason.js';
 import { readMorning } from '../server/morningReport.js';
 import type { BuildContext } from '../server/presentation/frontOffice/desk.js';
-import { gamesWords, morningWords, teamSeasonWords } from '../server/presentation/frontOffice/morning.js';
+import { gamesWords, lastFiveWords, morningWords, teamSeasonWords } from '../server/presentation/frontOffice/morning.js';
 import { buildSave, dropColumn, dropTable, exec, type BuiltSave } from './syntheticSave';
 
 /**
@@ -125,6 +125,13 @@ describe('the masthead reads the season as the export gives it', () => {
     expect(words.lastFive!.results.every((r) => r === 'W' || r === 'L')).toBe(true);
     expect(words.streak?.display).toMatch(/^(Won|Lost) \d+$/);
     expect(words.lastFive!.line.display).toContain(words.streak!.display);
+  });
+
+  it('counts the ties in the last five\'s line, where there are any (N6 B1 review)', () => {
+    expect(lastFiveWords(null, ['W', 'T', 'L', 'W', 'W'])).toBe('Last five 3–1–1');
+    expect(lastFiveWords('Won 2', ['W', 'T', 'L', 'W', 'W'])).toBe('Won 2 · last five 3–1–1');
+    expect(lastFiveWords('Lost 1', ['W', 'W', 'L', 'W', 'L'])).toBe('Lost 1 · last five 3–2');
+    expect(lastFiveWords(null, ['T', 'W', 'L'])).toBe('Last three 1–1–1');
   });
 });
 

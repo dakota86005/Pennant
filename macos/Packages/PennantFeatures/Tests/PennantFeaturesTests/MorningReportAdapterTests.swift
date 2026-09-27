@@ -1,7 +1,7 @@
 import Foundation
 @testable import FrontOffice
 import PennantAPI
-import PennantDesign
+@testable import PennantDesign
 import Shell
 import Testing
 
@@ -89,7 +89,7 @@ struct MorningReportAdapterTests {
         #expect(design.mastheadMissing.map(\.text) == ["Runs scored and allowed aren't in the export", "No game is scheduled on or after today"])
     }
 
-    @Test("each dimension crosses with its place, its ties, its recent place and its served words; the groups and the lines as served")
+    @Test("each dimension crosses with its place, its strip, its ties, its recent place and its served words; the headings and the legend as served")
     func dimensions() throws {
         let summary = try served()
         let profile = try #require(summary.clubProfile)
@@ -99,7 +99,10 @@ struct MorningReportAdapterTests {
         for (drawn, served) in zip(dimensions, profile.dimensions) {
             #expect(drawn.name == served.name && drawn.symbol == served.symbol)
             #expect(drawn.place == served.place?.rank)
-            #expect(drawn.of == served.place?.of)
+            #expect(drawn.of == served.strip.of)
+            #expect(drawn.strengthThrough == served.strip.strengthThrough)
+            #expect(drawn.weaknessFrom == served.strip.weaknessFrom)
+            if let place = served.place { #expect(drawn.of == place.of) }
             #expect(drawn.tiedWith == served.place?.tiedWith)
             #expect(drawn.recentPlace == served.recent.place?.rank)
             #expect(drawn.placeText == served.placeText)
@@ -107,14 +110,22 @@ struct MorningReportAdapterTests {
             #expect(drawn.group.rawValue == served.group.value1?.rawValue)
             #expect(drawn.claim == served.claim)
         }
-        #expect(design.placeLines[.strength] == profile.lines.strength.display)
-        #expect(design.placeLines[.notPlaced] == profile.lines.notPlaced.display)
-        #expect(design.placeLines.count == 5)
+        #expect(design.placeHeadings.count == 5)
+        #expect(design.placeHeadings[.strength] == PlaceDimension.Heading(title: profile.groups.strength.title.display, titleHint: profile.groups.strength.title.hint,
+                                                                           line: profile.groups.strength.line?.display, lineHint: profile.groups.strength.line?.hint))
+        // A heading never says its title twice (review H1a: "The rest The rest", "Not placed Not placed")
+        for heading in design.placeHeadings.values { #expect(heading.line != heading.title) }
+        #expect(design.placeHeadings[.rest]?.line == nil && design.placeHeadings[.notPlaced]?.line == nil)
+        #expect(design.placeLegend == profile.legend)
+        // The synthetic league's four clubs have no top or bottom fifth: no shading, and no legend line for it
+        #expect(profile.clubs == 4)
+        #expect(dimensions.allSatisfy { $0.strengthThrough == nil && $0.weaknessFrom == nil })
+        #expect(design.placeLegend?.shading == nil)
         #expect(design.placesNote == profile.note.display)
         #expect(design.placesUnavailable == nil)
     }
 
-    @Test("a dimension too early or not placed keeps no place, takes the league's size from the others, and is never a weakness")
+    @Test("a dimension too early or not placed keeps no place, draws on its own served strip (nothing borrowed from a sibling), and is never a weakness")
     func notPlaced() throws {
         var profile = try #require(try served().clubProfile)
         var early = profile.dimensions[0]
@@ -127,19 +138,27 @@ struct MorningReportAdapterTests {
         missing.recent = .init(place: nil, text: "Last 15: not placed", why: "The export lacks the figure")
         missing.group = .init(value1: .notPlaced)
         missing.placeText = "Not placed"
+        missing.strip = .init(of: 0, strengthThrough: nil, weaknessFrom: nil)
         var newer = profile.dimensions[2]
         newer.group = .init(value2: "somethingNewer")
         profile.dimensions = [early, missing, newer]
         let drawn = MorningReportDesign.dimensions(profile)
         #expect(drawn[0].place == nil && drawn[0].recentPlace == nil && drawn[0].group == .tooEarly)
         #expect(drawn[1].place == nil && drawn[1].group == .notPlaced && drawn[1].placeText == "Not placed")
-        // The size of the league is the served count on the sibling that has one (4 clubs on the synthetic save)
-        #expect(drawn[0].of == 4 && drawn[1].of == 4)
+        // Each strip is its own served one: the clubs that have the figure (4 on the synthetic save), or none at all,
+        // which draws an empty track and no dots; never a sibling's count (review M1)
+        #expect(drawn[0].of == early.strip.of && drawn[0].of == 4)
+        #expect(drawn[1].of == 0)
         // A group this build has not heard of reads as the rest, never a weakness
         #expect(drawn[2].group == .rest)
-        // Nothing placed anywhere: no size at all (the strip draws no dots)
-        profile.dimensions = [early, missing]
-        #expect(MorningReportDesign.dimensions(profile).map(\.of) == [0, 0])
+        // The lines fall where the server says, and nowhere in a league without fifths
+        var thirty = early
+        thirty.strip = .init(of: 30, strengthThrough: 6, weaknessFrom: 25)
+        profile.dimensions = [thirty]
+        let placed = MorningReportDesign.dimensions(profile)[0]
+        #expect(placed.of == 30 && placed.strengthThrough == 6 && placed.weaknessFrom == 25)
+        #expect(PlaceStrip.shading(placed).strength == 1...6 && PlaceStrip.shading(placed).weakness == 25...30)
+        #expect(PlaceStrip.shading(drawn[0]).strength == nil && PlaceStrip.shading(drawn[0]).weakness == nil)
     }
 
     @Test("each node crosses with its holder, its expected wins, its place, how it reads against the other clubs, who is behind, the farm and control")
@@ -185,9 +204,12 @@ struct MorningReportAdapterTests {
     func control() {
         let through = Components.Schemas.ControlTerm(kind: .init(value1: .through), text: "Through 2046 at least", hint: "Held on every branch", through: 2046, latest: nil, seasonsLeft: 7, atLeast: true, clock: nil)
         #expect(MorningReportDesign.control(through) == .seasons(7, text: "Through 2046 at least"))
+        // No count served: not known (hatched), never zero seasons (review H2, D-018)
         var noCount = through
         noCount.seasonsLeft = nil
-        #expect(MorningReportDesign.control(noCount) == .seasons(0, text: "Through 2046 at least"))
+        #expect(MorningReportDesign.control(noCount) == .seasons(nil, text: "Through 2046 at least"))
+        #expect(ControlPips.seasonPips(MorningReportDesign.control(noCount)) == nil)
+        #expect(ControlPips.seasonPips(MorningReportDesign.control(through)) == 7)
         let clock = Components.Schemas.ControlTerm(kind: .init(value1: .clock), text: "Arbitration this winter", hint: "", through: nil, latest: nil, seasonsLeft: nil, atLeast: false, clock: .init(value1: .arbitration))
         #expect(MorningReportDesign.control(clock) == .clock("Arbitration this winter"))
         let unknown = Components.Schemas.ControlTerm(kind: .init(value1: .unknown), text: "Control not known", hint: "", through: nil, latest: nil, seasonsLeft: nil, atLeast: false, clock: nil)
@@ -196,15 +218,22 @@ struct MorningReportAdapterTests {
         #expect(MorningReportDesign.control(newer) == .unknown("On loan"))
     }
 
-    @Test("the farm's next man's bar crosses only when Player Development serves both numbers, with its served words")
+    @Test("the farm's next man's bar crosses only when Player Development serves both numbers, with its served scale, line and words")
     func farmBar() throws {
         var node = try #require(try served().rosterMap?.positions.first)
         #expect(MorningReportDesign.position(node).farmBar == nil)
         node.farmNext = .init(playerId: 9, name: "L Moreau", short: "L. Moreau", level: "Triple-A", state: .init(value1: .notYet),
-                              readiness: .init(display: "Not ready yet", hint: "His bat is behind the bar"), bar: .init(readiness: 41, required: 55), text: "L. Moreau · Triple-A · not ready yet")
+                              readiness: .init(display: "Not ready yet", hint: "His bat is behind the bar"),
+                              bar: .init(readiness: 41, required: 55, scale: .init(low: 0, high: 100), line: .init(display: "Readiness 41 · his bar 55", hint: "Readiness runs 0 to 100")),
+                              text: "L. Moreau · Triple-A · not ready yet")
         let drawn = MorningReportDesign.position(node)
         #expect(drawn.farmNext == "L. Moreau · Triple-A · not ready yet")
-        #expect(drawn.farmBar == FarmBar(readiness: 41, required: 55, text: "Not ready yet", hint: "His bat is behind the bar"))
+        #expect(drawn.farmBar == FarmBar(readiness: 41, required: 55, scaleLow: 0, scaleHigh: 100, line: "Readiness 41 · his bar 55", lineHint: "Readiness runs 0 to 100",
+                                         text: "Not ready yet", hint: "His bat is behind the bar"))
+        // On the served scale: a man past his bar is past the line, never a full bar
+        node.farmNext?.bar = .init(readiness: 88, required: 76, scale: .init(low: 0, high: 100), line: .init(display: "Readiness 88 · his bar 76"))
+        let past = try #require(MorningReportDesign.position(node).farmBar)
+        #expect(past.position(of: past.readiness) == 0.88 && past.position(of: past.required) == 0.76)
         node.farmNext?.bar = nil
         #expect(MorningReportDesign.position(node).farmBar == nil)
     }

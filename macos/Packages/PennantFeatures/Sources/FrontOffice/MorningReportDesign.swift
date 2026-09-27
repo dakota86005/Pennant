@@ -22,7 +22,10 @@ public struct MorningReportDesign {
     public var ledeClaim: Components.Schemas.Claim?
     public var chips: [Chip]?
     public var dimensions: [PlaceDimension]?
-    public var placeLines: [PlaceDimension.Group: String]
+    /// Each group's heading as served (its title, and the policy line beside it where there is one).
+    public var placeHeadings: [PlaceDimension.Group: PlaceDimension.Heading]
+    /// The legend under the strips as served (the shaded ends' entry only where a strip shows them); nil draws none.
+    public var placeLegend: Components.Schemas.ProfileLegend?
     /// The note beside "How we win and lose" ("Through July 13 · 89 games"), as served.
     public var placesNote: String?
     /// Why "How we win and lose" could not be read this time, as served; nil when it was.
@@ -45,7 +48,8 @@ public struct MorningReportDesign {
         kicker: [String?]? = nil, kickerHint: String? = nil, club: String? = nil,
         scoreboard: Scoreboard? = nil, mastheadMissing: [ServedLine] = [],
         lede: String? = nil, ledeHint: String? = nil, ledeClaim: Components.Schemas.Claim? = nil, chips: [Chip]? = nil,
-        dimensions: [PlaceDimension]? = nil, placeLines: [PlaceDimension.Group: String] = [:], placesNote: String? = nil,
+        dimensions: [PlaceDimension]? = nil, placeHeadings: [PlaceDimension.Group: PlaceDimension.Heading] = [:],
+        placeLegend: Components.Schemas.ProfileLegend? = nil, placesNote: String? = nil,
         placesUnavailable: ServedLine? = nil,
         positions: [RosterPosition]? = nil, valueScale: ValueScale? = nil, rotation: [StaffPitcher] = [], bullpen: [StaffPitcher] = [],
         rotationNeeds: [ServedLine] = [], bullpenNeeds: [ServedLine] = [], rosterNotes: [ServedLine] = [], rosterUnavailable: ServedLine? = nil,
@@ -61,7 +65,8 @@ public struct MorningReportDesign {
         self.ledeClaim = ledeClaim
         self.chips = chips
         self.dimensions = dimensions
-        self.placeLines = placeLines
+        self.placeHeadings = placeHeadings
+        self.placeLegend = placeLegend
         self.placesNote = placesNote
         self.placesUnavailable = placesUnavailable
         self.positions = positions
@@ -105,7 +110,8 @@ extension MorningReportDesign {
         }
         if let profile = summary.clubProfile {
             dimensions = Self.dimensions(profile)
-            placeLines = Self.placeLines(profile.lines)
+            placeHeadings = Self.headings(profile.groups)
+            placeLegend = profile.legend
             placesNote = profile.note.display
             placesUnavailable = profile.unavailable.map { ServedLine(id: "profile", text: $0.display, hint: $0.hint) }
         }
@@ -172,16 +178,17 @@ extension MorningReportDesign {
 
     // MARK: How we win and lose
 
-    /// Each dimension as served. `of` is the place's; for a dimension without one (too early, not placed) the
-    /// recent place's, else the largest `of` among the served dimensions (the clubs the profile counts), else zero,
-    /// which draws an empty track and no dots.
+    /// Each dimension as served, on the strip the server serves for it: its clubs (0 draws an empty track and no dots)
+    /// and where the stated lines fall (none in a league too small to have a top or bottom fifth). Nothing is counted
+    /// or borrowed from a sibling here.
     nonisolated static func dimensions(_ profile: Components.Schemas.ClubProfile) -> [PlaceDimension] {
-        let leagueSize = profile.dimensions.flatMap { [$0.place?.of, $0.recent.place?.of] }.compactMap { $0 }.max() ?? 0
-        return profile.dimensions.map { served in
+        profile.dimensions.map { served in
             PlaceDimension(
                 id: served.id, name: served.name, symbol: served.symbol,
                 place: served.place?.rank,
-                of: served.place?.of ?? served.recent.place?.of ?? leagueSize,
+                of: served.strip.of,
+                strengthThrough: served.strip.strengthThrough,
+                weaknessFrom: served.strip.weaknessFrom,
                 tiedWith: served.place?.tiedWith ?? 0,
                 recentPlace: served.recent.place?.rank,
                 placeText: served.placeText, recentText: served.recent.text,
@@ -202,10 +209,14 @@ extension MorningReportDesign {
         }
     }
 
-    nonisolated static func placeLines(_ lines: Components.Schemas.ProfileLines) -> [PlaceDimension.Group: String] {
-        [
-            .strength: lines.strength.display, .weakness: lines.weakness.display, .rest: lines.rest.display,
-            .tooEarly: lines.tooEarly.display, .notPlaced: lines.notPlaced.display,
+    /// Each group's served heading: its title and, where served, its line, each with its help tag.
+    nonisolated static func headings(_ groups: Components.Schemas.ProfileGroups) -> [PlaceDimension.Group: PlaceDimension.Heading] {
+        let heading = { (served: Components.Schemas.ProfileGroupHeading) in
+            PlaceDimension.Heading(title: served.title.display, titleHint: served.title.hint, line: served.line?.display, lineHint: served.line?.hint)
+        }
+        return [
+            .strength: heading(groups.strength), .weakness: heading(groups.weakness), .rest: heading(groups.rest),
+            .tooEarly: heading(groups.tooEarly), .notPlaced: heading(groups.notPlaced),
         ]
     }
 
@@ -228,7 +239,10 @@ extension MorningReportDesign {
             overlapHint: node.overlapText.hint,
             holderRule: holderRule(node.holderRule),
             farmBar: node.farmNext.flatMap { next in
-                next.bar.map { FarmBar(readiness: $0.readiness, required: $0.required, text: next.readiness.display, hint: next.readiness.hint) }
+                next.bar.map {
+                    FarmBar(readiness: $0.readiness, required: $0.required, scaleLow: $0.scale.low, scaleHigh: $0.scale.high,
+                            line: $0.line.display, lineHint: $0.line.hint, text: next.readiness.display, hint: next.readiness.hint)
+                }
             }
         )
     }
@@ -237,11 +251,12 @@ extension MorningReportDesign {
         ValueRange(low: served.low, likely: served.likely, high: served.high, text: served.text, short: served.short)
     }
 
-    /// Control as served: seasons through a year (the served count of seasons left; none drawn when the server gives
-    /// no count), a clock, or not known. A kind this build has not heard of reads as not known, with its served words.
+    /// Control as served: seasons through a year (the served count of seasons left, or none served: drawn as not
+    /// known, never as no seasons), a clock, or not known. A kind this build has not heard of reads as not known, with
+    /// its served words.
     nonisolated static func control(_ served: Components.Schemas.ControlTerm) -> ControlTerm {
         switch served.kind.value1 {
-        case .through: .seasons(served.seasonsLeft ?? 0, text: served.text)
+        case .through: .seasons(served.seasonsLeft, text: served.text)
         case .clock: .clock(served.text)
         case .unknown, nil: .unknown(served.text)
         }
@@ -269,7 +284,8 @@ extension MorningReportDesign {
     public static let fixture = MorningReportDesign(
         kicker: Array(DesignFixtures.kicker.dropFirst()), club: DesignFixtures.kicker.first ?? nil,
         scoreboard: DesignFixtures.scoreboard, lede: DesignFixtures.lede, ledeHint: DesignFixtures.ledeHint, chips: DesignFixtures.chips,
-        dimensions: DesignFixtures.dimensions, placeLines: DesignFixtures.placeLines, placesNote: DesignFixtures.served("Through July 13 · 89 games"),
+        dimensions: DesignFixtures.dimensions, placeHeadings: DesignFixtures.placeHeadings, placeLegend: DesignFixtures.placeLegend,
+        placesNote: DesignFixtures.served("Through July 13 · 89 games"),
         positions: DesignFixtures.positions, valueScale: DesignFixtures.valueScale, rotation: DesignFixtures.rotation, bullpen: DesignFixtures.bullpen,
         rotationNeeds: DesignFixtures.rotationNeeds, bullpenNeeds: DesignFixtures.bullpenNeeds, rosterNotes: DesignFixtures.rosterNotes,
         wire: DesignFixtures.wire
@@ -281,6 +297,15 @@ extension MorningReportDesign {
         var design = fixture
         design.scoreboard = DesignFixtures.scoreboardWithTieAndMissing
         design.dimensions = DesignFixtures.dimensions + [DesignFixtures.tooEarly, DesignFixtures.notPlaced]
+        return design
+    }()
+
+    /// No game served: the deadline stands alone in the box score; and a last five this build cannot draw (a letter it
+    /// does not know), so the served line stands without dots.
+    public static let fixtureNoGame: MorningReportDesign = {
+        var design = fixture
+        design.scoreboard?.tonight = nil
+        design.scoreboard?.lastFive = nil
         return design
     }()
 }

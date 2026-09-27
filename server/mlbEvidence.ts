@@ -44,6 +44,7 @@ import type { PlatoonInput, PlatoonParams } from './platoon.js';
 import type { LensEvidence } from './roleReview.js';
 import type { RoleRef } from './mlbRoster.js';
 import { mlbDiscussionAssessments, type MlbDiscussionAssessment } from './org.js';
+import { READINESS_SCALE } from './prospectDecision.js';
 import { organizationPlayerStates } from './playerState.js';
 import type { DevelopmentalJudgment } from './developmentJudgment.js';
 
@@ -588,6 +589,8 @@ export interface FarmNext {
     readiness: number | null;
     /** The readiness its bar asks for, as it states it. */
     required: number | null;
+    /** The scale readiness and the bar are read on, as Player Development states it. */
+    scale: { low: number; high: number };
     reasons: string[];
     blockers: string[];
     missing: string[];
@@ -606,7 +609,7 @@ export function farmNextByPosition(orgId: number): Map<number, FarmNext[]> {
     const entry: FarmNext = {
       playerId: s.playerId, name: s.name, level: s.level.value!,
       assessment: a ? {
-        judgment: a.judgment, readiness: a.evidence.readiness, required: a.requirements.readiness,
+        judgment: a.judgment, readiness: a.evidence.readiness, required: a.requirements.readiness, scale: { ...READINESS_SCALE },
         reasons: a.reasons, blockers: a.blockers, missing: a.missingEvidence.map((m) => m.detail),
       } : null,
     };

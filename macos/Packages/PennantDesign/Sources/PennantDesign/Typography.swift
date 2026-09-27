@@ -249,15 +249,20 @@ public struct BoxRule: View {
     }
 }
 
-/// Tonight's game on the masthead: a control (it opens the schedule and game plans, the nearest view to Game Day until
-/// N9), so it is glass, per the HIG: glass on controls, not on content. With Reduce Transparency it is opaque with a
-/// border. Every word on it is served. Its basis (the date, the start, the starters' source) opens from the control's
-/// context menu ("Show why"); the deadline beside it is a claim of its own, so a click on it opens the league's own
-/// row. Nothing is drawn where the game or the deadline is not served (the masthead's missing lines say why).
+/// Tonight's game on the masthead: the one control there (it opens the schedule and game plans, the nearest view to
+/// Game Day until N9), so its surface is glass, per the HIG: glass on controls, not on content. With Reduce Transparency
+/// the surface is opaque, in the masthead's own colour, with a border. Every word on it is served, drawn in the
+/// masthead's checked text pair (`mastheadText`, `mastheadSecondaryText`), never a tint of the system's.
+///
+/// The game and the deadline are siblings, never one control inside another: the game is a button where this build can
+/// open it (and plain content where it cannot: nothing is drawn disabled), and the deadline beside it is a claim of its
+/// own, so a click on it opens the league's own row. The game's basis (the date, the start, the starters' source) opens
+/// from its context menu ("Show why"). Nothing is drawn where the game is not served (the masthead's missing lines say
+/// why, and the deadline stands alone in the box score).
 public struct TonightControl: View {
     let tonight: TonightGame
     let deadline: DeadlineNote?
-    /// Opens the game's served target; nil when this build cannot (the control is then disabled).
+    /// Opens the game's served target; nil when this build cannot (the game is then drawn as content, not a control).
     let action: (() -> Void)?
     @EffectiveReduceTransparency private var reduceTransparency
     @EffectiveContrast private var contrast
@@ -273,32 +278,42 @@ public struct TonightControl: View {
 
     public var body: some View {
         let palette = theme.palette(colorScheme: colorScheme, contrast: contrast)
-        Button(action: { action?() }) {
-            HStack(spacing: 16) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Kicker(tonight.when, size: .small)
-                    Text(verbatim: tonight.matchup).font(.headline)
-                    Text(verbatim: tonight.starters).font(.caption).monospacedDigit()
-                }
-                if let deadline {
-                    Rectangle().fill(.primary.opacity(0.2)).frame(width: 1, height: 36)
-                    let figures = VStack(alignment: .trailing, spacing: 2) {
-                        Text(verbatim: deadline.count).font(.title3.weight(.bold)).fontWidth(.condensed).monospacedDigit()
-                        Text(verbatim: deadline.text).font(.caption)
-                    }
-                    if let claim = deadline.claim {
-                        ClaimText(claim, edge: .bottom) { figures }.accessibilityIdentifier("masthead.deadline")
-                    } else {
-                        figures
-                    }
-                }
-                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).opacity(0.7)
+        HStack(spacing: 16) {
+            game(palette)
+            if let deadline {
+                Rectangle().fill(palette.mastheadText.opacity(0.3)).frame(width: 1, height: 36).accessibilityHidden(true)
+                DeadlineFigures(deadline: deadline, palette: palette, alignment: .trailing)
             }
-            .padding(.horizontal, 6).padding(.vertical, 4)
         }
-        .modifier(GlassOrOpaque(reduceTransparency: reduceTransparency, borderColor: palette.mastheadText))
-        .controlSize(.large)
-        .disabled(action == nil)
+        .padding(.horizontal, 14).padding(.vertical, 8)
+        .modifier(ControlSurface(reduceTransparency: reduceTransparency, palette: palette))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("masthead.tonightCard")
+    }
+
+    /// The game: a button where this build can open it, else the same words as content.
+    @ViewBuilder
+    private func game(_ palette: Theme.Palette) -> some View {
+        let words = HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Kicker(tonight.when, size: .small).foregroundStyle(palette.mastheadSecondaryText)
+                Text(verbatim: tonight.matchup).font(.headline).foregroundStyle(palette.mastheadText)
+                Text(verbatim: tonight.starters).font(.caption).monospacedDigit().foregroundStyle(palette.mastheadSecondaryText)
+            }
+            if action != nil {
+                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(palette.mastheadSecondaryText)
+                    .accessibilityHidden(true)
+            }
+        }
+        Group {
+            if let action {
+                Button(action: action) { words.contentShape(.rect) }
+                    .buttonStyle(.plain)
+                    .accessibilityHint(Text(verbatim: tonight.hint))
+            } else {
+                words.accessibilityElement(children: .combine)
+            }
+        }
         .help(Text(verbatim: tonight.hint))
         .contextMenu {
             if tonight.claim != nil {
@@ -313,21 +328,48 @@ public struct TonightControl: View {
     }
 }
 
-/// The system's glass button style, or, with Reduce Transparency, an opaque capsule with a border.
-struct GlassOrOpaque: ViewModifier {
+/// The trade deadline's served count and words ("17 days", "to the deadline · August 3"), a claim of its own where it
+/// is served as one (a click opens the league's own row), in the masthead's checked text pair. Beside tonight's game,
+/// or alone in the box score when no game is served.
+public struct DeadlineFigures: View {
+    let deadline: DeadlineNote
+    let palette: Theme.Palette
+    let alignment: HorizontalAlignment
+
+    public init(deadline: DeadlineNote, palette: Theme.Palette, alignment: HorizontalAlignment = .leading) {
+        self.deadline = deadline
+        self.palette = palette
+        self.alignment = alignment
+    }
+
+    public var body: some View {
+        let figures = VStack(alignment: alignment, spacing: 2) {
+            Text(verbatim: deadline.count).font(.title3.weight(.bold)).fontWidth(.condensed).monospacedDigit()
+                .foregroundStyle(palette.mastheadText)
+            Text(verbatim: deadline.text).font(.caption).foregroundStyle(palette.mastheadSecondaryText)
+        }
+        if let claim = deadline.claim {
+            ClaimText(claim, edge: .bottom) { figures }.accessibilityIdentifier("masthead.deadline")
+        } else {
+            figures.accessibilityElement(children: .combine).accessibilityIdentifier("masthead.deadline")
+        }
+    }
+}
+
+/// The Tonight card's surface: the system's glass (a control's layer), or, with Reduce Transparency, an opaque
+/// rounded surface in the masthead's own colour with a border in its text colour, so the checked text pair reads on it.
+struct ControlSurface: ViewModifier {
     let reduceTransparency: Bool
-    let borderColor: Color
+    let palette: Theme.Palette
 
     func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
         if reduceTransparency {
             content
-                .buttonStyle(.plain)
-                .padding(.horizontal, 12).padding(.vertical, 8)
-                .background(Color(nsColor: .controlBackgroundColor), in: .capsule)
-                .foregroundStyle(Color(nsColor: .labelColor))
-                .overlay(Capsule().strokeBorder(borderColor.opacity(0.6), lineWidth: 1))
+                .background(palette.masthead.first ?? palette.mastheadTop, in: shape)
+                .overlay(shape.strokeBorder(palette.mastheadText.opacity(0.6), lineWidth: 1))
         } else {
-            content.buttonStyle(.glass)
+            content.glassEffect(.regular.interactive(), in: shape)
         }
     }
 }

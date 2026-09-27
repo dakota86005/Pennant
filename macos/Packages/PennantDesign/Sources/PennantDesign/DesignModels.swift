@@ -57,12 +57,33 @@ nonisolated public struct PlaceDimension: Identifiable, Sendable, Hashable {
         case strength, weakness, rest, tooEarly, notPlaced
     }
 
+    /// A group's heading as served: its title ("Strengths") and the policy line beside it ("Top fifth of the league"),
+    /// each with its help tag; no line where the title says it all ("The rest").
+    public struct Heading: Sendable, Hashable {
+        public var title: String
+        public var titleHint: String?
+        public var line: String?
+        public var lineHint: String?
+
+        public init(title: String, titleHint: String? = nil, line: String? = nil, lineHint: String? = nil) {
+            self.title = title
+            self.titleHint = titleHint
+            self.line = line
+            self.lineHint = lineHint
+        }
+    }
+
     public var id: String
     public var name: String
     public var symbol: String
     /// The place among `of` clubs; nil when it is too early to call.
     public var place: Int?
+    /// The clubs the strip shows, as served (0 draws an empty track and no dots).
     public var of: Int
+    /// Where the stated lines fall, as served: a place at or above `strengthThrough` is a strength, at or below
+    /// `weaknessFrom` a weakness; nil in a league too small to have a top or bottom fifth (no shading).
+    public var strengthThrough: Int?
+    public var weaknessFrom: Int?
     /// How many other clubs share the place.
     public var tiedWith: Int
     /// The place over the recent window; nil when the sample is too small to call.
@@ -75,14 +96,16 @@ nonisolated public struct PlaceDimension: Identifiable, Sendable, Hashable {
     public var claim: Components.Schemas.Claim
 
     public init(
-        id: String, name: String, symbol: String, place: Int?, of: Int, tiedWith: Int, recentPlace: Int?,
-        placeText: String, recentText: String, group: Group, claim: Components.Schemas.Claim
+        id: String, name: String, symbol: String, place: Int?, of: Int, strengthThrough: Int? = nil, weaknessFrom: Int? = nil,
+        tiedWith: Int, recentPlace: Int?, placeText: String, recentText: String, group: Group, claim: Components.Schemas.Claim
     ) {
         self.id = id
         self.name = name
         self.symbol = symbol
         self.place = place
         self.of = of
+        self.strengthThrough = strengthThrough
+        self.weaknessFrom = weaknessFrom
         self.tiedWith = tiedWith
         self.recentPlace = recentPlace
         self.placeText = placeText
@@ -94,8 +117,9 @@ nonisolated public struct PlaceDimension: Identifiable, Sendable, Hashable {
 
 /// How long the club controls a player, as Player Rights answers it: seasons through a year, or a clock.
 nonisolated public enum ControlTerm: Sendable, Hashable {
-    /// Under control for `seasons` more seasons, counting this one ("Through 2043").
-    case seasons(Int, text: String)
+    /// Under control for `seasons` more seasons, counting this one ("Through 2043"); nil when the server gives no count
+    /// (drawn hatched, as not known: never as no seasons).
+    case seasons(Int?, text: String)
     /// A clock ("Arbitration this winter", "Free agent after this season").
     case clock(String)
     /// Not known: the export lacks what it takes.
@@ -128,19 +152,36 @@ nonisolated public enum HolderRule: String, Sendable, Hashable {
 }
 
 /// Player Development's readiness of the farm's next man against the bar it asks for, as served (two served
-/// numbers, never a share of a whole): drawn in the node's popover, beside the served words.
+/// numbers on the served scale they are read on, never a share of a whole): drawn in the node's popover, beside the
+/// served words and the served line that labels the two.
 nonisolated public struct FarmBar: Sendable, Hashable {
     public var readiness: Int
     public var required: Int
+    /// The scale both are read on, as served (0 to 100): a man past his bar is past the line, not a full bar.
+    public var scaleLow: Int
+    public var scaleHigh: Int
+    /// "Readiness 41 · his bar 55", as served, with how the two are read in its hint.
+    public var line: String
+    public var lineHint: String?
     /// "Ready for a look", "Not ready yet", as served, with Player Development's reasons in its hint.
     public var text: String
     public var hint: String?
 
-    public init(readiness: Int, required: Int, text: String, hint: String? = nil) {
+    public init(readiness: Int, required: Int, scaleLow: Int, scaleHigh: Int, line: String, lineHint: String? = nil, text: String, hint: String? = nil) {
         self.readiness = readiness
         self.required = required
+        self.scaleLow = scaleLow
+        self.scaleHigh = scaleHigh
+        self.line = line
+        self.lineHint = lineHint
         self.text = text
         self.hint = hint
+    }
+
+    /// Where a served number sits along the served scale, 0 at its low end and 1 at its high end (clipped to it).
+    public func position(of value: Int) -> Double {
+        guard scaleHigh > scaleLow else { return 0 }
+        return min(1, max(0, Double(value - scaleLow) / Double(scaleHigh - scaleLow)))
     }
 }
 

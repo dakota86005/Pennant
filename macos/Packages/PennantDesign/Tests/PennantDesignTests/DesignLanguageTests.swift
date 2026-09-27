@@ -148,12 +148,37 @@ struct DesignLanguageTests {
         #expect(DesignFixtures.valueScale.low <= 0 && DesignFixtures.valueScale.high > 0)
         // A holder merely listed says so; the farm's bar rides with its served words
         #expect(DesignFixtures.positions.contains { $0.holderRule == .listed })
-        #expect(DesignFixtures.positions.first { $0.id == "C" }?.farmBar == FarmBar(readiness: 41, required: 55, text: "Not ready yet", hint: "Player Development: his bat is behind the bar for Triple-A"))
+        #expect(DesignFixtures.positions.first { $0.id == "C" }?.farmBar == DesignFixtures.farmBar(41, 55, text: "Not ready yet", hint: "Player Development: his bat is behind the bar for Triple-A"))
     }
 
-    @Test("control reads its served words whatever its form")
+    @Test("the farm's bar is drawn on its served scale: a man past his bar is past the line, never a full bar (review)")
+    func farmBarScale() {
+        let past = DesignFixtures.farmBar(88, 76, text: "Ready for a look")
+        #expect(past.position(of: past.readiness) == 0.88)
+        #expect(past.position(of: past.required) == 0.76)
+        #expect(past.position(of: 140) == 1 && past.position(of: -5) == 0)
+        #expect(past.line == "Readiness 88 · his bar 76")
+    }
+
+    @Test("a strip shades only where the server says the lines fall, and nothing in a league without fifths (review M1)")
+    func shading() {
+        let placed = DesignFixtures.dimensions[0]
+        #expect(PlaceStrip.shading(placed).strength == 1...6)
+        #expect(PlaceStrip.shading(placed).weakness == 25...30)
+        var small = placed
+        small.of = 4
+        small.strengthThrough = nil
+        small.weaknessFrom = nil
+        #expect(PlaceStrip.shading(small).strength == nil && PlaceStrip.shading(small).weakness == nil)
+        #expect(PlaceStrip.dots(small).count == 4)
+    }
+
+    @Test("control reads its served words whatever its form; seasons with no served count are not known, never none (review H2)")
     func control() {
         #expect(ControlTerm.seasons(3, text: "Through 2043").text == "Through 2043")
+        #expect(ControlPips.seasonPips(.seasons(3, text: "Through 2043")) == 3)
+        #expect(ControlPips.seasonPips(.seasons(nil, text: "Through 2043")) == nil)
+        #expect(ControlPips.seasonPips(.seasons(0, text: "Through 2041")) == 0)
         #expect(ControlTerm.clock("Free agent after this season").text == "Free agent after this season")
         #expect(ControlTerm.unknown("Not known: no contract in the export").text == "Not known: no contract in the export")
     }
