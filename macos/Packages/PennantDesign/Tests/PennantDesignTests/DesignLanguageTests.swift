@@ -90,6 +90,15 @@ struct DesignLanguageTests {
         #expect(PlaceStrip.dots(DesignFixtures.tooEarly).allSatisfy { $0.kind == .other && $0.scale == 1 })
     }
 
+    @Test("control pips draw exactly the served seasons: none for none, never an invented pip (review S7)")
+    func controlPips() {
+        #expect(ControlPips.seasonPips(.seasons(3, text: "Through 2043")) == 3)
+        #expect(ControlPips.seasonPips(.seasons(1, text: "Through 2041")) == 1)
+        #expect(ControlPips.seasonPips(.seasons(0, text: "Free agent after this season")) == 0)
+        #expect(ControlPips.seasonPips(.seasons(-1, text: "x")) == 0)
+        #expect(ControlPips.seasonPips(.clock("Arbitration this winter")) == 0)
+    }
+
     @Test("a served tone maps to a distinct symbol and reads neutral when unknown to this build")
     func tones() {
         #expect(Set(Tone.allCases.map(\.symbol)).count == Tone.allCases.count)

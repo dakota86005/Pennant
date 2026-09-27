@@ -383,8 +383,8 @@ public struct InlineBar: View {
     }
 }
 
-/// Control as small pips: one per season the club holds him, a hollow pip for a clock, a hatched pip when not known.
-/// The served words are in the help tag and the accessibility label.
+/// Control as small pips: one per season the club holds him (none for none: a pip is never invented), a hollow pip for
+/// a clock, a hatched pip when not known. The served words are in the help tag and the accessibility label.
 public struct ControlPips: View {
     let control: ControlTerm
     @Environment(\.theme) private var theme
@@ -395,13 +395,19 @@ public struct ControlPips: View {
         self.control = control
     }
 
+    /// How many filled pips the served seasons draw: exactly that many, none for zero (or a count below it).
+    nonisolated static func seasonPips(_ control: ControlTerm) -> Int {
+        if case .seasons(let count, _) = control { return max(0, count) }
+        return 0
+    }
+
     public var body: some View {
         let palette = theme.palette(colorScheme: colorScheme, contrast: contrast)
         let accent = (palette.isNeutral ? Color.accentColor : palette.accent).opacity(0.8)
         HStack(spacing: 2) {
             switch control {
-            case .seasons(let count, _):
-                ForEach(0..<max(1, count), id: \.self) { _ in
+            case .seasons:
+                ForEach(0..<Self.seasonPips(control), id: \.self) { _ in
                     RoundedRectangle(cornerRadius: 1).fill(accent).frame(width: 5, height: 7)
                 }
             case .clock:
