@@ -30,7 +30,32 @@ export type NoPickReason =
   /** The save played most recently has no export to import. */
   | 'noExport'
   /** Another save was played within the window before the most recent one. */
-  | 'tooClose';
+  | 'tooClose'
+  /** A save's last-played time is in the future (a clock or a copied file), so which was played last isn't known. */
+  | 'timeUnknown'
+  /** Pennant couldn't look inside a folder where saves are kept, or inside the most recent save's export folder. */
+  | 'cantLook';
+
+/**
+ * A file time further ahead of now than this is not a time the save was played (a wrong clock, a copied file): it is
+ * unknown (D-018), never "played most recently". Generous, so a Mac whose clock drifts a little is not caught.
+ */
+export const FUTURE_TOLERANCE_MS = 5 * 60_000;
+
+/** Whether a save's last-played time is ahead of `now` by more than the tolerance (not a time it was played). */
+export const playedInFuture = (s: SaveInfo, now: number): boolean => {
+  const at = s.lastPlayedAt ? Date.parse(s.lastPlayedAt) : null;
+  return at !== null && at > now + FUTURE_TOLERANCE_MS;
+};
+
+/**
+ * A save's name for a sentence: its name, and where it is when another save found has the same name (this Mac has two
+ * called "New Game"), so a sentence never names the wrong one.
+ */
+export function saveLabel(save: SaveInfo, saves: readonly SaveInfo[]): string {
+  const twin = saves.some((o) => o.name === save.name && o.id !== save.id);
+  return twin ? `${save.name} (${save.location ?? save.lgPath})` : save.name;
+}
 
 /** The pick, or why there is none, and the save played next most recently (the pick's margin). */
 export interface SavePick {
@@ -40,6 +65,10 @@ export interface SavePick {
   latest: SaveInfo | null;
   /** The save played next most recently, when there is one. */
   runnerUp: SaveInfo | null;
+  /** The saves whose last-played time is in the future (unknown). */
+  futureTimes: SaveInfo[];
+  /** The folders Pennant couldn't look inside. */
+  unreadable: string[];
 }
 
 const playedMs = (s: SaveInfo | null | undefined): number | null => (s?.lastPlayedAt ? Date.parse(s.lastPlayedAt) : null);
@@ -49,15 +78,23 @@ const playedMs = (s: SaveInfo | null | undefined): number | null => (s?.lastPlay
  * location), with an export, and no other save played within `STANDOUT_WINDOW_MS` before it. Pure: the saves in, the
  * pick out.
  */
-export function pickSave(saves: readonly SaveInfo[]): SavePick {
-  const played = saves.filter((s) => playedMs(s) !== null).sort((a, b) => playedMs(b)! - playedMs(a)!);
+export function pickSave(saves: readonly SaveInfo[], opts: { now?: number; unreadable?: readonly string[] } = {}): SavePick {
+  const now = opts.now ?? Date.now();
+  const unreadable = [...(opts.unreadable ?? [])];
+  const futureTimes = saves.filter((s) => playedInFuture(s, now));
+  const played = saves.filter((s) => playedMs(s) !== null && !playedInFuture(s, now)).sort((a, b) => playedMs(b)! - playedMs(a)!);
   const latest = played[0] ?? null;
   const runnerUp = played[1] ?? null;
-  if (saves.length === 0) return { pick: null, reason: 'noSaves', latest, runnerUp };
-  if (!latest) return { pick: null, reason: 'neverPlayed', latest, runnerUp };
-  if (!latest.hasExport) return { pick: null, reason: 'noExport', latest, runnerUp };
-  if (runnerUp && playedMs(latest)! - playedMs(runnerUp)! < STANDOUT_WINDOW_MS) return { pick: null, reason: 'tooClose', latest, runnerUp };
-  return { pick: latest, reason: null, latest, runnerUp };
+  const none = (reason: NoPickReason): SavePick => ({ pick: null, reason, latest, runnerUp, futureTimes, unreadable });
+  // A folder Pennant couldn't look inside may hold the save being played: nothing clearly stands out (D-018)
+  if (unreadable.length > 0) return none('cantLook');
+  if (saves.length === 0) return none('noSaves');
+  if (futureTimes.length > 0) return none('timeUnknown');
+  if (!latest) return none('neverPlayed');
+  if (latest.hasExport === null) return none('cantLook');
+  if (!latest.hasExport) return none('noExport');
+  if (runnerUp && playedMs(latest)! - playedMs(runnerUp)! < STANDOUT_WINDOW_MS) return none('tooClose');
+  return { pick: latest, reason: null, latest, runnerUp, futureTimes, unreadable };
 }
 
 // ── "played since": another save played after the chosen one ──────────────────────────────────────────────────────
@@ -67,8 +104,12 @@ export function pickSave(saves: readonly SaveInfo[]): SavePick {
  * yet: a new member of the event union moves the Swift tests' positional reads, so it waits for the Mac stage.
  */
 export interface SavePlayedElsewhere {
-  /** `otherSave`: another save of the same (or an unknown) OOTP version; `newerOotp`: a save in a newer OOTP version. */
-  kind: 'otherSave' | 'newerOotp';
+  /**
+   * `otherSave`: another save of the same (or an unknown) OOTP version; `newerOotp`: a save in a newer OOTP version;
+   * `chosenMissing`: the chosen save is no longer where it was (moved, renamed or deleted), and this is the save played
+   * most recently.
+   */
+  kind: 'otherSave' | 'newerOotp' | 'chosenMissing';
   /** The line the app shows ("You've played RIGHTS-EXP since this save, last on Sep 20, 2026, 6:58 AM."). */
   text: string;
   /** The help tag: at most about 75 characters. */
@@ -102,12 +143,12 @@ export const discoveryClock = {
   saves: (): SaveInfo[] => detectSaves(os.homedir(), 'times'),
 };
 
-/** The chosen save's own facts: from the scan when it is there, else read from its folder. */
-function chosenSave(saves: readonly SaveInfo[]): SaveInfo | null {
+/** The chosen save's own facts (from the scan when it is there, else read from its folder), or `missing` when gone. */
+function chosenSave(saves: readonly SaveInfo[]): SaveInfo | 'missing' | null {
   const config = loadConfig();
   if (!config.csvDir) return null;
   const location = locateSave({ csvDir: config.csvDir, saveName: config.saveName, manualLgPath: config.lgPath ?? null });
-  if (!location.found || !location.lgPath) return null;
+  if (!location.found || !location.lgPath || !fs.existsSync(location.lgPath)) return 'missing';
   const id = saveId(location.lgPath);
   return saves.find((s) => s.id === id) ?? describeSave(location.lgPath, null, 'times');
 }
@@ -117,14 +158,31 @@ function chosenSave(saves: readonly SaveInfo[]): SaveInfo | null {
  * last save, once its times have been still for `PLAYED_SETTLE_MS`. None when no save is chosen, when the chosen
  * save's last-played time is not known (then nothing can be said to be later), or when nothing was played since.
  */
-export function playedElsewhere(saves: readonly SaveInfo[], chosen: SaveInfo | null, now: number): SavePlayedElsewhere | null {
+export function playedElsewhere(saves: readonly SaveInfo[], chosen: SaveInfo | 'missing' | null, now: number): SavePlayedElsewhere | null {
+  // A time in the future is not a time a save was played (unknown, D-018): it is never "played since"
+  const settled = (s: SaveInfo): boolean => playedMs(s) !== null && !playedInFuture(s, now) && now - playedMs(s)! >= PLAYED_SETTLE_MS;
+  if (chosen === 'missing') {
+    // The chosen save has gone (moved, renamed, deleted): name the save played most recently, so one click finds it
+    const latest = saves.filter(settled).sort((a, b) => playedMs(b)! - playedMs(a)!)[0];
+    if (!latest) return null;
+    const name = saveLabel(latest, saves);
+    return {
+      kind: 'chosenMissing',
+      text: `Pennant can't find the save it was using. You've played ${name} most recently, last on ${latest.lastPlayedText ?? 'a date that couldn\'t be read'}.${latest.hasExport ? '' : ' It has no export yet.'}`,
+      hint: 'It may have been renamed or moved in OOTP.',
+      actionText: `Switch to ${name}`,
+      save: latest,
+      chosenLastPlayedAt: null,
+    };
+  }
   const chosenAt = playedMs(chosen);
-  if (!chosen || chosenAt === null) return null;
+  if (!chosen || chosenAt === null || playedInFuture(chosen, now)) return null;
   const later = saves
-    .filter((s) => s.id !== chosen.id && playedMs(s) !== null && playedMs(s)! > chosenAt && now - playedMs(s)! >= PLAYED_SETTLE_MS)
+    .filter((s) => s.id !== chosen.id && settled(s) && playedMs(s)! > chosenAt)
     .sort((a, b) => playedMs(b)! - playedMs(a)!);
   const other = later[0];
   if (!other) return null;
+  const name = saveLabel(other, saves);
   const chosenVersion = chosen.ootpVersion ?? versionFromPath(chosen.lgPath);
   const newer = other.ootpVersion != null && chosenVersion != null && other.ootpVersion > chosenVersion;
   const when = other.lastPlayedText ?? 'recently';
@@ -132,9 +190,9 @@ export function playedElsewhere(saves: readonly SaveInfo[], chosen: SaveInfo | n
   const exportLine = other.hasExport ? '' : ' It has no export yet.';
   return {
     kind: newer ? 'newerOotp' : 'otherSave',
-    text: `You've played ${other.name}${where} since this save, last on ${when}.${exportLine}`,
+    text: `You've played ${name}${where} since this save, last on ${when}.${exportLine}`,
     hint: 'Pennant stays on this save until you switch.',
-    actionText: `Switch to ${other.name}`,
+    actionText: `Switch to ${name}`,
     save: other,
     chosenLastPlayedAt: chosen.lastPlayedAt ?? null,
   };
@@ -162,10 +220,11 @@ export function scanSaves(): SavePlayedElsewhere | null {
     const chosen = chosenSave(saves);
     notice = playedElsewhere(saves, chosen, now);
     // A save played since that has not settled yet: look again once it would have
-    const chosenAt = playedMs(chosen);
+    const chosenAt = chosen === 'missing' ? -Infinity : playedMs(chosen);
+    const chosenId = chosen === 'missing' ? null : chosen?.id;
     for (const s of saves) {
       const at = playedMs(s);
-      if (chosenAt !== null && at !== null && s.id !== chosen?.id && at > chosenAt && now - at < PLAYED_SETTLE_MS) {
+      if (chosenAt !== null && at !== null && s.id !== chosenId && at > chosenAt && now - at < PLAYED_SETTLE_MS) {
         next = Math.min(next, PLAYED_SETTLE_MS - (now - at) + 50);
       }
     }

@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { loadConfig, saveConfig, type AppConfig } from '../server/config.js';
 import { detectSaves } from '../server/paths.js';
 import { currentPlayedElsewhere, discoveryClock, resetSaveDiscovery, scanSaves, startSaveWatch } from '../server/saveDiscovery.js';
-import { APP_STORE_27, DIRECT_28, PretendHome } from './saveHomeFixture';
+import { APP_STORE_27, DIRECT_28, HOME_APP_SUPPORT_27, PretendHome } from './saveHomeFixture';
 import request from './request';
 
 /**
@@ -130,5 +130,35 @@ describe('the minute\'s look at the saves (N3.5 B2 review, finding 2)', () => {
       stats.mockRestore();
       process.env.HOME = realHome;
     }
+  });
+});
+
+describe('"played since" when the chosen save has gone, or a time is in the future (N3.5 B2 review)', () => {
+  it('names the save played most recently when the chosen save is no longer where it was', () => {
+    const { home, at } = world();
+    home.save(APP_STORE_27, 'Renamed in OOTP', { playedHoursAgo: 3 });
+    home.save(APP_STORE_27, 'Older', { playedHoursAgo: 50 });
+    saveConfig({ csvDir: `${home.dir}/${APP_STORE_27}/Gone.lg/import_export/csv`, saveName: 'Gone' });
+    at(0);
+    const notice = scanSaves()!;
+    expect(notice).toMatchObject({ kind: 'chosenMissing', actionText: 'Switch to Renamed in OOTP', save: { name: 'Renamed in OOTP' }, chosenLastPlayedAt: null });
+    expect(notice.text).toMatch(/^Pennant can't find the save it was using\. You've played Renamed in OOTP most recently, last on .+\.$/);
+  });
+
+  it('never calls a save with a time in the future "played since"', () => {
+    const { home } = world();
+    const chosen = home.save(APP_STORE_27, 'Chosen', { playedHoursAgo: 10 });
+    home.save(APP_STORE_27, 'Clock ahead', { playedHoursAgo: -2 });
+    saveConfig({ csvDir: chosen.csvDir, saveName: 'Chosen' });
+    expect(scanSaves()).toBeNull();
+  });
+
+  it('says where the save is when another has the same name', () => {
+    const { home } = world();
+    const chosen = home.save(APP_STORE_27, 'New Game', { playedHoursAgo: 10 });
+    home.save(HOME_APP_SUPPORT_27, 'New Game', { playedHoursAgo: 1 });
+    saveConfig({ csvDir: chosen.csvDir, saveName: 'New Game' });
+    const notice = scanSaves()!;
+    expect(notice.actionText).toBe('Switch to New Game (OOTP 27, Application Support in your home folder)');
   });
 });

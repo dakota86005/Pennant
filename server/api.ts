@@ -2,7 +2,7 @@ import { Router, type NextFunction, type Request, type Response } from 'express'
 import fs from 'node:fs';
 import path from 'node:path';
 import { db, tableExists, tableColumns, locateColumn, LAST_IMPORT_PATH, LEAGUE_DB_PATH, NEXT_DB_PATH, swapWhenFree } from './db.js';
-import { detectSaves, resolveChosenFolder, searchLocations, type ResolveResult, type SaveInfo, type SearchLocation } from './paths.js';
+import { detectSaves, findSaves, resolveChosenFolder, searchLocations, type ResolveResult, type SaveInfo, type SearchLocation } from './paths.js';
 import { DATA_DIR, loadConfig, saveConfig } from './config.js';
 import { diskSpace, importCsvDir, ImportRefused, type ImportProgress, type ImportResult } from './importer.js';
 import { upgradeLeagueDatabase } from './importBuild.js';
@@ -12,7 +12,7 @@ import { locateSave } from './ootpSave.js';
 import { readRatingMode } from './ratingMode.js';
 import { registerPostImportHook, runPostImportHooks } from './postImport.js';
 import { snapshotsAfterImport } from './importSnapshots.js';
-import { currentPlayedElsewhere, forgetSaveScan, humanClubsInExport, pickSave, type SavePlayedElsewhere } from './saveDiscovery.js';
+import { currentPlayedElsewhere, forgetSaveScan, humanClubsInExport, pickSave, saveLabel, type SavePlayedElsewhere } from './saveDiscovery.js';
 import { saveDiscoveryView, type SaveDiscovery } from './presentation/saveWords.js';
 import { assertAuthored } from './presentation/claim.js';
 import type { Claim } from './contract/presentation.js';
@@ -714,8 +714,8 @@ api.get('/v2/events', eventStream(statusSnapshot));
 
 /** The saves on this Mac, most recently played first, and the one you're playing when it clearly stands out (D-063). */
 api.get('/v2/saves', (_req, res: Response<SaveDiscovery>) => {
-  const saves = detectSaves();
-  const view = saveDiscoveryView(saves, pickSave(saves), searchLocations());
+  const { saves, unreadable } = findSaves();
+  const view = saveDiscoveryView(saves, pickSave(saves, { unreadable }), searchLocations());
   assertAuthored(view);
   res.json(view);
 });
@@ -817,19 +817,19 @@ function clubFromSave(csvDir: string): SetupClub {
 /** The first run's zero-question setup: choose and import the save that clearly stands out, or say why not. */
 export function automaticSetup(): AutomaticSetup {
   const config = loadConfig();
-  const saves = detectSaves();
+  const { saves, unreadable } = findSaves();
   if (config.csvDir || importState.importing) {
     const save = saves.find((s) => s.csvDir === config.csvDir) ?? null;
     return { outcome: 'alreadyChosen', text: `${config.saveName ?? save?.name ?? 'A save'} is already chosen.`, save, club: null, why: null };
   }
-  const view = saveDiscoveryView(saves, pickSave(saves), []);
+  const view = saveDiscoveryView(saves, pickSave(saves, { unreadable }), []);
   const pick = view.pick ? saves.find((s) => s.id === view.pick!.saveId)! : null;
   if (!pick) {
     return { outcome: 'nothingStandsOut', text: 'No save clearly stands out, so Pennant will ask which to use.', save: null, club: null, why: view.noPick!.claim };
   }
   const club = clubFromSave(pick.csvDir);
   chooseSave(pick.csvDir, pick.name);
-  return { outcome: 'started', text: `Using ${pick.name}, the save you've played most recently.`, save: pick, club, why: view.pick!.claim };
+  return { outcome: 'started', text: `Using ${saveLabel(pick, saves)}, the save you've played most recently.`, save: pick, club, why: view.pick!.claim };
 }
 
 api.post('/import', (_req, res: Response<ImportAccepted | ApiError>) => {

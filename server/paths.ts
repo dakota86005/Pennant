@@ -35,8 +35,8 @@ export interface SaveInfo {
   lastPlayedText?: string | null;
   /** When OOTP wrote the newest file of its export (the same time as `csvLastModified`); null with no export (N3.5). */
   exportedAt?: string | null;
-  /** The export holds CSV files to import (N3.5). */
-  hasExport?: boolean;
+  /** The export holds CSV files to import (N3.5); null when its folder is there but couldn't be looked inside (D-018). */
+  hasExport?: boolean | null;
   /** OOTP's export settings for this save exist (`settings/db_dump_standard_csv.cfg`): the export has been set up (N3.5). */
   exportConfigured?: boolean;
   /** The last day the save has played, from the save itself; null when it cannot be read (N3.5). */
@@ -83,16 +83,24 @@ export interface SaveRoot {
   ootpVersion: number | null;
 }
 
-const listDirs = (dir: string): string[] => {
+/** A folder that is simply not there, as against one that is there and couldn't be read. */
+const absent = (err: unknown): boolean => ['ENOENT', 'ENOTDIR'].includes((err as NodeJS.ErrnoException).code ?? '');
+
+/**
+ * The folders inside `dir`. One that is there but couldn't be read (permissions, a cloud folder that failed) is added
+ * to `unreadable`: Pennant couldn't look, which is never "nothing there" (D-018, N3.5 B2 review).
+ */
+const listDirs = (dir: string, unreadable?: string[]): string[] => {
   try {
     return fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory() || e.isSymbolicLink()).map((e) => e.name);
-  } catch {
+  } catch (err) {
+    if (!absent(err)) unreadable?.push(dir);
     return [];
   }
 };
 
 /** Every folder under `home` matching a base's segments, with the OOTP version named on the way. */
-function expandBase(home: string, base: SaveBase): SaveRoot[] {
+function expandBase(home: string, base: SaveBase, unreadable?: string[]): SaveRoot[] {
   let found: Array<{ path: string; version: number | null }> = [{ path: home, version: null }];
   for (const segment of base.segments) {
     const next: typeof found = [];
@@ -101,7 +109,7 @@ function expandBase(home: string, base: SaveBase): SaveRoot[] {
         next.push({ path: path.join(at.path, segment), version: at.version });
         continue;
       }
-      for (const name of listDirs(at.path)) {
+      for (const name of listDirs(at.path, unreadable)) {
         const m = segment.exec(name);
         if (!m) continue;
         next.push({ path: path.join(at.path, name), version: m[1] !== undefined ? Number(m[1]) : at.version });
@@ -123,8 +131,8 @@ const isDir = (p: string): boolean => {
 };
 
 /** Every `saved_games` folder on this machine, every OOTP version, in a stable order. */
-export function saveGameRoots(home: string = os.homedir()): SaveRoot[] {
-  return SAVE_BASES.flatMap((base) => expandBase(home, base)).sort((a, b) => (b.ootpVersion ?? 0) - (a.ootpVersion ?? 0) || (a.path < b.path ? -1 : 1));
+export function saveGameRoots(home: string = os.homedir(), unreadable?: string[]): SaveRoot[] {
+  return SAVE_BASES.flatMap((base) => expandBase(home, base, unreadable)).sort((a, b) => (b.ootpVersion ?? 0) - (a.ootpVersion ?? 0) || (a.path < b.path ? -1 : 1));
 }
 
 /** One place the server looks for saves: a human label, the folder, and whether it exists here. */
@@ -132,6 +140,8 @@ export interface SearchLocation {
   label: string;
   path: string;
   exists: boolean;
+  /** False when the folder is there but Pennant couldn't look inside it (N3.5 B2 review); absent when it could. */
+  readable?: boolean;
 }
 
 /**
@@ -143,8 +153,15 @@ export interface SearchLocation {
 export function searchLocations(home: string = os.homedir(), platform: NodeJS.Platform = process.platform): SearchLocation[] {
   const wanted = SAVE_BASES.filter((b) => b.platform === 'any' || (platform === 'win32' ? b.platform === 'win' : platform === 'darwin' ? b.platform === 'mac' : true));
   return wanted.flatMap((base): SearchLocation[] => {
-    const found = expandBase(home, base);
-    if (found.length > 0) return found.map((r) => ({ label: r.label, path: r.path, exists: true }));
+    const unreadable: string[] = [];
+    const found = expandBase(home, base, unreadable);
+    const looked = found.map((r): SearchLocation => {
+      const blocked: string[] = [];
+      listDirs(r.path, blocked);
+      return blocked.length ? { label: r.label, path: r.path, exists: true, readable: false } : { label: r.label, path: r.path, exists: true };
+    });
+    const couldnt = unreadable.map((dir): SearchLocation => ({ label: `OOTP, ${base.label}`, path: dir, exists: true, readable: false }));
+    if (looked.length + couldnt.length > 0) return [...looked, ...couldnt];
     const pattern = base.segments.map((s) => (typeof s === 'string' ? s : s === OOTP_VERSION_FOLDER ? 'OOTP Baseball *' : 'com.ootpdevelopments.ootp*macqlm'));
     const versioned = base.segments.includes(OOTP_VERSION_FOLDER);
     return [{ label: versioned ? `OOTP, ${base.label}` : base.label, path: path.join(home, ...pattern), exists: false }];
@@ -261,6 +278,8 @@ export function lastPlayedMs(lgPath: string): number | null {
 }
 
 /** How to switch an export on in OOTP, as its own documentation puts it (`presentation/saveWords.ts` cites it). */
+export const EXPORT_UNREADABLE_NOTE = 'Pennant couldn\'t look inside this save\'s export folder (check its permissions).';
+
 export const EXPORT_OFF_NOTE =
   'No export yet. In OOTP, open Game Settings, then the Database tab, and use Database Tools to export the league to CSV files.';
 
@@ -278,10 +297,12 @@ export function describeSave(lgPath: string, root: SaveRoot | null = null, facts
   let csvCount = 0;
   let csvLastModified: string | null = null;
   let csvs: string[] = [];
+  let exportUnreadable = false;
   try {
     csvs = fs.readdirSync(csvDir).filter((f) => f.toLowerCase().endsWith('.csv'));
-  } catch {
+  } catch (err) {
     csvs = [];
+    exportUnreadable = !absent(err);
   }
   csvCount = csvs.length;
   let latest = 0;
@@ -314,10 +335,10 @@ export function describeSave(lgPath: string, root: SaveRoot | null = null, facts
     lastPlayedAt,
     lastPlayedText: timestampWords(lastPlayedAt),
     exportedAt: csvLastModified,
-    hasExport: csvCount > 0,
+    hasExport: exportUnreadable ? null : csvCount > 0,
     exportConfigured: mtimeOf(path.join(lgPath, 'settings', 'db_dump_standard_csv.cfg')) !== null,
     simulatedThrough: simulated?.date ?? null,
-    exportNote: csvCount > 0 ? null : EXPORT_OFF_NOTE,
+    exportNote: exportUnreadable ? EXPORT_UNREADABLE_NOTE : csvCount > 0 ? null : EXPORT_OFF_NOTE,
   };
 }
 
@@ -335,10 +356,16 @@ export function versionFromPath(p: string): number | null {
  * played first (a save OOTP has never saved last), then by name. A stray folder named just `.lg` is not a save.
  */
 export function detectSaves(home: string = os.homedir(), facts: SaveFacts = 'full'): SaveInfo[] {
+  return findSaves(home, facts).saves;
+}
+
+/** The saves found, and the folders Pennant couldn't look inside (a save may be there: never read as none). */
+export function findSaves(home: string = os.homedir(), facts: SaveFacts = 'full'): { saves: SaveInfo[]; unreadable: string[] } {
   const saves: SaveInfo[] = [];
+  const unreadable: string[] = [];
   const seen = new Set<string>();
-  for (const root of saveGameRoots(home)) {
-    for (const entry of listDirs(root.path)) {
+  for (const root of saveGameRoots(home, unreadable)) {
+    for (const entry of listDirs(root.path, unreadable)) {
       if (!entry.toLowerCase().endsWith('.lg') || entry === '.lg') continue;
       const lgPath = path.join(root.path, entry);
       if (!isDir(lgPath)) continue;
@@ -348,7 +375,7 @@ export function detectSaves(home: string = os.homedir(), facts: SaveFacts = 'ful
       saves.push(info);
     }
   }
-  return rankSaves(saves);
+  return { saves: rankSaves(saves), unreadable: [...new Set(unreadable)] };
 }
 
 /** Most recently played first; a save never saved by OOTP last; then by name. Export time never orders them. */

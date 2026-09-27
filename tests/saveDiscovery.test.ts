@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import fs from 'node:fs';
 import path from 'node:path';
-import { detectSaves, searchLocations, type SaveInfo } from '../server/paths.js';
+import { detectSaves, findSaves, searchLocations, type SaveInfo } from '../server/paths.js';
 import { pickSave, STANDOUT_WINDOW_MS } from '../server/saveDiscovery.js';
-import { OOTP_EXPORT_DOCS, saveDiscoveryView } from '../server/presentation/saveWords.js';
+import { noPickClaim, OOTP_EXPORT_DOCS, saveDiscoveryView } from '../server/presentation/saveWords.js';
 import { bannedInPayload } from './bannedJargon';
 import { APP_STORE_27, DIRECT_28, HOME_APP_SUPPORT_27, PretendHome } from './saveHomeFixture';
 
@@ -22,7 +23,7 @@ afterEach(() => { for (const h of homes.splice(0)) h.cleanup(); });
 const HOUR = 3_600_000;
 
 /** A save as `pickSave` sees it: only its last-played time and whether it has an export matter. */
-const save = (name: string, playedHoursAgo: number | null, hasExport = true, now = Date.parse('2040-07-01T12:00:00Z')): SaveInfo => ({
+const save = (name: string, playedHoursAgo: number | null, hasExport = true, now = Date.now()): SaveInfo => ({
   name, lgPath: `/saves/${name}.lg`, csvDir: `/saves/${name}.lg/import_export/csv`, csvCount: hasExport ? 70 : 0,
   csvLastModified: null, csvLastModifiedText: null, id: name,
   lastPlayedAt: playedHoursAgo === null ? null : new Date(now - playedHoursAgo * HOUR).toISOString(), hasExport,
@@ -141,5 +142,61 @@ describe('the discovery payload', () => {
     expect(bannedInPayload(view, 'getSaveDiscovery')).toEqual([]);
     const close = [save('A', 1), save('B', 5)];
     expect(saveDiscoveryView(close, pickSave(close), []).noPick?.claim.text).toBe('You\'ve played A and B within 2 days of each other');
+  });
+});
+
+describe('what discovery cannot know stays unknown (N3.5 B2 review)', () => {
+  const chmods: string[] = [];
+  /** Unlocks what a test locked, the outer folder first, before the pretend home is removed. */
+  const unlock = (): void => { for (const d of chmods.splice(0).reverse()) fs.chmodSync(d, 0o755); };
+  const lock = (dir: string): void => {
+    fs.chmodSync(dir, 0o000);
+    chmods.push(dir);
+  };
+
+  it('never picks a save whose last-played time is in the future (a wrong clock, a copied file): it is not known', () => {
+    const now = Date.parse('2040-07-01T12:00:00Z');
+    const saves = [save('Clock ahead', -1, true, now), save('Current', 2, true, now), save('Older', 100, true, now)];
+    const pick = pickSave(saves, { now });
+    expect(pick).toMatchObject({ pick: null, reason: 'timeUnknown', latest: { name: 'Current' } });
+    expect(noPickClaim(pick, saves).text).toBe('Clock ahead was last saved at a time in the future, so which save you played last isn\'t known');
+    // A few minutes ahead is a drifting clock, not the future
+    expect(pickSave([save('Current', -0.05, true, now), save('Older', 100, true, now)], { now }).pick?.name).toBe('Current');
+  });
+
+  it('says it couldn\'t look, never "no saves" or "no export", when a folder can\'t be read', () => {
+    const h = home();
+    const s = h.save(APP_STORE_27, 'Locked export', { playedHoursAgo: 1 });
+    h.save(APP_STORE_27, 'Older', { playedHoursAgo: 100 });
+    lock(s.csvDir);
+    try {
+    const found = findSaves(h.dir);
+    const locked = found.saves.find((x) => x.name === 'Locked export')!;
+    expect(locked).toMatchObject({ hasExport: null, exportNote: 'Pennant couldn\'t look inside this save\'s export folder (check its permissions).' });
+    const pick = pickSave(found.saves, { unreadable: found.unreadable });
+    expect(pick.reason).toBe('cantLook');
+    const view = saveDiscoveryView(found.saves, pick, []);
+    expect(view.noPick?.claim.text).toBe('Pennant couldn\'t look inside Locked export\'s export folder');
+    expect(view.exportHelp).toBeNull();
+    // A saved_games folder that can't be read: never "no saves"
+    const root = path.join(h.dir, APP_STORE_27);
+    lock(root);
+    const hidden = findSaves(h.dir);
+    expect(hidden.saves).toEqual([]);
+    expect(hidden.unreadable).toEqual([root]);
+    expect(pickSave(hidden.saves, { unreadable: hidden.unreadable }).reason).toBe('cantLook');
+    expect(searchLocations(h.dir, 'darwin').find((l) => l.path === root)).toMatchObject({ exists: true, readable: false });
+    } finally {
+      unlock();
+    }
+  });
+
+  it('names where each save is when two share a name', () => {
+    const h = home();
+    h.save(APP_STORE_27, 'New Game', { playedHoursAgo: 1 });
+    h.save(HOME_APP_SUPPORT_27, 'New Game', { playedHoursAgo: 5 });
+    const saves = detectSaves(h.dir);
+    const view = saveDiscoveryView(saves, pickSave(saves), []);
+    expect(view.noPick?.claim.text).toBe('You\'ve played New Game (OOTP 27, Mac App Store version) and New Game (OOTP 27, Application Support in your home folder) within 2 days of each other');
   });
 });

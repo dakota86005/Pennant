@@ -2865,7 +2865,9 @@
               "noSaves",
               "neverPlayed",
               "noExport",
-              "tooClose"
+              "tooClose",
+              "timeUnknown",
+              "cantLook"
             ]
           },
           {
@@ -3664,8 +3666,11 @@
             "description": "When OOTP wrote the newest file of its export (the same time as `csvLastModified`); null with no export (N3.5)."
           },
           "hasExport": {
-            "type": "boolean",
-            "description": "The export holds CSV files to import (N3.5)."
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "The export holds CSV files to import (N3.5); null when its folder is there but couldn't be looked inside (D-018)."
           },
           "exportConfigured": {
             "type": "boolean",
@@ -3704,13 +3709,14 @@
         "type": "object",
         "properties": {
           "kind": {
-            "description": "`otherSave`: another save of the same (or an unknown) OOTP version; `newerOotp`: a save in a newer OOTP version.",
+            "description": "`otherSave`: another save of the same (or an unknown) OOTP version; `newerOotp`: a save in a newer OOTP version; `chosenMissing`: the chosen save is no longer where it was (moved, renamed or deleted), and this is the save played most recently.",
             "anyOf": [
               {
                 "type": "string",
                 "enum": [
                   "otherSave",
-                  "newerOotp"
+                  "newerOotp",
+                  "chosenMissing"
                 ]
               },
               {
@@ -3792,6 +3798,10 @@
           },
           "exists": {
             "type": "boolean"
+          },
+          "readable": {
+            "type": "boolean",
+            "description": "False when the folder is there but Pennant couldn't look inside it (N3.5 B2 review); absent when it could."
           }
         },
         "required": [

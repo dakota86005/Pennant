@@ -4,7 +4,7 @@
  */
 import type { Claim } from '../contract/presentation.js';
 import { EXPORT_OFF_NOTE, type SaveInfo, type SearchLocation } from '../paths.js';
-import { STANDOUT_WINDOW_MS, type NoPickReason, type SavePick } from '../saveDiscovery.js';
+import { saveLabel, STANDOUT_WINDOW_MS, type NoPickReason, type SavePick } from '../saveDiscovery.js';
 import { timestampWords } from '../timeWords.js';
 import { basis, claim, type BasisInput } from './claim.js';
 
@@ -74,13 +74,13 @@ function source(gameDate: string | null): BasisInput['source'] {
 }
 
 /** The pick's line: the save you're playing, and why. */
-export function pickClaim(pick: SavePick) {
+export function pickClaim(pick: SavePick, saves: readonly SaveInfo[] = []) {
   const s = pick.pick!;
   const because = [
     { label: 'Last played', value: `${played(s)} (when OOTP last saved it)` },
     exportLine(s),
     pick.runnerUp
-      ? { label: 'Next most recent', value: `${pick.runnerUp.name}, last played ${played(pick.runnerUp)} (${gap(s, pick.runnerUp)})` }
+      ? { label: 'Next most recent', value: `${saveLabel(pick.runnerUp, saves)}, last played ${played(pick.runnerUp)} (${gap(s, pick.runnerUp)})` }
       : { label: 'Next most recent', value: 'No other save has been saved in OOTP' },
     { label: 'Found in', value: s.location ?? s.lgPath },
   ];
@@ -106,17 +106,29 @@ export function noPickClaim(pick: SavePick, saves: readonly SaveInfo[]) {
   const reason = pick.reason!;
   const top = saves.filter((s) => s.lastPlayedAt).slice(0, 3);
   const because = top.length
-    ? top.map((s) => ({ label: s.name, value: `Last played ${played(s)}${s.hasExport ? '' : ', no export'}` }))
+    ? top.map((s) => ({
+      label: saveLabel(s, saves),
+      value: `Last played ${played(s)}${s.hasExport === null ? ', its export folder couldn\'t be looked inside' : s.hasExport ? '' : ', no export'}${pick.futureTimes.includes(s) ? ' (a time in the future: not known)' : ''}`,
+    }))
     : [{ label: 'Saves found', value: saves.length === 0 ? 'None' : `${saves.length}, none saved in OOTP yet` }];
+  for (const dir of pick.unreadable) because.push({ label: 'Couldn\'t look inside', value: dir });
+  const latest = pick.latest ? saveLabel(pick.latest, saves) : null;
+  const future = pick.futureTimes[0] ? saveLabel(pick.futureTimes[0], saves) : 'A save';
   const text: Record<NoPickReason, string> = {
+    timeUnknown: `${future} was last saved at a time in the future, so which save you played last isn't known`,
+    cantLook: pick.unreadable.length
+      ? 'Pennant couldn\'t look inside every folder where OOTP keeps saves'
+      : `Pennant couldn't look inside ${latest ?? 'your most recent save'}'s export folder`,
     noSaves: 'No OOTP saves were found on this Mac',
     neverPlayed: 'None of these saves has been saved in OOTP yet',
-    noExport: `${pick.latest?.name ?? 'Your most recent save'}, your most recent save, has no export yet`,
+    noExport: `${latest ?? 'Your most recent save'}, your most recent save, has no export yet`,
     tooClose: pick.latest && pick.runnerUp
-      ? `You've played ${pick.latest.name} and ${pick.runnerUp.name} within ${WINDOW_DAYS} days of each other`
+      ? `You've played ${latest} and ${saveLabel(pick.runnerUp, saves)} within ${WINDOW_DAYS} days of each other`
       : `Two saves were played within ${WINDOW_DAYS} days of each other`,
   };
   const hint: Record<NoPickReason, string> = {
+    timeUnknown: 'Choose the save to use.',
+    cantLook: 'Check the folder\'s permissions, or choose the save.',
     noSaves: 'Choose the folder that holds your saves.',
     neverPlayed: 'Choose the save to use.',
     noExport: 'Export the league from OOTP, or choose another save.',
@@ -129,7 +141,11 @@ export function noPickClaim(pick: SavePick, saves: readonly SaveInfo[]) {
     basis: basis({
       because,
       source: source(null),
-      unknown: [],
+      unknown: reason === 'cantLook'
+        ? ['What is inside the folders Pennant couldn\'t look inside: a save there may be the one you played last.']
+        : reason === 'timeUnknown'
+          ? ['When the save with a time in the future was really last played.']
+          : [],
       wouldChange: reason === 'noExport'
         ? ['An export of that save, written by OOTP.']
         : reason === 'tooClose'
@@ -170,9 +186,9 @@ export function saveDiscoveryView(saves: SaveInfo[], pick: SavePick, searched: S
   const latest = pick.latest;
   return {
     saves,
-    pick: pick.pick ? { saveId: pick.pick.id!, claim: pickClaim(pick) } : null,
+    pick: pick.pick ? { saveId: pick.pick.id!, claim: pickClaim(pick, saves) } : null,
     noPick: pick.reason ? { reason: pick.reason, claim: noPickClaim(pick, saves) } : null,
-    exportHelp: latest && !latest.hasExport ? exportHelpClaim(latest) : null,
+    exportHelp: latest && latest.hasExport === false ? exportHelpClaim(latest) : null,
     searched,
   };
 }
