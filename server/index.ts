@@ -11,6 +11,7 @@ import { checkExport, startWatcher, stopWatcher } from './watcher.js';
 import { closeLeagueDatabase, prepareLeagueDatabase, tableExists } from './db.js';
 import { currentRatingMode, historyDb, snapshotDates, stampSnapshotMode, takeSnapshot } from './history.js';
 import { loadSettings } from './settings.js';
+import { startSaveWatch, stopSaveWatch } from './saveDiscovery.js';
 import { requireApiToken } from './apiToken.js';
 import { acquireDataLock, releaseDataLock } from './dataLock.js';
 
@@ -95,6 +96,9 @@ function bootstrapData(): void {
   // Under the data-folder lock: a crashed import's unfinished file goes, and a database from an earlier build is
   // brought to the served shape (rollback journal, every index) once
   let needsUpgrade = false;
+  // The saves on this Mac, looked at now and every minute: whether another has been played since the chosen one
+  // (D-062). After this turn, so the start-up answers first
+  setImmediate(() => startSaveWatch());
   try {
     needsUpgrade = prepareLeagueDatabase().needsUpgrade;
   } catch (err) {
@@ -232,6 +236,7 @@ export async function shutdownServer(): Promise<void> {
     });
   }
   stopWatcher();
+  stopSaveWatch();
   closeLeagueDatabase();
   try {
     if (historyDb.open) historyDb.close();

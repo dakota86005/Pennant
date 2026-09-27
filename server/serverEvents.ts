@@ -4,6 +4,7 @@ import type { ImportNote } from './presentation/importWords.js';
 import type { JobStatus } from './jobs.js';
 import type { ServerStatus } from './api.js';
 import type { Integer } from './contract/primitives.js';
+import type { SavePlayedElsewhere } from './saveDiscovery.js';
 
 /**
  * What the server tells a connected app as it happens, over `GET /api/v2/events` (server-sent events, D-055).
@@ -23,7 +24,8 @@ export type ServerEvent =
   | ImportFinishedEvent
   | ExportPendingEvent
   | JobEvent
-  | FrontOfficeUpdatedEvent;
+  | FrontOfficeUpdatedEvent
+  | SavePlayedElsewhereEvent;
 
 /** The first event on every stream: the `/api/status` snapshot, so nothing is missed between loading and listening. */
 export interface HelloEvent { type: 'hello'; status: ServerStatus }
@@ -46,6 +48,11 @@ export interface JobEvent { type: 'job'; kind: string; orgId: Integer; status: J
  * `reportStamp`. The Mac app's Front Office store reloads on it (a cached read).
  */
 export interface FrontOfficeUpdatedEvent { type: 'front-office-updated'; orgId: Integer; reportStamp: string }
+/**
+ * Whether another save has been played since the one chosen changed (N3.5 Stage B2, D-062): the notice now, or null when
+ * there is none any more. The same value as `/api/status`'s `savePlayedElsewhere`.
+ */
+export interface SavePlayedElsewhereEvent { type: 'save-played-elsewhere'; notice: SavePlayedElsewhere | null }
 
 type Listener = (event: ServerEvent) => void;
 const listeners = new Set<Listener>();

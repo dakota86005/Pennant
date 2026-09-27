@@ -5,6 +5,16 @@
     "csvDir": "/tmp/pennant-contract-home/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games/Test League.lg/import_export/csv",
     "csvCount": 1,
     "csvLastModified": "2040-07-01T12:00:00.000Z",
-    "csvLastModifiedText": "Jul 1, 2040, 12:00 PM"
+    "csvLastModifiedText": "Jul 1, 2040, 12:00 PM",
+    "id": "saveid",
+    "ootpVersion": 27,
+    "location": "OOTP 27, direct download",
+    "lastPlayedAt": null,
+    "lastPlayedText": null,
+    "exportedAt": "2040-07-01T12:00:00.000Z",
+    "hasExport": true,
+    "exportConfigured": false,
+    "simulatedThrough": null,
+    "exportNote": null
   }
 ]
