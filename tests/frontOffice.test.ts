@@ -11,7 +11,8 @@ import { orgInjuries } from '../server/dashboard.js';
 import { computeFarmSystem } from '../server/farmOperations.js';
 import {
   FrontOfficeRefusal, NO_CLUB, UNKNOWN_CLAIM, UNKNOWN_CLUB, UNKNOWN_DEPARTMENT, claimTrail, currentReportStamp, departmentReport, frontOfficeStats,
-  frontOfficeSummary, frontOfficeTimings, invalidateFrontOffice, resetFrontOfficeCache, resolveOrg, valueRefitsRecorded, warmFrontOffice,
+  frontOfficeSummary, frontOfficeTimings, holdFrontOfficeRebuilds, invalidateFrontOffice, rebuildFrontOfficeLater, resetFrontOfficeCache, resolveOrg,
+  valueRefitsRecorded, warmFrontOffice,
 } from '../server/frontOfficeService.js';
 import { mlbOverview } from '../server/mlbOperations.js';
 import { importedAt } from '../server/playerStateRoutes.js';
@@ -393,6 +394,23 @@ describe('the cache', () => {
     expect(valueRefitsRecorded([{ refit: true, adopted: true }])).toBe(true);
     const after = await frontOfficeSummary(save.org);
     expect(after.reportStamp).not.toBe(before.reportStamp);
+    expect(frontOfficeStats().builds).toBe(2);
+  });
+
+  it('coalesces the rebuilds the refits after an import ask for into one, after both, never serving the old build meanwhile', async () => {
+    await frontOfficeSummary(save.org);
+    const runs = () => frontOfficeStats().inlineRuns + frontOfficeStats().workerRuns;
+    const started = runs();
+    const release = holdFrontOfficeRebuilds();
+    // Player Value adopts a refit, and a calibration is recorded: each drops the kept build at once
+    expect(valueRefitsRecorded([{ refit: true, adopted: true }])).toBe(true);
+    rebuildFrontOfficeLater();
+    expect(frontOfficeStats().cached).toBe(0);
+    expect(runs()).toBe(started);
+    // Both settled: one rebuild
+    release();
+    await frontOfficeSummary(save.org);
+    expect(runs()).toBe(started + 1);
     expect(frontOfficeStats().builds).toBe(2);
   });
 
