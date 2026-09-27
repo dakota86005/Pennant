@@ -268,7 +268,8 @@ public struct PositionPlate: View {
                             LabeledContent("Farm's next man") { Text(verbatim: farmNext) }
                         }
                     }
-                    .font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
+                    .font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
                     .transition(.opacity)
                 }
             }
