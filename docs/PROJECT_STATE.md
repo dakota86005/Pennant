@@ -30,8 +30,13 @@ material implementation state changes.
 
 ### Import and local runtime
 
-- Detects common OOTP Baseball 27 save locations and accepts a selected save,
-  `.lg` directory, saved-games directory, or CSV export directory.
+- Finds saves under every OOTP version (N3.5 Stage B2, D-062): `OOTP Baseball <n>` under the direct build's
+  Application Support folder, the Mac App Store container and a second `~/Application Support` folder; lists them
+  most recently played first (when OOTP last saved each, from file times only), picks the save being played only
+  when it clearly stands out (played most recently, with an export, no other save played in the two days before it)
+  and otherwise asks; a first run chooses and imports that save without a question (`POST /api/v2/setup/automatic`)
+  and follows the save's one human club; `/api/status` says when another save has been played since the chosen one.
+  It still accepts a selected save, `.lg` directory, saved-games directory, or CSV export directory.
 - Imports all available CSVs into SQLite with delimiter/encoding detection,
   numeric conversion, schema discovery, progress reporting, and generated
   indexes, all or nothing (N3.5, D-061): a worker thread builds `league.next.db`
@@ -1017,11 +1022,12 @@ resolution across all organization-specific features is future work.
 
 ## Known gaps and constraints
 
-- The import (N3.5 Stage B1) left for later: save discovery v2 (pattern roots, the recommended save, a newer save or
-  OOTP version noticed) and the Mac app's side are Stage B2; numbers are still stored as REAL (integer storage waits
-  for an SQL-arithmetic audit and the Electron cutover, the owner's decision 8); the transaction log is still copied
-  on the first data-status request after OOTP writes it; OOTP's saved log (`text_data.dat`) is not read; Org
-  Comparison's Player Value math (about 1 s) is not cached, because the fits in force change after an import.
+- The import (N3.5) left for later: the Mac app's side of discovery (Setup's zero-question path, the "played since"
+  prompt, the in-place update banner) is a later stage and uses what B2 serves; whether OOTP has a save open now is not
+  read (a stale live-log trio stays in a closed save's `temp/`); no Steam location is listed (none could be observed);
+  numbers are still stored as REAL (integer storage waits for an SQL-arithmetic audit and the Electron cutover, the
+  owner's decision 8); OOTP's saved log (`text_data.dat`) is not read; Org Comparison's Player Value math (about 1 s)
+  is not cached, because the fits in force change after an import.
 - Player Development mechanics (readiness, assignment authorization, demotion,
   destination fit, protection, philosophy profiles), the evidence adapter and the
   whole Minor League Operations model now have direct synthetic tests. Philosophy

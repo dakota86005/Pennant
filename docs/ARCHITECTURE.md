@@ -109,6 +109,16 @@ table/column discovery helpers because OOTP export shapes vary.
 asset. Domain queries should tolerate absent tables and renamed/absent columns
 where practical instead of assuming one developer's save shape.
 
+**Finding the save (N3.5 Stage B2, D-062).** `server/paths.ts` finds every `saved_games` folder by pattern (every
+OOTP version: the direct build, the Mac App Store container, a second `~/Application Support` folder, the Windows and
+OneDrive folders) and describes each save from file names, sizes and times only: when OOTP last saved it (the newer of
+`players.dat` and `flag_save_completed.dat`), its export and whether the export is set up, its OOTP version and game
+date. `server/saveDiscovery.ts` holds the one rule that picks a save (`pickSave`: played most recently, with an export,
+no other save played within `STANDOUT_WINDOW_MS`), the "played since" notice (a scan every minute, never on a request's
+path; a save counts once its times have been still for a minute) and the export's human clubs (`teams.csv`, before any
+import). `presentation/saveWords.ts` says it (`GET /api/v2/saves`); `api.ts` `automaticSetup` is the first run's
+zero-question path (`POST /api/v2/setup/automatic`). Nothing ever switches the chosen save by itself.
+
 **The import is all or nothing and off the server's thread (N3.5, D-061).**
 
 ```
@@ -135,15 +145,19 @@ export folder --(exportFiles.ts: quiet 10 s, one burst, fingerprint)--> importer
   nothing, removes it); the interrupted import is retried at the next start, never a repair. `last-import.json` is
   written in the swap's turn, and the database's own record (`pennant_import`) is trusted only when its start matches
   it (the earlier build imports in place and leaves that table behind). On Windows a refused rename is retried every
-  half second without blocking (`swapWhenFree`), the previous import served meanwhile.
+  half second without blocking (`swapWhenFree`), the previous import served meanwhile. The swap rolls a hot journal
+  on `league.db` back into it before the rename, never deletes it (a failed rename then leaves the previous import
+  whole), and the one-time upgrade first checks for 1.5 times the league file free, writing nothing without it (B2).
 - A file older than the rest of the export (not rewritten; a table switched off in OOTP) is left out and named
   (`leftOut` on the import, the data status); its table keeps the previous import's rows, recorded as carried and from
   which import, only when that import read the same export folder, otherwise it is absent. An unreadable file leaves
   its table absent. A stale or unreadable `players`, `teams` or `leagues` refuses the import.
 - Completeness: 10 s of quiet; a burst whose files fall in groups more than a minute apart (OOTP paused part way) only
   after two minutes' quiet, when the older group becomes stale; and before the swap the whole folder must match the
-  listing the build began from and still be settled, or the export is read again.
-- The watcher (`watcher.ts`) judges the folder after every change and at start-up; a settled export whose fingerprint
+  listing the build began from and still be settled, or the export is read again. Once any file is newer than the
+  newest file of the last import of the same folder, a file no newer was not rewritten and the export is judged in
+  groups whatever the gap (B2, `importedExport` in `exportFiles.ts`).
+- The watcher (`watcher.ts`) judges the folder after every change, every minute (a dropped watch heals, B2) and at start-up; a settled export whose fingerprint
   differs from the imported one is imported in the background when `importAutomatically` is on (the default), or
   offered (`exportPending`) when it is off. An Import Now waits the same way (`phase: 'waiting'`).
 - Indexes: `player_id`, `team_id`, `game_id`, `league_id`, and the season index `(year, split_id)` (or `(year)`),
@@ -390,7 +404,12 @@ then from a hand-picked folder. `liveLogSnapshot.ts` is the only code that
 touches the live database: copy the database and WAL to a private temp
 directory, re-stat the source and reject a moved or short copy, validate, retry,
 open the copy read-only, delete it on close. Results are cached against the
-source files' size and modification time.
+source files' size and modification time. Since N3.5 Stage B2 a copy is never made
+on a request's path after OOTP writes the log: the request is served the last
+copy and a new one is read in the background (`dataStatus.ts` `logRefreshTiming`,
+2 s after the last change seen, at most 10 s after the first, in
+`transactionLogWorker.ts` where a worker can start); the first copy for a save is
+warmed at start and when a save is chosen, and an import does not discard it.
 
 ### Freshness (`dataFreshness.ts`, `dataStatus.ts`)
 

@@ -216,6 +216,22 @@ node scripts/bench-import.mjs --server build/sidecar/server.cjs --data /tmp/penn
 It prints the import's time, `/api/status` latency during the import, peak memory, how long the refits take to settle,
 and each slow route cold and warm. SWIFTUI_REBUILD.md "N3.5" holds the numbers it measured.
 
+The launch budgets (N3.5 Stage B2) are measured on the same scratch folder once it holds an import: each run starts the
+bundled sidecar afresh and times launch to ready, launch to the first Morning Report payload, and every department's
+report asked again (the server's half of a view switch from the cache). It refuses the repository's `data/` and any
+folder under `~/Library/Application Support`:
+
+```bash
+node scripts/bench-launch.mjs --server build/sidecar/server.cjs --data /tmp/pennant-bench --runs 3 --out /tmp/launch.json
+```
+
+**Finding the save (N3.5 Stage B2, D-062).** The server finds saves under every OOTP version by itself
+(`GET /api/v2/saves`), and a first run with no save chosen can choose and import the one that clearly stands out
+(`POST /api/v2/setup/automatic`). Both read the real home folder's OOTP saves (file times only); in a test, point
+`HOME` at a pretend home (`tests/saveHomeFixture.ts`), never at the real one. The live transaction log's background
+copy runs in `build/sidecar/transaction-log-worker.cjs` (and `build/transaction-log-worker.cjs` for Electron), found
+beside the bundle like the other workers.
+
 **The data-folder lock.** Every server start, `npm run dev` included, takes `server.lock` in its data folder. A second
 server on the same folder refuses to start and names the one holding it. A lock left by a process that has gone is
 taken over on the next start; one held by a live process that is not Pennant (a reused process id) needs the file
