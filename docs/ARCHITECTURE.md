@@ -178,16 +178,21 @@ credentials, chat history, AI caches, import metadata, and the selected save
 also live under `DATA_DIR`.
 
 Rating history belongs to the save, not to its name (D-064). `server/historyIdentity.ts`
-gives each save a history key (its folder, D-063's id, checked against its players), and
-every reader and writer of rating history uses `currentHistoryKey()`: the snapshots and
-their rating-kind stamps (`save_rating_snapshots`, `save_rating_snapshot_modes`), the
-trends, observed history (`scoutedEvidence.ts`), the Development routes and the
-roster-state comparator (`roster_state_snapshot_saves`). The name-keyed
-`rating_snapshots` and `rating_snapshot_modes` are left exactly as they are for the
-earlier build; history filed under a save's name before D-064 is brought over once per
-save, only where it is certainly that save's, after a copy of `history.db` is made in
-`backups/`, and what is left unused is said on the data status (`history`). The
-watchlist, player notes and per-save fits keep their own keys.
+gives each save a history key: its folder (D-063's id), one folder one history, with a
+players test that only ever refuses (a folder whose league changed or went back in time
+starts fresh). Every reader and writer of rating history uses `currentHistoryKey()`: the
+snapshots and their rating-kind stamps (`save_rating_snapshots`,
+`save_rating_snapshot_modes`), the trends, observed history (`scoutedEvidence.ts`), the
+Development routes and the roster-state comparator (`roster_state_snapshot_saves`). Each
+snapshot is also written to the name-keyed `rating_snapshots` and `rating_snapshot_modes`
+exactly as the earlier build writes them, for a rollback; this build never reads them for
+development. A save that might have moved is asked about (`GET /api/v2/rating-history`,
+answered by `POST /api/v2/rating-history/choice`), never adopted. A snapshot is filed only
+when the league served is certainly the configured save's (`servedLeagueCertain`).
+History filed under a save's name before D-064 is brought over only where it is certainly
+that save's, after a copy of `history.db` is made in `backups/`, and what is left unused
+is said on the data status (`history`). The watchlist, player notes and per-save fits keep
+their own keys.
 
 From source, `DATA_DIR` defaults to `./data`. In the packaged desktop app,
 `electron/main.ts` sets it to Electron's OS user-data directory before loading

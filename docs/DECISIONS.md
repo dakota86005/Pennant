@@ -2344,71 +2344,76 @@ Mac can hold saves under several OOTP versions and locations.
 
 ## D-064 — Rating history belongs to the save, not to its name
 
-**Status:** Accepted (owner, 2026-09-27: "re-key rating history by save identity instead of by name"). What a save's
-identity is built from, its limits, the same-league line and the rules for the history written before this decision
-are the builder's, stated for review. **Implementation:** `server/historyIdentity.ts` (the key, the review of the
-name-keyed history, the served sentence); the keyed tables in `server/history.ts` (`save_rating_snapshots`,
-`save_rating_snapshot_modes`, `history_saves`, `history_legacy_review`, `history_identity_meta`);
-`roster_state_snapshot_saves` in `server/rosterStateHistory.ts`; `history` on `/api/data-status` and `ratingHistory` on
-`/api/v2/data-status`; `history` on `/api/development-history/:orgId` and `/api/development/:orgId`. Refines D-018,
-D-020 (roster-state comparisons), D-053 (a save's identity), D-061 (the rating-kind stamps are keyed the same way) and
-D-063 (a save's id).
+**Status:** Accepted (owner, 2026-09-27: "re-key rating history by save identity instead of by name"). Revised the same
+day after an independent review found that the first design's identity heuristics could mix saves; the supervisor
+decided the simpler rule below ("the GM decides"), including writing the name-keyed tables as well so a rollback keeps
+the Mac app's snapshots. **Implementation:** `server/historyIdentity.ts` (the key, the refusals, the offers, the review
+of the name-keyed history, the served sentence); the keyed tables in `server/history.ts` (`save_rating_snapshots`,
+`save_rating_snapshot_modes`, `history_saves`, `history_legacy_review`, `history_identity_meta`,
+`history_dual_writes`, `history_offer_choices`) and its `baselineSnapshot`; `roster_state_snapshot_saves` in
+`server/rosterStateHistory.ts`; `history` on `/api/data-status` and `ratingHistory` on `/api/v2/data-status`;
+`GET /api/v2/rating-history` and `POST /api/v2/rating-history/choice` (`presentation/ratingHistoryWords.ts`);
+`history` on `/api/development-history/:orgId` and `/api/development/:orgId`. Refines D-018, D-020 (roster-state
+comparisons), D-053 (a save's identity), D-061 (the rating-kind stamps are keyed the same way) and D-063 (a save's id).
 
 Rating history was filed under the save's name. OOTP names every new league "New Game"; one Mac held two saves of that
 name (N3.5), and the "played since" switch makes moving between them one click. Filed by name, one save's ratings were
 compared with the other's and the difference read as development, and a snapshot of one on a date the other also had
 overwrote part of the other's.
 
-- **A save's history key is its folder, checked against its players.** The folder is identified the way the save list
-  identifies it (D-063's id: the `<save>.lg` folder's real path, hashed; the export folder when no save folder encloses
-  it). The key bound to a folder is kept only while the league there still has the players its history saw. So a
-  restart, a re-import or another save of the same name changes nothing; two saves of one name are two folders, so two
-  histories; a folder that now holds a league with other players (a save deleted and a new one made under its name)
-  starts fresh. The save whose league is served decides, from the export folder its import read, never a save chosen
-  but not yet imported.
-- **A save moved or renamed in OOTP** is a new folder. Its history follows it only when exactly one earlier history's
-  folder has gone, that history is not later than the league's own date (a save never goes back in time) and it has
-  this league's players. More than one such history: it starts fresh and says so. A copy of a save starts fresh while
-  the original is still there, rather than sharing its past.
-- **The same league is drawn at 999 players in 1,000** (`CONTINUITY_POLICY`, a policy line, not a fit). Players are
-  compared by id and name where both sides have the id. One league keeps its players' names (only a GM's edit changes
-  one): on the owner's history every earlier snapshot matched its own save's export on every shared name. Two fictional
-  leagues share almost no names. Two leagues started from the same real-life database share every real player's id
-  and name and differ only in the players each generated: 99.2% and 99.8% of shared players matched across different
-  saves on the owner's Mac, so the line sits above that, and those saves are told apart by their generated players.
-  Below 50% is another league; between the lines is unclear; fewer than 20 shared players is no evidence. Unclear and
-  no evidence are never read as the same league.
+- **One folder, one history.** A save's history key is its folder, identified the way the save list identifies it
+  (D-063's id: the `<save>.lg` folder's real path, hashed; the export folder when no save folder encloses it; OOTP's
+  layout names the save folder even while it can't be seen). A restart, a re-import or another save of the same name
+  changes nothing; two saves of one name are two folders, so two histories.
+- **The players test only ever refuses.** When the league served is certainly the configured save's, the history bound
+  to its folder is checked against it: players compared by id and name where both sides have the id, the same league at
+  999 in 1,000 (`CONTINUITY_POLICY`, a policy line), another below 50%, unclear between, no evidence under 20 shared
+  players. A league that reads as another or unclear, or whose date is earlier than the history already holds (a save
+  deleted and made again in the folder, or restored from an OOTP backup), starts a fresh history for the folder and
+  says so; the earlier history is kept apart and never written over. Too few players to compare, at a date no earlier
+  than the history's, keeps appending: no evidence is never read as a refusal, nor as a match. The test never joins two
+  histories, so its thin margin (on the owner's saves, two saves of one real-life database matched 98.9% to 99.8% of
+  shared players) can cost a fresh start, never a mix.
+- **A moved or renamed save is asked about, never adopted.** When a save has no history of its own yet (at most the
+  snapshot of its first import here), its league is certainly its own, and another history is still bound to a folder
+  that has really gone (missing inside a folder that can be read: a drive not mounted, or a folder that can't be looked
+  inside, is not gone), is not later than this league, and the players test does not rule it out (same, or too few to
+  tell), the question is served: "This save has no rating history yet. Is it "New Game", the save that used to be in
+  ...?" The GM answers with one click. Yes carries that history to this folder, with this save's own first snapshot;
+  start fresh keeps them apart; either answer is recorded and nothing is asked again. Pennant never answers it.
+- **Only a certain league is filed.** The league on disk is certainly the configured save's when the import's own record
+  names its export folder (every import by this build), or, for an earlier build's import (which names none), when the
+  configuration has not changed since it. Otherwise (a save chosen and not yet imported) no baseline snapshot is taken,
+  no history is refused and no earlier history is reviewed: the chosen save's history is never given another league.
 - **Why not D-053's identity** (`saveIdentity.ts`: the name and a fingerprint of the league's first season). It
-  contains the name, so renaming a save would orphan history that, unlike a fit, cannot be refitted; it is per league,
-  not per save; its fingerprint can change when OOTP deletes retired players; and two saves named "New Game" started
-  from the same real-life database share it. The calibration fits keep it; nothing in it changes here.
-- **Additive storage.** The keyed tables are new. `rating_snapshots` and `rating_snapshot_modes` are never altered: the
-  earlier (Electron) build still reads and writes them under the name, as before, and this build neither reads them for
-  development nor writes them. A snapshot this build takes is therefore not seen by a rolled-back Electron build. A
-  roster-state snapshot keeps its name in its own row (the earlier build reads it) and gains its key in a table of its
-  own; one taken before this decision has none and is never compared.
-- **The history written before, brought over only where certain.** For the served save, every date filed under its
-  name is reviewed against the served league: brought over when its rows have this league's players, the date is not later than the
-  league's own, and no other known save of that name with an export has those players too; then only the rows of
-  players the league still has under the same name. A date with another league's players belongs to another save and
-  is kept apart. Anything else (unclear, too few players, a later date, another same-named save that also matches, or
-  whose export couldn't be read) is left where it is, unused by any save, and said. A date brought over is final; one
-  left unused is looked at again against the next import, since the league it was compared with may have been another
-  save's (an earlier build's import records no export folder, so while a newly chosen save's first import runs the
-  configured save is all there is to go on); with no league imported nothing is decided. A copy of `history.db` is made in
-  `backups/history-before-save-identity-<time>.db` before the first row is brought over, once per data folder (written
-  under a temporary name and renamed, so a copy cut short is never taken for one). Each date is one transaction with
-  its record: a crash part way through leaves every date whole or untouched, and the next start carries on. The review
-  runs on the server's own thread; a worker only resolves the key.
-- **Said, not silent.** When some of a save's history is left unused, or it started fresh, the data status says so in
-  one sentence ("Rating history from 2 earlier imports couldn't be matched to this save for sure, so it isn't used."),
-  with what became of each part in its basis; the development routes serve the same, and each development trend
-  carries it in its reasons.
-- **What it cannot tell apart.** Two saves of one real-life database with fewer than one generated player in a thousand
-  among those compared; a save deleted and made again in the same folder from the same database (it keeps the history
-  of the one it replaced); a save renamed before this decision (its earlier history stays under its old name, unused);
-  a same-named save that has no export now but had one then (it is not checked, since only an export was ever
-  imported). No OOTP save file is parsed: only the export's `players.csv` and the served league are read.
+  contains the name, so renaming a save would orphan history that, unlike a fit, cannot be refitted; it is per league;
+  and two saves named "New Game" from the same real-life database share it. Two definitions now coexist on purpose:
+  this one for history, D-053's for the per-save fits, which keep it unchanged.
+- **Additive storage, written both ways.** The keyed tables are new. This build writes every rating snapshot and its
+  rating-kind stamp to them and also, exactly as the earlier (Electron) build writes them, to `rating_snapshots` and
+  `rating_snapshot_modes` under the save's name, so a rolled-back Electron build keeps every snapshot (its own
+  same-name defect stays its own). This build reads only the keyed tables, and records the dates it wrote under a name
+  (`history_dual_writes`) so they are never taken for earlier history. A roster-state snapshot keeps its name in its own
+  row and gains its key in a table of its own; one taken before this decision has none and is never compared.
+- **The history written before, brought over only where certain.** For the served save (when certain), each date filed
+  under its name that this build did not write is brought over when its rows have this league's players (the same
+  league), the date is not later than the league's own, and no other known save carries the name (and every folder of
+  saves could be looked inside); then only the rows of players the league still has under the same name. A date with
+  another league's players is kept apart; anything else is left where it is, unused by any save, and said. A copy of
+  `history.db` is made in `backups/history-before-save-identity-<time>.db` before the first row is brought over, once
+  per data folder (written under a temporary name and renamed; a finished copy whose record a crash lost is recorded,
+  not made again). Each date is one transaction with its record: a crash part way through leaves every date whole or
+  untouched, the data status says it stopped, and the next start carries on. A date brought over is final; one left
+  unused is looked at again against the next import; with no league imported nothing is decided. The review runs on the
+  server's own thread; a worker only resolves the key.
+- **Said, not silent.** When some of a save's history is left unused, it started fresh, or bringing it over failed, the
+  data status says so in one sentence ("Rating history from 2 earlier imports couldn't be matched to this save for
+  sure, so it isn't used."), with what became of each part in its basis; the development routes serve the same, and
+  each development trend carries it in its reasons.
+- **What it cannot tell apart.** A save deleted and made again in the same folder from the same real-life database, at
+  a date no earlier than its history (its players read the same; it continues that history); a save renamed before this
+  decision (its earlier history stays under its old name, unused). No OOTP save file is parsed: only the served league
+  is read.
 
 Not changed: the watchlist and player notes are still filed under the save's name, and the per-save fits keep D-053's
 identity (PROJECT_STATE lists both as known gaps).
