@@ -106,7 +106,7 @@ struct PennantAPITests {
         #expect(response.status == .ok)
     }
 
-    @Test("an event stream with known events decodes, each to its own shape")
+    @Test("an event stream with known events decodes, each to its own shape, read by type and never by position")
     func knownEvents() async throws {
         let events = try await decodedEvents(from: sse([
             ("hello", #"{"type":"hello","status":\#(status)}"#),
@@ -115,20 +115,33 @@ struct PennantAPITests {
             ("import-finished", #"{"type":"import-finished","lastImport":null,"error":"No .csv files"}"#),
             ("export-pending", #"{"type":"export-pending","since":"2026-09-25T12:05:00.000Z"}"#),
             ("job", #"{"type":"job","kind":"storylines","orgId":1,"status":{"state":"running","startedAt":"2026-09-25T12:06:00.000Z","finishedAt":null,"error":null}}"#),
+            ("front-office-updated", #"{"type":"front-office-updated","orgId":1,"reportStamp":"r2"}"#),
+            ("save-played-elsewhere", #"{"type":"save-played-elsewhere","savePlayedElsewhere":null}"#),
         ]))
-        #expect(events.count == 6)
-        #expect(events[0].value1?.status.saveName == "Test League")
-        #expect(events[0].value1?.status.lastImport?.files.first?.table == "players")
-        #expect(events[1].value2?.startedAt == "2026-09-25T12:00:00.000Z")
-        #expect(events[2].value3?.progress.phase.value1 == .writing)
-        #expect(events[3].value4?.lastImport == nil)
-        #expect(events[3].value4?.error == "No .csv files")
-        #expect(events[4].value5?.since == "2026-09-25T12:05:00.000Z")
-        #expect(events[5].value6?.status.state.value1 == .running)
+        #expect(events.count == 8)
+        guard case .hello(let hello) = events[0].kind else { Issue.record("hello"); return }
+        #expect(hello.status.saveName == "Test League")
+        #expect(hello.status.lastImport?.files.first?.table == "players")
+        #expect(events[0].hello?.status.saveName == "Test League")
+        guard case .importStarted(let started) = events[1].kind else { Issue.record("import-started"); return }
+        #expect(started.startedAt == "2026-09-25T12:00:00.000Z")
+        guard case .importProgress(let progress) = events[2].kind else { Issue.record("import-progress"); return }
+        #expect(progress.progress.phase.value1 == .writing)
+        guard case .importFinished(let finished) = events[3].kind else { Issue.record("import-finished"); return }
+        #expect(finished.lastImport == nil)
+        #expect(finished.error == "No .csv files")
+        guard case .exportPending(let pending) = events[4].kind else { Issue.record("export-pending"); return }
+        #expect(pending.since == "2026-09-25T12:05:00.000Z")
+        guard case .job(let job) = events[5].kind else { Issue.record("job"); return }
+        #expect(job.status.state.value1 == .running)
+        guard case .frontOfficeUpdated(let updated) = events[6].kind else { Issue.record("front-office-updated"); return }
+        #expect(updated.reportStamp == "r2")
+        guard case .savePlayedElsewhere(let played) = events[7].kind else { Issue.record("save-played-elsewhere"); return }
+        #expect(played.savePlayedElsewhere == nil)
         // Every event also reads as its bare type, which is what a client switches on
-        #expect(events.map { $0.value8?._type } == ["hello", "import-started", "import-progress", "import-finished", "export-pending", "job"])
+        #expect(events.map(\.typeName) == ["hello", "import-started", "import-progress", "import-finished", "export-pending", "job", "front-office-updated", "save-played-elsewhere"])
         // Each event decodes to its own shape only: a hello is not an export-pending
-        #expect(events[0].value5 == nil && events[4].value1 == nil)
+        #expect(events[0].hello != nil && events[4].hello == nil)
     }
 
     @Test("an event type this build does not know decodes as unknown, and the stream goes on")
@@ -139,12 +152,10 @@ struct PennantAPITests {
         ]))
         #expect(events.count == 2)
         let unknown = events[0]
-        #expect(unknown.value8?._type == "desk-changed")
-        #expect(
-            [unknown.value1 == nil, unknown.value2 == nil, unknown.value3 == nil, unknown.value4 == nil,
-             unknown.value5 == nil, unknown.value6 == nil, unknown.value7 == nil].allSatisfy { $0 }
-        )
-        #expect(events[1].value5?.since == "2026-09-25T12:05:00.000Z")
+        #expect(unknown.typeName == "desk-changed")
+        #expect(unknown.kind == nil)
+        guard case .exportPending(let pending) = events[1].kind else { Issue.record("export-pending"); return }
+        #expect(pending.since == "2026-09-25T12:05:00.000Z")
     }
 
     @Test("an enum code this build does not know decodes as its string, never an error")
@@ -256,8 +267,9 @@ struct PennantAPITests {
                 continue
             }
         }
-        #expect(events[4].value6?.status.state.value1 == .done)
-        let orgID: Int? = events[4].value6?.orgId
+        guard case .job(let job) = events[4].kind else { Issue.record("job"); return }
+        #expect(job.status.state.value1 == .done)
+        let orgID: Int = job.orgId
         #expect(orgID == 1)
     }
 
@@ -272,10 +284,10 @@ struct PennantAPITests {
         ]))
         #expect(events.count == 4)
         guard case .known(let hello) = events[0].reading else { Issue.record("hello"); return }
-        #expect(hello.value1?.status.saveName == "Test League")
+        #expect(hello.hello?.status.saveName == "Test League")
         #expect(events[1].reading == .unknown(type: "desk-changed"))
         #expect(events[2].reading == .malformed(type: "hello"))
-        #expect(events[2].value1 == nil)
+        #expect(events[2].hello == nil && events[2].kind == nil)
         #expect(events[3].reading == .malformed(type: "import-progress"))
     }
 
@@ -283,7 +295,59 @@ struct PennantAPITests {
     func readingCoversEveryShape() {
         let names = Components.Schemas.ServerEvent.knownTypeNames
         #expect(names.count == Components.Schemas.ServerEvent.shapeCount)
-        #expect(names == ["hello", "import-started", "import-progress", "import-finished", "export-pending", "job", "front-office-updated"])
+        #expect(names == ["hello", "import-started", "import-progress", "import-finished", "export-pending", "job", "front-office-updated", "save-played-elsewhere"])
+    }
+
+    /// The union holds its members by position, so a new member moves every later one (N3.5 B2 review, item 1): the
+    /// accessor reads each by its type. This fails when the generated union gains a shape the accessor has no case for,
+    /// and when a shape's position no longer reads as its own kind.
+    @Test("the typed accessor covers every shape, whatever its position in the union")
+    func typedAccessorCoversEveryShape() async throws {
+        #expect(Set(Components.Schemas.ServerEvent.Kind.typeNames) == Components.Schemas.ServerEvent.knownTypeNames)
+        #expect(Components.Schemas.ServerEvent.Kind.typeNames.count == Components.Schemas.ServerEvent.shapeCount)
+        // Each member set by position reads as its own kind: a shifted member would read as another's
+        let event = Components.Schemas.ServerEvent(value5: .init(_type: .exportPending, since: "2026-09-25T12:05:00.000Z"))
+        guard case .exportPending(let pending) = event.kind else { Issue.record("value5 is export-pending"); return }
+        #expect(pending.since == "2026-09-25T12:05:00.000Z")
+        let mirror = Mirror(reflecting: Components.Schemas.ServerEvent())
+        #expect(mirror.children.count == Components.Schemas.ServerEvent.shapeCount + 1)
+    }
+
+    @Test("the fixtures the save-finding stage and the rating history added decode (N3.5 B2, D-064)")
+    func saveFindingFixtures() async throws {
+        let discovery = try await jsonClient("getSaveDiscovery").getSaveDiscovery().ok.body.json
+        #expect(discovery.saves.count >= 1)
+        let saves = try await jsonClient("listSaves").listSaves().ok.body.json
+        let first = try #require(saves.first)
+        #expect(first.id?.isEmpty == false)
+        #expect(first.hasExport != nil)
+        #expect(first.ootpVersion == 27)
+        let status = try await jsonClient("getStatus").getStatus().ok.body.json
+        #expect(status.savePlayedElsewhere == nil)
+        #expect(status.saveId == nil)
+        let configured = try await jsonClient("getStatus-configured").getStatus().ok.body.json
+        #expect(configured.saveId == "saveid")
+        let decoder = JSONDecoder()
+        let nothing = try decoder.decode(Components.Schemas.AutomaticSetup.self, from: Data(try fixture("responses/setUpAutomatically-nothing-stands-out.json").utf8))
+        #expect(nothing.outcome.value1 == .nothingStandsOut)
+        for name in ["getRatingHistory", "getRatingHistory-offer"] {
+            _ = try decoder.decode(Components.Schemas.RatingHistoryView.self, from: Data(try fixture("responses/\(name).json").utf8))
+        }
+        for name in ["answerRatingHistoryOffer-adopt", "answerRatingHistoryOffer-undo"] {
+            _ = try decoder.decode(Components.Schemas.RatingHistoryView.self, from: Data(try fixture("responses/\(name).json").utf8))
+        }
+        // An answer the server refuses (no choice, nothing to answer) is its sentence
+        for name in ["answerRatingHistoryOffer-no-choice", "answerRatingHistoryOffer-nothing-to-answer"] {
+            #expect(try decoder.decode(Components.Schemas.ApiError.self, from: Data(try fixture("responses/\(name).json").utf8)).error.isEmpty == false)
+        }
+        // The event the minute's look sends when another save has been played since (N6, Stage B1)
+        let events = try await decodedEvents(from: try fixture("events-save-played-elsewhere.sse"))
+        #expect(events.count == 1)
+        guard case .savePlayedElsewhere(let played) = events[0].kind else { Issue.record("save-played-elsewhere"); return }
+        let notice = try #require(played.savePlayedElsewhere)
+        #expect(notice.kind.value1 == .otherSave)
+        #expect(notice.actionText == "Switch to Played Since")
+        #expect(notice.save.id == "saveid")
     }
 
     @Test("a game date stays the string the server sent, unpadded")
