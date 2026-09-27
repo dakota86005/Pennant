@@ -2261,3 +2261,36 @@ export's (or a previous save's) table, and no check that OOTP had finished writi
   way an import works: a copy is converted in the worker and swapped in, never the served file in place. A hot
   rollback journal left by a process killed while writing the file in place is rolled back before the read-only server
   reads it, and no journal of a replaced file is left beside the new one.
+
+## D-062 — Pennant picks the save you're playing only when it clearly stands out, and asks otherwise
+
+**Status:** Accepted (owner, 2026-09-26: the N3.5 decisions 2, 3 and 4; the policy line is the builder's, stated for
+review). **Implementation:** N3.5, Stage B2: `server/paths.ts` (where saves are found, and each save's facts),
+`server/saveDiscovery.ts` (the ranking, the pick and the "played since" notice), `GET /api/v2/saves`,
+`POST /api/v2/setup/automatic`, `savePlayedElsewhere` on `/api/status`. Refines D-021 (normal use needs nothing but the
+export) and D-061 (automatic import).
+
+The owner asked for "automated finding of the right files". The investigation (N3.5 Stage A, section 1.1) found that the
+only safe signal of which save is being played is when OOTP last saved it, that the newest export is the wrong signal
+(a research copy, an export behind its own save, and copied saves that keep their export's file times), and that one
+Mac can hold saves under several OOTP versions and locations.
+
+- **Where saves are looked for** is a pattern, not one version: `OOTP Baseball <n>` under the direct build's
+  Application Support folder, under the Mac App Store build's container (`com.ootpdevelopments.ootp<n>macqlm`) and under
+  the second `~/Application Support` folder found on the owner's Mac; the Windows and OneDrive folders as before. Only
+  folders seen on disk or named by earlier builds are listed; no Steam folder is, since none could be observed.
+- **When a save was last played** is the newer file time of `<save>.lg/players.dat` and `flag_save_completed.dat`, both
+  written by OOTP on every save. Only file times are read; neither file's format is parsed. A folder with neither has
+  never been saved by OOTP and is never the save being played.
+- **The pick.** A save clearly stands out when it is the save played most recently across every version and location,
+  it has an export, and no other save was played in the two days before it (`STANDOUT_WINDOW_MS`, a policy line, not a
+  fit). Then it is served as the save you're playing, with its reason and basis, and a first run (no save chosen)
+  chooses and imports it without asking. Otherwise nothing is picked: the saves are served most recently played first,
+  and the app asks. The export's time never picks a save.
+- **The club** is taken from the save when its export names exactly one human-managed club (the existing automatic
+  resolution, `viewingOrganization.ts`); with several the app asks.
+- **Played since.** When another save (or a newer OOTP version's) has been played since the chosen one, the status says
+  so with that save's id and one sentence, once OOTP has finished saving it (its times still for a minute). Pennant never
+  switches by itself: the GM chooses with one click.
+- **No export.** A save without one is told, in one sentence, where OOTP's own documentation puts the export (OOTP's
+  wiki and manual, cited in the basis). Nothing more about OOTP's menus is invented.
