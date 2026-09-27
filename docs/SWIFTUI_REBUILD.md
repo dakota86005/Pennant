@@ -9,6 +9,8 @@ department registry, the commands, Setup and Settings; "As built at N3" in secti
 Milestone N4, Stage A is built (2026-09-26: the presentation types and builder, `server/presentation/`, the route
 extractions, severity normalization, `/api/v2/catalog`, the N3 gaps served as words; "As built at N4 (Stage A)" in
 sections 4.1, 4.2 and 8); its Stage B (the Front Office adapters, their cache and the claims endpoint) follows.
+Milestone N3.5, Stage B1 is built (2026-09-26: the all-or-nothing, automatic import and the export's rating mode, D-061;
+"N3.5, Stage B1: the import, as built" in section 9); Stage B2 (discovery and the Mac app's everyday experience) follows.
 Nothing else in this document is implemented yet. It supersedes the UI parts of the
 V2 web plan (`~/.claude/plans/okay-can-we-please-effervescent-cherny.md`, sections 3 and 4). The server-side
 parts of that plan (the Front Office contract, the Club Profile, the roster map, the horizon board, the league
@@ -436,7 +438,8 @@ is the raw message (for the log and a help tag); an unknown `/v2` route answers 
   whatever columns the export has (`catalogClubs()`): without `human_team`, who runs a club is unknown (null).
 - *For N3.5:* `/api/v2/data-status` reuses `getDataStatus`, whose first read after OOTP writes the log copies
   `text_data.sqlite3` on the request path (cached by size and time afterwards). Stage B's cache or N3.5's import work
-  should move it off the request.
+  should move it off the request. *(N3.5 Stage B1 did not: the log changes as OOTP plays, not with an import, so moving
+  it needs a watcher on the log, left for Stage B2 or N4's cache.)*
 - Measured on the synthetic save (30 requests each after one warm-up): the catalog about 2 ms at 4 clubs and 3 ms at 30
   (it grows with the club count: a palette, a record and a logo check per club, 45 kB at 30 clubs); the data status
   0.3 ms (a real save's first read copies the transaction log, cached against the files' size and time after that).
@@ -861,6 +864,7 @@ sizes, not dates.
 | **N1** | Sidecar server | `sidecar.ts`, `PORT=0`, ready line, stdin watchdog, SIGTERM, token (including self-calls), bind, lock (also in Electron), injected keys, `/api/v2/events` SSE, `build:sidecar`, pinned Node download with checksum, kill-mid-import safety check | 2 |
 | **N2** | Contract pipeline | `server/contract/`, `contract:build`, `openapi.json`, drift, coverage, ajv and jargon tests; the PennantAPI package builds | 2 |
 | **N3** | App skeleton | Xcode project and packages, `ServerController`, `AppModel`, window shell (sidebar from the registry, toolbar, inspector, commands, Settings, Setup/import flow), dev signing, test scripts, fixture generation, backups | 3 |
+| **N3.5** | "It just works": the import and discovery | Stage B1 (server): the all-or-nothing import in worker threads, the export's completeness, automatic import, the served database's pragmas and indexes, per-import caches, concurrent refits, the export's rating mode (D-061). Stage B2: discovery v2 and the Mac app's everyday experience (setup, freshness, the background import shown quietly) | 7 server, 2.5 Mac |
 | **N4** | Presentation foundation (server) | `Claim` and `Row`, the org resolver, route extractions (standings, trends, crunch, pitching), severity normalization, Front Office adapters and cache, `/api/v2/catalog` (glossary, stat catalog, theme tokens, staff heads) | 3 |
 | **N5** | Design system (Swift) | `ClaimText`, `ClaimValue`, `BasisPopover` (detachable), `EvidenceView`, `RankStrip`, `RangeBar`, `Masthead`, `ReportCard`, table and chart styles, theming, tones, previews, accessibility | 3 |
 | **N6** | The Morning Report | Server: `teamSeason`, `clubProfile`, `rosterMap`, `horizon` (fixtures extended; R2/R4/R5 rules from the V2 plan). App: Morning Report, the report template, roster map | 4 |
@@ -873,6 +877,46 @@ sizes, not dates.
 | **N13** | AI surfaces, native | Staff room (SSE streaming, markdown via `AttributedString`, server-provided player links), Storylines, GM Briefing; keys in the Keychain (decide then between the data-protection keychain, which needs an application-identifier entitlement and so a provisioning profile, and the login keychain, whose per-item access lists can prompt; N3 only reads). Behaviour unchanged | 2 |
 | **N14** | macOS integration and release | App Intents and Spotlight, widgets (App Group), menu bar extra (optional), Sparkle with appcast on GitHub Releases (`pennant-v*`), notarized DMG pipeline | 3 |
 | **N15** | Acceptance and cutover | Accessibility audit, Instruments pass, parity checklist against the React app (every field, every hover), acceptance by the owner and his brother; then the **cutover PR** (delete `src/`, `electron/`, the web tests and dependencies; docs), and merge to `main` with the owner's approval | 3 |
+
+### N3.5, Stage B1: the import, as built (2026-09-26)
+
+Branch `feature/swiftui-import`. The design is the N3.5 investigation's (its section 2.2 to 2.5), with the owner's
+decisions of 2026-09-26 (D-061). ARCHITECTURE "Imported league database" has the pipeline.
+
+| Piece | Where | What it does |
+|---|---|---|
+| Completeness | `server/exportFiles.ts`, `watcher.ts` | An export is read once no CSV has changed for 10 s; files older than the newest by more than 10 min are stale (left out, named). Every change restarts the quiet period; a start-up check catches an export written while Pennant was closed. A fingerprint (names, sizes, times) tells a new export from the imported one. |
+| Build | `server/importBuild.ts`, `importWorker.ts` | A worker thread builds `league.next.db`: three parse workers (the same file, another role) read each file, check it again, stream-parse it and send flat batches; the writer inserts, indexes each table as it lands, copies stale tables (same export folder only), runs ANALYZE, records the import in `pennant_import`, closes in rollback-journal mode and flushes. A large file with no quote character is split across the parse workers at line breaks (rowids keep its order). |
+| Swap and serving | `server/db.ts` | One rename; `db` is a live binding reopened read-only (2 GB memory map, 128 MB cache); a replaced connection closes 5 s later. The start-up tidy removes a crashed build, converts an old write-ahead-log file and adds missing indexes. The served schema is remembered per connection. |
+| Refusals | `server/importer.ts`, `presentation/importWords.ts` | No room (4.5 x the export free), a still-changing export (three reads, then a sentence), a stale or unreadable `players`, `teams` or `leagues`: each a sentence, the previous import untouched. |
+| After the swap | `server/postImport.ts`, `importSnapshots.ts` | The hook list: the snapshots in their own worker (stamped with the rating mode), the storylines and briefing, then both refits at once. N4's Front Office warm-up registers here (`registerPostImportHook`); a start-up re-runs the snapshots of an import that never took them. |
+| Automatic import | `api.ts` `handleSettledExport`, `settings.ts` | `importAutomatically` (default on; needs `autoImport`, the watch): a settled new export is imported in the background; off, it is offered as before. The events are the existing `import-started`, `import-progress` (with a new phase, `waiting`) and `import-finished`. |
+| Rating mode | `server/ratingMode.ts`, `scoutedEvidence.ts`, `history.ts` | Read by label from the save's export settings at each import; recorded with the import and on each rating snapshot (`rating_snapshot_modes`); served on the data status (a Ratings line, the reason when unknown) and through `exportRatingMode` / `ratingSource`; "none" withholds every rating; a switch is left out of development and said. |
+| Caches | `server/importCache.ts`, `destinationFit.ts` | The destination-fit league populations, once per import. |
+
+**Speed on the owner's real export** (70 CSVs, 289 MB, 2.79 million rows; Apple M4, 16 GB; the bundled sidecar on a scratch
+data folder, `scripts/bench-import.mjs`). The Mac was busy with other work during these runs: the investigation's
+prototype, re-run the same hour, took 16.0 s where it had taken 8.6 s idle, so every time here is about 1.9 times what an
+idle Mac would show. Before is `feature/swiftui` at `435d84a`, run back to back with after.
+
+| Measure | Before | After |
+|---|---|---|
+| Import, start to finish | 40.4 s (21.0 s idle, the investigation) | **13.7 s** (build alone 13.2 s: writer busy 10.1 s, of which indexes 4.1 s) |
+| `/api/status` during the import, p50 / p95 / p99 / max | 69 / 1,226 / 4,215 / 9,706 ms | **2 / 3 / 4 / 87 ms** |
+| Peak memory during the import (RSS) | 1,765 MB | **1,215 MB** |
+| Cores used during the import (average) | 1.1 | 2.8 |
+| Refits settled after the import | 60.1 s (one after the other) | **36.3 s** (together; the value refit is the longer) |
+| `league.db` | 1,321 MB | 1,126 MB (16 KB pages) |
+| Dashboard, cold / warm | 3,392 / 1,320 ms | 1,313 / **228 ms** |
+| MLB need responses (role holder review), warm | 3,182 ms | **480 ms** |
+| Farm operations, warm | 1,009 ms | **134 ms** |
+| Prospects, warm | 883 ms | **64 ms** |
+| Lineup, warm | 372 ms | 216 ms |
+| Org comparison, warm | 1,203 ms | 1,081 ms (Player Value's math; not export-only, not cached) |
+| Contracts / payroll / free agents / draft, warm | 162 / 142 / 282 / 170 ms | 48 / 111 / 239 / 117 ms |
+
+The new build was checked against the previous importer on the same export: the same 70 tables, the same rows in the
+same order, and 30 season indexes added.
 
 **Total: about 51 working sessions.** The milestones are strictly ordered. There are two exceptions:
 - N1 and N2 can overlap.

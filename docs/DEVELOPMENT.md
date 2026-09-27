@@ -181,7 +181,8 @@ npm run build:sidecar
 npm run sidecar:node
 ```
 
-The first writes `build/sidecar/` (the bundled server and its two refit workers); the second fetches Node 24.21.0 for
+The first writes `build/sidecar/` (the bundled server and its worker threads: the two refits, the import's build and
+parse worker, and the import's snapshots); the second fetches Node 24.21.0 for
 Apple Silicon into `build/node-runtime/pennant-server`, checked against a pinned SHA-256. Both folders are ignored by
 Git. To run the bundle, point it at a scratch data folder and send the handshake on stdin; it answers with a
 `PENNANT_READY` line holding the port, and every request needs `Authorization: Bearer <token>`:
@@ -193,6 +194,23 @@ echo '{"token":"0123456789abcdef0123456789abcdef"}' | OOTP_FO_DATA_DIR=/tmp/penn
 That example stops at once, because stdin closes after the one line; the app keeps stdin open for as long as it wants
 the server. The bundle loads better-sqlite3 from the repository's `node_modules`, so it needs the Node build of the
 native module (`npm run abi:node`), not Electron's.
+
+**The import (N3.5, D-061).** An import builds `league.next.db` in a worker thread and swaps it in with one rename;
+the app serves `league.db` read-only. A leftover `league.next.db` is a crashed import's and the next start removes it.
+Two environment variables exist for the tests and scripts, never for the app: `OOTP_FO_DB_WRITABLE=1` opens `league.db`
+read-write (the tests and `npm run synthetic:league` build their leagues through the server's own connection), and
+`OOTP_FO_EXPORT_QUIET_MS` shortens the 10 s an export must stay unwritten before it is read (the tests set 0).
+`OOTP_FO_DB_READONLY=1` (the report scripts) is unchanged: read-only, and not even the start-up tidy runs.
+
+To measure an import and the slow pages on a real export, drive the bundled sidecar with the benchmark, on a scratch
+data folder only (the export is only read; delete the folder afterwards):
+
+```bash
+node scripts/bench-import.mjs --server build/sidecar/server.cjs --data /tmp/pennant-bench --csv "<save>.lg/import_export/csv" --out /tmp/bench.json
+```
+
+It prints the import's time, `/api/status` latency during the import, peak memory, how long the refits take to settle,
+and each slow route cold and warm. SWIFTUI_REBUILD.md "N3.5" holds the numbers it measured.
 
 **The data-folder lock.** Every server start, `npm run dev` included, takes `server.lock` in its data folder. A second
 server on the same folder refuses to start and names the one holding it. A lock left by a process that has gone is

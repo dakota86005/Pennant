@@ -33,9 +33,27 @@ material implementation state changes.
 - Detects common OOTP Baseball 27 save locations and accepts a selected save,
   `.lg` directory, saved-games directory, or CSV export directory.
 - Imports all available CSVs into SQLite with delimiter/encoding detection,
-  numeric conversion, schema discovery, progress reporting, transactions, and
-  generated indexes.
-- Watches selected exports and can re-import automatically.
+  numeric conversion, schema discovery, progress reporting, and generated
+  indexes, all or nothing (N3.5, D-061): a worker thread builds `league.next.db`
+  (three parse workers, one writer) and one rename swaps it in, so the pages read
+  the previous import whole until then and a failure or crash leaves it intact.
+  The served `league.db` is read-only with memory-mapped reads and the season
+  index `(year, split_id)`. About 14 s for a real 289 MB export on a busy M4
+  (40 s before), with `/api/status` answering in 3 ms at p95 throughout.
+- Reads an export only once OOTP has finished writing it (10 s quiet, each file
+  re-checked after reading); a file older than the rest is left out and named
+  (its table keeps the previous import's rows, marked, only for the same export
+  folder); a stale or unreadable players, teams or leagues file refuses the
+  import; the free disk space is checked first.
+- Watches the selected export and imports a new one in the background once it
+  has settled (`importAutomatically`, on by default; off, it is offered), and
+  checks at start-up for an export written while Pennant was closed.
+- Records which kind of ratings the export carries (OOTP's export settings: the
+  scouts' view, true, OSA or none) with each import and rating snapshot, serves
+  it on the data status, and never reads a switch between kinds as development.
+- After an import, the snapshots run in a worker and both refits at the same
+  time (a post-import hook list later milestones register into); the
+  destination-fit league populations are cached once per import.
 - Stores replaceable imported data separately from persistent rating history,
   watchlist/notes, settings, chat histories, credentials, and AI caches.
 - Runs as a local Express/React web app or a packaged Electron application.
@@ -59,7 +77,8 @@ material implementation state changes.
   sidecar, `npm run dev`), so two copies never write the same databases; a lock whose process has gone is
   taken over.
 - An import that never completed (the process was killed partway, or the import failed) is recorded by `import-in-progress.json`;
-  `/api/status` reports it as `importInterruptedSince`, and the next start imports the export again.
+  `/api/status` reports it as `importInterruptedSince`, and the next start imports the export again. Since N3.5 the
+  previous import is whole meanwhile (the unfinished build is a separate file, removed at the next start).
 - Binds to loopback by default, applies a Host allowlist against DNS rebinding,
   and supports explicit unauthenticated LAN binding with warnings.
 - Can export a read-only static website snapshot.
@@ -993,6 +1012,11 @@ resolution across all organization-specific features is future work.
 
 ## Known gaps and constraints
 
+- The import (N3.5 Stage B1) left for later: save discovery v2 (pattern roots, the recommended save, a newer save or
+  OOTP version noticed) and the Mac app's side are Stage B2; numbers are still stored as REAL (integer storage waits
+  for an SQL-arithmetic audit and the Electron cutover, the owner's decision 8); the transaction log is still copied
+  on the first data-status request after OOTP writes it; OOTP's saved log (`text_data.dat`) is not read; Org
+  Comparison's Player Value math (about 1 s) is not cached, because the fits in force change after an import.
 - Player Development mechanics (readiness, assignment authorization, demotion,
   destination fit, protection, philosophy profiles), the evidence adapter and the
   whole Minor League Operations model now have direct synthetic tests. Philosophy
