@@ -4480,7 +4480,7 @@
           },
           "name": {
             "type": "string",
-            "description": "The pack's name as its file gives it, or \"Club colours\" for the club's own."
+            "description": "The pack's name as its file gives it, or \"Team colors\" for the club's own (as Settings lists it)."
           },
           "kind": {
             "$ref": "#/components/schemas/ThemePackKind"

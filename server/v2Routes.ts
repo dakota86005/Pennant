@@ -20,7 +20,7 @@ import {
 } from './frontOfficeService.js';
 import type { ClaimTrail, DepartmentReport, FrontOfficeSummary } from './presentation/frontOffice/types.js';
 import type { ThemeChoice, ThemeChoices } from './contract/themePack.js';
-import { ThemeChoiceRefusal, activePack, chooseTheme, installedPacks, themeChoices } from './themePackStore.js';
+import { ThemeChoiceRefusal, activePack, chooseTheme, chosenPacks, installedPacks, themeChoices } from './themePackStore.js';
 import { currentOrganization } from './viewingOrganization.js';
 
 export const v2Routes = Router();
@@ -36,9 +36,10 @@ function send<T>(res: Response<T>, payload: T): void {
 
 /** What the app draws on: glossary, stat catalog, club palettes, logos and records, departments and their heads. */
 v2Routes.get('/catalog', (_req, res: Response<Catalog>) => {
-  // The installed packs are read once for every club in the catalog
+  // The installed packs and each club's choice are read once for every club in the catalog
   const installed = installedPacks();
-  send(res, buildCatalog(catalogClubs(), currentOrganization()?.id ?? null, (club) => activePack(club, installed).pack));
+  const chosen = chosenPacks();
+  send(res, buildCatalog(catalogClubs(), currentOrganization()?.id ?? null, (club) => activePack(club, installed, chosen).pack));
 });
 
 /** How current the data is, in words. */

@@ -61,7 +61,7 @@ export type ThemePackKind = 'clubColors' | 'installed';
 export interface ThemePack {
   /** `club-colors` for the club's own colours; an installed pack's folder name. */
   id: string;
-  /** The pack's name as its file gives it, or "Club colours" for the club's own. */
+  /** The pack's name as its file gives it, or "Team colors" for the club's own (as Settings lists it). */
   name: string;
   kind: ThemePackKind;
   /** The pack's own version, as its file gives it (the club's own colours: the format's). */

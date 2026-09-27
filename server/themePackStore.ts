@@ -106,11 +106,17 @@ function fileSize(dir: string, file: string): number | null {
   }
 }
 
-/** The pack id a club was set to wear, or the club's own colours when none was chosen. */
-export function chosenPack(teamId: number): string {
+/** Every club's chosen pack as settings.json has it (team id to pack id), read once for a request that needs several. */
+export type ChosenPacks = Readonly<Record<string, unknown>>;
+
+export function chosenPacks(): ChosenPacks {
   const chosen: unknown = loadSettings().themePacks;
-  if (!chosen || typeof chosen !== 'object') return CLUB_COLORS_ID;
-  const id = (chosen as Record<string, unknown>)[String(teamId)];
+  return chosen && typeof chosen === 'object' ? (chosen as ChosenPacks) : {};
+}
+
+/** The pack id a club was set to wear, or the club's own colours when none was chosen. */
+export function chosenPack(teamId: number, chosen: ChosenPacks = chosenPacks()): string {
+  const id = chosen[String(teamId)];
   return typeof id === 'string' && id ? id : CLUB_COLORS_ID;
 }
 
@@ -123,11 +129,18 @@ export interface ThemedClub {
   colors: TeamColors | null;
 }
 
-/** The pack a club wears now, and a sentence when the one it chose cannot be worn. */
-export function activePack(club: ThemedClub, installed: InstalledPacks = installedPacks()): { pack: ThemePack; unavailable: Cell | null } {
+/**
+ * The pack a club wears now, and a sentence when the one it chose cannot be worn. A request that asks for several clubs
+ * reads the installed packs and the choices once and passes them in.
+ */
+export function activePack(
+  club: ThemedClub,
+  installed: InstalledPacks = installedPacks(),
+  choices: ChosenPacks = chosenPacks(),
+): { pack: ThemePack; unavailable: Cell | null } {
   const saveLogo = logoReference(club.team_id);
   const own = clubColorsPack(club.team_id, club.colors, saveLogo);
-  const chosen = chosenPack(club.team_id);
+  const chosen = chosenPack(club.team_id, choices);
   if (chosen === CLUB_COLORS_ID) return { pack: own, unavailable: null };
   const pack = installed.packs.find((p) => p.id === chosen && fits(p, club.team_id));
   if (pack) return { pack: { ...pack, logo: pack.logo ?? saveLogo }, unavailable: null };

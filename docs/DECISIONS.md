@@ -2283,8 +2283,9 @@ built at N5 (Stage A)"; how to make one: DEVELOPMENT.md "Making a theme pack".
   Contrast), in light and dark, a gradient's blends included, and the masthead's top against the window's title (the bar
   `npm run check:theme` holds). A pack that fails anything is refused whole with a sentence and never half-applied; a club
   that chose it wears its own colours and Settings says why. A pack that gives no Increase Contrast colours has them made
-  from its plain ones and checked like the rest. The app checks the served colours again as it draws and draws an
-  appearance neutral rather than half-themed.
+  from its plain ones and checked like the rest. The app checks again, as it draws, the text pairs it draws on served
+  colours (the masthead's text on its colours and their blends, the accent's, the tint's and the card's text) and draws
+  an appearance neutral rather than half-themed; the masthead's top against the title is the server's check alone.
 - **Chosen per club, additively.** The choice is `themePacks` in settings.json (team id to pack id); the React app ignores
   it, and team colours off (`useTeamColors`) draws the neutral system theme whatever pack is chosen.
 - **Pennant ships the mechanism and the save-derived defaults, never trademarked art.** Packs are plain folders in the data

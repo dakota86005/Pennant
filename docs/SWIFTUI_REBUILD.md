@@ -396,8 +396,11 @@ modular: "theme packs" per club (D-062).
   settings.json, per club; the React app ignores it. `npm run check:theme` also checks each club's own pack and the
   repository's example (`docs/theme-packs/sunset-series`, made-up colours; Pennant ships no club art).
 - **Swift:** PennantDesign now depends on PennantAPI. `Theme` resolves a served pack into a `Palette` per appearance
-  (`Variant` from the colour scheme and contrast) and checks the served pairs again as it draws: an appearance that does
-  not read is drawn neutral, never half-themed; team colours off (`useTeamColors`) or no club is the neutral theme (the
+  (`Variant` from the colour scheme and contrast) and checks again, as it draws, the text pairs it draws on served
+  colours: the masthead's text and secondary text on each masthead colour and on the worst blend between neighbours,
+  and the accent's, the tint's and the card's text on theirs (4.5:1, 7:1 with Increase Contrast). The masthead's top
+  against the window's title and the accent against the window's backgrounds are the server's check alone (the app
+  draws no text of its own there). An appearance that does not read is drawn neutral, never half-themed; team colours off (`useTeamColors`) or no club is the neutral theme (the
   system's window, label and accent colours). The main window puts `model.theme` in the environment (`\.theme`); the club
   card, the masthead and the floating control read it, and `ClubTint` is gone. Settings ▸ Appearance gains Use Team
   Colors and Theme: the club's choices as radio buttons with a swatch and the served name, a live preview (the masthead

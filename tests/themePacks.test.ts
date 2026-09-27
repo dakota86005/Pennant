@@ -2,7 +2,7 @@ import express from 'express';
 import fs from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import path from 'node:path';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { api } from '../server/api.js';
 import { DATA_DIR } from '../server/config.js';
 import type { Catalog } from '../server/presentation/catalog.js';
@@ -330,6 +330,19 @@ describe('the routes (a synthetic save)', () => {
     expect((await fetch(`${base}/api/theme-packs/sunset-series/notes.png`)).status).toBe(404);
     expect((await fetch(`${base}/api/theme-packs/sunset-series/pack.json`)).status).toBe(404);
     expect((await fetch(`${base}/api/theme-packs/..%2F..%2Fsettings.json/x.png`)).status).toBe(404);
+  });
+
+  it('reads each club\'s choice once for the whole catalog, not once a club (review nit)', async () => {
+    const reads = vi.spyOn(fs, 'readFileSync');
+    try {
+      const catalog = await (await fetch(`${base}/api/v2/catalog`)).json() as Catalog;
+      expect(catalog.clubs.length).toBeGreaterThan(2);
+      const settingsReads = reads.mock.calls.filter(([file]) => String(file) === settingsFile).length;
+      // One for the choices, one for the club the app is about; never one a club
+      expect(settingsReads).toBeLessThanOrEqual(2);
+    } finally {
+      reads.mockRestore();
+    }
   });
 
   it('never serves a file a link points to (review S4)', async () => {
