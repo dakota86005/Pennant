@@ -54,13 +54,18 @@ public protocol DepartmentModule {
     static var order: Int { get }
     /// Its views, in the order the sidebar lists them; the first is where Go takes the GM.
     static var views: [DepartmentViewDescriptor] { get }
-    /// The count of items "to decide" for the sidebar badge, from what the server serves (the desk arrives with N7);
-    /// nil draws no badge.
+    /// The count of items "to decide" for the sidebar badge, from what the server serves; nil draws no badge.
     @MainActor static func badge(from model: AppModel) -> Int?
 }
 
 extension DepartmentModule {
-    @MainActor public static func badge(from model: AppModel) -> Int? { nil }
+    /// The department card's served count to decide (the Front Office's summary), when it has any: a department that
+    /// could not be read, or has no report yet, has no count and draws no badge (unknown is never zero).
+    @MainActor public static func badge(from model: AppModel) -> Int? {
+        let card = model.frontOffice.summary?.departments.first { $0.department.rawValue == id.rawValue }
+        guard let count = card?.toDecide, count > 0 else { return nil }
+        return count
+    }
 }
 
 /// The structural placeholder a view shows until its milestone builds it: its title and one line.

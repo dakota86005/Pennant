@@ -45,6 +45,8 @@ files:
   - build/import-worker.cjs.map
   - build/snapshot-worker.cjs
   - build/snapshot-worker.cjs.map
+  - build/front-office-worker.cjs
+  - build/front-office-worker.cjs.map
   - package.json
 
 # The built frontend lives outside the asar archive so Express can serve it

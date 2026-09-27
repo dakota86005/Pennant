@@ -20,7 +20,7 @@ function pretendRepository(): { root: string; run: () => { status: number | null
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pennant-embed-'));
   write(path.join(root, 'package.json'), '{"version":"1.2.3"}');
   write(path.join(root, 'package-lock.json'), '{"lockfileVersion":3}');
-  for (const file of ['server.cjs', 'value-refit-worker.cjs', 'calibration-refit-worker.cjs']) {
+  for (const file of ['server.cjs', 'value-refit-worker.cjs', 'calibration-refit-worker.cjs', 'front-office-worker.cjs']) {
     write(path.join(root, 'build/sidecar', file), `// ${file}`);
   }
   write(path.join(root, 'build/sidecar/package.json'), '{"version":"1.2.3"}');

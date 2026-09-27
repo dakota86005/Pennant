@@ -61,7 +61,7 @@ describe('a regular with a platoon problem is a need, with its evidence', () => 
     expect(need.title).toMatch(/weak against left-handers; a platoon partner could help/);
     expect(need.platoon?.verdict).toBe('problem');
     expect(need.platoon?.basis).toBe('ratings');
-    expect(need.unknowns[0]).toMatch(/flag for your attention, not a recommendation to bench him/);
+    expect(need.unknowns[0]).toMatch(/flag for your attention, not a move: whether to bench him is your call/);
   });
 
   it('resolves by id', () => {

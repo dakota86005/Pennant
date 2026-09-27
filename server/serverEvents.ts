@@ -22,7 +22,8 @@ export type ServerEvent =
   | ImportProgressEvent
   | ImportFinishedEvent
   | ExportPendingEvent
-  | JobEvent;
+  | JobEvent
+  | FrontOfficeUpdatedEvent;
 
 /** The first event on every stream: the `/api/status` snapshot, so nothing is missed between loading and listening. */
 export interface HelloEvent { type: 'hello'; status: ServerStatus }
@@ -40,6 +41,11 @@ export interface ImportFinishedEvent {
 export interface ExportPendingEvent { type: 'export-pending'; since: string }
 /** A background job (storylines, the briefing) changed state for one club. */
 export interface JobEvent { type: 'job'; kind: string; orgId: Integer; status: JobStatus }
+/**
+ * The server built a club's Front Office again and keeps it (a new import, a settings change, a calibration): its new
+ * `reportStamp`. The Mac app's Front Office store reloads on it (a cached read).
+ */
+export interface FrontOfficeUpdatedEvent { type: 'front-office-updated'; orgId: Integer; reportStamp: string }
 
 type Listener = (event: ServerEvent) => void;
 const listeners = new Set<Listener>();

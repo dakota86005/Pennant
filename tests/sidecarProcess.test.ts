@@ -173,6 +173,22 @@ describe('starting the sidecar', () => {
     expect(side.output()).not.toContain(TOKEN);
   }, 60_000);
 
+  it('builds the Front Office in its worker thread at start, and serves it, the server answering meanwhile', async () => {
+    const dataDir = scratch('pennant-sidecar-');
+    fs.copyFileSync(path.join(process.env.OOTP_FO_DATA_DIR!, 'league.db'), path.join(dataDir, 'league.db'));
+    const side = await ready(dataDir);
+    const warmed = await until('the start-up warm', async () => /\[front office\] warmed club/.test(side.output()));
+    expect(warmed).toBe(true);
+    const res = await fetch(`${side.base}/api/v2/front-office/automatic`, { headers: auth });
+    expect(res.status).toBe(200);
+    const summary = (await res.json()) as { reportStamp: string; desk: { items: unknown[] } };
+    expect((await status(side)).reportStamp).toBe(summary.reportStamp);
+    // Built by the worker: no fall back to the server's own event loop
+    expect(side.output()).not.toContain('worker unavailable');
+    side.child.kill('SIGTERM');
+    expect(await side.exited).toEqual({ code: 0, signal: null });
+  }, 90_000);
+
   it('refuses to start without a usable token', async () => {
     for (const handshake of ['not json', JSON.stringify({ keys: {} }), JSON.stringify({ token: 'short' })]) {
       const started = start(scratch('pennant-sidecar-'), handshake);

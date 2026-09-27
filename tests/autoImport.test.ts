@@ -185,9 +185,13 @@ describe('an import whose after-steps never ran (the server stopped between the 
       importState.lastImport = { tables: 1, rows: 1, startedAt: '2040-07-01T12:00:00.000Z', finishedAt: '2040-07-01T12:00:05.000Z', files: [], exportFingerprint: 'f' };
       fs.rmSync(record, { force: true });
       expect(finishInterruptedPostImport()).toBe(true);
-      const deadline = Date.now() + 30_000;
-      while (!fs.existsSync(record) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 50));
-      expect(JSON.parse(fs.readFileSync(record, 'utf8')).importStartedAt).toBe('2040-07-01T12:00:00.000Z');
+      // An earlier case's import may still be finishing its own after-steps; wait for this one's record
+      const recorded = (): string | null => {
+        try { return JSON.parse(fs.readFileSync(record, 'utf8')).importStartedAt; } catch { return null; }
+      };
+      const deadline = Date.now() + 50_000;
+      while (recorded() !== '2040-07-01T12:00:00.000Z' && Date.now() < deadline) await new Promise((r) => setTimeout(r, 50));
+      expect(recorded()).toBe('2040-07-01T12:00:00.000Z');
       // Done: the next start leaves it
       expect(finishInterruptedPostImport()).toBe(false);
       // An import from before N3.5 (no fingerprint, no record) took its snapshots on its own thread
@@ -197,5 +201,5 @@ describe('an import whose after-steps never ran (the server stopped between the 
     } finally {
       importState.lastImport = saved;
     }
-  }, 60_000);
+  }, 90_000);
 });

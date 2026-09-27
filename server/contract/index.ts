@@ -27,6 +27,7 @@ export type {
   ImportFinishedEvent,
   ExportPendingEvent,
   JobEvent,
+  FrontOfficeUpdatedEvent,
 } from '../serverEvents.js';
 export type { ImportProgress, ImportResult, ImportWords } from '../importer.js';
 export type { ImportNote } from '../presentation/importWords.js';
@@ -80,3 +81,9 @@ export type { ClubPalette } from '../presentation/palette.js';
 // The data status in words (`GET /api/v2/data-status`)
 export type { DataStatusView, DataStatusRow, DataStatusFact, GameDateText } from '../presentation/dataStatusWords.js';
 export type { RosterEvidenceLevel } from '../dataFreshness.js';
+
+// The Front Office (`GET /api/v2/front-office/:org`, `/departments/:org/:dept`, `/claims/:key`)
+export type {
+  FoItem, DeskSeverity, ReportStatus, ReportSection, ReportUnknowns, ReportChange, StaffMemo, DepartmentReport, DepartmentCard,
+  Desk, DeskMore, FrontOfficeSummary, TrailSection, ClaimTrail,
+} from '../presentation/frontOffice/types.js';

@@ -80,6 +80,9 @@ export interface FarmFinding {
 
   evidence: FarmEvidenceItem[];
 
+  /** The fielding position it is about, when it is about one (a gap or a single cover at 2B). */
+  position?: string;
+
   /** Who it is about, when it is about people. */
   players: Array<{ playerId: number; name: string; note: string }>;
 
@@ -89,6 +92,13 @@ export interface FarmFinding {
   /** What would settle it. */
   wouldResolve: string[];
 }
+
+/** A count as a GM says it in a sentence: "no", "one" to "ten", then the numeral. */
+export function countInWords(n: number): string {
+  return ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'][n] ?? String(n);
+}
+/** "Only three pitchers", "No pitchers": a short count at the start of a sentence. */
+const onlyCount = (n: number, noun: string): string => (n === 0 ? `No ${noun}` : `Only ${countInWords(n)} ${n === 1 ? noun.replace(/s$/, '') : noun}`);
 
 let findingSeq = 0;
 const nextId = (prefix: string): string => `${prefix}-${++findingSeq}`;
@@ -250,6 +260,7 @@ export function operationalReading(input: OperationalInput): AffiliateOperationa
         severity: 'critical',
         owner: 'minor_league_operations',
         headline: `Nobody on the roster covers ${c.position}.`,
+        position: c.position,
         evidence: [
           { label: 'Players with a revealed grade there', value: '0', basis: `A visible fielding grade of ${PLAYABLE_GRADE} or better.` },
           { label: 'Players listed there', value: '0', basis: 'The roster\'s own listed position.' },
@@ -268,6 +279,7 @@ export function operationalReading(input: OperationalInput): AffiliateOperationa
         severity: 'attention',
         owner: 'minor_league_operations',
         headline: `Only one man covers ${c.position}; a day off or an injury leaves the club without it.`,
+        position: c.position,
         evidence: [
           { label: 'Revealed grades there', value: String(c.graded), basis: `A visible fielding grade of ${PLAYABLE_GRADE} or better.` },
           { label: 'Covered by a roster label only', value: String(c.listedOnly), basis: 'Listed at the position with no visible grade for it.' },
@@ -294,7 +306,7 @@ export function operationalReading(input: OperationalInput): AffiliateOperationa
       lens: 'operational',
       severity: 'critical',
       owner: 'minor_league_operations',
-      headline: `The club can fill only ${health.positionPlayers.fieldablePositions} of the eight fielding positions at once.`,
+      headline: `The club can fill only ${countInWords(health.positionPlayers.fieldablePositions)} of the eight fielding positions at once.`,
       evidence: [
         {
           label: 'Positions fillable simultaneously',
@@ -316,7 +328,7 @@ export function operationalReading(input: OperationalInput): AffiliateOperationa
       lens: 'operational',
       severity: hitters < BODY_COUNT.hitters.thinBelow - 2 ? 'critical' : 'attention',
       owner: 'minor_league_operations',
-      headline: `${hitters} position players is short of what the club needs to rest a lineup.`,
+      headline: `${onlyCount(hitters, 'position players')}: short of what the club needs to rest a lineup.`,
       evidence: [
         { label: 'Position players', value: String(hitters), basis: 'Active list, rehab assignees excluded.' },
         { label: 'Short below', value: String(BODY_COUNT.hitters.thinBelow), basis: 'Eight fielding positions plus rest.' },
@@ -335,7 +347,7 @@ export function operationalReading(input: OperationalInput): AffiliateOperationa
       lens: 'operational',
       severity: pitchers < BODY_COUNT.pitchers.thinBelow - 2 ? 'critical' : 'attention',
       owner: 'minor_league_operations',
-      headline: `${pitchers} pitchers is short of what the club needs to cover a schedule.`,
+      headline: `${onlyCount(pitchers, 'pitchers')}: short of what the club needs to cover a schedule.`,
       evidence: [
         { label: 'Pitchers', value: String(pitchers), basis: 'Active list, rehab assignees excluded.' },
         { label: 'Short below', value: String(BODY_COUNT.pitchers.thinBelow), basis: 'A five-man rotation plus relief coverage.' },
@@ -354,7 +366,9 @@ export function operationalReading(input: OperationalInput): AffiliateOperationa
       lens: 'operational',
       severity: input.rotationClaimants < ROTATION_SPOTS - 1 ? 'critical' : 'attention',
       owner: 'minor_league_operations',
-      headline: `${input.rotationClaimants} pitchers are taking this club's starts; the rotation is ${short} short of ${ROTATION_SPOTS}.`,
+      headline: input.rotationClaimants === 0
+        ? `No pitcher is taking this club's starts; the rotation needs ${countInWords(ROTATION_SPOTS)}.`
+        : `${onlyCount(input.rotationClaimants, 'pitchers')} ${input.rotationClaimants === 1 ? 'is' : 'are'} taking this club's starts; the rotation is ${countInWords(short)} short.`,
       evidence: [
         {
           label: 'Taking starts',
@@ -389,7 +403,7 @@ export function operationalReading(input: OperationalInput): AffiliateOperationa
       lens: 'operational',
       severity: health.pitching.relievers < RELIEF_CORPS.criticalBelow ? 'critical' : 'attention',
       owner: 'minor_league_operations',
-      headline: `${health.pitching.relievers} relief arms is short of the ${RELIEF_CORPS.thinBelow} a schedule takes.`,
+      headline: `${onlyCount(health.pitching.relievers, 'relief arms')}: short of the ${countInWords(RELIEF_CORPS.thinBelow)} a schedule takes.`,
       evidence: [
         { label: 'Relief arms', value: String(health.pitching.relievers), basis: 'OOTP role, closers included, rehab assignees excluded.' },
         { label: 'Short below', value: String(RELIEF_CORPS.thinBelow), basis: 'Relief coverage over a normal week.' },

@@ -61,6 +61,7 @@ import { appInfo, type AppInfo } from './appInfo.js';
 import { scoutedDevelopmentRoutes } from './scoutedDevelopment.js';
 import { eventStream, progressThrottle, publish } from './serverEvents.js';
 import { v2Routes } from './v2Routes.js';
+import { currentReportStamp, warmFrontOffice } from './frontOfficeService.js';
 import { EXPORT_NOT_FOUND, importNote, importWords, leftOutNote, type ImportNote } from './presentation/importWords.js';
 import type { Integer } from './contract/primitives.js';
 
@@ -415,8 +416,8 @@ onSettledExport(handleSettledExport);
 
 /*
  * The post-import hooks, in order. The snapshots first (in a worker; they write history.db), then the storylines and
- * briefing, then the refits (both at once, in their own workers; not awaited, so a later hook is not held up by them).
- * N4's Front Office warm-up registers itself after these.
+ * briefing, then the refits (both at once, in their own workers; not awaited, so a later hook is not held up by them),
+ * then N4's Front Office warm-up.
  */
 registerPostImportHook('snapshots', async (context) => {
   const last = importState.lastImport;
@@ -437,6 +438,8 @@ registerPostImportHook('refits', (context) => {
   if (context.generation !== importGeneration) return;
   void refitAfterImport();
 });
+// The GM's first look after an import is a cached read (N4's Front Office, built in its own worker)
+registerPostImportHook('frontOffice', () => void warmFrontOffice());
 
 /**
  * At start-up: an import whose snapshots never ran (the server stopped between the swap and them) takes them now.
@@ -500,6 +503,11 @@ export interface ServerStatus {
   logoToken: string;
   /** The top of the rating scale the save shows ratings on. */
   ratingScaleMax: Integer;
+  /**
+   * The stamp of the Front Office's current build for the club the app follows (`FrontOfficeSummary.reportStamp`), or
+   * null before one is kept. It moves whenever the server builds the Front Office again; the Mac app reloads on it.
+   */
+  reportStamp: string | null;
 }
 
 /** A request the server accepted, with nothing more to say. */
@@ -593,6 +601,7 @@ export function statusSnapshot(): ServerStatus {
      * new one reuses.
      */
     logoToken: logoToken(),
+    reportStamp: currentReportStamp(),
     /*
      * The scale OOTP is set to show ratings on, read off the save. Bars used
      * to divide by eighty regardless, so a 5 on the 1-to-5 scale drew at six

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { historyDb } from '../server/history';
 import { adoptedCalibration, calibrationAttempted, latestCalibrationAttempt, recordCalibration, type CalibrationRecord } from '../server/saveCalibrationStore';
-import { recordCalibrationRefits, type PendingCalibration } from '../server/saveCalibration';
+import { onCalibrationRecorded, recordCalibrationRefits, type PendingCalibration } from '../server/saveCalibration';
 import { saveIdentity } from '../server/saveIdentity';
 import { rosterReviewCalibration, clearRosterReviewCalibrationCache } from '../server/mlbCalibration';
 import { STARTING_STANDARDS } from '../server/roleStandards';
@@ -89,6 +89,19 @@ describe('the per-save calibration store', () => {
     ];
     const out = recordCalibrationRefits(pending);
     expect(out.map((o) => o.reason)).toEqual(['ok', 'nothing to fit']);
+  });
+
+  it('tells its listeners only when a record was written, never for nothing recorded or the same record again', () => {
+    clear();
+    let heard = 0;
+    onCalibrationRecorded(() => { heard += 1; });
+    const fit: PendingCalibration = { run: { model: {}, record: record({ passed: true }) }, ms: 3, force: false, outcome: { leagueId: L, subsystem: 'test', component: 'thing', method: 'm-1', basis: '2025', refit: true, adopted: true, reason: 'ok', ms: 3 } };
+    recordCalibrationRefits([]);
+    expect(heard).toBe(0);
+    recordCalibrationRefits([fit]);
+    expect(heard).toBe(1);
+    recordCalibrationRefits([fit]); // the same key again writes nothing
+    expect(heard).toBe(1);
   });
 });
 
