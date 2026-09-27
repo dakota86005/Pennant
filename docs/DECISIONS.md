@@ -2384,7 +2384,10 @@ overwrote part of the other's.
   served is certainly the save's own:
   - *A refusal is never a dead end.* When the folder's own history was set aside, the question is "This save's players
     no longer match its rating history. Continue that history, or keep the new start?" (or, for a save that went back,
-    "... Continue that history up to <the league's date>, or keep the new start?"), asked until answered.
+    "... Continue that history up to <a date>, or keep the new start?"), asked until answered. For a save that went
+    back, the league's date when it went back is kept with the fresh start, and nothing from that date on is ever
+    copied from the history it set aside, however far the save plays on or however often a carry-over is undone and made
+    again: the timeline it left stays apart, and the question's date never moves.
   - *A save that moved.* While a save has no history of its own yet (at most its first snapshot) and nothing carried
     over, another history still bound to a folder that has really gone (missing inside a folder that can be read: a
     drive not mounted, or a folder that can't be looked inside, is not gone), not later than this league, whose players
@@ -2393,11 +2396,18 @@ overwrote part of the other's.
   - *Any other history, by choice.* The GM may also carry over any other history (one set aside, or another folder's,
     as after an OOTP upgrade copied the save, whether that folder is there or not) from a list that hides only a history
     whose players read as another league.
-  - *Carrying over copies, and can be undone.* It copies the history's dates up to this league's own date into this
-    save's history (this save's own rows win on a shared date); the later dates stay where they were, kept apart. The
-    source is never changed or unbound. Before each carry-over a copy of `history.db` is made in
-    `backups/history-before-carry-over-<time>.db` (after a cheap check for room; no room refuses it in words), and the
-    rows copied are recorded, so "Undo carry-over" removes exactly them; after an undo the question can be asked again.
+  - *Carrying over copies, and can be undone.* It copies the history's dates strictly before this league's own date
+    (the save files its own snapshot there) into this save's history (this save's own rows win on a shared date); the
+    later dates stay where they were, kept apart. The source is never changed or unbound. The rows copied are recorded,
+    and a row or rating-kind stamp the save's own snapshot later writes is no longer the carry-over's, so "Undo
+    carry-over" removes exactly what it copied and never the save's own ratings; after an undo the question can be asked
+    again. Before a carry-over a copy of `history.db` is made in `backups/history-before-carry-over-<time>.db` (after a
+    cheap check for room; no room refuses it in words), unless the last such copy is newer than the last import (the
+    carry-overs since can be undone); the newest three are kept, and the one-time copy made before earlier history was
+    brought over is never removed.
+  - *Stacking.* While a carry-over is in force, a plain sentence says so: carrying over another adds only the imports
+    this save doesn't have yet. Undoing one carry-over never takes away what another supplies: the dates it vacates are
+    filled again from the carry-overs still in force, oldest first, as if it had never been made.
   - *Answers name the save.* An answer's id carries this save's key, so it can't answer for another save; an answer
     already given is refused, never written over (`INSERT OR IGNORE`); "keep them apart" answers only a question asked.
 - **Only a certain league is filed.** The league on disk is certainly the configured save's when the import's own record
