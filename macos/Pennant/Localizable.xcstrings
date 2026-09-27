@@ -87,6 +87,9 @@
     "Decision": {
       "extractionState": "manual"
     },
+    "Department Reports": {
+      "extractionState": "manual"
+    },
     "Depth Chart": {
       "extractionState": "manual"
     },

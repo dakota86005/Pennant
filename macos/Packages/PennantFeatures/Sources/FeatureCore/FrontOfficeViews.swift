@@ -279,6 +279,8 @@ public struct DepartmentReportView: View {
                     .frame(maxWidth: 900, alignment: .leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                // As the Morning Report: a hard edge under the toolbar keeps the window's title legible
+                .scrollEdgeEffectStyle(.hard, for: .top)
             } else if let problem = store.reportProblems[department.rawValue] {
                 ProblemLine(problem).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {

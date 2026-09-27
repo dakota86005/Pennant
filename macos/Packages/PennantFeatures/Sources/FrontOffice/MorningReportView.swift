@@ -29,6 +29,9 @@ public struct MorningReportView: View {
                     .frame(maxWidth: 1100, alignment: .leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                // A hard edge under the toolbar: the soft one blurs the content behind the window's title and
+                // subtitle, and the accessibility audit measures them below contrast there
+                .scrollEdgeEffectStyle(.hard, for: .top)
             } else if let problem = store.summaryProblem {
                 ProblemLine(problem).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -83,12 +86,16 @@ public struct MorningReportContent: View {
                 }
             }
             .accessibilityElement(children: .contain)
+            .accessibilityLabel(Text(verbatim: summary.desk.title.display))
             .accessibilityIdentifier("morningReport.desk")
             LazyVGrid(columns: columns, alignment: .leading, spacing: 16) {
                 ForEach(summary.departments, id: \.department.rawValue) { card in
                     DepartmentCardView(card)
                 }
             }
+            // A container of the cards, named for VoiceOver (a bare grid is a group with no description)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(Text("Department Reports"))
             .accessibilityIdentifier("morningReport.cards")
         }
     }
