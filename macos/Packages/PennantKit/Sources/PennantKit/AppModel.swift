@@ -429,8 +429,9 @@ public final class AppModel {
         } else if let pending = event.value5 {
             status?.exportPending = pending.since
         } else if let updated = event.value7 {
-            // A new Front Office build is kept: follow it when it is the club the app shows (or no club is known yet)
-            if club == nil || club?.ref.id == updated.orgId { reportStamp = updated.reportStamp }
+            // A new Front Office build is kept: follow it only for the club the app shows (with no club known yet, the
+            // next status read carries the stamp)
+            if let shown = club?.ref.id, shown == updated.orgId { reportStamp = updated.reportStamp }
         }
         // `job` (value6): the storylines and briefing jobs arrive with N13
     }
@@ -461,13 +462,17 @@ public final class AppModel {
         async let orgsAnswer = client.listOrgs()
         async let dataStatusAnswer = client.getDataStatusWords()
         async let catalogAnswer = client.getCatalog()
+        // The settings, the clubs and the club they resolve to land together, so `storeKey` never appears with the
+        // settings but before the club (a store would load twice, and another club's build could be followed)
+        var nextSettings = settings
+        var nextOrgs = orgs
         do {
-            settings = try await settingsAnswer.ok.body.json
+            nextSettings = try await settingsAnswer.ok.body.json
         } catch {
             note(error, reading: "settings")
         }
         do {
-            orgs = try await orgsAnswer.ok.body.json
+            nextOrgs = try await orgsAnswer.ok.body.json
         } catch {
             note(error, reading: "clubs")
         }
@@ -481,7 +486,9 @@ public final class AppModel {
         } catch {
             note(error, reading: "catalog")
         }
-        club = CurrentClub.from(served: settings?.organization, orgs: orgs)
+        orgs = nextOrgs
+        club = CurrentClub.from(served: nextSettings?.organization, orgs: nextOrgs)
+        settings = nextSettings
     }
 
     private func note(_ error: any Error, reading what: String) {
