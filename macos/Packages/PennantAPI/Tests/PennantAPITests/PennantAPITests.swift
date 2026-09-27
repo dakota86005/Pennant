@@ -126,7 +126,7 @@ struct PennantAPITests {
         #expect(events[4].value5?.since == "2026-09-25T12:05:00.000Z")
         #expect(events[5].value6?.status.state.value1 == .running)
         // Every event also reads as its bare type, which is what a client switches on
-        #expect(events.map { $0.value7?._type } == ["hello", "import-started", "import-progress", "import-finished", "export-pending", "job"])
+        #expect(events.map { $0.value8?._type } == ["hello", "import-started", "import-progress", "import-finished", "export-pending", "job"])
         // Each event decodes to its own shape only: a hello is not an export-pending
         #expect(events[0].value5 == nil && events[4].value1 == nil)
     }
@@ -139,10 +139,10 @@ struct PennantAPITests {
         ]))
         #expect(events.count == 2)
         let unknown = events[0]
-        #expect(unknown.value7?._type == "desk-changed")
+        #expect(unknown.value8?._type == "desk-changed")
         #expect(
             [unknown.value1 == nil, unknown.value2 == nil, unknown.value3 == nil, unknown.value4 == nil,
-             unknown.value5 == nil, unknown.value6 == nil].allSatisfy { $0 }
+             unknown.value5 == nil, unknown.value6 == nil, unknown.value7 == nil].allSatisfy { $0 }
         )
         #expect(events[1].value5?.since == "2026-09-25T12:05:00.000Z")
     }
@@ -283,7 +283,7 @@ struct PennantAPITests {
     func readingCoversEveryShape() {
         let names = Components.Schemas.ServerEvent.knownTypeNames
         #expect(names.count == Components.Schemas.ServerEvent.shapeCount)
-        #expect(names == ["hello", "import-started", "import-progress", "import-finished", "export-pending", "job"])
+        #expect(names == ["hello", "import-started", "import-progress", "import-finished", "export-pending", "job", "front-office-updated"])
     }
 
     @Test("a game date stays the string the server sent, unpadded")

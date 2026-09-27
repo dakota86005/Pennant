@@ -72,7 +72,15 @@ let package = Package(
             swiftSettings: concurrency
         ),
     ] + departments.map {
-        .target(name: $0, dependencies: ["FeatureCore"], swiftSettings: concurrency)
+        .target(
+            name: $0,
+            dependencies: [
+                "FeatureCore",
+                .product(name: "PennantAPI", package: "PennantAPI"),
+                .product(name: "PennantKit", package: "PennantKit"),
+            ],
+            swiftSettings: concurrency
+        )
     },
     swiftLanguageModes: [.v6]
 )

@@ -198,7 +198,7 @@ function platoonNeeds(groups: RoleGroupReview[], view: ClubView): MlbNeed[] {
           { label: 'Against right-handers', value: platoon.vsRight.expected === null ? 'Unknown' : `${platoon.vsRight.expected.toFixed(3).replace(/^0/, '')} expected wOBA (${platoon.vsRight.pa} PA)` },
           { label: 'Basis', value: platoon.basis.replace(/_/g, ' ') },
         ],
-        unknowns: ['This is a flag for your attention, not a recommendation to bench him: a platoon partner would play only against the hand he struggles with.'],
+        unknowns: ['A flag for your attention, not a move: whether to bench him is your call. A platoon partner would play only against the hand he struggles with.'],
         returning: null, subject: { playerId: m.playerId, name: m.name }, platoon,
       });
     }
@@ -287,7 +287,7 @@ export function needFromReview(m: RosterMember, r: HolderReview, groupRole: stri
       ...r.usage.map((u) => ({ label: 'Usage', value: u })),
     ],
     unknowns: [
-      'This is a flag for your attention, not a recommendation to move him: it says where the evidence points and how sure it is.',
+      'A flag for your attention, not a move: whether to move him is your call. It says where the evidence points and how sure it is.',
       ...r.explanations,
     ],
     returning: null,

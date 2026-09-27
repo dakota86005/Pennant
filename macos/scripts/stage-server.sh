@@ -67,6 +67,7 @@ mkdir -p "$STAGE/Helpers" "$STAGE/Resources/server"
 cp -p "$NODE" "$STAGE/Helpers/pennant-server"
 cp build/node-runtime/LICENSE "$STAGE/Resources/server/NODE_LICENSE"
 cp build/sidecar/server.cjs build/sidecar/value-refit-worker.cjs build/sidecar/calibration-refit-worker.cjs \
+  build/sidecar/front-office-worker.cjs \
   build/sidecar/package.json "$STAGE/Resources/server/"
 # Pruned: build intermediates and sources of the native module, type declarations, source maps, docs and the
 # install-time .bin links. Licences stay.

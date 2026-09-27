@@ -26,12 +26,54 @@ const teamLabel = `CASE WHEN t.name = t.nickname THEN t.name ELSE t.name || ' ' 
  * essentially never fire, because OOTP exports 4 or 5, never a countdown.)
  */
 /** The roster crunch (`GET /api/roster-crunch/:orgId`): counts against the limits, the players with issues, the 40-man. */
-export type RosterCrunch = ReturnType<typeof crunchOf>;
+export type RosterCrunch = ReturnType<typeof crunchOf>['body'];
 
 /** The organization's 40-man, options and DFA picture, or why it cannot be read (the route's own answer). */
 export function computeRosterCrunch(orgId: number): Computed<RosterCrunch> {
   if (!tableExists('players_roster_status')) return refuse(400, 'No roster data imported yet');
-  return answer(crunchOf(orgId));
+  return answer(crunchOf(orgId).body);
+}
+
+/**
+ * One 40-man issue as data, the same issue the crunch's `issues` strings say (they are written from these): a running
+ * clock (designated for assignment, or on waivers) with its days left as Player State exports them (null: not
+ * exported), or an option note from Player Rights.
+ */
+export type CrunchIssue =
+  | { kind: 'designated'; daysLeft: number | null }
+  | { kind: 'waivers'; daysLeft: number | null }
+  | { kind: 'out_of_options' | 'third_option_year' | 'last_option_year' };
+
+export interface CrunchIssues {
+  crunch: RosterCrunch;
+  /** Every player with an issue, in the crunch's own order, with each issue as data. */
+  players: Array<{ playerId: number; name: string; positionName: string; levelName: string; issues: CrunchIssue[] }>;
+}
+
+/**
+ * The crunch and its issues as data, from one read (the Front Office's 40-man items): the same players and issues the
+ * route serves, so the desk's count is the workspace's.
+ */
+export function computeRosterCrunchIssues(orgId: number): Computed<CrunchIssues> {
+  if (!tableExists('players_roster_status')) return refuse(400, 'No roster data imported yet');
+  const { body, issues } = crunchOf(orgId);
+  return answer({
+    crunch: body,
+    players: body.issues.map((p) => ({
+      playerId: p.player_id, name: p.name, positionName: p.positionName, levelName: p.levelName, issues: issues.get(p.player_id) ?? [],
+    })),
+  });
+}
+
+/** An issue in the crunch's own words (the strings `/roster-crunch` has always served). */
+function issueText(issue: CrunchIssue): string {
+  switch (issue.kind) {
+    case 'designated': return `DFA — ${issue.daysLeft ?? '?'} days to resolve`;
+    case 'waivers': return `on waivers — ${issue.daysLeft ?? '?'} days left`;
+    case 'out_of_options': return 'out of options';
+    case 'third_option_year': return 'third option year in use';
+    case 'last_option_year': return 'last option year';
+  }
 }
 
 function crunchOf(orgId: number) {
@@ -49,6 +91,7 @@ function crunchOf(orgId: number) {
   const relevant = states.filter((s) => s.fortyMan.value === true || s.dfa.designated.value === true || s.dfa.onWaivers.value === true);
   const picture = rightsFor(relevant.map((s) => s.playerId));
 
+  const issuesById = new Map<number, CrunchIssue[]>();
   const players = states.map((state) => {
     const on26 = state.activeRoster.value === true;
     const on40 = state.fortyMan.value === true;
@@ -59,16 +102,18 @@ function crunchOf(orgId: number) {
     // whether he can be optioned. The export shows him exactly like an optioned
     // player, so only the log can tell
     const onRehab = assignment?.kind === 'rehab_assignment';
-    const issues: string[] = [];
-    if (state.dfa.designated.value === true) issues.push(`DFA — ${state.dfa.daysLeft.value ?? '?'} days to resolve`);
-    if (state.dfa.onWaivers.value === true) issues.push(`on waivers — ${state.dfa.waiverDaysLeft.value ?? '?'} days left`);
+    const flagged: CrunchIssue[] = [];
+    if (state.dfa.designated.value === true) flagged.push({ kind: 'designated', daysLeft: state.dfa.daysLeft.value });
+    if (state.dfa.onWaivers.value === true) flagged.push({ kind: 'waivers', daysLeft: state.dfa.waiverDaysLeft.value });
     const below = (state.level.value ?? 1) > 1 && on40 && !on26 && !onRehab;
     if (below && rights) {
       const years = rights.optionYears;
-      if (years.standing === 'exhausted') issues.push('out of options');
-      else if (years.standing === 'exhausted_charged_this_season') issues.push('third option year in use');
-      else if (years.standing === 'available' && years.remaining === 1) issues.push('last option year');
+      if (years.standing === 'exhausted') flagged.push({ kind: 'out_of_options' });
+      else if (years.standing === 'exhausted_charged_this_season') flagged.push({ kind: 'third_option_year' });
+      else if (years.standing === 'available' && years.remaining === 1) flagged.push({ kind: 'last_option_year' });
     }
+    if (flagged.length) issuesById.set(state.playerId, flagged);
+    const issues = flagged.map(issueText);
     return {
       player_id: state.playerId,
       name: state.name,
@@ -99,7 +144,7 @@ function crunchOf(orgId: number) {
   const withIssues = players.filter((p) => p.issues.length > 0);
   withIssues.sort((a, b) => b.issues.length - a.issues.length);
 
-  return {
+  const body = {
     counts: {
       active: counts.active ?? players.filter((p) => p.on26).length,
       fortyMan: counts.fortyMan ?? fortyMan.length,
@@ -112,6 +157,7 @@ function crunchOf(orgId: number) {
     issues: withIssues,
     fortyMan: fortyMan.sort((a, b) => (a.on26 === b.on26 ? 0 : a.on26 ? -1 : 1)),
   };
+  return { body, issues: issuesById };
 }
 
 rosterOpsRoutes.get('/roster-crunch/:orgId', (req, res) => {

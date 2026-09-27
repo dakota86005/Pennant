@@ -1,0 +1,989 @@
+{
+  "orgId": 1,
+  "club": "Club 1 N",
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "asOf": {
+    "display": "Through May 5, 2040",
+    "hint": "The last game day in the imported export"
+  },
+  "desk": {
+    "title": {
+      "display": "Your desk"
+    },
+    "order": {
+      "display": "Most urgent first",
+      "hint": "Urgent first, then the nearest deadline; five from each department"
+    },
+    "items": [
+      {
+        "key": "farm:position_single_cover:organization:critical",
+        "department": "farm",
+        "raisedBy": {
+          "display": "Raised by the minor league staff"
+        },
+        "severity": "critical",
+        "neutralSeverity": "critical",
+        "urgency": {
+          "text": "Urgent",
+          "tone": "bad",
+          "basis": {
+            "because": [
+              {
+                "label": "Farm & Development said",
+                "value": "Urgent"
+              },
+              {
+                "label": "With no philosophy and no season",
+                "value": "Urgent"
+              },
+              {
+                "label": "On the desk",
+                "value": "Urgent"
+              }
+            ],
+            "source": {
+              "department": "farm",
+              "specialist": "The desk",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "policy",
+            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
+          },
+          "links": []
+        },
+        "headline": {
+          "text": "The major-league club is thin at 2B, C, RF and SS, with little in the upper minors to step in.",
+          "tone": "bad",
+          "basis": {
+            "because": [
+              {
+                "label": "2B",
+                "value": "The major-league club is thin at 2B, and no one in the upper minors can step in."
+              },
+              {
+                "label": "C",
+                "value": "The major-league club is thin at C, and no one in the upper minors can step in."
+              },
+              {
+                "label": "RF",
+                "value": "The major-league club is thin at RF, and no one in the upper minors can step in."
+              },
+              {
+                "label": "SS",
+                "value": "The major-league club is thin at SS, and no one in the upper minors can step in."
+              }
+            ],
+            "source": {
+              "department": "farm",
+              "specialist": "Minor League Operations",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "stamp": "The farm's stated lines, 10 of 30 still starting values. The same kind of finding about the same club or the organization, at the same urgency, is one row listing its positions"
+          },
+          "links": [
+            {
+              "kind": "view",
+              "department": "farm",
+              "view": "organization"
+            }
+          ],
+          "hint": "4 findings, one row: each is in the breakdown"
+        },
+        "detail": null,
+        "due": null,
+        "dueInDays": null,
+        "evidence": null,
+        "count": 4
+      },
+      {
+        "key": "majorLeague:need:mlb:role_below_standard:catcher",
+        "department": "majorLeague",
+        "raisedBy": {
+          "display": "Raised by Rafael Dunn, bench coach",
+          "hint": "From the club's staff in the save"
+        },
+        "severity": "attention",
+        "neutralSeverity": "attention",
+        "urgency": {
+          "text": "Needs attention",
+          "tone": "caution",
+          "basis": {
+            "because": [
+              {
+                "label": "Major League Ops said",
+                "value": "Needs attention"
+              },
+              {
+                "label": "With no philosophy and no season",
+                "value": "Needs attention"
+              },
+              {
+                "label": "On the desk",
+                "value": "Needs attention"
+              }
+            ],
+            "source": {
+              "department": "majorLeague",
+              "specialist": "The desk",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "policy",
+            "stamp": "Major League Ops states critical, elevated or watch; they read critical, attention and noted on the desk, in the same order and never higher. A flag the philosophy shaded keeps its philosophy-free severity beside it. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
+          },
+          "links": []
+        },
+        "headline": {
+          "text": "Short of healthy catchers",
+          "tone": "caution",
+          "basis": {
+            "because": [
+              {
+                "label": "Coverage floor",
+                "value": "two healthy catchers: Pennant's first-pass minimum, not a league rule or an ideal roster"
+              },
+              {
+                "label": "Active in role",
+                "value": "1 (1 available)"
+              },
+              {
+                "label": "Active roster",
+                "value": "26 of 26"
+              },
+              {
+                "label": "When",
+                "value": "Now"
+              }
+            ],
+            "source": {
+              "department": "majorLeague",
+              "specialist": "Major League Ops' roster review",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [
+              "No injured or unavailable player in this role explains the shortfall; Pennant cannot say how the roster came to be this way."
+            ],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "policy",
+            "stamp": "Pennant's first-pass minimum for each role: a stated floor, not a league rule or an ideal roster."
+          },
+          "links": [],
+          "hint": "Fewer healthy on the active roster than the club's minimum"
+        },
+        "detail": null,
+        "due": null,
+        "dueInDays": null,
+        "evidence": "1.majorLeague:need:mlb:role_below_standard:catcher",
+        "count": 1
+      },
+      {
+        "key": "farm:position_single_cover:organization:attention",
+        "department": "farm",
+        "raisedBy": {
+          "display": "Raised by the minor league staff"
+        },
+        "severity": "attention",
+        "neutralSeverity": "attention",
+        "urgency": {
+          "text": "Needs attention",
+          "tone": "caution",
+          "basis": {
+            "because": [
+              {
+                "label": "Farm & Development said",
+                "value": "Needs attention"
+              },
+              {
+                "label": "With no philosophy and no season",
+                "value": "Needs attention"
+              },
+              {
+                "label": "On the desk",
+                "value": "Needs attention"
+              }
+            ],
+            "source": {
+              "department": "farm",
+              "specialist": "The desk",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "policy",
+            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
+          },
+          "links": []
+        },
+        "headline": {
+          "text": "Little depth in the upper minors at 1B, 3B, CF and LF.",
+          "tone": "caution",
+          "basis": {
+            "because": [
+              {
+                "label": "1B",
+                "value": "No one in the upper minors can play 1B."
+              },
+              {
+                "label": "3B",
+                "value": "No one in the upper minors can play 3B."
+              },
+              {
+                "label": "CF",
+                "value": "No one in the upper minors can play CF."
+              },
+              {
+                "label": "LF",
+                "value": "No one in the upper minors can play LF."
+              }
+            ],
+            "source": {
+              "department": "farm",
+              "specialist": "Minor League Operations",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "stamp": "The farm's stated lines, 10 of 30 still starting values. The same kind of finding about the same club or the organization, at the same urgency, is one row listing its positions"
+          },
+          "links": [
+            {
+              "kind": "view",
+              "department": "farm",
+              "view": "organization"
+            }
+          ],
+          "hint": "4 findings, one row: each is in the breakdown"
+        },
+        "detail": null,
+        "due": null,
+        "dueInDays": null,
+        "evidence": null,
+        "count": 4
+      }
+    ],
+    "more": [],
+    "empty": null,
+    "incomplete": null
+  },
+  "departments": [
+    {
+      "department": "majorLeague",
+      "name": "Major League Ops",
+      "status": "ready",
+      "preparedBy": {
+        "display": "Prepared by Rafael Dunn, bench coach",
+        "hint": "From the club's staff in the save"
+      },
+      "summary": {
+        "text": "One to decide.",
+        "tone": "caution",
+        "basis": {
+          "because": [
+            {
+              "label": "To decide",
+              "value": "1"
+            },
+            {
+              "label": "To watch",
+              "value": "0"
+            }
+          ],
+          "source": {
+            "department": "majorLeague",
+            "specialist": "Major League Ops' roster review",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [
+            "A new export."
+          ],
+          "lean": null,
+          "certainty": "fact"
+        },
+        "links": []
+      },
+      "figures": [
+        {
+          "text": "Active roster",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Players",
+                "value": "26"
+              },
+              {
+                "label": "Limit",
+                "value": "26"
+              }
+            ],
+            "source": {
+              "department": "majorLeague",
+              "specialist": "Major League Ops' roster review",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact"
+          },
+          "links": [],
+          "value": {
+            "n": 26,
+            "unit": "count",
+            "display": "26 of 26"
+          }
+        },
+        {
+          "text": "40-man roster",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Players",
+                "value": "26"
+              },
+              {
+                "label": "Limit",
+                "value": "40"
+              }
+            ],
+            "source": {
+              "department": "majorLeague",
+              "specialist": "Player State",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact"
+          },
+          "links": [],
+          "value": {
+            "n": 26,
+            "unit": "count",
+            "display": "26 of 40"
+          }
+        },
+        {
+          "text": "On the injured list",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Major league players on the injured list",
+                "value": "0"
+              }
+            ],
+            "source": {
+              "department": "majorLeague",
+              "specialist": "Major League Ops' roster review",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact"
+          },
+          "links": [],
+          "value": {
+            "n": 0,
+            "unit": "count",
+            "display": "0"
+          }
+        }
+      ],
+      "top": [],
+      "toDecide": 1,
+      "watching": 0,
+      "open": {
+        "kind": "view",
+        "department": "majorLeague",
+        "view": "report"
+      },
+      "memo": null
+    },
+    {
+      "department": "farm",
+      "name": "Farm & Development",
+      "status": "ready",
+      "preparedBy": {
+        "display": "Prepared by the minor league staff"
+      },
+      "summary": {
+        "text": "Two to decide.",
+        "tone": "bad",
+        "basis": {
+          "because": [
+            {
+              "label": "To decide",
+              "value": "2"
+            },
+            {
+              "label": "To watch",
+              "value": "0"
+            }
+          ],
+          "source": {
+            "department": "farm",
+            "specialist": "Minor League Operations",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [
+            "A new export."
+          ],
+          "lean": null,
+          "certainty": "fact"
+        },
+        "links": []
+      },
+      "figures": [
+        {
+          "text": "Players in the system",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Players",
+                "value": "0"
+              },
+              {
+                "label": "Read by Player Development",
+                "value": "0"
+              },
+              {
+                "label": "Too little to read yet",
+                "value": "0"
+              }
+            ],
+            "source": {
+              "department": "farm",
+              "specialist": "Minor League Operations",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact"
+          },
+          "links": [],
+          "value": {
+            "n": 0,
+            "unit": "count",
+            "display": "0"
+          }
+        },
+        {
+          "text": "Affiliates",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Affiliates",
+                "value": "None in the export"
+              }
+            ],
+            "source": {
+              "department": "farm",
+              "specialist": "Minor League Operations",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact"
+          },
+          "links": [],
+          "value": {
+            "n": 0,
+            "unit": "count",
+            "display": "0"
+          }
+        },
+        {
+          "text": "Players we have a read on",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Read",
+                "value": "0"
+              },
+              {
+                "label": "Players",
+                "value": "0"
+              }
+            ],
+            "source": {
+              "department": "farm",
+              "specialist": "Minor League Operations",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact"
+          },
+          "links": [],
+          "value": {
+            "n": 0,
+            "unit": "count",
+            "display": "0 of 0"
+          }
+        }
+      ],
+      "top": [],
+      "toDecide": 2,
+      "watching": 0,
+      "open": {
+        "kind": "view",
+        "department": "farm",
+        "view": "report"
+      },
+      "memo": null
+    },
+    {
+      "department": "scouting",
+      "name": "Scouting",
+      "status": "notYet",
+      "preparedBy": {
+        "display": "Prepared by Terry Ellis, head scout",
+        "hint": "From the club's staff in the save"
+      },
+      "summary": {
+        "text": "No scouting report yet.",
+        "tone": "neutral",
+        "basis": {
+          "because": [],
+          "source": {
+            "department": "scouting",
+            "specialist": "Scouting",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [
+            "No scouting report yet."
+          ],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "unknown"
+        },
+        "links": [],
+        "hint": "The draft board and player search come in a later version"
+      },
+      "figures": [],
+      "top": [],
+      "toDecide": null,
+      "watching": null,
+      "open": null,
+      "memo": null
+    },
+    {
+      "department": "trades",
+      "name": "Trades",
+      "status": "notYet",
+      "preparedBy": {
+        "display": "Prepared by the front office"
+      },
+      "summary": {
+        "text": "No trade report yet.",
+        "tone": "neutral",
+        "basis": {
+          "because": [],
+          "source": {
+            "department": "trades",
+            "specialist": "Trades",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [
+            "No trade report yet."
+          ],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "unknown"
+        },
+        "links": [],
+        "hint": "The trade desk comes in a later version"
+      },
+      "figures": [],
+      "top": [],
+      "toDecide": null,
+      "watching": null,
+      "open": null,
+      "memo": null
+    },
+    {
+      "department": "finance",
+      "name": "Finance",
+      "status": "ready",
+      "preparedBy": {
+        "display": "Prepared by the front office"
+      },
+      "summary": {
+        "text": "Nothing to decide or watch.",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "To decide",
+              "value": "0"
+            },
+            {
+              "label": "To watch",
+              "value": "0"
+            }
+          ],
+          "source": {
+            "department": "finance",
+            "specialist": "Contracts",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [
+            "A new export."
+          ],
+          "lean": null,
+          "certainty": "fact"
+        },
+        "links": []
+      },
+      "figures": [
+        {
+          "text": "Payroll this season",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Committed this season",
+                "value": "$84.1M"
+              }
+            ],
+            "source": {
+              "department": "finance",
+              "specialist": "Payroll",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact"
+          },
+          "links": [],
+          "value": {
+            "n": 84143000,
+            "unit": "dollars",
+            "display": "$84.1M"
+          }
+        },
+        {
+          "text": "Room under the budget",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Budget less committed payroll",
+                "value": "$65.9M"
+              }
+            ],
+            "source": {
+              "department": "finance",
+              "specialist": "Payroll",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact"
+          },
+          "links": [],
+          "value": {
+            "n": 65857000,
+            "unit": "dollars",
+            "display": "$65.9M"
+          }
+        },
+        {
+          "text": "Free agents after this season",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Contracts ending",
+                "value": "0"
+              },
+              {
+                "label": "Options to decide",
+                "value": "0"
+              },
+              {
+                "label": "Headed to arbitration",
+                "value": "0"
+              }
+            ],
+            "source": {
+              "department": "finance",
+              "specialist": "Contracts",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact"
+          },
+          "links": [],
+          "value": {
+            "n": 0,
+            "unit": "count",
+            "display": "0"
+          }
+        }
+      ],
+      "top": [],
+      "toDecide": 0,
+      "watching": 0,
+      "open": {
+        "kind": "view",
+        "department": "finance",
+        "view": "report"
+      },
+      "memo": null
+    },
+    {
+      "department": "medical",
+      "name": "Medical",
+      "status": "ready",
+      "preparedBy": {
+        "display": "Prepared by Ana Frey, team doctor",
+        "hint": "From the club's staff in the save"
+      },
+      "summary": {
+        "text": "Nothing to decide or watch.",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "To decide",
+              "value": "0"
+            },
+            {
+              "label": "To watch",
+              "value": "0"
+            }
+          ],
+          "source": {
+            "department": "medical",
+            "specialist": "The injury report",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [
+            "A new export."
+          ],
+          "lean": null,
+          "certainty": "fact"
+        },
+        "links": []
+      },
+      "figures": [
+        {
+          "text": "Injured",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Injured in the organization",
+                "value": "0"
+              }
+            ],
+            "source": {
+              "department": "medical",
+              "specialist": "The injury report",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact"
+          },
+          "links": [],
+          "value": {
+            "n": 0,
+            "unit": "count",
+            "display": "0"
+          }
+        },
+        {
+          "text": "With the major league club",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Injured major leaguers",
+                "value": "0"
+              }
+            ],
+            "source": {
+              "department": "medical",
+              "specialist": "The injury report",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact"
+          },
+          "links": [],
+          "value": {
+            "n": 0,
+            "unit": "count",
+            "display": "0"
+          }
+        },
+        {
+          "text": "Day-to-day",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Playing through it or day-to-day",
+                "value": "0"
+              }
+            ],
+            "source": {
+              "department": "medical",
+              "specialist": "The injury report",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact"
+          },
+          "links": [],
+          "value": {
+            "n": 0,
+            "unit": "count",
+            "display": "0"
+          }
+        }
+      ],
+      "top": [],
+      "toDecide": 0,
+      "watching": 0,
+      "open": {
+        "kind": "view",
+        "department": "medical",
+        "view": "report"
+      },
+      "memo": null
+    },
+    {
+      "department": "league",
+      "name": "League Office",
+      "status": "notYet",
+      "preparedBy": {
+        "display": "Prepared by the front office"
+      },
+      "summary": {
+        "text": "No league report yet.",
+        "tone": "neutral",
+        "basis": {
+          "because": [],
+          "source": {
+            "department": "league",
+            "specialist": "League Office",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [
+            "No league report yet."
+          ],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "unknown"
+        },
+        "links": [],
+        "hint": "The wire, standings and club reports come in a later version"
+      },
+      "figures": [],
+      "top": [],
+      "toDecide": null,
+      "watching": null,
+      "open": null,
+      "memo": null
+    },
+    {
+      "department": "philosophy",
+      "name": "Philosophy & Staff",
+      "status": "notYet",
+      "preparedBy": {
+        "display": "Prepared by the front office"
+      },
+      "summary": {
+        "text": "No staff report yet.",
+        "tone": "neutral",
+        "basis": {
+          "because": [],
+          "source": {
+            "department": "philosophy",
+            "specialist": "Philosophy & Staff",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [
+            "No staff report yet."
+          ],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "unknown"
+        },
+        "links": [],
+        "hint": "The philosophy and coaching staff views come in a later version"
+      },
+      "figures": [],
+      "top": [],
+      "toDecide": null,
+      "watching": null,
+      "open": null,
+      "memo": null
+    }
+  ]
+}

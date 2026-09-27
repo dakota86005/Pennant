@@ -2,14 +2,17 @@ import FeatureCore
 import PennantKit
 import SwiftUI
 
-/// Major League Ops (SWIFTUI_REBUILD.md section 3.5). Every view is a structural placeholder until its milestone builds it.
+/// Major League Ops (SWIFTUI_REBUILD.md section 3.5). Its report is the served department report (N4); the
+/// other views are structural placeholders until their milestones build them.
 public enum MajorLeagueDepartment: DepartmentModule {
     public static let id: DeptID = "majorLeague"
     public static let title: LocalizedStringResource = "Major League Ops"
     public static let symbol = "baseball"
     public static let order = 2
     public static let views: [DepartmentViewDescriptor] = [
-        .placeholder(id: "report", title: "Report", symbol: "list.bullet.clipboard", keywords: ["mlb"]),
+        DepartmentViewDescriptor(id: "report", title: "Report", symbol: "list.bullet.clipboard", keywords: ["mlb"]) {
+            DepartmentReportView(department: id)
+        },
         .placeholder(id: "positionPlayers", title: "Position Players", symbol: "person.3", keywords: ["hitters", "batters"]),
         .placeholder(id: "pitchingStaff", title: "Pitching Staff", symbol: "figure.baseball", keywords: ["pitchers", "rotation", "bullpen"]),
         .placeholder(id: "benchCoverage", title: "Bench & Backups", symbol: "chair", keywords: ["bench", "backups"]),

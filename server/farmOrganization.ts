@@ -20,7 +20,12 @@ import {
   UPPER_MINORS_LEVELS,
 } from './farmCalibration.js';
 import { tierWord, type DevelopmentProtectionTier } from './developmentFit.js';
-import type { FarmFinding } from './farmAffiliate.js';
+import { countInWords, type FarmFinding } from './farmAffiliate.js';
+
+/** Who in the upper minors, in words: "no one in the upper minors", "only one player…", "only two players…". */
+const upperMinorsWho = (n: number): string =>
+  n === 0 ? 'no one in the upper minors' : `only ${countInWords(n)} ${n === 1 ? 'player' : 'players'} in the upper minors`;
+const capitalized = (text: string): string => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 import type { AssignmentConclusion } from './farmAssignments.js';
 
 export interface OrgPlayerFact {
@@ -195,8 +200,9 @@ export function buildOrganizationView(input: OrganizationInput): OrganizationVie
       severity: thinAbove ? 'critical' : 'attention',
       owner: 'minor_league_operations',
       headline: thinAbove
-        ? `The major-league club is thin at ${dist.position} and the upper minors have ${dist.upperMinors} to reach for.`
-        : `The upper minors carry ${dist.upperMinors} players who can play ${dist.position}.`,
+        ? `The major-league club is thin at ${dist.position}, and ${upperMinorsWho(dist.upperMinors)} can step in.`
+        : `${capitalized(upperMinorsWho(dist.upperMinors))} can play ${dist.position}.`,
+      position: dist.position,
       evidence: [
         {
           label: `Upper-minors players at ${dist.position}`,

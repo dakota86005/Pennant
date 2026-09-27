@@ -29,6 +29,9 @@ public final class AppModel {
     public private(set) var catalog: Components.Schemas.Catalog?
     /// The last import's finish time as the server reported it; changes only when a new import lands.
     public private(set) var importStamp = ""
+    /// The server's current Front Office build for the club the app follows (`/api/status` and the
+    /// `front-office-updated` event); part of `storeKey`, so the Front Office reloads when the server rebuilds.
+    public private(set) var reportStamp = ""
     /// Counts successful backup restores; part of `storeKey`, so stores reload after one.
     public private(set) var restoreCount = 0
     /// Whether the event stream is connected.
@@ -45,6 +48,8 @@ public final class AppModel {
     public private(set) var lastRequestError: String?
     /// The client for the running server; nil while it is not ready.
     public private(set) var client: Client?
+    /// The Front Office's desk, cards and department reports (`FrontOfficeStore`), loaded on `storeKey`.
+    public private(set) var frontOffice: FrontOfficeStore
 
     /// How many event problems are kept (the log has them all).
     public static let keptEventProblems = 20
@@ -73,6 +78,8 @@ public final class AppModel {
         self.controller = controller
         self.backups = controller.backups
         self.makeClient = makeClient
+        let log = controller.log
+        frontOffice = FrontOfficeStore { line in log.write(line, source: "app") }
     }
 
     #if DEBUG
@@ -85,7 +92,8 @@ public final class AppModel {
         orgs: [Components.Schemas.Org] = [],
         dataStatus: Components.Schemas.DataStatusView? = nil,
         catalog: Components.Schemas.Catalog? = nil,
-        importRequestProblem: RequestProblem? = nil
+        importRequestProblem: RequestProblem? = nil,
+        frontOffice: FrontOfficeStore? = nil
     ) -> AppModel {
         let model = AppModel(configuration: configuration)
         model.serverState = state
@@ -96,6 +104,7 @@ public final class AppModel {
         model.catalog = catalog
         model.importRequestProblem = importRequestProblem
         model.club = CurrentClub.from(served: settings?.organization, orgs: orgs)
+        if let frontOffice { model.frontOffice = frontOffice }
         return model
     }
     #endif
@@ -108,13 +117,23 @@ public final class AppModel {
         public var importStamp: String
         public var club: ClubRef?
         public var restores: Int
+        /// The server's current Front Office build (`reportStamp`), empty before one is kept: it moves whenever the
+        /// server builds again without a new import (a settings change, a calibration, the live log).
+        public var reportStamp: String
+
+        public init(importStamp: String, club: ClubRef?, restores: Int, reportStamp: String = "") {
+            self.importStamp = importStamp
+            self.club = club
+            self.restores = restores
+            self.reportStamp = reportStamp
+        }
     }
 
     /// Nil until the server is ready and its settings (with the served club) are read, so a store loads once at
     /// launch rather than once for the first status and again when the club arrives.
     public var storeKey: StoreKey? {
         guard client != nil, settings != nil else { return nil }
-        return StoreKey(importStamp: importStamp, club: club?.ref, restores: restoreCount)
+        return StoreKey(importStamp: importStamp, club: club?.ref, restores: restoreCount, reportStamp: reportStamp)
     }
 
     // MARK: Derived from the served status
@@ -265,6 +284,21 @@ public final class AppModel {
         return await PennantClient.data(path: path, port: connection.port, token: connection.token)
     }
 
+    /// Loads the Morning Report's desk and cards for the current key (a view calls it in `.task(id: storeKey)`).
+    public func loadFrontOffice() async {
+        await frontOffice.loadSummary(client: client, key: storeKey)
+    }
+
+    /// Loads one department's report for the current key.
+    public func loadReport(_ department: DeptID) async {
+        await frontOffice.loadReport(department.rawValue, client: client, key: storeKey)
+    }
+
+    /// Fetches the evidence trail behind an item, on demand.
+    public func loadTrail(_ evidence: String) async {
+        await frontOffice.loadTrail(evidence, client: client, key: storeKey)
+    }
+
     /// Writes a line to the server's log (a raw error a window shows only as a kind).
     public func logProblem(_ line: String) {
         controller.log.write(line, source: "app")
@@ -339,12 +373,16 @@ public final class AppModel {
             await reloadStatus()
         } else if let pending = event.value5 {
             status?.exportPending = pending.since
+        } else if let updated = event.value7 {
+            // A new Front Office build is kept: follow it when it is the club the app shows (or no club is known yet)
+            if club == nil || club?.ref.id == updated.orgId { reportStamp = updated.reportStamp }
         }
         // `job` (value6): the storylines and briefing jobs arrive with N13
     }
 
     private func apply(status next: Components.Schemas.ServerStatus, reload: Bool) {
         status = next
+        if let served = next.reportStamp, served != reportStamp { reportStamp = served }
         let stamp = next.lastImport?.finishedAt ?? ""
         guard stamp != importStamp else { return }
         importStamp = stamp

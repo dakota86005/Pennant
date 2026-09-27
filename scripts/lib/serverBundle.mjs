@@ -35,14 +35,17 @@ export async function bundleServerEntry(entry, outfile) {
 }
 
 /**
- * The two refit workers. They are found beside the file that starts them (`playerValue.ts` `refitWorkerUrl`,
- * `saveCalibration.ts` `calibrationWorkerUrl`), so each build writes them into its own output folder.
+ * The worker threads: the two refits and the Front Office's build. Each is found beside the file that starts it
+ * (`playerValue.ts` `refitWorkerUrl`, `saveCalibration.ts` `calibrationWorkerUrl`, `frontOfficeService.ts` `workerUrl`),
+ * so each build writes them into its own output folder.
  */
 export async function bundleRefitWorkers(outDir) {
   // Player Value's refit runs in a worker thread (A-17)
   await bundleServerEntry('server/playerValueRefitWorker.ts', `${outDir}/value-refit-worker.cjs`);
   // The per-save calibration refit (D-053, cycle 1) runs in its own worker thread the same way
   await bundleServerEntry('server/calibrationRefitWorker.ts', `${outDir}/calibration-refit-worker.cjs`);
+  // The Front Office builds its desk and reports off the event loop the same way (SWIFTUI_REBUILD.md section 4.2)
+  await bundleServerEntry('server/frontOfficeWorker.ts', `${outDir}/front-office-worker.cjs`);
 }
 
 export { pkg };

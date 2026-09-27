@@ -110,7 +110,7 @@ export interface Catalog {
  */
 const DEPARTMENTS: ReadonlyArray<{ id: DeptId; name: string; seat: StaffSeat | null; office: string; views: ReadonlyArray<[string, string]> }> = [
   { id: 'frontOffice', name: 'Front Office', seat: 'general_manager', office: 'the front office', views: [
-    ['morningReport', 'Morning Report'], ['storylines', 'Storylines'], ['briefing', 'GM Briefing'],
+    ['morningReport', 'Morning Report'], ['report', 'Report'], ['storylines', 'Storylines'], ['briefing', 'GM Briefing'],
   ] },
   { id: 'majorLeague', name: 'Major League Ops', seat: 'bench_coach', office: 'the major league staff', views: [
     ['report', 'Report'], ['positionPlayers', 'Position Players'], ['pitchingStaff', 'Pitching Staff'],
@@ -139,6 +139,11 @@ const DEPARTMENTS: ReadonlyArray<{ id: DeptId; name: string; seat: StaffSeat | n
     ['organizationalPhilosophy', 'Organizational Philosophy'], ['coachingStaff', 'Coaching Staff'],
   ] },
 ];
+
+/** Who a department's work comes from when the save names no one person ("the major league staff"). */
+export function departmentOffice(id: DeptId): string {
+  return DEPARTMENTS.find((d) => d.id === id)?.office ?? 'the front office';
+}
 
 /** The glossary as served: every term but those only the React app's pages use. */
 export function servedGlossary(): GlossaryEntry[] {

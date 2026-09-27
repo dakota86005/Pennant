@@ -87,6 +87,15 @@ stopping when told to or when its parent goes. Every server start takes the
 data-folder lock (`server/dataLock.ts`), so the Electron app and the Mac app,
 which share one data folder, never run against it together.
 
+The Mac app reads its words from `/api/v2` (D-056): `server/presentation/` authors every sentence about what the
+specialists answered, and decides nothing. The Front Office (`server/frontOfficeService.ts`) reads each department's
+specialist through its public module (`server/frontOfficeBuild.ts`, in a worker thread), hands the answers to the pure
+adapters in `server/presentation/frontOffice/`, and keeps the result per club and import (with the settings, the
+configuration, the live log and a calibration revision in its key; never a build read while an import writes), built at
+start and after each import, and stamped (`reportStamp`) so the Mac app reloads when it is rebuilt. This is the one place a department's answer is cached across
+requests: MINOR_LEAGUE_OPERATIONS.md section 7.8's "nothing cached across requests" still holds for the specialists
+themselves, and the Front Office's key moves whenever an input they read can.
+
 ## Data and persistence
 
 ### Imported league database

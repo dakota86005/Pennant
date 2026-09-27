@@ -15,6 +15,10 @@ import { importedAt } from './playerStateRoutes.js';
 import { buildCatalog, type Catalog } from './presentation/catalog.js';
 import { assertAuthored } from './presentation/claim.js';
 import { dataStatusView, type DataStatusView } from './presentation/dataStatusWords.js';
+import {
+  FrontOfficeRefusal, claimTrail, departmentReport, frontOfficeSummary, resolveOrg,
+} from './frontOfficeService.js';
+import type { ClaimTrail, DepartmentReport, FrontOfficeSummary } from './presentation/frontOffice/types.js';
 import { currentOrganization } from './viewingOrganization.js';
 
 export const v2Routes = Router();
@@ -37,6 +41,26 @@ v2Routes.get('/catalog', (_req, res: Response<Catalog>) => {
 v2Routes.get('/data-status', (_req, res: Response<DataStatusView>) => {
   send(res, dataStatusView(getDataStatus({ importedAt: importedAt.value })));
 });
+
+/** A Front Office route: its answer, or its refusal in a sentence (a 404 the contract documents). */
+function frontOffice<T>(answer: (req: Request) => Promise<T>) {
+  return (req: Request, res: Response<T | ApiError>, next: NextFunction): void => {
+    Promise.resolve().then(() => answer(req)).then((payload) => send(res, payload)).catch((err: unknown) => {
+      if (err instanceof FrontOfficeRefusal) res.status(err.status).json({ error: err.message });
+      else next(err);
+    });
+  };
+}
+
+/** The Morning Report's desk and department cards, for a club (a team id, or `automatic`). */
+v2Routes.get('/front-office/:org', frontOffice<FrontOfficeSummary>((req) => frontOfficeSummary(resolveOrg(String(req.params.org)))));
+
+/** One department's full report. */
+v2Routes.get('/departments/:org/:dept', frontOffice<DepartmentReport>((req) =>
+  departmentReport(resolveOrg(String(req.params.org)), String(req.params.dept))));
+
+/** The evidence trail behind an item, on demand (an MLB need's responses). */
+v2Routes.get('/claims/:key', frontOffice<ClaimTrail>((req) => claimTrail(String(req.params.key))));
 
 /** The sentence for a `/v2` request this build does not serve. */
 export const V2_UNKNOWN = 'This version of Pennant doesn\'t know that request. Updating the app should fix it.';

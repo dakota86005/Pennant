@@ -87,6 +87,9 @@
     "Decision": {
       "extractionState": "manual"
     },
+    "Department Reports": {
+      "extractionState": "manual"
+    },
     "Depth Chart": {
       "extractionState": "manual"
     },
@@ -190,6 +193,9 @@
     "Lineup": {
       "extractionState": "manual"
     },
+    "Loading": {
+      "extractionState": "manual"
+    },
     "Location": {
       "extractionState": "manual"
     },
@@ -237,6 +243,9 @@
       "extractionState": "manual"
     },
     "OOTP save": {
+      "extractionState": "manual"
+    },
+    "Open Report": {
       "extractionState": "manual"
     },
     "Or choose a folder": {
@@ -291,6 +300,9 @@
       "extractionState": "manual"
     },
     "Refresh Data": {
+      "extractionState": "manual"
+    },
+    "Refreshing": {
       "extractionState": "manual"
     },
     "Replaced files kept in": {
@@ -352,6 +364,9 @@
       "extractionState": "manual"
     },
     "Show why": {
+      "extractionState": "manual"
+    },
+    "Staff's Options": {
       "extractionState": "manual"
     },
     "Standings": {

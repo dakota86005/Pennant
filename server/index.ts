@@ -5,6 +5,7 @@ import os from 'node:os';
 import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
 import { api, recordImportMarket, recoverInterruptedImport, refitAfterImport, runImport } from './api.js';
+import { warmFrontOffice } from './frontOfficeService.js';
 import { buildIndexes } from './importer.js';
 import { APP_ROOT, DATA_DIR, loadConfig } from './config.js';
 import { startWatcher, stopWatcher } from './watcher.js';
@@ -107,6 +108,8 @@ function bootstrapData(): void {
   // The export already imported records its market and contracts if this build has not yet (idempotent: a second
   // start writes nothing). Deferred like the refit, after the synchronous start-up below
   if (tableExists('players')) setImmediate(() => recordImportMarket());
+  // The Front Office for the club the app follows, in its worker, so the first look after a launch is a cached read
+  if (tableExists('players')) setImmediate(() => void warmFrontOffice());
   const config = loadConfig();
   if (!config.csvDir || !fs.existsSync(config.csvDir)) return;
   if (!tableExists('players')) void runImport(config.csvDir);

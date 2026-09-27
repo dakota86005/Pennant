@@ -116,3 +116,9 @@ extension FocusedValues {
     /// The key main window's model, for the Go and View commands.
     @Entry public var mainWindow: MainWindowModel?
 }
+
+/// The window opens routes for the views it hosts (a card's report, a desk's "more" line).
+extension MainWindowModel: RouteOpening {
+    public func canOpen(_ route: AppRoute) -> Bool { registry.contains(route) }
+    public func open(_ route: AppRoute) { go(to: route) }
+}

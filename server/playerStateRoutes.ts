@@ -12,6 +12,13 @@ export const playerStateRoutes = Router();
 export const importedAt: { value: string | null } = { value: null };
 
 /**
+ * Set by the import pipeline while it writes: whether an import is running, and a count of imports started. A reader
+ * that keeps what it read (the Front Office's cache) keeps nothing read while an import was writing, because the
+ * database is then partly one export and partly another, and the stamp above does not move when an import fails.
+ */
+export const importRun: { importing: boolean; generation: number } = { importing: false, generation: 0 };
+
+/**
  * How current each source is, and where the save and its live transaction
  * database were found. The save is derived from the CSV export's location;
  * nothing here needs configuring in normal use.

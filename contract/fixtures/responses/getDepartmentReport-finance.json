@@ -1,0 +1,168 @@
+{
+  "department": "finance",
+  "name": "Finance",
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "preparedBy": {
+    "display": "Prepared by the front office"
+  },
+  "head": null,
+  "asOf": {
+    "display": "Through May 5, 2040",
+    "hint": "The last game day in the imported export"
+  },
+  "changes": null,
+  "memo": null,
+  "status": "ready",
+  "summary": {
+    "text": "Nothing to decide or watch.",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "To decide",
+          "value": "0"
+        },
+        {
+          "label": "To watch",
+          "value": "0"
+        }
+      ],
+      "source": {
+        "department": "finance",
+        "specialist": "Contracts",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [
+        "A new export."
+      ],
+      "lean": null,
+      "certainty": "fact"
+    },
+    "links": []
+  },
+  "figures": [
+    {
+      "text": "Payroll this season",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Committed this season",
+            "value": "$84.1M"
+          }
+        ],
+        "source": {
+          "department": "finance",
+          "specialist": "Payroll",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact"
+      },
+      "links": [],
+      "value": {
+        "n": 84143000,
+        "unit": "dollars",
+        "display": "$84.1M"
+      }
+    },
+    {
+      "text": "Room under the budget",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Budget less committed payroll",
+            "value": "$65.9M"
+          }
+        ],
+        "source": {
+          "department": "finance",
+          "specialist": "Payroll",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact"
+      },
+      "links": [],
+      "value": {
+        "n": 65857000,
+        "unit": "dollars",
+        "display": "$65.9M"
+      }
+    },
+    {
+      "text": "Free agents after this season",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Contracts ending",
+            "value": "0"
+          },
+          {
+            "label": "Options to decide",
+            "value": "0"
+          },
+          {
+            "label": "Headed to arbitration",
+            "value": "0"
+          }
+        ],
+        "source": {
+          "department": "finance",
+          "specialist": "Contracts",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact"
+      },
+      "links": [],
+      "value": {
+        "n": 0,
+        "unit": "count",
+        "display": "0"
+      }
+    }
+  ],
+  "toDecide": {
+    "title": {
+      "display": "To decide"
+    },
+    "items": [],
+    "empty": {
+      "display": "Nothing to decide"
+    }
+  },
+  "watching": {
+    "title": {
+      "display": "Watching"
+    },
+    "items": [],
+    "empty": {
+      "display": "Nothing to watch"
+    }
+  },
+  "unknowns": {
+    "title": {
+      "display": "What we can't see"
+    },
+    "lines": [
+      {
+        "display": "Nothing missing that we know of"
+      }
+    ]
+  }
+}

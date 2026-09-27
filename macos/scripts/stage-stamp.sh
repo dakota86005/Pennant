@@ -9,6 +9,7 @@ ROOT="$1"
 node_version="$("$ROOT/build/node-runtime/pennant-server" --version)"
 {
   cat "$ROOT/build/sidecar/server.cjs" "$ROOT/build/sidecar/value-refit-worker.cjs" \
-    "$ROOT/build/sidecar/calibration-refit-worker.cjs" "$ROOT/build/sidecar/package.json" "$ROOT/package-lock.json"
+    "$ROOT/build/sidecar/calibration-refit-worker.cjs" "$ROOT/build/sidecar/front-office-worker.cjs" \
+    "$ROOT/build/sidecar/package.json" "$ROOT/package-lock.json"
   echo "$node_version"
 } | shasum -a 256 | cut -c1-64

@@ -392,6 +392,48 @@
         }
       }
     },
+    "/api/v2/claims/{key}": {
+      "get": {
+        "operationId": "getClaimTrail",
+        "summary": "The evidence trail behind an item, built on demand (an MLB need's responses); the key is the item's `evidence`.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "description": "An item's `evidence` key.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimTrail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v2/data-status": {
       "get": {
         "operationId": "getDataStatusWords",
@@ -413,6 +455,57 @@
         }
       }
     },
+    "/api/v2/departments/{org}/{dept}": {
+      "get": {
+        "operationId": "getDepartmentReport",
+        "summary": "One department's full report: prepared by, key figures, to decide, watching, what changed, what we can't see.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dept",
+            "in": "path",
+            "required": true,
+            "description": "The department's id (`majorLeague`, `farm`, ...).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepartmentReport"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v2/events": {
       "get": {
         "operationId": "streamEvents",
@@ -425,6 +518,48 @@
             "description": "A stream of server-sent events; each event's data is a JSON ServerEvent.",
             "content": {
               "text/event-stream": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/front-office/{org}": {
+      "get": {
+        "operationId": "getFrontOffice",
+        "summary": "The Morning Report's desk (every department's items to decide, in a stated order) and one card per department.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FrontOfficeSummary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
             }
           }
         }
@@ -862,6 +997,44 @@
           "links"
         ],
         "description": "One visible line, in the GM's voice, with its basis."
+      },
+      "ClaimTrail": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "headline": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrailSection"
+            }
+          }
+        },
+        "required": [
+          "key",
+          "importStamp",
+          "reportStamp",
+          "title",
+          "headline",
+          "sections"
+        ],
+        "description": "The evidence trail behind an item, fetched on demand (`GET /api/v2/claims/:key`): too slow to put in a summary (an MLB need's staff recommendation takes seconds on a real save), so the inspector asks for it when the GM opens the item."
       },
       "ClubPalette": {
         "type": "object",
@@ -1315,6 +1488,64 @@
           "facts"
         ]
       },
+      "DepartmentCard": {
+        "type": "object",
+        "properties": {
+          "department": {
+            "$ref": "#/components/schemas/DeptId"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReportStatus"
+          },
+          "preparedBy": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "figures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Claim"
+            },
+            "description": "Two or three key figures."
+          },
+          "top": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FoItem"
+            },
+            "description": "The first things it is watching (at most three): the desk already shows what it has to decide."
+          },
+          "toDecide": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "How many items it has to decide and to watch; null when it could not be read or has no report yet."
+          },
+          "watching": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target",
+            "description": "Opens the department's report; null when it has none yet."
+          },
+          "memo": {
+            "$ref": "#/components/schemas/StaffMemo"
+          }
+        },
+        "required": [
+          "department",
+          "name",
+          "status",
+          "preparedBy",
+          "summary",
+          "figures",
+          "top"
+        ],
+        "description": "A department's compact card on the Morning Report."
+      },
       "DepartmentHead": {
         "type": "object",
         "properties": {
@@ -1336,6 +1567,92 @@
         ],
         "description": "Who heads a department, as the save's staff has it."
       },
+      "DepartmentReport": {
+        "type": "object",
+        "properties": {
+          "department": {
+            "$ref": "#/components/schemas/DeptId"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReportStatus"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The import the report was built from (the last import's finish time), or null when the server has none on record."
+          },
+          "reportStamp": {
+            "type": "string",
+            "description": "The build it comes from: moves whenever the server builds the Front Office again (a new import, a settings change, a calibration)."
+          },
+          "preparedBy": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Prepared by Jeff Banister, bench coach\", or its staff when the save names nobody."
+          },
+          "head": {
+            "$ref": "#/components/schemas/DepartmentHead"
+          },
+          "asOf": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Through May 16, 2040\": the game date the evidence reflects, or why it is not known."
+          },
+          "summary": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "One sentence assembled from its items."
+          },
+          "figures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Claim"
+            },
+            "description": "Key figures (three to five)."
+          },
+          "toDecide": {
+            "$ref": "#/components/schemas/ReportSection"
+          },
+          "watching": {
+            "$ref": "#/components/schemas/ReportSection"
+          },
+          "changes": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ReportChange"
+            },
+            "description": "What changed since the last export; null until Pennant keeps each import's reports (N7), never an empty list."
+          },
+          "unknowns": {
+            "$ref": "#/components/schemas/ReportUnknowns"
+          },
+          "memo": {
+            "$ref": "#/components/schemas/StaffMemo",
+            "description": "The staff memo; null until the AI pass writes one."
+          }
+        },
+        "required": [
+          "department",
+          "name",
+          "status",
+          "importStamp",
+          "reportStamp",
+          "preparedBy",
+          "asOf",
+          "summary",
+          "figures",
+          "toDecide",
+          "watching",
+          "changes",
+          "unknowns"
+        ],
+        "description": "A department's report, one anatomy for all (SWIFTUI_REBUILD.md section 3.5)."
+      },
       "DeptId": {
         "description": "A department of the club, as the Mac app's sidebar has them (SWIFTUI_REBUILD.md section 3.5). An open enum in the spec: a newer server may name a department an older app does not know.",
         "anyOf": [
@@ -1351,6 +1668,88 @@
               "medical",
               "league",
               "philosophy"
+            ]
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "Desk": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "order": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "How the desk is ordered and what it shows, in words, with the full rule in its help tag."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FoItem"
+            }
+          },
+          "more": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeskMore"
+            },
+            "description": "Each department with more to decide than the desk shows, and how many more."
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Nothing to decide from the departments reporting\" when every department was read and none raised anything; null otherwise."
+          },
+          "incomplete": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Which departments could not be read, so the desk may be missing items; null when every one was."
+          }
+        },
+        "required": [
+          "title",
+          "order",
+          "items",
+          "more"
+        ],
+        "description": "The desk: the items to decide from every department (a stated share of each), in a stated order."
+      },
+      "DeskMore": {
+        "type": "object",
+        "properties": {
+          "department": {
+            "$ref": "#/components/schemas/DeptId"
+          },
+          "line": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"And 3 more in Farm & Development\"."
+          },
+          "count": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target",
+            "description": "Its report."
+          }
+        },
+        "required": [
+          "department",
+          "line",
+          "count",
+          "open"
+        ],
+        "description": "A department's items to decide beyond the desk's stated share, and where they are."
+      },
+      "DeskSeverity": {
+        "description": "The desk's common scale, most urgent first.",
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "critical",
+              "attention",
+              "noted"
             ]
           },
           {
@@ -1376,6 +1775,73 @@
           "since"
         ],
         "description": "OOTP has written a fresh export the server has not imported yet."
+      },
+      "FoItem": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "The item's key within an import: its department, its kind and its subject (`majorLeague:need:mlb:il_return_crunch:412`). The same problem keeps the same key from one build to the next of the same import."
+          },
+          "department": {
+            "$ref": "#/components/schemas/DeptId"
+          },
+          "raisedBy": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Who raised it: the department's head as the save names him (\"Raised by Jeff Banister, bench coach\"), or its staff."
+          },
+          "severity": {
+            "$ref": "#/components/schemas/DeskSeverity",
+            "description": "The department's own severity on the desk's scale, with its philosophy and season weighed (never above what it said)."
+          },
+          "neutralSeverity": {
+            "$ref": "#/components/schemas/DeskSeverity",
+            "description": "What the department states with no philosophy and no season to weigh: the plain reading, and what the desk goes by (whether it is to decide or to watch, and its order; D-060). The same as `severity` when nothing shaded it."
+          },
+          "urgency": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "The plain severity in words (\"Urgent\", \"Needs attention\", \"Noted\"), with the line that placed it and any lean in its basis."
+          },
+          "headline": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What it is, in one line, with the department's evidence as its basis."
+          },
+          "detail": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "A second line when there is one (who is out, where he plays); null when the headline says it all."
+          },
+          "due": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The days left on a running clock (\"3 days left\"), or null when nothing is counting down."
+          },
+          "dueInDays": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "The same, as a number for ordering; null when there is no clock or its days are not exported."
+          },
+          "evidence": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The key of the evidence trail `GET /api/v2/claims/:key` serves for it; null when it has none beyond its basis."
+          },
+          "count": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "How many of the department's own items this row stands for: 1, or more when the grouping rule put several in one row."
+          }
+        },
+        "required": [
+          "key",
+          "department",
+          "raisedBy",
+          "severity",
+          "neutralSeverity",
+          "urgency",
+          "headline",
+          "evidence",
+          "count"
+        ],
+        "description": "One thing a department raised for the GM."
       },
       "FreshnessAssessment": {
         "type": "object",
@@ -1462,6 +1928,77 @@
           "reasons",
           "action"
         ]
+      },
+      "FrontOfficeSummary": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "club": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The club's name, or null when the export does not have it."
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The import it was built from; the Mac app's stores key on the same stamp."
+          },
+          "reportStamp": {
+            "type": "string",
+            "description": "The build it comes from (`DepartmentReport.reportStamp`); `/api/status` and the `front-office-updated` event serve the current one."
+          },
+          "asOf": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "desk": {
+            "$ref": "#/components/schemas/Desk"
+          },
+          "departments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DepartmentCard"
+            }
+          }
+        },
+        "required": [
+          "orgId",
+          "club",
+          "importStamp",
+          "reportStamp",
+          "asOf",
+          "desk",
+          "departments"
+        ],
+        "description": "The Morning Report's desk and department cards (`GET /api/v2/front-office/:org`)."
+      },
+      "FrontOfficeUpdatedEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "front-office-updated"
+            ]
+          },
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "reportStamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "orgId",
+          "reportStamp"
+        ],
+        "description": "The server built a club's Front Office again and keeps it (a new import, a settings change, a calibration): its new `reportStamp`. The Mac app's Front Office store reloads on it (a cached read)."
       },
       "GameDate": {
         "type": "string",
@@ -2548,6 +3085,92 @@
         ],
         "description": "What `GET /api/settings/providers` serves: the providers on offer and every provider's key state."
       },
+      "ReportChange": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "new",
+                  "resolved",
+                  "moved"
+                ]
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "line": {
+            "$ref": "#/components/schemas/Claim"
+          }
+        },
+        "required": [
+          "kind",
+          "line"
+        ],
+        "description": "What changed since the last export (N7 fills it)."
+      },
+      "ReportSection": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FoItem"
+            }
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The line shown when there are no items (\"Nothing to decide\"); null when there are items or nothing could be read."
+          }
+        },
+        "required": [
+          "title",
+          "items"
+        ],
+        "description": "\"To decide\" or \"Watching\": a titled list of items, and what it says when it is empty."
+      },
+      "ReportStatus": {
+        "description": "A department's report is ready, could not be read this time, or has nothing to report yet.",
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "ready",
+              "unavailable",
+              "notYet"
+            ]
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "ReportUnknowns": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          }
+        },
+        "required": [
+          "title",
+          "lines"
+        ],
+        "description": "\"What we can't see\": the department's unknowns, as short sentences."
+      },
       "ResolveFolderRequest": {
         "type": "object",
         "properties": {
@@ -2788,6 +3411,9 @@
             "$ref": "#/components/schemas/JobEvent"
           },
           {
+            "$ref": "#/components/schemas/FrontOfficeUpdatedEvent"
+          },
+          {
             "$ref": "#/components/schemas/UnknownServerEvent"
           }
         ],
@@ -2868,6 +3494,13 @@
           "ratingScaleMax": {
             "$ref": "#/components/schemas/Integer",
             "description": "The top of the rating scale the save shows ratings on."
+          },
+          "reportStamp": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The stamp of the Front Office's current build for the club the app follows (`FrontOfficeSummary.reportStamp`), or null before one is kept. It moves whenever the server builds the Front Office again; the Mac app reloads on it."
           }
         },
         "required": [
@@ -2883,7 +3516,8 @@
           "hasData",
           "exportPending",
           "logoToken",
-          "ratingScaleMax"
+          "ratingScaleMax",
+          "reportStamp"
         ],
         "description": "What `/api/status` serves, and the snapshot `/api/v2/events` opens with (described in `contract/openapi.json`)."
       },
@@ -3213,6 +3847,25 @@
           }
         ]
       },
+      "StaffMemo": {
+        "type": "object",
+        "properties": {
+          "by": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          }
+        },
+        "required": [
+          "by",
+          "lines"
+        ],
+        "description": "A staff member's memo (the later AI pass fills it; never part of a decision, D-001)."
+      },
       "StatCatalogGroup": {
         "anyOf": [
           {
@@ -3369,6 +4022,29 @@
             "type": "string"
           }
         ]
+      },
+      "TrailSection": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "claims": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Claim"
+            }
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "What the section says when it has no claims; null when it has some."
+          }
+        },
+        "required": [
+          "title",
+          "claims"
+        ],
+        "description": "One titled part of an evidence trail."
       },
       "Unit": {
         "description": "What a served number counts, so the app formats it (a share as a percentage, dollars as money).",

@@ -83,7 +83,7 @@ final class PennantUITests: XCTestCase {
     /// draw and no SwiftUI modifier reaches; labelling a SwiftUI container above them made the sidebar's rows stop
     /// scrolling into view for a click), and on the Touch Bar the system draws. Anything else fails the test.
     @MainActor
-    private func audit(_ app: XCUIApplication) throws {
+    private func audit(_ app: XCUIApplication, named name: String = "accessibility-audit") throws {
         var issues: [String] = []
         var setAside: [String] = []
         let windows = app.windows.allElementsBoundByIndex.map(\.frame)
@@ -99,10 +99,22 @@ final class PennantUITests: XCTestCase {
             return true
         }
         let attachment = XCTAttachment(string: (["Findings:"] + issues + ["", "Set aside (the system's own containers):"] + setAside).joined(separator: "\n"))
-        attachment.name = "accessibility-audit"
+        attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
         XCTAssertEqual(issues, [], "the accessibility audit found issues")
+    }
+
+    /// Every department folded and the sidebar at its top, so the whole list fits and no row is caught half under the
+    /// toolbar's glass or cut by the window's edge (a half-shown line reads as low contrast; every macOS sidebar scrolls
+    /// that way).
+    @MainActor
+    private func foldSidebar(_ app: XCUIApplication) {
+        let sidebar = app.outlines["sidebar"].firstMatch
+        for triangle in sidebar.disclosureTriangles.allElementsBoundByIndex where (triangle.value as? Int) == 1 {
+            triangle.click()
+        }
+        sidebar.scroll(byDeltaX: 0, deltaY: 2000)
     }
 
     @MainActor
@@ -167,6 +179,17 @@ final class PennantUITests: XCTestCase {
             ("8", "league", "wire", "franchiseHistory"),
             ("9", "philosophy", "organizationalPhilosophy", "coachingStaff"),
         ]
+        // The Morning Report shows the served desk and cards, and a department's report its served anatomy
+        app.typeKey("1", modifierFlags: .command)
+        XCTAssertTrue(element(app, "morningReport.desk").waitForExistence(timeout: 20), "the Morning Report's desk did not load")
+        // The served desk and cards pass the audit too, the window at rest as for the audit below
+        foldSidebar(app)
+        keep(app.windows.firstMatch.screenshot(), named: "morning-report")
+        try audit(app, named: "accessibility-audit-morning-report")
+        app.typeKey("2", modifierFlags: .command)
+        XCTAssertTrue(element(app, "report.content").waitForExistence(timeout: 20), "Major League Ops' report did not load")
+        keep(app.windows.firstMatch.screenshot(), named: "major-league-report")
+
         for department in departments {
             app.typeKey(department.key, modifierFlags: .command)
             XCTAssertTrue(element(app, "detail.\(department.id).\(department.first)").waitForExistence(timeout: 5),
@@ -192,11 +215,7 @@ final class PennantUITests: XCTestCase {
         // Audit the window at rest: every department folded and the sidebar at its top, so the whole list fits and no
         // row is caught half under the toolbar's glass or cut by the window's edge (a half-shown line reads as low
         // contrast; every macOS sidebar scrolls that way)
-        let sidebar = app.outlines["sidebar"].firstMatch
-        for triangle in sidebar.disclosureTriangles.allElementsBoundByIndex where (triangle.value as? Int) == 1 {
-            triangle.click()
-        }
-        sidebar.scroll(byDeltaX: 0, deltaY: 2000)
+        foldSidebar(app)
         try audit(app)
 
         app.typeKey(",", modifierFlags: .command)
