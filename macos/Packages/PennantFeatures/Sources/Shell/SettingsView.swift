@@ -1,5 +1,6 @@
 import FeatureCore
 import PennantAPI
+import PennantDesign
 import PennantKit
 import SwiftUI
 import UniformTypeIdentifiers
@@ -16,7 +17,7 @@ public struct SettingsView: View {
     public static func height(_ tab: AppRouting.SettingsTab) -> CGFloat {
         switch tab {
         case .general: 620
-        case .appearance: 200
+        case .appearance: 560
         case .ai: 460
         }
     }
@@ -328,7 +329,9 @@ struct DataStatusSection: View {
 
 // MARK: Appearance
 
-/// System, Light or Dark: the served `theme`, applied to every window once the server has saved it.
+/// System, Light or Dark (the served `theme`, applied to every window once the server has saved it), and the club's
+/// colours: whether to draw team colours at all (the served `useTeamColors`), and which theme the current club wears,
+/// its own colours or an installed theme pack, each with a preview in its own colours (D-061).
 struct AppearanceSettings: View {
     @Environment(AppModel.self) private var model
     @State private var problem: RequestProblem?
@@ -359,8 +362,160 @@ struct AppearanceSettings: View {
                 .accessibilityIdentifier("settings.appearance")
                 if let problem { ProblemLine(problem) }
             }
+            ThemeSettings()
         }
         .formStyle(.grouped)
+    }
+}
+
+/// The club's theme: team colours on or off, and the theme the current club wears, chosen from its served choices.
+struct ThemeSettings: View {
+    @Environment(AppModel.self) private var model
+    @State private var problem: RequestProblem?
+    @State private var loadProblem: RequestProblem?
+
+    var body: some View {
+        let useTeamColors = model.settings?.settings.useTeamColors ?? true
+        Section {
+            Toggle("Use Team Colors", isOn: Binding(
+                get: { useTeamColors },
+                set: { on in
+                    Task {
+                        do {
+                            try await model.saveSettings(.init(useTeamColors: on))
+                            problem = nil
+                        } catch {
+                            problem = RequestProblem.from(error)
+                        }
+                    }
+                }
+            ))
+            .disabled(model.settings == nil)
+            .accessibilityIdentifier("settings.useTeamColors")
+            if let choices = model.themeChoices {
+                Picker("Theme", selection: Binding(
+                    get: { choices.active },
+                    set: { id in
+                        Task {
+                            do {
+                                try await model.chooseTheme(id)
+                                problem = nil
+                            } catch {
+                                problem = RequestProblem.from(error)
+                            }
+                        }
+                    }
+                )) {
+                    ForEach(choices.choices, id: \.id) { pack in
+                        ThemeChoiceLabel(pack: pack).tag(pack.id)
+                    }
+                }
+                .pickerStyle(.radioGroup)
+                .disabled(!useTeamColors)
+                .accessibilityIdentifier("settings.theme")
+                if let active = choices.choices.first(where: { $0.id == choices.active }) {
+                    ThemePreview(pack: active, useTeamColors: useTeamColors)
+                }
+                if let unavailable = choices.unavailable {
+                    ProblemLine(served: unavailable.display, detail: unavailable.hint)
+                }
+                ForEach(choices.refused, id: \.folder) { refused in
+                    LabeledContent {
+                        Text(verbatim: refused.problem.display)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } label: {
+                        Label { Text(verbatim: refused.folder) } icon: { Image(systemName: "exclamationmark.triangle") }
+                    }
+                    .help(Text(verbatim: refused.details.joined(separator: "\n")))
+                    .accessibilityIdentifier("settings.theme.refused.\(refused.folder)")
+                }
+                LabeledContent("Theme Packs Folder") {
+                    HStack {
+                        Text(verbatim: choices.folder)
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .textSelection(.enabled)
+                            .help(Text(verbatim: choices.folder))
+                        if FileManager.default.fileExists(atPath: choices.folder) {
+                            Button("Show in Finder") {
+                                NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: choices.folder, isDirectory: true)])
+                            }
+                            .controlSize(.small)
+                        }
+                    }
+                }
+            } else if let loadProblem {
+                ProblemLine(loadProblem)
+            } else {
+                ProgressView().controlSize(.small)
+            }
+            if let problem { ProblemLine(problem) }
+        } header: {
+            Text("Team Colors")
+        }
+        .task(id: model.storeKey) {
+            do {
+                try await model.loadThemeChoices()
+                loadProblem = nil
+            } catch {
+                loadProblem = RequestProblem.from(error)
+            }
+        }
+    }
+}
+
+/// A theme on offer: a swatch of its masthead's colours and its served name (the colour is never the only signal).
+struct ThemeChoiceLabel: View {
+    let pack: Components.Schemas.ThemePack
+    @Environment(\.colorScheme) private var colorScheme
+    @EffectiveContrast private var contrast
+
+    var body: some View {
+        let palette = Theme(served: pack, useTeamColors: true).palette(colorScheme: colorScheme, contrast: contrast)
+        HStack(spacing: 8) {
+            LinearGradient(colors: palette.masthead.count == 1 ? palette.masthead + palette.masthead : palette.masthead,
+                           startPoint: .leading, endPoint: .trailing)
+                .frame(width: 28, height: 14)
+                .clipShape(.capsule)
+                .overlay { Capsule().strokeBorder(.separator, lineWidth: 0.5) }
+                .accessibilityHidden(true)
+            Text(verbatim: pack.name)
+        }
+    }
+}
+
+/// A live preview of a theme in the window's appearance: its masthead with the club's served name and record, and the
+/// club card, drawn by the same components the window uses.
+struct ThemePreview: View {
+    @Environment(AppModel.self) private var model
+    let pack: Components.Schemas.ThemePack
+    let useTeamColors: Bool
+    @State private var logo: Image?
+
+    var body: some View {
+        let club = model.catalogClub
+        VStack(alignment: .leading, spacing: 10) {
+            Masthead(
+                title: Text(verbatim: club?.name ?? pack.name),
+                record: club?.record.display,
+                recordHint: club?.record.hint,
+                logo: logo
+            )
+            .environment(\.mastheadTopInset, 0)
+            .clipShape(.rect(cornerRadius: 10))
+            .frame(height: 118)
+            if let club {
+                ClubCard(name: club.name, detail: nil, record: club.record.display, recordHint: club.record.hint, logo: logo)
+                    .frame(width: 260)
+            }
+        }
+        .environment(\.theme, Theme(served: pack, useTeamColors: useTeamColors))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("settings.theme.preview")
+        .task(id: pack.logo) { logo = await ServedImages.image(pack.logo, model: model) }
     }
 }
 

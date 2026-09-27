@@ -78,6 +78,7 @@ let package = Package(
                 "FeatureCore",
                 .product(name: "PennantAPI", package: "PennantAPI"),
                 .product(name: "PennantKit", package: "PennantKit"),
+                .product(name: "PennantDesign", package: "PennantDesign"),
             ],
             swiftSettings: concurrency
         )

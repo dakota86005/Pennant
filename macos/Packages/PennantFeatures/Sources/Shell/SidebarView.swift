@@ -80,11 +80,12 @@ struct SidebarSymbol: View {
     }
 }
 
-/// The club card for the served current club: its served name and colours (unless the GM turned team colours off, the
-/// served `useTeamColors`), its record and logo from the catalog, and which club it is. A configured club the club
+/// The club card for the served current club: its served name on the theme's card colours (the pack the club wears, or
+/// neutral when the GM turned team colours off), its record and logo, and which club it is. A configured club the club
 /// list does not have is named as not found; with no club served there is no card.
 struct SidebarClubCard: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.theme) private var theme
     @State private var logo: Image?
 
     var body: some View {
@@ -96,15 +97,9 @@ struct SidebarClubCard: View {
                     detail: club.source.label,
                     record: served?.record.display,
                     recordHint: served?.record.hint,
-                    logo: logo,
-                    tint: ClubTint(
-                        background: org.colors.bg,
-                        foreground: org.colors.fg,
-                        secondary: org.colors.secondary,
-                        useTeamColors: model.settings?.settings.useTeamColors ?? true
-                    )
+                    logo: logo
                 )
-                .task(id: served?.logo) { await loadLogo(served?.logo) }
+                .task(id: theme.logo) { logo = await ServedImages.image(theme.logo, model: model) }
             } else {
                 Label("Club not in this save", systemImage: "questionmark.circle")
                     .font(.callout)
@@ -113,17 +108,6 @@ struct SidebarClubCard: View {
                     .accessibilityIdentifier("club.card")
             }
         }
-    }
-}
-
-extension SidebarClubCard {
-    /// The club's logo from the path the catalog serves (the save's own art); none when the save holds none.
-    private func loadLogo(_ path: String?) async {
-        guard let path, let data = await model.servedFile(path), let image = NSImage(data: data) else {
-            logo = nil
-            return
-        }
-        logo = Image(nsImage: image)
     }
 }
 

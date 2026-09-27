@@ -39,12 +39,12 @@ final class PennantUITests: XCTestCase {
     }
 
     @MainActor
-    private func launch() -> XCUIApplication {
+    private func launch(arguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["PENNANT_DEV_DATA_DIR"] = dataFolder.path(percentEncoded: false)
         app.launchEnvironment["PENNANT_DEV_LOG_DIR"] = scratch.appending(path: "logs").path(percentEncoded: false)
         // A fresh window each time: no restored route from an earlier run
-        app.launchArguments += ["-ApplePersistenceIgnoreState", "YES"]
+        app.launchArguments += ["-ApplePersistenceIgnoreState", "YES"] + arguments
         app.launch()
         return app
     }
@@ -105,16 +105,10 @@ final class PennantUITests: XCTestCase {
         XCTAssertEqual(issues, [], "the accessibility audit found issues")
     }
 
-    /// Every department folded and the sidebar at its top, so the whole list fits and no row is caught half under the
-    /// toolbar's glass or cut by the window's edge (a half-shown line reads as low contrast; every macOS sidebar scrolls
-    /// that way).
+    /// The sidebar at its top, as a window opens: its departments stay unfolded (the audit reads every row there is).
     @MainActor
-    private func foldSidebar(_ app: XCUIApplication) {
-        let sidebar = app.outlines["sidebar"].firstMatch
-        for triangle in sidebar.disclosureTriangles.allElementsBoundByIndex where (triangle.value as? Int) == 1 {
-            triangle.click()
-        }
-        sidebar.scroll(byDeltaX: 0, deltaY: 2000)
+    private func sidebarAtTop(_ app: XCUIApplication) {
+        app.outlines["sidebar"].firstMatch.scroll(byDeltaX: 0, deltaY: 2000)
     }
 
     @MainActor
@@ -182,8 +176,8 @@ final class PennantUITests: XCTestCase {
         // The Morning Report shows the served desk and cards, and a department's report its served anatomy
         app.typeKey("1", modifierFlags: .command)
         XCTAssertTrue(element(app, "morningReport.desk").waitForExistence(timeout: 20), "the Morning Report's desk did not load")
-        // The served desk and cards pass the audit too, the window at rest as for the audit below
-        foldSidebar(app)
+        // The served desk and cards pass the audit too, with the sidebar's departments unfolded
+        sidebarAtTop(app)
         keep(app.windows.firstMatch.screenshot(), named: "morning-report")
         try audit(app, named: "accessibility-audit-morning-report")
         app.typeKey("2", modifierFlags: .command)
@@ -212,10 +206,8 @@ final class PennantUITests: XCTestCase {
         app.typeKey("i", modifierFlags: [.command, .option])
         XCTAssertTrue(element(app, "inspector").waitForNonExistence(timeout: 5))
 
-        // Audit the window at rest: every department folded and the sidebar at its top, so the whole list fits and no
-        // row is caught half under the toolbar's glass or cut by the window's edge (a half-shown line reads as low
-        // contrast; every macOS sidebar scrolls that way)
-        foldSidebar(app)
+        // Audit the window with every department unfolded (the loop above opened each), the sidebar at its top
+        sidebarAtTop(app)
         try audit(app)
 
         app.typeKey(",", modifierFlags: .command)
@@ -227,6 +219,87 @@ final class PennantUITests: XCTestCase {
             keep(app.windows.firstMatch.screenshot(), named: "settings-\(tab.lowercased())")
         }
         app.typeKey("w", modifierFlags: .command)
+        quitCleanly(app)
+    }
+
+    // MARK: The glass shell (N5)
+
+    /// The Morning Report and Major League Ops' report under the club's masthead, each audited with the sidebar
+    /// unfolded, kept as `glass-<look>-morning-report` and `glass-<look>-report`.
+    @MainActor
+    private func shellFlow(_ app: XCUIApplication, look: String) throws {
+        waitForShell(app)
+        // Major League Ops first, so its twelve views are unfolded too: the sidebar runs past the window's bottom edge
+        app.typeKey("2", modifierFlags: .command)
+        XCTAssertTrue(element(app, "report.content").waitForExistence(timeout: 20), "Major League Ops' report did not load")
+        app.typeKey("1", modifierFlags: .command)
+        XCTAssertTrue(element(app, "morningReport.desk").waitForExistence(timeout: 20), "the Morning Report's desk did not load")
+        XCTAssertTrue(element(app, "masthead").waitForExistence(timeout: 5), "no masthead on the Morning Report")
+        sidebarAtTop(app)
+        keep(app.windows.firstMatch.screenshot(), named: "glass-\(look)-morning-report")
+        try audit(app, named: "accessibility-audit-glass-\(look)-morning-report")
+        app.typeKey("2", modifierFlags: .command)
+        XCTAssertTrue(element(app, "masthead").waitForExistence(timeout: 20), "no masthead on Major League Ops' report")
+        keep(app.windows.firstMatch.screenshot(), named: "glass-\(look)-report")
+        try audit(app, named: "accessibility-audit-glass-\(look)-report")
+    }
+
+    /// The club's own colours, light (the save's served appearance), then with Increase Contrast.
+    @MainActor
+    func testGlassShellClubColorsLight() throws {
+        var app = launch()
+        try shellFlow(app, look: "club-colors-light")
+        // The floating control opens the whole desk
+        app.typeKey("1", modifierFlags: .command)
+        let wholeDesk = element(app, "morningReport.wholeDesk")
+        XCTAssertTrue(wholeDesk.waitForExistence(timeout: 10))
+        wholeDesk.click()
+        XCTAssertTrue(element(app, "detail.frontOffice.report").waitForExistence(timeout: 10), "Whole Desk did not open the Front Office's report")
+        quitCleanly(app)
+        app = launch(arguments: ["-PennantDebugAppearance", "increasedContrastLight"])
+        try shellFlow(app, look: "club-colors-light-increased-contrast")
+        quitCleanly(app)
+    }
+
+    /// The club's own colours in dark (settings.json's `theme`), then with Increase Contrast.
+    @MainActor
+    func testGlassShellClubColorsDark() throws {
+        var app = launch()
+        try shellFlow(app, look: "club-colors-dark")
+        quitCleanly(app)
+        app = launch(arguments: ["-PennantDebugAppearance", "increasedContrastDark"])
+        try shellFlow(app, look: "club-colors-dark-increased-contrast")
+        quitCleanly(app)
+    }
+
+    /// The example pack, installed in the data folder and chosen in Settings ▸ Appearance: the masthead and the club
+    /// card wear it at once.
+    @MainActor
+    func testGlassShellExamplePackLight() throws {
+        let app = launch()
+        waitForShell(app)
+        app.typeKey(",", modifierFlags: .command)
+        let appearance = app.toolbars.buttons["Appearance"].firstMatch
+        XCTAssertTrue(appearance.waitForExistence(timeout: 5))
+        appearance.click()
+        let pack = app.radioButtons["Sunset Series"].firstMatch
+        XCTAssertTrue(pack.waitForExistence(timeout: 10), "the example pack is not offered")
+        pack.click()
+        XCTAssertTrue(element(app, "settings.theme.preview").waitForExistence(timeout: 5))
+        keep(app.windows.firstMatch.screenshot(), named: "glass-settings-theme")
+        app.typeKey("w", modifierFlags: .command)
+        try shellFlow(app, look: "sunset-series-light")
+        quitCleanly(app)
+    }
+
+    /// The example pack in dark, chosen before launch (settings.json's `themePacks`).
+    @MainActor
+    func testGlassShellExamplePackDark() throws {
+        var app = launch()
+        try shellFlow(app, look: "sunset-series-dark")
+        quitCleanly(app)
+        app = launch(arguments: ["-PennantDebugAppearance", "increasedContrastDark"])
+        try shellFlow(app, look: "sunset-series-dark-increased-contrast")
         quitCleanly(app)
     }
 }

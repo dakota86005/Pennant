@@ -3,6 +3,7 @@ import FeatureCore
 import FrontOffice
 import Foundation
 import PennantAPI
+import PennantDesign
 import PennantKit
 import Setup
 @testable import Shell
@@ -170,6 +171,7 @@ struct SnapshotTests {
         let model = PreviewFixtures.ready()
         let summary = try #require(model.frontOffice.summary)
         let view = ScrollView { MorningReportContent(summary: summary).padding(24) }.environment(model).environment(AppRouting())
+            .environment(\.theme, model.theme)
         try draw(view, size: CGSize(width: 1000, height: 2200), dark: dark, name: "morning-report-full")
     }
 
@@ -198,39 +200,112 @@ struct SnapshotTests {
         try draw(TrailContent(evidence: key).padding().environment(model), size: CGSize(width: 420, height: 480), dark: dark, name: "staff-options")
     }
 
+    // MARK: The glass shell and theme packs (N5)
+
+    /// An appearance the shell is drawn in: light or dark, and with Increase Contrast or Reduce Transparency, as the app's
+    /// own pieces draw them (`forcesIncreasedContrast`, `forcesReduceTransparency`), with AppKit in the high-contrast
+    /// appearance for Increase Contrast. The system's own glass reads only the Mac's settings.
+    enum Look: String, CaseIterable, Sendable {
+        case light, dark, lightIncreasedContrast, darkIncreasedContrast, lightReduceTransparency, darkReduceTransparency
+
+        var dark: Bool { [.dark, .darkIncreasedContrast, .darkReduceTransparency].contains(self) }
+        var increasedContrast: Bool { self == .lightIncreasedContrast || self == .darkIncreasedContrast }
+        var reduceTransparency: Bool { self == .lightReduceTransparency || self == .darkReduceTransparency }
+        var appearance: NSAppearance.Name {
+            switch self {
+            case .lightIncreasedContrast: .accessibilityHighContrastAqua
+            case .darkIncreasedContrast: .accessibilityHighContrastDarkAqua
+            default: dark ? .darkAqua : .aqua
+            }
+        }
+    }
+
+    /// In the synthetic club's own colours and in the repository's example pack.
+    @Test("the Morning Report's shell: masthead, glass and the floating control, in each theme and appearance",
+          arguments: [nil, "sunset-series"] as [String?], Look.allCases)
+    func shell(theme: String?, look: Look) throws {
+        let model = PreviewFixtures.ready(themePack: theme)
+        let window = MainWindowModel(registry: registry, expanded: ["frontOffice", "majorLeague"])
+        window.go(to: AppRoute(department: "frontOffice", view: "morningReport"))
+        try drawMainWindow(model: model, window: window, look: look, name: "shell-morning-report-\(theme ?? "club-colors")")
+    }
+
+    @Test("a department's report under its masthead, in each theme", arguments: [nil, "sunset-series"] as [String?], [Look.light, .dark])
+    func reportShell(theme: String?, look: Look) throws {
+        let model = PreviewFixtures.ready(themePack: theme)
+        let window = MainWindowModel(registry: registry, expanded: ["majorLeague"])
+        window.go(to: AppRoute(department: "majorLeague", view: "report"))
+        try drawMainWindow(model: model, window: window, look: look, name: "shell-major-league-report-\(theme ?? "club-colors")")
+    }
+
+    @Test("the masthead and the club card with team colours off: neutral", arguments: [Look.light, .dark])
+    func neutralShell(look: Look) throws {
+        let model = PreviewFixtures.ready(useTeamColors: false)
+        let window = MainWindowModel(registry: registry, expanded: ["frontOffice"])
+        window.go(to: AppRoute(department: "frontOffice", view: "morningReport"))
+        try drawMainWindow(model: model, window: window, look: look, name: "shell-morning-report-neutral")
+    }
+
+    @Test("Settings' theme choices with the example pack chosen", arguments: [Look.light, .dark])
+    func themeSettings(look: Look) throws {
+        let routing = AppRouting()
+        routing.settingsTab = .appearance
+        let view = AppearanceSettings().environment(PreviewFixtures.ready(themePack: "sunset-series")).environment(routing)
+        try draw(view, size: CGSize(width: SettingsView.width, height: SettingsView.height(.appearance)), look: look, name: "settings-appearance-theme", titled: true)
+    }
+
     // MARK: Drawing
 
     private func sidebarView(model: AppModel, window: MainWindowModel) -> some View {
-        SidebarView(window: window).environment(model).environment(AppRouting())
+        SidebarView(window: window).environment(model).environment(AppRouting()).environment(\.theme, model.theme)
     }
 
     /// The main window, with the sidebar drawn on its own and laid over the sidebar column.
     private func drawMainWindow(model: AppModel, window: MainWindowModel, dark: Bool, name: String) throws {
-        let whole = try image(MainWindowView(window: window).environment(model).environment(AppRouting()),
-                              size: Self.window, dark: dark, titled: true)
-        let sidebar = try image(sidebarView(model: model, window: window),
-                                size: CGSize(width: SidebarView.idealWidth, height: Self.window.height), dark: dark, titled: true)
+        try drawMainWindow(model: model, window: window, look: dark ? .dark : .light, name: name, suffix: dark ? "dark" : "light")
+    }
+
+    private func drawMainWindow(model: AppModel, window: MainWindowModel, look: Look, name: String, suffix: String? = nil) throws {
+        let whole = try image(looked(MainWindowView(window: window).environment(model).environment(AppRouting()), look),
+                              size: Self.window, appearance: look.appearance, titled: true)
+        let sidebar = try image(looked(sidebarView(model: model, window: window), look),
+                                size: CGSize(width: SidebarView.idealWidth, height: Self.window.height), appearance: look.appearance, titled: true)
         let composite = NSImage(size: whole.size, flipped: false) { rect in
             whole.draw(in: rect)
             sidebar.draw(in: CGRect(x: 0, y: 0, width: sidebar.size.width, height: sidebar.size.height))
             return true
         }
-        try write(composite, name: name, dark: dark)
+        try write(composite, file: "\(name)-\(suffix ?? look.rawValue).png")
+    }
+
+    /// The view with the look's accessibility settings the environment can carry.
+    private func looked(_ view: some View, _ look: Look) -> some View {
+        view
+            .environment(\.forcesIncreasedContrast, look.increasedContrast)
+            .environment(\.forcesReduceTransparency, look.reduceTransparency)
     }
 
     private func draw(_ view: some View, size: CGSize, dark: Bool, name: String, titled: Bool = false) throws {
         try write(try image(view, size: size, dark: dark, titled: titled), name: name, dark: dark)
     }
 
+    private func draw(_ view: some View, size: CGSize, look: Look, name: String, titled: Bool = false) throws {
+        try write(try image(looked(view, look), size: size, appearance: look.appearance, titled: titled), file: "\(name)-\(look.rawValue).png")
+    }
+
+    private func image(_ view: some View, size: CGSize, dark: Bool, titled: Bool) throws -> NSImage {
+        try image(view, size: size, appearance: dark ? .darkAqua : .aqua, titled: titled)
+    }
+
     /// Hosts the view in an off-screen window of the given content size and draws the whole window (with its title
     /// bar and toolbar when `titled`).
-    private func image(_ view: some View, size: CGSize, dark: Bool, titled: Bool) throws -> NSImage {
+    private func image(_ view: some View, size: CGSize, appearance: NSAppearance.Name, titled: Bool) throws -> NSImage {
         _ = NSApplication.shared
         let host = NSHostingView(rootView: view.frame(width: size.width, height: size.height))
         let style: NSWindow.StyleMask = titled ? [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView] : [.borderless]
         let window = NSWindow(contentRect: CGRect(origin: .zero, size: size), styleMask: style, backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
-        window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+        window.appearance = NSAppearance(named: appearance)
         window.contentView = host
         window.setFrameOrigin(NSPoint(x: -20_000, y: -20_000))
         window.orderFrontRegardless()
@@ -245,8 +320,12 @@ struct SnapshotTests {
     }
 
     private func write(_ image: NSImage, name: String, dark: Bool) throws {
+        try write(image, file: "\(name)-\(dark ? "dark" : "light").png")
+    }
+
+    private func write(_ image: NSImage, file: String) throws {
         let tiff = try #require(image.tiffRepresentation)
         let png = try #require(NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]))
-        try png.write(to: Self.folder.appending(path: "\(name)-\(dark ? "dark" : "light").png"))
+        try png.write(to: Self.folder.appending(path: file))
     }
 }

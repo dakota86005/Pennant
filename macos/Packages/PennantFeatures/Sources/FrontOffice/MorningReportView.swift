@@ -1,21 +1,35 @@
 import FeatureCore
 import PennantAPI
+import PennantDesign
 import PennantKit
 import SwiftUI
 
-/// The Morning Report's first plain rendering (SWIFTUI_REBUILD.md section 3.4, items 5 and 6): the GM's desk, every
-/// department's items to decide in the server's stated order, then one card per department. The masthead, the club
-/// profile, the roster map and the horizon arrive with N6, the look with N5; every word here is served.
+/// The Morning Report (SWIFTUI_REBUILD.md section 3.4): the club's masthead (at N5 the view's title, the club, its
+/// record and how current the report is; the scoreboard's contents are N6), then the GM's desk, every department's items
+/// to decide in the server's stated order, then one card per department. The club profile, the roster map and the
+/// horizon arrive with N6; every word here is served. Its one floating control opens the whole desk (the Front Office's
+/// report), where every item waits, not only each department's first five.
 public struct MorningReportView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.routeOpener) private var opener
 
     public init() {}
+
+    /// The Front Office's report: the whole desk.
+    static let wholeDesk = AppRoute(department: "frontOffice", view: "report")
 
     public var body: some View {
         let store = model.frontOffice
         Group {
             if let summary = store.summary {
-                ScrollView {
+                MastheadScrollView {
+                    ClubMasthead(
+                        title: model.servedViewName(department: "frontOffice", view: "morningReport").map { Text(verbatim: $0) }
+                            ?? Text("Morning Report"),
+                        line: summary.asOf.display,
+                        lineHint: summary.asOf.hint
+                    )
+                } content: {
                     VStack(alignment: .leading, spacing: 12) {
                         // A reload that failed says so above what is kept, never "refreshing" for ever
                         if let problem = store.summaryProblem { ProblemLine(problem) }
@@ -28,10 +42,17 @@ public struct MorningReportView: View {
                     .padding(24)
                     .frame(maxWidth: 1100, alignment: .leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                } actions: {
+                    if let opener, opener.canOpen(Self.wholeDesk) {
+                        FloatingControlGroup { namespace in
+                            FloatingControl("Whole Desk", systemImage: "tray.full", prominent: true, id: "wholeDesk", in: namespace) {
+                                opener.open(Self.wholeDesk)
+                            }
+                            .help(Text("Every item to decide, from every department"))
+                            .accessibilityIdentifier("morningReport.wholeDesk")
+                        }
+                    }
                 }
-                // A hard edge under the toolbar: the soft one blurs the content behind the window's title and
-                // subtitle, and the accessibility audit measures them below contrast there
-                .scrollEdgeEffectStyle(.hard, for: .top)
             } else if let problem = store.summaryProblem {
                 ProblemLine(problem).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -63,10 +84,8 @@ public struct MorningReportContent: View {
                         .foregroundStyle(.secondary)
                         .help(detail: summary.desk.order.hint)
                     Spacer()
+                    // How current it is sits on the masthead
                     if refreshing { ProgressView { Text("Refreshing") }.controlSize(.small) }
-                    Text(verbatim: summary.asOf.display)
-                        .foregroundStyle(.secondary)
-                        .help(detail: summary.asOf.hint)
                 }
                 if let incomplete = summary.desk.incomplete {
                     ProblemLine(served: incomplete.display, detail: incomplete.hint)

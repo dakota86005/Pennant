@@ -72,8 +72,10 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   # One folder per UI test (the method's name), each with its own data folder holding the synthetic league and a
   # pretend OOTP save; `configured` chooses the save for the server before the app starts (its config.json), `new`
   # leaves it for the Setup window to find. The runner only reads these paths.
+  # A third argument writes settings.json (the appearance, the theme each club wears), and `pack` installs the
+  # repository's example theme pack (docs/theme-packs/sunset-series) in the data folder.
   prepare_ui_test() {
-    local test="$1" kind="$2"
+    local test="$1" kind="$2" settings="${3:-}" pack="${4:-}"
     local root="$UI_SCRATCH/$test"
     local csv="$root/saves/Synthetic League.lg/import_export/csv"
     mkdir -p "$root/data" "$root/logs" "$csv"
@@ -83,10 +85,20 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
       node -e 'process.stdout.write(JSON.stringify({ csvDir: process.argv[1], saveName: "Synthetic League" }))' "$csv" \
         > "$root/data/config.json"
     fi
+    if [ -n "$settings" ]; then printf '%s' "$settings" > "$root/data/settings.json"; fi
+    if [ "$pack" = "pack" ]; then
+      mkdir -p "$root/data/theme-packs"
+      cp -R "$ROOT/docs/theme-packs/sunset-series" "$root/data/theme-packs/"
+    fi
   }
   prepare_ui_test testStartsTheServerAndQuitsCleanly configured
   prepare_ui_test testSetupFlowOnAScratchFolder new
   prepare_ui_test testDepartmentsInspectorAndSettings configured
+  # The glass shell (N5): the synthetic club (team 1, the human's) in its own colours and in the example pack
+  prepare_ui_test testGlassShellClubColorsLight configured '{"theme":"light"}'
+  prepare_ui_test testGlassShellClubColorsDark configured '{"theme":"dark"}'
+  prepare_ui_test testGlassShellExamplePackLight configured '{"theme":"light"}' pack
+  prepare_ui_test testGlassShellExamplePackDark configured '{"theme":"dark","themePacks":{"1":"sunset-series"}}' pack
   signing=()
   if [ "${PENNANT_TEST_UNSIGNED:-0}" = "1" ]; then signing=(CODE_SIGNING_ALLOWED=NO); fi
   if [ -n "${PENNANT_TEST_ONLY:-}" ]; then signing+=("-only-testing:$PENNANT_TEST_ONLY"); fi
@@ -120,7 +132,7 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
         const fs = require("fs"), path = require("path");
         const dir = process.argv[1];
         const manifest = JSON.parse(fs.readFileSync(path.join(dir, "manifest.json"), "utf8"));
-        const keep = /^(main-window|setup-|department-|inspector-open|settings-|morning-report|major-league-report|accessibility-audit)/;
+        const keep = /^(main-window|setup-|department-|inspector-open|settings-|morning-report|major-league-report|accessibility-audit|glass-)/;
         const kept = new Set();
         for (const test of manifest) for (const a of test.attachments ?? []) {
           const name = a.suggestedHumanReadableName ?? "";

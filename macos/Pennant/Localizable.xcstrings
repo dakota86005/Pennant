@@ -102,6 +102,9 @@
     "Draft Board": {
       "extractionState": "manual"
     },
+    "Every item to decide, from every department": {
+      "extractionState": "manual"
+    },
     "Evidence": {
       "extractionState": "manual"
     },
@@ -380,6 +383,9 @@
     "System": {
       "extractionState": "manual"
     },
+    "Team Colors": {
+      "extractionState": "manual"
+    },
     "The Pennant server isn't running": {
       "extractionState": "manual"
     },
@@ -408,6 +414,12 @@
     "The server did not start in time": {},
     "The server is missing from this build": {},
     "The server keeps stopping": {},
+    "Theme": {
+      "extractionState": "manual"
+    },
+    "Theme Packs Folder": {
+      "extractionState": "manual"
+    },
     "Trade Desk": {
       "extractionState": "manual"
     },
@@ -421,6 +433,9 @@
     "Us vs Them": {
       "extractionState": "manual"
     },
+    "Use Team Colors": {
+      "extractionState": "manual"
+    },
     "Use This Folder": {
       "extractionState": "manual"
     },
@@ -431,6 +446,9 @@
       "extractionState": "manual"
     },
     "Where Pennant looked": {
+      "extractionState": "manual"
+    },
+    "Whole Desk": {
       "extractionState": "manual"
     },
     "Why": {

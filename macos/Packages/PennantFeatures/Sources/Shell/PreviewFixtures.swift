@@ -50,6 +50,24 @@ nonisolated public enum PreviewFixtures {
         decode([Components.Schemas.Org].self, "listOrgs") ?? []
     }
 
+    /// The captured theme choices of the current club: its own colours and the repository's example pack.
+    public static var themeChoices: Components.Schemas.ThemeChoices? {
+        decode(Components.Schemas.ThemeChoices.self, "getThemeChoices")
+    }
+
+    /// The catalog with the current club wearing a captured pack (`sunset-series`), as the server serves it once chosen.
+    public static func catalog(wearing packID: String?, club teamID: Int?) -> Components.Schemas.Catalog? {
+        guard var catalog, let packID, let teamID,
+              let pack = themeChoices?.choices.first(where: { $0.id == packID })
+        else { return catalog }
+        catalog.clubs = catalog.clubs.map { club in
+            var club = club
+            if club.teamId == teamID { club.theme = pack }
+            return club
+        }
+        return catalog
+    }
+
     public static var providers: Components.Schemas.ProvidersResponse? {
         decode(Components.Schemas.ProvidersResponse.self, "getProviders")
     }
@@ -79,9 +97,15 @@ nonisolated public enum PreviewFixtures {
     public static func ready(
         configured: Bool = true,
         useTeamColors: Bool = true,
+        themePack: String? = nil,
         importRequestProblem: RequestProblem? = nil
     ) -> AppModel {
         let status = status(configured: configured)
+        let settings = decode(Components.Schemas.SettingsResponse.self, "getSettings").map {
+            var settings = $0
+            settings.settings.useTeamColors = useTeamColors
+            return settings
+        }
         let state: ServerState = status.map {
             .ready(ServerConnection(port: 5178, token: String(repeating: "p", count: 64), pid: 1, status: $0))
         } ?? .starting
@@ -89,14 +113,15 @@ nonisolated public enum PreviewFixtures {
             configuration: configuration,
             state: state,
             status: status,
-            settings: decode(Components.Schemas.SettingsResponse.self, "getSettings").map {
-                var settings = $0
-                settings.settings.useTeamColors = useTeamColors
-                return settings
-            },
+            settings: settings,
             orgs: orgs,
             dataStatus: dataStatus(configured: configured),
-            catalog: catalog,
+            catalog: catalog(wearing: themePack, club: settings?.organization?.id),
+            themeChoices: themeChoices.map {
+                var choices = $0
+                if let themePack { choices.active = themePack }
+                return choices
+            },
             importRequestProblem: importRequestProblem,
             frontOffice: configured ? frontOffice : nil
         )

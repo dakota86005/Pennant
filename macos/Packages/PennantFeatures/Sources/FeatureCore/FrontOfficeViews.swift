@@ -1,4 +1,5 @@
 import PennantAPI
+import PennantDesign
 import PennantKit
 import SwiftUI
 
@@ -265,22 +266,28 @@ public struct DepartmentReportView: View {
         let store = model.frontOffice
         Group {
             if let report = store.reports[department.rawValue] {
-                ScrollView {
+                MastheadScrollView {
+                    // The report's name, who prepared it and how current it is, on the club's masthead
+                    ClubMasthead(
+                        title: Text(verbatim: report.name),
+                        line: servedLine([report.preparedBy.display, report.asOf.display]),
+                        lineHint: report.asOf.hint
+                    )
+                } content: {
                     VStack(alignment: .leading, spacing: 12) {
                         // A reload that failed says so above what is kept, never "refreshing" for ever
                         if let problem = store.reportProblems[department.rawValue] { ProblemLine(problem) }
                         DepartmentReportContent(
                             report: report,
                             refreshing: store.loadingReports.contains(department.rawValue)
-                                || (store.reportProblems[department.rawValue] == nil && model.storeKey.map { !store.reportIsCurrent(department.rawValue, for: $0) } ?? false)
+                                || (store.reportProblems[department.rawValue] == nil && model.storeKey.map { !store.reportIsCurrent(department.rawValue, for: $0) } ?? false),
+                            showsHeader: false
                         )
                     }
                     .padding(24)
                     .frame(maxWidth: 900, alignment: .leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                // As the Morning Report: a hard edge under the toolbar keeps the window's title legible
-                .scrollEdgeEffectStyle(.hard, for: .top)
             } else if let problem = store.reportProblems[department.rawValue] {
                 ProblemLine(problem).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -295,22 +302,29 @@ public struct DepartmentReportView: View {
 public struct DepartmentReportContent: View {
     let report: Components.Schemas.DepartmentReport
     let refreshing: Bool
+    /// The report's name, who prepared it and when, above it (false where a masthead says them).
+    let showsHeader: Bool
 
-    public init(report: Components.Schemas.DepartmentReport, refreshing: Bool = false) {
+    public init(report: Components.Schemas.DepartmentReport, refreshing: Bool = false, showsHeader: Bool = true) {
         self.report = report
         self.refreshing = refreshing
+        self.showsHeader = showsHeader
     }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(verbatim: report.name).font(.largeTitle.weight(.semibold))
-                    if refreshing { ProgressView { Text("Refreshing") }.controlSize(.small) }
+            if showsHeader {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(verbatim: report.name).font(.largeTitle.weight(.semibold))
+                        if refreshing { ProgressView { Text("Refreshing") }.controlSize(.small) }
+                    }
+                    Text(verbatim: servedLine([report.preparedBy.display, report.asOf.display]))
+                        .foregroundStyle(.secondary)
+                        .help(detail: report.asOf.hint)
                 }
-                Text(verbatim: servedLine([report.preparedBy.display, report.asOf.display]))
-                    .foregroundStyle(.secondary)
-                    .help(detail: report.asOf.hint)
+            } else if refreshing {
+                ProgressView { Text("Refreshing") }.controlSize(.small)
             }
             ClaimLine(report.summary, font: .title3)
             if !report.figures.isEmpty {

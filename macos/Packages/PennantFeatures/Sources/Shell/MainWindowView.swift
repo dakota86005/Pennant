@@ -60,6 +60,26 @@ struct ShellSplitView: View {
                 }
         }
         .searchable(text: $window.searchText, placement: .toolbar, prompt: Text("Search"))
+        // The club's theme for every coloured piece in the window: the club card, the mastheads, the floating control
+        .environment(\.theme, model.theme)
+        .modifier(DebugIncreasedContrast())
+    }
+}
+
+/// A Debug build's UI tests and screenshots can draw the window as Increase Contrast or Reduce Transparency do without
+/// changing the Mac's settings: `-PennantDebugAppearance increasedContrastLight` or `increasedContrastDark` (the app's
+/// own pieces read the increased contrast, the theme's 7:1 colours and the borders, and AppKit the high-contrast
+/// appearance, `AppAppearance.debugAppearance`), and `-PennantDebugReduceTransparency YES` (the app's own pieces draw
+/// opaque; the system's glass follows only the Mac's setting). A release build draws what the Mac says.
+struct DebugIncreasedContrast: ViewModifier {
+    func body(content: Content) -> some View {
+        #if DEBUG
+        content
+            .environment(\.forcesIncreasedContrast, AppAppearance.debugAppearance != nil)
+            .environment(\.forcesReduceTransparency, UserDefaults.standard.bool(forKey: "PennantDebugReduceTransparency"))
+        #else
+        content
+        #endif
     }
 }
 
@@ -219,11 +239,27 @@ public enum AppAppearance {
     }
 
     public static func apply(_ theme: String?) {
-        let appearance: NSAppearance? = switch theme {
+        var appearance: NSAppearance? = switch theme {
         case "dark": NSAppearance(named: .darkAqua)
         case "light": NSAppearance(named: .aqua)
         default: nil
         }
+        #if DEBUG
+        if let override = debugAppearance { appearance = override }
+        #endif
         if NSApp.appearance != appearance { NSApp.appearance = appearance }
     }
+
+    #if DEBUG
+    /// A Debug build's UI tests draw the app in the system's high-contrast appearance, which is what Increase Contrast
+    /// gives (AppKit and SwiftUI both follow it), without changing the Mac's own accessibility setting: the launch
+    /// argument `-PennantDebugAppearance increasedContrastLight` or `increasedContrastDark`. Never in a release build.
+    static var debugAppearance: NSAppearance? {
+        switch UserDefaults.standard.string(forKey: "PennantDebugAppearance") {
+        case "increasedContrastLight": NSAppearance(named: .accessibilityHighContrastAqua)
+        case "increasedContrastDark": NSAppearance(named: .accessibilityHighContrastDarkAqua)
+        default: nil
+        }
+    }
+    #endif
 }
