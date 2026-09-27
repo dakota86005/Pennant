@@ -279,7 +279,24 @@ export function locateColumn(candidates: Array<[table: string, column: string]>)
   return null;
 }
 
-/** What the served database records about its own import (`pennant_import`), or null for one built before N3.5. */
+/** `last-import.json`: the record of the last import, which every build (the earlier Electron one too) writes. */
+export const LAST_IMPORT_PATH = path.join(DATA_DIR, 'last-import.json');
+
+function lastImportStartedAt(): string | null {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(LAST_IMPORT_PATH, 'utf8')) as { startedAt?: unknown };
+    return typeof parsed.startedAt === 'string' ? parsed.startedAt : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * What the served database records about its own import (`pennant_import`), or null for one built before N3.5. Trusted
+ * only when it is the last import's: the earlier (Electron) build imports into the same file in place and leaves this
+ * table behind, so a record whose start differs from `last-import.json`'s describes an older import (N3.5 review,
+ * finding 3), and is treated as absent: the kind of ratings unknown, nothing left out, nothing carried.
+ */
 export function importRecord(): Record<string, unknown> | null {
   if (cachedRecord && cachedRecord.generation === generation && cachedRecord.conn === db) return cachedRecord.value;
   let value: Record<string, unknown> | null = null;
@@ -291,6 +308,7 @@ export function importRecord(): Record<string, unknown> | null {
   } catch {
     value = null;
   }
+  if (value && value.startedAt !== lastImportStartedAt()) value = null;
   cachedRecord = { generation, conn: db, value };
   return value;
 }

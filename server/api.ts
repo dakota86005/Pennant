@@ -1,7 +1,7 @@
 import { Router, type NextFunction, type Request, type Response } from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
-import { db, tableExists, tableColumns, locateColumn, LEAGUE_DB_PATH, NEXT_DB_PATH, swapInLeagueDatabase } from './db.js';
+import { db, tableExists, tableColumns, locateColumn, LAST_IMPORT_PATH, LEAGUE_DB_PATH, NEXT_DB_PATH, swapInLeagueDatabase } from './db.js';
 import { detectSaves, resolveChosenFolder, searchLocations, type ResolveResult, type SaveInfo, type SearchLocation } from './paths.js';
 import { DATA_DIR, loadConfig, saveConfig } from './config.js';
 import { importCsvDir, type ImportProgress, type ImportResult } from './importer.js';
@@ -98,7 +98,7 @@ api.use(freeAgentRoutes);
 api.use(lineupRoutes);
 api.use(storylineRoutes);
 
-const META_PATH = path.join(DATA_DIR, 'last-import.json');
+const META_PATH = LAST_IMPORT_PATH;
 
 function loadImportMeta(): ImportResult | null {
   try {
@@ -372,7 +372,6 @@ export async function runImport(csvDir: string, trigger: ImportTrigger = 'manual
     });
     // Whatever was waiting on disk has now been read
     clearPendingExport();
-    fs.writeFileSync(META_PATH, JSON.stringify(imported));
     importState.interruptedSince = null;
     fs.rmSync(IMPORT_MARKER_PATH, { force: true });
   } catch (err) {

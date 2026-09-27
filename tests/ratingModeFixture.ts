@@ -1,4 +1,5 @@
-import { db, forgetImportRecord } from '../server/db.js';
+import fs from 'node:fs';
+import { db, forgetImportRecord, LAST_IMPORT_PATH } from '../server/db.js';
 import type { RatingMode } from '../server/ratingMode.js';
 
 /**
@@ -11,6 +12,8 @@ export function setExportRatingMode(mode: RatingMode | null): void {
   if (mode !== null) {
     const record = { startedAt: '2040-07-01T12:00:00.000Z', ratingMode: { mode, additionalScouted: null, source: 'export_settings', reason: null } };
     db.prepare(`INSERT INTO pennant_import (key, value) VALUES ('import', ?)`).run(JSON.stringify(record));
+    // The record is trusted only as the last import's (the file every build writes)
+    fs.writeFileSync(LAST_IMPORT_PATH, JSON.stringify({ tables: 0, rows: 0, startedAt: record.startedAt, finishedAt: record.startedAt, files: [] }));
   }
   forgetImportRecord();
 }

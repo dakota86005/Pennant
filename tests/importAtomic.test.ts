@@ -392,3 +392,18 @@ describe('an export OOTP paused part way through (N3.5 review, finding 2)', () =
     expect(settledGroups.stale.map((x) => x.table)).toEqual(['a']);
   });
 });
+
+describe('the database\'s own record of its import (N3.5 review, finding 3)', () => {
+  it('is trusted only as the last import\'s: after the earlier build imports into the same file, it is treated as absent', async () => {
+    const { forgetImportRecord, LAST_IMPORT_PATH } = await import('../server/db.js');
+    const { previousFromDatabase } = await import('../server/importer.js');
+    const result = await importCsvDir(writeExport(100));
+    expect(importRecord()).toMatchObject({ startedAt: result.startedAt });
+    expect(previousFromDatabase()).not.toBeNull();
+    // The earlier (Electron) build imports in place: it rewrites last-import.json and leaves pennant_import behind
+    fs.writeFileSync(LAST_IMPORT_PATH, JSON.stringify({ tables: 5, rows: 1, startedAt: '2099-01-01T00:00:00.000Z', finishedAt: '2099-01-01T00:00:10.000Z', files: [] }));
+    forgetImportRecord();
+    expect(importRecord()).toBeNull();
+    expect(previousFromDatabase()).toBeNull();
+  });
+});

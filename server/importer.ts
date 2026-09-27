@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import { DATA_DIR } from './config.js';
-import { LEAGUE_DB_PATH, NEXT_DB_PATH, importRecord, swapInLeagueDatabase } from './db.js';
+import { LAST_IMPORT_PATH, LEAGUE_DB_PATH, NEXT_DB_PATH, importRecord, swapInLeagueDatabase } from './db.js';
 import { assessExport, BURST_WINDOW_MS, exportTiming, REQUIRED_TABLES, staleRequired, type ExportAssessment, type ExportFile } from './exportFiles.js';
 import { buildLeagueDatabase, BuildError, type BuildResult } from './importBuild.js';
 import type { RatingModeRecord } from './ratingMode.js';
@@ -297,6 +297,8 @@ export async function importCsvDir(csvDir: string, onProgressOrOptions?: ((p: Im
       fs.rmSync(NEXT_DB_PATH, { force: true });
       throw err;
     }
+    // The record of the last import, in the same turn as the swap: the database's own record is trusted only beside it
+    fs.writeFileSync(LAST_IMPORT_PATH, JSON.stringify(result));
     options.afterSwap?.(result);
     console.log(`[import] ${result.tables} tables, ${result.rows} rows in ${(result.durationMs! / 1000).toFixed(1)}s ` +
       `(parse and write ${build.timings.parseAndWriteMs} ms, indexes ${build.timings.indexMs} ms, ${build.indexes} indexes)` +
