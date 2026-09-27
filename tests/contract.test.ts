@@ -551,6 +551,21 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
   });
 });
 
+describe('the committed fixtures of finding the save (N3.5 B2, which the Mac stage decodes)', () => {
+  it.each([
+    ['getSaveDiscovery.json', 'SaveDiscovery'],
+    ['setUpAutomatically-nothing-stands-out.json', 'AutomaticSetup'],
+    ['listSaves.json', 'SaveList'],
+    ['getStatus.json', 'ServerStatus'],
+  ])('%s is there and holds a %s in the strict form', (file, type) => {
+    const at = path.join(FIXTURES, 'responses', file);
+    expect(fs.existsSync(at), `${file} is missing: run npm run contract:fixtures`).toBe(true);
+    const validate = strictValidator()(type);
+    const body = JSON.parse(fs.readFileSync(at, 'utf8'));
+    expect(validate(body) ? [] : validate.errors).toEqual([]);
+  });
+});
+
 describe('the banned-jargon walk over a /v2 payload', () => {
   // No Claims are served yet (they arrive at N4); a small payload proves the walk reads what the app would show
   const sample = {
