@@ -69,19 +69,19 @@ private struct PreviewFrame<Content: View>: View {
     PreviewFrame {
         VStack(alignment: .leading, spacing: 24) {
             ChipRow(label: Text(verbatim: DesignFixtures.served("Since the last export")), chips: DesignFixtures.chips)
-            MagazineSection(kicker: Text(verbatim: DesignFixtures.served("The club")), title: Text(verbatim: DesignFixtures.served("How we win and lose")), trailing: "Through July 13 · 89 games")
+            MagazineSection(kicker: Text(verbatim: DesignFixtures.served("The club")), title: Text(verbatim: DesignFixtures.served("How we win and lose")), trailing: DesignFixtures.served("Through July 13 · 89 games"))
             HStack(spacing: 8) {
                 ForEach(DesignFixtures.departmentCard.figures.indices, id: \.self) { i in
                     MetricTile(Figure(DesignFixtures.departmentCard.figures[i], id: "f\(i)"))
                 }
             }
             HStack(spacing: 14) {
-                Pill("Urgent", tone: .bad); Pill("Needs attention", tone: .caution); Pill("Noted", tone: .neutral)
-                InlineBar(fraction: 0.62, text: "62%")
+                Pill(DesignFixtures.served("Urgent"), tone: .bad); Pill(DesignFixtures.served("Needs attention"), tone: .caution); Pill(DesignFixtures.served("Noted"), tone: .neutral)
+                InlineBar(fraction: 0.62, text: DesignFixtures.served("62%"))
                 Ring(fraction: 39 / 40)
             }
-            GroupHeader(Text(verbatim: DesignFixtures.served("Rotation")), note: "Five starters", trailing: "5")
-            Sparkline(values: DesignFixtures.scoreboard.trend ?? [], label: "Run differential over the last 20 games").frame(width: 200)
+            GroupHeader(Text(verbatim: DesignFixtures.served("Rotation")), note: DesignFixtures.served("Five starters"), trailing: DesignFixtures.served("5"))
+            Sparkline(values: DesignFixtures.scoreboard.trend ?? [], label: DesignFixtures.served("Run differential over the last 20 games")).frame(width: 200)
         }
     }
     .frame(width: 900)

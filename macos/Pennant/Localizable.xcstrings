@@ -1,6 +1,9 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "%lld of %lld": {
+      "extractionState": "manual"
+    },
     "%lld to decide": {
       "extractionState": "manual"
     },
@@ -590,9 +593,6 @@
       "extractionState": "manual"
     },
     "Your club": {
-      "extractionState": "manual"
-    },
-    "of": {
       "extractionState": "manual"
     },
     "↩": {

@@ -37,12 +37,17 @@ extension EnvironmentValues {
 }
 
 /// A served claim on the face: the caller's label, the served help tag on hover, the basis popover on a click or on
-/// Space while focused. VoiceOver reads the served text as the label and the basis as custom content.
+/// Space while it is focused (a click or Tab focuses it; like Quick Look, and whether or not the Mac's keyboard
+/// navigation is on, which a plain button would need). VoiceOver reads the served text as the label and the basis as
+/// custom content.
 public struct ClaimText<Label: View>: View {
     let claim: Components.Schemas.Claim
     let edge: Edge
     @ViewBuilder let label: () -> Label
     @State private var showing = false
+
+    /// The key that opens (and closes) the focused claim's basis, as Quick Look's does a selected file.
+    nonisolated public static var basisKey: KeyEquivalent { .space }
 
     public init(_ claim: Components.Schemas.Claim, edge: Edge = .bottom, @ViewBuilder label: @escaping () -> Label) {
         self.claim = claim
@@ -53,6 +58,11 @@ public struct ClaimText<Label: View>: View {
     public var body: some View {
         Button { showing.toggle() } label: { label().contentShape(.rect) }
             .buttonStyle(.plain)
+            .focusable()
+            .onKeyPress(Self.basisKey) {
+                showing.toggle()
+                return .handled
+            }
             .help(Text(verbatim: claim.hint ?? claim.text))
             .accessibilityLabel(Text(verbatim: claim.text))
             .accessibilityHint(Text("Shows why"))

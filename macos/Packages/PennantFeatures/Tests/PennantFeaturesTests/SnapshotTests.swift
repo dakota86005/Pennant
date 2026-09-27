@@ -263,12 +263,15 @@ struct SnapshotTests {
     static let designWindow = CGSize(width: 1440, height: 900)
     nonisolated static let designThemes: [String?] = [nil, "sunset-series", "aurora-nights"]
 
+    /// Which theme is drawn in which look: the art pack and the club's colours in every look, the example pack in light
+    /// and dark alone. Listed, not skipped inside the test, so every combination the run reports is one it drew.
+    nonisolated static let designedLooks: [(String?, Look)] =
+        [nil, "aurora-nights"].flatMap { theme in Look.allCases.map { (theme, $0) } } + [Look.light, .dark].map { ("sunset-series", $0) }
+
     /// The Morning Report as designed (R2), the unserved slots drawn from the fixtures, in the club's own colours, the
     /// example pack and the example art pack, light, dark, and with Increase Contrast and Reduce Transparency.
-    @Test("the Morning Report as designed, from the fixtures, in each theme and appearance", arguments: designThemes, Look.allCases)
+    @Test("the Morning Report as designed, from the fixtures, in each theme and appearance", arguments: designedLooks)
     func designedMorningReport(theme: String?, look: Look) throws {
-        // The art pack and the club's colours in every look; the example pack in light and dark alone
-        guard theme != "sunset-series" || [.light, .dark].contains(look) else { return }
         let model = PreviewFixtures.ready(themePack: theme)
         let window = MainWindowModel(registry: registry, expanded: ["frontOffice"])
         window.go(to: AppRoute(department: "frontOffice", view: "morningReport"))

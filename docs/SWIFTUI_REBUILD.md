@@ -351,8 +351,9 @@ Data Status: Settings ▸ General at the data status) and Help ▸ Server Log. G
 drop and context menus arrive with the views that need them.
 
 **As built at N5 (Stage B), 2026-09-26.** View ▸ Find Anything… (⌘K) opens the palette (section 3.7, "Design
-language"); Basis for Selection is Space on a focused claim (`ClaimText` is a button); Show Inspector shows the pinned
-evidence. Search tokens and suggestions wait for the search endpoint.
+language"); Basis for Selection is Space on a focused claim (`ClaimText` is focusable and answers Space with
+`.onKeyPress(.space)`, since the N5 review, so it works whether or not the Mac's keyboard navigation is on, which a
+plain button's Space needs); Show Inspector shows the pinned evidence. Search tokens and suggestions wait for the search endpoint.
 
 ### 3.7 Visual language
 
@@ -496,8 +497,8 @@ Reference pictures, made-up data only: `docs/design/morning-report-light.png`, `
   unserved slots take (`Scoreboard`, `PlaceDimension`, `RosterPosition`, `ControlTerm`, `StaffPitcher`, `Chip`,
   `WireItem`, `Figure`) hold served sentences and numbers only; an adapter maps the served payload to them when N6
   serves each slot. `DesignFixtures` (Debug only) is made-up data for the previews and the snapshots, never the app.
-- **Depth, as built (section 3.3).** A `ClaimText` is a plain button: hover shows the served help tag, a click or Space
-  while focused opens `BasisPopover`: why (the evidence grid), from (the specialist, the department's served name, the
+- **Depth, as built (section 3.3).** A `ClaimText` is a plain, focusable button: hover shows the served help tag, a
+  click (which focuses it) or Space while it is focused (`.onKeyPress(.space)`, like Quick Look) opens `BasisPopover`: why (the evidence grid), from (the specialist, the department's served name, the
   sample and the game date as the export wrote it), how it's called (the basis's served `called`, the certainty in the
   GM's words, with the stamp beneath), not known, would change if, our philosophy's lean with the neutral reading beside it; then Pin to
   Inspector, Detach and "Open in <department>" for the first served link this build can open. Pinning shows the claim

@@ -90,9 +90,8 @@ public struct CommandPalette: View {
                 Label("Open", systemImage: "return").font(.caption)
                 Label("Close", systemImage: "escape").font(.caption)
                 Spacer()
-                Text(verbatim: "\(visible.count)").font(.caption).foregroundStyle(.secondary).monospacedDigit()
-                Text("of").font(.caption).foregroundStyle(.secondary)
-                Text(verbatim: "\(results.count)").font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                // One format key ("%lld of %lld"), so a language can order the counts its own way
+                Text("\(visible.count) of \(results.count)").font(.caption).foregroundStyle(.secondary).monospacedDigit()
             }
             .foregroundStyle(.secondary)
             .padding(.horizontal, 16).padding(.vertical, 8)

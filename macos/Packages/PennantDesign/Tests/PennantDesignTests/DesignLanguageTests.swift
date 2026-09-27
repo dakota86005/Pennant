@@ -99,6 +99,11 @@ struct DesignLanguageTests {
         #expect(ControlPips.seasonPips(.clock("Arbitration this winter")) == 0)
     }
 
+    @Test("Space opens a focused claim's basis, as the design says (review nit)")
+    func spaceOpensTheBasis() {
+        #expect(ClaimText<Text>.basisKey == .space)
+    }
+
     @Test("a served tone maps to a distinct symbol and reads neutral when unknown to this build")
     func tones() {
         #expect(Set(Tone.allCases.map(\.symbol)).count == Tone.allCases.count)
