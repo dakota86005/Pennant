@@ -24,6 +24,8 @@ public struct Masthead: View {
     @EffectiveContrast private var contrast
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.mastheadTopInset) private var topInset
+    /// Where the text column ends, so the art starts past it.
+    @State private var textTrailing: CGFloat = 0
 
     /// - Parameters:
     ///   - title: the view's title: its served name, or its structural title while none is served.
@@ -84,6 +86,7 @@ public struct Masthead: View {
                 }
             }
             .fixedSize(horizontal: false, vertical: true)
+            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(MastheadBackground.space)).maxX } action: { textTrailing = $0 }
             Spacer(minLength: 0)
             if let logo {
                 logo.resizable().scaledToFit()
@@ -97,8 +100,9 @@ public struct Masthead: View {
         .padding(.bottom, 22)
         .padding(.top, topInset > 0 ? topInset + Self.fade + 8 : 22)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .coordinateSpace(.named(MastheadBackground.space))
         .background {
-            MastheadBackground(palette: palette, topInset: topInset, art: art)
+            MastheadBackground(palette: palette, topInset: topInset, art: art, textTrailing: textTrailing)
                 .backgroundExtensionEffect()
         }
         .overlay(alignment: .bottom) {
@@ -110,16 +114,51 @@ public struct Masthead: View {
     }
 }
 
+/// Where the pack's art may show on a masthead: past every piece of text, and never behind the masthead's one control,
+/// so no word sits on the art. The server checks each text colour against the masthead's colours (D-062), never against
+/// a picture, so text over art would be a pair nobody checked: the art begins past the text column, and around the
+/// control it is cleared, so the control sits on the masthead's own (checked) colour.
+nonisolated struct ArtClearance: Equatable, Sendable {
+    /// Where the art may begin, from the leading edge, in points.
+    var start: CGFloat
+    /// The control's frame with a margin, where the art is cleared; nil when the masthead has no control.
+    var clear: CGRect?
+
+    /// The room kept between text (or the control) and the art.
+    static let margin: CGFloat = 16
+
+    /// - Parameters:
+    ///   - width: the masthead's width.
+    ///   - textTrailing: where the furthest piece of text ends (the kicker, the headline, the deck, the figures).
+    ///   - control: the masthead's control's frame, in the masthead's space; nil or empty for none.
+    static func resolve(width: CGFloat, textTrailing: CGFloat, control: CGRect?) -> ArtClearance {
+        let start = max(MastheadBackground.artStart, width * 0.5, textTrailing + margin)
+        let clear = control.flatMap { $0.width > 0 && $0.height > 0 ? $0.insetBy(dx: -margin, dy: -margin) : nil }
+        return ArtClearance(start: start, clear: clear)
+    }
+}
+
 /// The masthead's colour: the club's colours from leading top to trailing bottom, the top colour held under the
-/// toolbar and faded into them just below it, and the pack's art at the trailing side.
+/// toolbar and faded into them just below it, and the pack's art at the trailing side, clear of every word
+/// (`ArtClearance`).
 struct MastheadBackground: View {
     let palette: Theme.Palette
     let topInset: CGFloat
     let art: Image?
+    /// Where the furthest piece of text ends, in the masthead's space (`space`).
+    var textTrailing: CGFloat = 0
+    /// The masthead's control's frame, in the masthead's space; nil for none.
+    var control: CGRect? = nil
 
-    /// Where the art may begin, from the leading edge: past the text column (640 points of deck plus the padding), or
-    /// half the width, whichever is further, so no text ever sits on the art.
-    static let artStart: CGFloat = 680
+    /// Where the art may begin at the least, from the leading edge: past the text column (640 points of deck plus the
+    /// padding), or half the width, whichever is further; past any text measured further out than that.
+    nonisolated static let artStart: CGFloat = 680
+    /// The coordinate space a masthead measures its text and its control in: the masthead's own frame, which is the
+    /// background's.
+    nonisolated static let space = "pennant.masthead"
+    /// How softly the art's edge around the control fades (less than `ArtClearance.margin`, so the control's own frame
+    /// is fully clear).
+    nonisolated static let feather: CGFloat = 6
 
     var body: some View {
         let stops = palette.masthead.count == 1 ? palette.masthead + palette.masthead : palette.masthead
@@ -129,14 +168,27 @@ struct MastheadBackground: View {
             LinearGradient(colors: stops, startPoint: .topLeading, endPoint: .bottomTrailing)
             if let art {
                 GeometryReader { proxy in
-                    let start = max(Self.artStart, proxy.size.width * 0.5) / max(1, proxy.size.width)
+                    let clearance = ArtClearance.resolve(width: proxy.size.width, textTrailing: textTrailing, control: control)
+                    let start = clearance.start / max(1, proxy.size.width)
                     art.resizable().scaledToFill()
                         .frame(width: proxy.size.width, height: proxy.size.height, alignment: .trailing)
                         .clipped()
-                        .mask(LinearGradient(stops: [
-                            .init(color: .clear, location: min(1, start)),
-                            .init(color: .black, location: min(1, start + 0.25)),
-                        ], startPoint: .leading, endPoint: .trailing))
+                        .mask {
+                            ZStack {
+                                LinearGradient(stops: [
+                                    .init(color: .clear, location: min(1, start)),
+                                    .init(color: .black, location: min(1, start + 0.25)),
+                                ], startPoint: .leading, endPoint: .trailing)
+                                if let clear = clearance.clear {
+                                    Capsule().fill(.black)
+                                        .frame(width: clear.width, height: clear.height)
+                                        .position(x: clear.midX, y: clear.midY)
+                                        .blur(radius: Self.feather)
+                                        .blendMode(.destinationOut)
+                                }
+                            }
+                            .compositingGroup()
+                        }
                 }
                 .accessibilityHidden(true)
             }

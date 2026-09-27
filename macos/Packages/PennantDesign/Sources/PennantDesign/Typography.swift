@@ -105,7 +105,8 @@ public struct BoxFigure<Graphic: View>: View {
 /// The masthead as a magazine sets it (section 3.4, item 1; R2): a served kicker, the serif display headline, the deck
 /// (a served claim written from the facts on the page; none until it is served), the box score the caller composes,
 /// and the one control on it (tonight's game, glass: it opens Game Day). Content colour under the toolbar, extended
-/// under the sidebar and the inspector; the pack's art at the trailing side where no text sits.
+/// under the sidebar and the inspector; the pack's art at the trailing side, past every piece of text and cleared
+/// around the control, so no word sits on the art (`ArtClearance`).
 public struct MagazineMasthead<Figures: View, Control: View>: View {
     let kicker: [String?]
     let kickerHint: String?
@@ -120,6 +121,10 @@ public struct MagazineMasthead<Figures: View, Control: View>: View {
     @Environment(\.colorScheme) private var colorScheme
     @EffectiveContrast private var contrast
     @Environment(\.mastheadTopInset) private var topInset
+    /// Where each piece of text ends, in the masthead's space, so the art starts past the furthest (`ArtClearance`).
+    @State private var textEdges: [String: CGFloat] = [:]
+    /// The control's frame, in the masthead's space, where the art is cleared.
+    @State private var controlFrame: CGRect?
 
     /// - Parameters:
     ///   - kicker: the served parts of the kicker (the club, the game date, how current), joined with middle dots.
@@ -156,30 +161,36 @@ public struct MagazineMasthead<Figures: View, Control: View>: View {
         VStack(alignment: .leading, spacing: 14) {
             Kicker(served: kicker).foregroundStyle(palette.mastheadSecondaryText)
                 .help(kickerHint.map { Text(verbatim: $0) } ?? Text(verbatim: kicker.compactMap { $0 }.joined(separator: " · ")))
+                .modifier(TextEdge(id: "kicker", edges: $textEdges))
             headline.font(.system(size: 62, weight: .bold, design: .serif)).kerning(-0.5)
                 .lineLimit(2).minimumScaleFactor(0.6)
                 .accessibilityAddTraits(.isHeader)
+                .modifier(TextEdge(id: "headline", edges: $textEdges))
             if let deck {
                 let text = Text(verbatim: deck)
                     .font(.system(size: 20, weight: .regular, design: .serif)).lineSpacing(3)
                     .foregroundStyle(palette.mastheadText)
                     .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true).frame(maxWidth: 640, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .modifier(TextEdge(id: "deck", edges: $textEdges))
+                    .frame(maxWidth: 640, alignment: .leading)
                 if let deckClaim {
                     ClaimText(deckClaim) { text }.accessibilityIdentifier("masthead.deck")
                 } else {
                     text.help(deckHint.map { Text(verbatim: $0) } ?? Text(verbatim: deck))
                 }
             }
+            // Only the layout that fits reports its geometry, so the figures' edge and the control's frame are always the
+            // shown ones
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .bottom, spacing: 28) {
-                    figures()
+                    HStack(alignment: .bottom, spacing: 28) { figures() }.modifier(TextEdge(id: "figures", edges: $textEdges))
                     Spacer(minLength: 24)
-                    control()
+                    control().onGeometryChange(for: CGRect.self) { $0.frame(in: .named(MastheadBackground.space)) } action: { controlFrame = $0 }
                 }
                 VStack(alignment: .leading, spacing: 16) {
-                    figures()
-                    control()
+                    VStack(alignment: .leading, spacing: 16) { figures() }.modifier(TextEdge(id: "figures", edges: $textEdges))
+                    control().onGeometryChange(for: CGRect.self) { $0.frame(in: .named(MastheadBackground.space)) } action: { controlFrame = $0 }
                 }
             }
             .padding(.top, 6)
@@ -190,8 +201,9 @@ public struct MagazineMasthead<Figures: View, Control: View>: View {
         .padding(.bottom, 22)
         .padding(.top, topInset > 0 ? topInset + Masthead.fade + 8 : 22)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .coordinateSpace(.named(MastheadBackground.space))
         .background {
-            MastheadBackground(palette: palette, topInset: topInset, art: art)
+            MastheadBackground(palette: palette, topInset: topInset, art: art, textTrailing: textEdges.values.max() ?? 0, control: controlFrame)
                 .backgroundExtensionEffect()
         }
         .overlay(alignment: .bottom) {
@@ -200,6 +212,16 @@ public struct MagazineMasthead<Figures: View, Control: View>: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("masthead")
+    }
+}
+
+/// Reports where a piece of the masthead's text ends, in the masthead's space, so the art starts past it.
+struct TextEdge: ViewModifier {
+    let id: String
+    @Binding var edges: [String: CGFloat]
+
+    func body(content: Content) -> some View {
+        content.onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(MastheadBackground.space)).maxX } action: { edges[id] = $0 }
     }
 }
 

@@ -464,7 +464,9 @@ Reference pictures, made-up data only: `docs/design/morning-report-light.png`, `
   and 13% in dark (a chip 9% and 16%; `Theme.Palette.wash`), the way Now Playing takes its wash from artwork; a neutral
   theme washes nothing (the system's grouped fill). Leaders, nodes, the strips' filled dots, the range bars and the
   sparkline are the accent. The pack's art is masked to the masthead's trailing side, starting past the text column
-  (680 points, or half the width, whichever is further), so no text sits on it. The masthead's top colour steps
+  (680 points, or half the width, or past the furthest piece of text the masthead measures, whichever is furthest),
+  and cleared around the masthead's control (`ArtClearance`, since the N5 review), so no text sits on it: the Tonight
+  card sits on the masthead's own colour, which the server checked, never on art it did not. The masthead's top colour steps
   towards the club's colour perceptually (`Color.mix(in: .perceptual)`) as it clears, so a near-white top over a navy
   no longer passes through a grey mid-way (Stage A's leftover). No colour is Swift's own: the tones are the system's
   semantic colours, and everything else comes from the served pack.

@@ -56,6 +56,23 @@ struct DesignLanguageTests {
         #expect(scale.position(of: -12) < 0)
     }
 
+    @Test("the art starts past every word and is cleared around the masthead's control (review S2)")
+    func artClearance() {
+        // The Tonight control at the trailing side of a wide masthead, where the art is
+        let control = CGRect(x: 1020, y: 300, width: 260, height: 56)
+        let clearance = ArtClearance.resolve(width: 1320, textTrailing: 600, control: control)
+        #expect(clearance.start >= MastheadBackground.artStart)
+        let clear = try! #require(clearance.clear)
+        #expect(clear.contains(control))
+        // The feathered edge stays outside the control's own frame
+        #expect(clear.insetBy(dx: MastheadBackground.feather * 2, dy: MastheadBackground.feather * 2).contains(control))
+        // A headline running past the usual column pushes the art further out
+        #expect(ArtClearance.resolve(width: 1320, textTrailing: 900, control: nil).start >= 900 + ArtClearance.margin)
+        // No control (or one not laid out) clears nothing
+        #expect(ArtClearance.resolve(width: 1320, textTrailing: 0, control: nil).clear == nil)
+        #expect(ArtClearance.resolve(width: 1320, textTrailing: 0, control: .zero).clear == nil)
+    }
+
     @Test("a served tone maps to a distinct symbol and reads neutral when unknown to this build")
     func tones() {
         #expect(Set(Tone.allCases.map(\.symbol)).count == Tone.allCases.count)

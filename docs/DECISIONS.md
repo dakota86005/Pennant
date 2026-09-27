@@ -2293,5 +2293,8 @@ built at N5 (Stage A)"; how to make one: DEVELOPMENT.md "Making a theme pack".
   colours by `AuroraArt`, with no club's mark in it).
 - **A pack is tonal, not only a masthead (N5, Stage B, 2026-09-26).** The pack's accent washes every card, chip and the
   roster diagram's field faintly (7% in light, 13% in dark), tints the strips, bars, nodes and leaders, and its art sits
-  at the masthead's trailing side where no text falls; the neutral theme washes nothing. No new served field was needed:
+  at the masthead's trailing side where no text falls; the neutral theme washes nothing. **Text never sits on art**
+  (since the N5 review): the server checks each text colour against the masthead's colours, not against a picture, so
+  the art begins past every piece of text the masthead measures and is cleared around its one control (the Tonight
+  card sits on the masthead's own colour); text also takes its served colour as served, never faded. No new served field was needed:
   the wash is the served accent at an opacity, so every pack made for Stage A wears the whole design.
