@@ -12,25 +12,27 @@ import {
   peerDevelopmentTrendByPlayer,
   peerDevelopmentTrendByPlayerForOrg,
 } from '../server/history.js';
+import { currentHistoryKey } from '../server/historyIdentity.js';
 import { IDS } from './fixture';
 import request from './request';
 
-const SAVE_NAME = 'unknown';
+/** The history key of the fixture's save: rating history is filed under it, never under the save's name (D-064). */
+const SAVE_KEY = (): string => currentHistoryKey();
 const PEER_ID_START = 910_000;
 const PEER_COUNT = 19;
 const INSUFFICIENT_PEER_ID = 920_000;
 
 const deleteTestSnapshots = (): void => {
   historyDb.prepare(
-    `DELETE FROM rating_snapshots
-     WHERE save_name = ?
+    `DELETE FROM save_rating_snapshots
+     WHERE save_key = ?
        AND (
          player_id = ? OR
          player_id BETWEEN ? AND ? OR
          player_id = ?
        )`
   ).run(
-    SAVE_NAME,
+    SAVE_KEY(),
     IDS.optioned,
     PEER_ID_START,
     PEER_ID_START + PEER_COUNT - 1,
@@ -43,8 +45,8 @@ describe('organization-scoped scouting development history', () => {
     deleteTestSnapshots();
 
     const insert = historyDb.prepare(
-      `INSERT INTO rating_snapshots
-       (save_name, game_date, player_id, name, team_id, org_id,
+      `INSERT INTO save_rating_snapshots
+       (save_key, game_date, player_id, name, team_id, org_id,
         level, position, age, cur, pot)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
@@ -59,7 +61,7 @@ describe('organization-scoped scouting development history', () => {
     // Save-wide callers retain that earlier observation, while the current
     // organization's workspace must begin with the first snapshot below.
     insert.run(
-      SAVE_NAME,
+      SAVE_KEY(),
       '2030-1-1',
       IDS.optioned,
       'Optioned Prospect',
@@ -74,7 +76,7 @@ describe('organization-scoped scouting development history', () => {
 
     for (const [gameDate, current] of orgDates) {
       insert.run(
-        SAVE_NAME,
+        SAVE_KEY(),
         gameDate,
         IDS.optioned,
         'Optioned Prospect',
@@ -94,7 +96,7 @@ describe('organization-scoped scouting development history', () => {
       const playerId = PEER_ID_START + offset;
       for (const [gameDate, current] of orgDates) {
         insert.run(
-          SAVE_NAME,
+          SAVE_KEY(),
           gameDate,
           playerId,
           `Peer ${offset}`,
@@ -111,7 +113,7 @@ describe('organization-scoped scouting development history', () => {
 
     for (const [gameDate, current] of orgDates) {
       insert.run(
-        SAVE_NAME,
+        SAVE_KEY(),
         gameDate,
         INSUFFICIENT_PEER_ID,
         'Small Cohort Player',

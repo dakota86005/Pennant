@@ -12,6 +12,7 @@ import { locateSave } from './ootpSave.js';
 import { readRatingMode } from './ratingMode.js';
 import { registerPostImportHook, runPostImportHooks } from './postImport.js';
 import { snapshotsAfterImport } from './importSnapshots.js';
+import { currentHistoryKey } from './historyIdentity.js';
 import { currentPlayedElsewhere, forgetSaveScan, humanClubsInExport, pickSave, saveLabel, type SavePlayedElsewhere } from './saveDiscovery.js';
 import { saveDiscoveryView, type SaveDiscovery } from './presentation/saveWords.js';
 import { assertAuthored } from './presentation/claim.js';
@@ -509,6 +510,13 @@ importedExport.writtenAtMs = (csvDir) => {
  */
 registerPostImportHook('snapshots', async (context) => {
   const last = importState.lastImport;
+  // The imported save's history key, resolved here first (D-064): on this thread the history filed under its name
+  // before it had a key is reviewed then, so the worker's snapshot lands on a history already brought over
+  try {
+    currentHistoryKey();
+  } catch (err) {
+    console.error('[history] could not resolve the save\'s history:', err);
+  }
   const outcome = await snapshotsAfterImport({
     importFinishedAt: last?.finishedAt ?? null,
     importStartedAt: context.importStartedAt,

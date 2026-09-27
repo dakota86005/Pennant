@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { developmentTrendByPlayer, historyDb, modeFilter, modeSwitches, snapshotModes, stampSnapshotMode } from '../server/history.js';
+import { currentHistoryKey } from '../server/historyIdentity.js';
 import { takeImportSnapshots } from '../server/importSnapshots.js';
 import { loadScoutedObservations } from '../server/scoutedEvidence.js';
 import type { RatingMode } from '../server/ratingMode.js';
@@ -11,7 +12,8 @@ import request from './request';
  * each rating snapshot is stamped with the kind its export carried, and a snapshot in another known kind than today's
  * export is left out of development and said, never compared.
  */
-const SAVE = 'unknown';
+/** The history key of the fixture's save: rating history is filed under it, never under the save's name (D-064). */
+const SAVE = (): string => currentHistoryKey();
 const PLAYER = 930_001;
 const ORG = 930_900;
 
@@ -24,19 +26,19 @@ const series: Array<{ date: string; cur: number; mode: RatingMode | null }> = [
 ];
 
 function clear(): void {
-  historyDb.prepare('DELETE FROM rating_snapshots WHERE save_name = ? AND player_id = ?').run(SAVE, PLAYER);
-  historyDb.prepare(`DELETE FROM rating_snapshot_modes WHERE save_name = ? AND game_date LIKE '2031-%'`).run(SAVE);
+  historyDb.prepare('DELETE FROM save_rating_snapshots WHERE save_key = ? AND player_id = ?').run(SAVE(), PLAYER);
+  historyDb.prepare(`DELETE FROM save_rating_snapshot_modes WHERE save_key = ? AND game_date LIKE '2031-%'`).run(SAVE());
 }
 
 describe('rating history across a switch in the kind of ratings', () => {
   beforeAll(() => {
     clear();
     const insert = historyDb.prepare(
-      `INSERT INTO rating_snapshots (save_name, game_date, player_id, name, team_id, org_id, level, position, age, cur, pot, con, gap, pow, eye, avk)
+      `INSERT INTO save_rating_snapshots (save_key, game_date, player_id, name, team_id, org_id, level, position, age, cur, pot, con, gap, pow, eye, avk)
        VALUES (?, ?, ?, 'Switch Case', ?, ?, 1, 6, 25, ?, 60, ?, ?, ?, ?, ?)`
     );
     for (const s of series) {
-      insert.run(SAVE, s.date, PLAYER, ORG, ORG, s.cur, s.cur, s.cur, s.cur, s.cur, s.cur);
+      insert.run(SAVE(), s.date, PLAYER, ORG, ORG, s.cur, s.cur, s.cur, s.cur, s.cur, s.cur);
       if (s.mode) stampSnapshotMode(s.date, { mode: s.mode, additionalScouted: null, source: 'export_settings', reason: null }, null);
     }
   });
@@ -106,7 +108,7 @@ describe('rating history across a switch in the kind of ratings', () => {
       expect(body.changes).toBeNull();
       expect(body.ratingModeUnknown).toMatchObject({ dates: ['2031-7-1'] });
     } finally {
-      historyDb.prepare('DELETE FROM rating_snapshot_modes WHERE save_name = ? AND game_date = ?').run(SAVE, '2031-7-1');
+      historyDb.prepare('DELETE FROM save_rating_snapshot_modes WHERE save_key = ? AND game_date = ?').run(SAVE(), '2031-7-1');
     }
   });
 
@@ -124,17 +126,17 @@ describe('rating history across a switch in the kind of ratings', () => {
     }, async () => {});
     expect(outcome.ratings).not.toBeNull();
     expect(snapshotModes().get(outcome.ratings!.gameDate)).toBe('osa');
-    historyDb.prepare('DELETE FROM rating_snapshot_modes WHERE save_name = ? AND game_date = ?').run(SAVE, outcome.ratings!.gameDate);
+    historyDb.prepare('DELETE FROM save_rating_snapshot_modes WHERE save_key = ? AND game_date = ?').run(SAVE(), outcome.ratings!.gameDate);
   });
 
   it('takes no rating snapshot of an export that carries no ratings, and never reads one stamped so', async () => {
-    const before = historyDb.prepare('SELECT COUNT(*) AS n FROM rating_snapshots').get() as { n: number };
+    const before = historyDb.prepare('SELECT COUNT(*) AS n FROM save_rating_snapshots').get() as { n: number };
     const outcome = await takeImportSnapshots({
       importFinishedAt: null, importStartedAt: null,
       ratingMode: { mode: 'none', additionalScouted: null, source: 'export_settings', reason: null },
     }, async () => {});
     expect(outcome.ratings).toBeNull();
-    expect((historyDb.prepare('SELECT COUNT(*) AS n FROM rating_snapshots').get() as { n: number }).n).toBe(before.n);
+    expect((historyDb.prepare('SELECT COUNT(*) AS n FROM save_rating_snapshots').get() as { n: number }).n).toBe(before.n);
     // A snapshot stamped "no ratings" (zeros in its columns, say) is left out of observed history and trends
     stampSnapshotMode('2031-7-1', { mode: 'none', additionalScouted: null, source: 'export_settings', reason: null }, null);
     try {
@@ -142,7 +144,7 @@ describe('rating history across a switch in the kind of ratings', () => {
       expect(modeFilter().excluded.has('2031-7-1')).toBe(true);
       expect((loadScoutedObservations([PLAYER]).get(PLAYER) ?? []).map((o) => o.gameDate)).not.toContain('2031-07-01');
     } finally {
-      historyDb.prepare('DELETE FROM rating_snapshot_modes WHERE save_name = ? AND game_date = ?').run(SAVE, '2031-7-1');
+      historyDb.prepare('DELETE FROM save_rating_snapshot_modes WHERE save_key = ? AND game_date = ?').run(SAVE(), '2031-7-1');
     }
   });
 });

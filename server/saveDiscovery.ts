@@ -275,7 +275,7 @@ export interface HumanClub {
 }
 
 /** The delimiter of a header row, as the importer decides it (the most used of `,` `;` tab `|` outside quotes). */
-function delimiterOf(header: string): string {
+export function delimiterOf(header: string): string {
   let best = ',';
   let bestCount = 0;
   for (const candidate of [',', ';', '\t', '|']) {
@@ -294,7 +294,7 @@ function delimiterOf(header: string): string {
 }
 
 /** Splits one CSV line on the delimiter, honouring double quotes (a teams row holds no line break). */
-function splitLine(line: string, delimiter: string): string[] {
+export function splitLine(line: string, delimiter: string): string[] {
   const out: string[] = [];
   let field = '';
   let inQuotes = false;

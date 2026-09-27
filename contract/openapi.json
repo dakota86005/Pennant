@@ -1523,6 +1523,28 @@
               "upgradeNote"
             ],
             "description": "What the imported export carries and what its import left out (N3.5, D-061)."
+          },
+          "history": {
+            "type": "object",
+            "properties": {
+              "note": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "because": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "note",
+              "because"
+            ],
+            "description": "This save's rating history (D-064): a sentence when some of it is not used (history filed under the save's name before it had a key of its own that couldn't be matched to it for sure) or when it started fresh; null when all of it is this save's. `because` is the basis: what became of each part, and why the history began where it did."
           }
         },
         "required": [
@@ -1532,7 +1554,8 @@
           "csv",
           "transactionLog",
           "freshness",
-          "import"
+          "import",
+          "history"
         ]
       },
       "DataStatusFact": {
@@ -1712,6 +1735,10 @@
           "leftOut": {
             "$ref": "#/components/schemas/Claim",
             "description": "Files the last import left out, in a sentence, each file and why in its basis; null when none was (N3.5)."
+          },
+          "ratingHistory": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Rating history of this save that isn't used, or that started fresh, in a sentence with its basis; null when all is its own (D-064)."
           }
         },
         "required": [

@@ -12,7 +12,8 @@ import { holmSignificant, judgeGate, logisticFit, ratioEffect, seasonTotals, typ
 import { recordProductionFit } from '../server/playerValueFitStore.js';
 import { PRODUCTION_POLICY, PRODUCTION_PRIOR, RATINGS_METHOD, RATINGS_POLICY, RATINGS_PRIOR } from '../server/playerValueCalibration.js';
 import type { ProductionLine } from '../server/playerValueProduction.js';
-import { currentSaveName, historyDb } from '../server/history.js';
+import { historyDb } from '../server/history.js';
+import { currentHistoryKey } from '../server/historyIdentity.js';
 import { IDS } from './fixture';
 
 /*
@@ -391,14 +392,14 @@ describe('the fit store and the refit after an import (fixture league)', () => {
     expect(fits).toHaveLength(1);
     // The save's own snapshots a season apart arrive: enough of them refit it once, with no new season
     const bat = historyDb.prepare(
-      `INSERT OR REPLACE INTO rating_snapshots (save_name, game_date, player_id, position, level, age, con, gap, pow, eye, avk, conP, gapP, powP, eyeP, avkP)
+      `INSERT OR REPLACE INTO save_rating_snapshots (save_key, game_date, player_id, position, level, age, con, gap, pow, eye, avk, conP, gapP, powP, eyeP, avkP)
        VALUES (?, ?, ?, 6, 3, ?, ?, ?, ?, ?, ?, 60, 60, 60, 60, 60)`
     );
     const arm = historyDb.prepare(
-      `INSERT OR REPLACE INTO rating_snapshots (save_name, game_date, player_id, position, level, age, stu, mov, ctl, stuP, movP, ctlP)
+      `INSERT OR REPLACE INTO save_rating_snapshots (save_key, game_date, player_id, position, level, age, stu, mov, ctl, stuP, movP, ctlP)
        VALUES (?, ?, ?, 1, 3, ?, ?, ?, ?, 60, 60, 60)`
     );
-    const save = currentSaveName();
+    const save = currentHistoryKey();
     for (let n = 0; n < RATINGS_POLICY.longitudinal.minimumPairs; n += 1) {
       // Unpadded game dates, as OOTP writes them, a season apart
       if (n % 2 === 0) {
@@ -419,7 +420,7 @@ describe('the fit store and the refit after an import (fixture league)', () => {
       // ...and once it has, a further re-import fits nothing
       expect(refitRatingsIfNeeded({ fit: fitter, leagues: [IDS.league] })).toEqual([expect.objectContaining({ refit: false })]);
     } finally {
-      historyDb.prepare(`DELETE FROM rating_snapshots WHERE player_id >= 70000 AND player_id < 71000`).run();
+      historyDb.prepare(`DELETE FROM save_rating_snapshots WHERE player_id >= 70000 AND player_id < 71000`).run();
     }
   });
 });

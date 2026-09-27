@@ -47,6 +47,8 @@ export interface DataStatusView {
   action: Cell | null;
   /** Files the last import left out, in a sentence, each file and why in its basis; null when none was (N3.5). */
   leftOut: Claim | null;
+  /** Rating history of this save that isn't used, or that started fresh, in a sentence with its basis; null when all is its own (D-064). */
+  ratingHistory: Claim | null;
 }
 
 const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -231,7 +233,27 @@ export function dataStatusView(s: DataStatus): DataStatusView {
     facts,
     action: action ? cell(action) : null,
     leftOut: leftOutCell(s),
+    ratingHistory: ratingHistoryCell(s),
   };
+}
+
+/** What became of this save's rating history, when some isn't used or it started fresh (D-064). */
+function ratingHistoryCell(s: DataStatus): Claim | null {
+  const history = s.history;
+  if (!history?.note) return null;
+  return claim({
+    text: history.note,
+    tone: 'caution',
+    hint: 'Each save keeps its own rating history, so two saves are never compared',
+    basis: basis({
+      because: history.because.map((line) => ({ label: 'Rating history', value: line })),
+      source: { department: 'frontOffice', specialist: 'Data status', asOf: s.csv.importedAt, gameDate: s.csv.currentDate },
+      unknown: [],
+      wouldChange: [],
+      lean: null,
+      certainty: 'fact',
+    }),
+  });
 }
 
 /** Why the kind of ratings is not known, when it is not (D-061). */

@@ -21,6 +21,7 @@ import { createHash } from 'node:crypto';
 import { db, tableColumns, tableExists } from './db.js';
 import { loadConfig } from './config.js';
 import { historyDb } from './history.js';
+import { currentHistoryKey } from './historyIdentity.js';
 import { allPlayerStates, type PlayerState } from './playerState.js';
 import { playerRosterEventHistory, type PlayerRosterEvent } from './transactionHistory.js';
 import { currentTransactionLog } from './dataStatus.js';
@@ -63,6 +64,17 @@ historyDb.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_roster_state_player
     ON roster_state_snapshot_players (player_id, snapshot_id);
+  /*
+   * Which save each snapshot belongs to (D-064): its history key, not its name, so two saves that share a name are
+   * never compared with each other. Additive: the snapshot rows keep their name as before (the earlier build reads
+   * them by it). A snapshot taken before this table existed has no row here and is never a comparator for any save.
+   */
+  CREATE TABLE IF NOT EXISTS roster_state_snapshot_saves (
+    snapshot_id INTEGER PRIMARY KEY,
+    save_key TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_roster_state_snapshot_saves_key
+    ON roster_state_snapshot_saves (save_key, snapshot_id);
   CREATE TABLE IF NOT EXISTS roster_state_transitions (
     snapshot_id INTEGER NOT NULL,
     prior_snapshot_id INTEGER NOT NULL,
@@ -319,15 +331,16 @@ export function rosterStateSnapshotById(id: number): RosterStateSnapshot | null 
   return readSnapshotById(id);
 }
 
-function latestSnapshot(saveName: string): RosterStateSnapshot | null {
+function latestSnapshot(saveKey: string): RosterStateSnapshot | null {
   const row = historyDb.prepare(
-    `SELECT id FROM roster_state_snapshots WHERE save_name = ? ORDER BY id DESC LIMIT 1`
-  ).get(saveName) as { id: number } | undefined;
+    `SELECT snapshot_id AS id FROM roster_state_snapshot_saves WHERE save_key = ? ORDER BY snapshot_id DESC LIMIT 1`
+  ).get(saveKey) as { id: number } | undefined;
   return row ? readSnapshotById(row.id) : null;
 }
 
-export function latestRosterStateSnapshot(saveName = currentSaveName()): RosterStateSnapshot | null {
-  return latestSnapshot(saveName);
+/** The latest roster-state snapshot of a save, by its history key (D-064); the save being served by default. */
+export function latestRosterStateSnapshot(saveKey = currentHistoryKey()): RosterStateSnapshot | null {
+  return latestSnapshot(saveKey);
 }
 
 function valuesDiffer(before: number | boolean | null, after: number | boolean | null): boolean {
@@ -530,9 +543,10 @@ export function captureRosterStateSnapshot(
   const players = allPlayerStates().map(persistedState).filter((player) => player.playerId > 0);
   if (!players.length) return { status: 'unavailable', snapshot: null, events: [] };
   const saveName = currentSaveName();
+  const saveKey = currentHistoryKey();
   const { leagueId, gameDate } = importedLeagueIdentity();
   const hash = stateHash(players);
-  const previous = latestSnapshot(saveName);
+  const previous = latestSnapshot(saveKey);
   if (previous && previous.gameDate === gameDate && previous.stateHash === hash) {
     return { status: 'duplicate', snapshot: previous, events: [] };
   }
@@ -553,6 +567,7 @@ export function captureRosterStateSnapshot(
   historyDb.transaction(() => {
     const result = insertSnapshot.run(saveName, leagueId, gameDate, observedAt, hash);
     snapshotId = Number(result.lastInsertRowid);
+    historyDb.prepare(`INSERT INTO roster_state_snapshot_saves (snapshot_id, save_key) VALUES (?, ?)`).run(snapshotId, saveKey);
     for (const player of players) {
       insertPlayer.run(
         snapshotId, player.playerId, player.name, player.organizationId, player.teamId, player.teamLevel,
@@ -585,14 +600,14 @@ export function rosterStateEventsForSnapshot(snapshotId: number): StructuredRost
  * validate each observed change against current state; this is history, not a
  * list of perpetually open work items.
  */
-export function rosterStateEventsForSave(saveName = currentSaveName()): StructuredRosterEvent[] {
+export function rosterStateEventsForSave(saveKey = currentHistoryKey()): StructuredRosterEvent[] {
   return (historyDb.prepare(
     `SELECT t.transition_json
      FROM roster_state_transitions t
-     JOIN roster_state_snapshots s ON s.id = t.snapshot_id
-     WHERE s.save_name = ?
+     JOIN roster_state_snapshot_saves s ON s.snapshot_id = t.snapshot_id
+     WHERE s.save_key = ?
      ORDER BY t.snapshot_id, t.player_id`
-  ).all(saveName) as Array<{ transition_json: string }>).flatMap((row) => {
+  ).all(saveKey) as Array<{ transition_json: string }>).flatMap((row) => {
     try { return [JSON.parse(row.transition_json) as StructuredRosterEvent]; } catch { return []; }
   });
 }
