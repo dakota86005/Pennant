@@ -432,17 +432,17 @@ private struct ComponentSheet: View {
                 }
                 HStack(spacing: 12) {
                     ControlPips(.seasons(4, text: DesignFixtures.served("Through 2044"))); ControlPips(.clock(DesignFixtures.served("Arbitration this winter"))); ControlPips(.unknown(DesignFixtures.served("Not known")))
-                    RangeBar(range: DesignFixtures.positions[0].value, label: DesignFixtures.positions[0].valueText).frame(width: 120)
-                    RangeBar(range: nil, label: DesignFixtures.served("Not valued yet")).frame(width: 120)
+                    RangeBar(range: DesignFixtures.positions[0].value, label: DesignFixtures.positions[0].valueText, scale: DesignFixtures.valueScale).frame(width: 120)
+                    RangeBar(range: nil, label: DesignFixtures.served("Not valued yet"), scale: DesignFixtures.valueScale).frame(width: 120)
                 }
             case "places":
                 PlaceStrips(DesignFixtures.dimensions + [DesignFixtures.tooEarly], lines: DesignFixtures.placeLines)
             case "roster":
-                RosterDiagram(DesignFixtures.positions).frame(height: 540)
+                RosterDiagram(DesignFixtures.positions, scale: DesignFixtures.valueScale).frame(height: 540)
                 RosterLegend()
                 HStack(alignment: .top, spacing: 24) {
-                    Card { StaffColumn(title: Text(verbatim: DesignFixtures.served("Rotation")), pitchers: DesignFixtures.rotation) }
-                    Card { StaffColumn(title: Text(verbatim: DesignFixtures.served("Bullpen")), pitchers: DesignFixtures.bullpen) }
+                    Card { StaffColumn(title: Text(verbatim: DesignFixtures.served("Rotation")), pitchers: DesignFixtures.rotation, scale: DesignFixtures.valueScale) }
+                    Card { StaffColumn(title: Text(verbatim: DesignFixtures.served("Bullpen")), pitchers: DesignFixtures.bullpen, scale: DesignFixtures.valueScale) }
                 }
             case "rows":
                 HStack(alignment: .top, spacing: 24) {

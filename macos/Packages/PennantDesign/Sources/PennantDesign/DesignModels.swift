@@ -26,6 +26,26 @@ nonisolated public struct ValueRange: Sendable, Hashable {
     }
 }
 
+/// The scale a diagram's range bars share, served with the diagram (its ends, in the values' own unit), so every bar on
+/// it reads against the same line. Swift holds no scale of its own: until the server serves one, there is no diagram.
+nonisolated public struct ValueScale: Sendable, Hashable {
+    public var low: Double
+    public var high: Double
+
+    /// A scale is its two ends, low below high; anything else is no scale.
+    public init?(low: Double, high: Double) {
+        guard low.isFinite, high.isFinite, low < high else { return nil }
+        self.low = low
+        self.high = high
+    }
+
+    /// Where a value sits along the scale, 0 at `low` and 1 at `high` (outside 0...1 for a value off the scale, which
+    /// the bar clips rather than moving it).
+    public func position(of value: Double) -> Double {
+        (value - low) / (high - low)
+    }
+}
+
 /// One dimension of "How we win and lose": a stated league place among the clubs that have the figure.
 nonisolated public struct PlaceDimension: Identifiable, Sendable, Hashable {
     /// Where the server puts a dimension: a strength (the top fifth, a stated line), a weakness (the bottom fifth),

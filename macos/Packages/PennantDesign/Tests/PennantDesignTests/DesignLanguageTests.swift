@@ -42,6 +42,20 @@ struct DesignLanguageTests {
         #expect(Figure(ranged, id: "ranged").fraction == nil)
     }
 
+    @Test("a range bar's scale is the served one: two ends, low below high, and a value off it is not moved onto it")
+    func valueScale() {
+        #expect(ValueScale(low: 3, high: 3) == nil)
+        #expect(ValueScale(low: 5, high: -5) == nil)
+        #expect(ValueScale(low: .nan, high: 1) == nil)
+        let scale = ValueScale(low: -5, high: 30)!
+        #expect(scale.position(of: -5) == 0)
+        #expect(scale.position(of: 30) == 1)
+        #expect(scale.position(of: 12.5) == 0.5)
+        // Off the scale stays off it (the bar clips it), never clamped onto the end
+        #expect(scale.position(of: 37) > 1)
+        #expect(scale.position(of: -12) < 0)
+    }
+
     @Test("a served tone maps to a distinct symbol and reads neutral when unknown to this build")
     func tones() {
         #expect(Set(Tone.allCases.map(\.symbol)).count == Tone.allCases.count)

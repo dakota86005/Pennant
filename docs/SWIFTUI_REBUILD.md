@@ -259,8 +259,10 @@ nothing until the payload carries the field. `positions[].control` is served str
   lines per group ("Top fifth of the league").
 - `RosterDiagram`: `positions[] {pos, holder {name, id}, value {low, likely, high, text, short} | null (with reason),
   placeText, place, overlap, behind, farmNext {name, readiness} | null, control: {through: year, seasonsLeft} |
-  {clock: "arbitration" | "free agent after season", text} | {unknown, text}, need: bool, basis}`; `StaffColumn`:
-  `rotation[]`, `bullpen[] {role, name, line, value | null, note | null, hint}`.
+  {clock: "arbitration" | "free agent after season", text} | {unknown, text}, need: bool, basis}`, and the scale every
+  range bar on it shares, `valueScale {low, high}` (in the values' unit; Swift holds no scale of its own, draws no
+  diagram without it and clips a value off it rather than moving it); `StaffColumn`: `rotation[]`, `bullpen[] {role,
+  name, line, value | null, note | null, hint}`, on the same scale.
 - `MetricTile`: `figures[] {label, value, hint, basis}` (the department cards' key figures, served since N4). A ring
   only where the server serves the whole the figure counts (`value.whole`, a real "x of y": the active and 40-man
   rosters against their limits, the farm's players read, the departments reporting; served since the N5 review); a

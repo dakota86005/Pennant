@@ -157,23 +157,23 @@ public struct PlaceStrips: View {
     }
 }
 
-/// A value's range with its most likely value marked; hatched when there is no value (never a zero).
+/// A value's range with its most likely value marked, on the scale served with it; hatched when there is no value
+/// (never a zero). The scale is always the caller's, from the server (a diagram's bars share one); a value off the
+/// scale is clipped at the bar's end, never moved onto it.
 public struct RangeBar: View {
     let range: ValueRange?
     /// The served sentence the bar stands for (its accessibility label): the range, or why there is none.
     let label: String
-    let scaleMin: Double
-    let scaleMax: Double
+    let scale: ValueScale
     let height: CGFloat
     @Environment(\.theme) private var theme
     @Environment(\.colorScheme) private var colorScheme
     @EffectiveContrast private var contrast
 
-    public init(range: ValueRange?, label: String, scaleMin: Double = -5, scaleMax: Double = 30, height: CGFloat = 8) {
+    public init(range: ValueRange?, label: String, scale: ValueScale, height: CGFloat = 8) {
         self.range = range
         self.label = label
-        self.scaleMin = scaleMin
-        self.scaleMax = scaleMax
+        self.scale = scale
         self.height = height
     }
 
@@ -182,8 +182,7 @@ public struct RangeBar: View {
         let accent = palette.isNeutral ? Color.accentColor : palette.accent
         GeometryReader { g in
             let w = g.size.width
-            let span = max(0.001, scaleMax - scaleMin)
-            let x = { (v: Double) -> CGFloat in CGFloat((min(scaleMax, max(scaleMin, v)) - scaleMin) / span) * w }
+            let x = { (v: Double) -> CGFloat in CGFloat(scale.position(of: v)) * w }
             ZStack(alignment: .leading) {
                 Capsule().fill(Color(nsColor: .quaternaryLabelColor).opacity(0.5))
                 if let range {
@@ -196,6 +195,8 @@ public struct RangeBar: View {
                     Hatch().frame(height: height).clipShape(Capsule())
                 }
             }
+            // Clipped at the ends only, so the mark still stands above and below the bar
+            .mask(Rectangle().padding(.vertical, -4))
         }
         .frame(height: height)
         .accessibilityElement(children: .ignore)

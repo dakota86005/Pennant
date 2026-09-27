@@ -154,19 +154,22 @@ public struct FieldNode: View {
     }
 }
 
-/// The compact figures a position carries: the range bar with its mark, the served value, the served place.
+/// The compact figures a position carries: the range bar with its mark (on the diagram's served scale), the served
+/// value, the served place.
 public struct PositionFigures: View {
     let position: RosterPosition
+    let scale: ValueScale
     let barWidth: CGFloat
 
-    public init(_ position: RosterPosition, barWidth: CGFloat = 56) {
+    public init(_ position: RosterPosition, scale: ValueScale, barWidth: CGFloat = 56) {
         self.position = position
+        self.scale = scale
         self.barWidth = barWidth
     }
 
     public var body: some View {
         HStack(spacing: 8) {
-            RangeBar(range: position.value, label: position.value?.text ?? position.valueText, height: 5).frame(width: barWidth)
+            RangeBar(range: position.value, label: position.value?.text ?? position.valueText, scale: scale, height: 5).frame(width: barWidth)
             Text(verbatim: position.valueText).font(.system(size: 11, weight: .semibold)).fontWidth(.condensed).monospacedDigit()
                 .foregroundStyle(position.value == nil ? .secondary : .primary).lineLimit(1)
             Text(verbatim: position.placeText).font(.system(size: 11)).fontWidth(.condensed).monospacedDigit()
@@ -176,15 +179,18 @@ public struct PositionFigures: View {
 }
 
 /// The roster diagram (V2): the tonal field, the nodes, radial hairlines and the plates. The diagram is given its
-/// height by the caller (540 points reads well; the plates keep their size).
+/// height by the caller (540 points reads well; the plates keep their size), and the scale its range bars share, as
+/// served with the positions.
 public struct RosterDiagram: View {
     let positions: [RosterPosition]
+    let scale: ValueScale
     @Environment(\.theme) private var theme
     @Environment(\.colorScheme) private var colorScheme
     @EffectiveContrast private var contrast
 
-    public init(_ positions: [RosterPosition]) {
+    public init(_ positions: [RosterPosition], scale: ValueScale) {
         self.positions = positions
+        self.scale = scale
     }
 
     public var body: some View {
@@ -202,7 +208,7 @@ public struct RosterDiagram: View {
                 }
                 .accessibilityHidden(true)
                 ForEach(positions) { position in FieldNode(need: position.need).position(g.spot(position.id)) }
-                ForEach(positions) { position in PositionPlate(position).position(g.plate(position.id)) }
+                ForEach(positions) { position in PositionPlate(position, scale: scale).position(g.plate(position.id)) }
             }
         }
         .accessibilityElement(children: .contain)
@@ -215,13 +221,15 @@ public struct RosterDiagram: View {
 /// as pips, and his figures. Hover shows who is behind him and the farm's next man; a click opens the basis.
 public struct PositionPlate: View {
     let position: RosterPosition
+    let scale: ValueScale
     @Environment(\.theme) private var theme
     @Environment(\.colorScheme) private var colorScheme
     @EffectiveContrast private var contrast
     @State private var hovering = false
 
-    public init(_ position: RosterPosition) {
+    public init(_ position: RosterPosition, scale: ValueScale) {
         self.position = position
+        self.scale = scale
     }
 
     public var body: some View {
@@ -238,7 +246,7 @@ public struct PositionPlate: View {
                     Spacer(minLength: 0)
                     ControlPips(position.control)
                 }
-                PositionFigures(position)
+                PositionFigures(position, scale: scale)
                 if hovering {
                     VStack(alignment: .leading, spacing: 1) {
                         LabeledContent("Behind him") { Text(verbatim: position.behind) }

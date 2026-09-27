@@ -97,11 +97,11 @@ private struct PreviewFrame<Content: View>: View {
 #Preview("Roster diagram (V2)") {
     PreviewFrame {
         VStack(alignment: .leading, spacing: 12) {
-            RosterDiagram(DesignFixtures.positions).frame(height: 540)
+            RosterDiagram(DesignFixtures.positions, scale: DesignFixtures.valueScale).frame(height: 540)
             RosterLegend()
             HStack(alignment: .top, spacing: 24) {
-                Card { StaffColumn(title: Text(verbatim: DesignFixtures.served("Rotation")), pitchers: DesignFixtures.rotation) }
-                Card { StaffColumn(title: Text(verbatim: DesignFixtures.served("Bullpen")), pitchers: DesignFixtures.bullpen) }
+                Card { StaffColumn(title: Text(verbatim: DesignFixtures.served("Rotation")), pitchers: DesignFixtures.rotation, scale: DesignFixtures.valueScale) }
+                Card { StaffColumn(title: Text(verbatim: DesignFixtures.served("Bullpen")), pitchers: DesignFixtures.bullpen, scale: DesignFixtures.valueScale) }
             }
         }
     }

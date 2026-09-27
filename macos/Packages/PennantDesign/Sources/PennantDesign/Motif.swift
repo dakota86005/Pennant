@@ -419,14 +419,17 @@ public struct WireRow: View {
     }
 }
 
-/// The rotation or the bullpen beside the roster diagram: role, name, a served note, the line, and the range bar.
+/// The rotation or the bullpen beside the roster diagram: role, name, a served note, the line, and the range bar on the
+/// diagram's served scale.
 public struct StaffColumn: View {
     let title: Text
     let pitchers: [StaffPitcher]
+    let scale: ValueScale
 
-    public init(title: Text, pitchers: [StaffPitcher]) {
+    public init(title: Text, pitchers: [StaffPitcher], scale: ValueScale) {
         self.title = title
         self.pitchers = pitchers
+        self.scale = scale
     }
 
     public var body: some View {
@@ -441,7 +444,7 @@ public struct StaffColumn: View {
                         Text(verbatim: note).font(.caption2).foregroundStyle(Tone.caution.color).lineLimit(1)
                     }
                     Text(verbatim: p.line).font(.caption).monospacedDigit().foregroundStyle(.secondary)
-                    RangeBar(range: p.value, label: p.hint, height: 5).frame(width: 54)
+                    RangeBar(range: p.value, label: p.hint, scale: scale, height: 5).frame(width: 54)
                 }
                 .help(Text(verbatim: p.hint))
                 .accessibilityElement(children: .combine)

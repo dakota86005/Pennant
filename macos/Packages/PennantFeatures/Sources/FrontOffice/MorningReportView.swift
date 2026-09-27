@@ -77,6 +77,8 @@ public struct MorningReportDesign {
     /// The note beside "How we win and lose" ("Through July 13 · 89 games"), as served.
     public var placesNote: String?
     public var positions: [RosterPosition]?
+    /// The scale the diagram's range bars share, served with the positions; no diagram without it.
+    public var valueScale: ValueScale?
     public var rotation: [StaffPitcher]
     public var bullpen: [StaffPitcher]
     public var wire: [WireItem]?
@@ -84,7 +86,8 @@ public struct MorningReportDesign {
     public init(
         scoreboard: Scoreboard? = nil, lede: String? = nil, ledeHint: String? = nil, chips: [Chip]? = nil,
         dimensions: [PlaceDimension]? = nil, placeLines: [PlaceDimension.Group: String] = [:], placesNote: String? = nil,
-        positions: [RosterPosition]? = nil, rotation: [StaffPitcher] = [], bullpen: [StaffPitcher] = [], wire: [WireItem]? = nil
+        positions: [RosterPosition]? = nil, valueScale: ValueScale? = nil, rotation: [StaffPitcher] = [], bullpen: [StaffPitcher] = [],
+        wire: [WireItem]? = nil
     ) {
         self.scoreboard = scoreboard
         self.lede = lede
@@ -94,6 +97,7 @@ public struct MorningReportDesign {
         self.placeLines = placeLines
         self.placesNote = placesNote
         self.positions = positions
+        self.valueScale = valueScale
         self.rotation = rotation
         self.bullpen = bullpen
         self.wire = wire
@@ -219,14 +223,14 @@ public struct MorningReportPage: View {
                     PlaceStrips(dimensions, lines: design?.placeLines ?? [:], wide: false)
                 }
             }
-            if let positions = design?.positions {
+            if let positions = design?.positions, let scale = design?.valueScale {
                 VStack(alignment: .leading, spacing: 12) {
                     MagazineSection(kicker: Text("The roster"), title: Text("Who we have"))
-                    RosterDiagram(positions).frame(height: 540)
+                    RosterDiagram(positions, scale: scale).frame(height: 540)
                     RosterLegend()
                     HStack(alignment: .top, spacing: 24) {
-                        Card { StaffColumn(title: Text("Rotation"), pitchers: design?.rotation ?? []) }
-                        Card { StaffColumn(title: Text("Bullpen"), pitchers: design?.bullpen ?? []) }
+                        Card { StaffColumn(title: Text("Rotation"), pitchers: design?.rotation ?? [], scale: scale) }
+                        Card { StaffColumn(title: Text("Bullpen"), pitchers: design?.bullpen ?? [], scale: scale) }
                     }
                 }
             }
@@ -331,7 +335,7 @@ extension MorningReportDesign {
     public static let fixture = MorningReportDesign(
         scoreboard: DesignFixtures.scoreboard, lede: DesignFixtures.lede, ledeHint: DesignFixtures.ledeHint, chips: DesignFixtures.chips,
         dimensions: DesignFixtures.dimensions, placeLines: DesignFixtures.placeLines, placesNote: DesignFixtures.served("Through July 13 · 89 games"),
-        positions: DesignFixtures.positions, rotation: DesignFixtures.rotation, bullpen: DesignFixtures.bullpen, wire: DesignFixtures.wire
+        positions: DesignFixtures.positions, valueScale: DesignFixtures.valueScale, rotation: DesignFixtures.rotation, bullpen: DesignFixtures.bullpen, wire: DesignFixtures.wire
     )
 }
 #endif

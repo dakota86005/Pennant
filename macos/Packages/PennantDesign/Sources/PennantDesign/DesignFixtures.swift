@@ -128,6 +128,9 @@ public enum DesignFixtures {
 
     static func fmt(_ v: Double) -> String { v == v.rounded() ? String(Int(v)) : String(format: "%.1f", v) }
 
+    /// The scale the diagram's range bars share, as N6 will serve it with the positions ($M beyond his pay).
+    public static let valueScale = ValueScale(low: -5, high: 30)!
+
     public static let positions: [RosterPosition] = [
         position("C", "M. Okafor", value: (4, 8, 11), placeText: "12th of 30", behind: "Nobody healthy", farmNext: "L. Moreau · not yet", control: .seasons(3, text: "Through 2043"), need: true),
         position("1B", "D. Whitfield", value: (1, 5, 9), placeText: "19th of 30", behind: "S. Petrov", farmNext: nil, control: .seasons(2, text: "Through 2042"), need: false),
