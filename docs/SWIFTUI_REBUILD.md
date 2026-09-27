@@ -406,6 +406,10 @@ modular: "theme packs" per club (D-061).
   over, and the floating control's glass is missing), so the real look is in window screenshots. The XCUITests gain four
   glass-shell flows (the club's colours and the example pack, light and dark, each with an Increase Contrast relaunch;
   the example pack chosen through Settings), each auditing the Morning Report and a report with the sidebar unfolded.
+  They build, but have not run at Stage A: the Mac's UI automation mode asks for the owner's password again ("Timed out
+  while enabling automation mode"), so the audits of the unfolded sidebar and the masthead's title are still to be seen.
+  The real windows were captured instead from a Debug build launched on scratch folders (window only, `screencapture
+  -l`): the Morning Report in both themes, light and dark, with Increase Contrast and Reduce Transparency, and neutral.
 
 ---
 
@@ -1174,6 +1178,9 @@ the club the save's human manages as Automatic.
   not values, so nothing shown depends on it today.
 - N3.5's per-import caches of league populations would make each build cheaper; the worker already keeps it off the
   request path.
+
+**N5, Stage A (2026-09-26)** on `feature/swiftui-n5-design`: theme packs (D-061), the glass shell and the masthead
+(section 3.7, "As built at N5 (Stage A)"), shown to the owner before Stage B (the claim components).
 
 **Next: N5** (the design system, section 9). Continue the SwiftUI rebuild at N5 (docs/SWIFTUI_REBUILD.md): open a fresh
 session on `feature/swiftui` once N4's PR is merged.
