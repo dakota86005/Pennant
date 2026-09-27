@@ -628,7 +628,7 @@ function farmMan(f: FarmNext): FarmNextMan {
   const bar = barOf(f);
   const against = bar ? ` (readiness ${bar.readiness}, bar ${bar.required})` : '';
   const words: Record<ReadinessState, { text: string; hint: string }> = {
-    ready: { text: 'Ready for a look', hint: `Player Development: a major-league look is defensible now${against}` },
+    ready: { text: 'Ready for a look', hint: `Player Development: a look is defensible now${against}` },
     notYet: {
       text: 'Not ready yet',
       // Readiness may clear its bar while another of its bars (the evidence behind it) is not met: never read as the readiness

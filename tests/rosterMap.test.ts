@@ -267,6 +267,9 @@ describe('the farm\'s readiness against its bar', () => {
     expect(node.farmNext).toMatchObject({ state: 'notYet', bar: { readiness: 98, required: 76 } });
     expect(node.farmNext!.readiness.hint).toBe('Player Development: not yet; readiness 98 clears its bar, another isn\'t met');
     expect(node.claim.basis.because.find((b) => b.label === 'The farm\'s next man')!.value).toContain(blocker);
+    // A ready man's hover keeps his readiness and its bar whole, never cut mid-figure
+    m.map.positions[0] = { ...m.map.positions[0], farmNext: { playerId: 99, name: 'Adrian Castle', level: 2, assessment: { judgment: 'defensible', readiness: 96, required: 81, reasons: [], blockers: [], missing: [] } } } as never;
+    expect(rosterMapWords(build, m).positions[0].farmNext!.readiness.hint).toBe('Player Development: a look is defensible now (readiness 96, bar 81)');
   });
 });
 
