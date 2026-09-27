@@ -100,6 +100,8 @@ export interface ItemInput {
   headline: Claim;
   detail?: Cell | null;
   evidence?: string | null;
+  /** How many of the department's own items the row stands for (the grouping rule); 1 by default. */
+  count?: number;
 }
 
 /**
@@ -160,6 +162,7 @@ export function item(ctx: DepartmentContext, input: ItemInput): FoItem {
       : cell(s.dueInDays <= 0 ? 'Due today' : `${plural(s.dueInDays, 'day')} left`, { tone: s.neutral === 'critical' ? 'bad' : 'neutral' }),
     dueInDays: s.dueInDays,
     evidence: input.evidence ?? null,
+    count: input.count ?? 1,
   };
 }
 
@@ -185,7 +188,6 @@ export function deskOrder(items: readonly FoItem[]): FoItem[] {
     .map(({ it }) => it);
 }
 
-export const DESK_ORDER_HINT = 'Urgent first, then the nearest deadline, then the sidebar\'s order';
 
 /** To decide: urgent and needs-attention items by the plain reading. Watching: noted ones (SWIFTUI_REBUILD.md section 3.5). */
 export const toDecide = (items: readonly FoItem[]) => items.filter((it) => it.neutralSeverity !== 'noted');
@@ -299,26 +301,54 @@ export function card(r: DepartmentReport): DepartmentCard {
     preparedBy: r.preparedBy,
     summary: r.summary,
     figures: r.figures.slice(0, 3),
-    top: [...r.toDecide.items, ...r.watching.items].slice(0, 3),
+    top: r.watching.items.slice(0, 3),
     toDecide: ready ? r.toDecide.items.length : null,
     watching: ready ? r.watching.items.length : null,
-    open: target({ kind: 'view', department: r.department, view: 'report' }),
+    open: r.status === 'notYet' ? null : target({ kind: 'view', department: r.department, view: 'report' }),
     memo: r.memo,
   };
 }
 
+/** How many items to decide the desk shows from one department (a stated policy line, D-041); the rest are in its report. */
+export const DESK_SHARE = 5;
+
+export const DESK_ORDER_HINT = 'Urgent first, then the nearest deadline; five from each department';
+
 /**
- * The desk: every department's items to decide, merged in the stated order. When a department could not be read the
- * desk says it may be missing items, and never reads as "nothing to decide".
+ * The desk: each department's items to decide, the first `DESK_SHARE` in its own desk order, merged in the stated order,
+ * and a line for each department with more. When a department could not be read the desk says it may be missing items;
+ * with nothing to decide it says which departments that covers, never an all clear for the ones with no report yet.
  */
 export function desk(reports: readonly DepartmentReport[]): Desk {
-  const items = deskOrder(reports.flatMap((r) => r.toDecide.items));
+  const shown: FoItem[] = [];
+  const more: Desk['more'] = [];
+  for (const r of reports) {
+    const decide = r.toDecide.items;
+    shown.push(...decide.slice(0, DESK_SHARE));
+    if (decide.length > DESK_SHARE) {
+      const extra = decide.length - DESK_SHARE;
+      more.push({
+        department: r.department,
+        line: cell(`And ${extra} more in ${r.name}`),
+        count: extra,
+        open: target({ kind: 'view', department: r.department, view: 'report' }),
+      });
+    }
+  }
+  const items = deskOrder(shown);
   const missing = reports.filter((r) => r.status === 'unavailable').map((r) => r.name);
+  const notYet = reports.filter((r) => r.status === 'notYet').map((r) => r.name);
+  const reporting = reports.length - notYet.length - missing.length;
   return {
     title: cell('Your desk'),
     order: cell('Most urgent first', { hint: DESK_ORDER_HINT }),
     items,
-    empty: items.length === 0 && missing.length === 0 ? cell('Nothing to decide') : null,
+    more,
+    empty: items.length === 0 && missing.length === 0
+      ? notYet.length
+        ? cell(`Nothing to decide from the ${countWord(reporting).toLowerCase()} departments reporting`, { hint: `${listWords(notYet)} have no report yet` })
+        : cell('Nothing to decide')
+      : null,
     incomplete: missing.length
       ? cell(`${listWords(missing)} couldn't be read, so the desk may be missing items`, { tone: 'unknown' })
       : null,

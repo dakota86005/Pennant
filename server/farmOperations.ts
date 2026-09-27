@@ -93,6 +93,7 @@ import {
 import { evaluateCurrentAssignment, type CurrentAssignmentRead } from './currentAssignment.js';
 import {
   buildAffiliateView,
+  countInWords,
   operationalReading,
   resetFarmFindingIds,
   type AffiliateOperational,
@@ -311,6 +312,10 @@ export interface FarmSystemView {
   /** The one list that answers "what needs my attention". */
   attention: Array<{
     kind: 'assignment' | 'affiliate' | 'organization' | 'retention';
+    /** What kind of finding it is: a finding's code, or `assignment`, `past_window` or `retention`. */
+    code: string;
+    /** The fielding position it is about, when it is about one; null otherwise. */
+    position: string | null;
     severity: 'critical' | 'attention' | 'noted';
     headline: string;
     detail: string;
@@ -1010,7 +1015,10 @@ export function computeFarmSystem(orgId: number, session: FarmSession = openFarm
     });
   });
 
-  /* ── the attention list ────────────────────────────────────────────────────────────────────── */
+  /** A count at the start of a sentence, in words up to ten. */
+const capitalizedCount = (n: number): string => { const w = countInWords(n); return `${w.charAt(0).toUpperCase()}${w.slice(1)}`; };
+
+/* ── the attention list ────────────────────────────────────────────────────────────────────── */
 
   const attention: FarmSystemView['attention'] = [];
 
@@ -1024,6 +1032,8 @@ export function computeFarmSystem(orgId: number, session: FarmSession = openFarm
     if (r.conclusion === 'organizational_question') continue;
     attention.push({
       kind: 'assignment',
+      code: 'assignment',
+      position: null,
       severity: r.attention === 'needs_attention' ? 'attention' : 'noted',
       headline: `${r.name} (${r.age}, ${r.levelName}): ${summarizeReview(r)}`,
       detail: r.reasons[0] ?? '',
@@ -1035,8 +1045,12 @@ export function computeFarmSystem(orgId: number, session: FarmSession = openFarm
   if (organizationalQuestions.length > 0) {
     attention.push({
       kind: 'organization',
+      code: 'past_window',
+      position: null,
       severity: 'noted',
-      headline: `${organizationalQuestions.length} players are past their level's developmental window.`,
+      headline: organizationalQuestions.length === 1
+        ? 'One player is past his level\'s developmental window.'
+        : `${capitalizedCount(organizationalQuestions.length)} players are past their level's developmental window.`,
       detail:
         'The level has no developmental value left for them, so where each plays is a question about what the organization needs and who else needs the reps, not about his development.',
       target: { kind: 'organization' },
@@ -1058,6 +1072,8 @@ export function computeFarmSystem(orgId: number, session: FarmSession = openFarm
       if (f.severity === 'noted') continue;
       attention.push({
         kind: 'affiliate',
+        code: f.code,
+        position: f.position ?? null,
         severity: f.severity,
         headline: `${a.label}: ${f.headline}`,
         detail: f.evidence[0] ? `${f.evidence[0].label}: ${f.evidence[0].value}` : '',
@@ -1070,6 +1086,8 @@ export function computeFarmSystem(orgId: number, session: FarmSession = openFarm
     if (f.severity === 'noted') continue;
     attention.push({
       kind: 'organization',
+      code: f.code,
+      position: f.position ?? null,
       severity: f.severity,
       headline: f.headline,
       detail: f.evidence[0] ? `${f.evidence[0].label}: ${f.evidence[0].value}` : '',
@@ -1081,6 +1099,8 @@ export function computeFarmSystem(orgId: number, session: FarmSession = openFarm
     if (r.conclusion !== 'review') continue;
     attention.push({
       kind: 'retention',
+      code: 'retention',
+      position: null,
       severity: 'noted',
       headline: `${r.name} (${r.age}, ${r.levelName}): no development case left and the spot is wanted.`,
       detail: r.reasons[0] ?? '',

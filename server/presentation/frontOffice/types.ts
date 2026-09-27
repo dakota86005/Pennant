@@ -43,6 +43,8 @@ export interface FoItem {
   dueInDays: Integer | null;
   /** The key of the evidence trail `GET /api/v2/claims/:key` serves for it; null when it has none beyond its basis. */
   evidence: string | null;
+  /** How many of the department's own items this row stands for: 1, or more when the grouping rule put several in one row. */
+  count: Integer;
 }
 
 /** A department's report is ready, could not be read this time, or has nothing to report yet. */
@@ -110,23 +112,35 @@ export interface DepartmentCard {
   summary: Claim;
   /** Two or three key figures. */
   figures: Claim[];
-  /** The first items it would put in front of the GM (at most three), most urgent first. */
+  /** The first things it is watching (at most three): the desk already shows what it has to decide. */
   top: FoItem[];
   /** How many items it has to decide and to watch; null when it could not be read or has no report yet. */
   toDecide: Integer | null;
   watching: Integer | null;
-  /** Opens the department's report. */
-  open: Target;
+  /** Opens the department's report; null when it has none yet. */
+  open: Target | null;
   memo: StaffMemo | null;
 }
 
-/** The desk: every item to decide, from every department, in a stated order. */
+/** A department's items to decide beyond the desk's stated share, and where they are. */
+export interface DeskMore {
+  department: DeptId;
+  /** "And 3 more in Farm & Development". */
+  line: Cell;
+  count: Integer;
+  /** Its report. */
+  open: Target;
+}
+
+/** The desk: the items to decide from every department (a stated share of each), in a stated order. */
 export interface Desk {
   title: Cell;
-  /** How the desk is ordered, in words, with the full rule in its help tag. */
+  /** How the desk is ordered and what it shows, in words, with the full rule in its help tag. */
   order: Cell;
   items: FoItem[];
-  /** "Nothing to decide" when every department was read and none raised anything; null otherwise. */
+  /** Each department with more to decide than the desk shows, and how many more. */
+  more: DeskMore[];
+  /** "Nothing to decide from the departments reporting" when every department was read and none raised anything; null otherwise. */
   empty: Cell | null;
   /** Which departments could not be read, so the desk may be missing items; null when every one was. */
   incomplete: Cell | null;

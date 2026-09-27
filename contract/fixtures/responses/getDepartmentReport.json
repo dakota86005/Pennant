@@ -230,7 +230,8 @@
         "detail": null,
         "due": null,
         "dueInDays": null,
-        "evidence": "1.majorLeague:need:mlb:role_below_standard:catcher"
+        "evidence": "1.majorLeague:need:mlb:role_below_standard:catcher",
+        "count": 1
       }
     ],
     "empty": null

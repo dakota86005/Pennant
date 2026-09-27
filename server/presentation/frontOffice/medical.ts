@@ -36,6 +36,8 @@ export function medicalMaterial(ctx: DepartmentContext, input: MedicalInput): De
   const items = raised.map((p) => {
     const playerId = Number(p.player_id);
     const days = p.daysLeft ?? null;
+    // Where he plays, leaving out what the export does not say (never a '?')
+    const where = [p.positionName, p.levelName].filter((x) => x && x !== '?').join(', ');
     const headline = claim({
       text: `${p.name} ${STATUS_WORDS[p.status] ?? 'is injured'}`,
       tone: 'neutral',
@@ -58,7 +60,7 @@ export function medicalMaterial(ctx: DepartmentContext, input: MedicalInput): De
       severity: medicalSeverity(),
       shading: [],
       headline,
-      detail: cell(`${p.positionName}, ${p.levelName} · ${daysWords(days)}`),
+      detail: cell(where ? `${where} · ${daysWords(days)}` : daysWords(days)),
     });
   });
 

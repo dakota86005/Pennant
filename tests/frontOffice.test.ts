@@ -19,7 +19,7 @@ import { subscribe } from '../server/serverEvents.js';
 import { servedDepartments, departmentOffice } from '../server/presentation/catalog.js';
 import { assertAuthored, basis, claim } from '../server/presentation/claim.js';
 import {
-  REPORTING, assemble, deskOrder, item, type BuildContext, type DepartmentAnswer, type DepartmentContext,
+  DESK_SHARE, REPORTING, assemble, deskOrder, item, type BuildContext, type DepartmentAnswer, type DepartmentContext,
 } from '../server/presentation/frontOffice/desk.js';
 import { majorLeagueMaterial, type MajorLeagueInput } from '../server/presentation/frontOffice/majorLeague.js';
 import { medicalMaterial } from '../server/presentation/frontOffice/medical.js';
@@ -119,8 +119,10 @@ describe('an adapter never raises its specialist\'s severity (case 9)', () => {
         expect(it.severity).toBe(mlbSeverity(n).severity);
         expect(rankOf(it.neutralSeverity)).toBeLessThanOrEqual(MLB_RANK[n.explanation?.neutralSeverity ?? n.severity]);
       } else if (it.department === 'farm') {
-        const own = farm.attention.find((a) => it.headline.text === a.headline.trim())!;
-        expect(it.severity).toBe(farmSeverity(own).severity);
+        // A row stands for one or more of the farm's own items (the grouping rule), all at the row's severity
+        const own = farm.attention.filter((a) => a.severity === it.severity);
+        expect(own.length).toBeGreaterThanOrEqual(it.count);
+        expect(it.severity).toBe(farmSeverity(own[0]).severity);
       }
     }
     expect(all.toDecide.items.length + all.watching.items.length).toBeGreaterThan(0);
@@ -159,8 +161,27 @@ describe('a report counts what its own workspace lists (case 10)', () => {
     expect(items.find((it) => it.key.includes(':waivers'))).toMatchObject({ severity: 'critical', dueInDays: 2 });
   });
 
-  it('Farm & Development: every item on the farm\'s attention list', async () => {
-    expect((await itemsOf('farm')).length).toBe(computeFarmSystem(save.org).attention.length);
+  it('Farm & Development: every item on the farm\'s attention list, each in exactly one row', async () => {
+    const rows = await itemsOf('farm');
+    expect(rows.reduce((n, it) => n + it.count, 0)).toBe(computeFarmSystem(save.org).attention.length);
+  });
+
+  it('groups the same kind of farm finding about one subject into one row listing the positions (review S-7)', async () => {
+    const attention = computeFarmSystem(save.org).attention;
+    const rows = await itemsOf('farm');
+    // The synthetic farm has several uncovered positions at one affiliate: one row, the positions listed
+    const uncovered = attention.filter((a) => a.code === 'position_uncovered');
+    expect(uncovered.length).toBeGreaterThan(1);
+    const row = rows.find((it) => it.key.startsWith('farm:position_uncovered:'))!;
+    expect(row.count).toBe(uncovered.length);
+    for (const a of uncovered) expect(row.headline.text).toContain(a.position!);
+    expect(row.headline.text).toMatch(/^.+: Nobody on the roster covers .+ or .+\.$/);
+    expect(row.headline.basis.because.map((l) => l.label)).toEqual(uncovered.map((a) => a.position));
+    // No zero, and no restated detail, in a finding's row
+    for (const it of rows) {
+      expect(it.headline.text).not.toMatch(/\b0\b|\b1 players\b/);
+      if (!/^farm:(assignment|retention):/.test(it.key)) expect(it.detail).toBeNull();
+    }
   });
 
   it('Finance: every contract heading to a decision (leaving, an option, arbitration)', async () => {
@@ -180,7 +201,13 @@ describe('a report counts what its own workspace lists (case 10)', () => {
   it('the desk holds exactly the departments\' items to decide, and the cards count what their reports list', async () => {
     const summary = await frontOfficeSummary(save.org);
     const reports = await Promise.all(REPORTING.map((d) => departmentReport(save.org, d)));
-    expect(summary.desk.items.map((it) => it.key).sort()).toEqual(reports.flatMap((r) => r.toDecide.items.map((it) => it.key)).sort());
+    // At most the stated share from each department, the rest counted in its "more" line
+    expect(summary.desk.items.map((it) => it.key).sort()).toEqual(reports.flatMap((r) => r.toDecide.items.slice(0, DESK_SHARE).map((it) => it.key)).sort());
+    for (const r of reports) {
+      const more = summary.desk.more.find((m) => m.department === r.department);
+      expect(more?.count ?? 0).toBe(Math.max(0, r.toDecide.items.length - DESK_SHARE));
+      if (more) expect(more.line.display).toBe(`And ${more.count} more in ${r.name}`);
+    }
     for (const card of summary.departments) {
       const r = reports.find((x) => x.department === card.department)!;
       if (r.status === 'ready') expect([card.toDecide, card.watching]).toEqual([r.toDecide.items.length, r.watching.items.length]);
@@ -212,10 +239,16 @@ describe('one problem appears once, under its owner (case 11)', () => {
 
 describe('unavailable is never all clear (case 12)', () => {
 
-  it('says the desk is clear only when every department was read and raised nothing', () => {
+  it('says the desk is clear only for the departments reporting, naming those with no report yet (review N-4)', () => {
     const { summary } = assemble(build, departments(), departmentOffice, answers({}));
-    expect(summary.desk.empty?.display).toBe('Nothing to decide');
+    expect(summary.desk.empty?.display).toBe('Nothing to decide from the four departments reporting');
+    expect(summary.desk.empty?.hint).toBe('Scouting, Trades, League Office and Philosophy & Staff have no report yet');
     expect(summary.desk.incomplete).toBeNull();
+  });
+
+  it('gives a card with no report yet no way into a report that does not exist (review S-9)', () => {
+    const { summary } = assemble(build, departments(), departmentOffice, answers({}));
+    for (const card of summary.departments) expect(card.open === null).toBe(card.status === 'notYet');
   });
 
   it('gives an unread department a sentence and unknown counts, and says the desk may be missing items', () => {

@@ -207,7 +207,7 @@ public struct DepartmentCardView: View {
                     }
                 }
             }
-            if let view = card.open.view, let department = card.open.department {
+            if let open = card.open, let view = open.view, let department = open.department {
                 Button("Open Report") { openRoute(AppRoute(department: DeptID(rawValue: department.rawValue), view: view)) }
                     .controlSize(.small)
                     .accessibilityIdentifier("card.open.\(department.rawValue)")

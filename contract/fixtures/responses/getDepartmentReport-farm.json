@@ -15,13 +15,13 @@
   "memo": null,
   "status": "ready",
   "summary": {
-    "text": "Eight to decide.",
+    "text": "Two to decide.",
     "tone": "bad",
     "basis": {
       "because": [
         {
           "label": "To decide",
-          "value": "8"
+          "value": "2"
         },
         {
           "label": "To watch",
@@ -109,7 +109,7 @@
       }
     },
     {
-      "text": "Assignments read",
+      "text": "Players we have a read on",
       "tone": "neutral",
       "basis": {
         "because": [
@@ -147,7 +147,7 @@
     },
     "items": [
       {
-        "key": "farm:organization:organization:17u2zf4",
+        "key": "farm:position_single_cover:organization:critical",
         "department": "farm",
         "raisedBy": {
           "display": "Raised by the minor league staff"
@@ -187,17 +187,25 @@
           "links": []
         },
         "headline": {
-          "text": "The major-league club is thin at 2B and the upper minors have 0 to reach for.",
+          "text": "The major-league club is thin at 2B, C, RF and SS, with little in the upper minors to step in.",
           "tone": "bad",
           "basis": {
             "because": [
               {
-                "label": "About",
-                "value": "The whole system"
+                "label": "2B",
+                "value": "The major-league club is thin at 2B, and no one in the upper minors can step in."
               },
               {
-                "label": "Why",
-                "value": "Upper-minors players at 2B: 0"
+                "label": "C",
+                "value": "The major-league club is thin at C, and no one in the upper minors can step in."
+              },
+              {
+                "label": "RF",
+                "value": "The major-league club is thin at RF, and no one in the upper minors can step in."
+              },
+              {
+                "label": "SS",
+                "value": "The major-league club is thin at SS, and no one in the upper minors can step in."
               }
             ],
             "source": {
@@ -210,7 +218,7 @@
             "wouldChange": [],
             "lean": null,
             "certainty": "provisional",
-            "stamp": "The farm's stated lines, 10 of 30 still starting values"
+            "stamp": "The farm's stated lines, 10 of 30 still starting values. The same kind of finding about the same club or the organization, at the same urgency, is one row listing its positions"
           },
           "links": [
             {
@@ -218,260 +226,17 @@
               "department": "farm",
               "view": "organization"
             }
-          ]
+          ],
+          "hint": "4 findings, one row: each is in the breakdown"
         },
-        "detail": {
-          "display": "Upper-minors players at 2B: 0"
-        },
+        "detail": null,
         "due": null,
         "dueInDays": null,
-        "evidence": null
+        "evidence": null,
+        "count": 4
       },
       {
-        "key": "farm:organization:organization:1i5fe0m",
-        "department": "farm",
-        "raisedBy": {
-          "display": "Raised by the minor league staff"
-        },
-        "severity": "critical",
-        "neutralSeverity": "critical",
-        "urgency": {
-          "text": "Urgent",
-          "tone": "bad",
-          "basis": {
-            "because": [
-              {
-                "label": "Farm & Development said",
-                "value": "Urgent"
-              },
-              {
-                "label": "With no philosophy and no season",
-                "value": "Urgent"
-              },
-              {
-                "label": "On the desk",
-                "value": "Urgent"
-              }
-            ],
-            "source": {
-              "department": "farm",
-              "specialist": "The desk",
-              "asOf": null,
-              "gameDate": "2040-05-05"
-            },
-            "unknown": [],
-            "wouldChange": [],
-            "lean": null,
-            "certainty": "policy",
-            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
-          },
-          "links": []
-        },
-        "headline": {
-          "text": "The major-league club is thin at C and the upper minors have 0 to reach for.",
-          "tone": "bad",
-          "basis": {
-            "because": [
-              {
-                "label": "About",
-                "value": "The whole system"
-              },
-              {
-                "label": "Why",
-                "value": "Upper-minors players at C: 0"
-              }
-            ],
-            "source": {
-              "department": "farm",
-              "specialist": "Minor League Operations",
-              "asOf": null,
-              "gameDate": "2040-05-05"
-            },
-            "unknown": [],
-            "wouldChange": [],
-            "lean": null,
-            "certainty": "provisional",
-            "stamp": "The farm's stated lines, 10 of 30 still starting values"
-          },
-          "links": [
-            {
-              "kind": "view",
-              "department": "farm",
-              "view": "organization"
-            }
-          ]
-        },
-        "detail": {
-          "display": "Upper-minors players at C: 0"
-        },
-        "due": null,
-        "dueInDays": null,
-        "evidence": null
-      },
-      {
-        "key": "farm:organization:organization:ctpw0d",
-        "department": "farm",
-        "raisedBy": {
-          "display": "Raised by the minor league staff"
-        },
-        "severity": "critical",
-        "neutralSeverity": "critical",
-        "urgency": {
-          "text": "Urgent",
-          "tone": "bad",
-          "basis": {
-            "because": [
-              {
-                "label": "Farm & Development said",
-                "value": "Urgent"
-              },
-              {
-                "label": "With no philosophy and no season",
-                "value": "Urgent"
-              },
-              {
-                "label": "On the desk",
-                "value": "Urgent"
-              }
-            ],
-            "source": {
-              "department": "farm",
-              "specialist": "The desk",
-              "asOf": null,
-              "gameDate": "2040-05-05"
-            },
-            "unknown": [],
-            "wouldChange": [],
-            "lean": null,
-            "certainty": "policy",
-            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
-          },
-          "links": []
-        },
-        "headline": {
-          "text": "The major-league club is thin at RF and the upper minors have 0 to reach for.",
-          "tone": "bad",
-          "basis": {
-            "because": [
-              {
-                "label": "About",
-                "value": "The whole system"
-              },
-              {
-                "label": "Why",
-                "value": "Upper-minors players at RF: 0"
-              }
-            ],
-            "source": {
-              "department": "farm",
-              "specialist": "Minor League Operations",
-              "asOf": null,
-              "gameDate": "2040-05-05"
-            },
-            "unknown": [],
-            "wouldChange": [],
-            "lean": null,
-            "certainty": "provisional",
-            "stamp": "The farm's stated lines, 10 of 30 still starting values"
-          },
-          "links": [
-            {
-              "kind": "view",
-              "department": "farm",
-              "view": "organization"
-            }
-          ]
-        },
-        "detail": {
-          "display": "Upper-minors players at RF: 0"
-        },
-        "due": null,
-        "dueInDays": null,
-        "evidence": null
-      },
-      {
-        "key": "farm:organization:organization:1lpnw0z",
-        "department": "farm",
-        "raisedBy": {
-          "display": "Raised by the minor league staff"
-        },
-        "severity": "critical",
-        "neutralSeverity": "critical",
-        "urgency": {
-          "text": "Urgent",
-          "tone": "bad",
-          "basis": {
-            "because": [
-              {
-                "label": "Farm & Development said",
-                "value": "Urgent"
-              },
-              {
-                "label": "With no philosophy and no season",
-                "value": "Urgent"
-              },
-              {
-                "label": "On the desk",
-                "value": "Urgent"
-              }
-            ],
-            "source": {
-              "department": "farm",
-              "specialist": "The desk",
-              "asOf": null,
-              "gameDate": "2040-05-05"
-            },
-            "unknown": [],
-            "wouldChange": [],
-            "lean": null,
-            "certainty": "policy",
-            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
-          },
-          "links": []
-        },
-        "headline": {
-          "text": "The major-league club is thin at SS and the upper minors have 0 to reach for.",
-          "tone": "bad",
-          "basis": {
-            "because": [
-              {
-                "label": "About",
-                "value": "The whole system"
-              },
-              {
-                "label": "Why",
-                "value": "Upper-minors players at SS: 0"
-              }
-            ],
-            "source": {
-              "department": "farm",
-              "specialist": "Minor League Operations",
-              "asOf": null,
-              "gameDate": "2040-05-05"
-            },
-            "unknown": [],
-            "wouldChange": [],
-            "lean": null,
-            "certainty": "provisional",
-            "stamp": "The farm's stated lines, 10 of 30 still starting values"
-          },
-          "links": [
-            {
-              "kind": "view",
-              "department": "farm",
-              "view": "organization"
-            }
-          ]
-        },
-        "detail": {
-          "display": "Upper-minors players at SS: 0"
-        },
-        "due": null,
-        "dueInDays": null,
-        "evidence": null
-      },
-      {
-        "key": "farm:organization:organization:1kyvn87",
+        "key": "farm:position_single_cover:organization:attention",
         "department": "farm",
         "raisedBy": {
           "display": "Raised by the minor league staff"
@@ -511,17 +276,25 @@
           "links": []
         },
         "headline": {
-          "text": "The upper minors carry 0 players who can play 1B.",
+          "text": "Little depth in the upper minors at 1B, 3B, CF and LF.",
           "tone": "caution",
           "basis": {
             "because": [
               {
-                "label": "About",
-                "value": "The whole system"
+                "label": "1B",
+                "value": "No one in the upper minors can play 1B."
               },
               {
-                "label": "Why",
-                "value": "Upper-minors players at 1B: 0"
+                "label": "3B",
+                "value": "No one in the upper minors can play 3B."
+              },
+              {
+                "label": "CF",
+                "value": "No one in the upper minors can play CF."
+              },
+              {
+                "label": "LF",
+                "value": "No one in the upper minors can play LF."
               }
             ],
             "source": {
@@ -534,7 +307,7 @@
             "wouldChange": [],
             "lean": null,
             "certainty": "provisional",
-            "stamp": "The farm's stated lines, 10 of 30 still starting values"
+            "stamp": "The farm's stated lines, 10 of 30 still starting values. The same kind of finding about the same club or the organization, at the same urgency, is one row listing its positions"
           },
           "links": [
             {
@@ -542,257 +315,14 @@
               "department": "farm",
               "view": "organization"
             }
-          ]
+          ],
+          "hint": "4 findings, one row: each is in the breakdown"
         },
-        "detail": {
-          "display": "Upper-minors players at 1B: 0"
-        },
+        "detail": null,
         "due": null,
         "dueInDays": null,
-        "evidence": null
-      },
-      {
-        "key": "farm:organization:organization:1kyvn87:2",
-        "department": "farm",
-        "raisedBy": {
-          "display": "Raised by the minor league staff"
-        },
-        "severity": "attention",
-        "neutralSeverity": "attention",
-        "urgency": {
-          "text": "Needs attention",
-          "tone": "caution",
-          "basis": {
-            "because": [
-              {
-                "label": "Farm & Development said",
-                "value": "Needs attention"
-              },
-              {
-                "label": "With no philosophy and no season",
-                "value": "Needs attention"
-              },
-              {
-                "label": "On the desk",
-                "value": "Needs attention"
-              }
-            ],
-            "source": {
-              "department": "farm",
-              "specialist": "The desk",
-              "asOf": null,
-              "gameDate": "2040-05-05"
-            },
-            "unknown": [],
-            "wouldChange": [],
-            "lean": null,
-            "certainty": "policy",
-            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
-          },
-          "links": []
-        },
-        "headline": {
-          "text": "The upper minors carry 0 players who can play 3B.",
-          "tone": "caution",
-          "basis": {
-            "because": [
-              {
-                "label": "About",
-                "value": "The whole system"
-              },
-              {
-                "label": "Why",
-                "value": "Upper-minors players at 3B: 0"
-              }
-            ],
-            "source": {
-              "department": "farm",
-              "specialist": "Minor League Operations",
-              "asOf": null,
-              "gameDate": "2040-05-05"
-            },
-            "unknown": [],
-            "wouldChange": [],
-            "lean": null,
-            "certainty": "provisional",
-            "stamp": "The farm's stated lines, 10 of 30 still starting values"
-          },
-          "links": [
-            {
-              "kind": "view",
-              "department": "farm",
-              "view": "organization"
-            }
-          ]
-        },
-        "detail": {
-          "display": "Upper-minors players at 3B: 0"
-        },
-        "due": null,
-        "dueInDays": null,
-        "evidence": null
-      },
-      {
-        "key": "farm:organization:organization:14ms6ib",
-        "department": "farm",
-        "raisedBy": {
-          "display": "Raised by the minor league staff"
-        },
-        "severity": "attention",
-        "neutralSeverity": "attention",
-        "urgency": {
-          "text": "Needs attention",
-          "tone": "caution",
-          "basis": {
-            "because": [
-              {
-                "label": "Farm & Development said",
-                "value": "Needs attention"
-              },
-              {
-                "label": "With no philosophy and no season",
-                "value": "Needs attention"
-              },
-              {
-                "label": "On the desk",
-                "value": "Needs attention"
-              }
-            ],
-            "source": {
-              "department": "farm",
-              "specialist": "The desk",
-              "asOf": null,
-              "gameDate": "2040-05-05"
-            },
-            "unknown": [],
-            "wouldChange": [],
-            "lean": null,
-            "certainty": "policy",
-            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
-          },
-          "links": []
-        },
-        "headline": {
-          "text": "The upper minors carry 0 players who can play CF.",
-          "tone": "caution",
-          "basis": {
-            "because": [
-              {
-                "label": "About",
-                "value": "The whole system"
-              },
-              {
-                "label": "Why",
-                "value": "Upper-minors players at CF: 0"
-              }
-            ],
-            "source": {
-              "department": "farm",
-              "specialist": "Minor League Operations",
-              "asOf": null,
-              "gameDate": "2040-05-05"
-            },
-            "unknown": [],
-            "wouldChange": [],
-            "lean": null,
-            "certainty": "provisional",
-            "stamp": "The farm's stated lines, 10 of 30 still starting values"
-          },
-          "links": [
-            {
-              "kind": "view",
-              "department": "farm",
-              "view": "organization"
-            }
-          ]
-        },
-        "detail": {
-          "display": "Upper-minors players at CF: 0"
-        },
-        "due": null,
-        "dueInDays": null,
-        "evidence": null
-      },
-      {
-        "key": "farm:organization:organization:167uyym",
-        "department": "farm",
-        "raisedBy": {
-          "display": "Raised by the minor league staff"
-        },
-        "severity": "attention",
-        "neutralSeverity": "attention",
-        "urgency": {
-          "text": "Needs attention",
-          "tone": "caution",
-          "basis": {
-            "because": [
-              {
-                "label": "Farm & Development said",
-                "value": "Needs attention"
-              },
-              {
-                "label": "With no philosophy and no season",
-                "value": "Needs attention"
-              },
-              {
-                "label": "On the desk",
-                "value": "Needs attention"
-              }
-            ],
-            "source": {
-              "department": "farm",
-              "specialist": "The desk",
-              "asOf": null,
-              "gameDate": "2040-05-05"
-            },
-            "unknown": [],
-            "wouldChange": [],
-            "lean": null,
-            "certainty": "policy",
-            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
-          },
-          "links": []
-        },
-        "headline": {
-          "text": "The upper minors carry 0 players who can play LF.",
-          "tone": "caution",
-          "basis": {
-            "because": [
-              {
-                "label": "About",
-                "value": "The whole system"
-              },
-              {
-                "label": "Why",
-                "value": "Upper-minors players at LF: 0"
-              }
-            ],
-            "source": {
-              "department": "farm",
-              "specialist": "Minor League Operations",
-              "asOf": null,
-              "gameDate": "2040-05-05"
-            },
-            "unknown": [],
-            "wouldChange": [],
-            "lean": null,
-            "certainty": "provisional",
-            "stamp": "The farm's stated lines, 10 of 30 still starting values"
-          },
-          "links": [
-            {
-              "kind": "view",
-              "department": "farm",
-              "view": "organization"
-            }
-          ]
-        },
-        "detail": {
-          "display": "Upper-minors players at LF: 0"
-        },
-        "due": null,
-        "dueInDays": null,
-        "evidence": null
+        "evidence": null,
+        "count": 4
       }
     ],
     "empty": null

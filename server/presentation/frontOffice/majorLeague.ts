@@ -147,7 +147,9 @@ function fortyManItem(ctx: DepartmentContext, player: CrunchIssues['players'][nu
     severity,
     shading: [],
     headline,
-    detail: cell(`${player.positionName}, ${player.levelName}`),
+    detail: [player.positionName, player.levelName].some((x) => x && x !== '?')
+      ? cell([player.positionName, player.levelName].filter((x) => x && x !== '?').join(', '))
+      : null,
   });
 }
 

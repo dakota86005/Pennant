@@ -1518,7 +1518,7 @@
             "items": {
               "$ref": "#/components/schemas/FoItem"
             },
-            "description": "The first items it would put in front of the GM (at most three), most urgent first."
+            "description": "The first things it is watching (at most three): the desk already shows what it has to decide."
           },
           "toDecide": {
             "$ref": "#/components/schemas/Integer",
@@ -1529,7 +1529,7 @@
           },
           "open": {
             "$ref": "#/components/schemas/Target",
-            "description": "Opens the department's report."
+            "description": "Opens the department's report; null when it has none yet."
           },
           "memo": {
             "$ref": "#/components/schemas/StaffMemo"
@@ -1542,8 +1542,7 @@
           "preparedBy",
           "summary",
           "figures",
-          "top",
-          "open"
+          "top"
         ],
         "description": "A department's compact card on the Morning Report."
       },
@@ -1684,7 +1683,7 @@
           },
           "order": {
             "$ref": "#/components/schemas/Cell",
-            "description": "How the desk is ordered, in words, with the full rule in its help tag."
+            "description": "How the desk is ordered and what it shows, in words, with the full rule in its help tag."
           },
           "items": {
             "type": "array",
@@ -1692,9 +1691,16 @@
               "$ref": "#/components/schemas/FoItem"
             }
           },
+          "more": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeskMore"
+            },
+            "description": "Each department with more to decide than the desk shows, and how many more."
+          },
           "empty": {
             "$ref": "#/components/schemas/Cell",
-            "description": "\"Nothing to decide\" when every department was read and none raised anything; null otherwise."
+            "description": "\"Nothing to decide from the departments reporting\" when every department was read and none raised anything; null otherwise."
           },
           "incomplete": {
             "$ref": "#/components/schemas/Cell",
@@ -1704,9 +1710,36 @@
         "required": [
           "title",
           "order",
-          "items"
+          "items",
+          "more"
         ],
-        "description": "The desk: every item to decide, from every department, in a stated order."
+        "description": "The desk: the items to decide from every department (a stated share of each), in a stated order."
+      },
+      "DeskMore": {
+        "type": "object",
+        "properties": {
+          "department": {
+            "$ref": "#/components/schemas/DeptId"
+          },
+          "line": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"And 3 more in Farm & Development\"."
+          },
+          "count": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target",
+            "description": "Its report."
+          }
+        },
+        "required": [
+          "department",
+          "line",
+          "count",
+          "open"
+        ],
+        "description": "A department's items to decide beyond the desk's stated share, and where they are."
       },
       "DeskSeverity": {
         "description": "The desk's common scale, most urgent first.",
@@ -1791,6 +1824,10 @@
               "null"
             ],
             "description": "The key of the evidence trail `GET /api/v2/claims/:key` serves for it; null when it has none beyond its basis."
+          },
+          "count": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "How many of the department's own items this row stands for: 1, or more when the grouping rule put several in one row."
           }
         },
         "required": [
@@ -1801,7 +1838,8 @@
           "neutralSeverity",
           "urgency",
           "headline",
-          "evidence"
+          "evidence",
+          "count"
         ],
         "description": "One thing a department raised for the GM."
       },

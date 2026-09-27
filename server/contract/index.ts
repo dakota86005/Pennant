@@ -85,5 +85,5 @@ export type { RosterEvidenceLevel } from '../dataFreshness.js';
 // The Front Office (`GET /api/v2/front-office/:org`, `/departments/:org/:dept`, `/claims/:key`)
 export type {
   FoItem, DeskSeverity, ReportStatus, ReportSection, ReportUnknowns, ReportChange, StaffMemo, DepartmentReport, DepartmentCard,
-  Desk, FrontOfficeSummary, TrailSection, ClaimTrail,
+  Desk, DeskMore, FrontOfficeSummary, TrailSection, ClaimTrail,
 } from '../presentation/frontOffice/types.js';
