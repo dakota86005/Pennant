@@ -102,4 +102,23 @@ describe('rating history across a switch in the kind of ratings', () => {
     expect(snapshotModes().get(outcome.ratings!.gameDate)).toBe('osa');
     historyDb.prepare('DELETE FROM rating_snapshot_modes WHERE save_name = ? AND game_date = ?').run(SAVE, outcome.ratings!.gameDate);
   });
+
+  it('takes no rating snapshot of an export that carries no ratings, and never reads one stamped so', async () => {
+    const before = historyDb.prepare('SELECT COUNT(*) AS n FROM rating_snapshots').get() as { n: number };
+    const outcome = await takeImportSnapshots({
+      importFinishedAt: null, importStartedAt: null,
+      ratingMode: { mode: 'none', additionalScouted: null, source: 'export_settings', reason: null },
+    }, async () => {});
+    expect(outcome.ratings).toBeNull();
+    expect((historyDb.prepare('SELECT COUNT(*) AS n FROM rating_snapshots').get() as { n: number }).n).toBe(before.n);
+    // A snapshot stamped "no ratings" (zeros in its columns, say) is left out of observed history and trends
+    stampSnapshotMode('2031-7-1', { mode: 'none', additionalScouted: null, source: 'export_settings', reason: null }, null);
+    try {
+      setExportRatingMode('scouted');
+      expect(modeFilter().excluded.has('2031-7-1')).toBe(true);
+      expect((loadScoutedObservations([PLAYER]).get(PLAYER) ?? []).map((o) => o.gameDate)).not.toContain('2031-07-01');
+    } finally {
+      historyDb.prepare('DELETE FROM rating_snapshot_modes WHERE save_name = ? AND game_date = ?').run(SAVE, '2031-7-1');
+    }
+  });
 });

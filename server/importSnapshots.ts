@@ -35,8 +35,12 @@ export async function takeImportSnapshots(request: SnapshotRequest, between: () 
   const errors: string[] = [];
   let ratings: SnapshotOutcome['ratings'] = null;
   try {
-    ratings = takeSnapshot(); // development-tracking snapshot, keyed by in-game date
-    if (ratings) stampSnapshotMode(ratings.gameDate, request.ratingMode, request.importStartedAt);
+    // An export carrying no ratings ("Show no player ratings") gives no rating snapshot: its rating columns hold nothing
+    // to observe (D-018), whatever OOTP wrote in them
+    if (request.ratingMode?.mode !== 'none') {
+      ratings = takeSnapshot(); // development-tracking snapshot, keyed by in-game date
+      if (ratings) stampSnapshotMode(ratings.gameDate, request.ratingMode, request.importStartedAt);
+    }
   } catch (err) {
     errors.push(`rating snapshot: ${(err as Error).message}`);
   }

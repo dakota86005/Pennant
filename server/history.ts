@@ -141,13 +141,16 @@ export interface RatingModeSwitch {
 /**
  * The snapshot dates rating history reads now: every date except those recorded in a known mode other than the
  * current export's (a switch, never development). With no known current mode nothing is left out: an unknown mode is
- * not evidence of a switch. Returns the dates left out and the switch, for the reasons a consumer shows.
+ * not evidence of a switch. A snapshot stamped "no ratings" is always left out. Returns the dates left out and the
+ * switch, for the reasons a consumer shows.
  */
 export function modeFilter(): { excluded: Set<string>; switches: RatingModeSwitch[] } {
   const current = currentRatingMode()?.mode ?? null;
   const modes = snapshotModes();
   const excluded = new Set<string>();
   if (current && current !== 'unknown') for (const [date, mode] of modes) if (isModeSwitch(mode, current)) excluded.add(date);
+  // A snapshot of an export that carried no ratings observes none, whatever its columns hold (D-018)
+  for (const [date, mode] of modes) if (mode === 'none') excluded.add(date);
   return { excluded, switches: modeSwitches(modes) };
 }
 
