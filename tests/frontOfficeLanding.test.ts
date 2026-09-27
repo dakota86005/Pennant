@@ -11,6 +11,7 @@ import { majorLeagueMaterial } from '../server/presentation/frontOffice/majorLea
 import { healthy26, viewOf } from './mlbFixtures';
 import { BANNED_VERDICTS, basisStrings, shownStrings } from './bannedJargon';
 import { ledeWords } from '../server/presentation/frontOffice/morning.js';
+import { CLUB_PROFILE_POLICY } from '../server/frontOffice/clubProfile.js';
 import type { FrontOfficeSummary } from '../server/presentation/frontOffice/types.js';
 import { buildSave, type BuiltSave } from './syntheticSave';
 
@@ -65,6 +66,25 @@ describe('the landing payload shows no odds, posture or window label (D-060)', (
     for (const n of lede.text.match(/\b\d+(st|nd|rd|th)\b/g) ?? []) expect(shown.has(n), n).toBe(true);
     expect(BANNED_VERDICTS.some((p) => p.test(lede.text))).toBe(false);
     expect(lede.basis.certainty).toBe('policy');
+  });
+
+  it('sets a recent place against the season place only when both count the same clubs', () => {
+    const summary = payloads[0] as FrontOfficeSummary;
+    const division = { rank: 2, of: 5, tiedWith: 0, gamesBack: 3, gamesAhead: null, division: 'AL East', source: 'exported' as const, order: 'standings' as const, members: [], levelWith: [] };
+    const reading = (recentOf: number) => ({
+      tooEarly: false, games: 60, clubs: 30, policy: CLUB_PROFILE_POLICY,
+      dimensions: [
+        { id: 'bullpen', group: 'rest', place: { rank: 3, of: 30, tiedWith: 0 }, recent: { place: { rank: 28, of: recentOf, tiedWith: 0 } } },
+        { id: 'scoring', group: 'strength', place: { rank: 2, of: 30, tiedWith: 0 }, recent: { place: null } },
+      ],
+    }) as never;
+    const profile = { dimensions: [{ id: 'bullpen', name: 'Bullpen', placeText: '3rd of 30', recent: { text: 'Last 15: 28th' } }, { id: 'scoring', name: 'Scoring runs', placeText: '2nd of 30', recent: { text: '' } }] } as never;
+    const build = { orgId: 1, club: null, importStamp: null, reportStamp: 'r', gameDate: null };
+    expect(ledeWords(build, summary.teamSeason!, division, profile, reading(30))!.text).toMatch(/The bullpen has slipped to 28th/);
+    // 28th of 29 against 3rd of 30: not the same clubs, so not set against each other
+    const other = ledeWords(build, summary.teamSeason!, division, profile, reading(29))!.text;
+    expect(other).not.toMatch(/slipped/);
+    expect(other).toMatch(/Run scoring is 2nd in the league/);
   });
 
   it('leaves the lede out when there is too little to say: no record, no lede', () => {

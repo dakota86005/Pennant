@@ -1118,7 +1118,7 @@
             "view": "standings"
           }
         ],
-        "hint": "Games back of the division's leader, as the standings have it",
+        "hint": "The division's standings, as the export has them",
         "place": {
           "rank": 3,
           "of": 4,
@@ -1223,7 +1223,7 @@
       "gameDate": "2040-5-6",
       "when": {
         "display": "Tonight · 7:05 PM",
-        "hint": "May 6, 2040, 7:05 PM"
+        "hint": "May 6, 2040, 7:05 PM local start, as the export gives it"
       },
       "homeAway": "away",
       "opponent": {
@@ -1274,7 +1274,7 @@
             },
             {
               "label": "Start",
-              "value": "7:05 PM"
+              "value": "7:05 PM, the park's local time as the export gives it"
             },
             {
               "label": "Where",

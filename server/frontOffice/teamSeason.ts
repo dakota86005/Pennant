@@ -34,6 +34,8 @@ export interface ClubRecord {
   g: number;
   /** OOTP's place in the division, as exported; null when it states none. */
   pos: number | null;
+  /** The winning percentage as exported; null when it states none. */
+  pct: number | null;
   /** Games back in the division, as exported; null when it states none. */
   gb: number | null;
   /** The streak as OOTP writes it: +3 won three, -2 lost two; null when not exported. */
@@ -197,14 +199,14 @@ export function readTeamSeason(orgId: number): TeamSeasonFacts {
   const rec = has('team_record');
   if (rec.has('team_id') && rec.has('w') && rec.has('l')) {
     const pick = (c: string) => (rec.has(c) ? c : 'NULL');
-    for (const r of db.prepare(`SELECT team_id, w, l, ${pick('t')} AS t, ${pick('g')} AS g, ${pick('pos')} AS pos, ${pick('gb')} AS gb, ${pick('streak')} AS streak
+    for (const r of db.prepare(`SELECT team_id, w, l, ${pick('t')} AS t, ${pick('g')} AS g, ${pick('pos')} AS pos, ${pick('pct')} AS pct, ${pick('gb')} AS gb, ${pick('streak')} AS streak
       FROM team_record WHERE ${inClubs}`).all() as Array<Record<string, unknown>>) {
       const w = num(r.w);
       const l = num(r.l);
       if (w === null || l === null) continue;
       const t = num(r.t) ?? 0;
       const pos = num(r.pos);
-      records.set(r.team_id as number, { w, l, t, g: num(r.g) ?? w + l + t, pos: pos !== null && pos > 0 ? pos : null, gb: num(r.gb), streak: num(r.streak) });
+      records.set(r.team_id as number, { w, l, t, g: num(r.g) ?? w + l + t, pos: pos !== null && pos > 0 ? pos : null, pct: num(r.pct), gb: num(r.gb), streak: num(r.streak) });
     }
   }
 
@@ -285,10 +287,13 @@ export function readTeamSeason(orgId: number): TeamSeasonFacts {
         // runs0 is the visitors' score, runs1 the home club's (verified against the standings)
         awayRuns: num(g.runs0) ?? 0, homeRuns: num(g.runs1) ?? 0,
       }));
+    // The next game is on or after the league's day: an unplayed game dated before it (a postponement) is never next
+    const today = parseGameDate(out.currentDate);
+    const fromToday = today ? `AND ${DATE_KEY('date')} >= ${Number(today.replace(/-/g, ''))}` : '';
     const next = db.prepare(`SELECT game_id, date, ${games.has('time') ? 'time' : 'NULL'} AS time, home_team, away_team FROM games
-      WHERE played = 0 ${regular} AND (home_team = ? OR away_team = ?) ${order} LIMIT 1`).get(orgId, orgId) as Record<string, unknown> | undefined;
+      WHERE played = 0 ${regular} AND (home_team = ? OR away_team = ?) ${fromToday} ${order} LIMIT 1`).get(orgId, orgId) as Record<string, unknown> | undefined;
     if (next) out.next = { gameId: next.game_id as number, date: String(next.date), time: num(next.time), home: next.home_team as number, away: next.away_team as number };
-    else out.nextWhy = 'The export schedules no more games for the club this season.';
+    else out.nextWhy = today ? 'The export schedules no more games for the club from the league\'s day on.' : 'The export schedules no more games for the club this season.';
   }
   if (out.gamesWhy) out.nextWhy = out.gamesWhy;
 
@@ -424,7 +429,13 @@ export function pitcherLines(ids: readonly number[], leagueId: number, season: n
 
 // ── the masthead's facts (pure) ─────────────────────────────────────────────
 
-/** The club's place in its division, from games back: clubs level on games back share the place. */
+/**
+ * The club's place in its division, in the exported standings' own order (`team_record.pos`) where every club of the
+ * division has one, games back the number beside it (N6 review, M2). Two clubs share a place only when their winning
+ * percentages are equal (as exported, else won over decided, at the standings' three decimals), never because their games
+ * back are level. Where the standings give no order, the place is counted from the records (winning percentage, then
+ * wins less losses) and says so.
+ */
 export interface DivisionPlace {
   rank: number;
   of: number;
@@ -437,20 +448,49 @@ export interface DivisionPlace {
   division: string | null;
   /** How games back was read. */
   source: 'exported' | 'records';
+  /** How the place was read: the standings' own order, or counted from the records. */
+  order: 'standings' | 'records';
+  /** The division's clubs with a record, in that order (team ids). */
+  members: number[];
+  /** The clubs sharing the place with ours (team ids). */
+  levelWith: number[];
 }
 
 const gbFromRecords = (leader: ClubRecord, r: ClubRecord) => ((leader.w - leader.l) - (r.w - r.l)) / 2;
 
+/** A club's winning percentage at the standings' three decimals: as exported, else won over decided; null with none decided. */
+export function pctOf(r: ClubRecord): number | null {
+  const raw = r.pct ?? (r.w + r.l > 0 ? r.w / (r.w + r.l) : null);
+  return raw === null ? null : Number(raw.toFixed(3));
+}
+
+/** The division's clubs with a record, in the order the place is read (the standings' own, else the records'). */
+export function divisionOrder(facts: TeamSeasonFacts, me: ClubFacts): { members: ClubFacts[]; order: 'standings' | 'records' } {
+  const members = facts.clubs.filter((c) => c.subLeagueId === me.subLeagueId && c.divisionId === me.divisionId && c.record);
+  const standings = members.every((c) => c.record!.pos !== null);
+  const wl = (c: ClubFacts) => c.record!.w - c.record!.l;
+  const sorted = standings
+    ? [...members].sort((a, b) => a.record!.pos! - b.record!.pos! || a.name.localeCompare(b.name))
+    : [...members].sort((a, b) => (pctOf(b.record!) ?? -1) - (pctOf(a.record!) ?? -1) || wl(b) - wl(a) || a.name.localeCompare(b.name));
+  return { members: sorted, order: standings ? 'standings' : 'records' };
+}
+
 export function divisionPlace(facts: TeamSeasonFacts): DivisionPlace | null {
   const me = facts.clubs.find((c) => c.teamId === facts.orgId);
   if (!me?.record) return null;
-  const members = facts.clubs.filter((c) => c.subLeagueId === me.subLeagueId && c.divisionId === me.divisionId && c.record);
+  const { members, order } = divisionOrder(facts, me);
   const exported = members.every((c) => c.record!.gb !== null);
   const best = members.reduce((a, b) => ((b.record!.w - b.record!.l) > (a.record!.w - a.record!.l) ? b : a));
   const gb = (c: ClubFacts) => (exported ? c.record!.gb! : gbFromRecords(best.record!, c.record!));
   const mine = gb(me);
-  const better = members.filter((c) => gb(c) < mine).length;
-  const level = members.filter((c) => c.teamId !== me.teamId && gb(c) === mine).length;
+  const myPct = pctOf(me.record);
+  const wl = (c: ClubFacts) => c.record!.w - c.record!.l;
+  // Level: the same winning percentage (and, read from the records, the same wins less losses)
+  const level = members.filter((c) => c.teamId !== me.teamId && myPct !== null && pctOf(c.record!) === myPct
+    && (order === 'standings' || wl(c) === wl(me)));
+  const rank = order === 'standings'
+    ? Math.min(me.record.pos!, ...level.map((c) => c.record!.pos!))
+    : members.indexOf(me) + 1 - members.slice(0, members.indexOf(me)).filter((c) => level.includes(c)).length;
   const others = members.filter((c) => c.teamId !== me.teamId).map(gb);
   const sub = facts.subLeagues.find((s) => s.subLeagueId === me.subLeagueId);
   const div = facts.divisions.find((d) => d.subLeagueId === me.subLeagueId && d.divisionId === me.divisionId);
@@ -458,9 +498,10 @@ export function divisionPlace(facts: TeamSeasonFacts): DivisionPlace | null {
   const divName = div ? div.name.replace(/\s+Division$/i, '') : null;
   const division = divName ? [subName, divName].filter(Boolean).join(' ') : subName;
   return {
-    rank: better + 1, of: members.length, tiedWith: level, gamesBack: mine,
-    gamesAhead: better === 0 && level === 0 && others.length ? Math.min(...others) - mine : null,
-    division, source: exported ? 'exported' : 'records',
+    rank, of: members.length, tiedWith: level.length, gamesBack: mine,
+    gamesAhead: rank === 1 && level.length === 0 && others.length ? Math.max(0, Math.min(...others) - mine) : null,
+    division, source: exported ? 'exported' : 'records', order,
+    members: members.map((c) => c.teamId), levelWith: level.map((c) => c.teamId),
   };
 }
 

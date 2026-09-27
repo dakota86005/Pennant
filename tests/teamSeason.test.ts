@@ -35,19 +35,44 @@ describe('the masthead reads the season as the export gives it', () => {
     expect(words.missing).toEqual([]);
   });
 
-  it('counts the division place from games back: clubs level on games back share the place, and the tie is said', () => {
-    // Two division rivals level with each other, a game and a half behind the leader (club 1)
-    exec(`UPDATE team_record SET w = 20, l = 10, gb = 0 WHERE team_id = 1`);
-    exec(`UPDATE team_record SET w = 18, l = 13, gb = 1.5 WHERE team_id IN (2, 3)`);
-    let facts = readTeamSeason(2);
-    let place = divisionPlace(facts)!;
-    expect(place).toMatchObject({ rank: 2, of: 3, tiedWith: 1, gamesBack: 1.5, gamesAhead: null, source: 'exported' });
-    const words = teamSeasonWords(buildOf(2), { ...readMorning(2, getDataStatus(), null), division: place });
+  it('reads the division place from the standings\' order, games back beside it; a tie only on equal winning percentages', () => {
+    // Two division rivals with the same winning percentage, a game and a half behind the leader (club 1)
+    exec(`UPDATE team_record SET w = 20, l = 10, pct = 0.667, pos = 1, gb = 0 WHERE team_id = 1`);
+    exec(`UPDATE team_record SET w = 18, l = 13, pct = 0.581, pos = 2, gb = 1.5 WHERE team_id = 2`);
+    exec(`UPDATE team_record SET w = 18, l = 13, pct = 0.581, pos = 3, gb = 1.5 WHERE team_id = 3`);
+    let place = divisionPlace(readTeamSeason(3))!;
+    expect(place).toMatchObject({ rank: 2, of: 3, tiedWith: 1, gamesBack: 1.5, gamesAhead: null, source: 'exported', order: 'standings' });
+    const words = teamSeasonWords(buildOf(3), { ...readMorning(3, getDataStatus(), null), division: place });
     expect(words.place?.claim.text).toBe('Tied for 2nd in the East · 1½ back');
+    expect(words.place?.claim.basis.because.find((b) => b.label === 'Level with')?.value).toMatch(/same winning percentage/);
     // The leader alone: how far ahead of the next club
-    facts = readTeamSeason(1);
-    place = divisionPlace(facts)!;
+    place = divisionPlace(readTeamSeason(1))!;
     expect(place).toMatchObject({ rank: 1, tiedWith: 0, gamesBack: 0, gamesAhead: 1.5 });
+  });
+
+  it('never calls level games back a tie: the standings\' order places the better percentage first (the real save\'s NL West)', () => {
+    // 26–17 (.605) and 27–18 (.600): the same wins less losses, so both 0 games back, but OOTP places the first 1st
+    exec(`UPDATE team_record SET w = 26, l = 17, pct = 0.605, pos = 1, gb = 0 WHERE team_id = 1`);
+    exec(`UPDATE team_record SET w = 27, l = 18, pct = 0.6, pos = 2, gb = 0 WHERE team_id = 2`);
+    exec(`UPDATE team_record SET w = 20, l = 25, pct = 0.444, pos = 3, gb = 7 WHERE team_id = 3`);
+    const first = divisionPlace(readTeamSeason(1))!;
+    expect(first).toMatchObject({ rank: 1, tiedWith: 0, gamesBack: 0, gamesAhead: 0 });
+    const words = teamSeasonWords(buildOf(1), { ...readMorning(1, getDataStatus(), null), division: first });
+    expect(words.place?.claim.text).toBe('1st in the East');
+    expect(divisionPlace(readTeamSeason(2))).toMatchObject({ rank: 2, tiedWith: 0, gamesBack: 0 });
+    const parts = morningWords(buildOf(1), { ...readMorning(1, getDataStatus(), null), division: first });
+    expect(parts.lede?.text).toMatch(/^First in the East\./);
+  });
+
+  it('counts the place from the records where the standings give no order, and says so', () => {
+    exec(`UPDATE team_record SET pos = NULL`);
+    exec(`UPDATE team_record SET w = 20, l = 10, pct = 0.667 WHERE team_id = 1`);
+    exec(`UPDATE team_record SET w = 22, l = 12, pct = 0.647 WHERE team_id = 2`);
+    exec(`UPDATE team_record SET w = 10, l = 20, pct = 0.333 WHERE team_id = 3`);
+    const place = divisionPlace(readTeamSeason(2))!;
+    expect(place).toMatchObject({ rank: 2, tiedWith: 0, order: 'records' });
+    const words = teamSeasonWords(buildOf(2), { ...readMorning(2, getDataStatus(), null), division: place });
+    expect(words.place?.claim.basis.unknown.join(' ')).toMatch(/counted from the records: winning percentage, then wins less losses/);
   });
 
   it('counts games back from the wins and losses where the standings give none, and says so', () => {
@@ -130,11 +155,22 @@ describe('the next game, only as the export schedules it', () => {
     expect(words.tonight?.claim.basis.unknown.length).toBeGreaterThan(0);
   });
 
+  it('never takes a game left unplayed before the league\'s day (a postponement) as the next one, and gives the local start time', () => {
+    const { material } = masthead(save);
+    const next = material.facts.next!;
+    // An unplayed game of ours dated the day before the league's day, earlier in the schedule than the real next one
+    exec(`INSERT INTO games (game_id, league_id, home_team, away_team, date, played, time, game_type, runs0, runs1, innings)
+      VALUES (99999, ${save.leagueId}, ${save.org}, ${next.home === save.org ? next.away : next.home}, '2040-5-4', 0, 1305, 0, 0, 0, 0)`);
+    const { words } = masthead(save);
+    expect(words.tonight?.gameId).toBe(next.gameId);
+    expect(words.tonight?.when.hint).toMatch(/7:05 PM local start, as the export gives it/);
+  });
+
   it('shows no next game when the export schedules none, and says why', () => {
     exec(`DELETE FROM games WHERE played = 0`);
     const { words } = masthead(save);
     expect(words.tonight).toBeNull();
-    expect(missingPart(words, 'tonight')).toMatch(/schedules no more games/);
+    expect(missingPart(words, 'tonight')).toMatch(/schedules no more games for the club from the league's day on/);
   });
 });
 

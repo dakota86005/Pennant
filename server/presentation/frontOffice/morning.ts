@@ -120,10 +120,6 @@ const VALUE = 'Player Value, Player Rights and Player Development';
 
 // ── the masthead ─────────────────────────────────────────────────────────────
 
-function divisionMembers(facts: TeamSeasonFacts, me: ClubFacts): ClubFacts[] {
-  return facts.clubs.filter((c) => c.subLeagueId === me.subLeagueId && c.divisionId === me.divisionId && c.record);
-}
-
 function standingLine(build: BuildContext, facts: TeamSeasonFacts, me: ClubFacts, place: DivisionPlace): StandingLine {
   const where = place.division ? `in the ${place.division}` : 'in the league';
   const tied = place.tiedWith > 0;
@@ -131,7 +127,7 @@ function standingLine(build: BuildContext, facts: TeamSeasonFacts, me: ClubFacts
   const text = lead
     ? tied ? `Tied for 1st ${where}` : `1st ${where}${place.gamesAhead !== null && place.gamesAhead > 0 ? ` · ${gamesWords(place.gamesAhead)} ahead` : ''}`
     : `${tied ? 'Tied for ' : ''}${ordinal(place.rank)} ${where} · ${gamesWords(place.gamesBack)} back`;
-  const members = divisionMembers(facts, me).sort((a, b) => (a.record!.gb ?? 0) - (b.record!.gb ?? 0) || a.name.localeCompare(b.name));
+  const members = place.members.map((id) => facts.clubs.find((c) => c.teamId === id)).filter((c): c is ClubFacts => !!c?.record);
   const lineOf = (c: ClubFacts) => {
     const r = c.record!;
     const gb = place.source === 'exported' ? r.gb ?? 0 : null;
@@ -141,12 +137,21 @@ function standingLine(build: BuildContext, facts: TeamSeasonFacts, me: ClubFacts
     claim: claim({
       text,
       tone: 'neutral',
-      hint: 'Games back of the division\'s leader, as the standings have it',
+      hint: place.order === 'standings' ? 'The division\'s standings, as the export has them' : 'Counted from the records: the standings give no order',
       place: { rank: place.rank, of: place.of, tiedWith: place.tiedWith },
       basis: basis({
-        because: members.slice(0, 8).map((c) => ({ label: c.teamId === me.teamId ? `${c.name} (us)` : c.name, value: lineOf(c) })),
+        because: [
+          ...members.slice(0, 8).map((c) => ({ label: c.teamId === me.teamId ? `${c.name} (us)` : c.name, value: lineOf(c) })),
+          ...(tied ? [{
+            label: 'Level with',
+            value: `${listWords(members.filter((c) => place.levelWith.includes(c.teamId)).map((c) => c.name))}: the same winning percentage shares the place`,
+          }] : []),
+        ],
         source: source(build, STANDINGS),
-        unknown: place.source === 'records' ? ['The standings give no games back, so it is counted from the wins and losses.'] : [],
+        unknown: [
+          ...(place.order === 'records' ? ['The standings give no order, so the place is counted from the records: winning percentage, then wins less losses.'] : []),
+          ...(place.source === 'records' ? ['The standings give no games back, so it is counted from the wins and losses.'] : []),
+        ],
         wouldChange: [],
         lean: null,
         certainty: 'fact',
@@ -196,7 +201,9 @@ function tonight(build: BuildContext, m: MorningMaterial): TonightGame | null {
     ? cell(`${brief(ours)} vs ${brief(theirs)}`, { hint: 'The probable starters, as OOTP projects them' })
     : cell(facts.projectedWhy ? 'Starters not known' : 'Starters not projected yet', { tone: 'unknown', hint: facts.projectedWhy ?? 'OOTP hasn\'t projected the starters' });
   const oppRecord = opp?.record ? cell(recordWords(opp.record.w, opp.record.l, opp.record.t), { hint: `${possessive(oppName)} record` }) : null;
-  const when = cell(time ? `${day} · ${time}` : day, { hint: `${gameDateDisplay(next.date) ?? next.date}${time ? `, ${time}` : ''}` });
+  const when = cell(time ? `${day} · ${time}` : day, {
+    hint: `${gameDateDisplay(next.date) ?? next.date}${time ? `, ${time} local start, as the export gives it` : ''}`,
+  });
   const matchup = cell(`${home ? 'vs' : 'at'} ${oppName}`);
   return {
     gameId: next.gameId,
@@ -214,7 +221,7 @@ function tonight(build: BuildContext, m: MorningMaterial): TonightGame | null {
       basis: basis({
         because: [
           { label: 'Date', value: gameDateDisplay(next.date) ?? next.date },
-          { label: 'Start', value: time ?? 'Not in the export' },
+          { label: 'Start', value: time ? `${time}, the park's local time as the export gives it` : 'Not in the export' },
           { label: 'Where', value: home ? 'At home' : `At ${oppName}` },
           { label: 'Our starter', value: ours ? `${ours.name} · ${ours.line.display}` : 'Not projected' },
           { label: 'Their starter', value: theirs ? `${theirs.name} · ${theirs.line.display}` : 'Not projected' },
@@ -439,7 +446,8 @@ export function ledeWords(build: BuildContext, season: TeamSeason, division: Div
   if (profile && reading && !reading.tooEarly) {
     // The first dimension in the page's order whose recent place moved from its season place by a fifth of the league
     const moved = reading.dimensions
-      .filter((d) => d.place && d.recent.place)
+      // Set against each other only where both places count the same clubs
+      .filter((d) => d.place && d.recent.place && d.place.of === d.recent.place.of)
       .map((d) => ({ d, move: d.recent.place!.rank - d.place!.rank }))
       .find(({ d, move }) => Math.abs(move) * Math.round(1 / reading.policy.fifth) >= d.place!.of);
     if (moved) {
