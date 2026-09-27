@@ -187,7 +187,7 @@ struct PennantAPITests {
         #expect(claim.basis.source.gameDate == "2040-05-06")
         #expect(claim.basis.unknown.isEmpty == false)
         #expect(claim.basis.lean == nil)
-        #expect(Array(claim.basis.because.map(\.label).prefix(5)) == ["League data", "Transactions", "OOTP save", "Roster evidence", "How the save was found"])
+        #expect(Array(claim.basis.because.map(\.label).prefix(6)) == ["League data", "Transactions", "OOTP save", "Ratings", "Roster evidence", "How the save was found"])
         #expect(claim.links.isEmpty)
         // A row's sort keys: a string and a number, each read as served
         let league = try #require(view.sources.first)
