@@ -330,6 +330,12 @@ nothing else in it (no clubs to pick). The tests' pretend saves copy it (`macos/
 PENNANT_DEV_DATA_DIR=/tmp/pennant-dev "<DerivedData>/Build/Products/Debug/Pennant.app/Contents/MacOS/Pennant"
 ```
 
+A Debug build keeps the Morning Report it received (for the next launch) in `PENNANT_DEV_CACHES_DIR` when set. To see
+the kept report as it waits for the fresh one (the synthetic league answers faster than a frame), set
+`PENNANT_DEV_HOLD_FRESH_MS=2500`; with `PENNANT_DEV_CAPTURE_DIR=<folder>` the window draws itself to a PNG there when
+the report is first drawn updating and when the fresh one has replaced it (the app's own window, no screen recording).
+The log's "first Morning Report drawn" line times the first committed frame from the process's start.
+
 The first start on a folder backs up its irreplaceable files to `backups/pre-swiftui-<date>/` (SWIFTUI_REBUILD.md
 section 7.5). The server's log is `server.log` in the log folder (`~/Library/Logs/Pennant/` for a release build; Help ▸
 Server Log opens it). A synthetic league has no save chosen, so the Setup window opens: to run the flow, give it a pretend

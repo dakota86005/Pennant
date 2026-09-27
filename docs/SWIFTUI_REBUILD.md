@@ -270,8 +270,10 @@ nothing until the payload carries the field. `positions[].control` is served str
 - `WireRow` (*N7: the league wire*): `wire[] {club {name, abbreviation, followed}, text, when}`.
 - `BasisPopover`: `Basis {because[] {label, value}, source, certainty, called, stamp, unknown[], wouldChange[], lean |
   null}` (served since N4; `called`, the certainty in the GM's words, since the N5 review) and an open-in `Target`.
-- The legends under `PlaceStrips` and `RosterDiagram`: the catalog's `phrases.placeLegend {season, recent, fifths}` and
-  `phrases.rosterLegend {range, control, need, more}` (served since the N5 review); the app keeps only their symbols.
+- The legends under `PlaceStrips` and `RosterDiagram`: the club profile's `legend {dot, ring, shading | null}` (since the
+  N6 B1 review; the catalog's `phrases.placeLegend` is gone, since the shading depends on the league's size) and the
+  catalog's `phrases.rosterLegend {range, control, need, more}` (served since the N5 review); the app keeps only their
+  symbols.
 - `CommandPalette`: later a search endpoint `{group, symbol, title, line, route}` and token suggestions.
 
 **As built at N6 (Stage A), 2026-09-27: the server side of the Morning Report.** Branch `feature/swiftui-n6-morning`.
@@ -389,14 +391,16 @@ Mac app draws what Stage A serves, and draws it at once.
   sparkline), `lastFive` ← `results` (`GameResult(served:)`, a tie included; a letter this build does not draw gives
   no dots at all, never four of five), `lastFiveLine`, `streak`, `tonight {when, matchup, starters, hint, claim, open}`,
   `deadline {count, text, claim}`, `missing[]` ← each part's served line; the lede as a claim (the deck opens its basis);
-  `PlaceDimension` ← each dimension (`place` null when too early or not placed; `of` from `place.of`, else the recent
-  place's, else the largest `of` among the served dimensions, else zero, which draws an empty track and no dots; the
-  group as served, `notPlaced` included, and a group this build has not heard of reads as the rest, never a weakness);
-  `placeLines` ← `lines` (five, `notPlaced` included); `placesNote`, `placesUnavailable`; `RosterPosition` ← each node
+  `PlaceDimension` ← each dimension (`place` null when too early or not placed; `of`, `strengthThrough` and
+  `weaknessFrom` ← its served `strip`, zero clubs drawing an empty track and no dots, no lines no shading; the group as
+  served, `notPlaced` included, and a group this build has not heard of reads as the rest, never a weakness);
+  `placeHeadings` ← `groups` (a served title and a line or none, each with its hint); `placeLegend` ← `legend`;
+  `placesNote`, `placesUnavailable`; `RosterPosition` ← each node
   (`holder` ← `holder.short`, else the served claim's text: "Nobody at right field"; `value` in expected wins with its
   text and short; `overlapText`/`overlapHint` ← `overlapText`; `holderRule`; `farmNext` ← `farmNext.text`, else
-  `farmText.display`; `farmBar` only where Player Development serves both numbers, with the served readiness words;
-  `control` → `.seasons(seasonsLeft, text)` for `through` (no pip drawn when the server gives no count), `.clock(text)`,
+  `farmText.display`; `farmBar` only where Player Development serves both numbers, with its served scale and
+  labelled line and the served readiness words; `control` → `.seasons(seasonsLeft, text)` for `through` (hatched, as
+  not known, when the server gives no count), `.clock(text)`,
   `.unknown(text)`, a kind this build has not heard of `.unknown` with its served words); `valueScale` ← `valueScale`
   (nil is no diagram: the map's notes are drawn instead); `StaffPitcher` ← each pitcher (`id` from `playerId`, `need`,
   `claim`); `rotationNeeds`/`bullpenNeeds`/`notes`/`unavailable` as served lines. Nothing is computed, ranked or judged
@@ -415,36 +419,77 @@ Mac app draws what Stage A serves, and draws it at once.
   when there is no record); the kicker from `teamSeason.kicker`. Every basis opens in `BasisPopover`: the record, the
   place, the runs, each dimension, each node, each pitcher, the deadline (a claim inside the Tonight control) and the
   game itself (the control's context menu, "Show why"). `tonight.open` routes through the window's `RouteOpening` to
-  Major League Ops' Schedule & Game Plans (the nearest view until Game Day, N9); the control is disabled where this
-  build cannot open it.
+  Major League Ops' Schedule & Game Plans (the nearest view until Game Day, N9); where this build cannot open it
+  the game is drawn as content, never as a disabled control (the review's fixes, below).
 - **Instant launch: the kept payload** (`KeptReports`, PennantKit). Every fresh Morning Report the store receives is
   kept for the next launch, atomically (a temporary file in the folder, then moved into place), in the app's own
   caches folder (`~/Library/Caches/<bundle id>/front-office/`; `ServerConfiguration.cachesFolder`, a Debug build's
   `PENNANT_DEV_CACHES_DIR` / `-PennantDevCachesFolder`; tests give a scratch folder; never the data folder). It is keyed
-  by the save's id (D-063, now served on `/api/status` as `saveId`: the configured save's, memoized on the
-  configuration, so no save is located on the status's path), the club and the contract this build was made against
-  (the app's version, which the sidecar's contract follows), written into the file and checked on every read: a
-  payload from another save, another club or an older contract is never read, and a file that no longer decodes is
-  dropped silently (the app then waits for the server as it did before). At launch `FrontOfficeStore.loadSummary`
-  reads it off the main actor once the store key is known (the status and the settings, about 0.3 s after launch),
-  shows it at once as kept (`summaryIsKept`), fetches the fresh one and swaps it in place: the rows keep their identity
-  (the desk's keys, the positions, the pitchers' ids), the box score's figures roll (`.contentTransition(.numericText())`,
-  the figures animated on the scoreboard's change unless Reduce Motion is on), and nothing scrolls. While the kept one
-  is shown, or a fresh one is on its way, the kicker ends in "Updating" (a String Catalog label; the content shows no
-  spinner, and the kept payload's own served kicker says how current it is). `AppModel.noteMorningReportDrawn` records
-  the first drawn report's time after launch in the log ("first Morning Report drawn N ms after launch, from the kept
-  payload"); the XCUITest `testLaunchWithKeptPayload` launches twice on one folder and records both the app's measure
-  and its own wall clock. Measured on the synthetic league (a Debug build, the bundled sidecar, a scratch data folder):
-  a Debug build, launched six times from a shell on a busy M4 (`PENNANT_DEV_DATA_DIR`, `PENNANT_DEV_CACHES_DIR`): the
-  first launch, with nothing kept, drew the report **2.6 s** after launch (the server ready at 1.96 s, cold; the store
-  key at 2.29 s; the fresh payload drawn at 2.60 s); the next five, from the kept payload, drew it at **1.00, 1.04,
-  1.02, 1.00 and 1.04 s** (the server ready at 0.48 s; the settings and the clubs, which give the store key, answered at
-  0.80 s, behind the server's start-up warm build; the kept payload in hand 15 ms later, already decoded; the Debug
-  build's first layout of the whole page the last 0.2 s). The budget of 1 s is met at the edge: the app's own share is
-  the last 0.2 s, and a Release build lays the page out faster; what remains is the server's start and its first two
-  answers. The fresh payload replaced the kept one in place about 0.4 s later, the kicker's "Updating" gone with it. The
-  numbers are the app's own log lines ("server ready", "store key known", "showing the kept Morning Report", "first
-  Morning Report drawn"), so the XCUITest and the CI runner record the same measure.
+  by the id of the save the imported data came from (D-063, served on `/api/status` as `saveId`, tied to the last
+  import and worked out off the request path: see the review's fixes below), the club and the digest of the contract
+  this build was generated from (`contractDigest`, a generated constant), written into the file and checked on every
+  read, with the payload's own `orgId`: a payload from another save, another club or another contract is never read,
+  and a file that no longer decodes is dropped silently (the app then waits for the server as it did before). At
+  launch the store decodes one file, the one a small index names (the last written), off the main actor, and shows it
+  once the store key is known, as kept (`summaryIsKept`), in the club's colours and legends kept with it; it fetches
+  the fresh one and swaps it in place: the rows keep their identity (the desk's keys, the positions, the pitchers'
+  ids), the box score's figures roll (`.contentTransition(.numericText())`, the figures animated on the scoreboard's
+  change unless Reduce Motion is on), and nothing scrolls. While the kept one is shown, or a fresh one is on its way,
+  the kicker ends in "Updating" (a String Catalog label; the content shows no spinner, and the kept payload's own
+  served kicker says how current it is); never while the last fetch failed (its problem line says so instead).
+  `AppModel.noteMorningReportDrawn` records, once the first frame holding the report is committed (`AfterNextFrame`),
+  its time from the process's start (the kernel's record, not the model's making) in the log ("first Morning Report
+  drawn N ms after launch (M ms after the process started), from the kept payload"), and the store logs when the fresh
+  one replaces the kept one; the XCUITest `testLaunchWithKeptPayload` launches twice on one folder, records both the
+  app's measure and its own wall clock, and asserts the second launch said "Updating". The measurement is in the
+  review's fixes below.
+- **The review's fixes (2026-09-27).** An independent review of Stage B1 found the following, each fixed at its source:
+  - *"How we win and lose"*: each group's heading is served (`ClubProfile.groups`: a title and a line, the line null
+    where the title says it all, each with its hint), so no heading repeats itself ("The rest The rest"); each
+    dimension serves its `strip {of, strengthThrough, weaknessFrom}` (the lines in `groupOf`'s arithmetic, `bandsOf`,
+    null in a league too small to have a fifth); the profile serves `clubs` and its `legend` (no shading entry without
+    fifths). Swift counts nothing, borrows no sibling's `of` and shades no fifth of its own.
+  - *The Tonight card*: its words are drawn in the masthead's checked pair (`mastheadText`, `mastheadSecondaryText`);
+    its surface is glass (`glassEffect`), or with Reduce Transparency the masthead's own colour with a border; the game
+    is a button only where this build can open it, else content (never disabled); the deadline is a sibling claim,
+    never a control inside a control; with no game served the deadline stands alone in the box score.
+  - *Plates*: the badge and the words "Listed" and "Need" keep their size and the holder's name truncates; the hover
+    lines sit under their labels and wrap in full.
+  - *Unknown stays unknown*: seasons of control with no served count are hatched (`.seasons(nil, …)`), never zero; a last
+    five with a letter this build does not draw shows the served line without dots, and the line counts ties
+    ("last five 3–1–1"); the farm's bar serves its scale (0 to 100) and a labelled line, so a man past his bar is past
+    the line.
+  - *The save's id*: `saveId` is the id of the save the imported data came from (`servedSaveId`), worked out at start,
+    at the minute's look, when a save is chosen and when an import lands (`lookAtTheServedSave`), never on the status's
+    path; a folder not found is looked for again at the next look. The Front Office's live-log files are found the same
+    way, so `/api/status` (which serves the stamp) locates no save at all (`tests/speedBudgets.test.ts` counts the
+    calls). A report is kept only when it is current for its key, so a save being left never has its report kept under
+    the new one's id.
+  - *The kept report*: keyed on `contractDigest` (written by `npm run contract:build`; the drift test fails when stale);
+    kept with the club's catalog entry and the phrases, so it draws in the club's colours with its legends before the
+    catalog arrives; one indexed file decoded at launch, four kept, leftovers removed; writes ordered through an actor
+    (an older write never replaces a newer one) and awaited; a restore forgets them all.
+  - *Also*: names stay text on import ("P. 1013", never "P. 1013.0"); "played since" is announced again when the save is
+    played again; previews use a caches folder of their own per run; `pennant-mac-ui` writes PASSED or FAILED, with the
+    launch timing, to the run's summary; the snapshots' "largest text" variants are gone (macOS does not honour
+    `dynamicTypeSize` for these fixed-size fonts, so they were the same picture) and an "updating" variant is drawn.
+  - *Development builds only*: `PENNANT_DEV_HOLD_FRESH_MS` holds the fresh report back while the kept one is shown, and
+    `PENNANT_DEV_CAPTURE_DIR` has the window draw itself to a PNG when the report is first drawn updating and when the
+    fresh one has replaced it (the app's own window; no screen recording).
+  - *The launch, measured again* (a Debug build on the synthetic league, launched from a shell on a scratch folder,
+    from the process's start to the first committed frame): seven launches with a report kept drew it at **1.59, 1.32,
+    1.36, 1.37, 1.36, 1.37 and 1.36 s** (median 1.36 s, worst 1.59 s, the first of the series): **the 1-second budget is
+    not met**. Where the time goes, in a typical run: the process's start to the app's model, 0.12 s; the server's
+    start, ready 0.48 s later; the settings and the clubs, which give the store key, 0.32 s after that; the page's first
+    layout, 0.44 s. The server is not what the
+    requests wait on: profiled on its own, it answers the settings and the clubs within 10 ms of being asked, at any
+    moment after it is ready. They wait on the app's main thread, which builds the window's whole shell (the split view,
+    the sidebar, the toolbar, the inspector) when the server becomes ready, and then lays out the report (a Debug
+    build). On the synthetic league the fresh report is served before that first layout is committed (the server's
+    start-up build takes 0.44 s), so the first frame shows the fresh report and the kept one saves little there; on a
+    real save, whose build takes about 2.5 s, the kept report is what the first frame shows. The next steps are the
+    app's: build the shell while the server starts, and measure a Release build (which a scratch folder cannot run
+    today: a Release build always uses the real data folder).
 - **Update in place after an import.** `front-office-updated` for the shown club moves `reportStamp`, the store reloads
   and swaps the fresh payload in the same way (kept rows, rolling figures, "Updating" in the kicker meanwhile); another
   club's build is never followed (a20fcdb). The banner is structural or served: the kicker's word and the served kicker.
@@ -1445,7 +1490,7 @@ export (M4, load average about 2.5; B1's build measured back to back for compari
 |---|---|---|---|
 | Launch to server ready | ≤ 0.5 s | **0.30 s** | 0.29 s |
 | Launch to the first Morning Report payload | ≤ 1.0 s | **2.5 s: not met** (the Front Office is built cold at each launch; the request waits on the start-up build, 2.0 s) | 2.5 s |
-| Launch to the first drawn Morning Report, the Mac app (N6, Stage B1: the kept payload, replaced in place when the fresh one lands) | ≤ 1.0 s | **1.0 to 1.04 s** on the synthetic league (a Debug build, five launches; the server ready at 0.48 s, the store key at 0.80 s, the app's own layout the last 0.2 s); 2.6 s with nothing kept | |
+| Launch to the first drawn Morning Report, the Mac app (N6, Stage B1: the kept payload, replaced in place when the fresh one lands) | ≤ 1.0 s | **Not met: median 1.36 s, worst 1.59 s**, from the process's start to the first committed frame (a Debug build on the synthetic league, seven launches, after the review's fixes): the model at 0.12 s, the server ready 0.48 s later, the store key 0.32 s after that (the app's main thread building the window's shell; the server answers in 10 ms), the page's first layout 0.44 s. The earlier "1.0 to 1.04 s" was timed from the model's making, not the launch | |
 | A view switch from the cache (a department's report asked again) | ≤ 100 ms | **1 ms** (median; 2 ms worst) | 1 ms |
 | `/api/status` during an import, p99 | ≤ 50 ms | **5 ms** (p95 3 ms, max 78 ms) | p95 2 ms |
 | Import of the 289 MB export | ≤ 10 s | 13.9 s (busy Mac) | 13.8 s |
@@ -1630,8 +1675,10 @@ the owner and Stage B:
 **N6, Stage B1 (2026-09-27)** on `feature/swiftui-n6-mac`: the Mac side of the Morning Report (section 3.4, "As built
 at N6 (Stage B1)"): the adapters from the served payload to the design's models with the Stage B mismatches closed, the
 kept payload drawn at launch and replaced in place, the update in place after an import, the event union read by type
-with the `save-played-elsewhere` event, and the save-finding fixtures decoded. Left open: the XCUITests' automation
-mode (the kept-payload launch test is written and builds), and B2's screens below.
+with the `save-played-elsewhere` event, and the save-finding fixtures decoded; then the independent review's fixes
+(section 3.4, "The review's fixes"). Left open: the launch budget (1.36 s median on a Debug build; the app's main
+thread, not the server), the XCUITests' automation mode on this Mac (the kept-payload launch test is written and
+builds), and B2's screens below.
 
 **Next: N6, Stage B2** (the save-finding screens: Setup's zero-question path, the "played since" notice from
 `AppModel.savePlayedElsewhere`, the rating-history questions). Open a fresh session on `feature/swiftui` once N6 Stage
