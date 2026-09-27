@@ -4,7 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
-import { api, finishInterruptedPostImport, recordImportMarket, recoverInterruptedImport, refitAfterImport, runImport } from './api.js';
+import { api, finishInterruptedPostImport, upgradeLeagueInBackground, recordImportMarket, recoverInterruptedImport, refitAfterImport, runImport } from './api.js';
 import { warmFrontOffice } from './frontOfficeService.js';
 import { APP_ROOT, DATA_DIR, loadConfig } from './config.js';
 import { checkExport, startWatcher, stopWatcher } from './watcher.js';
@@ -94,17 +94,21 @@ function requireLocalHost(
 function bootstrapData(): void {
   // Under the data-folder lock: a crashed import's unfinished file goes, and a database from an earlier build is
   // brought to the served shape (rollback journal, every index) once
+  let needsUpgrade = false;
   try {
-    prepareLeagueDatabase();
+    needsUpgrade = prepareLeagueDatabase().needsUpgrade;
   } catch (err) {
     console.error('[import] could not tidy the league database:', err);
   }
-  // An import the last run never finished: import it again (the previous import is whole; this is a retry)
+  // An import the last run never finished: import it again (the previous import is whole; this is a retry, and its
+  // new file needs no upgrade)
   if (recoverInterruptedImport()) {
     const { csvDir } = loadConfig();
     if (csvDir && loadSettings().autoImport) startWatcher(csvDir);
     return;
   }
+  // A database an earlier build imported gets its one-time upgrade: a converted copy, swapped in (never in place)
+  if (needsUpgrade) void upgradeLeagueInBackground();
   // An import whose snapshots never ran takes them now (they write history.db), before the refits read them
   const finishing = finishInterruptedPostImport();
   // A save that is already imported but has no fit for its latest completed season gets one now,

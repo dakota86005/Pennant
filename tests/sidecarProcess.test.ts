@@ -1,5 +1,7 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { spawn, type ChildProcess } from 'node:child_process';
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
 import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
@@ -314,4 +316,97 @@ describe('a sidecar killed in the middle of an import', () => {
     side.child.kill('SIGTERM');
     expect(await side.exited).toEqual({ code: 0, signal: null });
   }, 120_000);
+});
+
+/**
+ * The start-up of a data folder an earlier build left (N3.5 review, finding 1). Its league database is upgraded by
+ * building a converted copy and swapping it in, never in place, so a process stopped during the upgrade leaves the
+ * served file as it was; and a hot rollback journal (a process killed while writing the file in place, as the earlier
+ * build's import does) is rolled back before the read-only server reads it. In both cases the next start serves.
+ */
+describe('a league database an earlier build left', () => {
+  const ROWS = 2_000_000;
+
+  /** The earlier build's league: write-ahead-log mode, only the player index, a big career table. */
+  function oldBuildLeague(dataDir: string): void {
+    const db = new Database(path.join(dataDir, 'league.db'));
+    db.pragma('journal_mode = WAL');
+    db.exec(`CREATE TABLE leagues (league_id, name); INSERT INTO leagues VALUES (100, 'Major');
+      CREATE TABLE teams (team_id, league_id, name, human_team); INSERT INTO teams VALUES (1, 100, 'Club', 1);
+      CREATE TABLE players (player_id, team_id, first_name, last_name); INSERT INTO players VALUES (1, 1, 'A', 'B');
+      CREATE TABLE players_career_batting_stats (player_id, year, split_id, v)`);
+    const insert = db.prepare('INSERT INTO players_career_batting_stats VALUES (?, ?, ?, ?)');
+    db.transaction(() => { for (let i = 0; i < ROWS; i++) insert.run(i % 5000, 2000 + (i % 30), i % 3, 1); })();
+    db.exec('CREATE INDEX idx_players_career_batting_stats_player_id ON players_career_batting_stats (player_id)');
+    db.close();
+    fs.writeFileSync(path.join(dataDir, 'settings.json'), JSON.stringify({ autoImport: false }));
+  }
+
+  const shape = (dataDir: string) => {
+    const db = new Database(path.join(dataDir, 'league.db'), { readonly: true });
+    try {
+      return {
+        integrity: db.pragma('quick_check', { simple: true }),
+        rows: (db.prepare('SELECT COUNT(*) AS n FROM players_career_batting_stats').get() as { n: number }).n,
+        seasonIndex: !!db.prepare(`SELECT 1 FROM sqlite_master WHERE name = 'idx_players_career_batting_stats_year_split'`).get(),
+      };
+    } finally {
+      db.close();
+    }
+  };
+
+  it('is upgraded by a copy swapped in; killed during the upgrade, the file is untouched and the next start serves and upgrades', async () => {
+    const dataDir = scratch('pennant-upgrade-');
+    oldBuildLeague(dataDir);
+    let side = await ready(dataDir);
+    const next = path.join(dataDir, 'league.next.db');
+    await until('the upgrade to start', async () => fs.existsSync(next), 60_000);
+    side.child.kill('SIGKILL');
+    await side.exited;
+    expect(fs.existsSync(path.join(dataDir, 'league.db-journal')), 'nothing wrote the served file in place').toBe(false);
+    expect(shape(dataDir)).toMatchObject({ integrity: 'ok', rows: ROWS, seasonIndex: false });
+
+    side = await ready(dataDir);
+    expect((await status(side)).hasData).toBe(true);
+    const teams = await fetch(`${side.base}/api/teams`, { headers: auth });
+    expect(teams.status).toBe(200);
+    await until('the upgrade to finish', async () => /brought the league database up to date/.test(side.output()), 90_000);
+    expect(fs.existsSync(next)).toBe(false);
+    side.child.kill('SIGTERM');
+    await side.exited;
+    expect(shape(dataDir)).toEqual({ integrity: 'ok', rows: ROWS, seasonIndex: true });
+    const db = new Database(path.join(dataDir, 'league.db'), { readonly: true });
+    expect(db.pragma('journal_mode', { simple: true })).toBe('delete');
+    db.close();
+  }, 180_000);
+
+  it('serves after a process was killed writing the file in place (a hot rollback journal), with the write undone', async () => {
+    const dataDir = scratch('pennant-hot-journal-');
+    oldBuildLeague(dataDir);
+    const file = path.join(dataDir, 'league.db');
+    // Out of write-ahead-log mode, then a writer with a tiny cache spills an unfinished update to the file and dies
+    const plain = new Database(file);
+    plain.pragma('journal_mode = DELETE');
+    plain.close();
+    const killed = spawnSync(process.execPath, ['-e', `
+      const Database = require(${JSON.stringify(require.resolve('better-sqlite3'))});
+      const db = new Database(${JSON.stringify(file)});
+      db.pragma('cache_size = 10');
+      db.exec('BEGIN');
+      db.exec('UPDATE players_career_batting_stats SET v = 2');
+      process.kill(process.pid, 'SIGKILL');
+    `]);
+    expect(killed.signal).toBe('SIGKILL');
+    expect(fs.statSync(`${file}-journal`).size).toBeGreaterThan(0);
+
+    const side = await ready(dataDir);
+    expect((await status(side)).hasData).toBe(true);
+    const teams = await fetch(`${side.base}/api/teams`, { headers: auth });
+    expect(teams.status).toBe(200);
+    side.child.kill('SIGTERM');
+    await side.exited;
+    const db = new Database(file, { readonly: true });
+    expect(db.prepare('SELECT DISTINCT v FROM players_career_batting_stats').all()).toEqual([{ v: 1 }]);
+    db.close();
+  }, 180_000);
 });

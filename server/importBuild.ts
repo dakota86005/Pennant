@@ -120,3 +120,29 @@ export function buildLeagueDatabase(spec: BuildSpec, onProgress?: (step: ImportS
     worker.once('exit', (code) => finish(() => reject(new Error(`the import worker stopped (exit ${code}) before it finished`))));
   });
 }
+
+/**
+ * The one-time upgrade of a league database an earlier build imported (N3.5 review, finding 1): a converted copy with
+ * every index, built in the worker and never touching the served file; the caller swaps it in. Resolves with how many
+ * indexes were added.
+ */
+export function upgradeLeagueDatabase(sourcePath: string, outPath: string): Promise<{ indexes: number; ms: number }> {
+  return new Promise((resolve, reject) => {
+    let worker: Worker;
+    try {
+      worker = new Worker(importWorkerUrl(), { workerData: { role: 'upgrade', spec: { sourcePath, outPath } } });
+    } catch (err) {
+      reject(err);
+      return;
+    }
+    let settled = false;
+    worker.once('message', (m: { type: 'done'; indexes: number; ms: number } | { type: 'error'; message: string }) => {
+      settled = true;
+      if (m.type === 'done') resolve({ indexes: m.indexes, ms: m.ms });
+      else reject(new Error(m.message));
+      void worker.terminate();
+    });
+    worker.once('error', (err) => { if (!settled) { settled = true; reject(err); } });
+    worker.once('exit', (code) => { if (!settled) { settled = true; reject(new Error(`the upgrade worker stopped (exit ${code})`)); } });
+  });
+}

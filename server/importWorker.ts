@@ -262,6 +262,12 @@ export function splitPoints(buf: Buffer, parts: number): Array<{ start: number; 
 
 // ── Build role ───────────────────────────────────────────────────────────
 
+/** Flushes a finished file to disk before a rename makes it the league. */
+function flushFile(file: string): void {
+  const fd = fs.openSync(file, 'r+');
+  try { fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
+}
+
 function removeDatabaseFiles(file: string): void {
   for (const suffix of ['', '-journal', '-wal', '-shm']) fs.rmSync(file + suffix, { force: true });
 }
@@ -321,8 +327,7 @@ async function runBuild(spec: BuildSpec): Promise<void> {
     db.pragma('journal_mode = DELETE');
     db.close();
     // On disk before the rename makes it the league
-    const fd = fs.openSync(spec.outPath, 'r+');
-    try { fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
+    flushFile(spec.outPath);
 
     const full: BuildResult = {
       ...result,
@@ -577,8 +582,58 @@ function parseAndWrite(
   });
 }
 
+// ── Upgrade role ─────────────────────────────────────────────────────────
+
+/**
+ * The one-time upgrade of a league database an earlier build imported (N3.5): a consistent copy (`VACUUM INTO`, which
+ * also takes a write-ahead log's pages and leaves the copy in rollback-journal mode), every index an import now builds,
+ * ANALYZE, closed and flushed. The served file is only read; the caller swaps the copy in.
+ */
+function runUpgrade(spec: { sourcePath: string; outPath: string }): void {
+  const port = parentPort!;
+  const started = performance.now();
+  removeDatabaseFiles(spec.outPath);
+  try {
+    const source = new Database(spec.sourcePath, { readonly: true, fileMustExist: true });
+    try {
+      source.prepare('VACUUM INTO ?').run(spec.outPath);
+    } finally {
+      source.close();
+    }
+    const db = new Database(spec.outPath);
+    let indexes = 0;
+    try {
+      for (const p of ['journal_mode = OFF', 'synchronous = OFF', 'cache_size = -65536', 'temp_store = MEMORY']) db.pragma(p);
+      const have = new Set((db.prepare(`SELECT name FROM sqlite_master WHERE type = 'index'`).all() as Array<{ name: string }>).map((r) => r.name));
+      const tables = (db.prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name <> 'pennant_import'`).all() as Array<{ name: string }>).map((r) => r.name);
+      for (const table of tables) {
+        const columns = new Set((db.prepare(`PRAGMA table_info("${table.replace(/"/g, '')}")`).all() as Array<{ name: string }>).map((c) => c.name));
+        for (const index of indexesFor(table, columns)) {
+          if (have.has(index.name)) continue;
+          try {
+            db.exec(`CREATE INDEX "${index.name}" ON "${table}" (${index.columns.map((c) => `"${c}"`).join(', ')})`);
+            indexes += 1;
+          } catch (err) {
+            console.warn(`[import] index ${index.name} failed:`, (err as Error).message);
+          }
+        }
+      }
+      db.exec('ANALYZE');
+      db.pragma('journal_mode = DELETE');
+    } finally {
+      db.close();
+    }
+    flushFile(spec.outPath);
+    port.postMessage({ type: 'done', indexes, ms: Math.round(performance.now() - started) });
+  } catch (err) {
+    removeDatabaseFiles(spec.outPath);
+    port.postMessage({ type: 'error', message: (err as Error).message });
+  }
+}
+
 if (!isMainThread) {
   const role = (workerData as { role?: string } | null)?.role;
   if (role === 'parse') runParser();
   else if (role === 'build') void runBuild((workerData as { spec: BuildSpec }).spec);
+  else if (role === 'upgrade') runUpgrade((workerData as { spec: { sourcePath: string; outPath: string } }).spec);
 }

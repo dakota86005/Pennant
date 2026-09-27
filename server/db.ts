@@ -47,9 +47,34 @@ export function isWalFile(file: string): boolean {
 }
 
 /**
+ * Rolls back a hot rollback journal (`league.db-journal`), left when a process writing the database in place was
+ * killed: the earlier (Electron) build's import, or this build's start-up tidy before N3.5's review. A read-only
+ * connection cannot roll one back, so every read would fail (SQLITE_READONLY_ROLLBACK) and the server could never start.
+ * One read through a read-write connection makes SQLite roll it back; a journal that is not hot (another live process
+ * holds its lock) is left alone by SQLite itself. Returns whether there was a journal.
+ */
+export function rollBackHotJournal(file: string = LEAGUE_DB_PATH): boolean {
+  let size = 0;
+  try {
+    size = fs.statSync(`${file}-journal`).size;
+  } catch {
+    return false;
+  }
+  if (size === 0 || !fs.existsSync(file)) return false;
+  const conn = new Database(file);
+  try {
+    conn.prepare(`SELECT COUNT(*) FROM sqlite_master`).get();
+  } finally {
+    conn.close();
+  }
+  console.warn('[import] rolled back an unfinished write to the league database (a process was stopped partway)');
+  return true;
+}
+
+/**
  * Opens a league database for serving. Read-only where it can be: a folder with no import yet gets an empty file
- * first, and a file the earlier (Electron) build left in write-ahead-log mode is opened as it is until the start-up
- * tidy (`prepareLeagueDatabase`) converts it under the data-folder lock.
+ * first, a hot journal is rolled back first, and a file the earlier (Electron) build left in write-ahead-log mode is
+ * opened as it is until the start-up upgrade (`upgradeLeagueInBackground`, api.ts) swaps in a converted copy.
  */
 function openServing(file: string): Database.Database {
   if (READ_ONLY_REPORT) return new Database(file, { readonly: true, fileMustExist: true });
@@ -59,6 +84,7 @@ function openServing(file: string): Database.Database {
     return conn;
   }
   if (!fs.existsSync(file)) new Database(file).close();
+  rollBackHotJournal(file);
   const conn = isWalFile(file) ? new Database(file) : new Database(file, { readonly: true, fileMustExist: true });
   for (const p of SERVING_PRAGMAS) conn.pragma(p);
   return conn;
@@ -134,7 +160,8 @@ export function swapInLeagueDatabase(nextPath: string = NEXT_DB_PATH): void {
   if (process.platform === 'win32') {
     try { old.close(); } catch { /* already closed */ }
   }
-  for (const suffix of ['-wal', '-shm']) fs.rmSync(LEAGUE_DB_PATH + suffix, { force: true });
+  // No journal of the replaced file may ever meet the new one (a hot one would be rolled back into it)
+  for (const suffix of ['-journal', '-wal', '-shm']) fs.rmSync(LEAGUE_DB_PATH + suffix, { force: true });
   try {
     renameWithRetry(nextPath, LEAGUE_DB_PATH);
   } catch (err) {
@@ -149,12 +176,14 @@ export function swapInLeagueDatabase(nextPath: string = NEXT_DB_PATH): void {
 }
 
 /**
- * The start-up tidy, under the data-folder lock (`startServer`): removes a crashed import's leftover build, and brings
- * a database from an earlier build to the served shape once: out of write-ahead-log mode (the old Electron build sets
- * it on every open) and with every index an import now builds. Costs nothing on a database already in shape.
+ * The start-up tidy, under the data-folder lock (`startServer`): removes a crashed import's or upgrade's leftover
+ * `league.next.db`, rolls back a hot journal, and says whether the served database needs the one-time upgrade to the
+ * served shape (out of write-ahead-log mode, the old Electron build's; every index an import now builds). It never
+ * writes the served file in place: the upgrade builds a converted copy and swaps it in, the way an import does
+ * (`upgradeLeagueInBackground`), so a process stopped at any point leaves the previous file as it was.
  */
-export function prepareLeagueDatabase(): { removedLeftover: boolean; converted: boolean; indexesAdded: number } {
-  const outcome = { removedLeftover: false, converted: false, indexesAdded: 0 };
+export function prepareLeagueDatabase(): { removedLeftover: boolean; rolledBack: boolean; needsUpgrade: boolean } {
+  const outcome = { removedLeftover: false, rolledBack: false, needsUpgrade: false };
   if (READ_ONLY_REPORT) return outcome;
   for (const suffix of ['', '-journal', '-wal', '-shm']) {
     if (fs.existsSync(NEXT_DB_PATH + suffix)) {
@@ -163,43 +192,23 @@ export function prepareLeagueDatabase(): { removedLeftover: boolean; converted: 
     }
   }
   if (outcome.removedLeftover) console.warn('[import] removed an unfinished import\'s file; the league is the last complete import');
-  const wal = isWalFile(LEAGUE_DB_PATH);
-  const missing = missingIndexes(db);
-  if (!wal && missing.length === 0) return outcome;
-  // One read-write connection for the tidy; the served one is reopened read-only after it
-  const conn = db.readonly ? new Database(LEAGUE_DB_PATH) : db;
-  try {
-    if (wal) {
-      conn.pragma('wal_checkpoint(TRUNCATE)');
-      conn.pragma('journal_mode = DELETE');
-      outcome.converted = true;
-    }
-    for (const { table, name, columns } of missing) {
-      try {
-        conn.exec(`CREATE INDEX IF NOT EXISTS "${name}" ON "${table}" (${columns.map((c) => `"${c}"`).join(', ')})`);
-        outcome.indexesAdded += 1;
-      } catch (err) {
-        console.warn(`[import] index ${name} failed:`, (err as Error).message);
-      }
-    }
-    if (outcome.indexesAdded > 0) conn.exec('ANALYZE');
-  } finally {
-    if (conn !== db) conn.close();
-  }
-  if (conn !== db || wal) {
+  if (!WRITABLE && rollBackHotJournal(LEAGUE_DB_PATH)) {
+    outcome.rolledBack = true;
     const old = db;
     db = openServing(LEAGUE_DB_PATH);
     generation += 1;
     try { old.close(); } catch { /* already closed */ }
   }
-  if (outcome.converted || outcome.indexesAdded > 0) {
-    console.log(`[import] brought the league database up to date (${outcome.converted ? 'journal mode, ' : ''}${outcome.indexesAdded} indexes)`);
-  }
+  outcome.needsUpgrade = !WRITABLE && tableCount(db) > 0 && (isWalFile(LEAGUE_DB_PATH) || missingIndexes(db).length > 0);
   return outcome;
 }
 
+function tableCount(conn: Database.Database): number {
+  return (conn.prepare(`SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table'`).get() as { n: number }).n;
+}
+
 /** The indexes an import builds that this database lacks (an import from an earlier build). */
-function missingIndexes(conn: Database.Database): Array<{ table: string; name: string; columns: string[] }> {
+export function missingIndexes(conn: Database.Database): Array<{ table: string; name: string; columns: string[] }> {
   const have = new Set((conn.prepare(`SELECT name FROM sqlite_master WHERE type = 'index'`).all() as Array<{ name: string }>).map((r) => r.name));
   const tables = (conn.prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name <> 'pennant_import'`).all() as Array<{ name: string }>).map((r) => r.name);
   const out: Array<{ table: string; name: string; columns: string[] }> = [];

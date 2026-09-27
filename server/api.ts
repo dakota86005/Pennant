@@ -1,10 +1,11 @@
 import { Router, type NextFunction, type Request, type Response } from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
-import { db, tableExists, tableColumns, locateColumn } from './db.js';
+import { db, tableExists, tableColumns, locateColumn, LEAGUE_DB_PATH, NEXT_DB_PATH, swapInLeagueDatabase } from './db.js';
 import { detectSaves, resolveChosenFolder, searchLocations, type ResolveResult, type SaveInfo, type SearchLocation } from './paths.js';
 import { DATA_DIR, loadConfig, saveConfig } from './config.js';
 import { importCsvDir, type ImportProgress, type ImportResult } from './importer.js';
+import { upgradeLeagueDatabase } from './importBuild.js';
 import { checkExport, clearPendingExport, notePendingExport, onSettledExport, pendingExport, startWatcher } from './watcher.js';
 import type { ExportAssessment } from './exportFiles.js';
 import { locateSave } from './ootpSave.js';
@@ -348,6 +349,8 @@ export async function runImport(csvDir: string, trigger: ImportTrigger = 'manual
   publish({ type: 'import-started', startedAt });
   const announceProgress = progressThrottle<ImportProgress>((progress) => publish({ type: 'import-progress', progress }));
   try {
+    // The start-up upgrade of an earlier build's database uses the same next file: it finishes first
+    if (upgrading) await upgrading;
     const config = loadConfig();
     // Which kind of ratings this export carries, from the save's export settings, read now (D-061)
     const save = locateSave({ csvDir, saveName: config.saveName, manualLgPath: config.csvDir === csvDir ? config.lgPath ?? null : null });
@@ -385,6 +388,33 @@ export async function runImport(csvDir: string, trigger: ImportTrigger = 'manual
     lookAgainAfterImport = false;
     checkExport(csvDir);
   }
+}
+
+/** The one-time upgrade of an earlier build's league database, while it runs (an import waits for it). */
+let upgrading: Promise<void> | null = null;
+
+/**
+ * At start-up, for a league database an earlier build imported (write-ahead-log mode, or without the indexes an import
+ * now builds): a converted copy is built in the import's worker and swapped in, the way an import is (N3.5 review,
+ * finding 1). The served file is never written in place, so a process stopped at any point leaves it as it was, and the
+ * leftover copy is removed at the next start. The pages keep reading the old file meanwhile. Never throws.
+ */
+export function upgradeLeagueInBackground(): Promise<void> {
+  if (upgrading) return upgrading;
+  upgrading = (async () => {
+    try {
+      const outcome = await upgradeLeagueDatabase(LEAGUE_DB_PATH, NEXT_DB_PATH);
+      swapInLeagueDatabase(NEXT_DB_PATH);
+      clearLeagueCaches();
+      console.log(`[import] brought the league database up to date in ${(outcome.ms / 1000).toFixed(1)}s (${outcome.indexes} indexes added)`);
+    } catch (err) {
+      fs.rmSync(NEXT_DB_PATH, { force: true });
+      console.error('[import] could not bring the league database up to date; it is served as it is:', (err as Error).message);
+    } finally {
+      upgrading = null;
+    }
+  })();
+  return upgrading;
 }
 
 /** Whether a settled export is one the app has not imported: its fingerprint differs from the last import's. */
