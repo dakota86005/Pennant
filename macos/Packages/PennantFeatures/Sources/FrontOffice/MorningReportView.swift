@@ -1,3 +1,4 @@
+import AppKit
 import FeatureCore
 import PennantAPI
 import PennantDesign
@@ -45,7 +46,14 @@ public struct MorningReportView: View {
                     let kept = store.summaryIsKept
                     AfterNextFrame.run { model.noteMorningReportDrawn(kept: kept) }
                 }
-                .onChange(of: updating, initial: true) { _, now in if now { model.noteMorningReportUpdating() } }
+                .onChange(of: updating, initial: true) { was, now in
+                    if now { model.noteMorningReportUpdating() }
+                    #if DEBUG
+                    // A development build given a capture folder draws its own window there, updating and then fresh
+                    if now { AfterNextFrame.run { DevWindowCapture.capture("morning-report-updating") } }
+                    if was && !now { AfterNextFrame.run { DevWindowCapture.capture("morning-report-fresh") } }
+                    #endif
+                }
             } else if let problem = store.summaryProblem {
                 ProblemLine(problem).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -389,3 +397,30 @@ enum AfterNextFrame {
         CFRunLoopAddObserver(CFRunLoopGetMain(), observer, .commonModes)
     }
 }
+
+#if DEBUG
+/// Development builds only: with `PENNANT_DEV_CAPTURE_DIR` set, the Morning Report's window draws itself to a PNG in
+/// that folder at the moments a screen capture cannot time (the kept report said to be updating, then the fresh one),
+/// the window only and by the app itself, so no screen-recording permission is involved. Each moment once a launch,
+/// named for the appearance ("morning-report-updating-dark.png"). Nothing happens without the variable.
+@MainActor
+enum DevWindowCapture {
+    private static var taken: Set<String> = []
+
+    static func capture(_ moment: String) {
+        guard let folder = ProcessInfo.processInfo.environment["PENNANT_DEV_CAPTURE_DIR"], !folder.isEmpty,
+              !taken.contains(moment),
+              let window = NSApp.windows.first(where: { $0.isVisible && $0.frame.height > 400 && $0.contentView != nil }),
+              let view = window.contentView?.superview ?? window.contentView,
+              let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds)
+        else { return }
+        taken.insert(moment)
+        view.cacheDisplay(in: view.bounds, to: rep)
+        let dark = window.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        guard let png = rep.representation(using: .png, properties: [:]) else { return }
+        let url = URL(fileURLWithPath: folder, isDirectory: true).appending(path: "\(moment)-\(dark ? "dark" : "light").png")
+        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? png.write(to: url)
+    }
+}
+#endif

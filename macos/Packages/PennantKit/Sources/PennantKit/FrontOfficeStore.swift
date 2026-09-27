@@ -77,6 +77,13 @@ public final class FrontOfficeStore {
         return KeptReports.Key(saveId: saveId, clubId: club.id, contract: contract)
     }
 
+    #if DEBUG
+    /// Development builds only: `PENNANT_DEV_HOLD_FRESH_MS` holds the fresh Morning Report back that long after the kept
+    /// one is shown (to see and capture the kept report while it waits; the synthetic league answers too fast to).
+    nonisolated static let devHoldFresh: Duration? = ProcessInfo.processInfo.environment["PENNANT_DEV_HOLD_FRESH_MS"]
+        .flatMap(Int.init).map { .milliseconds($0) }
+    #endif
+
     /// Whether the view says the report is updating: the kept one is shown, a fresh one is on its way, or the shown one
     /// is not the key's; never while the last request failed (the problem line says so instead, and "Updating" would
     /// otherwise stay on for good).
@@ -144,6 +151,13 @@ public final class FrontOfficeStore {
                 log("showing the kept Morning Report \(Int((ContinuousClock.now - made) / .milliseconds(1))) ms after the store was made")
             }
         }
+        #if DEBUG
+        // A development build can hold the fresh answer back while the kept one is shown, to see and capture it waiting
+        if summaryIsKept, let hold = Self.devHoldFresh {
+            try? await Task.sleep(for: hold)
+            guard summaryAsked == key, !Task.isCancelled else { return }
+        }
+        #endif
         var served: Components.Schemas.FrontOfficeSummary?
         var problem: RequestProblem?
         do {
@@ -161,6 +175,9 @@ public final class FrontOfficeStore {
         // The view's task was cancelled (the key moved, and a load for the new key follows): no answer, no problem
         guard summaryAsked == key, !Task.isCancelled else { return }
         if let served {
+            if summaryIsKept {
+                log("the fresh Morning Report replaced the kept one \(Int((ContinuousClock.now - made) / .milliseconds(1))) ms after the store was made")
+            }
             summary = served
             summaryKey = key
             summaryIsKept = false
