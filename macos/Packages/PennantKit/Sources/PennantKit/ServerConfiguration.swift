@@ -18,6 +18,9 @@ public struct ServerConfiguration: Sendable, Equatable {
     /// Whether this data folder was chosen on purpose. Always true in a release build; false for a development
     /// build given neither a scratch folder nor the explicit opt-in to the real one, which then starts no server.
     public var dataFolderChosen: Bool
+    /// The app's own caches (the Morning Report kept across launches, `KeptReports`): the bundle's caches folder in a
+    /// release build; never the data folder. Beside the log folder when none is given (a test's scratch).
+    public var cachesFolder: URL
 
     public init(
         nodeExecutable: URL,
@@ -26,7 +29,8 @@ public struct ServerConfiguration: Sendable, Equatable {
         logFolder: URL,
         appVersion: String,
         extraEnvironment: [String: String] = [:],
-        dataFolderChosen: Bool = true
+        dataFolderChosen: Bool = true,
+        cachesFolder: URL? = nil
     ) {
         self.nodeExecutable = nodeExecutable
         self.serverRoot = serverRoot
@@ -35,6 +39,7 @@ public struct ServerConfiguration: Sendable, Equatable {
         self.appVersion = appVersion
         self.extraEnvironment = extraEnvironment
         self.dataFolderChosen = dataFolderChosen
+        self.cachesFolder = cachesFolder ?? logFolder.deletingLastPathComponent().appending(path: "caches", directoryHint: .isDirectory)
     }
 
     /// The release data folder: `~/Library/Application Support/ootp-front-office` (the D-049 hold on the name).
@@ -47,12 +52,19 @@ public struct ServerConfiguration: Sendable, Equatable {
         URL.libraryDirectory.appending(path: "Logs/Pennant", directoryHint: .isDirectory)
     }
 
+    /// The app's own caches folder for a bundle: `~/Library/Caches/<bundle id>`.
+    public static func releaseCachesFolder(for bundle: Bundle) -> URL {
+        (FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
+            .appending(path: bundle.bundleIdentifier ?? "Pennant", directoryHint: .isDirectory)
+    }
+
     /// The server inside an app bundle, with the given data and log folders.
     public static func bundled(
         in bundle: Bundle,
         dataFolder: URL = releaseDataFolder,
         logFolder: URL = releaseLogFolder,
-        extraEnvironment: [String: String] = [:]
+        extraEnvironment: [String: String] = [:],
+        cachesFolder: URL? = nil
     ) -> ServerConfiguration {
         let contents = bundle.bundleURL.appending(path: "Contents", directoryHint: .isDirectory)
         return ServerConfiguration(
@@ -61,7 +73,8 @@ public struct ServerConfiguration: Sendable, Equatable {
             dataFolder: dataFolder,
             logFolder: logFolder,
             appVersion: bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown",
-            extraEnvironment: extraEnvironment
+            extraEnvironment: extraEnvironment,
+            cachesFolder: cachesFolder ?? releaseCachesFolder(for: bundle)
         )
     }
 
@@ -106,7 +119,9 @@ extension URL {
 extension ServerConfiguration {
     /// A development build's folders (review S5): never the real data folder unless someone chose it.
     /// - `PENNANT_DEV_DATA_DIR=<folder>` or `-PennantDevDataFolder <folder>`: that scratch folder, with the log in
-    ///   `PENNANT_DEV_LOG_DIR` / `-PennantDevLogFolder`, else `logs/` inside it; `OOTP_FO_DB_READONLY` is passed on.
+    ///   `PENNANT_DEV_LOG_DIR` / `-PennantDevLogFolder`, else `logs/` inside it, and the app's own caches (the kept
+    ///   Morning Report) in `PENNANT_DEV_CACHES_DIR` / `-PennantDevCachesFolder`, else the Debug bundle's own caches
+    ///   folder; `OOTP_FO_DB_READONLY` is passed on.
     /// - `PENNANT_DEV_USE_REAL_DATA=1` or `-PennantUseRealDataFolder YES`: the release folders, on purpose.
     /// - Neither: the release paths are named but `dataFolderChosen` is false, so no server starts and nothing is
     ///   written there; the log goes to a temporary folder.
@@ -129,7 +144,8 @@ extension ServerConfiguration {
                 ?? dataFolder.appending(path: "logs", directoryHint: .isDirectory)
             var extra: [String: String] = [:]
             if let readOnly = environment["OOTP_FO_DB_READONLY"] { extra["OOTP_FO_DB_READONLY"] = readOnly }
-            return .bundled(in: bundle, dataFolder: dataFolder, logFolder: logs, extraEnvironment: extra)
+            let caches = text("PENNANT_DEV_CACHES_DIR", "PennantDevCachesFolder").map(folder)
+            return .bundled(in: bundle, dataFolder: dataFolder, logFolder: logs, extraEnvironment: extra, cachesFolder: caches)
         }
         if environment["PENNANT_DEV_USE_REAL_DATA"] == "1" || defaults.bool(forKey: "PennantUseRealDataFolder") {
             return .bundled(in: bundle)

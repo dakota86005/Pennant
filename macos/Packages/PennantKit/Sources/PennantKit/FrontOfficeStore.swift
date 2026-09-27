@@ -12,12 +12,19 @@ import PennantAPI
 /// payload says which import it was built from (`importStamp`): one whose stamp is not the key's is kept but never
 /// taken as current (`isCurrent`), so the view says it is refreshing until the key catches up. It decides nothing:
 /// every sentence and order is the server's.
+///
+/// At launch (N6, Stage B1) the Morning Report the app last received for the key's save and club is read from the
+/// app's own caches (`KeptReports`) and shown at once, said to be updating, while the server's fresh one is fetched
+/// and swapped in place; every fresh payload is kept for the next launch.
 @Observable @MainActor
 public final class FrontOfficeStore {
     /// The Morning Report's desk and cards, as last served.
     public private(set) var summary: Components.Schemas.FrontOfficeSummary?
     /// Why the last summary request failed; nil when it did not.
     public private(set) var summaryProblem: RequestProblem?
+    /// The shown summary is the one kept from an earlier launch, not yet replaced by the server's (the view says it
+    /// is updating; the payload's own served kicker says how current it is).
+    public private(set) var summaryIsKept = false
     /// Each department's report, as last served, by department id.
     public private(set) var reports: [String: Components.Schemas.DepartmentReport] = [:]
     public private(set) var reportProblems: [String: RequestProblem] = [:]
@@ -37,9 +44,29 @@ public final class FrontOfficeStore {
     private var trailsKey: AppModel.StoreKey?
     /// Writes a raw failure to the server's log (the window shows only its kind).
     private let log: @MainActor (String) -> Void
+    /// Where the Morning Report is kept across launches; nil keeps nothing (a preview).
+    private let kept: KeptReports?
+    /// The contract this build was made against, part of every kept payload's key.
+    private let contractVersion: String
 
-    public init(log: @escaping @MainActor (String) -> Void = { _ in }) {
+    /// Every payload kept in the folder, read at the store's making (the launch) off the main actor, so the one for
+    /// the key is in hand when the key is known; nil with nowhere to keep.
+    private let preloaded: Task<[KeptReports.Key: Components.Schemas.FrontOfficeSummary], Never>?
+    /// When the store was made, for the launch's log line.
+    private let made = ContinuousClock.now
+
+    public init(kept: KeptReports? = nil, contractVersion: String = "", log: @escaping @MainActor (String) -> Void = { _ in }) {
+        self.kept = kept
+        self.contractVersion = contractVersion
         self.log = log
+        preloaded = kept.map { kept in Task.detached(priority: .userInitiated) { kept.readAll() } }
+    }
+
+    /// What a kept payload is for, from a store key: the save the status names and the club the app shows; nil while
+    /// either is not known (nothing kept is read or written then).
+    nonisolated static func keptKey(_ key: AppModel.StoreKey, contractVersion: String) -> KeptReports.Key? {
+        guard let saveId = key.saveId, !saveId.isEmpty, let club = key.club else { return nil }
+        return KeptReports.Key(saveId: saveId, clubId: club.id, contractVersion: contractVersion)
     }
 
     /// Whether a payload was built from what the key names: the same import, the same club, and (once the server has
@@ -76,7 +103,8 @@ public final class FrontOfficeStore {
 
     // MARK: Loading
 
-    /// Loads the desk and cards for the key, once per key; nothing without a server or a key.
+    /// Loads the desk and cards for the key, once per key; nothing without a server or a key. With nothing shown yet,
+    /// the payload kept from an earlier launch for the key's save and club is shown first, as updating.
     public func loadSummary(client: Client?, key: AppModel.StoreKey?) async {
         guard let client, let key, summaryKey != key || summary == nil else { return }
         // Only the build stamp moved, to the build the store already has (read just before the event): nothing to ask
@@ -87,6 +115,17 @@ public final class FrontOfficeStore {
         summaryAsked = key
         loadingSummary = true
         defer { if summaryAsked == key { loadingSummary = false } }
+        let keptKey = Self.keptKey(key, contractVersion: contractVersion)
+        if summary == nil, let preloaded, let keptKey {
+            // Read and decoded at launch, off the main actor; shown only if nothing arrived meanwhile
+            let stored = await preloaded.value[keptKey]
+            guard summaryAsked == key else { return }
+            if let stored, summary == nil {
+                summary = stored
+                summaryIsKept = true
+                log("showing the kept Morning Report \(Int((ContinuousClock.now - made) / .milliseconds(1))) ms after the store was made")
+            }
+        }
         var served: Components.Schemas.FrontOfficeSummary?
         var problem: RequestProblem?
         do {
@@ -101,10 +140,19 @@ public final class FrontOfficeStore {
         } catch {
             problem = .from(error)
         }
-        guard summaryAsked == key else { return }
+        // The view's task was cancelled (the key moved, and a load for the new key follows): no answer, no problem
+        guard summaryAsked == key, !Task.isCancelled else { return }
         if let served {
             summary = served
             summaryKey = key
+            summaryIsKept = false
+            // Kept for the next launch, atomically, off the main actor; a write that fails is logged and costs nothing
+            if let kept, let keptKey {
+                let log = log
+                Task.detached(priority: .utility) {
+                    do { try kept.write(served, for: keptKey) } catch { await log("could not keep the Morning Report: \(error)") }
+                }
+            }
         }
         summaryProblem = problem
         if let detail = problem?.detail { log("could not read the Front Office: \(detail)") }
@@ -134,7 +182,7 @@ public final class FrontOfficeStore {
         } catch {
             problem = .from(error)
         }
-        guard reportAsked[department] == key else { return }
+        guard reportAsked[department] == key, !Task.isCancelled else { return }
         if let served {
             reports[department] = served
             reportKeys[department] = key
@@ -169,7 +217,7 @@ public final class FrontOfficeStore {
             problem = .from(error)
         }
         // The key moved while it was fetched: an earlier build's trail is never kept as the current one's
-        guard trailsKey == key else { return }
+        guard trailsKey == key, !Task.isCancelled else { return }
         if let served { trails[evidence] = served }
         trailProblems[evidence] = problem
         if let detail = problem?.detail { log("could not read an evidence trail: \(detail)") }

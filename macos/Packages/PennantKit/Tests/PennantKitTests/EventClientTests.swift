@@ -93,10 +93,10 @@ struct EventClientTests {
         #expect(signals.count == 4)
         #expect(signals[0] == .connected)
         guard case .event(let hello) = signals[1] else { Issue.record("hello"); return }
-        #expect(hello.value1?.status.app.name == "Pennant")
+        #expect(hello.hello?.status.app.name == "Pennant")
         #expect(signals[2] == .malformed(type: "import-progress"))
         guard case .event(let pending) = signals[3] else { Issue.record("export-pending"); return }
-        #expect(pending.value5?.since == "2040-07-01T12:05:00.000Z")
+        #expect({ if case .exportPending(let p) = pending.kind { p.since } else { nil } }() == "2040-07-01T12:05:00.000Z")
         #expect(unknown.unknownTypes == ["desk-changed"])
     }
 
