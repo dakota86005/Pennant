@@ -139,6 +139,16 @@ describe('server events', () => {
     expect(sent.map((p) => `${p.fileIndex}:${p.phase}:${p.rows}`)).toEqual(['1:reading:0', '1:writing:10', '1:writing:30', '2:reading:30']);
   });
 
+  it('sends a step naming another table at once, though files are read side by side (N3.5)', () => {
+    const clock = 0;
+    const sent: ImportProgress[] = [];
+    const throttled = progressThrottle((p) => sent.push(p), () => clock);
+    throttled({ table: 'big', fileIndex: 3, files: 3, rows: 10, phase: 'writing' });
+    throttled({ table: 'small', fileIndex: 3, files: 3, rows: 20, phase: 'writing' });
+    throttled({ table: 'small', fileIndex: 3, files: 3, rows: 30, phase: 'writing' }); // too soon, same table
+    expect(sent.map((p) => p.table)).toEqual(['big', 'small']);
+  });
+
   it('opens a stream with the current status, then relays each event, and forgets a closed stream', async () => {
     const app = express();
     const snapshot: ServerStatus = {

@@ -263,7 +263,8 @@ describe('a sidecar killed in the middle of an import', () => {
     // OOTP writes the next export; the import of it is killed while it writes the big table
     writeExport(csvDir, 2);
     side = await ready(dataDir);
-    const writingBig = watchEvents(side, (e) => e.type === 'import-progress' && e.progress.table === 'b_big' && e.progress.phase === 'writing');
+    // The build is under way once the big file is being read (the new file exists from before the first read)
+    const writingBig = watchEvents(side, (e) => e.type === 'import-progress' && e.progress.table === 'b_big');
     await new Promise((r) => setTimeout(r, 100)); // the stream is open before the import starts
     const res = await fetch(`${side.base}/api/import`, { method: 'POST', headers: auth });
     expect(res.status).toBe(200);
