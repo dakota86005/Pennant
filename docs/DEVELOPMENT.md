@@ -374,7 +374,7 @@ folder.
    | `club` | the team id it is made for (as the save numbers clubs), or `"any"` |
    | `light`, `dark` | the colours for each appearance (below), every one written `#rrggbb` |
    | `lightIncreasedContrast`, `darkIncreasedContrast` | optional: the colours with Increase Contrast; left out, Pennant makes them from `light` and `dark` |
-   | `logo`, `art` | optional: a `.png` or `.jpg` in the folder, at most 2 MB (the masthead's logo, and art drawn at its trailing side, past the text, faded in from the middle; `docs/theme-packs/aurora-nights` shows one, made by `AuroraArt` and remade with `PENNANT_RENDER_ART=<path> swift test --filter AuroraArtTests` in PennantDesign) |
+   | `logo`, `art` | optional: a `.png` or `.jpg` in the folder itself (a link to a file elsewhere is refused, as is a pack folder or `pack.json` that is a link), at most 2 MB (the masthead's logo, and art drawn at its trailing side, past the text, faded in from the middle; `docs/theme-packs/aurora-nights` shows one, made by `AuroraArt` and remade with `PENNANT_RENDER_ART=<path> swift test --filter AuroraArtTests` in PennantDesign) |
 
    Each appearance names `mastheadTop` (under the toolbar, where macOS writes the window's title: nearly white in light,
    nearly black in dark), `masthead` (one to four colours, from the masthead's leading top to its trailing bottom),

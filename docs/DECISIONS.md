@@ -2288,7 +2288,8 @@ built at N5 (Stage A)"; how to make one: DEVELOPMENT.md "Making a theme pack".
 - **Chosen per club, additively.** The choice is `themePacks` in settings.json (team id to pack id); the React app ignores
   it, and team colours off (`useTeamColors`) draws the neutral system theme whatever pack is chosen.
 - **Pennant ships the mechanism and the save-derived defaults, never trademarked art.** Packs are plain folders in the data
-  folder (`theme-packs/<id>/pack.json` and its images) that the owner makes for his own use; the repository carries only
+  folder (`theme-packs/<id>/pack.json` and its images; a link is never followed, so a pack folder, `pack.json` or
+  picture that is a link is refused and listed, and no pack serves a file from elsewhere on the Mac) that the owner makes for his own use; the repository carries only
   made-up examples (`docs/theme-packs/sunset-series`; `aurora-nights`, whose art is made procedurally from its own
   colours by `AuroraArt`, with no club's mark in it).
 - **A pack is tonal, not only a masthead (N5, Stage B, 2026-09-26).** The pack's accent washes every card, chip and the

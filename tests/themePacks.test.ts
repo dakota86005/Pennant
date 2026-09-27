@@ -227,6 +227,30 @@ describe('which pack each club wears', () => {
     ]);
   });
 
+  it('follows no link: a linked picture, a linked pack.json or a linked pack folder is refused and listed (review S4)', () => {
+    const outside = fs.mkdtempSync(path.join(path.dirname(folder), 'outside-'));
+    try {
+      fs.writeFileSync(path.join(outside, 'secret.png'), Buffer.from([137, 80, 78, 71]));
+      install('linked-logo', { ...example(), id: 'linked-logo', logo: 'logo.png' });
+      fs.symlinkSync(path.join(outside, 'secret.png'), path.join(folder, 'linked-logo', 'logo.png'));
+      fs.mkdirSync(path.join(folder, 'linked-json'), { recursive: true });
+      fs.writeFileSync(path.join(outside, 'pack.json'), JSON.stringify({ ...example(), id: 'linked-json' }));
+      fs.symlinkSync(path.join(outside, 'pack.json'), path.join(folder, 'linked-json', 'pack.json'));
+      fs.mkdirSync(path.join(outside, 'elsewhere'));
+      fs.writeFileSync(path.join(outside, 'elsewhere', 'pack.json'), JSON.stringify({ ...example(), id: 'linked-folder' }));
+      fs.symlinkSync(path.join(outside, 'elsewhere'), path.join(folder, 'linked-folder'));
+      const { packs, refused } = installedPacks();
+      expect(packs).toEqual([]);
+      expect(refused.map((r) => [r.folder, r.problem.display])).toEqual([
+        ['linked-folder', 'It is a link to a folder elsewhere; put the pack\'s folder itself in theme-packs.'],
+        ['linked-json', 'Its pack.json is a link to a file elsewhere; put the file itself in the pack\'s folder.'],
+        ['linked-logo', 'Its logo, logo.png, is a link to a file elsewhere; put the picture itself in the pack\'s folder.'],
+      ]);
+    } finally {
+      fs.rmSync(outside, { recursive: true, force: true });
+    }
+  });
+
   it('puts the save\'s logo on a pack that has none, and its own on one that has', () => {
     install('with-logo', { ...example(), id: 'with-logo', logo: 'mark.png' }, { 'mark.png': Buffer.from([137, 80, 78, 71]) });
     expect(installedPacks().packs[0].logo).toBe('/api/theme-packs/with-logo/mark.png');
@@ -306,5 +330,18 @@ describe('the routes (a synthetic save)', () => {
     expect((await fetch(`${base}/api/theme-packs/sunset-series/notes.png`)).status).toBe(404);
     expect((await fetch(`${base}/api/theme-packs/sunset-series/pack.json`)).status).toBe(404);
     expect((await fetch(`${base}/api/theme-packs/..%2F..%2Fsettings.json/x.png`)).status).toBe(404);
+  });
+
+  it('never serves a file a link points to (review S4)', async () => {
+    fs.mkdirSync(path.join(folder, 'linked'), { recursive: true });
+    fs.writeFileSync(path.join(folder, 'linked', 'pack.json'), JSON.stringify({ ...example(), id: 'linked', logo: 'logo.png' }));
+    fs.symlinkSync('/etc/hosts', path.join(folder, 'linked', 'logo.png'));
+    try {
+      expect((await fetch(`${base}/api/theme-packs/linked/logo.png`)).status).toBe(404);
+      const choices = await (await fetch(`${base}/api/v2/theme-packs/${org}`)).json() as ThemeChoices;
+      expect(choices.refused.map((r) => r.folder)).toContain('linked');
+    } finally {
+      fs.rmSync(path.join(folder, 'linked'), { recursive: true, force: true });
+    }
   });
 });

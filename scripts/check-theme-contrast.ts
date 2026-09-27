@@ -151,8 +151,14 @@ let installedFailures = 0;
 for (const folder of packFolders) {
   if (!fs.existsSync(folder)) continue;
   console.log(`\n── theme packs in ${folder} ──`);
-  for (const entry of fs.readdirSync(folder, { withFileTypes: true }).filter((e) => e.isDirectory())) {
+  for (const entry of fs.readdirSync(folder, { withFileTypes: true }).filter((e) => e.isDirectory() || e.isSymbolicLink())) {
     const dir = path.join(folder, entry.name);
+    // As the app reads packs (`server/themePackStore.ts`): a link is never followed
+    if (entry.isSymbolicLink()) {
+      installedFailures++;
+      console.log(`❌ ${entry.name.padEnd(26)} It is a link to a folder elsewhere; put the pack's folder itself in theme-packs.`);
+      continue;
+    }
     let raw: unknown = null;
     try {
       raw = JSON.parse(fs.readFileSync(path.join(dir, 'pack.json'), 'utf8'));
@@ -160,9 +166,12 @@ for (const folder of packFolders) {
       // readPack refuses what is not a pack
     }
     const size = (file: string): number | null => {
-      try { return fs.statSync(path.join(dir, file)).size; } catch { return null; }
+      try { const stat = fs.lstatSync(path.join(dir, file)); return stat.isFile() ? stat.size : null; } catch { return null; }
     };
-    const reading = readPack(raw, entry.name, { size }, (file) => file);
+    const link = (file: string): boolean => {
+      try { return fs.lstatSync(path.join(dir, file)).isSymbolicLink(); } catch { return false; }
+    };
+    const reading = readPack(raw, entry.name, { size, link }, (file) => file);
     if (!reading.ok) installedFailures++;
     console.log(`${reading.ok ? '✓' : '❌'} ${entry.name.padEnd(26)} ${reading.ok ? 'every pair reads' : reading.details.join(' ')}`);
   }

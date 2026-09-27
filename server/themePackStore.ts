@@ -37,7 +37,19 @@ const refused = (folder: string, problem: string, details: string[]): RefusedThe
   details,
 });
 
-/** Reads and checks every pack folder, in name order. A folder that is not a pack is refused, never skipped quietly. */
+/** Whether a path is a symbolic link (never followed: a pack is only what is in its own folder). */
+function isLink(file: string): boolean {
+  try {
+    return fs.lstatSync(file).isSymbolicLink();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Reads and checks every pack folder, in name order. A folder that is not a pack is refused, never skipped quietly; so
+ * is a link standing in for a pack folder, which is never followed (a pack is the files in its own folder).
+ */
 export function installedPacks(): InstalledPacks {
   const root = themePacksFolder();
   const out: InstalledPacks = { packs: [], refused: [] };
@@ -47,9 +59,20 @@ export function installedPacks(): InstalledPacks {
   } catch {
     return out;
   }
-  for (const entry of entries.filter((e) => e.isDirectory() && !e.name.startsWith('.')).sort((a, b) => a.name.localeCompare(b.name))) {
+  const candidates = entries.filter((e) => (e.isDirectory() || e.isSymbolicLink()) && !e.name.startsWith('.'));
+  for (const entry of candidates.sort((a, b) => a.name.localeCompare(b.name))) {
     const folder = entry.name;
     const dir = path.join(root, folder);
+    if (entry.isSymbolicLink()) {
+      const problem = 'It is a link to a folder elsewhere; put the pack\'s folder itself in theme-packs.';
+      out.refused.push(refused(folder, problem, [problem]));
+      continue;
+    }
+    if (isLink(path.join(dir, 'pack.json'))) {
+      const problem = 'Its pack.json is a link to a file elsewhere; put the file itself in the pack\'s folder.';
+      out.refused.push(refused(folder, problem, [problem]));
+      continue;
+    }
     let raw: unknown;
     try {
       raw = JSON.parse(fs.readFileSync(path.join(dir, 'pack.json'), 'utf8'));
@@ -59,19 +82,24 @@ export function installedPacks(): InstalledPacks {
       out.refused.push(refused(folder, problem, missing ? [problem] : [problem, (err as Error).message]));
       continue;
     }
-    const reading = readPack(raw, folder, { size: (file) => fileSize(dir, file) }, (file) => packFilePath(folder, file));
+    const probe = { size: (file: string) => fileSize(dir, file), link: (file: string) => isLink(path.resolve(dir, file)) };
+    const reading = readPack(raw, folder, probe, (file) => packFilePath(folder, file));
     if (reading.ok) out.packs.push(reading.pack);
     else out.refused.push(refused(folder, reading.problem, reading.details));
   }
   return out;
 }
 
-/** A file's size inside a pack's folder, or null when it is not there (or would reach outside the folder). */
+/**
+ * A file's size inside a pack's folder, or null when it is not there, would reach outside the folder, or is a link (a
+ * link is never followed, so a pack can never serve a file from elsewhere on the Mac).
+ */
 function fileSize(dir: string, file: string): number | null {
   const resolved = path.resolve(dir, file);
   if (!resolved.startsWith(path.resolve(dir) + path.sep)) return null;
+  if (isLink(dir)) return null;
   try {
-    const stat = fs.statSync(resolved);
+    const stat = fs.lstatSync(resolved);
     return stat.isFile() ? stat.size : null;
   } catch {
     return null;

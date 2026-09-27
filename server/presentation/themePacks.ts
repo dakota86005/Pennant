@@ -301,6 +301,8 @@ export function strengthened(tokens: ThemeTokens, appearance: Appearance): Theme
 export interface AssetProbe {
   /** The file's size in bytes, or null when the pack's folder has no such file. */
   size(file: string): number | null;
+  /** Whether the name is a link (a symbolic link) rather than a file in the folder: never followed, so refused. */
+  link?(file: string): boolean;
 }
 
 /** A pack read and checked: served, or refused with a sentence (the first thing wrong) and every finding. */
@@ -388,6 +390,10 @@ export function readPack(raw: unknown, folder: string, assets: AssetProbe, asset
     if (value === undefined) continue;
     if (typeof value !== 'string' || !ASSET.test(value)) {
       problems.push(`Its "${key}" must name a .png or .jpg file in the pack's folder.`);
+      continue;
+    }
+    if (assets.link?.(value)) {
+      problems.push(`Its ${key}, ${value}, is a link to a file elsewhere; put the picture itself in the pack's folder.`);
       continue;
     }
     const size = assets.size(value);
