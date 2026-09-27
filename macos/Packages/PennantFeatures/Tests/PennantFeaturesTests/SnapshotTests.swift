@@ -166,13 +166,13 @@ struct SnapshotTests {
 
     // MARK: The Front Office
 
-    @Test("the Morning Report: the desk and every department's card, at full length", arguments: [false, true])
+    @Test("the Morning Report as served today: the desk and every department's card, at full length", arguments: [false, true])
     func morningReport(dark: Bool) throws {
         let model = PreviewFixtures.ready()
         let summary = try #require(model.frontOffice.summary)
-        let view = ScrollView { MorningReportContent(summary: summary).padding(24) }.environment(model).environment(AppRouting())
-            .environment(\.theme, model.theme)
-        try draw(view, size: CGSize(width: 1000, height: 2200), dark: dark, name: "morning-report-full")
+        let view = ScrollView { MorningReportPage(summary: summary).padding(24) }.environment(model).environment(AppRouting())
+            .environment(\.theme, model.theme).environment(\.contentWidth, 1000)
+        try draw(view, size: CGSize(width: 1000, height: 2000), dark: dark, name: "morning-report-full")
     }
 
     nonisolated static let reports = ["frontOffice", "majorLeague", "farm", "finance", "medical", "scouting"]
@@ -254,6 +254,78 @@ struct SnapshotTests {
         try draw(view, size: CGSize(width: SettingsView.width, height: SettingsView.height(.appearance)), look: look, name: "settings-appearance-theme", titled: true)
     }
 
+    // MARK: The design language (N5, Stage B)
+
+    /// The design's window: the sample's size, so the pictures compare with the design shots.
+    static let designWindow = CGSize(width: 1440, height: 900)
+    nonisolated static let designThemes: [String?] = [nil, "sunset-series", "aurora-nights"]
+
+    /// The Morning Report as designed (R2), the unserved slots drawn from the fixtures, in the club's own colours, the
+    /// example pack and the example art pack, light, dark, and with Increase Contrast and Reduce Transparency.
+    @Test("the Morning Report as designed, from the fixtures, in each theme and appearance", arguments: designThemes, Look.allCases)
+    func designedMorningReport(theme: String?, look: Look) throws {
+        // The art pack and the club's colours in every look; the example pack in light and dark alone
+        guard theme != "sunset-series" || [.light, .dark].contains(look) else { return }
+        let model = PreviewFixtures.ready(themePack: theme)
+        let window = MainWindowModel(registry: registry, expanded: ["frontOffice"])
+        window.go(to: AppRoute(department: "frontOffice", view: "morningReport"))
+        try drawMainWindow(model: model, window: window, look: look, name: "design-morning-report-\(theme ?? "club-colors")", size: Self.designWindow, design: .fixture)
+    }
+
+    @Test("the Morning Report as designed, further down: the roster diagram, the staff, the wire and the departments", arguments: [Look.light, .dark])
+    func designedMorningReportLower(look: Look) throws {
+        let model = PreviewFixtures.ready()
+        let summary = try #require(model.frontOffice.summary)
+        let view = ScrollView { MorningReportPage(summary: summary).padding(.horizontal, 28).padding(.vertical, 24) }
+            .environment(model).environment(AppRouting()).environment(\.theme, model.theme)
+            .environment(\.contentWidth, 1160).environment(\.morningReportDesign, .fixture)
+        try draw(view, size: CGSize(width: 1160, height: 2600), look: look, name: "design-morning-report-page")
+    }
+
+    @Test("the Morning Report as designed, narrow: the columns stack", arguments: [Look.light])
+    func designedMorningReportNarrow(look: Look) throws {
+        let model = PreviewFixtures.ready()
+        let window = MainWindowModel(registry: registry, expanded: ["frontOffice"])
+        window.go(to: AppRoute(department: "frontOffice", view: "morningReport"))
+        try drawMainWindow(model: model, window: window, look: look, name: "design-morning-report-narrow", size: CGSize(width: 1000, height: 900), design: .fixture)
+    }
+
+    @Test("a department's report in the design, in each theme", arguments: designThemes, [Look.light, .dark])
+    func designedReport(theme: String?, look: Look) throws {
+        let model = PreviewFixtures.ready(themePack: theme)
+        let window = MainWindowModel(registry: registry, expanded: ["majorLeague"])
+        window.go(to: AppRoute(department: "majorLeague", view: "report"))
+        try drawMainWindow(model: model, window: window, look: look, name: "design-major-league-report-\(theme ?? "club-colors")", size: Self.designWindow)
+    }
+
+    @Test("the ⌘K palette over the window", arguments: [Look.light, .dark, .lightReduceTransparency])
+    func palette(look: Look) throws {
+        let model = PreviewFixtures.ready()
+        let window = MainWindowModel(registry: registry, expanded: ["frontOffice"])
+        window.paletteShown = true
+        window.paletteQuery = "rep"
+        try drawMainWindow(model: model, window: window, look: look, name: "design-palette", size: Self.designWindow, design: .fixture)
+    }
+
+    @Test("a claim pinned to the inspector", arguments: [Look.light, .dark])
+    func pinned(look: Look) throws {
+        let model = PreviewFixtures.ready()
+        let window = MainWindowModel(registry: registry, inspectorPresented: true, expanded: ["frontOffice"])
+        window.pin(DesignFixtures.positions[0].claim)
+        try drawMainWindow(model: model, window: window, look: look, name: "design-inspector-evidence", size: Self.designWindow, design: .fixture)
+    }
+
+    nonisolated static let components = ["masthead", "sections", "places", "roster", "rows", "basis", "palette"]
+
+    @Test("each component, from the fixtures", arguments: components, Look.allCases)
+    func component(name: String, look: Look) throws {
+        let model = PreviewFixtures.ready(themePack: "aurora-nights")
+        let width: CGFloat = name == "roster" || name == "masthead" ? 1160 : 1000
+        let view = ComponentSheet(name: name).environment(model).environment(AppRouting()).environment(\.theme, model.theme)
+            .environment(\.claimActions, ClaimActions(pin: { _ in }, detach: { _ in }, canOpen: { _ in true }, open: { _ in }, departmentName: { _ in "Major League Ops" }))
+        try draw(view, size: CGSize(width: width, height: name == "roster" ? 900 : 700), look: look, name: "design-component-\(name)")
+    }
+
     // MARK: Drawing
 
     private func sidebarView(model: AppModel, window: MainWindowModel) -> some View {
@@ -265,11 +337,11 @@ struct SnapshotTests {
         try drawMainWindow(model: model, window: window, look: dark ? .dark : .light, name: name, suffix: dark ? "dark" : "light")
     }
 
-    private func drawMainWindow(model: AppModel, window: MainWindowModel, look: Look, name: String, suffix: String? = nil) throws {
-        let whole = try image(looked(MainWindowView(window: window).environment(model).environment(AppRouting()), look),
-                              size: Self.window, appearance: look.appearance, titled: true)
+    private func drawMainWindow(model: AppModel, window: MainWindowModel, look: Look, name: String, suffix: String? = nil, size: CGSize = SnapshotTests.window, design: MorningReportDesign? = nil) throws {
+        let whole = try image(looked(MainWindowView(window: window).environment(model).environment(AppRouting()).environment(\.morningReportDesign, design), look),
+                              size: size, appearance: look.appearance, titled: true)
         let sidebar = try image(looked(sidebarView(model: model, window: window), look),
-                                size: CGSize(width: SidebarView.idealWidth, height: Self.window.height), appearance: look.appearance, titled: true)
+                                size: CGSize(width: SidebarView.idealWidth, height: size.height), appearance: look.appearance, titled: true)
         let composite = NSImage(size: whole.size, flipped: false) { rect in
             whole.draw(in: rect)
             sidebar.draw(in: CGRect(x: 0, y: 0, width: sidebar.size.width, height: sidebar.size.height))
@@ -327,5 +399,89 @@ struct SnapshotTests {
         let tiff = try #require(image.tiffRepresentation)
         let png = try #require(NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]))
         try png.write(to: Self.folder.appending(path: file))
+    }
+}
+
+/// One component drawn on its own, from the fixtures (the pieces PennantDesign's previews show).
+private struct ComponentSheet: View {
+    let name: String
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            switch name {
+            case "masthead":
+                if let summary = model.frontOffice.summary {
+                    MorningReportMasthead(summary: summary, record: model.catalogClub?.record, headline: Text(verbatim: DesignFixtures.served("Morning Report")))
+                        .environment(\.morningReportDesign, .fixture)
+                        .environment(\.mastheadTopInset, 52)
+                }
+            case "sections":
+                ChipRow(label: Text(verbatim: DesignFixtures.served("Since the last export")), chips: DesignFixtures.chips)
+                MagazineSection(kicker: Text(verbatim: DesignFixtures.served("The club")), title: Text(verbatim: DesignFixtures.served("How we win and lose")), trailing: DesignFixtures.served("Through July 13 · 89 games"))
+                HStack(spacing: 8) {
+                    ForEach(DesignFixtures.departmentCard.figures.indices, id: \.self) { i in
+                        MetricTile(Figure(DesignFixtures.departmentCard.figures[i], id: "f\(i)"))
+                    }
+                }
+                HStack(spacing: 14) {
+                    Pill(DesignFixtures.served("Urgent"), tone: .bad); Pill(DesignFixtures.served("Needs attention"), tone: .caution); Pill(DesignFixtures.served("Noted"), tone: .neutral)
+                    InlineBar(fraction: 0.62, text: "62%").frame(width: 200)
+                    Ring(fraction: 39 / 40)
+                    Sparkline(values: DesignFixtures.scoreboard.trend ?? [], label: DesignFixtures.served("Run differential over the last 20 games")).frame(width: 200)
+                }
+                HStack(spacing: 12) {
+                    ControlPips(.seasons(4, text: DesignFixtures.served("Through 2044"))); ControlPips(.clock(DesignFixtures.served("Arbitration this winter"))); ControlPips(.unknown(DesignFixtures.served("Not known")))
+                    RangeBar(range: DesignFixtures.positions[0].value, label: DesignFixtures.positions[0].valueText).frame(width: 120)
+                    RangeBar(range: nil, label: DesignFixtures.served("Not valued yet")).frame(width: 120)
+                }
+            case "places":
+                PlaceStrips(DesignFixtures.dimensions + [DesignFixtures.tooEarly], lines: DesignFixtures.placeLines)
+            case "roster":
+                RosterDiagram(DesignFixtures.positions).frame(height: 540)
+                RosterLegend()
+                HStack(alignment: .top, spacing: 24) {
+                    Card { StaffColumn(title: Text(verbatim: DesignFixtures.served("Rotation")), pitchers: DesignFixtures.rotation) }
+                    Card { StaffColumn(title: Text(verbatim: DesignFixtures.served("Bullpen")), pitchers: DesignFixtures.bullpen) }
+                }
+            case "rows":
+                HStack(alignment: .top, spacing: 24) {
+                    RowGroup {
+                        DeskRow(DesignFixtures.deskItem, compact: true)
+                        Divider()
+                        DeskRow(DesignFixtures.deskItem)
+                    }
+                    VStack(spacing: 12) {
+                        DepartmentTile(DesignFixtures.departmentCard, symbol: "baseball", open: {})
+                        RowGroup {
+                            DepartmentPlaceholderRow(DesignFixtures.notYetCard, symbol: "binoculars")
+                            Divider()
+                            DepartmentPlaceholderRow(DesignFixtures.notYetCard, symbol: "arrow.left.arrow.right")
+                        }
+                    }
+                    .frame(width: 340)
+                }
+                RowGroup {
+                    ForEach(DesignFixtures.wire) { item in
+                        WireRow(item)
+                        if item.id != DesignFixtures.wire.last?.id { Divider() }
+                    }
+                }
+            case "basis":
+                HStack(alignment: .top, spacing: 24) {
+                    BasisPopover(claim: DesignFixtures.dimensions[3].claim)
+                        .background(.background, in: .rect(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color(nsColor: .separatorColor)))
+                    EvidenceView(claim: DesignFixtures.positions[0].claim).frame(width: 320, height: 560)
+                        .background(.background.secondary)
+                }
+            default:
+                CommandPalette(entries: DesignFixtures.paletteEntries, query: .constant("rep"), open: { _ in }, dismiss: {})
+                    .padding(.top, 40)
+            }
+        }
+        .padding(28)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(.background)
     }
 }

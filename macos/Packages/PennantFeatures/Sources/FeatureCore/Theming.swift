@@ -1,4 +1,5 @@
 import AppKit
+import PennantAPI
 import PennantDesign
 import PennantKit
 import SwiftUI
@@ -25,6 +26,11 @@ extension AppModel {
 public enum ServedImages {
     private static var cache: [String: NSImage] = [:]
 
+    /// Keeps a picture for a path without fetching it (a preview or a snapshot standing in for the server).
+    public static func preload(_ path: String, image: NSImage) {
+        cache[path] = image
+    }
+
     public static func image(_ path: String?, model: AppModel) async -> Image? {
         guard let path else { return nil }
         if let cached = cache[path] { return Image(nsImage: cached) }
@@ -34,37 +40,73 @@ public enum ServedImages {
     }
 }
 
-/// A view's masthead for the current club (SWIFTUI_REBUILD.md section 3.4): the view's served title and line, with
-/// the club's served name and record and the theme's logo and art. Nothing on it is written here; with no club served
-/// it shows the title and line alone.
-public struct ClubMasthead: View {
+/// A view's masthead for the current club, set like a magazine (SWIFTUI_REBUILD.md sections 3.4 and 3.7): the club's
+/// served name leads the kicker, then the caller's served parts (the game date, how current, who prepared it); the
+/// served headline; a served claim as the deck; the caller's box score and control; the theme's art. Nothing on it is
+/// written here; with no club served the kicker is the caller's parts alone.
+public struct ClubMagazineMasthead<Figures: View, Control: View>: View {
     @Environment(AppModel.self) private var model
     @Environment(\.theme) private var theme
-    private let title: Text
-    private let line: String?
-    private let lineHint: String?
-    @State private var logo: Image?
+    private let kicker: [String?]
+    private let kickerHint: String?
+    private let headline: Text
+    private let deck: Components.Schemas.Claim?
+    private let deckText: String?
+    private let deckHint: String?
+    private let figures: () -> Figures
+    private let control: () -> Control
     @State private var art: Image?
 
-    public init(title: Text, line: String? = nil, lineHint: String? = nil) {
-        self.title = title
-        self.line = line
-        self.lineHint = lineHint
+    public init(
+        kicker: [String?],
+        kickerHint: String? = nil,
+        headline: Text,
+        deck: Components.Schemas.Claim? = nil,
+        @ViewBuilder figures: @escaping () -> Figures,
+        @ViewBuilder control: @escaping () -> Control = { EmptyView() }
+    ) {
+        self.kicker = kicker
+        self.kickerHint = kickerHint
+        self.headline = headline
+        self.deck = deck
+        deckText = deck?.text
+        deckHint = deck?.hint
+        self.figures = figures
+        self.control = control
+    }
+
+    /// With a served lede that is not a claim of its own (its help tag says where it comes from).
+    public init(
+        kicker: [String?],
+        kickerHint: String? = nil,
+        headline: Text,
+        deckText: String?,
+        deckHint: String?,
+        @ViewBuilder figures: @escaping () -> Figures,
+        @ViewBuilder control: @escaping () -> Control = { EmptyView() }
+    ) {
+        self.kicker = kicker
+        self.kickerHint = kickerHint
+        self.headline = headline
+        deck = nil
+        self.deckText = deckText
+        self.deckHint = deckHint
+        self.figures = figures
+        self.control = control
     }
 
     public var body: some View {
-        let club = model.catalogClub
-        Masthead(
-            title: title,
-            club: club?.name,
-            record: club?.record.display,
-            recordHint: club?.record.hint,
-            line: line,
-            lineHint: lineHint,
-            logo: logo,
-            art: art
+        MagazineMasthead(
+            kicker: [model.catalogClub?.name] + kicker,
+            kickerHint: kickerHint,
+            headline: headline,
+            deck: deckText,
+            deckHint: deckHint,
+            deckClaim: deck,
+            art: art,
+            figures: figures,
+            control: control
         )
-        .task(id: theme.logo) { logo = await ServedImages.image(theme.logo, model: model) }
         .task(id: theme.art) { art = await ServedImages.image(theme.art, model: model) }
     }
 }

@@ -302,4 +302,84 @@ final class PennantUITests: XCTestCase {
         try shellFlow(app, look: "sunset-series-dark-increased-contrast")
         quitCleanly(app)
     }
+
+    // MARK: The design language (N5, Stage B)
+
+    /// The design on the Morning Report: the ⌘K palette opens a department's report by keyboard, a claim's basis opens
+    /// on a click and pins to the inspector, Whole Desk is in the toolbar, and the audit passes with the sidebar
+    /// unfolded and the inspector open.
+    @MainActor
+    func testDesignPaletteBasisAndInspector() throws {
+        let app = launch()
+        waitForShell(app)
+        app.typeKey("1", modifierFlags: .command)
+        XCTAssertTrue(element(app, "morningReport.desk").waitForExistence(timeout: 20), "the Morning Report's desk did not load")
+        XCTAssertTrue(element(app, "masthead").waitForExistence(timeout: 5))
+
+        // ⌘K: the palette, its query, the arrow keys and Return
+        app.typeKey("k", modifierFlags: .command)
+        let query = element(app, "palette.query")
+        XCTAssertTrue(query.waitForExistence(timeout: 5), "⌘K did not open the palette")
+        query.typeText("major")
+        XCTAssertTrue(element(app, "palette.result.view.majorLeague.report").waitForExistence(timeout: 5), "the palette did not list Major League Ops' report")
+        sidebarAtTop(app)
+        keep(app.windows.firstMatch.screenshot(), named: "design-palette")
+        try audit(app, named: "accessibility-audit-design-palette")
+        query.typeKey(.return, modifierFlags: [])
+        XCTAssertTrue(element(app, "detail.majorLeague.report").waitForExistence(timeout: 10), "Return did not open the palette's first result")
+        XCTAssertTrue(element(app, "palette").waitForNonExistence(timeout: 5), "the palette stayed open")
+        keep(app.windows.firstMatch.screenshot(), named: "design-report")
+        try audit(app, named: "accessibility-audit-design-report")
+
+        // Escape closes the palette without opening anything
+        app.typeKey("k", modifierFlags: .command)
+        XCTAssertTrue(element(app, "palette").waitForExistence(timeout: 5))
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(element(app, "palette").waitForNonExistence(timeout: 5), "Escape did not close the palette")
+
+        // A claim's basis: a click opens the popover; Pin to Inspector shows it in the inspector's evidence tab
+        app.typeKey("1", modifierFlags: .command)
+        XCTAssertTrue(element(app, "morningReport.desk").waitForExistence(timeout: 20))
+        let claim = app.descendants(matching: .any)["morningReport.desk"].firstMatch.descendants(matching: .any)["claim"].firstMatch
+        XCTAssertTrue(claim.waitForExistence(timeout: 5), "no claim on the desk")
+        claim.click()
+        XCTAssertTrue(element(app, "basis.popover").waitForExistence(timeout: 5), "the click did not open the basis")
+        keep(app.windows.firstMatch.screenshot(), named: "design-basis-popover")
+        let pin = element(app, "basis.pin")
+        XCTAssertTrue(pin.waitForExistence(timeout: 5), "the popover offers no Pin to Inspector")
+        pin.click()
+        XCTAssertTrue(element(app, "inspector.evidence").waitForExistence(timeout: 10), "the pinned claim did not reach the inspector")
+        sidebarAtTop(app)
+        keep(app.windows.firstMatch.screenshot(), named: "design-inspector-evidence")
+        try audit(app, named: "accessibility-audit-design-inspector")
+        app.typeKey("i", modifierFlags: [.command, .option])
+        XCTAssertTrue(element(app, "inspector").waitForNonExistence(timeout: 5))
+
+        // Whole Desk is a toolbar item, and nothing floats over the content
+        let wholeDesk = element(app, "morningReport.wholeDesk")
+        XCTAssertTrue(wholeDesk.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.toolbars.firstMatch.descendants(matching: .any)["morningReport.wholeDesk"].firstMatch.exists, "Whole Desk is not in the toolbar")
+        wholeDesk.click()
+        XCTAssertTrue(element(app, "detail.frontOffice.report").waitForExistence(timeout: 10), "Whole Desk did not open the Front Office's report")
+        quitCleanly(app)
+    }
+
+    /// The example art pack (`docs/theme-packs/aurora-nights`) chosen before launch: the masthead wears its colours and
+    /// its art, in light and in dark, each audited.
+    @MainActor
+    func testDesignArtPackLight() throws {
+        let app = launch()
+        try shellFlow(app, look: "aurora-nights-light")
+        quitCleanly(app)
+    }
+
+    @MainActor
+    func testDesignArtPackDark() throws {
+        var app = launch()
+        try shellFlow(app, look: "aurora-nights-dark")
+        quitCleanly(app)
+        app = launch(arguments: ["-PennantDebugAppearance", "increasedContrastDark"])
+        try shellFlow(app, look: "aurora-nights-dark-increased-contrast")
+        quitCleanly(app)
+    }
 }

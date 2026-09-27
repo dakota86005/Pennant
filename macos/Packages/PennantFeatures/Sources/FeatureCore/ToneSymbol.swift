@@ -1,9 +1,9 @@
 import PennantAPI
+import PennantDesign
 import SwiftUI
 
-/// The symbol beside a served line, from its served tone: a different shape for each tone, so colour is never the only
-/// signal (SWIFTUI_REBUILD.md section 2). Decorative: the served words beside it say the same thing to VoiceOver.
-/// (The design system's tone colours arrive with N5; this is the shell's stand-in until then.)
+/// The symbol beside a served line, from its served tone: the design's tone symbols (a different shape for each tone,
+/// so colour is never the only signal). Decorative: the served words beside it say the same thing to VoiceOver.
 public struct ToneSymbol: View {
     let tone: Components.Schemas.Tone?
 
@@ -12,17 +12,8 @@ public struct ToneSymbol: View {
     }
 
     public var body: some View {
-        let (name, style): (String, Color) = switch tone?.value1 {
-        case .good: ("checkmark.circle.fill", .green)
-        case .bad: ("exclamationmark.octagon.fill", .red)
-        case .caution: ("exclamationmark.triangle.fill", .orange)
-        case .unknown: ("questionmark.circle", .secondary)
-        case .neutral, nil: ("circle.fill", .secondary)
-        }
-        Image(systemName: name)
-            // A neutral line is marked by a small dot, never an empty ring that reads as a radio button
+        ToneMark(served: tone)
+            // A neutral line is marked small, never a large ring that reads as a control
             .imageScale(tone?.value1 == .neutral || tone == nil ? .small : .medium)
-            .foregroundStyle(style)
-            .accessibilityHidden(true)
     }
 }

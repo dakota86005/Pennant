@@ -2,7 +2,7 @@ import AppKit
 import PennantAPI
 import SwiftUI
 
-/// The theme a club wears (SWIFTUI_REBUILD.md section 3.7, D-061): the served theme pack's colours for each appearance,
+/// The theme a club wears (SWIFTUI_REBUILD.md section 3.7, D-062): the served theme pack's colours for each appearance,
 /// ready to draw. Every coloured piece (the masthead, the club card, the tinted floating control, chart accents later)
 /// reads the theme in the environment (`\.theme`), never a colour of its own.
 ///
@@ -160,7 +160,50 @@ nonisolated public struct Theme: Sendable, Equatable {
     }
 }
 
+extension Theme.Palette {
+    /// How strong a tonal wash is: a card's fill, a chip's, or the field of the roster diagram.
+    public enum Wash: Sendable {
+        case card, chip, field, fieldInner
+
+        /// The accent's opacity in light and in dark (the design sample's values: about 7% and 13% on a card).
+        var opacity: (light: Double, dark: Double) {
+            switch self {
+            case .card: (0.07, 0.13)
+            case .chip: (0.09, 0.16)
+            case .field: (0.07, 0.13)
+            case .fieldInner: (0.09, 0.16)
+            }
+        }
+    }
+
+    /// The pack's accent washed into a fill (SWIFTUI_REBUILD.md section 3.7, the tonal packs): the cards, the chips and
+    /// the roster diagram's field take the club's colour faintly, from the served accent, never a colour of Swift's own.
+    /// A neutral palette washes nothing: the system's grouped fill instead.
+    public func wash(_ wash: Wash, in scheme: ColorScheme) -> Color {
+        if isNeutral { return Color(nsColor: .quaternarySystemFill) }
+        let opacity = wash.opacity
+        return accent.opacity(scheme == .dark ? opacity.dark : opacity.light)
+    }
+
+    /// The accent as a line or a mark on the content (a hairline leader, a node), at the strength that reads in the appearance.
+    public func accentLine(in scheme: ColorScheme) -> Color {
+        accent.opacity(scheme == .dark ? 0.55 : 0.45)
+    }
+}
+
+/// Concentric corners (SWIFTUI_REBUILD.md section 3.7): a card of radius `card` with `cardPadding` inside gives its
+/// children radius `inner`, so the corners share a centre.
+public enum Corner {
+    public static let card: CGFloat = 16
+    public static let cardPadding: CGFloat = 14
+    public static var inner: CGFloat { card - cardPadding }
+}
+
 extension EnvironmentValues {
+    /// The content column's width (the window less the sidebar and the inspector), set by `MastheadScrollView`, so a
+    /// page can choose its layout (the lead and side columns stack below 1080 points).
+    @Entry public var contentWidth: CGFloat = 1160
+
     /// The theme the current club wears (set by the main window from the served catalog); neutral where none is set.
     @Entry public var theme: Theme = .neutral
 

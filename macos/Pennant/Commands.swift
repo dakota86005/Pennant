@@ -24,6 +24,11 @@ struct PennantCommands: Commands {
             }
             .keyboardShortcut("i", modifiers: [.command, .option])
             .disabled(!can.inspector)
+            Button("Find Anything…") {
+                window?.togglePalette()
+            }
+            .keyboardShortcut("k", modifiers: .command)
+            .disabled(!can.findAnything)
         }
 
         CommandMenu("Go") {

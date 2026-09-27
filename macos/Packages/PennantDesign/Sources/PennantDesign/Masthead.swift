@@ -117,6 +117,10 @@ struct MastheadBackground: View {
     let topInset: CGFloat
     let art: Image?
 
+    /// Where the art may begin, from the leading edge: past the text column (640 points of deck plus the padding), or
+    /// half the width, whichever is further, so no text ever sits on the art.
+    static let artStart: CGFloat = 680
+
     var body: some View {
         let stops = palette.masthead.count == 1 ? palette.masthead + palette.masthead : palette.masthead
         let band = topInset + Masthead.fade
@@ -124,24 +128,38 @@ struct MastheadBackground: View {
         ZStack(alignment: .top) {
             LinearGradient(colors: stops, startPoint: .topLeading, endPoint: .bottomTrailing)
             if let art {
-                art.resizable().scaledToFill()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
-                    .mask(LinearGradient(colors: [.clear, .black], startPoint: .leading, endPoint: .trailing))
-                    .accessibilityHidden(true)
+                GeometryReader { proxy in
+                    let start = max(Self.artStart, proxy.size.width * 0.5) / max(1, proxy.size.width)
+                    art.resizable().scaledToFill()
+                        .frame(width: proxy.size.width, height: proxy.size.height, alignment: .trailing)
+                        .clipped()
+                        .mask(LinearGradient(stops: [
+                            .init(color: .clear, location: min(1, start)),
+                            .init(color: .black, location: min(1, start + 0.25)),
+                        ], startPoint: .leading, endPoint: .trailing))
+                }
+                .accessibilityHidden(true)
             }
             // Nothing to hold where no toolbar sits above (a preview)
             if topInset > 0 {
-                LinearGradient(
-                    stops: [
-                        .init(color: palette.mastheadTop, location: 0),
-                        .init(color: palette.mastheadTop, location: hold),
-                        .init(color: palette.mastheadTop.opacity(0), location: 1),
-                    ],
-                    startPoint: .top, endPoint: .bottom
-                )
-                .frame(height: band)
+                LinearGradient(stops: Self.fadeStops(top: palette.mastheadTop, into: stops[0], hold: hold), startPoint: .top, endPoint: .bottom)
+                    .frame(height: band)
             }
         }
+    }
+
+    /// The top colour held under the toolbar, then faded into the club's colour: each step is mixed towards the
+    /// club's colour perceptually before its opacity falls, so a near-white top over a navy never passes through a
+    /// grey mid-way (the alpha blend alone did, in Stage A's light masthead).
+    static func fadeStops(top: Color, into club: Color, hold: Double) -> [Gradient.Stop] {
+        var stops: [Gradient.Stop] = [.init(color: top, location: 0), .init(color: top, location: hold)]
+        let steps = 6
+        for step in 1...steps {
+            let t = Double(step) / Double(steps)
+            let mixed = top.mix(with: club, by: t, in: .perceptual)
+            stops.append(.init(color: mixed.opacity(1 - t), location: hold + (1 - hold) * t))
+        }
+        return stops
     }
 }
 
@@ -178,6 +196,7 @@ public struct MastheadScrollView<Header: View, Content: View, Actions: View>: Vi
                     header.environment(\.mastheadTopInset, proxy.safeAreaInsets.top)
                     content
                 }
+                .environment(\.contentWidth, proxy.size.width)
             }
             .ignoresSafeArea(edges: .top)
             .scrollEdgeEffectStyle(.soft, for: .top)

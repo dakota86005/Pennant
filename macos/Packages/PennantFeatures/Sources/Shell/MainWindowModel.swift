@@ -1,5 +1,6 @@
 import FeatureCore
 import Observation
+import PennantAPI
 import PennantKit
 import SwiftUI
 
@@ -17,6 +18,11 @@ public final class MainWindowModel {
     public var expanded: Set<DeptID>
     /// The search field (a stub until search arrives).
     public var searchText = ""
+    /// The ⌘K palette: whether it is up, and what is typed in it.
+    public var paletteShown = false
+    public var paletteQuery = ""
+    /// The claim pinned to the inspector's evidence tab (SWIFTUI_REBUILD.md section 3.3); nil when none is.
+    public var pinnedClaim: Components.Schemas.Claim?
 
     public init(
         registry: DepartmentRegistry,
@@ -76,6 +82,18 @@ public final class MainWindowModel {
 
     public func toggleInspector() { inspectorPresented.toggle() }
 
+    /// Pins a claim to the inspector's evidence tab and shows the inspector.
+    public func pin(_ claim: Components.Schemas.Claim) {
+        pinnedClaim = claim
+        inspectorPresented = true
+    }
+
+    /// View ▸ Find Anything… (⌘K): the palette, its query cleared each time it opens.
+    public func togglePalette() {
+        paletteShown.toggle()
+        if paletteShown { paletteQuery = "" }
+    }
+
     public func isExpanded(_ id: DeptID) -> Binding<Bool> {
         Binding(
             get: { self.expanded.contains(id) },
@@ -121,4 +139,5 @@ extension FocusedValues {
 extension MainWindowModel: RouteOpening {
     public func canOpen(_ route: AppRoute) -> Bool { registry.contains(route) }
     public func open(_ route: AppRoute) { go(to: route) }
+    public func department(_ id: DeptID) -> Department? { registry.department(id) }
 }

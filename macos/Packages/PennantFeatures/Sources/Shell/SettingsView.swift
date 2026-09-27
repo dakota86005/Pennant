@@ -279,16 +279,13 @@ struct DataStatusSection: View {
     var body: some View {
         Section("Data status") {
             if let status = dataStatus {
-                HStack {
-                    Label {
-                        Text(verbatim: status.headline.text).font(.headline)
-                    } icon: {
-                        ToneSymbol(tone: status.headline.tone)
+                // The reasons, where the save was found and what the log reader said: the basis, one click away
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    ToneSymbol(tone: status.headline.tone)
+                    ClaimText(status.headline, edge: .trailing) {
+                        Text(verbatim: status.headline.text).font(.headline).multilineTextAlignment(.leading)
                     }
-                    .help(detail: status.headline.hint)
-                    Spacer()
-                    // The reasons, where the save was found and what the log reader said: the breakdown, one click away
-                    BasisButton(basis: status.headline.basis)
+                    .accessibilityIdentifier("settings.dataStatus.headline")
                 }
                 if let action = status.action {
                     Label { Text(verbatim: action.display) } icon: { Image(systemName: "arrow.forward.circle") }
@@ -331,7 +328,7 @@ struct DataStatusSection: View {
 
 /// System, Light or Dark (the served `theme`, applied to every window once the server has saved it), and the club's
 /// colours: whether to draw team colours at all (the served `useTeamColors`), and which theme the current club wears,
-/// its own colours or an installed theme pack, each with a preview in its own colours (D-061).
+/// its own colours or an installed theme pack, each with a preview in its own colours (D-062).
 struct AppearanceSettings: View {
     @Environment(AppModel.self) private var model
     @State private var problem: RequestProblem?

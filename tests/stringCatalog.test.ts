@@ -122,9 +122,28 @@ describe('the Mac app\'s structural labels', () => {
     expect(sources.flatMap((file) => structuralLiterals(fs.readFileSync(file, 'utf8'))).length).toBeGreaterThan(50);
   });
 
+  /**
+   * A label with an interpolation (`Open in \(name)`, `\(count) to decide`) is keyed by SwiftUI with a format
+   * specifier in its place (`Open in %@`, `%lld to decide`), so it is looked up as one.
+   */
+  const inCatalog = (text: string): boolean => {
+    if (keys.has(text)) return true;
+    if (!text.includes('\\(')) return false;
+    const pattern = new RegExp(
+      '^' + text.split(/\\\((?:[^()]|\([^()]*\))*\)/).map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('%(?:@|lld|ld|d|\\.\\d+f)') + '$',
+    );
+    return [...keys].some((key) => pattern.test(key));
+  };
+
+  it('looks a label with an interpolation up by its format key', () => {
+    expect(inCatalog('Open in \\(name)')).toBe(keys.has('Open in %@'));
+    expect(inCatalog('\\(count) to decide')).toBe(keys.has('%lld to decide'));
+    expect(inCatalog('Nothing \\(here)')).toBe(false);
+  });
+
   // The packages' views look their labels up in the app's bundle, so every label lives in the app's one catalog
   it.each(sources)('%s: every label is in the app\'s String Catalog', (file) => {
-    const missing = structuralLiterals(fs.readFileSync(file, 'utf8')).filter((text) => !keys.has(text));
+    const missing = structuralLiterals(fs.readFileSync(file, 'utf8')).filter((text) => !inCatalog(text));
     expect(missing).toEqual([]);
   });
 

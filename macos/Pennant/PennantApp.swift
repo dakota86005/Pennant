@@ -1,4 +1,5 @@
 import FeatureCore
+import PennantAPI
 import PennantKit
 import Shell
 import SwiftUI
@@ -20,6 +21,17 @@ struct PennantApp: App {
         .commands {
             PennantCommands(model: appDelegate.model, routing: appDelegate.routing, registry: AppRegistry.shared)
         }
+
+        // A basis detached from its popover (SWIFTUI_REBUILD.md section 3.3): a floating panel the GM keeps open while
+        // working, one per claim
+        WindowGroup("Basis", for: Components.Schemas.Claim.self) { claim in
+            BasisPanelScene(claim: claim.wrappedValue)
+                .environment(appDelegate.model)
+        }
+        .windowResizability(.contentSize)
+        .windowLevel(.floating)
+        .restorationBehavior(.disabled)
+        .defaultSize(width: 380, height: 520)
 
         Window("Set Up Pennant", id: SceneID.setup) {
             SetupScene()
