@@ -37,6 +37,16 @@ material implementation state changes.
   and otherwise asks; a first run chooses and imports that save without a question (`POST /api/v2/setup/automatic`)
   and follows the save's one human club; `/api/status` says when another save has been played since the chosen one.
   It still accepts a selected save, `.lg` directory, saved-games directory, or CSV export directory.
+- Keeps rating history per save, not per save name (D-064, `historyIdentity.ts`): a save's history key is its folder
+  (D-063's id) checked against its players, so two saves named "New Game" never read each other's ratings as
+  development, and a save moved or renamed in OOTP keeps its history when exactly one gone history has its players.
+  Snapshots, their rating-kind stamps, trends, observed history, the Development routes and the roster-state
+  comparator all read the key. History filed under the save's name before D-064 is brought over once per save, only
+  where it is certainly that save's (its players, not after its date, no same-named save with an export that also
+  matches), after a copy of `history.db` in `backups/history-before-save-identity-<time>.db`; what is left unused is
+  said on the data status. On a scratch copy of the owner's Electron data folder's history (2026-09-27) every row
+  would be brought over: both names there ("New Game 5", 4 dates, 42,509 rows; "New Game 6", 4 dates, 31,871 rows) are
+  each carried by one known save whose export has every one of their players.
 - Imports all available CSVs into SQLite with delimiter/encoding detection,
   numeric conversion, schema discovery, progress reporting, and generated
   indexes, all or nothing (N3.5, D-061): a worker thread builds `league.next.db`
@@ -1021,6 +1031,13 @@ There is no shared server-side organization-context resolver yet. Automatic
 resolution across all organization-specific features is future work.
 
 ## Known gaps and constraints
+
+- Rating history per save (D-064) left for later: the watchlist and player notes are still filed under the save's name
+  (two saves of one name share them); the per-save fits keep D-053's identity (the name and a league fingerprint), so
+  two saves named alike and started from the same real-life database share their fits; snapshots the Mac app takes are
+  not seen by a rolled-back Electron build; a save renamed before D-064 leaves its earlier history under the old name,
+  unused; two saves of one real-life database with fewer than one generated player in a thousand among those compared
+  cannot be told apart.
 
 - The import (N3.5) left for later: the Mac app's side of discovery (Setup's zero-question path, the "played since"
   prompt, the in-place update banner) is a later stage and uses what B2 serves; whether OOTP has a save open now is not

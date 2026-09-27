@@ -166,6 +166,14 @@ irreplaceable files in `backups/pre-swiftui-<date>/` (`history.db`, `settings.js
 either with the Mac app's Settings ▸ Restore backup or by copying the files back into the data folder. A key saved only
 in the Mac app's Keychain item is not in the Electron app; enter it again there.
 
+Rating history is kept per save since D-064, in new tables the Electron app doesn't read; its own name-keyed history
+is untouched, so it reads the folder as it was, but snapshots the Mac app took since are not in it. The first time the
+server brought earlier rating history over into the new tables it copied `history.db` to
+`backups/history-before-save-identity-<time>.db`. To undo that change alone, quit both apps and copy that file back
+as `history.db` (removing any `history.db-wal` and `history.db-shm` beside it). Nothing brought over survives the
+restore, and neither does anything written since (the Mac app's snapshots, fits and notes); the next start reviews the
+earlier history again.
+
 Undoing the cutover after it merges is `git revert` of that one PR.
 
 ### The sidecar
