@@ -9,7 +9,7 @@ import { warmFrontOffice } from './frontOfficeService.js';
 import { APP_ROOT, DATA_DIR, loadConfig } from './config.js';
 import { checkExport, startWatcher, stopWatcher } from './watcher.js';
 import { closeLeagueDatabase, prepareLeagueDatabase, tableExists } from './db.js';
-import { currentRatingMode, historyDb, snapshotDates, stampSnapshotMode, takeSnapshot } from './history.js';
+import { baselineSnapshot, historyDb } from './history.js';
 import { loadSettings } from './settings.js';
 import { startSaveWatch, stopSaveWatch } from './saveDiscovery.js';
 import { warmTransactionLog } from './dataStatus.js';
@@ -137,11 +137,7 @@ function bootstrapData(): void {
   try {
     // Ensure development tracking has a baseline for already-imported data
     // (none for an export that carries no ratings; stamped with the kind the export carries, N3.5)
-    const mode = currentRatingMode();
-    if (tableExists('players') && snapshotDates().length === 0 && mode?.mode !== 'none') {
-      const snapshot = takeSnapshot();
-      if (snapshot) stampSnapshotMode(snapshot.gameDate, mode, null);
-    }
+    baselineSnapshot();
   } catch (err) {
     console.error('[history] baseline snapshot failed:', err);
   }

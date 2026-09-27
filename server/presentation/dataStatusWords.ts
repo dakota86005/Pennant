@@ -17,6 +17,7 @@ import { timestampWords } from '../timeWords.js';
 import { basis, cell, claim, row } from './claim.js';
 import { RATING_MODE_WORDS } from '../ratingMode.js';
 import { leftOutDetail, leftOutNote } from './importWords.js';
+import { ratingHistoryNoteClaim } from './ratingHistoryWords.js';
 
 /** A game date as served (unpadded, as OOTP writes it, or null) and as the app shows it. */
 export interface GameDateText {
@@ -239,21 +240,7 @@ export function dataStatusView(s: DataStatus): DataStatusView {
 
 /** What became of this save's rating history, when some isn't used or it started fresh (D-064). */
 function ratingHistoryCell(s: DataStatus): Claim | null {
-  const history = s.history;
-  if (!history?.note) return null;
-  return claim({
-    text: history.note,
-    tone: 'caution',
-    hint: 'Each save keeps its own rating history, so two saves are never compared',
-    basis: basis({
-      because: history.because.map((line) => ({ label: 'Rating history', value: line })),
-      source: { department: 'frontOffice', specialist: 'Data status', asOf: s.csv.importedAt, gameDate: s.csv.currentDate },
-      unknown: [],
-      wouldChange: [],
-      lean: null,
-      certainty: 'fact',
-    }),
-  });
+  return s.history ? ratingHistoryNoteClaim(s.history) : null;
 }
 
 /** Why the kind of ratings is not known, when it is not (D-061). */

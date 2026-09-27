@@ -4,7 +4,7 @@ import path from 'node:path';
 import { db as leagueDb, importRecord, tableExists } from './db.js';
 import { DATA_DIR, loadConfig } from './config.js';
 import { isModeSwitch, RATING_MODE_WORDS, type RatingMode, type RatingModeRecord } from './ratingMode.js';
-import { currentHistoryKey, historyNote } from './historyIdentity.js';
+import { currentHistoryKey, historyNote, servedLeagueCertain } from './historyIdentity.js';
 
 /**
  * Persistent store that SURVIVES reimports (league.db is rebuilt on every
@@ -104,9 +104,12 @@ historyDb.exec(`
  * Rating history keyed by the save's identity (D-064), not its name. Two saves can share a name (OOTP names every new
  * league "New Game"), and `rating_snapshots` is keyed by the name, so two such saves would read each other's ratings as
  * development, and a snapshot of one on a date the other also has would overwrite part of the other's. These tables are
- * new and additive: the tables above stay exactly as they are, the earlier (Electron) build keeps reading and writing
- * them under the name, and this build reads and writes only these. The earlier rows are brought over for a save only
- * where they are certainly its own (`historyIdentity.ts`); the rest stay where they are, unused.
+ * new and additive: the tables above keep their shape and meaning, and the earlier (Electron) build keeps reading and
+ * writing them under the name. This build reads only these; it writes each snapshot here AND, as the earlier build
+ * would, under the name (so a rolled-back Electron build still sees it; its own same-name defect stays its own). The
+ * earlier rows are brought over for a save only where they are certainly its own (`historyIdentity.ts`); the rest stay
+ * where they are, unused. `history_dual_writes` names the dates this build wrote under a name, which are never taken
+ * for earlier history; `history_offer_choices` records the GM's answer to "is this the save that used to be at...?".
  *
  * `history_saves` names each save's history (its key, the folder it was last seen in, and why it began), and
  * `history_legacy_review` records, for each save and each date of the name-keyed history, whether its rows were brought
@@ -179,6 +182,20 @@ historyDb.exec(`
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS history_dual_writes (
+    save_name TEXT NOT NULL,
+    game_date TEXT NOT NULL,
+    save_key TEXT NOT NULL,
+    written_at TEXT NOT NULL,
+    PRIMARY KEY (save_name, game_date)
+  );
+  CREATE TABLE IF NOT EXISTS history_offer_choices (
+    save_key TEXT NOT NULL,
+    candidate_key TEXT NOT NULL,
+    choice TEXT NOT NULL,
+    chosen_at TEXT NOT NULL,
+    PRIMARY KEY (save_key, candidate_key)
+  );
 `);
 
 /**
@@ -188,16 +205,27 @@ historyDb.exec(`
  */
 export function stampSnapshotMode(gameDate: string, record: RatingModeRecord | null, importStartedAt: string | null): void {
   if (!record) return;
-  historyDb
-    .prepare(
-      `INSERT OR REPLACE INTO save_rating_snapshot_modes
-       (save_key, game_date, mode, additional_scouted, source, import_started_at, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
-    )
-    .run(
-      currentHistoryKey(), gameDate, record.mode,
-      record.additionalScouted === null || record.additionalScouted === undefined ? null : record.additionalScouted ? 1 : 0,
-      record.source ?? null, importStartedAt, new Date().toISOString(),
-    );
+  const values = [
+    gameDate, record.mode,
+    record.additionalScouted === null || record.additionalScouted === undefined ? null : record.additionalScouted ? 1 : 0,
+    record.source ?? null, importStartedAt, new Date().toISOString(),
+  ];
+  const saveKey = currentHistoryKey();
+  historyDb.transaction(() => {
+    historyDb
+      .prepare(
+        `INSERT OR REPLACE INTO save_rating_snapshot_modes
+         (save_key, game_date, mode, additional_scouted, source, import_started_at, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(saveKey, ...values);
+    // And under the name, as the earlier build writes it, so a rolled-back Electron build reads it (D-064)
+    historyDb
+      .prepare(
+        `INSERT OR REPLACE INTO rating_snapshot_modes
+         (save_name, game_date, mode, additional_scouted, source, import_started_at, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(currentSaveName(), ...values);
+  })();
 }
 
 /** The recorded rating mode of each snapshot date of this save (dates as the snapshots store them); unrecorded dates are absent. */
@@ -303,6 +331,7 @@ export function takeSnapshot(): { gameDate: string; players: number } | null {
   const gameDate = leagueGameDate();
   if (!gameDate) return null;
   const saveKey = currentHistoryKey();
+  const saveName = currentSaveName();
 
   // The split and running columns are read where the export has them; a missing one is stored as unknown (NULL), never guessed
   const battingColumns = new Set(tableExists('players_batting') ? (leagueDb.prepare(`PRAGMA table_info(players_batting)`).all() as Array<{ name: string }>).map((c) => c.name) : []);
@@ -333,13 +362,20 @@ export function takeSnapshot(): { gameDate: string; players: number } | null {
     )
     .all() as Array<Record<string, number | string | null>>;
 
-  const insert = historyDb.prepare(
-    `INSERT OR REPLACE INTO save_rating_snapshots
-     (save_key, game_date, player_id, name, team_id, org_id, level, position, age,
+  const insertInto = (table: string, keyColumn: string) => historyDb.prepare(
+    `INSERT OR REPLACE INTO ${table}
+     (${keyColumn}, game_date, player_id, name, team_id, org_id, level, position, age,
       con, gap, pow, eye, avk, spd, conP, gapP, powP, eyeP, avkP,
       stu, mov, ctl, stuP, movP, ctlP, cur, pot,
       ${[...SNAPSHOT_SPLIT_COLUMNS, ...SNAPSHOT_RUNNING_COLUMNS].join(', ')})
      VALUES (${new Array(28 + SNAPSHOT_SPLIT_COLUMNS.length + SNAPSHOT_RUNNING_COLUMNS.length).fill('?').join(', ')})`
+  );
+  const insert = insertInto('save_rating_snapshots', 'save_key');
+  // The same snapshot under the save's name, exactly as the earlier (Electron) build writes it, so a rolled-back build
+  // still has it (D-064); the date is recorded as this build's own, never taken for earlier history
+  const insertByName = insertInto('rating_snapshots', 'save_name');
+  const dualWrite = historyDb.prepare(
+    `INSERT OR REPLACE INTO history_dual_writes (save_name, game_date, save_key, written_at) VALUES (?, ?, ?, ?)`
   );
   const avg = (vals: Array<number | string | null>): number | null => {
     const nums = vals.filter((v): v is number => typeof v === 'number');
@@ -352,17 +388,34 @@ export function takeSnapshot(): { gameDate: string; players: number } | null {
       const pot = isPitcher
         ? avg([r.stuP, r.movP, r.ctlP])
         : avg([r.conP, r.gapP, r.powP, r.eyeP, r.avkP]);
-      insert.run(
-        saveKey, gameDate, r.player_id, r.name, r.team_id, r.org_id, r.level, r.position, r.age,
+      const values = [
+        gameDate, r.player_id, r.name, r.team_id, r.org_id, r.level, r.position, r.age,
         r.con, r.gap, r.pow, r.eye, r.avk, r.spd, r.conP, r.gapP, r.powP, r.eyeP, r.avkP,
         r.stu, r.mov, r.ctl, r.stuP, r.movP, r.ctlP, cur, pot,
-        ...[...SNAPSHOT_SPLIT_COLUMNS, ...SNAPSHOT_RUNNING_COLUMNS].map((c) => r[c] ?? null)
-      );
+        ...[...SNAPSHOT_SPLIT_COLUMNS, ...SNAPSHOT_RUNNING_COLUMNS].map((c) => r[c] ?? null),
+      ];
+      insert.run(saveKey, ...values);
+      insertByName.run(saveName, ...values);
     }
+    dualWrite.run(saveName, gameDate, saveKey, new Date().toISOString());
   });
   insertAll();
   console.log(`[history] snapshot ${gameDate}: ${rows.length} players`);
   return { gameDate, players: rows.length };
+}
+
+/**
+ * The start-up baseline: a snapshot of the league already imported, for a save with no rating history yet (none for an
+ * export that carries no ratings; stamped with the kind the export carries, N3.5). Only when the league served is
+ * certainly the configured save's (D-064): a save chosen after the earlier build's last import (which names no folder)
+ * is not the league on disk, and its history must never be given another save's ratings.
+ */
+export function baselineSnapshot(): { gameDate: string; players: number } | null {
+  const mode = currentRatingMode();
+  if (!tableExists('players') || !servedLeagueCertain() || mode?.mode === 'none' || snapshotDates().length > 0) return null;
+  const snapshot = takeSnapshot();
+  if (snapshot) stampSnapshotMode(snapshot.gameDate, mode, null);
+  return snapshot;
 }
 
 function gameDateEpoch(value: string): number {

@@ -404,6 +404,11 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
       { name: 'not-installed', body: { packId: 'nothing-here' }, status: 400 },
       { name: 'club-colors', body: { packId: 'club-colors' }, status: 200 },
     ],
+    // No earlier save's history is on offer in the synthetic folder, so an answer is refused in words (D-064)
+    answerRatingHistoryOffer: [
+      { name: 'nothing-to-answer', body: { offerId: 'save-none', choice: 'adopt' }, status: 400 },
+      { name: 'no-choice', body: { offerId: 'save-none' }, status: 400 },
+    ],
     // The pretend save was never saved by OOTP, so nothing stands out and nothing is chosen (D-063)
     setUpAutomatically: [{ name: 'nothing-stands-out', body: {}, status: 200 }],
   };

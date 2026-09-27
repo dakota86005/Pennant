@@ -565,6 +565,68 @@
         }
       }
     },
+    "/api/v2/rating-history": {
+      "get": {
+        "operationId": "getRatingHistory",
+        "summary": "This save's rating history: whether some of it isn't used or it started fresh, and any earlier save (whose folder has gone) it could be, as a question for the GM.",
+        "tags": [
+          "v2"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RatingHistoryView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/rating-history/choice": {
+      "post": {
+        "operationId": "answerRatingHistoryOffer",
+        "summary": "The GM's answer to a rating-history question: carry that earlier save's history over to this save (`adopt`), or start fresh (`fresh`). An answer that no longer fits is refused (400).",
+        "tags": [
+          "v2"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RatingHistoryChoice"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RatingHistoryView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request could not be done",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v2/saves": {
       "get": {
         "operationId": "getSaveDiscovery",
@@ -3492,6 +3554,93 @@
           "keys"
         ],
         "description": "What `GET /api/settings/providers` serves: the providers on offer and every provider's key state."
+      },
+      "RatingHistoryChoice": {
+        "type": "object",
+        "properties": {
+          "offerId": {
+            "type": "string"
+          },
+          "choice": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "adopt",
+                  "fresh"
+                ]
+              },
+              {
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "required": [
+          "offerId",
+          "choice"
+        ],
+        "description": "The GM's answer: carry that save's history over (`adopt`, naming the offer), or start this save's own (`fresh`)."
+      },
+      "RatingHistoryOffer": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "What the answer names (`offerId`)."
+          },
+          "question": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "\"This save has no rating history yet. Is it \"New Game\", the save that used to be in ...?\""
+          },
+          "saveName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The name that save last had; null when not recorded."
+          },
+          "place": {
+            "type": "string",
+            "description": "Where it was, in words (the home folder shortened to ~)."
+          },
+          "lastDate": {
+            "$ref": "#/components/schemas/GameDate",
+            "description": "Its latest rating snapshot's game date, as filed (unpadded); null when unknown."
+          },
+          "imports": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "How many imports its history holds."
+          }
+        },
+        "required": [
+          "id",
+          "question",
+          "saveName",
+          "place",
+          "imports"
+        ],
+        "description": "A history the save could be asked about: the question, with why it is asked in its basis."
+      },
+      "RatingHistoryView": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Some of this save's rating history isn't used, or it started fresh, in a sentence with its basis; null when all is its own."
+          },
+          "offers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RatingHistoryOffer"
+            },
+            "description": "Earlier saves this one could be (their folders have gone), most recently seen first; empty when there is nothing to ask."
+          }
+        },
+        "required": [
+          "offers"
+        ],
+        "description": "This save's rating history: what isn't used or started fresh, and any question to ask the GM."
       },
       "RatingMode": {
         "anyOf": [
