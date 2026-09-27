@@ -84,5 +84,11 @@ and those documents differ, they win. The presentation cases are in `docs/BEHAVI
   the server does not serve yet shows nothing in the app and is drawn from `DesignFixtures` in previews and snapshots
   only. A claim is a `ClaimText` (hover, click or Space, `BasisPopover`, pin to the inspector, detach). SWIFTUI_REBUILD.md
   section 3.7, "Design language (N5, Stage B)"; section 3.4, "What the design's slots need from the server".
+- **The Morning Report, live and instant (N6, Stage B1):** the served payload reaches the design's models only through
+  `MorningReportDesign(served:)` (one adapter file, pure, tested against the committed fixture); the last payload
+  received is kept in the app's own caches (`KeptReports`, keyed by the save's id, the club and the contract; never the
+  data folder; tests give a scratch folder) and drawn at launch as "Updating" until the fresh one lands. Read a server
+  event through `ServerEvent.kind`, never `value1` … `valueN`. SWIFTUI_REBUILD.md section 3.4, "As built at N6 (Stage
+  B1)".
 - Verify with `macos/scripts/test.sh` plus the server baseline; visual checks come from XCUITest and
   snapshot PNGs (`build/macos-snapshots/`), not from asking the owner to look.
