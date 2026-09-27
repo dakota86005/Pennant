@@ -4,7 +4,7 @@ import path from 'node:path';
 import { db, tableExists, tableColumns, locateColumn, LAST_IMPORT_PATH, LEAGUE_DB_PATH, NEXT_DB_PATH, swapWhenFree } from './db.js';
 import { detectSaves, resolveChosenFolder, searchLocations, type ResolveResult, type SaveInfo, type SearchLocation } from './paths.js';
 import { DATA_DIR, loadConfig, saveConfig } from './config.js';
-import { importCsvDir, ImportRefused, type ImportProgress, type ImportResult } from './importer.js';
+import { diskSpace, importCsvDir, ImportRefused, type ImportProgress, type ImportResult } from './importer.js';
 import { upgradeLeagueDatabase } from './importBuild.js';
 import { checkExport, clearPendingExport, notePendingExport, onSettledExport, pendingExport, startWatcher } from './watcher.js';
 import type { ExportAssessment } from './exportFiles.js';
@@ -408,7 +408,16 @@ let upgrading: Promise<void> | null = null;
 export function upgradeLeagueInBackground(): Promise<void> {
   if (upgrading) return upgrading;
   upgrading = (async () => {
+    // Never finish in this turn: the `finally` below must run after `upgrading` is assigned, or it would stay set
+    await Promise.resolve();
     try {
+      // Room for the converted copy beside the served file first: without it nothing is written, the file is served as
+      // it is, and the next start checks again (a check, never a failed write at every launch)
+      const room = upgradeRoom();
+      if (room) {
+        console.warn(`[import] ${room}`);
+        return;
+      }
       const outcome = await upgradeLeagueDatabase(LEAGUE_DB_PATH, NEXT_DB_PATH);
       await swapWhenFree(NEXT_DB_PATH, clearLeagueCaches);
       console.log(`[import] brought the league database up to date in ${(outcome.ms / 1000).toFixed(1)}s (${outcome.indexes} indexes added)`);
@@ -420,6 +429,25 @@ export function upgradeLeagueInBackground(): Promise<void> {
     }
   })();
   return upgrading;
+}
+
+/** The converted copy is about the size of the served file; with room to spare. */
+export const UPGRADE_DISK_FACTOR = 1.5;
+
+/** Why the one-time upgrade cannot run now (not enough free space for its copy), in a sentence; null when it can. */
+export function upgradeRoom(): string | null {
+  let size = 0;
+  try {
+    size = fs.statSync(LEAGUE_DB_PATH).size;
+  } catch {
+    return null;
+  }
+  const needed = Math.round(size * UPGRADE_DISK_FACTOR);
+  const free = diskSpace.free(DATA_DIR);
+  if (free === null || free >= needed) return null;
+  const gb = (bytes: number): string => `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+  return `Not enough free disk space to bring the league database up to date: about ${gb(needed)} is needed and ${gb(free)} is free. ` +
+    'It is served as it is, and Pennant checks again at the next start.';
 }
 
 /** Whether a settled export is one the app has not imported: its fingerprint differs from the last import's. */
