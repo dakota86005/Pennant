@@ -15,6 +15,7 @@ import type { Basis } from '../server/contract/presentation.js';
 import { api, importState, runImport } from '../server/api.js';
 import { loadConfig, saveConfig } from '../server/config.js';
 import { startJob } from '../server/jobs.js';
+import { themePacksFolder } from '../server/themePackStore.js';
 import { registeredRoutes, type RegisteredRoute } from './apiRoutes';
 import {
   BANNED_JARGON, BANNED_VERDICTS, JARGON_EXCEPTIONS, bannedIn, bannedInPayload, exceptionsUsed, shownStrings,
@@ -277,6 +278,8 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     fs.writeFileSync(path.join(csv, 'players.csv'), 'player_id\n1\n');
     process.env.HOME = home;
     for (const k of KEY_VARS) delete process.env[k];
+    // The repository's example theme pack, installed, so the club's choices list a pack beside its own colours
+    fs.cpSync(path.join(process.cwd(), 'docs', 'theme-packs', 'sunset-series'), path.join(themePacksFolder(), 'sunset-series'), { recursive: true });
     const app = express();
     app.use(express.json());
     app.use('/api', api);
@@ -295,6 +298,7 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     process.env.HOME = realHome;
     for (const [k, v] of Object.entries(realKeys)) if (v !== undefined) process.env[k] = v;
     if (home) fs.rmSync(home, { recursive: true, force: true });
+    fs.rmSync(themePacksFolder(), { recursive: true, force: true });
   });
 
   const reads = operations.filter((op) => op.method === 'get' && !op.stream);
@@ -388,6 +392,12 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
       { name: 'restored', body: { defaultOrgId: null, theme: 'system' }, status: 200 },
     ],
     startImport: [{ name: 'no-save', body: undefined, status: 400 }],
+    // The club wears the installed example pack, a pack that is not there is refused, and it goes back to its own colours
+    chooseTheme: [
+      { name: 'pack', body: { packId: 'sunset-series' }, status: 200 },
+      { name: 'not-installed', body: { packId: 'nothing-here' }, status: 400 },
+      { name: 'club-colors', body: { packId: 'club-colors' }, status: 200 },
+    ],
   };
 
   it('answers every POST in the contract\'s shape, for each answer it is safe to cause here', async () => {
@@ -398,7 +408,8 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     for (const op of posts) {
       for (const c of POSTS[op.operationId]) {
         const body = c.body === undefined ? undefined : JSON.parse(JSON.stringify(c.body).split('$HOME').join(home));
-        const res = await fetch(`${base}${op.path}`, {
+        const url = op.path.replace(/:([A-Za-z0-9_]+)/g, (_m, name: string) => SAMPLE_PARAMS[name]());
+        const res = await fetch(`${base}${url}`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: body === undefined ? undefined : JSON.stringify(body),

@@ -13,7 +13,9 @@ import { logoReference } from '../logos.js';
 import { seatHolder, type StaffSeat } from '../staff.js';
 import { cell } from './claim.js';
 import { REACT_ONLY_TERMS, glossaryTable } from './glossary.js';
+import type { ThemePack } from '../contract/themePack.js';
 import { clubPalette, type ClubPalette, type TeamColors } from './palette.js';
+import { clubColorsPack } from './themePacks.js';
 import {
   BATTING_STATS, CONTACT_STATS, FIELDING_STATS, PITCHING_STATS, type StatDef, type StatFormat,
 } from './statCatalog.js';
@@ -62,6 +64,11 @@ export interface CatalogClub {
   logo: string | null;
   /** Wins and losses ("45–38"), or the sentence for a record the export does not have. */
   record: Cell;
+  /**
+   * The theme the club wears in the Mac app (D-061): its own colours unless another pack was chosen for it, every
+   * appearance resolved and checked. `palette` stays for the React app's colours.
+   */
+  theme: ThemePack;
 }
 
 /** Who heads a department, as the save's staff has it. */
@@ -188,7 +195,12 @@ export interface ClubSource {
   colors: TeamColors;
 }
 
-export function servedClub(club: ClubSource): CatalogClub {
+/** The theme a club wears: given by the caller (the installed packs and the club's choice), else its own colours. */
+export type ClubTheme = (club: ClubSource) => ThemePack;
+
+const ownColors: ClubTheme = (club) => clubColorsPack(club.team_id, club.colors, logoReference(club.team_id));
+
+export function servedClub(club: ClubSource, themeOf: ClubTheme = ownColors): CatalogClub {
   return {
     teamId: club.team_id,
     name: club.label,
@@ -196,6 +208,7 @@ export function servedClub(club: ClubSource): CatalogClub {
     palette: { light: clubPalette(club.colors, 'light'), dark: clubPalette(club.colors, 'dark') },
     logo: logoReference(club.team_id),
     record: recordCell(club.team_id),
+    theme: themeOf(club),
   };
 }
 
@@ -220,11 +233,11 @@ export function servedDepartments(orgId: number | null): CatalogDepartment[] {
   });
 }
 
-export function buildCatalog(clubs: ClubSource[], orgId: number | null): Catalog {
+export function buildCatalog(clubs: ClubSource[], orgId: number | null, themeOf: ClubTheme = ownColors): Catalog {
   return {
     glossary: servedGlossary(),
     stats: servedStats(),
-    clubs: clubs.map(servedClub),
+    clubs: clubs.map((club) => servedClub(club, themeOf)),
     departments: servedDepartments(orgId),
     phrases: {
       missingValue: cell('Not known yet', { tone: 'unknown', hint: 'The export does not include this yet' }),

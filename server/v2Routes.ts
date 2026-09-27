@@ -16,9 +16,11 @@ import { buildCatalog, type Catalog } from './presentation/catalog.js';
 import { assertAuthored } from './presentation/claim.js';
 import { dataStatusView, type DataStatusView } from './presentation/dataStatusWords.js';
 import {
-  FrontOfficeRefusal, claimTrail, departmentReport, frontOfficeSummary, resolveOrg,
+  FrontOfficeRefusal, UNKNOWN_CLUB, claimTrail, departmentReport, frontOfficeSummary, resolveOrg,
 } from './frontOfficeService.js';
 import type { ClaimTrail, DepartmentReport, FrontOfficeSummary } from './presentation/frontOffice/types.js';
+import type { ThemeChoice, ThemeChoices } from './contract/themePack.js';
+import { ThemeChoiceRefusal, activePack, chooseTheme, installedPacks, themeChoices } from './themePackStore.js';
 import { currentOrganization } from './viewingOrganization.js';
 
 export const v2Routes = Router();
@@ -34,7 +36,9 @@ function send<T>(res: Response<T>, payload: T): void {
 
 /** What the app draws on: glossary, stat catalog, club palettes, logos and records, departments and their heads. */
 v2Routes.get('/catalog', (_req, res: Response<Catalog>) => {
-  send(res, buildCatalog(catalogClubs(), currentOrganization()?.id ?? null));
+  // The installed packs are read once for every club in the catalog
+  const installed = installedPacks();
+  send(res, buildCatalog(catalogClubs(), currentOrganization()?.id ?? null, (club) => activePack(club, installed).pack));
 });
 
 /** How current the data is, in words. */
@@ -61,6 +65,27 @@ v2Routes.get('/departments/:org/:dept', frontOffice<DepartmentReport>((req) =>
 
 /** The evidence trail behind an item, on demand (an MLB need's responses). */
 v2Routes.get('/claims/:key', frontOffice<ClaimTrail>((req) => claimTrail(String(req.params.key))));
+
+/** The club a theme route is about (a team id, or `automatic`), with its colours as the export has them. */
+function themedClub(param: string) {
+  const id = resolveOrg(param);
+  const club = catalogClubs().find((c) => c.team_id === id);
+  if (!club) throw new FrontOfficeRefusal(UNKNOWN_CLUB, 404);
+  return club;
+}
+
+/** The themes a club can wear (its own colours and the installed packs that fit it), and the one it wears. */
+v2Routes.get('/theme-packs/:org', frontOffice<ThemeChoices>(async (req) => themeChoices(themedClub(String(req.params.org)))));
+
+/** Chooses the theme a club wears; a pack that is not installed, was refused or is made for another club is refused. */
+v2Routes.post('/theme-packs/:org', (req: Request, res: Response<ThemeChoices | ApiError>, next: NextFunction) => {
+  try {
+    send(res, chooseTheme(themedClub(String(req.params.org)), (req.body as Partial<ThemeChoice> | undefined)?.packId));
+  } catch (err) {
+    if (err instanceof ThemeChoiceRefusal || err instanceof FrontOfficeRefusal) res.status(err.status).json({ error: err.message });
+    else next(err);
+  }
+});
 
 /** The sentence for a `/v2` request this build does not serve. */
 export const V2_UNKNOWN = 'This version of Pennant doesn\'t know that request. Updating the app should fix it.';

@@ -1,0 +1,151 @@
+{
+  "teamId": 1,
+  "active": "sunset-series",
+  "choices": [
+    {
+      "id": "club-colors",
+      "name": "Team colors",
+      "kind": "clubColors",
+      "version": "0.0.0",
+      "teamId": 1,
+      "tokens": {
+        "light": {
+          "mastheadTop": "#edf1f7",
+          "masthead": [
+            "#1d2d44",
+            "#546c8c"
+          ],
+          "mastheadText": "#f0ebd8",
+          "mastheadSecondaryText": "#f0ebd8",
+          "accent": "#316ab9",
+          "accentText": "#f7f9fd",
+          "tint": "#316ab9",
+          "tintText": "#f7f9fd",
+          "card": "#1d2d44",
+          "cardText": "#f0ebd8"
+        },
+        "dark": {
+          "mastheadTop": "#0e1520",
+          "masthead": [
+            "#1d2d44",
+            "#546c8c"
+          ],
+          "mastheadText": "#f0ebd8",
+          "mastheadSecondaryText": "#f0ebd8",
+          "accent": "#729dda",
+          "accentText": "#0d1c30",
+          "tint": "#729dda",
+          "tintText": "#0d1c30",
+          "card": "#1d2d44",
+          "cardText": "#f0ebd8"
+        },
+        "lightIncreasedContrast": {
+          "mastheadTop": "#edf1f7",
+          "masthead": [
+            "#1d2d44",
+            "#455973"
+          ],
+          "mastheadText": "#ffffff",
+          "mastheadSecondaryText": "#ffffff",
+          "accent": "#244e89",
+          "accentText": "#f7f9fd",
+          "tint": "#244e89",
+          "tintText": "#f7f9fd",
+          "card": "#1d2d44",
+          "cardText": "#ffffff"
+        },
+        "darkIncreasedContrast": {
+          "mastheadTop": "#0e1520",
+          "masthead": [
+            "#1d2d44",
+            "#455973"
+          ],
+          "mastheadText": "#ffffff",
+          "mastheadSecondaryText": "#ffffff",
+          "accent": "#aac4e9",
+          "accentText": "#0d1c30",
+          "tint": "#aac4e9",
+          "tintText": "#0d1c30",
+          "card": "#1d2d44",
+          "cardText": "#ffffff"
+        }
+      },
+      "logo": null,
+      "art": null
+    },
+    {
+      "id": "sunset-series",
+      "name": "Sunset Series",
+      "kind": "installed",
+      "version": "0.0.0",
+      "teamId": null,
+      "tokens": {
+        "light": {
+          "mastheadTop": "#fbf1ec",
+          "masthead": [
+            "#7a1020",
+            "#b3361a"
+          ],
+          "mastheadText": "#ffffff",
+          "mastheadSecondaryText": "#ffe3d6",
+          "accent": "#a8321c",
+          "accentText": "#ffffff",
+          "tint": "#a8321c",
+          "tintText": "#ffffff",
+          "card": "#7a1020",
+          "cardText": "#ffffff"
+        },
+        "dark": {
+          "mastheadTop": "#1c0b0a",
+          "masthead": [
+            "#5e0c1a",
+            "#a33017"
+          ],
+          "mastheadText": "#ffffff",
+          "mastheadSecondaryText": "#ffd9c7",
+          "accent": "#ff8a65",
+          "accentText": "#1c0b0a",
+          "tint": "#ff8a65",
+          "tintText": "#1c0b0a",
+          "card": "#5e0c1a",
+          "cardText": "#ffffff"
+        },
+        "lightIncreasedContrast": {
+          "mastheadTop": "#fbf1ec",
+          "masthead": [
+            "#7a1020",
+            "#a13017"
+          ],
+          "mastheadText": "#ffffff",
+          "mastheadSecondaryText": "#ffffff",
+          "accent": "#902a18",
+          "accentText": "#ffffff",
+          "tint": "#a12f1b",
+          "tintText": "#ffffff",
+          "card": "#7a1020",
+          "cardText": "#ffffff"
+        },
+        "darkIncreasedContrast": {
+          "mastheadTop": "#1c0b0a",
+          "masthead": [
+            "#5e0c1a",
+            "#a33017"
+          ],
+          "mastheadText": "#ffffff",
+          "mastheadSecondaryText": "#ffffff",
+          "accent": "#ffad94",
+          "accentText": "#1c0b0a",
+          "tint": "#ff8a65",
+          "tintText": "#1c0b0a",
+          "card": "#5e0c1a",
+          "cardText": "#ffffff"
+        }
+      },
+      "logo": null,
+      "art": null
+    }
+  ],
+  "refused": [],
+  "unavailable": null,
+  "folder": "/tmp/ootp-fo-test/theme-packs"
+}

@@ -1046,6 +1046,77 @@
       "record": {
         "display": "15–15",
         "hint": "15 wins, 15 losses, first in the division"
+      },
+      "theme": {
+        "id": "club-colors",
+        "name": "Team colors",
+        "kind": "clubColors",
+        "version": "0.0.0",
+        "teamId": 1,
+        "tokens": {
+          "light": {
+            "mastheadTop": "#edf1f7",
+            "masthead": [
+              "#1d2d44",
+              "#546c8c"
+            ],
+            "mastheadText": "#f0ebd8",
+            "mastheadSecondaryText": "#f0ebd8",
+            "accent": "#316ab9",
+            "accentText": "#f7f9fd",
+            "tint": "#316ab9",
+            "tintText": "#f7f9fd",
+            "card": "#1d2d44",
+            "cardText": "#f0ebd8"
+          },
+          "dark": {
+            "mastheadTop": "#0e1520",
+            "masthead": [
+              "#1d2d44",
+              "#546c8c"
+            ],
+            "mastheadText": "#f0ebd8",
+            "mastheadSecondaryText": "#f0ebd8",
+            "accent": "#729dda",
+            "accentText": "#0d1c30",
+            "tint": "#729dda",
+            "tintText": "#0d1c30",
+            "card": "#1d2d44",
+            "cardText": "#f0ebd8"
+          },
+          "lightIncreasedContrast": {
+            "mastheadTop": "#edf1f7",
+            "masthead": [
+              "#1d2d44",
+              "#455973"
+            ],
+            "mastheadText": "#ffffff",
+            "mastheadSecondaryText": "#ffffff",
+            "accent": "#244e89",
+            "accentText": "#f7f9fd",
+            "tint": "#244e89",
+            "tintText": "#f7f9fd",
+            "card": "#1d2d44",
+            "cardText": "#ffffff"
+          },
+          "darkIncreasedContrast": {
+            "mastheadTop": "#0e1520",
+            "masthead": [
+              "#1d2d44",
+              "#455973"
+            ],
+            "mastheadText": "#ffffff",
+            "mastheadSecondaryText": "#ffffff",
+            "accent": "#aac4e9",
+            "accentText": "#0d1c30",
+            "tint": "#aac4e9",
+            "tintText": "#0d1c30",
+            "card": "#1d2d44",
+            "cardText": "#ffffff"
+          }
+        },
+        "logo": null,
+        "art": null
       }
     },
     {
@@ -1090,6 +1161,77 @@
       "record": {
         "display": "15–15",
         "hint": "15 wins, 15 losses, first in the division"
+      },
+      "theme": {
+        "id": "club-colors",
+        "name": "Team colors",
+        "kind": "clubColors",
+        "version": "0.0.0",
+        "teamId": 2,
+        "tokens": {
+          "light": {
+            "mastheadTop": "#edf1f7",
+            "masthead": [
+              "#1d2d44",
+              "#546c8c"
+            ],
+            "mastheadText": "#f0ebd8",
+            "mastheadSecondaryText": "#f0ebd8",
+            "accent": "#316ab9",
+            "accentText": "#f7f9fd",
+            "tint": "#316ab9",
+            "tintText": "#f7f9fd",
+            "card": "#1d2d44",
+            "cardText": "#f0ebd8"
+          },
+          "dark": {
+            "mastheadTop": "#0e1520",
+            "masthead": [
+              "#1d2d44",
+              "#546c8c"
+            ],
+            "mastheadText": "#f0ebd8",
+            "mastheadSecondaryText": "#f0ebd8",
+            "accent": "#729dda",
+            "accentText": "#0d1c30",
+            "tint": "#729dda",
+            "tintText": "#0d1c30",
+            "card": "#1d2d44",
+            "cardText": "#f0ebd8"
+          },
+          "lightIncreasedContrast": {
+            "mastheadTop": "#edf1f7",
+            "masthead": [
+              "#1d2d44",
+              "#455973"
+            ],
+            "mastheadText": "#ffffff",
+            "mastheadSecondaryText": "#ffffff",
+            "accent": "#244e89",
+            "accentText": "#f7f9fd",
+            "tint": "#244e89",
+            "tintText": "#f7f9fd",
+            "card": "#1d2d44",
+            "cardText": "#ffffff"
+          },
+          "darkIncreasedContrast": {
+            "mastheadTop": "#0e1520",
+            "masthead": [
+              "#1d2d44",
+              "#455973"
+            ],
+            "mastheadText": "#ffffff",
+            "mastheadSecondaryText": "#ffffff",
+            "accent": "#aac4e9",
+            "accentText": "#0d1c30",
+            "tint": "#aac4e9",
+            "tintText": "#0d1c30",
+            "card": "#1d2d44",
+            "cardText": "#ffffff"
+          }
+        },
+        "logo": null,
+        "art": null
       }
     },
     {
@@ -1134,6 +1276,77 @@
       "record": {
         "display": "15–15",
         "hint": "15 wins, 15 losses, first in the division"
+      },
+      "theme": {
+        "id": "club-colors",
+        "name": "Team colors",
+        "kind": "clubColors",
+        "version": "0.0.0",
+        "teamId": 3,
+        "tokens": {
+          "light": {
+            "mastheadTop": "#edf1f7",
+            "masthead": [
+              "#1d2d44",
+              "#546c8c"
+            ],
+            "mastheadText": "#f0ebd8",
+            "mastheadSecondaryText": "#f0ebd8",
+            "accent": "#316ab9",
+            "accentText": "#f7f9fd",
+            "tint": "#316ab9",
+            "tintText": "#f7f9fd",
+            "card": "#1d2d44",
+            "cardText": "#f0ebd8"
+          },
+          "dark": {
+            "mastheadTop": "#0e1520",
+            "masthead": [
+              "#1d2d44",
+              "#546c8c"
+            ],
+            "mastheadText": "#f0ebd8",
+            "mastheadSecondaryText": "#f0ebd8",
+            "accent": "#729dda",
+            "accentText": "#0d1c30",
+            "tint": "#729dda",
+            "tintText": "#0d1c30",
+            "card": "#1d2d44",
+            "cardText": "#f0ebd8"
+          },
+          "lightIncreasedContrast": {
+            "mastheadTop": "#edf1f7",
+            "masthead": [
+              "#1d2d44",
+              "#455973"
+            ],
+            "mastheadText": "#ffffff",
+            "mastheadSecondaryText": "#ffffff",
+            "accent": "#244e89",
+            "accentText": "#f7f9fd",
+            "tint": "#244e89",
+            "tintText": "#f7f9fd",
+            "card": "#1d2d44",
+            "cardText": "#ffffff"
+          },
+          "darkIncreasedContrast": {
+            "mastheadTop": "#0e1520",
+            "masthead": [
+              "#1d2d44",
+              "#455973"
+            ],
+            "mastheadText": "#ffffff",
+            "mastheadSecondaryText": "#ffffff",
+            "accent": "#aac4e9",
+            "accentText": "#0d1c30",
+            "tint": "#aac4e9",
+            "tintText": "#0d1c30",
+            "card": "#1d2d44",
+            "cardText": "#ffffff"
+          }
+        },
+        "logo": null,
+        "art": null
       }
     },
     {
@@ -1178,6 +1391,77 @@
       "record": {
         "display": "15–15",
         "hint": "15 wins, 15 losses, first in the division"
+      },
+      "theme": {
+        "id": "club-colors",
+        "name": "Team colors",
+        "kind": "clubColors",
+        "version": "0.0.0",
+        "teamId": 4,
+        "tokens": {
+          "light": {
+            "mastheadTop": "#edf1f7",
+            "masthead": [
+              "#1d2d44",
+              "#546c8c"
+            ],
+            "mastheadText": "#f0ebd8",
+            "mastheadSecondaryText": "#f0ebd8",
+            "accent": "#316ab9",
+            "accentText": "#f7f9fd",
+            "tint": "#316ab9",
+            "tintText": "#f7f9fd",
+            "card": "#1d2d44",
+            "cardText": "#f0ebd8"
+          },
+          "dark": {
+            "mastheadTop": "#0e1520",
+            "masthead": [
+              "#1d2d44",
+              "#546c8c"
+            ],
+            "mastheadText": "#f0ebd8",
+            "mastheadSecondaryText": "#f0ebd8",
+            "accent": "#729dda",
+            "accentText": "#0d1c30",
+            "tint": "#729dda",
+            "tintText": "#0d1c30",
+            "card": "#1d2d44",
+            "cardText": "#f0ebd8"
+          },
+          "lightIncreasedContrast": {
+            "mastheadTop": "#edf1f7",
+            "masthead": [
+              "#1d2d44",
+              "#455973"
+            ],
+            "mastheadText": "#ffffff",
+            "mastheadSecondaryText": "#ffffff",
+            "accent": "#244e89",
+            "accentText": "#f7f9fd",
+            "tint": "#244e89",
+            "tintText": "#f7f9fd",
+            "card": "#1d2d44",
+            "cardText": "#ffffff"
+          },
+          "darkIncreasedContrast": {
+            "mastheadTop": "#0e1520",
+            "masthead": [
+              "#1d2d44",
+              "#455973"
+            ],
+            "mastheadText": "#ffffff",
+            "mastheadSecondaryText": "#ffffff",
+            "accent": "#aac4e9",
+            "accentText": "#0d1c30",
+            "tint": "#aac4e9",
+            "tintText": "#0d1c30",
+            "card": "#1d2d44",
+            "cardText": "#ffffff"
+          }
+        },
+        "logo": null,
+        "art": null
       }
     }
   ],
