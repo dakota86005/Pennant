@@ -93,3 +93,27 @@ describe('the kind of ratings an export carries', () => {
     }
   });
 });
+
+describe('the rating mode an import records', () => {
+  it('is read from the save the export sits in, recorded with the import and inside its database, and served on the data status', async () => {
+    const { runImport, importState } = await import('../server/api.js');
+    const { getDataStatus } = await import('../server/dataStatus.js');
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pennant-mode-save-'));
+    const lg = path.join(root, 'Mode Test.lg');
+    const csvDir = path.join(lg, 'import_export', 'csv');
+    fs.mkdirSync(csvDir, { recursive: true });
+    fs.mkdirSync(path.join(lg, 'settings'), { recursive: true });
+    fs.writeFileSync(path.join(lg, EXPORT_SETTINGS_FILE), settings({ osa: '0', real: '1', none: '0', additional: '0' }));
+    fs.writeFileSync(path.join(csvDir, 'players.csv'), 'player_id,version\n1,1\n');
+    fs.writeFileSync(path.join(csvDir, 'teams.csv'), 'team_id,version\n1,1\n');
+    try {
+      await runImport(csvDir);
+      expect(importState.lastError).toBeNull();
+      expect(importState.lastImport?.ratingMode).toMatchObject({ mode: 'real', additionalScouted: false, source: 'export_settings' });
+      expect(exportRatingMode().mode).toBe('real');
+      expect(getDataStatus().import.ratingMode?.mode).toBe('real');
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+});

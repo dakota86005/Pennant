@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { developmentTrendByPlayer, historyDb, modeFilter, modeSwitches, stampSnapshotMode } from '../server/history.js';
+import { developmentTrendByPlayer, historyDb, modeFilter, modeSwitches, snapshotModes, stampSnapshotMode } from '../server/history.js';
+import { takeImportSnapshots } from '../server/importSnapshots.js';
 import { loadScoutedObservations } from '../server/scoutedEvidence.js';
 import type { RatingMode } from '../server/ratingMode.js';
 import { setExportRatingMode } from './ratingModeFixture';
@@ -81,5 +82,15 @@ describe('rating history across a switch in the kind of ratings', () => {
     const body = await request(`/api/development/${ORG}?from=2031-5-1&to=2031-6-1`);
     expect(body.changes).toBeNull();
     expect(body.ratingModeSwitch).toMatchObject({ before: '2031-5-1', after: '2031-6-1', fromMode: 'real', toMode: 'scouted' });
+  });
+
+  it('stamps the snapshot an import takes with the kind its export carried', async () => {
+    const outcome = await takeImportSnapshots({
+      importFinishedAt: null, importStartedAt: '2040-07-01T12:00:00.000Z',
+      ratingMode: { mode: 'osa', additionalScouted: null, source: 'export_settings', reason: null },
+    }, async () => {});
+    expect(outcome.ratings).not.toBeNull();
+    expect(snapshotModes().get(outcome.ratings!.gameDate)).toBe('osa');
+    historyDb.prepare('DELETE FROM rating_snapshot_modes WHERE save_name = ? AND game_date = ?').run(SAVE, outcome.ratings!.gameDate);
   });
 });

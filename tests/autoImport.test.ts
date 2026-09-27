@@ -175,3 +175,27 @@ describe('a settled new export', () => {
     expect(fs.existsSync(path.join(DATA_DIR, 'import-in-progress.json'))).toBe(false);
   });
 });
+
+describe('an import whose after-steps never ran (the server stopped between the swap and the snapshots)', () => {
+  it('takes its snapshots at the next start, once', async () => {
+    const { finishInterruptedPostImport } = await import('../server/api.js');
+    const record = path.join(DATA_DIR, 'post-import.json');
+    const saved = importState.lastImport;
+    try {
+      importState.lastImport = { tables: 1, rows: 1, startedAt: '2040-07-01T12:00:00.000Z', finishedAt: '2040-07-01T12:00:05.000Z', files: [], exportFingerprint: 'f' };
+      fs.rmSync(record, { force: true });
+      expect(finishInterruptedPostImport()).toBe(true);
+      const deadline = Date.now() + 30_000;
+      while (!fs.existsSync(record) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 50));
+      expect(JSON.parse(fs.readFileSync(record, 'utf8')).importStartedAt).toBe('2040-07-01T12:00:00.000Z');
+      // Done: the next start leaves it
+      expect(finishInterruptedPostImport()).toBe(false);
+      // An import from before N3.5 (no fingerprint, no record) took its snapshots on its own thread
+      fs.rmSync(record, { force: true });
+      importState.lastImport = { tables: 1, rows: 1, startedAt: '2040-07-02T12:00:00.000Z', finishedAt: '2040-07-02T12:00:05.000Z', files: [] };
+      expect(finishInterruptedPostImport()).toBe(false);
+    } finally {
+      importState.lastImport = saved;
+    }
+  }, 60_000);
+});
