@@ -94,3 +94,9 @@ export type {
   FoItem, DeskSeverity, ReportStatus, ReportSection, ReportUnknowns, ReportChange, StaffMemo, DepartmentReport, DepartmentCard,
   Desk, DeskMore, FrontOfficeSummary, TrailSection, ClaimTrail,
 } from '../presentation/frontOffice/types.js';
+// The Morning Report's own parts on `FrontOfficeSummary` (N6): the masthead, "How we win and lose", the roster map
+export type {
+  GameLetter, MastheadKicker, StandingLine, RunsFigure, LastFive, ProbableStarter, TonightGame, DeadlineNote, MastheadPart, MissingPart,
+  TeamSeason, ProfileGroup, ProfileLines, RecentPlace, ProfileDimension, ClubProfile, WinsValue, PlayerRef, ReadinessState, FarmNextMan,
+  ControlKind, ControlClock, ControlTerm, RosterNode, StaffPitcher, ValueScale, RosterMap,
+} from '../presentation/frontOffice/morningTypes.js';

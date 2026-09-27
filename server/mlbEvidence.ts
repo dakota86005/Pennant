@@ -43,6 +43,9 @@ import type { HitterUsageInput } from './lineupPicture.js';
 import type { PlatoonInput, PlatoonParams } from './platoon.js';
 import type { LensEvidence } from './roleReview.js';
 import type { RoleRef } from './mlbRoster.js';
+import { mlbDiscussionAssessments, type MlbDiscussionAssessment } from './org.js';
+import { organizationPlayerStates } from './playerState.js';
+import type { DevelopmentalJudgment } from './developmentJudgment.js';
 
 export interface RoleFitEvidence {
   /** Player Development's destination-fit classification at the MLB club; null when it cannot be computed. */
@@ -561,6 +564,65 @@ export function playableCovers(playerIds: number[]): Map<number, number[]> {
   for (const id of playerIds) {
     const positions = scoutedGloves(id)?.positions.filter((p) => p.position >= 2 && p.position <= 9 && p.current >= PLAYABLE_RATING).map((p) => p.position) ?? [];
     out.set(id, positions.sort((a, b) => a - b));
+  }
+  return out;
+}
+
+/**
+ * The farm's next man at each position, for the Morning Report's roster map (N6, D-057): the organization's minor
+ * leaguers listed there, at the highest level where anyone is, each with Player Development's answer to "is a
+ * major-league look defensible for him now?" as it serves it (its durable Triple-A assessment,
+ * `mlbDiscussionAssessments`; a man it has not assessed has no answer, never "not ready"). Where he is placed is Player
+ * State's; readiness is Player Development's; nothing here runs the farm's solver, reads a rating or judges readiness.
+ * Ordered by level, then by Player Development's own readiness where it gave one (an order of readiness, not a ranking
+ * of players), then by name.
+ */
+export interface FarmNext {
+  playerId: number;
+  name: string;
+  /** His level, as Player State reads it (2 is Triple-A). */
+  level: number;
+  /** Player Development's answer as served; null where it has not assessed him (only Triple-A players are). */
+  assessment: {
+    judgment: DevelopmentalJudgment;
+    readiness: number | null;
+    /** The readiness its bar asks for, as it states it. */
+    required: number | null;
+    reasons: string[];
+    blockers: string[];
+    missing: string[];
+  } | null;
+}
+
+export function farmNextByPosition(orgId: number): Map<number, FarmNext[]> {
+  const states = organizationPlayerStates(orgId).filter((s) => {
+    const level = s.level.value;
+    return level !== null && level > 1 && s.position.value !== null && s.position.value >= 2;
+  });
+  const assessed = states.length ? mlbDiscussionAssessments(orgId) : new Map<number, MlbDiscussionAssessment>();
+  const out = new Map<number, FarmNext[]>();
+  for (const s of states) {
+    const a = assessed.get(s.playerId);
+    const entry: FarmNext = {
+      playerId: s.playerId, name: s.name, level: s.level.value!,
+      assessment: a ? {
+        judgment: a.judgment, readiness: a.evidence.readiness, required: a.requirements.readiness,
+        reasons: a.reasons, blockers: a.blockers, missing: a.missingEvidence.map((m) => m.detail),
+      } : null,
+    };
+    const list = out.get(s.position.value!) ?? [];
+    list.push(entry);
+    out.set(s.position.value!, list);
+  }
+  for (const [pos, list] of out) {
+    const top = Math.min(...list.map((f) => f.level));
+    out.set(pos, list.filter((f) => f.level === top).sort((a, b) => {
+      const ra = a.assessment?.readiness ?? null;
+      const rb = b.assessment?.readiness ?? null;
+      if (ra !== null && rb !== null && ra !== rb) return rb - ra;
+      if ((ra === null) !== (rb === null)) return ra === null ? 1 : -1;
+      return a.name.localeCompare(b.name);
+    }));
   }
   return out;
 }

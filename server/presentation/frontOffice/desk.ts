@@ -14,6 +14,7 @@ import { basis, cell, claim, target } from '../claim.js';
 import { gameDateDisplay } from '../dataStatusWords.js';
 import { DESK_SEVERITIES, rankOf, type DepartmentReading, type DeskSeverity, type NormalizedSeverity } from '../severity.js';
 import type { DepartmentCard, DepartmentReport, Desk, FoItem, FrontOfficeSummary, ReportSection } from './types.js';
+import type { MorningParts } from './morningTypes.js';
 
 /** What every claim of one build shares: the club, the import it reads and the game date it reflects. */
 export interface BuildContext {
@@ -361,8 +362,11 @@ export function listWords(names: readonly string[]): string {
   return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
 }
 
-/** The Morning Report's desk and cards. `reports` is every department's but the Front Office's own. */
-export function summary(build: BuildContext, reports: readonly DepartmentReport[]): FrontOfficeSummary {
+/**
+ * The Morning Report's desk and cards, and its own parts when they were built (N6). `reports` is every department's but
+ * the Front Office's own.
+ */
+export function summary(build: BuildContext, reports: readonly DepartmentReport[], morning: MorningParts | null = null): FrontOfficeSummary {
   return {
     orgId: build.orgId,
     club: build.club,
@@ -371,6 +375,10 @@ export function summary(build: BuildContext, reports: readonly DepartmentReport[
     asOf: asOfCell(build),
     desk: desk(reports),
     departments: reports.map(card),
+    teamSeason: morning?.teamSeason ?? null,
+    lede: morning?.lede ?? null,
+    clubProfile: morning?.clubProfile ?? null,
+    rosterMap: morning?.rosterMap ?? null,
   };
 }
 
@@ -429,6 +437,7 @@ export function assemble(
   departments: readonly CatalogDepartment[],
   offices: (id: DeptId) => string,
   answers: Readonly<Partial<Record<DeptId, DepartmentAnswer>>>,
+  morning: MorningParts | null = null,
 ): { summary: FrontOfficeSummary; reports: Map<DeptId, DepartmentReport> } {
   const ctxOf = (id: DeptId): DepartmentContext => {
     const department = departments.find((d) => d.id === id);
@@ -443,5 +452,5 @@ export function assemble(
   }
   const listed = [...reports.values()];
   reports.set('frontOffice', frontOfficeReport(ctxOf('frontOffice'), listed));
-  return { summary: summary(build, listed), reports };
+  return { summary: summary(build, listed, morning), reports };
 }

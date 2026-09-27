@@ -182,15 +182,33 @@ describe('the presentation boundary', () => {
    * reaches into a department: no rating module, no scouted evidence, no odds or posture of its own.
    */
   it.each(['frontOfficeService.ts', 'frontOfficeBuild.ts', 'frontOfficeWorker.ts'])('%s reads the specialists only through their public modules', (file) => {
+    // `morningReport` is the Morning Report's own reader (N6): the masthead's and the profile's facts, and the roster map
+    // through Player Value, Player State and the farm's door (`mlbEvidence`); its own imports are held below
     const PUBLIC = new Set([
-      'contracts', 'config', 'dashboard', 'dataStatus', 'db', 'farmOperations', 'frontOfficeBuild', 'leagueRules', 'mlbOperations', 'org',
-      'payroll', 'playerStateRoutes', 'rosterops', 'saveCalibration', 'serverEvents', 'valuation', 'viewingOrganization',
+      'contracts', 'config', 'dashboard', 'dataStatus', 'db', 'farmOperations', 'frontOfficeBuild', 'leagueRules', 'mlbOperations', 'morningReport',
+      'org', 'payroll', 'playerStateRoutes', 'rosterops', 'saveCalibration', 'serverEvents', 'valuation', 'viewingOrganization',
     ]);
     const outside = valueImports(file)
       .filter((s) => s.startsWith('./') && !s.startsWith('./presentation/'))
       .map(moduleName)
       .filter((m) => !PUBLIC.has(m));
     expect(outside).toEqual([]);
+  });
+
+  /**
+   * The Morning Report's reader (N6) asks each specialist through its public door and nothing else: the season's facts and
+   * the profile from the landing folder's own readers, value and control from Player Value's entry point, where a player
+   * is from Player State, the farm's next man through `mlbEvidence` (the farm's one door, D-045). It reads no rating, no
+   * philosophy, no stakes tier and no odds or posture of its own.
+   */
+  it('morningReport.ts reads the specialists only through their public doors', () => {
+    const allowed = new Set(['db', 'dataStatus', 'clubProfile', 'rosterMap', 'teamSeason', 'mlbEvidence', 'playerValue', 'playerState']);
+    const outside = valueImports('morningReport.ts').filter((s) => s.startsWith('./')).map(moduleName).filter((m) => !allowed.has(m));
+    expect(outside).toEqual([]);
+    const source = code('morningReport.ts');
+    for (const pattern of [...RATINGS, /developmentalContext|protectionTier|evaluateDevelopmentProtection/, /philosophy|settings\.js|posture|playoffs|oddsModel|clubWinValue|winValueOf/]) {
+      expect(source, `morningReport.ts matches ${pattern}`).not.toMatch(pattern);
+    }
   });
 
   it('keeps the Front Office service to the routes, the start and the import: no specialist calls it', () => {

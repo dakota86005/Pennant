@@ -11,7 +11,7 @@ import { orgInjuries } from '../server/dashboard.js';
 import { computeFarmSystem } from '../server/farmOperations.js';
 import {
   FrontOfficeRefusal, NO_CLUB, UNKNOWN_CLAIM, UNKNOWN_CLUB, UNKNOWN_DEPARTMENT, claimTrail, currentReportStamp, departmentReport, frontOfficeStats,
-  frontOfficeSummary, invalidateFrontOffice, resetFrontOfficeCache, resolveOrg, warmFrontOffice,
+  frontOfficeSummary, frontOfficeTimings, invalidateFrontOffice, resetFrontOfficeCache, resolveOrg, warmFrontOffice,
 } from '../server/frontOfficeService.js';
 import { mlbOverview } from '../server/mlbOperations.js';
 import { importedAt } from '../server/playerStateRoutes.js';
@@ -360,7 +360,7 @@ describe('the cache', () => {
   let save: BuiltSave;
   const realStamp = importedAt.value;
   beforeAll(() => {
-    save = buildSave({ season: 2040, historySeasons: 1, gamesPerTeam: 60, playedShare: 0.5, clubs: 4, seed: 11 });
+    save = buildSave({ season: 2040, historySeasons: 1, gamesPerTeam: 60, playedShare: 0.5, clubs: 4, seed: 11, teamSeason: true });
   });
   beforeEach(() => resetFrontOfficeCache());
   afterAll(() => {
@@ -373,6 +373,17 @@ describe('the cache', () => {
     await frontOfficeSummary(save.org);
     for (const d of ['majorLeague', 'farm', 'finance', 'medical', 'frontOffice']) await departmentReport(save.org, d);
     expect(frontOfficeStats()).toMatchObject({ builds: 1, hits: 6 });
+  });
+
+  it('builds the Morning Report\'s own parts with the desk, once, and serves them from the same cache (N6)', async () => {
+    await warmFrontOffice(save.org);
+    const summary = await frontOfficeSummary(save.org);
+    expect(summary.teamSeason?.record).not.toBeNull();
+    expect(summary.clubProfile?.dimensions).toHaveLength(8);
+    expect(summary.rosterMap?.valueScale).not.toBeNull();
+    expect((await frontOfficeSummary(save.org)).rosterMap).toBe(summary.rosterMap);
+    expect(frontOfficeStats()).toMatchObject({ builds: 1, hits: 2 });
+    expect(Object.keys(frontOfficeTimings(save.org) ?? {})).toEqual(expect.arrayContaining(['teamSeason', 'clubProfile', 'rosterMap', 'morningWords']));
   });
 
   it('shares one build between requests that arrive while it runs', async () => {

@@ -82,7 +82,7 @@ export const operations: Operation[] = [
     operationId: 'getFrontOffice',
     method: 'get',
     path: '/api/v2/front-office/:org',
-    summary: 'The Morning Report\'s desk (every department\'s items to decide, in a stated order) and one card per department.',
+    summary: 'The Morning Report: its masthead (record, place, runs, last five, next game, trade deadline), the lede, "How we win and lose", the roster map, the desk (every department\'s items to decide, in a stated order) and one card per department.',
     params: [ORG_PARAM],
     response: 'FrontOfficeSummary',
     errors: { 404: 'ApiError' },

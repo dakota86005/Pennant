@@ -275,7 +275,7 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
   const realKeys = Object.fromEntries(KEY_VARS.map((k) => [k, process.env[k]]));
 
   beforeAll(async () => {
-    save = buildSave({ season: 2040, historySeasons: 1, gamesPerTeam: 60, playedShare: 0.5, clubs: 4, seed: 11 });
+    save = buildSave({ season: 2040, historySeasons: 1, gamesPerTeam: 60, playedShare: 0.5, clubs: 4, seed: 11, teamSeason: true });
     // A pretend Mac home with one OOTP save, so finding saves reads neither the real disk nor nothing at all
     home = fs.mkdtempSync(path.join(os.tmpdir(), 'pennant-contract-home-'));
     const csv = path.join(home, 'Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games/Test League.lg/import_export/csv');
