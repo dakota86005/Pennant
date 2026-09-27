@@ -419,36 +419,58 @@ public struct WireRow: View {
     }
 }
 
-/// The rotation or the bullpen beside the roster diagram: role, name, a served note, the line, and the range bar on the
-/// diagram's served scale.
+/// The rotation or the bullpen beside the roster diagram: role, name, a served note, the word "Need" where Major
+/// League Ops raised one naming him, the line, and the range bar on the diagram's served scale; a click on a served
+/// pitcher opens his basis. Beneath, the needs Major League Ops raised at the staff's role that name no pitcher shown
+/// (a return, a short staff), each in its served words.
 public struct StaffColumn: View {
     let title: Text
     let pitchers: [StaffPitcher]
     let scale: ValueScale
+    let needs: [ServedLine]
 
-    public init(title: Text, pitchers: [StaffPitcher], scale: ValueScale) {
+    public init(title: Text, pitchers: [StaffPitcher], scale: ValueScale, needs: [ServedLine] = []) {
         self.title = title
         self.pitchers = pitchers
         self.scale = scale
+        self.needs = needs
     }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             title.font(.caption.weight(.semibold)).foregroundStyle(.secondary).textCase(.uppercase).kerning(0.6)
             ForEach(pitchers) { p in
-                HStack(spacing: 8) {
-                    Text(verbatim: p.role).font(.caption2.weight(.bold)).foregroundStyle(.secondary).frame(width: 26, alignment: .leading)
-                    Text(verbatim: p.name).font(.callout.weight(.medium)).lineLimit(1)
-                    Spacer(minLength: 4)
-                    if let note = p.note {
-                        Text(verbatim: note).font(.caption2).foregroundStyle(Tone.caution.color).lineLimit(1)
-                    }
-                    Text(verbatim: p.line).font(.caption).monospacedDigit().foregroundStyle(.secondary)
-                    RangeBar(range: p.value, label: p.hint, scale: scale, height: 5).frame(width: 54)
+                if let claim = p.claim {
+                    ClaimText(claim, edge: .trailing) { row(p) }
+                } else {
+                    row(p).help(Text(verbatim: p.hint))
                 }
-                .help(Text(verbatim: p.hint))
-                .accessibilityElement(children: .combine)
+            }
+            ForEach(needs) { need in
+                Label { Text(verbatim: need.text).fixedSize(horizontal: false, vertical: true) } icon: {
+                    Image(systemName: "circle.circle").foregroundStyle(Tone.caution.color)
+                }
+                .font(.caption)
+                .help(Text(verbatim: need.hint ?? need.text))
+                .padding(.top, 2)
+                .accessibilityIdentifier("staff.need")
             }
         }
+    }
+
+    private func row(_ p: StaffPitcher) -> some View {
+        HStack(spacing: 8) {
+            Text(verbatim: p.role).font(.caption2.weight(.bold)).foregroundStyle(.secondary).frame(width: 26, alignment: .leading)
+            Text(verbatim: p.name).font(.callout.weight(.medium)).lineLimit(1)
+            if p.need { Text("Need").font(.system(size: 9, weight: .bold)).foregroundStyle(Tone.caution.color) }
+            Spacer(minLength: 4)
+            if let note = p.note {
+                Text(verbatim: note).font(.caption2).foregroundStyle(Tone.caution.color).lineLimit(1)
+            }
+            Text(verbatim: p.line).font(.caption).monospacedDigit().foregroundStyle(.secondary)
+            RangeBar(range: p.value, label: p.hint, scale: scale, height: 5).frame(width: 54)
+        }
+        .contentShape(.rect)
+        .accessibilityElement(children: .combine)
     }
 }

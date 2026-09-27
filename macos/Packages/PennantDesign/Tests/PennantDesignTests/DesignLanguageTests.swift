@@ -101,7 +101,7 @@ struct DesignLanguageTests {
 
     @Test("Space opens a focused claim's basis, as the design says (review nit)")
     func spaceOpensTheBasis() {
-        #expect(ClaimText<Text>.basisKey == .space)
+        #expect(ClaimText<Text, EmptyView>.basisKey == .space)
     }
 
     @Test("a served tone maps to a distinct symbol and reads neutral when unknown to this build")
@@ -113,11 +113,42 @@ struct DesignLanguageTests {
         #expect(Tone(nil) == .neutral)
     }
 
-    @Test("a served result letter reads W or L and nothing else")
+    @Test("a served result letter reads W, L or T (a tie) and nothing else")
     func results() {
         #expect(GameResult(served: "W") == .win)
         #expect(GameResult(served: "l") == .loss)
-        #expect(GameResult(served: "T") == nil)
+        #expect(GameResult(served: "T") == .tie)
+        #expect(GameResult(served: "X") == nil)
+    }
+
+    @Test("a dimension not placed draws no dot of its own and no ring, and a league of unknown size draws no dots at all")
+    func notPlacedStrip() {
+        let notPlaced = DesignFixtures.notPlaced
+        #expect(notPlaced.group == .notPlaced)
+        let dots = PlaceStrip.dots(notPlaced)
+        #expect(dots.count == 30)
+        #expect(dots.allSatisfy { $0.kind == .other && !$0.recent })
+        var unsized = notPlaced
+        unsized.of = 0
+        #expect(PlaceStrip.dots(unsized).isEmpty)
+        // A tie shares the club's size, still
+        let tied = DesignFixtures.dimensions.first { $0.tiedWith > 0 }!
+        #expect(PlaceStrip.dots(tied).filter { $0.kind == .tied }.count == tied.tiedWith)
+    }
+
+    @Test("the roster diagram's unit is expected wins: the fixtures' ranges, scale and legend say wins, never dollars")
+    func winsNotDollars() {
+        for position in DesignFixtures.positions {
+            if let value = position.value {
+                #expect(value.text.contains("wins") && !value.text.contains("$"))
+                #expect(value.short.hasSuffix("wins"))
+            }
+        }
+        #expect(DesignFixtures.rosterLegend.range.display.contains("expected wins"))
+        #expect(DesignFixtures.valueScale.low <= 0 && DesignFixtures.valueScale.high > 0)
+        // A holder merely listed says so; the farm's bar rides with its served words
+        #expect(DesignFixtures.positions.contains { $0.holderRule == .listed })
+        #expect(DesignFixtures.positions.first { $0.id == "C" }?.farmBar == FarmBar(readiness: 41, required: 55, text: "Not ready yet", hint: "Player Development: his bat is behind the bar for Triple-A"))
     }
 
     @Test("control reads its served words whatever its form")

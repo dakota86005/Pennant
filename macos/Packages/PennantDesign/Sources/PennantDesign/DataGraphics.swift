@@ -33,9 +33,12 @@ public struct PlaceStrip: View {
     /// How much larger the club's dot is than the others (and every club tied with it: a tie shares the size).
     nonisolated static let clubScale: CGFloat = 1.7
 
-    /// The dots, best place first: the club's and those tied with it at the club's size, the rest plain.
+    /// The dots, best place first: the club's and those tied with it at the club's size, the rest plain. No dots at
+    /// all when the size of the league is not served (`of` below one): a strip of one dot would read as a league of
+    /// one.
     nonisolated static func dots(_ dimension: PlaceDimension) -> [Dot] {
-        (1...max(1, dimension.of)).map { p in
+        guard dimension.of >= 1 else { return [] }
+        return (1...dimension.of).map { p in
             let kind: Dot.Kind
             if p == dimension.place {
                 kind = .club
@@ -63,10 +66,14 @@ public struct PlaceStrip: View {
             let step = size.width / CGFloat(of)
             let dot = min(maxDot, step * 0.62)
             let midY = size.height / 2
-            // The top and bottom fifths, the stated lines for a strength and a weakness
-            let fifth = CGFloat((Double(of) / 5).rounded(.down)) * step
+            // The top and bottom fifths, the stated lines for a strength and a weakness (none without a size)
+            let fifth = dots.isEmpty ? 0 : CGFloat((Double(of) / 5).rounded(.down)) * step
             ctx.fill(Path(roundedRect: CGRect(x: 0, y: 0, width: fifth, height: size.height), cornerRadius: 4), with: .color(Tone.good.color.opacity(0.14)))
             ctx.fill(Path(roundedRect: CGRect(x: size.width - fifth, y: 0, width: fifth, height: size.height), cornerRadius: 4), with: .color(Tone.bad.color.opacity(0.14)))
+            if dots.isEmpty {
+                // Not placed, no size: a quiet empty track, never dots that read as a league
+                ctx.fill(Path(roundedRect: CGRect(x: 0, y: midY - 2, width: size.width, height: 4), cornerRadius: 2), with: .color(Color(nsColor: .quaternaryLabelColor).opacity(0.5)))
+            }
             for d in dots {
                 let cx = step * (CGFloat(d.place) - 0.5)
                 let size = dot * d.scale
@@ -88,7 +95,8 @@ public struct PlaceStrip: View {
     }
 }
 
-/// Strength or weakness, as a symbol and a word (never only the colour); nothing for the rest.
+/// Strength or weakness, as a symbol and a word (never only the colour); nothing for the rest, and nothing for a
+/// dimension not placed (the export lacks the figure: that is not a weakness).
 public struct StrengthMark: View {
     let group: PlaceDimension.Group
 
@@ -102,7 +110,7 @@ public struct StrengthMark: View {
             Image(systemName: "arrow.up.circle.fill").foregroundStyle(Tone.good.color).accessibilityLabel(Text("Strength"))
         case .weakness:
             Image(systemName: "arrow.down.circle.fill").foregroundStyle(Tone.bad.color).accessibilityLabel(Text("Weakness"))
-        case .rest, .tooEarly:
+        case .rest, .tooEarly, .notPlaced:
             EmptyView()
         }
     }
@@ -120,8 +128,10 @@ public struct PlaceRow: View {
 
     public var body: some View {
         HStack(spacing: 12) {
+            // A dimension not placed reads quieter: the export lacks its figure, which is no judgment of the club
             Label { Text(verbatim: dimension.name) } icon: { Image(systemName: dimension.symbol).frame(width: 18) }
                 .font(.body)
+                .foregroundStyle(dimension.group == .notPlaced ? .secondary : .primary)
                 .frame(width: wide ? 200 : 170, alignment: .leading)
             PlaceStrip(dimension).frame(maxWidth: 480)
             Spacer(minLength: 8)
@@ -164,6 +174,7 @@ public struct PlaceStrips: View {
             group(Text("Weaknesses"), .weakness)
             group(Text("The rest"), .rest)
             group(Text("Too early to call"), .tooEarly)
+            group(Text("Not placed"), .notPlaced)
             if let legend {
                 HStack(spacing: 14) {
                     LegendEntry(legend.season, symbol: "circle.fill")
@@ -422,7 +433,8 @@ public struct ControlPips: View {
     }
 }
 
-/// The last five results, oldest first: a filled dot with a W, a hollow one with an L, on the masthead.
+/// The last five results, oldest first: a filled dot with a W, a hollow one with an L, a dashed one with a T for a
+/// tie, on the masthead.
 public struct LastFiveDots: View {
     let results: [GameResult]
     let size: CGFloat
@@ -444,12 +456,16 @@ public struct LastFiveDots: View {
             ForEach(Array(results.enumerated()), id: \.offset) { _, result in
                 ZStack {
                     // Each letter in a served, checked pair as served (the masthead's text and its colour), never faded
-                    if result == .win {
+                    switch result {
+                    case .win:
                         Circle().fill(palette.mastheadText)
                         Text("W").font(.system(size: size * 0.55, weight: .bold)).foregroundStyle(palette.masthead.first ?? palette.mastheadTop)
-                    } else {
+                    case .loss:
                         Circle().strokeBorder(palette.mastheadText.opacity(0.7), lineWidth: 1.5)
                         Text("L").font(.system(size: size * 0.55, weight: .semibold)).foregroundStyle(palette.mastheadText)
+                    case .tie:
+                        Circle().strokeBorder(palette.mastheadText.opacity(0.7), style: StrokeStyle(lineWidth: 1.5, dash: [2.5, 2]))
+                        Text("T").font(.system(size: size * 0.55, weight: .semibold)).foregroundStyle(palette.mastheadText)
                     }
                 }
                 .frame(width: size, height: size)

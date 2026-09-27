@@ -40,19 +40,22 @@ extension EnvironmentValues {
 /// Space while it is focused (a click or Tab focuses it; like Quick Look, and whether or not the Mac's keyboard
 /// navigation is on, which a plain button would need). VoiceOver reads the served text as the label and the basis as
 /// custom content.
-public struct ClaimText<Label: View>: View {
+public struct ClaimText<Label: View, Detail: View>: View {
     let claim: Components.Schemas.Claim
     let edge: Edge
     @ViewBuilder let label: () -> Label
+    /// What the popover shows under the basis (a served figure the basis's words describe); nothing by default.
+    @ViewBuilder let detail: () -> Detail
     @State private var showing = false
 
     /// The key that opens (and closes) the focused claim's basis, as Quick Look's does a selected file.
     nonisolated public static var basisKey: KeyEquivalent { .space }
 
-    public init(_ claim: Components.Schemas.Claim, edge: Edge = .bottom, @ViewBuilder label: @escaping () -> Label) {
+    public init(_ claim: Components.Schemas.Claim, edge: Edge = .bottom, @ViewBuilder label: @escaping () -> Label, @ViewBuilder detail: @escaping () -> Detail) {
         self.claim = claim
         self.edge = edge
         self.label = label
+        self.detail = detail
     }
 
     public var body: some View {
@@ -68,14 +71,20 @@ public struct ClaimText<Label: View>: View {
             .accessibilityHint(Text("Shows why"))
             .accessibilityCustomContent(Text("Why"), Text(verbatim: claim.basis.because.map { "\($0.label): \($0.value)" }.joined(separator: "; ")))
             .accessibilityIdentifier("claim")
-            .popover(isPresented: $showing, arrowEdge: edge) { BasisPopover(claim: claim) }
+            .popover(isPresented: $showing, arrowEdge: edge) { BasisPopover(claim: claim, detail: detail) }
     }
 }
 
-extension ClaimText where Label == Text {
+extension ClaimText where Detail == EmptyView {
+    public init(_ claim: Components.Schemas.Claim, edge: Edge = .bottom, @ViewBuilder label: @escaping () -> Label) {
+        self.init(claim, edge: edge, label: label, detail: { EmptyView() })
+    }
+}
+
+extension ClaimText where Label == Text, Detail == EmptyView {
     /// The claim's served text as its own label.
     public init(_ claim: Components.Schemas.Claim, edge: Edge = .bottom, font: Font = .body) {
-        self.init(claim, edge: edge) { Text(verbatim: claim.text).font(font) }
+        self.init(claim, edge: edge, label: { Text(verbatim: claim.text).font(font) }, detail: { EmptyView() })
     }
 }
 
@@ -107,13 +116,16 @@ public struct ClaimValue: View {
 
 /// The basis, read top to bottom (section 3.3): why, from, how it's called, not known, would change if, our
 /// philosophy's lean beside the neutral reading; then pin to the inspector, detach, and open in the owning department.
-public struct BasisPopover: View {
+public struct BasisPopover<Detail: View>: View {
     let claim: Components.Schemas.Claim
+    /// What the caller shows under the basis (a served figure its words describe); nothing by default.
+    @ViewBuilder let detail: () -> Detail
     @Environment(\.claimActions) private var actions
     @Environment(\.dismiss) private var dismiss
 
-    public init(claim: Components.Schemas.Claim) {
+    public init(claim: Components.Schemas.Claim, @ViewBuilder detail: @escaping () -> Detail) {
         self.claim = claim
+        self.detail = detail
     }
 
     public var body: some View {
@@ -124,6 +136,7 @@ public struct BasisPopover: View {
             }
             Divider()
             BasisSections(basis: claim.basis)
+            detail()
             if actions?.pin != nil || actions?.detach != nil || openTarget != nil {
                 HStack {
                     if let pin = actions?.pin {
@@ -164,6 +177,12 @@ public struct BasisPopover: View {
             if let name = actions.departmentName?(id) { return (link, name) }
         }
         return nil
+    }
+}
+
+extension BasisPopover where Detail == EmptyView {
+    public init(claim: Components.Schemas.Claim) {
+        self.init(claim: claim, detail: { EmptyView() })
     }
 }
 

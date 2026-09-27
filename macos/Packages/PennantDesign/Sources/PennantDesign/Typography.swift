@@ -17,9 +17,12 @@ public struct Kicker: View {
         self.size = size
     }
 
-    /// A served kicker, its parts joined with a middle dot ("Bay City Admirals · July 14, 2041 · Through July 13").
-    public init(served parts: [String?], size: Size = .regular) {
-        text = Text(verbatim: parts.compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
+    /// A served kicker, its parts joined with a middle dot ("Bay City Admirals · July 14, 2041 · Through July 13"),
+    /// and a structural status after them ("Updating") while the caller has one.
+    public init(served parts: [String?], status: Text? = nil, size: Size = .regular) {
+        let separator = " · "
+        let served = Text(verbatim: parts.compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: separator))
+        text = status.map { served + Text(verbatim: separator) + $0 } ?? served
         self.size = size
     }
 
@@ -110,6 +113,8 @@ public struct BoxFigure<Graphic: View>: View {
 public struct MagazineMasthead<Figures: View, Control: View>: View {
     let kicker: [String?]
     let kickerHint: String?
+    /// A structural word after the kicker's served parts ("Updating" while the kept report waits on the fresh one).
+    let kickerStatus: Text?
     let headline: Text
     let deck: String?
     let deckHint: String?
@@ -128,6 +133,7 @@ public struct MagazineMasthead<Figures: View, Control: View>: View {
 
     /// - Parameters:
     ///   - kicker: the served parts of the kicker (the club, the game date, how current), joined with middle dots.
+    ///   - kickerStatus: a structural word after them ("Updating"), or nil.
     ///   - headline: the view's served title.
     ///   - kickerHint: the kicker's help tag (how current the report is, as served).
     ///   - deck: the served lede, with its help tag; nil draws none. With `deckClaim`, the deck opens that claim's basis.
@@ -137,6 +143,7 @@ public struct MagazineMasthead<Figures: View, Control: View>: View {
     public init(
         kicker: [String?],
         kickerHint: String? = nil,
+        kickerStatus: Text? = nil,
         headline: Text,
         deck: String? = nil,
         deckHint: String? = nil,
@@ -147,6 +154,7 @@ public struct MagazineMasthead<Figures: View, Control: View>: View {
     ) {
         self.kicker = kicker
         self.kickerHint = kickerHint
+        self.kickerStatus = kickerStatus
         self.headline = headline
         self.deck = deck
         self.deckHint = deckHint
@@ -159,9 +167,10 @@ public struct MagazineMasthead<Figures: View, Control: View>: View {
     public var body: some View {
         let palette = theme.palette(colorScheme: colorScheme, contrast: contrast)
         VStack(alignment: .leading, spacing: 14) {
-            Kicker(served: kicker).foregroundStyle(palette.mastheadSecondaryText)
+            Kicker(served: kicker, status: kickerStatus).foregroundStyle(palette.mastheadSecondaryText)
                 .help(kickerHint.map { Text(verbatim: $0) } ?? Text(verbatim: kicker.compactMap { $0 }.joined(separator: " · ")))
                 .modifier(TextEdge(id: "kicker", edges: $textEdges))
+                .accessibilityIdentifier("masthead.kicker")
             headline.font(.system(size: 62, weight: .bold, design: .serif)).kerning(-0.5)
                 .lineLimit(2).minimumScaleFactor(0.6)
                 .accessibilityAddTraits(.isHeader)
@@ -240,18 +249,23 @@ public struct BoxRule: View {
     }
 }
 
-/// Tonight's game on the masthead: a control (it opens Game Day), so it is glass, per the HIG: glass on controls, not
-/// on content. With Reduce Transparency it is opaque with a border. Every word on it is served.
+/// Tonight's game on the masthead: a control (it opens the schedule and game plans, the nearest view to Game Day until
+/// N9), so it is glass, per the HIG: glass on controls, not on content. With Reduce Transparency it is opaque with a
+/// border. Every word on it is served. Its basis (the date, the start, the starters' source) opens from the control's
+/// context menu ("Show why"); the deadline beside it is a claim of its own, so a click on it opens the league's own
+/// row. Nothing is drawn where the game or the deadline is not served (the masthead's missing lines say why).
 public struct TonightControl: View {
     let tonight: TonightGame
     let deadline: DeadlineNote?
-    let action: () -> Void
+    /// Opens the game's served target; nil when this build cannot (the control is then disabled).
+    let action: (() -> Void)?
     @EffectiveReduceTransparency private var reduceTransparency
     @EffectiveContrast private var contrast
     @Environment(\.theme) private var theme
     @Environment(\.colorScheme) private var colorScheme
+    @State private var showingBasis = false
 
-    public init(tonight: TonightGame, deadline: DeadlineNote?, action: @escaping () -> Void) {
+    public init(tonight: TonightGame, deadline: DeadlineNote?, action: (() -> Void)?) {
         self.tonight = tonight
         self.deadline = deadline
         self.action = action
@@ -259,7 +273,7 @@ public struct TonightControl: View {
 
     public var body: some View {
         let palette = theme.palette(colorScheme: colorScheme, contrast: contrast)
-        Button(action: action) {
+        Button(action: { action?() }) {
             HStack(spacing: 16) {
                 VStack(alignment: .leading, spacing: 2) {
                     Kicker(tonight.when, size: .small)
@@ -268,9 +282,14 @@ public struct TonightControl: View {
                 }
                 if let deadline {
                     Rectangle().fill(.primary.opacity(0.2)).frame(width: 1, height: 36)
-                    VStack(alignment: .trailing, spacing: 2) {
+                    let figures = VStack(alignment: .trailing, spacing: 2) {
                         Text(verbatim: deadline.count).font(.title3.weight(.bold)).fontWidth(.condensed).monospacedDigit()
                         Text(verbatim: deadline.text).font(.caption)
+                    }
+                    if let claim = deadline.claim {
+                        ClaimText(claim, edge: .bottom) { figures }.accessibilityIdentifier("masthead.deadline")
+                    } else {
+                        figures
                     }
                 }
                 Image(systemName: "chevron.right").font(.caption.weight(.semibold)).opacity(0.7)
@@ -279,7 +298,17 @@ public struct TonightControl: View {
         }
         .modifier(GlassOrOpaque(reduceTransparency: reduceTransparency, borderColor: palette.mastheadText))
         .controlSize(.large)
+        .disabled(action == nil)
         .help(Text(verbatim: tonight.hint))
+        .contextMenu {
+            if tonight.claim != nil {
+                Button("Show why") { showingBasis = true }
+            }
+        }
+        .popover(isPresented: $showingBasis, arrowEdge: .bottom) {
+            if let claim = tonight.claim { BasisPopover(claim: claim) }
+        }
+        .accessibilityCustomContent(Text("Why"), Text(verbatim: tonight.claim?.basis.because.map { "\($0.label): \($0.value)" }.joined(separator: "; ") ?? ""))
         .accessibilityIdentifier("masthead.tonight")
     }
 }
