@@ -2196,3 +2196,32 @@ we" with objective facts only: record, standings place and games back, run diffe
 deadline date. Neither the odds, the posture nor the season-window labels are headlined there, and the landing payload
 does not import them (a boundary test). They appear only in League Office standings, labelled with their basis, until
 ROADMAP "Playoff odds from the roster" replaces them.
+
+## D-061 — Theme packs: a club's look is data, its default is the save's own colours, and no pack costs readability
+
+**Status:** Accepted in direction by the owner (2026-09-26: "I like the use of team colors. please build this modular. I
+picture being able to have 'theme packs' for each team for things like city connects"). **Implementation:** N5, Stage A
+(2026-09-26): the pack type (`server/contract/themePack.ts`, through the contract pipeline), the save-derived default and
+the check (`server/presentation/themePacks.ts`), the installed packs and each club's choice (`server/themePackStore.ts`,
+`themePacks` in settings.json), `GET` and `POST /api/v2/theme-packs/:org`, each club's `theme` in `GET /api/v2/catalog`,
+and the Mac app's `Theme` (PennantDesign) read by every coloured piece. Design: SWIFTUI_REBUILD.md section 3.7, "As
+built at N5 (Stage A)"; how to make one: DEVELOPMENT.md "Making a theme pack".
+
+- **A club's look is data, not code.** A theme pack names the colours every coloured piece of the Mac app draws: the
+  masthead's top (under the toolbar) and its gradient, the text on it, the one accent, the tint of the one floating
+  control, and the club card, each with its text colour, in light and dark and each again for Increase Contrast, with
+  an optional logo and masthead art. Swift holds no club colour of its own; a new look is a new pack, never a code change.
+- **Every club has a pack with no file: its own colours, derived from the save** (`derivePalette`'s plate and accent, the
+  palette the React app draws), so any league looks like itself, real or fictional. In light the masthead's top is
+  lightened nearly to white so the window's title reads; in dark it is darkened nearly to black.
+- **No pack costs readability.** Every piece of text is checked on the colour it sits on, at 4.5:1 (7:1 for Increase
+  Contrast), in light and dark, a gradient's blends included, and the masthead's top against the window's title (the bar
+  `npm run check:theme` holds). A pack that fails anything is refused whole with a sentence and never half-applied; a club
+  that chose it wears its own colours and Settings says why. A pack that gives no Increase Contrast colours has them made
+  from its plain ones and checked like the rest. The app checks the served colours again as it draws and draws an
+  appearance neutral rather than half-themed.
+- **Chosen per club, additively.** The choice is `themePacks` in settings.json (team id to pack id); the React app ignores
+  it, and team colours off (`useTeamColors`) draws the neutral system theme whatever pack is chosen.
+- **Pennant ships the mechanism and the save-derived defaults, never trademarked art.** Packs are plain folders in the data
+  folder (`theme-packs/<id>/pack.json` and its images) that the owner makes for his own use; the repository carries only a
+  made-up example (`docs/theme-packs/sunset-series`).

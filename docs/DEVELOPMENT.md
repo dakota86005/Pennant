@@ -312,6 +312,49 @@ by `tests/stringCatalog.test.ts`, which also fails when a label written in the S
 `Label`, `Section`, a `title:` and the like) is missing from the app's catalog: the packages' views look their labels up
 there.
 
+**Accessibility looks without changing the Mac's settings.** A Debug build takes `-PennantDebugAppearance
+increasedContrastLight` (or `increasedContrastDark`), which draws the app's own pieces as Increase Contrast does (the
+theme's 7:1 colours, the borders) with AppKit in the high-contrast appearance, and `-PennantDebugReduceTransparency YES`,
+which draws the app's own pieces opaque. The system's own glass follows only the Mac's real settings, so check those by
+hand. `-PennantDebugActivate YES` brings a Debug build launched from a script to the front. None of these exist in a
+release build.
+
+### Making a theme pack
+
+A theme pack (D-061) is how a club looks in the Mac app: the masthead at the top of a report, the club card, the one
+floating control's tint. Every club already has one with no file, its own colours from the save; a pack is for another
+look, a City Connect set, say. Pennant ships no club's art: packs you make are for your own use and stay in your data
+folder.
+
+1. Make a folder in the data folder's `theme-packs/` (Settings ▸ Appearance shows where, with Show in Finder), named for
+   the pack's id: lower-case letters, digits and dashes, not `club-colors`.
+2. Put a `pack.json` in it. `docs/theme-packs/sunset-series/pack.json` is a complete example with made-up colours:
+
+   | Field | What it is |
+   |---|---|
+   | `format` | `1` |
+   | `id` | the folder's name |
+   | `name` | what Settings calls it, up to 40 characters |
+   | `version` | yours, up to 20 characters (`"1.0"`) |
+   | `club` | the team id it is made for (as the save numbers clubs), or `"any"` |
+   | `light`, `dark` | the colours for each appearance (below), every one written `#rrggbb` |
+   | `lightIncreasedContrast`, `darkIncreasedContrast` | optional: the colours with Increase Contrast; left out, Pennant makes them from `light` and `dark` |
+   | `logo`, `art` | optional: a `.png` or `.jpg` in the folder, at most 2 MB (the masthead's logo, and art drawn at its trailing side) |
+
+   Each appearance names `mastheadTop` (under the toolbar, where macOS writes the window's title: nearly white in light,
+   nearly black in dark), `masthead` (one to four colours, from the masthead's leading top to its trailing bottom),
+   `mastheadText` and `mastheadSecondaryText` (on them), `accent` and `accentText` (the club's accent on the window, and
+   text on it), `tint` and `tintText` (the floating control), and `card` and `cardText` (the club card).
+3. Every piece of text must read on its colour: 4.5:1, 7:1 with Increase Contrast, the masthead's text on every colour and
+   every blend between two neighbours, the accent on the window's backgrounds, and the masthead's top against the title
+   (17:1 against black in light, 14:1 against white in dark). A pack that falls short is refused whole: Settings ▸
+   Appearance lists it with the first thing wrong, and every finding is in its help tag. Nothing half-applies.
+4. Choose it in Settings ▸ Appearance ▸ Theme (the club's own colours are "Team colors"). Packs are read as they are: a
+   fix is seen the next time Settings or a window asks.
+
+To check packs outside the app: `npm run check:theme -- <league.db> <theme-packs folder>` (the repository's example is
+always checked).
+
 ## Versions
 
 Pennant has its own version lineage starting at **0.1.0** (D-049); it is unrelated to upstream's numbers.
