@@ -59,6 +59,13 @@ export interface SaveSpec {
   seed?: number;
   /** Proneness: 'blank' leaves the columns 0 (the export's unfilled value); 'set' fills 1-200; 'absent' writes none. */
   proneness?: 'blank' | 'set' | 'absent';
+  /**
+   * The season as the Morning Report reads it (N6): a schedule in `games` (played and to come), standings and streaks from
+   * it, the clubs' season totals (batting, pitching, the rotation's and the bullpen's, fielding) as a current export has
+   * them, the per-game log, divisions, the projected starters and base-running runs. Off by default: the cross-save suite's
+   * saves have no games, as before.
+   */
+  teamSeason?: boolean;
 }
 
 export interface BuiltSave {
@@ -351,11 +358,227 @@ export function buildSave(spec: SaveSpec): BuiltSave {
     for (let i = 0; i < 6; i += 1) prospects.push(addPlayer(f, f - 100, i % 2 === 1, 'prospect'));
   }
   clearPlayerValueHistory();
-  return {
+  const built: BuiltSave = {
     spec, leagueId: L, aaaLeagueId: AAA, clubs, farmClubs: farm, hitters, pitchers, prospects,
     regular: hitters[0], reliever: pitchers[6], org: 1,
   };
+  if (spec.teamSeason) writeTeamSeason(built, rnd);
+  return built;
 }
+
+/** The tables and columns the Morning Report reads, as a current export has them (the fixture carries only `g` and `r`). */
+const SEASON_TABLES: Record<string, string> = {
+  team_starting_pitching_stats: 'team_id INTEGER, year INTEGER, league_id INTEGER, level_id INTEGER, split_id INTEGER',
+  team_bullpen_pitching_stats: 'team_id INTEGER, year INTEGER, league_id INTEGER, level_id INTEGER, split_id INTEGER',
+  team_fielding_stats_stats: 'team_id INTEGER, year INTEGER, league_id INTEGER, level_id INTEGER, split_id INTEGER, position INTEGER',
+  divisions: 'league_id INTEGER, sub_league_id INTEGER, division_id INTEGER, name TEXT, gender INTEGER',
+  players_game_batting: 'player_id INTEGER, year INTEGER, team_id INTEGER, game_id INTEGER, league_id INTEGER, level_id INTEGER, split_id INTEGER',
+};
+const BATTING_TOTALS = ['league_id', 'pa', 'ab', 'h', 'k', 'tb', 'd', 't', 'hr', 'sb', 'cs', 'bb', 'hp', 'sf', 'gs', 'ubr'];
+const PITCHING_TOTALS = ['league_id', 'ip', 'ipf', 'bf', 'ha', 'k', 'bb', 'er', 'hra', 'hp', 'gs', 'w', 'l', 's', 'outs'];
+const SEASON_COLUMNS: Record<string, string[]> = {
+  team_batting_stats: BATTING_TOTALS,
+  team_pitching_stats: PITCHING_TOTALS,
+  team_starting_pitching_stats: ['g', 'r', ...PITCHING_TOTALS],
+  team_bullpen_pitching_stats: ['g', 'r', ...PITCHING_TOTALS],
+  team_fielding_stats_stats: ['g', 'e', 'dp', 'pct'],
+  players_game_batting: ['ab', 'h', 'k', 'pa', 'd', 't', 'hr', 'r', 'sb', 'cs', 'bb', 'hp', 'sf', 'ubr'],
+  players_game_pitching_stats: ['year', 'team_id', 'league_id', 'level_id', 'split_id', 'ip', 'ipf', 'ha', 'k', 'bf', 'bb', 'r', 'er', 'hra', 'hp', 'w', 'l', 's'],
+  players_career_batting_stats: ['ubr'],
+  games: ['time', 'game_type', 'runs0', 'runs1'],
+};
+
+function seasonSchema(): void {
+  for (const [table, ddl] of Object.entries(SEASON_TABLES)) if (!tableExists(table)) db.exec(`CREATE TABLE ${table} (${ddl})`);
+  for (const [table, cols] of Object.entries(SEASON_COLUMNS)) {
+    if (!tableExists(table)) continue;
+    const have = new Set(tableColumns(table));
+    for (const c of cols) if (!have.has(c)) db.exec(`ALTER TABLE "${table}" ADD COLUMN "${c}" ${c === 'ubr' || c === 'pct' ? 'REAL' : 'INTEGER'}`);
+  }
+}
+
+/**
+ * The season so far, as OOTP exports it: a balanced schedule (every club once a day while there is a partner), the
+ * games played up to the share asked for with seeded scores, and everything that follows from them. The standings,
+ * the clubs' totals and the game log all add up from the same games, as they do in a real export.
+ */
+function writeTeamSeason(save: BuiltSave, rnd: () => number): void {
+  seasonSchema();
+  const { spec, leagueId: L, clubs } = save;
+  const Y = spec.season;
+  const G = spec.gamesPerTeam;
+  const { seasonDays } = seasonDaysOf(spec);
+  const start = parseDay(spec.startDate ?? `${Y}-4-1`);
+  const dayOf = (k: number) => {
+    const d = new Date(start + Math.ceil((k * seasonDays) / G) * 86_400_000);
+    return `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${d.getUTCDate()}`;
+  };
+  const playedRounds = Math.round(spec.playedShare * G);
+  // Two divisions when the league has six clubs or more; one otherwise
+  const split = clubs.length >= 6;
+  insert('divisions', { league_id: L, sub_league_id: 0, division_id: 0, name: 'East Division', gender: 0 });
+  if (split) insert('divisions', { league_id: L, sub_league_id: 0, division_id: 1, name: 'West Division', gender: 0 });
+  const division = new Map(clubs.map((c, i) => [c, split && i >= clubs.length / 2 ? 1 : 0]));
+  for (const c of clubs) db.prepare(`UPDATE teams SET division_id = ? WHERE team_id = ?`).run(division.get(c), c);
+  const strength = new Map(clubs.map((c) => [c, 0.8 + 0.4 * rnd()]));
+  const facts = new Map((db.prepare(`SELECT player_id, team_id, role FROM players`).all() as Array<{ player_id: number; team_id: number; role: number }>)
+    .map((r) => [r.player_id, r] as const));
+  const starters = new Map(clubs.map((c) => [c, save.pitchers.filter((p) => facts.get(p)?.team_id === c && facts.get(p)?.role === 11)]));
+  const relievers = new Map(clubs.map((c) => [c, save.pitchers.filter((p) => facts.get(p)?.team_id === c && facts.get(p)?.role !== 11)]));
+  const regular = new Map(clubs.map((c) => [c, save.hitters.find((h) => facts.get(h)?.team_id === c)!]));
+  // One pitcher a club a season closes games: its first reliever
+  for (const c of clubs) {
+    const closer = relievers.get(c)![0];
+    if (closer) db.prepare(`UPDATE players SET role = 13 WHERE player_id = ?`).run(closer);
+  }
+
+  type Line = Record<string, number>;
+  const add = (to: Line, from: Line) => { for (const [k, v] of Object.entries(from)) to[k] = (to[k] ?? 0) + v; };
+  const batting = new Map(clubs.map((c) => [c, {} as Line]));
+  const pitchingAll = new Map(clubs.map((c) => [c, {} as Line]));
+  const startingAll = new Map(clubs.map((c) => [c, {} as Line]));
+  const bullpenAll = new Map(clubs.map((c) => [c, {} as Line]));
+  const record = new Map(clubs.map((c) => [c, { w: 0, l: 0, results: [] as number[] }]));
+  const started = new Map(clubs.map((c) => [c, 0]));
+  const pitcherLines = new Map<number, Line>();
+  let gameId = 1;
+  const poisson = (mean: number) => {
+    let k = 0;
+    let p = Math.exp(-mean);
+    let sum = p;
+    const u = rnd();
+    while (u > sum && k < 20) { k += 1; p *= mean / k; sum += p; }
+    return k;
+  };
+  const battingLine = (runs: number): Line => {
+    const pa = 34 + Math.floor(rnd() * 8) + runs;
+    const bb = poisson(3); const hp = poisson(0.4); const sf = poisson(0.3);
+    const ab = pa - bb - hp - sf;
+    const h = Math.min(ab, 5 + poisson(3) + Math.floor(runs / 2));
+    const hr = Math.min(h, poisson(1.1)); const d = Math.min(h - hr, poisson(1.7)); const t = Math.min(h - hr - d, poisson(0.15));
+    return { pa, ab, h, d, t, hr, tb: h + d + 2 * t + 3 * hr, bb, hp, sf, k: poisson(8.5), sb: poisson(0.6), cs: poisson(0.2), r: runs, ubr: Math.round((rnd() - 0.5) * 10) / 10 };
+  };
+  const pitchingSplit = (opp: Line, runsAllowed: number): { starter: Line; relief: Line } => {
+    const outs = 27;
+    const starterOuts = 15 + Math.floor(rnd() * 6);
+    const share = starterOuts / outs;
+    const er = Math.max(0, runsAllowed - (rnd() < 0.1 ? 1 : 0));
+    const part = (f: number, whole: number) => Math.round(whole * f);
+    const starter: Line = {
+      outs: starterOuts, r: part(share, runsAllowed), er: part(share, er), ha: part(share, opp.h), hra: part(share, opp.hr),
+      bf: part(share, opp.pa), k: part(share, opp.k), bb: part(share, opp.bb), hp: part(share, opp.hp),
+    };
+    const relief: Line = {
+      outs: outs - starterOuts, r: runsAllowed - starter.r, er: er - starter.er, ha: opp.h - starter.ha, hra: opp.hr - starter.hra,
+      bf: opp.pa - starter.bf, k: opp.k - starter.k, bb: opp.bb - starter.bb, hp: opp.hp - starter.hp,
+    };
+    return { starter, relief };
+  };
+  const inningsOf = (outs: number) => ({ ip: Math.floor(outs / 3), ipf: outs % 3 });
+
+  for (let k = 0; k < G; k += 1) {
+    // A round robin: rotate every club but the first, pair the ends
+    const order = [clubs[0], ...clubs.slice(1).map((_, i) => clubs[1 + ((i + k) % (clubs.length - 1))])];
+    const pairs: Array<[number, number]> = [];
+    for (let i = 0; i < Math.floor(order.length / 2); i += 1) pairs.push(k % 2 === 0 ? [order[i], order[order.length - 1 - i]] : [order[order.length - 1 - i], order[i]]);
+    for (const [away, home] of pairs) {
+      const played = k < playedRounds;
+      let runs0 = 0;
+      let runs1 = 0;
+      if (played) {
+        runs0 = poisson(4.4 * strength.get(away)! / strength.get(home)!);
+        runs1 = poisson(4.4 * strength.get(home)! / strength.get(away)!);
+        if (runs0 === runs1) runs1 += 1;
+      }
+      insert('games', { game_id: gameId, league_id: L, home_team: home, away_team: away, date: dayOf(k), played: played ? 1 : 0, time: 1905, game_type: 0, runs0, runs1, innings: played ? 9 : 0 });
+      if (played) {
+        for (const [club, us, them] of [[away, runs0, runs1], [home, runs1, runs0]] as const) {
+          const bat = battingLine(us);
+          add(batting.get(club)!, bat);
+          insert('players_game_batting', { player_id: regular.get(club), year: Y, team_id: club, game_id: gameId, league_id: L, level_id: 1, split_id: 0, ...bat });
+          const rec = record.get(club)!;
+          if (us > them) rec.w += 1; else rec.l += 1;
+          rec.results.push(us > them ? 1 : -1);
+        }
+      }
+      gameId += 1;
+    }
+  }
+  // The pitching side is the other club's batting, game by game: read back from the log just written
+  const logs = db.prepare(`SELECT g.game_id, g.home_team, g.away_team, g.runs0, g.runs1, b.team_id, b.pa, b.h, b.hr, b.k, b.bb, b.hp
+    FROM games g JOIN players_game_batting b ON b.game_id = g.game_id WHERE g.played = 1 ORDER BY g.game_id`).all() as Array<Record<string, number>>;
+  for (const row of logs) {
+    const pitchingClub = row.team_id === row.home_team ? row.away_team : row.home_team;
+    const allowed = row.team_id === row.home_team ? row.runs1 : row.runs0;
+    const won = (pitchingClub === row.home_team ? row.runs1 : row.runs0) > allowed;
+    const { starter, relief } = pitchingSplit({ pa: row.pa, h: row.h, hr: row.hr, k: row.k, bb: row.bb, hp: row.hp }, allowed);
+    const rotation = starters.get(pitchingClub)!;
+    const pen = relievers.get(pitchingClub)!;
+    const n = started.get(pitchingClub)!;
+    started.set(pitchingClub, n + 1);
+    const sp = rotation[n % Math.max(1, rotation.length)];
+    const rp = pen[n % Math.max(1, pen.length)];
+    const decision = { w: won ? 1 : 0, l: won ? 0 : 1 };
+    for (const [pid, line, gs, dec] of [[sp, starter, 1, decision], [rp, relief, 0, { w: 0, l: 0, s: won && rnd() < 0.5 ? 1 : 0 }]] as const) {
+      if (pid === undefined) continue;
+      insert('players_game_pitching_stats', { player_id: pid, year: Y, team_id: pitchingClub, game_id: row.game_id, league_id: L, level_id: 1, split_id: 1, gs, g: 1, ...inningsOf(line.outs), ...line, ...dec });
+      const mine = pitcherLines.get(pid) ?? {};
+      add(mine, { ...line, ...dec });
+      pitcherLines.set(pid, mine);
+    }
+    add(pitchingAll.get(pitchingClub)!, { ...starter, g: 0 });
+    add(pitchingAll.get(pitchingClub)!, relief);
+    add(startingAll.get(pitchingClub)!, { ...starter, g: 1, gs: 1, ...decision });
+    add(bullpenAll.get(pitchingClub)!, { ...relief, g: 1 });
+  }
+  for (const c of clubs) db.prepare(`UPDATE players_career_pitching_stats SET er = 0, w = 0, l = 0, s = 0 WHERE team_id = ? AND year = ?`).run(c, Y);
+  for (const [pid, line] of pitcherLines) {
+    db.prepare(`UPDATE players_career_pitching_stats SET er = ?, w = ?, l = ?, s = ? WHERE player_id = ? AND year = ? AND split_id = 1`)
+      .run(line.er ?? 0, line.w ?? 0, line.l ?? 0, line.s ?? 0, pid, Y);
+  }
+  db.prepare(`UPDATE players_career_batting_stats SET ubr = ROUND((player_id % 7 - 3) * 0.4, 1) WHERE year = ? AND split_id = 1`).run(Y);
+
+  // The standings from the games: games back within the division, the streak signed as OOTP writes it
+  const gamesPlayed = (c: number) => record.get(c)!.w + record.get(c)!.l;
+  for (const div of new Set(division.values())) {
+    const members = clubs.filter((c) => division.get(c) === div);
+    const lead = Math.max(...members.map((c) => record.get(c)!.w - record.get(c)!.l));
+    const byGb = [...members].sort((a, b) => (record.get(b)!.w - record.get(b)!.l) - (record.get(a)!.w - record.get(a)!.l));
+    for (const c of members) {
+      const r = record.get(c)!;
+      const g = gamesPlayed(c);
+      let streak = 0;
+      for (let i = r.results.length - 1; i >= 0 && (streak === 0 || Math.sign(streak) === r.results[i]); i -= 1) streak += r.results[i];
+      db.prepare(`UPDATE team_record SET g = ?, w = ?, l = ?, pct = ?, pos = ?, gb = ?, streak = ? WHERE team_id = ?`)
+        .run(g, r.w, r.l, g > 0 ? r.w / g : 0, byGb.indexOf(c) + 1, (lead - (r.w - r.l)) / 2, streak, c);
+    }
+  }
+  // The clubs' season totals, one row each at the major league, and a placeholder row as a real export carries
+  for (const c of clubs) {
+    const g = gamesPlayed(c);
+    const b = batting.get(c)!;
+    insert('team_batting_stats', { team_id: c, year: Y, league_id: L, level_id: 1, split_id: 0, g, gs: g, ...b });
+    const withInnings = (l: Line) => ({ ...l, ...inningsOf(l.outs ?? 0) });
+    insert('team_pitching_stats', { team_id: c, year: Y, league_id: L, level_id: 1, split_id: 1, g, gs: g, ...withInnings(pitchingAll.get(c)!) });
+    insert('team_starting_pitching_stats', { team_id: c, year: Y, league_id: L, level_id: 1, split_id: 1, ...withInnings(startingAll.get(c)!) });
+    insert('team_bullpen_pitching_stats', { team_id: c, year: Y, league_id: L, level_id: 1, split_id: 1, gs: 0, ...withInnings(bullpenAll.get(c)!) });
+    insert('team_fielding_stats_stats', { team_id: c, year: Y, league_id: L, level_id: 1, split_id: 0, position: 0, g, e: Math.round(g * 0.6), dp: Math.round(g * 0.9), pct: 0.984 });
+  }
+  for (const f of save.farmClubs) insert('team_batting_stats', { team_id: f, year: 0, league_id: 0, level_id: 0, split_id: 0, g: 0, r: 0 });
+  // OOTP's projected starters: the rotation from the next start on
+  for (const c of clubs) {
+    const rotation = starters.get(c)!;
+    const next = started.get(c)!;
+    const row: Record<string, unknown> = { team_id: c };
+    for (let i = 0; i < 8; i += 1) row[`starter_${i}`] = rotation.length ? rotation[(next + i) % rotation.length] : 0;
+    insert('projected_starting_pitchers', row);
+  }
+}
+
+const parseDay = (s: string): number => {
+  const [y, m, d] = s.split('-').map(Number);
+  return Date.UTC(y, m - 1, d);
+};
 
 /** Clears Player Value's history.db tables (fits, market and contract snapshots): a new save starts with none. */
 export function clearPlayerValueHistory(): void {
