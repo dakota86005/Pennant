@@ -18,6 +18,10 @@
           "value": "Not found"
         },
         {
+          "label": "Ratings",
+          "value": "Not known"
+        },
+        {
           "label": "Roster evidence",
           "value": "Transaction history unavailable"
         },
@@ -37,7 +41,8 @@
         "gameDate": "2040-05-06"
       },
       "unknown": [
-        "The OOTP save folder could not be found. Current league state is available, but reasoning that depends on transaction history is limited."
+        "The OOTP save folder could not be found. Current league state is available, but reasoning that depends on transaction history is limited.",
+        "Which kind of ratings the export carries: this import was made before Pennant noted it."
       ],
       "wouldChange": [],
       "lean": null,
@@ -99,6 +104,23 @@
       },
       "sort": {
         "source": "OOTP save",
+        "state": 0
+      }
+    },
+    {
+      "id": "ratings",
+      "cells": {
+        "source": {
+          "display": "Ratings"
+        },
+        "state": {
+          "display": "Not known",
+          "tone": "caution",
+          "hint": "Imported before Pennant noted which kind of ratings it carries"
+        }
+      },
+      "sort": {
+        "source": "Ratings",
         "state": 0
       }
     },
@@ -215,5 +237,6 @@
       }
     }
   ],
-  "action": null
+  "action": null,
+  "leftOut": null
 }

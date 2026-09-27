@@ -1119,6 +1119,26 @@
           },
           "freshness": {
             "$ref": "#/components/schemas/FreshnessAssessment"
+          },
+          "import": {
+            "type": "object",
+            "properties": {
+              "ratingMode": {
+                "$ref": "#/components/schemas/RatingModeRecord",
+                "description": "Which kind of ratings the export carries, as the import read OOTP's export settings; null for an import from before N3.5."
+              },
+              "leftOut": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/LeftOutFile"
+                },
+                "description": "Files the import left out (older than the rest of the export, or unreadable), and what their tables hold."
+              }
+            },
+            "required": [
+              "leftOut"
+            ],
+            "description": "What the imported export carries and what its import left out (N3.5, D-061)."
           }
         },
         "required": [
@@ -1127,7 +1147,8 @@
           "save",
           "csv",
           "transactionLog",
-          "freshness"
+          "freshness",
+          "import"
         ]
       },
       "DataStatusFact": {
@@ -1303,6 +1324,10 @@
           "action": {
             "$ref": "#/components/schemas/Cell",
             "description": "What to do about it, when there is something to do."
+          },
+          "leftOut": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Files the last import left out, in a sentence, each file and why in its basis; null when none was (N3.5)."
           }
         },
         "required": [

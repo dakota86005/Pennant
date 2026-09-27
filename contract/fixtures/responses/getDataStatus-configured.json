@@ -56,5 +56,9 @@
       "The save has no live transaction database. Current league state is available, but reasoning that depends on transaction history is limited."
     ],
     "action": null
+  },
+  "import": {
+    "ratingMode": null,
+    "leftOut": []
   }
 }

@@ -15,6 +15,8 @@ import { parseGameDate, type GameDate, type RosterEvidenceLevel } from '../dataF
 import type { SaveDiscoveryMethod } from '../ootpSave.js';
 import { timestampWords } from '../timeWords.js';
 import { basis, cell, claim, row } from './claim.js';
+import { RATING_MODE_WORDS } from '../ratingMode.js';
+import { leftOutDetail, leftOutNote } from './importWords.js';
 
 /** A game date as served (unpadded, as OOTP writes it, or null) and as the app shows it. */
 export interface GameDateText {
@@ -43,6 +45,8 @@ export interface DataStatusView {
   facts: DataStatusFact[];
   /** What to do about it, when there is something to do. */
   action: Cell | null;
+  /** Files the last import left out, in a sentence, each file and why in its basis; null when none was (N3.5). */
+  leftOut: Claim | null;
 }
 
 const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -116,6 +120,17 @@ function sourceLines(s: DataStatus): Line[] {
     order: 0,
   };
 
+  // Which kind of ratings the export carries (D-061): the scouts' view, true ratings, OSA's, none, or not known
+  const mode = s.import?.ratingMode?.mode ?? 'unknown';
+  const ratings: Line = {
+    id: 'ratings',
+    source: 'Ratings',
+    state: RATING_MODE_WORDS[mode].short,
+    tone: mode === 'unknown' || mode === 'none' ? 'caution' : 'neutral',
+    hint: s.import?.ratingMode ? RATING_MODE_WORDS[mode].hint : 'Imported before Pennant noted which kind of ratings it carries',
+    order: 0,
+  };
+
   const evidence: Line = {
     id: 'evidence',
     source: 'Roster evidence',
@@ -123,7 +138,7 @@ function sourceLines(s: DataStatus): Line[] {
     tone: f.level === 'current' ? 'good' : f.level === 'partial' ? 'caution' : 'bad',
     order: 0,
   };
-  return [league, transactions, save, evidence];
+  return [league, transactions, save, ratings, evidence];
 }
 
 /** The headline for each level, in the GM's words, from the freshness model's own states and lags. */
@@ -187,7 +202,7 @@ export function dataStatusView(s: DataStatus): DataStatusView {
     basis: basis({
       because,
       source: { department: 'frontOffice', specialist: 'Data status', asOf: s.csv.importedAt, gameDate: s.csv.currentDate },
-      unknown: [...new Set(s.freshness.reasons)],
+      unknown: [...new Set([...s.freshness.reasons, ...ratingsUnknown(s)])],
       wouldChange: action ? [action] : [],
       lean: null,
       certainty: 'fact',
@@ -215,5 +230,35 @@ export function dataStatusView(s: DataStatus): DataStatusView {
     ),
     facts,
     action: action ? cell(action) : null,
+    leftOut: leftOutCell(s),
   };
+}
+
+/** Why the kind of ratings is not known, when it is not (D-061). */
+function ratingsUnknown(s: DataStatus): string[] {
+  const record = s.import?.ratingMode;
+  if (s.freshness.level === 'unavailable') return [];
+  if (!record) return ['Which kind of ratings the export carries: this import was made before Pennant noted it.'];
+  return record.mode === 'unknown' ? [record.reason ?? RATING_MODE_WORDS.unknown.long] : [];
+}
+
+/** The files the last import left out, as one sentence, with each file and why in its basis. */
+function leftOutCell(s: DataStatus): Claim | null {
+  const leftOut = s.import?.leftOut ?? [];
+  const text = leftOutNote(leftOut);
+  if (!text) return null;
+  const lines = (leftOutDetail(leftOut) ?? '').split('\n').filter(Boolean);
+  return claim({
+    text,
+    tone: 'caution',
+    hint: 'Files OOTP didn\'t write this time, or that Pennant couldn\'t read',
+    basis: basis({
+      because: lines.map((line) => ({ label: 'Left out', value: line })),
+      source: { department: 'frontOffice', specialist: 'Data status', asOf: s.csv.importedAt, gameDate: s.csv.currentDate },
+      unknown: [],
+      wouldChange: ['Export the league from OOTP with every table switched on, then import.'],
+      lean: null,
+      certainty: 'fact',
+    }),
+  });
 }

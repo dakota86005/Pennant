@@ -91,13 +91,33 @@ export function readRatingMode(lgPath: string | null): RatingModeRecord {
   return parseRatingMode(text);
 }
 
-/** The mode in the GM's words, for the data status and a rating's basis. */
-export const RATING_MODE_WORDS: Record<RatingMode, { short: string; long: string }> = {
-  scouted: { short: 'Your scouts\' view', long: 'The ratings are your scouts\' view (OOTP\'s export shows scouted ratings).' },
-  real: { short: 'True ratings', long: 'The ratings are true ratings (OOTP\'s export setting "Show real player ratings" is on).' },
-  osa: { short: 'OSA\'s view', long: 'The ratings are the league scouting service\'s view (OOTP\'s export setting "Show OSA player ratings" is on).' },
-  none: { short: 'No ratings', long: 'The export carries no ratings (OOTP\'s export setting "Show no player ratings" is on), so every rating is unknown.' },
-  unknown: { short: 'Not known', long: 'Which kind of ratings the export carries isn\'t known.' },
+/** The mode in the GM's words, for the data status and a rating's basis: a name, a help tag (75 characters at most), a sentence. */
+export const RATING_MODE_WORDS: Record<RatingMode, { short: string; hint: string; long: string }> = {
+  scouted: {
+    short: 'Your scouts\' view',
+    hint: 'OOTP\'s export shows the ratings as your scouts see them',
+    long: 'The ratings are your scouts\' view (OOTP\'s export shows scouted ratings).',
+  },
+  real: {
+    short: 'True ratings',
+    hint: 'OOTP\'s export setting "Show real player ratings" is on',
+    long: 'The ratings are true ratings (OOTP\'s export setting "Show real player ratings" is on).',
+  },
+  osa: {
+    short: 'OSA\'s view',
+    hint: 'OOTP\'s export setting "Show OSA player ratings" is on',
+    long: 'The ratings are the league scouting service\'s view (OOTP\'s export setting "Show OSA player ratings" is on).',
+  },
+  none: {
+    short: 'No ratings',
+    hint: 'The export carries no ratings, so every rating is unknown',
+    long: 'The export carries no ratings (OOTP\'s export setting "Show no player ratings" is on), so every rating is unknown.',
+  },
+  unknown: {
+    short: 'Not known',
+    hint: 'Pennant couldn\'t tell which kind of ratings the export carries',
+    long: 'Which kind of ratings the export carries isn\'t known.',
+  },
 };
 
 /** Whether two recorded modes are a switch: both known and different. An unrecorded or unknown mode is never evidence of one. */

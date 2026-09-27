@@ -281,6 +281,30 @@ export async function importCsvDir(csvDir: string, onProgressOrOptions?: ((p: Im
   }
 }
 
+/**
+ * The files the served database's import left out, rebuilt from its own record (so it is always the database's truth,
+ * whichever process imported it): stale files, with whether their table kept earlier rows and from when; unreadable ones.
+ */
+export function leftOutOfServedImport(): LeftOutFile[] {
+  const record = importRecord();
+  if (!record) return [];
+  const tables = Array.isArray(record.tables) ? (record.tables as Array<{ table?: unknown; source?: unknown }>) : [];
+  const carried = new Set(tables.filter((t) => t.source === 'carried').map((t) => String(t.table)));
+  const keptFrom = record.keptFrom && typeof record.keptFrom === 'object' ? (record.keptFrom as Record<string, string>) : {};
+  const stale = Array.isArray(record.stale) ? (record.stale as Array<{ file: string; table: string; writtenAt: string | null }>) : [];
+  const unreadable = Array.isArray(record.unreadable) ? (record.unreadable as Array<{ file: string; table: string }>) : [];
+  const files = Array.isArray(record.files) ? (record.files as Array<{ file: string; writtenAt: string | null }>) : [];
+  return [
+    ...stale.map((f): LeftOutFile => ({
+      table: f.table, file: f.file, reason: 'stale', writtenAt: f.writtenAt ?? null,
+      kept: carried.has(f.table), keptFrom: carried.has(f.table) ? keptFrom[f.table] ?? null : null,
+    })),
+    ...unreadable.map((f): LeftOutFile => ({
+      table: f.table, file: f.file, reason: 'unreadable', writtenAt: files.find((x) => x.file === f.file)?.writtenAt ?? null, kept: false, keptFrom: null,
+    })),
+  ];
+}
+
 /** Three parse workers were the measured best on a ten-core M4 (a fourth adds nothing: one writer is the floor). */
 function parseWorkerCount(): number {
   const cores = typeof os.availableParallelism === 'function' ? os.availableParallelism() : os.cpus().length;
