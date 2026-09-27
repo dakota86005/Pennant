@@ -41,6 +41,10 @@ files:
   - build/value-refit-worker.cjs.map
   - build/calibration-refit-worker.cjs
   - build/calibration-refit-worker.cjs.map
+  - build/import-worker.cjs
+  - build/import-worker.cjs.map
+  - build/snapshot-worker.cjs
+  - build/snapshot-worker.cjs.map
   - build/front-office-worker.cjs
   - build/front-office-worker.cjs.map
   - package.json

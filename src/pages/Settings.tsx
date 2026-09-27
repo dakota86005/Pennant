@@ -64,6 +64,7 @@ interface ProvidersResponse {
 }
 export interface AppSettings {
   autoImport: boolean;
+  importAutomatically: boolean;
   useTeamColors: boolean;
   defaultOrgId: number | null;
   theme: 'system' | 'dark' | 'light';
@@ -621,8 +622,7 @@ export function Settings({
           <div>
             <strong>Watch for new exports</strong>
             <div className="muted">
-              Notice when OOTP writes a fresh export and offer to load it. Importing a full league
-              takes a while, so the app asks rather than interrupting you.
+              Notice when OOTP writes a fresh export.
             </div>
           </div>
           <label className="toggle">
@@ -632,6 +632,25 @@ export function Settings({
               onChange={(e) => void update({ autoImport: e.target.checked })}
             />
             <span>{settings.autoImport ? 'On' : 'Off'}</span>
+          </label>
+        </div>
+
+        <div className="settings-row">
+          <div>
+            <strong>Import new exports automatically</strong>
+            <div className="muted">
+              Load a new export in the background once OOTP has finished writing it. The pages keep
+              showing the last import until the new one is complete. Off, a new export is offered instead.
+            </div>
+          </div>
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={settings.importAutomatically !== false}
+              disabled={!settings.autoImport}
+              onChange={(e) => void update({ importAutomatically: e.target.checked })}
+            />
+            <span>{settings.importAutomatically !== false && settings.autoImport ? 'On' : 'Off'}</span>
           </label>
         </div>
 

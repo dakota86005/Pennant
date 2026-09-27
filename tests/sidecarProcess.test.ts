@@ -1,5 +1,7 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { spawn, type ChildProcess } from 'node:child_process';
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
 import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
@@ -49,7 +51,8 @@ interface Started {
 
 function start(dataDir: string, handshake: string | null): Started {
   const child = spawn(process.execPath, ['--import', 'tsx', 'server/sidecar.ts'], {
-    env: { PATH: process.env.PATH, HOME: process.env.HOME, OOTP_FO_DATA_DIR: dataDir, OOTP_FO_APP_ROOT: process.cwd() },
+    // An export a case has just written imports at once (the quiet period is the importer's own tests')
+    env: { PATH: process.env.PATH, HOME: process.env.HOME, OOTP_FO_DATA_DIR: dataDir, OOTP_FO_APP_ROOT: process.cwd(), OOTP_FO_EXPORT_QUIET_MS: '0' },
     stdio: ['pipe', 'pipe', 'pipe'],
   });
   running.add(child);
@@ -216,10 +219,11 @@ describe('starting the sidecar', () => {
 });
 
 /**
- * N1's kill-mid-import check (SWIFTUI_REBUILD.md section 5.3). The importer replaces one table per file, so a
- * process killed partway leaves a database that is sound as a file but neither export. What must hold: SQLite's
- * file is intact; the interruption is recorded; the next start says so and imports the export again, after which
- * the database is exactly the new export.
+ * N1's kill-mid-import check (SWIFTUI_REBUILD.md section 5.3), as N3.5 made it (D-061): the import builds a new file
+ * and swaps it in with one rename, so a process killed in the middle of an import leaves the previous import whole
+ * (never a mix of two exports) and an unfinished `league.next.db`. What must hold: the served database is exactly the
+ * previous export; the interruption is recorded; the next start removes the leftover, says so and imports the export
+ * again, after which the database is exactly the new export.
  */
 describe('a sidecar killed in the middle of an import', () => {
   const BIG = 400_000;
@@ -249,6 +253,13 @@ describe('a sidecar killed in the middle of an import', () => {
     }
   }
 
+  const whole = (version: number) => ({
+    a_first: { rows: 2, versions: [version] },
+    b_big: { rows: BIG, versions: [version] },
+    c_last: { rows: 1, versions: [version] },
+    players: { rows: 1, versions: [version] },
+  });
+
   it('leaves a sound database, records the interruption, and the next start imports the export again', async () => {
     const dataDir = scratch('pennant-sidecar-');
     const csvDir = path.join(scratch('pennant-export-'), 'csv');
@@ -270,7 +281,8 @@ describe('a sidecar killed in the middle of an import', () => {
     // OOTP writes the next export; the import of it is killed while it writes the big table
     writeExport(csvDir, 2);
     side = await ready(dataDir);
-    const writingBig = watchEvents(side, (e) => e.type === 'import-progress' && e.progress.table === 'b_big' && e.progress.phase === 'writing');
+    // The build is under way once the big file is being read (the new file exists from before the first read)
+    const writingBig = watchEvents(side, (e) => e.type === 'import-progress' && e.progress.table === 'b_big');
     await new Promise((r) => setTimeout(r, 100)); // the stream is open before the import starts
     const res = await fetch(`${side.base}/api/import`, { method: 'POST', headers: auth });
     expect(res.status).toBe(200);
@@ -278,15 +290,12 @@ describe('a sidecar killed in the middle of an import', () => {
     side.child.kill('SIGKILL');
     expect((await side.exited).signal).toBe('SIGKILL');
 
-    // The file is sound (SQLite rolled the open transaction back) ...
-    const db = new Database(path.join(dataDir, 'league.db'));
+    // The league is sound and exactly the first export: the kill hit the new file, never the one the app reads
+    const db = new Database(path.join(dataDir, 'league.db'), { readonly: true });
     expect(db.pragma('integrity_check', { simple: true })).toBe('ok');
     db.close();
-    // ... but it is neither export: the first file is the new one's, the big table is not whole, and the record of
-    // the last import still describes the old one. Only the marker says so.
-    const mixed = tables(dataDir);
-    expect(mixed.a_first.versions).toEqual([2]);
-    expect(mixed.b_big.rows).toBeLessThan(BIG);
+    expect(tables(dataDir)).toEqual(whole(1));
+    expect(fs.existsSync(path.join(dataDir, 'league.next.db')), 'the unfinished build is left for the next start to remove').toBe(true);
     expect(JSON.parse(fs.readFileSync(path.join(dataDir, 'last-import.json'), 'utf8')).startedAt).toBe(firstImport.startedAt);
     const marker = JSON.parse(fs.readFileSync(path.join(dataDir, 'import-in-progress.json'), 'utf8')) as { csvDir: string };
     expect(marker.csvDir).toBe(csvDir);
@@ -302,13 +311,102 @@ describe('a sidecar killed in the middle of an import', () => {
     expect(done.importInterruptedSince).toBeNull();
     expect(done.lastError).toBeNull();
     expect(fs.existsSync(path.join(dataDir, 'import-in-progress.json'))).toBe(false);
-    expect(tables(dataDir)).toEqual({
-      a_first: { rows: 2, versions: [2] },
-      b_big: { rows: BIG, versions: [2] },
-      c_last: { rows: 1, versions: [2] },
-      players: { rows: 1, versions: [2] },
-    });
+    expect(fs.existsSync(path.join(dataDir, 'league.next.db'))).toBe(false);
+    expect(tables(dataDir)).toEqual(whole(2));
     side.child.kill('SIGTERM');
     expect(await side.exited).toEqual({ code: 0, signal: null });
   }, 120_000);
+});
+
+/**
+ * The start-up of a data folder an earlier build left (N3.5 review, finding 1). Its league database is upgraded by
+ * building a converted copy and swapping it in, never in place, so a process stopped during the upgrade leaves the
+ * served file as it was; and a hot rollback journal (a process killed while writing the file in place, as the earlier
+ * build's import does) is rolled back before the read-only server reads it. In both cases the next start serves.
+ */
+describe('a league database an earlier build left', () => {
+  const ROWS = 2_000_000;
+
+  /** The earlier build's league: write-ahead-log mode, only the player index, a big career table. */
+  function oldBuildLeague(dataDir: string): void {
+    const db = new Database(path.join(dataDir, 'league.db'));
+    db.pragma('journal_mode = WAL');
+    db.exec(`CREATE TABLE leagues (league_id, name); INSERT INTO leagues VALUES (100, 'Major');
+      CREATE TABLE teams (team_id, league_id, name, human_team); INSERT INTO teams VALUES (1, 100, 'Club', 1);
+      CREATE TABLE players (player_id, team_id, first_name, last_name); INSERT INTO players VALUES (1, 1, 'A', 'B');
+      CREATE TABLE players_career_batting_stats (player_id, year, split_id, v)`);
+    const insert = db.prepare('INSERT INTO players_career_batting_stats VALUES (?, ?, ?, ?)');
+    db.transaction(() => { for (let i = 0; i < ROWS; i++) insert.run(i % 5000, 2000 + (i % 30), i % 3, 1); })();
+    db.exec('CREATE INDEX idx_players_career_batting_stats_player_id ON players_career_batting_stats (player_id)');
+    db.close();
+    fs.writeFileSync(path.join(dataDir, 'settings.json'), JSON.stringify({ autoImport: false }));
+  }
+
+  const shape = (dataDir: string) => {
+    const db = new Database(path.join(dataDir, 'league.db'), { readonly: true });
+    try {
+      return {
+        integrity: db.pragma('quick_check', { simple: true }),
+        rows: (db.prepare('SELECT COUNT(*) AS n FROM players_career_batting_stats').get() as { n: number }).n,
+        seasonIndex: !!db.prepare(`SELECT 1 FROM sqlite_master WHERE name = 'idx_players_career_batting_stats_year_split'`).get(),
+      };
+    } finally {
+      db.close();
+    }
+  };
+
+  it('is upgraded by a copy swapped in; killed during the upgrade, the file is untouched and the next start serves and upgrades', async () => {
+    const dataDir = scratch('pennant-upgrade-');
+    oldBuildLeague(dataDir);
+    let side = await ready(dataDir);
+    const next = path.join(dataDir, 'league.next.db');
+    await until('the upgrade to start', async () => fs.existsSync(next), 60_000);
+    side.child.kill('SIGKILL');
+    await side.exited;
+    expect(fs.existsSync(path.join(dataDir, 'league.db-journal')), 'nothing wrote the served file in place').toBe(false);
+    expect(shape(dataDir)).toMatchObject({ integrity: 'ok', rows: ROWS, seasonIndex: false });
+
+    side = await ready(dataDir);
+    expect((await status(side)).hasData).toBe(true);
+    const teams = await fetch(`${side.base}/api/teams`, { headers: auth });
+    expect(teams.status).toBe(200);
+    await until('the upgrade to finish', async () => /brought the league database up to date/.test(side.output()), 90_000);
+    expect(fs.existsSync(next)).toBe(false);
+    side.child.kill('SIGTERM');
+    await side.exited;
+    expect(shape(dataDir)).toEqual({ integrity: 'ok', rows: ROWS, seasonIndex: true });
+    const db = new Database(path.join(dataDir, 'league.db'), { readonly: true });
+    expect(db.pragma('journal_mode', { simple: true })).toBe('delete');
+    db.close();
+  }, 180_000);
+
+  it('serves after a process was killed writing the file in place (a hot rollback journal), with the write undone', async () => {
+    const dataDir = scratch('pennant-hot-journal-');
+    oldBuildLeague(dataDir);
+    const file = path.join(dataDir, 'league.db');
+    // Out of write-ahead-log mode, then a writer with a tiny cache spills an unfinished update to the file and dies
+    const plain = new Database(file);
+    plain.pragma('journal_mode = DELETE');
+    plain.close();
+    const killed = spawnSync(process.execPath, ['-e', `
+      const Database = require(${JSON.stringify(require.resolve('better-sqlite3'))});
+      const db = new Database(${JSON.stringify(file)});
+      db.pragma('cache_size = 10');
+      db.exec('BEGIN');
+      db.exec('UPDATE players_career_batting_stats SET v = 2');
+      process.kill(process.pid, 'SIGKILL');
+    `]);
+    expect(killed.signal).toBe('SIGKILL');
+    expect(fs.statSync(`${file}-journal`).size).toBeGreaterThan(0);
+
+    const side = await ready(dataDir);
+    expect((await status(side)).hasData).toBe(true);
+    const teams = await fetch(`${side.base}/api/teams`, { headers: auth });
+    expect(teams.status).toBe(200);
+    side.child.kill('SIGTERM');
+    await side.exited;
+    const db = new Database(file, { readonly: true });
+    expect(db.prepare('SELECT DISTINCT v FROM players_career_batting_stats').all()).toEqual([{ v: 1 }]);
+    db.close();
+  }, 180_000);
 });

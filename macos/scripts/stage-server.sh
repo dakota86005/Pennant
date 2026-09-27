@@ -4,7 +4,7 @@
 #
 #   build/macos-server/Helpers/pennant-server           the pinned Node 24 binary   -> Contents/Helpers/
 #   build/macos-server/Resources/server/server.cjs      the bundled server           -> Contents/Resources/server/
-#   build/macos-server/Resources/server/*-worker.cjs    the two refit workers
+#   build/macos-server/Resources/server/*-worker.cjs    the worker threads (refits, import, snapshots)
 #   build/macos-server/Resources/server/package.json    the version and runtime dependencies
 #   build/macos-server/Resources/server/node_modules/   production only, better-sqlite3 built for Node's ABI
 #   build/macos-server/Resources/server/NODE_LICENSE    Node's licence, which must ship with the binary
@@ -66,9 +66,8 @@ rm -rf "$STAGE"
 mkdir -p "$STAGE/Helpers" "$STAGE/Resources/server"
 cp -p "$NODE" "$STAGE/Helpers/pennant-server"
 cp build/node-runtime/LICENSE "$STAGE/Resources/server/NODE_LICENSE"
-cp build/sidecar/server.cjs build/sidecar/value-refit-worker.cjs build/sidecar/calibration-refit-worker.cjs \
-  build/sidecar/front-office-worker.cjs \
-  build/sidecar/package.json "$STAGE/Resources/server/"
+# The bundle and every worker thread beside it (the refits, the import, the snapshots)
+cp build/sidecar/*.cjs build/sidecar/package.json "$STAGE/Resources/server/"
 # Pruned: build intermediates and sources of the native module, type declarations, source maps, docs and the
 # install-time .bin links. Licences stay.
 rsync -a \

@@ -63,9 +63,9 @@ describe('the contract\'s shape', () => {
   const schemas = spec.components.schemas as Record<string, Any>;
 
   it('writes a closed string union as an open enum, so an older app reads a new code', () => {
-    // ImportProgress.phase is 'reading' | 'writing' | 'indexing' in TypeScript
+    // ImportProgress.phase is 'reading' | 'writing' | 'indexing' | 'waiting' in TypeScript
     expect(schemas.ImportProgress.properties.phase.anyOf).toEqual([
-      { type: 'string', enum: ['reading', 'writing', 'indexing'] },
+      { type: 'string', enum: ['reading', 'writing', 'indexing', 'waiting'] },
       { type: 'string' },
     ]);
     // Nowhere is a multi-value enum left closed
@@ -228,6 +228,9 @@ function stable(value: unknown): unknown {
   const walk = (node: unknown, key: string): unknown => {
     if (Array.isArray(node)) return node.map((n) => walk(n, key));
     if (node && typeof node === 'object') return Object.fromEntries(Object.entries(node).map(([k, v]) => [k, walk(v, k)]));
+    // An import's own time, and its export's fingerprint (the files' times), vary run to run
+    if (key === 'durationMs' && typeof node === 'number') return 0;
+    if (key === 'exportFingerprint' && typeof node === 'string') return 'fingerprint';
     if (typeof node !== 'string') return node;
     if (iso.test(node)) return '2040-07-01T12:00:00.000Z';
     if (key === 'version') return '0.0.0';

@@ -28,7 +28,7 @@ export interface Status {
     fileIndex: number;
     files: number;
     rows: number;
-    phase: 'reading' | 'writing' | 'indexing';
+    phase: 'reading' | 'writing' | 'indexing' | 'waiting';
   } | null;
   lastImport: { tables: number; rows: number; finishedAt: string } | null;
   lastError: string | null;

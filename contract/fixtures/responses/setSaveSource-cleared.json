@@ -53,6 +53,10 @@
         "The OOTP save folder could not be found. Current league state is available, but reasoning that depends on transaction history is limited."
       ],
       "action": null
+    },
+    "import": {
+      "ratingMode": null,
+      "leftOut": []
     }
   }
 }

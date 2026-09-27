@@ -91,7 +91,7 @@ The Mac app reads its words from `/api/v2` (D-056): `server/presentation/` autho
 specialists answered, and decides nothing. The Front Office (`server/frontOfficeService.ts`) reads each department's
 specialist through its public module (`server/frontOfficeBuild.ts`, in a worker thread), hands the answers to the pure
 adapters in `server/presentation/frontOffice/`, and keeps the result per club and import (with the settings, the
-configuration, the live log and a calibration revision in its key; never a build read while an import writes), built at
+configuration, the live log and a calibration revision in its key; never a build read across an import's swap), built at
 start and after each import, and stamped (`reportStamp`) so the Mac app reloads when it is rebuilt. This is the one place a department's answer is cached across
 requests: MINOR_LEAGUE_OPERATIONS.md section 7.8's "nothing cached across requests" still holds for the specialists
 themselves, and the Front Office's key moves whenever an input they read can.
@@ -102,13 +102,59 @@ themselves, and the Front Office's key moves whenever an input they read can.
 
 `server/importer.ts` reads every CSV in the selected OOTP export and creates one
 SQLite table per file, using the exported header as the schema. It detects CSV
-delimiter and encoding, yields between write chunks, and builds discovered
-indexes. `server/db.ts` supplies table/column discovery helpers because OOTP
-export shapes vary.
+delimiter and encoding and builds discovered indexes. `server/db.ts` supplies
+table/column discovery helpers because OOTP export shapes vary.
 
 `league.db` is a replaceable view of the latest export, not a checked-in source
 asset. Domain queries should tolerate absent tables and renamed/absent columns
 where practical instead of assuming one developer's save shape.
+
+**The import is all or nothing and off the server's thread (N3.5, D-061).**
+
+```
+export folder --(exportFiles.ts: quiet 10 s, one burst, fingerprint)--> importer.ts
+  free-space check (4.5 x the export) --> importBuild.ts --> worker thread (importWorker.ts, role "build")
+      3 parse workers (same file, role "parse"): read a file, re-check it, stream-parse, send flat batches
+      1 writer: CREATE TABLE per header, many-row INSERTs, each table indexed as it lands,
+                stale tables carried from league.db (same export folder only), ANALYZE,
+                pennant_import (the import's own record), journal DELETE, close, fsync
+  --> league.next.db --(db.ts swapInLeagueDatabase: one rename, reopen read-only)--> league.db
+  --> post-import hooks (postImport.ts): snapshots (snapshot worker) -> generations -> both refits at once -> ...
+```
+
+- Readers use the previous `league.db` until the rename, whole; the served connection is read-only (rollback journal,
+  2 GB memory map, 128 MB cache) and `db` is a live binding every module reads at call time, so after the swap every
+  query reads the new file. A replaced connection closes 5 s later (nothing keeps a statement across an `await`).
+  No module may keep `db`, or a statement prepared on it, across requests.
+- A crash at any point before the rename leaves the previous import whole; the start-up tidy (`prepareLeagueDatabase`,
+  under the data-folder lock) removes a leftover `league.next.db` and rolls back a hot rollback journal (a process
+  killed while writing the file in place: the earlier build's import) before the read-only server reads it. A database
+  the old Electron build left (write-ahead-log mode, or without the season indexes) is upgraded once in the background
+  the way an import works (`upgradeLeagueInBackground`: a `VACUUM INTO` copy in the import's worker, the indexes, a swap),
+  never in place; an import waits for it. `import-in-progress.json` keeps its meaning (a refusal, which touches
+  nothing, removes it); the interrupted import is retried at the next start, never a repair. `last-import.json` is
+  written in the swap's turn, and the database's own record (`pennant_import`) is trusted only when its start matches
+  it (the earlier build imports in place and leaves that table behind). On Windows a refused rename is retried every
+  half second without blocking (`swapWhenFree`), the previous import served meanwhile.
+- A file older than the rest of the export (not rewritten; a table switched off in OOTP) is left out and named
+  (`leftOut` on the import, the data status); its table keeps the previous import's rows, recorded as carried and from
+  which import, only when that import read the same export folder, otherwise it is absent. An unreadable file leaves
+  its table absent. A stale or unreadable `players`, `teams` or `leagues` refuses the import.
+- Completeness: 10 s of quiet; a burst whose files fall in groups more than a minute apart (OOTP paused part way) only
+  after two minutes' quiet, when the older group becomes stale; and before the swap the whole folder must match the
+  listing the build began from and still be settled, or the export is read again.
+- The watcher (`watcher.ts`) judges the folder after every change and at start-up; a settled export whose fingerprint
+  differs from the imported one is imported in the background when `importAutomatically` is on (the default), or
+  offered (`exportPending`) when it is off. An Import Now waits the same way (`phase: 'waiting'`).
+- Indexes: `player_id`, `team_id`, `game_id`, `league_id`, and the season index `(year, split_id)` (or `(year)`),
+  guarded by `EXPLAIN QUERY PLAN` tests (`tests/importAtomic.test.ts`).
+- Per-import caches (`importCache.ts`): a figure that depends on the export alone (today the destination-fit league
+  populations) is computed once per import, keyed on the database generation every swap bumps. This narrows
+  MINOR_LEAGUE_OPERATIONS.md section 7.8's "nothing cached across requests" to data keyed to one import; nothing keyed on
+  a philosophy input may live there (`tests/importCache.test.ts`). The served schema (tables and columns) is also
+  remembered per read-only connection.
+- The export's rating mode (`ratingMode.ts`) is read from `<save>.lg/settings/db_dump_standard_csv.cfg` at each import
+  and recorded in `pennant_import`; see "Evidence and fog of war".
 
 ### Persistent local state
 
@@ -136,7 +182,7 @@ artifact, not an alternative application backend.
 
 | Subsystem | Current responsibility | Boundary |
 |---|---|---|
-| Import and save discovery | `server/paths.ts`, `importer.ts`, `watcher.ts`, and `api.ts` find OOTP 27 saves, import CSVs, report progress, and refresh on new exports. | Do not parse or mutate binary OOTP saves. The live `temp/` transaction database is read only through a copy (D-021). |
+| Import and save discovery | `server/paths.ts`, `importer.ts` (with `exportFiles.ts`, `importBuild.ts`, `importWorker.ts`, `postImport.ts`, `importSnapshots.ts`), `watcher.ts`, and `api.ts` find OOTP 27 saves, import CSVs all or nothing in worker threads, report progress, and import a new export automatically once it has settled (D-061). | Do not parse or mutate binary OOTP saves; only file names, sizes, times and the plain-text export settings are read. The live `temp/` transaction database is read only through a copy (D-021). Nothing writes `league.db`: an import and the one-time upgrade build a new file and swap it in; only a hot journal's rollback at start touches the served file. |
 | Roster evidence | `playerState.ts` + `leagueRules.ts` (current state), `transactionLog.ts` + `liveLogSnapshot.ts` + `ootpSave.ts` (chronology and save discovery), `assignmentContext.ts` + `playerContext.ts` (reading one against the other), `dataFreshness.ts` + `dataStatus.ts` (how current each is), `rosterStateHistory.ts` (observed fallback and cross-check). | Three concerns, kept apart: Current State, Transaction Chronology, Rights/Eligibility. Sources are read in the order in D-020; nothing opens an OOTP file for writing. |
 | Player Rights | `playerRights.ts` evaluates option, recall, add to 40-man, DFA, outright and IL activation as `eligible` / `ineligible` / `indeterminate` with a basis per reason (D-023), and contract-control eligibility (pre-arbitration, arbitration and which trip, free agency) season by season from service time, the season's clock and the league's schedule on the calendar (`evaluateContractControl`, D-052 owner Q-1; `seasonServiceClocks` and `seasonServiceCalendars` in `playerState.ts`); `playerContext.ts` (`rightsFor`) assembles its inputs. `leagueRules.ts` is the one `LeagueRules`. | Pure: no table or log access. Consumers (roster crunch, player card, Player Value) read its output and never rebuild it from raw columns. |
 | Player Value | `playerValue.ts` (the one entry point and reader), `playerValueContract.ts` (concern 1: contract facts, season by season), `playerValueControl.ts` (concern 2: the control timeline), `playerValueCost.ts` (phase 4a, pure: the cost ladder measured on each import (the renewal spread and the arbitration ladder by class) and the timeline's controlled seasons priced from it, the platform seasons' production and the price of a win), `playerValueProduction.ts` (concern 3: expected production in wins, an 80% and a 50% band per season, from major-league results, regressed toward what a player's ratings imply when they are given), `playerValueProductionFit.ts` (the method that fits the production model on the save's own history and backtests it; playing time conditional on quality), `playerValueRatings.ts` (phase 3b, pure: the ratings → rate mapping applied, development toward potential, the blend with results, and a prospect's band from his ratings and his arrival), `playerValueRatingsFit.ts` (phase 3b, pure: fits the ratings model per save: the same-time mapping, arrival rates from minor-league usage, and the development path from the save's rating snapshots once enough exist), `playerValueHistory.ts` (the reader of major-league lines, minor-league usage without WAR, ages, standings and the season's calendar), `playerValueFinances.ts` (concern 4: Club Finances, the opening price of a win, the replacement level), `playerValueSnapshot.ts` (the per-import market snapshot in `history.db`; since phase 4b it records the import's contracts first and which price of a win was in force), `playerValueContractStore.ts` (phase 4b: the per-import contract snapshot in `history.db`, keyed by the save's identity), `playerValueSignings.ts` (phase 4b, pure: the changes between two consecutive imports, read through Player Rights at the earlier one and never given a transaction type the export does not carry; the measured price of a win, observed arbitration salaries, reserve-clause renewals and replacement from freely available talent; the adoption rule, owner Q-4; the save's timeline of imports; reviewed 2026-09-24: the price read as bases like the opening's, compared only on the realized reading), `playerValueFitStore.ts` (the per-save production fits in `history.db`, D-053), `playerValueCone.ts` (pure: the player card's production cone, production joined with control season by season), `playerValueSurplus.ts` (phase 5a, pure: the neutral contract surplus and the retention margin, season by season with every component, from production, the cost path and the market the entry point hands it; sunk money cancels; the owner's 5% discount; since phase 6c also `marketValueOf`, one season of a player's production at the market, the figure a free agent is shown with), `playerValueLens.ts` (phase 5b, pure: "our view", the neutral value read through the organization's philosophy at read time, every lean named; the one value module that names philosophy), `playerValueWinValue.ts` (phase 5b, pure: the club's value of a win in playoff odds, from the deadline read's odds model in `posture.ts`), `playerValueTrade.ts` (phase 6b, pure: a deal's two sides and the difference between them, what comes in less what goes out, on contract value, players combined as independent with an open season at its edges, each player's part named, an unknown player named and left out), `playerValueRoutes.ts` (`/api/player-value/...`), `playerValueCalibration.ts` (policy and the provisional fallback priors, stamped). Phases 1–3, 4a, 4b, 5a and 5b of D-052 ([PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9) and, of the consumer migration (6), 6a, 6b, 6c and 6d, the whole migration. Contracts, Payroll (control column, finance header, price of a win), the Trade Center, the player card and Free Agents' "hitting the market" read it; `/api/club-finances/:orgId` (`clubFinanceRoutes.ts`) serves Club Finances, the market history and the price of a win's history, and `/api/club-finances/:orgId/price-history` the price in force, every observed change and each import's readings; `/api/player-value/:playerId`, `?ids=` and `/api/player-value/production-fit/:orgId` serve a player's value and the production fit in force; `/api/player-value/:playerId/cone` serves the player card's production cone, and `/api/player-value/:playerId/surplus` its Value section (the same surplus every valuation carries); `/api/player-value/:playerId/our-view` (`ourViewRoutes.ts`, outside the neutral path) serves our view under the viewing organization's philosophy with that club's value of a win, which `/api/club-finances/:orgId` also serves. The one-player routes read the export's freshness and pass it as `currentState` (A-20). Its consumers so far: Payroll, Free Agents' control and finances, the player card (its header, cone and Value section) Contracts (phase 6a: contract facts, control's end, the cost path, production, value and our view, with no recommendation) the Trade Center (phase 6b: `trade.ts` `analyzeTrade` at `POST /api/trade/analyze`, trade fits, offers and trade talk, `tradingblock.ts` and the AI's trade context read Player Value and no `players_value`), Free Agents (phase 6c: `freeagents.ts` `computeFreeAgents`, each free agent's expected wins, scouted tools and production at the market; the club's thinnest positions in `positionNeeds.ts`, by expected wins, also read by the draft board and the trade desk; the briefing and chat prompts carry Player Value's figures and no percentile) and Org Comparison (phase 6d: `franchise.ts` `computeOrgComparison` at `/api/org-comparison/:orgId` sums each club's players' served figures, the roster's expected wins for the rest of the season and its contract value and the farm's expected wins next season, players combined as independent with `groupWinsOf` and `tradeValueOf`, unknowns named and left out, beside Club Finances' payroll and budget and the export's record; no rank). Payroll, Free Agents and the Trade Center pass the export's freshness as `currentState` too (phase 6c). After an import, and once at server start for an already-imported save, production and then the ratings model are refitted in the background when the export holds a newer completed season (the ratings model also when the save's rating snapshots first become enough for its own development path). | Describes, never authorizes (D-052). Eligibility, including which contracts are market prices and a controlled season's status, arbitration class and trip, comes from Player Rights (`evaluateContractControl`, `arbitrationRegimeOf`); a projected cost is never committed money; ability only through `scoutedEvidence.ts` (D-017), never a rating column or `players_value`; no minor-league WAR (Q-9); no philosophy, tier, defensibility or prospect decision. Production's fitted numbers are the save's (D-053): fitted from its history, stored per save, adopted only through the gate; the only fitted artefacts in code are the two provisional priors, and the ratings prior measures no arrivals. Injury proneness comes only through `injuryProneness.ts`. Only the three writers write (the market snapshot, the contract snapshot and the fit store), only to `history.db`, idempotent per key and never able to fail the import; nothing writes `league.db`. A snapshot difference names what changed and never which transaction did it (D-020); the live log is not read. A missing rule, service time, financial figure, age or WAR is `indeterminate` or `unknown`. `tests/playerValueBoundary.test.ts` enforces it. |
@@ -273,6 +319,7 @@ evidence; the export itself proves nothing about visibility.
 | `players_value.overall_value`, `talent_value`, `offensive_value*`, `pitching_value` | OOTP's continuous club-value figures; upstream notes playing time is baked into `overall_value`. A code comment calls `talent_value` "scouted"; nothing supports that. | **UNKNOWN. Prohibited.** |
 | `leagues.avg_rating_*` | League-wide aggregates, shown as context by destination fit. Not a judgment input. | **UNKNOWN** provenance. Context only. |
 | `rating_snapshots.cur`, `pot` | Derived by Pennant from the approved tool columns at import (unweighted mean, partial averages allowed, native scale). | **Derived.** Not yet routed through the adapter. |
+| The export's rating mode (N3.5, D-061) | OOTP's CSV-export settings, `<save>.lg/settings/db_dump_standard_csv.cfg`, read by label at each import: the scouts' view, "real" (true) ratings, OSA's, or none. Recorded with the import (`pennant_import`) and on each rating snapshot (`rating_snapshot_modes`). | **Recorded, not enforced.** Ratings are read as the export gives them and labelled (`scoutedEvidence.ts` `exportRatingMode`, `ratingSource`); "none" leaves every rating unknown; snapshots in another known kind are a switch, left out of development and said. `unknown` when the file cannot be read. |
 | Viewer organization | Not encoded anywhere in the import. `teams.human_team` marks the human-managed club; `coaches.scout_*` are staff attributes with no accuracy semantics. | **Not encoded.** The adapter uses `human_team`, or reports unresolved. |
 | Scouting accuracy setting | Not exported. | **UNKNOWN.** |
 
@@ -631,7 +678,8 @@ Calibration belongs to the save. Three subsystem-neutral modules carry every sub
   not completed is never served.
 - `saveCalibration.ts`: the registry (each subsystem registers its components, their method version, their trigger:
   `completed_season` or `each_import`, and their compute) and the refit, which runs after an import in its own worker thread
-  (`calibrationRefitWorker.ts`, after Player Value's), never starts for an import already superseded, records only if no import
+  (`calibrationRefitWorker.ts`, at the same time as Player Value's since N3.5: neither reads the other's fits, and the
+  calibration worker's module graph holds no Player Value module), never starts for an import already superseded, records only if no import
   started meanwhile, is skipped with a logged reason when no worker thread can start (never on the event loop), and can never block
   or fail the import. A measurement keyed by game date is served only from an export no later than today's.
 

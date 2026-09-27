@@ -1,3 +1,4 @@
+import { importCache } from './importCache.js';
 import { db } from './db.js';
 import { loadScoutedAbilities } from './scoutedEvidence.js';
 import {
@@ -622,7 +623,17 @@ function destinationLeague(
   };
 }
 
+/** The league's population per kind, once per import: it depends on the export alone (N3.5, `importCache.ts`). */
+const populations = importCache<Array<Record<string, unknown>>>();
+
 function populationRows(
+  leagueId: number,
+  kind: DestinationPlayerKind
+): Array<Record<string, unknown>> {
+  return populations.get(`${leagueId}:${kind}`, () => computePopulationRows(leagueId, kind));
+}
+
+function computePopulationRows(
   leagueId: number,
   kind: DestinationPlayerKind
 ): Array<Record<string, unknown>> {

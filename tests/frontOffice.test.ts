@@ -6,7 +6,7 @@ import type { AddressInfo } from 'node:net';
 import { api } from '../server/api.js';
 import { computeContracts } from '../server/contracts.js';
 import { DATA_DIR } from '../server/config.js';
-import { db } from '../server/db.js';
+import { db, swapInLeagueDatabase } from '../server/db.js';
 import { orgInjuries } from '../server/dashboard.js';
 import { computeFarmSystem } from '../server/farmOperations.js';
 import {
@@ -14,7 +14,7 @@ import {
   frontOfficeSummary, invalidateFrontOffice, resetFrontOfficeCache, resolveOrg, warmFrontOffice,
 } from '../server/frontOfficeService.js';
 import { mlbOverview } from '../server/mlbOperations.js';
-import { importRun, importedAt } from '../server/playerStateRoutes.js';
+import { importedAt } from '../server/playerStateRoutes.js';
 import { subscribe } from '../server/serverEvents.js';
 import { servedDepartments, departmentOffice } from '../server/presentation/catalog.js';
 import { assertAuthored, basis, claim } from '../server/presentation/claim.js';
@@ -425,30 +425,32 @@ describe('the cache', () => {
     }
   });
 
-  it('never keeps a build read while an import writes, and serves the kept one meanwhile (review S-5)', async () => {
+  it('keeps builds while an import builds its own file, and never one read across the swap (N3.5; review S-5)', async () => {
     importedAt.value = '2040-07-01T12:00:00.000Z';
+    // The swap an import makes, of a copy of this very league (the served data is the same; the file is another)
+    const copy = path.join(DATA_DIR, 'league.copy.db');
+    fs.rmSync(copy, { force: true });
+    db.exec(`VACUUM INTO '${copy.replaceAll("'", "''")}'`);
+    // An import running (waiting for OOTP, or building its file): nothing served has changed, so the build is kept
+    const { importState } = await import('../server/api.js');
+    importState.importing = true;
     try {
-      // Nothing kept yet, an import running: built for the request, not kept
-      importRun.importing = true;
       await frontOfficeSummary(save.org);
-      expect(frontOfficeStats()).toMatchObject({ builds: 1, cached: 0 });
-      await warmFrontOffice(save.org);
-      expect(frontOfficeStats().builds).toBe(1);
-      // A build that started before an import, finishing while it writes (then the import fails): not kept
-      importRun.importing = false;
-      const racing = frontOfficeSummary(save.org);
-      importRun.generation += 1;
-      await racing;
-      expect(frontOfficeStats()).toMatchObject({ builds: 2, cached: 0 });
-      // No import: kept, and served from the cache while the next import writes
-      await frontOfficeSummary(save.org);
-      expect(frontOfficeStats().cached).toBe(1);
-      importRun.importing = true;
-      await frontOfficeSummary(save.org);
-      expect(frontOfficeStats()).toMatchObject({ builds: 3, hits: 1 });
     } finally {
-      importRun.importing = false;
+      importState.importing = false;
     }
+    expect(frontOfficeStats()).toMatchObject({ builds: 1, cached: 1 });
+    await warmFrontOffice(save.org);
+    expect(frontOfficeStats().builds).toBe(1);
+    // A build that started before a swap and finished after it: its worker may have read either file, so not kept
+    invalidateFrontOffice();
+    const racing = frontOfficeSummary(save.org);
+    swapInLeagueDatabase(copy);
+    await racing;
+    expect(frontOfficeStats()).toMatchObject({ builds: 2, cached: 0 });
+    // After the swap: kept again
+    await frontOfficeSummary(save.org);
+    expect(frontOfficeStats()).toMatchObject({ builds: 3, cached: 1 });
   });
 
   it('refuses an unknown department before building anything (review N-1)', async () => {

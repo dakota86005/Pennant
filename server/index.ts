@@ -4,13 +4,12 @@ import path from 'node:path';
 import os from 'node:os';
 import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
-import { api, recordImportMarket, recoverInterruptedImport, refitAfterImport, runImport } from './api.js';
+import { api, finishInterruptedPostImport, upgradeLeagueInBackground, recordImportMarket, recoverInterruptedImport, refitAfterImport, runImport } from './api.js';
 import { warmFrontOffice } from './frontOfficeService.js';
-import { buildIndexes } from './importer.js';
 import { APP_ROOT, DATA_DIR, loadConfig } from './config.js';
-import { startWatcher, stopWatcher } from './watcher.js';
-import { db, tableExists } from './db.js';
-import { historyDb, snapshotDates, takeSnapshot } from './history.js';
+import { checkExport, startWatcher, stopWatcher } from './watcher.js';
+import { closeLeagueDatabase, prepareLeagueDatabase, tableExists } from './db.js';
+import { currentRatingMode, historyDb, snapshotDates, stampSnapshotMode, takeSnapshot } from './history.js';
 import { loadSettings } from './settings.js';
 import { requireApiToken } from './apiToken.js';
 import { acquireDataLock, releaseDataLock } from './dataLock.js';
@@ -93,35 +92,49 @@ function requireLocalHost(
 
 /** Import on boot if needed, then watch for fresh OOTP exports. */
 function bootstrapData(): void {
-  // An import the last run never finished left a database that is neither export: import it again, which also
-  // refits and records the market once it is done (api.ts). Nothing else below needs doing until then.
+  // Under the data-folder lock: a crashed import's unfinished file goes, and a database from an earlier build is
+  // brought to the served shape (rollback journal, every index) once
+  let needsUpgrade = false;
+  try {
+    needsUpgrade = prepareLeagueDatabase().needsUpgrade;
+  } catch (err) {
+    console.error('[import] could not tidy the league database:', err);
+  }
+  // An import the last run never finished: import it again (the previous import is whole; this is a retry, and its
+  // new file needs no upgrade)
   if (recoverInterruptedImport()) {
     const { csvDir } = loadConfig();
     if (csvDir && loadSettings().autoImport) startWatcher(csvDir);
     return;
   }
+  // A database an earlier build imported gets its one-time upgrade: a converted copy, swapped in (never in place)
+  if (needsUpgrade) void upgradeLeagueInBackground();
+  // An import whose snapshots never ran takes them now (they write history.db), before the refits read them
+  const finishing = finishInterruptedPostImport();
   // A save that is already imported but has no fit for its latest completed season gets one now,
   // in the background, instead of waiting for the next import (D-053: nothing for the user to do).
   // It reads only the imported database, so it does not depend on the export folder being present.
-  // Deferred with setImmediate, so it runs after the synchronous start-up below (indexes included).
-  if (tableExists('players')) refitAfterImport();
+  // Deferred with setImmediate, so it runs after the synchronous start-up below.
+  if (tableExists('players') && !finishing) void refitAfterImport();
   // The export already imported records its market and contracts if this build has not yet (idempotent: a second
   // start writes nothing). Deferred like the refit, after the synchronous start-up below
-  if (tableExists('players')) setImmediate(() => recordImportMarket());
+  if (tableExists('players') && !finishing) setImmediate(() => recordImportMarket());
   // The Front Office for the club the app follows, in its worker, so the first look after a launch is a cached read
-  if (tableExists('players')) setImmediate(() => void warmFrontOffice());
+  if (tableExists('players') && !finishing) setImmediate(() => void warmFrontOffice());
   const config = loadConfig();
   if (!config.csvDir || !fs.existsSync(config.csvDir)) return;
   if (!tableExists('players')) void runImport(config.csvDir);
-  // Indexes used to be built only by the importer, so upgrading the app left
-  // every existing database without them — the same full table scans as before,
-  // and an export that took twenty-five minutes with the UI wedged behind it.
-  // Creating them is idempotent and only costs anything the first time.
-  buildIndexes();
+  // An export written while Pennant was closed: the same judgement the watcher makes (import it, or offer it)
+  else checkExport(config.csvDir);
   if (loadSettings().autoImport) startWatcher(config.csvDir);
   try {
     // Ensure development tracking has a baseline for already-imported data
-    if (tableExists('players') && snapshotDates().length === 0) takeSnapshot();
+    // (none for an export that carries no ratings; stamped with the kind the export carries, N3.5)
+    const mode = currentRatingMode();
+    if (tableExists('players') && snapshotDates().length === 0 && mode?.mode !== 'none') {
+      const snapshot = takeSnapshot();
+      if (snapshot) stampSnapshotMode(snapshot.gameDate, mode, null);
+    }
   } catch (err) {
     console.error('[history] baseline snapshot failed:', err);
   }
@@ -219,12 +232,11 @@ export async function shutdownServer(): Promise<void> {
     });
   }
   stopWatcher();
-  for (const [name, handle] of [['league', db], ['history', historyDb]] as const) {
-    try {
-      if (handle.open) handle.close();
-    } catch (err) {
-      console.error(`[server] closing the ${name} database failed:`, err);
-    }
+  closeLeagueDatabase();
+  try {
+    if (historyDb.open) historyDb.close();
+  } catch (err) {
+    console.error('[server] closing the history database failed:', err);
   }
   releaseDataLock();
 }

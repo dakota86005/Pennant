@@ -273,6 +273,17 @@ case here is a new baseball judgment: each keeps an existing doctrine true once 
 | `clubReport.test.ts` (N7) | Another club's players are read through our organization's scouting, the same fog of war as our own; where our scouts have no report, the report says so and fills nothing in. |
 | `following.test.ts` (N7) | Following copies the watchlist and leaves it in place. |
 
+## The import and the export's ratings (N3.5)
+
+Written at N3.5 Stage B1 (D-061), before the code that holds them. The import is plumbing, but two of its rules are
+evidence rules: which rows a table holds after an import, and what a rating is.
+
+| File | What it protects |
+|---|---|
+| `ratingMode.test.ts` | Which kind of ratings an export carries is read from OOTP's export settings by each option's label, never by its number alone. Exactly one of "OSA", "real" or "no ratings" on is that kind; all three read as off is the scouts' view; a missing file, a missing label, a value that is not 0 or 1, or two kinds on at once is unknown, never assumed to be the scouts' view. "Show no player ratings" leaves every rating unknown (none is read, never zero or a default). |
+| `ratingModeHistory.test.ts` | Two rating snapshots taken in different known kinds of ratings are a switch, never development: a development trend leaves the snapshots of the other kind out and says the kind changed, and the rating-change list between two such dates shows the switch and no changes. A snapshot taken before the kind was recorded, or in an unknown kind, is never evidence of a switch. |
+| `importAtomic.test.ts` | An import is all or nothing: the pages read the previous import, whole, until the new one is complete, then the new one, whole; a failed or interrupted import leaves the previous one exactly as it was. A table whose export file was not rewritten this time keeps the previous import's rows, named as older, only when that import read the same export folder; otherwise the table is absent (unknown), never another save's rows. A file that cannot be read leaves its table absent, never the previous import's rows. A stale or unreadable players, clubs or leagues file refuses the import and keeps the previous one. |
+
 ## Adding a case
 
 When real-save testing finds a new failure mode, add the case before the fix:

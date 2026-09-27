@@ -2197,6 +2197,71 @@ deadline date. Neither the odds, the posture nor the season-window labels are he
 does not import them (a boundary test). They appear only in League Office standings, labelled with their basis, until
 ROADMAP "Playoff odds from the roster" replaces them.
 
+## D-061 — The import is all or nothing and automatic; the export's ratings are read as it gives them, labelled
+
+**Status:** Accepted (owner, 2026-09-26: the N3.5 decisions 1, 5, 7, 8 and 9). **Implementation:** N3.5, Stage B1
+(2026-09-26): `server/importer.ts`, `importBuild.ts`, `importWorker.ts`, `exportFiles.ts`, `ratingMode.ts`,
+`postImport.ts`, `importSnapshots.ts`; the served database in `db.ts`; the watcher (`watcher.ts`). Design and
+measurements: SWIFTUI_REBUILD.md "N3.5". Refines D-002 and D-017 (what a rating is), D-018 (a table the export did not
+give), D-021 (normal use needs nothing but the export) and D-053 (the refits after an import).
+
+The owner asked for an import that is fast, robust and finds the right files on its own, "something Steve Jobs would
+approve of". The investigation (N3.5 Stage A) measured the import on a real export: 21 s on the server's own thread, every
+page slowed to seconds and reading a mix of two exports while it ran, a missing file silently keeping the previous
+export's (or a previous save's) table, and no check that OOTP had finished writing.
+
+- **All or nothing.** An import builds a new database file (`league.next.db`) in a worker thread and swaps it in with one
+  rename. Until the swap every page reads the previous import, whole; after it, the new one, whole. A failure or a crash at
+  any point before the swap leaves the previous import exactly as it was, and the unfinished file is removed at the next
+  start. `league.db`'s name, `last-import.json` and `import-in-progress.json` keep their meaning for the Electron app.
+- **Only a finished export is imported.** OOTP writes an export as some seventy files over 35 to 41 s, back to back. An
+  export is read only once no file has changed for 10 s; when the files of the burst fall in groups more than a minute
+  apart (OOTP paused part way, the rest still the previous export's), only after two minutes' quiet, and then the older
+  group is named as not rewritten. Each file is checked again after it is read, and before the swap the whole folder must
+  be exactly as it was when the build began and still settled; otherwise the export is read again. What this cannot see:
+  OOTP pausing for more than 10 s and less than a minute part way through an export written within a minute of the
+  previous one (the two exports' files then look like one burst). No other way to a mixed database is known.
+- **A file older than the rest of the export** (not rewritten this time, as when a table is switched off in OOTP's export
+  settings) is left out and named, in a served sentence on the import and the data status. Its table keeps the previous
+  import's rows, marked in the database as kept and from which import, **only when that import read the same export
+  folder**; otherwise the table is absent. Keeping it is exactly what importing the old file would give (it is the same
+  file, read before), it is labelled rather than silent, and it never mixes another save's rows in. A file that cannot
+  be read leaves its table absent (D-018). A stale or unreadable `players`, `teams` or `leagues` refuses the import.
+- **Room first.** The new file is built beside the old one (about 1.2 GB on a real export), so the import checks for
+  about 4.5 times the export's size free and otherwise refuses with a sentence, touching nothing. The old file is deleted
+  by the swap, a crashed build's leftover at the next start, and nothing accumulates.
+- **Automatic by default.** A new export that has settled is imported in the background (the `importAutomatically`
+  setting, on by default; `autoImport` keeps its meaning of watching for exports). The same check runs at start-up, so an
+  export written while Pennant was closed is noticed. The GM's own Import Now waits for a still-writing export the same way.
+- **After the swap** a list of post-import hooks runs in order (the snapshots in a worker, the AI generations, the refits,
+  then warm-ups a later milestone registers). The two refits run at the same time in their own workers; their gates,
+  records and the rule that a fit read across an import is discarded are unchanged (D-053).
+- **The served database is read-only**, in rollback-journal mode with memory-mapped reads, with the season index
+  `(year, split_id)` beside the four it always had. Integers stay stored as numbers of one kind (REAL) for now (decision
+  8): storing them as integers changes SQL arithmetic and would give the rollback Electron build wrong answers.
+- **Ratings are read as the export gives them, labelled.** OOTP's export settings choose which ratings the CSVs carry:
+  the scouts' view, "real" (true) ratings, the league scouting service's (OSA) or none. The app works on any of them (the
+  owner's decision 9: "Build the app so that either is okay - and is just noted by the import mechanism"). At each
+  import it reads `<save>.lg/settings/db_dump_standard_csv.cfg` by each option's label and records the kind with the
+  import, `unknown` when it cannot tell (never assumed to be the scouts' view), including when the settings file was
+  written after the export (OOTP writes it when the setting changes, so it may describe a later setting). The data status says which kind the export carries, and
+  `scoutedEvidence.ts` exposes it (`exportRatingMode`, `ratingSource`) so a claim resting on a rating can name its source.
+  Fog of war (D-002, D-017) holds in what it always forbade: nothing reaches past the export's rating columns, and
+  `players_value` stays unread. "No ratings" leaves every rating unknown and takes no rating snapshot.
+- **A switch is never development.** Each rating snapshot is stamped with its kind (`rating_snapshot_modes` in
+  `history.db`, a new table keyed like the snapshots). Snapshots in a known kind other than the current export's are left
+  out of development trends, observed history and the Development page's history, and the switch is said; an unrecorded
+  or unknown kind is never evidence of one.
+- *Whose words these are.* The owner decided only that either kind is fine and is noted. Withholding every rating under
+  "no ratings" and leaving snapshots of another kind out of development are the supervisor's refinements (the N3.5
+  brief), made so that noting the kind keeps D-018: they add no judgment, they keep an unknown unknown.
+- **The database's own record** (`pennant_import`) is trusted only when its start matches `last-import.json`'s, which
+  every build writes: the earlier (Electron) build imports into `league.db` in place and leaves the table behind.
+- **An earlier build's database** (write-ahead-log mode, or without the season indexes) is upgraded once at start the
+  way an import works: a copy is converted in the worker and swapped in, never the served file in place. A hot
+  rollback journal left by a process killed while writing the file in place is rolled back before the read-only server
+  reads it, and no journal of a replaced file is left beside the new one.
+
 ## D-062 — Theme packs: a club's look is data, its default is the save's own colours, and no pack costs readability
 
 **Status:** Accepted in direction by the owner (2026-09-26: "I like the use of team colors. please build this modular. I

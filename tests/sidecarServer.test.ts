@@ -139,6 +139,16 @@ describe('server events', () => {
     expect(sent.map((p) => `${p.fileIndex}:${p.phase}:${p.rows}`)).toEqual(['1:reading:0', '1:writing:10', '1:writing:30', '2:reading:30']);
   });
 
+  it('sends a step naming another table at once, though files are read side by side (N3.5)', () => {
+    const clock = 0;
+    const sent: ImportProgress[] = [];
+    const throttled = progressThrottle((p) => sent.push(p), () => clock);
+    throttled({ table: 'big', fileIndex: 3, files: 3, rows: 10, phase: 'writing' });
+    throttled({ table: 'small', fileIndex: 3, files: 3, rows: 20, phase: 'writing' });
+    throttled({ table: 'small', fileIndex: 3, files: 3, rows: 30, phase: 'writing' }); // too soon, same table
+    expect(sent.map((p) => p.table)).toEqual(['big', 'small']);
+  });
+
   it('opens a stream with the current status, then relays each event, and forgets a closed stream', async () => {
     const app = express();
     const snapshot: ServerStatus = {
@@ -223,11 +233,18 @@ describe('the record of an import that never completed', () => {
   const marker = (): string => path.join(dataDir(), 'import-in-progress.json');
   const configPath = (): string => path.join(dataDir(), 'config.json');
 
-  it('stays when an import fails, goes when one completes, and is reported until then', async () => {
+  it('stays when an import fails, goes when one completes or is refused (nothing touched), and is reported until then', async () => {
     const { importState, runImport, statusSnapshot } = await import('../server/api.js');
     const empty = fs.mkdtempSync(path.join(os.tmpdir(), 'pennant-empty-export-'));
+    // Refused: there was nothing to import, so nothing was interrupted
     await runImport(empty);
     expect(importState.lastError).toMatch(/No \.csv files/);
+    expect(fs.existsSync(marker())).toBe(false);
+    // Failed part way (a players file that cannot be read): the marker stays, and the next start tries again
+    const broken = fs.mkdtempSync(path.join(os.tmpdir(), 'pennant-broken-export-'));
+    fs.writeFileSync(path.join(broken, 'players.csv'), 'player_id,name\n1,"never closed\n');
+    await runImport(broken);
+    expect(importState.lastError).toMatch(/players\.csv could not be read/);
     expect(fs.existsSync(marker())).toBe(true);
 
     const tiny = fs.mkdtempSync(path.join(os.tmpdir(), 'pennant-tiny-export-'));
