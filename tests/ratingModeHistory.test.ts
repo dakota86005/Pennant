@@ -110,6 +110,13 @@ describe('rating history across a switch in the kind of ratings', () => {
     }
   });
 
+  it('stamps nothing for a snapshot whose import recorded no kind (an import from before N3.5): unrecorded, never unknown', () => {
+    stampSnapshotMode('2031-7-1', null, null);
+    expect(snapshotModes().has('2031-7-1')).toBe(false);
+    setExportRatingMode('scouted');
+    expect(modeFilter().excluded.has('2031-7-1')).toBe(false);
+  });
+
   it('stamps the snapshot an import takes with the kind its export carried', async () => {
     const outcome = await takeImportSnapshots({
       importFinishedAt: null, importStartedAt: '2040-07-01T12:00:00.000Z',

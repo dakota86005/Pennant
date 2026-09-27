@@ -99,17 +99,22 @@ historyDb.exec(`
   );
 `);
 
-/** Records the rating mode of the snapshot of `gameDate` (replacing it, as the snapshot itself is replaced on a re-import of that date). */
+/**
+ * Records the rating mode of the snapshot of `gameDate` (replacing it, as the snapshot itself is replaced on a re-import
+ * of that date). No record (an import from before N3.5 recorded none) stamps nothing: the snapshot stays unrecorded,
+ * never `unknown`, which would leave it out of development (N3.5 B2 review).
+ */
 export function stampSnapshotMode(gameDate: string, record: RatingModeRecord | null, importStartedAt: string | null): void {
+  if (!record) return;
   historyDb
     .prepare(
       `INSERT OR REPLACE INTO rating_snapshot_modes
        (save_name, game_date, mode, additional_scouted, source, import_started_at, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
-      currentSaveName(), gameDate, record?.mode ?? 'unknown',
-      record?.additionalScouted === null || record?.additionalScouted === undefined ? null : record.additionalScouted ? 1 : 0,
-      record?.source ?? null, importStartedAt, new Date().toISOString(),
+      currentSaveName(), gameDate, record.mode,
+      record.additionalScouted === null || record.additionalScouted === undefined ? null : record.additionalScouted ? 1 : 0,
+      record.source ?? null, importStartedAt, new Date().toISOString(),
     );
 }
 
