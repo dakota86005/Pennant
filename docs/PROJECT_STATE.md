@@ -75,7 +75,15 @@ material implementation state changes.
   `tests/bannedJargon.ts` is the one banned-jargon list. N4 added the presentation layer (`server/presentation/`:
   `Claim`, `Row`, `Cell` and their builder, severity normalization, `/api/v2/catalog`, `/api/v2/data-status`) and the
   Front Office (`/api/v2/front-office/:org`, `/departments/:org/:dept`, `/claims/:key`: the desk, the department cards
-  and reports, cached per club and import, warmed after each import).
+  and reports, cached per club and import, warmed after each import). N6, Stage A (server) added the Morning Report's
+  own parts to `/api/v2/front-office/:org`, from the same cached build: the masthead's box score (`teamSeason`: record,
+  division place with ties, run differential with its running line, last five, streak, the next game with OOTP's projected
+  starters, the trade deadline only from the league's own row), the lede (built only from facts on the page), "How we win
+  and lose" (`clubProfile`: eight dimensions placed among the league's clubs, policy fifths, "too early" below 20 games,
+  the last 15 games' place) and the roster map (`rosterMap`: each position's holder, expected wins, league place with the
+  overlap count, depth, the farm's next man with Player Development's answer, control served structured, needs; the
+  rotation and bullpen; one value scale). The Mac app draws them in N6, Stage B. Not built: "since the last export" and
+  "around the league" (N7) and the horizon board (N12).
 - Pennant for Mac, the app skeleton (SwiftUI rebuild N3, D-055): `macos/Pennant.xcodeproj` and its packages. The app
   carries the server and starts it as its sidecar (after a one-time backup of the data folder), and has the window shell:
   the sidebar from the department registry with the served club card, the toolbar, the inspector, the Go, View and Club

@@ -96,6 +96,18 @@ start and after each import, and stamped (`reportStamp`) so the Mac app reloads 
 requests: MINOR_LEAGUE_OPERATIONS.md section 7.8's "nothing cached across requests" still holds for the specialists
 themselves, and the Front Office's key moves whenever an input they read can.
 
+The Morning Report's own parts (N6, Stage A; D-057, D-060) ride in the same build. `server/frontOffice/` (a landing
+folder: nothing in it reaches the odds or the posture) reads the club's league as the export states it
+(`teamSeason.ts`: standings, the clubs' season totals, the games, the projected starters, the per-game log, the trade
+deadline from the league's own row) and places each dimension of "How we win and lose" among the league's clubs
+(`clubProfile.ts`, pure; the fifths and "too early" are stamped policy lines), and holds the roster map's places
+(`rosterMap.ts`, pure: one holder rule for every club, a place counted on Player Value's figure with its overlap).
+`server/morningReport.ts`, outside the landing folders because Player Value's entry point reaches the deadline read's
+odds model, gathers the rest through each specialist's own door: expected wins and control from `playerValue.ts`, where a
+player is from Player State, the farm's next man through `mlbEvidence.ts` (`farmNextByPosition`: Player State's placement
+with Player Development's durable Triple-A assessment, never the farm's solver), and Major League Ops' needs as its
+overview served them. `server/presentation/frontOffice/morning.ts` words it.
+
 ## Data and persistence
 
 ### Imported league database

@@ -249,7 +249,8 @@ before its code and failed on `origin/main` (38cd361) for the reason expected; t
 Written at milestone N0 of the SwiftUI rebuild, before any code (D-055 to D-060, the D-052 amendment of 2026-09-25,
 [SWIFTUI_REBUILD.md](SWIFTUI_REBUILD.md)). Built so far: the sort cases (as `sortCases.test.ts`, N3),
 `v2Contract.test.ts` and `severity.test.ts` (N4, Stage A), `frontOffice.test.ts` and `frontOfficeLanding.test.ts` (N4,
-Stage B), `themePacks.test.ts` (N5, Stage A); the rest arrive with their milestones. Each invariant becomes an `it` in the named file in
+Stage B), `themePacks.test.ts` (N5, Stage A), `teamSeason.test.ts`, `clubProfile.test.ts` and `rosterMap.test.ts` with the
+lede's cases in `frontOfficeLanding.test.ts` (N6, Stage A); the rest arrive with their milestones. Each invariant becomes an `it` in the named file in
 the milestone that builds its concern, is built from the synthetic save (`tests/syntheticSave.ts`) or synthetic evidence,
 and must fail first for the reason expected. The presentation layer only says what the specialists already decided, so no
 case here is a new baseball judgment: each keeps an existing doctrine true once the server writes every sentence.
