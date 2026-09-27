@@ -4,7 +4,7 @@ import path from 'node:path';
 import { db, tableExists, tableColumns, locateColumn, LAST_IMPORT_PATH, LEAGUE_DB_PATH, NEXT_DB_PATH, swapWhenFree } from './db.js';
 import { detectSaves, resolveChosenFolder, searchLocations, type ResolveResult, type SaveInfo, type SearchLocation } from './paths.js';
 import { DATA_DIR, loadConfig, saveConfig } from './config.js';
-import { importCsvDir, type ImportProgress, type ImportResult } from './importer.js';
+import { importCsvDir, ImportRefused, type ImportProgress, type ImportResult } from './importer.js';
 import { upgradeLeagueDatabase } from './importBuild.js';
 import { checkExport, clearPendingExport, notePendingExport, onSettledExport, pendingExport, startWatcher } from './watcher.js';
 import type { ExportAssessment } from './exportFiles.js';
@@ -377,6 +377,9 @@ export async function runImport(csvDir: string, trigger: ImportTrigger = 'manual
   } catch (err) {
     importState.lastError = (err as Error).message;
     console.error('[import] failed:', (err as Error).message);
+    // A refusal touched nothing (OOTP still writing, no room, an old players file, no files): nothing was interrupted,
+    // so the next start does not call it so (review nit 9). Any other failure keeps the marker and is retried at start.
+    if (err instanceof ImportRefused) fs.rmSync(IMPORT_MARKER_PATH, { force: true });
   } finally {
     importState.importing = false;
     importState.progress = null;

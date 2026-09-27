@@ -88,12 +88,13 @@ export function failedImportText(message: string): string {
     return `The export has an old copy of ${listWords(tables)}: OOTP didn't write ${tables.length === 1 ? 'it' : 'them'} this time. Export the league from OOTP again, then import.`;
   }
   const space = /^Not enough free disk space to import: about (\S+ GB) is needed and (\S+ GB) is free/.exec(message);
-  if (space) return `There isn't room on the disk to import: Pennant needs about ${space[1]} free and ${space[2]} is. Free some space, then import again.`;
+  // The free space is what the system reports as available now, which leaves out space macOS can reclaim on its own
+  if (space) return `There isn't room on the disk to import: Pennant needs about ${space[1]} free and ${space[2]} is available. Free some space (emptying the Trash helps), then import again.`;
   if (/No \.csv files found/i.test(message)) return 'The export folder has no files to import. Export the league from OOTP again, then import.';
   if (/SQLITE_BUSY|database is locked/i.test(message)) return 'Another program was using Pennant\'s league file. Import again in a moment.';
   if (/EACCES|EPERM|permission/i.test(message)) return 'Pennant wasn\'t allowed to read the export. Check the folder\'s permissions, then import again.';
   if (/ENOENT|no such file/i.test(message)) return 'A file in the export went missing while it was read. Export the league from OOTP again, then import.';
-  if (/ENOSPC|disk is full|SQLITE_FULL/i.test(message)) return 'The disk is full, so the import couldn\'t finish. Free some space, then import again.';
+  if (/ENOSPC|disk is full|SQLITE_FULL|database or disk is full/i.test(message)) return 'The disk is full, so the import couldn\'t finish. Free some space, then import again.';
   return 'The import stopped before it finished. Import again; the details are in the server log.';
 }
 

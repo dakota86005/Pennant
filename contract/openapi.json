@@ -2321,7 +2321,7 @@
           "finishedAt",
           "files"
         ],
-        "description": "The import (N3.5, D-061): all or nothing, off the server's thread.\n\n1. The export must be whole: quiet for `QUIET_MS` (OOTP has finished writing) and every file from one burst. A file    older than the rest was not rewritten this time (a table switched off in OOTP's export settings): it is left out    and named, and its table keeps the previous import's rows, marked stale, when that import was of the same export    folder; otherwise the table is absent. A stale `players`, `teams` or `leagues` refuses the import. 2. There must be room: the new database is built beside the old one (about 4.5 times the export's size). 3. A worker thread builds `league.next.db` (`importBuild.ts`), checking each file again after reading it. 4. One rename swaps it in (`swapInLeagueDatabase`). Until then the app reads the previous import, whole; any failure    before it leaves the previous import in place and removes the unfinished file."
+        "description": "What an import did: its tables and rows, when it ran, the export it read, what it left out, and the kind of ratings."
       },
       "ImportStartedEvent": {
         "type": "object",

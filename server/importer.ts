@@ -1,12 +1,3 @@
-import fs from 'node:fs';
-import os from 'node:os';
-import { DATA_DIR } from './config.js';
-import { LAST_IMPORT_PATH, LEAGUE_DB_PATH, NEXT_DB_PATH, importRecord, swapWhenFree } from './db.js';
-import { assessExport, BURST_WINDOW_MS, exportTiming, REQUIRED_TABLES, staleRequired, type ExportAssessment, type ExportFile } from './exportFiles.js';
-import { buildLeagueDatabase, BuildError, type BuildResult } from './importBuild.js';
-import type { RatingModeRecord } from './ratingMode.js';
-import type { Integer } from './contract/primitives.js';
-
 /**
  * The import (N3.5, D-061): all or nothing, off the server's thread.
  *
@@ -19,6 +10,16 @@ import type { Integer } from './contract/primitives.js';
  * 4. One rename swaps it in (`swapInLeagueDatabase`). Until then the app reads the previous import, whole; any failure
  *    before it leaves the previous import in place and removes the unfinished file.
  */
+import fs from 'node:fs';
+import os from 'node:os';
+import { DATA_DIR } from './config.js';
+import { LAST_IMPORT_PATH, LEAGUE_DB_PATH, NEXT_DB_PATH, importRecord, swapWhenFree } from './db.js';
+import { assessExport, BURST_WINDOW_MS, exportTiming, REQUIRED_TABLES, staleRequired, type ExportAssessment, type ExportFile } from './exportFiles.js';
+import { buildLeagueDatabase, BuildError, type BuildResult } from './importBuild.js';
+import type { RatingModeRecord } from './ratingMode.js';
+import type { Integer } from './contract/primitives.js';
+
+/** What an import did: its tables and rows, when it ran, the export it read, what it left out, and the kind of ratings. */
 export interface ImportResult {
   tables: Integer;
   rows: Integer;

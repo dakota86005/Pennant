@@ -293,7 +293,17 @@ async function runBuild(spec: BuildSpec): Promise<void> {
     if (spec.carryOver.length > 0 && spec.previousPath && fs.existsSync(spec.previousPath)) {
       db.prepare('ATTACH DATABASE ? AS prev').run(spec.previousPath);
       db.pragma('prev.locking_mode = NORMAL');
-      for (const table of spec.carryOver) {
+      // Only from the same save: its leagues, by id and name, as the new export has them (a save deleted and made again
+      // in the same folder is another league). Unreadable on either side: not the same, nothing is carried
+      const leaguesOf = (schema: string): string | null => {
+        try {
+          return JSON.stringify(db.prepare(`SELECT league_id, name FROM ${schema}.leagues ORDER BY league_id`).all());
+        } catch {
+          return null;
+        }
+      };
+      const sameSave = leaguesOf('main') !== null && leaguesOf('main') === leaguesOf('prev');
+      for (const table of sameSave ? spec.carryOver : []) {
         const ddl = db.prepare(`SELECT sql FROM prev.sqlite_master WHERE type = 'table' AND name = ?`).get(table) as { sql: string } | undefined;
         if (!ddl?.sql || result.tables.some((t) => t.table === table)) {
           notCarried.push(table);
@@ -305,6 +315,7 @@ async function runBuild(spec: BuildSpec): Promise<void> {
         const file = spec.files.find((f) => f.table === table)?.file ?? `${table}.csv`;
         result.tables.push({ table, file, rows, source: 'carried' });
       }
+      if (!sameSave) notCarried.push(...spec.carryOver);
       db.exec('DETACH DATABASE prev');
     } else {
       notCarried.push(...spec.carryOver);
@@ -319,12 +330,15 @@ async function runBuild(spec: BuildSpec): Promise<void> {
     db.exec('ANALYZE');
     const indexedAt = performance.now();
 
-    // The database describes its own import, written atomically with it
+    // Durable from here: rollback journal, full syncs, and on macOS a full flush to the drive (F_FULLFSYNC) at the
+    // commit below, which the build's own writes skipped (review nit 13)
+    db.pragma('journal_mode = DELETE');
+    db.pragma('synchronous = FULL');
+    db.pragma('fullfsync = ON');
+    // The database describes its own import, written atomically with it, and its commit is the flush
     db.exec('CREATE TABLE pennant_import (key TEXT PRIMARY KEY, value TEXT)');
     const meta = { ...spec.meta, tables: result.tables, unreadable: result.unreadable, notCarried };
     db.prepare('INSERT INTO pennant_import (key, value) VALUES (?, ?)').run('import', JSON.stringify(meta));
-
-    db.pragma('journal_mode = DELETE');
     db.close();
     // On disk before the rename makes it the league
     flushFile(spec.outPath);
@@ -620,6 +634,10 @@ function runUpgrade(spec: { sourcePath: string; outPath: string }): void {
       }
       db.exec('ANALYZE');
       db.pragma('journal_mode = DELETE');
+      // A last write with full syncs, so the copy reaches the drive (F_FULLFSYNC on macOS) before it is swapped in
+      db.pragma('synchronous = FULL');
+      db.pragma('fullfsync = ON');
+      db.pragma(`user_version = ${Number(db.pragma('user_version', { simple: true })) || 0}`);
     } finally {
       db.close();
     }

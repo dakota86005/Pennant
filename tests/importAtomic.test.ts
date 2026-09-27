@@ -1,4 +1,5 @@
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -176,6 +177,17 @@ describe('a file older than the rest of the export', () => {
     expect(tableExists('players_game_batting')).toBe(false);
   });
 
+  it('leaves its table absent when the previous import was of another save in the same folder (other leagues)', async () => {
+    const dir = writeExport(35, { extra: { 'players_game_batting.csv': 'player_id,game_id,version\n1,1,35\n' } });
+    await importCsvDir(dir);
+    writeExport(36, { dir });
+    fs.writeFileSync(path.join(dir, 'leagues.csv'), 'league_id,name,version\n100,Another League,36\n');
+    backdate(path.join(dir, 'players_game_batting.csv'), 60);
+    const result = await importCsvDir(dir);
+    expect(result.leftOut).toEqual([expect.objectContaining({ table: 'players_game_batting', reason: 'stale', kept: false })]);
+    expect(tableExists('players_game_batting')).toBe(false);
+  });
+
   it('refuses the import when it is players, clubs or leagues, and keeps the previous import', async () => {
     const dir = writeExport(40);
     await importCsvDir(dir);
@@ -219,6 +231,14 @@ describe('the data folder over repeated imports', () => {
       }
       // Every connection these imports replaced has closed (and given its file's space back)
       expect(retiredConnections()).toBeLessThanOrEqual(pending);
+      // The listing cannot see a replaced file still held open; lsof can (unlinked files this process holds), where it exists
+      const lsof = spawnSync('lsof', ['-a', '-p', String(process.pid), '+L1'], { encoding: 'utf8' });
+      if (!lsof.error) {
+        // One file each (an open file and its memory map are two lines of one inode): NODE is the column before NAME
+        const lines = lsof.stdout.split('\n').filter((line) => line.includes(DATA_DIR) && /league/.test(line));
+        const held = new Set(lines.map((line) => line.trim().split(/\s+/).slice(-2)[0]));
+        expect(held.size, lines.join('\n')).toBeLessThanOrEqual(pending);
+      }
       expect(fs.existsSync(NEXT_DB_PATH)).toBe(false);
       expect(Math.max(...sizes) / Math.min(...sizes)).toBeLessThan(1.1);
     } finally {
