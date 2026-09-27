@@ -16,6 +16,8 @@ import { api, importState, runImport } from '../server/api.js';
 import { loadConfig, saveConfig } from '../server/config.js';
 import { startJob } from '../server/jobs.js';
 import { themePacksFolder } from '../server/themePackStore.js';
+import { historyDb, SNAPSHOT_DATA_COLUMNS, takeSnapshot } from '../server/history.js';
+import { currentHistoryKey, forgetHistoryKey } from '../server/historyIdentity.js';
 import { registeredRoutes, type RegisteredRoute } from './apiRoutes';
 import {
   BANNED_JARGON, BANNED_VERDICTS, JARGON_EXCEPTIONS, bannedIn, bannedInPayload, exceptionsUsed, shownStrings,
@@ -442,6 +444,54 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     }
     } finally {
       saveConfig(previous);
+    }
+  }, SLOW);
+
+  it('asks about a save that moved, carries its history over and undoes it, in the contract\'s shape (captured for the previews)', async () => {
+    // A history bound to a folder that has gone (the pretend OOTP folder is there, the save in it is not), with this
+    // league's players: the question the Mac app asks, then its two answers
+    const key = currentHistoryKey();
+    takeSnapshot();
+    const [latest] = (historyDb.prepare(`SELECT DISTINCT game_date FROM save_rating_snapshots WHERE save_key = ?`).all(key) as Array<{ game_date: string }>).map((r) => r.game_date);
+    const gone = path.join(home, 'Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games/Old League.lg');
+    const source = 'save-fixture-old-league';
+    const cols = SNAPSHOT_DATA_COLUMNS.filter((c) => c !== 'game_date').join(', ');
+    try {
+      historyDb.prepare(
+        `INSERT INTO history_saves (save_key, folder_id, folder_path, save_name, bound, origin, replaces, created_at, last_seen_at)
+         VALUES (?, 'fixture', ?, 'Old League', 1, 'new', NULL, '2040-01-01T00:00:00.000Z', '2040-01-01T00:00:00.000Z')`
+      ).run(source, gone);
+      for (const date of ['2040-4-1', latest]) {
+        historyDb.prepare(`INSERT INTO save_rating_snapshots (save_key, game_date, ${cols}) SELECT ?, ?, ${cols} FROM save_rating_snapshots WHERE save_key = ? AND game_date = ?`)
+          .run(source, date, key, latest);
+      }
+      const steps: Array<[string, string, unknown, string]> = [
+        ['getRatingHistory-offer', '/api/v2/rating-history', undefined, 'RatingHistoryView'],
+        ['answerRatingHistoryOffer-adopt', '/api/v2/rating-history/choice', { offerId: `${key}:${source}`, choice: 'adopt' }, 'RatingHistoryView'],
+        ['answerRatingHistoryOffer-undo', '/api/v2/rating-history/choice', { offerId: `${key}:carry:1`, choice: 'undo' }, 'RatingHistoryView'],
+      ];
+      for (const [name, route, body, type] of steps) {
+        const res = await fetch(`${base}${route}`, body === undefined ? undefined : {
+          method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+        });
+        expect(res.status, name).toBe(200);
+        const answer = await res.json();
+        const validate = validator(type);
+        expect(validate(answer) ? [] : validate.errors, name).toEqual([]);
+        expect(bannedInPayload(answer, name.split('-')[0])).toEqual([]);
+        expect(servedBasisProblems(answer)).toEqual([]);
+        if (name.endsWith('offer')) expect(answer.offers).toHaveLength(1);
+        if (name.endsWith('adopt')) expect(answer.carriedOver).toHaveLength(1);
+        if (name.endsWith('undo')) expect(answer.carriedOver).toEqual([]);
+        fixture(`responses/${name}.json`, json(answer));
+      }
+    } finally {
+      for (const table of ['history_carry_overs', 'history_carried_rows', 'history_offer_choices', 'history_dual_writes']) historyDb.exec(`DELETE FROM ${table}`);
+      historyDb.prepare(`DELETE FROM save_rating_snapshots WHERE save_key IN (?, ?)`).run(key, source);
+      historyDb.prepare(`DELETE FROM save_rating_snapshot_modes WHERE save_key IN (?, ?)`).run(key, source);
+      historyDb.prepare(`DELETE FROM rating_snapshots WHERE game_date = ?`).run(latest);
+      historyDb.prepare(`DELETE FROM history_saves WHERE save_key = ?`).run(source);
+      forgetHistoryKey();
     }
   }, SLOW);
 

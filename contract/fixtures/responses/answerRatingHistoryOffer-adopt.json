@@ -1,0 +1,39 @@
+{
+  "note": null,
+  "offers": [],
+  "candidates": [],
+  "carriedOver": [
+    {
+      "id": "save-none:carry:1",
+      "text": {
+        "text": "Rating history carried over from \"Old League\" through May 6, 2040.",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "From",
+              "value": "/tmp/pennant-contract-home/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games/Old League.lg"
+            },
+            {
+              "label": "Copied",
+              "value": "104 player ratings."
+            }
+          ],
+          "source": {
+            "department": "frontOffice",
+            "specialist": "Rating history",
+            "asOf": null,
+            "gameDate": null
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "fact",
+          "called": "A fact from the export"
+        },
+        "links": [],
+        "hint": "Undoing it removes exactly what was copied; the other save keeps its own"
+      }
+    }
+  ]
+}

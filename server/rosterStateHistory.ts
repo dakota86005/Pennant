@@ -19,9 +19,8 @@
 
 import { createHash } from 'node:crypto';
 import { db, tableColumns, tableExists } from './db.js';
-import { loadConfig } from './config.js';
 import { historyDb } from './history.js';
-import { currentHistoryKey } from './historyIdentity.js';
+import { currentHistoryKey, rollbackName } from './historyIdentity.js';
 import { allPlayerStates, type PlayerState } from './playerState.js';
 import { playerRosterEventHistory, type PlayerRosterEvent } from './transactionHistory.js';
 import { currentTransactionLog } from './dataStatus.js';
@@ -64,17 +63,6 @@ historyDb.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_roster_state_player
     ON roster_state_snapshot_players (player_id, snapshot_id);
-  /*
-   * Which save each snapshot belongs to (D-064): its history key, not its name, so two saves that share a name are
-   * never compared with each other. Additive: the snapshot rows keep their name as before (the earlier build reads
-   * them by it). A snapshot taken before this table existed has no row here and is never a comparator for any save.
-   */
-  CREATE TABLE IF NOT EXISTS roster_state_snapshot_saves (
-    snapshot_id INTEGER PRIMARY KEY,
-    save_key TEXT NOT NULL
-  );
-  CREATE INDEX IF NOT EXISTS idx_roster_state_snapshot_saves_key
-    ON roster_state_snapshot_saves (save_key, snapshot_id);
   CREATE TABLE IF NOT EXISTS roster_state_transitions (
     snapshot_id INTEGER NOT NULL,
     prior_snapshot_id INTEGER NOT NULL,
@@ -204,10 +192,6 @@ const boolFromDb = (value: unknown): boolean | null =>
 const dbBool = (value: boolean | null): number | null => value === null ? null : value ? 1 : 0;
 const numberOrNull = (value: unknown): number | null =>
   typeof value === 'number' && Number.isFinite(value) ? value : null;
-
-function currentSaveName(): string {
-  return loadConfig().saveName ?? 'unknown';
-}
 
 function importedLeagueIdentity(): { leagueId: number | null; gameDate: string | null } {
   if (!tableExists('leagues') || !tableExists('teams')) return { leagueId: null, gameDate: null };
@@ -542,7 +526,9 @@ export function captureRosterStateSnapshot(
 ): RosterStateCapture {
   const players = allPlayerStates().map(persistedState).filter((player) => player.playerId > 0);
   if (!players.length) return { status: 'unavailable', snapshot: null, events: [] };
-  const saveName = currentSaveName();
+  // Its row keeps a name for the earlier build: the served save's, only when it is certainly the configured one (D-064);
+  // otherwise none that any save has, so the earlier build never compares it
+  const saveName = rollbackName() ?? '';
   const saveKey = currentHistoryKey();
   const { leagueId, gameDate } = importedLeagueIdentity();
   const hash = stateHash(players);

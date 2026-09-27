@@ -89,7 +89,9 @@ export type {
 export type { DataStatusView, DataStatusRow, DataStatusFact, GameDateText } from '../presentation/dataStatusWords.js';
 
 // Rating history per save (`GET /api/v2/rating-history`, `POST /api/v2/rating-history/choice`, D-064)
-export type { RatingHistoryView, RatingHistoryOffer, RatingHistoryChoice } from '../presentation/ratingHistoryWords.js';
+export type {
+  RatingHistoryView, RatingHistoryOffer, RatingHistoryCandidate, RatingHistoryCarryOver, RatingHistoryChoice, RatingHistoryPlayers,
+} from '../presentation/ratingHistoryWords.js';
 export type { RosterEvidenceLevel } from '../dataFreshness.js';
 
 // The Front Office (`GET /api/v2/front-office/:org`, `/departments/:org/:dept`, `/claims/:key`)

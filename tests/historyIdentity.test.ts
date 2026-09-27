@@ -5,7 +5,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { DATA_DIR, saveConfig } from '../server/config.js';
 import { db, forgetImportRecord, LAST_IMPORT_PATH } from '../server/db.js';
 import { getDataStatus } from '../server/dataStatus.js';
-import { baselineSnapshot, developmentTrendByPlayer, historyDb, snapshotDates, stampSnapshotMode, takeSnapshot } from '../server/history.js';
+import { baselineSnapshot, developmentTrendByPlayer, historyDb, SNAPSHOT_DATA_COLUMNS, snapshotDates, stampSnapshotMode, takeSnapshot } from '../server/history.js';
 import {
   CONTINUITY_POLICY,
   continuityOf,
@@ -14,6 +14,7 @@ import {
   forgetHistoryKey,
   historyIdentityDeps,
   historyNote,
+  historyCandidates,
   historyOffers,
   historySave,
   legacyBackupPath,
@@ -83,7 +84,7 @@ const keyedRows = (key: string): unknown[] => historyDb.prepare(`SELECT * FROM s
 
 const clearAll = (): void => {
   for (const table of ['save_rating_snapshots', 'save_rating_snapshot_modes', 'history_saves', 'history_legacy_review', 'history_identity_meta',
-    'history_dual_writes', 'history_offer_choices', 'roster_state_snapshot_saves', 'rating_snapshots', 'rating_snapshot_modes']) {
+    'history_dual_writes', 'history_offer_choices', 'history_carry_overs', 'history_carried_rows', 'roster_state_snapshot_saves', 'rating_snapshots', 'rating_snapshot_modes']) {
     historyDb.exec(`DELETE FROM ${table}`);
   }
 };
@@ -171,12 +172,17 @@ describe('earlier history filed under a name is used only where it is certainly 
 
   it('brings over a date whose rows have this league\'s players, and only those rows', () => {
     const many = new Map(Array.from({ length: 1001 }, (_, i) => [i, `Player ${i}`] as const));
-    const rows = [...Array.from({ length: 1000 }, (_, i) => ({ player_id: i + 1, name: `Player ${i + 1}` })), { player_id: 0, name: 'Renamed' }, { player_id: 5000, name: 'Not In League' }];
+    const rows = [...Array.from({ length: 1000 }, (_, i) => ({ player_id: i + 1, name: `Player ${i + 1}` })), { player_id: 5000, name: 'Not In League' }];
     const d = decide({ rows, names: many });
     expect(d).toMatchObject({ verdict: 'attributed', reason: 'matched' });
-    expect(d.playerIds).not.toContain(0);
     expect(d.playerIds).not.toContain(5000);
     expect(d.playerIds).toHaveLength(1000);
+  });
+
+  it('brings a date over only when every player compared has the same name: one in a thousand renamed leaves it unused', () => {
+    const many = new Map(Array.from({ length: 1001 }, (_, i) => [i, `Player ${i}`] as const));
+    const rows = [...Array.from({ length: 1000 }, (_, i) => ({ player_id: i + 1, name: `Player ${i + 1}` })), { player_id: 0, name: 'Renamed' }];
+    expect(decide({ rows, names: many })).toMatchObject({ verdict: 'unattributed', reason: 'unclear', playerIds: [] });
   });
 
   it('keeps apart a date with another league\'s players, and leaves unused one it cannot tell', () => {
@@ -278,42 +284,72 @@ describe('a save chosen but not yet imported', () => {
   });
 });
 
-describe('one folder, one history: the players test only refuses', () => {
-  it('starts fresh, and never writes over the earlier history, when the folder now holds a league with other players', () => {
+/** Copies a key's snapshot of the league's date to another date, as an earlier (or later) import of the same save. */
+function copyDate(key: string, to: string, cur = 1): void {
+  const cols = SNAPSHOT_DATA_COLUMNS.filter((c) => c !== 'game_date' && c !== 'cur').join(', ');
+  historyDb.prepare(`INSERT INTO save_rating_snapshots (save_key, game_date, cur, ${cols}) SELECT save_key, ?, cur - ?, ${cols} FROM save_rating_snapshots WHERE save_key = ? AND game_date = ?`)
+    .run(to, cur, key, LEAGUE_DATE);
+}
+
+const choose = (offerId: string, choice: 'adopt' | 'fresh' | 'undo') => post('/api/v2/rating-history/choice', { offerId, choice });
+
+describe('one folder, one history: the players test only refuses, and a refusal is never a dead end', () => {
+  it('starts fresh when the folder now holds a league with other players, never writes over the earlier history, and asks whether to continue it', async () => {
     const a = saveFolder('mac-app-store', 'New Game');
     useSave(a.csvDir, 'New Game');
     const key = currentHistoryKey();
     takeSnapshot();
+    copyDate(key, '2030-5-1');
     const before = keyedRows(key);
     db.exec(`UPDATE players SET first_name = 'New' || first_name`);
     try {
-      useSave(a.csvDir, 'New Game'); // a new league made under the same name in the same folder, imported
+      useSave(a.csvDir, 'New Game');
       const fresh = currentHistoryKey();
       expect(fresh).not.toBe(key);
       expect(historySave(key)?.bound).toBe(false);
-      expect(historySave(fresh)?.origin).toBe('fresh_new_league');
+      expect(historySave(fresh)).toMatchObject({ origin: 'fresh_new_league', replaces: key });
       takeSnapshot(); // the same date as the earlier history's
       expect(keyedRows(key)).toEqual(before);
       expect(snapshotDates()).toEqual([LEAGUE_DATE]);
-      expect(historyNote().note).toMatch(/starts fresh: its players don't match/);
+      expect(historyNote().note).toBe('This save\'s rating history starts fresh: its players don\'t match the history kept for its folder.');
+      const view = await request('/api/v2/rating-history');
+      expect(view.offers).toHaveLength(1);
+      expect(view.offers[0]).toMatchObject({ id: `${fresh}:${key}`, kind: 'players_changed' });
+      expect(view.offers[0].question.text).toBe('This save\'s players no longer match its rating history. Continue that history, or keep the new start?');
+      // Continued: its dates up to this league's are copied in; the history set aside stays exactly as it was
+      expect((await choose(`${fresh}:${key}`, 'adopt')).status).toBe(200);
+      expect(currentHistoryKey()).toBe(fresh);
+      expect(snapshotDates()).toEqual(['2030-5-1', LEAGUE_DATE]);
+      expect(keyedRows(key)).toEqual(before);
+      expect(historyNote().note).toBeNull();
+      expect(historyNote().because.join(' ')).toMatch(/You carried over the rating history of "New Game" \(in .*New Game\.lg\) through June 1, 2030/);
     } finally {
       db.exec(`UPDATE players SET first_name = substr(first_name, 4) WHERE first_name LIKE 'New%'`);
     }
   });
 
-  it('starts fresh, and says so, when the same players come back at an earlier date than the folder\'s history', () => {
+  it('starts fresh when the save went back to an earlier date, and offers its history up to the new date, keeping the later dates apart', async () => {
     const a = saveFolder('mac-app-store', 'New Game');
     useSave(a.csvDir, 'New Game');
     const key = currentHistoryKey();
     takeSnapshot();
-    historyDb.prepare(`UPDATE save_rating_snapshots SET game_date = '2031-1-1' WHERE save_key = ?`).run(key);
+    copyDate(key, '2030-5-1');
+    historyDb.prepare(`UPDATE save_rating_snapshots SET game_date = '2031-1-1' WHERE save_key = ? AND game_date = ?`).run(key, LEAGUE_DATE);
     const before = keyedRows(key);
     useSave(a.csvDir, 'New Game');
     const fresh = currentHistoryKey();
     expect(historySave(fresh)?.origin).toBe('fresh_went_back');
     takeSnapshot();
     expect(keyedRows(key)).toEqual(before);
-    expect(historyNote().note).toMatch(/its date is earlier/);
+    // One account: a fresh start, and nothing brought over from under the name for it
+    expect(historyNote().note).toBe('This save\'s rating history starts fresh: its date is earlier than the history kept for its folder.');
+    const [offer] = historyOffers();
+    expect(offer).toMatchObject({ kind: 'went_back', carriesThrough: '2030-5-1', lastDate: '2031-1-1' });
+    const view = await request('/api/v2/rating-history');
+    expect(view.offers[0].question.text).toBe('This save went back to an earlier date than its rating history. Continue that history up to May 1, 2030, or keep the new start?');
+    expect((await choose(offer.id, 'adopt')).status).toBe(200);
+    expect(snapshotDates()).toEqual(['2030-5-1', LEAGUE_DATE]);
+    expect(keyedRows(key)).toEqual(before);
   });
 
   it('never writes over the folder\'s history when the league is earlier than it, even with too few players to compare', () => {
@@ -338,15 +374,58 @@ describe('one folder, one history: the players test only refuses', () => {
     useSave(a.csvDir, 'New Game');
     expect(currentHistoryKey()).toBe(key);
   });
+
+  it('never refuses a save\'s own history over names written or read differently: case, accents, punctuation, a misread accent', () => {
+    const a = saveFolder('mac-app-store', 'New Game');
+    useSave(a.csvDir, 'New Game');
+    const key = currentHistoryKey();
+    takeSnapshot();
+    const ids = leaguePlayers().slice(0, 4).map((p) => p.player_id);
+    const saved = db.prepare(`SELECT player_id, first_name, last_name FROM players WHERE player_id IN (${ids.join(', ')})`).all() as Array<{ player_id: number; first_name: string; last_name: string }>;
+    db.prepare(`UPDATE players SET first_name = 'Zoë' WHERE player_id = ?`).run(ids[0]);
+    db.prepare(`UPDATE players SET first_name = 'José' WHERE player_id = ?`).run(ids[1]);
+    db.prepare(`UPDATE players SET last_name = 'O''Neil' WHERE player_id = ?`).run(ids[2]);
+    const rename = historyDb.prepare(`UPDATE save_rating_snapshots SET name = ? WHERE save_key = ? AND player_id = ?`);
+    const last = (id: number) => (db.prepare(`SELECT last_name FROM players WHERE player_id = ?`).get(id) as { last_name: string }).last_name;
+    rename.run(`ZOE ${last(ids[0])}`, key, ids[0]);
+    rename.run(`JosÃ© ${last(ids[1])}`, key, ids[1]); // UTF-8 read as Latin-1
+    const first2 = (db.prepare(`SELECT first_name FROM players WHERE player_id = ?`).get(ids[2]) as { first_name: string }).first_name;
+    rename.run(`${first2}  ONeil`, key, ids[2]);
+    rename.run('Unread�ble Name', key, ids[3]); // unreadable: not compared at all
+    try {
+      useSave(a.csvDir, 'New Game');
+      expect(currentHistoryKey()).toBe(key);
+    } finally {
+      const put = db.prepare(`UPDATE players SET first_name = ?, last_name = ? WHERE player_id = ?`);
+      for (const p of saved) put.run(p.first_name, p.last_name, p.player_id);
+    }
+  });
 });
 
-describe('a save that might have moved is asked about, never adopted', () => {
+describe('a writer that resolved the key before it was set aside', () => {
+  it('files the snapshot under the key bound to the save now, never under the one set aside', () => {
+    const a = saveFolder('mac-app-store', 'New Game');
+    useSave(a.csvDir, 'New Game');
+    const key = currentHistoryKey();
+    // Another thread sets the key aside and starts the folder afresh, after this one resolved it
+    const folder = historySave(key)!.folderId;
+    historyDb.prepare(`UPDATE history_saves SET bound = 0 WHERE save_key = ?`).run(key);
+    historyDb.prepare(`INSERT INTO history_saves (save_key, folder_id, folder_path, save_name, bound, origin, replaces, created_at, last_seen_at) VALUES ('save-other', ?, ?, 'New Game', 1, 'fresh_new_league', ?, 'x', 'x')`)
+      .run(folder, a.lgPath, key);
+    expect(takeSnapshot()?.gameDate).toBe(LEAGUE_DATE);
+    expect(keyedRows(key)).toEqual([]);
+    expect(keyedRows('save-other').length).toBe(leaguePlayers().length);
+  });
+});
+
+describe('the GM decides: questions about a save that might have moved, the list of other histories, and undo', () => {
   it('never takes the history of a save whose folder can\'t be seen (a drive not mounted), even for a copy with every player the same', () => {
     const a = saveFolder('external', 'New Game');
     const copy = saveFolder('copies', 'New Game');
     useSave(a.csvDir, 'New Game');
     const keyA = currentHistoryKey();
     takeSnapshot();
+    const before = keyedRows(keyA);
     folderStates.set(a.lgPath, 'unknown');
     useSave(copy.csvDir, 'New Game');
     const keyCopy = currentHistoryKey();
@@ -359,43 +438,55 @@ describe('a save that might have moved is asked about, never adopted', () => {
     useSave(a.csvDir, 'New Game');
     expect(currentHistoryKey()).toBe(keyA);
     expect(historySave(keyA)).toMatchObject({ bound: true, folderPath: a.lgPath, origin: 'new' });
+    expect(keyedRows(keyA)).toEqual(before);
   });
 
-  it('asks, and carries the history over only on a yes: the offer and its answer, round trip', async () => {
+  it('asks about a save that moved, carries its history over only on a yes, after a backup, and undoes exactly that', async () => {
     const a = saveFolder('mac-app-store', 'New Game');
     const renamed = saveFolder('mac-app-store', 'Dynasty');
     useSave(a.csvDir, 'New Game');
     const keyA = currentHistoryKey();
     takeSnapshot();
-    stampSnapshotMode(LEAGUE_DATE, { mode: 'scouted', additionalScouted: null, source: 'export_settings', reason: null }, null);
+    copyDate(keyA, '2030-5-1');
+    stampSnapshotMode('2030-5-1', { mode: 'scouted', additionalScouted: null, source: 'export_settings', reason: null }, null);
+    const aBefore = keyedRows(keyA);
     fs.rmSync(a.lgPath, { recursive: true });
     useSave(renamed.csvDir, 'Dynasty');
     const keyNew = currentHistoryKey();
     takeSnapshot();
-    // Nothing is joined by itself
+    const ownBefore = keyedRows(keyNew);
     expect(currentHistoryKey()).toBe(keyNew);
-    expect(historySave(keyA)?.folderPath).toBe(a.lgPath);
     const view = await request('/api/v2/rating-history');
     expect(view.offers).toHaveLength(1);
-    expect(view.offers[0]).toMatchObject({ id: keyA, saveName: 'New Game', imports: 1 });
+    expect(view.offers[0]).toMatchObject({ id: `${keyNew}:${keyA}`, kind: 'moved', saveName: 'New Game', imports: 2, carriesThrough: LEAGUE_DATE, players: 'same' });
     expect(view.offers[0].question.text).toMatch(/^This save has no rating history yet\. Is it "New Game", the save that used to be in /);
     for (const banned of BANNED_JARGON) expect(view.offers[0].question.text).not.toMatch(banned);
-    // A stale or unknown answer is refused in words
-    expect((await post('/api/v2/rating-history/choice', { offerId: 'save-nothing', choice: 'adopt' })).status).toBe(400);
-    const answered = await post('/api/v2/rating-history/choice', { offerId: keyA, choice: 'adopt' });
+    // Answers name this save: another save's, a made-up one, or an unknown choice is refused in words
+    expect((await choose(`save-someone-else:${keyA}`, 'adopt')).status).toBe(400);
+    expect((await choose(`${keyNew}:save-nothing`, 'adopt')).status).toBe(400);
+    const answered = await choose(`${keyNew}:${keyA}`, 'adopt');
     expect(answered.status).toBe(200);
     expect(answered.body.offers).toEqual([]);
-    expect(currentHistoryKey()).toBe(keyA);
-    expect(historySave(keyA)).toMatchObject({ origin: 'adopted', folderPath: renamed.lgPath, saveName: 'Dynasty', bound: true });
-    expect(historySave(keyNew)?.bound).toBe(false);
-    expect(snapshotDates()).toEqual([LEAGUE_DATE]);
-    expect(historyDb.prepare(`SELECT choice FROM history_offer_choices WHERE save_key = ?`).all(keyNew)).toEqual([{ choice: 'adopt' }]);
-    // The answer holds across a re-import
-    useSave(renamed.csvDir, 'Dynasty');
-    expect(currentHistoryKey()).toBe(keyA);
+    expect(answered.body.carriedOver).toHaveLength(1);
+    expect(answered.body.carriedOver[0].text.text).toBe('Rating history carried over from "New Game" through June 1, 2030.');
+    expect(fs.readdirSync(path.join(DATA_DIR, 'backups')).filter((f) => f.startsWith('history-before-carry-over-'))).toHaveLength(1);
+    expect(currentHistoryKey()).toBe(keyNew);
+    expect(snapshotDates()).toEqual(['2030-5-1', LEAGUE_DATE]);
+    expect(historyDb.prepare(`SELECT mode FROM save_rating_snapshot_modes WHERE save_key = ? AND game_date = '2030-5-1'`).get(keyNew)).toEqual({ mode: 'scouted' });
+    // The source is never changed or taken
+    expect(keyedRows(keyA)).toEqual(aBefore);
+    expect(historySave(keyA)).toMatchObject({ bound: true, folderPath: a.lgPath });
+    // Undo removes exactly what was copied, and the question can be asked again
+    const undone = await choose(answered.body.carriedOver[0].id, 'undo');
+    expect(undone.status).toBe(200);
+    expect(undone.body.carriedOver).toEqual([]);
+    expect(keyedRows(keyNew)).toEqual(ownBefore);
+    expect(historyDb.prepare(`SELECT COUNT(*) AS n FROM save_rating_snapshot_modes WHERE save_key = ? AND game_date = '2030-5-1'`).get(keyNew)).toEqual({ n: 0 });
+    expect(undone.body.offers).toHaveLength(1);
+    expect((await choose(answered.body.carriedOver[0].id, 'undo')).status).toBe(400);
   });
 
-  it('starts fresh on a no, and asks nothing again', async () => {
+  it('keeps them apart on a no, never asks again, and refuses a second answer or one to a question not asked', async () => {
     const a = saveFolder('mac-app-store', 'New Game');
     const renamed = saveFolder('mac-app-store', 'Dynasty');
     useSave(a.csvDir, 'New Game');
@@ -404,15 +495,19 @@ describe('a save that might have moved is asked about, never adopted', () => {
     fs.rmSync(a.lgPath, { recursive: true });
     useSave(renamed.csvDir, 'Dynasty');
     const keyNew = currentHistoryKey();
-    expect(historyOffers().map((o) => o.id)).toEqual([keyA]);
-    const answered = await post('/api/v2/rating-history/choice', { offerId: keyA, choice: 'fresh' });
+    expect(historyOffers().map((o) => o.id)).toEqual([`${keyNew}:${keyA}`]);
+    expect((await choose(`${keyNew}:save-not-asked`, 'fresh')).status).toBe(400);
+    const answered = await choose(`${keyNew}:${keyA}`, 'fresh');
     expect(answered.status).toBe(200);
     expect(answered.body.offers).toEqual([]);
+    expect((await choose(`${keyNew}:${keyA}`, 'fresh')).status).toBe(400);
     expect(currentHistoryKey()).toBe(keyNew);
     expect(historySave(keyA)?.folderPath).toBe(a.lgPath);
+    // Still in the list: the GM can carry it over later
+    expect(historyCandidates().map((c) => c.source)).toContain(keyA);
   });
 
-  it('never offers a history with another league\'s players, or one later than this league\'s date', () => {
+  it('never asks about a history with another league\'s players, or one later than this league\'s date', () => {
     const a = saveFolder('mac-app-store', 'New Game');
     const b = saveFolder('elsewhere', 'Another');
     useSave(a.csvDir, 'New Game');
@@ -427,6 +522,38 @@ describe('a save that might have moved is asked about, never adopted', () => {
     expect(historyOffers()).toEqual([]);
   });
 
+  it('lists every other history the GM may carry over, hiding only another league\'s; a listed one is copied on request and names where it came from', async () => {
+    const a = saveFolder('ootp-26', 'Franchise');
+    const b = saveFolder('ootp-27', 'Franchise');
+    const other = saveFolder('elsewhere', 'Other League');
+    useSave(other.csvDir, 'Other League');
+    const keyOther = currentHistoryKey();
+    takeSnapshot();
+    historyDb.prepare(`UPDATE save_rating_snapshots SET name = 'Stranger ' || player_id WHERE save_key = ?`).run(keyOther);
+    useSave(a.csvDir, 'Franchise');
+    const keyA = currentHistoryKey();
+    takeSnapshot();
+    copyDate(keyA, '2030-5-1');
+    const aBefore = keyedRows(keyA);
+    // OOTP's upgrade copied the save: both folders are there
+    useSave(b.csvDir, 'Franchise');
+    const keyB = currentHistoryKey();
+    takeSnapshot();
+    copyDate(keyB, '2030-5-15');
+    expect(historyOffers()).toEqual([]);
+    const view = await request('/api/v2/rating-history');
+    expect(view.candidates.map((c: { id: string }) => c.id)).toEqual([`${keyB}:${keyA}`]);
+    expect(view.candidates[0]).toMatchObject({ folder: 'present', players: 'same', imports: 2 });
+    expect(view.candidates[0].label.text).toMatch(/^"Franchise" in .*ootp-26: 2 imports, the latest on June 1, 2030$/);
+    expect((await choose(`${keyB}:${keyA}`, 'adopt')).status).toBe(200);
+    expect(snapshotDates()).toEqual(['2030-5-1', '2030-5-15', LEAGUE_DATE]);
+    expect(keyedRows(keyA)).toEqual(aBefore);
+    expect(historyNote().because.join(' ')).toContain(`(in ${a.lgPath})`);
+    // Its own folder's history is still its own
+    useSave(a.csvDir, 'Franchise');
+    expect(currentHistoryKey()).toBe(keyA);
+  });
+
   it('reads the history of the save whose league is served, not of a save chosen but not yet imported', () => {
     const a = saveFolder('mac-app-store', 'New Game');
     const b = saveFolder('application-support', 'New Game');
@@ -438,7 +565,7 @@ describe('a save that might have moved is asked about, never adopted', () => {
       fs.writeFileSync(LAST_IMPORT_PATH, JSON.stringify({ startedAt }));
       forgetImportRecord();
       forgetHistoryKey();
-      expect(servedSave()).toMatchObject({ folderPath: a.lgPath, name: 'New Game' });
+      expect(servedSave()).toMatchObject({ folderPath: a.lgPath, name: 'New Game', configured: false });
       expect(servedLeagueCertain()).toBe(true);
     } finally {
       db.prepare(`DELETE FROM pennant_import WHERE key = 'import'`).run();
@@ -510,6 +637,21 @@ describe('the history filed under a name before D-064', () => {
     expect(historyDb.prepare(`SELECT reason FROM history_legacy_review WHERE save_key = ? AND game_date = '2030-4-1'`).get(key)).toEqual({ reason: 'saves_unreadable' });
   });
 
+  it('is not brought over into a fresh start: that history\'s earlier dates are the set-aside history\'s, so there is one account', () => {
+    const a = saveFolder('mac-app-store', 'New Game');
+    useSave(a.csvDir, 'New Game');
+    const key = currentHistoryKey();
+    takeSnapshot();
+    historyDb.prepare(`UPDATE save_rating_snapshots SET game_date = '2031-1-1' WHERE save_key = ?`).run(key);
+    writeLegacy('New Game');
+    useSave(a.csvDir, 'New Game');
+    const fresh = currentHistoryKey();
+    expect(historySave(fresh)?.origin).toBe('fresh_went_back');
+    expect(historyDb.prepare(`SELECT COUNT(*) AS n FROM history_legacy_review WHERE save_key = ?`).get(fresh)).toEqual({ n: 0 });
+    expect(historyNote().note).toBe('This save\'s rating history starts fresh: its date is earlier than the history kept for its folder.');
+    expect(historyNote().because.join(' ')).not.toMatch(/Brought over/);
+  });
+
   it('is reviewed once: a second look copies nothing, and a backup whose record was lost is not made again', () => {
     writeLegacy('New Game');
     const a = saveFolder('mac-app-store', 'New Game');
@@ -572,6 +714,42 @@ describe('the history filed under a name before D-064', () => {
 });
 
 describe('the earlier (Electron) build after a rollback', () => {
+  it('never files the league under the configured name when the GM chose another save with one click right after an import', () => {
+    const a = saveFolder('mac-app-store', 'New Game 6');
+    const b = saveFolder('mac-app-store-2', 'New Game 5');
+    const startedAt = '2040-07-01T12:00:00.000Z';
+    db.exec('CREATE TABLE IF NOT EXISTS pennant_import (key TEXT PRIMARY KEY, value TEXT)');
+    db.prepare(`INSERT OR REPLACE INTO pennant_import (key, value) VALUES ('import', ?)`).run(JSON.stringify({ startedAt, csvDir: a.csvDir }));
+    const imported = () => {
+      fs.writeFileSync(LAST_IMPORT_PATH, JSON.stringify({ startedAt }));
+      forgetImportRecord();
+      forgetHistoryKey();
+    };
+    try {
+      // New Game 6's import, and its snapshots taken while it is still the configured save: under its own name
+      saveConfig({ csvDir: a.csvDir, saveName: 'New Game 6' });
+      imported();
+      const keyA = currentHistoryKey();
+      takeSnapshot();
+      expect(historyDb.prepare(`SELECT save_name, COUNT(*) AS n FROM rating_snapshots GROUP BY save_name`).all()).toEqual([{ save_name: 'New Game 6', n: leaguePlayers().length }]);
+      historyDb.exec(`DELETE FROM rating_snapshots; DELETE FROM history_dual_writes`);
+      // The GM switches to New Game 5 with one click while the post-import snapshots run: they are New Game 6's league
+      saveConfig({ csvDir: b.csvDir, saveName: 'New Game 5' });
+      imported();
+      expect(currentHistoryKey()).toBe(keyA);
+      takeSnapshot();
+      stampSnapshotMode(LEAGUE_DATE, { mode: 'scouted', additionalScouted: null, source: 'export_settings', reason: null }, null);
+      const roster = captureRosterStateSnapshot({ log: null });
+      expect(keyedRows(keyA).length).toBe(leaguePlayers().length);
+      expect(historyDb.prepare(`SELECT COUNT(*) AS n FROM rating_snapshots`).get()).toEqual({ n: 0 });
+      expect(historyDb.prepare(`SELECT COUNT(*) AS n FROM rating_snapshot_modes`).get()).toEqual({ n: 0 });
+      expect(historyDb.prepare(`SELECT save_name FROM roster_state_snapshots WHERE id = ?`).get(roster.snapshot!.id)).toEqual({ save_name: '' });
+    } finally {
+      db.prepare(`DELETE FROM pennant_import WHERE key = 'import'`).run();
+      forgetImportRecord();
+    }
+  });
+
   it('reads every snapshot this build takes, under the save\'s name, as it always wrote them; and they are never taken for earlier history', () => {
     const a = saveFolder('mac-app-store', 'New Game');
     const b = saveFolder('application-support', 'New Game');

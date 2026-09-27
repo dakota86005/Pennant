@@ -4,7 +4,7 @@ import path from 'node:path';
 import { db as leagueDb, importRecord, tableExists } from './db.js';
 import { DATA_DIR, loadConfig } from './config.js';
 import { isModeSwitch, RATING_MODE_WORDS, type RatingMode, type RatingModeRecord } from './ratingMode.js';
-import { currentHistoryKey, historyNote, servedLeagueCertain } from './historyIdentity.js';
+import { boundKeyNow, currentHistoryKey, historyNote, rollbackName, servedLeagueCertain } from './historyIdentity.js';
 
 /**
  * Persistent store that SURVIVES reimports (league.db is rebuilt on every
@@ -160,6 +160,7 @@ historyDb.exec(`
     save_name TEXT,
     bound INTEGER NOT NULL DEFAULT 1,
     origin TEXT NOT NULL,
+    replaces TEXT,
     created_at TEXT NOT NULL,
     last_seen_at TEXT NOT NULL
   );
@@ -196,6 +197,36 @@ historyDb.exec(`
     chosen_at TEXT NOT NULL,
     PRIMARY KEY (save_key, candidate_key)
   );
+  CREATE TABLE IF NOT EXISTS history_carry_overs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    save_key TEXT NOT NULL,
+    from_key TEXT NOT NULL,
+    from_name TEXT,
+    from_path TEXT,
+    through_date TEXT,
+    rows_copied INTEGER NOT NULL,
+    mode_dates TEXT NOT NULL,
+    backup TEXT,
+    carried_at TEXT NOT NULL,
+    undone_at TEXT
+  );
+  CREATE TABLE IF NOT EXISTS history_carried_rows (
+    carry_id INTEGER NOT NULL,
+    game_date TEXT NOT NULL,
+    player_id INTEGER NOT NULL,
+    PRIMARY KEY (carry_id, game_date, player_id)
+  );
+  /*
+   * Which save each roster-state snapshot belongs to (D-064): its history key, not its name, so two saves that share a
+   * name are never compared with each other. The snapshot rows (rosterStateHistory.ts) keep a name as before; one
+   * taken before this table existed has no row here and is never a comparator for any save.
+   */
+  CREATE TABLE IF NOT EXISTS roster_state_snapshot_saves (
+    snapshot_id INTEGER PRIMARY KEY,
+    save_key TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_roster_state_snapshot_saves_key
+    ON roster_state_snapshot_saves (save_key, snapshot_id);
 `);
 
 /**
@@ -210,22 +241,28 @@ export function stampSnapshotMode(gameDate: string, record: RatingModeRecord | n
     record.additionalScouted === null || record.additionalScouted === undefined ? null : record.additionalScouted ? 1 : 0,
     record.source ?? null, importStartedAt, new Date().toISOString(),
   ];
-  const saveKey = currentHistoryKey();
+  const resolved = currentHistoryKey();
+  const name = rollbackName();
   historyDb.transaction(() => {
+    // The key still bound for this save now (another thread may have answered a question since this one resolved it)
+    const saveKey = boundKeyNow(resolved);
+    if (saveKey === null) return;
     historyDb
       .prepare(
         `INSERT OR REPLACE INTO save_rating_snapshot_modes
          (save_key, game_date, mode, additional_scouted, source, import_started_at, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
       )
       .run(saveKey, ...values);
-    // And under the name, as the earlier build writes it, so a rolled-back Electron build reads it (D-064)
+    // And under the served save's name, as the earlier build writes it, so a rolled-back Electron build reads it (D-064);
+    // never when the league served isn't certainly the configured save's
+    if (name === null) return;
     historyDb
       .prepare(
         `INSERT OR REPLACE INTO rating_snapshot_modes
          (save_name, game_date, mode, additional_scouted, source, import_started_at, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
       )
-      .run(currentSaveName(), ...values);
-  })();
+      .run(name, ...values);
+  }).immediate();
 }
 
 /** The recorded rating mode of each snapshot date of this save (dates as the snapshots store them); unrecorded dates are absent. */
@@ -330,8 +367,8 @@ export function takeSnapshot(): { gameDate: string; players: number } | null {
   if (!tableExists('players') || !tableExists('players_batting')) return null;
   const gameDate = leagueGameDate();
   if (!gameDate) return null;
-  const saveKey = currentHistoryKey();
-  const saveName = currentSaveName();
+  const resolved = currentHistoryKey();
+  const saveName = rollbackName();
 
   // The split and running columns are read where the export has them; a missing one is stored as unknown (NULL), never guessed
   const battingColumns = new Set(tableExists('players_batting') ? (leagueDb.prepare(`PRAGMA table_info(players_batting)`).all() as Array<{ name: string }>).map((c) => c.name) : []);
@@ -381,7 +418,15 @@ export function takeSnapshot(): { gameDate: string; players: number } | null {
     const nums = vals.filter((v): v is number => typeof v === 'number');
     return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null;
   };
+  let filed = true;
   const insertAll = historyDb.transaction(() => {
+    // The key still bound for this save now: a worker that resolved it before the GM answered a question files the
+    // snapshot where the answer put this save's history, and never on a key that has been set aside (D-064)
+    const saveKey = boundKeyNow(resolved);
+    if (saveKey === null) {
+      filed = false;
+      return;
+    }
     for (const r of rows) {
       const isPitcher = r.position === 1;
       const cur = isPitcher ? avg([r.stu, r.mov, r.ctl]) : avg([r.con, r.gap, r.pow, r.eye, r.avk]);
@@ -395,11 +440,12 @@ export function takeSnapshot(): { gameDate: string; players: number } | null {
         ...[...SNAPSHOT_SPLIT_COLUMNS, ...SNAPSHOT_RUNNING_COLUMNS].map((c) => r[c] ?? null),
       ];
       insert.run(saveKey, ...values);
-      insertByName.run(saveName, ...values);
+      if (saveName !== null) insertByName.run(saveName, ...values);
     }
-    dualWrite.run(saveName, gameDate, saveKey, new Date().toISOString());
+    if (saveName !== null) dualWrite.run(saveName, gameDate, saveKey, new Date().toISOString());
   });
-  insertAll();
+  insertAll.immediate();
+  if (!filed) return null;
   console.log(`[history] snapshot ${gameDate}: ${rows.length} players`);
   return { gameDate, players: rows.length };
 }
