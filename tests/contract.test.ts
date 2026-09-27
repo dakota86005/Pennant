@@ -618,6 +618,12 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
 });
 
 describe('the committed fixtures of finding the save (N3.5 B2, which the Mac stage decodes)', () => {
+  // One validator for every case: building the strict spec and compiling a type took over five seconds on CI per case
+  let validator: (type: string) => ValidateFunction;
+  beforeAll(() => {
+    validator = strictValidator();
+  }, SLOW);
+
   it.each([
     ['getSaveDiscovery.json', 'SaveDiscovery'],
     ['setUpAutomatically-nothing-stands-out.json', 'AutomaticSetup'],
@@ -626,10 +632,10 @@ describe('the committed fixtures of finding the save (N3.5 B2, which the Mac sta
   ])('%s is there and holds a %s in the strict form', (file, type) => {
     const at = path.join(FIXTURES, 'responses', file);
     expect(fs.existsSync(at), `${file} is missing: run npm run contract:fixtures`).toBe(true);
-    const validate = strictValidator()(type);
+    const validate = validator(type);
     const body = JSON.parse(fs.readFileSync(at, 'utf8'));
     expect(validate(body) ? [] : validate.errors).toEqual([]);
-  });
+  }, SLOW);
 });
 
 describe('the banned-jargon walk over a /v2 payload', () => {
