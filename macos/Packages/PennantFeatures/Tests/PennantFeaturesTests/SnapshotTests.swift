@@ -134,7 +134,8 @@ struct SnapshotTests {
             case .ai: AISettings(preloaded: PreviewFixtures.providers)
             }
         }
-        try draw(view.environment(model).environment(routing), size: CGSize(width: SettingsView.width, height: SettingsView.height(tab)), dark: dark, name: "settings-\(tab.rawValue)", titled: true)
+        let height = SettingsView.height(tab, themes: model.themeChoices?.choices.count ?? 0, refusedPacks: model.themeChoices?.refused.count ?? 0)
+        try draw(view.environment(model).environment(routing), size: CGSize(width: SettingsView.width, height: height), dark: dark, name: "settings-\(tab.rawValue)", titled: true)
     }
 
     @Test("General at full length, down to the data status", arguments: [false, true])
@@ -250,8 +251,10 @@ struct SnapshotTests {
     func themeSettings(look: Look) throws {
         let routing = AppRouting()
         routing.settingsTab = .appearance
-        let view = AppearanceSettings().environment(PreviewFixtures.ready(themePack: "sunset-series")).environment(routing)
-        try draw(view, size: CGSize(width: SettingsView.width, height: SettingsView.height(.appearance)), look: look, name: "settings-appearance-theme", titled: true)
+        let model = PreviewFixtures.ready(themePack: "sunset-series")
+        let view = AppearanceSettings().environment(model).environment(routing)
+        let height = SettingsView.height(.appearance, themes: model.themeChoices?.choices.count ?? 0, refusedPacks: model.themeChoices?.refused.count ?? 0)
+        try draw(view, size: CGSize(width: SettingsView.width, height: height), look: look, name: "settings-appearance-theme", titled: true)
     }
 
     // MARK: The design language (N5, Stage B)

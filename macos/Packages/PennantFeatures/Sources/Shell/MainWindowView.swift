@@ -200,10 +200,7 @@ struct DetailView: View {
             detach: { openWindow(value: $0) },
             canOpen: { target in route(target).map { window.canOpen($0) } ?? false },
             open: { target in if let route = route(target) { window.open(route) } },
-            departmentName: { id in
-                catalog?.departments.first { $0.id.rawValue == id }?.name
-                    ?? window.registry.department(DeptID(rawValue: id)).map { String(localized: $0.title) }
-            }
+            departmentName: { id in window.registry.name(of: id, catalog: catalog) }
         )
     }
 
@@ -270,6 +267,7 @@ struct NoSaveView: View {
 struct InspectorView: View {
     private enum Tab: Hashable { case evidence }
     @State private var tab = Tab.evidence
+    @Environment(AppModel.self) private var model
     let window: MainWindowModel
 
     var body: some View {
@@ -282,8 +280,8 @@ struct InspectorView: View {
             .padding(8)
             if let claim = window.pinnedClaim {
                 EvidenceView(claim: claim)
-                    .environment(\.claimActions, ClaimActions(departmentName: { [registry = window.registry] id in
-                        registry.department(DeptID(rawValue: id)).map { String(localized: $0.title) }
+                    .environment(\.claimActions, ClaimActions(departmentName: { [registry = window.registry, catalog = model.catalog] id in
+                        registry.name(of: id, catalog: catalog)
                     }))
                     .frame(maxHeight: .infinity)
             } else {

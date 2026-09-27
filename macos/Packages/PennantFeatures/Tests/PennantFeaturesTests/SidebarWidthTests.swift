@@ -26,4 +26,13 @@ struct SidebarWidthTests {
         #expect(SidebarView.minimumWidth <= SidebarView.idealWidth)
         #expect(SidebarView.idealWidth <= SidebarView.maximumWidth)
     }
+
+    @Test("Settings' Appearance grows with the themes on offer and the refused packs it lists, up to a cap (review nit)")
+    func appearanceHeight() {
+        let plain = SettingsView.height(.appearance, themes: 2, refusedPacks: 0)
+        #expect(SettingsView.height(.appearance, themes: 2, refusedPacks: 2) > plain)
+        #expect(SettingsView.height(.appearance, themes: 4, refusedPacks: 0) > plain)
+        #expect(SettingsView.height(.appearance, themes: 40, refusedPacks: 40) == SettingsView.appearanceMax)
+        #expect(SettingsView.height(.general, themes: 9, refusedPacks: 9) == SettingsView.height(.general))
+    }
 }

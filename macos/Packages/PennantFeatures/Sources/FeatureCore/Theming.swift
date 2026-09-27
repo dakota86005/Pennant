@@ -20,6 +20,16 @@ extension AppModel {
     }
 }
 
+extension DepartmentRegistry {
+    /// A department's name as the catalog serves it ("Major League Ops"), else the registry's structural title while
+    /// the catalog is not there; nil for a department this build does not know. Every place that names a department
+    /// (the window, the inspector, a detached basis) reads it here, so they never disagree.
+    public func name(of id: String, catalog: Components.Schemas.Catalog?) -> String? {
+        catalog?.departments.first { ($0.id.value1?.rawValue ?? $0.id.value2) == id }?.name
+            ?? department(DeptID(rawValue: id)).map { String(localized: $0.title) }
+    }
+}
+
 /// A picture the server serves by path (a club's logo, a theme pack's art), fetched with the launch's token and kept
 /// for the rest of the launch, so the club card and every masthead share one fetch.
 @MainActor

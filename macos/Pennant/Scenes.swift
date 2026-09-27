@@ -96,8 +96,7 @@ struct BasisPanelScene: View {
             EvidenceView(claim: claim)
                 .environment(\.theme, model.theme)
                 .environment(\.claimActions, ClaimActions(departmentName: { [catalog = model.catalog] id in
-                    catalog?.departments.first { $0.id.rawValue == id }?.name
-                        ?? AppRegistry.shared.department(DeptID(rawValue: id)).map { String(localized: $0.title) }
+                    AppRegistry.shared.name(of: id, catalog: catalog)
                 }))
                 .frame(width: 380, height: 520)
         } else {

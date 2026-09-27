@@ -14,13 +14,18 @@ public struct SettingsView: View {
 
     /// Each tab's size: the window takes the selected tab's.
     public static let width: CGFloat = 620
-    public static func height(_ tab: AppRouting.SettingsTab) -> CGFloat {
+    /// A tab's height. Appearance grows with what it lists: each theme on offer past the first two, and each refused
+    /// pack (a line with its sentence), up to a height that still fits a small screen, past which the form scrolls.
+    public static func height(_ tab: AppRouting.SettingsTab, themes: Int = 0, refusedPacks: Int = 0) -> CGFloat {
         switch tab {
         case .general: 620
-        case .appearance: 560
+        case .appearance: min(appearanceMax, 560 + 24 * CGFloat(max(0, themes - 2)) + 44 * CGFloat(max(0, refusedPacks)))
         case .ai: 460
         }
     }
+
+    /// The tallest Appearance grows.
+    public static let appearanceMax: CGFloat = 820
 
     public init() {}
 
@@ -31,7 +36,9 @@ public struct SettingsView: View {
                 GeneralSettings().frame(width: Self.width, height: Self.height(.general))
             }
             Tab("Appearance", systemImage: "circle.lefthalf.filled", value: AppRouting.SettingsTab.appearance) {
-                AppearanceSettings().frame(width: Self.width, height: Self.height(.appearance))
+                AppearanceSettings().frame(width: Self.width, height: Self.height(
+                    .appearance, themes: model.themeChoices?.choices.count ?? 0, refusedPacks: model.themeChoices?.refused.count ?? 0
+                ))
             }
             Tab("AI", systemImage: "sparkles", value: AppRouting.SettingsTab.ai) {
                 AISettings().frame(width: Self.width, height: Self.height(.ai))
@@ -484,26 +491,41 @@ struct ThemeChoiceLabel: View {
     }
 }
 
-/// A live preview of a theme in the window's appearance: its masthead with the club's served name and record, and the
-/// club card, drawn by the same components the window uses.
+/// A live preview of a theme in the window's appearance: the Morning Report's masthead as the window sets it
+/// (`ClubMagazineMasthead`: the club's served name and the pack's in the kicker, the view's served name, the served
+/// record, the pack's art past the text) drawn at the width the window gives it and scaled down to fit, and the club
+/// card, drawn by the same components the window uses.
 struct ThemePreview: View {
     @Environment(AppModel.self) private var model
     let pack: Components.Schemas.ThemePack
     let useTeamColors: Bool
     @State private var logo: Image?
+    @State private var mastheadHeight: CGFloat = 0
+
+    /// The width the masthead is laid out at (a report's, so the art has its room past the text) and the scale it is
+    /// shown at in Settings.
+    static let mastheadWidth: CGFloat = 900
+    static let scale: CGFloat = 0.6
 
     var body: some View {
         let club = model.catalogClub
         VStack(alignment: .leading, spacing: 10) {
-            Masthead(
-                title: Text(verbatim: club?.name ?? pack.name),
-                record: club?.record.display,
-                recordHint: club?.record.hint,
-                logo: logo
-            )
+            ClubMagazineMasthead(
+                kicker: [pack.name],
+                headline: model.servedViewName(department: "frontOffice", view: "morningReport").map { Text(verbatim: $0) } ?? Text("Morning Report")
+            ) {
+                if let record = club?.record {
+                    BoxFigure(value: record.display, label: "")
+                        .help(record.hint.map { Text(verbatim: $0) } ?? Text(verbatim: record.display))
+                }
+            }
             .environment(\.mastheadTopInset, 0)
+            .frame(width: Self.mastheadWidth)
+            .fixedSize(horizontal: false, vertical: true)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { mastheadHeight = $0 }
+            .scaleEffect(Self.scale, anchor: .topLeading)
+            .frame(width: Self.mastheadWidth * Self.scale, height: mastheadHeight * Self.scale, alignment: .topLeading)
             .clipShape(.rect(cornerRadius: 10))
-            .frame(height: 118)
             if let club {
                 ClubCard(name: club.name, detail: nil, record: club.record.display, recordHint: club.record.hint, logo: logo)
                     .frame(width: 260)

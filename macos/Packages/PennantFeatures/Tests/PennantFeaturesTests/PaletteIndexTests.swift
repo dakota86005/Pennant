@@ -36,6 +36,16 @@ struct PaletteIndexTests {
         #expect(index.entries.first { $0.id == "view.majorLeague.report" }?.group == served?.name)
     }
 
+    @Test("names a department by the catalog's served name wherever it is named, the registry's title only without one (review S8)")
+    func departmentNames() throws {
+        var catalog = try #require(PreviewFixtures.catalog)
+        let index = try #require(catalog.departments.firstIndex { $0.id.rawValue == "majorLeague" })
+        catalog.departments[index].name = "The Big Club"
+        #expect(registry.name(of: "majorLeague", catalog: catalog) == "The Big Club")
+        #expect(registry.name(of: "majorLeague", catalog: nil) == "Major League Ops")
+        #expect(registry.name(of: "brandNew", catalog: catalog) == nil)
+    }
+
     @Test("lists only the commands that can act now, the inspector's label following its state")
     func commands() {
         let fresh = CommandAvailability(serverReady: true, configured: true, importing: false, window: (false, false))
