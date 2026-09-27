@@ -181,27 +181,28 @@ describe('the presentation boundary', () => {
    * The service reads each department's specialist through its public module (V2 plan section 4.4), and nothing else
    * reaches into a department: no rating module, no scouted evidence, no odds or posture of its own.
    */
-  it('reads the specialists only through their public modules (the Front Office service)', () => {
+  it.each(['frontOfficeService.ts', 'frontOfficeBuild.ts', 'frontOfficeWorker.ts'])('%s reads the specialists only through their public modules', (file) => {
     const PUBLIC = new Set([
-      'contracts', 'config', 'dashboard', 'dataStatus', 'db', 'farmOperations', 'mlbOperations', 'org', 'payroll', 'playerStateRoutes',
-      'rosterops', 'saveCalibration', 'viewingOrganization',
+      'contracts', 'config', 'dashboard', 'dataStatus', 'db', 'farmOperations', 'frontOfficeBuild', 'leagueRules', 'mlbOperations', 'org',
+      'payroll', 'playerStateRoutes', 'rosterops', 'saveCalibration', 'serverEvents', 'valuation', 'viewingOrganization',
     ]);
-    const outside = valueImports('frontOfficeService.ts')
+    const outside = valueImports(file)
       .filter((s) => s.startsWith('./') && !s.startsWith('./presentation/'))
       .map(moduleName)
       .filter((m) => !PUBLIC.has(m));
     expect(outside).toEqual([]);
   });
 
-  it('keeps the Front Office service to the routes and the import: no specialist calls it', () => {
-    const importers = filesUnder('')
-      .filter((f) => f !== 'frontOfficeService.ts' && /from\s+'\.\/frontOfficeService\.js'/.test(code(f)));
-    expect(importers.sort()).toEqual(['api.ts', 'v2Routes.ts']);
+  it('keeps the Front Office service to the routes, the start and the import: no specialist calls it', () => {
+    const importers = (name: string) => filesUnder('')
+      .filter((f) => new RegExp(`from\\s+'\\./${name}\\.js'`).test(code(f)));
+    expect(importers('frontOfficeService').sort()).toEqual(['api.ts', 'index.ts', 'v2Routes.ts']);
+    expect(importers('frontOfficeBuild').sort()).toEqual(['frontOfficeService.ts', 'frontOfficeWorker.ts']);
   });
 
   it('is imported only by the modules that serve it, never by a specialist', () => {
     // The API and the v2 routes serve its words; the event stream names its import note
-    const allowed = new Set(['api.ts', 'v2Routes.ts', 'serverEvents.ts', 'frontOfficeService.ts']);
+    const allowed = new Set(['api.ts', 'v2Routes.ts', 'serverEvents.ts', 'frontOfficeService.ts', 'frontOfficeBuild.ts']);
     const importers = filesUnder('')
       .filter((f) => !f.startsWith('presentation/') && !f.startsWith('contract/'))
       .filter((f) => /from\s+'\.\/presentation\//.test(code(f)));

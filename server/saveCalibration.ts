@@ -121,10 +121,12 @@ export function computeCalibrationRefits(options: { force?: boolean; leagues?: n
 /** Record refits computed elsewhere (the main thread's half): each at its key, idempotent, never replacing an adopted fit with a failing one. */
 export function recordCalibrationRefits(pending: PendingCalibration[]): CalibrationOutcome[] {
   const out: CalibrationOutcome[] = [];
+  let changed = false;
   for (const p of pending) {
     if (!p.run) { out.push(p.outcome); continue; }
     try {
       const written = recordCalibration(p.run, { fitMs: p.ms, force: p.force });
+      if (written > 0) changed = true;
       out.push(written === 0 && p.force && !p.outcome.adopted
         ? { ...p.outcome, reason: `${p.outcome.reason} Not recorded: the fit in force stays (a failing refit never replaces an adopted one).` }
         : p.outcome);
@@ -132,13 +134,14 @@ export function recordCalibrationRefits(pending: PendingCalibration[]): Calibrat
       out.push({ ...p.outcome, adopted: null, reason: `Not recorded (${err instanceof Error ? err.message : String(err)}); the fit in force stays.` });
     }
   }
-  for (const l of listeners) l();
+  // Only a record that was written can change a fit in force: nothing recorded, nothing for a listener to drop
+  if (changed) for (const l of listeners) l();
   return out;
 }
 
 const listeners: Array<() => void> = [];
 
-/** Called after refits are recorded, so a subsystem can drop its cached fit in force. */
+/** Called after refits are recorded and at least one was written, so a subsystem can drop its cached fit in force. */
 export function onCalibrationRecorded(listener: () => void): void {
   listeners.push(listener);
 }

@@ -230,6 +230,8 @@ function stable(value: unknown): unknown {
     if (typeof node !== 'string') return node;
     if (iso.test(node)) return '2040-07-01T12:00:00.000Z';
     if (key === 'version') return '0.0.0';
+    // A build's stamp hashes the data folder's file times, which differ on every run
+    if (key === 'reportStamp') return 'rstamp';
     // A served time in words is written in the host's zone; the fixture keeps a fixed one
     if (key === 'csvLastModifiedText') return 'Jul 1, 2040, 12:00 PM';
     let text = node;

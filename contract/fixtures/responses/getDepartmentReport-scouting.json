@@ -2,6 +2,7 @@
   "department": "scouting",
   "name": "Scouting",
   "importStamp": null,
+  "reportStamp": "rstamp",
   "preparedBy": {
     "display": "Prepared by Terry Ellis, head scout",
     "hint": "From the club's staff in the save"

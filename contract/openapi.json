@@ -1010,6 +1010,9 @@
               "null"
             ]
           },
+          "reportStamp": {
+            "type": "string"
+          },
           "title": {
             "$ref": "#/components/schemas/Cell"
           },
@@ -1026,6 +1029,7 @@
         "required": [
           "key",
           "importStamp",
+          "reportStamp",
           "title",
           "headline",
           "sections"
@@ -1583,6 +1587,10 @@
             ],
             "description": "The import the report was built from (the last import's finish time), or null when the server has none on record."
           },
+          "reportStamp": {
+            "type": "string",
+            "description": "The build it comes from: moves whenever the server builds the Front Office again (a new import, a settings change, a calibration)."
+          },
           "preparedBy": {
             "$ref": "#/components/schemas/Cell",
             "description": "\"Prepared by Jeff Banister, bench coach\", or its staff when the save names nobody."
@@ -1634,6 +1642,7 @@
           "name",
           "status",
           "importStamp",
+          "reportStamp",
           "preparedBy",
           "asOf",
           "summary",
@@ -1902,6 +1911,10 @@
             ],
             "description": "The import it was built from; the Mac app's stores key on the same stamp."
           },
+          "reportStamp": {
+            "type": "string",
+            "description": "The build it comes from (`DepartmentReport.reportStamp`); `/api/status` and the `front-office-updated` event serve the current one."
+          },
           "asOf": {
             "$ref": "#/components/schemas/Cell"
           },
@@ -1919,11 +1932,35 @@
           "orgId",
           "club",
           "importStamp",
+          "reportStamp",
           "asOf",
           "desk",
           "departments"
         ],
         "description": "The Morning Report's desk and department cards (`GET /api/v2/front-office/:org`)."
+      },
+      "FrontOfficeUpdatedEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "front-office-updated"
+            ]
+          },
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "reportStamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "orgId",
+          "reportStamp"
+        ],
+        "description": "The server built a club's Front Office again and keeps it (a new import, a settings change, a calibration): its new `reportStamp`. The Mac app's Front Office store reloads on it (a cached read)."
       },
       "GameDate": {
         "type": "string",
@@ -3336,6 +3373,9 @@
             "$ref": "#/components/schemas/JobEvent"
           },
           {
+            "$ref": "#/components/schemas/FrontOfficeUpdatedEvent"
+          },
+          {
             "$ref": "#/components/schemas/UnknownServerEvent"
           }
         ],
@@ -3416,6 +3456,13 @@
           "ratingScaleMax": {
             "$ref": "#/components/schemas/Integer",
             "description": "The top of the rating scale the save shows ratings on."
+          },
+          "reportStamp": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The stamp of the Front Office's current build for the club the app follows (`FrontOfficeSummary.reportStamp`), or null before one is kept. It moves whenever the server builds the Front Office again; the Mac app reloads on it."
           }
         },
         "required": [
@@ -3431,7 +3478,8 @@
           "hasData",
           "exportPending",
           "logoToken",
-          "ratingScaleMax"
+          "ratingScaleMax",
+          "reportStamp"
         ],
         "description": "What `/api/status` serves, and the snapshot `/api/v2/events` opens with (described in `contract/openapi.json`)."
       },

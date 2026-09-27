@@ -221,6 +221,32 @@ export function assertAuthored(payload: unknown): void {
   walk(payload, '$');
 }
 
+/**
+ * Takes in a payload authored by `claim()` and `basis()` in another thread (the Front Office's worker hands back a
+ * structured clone, which the registry cannot recognise): every claim and basis in it is checked against the builder's
+ * rules again (text, help tag, basis) and then registered, so `assertAuthored` accepts it. A breach throws, as it would
+ * have where it was built. Used only on what this server's own worker built.
+ */
+export function adoptAuthored<T>(payload: T): T {
+  const walk = (node: unknown, path: string): void => {
+    if (Array.isArray(node)) return node.forEach((n, i) => walk(n, `${path}[${i}]`));
+    if (!node || typeof node !== 'object') return;
+    const o = node as Record<string, unknown>;
+    for (const [k, v] of Object.entries(o)) walk(v, `${path}.${k}`);
+    const claimLike = 'basis' in o || ('text' in o && 'tone' in o && 'links' in o);
+    if (!claimLike) return;
+    const b = o.basis as Basis;
+    const problems = basisProblems(b);
+    if (problems.length) throw new AuthoringError(`${path}.basis: ${problems.join('; ')}`);
+    sentence(o.text as string, `${path}.text`);
+    hintOf(o.hint as string | undefined, `${path}.hint`);
+    BUILT_BASES.add(deepFreeze(b));
+    BUILT_CLAIMS.add(deepFreeze(o));
+  };
+  walk(payload, '$');
+  return payload;
+}
+
 /** Where a claim or a row leads, with the fields its kind needs (a player target without a player is refused). */
 export type TargetInput =
   | { kind: 'department'; department: DeptId }

@@ -103,21 +103,27 @@ export function financeMaterial(ctx: DepartmentContext, input: FinanceInput): De
     unknowns.push(payroll.reason);
   }
   const leaving = deciding.filter((p) => p.group === 'leaving').length;
+  // Players whose next season the export does not settle may be leaving too: the count is then a floor, never a total
+  const unsettled = input.contracts.players.filter((p) => p.group === 'not_settled').length;
+  const unsettledLine = `What happens after this season isn't settled from the export for ${plural(unsettled, 'player')}.`;
   figures.push(claim({
-    text: `Contracts ending after ${season}`,
-    tone: 'neutral',
-    value: servedValue(leaving, 'count', String(leaving)),
+    text: 'Free agents after this season',
+    tone: unsettled > 0 ? 'unknown' : 'neutral',
+    hint: unsettled > 0 ? `${plural(unsettled, 'player')} not settled, so this may be more` : undefined,
+    value: unsettled === 0
+      ? servedValue(leaving, 'count', String(leaving))
+      : unknownValue('count', leaving > 0 ? `At least ${leaving}` : 'Not known'),
     basis: fact(
       [
-        { label: 'Ending', value: String(leaving) },
+        { label: 'Contracts ending', value: String(leaving) },
         { label: 'Options to decide', value: String(deciding.filter((p) => p.group === 'option').length) },
         { label: 'Headed to arbitration', value: String(deciding.filter((p) => p.group === 'arbitration').length) },
+        ...(unsettled > 0 ? [{ label: 'Not settled from the export', value: String(unsettled) }] : []),
       ],
-      [],
+      unsettled > 0 ? [unsettledLine] : [],
       SPECIALIST,
     ),
   }));
-  const unsettled = input.contracts.players.filter((p) => p.group === 'not_settled').length;
-  if (unsettled > 0) unknowns.push(`What happens after this season isn't settled from the export for ${plural(unsettled, 'player')}.`);
+  if (unsettled > 0) unknowns.push(unsettledLine);
   return { specialist: SPECIALIST, items, figures, unknowns };
 }

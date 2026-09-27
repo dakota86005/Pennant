@@ -2,6 +2,7 @@
   "department": "medical",
   "name": "Medical",
   "importStamp": null,
+  "reportStamp": "rstamp",
   "preparedBy": {
     "display": "Prepared by Ana Frey, team doctor",
     "hint": "From the club's staff in the save"

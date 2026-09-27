@@ -2,6 +2,7 @@
   "department": "frontOffice",
   "name": "Front Office",
   "importStamp": null,
+  "reportStamp": "rstamp",
   "preparedBy": {
     "display": "Prepared by Morgan Brock, general manager",
     "hint": "From the club's staff in the save"

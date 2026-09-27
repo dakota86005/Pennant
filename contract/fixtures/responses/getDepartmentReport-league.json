@@ -2,6 +2,7 @@
   "department": "league",
   "name": "League Office",
   "importStamp": null,
+  "reportStamp": "rstamp",
   "preparedBy": {
     "display": "Prepared by the front office"
   },

@@ -33,13 +33,15 @@ const PATH_WORDS: Record<ResponseCandidate['pathKind'], string> = {
   add_to_forty_man: 'a call-up and a 40-man spot',
 };
 
-const LEVELS: Record<number, string> = { 1: 'the majors', 2: 'Triple-A', 3: 'Double-A', 4: 'Single-A', 5: 'Single-A', 6: 'rookie ball' };
-
 const lines = (texts: readonly string[], label: string) =>
   [...new Set(texts.map((t) => t.trim()).filter(Boolean))].map((value) => ({ label, value }));
 
-function candidateClaim(ctx: DepartmentContext, c: ResponseCandidate) {
-  const where = c.level !== null && LEVELS[c.level] ? `, in ${LEVELS[c.level]}` : '';
+/** A level's name as the league's pages write it (`LEVEL_NAMES`, handed in by the service: this module reads nothing). */
+export type LevelName = (level: number) => string | null;
+
+function candidateClaim(ctx: DepartmentContext, c: ResponseCandidate, levelName: LevelName) {
+  const level = c.level === null ? null : levelName(c.level);
+  const where = level ? `, in ${level}` : '';
   const because = [
     ...lines(c.why, 'Why he is here'),
     { label: 'The move', value: PATH_WORDS[c.pathKind] ?? 'a roster move' },
@@ -68,6 +70,7 @@ export function needTrail(
   need: MlbNeed,
   packet: Pick<ResponsePacket, 'groups' | 'notConsidered' | 'unknowns'>,
   overview: MajorLeagueInput['overview'],
+  levelName: LevelName,
 ): ClaimTrail {
   const { text, hint } = needText(need, overview);
   const found = packet.groups.reduce((n, g) => n + g.candidates.length, 0);
@@ -75,7 +78,7 @@ export function needTrail(
     .filter((g) => g.candidates.length > 0)
     .map((g) => ({
       title: cell(GROUP_WORDS[g.group] ?? 'Other responses'),
-      claims: g.candidates.map((c) => candidateClaim(ctx, c)),
+      claims: g.candidates.map((c) => candidateClaim(ctx, c, levelName)),
       empty: null,
     }));
   if (sections.length === 0) {
@@ -84,6 +87,7 @@ export function needTrail(
   return {
     key,
     importStamp: ctx.build.importStamp,
+    reportStamp: ctx.build.reportStamp,
     title: cell('The staff\'s options'),
     headline: claim({
       text,

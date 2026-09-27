@@ -21,6 +21,8 @@ export interface BuildContext {
   club: string | null;
   /** The import's finish time (ISO), or null when the server has none on record. */
   importStamp: string | null;
+  /** The build's stamp (moves with every rebuild), served in every payload. */
+  reportStamp: string;
   /** The last game day the imported export reflects, as OOTP wrote it. */
   gameDate: GameDate | null;
 }
@@ -212,6 +214,7 @@ export function report(ctx: DepartmentContext, answer: DepartmentAnswer): Depart
     department: d.id,
     name: d.name,
     importStamp: ctx.build.importStamp,
+    reportStamp: ctx.build.reportStamp,
     preparedBy: d.preparedBy,
     head: d.head,
     asOf: asOfCell(ctx.build),
@@ -334,6 +337,7 @@ export function summary(build: BuildContext, reports: readonly DepartmentReport[
     orgId: build.orgId,
     club: build.club,
     importStamp: build.importStamp,
+    reportStamp: build.reportStamp,
     asOf: asOfCell(build),
     desk: desk(reports),
     departments: reports.map(card),

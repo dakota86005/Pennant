@@ -84,7 +84,7 @@ describe('the season\'s odds never decide the desk', () => {
   const ports: ReviewPorts = { holderEvidence: (ids) => new Map(ids.filter((id) => table[id]).map((id) => [id, table[id]] as const)) };
   const view = viewOf(healthy26().map((spec) => (spec.id === 104 ? { ...spec, age: 23 } : spec)));
   const groups = reviewClub(view, ports);
-  const build: BuildContext = { orgId: 1, club: 'Test Club', importStamp: null, gameDate: '2040-7-1' };
+  const build: BuildContext = { orgId: 1, club: 'Test Club', importStamp: null, reportStamp: 'r1', gameDate: '2040-7-1' };
   const departments = servedDepartments(null);
   const at = (odds: number | null) => {
     const context = readContext({ dimensions: { competitiveWindow: 50 }, posture: odds === null ? null : { posture: 'hold', odds, gamesLeft: 80, deadlinePassed: false, headline: 'x' } });

@@ -2,6 +2,7 @@
   "department": "finance",
   "name": "Finance",
   "importStamp": null,
+  "reportStamp": "rstamp",
   "preparedBy": {
     "display": "Prepared by the front office"
   },
@@ -100,12 +101,12 @@
       }
     },
     {
-      "text": "Contracts ending after 2040",
+      "text": "Free agents after this season",
       "tone": "neutral",
       "basis": {
         "because": [
           {
-            "label": "Ending",
+            "label": "Contracts ending",
             "value": "0"
           },
           {

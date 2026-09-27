@@ -32,6 +32,7 @@ extension Components.Schemas.ImportProgressEvent: ServerEventShape {}
 extension Components.Schemas.ImportFinishedEvent: ServerEventShape {}
 extension Components.Schemas.ExportPendingEvent: ServerEventShape {}
 extension Components.Schemas.JobEvent: ServerEventShape {}
+extension Components.Schemas.FrontOfficeUpdatedEvent: ServerEventShape {}
 
 /// Lets the reading find an event shape's names through the optional that holds it in `ServerEvent`.
 protocol OptionalServerEventShape {

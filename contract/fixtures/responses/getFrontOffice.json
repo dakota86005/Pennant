@@ -2,6 +2,7 @@
   "orgId": 1,
   "club": "Club 1 N",
   "importStamp": null,
+  "reportStamp": "rstamp",
   "asOf": {
     "display": "Through May 5, 2040",
     "hint": "The last game day in the imported export"
@@ -1541,12 +1542,12 @@
           }
         },
         {
-          "text": "Contracts ending after 2040",
+          "text": "Free agents after this season",
           "tone": "neutral",
           "basis": {
             "because": [
               {
-                "label": "Ending",
+                "label": "Contracts ending",
                 "value": "0"
               },
               {

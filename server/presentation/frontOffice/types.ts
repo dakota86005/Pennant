@@ -81,6 +81,8 @@ export interface DepartmentReport {
   status: ReportStatus;
   /** The import the report was built from (the last import's finish time), or null when the server has none on record. */
   importStamp: string | null;
+  /** The build it comes from: moves whenever the server builds the Front Office again (a new import, a settings change, a calibration). */
+  reportStamp: string;
   /** "Prepared by Jeff Banister, bench coach", or its staff when the save names nobody. */
   preparedBy: Cell;
   head: DepartmentHead | null;
@@ -137,6 +139,8 @@ export interface FrontOfficeSummary {
   club: string | null;
   /** The import it was built from; the Mac app's stores key on the same stamp. */
   importStamp: string | null;
+  /** The build it comes from (`DepartmentReport.reportStamp`); `/api/status` and the `front-office-updated` event serve the current one. */
+  reportStamp: string;
   asOf: Cell;
   desk: Desk;
   departments: DepartmentCard[];
@@ -157,6 +161,7 @@ export interface TrailSection {
 export interface ClaimTrail {
   key: string;
   importStamp: string | null;
+  reportStamp: string;
   title: Cell;
   headline: Claim;
   sections: TrailSection[];

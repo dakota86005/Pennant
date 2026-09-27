@@ -2,6 +2,7 @@
   "department": "philosophy",
   "name": "Philosophy & Staff",
   "importStamp": null,
+  "reportStamp": "rstamp",
   "preparedBy": {
     "display": "Prepared by the front office"
   },

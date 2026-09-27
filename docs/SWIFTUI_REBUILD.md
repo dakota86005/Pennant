@@ -594,7 +594,7 @@ answered, better-sqlite3 loaded, and the calibration refit worker ran from besid
 |---|---|
 | `Pennant.app/Contents/MacOS/Pennant` | The Swift app |
 | `Contents/Helpers/pennant-server` | The official Node 24 LTS binary, pinned by version and SHA-256, renamed so Activity Monitor reads well |
-| `Contents/Resources/server/` | `server.cjs`, `value-refit-worker.cjs`, `calibration-refit-worker.cjs`, `package.json`, pruned production `node_modules` (better-sqlite3 built for Node's ABI, so the Electron ABI trap is gone) |
+| `Contents/Resources/server/` | `server.cjs`, `value-refit-worker.cjs`, `calibration-refit-worker.cjs`, `front-office-worker.cjs`, `package.json`, pruned production `node_modules` (better-sqlite3 built for Node's ABI, so the Electron ABI trap is gone) |
 
 **Signing (inside out):**
 1. Each `.node` file.

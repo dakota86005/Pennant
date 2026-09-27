@@ -2,6 +2,7 @@
   "department": "majorLeague",
   "name": "Major League Ops",
   "importStamp": null,
+  "reportStamp": "rstamp",
   "preparedBy": {
     "display": "Prepared by Rafael Dunn, bench coach",
     "hint": "From the club's staff in the save"

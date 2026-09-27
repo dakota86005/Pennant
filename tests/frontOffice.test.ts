@@ -10,11 +10,12 @@ import { db } from '../server/db.js';
 import { orgInjuries } from '../server/dashboard.js';
 import { computeFarmSystem } from '../server/farmOperations.js';
 import {
-  FrontOfficeRefusal, NO_CLUB, UNKNOWN_CLAIM, UNKNOWN_CLUB, UNKNOWN_DEPARTMENT, claimTrail, departmentReport, frontOfficeStats,
+  FrontOfficeRefusal, NO_CLUB, UNKNOWN_CLAIM, UNKNOWN_CLUB, UNKNOWN_DEPARTMENT, claimTrail, currentReportStamp, departmentReport, frontOfficeStats,
   frontOfficeSummary, invalidateFrontOffice, resetFrontOfficeCache, resolveOrg, warmFrontOffice,
 } from '../server/frontOfficeService.js';
 import { mlbOverview } from '../server/mlbOperations.js';
-import { importedAt } from '../server/playerStateRoutes.js';
+import { importRun, importedAt } from '../server/playerStateRoutes.js';
+import { subscribe } from '../server/serverEvents.js';
 import { servedDepartments, departmentOffice } from '../server/presentation/catalog.js';
 import { assertAuthored, basis, claim } from '../server/presentation/claim.js';
 import {
@@ -26,7 +27,7 @@ import type { FoItem } from '../server/presentation/frontOffice/types.js';
 import { farmSeverity, medicalSeverity, mlbSeverity, rankOf } from '../server/presentation/severity.js';
 import { computeRosterCrunchIssues } from '../server/rosterops.js';
 import { recordCalibrationRefits } from '../server/saveCalibration.js';
-import { buildSave, exec, type BuiltSave } from './syntheticSave';
+import { buildSave, dropTable, exec, type BuiltSave } from './syntheticSave';
 
 /**
  * The Front Office (BEHAVIOR_CASES.md "Pennant for Mac", `frontOffice.test.ts`; V2 plan section 4.4 and cases 9 to 12):
@@ -36,7 +37,7 @@ import { buildSave, exec, type BuiltSave } from './syntheticSave';
 
 const MLB_RANK = { watch: 1, elevated: 2, critical: 3 } as const;
 
-const build: BuildContext = { orgId: 1, club: 'Test Club', importStamp: '2040-07-01T12:00:00.000Z', gameDate: '2040-7-1' };
+const build: BuildContext = { orgId: 1, club: 'Test Club', importStamp: '2040-07-01T12:00:00.000Z', reportStamp: 'r1', gameDate: '2040-7-1' };
 const departments = () => servedDepartments(null);
 const ctxOf = (id: Parameters<typeof departmentOffice>[0]): DepartmentContext => ({
   build, department: departments().find((d) => d.id === id)!, office: departmentOffice(id),
@@ -240,6 +241,47 @@ describe('unavailable is never all clear (case 12)', () => {
   });
 });
 
+describe('a department whose export lacks what it reads says so, never all clear (D-018, review S-6)', () => {
+  const fresh = () => {
+    const save = buildSave({ season: 2040, historySeasons: 1, gamesPerTeam: 60, playedShare: 0.5, clubs: 4, seed: 11 });
+    resetFrontOfficeCache();
+    return save;
+  };
+
+  it('Finance: no contracts in the export is a sentence and unknown counts, not "nothing to decide" and a zero', async () => {
+    const save = fresh();
+    dropTable('players_contract');
+    const r = await departmentReport(save.org, 'finance');
+    expect(r).toMatchObject({ status: 'unavailable', figures: [] });
+    expect(r.summary.text).toBe('The export has no contracts, so Finance can\'t report on them.');
+    const card = (await frontOfficeSummary(save.org)).departments.find((c) => c.department === 'finance')!;
+    expect([card.toDecide, card.watching]).toEqual([null, null]);
+  });
+
+  it('Finance and Medical: no roster status is one plain sentence each of what is missing', async () => {
+    const save = fresh();
+    dropTable('players_roster_status');
+    expect((await departmentReport(save.org, 'finance')).summary.text).toBe('The export has no roster status, so Finance can\'t tell who is on the roster.');
+    expect((await departmentReport(save.org, 'medical')).summary.text).toBe('The export has no roster status, so the injured list can\'t be read.');
+    expect((await frontOfficeSummary(save.org)).desk.incomplete?.display).toMatch(/Finance and Medical couldn't be read/);
+  });
+
+  it('Finance: a player whose next season is not settled makes the free-agent count a floor, never a total', async () => {
+    const save = fresh();
+    // One player with no contract row: what happens after this season is not settled from the export
+    const one = (db.prepare('SELECT p.player_id AS id FROM players p WHERE p.team_id = ? ORDER BY p.player_id LIMIT 1').get(save.org) as { id: number }).id;
+    exec(`DELETE FROM players_contract WHERE player_id = ${one}`);
+    const contracts = computeContracts(save.org).players;
+    const leaving = contracts.filter((p) => p.group === 'leaving').length;
+    const unsettled = contracts.filter((p) => p.group === 'not_settled').length;
+    const figure = (await departmentReport(save.org, 'finance')).figures.find((f) => f.text === 'Free agents after this season')!;
+    expect(unsettled).toBeGreaterThan(0);
+    expect(figure.value?.n).toBeNull();
+    expect(figure.value?.display).toBe(leaving > 0 ? `At least ${leaving}` : 'Not known');
+    expect(figure.basis.unknown[0]).toMatch(/isn't settled from the export/);
+  });
+});
+
 describe('the desk\'s order is stated', () => {
   const at = (key: string, severity: 'critical' | 'attention' | 'noted', department: 'majorLeague' | 'farm' | 'medical', due: number | null): FoItem =>
     item(ctxOf(department), {
@@ -320,9 +362,65 @@ describe('the cache', () => {
     }
     await frontOfficeSummary(save.org);
     const builds = frontOfficeStats().builds;
-    recordCalibrationRefits([]); // a recorded calibration: the cache is dropped and warmed again
+    // A refit that recorded nothing changes nothing: no second cold build per import (review S-4)
+    recordCalibrationRefits([]);
+    await frontOfficeSummary(save.org);
+    expect(frontOfficeStats().builds).toBe(builds);
+    // A calibration that changed invalidates, and the next request builds
+    invalidateFrontOffice();
     await frontOfficeSummary(save.org);
     expect(frontOfficeStats().builds).toBe(builds + 1);
+  });
+
+  it('serves each build\'s stamp, the current one on the status, and says when a new build is kept (review S-3)', async () => {
+    const heard: unknown[] = [];
+    const stop = subscribe((event) => { if (event.type === 'front-office-updated') heard.push(event); });
+    try {
+      importedAt.value = '2040-07-01T12:00:00.000Z';
+      const first = await frontOfficeSummary(save.org);
+      expect(first.reportStamp).toMatch(/^r[0-9a-z]+$/);
+      expect((await departmentReport(save.org, 'farm')).reportStamp).toBe(first.reportStamp);
+      expect(currentReportStamp()).toBe(first.reportStamp);
+      expect(heard).toEqual([{ type: 'front-office-updated', orgId: save.org, reportStamp: first.reportStamp }]);
+      invalidateFrontOffice();
+      expect(currentReportStamp()).toBeNull();
+      const second = await frontOfficeSummary(save.org);
+      expect(second.reportStamp).not.toBe(first.reportStamp);
+      expect(heard).toHaveLength(2);
+    } finally {
+      stop();
+    }
+  });
+
+  it('never keeps a build read while an import writes, and serves the kept one meanwhile (review S-5)', async () => {
+    importedAt.value = '2040-07-01T12:00:00.000Z';
+    try {
+      // Nothing kept yet, an import running: built for the request, not kept
+      importRun.importing = true;
+      await frontOfficeSummary(save.org);
+      expect(frontOfficeStats()).toMatchObject({ builds: 1, cached: 0 });
+      await warmFrontOffice(save.org);
+      expect(frontOfficeStats().builds).toBe(1);
+      // A build that started before an import, finishing while it writes (then the import fails): not kept
+      importRun.importing = false;
+      const racing = frontOfficeSummary(save.org);
+      importRun.generation += 1;
+      await racing;
+      expect(frontOfficeStats()).toMatchObject({ builds: 2, cached: 0 });
+      // No import: kept, and served from the cache while the next import writes
+      await frontOfficeSummary(save.org);
+      expect(frontOfficeStats().cached).toBe(1);
+      importRun.importing = true;
+      await frontOfficeSummary(save.org);
+      expect(frontOfficeStats()).toMatchObject({ builds: 3, hits: 1 });
+    } finally {
+      importRun.importing = false;
+    }
+  });
+
+  it('refuses an unknown department before building anything (review N-1)', async () => {
+    await expect(departmentReport(save.org, 'nowhere')).rejects.toThrow(UNKNOWN_DEPARTMENT);
+    expect(frontOfficeStats().builds).toBe(0);
   });
 
   it('keeps at most four builds, oldest dropped first', async () => {

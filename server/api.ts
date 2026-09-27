@@ -16,7 +16,7 @@ import { playerRoutes } from './player.js';
 import { historyRoutes, takeSnapshot } from './history.js';
 import { captureRosterStateSnapshot } from './rosterStateHistory.js';
 import { csvExportedAt, resetTransactionLogCache } from './dataStatus.js';
-import { importedAt, playerStateRoutes } from './playerStateRoutes.js';
+import { importRun, importedAt, playerStateRoutes } from './playerStateRoutes.js';
 import { assignmentContextsFor } from './playerContext.js';
 import { clearStatCaches, computeBatting, computePitching, leagueBaseline } from './stats.js';
 import { clearResultsCaches } from './resultsEvidence.js';
@@ -57,7 +57,7 @@ import { appInfo, type AppInfo } from './appInfo.js';
 import { scoutedDevelopmentRoutes } from './scoutedDevelopment.js';
 import { eventStream, progressThrottle, publish } from './serverEvents.js';
 import { v2Routes } from './v2Routes.js';
-import { warmFrontOffice } from './frontOfficeService.js';
+import { currentReportStamp, warmFrontOffice } from './frontOfficeService.js';
 import { EXPORT_NOT_FOUND, importNote, importWords, type ImportNote } from './presentation/importWords.js';
 import type { Integer } from './contract/primitives.js';
 
@@ -294,6 +294,8 @@ export async function runImport(csvDir: string): Promise<void> {
   let imported = false;
   importState.importing = true;
   importGeneration += 1;
+  importRun.importing = true;
+  importRun.generation += 1;
   importState.lastError = null;
   importState.progress = null;
   const startedAt = new Date().toISOString();
@@ -353,6 +355,7 @@ export async function runImport(csvDir: string): Promise<void> {
     console.error('[import] failed:', err);
   } finally {
     importState.importing = false;
+    importRun.importing = false;
     importState.progress = null;
     publish({ type: 'import-finished', lastImport: importState.lastImport, error: importState.lastError, note: currentImportNote() });
   }
@@ -402,6 +405,11 @@ export interface ServerStatus {
   logoToken: string;
   /** The top of the rating scale the save shows ratings on. */
   ratingScaleMax: Integer;
+  /**
+   * The stamp of the Front Office's current build for the club the app follows (`FrontOfficeSummary.reportStamp`), or
+   * null before one is kept. It moves whenever the server builds the Front Office again; the Mac app reloads on it.
+   */
+  reportStamp: string | null;
 }
 
 /** A request the server accepted, with nothing more to say. */
@@ -495,6 +503,7 @@ export function statusSnapshot(): ServerStatus {
      * new one reuses.
      */
     logoToken: logoToken(),
+    reportStamp: currentReportStamp(),
     /*
      * The scale OOTP is set to show ratings on, read off the save. Bars used
      * to divide by eighty regardless, so a 5 on the 1-to-5 scale drew at six
