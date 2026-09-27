@@ -153,7 +153,10 @@ export function swapInLeagueDatabase(nextPath: string = NEXT_DB_PATH): void {
   if (process.platform === 'win32') {
     try { old.close(); } catch { /* already closed */ }
   }
-  // No journal of the replaced file may ever meet the new one (a hot one would be rolled back into it)
+  // No journal of the replaced file may ever meet the new one (a hot one would be rolled back into it). A hot journal is
+  // rolled back into the file it belongs to first, never deleted: if the rename then fails, the previous import is
+  // served whole, not half-written (N3.5 re-review)
+  rollBackHotJournal(LEAGUE_DB_PATH);
   for (const suffix of ['-journal', '-wal', '-shm']) fs.rmSync(LEAGUE_DB_PATH + suffix, { force: true });
   try {
     fs.renameSync(nextPath, LEAGUE_DB_PATH);

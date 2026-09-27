@@ -108,3 +108,36 @@ describe('an export written within a minute of the last one imported from the sa
     expect((served.db.prepare('SELECT DISTINCT version FROM players').all() as Array<{ version: number }>).map((r) => r.version)).toEqual([1]);
   });
 });
+
+describe('a swap over a league file with a hot rollback journal (a process killed while writing it in place)', () => {
+  it('rolls the journal back into the file before the rename, never deletes it: a failed rename leaves the previous import whole', async () => {
+    const { spawnSync } = await import('node:child_process');
+    const { createRequire } = await import('node:module');
+    const Database = (await import('better-sqlite3')).default;
+    const served = await import('../server/db.js');
+    const file = served.LEAGUE_DB_PATH;
+    served.db.exec(`CREATE TABLE hot_case (v INTEGER, pad TEXT)`);
+    served.db.prepare(`INSERT INTO hot_case SELECT 1, hex(randomblob(200)) FROM (WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 20000) SELECT i FROM n)`).run();
+    const require = createRequire(import.meta.url);
+    const killed = spawnSync(process.execPath, ['-e', `
+      const Database = require(${JSON.stringify(require.resolve('better-sqlite3'))});
+      const db = new Database(${JSON.stringify(file)});
+      db.pragma('cache_size = 10');
+      db.exec('BEGIN');
+      db.exec('UPDATE hot_case SET v = 2');
+      process.kill(process.pid, 'SIGKILL');
+    `]);
+    expect(killed.signal).toBe('SIGKILL');
+    expect(fs.statSync(`${file}-journal`).size).toBeGreaterThan(0);
+    // The swap's rename fails (its new file is not there): the previous import must be served as it was
+    expect(() => served.swapInLeagueDatabase(path.join(tempDir('pennant-hot-'), 'missing.db'))).toThrow();
+    const check = new Database(file, { readonly: true });
+    try {
+      expect(check.prepare('SELECT DISTINCT v FROM hot_case').all()).toEqual([{ v: 1 }]);
+      expect(check.pragma('integrity_check', { simple: true })).toBe('ok');
+    } finally {
+      check.close();
+      served.db.exec('DROP TABLE hot_case');
+    }
+  });
+});
