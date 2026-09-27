@@ -2347,11 +2347,13 @@ Mac can hold saves under several OOTP versions and locations.
 **Status:** Accepted (owner, 2026-09-27: "re-key rating history by save identity instead of by name"). Revised the same
 day after an independent review found that the first design's identity heuristics could mix saves; the supervisor
 decided the simpler rule below ("the GM decides"), including writing the name-keyed tables as well so a rollback keeps
-the Mac app's snapshots. **Implementation:** `server/historyIdentity.ts` (the key, the refusals, the offers, the review
+the Mac app's snapshots. Revised again after a second review, under the supervisor's principle "the GM decides, and
+nothing is lost for good": a refusal is never a dead end, carrying a history over copies and can be undone, and the GM
+may carry over any history but another league's. **Implementation:** `server/historyIdentity.ts` (the key, the refusals, the offers, the review
 of the name-keyed history, the served sentence); the keyed tables in `server/history.ts` (`save_rating_snapshots`,
 `save_rating_snapshot_modes`, `history_saves`, `history_legacy_review`, `history_identity_meta`,
-`history_dual_writes`, `history_offer_choices`) and its `baselineSnapshot`; `roster_state_snapshot_saves` in
-`server/rosterStateHistory.ts`; `history` on `/api/data-status` and `ratingHistory` on `/api/v2/data-status`;
+`history_dual_writes`, `history_offer_choices`, `history_carry_overs`, `history_carried_rows`,
+`roster_state_snapshot_saves`) and its `baselineSnapshot`; `history` on `/api/data-status` and `ratingHistory` on `/api/v2/data-status`;
 `GET /api/v2/rating-history` and `POST /api/v2/rating-history/choice` (`presentation/ratingHistoryWords.ts`);
 `history` on `/api/development-history/:orgId` and `/api/development/:orgId`. Refines D-018, D-020 (roster-state
 comparisons), D-053 (a save's identity), D-061 (the rating-kind stamps are keyed the same way) and D-063 (a save's id).
@@ -2368,37 +2370,65 @@ overwrote part of the other's.
 - **The players test only ever refuses.** When the league served is certainly the configured save's, the history bound
   to its folder is checked against it: players compared by id and name where both sides have the id, the same league at
   999 in 1,000 (`CONTINUITY_POLICY`, a policy line), another below 50%, unclear between, no evidence under 20 shared
-  players. A league that reads as another or unclear, or whose date is earlier than the history already holds (a save
-  deleted and made again in the folder, or restored from an OOTP backup), starts a fresh history for the folder and
-  says so; the earlier history is kept apart and never written over. Too few players to compare, at a date no earlier
+  players. Here names are compared loosely: a name written as UTF-8 and read as Latin-1 is read back, then case,
+  accents (NFKD, marks stripped), punctuation and whitespace are set aside, and a name with an unreadable character is
+  not compared, so a handful of names written or read differently never refuses a save's own history. A league that
+  reads as another or unclear, or whose date is earlier than the history already holds (a save deleted and made again
+  in the folder, or restored from an OOTP backup), starts a fresh history for the folder and says so; the earlier
+  history is kept apart, never written over, and offered back (below). Too few players to compare, at a date no earlier
   than the history's, keeps appending: no evidence is never read as a refusal, nor as a match. The test never joins two
   histories, so its thin margin (on the owner's saves, two saves of one real-life database matched 98.9% to 99.8% of
-  shared players) can cost a fresh start, never a mix.
-- **A moved or renamed save is asked about, never adopted.** When a save has no history of its own yet (at most the
-  snapshot of its first import here), its league is certainly its own, and another history is still bound to a folder
-  that has really gone (missing inside a folder that can be read: a drive not mounted, or a folder that can't be looked
-  inside, is not gone), is not later than this league, and the players test does not rule it out (same, or too few to
-  tell), the question is served: "This save has no rating history yet. Is it "New Game", the save that used to be in
-  ...?" The GM answers with one click. Yes carries that history to this folder, with this save's own first snapshot;
-  start fresh keeps them apart; either answer is recorded and nothing is asked again. Pennant never answers it.
+  shared players) can cost a fresh start, never a mix, and the fresh start can be undone by the GM.
+- **The GM decides, and nothing is lost for good.** Pennant never joins two histories by itself; it asks, and the GM
+  answers with one click (`GET /api/v2/rating-history`, `POST /api/v2/rating-history/choice`), only while the league
+  served is certainly the save's own:
+  - *A refusal is never a dead end.* When the folder's own history was set aside, the question is "This save's players
+    no longer match its rating history. Continue that history, or keep the new start?" (or, for a save that went back,
+    "... Continue that history up to <the league's date>, or keep the new start?"), asked until answered.
+  - *A save that moved.* While a save has no history of its own yet (at most its first snapshot) and nothing carried
+    over, another history still bound to a folder that has really gone (missing inside a folder that can be read: a
+    drive not mounted, or a folder that can't be looked inside, is not gone), not later than this league, whose players
+    the test does not rule out (the same, or too few to tell): "This save has no rating history yet. Is it "New Game",
+    the save that used to be in ...?"
+  - *Any other history, by choice.* The GM may also carry over any other history (one set aside, or another folder's,
+    as after an OOTP upgrade copied the save, whether that folder is there or not) from a list that hides only a history
+    whose players read as another league.
+  - *Carrying over copies, and can be undone.* It copies the history's dates up to this league's own date into this
+    save's history (this save's own rows win on a shared date); the later dates stay where they were, kept apart. The
+    source is never changed or unbound. Before each carry-over a copy of `history.db` is made in
+    `backups/history-before-carry-over-<time>.db` (after a cheap check for room; no room refuses it in words), and the
+    rows copied are recorded, so "Undo carry-over" removes exactly them; after an undo the question can be asked again.
+  - *Answers name the save.* An answer's id carries this save's key, so it can't answer for another save; an answer
+    already given is refused, never written over (`INSERT OR IGNORE`); "keep them apart" answers only a question asked.
 - **Only a certain league is filed.** The league on disk is certainly the configured save's when the import's own record
   names its export folder (every import by this build), or, for an earlier build's import (which names none), when the
-  configuration has not changed since it. Otherwise (a save chosen and not yet imported) no baseline snapshot is taken,
-  no history is refused and no earlier history is reviewed: the chosen save's history is never given another league.
+  configuration has not changed since it (`config.json` no newer than `last-import.json`). Otherwise (a save chosen and
+  not yet imported) no baseline snapshot is taken, nothing is written under any name, no history is refused, nothing
+  is offered and no earlier history is reviewed: the chosen save's history is never given another league. The rule for
+  the earlier build's imports rests on file times, and has two known limits: a `config.json` restored from a backup
+  keeps an older time and can read as unchanged though it names another save; and on a file system with coarse times
+  (FAT or exFAT, two seconds; some network shares) a configuration written within the same tick as the import reads as
+  unchanged. Every import by this build names its folder, so both last only until the next import.
 - **Why not D-053's identity** (`saveIdentity.ts`: the name and a fingerprint of the league's first season). It
   contains the name, so renaming a save would orphan history that, unlike a fit, cannot be refitted; it is per league;
   and two saves named "New Game" from the same real-life database share it. Two definitions now coexist on purpose:
   this one for history, D-053's for the per-save fits, which keep it unchanged.
 - **Additive storage, written both ways.** The keyed tables are new. This build writes every rating snapshot and its
   rating-kind stamp to them and also, exactly as the earlier (Electron) build writes them, to `rating_snapshots` and
-  `rating_snapshot_modes` under the save's name, so a rolled-back Electron build keeps every snapshot (its own
-  same-name defect stays its own). This build reads only the keyed tables, and records the dates it wrote under a name
-  (`history_dual_writes`) so they are never taken for earlier history. A roster-state snapshot keeps its name in its own
-  row and gains its key in a table of its own; one taken before this decision has none and is never compared.
+  `rating_snapshot_modes` under the served save's own earlier name, so a rolled-back Electron build keeps every snapshot
+  (its own same-name defect stays its own). The name-keyed write is skipped whenever the served save isn't certainly the
+  configured one (a one-click switch right after an import, while the post-import snapshots still run), so the league
+  is never filed under another save's name. This build reads only the keyed tables, and records the dates it wrote
+  under a name (`history_dual_writes`) so they are never taken for earlier history. A roster-state snapshot keeps a
+  name in its own row (the same name, or none any save has when that is skipped) and gains its key in a table of its
+  own; one taken before this decision has none and is never compared. A writer that resolved the key before it was set
+  aside files under the key bound to the folder now, checked inside its transaction.
 - **The history written before, brought over only where certain.** For the served save (when certain), each date filed
-  under its name that this build did not write is brought over when its rows have this league's players (the same
-  league), the date is not later than the league's own, and no other known save carries the name (and every folder of
-  saves could be looked inside); then only the rows of players the league still has under the same name. A date with
+  under its name that this build did not write is brought over when every player its rows share with this league has
+  the same name (100%, names as written: the 999-in-1,000 line only refuses), the date is not later than the league's
+  own, and no other known save carries the name (and every folder of saves could be looked inside); then only the rows
+  of players the league still has. This is done for a folder's first history only: a fresh start's earlier dates belong
+  to the history it set aside, which the GM can continue, so the two never give different accounts. A date with
   another league's players is kept apart; anything else is left where it is, unused by any save, and said. A copy of
   `history.db` is made in `backups/history-before-save-identity-<time>.db` before the first row is brought over, once
   per data folder (written under a temporary name and renamed; a finished copy whose record a crash lost is recorded,

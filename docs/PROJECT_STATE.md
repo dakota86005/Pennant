@@ -39,10 +39,12 @@ material implementation state changes.
   It still accepts a selected save, `.lg` directory, saved-games directory, or CSV export directory.
 - Keeps rating history per save, not per save name (D-064, `historyIdentity.ts`): one folder (D-063's id) is one
   history, so two saves named "New Game" never read each other's ratings as development. A players test only refuses
-  (a folder whose league changed, or went back in time, starts fresh and says so); a save that might have moved or been
-  renamed is asked about through `GET /api/v2/rating-history` and answered with `POST /api/v2/rating-history/choice`
-  (the Mac app's question arrives with N6 Stage B), never adopted. Snapshots are filed only when the league served is
-  certainly the configured save's, and are also written to the Electron app's name-keyed tables for a rollback.
+  (a folder whose league changed, or went back in time, starts fresh, says so, and asks whether to continue the
+  history set aside); a save that might have moved or been renamed is asked about, and the GM may carry over any other
+  history but another league's, through `GET /api/v2/rating-history` and `POST /api/v2/rating-history/choice` (the
+  Mac app's question and list arrive with N6 Stage B). Carrying over copies, after a backup, and can be undone.
+  Snapshots are filed only when the league served is certainly the configured save's, and are also written to the
+  Electron app's name-keyed tables, under the served save's name, for a rollback.
   History filed under the save's name before D-064 is brought over once per save, only where it is certainly that
   save's (its players, not after its date, under a name no other known save carries), after a copy of `history.db` in
   `backups/history-before-save-identity-<time>.db`; what is left unused is said on the data status. On a fresh scratch
@@ -1038,8 +1040,9 @@ resolution across all organization-specific features is future work.
   (two saves of one name share them); the per-save fits keep D-053's identity (the name and a league fingerprint), so
   two saves named alike and started from the same real-life database share their fits; a save renamed before D-064
   leaves its earlier history under the old name, unused; a save deleted and made again in the same folder from the same
-  real-life database, at no earlier a date, continues the folder's history; the Mac app does not yet ask the
-  rating-history question (N6 Stage B).
+  real-life database, at no earlier a date, continues the folder's history; the Electron-era certainty rule rests on
+  file times (a restored `config.json`, coarse file-system times); the Mac app does not yet ask the rating-history
+  questions or show the list (N6 Stage B).
 
 - The import (N3.5) left for later: the Mac app's side of discovery (Setup's zero-question path, the "played since"
   prompt, the in-place update banner) is a later stage and uses what B2 serves; whether OOTP has a save open now is not

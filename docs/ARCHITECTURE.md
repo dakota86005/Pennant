@@ -186,8 +186,11 @@ snapshots and their rating-kind stamps (`save_rating_snapshots`,
 Development routes and the roster-state comparator (`roster_state_snapshot_saves`). Each
 snapshot is also written to the name-keyed `rating_snapshots` and `rating_snapshot_modes`
 exactly as the earlier build writes them, for a rollback; this build never reads them for
-development. A save that might have moved is asked about (`GET /api/v2/rating-history`,
-answered by `POST /api/v2/rating-history/choice`), never adopted. A snapshot is filed only
+development. The GM decides whether two histories are one: a save that might have moved,
+and a folder whose own history was set aside, are asked about (`GET /api/v2/rating-history`,
+answered by `POST /api/v2/rating-history/choice`), and any other history but another
+league's may be carried over by choice; carrying over copies, after a backup, and can be
+undone. A snapshot is filed only
 when the league served is certainly the configured save's (`servedLeagueCertain`).
 History filed under a save's name before D-064 is brought over only where it is certainly
 that save's, after a copy of `history.db` is made in `backups/`, and what is left unused
