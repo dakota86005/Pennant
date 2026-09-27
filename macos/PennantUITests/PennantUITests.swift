@@ -336,6 +336,9 @@ final class PennantUITests: XCTestCase {
         let desk = element(app, "morningReport.desk")
         XCTAssertTrue(desk.waitForExistence(timeout: 60), "the kept Morning Report was not drawn")
         let wallMs = Int(Date.now.timeIntervalSince(started) * 1000)
+        // The kept report says it is updating: seen in the kicker if the fresh one has not landed yet, and in any case
+        // in the app's log, which the view writes when it draws the word (it may last less than a query takes)
+        let sawUpdating = element(app, "masthead.kicker").label.contains("Updating")
         keep(app.windows.firstMatch.screenshot(), named: "launch-kept-payload")
         // The app's own measure, in its log, says the kept payload was drawn and how long after launch
         let log = scratch.appending(path: "logs/server.log")
@@ -347,7 +350,12 @@ final class PennantUITests: XCTestCase {
             if line == nil { RunLoop.current.run(until: Date.now.addingTimeInterval(0.25)) }
         }
         XCTAssertTrue(line?.contains("from the kept payload") == true, "the second launch did not draw the kept payload: \(line ?? "no line")")
-        let record = XCTAttachment(string: "launch to the first drawn Morning Report: \(wallMs) ms by the test's clock (with the runner's launch); the app: \(line ?? "not recorded")")
+        let lines = (try? String(contentsOf: log, encoding: .utf8))?.split(separator: "\n") ?? []
+        // This launch's lines: from its "server ready" on (the log holds both launches)
+        let thisLaunch = lines.lastIndex { $0.contains("server ready") } ?? 0
+        let saidUpdating = lines[thisLaunch...].contains { $0.contains("the Morning Report said Updating") }
+        XCTAssertTrue(sawUpdating || saidUpdating, "the second launch never said the kept report was updating")
+        let record = XCTAttachment(string: "launch to the first drawn Morning Report: \(wallMs) ms by the test's clock (with the runner's launch); the app: \(line ?? "not recorded"); \"Updating\" \(sawUpdating ? "seen in the kicker" : "in the app's log")")
         record.name = "launch-timing"
         record.lifetime = .keepAlways
         add(record)

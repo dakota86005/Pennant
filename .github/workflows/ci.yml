@@ -120,11 +120,27 @@ jobs:
       - run: npm ci
       # The package tests ran in pennant-mac; this job is the app, its server and the UI tests
       - name: XCUITests on the synthetic league
+        id: xcuitests
         env:
           PENNANT_TEST_NO_PACKAGES: "1"
           PENNANT_TEST_UNSIGNED: "1"
           PENNANT_TEST_SCRATCH: ${{ runner.temp }}/pennant-ui
         run: macos/scripts/test.sh
+      # The job may fail without failing the run (continue-on-error), so its outcome is written where it is seen: the
+      # run's summary page, with the launch timing the kept-payload test recorded
+      - name: Say how the XCUITests went, on the run's summary
+        if: always()
+        env:
+          OUTCOME: ${{ steps.xcuitests.outcome }}
+        run: |
+          if [ "$OUTCOME" = "success" ]; then line="PASSED"; else line="FAILED ($OUTCOME)"; fi
+          {
+            echo "### Mac app XCUITests: $line"
+            echo
+            echo "This job may fail without failing the run; the screenshots, audits and logs are in the xcuitest-screenshots artifact."
+            timing=$(cat build/macos-test/screenshots/launch-timing* 2>/dev/null)
+            if [ -n "$timing" ]; then echo; echo '```'; echo "$timing"; echo '```'; fi
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Keep the screenshots, the audits, the launch timing and the logs
         if: always()
         uses: actions/upload-artifact@v4
