@@ -8,9 +8,10 @@ import SwiftUI
 // when the value is not known (never a zero, never an empty chart that reads as "none"), and carries the served
 // sentence as its accessibility label. Colour is never the only signal: a mark has a shape and a word beside it.
 
-/// A league place among `of` clubs, best on the left: the club's place filled in the accent (a tie shares the size),
-/// a hollow ring at its recent place, and the top and bottom fifths shaded so a strength and a weakness are visible.
-/// Too early to call (no place) draws the shading and the dots alone. Drawn with Canvas, so it fits a tile or a row.
+/// A league place among `of` clubs, best on the left: the club's place filled in the accent, the clubs tied with it
+/// drawn at the same size (a tie shares the size; they are paler, and the place's served words say "T-"), a hollow
+/// ring at its recent place, and the top and bottom fifths shaded so a strength and a weakness are visible. Too early
+/// to call (no place) draws the shading and the dots alone. Drawn with Canvas, so it fits a tile or a row.
 public struct PlaceStrip: View {
     let dimension: PlaceDimension
     let height: CGFloat
@@ -18,6 +19,34 @@ public struct PlaceStrip: View {
     @Environment(\.theme) private var theme
     @Environment(\.colorScheme) private var colorScheme
     @EffectiveContrast private var contrast
+
+    /// One dot on the strip: whose it is and how large, as a multiple of the plain dot.
+    nonisolated struct Dot: Equatable, Sendable {
+        enum Kind: Equatable, Sendable { case club, tied, other }
+        let place: Int
+        let kind: Kind
+        let scale: CGFloat
+        /// The recent place is here (a hollow ring).
+        let recent: Bool
+    }
+
+    /// How much larger the club's dot is than the others (and every club tied with it: a tie shares the size).
+    nonisolated static let clubScale: CGFloat = 1.7
+
+    /// The dots, best place first: the club's and those tied with it at the club's size, the rest plain.
+    nonisolated static func dots(_ dimension: PlaceDimension) -> [Dot] {
+        (1...max(1, dimension.of)).map { p in
+            let kind: Dot.Kind
+            if p == dimension.place {
+                kind = .club
+            } else if let place = dimension.place, p > place, p <= place + dimension.tiedWith {
+                kind = .tied
+            } else {
+                kind = .other
+            }
+            return Dot(place: p, kind: kind, scale: kind == .other ? 1 : clubScale, recent: dimension.recentPlace == p)
+        }
+    }
 
     public init(_ dimension: PlaceDimension, height: CGFloat = 16, maxDot: CGFloat = 7) {
         self.dimension = dimension
@@ -29,6 +58,7 @@ public struct PlaceStrip: View {
         let palette = theme.palette(colorScheme: colorScheme, contrast: contrast)
         let accent = palette.isNeutral ? Color.accentColor : palette.accent
         let of = max(1, dimension.of)
+        let dots = Self.dots(dimension)
         Canvas { ctx, size in
             let step = size.width / CGFloat(of)
             let dot = min(maxDot, step * 0.62)
@@ -37,15 +67,17 @@ public struct PlaceStrip: View {
             let fifth = CGFloat((Double(of) / 5).rounded(.down)) * step
             ctx.fill(Path(roundedRect: CGRect(x: 0, y: 0, width: fifth, height: size.height), cornerRadius: 4), with: .color(Tone.good.color.opacity(0.14)))
             ctx.fill(Path(roundedRect: CGRect(x: size.width - fifth, y: 0, width: fifth, height: size.height), cornerRadius: 4), with: .color(Tone.bad.color.opacity(0.14)))
-            for p in 1...of {
-                let cx = step * (CGFloat(p) - 0.5)
-                let mine = p == dimension.place
-                let tied = dimension.place.map { p > $0 && p <= $0 + dimension.tiedWith } ?? false
-                let d = mine ? dot * 1.7 : dot
-                let color: Color = mine ? accent : (tied ? accent.opacity(0.45) : Color(nsColor: .quaternaryLabelColor))
-                ctx.fill(Path(ellipseIn: CGRect(x: cx - d / 2, y: midY - d / 2, width: d, height: d)), with: .color(color))
-                if dimension.recentPlace == p {
-                    let r = mine ? dot * 2.5 : dot * 1.7
+            for d in dots {
+                let cx = step * (CGFloat(d.place) - 0.5)
+                let size = dot * d.scale
+                let color: Color = switch d.kind {
+                case .club: accent
+                case .tied: accent.opacity(0.45)
+                case .other: Color(nsColor: .quaternaryLabelColor)
+                }
+                ctx.fill(Path(ellipseIn: CGRect(x: cx - size / 2, y: midY - size / 2, width: size, height: size)), with: .color(color))
+                if d.recent {
+                    let r = d.kind == .other ? dot * Self.clubScale : dot * 2.5
                     ctx.stroke(Path(ellipseIn: CGRect(x: cx - r / 2, y: midY - r / 2, width: r, height: r)), with: .color(accent), lineWidth: 1.5)
                 }
             }

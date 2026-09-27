@@ -73,6 +73,23 @@ struct DesignLanguageTests {
         #expect(ArtClearance.resolve(width: 1320, textTrailing: 0, control: .zero).clear == nil)
     }
 
+    @Test("a tie shares the size: every club tied with ours is drawn at our size (review S6)")
+    func tiesShareTheSize() {
+        // "T-26th of 30" with two others on the same figure
+        let bullpen = try! #require(DesignFixtures.dimensions.first { $0.tiedWith == 2 })
+        let dots = PlaceStrip.dots(bullpen)
+        let place = try! #require(bullpen.place)
+        let club = try! #require(dots.first { $0.kind == .club })
+        #expect(club.place == place)
+        let tied = dots.filter { $0.kind == .tied }
+        #expect(tied.map(\.place) == [place + 1, place + 2])
+        #expect(tied.allSatisfy { $0.scale == club.scale })
+        #expect(club.scale > 1)
+        #expect(dots.filter { $0.kind == .other }.allSatisfy { $0.scale == 1 })
+        // Too early: no club dot, nothing tied, every dot plain
+        #expect(PlaceStrip.dots(DesignFixtures.tooEarly).allSatisfy { $0.kind == .other && $0.scale == 1 })
+    }
+
     @Test("a served tone maps to a distinct symbol and reads neutral when unknown to this build")
     func tones() {
         #expect(Set(Tone.allCases.map(\.symbol)).count == Tone.allCases.count)
