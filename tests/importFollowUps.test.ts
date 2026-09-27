@@ -27,11 +27,15 @@ describe('the one-time upgrade of an earlier build\'s league database', () => {
     expect(databaseGeneration()).toBe(generation);
     expect(fs.existsSync(NEXT_DB_PATH)).toBe(false);
     expect(upgradeRoom()).toMatch(/^Not enough free disk space to bring the league database up to date: about \S+ GB is needed and 0\.0 GB is free\. It is served as it is, and Pennant checks again at the next start\.$/);
+    // Served on the data status, not only logged
+    const { getDataStatus } = await import('../server/dataStatus.js');
+    expect(getDataStatus().import.upgradeNote).toBe(upgradeRoom());
     // With room, it runs
     diskSpace.free = () => 1024 ** 4;
     expect(upgradeRoom()).toBeNull();
     await upgradeLeagueInBackground();
     expect(databaseGeneration()).toBe(generation + 1);
+    expect((await import('../server/dataStatus.js')).getDataStatus().import.upgradeNote).toBeNull();
   });
 });
 

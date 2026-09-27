@@ -27,7 +27,7 @@ import {
 } from './dataFreshness.js';
 import type { Integer } from './contract/primitives.js';
 import { currentRatingMode } from './history.js';
-import { leftOutOfServedImport, type LeftOutFile } from './importer.js';
+import { leftOutOfServedImport, upgradeState, type LeftOutFile } from './importer.js';
 import type { RatingModeRecord } from './ratingMode.js';
 
 export interface LogSourceStatus {
@@ -73,6 +73,11 @@ export interface DataStatus {
     ratingMode: RatingModeRecord | null;
     /** Files the import left out (older than the rest of the export, or unreadable), and what their tables hold. */
     leftOut: LeftOutFile[];
+    /**
+     * Why the one-time upgrade of an earlier build's league database did not run at this start, in a sentence (not
+     * enough free space; the league is served as it is and it is tried again at the next start); null otherwise.
+     */
+    upgradeNote: string | null;
   };
 }
 
@@ -367,6 +372,7 @@ export function getDataStatus(opts: { importedAt?: string | null } = {}): DataSt
     import: {
       ratingMode: hasData ? currentRatingMode() : null,
       leftOut: hasData ? leftOutOfServedImport() : [],
+      upgradeNote: upgradeState.note,
     },
   };
 }

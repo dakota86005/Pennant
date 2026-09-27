@@ -1389,10 +1389,18 @@
                   "$ref": "#/components/schemas/LeftOutFile"
                 },
                 "description": "Files the import left out (older than the rest of the export, or unreadable), and what their tables hold."
+              },
+              "upgradeNote": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Why the one-time upgrade of an earlier build's league database did not run at this start, in a sentence (not enough free space; the league is served as it is and it is tried again at the next start); null otherwise."
               }
             },
             "required": [
-              "leftOut"
+              "leftOut",
+              "upgradeNote"
             ],
             "description": "What the imported export carries and what its import left out (N3.5, D-061)."
           }

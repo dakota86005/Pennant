@@ -143,6 +143,12 @@ export const diskSpace = {
   },
 };
 
+/**
+ * Why the one-time upgrade of an earlier build's league database did not run at this start (not enough free space), in
+ * a sentence; null when it ran or was not needed (N3.5 B2 review). Served on the data status (`import.upgradeNote`).
+ */
+export const upgradeState: { note: string | null } = { note: null };
+
 /** The new database is about four times the export's size (numbers stored as REAL, plus indexes); with room to spare. */
 export const DISK_FACTOR = 4.5;
 

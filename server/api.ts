@@ -4,7 +4,7 @@ import path from 'node:path';
 import { db, tableExists, tableColumns, locateColumn, LAST_IMPORT_PATH, LEAGUE_DB_PATH, NEXT_DB_PATH, swapWhenFree } from './db.js';
 import { detectSaves, findSaves, resolveChosenFolder, searchLocations, type ResolveResult, type SaveInfo, type SearchLocation } from './paths.js';
 import { DATA_DIR, loadConfig, saveConfig } from './config.js';
-import { diskSpace, importCsvDir, ImportRefused, type ImportProgress, type ImportResult } from './importer.js';
+import { diskSpace, importCsvDir, upgradeState, ImportRefused, type ImportProgress, type ImportResult } from './importer.js';
 import { upgradeLeagueDatabase } from './importBuild.js';
 import { checkExport, clearPendingExport, notePendingExport, onSettledExport, pendingExport, startWatcher } from './watcher.js';
 import { assessExport, importedExport, type ExportAssessment } from './exportFiles.js';
@@ -425,6 +425,7 @@ export function upgradeLeagueInBackground(): Promise<void> {
       // Room for the converted copy beside the served file first: without it nothing is written, the file is served as
       // it is, and the next start checks again (a check, never a failed write at every launch)
       const room = upgradeRoom();
+      upgradeState.note = room;
       if (room) {
         console.warn(`[import] ${room}`);
         return;
