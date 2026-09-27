@@ -1,5 +1,5 @@
 /**
- * Theme packs on disk (D-061): the packs installed in the data folder (`theme-packs/<id>/pack.json` and its images),
+ * Theme packs on disk (D-062): the packs installed in the data folder (`theme-packs/<id>/pack.json` and its images),
  * which pack each club wears (`themePacks` in settings.json), and the pack's files. The checks themselves are pure and
  * live in `server/presentation/themePacks.ts`; this module reads the files and hands them over.
  *

@@ -1,7 +1,7 @@
 /**
  * Checks every club's palette for contrast (WCAG AA on every pair a page draws), in both modes, as both clients draw it:
  * the React app's CSS values and the hex tokens the Mac app is served (`GET /api/v2/catalog`), both from the server's
- * `server/presentation/palette.ts`. Then each club's own theme pack for the Mac app (D-061: the masthead, the accent,
+ * `server/presentation/palette.ts`. Then each club's own theme pack for the Mac app (D-062: the masthead, the accent,
  * the tint and the club card, in light, dark and both with Increase Contrast), and the theme packs in a folder: the
  * repository's example, and any given.
  *

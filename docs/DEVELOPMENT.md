@@ -304,7 +304,16 @@ server.
 **Snapshots.** PennantFeatures' tests also draw the shell (the sidebar with the club card, the main window, each server
 state, each Setup step, each Settings tab) in light and dark at their real sizes into `build/macos-snapshots/`, from
 `contract/fixtures/`. They are for looking at, not compared; CI skips them. To draw only them:
-`cd macos/Packages/PennantFeatures && swift test --filter SnapshotTests`.
+`cd macos/Packages/PennantFeatures && swift test --filter SnapshotTests`. The design language's pictures are the
+`design-*` files: the Morning Report as designed (the slots the server does not serve yet drawn from
+`DesignFixtures`, made-up data in PennantDesign), a report, the ⌘K palette, a pinned claim and each component, in the
+club's colours, the example pack and the example art pack, light, dark, Increase Contrast and Reduce Transparency.
+Offscreen drawing cannot draw the system's glass, so the real look is in the XCUITest screenshots.
+
+**Previews.** Every PennantDesign component has a `#Preview` in `Previews.swift` (Xcode's canvas, the example pack's
+colours, `DesignFixtures`), and the Morning Report has one as designed; the shell's previews are in
+`Shell/Previews.swift`. A preview never shows a sentence the server would not serve: fixture text is passed through
+`DesignFixtures.served(_:)`, and the String Catalog check refuses a `Text(verbatim:)` literal anywhere else.
 
 The unknown-last comparator's cases (`contract/fixtures/sort-cases.json`) are shared: `tests/sortCases.test.ts` runs them
 against a TypeScript reference, PennantKit against the app. The String Catalog is checked against the banned-jargon list
@@ -321,7 +330,7 @@ release build.
 
 ### Making a theme pack
 
-A theme pack (D-061) is how a club looks in the Mac app: the masthead at the top of a report, the club card, the one
+A theme pack (D-062) is how a club looks in the Mac app: the masthead at the top of a report, the club card, the one
 floating control's tint. Every club already has one with no file, its own colours from the save; a pack is for another
 look, a City Connect set, say. Pennant ships no club's art: packs you make are for your own use and stay in your data
 folder.
@@ -339,7 +348,7 @@ folder.
    | `club` | the team id it is made for (as the save numbers clubs), or `"any"` |
    | `light`, `dark` | the colours for each appearance (below), every one written `#rrggbb` |
    | `lightIncreasedContrast`, `darkIncreasedContrast` | optional: the colours with Increase Contrast; left out, Pennant makes them from `light` and `dark` |
-   | `logo`, `art` | optional: a `.png` or `.jpg` in the folder, at most 2 MB (the masthead's logo, and art drawn at its trailing side) |
+   | `logo`, `art` | optional: a `.png` or `.jpg` in the folder, at most 2 MB (the masthead's logo, and art drawn at its trailing side, past the text, faded in from the middle; `docs/theme-packs/aurora-nights` shows one, made by `AuroraArt` and remade with `PENNANT_RENDER_ART=<path> swift test --filter AuroraArtTests` in PennantDesign) |
 
    Each appearance names `mastheadTop` (under the toolbar, where macOS writes the window's title: nearly white in light,
    nearly black in dark), `masthead` (one to four colours, from the masthead's leading top to its trailing bottom),
@@ -352,8 +361,9 @@ folder.
 4. Choose it in Settings ▸ Appearance ▸ Theme (the club's own colours are "Team colors"). Packs are read as they are: a
    fix is seen the next time Settings or a window asks.
 
-To check packs outside the app: `npm run check:theme -- <league.db> <theme-packs folder>` (the repository's example is
-always checked).
+To check packs outside the app: `npm run check:theme -- <league.db> <theme-packs folder>` (the repository's examples are
+always checked). A pack's accent also washes the cards, chips and the roster diagram faintly and tints its strips and
+bars (D-062), so a pack made for the masthead alone wears the whole design.
 
 ## Versions
 

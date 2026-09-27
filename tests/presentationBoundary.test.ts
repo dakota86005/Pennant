@@ -202,7 +202,7 @@ describe('the presentation boundary', () => {
 
   it('is imported only by the modules that serve it, never by a specialist', () => {
     // The API and the v2 routes serve its words; the event stream names its import note; the theme pack store reads the
-    // pack files and hands them to the pack check (D-061)
+    // pack files and hands them to the pack check (D-062)
     const allowed = new Set(['api.ts', 'v2Routes.ts', 'serverEvents.ts', 'frontOfficeService.ts', 'frontOfficeBuild.ts', 'themePackStore.ts']);
     const importers = filesUnder('')
       .filter((f) => !f.startsWith('presentation/') && !f.startsWith('contract/'))

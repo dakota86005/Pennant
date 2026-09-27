@@ -1,5 +1,5 @@
 /**
- * Theme packs (D-061, SWIFTUI_REBUILD.md section 3.7): how a club looks in the Mac app, as data. A pack names the colours
+ * Theme packs (D-062, SWIFTUI_REBUILD.md section 3.7): how a club looks in the Mac app, as data. A pack names the colours
  * every coloured piece draws (the masthead, the club card, the one tinted control, chart accents later), in light and
  * dark and each again for Increase Contrast, with optional art. Swift reads them from here through the generated
  * client and never holds a club colour of its own.

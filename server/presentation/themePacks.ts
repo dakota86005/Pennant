@@ -1,5 +1,5 @@
 /**
- * Theme packs (D-061): the club's own colours as a pack, derived from the save's team colours, and the check every
+ * Theme packs (D-062): the club's own colours as a pack, derived from the save's team colours, and the check every
  * installed pack passes before it is served. Pure: the files are read by `server/themePackStore.ts`, which hands this
  * module what it read.
  *

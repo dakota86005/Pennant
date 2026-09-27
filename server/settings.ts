@@ -109,7 +109,7 @@ export interface Settings {
   organizationPhilosophies: Record<string, PhilosophyProfile>;
 
   /**
-   * The theme pack each club wears in the Mac app (D-061), by team id; a club left out wears its own colours. Written
+   * The theme pack each club wears in the Mac app (D-062), by team id; a club left out wears its own colours. Written
    * only by `POST /api/v2/theme-packs/:org` (`themePackStore.ts`); the React app ignores it.
    */
   themePacks: Record<string, string>;
@@ -198,7 +198,7 @@ function writeSettings(next: Settings): void {
 }
 
 /**
- * Records the theme pack a club wears (D-061); null forgets the choice, so the club wears its own colours. The rest of
+ * Records the theme pack a club wears (D-062); null forgets the choice, so the club wears its own colours. The rest of
  * the settings are kept as they are.
  */
 export function saveThemePackChoice(teamId: number, packId: string | null): Settings {

@@ -952,7 +952,7 @@
           },
           "theme": {
             "$ref": "#/components/schemas/ThemePack",
-            "description": "The theme the club wears in the Mac app (D-061): its own colours unless another pack was chosen for it, every appearance resolved and checked. `palette` stays for the React app's colours."
+            "description": "The theme the club wears in the Mac app (D-062): its own colours unless another pack was chosen for it, every appearance resolved and checked. `palette` stays for the React app's colours."
           }
         },
         "required": [
@@ -3764,7 +3764,7 @@
             "additionalProperties": {
               "type": "string"
             },
-            "description": "The theme pack each club wears in the Mac app (D-061), by team id; a club left out wears its own colours. Written only by `POST /api/v2/theme-packs/:org` (`themePackStore.ts`); the React app ignores it."
+            "description": "The theme pack each club wears in the Mac app (D-062), by team id; a club left out wears its own colours. Written only by `POST /api/v2/theme-packs/:org` (`themePackStore.ts`); the React app ignores it."
           }
         },
         "required": [

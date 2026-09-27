@@ -18,7 +18,7 @@ import { buildSave } from './syntheticSave.js';
 import { IDS } from './fixture';
 
 /**
- * Theme packs (D-061, SWIFTUI_REBUILD.md section 3.7): every club's own colours as a pack derived from the save, the
+ * Theme packs (D-062, SWIFTUI_REBUILD.md section 3.7): every club's own colours as a pack derived from the save, the
  * check an installed pack passes (its shape, its files, and every piece of text on its colour in light, dark and with
  * Increase Contrast), which pack each club wears, and the catalog serving it.
  */

@@ -2197,7 +2197,7 @@ deadline date. Neither the odds, the posture nor the season-window labels are he
 does not import them (a boundary test). They appear only in League Office standings, labelled with their basis, until
 ROADMAP "Playoff odds from the roster" replaces them.
 
-## D-061 — Theme packs: a club's look is data, its default is the save's own colours, and no pack costs readability
+## D-062 — Theme packs: a club's look is data, its default is the save's own colours, and no pack costs readability
 
 **Status:** Accepted in direction by the owner (2026-09-26: "I like the use of team colors. please build this modular. I
 picture being able to have 'theme packs' for each team for things like city connects"). **Implementation:** N5, Stage A
@@ -2223,5 +2223,10 @@ built at N5 (Stage A)"; how to make one: DEVELOPMENT.md "Making a theme pack".
 - **Chosen per club, additively.** The choice is `themePacks` in settings.json (team id to pack id); the React app ignores
   it, and team colours off (`useTeamColors`) draws the neutral system theme whatever pack is chosen.
 - **Pennant ships the mechanism and the save-derived defaults, never trademarked art.** Packs are plain folders in the data
-  folder (`theme-packs/<id>/pack.json` and its images) that the owner makes for his own use; the repository carries only a
-  made-up example (`docs/theme-packs/sunset-series`).
+  folder (`theme-packs/<id>/pack.json` and its images) that the owner makes for his own use; the repository carries only
+  made-up examples (`docs/theme-packs/sunset-series`; `aurora-nights`, whose art is made procedurally from its own
+  colours by `AuroraArt`, with no club's mark in it).
+- **A pack is tonal, not only a masthead (N5, Stage B, 2026-09-26).** The pack's accent washes every card, chip and the
+  roster diagram's field faintly (7% in light, 13% in dark), tints the strips, bars, nodes and leaders, and its art sits
+  at the masthead's trailing side where no text falls; the neutral theme washes nothing. No new served field was needed:
+  the wash is the served accent at an opacity, so every pack made for Stage A wears the whole design.

@@ -65,7 +65,7 @@ export interface CatalogClub {
   /** Wins and losses ("45–38"), or the sentence for a record the export does not have. */
   record: Cell;
   /**
-   * The theme the club wears in the Mac app (D-061): its own colours unless another pack was chosen for it, every
+   * The theme the club wears in the Mac app (D-062): its own colours unless another pack was chosen for it, every
    * appearance resolved and checked. `palette` stays for the React app's colours.
    */
   theme: ThemePack;

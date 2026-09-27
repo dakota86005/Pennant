@@ -16,6 +16,7 @@ paths:
   - "server/presentation/**"
   - "server/themePackStore.ts"
   - "docs/theme-packs/**"
+  - "docs/design/**"
   - "tests/bannedJargon.ts"
   - "tests/contract.test.ts"
   - "tests/apiRoutes.ts"
@@ -27,7 +28,7 @@ paths:
 # Pennant for Mac (the SwiftUI rebuild): working reminder
 
 This is a router, not the doctrine. The canonical detail is in `docs/SWIFTUI_REBUILD.md` and `docs/DECISIONS.md`
-D-055 to D-061 (with D-001, D-008, D-018, D-020, D-041, D-049 and D-052's amendment of 2026-09-25). Where this file
+D-055 to D-062 (with D-001, D-008, D-018, D-020, D-041, D-049 and D-052's amendment of 2026-09-25). Where this file
 and those documents differ, they win. The presentation cases are in `docs/BEHAVIOR_CASES.md` "Pennant for Mac".
 
 - **The server decides and writes; Swift renders.** Swift code holds no baseball threshold, computes no ranking,
@@ -71,10 +72,16 @@ and those documents differ, they win. The presentation cases are in `docs/BEHAVI
   built at N3", have the details.
 - **Quit only through `QuitCoordinator.requestQuit()`**, never `NSApp.terminate` from a `Task` or main-queue block (the
   `.terminateLater` wait cannot drain the main queue); `applicationShouldTerminate` answers through `shouldTerminate`.
-- **Theme packs (N5, D-061):** every coloured piece reads the `Theme` in the environment (PennantDesign), resolved from
+- **Theme packs (N5, D-062):** every coloured piece reads the `Theme` in the environment (PennantDesign), resolved from
   the pack the catalog serves for the club (`theme`); never a colour of Swift's own. A club's default pack is its save's
   colours; installed packs are checked on the server (every text pair at 4.5:1, 7:1 with Increase Contrast) and refused
   whole. The masthead is content colour under the toolbar (`MastheadScrollView`), not glass; one floating control group
   at most per view (`FloatingControlGroup`). SWIFTUI_REBUILD.md section 3.7, "As built at N5 (Stage A)".
+- **The design language (N5, Stage B):** R2 with the V2 roster diagram, built as PennantDesign components (typography,
+  data graphics, motif, depth, the ⌘K palette) and applied to the Morning Report and the reports. Every card and chip
+  is washed in the served accent (`Theme.Palette.wash`); glass only on controls (the palette, the Tonight card); a slot
+  the server does not serve yet shows nothing in the app and is drawn from `DesignFixtures` in previews and snapshots
+  only. A claim is a `ClaimText` (hover, click or Space, `BasisPopover`, pin to the inspector, detach). SWIFTUI_REBUILD.md
+  section 3.7, "Design language (N5, Stage B)"; section 3.4, "What the design's slots need from the server".
 - Verify with `macos/scripts/test.sh` plus the server baseline; visual checks come from XCUITest and
   snapshot PNGs (`build/macos-snapshots/`), not from asking the owner to look.
