@@ -186,7 +186,7 @@ public struct BasisSections: View {
             }
             section("How it's called") {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(certainty)
+                    Text(verbatim: basis.called).fixedSize(horizontal: false, vertical: true)
                     if let stamp = basis.stamp {
                         Text(verbatim: stamp).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     }
@@ -228,17 +228,6 @@ public struct BasisSections: View {
         let id = source.department.value1?.rawValue ?? source.department.value2 ?? ""
         return [source.specialist, actions?.departmentName?(id), source.sample, source.gameDate]
             .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
-    }
-
-    /// The served certainty (D-041) in the GM's words: a structural label per code.
-    private var certainty: LocalizedStringKey {
-        switch basis.certainty.value1 {
-        case .fact: "A fact from the export"
-        case .calibrated: "Fitted on this save's own history"
-        case .provisional: "A starting number, not yet fitted on this save"
-        case .policy: "A line chosen and stated"
-        case .unknown, nil: "Not known"
-        }
     }
 
     private func section<C: View>(_ title: LocalizedStringKey, @ViewBuilder _ content: () -> C) -> some View {

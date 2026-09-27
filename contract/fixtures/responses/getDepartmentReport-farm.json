@@ -39,7 +39,8 @@
         "A new export."
       ],
       "lean": null,
-      "certainty": "fact"
+      "certainty": "fact",
+      "called": "A fact from the export"
     },
     "links": []
   },
@@ -71,7 +72,8 @@
         "unknown": [],
         "wouldChange": [],
         "lean": null,
-        "certainty": "fact"
+        "certainty": "fact",
+        "called": "A fact from the export"
       },
       "links": [],
       "value": {
@@ -99,7 +101,8 @@
         "unknown": [],
         "wouldChange": [],
         "lean": null,
-        "certainty": "fact"
+        "certainty": "fact",
+        "called": "A fact from the export"
       },
       "links": [],
       "value": {
@@ -131,7 +134,8 @@
         "unknown": [],
         "wouldChange": [],
         "lean": null,
-        "certainty": "fact"
+        "certainty": "fact",
+        "called": "A fact from the export"
       },
       "links": [],
       "value": {
@@ -182,6 +186,7 @@
             "wouldChange": [],
             "lean": null,
             "certainty": "policy",
+            "called": "A line chosen and stated",
             "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
           },
           "links": []
@@ -218,6 +223,7 @@
             "wouldChange": [],
             "lean": null,
             "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
             "stamp": "The farm's stated lines, 10 of 30 still starting values. The same kind of finding about the same club or the organization, at the same urgency, is one row listing its positions"
           },
           "links": [
@@ -271,6 +277,7 @@
             "wouldChange": [],
             "lean": null,
             "certainty": "policy",
+            "called": "A line chosen and stated",
             "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
           },
           "links": []
@@ -307,6 +314,7 @@
             "wouldChange": [],
             "lean": null,
             "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
             "stamp": "The farm's stated lines, 10 of 30 still starting values. The same kind of finding about the same club or the organization, at the same urgency, is one row listing its positions"
           },
           "links": [

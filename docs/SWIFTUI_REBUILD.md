@@ -268,8 +268,10 @@ nothing until the payload carries the field. `positions[].control` is served str
   rosters against their limits, the farm's players read, the departments reporting; served since the N5 review); a
   range's `high` is the end of a range and never read as a whole.
 - `WireRow`: `wire[] {club {name, abbreviation, followed}, text, when}`.
-- `BasisPopover`: `Basis {because[] {label, value}, source, certainty, stamp, unknown[], wouldChange[], lean |
-  null}` (served since N4) and an open-in `Target`.
+- `BasisPopover`: `Basis {because[] {label, value}, source, certainty, called, stamp, unknown[], wouldChange[], lean |
+  null}` (served since N4; `called`, the certainty in the GM's words, since the N5 review) and an open-in `Target`.
+- The legends under `PlaceStrips` and `RosterDiagram`: the catalog's `phrases.placeLegend {season, recent, fifths}` and
+  `phrases.rosterLegend {range, control, need, more}` (served since the N5 review); the app keeps only their symbols.
 - `CommandPalette`: later a search endpoint `{group, symbol, title, line, route}` and token suggestions.
 
 ### 3.5 One anatomy for every department report
@@ -493,8 +495,8 @@ Reference pictures, made-up data only: `docs/design/morning-report-light.png`, `
   serves each slot. `DesignFixtures` (Debug only) is made-up data for the previews and the snapshots, never the app.
 - **Depth, as built (section 3.3).** A `ClaimText` is a plain button: hover shows the served help tag, a click or Space
   while focused opens `BasisPopover`: why (the evidence grid), from (the specialist, the department's served name, the
-  sample and the game date as the export wrote it), how it's called (the served certainty in the GM's words, the stamp
-  beneath), not known, would change if, our philosophy's lean with the neutral reading beside it; then Pin to
+  sample and the game date as the export wrote it), how it's called (the basis's served `called`, the certainty in the
+  GM's words, with the stamp beneath), not known, would change if, our philosophy's lean with the neutral reading beside it; then Pin to
   Inspector, Detach and "Open in <department>" for the first served link this build can open. Pinning shows the claim
   in the inspector's Evidence tab (`EvidenceView`, opened by ⌥⌘I or the pin); Detach opens the same in a floating
   panel (`WindowGroup(for: Claim.self)`, `.windowLevel(.floating)`). VoiceOver reads the claim's text as the label and

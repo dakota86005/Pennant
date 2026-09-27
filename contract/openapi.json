@@ -818,6 +818,10 @@
           "certainty": {
             "$ref": "#/components/schemas/Certainty"
           },
+          "called": {
+            "type": "string",
+            "description": "How the reading is called, in the GM's words: `certainty` said plainly (\"A fact from the export\"), which the app shows under \"How it's called\" (a code this build does not know still has its words)."
+          },
           "stamp": {
             "type": "string",
             "description": "The D-041 stamp shown in the evidence view (a breakdown, where a method word may help)."
@@ -828,7 +832,8 @@
           "source",
           "unknown",
           "wouldChange",
-          "certainty"
+          "certainty",
+          "called"
         ],
         "description": "Why a claim says what it says (D-018, D-023, D-031, D-044: show the basis)."
       },
@@ -1003,12 +1008,20 @@
         "properties": {
           "missingValue": {
             "$ref": "#/components/schemas/Cell"
+          },
+          "placeLegend": {
+            "$ref": "#/components/schemas/PlaceLegend"
+          },
+          "rosterLegend": {
+            "$ref": "#/components/schemas/RosterLegend"
           }
         },
         "required": [
-          "missingValue"
+          "missingValue",
+          "placeLegend",
+          "rosterLegend"
         ],
-        "description": "Sentences the app shows wherever a served value is missing and no line of its own says why."
+        "description": "Sentences the app shows in more than one place: for a served value that is missing and no line of its own says why, and the legends under the design's graphics (the app keeps only their symbols)."
       },
       "CatalogView": {
         "type": "object",
@@ -3199,6 +3212,29 @@
         ],
         "description": "A league place, stated (D-057): `rank` among `of` clubs that have the figure, `tiedWith` the number of other clubs on the same figure, and, for a Player Value place, `overlap`: how many clubs' ranges overlap this one."
       },
+      "PlaceLegend": {
+        "type": "object",
+        "properties": {
+          "season": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The filled dot."
+          },
+          "recent": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The hollow ring."
+          },
+          "fifths": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The shaded ends."
+          }
+        },
+        "required": [
+          "season",
+          "recent",
+          "fifths"
+        ],
+        "description": "The legend under \"How we win and lose\": what each mark on a place strip means."
+      },
       "ProviderChoice": {
         "type": "object",
         "properties": {
@@ -3553,6 +3589,34 @@
             "type": "string"
           }
         ]
+      },
+      "RosterLegend": {
+        "type": "object",
+        "properties": {
+          "range": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The range bar and its hatching."
+          },
+          "control": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The control pips."
+          },
+          "need": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The ring and the word for a need."
+          },
+          "more": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Hover and click."
+          }
+        },
+        "required": [
+          "range",
+          "control",
+          "need",
+          "more"
+        ],
+        "description": "The legend under the roster diagram: what each mark on a plate means, and what the pointer does."
       },
       "SaveDiscoveryMethod": {
         "anyOf": [

@@ -1,3 +1,4 @@
+import PennantAPI
 import Charts
 import SwiftUI
 
@@ -108,16 +109,20 @@ public struct PlaceRow: View {
 }
 
 /// "How we win and lose": the served dimensions in their served groups (strengths, weaknesses, the rest, too early),
-/// each group under its structural header with the served policy line beside it, and the legend.
+/// each group under its structural header with the served policy line beside it, and the served legend (the view keeps
+/// only its symbols).
 public struct PlaceStrips: View {
     let dimensions: [PlaceDimension]
     /// The policy lines as served, by group ("Top fifth of the league").
     let lines: [PlaceDimension.Group: String]
+    /// The legend as served (the catalog's `phrases.placeLegend`); nil draws none.
+    let legend: Components.Schemas.PlaceLegend?
     let wide: Bool
 
-    public init(_ dimensions: [PlaceDimension], lines: [PlaceDimension.Group: String], wide: Bool = true) {
+    public init(_ dimensions: [PlaceDimension], lines: [PlaceDimension.Group: String], legend: Components.Schemas.PlaceLegend?, wide: Bool = true) {
         self.dimensions = dimensions
         self.lines = lines
+        self.legend = legend
         self.wide = wide
     }
 
@@ -127,12 +132,14 @@ public struct PlaceStrips: View {
             group(Text("Weaknesses"), .weakness)
             group(Text("The rest"), .rest)
             group(Text("Too early to call"), .tooEarly)
-            HStack(spacing: 14) {
-                Label("Filled dot: this season", systemImage: "circle.fill")
-                Label("Ring: the last 15 games", systemImage: "circle")
-                Label("Shaded: the top and bottom fifths", systemImage: "rectangle.lefthalf.filled")
+            if let legend {
+                HStack(spacing: 14) {
+                    LegendEntry(legend.season, symbol: "circle.fill")
+                    LegendEntry(legend.recent, symbol: "circle")
+                    LegendEntry(legend.fifths, symbol: "rectangle.lefthalf.filled")
+                }
+                .font(.caption).foregroundStyle(.secondary).padding(.top, 4)
             }
-            .font(.caption).foregroundStyle(.secondary).padding(.top, 4)
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("placeStrips")
@@ -154,6 +161,22 @@ public struct PlaceStrips: View {
                 }
             }
         }
+    }
+}
+
+/// One line of a legend: its symbol (structural) and its served words, with the served help tag.
+public struct LegendEntry: View {
+    let line: Components.Schemas.Cell
+    let symbol: String
+
+    public init(_ line: Components.Schemas.Cell, symbol: String) {
+        self.line = line
+        self.symbol = symbol
+    }
+
+    public var body: some View {
+        Label { Text(verbatim: line.display) } icon: { Image(systemName: symbol) }
+            .help(line.hint.map { Text(verbatim: $0) } ?? Text(verbatim: line.display))
     }
 }
 

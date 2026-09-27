@@ -16,8 +16,19 @@ public enum DesignFixtures {
         .init(
             because: because.map { .init(label: $0.0, value: $0.1) },
             source: .init(department: .init(value1: .frontOffice), specialist: from, gameDate: "2041-7-13"),
-            unknown: unknown, wouldChange: wouldChange, lean: lean, certainty: called, stamp: stamp
+            unknown: unknown, wouldChange: wouldChange, lean: lean, certainty: called, called: calledWords(called), stamp: stamp
         )
+    }
+
+    /// Each certainty in words, as the server serves it on every basis (`called`).
+    static func calledWords(_ certainty: Components.Schemas.Certainty) -> String {
+        switch certainty.value1 {
+        case .fact: served("A fact from the export")
+        case .calibrated: served("Fitted on this save's own history")
+        case .provisional: served("A starting number, not yet fitted on this save")
+        case .policy: served("A line chosen and stated")
+        case .unknown, nil: served("Not known")
+        }
     }
 
     public static func claim(_ text: String, hint: String? = nil, value: String? = nil, tone: Components.Schemas.Tone = .init(value1: .neutral), basis: Components.Schemas.Basis, links: [Components.Schemas.Target] = []) -> Components.Schemas.Claim {
@@ -127,6 +138,17 @@ public enum DesignFixtures {
     }
 
     static func fmt(_ v: Double) -> String { v == v.rounded() ? String(Int(v)) : String(format: "%.1f", v) }
+
+    /// The legends as the catalog serves them (`phrases.placeLegend`, `phrases.rosterLegend`).
+    public static let placeLegend = Components.Schemas.PlaceLegend(
+        season: .init(display: "Filled dot: this season"), recent: .init(display: "Ring: the last 15 games"),
+        fifths: .init(display: "Shaded: the top and bottom fifths", hint: "A strength is the top fifth of the league, a weakness the bottom fifth")
+    )
+    public static let rosterLegend = Components.Schemas.RosterLegend(
+        range: .init(display: "Range: what he's worth beyond his pay, most likely value marked · hatched: not valued yet"),
+        control: .init(display: "Pips: seasons we control him"), need: .init(display: "Ring and word: a need Major League Ops raised"),
+        more: .init(display: "Hover for more; click for the basis")
+    )
 
     /// The scale the diagram's range bars share, as N6 will serve it with the positions ($M beyond his pay).
     public static let valueScale = ValueScale(low: -5, high: 30)!

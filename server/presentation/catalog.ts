@@ -97,9 +97,36 @@ export interface CatalogDepartment {
   preparedBy: Cell;
 }
 
-/** Sentences the app shows wherever a served value is missing and no line of its own says why. */
+/** The legend under "How we win and lose": what each mark on a place strip means. */
+export interface PlaceLegend {
+  /** The filled dot. */
+  season: Cell;
+  /** The hollow ring. */
+  recent: Cell;
+  /** The shaded ends. */
+  fifths: Cell;
+}
+
+/** The legend under the roster diagram: what each mark on a plate means, and what the pointer does. */
+export interface RosterLegend {
+  /** The range bar and its hatching. */
+  range: Cell;
+  /** The control pips. */
+  control: Cell;
+  /** The ring and the word for a need. */
+  need: Cell;
+  /** Hover and click. */
+  more: Cell;
+}
+
+/**
+ * Sentences the app shows in more than one place: for a served value that is missing and no line of its own says why,
+ * and the legends under the design's graphics (the app keeps only their symbols).
+ */
 export interface CatalogPhrases {
   missingValue: Cell;
+  placeLegend: PlaceLegend;
+  rosterLegend: RosterLegend;
 }
 
 export interface Catalog {
@@ -241,6 +268,17 @@ export function buildCatalog(clubs: ClubSource[], orgId: number | null, themeOf:
     departments: servedDepartments(orgId),
     phrases: {
       missingValue: cell('Not known yet', { tone: 'unknown', hint: 'The export does not include this yet' }),
+      placeLegend: {
+        season: cell('Filled dot: this season'),
+        recent: cell('Ring: the last 15 games'),
+        fifths: cell('Shaded: the top and bottom fifths', { hint: 'A strength is the top fifth of the league, a weakness the bottom fifth' }),
+      },
+      rosterLegend: {
+        range: cell('Range: what he\'s worth beyond his pay, most likely value marked · hatched: not valued yet'),
+        control: cell('Pips: seasons we control him'),
+        need: cell('Ring and word: a need Major League Ops raised'),
+        more: cell('Hover for more; click for the basis'),
+      },
     },
   };
 }

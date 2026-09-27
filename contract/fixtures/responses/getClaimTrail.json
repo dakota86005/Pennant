@@ -31,7 +31,8 @@
       ],
       "wouldChange": [],
       "lean": null,
-      "certainty": "fact"
+      "certainty": "fact",
+      "called": "A fact from the export"
     },
     "links": [],
     "hint": "Fewer healthy on the active roster than the club's minimum"

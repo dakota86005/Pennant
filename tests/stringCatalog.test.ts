@@ -40,6 +40,46 @@ describe('the Mac app\'s String Catalogs', () => {
 });
 
 /**
+ * A structural label is a name (a menu, a tab, a column, a section), never an explanation: at most eight words and no
+ * sentence break inside it. An explanation (a certainty in words, a legend, a reason) is the server's, served as a
+ * sentence (review S5). The exceptions are the app's own words about itself from before the rule, none about baseball:
+ * its setup, its server, its backups and its development build. A new one fails.
+ */
+const LABEL_WORDS_MAX = 8;
+const APP_SENTENCES = new Set([
+  'Adding or changing a key arrives in a later build',
+  'An import is running. Choose a save when it has finished.',
+  'Automatic follows the club you manage in the save.',
+  'Pennant reads the save\'s export each time it imports.',
+  'Pennant reads the transaction log from the save\'s folder, which it finds from the export. Name the folder here only if it isn\'t found.',
+  'Pennant stops its server, puts back the files it copied before it first ran on this folder, and starts again. The files it replaces are kept in the backups folder.',
+  'Set PENNANT_DEV_DATA_DIR (or -PennantDevDataFolder) to a scratch folder, or choose the real folder on purpose with PENNANT_DEV_USE_REAL_DATA=1 (or -PennantUseRealDataFolder YES).',
+  'The save\'s folder, or the folder that holds your saves',
+]);
+
+/** Whether a catalog key reads as a sentence rather than a label. */
+function readsAsSentence(key: string): boolean {
+  return key.split(/\s+/).filter(Boolean).length > LABEL_WORDS_MAX || /\S(?:\. |; |: | · )\S/.test(key);
+}
+
+describe('a structural label is a name, not an explanation (review S5)', () => {
+  it('tells a label from a sentence', () => {
+    expect(readsAsSentence('How it\'s called')).toBe(false);
+    expect(readsAsSentence('Not known')).toBe(false);
+    expect(readsAsSentence('Ring: the last 15 games')).toBe(true);
+    expect(readsAsSentence('Hover for more; click for the basis')).toBe(true);
+    expect(readsAsSentence('A starting number, not yet fitted on this save, as stated')).toBe(true);
+  });
+
+  it('holds every key of the app\'s catalog to it, but the app\'s own sentences from before the rule', () => {
+    const keys = Object.keys((JSON.parse(fs.readFileSync('macos/Pennant/Localizable.xcstrings', 'utf8')) as Catalog).strings);
+    expect(keys.filter((key) => readsAsSentence(key) && !APP_SENTENCES.has(key))).toEqual([]);
+    // An exception that is gone from the catalog leaves the list too
+    expect([...APP_SENTENCES].filter((key) => !keys.includes(key))).toEqual([]);
+  });
+});
+
+/**
  * The structural labels the Swift sources write, the way SwiftUI looks them up: a string literal given to `Text`,
  * `Button`, `Label`, `Section`, `Menu` and the other labelled views, to `.navigationTitle`, `.navigationSubtitle`,
  * `.help`, `.alert` and `.confirmationDialog`, a `prompt:`, a `title:`, a `LocalizedStringResource` or

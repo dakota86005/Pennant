@@ -185,6 +185,7 @@ public struct ScoreboardFigures: View {
 public struct MorningReportPage: View {
     let summary: Components.Schemas.FrontOfficeSummary
     let refreshing: Bool
+    @Environment(AppModel.self) private var model
     @Environment(\.contentWidth) private var contentWidth
     @Environment(\.morningReportDesign) private var design
 
@@ -220,14 +221,14 @@ public struct MorningReportPage: View {
             if let dimensions = design?.dimensions {
                 VStack(alignment: .leading, spacing: 8) {
                     MagazineSection(kicker: Text("The club"), title: Text("How we win and lose"), trailing: design?.placesNote)
-                    PlaceStrips(dimensions, lines: design?.placeLines ?? [:], wide: false)
+                    PlaceStrips(dimensions, lines: design?.placeLines ?? [:], legend: model.catalog?.phrases.placeLegend, wide: false)
                 }
             }
             if let positions = design?.positions, let scale = design?.valueScale {
                 VStack(alignment: .leading, spacing: 12) {
                     MagazineSection(kicker: Text("The roster"), title: Text("Who we have"))
                     RosterDiagram(positions, scale: scale).frame(height: 540)
-                    RosterLegend()
+                    if let legend = model.catalog?.phrases.rosterLegend { RosterLegend(legend) }
                     HStack(alignment: .top, spacing: 24) {
                         Card { StaffColumn(title: Text("Rotation"), pitchers: design?.rotation ?? [], scale: scale) }
                         Card { StaffColumn(title: Text("Bullpen"), pitchers: design?.bullpen ?? [], scale: scale) }

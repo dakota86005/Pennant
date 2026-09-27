@@ -272,16 +272,21 @@ public struct PositionPlate: View {
     }
 }
 
-/// The diagram's legend: what the band, the pips, the ring and a click mean.
+/// The diagram's legend, as served (the catalog's `phrases.rosterLegend`): what the band, the pips, the ring and a click
+/// mean. The view keeps only the symbols.
 public struct RosterLegend: View {
-    public init() {}
+    let legend: Components.Schemas.RosterLegend
+
+    public init(_ legend: Components.Schemas.RosterLegend) {
+        self.legend = legend
+    }
 
     public var body: some View {
         HStack(spacing: 14) {
-            Label("Range: what he's worth beyond his pay, most likely value marked · hatched: not valued yet", systemImage: "rectangle.lefthalf.filled")
-            Label("Pips: seasons we control him", systemImage: "square.grid.3x1.below.line.grid.1x2")
-            Label("Ring and word: a need Major League Ops raised", systemImage: "circle.circle").foregroundStyle(Tone.caution.color)
-            Label("Hover for more; click for the basis", systemImage: "cursorarrow.click")
+            LegendEntry(legend.range, symbol: "rectangle.lefthalf.filled")
+            LegendEntry(legend.control, symbol: "square.grid.3x1.below.line.grid.1x2")
+            LegendEntry(legend.need, symbol: "circle.circle").foregroundStyle(Tone.caution.color)
+            LegendEntry(legend.more, symbol: "cursorarrow.click")
         }
         .font(.caption).foregroundStyle(.secondary)
     }

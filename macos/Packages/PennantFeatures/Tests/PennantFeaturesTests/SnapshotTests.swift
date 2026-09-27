@@ -436,10 +436,10 @@ private struct ComponentSheet: View {
                     RangeBar(range: nil, label: DesignFixtures.served("Not valued yet"), scale: DesignFixtures.valueScale).frame(width: 120)
                 }
             case "places":
-                PlaceStrips(DesignFixtures.dimensions + [DesignFixtures.tooEarly], lines: DesignFixtures.placeLines)
+                PlaceStrips(DesignFixtures.dimensions + [DesignFixtures.tooEarly], lines: DesignFixtures.placeLines, legend: DesignFixtures.placeLegend)
             case "roster":
                 RosterDiagram(DesignFixtures.positions, scale: DesignFixtures.valueScale).frame(height: 540)
-                RosterLegend()
+                RosterLegend(DesignFixtures.rosterLegend)
                 HStack(alignment: .top, spacing: 24) {
                     Card { StaffColumn(title: Text(verbatim: DesignFixtures.served("Rotation")), pitchers: DesignFixtures.rotation, scale: DesignFixtures.valueScale) }
                     Card { StaffColumn(title: Text(verbatim: DesignFixtures.served("Bullpen")), pitchers: DesignFixtures.bullpen, scale: DesignFixtures.valueScale) }

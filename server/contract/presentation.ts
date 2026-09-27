@@ -113,6 +113,11 @@ export interface Basis {
   wouldChange: string[];
   lean: Lean | null;
   certainty: Certainty;
+  /**
+   * How the reading is called, in the GM's words: `certainty` said plainly ("A fact from the export"), which the app
+   * shows under "How it's called" (a code this build does not know still has its words).
+   */
+  called: string;
   /** The D-041 stamp shown in the evidence view (a breakdown, where a method word may help). */
   stamp?: string;
 }

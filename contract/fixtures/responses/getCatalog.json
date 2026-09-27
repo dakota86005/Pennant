@@ -1750,6 +1750,32 @@
       "display": "Not known yet",
       "tone": "unknown",
       "hint": "The export does not include this yet"
+    },
+    "placeLegend": {
+      "season": {
+        "display": "Filled dot: this season"
+      },
+      "recent": {
+        "display": "Ring: the last 15 games"
+      },
+      "fifths": {
+        "display": "Shaded: the top and bottom fifths",
+        "hint": "A strength is the top fifth of the league, a weakness the bottom fifth"
+      }
+    },
+    "rosterLegend": {
+      "range": {
+        "display": "Range: what he's worth beyond his pay, most likely value marked · hatched: not valued yet"
+      },
+      "control": {
+        "display": "Pips: seasons we control him"
+      },
+      "need": {
+        "display": "Ring and word: a need Major League Ops raised"
+      },
+      "more": {
+        "display": "Hover for more; click for the basis"
+      }
     }
   }
 }
