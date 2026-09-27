@@ -629,7 +629,13 @@ function farmMan(f: FarmNext): FarmNextMan {
   const against = bar ? ` (readiness ${bar.readiness}, bar ${bar.required})` : '';
   const words: Record<ReadinessState, { text: string; hint: string }> = {
     ready: { text: 'Ready for a look', hint: `Player Development: a major-league look is defensible now${against}` },
-    notYet: { text: 'Not ready yet', hint: `Player Development: not yet, by its bar${against}` },
+    notYet: {
+      text: 'Not ready yet',
+      // Readiness may clear its bar while another of its bars (the evidence behind it) is not met: never read as the readiness
+      hint: bar && bar.readiness >= bar.required
+        ? `Player Development: not yet; readiness ${bar.readiness} clears its bar, another isn't met`
+        : `Player Development: not yet, by its bar${against}`,
+    },
     cantTell: { text: 'Can\'t tell yet', hint: 'Player Development can\'t judge it without more evidence' },
     notAssessed: { text: 'Not assessed', hint: 'Player Development hasn\'t assessed him for the majors' },
   };
@@ -750,7 +756,13 @@ function nodeWords(build: BuildContext, p: MapPosition, clubs: number, part: Ros
     ] : []),
     ...(showMiddle ? [{ label: 'League middle', value: `${wins1(p.middle!)} wins` }] : []),
     { label: 'Behind him', value: p.behind.length ? p.behind.map((b) => `${b.name}${b.wins ? ` (${wins1(b.wins.likely)})` : ' (not valued)'}`).join(', ') : 'Nobody else there' },
-    { label: 'The farm\'s next man', value: farm ? `${farm.name}, ${farm.level}: ${farm.readiness.display}${farm.bar ? ` (readiness ${farm.bar.readiness} against the ${farm.bar.required} its bar asks)` : ''}` : 'Nobody listed there' },
+    {
+      label: 'The farm\'s next man',
+      value: farm
+        ? `${farm.name}, ${farm.level}: ${farm.readiness.display}${farm.bar ? ` (readiness ${farm.bar.readiness} against the ${farm.bar.required} its bar asks)` : ''}`
+          + (farm.state === 'notYet' && p.farmNext!.assessment!.blockers.length ? `. ${p.farmNext!.assessment!.blockers.join(' ')}` : '')
+        : 'Nobody listed there',
+    },
     { label: 'How the farm\'s next man is chosen', value: `The man Player Development reads as readiest at ${where.at}, at the highest level where anyone is listed there; men it hasn't assessed follow, by name.` },
     { label: 'Control', value: control.text },
     ...(p.standing ? [{ label: 'Standing', value: p.standing }] : []),

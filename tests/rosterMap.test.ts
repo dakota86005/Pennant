@@ -254,6 +254,22 @@ describe('the farm\'s next man is Player Development\'s answer as served', () =>
   });
 });
 
+describe('the farm\'s readiness against its bar', () => {
+  it('never reads a readiness that clears its bar as ready: another bar Player Development set may not be met, and it says which', () => {
+    const [r] = positionReadings(1, clubs, [player(11, 1, SS, 2.0), player(20, 2, SS, 1.0)], [SS]);
+    const m = mapMaterial(r);
+    const blocker = 'Current-level evidence confidence 30 is below the minimum of 45.';
+    m.map.positions[0] = {
+      ...m.map.positions[0],
+      farmNext: { playerId: 99, name: 'Adrian Castle', level: 2, assessment: { judgment: 'indefensible', readiness: 98, required: 76, reasons: [], blockers: [blocker], missing: [] } },
+    } as never;
+    const node = rosterMapWords(build, m).positions[0];
+    expect(node.farmNext).toMatchObject({ state: 'notYet', bar: { readiness: 98, required: 76 } });
+    expect(node.farmNext!.readiness.hint).toBe('Player Development: not yet; readiness 98 clears its bar, another isn\'t met');
+    expect(node.claim.basis.because.find((b) => b.label === 'The farm\'s next man')!.value).toContain(blocker);
+  });
+});
+
 describe('the map on the synthetic save', () => {
   it('marks a need only where Major League Ops raised one: at the position, on the pitcher it names, else on the staff', () => {
     const save = buildSave({ season: 2040, historySeasons: 1, gamesPerTeam: 60, playedShare: 0.5, clubs: 4, seed: 11, teamSeason: true });
