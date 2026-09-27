@@ -70,7 +70,8 @@ export const listenerCount = (): number => listeners.size;
 
 /**
  * Progress arrives once per chunk written (hundreds a second on a fast disk). A client needs a bar that moves, not
- * every row, so progress is sent at most this often; the start, a change of file or phase, and the finish always go.
+ * every row, so progress is sent at most this often; the start, a change of file, table or phase, and the finish always
+ * go. (Since N3.5 several files are read at once, so the table a step names changes more often than the file count.)
  */
 export const PROGRESS_INTERVAL_MS = 200;
 
@@ -78,7 +79,7 @@ export function progressThrottle<P extends ImportStep>(send: (p: P) => void, now
   let last = -Infinity;
   let lastKey = '';
   return (p) => {
-    const key = `${p.fileIndex}:${p.phase}`;
+    const key = `${p.fileIndex}:${p.phase}:${p.table}`;
     const t = now();
     if (key === lastKey && t - last < PROGRESS_INTERVAL_MS) return;
     last = t;

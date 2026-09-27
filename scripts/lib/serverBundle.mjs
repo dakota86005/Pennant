@@ -35,9 +35,9 @@ export async function bundleServerEntry(entry, outfile) {
 }
 
 /**
- * The worker threads: the two refits and the Front Office's build. Each is found beside the file that starts it
- * (`playerValue.ts` `refitWorkerUrl`, `saveCalibration.ts` `calibrationWorkerUrl`, `frontOfficeService.ts` `workerUrl`),
- * so each build writes them into its own output folder.
+ * The server's worker threads. Each is found beside the file that starts it (`playerValue.ts` `refitWorkerUrl`,
+ * `saveCalibration.ts` `calibrationWorkerUrl`, `frontOfficeService.ts` `workerUrl`, `importBuild.ts` `importWorkerUrl`,
+ * `importSnapshots.ts` `snapshotWorkerUrl`), so each build writes them into its own output folder.
  */
 export async function bundleRefitWorkers(outDir) {
   // Player Value's refit runs in a worker thread (A-17)
@@ -46,6 +46,9 @@ export async function bundleRefitWorkers(outDir) {
   await bundleServerEntry('server/calibrationRefitWorker.ts', `${outDir}/calibration-refit-worker.cjs`);
   // The Front Office builds its desk and reports off the event loop the same way (SWIFTUI_REBUILD.md section 4.2)
   await bundleServerEntry('server/frontOfficeWorker.ts', `${outDir}/front-office-worker.cjs`);
+  // The import (N3.5): the build and its parse workers (one file, two roles), and the snapshots after the swap
+  await bundleServerEntry('server/importWorker.ts', `${outDir}/import-worker.cjs`);
+  await bundleServerEntry('server/snapshotWorker.ts', `${outDir}/snapshot-worker.cjs`);
 }
 
 export { pkg };

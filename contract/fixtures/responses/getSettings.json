@@ -4,6 +4,7 @@
     "models": {},
     "aiFeatures": {},
     "autoImport": true,
+    "importAutomatically": true,
     "useTeamColors": true,
     "nextSeasonBudget": {},
     "organizationPhilosophies": {},

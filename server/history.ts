@@ -1,8 +1,9 @@
 import Database from 'better-sqlite3';
 import { Router } from 'express';
 import path from 'node:path';
-import { db as leagueDb, tableExists } from './db.js';
+import { db as leagueDb, importRecord, tableExists } from './db.js';
 import { DATA_DIR, loadConfig } from './config.js';
+import { isModeSwitch, RATING_MODE_WORDS, type RatingMode, type RatingModeRecord } from './ratingMode.js';
 
 /**
  * Persistent store that SURVIVES reimports (league.db is rebuilt on every
@@ -77,6 +78,99 @@ export const SNAPSHOT_RUNNING_COLUMNS = ['brn', 'stl'] as const;
   for (const column of [...SNAPSHOT_SPLIT_COLUMNS, ...SNAPSHOT_RUNNING_COLUMNS]) {
     if (!present.has(column)) historyDb.exec(`ALTER TABLE rating_snapshots ADD COLUMN ${column} REAL`);
   }
+}
+
+/*
+ * Which kind of ratings each rating snapshot holds (D-061): the export's rating mode, read from OOTP's export settings
+ * at the import that took the snapshot. Additive: its own table keyed like the snapshots (save, game date), never a
+ * column on them. A snapshot taken before this table existed has no row: its mode is unrecorded, which is never
+ * evidence of a switch. Two snapshots in different KNOWN modes are a switch, and a switch is never read as development.
+ */
+historyDb.exec(`
+  CREATE TABLE IF NOT EXISTS rating_snapshot_modes (
+    save_name TEXT NOT NULL,
+    game_date TEXT NOT NULL,
+    mode TEXT NOT NULL,
+    additional_scouted INTEGER,
+    source TEXT,
+    import_started_at TEXT,
+    recorded_at TEXT NOT NULL,
+    PRIMARY KEY (save_name, game_date)
+  );
+`);
+
+/** Records the rating mode of the snapshot of `gameDate` (replacing it, as the snapshot itself is replaced on a re-import of that date). */
+export function stampSnapshotMode(gameDate: string, record: RatingModeRecord | null, importStartedAt: string | null): void {
+  historyDb
+    .prepare(
+      `INSERT OR REPLACE INTO rating_snapshot_modes
+       (save_name, game_date, mode, additional_scouted, source, import_started_at, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
+    )
+    .run(
+      currentSaveName(), gameDate, record?.mode ?? 'unknown',
+      record?.additionalScouted === null || record?.additionalScouted === undefined ? null : record.additionalScouted ? 1 : 0,
+      record?.source ?? null, importStartedAt, new Date().toISOString(),
+    );
+}
+
+/** The recorded rating mode of each snapshot date of this save (dates as the snapshots store them); unrecorded dates are absent. */
+export function snapshotModes(): Map<string, RatingMode> {
+  const rows = historyDb
+    .prepare(`SELECT game_date, mode FROM rating_snapshot_modes WHERE save_name = ?`)
+    .all(currentSaveName()) as Array<{ game_date: string; mode: string }>;
+  return new Map(rows.map((r) => [r.game_date, r.mode as RatingMode]));
+}
+
+/** The rating mode of the export imported now (its own record of its import), or null for an import from before N3.5. */
+export function currentRatingMode(): RatingModeRecord | null {
+  const record = importRecord()?.ratingMode;
+  return record && typeof record === 'object' && typeof (record as RatingModeRecord).mode === 'string' ? (record as RatingModeRecord) : null;
+}
+
+/** A switch in the kind of ratings, as rating history shows it. */
+export interface RatingModeSwitch {
+  /** The last snapshot before the switch, and the first after it (game dates as stored). */
+  before: string;
+  after: string;
+  fromMode: RatingMode;
+  toMode: RatingMode;
+  /** The switch in words. */
+  text: string;
+}
+
+/**
+ * The snapshot dates rating history reads now: every date except those recorded in a known mode other than the
+ * current export's (a switch, never development). With no known current mode nothing is left out: an unknown mode is
+ * not evidence of a switch. A snapshot stamped "no ratings" is always left out. Returns the dates left out and the
+ * switch, for the reasons a consumer shows.
+ */
+export function modeFilter(): { excluded: Set<string>; switches: RatingModeSwitch[] } {
+  const current = currentRatingMode()?.mode ?? null;
+  const modes = snapshotModes();
+  const excluded = new Set<string>();
+  if (current && current !== 'unknown') for (const [date, mode] of modes) if (isModeSwitch(mode, current)) excluded.add(date);
+  // A snapshot of an export that carried no ratings observes none, whatever its columns hold (D-018)
+  for (const [date, mode] of modes) if (mode === 'none') excluded.add(date);
+  return { excluded, switches: modeSwitches(modes) };
+}
+
+/** Every switch between consecutive snapshots in known, different modes. */
+export function modeSwitches(modes: Map<string, RatingMode> = snapshotModes()): RatingModeSwitch[] {
+  const dates = [...modes.keys()].sort(compareGameDates);
+  const out: RatingModeSwitch[] = [];
+  let last: { date: string; mode: RatingMode } | null = null;
+  for (const date of dates) {
+    const mode = modes.get(date)!;
+    if (mode === 'unknown') continue;
+    if (last && isModeSwitch(last.mode, mode)) {
+      out.push({
+        before: last.date, after: date, fromMode: last.mode, toMode: mode,
+        text: `The kind of ratings changed between ${last.date} and ${date}, from ${RATING_MODE_WORDS[last.mode].short.toLowerCase()} to ${RATING_MODE_WORDS[mode].short.toLowerCase()}: the change is a switch, not development.`,
+      });
+    }
+    last = { date, mode };
+  }
+  return out;
 }
 
 export function currentSaveName(): string {
@@ -348,6 +442,9 @@ function developmentTrendByPlayerForScope(
             )
     ) as DevelopmentTrendRow[];
 
+  // Snapshots in another known kind of ratings are a switch, never development (D-061): left out, and said
+  const { excluded: otherMode, switches } = modeFilter();
+
   const byPlayer =
     new Map<
       number,
@@ -355,6 +452,7 @@ function developmentTrendByPlayerForScope(
     >();
 
   for (const row of rows) {
+    if (otherMode.has(row.game_date)) continue;
     const existing =
       byPlayer.get(
         row.player_id
@@ -507,6 +605,10 @@ function developmentTrendByPlayerForScope(
       reasons.push(
         `Scouted projected ceiling changed ${potentialDelta >= 0 ? '+' : ''}${potentialDelta.toFixed(1)} over the same observation window.`
       );
+    }
+
+    if (otherMode.size > 0) {
+      reasons.push(...switches.map((sw) => `${sw.text} Snapshots in the earlier kind are not compared.`));
     }
 
     out.set(
@@ -768,6 +870,9 @@ function peerDevelopmentTrendByPlayerForScope(
             )
     ) as PeerSnapshotRow[];
 
+  // As the player's own trend: snapshots in another known kind of ratings are a switch, never development (D-061)
+  const { excluded: otherMode } = modeFilter();
+
   const byPlayer =
     new Map<
       number,
@@ -775,6 +880,7 @@ function peerDevelopmentTrendByPlayerForScope(
     >();
 
   for (const row of rows) {
+    if (otherMode.has(row.game_date)) continue;
     const group =
       byPlayer.get(
         row.player_id
@@ -1203,7 +1309,7 @@ historyRoutes.get('/development-history/:orgId', (req, res) => {
   const saveName =
     currentSaveName();
 
-  const rows =
+  const allRows =
     historyDb
       .prepare(
         `SELECT
@@ -1254,6 +1360,11 @@ historyRoutes.get('/development-history/:orgId', (req, res) => {
         mov: number | null;
         ctl: number | null;
       }>;
+
+  // Snapshots in another known kind of ratings than today's export are a switch, never movement (D-061): left out here
+  // as in every trend, so the Development page's changes never read a switch; the switches themselves are served below
+  const { excluded: otherMode } = modeFilter();
+  const rows = allRows.filter((row) => !otherMode.has(row.game_date));
 
   rows.sort(
     (a, b) =>
@@ -1318,6 +1429,11 @@ historyRoutes.get('/development-history/:orgId', (req, res) => {
     observationDays,
 
     rows,
+
+    // The kind of ratings each date holds, and every switch between them (D-061), so a jump reads as a switch
+    ratingModes: Object.fromEntries(snapshotModes()),
+
+    ratingModeSwitches: modeSwitches(),
   });
 });
 
@@ -1331,6 +1447,12 @@ historyRoutes.get('/development/:orgId', (req, res) => {
   }
   const from = String(req.query.from ?? dates[dates.length - 2]);
   const to = String(req.query.to ?? dates[dates.length - 1]);
+  // Two snapshots in different known kinds of ratings: a switch, shown as one, never read as development (D-061)
+  const modes = snapshotModes();
+  if (isModeSwitch(modes.get(from), modes.get(to))) {
+    const ratingModeSwitch = modeSwitches(new Map([[from, modes.get(from)!], [to, modes.get(to)!]]))[0];
+    return res.json({ snapshots: dates.length, dates, from, to, changes: null, ratingModeSwitch });
+  }
 
   const rows = historyDb
     .prepare(

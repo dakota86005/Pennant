@@ -25,6 +25,9 @@ import {
   type FreshnessAssessment, type GameDate, type LogUnavailableReason, type SourceState,
 } from './dataFreshness.js';
 import type { Integer } from './contract/primitives.js';
+import { currentRatingMode } from './history.js';
+import { leftOutOfServedImport, type LeftOutFile } from './importer.js';
+import type { RatingModeRecord } from './ratingMode.js';
 
 export interface LogSourceStatus {
   /** The live transaction database exists in the save's temp folder. */
@@ -63,6 +66,13 @@ export interface DataStatus {
   };
   transactionLog: LogSourceStatus;
   freshness: FreshnessAssessment;
+  /** What the imported export carries and what its import left out (N3.5, D-061). */
+  import: {
+    /** Which kind of ratings the export carries, as the import read OOTP's export settings; null for an import from before N3.5. */
+    ratingMode: RatingModeRecord | null;
+    /** Files the import left out (older than the rest of the export, or unreadable), and what their tables hold. */
+    leftOut: LeftOutFile[];
+  };
 }
 
 interface Cached {
@@ -227,6 +237,10 @@ export function getDataStatus(opts: { importedAt?: string | null } = {}): DataSt
     },
     transactionLog: logStatus,
     freshness,
+    import: {
+      ratingMode: hasData ? currentRatingMode() : null,
+      leftOut: hasData ? leftOutOfServedImport() : [],
+    },
   };
 }
 

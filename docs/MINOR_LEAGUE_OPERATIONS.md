@@ -1263,6 +1263,12 @@ populations, two season scans), which Player Development owns and the farm reads
 cached across requests, so a fresh export or a changed philosophy is seen on the next request. No
 further optimisation is warranted on a 230-player organization.
 
+*Amended at N3.5 (D-061, ARCHITECTURE "Imported league database").* One export-only figure is now kept
+across requests: the destination-fit league populations, once per import (`importCache.ts`, keyed on the
+database generation every import's swap bumps, so a fresh export is still seen at once). It holds no
+philosophy input, so a changed philosophy is still seen on the next request. `computeFarmSystem` on the
+real save went from about 1.0 s to about 0.13 s warm, `computeProspects` from about 0.85 s to 0.06 s.
+
 ## 7.9 The workspace and the MLB view, after
 
 * Decision: who is ahead of a man now says what each holds and whether he is a claimant or covering

@@ -1,11 +1,17 @@
 import { Router, type NextFunction, type Request, type Response } from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
-import { db, tableExists, tableColumns, locateColumn } from './db.js';
+import { db, tableExists, tableColumns, locateColumn, LAST_IMPORT_PATH, LEAGUE_DB_PATH, NEXT_DB_PATH, swapWhenFree } from './db.js';
 import { detectSaves, resolveChosenFolder, searchLocations, type ResolveResult, type SaveInfo, type SearchLocation } from './paths.js';
 import { DATA_DIR, loadConfig, saveConfig } from './config.js';
-import { importCsvDir, type ImportProgress, type ImportResult } from './importer.js';
-import { clearPendingExport, pendingExport, startWatcher } from './watcher.js';
+import { importCsvDir, ImportRefused, type ImportProgress, type ImportResult } from './importer.js';
+import { upgradeLeagueDatabase } from './importBuild.js';
+import { checkExport, clearPendingExport, notePendingExport, onSettledExport, pendingExport, startWatcher } from './watcher.js';
+import type { ExportAssessment } from './exportFiles.js';
+import { locateSave } from './ootpSave.js';
+import { readRatingMode } from './ratingMode.js';
+import { registerPostImportHook, runPostImportHooks } from './postImport.js';
+import { snapshotsAfterImport } from './importSnapshots.js';
 import { featureProvider, providerCredential, loadSettings } from './settings.js';
 import { orgRoutes } from './org.js';
 import { contractRoutes } from './contracts.js';
@@ -13,10 +19,9 @@ import { freeAgentRoutes } from './freeagents.js';
 import { lineupRoutes } from './lineup.js';
 import { storylineRoutes, startStorylineJob } from './storylines.js';
 import { playerRoutes } from './player.js';
-import { historyRoutes, takeSnapshot } from './history.js';
-import { captureRosterStateSnapshot } from './rosterStateHistory.js';
+import { historyRoutes } from './history.js';
 import { csvExportedAt, resetTransactionLogCache } from './dataStatus.js';
-import { importRun, importedAt, playerStateRoutes } from './playerStateRoutes.js';
+import { importedAt, playerStateRoutes } from './playerStateRoutes.js';
 import { assignmentContextsFor } from './playerContext.js';
 import { clearStatCaches, computeBatting, computePitching, leagueBaseline } from './stats.js';
 import { clearResultsCaches } from './resultsEvidence.js';
@@ -58,7 +63,7 @@ import { scoutedDevelopmentRoutes } from './scoutedDevelopment.js';
 import { eventStream, progressThrottle, publish } from './serverEvents.js';
 import { v2Routes } from './v2Routes.js';
 import { currentReportStamp, warmFrontOffice } from './frontOfficeService.js';
-import { EXPORT_NOT_FOUND, importNote, importWords, type ImportNote } from './presentation/importWords.js';
+import { EXPORT_NOT_FOUND, importNote, importWords, leftOutNote, type ImportNote } from './presentation/importWords.js';
 import type { Integer } from './contract/primitives.js';
 
 export const api = Router();
@@ -93,7 +98,7 @@ api.use(freeAgentRoutes);
 api.use(lineupRoutes);
 api.use(storylineRoutes);
 
-const META_PATH = path.join(DATA_DIR, 'last-import.json');
+const META_PATH = LAST_IMPORT_PATH;
 
 function loadImportMeta(): ImportResult | null {
   try {
@@ -138,9 +143,10 @@ function readImportMarker(): { startedAt: string; csvDir: string | null } | null
 }
 
 /**
- * At start-up: if the last import never finished, say so on `/api/status` and import the export again, so the
- * database is one export rather than two. Returns whether a re-import was started. Without the export folder the
- * mixed state is reported and left for the user to re-import once the folder is back; nothing is guessed.
+ * At start-up: if the last import never finished, say so on `/api/status` and import the export again. Since N3.5 an
+ * unfinished import never touches the database the app reads (it builds a new file and swaps it in), so the previous
+ * import is whole and this is a retry, not a repair. Returns whether a re-import was started. Without the export
+ * folder the interruption is reported and nothing is guessed.
  */
 export function recoverInterruptedImport(): boolean {
   const marker = readImportMarker();
@@ -152,7 +158,7 @@ export function recoverInterruptedImport(): boolean {
     return false;
   }
   console.warn(`[import] the import started ${marker.startedAt} never finished; importing the export again`);
-  void runImport(csvDir);
+  void runImport(csvDir, 'recovery');
   return true;
 }
 
@@ -210,15 +216,17 @@ function humanOrgId(): number | null {
 
 /**
  * After an import: refit the production model (and, phase 3b, the ratings model) where the export now holds a completed season newer
- * than the last fit (D-053, PLAYER_VALUE.md Part 7). In the background, once the import has
- * finished, so it can never block or fail it: every error is caught and logged. No timer: it runs
- * once per import, and a re-import without a newer completed season fits nothing.
+ * than the last fit (D-053, PLAYER_VALUE.md Part 7), and every subsystem's per-save calibration, AT THE SAME TIME, each in its own
+ * worker thread (N3.5: about 28 s one after the other, about 18 s together; neither reads the other's fits). In the background, once
+ * the import has finished, so they can never block or fail it: every error is caught and logged. No timer: they run once per import,
+ * and a re-import without a newer completed season fits nothing. Each result is recorded only if no import started while it read
+ * (the gates and records are unchanged, D-053).
  *
  * Also called once at startup for a save that is already imported, so a save that has never been
  * fitted (a new install, or a method version that ignores the stored fit) gets its own fit without
  * waiting for the next import. It fits nothing when the latest completed season is already fitted.
  */
-export function refitAfterImport(): void {
+export function refitAfterImport(): Promise<void> {
   // In a worker thread (A-17): the fit reads for seconds, and the server keeps answering meanwhile. Its
   // result is recorded only if no import started while it read, so a fit never spans two exports.
   const generation = importGeneration;
@@ -230,17 +238,19 @@ export function refitAfterImport(): void {
       try { resolve(computeRefits()); } catch (e) { reject(e); }
     }));
   });
-  refitOffThread({ compute, stale: () => importState.importing || generation !== importGeneration })
+  const value = refitOffThread({ compute, stale: () => importState.importing || generation !== importGeneration })
     .then((outcomes) => {
       for (const r of outcomes) {
         if (r.refit) console.log(`[value] refit, league ${r.leagueId} through ${r.throughSeason}: ${r.adopted ? 'adopted' : 'not adopted'} (${Math.round(r.ms ?? 0)} ms in the worker, ${Math.round(performance.now() - started)} ms end to end). ${r.reason}`);
       }
     })
-    .catch((err) => console.error('[value] production refit failed:', err))
-    // Then every subsystem's per-save calibration (D-053, cycle 1: MLB Operations' roster review), in its own worker, the same way
-    .finally(() => { void refitCalibrationsAfterImport(generation); });
+    .catch((err) => console.error('[value] production refit failed:', err));
+  // Every subsystem's per-save calibration (D-053), in its own worker, at the same time
+  const calibration = refitCalibrationsAfterImport(generation);
+  return Promise.all([value, calibration]).then(() => {
+    console.log(`[refit] the refits settled ${Math.round(performance.now() - started)} ms after they started`);
+  });
 }
-
 /**
  * After an import: the per-save calibrations every subsystem registered (`saveCalibration.ts`), computed in a worker thread and
  * recorded only if no import started meanwhile. Never blocks or fails the import: every error is caught and logged.
@@ -289,13 +299,44 @@ export function recordImportMarket(importFinishedAt: string | null = null): void
 /** Counts imports, so a refit read across one is never recorded. */
 let importGeneration = 0;
 
-export async function runImport(csvDir: string): Promise<void> {
-  if (importState.importing) return;
-  let imported = false;
+/** What started an import: the GM (Import Now, choosing a save), the watcher (a new export), or the start-up's retry. */
+export type ImportTrigger = 'manual' | 'automatic' | 'recovery';
+
+/** A new export settled while an import was running: look again once it finishes. */
+let lookAgainAfterImport = false;
+
+/** Written once the post-import snapshots are taken, so a start-up can finish an import whose snapshots never ran. */
+const POST_IMPORT_PATH = path.join(DATA_DIR, 'post-import.json');
+
+/** The caches that depend on the league database, cleared at the swap so no request reads a cache of the previous import. */
+function clearLeagueCaches(): void {
+  clearStatCaches(); // league baselines are per-import
+  clearResultsCaches(); // and so are the league populations behind results percentiles
+  clearFarmResultsCaches(); // the farm's league populations, lines and club games
+  clearFarmUsageCaches(); // and who has been playing where
+  clearFieldingPopulationCache();
+  clearProductionCaches(); // what Player Value measured about the last export (schedules, rates, identity)
+  clearSaveIdentityCache(); // the save's identity is re-read from the new export
+  clearRosterReviewCalibrationCache(); // the roster review's yardsticks in force are re-read
+  clearScaleCache();
+  clearTwoWayCache();
+  resetTransactionLogCache();
+}
+
+/**
+ * Imports the export at `csvDir` (N3.5, D-061): the build runs in a worker on a new file, and the app reads the previous
+ * import, whole, until one rename swaps the new one in. `import-started`, `import-progress` and `import-finished` are
+ * published as before; after the swap the post-import hooks run (`postImport.ts`). A second call while one runs starts
+ * nothing (a new export that settled meanwhile is looked at again when this one finishes).
+ */
+export async function runImport(csvDir: string, trigger: ImportTrigger = 'manual'): Promise<void> {
+  if (importState.importing) {
+    if (trigger === 'automatic') lookAgainAfterImport = true;
+    return;
+  }
+  let imported: ImportResult | null = null;
   importState.importing = true;
   importGeneration += 1;
-  importRun.importing = true;
-  importRun.generation += 1;
   importState.lastError = null;
   importState.progress = null;
   const startedAt = new Date().toISOString();
@@ -308,60 +349,150 @@ export async function runImport(csvDir: string): Promise<void> {
   publish({ type: 'import-started', startedAt });
   const announceProgress = progressThrottle<ImportProgress>((progress) => publish({ type: 'import-progress', progress }));
   try {
-    importState.lastImport = await importCsvDir(csvDir, (step) => {
-      const progress: ImportProgress = { ...step, words: importWords(step) };
-      importState.progress = progress;
-      announceProgress(progress);
+    // The start-up upgrade of an earlier build's database uses the same next file: it finishes first
+    if (upgrading) await upgrading;
+    const config = loadConfig();
+    // Which kind of ratings this export carries, from the save's export settings, read now (D-061)
+    const save = locateSave({ csvDir, saveName: config.saveName, manualLgPath: config.csvDir === csvDir ? config.lgPath ?? null : null });
+    const lgPath = save.found ? save.lgPath : null;
+    imported = await importCsvDir(csvDir, {
+      onProgress: (step) => {
+        const progress: ImportProgress = { ...step, words: importWords(step) };
+        importState.progress = progress;
+        announceProgress(progress);
+      },
+      ratingModeFor: (exportWrittenAtMs) => readRatingMode(lgPath, exportWrittenAtMs),
+      leftOutNote,
+      // The swap: from this line every request reads the new import, and no cache of the old one survives it
+      afterSwap: (result) => {
+        importState.lastImport = result;
+        importedAt.value = result.finishedAt;
+        clearLeagueCaches();
+      },
     });
     // Whatever was waiting on disk has now been read
     clearPendingExport();
-    fs.writeFileSync(META_PATH, JSON.stringify(importState.lastImport));
-    clearStatCaches(); // league baselines are per-import
-    clearResultsCaches(); // and so are the league populations behind results percentiles
-    clearFarmResultsCaches(); // the farm's league populations, lines and club games
-    clearFarmUsageCaches(); // and who has been playing where
-    clearFieldingPopulationCache();
-    clearProductionCaches(); // what Player Value measured about the last export (schedules, rates, identity)
-    clearSaveIdentityCache(); // the save's identity is re-read from the new export
-    clearRosterReviewCalibrationCache(); // the roster review's yardsticks in force are re-read
-    importedAt.value = importState.lastImport.finishedAt;
-    try {
-      takeSnapshot(); // development-tracking snapshot, keyed by in-game date
-    } catch (err) {
-      console.error('[history] snapshot failed:', err);
-    }
-    try {
-      // Roster-state observation: a fallback and cross-check beside the CSV and
-      // the live transaction log, never a source of transactions itself. The
-      // live log is re-read first so the cross-check sees what OOTP has written
-      resetTransactionLogCache();
-      captureRosterStateSnapshot();
-    } catch (err) {
-      // Like scouting history, this must not make an otherwise good import fail
-      console.error('[history] roster-state snapshot failed:', err);
-    }
-    recordImportMarket(importState.lastImport.finishedAt);
-    console.log(
-      `[import] ${importState.lastImport.tables} tables, ${importState.lastImport.rows} rows imported`
-    );
-    clearScaleCache();
-    clearTwoWayCache();
-    autoGenerate();
-    imported = true;
     importState.interruptedSince = null;
     fs.rmSync(IMPORT_MARKER_PATH, { force: true });
   } catch (err) {
     importState.lastError = (err as Error).message;
-    console.error('[import] failed:', err);
+    console.error('[import] failed:', (err as Error).message);
+    // A refusal touched nothing (OOTP still writing, no room, an old players file, no files): nothing was interrupted,
+    // so the next start does not call it so (review nit 9). Any other failure keeps the marker and is retried at start.
+    if (err instanceof ImportRefused) fs.rmSync(IMPORT_MARKER_PATH, { force: true });
   } finally {
     importState.importing = false;
-    importRun.importing = false;
     importState.progress = null;
     publish({ type: 'import-finished', lastImport: importState.lastImport, error: importState.lastError, note: currentImportNote() });
   }
-  if (imported) refitAfterImport();
-  // The GM's first look after an import is a cached read (N3.5's post-import hook list will call it from there)
-  if (imported) void warmFrontOffice();
+  if (imported) void runPostImportHooks({ generation: importGeneration, importStartedAt: imported.startedAt, fresh: true });
+  if (lookAgainAfterImport) {
+    lookAgainAfterImport = false;
+    checkExport(csvDir);
+  }
+}
+
+/** The one-time upgrade of an earlier build's league database, while it runs (an import waits for it). */
+let upgrading: Promise<void> | null = null;
+
+/**
+ * At start-up, for a league database an earlier build imported (write-ahead-log mode, or without the indexes an import
+ * now builds): a converted copy is built in the import's worker and swapped in, the way an import is (N3.5 review,
+ * finding 1). The served file is never written in place, so a process stopped at any point leaves it as it was, and the
+ * leftover copy is removed at the next start. The pages keep reading the old file meanwhile. Never throws.
+ */
+export function upgradeLeagueInBackground(): Promise<void> {
+  if (upgrading) return upgrading;
+  upgrading = (async () => {
+    try {
+      const outcome = await upgradeLeagueDatabase(LEAGUE_DB_PATH, NEXT_DB_PATH);
+      await swapWhenFree(NEXT_DB_PATH, clearLeagueCaches);
+      console.log(`[import] brought the league database up to date in ${(outcome.ms / 1000).toFixed(1)}s (${outcome.indexes} indexes added)`);
+    } catch (err) {
+      fs.rmSync(NEXT_DB_PATH, { force: true });
+      console.error('[import] could not bring the league database up to date; it is served as it is:', (err as Error).message);
+    } finally {
+      upgrading = null;
+    }
+  })();
+  return upgrading;
+}
+
+/** Whether a settled export is one the app has not imported: its fingerprint differs from the last import's. */
+export function isNewExport(assessment: ExportAssessment, last: ImportResult | null = importState.lastImport): boolean {
+  if (!assessment.fingerprint) return false;
+  if (!last) return true;
+  if (last.exportFingerprint) return last.exportFingerprint !== assessment.fingerprint;
+  // An import from before N3.5 recorded no fingerprint: an export written after it started is newer
+  const startedAt = Date.parse(last.startedAt);
+  return assessment.newestMs !== null && Number.isFinite(startedAt) && assessment.newestMs > startedAt;
+}
+
+/*
+ * A settled export (`watcher.ts`): a new one is imported in the background when the GM has left automatic import on
+ * (the default, the owner's decision 1), else it is offered as before. Never while an import runs: that import looks
+ * again when it finishes.
+ */
+export function handleSettledExport(csvDir: string, assessment: ExportAssessment): void {
+  if (loadConfig().csvDir !== csvDir || !isNewExport(assessment)) return;
+  const settings = loadSettings();
+  if (settings.autoImport && settings.importAutomatically) {
+    if (importState.importing) lookAgainAfterImport = true;
+    else void runImport(csvDir, 'automatic');
+  } else {
+    notePendingExport();
+  }
+}
+onSettledExport(handleSettledExport);
+
+/*
+ * The post-import hooks, in order. The snapshots first (in a worker; they write history.db), then the storylines and
+ * briefing, then the refits (both at once, in their own workers; not awaited, so a later hook is not held up by them),
+ * then N4's Front Office warm-up.
+ */
+registerPostImportHook('snapshots', async (context) => {
+  const last = importState.lastImport;
+  const outcome = await snapshotsAfterImport({
+    importFinishedAt: last?.finishedAt ?? null,
+    importStartedAt: context.importStartedAt,
+    ratingMode: last?.ratingMode ?? null,
+  });
+  for (const error of outcome.errors) console.error('[history]', error);
+  // Recorded only for the import in force: an earlier import's hooks finishing late must not name it as done
+  if (importState.lastImport?.startedAt !== context.importStartedAt) return;
+  try {
+    fs.writeFileSync(POST_IMPORT_PATH, JSON.stringify({ importStartedAt: context.importStartedAt, snapshotsAt: new Date().toISOString() }));
+  } catch (err) {
+    console.error('[import] could not record the snapshots:', err);
+  }
+});
+registerPostImportHook('generations', () => autoGenerate());
+registerPostImportHook('refits', (context) => {
+  if (context.generation !== importGeneration) return;
+  void refitAfterImport();
+});
+// The GM's first look after an import is a cached read (N4's Front Office, built in its own worker)
+registerPostImportHook('frontOffice', () => void warmFrontOffice());
+
+/**
+ * At start-up: an import whose snapshots never ran (the server stopped between the swap and them) takes them now.
+ * Idempotent: every snapshot is keyed by its save and game date. Returns whether they were started.
+ */
+export function finishInterruptedPostImport(): boolean {
+  const last = importState.lastImport;
+  if (!last || !tableExists('players')) return false;
+  let done: { importStartedAt?: string } | null = null;
+  try {
+    done = JSON.parse(fs.readFileSync(POST_IMPORT_PATH, 'utf8'));
+  } catch {
+    done = null;
+  }
+  // An import from before N3.5 has no record; its snapshots were taken on the import's own thread
+  if (!done && !last.exportFingerprint) return false;
+  if (done?.importStartedAt === last.startedAt) return false;
+  console.warn('[import] the last import\'s snapshots were not taken; taking them now');
+  void runPostImportHooks({ generation: importGeneration, importStartedAt: last.startedAt, fresh: false });
+  return true;
 }
 
 api.get('/saves', (_req, res: Response<SaveInfo[]>) => {

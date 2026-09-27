@@ -75,6 +75,8 @@ function contract(
 export function buildFixture(): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ootp-fo-test-'));
   const db = new Database(path.join(dir, 'league.db'));
+  // A throwaway league: no syncs to disk while it is written (they cost seconds per file on Linux CI)
+  db.pragma('synchronous = OFF');
 
   db.exec(`
     CREATE TABLE leagues (

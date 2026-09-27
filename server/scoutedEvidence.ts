@@ -41,7 +41,8 @@ import { db, tableColumns, tableExists } from './db.js';
 import { ratingScaleMax } from './valuation.js';
 import { gloves, type Gloves, type PositionRating } from './gloves.js';
 import { parseGameDate } from './dataFreshness.js';
-import { currentSaveName, historyDb } from './history.js';
+import { currentRatingMode, currentSaveName, historyDb, modeFilter, snapshotModes } from './history.js';
+import { RATING_MODE_WORDS, type RatingMode, type RatingModeRecord } from './ratingMode.js';
 
 // ── Provenance ──────────────────────────────────────────────────────────
 
@@ -71,6 +72,39 @@ const FIELDING_PROVENANCE: EvidenceProvenance = {
   ...TOOL_PROVENANCE,
   source: 'exported_fielding_ratings',
 };
+
+/**
+ * Which kind of ratings the export carries (D-061): read from OOTP's export settings at the import, and recorded with
+ * it. The app reads the export's rating columns as the export gives them, whichever kind they are, and names the kind
+ * wherever a rating is shown, so a claim resting on a rating can say whose view it is. An import from before Pennant
+ * recorded the mode, or settings it could not read, is `unknown`: never assumed to be the scouts' view.
+ */
+export function exportRatingMode(): RatingModeRecord {
+  return currentRatingMode() ?? {
+    mode: 'unknown', additionalScouted: null, source: 'settings_missing',
+    reason: 'This import was made before Pennant recorded which kind of ratings the export carries.',
+  };
+}
+
+/** Where the ratings come from, for a claim's basis: the mode, a short name and a sentence. */
+export interface RatingSource {
+  mode: RatingMode;
+  /** "Your scouts' view", "True ratings", ... */
+  short: string;
+  /** The sentence a basis carries. */
+  text: string;
+}
+
+export function ratingSource(): RatingSource {
+  const record = exportRatingMode();
+  const words = RATING_MODE_WORDS[record.mode];
+  return { mode: record.mode, short: words.short, text: record.mode === 'unknown' && record.reason ? `${words.long} ${record.reason}` : words.long };
+}
+
+/** "Show no player ratings": the export carries none, so every rating reads as unknown (never a zero, never a default). */
+export function ratingsWithheld(): boolean {
+  return exportRatingMode().mode === 'none';
+}
 
 /**
  * Whose eyes these ratings are. The import encodes no viewer, so this is the
@@ -350,7 +384,7 @@ export class ScoutedAbilities {
 export function loadScoutedAbilities(playerIds: Iterable<number>): ScoutedAbilities {
   const ids = [...new Set(playerIds)].filter((id) => Number.isFinite(id));
   const out = new Map<number, ScoutedAbility>();
-  if (ids.length === 0 || !tableExists('players')) return new ScoutedAbilities(out);
+  if (ids.length === 0 || !tableExists('players') || ratingsWithheld()) return new ScoutedAbilities(out);
 
   const scale = ratingScale();
   const viewer = viewerContext();
@@ -456,6 +490,7 @@ const scalePosition = (rating: PositionRating, scale: RatingScale): PositionRati
  * column; it cannot be verified from the export.
  */
 export function scoutedGloves(playerId: number): Gloves | null {
+  if (ratingsWithheld()) return null;
   const profile = gloves(playerId);
   if (!profile) return null;
   const scale = ratingScale();
@@ -508,7 +543,7 @@ export function scoutedFieldingPopulation(leagueId: number, position: number): n
   if (hit) return hit;
   const out: number[] = [];
   const column = `fielding_rating_pos${position}`;
-  if (position >= 1 && position <= 9 && tableExists('players_fielding') && tableExists('teams') && tableColumns('players_fielding').includes(column)) {
+  if (!ratingsWithheld() && position >= 1 && position <= 9 && tableExists('players_fielding') && tableExists('teams') && tableColumns('players_fielding').includes(column)) {
     const scale = ratingScale();
     const rows = db.prepare(
       `SELECT f."${column}" AS grade
@@ -618,7 +653,7 @@ const hitterColumns = (): string[] => {
 export function loadScoutedHitterProfiles(playerIds: Iterable<number>): Map<number, ScoutedHitterProfile> {
   const ids = [...new Set(playerIds)].filter((id) => Number.isFinite(id));
   const out = new Map<number, ScoutedHitterProfile>();
-  if (ids.length === 0 || !tableExists('players_batting')) return out;
+  if (ids.length === 0 || !tableExists('players_batting') || ratingsWithheld()) return out;
   const present = new Set(tableColumns('players_batting'));
   const select = hitterColumns().map((c) => (present.has(c) ? `b."${c}" AS "${c}"` : `NULL AS "${c}"`));
   const scale = ratingScale();
@@ -674,7 +709,7 @@ export interface ScoutedGloveAtPosition {
 export function loadScoutedGlovesAtPosition(playerIds: Iterable<number>): Map<number, ScoutedGloveAtPosition> {
   const ids = [...new Set(playerIds)].filter((id) => Number.isFinite(id));
   const out = new Map<number, ScoutedGloveAtPosition>();
-  if (ids.length === 0 || !tableExists('players') || !tableExists('players_fielding')) return out;
+  if (ids.length === 0 || !tableExists('players') || !tableExists('players_fielding') || ratingsWithheld()) return out;
   const present = new Set(tableColumns('players_fielding'));
   if (!present.has('player_id') || !tableColumns('players').includes('position')) return out;
   const select: string[] = [];
@@ -735,6 +770,8 @@ export interface ScoutedObservation {
    * stealing rating, so those read unknown there). Null for a pitcher or a player of unknown kind.
    */
   readonly hitter: ScoutedHitterProfile | null;
+  /** Which kind of ratings the snapshot holds (D-061); null when it was taken before Pennant recorded the kind. */
+  readonly ratingMode: RatingMode | null;
 }
 
 const SNAPSHOT_TOOL_COLUMN: Record<HitterTool, string> = { contact: 'con', gap: 'gap', power: 'pow', eye: 'eye', avoidK: 'avk' };
@@ -778,8 +815,12 @@ export function loadScoutedObservations(playerIds: Iterable<number> | null = nul
   ].join(', ');
   const scale = ratingScale();
   const viewer = viewerContext();
+  // A snapshot in another known kind of ratings than today's export is a switch, never development: left out (D-061)
+  const { excluded } = modeFilter();
+  const modes = snapshotModes();
   const take = (rows: Array<Record<string, unknown>>) => {
     for (const row of rows) {
+      if (excluded.has(String(row.game_date))) continue;
       const gameDate = parseGameDate(row.game_date ?? null);
       const playerId = Number(row.player_id);
       if (!gameDate || !Number.isFinite(playerId)) continue;
@@ -804,6 +845,7 @@ export function loadScoutedObservations(playerIds: Iterable<number> | null = nul
         hitter: kind === 'hitter'
           ? hitterProfileFromRow(playerId, Object.fromEntries(Object.entries(SNAPSHOT_HITTER_COLUMNS).map(([exported, kept]) => [exported, row[kept]])), scale)
           : null,
+        ratingMode: modes.get(String(row.game_date)) ?? null,
       });
       out.set(playerId, list);
     }

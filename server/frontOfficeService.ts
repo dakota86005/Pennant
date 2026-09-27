@@ -26,10 +26,10 @@ import { Worker } from 'node:worker_threads';
 import { DATA_DIR } from './config.js';
 import type { DeptId } from './contract/presentation.js';
 import { currentSaveLocation } from './dataStatus.js';
-import { tableExists } from './db.js';
+import { databaseGeneration, tableExists } from './db.js';
 import { buildFrontOffice, buildTrail, type BuildRequest, type BuildResult, type TrailRequest } from './frontOfficeBuild.js';
 import { catalogClubs } from './org.js';
-import { importRun, importedAt } from './playerStateRoutes.js';
+import { importedAt } from './playerStateRoutes.js';
 import { adoptAuthored } from './presentation/claim.js';
 import { REPORTING } from './presentation/frontOffice/desk.js';
 import type { ClaimTrail, DepartmentReport, FrontOfficeSummary } from './presentation/frontOffice/types.js';
@@ -211,8 +211,9 @@ async function current(orgId: number): Promise<Built> {
   const pending = building.get(key);
   if (pending) return pending;
   const startedRevision = revision;
-  const startedGeneration = importRun.generation;
-  const startedImporting = importRun.importing;
+  // The served database this build reads (N3.5): an import builds its own file and changes what is served only at its
+  // swap, so a build is kept unless a swap happened while it ran (its worker may then have read either file)
+  const startedGeneration = databaseGeneration();
   const stamp = stampOf(key);
   const job = run<BuildResult>({ kind: 'build', request: { orgId, importStamp: importedAt.value, reportStamp: stamp } })
     .then((result) => {
@@ -220,9 +221,8 @@ async function current(orgId: number): Promise<Built> {
       const built: Built = {
         key, stamp, orgId, summary: result.summary, reports: new Map(result.reports), majorLeague: result.majorLeague, ms: result.ms,
       };
-      // Kept only when nothing moved under it: no invalidation, no import running or started, the same inputs
-      const keep = revision === startedRevision && !startedImporting && !importRun.importing
-        && importRun.generation === startedGeneration && inputsKey(orgId) === key;
+      // Kept only when nothing moved under it: no invalidation, no swap to another import, the same inputs
+      const keep = revision === startedRevision && databaseGeneration() === startedGeneration && inputsKey(orgId) === key;
       if (keep) {
         builds.delete(key);
         builds.set(key, built);
@@ -327,11 +327,10 @@ export async function claimTrail(key: string): Promise<ClaimTrail> {
 /**
  * Builds the club's Front Office in the background so the GM's first look is a cached read: at start, after every
  * import (N3.5's post-import hook list registers it) and after a calibration changes. `org` defaults to the served club
- * (configured, else the human's). Nothing while an import writes (the build would not be kept). Never throws.
+ * (configured, else the human's). An import running meanwhile does not matter: it changes nothing served until its swap. Never throws.
  */
 export async function warmFrontOffice(org: number | 'automatic' = 'automatic'): Promise<void> {
   try {
-    if (importRun.importing) return;
     const orgId = org === 'automatic' ? currentOrganization()?.id ?? null : org;
     if (orgId === null || !tableExists('players') || !tableExists('teams')) return;
     const started = performance.now();

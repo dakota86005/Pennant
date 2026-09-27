@@ -40,7 +40,7 @@ describe('the level and each source, in a sentence', () => {
     expect(view.subtitle).toBe('May 9, 2040 · Up to date');
     expect(view.subtitleHint).toBe('May 9, 2040 · Up to date');
     expect(view.sources.map((r) => [r.id, r.cells.state.display])).toEqual([
-      ['league', 'Current'], ['transactions', 'Through May 8, 2040'], ['save', 'Through May 8, 2040'], ['evidence', 'Up to date'],
+      ['league', 'Current'], ['transactions', 'Through May 8, 2040'], ['save', 'Through May 8, 2040'], ['ratings', 'Not known'], ['evidence', 'Up to date'],
     ]);
   });
 
@@ -144,5 +144,36 @@ describe('dates and places', () => {
       { label: 'Where Pennant looked', value: 'Found above the export folder.' },
       { label: 'What the log reader said', value: 'The copy lacks the transactions table.' },
     ]));
+  });
+});
+
+describe('what the export carries and what the import left out (N3.5, D-061)', () => {
+  const withImport = (imported: DataStatus['import']): DataStatus => ({ ...current, import: imported });
+
+  it('says which kind of ratings the export carries, and why it is not known when it is not', () => {
+    const real = dataStatusView(withImport({ ratingMode: { mode: 'real', additionalScouted: false, source: 'export_settings', reason: null }, leftOut: [] }));
+    expect(real.sources.find((r) => r.id === 'ratings')!.cells.state).toMatchObject({ display: 'True ratings', hint: expect.stringMatching(/Show real player ratings/) });
+    const scouted = dataStatusView(withImport({ ratingMode: { mode: 'scouted', additionalScouted: null, source: 'export_settings', reason: null }, leftOut: [] }));
+    expect(scouted.sources.find((r) => r.id === 'ratings')!.cells.state.display).toBe('Your scouts\' view');
+    const unknown = dataStatusView(withImport({ ratingMode: { mode: 'unknown', additionalScouted: null, source: 'settings_missing', reason: 'The save has no export settings file, so the kind of ratings isn\'t known.' }, leftOut: [] }));
+    expect(unknown.sources.find((r) => r.id === 'ratings')!.cells.state).toMatchObject({ display: 'Not known', tone: 'caution' });
+    expect(unknown.headline.basis.unknown).toContain('The save has no export settings file, so the kind of ratings isn\'t known.');
+  });
+
+  it('names the files the import left out in one sentence, each file and why in its basis, and nothing when none was', () => {
+    expect(dataStatusView(withImport({ ratingMode: null, leftOut: [] })).leftOut).toBeNull();
+    const view = dataStatusView(withImport({
+      ratingMode: null,
+      leftOut: [
+        { table: 'players_game_batting', file: 'players_game_batting.csv', reason: 'stale', writtenAt: '2040-06-01T12:00:00.000Z', kept: true, keptFrom: '2040-06-01T12:05:00.000Z' },
+        { table: 'coaches', file: 'coaches.csv', reason: 'unreadable', writtenAt: '2040-07-01T11:00:00.000Z', kept: false, keptFrom: null },
+      ],
+    }));
+    expect(view.leftOut!.text).toMatch(/^OOTP didn't write game logs \(hitting\) this time, so Pennant kept the figures from the import of .+, marked as older\. Pennant couldn't read coaches and staff in this export, so it has none for now\.$/);
+    expect(view.leftOut!.basis.because.map((b) => b.value)).toEqual([
+      expect.stringMatching(/^players_game_batting\.csv: not rewritten .*figures kept from the import of/),
+      'coaches.csv: could not be read',
+    ]);
+    for (const { path, text } of shownStrings(view)) expect(bannedIn(text, [BANNED_JARGON, BANNED_VERDICTS]), `${path}: ${text}`).toEqual([]);
   });
 });
