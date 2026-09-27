@@ -515,8 +515,11 @@ export function controlSummaryOf(control: ControlTimeline): TradeControlSummary 
 export interface TradeProduction {
   status: 'projected' | 'unknown';
   reason: string | null;
-  /** This season: the rest of it where it is under way, else the whole season (the 80% band). */
-  now: { season: number; part: 'rest_of_season' | 'season'; wins: WinsBand } | null;
+  /**
+   * This season: the rest of it where it is under way, else the whole season (the 80% band), with its 50% band inside
+   * it (`inner`; null on a valuation kept from before the rest of the season's was served).
+   */
+  now: { season: number; part: 'rest_of_season' | 'season'; wins: WinsBand; inner: WinsBand | null } | null;
   /** Next season, where established; else its reason. */
   next: { season: number; wins: WinsBand } | null;
   nextReason: string | null;
@@ -529,8 +532,8 @@ export function productionHeadlineOf(p: PlayerProduction): TradeProduction {
   }
   const first = p.seasons[0];
   const now = first.remaining
-    ? { season: first.season, part: 'rest_of_season' as const, wins: first.remaining }
-    : { season: first.season, part: 'season' as const, wins: first.wins };
+    ? { season: first.season, part: 'rest_of_season' as const, wins: first.remaining, inner: first.remainingInner ?? null }
+    : { season: first.season, part: 'season' as const, wins: first.wins, inner: first.inner };
   const nextSeason = p.seasons.find((s) => s.season === first.season + 1) ?? null;
   const unestablished = p.notEstablished.find((s) => s.season === first.season + 1) ?? null;
   return {

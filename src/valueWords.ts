@@ -70,6 +70,7 @@ export function totalWords(total: SurplusTotal | null | undefined, unit: 'dollar
 /** When his control ends, in a phrase: "Free agent after 2028", "Free agent after 2026 or 2027", "Controlled past 2032". */
 export function controlEndWords(end: ControlEnd): { text: string; short: string; known: boolean } {
   if (end.high === null && end.laterUnknown && end.low !== null) return { text: `Free agent after ${end.low} at the earliest`, short: `${end.low} or later`, known: true };
+  if (end.high === null && end.heldThrough != null) return { text: `Controlled through ${end.heldThrough} at least`, short: `${end.heldThrough} or later`, known: true };
   if (end.high === null) return { text: 'End of control not known', short: 'not known', known: false };
   if (end.pastHorizon) {
     const out = end.optOutBefore !== null ? `, unless he opts out before ${end.optOutBefore}` : '';
