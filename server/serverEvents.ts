@@ -4,6 +4,7 @@ import type { ImportNote } from './presentation/importWords.js';
 import type { JobStatus } from './jobs.js';
 import type { ServerStatus } from './api.js';
 import type { Integer } from './contract/primitives.js';
+import type { SavePlayedElsewhere } from './saveDiscovery.js';
 
 /**
  * What the server tells a connected app as it happens, over `GET /api/v2/events` (server-sent events, D-055).
@@ -23,7 +24,8 @@ export type ServerEvent =
   | ImportFinishedEvent
   | ExportPendingEvent
   | JobEvent
-  | FrontOfficeUpdatedEvent;
+  | FrontOfficeUpdatedEvent
+  | SavePlayedElsewhereEvent;
 
 /** The first event on every stream: the `/api/status` snapshot, so nothing is missed between loading and listening. */
 export interface HelloEvent { type: 'hello'; status: ServerStatus }
@@ -46,6 +48,13 @@ export interface JobEvent { type: 'job'; kind: string; orgId: Integer; status: J
  * `reportStamp`. The Mac app's Front Office store reloads on it (a cached read).
  */
 export interface FrontOfficeUpdatedEvent { type: 'front-office-updated'; orgId: Integer; reportStamp: string }
+/**
+ * The minute's look at the saves (D-063) changed what it has to say: another save (or a newer OOTP version's) has been
+ * played since the chosen one, the chosen save has gone or come back, or the notice cleared. The payload is the
+ * `savePlayedElsewhere` `/api/status` serves (null once nothing is played since). Sent only when the notice changes,
+ * never on every look. The app shows it; Pennant never switches by itself.
+ */
+export interface SavePlayedElsewhereEvent { type: 'save-played-elsewhere'; savePlayedElsewhere: SavePlayedElsewhere | null }
 
 type Listener = (event: ServerEvent) => void;
 const listeners = new Set<Listener>();

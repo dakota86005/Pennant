@@ -13,6 +13,7 @@ import path from 'node:path';
 import { loadConfig } from './config.js';
 import { locateSave } from './ootpSave.js';
 import { describeSave, detectSaves, saveId, versionFromPath, type SaveInfo } from './paths.js';
+import { publish } from './serverEvents.js';
 import { timestampWords } from './timeWords.js';
 
 /**
@@ -202,6 +203,40 @@ export function playedElsewhere(saves: readonly SaveInfo[], chosen: SaveInfo | '
 let lastScan: { at: number; saves: SaveInfo[]; notice: SavePlayedElsewhere | null } | null = null;
 let scanTimer: ReturnType<typeof setTimeout> | null = null;
 let scanning = false;
+/**
+ * What the notice said when it was last announced on the event stream (`save-played-elsewhere`): its kind and the save
+ * it names, or nothing. Kept apart from the last look, so a look after the chosen save changed still announces a
+ * notice that cleared. A look that finds the same notice announces nothing.
+ */
+let announced = '';
+
+/** What tells one notice from another: the kind and the save it names; nothing for none. */
+function noticeKey(notice: SavePlayedElsewhere | null): string {
+  return notice ? `${notice.kind}:${notice.save.id}` : '';
+}
+
+/**
+ * The configured save's id (D-063: the `<save>.lg` folder's real path, hashed, as the save list identifies it; the
+ * export folder when no save folder encloses it), or null with no save chosen. Memoized on the configuration, so the
+ * status can serve it on every poll without locating the save again; the Mac app keys the payload it keeps across
+ * launches on it, so a payload from another save is never drawn.
+ */
+let configuredId: { signature: string; id: string | null } | null = null;
+export function configuredSaveId(config = loadConfig()): string | null {
+  const signature = `${config.csvDir ?? ''}|${config.saveName ?? ''}|${config.lgPath ?? ''}`;
+  if (configuredId?.signature === signature) return configuredId.id;
+  let id: string | null = null;
+  if (config.csvDir) {
+    const location = locateSave({ csvDir: config.csvDir, saveName: config.saveName, manualLgPath: config.lgPath ?? null });
+    // A save folder that can't be seen just now keeps its identity: OOTP's layout names it
+    const csv = path.resolve(config.csvDir);
+    const byLayout = path.basename(csv).toLowerCase() === 'csv' && path.basename(path.dirname(csv)).toLowerCase() === 'import_export'
+      && path.dirname(path.dirname(csv)).toLowerCase().endsWith('.lg') ? path.dirname(path.dirname(csv)) : null;
+    id = saveId(location.lgPath ?? byLayout ?? csv);
+  }
+  configuredId = { signature, id };
+  return id;
+}
 
 /**
  * Looks at the saves now (a few hundred `stat` calls; never on a request's path: `/api/status` serves the last look),
@@ -229,6 +264,12 @@ export function scanSaves(): SavePlayedElsewhere | null {
       }
     }
     lastScan = { at: now, saves, notice };
+    // Announced only when it changes: first seen, another save, the chosen one gone or back, or cleared
+    const key = noticeKey(notice);
+    if (key !== announced) {
+      announced = key;
+      publish({ type: 'save-played-elsewhere', savePlayedElsewhere: notice });
+    }
   } catch (err) {
     console.error('[saves] could not look at the saves:', err);
   } finally {
@@ -351,6 +392,8 @@ export function humanClubsInExport(csvDir: string): HumanClub[] | null {
 export function resetSaveDiscovery(): void {
   stopSaveWatch();
   lastScan = null;
+  announced = '';
+  configuredId = null;
 }
 
 /** When a save was last played, in words, for a sentence ("Sep 22, 2026, 4:52 PM"). */

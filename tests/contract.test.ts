@@ -24,6 +24,10 @@ import {
   type JargonException,
 } from './bannedJargon';
 import { buildSave, type BuiltSave } from './syntheticSave';
+import { detectSaves } from '../server/paths.js';
+import { discoveryClock, resetSaveDiscovery, scanSaves } from '../server/saveDiscovery.js';
+import { subscribe, type ServerEvent } from '../server/serverEvents.js';
+import { APP_STORE_27, PretendHome } from './saveHomeFixture';
 
 /**
  * The presentation contract holds (D-056, SWIFTUI_REBUILD.md section 4.3): the committed spec is a fresh build, every
@@ -241,15 +245,26 @@ function stable(value: unknown): unknown {
     // A build's stamp hashes the data folder's file times, which differ on every run
     if (key === 'reportStamp') return 'rstamp';
     // A served time in words is written in the host's zone; the fixture keeps a fixed one
-    if (key === 'csvLastModifiedText') return 'Jul 1, 2040, 12:00 PM';
+    if (key === 'csvLastModifiedText' || key === 'lastPlayedText') return PLAYED_WORDS;
     let text = node;
     for (const root of roots) {
       text = text.split(root).join('/tmp');
     }
-    return text.replace(/\/(ootp-fo-test|pennant-contract-home|pennant-contract-export)-[A-Za-z0-9]+/g, '/$1');
+    return text.replace(/\/(ootp-fo-test|pennant-contract-home|pennant-contract-export|pennant-home)-[A-Za-z0-9]+/g, '/$1');
   };
-  return walk(value, '');
+  // A "played since" notice writes the save's last-played words into its sentence: the same fixed words there
+  const played = (node: unknown): unknown => {
+    if (Array.isArray(node)) return node.map(played);
+    if (!node || typeof node !== 'object') return node;
+    const record = Object.fromEntries(Object.entries(node).map(([k, v]) => [k, played(v)]));
+    const words = (record.save as { lastPlayedText?: unknown } | undefined)?.lastPlayedText;
+    if (typeof words === 'string' && typeof record.text === 'string') record.text = record.text.split(words).join(PLAYED_WORDS);
+    return record;
+  };
+  return walk(played(value), '');
 }
+
+const PLAYED_WORDS = 'Jul 1, 2040, 12:00 PM';
 
 /** Compares a captured payload with its committed fixture, or writes it (`npm run contract:fixtures`). */
 function fixture(name: string, content: string): void {
@@ -605,6 +620,36 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     fixture('events.sse', kept.map((e) => `event: ${e.name}\ndata: ${JSON.stringify(stable(e.data))}\n\n`).join(''));
   }, SLOW);
 
+  it('announces a save played since the chosen one on the event stream, in the strict form (N6, Stage B1)', () => {
+    const previous = loadConfig();
+    const pretend = new PretendHome();
+    const clock = { ...discoveryClock };
+    const heard: ServerEvent[] = [];
+    const unsubscribe = subscribe((event) => { if (event.type === 'save-played-elsewhere') heard.push(event); });
+    try {
+      const chosen = pretend.save(APP_STORE_27, 'Chosen', { playedHoursAgo: 10 });
+      pretend.save(APP_STORE_27, 'Played Since', { playedHoursAgo: 1 });
+      saveConfig({ csvDir: chosen.csvDir, saveName: 'Chosen' });
+      discoveryClock.saves = () => detectSaves(pretend.dir);
+      resetSaveDiscovery();
+      const notice = scanSaves();
+      expect(notice?.save.name).toBe('Played Since');
+      expect(heard).toHaveLength(1);
+      expect(heard[0]).toEqual({ type: 'save-played-elsewhere', savePlayedElsewhere: notice });
+      const validate = validator('ServerEvent');
+      expect(validate(heard[0]) ? [] : validate.errors).toEqual([]);
+      expect(bannedInPayload(heard[0])).toEqual([]);
+      // The status serves the chosen save's id, in the save list's form (D-063)
+      fixture('events-save-played-elsewhere.sse', `event: save-played-elsewhere\ndata: ${JSON.stringify(stable(heard[0]))}\n\n`);
+    } finally {
+      unsubscribe();
+      Object.assign(discoveryClock, clock);
+      resetSaveDiscovery();
+      saveConfig(previous);
+      pretend.cleanup();
+    }
+  });
+
   it('holds the server to the strict form: an undescribed field or an unlisted code fails', () => {
     const status = validator('ImportProgress');
     const good = {
@@ -635,6 +680,17 @@ describe('the committed fixtures of finding the save (N3.5 B2, which the Mac sta
     const validate = validator(type);
     const body = JSON.parse(fs.readFileSync(at, 'utf8'));
     expect(validate(body) ? [] : validate.errors).toEqual([]);
+  }, SLOW);
+
+  it('events-save-played-elsewhere.sse is there and holds a ServerEvent in the strict form (N6, Stage B1)', () => {
+    const at = path.join(FIXTURES, 'events-save-played-elsewhere.sse');
+    expect(fs.existsSync(at), 'events-save-played-elsewhere.sse is missing: run npm run contract:fixtures').toBe(true);
+    const data = /^data: (.*)$/m.exec(fs.readFileSync(at, 'utf8'))?.[1] ?? '';
+    const event = JSON.parse(data);
+    expect(event.type).toBe('save-played-elsewhere');
+    expect(event.savePlayedElsewhere?.kind).toBe('otherSave');
+    const validate = validator('ServerEvent');
+    expect(validate(event) ? [] : validate.errors).toEqual([]);
   }, SLOW);
 });
 

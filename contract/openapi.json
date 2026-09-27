@@ -4960,6 +4960,24 @@
         ],
         "description": "Another save played since the one chosen, on `/api/status` (and so on the event stream's `hello`). No event of its own yet: a new member of the event union moves the Swift tests' positional reads, so it waits for the Mac stage."
       },
+      "SavePlayedElsewhereEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "save-played-elsewhere"
+            ]
+          },
+          "savePlayedElsewhere": {
+            "$ref": "#/components/schemas/SavePlayedElsewhere"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "description": "The minute's look at the saves (D-063) changed what it has to say: another save (or a newer OOTP version's) has been played since the chosen one, the chosen save has gone or come back, or the notice cleared. The payload is the `savePlayedElsewhere` `/api/status` serves (null once nothing is played since). Sent only when the notice changes, never on every look. The app shows it; Pennant never switches by itself."
+      },
       "SaveSourceRequest": {
         "type": "object",
         "properties": {
@@ -5092,6 +5110,9 @@
             "$ref": "#/components/schemas/FrontOfficeUpdatedEvent"
           },
           {
+            "$ref": "#/components/schemas/SavePlayedElsewhereEvent"
+          },
+          {
             "$ref": "#/components/schemas/UnknownServerEvent"
           }
         ],
@@ -5183,6 +5204,13 @@
           "savePlayedElsewhere": {
             "$ref": "#/components/schemas/SavePlayedElsewhere",
             "description": "Another save (or a newer OOTP version's) played since the chosen one, once OOTP has finished saving it, with the sentence and the save to switch to; null when there is none (N3.5 Stage B2, D-063). Pennant never switches by itself."
+          },
+          "saveId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The chosen save's id (D-063: its folder's real path, hashed, as the save list identifies it), or null with no save chosen. The Mac app keys the Morning Report it keeps across launches on it, so another save's is never drawn."
           }
         },
         "required": [
@@ -5199,7 +5227,8 @@
           "exportPending",
           "logoToken",
           "ratingScaleMax",
-          "reportStamp"
+          "reportStamp",
+          "saveId"
         ],
         "description": "What `/api/status` serves, and the snapshot `/api/v2/events` opens with (described in `contract/openapi.json`)."
       },

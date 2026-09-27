@@ -28,6 +28,7 @@ export type {
   ExportPendingEvent,
   JobEvent,
   FrontOfficeUpdatedEvent,
+  SavePlayedElsewhereEvent,
 } from '../serverEvents.js';
 export type { ImportProgress, ImportResult, ImportWords } from '../importer.js';
 export type { ImportNote } from '../presentation/importWords.js';

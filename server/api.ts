@@ -13,7 +13,7 @@ import { readRatingMode } from './ratingMode.js';
 import { registerPostImportHook, runPostImportHooks } from './postImport.js';
 import { snapshotsAfterImport } from './importSnapshots.js';
 import { currentHistoryKey } from './historyIdentity.js';
-import { currentPlayedElsewhere, forgetSaveScan, humanClubsInExport, pickSave, saveLabel, type SavePlayedElsewhere } from './saveDiscovery.js';
+import { configuredSaveId, currentPlayedElsewhere, forgetSaveScan, humanClubsInExport, pickSave, saveLabel, type SavePlayedElsewhere } from './saveDiscovery.js';
 import { saveDiscoveryView, type SaveDiscovery } from './presentation/saveWords.js';
 import { assertAuthored } from './presentation/claim.js';
 import type { Claim } from './contract/presentation.js';
@@ -615,6 +615,11 @@ export interface ServerStatus {
    * sentence and the save to switch to; null when there is none (N3.5 Stage B2, D-063). Pennant never switches by itself.
    */
   savePlayedElsewhere: SavePlayedElsewhere | null;
+  /**
+   * The chosen save's id (D-063: its folder's real path, hashed, as the save list identifies it), or null with no save
+   * chosen. The Mac app keys the Morning Report it keeps across launches on it, so another save's is never drawn.
+   */
+  saveId: string | null;
 }
 
 /** A request the server accepted, with nothing more to say. */
@@ -711,6 +716,8 @@ export function statusSnapshot(): ServerStatus {
     reportStamp: currentReportStamp(),
     // The last look at the saves (`saveDiscovery.ts`), never a scan on this request's path
     savePlayedElsewhere: currentPlayedElsewhere(),
+    // Memoized on the configuration: no save is located on this request's path
+    saveId: configuredSaveId(config),
     /*
      * The scale OOTP is set to show ratings on, read off the save. Bars used
      * to divide by eighty regardless, so a 5 on the 1-to-5 scale drew at six

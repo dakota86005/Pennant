@@ -1,7 +1,8 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { loadConfig, saveConfig, type AppConfig } from '../server/config.js';
-import { detectSaves } from '../server/paths.js';
-import { currentPlayedElsewhere, discoveryClock, resetSaveDiscovery, scanSaves, startSaveWatch } from '../server/saveDiscovery.js';
+import { detectSaves, saveId } from '../server/paths.js';
+import { configuredSaveId, currentPlayedElsewhere, discoveryClock, resetSaveDiscovery, scanSaves, startSaveWatch } from '../server/saveDiscovery.js';
+import { subscribe, type ServerEvent } from '../server/serverEvents.js';
 import { APP_STORE_27, DIRECT_28, HOME_APP_SUPPORT_27, PretendHome } from './saveHomeFixture';
 import request from './request';
 
@@ -83,6 +84,46 @@ describe('a save played since the chosen one', () => {
     const unknown = home.save(APP_STORE_27, 'Never saved', { playedHoursAgo: null, exportedHoursAgo: 1 });
     saveConfig({ csvDir: unknown.csvDir, saveName: 'Never saved' });
     expect(scanSaves()).toBeNull();
+  });
+
+  it('is announced on the event stream when the look first sees it, not on every look, and once more when it clears (N6 B1)', async () => {
+    const { home, at } = world();
+    const chosen = home.save(APP_STORE_27, 'Chosen', { playedHoursAgo: 10 });
+    const other = home.save(APP_STORE_27, 'RIGHTS-EXP', { playedHoursAgo: 20 / 3600 });
+    saveConfig({ csvDir: chosen.csvDir, saveName: 'Chosen' });
+    const heard: ServerEvent[] = [];
+    const unsubscribe = subscribe((event) => { if (event.type === 'save-played-elsewhere') heard.push(event); });
+    try {
+      // Nothing to say yet (OOTP may still be saving it): nothing announced
+      expect(scanSaves()).toBeNull();
+      expect(heard).toEqual([]);
+      at(45_000);
+      const notice = scanSaves()!;
+      expect(heard).toHaveLength(1);
+      expect(heard[0]).toEqual({ type: 'save-played-elsewhere', savePlayedElsewhere: notice });
+      // The same notice on the next looks: announced once
+      at(90_000);
+      scanSaves();
+      at(150_000);
+      scanSaves();
+      expect(heard).toHaveLength(1);
+      // The GM switched to it: the notice clears, and the clearing is announced (null, as the status serves it)
+      saveConfig({ csvDir: other.csvDir, saveName: 'RIGHTS-EXP' });
+      expect(scanSaves()).toBeNull();
+      expect(heard).toHaveLength(2);
+      expect(heard[1]).toEqual({ type: 'save-played-elsewhere', savePlayedElsewhere: null });
+      // The status serves the chosen save's id (D-063), the same on every poll, and it follows the choice
+      const status = await request('/api/status');
+      expect(status.saveId).toMatch(/^[0-9a-f]{16}$/);
+      expect(status.saveId).toBe(saveId(other.lg));
+      expect(notice.save.id).toBe(saveId(other.lg));
+      expect((await request('/api/status')).saveId).toBe(status.saveId);
+      expect(configuredSaveId()).toBe(saveId(other.lg));
+      saveConfig({ csvDir: null, saveName: null });
+      expect((await request('/api/status')).saveId).toBeNull();
+    } finally {
+      unsubscribe();
+    }
   });
 
   it('looks again by itself once a save played since would have settled', () => {
