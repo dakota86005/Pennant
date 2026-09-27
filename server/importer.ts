@@ -92,6 +92,8 @@ export interface PreviousImport {
   csvDir: string | null;
   /** For each table it carried over from an import before it, when those rows were imported. */
   keptFrom: Record<string, string>;
+  /** When OOTP wrote the newest file of the export it read (whole milliseconds), or null (N3.5 Stage B2). */
+  exportWrittenAtMs?: number | null;
 }
 
 export interface ImportOptions {
@@ -161,15 +163,16 @@ export function previousFromDatabase(): PreviousImport | null {
     importedAt: typeof record.startedAt === 'string' ? record.startedAt : null,
     csvDir: typeof record.csvDir === 'string' ? record.csvDir : null,
     keptFrom: Object.fromEntries(Object.entries(keptFrom).filter(([t, at]) => carried.has(t) && typeof at === 'string')) as Record<string, string>,
+    exportWrittenAtMs: typeof record.exportWrittenAt === 'string' && Number.isFinite(Date.parse(record.exportWrittenAt)) ? Date.parse(record.exportWrittenAt) : null,
   };
 }
 
 /** Waits until the export is quiet (OOTP has finished writing), reporting `waiting`; refuses after the timeout. */
-async function settledExport(csvDir: string, onProgress?: (p: ImportStep) => void): Promise<ExportAssessment> {
+async function settledExport(csvDir: string, importedWrittenAtMs: number | null, onProgress?: (p: ImportStep) => void): Promise<ExportAssessment> {
   const started = Date.now();
   for (;;) {
     const now = Date.now();
-    const a = assessExport(csvDir, now);
+    const a = assessExport(csvDir, now, importedWrittenAtMs);
     if (a.files.length === 0) throw new ImportRefused(`No .csv files found in ${csvDir}`, 'no_files');
     if (a.settled) return a;
     if (now - started >= importTiming.settleTimeoutMs) {
@@ -191,8 +194,10 @@ export async function importCsvDir(csvDir: string, onProgressOrOptions?: ((p: Im
   const started = performance.now();
   const previous = options.previous === undefined ? previousFromDatabase() : options.previous;
 
+  // When the newest file of the last import of this same folder was written: a file no newer was not rewritten since
+  const importedWrittenAtMs = previous?.csvDir === csvDir ? previous.exportWrittenAtMs ?? null : null;
   for (let attempt = 1; ; attempt++) {
-    const assessment = await settledExport(csvDir, options.onProgress);
+    const assessment = await settledExport(csvDir, importedWrittenAtMs, options.onProgress);
     const ratingMode = options.ratingModeFor ? options.ratingModeFor(assessment.newestMs) : options.ratingMode ?? null;
     const staleRequiredTables = staleRequired(assessment);
     if (staleRequiredTables.length > 0) {
@@ -261,7 +266,7 @@ export async function importCsvDir(csvDir: string, onProgressOrOptions?: ((p: Im
      * file appearing, is caught here and the export is read again; the per-file checks alone could not see a file the
      * build had already finished with. (N3.5 review, finding 2.)
      */
-    const now = assessExport(csvDir);
+    const now = assessExport(csvDir, Date.now(), importedWrittenAtMs);
     if (now.folderFingerprint !== assessment.folderFingerprint || !now.settled) {
       fs.rmSync(NEXT_DB_PATH, { force: true });
       if (attempt < importTiming.attempts) {

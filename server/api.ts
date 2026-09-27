@@ -7,7 +7,7 @@ import { DATA_DIR, loadConfig, saveConfig } from './config.js';
 import { diskSpace, importCsvDir, ImportRefused, type ImportProgress, type ImportResult } from './importer.js';
 import { upgradeLeagueDatabase } from './importBuild.js';
 import { checkExport, clearPendingExport, notePendingExport, onSettledExport, pendingExport, startWatcher } from './watcher.js';
-import type { ExportAssessment } from './exportFiles.js';
+import { importedExport, type ExportAssessment } from './exportFiles.js';
 import { locateSave } from './ootpSave.js';
 import { readRatingMode } from './ratingMode.js';
 import { registerPostImportHook, runPostImportHooks } from './postImport.js';
@@ -476,6 +476,14 @@ export function handleSettledExport(csvDir: string, assessment: ExportAssessment
   }
 }
 onSettledExport(handleSettledExport);
+
+// The watcher's judgement knows the last import of the folder it looks at: a file no newer was not rewritten since
+importedExport.writtenAtMs = (csvDir) => {
+  const last = importState.lastImport;
+  if (!last?.exportWrittenAt || last.csvDir !== csvDir) return null;
+  const at = Date.parse(last.exportWrittenAt);
+  return Number.isFinite(at) ? at : null;
+};
 
 /*
  * The post-import hooks, in order. The snapshots first (in a worker; they write history.db), then the storylines and

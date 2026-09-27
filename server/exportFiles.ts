@@ -119,8 +119,22 @@ export function fingerprintOf(files: readonly ExportFile[]): string | null {
   return hash.digest('hex').slice(0, 32);
 }
 
-/** Judges a listing at `now`: quiet, the current burst, the stale files, the fingerprint. */
-export function assessFiles(files: ExportFile[], now: number): ExportAssessment {
+/**
+ * When the newest file of the export last imported from a folder was written (milliseconds, whole), or null when no
+ * import read that folder. `api.ts` answers it from the last import; a file no later than it was not rewritten since.
+ */
+export const importedExport = {
+  writtenAtMs: (_csvDir: string): number | null => null,
+};
+
+/**
+ * Judges a listing at `now`: quiet, the current burst, the stale files, the fingerprint. `importedWrittenAtMs` is when
+ * the newest file of the last import of this folder was written: once any file is newer than that (a new export has
+ * begun), a file no newer was not rewritten by it, however close in time the two exports are, so the export is judged
+ * in groups (quiet for `CLUSTER_SETTLE_MS`, then that file is stale), never read as one burst (N3.5 Stage B2, closing
+ * D-061's remaining window).
+ */
+export function assessFiles(files: ExportFile[], now: number, importedWrittenAtMs: number | null = null): ExportAssessment {
   if (files.length === 0) {
     return { files, newestMs: null, quietForMs: null, settled: false, settlesInMs: exportTiming.quietMs, clustered: false, current: [], stale: [], fingerprint: null, folderFingerprint: null };
   }
@@ -130,6 +144,11 @@ export function assessFiles(files: ExportFile[], now: number): ExportAssessment 
   const times = [...new Set(burst.map((f) => f.mtimeMs))].sort((a, b) => b - a);
   let groupStart = times[0];
   for (let i = 1; i < times.length && times[i - 1] - times[i] <= CLUSTER_GAP_MS; i++) groupStart = times[i];
+  if (importedWrittenAtMs !== null) {
+    // Files rewritten since the last import of this folder, beside files that were not: the new export begins after them
+    const rewritten = burst.filter((f) => Math.floor(f.mtimeMs) > importedWrittenAtMs);
+    if (rewritten.length > 0 && rewritten.length < burst.length) groupStart = Math.max(groupStart, Math.min(...rewritten.map((f) => f.mtimeMs)));
+  }
   const clustered = burst.some((f) => f.mtimeMs < groupStart);
   const quietForMs = Math.max(0, now - newestMs);
   const needed = clustered ? Math.max(exportTiming.quietMs, CLUSTER_SETTLE_MS) : exportTiming.quietMs;
@@ -144,8 +163,8 @@ export function assessFiles(files: ExportFile[], now: number): ExportAssessment 
 }
 
 /** The export folder judged now. */
-export function assessExport(csvDir: string, now: number = Date.now()): ExportAssessment {
-  return assessFiles(listExport(csvDir), now);
+export function assessExport(csvDir: string, now: number = Date.now(), importedWrittenAtMs: number | null = importedExport.writtenAtMs(csvDir)): ExportAssessment {
+  return assessFiles(listExport(csvDir), now, importedWrittenAtMs);
 }
 
 /** The required tables among the stale files (an export without them fresh is not imported). */
