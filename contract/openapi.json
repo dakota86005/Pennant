@@ -564,6 +564,48 @@
           }
         }
       }
+    },
+    "/api/v2/saves": {
+      "get": {
+        "operationId": "getSaveDiscovery",
+        "summary": "The saves on this Mac, most recently played first, and the one you're playing when it clearly stands out, or why none does.",
+        "tags": [
+          "v2"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaveDiscovery"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/setup/automatic": {
+      "post": {
+        "operationId": "setUpAutomatically",
+        "summary": "On a first run, choose and import the save that clearly stands out (and its club, when the save names one), or say why not.",
+        "tags": [
+          "v2"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomaticSetup"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -683,6 +725,47 @@
           "projectUrl",
           "upstreamUrl"
         ]
+      },
+      "AutomaticSetup": {
+        "type": "object",
+        "properties": {
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "started",
+                  "alreadyChosen",
+                  "nothingStandsOut"
+                ]
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "text": {
+            "type": "string",
+            "description": "The line the app shows."
+          },
+          "save": {
+            "$ref": "#/components/schemas/SaveInfo",
+            "description": "The save chosen (now or before); null when none is."
+          },
+          "club": {
+            "$ref": "#/components/schemas/SetupClub",
+            "description": "The club followed, when a save was chosen now; null otherwise."
+          },
+          "why": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Why this save, or why none: the line with its basis; null when a save was already chosen."
+          }
+        },
+        "required": [
+          "outcome",
+          "text"
+        ],
+        "description": "What `POST /api/v2/setup/automatic` answers (N3.5 Stage B2, D-063): whether the first run chose a save by itself. `started`: the save that clearly stands out is chosen and importing, with the club when the save names one. `alreadyChosen`: a save was chosen before; nothing changed (asking twice starts one import). `nothingStandsOut`: nothing was chosen; `why` says why, and the app asks."
       },
       "Basis": {
         "type": "object",
@@ -1306,10 +1389,18 @@
                   "$ref": "#/components/schemas/LeftOutFile"
                 },
                 "description": "Files the import left out (older than the rest of the export, or unreadable), and what their tables hold."
+              },
+              "upgradeNote": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Why the one-time upgrade of an earlier build's league database did not run at this start, in a sentence (not enough free space; the league is served as it is and it is tried again at the next start); null otherwise."
               }
             },
             "required": [
-              "leftOut"
+              "leftOut",
+              "upgradeNote"
             ],
             "description": "What the imported export carries and what its import left out (N3.5, D-061)."
           }
@@ -2773,6 +2864,25 @@
           }
         ]
       },
+      "NoPickReason": {
+        "description": "Why nothing was picked.",
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "noSaves",
+              "neverPlayed",
+              "noExport",
+              "tooClose",
+              "timeUnknown",
+              "cantLook"
+            ]
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
       "Ok": {
         "type": "object",
         "properties": {
@@ -3417,6 +3527,42 @@
           }
         ]
       },
+      "SaveDiscovery": {
+        "type": "object",
+        "properties": {
+          "saves": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SaveInfo"
+            },
+            "description": "Every save found, most recently played first (a save OOTP has never saved last)."
+          },
+          "pick": {
+            "$ref": "#/components/schemas/SaveDiscoveryPick",
+            "description": "The save you're playing, when one clearly stands out; null when the app asks."
+          },
+          "noPick": {
+            "$ref": "#/components/schemas/SaveDiscoveryNoPick",
+            "description": "Why nothing was picked, when nothing was: a code, and the line with its basis."
+          },
+          "exportHelp": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "How to switch the export on, with OOTP's documentation as the basis, when the save played most recently has none."
+          },
+          "searched": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SearchLocation"
+            },
+            "description": "Where the server looked (the same as `GET /api/search-locations`)."
+          }
+        },
+        "required": [
+          "saves",
+          "searched"
+        ],
+        "description": "What `GET /api/v2/saves` serves: the saves, most recently played first, and the one that stands out or why none does."
+      },
       "SaveDiscoveryMethod": {
         "anyOf": [
           {
@@ -3433,6 +3579,38 @@
             "type": "string"
           }
         ]
+      },
+      "SaveDiscoveryNoPick": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "$ref": "#/components/schemas/NoPickReason"
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          }
+        },
+        "required": [
+          "reason",
+          "claim"
+        ],
+        "description": "Why nothing was picked."
+      },
+      "SaveDiscoveryPick": {
+        "type": "object",
+        "properties": {
+          "saveId": {
+            "type": "string"
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          }
+        },
+        "required": [
+          "saveId",
+          "claim"
+        ],
+        "description": "The save that clearly stands out, and the line saying why."
       },
       "SaveInfo": {
         "type": "object",
@@ -3461,6 +3639,61 @@
               "null"
             ],
             "description": "`csvLastModified` in words (`timeWords.ts`); null with it."
+          },
+          "id": {
+            "type": "string",
+            "description": "A stable id for this save on this Mac (its folder's real path, hashed), for a request that names one (N3.5)."
+          },
+          "ootpVersion": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "The OOTP version whose folder holds it (\"OOTP Baseball 27\" is 27); null when the folder does not say (N3.5)."
+          },
+          "location": {
+            "type": "string",
+            "description": "Where it was found, in words (\"OOTP 27, Mac App Store version\") (N3.5)."
+          },
+          "lastPlayedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "When OOTP last saved it: the newer file time of `players.dat` and `flag_save_completed.dat`, which OOTP writes on every save; null when neither is there (OOTP has never saved this folder) (N3.5)."
+          },
+          "lastPlayedText": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`lastPlayedAt` in words; null with it (N3.5)."
+          },
+          "exportedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "When OOTP wrote the newest file of its export (the same time as `csvLastModified`); null with no export (N3.5)."
+          },
+          "hasExport": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "The export holds CSV files to import (N3.5); null when its folder is there but couldn't be looked inside (D-018)."
+          },
+          "exportConfigured": {
+            "type": "boolean",
+            "description": "OOTP's export settings for this save exist (`settings/db_dump_standard_csv.cfg`): the export has been set up (N3.5)."
+          },
+          "simulatedThrough": {
+            "$ref": "#/components/schemas/GameDate",
+            "description": "The last day the save has played, from the save itself; null when it cannot be read (N3.5)."
+          },
+          "exportNote": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "How to turn the export on, in one sentence, when the save has none; null when it has one (N3.5)."
           }
         },
         "required": [
@@ -3470,7 +3703,8 @@
           "csvCount",
           "csvLastModified",
           "csvLastModifiedText"
-        ]
+        ],
+        "description": "One OOTP save found on this Mac (`GET /api/saves`): where it is, its export, and (N3.5 Stage B2, D-063) which OOTP it belongs to, when OOTP last saved it and whether its export is switched on. Only file names, sizes and times are read, and the 7-byte game date OOTP keeps beside the save (`ootpSave.ts`); no save file's contents are parsed."
       },
       "SaveList": {
         "type": "array",
@@ -3478,6 +3712,59 @@
           "$ref": "#/components/schemas/SaveInfo"
         },
         "description": "The saves found in the usual places (`GET /api/saves`)."
+      },
+      "SavePlayedElsewhere": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "description": "`otherSave`: another save of the same (or an unknown) OOTP version; `newerOotp`: a save in a newer OOTP version; `chosenMissing`: the chosen save is no longer where it was (moved, renamed or deleted), and this is the save played most recently.",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "otherSave",
+                  "newerOotp",
+                  "chosenMissing"
+                ]
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "text": {
+            "type": "string",
+            "description": "The line the app shows (\"You've played RIGHTS-EXP since this save, last on Sep 20, 2026, 6:58 AM.\")."
+          },
+          "hint": {
+            "type": "string",
+            "description": "The help tag: at most about 75 characters."
+          },
+          "actionText": {
+            "type": "string",
+            "description": "The label of the one-click switch (\"Switch to RIGHTS-EXP\")."
+          },
+          "save": {
+            "$ref": "#/components/schemas/SaveInfo",
+            "description": "The save played since: its id, its export folder and name (what choosing it sends), and its facts."
+          },
+          "chosenLastPlayedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "When OOTP last saved the chosen save; null when that is not known."
+          }
+        },
+        "required": [
+          "kind",
+          "text",
+          "hint",
+          "actionText",
+          "save",
+          "chosenLastPlayedAt"
+        ],
+        "description": "Another save played since the one chosen, on `/api/status` (and so on the event stream's `hello`). No event of its own yet: a new member of the event union moves the Swift tests' positional reads, so it waits for the Mac stage."
       },
       "SaveSourceRequest": {
         "type": "object",
@@ -3519,6 +3806,10 @@
           },
           "exists": {
             "type": "boolean"
+          },
+          "readable": {
+            "type": "boolean",
+            "description": "False when the folder is there but Pennant couldn't look inside it (N3.5 B2 review); absent when it could."
           }
         },
         "required": [
@@ -3689,6 +3980,10 @@
               "null"
             ],
             "description": "The stamp of the Front Office's current build for the club the app follows (`FrontOfficeSummary.reportStamp`), or null before one is kept. It moves whenever the server builds the Front Office again; the Mac app reloads on it."
+          },
+          "savePlayedElsewhere": {
+            "$ref": "#/components/schemas/SavePlayedElsewhere",
+            "description": "Another save (or a newer OOTP version's) played since the chosen one, once OOTP has finished saving it, with the sentence and the save to switch to; null when there is none (N3.5 Stage B2, D-063). Pennant never switches by itself."
           }
         },
         "required": [
@@ -3974,6 +4269,39 @@
           }
         },
         "description": "What `POST /api/settings` takes: the preferences to change. A field left out keeps its value, and a value the handler cannot use is ignored. (Philosophy and next season's budget have routes of their own.)\n\n`clubChoice: 'automatic'` forgets the chosen club, so the app follows the club the save's human manages (`viewingOrganization.ts`). It is the Mac app's way back to automatic: its generated client never sends an explicit null, so it cannot clear `defaultOrgId` by sending one (SWIFTUI_REBUILD.md section 4.3). It wins over a `defaultOrgId` sent beside it."
+      },
+      "SetupClub": {
+        "type": "object",
+        "properties": {
+          "decided": {
+            "type": "boolean",
+            "description": "Whether the club was taken from the save: exactly one club is managed by the save's human."
+          },
+          "teamId": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "The club followed; null when none was taken."
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "humanClubs": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "How many clubs the save's human manages, as the export's teams file says; null when it doesn't say."
+          },
+          "text": {
+            "type": "string",
+            "description": "The line the app shows."
+          }
+        },
+        "required": [
+          "decided",
+          "name",
+          "text"
+        ],
+        "description": "The club a first run follows, taken from the save's export (N3.5 Stage B2, D-063)."
       },
       "SnapshotMeta": {
         "type": "object",

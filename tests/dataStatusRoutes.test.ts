@@ -3,7 +3,7 @@ import path from 'node:path';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../server/db.js';
 import { DATA_DIR, saveConfig } from '../server/config.js';
-import { resetTransactionLogCache } from '../server/dataStatus.js';
+import { logRefreshTiming, resetTransactionLogCache, transactionLogSettled } from '../server/dataStatus.js';
 import request, { post } from './request';
 import { IDS } from './fixture';
 import { fingerprint, makeSave, tx, type FakeSave, type LogRow } from './liveLogFixture';
@@ -116,11 +116,19 @@ describe('GET /api/data-status', () => {
     fs.rmSync(elsewhere, { recursive: true, force: true });
   });
 
-  it('picks up OOTP writing to the log without a restart', async () => {
+  it('picks up OOTP writing to the log without a restart, copying it in the background (N3.5 B2)', async () => {
     const s = useSave({ keepWriterOpen: true });
     expect((await request('/api/data-status')).transactionLog.counts.events).toBe(3);
-    s.add([{ date: '20300531', teamId: 9, text: tx.released([888, 'Another'], 'RP') }]);
-    expect((await request('/api/data-status')).transactionLog.counts.events).toBe(4);
+    logRefreshTiming.debounceMs = 10;
+    try {
+      s.add([{ date: '20300531', teamId: 9, text: tx.released([888, 'Another'], 'RP') }]);
+      // The request after OOTP writes is served the last copy at once; the new copy follows
+      expect((await request('/api/data-status')).transactionLog.counts.events).toBe(3);
+      await transactionLogSettled();
+      expect((await request('/api/data-status')).transactionLog.counts.events).toBe(4);
+    } finally {
+      logRefreshTiming.debounceMs = 2_000;
+    }
   });
 
   it('never writes to the save: reading status, rosters and players leaves it byte-identical', async () => {

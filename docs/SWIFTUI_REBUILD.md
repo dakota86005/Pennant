@@ -970,7 +970,7 @@ sizes, not dates.
 | **N1** | Sidecar server | `sidecar.ts`, `PORT=0`, ready line, stdin watchdog, SIGTERM, token (including self-calls), bind, lock (also in Electron), injected keys, `/api/v2/events` SSE, `build:sidecar`, pinned Node download with checksum, kill-mid-import safety check | 2 |
 | **N2** | Contract pipeline | `server/contract/`, `contract:build`, `openapi.json`, drift, coverage, ajv and jargon tests; the PennantAPI package builds | 2 |
 | **N3** | App skeleton | Xcode project and packages, `ServerController`, `AppModel`, window shell (sidebar from the registry, toolbar, inspector, commands, Settings, Setup/import flow), dev signing, test scripts, fixture generation, backups | 3 |
-| **N3.5** | "It just works": the import and discovery | Stage B1 (server): the all-or-nothing import in worker threads, the export's completeness, automatic import, the served database's pragmas and indexes, per-import caches, concurrent refits, the export's rating mode (D-061). Stage B2: discovery v2 and the Mac app's everyday experience (setup, freshness, the background import shown quietly) | 7 server, 2.5 Mac |
+| **N3.5** | "It just works": the import and discovery | Stage B1 (server): the all-or-nothing import in worker threads, the export's completeness, automatic import, the served database's pragmas and indexes, per-import caches, concurrent refits, the export's rating mode (D-061). Stage B2 (server): discovery v2 (every OOTP version, the save picked only when it clearly stands out, the zero-question first run, "played since"), the re-review's follow-ups, the speed budgets (D-063). Later: the Mac app's everyday experience (setup, freshness, the background import shown quietly) | 7 server, 2.5 Mac |
 | **N4** | Presentation foundation (server) | `Claim` and `Row`, the org resolver, route extractions (standings, trends, crunch, pitching), severity normalization, Front Office adapters and cache, `/api/v2/catalog` (glossary, stat catalog, theme tokens, staff heads) | 3 |
 | **N5** | Design system (Swift) | `ClaimText`, `ClaimValue`, `BasisPopover` (detachable), `EvidenceView`, `RankStrip`, `RangeBar`, `Masthead`, `ReportCard`, table and chart styles, theming, tones, previews, accessibility | 3 |
 | **N6** | The Morning Report | Server: `teamSeason`, `clubProfile`, `rosterMap`, `horizon` (fixtures extended; R2/R4/R5 rules from the V2 plan). App: Morning Report, the report template, roster map | 4 |
@@ -1023,6 +1023,65 @@ idle Mac would show. Before is `feature/swiftui` at `435d84a`, run back to back 
 
 The new build was checked against the previous importer on the same export: the same 70 tables, the same rows in the
 same order, and 30 season indexes added.
+
+### N3.5, Stage B2: finding the save and the import's follow-ups, as built (server; 2026-09-27)
+
+Branch `feature/swiftui-import-b2`. Server only; the Mac app's side (Setup's zero-question path, the "played since"
+prompt, the in-place update banner) is a later stage and uses what is served here. The owner's decisions 2, 3 and 4 of
+2026-09-26 (D-063).
+
+| Piece | Where | What it does |
+|---|---|---|
+| Where saves are found | `server/paths.ts` | Patterns over every OOTP version: `OOTP Baseball <n>` under the direct build, the Mac App Store container (`com.ootpdevelopments.ootp<n>macqlm`) and the second `~/Application Support` folder found on the owner's Mac; the Windows and OneDrive folders as before. No Steam folder: none could be observed. Each save once (by its real path). `GET /api/search-locations` lists each folder found, and a pattern where none was. |
+| Each save's facts | `server/paths.ts` `describeSave` | Additive fields on `SaveInfo` (`GET /api/saves`, now most recently played first): `id` (the real path, hashed), `ootpVersion` (from the path), `location`, `lastPlayedAt` / `lastPlayedText` (the newer file time of `players.dat` and `flag_save_completed.dat`; never a file's contents), `exportedAt`, `hasExport`, `exportConfigured` (`settings/db_dump_standard_csv.cfg` present), `simulatedThrough`, `exportNote` (one sentence when there is no export). |
+| The pick | `server/saveDiscovery.ts` `pickSave`, `presentation/saveWords.ts` | Picked only when it clearly stands out: played most recently of every save, with an export, and no other save played in the two days before it (`STANDOUT_WINDOW_MS`, a policy line). `GET /api/v2/saves`: the ranked saves, the pick with its reason as a `Claim` (stamped policy, the runner-up in its basis) or why none (`noPick`: `noSaves`, `neverPlayed`, `noExport`, `tooClose`), and `exportHelp` (how to turn the export on, citing OOTP's wiki and manual) when the save played most recently has none. The export's time never picks. |
+| Zero-question first run | `api.ts` `automaticSetup` | `POST /api/v2/setup/automatic`: with no save chosen, chooses and imports the pick (the same path as `POST /api/config`) and follows the save's club when the export's `teams.csv` names exactly one human club (the automatic resolution, `viewingOrganization.ts`, by forgetting a chosen club); several: none taken, "Pennant will ask". `alreadyChosen` when a save is chosen (idempotent: one import), `nothingStandsOut` with the reason otherwise. |
+| Played since | `server/saveDiscovery.ts` `scanSaves` | A look at the saves at start and every minute (about 8 ms on the owner's Mac, 18 saves), never on a request's path. `savePlayedElsewhere` on `/api/status` (and the event stream's `hello`; no event of its own yet, since a new member of the event union moves the Swift tests' positional reads, so it waits for the Mac stage): the save played since the chosen one, `kind` `otherSave` or `newerOotp`, the sentence, the switch's label and the save (id, export folder, name); `chosenMissing` names the save played most recently when the chosen one has gone (renamed or moved in OOTP). A save counts once its times have been still for a minute (never while OOTP is saving). The look reads times only (no save file read, no CSV stat'ed), so a cloud-only folder never blocks it. Never a switch. |
+| Unknowns (review) | `paths.ts`, `saveDiscovery.ts` | A last-played time more than 5 minutes in the future is not known (`timeUnknown`); a folder that is there but can't be read says Pennant couldn't look (`cantLook`, `hasExport: null`, `readable: false` on a search location), never "no saves" or "no export"; a save sharing its name with another is named with where it is. |
+| Review follow-ups | `api.ts`, `history.ts`, `dataStatus.ts` | An export an import failed on is not imported again by the watcher or the minute's look until the folder changes (`importState.lastFailed`; Import Now still tries). A snapshot whose import recorded no kind of ratings is stamped with nothing, never unknown. The one-time upgrade's "no room" sentence is served (`DataStatus.import.upgradeNote`). |
+| Follow-ups | `api.ts`, `watcher.ts`, `exportFiles.ts`, `db.ts`, `history.ts`, `dataStatus.ts` | The one-time upgrade checks for 1.5 times the league file free first and otherwise writes nothing (one sentence in the log; checked again at the next start). The watched folder is judged every minute besides the file watch (a dropped watch heals). A file no newer than the last import's export of the same folder was not rewritten, whatever the gap (D-061's window closed). The swap rolls a hot journal back instead of deleting it. Snapshots stamped with an unknown kind of ratings are left out of trends, observed history and the change list, with the reason. The live transaction log is copied in the background after OOTP writes it (`transaction-log-worker.cjs`; 2 s after the last change, at most 10 s), never on a request. |
+
+**What it picks on the owner's Mac** (read-only, 2026-09-26): 18 saves, all OOTP 27 (17 in the App Store container,
+one in `~/Application Support`). The pick is **D-backs real save**: last played Sep 22, 2026, 4:52 PM, with an export
+(Sep 19, 70 files); the next most recent, RIGHTS-EXP, was last played Sep 20, 6:58 AM, about 58 hours earlier.
+
+**The speed budgets.** The structural guards run in CI (`tests/speedBudgets.test.ts`: the Front Office is built after
+an import with no request; the status never looks at the saves on its path; with `importAtomic.test.ts`'s index and
+event-loop guards, `autoImport.test.ts`'s status-during-import guard and `liveLogBackground.test.ts`). The wall-clock
+budgets are measured by `scripts/bench-launch.mjs` and `scripts/bench-import.mjs` on a scratch copy of the owner's
+export (M4, load average about 2.5; B1's build measured back to back for comparison):
+
+| Budget | Target | This build | B1's build |
+|---|---|---|---|
+| Launch to server ready | ≤ 0.5 s | **0.30 s** | 0.29 s |
+| Launch to the first Morning Report payload | ≤ 1.0 s | **2.5 s: not met** (the Front Office is built cold at each launch; the request waits on the start-up build, 2.0 s) | 2.5 s |
+| A view switch from the cache (a department's report asked again) | ≤ 100 ms | **1 ms** (median; 2 ms worst) | 1 ms |
+| `/api/status` during an import, p99 | ≤ 50 ms | **5 ms** (p95 3 ms, max 78 ms) | p95 2 ms |
+| Import of the 289 MB export | ≤ 10 s | 13.9 s (busy Mac) | 13.8 s |
+| Import peak memory | ≤ 1.5 GB | 1.16 GB | |
+
+The routes measured after the import match B1's build within noise (dashboard warm 420 ms, farm 245 ms, Org
+comparison 1.9 s on this run; B1's build 406, 253 and 1,930 ms). The Morning Report's first payload after a launch
+misses its budget on the server alone: meeting it needs the landing payload kept across launches (the Mac app showing
+the last one it received, Stage A's M3). A Front Office build kept on disk by the server would be stale at the next
+launch (its key includes the live transaction log), so it is not built.
+
+**The Mac stage's first items** (from the B2 review):
+1. A typed accessor for the `ServerEvent` union (`AppModel.swift` and `PennantAPITests.swift` read its members by
+   position, `value1` to `value8`), then the `save-played-elsewhere` event, which B2 left out because a new member
+   moves those positions.
+2. Decoding the new fixtures in Swift (`getSaveDiscovery.json`, `setUpAutomatically-nothing-stands-out.json`, the new
+   `SaveInfo` fields in `listSaves.json`); the server already validates them against the strict schema.
+3. Launch to the first Morning Report within its budget by showing the last payload the app received at once, then
+   refreshing.
+
+**Open: history is keyed by the save's name.** `history.db` (rating snapshots and their kinds, roster-state and market
+snapshots, the fits) keys each row by the configured save's name, and this Mac already has two different saves called
+"New Game" (one in the App Store container, one in `~/Application Support`). Now that Pennant finds saves in every
+location and can switch between them in one click, choosing the other "New Game" would read and add to the first
+one's history as if they were one league: its rating trends, its snapshots and its fits would mix two leagues.
+Changing the key (to the save's id, or its folder) is a data migration and the owner's decision; until then two saves
+of one name share their history.
 
 **Total: about 51 working sessions.** The milestones are strictly ordered. There are two exceptions:
 - N1 and N2 can overlap.

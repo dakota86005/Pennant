@@ -1,9 +1,17 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import type { Integer } from './contract/primitives.js';
 import { timestampWords } from './timeWords.js';
+import type { GameDate } from './dataFreshness.js';
+import { parseLastDateSimulated } from './ootpSave.js';
 
+/**
+ * One OOTP save found on this Mac (`GET /api/saves`): where it is, its export, and (N3.5 Stage B2, D-063) which OOTP it
+ * belongs to, when OOTP last saved it and whether its export is switched on. Only file names, sizes and times are read,
+ * and the 7-byte game date OOTP keeps beside the save (`ootpSave.ts`); no save file's contents are parsed.
+ */
 export interface SaveInfo {
   name: string;
   lgPath: string;
@@ -12,26 +20,119 @@ export interface SaveInfo {
   csvLastModified: string | null;
   /** `csvLastModified` in words (`timeWords.ts`); null with it. */
   csvLastModifiedText: string | null;
+  /** A stable id for this save on this Mac (its folder's real path, hashed), for a request that names one (N3.5). */
+  id?: string;
+  /** The OOTP version whose folder holds it ("OOTP Baseball 27" is 27); null when the folder does not say (N3.5). */
+  ootpVersion?: Integer | null;
+  /** Where it was found, in words ("OOTP 27, Mac App Store version") (N3.5). */
+  location?: string;
+  /**
+   * When OOTP last saved it: the newer file time of `players.dat` and `flag_save_completed.dat`, which OOTP writes on
+   * every save; null when neither is there (OOTP has never saved this folder) (N3.5).
+   */
+  lastPlayedAt?: string | null;
+  /** `lastPlayedAt` in words; null with it (N3.5). */
+  lastPlayedText?: string | null;
+  /** When OOTP wrote the newest file of its export (the same time as `csvLastModified`); null with no export (N3.5). */
+  exportedAt?: string | null;
+  /** The export holds CSV files to import (N3.5); null when its folder is there but couldn't be looked inside (D-018). */
+  hasExport?: boolean | null;
+  /** OOTP's export settings for this save exist (`settings/db_dump_standard_csv.cfg`): the export has been set up (N3.5). */
+  exportConfigured?: boolean;
+  /** The last day the save has played, from the save itself; null when it cannot be read (N3.5). */
+  simulatedThrough?: GameDate | null;
+  /** How to turn the export on, in one sentence, when the save has none; null when it has one (N3.5). */
+  exportNote?: string | null;
 }
 
-/** Known locations for OOTP 27 saved_games folders, per platform. */
-function saveGameRoots(): string[] {
-  const home = os.homedir();
-  const roots = [
-    // Mac App Store (sandboxed) build
-    path.join(
-      home,
-      'Library/Containers/com.ootpdevelopments.ootp27macqlm/Data/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games'
-    ),
-    // Direct Mac build
-    path.join(home, 'Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games'),
-    // Windows
-    path.join(home, 'Documents/Out of the Park Developments/OOTP Baseball 27/saved_games'),
-    // OneDrive-synced installs
-    path.join(home, 'Library/CloudStorage/OneDrive-Personal/ootp/saved_games'),
-    path.join(home, 'OneDrive/Documents/Out of the Park Developments/OOTP Baseball 27/saved_games'),
-  ];
-  return roots.filter((r) => fs.existsSync(r));
+/**
+ * Where OOTP keeps its data, as patterns over every version (N3.5 Stage B2, D-063): the direct build's Application
+ * Support folder, the Mac App Store build's container (its id names the version: `com.ootpdevelopments.ootp27macqlm`),
+ * the second `~/Application Support` folder seen on the owner's Mac, and the Windows and OneDrive folders the earlier
+ * builds listed. A Steam install could not be observed, so no Steam folder is listed. `*` stands for any OOTP version.
+ */
+interface SaveBase {
+  label: string;
+  /** Path segments under the home folder; a segment given as a RegExp matches any folder of that name pattern. */
+  segments: Array<string | RegExp>;
+  platform: 'mac' | 'win' | 'any';
+}
+
+const OOTP_VERSION_FOLDER = /^OOTP Baseball (\d+)$/;
+const APP_STORE_CONTAINER = /^com\.ootpdevelopments\.ootp\d*macqlm$/i;
+const OOTP_DATA = 'Out of the Park Developments';
+
+const SAVE_BASES: SaveBase[] = [
+  {
+    label: 'Mac App Store version',
+    segments: ['Library', 'Containers', APP_STORE_CONTAINER, 'Data', 'Application Support', OOTP_DATA, OOTP_VERSION_FOLDER, 'saved_games'],
+    platform: 'mac',
+  },
+  { label: 'direct download', segments: ['Library', 'Application Support', OOTP_DATA, OOTP_VERSION_FOLDER, 'saved_games'], platform: 'mac' },
+  // Seen on the owner's Mac (N3.5 Stage A): an OOTP folder under ~/Application Support, not ~/Library
+  { label: 'Application Support in your home folder', segments: ['Application Support', OOTP_DATA, OOTP_VERSION_FOLDER, 'saved_games'], platform: 'mac' },
+  { label: 'OneDrive-synced saves', segments: ['Library', 'CloudStorage', 'OneDrive-Personal', 'ootp', 'saved_games'], platform: 'mac' },
+  { label: 'Documents', segments: ['Documents', OOTP_DATA, OOTP_VERSION_FOLDER, 'saved_games'], platform: 'win' },
+  { label: 'OneDrive Documents', segments: ['OneDrive', 'Documents', OOTP_DATA, OOTP_VERSION_FOLDER, 'saved_games'], platform: 'win' },
+];
+
+/** A `saved_games` folder found on disk, with the OOTP version its path names. */
+export interface SaveRoot {
+  path: string;
+  label: string;
+  ootpVersion: number | null;
+}
+
+/** A folder that is simply not there, as against one that is there and couldn't be read. */
+const absent = (err: unknown): boolean => ['ENOENT', 'ENOTDIR'].includes((err as NodeJS.ErrnoException).code ?? '');
+
+/**
+ * The folders inside `dir`. One that is there but couldn't be read (permissions, a cloud folder that failed) is added
+ * to `unreadable`: Pennant couldn't look, which is never "nothing there" (D-018, N3.5 B2 review).
+ */
+const listDirs = (dir: string, unreadable?: string[]): string[] => {
+  try {
+    return fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory() || e.isSymbolicLink()).map((e) => e.name);
+  } catch (err) {
+    if (!absent(err)) unreadable?.push(dir);
+    return [];
+  }
+};
+
+/** Every folder under `home` matching a base's segments, with the OOTP version named on the way. */
+function expandBase(home: string, base: SaveBase, unreadable?: string[]): SaveRoot[] {
+  let found: Array<{ path: string; version: number | null }> = [{ path: home, version: null }];
+  for (const segment of base.segments) {
+    const next: typeof found = [];
+    for (const at of found) {
+      if (typeof segment === 'string') {
+        next.push({ path: path.join(at.path, segment), version: at.version });
+        continue;
+      }
+      for (const name of listDirs(at.path, unreadable)) {
+        const m = segment.exec(name);
+        if (!m) continue;
+        next.push({ path: path.join(at.path, name), version: m[1] !== undefined ? Number(m[1]) : at.version });
+      }
+    }
+    found = next;
+  }
+  return found
+    .filter((f) => isDir(f.path))
+    .map((f) => ({ path: f.path, ootpVersion: f.version, label: f.version === null ? base.label : `OOTP ${f.version}, ${base.label}` }));
+}
+
+const isDir = (p: string): boolean => {
+  try {
+    return fs.statSync(p).isDirectory();
+  } catch {
+    return false;
+  }
+};
+
+/** Every `saved_games` folder on this machine, every OOTP version, in a stable order. */
+export function saveGameRoots(home: string = os.homedir(), unreadable?: string[]): SaveRoot[] {
+  return SAVE_BASES.flatMap((base) => expandBase(home, base, unreadable)).sort((a, b) => (b.ootpVersion ?? 0) - (a.ootpVersion ?? 0) || (a.path < b.path ? -1 : 1));
 }
 
 /** One place the server looks for saves: a human label, the folder, and whether it exists here. */
@@ -39,28 +140,31 @@ export interface SearchLocation {
   label: string;
   path: string;
   exists: boolean;
+  /** False when the folder is there but Pennant couldn't look inside it (N3.5 B2 review); absent when it could. */
+  readable?: boolean;
 }
 
 /**
  * The locations we scan, with a human label and whether each exists here.
  * Shown to the user when auto-detection finds nothing, so they know where we
- * looked before being asked to browse for the folder themselves.
+ * looked before being asked to browse for the folder themselves. Each folder found is listed; a pattern with none
+ * found is listed once with `*` for the parts that vary (the version, the App Store container's id).
  */
-export function searchLocations(): SearchLocation[] {
-  const home = os.homedir();
-  const mac = [
-    ['OOTP 27 (Mac App Store version)', 'Library/Containers/com.ootpdevelopments.ootp27macqlm/Data/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games'],
-    ['OOTP 27 (direct download)', 'Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games'],
-    ['OneDrive-synced saves', 'Library/CloudStorage/OneDrive-Personal/ootp/saved_games'],
-  ];
-  const win = [
-    ['OOTP 27 (Documents)', 'Documents/Out of the Park Developments/OOTP Baseball 27/saved_games'],
-    ['OOTP 27 (OneDrive Documents)', 'OneDrive/Documents/Out of the Park Developments/OOTP Baseball 27/saved_games'],
-  ];
-  const list = process.platform === 'win32' ? win : process.platform === 'darwin' ? mac : [...mac, ...win];
-  return list.map(([label, rel]) => {
-    const full = path.join(home, rel);
-    return { label, path: full, exists: fs.existsSync(full) };
+export function searchLocations(home: string = os.homedir(), platform: NodeJS.Platform = process.platform): SearchLocation[] {
+  const wanted = SAVE_BASES.filter((b) => b.platform === 'any' || (platform === 'win32' ? b.platform === 'win' : platform === 'darwin' ? b.platform === 'mac' : true));
+  return wanted.flatMap((base): SearchLocation[] => {
+    const unreadable: string[] = [];
+    const found = expandBase(home, base, unreadable);
+    const looked = found.map((r): SearchLocation => {
+      const blocked: string[] = [];
+      listDirs(r.path, blocked);
+      return blocked.length ? { label: r.label, path: r.path, exists: true, readable: false } : { label: r.label, path: r.path, exists: true };
+    });
+    const couldnt = unreadable.map((dir): SearchLocation => ({ label: `OOTP, ${base.label}`, path: dir, exists: true, readable: false }));
+    if (looked.length + couldnt.length > 0) return [...looked, ...couldnt];
+    const pattern = base.segments.map((s) => (typeof s === 'string' ? s : s === OOTP_VERSION_FOLDER ? 'OOTP Baseball *' : 'com.ootpdevelopments.ootp*macqlm'));
+    const versioned = base.segments.includes(OOTP_VERSION_FOLDER);
+    return [{ label: versioned ? `OOTP, ${base.label}` : base.label, path: path.join(home, ...pattern), exists: false }];
   });
 }
 
@@ -144,52 +248,138 @@ export function resolveChosenFolder(input: string): ResolveResult {
   };
 }
 
-/** Reads the CSV export state for one `<save>.lg` directory. */
-function describeSave(lgPath: string): SaveInfo {
+/** The file times OOTP writes on every save: the players file and the flag it closes a save with. */
+const SAVE_WRITTEN_FILES = ['players.dat', 'flag_save_completed.dat'];
+
+const mtimeOf = (file: string): number | null => {
+  try {
+    const st = fs.statSync(file);
+    return st.isFile() ? st.mtimeMs : null;
+  } catch {
+    return null;
+  }
+};
+
+/** A save's id: its folder's real path, hashed (stable on this Mac, and nothing in it to read back). */
+export function saveId(lgPath: string): string {
+  let real = path.resolve(lgPath);
+  try {
+    real = fs.realpathSync(lgPath);
+  } catch {
+    // A folder that has gone keeps the id of the path it had
+  }
+  return crypto.createHash('sha256').update(real).digest('hex').slice(0, 16);
+}
+
+/** When OOTP last saved this save: the newer of the files it writes on every save, or null when neither is there. */
+export function lastPlayedMs(lgPath: string): number | null {
+  const times = SAVE_WRITTEN_FILES.map((f) => mtimeOf(path.join(lgPath, f))).filter((t): t is number => t !== null);
+  return times.length ? Math.max(...times) : null;
+}
+
+/** How to switch an export on in OOTP, as its own documentation puts it (`presentation/saveWords.ts` cites it). */
+export const EXPORT_UNREADABLE_NOTE = 'Pennant couldn\'t look inside this save\'s export folder (check its permissions).';
+
+export const EXPORT_OFF_NOTE =
+  'No export yet. In OOTP, open Game Settings, then the Database tab, and use Database Tools to export the league to CSV files.';
+
+/**
+ * How much of a save to read: `full` (every fact, for `GET /api/v2/saves` and Setup), or `times` (the minute's scan
+ * for "played since", N3.5 B2 review): the files OOTP writes on a save are stat'ed and the export folder listed, but no
+ * file is read and no CSV stat'ed, so a folder synced to the cloud never blocks the server while a file downloads.
+ * With `times`, `csvLastModified`, `exportedAt` and `simulatedThrough` are null (not looked at, never "none").
+ */
+export type SaveFacts = 'full' | 'times';
+
+/** Reads the export state and the save facts for one `<save>.lg` directory. */
+export function describeSave(lgPath: string, root: SaveRoot | null = null, facts: SaveFacts = 'full'): SaveInfo {
   const csvDir = path.join(lgPath, 'import_export', 'csv');
   let csvCount = 0;
   let csvLastModified: string | null = null;
-  if (fs.existsSync(csvDir)) {
-    const csvs = fs.readdirSync(csvDir).filter((f) => f.endsWith('.csv'));
-    csvCount = csvs.length;
-    let latest = 0;
+  let csvs: string[] = [];
+  let exportUnreadable = false;
+  try {
+    csvs = fs.readdirSync(csvDir).filter((f) => f.toLowerCase().endsWith('.csv'));
+  } catch (err) {
+    csvs = [];
+    exportUnreadable = !absent(err);
+  }
+  csvCount = csvs.length;
+  let latest = 0;
+  if (facts === 'full') {
     for (const f of csvs) {
-      const mtime = fs.statSync(path.join(csvDir, f)).mtimeMs;
+      const mtime = mtimeOf(path.join(csvDir, f)) ?? 0;
       if (mtime > latest) latest = mtime;
     }
-    if (latest > 0) csvLastModified = new Date(latest).toISOString();
   }
-  return { name: path.basename(lgPath).replace(/\.lg$/i, ''), lgPath, csvDir, csvCount, csvLastModified, csvLastModifiedText: timestampWords(csvLastModified) };
+  if (latest > 0) csvLastModified = new Date(latest).toISOString();
+  const played = lastPlayedMs(lgPath);
+  const lastPlayedAt = played === null ? null : new Date(played).toISOString();
+  const version = root?.ootpVersion ?? versionFromPath(lgPath);
+  let simulated: { date: string } | null = null;
+  if (facts === 'full') try {
+    simulated = parseLastDateSimulated(fs.readFileSync(path.join(lgPath, 'settings', 'last_date_simulated.dat')));
+  } catch {
+    simulated = null;
+  }
+  return {
+    name: path.basename(lgPath).replace(/\.lg$/i, ''),
+    lgPath,
+    csvDir,
+    csvCount,
+    csvLastModified,
+    csvLastModifiedText: timestampWords(csvLastModified),
+    id: saveId(lgPath),
+    ootpVersion: version,
+    location: root?.label ?? (version === null ? 'Chosen folder' : `OOTP ${version}`),
+    lastPlayedAt,
+    lastPlayedText: timestampWords(lastPlayedAt),
+    exportedAt: csvLastModified,
+    hasExport: exportUnreadable ? null : csvCount > 0,
+    exportConfigured: mtimeOf(path.join(lgPath, 'settings', 'db_dump_standard_csv.cfg')) !== null,
+    simulatedThrough: simulated?.date ?? null,
+    exportNote: exportUnreadable ? EXPORT_UNREADABLE_NOTE : csvCount > 0 ? null : EXPORT_OFF_NOTE,
+  };
 }
 
-export function detectSaves(): SaveInfo[] {
+/** The OOTP version a path names ("…/OOTP Baseball 27/…"), or null. */
+export function versionFromPath(p: string): number | null {
+  for (const part of path.resolve(p).split(path.sep).reverse()) {
+    const m = OOTP_VERSION_FOLDER.exec(part);
+    if (m) return Number(m[1]);
+  }
+  return null;
+}
+
+/**
+ * Every save in every `saved_games` folder found (every OOTP version), each once (by its real path), most recently
+ * played first (a save OOTP has never saved last), then by name. A stray folder named just `.lg` is not a save.
+ */
+export function detectSaves(home: string = os.homedir(), facts: SaveFacts = 'full'): SaveInfo[] {
+  return findSaves(home, facts).saves;
+}
+
+/** The saves found, and the folders Pennant couldn't look inside (a save may be there: never read as none). */
+export function findSaves(home: string = os.homedir(), facts: SaveFacts = 'full'): { saves: SaveInfo[]; unreadable: string[] } {
   const saves: SaveInfo[] = [];
-  for (const root of saveGameRoots()) {
-    let entries: string[] = [];
-    try {
-      entries = fs.readdirSync(root);
-    } catch {
-      continue;
-    }
-    for (const entry of entries) {
-      if (!entry.endsWith('.lg') || entry === '.lg') continue;
-      const lgPath = path.join(root, entry);
-      if (!fs.statSync(lgPath).isDirectory()) continue;
-      const csvDir = path.join(lgPath, 'import_export', 'csv');
-      let csvCount = 0;
-      let csvLastModified: string | null = null;
-      if (fs.existsSync(csvDir)) {
-        const csvs = fs.readdirSync(csvDir).filter((f) => f.endsWith('.csv'));
-        csvCount = csvs.length;
-        let latest = 0;
-        for (const f of csvs) {
-          const mtime = fs.statSync(path.join(csvDir, f)).mtimeMs;
-          if (mtime > latest) latest = mtime;
-        }
-        if (latest > 0) csvLastModified = new Date(latest).toISOString();
-      }
-      saves.push({ name: entry.replace(/\.lg$/, ''), lgPath, csvDir, csvCount, csvLastModified, csvLastModifiedText: timestampWords(csvLastModified) });
+  const unreadable: string[] = [];
+  const seen = new Set<string>();
+  for (const root of saveGameRoots(home, unreadable)) {
+    for (const entry of listDirs(root.path, unreadable)) {
+      if (!entry.toLowerCase().endsWith('.lg') || entry === '.lg') continue;
+      const lgPath = path.join(root.path, entry);
+      if (!isDir(lgPath)) continue;
+      const info = describeSave(lgPath, root, facts);
+      if (seen.has(info.id!)) continue;
+      seen.add(info.id!);
+      saves.push(info);
     }
   }
-  return saves;
+  return { saves: rankSaves(saves), unreadable: [...new Set(unreadable)] };
+}
+
+/** Most recently played first; a save never saved by OOTP last; then by name. Export time never orders them. */
+export function rankSaves(saves: SaveInfo[]): SaveInfo[] {
+  const at = (s: SaveInfo): number => (s.lastPlayedAt ? Date.parse(s.lastPlayedAt) : -Infinity);
+  return [...saves].sort((a, b) => at(b) - at(a) || a.name.localeCompare(b.name) || a.lgPath.localeCompare(b.lgPath));
 }
