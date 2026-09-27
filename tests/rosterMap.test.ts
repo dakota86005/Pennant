@@ -41,7 +41,7 @@ describe('one rule picks every club\'s holder, and the place counts that figure'
     expect(r.overlap).toBe(2);
     expect(r.overlapping.sort()).toEqual(['Club 2', 'Club 5']);
     const node = rosterMapWords(build, mapMaterial(r)).positions[0];
-    expect(node.overlapText.display).toBe('Ranges overlap 2 other clubs\'');
+    expect(node.overlapText.display).toBe('His range overlaps 2 of the other 4');
     expect(node.place?.overlap).toBe(2);
   });
 
@@ -127,14 +127,22 @@ describe('the farm\'s next man is Player Development\'s answer as served', () =>
 });
 
 describe('the map on the synthetic save', () => {
-  it('marks a need only where Major League Ops raised one', () => {
+  it('marks a need only where Major League Ops raised one: at the position, on the pitcher it names, else on the staff', () => {
     const save = buildSave({ season: 2040, historySeasons: 1, gamesPerTeam: 60, playedShare: 0.5, clubs: 4, seed: 11, teamSeason: true });
-    const need = (position: number, kind: string) => ({ id: `n${position}`, kind: 'bench_coverage', title: `No backup at ${position}`, role: { kind, label: 'x', position } });
-    const m = readMorning(save.org, getDataStatus(), [need(6, 'position_player'), need(1, 'relief_pitcher')] as never);
+    const need = (position: number, kind: string, subject?: number) => ({
+      id: `n${position}${subject ?? ''}`, kind: subject ? 'role_holder_review' : 'bench_coverage', title: 'x',
+      role: { kind, label: kind === 'position_player' ? 'shortstop' : 'relief pitcher', position }, causes: [], returning: null,
+      ...(subject ? { subject: { playerId: subject, name: `P ${subject}` } } : {}),
+    });
+    const first = rosterMapWords(build, readMorning(save.org, getDataStatus(), null));
+    const starter = first.rotation[1].playerId;
+    const m = readMorning(save.org, getDataStatus(), [need(6, 'position_player'), need(1, 'relief_pitcher'), need(1, 'starting_pitcher', starter)] as never);
     const words = rosterMapWords(build, m);
     expect(words.positions.filter((p) => p.need).map((p) => p.pos)).toEqual(['SS']);
-    expect(words.bullpen.every((p) => p.need)).toBe(true);
-    expect(words.rotation.some((p) => p.need)).toBe(false);
+    expect(words.rotation.filter((p) => p.need).map((p) => p.playerId)).toEqual([starter]);
+    expect(words.bullpen.some((p) => p.need)).toBe(false);
+    expect(words.bullpenNeeds.map((c) => c.display)).toEqual(['No backup on the bench for relief pitcher']);
+    expect(words.rotationNeeds).toEqual([]);
   });
 
   it('draws every range on its one served scale, places inside "of N", and a basis on every node', () => {
@@ -149,6 +157,16 @@ describe('the map on the synthetic save', () => {
       expect(p.claim.basis.because.length).toBeGreaterThan(3);
     }
     expect(words.positions.map((p) => p.pos)).toEqual(['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH']);
+    // The club's player listed at designated hitter holds it
+    expect(words.positions.at(-1)?.holder?.playerId).toBe(save.hitters[8]);
+  });
+
+  it('keeps the designated hitter off the map where no club lists one there, and says so', () => {
+    const save = buildSave({ season: 2040, historySeasons: 1, gamesPerTeam: 60, playedShare: 0.5, clubs: 4, seed: 11, teamSeason: true });
+    exec(`UPDATE players SET position = 3 WHERE position = 10`);
+    const words = rosterMapWords(build, readMorning(save.org, getDataStatus(), null));
+    expect(words.positions.map((p) => p.pos)).not.toContain('DH');
+    expect(words.notes.map((n) => n.display)).toContain('No club lists a player at designated hitter, so the DH isn\'t on the map.');
   });
 
   it('leaves the designated hitter off where the league plays without one, and says so', () => {
@@ -173,7 +191,7 @@ function mapMaterial(r: ReturnType<typeof positionReadings>[number]) {
     facts: {} as never, division: null, profile: { why: 'x' }, starters: [], ms: {},
     map: {
       positions: [{ ...r, farmNext: null, farmMore: 0, control: null, standing: null, needs: [] }],
-      noDh: null, rotation: [], bullpen: [], scale: { low: -2, high: 6 }, part: 'rest_of_season' as const, season: 2040, clubs: clubs.length,
+      noDh: null, rotation: [], bullpen: [], rotationNeeds: [], bullpenNeeds: [], scale: { low: -2, high: 6 }, part: 'rest_of_season' as const, season: 2040, clubs: clubs.length,
     },
   };
 }

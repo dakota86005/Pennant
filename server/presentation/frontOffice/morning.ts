@@ -16,6 +16,8 @@ import type { ControlReading, MapPitcher, MapPosition, MorningMaterial, RosterMa
 import { basis, cell, claim, servedValue, target } from '../claim.js';
 import { gameDateDisplay } from '../dataStatusWords.js';
 import { asOfCell, listWords, plural, type BuildContext } from './desk.js';
+import { needText, type MajorLeagueInput } from './majorLeague.js';
+import type { MlbNeed } from '../../mlbNeeds.js';
 import type {
   ClubProfile, ControlTerm, DeadlineNote, FarmNextMan, GameLetter, LastFive, MissingPart, MorningParts, PlayerRef, ProbableStarter,
   ProfileDimension, ReadinessState, RosterMap, RosterNode, RunsFigure, StaffPitcher, StandingLine, TeamSeason, TonightGame, WinsValue,
@@ -82,6 +84,13 @@ function dayWords(raw: string | null): string | null {
   const m = raw ? /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(raw) : null;
   return m ? `${MONTHS[Number(m[2]) - 1]} ${Number(m[3])}` : null;
 }
+
+/** "Colorado Rockies' record", "Club 1's record". */
+const possessive = (name: string) => (/s$/.test(name) ? `${name}'` : `${name}'s`);
+
+/** A need in Major League Ops' own words on the desk (`needText`); a need tied to a node never counts the roster. */
+const NO_ROSTER: MajorLeagueInput['overview'] = { needs: [], roster: { active: { count: null, limit: null }, fortyMan: { count: null, limit: null }, injuredList: 0 }, unknowns: [], yardsticks: { line: '', tip: '', groups: [], longMan: '' } };
+const needWords = (n: MlbNeed) => needText(n, NO_ROSTER).text;
 
 const recordWords = (w: number, l: number, t: number) => `${w}–${l}${t > 0 ? `–${t}` : ''}`;
 
@@ -186,7 +195,7 @@ function tonight(build: BuildContext, m: MorningMaterial): TonightGame | null {
   const starters = ours || theirs
     ? cell(`${brief(ours)} vs ${brief(theirs)}`, { hint: 'The probable starters, as OOTP projects them' })
     : cell(facts.projectedWhy ? 'Starters not known' : 'Starters not projected yet', { tone: 'unknown', hint: facts.projectedWhy ?? 'OOTP hasn\'t projected the starters' });
-  const oppRecord = opp?.record ? cell(recordWords(opp.record.w, opp.record.l, opp.record.t), { hint: `${oppName}'s record` }) : null;
+  const oppRecord = opp?.record ? cell(recordWords(opp.record.w, opp.record.l, opp.record.t), { hint: `${possessive(oppName)} record` }) : null;
   const when = cell(time ? `${day} · ${time}` : day, { hint: `${gameDateDisplay(next.date) ?? next.date}${time ? `, ${time}` : ''}` });
   const matchup = cell(`${home ? 'vs' : 'at'} ${oppName}`);
   return {
@@ -209,7 +218,7 @@ function tonight(build: BuildContext, m: MorningMaterial): TonightGame | null {
           { label: 'Where', value: home ? 'At home' : `At ${oppName}` },
           { label: 'Our starter', value: ours ? `${ours.name} · ${ours.line.display}` : 'Not projected' },
           { label: 'Their starter', value: theirs ? `${theirs.name} · ${theirs.line.display}` : 'Not projected' },
-          ...(oppRecord ? [{ label: `${oppName}'s record`, value: oppRecord.display }] : []),
+          ...(oppRecord ? [{ label: `${possessive(oppName)} record`, value: oppRecord.display }] : []),
         ],
         source: source(build, SCHEDULE),
         unknown: [...(ours && theirs ? [] : ['OOTP hasn\'t projected both starters, so who starts is not known.'])],
@@ -407,8 +416,8 @@ const LEDE_SUBJECT: Record<DimensionId, string> = {
   bullpen: 'The bullpen', defense: 'The defense', baserunning: 'Baserunning',
 };
 
-const LEDE_RULE = 'The lede says only what is on this page: the division place and games back; the dimension whose place over the last 15 '
-  + 'games moved furthest from its season place, when it moved by a fifth of the league or more, else the club\'s best-placed strength; and '
+const LEDE_RULE = 'The lede says only what is on this page: the division place and games back; the first dimension, in the page\'s order, '
+  + 'whose place over the last 15 games moved from its season place by a fifth of the league or more, else the club\'s best-placed strength; and '
   + 'the days to the trade deadline while it is ahead. It adds nothing that is not shown with its own basis.';
 
 /** One or two sentences built only from facts on the page; null when there is too little to say. */
@@ -428,14 +437,15 @@ export function ledeWords(build: BuildContext, season: TeamSeason, division: Div
   because.push({ label: 'Place', value: place.claim.text });
 
   if (profile && reading && !reading.tooEarly) {
+    // The first dimension in the page's order whose recent place moved from its season place by a fifth of the league
     const moved = reading.dimensions
       .filter((d) => d.place && d.recent.place)
       .map((d) => ({ d, move: d.recent.place!.rank - d.place!.rank }))
-      .filter(({ d, move }) => Math.abs(move) * Math.round(1 / reading.policy.fifth) >= d.place!.of)
-      .sort((a, b) => Math.abs(b.move) - Math.abs(a.move))[0];
+      .find(({ d, move }) => Math.abs(move) * Math.round(1 / reading.policy.fifth) >= d.place!.of);
     if (moved) {
       const r = moved.d.recent.place!;
-      sentences.push(`${LEDE_SUBJECT[moved.d.id]} has ${moved.move > 0 ? 'slipped' : 'climbed'} to ${ordinal(r.rank)} over the last ${numberWord(reading.policy.recentGames)}.`);
+      const to = r.tiedWith > 0 ? `into a tie for ${ordinal(r.rank)}` : `to ${ordinal(r.rank)}`;
+      sentences.push(`${LEDE_SUBJECT[moved.d.id]} has ${moved.move > 0 ? 'slipped' : 'climbed'} ${to} over the last ${numberWord(reading.policy.recentGames)}.`);
       const shown = profile.dimensions.find((x) => x.id === moved.d.id);
       because.push({ label: shown?.name ?? moved.d.id, value: `${shown?.placeText ?? ''} this season; ${shown?.recent.text ?? ''}`.trim() });
     } else {
@@ -656,7 +666,9 @@ function nodeWords(build: BuildContext, p: MapPosition, clubs: number, part: Ros
   const placeText = p.place ? placeWords(p.place) : 'Not placed';
   const others = p.overlap ?? 0;
   const overlapText = p.place
-    ? cell(others === 0 ? 'No other club\'s range overlaps his' : `Ranges overlap ${plural(others, 'other club')}'`, {
+    ? cell(others === 0 ? 'His range overlaps no other club\'s'
+      : others === p.place.of - 1 ? 'His range overlaps every other club\'s'
+        : `His range overlaps ${others} of the other ${p.place.of - 1}`, {
       hint: 'Two holders whose ranges overlap aren\'t said to differ',
     })
     : cell(holder ? 'Not placed: he isn\'t valued yet' : `Not placed: nobody listed at ${where.at}`, { tone: 'unknown' });
@@ -684,7 +696,7 @@ function nodeWords(build: BuildContext, p: MapPosition, clubs: number, part: Ros
     { label: 'The farm\'s next man', value: farm ? `${farm.name}, ${farm.level}: ${farm.readiness.display}` : 'Nobody listed there' },
     { label: 'Control', value: control.text },
     ...(p.standing ? [{ label: 'Standing', value: p.standing }] : []),
-    { label: 'Major League Ops', value: need ? p.needs.join('; ') : 'No need raised here' },
+    { label: 'Major League Ops', value: need ? p.needs.map(needWords).join('; ') : 'No need raised here' },
     { label: 'How the holder is chosen', value: 'The club\'s major-league player listed there with the most expected wins; the same for every club.' },
   ];
   const a = p.farmNext?.assessment ?? null;
@@ -740,7 +752,7 @@ function pitcherWords(build: BuildContext, p: MapPitcher, role: string, part: Ro
     { label: 'This season', value: line },
     { label: `Expected wins, ${partWords}`, value: value?.text ?? `Not valued: ${p.why ?? 'not established'}` },
     ...(p.standing ? [{ label: 'Standing', value: p.standing }] : []),
-    ...(p.needs.length ? [{ label: 'Major League Ops', value: p.needs.join('; ') }] : []),
+    ...(p.needs.length ? [{ label: 'Major League Ops', value: p.needs.map(needWords).join('; ') }] : []),
   ];
   return {
     playerId: p.playerId,
@@ -768,7 +780,7 @@ const ROTATION_ROLES = ['Next', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th']
 
 export function rosterMapWords(build: BuildContext, m: MorningMaterial): RosterMap {
   if ('why' in m.map) {
-    return { positions: [], valueScale: null, rotation: [], bullpen: [], notes: [], unavailable: cell(m.map.why, { tone: 'unknown' }) };
+    return { positions: [], valueScale: null, rotation: [], bullpen: [], rotationNeeds: [], bullpenNeeds: [], notes: [], unavailable: cell(m.map.why, { tone: 'unknown' }) };
   }
   const map = m.map;
   const notes = [
@@ -782,6 +794,8 @@ export function rosterMapWords(build: BuildContext, m: MorningMaterial): RosterM
     valueScale: map.scale ? { low: map.scale.low, high: map.scale.high, unit: 'wins' } : null,
     rotation: map.rotation.map((p, i) => pitcherWords(build, p, ROTATION_ROLES[i] ?? ordinal(i + 1), map.part, false)),
     bullpen: map.bullpen.map((p) => pitcherWords(build, p, p.kind === 'closer' ? 'CL' : 'RP', map.part, true)),
+    rotationNeeds: map.rotationNeeds.map((n) => cell(needWords(n), { tone: 'caution', hint: 'Raised by Major League Ops' })),
+    bullpenNeeds: map.bullpenNeeds.map((n) => cell(needWords(n), { tone: 'caution', hint: 'Raised by Major League Ops' })),
     notes,
     unavailable: null,
   };
@@ -826,7 +840,7 @@ export function morningUnavailable(build: BuildContext, why: string): MorningPar
       dimensions: [],
       unavailable: line,
     },
-    rosterMap: { positions: [], valueScale: null, rotation: [], bullpen: [], notes: [], unavailable: line },
+    rosterMap: { positions: [], valueScale: null, rotation: [], bullpen: [], rotationNeeds: [], bullpenNeeds: [], notes: [], unavailable: line },
   };
 }
 

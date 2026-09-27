@@ -11,7 +11,7 @@ import { orgInjuries } from '../server/dashboard.js';
 import { computeFarmSystem } from '../server/farmOperations.js';
 import {
   FrontOfficeRefusal, NO_CLUB, UNKNOWN_CLAIM, UNKNOWN_CLUB, UNKNOWN_DEPARTMENT, claimTrail, currentReportStamp, departmentReport, frontOfficeStats,
-  frontOfficeSummary, frontOfficeTimings, invalidateFrontOffice, resetFrontOfficeCache, resolveOrg, warmFrontOffice,
+  frontOfficeSummary, frontOfficeTimings, invalidateFrontOffice, resetFrontOfficeCache, resolveOrg, valueRefitsRecorded, warmFrontOffice,
 } from '../server/frontOfficeService.js';
 import { mlbOverview } from '../server/mlbOperations.js';
 import { importedAt } from '../server/playerStateRoutes.js';
@@ -384,6 +384,16 @@ describe('the cache', () => {
     expect((await frontOfficeSummary(save.org)).rosterMap).toBe(summary.rosterMap);
     expect(frontOfficeStats()).toMatchObject({ builds: 1, hits: 2 });
     expect(Object.keys(frontOfficeTimings(save.org) ?? {})).toEqual(expect.arrayContaining(['teamSeason', 'clubProfile', 'rosterMap', 'morningWords']));
+  });
+
+  it('builds again when Player Value adopts a refit, and only then: the roster map shows its figures (N6)', async () => {
+    const before = await frontOfficeSummary(save.org);
+    expect(valueRefitsRecorded([{ refit: true, adopted: false }, { refit: false, adopted: null }])).toBe(false);
+    expect((await frontOfficeSummary(save.org)).reportStamp).toBe(before.reportStamp);
+    expect(valueRefitsRecorded([{ refit: true, adopted: true }])).toBe(true);
+    const after = await frontOfficeSummary(save.org);
+    expect(after.reportStamp).not.toBe(before.reportStamp);
+    expect(frontOfficeStats().builds).toBe(2);
   });
 
   it('shares one build between requests that arrive while it runs', async () => {

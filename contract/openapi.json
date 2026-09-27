@@ -4217,6 +4217,19 @@
               "$ref": "#/components/schemas/StaffPitcher"
             }
           },
+          "rotationNeeds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            },
+            "description": "Major League Ops' needs at the rotation's or the bullpen's role that name no pitcher shown (a return, a short staff)."
+          },
+          "bullpenNeeds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
           "notes": {
             "type": "array",
             "items": {
@@ -4233,6 +4246,8 @@
           "positions",
           "rotation",
           "bullpen",
+          "rotationNeeds",
+          "bullpenNeeds",
           "notes"
         ]
       },

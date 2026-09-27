@@ -50,8 +50,8 @@ export interface MapPosition extends PositionReading {
   control: ControlReading | null;
   /** The club's standing for the holder (IL, Day-to-day ...), as Player State reads it; null when active or not known. */
   standing: string | null;
-  /** Major League Ops' needs at the position, by title. */
-  needs: string[];
+  /** Major League Ops' needs at the position (its role), as it served them. */
+  needs: MlbNeed[];
 }
 
 export interface MapPitcher extends StaffInput {
@@ -59,13 +59,17 @@ export interface MapPitcher extends StaffInput {
   standing: string | null;
   /** He is OOTP's projected starter for the club's next game. */
   next: boolean;
-  needs: string[];
+  /** Major League Ops' needs about him by name (a flag on his work, his return), as it served them. */
+  needs: MlbNeed[];
 }
 
 export interface RosterMaterial {
   positions: MapPosition[];
   /** The designated hitter's node is left out: why (the league plays without one); null when it is there. */
   noDh: string | null;
+  /** Major League Ops' needs at the rotation's or the bullpen's role that name no pitcher listed here. */
+  rotationNeeds: MlbNeed[];
+  bullpenNeeds: MlbNeed[];
   rotation: MapPitcher[];
   bullpen: MapPitcher[];
   scale: { low: number; high: number } | null;
@@ -143,7 +147,13 @@ function readMap(facts: TeamSeasonFacts, status: DataStatus, needs: readonly Mlb
   const me = facts.clubs.find((c) => c.teamId === orgId);
   const listed = positionPlayers(clubs.map((c) => c.teamId));
   const dhRule = facts.subLeagues.find((s) => s.subLeagueId === me?.subLeagueId)?.dh ?? null;
-  const withDh = dhRule === true || (dhRule === null && listed.some((p) => p.position === 10));
+  // The designated hitter's node, where the league uses one and a club lists a player there (OOTP lists most players at
+  // their fielding position, so a league where nobody is listed at DH has no DH holder to place)
+  const listsDh = listed.some((p) => p.position === 10);
+  const withDh = dhRule !== false && listsDh;
+  const noDh = withDh ? null
+    : dhRule === false ? 'The league plays without a designated hitter.'
+      : 'No club lists a player at designated hitter, so the DH isn\'t on the map.';
   const positions = [2, 3, 4, 5, 6, 7, 8, 9, ...(withDh ? [10] : [])];
 
   // Our major-league pitchers, as Player State places them: on the active roster, or projected to start
@@ -161,7 +171,8 @@ function readMap(facts: TeamSeasonFacts, status: DataStatus, needs: readonly Mlb
     const s = states.find((x) => x.playerId === id)?.standing.value ?? null;
     return s && !NOT_SHOWN_STANDINGS.has(s.label) ? s.label + (s.daysLeft ? ` · ${s.daysLeft} days` : '') : null;
   };
-  const needsAt = (spot: number) => (needs ?? []).filter((n) => needSpot(n) === spot).map((n) => n.title);
+  const needsAt = (spot: number) => (needs ?? []).filter((n) => needSpot(n) === spot);
+  const aboutHim = (n: MlbNeed) => n.subject?.playerId ?? n.returning?.playerId ?? null;
 
   const lines = pitcherLines(pitchers.map((p) => p.playerId), facts.leagueId ?? 0, facts.season);
   const staffInputs: StaffInput[] = pitchers.map((p) => {
@@ -177,11 +188,14 @@ function readMap(facts: TeamSeasonFacts, status: DataStatus, needs: readonly Mlb
   });
   const order = staffOrder(staffInputs);
   const nextStarter = facts.next ? projected[0] ?? null : null;
+  // A pitcher carries a need only where it names him; a need at the role that names no one listed here is the group's
   const staff = (list: StaffInput[], spot: number): MapPitcher[] => list.map((p) => ({
-    ...p, line: lines.get(p.playerId)!, standing: standingOf(p.playerId), next: p.playerId === nextStarter, needs: needsAt(spot),
+    ...p, line: lines.get(p.playerId)!, standing: standingOf(p.playerId), next: p.playerId === nextStarter,
+    needs: needsAt(spot).filter((n) => aboutHim(n) === p.playerId),
   }));
   const rotation = staff(order.rotation, 1);
   const bullpen = staff(order.bullpen, 0);
+  const groupNeeds = (spot: number, shown: MapPitcher[]) => needsAt(spot).filter((n) => !shown.some((p) => p.playerId === aboutHim(n)));
 
   const mapped: MapPosition[] = readings.map((r) => {
     const next = farm.get(r.position) ?? [];
@@ -197,7 +211,9 @@ function readMap(facts: TeamSeasonFacts, status: DataStatus, needs: readonly Mlb
   const firstPart = players.find((p) => p.teamId === orgId && p.part)?.part ?? null;
   return {
     positions: mapped,
-    noDh: withDh ? null : 'The league plays without a designated hitter.',
+    noDh,
+    rotationNeeds: groupNeeds(1, rotation),
+    bullpenNeeds: groupNeeds(0, bullpen),
     rotation, bullpen,
     scale: valueScaleOf([...mapped.map((p) => p.holder?.wins ?? null), ...rotation.map((p) => p.wins), ...bullpen.map((p) => p.wins)]),
     part: firstPart,

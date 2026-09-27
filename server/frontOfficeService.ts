@@ -347,6 +347,19 @@ export function frontOfficeTimings(orgId: number): Record<string, number> | null
   return built ? { ...built.ms } : null;
 }
 
+/**
+ * Player Value's refits after an import (N6): an adopted fit moves every expected-wins figure the roster map shows (and
+ * its places), so the kept builds are dropped and the club's is built again in the background, which moves the served
+ * stamp and sends `front-office-updated`. A refit that was not adopted leaves the fits in force, and nothing is rebuilt.
+ * Returns whether it rebuilt. Called by the import's refit step (`api.ts`), after the fits are recorded.
+ */
+export function valueRefitsRecorded(outcomes: ReadonlyArray<{ refit: boolean; adopted: boolean | null }>): boolean {
+  if (!outcomes.some((o) => o.refit && o.adopted === true)) return false;
+  invalidateFrontOffice();
+  void warmFrontOffice();
+  return true;
+}
+
 // A calibration that changed moves the review's yardsticks, so what Major League Ops raises: build again, in the background
 onCalibrationRecorded(() => {
   invalidateFrontOffice();

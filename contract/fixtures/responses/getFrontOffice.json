@@ -1029,7 +1029,7 @@
       }
     },
     "record": {
-      "text": "Won 16, lost 14",
+      "text": "Won 15, lost 15",
       "tone": "neutral",
       "basis": {
         "because": [
@@ -1039,15 +1039,15 @@
           },
           {
             "label": "At home",
-            "value": "8–7"
+            "value": "0–15"
           },
           {
             "label": "On the road",
-            "value": "8–7"
+            "value": "15–0"
           },
           {
             "label": "Last 10",
-            "value": "3–7"
+            "value": "5–5"
           }
         ],
         "source": {
@@ -1069,34 +1069,34 @@
           "view": "standings"
         }
       ],
-      "hint": "Won 16, lost 14, as the standings have it",
+      "hint": "Won 15, lost 15, as the standings have it",
       "value": {
-        "n": 16,
+        "n": 15,
         "unit": "games",
-        "display": "16–14"
+        "display": "15–15"
       }
     },
     "place": {
       "claim": {
-        "text": "3rd in the East · 4 back",
+        "text": "3rd in the East · 3 back",
         "tone": "neutral",
         "basis": {
           "because": [
             {
-              "label": "Club 4 N",
-              "value": "20–10 · leads"
+              "label": "Club 3 N",
+              "value": "18–12 · leads"
             },
             {
-              "label": "Club 3 N",
-              "value": "17–13 · 3 back"
+              "label": "Club 4 N",
+              "value": "18–12 · leads"
             },
             {
               "label": "Club 1 N (us)",
-              "value": "16–14 · 4 back"
+              "value": "15–15 · 3 back"
             },
             {
               "label": "Club 2 N",
-              "value": "7–23 · 13 back"
+              "value": "9–21 · 9 back"
             }
           ],
           "source": {
@@ -1125,7 +1125,7 @@
           "tiedWith": 0
         }
       },
-      "gamesBack": 4,
+      "gamesBack": 3,
       "gamesAhead": null
     },
     "runs": {
@@ -1136,15 +1136,15 @@
           "because": [
             {
               "label": "Runs scored",
-              "value": "135 · 4.50 a game"
+              "value": "136 · 4.53 a game"
             },
             {
               "label": "Runs allowed",
-              "value": "129 · 4.30 a game"
+              "value": "128 · 4.27 a game"
             },
             {
               "label": "Last 20 games",
-              "value": "+14"
+              "value": "+10"
             }
           ],
           "source": {
@@ -1168,38 +1168,38 @@
         ],
         "hint": "Runs scored less runs allowed, this season",
         "value": {
-          "n": 6,
+          "n": 8,
           "unit": "runs",
-          "display": "+6"
+          "display": "+8"
         }
       },
       "line": {
-        "display": "135 scored · 129 allowed"
+        "display": "136 scored · 128 allowed"
       },
-      "scored": 135,
-      "allowed": 129,
-      "diff": 6,
+      "scored": 136,
+      "allowed": 128,
+      "diff": 8,
       "trend": [
-        -10,
-        -9,
-        -6,
+        0,
+        -1,
+        2,
+        -5,
         1,
-        7,
-        8,
-        14,
-        16,
-        13,
-        16,
-        13,
-        16,
-        15,
-        13,
-        7,
+        0,
         6,
-        9,
+        4,
+        7,
+        4,
+        7,
+        4,
         5,
+        3,
+        9,
         8,
-        6
+        11,
+        7,
+        10,
+        8
       ]
     },
     "lastFive": {
@@ -1231,7 +1231,7 @@
         "name": "Club 4 N",
         "abbr": "C4",
         "record": {
-          "display": "20–10",
+          "display": "18–12",
           "hint": "Club 4 N's record"
         }
       },
@@ -1243,7 +1243,7 @@
         "name": "P 1013",
         "short": "P. 1013",
         "line": {
-          "display": "1–5 · 6.15 ERA"
+          "display": "3–3 · 4.81 ERA"
         }
       },
       "theirs": {
@@ -1251,11 +1251,11 @@
         "name": "P 1091",
         "short": "P. 1091",
         "line": {
-          "display": "3–3 · 5.28 ERA"
+          "display": "3–3 · 6.16 ERA"
         }
       },
       "starters": {
-        "display": "P. 1013 (1–5 · 6.15 ERA) vs P. 1091 (3–3 · 5.28 ERA)",
+        "display": "P. 1013 (3–3 · 4.81 ERA) vs P. 1091 (3–3 · 6.16 ERA)",
         "hint": "The probable starters, as OOTP projects them"
       },
       "open": {
@@ -1282,15 +1282,15 @@
             },
             {
               "label": "Our starter",
-              "value": "P 1013 · 1–5 · 6.15 ERA"
+              "value": "P 1013 · 3–3 · 4.81 ERA"
             },
             {
               "label": "Their starter",
-              "value": "P 1091 · 3–3 · 5.28 ERA"
+              "value": "P 1091 · 3–3 · 6.16 ERA"
             },
             {
               "label": "Club 4 N's record",
-              "value": "20–10"
+              "value": "18–12"
             }
           ],
           "source": {
@@ -1365,17 +1365,17 @@
     "missing": []
   },
   "lede": {
-    "text": "Third in the East, four games back. Run prevention has slipped to 3rd over the last fifteen. The deadline is 86 days out.",
+    "text": "Third in the East, three games back. Run scoring has climbed to 2nd over the last fifteen. The deadline is 86 days out.",
     "tone": "neutral",
     "basis": {
       "because": [
         {
           "label": "Place",
-          "value": "3rd in the East · 4 back"
+          "value": "3rd in the East · 3 back"
         },
         {
-          "label": "Preventing runs",
-          "value": "2nd of 4 this season; Last 15: 3rd"
+          "label": "Scoring runs",
+          "value": "3rd of 4 this season; Last 15: 2nd"
         },
         {
           "label": "Trade deadline",
@@ -1393,7 +1393,7 @@
       "lean": null,
       "certainty": "policy",
       "called": "A line chosen and stated",
-      "stamp": "The lede says only what is on this page: the division place and games back; the dimension whose place over the last 15 games moved furthest from its season place, when it moved by a fifth of the league or more, else the club's best-placed strength; and the days to the trade deadline while it is ahead. It adds nothing that is not shown with its own basis."
+      "stamp": "The lede says only what is on this page: the division place and games back; the first dimension, in the page's order, whose place over the last 15 games moved from its season place by a fifth of the league or more, else the club's best-placed strength; and the days to the trade deadline while it is ahead. It adds nothing that is not shown with its own basis."
     },
     "links": [],
     "hint": "Written from the facts on this page; each is below with its basis"
@@ -1438,15 +1438,15 @@
         "placeText": "3rd of 4",
         "recent": {
           "place": {
-            "rank": 3,
+            "rank": 2,
             "of": 4,
             "tiedWith": 0
           },
-          "text": "Last 15: 3rd",
+          "text": "Last 15: 2nd",
           "why": null
         },
         "detail": {
-          "display": "4.50 runs a game · league middle 4.90"
+          "display": "4.53 runs a game · league middle 4.73"
         },
         "group": "rest",
         "claim": {
@@ -1456,15 +1456,15 @@
             "because": [
               {
                 "label": "This season",
-                "value": "4.50 runs a game · 3rd of 4"
+                "value": "4.53 runs a game · 3rd of 4"
               },
               {
                 "label": "League middle",
-                "value": "4.90 runs a game"
+                "value": "4.73 runs a game"
               },
               {
                 "label": "Last 15 games",
-                "value": "4.67 runs a game · 3rd of 4"
+                "value": "4.93 runs a game · 2nd of 4"
               },
               {
                 "label": "How it is read",
@@ -1509,40 +1509,44 @@
         "name": "Preventing runs",
         "symbol": "shield",
         "place": {
-          "rank": 2,
+          "rank": 1,
           "of": 4,
-          "tiedWith": 0
+          "tiedWith": 1
         },
-        "placeText": "2nd of 4",
+        "placeText": "T-1st of 4",
         "recent": {
           "place": {
-            "rank": 3,
+            "rank": 2,
             "of": 4,
             "tiedWith": 0
           },
-          "text": "Last 15: 3rd",
+          "text": "Last 15: 2nd",
           "why": null
         },
         "detail": {
-          "display": "4.30 allowed a game · league middle 4.50"
+          "display": "4.27 allowed a game · league middle 4.48"
         },
         "group": "rest",
         "claim": {
-          "text": "Preventing runs: 2nd of 4",
+          "text": "Preventing runs: T-1st of 4",
           "tone": "neutral",
           "basis": {
             "because": [
               {
                 "label": "This season",
-                "value": "4.30 allowed a game · 2nd of 4"
+                "value": "4.27 allowed a game · T-1st of 4"
               },
               {
                 "label": "League middle",
-                "value": "4.50 allowed a game"
+                "value": "4.48 allowed a game"
+              },
+              {
+                "label": "Level with",
+                "value": "Club 4 N"
               },
               {
                 "label": "Last 15 games",
-                "value": "4.73 allowed a game · 3rd of 4"
+                "value": "4.47 allowed a game · 2nd of 4"
               },
               {
                 "label": "How it is read",
@@ -1576,9 +1580,9 @@
           ],
           "hint": "Runs allowed a game (fewer is better), against the other 3 clubs",
           "place": {
-            "rank": 2,
+            "rank": 1,
             "of": 4,
-            "tiedWith": 0
+            "tiedWith": 1
           }
         }
       },
@@ -1620,7 +1624,7 @@
               },
               {
                 "label": "Last 15 games",
-                "value": ".342 on base · 1st of 4"
+                "value": ".345 on base · 1st of 4"
               },
               {
                 "label": "How it is read",
@@ -1680,7 +1684,7 @@
           "why": null
         },
         "detail": {
-          "display": ".113 extra bases an at-bat · league middle .140"
+          "display": ".113 extra bases an at-bat · league middle .141"
         },
         "group": "rest",
         "claim": {
@@ -1694,11 +1698,11 @@
               },
               {
                 "label": "League middle",
-                "value": ".140 extra bases an at-bat"
+                "value": ".141 extra bases an at-bat"
               },
               {
                 "label": "Last 15 games",
-                "value": ".110 extra bases an at-bat · 4th of 4"
+                "value": ".109 extra bases an at-bat · 4th of 4"
               },
               {
                 "label": "How it is read",
@@ -1743,11 +1747,11 @@
         "name": "Rotation",
         "symbol": "arrow.trianglehead.2.clockwise",
         "place": {
-          "rank": 2,
+          "rank": 1,
           "of": 4,
           "tiedWith": 0
         },
-        "placeText": "2nd of 4",
+        "placeText": "1st of 4",
         "recent": {
           "place": {
             "rank": 2,
@@ -1758,25 +1762,25 @@
           "why": null
         },
         "detail": {
-          "display": "4.26 starters' ERA · league middle 4.38"
+          "display": "4.12 starters' ERA · league middle 4.40"
         },
         "group": "rest",
         "claim": {
-          "text": "Rotation: 2nd of 4",
+          "text": "Rotation: 1st of 4",
           "tone": "neutral",
           "basis": {
             "because": [
               {
                 "label": "This season",
-                "value": "4.26 starters' ERA · 2nd of 4"
+                "value": "4.12 starters' ERA · 1st of 4"
               },
               {
                 "label": "League middle",
-                "value": "4.38 ERA"
+                "value": "4.40 ERA"
               },
               {
                 "label": "Last 15 games",
-                "value": "4.57 starters' ERA · 2nd of 4"
+                "value": "4.25 starters' ERA · 2nd of 4"
               },
               {
                 "label": "How it is read",
@@ -1810,7 +1814,7 @@
           ],
           "hint": "Starters' earned runs a nine innings, against the other 3 clubs",
           "place": {
-            "rank": 2,
+            "rank": 1,
             "of": 4,
             "tiedWith": 0
           }
@@ -1828,15 +1832,15 @@
         "placeText": "2nd of 4",
         "recent": {
           "place": {
-            "rank": 3,
+            "rank": 2,
             "of": 4,
             "tiedWith": 0
           },
-          "text": "Last 15: 3rd",
+          "text": "Last 15: 2nd",
           "why": null
         },
         "detail": {
-          "display": "4.18 relievers' ERA · league middle 4.48"
+          "display": "4.05 relievers' ERA · league middle 4.41"
         },
         "group": "rest",
         "claim": {
@@ -1846,15 +1850,15 @@
             "because": [
               {
                 "label": "This season",
-                "value": "4.18 relievers' ERA · 2nd of 4"
+                "value": "4.05 relievers' ERA · 2nd of 4"
               },
               {
                 "label": "League middle",
-                "value": "4.48 ERA"
+                "value": "4.41 ERA"
               },
               {
                 "label": "Last 15 games",
-                "value": "4.84 relievers' ERA · 3rd of 4"
+                "value": "4.30 relievers' ERA · 2nd of 4"
               },
               {
                 "label": "How it is read",
@@ -1914,7 +1918,7 @@
           "why": null
         },
         "detail": {
-          "display": ".707 of balls in play made outs · league middle .704"
+          "display": ".708 of balls in play made outs · league middle .704"
         },
         "group": "rest",
         "claim": {
@@ -1924,7 +1928,7 @@
             "because": [
               {
                 "label": "This season",
-                "value": ".707 of balls in play made outs · 2nd of 4"
+                "value": ".708 of balls in play made outs · 2nd of 4"
               },
               {
                 "label": "League middle",
@@ -1932,7 +1936,7 @@
               },
               {
                 "label": "Last 15 games",
-                "value": ".685 of balls in play made outs · 3rd of 4"
+                "value": ".689 of balls in play made outs · 3rd of 4"
               },
               {
                 "label": "How it is read",
@@ -2081,7 +2085,7 @@
         "placeText": "3rd of 3",
         "overlap": 2,
         "overlapText": {
-          "display": "Ranges overlap 2 other clubs'",
+          "display": "His range overlaps every other club's",
           "hint": "Two holders whose ranges overlap aren't said to differ"
         },
         "behind": {
@@ -2137,7 +2141,7 @@
               },
               {
                 "label": "Major League Ops",
-                "value": "Catcher coverage is below the minimum floor"
+                "value": "Short of healthy catchers"
               },
               {
                 "label": "How the holder is chosen",
@@ -2206,7 +2210,7 @@
         "placeText": "4th of 4",
         "overlap": 3,
         "overlapText": {
-          "display": "Ranges overlap 3 other clubs'",
+          "display": "His range overlaps every other club's",
           "hint": "Two holders whose ranges overlap aren't said to differ"
         },
         "behind": {
@@ -2330,7 +2334,7 @@
         "placeText": "T-3rd of 4",
         "overlap": 3,
         "overlapText": {
-          "display": "Ranges overlap 3 other clubs'",
+          "display": "His range overlaps every other club's",
           "hint": "Two holders whose ranges overlap aren't said to differ"
         },
         "behind": {
@@ -2453,7 +2457,7 @@
         "placeText": "T-1st of 4",
         "overlap": 3,
         "overlapText": {
-          "display": "Ranges overlap 3 other clubs'",
+          "display": "His range overlaps every other club's",
           "hint": "Two holders whose ranges overlap aren't said to differ"
         },
         "behind": {
@@ -2577,7 +2581,7 @@
         "placeText": "1st of 2",
         "overlap": 1,
         "overlapText": {
-          "display": "Ranges overlap 1 other club'",
+          "display": "His range overlaps every other club's",
           "hint": "Two holders whose ranges overlap aren't said to differ"
         },
         "behind": {
@@ -2702,7 +2706,7 @@
         "placeText": "3rd of 4",
         "overlap": 3,
         "overlapText": {
-          "display": "Ranges overlap 3 other clubs'",
+          "display": "His range overlaps every other club's",
           "hint": "Two holders whose ranges overlap aren't said to differ"
         },
         "behind": {
@@ -2826,7 +2830,7 @@
         "placeText": "1st of 3",
         "overlap": 2,
         "overlapText": {
-          "display": "Ranges overlap 2 other clubs'",
+          "display": "His range overlaps every other club's",
           "hint": "Two holders whose ranges overlap aren't said to differ"
         },
         "behind": {
@@ -2929,31 +2933,15 @@
       {
         "pos": "RF",
         "name": "Right field",
-        "holder": {
-          "playerId": 1008,
-          "name": "P 1008",
-          "short": "P. 1008"
-        },
-        "value": {
-          "low": -0.25766949269640854,
-          "likely": 0.44781263666603216,
-          "high": 1.0089173367604405,
-          "unit": "wins",
-          "text": "Most likely 0.4 wins · could be −0.3 to 1.0",
-          "short": "0.4 wins"
-        },
-        "valueText": "0.4 wins",
-        "place": {
-          "rank": 1,
-          "of": 3,
-          "tiedWith": 0,
-          "overlap": 2
-        },
-        "placeText": "1st of 3",
-        "overlap": 2,
+        "holder": null,
+        "value": null,
+        "valueText": "Not valued",
+        "place": null,
+        "placeText": "Not placed",
+        "overlap": null,
         "overlapText": {
-          "display": "Ranges overlap 2 other clubs'",
-          "hint": "Two holders whose ranges overlap aren't said to differ"
+          "display": "Not placed: nobody listed at right field",
+          "tone": "unknown"
         },
         "behind": {
           "display": "Nobody else listed at right field"
@@ -2961,6 +2949,116 @@
         "farmNext": null,
         "farmText": {
           "display": "Nobody in the farm listed at right field"
+        },
+        "control": {
+          "kind": "unknown",
+          "text": "Nobody listed",
+          "hint": "Nobody on the club is listed at right field",
+          "through": null,
+          "latest": null,
+          "seasonsLeft": null,
+          "atLeast": false,
+          "clock": null
+        },
+        "need": false,
+        "claim": {
+          "text": "Nobody listed at right field",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Expected wins, the rest of this season",
+                "value": "Nobody listed"
+              },
+              {
+                "label": "At right field in the league",
+                "value": "Not placed"
+              },
+              {
+                "label": "League middle",
+                "value": "0.0 wins"
+              },
+              {
+                "label": "Behind him",
+                "value": "Nobody else listed"
+              },
+              {
+                "label": "The farm's next man",
+                "value": "Nobody listed there"
+              },
+              {
+                "label": "Control",
+                "value": "Nobody listed"
+              },
+              {
+                "label": "Major League Ops",
+                "value": "No need raised here"
+              },
+              {
+                "label": "How the holder is chosen",
+                "value": "The club's major-league player listed there with the most expected wins; the same for every club."
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "Player Value, Player Rights and Player Development",
+              "asOf": null,
+              "gameDate": "2040-05-05",
+              "sample": "4 clubs"
+            },
+            "unknown": [
+              "2 clubs not placed at right field: Club 1 N, Club 4 N."
+            ],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "unknown",
+            "called": "Not known"
+          },
+          "links": [
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "positionPlayers"
+            }
+          ],
+          "hint": "Nobody on the club is listed at right field"
+        }
+      },
+      {
+        "pos": "DH",
+        "name": "Designated hitter",
+        "holder": {
+          "playerId": 1008,
+          "name": "P 1008",
+          "short": "P. 1008"
+        },
+        "value": {
+          "low": -0.23076305846185252,
+          "likely": 0.4841703576287041,
+          "high": 1.0484882653515821,
+          "unit": "wins",
+          "text": "Most likely 0.5 wins · could be −0.2 to 1.0",
+          "short": "0.5 wins"
+        },
+        "valueText": "0.5 wins",
+        "place": {
+          "rank": 2,
+          "of": 4,
+          "tiedWith": 0,
+          "overlap": 3
+        },
+        "placeText": "2nd of 4",
+        "overlap": 3,
+        "overlapText": {
+          "display": "His range overlaps every other club's",
+          "hint": "Two holders whose ranges overlap aren't said to differ"
+        },
+        "behind": {
+          "display": "Nobody else listed at designated hitter"
+        },
+        "farmNext": null,
+        "farmText": {
+          "display": "Nobody in the farm listed at designated hitter"
         },
         "control": {
           "kind": "through",
@@ -2974,25 +3072,25 @@
         },
         "need": false,
         "claim": {
-          "text": "P 1008 at right field",
+          "text": "P 1008 at designated hitter",
           "tone": "neutral",
           "basis": {
             "because": [
               {
                 "label": "Expected wins, the rest of this season",
-                "value": "Most likely 0.4 wins · could be −0.3 to 1.0"
+                "value": "Most likely 0.5 wins · could be −0.2 to 1.0"
               },
               {
-                "label": "At right field in the league",
-                "value": "1st of 3"
+                "label": "At designated hitter in the league",
+                "value": "2nd of 4"
               },
               {
                 "label": "Ranges overlapping his",
-                "value": "Club 2 N and Club 3 N"
+                "value": "Club 2 N, Club 3 N and Club 4 N"
               },
               {
                 "label": "League middle",
-                "value": "0.1 wins"
+                "value": "0.4 wins"
               },
               {
                 "label": "Behind him",
@@ -3022,9 +3120,7 @@
               "gameDate": "2040-05-05",
               "sample": "4 clubs"
             },
-            "unknown": [
-              "1 club not placed at right field: Club 4 N."
-            ],
+            "unknown": [],
             "wouldChange": [],
             "lean": null,
             "certainty": "provisional",
@@ -3042,103 +3138,13 @@
               "view": "positionPlayers"
             }
           ],
-          "hint": "Most likely 0.4 wins · could be −0.3 to 1.0, rest of season",
+          "hint": "Most likely 0.5 wins · could be −0.2 to 1.0, rest of season",
           "place": {
-            "rank": 1,
-            "of": 3,
+            "rank": 2,
+            "of": 4,
             "tiedWith": 0,
-            "overlap": 2
+            "overlap": 3
           }
-        }
-      },
-      {
-        "pos": "DH",
-        "name": "Designated hitter",
-        "holder": null,
-        "value": null,
-        "valueText": "Not valued",
-        "place": null,
-        "placeText": "Not placed",
-        "overlap": null,
-        "overlapText": {
-          "display": "Not placed: nobody listed at designated hitter",
-          "tone": "unknown"
-        },
-        "behind": {
-          "display": "Nobody else listed at designated hitter"
-        },
-        "farmNext": null,
-        "farmText": {
-          "display": "Nobody in the farm listed at designated hitter"
-        },
-        "control": {
-          "kind": "unknown",
-          "text": "Nobody listed",
-          "hint": "Nobody on the club is listed at designated hitter",
-          "through": null,
-          "latest": null,
-          "seasonsLeft": null,
-          "atLeast": false,
-          "clock": null
-        },
-        "need": false,
-        "claim": {
-          "text": "Nobody listed at designated hitter",
-          "tone": "neutral",
-          "basis": {
-            "because": [
-              {
-                "label": "Expected wins, the rest of this season",
-                "value": "Nobody listed"
-              },
-              {
-                "label": "At designated hitter in the league",
-                "value": "Not placed"
-              },
-              {
-                "label": "Behind him",
-                "value": "Nobody else listed"
-              },
-              {
-                "label": "The farm's next man",
-                "value": "Nobody listed there"
-              },
-              {
-                "label": "Control",
-                "value": "Nobody listed"
-              },
-              {
-                "label": "Major League Ops",
-                "value": "No need raised here"
-              },
-              {
-                "label": "How the holder is chosen",
-                "value": "The club's major-league player listed there with the most expected wins; the same for every club."
-              }
-            ],
-            "source": {
-              "department": "frontOffice",
-              "specialist": "Player Value, Player Rights and Player Development",
-              "asOf": null,
-              "gameDate": "2040-05-05",
-              "sample": "4 clubs"
-            },
-            "unknown": [
-              "4 clubs not placed at designated hitter: Club 1 N, Club 2 N, Club 3 N, Club 4 N."
-            ],
-            "wouldChange": [],
-            "lean": null,
-            "certainty": "unknown",
-            "called": "Not known"
-          },
-          "links": [
-            {
-              "kind": "view",
-              "department": "majorLeague",
-              "view": "positionPlayers"
-            }
-          ],
-          "hint": "Nobody on the club is listed at designated hitter"
         }
       }
     ],
@@ -3154,12 +3160,12 @@
         "name": "P 1013",
         "short": "P. 1013",
         "line": {
-          "display": "1–5 · 6.15 ERA"
+          "display": "3–3 · 4.81 ERA"
         },
         "value": {
-          "low": 0.12758179381398715,
-          "likely": 1.1258207970639629,
-          "high": 1.853265262922505,
+          "low": 0.1272238999793679,
+          "likely": 1.1328682174224738,
+          "high": 1.854904574300668,
           "unit": "wins",
           "text": "Most likely 1.1 wins · could be 0.1 to 1.9",
           "short": "1.1 wins"
@@ -3181,7 +3187,7 @@
               },
               {
                 "label": "This season",
-                "value": "1–5 · 6.15 ERA"
+                "value": "3–3 · 4.81 ERA"
               },
               {
                 "label": "Expected wins, the rest of this season",
@@ -3221,12 +3227,12 @@
         "name": "P 1014",
         "short": "P. 1014",
         "line": {
-          "display": "5–1 · 4.02 ERA"
+          "display": "3–3 · 4.60 ERA"
         },
         "value": {
-          "low": -0.8004510776910959,
-          "likely": 0.0591241071465633,
-          "high": 0.6349262915856293,
+          "low": -0.8025527919179216,
+          "likely": 0.05949421261758508,
+          "high": 0.634525174445374,
           "unit": "wins",
           "text": "Most likely 0.1 wins · could be −0.8 to 0.6",
           "short": "0.1 wins"
@@ -3245,7 +3251,7 @@
               },
               {
                 "label": "This season",
-                "value": "5–1 · 4.02 ERA"
+                "value": "3–3 · 4.60 ERA"
               },
               {
                 "label": "Expected wins, the rest of this season",
@@ -3285,12 +3291,12 @@
         "name": "P 1015",
         "short": "P. 1015",
         "line": {
-          "display": "4–2 · 4.22 ERA"
+          "display": "3–3 · 4.78 ERA"
         },
         "value": {
-          "low": -0.21317853218557725,
-          "likely": 0.24561618069589478,
-          "high": 0.8448930370738836,
+          "low": -0.21325050476000976,
+          "likely": 0.24715369046363947,
+          "high": 0.8472781963345136,
           "unit": "wins",
           "text": "Most likely 0.2 wins · could be −0.2 to 0.8",
           "short": "0.2 wins"
@@ -3309,7 +3315,7 @@
               },
               {
                 "label": "This season",
-                "value": "4–2 · 4.22 ERA"
+                "value": "3–3 · 4.78 ERA"
               },
               {
                 "label": "Expected wins, the rest of this season",
@@ -3349,12 +3355,12 @@
         "name": "P 1016",
         "short": "P. 1016",
         "line": {
-          "display": "3–3 · 4.22 ERA"
+          "display": "3–3 · 4.78 ERA"
         },
         "value": {
-          "low": -0.12903900840527138,
-          "likely": 0.555689617498166,
-          "high": 1.2641950294347715,
+          "low": -0.12999993222211448,
+          "likely": 0.5591681269852733,
+          "high": 1.2642395747574682,
           "unit": "wins",
           "text": "Most likely 0.6 wins · could be −0.1 to 1.3",
           "short": "0.6 wins"
@@ -3373,7 +3379,7 @@
               },
               {
                 "label": "This season",
-                "value": "3–3 · 4.22 ERA"
+                "value": "3–3 · 4.78 ERA"
               },
               {
                 "label": "Expected wins, the rest of this season",
@@ -3413,12 +3419,12 @@
         "name": "P 1017",
         "short": "P. 1017",
         "line": {
-          "display": "3–3 · 3.76 ERA"
+          "display": "3–3 · 3.29 ERA"
         },
         "value": {
-          "low": 0.2036532669757285,
-          "likely": 1.2244185013659545,
-          "high": 1.9215778795824294,
+          "low": 0.20290011653596962,
+          "likely": 1.2320831242760726,
+          "high": 1.9228808301309774,
           "unit": "wins",
           "text": "Most likely 1.2 wins · could be 0.2 to 1.9",
           "short": "1.2 wins"
@@ -3437,7 +3443,7 @@
               },
               {
                 "label": "This season",
-                "value": "3–3 · 3.76 ERA"
+                "value": "3–3 · 3.29 ERA"
               },
               {
                 "label": "Expected wins, the rest of this season",
@@ -3479,7 +3485,7 @@
         "name": "P 1018",
         "short": "P. 1018",
         "line": {
-          "display": "1 save · 5.25 ERA"
+          "display": "2 saves · 1.50 ERA"
         },
         "value": {
           "low": -0.3472261093687789,
@@ -3503,7 +3509,7 @@
               },
               {
                 "label": "This season",
-                "value": "1 save · 5.25 ERA"
+                "value": "2 saves · 1.50 ERA"
               },
               {
                 "label": "Expected wins, the rest of this season",
@@ -3607,7 +3613,7 @@
         "name": "P 1023",
         "short": "P. 1023",
         "line": {
-          "display": "4.26 ERA · 12.2 innings"
+          "display": "6.39 ERA · 12.2 innings"
         },
         "value": {
           "low": -0.27797525777248827,
@@ -3631,7 +3637,7 @@
               },
               {
                 "label": "This season",
-                "value": "4.26 ERA · 12.2 innings"
+                "value": "6.39 ERA · 12.2 innings"
               },
               {
                 "label": "Expected wins, the rest of this season",
@@ -3735,7 +3741,7 @@
         "name": "P 1021",
         "short": "P. 1021",
         "line": {
-          "display": "3.27 ERA · 11 innings"
+          "display": "4.91 ERA · 11 innings"
         },
         "value": {
           "low": -0.2612042333221651,
@@ -3759,7 +3765,7 @@
               },
               {
                 "label": "This season",
-                "value": "3.27 ERA · 11 innings"
+                "value": "4.91 ERA · 11 innings"
               },
               {
                 "label": "Expected wins, the rest of this season",
@@ -3799,7 +3805,7 @@
         "name": "P 1022",
         "short": "P. 1022",
         "line": {
-          "display": "4.09 ERA · 11 innings"
+          "display": "3.27 ERA · 11 innings"
         },
         "value": {
           "low": -0.4009880562465833,
@@ -3823,7 +3829,7 @@
               },
               {
                 "label": "This season",
-                "value": "4.09 ERA · 11 innings"
+                "value": "3.27 ERA · 11 innings"
               },
               {
                 "label": "Expected wins, the rest of this season",
@@ -3863,7 +3869,7 @@
         "name": "P 1020",
         "short": "P. 1020",
         "line": {
-          "display": "5.91 ERA · 10.2 innings"
+          "display": "4.22 ERA · 10.2 innings"
         },
         "value": {
           "low": -0.06520673229627112,
@@ -3887,7 +3893,7 @@
               },
               {
                 "label": "This season",
-                "value": "5.91 ERA · 10.2 innings"
+                "value": "4.22 ERA · 10.2 innings"
               },
               {
                 "label": "Expected wins, the rest of this season",
@@ -3986,6 +3992,8 @@
         }
       }
     ],
+    "rotationNeeds": [],
+    "bullpenNeeds": [],
     "notes": [
       {
         "display": "Holders are each club's player listed at the position with the most expected wins",

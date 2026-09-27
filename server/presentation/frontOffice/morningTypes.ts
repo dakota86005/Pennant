@@ -288,6 +288,9 @@ export interface RosterMap {
   valueScale: ValueScale | null;
   rotation: StaffPitcher[];
   bullpen: StaffPitcher[];
+  /** Major League Ops' needs at the rotation's or the bullpen's role that name no pitcher shown (a return, a short staff). */
+  rotationNeeds: Cell[];
+  bullpenNeeds: Cell[];
   /** What the map says about itself ("The league plays without a designated hitter"). */
   notes: Cell[];
   /** Why the map could not be read this time; null when it was. */

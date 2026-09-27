@@ -426,6 +426,11 @@ function writeTeamSeason(save: BuiltSave, rnd: () => number): void {
   const starters = new Map(clubs.map((c) => [c, save.pitchers.filter((p) => facts.get(p)?.team_id === c && facts.get(p)?.role === 11)]));
   const relievers = new Map(clubs.map((c) => [c, save.pitchers.filter((p) => facts.get(p)?.team_id === c && facts.get(p)?.role !== 11)]));
   const regular = new Map(clubs.map((c) => [c, save.hitters.find((h) => facts.get(h)?.team_id === c)!]));
+  // Each club's ninth regular is its designated hitter, as OOTP lists a club's DH
+  for (const c of clubs) {
+    const dh = save.hitters.filter((h) => facts.get(h)?.team_id === c)[8];
+    if (dh !== undefined) db.prepare(`UPDATE players SET position = 10 WHERE player_id = ?`).run(dh);
+  }
   // One pitcher a club a season closes games: its first reliever
   for (const c of clubs) {
     const closer = relievers.get(c)![0];
@@ -442,6 +447,7 @@ function writeTeamSeason(save: BuiltSave, rnd: () => number): void {
   const started = new Map(clubs.map((c) => [c, 0]));
   const pitcherLines = new Map<number, Line>();
   let gameId = 1;
+  let humanGames = 0;
   const poisson = (mean: number) => {
     let k = 0;
     let p = Math.exp(-mean);
@@ -489,6 +495,16 @@ function writeTeamSeason(save: BuiltSave, rnd: () => number): void {
         runs0 = poisson(4.4 * strength.get(away)! / strength.get(home)!);
         runs1 = poisson(4.4 * strength.get(home)! / strength.get(away)!);
         if (runs0 === runs1) runs1 += 1;
+        // The human's club splits its games, win and loss in turn, so its record stays the even one the league had
+        // before it had a schedule (the Mac app's tests read it)
+        if (away === save.org || home === save.org) {
+          const nth = humanGames;
+          humanGames += 1;
+          const humanWins = nth % 2 === 0;
+          const humanScored = away === save.org ? runs0 : runs1;
+          const humanAllowed = away === save.org ? runs1 : runs0;
+          if ((humanScored > humanAllowed) !== humanWins) [runs0, runs1] = [runs1, runs0];
+        }
       }
       insert('games', { game_id: gameId, league_id: L, home_team: home, away_team: away, date: dayOf(k), played: played ? 1 : 0, time: 1905, game_type: 0, runs0, runs1, innings: played ? 9 : 0 });
       if (played) {
