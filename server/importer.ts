@@ -271,8 +271,13 @@ export async function importCsvDir(csvDir: string, onProgressOrOptions?: ((p: Im
       ratingMode: options.ratingMode ?? null,
       durationMs: Math.round(performance.now() - started),
     };
-    // The swap: from here the app reads the new import
-    swapInLeagueDatabase(NEXT_DB_PATH);
+    // The swap: from here the app reads the new import (a rename that fails leaves the previous one, and no leftover)
+    try {
+      swapInLeagueDatabase(NEXT_DB_PATH);
+    } catch (err) {
+      fs.rmSync(NEXT_DB_PATH, { force: true });
+      throw err;
+    }
     options.afterSwap?.(result);
     console.log(`[import] ${result.tables} tables, ${result.rows} rows in ${(result.durationMs! / 1000).toFixed(1)}s ` +
       `(parse and write ${build.timings.parseAndWriteMs} ms, indexes ${build.timings.indexMs} ms, ${build.indexes} indexes)` +

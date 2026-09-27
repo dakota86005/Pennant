@@ -135,7 +135,13 @@ export function swapInLeagueDatabase(nextPath: string = NEXT_DB_PATH): void {
     try { old.close(); } catch { /* already closed */ }
   }
   for (const suffix of ['-wal', '-shm']) fs.rmSync(LEAGUE_DB_PATH + suffix, { force: true });
-  renameWithRetry(nextPath, LEAGUE_DB_PATH);
+  try {
+    renameWithRetry(nextPath, LEAGUE_DB_PATH);
+  } catch (err) {
+    // The previous import stays the league: on Windows its connection was closed for the rename, so it is reopened
+    if (!old.open) db = openServing(LEAGUE_DB_PATH);
+    throw err;
+  }
   fsyncDirectory(DATA_DIR);
   db = openServing(LEAGUE_DB_PATH);
   generation += 1;
