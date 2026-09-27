@@ -3248,7 +3248,8 @@
                   "export_settings",
                   "settings_missing",
                   "settings_unreadable",
-                  "save_not_found"
+                  "save_not_found",
+                  "settings_changed_after_export"
                 ]
               },
               {

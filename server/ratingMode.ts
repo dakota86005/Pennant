@@ -28,7 +28,7 @@ export interface RatingModeRecord {
   /** "Additional complete scouted ratings" (OOTP's option), when the file says; null when it does not. */
   additionalScouted: boolean | null;
   /** Where the mode came from: the save's export settings, or why they could not be read. */
-  source: 'export_settings' | 'settings_missing' | 'settings_unreadable' | 'save_not_found';
+  source: 'export_settings' | 'settings_missing' | 'settings_unreadable' | 'save_not_found' | 'settings_changed_after_export';
   /** Why the mode is unknown, in a sentence; null when it is known. */
   reason: string | null;
 }
@@ -72,12 +72,23 @@ export function parseRatingMode(text: string): RatingModeRecord {
   return unknown('OOTP\'s export settings don\'t say which kind of ratings the export carries.');
 }
 
-/** The rating mode of the save at `lgPath` (its export settings, read now); `unknown` with the reason when they can't be read. */
-export function readRatingMode(lgPath: string | null): RatingModeRecord {
+/**
+ * The rating mode of the save at `lgPath` (its export settings, read now); `unknown` with the reason when they can't be
+ * read. OOTP writes the settings file when the setting changes, not at each export, so a file written after the export
+ * (`exportWrittenAtMs`, its newest CSV) may describe a later setting than the export was made with: then the kind is
+ * unknown for that export (N3.5 review, finding 6), never the later setting's.
+ */
+export function readRatingMode(lgPath: string | null, exportWrittenAtMs: number | null = null): RatingModeRecord {
   if (!lgPath) return { mode: 'unknown', additionalScouted: null, source: 'save_not_found', reason: 'Pennant couldn\'t find the save, so it couldn\'t read its export settings.' };
   const file = path.join(lgPath, EXPORT_SETTINGS_FILE);
   let text: string;
   try {
+    if (exportWrittenAtMs !== null && fs.statSync(file).mtimeMs > exportWrittenAtMs) {
+      return {
+        mode: 'unknown', additionalScouted: null, source: 'settings_changed_after_export',
+        reason: 'OOTP\'s export settings changed after this export was written, so which kind of ratings it carries isn\'t known.',
+      };
+    }
     text = fs.readFileSync(file, 'latin1');
   } catch (err) {
     const missing = (err as NodeJS.ErrnoException).code === 'ENOENT';

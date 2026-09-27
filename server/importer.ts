@@ -99,6 +99,8 @@ export interface ImportOptions {
   previous?: PreviousImport | null;
   /** The export's rating mode, read by the caller from the save's export settings. */
   ratingMode?: RatingModeRecord | null;
+  /** Or read once the export has settled, given when its newest file was written (the settings may be newer). */
+  ratingModeFor?: (exportWrittenAtMs: number | null) => RatingModeRecord;
   /** Says the files left out in a sentence (`presentation/importWords.ts`). */
   leftOutNote?: (leftOut: LeftOutFile[]) => string | null;
   /** Called between judging the export and reading it, on every attempt (the tests' seam for a file OOTP rewrites then). */
@@ -190,6 +192,7 @@ export async function importCsvDir(csvDir: string, onProgressOrOptions?: ((p: Im
 
   for (let attempt = 1; ; attempt++) {
     const assessment = await settledExport(csvDir, options.onProgress);
+    const ratingMode = options.ratingModeFor ? options.ratingModeFor(assessment.newestMs) : options.ratingMode ?? null;
     const staleRequiredTables = staleRequired(assessment);
     if (staleRequiredTables.length > 0) {
       throw new ImportRefused(`STALE_REQUIRED: ${staleRequiredTables.join(', ')} not rewritten with the rest of the export`, 'stale_required');
@@ -235,7 +238,7 @@ export async function importCsvDir(csvDir: string, onProgressOrOptions?: ((p: Im
           csvDir,
           exportFingerprint: assessment.fingerprint,
           exportWrittenAt: iso(assessment.newestMs),
-          ratingMode: options.ratingMode ?? null,
+          ratingMode,
           keptFrom,
           stale: assessment.stale.map((f: ExportFile) => ({ file: f.file, table: f.table, writtenAt: iso(f.mtimeMs) })),
           files: assessment.current.map((f: ExportFile) => ({ file: f.file, table: f.table, size: f.size, writtenAt: iso(f.mtimeMs) })),
@@ -287,7 +290,7 @@ export async function importCsvDir(csvDir: string, onProgressOrOptions?: ((p: Im
       exportWrittenAt: iso(assessment.newestMs),
       leftOut,
       leftOutNote: options.leftOutNote?.(leftOut) ?? null,
-      ratingMode: options.ratingMode ?? null,
+      ratingMode,
       durationMs: Math.round(performance.now() - started),
     };
     // The swap: from here the app reads the new import (a rename that fails leaves the previous one, and no leftover)

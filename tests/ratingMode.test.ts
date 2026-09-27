@@ -68,6 +68,15 @@ describe('the kind of ratings an export carries', () => {
     expect(readRatingMode(null)).toMatchObject({ mode: 'unknown', source: 'save_not_found' });
   });
 
+  it('is unknown for an export written before the settings last changed: the file may describe a later setting', () => {
+    const lg = save(settings({ osa: '0', real: '1', none: '0' }));
+    const written = fs.statSync(path.join(lg, EXPORT_SETTINGS_FILE)).mtimeMs;
+    expect(readRatingMode(lg, written + 60_000).mode).toBe('real');
+    const changed = readRatingMode(lg, written - 60_000);
+    expect(changed).toMatchObject({ mode: 'unknown', source: 'settings_changed_after_export' });
+    expect(changed.reason).toMatch(/changed after this export was written/);
+  });
+
   it('is served in words, and an import from before it was recorded is unknown, not the scouts\' view', () => {
     setExportRatingMode(null);
     expect(exportRatingMode().mode).toBe('unknown');

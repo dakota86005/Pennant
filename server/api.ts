@@ -354,14 +354,14 @@ export async function runImport(csvDir: string, trigger: ImportTrigger = 'manual
     const config = loadConfig();
     // Which kind of ratings this export carries, from the save's export settings, read now (D-061)
     const save = locateSave({ csvDir, saveName: config.saveName, manualLgPath: config.csvDir === csvDir ? config.lgPath ?? null : null });
-    const ratingMode = readRatingMode(save.found ? save.lgPath : null);
+    const lgPath = save.found ? save.lgPath : null;
     imported = await importCsvDir(csvDir, {
       onProgress: (step) => {
         const progress: ImportProgress = { ...step, words: importWords(step) };
         importState.progress = progress;
         announceProgress(progress);
       },
-      ratingMode,
+      ratingModeFor: (exportWrittenAtMs) => readRatingMode(lgPath, exportWrittenAtMs),
       leftOutNote,
       // The swap: from this line every request reads the new import, and no cache of the old one survives it
       afterSwap: (result) => {
