@@ -9,7 +9,10 @@ import { departmentOffice, servedDepartments } from '../server/presentation/cata
 import { REPORTING, assemble, type BuildContext } from '../server/presentation/frontOffice/desk.js';
 import { majorLeagueMaterial } from '../server/presentation/frontOffice/majorLeague.js';
 import { healthy26, viewOf } from './mlbFixtures';
-import { basisStrings, shownStrings } from './bannedJargon';
+import { BANNED_VERDICTS, basisStrings, shownStrings } from './bannedJargon';
+import { ledeWords } from '../server/presentation/frontOffice/morning.js';
+import { CLUB_PROFILE_POLICY } from '../server/frontOffice/clubProfile.js';
+import type { FrontOfficeSummary } from '../server/presentation/frontOffice/types.js';
 import { buildSave, type BuiltSave } from './syntheticSave';
 
 /**
@@ -32,7 +35,7 @@ describe('the landing payload shows no odds, posture or window label (D-060)', (
   let save: BuiltSave;
   let payloads: unknown[] = [];
   beforeAll(async () => {
-    save = buildSave({ season: 2040, historySeasons: 1, gamesPerTeam: 60, playedShare: 0.5, clubs: 6, seed: 11, minors: true });
+    save = buildSave({ season: 2040, historySeasons: 1, gamesPerTeam: 60, playedShare: 0.5, clubs: 6, seed: 11, minors: true, teamSeason: true });
     resetFrontOfficeCache();
     const summary = await frontOfficeSummary(save.org);
     const reports = await Promise.all([...REPORTING, 'frontOffice'].map((d) => departmentReport(save.org, d)));
@@ -40,9 +43,53 @@ describe('the landing payload shows no odds, posture or window label (D-060)', (
     payloads = [summary, ...reports, ...(evidence ? [await claimTrail(evidence)] : [])];
   }, 60_000);
 
-  it('has payloads to check', () => {
+  it('has payloads to check, the Morning Report\'s own parts among them', () => {
     expect(payloads.length).toBeGreaterThan(8);
     expect(shownStrings(payloads).length).toBeGreaterThan(50);
+    const summary = payloads[0] as FrontOfficeSummary;
+    expect(summary.teamSeason?.record).not.toBeNull();
+    expect(summary.lede).not.toBeNull();
+    expect(summary.clubProfile?.dimensions.length).toBe(8);
+    expect(summary.rosterMap?.positions.length).toBeGreaterThan(7);
+  });
+
+  it('builds the lede only from facts on the page, each named in its basis, with no verdict (D-060)', () => {
+    const summary = payloads[0] as FrontOfficeSummary;
+    const lede = summary.lede!;
+    const place = summary.teamSeason!.place!.claim.text;
+    expect(lede.basis.because[0]).toEqual({ label: 'Place', value: place });
+    // Every place or count the lede says is one the page shows: the division place, a dimension's place, the deadline's days
+    const shown = new Set([
+      ...summary.clubProfile!.dimensions.flatMap((d) => [d.placeText, d.recent.text]),
+      summary.teamSeason!.deadline?.count.display ?? '',
+    ].join(' ').match(/\d+(st|nd|rd|th)?/g));
+    for (const n of lede.text.match(/\b\d+(st|nd|rd|th)\b/g) ?? []) expect(shown.has(n), n).toBe(true);
+    expect(BANNED_VERDICTS.some((p) => p.test(lede.text))).toBe(false);
+    expect(lede.basis.certainty).toBe('policy');
+  });
+
+  it('sets a recent place against the season place only when both count the same clubs', () => {
+    const summary = payloads[0] as FrontOfficeSummary;
+    const division = { rank: 2, of: 5, tiedWith: 0, gamesBack: 3, gamesAhead: null, division: 'AL East', source: 'exported' as const, order: 'standings' as const, members: [], levelWith: [] };
+    const reading = (recentOf: number) => ({
+      tooEarly: false, games: 60, clubs: 30, policy: CLUB_PROFILE_POLICY,
+      dimensions: [
+        { id: 'bullpen', group: 'rest', place: { rank: 3, of: 30, tiedWith: 0 }, recent: { place: { rank: 28, of: recentOf, tiedWith: 0 } } },
+        { id: 'scoring', group: 'strength', place: { rank: 2, of: 30, tiedWith: 0 }, recent: { place: null } },
+      ],
+    }) as never;
+    const profile = { dimensions: [{ id: 'bullpen', name: 'Bullpen', placeText: '3rd of 30', recent: { text: 'Last 15: 28th' } }, { id: 'scoring', name: 'Scoring runs', placeText: '2nd of 30', recent: { text: '' } }] } as never;
+    const build = { orgId: 1, club: null, importStamp: null, reportStamp: 'r', gameDate: null };
+    expect(ledeWords(build, summary.teamSeason!, division, profile, reading(30))!.text).toMatch(/The bullpen has slipped to 28th/);
+    // 28th of 29 against 3rd of 30: not the same clubs, so not set against each other
+    const other = ledeWords(build, summary.teamSeason!, division, profile, reading(29))!.text;
+    expect(other).not.toMatch(/slipped/);
+    expect(other).toMatch(/Run scoring is 2nd in the league/);
+  });
+
+  it('leaves the lede out when there is too little to say: no record, no lede', () => {
+    const facts = { ...(payloads[0] as FrontOfficeSummary).teamSeason!, record: null };
+    expect(ledeWords({ orgId: 1, club: null, importStamp: null, reportStamp: 'r', gameDate: null }, facts, null, null, null)).toBeNull();
   });
 
   it('names no postseason odds and no deadline posture anywhere, basis included', () => {

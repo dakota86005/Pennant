@@ -170,11 +170,12 @@ struct EventReconnectTests {
             onError: { problems.appendUnknown($0) }
         )
         let task = Task { await events.run { _ in } }
-        try? await Task.sleep(for: .milliseconds(300))
+        try? await Task.sleep(for: .milliseconds(600))
         task.cancel()
         await task.value
-        // Always connecting, so never slowed: many attempts, each logged as ended
-        #expect(transport.paths.count >= 6)
+        // Always connecting, so never slowed: more attempts than a backed-off client would make (20, 40, 80, 160, 320 ms
+        // gives at most five in 600 ms) — a lower bound with room for a loaded CI machine
+        #expect(transport.paths.count >= 7)
         #expect(problems.unknownTypes.allSatisfy { $0 == "the event stream ended" })
     }
 

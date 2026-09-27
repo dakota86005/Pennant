@@ -68,7 +68,7 @@ import { appInfo, type AppInfo } from './appInfo.js';
 import { scoutedDevelopmentRoutes } from './scoutedDevelopment.js';
 import { eventStream, progressThrottle, publish } from './serverEvents.js';
 import { v2Routes } from './v2Routes.js';
-import { currentReportStamp, warmFrontOffice } from './frontOfficeService.js';
+import { currentReportStamp, holdFrontOfficeRebuilds, valueRefitsRecorded, warmFrontOffice } from './frontOfficeService.js';
 import { EXPORT_NOT_FOUND, importNote, importWords, leftOutNote, type ImportNote } from './presentation/importWords.js';
 import type { Integer } from './contract/primitives.js';
 
@@ -244,6 +244,8 @@ export function refitAfterImport(): Promise<void> {
   // result is recorded only if no import started while it read, so a fit never spans two exports.
   const generation = importGeneration;
   const started = performance.now();
+  // Player Value's refit and the calibrations may each ask the Front Office to build again: one build, after both (N6)
+  const release = holdFrontOfficeRebuilds();
   const compute = (): Promise<PendingRefits> => refitInWorker().catch((err) => {
     // No worker (an unusual packaging): the same work in-process, after this turn, logged as such
     console.error('[value] refit worker unavailable, refitting in-process:', err);
@@ -256,13 +258,15 @@ export function refitAfterImport(): Promise<void> {
       for (const r of outcomes) {
         if (r.refit) console.log(`[value] refit, league ${r.leagueId} through ${r.throughSeason}: ${r.adopted ? 'adopted' : 'not adopted'} (${Math.round(r.ms ?? 0)} ms in the worker, ${Math.round(performance.now() - started)} ms end to end). ${r.reason}`);
       }
+      // An adopted fit moves the roster map's expected wins: the Morning Report is built again (N6)
+      valueRefitsRecorded(outcomes);
     })
     .catch((err) => console.error('[value] production refit failed:', err));
   // Every subsystem's per-save calibration (D-053), in its own worker, at the same time
   const calibration = refitCalibrationsAfterImport(generation);
   return Promise.all([value, calibration]).then(() => {
     console.log(`[refit] the refits settled ${Math.round(performance.now() - started)} ms after they started`);
-  });
+  }).finally(release);
 }
 /**
  * After an import: the per-save calibrations every subsystem registered (`saveCalibration.ts`), computed in a worker thread and

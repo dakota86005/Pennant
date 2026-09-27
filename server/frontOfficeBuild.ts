@@ -25,6 +25,9 @@ import { farmMaterial } from './presentation/frontOffice/farm.js';
 import { financeMaterial } from './presentation/frontOffice/finance.js';
 import { majorLeagueMaterial, type MajorLeagueInput } from './presentation/frontOffice/majorLeague.js';
 import { medicalMaterial } from './presentation/frontOffice/medical.js';
+import { morningUnavailable, morningWords } from './presentation/frontOffice/morning.js';
+import type { MorningParts } from './presentation/frontOffice/morningTypes.js';
+import { readMorning } from './morningReport.js';
 import type { ClaimTrail, DepartmentReport, FrontOfficeSummary } from './presentation/frontOffice/types.js';
 import { readDepartment } from './presentation/severity.js';
 import { computeRosterCrunchIssues } from './rosterops.js';
@@ -143,7 +146,20 @@ export async function buildFrontOffice(request: BuildRequest): Promise<BuildResu
       UNREADABLE.medical,
     ));
 
-  const { summary, reports } = timed('words', () => assemble(build, departments, departmentOffice, answers));
+  // The Morning Report's own parts (N6): the masthead, "How we win and lose" and the roster map, each part timed
+  await tick();
+  let morning: MorningParts;
+  try {
+    const needs = (majorLeague as MajorLeagueInput['overview'] | null)?.needs ?? null;
+    const material = readMorning(orgId, status, needs);
+    for (const [part, took] of Object.entries(material.ms)) ms[part] = took;
+    morning = timed('morningWords', () => morningWords(build, material));
+  } catch (err) {
+    console.error('[front office] the Morning Report\'s own parts could not be read:', err);
+    morning = morningUnavailable(build, 'The club\'s season couldn\'t be read this time.');
+  }
+
+  const { summary, reports } = timed('words', () => assemble(build, departments, departmentOffice, answers, morning));
   return { summary, reports: [...reports.entries()], majorLeague, ms };
 }
 

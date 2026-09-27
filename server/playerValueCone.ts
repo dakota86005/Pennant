@@ -326,10 +326,36 @@ export interface ControlEnd {
   laterUnknown: boolean;
   /** Why it is not established (or, with `laterUnknown`, why only the earliest is); null where it is. */
   reason: string | null;
+  /**
+   * The last season of the run from this season that the timeline lays out with the club holding him on every branch (no
+   * season in it is, or may be, free agency: an unsettled season that names nothing it lies between counts as one that
+   * may be); null when this season is not surely held (N6 review). Where `low` and `high` cannot say when control ends
+   * because the last season laid out is unsettled between two held statuses, he is still surely held through it: the
+   * card, the cone and the roster map all read it here.
+   */
+  heldThrough: number | null;
+}
+
+/** The last season of the run from this season with the club holding him on every branch; null when this season is not. */
+function heldThroughOf(control: ControlTimeline): number | null {
+  if (control.standing !== 'held' || control.thisSeason === null) return null;
+  const mayBeFree = (c: ControlSeason) => c.status === 'free_agent'
+    || (c.status === 'indeterminate' && (c.between.length === 0 || c.between.includes('free_agent')))
+    || (c.declined !== null && (c.declined.status === 'free_agent' || c.declined.between.includes('free_agent')));
+  let held: number | null = null;
+  for (let y = control.thisSeason; ; y += 1) {
+    const c = control.seasons.find((x) => x.season === y);
+    if (!c || mayBeFree(c)) return held;
+    held = y;
+  }
 }
 
 export function controlEndOf(control: ControlTimeline): ControlEnd {
-  const none = (reason: string): ControlEnd => ({ low: null, high: null, pastHorizon: false, optOutBefore: null, laterUnknown: false, reason });
+  return { ...endOf(control), heldThrough: heldThroughOf(control) };
+}
+
+function endOf(control: ControlTimeline): Omit<ControlEnd, 'heldThrough'> {
+  const none = (reason: string): Omit<ControlEnd, 'heldThrough'> => ({ low: null, high: null, pastHorizon: false, optOutBefore: null, laterUnknown: false, reason });
   // An unsettled season that may be free agency, or an option (or opt-out) whose other branch is
   const mayBeFree = (c: ControlSeason | undefined): boolean => c !== undefined && (
     (c.status === 'indeterminate' && c.between.includes('free_agent'))
@@ -415,6 +441,11 @@ export function productionCone(production: PlayerProduction, control: ControlTim
     note = optOut
       ? `Under contract past ${last.season}, the last season projected, unless he opts out before ${optOut.season}.`
       : `Control continues past ${last.season}, the last season projected.`;
+  } else if (control.standing === 'held') {
+    // The end is not established: say what is (the reading the card's header and the roster map share, `controlEndOf`)
+    const end = controlEndOf(control);
+    if (end.laterUnknown && end.low !== null) note = `Free agent after ${end.low} at the earliest: the seasons after it may be free agency.`;
+    else if (end.heldThrough !== null) note = `Held through ${end.heldThrough} at least: the seasons after it aren't settled.`;
   }
 
   return {

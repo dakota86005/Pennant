@@ -2134,8 +2134,20 @@ enforced once.
 
 ## D-057 — The Club Profile, the roster map and the horizon: stated places, no composite score
 
-**Status:** Accepted in direction by the owner (2026-09-25); drafted at N0. **Implementation:** Not started (milestone N6).
-Design: SWIFTUI_REBUILD.md sections 3.4 and 3.6.
+**Status:** Accepted in direction by the owner (2026-09-25); drafted at N0. **Implementation:** Partial. N6, Stage A
+(server, 2026-09-27) serves the Club Profile and the roster map on `GET /api/v2/front-office/:org`
+(`server/frontOffice/teamSeason.ts`, `clubProfile.ts` and `rosterMap.ts`, `server/morningReport.ts`, words in
+`server/presentation/frontOffice/morning.ts`; `tests/clubProfile.test.ts`, `rosterMap.test.ts`, `teamSeason.test.ts`):
+eight dimensions (scoring runs, preventing runs, on base, power, rotation, bullpen, defensive efficiency, baserunning)
+each placed with its recent place over the last 15 games (the "recent against season" of the list is that second place,
+not a ninth dimension), `CLUB_PROFILE_POLICY` (20 games, the fifths, 15 games) stamped as policy, and the positional places
+with their overlap counts. At the Stage A review (the supervisor's calls, adopted, the owner may overrule): the roster map's
+unit stays Player Value's expected wins (positional strength; surplus dollars would rank contracts); the holder is the
+regular the club's game log shows (most starts there this season among the men who started there in its last 15 games,
+the listed man only where the log is silent, said so), the same rule for every club; and a place is stated as clearly
+ahead of / not separable from / clearly behind, told apart on the range each holder lands in half the time (Player Value's
+50% band), the drawn range the 80%. The Mac app draws them at N6, Stage B. The horizon is not built (N12). Design:
+SWIFTUI_REBUILD.md sections 3.4 and 3.6; as built, section 3.4 "As built at N6 (Stage A)".
 
 The Morning Report answers "where are we, what are we good at, what are we bad at, what needs me" with facts and stated
 places, never a thin prediction.
@@ -2185,7 +2197,9 @@ severity order, `FrontOfficeSummary.desk`); the snapshots, the statuses and foll
 **Status:** Accepted (owner, 2026-09-25). **Implementation:** Partial: N4, Stage A holds the boundary
 (`tests/presentationBoundary.test.ts`: nothing in the landing folders reaches `posture` or `playoffs` by any chain of
 imports); N4, Stage B serves the desk and the department cards and holds their payloads free of odds, posture and window
-labels (`tests/frontOfficeLanding.test.ts`); the masthead arrives with N6. The desk's membership and order use each
+labels (`tests/frontOfficeLanding.test.ts`); N6, Stage A serves the masthead's objective facts and the lede, built only
+from facts on the page, and holds them to the same test (the trade deadline only from the league's own row, never a
+major-league date by assumption). The desk's membership and order use each
 department's philosophy-free, season-free severity (Major League Ops states it beside its own); the season- and
 philosophy-shaded severity and its lean are shown beside it in the basis and the hover, never deciding what appears or
 its order (confirmed by the owner, 2026-09-26).

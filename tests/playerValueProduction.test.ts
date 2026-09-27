@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { db } from '../server/db.js';
 import {
-  PRODUCTION_NO_EVIDENCE, playerValues, projectProduction,
+  PRODUCTION_NO_EVIDENCE, playerValues, productionHeadlineOf, projectProduction,
   type PlayerProduction, type ProductionInput, type ProductionLine, type ProductionModelInForce, type WinsBand,
 } from '../server/playerValue.js';
 import { PRODUCTION_PRIOR } from '../server/playerValueCalibration.js';
@@ -269,9 +269,18 @@ describe('expected production (phase 3a): what the evidence says', () => {
       expect(now.remaining).not.toBeNull();
       expect(now.wins.central).toBeCloseTo(now.toDate! + now.remaining!.central, 9);
       expect(width(now.wins)).toBeCloseTo(width(now.remaining!), 9);
+      // The rest of the season carries its 50% band too: the season's, less what he has banked, inside the rest's 80%
+      expect(now.remainingInner).not.toBeNull();
+      expect(now.remainingInner!.low).toBeCloseTo(now.inner.low - now.toDate!, 9);
+      expect(now.remainingInner!.high).toBeCloseTo(now.inner.high - now.toDate!, 9);
+      expect(now.remainingInner!.low).toBeGreaterThanOrEqual(now.remaining!.low - EPS);
+      expect(now.remainingInner!.high).toBeLessThanOrEqual(now.remaining!.high + EPS);
+      // ...and the headline the consumers read serves it beside the 80% band
+      const headline = productionHeadlineOf(p).now!;
+      expect(headline.inner).toEqual(now.remainingInner);
     }
     // Later seasons carry no to-date figure: nothing has been banked in them
-    expect(many.seasons.slice(1).every((s) => s.toDate === null && s.remaining === null)).toBe(true);
+    expect(many.seasons.slice(1).every((s) => s.toDate === null && s.remaining === null && s.remainingInner === null)).toBe(true);
   });
 
   it('a two-way player\'s band is the sum of both sides, edge with edge', () => {
