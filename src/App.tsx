@@ -127,7 +127,9 @@ function ImportBar({ progress }: { progress: Status['importProgress'] }) {
     ? 'Starting…'
     : progress.phase === 'indexing'
       ? 'Building indexes'
-      : `${progress.phase === 'reading' ? 'Reading' : 'Importing'} ${progress.table}`;
+      : progress.phase === 'waiting'
+        ? 'Waiting for OOTP to finish writing the export'
+        : `${progress.phase === 'reading' ? 'Reading' : 'Importing'} ${progress.table}`;
   return (
     <div className="import-bar" role="status" aria-live="polite">
       <div className="import-bar-track">
