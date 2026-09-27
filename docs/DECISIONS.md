@@ -2241,13 +2241,23 @@ export's (or a previous save's) table, and no check that OOTP had finished writi
   8): storing them as integers changes SQL arithmetic and would give the rollback Electron build wrong answers.
 - **Ratings are read as the export gives them, labelled.** OOTP's export settings choose which ratings the CSVs carry:
   the scouts' view, "real" (true) ratings, the league scouting service's (OSA) or none. The app works on any of them (the
-  owner's decision 9: "either is okay, and is just noted by the import"). At each import it reads
-  `<save>.lg/settings/db_dump_standard_csv.cfg` by each option's label and records the kind with the import, `unknown`
-  when it cannot tell (never assumed to be the scouts' view). The data status says which kind the export carries, and
+  owner's decision 9: "Build the app so that either is okay - and is just noted by the import mechanism"). At each
+  import it reads `<save>.lg/settings/db_dump_standard_csv.cfg` by each option's label and records the kind with the
+  import, `unknown` when it cannot tell (never assumed to be the scouts' view), including when the settings file was
+  written after the export (OOTP writes it when the setting changes, so it may describe a later setting). The data status says which kind the export carries, and
   `scoutedEvidence.ts` exposes it (`exportRatingMode`, `ratingSource`) so a claim resting on a rating can name its source.
   Fog of war (D-002, D-017) holds in what it always forbade: nothing reaches past the export's rating columns, and
-  `players_value` stays unread. "No ratings" leaves every rating unknown.
+  `players_value` stays unread. "No ratings" leaves every rating unknown and takes no rating snapshot.
 - **A switch is never development.** Each rating snapshot is stamped with its kind (`rating_snapshot_modes` in
   `history.db`, a new table keyed like the snapshots). Snapshots in a known kind other than the current export's are left
-  out of development trends and observed history, and the switch is said; an unrecorded or unknown kind is never evidence
-  of one.
+  out of development trends, observed history and the Development page's history, and the switch is said; an unrecorded
+  or unknown kind is never evidence of one.
+- *Whose words these are.* The owner decided only that either kind is fine and is noted. Withholding every rating under
+  "no ratings" and leaving snapshots of another kind out of development are the supervisor's refinements (the N3.5
+  brief), made so that noting the kind keeps D-018: they add no judgment, they keep an unknown unknown.
+- **The database's own record** (`pennant_import`) is trusted only when its start matches `last-import.json`'s, which
+  every build writes: the earlier (Electron) build imports into `league.db` in place and leaves the table behind.
+- **An earlier build's database** (write-ahead-log mode, or without the season indexes) is upgraded once at start the
+  way an import works: a copy is converted in the worker and swapped in, never the served file in place. A hot
+  rollback journal left by a process killed while writing the file in place is rolled back before the read-only server
+  reads it, and no journal of a replaced file is left beside the new one.

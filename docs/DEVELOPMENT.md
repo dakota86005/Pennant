@@ -202,6 +202,10 @@ read-write (the tests and `npm run synthetic:league` build their leagues through
 `OOTP_FO_EXPORT_QUIET_MS` shortens the 10 s an export must stay unwritten before it is read (the tests set 0).
 `OOTP_FO_DB_READONLY=1` (the report scripts) is unchanged: read-only, and not even the start-up tidy runs.
 
+A leftover `league.next.db` (about the size of `league.db`) is removed only by this build's start: an earlier build
+(the Electron app from before N3.5, or `archive/electron-react`) ignores it, so after the way back it stays until this
+build next starts, or until it is deleted by hand (it is never the league; `league.db` is).
+
 To measure an import and the slow pages on a real export, drive the bundled sidecar with the benchmark, on a scratch
 data folder only (the export is only read; delete the folder afterwards):
 

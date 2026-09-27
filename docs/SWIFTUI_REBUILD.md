@@ -511,10 +511,10 @@ is the raw message (for the log and a help tag); an unknown `/v2` route answers 
   beside the sidecar and the Electron main, like the refit workers), so no request waits behind a build. What the worker
   posts back is checked again claim by claim and registered (`adoptAuthored`) before a route sends it. Where no worker
   can load (the TypeScript sources under the test runner) it builds in-process, yielding between departments.
-- **Never kept across an import:** `importRun` (beside `importedAt`) says when an import writes. A build that started or
-  finished while one ran, or across one, is handed to the requests waiting on it and not kept (a failed import does not
-  move the stamp, and the database is then partly two exports); a build kept from before is served meanwhile; no warm-up
-  runs during an import.
+- **Never kept across an import:** since N3.5 an import builds its own file and changes what is served only at its
+  swap, so the cache keys on the served database's generation (`databaseGeneration()`, bumped by every swap; `importRun`
+  is gone). A build whose worker may have read across a swap is handed to the requests waiting on it and not kept;
+  builds during an import's wait and build are kept, and the warm-up is a post-import hook.
 - **Stamped for the Mac app:** every payload carries its build's `reportStamp` (a hash of its key); `/api/status` serves
   the current one (`ServerStatus.reportStamp`) and a `front-office-updated` event (additive) says when a new build is kept,
   so the app reloads when the server rebuilds without an import (a settings change, a calibration, the live log).
@@ -991,10 +991,10 @@ decisions of 2026-09-26 (D-061). ARCHITECTURE "Imported league database" has the
 
 | Piece | Where | What it does |
 |---|---|---|
-| Completeness | `server/exportFiles.ts`, `watcher.ts` | An export is read once no CSV has changed for 10 s; files older than the newest by more than 10 min are stale (left out, named). Every change restarts the quiet period; a start-up check catches an export written while Pennant was closed. A fingerprint (names, sizes, times) tells a new export from the imported one. |
+| Completeness | `server/exportFiles.ts`, `watcher.ts` | An export is read once no CSV has changed for 10 s (two minutes when its files fall in groups more than a minute apart, after which the older group is stale); files older than the newest by more than 10 min are stale (left out, named). Before the swap the whole folder must still match the listing the build began from. Every change restarts the quiet period; a start-up check catches an export written while Pennant was closed. A fingerprint (names, sizes, times) tells a new export from the imported one. |
 | Build | `server/importBuild.ts`, `importWorker.ts` | A worker thread builds `league.next.db`: three parse workers (the same file, another role) read each file, check it again, stream-parse it and send flat batches; the writer inserts, indexes each table as it lands, copies stale tables (same export folder only), runs ANALYZE, records the import in `pennant_import`, closes in rollback-journal mode and flushes. A large file with no quote character is split across the parse workers at line breaks (rowids keep its order). |
-| Swap and serving | `server/db.ts` | One rename; `db` is a live binding reopened read-only (2 GB memory map, 128 MB cache); a replaced connection closes 5 s later. The start-up tidy removes a crashed build, converts an old write-ahead-log file and adds missing indexes. The served schema is remembered per connection. |
-| Refusals | `server/importer.ts`, `presentation/importWords.ts` | No room (4.5 x the export free), a still-changing export (three reads, then a sentence), a stale or unreadable `players`, `teams` or `leagues`: each a sentence, the previous import untouched. |
+| Swap and serving | `server/db.ts` | One rename; `db` is a live binding reopened read-only (2 GB memory map, 128 MB cache); a replaced connection closes 5 s later. The start-up tidy removes a crashed build and rolls back a hot journal; an earlier build's file is upgraded by a converted copy swapped in (never in place). `pennant_import` is trusted only beside a matching `last-import.json`. The served schema is remembered per connection. |
+| Refusals | `server/importer.ts`, `presentation/importWords.ts` | No room (4.5 x the export free), a still-changing export (three reads, then a sentence), a stale or unreadable `players`, `teams` or `leagues`: each a sentence, the previous import untouched, and no interruption recorded. |
 | After the swap | `server/postImport.ts`, `importSnapshots.ts` | The hook list: the snapshots in their own worker (stamped with the rating mode), the storylines and briefing, then both refits at once. N4's Front Office warm-up registers here (`registerPostImportHook`); a start-up re-runs the snapshots of an import that never took them. |
 | Automatic import | `api.ts` `handleSettledExport`, `settings.ts` | `importAutomatically` (default on; needs `autoImport`, the watch): a settled new export is imported in the background; off, it is offered as before. The events are the existing `import-started`, `import-progress` (with a new phase, `waiting`) and `import-finished`. |
 | Rating mode | `server/ratingMode.ts`, `scoutedEvidence.ts`, `history.ts` | Read by label from the save's export settings at each import; recorded with the import and on each rating snapshot (`rating_snapshot_modes`); served on the data status (a Ratings line, the reason when unknown) and through `exportRatingMode` / `ratingSource`; "none" withholds every rating; a switch is left out of development and said. |
