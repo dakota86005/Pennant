@@ -458,6 +458,8 @@ registerPostImportHook('snapshots', async (context) => {
     ratingMode: last?.ratingMode ?? null,
   });
   for (const error of outcome.errors) console.error('[history]', error);
+  // Recorded only for the import in force: an earlier import's hooks finishing late must not name it as done
+  if (importState.lastImport?.startedAt !== context.importStartedAt) return;
   try {
     fs.writeFileSync(POST_IMPORT_PATH, JSON.stringify({ importStartedAt: context.importStartedAt, snapshotsAt: new Date().toISOString() }));
   } catch (err) {

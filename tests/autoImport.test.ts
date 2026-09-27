@@ -1,4 +1,5 @@
-import { afterAll, afterEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { registerPostImportHook } from '../server/postImport.js';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -16,6 +17,15 @@ import request from './request';
  */
 const scratch: string[] = [];
 const savedConfig = loadConfig();
+/*
+ * This file is about noticing and importing exports, not the refits: after each of its imports the refits (a worker
+ * the tests cannot start, so in-process, for seconds each) would only slow the cases after it. They are stood down here;
+ * `calibrationRefitAfterImport.test.ts` and the Player Value refit tests cover them.
+ */
+beforeAll(() => {
+  registerPostImportHook('refits', () => {});
+  registerPostImportHook('frontOffice', () => {});
+});
 const settingsPath = path.join(DATA_DIR, 'settings.json');
 afterAll(() => {
   for (const d of scratch) fs.rmSync(d, { recursive: true, force: true });
@@ -28,8 +38,11 @@ function exportDir(version: number, rows = 50): string {
   scratch.push(dir);
   fs.writeFileSync(path.join(dir, 'leagues.csv'), `league_id,version\n1,${version}\n`);
   fs.writeFileSync(path.join(dir, 'teams.csv'), `team_id,version\n1,${version}\n`);
-  const body = Array.from({ length: rows }, (_, i) => `${i},${version}`).join('\n');
-  fs.writeFileSync(path.join(dir, 'players.csv'), `player_id,version\n${body}\n`);
+  fs.writeFileSync(path.join(dir, 'players.csv'), `player_id,version\n1,${version}\n`);
+  // The bulk in a statistics table, as in a real export: 250,000 players would make every after-import snapshot of
+  // this pretend league (which reads each player's state) take seconds, and hold up the cases after it
+  const body = Array.from({ length: rows }, (_, i) => `${i % 500},${2000 + (i % 20)},${version}`).join('\n');
+  fs.writeFileSync(path.join(dir, 'players_career_batting_stats.csv'), `player_id,year,version\n${body}\n`);
   return dir;
 }
 
@@ -169,7 +182,7 @@ describe('a settled new export', () => {
     expect(p95, `p95 ${p95.toFixed(0)} ms over ${times.length} requests`).toBeLessThan(250);
     // The Electron app's shapes: the status and last-import.json keep every field they had
     const snap = statusSnapshot();
-    expect(snap.lastImport).toMatchObject({ tables: 3, rows: 250_002, startedAt: expect.any(String), finishedAt: expect.any(String), files: expect.any(Array) });
+    expect(snap.lastImport).toMatchObject({ tables: 4, rows: 250_003, startedAt: expect.any(String), finishedAt: expect.any(String), files: expect.any(Array) });
     const onDisk = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'last-import.json'), 'utf8')) as ImportResult;
     expect(Object.keys(onDisk)).toEqual(expect.arrayContaining(['tables', 'rows', 'startedAt', 'finishedAt', 'files']));
     expect(fs.existsSync(path.join(DATA_DIR, 'import-in-progress.json'))).toBe(false);
