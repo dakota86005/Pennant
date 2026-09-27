@@ -33,7 +33,7 @@ final class PennantUITests: XCTestCase {
 
     // MARK: Helpers
 
-    /// The pretend OOTP save `test.sh` put in the test's folder: the `.lg` folder with an export of one small table.
+    /// The pretend OOTP save `test.sh` put in the test's folder: the `.lg` folder with the synthetic league's export.
     private var save: URL {
         scratch.appending(path: "saves/Synthetic League.lg", directoryHint: .isDirectory)
     }

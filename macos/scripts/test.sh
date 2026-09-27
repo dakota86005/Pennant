@@ -3,7 +3,8 @@
 #
 #   macos/scripts/test.sh
 #
-#   1. writes the synthetic league into a scratch folder (npm run synthetic:league), never a real save;
+#   1. writes the synthetic league and its CSV export into a scratch folder (npm run synthetic:league), never a real
+#      save;
 #   2. stages the server for the bundle (npm run mac:stage);
 #   3. runs each package's Swift tests (PennantAPI, PennantKit and PennantFeatures with their real-server integration
 #      tests, PennantDesign); PennantFeatures also draws the shell's snapshots into build/macos-snapshots/;
@@ -70,7 +71,7 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   rm -rf "$UI_SCRATCH" "$OUT/Pennant.xcresult" "$OUT/screenshots"
   mkdir -p "$UI_SCRATCH"
   # One folder per UI test (the method's name), each with its own data folder holding the synthetic league and a
-  # pretend OOTP save; `configured` chooses the save for the server before the app starts (its config.json), `new`
+  # pretend OOTP save that exports it; `configured` chooses the save for the server before the app starts (its config.json), `new`
   # leaves it for the Setup window to find. The runner only reads these paths.
   # A third argument writes settings.json (the appearance, the theme each club wears), and a fourth names the
   # repository's example theme packs (docs/theme-packs/<id>, space-separated) to install in the data folder.
@@ -80,7 +81,9 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
     local csv="$root/saves/Synthetic League.lg/import_export/csv"
     mkdir -p "$root/data" "$root/logs" "$csv"
     cp "$LEAGUE" "$root/data/league.db"
-    printf 'id,note\n1,one\n2,two\n' > "$csv/zz_ui_check.csv"
+    # The pretend save exports the synthetic league itself: the import builds a whole new database from the export
+    # (D-061), so a token file would leave a league of one table. Times kept, so the export is already settled.
+    cp -p "$SCRATCH/league/export/"*.csv "$csv/"
     if [ "$kind" = "configured" ]; then
       node -e 'process.stdout.write(JSON.stringify({ csvDir: process.argv[1], saveName: "Synthetic League" }))' "$csv" \
         > "$root/data/config.json"

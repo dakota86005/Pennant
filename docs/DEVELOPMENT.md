@@ -292,6 +292,10 @@ launch from a shell. A synthetic league to point it at:
 npm run synthetic:league -- /tmp/pennant-dev
 ```
 
+Beside `league.db` it writes `export/`, the same league as OOTP's CSV export, for a pretend save to choose: the import
+builds a whole new database from an export (D-061), so a save that exports only a token table imports a league with
+nothing else in it (no clubs to pick). The tests' pretend saves copy it (`macos/scripts/test.sh`).
+
 ```bash
 PENNANT_DEV_DATA_DIR=/tmp/pennant-dev "<DerivedData>/Build/Products/Debug/Pennant.app/Contents/MacOS/Pennant"
 ```
