@@ -300,6 +300,19 @@ GM meets first: which save.
 | `savePlayedElsewhere.test.ts` | When another save (in this OOTP or a newer one) has been played since the chosen one, the status says so with that save, in one sentence, and never switches by itself. It says so only once OOTP has finished saving it (the times stay still for a minute), so it never flickers while OOTP writes. When the chosen save has gone (renamed or moved in OOTP), it names the save played most recently. |
 
 
+## Rating history belongs to the save (D-064)
+
+Written before the code that holds them. None is a baseball judgment; each keeps development honest: a change in a
+player's ratings is read only against that same save's earlier ratings, and history that cannot be placed stays
+unknown (D-018).
+
+| File | What it protects |
+|---|---|
+| `historyIdentity.test.ts` | Two saves that share a name keep two rating histories: a snapshot of one is never compared with the other's, never counted in the other's trends, observed history, rating-change list or Development page, and a snapshot of one on a date the other also has leaves the other's exactly as it was. Their roster states are never compared with each other either. A save keeps its history across restarts and re-imports. |
+| `historyIdentity.test.ts` | Two sets of players are the same league only when all but one in a thousand of the players they share have the same name (a stated line, set above the 99.2% to 99.8% measured between two saves started from one real-life database); most shared players with other names is another league; between the lines is unclear, and too few shared players is no evidence. Unclear and no evidence are never read as the same league. |
+| `historyIdentity.test.ts` | A save moved or renamed in OOTP keeps its history only when exactly one earlier history's folder has gone, that history is not later than the league's own date, and it has this league's players; more than one such history starts it fresh and says so. A copy of a save starts fresh while the original is there. A folder that now holds a league with other players starts fresh and says so. The history read is the served league's save, never a save chosen but not yet imported. |
+| `historyIdentity.test.ts` | History filed under a save's name before it had a key of its own is brought over only where it is certainly that save's: a date whose rows have this league's players, not later than its date, when no other known save of that name with an export has them too (or couldn't be checked); only the rows of players the league still has under the same name. Another league's date is kept apart; anything uncertain is left unused and the data status and development basis say so in one sentence. A copy of `history.db` is made in `backups/` first, once; the name-keyed rows are never changed; each date is brought over whole or not at all, so a crash part way through leaves a usable history and the next start carries on; a second look copies nothing. A date left unused is looked at again against the next import, never against the same one. |
+
 ## Adding a case
 
 When real-save testing finds a new failure mode, add the case before the fix:
