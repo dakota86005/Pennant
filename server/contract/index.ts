@@ -48,7 +48,9 @@ export type { AppInfo } from '../appInfo.js';
 // Setup: finding and choosing the save
 import type { SaveInfo } from '../paths.js';
 export type { SaveInfo, ResolveResult, SearchLocation } from '../paths.js';
-export type { SearchLocations, ResolveFolderRequest, ConfigRequest, ConfigAccepted } from '../api.js';
+export type { SearchLocations, ResolveFolderRequest, ConfigRequest, ConfigAccepted, AutomaticSetup, SetupClub } from '../api.js';
+export type { SavePlayedElsewhere, NoPickReason } from '../saveDiscovery.js';
+export type { SaveDiscovery, SaveDiscoveryPick, SaveDiscoveryNoPick } from '../presentation/saveWords.js';
 /** The saves found in the usual places (`GET /api/saves`). */
 export type SaveList = SaveInfo[];
 

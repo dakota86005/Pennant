@@ -37,7 +37,7 @@ export async function bundleServerEntry(entry, outfile) {
 /**
  * The server's worker threads. Each is found beside the file that starts it (`playerValue.ts` `refitWorkerUrl`,
  * `saveCalibration.ts` `calibrationWorkerUrl`, `frontOfficeService.ts` `workerUrl`, `importBuild.ts` `importWorkerUrl`,
- * `importSnapshots.ts` `snapshotWorkerUrl`), so each build writes them into its own output folder.
+ * `importSnapshots.ts` `snapshotWorkerUrl`, `dataStatus.ts` `logWorkerUrl`), so each build writes them into its own output folder.
  */
 export async function bundleRefitWorkers(outDir) {
   // Player Value's refit runs in a worker thread (A-17)
@@ -49,6 +49,8 @@ export async function bundleRefitWorkers(outDir) {
   // The import (N3.5): the build and its parse workers (one file, two roles), and the snapshots after the swap
   await bundleServerEntry('server/importWorker.ts', `${outDir}/import-worker.cjs`);
   await bundleServerEntry('server/snapshotWorker.ts', `${outDir}/snapshot-worker.cjs`);
+  // The live transaction log's copy after OOTP writes it (N3.5 Stage B2), off the request's path
+  await bundleServerEntry('server/transactionLogWorker.ts', `${outDir}/transaction-log-worker.cjs`);
 }
 
 export { pkg };

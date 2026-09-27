@@ -133,6 +133,22 @@ export const operations: Operation[] = [
     errors: { 400: 'ApiError', 404: 'ApiError' },
     reused: false,
   },
+  {
+    operationId: 'getSaveDiscovery',
+    method: 'get',
+    path: '/api/v2/saves',
+    summary: 'The saves on this Mac, most recently played first, and the one you\'re playing when it clearly stands out, or why none does.',
+    response: 'SaveDiscovery',
+    reused: false,
+  },
+  {
+    operationId: 'setUpAutomatically',
+    method: 'post',
+    path: '/api/v2/setup/automatic',
+    summary: 'On a first run, choose and import the save that clearly stands out (and its club, when the save names one), or say why not.',
+    response: 'AutomaticSetup',
+    reused: false,
+  },
 
   // ── Status and import (reused) ──────────────────────────────────────────
   {

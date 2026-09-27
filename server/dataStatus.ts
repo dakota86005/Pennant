@@ -15,8 +15,9 @@ import { db, tableColumns, tableExists } from './db.js';
 import { loadConfig } from './config.js';
 import {
   locateSave, readLastDateSimulated,
-  type SaveDiscoveryMethod, type SaveLocation,
+  type LiveDatabaseFiles, type SaveDiscoveryMethod, type SaveLocation,
 } from './ootpSave.js';
+import { Worker } from 'node:worker_threads';
 import { LiveLogError, type LiveLogFailure, type SnapshotMeta } from './liveLogSnapshot.js';
 import { readTransactionLog, type LogCoverage, type TransactionKind, type TransactionLog } from './transactionLog.js';
 import type { LogAvailability } from './assignmentContext.js';
@@ -26,7 +27,7 @@ import {
 } from './dataFreshness.js';
 import type { Integer } from './contract/primitives.js';
 import { currentRatingMode } from './history.js';
-import { leftOutOfServedImport, type LeftOutFile } from './importer.js';
+import { leftOutOfServedImport, upgradeState, type LeftOutFile } from './importer.js';
 import type { RatingModeRecord } from './ratingMode.js';
 
 export interface LogSourceStatus {
@@ -72,11 +73,18 @@ export interface DataStatus {
     ratingMode: RatingModeRecord | null;
     /** Files the import left out (older than the rest of the export, or unreadable), and what their tables hold. */
     leftOut: LeftOutFile[];
+    /**
+     * Why the one-time upgrade of an earlier build's league database did not run at this start, in a sentence (not
+     * enough free space; the league is served as it is and it is tried again at the next start); null otherwise.
+     */
+    upgradeNote: string | null;
   };
 }
 
 interface Cached {
   key: string;
+  /** The save the log was read from: a stale copy is served only for the same save. */
+  lgPath: string | null;
   at: number;
   log: TransactionLog | null;
   status: LogSourceStatus;
@@ -86,8 +94,25 @@ let cache: Cached | null = null;
 /** A failed read of an unchanged source is not retried every poll. */
 const FAILURE_TTL_MS = 15_000;
 
+/**
+ * How the live log is read again after OOTP writes it (N3.5 Stage B2): never on a request's path. A request that finds
+ * the log changed is served the last copy at once, and a read is scheduled `debounceMs` after the last change it saw
+ * (OOTP writes the log many times while it plays), but no later than `maxWaitMs` after the first, in a worker thread
+ * where one can start. The same as the Front Office's cache: the page never waits, the copy follows within seconds.
+ */
+export const logRefreshTiming = { debounceMs: 2_000, maxWaitMs: 10_000 };
+
+/** Bumped by every reset, so a background read begun before one is never kept after it. */
+let generation = 0;
+let pending: { timer: ReturnType<typeof setTimeout>; firstSeen: number; lgPath: string | null } | null = null;
+let reading: Promise<void> | null = null;
+
+/** Forgets the log entirely (a different save, a hand-named save folder): the next request reads it afresh. */
 export function resetTransactionLogCache(): void {
   cache = null;
+  generation += 1;
+  if (pending) clearTimeout(pending.timer);
+  pending = null;
 }
 
 const statKey = (file: string): string => {
@@ -110,10 +135,122 @@ export function currentSaveLocation(): SaveLocation {
   return locateSave({ csvDir: config.csvDir, saveName: config.saveName, manualLgPath: config.lgPath ?? null });
 }
 
+const logKey = (location: SaveLocation): string =>
+  [location.lgPath, statKey(location.live!.db), statKey(location.live!.wal)].join('|');
+
+const filesOf = (live: LiveDatabaseFiles) => ({ db: live.dbExists, wal: live.walExists, shm: live.shmExists });
+
+/** What a read gave, as the cache keeps it. */
+function outcome(location: SaveLocation, key: string, read: { log: TransactionLog } | { code: LiveLogFailure | null; message: string }): Cached {
+  const files = filesOf(location.live!);
+  if ('log' in read) {
+    const log = read.log;
+    return {
+      key, lgPath: location.lgPath, at: Date.now(), log,
+      status: {
+        found: true, readable: true, error: null, unavailableReason: null, files,
+        snapshot: log.snapshot, coverage: log.coverage,
+        counts: { events: log.counts.events, unsupported: log.counts.unsupported, byKind: log.counts.byKind },
+        unsupportedSamples: log.unsupportedSamples,
+      },
+    };
+  }
+  return {
+    key, lgPath: location.lgPath, at: Date.now(), log: null,
+    status: emptyLogStatus({
+      found: true,
+      files,
+      unavailableReason: read.code === 'not_found' ? 'database_missing' : 'unreadable',
+      error: { code: read.code ?? 'copy_failed', message: read.message },
+    }),
+  };
+}
+
+/** Reads the log on this thread (a first read for a save, or where no worker can start). */
+function readHere(location: SaveLocation, key: string): Cached {
+  try {
+    return outcome(location, key, { log: readTransactionLog(location.live!) });
+  } catch (err) {
+    return outcome(location, key, { code: err instanceof LiveLogError ? err.code : null, message: (err as Error).message });
+  }
+}
+
+/** The worker's entry: the bundled builds ship it beside the bundle; the source runs it through tsx. */
+function logWorkerUrl(): URL {
+  const here = new URL(import.meta.url);
+  return here.pathname.endsWith('.cjs') ? new URL('./transaction-log-worker.cjs', here) : new URL('./transactionLogWorker.ts', here);
+}
+
+let workerBroken = false;
+/** Whether a worker can load: the bundle always; the TypeScript sources only under tsx (a test runner has none). */
+function logWorkerAvailable(): boolean {
+  return !workerBroken && (logWorkerUrl().pathname.endsWith('.cjs') || process.execArgv.some((a) => a.includes('tsx')));
+}
+
+/** Reads the log in a worker thread; in-process after this turn when none can start. */
+function readInBackground(location: SaveLocation, key: string): Promise<Cached> {
+  if (!logWorkerAvailable()) return new Promise((resolve) => setImmediate(() => resolve(readHere(location, key))));
+  return new Promise((resolve) => {
+    let worker: Worker;
+    try {
+      worker = new Worker(logWorkerUrl(), { workerData: location.live });
+    } catch (err) {
+      workerBroken = true;
+      console.error('[log] worker unavailable, reading in-process from now on:', err);
+      setImmediate(() => resolve(readHere(location, key)));
+      return;
+    }
+    let done = false;
+    const finish = (value: Cached): void => {
+      if (done) return;
+      done = true;
+      resolve(value);
+      void worker.terminate();
+    };
+    worker.once('message', (m: { ok: true; log: TransactionLog } | { ok: false; code: LiveLogFailure | null; message: string }) =>
+      finish(outcome(location, key, m.ok ? { log: m.log } : { code: m.code, message: m.message })));
+    worker.once('error', (err) => {
+      workerBroken = true;
+      console.error('[log] worker failed, reading in-process from now on:', err);
+      setImmediate(() => finish(readHere(location, key)));
+    });
+    worker.once('exit', (code) => { if (!done) setImmediate(() => finish(readHere(location, key))); void code; });
+  });
+}
+
+/** Schedules the background read: `debounceMs` after the last change seen, no later than `maxWaitMs` after the first. */
+function scheduleRefresh(location: SaveLocation): void {
+  const now = Date.now();
+  const firstSeen = pending?.lgPath === location.lgPath ? pending.firstSeen : now;
+  if (pending) clearTimeout(pending.timer);
+  const wait = Math.max(0, Math.min(logRefreshTiming.debounceMs, firstSeen + logRefreshTiming.maxWaitMs - now));
+  const timer = setTimeout(() => {
+    pending = null;
+    if (reading) return; // the read in flight is followed by the next request's look
+    const started = generation;
+    const key = logKey(location);
+    reading = readInBackground(location, key).then((read) => {
+      if (started === generation) cache = read;
+    }).finally(() => { reading = null; });
+  }, wait);
+  timer.unref?.();
+  pending = { timer, firstSeen, lgPath: location.lgPath };
+}
+
+/** Resolves once no background read is scheduled or running (the tests' seam). */
+export async function transactionLogSettled(): Promise<void> {
+  while (pending || reading) {
+    if (reading) await reading;
+    else await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+}
+
 /**
- * The parsed live transaction log for the current save, or the reason it is
- * unavailable. Cached against the source files' size and modification time, so
- * asking again while OOTP has written nothing costs a few `stat` calls.
+ * The parsed live transaction log for the current save, or the reason it is unavailable. Cached against the source
+ * files' size and modification time, so asking again while OOTP has written nothing costs a few `stat` calls. When
+ * OOTP has written it since the last copy, the last copy is served at once and a new one is read in the background
+ * (`logRefreshTiming`): a request never waits on the copy. Only a save's first read happens on the request's path
+ * (the server warms it at start, `warmTransactionLog`).
  */
 export function currentTransactionLog(location: SaveLocation = currentSaveLocation()): {
   log: TransactionLog | null;
@@ -123,44 +260,39 @@ export function currentTransactionLog(location: SaveLocation = currentSaveLocati
     return { log: null, status: emptyLogStatus({ unavailableReason: 'save_not_found' }) };
   }
   const live = location.live;
-  const files = { db: live.dbExists, wal: live.walExists, shm: live.shmExists };
   if (!live.dbExists) {
     return {
       log: null,
       status: emptyLogStatus({
-        files,
+        files: filesOf(live),
         unavailableReason: 'database_missing',
         error: { code: 'missing', message: `No ${live.db} in the save's temp folder.` },
       }),
     };
   }
 
-  const key = [location.lgPath, statKey(live.db), statKey(live.wal)].join('|');
+  const key = logKey(location);
   if (cache && cache.key === key && (cache.log || Date.now() - cache.at < FAILURE_TTL_MS)) {
     return { log: cache.log, status: cache.status };
   }
-
-  try {
-    const log = readTransactionLog(live);
-    const status: LogSourceStatus = {
-      found: true, readable: true, error: null, unavailableReason: null, files,
-      snapshot: log.snapshot, coverage: log.coverage,
-      counts: { events: log.counts.events, unsupported: log.counts.unsupported, byKind: log.counts.byKind },
-      unsupportedSamples: log.unsupportedSamples,
-    };
-    cache = { key, at: Date.now(), log, status };
-    return { log, status };
-  } catch (err) {
-    const failure = err instanceof LiveLogError ? err : null;
-    const status = emptyLogStatus({
-      found: true,
-      files,
-      unavailableReason: failure?.code === 'not_found' ? 'database_missing' : 'unreadable',
-      error: { code: failure?.code ?? 'copy_failed', message: (err as Error).message },
-    });
-    cache = { key, at: Date.now(), log: null, status };
-    return { log: null, status };
+  // The same save, written since (or a failure worth retrying): the last copy now, a new one in the background
+  if (cache && cache.lgPath === location.lgPath) {
+    scheduleRefresh(location);
+    return { log: cache.log, status: cache.status };
   }
+  cache = readHere(location, key);
+  return { log: cache.log, status: cache.status };
+}
+
+/** Reads the current save's log in the background (at start), so no request makes the first copy. */
+export function warmTransactionLog(): void {
+  const location = currentSaveLocation();
+  if (!location.found || !location.live?.dbExists || (cache && cache.lgPath === location.lgPath)) return;
+  const started = generation;
+  const key = logKey(location);
+  reading = readInBackground(location, key).then((read) => {
+    if (started === generation && !(cache && cache.lgPath === location.lgPath)) cache = read;
+  }).finally(() => { reading = null; });
 }
 
 function csvCurrentDate(): string | null {
@@ -240,6 +372,7 @@ export function getDataStatus(opts: { importedAt?: string | null } = {}): DataSt
     import: {
       ratingMode: hasData ? currentRatingMode() : null,
       leftOut: hasData ? leftOutOfServedImport() : [],
+      upgradeNote: upgradeState.note,
     },
   };
 }

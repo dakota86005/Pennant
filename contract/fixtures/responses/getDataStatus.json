@@ -54,6 +54,7 @@
   },
   "import": {
     "ratingMode": null,
-    "leftOut": []
+    "leftOut": [],
+    "upgradeNote": null
   }
 }

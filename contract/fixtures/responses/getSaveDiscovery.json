@@ -1,0 +1,56 @@
+{
+  "saves": [
+    {
+      "name": "Test League",
+      "lgPath": "/tmp/pennant-contract-home/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games/Test League.lg",
+      "csvDir": "/tmp/pennant-contract-home/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games/Test League.lg/import_export/csv",
+      "csvCount": 1,
+      "csvLastModified": "2040-07-01T12:00:00.000Z",
+      "csvLastModifiedText": "Jul 1, 2040, 12:00 PM",
+      "id": "saveid",
+      "ootpVersion": 27,
+      "location": "OOTP 27, direct download",
+      "lastPlayedAt": null,
+      "lastPlayedText": null,
+      "exportedAt": "2040-07-01T12:00:00.000Z",
+      "hasExport": true,
+      "exportConfigured": false,
+      "simulatedThrough": null,
+      "exportNote": null
+    }
+  ],
+  "pick": null,
+  "noPick": {
+    "reason": "neverPlayed",
+    "claim": {
+      "text": "None of these saves has been saved in OOTP yet",
+      "tone": "caution",
+      "basis": {
+        "because": [
+          {
+            "label": "Saves found",
+            "value": "1, none saved in OOTP yet"
+          }
+        ],
+        "source": {
+          "department": "frontOffice",
+          "specialist": "Data status",
+          "asOf": "2040-07-01T12:00:00.000Z",
+          "gameDate": null
+        },
+        "unknown": [],
+        "wouldChange": [
+          "A save saved in OOTP, with an export."
+        ],
+        "lean": null,
+        "certainty": "policy",
+        "called": "A line chosen and stated",
+        "stamp": "Chosen only when it clearly stands out: played most recently of all your saves, with an export, and no other save played in the two days before it"
+      },
+      "links": [],
+      "hint": "Choose the save to use."
+    }
+  },
+  "exportHelp": null,
+  "searched": []
+}

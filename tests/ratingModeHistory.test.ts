@@ -93,6 +93,30 @@ describe('rating history across a switch in the kind of ratings', () => {
     expect(body.ratingModeSwitch).toMatchObject({ before: '2031-5-1', after: '2031-6-1', fromMode: 'real', toMode: 'scouted' });
   });
 
+  it('leaves a snapshot stamped with an unknown kind out of trends, observed history and the rating-change list, and says why', async () => {
+    stampSnapshotMode('2031-7-1', { mode: 'unknown', additionalScouted: null, source: 'export_settings', reason: 'two kinds on' }, null);
+    try {
+      setExportRatingMode('scouted');
+      expect(modeFilter().excluded.has('2031-7-1')).toBe(true);
+      const trend = developmentTrendByPlayer().get(PLAYER)!;
+      expect(trend.snapshotCount).toBe(2);
+      expect(trend.reasons.join(' ')).toMatch(/kind of ratings in the snapshot of 2031-7-1 couldn't be read, so it is not compared/);
+      expect((loadScoutedObservations([PLAYER]).get(PLAYER) ?? []).map((o) => o.gameDate)).toEqual(['2031-06-01', '2031-08-20']);
+      const body = await request(`/api/development/${ORG}?from=2031-6-1&to=2031-7-1`);
+      expect(body.changes).toBeNull();
+      expect(body.ratingModeUnknown).toMatchObject({ dates: ['2031-7-1'] });
+    } finally {
+      historyDb.prepare('DELETE FROM rating_snapshot_modes WHERE save_name = ? AND game_date = ?').run(SAVE, '2031-7-1');
+    }
+  });
+
+  it('stamps nothing for a snapshot whose import recorded no kind (an import from before N3.5): unrecorded, never unknown', () => {
+    stampSnapshotMode('2031-7-1', null, null);
+    expect(snapshotModes().has('2031-7-1')).toBe(false);
+    setExportRatingMode('scouted');
+    expect(modeFilter().excluded.has('2031-7-1')).toBe(false);
+  });
+
   it('stamps the snapshot an import takes with the kind its export carried', async () => {
     const outcome = await takeImportSnapshots({
       importFinishedAt: null, importStartedAt: '2040-07-01T12:00:00.000Z',

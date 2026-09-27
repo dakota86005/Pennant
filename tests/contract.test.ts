@@ -231,6 +231,8 @@ function stable(value: unknown): unknown {
     // An import's own time, and its export's fingerprint (the files' times), vary run to run
     if (key === 'durationMs' && typeof node === 'number') return 0;
     if (key === 'exportFingerprint' && typeof node === 'string') return 'fingerprint';
+    // A save's id hashes its folder's real path, which is a new temporary folder on every run (D-063)
+    if ((key === 'id' || key === 'saveId') && typeof node === 'string' && /^[0-9a-f]{16}$/.test(node)) return 'saveid';
     if (typeof node !== 'string') return node;
     if (iso.test(node)) return '2040-07-01T12:00:00.000Z';
     if (key === 'version') return '0.0.0';
@@ -347,7 +349,8 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
       expect(servedBasisProblems(body)).toEqual([]);
       for (const e of exceptionsUsed(body, op.operationId)) exceptionsInUse.add(e);
     }
-    // Where the server looked for saves depends on the platform, so it is no fixture
+    // Where the server looked for saves depends on the platform, so it is no fixture (and is left out of the saves')
+    if (op.operationId === 'getSaveDiscovery') body.searched = [];
     if (op.operationId !== 'getSearchLocations') fixture(`responses/${op.operationId}.json`, json(body));
   }, SLOW);
 
@@ -401,6 +404,8 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
       { name: 'not-installed', body: { packId: 'nothing-here' }, status: 400 },
       { name: 'club-colors', body: { packId: 'club-colors' }, status: 200 },
     ],
+    // The pretend save was never saved by OOTP, so nothing stands out and nothing is chosen (D-063)
+    setUpAutomatically: [{ name: 'nothing-stands-out', body: {}, status: 200 }],
   };
 
   it('answers every POST in the contract\'s shape, for each answer it is safe to cause here', async () => {
@@ -554,6 +559,21 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     expect(status(good)).toBe(true);
     expect(status({ ...good, extra: 1 })).toBe(false);
     expect(status({ ...good, phase: 'guessing' })).toBe(false);
+  });
+});
+
+describe('the committed fixtures of finding the save (N3.5 B2, which the Mac stage decodes)', () => {
+  it.each([
+    ['getSaveDiscovery.json', 'SaveDiscovery'],
+    ['setUpAutomatically-nothing-stands-out.json', 'AutomaticSetup'],
+    ['listSaves.json', 'SaveList'],
+    ['getStatus.json', 'ServerStatus'],
+  ])('%s is there and holds a %s in the strict form', (file, type) => {
+    const at = path.join(FIXTURES, 'responses', file);
+    expect(fs.existsSync(at), `${file} is missing: run npm run contract:fixtures`).toBe(true);
+    const validate = strictValidator()(type);
+    const body = JSON.parse(fs.readFileSync(at, 'utf8'));
+    expect(validate(body) ? [] : validate.errors).toEqual([]);
   });
 });
 

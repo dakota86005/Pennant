@@ -2,17 +2,21 @@ import { Router, type NextFunction, type Request, type Response } from 'express'
 import fs from 'node:fs';
 import path from 'node:path';
 import { db, tableExists, tableColumns, locateColumn, LAST_IMPORT_PATH, LEAGUE_DB_PATH, NEXT_DB_PATH, swapWhenFree } from './db.js';
-import { detectSaves, resolveChosenFolder, searchLocations, type ResolveResult, type SaveInfo, type SearchLocation } from './paths.js';
+import { detectSaves, findSaves, resolveChosenFolder, searchLocations, type ResolveResult, type SaveInfo, type SearchLocation } from './paths.js';
 import { DATA_DIR, loadConfig, saveConfig } from './config.js';
-import { importCsvDir, ImportRefused, type ImportProgress, type ImportResult } from './importer.js';
+import { diskSpace, importCsvDir, upgradeState, ImportRefused, type ImportProgress, type ImportResult } from './importer.js';
 import { upgradeLeagueDatabase } from './importBuild.js';
 import { checkExport, clearPendingExport, notePendingExport, onSettledExport, pendingExport, startWatcher } from './watcher.js';
-import type { ExportAssessment } from './exportFiles.js';
+import { assessExport, importedExport, type ExportAssessment } from './exportFiles.js';
 import { locateSave } from './ootpSave.js';
 import { readRatingMode } from './ratingMode.js';
 import { registerPostImportHook, runPostImportHooks } from './postImport.js';
 import { snapshotsAfterImport } from './importSnapshots.js';
-import { featureProvider, providerCredential, loadSettings } from './settings.js';
+import { currentPlayedElsewhere, forgetSaveScan, humanClubsInExport, pickSave, saveLabel, type SavePlayedElsewhere } from './saveDiscovery.js';
+import { saveDiscoveryView, type SaveDiscovery } from './presentation/saveWords.js';
+import { assertAuthored } from './presentation/claim.js';
+import type { Claim } from './contract/presentation.js';
+import { featureProvider, followSaveClub, providerCredential, loadSettings } from './settings.js';
 import { orgRoutes } from './org.js';
 import { contractRoutes } from './contracts.js';
 import { freeAgentRoutes } from './freeagents.js';
@@ -20,7 +24,7 @@ import { lineupRoutes } from './lineup.js';
 import { storylineRoutes, startStorylineJob } from './storylines.js';
 import { playerRoutes } from './player.js';
 import { historyRoutes } from './history.js';
-import { csvExportedAt, resetTransactionLogCache } from './dataStatus.js';
+import { csvExportedAt, resetTransactionLogCache, warmTransactionLog } from './dataStatus.js';
 import { importedAt, playerStateRoutes } from './playerStateRoutes.js';
 import { assignmentContextsFor } from './playerContext.js';
 import { clearStatCaches, computeBatting, computePitching, leagueBaseline } from './stats.js';
@@ -118,7 +122,13 @@ export const importState: {
   progress: ImportProgress | null;
   /** When an import that never finished had started (the server stopped partway), until a later import completes. */
   interruptedSince: string | null;
-} = { importing: false, lastImport: loadImportMeta(), lastError: null, progress: null, interruptedSince: null };
+  /**
+   * The export an import last failed on (its folder and the fingerprint of its files then), until an import succeeds
+   * (N3.5 Stage B2 review): the watcher and the minute's look do not try it again until the folder changes, so a
+   * broken export is not re-imported every minute. The GM's own Import Now still tries.
+   */
+  lastFailed: { csvDir: string; fingerprint: string } | null;
+} = { importing: false, lastImport: loadImportMeta(), lastError: null, progress: null, interruptedSince: null, lastFailed: null };
 importedAt.value = importState.lastImport?.finishedAt ?? null;
 
 /**
@@ -322,7 +332,8 @@ function clearLeagueCaches(): void {
   clearRosterReviewCalibrationCache(); // the roster review's yardsticks in force are re-read
   clearScaleCache();
   clearTwoWayCache();
-  resetTransactionLogCache();
+  // Not the live transaction log: it is OOTP's, not the import's, and is read again only when OOTP writes it (so the
+  // first page after an import never waits on a copy of it)
 }
 
 /**
@@ -375,10 +386,14 @@ export async function runImport(csvDir: string, trigger: ImportTrigger = 'manual
     // Whatever was waiting on disk has now been read
     clearPendingExport();
     importState.interruptedSince = null;
+    importState.lastFailed = null;
     fs.rmSync(IMPORT_MARKER_PATH, { force: true });
   } catch (err) {
     importState.lastError = (err as Error).message;
     console.error('[import] failed:', (err as Error).message);
+    // Remembered, so an automatic look does not try the same files again (a changed folder is a new attempt)
+    const failedOn = assessExport(csvDir).fingerprint;
+    importState.lastFailed = failedOn ? { csvDir, fingerprint: failedOn } : null;
     // A refusal touched nothing (OOTP still writing, no room, an old players file, no files): nothing was interrupted,
     // so the next start does not call it so (review nit 9). Any other failure keeps the marker and is retried at start.
     if (err instanceof ImportRefused) fs.rmSync(IMPORT_MARKER_PATH, { force: true });
@@ -406,7 +421,17 @@ let upgrading: Promise<void> | null = null;
 export function upgradeLeagueInBackground(): Promise<void> {
   if (upgrading) return upgrading;
   upgrading = (async () => {
+    // Never finish in this turn: the `finally` below must run after `upgrading` is assigned, or it would stay set
+    await Promise.resolve();
     try {
+      // Room for the converted copy beside the served file first: without it nothing is written, the file is served as
+      // it is, and the next start checks again (a check, never a failed write at every launch)
+      const room = upgradeRoom();
+      upgradeState.note = room;
+      if (room) {
+        console.warn(`[import] ${room}`);
+        return;
+      }
       const outcome = await upgradeLeagueDatabase(LEAGUE_DB_PATH, NEXT_DB_PATH);
       await swapWhenFree(NEXT_DB_PATH, clearLeagueCaches);
       console.log(`[import] brought the league database up to date in ${(outcome.ms / 1000).toFixed(1)}s (${outcome.indexes} indexes added)`);
@@ -418,6 +443,25 @@ export function upgradeLeagueInBackground(): Promise<void> {
     }
   })();
   return upgrading;
+}
+
+/** The converted copy is about the size of the served file; with room to spare. */
+export const UPGRADE_DISK_FACTOR = 1.5;
+
+/** Why the one-time upgrade cannot run now (not enough free space for its copy), in a sentence; null when it can. */
+export function upgradeRoom(): string | null {
+  let size = 0;
+  try {
+    size = fs.statSync(LEAGUE_DB_PATH).size;
+  } catch {
+    return null;
+  }
+  const needed = Math.round(size * UPGRADE_DISK_FACTOR);
+  const free = diskSpace.free(DATA_DIR);
+  if (free === null || free >= needed) return null;
+  const gb = (bytes: number): string => `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+  return `Not enough free disk space to bring the league database up to date: about ${gb(needed)} is needed and ${gb(free)} is free. ` +
+    'It is served as it is, and Pennant checks again at the next start.';
 }
 
 /** Whether a settled export is one the app has not imported: its fingerprint differs from the last import's. */
@@ -437,6 +481,9 @@ export function isNewExport(assessment: ExportAssessment, last: ImportResult | n
  */
 export function handleSettledExport(csvDir: string, assessment: ExportAssessment): void {
   if (loadConfig().csvDir !== csvDir || !isNewExport(assessment)) return;
+  // The export the last import failed on, unchanged: not tried again automatically (its error stays on the status)
+  const failed = importState.lastFailed;
+  if (failed && failed.csvDir === csvDir && failed.fingerprint === assessment.fingerprint) return;
   const settings = loadSettings();
   if (settings.autoImport && settings.importAutomatically) {
     if (importState.importing) lookAgainAfterImport = true;
@@ -446,6 +493,14 @@ export function handleSettledExport(csvDir: string, assessment: ExportAssessment
   }
 }
 onSettledExport(handleSettledExport);
+
+// The watcher's judgement knows the last import of the folder it looks at: a file no newer was not rewritten since
+importedExport.writtenAtMs = (csvDir) => {
+  const last = importState.lastImport;
+  if (!last?.exportWrittenAt || last.csvDir !== csvDir) return null;
+  const at = Date.parse(last.exportWrittenAt);
+  return Number.isFinite(at) ? at : null;
+};
 
 /*
  * The post-import hooks, in order. The snapshots first (in a worker; they write history.db), then the storylines and
@@ -543,6 +598,11 @@ export interface ServerStatus {
    * null before one is kept. It moves whenever the server builds the Front Office again; the Mac app reloads on it.
    */
   reportStamp: string | null;
+  /**
+   * Another save (or a newer OOTP version's) played since the chosen one, once OOTP has finished saving it, with the
+   * sentence and the save to switch to; null when there is none (N3.5 Stage B2, D-063). Pennant never switches by itself.
+   */
+  savePlayedElsewhere: SavePlayedElsewhere | null;
 }
 
 /** A request the server accepted, with nothing more to say. */
@@ -637,6 +697,8 @@ export function statusSnapshot(): ServerStatus {
      */
     logoToken: logoToken(),
     reportStamp: currentReportStamp(),
+    // The last look at the saves (`saveDiscovery.ts`), never a scan on this request's path
+    savePlayedElsewhere: currentPlayedElsewhere(),
     /*
      * The scale OOTP is set to show ratings on, read off the save. Bars used
      * to divide by eighty regardless, so a 5 on the 1-to-5 scale drew at six
@@ -653,6 +715,21 @@ api.get('/status', (_req, res: Response<ServerStatus>) => {
 /** Server-sent events for the Mac app: import, job and fresh-export news as it happens (`serverEvents.ts`). */
 api.get('/v2/events', eventStream(statusSnapshot));
 
+/** The saves on this Mac, most recently played first, and the one you're playing when it clearly stands out (D-063). */
+api.get('/v2/saves', (_req, res: Response<SaveDiscovery>) => {
+  const { saves, unreadable } = findSaves();
+  const view = saveDiscoveryView(saves, pickSave(saves, { unreadable }), searchLocations());
+  assertAuthored(view);
+  res.json(view);
+});
+
+/** The first run's zero-question setup (D-063): the save that clearly stands out is chosen and imported, or why not. */
+api.post('/v2/setup/automatic', (_req, res: Response<AutomaticSetup>) => {
+  const answer = automaticSetup();
+  assertAuthored(answer);
+  res.json(answer);
+});
+
 /** The rest of the Mac app's own API (`v2Routes.ts`), after the event stream so its unknown-route answer is last. */
 api.use('/v2', v2Routes);
 
@@ -663,25 +740,100 @@ api.use('/v2', v2Routes);
  */
 export const IMPORT_RUNNING = 'An import is already running. Wait for it to finish, then try again.';
 
+/**
+ * Chooses a save: its export folder and name become the configuration, and its import starts when the folder is there
+ * (with the watcher). Returns whether the import started. The caller has checked that no import is running.
+ */
+function chooseSave(csvDir: string, saveName: string | null): boolean {
+  // A hand-picked .lg folder belongs to the save it was picked for
+  const previous = loadConfig();
+  saveConfig({ csvDir, saveName, lgPath: previous.csvDir === csvDir ? previous.lgPath ?? null : null });
+  resetTransactionLogCache();
+  warmTransactionLog();
+  forgetSaveScan();
+  if (!fs.existsSync(csvDir)) return false;
+  importState.importing = true; // visible to /status before the import starts
+  setImmediate(() => {
+    importState.importing = false;
+    void runImport(csvDir);
+  });
+  startWatcher(csvDir);
+  return true;
+}
+
 api.post('/config', (req, res: Response<ConfigAccepted | ApiError>) => {
   const { csvDir, saveName } = req.body as Partial<ConfigRequest>;
   if (!csvDir) return res.status(400).json({ error: 'csvDir is required' });
   if (importState.importing) return res.status(409).json({ error: IMPORT_RUNNING });
-  // A hand-picked .lg folder belongs to the save it was picked for
-  const previous = loadConfig();
-  saveConfig({ csvDir, saveName: saveName ?? null, lgPath: previous.csvDir === csvDir ? previous.lgPath ?? null : null });
-  resetTransactionLogCache();
-  if (fs.existsSync(csvDir)) {
-    importState.importing = true; // visible to /status before the import starts
-    setImmediate(() => {
-      importState.importing = false;
-      void runImport(csvDir);
-    });
-    startWatcher(csvDir);
-    return res.json({ ok: true, importStarted: true, why: null });
-  }
+  if (chooseSave(csvDir, saveName ?? null)) return res.json({ ok: true, importStarted: true, why: null });
   res.json({ ok: true, importStarted: false, why: EXPORT_NOT_FOUND });
 });
+
+/** The club a first run follows, taken from the save's export (N3.5 Stage B2, D-063). */
+export interface SetupClub {
+  /** Whether the club was taken from the save: exactly one club is managed by the save's human. */
+  decided: boolean;
+  /** The club followed; null when none was taken. */
+  teamId: Integer | null;
+  name: string | null;
+  /** How many clubs the save's human manages, as the export's teams file says; null when it doesn't say. */
+  humanClubs: Integer | null;
+  /** The line the app shows. */
+  text: string;
+}
+
+/**
+ * What `POST /api/v2/setup/automatic` answers (N3.5 Stage B2, D-063): whether the first run chose a save by itself.
+ * `started`: the save that clearly stands out is chosen and importing, with the club when the save names one.
+ * `alreadyChosen`: a save was chosen before; nothing changed (asking twice starts one import).
+ * `nothingStandsOut`: nothing was chosen; `why` says why, and the app asks.
+ */
+export interface AutomaticSetup {
+  outcome: 'started' | 'alreadyChosen' | 'nothingStandsOut';
+  /** The line the app shows. */
+  text: string;
+  /** The save chosen (now or before); null when none is. */
+  save: SaveInfo | null;
+  /** The club followed, when a save was chosen now; null otherwise. */
+  club: SetupClub | null;
+  /** Why this save, or why none: the line with its basis; null when a save was already chosen. */
+  why: Claim | null;
+}
+
+/** The club a first run takes from the export: followed when the save's human manages exactly one. */
+function clubFromSave(csvDir: string): SetupClub {
+  const clubs = humanClubsInExport(csvDir);
+  if (clubs === null) {
+    return { decided: false, teamId: null, name: null, humanClubs: null, text: 'The export doesn\'t say which club you manage, so Pennant will ask.' };
+  }
+  if (clubs.length === 1) {
+    // Automatic: the server follows the club the save's human manages (`viewingOrganization.ts`), once imported
+    followSaveClub();
+    return { decided: true, teamId: clubs[0].teamId, name: clubs[0].name, humanClubs: 1, text: `Following the ${clubs[0].name}, the club you manage in this save.` };
+  }
+  return {
+    decided: false, teamId: null, name: null, humanClubs: clubs.length,
+    text: clubs.length === 0 ? 'The export names no club you manage, so Pennant will ask.' : `You manage ${clubs.length} clubs in this save, so Pennant will ask which to follow.`,
+  };
+}
+
+/** The first run's zero-question setup: choose and import the save that clearly stands out, or say why not. */
+export function automaticSetup(): AutomaticSetup {
+  const config = loadConfig();
+  const { saves, unreadable } = findSaves();
+  if (config.csvDir || importState.importing) {
+    const save = saves.find((s) => s.csvDir === config.csvDir) ?? null;
+    return { outcome: 'alreadyChosen', text: `${config.saveName ?? save?.name ?? 'A save'} is already chosen.`, save, club: null, why: null };
+  }
+  const view = saveDiscoveryView(saves, pickSave(saves, { unreadable }), []);
+  const pick = view.pick ? saves.find((s) => s.id === view.pick!.saveId)! : null;
+  if (!pick) {
+    return { outcome: 'nothingStandsOut', text: 'No save clearly stands out, so Pennant will ask which to use.', save: null, club: null, why: view.noPick!.claim };
+  }
+  const club = clubFromSave(pick.csvDir);
+  chooseSave(pick.csvDir, pick.name);
+  return { outcome: 'started', text: `Using ${saveLabel(pick, saves)}, the save you've played most recently.`, save: pick, club, why: view.pick!.claim };
+}
 
 api.post('/import', (_req, res: Response<ImportAccepted | ApiError>) => {
   const config = loadConfig();
