@@ -34,6 +34,8 @@ export interface BuildSpec {
   parseWorkers: number;
   /** What the new database records about its import (`pennant_import`), as JSON. */
   meta: Record<string, unknown>;
+  /** The size from which a file with no quote character is split across the parse workers (16 MB; a test sets less). */
+  splitMinBytes?: number;
 }
 
 /** A table the build wrote. */
@@ -59,7 +61,17 @@ export interface BuildResult {
   notCarried: string[];
   rows: Integer;
   indexes: Integer;
-  timings: { parseAndWriteMs: number; carryMs: number; indexMs: number; totalMs: number };
+  timings: {
+    /** Reading, parsing, writing and indexing each table as its file finished. */
+    parseAndWriteMs: number;
+    /** Of that, how long the one writer was busy (the rest it waited for the parsers), and how much of it was indexes. */
+    writerBusyMs: number;
+    indexBusyMs: number;
+    carryMs: number;
+    /** The carried tables' indexes and ANALYZE, after every file. */
+    indexMs: number;
+    totalMs: number;
+  };
 }
 
 /** Why a build failed, so the caller can tell a changing export (try again later) from a real failure. */

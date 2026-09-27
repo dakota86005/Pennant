@@ -6,6 +6,7 @@ import { DATA_DIR } from '../server/config.js';
 import { databaseGeneration, db, importRecord, leagueDbTiming, NEXT_DB_PATH, prepareLeagueDatabase, retiredConnections, tableExists } from '../server/db.js';
 import { diskSpace, importCsvDir, importTiming, ImportRefused, type ImportResult } from '../server/importer.js';
 import { buildLeagueDatabase, BuildError } from '../server/importBuild.js';
+import { splitPoints } from '../server/importWorker.js';
 import { listExport } from '../server/exportFiles.js';
 
 /**
@@ -260,5 +261,56 @@ describe('the served database', () => {
     // Generous bounds (CI hardware varies): the old import held the thread for seconds at a time
     expect(p95, `p95 ${p95.toFixed(0)} ms`).toBeLessThan(100);
     expect(gaps[gaps.length - 1], `worst ${gaps[gaps.length - 1].toFixed(0)} ms`).toBeLessThan(250);
+  });
+});
+
+describe('a large file split across the parse workers', () => {
+  const build = async (dir: string, splitMinBytes?: number): Promise<Array<Record<string, unknown>>> => {
+    const out = path.join(DATA_DIR, `league.split-${splitMinBytes ?? 'whole'}.db`);
+    await buildLeagueDatabase({ csvDir: dir, outPath: out, previousPath: null, files: listExport(dir), carryOver: [], required: [], parseWorkers: 3, meta: {}, splitMinBytes });
+    const Database = (await import('better-sqlite3')).default;
+    const conn = new Database(out, { readonly: true });
+    try {
+      return conn.prepare('SELECT * FROM big').all() as Array<Record<string, unknown>>;
+    } finally {
+      conn.close();
+      fs.rmSync(out, { force: true });
+    }
+  };
+
+  it('reads exactly as the whole file would, in the file\'s order, when the file has no quote character', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pennant-split-'));
+    scratch.push(dir);
+    const rows = Array.from({ length: 5000 }, (_, i) => `${i},${(i * 7) % 13},${i % 2 ? '' : 'x'}${i}`).join('\r\n');
+    fs.writeFileSync(path.join(dir, 'big.csv'), `id,n,label\r\n${rows}\r\n`);
+    const whole = await build(dir);
+    const split = await build(dir, 4096);
+    expect(split).toHaveLength(5000);
+    expect(split).toEqual(whole);
+    expect(split[0]).toEqual({ id: 0, n: 0, label: 'x0' });
+    expect(split[4999]).toMatchObject({ id: 4999 });
+  });
+
+  it('is cut only at line breaks, the header in the first part', () => {
+    const buf = Buffer.from(`a,b\n${Array.from({ length: 100 }, (_, i) => `${i},${i}`).join('\n')}\n`);
+    const parts = splitPoints(buf, 3)!;
+    expect(parts).toHaveLength(3);
+    expect(parts[0].start).toBe(0);
+    expect(parts[2].end).toBe(buf.length);
+    for (let i = 1; i < parts.length; i++) {
+      expect(parts[i].start).toBe(parts[i - 1].end);
+      expect(buf[parts[i].start - 1]).toBe(0x0a);
+    }
+    expect(splitPoints(Buffer.from('a,b\n1,"x"\n2,y\n'), 2)).toBeNull();
+  });
+
+  it('is never split when it holds a quote character (a quoted field may hold a line break)', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pennant-split-'));
+    scratch.push(dir);
+    const rows = Array.from({ length: 3000 }, (_, i) => (i === 1500 ? `${i},"two\nlines"` : `${i},plain`)).join('\n');
+    fs.writeFileSync(path.join(dir, 'big.csv'), `id,label\n${rows}\n`);
+    const split = await build(dir, 1024);
+    expect(split).toHaveLength(3000);
+    expect(split[1500]).toEqual({ id: 1500, label: 'two\nlines' });
   });
 });
