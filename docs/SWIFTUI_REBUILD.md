@@ -906,7 +906,10 @@ with scripted processes, and `ServerIntegrationTests` with the real staged serve
   reports a known type that did not decode and re-reads `/api/status` (the model keeps the latest 20 such reports),
   and reconnects while the server is up: each failed or ended connection is logged, and the wait doubles from 1 s to
   at most 10 s while connecting keeps failing, starting again from 1 s after a connection that opened. Cancelling it
-  (the server stopped) ends it at once.
+  (the server stopped) ends it at once. Since the N5 review it reads the stream as it arrives into a queue and passes
+  on what waits once the app is free, dropping an import's progress that a later import event already overtook: the
+  N3.5 import announces a step whenever the table changes, and a busy main actor that took each step in turn heard of
+  the finish only after the backlog (the Setup integration test, beside the snapshot tests, waited out its 10 s).
 
 ---
 
