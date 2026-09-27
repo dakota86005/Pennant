@@ -245,7 +245,9 @@ export function refitAfterImport(): Promise<void> {
     .catch((err) => console.error('[value] production refit failed:', err));
   // Every subsystem's per-save calibration (D-053), in its own worker, at the same time
   const calibration = refitCalibrationsAfterImport(generation);
-  return Promise.all([value, calibration]).then(() => undefined);
+  return Promise.all([value, calibration]).then(() => {
+    console.log(`[refit] the refits settled ${Math.round(performance.now() - started)} ms after they started`);
+  });
 }
 /**
  * After an import: the per-save calibrations every subsystem registered (`saveCalibration.ts`), computed in a worker thread and

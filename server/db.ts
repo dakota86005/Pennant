@@ -204,15 +204,38 @@ function missingIndexes(conn: Database.Database): Array<{ table: string; name: s
   return out;
 }
 
+/*
+ * The served database's schema, remembered per connection: it changes only when an import swaps a new file in (a new
+ * connection). Asked thousands of times a page (every schema-tolerant read checks its columns), it cost about a
+ * sixth of a slow page's time (N3.5). Not kept on a writable connection (the tests and the synthetic-league script
+ * change their league's tables through it).
+ */
+let schemaOf: { conn: Database.Database; tables: Map<string, string[] | null> } | null = null;
+
+function schema(): Map<string, string[] | null> | null {
+  if (!db.readonly) return null;
+  if (schemaOf?.conn !== db) schemaOf = { conn: db, tables: new Map() };
+  return schemaOf.tables;
+}
+
+function readColumns(name: string): string[] | null {
+  if (!db.prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?`).get(name)) return null;
+  return (db.prepare(`PRAGMA table_info("${name.replace(/"/g, '')}")`).all() as { name: string }[]).map((r) => r.name);
+}
+
+function columnsOf(name: string): string[] | null {
+  const known = schema();
+  if (!known) return readColumns(name);
+  if (!known.has(name)) known.set(name, readColumns(name));
+  return known.get(name)!;
+}
+
 export function tableExists(name: string): boolean {
-  return !!db.prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?`).get(name);
+  return columnsOf(name) !== null;
 }
 
 export function tableColumns(name: string): string[] {
-  if (!tableExists(name)) return [];
-  return (db.prepare(`PRAGMA table_info("${name.replace(/"/g, '')}")`).all() as { name: string }[]).map(
-    (r) => r.name
-  );
+  return [...(columnsOf(name) ?? [])];
 }
 
 /**
