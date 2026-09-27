@@ -32,6 +32,19 @@ export const exportTiming = {
     : QUIET_MS,
 };
 
+/**
+ * OOTP writes the files of one export back to back (the next begins within 0.03 s of the last; the longest file took
+ * 7.7 s). Files of the burst whose times fall in groups further apart than this are not one export as it stands: OOTP
+ * paused part way (the newer group is the new export, the older one the previous export's files not yet rewritten),
+ * or a table was switched off since an export a few minutes earlier. (N3.5 review, finding 2.)
+ */
+export const CLUSTER_GAP_MS = 60_000;
+/**
+ * How long a burst in groups must stay unwritten before the older group is taken as left over (stale: left out and
+ * named) rather than OOTP still at work. Much longer than any pause between two files.
+ */
+export const CLUSTER_SETTLE_MS = 120_000;
+
 /** Tables without which an export is not one: stale or unreadable, they fail the import and the previous import stays. */
 export const REQUIRED_TABLES = ['players', 'teams', 'leagues'] as const;
 
@@ -52,14 +65,23 @@ export interface ExportAssessment {
   newestMs: number | null;
   /** How long since the newest file was written. */
   quietForMs: number | null;
-  /** Quiet for `QUIET_MS` or more: OOTP has finished writing. */
+  /**
+   * OOTP has finished writing: quiet for `QUIET_MS` or more, and, when the burst's files fall in groups minutes apart,
+   * quiet for `CLUSTER_SETTLE_MS` (after which the older groups count as stale).
+   */
   settled: boolean;
+  /** How long until it would count as settled if nothing is written meanwhile (0 when settled). */
+  settlesInMs: number;
+  /** The burst's files fall in groups minutes apart (`CLUSTER_GAP_MS`): OOTP paused part way, or tables were left over. */
+  clustered: boolean;
   /** The files written in the newest burst: what an import reads. */
   current: ExportFile[];
   /** Files older than the burst: not rewritten this time. */
   stale: ExportFile[];
   /** A fingerprint of the current files (name, size, time), to tell a new export from one already imported. */
   fingerprint: string | null;
+  /** A fingerprint of every file in the folder, to tell whether anything at all changed since this look. */
+  folderFingerprint: string | null;
 }
 
 /** A file name as a table name: what the importer has always done. */
@@ -99,12 +121,26 @@ export function fingerprintOf(files: readonly ExportFile[]): string | null {
 
 /** Judges a listing at `now`: quiet, the current burst, the stale files, the fingerprint. */
 export function assessFiles(files: ExportFile[], now: number): ExportAssessment {
-  if (files.length === 0) return { files, newestMs: null, quietForMs: null, settled: false, current: [], stale: [], fingerprint: null };
+  if (files.length === 0) {
+    return { files, newestMs: null, quietForMs: null, settled: false, settlesInMs: exportTiming.quietMs, clustered: false, current: [], stale: [], fingerprint: null, folderFingerprint: null };
+  }
   const newestMs = Math.max(...files.map((f) => f.mtimeMs));
-  const current = files.filter((f) => f.mtimeMs >= newestMs - BURST_WINDOW_MS);
-  const stale = files.filter((f) => f.mtimeMs < newestMs - BURST_WINDOW_MS);
+  const burst = files.filter((f) => f.mtimeMs >= newestMs - BURST_WINDOW_MS);
+  // The newest group of the burst: back from the newest file until a gap longer than any pause between two files
+  const times = [...new Set(burst.map((f) => f.mtimeMs))].sort((a, b) => b - a);
+  let groupStart = times[0];
+  for (let i = 1; i < times.length && times[i - 1] - times[i] <= CLUSTER_GAP_MS; i++) groupStart = times[i];
+  const clustered = burst.some((f) => f.mtimeMs < groupStart);
   const quietForMs = Math.max(0, now - newestMs);
-  return { files, newestMs, quietForMs, settled: quietForMs >= exportTiming.quietMs, current, stale, fingerprint: fingerprintOf(current) };
+  const needed = clustered ? Math.max(exportTiming.quietMs, CLUSTER_SETTLE_MS) : exportTiming.quietMs;
+  const settled = quietForMs >= needed;
+  // Settled in groups: the older groups were not rewritten this time (stale); unsettled, they stay in the burst for now
+  const current = clustered && settled ? burst.filter((f) => f.mtimeMs >= groupStart) : burst;
+  const stale = files.filter((f) => !current.includes(f));
+  return {
+    files, newestMs, quietForMs, settled, settlesInMs: Math.max(0, needed - quietForMs), clustered,
+    current, stale, fingerprint: fingerprintOf(current), folderFingerprint: fingerprintOf(files),
+  };
 }
 
 /** The export folder judged now. */

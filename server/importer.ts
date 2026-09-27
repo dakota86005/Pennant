@@ -117,8 +117,11 @@ export class ImportRefused extends Error {
 
 /** Settings a test can shorten (the quiet period); the defaults are the measured rule. */
 export const importTiming = {
-  /** How long an import waits for OOTP to finish writing before it gives up (the watcher starts it again later). */
-  settleTimeoutMs: 120_000,
+  /**
+   * How long an import waits for OOTP to finish writing before it gives up (the watcher starts it again later): longer
+   * than the wait for an export in groups (`CLUSTER_SETTLE_MS`), so a paused export is waited out, not refused.
+   */
+  settleTimeoutMs: 200_000,
   /** Attempts when a file changes while it is read. */
   attempts: 3,
 };
@@ -170,7 +173,7 @@ async function settledExport(csvDir: string, onProgress?: (p: ImportStep) => voi
       throw new ImportRefused('EXPORT_CHANGING: OOTP was still writing the export when the import gave up waiting', 'export_changing');
     }
     onProgress?.({ table: 'export', fileIndex: 1, files: a.files.length, rows: 0, phase: 'waiting' });
-    await sleep(Math.min(1000, Math.max(50, exportTiming.quietMs - (a.quietForMs ?? 0))));
+    await sleep(Math.min(1000, Math.max(50, a.settlesInMs)));
   }
 }
 
@@ -246,6 +249,22 @@ export async function importCsvDir(csvDir: string, onProgressOrOptions?: ((p: Im
       }
       if (err instanceof BuildError && err.code === 'export_changed') throw new ImportRefused(`EXPORT_CHANGING: ${err.message}`, 'export_changing');
       throw err;
+    }
+
+    /*
+     * The export as a whole, again, before the swap: every file as it was when the build began (none added, removed or
+     * rewritten, even one already read) and the folder still settled. OOTP resuming part way through the build, or a
+     * file appearing, is caught here and the export is read again; the per-file checks alone could not see a file the
+     * build had already finished with. (N3.5 review, finding 2.)
+     */
+    const now = assessExport(csvDir);
+    if (now.folderFingerprint !== assessment.folderFingerprint || !now.settled) {
+      fs.rmSync(NEXT_DB_PATH, { force: true });
+      if (attempt < importTiming.attempts) {
+        console.warn('[import] the export changed while it was read; waiting for OOTP to finish, then reading it again');
+        continue;
+      }
+      throw new ImportRefused('EXPORT_CHANGING: the export kept changing while it was read', 'export_changing');
     }
 
     const carried = new Set(build.tables.filter((t) => t.source === 'carried').map((t) => t.table));

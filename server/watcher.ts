@@ -62,10 +62,9 @@ export function checkExport(csvDir: string = watchedDir ?? ''): void {
   timer = null;
   const assessment = assessExport(csvDir, watchClock.now());
   if (assessment.files.length === 0) return;
-  const quietFor = assessment.quietForMs ?? 0;
-  if (quietFor < watchClock.quietMs()) {
-    // Still being written (or just finished): look again once it has been quiet for the whole period
-    timer = watchClock.setTimeout(() => checkExport(csvDir), watchClock.quietMs() - quietFor + 50);
+  if (!assessment.settled) {
+    // Still being written (or just finished, or in groups minutes apart): look again once it would have settled
+    timer = watchClock.setTimeout(() => checkExport(csvDir), assessment.settlesInMs + 50);
     return;
   }
   handler?.(csvDir, assessment);

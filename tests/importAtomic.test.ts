@@ -7,7 +7,7 @@ import { databaseGeneration, db, importRecord, leagueDbTiming, NEXT_DB_PATH, pre
 import { diskSpace, importCsvDir, importTiming, ImportRefused, type ImportResult } from '../server/importer.js';
 import { buildLeagueDatabase, BuildError } from '../server/importBuild.js';
 import { splitPoints } from '../server/importWorker.js';
-import { listExport } from '../server/exportFiles.js';
+import { assessFiles, listExport } from '../server/exportFiles.js';
 
 /**
  * The import is all or nothing (D-061, BEHAVIOR_CASES "The import and the export's ratings"): a new file is built in a
@@ -312,5 +312,83 @@ describe('a large file split across the parse workers', () => {
     const split = await build(dir, 1024);
     expect(split).toHaveLength(3000);
     expect(split[1500]).toEqual({ id: 1500, label: 'two\nlines' });
+  });
+});
+
+describe('an export OOTP paused part way through (N3.5 review, finding 2)', () => {
+  const setTime = (dir: string, files: string[], msAgo: number): void => {
+    const at = new Date(Date.now() - msAgo);
+    for (const f of files) fs.utimesSync(path.join(dir, f), at, at);
+  };
+  const EARLY = ['leagues.csv', 'teams.csv', 'players.csv'];
+  const LATE = ['players_career_batting_stats.csv', 'games.csv'];
+  /** Export 2 written part way: the early files new, the late ones still export 1's, from a few minutes before. */
+  const partWritten = (dir: string, newAgoMs: number, oldAgoMs: number): void => {
+    writeExport(1, { dir });
+    setTime(dir, [...EARLY, ...LATE], oldAgoMs);
+    for (const f of EARLY) fs.writeFileSync(path.join(dir, f), fs.readFileSync(path.join(dir, f), 'utf8').replaceAll(',1\n', ',2\n'));
+    setTime(dir, EARLY, newAgoMs);
+  };
+  afterEach(() => { importTiming.settleTimeoutMs = 200_000; });
+
+  it('is never imported while its files fall in groups minutes apart: the import waits, and the previous one stays', async () => {
+    const dir = writeExport(1);
+    await importCsvDir(dir);
+    partWritten(dir, 1_000, 5 * 60_000);
+    importTiming.settleTimeoutMs = 300;
+    await expect(importCsvDir(dir)).rejects.toThrow(/^EXPORT_CHANGING/);
+    expect(versionsOf('players').versions).toEqual([1]);
+    expect(versionsOf('players_career_batting_stats').versions).toEqual([1]);
+    // OOTP finishes: every file from one burst, all export 2
+    writeExport(2, { dir });
+    const done = await importCsvDir(dir);
+    expect(done.leftOut).toEqual([]);
+    for (const t of ['leagues', 'teams', 'players', 'players_career_batting_stats', 'games']) expect(versionsOf(t).versions, t).toEqual([2]);
+  });
+
+  it('when it never finishes, names the older group as not rewritten (never mixed silently) once the newer has long been quiet', async () => {
+    const dir = writeExport(1);
+    const first = await importCsvDir(dir);
+    partWritten(dir, 3 * 60_000, 8 * 60_000);
+    const result = await importCsvDir(dir);
+    expect(result.leftOut?.map((l) => [l.table, l.reason, l.kept, l.keptFrom])).toEqual([
+      ['games', 'stale', true, first.startedAt],
+      ['players_career_batting_stats', 'stale', true, first.startedAt],
+    ]);
+    expect(versionsOf('players').versions).toEqual([2]);
+  });
+
+  it('refuses when the older group holds players, clubs or leagues', async () => {
+    const dir = writeExport(1);
+    await importCsvDir(dir);
+    writeExport(1, { dir });
+    setTime(dir, ['players.csv'], 8 * 60_000);
+    setTime(dir, ['leagues.csv', 'teams.csv', ...LATE], 3 * 60_000);
+    await expect(importCsvDir(dir)).rejects.toThrow(/^STALE_REQUIRED: players/);
+  });
+
+  it('reads the export again when anything in the folder changed during the build, even a file it did not read', async () => {
+    const dir = writeExport(3);
+    await importCsvDir(dir);
+    writeExport(4, { dir });
+    const late = (attempt: number): void => { if (attempt === 1) fs.writeFileSync(path.join(dir, 'zz_late.csv'), 'id\n1\n'); };
+    const result = await importCsvDir(dir, { beforeBuild: late });
+    expect(result.files.map((f) => f.table)).toContain('zz_late');
+    importTiming.attempts = 1;
+    await expect(importCsvDir(dir, { beforeBuild: () => fs.writeFileSync(path.join(dir, 'zz_later.csv'), `id\n${Date.now()}\n`) }))
+      .rejects.toThrow(/^EXPORT_CHANGING/);
+  });
+
+  it('judges groups by the gaps between files, and says how long until it would settle', () => {
+    const t = 5_000_000_000;
+    const f = (name: string, ms: number) => ({ file: `${name}.csv`, table: name, size: 1, mtimeMs: ms });
+    const oneBurst = assessFiles([f('a', t), f('b', t + 7_000), f('c', t + 14_000)], t + 20_000);
+    expect(oneBurst).toMatchObject({ clustered: false, settled: true, settlesInMs: 0 });
+    const grouped = assessFiles([f('a', t), f('b', t + 4 * 60_000), f('c', t + 4 * 60_000 + 5_000)], t + 4 * 60_000 + 5_000 + 30_000);
+    expect(grouped).toMatchObject({ clustered: true, settled: false, settlesInMs: 90_000 });
+    expect(grouped.current.map((x) => x.table)).toEqual(['a', 'b', 'c']);
+    const settledGroups = assessFiles(grouped.files, t + 4 * 60_000 + 5_000 + 120_000);
+    expect(settledGroups).toMatchObject({ clustered: true, settled: true });
+    expect(settledGroups.stale.map((x) => x.table)).toEqual(['a']);
   });
 });

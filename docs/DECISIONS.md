@@ -2214,9 +2214,13 @@ export's (or a previous save's) table, and no check that OOTP had finished writi
   rename. Until the swap every page reads the previous import, whole; after it, the new one, whole. A failure or a crash at
   any point before the swap leaves the previous import exactly as it was, and the unfinished file is removed at the next
   start. `league.db`'s name, `last-import.json` and `import-in-progress.json` keep their meaning for the Electron app.
-- **Only a finished export is imported.** OOTP writes an export as some seventy files over 35 to 41 s. An export is read
-  only once no file has changed for 10 s, and each file is checked again after it is read; a file that changed fails the
-  attempt, which is retried, never a mixed database.
+- **Only a finished export is imported.** OOTP writes an export as some seventy files over 35 to 41 s, back to back. An
+  export is read only once no file has changed for 10 s; when the files of the burst fall in groups more than a minute
+  apart (OOTP paused part way, the rest still the previous export's), only after two minutes' quiet, and then the older
+  group is named as not rewritten. Each file is checked again after it is read, and before the swap the whole folder must
+  be exactly as it was when the build began and still settled; otherwise the export is read again. What this cannot see:
+  OOTP pausing for more than 10 s and less than a minute part way through an export written within a minute of the
+  previous one (the two exports' files then look like one burst). No other way to a mixed database is known.
 - **A file older than the rest of the export** (not rewritten this time, as when a table is switched off in OOTP's export
   settings) is left out and named, in a served sentence on the import and the data status. Its table keeps the previous
   import's rows, marked in the database as kept and from which import, **only when that import read the same export
