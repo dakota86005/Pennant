@@ -526,7 +526,7 @@
     "/api/v2/front-office/{org}": {
       "get": {
         "operationId": "getFrontOffice",
-        "summary": "The Morning Report's desk (every department's items to decide, in a stated order) and one card per department.",
+        "summary": "The Morning Report: its masthead (record, place, runs, last five, next game, trade deadline), the lede, \"How we win and lose\", the roster map, the desk (every department's items to decide, in a stated order) and one card per department.",
         "tags": [
           "v2"
         ],
@@ -1321,6 +1321,33 @@
         ],
         "description": "A club's palette in both modes."
       },
+      "ClubProfile": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Through May 15, 2026 · 43 games\"."
+          },
+          "lines": {
+            "$ref": "#/components/schemas/ProfileLines"
+          },
+          "dimensions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProfileDimension"
+            }
+          },
+          "unavailable": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Why the profile could not be read this time; null when it was."
+          }
+        },
+        "required": [
+          "note",
+          "lines",
+          "dimensions"
+        ]
+      },
       "ConfigAccepted": {
         "type": "object",
         "properties": {
@@ -1363,6 +1390,76 @@
           "csvDir"
         ],
         "description": "The save to use (`POST /api/config`): its CSV export folder and its name."
+      },
+      "ControlClock": {
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "arbitration",
+              "freeAgentAfterSeason"
+            ]
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "ControlKind": {
+        "description": "How long the club controls a player, served structured (never parsed from words).",
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "through",
+              "clock",
+              "unknown"
+            ]
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "ControlTerm": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/ControlKind"
+          },
+          "text": {
+            "type": "string",
+            "description": "\"Through 2029\", \"Free agent after this season\", \"Arbitration this winter\", \"Control not known\"."
+          },
+          "hint": {
+            "type": "string"
+          },
+          "through": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "The last season the club surely holds him; null when not known."
+          },
+          "latest": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "When the end is a range: the latest it could be; null otherwise."
+          },
+          "seasonsLeft": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "Seasons left counting this one, to `through`; null when not known."
+          },
+          "atLeast": {
+            "type": "boolean",
+            "description": "`through` is the last season laid out, and control runs past it."
+          },
+          "clock": {
+            "$ref": "#/components/schemas/ControlClock"
+          }
+        },
+        "required": [
+          "kind",
+          "text",
+          "hint",
+          "atLeast"
+        ]
       },
       "CurrentOrganization": {
         "type": "object",
@@ -1724,6 +1821,42 @@
           "facts"
         ]
       },
+      "DeadlineNote": {
+        "type": "object",
+        "properties": {
+          "gameDate": {
+            "$ref": "#/components/schemas/GameDate",
+            "description": "The deadline as OOTP wrote it."
+          },
+          "daysLeft": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "Days from the league's current day; negative once it has passed."
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "count": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"17 days\", \"Today\", \"Passed\"."
+          },
+          "text": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"to the deadline · August 3, 2026\"."
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          }
+        },
+        "required": [
+          "gameDate",
+          "daysLeft",
+          "passed",
+          "count",
+          "text",
+          "claim"
+        ],
+        "description": "The trade deadline, only as the league's own row gives it."
+      },
       "DepartmentCard": {
         "type": "object",
         "properties": {
@@ -2012,6 +2145,65 @@
         ],
         "description": "OOTP has written a fresh export the server has not imported yet."
       },
+      "FarmNextMan": {
+        "type": "object",
+        "properties": {
+          "playerId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "short": {
+            "type": "string",
+            "description": "\"K. Marte\"."
+          },
+          "level": {
+            "type": "string",
+            "description": "\"Triple-A\"."
+          },
+          "state": {
+            "$ref": "#/components/schemas/ReadinessState"
+          },
+          "readiness": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Ready for a look\", \"Not ready yet\", \"Can't tell yet\", \"Not assessed\", with Player Development's reasons in its hint."
+          },
+          "bar": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "readiness": {
+                "$ref": "#/components/schemas/Integer"
+              },
+              "required": {
+                "$ref": "#/components/schemas/Integer"
+              }
+            },
+            "required": [
+              "readiness",
+              "required"
+            ],
+            "description": "Player Development's readiness against the readiness its bar asks for, as it serves them; null where either is not known."
+          },
+          "text": {
+            "type": "string",
+            "description": "\"L. Moreau · Triple-A · not ready yet\"."
+          }
+        },
+        "required": [
+          "bar",
+          "level",
+          "name",
+          "playerId",
+          "readiness",
+          "short",
+          "state",
+          "text"
+        ]
+      },
       "FoItem": {
         "type": "object",
         "properties": {
@@ -2200,6 +2392,22 @@
             "items": {
               "$ref": "#/components/schemas/DepartmentCard"
             }
+          },
+          "teamSeason": {
+            "$ref": "#/components/schemas/TeamSeason",
+            "description": "The masthead's box score (N6): the record, the division place, the run differential, the last five, the next game and the trade deadline, objective facts only (D-060). Null only where the Morning Report's parts were not built."
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "One or two sentences built only from facts on the page (D-060); null when there is too little to say."
+          },
+          "clubProfile": {
+            "$ref": "#/components/schemas/ClubProfile",
+            "description": "\"How we win and lose\": each dimension's stated place among the league's clubs (D-057)."
+          },
+          "rosterMap": {
+            "$ref": "#/components/schemas/RosterMap",
+            "description": "The roster map: each position's holder, his value, his place, who is behind him, control, needs; the staff beside it."
           }
         },
         "required": [
@@ -2255,6 +2463,22 @@
         ],
         "description": "A game date as served (unpadded, as OOTP writes it, or null) and as the app shows it."
       },
+      "GameLetter": {
+        "description": "A game's result as the box score shows it.",
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "W",
+              "L",
+              "T"
+            ]
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
       "GlossaryEntry": {
         "type": "object",
         "properties": {
@@ -2295,6 +2519,21 @@
       "HexColor": {
         "type": "string",
         "description": "A colour as `#rrggbb`."
+      },
+      "HolderRule": {
+        "description": "How a node's holder was chosen: the most starts there lately in the club's game log, or the listed man where it is silent.",
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "starts",
+              "listed"
+            ]
+          },
+          {
+            "type": "string"
+          }
+        ]
       },
       "ImportAccepted": {
         "type": "object",
@@ -2708,6 +2947,26 @@
           "encrypted"
         ]
       },
+      "LastFive": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GameLetter"
+            }
+          },
+          "line": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Lost 1 · last five 3–2\"."
+          }
+        },
+        "required": [
+          "results",
+          "line"
+        ],
+        "description": "The last five results, oldest first, and the line under them."
+      },
       "Lean": {
         "type": "object",
         "properties": {
@@ -2986,6 +3245,64 @@
           {
             "type": "string"
           }
+        ]
+      },
+      "MastheadKicker": {
+        "type": "object",
+        "properties": {
+          "club": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The club's name; null when the export does not have it."
+          },
+          "today": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The league's current day (\"May 16, 2026\"), or why it is not known."
+          },
+          "through": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Through May 15, 2026\": the last game day in the export."
+          }
+        },
+        "required": [
+          "today",
+          "through"
+        ],
+        "description": "The kicker over the masthead's headline: the club, the league's day, and the last game day the export reflects."
+      },
+      "MastheadPart": {
+        "description": "A part of the masthead the export cannot give.",
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "record",
+              "place",
+              "runs",
+              "lastFive",
+              "streak",
+              "tonight",
+              "deadline"
+            ]
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "MissingPart": {
+        "type": "object",
+        "properties": {
+          "part": {
+            "$ref": "#/components/schemas/MastheadPart"
+          },
+          "line": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "One sentence: why it is not shown."
+          }
+        },
+        "required": [
+          "part",
+          "line"
         ]
       },
       "NoPickReason": {
@@ -3345,6 +3662,147 @@
         ],
         "description": "The legend under \"How we win and lose\": what each mark on a place strip means."
       },
+      "PlayerRef": {
+        "type": "object",
+        "properties": {
+          "playerId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "short": {
+            "type": "string",
+            "description": "\"K. Marte\"."
+          }
+        },
+        "required": [
+          "playerId",
+          "name",
+          "short"
+        ]
+      },
+      "ProbableStarter": {
+        "type": "object",
+        "properties": {
+          "playerId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "short": {
+            "type": "string",
+            "description": "\"R. Castillo\"."
+          },
+          "line": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"7–4 · 3.21 ERA\", or why there is none."
+          }
+        },
+        "required": [
+          "playerId",
+          "name",
+          "short",
+          "line"
+        ],
+        "description": "A probable starter and his season line."
+      },
+      "ProfileDimension": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "\"Scoring runs\"."
+          },
+          "symbol": {
+            "type": "string",
+            "description": "An SF Symbol's name."
+          },
+          "place": {
+            "$ref": "#/components/schemas/Place",
+            "description": "The place among the clubs that have the figure; null when too early or not placed."
+          },
+          "placeText": {
+            "type": "string",
+            "description": "\"6th of 30\", \"T-26th of 30\", \"Too early\", \"Not placed\"."
+          },
+          "recent": {
+            "$ref": "#/components/schemas/RecentPlace"
+          },
+          "detail": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"4.63 runs a game · league middle 4.31\"."
+          },
+          "group": {
+            "$ref": "#/components/schemas/ProfileGroup"
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "The place as a claim: its figure, the league's middle, the ties, the clubs left out, the policy line."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "symbol",
+          "placeText",
+          "recent",
+          "detail",
+          "group",
+          "claim"
+        ],
+        "description": "One dimension of \"How we win and lose\"."
+      },
+      "ProfileGroup": {
+        "description": "Where a dimension falls: a strength (top fifth), a weakness (bottom fifth), the rest, too early, or not placed.",
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "strength",
+              "weakness",
+              "rest",
+              "tooEarly",
+              "notPlaced"
+            ]
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "ProfileLines": {
+        "type": "object",
+        "properties": {
+          "strength": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "weakness": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "rest": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "tooEarly": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "notPlaced": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "strength",
+          "weakness",
+          "rest",
+          "tooEarly",
+          "notPlaced"
+        ],
+        "description": "The stated policy line for each group (\"Top fifth of the league\")."
+      },
       "ProviderChoice": {
         "type": "object",
         "properties": {
@@ -3529,6 +3987,47 @@
           "reason"
         ],
         "description": "The export's rating mode as the import recorded it, with how it was read."
+      },
+      "ReadinessState": {
+        "description": "Player Development's answer on the farm's next man, in words.",
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "ready",
+              "notYet",
+              "cantTell",
+              "notAssessed"
+            ]
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "RecentPlace": {
+        "type": "object",
+        "properties": {
+          "place": {
+            "$ref": "#/components/schemas/Place"
+          },
+          "text": {
+            "type": "string",
+            "description": "\"Last 15: 9th\", \"Last 15: too few\"."
+          },
+          "why": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Why there is no recent place; null when there is one."
+          }
+        },
+        "required": [
+          "text",
+          "why"
+        ],
+        "description": "A dimension's place over the recent games, or why it has none."
       },
       "RefusedThemePack": {
         "type": "object",
@@ -3727,6 +4226,188 @@
           "more"
         ],
         "description": "The legend under the roster diagram: what each mark on a plate means, and what the pointer does."
+      },
+      "RosterMap": {
+        "type": "object",
+        "properties": {
+          "positions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RosterNode"
+            }
+          },
+          "valueScale": {
+            "$ref": "#/components/schemas/ValueScale",
+            "description": "Null when nothing on the map is valued: no diagram without a scale."
+          },
+          "rotation": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffPitcher"
+            }
+          },
+          "bullpen": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffPitcher"
+            }
+          },
+          "rotationNeeds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            },
+            "description": "Major League Ops' needs at the rotation's or the bullpen's role that name no pitcher shown (a return, a short staff)."
+          },
+          "bullpenNeeds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            },
+            "description": "What the map says about itself (\"The league plays without a designated hitter\")."
+          },
+          "unavailable": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Why the map could not be read this time; null when it was."
+          }
+        },
+        "required": [
+          "positions",
+          "rotation",
+          "bullpen",
+          "rotationNeeds",
+          "bullpenNeeds",
+          "notes"
+        ]
+      },
+      "RosterNode": {
+        "type": "object",
+        "properties": {
+          "pos": {
+            "type": "string",
+            "description": "\"C\", \"1B\" ... \"DH\"."
+          },
+          "name": {
+            "type": "string",
+            "description": "\"Catcher\"."
+          },
+          "holder": {
+            "$ref": "#/components/schemas/PlayerRef"
+          },
+          "holderRule": {
+            "$ref": "#/components/schemas/HolderRule",
+            "description": "How the holder was chosen: the regular the club's game log shows, or its listed man where the log is silent; null with nobody."
+          },
+          "value": {
+            "$ref": "#/components/schemas/WinsValue"
+          },
+          "valueText": {
+            "type": "string",
+            "description": "\"2.1 wins\", \"Not valued\"."
+          },
+          "place": {
+            "$ref": "#/components/schemas/Place",
+            "description": "His league place at the position; null when not valued."
+          },
+          "placeText": {
+            "type": "string",
+            "description": "\"7th of 30\", \"T-7th of 30\", \"Not placed\"."
+          },
+          "overlap": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "How many other placed clubs' holders he is not separable from (half-time ranges meet); null when not placed."
+          },
+          "clearlyAhead": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "How many other placed clubs' holders he is clearly ahead of, and clearly behind; null when not placed."
+          },
+          "clearlyBehind": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "overlapText": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Clearly ahead of 4 · not separable from 22 · clearly behind 3\", \"Not separable from the other 29\", or why he is not placed."
+          },
+          "behind": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Who is behind him at the position."
+          },
+          "farmNext": {
+            "$ref": "#/components/schemas/FarmNextMan"
+          },
+          "farmText": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The farm's next man in words, or who is not there (\"Nobody in the farm listed at shortstop\")."
+          },
+          "control": {
+            "$ref": "#/components/schemas/ControlTerm"
+          },
+          "need": {
+            "type": "boolean",
+            "description": "Major League Ops raised a need at the position."
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "The node with its basis."
+          }
+        },
+        "required": [
+          "pos",
+          "name",
+          "valueText",
+          "placeText",
+          "overlapText",
+          "behind",
+          "farmText",
+          "control",
+          "need",
+          "claim"
+        ],
+        "description": "One position on the roster map."
+      },
+      "RunsFigure": {
+        "type": "object",
+        "properties": {
+          "claim": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "\"Run differential\", its `value.display` the figure (\"+13\")."
+          },
+          "line": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"198 scored · 185 allowed\"."
+          },
+          "scored": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "allowed": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "diff": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "trend": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Integer"
+            },
+            "description": "The season's running differential after each of the club's last games, oldest first (up to 20); empty before two."
+          }
+        },
+        "required": [
+          "claim",
+          "line",
+          "scored",
+          "allowed",
+          "diff",
+          "trend"
+        ],
+        "description": "The run differential, with runs scored and allowed and the running differential over the last games."
       },
       "SaveDiscovery": {
         "type": "object",
@@ -4607,6 +5288,82 @@
         ],
         "description": "A staff member's memo (the later AI pass fills it; never part of a decision, D-001)."
       },
+      "StaffPitcher": {
+        "type": "object",
+        "properties": {
+          "playerId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "role": {
+            "type": "string",
+            "description": "\"Next\", \"2nd\" ... for the rotation; \"CL\", \"RP\" for the bullpen."
+          },
+          "name": {
+            "type": "string"
+          },
+          "short": {
+            "type": "string"
+          },
+          "line": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"7–4 · 3.21 ERA\"."
+          },
+          "value": {
+            "$ref": "#/components/schemas/WinsValue"
+          },
+          "note": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Next game\", \"IL · 12 days\"; null when none."
+          },
+          "hint": {
+            "type": "string",
+            "description": "What the range says, or why he is not valued."
+          },
+          "need": {
+            "type": "boolean"
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          }
+        },
+        "required": [
+          "playerId",
+          "role",
+          "name",
+          "short",
+          "line",
+          "hint",
+          "need",
+          "claim"
+        ],
+        "description": "A pitcher beside the map."
+      },
+      "StandingLine": {
+        "type": "object",
+        "properties": {
+          "claim": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "\"2nd in the AL West · 2½ back\", with the place (`claim.place`) and the division's clubs as its basis."
+          },
+          "gamesBack": {
+            "type": "number",
+            "description": "Games back of the division's leader; 0 when it leads or shares the lead."
+          },
+          "gamesAhead": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Games ahead of the next club when it leads alone; null otherwise."
+          }
+        },
+        "required": [
+          "claim",
+          "gamesBack",
+          "gamesAhead"
+        ],
+        "description": "The line under the record: the division place and games back, a stated place with its ties."
+      },
       "StatCatalogGroup": {
         "anyOf": [
           {
@@ -4745,6 +5502,49 @@
             "type": "string"
           }
         ]
+      },
+      "TeamSeason": {
+        "type": "object",
+        "properties": {
+          "kicker": {
+            "$ref": "#/components/schemas/MastheadKicker"
+          },
+          "record": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "\"Won 26, lost 17\", its `value.display` the figure (\"26–17\"); null when the standings lack it."
+          },
+          "place": {
+            "$ref": "#/components/schemas/StandingLine"
+          },
+          "runs": {
+            "$ref": "#/components/schemas/RunsFigure"
+          },
+          "lastFive": {
+            "$ref": "#/components/schemas/LastFive"
+          },
+          "streak": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Won 3\", \"Lost 1\"."
+          },
+          "tonight": {
+            "$ref": "#/components/schemas/TonightGame"
+          },
+          "deadline": {
+            "$ref": "#/components/schemas/DeadlineNote"
+          },
+          "missing": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MissingPart"
+            },
+            "description": "Each part not shown, with why."
+          }
+        },
+        "required": [
+          "kicker",
+          "missing"
+        ],
+        "description": "The masthead's box score: objective facts only (D-060)."
       },
       "ThemeChoice": {
         "type": "object",
@@ -4969,6 +5769,96 @@
           }
         ]
       },
+      "TonightGame": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "gameDate": {
+            "$ref": "#/components/schemas/GameDate",
+            "description": "The game's date as OOTP wrote it."
+          },
+          "when": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Tonight · 7:05 PM\", \"Tomorrow · 1:10 PM\", \"May 18 · 7:05 PM\"."
+          },
+          "homeAway": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "home",
+                  "away"
+                ]
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "opponent": {
+            "type": "object",
+            "properties": {
+              "teamId": {
+                "$ref": "#/components/schemas/Integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "abbr": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "record": {
+                "$ref": "#/components/schemas/Cell"
+              }
+            },
+            "required": [
+              "teamId",
+              "name",
+              "abbr"
+            ]
+          },
+          "matchup": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"vs Colorado Rockies\", \"at Colorado Rockies\"."
+          },
+          "ours": {
+            "$ref": "#/components/schemas/ProbableStarter",
+            "description": "Our probable starter, as OOTP projects him; null when it projects none (said in `starters`)."
+          },
+          "theirs": {
+            "$ref": "#/components/schemas/ProbableStarter"
+          },
+          "starters": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Both starters on one line, or why they are not known."
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target",
+            "description": "Where the game opens (the schedule and game plans)."
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "The game with its basis: the date, the time, the starters' source."
+          }
+        },
+        "required": [
+          "gameId",
+          "gameDate",
+          "when",
+          "homeAway",
+          "opponent",
+          "matchup",
+          "starters",
+          "open",
+          "claim"
+        ],
+        "description": "The club's next game, as the export schedules it."
+      },
       "TrailSection": {
         "type": "object",
         "properties": {
@@ -5026,6 +5916,60 @@
           "type"
         ],
         "description": "An event this build of the contract does not name, sent by a newer server. The spec lists it last among `ServerEvent`'s shapes, so an older app decodes it (and ignores it) instead of failing the stream."
+      },
+      "ValueScale": {
+        "type": "object",
+        "properties": {
+          "low": {
+            "type": "number"
+          },
+          "high": {
+            "type": "number"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/Unit"
+          }
+        },
+        "required": [
+          "low",
+          "high",
+          "unit"
+        ],
+        "description": "The scale every range on the map shares, in the values' unit (whole wins holding every range shown, and zero)."
+      },
+      "WinsValue": {
+        "type": "object",
+        "properties": {
+          "low": {
+            "type": "number"
+          },
+          "likely": {
+            "type": "number"
+          },
+          "high": {
+            "type": "number"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/Unit"
+          },
+          "text": {
+            "type": "string",
+            "description": "\"Most likely 2.1 wins · could be 0.8 to 3.4\"."
+          },
+          "short": {
+            "type": "string",
+            "description": "\"2.1 wins\"."
+          }
+        },
+        "required": [
+          "low",
+          "likely",
+          "high",
+          "unit",
+          "text",
+          "short"
+        ],
+        "description": "Expected wins as the map draws them: the most likely value inside its range."
       }
     }
   }

@@ -371,6 +371,11 @@ export interface ProductionSeason {
   toDate: number | null;
   /** This season only: the band for the rest of it (80%). */
   remaining: WinsBand | null;
+  /**
+   * This season only: the 50% band for the rest of it, inside `remaining` (the season's `inner` less what he has banked;
+   * N6 review: the roster map tells holders apart on it). Absent on a valuation kept from before it was served.
+   */
+  remainingInner?: WinsBand | null;
   sides: SideSeason[];
   notes: string[];
   /**
@@ -1196,7 +1201,7 @@ export function bandsAlong(tr: SideTrajectory, k: KindModel, upTo = tr.seasons.l
 
 interface SideResult {
   basis: SideBasis;
-  seasons: Array<{ season: number; wins: WinsBand; inner: WinsBand; remaining: WinsBand | null; toDate: number | null; side: SideSeason; notes: string[] }>;
+  seasons: Array<{ season: number; wins: WinsBand; inner: WinsBand; remaining: WinsBand | null; remainingInner: WinsBand | null; toDate: number | null; side: SideSeason; notes: string[] }>;
 }
 
 function projectSide(
@@ -1211,7 +1216,7 @@ function projectSide(
   const seasons: SideResult['seasons'] = tr.seasons.map((x, i) => {
     const { wins, inner, usage } = bands[i];
     return {
-      season: x.season, wins, inner, remaining: i === 0 ? wins : null, toDate: i === 0 ? tr.toDate : null, notes: [],
+      season: x.season, wins, inner, remaining: i === 0 ? wins : null, remainingInner: i === 0 ? inner : null, toDate: i === 0 ? tr.toDate : null, notes: [],
       side: {
         side, kind, wins, inner, rate: x.r * PER, rateBand: bands[i].rateBand, rateInner: bands[i].rateInner, aging: x.aging,
         selection: x.selection, usage, chance: x.reading.chance, zero: bands[i].zero, whenPlays: bands[i].whenPlays,
@@ -1235,6 +1240,7 @@ function projectSide(
   for (const x of seasons) x.side = { ...x.side, wins: x.wins, inner: x.inner };
   // This season: what he has banked is a fact beside the band for the rest of it
   seasons[0].remaining = seasons[0].wins;
+  seasons[0].remainingInner = seasons[0].inner;
   seasons[0].wins = shift(seasons[0].wins, tr.toDate);
   seasons[0].inner = shift(seasons[0].inner, tr.toDate);
   seasons[0].side = { ...seasons[0].side, wins: seasons[0].wins, inner: seasons[0].inner };
@@ -1627,6 +1633,7 @@ export function projectProductionWith(input: ProductionInput, model: ProductionM
       inner: parts.reduce((b, p) => addBands(b, p.inner), blank()),
       toDate: i === 0 ? parts.reduce((s, p) => s + (p.toDate ?? 0), 0) : null,
       remaining: i === 0 ? parts.reduce((b, p) => addBands(b, p.remaining ?? blank()), blank()) : null,
+      remainingInner: i === 0 ? parts.reduce((b, p) => addBands(b, p.remainingInner ?? blank()), blank()) : null,
       sides: parts.map((p) => p.side),
       notes: [...new Set(parts.flatMap((p) => p.notes))],
       coverage: coverageAt(h, provenance, estimator, ratingsWeight),

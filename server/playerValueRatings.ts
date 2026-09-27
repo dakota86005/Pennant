@@ -909,7 +909,7 @@ export function projectFromRatings(input: RatingsProductionInput, production: { 
     arrivalSeasons.push({ season: x.season, chance, expected });
     seasons.push({
       season: x.season, horizon: i + 1 - f, age: x.age, wins, inner,
-      toDate: i === 0 ? 0 : null, remaining: i === 0 ? wins : null,
+      toDate: i === 0 ? 0 : null, remaining: i === 0 ? wins : null, remainingInner: i === 0 ? inner : null,
       sides: [{ side, kind, wins, inner, rate: x.rate, rateBand, rateInner, aging: x.rate - path.rated.now, usage, arrival: { chance } }],
       notes: [...notes],
       coverage: {
@@ -1038,6 +1038,9 @@ function widenForMissingGrades(
       s.wins = reach(s.wins, readings.map((r) => r.seasons[i].wins));
       s.inner = inside(reach(s.inner, readings.map((r) => r.seasons[i].inner)), s.wins);
       if (s.remaining) s.remaining = reach(s.remaining, readings.map((r) => r.seasons[i].remaining ?? s.remaining as WinsBand));
+      if (s.remaining && s.remainingInner) {
+        s.remainingInner = inside(reach(s.remainingInner, readings.map((r) => r.seasons[i].remainingInner ?? s.remainingInner as WinsBand)), s.remaining);
+      }
       s.sides = s.sides.map((x) => {
         if (x.side !== side) return x;
         const alt = readings.map((r) => r.seasons[i].sides.find((y) => y.side === side)).filter((y): y is SideSeason => !!y);

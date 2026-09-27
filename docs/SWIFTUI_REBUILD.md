@@ -248,16 +248,16 @@ export" chips, the club profile, the roster map, the wire and game day are N6 an
 **What the design's slots need from the server (for N6), written at N5 Stage B, 2026-09-26.** Each slot below is a
 component in PennantDesign fed today by `DesignFixtures` in previews and snapshots only; in the running app it shows
 nothing until the payload carries the field. `positions[].control` is served structured, never parsed from words.
-- Masthead (`MagazineMasthead`, `ScoreboardFigures`, `TonightControl`): `record {display, wins, losses, hint, basis}`,
+- Masthead (`MagazineMasthead`, `ScoreboardFigures`, `TonightControl`; *served at N6 Stage A as `teamSeason` and `lede`*): `record {display, wins, losses, hint, basis}`,
   `place {text, gamesBack}` (the line under the record), `runs {scored, allowed, diff, trend[20], hint, basis}`,
   `lastFive ["W" | "L"]` with its line, `streak`, `tonight {opponent, homeAway, time, ours {name, line}, theirs {name,
   line}, oppRecord, route} | null`, `deadline {date, daysLeft} | null`, `lede` (a served claim built only from the facts
   on the page: no odds, no posture, D-060) `| null`; the kicker's parts (the club, the game date, "through").
-- `ChipRow`: `changes {new, resolved, moved, results}`, each `{count, text, hint, items[]}`.
-- `PlaceStrips` / `PlaceRow`: `dimensions[] {id, name, symbol, place, of, tiedWith, recentPlace | null (with why),
+- `ChipRow` (*N7: needs the per-import snapshots*): `changes {new, resolved, moved, results}`, each `{count, text, hint, items[]}`.
+- `PlaceStrips` / `PlaceRow` (*served at N6 Stage A as `clubProfile`*): `dimensions[] {id, name, symbol, place, of, tiedWith, recentPlace | null (with why),
   placeText, recentText, detail, hint, basis, group: strength | weakness | rest | tooEarly}` and the stated policy
   lines per group ("Top fifth of the league").
-- `RosterDiagram`: `positions[] {pos, holder {name, id}, value {low, likely, high, text, short} | null (with reason),
+- `RosterDiagram` (*served at N6 Stage A as `rosterMap`*): `positions[] {pos, holder {name, id}, value {low, likely, high, text, short} | null (with reason),
   placeText, place, overlap, behind, farmNext {name, readiness} | null, control: {through: year, seasonsLeft} |
   {clock: "arbitration" | "free agent after season", text} | {unknown, text}, need: bool, basis}`, and the scale every
   range bar on it shares, `valueScale {low, high}` (in the values' unit; Swift holds no scale of its own, draws no
@@ -267,12 +267,115 @@ nothing until the payload carries the field. `positions[].control` is served str
   only where the server serves the whole the figure counts (`value.whole`, a real "x of y": the active and 40-man
   rosters against their limits, the farm's players read, the departments reporting; served since the N5 review); a
   range's `high` is the end of a range and never read as a whole.
-- `WireRow`: `wire[] {club {name, abbreviation, followed}, text, when}`.
+- `WireRow` (*N7: the league wire*): `wire[] {club {name, abbreviation, followed}, text, when}`.
 - `BasisPopover`: `Basis {because[] {label, value}, source, certainty, called, stamp, unknown[], wouldChange[], lean |
   null}` (served since N4; `called`, the certainty in the GM's words, since the N5 review) and an open-in `Target`.
 - The legends under `PlaceStrips` and `RosterDiagram`: the catalog's `phrases.placeLegend {season, recent, fifths}` and
   `phrases.rosterLegend {range, control, need, more}` (served since the N5 review); the app keeps only their symbols.
 - `CommandPalette`: later a search endpoint `{group, symbol, title, line, route}` and token suggestions.
+
+**As built at N6 (Stage A), 2026-09-27: the server side of the Morning Report.** Branch `feature/swiftui-n6-morning`.
+`GET /api/v2/front-office/:org` serves, additively on `FrontOfficeSummary` and from the same per-import, per-club build (the
+post-import warm-up and the start-up warm build it; the parts are timed in `frontOfficeTimings`), four new fields, each
+null only where the parts were not built. The types are in `server/presentation/frontOffice/morningTypes.ts`, through the
+contract pipeline (fixture: `contract/fixtures/responses/getFrontOffice.json`, from the synthetic save's season:
+`buildSave({ teamSeason: true })`, also written by `npm run synthetic:league`).
+- **`teamSeason` (the box score, objective facts, D-060).** `kicker {club, today, through}`; `record` (a claim whose
+  `value.display` is "26–17"; home, road and last-ten records in its basis); `place {claim, gamesBack, gamesAhead}` ("1st
+  in the NL West", "Tied for 2nd in the AL West · 2½ back": the exported standings' own order, `team_record.pos`, where every
+  club of the division has one, games back the number beside it; a tie only where the winning percentages are equal, named
+  in the basis, never because games back are level; counted from the records, percentage then wins less losses, and said,
+  where the standings give no order; games back from the records, said, when the standings give none); `runs {claim
+  ("+13"), line ("198 scored · 185 allowed"), scored, allowed, diff, trend}` (the club's season totals; the trend is the
+  running differential after each of the last 20 games); `lastFive {results ["W" | "L" | "T"], line}` and `streak`; `tonight
+  {gameId, gameDate, when ("Tonight · 7:05 PM", "Today · 1:10 PM"), homeAway, opponent {teamId, name, abbr, record}, matchup,
+  ours, theirs {playerId, name, short, line}, starters, open, claim}` (the first unplayed game on or after the league's day,
+  so a postponement left unplayed before it is never next; its time the park's local start as the export gives it, said in
+  the hint; OOTP's projected starters, `starter_0`, said as projections; `open` is Major League Ops' Schedule & Game Plans, the nearest view to Game Day until N9) or null;
+  `deadline {gameDate, daysLeft, passed, count ("79 days", "Passed"), text, claim}` only from the league's own
+  `trade_deadline_date`, never a major-league date; and `missing[] {part, line}`: each part not shown with its sentence.
+- **`lede`**: a claim of up to three sentences built only from facts on the page (the division place and games back; the
+  first dimension in the page's order whose last-15 place moved from its season place by a fifth of the league or more,
+  else the best-placed strength, the two places set against each other only when both count the same clubs; the days to
+  the deadline while it is ahead), each named in its basis, its rule stamped as policy; null without a record and a place.
+  On the owner's save: "First in the NL West. Run prevention has climbed to 2nd over the last fifteen. The deadline is 79
+  days out."
+- **`clubProfile`**: `note` ("Through May 15, 2026 · 43 games", the league's size in its hint), `lines` (the policy line per
+  group: strength, weakness, rest, tooEarly, notPlaced), `dimensions[] {id, name, symbol, place, placeText, recent {place,
+  text, why}, detail, group, claim}` for scoring runs (runs a game), preventing runs, on base, power (extra bases an at-bat),
+  rotation and bullpen (their earned runs a nine innings), defensive efficiency (balls in play made outs, from pitching
+  allowed: V2 plan R4) and baserunning (the players' base-running runs a game, `ubr`), `unavailable`. A place counts the
+  clubs with the figure (a club whose row the export gives twice is not placed), ties share the best place at the precision
+  shown, `CLUB_PROFILE_POLICY` (20 games, the fifths counted in the league's own size, 15 games) is the stamp; the recent
+  place reads the last 15 games from the schedule (runs) and the per-game log (the rest), and a club whose last 15 the log
+  does not hold is not placed there. The design's "recent against season" is each dimension's recent place, not a ninth
+  dimension.
+- **`rosterMap`**: `positions[] {pos, name, holder {playerId, name, short}, holderRule: starts | listed | null, value {low,
+  likely, high, unit, text, short} | null, valueText, place (with `overlap`), placeText, overlap, clearlyAhead, clearlyBehind,
+  overlapText, behind, farmNext {…, level, state: ready | notYet | cantTell | notAssessed, readiness, bar {readiness,
+  required} | null, text} | null, farmText, control {kind: through | clock | unknown, text, hint, through, latest,
+  seasonsLeft, atLeast, clock: arbitration | freeAgentAfterSeason}, need, claim}`, `valueScale {low, high, unit}` (whole
+  wins holding every range shown, and zero), `rotation[]` and `bullpen[] {playerId, role ("Next", "2nd" … as OOTP projects
+  the starts; "CL", "RP"), name, short, line, value, note, hint, need, claim}`, `rotationNeeds[]` and `bullpenNeeds[]` (Major
+  League Ops' needs at a staff's role that name no pitcher shown, in its desk words), `notes`, `unavailable`. The value is
+  Player Value's expected wins this season (the rest of it once under way), the figure the place counts (the D-052
+  amendment; the supervisor's call (a) at the review: positional strength, never surplus dollars, which would rank
+  contracts; the map carries no surplus, market or salary field, `rosterMap.test.ts`). **The holder** (call (c)) is the
+  regular the export shows: the man now on the club with the most starts at the position this season in the club's own
+  game log (`players_game_batting`, `gs` and `position`, a game counted once whatever splits repeat it), among the men who
+  started there in its last 15 games (`HOLDER_WINDOW`), so a regular who has stopped starting there, hurt or moved, does
+  not hold it; only where the log shows no such start, the club's man listed there with the most expected wins, and the
+  node says so (`holderRule`, the basis, and a count of such clubs). The same rule for every club, the designated hitter
+  included (the DH node is on the map where the league uses one and a club starts or lists a player there). **The place**
+  (call (b)) is counted on the expected wins' most likely value and stated as how many placed clubs' holders he is clearly
+  ahead of, not separable from and clearly behind, told apart on the range each lands in half the time (Player Value's
+  `remainingInner`, the 50% band; the drawn range stays the 80%): "Clearly ahead of 7 · not separable from 22", and a
+  universal overlap once, "Not separable from the other 29". The league's middle is shown only where five or more clubs are
+  placed (on the map and in "How we win and lose"). A club with nobody valued there is not placed and is named. The farm's
+  next man is `mlbEvidence.farmNextByPosition`: the organization's players listed there at the highest level where anyone
+  is, the man Player Development reads as readiest first (said on every node), with its durable Triple-A assessment as
+  served and its readiness against its bar (`bar`; a man whose readiness clears its bar while another of its bars is not
+  met is "not ready yet" with Player Development's blockers, never read as ready by his readiness; a man it has not
+  assessed is "Not assessed", never "not ready"). The level words were checked against the owner's save: OOTP's level 4
+  holds both A levels, so 4 and 5 read "Single-A". Control reads Player Value's timeline (`controlEndOf`; where that cannot
+  say when control ends because the last season laid out is unsettled between two held statuses, its `heldThrough`,
+  "Through 2046 at least", the reading the card's header, Contracts and the cone now share). A need Major League Ops raised
+  about a man sits on the node he holds, wherever it raised it; else at its role; on a pitcher only where the need names
+  him.
+- **What the Stage B adapters map** (the design models in `DesignModels.swift`): `Scoreboard.record` ← `teamSeason.record`;
+  `recordLine` ← `place.claim.text`; `runs`/`runsLine`/`trend` ← `runs.claim`/`runs.line.display`/`runs.trend`; `lastFive`
+  ← `lastFive.results` (`GameResult(served:)`; a "T" has no case yet); `lastFiveLine` ← `lastFive.line.display`; `TonightGame
+  {when, matchup, starters, hint}` ← `tonight.when.display`, `matchup.display`, `starters.display`, `claim.hint`; `DeadlineNote
+  {count, text}` ← `deadline.count.display`, `text.display`; the lede and its hint ← `lede.text`, `lede.hint`;
+  `PlaceDimension` ← each dimension (`place` null when too early; `of` from `place.of`, else the league's size in the note's
+  hint; `recentText` ← `recent.text`; the group adds `notPlaced`, which the design's `Group` lacks); `placeLines` ← `lines`;
+  `placesNote` ← `clubProfile.note.display`; `RosterPosition` ← each node (`value` → `ValueRange` with its `text` and
+  `short`; `farmNext` ← `farmNext.text`, or `farmText.display` when null; `control` → `ControlTerm.seasons(seasonsLeft, text)`
+  for `through`, `.clock(text)`, `.unknown(text)`); `ValueScale` ← `valueScale`; `StaffPitcher` ← each pitcher (`id` from
+  `playerId`). Mismatches for Stage B: the design's `ValueRange` comment and the old roster legend said "worth beyond his
+  pay" (dollars); the map serves expected wins (the catalog's legend now says so, and that places are told apart on the
+  half-time range); `PlaceDimension.Group` needs `notPlaced`; `GameResult` needs a tie; the staff's
+  `rotationNeeds`/`bullpenNeeds`, `overlapText` (with `clearlyAhead`/`clearlyBehind`), `holderRule`, the farm's `bar` and
+  the masthead's `missing` have no slot yet; the kicker's parts are served (`teamSeason.kicker`) where the app now uses `summary.asOf`.
+- **Not in Stage A:** the "since the last export" chips and "around the league" (they need N7's per-import snapshots and
+  the league wire), and the horizon board (N12, Finance: the roster map needed none of it).
+- **Measured.** On the synthetic save in the test process (6 clubs): the season's facts 6 ms, the profile 2 ms, the roster
+  map 84 ms, the words 4 ms. On the owner's real export (a read-only scratch copy of its 289 MB, 70 CSVs, imported into a
+  scratch data folder through the bundled sidecar; M4, busy): the cold build (in the worker, at the post-import warm-up and
+  at start) adds the season's facts 43 ms, the profile 7 ms, the roster map 400 ms (Player Value for every club's position
+  players, about 400, and Player Development's assessments) and the words 4 ms to the departments' 1.9 s, so a cold build is
+  about 2.5 s, off the request path; warm `front-office` answers in p50 2.3 to 2.9 ms, p95 3.4 to 4.1 ms (60 requests), the
+  payload 114 kB. Launch to the first Morning Report payload is 2.9 s (it waits on the start-up build; B2's was 2.5 s): the
+  budget of 1 s still needs the Mac app to show the last payload it received (N3.5's Mac stage).
+  After the review's fixes (the game log's starts read for every club, the half-time ranges), on a fresh scratch import of
+  the same export: the roster map 421 ms, the season's facts 41 ms, the profile 7 ms, the words 5 ms, a cold build 2.6 s;
+  warm p50 3.0 ms, p95 3.5 ms (60 requests), the payload 122 kB; launch to the first payload 3.0 s.
+- **Kept current.** The parts ride in the Front Office's key, and an adopted Player Value refit (about half a minute after
+  an import) now drops the kept builds and builds the club's again (`valueRefitsRecorded`, called from the import's refit
+  step), so the map's expected wins are never an earlier fit's; a refit that was not adopted rebuilds nothing. A recorded
+  calibration does the same; since the review the two coalesce: each drops the kept builds at once (a request meanwhile
+  builds on the fits then in force, never the old build), and the refit step holds the background rebuild until both
+  have settled, then builds once (`rebuildFrontOfficeLater`, `holdFrontOfficeRebuilds`).
 
 ### 3.5 One anatomy for every department report
 
@@ -1158,7 +1261,7 @@ sizes, not dates.
 | **N3.5** | "It just works": the import and discovery | Stage B1 (server): the all-or-nothing import in worker threads, the export's completeness, automatic import, the served database's pragmas and indexes, per-import caches, concurrent refits, the export's rating mode (D-061). Stage B2 (server): discovery v2 (every OOTP version, the save picked only when it clearly stands out, the zero-question first run, "played since"), the re-review's follow-ups, the speed budgets (D-063). Later: the Mac app's everyday experience (setup, freshness, the background import shown quietly) | 7 server, 2.5 Mac |
 | **N4** | Presentation foundation (server) | `Claim` and `Row`, the org resolver, route extractions (standings, trends, crunch, pitching), severity normalization, Front Office adapters and cache, `/api/v2/catalog` (glossary, stat catalog, theme tokens, staff heads) | 3 |
 | **N5** | Design system (Swift) | `ClaimText`, `ClaimValue`, `BasisPopover` (detachable), `EvidenceView`, `RankStrip`, `RangeBar`, `Masthead`, `ReportCard`, table and chart styles, theming, tones, previews, accessibility | 3 |
-| **N6** | The Morning Report | Server: `teamSeason`, `clubProfile`, `rosterMap`, `horizon` (fixtures extended; R2/R4/R5 rules from the V2 plan). App: Morning Report, the report template, roster map | 4 |
+| **N6** | The Morning Report | Server: `teamSeason`, `clubProfile`, `rosterMap` (fixtures extended; R2/R4/R5 rules from the V2 plan; the horizon moved to N12). App: Morning Report, the report template, roster map | 4 |
 | **N7** | It remembers; the league is alive | Server: snapshots, desk, following (watchlist copied), `leagueWire`, club reports. App: desk with undo, changes, wire, club windows, Following in the sidebar, drag to follow, notifications, dock badge | 4 |
 | **N8** | Major League Ops | Server: MLB copy moved to v2 (label maps, platoon copy, need badges). App: Overview, Position players, Pitching staff, Bench, Decision (problem → why → recommendation → responses → candidates → mechanics) | 4 |
 | **N9** | Clubhouse tools | Lineup, pitching availability, depth chart, schedule and game plans, trends (Charts), 40-man and options, rosters | 3 |
@@ -1392,7 +1495,8 @@ the club the save's human manages as Automatic.
 - The Front Office keys on the live log's files, so a sim in OOTP with no new export builds it again (in its worker, a
   second or so on a real save; the answer can change: Player State reads the log).
 - A Player Value refit recorded after an import does not move the cache's key; Finance's items read contract groups,
-  not values, so nothing shown depends on it today.
+  not values, so nothing shown depends on it today. *(Closed at N6, Stage A: the roster map shows expected wins, so an
+  adopted value refit now drops the kept builds and builds the club's again, `valueRefitsRecorded`.)*
 - N3.5's per-import caches of league populations would make each build cheaper; the worker already keeps it off the
   request path.
 
@@ -1403,8 +1507,25 @@ applied to the Morning Report and the department reports with what is served tod
 (N5, Stage B)"; section 3.4, "What the design's slots need from the server"). Left open: the XCUITests' automation mode
 (the owner enables it once), and the unserved slots, which N6 serves.
 
-**Next: N5** (the design system, section 9). Continue the SwiftUI rebuild at N5 (docs/SWIFTUI_REBUILD.md): open a fresh
-session on `feature/swiftui` once N4's PR is merged.
+**N6, Stage A (2026-09-27)** on `feature/swiftui-n6-morning`: the server side of the Morning Report (section 3.4, "As
+built at N6 (Stage A)"): the masthead's box score, the lede, "How we win and lose" and the roster map on
+`GET /api/v2/front-office/:org`, from the same cached build; an adopted Player Value refit now rebuilds it. Left open for
+the owner and Stage B:
+- **Overlap on the roster map.** Early in a season the expected-wins ranges are wide: on the owner's save in May every
+  holder's range overlaps every other club's at all nine positions, so each place reads with "His range overlaps every other
+  club's". That is the honest reading of the served (80%) range; whether the map should count overlap on the inner (50%)
+  range is the owner's call (the D-052 amendment says "ranges").
+- **The holder rule reads OOTP's listed position.** A club's regular at a position may be listed at another (a shortstop
+  playing third); the DH is on the map only where a club lists one there (on the owner's save some clubs do and ours does
+  not, so our DH node reads "Nobody listed"). Reading the lineup's regular for every club would need Major League Ops'
+  lineup for 30 clubs; not done.
+- **The Stage B mismatches** listed in section 3.4 (a tie in the last five, `notPlaced`, the staff's need lines, the
+  masthead's missing parts, and the map's unit: wins, not dollars).
+- **Launch to the first payload** is 2.9 s on the real save (the start-up build); the Mac app showing the last payload it
+  received is N3.5's Mac stage.
+
+**Next: N6, Stage B** (the Mac side: the adapters from the served payload to PennantDesign's models, the instant launch,
+the save-finding screens). Open a fresh session on `feature/swiftui` once N6 Stage A's PR is merged.
 
 Read first: AGENTS.md, this document, D-001, D-008, D-018, D-020, D-043, D-046, D-049, D-052 (with its
 amendments), D-054 and D-055 to D-060.

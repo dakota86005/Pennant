@@ -347,8 +347,53 @@ export function frontOfficeTimings(orgId: number): Record<string, number> | null
   return built ? { ...built.ms } : null;
 }
 
-// A calibration that changed moves the review's yardsticks, so what Major League Ops raises: build again, in the background
-onCalibrationRecorded(() => {
+let rebuildHolds = 0;
+let rebuildOwed = false;
+
+/**
+ * Drops the kept builds at once, so no request is answered from the old one, and builds the club's again in the
+ * background: straight away, or once when the last hold is released (N6 review, L3). Player Value's adopted refit and a
+ * recorded calibration both call it.
+ */
+export function rebuildFrontOfficeLater(): void {
   invalidateFrontOffice();
+  if (rebuildHolds > 0) {
+    rebuildOwed = true;
+    return;
+  }
   void warmFrontOffice();
-});
+}
+
+/**
+ * Holds the background rebuilds while the refits after an import run (`api.ts`), so the two that each ask for one (Player
+ * Value's and the calibrations') cost one build, after both, not two. Invalidation is never held: a request meanwhile
+ * builds on the fits then in force. Returns the release (idempotent).
+ */
+export function holdFrontOfficeRebuilds(): () => void {
+  rebuildHolds += 1;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    rebuildHolds -= 1;
+    if (rebuildHolds === 0 && rebuildOwed) {
+      rebuildOwed = false;
+      void warmFrontOffice();
+    }
+  };
+}
+
+/**
+ * Player Value's refits after an import (N6): an adopted fit moves every expected-wins figure the roster map shows (and
+ * its places), so the kept builds are dropped and the club's is built again in the background, which moves the served
+ * stamp and sends `front-office-updated`. A refit that was not adopted leaves the fits in force, and nothing is rebuilt.
+ * Returns whether it rebuilt. Called by the import's refit step (`api.ts`), after the fits are recorded.
+ */
+export function valueRefitsRecorded(outcomes: ReadonlyArray<{ refit: boolean; adopted: boolean | null }>): boolean {
+  if (!outcomes.some((o) => o.refit && o.adopted === true)) return false;
+  rebuildFrontOfficeLater();
+  return true;
+}
+
+// A calibration that changed moves the review's yardsticks, so what Major League Ops raises: build again, in the background
+onCalibrationRecorded(() => rebuildFrontOfficeLater());

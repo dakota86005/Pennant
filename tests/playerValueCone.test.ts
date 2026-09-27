@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
-  playerProductionCone, productionCone, projectProduction, ratingsEvidence,
+  controlEndOf, playerProductionCone, productionCone, projectProduction, ratingsEvidence,
   type ArrivalModel, type ControlSeason, type ControlStatus, type ControlTimeline, type ProductionInput, type ProductionLine, type ProductionModelInForce,
   type RatingsEvidence, type RatingsModelInForce,
 } from '../server/playerValue.js';
 import { PRODUCTION_PRIOR, PRODUCTION_PRIOR_CALIBRATION, RATINGS_PRIOR } from '../server/playerValueCalibration.js';
 import { FIELDING_EVIDENCE_PROVENANCE, hitterProfileFromRow, syntheticScoutedAbility } from '../server/scoutedEvidence.js';
+import { controlEndWords } from '../src/valueWords.js';
 import { IDS } from './fixture';
 
 /*
@@ -203,6 +204,23 @@ describe('the production cone, hardening (F2)', () => {
       season(2033, 'free_agent'),
     ]));
     expect(cone.control.note).toMatch(/2031 or 2032/);
+  });
+
+  it('says how long he is surely held where the end of control is not established, the one reading the card and the map share (N6 review)', () => {
+    // Held on every branch through 2031; 2032 is unsettled between two held statuses, so when control ends is not known
+    const straddling = timeline([
+      season(2030, 'pre_arbitration'), season(2031, 'pre_arbitration'),
+      season(2032, 'indeterminate', { between: ['pre_arbitration', 'arbitration'] }),
+    ]);
+    const end = controlEndOf(straddling);
+    expect(end).toMatchObject({ low: null, high: null, heldThrough: 2032 });
+    expect(productionCone(projectProduction(regular()), straddling).control.note).toMatch(/Held through 2032 at least/);
+    expect(controlEndWords(end)).toMatchObject({ text: 'Controlled through 2032 at least', known: true });
+    // A season that may be free agency ends the run he is surely held
+    const mayLeave = timeline([season(2030, 'under_contract'), season(2031, 'indeterminate', { between: ['arbitration', 'free_agent'] })]);
+    expect(controlEndOf(mayLeave).heldThrough).toBe(2030);
+    expect(controlEndOf(controlled()).heldThrough).toBe(2033);
+    expect(controlEndOf(timeline([], { standing: 'unknown', thisSeason: null })).heldThrough).toBeNull();
   });
 
   it("carries each season's cost exactly as the timeline serves it, with its basis, and says so where it is unknown (phase 4a)", () => {

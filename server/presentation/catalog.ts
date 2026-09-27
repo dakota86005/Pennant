@@ -274,7 +274,9 @@ export function buildCatalog(clubs: ClubSource[], orgId: number | null, themeOf:
         fifths: cell('Shaded: the top and bottom fifths', { hint: 'A strength is the top fifth of the league, a weakness the bottom fifth' }),
       },
       rosterLegend: {
-        range: cell('Range: what he\'s worth beyond his pay, most likely value marked · hatched: not valued yet'),
+        range: cell('Range: his expected wins this season, most likely marked · hatched: not valued yet', {
+          hint: 'Where he lands four times in five; clubs are told apart on half the time',
+        }),
         control: cell('Pips: seasons we control him'),
         need: cell('Ring and word: a need Major League Ops raised'),
         more: cell('Hover for more; click for the basis'),

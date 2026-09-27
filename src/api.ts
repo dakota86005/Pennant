@@ -408,6 +408,8 @@ export interface ControlEnd {
   /** Only the earliest end is known: `high` is null and control may run past the last season laid out. */
   laterUnknown?: boolean;
   reason: string | null;
+  /** The last season from this one the club holds him on every branch; null when this season is not surely held. */
+  heldThrough?: number | null;
 }
 
 /** His contract in a phrase's parts (server/contracts.ts `contractSummaryOf`). */

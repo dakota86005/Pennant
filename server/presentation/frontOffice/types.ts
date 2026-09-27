@@ -11,6 +11,7 @@ import type { Cell, Claim, DeptId, Target } from '../../contract/presentation.js
 import type { Integer } from '../../contract/primitives.js';
 import type { DepartmentHead } from '../catalog.js';
 import type { DeskSeverity } from '../severity.js';
+import type { ClubProfile, RosterMap, TeamSeason } from './morningTypes.js';
 
 export type { DeskSeverity } from '../severity.js';
 
@@ -158,6 +159,17 @@ export interface FrontOfficeSummary {
   asOf: Cell;
   desk: Desk;
   departments: DepartmentCard[];
+  /**
+   * The masthead's box score (N6): the record, the division place, the run differential, the last five, the next game and
+   * the trade deadline, objective facts only (D-060). Null only where the Morning Report's parts were not built.
+   */
+  teamSeason: TeamSeason | null;
+  /** One or two sentences built only from facts on the page (D-060); null when there is too little to say. */
+  lede: Claim | null;
+  /** "How we win and lose": each dimension's stated place among the league's clubs (D-057). */
+  clubProfile: ClubProfile | null;
+  /** The roster map: each position's holder, his value, his place, who is behind him, control, needs; the staff beside it. */
+  rosterMap: RosterMap | null;
 }
 
 /** One titled part of an evidence trail. */
