@@ -1,0 +1,31 @@
+{
+  "format": 1,
+  "id": "sunset-series",
+  "name": "Sunset Series",
+  "version": "1.0",
+  "club": "any",
+  "light": {
+    "mastheadTop": "#fbf1ec",
+    "masthead": ["#7a1020", "#b3361a"],
+    "mastheadText": "#ffffff",
+    "mastheadSecondaryText": "#ffe3d6",
+    "accent": "#a8321c",
+    "accentText": "#ffffff",
+    "tint": "#a8321c",
+    "tintText": "#ffffff",
+    "card": "#7a1020",
+    "cardText": "#ffffff"
+  },
+  "dark": {
+    "mastheadTop": "#1c0b0a",
+    "masthead": ["#5e0c1a", "#a33017"],
+    "mastheadText": "#ffffff",
+    "mastheadSecondaryText": "#ffd9c7",
+    "accent": "#ff8a65",
+    "accentText": "#1c0b0a",
+    "tint": "#ff8a65",
+    "tintText": "#1c0b0a",
+    "card": "#5e0c1a",
+    "cardText": "#ffffff"
+  }
+}

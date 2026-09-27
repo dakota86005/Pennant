@@ -27,6 +27,9 @@ public final class AppModel {
     public private(set) var dataStatus: Components.Schemas.DataStatusView?
     /// `/api/v2/catalog`: the glossary, the stat catalog, each club's palette, logo and record, the departments and heads.
     public private(set) var catalog: Components.Schemas.Catalog?
+    /// `/api/v2/theme-packs/:org`: the themes the current club can wear and the one it wears (Settings ▸ Appearance),
+    /// read when Settings asks.
+    public private(set) var themeChoices: Components.Schemas.ThemeChoices?
     /// The last import's finish time as the server reported it; changes only when a new import lands.
     public private(set) var importStamp = ""
     /// The server's current Front Office build for the club the app follows (`/api/status` and the
@@ -92,6 +95,7 @@ public final class AppModel {
         orgs: [Components.Schemas.Org] = [],
         dataStatus: Components.Schemas.DataStatusView? = nil,
         catalog: Components.Schemas.Catalog? = nil,
+        themeChoices: Components.Schemas.ThemeChoices? = nil,
         importRequestProblem: RequestProblem? = nil,
         frontOffice: FrontOfficeStore? = nil
     ) -> AppModel {
@@ -102,6 +106,7 @@ public final class AppModel {
         model.orgs = orgs
         model.dataStatus = dataStatus
         model.catalog = catalog
+        model.themeChoices = themeChoices
         model.importRequestProblem = importRequestProblem
         model.club = CurrentClub.from(served: settings?.organization, orgs: orgs)
         if let frontOffice { model.frontOffice = frontOffice }
@@ -275,6 +280,56 @@ public final class AppModel {
     /// explicit `clubChoice` field; the generated client cannot send a null to clear `defaultOrgId`).
     public func chooseClubAutomatically() async throws(RequestProblem) {
         try await saveSettings(.init(clubChoice: .automatic))
+    }
+
+    /// The club a theme request is about: the current club, else the one the server follows.
+    private var themeOrg: String { club.map { String($0.ref.id) } ?? "automatic" }
+
+    /// Reads the themes the current club can wear (`GET /api/v2/theme-packs/:org`). Throws the server's sentence or a
+    /// kind of failure; its raw detail goes to the log.
+    public func loadThemeChoices() async throws(RequestProblem) {
+        guard let client else { throw .notRunning }
+        let problem: RequestProblem
+        do {
+            switch try await client.getThemeChoices(path: .init(org: themeOrg)) {
+            case .ok(let answer):
+                themeChoices = try answer.body.json
+                return
+            case .notFound(let refused):
+                problem = .served(try refused.body.json.error)
+            case .undocumented(let code, let payload):
+                problem = await .undocumented(code, body: payload.body, operation: "getThemeChoices", fromV2: true)
+            }
+        } catch {
+            problem = .from(error)
+        }
+        if let detail = problem.detail { logProblem("could not read the theme packs: \(detail)") }
+        throw problem
+    }
+
+    /// Chooses the theme the current club wears (`POST /api/v2/theme-packs/:org`; `club-colors` for its own colours),
+    /// then reads the catalog again, so every window wears it. Throws the server's sentence when it refuses.
+    public func chooseTheme(_ packId: String) async throws(RequestProblem) {
+        guard let client else { throw .notRunning }
+        let problem: RequestProblem
+        do {
+            switch try await client.chooseTheme(path: .init(org: themeOrg), body: .json(.init(packId: packId))) {
+            case .ok(let answer):
+                themeChoices = try answer.body.json
+                await reloadAll()
+                return
+            case .badRequest(let refused):
+                problem = .served(try refused.body.json.error)
+            case .notFound(let refused):
+                problem = .served(try refused.body.json.error)
+            case .undocumented(let code, let payload):
+                problem = await .undocumented(code, body: payload.body, operation: "chooseTheme", fromV2: true)
+            }
+        } catch {
+            problem = .from(error)
+        }
+        if let detail = problem.detail { logProblem("could not choose the theme: \(detail)") }
+        throw problem
     }
 
     /// A served file the API names by path (a club's logo, `/api/logo/…`), fetched with the launch's token; nil when the

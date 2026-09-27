@@ -13,7 +13,9 @@ import { logoReference } from '../logos.js';
 import { seatHolder, type StaffSeat } from '../staff.js';
 import { cell } from './claim.js';
 import { REACT_ONLY_TERMS, glossaryTable } from './glossary.js';
+import type { ThemePack } from '../contract/themePack.js';
 import { clubPalette, type ClubPalette, type TeamColors } from './palette.js';
+import { clubColorsPack } from './themePacks.js';
 import {
   BATTING_STATS, CONTACT_STATS, FIELDING_STATS, PITCHING_STATS, type StatDef, type StatFormat,
 } from './statCatalog.js';
@@ -62,6 +64,11 @@ export interface CatalogClub {
   logo: string | null;
   /** Wins and losses ("45–38"), or the sentence for a record the export does not have. */
   record: Cell;
+  /**
+   * The theme the club wears in the Mac app (D-062): its own colours unless another pack was chosen for it, every
+   * appearance resolved and checked. `palette` stays for the React app's colours.
+   */
+  theme: ThemePack;
 }
 
 /** Who heads a department, as the save's staff has it. */
@@ -90,9 +97,36 @@ export interface CatalogDepartment {
   preparedBy: Cell;
 }
 
-/** Sentences the app shows wherever a served value is missing and no line of its own says why. */
+/** The legend under "How we win and lose": what each mark on a place strip means. */
+export interface PlaceLegend {
+  /** The filled dot. */
+  season: Cell;
+  /** The hollow ring. */
+  recent: Cell;
+  /** The shaded ends. */
+  fifths: Cell;
+}
+
+/** The legend under the roster diagram: what each mark on a plate means, and what the pointer does. */
+export interface RosterLegend {
+  /** The range bar and its hatching. */
+  range: Cell;
+  /** The control pips. */
+  control: Cell;
+  /** The ring and the word for a need. */
+  need: Cell;
+  /** Hover and click. */
+  more: Cell;
+}
+
+/**
+ * Sentences the app shows in more than one place: for a served value that is missing and no line of its own says why,
+ * and the legends under the design's graphics (the app keeps only their symbols).
+ */
 export interface CatalogPhrases {
   missingValue: Cell;
+  placeLegend: PlaceLegend;
+  rosterLegend: RosterLegend;
 }
 
 export interface Catalog {
@@ -188,7 +222,12 @@ export interface ClubSource {
   colors: TeamColors;
 }
 
-export function servedClub(club: ClubSource): CatalogClub {
+/** The theme a club wears: given by the caller (the installed packs and the club's choice), else its own colours. */
+export type ClubTheme = (club: ClubSource) => ThemePack;
+
+const ownColors: ClubTheme = (club) => clubColorsPack(club.team_id, club.colors, logoReference(club.team_id));
+
+export function servedClub(club: ClubSource, themeOf: ClubTheme = ownColors): CatalogClub {
   return {
     teamId: club.team_id,
     name: club.label,
@@ -196,6 +235,7 @@ export function servedClub(club: ClubSource): CatalogClub {
     palette: { light: clubPalette(club.colors, 'light'), dark: clubPalette(club.colors, 'dark') },
     logo: logoReference(club.team_id),
     record: recordCell(club.team_id),
+    theme: themeOf(club),
   };
 }
 
@@ -220,14 +260,25 @@ export function servedDepartments(orgId: number | null): CatalogDepartment[] {
   });
 }
 
-export function buildCatalog(clubs: ClubSource[], orgId: number | null): Catalog {
+export function buildCatalog(clubs: ClubSource[], orgId: number | null, themeOf: ClubTheme = ownColors): Catalog {
   return {
     glossary: servedGlossary(),
     stats: servedStats(),
-    clubs: clubs.map(servedClub),
+    clubs: clubs.map((club) => servedClub(club, themeOf)),
     departments: servedDepartments(orgId),
     phrases: {
       missingValue: cell('Not known yet', { tone: 'unknown', hint: 'The export does not include this yet' }),
+      placeLegend: {
+        season: cell('Filled dot: this season'),
+        recent: cell('Ring: the last 15 games'),
+        fifths: cell('Shaded: the top and bottom fifths', { hint: 'A strength is the top fifth of the league, a weakness the bottom fifth' }),
+      },
+      rosterLegend: {
+        range: cell('Range: what he\'s worth beyond his pay, most likely value marked · hatched: not valued yet'),
+        control: cell('Pips: seasons we control him'),
+        need: cell('Ring and word: a need Major League Ops raised'),
+        more: cell('Hover for more; click for the basis'),
+      },
     },
   };
 }

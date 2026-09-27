@@ -1,4 +1,6 @@
 import FeatureCore
+import PennantAPI
+import PennantDesign
 import PennantKit
 import Setup
 import Shell
@@ -28,13 +30,26 @@ struct MainWindowScene: View {
         .frame(minWidth: 900, minHeight: 560)
         .onAppear {
             guard window == nil else { return }
-            window = MainWindowModel.restore(
+            let restored = MainWindowModel.restore(
                 registry: AppRegistry.shared,
                 history: historyData,
                 inspectorPresented: inspectorPresented,
                 sidebarVisible: sidebarVisible,
                 expanded: expanded
             )
+            #if DEBUG
+            // A Debug build launched by a script for window screenshots can open with the ⌘K palette up
+            // (`-PennantDebugPalette <query>`) or with a route (`-PennantDebugRoute department.view`)
+            let defaults = UserDefaults.standard
+            if let route = defaults.string(forKey: "PennantDebugRoute")?.split(separator: ".").map(String.init), route.count == 2 {
+                restored.go(to: AppRoute(department: DeptID(rawValue: route[0]), view: route[1]))
+            }
+            if let query = defaults.string(forKey: "PennantDebugPalette") {
+                restored.paletteShown = true
+                restored.paletteQuery = query
+            }
+            #endif
+            window = restored
         }
     }
 }
@@ -67,6 +82,25 @@ struct SetupScene: View {
         .onChange(of: routing.setupRequest) {
             setup?.restart()
             Task { await setup?.load() }
+        }
+    }
+}
+
+/// A basis detached into its own floating panel: the claim's evidence view, with the departments' served names.
+struct BasisPanelScene: View {
+    @Environment(AppModel.self) private var model
+    let claim: Components.Schemas.Claim?
+
+    var body: some View {
+        if let claim {
+            EvidenceView(claim: claim)
+                .environment(\.theme, model.theme)
+                .environment(\.claimActions, ClaimActions(departmentName: { [catalog = model.catalog] id in
+                    AppRegistry.shared.name(of: id, catalog: catalog)
+                }))
+                .frame(width: 380, height: 520)
+        } else {
+            Text("Nothing pinned").padding()
         }
     }
 }

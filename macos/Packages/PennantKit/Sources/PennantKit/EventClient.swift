@@ -57,21 +57,63 @@ public struct EventClient: Sendable {
     }
 
     /// Reads one connection to its end, passing each event on. Throws what the connection threw.
+    ///
+    /// The stream is read as fast as it arrives, apart from passing events on: while the app is busy with one (on the
+    /// main actor), the next ones wait in a queue, and an import's progress that a later import event has already
+    /// overtaken is dropped (`superseded`), so a busy app never works through a backlog of stale progress before it
+    /// hears that the import finished. Every other event is passed on, in order.
     public func readOnce(_ handle: (EventSignal) async -> Void) async throws {
         let response = try await client.streamEvents()
         let events = try response.ok.body.textEventStream
             .asDecodedServerSentEventsWithJSONData(of: Components.Schemas.ServerEvent.self)
         await handle(.connected)
-        for try await message in events {
-            guard let event = message.data else { continue }
-            switch event.reading {
-            case .known:
-                await handle(.event(event))
-            case .unknown(let type):
-                onUnknown(type)
-            case .malformed(let type):
-                await handle(.malformed(type: type))
+        let queue = SignalQueue()
+        let onUnknown = onUnknown
+        let reader = Task {
+            do {
+                for try await message in events {
+                    guard let event = message.data else { continue }
+                    switch event.reading {
+                    case .known:
+                        await queue.append(.event(event))
+                    case .unknown(let type):
+                        onUnknown(type)
+                    case .malformed(let type):
+                        await queue.append(.malformed(type: type))
+                    }
+                }
+                await queue.finish(nil)
+            } catch {
+                await queue.finish(error)
             }
+        }
+        try await withTaskCancellationHandler {
+            while let batch = try await queue.drain() {
+                for signal in Self.superseded(batch) {
+                    if Task.isCancelled { return }
+                    await handle(signal)
+                }
+            }
+        } onCancel: {
+            reader.cancel()
+            Task { await queue.finish(CancellationError()) }
+        }
+    }
+
+    /// The signals of a batch read while the app was busy, without an import's progress that a later import event in
+    /// the batch overtook (a later progress, a new start, or the finish). Everything else stays, in order.
+    public static func superseded(_ batch: [EventSignal]) -> [EventSignal] {
+        func isImport(_ signal: EventSignal) -> Bool {
+            guard case .event(let event) = signal else { return false }
+            return event.value2 != nil || event.value3 != nil || event.value4 != nil
+        }
+        func isProgress(_ signal: EventSignal) -> Bool {
+            guard case .event(let event) = signal else { return false }
+            return event.value3 != nil
+        }
+        return batch.enumerated().compactMap { index, signal in
+            if isProgress(signal), batch[(index + 1)...].contains(where: isImport) { return nil }
+            return signal
         }
     }
 
@@ -96,5 +138,47 @@ public struct EventClient: Sendable {
             await handle(.disconnected)
             try? await Task.sleep(for: delay(afterFailures: failures))
         }
+    }
+}
+
+/// The signals read off one connection, waiting to be passed on: the reader appends as they arrive, and the app takes
+/// all that are waiting at once.
+actor SignalQueue {
+    private var pending: [EventSignal] = []
+    private var ended = false
+    private var failure: (any Error)?
+    private var waiter: CheckedContinuation<Void, Never>?
+
+    func append(_ signal: EventSignal) {
+        guard !ended else { return }
+        pending.append(signal)
+        wake()
+    }
+
+    /// The stream ended, or failed with `error`.
+    func finish(_ error: (any Error)?) {
+        guard !ended else { return }
+        ended = true
+        failure = error
+        wake()
+    }
+
+    private func wake() {
+        waiter?.resume()
+        waiter = nil
+    }
+
+    /// Everything waiting, once something is; nil when the stream ended and everything was taken; throws what the
+    /// stream failed with, after everything read before it was taken.
+    func drain() async throws -> [EventSignal]? {
+        while pending.isEmpty && !ended {
+            await withCheckedContinuation { waiter = $0 }
+        }
+        if !pending.isEmpty {
+            defer { pending = [] }
+            return pending
+        }
+        if let failure { throw failure }
+        return nil
     }
 }

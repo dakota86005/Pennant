@@ -1,4 +1,5 @@
 import FeatureCore
+import PennantAPI
 import PennantKit
 import Shell
 import SwiftUI
@@ -20,6 +21,17 @@ struct PennantApp: App {
         .commands {
             PennantCommands(model: appDelegate.model, routing: appDelegate.routing, registry: AppRegistry.shared)
         }
+
+        // A basis detached from its popover (SWIFTUI_REBUILD.md section 3.3): a floating panel the GM keeps open while
+        // working, one per claim
+        WindowGroup("Basis", for: Components.Schemas.Claim.self) { claim in
+            BasisPanelScene(claim: claim.wrappedValue)
+                .environment(appDelegate.model)
+        }
+        .windowResizability(.contentSize)
+        .windowLevel(.floating)
+        .restorationBehavior(.disabled)
+        .defaultSize(width: 380, height: 520)
 
         Window("Set Up Pennant", id: SceneID.setup) {
             SetupScene()
@@ -57,6 +69,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         terminationSignal = Self.quitOnTerminationSignal()
         Task { await model.start() }
+        #if DEBUG
+        // A Debug build launched by a script for window screenshots comes to the front (`-PennantDebugActivate YES`)
+        if UserDefaults.standard.bool(forKey: "PennantDebugActivate") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { NSApp.activate(ignoringOtherApps: true) }
+        }
+        #endif
     }
 
     /// SIGTERM (a `kill`, a script) quits like ⌘Q, so the server is stopped cleanly rather than orphaned. The handler

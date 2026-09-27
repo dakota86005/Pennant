@@ -72,13 +72,13 @@ jobs:
             macos/Packages/PennantDesign/.build
             macos/Packages/PennantFeatures/.build
             build/macos-ci/SourcePackages
-          key: pennant-mac-${{ runner.os }}-${{ hashFiles('macos/Packages/PennantKit/Package.resolved', 'macos/Packages/PennantFeatures/Package.resolved', 'macos/Pennant.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          key: pennant-mac-${{ runner.os }}-${{ hashFiles('macos/Packages/PennantKit/Package.resolved', 'macos/Packages/PennantDesign/Package.resolved', 'macos/Packages/PennantFeatures/Package.resolved', 'macos/Pennant.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
       - name: PennantKit tests
         working-directory: macos/Packages/PennantKit
         run: swift test --force-resolved-versions
       - name: PennantDesign tests
         working-directory: macos/Packages/PennantDesign
-        run: swift test
+        run: swift test --force-resolved-versions
       - name: PennantFeatures tests
         working-directory: macos/Packages/PennantFeatures
         run: swift test --force-resolved-versions

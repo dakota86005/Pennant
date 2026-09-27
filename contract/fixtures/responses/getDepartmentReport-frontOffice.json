@@ -44,7 +44,8 @@
         "A new export."
       ],
       "lean": null,
-      "certainty": "fact"
+      "certainty": "fact",
+      "called": "A fact from the export"
     },
     "links": []
   },
@@ -96,13 +97,15 @@
         "unknown": [],
         "wouldChange": [],
         "lean": null,
-        "certainty": "fact"
+        "certainty": "fact",
+        "called": "A fact from the export"
       },
       "links": [],
       "value": {
         "n": 4,
         "unit": "count",
-        "display": "4 of 8"
+        "display": "4 of 8",
+        "whole": 8
       }
     }
   ],
@@ -147,6 +150,7 @@
             "wouldChange": [],
             "lean": null,
             "certainty": "policy",
+            "called": "A line chosen and stated",
             "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
           },
           "links": []
@@ -183,6 +187,7 @@
             "wouldChange": [],
             "lean": null,
             "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
             "stamp": "The farm's stated lines, 10 of 30 still starting values. The same kind of finding about the same club or the organization, at the same urgency, is one row listing its positions"
           },
           "links": [
@@ -237,6 +242,7 @@
             "wouldChange": [],
             "lean": null,
             "certainty": "policy",
+            "called": "A line chosen and stated",
             "stamp": "Major League Ops states critical, elevated or watch; they read critical, attention and noted on the desk, in the same order and never higher. A flag the philosophy shaded keeps its philosophy-free severity beside it. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
           },
           "links": []
@@ -275,6 +281,7 @@
             "wouldChange": [],
             "lean": null,
             "certainty": "policy",
+            "called": "A line chosen and stated",
             "stamp": "Pennant's first-pass minimum for each role: a stated floor, not a league rule or an ideal roster."
           },
           "links": [],
@@ -322,6 +329,7 @@
             "wouldChange": [],
             "lean": null,
             "certainty": "policy",
+            "called": "A line chosen and stated",
             "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
           },
           "links": []
@@ -358,6 +366,7 @@
             "wouldChange": [],
             "lean": null,
             "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
             "stamp": "The farm's stated lines, 10 of 30 still starting values. The same kind of finding about the same club or the organization, at the same urgency, is one row listing its positions"
           },
           "links": [

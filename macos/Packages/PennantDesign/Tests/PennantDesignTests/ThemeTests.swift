@@ -1,0 +1,126 @@
+import Foundation
+import PennantAPI
+import SwiftUI
+import Testing
+@testable import PennantDesign
+
+/// The theme a club wears, resolved from the served packs the real server sent on the synthetic save
+/// (`contract/fixtures/`): each appearance's colours, and the neutral theme wherever the club's colours are not to be
+/// drawn (team colours off, no pack, or served colours that do not read).
+@Suite("Theme")
+struct ThemeTests {
+    static let responses = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        .appending(path: "contract/fixtures/responses")
+
+    static func decode<T: Decodable>(_ type: T.Type, _ name: String) throws -> T {
+        try JSONDecoder().decode(type, from: Data(contentsOf: responses.appending(path: "\(name).json")))
+    }
+
+    /// The synthetic club's own colours, as the catalog serves them.
+    static func clubColors() throws -> Components.Schemas.ThemePack {
+        try #require(try decode(Components.Schemas.Catalog.self, "getCatalog").clubs.first?.theme)
+    }
+
+    /// The repository's example pack, as the club's choices serve it.
+    static func examplePack() throws -> Components.Schemas.ThemePack {
+        try #require(try decode(Components.Schemas.ThemeChoices.self, "getThemeChoices").choices.first { $0.id == "sunset-series" })
+    }
+
+    @Test("the club's own colours resolve in every appearance")
+    func clubColorsResolve() throws {
+        let pack = try Self.clubColors()
+        #expect(pack.id == "club-colors")
+        let theme = Theme(served: pack, useTeamColors: true)
+        #expect(theme.packID == "club-colors")
+        for variant in Theme.Variant.allCases { #expect(theme.isThemed(variant), "\(variant)") }
+        #expect(theme.palette(for: .light) != theme.palette(for: .dark))
+        #expect(theme.palette(for: .light).isNeutral == false)
+        #expect(theme.palette(for: .dark).masthead.count == pack.tokens.dark.masthead.count)
+    }
+
+    @Test("the appearance follows the window's colour scheme and contrast")
+    func variants() {
+        #expect(Theme.Variant(colorScheme: .light, contrast: .standard) == .light)
+        #expect(Theme.Variant(colorScheme: .dark, contrast: .standard) == .dark)
+        #expect(Theme.Variant(colorScheme: .light, contrast: .increased) == .lightIncreasedContrast)
+        #expect(Theme.Variant(colorScheme: .dark, contrast: .increased) == .darkIncreasedContrast)
+        #expect(Theme.Variant.light.requiredContrast == 4.5)
+        #expect(Theme.Variant.darkIncreasedContrast.requiredContrast == 7)
+    }
+
+    @Test("an installed pack resolves as the club's own colours do, and differs from them")
+    func examplePack() throws {
+        let theme = Theme(served: try Self.examplePack(), useTeamColors: true)
+        #expect(theme.packID == "sunset-series")
+        #expect(theme.name == "Sunset Series")
+        for variant in Theme.Variant.allCases { #expect(theme.isThemed(variant), "\(variant)") }
+        let own = Theme(served: try Self.clubColors(), useTeamColors: true)
+        #expect(theme.palette(for: .dark) != own.palette(for: .dark))
+    }
+
+    @Test("team colours off, or no pack served, is the neutral theme in every appearance; the logo stays")
+    func neutral() throws {
+        var pack = try Self.clubColors()
+        pack.logo = "/api/logo/1?v=abc"
+        let off = Theme(served: pack, useTeamColors: false)
+        for variant in Theme.Variant.allCases {
+            #expect(!off.isThemed(variant))
+            #expect(off.palette(for: variant) == .neutral)
+        }
+        #expect(off.packID == nil)
+        #expect(off.logo == "/api/logo/1?v=abc")
+        #expect(Theme(served: nil, useTeamColors: true) == .neutral)
+        #expect(Theme.neutral.palette(for: .dark).isNeutral)
+    }
+
+    @Test("an appearance whose served text does not read is drawn neutral, never half-themed; the others keep the club's colours")
+    func unreadableAppearance() throws {
+        var pack = try Self.clubColors()
+        // The dark masthead's text set to its own colour: unreadable
+        pack.tokens.dark.mastheadText = pack.tokens.dark.masthead[0]
+        let theme = Theme(served: pack, useTeamColors: true)
+        #expect(!theme.isThemed(.dark))
+        #expect(theme.palette(for: .dark) == .neutral)
+        #expect(theme.isThemed(.light))
+        #expect(theme.isThemed(.darkIncreasedContrast))
+    }
+
+    @Test("a gradient's blend is checked, not only its stops")
+    func blend() throws {
+        var pack = try Self.clubColors()
+        // Green and red each read under white; their channel-wise blend (a yellow) does not
+        pack.tokens.light.masthead = ["#008a00", "#d00000"]
+        pack.tokens.light.mastheadText = "#ffffff"
+        pack.tokens.light.mastheadSecondaryText = "#ffffff"
+        #expect(!Theme(served: pack, useTeamColors: true).isThemed(.light))
+    }
+
+    @Test("a served token that is not a colour makes its appearance neutral")
+    func notAColour() throws {
+        var pack = try Self.clubColors()
+        pack.tokens.light.card = "navy"
+        #expect(!Theme(served: pack, useTeamColors: true).isThemed(.light))
+        pack = try Self.clubColors()
+        pack.tokens.lightIncreasedContrast.masthead = []
+        #expect(!Theme(served: pack, useTeamColors: true).isThemed(.lightIncreasedContrast))
+    }
+
+    @Test("Increase Contrast holds the served colours to 7:1")
+    func increasedContrastBar() throws {
+        var pack = try Self.clubColors()
+        // The plain light colours read at 4.5:1 but not 7:1: served as the Increase Contrast ones, they are refused
+        pack.tokens.lightIncreasedContrast = pack.tokens.light
+        pack.tokens.lightIncreasedContrast.card = "#767676"
+        pack.tokens.lightIncreasedContrast.cardText = "#ffffff"
+        #expect(Theme.palette(pack.tokens.light, variant: .light) != nil)
+        #expect(!Theme(served: pack, useTeamColors: true).isThemed(.lightIncreasedContrast))
+    }
+
+    @Test("the contrast ratio is WCAG's: black on white is 21:1, a colour on itself 1:1")
+    func contrastRatio() {
+        #expect(abs(Contrast.ratio((0, 0, 0), (1, 1, 1)) - 21) < 0.001)
+        #expect(abs(Contrast.ratio((0.5, 0.2, 0.1), (0.5, 0.2, 0.1)) - 1) < 0.001)
+    }
+}

@@ -606,6 +606,108 @@
           }
         }
       }
+    },
+    "/api/v2/theme-packs/{org}": {
+      "get": {
+        "operationId": "getThemeChoices",
+        "summary": "The themes a club can wear: its own colours (from the save) and each installed theme pack that fits it, with every appearance resolved; the packs refused, and why.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThemeChoices"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "chooseTheme",
+        "summary": "Chooses the theme a club wears (`club-colors` for its own colours). A pack not installed, refused, or made for another club is refused (400).",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThemeChoice"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThemeChoices"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request could not be done",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -799,6 +901,10 @@
           "certainty": {
             "$ref": "#/components/schemas/Certainty"
           },
+          "called": {
+            "type": "string",
+            "description": "How the reading is called, in the GM's words: `certainty` said plainly (\"A fact from the export\"), which the app shows under \"How it's called\" (a code this build does not know still has its words)."
+          },
           "stamp": {
             "type": "string",
             "description": "The D-041 stamp shown in the evidence view (a breakdown, where a method word may help)."
@@ -809,7 +915,8 @@
           "source",
           "unknown",
           "wouldChange",
-          "certainty"
+          "certainty",
+          "called"
         ],
         "description": "Why a claim says what it says (D-018, D-023, D-031, D-044: show the basis)."
       },
@@ -930,6 +1037,10 @@
           "record": {
             "$ref": "#/components/schemas/Cell",
             "description": "Wins and losses (\"45–38\"), or the sentence for a record the export does not have."
+          },
+          "theme": {
+            "$ref": "#/components/schemas/ThemePack",
+            "description": "The theme the club wears in the Mac app (D-062): its own colours unless another pack was chosen for it, every appearance resolved and checked. `palette` stays for the React app's colours."
           }
         },
         "required": [
@@ -938,7 +1049,8 @@
           "isHuman",
           "palette",
           "logo",
-          "record"
+          "record",
+          "theme"
         ],
         "description": "A major-league club: its palette, where its logo is, and its record as the export has it."
       },
@@ -979,12 +1091,20 @@
         "properties": {
           "missingValue": {
             "$ref": "#/components/schemas/Cell"
+          },
+          "placeLegend": {
+            "$ref": "#/components/schemas/PlaceLegend"
+          },
+          "rosterLegend": {
+            "$ref": "#/components/schemas/RosterLegend"
           }
         },
         "required": [
-          "missingValue"
+          "missingValue",
+          "placeLegend",
+          "rosterLegend"
         ],
-        "description": "Sentences the app shows wherever a served value is missing and no line of its own says why."
+        "description": "Sentences the app shows in more than one place: for a served value that is missing and no line of its own says why, and the legends under the design's graphics (the app keeps only their symbols)."
       },
       "CatalogView": {
         "type": "object",
@@ -2172,6 +2292,10 @@
         ],
         "description": "The first event on every stream: the `/api/status` snapshot, so nothing is missed between loading and listening."
       },
+      "HexColor": {
+        "type": "string",
+        "description": "A colour as `#rrggbb`."
+      },
       "ImportAccepted": {
         "type": "object",
         "properties": {
@@ -3198,6 +3322,29 @@
         ],
         "description": "A league place, stated (D-057): `rank` among `of` clubs that have the figure, `tiedWith` the number of other clubs on the same figure, and, for a Player Value place, `overlap`: how many clubs' ranges overlap this one."
       },
+      "PlaceLegend": {
+        "type": "object",
+        "properties": {
+          "season": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The filled dot."
+          },
+          "recent": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The hollow ring."
+          },
+          "fifths": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The shaded ends."
+          }
+        },
+        "required": [
+          "season",
+          "recent",
+          "fifths"
+        ],
+        "description": "The legend under \"How we win and lose\": what each mark on a place strip means."
+      },
       "ProviderChoice": {
         "type": "object",
         "properties": {
@@ -3383,6 +3530,32 @@
         ],
         "description": "The export's rating mode as the import recorded it, with how it was read."
       },
+      "RefusedThemePack": {
+        "type": "object",
+        "properties": {
+          "folder": {
+            "type": "string",
+            "description": "The pack's folder name."
+          },
+          "problem": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The first thing wrong, as the GM reads it."
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Everything wrong with it, one sentence each, for whoever fixes the file."
+          }
+        },
+        "required": [
+          "folder",
+          "problem",
+          "details"
+        ],
+        "description": "A pack in the data folder that was refused, and why, in a sentence (the details in its help tag)."
+      },
       "ReportChange": {
         "type": "object",
         "properties": {
@@ -3526,6 +3699,34 @@
             "type": "string"
           }
         ]
+      },
+      "RosterLegend": {
+        "type": "object",
+        "properties": {
+          "range": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The range bar and its hatching."
+          },
+          "control": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The control pips."
+          },
+          "need": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The ring and the word for a need."
+          },
+          "more": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Hover and click."
+          }
+        },
+        "required": [
+          "range",
+          "control",
+          "need",
+          "more"
+        ],
+        "description": "The legend under the roster diagram: what each mark on a plate means, and what the pointer does."
       },
       "SaveDiscovery": {
         "type": "object",
@@ -3855,7 +4056,12 @@
             "description": "The low end of the range, when the value is a range (the most likely value is `n`)."
           },
           "high": {
-            "type": "number"
+            "type": "number",
+            "description": "The high end of the range; never \"the whole\" of anything (a share of a whole is `whole`)."
+          },
+          "whole": {
+            "type": "number",
+            "description": "The whole this value is a count of, when it is a real \"x of y\" (\"26 of 26\" on the active roster: `n` 26, `whole` 26). Only a value served with it is drawn as a share (a ring or a bar); the app never infers a whole from a range."
           },
           "display": {
             "type": "string",
@@ -4109,6 +4315,13 @@
               "$ref": "#/components/schemas/PhilosophyProfile"
             },
             "description": "Organizational philosophy is saved per club. The string key is the OOTP organization/team id so different clubs and saves may think differently."
+          },
+          "themePacks": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "The theme pack each club wears in the Mac app (D-062), by team id; a club left out wears its own colours. Written only by `POST /api/v2/theme-packs/:org` (`themePackStore.ts`); the React app ignores it."
           }
         },
         "required": [
@@ -4124,7 +4337,8 @@
           "showUnavailablePitchers",
           "autoGenerateAfterImport",
           "nextSeasonBudget",
-          "organizationPhilosophies"
+          "organizationPhilosophies",
+          "themePacks"
         ],
         "description": "User preferences, plus the Anthropic API key.\n\nThe key is a real secret, so it is never written in plain text when we can avoid it: the desktop app hands us Electron's safeStorage, which encrypts against the OS keychain (Keychain on macOS, DPAPI on Windows). Running from source in a browser there is no keychain available, so the key falls back to a 0600 file and the UI says so plainly rather than implying it is protected."
       },
@@ -4531,6 +4745,211 @@
             "type": "string"
           }
         ]
+      },
+      "ThemeChoice": {
+        "type": "object",
+        "properties": {
+          "packId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "packId"
+        ],
+        "description": "What `POST /api/v2/theme-packs/:org` takes: the pack the club should wear (`club-colors` for its own colours)."
+      },
+      "ThemeChoices": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "active": {
+            "type": "string",
+            "description": "The pack the club wears now (`club-colors` unless another was chosen and is still installed and sound)."
+          },
+          "choices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ThemePack"
+            }
+          },
+          "refused": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RefusedThemePack"
+            },
+            "description": "Packs in the data folder that were refused."
+          },
+          "unavailable": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "A chosen pack that is no longer installed or no longer passes, so the club wears its own colours; null when none."
+          },
+          "folder": {
+            "type": "string",
+            "description": "Where packs go, for the GM to find: the data folder's `theme-packs` folder."
+          }
+        },
+        "required": [
+          "teamId",
+          "active",
+          "choices",
+          "refused",
+          "folder"
+        ],
+        "description": "The themes a club can wear (`GET /api/v2/theme-packs/:org`): its own colours first, then each installed pack that fits."
+      },
+      "ThemePack": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "`club-colors` for the club's own colours; an installed pack's folder name."
+          },
+          "name": {
+            "type": "string",
+            "description": "The pack's name as its file gives it, or \"Team colors\" for the club's own (as Settings lists it)."
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ThemePackKind"
+          },
+          "version": {
+            "type": "string",
+            "description": "The pack's own version, as its file gives it (the club's own colours: the format's)."
+          },
+          "teamId": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "The club the pack is made for; null when it is made for any club."
+          },
+          "tokens": {
+            "$ref": "#/components/schemas/ThemeVariants"
+          },
+          "logo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Where to fetch the pack's logo, else the save's own logo for the club; null when there is neither."
+          },
+          "art": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Where to fetch the pack's masthead art; null when it has none."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "version",
+          "tokens",
+          "logo",
+          "art"
+        ],
+        "description": "A theme pack as served: checked, with every appearance's colours resolved."
+      },
+      "ThemePackKind": {
+        "description": "Where a pack comes from: the club's own colours (derived from the save), or a pack installed in the data folder.",
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "clubColors",
+              "installed"
+            ]
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "ThemeTokens": {
+        "type": "object",
+        "properties": {
+          "mastheadTop": {
+            "$ref": "#/components/schemas/HexColor",
+            "description": "The top of the masthead, under the toolbar, where macOS writes the window's title and subtitle in its own label colour: nearly white in light, nearly black in dark, so the title reads as it does on a plain window."
+          },
+          "masthead": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HexColor"
+            },
+            "description": "The masthead's colours, from its leading top to its trailing bottom (one to four), under its text."
+          },
+          "mastheadText": {
+            "$ref": "#/components/schemas/HexColor",
+            "description": "The masthead's headline text (the view's title, the club, the record)."
+          },
+          "mastheadSecondaryText": {
+            "$ref": "#/components/schemas/HexColor",
+            "description": "The masthead's second line."
+          },
+          "accent": {
+            "$ref": "#/components/schemas/HexColor",
+            "description": "The club's one accent, as a colour on the window's background (a link, a mark, a chart's own series)."
+          },
+          "accentText": {
+            "$ref": "#/components/schemas/HexColor",
+            "description": "Text on the accent."
+          },
+          "tint": {
+            "$ref": "#/components/schemas/HexColor",
+            "description": "The tint of the one floating control a view may have."
+          },
+          "tintText": {
+            "$ref": "#/components/schemas/HexColor",
+            "description": "Text on the tint."
+          },
+          "card": {
+            "$ref": "#/components/schemas/HexColor",
+            "description": "The club card's fill in the sidebar, and its text."
+          },
+          "cardText": {
+            "$ref": "#/components/schemas/HexColor"
+          }
+        },
+        "required": [
+          "mastheadTop",
+          "masthead",
+          "mastheadText",
+          "mastheadSecondaryText",
+          "accent",
+          "accentText",
+          "tint",
+          "tintText",
+          "card",
+          "cardText"
+        ],
+        "description": "The colours one appearance draws. Each colour that text sits on comes with its text, and every pair reads (4.5:1, or 7:1 for Increase Contrast): the server checks them before it serves a pack."
+      },
+      "ThemeVariants": {
+        "type": "object",
+        "properties": {
+          "light": {
+            "$ref": "#/components/schemas/ThemeTokens"
+          },
+          "dark": {
+            "$ref": "#/components/schemas/ThemeTokens"
+          },
+          "lightIncreasedContrast": {
+            "$ref": "#/components/schemas/ThemeTokens",
+            "description": "Light with Increase Contrast on: every pair at 7:1."
+          },
+          "darkIncreasedContrast": {
+            "$ref": "#/components/schemas/ThemeTokens",
+            "description": "Dark with Increase Contrast on."
+          }
+        },
+        "required": [
+          "light",
+          "dark",
+          "lightIncreasedContrast",
+          "darkIncreasedContrast"
+        ],
+        "description": "A pack's colours for each appearance."
       },
       "Tone": {
         "description": "How a line reads at a glance. Colour is never the only signal: the app pairs a tone with a symbol and a word.",

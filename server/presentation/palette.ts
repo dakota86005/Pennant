@@ -15,9 +15,9 @@ export interface TeamColors {
   cap: string | null;
 }
 
-interface HSL { h: number; s: number; l: number }
+export interface HSL { h: number; s: number; l: number }
 
-function hexToHsl(hex: string): HSL | null {
+export function hexToHsl(hex: string): HSL | null {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
   if (!m) return null;
   const n = parseInt(m[1], 16);
@@ -48,7 +48,7 @@ const channel = (c: number) => {
 const luminanceRgb = (r: number, g: number, b: number) =>
   0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
 
-function relativeLuminance(hex: string): number {
+export function relativeLuminance(hex: string): number {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
   if (!m) return 0;
   const n = parseInt(m[1], 16);

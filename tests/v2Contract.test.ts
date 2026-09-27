@@ -4,7 +4,7 @@ import path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import {
-  HINT_MAX, assertAuthored, basis, basisProblems, cell, claim, row, servedValue, target, unknownValue, type BasisInput, type BuiltBasis,
+  CERTAINTY_WORDS, HINT_MAX, assertAuthored, basis, basisProblems, cell, claim, row, servedValue, target, unknownValue, type BasisInput, type BuiltBasis,
 } from '../server/presentation/claim.js';
 import type { Claim } from '../server/contract/presentation.js';
 
@@ -85,6 +85,22 @@ describe('the shown strings are checked as they are built', () => {
     expect(() => claim({ text: 'Power', tone: 'neutral', basis: basis(plain), place: { rank: 31, of: 30, tiedWith: 0 } })).toThrow(/not inside/);
     expect(() => claim({ text: 'Power', tone: 'neutral', basis: basis(plain), place: { rank: 29, of: 30, tiedWith: 2 } })).toThrow(/does not fit/);
     expect(claim({ text: 'Power', tone: 'neutral', basis: basis(plain), place: { rank: 3, of: 30, tiedWith: 1 } }).place).toEqual({ rank: 3, of: 30, tiedWith: 1 });
+  });
+
+  it('serves a real "x of y" with its whole, and never reads a range\'s high end as one (review B1)', () => {
+    expect(servedValue(39, 'count', '39 of 40', { whole: 40 })).toEqual({ n: 39, unit: 'count', display: '39 of 40', whole: 40 });
+    const range = servedValue(8, 'dollars', '$8M', { low: 4, high: 11 });
+    expect(range.whole).toBeUndefined();
+    expect(() => servedValue(3, 'count', '3 of 0', { whole: 0 })).toThrow(/nothing to be a share of/);
+    expect(() => claim({ text: 'Mixed', tone: 'neutral', basis: basis(plain), value: { n: 3, unit: 'count', display: '3', low: 1, high: 4, whole: 5 } })).toThrow(/not both/);
+  });
+
+  it('says how every basis is called in words, one sentence per certainty (review S5)', () => {
+    for (const certainty of ['fact', 'calibrated', 'provisional', 'policy', 'unknown'] as const) {
+      const built = basis({ ...plain, certainty, stamp: ['calibrated', 'provisional', 'policy'].includes(certainty) ? 'A stated line.' : undefined });
+      expect(built.called).toBe(CERTAINTY_WORDS[certainty]);
+    }
+    expect(new Set(Object.values(CERTAINTY_WORDS)).size).toBe(5);
   });
 
   it('serves an unknown value as null with its sentence, never a zero', () => {

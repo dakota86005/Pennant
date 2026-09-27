@@ -1,0 +1,68 @@
+{
+  "format": 1,
+  "id": "aurora-nights",
+  "name": "Aurora Nights",
+  "version": "1.0",
+  "club": "any",
+  "art": "art.png",
+  "light": {
+    "mastheadTop": "#eef5f6",
+    "masthead": [
+      "#0f4c5c",
+      "#4a2a7a"
+    ],
+    "mastheadText": "#ffffff",
+    "mastheadSecondaryText": "#d7ecef",
+    "accent": "#0f5a6b",
+    "accentText": "#ffffff",
+    "tint": "#1f6f86",
+    "tintText": "#ffffff",
+    "card": "#0f4c5c",
+    "cardText": "#ffffff"
+  },
+  "dark": {
+    "mastheadTop": "#0a1214",
+    "masthead": [
+      "#0c3c48",
+      "#35205c"
+    ],
+    "mastheadText": "#ffffff",
+    "mastheadSecondaryText": "#cfe6ea",
+    "accent": "#7fd1e3",
+    "accentText": "#0a1214",
+    "tint": "#2a9ab8",
+    "tintText": "#0a1214",
+    "card": "#0c3c48",
+    "cardText": "#ffffff"
+  },
+  "lightIncreasedContrast": {
+    "mastheadTop": "#eef5f6",
+    "masthead": [
+      "#0f4c5c",
+      "#4a2a7a"
+    ],
+    "mastheadText": "#ffffff",
+    "mastheadSecondaryText": "#e6f3f5",
+    "accent": "#0b4652",
+    "accentText": "#ffffff",
+    "tint": "#0b4652",
+    "tintText": "#ffffff",
+    "card": "#0f4c5c",
+    "cardText": "#ffffff"
+  },
+  "darkIncreasedContrast": {
+    "mastheadTop": "#0a1214",
+    "masthead": [
+      "#0c3c48",
+      "#35205c"
+    ],
+    "mastheadText": "#ffffff",
+    "mastheadSecondaryText": "#e0f0f3",
+    "accent": "#7fd1e3",
+    "accentText": "#0a1214",
+    "tint": "#7fd1e3",
+    "tintText": "#0a1214",
+    "card": "#0c3c48",
+    "cardText": "#ffffff"
+  }
+}

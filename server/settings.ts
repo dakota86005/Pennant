@@ -113,6 +113,12 @@ export interface Settings {
    * organization/team id so different clubs and saves may think differently.
    */
   organizationPhilosophies: Record<string, PhilosophyProfile>;
+
+  /**
+   * The theme pack each club wears in the Mac app (D-062), by team id; a club left out wears its own colours. Written
+   * only by `POST /api/v2/theme-packs/:org` (`themePackStore.ts`); the React app ignores it.
+   */
+  themePacks: Record<string, string>;
 }
 
 const DEFAULTS: Settings = {
@@ -124,6 +130,7 @@ const DEFAULTS: Settings = {
   useTeamColors: true,
   nextSeasonBudget: {},
   organizationPhilosophies: {},
+  themePacks: {},
   roundRatingsToFive: false,
   showUnavailablePitchers: false,
   autoGenerateAfterImport: false,
@@ -204,6 +211,20 @@ export function followSaveClub(): void {
 
 function writeSettings(next: Settings): void {
   fs.writeFileSync(SETTINGS_PATH, JSON.stringify(next, null, 2));
+}
+
+/**
+ * Records the theme pack a club wears (D-062); null forgets the choice, so the club wears its own colours. The rest of
+ * the settings are kept as they are.
+ */
+export function saveThemePackChoice(teamId: number, packId: string | null): Settings {
+  const current = loadSettings();
+  const themePacks = { ...(current.themePacks ?? {}) };
+  if (packId === null) delete themePacks[String(teamId)];
+  else themePacks[String(teamId)] = packId;
+  const next = { ...current, themePacks };
+  writeSettings(next);
+  return next;
 }
 
 /** The normalized philosophy currently attached to one organization. */

@@ -1,6 +1,12 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "%lld of %lld": {
+      "extractionState": "manual"
+    },
+    "%lld to decide": {
+      "extractionState": "manual"
+    },
     "40-Man & Options": {
       "extractionState": "manual"
     },
@@ -17,6 +23,9 @@
       "extractionState": "manual"
     },
     "Appearance": {
+      "extractionState": "manual"
+    },
+    "Around the league": {
       "extractionState": "manual"
     },
     "Arrives in a later build": {
@@ -43,7 +52,16 @@
     "Backup taken": {
       "extractionState": "manual"
     },
+    "Basis": {
+      "extractionState": "manual"
+    },
+    "Behind him": {
+      "extractionState": "manual"
+    },
     "Bench & Backups": {
+      "extractionState": "manual"
+    },
+    "Bullpen": {
       "extractionState": "manual"
     },
     "Choose Another Save": {
@@ -58,6 +76,9 @@
     "Chosen in Settings": {
       "extractionState": "manual"
     },
+    "Close": {
+      "extractionState": "manual"
+    },
     "Club": {},
     "Club Reports": {
       "extractionState": "manual"
@@ -66,6 +87,9 @@
       "extractionState": "manual"
     },
     "Coaching Staff": {
+      "extractionState": "manual"
+    },
+    "Commands": {
       "extractionState": "manual"
     },
     "Contracts": {
@@ -93,6 +117,9 @@
     "Depth Chart": {
       "extractionState": "manual"
     },
+    "Detach": {
+      "extractionState": "manual"
+    },
     "Development Tracking": {
       "extractionState": "manual"
     },
@@ -100,6 +127,9 @@
       "extractionState": "manual"
     },
     "Draft Board": {
+      "extractionState": "manual"
+    },
+    "Every item to decide, from every department": {
       "extractionState": "manual"
     },
     "Evidence": {
@@ -117,16 +147,28 @@
     "Farm & Development": {
       "extractionState": "manual"
     },
+    "Farm's next man": {
+      "extractionState": "manual"
+    },
     "Finance": {
       "extractionState": "manual"
     },
+    "Find Anything…": {
+      "extractionState": "manual"
+    },
     "Find Automatically": {
+      "extractionState": "manual"
+    },
+    "Find anything": {
       "extractionState": "manual"
     },
     "Find the Save": {
       "extractionState": "manual"
     },
     "Folder": {
+      "extractionState": "manual"
+    },
+    "Followed": {
       "extractionState": "manual"
     },
     "Forward": {
@@ -139,6 +181,9 @@
       "extractionState": "manual"
     },
     "Free Agents": {
+      "extractionState": "manual"
+    },
+    "From": {
       "extractionState": "manual"
     },
     "Front Office": {
@@ -157,6 +202,12 @@
       "extractionState": "manual"
     },
     "Horizon Board": {
+      "extractionState": "manual"
+    },
+    "How it's called": {
+      "extractionState": "manual"
+    },
+    "How we win and lose": {
       "extractionState": "manual"
     },
     "Import": {},
@@ -179,6 +230,9 @@
       "extractionState": "manual"
     },
     "Inspector": {
+      "extractionState": "manual"
+    },
+    "L": {
       "extractionState": "manual"
     },
     "Leaders": {
@@ -214,6 +268,9 @@
     "Name": {
       "extractionState": "manual"
     },
+    "Need": {
+      "extractionState": "manual"
+    },
     "No data folder chosen for this development build": {},
     "No key": {
       "extractionState": "manual"
@@ -239,13 +296,25 @@
     "Not known": {
       "extractionState": "manual"
     },
+    "Nothing matches": {
+      "extractionState": "manual"
+    },
+    "Nothing pinned": {
+      "extractionState": "manual"
+    },
     "Nothing selected": {
       "extractionState": "manual"
     },
     "OOTP save": {
       "extractionState": "manual"
     },
+    "Open": {
+      "extractionState": "manual"
+    },
     "Open Report": {
+      "extractionState": "manual"
+    },
+    "Open in %@": {
       "extractionState": "manual"
     },
     "Or choose a folder": {
@@ -258,6 +327,9 @@
       "extractionState": "manual"
     },
     "Organizational Philosophy": {
+      "extractionState": "manual"
+    },
+    "Our philosophy's lean": {
       "extractionState": "manual"
     },
     "Payroll & Budget": {
@@ -279,6 +351,12 @@
       "extractionState": "manual"
     },
     "Pick the Club": {
+      "extractionState": "manual"
+    },
+    "Pin a figure's basis from its popover": {
+      "extractionState": "manual"
+    },
+    "Pin to Inspector": {
       "extractionState": "manual"
     },
     "Pitching Availability": {
@@ -321,7 +399,13 @@
     "Restore the backup?": {
       "extractionState": "manual"
     },
+    "Roster diagram": {
+      "extractionState": "manual"
+    },
     "Rosters": {
+      "extractionState": "manual"
+    },
+    "Rotation": {
       "extractionState": "manual"
     },
     "Save": {},
@@ -366,6 +450,12 @@
     "Show why": {
       "extractionState": "manual"
     },
+    "Shows why": {
+      "extractionState": "manual"
+    },
+    "Since the last export": {
+      "extractionState": "manual"
+    },
     "Staff's Options": {
       "extractionState": "manual"
     },
@@ -377,7 +467,16 @@
     "Storylines": {
       "extractionState": "manual"
     },
+    "Strength": {
+      "extractionState": "manual"
+    },
+    "Strengths": {
+      "extractionState": "manual"
+    },
     "System": {
+      "extractionState": "manual"
+    },
+    "Team Colors": {
       "extractionState": "manual"
     },
     "The Pennant server isn't running": {
@@ -386,15 +485,33 @@
     "The backup could not be restored": {
       "extractionState": "manual"
     },
+    "The club": {
+      "extractionState": "manual"
+    },
     "The data folder could not be backed up": {},
     "The data folder is in use": {},
+    "The departments": {
+      "extractionState": "manual"
+    },
     "The import did not finish": {
       "extractionState": "manual"
     },
     "The import did not start": {
       "extractionState": "manual"
     },
+    "The league": {
+      "extractionState": "manual"
+    },
+    "The neutral reading": {
+      "extractionState": "manual"
+    },
     "The request failed": {
+      "extractionState": "manual"
+    },
+    "The rest": {
+      "extractionState": "manual"
+    },
+    "The roster": {
       "extractionState": "manual"
     },
     "The save's folder, ending in .lg": {
@@ -408,6 +525,18 @@
     "The server did not start in time": {},
     "The server is missing from this build": {},
     "The server keeps stopping": {},
+    "Theme": {
+      "extractionState": "manual"
+    },
+    "Theme Packs Folder": {
+      "extractionState": "manual"
+    },
+    "To decide": {
+      "extractionState": "manual"
+    },
+    "Too early to call": {
+      "extractionState": "manual"
+    },
     "Trade Desk": {
       "extractionState": "manual"
     },
@@ -421,10 +550,25 @@
     "Us vs Them": {
       "extractionState": "manual"
     },
+    "Use Team Colors": {
+      "extractionState": "manual"
+    },
     "Use This Folder": {
       "extractionState": "manual"
     },
     "Use This Save": {
+      "extractionState": "manual"
+    },
+    "W": {
+      "extractionState": "manual"
+    },
+    "Weakness": {
+      "extractionState": "manual"
+    },
+    "Weaknesses": {
+      "extractionState": "manual"
+    },
+    "What changed": {
       "extractionState": "manual"
     },
     "What would change it": {
@@ -433,13 +577,28 @@
     "Where Pennant looked": {
       "extractionState": "manual"
     },
+    "Who we have": {
+      "extractionState": "manual"
+    },
+    "Whole Desk": {
+      "extractionState": "manual"
+    },
     "Why": {
       "extractionState": "manual"
     },
     "Wire": {
       "extractionState": "manual"
     },
+    "Would change if": {
+      "extractionState": "manual"
+    },
     "Your club": {
+      "extractionState": "manual"
+    },
+    "↩": {
+      "extractionState": "manual"
+    },
+    "⌘K": {
       "extractionState": "manual"
     }
   },

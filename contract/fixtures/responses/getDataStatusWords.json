@@ -46,7 +46,8 @@
       ],
       "wouldChange": [],
       "lean": null,
-      "certainty": "fact"
+      "certainty": "fact",
+      "called": "A fact from the export"
     },
     "links": [],
     "hint": "How current Pennant's copy of the league is against your OOTP save"

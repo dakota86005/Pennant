@@ -80,6 +80,11 @@ export type {
 export type { StatFormat } from '../presentation/statCatalog.js';
 export type { ClubPalette } from '../presentation/palette.js';
 
+// Theme packs (`GET` and `POST /api/v2/theme-packs/:org`, and each club's `theme` in the catalog)
+export type {
+  HexColor, ThemeTokens, ThemeVariants, ThemePackKind, ThemePack, RefusedThemePack, ThemeChoices, ThemeChoice,
+} from './themePack.js';
+
 // The data status in words (`GET /api/v2/data-status`)
 export type { DataStatusView, DataStatusRow, DataStatusFact, GameDateText } from '../presentation/dataStatusWords.js';
 export type { RosterEvidenceLevel } from '../dataFreshness.js';

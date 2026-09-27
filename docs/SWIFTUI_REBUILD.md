@@ -245,6 +245,35 @@ export" chips, the club profile, the roster map, the wire and game day are N6 an
   no report yet), the way into its report (none for a department with no report yet), and an empty staff-memo slot. The
   sidebar badges each department with its card's count to decide.
 
+**What the design's slots need from the server (for N6), written at N5 Stage B, 2026-09-26.** Each slot below is a
+component in PennantDesign fed today by `DesignFixtures` in previews and snapshots only; in the running app it shows
+nothing until the payload carries the field. `positions[].control` is served structured, never parsed from words.
+- Masthead (`MagazineMasthead`, `ScoreboardFigures`, `TonightControl`): `record {display, wins, losses, hint, basis}`,
+  `place {text, gamesBack}` (the line under the record), `runs {scored, allowed, diff, trend[20], hint, basis}`,
+  `lastFive ["W" | "L"]` with its line, `streak`, `tonight {opponent, homeAway, time, ours {name, line}, theirs {name,
+  line}, oppRecord, route} | null`, `deadline {date, daysLeft} | null`, `lede` (a served claim built only from the facts
+  on the page: no odds, no posture, D-060) `| null`; the kicker's parts (the club, the game date, "through").
+- `ChipRow`: `changes {new, resolved, moved, results}`, each `{count, text, hint, items[]}`.
+- `PlaceStrips` / `PlaceRow`: `dimensions[] {id, name, symbol, place, of, tiedWith, recentPlace | null (with why),
+  placeText, recentText, detail, hint, basis, group: strength | weakness | rest | tooEarly}` and the stated policy
+  lines per group ("Top fifth of the league").
+- `RosterDiagram`: `positions[] {pos, holder {name, id}, value {low, likely, high, text, short} | null (with reason),
+  placeText, place, overlap, behind, farmNext {name, readiness} | null, control: {through: year, seasonsLeft} |
+  {clock: "arbitration" | "free agent after season", text} | {unknown, text}, need: bool, basis}`, and the scale every
+  range bar on it shares, `valueScale {low, high}` (in the values' unit; Swift holds no scale of its own, draws no
+  diagram without it and clips a value off it rather than moving it); `StaffColumn`: `rotation[]`, `bullpen[] {role,
+  name, line, value | null, note | null, hint}`, on the same scale.
+- `MetricTile`: `figures[] {label, value, hint, basis}` (the department cards' key figures, served since N4). A ring
+  only where the server serves the whole the figure counts (`value.whole`, a real "x of y": the active and 40-man
+  rosters against their limits, the farm's players read, the departments reporting; served since the N5 review); a
+  range's `high` is the end of a range and never read as a whole.
+- `WireRow`: `wire[] {club {name, abbreviation, followed}, text, when}`.
+- `BasisPopover`: `Basis {because[] {label, value}, source, certainty, called, stamp, unknown[], wouldChange[], lean |
+  null}` (served since N4; `called`, the certainty in the GM's words, since the N5 review) and an open-in `Target`.
+- The legends under `PlaceStrips` and `RosterDiagram`: the catalog's `phrases.placeLegend {season, recent, fifths}` and
+  `phrases.rosterLegend {range, control, need, more}` (served since the N5 review); the app keeps only their symbols.
+- `CommandPalette`: later a search endpoint `{group, symbol, title, line, route}` and token suggestions.
+
 ### 3.5 One anatomy for every department report
 
 Every report reads the same way:
@@ -321,6 +350,11 @@ Data Status: Settings ▸ General at the data status) and Help ▸ Server Log. G
 `@FocusedValue`; what can act is `CommandAvailability`, tested. Find Anything, the Player menu, search tokens, drag and
 drop and context menus arrive with the views that need them.
 
+**As built at N5 (Stage B), 2026-09-26.** View ▸ Find Anything… (⌘K) opens the palette (section 3.7, "Design
+language"); Basis for Selection is Space on a focused claim (`ClaimText` is focusable and answers Space with
+`.onKeyPress(.space)`, since the N5 review, so it works whether or not the Mac's keyboard navigation is on, which a
+plain button's Space needs); Show Inspector shows the pinned evidence. Search tokens and suggestions wait for the search endpoint.
+
 ### 3.7 Visual language
 
 - **Liquid Glass** only on the navigation and controls layer: sidebar, toolbar, inspector, popovers, sheets,
@@ -341,6 +375,154 @@ drop and context menus arrive with the views that need them.
 - **Shape:** concentric corners (`ConcentricRectangle`, `.containerConcentric`) and capsule glass controls.
 - **Empty and unavailable states:** `ContentUnavailableView` with one plain sentence ("Not valued yet: his
   contract terms aren't in the export"). An unavailable department says so and never reads as "all clear".
+
+**As built at N5 (Stage A), 2026-09-26: the glass shell, theme packs and the masthead.** The owner saw the N4 build and
+said "I don't see the liquid glass yet"; a spike found that on macOS 27 the sidebar is flush and already glass, and looked
+flat only because nothing coloured was behind it, and showed mockups. He chose the club's colour running under the
+toolbar in light and in dark, the light gradient lighter at the top so the window's title reads, and asked for it
+modular: "theme packs" per club (D-062).
+- **Theme packs** (D-062): a pack is data (`server/contract/themePack.ts`: `ThemeTokens` per appearance, `ThemeVariants`
+  for light, dark and both with Increase Contrast, `ThemePack`, `ThemeChoices`), served per club as `theme` in the
+  catalog and listed and chosen through `GET` and `POST /api/v2/theme-packs/:org`. Every club's default is its own
+  colours, derived from the save (`server/presentation/themePacks.ts` from `derivePalette`'s plate, second colour and
+  accent), so any league works with no files: the masthead runs from the plate to the club's second colour, its top is
+  the plate's hue at 95% lightness in light and 9% in dark. Installed packs are folders in the data folder
+  (`theme-packs/<id>/pack.json` and a logo or art; `server/themePackStore.ts`), read fresh on each request and checked:
+  shape, files (named `.png` or `.jpg` in the folder, at most 2 MB), and every text pair at 4.5:1 (7:1 with Increase
+  Contrast) in each appearance, the masthead's text against each colour and the lightest or darkest blend of each
+  neighbouring pair, the accent against the window's backgrounds, and the masthead's top against the window's title
+  (17:1 against black in light, 14:1 against white in dark). A pack that fails is refused whole with a sentence (every
+  finding in `details`); a club that chose it wears its own colours and its choices say why (`unavailable`). Missing
+  Increase Contrast colours are made from the plain ones (`strengthened`) and checked. The choice is `themePacks` in
+  settings.json, per club; the React app ignores it. `npm run check:theme` also checks each club's own pack and the
+  repository's example (`docs/theme-packs/sunset-series`, made-up colours; Pennant ships no club art).
+- **Swift:** PennantDesign now depends on PennantAPI. `Theme` resolves a served pack into a `Palette` per appearance
+  (`Variant` from the colour scheme and contrast) and checks again, as it draws, the text pairs it draws on served
+  colours: the masthead's text and secondary text on each masthead colour and on the worst blend between neighbours,
+  and the accent's, the tint's and the card's text on theirs (4.5:1, 7:1 with Increase Contrast). The masthead's top
+  against the window's title and the accent against the window's backgrounds are the server's check alone (the app
+  draws no text of its own there). An appearance that does not read is drawn neutral, never half-themed; team colours off (`useTeamColors`) or no club is the neutral theme (the
+  system's window, label and accent colours). The main window puts `model.theme` in the environment (`\.theme`); the club
+  card, the masthead and the floating control read it, and `ClubTint` is gone. Settings ▸ Appearance gains Use Team
+  Colors and Theme: the club's choices as radio buttons with a swatch and the served name, a live preview (the masthead
+  and club card in the chosen pack), the packs refused with the first thing wrong (every finding in the help tag), and the
+  theme-packs folder with Show in Finder.
+- **The masthead** (`Masthead`, `MastheadScrollView`; `ClubMasthead` in FeatureCore): content colour, not glass. The
+  scroll view runs under the toolbar (`ignoresSafeArea(edges: .top)`, the toolbar's background hidden), the masthead's
+  colour is extended under the sidebar and the inspector (`backgroundExtensionEffect`, on its background only, so its
+  text and logo are not mirrored), and the soft top scroll edge is back (`scrollEdgeEffectStyle(.soft)`). Its top colour
+  is held under the toolbar and fades into the club's colours over 20 points below it, and its text starts below that
+  band, so no text sits on the blend. It carries the view's served title (the catalog's name, the structural title until
+  the catalog arrives), the club's served name and record (condensed-width numerals, `.monospacedDigit()`,
+  `.contentTransition(.numericText())` unless Reduce Motion), a served line and the served logo (the pack's, else the
+  save's), 48 points inside the trailing edge. On the Morning Report the line is how current it is; on a department's
+  report it is who prepared it and when (the report's own header is hidden there). No odds or posture (D-060); the
+  scoreboard's contents are N6. With Increase Contrast it uses the pack's 7:1 colours and ends on a rule.
+- **One floating control group** (`FloatingControlGroup`, `FloatingControl`, in a `GlassEffectContainer` with
+  `glassEffectID`): the Morning Report's Whole Desk, which opens the Front Office's report (every item, not only each
+  department's first five). The prominent control is the system's prominent glass (`.glassProminent`) in the theme's
+  tint with the tint's own text colour (a tinted `.glassEffect` over light content washed the tint out, and the offscreen
+  snapshots cannot draw it); in a window in the background the system draws it untinted and its label takes the label
+  colour. With Reduce Transparency it is an opaque capsule with a border. The content keeps 72 points at the bottom for
+  it.
+- **The N4 carry-overs:** the Morning Report and the reports' hard top edge is gone (the soft edge is back; the title now
+  sits on the masthead's top, which the pack check holds to 17:1 or 14:1), and the UI tests no longer fold the sidebar
+  before an audit: every audit runs with the departments the test opened still unfolded (`sidebarAtTop` only scrolls to the
+  top).
+- **Checking the accessibility looks without changing the Mac's settings:** `forcesIncreasedContrast` and
+  `forcesReduceTransparency` (environment values; `EffectiveContrast`, `EffectiveReduceTransparency`) draw the app's own
+  pieces as Increase Contrast and Reduce Transparency do; SwiftUI's `colorSchemeContrast` is read from the Mac at each
+  window column, so it cannot be set for a test. A Debug build sets them from `-PennantDebugAppearance
+  increasedContrastLight|increasedContrastDark` (with AppKit in the high-contrast appearance) and
+  `-PennantDebugReduceTransparency YES`; the snapshot tests set them directly. The system's own glass follows only the
+  Mac's real settings.
+- **Verification:** `tests/themePacks.test.ts` (the derived default for sample and synthetic clubs, the check's refusals,
+  the blend, the choice per club, a pack that breaks after it was chosen, the routes and the pack's files), the contract
+  test (the new routes and fixtures), `ThemeTests` (PennantDesign: resolution, the neutral fallback, an unreadable
+  appearance, Increase Contrast's bar). Snapshots in `build/macos-snapshots/shell-*` draw the Morning Report and Major
+  League Ops' report in the synthetic club's colours and the example pack, light, dark, and each with Increase Contrast
+  and Reduce Transparency, and the neutral theme; offscreen drawing cannot draw glass (the sidebar is drawn apart and laid
+  over, and the floating control's glass is missing), so the real look is in window screenshots. The XCUITests gain four
+  glass-shell flows (the club's colours and the example pack, light and dark, each with an Increase Contrast relaunch;
+  the example pack chosen through Settings), each auditing the Morning Report and a report with the sidebar unfolded.
+  They build, but have not run at Stage A: the Mac's UI automation mode asks for the owner's password again ("Timed out
+  while enabling automation mode"), so the audits of the unfolded sidebar and the masthead's title are still to be seen.
+  The real windows were captured instead from a Debug build launched on scratch folders (window only, `screencapture
+  -l`): the Morning Report in both themes, light and dark, with Increase Contrast and Reduce Transparency, and neutral.
+
+**Design language (N5, Stage B), 2026-09-26: R2 with the V2 roster diagram.** The owner chose the app's design from a
+design exploration ("this is really good… I LOVE everything else"; "yep V2 is it") after asking for "bold beautiful
+fonts… print or an intentionally laid out magazine", something "Steve Jobs would approve of", with macOS 26 Mail, the
+Siri app's cards, Now Playing's glass, a dark menu-bar utility panel, Craft, Raycast, Freeform and Bear as references.
+Reference pictures, made-up data only: `docs/design/morning-report-light.png`, `morning-report-dark.png`,
+`roster-diagram.png`, `basis-and-palette.png`.
+- **Type scale.** New York (`.design(.serif)`) at display sizes: the headline 62 bold (kerned −0.5), a section title 28
+  bold, the deck 20 regular with 3 points of leading. SF for everything else: a kicker and a small-caps label are
+  caption (or caption2) semibold, uppercase, spaced 1.2 (or 0.8); box-score figures are 40 bold in the condensed width
+  with tabular numerals (`BoxFigure`); metric tiles 22 the same; a plate's figures 11 condensed. Numerals roll
+  (`.contentTransition(.numericText())`) unless Reduce Motion is on.
+- **Grid.** The page is a lead column and a 340-point side column with 40 points between, under 28 points of margin;
+  below 1080 points of content width the columns stack (`\.contentWidth`, set by `MastheadScrollView`). Sections are
+  36 points apart, a section's kicker, serif title, trailing note and hairline rule (`MagazineSection`) 8 to 12 points
+  above its content. Cards have 16-point corners with 14 points of padding, so their children's corners (2 points)
+  are concentric (`Corner`).
+- **Tonal packs.** Every card, chip and the roster diagram's field is washed in the active pack's accent, 7% in light
+  and 13% in dark (a chip 9% and 16%; `Theme.Palette.wash`), the way Now Playing takes its wash from artwork; a neutral
+  theme washes nothing (the system's grouped fill). Leaders, nodes, the strips' filled dots, the range bars and the
+  sparkline are the accent. The pack's art is masked to the masthead's trailing side, starting past the text column
+  (680 points, or half the width, or past the furthest piece of text the masthead measures, whichever is furthest),
+  and cleared around the masthead's control (`ArtClearance`, since the N5 review), so no text sits on it: the Tonight
+  card sits on the masthead's own colour, which the server checked, never on art it did not. The masthead's top colour steps
+  towards the club's colour perceptually (`Color.mix(in: .perceptual)`) as it clears, so a near-white top over a navy
+  no longer passes through a grey mid-way (Stage A's leftover). No colour is Swift's own: the tones are the system's
+  semantic colours, and everything else comes from the served pack.
+- **Glass, per the HIG.** Glass is on the navigation and controls layer only: the sidebar, the toolbar, the inspector,
+  popovers, the ⌘K palette (a floating glass panel over the window) and the Tonight card on the masthead (a glass
+  `Button` that opens Game Day: a control within content). Content is opaque, the masthead is content colour, and
+  nothing floats over content: "Whole Desk" is a toolbar item (Stage A's floating control is gone from the Morning
+  Report; `FloatingControlGroup` stays for a view with a real primary action). With Reduce Transparency the app's own
+  glass pieces draw opaque with a border; with Increase Contrast cards, chips and plates gain borders, the masthead
+  ends on a rule, and the field's lines are the full accent.
+- **The components (PennantDesign).** Typography: `Kicker`, `MagazineSection`, `BoxFigure`, `BoxRule`,
+  `MagazineMasthead` (kicker, headline, deck, the caller's box score and its one control), `TonightControl`. Data
+  graphics: `PlaceStrip` and `PlaceRow` (a place among the clubs that have the figure, ties sharing the size, the top and
+  bottom fifths shaded, a hollow ring at the recent place, the served "too early" state) and `PlaceStrips` (the served
+  groups), `RangeBar` (the most likely value marked; hatched when not valued), `Hatch`, `Sparkline`, `Ring` and
+  `InlineBar` (only for a real "x of y"), `ControlPips`, `LastFiveDots`, and the roster diagram: `FieldGeometry`,
+  `FlatField`, `FieldNode`, `PositionPlate`, `PositionFigures`, `RosterDiagram`, `RosterLegend`, `StaffColumn`. Motif:
+  `Card`, `RowGroup`, `SymbolTile`, `Pill`, `GroupHeader`, `UtilityRow`, `MetricTile`, `ChipRow`, `DeskRow`,
+  `DepartmentTile`, `DepartmentPlaceholderRow`, `WireRow`. Depth: `ClaimText`, `ClaimValue`, `BasisPopover`,
+  `BasisSections`, `EvidenceView`, `ClaimActions` (the environment the window gives a popover: pin, detach, open, the
+  departments' served names). The palette: `CommandPalette`, `PaletteEntry` (its matching is tested). The models the
+  unserved slots take (`Scoreboard`, `PlaceDimension`, `RosterPosition`, `ControlTerm`, `StaffPitcher`, `Chip`,
+  `WireItem`, `Figure`) hold served sentences and numbers only; an adapter maps the served payload to them when N6
+  serves each slot. `DesignFixtures` (Debug only) is made-up data for the previews and the snapshots, never the app.
+- **Depth, as built (section 3.3).** A `ClaimText` is a plain, focusable button: hover shows the served help tag, a
+  click (which focuses it) or Space while it is focused (`.onKeyPress(.space)`, like Quick Look) opens `BasisPopover`: why (the evidence grid), from (the specialist, the department's served name, the
+  sample and the game date as the export wrote it), how it's called (the basis's served `called`, the certainty in the
+  GM's words, with the stamp beneath), not known, would change if, our philosophy's lean with the neutral reading beside it; then Pin to
+  Inspector, Detach and "Open in <department>" for the first served link this build can open. Pinning shows the claim
+  in the inspector's Evidence tab (`EvidenceView`, opened by ⌥⌘I or the pin); Detach opens the same in a floating
+  panel (`WindowGroup(for: Claim.self)`, `.windowLevel(.floating)`). VoiceOver reads the claim's text as the label and
+  its "why" lines as custom content.
+- **The ⌘K palette (section 3.6).** View ▸ Find Anything… (⌘K) opens `CommandPalette` over the window with the
+  registry's views (their served names, the Go menu's ⌘1 to ⌘9 beside the first view of each department) and the
+  commands that can act now (`PaletteIndex`, in Shell); ↑ and ↓ move, ↩ opens, esc or a click outside closes. Players
+  and clubs join when the server serves search (N7); the toolbar's search field stays a stub until then.
+- **The Morning Report today and at N6.** The app draws what is served: the masthead's kicker (the club and how current
+  the report is), the served headline and the record; the desk in the lead column and the department tiles beside it;
+  each department's report with its summary as the deck and its key figures as the box score. The slots the server
+  does not serve yet show nothing in the running app and are drawn from `DesignFixtures` in the previews and the
+  snapshots (`design-morning-report-*`), where the desk sits in the side column as designed. Section 3.4, "What the
+  design's slots need from the server", lists each slot and its served data for N6.
+- **Verification.** `DesignLanguageTests` (PennantDesign: the palette's matching and order, a figure's ring, tones,
+  served letters, control, the fade, the wash), `PaletteIndexTests` (Shell: every view listed with its shortcut, the
+  commands that can act), the snapshot tests (`design-*` in `build/macos-snapshots/`: the Morning Report as designed
+  in the club's colours, the example pack and the example art pack, light, dark, Increase Contrast and Reduce
+  Transparency; further down the page; narrow; a report; the palette; a pinned claim; each component in every look),
+  and the XCUITests (`testDesignPaletteBasisAndInspector`: ⌘K, the query, ↩, esc, a claim's popover, Pin to Inspector,
+  Whole Desk in the toolbar, each audited; `testDesignArtPack*`: the art pack in light, dark and Increase Contrast).
+  The String Catalog check now looks a label with an interpolation up by its format key (`Open in %@`).
 
 ---
 
@@ -724,7 +906,10 @@ with scripted processes, and `ServerIntegrationTests` with the real staged serve
   reports a known type that did not decode and re-reads `/api/status` (the model keeps the latest 20 such reports),
   and reconnects while the server is up: each failed or ended connection is logged, and the wait doubles from 1 s to
   at most 10 s while connecting keeps failing, starting again from 1 s after a connection that opened. Cancelling it
-  (the server stopped) ends it at once.
+  (the server stopped) ends it at once. Since the N5 review it reads the stream as it arrives into a queue and passes
+  on what waits once the app is free, dropping an import's progress that a later import event already overtook: the
+  N3.5 import announces a step whenever the table changes, and a busy main actor that took each step in turn heard of
+  the finish only after the backlog (the Setup integration test, beside the snapshot tests, waited out its 10 s).
 
 ---
 
@@ -1210,6 +1395,13 @@ the club the save's human manages as Automatic.
   not values, so nothing shown depends on it today.
 - N3.5's per-import caches of league populations would make each build cheaper; the worker already keeps it off the
   request path.
+
+**N5, Stage A (2026-09-26)** on `feature/swiftui-n5-design`: theme packs (D-062), the glass shell and the masthead
+(section 3.7, "As built at N5 (Stage A)"), shown to the owner before Stage B. **Stage B (2026-09-26)**, the same
+branch: the design language the owner chose (R2 with the V2 roster diagram) built as PennantDesign components and
+applied to the Morning Report and the department reports with what is served today (section 3.7, "Design language
+(N5, Stage B)"; section 3.4, "What the design's slots need from the server"). Left open: the XCUITests' automation mode
+(the owner enables it once), and the unserved slots, which N6 serves.
 
 **Next: N5** (the design system, section 9). Continue the SwiftUI rebuild at N5 (docs/SWIFTUI_REBUILD.md): open a fresh
 session on `feature/swiftui` once N4's PR is merged.

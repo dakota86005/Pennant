@@ -42,6 +42,7 @@ import { standingOf, type StandingFields } from './health.js';
 import { gameplanRoutes } from './gameplan.js';
 import { aiRoutes, startBriefingJob } from './ai.js';
 import { logoRoutes, logoToken } from './logos.js';
+import { themePackFileRoutes } from './themePackStore.js';
 import { settingsRoutes } from './settings.js';
 import { modelRoutes } from './models.js';
 import { exportRoutes } from './exporter.js';
@@ -72,6 +73,7 @@ import type { Integer } from './contract/primitives.js';
 
 export const api = Router();
 api.use(logoRoutes);
+api.use(themePackFileRoutes);
 api.use(settingsRoutes);
 api.use(modelRoutes);
 api.use(exportRoutes);

@@ -2268,6 +2268,45 @@ export's (or a previous save's) table, and no check that OOTP had finished writi
   rollback journal left by a process killed while writing the file in place is rolled back before the read-only server
   reads it, and no journal of a replaced file is left beside the new one.
 
+## D-062 — Theme packs: a club's look is data, its default is the save's own colours, and no pack costs readability
+
+**Status:** Accepted in direction by the owner (2026-09-26: "I like the use of team colors. please build this modular. I
+picture being able to have 'theme packs' for each team for things like city connects"). **Implementation:** N5, Stage A
+(2026-09-26): the pack type (`server/contract/themePack.ts`, through the contract pipeline), the save-derived default and
+the check (`server/presentation/themePacks.ts`), the installed packs and each club's choice (`server/themePackStore.ts`,
+`themePacks` in settings.json), `GET` and `POST /api/v2/theme-packs/:org`, each club's `theme` in `GET /api/v2/catalog`,
+and the Mac app's `Theme` (PennantDesign) read by every coloured piece. Design: SWIFTUI_REBUILD.md section 3.7, "As
+built at N5 (Stage A)"; how to make one: DEVELOPMENT.md "Making a theme pack".
+
+- **A club's look is data, not code.** A theme pack names the colours every coloured piece of the Mac app draws: the
+  masthead's top (under the toolbar) and its gradient, the text on it, the one accent, the tint of the one floating
+  control, and the club card, each with its text colour, in light and dark and each again for Increase Contrast, with
+  an optional logo and masthead art. Swift holds no club colour of its own; a new look is a new pack, never a code change.
+- **Every club has a pack with no file: its own colours, derived from the save** (`derivePalette`'s plate and accent, the
+  palette the React app draws), so any league looks like itself, real or fictional. In light the masthead's top is
+  lightened nearly to white so the window's title reads; in dark it is darkened nearly to black.
+- **No pack costs readability.** Every piece of text is checked on the colour it sits on, at 4.5:1 (7:1 for Increase
+  Contrast), in light and dark, a gradient's blends included, and the masthead's top against the window's title (the bar
+  `npm run check:theme` holds). A pack that fails anything is refused whole with a sentence and never half-applied; a club
+  that chose it wears its own colours and Settings says why. A pack that gives no Increase Contrast colours has them made
+  from its plain ones and checked like the rest. The app checks again, as it draws, the text pairs it draws on served
+  colours (the masthead's text on its colours and their blends, the accent's, the tint's and the card's text) and draws
+  an appearance neutral rather than half-themed; the masthead's top against the title is the server's check alone.
+- **Chosen per club, additively.** The choice is `themePacks` in settings.json (team id to pack id); the React app ignores
+  it, and team colours off (`useTeamColors`) draws the neutral system theme whatever pack is chosen.
+- **Pennant ships the mechanism and the save-derived defaults, never trademarked art.** Packs are plain folders in the data
+  folder (`theme-packs/<id>/pack.json` and its images; a link is never followed, so a pack folder, `pack.json` or
+  picture that is a link is refused and listed, and no pack serves a file from elsewhere on the Mac) that the owner makes for his own use; the repository carries only
+  made-up examples (`docs/theme-packs/sunset-series`; `aurora-nights`, whose art is made procedurally from its own
+  colours by `AuroraArt`, with no club's mark in it).
+- **A pack is tonal, not only a masthead (N5, Stage B, 2026-09-26).** The pack's accent washes every card, chip and the
+  roster diagram's field faintly (7% in light, 13% in dark), tints the strips, bars, nodes and leaders, and its art sits
+  at the masthead's trailing side where no text falls; the neutral theme washes nothing. **Text never sits on art**
+  (since the N5 review): the server checks each text colour against the masthead's colours, not against a picture, so
+  the art begins past every piece of text the masthead measures and is cleared around its one control (the Tonight
+  card sits on the masthead's own colour); text also takes its served colour as served, never faded. No new served field was needed:
+  the wash is the served accent at an opacity, so every pack made for Stage A wears the whole design.
+
 ## D-063 — Pennant picks the save you're playing only when it clearly stands out, and asks otherwise
 
 **Status:** Accepted (owner, 2026-09-26: the N3.5 decisions 2, 3 and 4; the policy line is the builder's, stated for

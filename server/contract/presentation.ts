@@ -53,7 +53,13 @@ export interface ServedValue {
   unit: Unit;
   /** The low end of the range, when the value is a range (the most likely value is `n`). */
   low?: number;
+  /** The high end of the range; never "the whole" of anything (a share of a whole is `whole`). */
   high?: number;
+  /**
+   * The whole this value is a count of, when it is a real "x of y" ("26 of 26" on the active roster: `n` 26, `whole`
+   * 26). Only a value served with it is drawn as a share (a ring or a bar); the app never infers a whole from a range.
+   */
+  whole?: number;
   /** The value as the app shows it ("4.8 runs a game", "Not known yet"). */
   display: string;
 }
@@ -107,6 +113,11 @@ export interface Basis {
   wouldChange: string[];
   lean: Lean | null;
   certainty: Certainty;
+  /**
+   * How the reading is called, in the GM's words: `certainty` said plainly ("A fact from the export"), which the app
+   * shows under "How it's called" (a code this build does not know still has its words).
+   */
+  called: string;
   /** The D-041 stamp shown in the evidence view (a breakdown, where a method word may help). */
   stamp?: string;
 }

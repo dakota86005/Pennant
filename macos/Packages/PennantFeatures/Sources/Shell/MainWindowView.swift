@@ -55,11 +55,72 @@ struct ShellSplitView: View {
                 .navigationSubtitle(ServedText.subtitle(dataStatus: model.dataStatus) ?? "")
                 .toolbar { WindowToolbar(window: window) }
                 .inspector(isPresented: $window.inspectorPresented) {
-                    InspectorView()
+                    InspectorView(window: window)
                         .inspectorColumnWidth(min: 280, ideal: 320, max: 440)
                 }
         }
         .searchable(text: $window.searchText, placement: .toolbar, prompt: Text("Search"))
+        // The ⌘K palette: a glass control over the whole window, keyboard first; a click outside closes it
+        .overlay(alignment: .top) {
+            if window.paletteShown { PaletteOverlay(window: window) }
+        }
+        // The club's theme for every coloured piece in the window: the club card, the mastheads, the floating control
+        .environment(\.theme, model.theme)
+        .modifier(DebugIncreasedContrast())
+    }
+}
+
+/// The ⌘K palette over the window (SWIFTUI_REBUILD.md section 3.6): the registry's views and the window's commands,
+/// from `PaletteIndex`; opening an entry goes there or runs the command, and closes the palette.
+struct PaletteOverlay: View {
+    @Environment(AppModel.self) private var model
+    @Environment(AppRouting.self) private var routing
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
+    @Bindable var window: MainWindowModel
+
+    var body: some View {
+        let index = PaletteIndex(registry: window.registry, catalog: model.catalog, can: .of(model, window: window), inspectorShown: window.inspectorPresented)
+        ZStack(alignment: .top) {
+            Color.black.opacity(0.18).ignoresSafeArea()
+                .onTapGesture { window.paletteShown = false }
+                .accessibilityHidden(true)
+            CommandPalette(entries: index.entries, query: $window.paletteQuery, open: { entry in
+                window.paletteShown = false
+                switch index.action(for: entry) {
+                case .route(let route): window.go(to: route)
+                case .command(.inspector): window.toggleInspector()
+                case .command(.refreshData): Task { await model.startImport() }
+                case .command(.importExport): routing.requestSetup(); openWindow(id: SceneID.setup)
+                case .command(.dataStatus): routing.showDataStatus(); openSettings()
+                case .command(.back): window.goBack()
+                case .command(.forward): window.goForward()
+                case nil: break
+                }
+            }, dismiss: { window.paletteShown = false })
+            .padding(.top, 120)
+        }
+    }
+}
+
+/// A Debug build's UI tests and screenshots can draw the window as Increase Contrast or Reduce Transparency do without
+/// changing the Mac's settings: `-PennantDebugAppearance increasedContrastLight` or `increasedContrastDark` (the app's
+/// own pieces read the increased contrast, the theme's 7:1 colours and the borders, and AppKit the high-contrast
+/// appearance, `AppAppearance.debugAppearance`), and `-PennantDebugReduceTransparency YES` (the app's own pieces draw
+/// opaque; the system's glass follows only the Mac's setting). A release build draws what the Mac says.
+struct DebugIncreasedContrast: ViewModifier {
+    @Environment(\.forcesIncreasedContrast) private var increasedContrast
+    @Environment(\.forcesReduceTransparency) private var reduceTransparency
+
+    func body(content: Content) -> some View {
+        #if DEBUG
+        // A look the snapshot tests set above the window is kept; the launch arguments add to it
+        content
+            .environment(\.forcesIncreasedContrast, increasedContrast || AppAppearance.debugAppearance != nil)
+            .environment(\.forcesReduceTransparency, reduceTransparency || UserDefaults.standard.bool(forKey: "PennantDebugReduceTransparency"))
+        #else
+        content
+        #endif
     }
 }
 
@@ -123,10 +184,25 @@ struct DataStatusButton: View {
     }
 }
 
-/// The current view: the descriptor's view, or, with no save chosen, the way to Setup. Opaque content.
+/// The current view: the descriptor's view, or, with no save chosen, the way to Setup. Opaque content. It gives the
+/// views what a basis popover can do in this window (SWIFTUI_REBUILD.md section 3.3): pin to the inspector, detach
+/// into a floating panel (the app's basis window), open a served target, and the departments' served names.
 struct DetailView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.openWindow) private var openWindow
     let window: MainWindowModel
+
+    private var claimActions: ClaimActions {
+        let window = window
+        let catalog = model.catalog
+        return ClaimActions(
+            pin: { window.pin($0) },
+            detach: { openWindow(value: $0) },
+            canOpen: { target in route(target).map { window.canOpen($0) } ?? false },
+            open: { target in if let route = route(target) { window.open(route) } },
+            departmentName: { id in window.registry.name(of: id, catalog: catalog) }
+        )
+    }
 
     var body: some View {
         Group {
@@ -140,6 +216,7 @@ struct DetailView: View {
         }
         .id(window.route)
         .environment(\.routeOpener, window)
+        .environment(\.claimActions, claimActions)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(.background)
         .accessibilityIdentifier("detail.\(window.route.department.rawValue).\(window.route.view)")
@@ -185,10 +262,13 @@ struct NoSaveView: View {
     }
 }
 
-/// The inspector column (SWIFTUI_REBUILD.md section 3.2): its evidence tab, empty until figures carry a basis (N5).
+/// The inspector column (SWIFTUI_REBUILD.md sections 3.2 and 3.3): its evidence tab shows the claim pinned from a
+/// basis popover, in full; nothing is selected until one is pinned.
 struct InspectorView: View {
     private enum Tab: Hashable { case evidence }
     @State private var tab = Tab.evidence
+    @Environment(AppModel.self) private var model
+    let window: MainWindowModel
 
     var body: some View {
         VStack(spacing: 0) {
@@ -198,12 +278,24 @@ struct InspectorView: View {
             .pickerStyle(.segmented)
             .labelsHidden()
             .padding(8)
-            ContentUnavailableView {
-                Label("Evidence", systemImage: "doc.text.magnifyingglass")
-            } description: {
-                Text("Nothing selected")
+            if let claim = window.pinnedClaim {
+                EvidenceView(claim: claim)
+                    .environment(\.claimActions, ClaimActions(departmentName: { [registry = window.registry, catalog = model.catalog] id in
+                        registry.name(of: id, catalog: catalog)
+                    }))
+                    .frame(maxHeight: .infinity)
+            } else {
+                // Drawn by hand rather than with ContentUnavailableView, whose dimmed text failed the contrast audit
+                VStack(spacing: 10) {
+                    Image(systemName: "doc.text.magnifyingglass").font(.system(size: 32)).foregroundStyle(.secondary).accessibilityHidden(true)
+                    Text("Nothing pinned").font(.body.weight(.semibold))
+                    Text("Pin a figure's basis from its popover").font(.callout)
+                }
+                .foregroundStyle(.primary)
+                .multilineTextAlignment(.center)
+                .padding()
+                .frame(maxHeight: .infinity)
             }
-            .frame(maxHeight: .infinity)
         }
         .controlSize(.small)
         .accessibilityIdentifier("inspector")
@@ -219,11 +311,27 @@ public enum AppAppearance {
     }
 
     public static func apply(_ theme: String?) {
-        let appearance: NSAppearance? = switch theme {
+        var appearance: NSAppearance? = switch theme {
         case "dark": NSAppearance(named: .darkAqua)
         case "light": NSAppearance(named: .aqua)
         default: nil
         }
+        #if DEBUG
+        if let override = debugAppearance { appearance = override }
+        #endif
         if NSApp.appearance != appearance { NSApp.appearance = appearance }
     }
+
+    #if DEBUG
+    /// A Debug build's UI tests draw the app in the system's high-contrast appearance, which is what Increase Contrast
+    /// gives (AppKit and SwiftUI both follow it), without changing the Mac's own accessibility setting: the launch
+    /// argument `-PennantDebugAppearance increasedContrastLight` or `increasedContrastDark`. Never in a release build.
+    static var debugAppearance: NSAppearance? {
+        switch UserDefaults.standard.string(forKey: "PennantDebugAppearance") {
+        case "increasedContrastLight": NSAppearance(named: .accessibilityHighContrastAqua)
+        case "increasedContrastDark": NSAppearance(named: .accessibilityHighContrastDarkAqua)
+        default: nil
+        }
+    }
+    #endif
 }

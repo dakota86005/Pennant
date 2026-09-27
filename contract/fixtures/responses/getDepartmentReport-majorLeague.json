@@ -44,7 +44,8 @@
         "A new export."
       ],
       "lean": null,
-      "certainty": "fact"
+      "certainty": "fact",
+      "called": "A fact from the export"
     },
     "links": []
   },
@@ -72,13 +73,15 @@
         "unknown": [],
         "wouldChange": [],
         "lean": null,
-        "certainty": "fact"
+        "certainty": "fact",
+        "called": "A fact from the export"
       },
       "links": [],
       "value": {
         "n": 26,
         "unit": "count",
-        "display": "26 of 26"
+        "display": "26 of 26",
+        "whole": 26
       }
     },
     {
@@ -104,13 +107,15 @@
         "unknown": [],
         "wouldChange": [],
         "lean": null,
-        "certainty": "fact"
+        "certainty": "fact",
+        "called": "A fact from the export"
       },
       "links": [],
       "value": {
         "n": 26,
         "unit": "count",
-        "display": "26 of 40"
+        "display": "26 of 40",
+        "whole": 40
       }
     },
     {
@@ -132,7 +137,8 @@
         "unknown": [],
         "wouldChange": [],
         "lean": null,
-        "certainty": "fact"
+        "certainty": "fact",
+        "called": "A fact from the export"
       },
       "links": [],
       "value": {
@@ -184,6 +190,7 @@
             "wouldChange": [],
             "lean": null,
             "certainty": "policy",
+            "called": "A line chosen and stated",
             "stamp": "Major League Ops states critical, elevated or watch; they read critical, attention and noted on the desk, in the same order and never higher. A flag the philosophy shaded keeps its philosophy-free severity beside it. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
           },
           "links": []
@@ -222,6 +229,7 @@
             "wouldChange": [],
             "lean": null,
             "certainty": "policy",
+            "called": "A line chosen and stated",
             "stamp": "Pennant's first-pass minimum for each role: a stated floor, not a league rule or an ideal roster."
           },
           "links": [],

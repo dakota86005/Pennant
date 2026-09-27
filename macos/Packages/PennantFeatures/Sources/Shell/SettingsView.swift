@@ -1,5 +1,6 @@
 import FeatureCore
 import PennantAPI
+import PennantDesign
 import PennantKit
 import SwiftUI
 import UniformTypeIdentifiers
@@ -13,13 +14,18 @@ public struct SettingsView: View {
 
     /// Each tab's size: the window takes the selected tab's.
     public static let width: CGFloat = 620
-    public static func height(_ tab: AppRouting.SettingsTab) -> CGFloat {
+    /// A tab's height. Appearance grows with what it lists: each theme on offer past the first two, and each refused
+    /// pack (a line with its sentence), up to a height that still fits a small screen, past which the form scrolls.
+    public static func height(_ tab: AppRouting.SettingsTab, themes: Int = 0, refusedPacks: Int = 0) -> CGFloat {
         switch tab {
         case .general: 620
-        case .appearance: 200
+        case .appearance: min(appearanceMax, 560 + 24 * CGFloat(max(0, themes - 2)) + 44 * CGFloat(max(0, refusedPacks)))
         case .ai: 460
         }
     }
+
+    /// The tallest Appearance grows.
+    public static let appearanceMax: CGFloat = 820
 
     public init() {}
 
@@ -30,7 +36,9 @@ public struct SettingsView: View {
                 GeneralSettings().frame(width: Self.width, height: Self.height(.general))
             }
             Tab("Appearance", systemImage: "circle.lefthalf.filled", value: AppRouting.SettingsTab.appearance) {
-                AppearanceSettings().frame(width: Self.width, height: Self.height(.appearance))
+                AppearanceSettings().frame(width: Self.width, height: Self.height(
+                    .appearance, themes: model.themeChoices?.choices.count ?? 0, refusedPacks: model.themeChoices?.refused.count ?? 0
+                ))
             }
             Tab("AI", systemImage: "sparkles", value: AppRouting.SettingsTab.ai) {
                 AISettings().frame(width: Self.width, height: Self.height(.ai))
@@ -278,16 +286,13 @@ struct DataStatusSection: View {
     var body: some View {
         Section("Data status") {
             if let status = dataStatus {
-                HStack {
-                    Label {
-                        Text(verbatim: status.headline.text).font(.headline)
-                    } icon: {
-                        ToneSymbol(tone: status.headline.tone)
+                // The reasons, where the save was found and what the log reader said: the basis, one click away
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    ToneSymbol(tone: status.headline.tone)
+                    ClaimText(status.headline, edge: .trailing) {
+                        Text(verbatim: status.headline.text).font(.headline).multilineTextAlignment(.leading)
                     }
-                    .help(detail: status.headline.hint)
-                    Spacer()
-                    // The reasons, where the save was found and what the log reader said: the breakdown, one click away
-                    BasisButton(basis: status.headline.basis)
+                    .accessibilityIdentifier("settings.dataStatus.headline")
                 }
                 if let action = status.action {
                     Label { Text(verbatim: action.display) } icon: { Image(systemName: "arrow.forward.circle") }
@@ -328,7 +333,9 @@ struct DataStatusSection: View {
 
 // MARK: Appearance
 
-/// System, Light or Dark: the served `theme`, applied to every window once the server has saved it.
+/// System, Light or Dark (the served `theme`, applied to every window once the server has saved it), and the club's
+/// colours: whether to draw team colours at all (the served `useTeamColors`), and which theme the current club wears,
+/// its own colours or an installed theme pack, each with a preview in its own colours (D-062).
 struct AppearanceSettings: View {
     @Environment(AppModel.self) private var model
     @State private var problem: RequestProblem?
@@ -359,8 +366,175 @@ struct AppearanceSettings: View {
                 .accessibilityIdentifier("settings.appearance")
                 if let problem { ProblemLine(problem) }
             }
+            ThemeSettings()
         }
         .formStyle(.grouped)
+    }
+}
+
+/// The club's theme: team colours on or off, and the theme the current club wears, chosen from its served choices.
+struct ThemeSettings: View {
+    @Environment(AppModel.self) private var model
+    @State private var problem: RequestProblem?
+    @State private var loadProblem: RequestProblem?
+
+    var body: some View {
+        let useTeamColors = model.settings?.settings.useTeamColors ?? true
+        Section {
+            Toggle("Use Team Colors", isOn: Binding(
+                get: { useTeamColors },
+                set: { on in
+                    Task {
+                        do {
+                            try await model.saveSettings(.init(useTeamColors: on))
+                            problem = nil
+                        } catch {
+                            problem = RequestProblem.from(error)
+                        }
+                    }
+                }
+            ))
+            .disabled(model.settings == nil)
+            .accessibilityIdentifier("settings.useTeamColors")
+            if let choices = model.themeChoices {
+                Picker("Theme", selection: Binding(
+                    get: { choices.active },
+                    set: { id in
+                        Task {
+                            do {
+                                try await model.chooseTheme(id)
+                                problem = nil
+                            } catch {
+                                problem = RequestProblem.from(error)
+                            }
+                        }
+                    }
+                )) {
+                    ForEach(choices.choices, id: \.id) { pack in
+                        ThemeChoiceLabel(pack: pack).tag(pack.id)
+                    }
+                }
+                .pickerStyle(.radioGroup)
+                .disabled(!useTeamColors)
+                .accessibilityIdentifier("settings.theme")
+                if let active = choices.choices.first(where: { $0.id == choices.active }) {
+                    ThemePreview(pack: active, useTeamColors: useTeamColors)
+                }
+                if let unavailable = choices.unavailable {
+                    ProblemLine(served: unavailable.display, detail: unavailable.hint)
+                }
+                ForEach(choices.refused, id: \.folder) { refused in
+                    LabeledContent {
+                        Text(verbatim: refused.problem.display)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } label: {
+                        Label { Text(verbatim: refused.folder) } icon: { Image(systemName: "exclamationmark.triangle") }
+                    }
+                    .help(Text(verbatim: refused.details.joined(separator: "\n")))
+                    .accessibilityIdentifier("settings.theme.refused.\(refused.folder)")
+                }
+                LabeledContent("Theme Packs Folder") {
+                    HStack {
+                        Text(verbatim: choices.folder)
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .textSelection(.enabled)
+                            .help(Text(verbatim: choices.folder))
+                        if FileManager.default.fileExists(atPath: choices.folder) {
+                            Button("Show in Finder") {
+                                NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: choices.folder, isDirectory: true)])
+                            }
+                            .controlSize(.small)
+                        }
+                    }
+                }
+            } else if let loadProblem {
+                ProblemLine(loadProblem)
+            } else {
+                ProgressView().controlSize(.small)
+            }
+            if let problem { ProblemLine(problem) }
+        } header: {
+            Text("Team Colors")
+        }
+        .task(id: model.storeKey) {
+            do {
+                try await model.loadThemeChoices()
+                loadProblem = nil
+            } catch {
+                loadProblem = RequestProblem.from(error)
+            }
+        }
+    }
+}
+
+/// A theme on offer: a swatch of its masthead's colours and its served name (the colour is never the only signal).
+struct ThemeChoiceLabel: View {
+    let pack: Components.Schemas.ThemePack
+    @Environment(\.colorScheme) private var colorScheme
+    @EffectiveContrast private var contrast
+
+    var body: some View {
+        let palette = Theme(served: pack, useTeamColors: true).palette(colorScheme: colorScheme, contrast: contrast)
+        HStack(spacing: 8) {
+            LinearGradient(colors: palette.masthead.count == 1 ? palette.masthead + palette.masthead : palette.masthead,
+                           startPoint: .leading, endPoint: .trailing)
+                .frame(width: 28, height: 14)
+                .clipShape(.capsule)
+                .overlay { Capsule().strokeBorder(.separator, lineWidth: 0.5) }
+                .accessibilityHidden(true)
+            Text(verbatim: pack.name)
+        }
+    }
+}
+
+/// A live preview of a theme in the window's appearance: the Morning Report's masthead as the window sets it
+/// (`ClubMagazineMasthead`: the club's served name and the pack's in the kicker, the view's served name, the served
+/// record, the pack's art past the text) drawn at the width the window gives it and scaled down to fit, and the club
+/// card, drawn by the same components the window uses.
+struct ThemePreview: View {
+    @Environment(AppModel.self) private var model
+    let pack: Components.Schemas.ThemePack
+    let useTeamColors: Bool
+    @State private var logo: Image?
+    @State private var mastheadHeight: CGFloat = 0
+
+    /// The width the masthead is laid out at (a report's, so the art has its room past the text) and the scale it is
+    /// shown at in Settings.
+    static let mastheadWidth: CGFloat = 900
+    static let scale: CGFloat = 0.6
+
+    var body: some View {
+        let club = model.catalogClub
+        VStack(alignment: .leading, spacing: 10) {
+            ClubMagazineMasthead(
+                kicker: [pack.name],
+                headline: model.servedViewName(department: "frontOffice", view: "morningReport").map { Text(verbatim: $0) } ?? Text("Morning Report")
+            ) {
+                if let record = club?.record {
+                    BoxFigure(value: record.display, label: "")
+                        .help(record.hint.map { Text(verbatim: $0) } ?? Text(verbatim: record.display))
+                }
+            }
+            .environment(\.mastheadTopInset, 0)
+            .frame(width: Self.mastheadWidth)
+            .fixedSize(horizontal: false, vertical: true)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { mastheadHeight = $0 }
+            .scaleEffect(Self.scale, anchor: .topLeading)
+            .frame(width: Self.mastheadWidth * Self.scale, height: mastheadHeight * Self.scale, alignment: .topLeading)
+            .clipShape(.rect(cornerRadius: 10))
+            if let club {
+                ClubCard(name: club.name, detail: nil, record: club.record.display, recordHint: club.record.hint, logo: logo)
+                    .frame(width: 260)
+            }
+        }
+        .environment(\.theme, Theme(served: pack, useTeamColors: useTeamColors))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("settings.theme.preview")
+        .task(id: pack.logo) { logo = await ServedImages.image(pack.logo, model: model) }
     }
 }
 

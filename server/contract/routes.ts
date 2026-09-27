@@ -113,6 +113,27 @@ export const operations: Operation[] = [
   },
 
   {
+    operationId: 'getThemeChoices',
+    method: 'get',
+    path: '/api/v2/theme-packs/:org',
+    summary: 'The themes a club can wear: its own colours (from the save) and each installed theme pack that fits it, with every appearance resolved; the packs refused, and why.',
+    params: [ORG_PARAM],
+    response: 'ThemeChoices',
+    errors: { 404: 'ApiError' },
+    reused: false,
+  },
+  {
+    operationId: 'chooseTheme',
+    method: 'post',
+    path: '/api/v2/theme-packs/:org',
+    summary: 'Chooses the theme a club wears (`club-colors` for its own colours). A pack not installed, refused, or made for another club is refused (400).',
+    params: [ORG_PARAM],
+    request: 'ThemeChoice',
+    response: 'ThemeChoices',
+    errors: { 400: 'ApiError', 404: 'ApiError' },
+    reused: false,
+  },
+  {
     operationId: 'getSaveDiscovery',
     method: 'get',
     path: '/api/v2/saves',

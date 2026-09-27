@@ -160,7 +160,9 @@ function countFigure(ctx: DepartmentContext, label: string, count: number | null
     text: label,
     tone: known ? 'neutral' : 'unknown',
     value: known
-      ? servedValue(count, 'count', limit !== null ? `${count} of ${limit}` : String(count))
+      ? limit !== null && limit > 0
+        ? servedValue(count, 'count', `${count} of ${limit}`, { whole: limit })
+        : servedValue(count, 'count', limit !== null ? `${count} of ${limit}` : String(count))
       : unknownValue('count', 'Not in the export'),
     basis: basis({
       because: [

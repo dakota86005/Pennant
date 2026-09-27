@@ -53,6 +53,8 @@ public struct CommandAvailability: Equatable, Sendable {
     public var back: Bool
     public var forward: Bool
     public var inspector: Bool
+    /// View ▸ Find Anything… (⌘K): a key main window whose server is ready.
+    public var findAnything: Bool
 
     /// - Parameters:
     ///   - serverReady: the server is up and answering.
@@ -67,6 +69,7 @@ public struct CommandAvailability: Equatable, Sendable {
         back = serverReady && (window?.canGoBack ?? false)
         forward = serverReady && (window?.canGoForward ?? false)
         inspector = window != nil && serverReady
+        findAnything = window != nil && serverReady
     }
 
     /// For the app's model and the key window.

@@ -23,8 +23,55 @@ struct EventClientTests {
         let types = signals.compactMap { signal -> String? in
             if case .event(let event) = signal { event.typeName } else { nil }
         }
-        #expect(types == ["hello", "import-started", "import-progress", "import-finished", "job"])
+        // The one progress step goes unless the finish was already waiting beside it (then it was overtaken)
+        #expect(types.filter { $0 != "import-progress" } == ["hello", "import-started", "import-finished", "job"])
+        #expect(types.filter { $0 == "import-progress" }.count <= 1)
+        #expect(types.firstIndex(of: "import-progress").map { $0 == 2 } ?? true)
         #expect(signals.contains { if case .malformed = $0 { true } else { false } } == false)
+    }
+
+    @Test("while the app is busy, an import's progress a later import event overtook is dropped, and nothing else")
+    func overtakenProgress() async throws {
+        let sse = try String(decoding: fixtureData("events.sse"), as: UTF8.self)
+        let blocks = sse.components(separatedBy: "\n\n").filter { !$0.isEmpty }
+        let progress = try #require(blocks.first { $0.hasPrefix("event: import-progress") })
+        // A busy import: forty progress steps between the start and the finish
+        let stream = blocks.flatMap { $0 == progress ? Array(repeating: progress, count: 40) : [$0] }.joined(separator: "\n\n") + "\n\n"
+        let transport = RoutedTransport(["/api/v2/events": RoutedTransport.sse(stream)])
+        let collected = SignalLog()
+        try await EventClient(client: client(transport)).readOnce { signal in
+            collected.append(signal)
+            // The app busy with each signal (drawing, say), while the stream keeps arriving
+            try? await Task.sleep(for: .milliseconds(150))
+        }
+        let types = collected.signals.compactMap { signal -> String? in
+            if case .event(let event) = signal { event.typeName } else { nil }
+        }
+        #expect(types.first == "hello")
+        #expect(types.suffix(2) == ["import-finished", "job"])
+        #expect(types.contains("import-started"))
+        #expect(types.filter { $0 == "import-progress" }.count < 40)
+    }
+
+    @Test("dropping overtaken progress keeps every other signal, in order")
+    func superseded() throws {
+        let sse = try String(decoding: fixtureData("events.sse"), as: UTF8.self)
+        let decoded = try sse.components(separatedBy: "\n\n").filter { !$0.isEmpty }.map { block -> EventSignal in
+            let json = try #require(block.split(separator: "\n").first { $0.hasPrefix("data: ") }).dropFirst(6)
+            return .event(try JSONDecoder().decode(Components.Schemas.ServerEvent.self, from: Data(json.utf8)))
+        }
+        // hello, started, progress, finished, job
+        let progress = decoded[2]
+        let names = { (signals: [EventSignal]) in
+            signals.map { signal -> String in if case .event(let e) = signal { e.typeName ?? "?" } else { "\(signal)" } }
+        }
+        #expect(names(EventClient.superseded([decoded[0], decoded[1], progress, progress, decoded[3], decoded[4]]))
+            == ["hello", "import-started", "import-finished", "job"])
+        // The last progress with nothing after it stays: it is the latest word
+        #expect(names(EventClient.superseded([decoded[1], progress, progress])) == ["import-started", "import-progress"])
+        // A job or a hello after progress overtakes nothing
+        #expect(names(EventClient.superseded([progress, decoded[4], .connected])).first == "import-progress")
+        #expect(EventClient.superseded([.malformed(type: "import-progress"), progress]).first == .malformed(type: "import-progress"))
     }
 
     @Test("an unknown type is ignored, and a known one that did not decode is reported")

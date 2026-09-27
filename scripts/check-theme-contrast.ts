@@ -1,13 +1,19 @@
 /**
  * Checks every club's palette for contrast (WCAG AA on every pair a page draws), in both modes, as both clients draw it:
  * the React app's CSS values and the hex tokens the Mac app is served (`GET /api/v2/catalog`), both from the server's
- * `server/presentation/palette.ts`.
+ * `server/presentation/palette.ts`. Then each club's own theme pack for the Mac app (D-062: the masthead, the accent,
+ * the tint and the club card, in light, dark and both with Increase Contrast), and the theme packs in a folder: the
+ * repository's example, and any given.
  *
- *   npm run check:theme              the imported league in ./data
- *   npm run check:theme -- <db>      another league database (a scratch copy, the synthetic league)
+ *   npm run check:theme                         the imported league in ./data
+ *   npm run check:theme -- <db>                 another league database (a scratch copy, the synthetic league)
+ *   npm run check:theme -- <db> <packs folder>  and every pack in a theme-packs folder
  */
+import fs from 'node:fs';
+import path from 'node:path';
 import Database from 'better-sqlite3';
 import { clubPalette, derivePalette } from '../server/presentation/palette.js';
+import { VARIANTS, clubColorVariants, contrastProblems, readPack } from '../server/presentation/themePacks.js';
 
 const db = new Database(process.argv[2] ?? './data/league.db', { readonly: true });
 
@@ -128,4 +134,46 @@ for (const t of teams) {
 }
 const total = teams.length * MODES.length;
 console.log(`\n${total - failures}/${total} team/mode combinations pass WCAG AA on every pair`);
-if (failures > 0) process.exit(1);
+
+// ── The Mac app's theme packs ──
+console.log('\n── each club\'s own theme pack (light, dark, and each with Increase Contrast) ──');
+let packFailures = 0;
+for (const t of teams) {
+  const tokens = clubColorVariants(t);
+  const problems = VARIANTS.flatMap((v) => contrastProblems(tokens[v.name], v));
+  if (problems.length) packFailures++;
+  console.log(`${problems.length ? '❌' : '✓'} ${(t.name + ' ' + t.nickname).padEnd(26)} ${problems.length ? problems.join(' ') : 'every pair reads'}`);
+}
+console.log(`${teams.length - packFailures}/${teams.length} clubs' own theme packs pass`);
+
+const packFolders = [path.join(process.cwd(), 'docs', 'theme-packs'), ...(process.argv[3] ? [path.resolve(process.argv[3])] : [])];
+let installedFailures = 0;
+for (const folder of packFolders) {
+  if (!fs.existsSync(folder)) continue;
+  console.log(`\n── theme packs in ${folder} ──`);
+  for (const entry of fs.readdirSync(folder, { withFileTypes: true }).filter((e) => e.isDirectory() || e.isSymbolicLink())) {
+    const dir = path.join(folder, entry.name);
+    // As the app reads packs (`server/themePackStore.ts`): a link is never followed
+    if (entry.isSymbolicLink()) {
+      installedFailures++;
+      console.log(`❌ ${entry.name.padEnd(26)} It is a link to a folder elsewhere; put the pack's folder itself in theme-packs.`);
+      continue;
+    }
+    let raw: unknown = null;
+    try {
+      raw = JSON.parse(fs.readFileSync(path.join(dir, 'pack.json'), 'utf8'));
+    } catch {
+      // readPack refuses what is not a pack
+    }
+    const size = (file: string): number | null => {
+      try { const stat = fs.lstatSync(path.join(dir, file)); return stat.isFile() ? stat.size : null; } catch { return null; }
+    };
+    const link = (file: string): boolean => {
+      try { return fs.lstatSync(path.join(dir, file)).isSymbolicLink(); } catch { return false; }
+    };
+    const reading = readPack(raw, entry.name, { size, link }, (file) => file);
+    if (!reading.ok) installedFailures++;
+    console.log(`${reading.ok ? '✓' : '❌'} ${entry.name.padEnd(26)} ${reading.ok ? 'every pair reads' : reading.details.join(' ')}`);
+  }
+}
+if (failures > 0 || packFailures > 0 || installedFailures > 0) process.exit(1);

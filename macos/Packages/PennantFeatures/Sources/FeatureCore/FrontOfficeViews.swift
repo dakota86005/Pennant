@@ -1,23 +1,25 @@
 import PennantAPI
+import PennantDesign
 import PennantKit
 import SwiftUI
 
-// The Front Office's first plain rendering (SWIFTUI_REBUILD.md sections 3.4 and 3.5): served claims, items, cards and
-// reports laid out structurally. Every sentence, number and order is the server's; the views add only structural labels
-// from the String Catalog. N5's design system (ClaimText, ReportCard, BasisPopover) and N6's Morning Report replace the
-// look; the structure stays.
+// The Front Office's served views in the design language (SWIFTUI_REBUILD.md sections 3.4, 3.5 and 3.7): served
+// claims, items, cards and reports drawn with PennantDesign's components. Every sentence, number and order is the
+// server's; the views add only structural labels from the String Catalog.
 
 /// Served strings on one line, in the order given, with the missing ones left out.
 func servedLine(_ parts: [String?]) -> String {
     parts.compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
 }
 
-/// What can open a route in the window a view is in (the Shell's window model): whether this build has the route, and
-/// going there. A reference, so the environment does not change on every update.
+/// What can open a route in the window a view is in (the Shell's window model): whether this build has the route,
+/// going there, and the registry's department for a served id (its symbol). A reference, so the environment does not
+/// change on every update.
 @MainActor
 public protocol RouteOpening: AnyObject {
     func canOpen(_ route: AppRoute) -> Bool
     func open(_ route: AppRoute)
+    func department(_ id: DeptID) -> Department?
 }
 
 extension EnvironmentValues {
@@ -26,7 +28,7 @@ extension EnvironmentValues {
 }
 
 /// A served target as a route in this build, when it names a department's view.
-func route(_ target: Components.Schemas.Target?) -> AppRoute? {
+public func route(_ target: Components.Schemas.Target?) -> AppRoute? {
     guard let target, let view = target.view, let department = target.department else { return nil }
     return AppRoute(department: DeptID(rawValue: department.rawValue), view: view)
 }
@@ -43,92 +45,36 @@ public struct ClaimLine: View {
 
     public var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
-            ToneSymbol(tone: claim.tone)
-            Text(verbatim: claim.text)
-                .font(font)
-                .fixedSize(horizontal: false, vertical: true)
-            BasisButton(basis: claim.basis)
-        }
-        .help(detail: claim.hint)
-    }
-}
-
-/// A key figure: its served value large, its line beneath, its basis one click away.
-public struct FigureTile: View {
-    let claim: Components.Schemas.Claim
-
-    public init(_ claim: Components.Schemas.Claim) {
-        self.claim = claim
-    }
-
-    public var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(verbatim: claim.value?.display ?? claim.text)
-                    .font(.title2.weight(.semibold))
-                    .monospacedDigit()
-                BasisButton(basis: claim.basis)
-            }
-            if claim.value != nil {
+            ToneMark(served: claim.tone)
+            ClaimText(claim, edge: .trailing) {
                 Text(verbatim: claim.text)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .font(font)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .help(detail: claim.hint)
-        .accessibilityElement(children: .combine)
     }
 }
 
-/// One item on the desk or in a report: how urgent the department said it is, what it is, who raised it, and a second
-/// line and a clock when it has them. Its basis and, for an item with one, the staff's options are a click away.
+/// One item on the desk or in a report: the design's desk row, with the staff's options trailing when it has them.
 public struct DeskItemRow: View {
     let item: Components.Schemas.FoItem
     /// Shows which department raised it (on the desk, where items from every department are merged).
     let showsDepartment: Bool
+    let compact: Bool
 
-    public init(_ item: Components.Schemas.FoItem, showsDepartment: Bool = true) {
+    public init(_ item: Components.Schemas.FoItem, showsDepartment: Bool = true, compact: Bool = false) {
         self.item = item
         self.showsDepartment = showsDepartment
+        self.compact = compact
     }
 
     public var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            ToneSymbol(tone: item.urgency.tone)
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(verbatim: item.headline.text)
-                        .font(.body.weight(.medium))
-                        .fixedSize(horizontal: false, vertical: true)
-                        .help(detail: item.headline.hint)
-                    BasisButton(basis: item.headline.basis)
-                }
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(verbatim: servedLine([item.urgency.text, item.due?.display, showsDepartment ? item.raisedBy.display : nil]))
-                        .font(.callout)
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                        .help(detail: item.urgency.hint)
-                    // Why it sits where it does on the desk: the line that placed it, and any lean beside the plain reading
-                    BasisButton(basis: item.urgency.basis)
-                        .controlSize(.small)
-                        .accessibilityIdentifier("item.urgency.basis")
-                }
-                if let detail = item.detail {
-                    Text(verbatim: detail.display)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .help(detail: detail.hint)
-                }
-            }
-            Spacer(minLength: 0)
+        DeskRow(item, showsDepartment: showsDepartment, compact: compact) {
             if let evidence = item.evidence {
-                TrailButton(evidence: evidence)
+                TrailButton(evidence: evidence, compact: compact)
             }
         }
-        .padding(.vertical, 4)
-        .accessibilityIdentifier("item.\(item.key)")
     }
 }
 
@@ -136,23 +82,45 @@ public struct DeskItemRow: View {
 public struct TrailButton: View {
     @Environment(AppModel.self) private var model
     let evidence: String
+    let compact: Bool
     @State private var showing = false
 
-    public init(evidence: String) {
+    public init(evidence: String, compact: Bool = false) {
         self.evidence = evidence
+        self.compact = compact
     }
 
     public var body: some View {
-        Button("Staff's Options") { showing.toggle() }
-            .controlSize(.small)
-            .accessibilityIdentifier("item.options")
-            .popover(isPresented: $showing, arrowEdge: .trailing) {
-                TrailContent(evidence: evidence)
-                    .padding()
-                    .frame(width: 420, alignment: .leading)
-                    .task { await model.loadTrail(evidence) }
+        Button { showing.toggle() } label: {
+            if compact {
+                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+                    .accessibilityLabel(Text("Staff's Options"))
+            } else {
+                Text("Staff's Options")
             }
+        }
+        .buttonStyle(compact ? AnyButtonStyle(.plain) : AnyButtonStyle(.bordered))
+        .controlSize(.small)
+        .help(Text("Staff's Options"))
+        .accessibilityIdentifier("item.options")
+        .popover(isPresented: $showing, arrowEdge: .trailing) {
+            TrailContent(evidence: evidence)
+                .padding()
+                .frame(width: 420, alignment: .leading)
+                .task { await model.loadTrail(evidence) }
+        }
     }
+}
+
+/// A button style chosen at run time.
+struct AnyButtonStyle: PrimitiveButtonStyle {
+    private let make: (Configuration) -> AnyView
+
+    init<S: PrimitiveButtonStyle>(_ style: S) {
+        make = { AnyView(style.makeBody(configuration: $0)) }
+    }
+
+    func makeBody(configuration: Configuration) -> some View { make(configuration) }
 }
 
 /// An evidence trail: its headline, then each section's claims, as served.
@@ -172,7 +140,7 @@ public struct TrailContent: View {
                     Text(verbatim: trail.title.display).font(.headline)
                     ClaimLine(trail.headline)
                     // The need's own basis (why, not known), above the responses
-                    BasisContent(basis: trail.headline.basis)
+                    BasisSections(basis: trail.headline.basis).font(.callout)
                     ForEach(Array(trail.sections.enumerated()), id: \.offset) { _, section in
                         VStack(alignment: .leading, spacing: 4) {
                             Text(verbatim: section.title.display).font(.subheadline.weight(.semibold))
@@ -196,8 +164,8 @@ public struct TrailContent: View {
     }
 }
 
-/// A department's card on the Morning Report: its name and who prepared it, its summary, two or three key figures and
-/// its first items, and the way into its report.
+/// A department's card on the Morning Report: the design's tile for a department with a report, or its placeholder
+/// row for one with none yet. The symbol is the registry's; a report only this build can open gets the way in.
 public struct DepartmentCardView: View {
     @Environment(\.routeOpener) private var opener
     let card: Components.Schemas.DepartmentCard
@@ -207,52 +175,22 @@ public struct DepartmentCardView: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(verbatim: card.name).font(.headline)
-                Text(verbatim: card.preparedBy.display)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .help(detail: card.preparedBy.hint)
-            }
-            ClaimLine(card.summary)
-            if !card.figures.isEmpty {
-                HStack(alignment: .top, spacing: 20) {
-                    ForEach(Array(card.figures.enumerated()), id: \.offset) { _, figure in
-                        FigureTile(figure)
-                    }
-                }
-            }
-            if !card.top.isEmpty {
-                VStack(alignment: .leading, spacing: 2) {
-                    ForEach(card.top, id: \.key) { item in
-                        DeskItemRow(item, showsDepartment: false)
-                    }
-                }
-            }
-            // Only a report this build can open: a card with none has no button
-            if let route = route(card.open), let opener, opener.canOpen(route) {
-                Button("Open Report") { opener.open(route) }
-                    .controlSize(.small)
-                    .accessibilityIdentifier("card.open.\(route.department.rawValue)")
-            }
+        let symbol = opener?.department(DeptID(rawValue: card.department.rawValue))?.symbol ?? "building.2"
+        if card.status.value1 == .notYet {
+            DepartmentPlaceholderRow(card, symbol: symbol)
+        } else {
+            let target = route(card.open)
+            DepartmentTile(card, symbol: symbol, open: target.flatMap { route in
+                guard let opener, opener.canOpen(route) else { return nil }
+                return { opener.open(route) }
+            })
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(.background.secondary, in: .rect(cornerRadius: 10))
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("card.\(card.department.rawValue)")
     }
 }
 
-extension Components.Schemas.DeptId {
-    /// The served department's id, whether this build knows it or not.
-    public var rawValue: String { value1?.rawValue ?? value2 ?? "" }
-}
-
-/// A department's report in the one anatomy (SWIFTUI_REBUILD.md section 3.5): who prepared it and when, its summary,
-/// key figures, what to decide, what it is watching, and what it can't see. "What changed" and the staff memo appear
-/// when the server serves them (N7, the AI pass).
+/// A department's report in the one anatomy (SWIFTUI_REBUILD.md section 3.5), set like a magazine: the masthead
+/// carries its served name, its summary as the deck and its key figures as the box score; below, what to decide, what
+/// it is watching, what changed and what it can't see. The staff memo appears when the server serves one (N7).
 public struct DepartmentReportView: View {
     @Environment(AppModel.self) private var model
     let department: DeptID
@@ -265,22 +203,30 @@ public struct DepartmentReportView: View {
         let store = model.frontOffice
         Group {
             if let report = store.reports[department.rawValue] {
-                ScrollView {
+                MastheadScrollView {
+                    ClubMagazineMasthead(
+                        kicker: [report.preparedBy.display, report.asOf.display],
+                        kickerHint: report.asOf.hint,
+                        headline: Text(verbatim: report.name),
+                        deck: report.summary
+                    ) {
+                        ReportFigures(figures: report.figures)
+                    }
+                } content: {
                     VStack(alignment: .leading, spacing: 12) {
                         // A reload that failed says so above what is kept, never "refreshing" for ever
                         if let problem = store.reportProblems[department.rawValue] { ProblemLine(problem) }
                         DepartmentReportContent(
                             report: report,
                             refreshing: store.loadingReports.contains(department.rawValue)
-                                || (store.reportProblems[department.rawValue] == nil && model.storeKey.map { !store.reportIsCurrent(department.rawValue, for: $0) } ?? false)
+                                || (store.reportProblems[department.rawValue] == nil && model.storeKey.map { !store.reportIsCurrent(department.rawValue, for: $0) } ?? false),
+                            showsHeader: false
                         )
                     }
-                    .padding(24)
-                    .frame(maxWidth: 900, alignment: .leading)
+                    .padding(.horizontal, 28).padding(.vertical, 24)
+                    .frame(maxWidth: 1100, alignment: .leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                // As the Morning Report: a hard edge under the toolbar keeps the window's title legible
-                .scrollEdgeEffectStyle(.hard, for: .top)
             } else if let problem = store.reportProblems[department.rawValue] {
                 ProblemLine(problem).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -291,53 +237,90 @@ public struct DepartmentReportView: View {
     }
 }
 
+/// A report's served key figures as the masthead's box score, each with its basis a click away.
+public struct ReportFigures: View {
+    let figures: [Components.Schemas.Claim]
+
+    public init(figures: [Components.Schemas.Claim]) {
+        self.figures = figures
+    }
+
+    public var body: some View {
+        HStack(alignment: .bottom, spacing: 22) {
+            ForEach(Array(figures.enumerated()), id: \.offset) { index, figure in
+                if index > 0 { BoxRule() }
+                ClaimText(figure) {
+                    BoxFigure(value: figure.value?.display ?? figure.text, label: figure.value == nil ? "" : figure.text)
+                }
+            }
+        }
+    }
+}
+
 /// The report itself, from a served payload.
 public struct DepartmentReportContent: View {
     let report: Components.Schemas.DepartmentReport
     let refreshing: Bool
+    /// The report's name, who prepared it and when, and its summary and figures above it (false where a masthead
+    /// says them).
+    let showsHeader: Bool
 
-    public init(report: Components.Schemas.DepartmentReport, refreshing: Bool = false) {
+    public init(report: Components.Schemas.DepartmentReport, refreshing: Bool = false, showsHeader: Bool = true) {
         self.report = report
         self.refreshing = refreshing
+        self.showsHeader = showsHeader
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(verbatim: report.name).font(.largeTitle.weight(.semibold))
-                    if refreshing { ProgressView { Text("Refreshing") }.controlSize(.small) }
-                }
-                Text(verbatim: servedLine([report.preparedBy.display, report.asOf.display]))
-                    .foregroundStyle(.secondary)
-                    .help(detail: report.asOf.hint)
-            }
-            ClaimLine(report.summary, font: .title3)
-            if !report.figures.isEmpty {
-                HStack(alignment: .top, spacing: 28) {
-                    ForEach(Array(report.figures.enumerated()), id: \.offset) { _, figure in
-                        FigureTile(figure)
+        VStack(alignment: .leading, spacing: 28) {
+            if showsHeader {
+                VStack(alignment: .leading, spacing: 8) {
+                    Kicker(served: [report.preparedBy.display, report.asOf.display]).foregroundStyle(.secondary)
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(verbatim: report.name).font(.system(size: 40, weight: .bold, design: .serif))
+                        if refreshing { ProgressView { Text("Refreshing") }.controlSize(.small) }
+                    }
+                    ClaimLine(report.summary, font: .title3)
+                    if !report.figures.isEmpty {
+                        HStack(spacing: 8) {
+                            ForEach(Array(report.figures.enumerated()), id: \.offset) { index, figure in
+                                MetricTile(Figure(figure, id: "\(report.department.rawValue).\(index)"))
+                            }
+                        }
                     }
                 }
+            } else if refreshing {
+                ProgressView { Text("Refreshing") }.controlSize(.small)
             }
             ItemSection(section: report.toDecide, showsDepartment: report.department.rawValue == "frontOffice")
             ItemSection(section: report.watching, showsDepartment: report.department.rawValue == "frontOffice")
             if let changes = report.changes, !changes.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(Array(changes.enumerated()), id: \.offset) { _, change in ClaimLine(change.line) }
+                VStack(alignment: .leading, spacing: 8) {
+                    MagazineSection(title: Text("What changed"))
+                    RowGroup {
+                        ForEach(Array(changes.enumerated()), id: \.offset) { index, change in
+                            ClaimLine(change.line).padding(.vertical, 8)
+                            if index < changes.count - 1 { Divider() }
+                        }
+                    }
                 }
             }
-            VStack(alignment: .leading, spacing: 6) {
-                Text(verbatim: report.unknowns.title.display).font(.title3.weight(.semibold))
-                ForEach(Array(report.unknowns.lines.enumerated()), id: \.offset) { _, line in
-                    Text(verbatim: line.display)
-                        .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 8) {
+                MagazineSection(title: Text(verbatim: report.unknowns.title.display))
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(Array(report.unknowns.lines.enumerated()), id: \.offset) { _, line in
+                        Label {
+                            Text(verbatim: line.display).fixedSize(horizontal: false, vertical: true)
+                        } icon: {
+                            Image(systemName: "questionmark.circle").foregroundStyle(.secondary)
+                        }
                         .help(detail: line.hint)
+                    }
                 }
             }
             if let memo = report.memo {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(verbatim: memo.by.display).font(.headline)
+                VStack(alignment: .leading, spacing: 8) {
+                    MagazineSection(title: Text(verbatim: memo.by.display))
                     ForEach(Array(memo.lines.enumerated()), id: \.offset) { _, line in Text(verbatim: line.display) }
                 }
             }
@@ -347,22 +330,27 @@ public struct DepartmentReportContent: View {
     }
 }
 
-/// "To decide" or "Watching": its title, its items, and its served line when it has none. A section with no items and
-/// no line (a department that could not be read, or has no report yet) is left out: its summary says why.
+/// "To decide" or "Watching": its served title as a section, its items in a grouped card, and its served line when it
+/// has none. A section with no items and no line (a department that could not be read, or has no report yet) is left
+/// out: its summary says why.
 struct ItemSection: View {
     let section: Components.Schemas.ReportSection
     let showsDepartment: Bool
 
     var body: some View {
         if !section.items.isEmpty || section.empty != nil {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(verbatim: section.title.display).font(.title3.weight(.semibold))
+            VStack(alignment: .leading, spacing: 8) {
+                MagazineSection(title: Text(verbatim: section.title.display))
                 if let empty = section.empty {
                     Text(verbatim: empty.display).foregroundStyle(.secondary)
                 }
-                ForEach(section.items, id: \.key) { item in
-                    DeskItemRow(item, showsDepartment: showsDepartment)
-                    Divider()
+                if !section.items.isEmpty {
+                    RowGroup {
+                        ForEach(Array(section.items.enumerated()), id: \.element.key) { index, item in
+                            DeskItemRow(item, showsDepartment: showsDepartment)
+                            if index < section.items.count - 1 { Divider() }
+                        }
+                    }
                 }
             }
         }

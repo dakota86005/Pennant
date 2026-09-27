@@ -39,7 +39,8 @@
         "A new export."
       ],
       "lean": null,
-      "certainty": "fact"
+      "certainty": "fact",
+      "called": "A fact from the export"
     },
     "links": []
   },
@@ -63,7 +64,8 @@
         "unknown": [],
         "wouldChange": [],
         "lean": null,
-        "certainty": "fact"
+        "certainty": "fact",
+        "called": "A fact from the export"
       },
       "links": [],
       "value": {
@@ -91,7 +93,8 @@
         "unknown": [],
         "wouldChange": [],
         "lean": null,
-        "certainty": "fact"
+        "certainty": "fact",
+        "called": "A fact from the export"
       },
       "links": [],
       "value": {
@@ -127,7 +130,8 @@
         "unknown": [],
         "wouldChange": [],
         "lean": null,
-        "certainty": "fact"
+        "certainty": "fact",
+        "called": "A fact from the export"
       },
       "links": [],
       "value": {
