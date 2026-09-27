@@ -1750,15 +1750,15 @@
           },
           "severity": {
             "$ref": "#/components/schemas/DeskSeverity",
-            "description": "The department's severity on the desk's scale, never above what the department said."
+            "description": "The department's own severity on the desk's scale, with its philosophy and season weighed (never above what it said)."
           },
           "neutralSeverity": {
             "$ref": "#/components/schemas/DeskSeverity",
-            "description": "What the department would have said with no philosophy and no season (the same as `severity` when nothing shaded it)."
+            "description": "What the department states with no philosophy and no season to weigh: the plain reading, and what the desk goes by (whether it is to decide or to watch, and its order; D-060). The same as `severity` when nothing shaded it."
           },
           "urgency": {
             "$ref": "#/components/schemas/Claim",
-            "description": "The severity in words (\"Urgent\", \"Needs attention\", \"Noted\"), with the line that placed it and any lean in its basis."
+            "description": "The plain severity in words (\"Urgent\", \"Needs attention\", \"Noted\"), with the line that placed it and any lean in its basis."
           },
           "headline": {
             "$ref": "#/components/schemas/Claim",

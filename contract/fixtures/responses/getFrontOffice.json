@@ -30,7 +30,11 @@
             "because": [
               {
                 "label": "Farm & Development said",
-                "value": "critical"
+                "value": "Urgent"
+              },
+              {
+                "label": "With no philosophy and no season",
+                "value": "Urgent"
               },
               {
                 "label": "On the desk",
@@ -47,7 +51,7 @@
             "wouldChange": [],
             "lean": null,
             "certainty": "policy",
-            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged."
+            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
           },
           "links": []
         },
@@ -107,7 +111,11 @@
             "because": [
               {
                 "label": "Farm & Development said",
-                "value": "critical"
+                "value": "Urgent"
+              },
+              {
+                "label": "With no philosophy and no season",
+                "value": "Urgent"
               },
               {
                 "label": "On the desk",
@@ -124,7 +132,7 @@
             "wouldChange": [],
             "lean": null,
             "certainty": "policy",
-            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged."
+            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
           },
           "links": []
         },
@@ -184,7 +192,11 @@
             "because": [
               {
                 "label": "Farm & Development said",
-                "value": "critical"
+                "value": "Urgent"
+              },
+              {
+                "label": "With no philosophy and no season",
+                "value": "Urgent"
               },
               {
                 "label": "On the desk",
@@ -201,7 +213,7 @@
             "wouldChange": [],
             "lean": null,
             "certainty": "policy",
-            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged."
+            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
           },
           "links": []
         },
@@ -261,7 +273,11 @@
             "because": [
               {
                 "label": "Farm & Development said",
-                "value": "critical"
+                "value": "Urgent"
+              },
+              {
+                "label": "With no philosophy and no season",
+                "value": "Urgent"
               },
               {
                 "label": "On the desk",
@@ -278,7 +294,7 @@
             "wouldChange": [],
             "lean": null,
             "certainty": "policy",
-            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged."
+            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
           },
           "links": []
         },
@@ -339,7 +355,11 @@
             "because": [
               {
                 "label": "Major League Ops said",
-                "value": "elevated"
+                "value": "Needs attention"
+              },
+              {
+                "label": "With no philosophy and no season",
+                "value": "Needs attention"
               },
               {
                 "label": "On the desk",
@@ -356,7 +376,7 @@
             "wouldChange": [],
             "lean": null,
             "certainty": "policy",
-            "stamp": "Major League Ops states critical, elevated or watch; they read critical, attention and noted on the desk, in the same order and never higher. A flag the philosophy shaded keeps its philosophy-free severity beside it."
+            "stamp": "Major League Ops states critical, elevated or watch; they read critical, attention and noted on the desk, in the same order and never higher. A flag the philosophy shaded keeps its philosophy-free severity beside it. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
           },
           "links": []
         },
@@ -419,7 +439,11 @@
             "because": [
               {
                 "label": "Farm & Development said",
-                "value": "attention"
+                "value": "Needs attention"
+              },
+              {
+                "label": "With no philosophy and no season",
+                "value": "Needs attention"
               },
               {
                 "label": "On the desk",
@@ -436,7 +460,7 @@
             "wouldChange": [],
             "lean": null,
             "certainty": "policy",
-            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged."
+            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
           },
           "links": []
         },
@@ -496,7 +520,11 @@
             "because": [
               {
                 "label": "Farm & Development said",
-                "value": "attention"
+                "value": "Needs attention"
+              },
+              {
+                "label": "With no philosophy and no season",
+                "value": "Needs attention"
               },
               {
                 "label": "On the desk",
@@ -513,7 +541,7 @@
             "wouldChange": [],
             "lean": null,
             "certainty": "policy",
-            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged."
+            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
           },
           "links": []
         },
@@ -573,7 +601,11 @@
             "because": [
               {
                 "label": "Farm & Development said",
-                "value": "attention"
+                "value": "Needs attention"
+              },
+              {
+                "label": "With no philosophy and no season",
+                "value": "Needs attention"
               },
               {
                 "label": "On the desk",
@@ -590,7 +622,7 @@
             "wouldChange": [],
             "lean": null,
             "certainty": "policy",
-            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged."
+            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
           },
           "links": []
         },
@@ -650,7 +682,11 @@
             "because": [
               {
                 "label": "Farm & Development said",
-                "value": "attention"
+                "value": "Needs attention"
+              },
+              {
+                "label": "With no philosophy and no season",
+                "value": "Needs attention"
               },
               {
                 "label": "On the desk",
@@ -667,7 +703,7 @@
             "wouldChange": [],
             "lean": null,
             "certainty": "policy",
-            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged."
+            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
           },
           "links": []
         },
@@ -865,7 +901,11 @@
               "because": [
                 {
                   "label": "Major League Ops said",
-                  "value": "elevated"
+                  "value": "Needs attention"
+                },
+                {
+                  "label": "With no philosophy and no season",
+                  "value": "Needs attention"
                 },
                 {
                   "label": "On the desk",
@@ -882,7 +922,7 @@
               "wouldChange": [],
               "lean": null,
               "certainty": "policy",
-              "stamp": "Major League Ops states critical, elevated or watch; they read critical, attention and noted on the desk, in the same order and never higher. A flag the philosophy shaded keeps its philosophy-free severity beside it."
+              "stamp": "Major League Ops states critical, elevated or watch; they read critical, attention and noted on the desk, in the same order and never higher. A flag the philosophy shaded keeps its philosophy-free severity beside it. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
             },
             "links": []
           },
@@ -1090,7 +1130,11 @@
               "because": [
                 {
                   "label": "Farm & Development said",
-                  "value": "critical"
+                  "value": "Urgent"
+                },
+                {
+                  "label": "With no philosophy and no season",
+                  "value": "Urgent"
                 },
                 {
                   "label": "On the desk",
@@ -1107,7 +1151,7 @@
               "wouldChange": [],
               "lean": null,
               "certainty": "policy",
-              "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged."
+              "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
             },
             "links": []
           },
@@ -1167,7 +1211,11 @@
               "because": [
                 {
                   "label": "Farm & Development said",
-                  "value": "critical"
+                  "value": "Urgent"
+                },
+                {
+                  "label": "With no philosophy and no season",
+                  "value": "Urgent"
                 },
                 {
                   "label": "On the desk",
@@ -1184,7 +1232,7 @@
               "wouldChange": [],
               "lean": null,
               "certainty": "policy",
-              "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged."
+              "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
             },
             "links": []
           },
@@ -1244,7 +1292,11 @@
               "because": [
                 {
                   "label": "Farm & Development said",
-                  "value": "critical"
+                  "value": "Urgent"
+                },
+                {
+                  "label": "With no philosophy and no season",
+                  "value": "Urgent"
                 },
                 {
                   "label": "On the desk",
@@ -1261,7 +1313,7 @@
               "wouldChange": [],
               "lean": null,
               "certainty": "policy",
-              "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged."
+              "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
             },
             "links": []
           },

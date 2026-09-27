@@ -101,14 +101,17 @@ export interface ItemInput {
 }
 
 /**
- * The severity as a claim: the word, the line that placed it on the desk (its policy stamp, D-041) and, when the
- * department's philosophy or season shaded it, the lean with the philosophy-free severity as the neutral reading.
+ * The item's place on the desk as a claim. The desk goes by the department's plain reading: the severity it states with
+ * no philosophy and no season to weigh (D-060: the season's odds never decide what reaches the desk or its order). When
+ * the club's philosophy or season shaded the department's own flag, that reading is shown beside it as the lean, never
+ * deciding anything. The basis names the policy line that placed it (D-041).
  */
 function urgencyClaim(ctx: DepartmentContext, s: NormalizedSeverity, shading: readonly string[]) {
-  const said = s.from.severity ?? 'no urgency of its own';
+  const said = s.from.severity === null ? 'No urgency of its own' : SEVERITY_WORDS[s.severity];
   const because = [
     { label: `${ctx.department.name} said`, value: said },
-    { label: 'On the desk', value: SEVERITY_WORDS[s.severity] },
+    { label: 'With no philosophy and no season', value: SEVERITY_WORDS[s.neutral] },
+    { label: 'On the desk', value: SEVERITY_WORDS[s.neutral] },
   ];
   if (s.dueInDays !== null) because.push({ label: 'Days left', value: String(s.dueInDays) });
   const shaded = s.neutral !== s.severity || shading.length > 0;
@@ -118,18 +121,24 @@ function urgencyClaim(ctx: DepartmentContext, s: NormalizedSeverity, shading: re
     unknown: [],
     wouldChange: [],
     lean: shaded
-      ? { neutral: `With no philosophy and no season to weigh: ${SEVERITY_WORDS[s.neutral].toLowerCase()}`, why: [...new Set(shading)] }
+      ? {
+        neutral: `With no philosophy and no season to weigh: ${SEVERITY_WORDS[s.neutral].toLowerCase()}`,
+        why: shading.length ? [...new Set(shading)] : [`The club's philosophy and season read it as ${SEVERITY_WORDS[s.severity].toLowerCase()}.`],
+      }
       : null,
     certainty: 'policy',
-    stamp: s.stamp.basis,
+    stamp: `${s.stamp.basis} ${DESK_PLACEMENT}`,
   });
   return claim({
-    text: SEVERITY_WORDS[s.severity],
-    tone: SEVERITY_TONE[s.severity],
-    hint: s.neutral !== s.severity ? `${SEVERITY_WORDS[s.neutral]} without the club's own situation` : undefined,
+    text: SEVERITY_WORDS[s.neutral],
+    tone: SEVERITY_TONE[s.neutral],
+    hint: s.neutral !== s.severity ? `Your club's situation would read it as ${SEVERITY_WORDS[s.severity].toLowerCase()}` : undefined,
     basis: b,
   });
 }
+
+/** The line that places an item on the desk (D-041 policy, D-060). */
+export const DESK_PLACEMENT = 'The desk places each item by its department\'s plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing.';
 
 /** One item on the desk, at its department's own severity (never raised: `severity.ts` holds that). */
 export function item(ctx: DepartmentContext, input: ItemInput): FoItem {
@@ -146,7 +155,7 @@ export function item(ctx: DepartmentContext, input: ItemInput): FoItem {
     detail: input.detail ?? null,
     due: s.dueInDays === null
       ? null
-      : cell(s.dueInDays <= 0 ? 'Due today' : `${plural(s.dueInDays, 'day')} left`, { tone: s.severity === 'critical' ? 'bad' : 'neutral' }),
+      : cell(s.dueInDays <= 0 ? 'Due today' : `${plural(s.dueInDays, 'day')} left`, { tone: s.neutral === 'critical' ? 'bad' : 'neutral' }),
     dueInDays: s.dueInDays,
     evidence: input.evidence ?? null,
   };
@@ -158,7 +167,8 @@ export function item(ctx: DepartmentContext, input: ItemInput): FoItem {
 const DEPARTMENT_ORDER: readonly DeptId[] = ['frontOffice', 'majorLeague', 'farm', 'scouting', 'trades', 'finance', 'medical', 'league', 'philosophy'];
 
 /**
- * The desk's stated order: the severity each department gave (urgent, then needs attention, then noted), then the
+ * The desk's stated order: the plain severity each department gave (urgent, then needs attention, then noted: with no
+ * philosophy and no season to weigh, D-060), then the
  * nearest deadline (an item with no clock after those with one), then the department (the sidebar's order), then the
  * department's own order. Stable, and nothing else: no hidden score.
  */
@@ -166,7 +176,7 @@ export function deskOrder(items: readonly FoItem[]): FoItem[] {
   return items
     .map((it, i) => ({ it, i }))
     .sort((a, b) =>
-      rankOf(b.it.severity) - rankOf(a.it.severity)
+      rankOf(b.it.neutralSeverity) - rankOf(a.it.neutralSeverity)
       || (a.it.dueInDays ?? Number.POSITIVE_INFINITY) - (b.it.dueInDays ?? Number.POSITIVE_INFINITY)
       || DEPARTMENT_ORDER.indexOf(a.it.department) - DEPARTMENT_ORDER.indexOf(b.it.department)
       || a.i - b.i)
@@ -175,9 +185,9 @@ export function deskOrder(items: readonly FoItem[]): FoItem[] {
 
 export const DESK_ORDER_HINT = 'Urgent first, then the nearest deadline, then the sidebar\'s order';
 
-/** To decide: urgent and needs-attention items. Watching: noted ones (SWIFTUI_REBUILD.md section 3.5). */
-export const toDecide = (items: readonly FoItem[]) => items.filter((it) => it.severity !== 'noted');
-export const watching = (items: readonly FoItem[]) => items.filter((it) => it.severity === 'noted');
+/** To decide: urgent and needs-attention items by the plain reading. Watching: noted ones (SWIFTUI_REBUILD.md section 3.5). */
+export const toDecide = (items: readonly FoItem[]) => items.filter((it) => it.neutralSeverity !== 'noted');
+export const watching = (items: readonly FoItem[]) => items.filter((it) => it.neutralSeverity === 'noted');
 
 // ── a report ─────────────────────────────────────────────────────────────────
 
@@ -253,7 +263,7 @@ export function report(ctx: DepartmentContext, answer: DepartmentAnswer): Depart
     status: 'ready',
     summary: claim({
       text: countsSentence(decide.length, watch.length),
-      tone: decide.some((it) => it.severity === 'critical') ? 'bad' : decide.length > 0 ? 'caution' : 'neutral',
+      tone: decide.some((it) => it.neutralSeverity === 'critical') ? 'bad' : decide.length > 0 ? 'caution' : 'neutral',
       basis: basis({
         because: [
           { label: 'To decide', value: String(decide.length) },

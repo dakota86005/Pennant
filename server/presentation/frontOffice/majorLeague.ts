@@ -101,7 +101,8 @@ function needItem(ctx: DepartmentContext, need: MlbNeed, overview: MajorLeagueIn
     }),
   });
   const out = need.causes.filter((c) => c.playerId !== need.returning?.playerId && c.playerId !== need.subject?.playerId);
-  const shading = (need.shading ?? need.explanation?.context.changed ?? []).map((r) => r.text);
+  // What the club's philosophy and season did to the flag (the lean); a role's usage is part of the plain reading too
+  const shading = (need.shading ?? need.explanation?.context.changed ?? []).filter((r) => r.dimension !== 'usage').map((r) => r.text);
   return item(ctx, {
     key: `majorLeague:need:${need.id}`,
     severity,

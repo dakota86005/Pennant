@@ -24,11 +24,14 @@ export interface FoItem {
   department: DeptId;
   /** Who raised it: the department's head as the save names him ("Raised by Jeff Banister, bench coach"), or its staff. */
   raisedBy: Cell;
-  /** The department's severity on the desk's scale, never above what the department said. */
+  /** The department's own severity on the desk's scale, with its philosophy and season weighed (never above what it said). */
   severity: DeskSeverity;
-  /** What the department would have said with no philosophy and no season (the same as `severity` when nothing shaded it). */
+  /**
+   * What the department states with no philosophy and no season to weigh: the plain reading, and what the desk goes by
+   * (whether it is to decide or to watch, and its order; D-060). The same as `severity` when nothing shaded it.
+   */
   neutralSeverity: DeskSeverity;
-  /** The severity in words ("Urgent", "Needs attention", "Noted"), with the line that placed it and any lean in its basis. */
+  /** The plain severity in words ("Urgent", "Needs attention", "Noted"), with the line that placed it and any lean in its basis. */
   urgency: Claim;
   /** What it is, in one line, with the department's evidence as its basis. */
   headline: Claim;

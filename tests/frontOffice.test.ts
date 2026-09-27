@@ -82,17 +82,27 @@ describe('an adapter never raises its specialist\'s severity (case 9)', () => {
     }
   });
 
-  it('states the lean when the club\'s situation shaded a flag, with the philosophy-free reading as its neutral', () => {
+  it('places a shaded flag by its plain reading, and states the lean beside it', () => {
+    const reason = { dimension: 'competitiveWindow', value: 70, effect: 'raises', text: 'A club pushing to win now cannot carry a soft spot.' };
     const shaded = need({
       severity: 'elevated',
-      explanation: { neutralSeverity: 'watch', wouldChange: ['A month of results.'], context: { changed: [{ dimension: 'usage', value: null, effect: 'raises', text: 'He is used in high-leverage spots.' }], notChanged: [] } },
-      shading: [{ dimension: 'usage', value: null, effect: 'raises', text: 'He is used in high-leverage spots.' }],
+      explanation: { neutralSeverity: 'watch', wouldChange: ['A month of results.'], context: { changed: [reason], notChanged: [] } },
+      shading: [reason],
     });
     const [it] = majorLeagueMaterial(ctxOf('majorLeague'), { overview: overview([shaded]), fortyMan: NO_CRUNCH }).items;
     expect(it).toMatchObject({ severity: 'attention', neutralSeverity: 'noted' });
-    expect(it.urgency.basis.lean).toEqual({ neutral: 'With no philosophy and no season to weigh: noted', why: ['He is used in high-leverage spots.'] });
-    expect(it.urgency.hint).toBe('Noted without the club\'s own situation');
+    expect(it.urgency.text).toBe('Noted');
+    expect(it.urgency.basis.lean).toEqual({ neutral: 'With no philosophy and no season to weigh: noted', why: [reason.text] });
+    expect(it.urgency.hint).toBe('Your club\'s situation would read it as needs attention');
     expect(it.headline.basis.wouldChange).toEqual(['A month of results.']);
+  });
+
+  it('states no lean when only the role\'s usage moved a flag (usage is part of the plain reading)', () => {
+    const usage = { dimension: 'usage', value: null, effect: 'raises', text: 'He is used in high-leverage spots.' };
+    const flag = need({ severity: 'elevated', explanation: { neutralSeverity: 'elevated', wouldChange: [], context: { changed: [usage], notChanged: [] } }, shading: [usage] });
+    const [it] = majorLeagueMaterial(ctxOf('majorLeague'), { overview: overview([flag]), fortyMan: NO_CRUNCH }).items;
+    expect(it.urgency.basis.lean).toBeNull();
+    expect(it.urgency.hint).toBeUndefined();
   });
 
   it('holds every item the synthetic save puts on the desk to its department\'s own code', async () => {
@@ -106,6 +116,7 @@ describe('an adapter never raises its specialist\'s severity (case 9)', () => {
         const n = mlb.needs.find((x) => `majorLeague:need:${x.id}` === it.key)!;
         expect(rankOf(it.severity)).toBeLessThanOrEqual(MLB_RANK[n.severity]);
         expect(it.severity).toBe(mlbSeverity(n).severity);
+        expect(rankOf(it.neutralSeverity)).toBeLessThanOrEqual(MLB_RANK[n.explanation?.neutralSeverity ?? n.severity]);
       } else if (it.department === 'farm') {
         const own = farm.attention.find((a) => it.headline.text === a.headline.trim())!;
         expect(it.severity).toBe(farmSeverity(own).severity);

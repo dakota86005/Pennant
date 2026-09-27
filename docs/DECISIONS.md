@@ -2185,9 +2185,10 @@ severity order, `FrontOfficeSummary.desk`); the snapshots, the statuses and foll
 **Status:** Accepted (owner, 2026-09-25). **Implementation:** Partial: N4, Stage A holds the boundary
 (`tests/presentationBoundary.test.ts`: nothing in the landing folders reaches `posture` or `playoffs` by any chain of
 imports); N4, Stage B serves the desk and the department cards and holds their payloads free of odds, posture and window
-labels (`tests/frontOfficeLanding.test.ts`); the masthead arrives with N6. Major League Ops' own urgency still leans on
-the season (D-036): the desk shows the severity it stated with the philosophy-free severity beside it, and the season's
-read itself is never copied into the payload.
+labels (`tests/frontOfficeLanding.test.ts`); the masthead arrives with N6. The desk's membership and order use each
+department's philosophy-free, season-free severity (Major League Ops states it beside its own); the season- and
+philosophy-shaded severity and its lean are shown beside it in the basis and the hover, never deciding what appears or
+its order (the supervisor's call, pending the owner's confirmation).
 
 The owner found the postseason odds and the buy/hold/sell posture (`server/posture.ts`, a two-club Pythagorean race against
 a provisional rival) weak and off-mission. The Morning Report, the Club Profile and the department cards answer "where are
