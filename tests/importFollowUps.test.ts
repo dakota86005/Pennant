@@ -141,3 +141,60 @@ describe('a swap over a league file with a hot rollback journal (a process kille
     }
   });
 });
+
+describe('an export an import failed on (N3.5 B2 review, finding 1)', () => {
+  it('is not imported again by the minute\'s look until the folder changes; the GM\'s Import Now still tries', async () => {
+    const { PERIODIC_CHECK_MS, startWatcher, stopWatcher, watchClock } = await import('../server/watcher.js');
+    const { importState, runImport } = await import('../server/api.js');
+    const { loadConfig, saveConfig } = await import('../server/config.js');
+    const { subscribe } = await import('../server/serverEvents.js');
+    const dir = tempDir('pennant-failing-');
+    // A settled export whose players file cannot be read: every import of it fails
+    fs.writeFileSync(path.join(dir, 'players.csv'), 'player_id,first_name\n1,"unterminated\n');
+    fs.writeFileSync(path.join(dir, 'teams.csv'), 'team_id,name\n1,A\n');
+    fs.writeFileSync(path.join(dir, 'leagues.csv'), 'league_id,name\n1,L\n');
+    const past = new Date(Date.now() - 5 * 60_000);
+    for (const f of fs.readdirSync(dir)) fs.utimesSync(path.join(dir, f), past, past);
+    const before = loadConfig();
+    saveConfig({ csvDir: dir, saveName: null });
+    const intervals: Array<() => void> = [];
+    const saved = { ...watchClock };
+    Object.assign(watchClock, {
+      setInterval: (fn: () => void) => { intervals.push(fn); return intervals.length as unknown as ReturnType<typeof setInterval>; },
+      clearInterval: () => {},
+    });
+    let started = 0;
+    const unsubscribe = subscribe((e) => { if (e.type === 'import-started') started += 1; });
+    const settle = async (): Promise<void> => {
+      await new Promise((r) => setTimeout(r, 20));
+      while (importState.importing) await new Promise((r) => setTimeout(r, 20));
+    };
+    try {
+      startWatcher(dir);
+      expect(PERIODIC_CHECK_MS).toBe(60_000);
+      // Three minutes' looks: one attempt, then none while the files are the same
+      for (let minute = 0; minute < 3; minute++) {
+        intervals[0]();
+        await settle();
+      }
+      expect(started).toBe(1);
+      expect(importState.lastError).toBeTruthy();
+      // The GM's own Import Now still tries
+      await runImport(dir);
+      expect(started).toBe(2);
+      // OOTP writes the export again: a changed folder is a new attempt
+      fs.writeFileSync(path.join(dir, 'teams.csv'), 'team_id,name\n1,A\n2,B\n');
+      fs.utimesSync(path.join(dir, 'teams.csv'), past, new Date(Date.now() - 4 * 60_000));
+      intervals[0]();
+      await settle();
+      expect(started).toBe(3);
+    } finally {
+      unsubscribe();
+      stopWatcher();
+      Object.assign(watchClock, saved);
+      saveConfig(before);
+      importState.lastError = null;
+      importState.lastFailed = null;
+    }
+  });
+});

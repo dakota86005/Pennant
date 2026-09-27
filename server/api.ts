@@ -7,7 +7,7 @@ import { DATA_DIR, loadConfig, saveConfig } from './config.js';
 import { diskSpace, importCsvDir, ImportRefused, type ImportProgress, type ImportResult } from './importer.js';
 import { upgradeLeagueDatabase } from './importBuild.js';
 import { checkExport, clearPendingExport, notePendingExport, onSettledExport, pendingExport, startWatcher } from './watcher.js';
-import { importedExport, type ExportAssessment } from './exportFiles.js';
+import { assessExport, importedExport, type ExportAssessment } from './exportFiles.js';
 import { locateSave } from './ootpSave.js';
 import { readRatingMode } from './ratingMode.js';
 import { registerPostImportHook, runPostImportHooks } from './postImport.js';
@@ -120,7 +120,13 @@ export const importState: {
   progress: ImportProgress | null;
   /** When an import that never finished had started (the server stopped partway), until a later import completes. */
   interruptedSince: string | null;
-} = { importing: false, lastImport: loadImportMeta(), lastError: null, progress: null, interruptedSince: null };
+  /**
+   * The export an import last failed on (its folder and the fingerprint of its files then), until an import succeeds
+   * (N3.5 Stage B2 review): the watcher and the minute's look do not try it again until the folder changes, so a
+   * broken export is not re-imported every minute. The GM's own Import Now still tries.
+   */
+  lastFailed: { csvDir: string; fingerprint: string } | null;
+} = { importing: false, lastImport: loadImportMeta(), lastError: null, progress: null, interruptedSince: null, lastFailed: null };
 importedAt.value = importState.lastImport?.finishedAt ?? null;
 
 /**
@@ -378,10 +384,14 @@ export async function runImport(csvDir: string, trigger: ImportTrigger = 'manual
     // Whatever was waiting on disk has now been read
     clearPendingExport();
     importState.interruptedSince = null;
+    importState.lastFailed = null;
     fs.rmSync(IMPORT_MARKER_PATH, { force: true });
   } catch (err) {
     importState.lastError = (err as Error).message;
     console.error('[import] failed:', (err as Error).message);
+    // Remembered, so an automatic look does not try the same files again (a changed folder is a new attempt)
+    const failedOn = assessExport(csvDir).fingerprint;
+    importState.lastFailed = failedOn ? { csvDir, fingerprint: failedOn } : null;
     // A refusal touched nothing (OOTP still writing, no room, an old players file, no files): nothing was interrupted,
     // so the next start does not call it so (review nit 9). Any other failure keeps the marker and is retried at start.
     if (err instanceof ImportRefused) fs.rmSync(IMPORT_MARKER_PATH, { force: true });
@@ -468,6 +478,9 @@ export function isNewExport(assessment: ExportAssessment, last: ImportResult | n
  */
 export function handleSettledExport(csvDir: string, assessment: ExportAssessment): void {
   if (loadConfig().csvDir !== csvDir || !isNewExport(assessment)) return;
+  // The export the last import failed on, unchanged: not tried again automatically (its error stays on the status)
+  const failed = importState.lastFailed;
+  if (failed && failed.csvDir === csvDir && failed.fingerprint === assessment.fingerprint) return;
   const settings = loadSettings();
   if (settings.autoImport && settings.importAutomatically) {
     if (importState.importing) lookAgainAfterImport = true;
