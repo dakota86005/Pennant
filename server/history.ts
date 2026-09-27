@@ -140,18 +140,28 @@ export interface RatingModeSwitch {
 
 /**
  * The snapshot dates rating history reads now: every date except those recorded in a known mode other than the
- * current export's (a switch, never development). With no known current mode nothing is left out: an unknown mode is
- * not evidence of a switch. A snapshot stamped "no ratings" is always left out. Returns the dates left out and the
- * switch, for the reasons a consumer shows.
+ * current export's (a switch, never development). With no known current mode no known one is left out: an unknown mode
+ * is not evidence of a switch. A snapshot stamped "no ratings" is always left out, and so is one stamped with an
+ * unknown kind (N3.5 Stage B2, D-018): its ratings may be of another kind, so comparing it could read a switch as
+ * movement. Returns the dates left out, the switches and the unknown-kind dates, for the reasons a consumer shows.
  */
-export function modeFilter(): { excluded: Set<string>; switches: RatingModeSwitch[] } {
+export function modeFilter(): { excluded: Set<string>; switches: RatingModeSwitch[]; unknownKind: string[] } {
   const current = currentRatingMode()?.mode ?? null;
   const modes = snapshotModes();
   const excluded = new Set<string>();
   if (current && current !== 'unknown') for (const [date, mode] of modes) if (isModeSwitch(mode, current)) excluded.add(date);
   // A snapshot of an export that carried no ratings observes none, whatever its columns hold (D-018)
   for (const [date, mode] of modes) if (mode === 'none') excluded.add(date);
-  return { excluded, switches: modeSwitches(modes) };
+  const unknownKind = [...modes].filter(([, mode]) => mode === 'unknown').map(([date]) => date).sort(compareGameDates);
+  for (const date of unknownKind) excluded.add(date);
+  return { excluded, switches: modeSwitches(modes), unknownKind };
+}
+
+/** Why the snapshots of an unknown kind are left out, in a sentence; null when there are none. */
+export function unknownKindReason(dates: readonly string[]): string | null {
+  if (dates.length === 0) return null;
+  const list = dates.length <= 3 ? dates.join(', ') : `${dates.slice(0, 3).join(', ')} and ${dates.length - 3} more`;
+  return `The kind of ratings in the snapshot${dates.length === 1 ? '' : 's'} of ${list} couldn't be read, so ${dates.length === 1 ? 'it is' : 'they are'} not compared.`;
 }
 
 /** Every switch between consecutive snapshots in known, different modes. */
@@ -443,7 +453,8 @@ function developmentTrendByPlayerForScope(
     ) as DevelopmentTrendRow[];
 
   // Snapshots in another known kind of ratings are a switch, never development (D-061): left out, and said
-  const { excluded: otherMode, switches } = modeFilter();
+  const { excluded: otherMode, switches, unknownKind } = modeFilter();
+  const unknownReason = unknownKindReason(unknownKind);
 
   const byPlayer =
     new Map<
@@ -609,6 +620,7 @@ function developmentTrendByPlayerForScope(
 
     if (otherMode.size > 0) {
       reasons.push(...switches.map((sw) => `${sw.text} Snapshots in the earlier kind are not compared.`));
+      if (unknownReason) reasons.push(unknownReason);
     }
 
     out.set(
@@ -1452,6 +1464,11 @@ historyRoutes.get('/development/:orgId', (req, res) => {
   if (isModeSwitch(modes.get(from), modes.get(to))) {
     const ratingModeSwitch = modeSwitches(new Map([[from, modes.get(from)!], [to, modes.get(to)!]]))[0];
     return res.json({ snapshots: dates.length, dates, from, to, changes: null, ratingModeSwitch });
+  }
+  // A snapshot stamped with an unknown kind of ratings is never compared (D-018): no changes, and why
+  const unknownEnds = [from, to].filter((d) => modes.get(d) === 'unknown');
+  if (unknownEnds.length > 0) {
+    return res.json({ snapshots: dates.length, dates, from, to, changes: null, ratingModeUnknown: { dates: unknownEnds, text: unknownKindReason(unknownEnds) } });
   }
 
   const rows = historyDb

@@ -2254,7 +2254,10 @@ export's (or a previous save's) table, and no check that OOTP had finished writi
 - **A switch is never development.** Each rating snapshot is stamped with its kind (`rating_snapshot_modes` in
   `history.db`, a new table keyed like the snapshots). Snapshots in a known kind other than the current export's are left
   out of development trends, observed history and the Development page's history, and the switch is said; an unrecorded
-  or unknown kind is never evidence of one.
+  or unknown kind is never evidence of one. A snapshot stamped with an unknown kind is itself left out of all three, and
+  the rating-change list between it and another shows no changes and says why (Stage B2, D-018): its ratings may be of
+  another kind, so comparing it could read a switch as movement. An unrecorded one (taken before the kind was recorded)
+  stays in.
 - *Whose words these are.* The owner decided only that either kind is fine and is noted. Withholding every rating under
   "no ratings" and leaving snapshots of another kind out of development are the supervisor's refinements (the N3.5
   brief), made so that noting the kind keeps D-018: they add no judgment, they keep an unknown unknown.
