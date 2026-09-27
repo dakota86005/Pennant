@@ -8,7 +8,7 @@ import type { GameDate } from './dataFreshness.js';
 import { parseLastDateSimulated } from './ootpSave.js';
 
 /**
- * One OOTP save found on this Mac (`GET /api/saves`): where it is, its export, and (N3.5 Stage B2, D-062) which OOTP it
+ * One OOTP save found on this Mac (`GET /api/saves`): where it is, its export, and (N3.5 Stage B2, D-063) which OOTP it
  * belongs to, when OOTP last saved it and whether its export is switched on. Only file names, sizes and times are read,
  * and the 7-byte game date OOTP keeps beside the save (`ootpSave.ts`); no save file's contents are parsed.
  */
@@ -46,7 +46,7 @@ export interface SaveInfo {
 }
 
 /**
- * Where OOTP keeps its data, as patterns over every version (N3.5 Stage B2, D-062): the direct build's Application
+ * Where OOTP keeps its data, as patterns over every version (N3.5 Stage B2, D-063): the direct build's Application
  * Support folder, the Mac App Store build's container (its id names the version: `com.ootpdevelopments.ootp27macqlm`),
  * the second `~/Application Support` folder seen on the owner's Mac, and the Windows and OneDrive folders the earlier
  * builds listed. A Steam install could not be observed, so no Steam folder is listed. `*` stands for any OOTP version.

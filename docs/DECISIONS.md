@@ -2268,7 +2268,7 @@ export's (or a previous save's) table, and no check that OOTP had finished writi
   rollback journal left by a process killed while writing the file in place is rolled back before the read-only server
   reads it, and no journal of a replaced file is left beside the new one.
 
-## D-062 — Pennant picks the save you're playing only when it clearly stands out, and asks otherwise
+## D-063 — Pennant picks the save you're playing only when it clearly stands out, and asks otherwise
 
 **Status:** Accepted (owner, 2026-09-26: the N3.5 decisions 2, 3 and 4; the policy line is the builder's, stated for
 review). **Implementation:** N3.5, Stage B2: `server/paths.ts` (where saves are found, and each save's facts),

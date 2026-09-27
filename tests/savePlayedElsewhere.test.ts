@@ -6,7 +6,7 @@ import { APP_STORE_27, DIRECT_28, PretendHome } from './saveHomeFixture';
 import request from './request';
 
 /**
- * "Played since" (D-062, BEHAVIOR_CASES "Finding the save"): when another save, or a newer OOTP's, has been played since
+ * "Played since" (D-063, BEHAVIOR_CASES "Finding the save"): when another save, or a newer OOTP's, has been played since
  * the chosen one, the status says so with that save, once OOTP has finished saving it, and never switches by itself.
  */
 let before: AppConfig;

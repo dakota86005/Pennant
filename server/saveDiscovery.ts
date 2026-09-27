@@ -1,5 +1,5 @@
 /**
- * Which save the GM is playing (N3.5 Stage B2, D-062): the saves found on this Mac (`paths.ts`), the one that clearly
+ * Which save the GM is playing (N3.5 Stage B2, D-063): the saves found on this Mac (`paths.ts`), the one that clearly
  * stands out, and whether another save has been played since the one chosen.
  *
  * Only file times decide anything here: when OOTP last saved each save (`lastPlayedAt`), and whether it has an export.
@@ -15,7 +15,7 @@ import { describeSave, detectSaves, saveId, versionFromPath, type SaveInfo } fro
 import { timestampWords } from './timeWords.js';
 
 /**
- * The policy line (D-062): a save stands out only when no other save was played in the two days before it. Two saves
+ * The policy line (D-063): a save stands out only when no other save was played in the two days before it. Two saves
  * played within two days of each other are both plausibly "the one you're playing", so the app asks. Stated, not fitted.
  */
 export const STANDOUT_WINDOW_MS = 2 * 24 * 60 * 60_000;
@@ -44,7 +44,7 @@ export interface SavePick {
 const playedMs = (s: SaveInfo | null | undefined): number | null => (s?.lastPlayedAt ? Date.parse(s.lastPlayedAt) : null);
 
 /**
- * The save that clearly stands out (D-062): played most recently of every save found (every OOTP version and
+ * The save that clearly stands out (D-063): played most recently of every save found (every OOTP version and
  * location), with an export, and no other save played within `STANDOUT_WINDOW_MS` before it. Pure: the saves in, the
  * pick out.
  */

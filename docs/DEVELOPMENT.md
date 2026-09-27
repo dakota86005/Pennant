@@ -225,7 +225,7 @@ folder under `~/Library/Application Support`:
 node scripts/bench-launch.mjs --server build/sidecar/server.cjs --data /tmp/pennant-bench --runs 3 --out /tmp/launch.json
 ```
 
-**Finding the save (N3.5 Stage B2, D-062).** The server finds saves under every OOTP version by itself
+**Finding the save (N3.5 Stage B2, D-063).** The server finds saves under every OOTP version by itself
 (`GET /api/v2/saves`), and a first run with no save chosen can choose and import the one that clearly stands out
 (`POST /api/v2/setup/automatic`). Both read the real home folder's OOTP saves (file times only); in a test, point
 `HOME` at a pretend home (`tests/saveHomeFixture.ts`), never at the real one. The live transaction log's background

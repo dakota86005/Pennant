@@ -584,7 +584,7 @@ export interface ServerStatus {
   reportStamp: string | null;
   /**
    * Another save (or a newer OOTP version's) played since the chosen one, once OOTP has finished saving it, with the
-   * sentence and the save to switch to; null when there is none (N3.5 Stage B2, D-062). Pennant never switches by itself.
+   * sentence and the save to switch to; null when there is none (N3.5 Stage B2, D-063). Pennant never switches by itself.
    */
   savePlayedElsewhere: SavePlayedElsewhere | null;
 }
@@ -699,7 +699,7 @@ api.get('/status', (_req, res: Response<ServerStatus>) => {
 /** Server-sent events for the Mac app: import, job and fresh-export news as it happens (`serverEvents.ts`). */
 api.get('/v2/events', eventStream(statusSnapshot));
 
-/** The saves on this Mac, most recently played first, and the one you're playing when it clearly stands out (D-062). */
+/** The saves on this Mac, most recently played first, and the one you're playing when it clearly stands out (D-063). */
 api.get('/v2/saves', (_req, res: Response<SaveDiscovery>) => {
   const saves = detectSaves();
   const view = saveDiscoveryView(saves, pickSave(saves), searchLocations());
@@ -707,7 +707,7 @@ api.get('/v2/saves', (_req, res: Response<SaveDiscovery>) => {
   res.json(view);
 });
 
-/** The first run's zero-question setup (D-062): the save that clearly stands out is chosen and imported, or why not. */
+/** The first run's zero-question setup (D-063): the save that clearly stands out is chosen and imported, or why not. */
 api.post('/v2/setup/automatic', (_req, res: Response<AutomaticSetup>) => {
   const answer = automaticSetup();
   assertAuthored(answer);
@@ -753,7 +753,7 @@ api.post('/config', (req, res: Response<ConfigAccepted | ApiError>) => {
   res.json({ ok: true, importStarted: false, why: EXPORT_NOT_FOUND });
 });
 
-/** The club a first run follows, taken from the save's export (N3.5 Stage B2, D-062). */
+/** The club a first run follows, taken from the save's export (N3.5 Stage B2, D-063). */
 export interface SetupClub {
   /** Whether the club was taken from the save: exactly one club is managed by the save's human. */
   decided: boolean;
@@ -767,7 +767,7 @@ export interface SetupClub {
 }
 
 /**
- * What `POST /api/v2/setup/automatic` answers (N3.5 Stage B2, D-062): whether the first run chose a save by itself.
+ * What `POST /api/v2/setup/automatic` answers (N3.5 Stage B2, D-063): whether the first run chose a save by itself.
  * `started`: the save that clearly stands out is chosen and importing, with the club when the save names one.
  * `alreadyChosen`: a save was chosen before; nothing changed (asking twice starts one import).
  * `nothingStandsOut`: nothing was chosen; `why` says why, and the app asks.

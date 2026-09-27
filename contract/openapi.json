@@ -765,7 +765,7 @@
           "outcome",
           "text"
         ],
-        "description": "What `POST /api/v2/setup/automatic` answers (N3.5 Stage B2, D-062): whether the first run chose a save by itself. `started`: the save that clearly stands out is chosen and importing, with the club when the save names one. `alreadyChosen`: a save was chosen before; nothing changed (asking twice starts one import). `nothingStandsOut`: nothing was chosen; `why` says why, and the app asks."
+        "description": "What `POST /api/v2/setup/automatic` answers (N3.5 Stage B2, D-063): whether the first run chose a save by itself. `started`: the save that clearly stands out is chosen and importing, with the club when the save names one. `alreadyChosen`: a save was chosen before; nothing changed (asking twice starts one import). `nothingStandsOut`: nothing was chosen; `why` says why, and the app asks."
       },
       "Basis": {
         "type": "object",
@@ -3691,7 +3691,7 @@
           "csvLastModified",
           "csvLastModifiedText"
         ],
-        "description": "One OOTP save found on this Mac (`GET /api/saves`): where it is, its export, and (N3.5 Stage B2, D-062) which OOTP it belongs to, when OOTP last saved it and whether its export is switched on. Only file names, sizes and times are read, and the 7-byte game date OOTP keeps beside the save (`ootpSave.ts`); no save file's contents are parsed."
+        "description": "One OOTP save found on this Mac (`GET /api/saves`): where it is, its export, and (N3.5 Stage B2, D-063) which OOTP it belongs to, when OOTP last saved it and whether its export is switched on. Only file names, sizes and times are read, and the 7-byte game date OOTP keeps beside the save (`ootpSave.ts`); no save file's contents are parsed."
       },
       "SaveList": {
         "type": "array",
@@ -3965,7 +3965,7 @@
           },
           "savePlayedElsewhere": {
             "$ref": "#/components/schemas/SavePlayedElsewhere",
-            "description": "Another save (or a newer OOTP version's) played since the chosen one, once OOTP has finished saving it, with the sentence and the save to switch to; null when there is none (N3.5 Stage B2, D-062). Pennant never switches by itself."
+            "description": "Another save (or a newer OOTP version's) played since the chosen one, once OOTP has finished saving it, with the sentence and the save to switch to; null when there is none (N3.5 Stage B2, D-063). Pennant never switches by itself."
           }
         },
         "required": [
@@ -4283,7 +4283,7 @@
           "name",
           "text"
         ],
-        "description": "The club a first run follows, taken from the save's export (N3.5 Stage B2, D-062)."
+        "description": "The club a first run follows, taken from the save's export (N3.5 Stage B2, D-063)."
       },
       "SnapshotMeta": {
         "type": "object",

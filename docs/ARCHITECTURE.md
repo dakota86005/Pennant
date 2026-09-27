@@ -109,7 +109,7 @@ table/column discovery helpers because OOTP export shapes vary.
 asset. Domain queries should tolerate absent tables and renamed/absent columns
 where practical instead of assuming one developer's save shape.
 
-**Finding the save (N3.5 Stage B2, D-062).** `server/paths.ts` finds every `saved_games` folder by pattern (every
+**Finding the save (N3.5 Stage B2, D-063).** `server/paths.ts` finds every `saved_games` folder by pattern (every
 OOTP version: the direct build, the Mac App Store container, a second `~/Application Support` folder, the Windows and
 OneDrive folders) and describes each save from file names, sizes and times only: when OOTP last saved it (the newer of
 `players.dat` and `flag_save_completed.dat`), its export and whether the export is set up, its OOTP version and game

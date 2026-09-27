@@ -30,7 +30,7 @@ material implementation state changes.
 
 ### Import and local runtime
 
-- Finds saves under every OOTP version (N3.5 Stage B2, D-062): `OOTP Baseball <n>` under the direct build's
+- Finds saves under every OOTP version (N3.5 Stage B2, D-063): `OOTP Baseball <n>` under the direct build's
   Application Support folder, the Mac App Store container and a second `~/Application Support` folder; lists them
   most recently played first (when OOTP last saved each, from file times only), picks the save being played only
   when it clearly stands out (played most recently, with an export, no other save played in the two days before it)

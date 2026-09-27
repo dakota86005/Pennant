@@ -195,7 +195,7 @@ export function loadSettings(): Settings {
 
 /**
  * Follows the club the save's human manages (automatic), forgetting a club chosen before: a first run whose save names
- * exactly one human club (N3.5 Stage B2, D-062). The same as the Setup window's `clubChoice: 'automatic'`.
+ * exactly one human club (N3.5 Stage B2, D-063). The same as the Setup window's `clubChoice: 'automatic'`.
  */
 export function followSaveClub(): void {
   const current = loadSettings();

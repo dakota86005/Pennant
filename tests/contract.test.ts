@@ -230,7 +230,7 @@ function stable(value: unknown): unknown {
     // An import's own time, and its export's fingerprint (the files' times), vary run to run
     if (key === 'durationMs' && typeof node === 'number') return 0;
     if (key === 'exportFingerprint' && typeof node === 'string') return 'fingerprint';
-    // A save's id hashes its folder's real path, which is a new temporary folder on every run (D-062)
+    // A save's id hashes its folder's real path, which is a new temporary folder on every run (D-063)
     if ((key === 'id' || key === 'saveId') && typeof node === 'string' && /^[0-9a-f]{16}$/.test(node)) return 'saveid';
     if (typeof node !== 'string') return node;
     if (iso.test(node)) return '2040-07-01T12:00:00.000Z';
@@ -394,7 +394,7 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
       { name: 'restored', body: { defaultOrgId: null, theme: 'system' }, status: 200 },
     ],
     startImport: [{ name: 'no-save', body: undefined, status: 400 }],
-    // The pretend save was never saved by OOTP, so nothing stands out and nothing is chosen (D-062)
+    // The pretend save was never saved by OOTP, so nothing stands out and nothing is chosen (D-063)
     setUpAutomatically: [{ name: 'nothing-stands-out', body: {}, status: 200 }],
   };
 

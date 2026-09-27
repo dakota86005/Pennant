@@ -98,7 +98,7 @@ function bootstrapData(): void {
   // brought to the served shape (rollback journal, every index) once
   let needsUpgrade = false;
   // The saves on this Mac, looked at now and every minute: whether another has been played since the chosen one
-  // (D-062). After this turn, so the start-up answers first
+  // (D-063). After this turn, so the start-up answers first
   setImmediate(() => startSaveWatch());
   // The save's live transaction log, copied in the background so no request makes the first copy
   setImmediate(() => warmTransactionLog());

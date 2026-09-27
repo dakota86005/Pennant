@@ -7,7 +7,7 @@ import { bannedInPayload } from './bannedJargon';
 import { APP_STORE_27, DIRECT_28, HOME_APP_SUPPORT_27, PretendHome } from './saveHomeFixture';
 
 /**
- * Finding the save (D-062, BEHAVIOR_CASES "Finding the save"): when a save was last played is the time OOTP last saved
+ * Finding the save (D-063, BEHAVIOR_CASES "Finding the save"): when a save was last played is the time OOTP last saved
  * it, never its export's time; saves are found under every OOTP version; the save being played is picked only when it
  * clearly stands out, and otherwise the saves are listed most recently played first and the GM is asked.
  */

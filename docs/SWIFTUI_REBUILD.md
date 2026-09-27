@@ -970,7 +970,7 @@ sizes, not dates.
 | **N1** | Sidecar server | `sidecar.ts`, `PORT=0`, ready line, stdin watchdog, SIGTERM, token (including self-calls), bind, lock (also in Electron), injected keys, `/api/v2/events` SSE, `build:sidecar`, pinned Node download with checksum, kill-mid-import safety check | 2 |
 | **N2** | Contract pipeline | `server/contract/`, `contract:build`, `openapi.json`, drift, coverage, ajv and jargon tests; the PennantAPI package builds | 2 |
 | **N3** | App skeleton | Xcode project and packages, `ServerController`, `AppModel`, window shell (sidebar from the registry, toolbar, inspector, commands, Settings, Setup/import flow), dev signing, test scripts, fixture generation, backups | 3 |
-| **N3.5** | "It just works": the import and discovery | Stage B1 (server): the all-or-nothing import in worker threads, the export's completeness, automatic import, the served database's pragmas and indexes, per-import caches, concurrent refits, the export's rating mode (D-061). Stage B2 (server): discovery v2 (every OOTP version, the save picked only when it clearly stands out, the zero-question first run, "played since"), the re-review's follow-ups, the speed budgets (D-062). Later: the Mac app's everyday experience (setup, freshness, the background import shown quietly) | 7 server, 2.5 Mac |
+| **N3.5** | "It just works": the import and discovery | Stage B1 (server): the all-or-nothing import in worker threads, the export's completeness, automatic import, the served database's pragmas and indexes, per-import caches, concurrent refits, the export's rating mode (D-061). Stage B2 (server): discovery v2 (every OOTP version, the save picked only when it clearly stands out, the zero-question first run, "played since"), the re-review's follow-ups, the speed budgets (D-063). Later: the Mac app's everyday experience (setup, freshness, the background import shown quietly) | 7 server, 2.5 Mac |
 | **N4** | Presentation foundation (server) | `Claim` and `Row`, the org resolver, route extractions (standings, trends, crunch, pitching), severity normalization, Front Office adapters and cache, `/api/v2/catalog` (glossary, stat catalog, theme tokens, staff heads) | 3 |
 | **N5** | Design system (Swift) | `ClaimText`, `ClaimValue`, `BasisPopover` (detachable), `EvidenceView`, `RankStrip`, `RangeBar`, `Masthead`, `ReportCard`, table and chart styles, theming, tones, previews, accessibility | 3 |
 | **N6** | The Morning Report | Server: `teamSeason`, `clubProfile`, `rosterMap`, `horizon` (fixtures extended; R2/R4/R5 rules from the V2 plan). App: Morning Report, the report template, roster map | 4 |
@@ -1028,7 +1028,7 @@ same order, and 30 season indexes added.
 
 Branch `feature/swiftui-import-b2`. Server only; the Mac app's side (Setup's zero-question path, the "played since"
 prompt, the in-place update banner) is a later stage and uses what is served here. The owner's decisions 2, 3 and 4 of
-2026-09-26 (D-062).
+2026-09-26 (D-063).
 
 | Piece | Where | What it does |
 |---|---|---|
