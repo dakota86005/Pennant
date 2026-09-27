@@ -1362,7 +1362,9 @@ migrated in one change that deleted their `players_value` reads (`player.ts` and
   long-term deals (three seasons or more). The columns, each sortable from the keyboard with its explanation on hover:
   this season's salary, signed through (with options and clauses), service, free agent after (`controlEndOf`: the
   cone's own reading of when control ends, "2028 or 2029" where the later season may itself be free agency, "2031 or
-  later" where the last seasons laid out may each be, "past 2032"), with next season's status under it; next season's
+  later" where the last seasons laid out may each be, "past 2032", and "Controlled through 2032 at least" where the end is
+  not established but the club holds him on every branch through that season, `controlEndOf`'s `heldThrough`, the reading
+  the cone and the Morning Report's roster map share, N6 review), with next season's status under it; next season's
   cost (most likely over its range, "if kept", "—" for a free agent); next season's wins; contract value; keeping him;
   and our view (the lens under the club's philosophy, "same" where it leans on nothing, the leans on hover). An unknown
   is a short word with its reason on hover and sorts after every known figure in either direction. A row opens the card;

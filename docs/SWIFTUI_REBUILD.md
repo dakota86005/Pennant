@@ -281,21 +281,25 @@ null only where the parts were not built. The types are in `server/presentation/
 contract pipeline (fixture: `contract/fixtures/responses/getFrontOffice.json`, from the synthetic save's season:
 `buildSave({ teamSeason: true })`, also written by `npm run synthetic:league`).
 - **`teamSeason` (the box score, objective facts, D-060).** `kicker {club, today, through}`; `record` (a claim whose
-  `value.display` is "26–17"; home, road and last-ten records in its basis); `place {claim, gamesBack, gamesAhead}` ("Tied
-  for 1st in the NL West", "2nd in the AL West · 2½ back": counted from the standings' games back, clubs level sharing the
-  place; the division's clubs in the basis; games back from the records, said, when the standings give none); `runs {claim
+  `value.display` is "26–17"; home, road and last-ten records in its basis); `place {claim, gamesBack, gamesAhead}` ("1st
+  in the NL West", "Tied for 2nd in the AL West · 2½ back": the exported standings' own order, `team_record.pos`, where every
+  club of the division has one, games back the number beside it; a tie only where the winning percentages are equal, named
+  in the basis, never because games back are level; counted from the records, percentage then wins less losses, and said,
+  where the standings give no order; games back from the records, said, when the standings give none); `runs {claim
   ("+13"), line ("198 scored · 185 allowed"), scored, allowed, diff, trend}` (the club's season totals; the trend is the
   running differential after each of the last 20 games); `lastFive {results ["W" | "L" | "T"], line}` and `streak`; `tonight
   {gameId, gameDate, when ("Tonight · 7:05 PM", "Today · 1:10 PM"), homeAway, opponent {teamId, name, abbr, record}, matchup,
-  ours, theirs {playerId, name, short, line}, starters, open, claim}` (OOTP's projected starters, `starter_0`, said as
-  projections; `open` is Major League Ops' Schedule & Game Plans, the nearest view to Game Day until N9) or null;
+  ours, theirs {playerId, name, short, line}, starters, open, claim}` (the first unplayed game on or after the league's day,
+  so a postponement left unplayed before it is never next; its time the park's local start as the export gives it, said in
+  the hint; OOTP's projected starters, `starter_0`, said as projections; `open` is Major League Ops' Schedule & Game Plans, the nearest view to Game Day until N9) or null;
   `deadline {gameDate, daysLeft, passed, count ("79 days", "Passed"), text, claim}` only from the league's own
   `trade_deadline_date`, never a major-league date; and `missing[] {part, line}`: each part not shown with its sentence.
 - **`lede`**: a claim of up to three sentences built only from facts on the page (the division place and games back; the
   first dimension in the page's order whose last-15 place moved from its season place by a fifth of the league or more,
-  else the best-placed strength; the days to the deadline while it is ahead), each named in its basis, its rule stamped as
-  policy; null without a record and a place. On the owner's save: "Tied for first in the NL West. Run prevention has climbed
-  to 2nd over the last fifteen. The deadline is 79 days out."
+  else the best-placed strength, the two places set against each other only when both count the same clubs; the days to
+  the deadline while it is ahead), each named in its basis, its rule stamped as policy; null without a record and a place.
+  On the owner's save: "First in the NL West. Run prevention has climbed to 2nd over the last fifteen. The deadline is 79
+  days out."
 - **`clubProfile`**: `note` ("Through May 15, 2026 · 43 games", the league's size in its hint), `lines` (the policy line per
   group: strength, weakness, rest, tooEarly, notPlaced), `dimensions[] {id, name, symbol, place, placeText, recent {place,
   text, why}, detail, group, claim}` for scoring runs (runs a game), preventing runs, on base, power (extra bases an at-bat),
@@ -306,22 +310,38 @@ contract pipeline (fixture: `contract/fixtures/responses/getFrontOffice.json`, f
   place reads the last 15 games from the schedule (runs) and the per-game log (the rest), and a club whose last 15 the log
   does not hold is not placed there. The design's "recent against season" is each dimension's recent place, not a ninth
   dimension.
-- **`rosterMap`**: `positions[] {pos, name, holder {playerId, name, short}, value {low, likely, high, unit, text, short} |
-  null, valueText, place (with `overlap`), placeText, overlap, overlapText, behind, farmNext {…, level, state: ready |
-  notYet | cantTell | notAssessed, readiness, text} | null, farmText, control {kind: through | clock | unknown, text, hint,
-  through, latest, seasonsLeft, atLeast, clock: arbitration | freeAgentAfterSeason}, need, claim}`, `valueScale {low, high,
-  unit}` (whole wins holding every range shown, and zero), `rotation[]` and `bullpen[] {playerId, role ("Next", "2nd" … as
-  OOTP projects the starts; "CL", "RP"), name, short, line, value, note, hint, need, claim}`, `rotationNeeds[]` and
-  `bullpenNeeds[]` (Major League Ops' needs at a staff's role that name no pitcher shown, in its desk words), `notes`,
-  `unavailable`. The value is Player Value's expected wins this season (the rest of it once under way), the figure the
-  place counts (the D-052 amendment); the holder is each club's major-league player listed at the position with the most
-  expected wins, the same rule for every club; a club with nobody valued there is not placed and is named. The farm's next
-  man is `mlbEvidence.farmNextByPosition`: the organization's players listed there at the highest level where anyone is,
-  ordered by Player Development's own readiness, with its durable Triple-A assessment as served (a man it has not assessed
-  is "Not assessed", never "not ready"). Control reads Player Value's timeline (`controlEndOf`; where that cannot say when
-  control ends because the last season laid out is unsettled between two held statuses, "Through 2046 at least": held on
-  every branch through it). A need is marked at a position from the need's role, and on a pitcher only where the need names
-  him. The DH is on the map where the league uses one and a club lists a player there (else a note says why).
+- **`rosterMap`**: `positions[] {pos, name, holder {playerId, name, short}, holderRule: starts | listed | null, value {low,
+  likely, high, unit, text, short} | null, valueText, place (with `overlap`), placeText, overlap, clearlyAhead, clearlyBehind,
+  overlapText, behind, farmNext {…, level, state: ready | notYet | cantTell | notAssessed, readiness, bar {readiness,
+  required} | null, text} | null, farmText, control {kind: through | clock | unknown, text, hint, through, latest,
+  seasonsLeft, atLeast, clock: arbitration | freeAgentAfterSeason}, need, claim}`, `valueScale {low, high, unit}` (whole
+  wins holding every range shown, and zero), `rotation[]` and `bullpen[] {playerId, role ("Next", "2nd" … as OOTP projects
+  the starts; "CL", "RP"), name, short, line, value, note, hint, need, claim}`, `rotationNeeds[]` and `bullpenNeeds[]` (Major
+  League Ops' needs at a staff's role that name no pitcher shown, in its desk words), `notes`, `unavailable`. The value is
+  Player Value's expected wins this season (the rest of it once under way), the figure the place counts (the D-052
+  amendment; the supervisor's call (a) at the review: positional strength, never surplus dollars, which would rank
+  contracts; the map carries no surplus, market or salary field, `rosterMap.test.ts`). **The holder** (call (c)) is the
+  regular the export shows: the man now on the club with the most starts at the position this season in the club's own
+  game log (`players_game_batting`, `gs` and `position`, a game counted once whatever splits repeat it), among the men who
+  started there in its last 15 games (`HOLDER_WINDOW`), so a regular who has stopped starting there, hurt or moved, does
+  not hold it; only where the log shows no such start, the club's man listed there with the most expected wins, and the
+  node says so (`holderRule`, the basis, and a count of such clubs). The same rule for every club, the designated hitter
+  included (the DH node is on the map where the league uses one and a club starts or lists a player there). **The place**
+  (call (b)) is counted on the expected wins' most likely value and stated as how many placed clubs' holders he is clearly
+  ahead of, not separable from and clearly behind, told apart on the range each lands in half the time (Player Value's
+  `remainingInner`, the 50% band; the drawn range stays the 80%): "Clearly ahead of 7 · not separable from 22", and a
+  universal overlap once, "Not separable from the other 29". The league's middle is shown only where five or more clubs are
+  placed (on the map and in "How we win and lose"). A club with nobody valued there is not placed and is named. The farm's
+  next man is `mlbEvidence.farmNextByPosition`: the organization's players listed there at the highest level where anyone
+  is, the man Player Development reads as readiest first (said on every node), with its durable Triple-A assessment as
+  served and its readiness against its bar (`bar`; a man whose readiness clears its bar while another of its bars is not
+  met is "not ready yet" with Player Development's blockers, never read as ready by his readiness; a man it has not
+  assessed is "Not assessed", never "not ready"). The level words were checked against the owner's save: OOTP's level 4
+  holds both A levels, so 4 and 5 read "Single-A". Control reads Player Value's timeline (`controlEndOf`; where that cannot
+  say when control ends because the last season laid out is unsettled between two held statuses, its `heldThrough`,
+  "Through 2046 at least", the reading the card's header, Contracts and the cone now share). A need Major League Ops raised
+  about a man sits on the node he holds, wherever it raised it; else at its role; on a pitcher only where the need names
+  him.
 - **What the Stage B adapters map** (the design models in `DesignModels.swift`): `Scoreboard.record` ← `teamSeason.record`;
   `recordLine` ← `place.claim.text`; `runs`/`runsLine`/`trend` ← `runs.claim`/`runs.line.display`/`runs.trend`; `lastFive`
   ← `lastFive.results` (`GameResult(served:)`; a "T" has no case yet); `lastFiveLine` ← `lastFive.line.display`; `TonightGame
@@ -333,9 +353,10 @@ contract pipeline (fixture: `contract/fixtures/responses/getFrontOffice.json`, f
   `short`; `farmNext` ← `farmNext.text`, or `farmText.display` when null; `control` → `ControlTerm.seasons(seasonsLeft, text)`
   for `through`, `.clock(text)`, `.unknown(text)`); `ValueScale` ← `valueScale`; `StaffPitcher` ← each pitcher (`id` from
   `playerId`). Mismatches for Stage B: the design's `ValueRange` comment and the old roster legend said "worth beyond his
-  pay" (dollars); the map serves expected wins (the catalog's legend now says so); `PlaceDimension.Group` needs `notPlaced`;
-  `GameResult` needs a tie; the staff's `rotationNeeds`/`bullpenNeeds`, `overlapText` and the masthead's `missing` have no
-  slot yet; the kicker's parts are served (`teamSeason.kicker`) where the app now uses `summary.asOf`.
+  pay" (dollars); the map serves expected wins (the catalog's legend now says so, and that places are told apart on the
+  half-time range); `PlaceDimension.Group` needs `notPlaced`; `GameResult` needs a tie; the staff's
+  `rotationNeeds`/`bullpenNeeds`, `overlapText` (with `clearlyAhead`/`clearlyBehind`), `holderRule`, the farm's `bar` and
+  the masthead's `missing` have no slot yet; the kicker's parts are served (`teamSeason.kicker`) where the app now uses `summary.asOf`.
 - **Not in Stage A:** the "since the last export" chips and "around the league" (they need N7's per-import snapshots and
   the league wire), and the horizon board (N12, Finance: the roster map needed none of it).
 - **Measured.** On the synthetic save in the test process (6 clubs): the season's facts 6 ms, the profile 2 ms, the roster
@@ -346,9 +367,15 @@ contract pipeline (fixture: `contract/fixtures/responses/getFrontOffice.json`, f
   about 2.5 s, off the request path; warm `front-office` answers in p50 2.3 to 2.9 ms, p95 3.4 to 4.1 ms (60 requests), the
   payload 114 kB. Launch to the first Morning Report payload is 2.9 s (it waits on the start-up build; B2's was 2.5 s): the
   budget of 1 s still needs the Mac app to show the last payload it received (N3.5's Mac stage).
+  After the review's fixes (the game log's starts read for every club, the half-time ranges), on a fresh scratch import of
+  the same export: the roster map 421 ms, the season's facts 41 ms, the profile 7 ms, the words 5 ms, a cold build 2.6 s;
+  warm p50 3.0 ms, p95 3.5 ms (60 requests), the payload 122 kB; launch to the first payload 3.0 s.
 - **Kept current.** The parts ride in the Front Office's key, and an adopted Player Value refit (about half a minute after
   an import) now drops the kept builds and builds the club's again (`valueRefitsRecorded`, called from the import's refit
-  step), so the map's expected wins are never an earlier fit's; a refit that was not adopted rebuilds nothing.
+  step), so the map's expected wins are never an earlier fit's; a refit that was not adopted rebuilds nothing. A recorded
+  calibration does the same; since the review the two coalesce: each drops the kept builds at once (a request meanwhile
+  builds on the fits then in force, never the old build), and the refit step holds the background rebuild until both
+  have settled, then builds once (`rebuildFrontOfficeLater`, `holdFrontOfficeRebuilds`).
 
 ### 3.5 One anatomy for every department report
 

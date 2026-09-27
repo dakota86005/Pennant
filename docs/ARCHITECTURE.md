@@ -101,7 +101,11 @@ folder: nothing in it reaches the odds or the posture) reads the club's league a
 (`teamSeason.ts`: standings, the clubs' season totals, the games, the projected starters, the per-game log, the trade
 deadline from the league's own row) and places each dimension of "How we win and lose" among the league's clubs
 (`clubProfile.ts`, pure; the fifths and "too early" are stamped policy lines), and holds the roster map's places
-(`rosterMap.ts`, pure: one holder rule for every club, a place counted on Player Value's figure with its overlap).
+(`rosterMap.ts`, pure: one holder rule for every club, the regular the club's game log shows, and a place counted on
+Player Value's figure, told apart on its 50% band).
+Player Value serves what the map reads and computes neither: the rest of the season's 50% band
+(`ProductionSeason.remainingInner`, `productionHeadlineOf(...).now.inner`) and how long a player is surely held
+(`controlEndOf(...).heldThrough`, the reading the card's header, Contracts and the cone share).
 `server/morningReport.ts`, outside the landing folders because Player Value's entry point reaches the deadline read's
 odds model, gathers the rest through each specialist's own door: expected wins and control from `playerValue.ts`, where a
 player is from Player State, the farm's next man through `mlbEvidence.ts` (`farmNextByPosition`: Player State's placement

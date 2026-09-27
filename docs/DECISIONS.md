@@ -2141,7 +2141,12 @@ enforced once.
 eight dimensions (scoring runs, preventing runs, on base, power, rotation, bullpen, defensive efficiency, baserunning)
 each placed with its recent place over the last 15 games (the "recent against season" of the list is that second place,
 not a ninth dimension), `CLUB_PROFILE_POLICY` (20 games, the fifths, 15 games) stamped as policy, and the positional places
-with their overlap counts. The Mac app draws them at N6, Stage B. The horizon is not built (N12). Design:
+with their overlap counts. At the Stage A review (the supervisor's calls, adopted, the owner may overrule): the roster map's
+unit stays Player Value's expected wins (positional strength; surplus dollars would rank contracts); the holder is the
+regular the club's game log shows (most starts there this season among the men who started there in its last 15 games,
+the listed man only where the log is silent, said so), the same rule for every club; and a place is stated as clearly
+ahead of / not separable from / clearly behind, told apart on the range each holder lands in half the time (Player Value's
+50% band), the drawn range the 80%. The Mac app draws them at N6, Stage B. The horizon is not built (N12). Design:
 SWIFTUI_REBUILD.md sections 3.4 and 3.6; as built, section 3.4 "As built at N6 (Stage A)".
 
 The Morning Report answers "where are we, what are we good at, what are we bad at, what needs me" with facts and stated

@@ -80,8 +80,9 @@ material implementation state changes.
   division place with ties, run differential with its running line, last five, streak, the next game with OOTP's projected
   starters, the trade deadline only from the league's own row), the lede (built only from facts on the page), "How we win
   and lose" (`clubProfile`: eight dimensions placed among the league's clubs, policy fifths, "too early" below 20 games,
-  the last 15 games' place) and the roster map (`rosterMap`: each position's holder, expected wins, league place with the
-  overlap count, depth, the farm's next man with Player Development's answer, control served structured, needs; the
+  the last 15 games' place) and the roster map (`rosterMap`: each position's holder, the regular the club's game log shows
+  (the listed man only where the log is silent, said so), expected wins, league place stated as clearly ahead of / not
+  separable from / clearly behind on the half-time range, depth, the farm's next man with Player Development's answer, control served structured, needs; the
   rotation and bullpen; one value scale). The Mac app draws them in N6, Stage B. Not built: "since the last export" and
   "around the league" (N7) and the horizon board (N12).
 - Pennant for Mac, the app skeleton (SwiftUI rebuild N3, D-055): `macos/Pennant.xcodeproj` and its packages. The app
