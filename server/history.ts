@@ -1306,7 +1306,7 @@ historyRoutes.get('/development-history/:orgId', (req, res) => {
   const saveName =
     currentSaveName();
 
-  const rows =
+  const allRows =
     historyDb
       .prepare(
         `SELECT
@@ -1357,6 +1357,11 @@ historyRoutes.get('/development-history/:orgId', (req, res) => {
         mov: number | null;
         ctl: number | null;
       }>;
+
+  // Snapshots in another known kind of ratings than today's export are a switch, never movement (D-061): left out here
+  // as in every trend, so the Development page's changes never read a switch; the switches themselves are served below
+  const { excluded: otherMode } = modeFilter();
+  const rows = allRows.filter((row) => !otherMode.has(row.game_date));
 
   rows.sort(
     (a, b) =>

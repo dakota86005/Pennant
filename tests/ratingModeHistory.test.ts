@@ -78,6 +78,15 @@ describe('rating history across a switch in the kind of ratings', () => {
     expect(modes).toEqual(['scouted', null, 'scouted']);
   });
 
+  it('serves the Development page only snapshots in today\'s kind, so a switch never reads as movement, and names the switch', async () => {
+    setExportRatingMode('scouted');
+    const body = await request(`/api/development-history/${ORG}`);
+    const dates = [...new Set((body.rows as Array<{ player_id: number; game_date: string }>).filter((r) => r.player_id === PLAYER).map((r) => r.game_date))];
+    expect(dates).toEqual(['2031-6-1', '2031-7-1', '2031-8-20']);
+    expect(body.dates).not.toContain('2031-4-1');
+    expect(body.ratingModeSwitches).toEqual([expect.objectContaining({ before: '2031-5-1', after: '2031-6-1' })]);
+  });
+
   it('shows the switch, and no changes, between two snapshots in different kinds', async () => {
     const body = await request(`/api/development/${ORG}?from=2031-5-1&to=2031-6-1`);
     expect(body.changes).toBeNull();
