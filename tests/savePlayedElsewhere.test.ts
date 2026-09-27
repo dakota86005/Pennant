@@ -104,3 +104,31 @@ describe('a save played since the chosen one', () => {
     expect(currentPlayedElsewhere()?.save.name).toBe('Other');
   });
 });
+
+describe('the minute\'s look at the saves (N3.5 B2 review, finding 2)', () => {
+  it('reads no file and stats no CSV: only the times OOTP writes on a save, so a cloud-only folder never blocks it', async () => {
+    const { vi } = await import('vitest');
+    const fs = (await import('node:fs')).default;
+    const home = new PretendHome();
+    homes.push(home);
+    const chosen = home.save(APP_STORE_27, 'Chosen', { playedHoursAgo: 10 });
+    home.save(APP_STORE_27, 'Other', { playedHoursAgo: 1 });
+    saveConfig({ csvDir: chosen.csvDir, saveName: 'Chosen' });
+    const realHome = process.env.HOME;
+    process.env.HOME = home.dir;
+    const reads = vi.spyOn(fs, 'readFileSync');
+    const stats = vi.spyOn(fs, 'statSync');
+    try {
+      const notice = scanSaves();
+      expect(notice?.save.name).toBe('Other');
+      const inSaves = (p: unknown) => String(p).startsWith(home.dir);
+      expect(reads.mock.calls.filter(([p]) => inSaves(p)).map(([p]) => String(p))).toEqual([]);
+      expect(stats.mock.calls.filter(([p]) => inSaves(p) && String(p).endsWith('.csv'))).toEqual([]);
+      expect(notice?.save).toMatchObject({ simulatedThrough: null, exportedAt: null, hasExport: true });
+    } finally {
+      reads.mockRestore();
+      stats.mockRestore();
+      process.env.HOME = realHome;
+    }
+  });
+});

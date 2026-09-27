@@ -264,8 +264,16 @@ export function lastPlayedMs(lgPath: string): number | null {
 export const EXPORT_OFF_NOTE =
   'No export yet. In OOTP, open Game Settings, then the Database tab, and use Database Tools to export the league to CSV files.';
 
+/**
+ * How much of a save to read: `full` (every fact, for `GET /api/v2/saves` and Setup), or `times` (the minute's scan
+ * for "played since", N3.5 B2 review): the files OOTP writes on a save are stat'ed and the export folder listed, but no
+ * file is read and no CSV stat'ed, so a folder synced to the cloud never blocks the server while a file downloads.
+ * With `times`, `csvLastModified`, `exportedAt` and `simulatedThrough` are null (not looked at, never "none").
+ */
+export type SaveFacts = 'full' | 'times';
+
 /** Reads the export state and the save facts for one `<save>.lg` directory. */
-export function describeSave(lgPath: string, root: SaveRoot | null = null): SaveInfo {
+export function describeSave(lgPath: string, root: SaveRoot | null = null, facts: SaveFacts = 'full'): SaveInfo {
   const csvDir = path.join(lgPath, 'import_export', 'csv');
   let csvCount = 0;
   let csvLastModified: string | null = null;
@@ -277,16 +285,18 @@ export function describeSave(lgPath: string, root: SaveRoot | null = null): Save
   }
   csvCount = csvs.length;
   let latest = 0;
-  for (const f of csvs) {
-    const mtime = mtimeOf(path.join(csvDir, f)) ?? 0;
-    if (mtime > latest) latest = mtime;
+  if (facts === 'full') {
+    for (const f of csvs) {
+      const mtime = mtimeOf(path.join(csvDir, f)) ?? 0;
+      if (mtime > latest) latest = mtime;
+    }
   }
   if (latest > 0) csvLastModified = new Date(latest).toISOString();
   const played = lastPlayedMs(lgPath);
   const lastPlayedAt = played === null ? null : new Date(played).toISOString();
   const version = root?.ootpVersion ?? versionFromPath(lgPath);
   let simulated: { date: string } | null = null;
-  try {
+  if (facts === 'full') try {
     simulated = parseLastDateSimulated(fs.readFileSync(path.join(lgPath, 'settings', 'last_date_simulated.dat')));
   } catch {
     simulated = null;
@@ -324,7 +334,7 @@ export function versionFromPath(p: string): number | null {
  * Every save in every `saved_games` folder found (every OOTP version), each once (by its real path), most recently
  * played first (a save OOTP has never saved last), then by name. A stray folder named just `.lg` is not a save.
  */
-export function detectSaves(home: string = os.homedir()): SaveInfo[] {
+export function detectSaves(home: string = os.homedir(), facts: SaveFacts = 'full'): SaveInfo[] {
   const saves: SaveInfo[] = [];
   const seen = new Set<string>();
   for (const root of saveGameRoots(home)) {
@@ -332,7 +342,7 @@ export function detectSaves(home: string = os.homedir()): SaveInfo[] {
       if (!entry.toLowerCase().endsWith('.lg') || entry === '.lg') continue;
       const lgPath = path.join(root.path, entry);
       if (!isDir(lgPath)) continue;
-      const info = describeSave(lgPath, root);
+      const info = describeSave(lgPath, root, facts);
       if (seen.has(info.id!)) continue;
       seen.add(info.id!);
       saves.push(info);

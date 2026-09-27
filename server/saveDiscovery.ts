@@ -8,6 +8,7 @@
  * Pennant never switches saves by itself: "played since" is a fact and a sentence, and the GM chooses.
  */
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { loadConfig } from './config.js';
 import { locateSave } from './ootpSave.js';
@@ -97,8 +98,8 @@ export const discoveryClock = {
     return t;
   },
   clearTimeout: (t: ReturnType<typeof setTimeout>): void => clearTimeout(t),
-  /** The saves found (a test points it at a pretend home). */
-  saves: (): SaveInfo[] => detectSaves(),
+  /** The saves found, times only (never a file read on the minute's scan); a test points it at a pretend home. */
+  saves: (): SaveInfo[] => detectSaves(os.homedir(), 'times'),
 };
 
 /** The chosen save's own facts: from the scan when it is there, else read from its folder. */
@@ -108,7 +109,7 @@ function chosenSave(saves: readonly SaveInfo[]): SaveInfo | null {
   const location = locateSave({ csvDir: config.csvDir, saveName: config.saveName, manualLgPath: config.lgPath ?? null });
   if (!location.found || !location.lgPath) return null;
   const id = saveId(location.lgPath);
-  return saves.find((s) => s.id === id) ?? describeSave(location.lgPath);
+  return saves.find((s) => s.id === id) ?? describeSave(location.lgPath, null, 'times');
 }
 
 /**
