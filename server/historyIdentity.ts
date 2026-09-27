@@ -23,7 +23,7 @@
  * a drive not mounted is not gone) and the players test doesn't rule it out; and a save whose folder's history was just
  * refused ("continue that history, or keep the new start?"). The GM can also pick any other history (one set aside, or
  * another folder's, as after an OOTP upgrade copied the save) from a list that hides only another league's. Carrying a
- * history over COPIES its dates up to this league's own date into this save's history, after a backup; the source is
+ * history over COPIES its dates before this league's own date into this save's history, after a backup; the source is
  * never changed or unbound, the rows copied are recorded, and "Undo carry-over" removes exactly them.
  *
  * What it cannot tell apart: a save deleted and made again in the same folder from the same real-life database with a
@@ -253,18 +253,20 @@ export interface HistorySave {
   origin: HistoryOrigin;
   /** For a fresh start, the folder's history it set aside; null otherwise. */
   replaces: string | null;
+  /** For a fresh start, the league's own date when it was made (a save that went back never carries a date from then on). */
+  refusedAt: string | null;
   createdAt: string;
   lastSeenAt: string;
 }
 
 interface RegistryRow {
   save_key: string; folder_id: string; folder_path: string | null; save_name: string | null; bound: number; origin: string;
-  replaces: string | null; created_at: string; last_seen_at: string;
+  replaces: string | null; refused_at: string | null; created_at: string; last_seen_at: string;
 }
 
 const toRecord = (r: RegistryRow): HistorySave => ({
   saveKey: r.save_key, folderId: r.folder_id, folderPath: r.folder_path, saveName: r.save_name, bound: r.bound === 1,
-  origin: r.origin as HistoryOrigin, replaces: r.replaces ?? null, createdAt: r.created_at, lastSeenAt: r.last_seen_at,
+  origin: r.origin as HistoryOrigin, replaces: r.replaces ?? null, refusedAt: r.refused_at ?? null, createdAt: r.created_at, lastSeenAt: r.last_seen_at,
 });
 
 /** The registry's record of a history key; null when there is none. */
@@ -359,8 +361,9 @@ function createKey(save: ServedSave, origin: HistoryOrigin, now: string, replace
   let key = base;
   for (let n = 2; taken.has(key); n += 1) key = `${base}-${n}`;
   historyDb.prepare(
-    `INSERT INTO history_saves (save_key, folder_id, folder_path, save_name, bound, origin, replaces, created_at, last_seen_at) VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?)`
-  ).run(key, save.folderId, save.folderPath, save.name, origin, replaces, now, now);
+    `INSERT INTO history_saves (save_key, folder_id, folder_path, save_name, bound, origin, replaces, refused_at, created_at, last_seen_at)
+     VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, ?)`
+  ).run(key, save.folderId, save.folderPath, save.name, origin, replaces, replaces ? snapshotGameDate() : null, now, now);
   return key;
 }
 
@@ -476,11 +479,23 @@ export function carryOvers(saveKey: string = currentHistoryKey()): HistoryCarryO
     .map((c) => ({ id: `${saveKey}:carry:${c.id}`, source: c.from_key, fromName: c.from_name, fromPath: c.from_path, throughDate: c.through_date, rows: c.rows_copied, carriedAt: c.carried_at }));
 }
 
-/** A history as a possible carry-over into `saveKey`: its dates up to this league's date, and how its players compare. */
-function describeSource(saveKey: string, r: RegistryRow, kind: HistoryOffer['kind'], names: ReadonlyMap<number, string> | null): HistoryOffer | null {
+/** A history as a possible carry-over into `saveKey`: its dates before the carry limit, and how its players compare. */
+/**
+ * The latest date a carry-over from `source` into `own` may copy, exclusive: this league's own date (the save files its
+ * own snapshot there), and, for the history a save that went back set aside, the league's date when it went back, fixed
+ * then, so however far the save plays on, the timeline it left is never copied in.
+ */
+function carryLimit(own: HistorySave | null, source: string): string | null {
   const today = parseGameDate(snapshotGameDate());
+  const wentBack = own?.origin === 'fresh_went_back' && own.replaces === source ? parseGameDate(own.refusedAt) : null;
+  if (today === null) return wentBack;
+  return wentBack !== null && wentBack < today ? wentBack : today;
+}
+
+function describeSource(saveKey: string, r: RegistryRow, kind: HistoryOffer['kind'], names: ReadonlyMap<number, string> | null): HistoryOffer | null {
+  const limit = carryLimit(historySave(saveKey), r.save_key);
   const dates = datesOf(r.save_key);
-  const upTo = dates.filter((d) => { const p = parseGameDate(d); return p !== null && (today === null || p <= today); });
+  const upTo = dates.filter((d) => { const p = parseGameDate(d); return p !== null && (limit === null || p < limit); });
   if (upTo.length === 0) return null;
   const continuity = continuityWithKey(r.save_key, names, upTo.at(-1)!);
   const players: HistoryPlayers = continuity.verdict === 'same' ? 'same' : continuity.verdict === 'no_evidence' ? 'too_few' : 'unclear';
@@ -499,7 +514,7 @@ const carriedFrom = (saveKey: string): Set<string> =>
 
 /**
  * The questions to ask about this save's rating history (D-064), only while its league is certainly its own:
- * - `players_changed` / `went_back`: its folder's history was set aside by a refusal. Continue it (its dates up to this
+ * - `players_changed` / `went_back`: its folder's history was set aside by a refusal. Continue it (its dates before this
  *   league's date) or keep the new start. Asked until answered: a refusal is never a dead end.
  * - `moved`: while this save has no history of its own (at most its first snapshot) and nothing carried over, another
  *   history still bound to a folder that has really gone, not later than this league, whose players the test doesn't
@@ -562,6 +577,10 @@ const CARRY_BACKUP_PREFIX = 'history-before-carry-over-';
  * file's size free), written under a temporary name and renamed. Refuses the carry-over with a sentence when it can't.
  */
 function backupBeforeCarry(): string {
+  // The last carry-over's backup still serves when nothing was imported since it (the carry-overs themselves can be undone)
+  const previous = latestCarryBackup();
+  const importedAt = (() => { try { return fs.statSync(LAST_IMPORT_PATH).mtimeMs; } catch { return null; } })();
+  if (previous && (importedAt === null || previous.at > importedAt)) return previous.file;
   const file = historyDb.name;
   let size = 0;
   try {
@@ -577,14 +596,82 @@ function backupBeforeCarry(): string {
     const partial = `${final}.partial`;
     historyDb.exec(`VACUUM INTO '${partial.replaceAll("'", "''")}'`);
     fs.renameSync(partial, final);
+    pruneCarryBackups();
     return final;
   } catch (err) {
     throw new HistoryChoiceRefusal(`The rating history couldn't be backed up first, so nothing was carried over (${(err as Error).message}).`);
   }
 }
 
+/** How many carry-over backups are kept (the one-time backup before earlier history was brought over is never removed). */
+export const CARRY_BACKUPS_KEPT = 3;
+
+const carryBackups = (): Array<{ file: string; at: number }> => {
+  try {
+    return fs.readdirSync(BACKUP_DIR).filter((f) => f.startsWith(CARRY_BACKUP_PREFIX) && f.endsWith('.db'))
+      .map((f) => ({ file: path.join(BACKUP_DIR, f), at: fs.statSync(path.join(BACKUP_DIR, f)).mtimeMs }))
+      .sort((a, b) => a.file.localeCompare(b.file));
+  } catch {
+    return [];
+  }
+};
+
+function latestCarryBackup(): { file: string; at: number } | null {
+  return carryBackups().at(-1) ?? null;
+}
+
+/** Keeps the newest `CARRY_BACKUPS_KEPT` carry-over backups (their names sort by time) and removes the rest. */
+function pruneCarryBackups(): void {
+  const all = carryBackups();
+  for (const b of all.slice(0, Math.max(0, all.length - CARRY_BACKUPS_KEPT))) fs.rmSync(b.file, { force: true });
+}
+
 /**
- * The GM's answer (D-064). `adopt` carries the named history over: after a backup, its dates up to this league's date are
+ * Copies `source`'s rows at `dates` into `saveKey` where this save has none, recording each row copied (and each date
+ * whose rating-kind stamp was copied) under carry-over `carry`. Returns the rows copied and the stamped dates.
+ */
+function copyInto(saveKey: string, carry: number, source: string, dates: readonly string[]): { rows: number; modeDates: string[] } {
+  const columns = SNAPSHOT_DATA_COLUMNS.join(', ');
+  let rows = 0;
+  const modeDates: string[] = [];
+  for (const date of dates) {
+    historyDb.prepare(
+      `INSERT OR IGNORE INTO history_carried_rows (carry_id, game_date, player_id)
+       SELECT ?, s.game_date, s.player_id FROM save_rating_snapshots s WHERE s.save_key = ? AND s.game_date = ?
+         AND NOT EXISTS (SELECT 1 FROM save_rating_snapshots t WHERE t.save_key = ? AND t.game_date = s.game_date AND t.player_id = s.player_id)`
+    ).run(carry, source, date, saveKey);
+    rows += historyDb.prepare(
+      `INSERT OR IGNORE INTO save_rating_snapshots (save_key, ${columns}) SELECT ?, ${columns} FROM save_rating_snapshots WHERE save_key = ? AND game_date = ?`
+    ).run(saveKey, source, date).changes;
+    const mode = historyDb.prepare(
+      `INSERT OR IGNORE INTO save_rating_snapshot_modes (save_key, game_date, mode, additional_scouted, source, import_started_at, recorded_at)
+       SELECT ?, game_date, mode, additional_scouted, source, import_started_at, recorded_at FROM save_rating_snapshot_modes WHERE save_key = ? AND game_date = ?`
+    ).run(saveKey, source, date).changes;
+    if (mode > 0) modeDates.push(date);
+  }
+  return { rows, modeDates };
+}
+
+/**
+ * This save's own snapshot now holds `date` for these players (or its own stamp now holds `date`): what a carry-over
+ * copied there is no longer the carry-over's, so undoing it never removes the save's own ratings (D-064). Called by the
+ * writers inside their transaction.
+ */
+export function releaseCarried(saveKey: string, date: string, playerIds: readonly number[] | null): void {
+  const active = `SELECT id FROM history_carry_overs WHERE save_key = ? AND undone_at IS NULL`;
+  if (playerIds === null) {
+    for (const c of historyDb.prepare(`SELECT id, mode_dates FROM history_carry_overs WHERE save_key = ? AND undone_at IS NULL`).all(saveKey) as Array<{ id: number; mode_dates: string }>) {
+      const dates = (JSON.parse(c.mode_dates) as string[]).filter((d) => d !== date);
+      historyDb.prepare(`UPDATE history_carry_overs SET mode_dates = ? WHERE id = ?`).run(JSON.stringify(dates), c.id);
+    }
+    return;
+  }
+  const release = historyDb.prepare(`DELETE FROM history_carried_rows WHERE game_date = ? AND player_id = ? AND carry_id IN (${active})`);
+  for (const id of playerIds) release.run(date, id, saveKey);
+}
+
+/**
+ * The GM's answer (D-064). `adopt` carries the named history over: after a backup, its dates before the carry limit are
  * COPIED into this save's history (this save's own rows win where both have one), the rows copied are recorded, and the
  * source is left exactly as it was. `fresh` answers a question with "keep them apart" and records it. `undo` removes
  * exactly the rows a carry-over copied. Every answer names this save's key, so it can't answer for another save; an
@@ -608,6 +695,15 @@ export function answerHistoryOffer(id: string, choice: 'adopt' | 'fresh' | 'undo
         historyDb.prepare(`DELETE FROM save_rating_snapshot_modes WHERE save_key = ? AND game_date = ?`).run(saveKey, date);
       }
       historyDb.prepare(`UPDATE history_carry_overs SET undone_at = ? WHERE id = ?`).run(now, n);
+      // Another carry-over still in force supplies what it has for the dates this one supplied, as if this one had never
+      // been made: an undo of one source never takes away what another carried over (oldest carry-over first, as copied)
+      for (const other of historyDb.prepare(`SELECT * FROM history_carry_overs WHERE save_key = ? AND undone_at IS NULL ORDER BY id`).all(saveKey) as CarryRow[]) {
+        const through = parseGameDate(other.through_date);
+        const dates = datesOf(other.from_key).filter((d) => { const p = parseGameDate(d); return p !== null && through !== null && p <= through; });
+        const added = copyInto(saveKey, other.id, other.from_key, dates);
+        historyDb.prepare(`UPDATE history_carry_overs SET rows_copied = rows_copied + ?, mode_dates = ? WHERE id = ?`)
+          .run(added.rows, JSON.stringify([...new Set([...(JSON.parse(other.mode_dates) as string[]), ...added.modeDates])]), other.id);
+      }
       // The question can be asked again
       historyDb.prepare(`DELETE FROM history_offer_choices WHERE save_key = ? AND candidate_key = ? AND choice = 'adopt'`).run(saveKey, row.from_key);
     }).immediate();
@@ -623,7 +719,6 @@ export function answerHistoryOffer(id: string, choice: 'adopt' | 'fresh' | 'undo
   const offer = [...historyOffers(saveKey), ...historyCandidates(saveKey)].find((o) => o.id === id);
   if (!offer) throw new HistoryChoiceRefusal('That earlier rating history can\'t be carried over to this save now.');
   const backup = backupBeforeCarry();
-  const columns = SNAPSHOT_DATA_COLUMNS.join(', ');
   const through = parseGameDate(offer.carriesThrough);
   const dates = datesOf(offer.source).filter((d) => { const p = parseGameDate(d); return p !== null && through !== null && p <= through; });
   historyDb.transaction(() => {
@@ -632,23 +727,7 @@ export function answerHistoryOffer(id: string, choice: 'adopt' | 'fresh' | 'undo
       `INSERT INTO history_carry_overs (save_key, from_key, from_name, from_path, through_date, rows_copied, mode_dates, backup, carried_at)
        VALUES (?, ?, ?, ?, ?, 0, '[]', ?, ?)`
     ).run(saveKey, offer.source, src?.saveName ?? null, src?.folderPath ?? null, offer.carriesThrough, backup, now).lastInsertRowid);
-    let copied = 0;
-    const modeDates: string[] = [];
-    for (const date of dates) {
-      historyDb.prepare(
-        `INSERT INTO history_carried_rows (carry_id, game_date, player_id)
-         SELECT ?, s.game_date, s.player_id FROM save_rating_snapshots s WHERE s.save_key = ? AND s.game_date = ?
-           AND NOT EXISTS (SELECT 1 FROM save_rating_snapshots t WHERE t.save_key = ? AND t.game_date = s.game_date AND t.player_id = s.player_id)`
-      ).run(carry, offer.source, date, saveKey);
-      copied += historyDb.prepare(
-        `INSERT OR IGNORE INTO save_rating_snapshots (save_key, ${columns}) SELECT ?, ${columns} FROM save_rating_snapshots WHERE save_key = ? AND game_date = ?`
-      ).run(saveKey, offer.source, date).changes;
-      const mode = historyDb.prepare(
-        `INSERT OR IGNORE INTO save_rating_snapshot_modes (save_key, game_date, mode, additional_scouted, source, import_started_at, recorded_at)
-         SELECT ?, game_date, mode, additional_scouted, source, import_started_at, recorded_at FROM save_rating_snapshot_modes WHERE save_key = ? AND game_date = ?`
-      ).run(saveKey, offer.source, date).changes;
-      if (mode > 0) modeDates.push(date);
-    }
+    const { rows: copied, modeDates } = copyInto(saveKey, carry, offer.source, dates);
     historyDb.prepare(`UPDATE history_carry_overs SET rows_copied = ?, mode_dates = ? WHERE id = ?`).run(copied, JSON.stringify(modeDates), carry);
     record.run(saveKey, offer.source, 'adopt', now);
   }).immediate();

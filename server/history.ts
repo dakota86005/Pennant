@@ -4,7 +4,7 @@ import path from 'node:path';
 import { db as leagueDb, importRecord, tableExists } from './db.js';
 import { DATA_DIR, loadConfig } from './config.js';
 import { isModeSwitch, RATING_MODE_WORDS, type RatingMode, type RatingModeRecord } from './ratingMode.js';
-import { boundKeyNow, currentHistoryKey, historyNote, rollbackName, servedLeagueCertain } from './historyIdentity.js';
+import { boundKeyNow, currentHistoryKey, historyNote, releaseCarried, rollbackName, servedLeagueCertain } from './historyIdentity.js';
 
 /**
  * Persistent store that SURVIVES reimports (league.db is rebuilt on every
@@ -161,6 +161,7 @@ historyDb.exec(`
     bound INTEGER NOT NULL DEFAULT 1,
     origin TEXT NOT NULL,
     replaces TEXT,
+    refused_at TEXT,
     created_at TEXT NOT NULL,
     last_seen_at TEXT NOT NULL
   );
@@ -229,6 +230,12 @@ historyDb.exec(`
     ON roster_state_snapshot_saves (save_key, snapshot_id);
 `);
 
+{
+  // A data folder that ran an earlier build of this branch has history_saves without the later columns: added, nullable
+  const present = new Set((historyDb.prepare(`PRAGMA table_info(history_saves)`).all() as Array<{ name: string }>).map((c) => c.name));
+  for (const column of ['replaces', 'refused_at']) if (!present.has(column)) historyDb.exec(`ALTER TABLE history_saves ADD COLUMN ${column} TEXT`);
+}
+
 /**
  * Records the rating mode of the snapshot of `gameDate` (replacing it, as the snapshot itself is replaced on a re-import
  * of that date). No record (an import from before N3.5 recorded none) stamps nothing: the snapshot stays unrecorded,
@@ -253,6 +260,8 @@ export function stampSnapshotMode(gameDate: string, record: RatingModeRecord | n
          (save_key, game_date, mode, additional_scouted, source, import_started_at, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
       )
       .run(saveKey, ...values);
+    // The save's own stamp now: no carry-over's undo removes it
+    releaseCarried(saveKey, gameDate, null);
     // And under the served save's name, as the earlier build writes it, so a rolled-back Electron build reads it (D-064);
     // never when the league served isn't certainly the configured save's
     if (name === null) return;
@@ -442,6 +451,8 @@ export function takeSnapshot(): { gameDate: string; players: number } | null {
       insert.run(saveKey, ...values);
       if (saveName !== null) insertByName.run(saveName, ...values);
     }
+    // The save's own ratings now: what a carry-over copied at this date and player is no longer the carry-over's (D-064)
+    releaseCarried(saveKey, gameDate, rows.map((r) => Number(r.player_id)));
     if (saveName !== null) dualWrite.run(saveName, gameDate, saveKey, new Date().toISOString());
   });
   insertAll.immediate();

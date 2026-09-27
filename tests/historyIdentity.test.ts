@@ -14,6 +14,7 @@ import {
   forgetHistoryKey,
   historyIdentityDeps,
   historyNote,
+  carryOvers,
   historyCandidates,
   historyOffers,
   historySave,
@@ -322,7 +323,7 @@ describe('one folder, one history: the players test only refuses, and a refusal 
       expect(snapshotDates()).toEqual(['2030-5-1', LEAGUE_DATE]);
       expect(keyedRows(key)).toEqual(before);
       expect(historyNote().note).toBeNull();
-      expect(historyNote().because.join(' ')).toMatch(/You carried over the rating history of "New Game" \(in .*New Game\.lg\) through June 1, 2030/);
+      expect(historyNote().because.join(' ')).toMatch(/You carried over the rating history of "New Game" \(in .*New Game\.lg\) through May 1, 2030/);
     } finally {
       db.exec(`UPDATE players SET first_name = substr(first_name, 4) WHERE first_name LIKE 'New%'`);
     }
@@ -458,7 +459,7 @@ describe('the GM decides: questions about a save that might have moved, the list
     expect(currentHistoryKey()).toBe(keyNew);
     const view = await request('/api/v2/rating-history');
     expect(view.offers).toHaveLength(1);
-    expect(view.offers[0]).toMatchObject({ id: `${keyNew}:${keyA}`, kind: 'moved', saveName: 'New Game', imports: 2, carriesThrough: LEAGUE_DATE, players: 'same' });
+    expect(view.offers[0]).toMatchObject({ id: `${keyNew}:${keyA}`, kind: 'moved', saveName: 'New Game', imports: 2, carriesThrough: '2030-5-1', players: 'same' });
     expect(view.offers[0].question.text).toMatch(/^This save has no rating history yet\. Is it "New Game", the save that used to be in /);
     for (const banned of BANNED_JARGON) expect(view.offers[0].question.text).not.toMatch(banned);
     // Answers name this save: another save's, a made-up one, or an unknown choice is refused in words
@@ -468,7 +469,7 @@ describe('the GM decides: questions about a save that might have moved, the list
     expect(answered.status).toBe(200);
     expect(answered.body.offers).toEqual([]);
     expect(answered.body.carriedOver).toHaveLength(1);
-    expect(answered.body.carriedOver[0].text.text).toBe('Rating history carried over from "New Game" through June 1, 2030.');
+    expect(answered.body.carriedOver[0].text.text).toBe('Rating history carried over from "New Game" through May 1, 2030.');
     expect(fs.readdirSync(path.join(DATA_DIR, 'backups')).filter((f) => f.startsWith('history-before-carry-over-'))).toHaveLength(1);
     expect(currentHistoryKey()).toBe(keyNew);
     expect(snapshotDates()).toEqual(['2030-5-1', LEAGUE_DATE]);
@@ -492,6 +493,7 @@ describe('the GM decides: questions about a save that might have moved, the list
     useSave(a.csvDir, 'New Game');
     const keyA = currentHistoryKey();
     takeSnapshot();
+    copyDate(keyA, '2030-5-1');
     fs.rmSync(a.lgPath, { recursive: true });
     useSave(renamed.csvDir, 'Dynasty');
     const keyNew = currentHistoryKey();
@@ -571,6 +573,148 @@ describe('the GM decides: questions about a save that might have moved, the list
       db.prepare(`DELETE FROM pennant_import WHERE key = 'import'`).run();
       forgetImportRecord();
     }
+  });
+});
+
+describe('a carry-over never takes what isn\'t its own', () => {
+  /** A history for another folder (gone), with this league's players at the given dates and ratings offset by `shift`. */
+  function sourceHistory(key: string, name: string, dates: string[], shift: number): void {
+    historyDb.prepare(
+      `INSERT INTO history_saves (save_key, folder_id, folder_path, save_name, bound, origin, created_at, last_seen_at) VALUES (?, ?, ?, ?, 1, 'new', 'x', ?)`
+    ).run(key, key, path.join(root, 'gone', `${name}.lg`), name, `2040-01-0${dates.length}`);
+    const players = leaguePlayers();
+    const insert = historyDb.prepare(`INSERT INTO save_rating_snapshots (save_key, game_date, player_id, name, position, cur) VALUES (?, ?, ?, ?, 6, ?)`);
+    for (const d of dates) for (const p of players) insert.run(key, d, p.player_id, p.name, 40 + shift);
+  }
+  const curAt = (key: string, date: string): number[] =>
+    (historyDb.prepare(`SELECT DISTINCT cur FROM save_rating_snapshots WHERE save_key = ? AND game_date = ?`).all(key, date) as Array<{ cur: number }>).map((r) => r.cur);
+
+  it('copies only dates before the league\'s own, so the save\'s own snapshot of today is never taken back by an undo', async () => {
+    const a = saveFolder('mac-app-store', 'New Game');
+    const renamed = saveFolder('mac-app-store', 'Dynasty');
+    useSave(a.csvDir, 'New Game');
+    const keyA = currentHistoryKey();
+    takeSnapshot();
+    copyDate(keyA, '2030-5-1');
+    fs.rmSync(a.lgPath, { recursive: true });
+    useSave(renamed.csvDir, 'Dynasty');
+    const keyNew = currentHistoryKey(); // its first import: no snapshot of its own yet
+    const [offer] = historyOffers();
+    expect(offer.carriesThrough).toBe('2030-5-1');
+    expect((await choose(offer.id, 'adopt')).status).toBe(200);
+    expect(snapshotDates()).toEqual(['2030-5-1']);
+    takeSnapshot(); // its own snapshot of today, after the carry-over
+    const [carry] = carryOvers();
+    expect((await choose(carry.id, 'undo')).status).toBe(200);
+    expect(keyedRows(keyNew).length).toBe(leaguePlayers().length);
+    expect(snapshotDates()).toEqual([LEAGUE_DATE]);
+  });
+
+  it('gives up a carried row or stamp the save\'s own snapshot writes over, so an undo leaves the save\'s own', async () => {
+    const own = saveFolder('mac-app-store', 'Dynasty');
+    useSave(own.csvDir, 'Dynasty');
+    const key = currentHistoryKey();
+    sourceHistory('save-earlier', 'Earlier', ['2030-5-1'], -5);
+    expect((await choose(`${key}:save-earlier`, 'adopt')).status).toBe(200);
+    // As if the carry-over had copied today's date (a history later rewound): recorded as carried, stamp and all
+    const [carry] = carryOvers();
+    const n = Number(carry.id.split(':carry:')[1]);
+    for (const p of leaguePlayers()) historyDb.prepare(`INSERT INTO history_carried_rows (carry_id, game_date, player_id) VALUES (?, ?, ?)`).run(n, LEAGUE_DATE, p.player_id);
+    historyDb.prepare(`UPDATE history_carry_overs SET mode_dates = ? WHERE id = ?`).run(JSON.stringify(['2030-5-1', LEAGUE_DATE]), n);
+    takeSnapshot();
+    stampSnapshotMode(LEAGUE_DATE, { mode: 'scouted', additionalScouted: null, source: 'export_settings', reason: null }, null);
+    expect(historyDb.prepare(`SELECT COUNT(*) AS n FROM history_carried_rows WHERE carry_id = ? AND game_date = ?`).get(n, LEAGUE_DATE)).toEqual({ n: 0 });
+    expect((await choose(carry.id, 'undo')).status).toBe(200);
+    expect(snapshotDates()).toEqual([LEAGUE_DATE]);
+    expect(keyedRows(key).length).toBe(leaguePlayers().length);
+    expect(historyDb.prepare(`SELECT mode FROM save_rating_snapshot_modes WHERE save_key = ? AND game_date = ?`).get(key, LEAGUE_DATE)).toEqual({ mode: 'scouted' });
+  });
+
+  it('never copies the timeline a save went back from, however far it plays on: the limit is the date it went back to', async () => {
+    const a = saveFolder('mac-app-store', 'New Game');
+    useSave(a.csvDir, 'New Game');
+    const key = currentHistoryKey();
+    takeSnapshot();
+    copyDate(key, '2030-5-1');
+    historyDb.prepare(`UPDATE save_rating_snapshots SET game_date = '2031-1-1' WHERE save_key = ? AND game_date = ?`).run(key, LEAGUE_DATE);
+    useSave(a.csvDir, 'New Game');
+    const fresh = currentHistoryKey();
+    expect(historySave(fresh)).toMatchObject({ origin: 'fresh_went_back', refusedAt: LEAGUE_DATE });
+    takeSnapshot();
+    // The save plays on, past the dates of the timeline it left
+    db.exec(`UPDATE leagues SET "current_date" = '2031-06-01'`);
+    try {
+      useSave(a.csvDir, 'New Game');
+      expect(currentHistoryKey()).toBe(fresh);
+      const [offer] = historyOffers();
+      expect(offer).toMatchObject({ kind: 'went_back', carriesThrough: '2030-5-1' });
+      expect(historyCandidates().find((c) => c.source === key)?.carriesThrough).toBe('2030-5-1');
+      const view = await request('/api/v2/rating-history');
+      expect(view.offers[0].question.text).toMatch(/up to May 1, 2030, or keep the new start\?$/);
+      expect((await choose(offer.id, 'adopt')).status).toBe(200);
+      expect(snapshotDates()).toEqual(['2030-5-1', LEAGUE_DATE]);
+    } finally {
+      db.exec(`UPDATE leagues SET "current_date" = '${LEAGUE_DATE}'`);
+    }
+  });
+
+  it('keeps three carry-over backups at most, never the one made before earlier history was brought over, and makes none when nothing was imported since the last', async () => {
+    const own = saveFolder('mac-app-store', 'Dynasty');
+    useSave(own.csvDir, 'Dynasty');
+    const key = currentHistoryKey();
+    takeSnapshot();
+    sourceHistory('save-earlier', 'Earlier', ['2030-5-1'], -5);
+    const dir = path.join(DATA_DIR, 'backups');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'history-before-save-identity-2020-01-01T00-00-00-000Z.db'), '');
+    const carryFiles = () => fs.readdirSync(dir).filter((f) => f.startsWith('history-before-carry-over-'));
+    // An import at `ms` (the configuration older still, so the league stays certainly this save's)
+    const importNow = (ms: number) => {
+      const t = new Date(ms);
+      const before = new Date(ms - 120_000);
+      fs.utimesSync(path.join(DATA_DIR, 'config.json'), before, before);
+      fs.utimesSync(LAST_IMPORT_PATH, t, t);
+    };
+    importNow(Date.now() - 60_000);
+    const cycle = async () => {
+      const adopted = await choose(`${key}:save-earlier`, 'adopt');
+      expect(adopted.status, JSON.stringify(adopted.body)).toBe(200);
+      const undone = await choose(carryOvers()[0].id, 'undo');
+      expect(undone.status, JSON.stringify(undone.body)).toBe(200);
+    };
+    await cycle();
+    await cycle(); // nothing imported since the last backup: it still serves
+    expect(carryFiles()).toHaveLength(1);
+    for (let i = 0; i < 4; i += 1) {
+      importNow(Date.now() + 60_000); // an import after the last backup
+      await cycle();
+    }
+    expect(carryFiles()).toHaveLength(3);
+    expect(fs.existsSync(path.join(dir, 'history-before-save-identity-2020-01-01T00-00-00-000Z.db'))).toBe(true);
+  });
+
+  it('says when a carry-over is already in force, and an undo of one leaves what another carried over', async () => {
+    const own = saveFolder('mac-app-store', 'Dynasty');
+    useSave(own.csvDir, 'Dynasty');
+    const key = currentHistoryKey();
+    takeSnapshot();
+    sourceHistory('save-first', 'First', ['2030-4-1', '2030-5-1'], -1);
+    sourceHistory('save-second', 'Second', ['2030-5-1', '2030-5-15'], -10);
+    expect((await request('/api/v2/rating-history')).warning).toBeNull();
+    expect((await choose(`${key}:save-first`, 'adopt')).status).toBe(200);
+    const view = await request('/api/v2/rating-history');
+    expect(view.warning.text).toBe('This save already has rating history carried over from "First". Carrying over another adds only the imports it doesn\'t have yet.');
+    expect((await choose(`${key}:save-second`, 'adopt')).status).toBe(200);
+    expect(snapshotDates()).toEqual(['2030-4-1', '2030-5-1', '2030-5-15', LEAGUE_DATE]);
+    expect(curAt(key, '2030-5-1')).toEqual([39]);
+    // Undo the first: its own dates go; the date both had now holds the second's, which is still in force
+    const first = carryOvers().find((c) => c.source === 'save-first')!;
+    expect((await choose(first.id, 'undo')).status).toBe(200);
+    expect(snapshotDates()).toEqual(['2030-5-1', '2030-5-15', LEAGUE_DATE]);
+    expect(curAt(key, '2030-5-1')).toEqual([30]);
+    const second = carryOvers().find((c) => c.source === 'save-second')!;
+    expect((await choose(second.id, 'undo')).status).toBe(200);
+    expect(snapshotDates()).toEqual([LEAGUE_DATE]);
   });
 });
 

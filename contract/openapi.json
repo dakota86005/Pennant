@@ -3765,6 +3765,10 @@
               "$ref": "#/components/schemas/RatingHistoryCarryOver"
             },
             "description": "The carry-overs in force, most recent first, each undoable."
+          },
+          "warning": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "While a carry-over is in force, what carrying over another would do, in a sentence; null otherwise."
           }
         },
         "required": [

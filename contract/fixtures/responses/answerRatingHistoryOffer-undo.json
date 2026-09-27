@@ -23,7 +23,7 @@
             },
             {
               "label": "Carrying it over",
-              "value": "Copies its imports up to May 6, 2040 into this save's history. Its own history is left as it is, and it can be undone."
+              "value": "Copies its imports up to April 1, 2040 into this save's history. Its own history is left as it is, and it can be undone."
             }
           ],
           "source": {
@@ -48,7 +48,7 @@
       "saveName": "Old League",
       "place": "~/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games",
       "lastDate": "2040-5-6",
-      "carriesThrough": "2040-5-6",
+      "carriesThrough": "2040-4-1",
       "imports": 2,
       "players": "same"
     }
@@ -75,7 +75,7 @@
             },
             {
               "label": "Carrying it over",
-              "value": "Copies its imports up to May 6, 2040 into this save's history. Its own history is left as it is, and it can be undone."
+              "value": "Copies its imports up to April 1, 2040 into this save's history. Its own history is left as it is, and it can be undone."
             }
           ],
           "source": {
@@ -97,10 +97,11 @@
       "place": "~/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games",
       "folder": "gone",
       "lastDate": "2040-5-6",
-      "carriesThrough": "2040-5-6",
+      "carriesThrough": "2040-4-1",
       "imports": 2,
       "players": "same"
     }
   ],
-  "carriedOver": []
+  "carriedOver": [],
+  "warning": null
 }

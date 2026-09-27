@@ -71,6 +71,8 @@ export interface RatingHistoryView {
   candidates: RatingHistoryCandidate[];
   /** The carry-overs in force, most recent first, each undoable. */
   carriedOver: RatingHistoryCarryOver[];
+  /** While a carry-over is in force, what carrying over another would do, in a sentence; null otherwise. */
+  warning: Claim | null;
 }
 
 /** The GM's answer: carry a history over (`adopt`), keep them apart (`fresh`, a question only), or undo a carry-over (`undo`). */
@@ -217,6 +219,26 @@ export function carryOverWords(c: HistoryCarryOver): RatingHistoryCarryOver {
   };
 }
 
+/** While a carry-over is in force: carrying over another stacks, and adds only what this save doesn't have yet. */
+export function stackingWarning(carries: HistoryCarryOver[]): Claim | null {
+  if (carries.length === 0) return null;
+  const names = carries.map((c) => (c.fromName ? `"${c.fromName}"` : 'another save'));
+  const from = names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
+  return claim({
+    text: `This save already has rating history carried over from ${from}. Carrying over another adds only the imports it doesn't have yet.`,
+    tone: 'caution',
+    hint: 'Two carried-over histories can disagree; undoing one leaves the other',
+    basis: basis({
+      because: carries.map((c) => ({ label: 'Carried over', value: `From ${c.fromName ? `"${c.fromName}"` : 'another save'}${c.fromPath ? ` (${c.fromPath})` : ''}, ${c.rows} player rating${c.rows === 1 ? '' : 's'}.` })),
+      source: SOURCE,
+      unknown: [],
+      wouldChange: ['Undo a carry-over first to carry over only the other.'],
+      lean: null,
+      certainty: 'fact',
+    }),
+  });
+}
+
 /** The view. */
 export function ratingHistoryView(note: HistoryNote, offers: HistoryOffer[], candidates: HistoryOffer[], carries: HistoryCarryOver[]): RatingHistoryView {
   return {
@@ -224,5 +246,6 @@ export function ratingHistoryView(note: HistoryNote, offers: HistoryOffer[], can
     offers: offers.map(offerWords),
     candidates: candidates.map(candidateWords),
     carriedOver: carries.map(carryOverWords),
+    warning: stackingWarning(carries),
   };
 }
