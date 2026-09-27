@@ -233,7 +233,7 @@ export function adoptAuthored<T>(payload: T): T {
     if (!node || typeof node !== 'object') return;
     const o = node as Record<string, unknown>;
     for (const [k, v] of Object.entries(o)) walk(v, `${path}.${k}`);
-    const claimLike = 'basis' in o || ('text' in o && 'tone' in o && 'links' in o);
+    const claimLike = (typeof o.basis === 'object' && o.basis !== null) || ('text' in o && 'tone' in o && 'links' in o);
     if (!claimLike) return;
     const b = o.basis as Basis;
     const problems = basisProblems(b);

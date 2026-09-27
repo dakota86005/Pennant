@@ -170,16 +170,28 @@ function inWorker<T>(job: Job): Promise<T> {
   });
 }
 
+/** Takes in what the worker built: its payloads' claims are checked again and registered (`adoptAuthored`). */
+function adopt<T>(job: Job, result: T): T {
+  if (job.kind === 'trail') return result === null ? result : adoptAuthored(result);
+  const built = result as unknown as BuildResult;
+  adoptAuthored(built.summary);
+  adoptAuthored(built.reports);
+  return result;
+}
+
 /** Runs a job in a worker thread; in-process when none can start (logged once), never on the request's own turn. */
 async function run<T>(job: Job): Promise<T> {
   if (workerAvailable()) {
+    let result: T | undefined;
     try {
       stats.workerRuns += 1;
-      return adoptAuthored(await inWorker<T>(job));
+      result = await inWorker<T>(job);
     } catch (err) {
       workerBroken = true;
       console.error('[front office] worker unavailable, building in-process from now on:', err);
     }
+    // An authoring defect in what it built throws here, as it would have in-process
+    if (result !== undefined) return adopt(job, result);
   }
   stats.inlineRuns += 1;
   await new Promise((resolve) => setImmediate(resolve));
