@@ -4,6 +4,7 @@ import path from 'node:path';
 import { db as leagueDb, importRecord, tableExists } from './db.js';
 import { DATA_DIR, loadConfig } from './config.js';
 import { isModeSwitch, RATING_MODE_WORDS, type RatingMode, type RatingModeRecord } from './ratingMode.js';
+import { boundKeyNow, currentHistoryKey, historyNote, releaseCarried, rollbackName, servedLeagueCertain } from './historyIdentity.js';
 
 /**
  * Persistent store that SURVIVES reimports (league.db is rebuilt on every
@@ -99,6 +100,142 @@ historyDb.exec(`
   );
 `);
 
+/*
+ * Rating history keyed by the save's identity (D-064), not its name. Two saves can share a name (OOTP names every new
+ * league "New Game"), and `rating_snapshots` is keyed by the name, so two such saves would read each other's ratings as
+ * development, and a snapshot of one on a date the other also has would overwrite part of the other's. These tables are
+ * new and additive: the tables above keep their shape and meaning, and the earlier (Electron) build keeps reading and
+ * writing them under the name. This build reads only these; it writes each snapshot here AND, as the earlier build
+ * would, under the name (so a rolled-back Electron build still sees it; its own same-name defect stays its own). The
+ * earlier rows are brought over for a save only where they are certainly its own (`historyIdentity.ts`); the rest stay
+ * where they are, unused. `history_dual_writes` names the dates this build wrote under a name, which are never taken
+ * for earlier history; `history_offer_choices` records the GM's answer to "is this the save that used to be at...?".
+ *
+ * `history_saves` names each save's history (its key, the folder it was last seen in, and why it began), and
+ * `history_legacy_review` records, for each save and each date of the name-keyed history, whether its rows were brought
+ * over and why, and against which import, so a date is brought over once, a date left unused is looked at again only
+ * against another import, and a crash part way through resumes where it stopped.
+ */
+/** Every column a rating snapshot keeps besides its save, in both tables (the legacy one has them since cycle 4 of D-053). */
+export const SNAPSHOT_DATA_COLUMNS = [
+  'game_date', 'player_id', 'name', 'team_id', 'org_id', 'level', 'position', 'age',
+  'con', 'gap', 'pow', 'eye', 'avk', 'spd', 'conP', 'gapP', 'powP', 'eyeP', 'avkP',
+  'stu', 'mov', 'ctl', 'stuP', 'movP', 'ctlP', 'cur', 'pot',
+  ...SNAPSHOT_SPLIT_COLUMNS, ...SNAPSHOT_RUNNING_COLUMNS,
+] as const;
+historyDb.exec(`
+  CREATE TABLE IF NOT EXISTS save_rating_snapshots (
+    save_key TEXT NOT NULL,
+    game_date TEXT NOT NULL,
+    player_id INTEGER NOT NULL,
+    name TEXT,
+    team_id INTEGER,
+    org_id INTEGER,
+    level INTEGER,
+    position INTEGER,
+    age INTEGER,
+    con REAL, gap REAL, pow REAL, eye REAL, avk REAL, spd REAL,
+    conP REAL, gapP REAL, powP REAL, eyeP REAL, avkP REAL,
+    stu REAL, mov REAL, ctl REAL,
+    stuP REAL, movP REAL, ctlP REAL,
+    cur REAL, pot REAL,
+    ${[...SNAPSHOT_SPLIT_COLUMNS, ...SNAPSHOT_RUNNING_COLUMNS].map((c) => `${c} REAL`).join(', ')},
+    PRIMARY KEY (save_key, game_date, player_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_save_snap_player ON save_rating_snapshots (save_key, player_id, game_date);
+  CREATE TABLE IF NOT EXISTS save_rating_snapshot_modes (
+    save_key TEXT NOT NULL,
+    game_date TEXT NOT NULL,
+    mode TEXT NOT NULL,
+    additional_scouted INTEGER,
+    source TEXT,
+    import_started_at TEXT,
+    recorded_at TEXT NOT NULL,
+    PRIMARY KEY (save_key, game_date)
+  );
+  CREATE TABLE IF NOT EXISTS history_saves (
+    save_key TEXT PRIMARY KEY,
+    folder_id TEXT NOT NULL,
+    folder_path TEXT,
+    save_name TEXT,
+    bound INTEGER NOT NULL DEFAULT 1,
+    origin TEXT NOT NULL,
+    replaces TEXT,
+    refused_at TEXT,
+    created_at TEXT NOT NULL,
+    last_seen_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_history_saves_folder ON history_saves (folder_id, bound);
+  CREATE TABLE IF NOT EXISTS history_legacy_review (
+    save_key TEXT NOT NULL,
+    legacy_name TEXT NOT NULL,
+    game_date TEXT NOT NULL,
+    verdict TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    rows_total INTEGER NOT NULL,
+    rows_attributed INTEGER NOT NULL,
+    compared INTEGER,
+    matched INTEGER,
+    league_import TEXT,
+    reviewed_at TEXT NOT NULL,
+    PRIMARY KEY (save_key, legacy_name, game_date)
+  );
+  CREATE TABLE IF NOT EXISTS history_identity_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS history_dual_writes (
+    save_name TEXT NOT NULL,
+    game_date TEXT NOT NULL,
+    save_key TEXT NOT NULL,
+    written_at TEXT NOT NULL,
+    PRIMARY KEY (save_name, game_date)
+  );
+  CREATE TABLE IF NOT EXISTS history_offer_choices (
+    save_key TEXT NOT NULL,
+    candidate_key TEXT NOT NULL,
+    choice TEXT NOT NULL,
+    chosen_at TEXT NOT NULL,
+    PRIMARY KEY (save_key, candidate_key)
+  );
+  CREATE TABLE IF NOT EXISTS history_carry_overs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    save_key TEXT NOT NULL,
+    from_key TEXT NOT NULL,
+    from_name TEXT,
+    from_path TEXT,
+    through_date TEXT,
+    rows_copied INTEGER NOT NULL,
+    mode_dates TEXT NOT NULL,
+    backup TEXT,
+    carried_at TEXT NOT NULL,
+    undone_at TEXT
+  );
+  CREATE TABLE IF NOT EXISTS history_carried_rows (
+    carry_id INTEGER NOT NULL,
+    game_date TEXT NOT NULL,
+    player_id INTEGER NOT NULL,
+    PRIMARY KEY (carry_id, game_date, player_id)
+  );
+  /*
+   * Which save each roster-state snapshot belongs to (D-064): its history key, not its name, so two saves that share a
+   * name are never compared with each other. The snapshot rows (rosterStateHistory.ts) keep a name as before; one
+   * taken before this table existed has no row here and is never a comparator for any save.
+   */
+  CREATE TABLE IF NOT EXISTS roster_state_snapshot_saves (
+    snapshot_id INTEGER PRIMARY KEY,
+    save_key TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_roster_state_snapshot_saves_key
+    ON roster_state_snapshot_saves (save_key, snapshot_id);
+`);
+
+{
+  // A data folder that ran an earlier build of this branch has history_saves without the later columns: added, nullable
+  const present = new Set((historyDb.prepare(`PRAGMA table_info(history_saves)`).all() as Array<{ name: string }>).map((c) => c.name));
+  for (const column of ['replaces', 'refused_at']) if (!present.has(column)) historyDb.exec(`ALTER TABLE history_saves ADD COLUMN ${column} TEXT`);
+}
+
 /**
  * Records the rating mode of the snapshot of `gameDate` (replacing it, as the snapshot itself is replaced on a re-import
  * of that date). No record (an import from before N3.5 recorded none) stamps nothing: the snapshot stays unrecorded,
@@ -106,23 +243,42 @@ historyDb.exec(`
  */
 export function stampSnapshotMode(gameDate: string, record: RatingModeRecord | null, importStartedAt: string | null): void {
   if (!record) return;
-  historyDb
-    .prepare(
-      `INSERT OR REPLACE INTO rating_snapshot_modes
-       (save_name, game_date, mode, additional_scouted, source, import_started_at, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
-    )
-    .run(
-      currentSaveName(), gameDate, record.mode,
-      record.additionalScouted === null || record.additionalScouted === undefined ? null : record.additionalScouted ? 1 : 0,
-      record.source ?? null, importStartedAt, new Date().toISOString(),
-    );
+  const values = [
+    gameDate, record.mode,
+    record.additionalScouted === null || record.additionalScouted === undefined ? null : record.additionalScouted ? 1 : 0,
+    record.source ?? null, importStartedAt, new Date().toISOString(),
+  ];
+  const resolved = currentHistoryKey();
+  const name = rollbackName();
+  historyDb.transaction(() => {
+    // The key still bound for this save now (another thread may have answered a question since this one resolved it)
+    const saveKey = boundKeyNow(resolved);
+    if (saveKey === null) return;
+    historyDb
+      .prepare(
+        `INSERT OR REPLACE INTO save_rating_snapshot_modes
+         (save_key, game_date, mode, additional_scouted, source, import_started_at, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(saveKey, ...values);
+    // The save's own stamp now: no carry-over's undo removes it
+    releaseCarried(saveKey, gameDate, null);
+    // And under the served save's name, as the earlier build writes it, so a rolled-back Electron build reads it (D-064);
+    // never when the league served isn't certainly the configured save's
+    if (name === null) return;
+    historyDb
+      .prepare(
+        `INSERT OR REPLACE INTO rating_snapshot_modes
+         (save_name, game_date, mode, additional_scouted, source, import_started_at, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(name, ...values);
+  }).immediate();
 }
 
 /** The recorded rating mode of each snapshot date of this save (dates as the snapshots store them); unrecorded dates are absent. */
 export function snapshotModes(): Map<string, RatingMode> {
   const rows = historyDb
-    .prepare(`SELECT game_date, mode FROM rating_snapshot_modes WHERE save_name = ?`)
-    .all(currentSaveName()) as Array<{ game_date: string; mode: string }>;
+    .prepare(`SELECT game_date, mode FROM save_rating_snapshot_modes WHERE save_key = ?`)
+    .all(currentHistoryKey()) as Array<{ game_date: string; mode: string }>;
   return new Map(rows.map((r) => [r.game_date, r.mode as RatingMode]));
 }
 
@@ -188,8 +344,17 @@ export function modeSwitches(modes: Map<string, RatingMode> = snapshotModes()): 
   return out;
 }
 
+/**
+ * The configured save's name. Rating history is no longer filed under it (D-064: `currentHistoryKey()`); the watchlist and
+ * player notes still are, and the name-keyed rating history written before D-064 is looked up by it.
+ */
 export function currentSaveName(): string {
   return loadConfig().saveName ?? 'unknown';
+}
+
+/** The imported league's current game date, as the export writes it (the date a snapshot is filed under); null when none. */
+export function snapshotGameDate(): string | null {
+  return leagueGameDate();
 }
 
 function leagueGameDate(): string | null {
@@ -211,7 +376,8 @@ export function takeSnapshot(): { gameDate: string; players: number } | null {
   if (!tableExists('players') || !tableExists('players_batting')) return null;
   const gameDate = leagueGameDate();
   if (!gameDate) return null;
-  const saveName = currentSaveName();
+  const resolved = currentHistoryKey();
+  const saveName = rollbackName();
 
   // The split and running columns are read where the export has them; a missing one is stored as unknown (NULL), never guessed
   const battingColumns = new Set(tableExists('players_batting') ? (leagueDb.prepare(`PRAGMA table_info(players_batting)`).all() as Array<{ name: string }>).map((c) => c.name) : []);
@@ -242,36 +408,71 @@ export function takeSnapshot(): { gameDate: string; players: number } | null {
     )
     .all() as Array<Record<string, number | string | null>>;
 
-  const insert = historyDb.prepare(
-    `INSERT OR REPLACE INTO rating_snapshots
-     (save_name, game_date, player_id, name, team_id, org_id, level, position, age,
+  const insertInto = (table: string, keyColumn: string) => historyDb.prepare(
+    `INSERT OR REPLACE INTO ${table}
+     (${keyColumn}, game_date, player_id, name, team_id, org_id, level, position, age,
       con, gap, pow, eye, avk, spd, conP, gapP, powP, eyeP, avkP,
       stu, mov, ctl, stuP, movP, ctlP, cur, pot,
       ${[...SNAPSHOT_SPLIT_COLUMNS, ...SNAPSHOT_RUNNING_COLUMNS].join(', ')})
      VALUES (${new Array(28 + SNAPSHOT_SPLIT_COLUMNS.length + SNAPSHOT_RUNNING_COLUMNS.length).fill('?').join(', ')})`
   );
+  const insert = insertInto('save_rating_snapshots', 'save_key');
+  // The same snapshot under the save's name, exactly as the earlier (Electron) build writes it, so a rolled-back build
+  // still has it (D-064); the date is recorded as this build's own, never taken for earlier history
+  const insertByName = insertInto('rating_snapshots', 'save_name');
+  const dualWrite = historyDb.prepare(
+    `INSERT OR REPLACE INTO history_dual_writes (save_name, game_date, save_key, written_at) VALUES (?, ?, ?, ?)`
+  );
   const avg = (vals: Array<number | string | null>): number | null => {
     const nums = vals.filter((v): v is number => typeof v === 'number');
     return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null;
   };
+  let filed = true;
   const insertAll = historyDb.transaction(() => {
+    // The key still bound for this save now: a worker that resolved it before the GM answered a question files the
+    // snapshot where the answer put this save's history, and never on a key that has been set aside (D-064)
+    const saveKey = boundKeyNow(resolved);
+    if (saveKey === null) {
+      filed = false;
+      return;
+    }
     for (const r of rows) {
       const isPitcher = r.position === 1;
       const cur = isPitcher ? avg([r.stu, r.mov, r.ctl]) : avg([r.con, r.gap, r.pow, r.eye, r.avk]);
       const pot = isPitcher
         ? avg([r.stuP, r.movP, r.ctlP])
         : avg([r.conP, r.gapP, r.powP, r.eyeP, r.avkP]);
-      insert.run(
-        saveName, gameDate, r.player_id, r.name, r.team_id, r.org_id, r.level, r.position, r.age,
+      const values = [
+        gameDate, r.player_id, r.name, r.team_id, r.org_id, r.level, r.position, r.age,
         r.con, r.gap, r.pow, r.eye, r.avk, r.spd, r.conP, r.gapP, r.powP, r.eyeP, r.avkP,
         r.stu, r.mov, r.ctl, r.stuP, r.movP, r.ctlP, cur, pot,
-        ...[...SNAPSHOT_SPLIT_COLUMNS, ...SNAPSHOT_RUNNING_COLUMNS].map((c) => r[c] ?? null)
-      );
+        ...[...SNAPSHOT_SPLIT_COLUMNS, ...SNAPSHOT_RUNNING_COLUMNS].map((c) => r[c] ?? null),
+      ];
+      insert.run(saveKey, ...values);
+      if (saveName !== null) insertByName.run(saveName, ...values);
     }
+    // The save's own ratings now: what a carry-over copied at this date and player is no longer the carry-over's (D-064)
+    releaseCarried(saveKey, gameDate, rows.map((r) => Number(r.player_id)));
+    if (saveName !== null) dualWrite.run(saveName, gameDate, saveKey, new Date().toISOString());
   });
-  insertAll();
+  insertAll.immediate();
+  if (!filed) return null;
   console.log(`[history] snapshot ${gameDate}: ${rows.length} players`);
   return { gameDate, players: rows.length };
+}
+
+/**
+ * The start-up baseline: a snapshot of the league already imported, for a save with no rating history yet (none for an
+ * export that carries no ratings; stamped with the kind the export carries, N3.5). Only when the league served is
+ * certainly the configured save's (D-064): a save chosen after the earlier build's last import (which names no folder)
+ * is not the league on disk, and its history must never be given another save's ratings.
+ */
+export function baselineSnapshot(): { gameDate: string; players: number } | null {
+  const mode = currentRatingMode();
+  if (!tableExists('players') || !servedLeagueCertain() || mode?.mode === 'none' || snapshotDates().length > 0) return null;
+  const snapshot = takeSnapshot();
+  if (snapshot) stampSnapshotMode(snapshot.gameDate, mode, null);
+  return snapshot;
 }
 
 function gameDateEpoch(value: string): number {
@@ -314,11 +515,11 @@ export function snapshotDates(): string[] {
     historyDb
       .prepare(
         `SELECT DISTINCT game_date
-         FROM rating_snapshots
-         WHERE save_name = ?`
+         FROM save_rating_snapshots
+         WHERE save_key = ?`
       )
       .all(
-        currentSaveName()
+        currentHistoryKey()
       ) as Array<{
         game_date: string;
       }>
@@ -434,11 +635,11 @@ function developmentTrendByPlayerForScope(
                  game_date,
                  cur,
                  pot
-               FROM rating_snapshots
-               WHERE save_name = ?`
+               FROM save_rating_snapshots
+               WHERE save_key = ?`
             )
             .all(
-              currentSaveName()
+              currentHistoryKey()
             )
         : historyDb
             .prepare(
@@ -447,12 +648,12 @@ function developmentTrendByPlayerForScope(
                  game_date,
                  cur,
                  pot
-               FROM rating_snapshots
-               WHERE save_name = ?
+               FROM save_rating_snapshots
+               WHERE save_key = ?
                  AND org_id = ?`
             )
             .all(
-              currentSaveName(),
+              currentHistoryKey(),
               orgId
             )
     ) as DevelopmentTrendRow[];
@@ -460,6 +661,8 @@ function developmentTrendByPlayerForScope(
   // Snapshots in another known kind of ratings are a switch, never development (D-061): left out, and said
   const { excluded: otherMode, switches, unknownKind } = modeFilter();
   const unknownReason = unknownKindReason(unknownKind);
+  // Rating history this save's earlier name held but that couldn't be matched to it is not used, and said (D-064)
+  const historyLeftOut = historyNote().note;
 
   const byPlayer =
     new Map<
@@ -627,6 +830,7 @@ function developmentTrendByPlayerForScope(
       reasons.push(...switches.map((sw) => `${sw.text} Snapshots in the earlier kind are not compared.`));
       if (unknownReason) reasons.push(unknownReason);
     }
+    if (historyLeftOut) reasons.push(historyLeftOut);
 
     out.set(
       playerId,
@@ -862,11 +1066,11 @@ function peerDevelopmentTrendByPlayerForScope(
                  level,
                  position,
                  cur
-               FROM rating_snapshots
-               WHERE save_name = ?`
+               FROM save_rating_snapshots
+               WHERE save_key = ?`
             )
             .all(
-              currentSaveName()
+              currentHistoryKey()
             )
         : historyDb
             .prepare(
@@ -877,12 +1081,12 @@ function peerDevelopmentTrendByPlayerForScope(
                  level,
                  position,
                  cur
-               FROM rating_snapshots
-               WHERE save_name = ?
+               FROM save_rating_snapshots
+               WHERE save_key = ?
                  AND org_id = ?`
             )
             .all(
-              currentSaveName(),
+              currentHistoryKey(),
               orgId
             )
     ) as PeerSnapshotRow[];
@@ -1323,8 +1527,8 @@ historyRoutes.get('/development-history/:orgId', (req, res) => {
     });
   }
 
-  const saveName =
-    currentSaveName();
+  const saveKey =
+    currentHistoryKey();
 
   const allRows =
     historyDb
@@ -1349,12 +1553,12 @@ historyRoutes.get('/development-history/:orgId', (req, res) => {
            stu,
            mov,
            ctl
-         FROM rating_snapshots
-         WHERE save_name = ?
+         FROM save_rating_snapshots
+         WHERE save_key = ?
            AND org_id = ?`
       )
       .all(
-        saveName,
+        saveKey,
         orgId
       ) as Array<{
         game_date: string;
@@ -1451,16 +1655,21 @@ historyRoutes.get('/development-history/:orgId', (req, res) => {
     ratingModes: Object.fromEntries(snapshotModes()),
 
     ratingModeSwitches: modeSwitches(),
+
+    // Whether any of this save's rating history is not used or started fresh, in a sentence, with its basis (D-064)
+    history: historyNote(),
   });
 });
 
 
 historyRoutes.get('/development/:orgId', (req, res) => {
   const orgId = Number(req.params.orgId);
-  const saveName = currentSaveName();
+  const saveKey = currentHistoryKey();
   const dates = snapshotDates();
+  // Whether any of this save's rating history is not used or started fresh (D-064), on every answer
+  const history = historyNote();
   if (dates.length < 2) {
-    return res.json({ snapshots: dates.length, dates, changes: null });
+    return res.json({ snapshots: dates.length, dates, changes: null, history });
   }
   const from = String(req.query.from ?? dates[dates.length - 2]);
   const to = String(req.query.to ?? dates[dates.length - 1]);
@@ -1468,12 +1677,12 @@ historyRoutes.get('/development/:orgId', (req, res) => {
   const modes = snapshotModes();
   if (isModeSwitch(modes.get(from), modes.get(to))) {
     const ratingModeSwitch = modeSwitches(new Map([[from, modes.get(from)!], [to, modes.get(to)!]]))[0];
-    return res.json({ snapshots: dates.length, dates, from, to, changes: null, ratingModeSwitch });
+    return res.json({ snapshots: dates.length, dates, from, to, changes: null, ratingModeSwitch, history });
   }
   // A snapshot stamped with an unknown kind of ratings is never compared (D-018): no changes, and why
   const unknownEnds = [from, to].filter((d) => modes.get(d) === 'unknown');
   if (unknownEnds.length > 0) {
-    return res.json({ snapshots: dates.length, dates, from, to, changes: null, ratingModeUnknown: { dates: unknownEnds, text: unknownKindReason(unknownEnds) } });
+    return res.json({ snapshots: dates.length, dates, from, to, changes: null, ratingModeUnknown: { dates: unknownEnds, text: unknownKindReason(unknownEnds) }, history });
   }
 
   const rows = historyDb
@@ -1485,12 +1694,12 @@ historyRoutes.get('/development/:orgId', (req, res) => {
               a.avk AS avk_a, b.avk AS avk_b, a.spd AS spd_a, b.spd AS spd_b,
               a.stu AS stu_a, b.stu AS stu_b, a.mov AS mov_a, b.mov AS mov_b,
               a.ctl AS ctl_a, b.ctl AS ctl_b
-       FROM rating_snapshots a
-       JOIN rating_snapshots b
-         ON b.save_name = a.save_name AND b.player_id = a.player_id AND b.game_date = ?
-       WHERE a.save_name = ? AND a.game_date = ? AND b.org_id = ?`
+       FROM save_rating_snapshots a
+       JOIN save_rating_snapshots b
+         ON b.save_key = a.save_key AND b.player_id = a.player_id AND b.game_date = ?
+       WHERE a.save_key = ? AND a.game_date = ? AND b.org_id = ?`
     )
-    .all(to, saveName, from, orgId) as Array<Record<string, number | string | null>>;
+    .all(to, saveKey, from, orgId) as Array<Record<string, number | string | null>>;
 
   const changes = rows
     .map((r) => {
@@ -1523,7 +1732,7 @@ historyRoutes.get('/development/:orgId', (req, res) => {
     .filter((c) => c.details.length > 0)
     .sort((a, b) => Math.abs(b.curDelta) + Math.abs(b.potDelta) - (Math.abs(a.curDelta) + Math.abs(a.potDelta)));
 
-  res.json({ snapshots: dates.length, dates, from, to, changes });
+  res.json({ snapshots: dates.length, dates, from, to, changes, history });
 });
 
 // ── Watchlist ───────────────────────────────────────────────────────────

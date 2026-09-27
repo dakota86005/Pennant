@@ -17,6 +17,7 @@ import { timestampWords } from '../timeWords.js';
 import { basis, cell, claim, row } from './claim.js';
 import { RATING_MODE_WORDS } from '../ratingMode.js';
 import { leftOutDetail, leftOutNote } from './importWords.js';
+import { ratingHistoryNoteClaim } from './ratingHistoryWords.js';
 
 /** A game date as served (unpadded, as OOTP writes it, or null) and as the app shows it. */
 export interface GameDateText {
@@ -47,6 +48,8 @@ export interface DataStatusView {
   action: Cell | null;
   /** Files the last import left out, in a sentence, each file and why in its basis; null when none was (N3.5). */
   leftOut: Claim | null;
+  /** Rating history of this save that isn't used, or that started fresh, in a sentence with its basis; null when all is its own (D-064). */
+  ratingHistory: Claim | null;
 }
 
 const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -231,7 +234,13 @@ export function dataStatusView(s: DataStatus): DataStatusView {
     facts,
     action: action ? cell(action) : null,
     leftOut: leftOutCell(s),
+    ratingHistory: ratingHistoryCell(s),
   };
+}
+
+/** What became of this save's rating history, when some isn't used or it started fresh (D-064). */
+function ratingHistoryCell(s: DataStatus): Claim | null {
+  return s.history ? ratingHistoryNoteClaim(s.history) : null;
 }
 
 /** Why the kind of ratings is not known, when it is not (D-061). */

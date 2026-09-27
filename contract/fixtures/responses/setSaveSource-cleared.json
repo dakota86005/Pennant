@@ -58,6 +58,10 @@
       "ratingMode": null,
       "leftOut": [],
       "upgradeNote": null
+    },
+    "history": {
+      "note": null,
+      "because": []
     }
   }
 }

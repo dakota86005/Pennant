@@ -1,0 +1,66 @@
+{
+  "note": null,
+  "offers": [],
+  "candidates": [],
+  "carriedOver": [
+    {
+      "id": "save-none:carry:1",
+      "text": {
+        "text": "Rating history carried over from \"Old League\" through April 1, 2040.",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "From",
+              "value": "/tmp/pennant-contract-home/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games/Old League.lg"
+            },
+            {
+              "label": "Copied",
+              "value": "104 player ratings."
+            }
+          ],
+          "source": {
+            "department": "frontOffice",
+            "specialist": "Rating history",
+            "asOf": null,
+            "gameDate": null
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "fact",
+          "called": "A fact from the export"
+        },
+        "links": [],
+        "hint": "Undoing it removes exactly what was copied; the other save keeps its own"
+      }
+    }
+  ],
+  "warning": {
+    "text": "This save already has rating history carried over from \"Old League\". Carrying over another adds only the imports it doesn't have yet.",
+    "tone": "caution",
+    "basis": {
+      "because": [
+        {
+          "label": "Carried over",
+          "value": "From \"Old League\" (/tmp/pennant-contract-home/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games/Old League.lg), 104 player ratings."
+        }
+      ],
+      "source": {
+        "department": "frontOffice",
+        "specialist": "Rating history",
+        "asOf": null,
+        "gameDate": null
+      },
+      "unknown": [],
+      "wouldChange": [
+        "Undo a carry-over first to carry over only the other."
+      ],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": [],
+    "hint": "Two carried-over histories can disagree; undoing one leaves the other"
+  }
+}

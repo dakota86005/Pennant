@@ -1,0 +1,107 @@
+{
+  "note": null,
+  "offers": [
+    {
+      "id": "save-none:save-fixture-old-league",
+      "kind": "moved",
+      "question": {
+        "text": "This save has no rating history yet. Is it \"Old League\", the save that used to be in ~/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games?",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "Its folder",
+              "value": "/tmp/pennant-contract-home/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games/Old League.lg is no longer there."
+            },
+            {
+              "label": "Its history",
+              "value": "2 imports, the latest on May 6, 2040."
+            },
+            {
+              "label": "Its players",
+              "value": "Its players match this save's (104 of 104 compared)."
+            },
+            {
+              "label": "Carrying it over",
+              "value": "Copies its imports up to April 1, 2040 into this save's history. Its own history is left as it is, and it can be undone."
+            }
+          ],
+          "source": {
+            "department": "frontOffice",
+            "specialist": "Rating history",
+            "asOf": null,
+            "gameDate": null
+          },
+          "unknown": [
+            "Whether it is the same save: the export doesn't say."
+          ],
+          "wouldChange": [
+            "Carry it over to continue it here, or keep them apart."
+          ],
+          "lean": null,
+          "certainty": "fact",
+          "called": "A fact from the export"
+        },
+        "links": [],
+        "hint": "Only you can say: Pennant never joins two histories by itself"
+      },
+      "saveName": "Old League",
+      "place": "~/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games",
+      "lastDate": "2040-5-6",
+      "carriesThrough": "2040-4-1",
+      "imports": 2,
+      "players": "same"
+    }
+  ],
+  "candidates": [
+    {
+      "id": "save-none:save-fixture-old-league",
+      "label": {
+        "text": "\"Old League\" in ~/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games: 2 imports, the latest on May 6, 2040",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "Its folder",
+              "value": "/tmp/pennant-contract-home/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games/Old League.lg is no longer there."
+            },
+            {
+              "label": "Its history",
+              "value": "2 imports, the latest on May 6, 2040."
+            },
+            {
+              "label": "Its players",
+              "value": "Its players match this save's (104 of 104 compared)."
+            },
+            {
+              "label": "Carrying it over",
+              "value": "Copies its imports up to April 1, 2040 into this save's history. Its own history is left as it is, and it can be undone."
+            }
+          ],
+          "source": {
+            "department": "frontOffice",
+            "specialist": "Rating history",
+            "asOf": null,
+            "gameDate": null
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "fact",
+          "called": "A fact from the export"
+        },
+        "links": [],
+        "hint": "Carrying it over copies its history into this save's; you can undo it"
+      },
+      "saveName": "Old League",
+      "place": "~/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games",
+      "folder": "gone",
+      "lastDate": "2040-5-6",
+      "carriesThrough": "2040-4-1",
+      "imports": 2,
+      "players": "same"
+    }
+  ],
+  "carriedOver": [],
+  "warning": null
+}

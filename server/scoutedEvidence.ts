@@ -41,7 +41,8 @@ import { db, tableColumns, tableExists } from './db.js';
 import { ratingScaleMax } from './valuation.js';
 import { gloves, type Gloves, type PositionRating } from './gloves.js';
 import { parseGameDate } from './dataFreshness.js';
-import { currentRatingMode, currentSaveName, historyDb, modeFilter, snapshotModes } from './history.js';
+import { currentRatingMode, historyDb, modeFilter, snapshotModes } from './history.js';
+import { currentHistoryKey } from './historyIdentity.js';
 import { RATING_MODE_WORDS, type RatingMode, type RatingModeRecord } from './ratingMode.js';
 
 // ── Provenance ──────────────────────────────────────────────────────────
@@ -803,8 +804,8 @@ const SNAPSHOT_TOOLS: Record<ToolKey, { current: string; potential: string }> = 
  */
 export function loadScoutedObservations(playerIds: Iterable<number> | null = null): Map<number, ScoutedObservation[]> {
   const out = new Map<number, ScoutedObservation[]>();
-  const present = new Set((historyDb.prepare(`PRAGMA table_info(rating_snapshots)`).all() as Array<{ name: string }>).map((c) => c.name));
-  if (!['save_name', 'game_date', 'player_id', 'position'].every((c) => present.has(c))) return out;
+  const present = new Set((historyDb.prepare(`PRAGMA table_info(save_rating_snapshots)`).all() as Array<{ name: string }>).map((c) => c.name));
+  if (!['save_key', 'game_date', 'player_id', 'position'].every((c) => present.has(c))) return out;
   const columns = [...new Set([...Object.values(SNAPSHOT_TOOLS).flatMap((t) => [t.current, t.potential]), ...Object.values(SNAPSHOT_HITTER_COLUMNS)])];
   const select = [
     'player_id', 'game_date', 'position',
@@ -850,13 +851,13 @@ export function loadScoutedObservations(playerIds: Iterable<number> | null = nul
       out.set(playerId, list);
     }
   };
-  const base = `SELECT ${select} FROM rating_snapshots WHERE save_name = ?`;
-  if (playerIds === null) take(historyDb.prepare(base).all(currentSaveName()) as Array<Record<string, unknown>>);
+  const base = `SELECT ${select} FROM save_rating_snapshots WHERE save_key = ?`;
+  if (playerIds === null) take(historyDb.prepare(base).all(currentHistoryKey()) as Array<Record<string, unknown>>);
   else {
     const ids = [...new Set(playerIds)].filter((id) => Number.isFinite(id));
     for (let at = 0; at < ids.length; at += CHUNK) {
       const chunk = ids.slice(at, at + CHUNK);
-      take(historyDb.prepare(`${base} AND player_id IN (${chunk.map(() => '?').join(', ')})`).all(currentSaveName(), ...chunk) as Array<Record<string, unknown>>);
+      take(historyDb.prepare(`${base} AND player_id IN (${chunk.map(() => '?').join(', ')})`).all(currentHistoryKey(), ...chunk) as Array<Record<string, unknown>>);
     }
   }
   for (const list of out.values()) list.sort((a, b) => (a.gameDate < b.gameDate ? -1 : a.gameDate > b.gameDate ? 1 : 0));

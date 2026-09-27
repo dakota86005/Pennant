@@ -27,6 +27,7 @@ import {
 } from './dataFreshness.js';
 import type { Integer } from './contract/primitives.js';
 import { currentRatingMode } from './history.js';
+import { historyNote } from './historyIdentity.js';
 import { leftOutOfServedImport, upgradeState, type LeftOutFile } from './importer.js';
 import type { RatingModeRecord } from './ratingMode.js';
 
@@ -78,6 +79,15 @@ export interface DataStatus {
      * enough free space; the league is served as it is and it is tried again at the next start); null otherwise.
      */
     upgradeNote: string | null;
+  };
+  /**
+   * This save's rating history (D-064): a sentence when some of it is not used (history filed under the save's name
+   * before it had a key of its own that couldn't be matched to it for sure) or when it started fresh; null when all of
+   * it is this save's. `because` is the basis: what became of each part, and why the history began where it did.
+   */
+  history: {
+    note: string | null;
+    because: string[];
   };
 }
 
@@ -374,6 +384,7 @@ export function getDataStatus(opts: { importedAt?: string | null } = {}): DataSt
       leftOut: hasData ? leftOutOfServedImport() : [],
       upgradeNote: upgradeState.note,
     },
+    history: hasData ? historyNote() : { note: null, because: [] },
   };
 }
 

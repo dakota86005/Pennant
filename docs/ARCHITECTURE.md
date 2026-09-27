@@ -193,6 +193,26 @@ separate `history.db`, so a re-import cannot erase development history. Settings
 credentials, chat history, AI caches, import metadata, and the selected save
 also live under `DATA_DIR`.
 
+Rating history belongs to the save, not to its name (D-064). `server/historyIdentity.ts`
+gives each save a history key: its folder (D-063's id), one folder one history, with a
+players test that only ever refuses (a folder whose league changed or went back in time
+starts fresh). Every reader and writer of rating history uses `currentHistoryKey()`: the
+snapshots and their rating-kind stamps (`save_rating_snapshots`,
+`save_rating_snapshot_modes`), the trends, observed history (`scoutedEvidence.ts`), the
+Development routes and the roster-state comparator (`roster_state_snapshot_saves`). Each
+snapshot is also written to the name-keyed `rating_snapshots` and `rating_snapshot_modes`
+exactly as the earlier build writes them, for a rollback; this build never reads them for
+development. The GM decides whether two histories are one: a save that might have moved,
+and a folder whose own history was set aside, are asked about (`GET /api/v2/rating-history`,
+answered by `POST /api/v2/rating-history/choice`), and any other history but another
+league's may be carried over by choice; carrying over copies, after a backup, and can be
+undone. A snapshot is filed only
+when the league served is certainly the configured save's (`servedLeagueCertain`).
+History filed under a save's name before D-064 is brought over only where it is certainly
+that save's, after a copy of `history.db` is made in `backups/`, and what is left unused
+is said on the data status (`history`). The watchlist, player notes and per-save fits keep
+their own keys.
+
 From source, `DATA_DIR` defaults to `./data`. In the packaged desktop app,
 `electron/main.ts` sets it to Electron's OS user-data directory before loading
 server modules. These files are private runtime state and must not be committed.
@@ -272,7 +292,7 @@ Player Development, Minor League Operations and Player Value's expected
 production (D-017; phase 3b of D-052). Callers decide *which* players (a roster,
 an affiliate, a league population — objective facts) and the adapter decides
 what their ratings are. It also reads back the persisted rating snapshots
-(`loadScoutedObservations`, history.db `rating_snapshots`) under the same rules,
+(`loadScoutedObservations`, history.db `save_rating_snapshots`, the save's own, D-064) under the same rules,
 and serves the revealed glove at a player's listed position in bulk
 (`loadScoutedGlovesAtPosition`); Player Value's reader is its only caller in
 Player Value, and the pure ratings modules take its types only.
@@ -349,7 +369,7 @@ evidence; the export itself proves nothing about visibility.
 | `players_value.overall_value`, `talent_value`, `offensive_value*`, `pitching_value` | OOTP's continuous club-value figures; upstream notes playing time is baked into `overall_value`. A code comment calls `talent_value` "scouted"; nothing supports that. | **UNKNOWN. Prohibited.** |
 | `leagues.avg_rating_*` | League-wide aggregates, shown as context by destination fit. Not a judgment input. | **UNKNOWN** provenance. Context only. |
 | `rating_snapshots.cur`, `pot` | Derived by Pennant from the approved tool columns at import (unweighted mean, partial averages allowed, native scale). | **Derived.** Not yet routed through the adapter. |
-| The export's rating mode (N3.5, D-061) | OOTP's CSV-export settings, `<save>.lg/settings/db_dump_standard_csv.cfg`, read by label at each import: the scouts' view, "real" (true) ratings, OSA's, or none. Recorded with the import (`pennant_import`) and on each rating snapshot (`rating_snapshot_modes`). | **Recorded, not enforced.** Ratings are read as the export gives them and labelled (`scoutedEvidence.ts` `exportRatingMode`, `ratingSource`); "none" leaves every rating unknown; snapshots in another known kind are a switch, left out of development and said. `unknown` when the file cannot be read. |
+| The export's rating mode (N3.5, D-061) | OOTP's CSV-export settings, `<save>.lg/settings/db_dump_standard_csv.cfg`, read by label at each import: the scouts' view, "real" (true) ratings, OSA's, or none. Recorded with the import (`pennant_import`) and on each rating snapshot (`save_rating_snapshot_modes`, keyed by the save's history key since D-064). | **Recorded, not enforced.** Ratings are read as the export gives them and labelled (`scoutedEvidence.ts` `exportRatingMode`, `ratingSource`); "none" leaves every rating unknown; snapshots in another known kind are a switch, left out of development and said. `unknown` when the file cannot be read. |
 | Viewer organization | Not encoded anywhere in the import. `teams.human_team` marks the human-managed club; `coaches.scout_*` are staff attributes with no accuracy semantics. | **Not encoded.** The adapter uses `human_team`, or reports unresolved. |
 | Scouting accuracy setting | Not exported. | **UNKNOWN.** |
 

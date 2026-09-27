@@ -166,6 +166,20 @@ irreplaceable files in `backups/pre-swiftui-<date>/` (`history.db`, `settings.js
 either with the Mac app's Settings ▸ Restore backup or by copying the files back into the data folder. A key saved only
 in the Mac app's Keychain item is not in the Electron app; enter it again there.
 
+Rating history is kept per save since D-064, in new tables the Electron app doesn't read. The server also writes every
+rating snapshot, and its rating-kind stamp, into the Electron app's own name-keyed tables exactly as that app writes
+them, so after a rollback it reads every snapshot the Mac app took (with its old defect: two saves of one name share
+that history there). A snapshot taken while the league on disk isn't certainly the chosen save's (a save chosen with
+one click just after an import) is not written there at all. Each time the GM carries another save's rating history
+over, the server first copies `history.db` to `backups/history-before-carry-over-<time>.db` (not again until the next
+import, and only the newest three are kept); the app's "Undo carry-over" is the normal way back, and the copy is there
+if it is ever needed. The one-time `history-before-save-identity-<time>.db` is never removed. The first time the
+server brought earlier rating history over into the new tables it copied `history.db` to
+`backups/history-before-save-identity-<time>.db`. To undo that change alone, quit both apps and copy that file back
+as `history.db` (removing any `history.db-wal` and `history.db-shm` beside it). Nothing brought over survives the
+restore, and neither does anything written since (the Mac app's snapshots, fits and notes); the next start reviews the
+earlier history again.
+
 Undoing the cutover after it merges is `git revert` of that one PR.
 
 ### The sidecar

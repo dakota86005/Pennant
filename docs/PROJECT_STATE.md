@@ -37,6 +37,20 @@ material implementation state changes.
   and otherwise asks; a first run chooses and imports that save without a question (`POST /api/v2/setup/automatic`)
   and follows the save's one human club; `/api/status` says when another save has been played since the chosen one.
   It still accepts a selected save, `.lg` directory, saved-games directory, or CSV export directory.
+- Keeps rating history per save, not per save name (D-064, `historyIdentity.ts`): one folder (D-063's id) is one
+  history, so two saves named "New Game" never read each other's ratings as development. A players test only refuses
+  (a folder whose league changed, or went back in time, starts fresh, says so, and asks whether to continue the
+  history set aside); a save that might have moved or been renamed is asked about, and the GM may carry over any other
+  history but another league's, through `GET /api/v2/rating-history` and `POST /api/v2/rating-history/choice` (the
+  Mac app's question and list arrive with N6 Stage B). Carrying over copies, after a backup, and can be undone.
+  Snapshots are filed only when the league served is certainly the configured save's, and are also written to the
+  Electron app's name-keyed tables, under the served save's name, for a rollback.
+  History filed under the save's name before D-064 is brought over once per save, only where it is certainly that
+  save's (its players, not after its date, under a name no other known save carries), after a copy of `history.db` in
+  `backups/history-before-save-identity-<time>.db`; what is left unused is said on the data status. On a fresh scratch
+  copy of the owner's Electron data folder's history (2026-09-27) every row would be brought over: both names there
+  ("New Game 5", 4 dates, 42,509 rows; "New Game 6", 4 dates, 31,871 rows) are each carried by exactly one known save
+  whose export has every one of their players.
 - Imports all available CSVs into SQLite with delimiter/encoding detection,
   numeric conversion, schema discovery, progress reporting, and generated
   indexes, all or nothing (N3.5, D-061): a worker thread builds `league.next.db`
@@ -1030,6 +1044,14 @@ There is no shared server-side organization-context resolver yet. Automatic
 resolution across all organization-specific features is future work.
 
 ## Known gaps and constraints
+
+- Rating history per save (D-064) left for later: the watchlist and player notes are still filed under the save's name
+  (two saves of one name share them); the per-save fits keep D-053's identity (the name and a league fingerprint), so
+  two saves named alike and started from the same real-life database share their fits; a save renamed before D-064
+  leaves its earlier history under the old name, unused; a save deleted and made again in the same folder from the same
+  real-life database, at no earlier a date, continues the folder's history; the Electron-era certainty rule rests on
+  file times (a restored `config.json`, coarse file-system times); the Mac app does not yet ask the rating-history
+  questions or show the list (N6 Stage B).
 
 - The import (N3.5) left for later: the Mac app's side of discovery (Setup's zero-question path, the "played since"
   prompt, the in-place update banner) is a later stage and uses what B2 serves; whether OOTP has a save open now is not

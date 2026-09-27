@@ -22,6 +22,8 @@ import type { ClaimTrail, DepartmentReport, FrontOfficeSummary } from './present
 import type { ThemeChoice, ThemeChoices } from './contract/themePack.js';
 import { ThemeChoiceRefusal, activePack, chooseTheme, chosenPacks, installedPacks, themeChoices } from './themePackStore.js';
 import { currentOrganization } from './viewingOrganization.js';
+import { answerHistoryOffer, carryOvers, currentHistoryKey, HistoryChoiceRefusal, historyCandidates, historyNote, historyOffers } from './historyIdentity.js';
+import { ratingHistoryView, type RatingHistoryChoice, type RatingHistoryView } from './presentation/ratingHistoryWords.js';
 
 export const v2Routes = Router();
 
@@ -84,6 +86,29 @@ v2Routes.post('/theme-packs/:org', (req: Request, res: Response<ThemeChoices | A
     send(res, chooseTheme(themedClub(String(req.params.org)), (req.body as Partial<ThemeChoice> | undefined)?.packId));
   } catch (err) {
     if (err instanceof ThemeChoiceRefusal || err instanceof FrontOfficeRefusal) res.status(err.status).json({ error: err.message });
+    else next(err);
+  }
+});
+
+/** This save's rating history (D-064): what isn't used or started fresh, and any earlier save it could be. */
+function ratingHistoryNow(): RatingHistoryView {
+  const key = currentHistoryKey();
+  return ratingHistoryView(historyNote(key), historyOffers(key), historyCandidates(key), carryOvers(key));
+}
+
+v2Routes.get('/rating-history', (_req, res: Response<RatingHistoryView>) => {
+  send(res, ratingHistoryNow());
+});
+
+/** The GM's answer: carry a history over, keep them apart, or undo a carry-over (D-064). */
+v2Routes.post('/rating-history/choice', (req: Request, res: Response<RatingHistoryView | ApiError>, next: NextFunction) => {
+  const body = (req.body ?? {}) as Partial<RatingHistoryChoice>;
+  try {
+    if (body.choice !== 'adopt' && body.choice !== 'fresh' && body.choice !== 'undo') throw new HistoryChoiceRefusal('Choose to carry that history over, to keep them apart, or to undo a carry-over.');
+    answerHistoryOffer(String(body.offerId ?? ''), body.choice);
+    send(res, ratingHistoryNow());
+  } catch (err) {
+    if (err instanceof HistoryChoiceRefusal) res.status(err.status).json({ error: err.message });
     else next(err);
   }
 });

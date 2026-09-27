@@ -565,6 +565,68 @@
         }
       }
     },
+    "/api/v2/rating-history": {
+      "get": {
+        "operationId": "getRatingHistory",
+        "summary": "This save's rating history: whether some of it isn't used or it started fresh; the questions to ask (an earlier save whose folder has gone, or this folder's own history set aside); every other history the GM may carry over; and the carry-overs in force, each undoable.",
+        "tags": [
+          "v2"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RatingHistoryView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/rating-history/choice": {
+      "post": {
+        "operationId": "answerRatingHistoryOffer",
+        "summary": "The GM's answer: carry a history over into this save (`adopt`, a question or a listed history), keep them apart (`fresh`, a question only), or undo a carry-over (`undo`). An answer that no longer fits, or names another save, is refused (400).",
+        "tags": [
+          "v2"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RatingHistoryChoice"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RatingHistoryView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request could not be done",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v2/saves": {
       "get": {
         "operationId": "getSaveDiscovery",
@@ -1620,6 +1682,28 @@
               "upgradeNote"
             ],
             "description": "What the imported export carries and what its import left out (N3.5, D-061)."
+          },
+          "history": {
+            "type": "object",
+            "properties": {
+              "note": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "because": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "note",
+              "because"
+            ],
+            "description": "This save's rating history (D-064): a sentence when some of it is not used (history filed under the save's name before it had a key of its own that couldn't be matched to it for sure) or when it started fresh; null when all of it is this save's. `because` is the basis: what became of each part, and why the history began where it did."
           }
         },
         "required": [
@@ -1629,7 +1713,8 @@
           "csv",
           "transactionLog",
           "freshness",
-          "import"
+          "import",
+          "history"
         ]
       },
       "DataStatusFact": {
@@ -1809,6 +1894,10 @@
           "leftOut": {
             "$ref": "#/components/schemas/Claim",
             "description": "Files the last import left out, in a sentence, each file and why in its basis; null when none was (N3.5)."
+          },
+          "ratingHistory": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Rating history of this save that isn't used, or that started fresh, in a sentence with its basis; null when all is its own (D-064)."
           }
         },
         "required": [
@@ -3923,6 +4012,229 @@
           "keys"
         ],
         "description": "What `GET /api/settings/providers` serves: the providers on offer and every provider's key state."
+      },
+      "RatingHistoryCandidate": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "What the answer names (`offerId`, with `adopt`)."
+          },
+          "label": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "The history in one line, with what carrying it over does in its basis."
+          },
+          "saveName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "place": {
+            "type": "string"
+          },
+          "folder": {
+            "description": "Whether its folder is there now, has gone, or can't be told.",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "present",
+                  "gone",
+                  "unknown"
+                ]
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "lastDate": {
+            "$ref": "#/components/schemas/GameDate"
+          },
+          "carriesThrough": {
+            "$ref": "#/components/schemas/GameDate"
+          },
+          "imports": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "players": {
+            "$ref": "#/components/schemas/RatingHistoryPlayers"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "saveName",
+          "place",
+          "folder",
+          "imports",
+          "players"
+        ],
+        "description": "Another history the GM may carry over by choice (the list behind \"Carry over another save's history...\")."
+      },
+      "RatingHistoryCarryOver": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "text": {
+            "$ref": "#/components/schemas/Claim"
+          }
+        },
+        "required": [
+          "id",
+          "text"
+        ],
+        "description": "A carry-over in force: what was carried over, and the id \"Undo carry-over\" sends (`choice: undo`)."
+      },
+      "RatingHistoryChoice": {
+        "type": "object",
+        "properties": {
+          "offerId": {
+            "type": "string"
+          },
+          "choice": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "adopt",
+                  "fresh",
+                  "undo"
+                ]
+              },
+              {
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "required": [
+          "offerId",
+          "choice"
+        ],
+        "description": "The GM's answer: carry a history over (`adopt`), keep them apart (`fresh`, a question only), or undo a carry-over (`undo`)."
+      },
+      "RatingHistoryOffer": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "What the answer names (`offerId`)."
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "moved",
+                  "players_changed",
+                  "went_back"
+                ]
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "question": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "The question, with why it is asked in its basis."
+          },
+          "saveName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The name that history's save last had; null when not recorded."
+          },
+          "place": {
+            "type": "string",
+            "description": "Where it was, in words (the home folder shortened to ~)."
+          },
+          "lastDate": {
+            "$ref": "#/components/schemas/GameDate",
+            "description": "Its latest rating snapshot's game date, and the latest one carrying it over would copy (as filed, unpadded)."
+          },
+          "carriesThrough": {
+            "$ref": "#/components/schemas/GameDate"
+          },
+          "imports": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "How many imports its history holds."
+          },
+          "players": {
+            "$ref": "#/components/schemas/RatingHistoryPlayers"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "question",
+          "saveName",
+          "place",
+          "imports",
+          "players"
+        ],
+        "description": "A question about this save's rating history, answered with one click: carry that history over (`adopt`) or keep them apart (`fresh`). `moved`: an earlier save whose folder has gone could be this one; `players_changed` / `went_back`: this folder's own history was set aside, and the GM may continue it."
+      },
+      "RatingHistoryPlayers": {
+        "description": "How a history's players compare with this save's: the same, unclear, or too few to tell.",
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "same",
+              "unclear",
+              "too_few"
+            ]
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "RatingHistoryView": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Some of this save's rating history isn't used, or it started fresh, in a sentence with its basis; null when all is its own."
+          },
+          "offers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RatingHistoryOffer"
+            },
+            "description": "Questions to ask the GM now; empty when there is nothing to ask."
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RatingHistoryCandidate"
+            },
+            "description": "Every other history the GM may carry over by choice (only another league's is hidden), most recently seen first."
+          },
+          "carriedOver": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RatingHistoryCarryOver"
+            },
+            "description": "The carry-overs in force, most recent first, each undoable."
+          },
+          "warning": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "While a carry-over is in force, what carrying over another would do, in a sentence; null otherwise."
+          }
+        },
+        "required": [
+          "offers",
+          "candidates",
+          "carriedOver"
+        ],
+        "description": "This save's rating history: what isn't used or started fresh, the questions, the other histories, and carry-overs."
       },
       "RatingMode": {
         "anyOf": [
