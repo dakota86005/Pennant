@@ -122,6 +122,22 @@ describe('the policy lines: fifths and "too early", stamped as policy', () => {
     expect(words.lines.strength.display).toBe('Top fifth of the league');
     expect(words.note.hint).toBe('Places among the league\'s 6 clubs');
   });
+
+  it('shows the league\'s middle only where at least five clubs are placed', () => {
+    const buildCtx = { orgId: 1, club: null, importStamp: null, reportStamp: 'r', gameDate: '2040-5-5' };
+    const middleOf = (clubs: ClubFacts[]) => {
+      const reading = clubProfileOf(facts(clubs));
+      const d = clubProfileWords(buildCtx, { facts: facts(clubs), division: null, profile: reading, map: { why: 'x' }, starters: [], ms: {} }).dimensions.find((x) => x.id === 'scoring')!;
+      return { detail: d.detail.display, line: d.claim.basis.because.find((b) => b.label === 'League middle') };
+    };
+    const five = middleOf([club(1, 150), club(2, 200), club(3, 120), club(4, 100), club(5, 180)]);
+    expect(five.detail).toMatch(/league middle/);
+    expect(five.line).toBeDefined();
+    // Four placed (a fifth club without the figure): the middle says little, so none is shown
+    const four = middleOf([club(1, 150), club(2, 200), club(3, 120), club(4, 100), club(5, null)]);
+    expect(four.detail).not.toMatch(/league middle/);
+    expect(four.line).toBeUndefined();
+  });
 });
 
 describe('the recent place', () => {

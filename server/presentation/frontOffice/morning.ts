@@ -504,7 +504,9 @@ function dimensionWords(build: BuildContext, d: DimensionReading, reading: ClubP
     ? `Last ${recentGames}: ${recentPlace.tiedWith > 0 ? 'T-' : ''}${ordinal(recentPlace.rank)}`
     : `Last ${recentGames}: ${d.recent.figure.value === null && /Fewer than/.test(d.recent.why ?? '') ? 'too few' : 'not known'}`;
   const figure = d.figure.value === null ? null : w.figure(d.figure.value);
-  const middle = d.middle === null ? null : w.figure(d.middle).replace(/ (starters'|relievers') ERA$/, ' ERA');
+  // The league's middle only where enough clubs are placed for it to say something
+  const placed = d.place?.of ?? Math.max(0, clubs - d.leftOut.length);
+  const middle = d.middle === null || placed < MIDDLE_MIN_PLACED ? null : w.figure(d.middle).replace(/ (starters'|relievers') ERA$/, ' ERA');
   const detail = cell(figure ? `${figure}${middle ? ` · league middle ${middle.split(' ')[0]}` : ''}` : 'Not known', {
     tone: figure ? undefined : 'unknown',
     hint: figure ? undefined : fit(d.figure.why ?? 'The export lacks the figure'),
@@ -584,6 +586,12 @@ const POSITIONS: Record<number, { pos: string; name: string; at: string }> = {
   8: { pos: 'CF', name: 'Center field', at: 'center field' }, 9: { pos: 'RF', name: 'Right field', at: 'right field' },
   10: { pos: 'DH', name: 'Designated hitter', at: 'designated hitter' },
 };
+/**
+ * OOTP's level numbers in words. Checked against a real save (N6 review): level 4 holds both the High-A and the Low-A
+ * leagues (the Northwest, South Atlantic and Midwest with the California, Carolina and Florida State), level 5 holds
+ * none, and level 6 the complex and Dominican leagues, so 4 and 5 are both "Single-A": the level number cannot tell the
+ * two A levels apart, and the words never claim to.
+ */
 const LEVEL_WORDS: Record<number, string> = { 2: 'Triple-A', 3: 'Double-A', 4: 'Single-A', 5: 'Single-A', 6: 'Rookie ball' };
 
 const wins1 = (v: number) => v.toFixed(1).replace(/^-0\.0$/, '0.0').replace(/^-/, '−');
@@ -599,13 +607,21 @@ function winsValue(w: WinsRange | null): WinsValue | null {
 
 const ref = (p: { playerId: number; name: string }): PlayerRef => ({ playerId: p.playerId, name: p.name, short: shortName(p.name) });
 
+/** Player Development's readiness against its bar, as it serves them (whole points); null where either is not known. */
+function barOf(f: FarmNext): FarmNextMan['bar'] {
+  const a = f.assessment;
+  return a && a.readiness !== null && a.required !== null ? { readiness: Math.round(a.readiness), required: Math.round(a.required) } : null;
+}
+
 function farmMan(f: FarmNext): FarmNextMan {
   const level = LEVEL_WORDS[f.level] ?? `Level ${f.level}`;
   const a = f.assessment;
   const state: ReadinessState = !a ? 'notAssessed' : a.judgment === 'defensible' ? 'ready' : a.judgment === 'indefensible' ? 'notYet' : 'cantTell';
+  const bar = barOf(f);
+  const against = bar ? ` (readiness ${bar.readiness}, bar ${bar.required})` : '';
   const words: Record<ReadinessState, { text: string; hint: string }> = {
-    ready: { text: 'Ready for a look', hint: 'Player Development: a major-league look is defensible now' },
-    notYet: { text: 'Not ready yet', hint: 'Player Development: not yet, by its bar' },
+    ready: { text: 'Ready for a look', hint: `Player Development: a major-league look is defensible now${against}` },
+    notYet: { text: 'Not ready yet', hint: `Player Development: not yet, by its bar${against}` },
     cantTell: { text: 'Can\'t tell yet', hint: 'Player Development can\'t judge it without more evidence' },
     notAssessed: { text: 'Not assessed', hint: 'Player Development hasn\'t assessed him for the majors' },
   };
@@ -613,10 +629,28 @@ function farmMan(f: FarmNext): FarmNextMan {
     ...ref(f),
     level,
     state,
-    readiness: cell(words[state].text, { tone: state === 'ready' ? 'good' : state === 'notYet' ? 'neutral' : 'unknown', hint: words[state].hint }),
+    readiness: cell(words[state].text, { tone: state === 'ready' ? 'good' : state === 'notYet' ? 'neutral' : 'unknown', hint: fit(words[state].hint) }),
+    bar,
     text: `${shortName(f.name)} · ${level} · ${words[state].text.toLowerCase()}`,
   };
 }
+
+/**
+ * Where our holder stands against the other clubs placed, told apart on the range each lands in half the time: "Clearly
+ * ahead of 4 · not separable from 22 · clearly behind 3", and a universal overlap once, "Not separable from the other 29".
+ */
+export function separationWords(ahead: number, level: number, behind: number): string {
+  const others = ahead + level + behind;
+  if (others === 0) return 'The only club placed here';
+  if (level === others) return `Not separable from the other ${others}`;
+  if (ahead === others) return `Clearly ahead of the other ${others}`;
+  if (behind === others) return `Clearly behind the other ${others}`;
+  return capital([ahead ? `clearly ahead of ${ahead}` : null, level ? `not separable from ${level}` : null, behind ? `clearly behind ${behind}` : null]
+    .filter(Boolean).join(' · '));
+}
+
+/** The fewest clubs placed for the league's middle to be shown (fewer, and the middle says little). */
+export const MIDDLE_MIN_PLACED = 5;
 
 /** Control as the map draws it, from Player Value's reading of Player Rights' answer (the app computes none of it). */
 export function controlTerm(c: ControlReading | null): ControlTerm {
@@ -626,10 +660,10 @@ export function controlTerm(c: ControlReading | null): ControlTerm {
   const { end, thisSeason } = c;
   const left = (y: number) => (thisSeason === null ? null : Math.max(1, y - thisSeason + 1));
   if (end.high === null && end.low === null) {
-    if (c.heldThrough !== null) {
+    if (end.heldThrough !== null) {
       return {
-        kind: 'through', text: `Through ${c.heldThrough} at least`, hint: 'Held on every branch through it; the export doesn\'t settle later seasons',
-        through: c.heldThrough, latest: null, seasonsLeft: left(c.heldThrough), atLeast: true, clock: null,
+        kind: 'through', text: `Through ${end.heldThrough} at least`, hint: 'Held on every branch through it; the export doesn\'t settle later seasons',
+        through: end.heldThrough, latest: null, seasonsLeft: left(end.heldThrough), atLeast: true, clock: null,
       };
     }
     return unknown('Control not known', 'Player Rights can\'t lay it out from the export');
@@ -659,64 +693,86 @@ export function controlTerm(c: ControlReading | null): ControlTerm {
 
 const NOT_VALUED_HINT = 'Not valued yet: Player Value can\'t read his production';
 
-function nodeWords(build: BuildContext, p: MapPosition, clubs: number, part: RosterMaterial['part']): RosterNode {
+function nodeWords(build: BuildContext, p: MapPosition, clubs: number, part: RosterMaterial['part'], window: number): RosterNode {
   const where = POSITIONS[p.position];
   const holder = p.holder;
   const value = winsValue(holder?.wins ?? null);
   const placeText = p.place ? placeWords(p.place) : 'Not placed';
   const others = p.overlap ?? 0;
+  const ahead = p.clearlyAhead.length;
+  const trailing = p.clearlyBehind.length;
+  const halfTime = holder?.wins?.inner != null;
   const overlapText = p.place
-    ? cell(others === 0 ? 'His range overlaps no other club\'s'
-      : others === p.place.of - 1 ? 'His range overlaps every other club\'s'
-        : `His range overlaps ${others} of the other ${p.place.of - 1}`, {
-      hint: 'Two holders whose ranges overlap aren\'t said to differ',
-    })
-    : cell(holder ? 'Not placed: he isn\'t valued yet' : `Not placed: nobody listed at ${where.at}`, { tone: 'unknown' });
+    ? cell(separationWords(ahead, others, trailing), { hint: 'Clubs are told apart on the range each lands in half the time' })
+    : cell(holder ? 'Not placed: he isn\'t valued yet' : `Not placed: nobody plays ${where.at}`, { tone: 'unknown' });
   const behindValued = p.behind.filter((b) => b.wins);
   const behind = p.behind.length
     ? cell(p.behind.slice(0, 2).map((b) => shortName(b.name)).join(', ') + (p.behind.length > 2 ? ` and ${p.behind.length - 2} more` : ''), {
       hint: behindValued.length ? `${shortName(behindValued[0].name)}: ${wins1(behindValued[0].wins!.likely)} wins most likely` : 'Not valued yet',
     })
-    : cell(`Nobody else listed at ${where.at}`);
+    : cell(`Nobody else plays ${where.at}`);
   const farm = p.farmNext ? farmMan(p.farmNext) : null;
   const farmText = farm
     ? cell(farm.text + (p.farmMore ? ` · ${p.farmMore} more there` : ''), { hint: farm.readiness.hint })
     : cell(`Nobody in the farm listed at ${where.at}`);
   const control = holder ? controlTerm(p.control)
-    : { kind: 'unknown' as const, text: 'Nobody listed', hint: `Nobody on the club is listed at ${where.at}`, through: null, latest: null, seasonsLeft: null, atLeast: false, clock: null };
+    : { kind: 'unknown' as const, text: 'Nobody there', hint: `Nobody on the club plays ${where.at}`, through: null, latest: null, seasonsLeft: null, atLeast: false, clock: null };
   const need = p.needs.length > 0;
   const partWords = part === 'rest_of_season' ? 'the rest of this season' : 'this season';
   const stamp = holder?.stamp ?? null;
+  const placed = p.place?.of ?? Math.max(0, clubs - p.leftOut.length);
+  const showMiddle = p.middle !== null && placed >= MIDDLE_MIN_PLACED;
+  const hb = p.holderBasis;
+  const chosen = hb.rule === 'starts'
+    ? `The club's regular: the most starts at ${where.at} this season (${hb.season}) among the men who started there in its last ${plural(hb.games, 'game')} (${hb.recent} of them).`
+    : holder ? `Listed at ${where.at}, the club's man there with the most expected wins: ${hb.why}` : hb.why;
+  const listNames = (names: string[]) => (names.length ? listWords(names.slice(0, 8)) + (names.length > 8 ? ` and ${names.length - 8} more` : '') : 'None');
   const because = [
-    { label: `Expected wins, ${partWords}`, value: value?.text ?? (holder ? `Not valued: ${holder.why ?? 'not established'}` : 'Nobody listed') },
+    { label: `Expected wins, ${partWords}`, value: value?.text ?? (holder ? `Not valued: ${holder.why ?? 'not established'}` : 'Nobody there') },
     { label: `At ${where.at} in the league`, value: p.place ? `${placeText}${p.tiedWith.length ? `, level with ${listWords(p.tiedWith)}` : ''}` : 'Not placed' },
-    ...(p.place ? [{ label: 'Ranges overlapping his', value: p.overlapping.length ? listWords(p.overlapping) : 'None' }] : []),
-    ...(p.middle !== null ? [{ label: 'League middle', value: `${wins1(p.middle)} wins` }] : []),
-    { label: 'Behind him', value: p.behind.length ? p.behind.map((b) => `${b.name}${b.wins ? ` (${wins1(b.wins.likely)})` : ' (not valued)'}`).join(', ') : 'Nobody else listed' },
-    { label: 'The farm\'s next man', value: farm ? `${farm.name}, ${farm.level}: ${farm.readiness.display}` : 'Nobody listed there' },
+    ...(p.place ? [
+      { label: 'Against the other clubs', value: overlapText.display },
+      ...(ahead ? [{ label: 'Clearly ahead of', value: listNames(p.clearlyAhead) }] : []),
+      ...(others && others < placed - 1 ? [{ label: 'Not separable from', value: listNames(p.overlapping) }] : []),
+      ...(trailing ? [{ label: 'Clearly behind', value: listNames(p.clearlyBehind) }] : []),
+      {
+        label: 'How clubs are told apart',
+        value: 'On the range each holder lands in half the time: two whose half-time ranges meet aren\'t said to differ. The range drawn is the one he lands in four times in five.',
+      },
+    ] : []),
+    ...(showMiddle ? [{ label: 'League middle', value: `${wins1(p.middle!)} wins` }] : []),
+    { label: 'Behind him', value: p.behind.length ? p.behind.map((b) => `${b.name}${b.wins ? ` (${wins1(b.wins.likely)})` : ' (not valued)'}`).join(', ') : 'Nobody else there' },
+    { label: 'The farm\'s next man', value: farm ? `${farm.name}, ${farm.level}: ${farm.readiness.display}${farm.bar ? ` (readiness ${farm.bar.readiness} against the ${farm.bar.required} its bar asks)` : ''}` : 'Nobody listed there' },
+    { label: 'How the farm\'s next man is chosen', value: `The man Player Development reads as readiest at ${where.at}, at the highest level where anyone is listed there; men it hasn't assessed follow, by name.` },
     { label: 'Control', value: control.text },
     ...(p.standing ? [{ label: 'Standing', value: p.standing }] : []),
     { label: 'Major League Ops', value: need ? p.needs.map(needWords).join('; ') : 'No need raised here' },
-    { label: 'How the holder is chosen', value: 'The club\'s major-league player listed there with the most expected wins; the same for every club.' },
+    { label: 'How the holder is chosen', value: chosen },
+    { label: 'The same rule for every club', value: `The man now on the club with the most starts there this season, among those who started there in its last ${window} games; where the game log shows no such start, its man listed there with the most expected wins.` },
   ];
   const a = p.farmNext?.assessment ?? null;
   const unknown = [
     ...(holder && !holder.wins ? [`${holder.name} isn't valued: ${holder.why ?? 'his production is not established'}`] : []),
+    ...(p.place && !halfTime ? ['Player Value served no half-time range for him, so clubs are told apart on the range drawn.'] : []),
     ...(p.leftOut.length ? [`${plural(p.leftOut.length, 'club')} not placed at ${where.at}: ${p.leftOut.slice(0, 5).map((l) => l.club).join(', ')}${p.leftOut.length > 5 ? ' and others' : ''}.`] : []),
+    ...(p.listedClubs > 0 ? [`${p.listedClubs === 1 ? 'One club\'s holder' : `${p.listedClubs} clubs' holders`} at ${where.at} ${p.listedClubs === 1 ? 'is its listed man' : 'are their listed men'}: the game log shows nobody now on the club starting there lately.`] : []),
     ...(farm?.state === 'notAssessed' ? [`Player Development hasn't assessed ${farm.name} for the majors (it assesses Triple-A players with enough of a season).`] : []),
     ...(a?.judgment === 'indeterminate' ? a.missing.map((x) => `${p.farmNext!.name}: ${x}`) : []),
     ...(control.kind === 'unknown' && p.control?.end.reason ? [`Control: ${p.control.end.reason}`] : []),
   ];
-  const text = holder ? `${holder.name} at ${where.at}` : `Nobody listed at ${where.at}`;
+  const text = holder ? `${holder.name} at ${where.at}` : `Nobody at ${where.at}`;
   return {
     pos: where.pos,
     name: where.name,
     holder: holder ? ref(holder) : null,
+    holderRule: holder ? hb.rule : null,
     value,
     valueText: value?.short ?? 'Not valued',
     place: p.place ? { rank: p.place.rank, of: p.place.of, tiedWith: p.place.tiedWith, overlap: others } : null,
     placeText,
     overlap: p.place ? others : null,
+    clearlyAhead: p.place ? ahead : null,
+    clearlyBehind: p.place ? trailing : null,
     overlapText,
     behind,
     farmNext: farm,
@@ -726,7 +782,7 @@ function nodeWords(build: BuildContext, p: MapPosition, clubs: number, part: Ros
     claim: claim({
       text,
       tone: holder && !holder.wins ? 'unknown' : 'neutral',
-      hint: value ? fit(`${value.text}, ${part === 'rest_of_season' ? 'rest of season' : 'this season'}`) : holder ? NOT_VALUED_HINT : `Nobody on the club is listed at ${where.at}`,
+      hint: value ? fit(`${value.text}, ${part === 'rest_of_season' ? 'rest of season' : 'this season'}`) : holder ? NOT_VALUED_HINT : `Nobody on the club plays ${where.at}`,
       ...(p.place ? { place: { rank: p.place.rank, of: p.place.of, tiedWith: p.place.tiedWith, overlap: others } } : {}),
       basis: stamp && value
         ? basis({ because, source: source(build, VALUE, plural(clubs, 'club')), unknown: [...new Set(unknown)], wouldChange: [], lean: null, certainty: stamp.status, stamp: stamp.basis })
@@ -785,12 +841,16 @@ export function rosterMapWords(build: BuildContext, m: MorningMaterial): RosterM
   const map = m.map;
   const notes = [
     ...(map.noDh ? [cell(map.noDh)] : []),
-    cell('Holders are each club\'s player listed at the position with the most expected wins', {
-      hint: 'Same rule for every club; a place counts only clubs with a valued holder',
-    }),
+    map.logWhy
+      ? cell('Holders are each club\'s listed men: the game log doesn\'t show who starts', {
+        hint: fit(`${map.logWhy} Each club's man listed there with the most expected wins.`),
+      })
+      : cell('Each club\'s holder is its regular: the man who\'s been starting there', {
+        hint: `Most starts this season among those starting there in the last ${map.holderWindow} games`,
+      }),
   ];
   return {
-    positions: map.positions.map((p) => nodeWords(build, p, map.clubs, map.part)),
+    positions: map.positions.map((p) => nodeWords(build, p, map.clubs, map.part, map.holderWindow)),
     valueScale: map.scale ? { low: map.scale.low, high: map.scale.high, unit: 'wins' } : null,
     rotation: map.rotation.map((p, i) => pitcherWords(build, p, ROTATION_ROLES[i] ?? ordinal(i + 1), map.part, false)),
     bullpen: map.bullpen.map((p) => pitcherWords(build, p, p.kind === 'closer' ? 'CL' : 'RP', map.part, true)),

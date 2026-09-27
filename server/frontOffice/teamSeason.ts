@@ -332,6 +332,60 @@ function readGameLog(leagueId: number, season: number | null, inClubs: string): 
   return log;
 }
 
+/**
+ * Each club's starts by position this season, from its own game log (`players_game_batting`: a line with a start, `gs`,
+ * at the position it was played, 2 catcher ... 10 designated hitter), and how many of each man's starts fall in the
+ * club's last `window` games played. Rows are counted once per game whatever splits the export repeats them in. Null
+ * with why when the log cannot say who started where (no log, or no position or start column).
+ */
+export function positionStartsOf(facts: TeamSeasonFacts, window: number): {
+  byClub: Map<number, { games: number; at: Map<number, Array<{ playerId: number; season: number; recent: number }>> }>;
+  why: string | null;
+} {
+  const out = new Map<number, { games: number; at: Map<number, Array<{ playerId: number; season: number; recent: number }>> }>();
+  const cols = has('players_game_batting');
+  if (!['player_id', 'team_id', 'game_id', 'position', 'gs'].every((c) => cols.has(c))) {
+    return { byClub: out, why: 'The export\'s game log doesn\'t say who started where.' };
+  }
+  if (facts.leagueId === null) return { byClub: out, why: 'The club\'s league isn\'t in the export.' };
+  const w = seasonWhere(cols, facts.leagueId, facts.season);
+  if (!w) return { byClub: out, why: 'The season isn\'t known, so its game log can\'t be read.' };
+  const ids = facts.clubs.map((c) => c.teamId);
+  if (!ids.length) return { byClub: out, why: null };
+  const rows = db.prepare(`SELECT DISTINCT team_id, position, player_id, game_id FROM players_game_batting
+    WHERE team_id IN (${ids.join(',')}) AND ${w.sql} AND gs > 0 AND position BETWEEN 2 AND 10`).all(...w.params) as Array<Record<string, unknown>>;
+  // Each club's last games played, from the schedule's order (the league's games are already in order)
+  const recent = new Map<number, Set<number>>();
+  const played = new Map<number, number>();
+  for (const id of ids) {
+    const mine = facts.games.filter((g) => g.home === id || g.away === id);
+    played.set(id, Math.min(window, mine.length));
+    recent.set(id, new Set(mine.slice(-window).map((g) => g.gameId)));
+  }
+  const counts = new Map<string, { teamId: number; position: number; playerId: number; season: number; recent: number }>();
+  for (const r of rows) {
+    const teamId = num(r.team_id);
+    const position = num(r.position);
+    const playerId = num(r.player_id);
+    const gameId = num(r.game_id);
+    if (teamId === null || position === null || playerId === null || gameId === null) continue;
+    const key = `${teamId}:${position}:${playerId}`;
+    const c = counts.get(key) ?? { teamId, position, playerId, season: 0, recent: 0 };
+    c.season += 1;
+    if (recent.get(teamId)?.has(gameId)) c.recent += 1;
+    counts.set(key, c);
+  }
+  for (const id of ids) out.set(id, { games: played.get(id) ?? 0, at: new Map() });
+  for (const c of counts.values()) {
+    const club = out.get(c.teamId);
+    if (!club) continue;
+    const list = club.at.get(c.position) ?? [];
+    list.push({ playerId: c.playerId, season: c.season, recent: c.recent });
+    club.at.set(c.position, list);
+  }
+  return { byClub: out, why: null };
+}
+
 /** Players' names, as the export has them. */
 export function playerNames(ids: readonly number[]): Map<number, string> {
   const cols = has('players');

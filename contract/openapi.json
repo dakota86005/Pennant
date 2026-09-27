@@ -2169,12 +2169,32 @@
             "$ref": "#/components/schemas/Cell",
             "description": "\"Ready for a look\", \"Not ready yet\", \"Can't tell yet\", \"Not assessed\", with Player Development's reasons in its hint."
           },
+          "bar": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "readiness": {
+                "$ref": "#/components/schemas/Integer"
+              },
+              "required": {
+                "$ref": "#/components/schemas/Integer"
+              }
+            },
+            "required": [
+              "readiness",
+              "required"
+            ],
+            "description": "Player Development's readiness against the readiness its bar asks for, as it serves them; null where either is not known."
+          },
           "text": {
             "type": "string",
             "description": "\"L. Moreau · Triple-A · not ready yet\"."
           }
         },
         "required": [
+          "bar",
           "level",
           "name",
           "playerId",
@@ -2499,6 +2519,21 @@
       "HexColor": {
         "type": "string",
         "description": "A colour as `#rrggbb`."
+      },
+      "HolderRule": {
+        "description": "How a node's holder was chosen: the most starts there lately in the club's game log, or the listed man where it is silent.",
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "starts",
+              "listed"
+            ]
+          },
+          {
+            "type": "string"
+          }
+        ]
       },
       "ImportAccepted": {
         "type": "object",
@@ -4265,6 +4300,10 @@
           "holder": {
             "$ref": "#/components/schemas/PlayerRef"
           },
+          "holderRule": {
+            "$ref": "#/components/schemas/HolderRule",
+            "description": "How the holder was chosen: the regular the club's game log shows, or its listed man where the log is silent; null with nobody."
+          },
           "value": {
             "$ref": "#/components/schemas/WinsValue"
           },
@@ -4282,11 +4321,18 @@
           },
           "overlap": {
             "$ref": "#/components/schemas/Integer",
-            "description": "How many other clubs' holders' ranges overlap his; null when not placed."
+            "description": "How many other placed clubs' holders he is not separable from (half-time ranges meet); null when not placed."
+          },
+          "clearlyAhead": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "How many other placed clubs' holders he is clearly ahead of, and clearly behind; null when not placed."
+          },
+          "clearlyBehind": {
+            "$ref": "#/components/schemas/Integer"
           },
           "overlapText": {
             "$ref": "#/components/schemas/Cell",
-            "description": "\"Ranges overlap 12 other clubs'\", or why he is not placed."
+            "description": "\"Clearly ahead of 4 · not separable from 22 · clearly behind 3\", \"Not separable from the other 29\", or why he is not placed."
           },
           "behind": {
             "$ref": "#/components/schemas/Cell",

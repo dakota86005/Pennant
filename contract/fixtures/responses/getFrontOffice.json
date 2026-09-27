@@ -1446,7 +1446,7 @@
           "why": null
         },
         "detail": {
-          "display": "4.53 runs a game · league middle 4.73"
+          "display": "4.53 runs a game"
         },
         "group": "rest",
         "claim": {
@@ -1457,10 +1457,6 @@
               {
                 "label": "This season",
                 "value": "4.53 runs a game · 3rd of 4"
-              },
-              {
-                "label": "League middle",
-                "value": "4.73 runs a game"
               },
               {
                 "label": "Last 15 games",
@@ -1524,7 +1520,7 @@
           "why": null
         },
         "detail": {
-          "display": "4.27 allowed a game · league middle 4.48"
+          "display": "4.27 allowed a game"
         },
         "group": "rest",
         "claim": {
@@ -1535,10 +1531,6 @@
               {
                 "label": "This season",
                 "value": "4.27 allowed a game · T-1st of 4"
-              },
-              {
-                "label": "League middle",
-                "value": "4.48 allowed a game"
               },
               {
                 "label": "Level with",
@@ -1606,7 +1598,7 @@
           "why": null
         },
         "detail": {
-          "display": ".319 on base · league middle .310"
+          "display": ".319 on base"
         },
         "group": "rest",
         "claim": {
@@ -1617,10 +1609,6 @@
               {
                 "label": "This season",
                 "value": ".319 on base · 1st of 4"
-              },
-              {
-                "label": "League middle",
-                "value": ".310 on base"
               },
               {
                 "label": "Last 15 games",
@@ -1684,7 +1672,7 @@
           "why": null
         },
         "detail": {
-          "display": ".113 extra bases an at-bat · league middle .141"
+          "display": ".113 extra bases an at-bat"
         },
         "group": "rest",
         "claim": {
@@ -1695,10 +1683,6 @@
               {
                 "label": "This season",
                 "value": ".113 extra bases an at-bat · 4th of 4"
-              },
-              {
-                "label": "League middle",
-                "value": ".141 extra bases an at-bat"
               },
               {
                 "label": "Last 15 games",
@@ -1762,7 +1746,7 @@
           "why": null
         },
         "detail": {
-          "display": "4.12 starters' ERA · league middle 4.40"
+          "display": "4.12 starters' ERA"
         },
         "group": "rest",
         "claim": {
@@ -1773,10 +1757,6 @@
               {
                 "label": "This season",
                 "value": "4.12 starters' ERA · 1st of 4"
-              },
-              {
-                "label": "League middle",
-                "value": "4.40 ERA"
               },
               {
                 "label": "Last 15 games",
@@ -1840,7 +1820,7 @@
           "why": null
         },
         "detail": {
-          "display": "4.05 relievers' ERA · league middle 4.41"
+          "display": "4.05 relievers' ERA"
         },
         "group": "rest",
         "claim": {
@@ -1851,10 +1831,6 @@
               {
                 "label": "This season",
                 "value": "4.05 relievers' ERA · 2nd of 4"
-              },
-              {
-                "label": "League middle",
-                "value": "4.41 ERA"
               },
               {
                 "label": "Last 15 games",
@@ -1918,7 +1894,7 @@
           "why": null
         },
         "detail": {
-          "display": ".708 of balls in play made outs · league middle .704"
+          "display": ".708 of balls in play made outs"
         },
         "group": "rest",
         "claim": {
@@ -1929,10 +1905,6 @@
               {
                 "label": "This season",
                 "value": ".708 of balls in play made outs · 2nd of 4"
-              },
-              {
-                "label": "League middle",
-                "value": ".704 of balls in play made outs"
               },
               {
                 "label": "Last 15 games",
@@ -1996,7 +1968,7 @@
           "why": null
         },
         "detail": {
-          "display": "−0.03 runs a game on the bases · league middle −0.01"
+          "display": "−0.03 runs a game on the bases"
         },
         "group": "rest",
         "claim": {
@@ -2007,10 +1979,6 @@
               {
                 "label": "This season",
                 "value": "−0.03 runs a game on the bases · 3rd of 4"
-              },
-              {
-                "label": "League middle",
-                "value": "−0.01 runs a game on the bases"
               },
               {
                 "label": "Last 15 games",
@@ -2067,6 +2035,7 @@
           "name": "P 1012",
           "short": "P. 1012"
         },
+        "holderRule": "listed",
         "value": {
           "low": -0.2150173672805822,
           "likely": 0.055051633077749136,
@@ -2084,12 +2053,14 @@
         },
         "placeText": "3rd of 3",
         "overlap": 2,
+        "clearlyAhead": 0,
+        "clearlyBehind": 0,
         "overlapText": {
-          "display": "His range overlaps every other club's",
-          "hint": "Two holders whose ranges overlap aren't said to differ"
+          "display": "Not separable from the other 2",
+          "hint": "Clubs are told apart on the range each lands in half the time"
         },
         "behind": {
-          "display": "Nobody else listed at catcher"
+          "display": "Nobody else plays catcher"
         },
         "farmNext": null,
         "farmText": {
@@ -2120,20 +2091,24 @@
                 "value": "3rd of 3"
               },
               {
-                "label": "Ranges overlapping his",
-                "value": "Club 3 N and Club 4 N"
+                "label": "Against the other clubs",
+                "value": "Not separable from the other 2"
               },
               {
-                "label": "League middle",
-                "value": "0.4 wins"
+                "label": "How clubs are told apart",
+                "value": "On the range each holder lands in half the time: two whose half-time ranges meet aren't said to differ. The range drawn is the one he lands in four times in five."
               },
               {
                 "label": "Behind him",
-                "value": "Nobody else listed"
+                "value": "Nobody else there"
               },
               {
                 "label": "The farm's next man",
                 "value": "Nobody listed there"
+              },
+              {
+                "label": "How the farm's next man is chosen",
+                "value": "The man Player Development reads as readiest at catcher, at the highest level where anyone is listed there; men it hasn't assessed follow, by name."
               },
               {
                 "label": "Control",
@@ -2145,7 +2120,11 @@
               },
               {
                 "label": "How the holder is chosen",
-                "value": "The club's major-league player listed there with the most expected wins; the same for every club."
+                "value": "Listed at catcher, the club's man there with the most expected wins: The export's game log doesn't say who started where."
+              },
+              {
+                "label": "The same rule for every club",
+                "value": "The man now on the club with the most starts there this season, among those who started there in its last 15 games; where the game log shows no such start, its man listed there with the most expected wins."
               }
             ],
             "source": {
@@ -2156,7 +2135,8 @@
               "sample": "4 clubs"
             },
             "unknown": [
-              "1 club not placed at catcher: Club 2 N."
+              "1 club not placed at catcher: Club 2 N.",
+              "3 clubs' holders at catcher are their listed men: the game log shows nobody now on the club starting there lately."
             ],
             "wouldChange": [],
             "lean": null,
@@ -2192,6 +2172,7 @@
           "name": "P 1006",
           "short": "P. 1006"
         },
+        "holderRule": "listed",
         "value": {
           "low": -0.39220938032543673,
           "likely": 0.1552296232183763,
@@ -2209,9 +2190,11 @@
         },
         "placeText": "4th of 4",
         "overlap": 3,
+        "clearlyAhead": 0,
+        "clearlyBehind": 0,
         "overlapText": {
-          "display": "His range overlaps every other club's",
-          "hint": "Two holders whose ranges overlap aren't said to differ"
+          "display": "Not separable from the other 3",
+          "hint": "Clubs are told apart on the range each lands in half the time"
         },
         "behind": {
           "display": "P. 1010",
@@ -2246,12 +2229,12 @@
                 "value": "4th of 4"
               },
               {
-                "label": "Ranges overlapping his",
-                "value": "Club 2 N, Club 3 N and Club 4 N"
+                "label": "Against the other clubs",
+                "value": "Not separable from the other 3"
               },
               {
-                "label": "League middle",
-                "value": "0.5 wins"
+                "label": "How clubs are told apart",
+                "value": "On the range each holder lands in half the time: two whose half-time ranges meet aren't said to differ. The range drawn is the one he lands in four times in five."
               },
               {
                 "label": "Behind him",
@@ -2260,6 +2243,10 @@
               {
                 "label": "The farm's next man",
                 "value": "Nobody listed there"
+              },
+              {
+                "label": "How the farm's next man is chosen",
+                "value": "The man Player Development reads as readiest at first base, at the highest level where anyone is listed there; men it hasn't assessed follow, by name."
               },
               {
                 "label": "Control",
@@ -2271,7 +2258,11 @@
               },
               {
                 "label": "How the holder is chosen",
-                "value": "The club's major-league player listed there with the most expected wins; the same for every club."
+                "value": "Listed at first base, the club's man there with the most expected wins: The export's game log doesn't say who started where."
+              },
+              {
+                "label": "The same rule for every club",
+                "value": "The man now on the club with the most starts there this season, among those who started there in its last 15 games; where the game log shows no such start, its man listed there with the most expected wins."
               }
             ],
             "source": {
@@ -2281,7 +2272,9 @@
               "gameDate": "2040-05-05",
               "sample": "4 clubs"
             },
-            "unknown": [],
+            "unknown": [
+              "4 clubs' holders at first base are their listed men: the game log shows nobody now on the club starting there lately."
+            ],
             "wouldChange": [],
             "lean": null,
             "certainty": "provisional",
@@ -2316,6 +2309,7 @@
           "name": "P 1001",
           "short": "P. 1001"
         },
+        "holderRule": "listed",
         "value": {
           "low": -0.33951719627719057,
           "likely": 0.2011319151368171,
@@ -2333,12 +2327,14 @@
         },
         "placeText": "T-3rd of 4",
         "overlap": 3,
+        "clearlyAhead": 0,
+        "clearlyBehind": 0,
         "overlapText": {
-          "display": "His range overlaps every other club's",
-          "hint": "Two holders whose ranges overlap aren't said to differ"
+          "display": "Not separable from the other 3",
+          "hint": "Clubs are told apart on the range each lands in half the time"
         },
         "behind": {
-          "display": "Nobody else listed at second base"
+          "display": "Nobody else plays second base"
         },
         "farmNext": null,
         "farmText": {
@@ -2369,20 +2365,24 @@
                 "value": "T-3rd of 4, level with Club 4 N"
               },
               {
-                "label": "Ranges overlapping his",
-                "value": "Club 2 N, Club 3 N and Club 4 N"
+                "label": "Against the other clubs",
+                "value": "Not separable from the other 3"
               },
               {
-                "label": "League middle",
-                "value": "0.2 wins"
+                "label": "How clubs are told apart",
+                "value": "On the range each holder lands in half the time: two whose half-time ranges meet aren't said to differ. The range drawn is the one he lands in four times in five."
               },
               {
                 "label": "Behind him",
-                "value": "Nobody else listed"
+                "value": "Nobody else there"
               },
               {
                 "label": "The farm's next man",
                 "value": "Nobody listed there"
+              },
+              {
+                "label": "How the farm's next man is chosen",
+                "value": "The man Player Development reads as readiest at second base, at the highest level where anyone is listed there; men it hasn't assessed follow, by name."
               },
               {
                 "label": "Control",
@@ -2394,7 +2394,11 @@
               },
               {
                 "label": "How the holder is chosen",
-                "value": "The club's major-league player listed there with the most expected wins; the same for every club."
+                "value": "Listed at second base, the club's man there with the most expected wins: The export's game log doesn't say who started where."
+              },
+              {
+                "label": "The same rule for every club",
+                "value": "The man now on the club with the most starts there this season, among those who started there in its last 15 games; where the game log shows no such start, its man listed there with the most expected wins."
               }
             ],
             "source": {
@@ -2404,7 +2408,9 @@
               "gameDate": "2040-05-05",
               "sample": "4 clubs"
             },
-            "unknown": [],
+            "unknown": [
+              "4 clubs' holders at second base are their listed men: the game log shows nobody now on the club starting there lately."
+            ],
             "wouldChange": [],
             "lean": null,
             "certainty": "provisional",
@@ -2439,6 +2445,7 @@
           "name": "P 1000",
           "short": "P. 1000"
         },
+        "holderRule": "listed",
         "value": {
           "low": -0.38420347295275126,
           "likely": 0.40368866672759235,
@@ -2456,9 +2463,11 @@
         },
         "placeText": "T-1st of 4",
         "overlap": 3,
+        "clearlyAhead": 0,
+        "clearlyBehind": 0,
         "overlapText": {
-          "display": "His range overlaps every other club's",
-          "hint": "Two holders whose ranges overlap aren't said to differ"
+          "display": "Not separable from the other 3",
+          "hint": "Clubs are told apart on the range each lands in half the time"
         },
         "behind": {
           "display": "P. 1004, P. 1011",
@@ -2493,12 +2502,12 @@
                 "value": "T-1st of 4, level with Club 4 N"
               },
               {
-                "label": "Ranges overlapping his",
-                "value": "Club 2 N, Club 3 N and Club 4 N"
+                "label": "Against the other clubs",
+                "value": "Not separable from the other 3"
               },
               {
-                "label": "League middle",
-                "value": "0.3 wins"
+                "label": "How clubs are told apart",
+                "value": "On the range each holder lands in half the time: two whose half-time ranges meet aren't said to differ. The range drawn is the one he lands in four times in five."
               },
               {
                 "label": "Behind him",
@@ -2507,6 +2516,10 @@
               {
                 "label": "The farm's next man",
                 "value": "Nobody listed there"
+              },
+              {
+                "label": "How the farm's next man is chosen",
+                "value": "The man Player Development reads as readiest at third base, at the highest level where anyone is listed there; men it hasn't assessed follow, by name."
               },
               {
                 "label": "Control",
@@ -2518,7 +2531,11 @@
               },
               {
                 "label": "How the holder is chosen",
-                "value": "The club's major-league player listed there with the most expected wins; the same for every club."
+                "value": "Listed at third base, the club's man there with the most expected wins: The export's game log doesn't say who started where."
+              },
+              {
+                "label": "The same rule for every club",
+                "value": "The man now on the club with the most starts there this season, among those who started there in its last 15 games; where the game log shows no such start, its man listed there with the most expected wins."
               }
             ],
             "source": {
@@ -2528,7 +2545,9 @@
               "gameDate": "2040-05-05",
               "sample": "4 clubs"
             },
-            "unknown": [],
+            "unknown": [
+              "4 clubs' holders at third base are their listed men: the game log shows nobody now on the club starting there lately."
+            ],
             "wouldChange": [],
             "lean": null,
             "certainty": "provisional",
@@ -2563,6 +2582,7 @@
           "name": "P 1003",
           "short": "P. 1003"
         },
+        "holderRule": "listed",
         "value": {
           "low": -0.02649380999106321,
           "likely": 0.7764465938002244,
@@ -2576,16 +2596,18 @@
           "rank": 1,
           "of": 2,
           "tiedWith": 0,
-          "overlap": 1
+          "overlap": 0
         },
         "placeText": "1st of 2",
-        "overlap": 1,
+        "overlap": 0,
+        "clearlyAhead": 1,
+        "clearlyBehind": 0,
         "overlapText": {
-          "display": "His range overlaps every other club's",
-          "hint": "Two holders whose ranges overlap aren't said to differ"
+          "display": "Clearly ahead of the other 1",
+          "hint": "Clubs are told apart on the range each lands in half the time"
         },
         "behind": {
-          "display": "Nobody else listed at shortstop"
+          "display": "Nobody else plays shortstop"
         },
         "farmNext": null,
         "farmText": {
@@ -2616,20 +2638,28 @@
                 "value": "1st of 2"
               },
               {
-                "label": "Ranges overlapping his",
+                "label": "Against the other clubs",
+                "value": "Clearly ahead of the other 1"
+              },
+              {
+                "label": "Clearly ahead of",
                 "value": "Club 4 N"
               },
               {
-                "label": "League middle",
-                "value": "0.4 wins"
+                "label": "How clubs are told apart",
+                "value": "On the range each holder lands in half the time: two whose half-time ranges meet aren't said to differ. The range drawn is the one he lands in four times in five."
               },
               {
                 "label": "Behind him",
-                "value": "Nobody else listed"
+                "value": "Nobody else there"
               },
               {
                 "label": "The farm's next man",
                 "value": "Nobody listed there"
+              },
+              {
+                "label": "How the farm's next man is chosen",
+                "value": "The man Player Development reads as readiest at shortstop, at the highest level where anyone is listed there; men it hasn't assessed follow, by name."
               },
               {
                 "label": "Control",
@@ -2641,7 +2671,11 @@
               },
               {
                 "label": "How the holder is chosen",
-                "value": "The club's major-league player listed there with the most expected wins; the same for every club."
+                "value": "Listed at shortstop, the club's man there with the most expected wins: The export's game log doesn't say who started where."
+              },
+              {
+                "label": "The same rule for every club",
+                "value": "The man now on the club with the most starts there this season, among those who started there in its last 15 games; where the game log shows no such start, its man listed there with the most expected wins."
               }
             ],
             "source": {
@@ -2652,7 +2686,8 @@
               "sample": "4 clubs"
             },
             "unknown": [
-              "2 clubs not placed at shortstop: Club 2 N, Club 3 N."
+              "2 clubs not placed at shortstop: Club 2 N, Club 3 N.",
+              "2 clubs' holders at shortstop are their listed men: the game log shows nobody now on the club starting there lately."
             ],
             "wouldChange": [],
             "lean": null,
@@ -2676,7 +2711,7 @@
             "rank": 1,
             "of": 2,
             "tiedWith": 0,
-            "overlap": 1
+            "overlap": 0
           }
         }
       },
@@ -2688,6 +2723,7 @@
           "name": "P 1007",
           "short": "P. 1007"
         },
+        "holderRule": "listed",
         "value": {
           "low": -0.18826183886245873,
           "likely": 0.617410663583015,
@@ -2705,9 +2741,11 @@
         },
         "placeText": "3rd of 4",
         "overlap": 3,
+        "clearlyAhead": 0,
+        "clearlyBehind": 0,
         "overlapText": {
-          "display": "His range overlaps every other club's",
-          "hint": "Two holders whose ranges overlap aren't said to differ"
+          "display": "Not separable from the other 3",
+          "hint": "Clubs are told apart on the range each lands in half the time"
         },
         "behind": {
           "display": "P. 1009",
@@ -2742,12 +2780,12 @@
                 "value": "3rd of 4"
               },
               {
-                "label": "Ranges overlapping his",
-                "value": "Club 2 N, Club 3 N and Club 4 N"
+                "label": "Against the other clubs",
+                "value": "Not separable from the other 3"
               },
               {
-                "label": "League middle",
-                "value": "0.7 wins"
+                "label": "How clubs are told apart",
+                "value": "On the range each holder lands in half the time: two whose half-time ranges meet aren't said to differ. The range drawn is the one he lands in four times in five."
               },
               {
                 "label": "Behind him",
@@ -2756,6 +2794,10 @@
               {
                 "label": "The farm's next man",
                 "value": "Nobody listed there"
+              },
+              {
+                "label": "How the farm's next man is chosen",
+                "value": "The man Player Development reads as readiest at left field, at the highest level where anyone is listed there; men it hasn't assessed follow, by name."
               },
               {
                 "label": "Control",
@@ -2767,7 +2809,11 @@
               },
               {
                 "label": "How the holder is chosen",
-                "value": "The club's major-league player listed there with the most expected wins; the same for every club."
+                "value": "Listed at left field, the club's man there with the most expected wins: The export's game log doesn't say who started where."
+              },
+              {
+                "label": "The same rule for every club",
+                "value": "The man now on the club with the most starts there this season, among those who started there in its last 15 games; where the game log shows no such start, its man listed there with the most expected wins."
               }
             ],
             "source": {
@@ -2777,7 +2823,9 @@
               "gameDate": "2040-05-05",
               "sample": "4 clubs"
             },
-            "unknown": [],
+            "unknown": [
+              "4 clubs' holders at left field are their listed men: the game log shows nobody now on the club starting there lately."
+            ],
             "wouldChange": [],
             "lean": null,
             "certainty": "provisional",
@@ -2812,6 +2860,7 @@
           "name": "P 1005",
           "short": "P. 1005"
         },
+        "holderRule": "listed",
         "value": {
           "low": 0.0997675658153131,
           "likely": 0.9602537073480558,
@@ -2825,13 +2874,15 @@
           "rank": 1,
           "of": 3,
           "tiedWith": 0,
-          "overlap": 2
+          "overlap": 1
         },
         "placeText": "1st of 3",
-        "overlap": 2,
+        "overlap": 1,
+        "clearlyAhead": 1,
+        "clearlyBehind": 0,
         "overlapText": {
-          "display": "His range overlaps every other club's",
-          "hint": "Two holders whose ranges overlap aren't said to differ"
+          "display": "Clearly ahead of 1 · not separable from 1",
+          "hint": "Clubs are told apart on the range each lands in half the time"
         },
         "behind": {
           "display": "P. 1002",
@@ -2866,12 +2917,20 @@
                 "value": "1st of 3"
               },
               {
-                "label": "Ranges overlapping his",
-                "value": "Club 2 N and Club 3 N"
+                "label": "Against the other clubs",
+                "value": "Clearly ahead of 1 · not separable from 1"
               },
               {
-                "label": "League middle",
-                "value": "0.9 wins"
+                "label": "Clearly ahead of",
+                "value": "Club 2 N"
+              },
+              {
+                "label": "Not separable from",
+                "value": "Club 3 N"
+              },
+              {
+                "label": "How clubs are told apart",
+                "value": "On the range each holder lands in half the time: two whose half-time ranges meet aren't said to differ. The range drawn is the one he lands in four times in five."
               },
               {
                 "label": "Behind him",
@@ -2880,6 +2939,10 @@
               {
                 "label": "The farm's next man",
                 "value": "Nobody listed there"
+              },
+              {
+                "label": "How the farm's next man is chosen",
+                "value": "The man Player Development reads as readiest at center field, at the highest level where anyone is listed there; men it hasn't assessed follow, by name."
               },
               {
                 "label": "Control",
@@ -2891,7 +2954,11 @@
               },
               {
                 "label": "How the holder is chosen",
-                "value": "The club's major-league player listed there with the most expected wins; the same for every club."
+                "value": "Listed at center field, the club's man there with the most expected wins: The export's game log doesn't say who started where."
+              },
+              {
+                "label": "The same rule for every club",
+                "value": "The man now on the club with the most starts there this season, among those who started there in its last 15 games; where the game log shows no such start, its man listed there with the most expected wins."
               }
             ],
             "source": {
@@ -2902,7 +2969,8 @@
               "sample": "4 clubs"
             },
             "unknown": [
-              "1 club not placed at center field: Club 4 N."
+              "1 club not placed at center field: Club 4 N.",
+              "3 clubs' holders at center field are their listed men: the game log shows nobody now on the club starting there lately."
             ],
             "wouldChange": [],
             "lean": null,
@@ -2926,7 +2994,7 @@
             "rank": 1,
             "of": 3,
             "tiedWith": 0,
-            "overlap": 2
+            "overlap": 1
           }
         }
       },
@@ -2934,17 +3002,20 @@
         "pos": "RF",
         "name": "Right field",
         "holder": null,
+        "holderRule": null,
         "value": null,
         "valueText": "Not valued",
         "place": null,
         "placeText": "Not placed",
         "overlap": null,
+        "clearlyAhead": null,
+        "clearlyBehind": null,
         "overlapText": {
-          "display": "Not placed: nobody listed at right field",
+          "display": "Not placed: nobody plays right field",
           "tone": "unknown"
         },
         "behind": {
-          "display": "Nobody else listed at right field"
+          "display": "Nobody else plays right field"
         },
         "farmNext": null,
         "farmText": {
@@ -2952,8 +3023,8 @@
         },
         "control": {
           "kind": "unknown",
-          "text": "Nobody listed",
-          "hint": "Nobody on the club is listed at right field",
+          "text": "Nobody there",
+          "hint": "Nobody on the club plays right field",
           "through": null,
           "latest": null,
           "seasonsLeft": null,
@@ -2962,33 +3033,33 @@
         },
         "need": false,
         "claim": {
-          "text": "Nobody listed at right field",
+          "text": "Nobody at right field",
           "tone": "neutral",
           "basis": {
             "because": [
               {
                 "label": "Expected wins, the rest of this season",
-                "value": "Nobody listed"
+                "value": "Nobody there"
               },
               {
                 "label": "At right field in the league",
                 "value": "Not placed"
               },
               {
-                "label": "League middle",
-                "value": "0.0 wins"
-              },
-              {
                 "label": "Behind him",
-                "value": "Nobody else listed"
+                "value": "Nobody else there"
               },
               {
                 "label": "The farm's next man",
                 "value": "Nobody listed there"
               },
               {
+                "label": "How the farm's next man is chosen",
+                "value": "The man Player Development reads as readiest at right field, at the highest level where anyone is listed there; men it hasn't assessed follow, by name."
+              },
+              {
                 "label": "Control",
-                "value": "Nobody listed"
+                "value": "Nobody there"
               },
               {
                 "label": "Major League Ops",
@@ -2996,7 +3067,11 @@
               },
               {
                 "label": "How the holder is chosen",
-                "value": "The club's major-league player listed there with the most expected wins; the same for every club."
+                "value": "The export's game log doesn't say who started where."
+              },
+              {
+                "label": "The same rule for every club",
+                "value": "The man now on the club with the most starts there this season, among those who started there in its last 15 games; where the game log shows no such start, its man listed there with the most expected wins."
               }
             ],
             "source": {
@@ -3007,7 +3082,8 @@
               "sample": "4 clubs"
             },
             "unknown": [
-              "2 clubs not placed at right field: Club 1 N, Club 4 N."
+              "2 clubs not placed at right field: Club 1 N, Club 4 N.",
+              "2 clubs' holders at right field are their listed men: the game log shows nobody now on the club starting there lately."
             ],
             "wouldChange": [],
             "lean": null,
@@ -3021,7 +3097,7 @@
               "view": "positionPlayers"
             }
           ],
-          "hint": "Nobody on the club is listed at right field"
+          "hint": "Nobody on the club plays right field"
         }
       },
       {
@@ -3032,6 +3108,7 @@
           "name": "P 1008",
           "short": "P. 1008"
         },
+        "holderRule": "listed",
         "value": {
           "low": -0.23076305846185252,
           "likely": 0.4841703576287041,
@@ -3049,12 +3126,14 @@
         },
         "placeText": "2nd of 4",
         "overlap": 3,
+        "clearlyAhead": 0,
+        "clearlyBehind": 0,
         "overlapText": {
-          "display": "His range overlaps every other club's",
-          "hint": "Two holders whose ranges overlap aren't said to differ"
+          "display": "Not separable from the other 3",
+          "hint": "Clubs are told apart on the range each lands in half the time"
         },
         "behind": {
-          "display": "Nobody else listed at designated hitter"
+          "display": "Nobody else plays designated hitter"
         },
         "farmNext": null,
         "farmText": {
@@ -3085,20 +3164,24 @@
                 "value": "2nd of 4"
               },
               {
-                "label": "Ranges overlapping his",
-                "value": "Club 2 N, Club 3 N and Club 4 N"
+                "label": "Against the other clubs",
+                "value": "Not separable from the other 3"
               },
               {
-                "label": "League middle",
-                "value": "0.4 wins"
+                "label": "How clubs are told apart",
+                "value": "On the range each holder lands in half the time: two whose half-time ranges meet aren't said to differ. The range drawn is the one he lands in four times in five."
               },
               {
                 "label": "Behind him",
-                "value": "Nobody else listed"
+                "value": "Nobody else there"
               },
               {
                 "label": "The farm's next man",
                 "value": "Nobody listed there"
+              },
+              {
+                "label": "How the farm's next man is chosen",
+                "value": "The man Player Development reads as readiest at designated hitter, at the highest level where anyone is listed there; men it hasn't assessed follow, by name."
               },
               {
                 "label": "Control",
@@ -3110,7 +3193,11 @@
               },
               {
                 "label": "How the holder is chosen",
-                "value": "The club's major-league player listed there with the most expected wins; the same for every club."
+                "value": "Listed at designated hitter, the club's man there with the most expected wins: The export's game log doesn't say who started where."
+              },
+              {
+                "label": "The same rule for every club",
+                "value": "The man now on the club with the most starts there this season, among those who started there in its last 15 games; where the game log shows no such start, its man listed there with the most expected wins."
               }
             ],
             "source": {
@@ -3120,7 +3207,9 @@
               "gameDate": "2040-05-05",
               "sample": "4 clubs"
             },
-            "unknown": [],
+            "unknown": [
+              "4 clubs' holders at designated hitter are their listed men: the game log shows nobody now on the club starting there lately."
+            ],
             "wouldChange": [],
             "lean": null,
             "certainty": "provisional",
@@ -3996,8 +4085,8 @@
     "bullpenNeeds": [],
     "notes": [
       {
-        "display": "Holders are each club's player listed at the position with the most expected wins",
-        "hint": "Same rule for every club; a place counts only clubs with a valued holder"
+        "display": "Holders are each club's listed men: the game log doesn't show who starts",
+        "hint": "The export's game log doesn't say who started where. Each club's man listed"
       }
     ],
     "unavailable": null

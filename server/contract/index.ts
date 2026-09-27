@@ -98,5 +98,5 @@ export type {
 export type {
   GameLetter, MastheadKicker, StandingLine, RunsFigure, LastFive, ProbableStarter, TonightGame, DeadlineNote, MastheadPart, MissingPart,
   TeamSeason, ProfileGroup, ProfileLines, RecentPlace, ProfileDimension, ClubProfile, WinsValue, PlayerRef, ReadinessState, FarmNextMan,
-  ControlKind, ControlClock, ControlTerm, RosterNode, StaffPitcher, ValueScale, RosterMap,
+  ControlKind, ControlClock, ControlTerm, HolderRule, RosterNode, StaffPitcher, ValueScale, RosterMap,
 } from '../presentation/frontOffice/morningTypes.js';

@@ -19,8 +19,8 @@
 import { db, tableColumns, tableExists } from './db.js';
 import { freshnessCue, type DataStatus } from './dataStatus.js';
 import { clubProfileOf, type ClubProfileReading } from './frontOffice/clubProfile.js';
-import { positionReadings, staffOrder, valueScaleOf, type PositionPlayer, type PositionReading, type StaffInput, type WinsRange } from './frontOffice/rosterMap.js';
-import { divisionPlace, pitcherLines, readTeamSeason, type DivisionPlace, type PitcherLine, type TeamSeasonFacts } from './frontOffice/teamSeason.js';
+import { HOLDER_WINDOW, positionReadings, staffOrder, valueScaleOf, type PositionPlayer, type PositionReading, type StaffInput, type StartsLog, type WinsRange } from './frontOffice/rosterMap.js';
+import { divisionPlace, pitcherLines, positionStartsOf, readTeamSeason, type DivisionPlace, type PitcherLine, type TeamSeasonFacts } from './frontOffice/teamSeason.js';
 import { farmNextByPosition, type FarmNext } from './mlbEvidence.js';
 import type { MlbNeed } from './mlbNeeds.js';
 import { controlEndOf, playerValues, productionHeadlineOf, type ControlEnd, type ControlStatus, type PlayerValuation } from './playerValue.js';
@@ -34,13 +34,6 @@ export interface ControlReading {
   now: ControlStatus | null;
   next: ControlStatus | null;
   standing: 'held' | 'unsigned' | 'unknown';
-  /**
-   * The last season of the run from this season that the timeline lays out with the club holding him on every branch
-   * (no season in it is, or may be, free agency); null when this season is not surely held. Read from Player Value's
-   * statuses (Player Rights' answer), never a rule of its own: where `end` cannot say when control ends because the last
-   * season laid out is unsettled between two held statuses, he is still surely held through it.
-   */
-  heldThrough: number | null;
 }
 
 export interface MapPosition extends PositionReading {
@@ -50,7 +43,7 @@ export interface MapPosition extends PositionReading {
   control: ControlReading | null;
   /** The club's standing for the holder (IL, Day-to-day ...), as Player State reads it; null when active or not known. */
   standing: string | null;
-  /** Major League Ops' needs at the position (its role), as it served them. */
+  /** Major League Ops' needs on this node: about its holder wherever it raised them, else at the position's role. */
   needs: MlbNeed[];
 }
 
@@ -73,6 +66,9 @@ export interface RosterMaterial {
   rotation: MapPitcher[];
   bullpen: MapPitcher[];
   scale: { low: number; high: number } | null;
+  /** The window of each club's last games the holder rule reads, and why the game log can't be read (null when it can). */
+  holderWindow: number;
+  logWhy: string | null;
   /** Which part of the season the expected wins cover. */
   part: 'rest_of_season' | 'season' | null;
   season: number | null;
@@ -96,39 +92,29 @@ const winsOf = (v: PlayerValuation | undefined): { wins: WinsRange | null; part:
   const h = productionHeadlineOf(v.production);
   if (!h.now) return { wins: null, part: null, why: h.reason ?? 'His production is not established.', stamp: null };
   const c = v.production.basis.calibration;
-  return { wins: { low: h.now.wins.low, likely: h.now.wins.central, high: h.now.wins.high }, part: h.now.part, why: null, stamp: { status: c.status, basis: c.basis } };
+  const inner = h.now.inner ? { low: h.now.inner.low, high: h.now.inner.high } : null;
+  return { wins: { low: h.now.wins.low, likely: h.now.wins.central, high: h.now.wins.high, inner }, part: h.now.part, why: null, stamp: { status: c.status, basis: c.basis } };
 };
 
 function controlOf(v: PlayerValuation | undefined): ControlReading | null {
   if (!v) return null;
   const c = v.control;
   const season = (y: number | null) => (y === null ? null : c.seasons.find((s) => s.season === y)?.status ?? null);
-  const mayBeFree = (s: PlayerValuation['control']['seasons'][number]) => s.status === 'free_agent'
-    || (s.status === 'indeterminate' && (s.between.length === 0 || s.between.includes('free_agent')))
-    || (s.declined !== null && (s.declined.status === 'free_agent' || s.declined.between.includes('free_agent')));
-  let heldThrough: number | null = null;
-  if (c.standing === 'held' && c.thisSeason !== null) {
-    for (let y = c.thisSeason; ; y += 1) {
-      const s = c.seasons.find((x) => x.season === y);
-      if (!s || mayBeFree(s)) break;
-      heldThrough = y;
-    }
-  }
   return {
     end: controlEndOf(c), thisSeason: c.thisSeason, now: season(c.thisSeason),
-    next: season(c.thisSeason === null ? null : c.thisSeason + 1), standing: c.standing, heldThrough,
+    next: season(c.thisSeason === null ? null : c.thisSeason + 1), standing: c.standing,
   };
 }
 
-/** Every club's major-league position players by listed position (2 to 10). */
-function positionPlayers(clubIds: readonly number[]): Array<{ player_id: number; name: string; position: number; team_id: number }> {
+/** Every club's major-league players with their listed position (1 pitcher, 2 to 10 the fielders and the DH). */
+function clubPlayers(clubIds: readonly number[]): Array<{ player_id: number; name: string; position: number; team_id: number }> {
   if (!tableExists('players') || !clubIds.length) return [];
   const cols = new Set(tableColumns('players'));
   if (!['player_id', 'team_id', 'position'].every((c) => cols.has(c))) return [];
   const name = cols.has('first_name') && cols.has('last_name') ? `TRIM(COALESCE(first_name, '') || ' ' || COALESCE(last_name, ''))` : `'Player ' || player_id`;
   const retired = cols.has('retired') ? 'AND COALESCE(retired, 0) = 0' : '';
   return db.prepare(`SELECT player_id, ${name} AS name, position, team_id FROM players
-    WHERE team_id IN (${clubIds.join(',')}) AND position BETWEEN 2 AND 10 ${retired}`).all() as Array<{ player_id: number; name: string; position: number; team_id: number }>;
+    WHERE team_id IN (${clubIds.join(',')}) ${retired}`).all() as Array<{ player_id: number; name: string; position: number; team_id: number }>;
 }
 
 const NOT_SHOWN_STANDINGS = new Set(['Active', 'Reserve']);
@@ -145,15 +131,21 @@ function readMap(facts: TeamSeasonFacts, status: DataStatus, needs: readonly Mlb
   const orgId = facts.orgId;
   const clubs = facts.clubs.map((c) => ({ teamId: c.teamId, name: c.name }));
   const me = facts.clubs.find((c) => c.teamId === orgId);
-  const listed = positionPlayers(clubs.map((c) => c.teamId));
+  const onClubs = clubPlayers(clubs.map((c) => c.teamId));
+  const listed = onClubs.filter((p) => p.position >= 2 && p.position <= 10);
+  // The club's own game log: who has been starting where (the holder rule, `rosterMap.ts`)
+  const starts = positionStartsOf(facts, HOLDER_WINDOW);
+  const log: StartsLog = { window: HOLDER_WINDOW, byClub: starts.byClub, why: starts.why };
+  const started = new Set<number>();
+  for (const club of starts.byClub.values()) for (const list of club.at.values()) for (const s of list) started.add(s.playerId);
   const dhRule = facts.subLeagues.find((s) => s.subLeagueId === me?.subLeagueId)?.dh ?? null;
-  // The designated hitter's node, where the league uses one and a club lists a player there (OOTP lists most players at
-  // their fielding position, so a league where nobody is listed at DH has no DH holder to place)
-  const listsDh = listed.some((p) => p.position === 10);
-  const withDh = dhRule !== false && listsDh;
+  // The designated hitter's node, where the league uses one and a club starts or lists a player there (OOTP lists most
+  // players at their fielding position, so a league where nobody starts or is listed at DH has no DH holder to place)
+  const dhSeen = listed.some((p) => p.position === 10) || [...starts.byClub.values()].some((c) => (c.at.get(10) ?? []).length > 0);
+  const withDh = dhRule !== false && dhSeen;
   const noDh = withDh ? null
     : dhRule === false ? 'The league plays without a designated hitter.'
-      : 'No club lists a player at designated hitter, so the DH isn\'t on the map.';
+      : 'No club starts or lists a player at designated hitter, so the DH isn\'t on the map.';
   const positions = [2, 3, 4, 5, 6, 7, 8, 9, ...(withDh ? [10] : [])];
 
   // Our major-league pitchers, as Player State places them: on the active roster, or projected to start
@@ -161,9 +153,11 @@ function readMap(facts: TeamSeasonFacts, status: DataStatus, needs: readonly Mlb
   const projected = facts.projected.find((p) => p.teamId === orgId)?.starters ?? [];
   const pitchers = states.filter((s) => s.position.value === 1 && (s.activeRoster.value === true || projected.includes(s.playerId)));
 
-  const values = playerValues([...listed.map((p) => p.player_id), ...pitchers.map((p) => p.playerId)], { currentState: freshnessCue(status).state });
-  const players: PositionPlayer[] = listed.map((p) => ({ playerId: p.player_id, name: p.name, teamId: p.team_id, position: p.position, ...winsOf(values.get(p.player_id)) }));
-  const readings = positionReadings(orgId, clubs, players, positions);
+  // Valued: every man listed at a position, every man now on a club who started at one, and our pitchers
+  const candidates = onClubs.filter((p) => (p.position >= 2 && p.position <= 10) || started.has(p.player_id));
+  const values = playerValues([...new Set([...candidates.map((p) => p.player_id), ...pitchers.map((p) => p.playerId)])], { currentState: freshnessCue(status).state });
+  const players: PositionPlayer[] = candidates.map((p) => ({ playerId: p.player_id, name: p.name, teamId: p.team_id, position: p.position, ...winsOf(values.get(p.player_id)) }));
+  const readings = positionReadings(orgId, clubs, players, positions, log);
 
   const farm = farmNextByPosition(orgId);
   const standingOf = (id: number | undefined): string | null => {
@@ -171,8 +165,14 @@ function readMap(facts: TeamSeasonFacts, status: DataStatus, needs: readonly Mlb
     const s = states.find((x) => x.playerId === id)?.standing.value ?? null;
     return s && !NOT_SHOWN_STANDINGS.has(s.label) ? s.label + (s.daysLeft ? ` · ${s.daysLeft} days` : '') : null;
   };
-  const needsAt = (spot: number) => (needs ?? []).filter((n) => needSpot(n) === spot);
   const aboutHim = (n: MlbNeed) => n.subject?.playerId ?? n.returning?.playerId ?? null;
+  // A need about a man who holds a node sits on his node, wherever Major League Ops raised it; else at its role
+  const holderNode = new Map(readings.filter((r) => r.holder).map((r) => [r.holder!.playerId, r.position]));
+  const nodeOf = (n: MlbNeed): number | null => {
+    const who = aboutHim(n);
+    return who !== null && holderNode.has(who) ? holderNode.get(who)! : needSpot(n);
+  };
+  const needsAt = (spot: number) => (needs ?? []).filter((n) => nodeOf(n) === spot);
 
   const lines = pitcherLines(pitchers.map((p) => p.playerId), facts.leagueId ?? 0, facts.season);
   const staffInputs: StaffInput[] = pitchers.map((p) => {
@@ -216,6 +216,8 @@ function readMap(facts: TeamSeasonFacts, status: DataStatus, needs: readonly Mlb
     bullpenNeeds: groupNeeds(0, bullpen),
     rotation, bullpen,
     scale: valueScaleOf([...mapped.map((p) => p.holder?.wins ?? null), ...rotation.map((p) => p.wins), ...bullpen.map((p) => p.wins)]),
+    holderWindow: HOLDER_WINDOW,
+    logWhy: starts.why,
     part: firstPart,
     season: facts.season,
     clubs: clubs.length,

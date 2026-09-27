@@ -203,6 +203,8 @@ export interface FarmNextMan extends PlayerRef {
   state: ReadinessState;
   /** "Ready for a look", "Not ready yet", "Can't tell yet", "Not assessed", with Player Development's reasons in its hint. */
   readiness: Cell;
+  /** Player Development's readiness against the readiness its bar asks for, as it serves them; null where either is not known. */
+  bar: { readiness: Integer; required: Integer } | null;
   /** "L. Moreau · Triple-A · not ready yet". */
   text: string;
 }
@@ -227,6 +229,9 @@ export interface ControlTerm {
   clock: ControlClock | null;
 }
 
+/** How a node's holder was chosen: the most starts there lately in the club's game log, or the listed man where it is silent. */
+export type HolderRule = 'starts' | 'listed';
+
 /** One position on the roster map. */
 export interface RosterNode {
   /** "C", "1B" ... "DH". */
@@ -234,6 +239,8 @@ export interface RosterNode {
   /** "Catcher". */
   name: string;
   holder: PlayerRef | null;
+  /** How the holder was chosen: the regular the club's game log shows, or its listed man where the log is silent; null with nobody. */
+  holderRule: HolderRule | null;
   value: WinsValue | null;
   /** "2.1 wins", "Not valued". */
   valueText: string;
@@ -241,9 +248,12 @@ export interface RosterNode {
   place: Place | null;
   /** "7th of 30", "T-7th of 30", "Not placed". */
   placeText: string;
-  /** How many other clubs' holders' ranges overlap his; null when not placed. */
+  /** How many other placed clubs' holders he is not separable from (half-time ranges meet); null when not placed. */
   overlap: Integer | null;
-  /** "Ranges overlap 12 other clubs'", or why he is not placed. */
+  /** How many other placed clubs' holders he is clearly ahead of, and clearly behind; null when not placed. */
+  clearlyAhead: Integer | null;
+  clearlyBehind: Integer | null;
+  /** "Clearly ahead of 4 · not separable from 22 · clearly behind 3", "Not separable from the other 29", or why he is not placed. */
   overlapText: Cell;
   /** Who is behind him at the position. */
   behind: Cell;

@@ -275,7 +275,7 @@ export function buildCatalog(clubs: ClubSource[], orgId: number | null, themeOf:
       },
       rosterLegend: {
         range: cell('Range: his expected wins this season, most likely marked · hatched: not valued yet', {
-          hint: 'The same scale for every range on the map; a place counts the same figure',
+          hint: 'Where he lands four times in five; clubs are told apart on half the time',
         }),
         control: cell('Pips: seasons we control him'),
         need: cell('Ring and word: a need Major League Ops raised'),
