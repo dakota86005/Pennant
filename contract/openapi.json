@@ -1433,6 +1433,10 @@
               "null"
             ],
             "description": "Why the import did not start; null when it did."
+          },
+          "club": {
+            "$ref": "#/components/schemas/SetupClub",
+            "description": "The club, when the request asked for it to be taken from the save (`club: 'fromSave'`, N6 Stage B2): followed when the save's export names exactly one club the human manages, else none and why the app asks. Null when not asked."
           }
         },
         "required": [
@@ -1453,12 +1457,28 @@
               "string",
               "null"
             ]
+          },
+          "club": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "fromSave"
+                ]
+              },
+              {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            ]
           }
         },
         "required": [
           "csvDir"
         ],
-        "description": "The save to use (`POST /api/config`): its CSV export folder and its name."
+        "description": "The save to use (`POST /api/config`): its CSV export folder and its name. `club: 'fromSave'` (the Mac app's choice of a save, D-063) also takes the club from the save, as the first run does: followed when the save's export names exactly one human club, asked for otherwise."
       },
       "ControlClock": {
         "anyOf": [
@@ -1905,6 +1925,10 @@
           "ratingHistory": {
             "$ref": "#/components/schemas/Claim",
             "description": "Rating history of this save that isn't used, or that started fresh, in a sentence with its basis; null when all is its own (D-064)."
+          },
+          "updated": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "What the last import brought the league up to (\"Updated to May 6, 2040\"), with when it was imported in its hint: the line the Mac app shows for a moment when an import lands while the GM reads (N6 Stage B2). Null with nothing imported."
           }
         },
         "required": [
@@ -4148,11 +4172,16 @@
           },
           "text": {
             "$ref": "#/components/schemas/Claim"
+          },
+          "undoQuestion": {
+            "type": "string",
+            "description": "What \"Undo carry-over\" asks before it undoes: what is removed and what is kept, in a sentence."
           }
         },
         "required": [
           "id",
-          "text"
+          "text",
+          "undoQuestion"
         ],
         "description": "A carry-over in force: what was carried over, and the id \"Undo carry-over\" sends (`choice: undo`)."
       },
@@ -4234,6 +4263,14 @@
           },
           "players": {
             "$ref": "#/components/schemas/RatingHistoryPlayers"
+          },
+          "adoptText": {
+            "type": "string",
+            "description": "The label of the answer that carries it over (`adopt`): \"Carry It Over\", \"Continue That History\"."
+          },
+          "freshText": {
+            "type": "string",
+            "description": "The label of the answer that keeps them apart (`fresh`): \"Keep Them Apart\", \"Keep the New Start\"."
           }
         },
         "required": [
@@ -4243,7 +4280,9 @@
           "saveName",
           "place",
           "imports",
-          "players"
+          "players",
+          "adoptText",
+          "freshText"
         ],
         "description": "A question about this save's rating history, answered with one click: carry that history over (`adopt`) or keep them apart (`fresh`). `moved`: an earlier save whose folder has gone could be this one; `players_changed` / `went_back`: this folder's own history was set aside, and the GM may continue it."
       },

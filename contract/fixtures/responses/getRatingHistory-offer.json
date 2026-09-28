@@ -50,7 +50,9 @@
       "lastDate": "2040-5-6",
       "carriesThrough": "2040-4-1",
       "imports": 2,
-      "players": "same"
+      "players": "same",
+      "adoptText": "Carry It Over",
+      "freshText": "Keep Them Apart"
     }
   ],
   "candidates": [

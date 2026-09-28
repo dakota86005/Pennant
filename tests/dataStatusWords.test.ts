@@ -177,3 +177,16 @@ describe('what the export carries and what the import left out (N3.5, D-061)', (
     for (const { path, text } of shownStrings(view)) expect(bannedIn(text, [BANNED_JARGON, BANNED_VERDICTS]), `${path}: ${text}`).toEqual([]);
   });
 });
+
+describe('the line shown when an import lands while the GM reads (N6 Stage B2)', () => {
+  it('says what day the import brought the league to, with when it was imported in its hint', () => {
+    const view = dataStatusView(current);
+    expect(view.updated).toMatchObject({ display: 'Updated to May 9, 2040', hint: expect.stringMatching(/^Pennant imported OOTP's export on /) });
+    expect(bannedIn([view.updated!.display], BANNED_JARGON)).toEqual([]);
+  });
+
+  it('says nothing before an import, and nothing with no game date (never a date made up)', () => {
+    expect(dataStatusView(status({ saveSimulatedThrough: null, csvCurrentDate: '2040-05-09', log: { available: false, reason: 'database_missing' } }, { csv: { importedAt: null } })).updated).toBeNull();
+    expect(dataStatusView(status({ saveSimulatedThrough: null, csvCurrentDate: null, log: { available: false, reason: 'database_missing' } })).updated).toBeNull();
+  });
+});

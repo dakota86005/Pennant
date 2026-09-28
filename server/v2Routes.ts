@@ -16,7 +16,7 @@ import { buildCatalog, type Catalog } from './presentation/catalog.js';
 import { assertAuthored } from './presentation/claim.js';
 import { dataStatusView, type DataStatusView } from './presentation/dataStatusWords.js';
 import {
-  FrontOfficeRefusal, UNKNOWN_CLUB, claimTrail, departmentReport, frontOfficeSummary, resolveOrg,
+  FrontOfficeRefusal, UNKNOWN_CLUB, claimTrail, departmentReport, frontOfficeSummary, invalidateFrontOffice, resolveOrg, warmFrontOffice,
 } from './frontOfficeService.js';
 import type { ClaimTrail, DepartmentReport, FrontOfficeSummary } from './presentation/frontOffice/types.js';
 import type { ThemeChoice, ThemeChoices } from './contract/themePack.js';
@@ -106,6 +106,13 @@ v2Routes.post('/rating-history/choice', (req: Request, res: Response<RatingHisto
   try {
     if (body.choice !== 'adopt' && body.choice !== 'fresh' && body.choice !== 'undo') throw new HistoryChoiceRefusal('Choose to carry that history over, to keep them apart, or to undo a carry-over.');
     answerHistoryOffer(String(body.offerId ?? ''), body.choice);
+    // Carrying a history over or undoing one changes what the reports read (the observed rating history): the Front
+    // Office is built again at once, and its `front-office-updated` event tells the Mac app to reload (N6 Stage B2).
+    // Keeping them apart copies nothing, so nothing is rebuilt.
+    if (body.choice !== 'fresh') {
+      invalidateFrontOffice();
+      void warmFrontOffice();
+    }
     send(res, ratingHistoryNow());
   } catch (err) {
     if (err instanceof HistoryChoiceRefusal) res.status(err.status).json({ error: err.message });

@@ -94,3 +94,35 @@ describe('a first run with no save chosen', () => {
     expect(loadConfig().csvDir).toBe(chosen.csvDir);
   });
 });
+
+describe('a save chosen by the GM, with its club taken from the save (N6 Stage B2)', () => {
+  it('follows the one club the chosen save\'s human manages, as the first run does, when asked to', async () => {
+    const other = home.save(APP_STORE_27, 'Played since', { playedHoursAgo: 1 });
+    await post('/api/settings', { defaultOrgId: 3 });
+    const answer = await post('/api/config', { csvDir: other.csvDir, saveName: 'Played since', club: 'fromSave' });
+    expect(answer).toMatchObject({
+      ok: true, importStarted: true, why: null,
+      club: { decided: true, teamId: 1, name: 'Arizona Diamondbacks', humanClubs: 1 },
+    });
+    expect(loadSettings().defaultOrgId).toBeNull();
+    expect(loadConfig()).toMatchObject({ csvDir: other.csvDir, saveName: 'Played since' });
+  });
+
+  it('takes no club when the save\'s human manages several, and keeps the chosen one until the GM answers', async () => {
+    const two = home.save(APP_STORE_27, 'Two clubs', { playedHoursAgo: 1, humanClubs: [[1, 'Arizona', 'Diamondbacks'], [3, 'Boston', 'Red Sox']] });
+    await post('/api/settings', { defaultOrgId: 3 });
+    const answer = await post('/api/config', { csvDir: two.csvDir, saveName: 'Two clubs', club: 'fromSave' });
+    expect(answer.club).toMatchObject({ decided: false, teamId: null, humanClubs: 2 });
+    expect(loadSettings().defaultOrgId).toBe(3);
+    await post('/api/settings', { defaultOrgId: null });
+  });
+
+  it('leaves the club alone when not asked (the React app and the folder typed by hand)', async () => {
+    const save = home.save(APP_STORE_27, 'By hand', { playedHoursAgo: 1 });
+    await post('/api/settings', { defaultOrgId: 3 });
+    const answer = await post('/api/config', { csvDir: save.csvDir, saveName: 'By hand' });
+    expect(answer).toMatchObject({ ok: true, importStarted: true, club: null });
+    expect(loadSettings().defaultOrgId).toBe(3);
+    await post('/api/settings', { defaultOrgId: null });
+  });
+});

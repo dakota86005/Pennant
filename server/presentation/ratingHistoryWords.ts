@@ -37,6 +37,10 @@ export interface RatingHistoryOffer {
   /** How many imports its history holds. */
   imports: Integer;
   players: RatingHistoryPlayers;
+  /** The label of the answer that carries it over (`adopt`): "Carry It Over", "Continue That History". */
+  adoptText: string;
+  /** The label of the answer that keeps them apart (`fresh`): "Keep Them Apart", "Keep the New Start". */
+  freshText: string;
 }
 
 /** Another history the GM may carry over by choice (the list behind "Carry over another save's history..."). */
@@ -59,6 +63,8 @@ export interface RatingHistoryCandidate {
 export interface RatingHistoryCarryOver {
   id: string;
   text: Claim;
+  /** What "Undo carry-over" asks before it undoes: what is removed and what is kept, in a sentence. */
+  undoQuestion: string;
 }
 
 /** This save's rating history: what isn't used or started fresh, the questions, the other histories, and carry-overs. */
@@ -168,6 +174,8 @@ export function offerWords(o: HistoryOffer): RatingHistoryOffer {
     carriesThrough: servedDate(o.carriesThrough),
     imports: o.dates,
     players: o.players,
+    adoptText: kind === 'moved' ? 'Carry It Over' : 'Continue That History',
+    freshText: kind === 'moved' ? 'Keep Them Apart' : 'Keep the New Start',
   };
 }
 
@@ -216,6 +224,7 @@ export function carryOverWords(c: HistoryCarryOver): RatingHistoryCarryOver {
         certainty: 'fact',
       }),
     }),
+    undoQuestion: `Undo the carry-over from ${name}? The ${c.rows} player rating${c.rows === 1 ? '' : 's'} it copied ${c.rows === 1 ? 'is' : 'are'} removed from this save's history; ${c.fromName ? name : 'that save'} keeps its own.`,
   };
 }
 

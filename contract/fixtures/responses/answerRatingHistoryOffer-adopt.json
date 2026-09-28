@@ -33,7 +33,8 @@
         },
         "links": [],
         "hint": "Undoing it removes exactly what was copied; the other save keeps its own"
-      }
+      },
+      "undoQuestion": "Undo the carry-over from \"Old League\"? The 104 player ratings it copied are removed from this save's history; \"Old League\" keeps its own."
     }
   ],
   "warning": {

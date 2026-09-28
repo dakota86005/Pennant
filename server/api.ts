@@ -663,12 +663,22 @@ export interface ConfigAccepted {
   importStarted: boolean;
   /** Why the import did not start; null when it did. */
   why: string | null;
+  /**
+   * The club, when the request asked for it to be taken from the save (`club: 'fromSave'`, N6 Stage B2): followed when
+   * the save's export names exactly one club the human manages, else none and why the app asks. Null when not asked.
+   */
+  club: SetupClub | null;
 }
 
-/** The save to use (`POST /api/config`): its CSV export folder and its name. */
+/**
+ * The save to use (`POST /api/config`): its CSV export folder and its name. `club: 'fromSave'` (the Mac app's choice
+ * of a save, D-063) also takes the club from the save, as the first run does: followed when the save's export names
+ * exactly one human club, asked for otherwise.
+ */
 export interface ConfigRequest {
   csvDir: string;
   saveName?: string | null;
+  club?: 'fromSave' | null;
 }
 
 /** Where `GET /api/search-locations` looked for saves, so the user can see why auto-detection came up empty. */
@@ -790,11 +800,13 @@ function chooseSave(csvDir: string, saveName: string | null): boolean {
 }
 
 api.post('/config', (req, res: Response<ConfigAccepted | ApiError>) => {
-  const { csvDir, saveName } = req.body as Partial<ConfigRequest>;
+  const { csvDir, saveName, club: clubChoice } = req.body as Partial<ConfigRequest>;
   if (!csvDir) return res.status(400).json({ error: 'csvDir is required' });
   if (importState.importing) return res.status(409).json({ error: IMPORT_RUNNING });
-  if (chooseSave(csvDir, saveName ?? null)) return res.json({ ok: true, importStarted: true, why: null });
-  res.json({ ok: true, importStarted: false, why: EXPORT_NOT_FOUND });
+  // The club is read from the export before the save is chosen, as the first run does (a folder that isn't there says so)
+  const club = clubChoice === 'fromSave' ? clubFromSave(csvDir) : null;
+  if (chooseSave(csvDir, saveName ?? null)) return res.json({ ok: true, importStarted: true, why: null, club });
+  res.json({ ok: true, importStarted: false, why: EXPORT_NOT_FOUND, club });
 });
 
 /** The club a first run follows, taken from the save's export (N3.5 Stage B2, D-063). */

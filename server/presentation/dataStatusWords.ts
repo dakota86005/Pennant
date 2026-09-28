@@ -50,6 +50,11 @@ export interface DataStatusView {
   leftOut: Claim | null;
   /** Rating history of this save that isn't used, or that started fresh, in a sentence with its basis; null when all is its own (D-064). */
   ratingHistory: Claim | null;
+  /**
+   * What the last import brought the league up to ("Updated to May 6, 2040"), with when it was imported in its hint: the
+   * line the Mac app shows for a moment when an import lands while the GM reads (N6 Stage B2). Null with nothing imported.
+   */
+  updated: Cell | null;
 }
 
 const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -235,7 +240,15 @@ export function dataStatusView(s: DataStatus): DataStatusView {
     action: action ? cell(action) : null,
     leftOut: leftOutCell(s),
     ratingHistory: ratingHistoryCell(s),
+    updated: updatedCell(gameDate, s.csv.importedAt),
   };
+}
+
+/** "Updated to May 6, 2040": the league's day the last import brought, and when it was imported; null before one. */
+function updatedCell(gameDate: string | null, importedAt: string | null): Cell | null {
+  if (!gameDate || !importedAt) return null;
+  const when = timestampWords(importedAt);
+  return cell(`Updated to ${gameDate}`, { hint: when ? `Pennant imported OOTP's export on ${when}` : 'Pennant imported OOTP\'s export' });
 }
 
 /** What became of this save's rating history, when some isn't used or it started fresh (D-064). */
