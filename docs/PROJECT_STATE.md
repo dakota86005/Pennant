@@ -42,7 +42,8 @@ material implementation state changes.
   (a folder whose league changed, or went back in time, starts fresh, says so, and asks whether to continue the
   history set aside); a save that might have moved or been renamed is asked about, and the GM may carry over any other
   history but another league's, through `GET /api/v2/rating-history` and `POST /api/v2/rating-history/choice` (the
-  Mac app's question and list arrive with N6 Stage B). Carrying over copies, after a backup, and can be undone.
+  Mac app asks the question as a notice and lists the histories in Settings since N6 Stage B2; a carry-over or its undo
+  builds the Front Office again). Carrying over copies, after a backup, and can be undone.
   Snapshots are filed only when the league served is certainly the configured save's, and are also written to the
   Electron app's name-keyed tables, under the served save's name, for a rollback.
   History filed under the save's name before D-064 is brought over once per save, only where it is certainly that
@@ -106,6 +107,15 @@ material implementation state changes.
   desk and department cards, and Major League Ops', the farm's, Finance's and Medical's Report views their served
   reports (N4, plain until N5's design system); every other view is still a placeholder. The React app remains the
   product until cutover.
+- Pennant for Mac finds the save by itself (N6, Stage B2, D-063): a first run with one save that clearly stands out
+  asks nothing (the server chooses and imports it and takes the club from it; the window shows only the import, then the
+  Morning Report); otherwise Setup shows the served reason and the saves most recently played first, one click to choose,
+  and the club question only when the save's human manages several. "Played since" (another save, a newer OOTP, the
+  chosen save gone) is a quiet notice above the content with the served switch and Dismiss; the rating-history
+  questions are a notice with their two served answers, and Settings ▸ General ▸ Rating history has the served sentence,
+  the carry-overs with Undo and the other histories. The kicker says "Updated to <date>" for a moment when an import
+  lands in place. The window's shell is built while the server starts: a Debug build draws the kept Morning Report about
+  0.95 s after its process starts (median of seven launches on the synthetic league).
 - A data-folder lock (`server.lock`, `server/dataLock.ts`) is taken by every server start (Electron, the
   sidecar, `npm run dev`), so two copies never write the same databases; a lock whose process has gone is
   taken over.
@@ -1050,11 +1060,14 @@ resolution across all organization-specific features is future work.
   two saves named alike and started from the same real-life database share their fits; a save renamed before D-064
   leaves its earlier history under the old name, unused; a save deleted and made again in the same folder from the same
   real-life database, at no earlier a date, continues the folder's history; the Electron-era certainty rule rests on
-  file times (a restored `config.json`, coarse file-system times); the Mac app does not yet ask the rating-history
-  questions or show the list (N6 Stage B).
+  file times (a restored `config.json`, coarse file-system times).
 
-- The import (N3.5) left for later: the Mac app's side of discovery (Setup's zero-question path, the "played since"
-  prompt, the in-place update banner) is a later stage and uses what B2 serves; whether OOTP has a save open now is not
+- Pennant for Mac, N6 Stage B2 left for later: the XCUITests' accessibility audit has been answered from the runner's
+  first report (fixes in the app, evidenced set-asides in the test) but not yet re-run on the runner; the launch budget
+  (1 s) is met at the median of a Debug build, not by the first launch after a build (1.39 s); a Release build cannot yet
+  be measured on a scratch folder; Settings ▸ Rating history was checked in snapshots, not in the running app (no
+  development switch opens Settings).
+- The import (N3.5) left for later: whether OOTP has a save open now is not
   read (a stale live-log trio stays in a closed save's `temp/`); no Steam location is listed (none could be observed);
   numbers are still stored as REAL (integer storage waits for an SQL-arithmetic audit and the Electron cutover, the
   owner's decision 8); OOTP's saved log (`text_data.dat`) is not read; Org Comparison's Player Value math (about 1 s)

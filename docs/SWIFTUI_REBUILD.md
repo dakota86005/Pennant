@@ -12,7 +12,9 @@ sections 4.1, 4.2 and 8). Stage B: the Front Office contract, its department ada
 and claims endpoints, and the Mac app's first plain Morning Report and department reports ("As built at N4 (Stage B)" in
 sections 3.4, 3.5, 4.2 and 6).
 Milestone N3.5, Stage B1 is built (2026-09-26: the all-or-nothing, automatic import and the export's rating mode, D-061;
-"N3.5, Stage B1: the import, as built" in section 9); Stage B2 (discovery and the Mac app's everyday experience) follows.
+"N3.5, Stage B1: the import, as built" in section 9); Stage B2 (discovery, server) is built, and its Mac side at N6,
+Stage B2 (2026-09-28: the zero-question first run, played since and the rating-history questions, section 3.4). Milestone
+N6 (the Morning Report) is complete.
 Nothing else in this document is implemented yet. It supersedes the UI parts of the
 V2 web plan (`~/.claude/plans/okay-can-we-please-effervescent-cherny.md`, sections 3 and 4). The server-side
 parts of that plan (the Front Office contract, the Club Profile, the roster map, the horizon board, the league
@@ -515,6 +517,77 @@ Mac app draws what Stage A serves, and draws it at once.
   adapters, light and dark and at the largest text size; `served-morning-report-window-*` in the main window;
   `design-component-{masthead,places,roster,staff}-edges-*` and `design-component-farm-bar-*`, each light and dark and
   at the largest text size), and the XCUITest above.
+
+**As built at N6 (Stage B2), 2026-09-28: finding the save, played since and the rating history.** Branch
+`feature/swiftui-n6-setup`. The app draws what N3.5 Stage B2 (D-063) and the re-key (D-064) serve; the server gained
+only words (additive, through the contract).
+- **The zero-question first run** (`SetupModel.begin`, `setUpAutomatically`). With no save chosen the Setup window first
+  asks the server to set up by itself (`POST /api/v2/setup/automatic`). When a save clearly stands out the server
+  chooses and imports it and takes the club from it when its export names exactly one human club: the window shows
+  only the import (the served "Using …" line, the pick's claim with its basis, the served club line) and closes when it
+  lands, and the Morning Report follows; the GM is asked nothing. When nothing stands out the window shows the served
+  reason (`noPick`), how to switch the export on (`exportHelp`, when the save played last has none) and the saves most
+  recently played first (`GET /api/v2/saves`): each row its name, "Last played" with the served time (or the pick's
+  served line, its basis on hover), where it is, its export note; one click chooses. A save with no export files is
+  shown in full but is not a control. `alreadyChosen` does nothing more; the window's model begins once. A development
+  build sets up by itself only on a pretend home (`PENNANT_DEV_HOME`, `ServerConfiguration.findsSavesAutomatically`),
+  so it never imports the developer's own save by itself.
+- **The club, taken from the save.** Every choice the Mac app makes (the list, a folder, a switch) sends
+  `club: "fromSave"` on `POST /api/config`; the server answers `ConfigAccepted.club` as the first run does (followed when
+  one human club, else why the GM is asked). With the club decided the window closes when the import lands; with
+  several human clubs it asks only the club, with the served sentence, and the main window draws no report until the GM
+  answers or closes the window (`AppRouting.awaitingClub`, "Pick the Club").
+- **Played since** (`NoticeStack`, `PlayedSinceNotice`). `AppModel.savePlayedElsewhere` (the status and the event) is
+  a quiet strip above the content: a symbol by kind (another save, a newer OOTP, the chosen save gone), the served
+  sentence with its hint on hover, the served switch as its one button (disabled while an import runs) and Dismiss. A
+  dismissed notice stays hidden until its key (kind, the save's id, when it was last played) changes, per save
+  (`NoticeMemory`, `notices.json` in the app's caches). The switch opens Setup on that save (`AppRouting.requestSwitch`,
+  `SetupModel.switchTo`), the same choice and import as the list; the kept report is keyed by the save, so the report
+  follows the new one and another save's is never drawn. The strip's text wraps to three lines without a fixed size:
+  a height that depends on the width fed back into the split view's minimum size and looped.
+- **The rating history** (D-064). The server's questions (`GET /api/v2/rating-history`, read with the rest after each
+  import) appear one at a time as a strip with the served question (its basis a click away) and its two served answers
+  (`adoptText`, `freshText`, new). Settings ▸ General ▸ Rating history: the served sentence (`status`, new: the note, or
+  how many imports the history holds, or none yet), the stacking warning, the questions, each carry-over in force with
+  Undo (confirmed once with the served `undoQuestion`, new) and "Other Saves' Histories", each with its served line and
+  basis and Carry Over. Every answer posts `POST /api/v2/rating-history/choice` and redraws from the reply, and the
+  data status is read again; a refusal (400) is the served sentence in place, never an alert. A carry-over or its undo
+  now builds the Front Office again on the server (`invalidateFrontOffice` and `warmFrontOffice`; the reports read the
+  observed history), whose `front-office-updated` reloads the report.
+- **Updated in place.** When an import lands while a report of an earlier import is shown (`FrontOfficeStore.importLandings`),
+  the kicker ends in the served "Updated to <date>" (`DataStatusView.updated`, new, with when it was imported in its
+  hint) for four seconds, then fades; with Reduce Motion it goes without a fade. "Updating" is looked up once from the
+  catalog and the kicker is one `Text` of served parts (no deprecated `Text +`).
+- **B1's help slots**: each dimension's served figure (`detail`) on its name, why it has no recent place (`recent.why`),
+  the profile's note hint (`clubProfile.note.hint`), the league's day (`kicker.today.hint`, joined with how current),
+  and the control's hint on the pips (`control.hint`).
+- **Launch.** The window's shell (the split view, the sidebar, the toolbar) is built while the server starts, with
+  "Starting…" where the view will be (a failure, a lock, a restart or a stop still shows the server's state), and the
+  settings and clubs (the store key) are asked for first when it is ready. Seven launches of a Debug build with a report
+  kept, from the process's start to the first committed frame: **1.39, 1.10, 0.94, 0.97, 0.96, 0.93 and 0.95 s** (median
+  0.96 s, worst 1.39 s, the first after a build). The store key now follows the server's readiness by about 0.08 s (it
+  was 0.32 s); the report's first layout takes about 0.3 s after it.
+- **The runner's accessibility audit** (B1's first run of `pennant-mac-ui`). Fixed in the app: the sidebar column's
+  container is named ("Sidebar", on AppKit's hosting view, since no SwiftUI modifier reaches it); the place strips, the
+  last five, the range bars, the sparklines and the control pips are images with their served sentence (they had no
+  role); secondary text on the content is a readable grey (`NSColor.readableSecondaryLabel`: 4.5:1 or better on the
+  window's own backgrounds; the system's secondary measured near 3:1 at the runner's 1× scale); the section kickers are
+  bold; the masthead holds its top colour under the whole toolbar, so the window's title sits on it alone; the ⌘K
+  palette asks for the keyboard again once the window has settled. Set aside in the test, each listed with its reason:
+  AppKit's zoom-menu view inside the title-bar button; contrast on elements outside the window or cut off by the
+  sidebar (the runner's 1024 × 768 screen); and contrast whose own pixels in a window screenshot taken at the audit read
+  at 4.5:1 or better, with the measured ratio (the sidebar's system labels measured 9:1 to 19:1 while the audit named a
+  different handful each run). The test's own flakiness: the kept-report count no longer counts `index.json`; the
+  palette's query is clicked before typing; `waitForShell` waits for the server too.
+- **Verification.** `SetupModelTests` (the zero-question run, the club asked, nothing standing out, no setup with a
+  save chosen or without a pretend home, the pick marked, the switch), `SetupB2IntegrationTests` on the real server
+  with pretend homes (one save that stands out; two within two days; two human clubs; played since and its switch; a
+  save that moved: offered, carried over, undone, a stale undo refused), PennantKit's `StageB2Tests` (dismissed notices
+  per save and across launches, a landing counted once, the pretend home, the answers and a refusal), the adapters'
+  help slots, snapshots (`setup-automatic-importing`, `setup-nothing-stands-out`, `setup-choose-another`,
+  `setup-club-asked`, `main-window-notice-*`, `settings-history-*`, `served-morning-report-updated`, light and dark),
+  the XCUITest `testZeroQuestionFirstRun` (a pretend home prepared by `test.sh`), and window captures of a Debug build on
+  scratch folders with one, two and three pretend saves.
 
 ### 3.5 One anatomy for every department report
 
@@ -1405,10 +1478,10 @@ sizes, not dates.
 | **N1** | Sidecar server | `sidecar.ts`, `PORT=0`, ready line, stdin watchdog, SIGTERM, token (including self-calls), bind, lock (also in Electron), injected keys, `/api/v2/events` SSE, `build:sidecar`, pinned Node download with checksum, kill-mid-import safety check | 2 |
 | **N2** | Contract pipeline | `server/contract/`, `contract:build`, `openapi.json`, drift, coverage, ajv and jargon tests; the PennantAPI package builds | 2 |
 | **N3** | App skeleton | Xcode project and packages, `ServerController`, `AppModel`, window shell (sidebar from the registry, toolbar, inspector, commands, Settings, Setup/import flow), dev signing, test scripts, fixture generation, backups | 3 |
-| **N3.5** | "It just works": the import and discovery | Stage B1 (server): the all-or-nothing import in worker threads, the export's completeness, automatic import, the served database's pragmas and indexes, per-import caches, concurrent refits, the export's rating mode (D-061). Stage B2 (server): discovery v2 (every OOTP version, the save picked only when it clearly stands out, the zero-question first run, "played since"), the re-review's follow-ups, the speed budgets (D-063). Later: the Mac app's everyday experience (setup, freshness, the background import shown quietly) | 7 server, 2.5 Mac |
+| **N3.5** | "It just works": the import and discovery | Stage B1 (server): the all-or-nothing import in worker threads, the export's completeness, automatic import, the served database's pragmas and indexes, per-import caches, concurrent refits, the export's rating mode (D-061). Stage B2 (server): discovery v2 (every OOTP version, the save picked only when it clearly stands out, the zero-question first run, "played since"), the re-review's follow-ups, the speed budgets (D-063). The Mac side (the zero-question setup, played since, the update in place): built at N6, Stage B2 | 7 server, 2.5 Mac |
 | **N4** | Presentation foundation (server) | `Claim` and `Row`, the org resolver, route extractions (standings, trends, crunch, pitching), severity normalization, Front Office adapters and cache, `/api/v2/catalog` (glossary, stat catalog, theme tokens, staff heads) | 3 |
 | **N5** | Design system (Swift) | `ClaimText`, `ClaimValue`, `BasisPopover` (detachable), `EvidenceView`, `RankStrip`, `RangeBar`, `Masthead`, `ReportCard`, table and chart styles, theming, tones, previews, accessibility | 3 |
-| **N6** | The Morning Report | Server: `teamSeason`, `clubProfile`, `rosterMap` (fixtures extended; R2/R4/R5 rules from the V2 plan; the horizon moved to N12). App: Morning Report, the report template, roster map. *Stage A (server) and Stage B1 (the app: the adapters, the kept payload, the event union) done; B2 (the save-finding screens) next* | 4 |
+| **N6** | The Morning Report | Server: `teamSeason`, `clubProfile`, `rosterMap` (fixtures extended; R2/R4/R5 rules from the V2 plan; the horizon moved to N12). App: Morning Report, the report template, roster map. *Done: Stage A (server), Stage B1 (the app: the adapters, the kept payload, the event union), Stage B2 (the save-finding screens, played since, the rating-history questions, the launch budget)* | 4 |
 | **N7** | It remembers; the league is alive | Server: snapshots, desk, following (watchlist copied), `leagueWire`, club reports. App: desk with undo, changes, wire, club windows, Following in the sidebar, drag to follow, notifications, dock badge | 4 |
 | **N8** | Major League Ops | Server: MLB copy moved to v2 (label maps, platoon copy, need badges). App: Overview, Position players, Pitching staff, Bench, Decision (problem → why → recommendation → responses → candidates → mechanics) | 4 |
 | **N9** | Clubhouse tools | Lineup, pitching availability, depth chart, schedule and game plans, trends (Charts), 40-man and options, rosters | 3 |
@@ -1490,7 +1563,7 @@ export (M4, load average about 2.5; B1's build measured back to back for compari
 |---|---|---|---|
 | Launch to server ready | ≤ 0.5 s | **0.30 s** | 0.29 s |
 | Launch to the first Morning Report payload | ≤ 1.0 s | **2.5 s: not met** (the Front Office is built cold at each launch; the request waits on the start-up build, 2.0 s) | 2.5 s |
-| Launch to the first drawn Morning Report, the Mac app (N6, Stage B1: the kept payload, replaced in place when the fresh one lands) | ≤ 1.0 s | **Not met: median 1.36 s, worst 1.59 s**, from the process's start to the first committed frame (a Debug build on the synthetic league, seven launches, after the review's fixes): the model at 0.12 s, the server ready 0.48 s later, the store key 0.32 s after that (the app's main thread building the window's shell; the server answers in 10 ms), the page's first layout 0.44 s. The earlier "1.0 to 1.04 s" was timed from the model's making, not the launch | |
+| Launch to the first drawn Morning Report, the Mac app (N6, Stage B1: the kept payload, replaced in place when the fresh one lands; Stage B2: the shell built while the server starts) | ≤ 1.0 s | **Met at the median: 0.96 s, worst 1.39 s** (the first launch after a build), from the process's start to the first committed frame (a Debug build on the synthetic league, seven launches, N6 Stage B2): the server ready at about 0.58 s, the store key 0.08 s after it (was 0.32 s), the page's first layout about 0.3 s. B1's build: median 1.36 s, worst 1.59 s | 1.36 s |
 | A view switch from the cache (a department's report asked again) | ≤ 100 ms | **1 ms** (median; 2 ms worst) | 1 ms |
 | `/api/status` during an import, p99 | ≤ 50 ms | **5 ms** (p95 3 ms, max 78 ms) | p95 2 ms |
 | Import of the 289 MB export | ≤ 10 s | 13.9 s (busy Mac) | 13.8 s |
@@ -1680,9 +1753,14 @@ with the `save-played-elsewhere` event, and the save-finding fixtures decoded; t
 thread, not the server), the XCUITests' automation mode on this Mac (the kept-payload launch test is written and
 builds), and B2's screens below.
 
-**Next: N6, Stage B2** (the save-finding screens: Setup's zero-question path, the "played since" notice from
-`AppModel.savePlayedElsewhere`, the rating-history questions). Open a fresh session on `feature/swiftui` once N6 Stage
-B1's PR is merged.
+**N6, Stage B2 (2026-09-28)** on `feature/swiftui-n6-setup`: finding the save, played since and the rating history in
+the Mac app, and the launch budget (section 3.4, "As built at N6 (Stage B2)"). **N6 is complete.** Left open: the
+runner's accessibility audit, answered from its first report but not yet re-run there (the supervisor runs
+`pennant-mac-ui` on the PR); the first launch after a build (1.39 s) and a Release build's launch (a Release build cannot
+use a scratch folder yet).
+
+**Next: N7** (it remembers; the league is alive). Open a fresh session on `feature/swiftui` once N6 Stage B2's PR is
+merged.
 
 Read first: AGENTS.md, this document, D-001, D-008, D-018, D-020, D-043, D-046, D-049, D-052 (with its
 amendments), D-054 and D-055 to D-060.
