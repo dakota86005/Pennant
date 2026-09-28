@@ -13,7 +13,7 @@ import { readRatingMode } from './ratingMode.js';
 import { registerPostImportHook, runPostImportHooks } from './postImport.js';
 import { snapshotsAfterImport } from './importSnapshots.js';
 import { currentHistoryKey } from './historyIdentity.js';
-import { currentPlayedElsewhere, forgetSaveScan, humanClubsInExport, pickSave, saveLabel, type SavePlayedElsewhere } from './saveDiscovery.js';
+import { currentPlayedElsewhere, forgetSaveScan, lookAtTheServedSave, onLookAtTheServedSave, servedSaveId, humanClubsInExport, pickSave, saveLabel, type SavePlayedElsewhere } from './saveDiscovery.js';
 import { saveDiscoveryView, type SaveDiscovery } from './presentation/saveWords.js';
 import { assertAuthored } from './presentation/claim.js';
 import type { Claim } from './contract/presentation.js';
@@ -68,7 +68,7 @@ import { appInfo, type AppInfo } from './appInfo.js';
 import { scoutedDevelopmentRoutes } from './scoutedDevelopment.js';
 import { eventStream, progressThrottle, publish } from './serverEvents.js';
 import { v2Routes } from './v2Routes.js';
-import { currentReportStamp, holdFrontOfficeRebuilds, valueRefitsRecorded, warmFrontOffice } from './frontOfficeService.js';
+import { currentReportStamp, holdFrontOfficeRebuilds, relocateLiveLog, valueRefitsRecorded, warmFrontOffice } from './frontOfficeService.js';
 import { EXPORT_NOT_FOUND, importNote, importWords, leftOutNote, type ImportNote } from './presentation/importWords.js';
 import type { Integer } from './contract/primitives.js';
 
@@ -386,6 +386,8 @@ export async function runImport(csvDir: string, trigger: ImportTrigger = 'manual
         importState.lastImport = result;
         importedAt.value = result.finishedAt;
         clearLeagueCaches();
+        // The save this import came from, before `import-finished` announces it (the status serves it with the import)
+        lookAtTheServedSave();
       },
     });
     // Whatever was waiting on disk has now been read
@@ -542,6 +544,9 @@ registerPostImportHook('refits', (context) => {
 });
 // The GM's first look after an import is a cached read (N4's Front Office, built in its own worker)
 registerPostImportHook('frontOffice', () => void warmFrontOffice());
+// The Front Office's stamp reads the save's live log: its files are found with every look at the served save, never on
+// a request's path (`/api/status` serves the stamp)
+onLookAtTheServedSave(relocateLiveLog);
 
 /**
  * At start-up: an import whose snapshots never ran (the server stopped between the swap and them) takes them now.
@@ -615,6 +620,13 @@ export interface ServerStatus {
    * sentence and the save to switch to; null when there is none (N3.5 Stage B2, D-063). Pennant never switches by itself.
    */
   savePlayedElsewhere: SavePlayedElsewhere | null;
+  /**
+   * The id of the save the imported data came from (D-063: its folder's real path, hashed, as the save list identifies
+   * it), tied to the last import (`lastImport`); null with nothing imported, while a save chosen but not yet imported is
+   * configured, or until it is worked out. The Mac app keys the Morning Report it keeps across launches on it, so
+   * another save's is never drawn and a save being left never has its report kept under the new one's id.
+   */
+  saveId: string | null;
 }
 
 /** A request the server accepted, with nothing more to say. */
@@ -711,6 +723,8 @@ export function statusSnapshot(): ServerStatus {
     reportStamp: currentReportStamp(),
     // The last look at the saves (`saveDiscovery.ts`), never a scan on this request's path
     savePlayedElsewhere: currentPlayedElsewhere(),
+    // Worked out off this request's path (at start, the minute's look, a new configuration, an import): only read here
+    saveId: servedSaveId(),
     /*
      * The scale OOTP is set to show ratings on, read off the save. Bars used
      * to divide by eighty regardless, so a 5 on the 1-to-5 scale drew at six
@@ -760,6 +774,8 @@ function chooseSave(csvDir: string, saveName: string | null): boolean {
   // A hand-picked .lg folder belongs to the save it was picked for
   const previous = loadConfig();
   saveConfig({ csvDir, saveName, lgPath: previous.csvDir === csvDir ? previous.lgPath ?? null : null });
+  // The served league is not this save's until its import lands: the status stops naming the save being left at once
+  lookAtTheServedSave();
   resetTransactionLogCache();
   warmTransactionLog();
   forgetSaveScan();

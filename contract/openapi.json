@@ -1154,19 +1154,15 @@
           "missingValue": {
             "$ref": "#/components/schemas/Cell"
           },
-          "placeLegend": {
-            "$ref": "#/components/schemas/PlaceLegend"
-          },
           "rosterLegend": {
             "$ref": "#/components/schemas/RosterLegend"
           }
         },
         "required": [
           "missingValue",
-          "placeLegend",
           "rosterLegend"
         ],
-        "description": "Sentences the app shows in more than one place: for a served value that is missing and no line of its own says why, and the legends under the design's graphics (the app keeps only their symbols)."
+        "description": "Sentences the app shows in more than one place: for a served value that is missing and no line of its own says why, and the legend under the roster diagram (the app keeps only its symbols). The legend under \"How we win and lose\" depends on the league's size, so the club profile serves it (`ClubProfile.legend`)."
       },
       "CatalogView": {
         "type": "object",
@@ -1390,8 +1386,17 @@
             "$ref": "#/components/schemas/Cell",
             "description": "\"Through May 15, 2026 · 43 games\"."
           },
-          "lines": {
-            "$ref": "#/components/schemas/ProfileLines"
+          "clubs": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "The clubs in the league; 0 when the profile could not be read."
+          },
+          "groups": {
+            "$ref": "#/components/schemas/ProfileGroups",
+            "description": "Each group's heading."
+          },
+          "legend": {
+            "$ref": "#/components/schemas/ProfileLegend",
+            "description": "What the marks on a strip mean, for this league."
           },
           "dimensions": {
             "type": "array",
@@ -1406,7 +1411,9 @@
         },
         "required": [
           "note",
-          "lines",
+          "clubs",
+          "groups",
+          "legend",
           "dimensions"
         ]
       },
@@ -2234,6 +2241,44 @@
         ],
         "description": "OOTP has written a fresh export the server has not imported yet."
       },
+      "FarmBar": {
+        "type": "object",
+        "properties": {
+          "readiness": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "required": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "scale": {
+            "type": "object",
+            "properties": {
+              "low": {
+                "$ref": "#/components/schemas/Integer"
+              },
+              "high": {
+                "$ref": "#/components/schemas/Integer"
+              }
+            },
+            "required": [
+              "low",
+              "high"
+            ],
+            "description": "The scale Player Development's readiness is on (0 to 100): a man past his bar is not a full bar."
+          },
+          "line": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Readiness 41 · his bar 55\", with how the two are read in its hint."
+          }
+        },
+        "required": [
+          "readiness",
+          "required",
+          "scale",
+          "line"
+        ],
+        "description": "The farm's next man's readiness against his bar, with the scale they are both on and the line that labels them."
+      },
       "FarmNextMan": {
         "type": "object",
         "properties": {
@@ -2259,22 +2304,7 @@
             "description": "\"Ready for a look\", \"Not ready yet\", \"Can't tell yet\", \"Not assessed\", with Player Development's reasons in its hint."
           },
           "bar": {
-            "type": [
-              "object",
-              "null"
-            ],
-            "properties": {
-              "readiness": {
-                "$ref": "#/components/schemas/Integer"
-              },
-              "required": {
-                "$ref": "#/components/schemas/Integer"
-              }
-            },
-            "required": [
-              "readiness",
-              "required"
-            ],
+            "$ref": "#/components/schemas/FarmBar",
             "description": "Player Development's readiness against the readiness its bar asks for, as it serves them; null where either is not known."
           },
           "text": {
@@ -2283,7 +2313,6 @@
           }
         },
         "required": [
-          "bar",
           "level",
           "name",
           "playerId",
@@ -3047,7 +3076,7 @@
           },
           "line": {
             "$ref": "#/components/schemas/Cell",
-            "description": "\"Lost 1 · last five 3–2\"."
+            "description": "\"Lost 1 · last five 3–2\", with the ties when there are any (\"last five 3–1–1\")."
           }
         },
         "required": [
@@ -3728,29 +3757,6 @@
         ],
         "description": "A league place, stated (D-057): `rank` among `of` clubs that have the figure, `tiedWith` the number of other clubs on the same figure, and, for a Player Value place, `overlap`: how many clubs' ranges overlap this one."
       },
-      "PlaceLegend": {
-        "type": "object",
-        "properties": {
-          "season": {
-            "$ref": "#/components/schemas/Cell",
-            "description": "The filled dot."
-          },
-          "recent": {
-            "$ref": "#/components/schemas/Cell",
-            "description": "The hollow ring."
-          },
-          "fifths": {
-            "$ref": "#/components/schemas/Cell",
-            "description": "The shaded ends."
-          }
-        },
-        "required": [
-          "season",
-          "recent",
-          "fifths"
-        ],
-        "description": "The legend under \"How we win and lose\": what each mark on a place strip means."
-      },
       "PlayerRef": {
         "type": "object",
         "properties": {
@@ -3819,6 +3825,10 @@
             "type": "string",
             "description": "\"6th of 30\", \"T-26th of 30\", \"Too early\", \"Not placed\"."
           },
+          "strip": {
+            "$ref": "#/components/schemas/ProfileStrip",
+            "description": "The strip it is drawn on: its clubs and the stated lines, served so the app counts nothing."
+          },
           "recent": {
             "$ref": "#/components/schemas/RecentPlace"
           },
@@ -3839,6 +3849,7 @@
           "name",
           "symbol",
           "placeText",
+          "strip",
           "recent",
           "detail",
           "group",
@@ -3864,23 +3875,38 @@
           }
         ]
       },
-      "ProfileLines": {
+      "ProfileGroupHeading": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "line": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "description": "A group's heading as \"How we win and lose\" shows it: its title (\"Strengths\") and the stated policy line beside it (\"Top fifth of the league\"), each with its hint; `line` is null where the title says it all (\"The rest\"), so the two never repeat each other."
+      },
+      "ProfileGroups": {
         "type": "object",
         "properties": {
           "strength": {
-            "$ref": "#/components/schemas/Cell"
+            "$ref": "#/components/schemas/ProfileGroupHeading"
           },
           "weakness": {
-            "$ref": "#/components/schemas/Cell"
+            "$ref": "#/components/schemas/ProfileGroupHeading"
           },
           "rest": {
-            "$ref": "#/components/schemas/Cell"
+            "$ref": "#/components/schemas/ProfileGroupHeading"
           },
           "tooEarly": {
-            "$ref": "#/components/schemas/Cell"
+            "$ref": "#/components/schemas/ProfileGroupHeading"
           },
           "notPlaced": {
-            "$ref": "#/components/schemas/Cell"
+            "$ref": "#/components/schemas/ProfileGroupHeading"
           }
         },
         "required": [
@@ -3890,7 +3916,48 @@
           "tooEarly",
           "notPlaced"
         ],
-        "description": "The stated policy line for each group (\"Top fifth of the league\")."
+        "description": "The heading of each group, in the order the page shows them."
+      },
+      "ProfileLegend": {
+        "type": "object",
+        "properties": {
+          "dot": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The filled dot (this season's place)."
+          },
+          "ring": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The hollow ring (the recent place)."
+          },
+          "shading": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The shaded ends (the top and bottom fifths)."
+          }
+        },
+        "required": [
+          "dot",
+          "ring"
+        ],
+        "description": "The legend under \"How we win and lose\"; `shading` is null when no strip shows a top or bottom fifth."
+      },
+      "ProfileStrip": {
+        "type": "object",
+        "properties": {
+          "of": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "The clubs the strip shows: the clubs placed, or, where our club is not, the clubs that have the figure (0 for none)."
+          },
+          "strengthThrough": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "weaknessFrom": {
+            "$ref": "#/components/schemas/Integer"
+          }
+        },
+        "required": [
+          "of"
+        ],
+        "description": "The strip a dimension is drawn on: how many clubs it shows, and where the stated lines fall (a place at or above `strengthThrough` is a strength, at or below `weaknessFrom` a weakness), in the same arithmetic that puts the dimension in its group. Both lines are null in a league too small to have a top or bottom fifth."
       },
       "ProviderChoice": {
         "type": "object",
@@ -4960,6 +5027,24 @@
         ],
         "description": "Another save played since the one chosen, on `/api/status` (and so on the event stream's `hello`). No event of its own yet: a new member of the event union moves the Swift tests' positional reads, so it waits for the Mac stage."
       },
+      "SavePlayedElsewhereEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "save-played-elsewhere"
+            ]
+          },
+          "savePlayedElsewhere": {
+            "$ref": "#/components/schemas/SavePlayedElsewhere"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "description": "The minute's look at the saves (D-063) changed what it has to say: another save (or a newer OOTP version's) has been played since the chosen one, the chosen save has gone or come back, or the notice cleared. The payload is the `savePlayedElsewhere` `/api/status` serves (null once nothing is played since). Sent only when the notice changes, never on every look. The app shows it; Pennant never switches by itself."
+      },
       "SaveSourceRequest": {
         "type": "object",
         "properties": {
@@ -5092,6 +5177,9 @@
             "$ref": "#/components/schemas/FrontOfficeUpdatedEvent"
           },
           {
+            "$ref": "#/components/schemas/SavePlayedElsewhereEvent"
+          },
+          {
             "$ref": "#/components/schemas/UnknownServerEvent"
           }
         ],
@@ -5183,6 +5271,13 @@
           "savePlayedElsewhere": {
             "$ref": "#/components/schemas/SavePlayedElsewhere",
             "description": "Another save (or a newer OOTP version's) played since the chosen one, once OOTP has finished saving it, with the sentence and the save to switch to; null when there is none (N3.5 Stage B2, D-063). Pennant never switches by itself."
+          },
+          "saveId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The id of the save the imported data came from (D-063: its folder's real path, hashed, as the save list identifies it), tied to the last import (`lastImport`); null with nothing imported, while a save chosen but not yet imported is configured, or until it is worked out. The Mac app keys the Morning Report it keeps across launches on it, so another save's is never drawn and a save being left never has its report kept under the new one's id."
           }
         },
         "required": [
@@ -5199,7 +5294,8 @@
           "exportPending",
           "logoToken",
           "ratingScaleMax",
-          "reportStamp"
+          "reportStamp",
+          "saveId"
         ],
         "description": "What `/api/status` serves, and the snapshot `/api/v2/events` opens with (described in `contract/openapi.json`)."
       },

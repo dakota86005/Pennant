@@ -105,11 +105,14 @@ public struct EventClient: Sendable {
     public static func superseded(_ batch: [EventSignal]) -> [EventSignal] {
         func isImport(_ signal: EventSignal) -> Bool {
             guard case .event(let event) = signal else { return false }
-            return event.value2 != nil || event.value3 != nil || event.value4 != nil
+            switch event.kind {
+            case .importStarted, .importProgress, .importFinished: return true
+            default: return false
+            }
         }
         func isProgress(_ signal: EventSignal) -> Bool {
-            guard case .event(let event) = signal else { return false }
-            return event.value3 != nil
+            guard case .event(let event) = signal, case .importProgress = event.kind else { return false }
+            return true
         }
         return batch.enumerated().compactMap { index, signal in
             if isProgress(signal), batch[(index + 1)...].contains(where: isImport) { return nil }

@@ -217,76 +217,169 @@ public struct RosterDiagram: View {
     }
 }
 
-/// A position's plate: the position badge, the holder, the word "Need" when Major League Ops raised one, his control
-/// as pips, and his figures. Hover shows who is behind him and the farm's next man; a click opens the basis.
+/// A position's plate: the position badge (hollow when the holder is the man listed there, not the regular the game log
+/// shows, with the word "Listed"), the holder, the word "Need" when Major League Ops raised one, his control as pips,
+/// and his figures. Hover shows how he stands against the other clubs' holders, who is behind him and the farm's next
+/// man; a click opens the basis, with the farm's next man's readiness against its bar beneath it when served.
 public struct PositionPlate: View {
     let position: RosterPosition
     let scale: ValueScale
+    /// Shows the hover lines without a hover (a snapshot).
+    let showsDetail: Bool
     @Environment(\.theme) private var theme
     @Environment(\.colorScheme) private var colorScheme
     @EffectiveContrast private var contrast
     @State private var hovering = false
 
-    public init(_ position: RosterPosition, scale: ValueScale) {
+    public init(_ position: RosterPosition, scale: ValueScale, showsDetail: Bool = false) {
         self.position = position
         self.scale = scale
+        self.showsDetail = showsDetail
     }
 
     public var body: some View {
         let palette = theme.palette(colorScheme: colorScheme, contrast: contrast)
         let accent = palette.isNeutral ? Color.accentColor : palette.accent
         let accentText = palette.isNeutral ? Color.white : palette.accentText
+        let listed = position.holderRule == .listed
         ClaimText(position.claim) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Text(verbatim: position.id).font(.system(size: 10, weight: .bold)).foregroundStyle(accentText)
-                        .padding(.horizontal, 4).padding(.vertical, 1).background(accent, in: .rect(cornerRadius: 3))
-                    Text(verbatim: position.holder).font(.system(size: 13, weight: .semibold)).lineLimit(1)
-                    if position.need { Text("Need").font(.system(size: 9, weight: .bold)).foregroundStyle(Tone.caution.color) }
+                    // The badge is filled for the regular the game log shows, hollow for the man merely listed there.
+                    // The badges and the words keep their size; the holder's name gives way (truncates), never a word
+                    Text(verbatim: position.id).font(.system(size: 10, weight: .bold)).foregroundStyle(listed ? accent : accentText)
+                        .lineLimit(1).fixedSize()
+                        .padding(.horizontal, 4).padding(.vertical, 1)
+                        .background(listed ? Color.clear : accent, in: .rect(cornerRadius: 3))
+                        .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(accent, lineWidth: listed ? 1 : 0))
+                    Text(verbatim: position.holder).font(.system(size: 13, weight: .semibold)).lineLimit(1).truncationMode(.tail)
+                        .layoutPriority(-1)
+                    if listed { Text("Listed").font(.system(size: 9, weight: .semibold)).foregroundStyle(.secondary).lineLimit(1).fixedSize() }
+                    if position.need { Text("Need").font(.system(size: 9, weight: .bold)).foregroundStyle(Tone.caution.color).lineLimit(1).fixedSize() }
                     Spacer(minLength: 0)
-                    ControlPips(position.control)
+                    ControlPips(position.control).fixedSize()
                 }
                 PositionFigures(position, scale: scale)
-                if hovering {
-                    VStack(alignment: .leading, spacing: 1) {
-                        LabeledContent("Behind him") { Text(verbatim: position.behind) }
+                if hovering || showsDetail {
+                    // Each served line under its structural label, wrapping in full (never cut short)
+                    VStack(alignment: .leading, spacing: 3) {
+                        if let overlap = position.overlapText {
+                            DetailLine(label: Text("Against the other clubs"), value: overlap)
+                                .help(Text(verbatim: position.overlapHint ?? overlap))
+                        }
+                        DetailLine(label: Text("Behind him"), value: position.behind)
                         if let farmNext = position.farmNext {
-                            LabeledContent("Farm's next man") { Text(verbatim: farmNext) }
+                            DetailLine(label: Text("Farm's next man"), value: farmNext)
                         }
                     }
-                    .font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
                     .transition(.opacity)
                 }
             }
             .padding(.horizontal, 9).padding(.vertical, 7)
-            .frame(width: 202, alignment: .leading)
+            .frame(width: 224, alignment: .leading)
             .background(Color(nsColor: .windowBackgroundColor), in: .rect(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(accent.opacity(position.need ? 0 : 0.25), lineWidth: contrast == .increased ? 1.5 : 1))
             .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Tone.caution.color.opacity(position.need ? 0.9 : 0), lineWidth: 1.5))
             .shadow(color: .black.opacity(0.06), radius: 4, y: 1)
+        } detail: {
+            // The farm's next man's readiness against its bar, as Player Development serves both numbers: in the
+            // popover beside the basis's words, never on the plate
+            if let bar = position.farmBar {
+                FarmBarView(bar, name: position.farmNext)
+            }
         }
         .onHover { hovering = $0 }
+        .accessibilityCustomContent(Text("Against the other clubs"), Text(verbatim: position.overlapText ?? ""))
         .accessibilityCustomContent(Text("Behind him"), Text(verbatim: position.behind))
         .accessibilityCustomContent(Text("Farm's next man"), Text(verbatim: position.farmNext ?? ""))
         .accessibilityIdentifier("position.\(position.id)")
     }
 }
 
-/// The diagram's legend, as served (the catalog's `phrases.rosterLegend`): what the band, the pips, the ring and a click
-/// mean. The view keeps only the symbols.
-public struct RosterLegend: View {
-    let legend: Components.Schemas.RosterLegend
+/// A plate's hover line: its structural label over the served value, the value wrapping in full rather than cut short.
+struct DetailLine: View {
+    let label: Text
+    let value: String
 
-    public init(_ legend: Components.Schemas.RosterLegend) {
-        self.legend = legend
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            label.font(.system(size: 9, weight: .semibold)).foregroundStyle(.tertiary).textCase(.uppercase).kerning(0.4)
+            Text(verbatim: value).font(.system(size: 10)).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// The farm's next man's readiness against the bar Player Development asks for (two served numbers, drawn as a mark
+/// on a track with the bar as a line across it; never a share of a whole), with the served words beside it and the
+/// served line that labels the two. The track is the served scale readiness is read on, so a man past his bar is past
+/// the line, never a full bar.
+public struct FarmBarView: View {
+    let bar: FarmBar
+    let name: String?
+    @Environment(\.theme) private var theme
+    @Environment(\.colorScheme) private var colorScheme
+    @EffectiveContrast private var contrast
+
+    public init(_ bar: FarmBar, name: String? = nil) {
+        self.bar = bar
+        self.name = name
     }
 
     public var body: some View {
-        HStack(spacing: 14) {
-            LegendEntry(legend.range, symbol: "rectangle.lefthalf.filled")
-            LegendEntry(legend.control, symbol: "square.grid.3x1.below.line.grid.1x2")
-            LegendEntry(legend.need, symbol: "circle.circle").foregroundStyle(Tone.caution.color)
-            LegendEntry(legend.more, symbol: "cursorarrow.click")
+        let palette = theme.palette(colorScheme: colorScheme, contrast: contrast)
+        let accent = palette.isNeutral ? Color.accentColor : palette.accent
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Farm's next man").font(.caption.weight(.semibold)).foregroundStyle(.secondary).textCase(.uppercase).kerning(0.6)
+            if let name { Text(verbatim: name).font(.callout) }
+            HStack(spacing: 10) {
+                GeometryReader { g in
+                    let x = { (v: Int) -> CGFloat in CGFloat(bar.position(of: v)) * g.size.width }
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color(nsColor: .quaternaryLabelColor).opacity(0.5))
+                        Capsule().fill(accent.opacity(0.35)).frame(width: max(2, x(bar.readiness)))
+                        Rectangle().fill(.primary).frame(width: 2, height: 14).offset(x: x(bar.required) - 1, y: -3)
+                    }
+                }
+                .frame(height: 8)
+                .accessibilityHidden(true)
+                Text(verbatim: bar.text).font(.caption.weight(.medium)).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+            }
+            .help(Text(verbatim: bar.hint ?? bar.text))
+            Text(verbatim: bar.line).font(.caption2).monospacedDigit().foregroundStyle(.secondary)
+                .help(Text(verbatim: bar.lineHint ?? bar.line))
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text(verbatim: [name, bar.text, bar.line].compactMap { $0 }.joined(separator: " · ")))
+        .accessibilityIdentifier("position.farmBar")
+    }
+}
+
+/// The diagram's legend, as served (the catalog's `phrases.rosterLegend`): what the band (expected wins, on the served
+/// scale), the pips, the ring and a click mean, and what the map says about itself (its served notes). The view keeps
+/// only the symbols.
+public struct RosterLegend: View {
+    let legend: Components.Schemas.RosterLegend
+    let notes: [ServedLine]
+
+    public init(_ legend: Components.Schemas.RosterLegend, notes: [ServedLine] = []) {
+        self.legend = legend
+        self.notes = notes
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 14) {
+                LegendEntry(legend.range, symbol: "rectangle.lefthalf.filled")
+                LegendEntry(legend.control, symbol: "square.grid.3x1.below.line.grid.1x2")
+                LegendEntry(legend.need, symbol: "circle.circle").foregroundStyle(Tone.caution.color)
+                LegendEntry(legend.more, symbol: "cursorarrow.click")
+            }
+            ForEach(notes) { note in
+                Label { Text(verbatim: note.text) } icon: { Image(systemName: "info.circle") }
+                    .help(Text(verbatim: note.hint ?? note.text))
+            }
         }
         .font(.caption).foregroundStyle(.secondary)
     }

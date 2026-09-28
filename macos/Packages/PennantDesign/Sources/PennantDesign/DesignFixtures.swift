@@ -58,8 +58,28 @@ public enum DesignFixtures {
         lastFive: [.win, .loss, .win, .win, .loss],
         lastFiveLine: "Lost 1 · last five 3–2",
         tonight: TonightGame(when: "Tonight · 7:05", matchup: "vs Northport Kings", starters: "R. Castillo 7–4 · 3.21 · J. Whitmore 9–3 · 2.88",
-                             hint: "Open Game Day: tonight's lineups, the probable starters and the bullpen's availability"),
-        deadline: DeadlineNote(count: "17 days", text: "to the deadline · July 31")
+                             hint: "Open the schedule and game plans",
+                             claim: claim("Tonight: vs Northport Kings", hint: "Open the schedule and game plans",
+                                          basis: basis([("Date", "July 14, 2041"), ("Start", "7:05 PM, the park's local time as the export gives it"), ("Our starter", "R. Castillo · 7–4 · 3.21"), ("Their starter", "J. Whitmore · 9–3 · 2.88")], from: "The schedule in the export"),
+                                          links: [mlbView]),
+                             open: mlbView),
+        deadline: DeadlineNote(count: "17 days", text: "to the deadline · July 31",
+                               claim: claim("17 days to the trade deadline", basis: basis([("Deadline", "July 31, 2041"), ("Today", "July 14, 2041")], from: "The league's own rules in the export"))),
+        placeClaim: claim("2nd in the East · 2½ back", hint: "The division's standings, as the export has them",
+                          basis: basis([("Northport Kings", "51–39 · leads"), ("Bay City Admirals (us)", "48–41 · 2½ back"), ("Delta City Herons", "44–45 · 7 back")], from: "Standings in the export")),
+        streak: "Lost 1", streakHint: "The current run of wins or losses"
+    )
+
+    /// A box score with a tie in the last five and two parts the export could not give, each with its served line.
+    public static let scoreboardWithTieAndMissing = Scoreboard(
+        record: scoreboard.record, recordLine: scoreboard.recordLine, runs: nil, runsLine: nil, trend: nil,
+        lastFive: [.win, .tie, .loss, .win, .win], lastFiveLine: "Won 2 · last five 3–1–1",
+        tonight: nil, deadline: nil, placeClaim: scoreboard.placeClaim, streak: "Won 2",
+        missing: [
+            ServedLine(id: "runs", text: "Runs scored and allowed aren't in the export's team totals", hint: "The clubs' season totals are missing"),
+            ServedLine(id: "tonight", text: "No game is scheduled on or after today", hint: "The schedule in the export"),
+            ServedLine(id: "deadline", text: "The league's rules give no trade deadline", hint: "Only the league's own row is read"),
+        ]
     )
 
     public static let chips: [Chip] = [
@@ -71,13 +91,18 @@ public enum DesignFixtures {
 
     // MARK: How we win and lose
 
-    public static let placeLines: [PlaceDimension.Group: String] = [
-        .strength: "Top fifth of the league", .weakness: "Bottom fifth", .tooEarly: "Fewer than 20 games",
+    /// Each group's heading as the club profile serves it (`groups`): a title, and a line only where it adds to it.
+    public static let placeHeadings: [PlaceDimension.Group: PlaceDimension.Heading] = [
+        .strength: .init(title: "Strengths", line: "Top fifth of the league", lineHint: "A place in the top fifth of the clubs that have the figure"),
+        .weakness: .init(title: "Weaknesses", line: "Bottom fifth of the league", lineHint: "A place in the bottom fifth of the clubs that have the figure"),
+        .rest: .init(title: "The rest", titleHint: "Neither a strength nor a weakness"),
+        .tooEarly: .init(title: "Too early to call", line: "Fewer than 20 games", lineHint: "Too early to call a strength or a weakness"),
+        .notPlaced: .init(title: "Not placed", titleHint: "The export lacks the figure for the club, which says nothing about it"),
     ]
 
     static func dimension(_ id: String, _ name: String, _ symbol: String, place: Int?, tiedWith: Int = 0, recent: Int?, placeText: String, recentText: String, group: PlaceDimension.Group, hint: String, because: [(String, String)], called: String, unknown: [String] = [], wouldChange: [String] = [], lean: Components.Schemas.Lean? = nil) -> PlaceDimension {
         PlaceDimension(
-            id: id, name: name, symbol: symbol, place: place, of: 30, tiedWith: tiedWith, recentPlace: recent,
+            id: id, name: name, symbol: symbol, place: place, of: 30, strengthThrough: 6, weaknessFrom: 25, tiedWith: tiedWith, recentPlace: recent,
             placeText: placeText, recentText: recentText, group: group,
             claim: claim(placeText, hint: hint, basis: basis(because, from: "Team totals in the export", called: policy, unknown: unknown, wouldChange: wouldChange, lean: lean, stamp: called), links: [mlbView])
         )
@@ -116,77 +141,141 @@ public enum DesignFixtures {
     public static let tooEarly = dimension("clutch", "Late and close", "clock", place: nil, recent: nil, placeText: "Too early", recentText: "Fewer than 20 games", group: .tooEarly,
                                            hint: "One-run and extra-inning games; too few so far", because: [("One-run games", "14")], called: "Below 20 games it reads too early (a stated line).")
 
+    /// A dimension not placed: the export lacks the club's figure, which is no weakness (drawn quieter).
+    public static let notPlaced = dimension("baserunningRuns", "Baserunning", "figure.run", place: nil, recent: nil, placeText: "Not placed", recentText: "Last 15: not placed", group: .notPlaced,
+                                            hint: "The export lacks the club's base-running runs", because: [("Base-running runs", "Not in the export")], called: "A club without the figure is left out, never placed last.",
+                                            unknown: ["The export's player totals carry no base-running runs for this club."])
+
     // MARK: The roster
 
-    static func position(_ id: String, _ holder: String, value: (Double, Double, Double)?, placeText: String, behind: String, farmNext: String?, control: ControlTerm, need: Bool) -> RosterPosition {
-        let range = value.map { ValueRange(low: $0.0, likely: $0.1, high: $0.2, text: "$\(fmt($0.1))M · could be $\(fmt($0.0))M to $\(fmt($0.2))M", short: "$\(fmt($0.1))M") }
+    /// A range in expected wins this season, the rest of it, as the map serves it (never dollars).
+    static func wins(_ value: (Double, Double, Double)) -> ValueRange {
+        ValueRange(low: value.0, likely: value.1, high: value.2, text: "Most likely \(fmt(value.1)) wins · could be \(fmt(value.0)) to \(fmt(value.2))", short: "\(fmt(value.1)) wins")
+    }
+
+    static func position(_ id: String, _ holder: String, value: (Double, Double, Double)?, placeText: String, overlap: String? = nil, behind: String, farmNext: String?, farmBar: FarmBar? = nil, control: ControlTerm, need: Bool, listed: Bool = false) -> RosterPosition {
+        let range = value.map(wins)
         let valueText = range?.short ?? "Not valued"
         return RosterPosition(
             id: id, holder: holder, value: range, valueText: valueText, placeText: placeText, behind: behind, farmNext: farmNext, control: control, need: need,
-            claim: claim(holder, hint: range.map { "Worth beyond what he's paid: \($0.text)" } ?? "Not valued yet: his contract terms aren't in the export",
+            claim: claim(holder, hint: range.map { "\($0.text), rest of season" } ?? "Not valued yet: too little of his record is in the export",
                          basis: basis([
-                             ("Worth this season", range?.text ?? "Not valued yet: his contract terms aren't in the export"),
+                             ("Expected wins, the rest of this season", range?.text ?? "Not valued yet: too little of his record is in the export"),
                              ("At \(id) in the league", placeText),
+                             ("Against the other clubs", overlap ?? "Not placed"),
                              ("Behind him", behind),
                              ("Farm's next man", farmNext ?? "Nobody in the upper minors at \(id)"),
                              ("Control", control.text),
+                             ("How the holder is chosen", holderRules(id)[listed ? 1 : 0]),
                          ], from: "Player Value, Player Rights, the farm's next man", called: .init(value1: .calibrated),
-                         unknown: range == nil ? ["His contract terms are not in the export, so he isn't valued."] : [],
+                         unknown: range == nil ? ["Too little of his record is in the export, so he isn't valued."] : [],
                          wouldChange: ["A new scouting export moves the range.", "An injury longer than 15 days narrows what this season can return."],
-                         stamp: "The range is what our scouts' ratings and his own record support; the most likely value is marked."), links: [mlbView])
+                         stamp: "The range is where he lands four times in five; clubs are told apart on the range each lands in half the time."), links: [mlbView]),
+            name: id, overlapText: overlap, overlapHint: overlap.map { _ in "Clubs are told apart on the range each lands in half the time" },
+            holderRule: listed ? .listed : (holder.isEmpty ? nil : .starts), farmBar: farmBar
         )
+    }
+
+    /// The farm's next man against his bar as the map serves it: on the 0 to 100 scale, with its labelled line.
+    public static func farmBar(_ readiness: Int, _ required: Int, text: String, hint: String? = nil) -> FarmBar {
+        FarmBar(readiness: readiness, required: required, scaleLow: 0, scaleHigh: 100, line: "Readiness \(readiness) · his bar \(required)",
+                lineHint: "Readiness runs 0 to 100; his bar is what a look asks of him", text: text, hint: hint)
     }
 
     static func fmt(_ v: Double) -> String { v == v.rounded() ? String(Int(v)) : String(format: "%.1f", v) }
 
-    /// The legends as the catalog serves them (`phrases.placeLegend`, `phrases.rosterLegend`).
-    public static let placeLegend = Components.Schemas.PlaceLegend(
-        season: .init(display: "Filled dot: this season"), recent: .init(display: "Ring: the last 15 games"),
-        fifths: .init(display: "Shaded: the top and bottom fifths", hint: "A strength is the top fifth of the league, a weakness the bottom fifth")
+    /// The served words for how a holder was chosen: by his starts, or listed there.
+    static func holderRules(_ id: String) -> [String] {
+        [served("The most starts at \(id) in the club's last 15 games"), served("The man listed there: the game log shows no start at \(id)")]
+    }
+
+    /// A pitcher's served role word for his claim: a starter, the closer, a reliever.
+    static func roleWord(_ role: String) -> String {
+        let words = [served("starter"), served("closer"), served("reliever")]
+        if role == "CL" { return words[1] }
+        if role == "Next" || role.hasSuffix("th") || role.hasSuffix("nd") || role.hasSuffix("rd") { return words[0] }
+        return words[2]
+    }
+
+    /// The legends as served: the club profile's (`legend`, its fifths only where a strip shows them) and the
+    /// catalog's (`phrases.rosterLegend`).
+    public static let placeLegend = Components.Schemas.ProfileLegend(
+        dot: .init(display: "Filled dot: this season"), ring: .init(display: "Ring: the last 15 games"),
+        shading: .init(display: "Shaded: the top and bottom fifths", hint: "A strength is the top fifth of the league, a weakness the bottom fifth")
     )
     public static let rosterLegend = Components.Schemas.RosterLegend(
-        range: .init(display: "Range: what he's worth beyond his pay, most likely value marked · hatched: not valued yet"),
+        range: .init(display: "Range: his expected wins this season, most likely marked · hatched: not valued yet", hint: "Where he lands four times in five; clubs are told apart on half the time"),
         control: .init(display: "Pips: seasons we control him"), need: .init(display: "Ring and word: a need Major League Ops raised"),
         more: .init(display: "Hover for more; click for the basis")
     )
 
-    /// The scale the diagram's range bars share, as N6 will serve it with the positions ($M beyond his pay).
-    public static let valueScale = ValueScale(low: -5, high: 30)!
+    /// The scale the diagram's range bars share, as the server serves it with the positions: whole expected wins
+    /// holding every range shown, and zero.
+    public static let valueScale = ValueScale(low: -1, high: 5)!
 
     public static let positions: [RosterPosition] = [
-        position("C", "M. Okafor", value: (4, 8, 11), placeText: "12th of 30", behind: "Nobody healthy", farmNext: "L. Moreau · not yet", control: .seasons(3, text: "Through 2043"), need: true),
-        position("1B", "D. Whitfield", value: (1, 5, 9), placeText: "19th of 30", behind: "S. Petrov", farmNext: nil, control: .seasons(2, text: "Through 2042"), need: false),
-        position("2B", "T. Brennan", value: (9, 14, 21), placeText: "5th of 30", behind: "A. Delgado", farmNext: "H. Sato · about a year", control: .clock("Arbitration this winter"), need: false),
-        position("3B", "K. Nakamura", value: (6, 11, 15), placeText: "8th of 30", behind: "S. Petrov", farmNext: "I. Novak · not yet", control: .seasons(4, text: "Through 2044"), need: false),
-        position("SS", "J. Alvarez", value: (15, 22, 30), placeText: "2nd of 30", behind: "A. Delgado", farmNext: "P. Quinlan · about a year", control: .seasons(6, text: "Through 2046"), need: false),
-        position("LF", "C. Ashford", value: (2, 6, 10), placeText: "16th of 30", behind: "B. Holloway", farmNext: "N. Barros · ready now", control: .clock("Free agent after this season"), need: false),
-        position("CF", "E. Lindqvist", value: (10, 16, 24), placeText: "4th of 30", behind: "C. Ashford", farmNext: nil, control: .seasons(5, text: "Through 2045"), need: false),
-        position("RF", "F. Ortega", value: (3, 7, 12), placeText: "15th of 30", behind: "B. Holloway", farmNext: "V. Reyes · about a year", control: .seasons(2, text: "Through 2042"), need: false),
-        position("DH", "G. Maddox", value: nil, placeText: "Not placed yet", behind: "D. Whitfield", farmNext: "O. Hughes · ready now", control: .seasons(1, text: "Through 2041"), need: true),
+        position("C", "M. Okafor", value: (0.4, 1.1, 1.8), placeText: "12th of 30", overlap: "Clearly ahead of 6 · not separable from 18 · clearly behind 5", behind: "Nobody healthy", farmNext: "L. Moreau · Triple-A · not ready yet", farmBar: farmBar(41, 55, text: "Not ready yet", hint: "Player Development: his bat is behind the bar for Triple-A"), control: .seasons(3, text: "Through 2043"), need: true),
+        position("1B", "D. Whitfield", value: (-0.2, 0.6, 1.3), placeText: "19th of 30", overlap: "Clearly ahead of 2 · not separable from 24 · clearly behind 3", behind: "S. Petrov", farmNext: nil, control: .seasons(2, text: "Through 2042"), need: false),
+        position("2B", "T. Brennan", value: (1.2, 2.0, 2.9), placeText: "5th of 30", overlap: "Clearly ahead of 14 · not separable from 15", behind: "A. Delgado", farmNext: "H. Sato · Double-A · can't tell yet", control: .clock("Arbitration this winter"), need: false),
+        position("3B", "K. Nakamura", value: (0.7, 1.5, 2.2), placeText: "8th of 30", overlap: "Clearly ahead of 9 · not separable from 20", behind: "S. Petrov", farmNext: "I. Novak · Triple-A · not ready yet", control: .seasons(4, text: "Through 2044"), need: false),
+        position("SS", "J. Alvarez", value: (2.1, 3.2, 4.4), placeText: "2nd of 30", overlap: "Clearly ahead of 22 · not separable from 7", behind: "A. Delgado", farmNext: "P. Quinlan · Triple-A · ready for a look", farmBar: farmBar(62, 55, text: "Ready for a look"), control: .seasons(6, text: "Through 2046"), need: false),
+        position("LF", "C. Ashford", value: (0.1, 0.8, 1.5), placeText: "16th of 30", overlap: "Not separable from the other 29", behind: "B. Holloway", farmNext: "N. Barros · Triple-A · ready for a look", control: .clock("Free agent after this season"), need: false, listed: true),
+        position("CF", "E. Lindqvist", value: (1.4, 2.3, 3.3), placeText: "4th of 30", overlap: "Clearly ahead of 16 · not separable from 13", behind: "C. Ashford", farmNext: nil, control: .seasons(5, text: "Through 2045"), need: false),
+        position("RF", "F. Ortega", value: (0.3, 0.9, 1.6), placeText: "15th of 30", overlap: "Not separable from the other 29", behind: "B. Holloway", farmNext: "V. Reyes · Double-A · not assessed", control: .seasons(2, text: "Through 2042"), need: false),
+        position("DH", "G. Maddox", value: nil, placeText: "Not placed", behind: "D. Whitfield", farmNext: "O. Hughes · Triple-A · ready for a look", control: .seasons(1, text: "Through 2041"), need: true),
     ]
 
-    static func pitcher(_ id: String, _ role: String, _ name: String, _ line: String, value: (Double, Double, Double)?, note: String?) -> StaffPitcher {
-        let range = value.map { ValueRange(low: $0.0, likely: $0.1, high: $0.2, text: "$\(fmt($0.1))M · could be $\(fmt($0.0))M to $\(fmt($0.2))M", short: "$\(fmt($0.1))M") }
-        return StaffPitcher(id: id, role: role, name: name, line: line, value: range, note: note,
-                            hint: range.map { "Worth beyond what he's paid: \($0.text)" } ?? "Not valued yet: the export lacks his contract")
+    static func pitcher(_ id: String, _ role: String, _ name: String, _ line: String, value: (Double, Double, Double)?, note: String?, need: Bool = false) -> StaffPitcher {
+        let range = value.map(wins)
+        let hint = range.map { "\($0.text), rest of season" } ?? "Not valued yet: too little of his record is in the export"
+        return StaffPitcher(id: id, role: role, name: name, line: line, value: range, note: note, hint: hint, need: need,
+                            claim: claim("\(name), \(roleWord(role))", hint: hint,
+                                         basis: basis([("Expected wins, the rest of this season", range?.text ?? "Not valued"), ("His line", line)], from: "Player Value", called: .init(value1: .calibrated)), links: [mlbView]))
+    }
+
+    /// The positions at their edges (N6 B1 review): the catcher listed there with a need and the longest name the
+    /// fixtures hold (the badge and both words keep their size; the name gives way), the DH's seasons with no served
+    /// count (hatched, never none).
+    public static let positionsEdges: [RosterPosition] = positions.map { position in
+        var edged = position
+        if position.id == "C" {
+            edged = Self.position("C", "M. Okafor-Whitlock", value: (0.4, 1.1, 1.8), placeText: "12th of 30", overlap: "Clearly ahead of 6 · not separable from 18 · clearly behind 5",
+                                  behind: "Nobody healthy", farmNext: "L. Moreau · Triple-A · not ready yet",
+                                  farmBar: farmBar(41, 55, text: "Not ready yet", hint: "Player Development: his bat is behind the bar for Triple-A"),
+                                  control: .seasons(3, text: "Through 2043"), need: true, listed: true)
+        }
+        if position.id == "DH" { edged.control = .seasons(nil, text: "Through 2041 at least") }
+        return edged
     }
 
     public static let rotation: [StaffPitcher] = [
-        pitcher("sp1", "SP1", "R. Castillo", "7–4 · 3.21", value: (12, 18, 25), note: "Tonight"),
-        pitcher("sp2", "SP2", "W. Tanaka", "8–5 · 3.64", value: (8, 13, 19), note: nil),
-        pitcher("sp3", "SP3", "Z. Kowalski", "5–6 · 4.10", value: (2, 6, 10), note: nil),
-        pitcher("sp4", "SP4", "P. Quinlan", "6–3 · 3.95", value: (4, 8, 12), note: nil),
-        pitcher("sp5", "SP5", "E. Vance", "3–7 · 5.02", value: (-3, 0, 3), note: "Day-to-day"),
+        pitcher("sp1", "Next", "R. Castillo", "7–4 · 3.21", value: (1.2, 1.8, 2.5), note: "Next game"),
+        pitcher("sp2", "2nd", "W. Tanaka", "8–5 · 3.64", value: (0.8, 1.3, 1.9), note: nil),
+        pitcher("sp3", "3rd", "Z. Kowalski", "5–6 · 4.10", value: (0.2, 0.6, 1.0), note: nil),
+        pitcher("sp4", "4th", "P. Quinlan", "6–3 · 3.95", value: (0.4, 0.8, 1.2), note: nil),
+        pitcher("sp5", "5th", "E. Vance", "3–7 · 5.02", value: (-0.3, 0, 0.3), note: "Day-to-day", need: true),
     ]
 
     public static let bullpen: [StaffPitcher] = [
-        pitcher("cl", "CL", "S. Petrov", "21 saves · 2.70", value: (5, 9, 13), note: nil),
-        pitcher("su1", "SU", "B. Holloway", "3.38", value: nil, note: "Rehab ends Friday"),
-        pitcher("su2", "SU", "A. Delgado", "4.85", value: nil, note: "Option clock · 5 days"),
-        pitcher("mr1", "MR", "O. Hughes", "4.40", value: nil, note: nil),
-        pitcher("mr2", "MR", "N. Barros", "5.12", value: nil, note: nil),
-        pitcher("mr3", "MR", "L. Moreau", "4.91", value: nil, note: nil),
-        pitcher("lr", "LR", "I. Novak", "5.30", value: nil, note: nil),
+        pitcher("cl", "CL", "S. Petrov", "21 saves · 2.70", value: (0.5, 0.9, 1.3), note: nil),
+        pitcher("su1", "RP", "B. Holloway", "3.38", value: nil, note: "IL · 12 days"),
+        pitcher("su2", "RP", "A. Delgado", "4.85", value: nil, note: "Option clock · 5 days"),
+        pitcher("mr1", "RP", "O. Hughes", "4.40", value: nil, note: nil),
+        pitcher("mr2", "RP", "N. Barros", "5.12", value: nil, note: nil),
+        pitcher("mr3", "RP", "L. Moreau", "4.91", value: nil, note: nil),
+        pitcher("lr", "RP", "I. Novak", "5.30", value: nil, note: nil),
+    ]
+
+    /// Major League Ops' needs at the staff's roles that name no pitcher shown, in its desk words.
+    public static let rotationNeeds: [ServedLine] = [
+        ServedLine(id: "rotation:0", text: "A fifth starter until Okafor's rehab ends", hint: "Raised by Rafael Dunn, bench coach"),
+    ]
+    public static let bullpenNeeds: [ServedLine] = [
+        ServedLine(id: "bullpen:0", text: "A second left-hander for the seventh", hint: "Raised by Rafael Dunn, bench coach"),
+    ]
+    /// What the map says about itself.
+    public static let rosterNotes: [ServedLine] = [
+        ServedLine(id: "note:0", text: "Holders are each club's regulars in the game log; a listed man where it is silent"),
     ]
 
     // MARK: The wire

@@ -7,6 +7,8 @@ on:
   pull_request:
   push:
     branches: [main]
+  # The XCUITest job (pennant-mac-ui) can be asked for by hand on any branch
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -88,3 +90,64 @@ jobs:
           -derivedDataPath build/macos-ci/DerivedData -clonedSourcePackagesDirPath build/macos-ci/SourcePackages
           -onlyUsePackageVersionsFromResolvedFile -skipPackagePluginValidation
           CODE_SIGNING_ALLOWED=NO PENNANT_SKIP_SERVER=YES build-for-testing
+
+  pennant-mac-ui:
+    # The XCUITests (SWIFTUI_REBUILD.md section 8) on GitHub's macOS runner, which has a logged-in GUI session no one is
+    # using, so no one's screen is taken over: the app with its bundled server on the synthetic league (never a real
+    # save), each test on a scratch folder of its own, as macos/scripts/test.sh runs them locally. The window
+    # screenshots, the accessibility audits and the launch timing (N6, Stage B1) are kept as an artifact. Off the
+    # critical path: its own job, only for pull requests into feature/swiftui (or by hand), and a failure here blocks
+    # nothing else. If the runner's UI automation refuses (TCC), the log says so and nothing here changes the runner's
+    # security settings. No secrets: the app is built unsigned.
+    name: Mac app (XCUITests on the runner)
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.base_ref == 'feature/swiftui')
+    runs-on: macos-26
+    timeout-minutes: 90
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: xcodebuild -version
+      - uses: actions/cache@v4
+        with:
+          path: |
+            build/node-runtime
+            build/macos-test/DerivedData/SourcePackages
+          key: pennant-mac-ui-${{ runner.os }}-${{ hashFiles('scripts/fetch-node-runtime.mjs', 'macos/Pennant.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+      - run: npm ci
+      # The package tests ran in pennant-mac; this job is the app, its server and the UI tests
+      - name: XCUITests on the synthetic league
+        id: xcuitests
+        env:
+          PENNANT_TEST_NO_PACKAGES: "1"
+          PENNANT_TEST_UNSIGNED: "1"
+          PENNANT_TEST_SCRATCH: ${{ runner.temp }}/pennant-ui
+        run: macos/scripts/test.sh
+      # The job may fail without failing the run (continue-on-error), so its outcome is written where it is seen: the
+      # run's summary page, with the launch timing the kept-payload test recorded
+      - name: Say how the XCUITests went, on the run's summary
+        if: always()
+        env:
+          OUTCOME: ${{ steps.xcuitests.outcome }}
+        run: |
+          if [ "$OUTCOME" = "success" ]; then line="PASSED"; else line="FAILED ($OUTCOME)"; fi
+          {
+            echo "### Mac app XCUITests: $line"
+            echo
+            echo "This job may fail without failing the run; the screenshots, audits and logs are in the xcuitest-screenshots artifact."
+            timing=$(cat build/macos-test/screenshots/launch-timing* 2>/dev/null)
+            if [ -n "$timing" ]; then echo; echo '```'; echo "$timing"; echo '```'; fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Keep the screenshots, the audits, the launch timing and the logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcuitest-screenshots
+          path: |
+            build/macos-test/screenshots
+            build/macos-test/logs
+          if-no-files-found: warn
+          retention-days: 14

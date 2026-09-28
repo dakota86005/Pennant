@@ -600,6 +600,21 @@
     },
     "⌘K": {
       "extractionState": "manual"
+    },
+    "Updating": {
+      "extractionState": "manual"
+    },
+    "T": {
+      "extractionState": "manual"
+    },
+    "Not placed": {
+      "extractionState": "manual"
+    },
+    "Listed": {
+      "extractionState": "manual"
+    },
+    "Against the other clubs": {
+      "extractionState": "manual"
     }
   },
   "version": "1.0"

@@ -268,6 +268,9 @@ function confidenceLabel(
   return 'limited';
 }
 
+/** The scale readiness is read on: production and ratings maturity, each 0 to 100, weighed together (never outside it). */
+export const READINESS_SCALE = { low: 0, high: 100 } as const;
+
 /** Readiness at which a promotion becomes developmentally defensible, before age context. */
 export const DEVELOPMENTAL_PROMOTION_BASE = 76;
 

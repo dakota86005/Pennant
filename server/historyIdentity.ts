@@ -146,6 +146,11 @@ export interface ServedSave {
   legacyName: string;
   /** Whether it is the configured save (or neither the import nor the configuration names one). */
   configured: boolean;
+  /**
+   * Whether the folder was found (the `<save>.lg` folder, or OOTP's layout naming it): false when the id falls back to
+   * the export folder itself, which may name the save differently once its folder can be seen.
+   */
+  located: boolean;
 }
 
 /**
@@ -157,7 +162,7 @@ export function servedSave(): ServedSave {
   const recorded = importRecord()?.csvDir;
   const csvDir = typeof recorded === 'string' && recorded ? recorded : config.csvDir;
   const configuredName = config.saveName ?? 'unknown';
-  if (!csvDir) return { folderId: '', folderPath: null, name: configuredName, legacyName: configuredName, configured: true };
+  if (!csvDir) return { folderId: '', folderPath: null, name: configuredName, legacyName: configuredName, configured: true, located: false };
   const location = locateSave({ csvDir });
   // A save folder that can't be seen just now (a drive not mounted) keeps its identity: OOTP's layout names it
   const csv = path.resolve(csvDir);
@@ -166,7 +171,10 @@ export function servedSave(): ServedSave {
   const folderPath = location.lgPath ?? byLayout ?? csv;
   const name = location.saveName ?? (byLayout ? path.basename(byLayout).replace(/\.lg$/i, '') : configuredName);
   const sameAsConfigured = config.csvDir !== null && path.resolve(config.csvDir) === csv;
-  return { folderId: saveId(folderPath), folderPath, name, legacyName: sameAsConfigured ? configuredName : name, configured: sameAsConfigured };
+  return {
+    folderId: saveId(folderPath), folderPath, name, legacyName: sameAsConfigured ? configuredName : name, configured: sameAsConfigured,
+    located: location.lgPath !== null || byLayout !== null,
+  };
 }
 
 /**

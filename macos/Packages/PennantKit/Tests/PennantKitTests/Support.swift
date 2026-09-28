@@ -179,7 +179,8 @@ func fakeConfiguration() throws -> ServerConfiguration {
         serverRoot: server,
         dataFolder: root.appending(path: "data", directoryHint: .isDirectory),
         logFolder: root.appending(path: "logs", directoryHint: .isDirectory),
-        appVersion: "9.9.9-test"
+        appVersion: "9.9.9-test",
+        cachesFolder: root.appending(path: "caches", directoryHint: .isDirectory)
     )
 }
 

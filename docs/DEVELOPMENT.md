@@ -330,6 +330,12 @@ nothing else in it (no clubs to pick). The tests' pretend saves copy it (`macos/
 PENNANT_DEV_DATA_DIR=/tmp/pennant-dev "<DerivedData>/Build/Products/Debug/Pennant.app/Contents/MacOS/Pennant"
 ```
 
+A Debug build keeps the Morning Report it received (for the next launch) in `PENNANT_DEV_CACHES_DIR` when set. To see
+the kept report as it waits for the fresh one (the synthetic league answers faster than a frame), set
+`PENNANT_DEV_HOLD_FRESH_MS=2500`; with `PENNANT_DEV_CAPTURE_DIR=<folder>` the window draws itself to a PNG there when
+the report is first drawn updating and when the fresh one has replaced it (the app's own window, no screen recording).
+The log's "first Morning Report drawn" line times the first committed frame from the process's start.
+
 The first start on a folder backs up its irreplaceable files to `backups/pre-swiftui-<date>/` (SWIFTUI_REBUILD.md
 section 7.5). The server's log is `server.log` in the log folder (`~/Library/Logs/Pennant/` for a release build; Help ▸
 Server Log opens it). A synthetic league has no save chosen, so the Setup window opens: to run the flow, give it a pretend
@@ -353,9 +359,15 @@ app's windows only, under their test names (the scheme keeps no system attachmen
 tests' named shots), with the accessibility audit's findings in `accessibility-audit.txt`. `PENNANT_TEST_NO_PACKAGES=1`
 skips the package tests and `PENNANT_TEST_ONLY=PennantUITests/PennantUITests/<test>` runs one UI test.
 `PENNANT_TEST_NO_UI=1` skips the XCUITests; `PENNANT_TEST_UNSIGNED=1` builds unsigned. The XCUITests need UI automation,
-which the Mac's owner enables once (running the scheme's tests from Xcode asks for it). CI (`pennant-mac` in `ci.yml`)
-runs the PennantKit, PennantDesign and PennantFeatures tests and builds the app and its UI tests unsigned, without the
-server.
+which the Mac's owner enables once (running the scheme's tests from Xcode asks for it); while they run they drive the
+app on screen. **Running them locally is optional** since N6, Stage B1: CI runs them on GitHub's macOS runner
+(`pennant-mac-ui` in `ci.yml`, its own job, for pull requests into `feature/swiftui` and by hand from the Actions tab),
+where a logged-in session no one is using takes the driving, on the synthetic league, with the same script
+(`PENNANT_TEST_NO_PACKAGES=1 PENNANT_TEST_UNSIGNED=1 macos/scripts/test.sh`); the window screenshots, the
+accessibility audits, the launch timing and the logs come back as the `xcuitest-screenshots` artifact. That job is off
+the critical path (`continue-on-error`) and changes nothing on the runner: if its UI automation refuses, the log says
+so. `pennant-mac` runs the PennantKit, PennantDesign and PennantFeatures tests and builds the app and its UI tests
+unsigned, without the server, on every pull request.
 
 **Snapshots.** PennantFeatures' tests also draw the shell (the sidebar with the club card, the main window, each server
 state, each Setup step, each Settings tab) in light and dark at their real sizes into `build/macos-snapshots/`, from

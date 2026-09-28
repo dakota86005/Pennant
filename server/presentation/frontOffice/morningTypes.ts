@@ -51,7 +51,7 @@ export interface RunsFigure {
 /** The last five results, oldest first, and the line under them. */
 export interface LastFive {
   results: GameLetter[];
-  /** "Lost 1 · last five 3–2". */
+  /** "Lost 1 · last five 3–2", with the ties when there are any ("last five 3–1–1"). */
   line: Cell;
 }
 
@@ -129,13 +129,45 @@ export interface TeamSeason {
 /** Where a dimension falls: a strength (top fifth), a weakness (bottom fifth), the rest, too early, or not placed. */
 export type ProfileGroup = 'strength' | 'weakness' | 'rest' | 'tooEarly' | 'notPlaced';
 
-/** The stated policy line for each group ("Top fifth of the league"). */
-export interface ProfileLines {
-  strength: Cell;
-  weakness: Cell;
-  rest: Cell;
-  tooEarly: Cell;
-  notPlaced: Cell;
+/**
+ * A group's heading as "How we win and lose" shows it: its title ("Strengths") and the stated policy line beside it
+ * ("Top fifth of the league"), each with its hint; `line` is null where the title says it all ("The rest"), so the
+ * two never repeat each other.
+ */
+export interface ProfileGroupHeading {
+  title: Cell;
+  line: Cell | null;
+}
+
+/** The heading of each group, in the order the page shows them. */
+export interface ProfileGroups {
+  strength: ProfileGroupHeading;
+  weakness: ProfileGroupHeading;
+  rest: ProfileGroupHeading;
+  tooEarly: ProfileGroupHeading;
+  notPlaced: ProfileGroupHeading;
+}
+
+/**
+ * The strip a dimension is drawn on: how many clubs it shows, and where the stated lines fall (a place at or above
+ * `strengthThrough` is a strength, at or below `weaknessFrom` a weakness), in the same arithmetic that puts the
+ * dimension in its group. Both lines are null in a league too small to have a top or bottom fifth.
+ */
+export interface ProfileStrip {
+  /** The clubs the strip shows: the clubs placed, or, where our club is not, the clubs that have the figure (0 for none). */
+  of: Integer;
+  strengthThrough: Integer | null;
+  weaknessFrom: Integer | null;
+}
+
+/** The legend under "How we win and lose"; `shading` is null when no strip shows a top or bottom fifth. */
+export interface ProfileLegend {
+  /** The filled dot (this season's place). */
+  dot: Cell;
+  /** The hollow ring (the recent place). */
+  ring: Cell;
+  /** The shaded ends (the top and bottom fifths). */
+  shading: Cell | null;
 }
 
 /** A dimension's place over the recent games, or why it has none. */
@@ -158,6 +190,8 @@ export interface ProfileDimension {
   place: Place | null;
   /** "6th of 30", "T-26th of 30", "Too early", "Not placed". */
   placeText: string;
+  /** The strip it is drawn on: its clubs and the stated lines, served so the app counts nothing. */
+  strip: ProfileStrip;
   recent: RecentPlace;
   /** "4.63 runs a game · league middle 4.31". */
   detail: Cell;
@@ -169,7 +203,12 @@ export interface ProfileDimension {
 export interface ClubProfile {
   /** "Through May 15, 2026 · 43 games". */
   note: Cell;
-  lines: ProfileLines;
+  /** The clubs in the league; 0 when the profile could not be read. */
+  clubs: Integer;
+  /** Each group's heading. */
+  groups: ProfileGroups;
+  /** What the marks on a strip mean, for this league. */
+  legend: ProfileLegend;
   dimensions: ProfileDimension[];
   /** Why the profile could not be read this time; null when it was. */
   unavailable: Cell | null;
@@ -204,9 +243,19 @@ export interface FarmNextMan extends PlayerRef {
   /** "Ready for a look", "Not ready yet", "Can't tell yet", "Not assessed", with Player Development's reasons in its hint. */
   readiness: Cell;
   /** Player Development's readiness against the readiness its bar asks for, as it serves them; null where either is not known. */
-  bar: { readiness: Integer; required: Integer } | null;
+  bar: FarmBar | null;
   /** "L. Moreau · Triple-A · not ready yet". */
   text: string;
+}
+
+/** The farm's next man's readiness against his bar, with the scale they are both on and the line that labels them. */
+export interface FarmBar {
+  readiness: Integer;
+  required: Integer;
+  /** The scale Player Development's readiness is on (0 to 100): a man past his bar is not a full bar. */
+  scale: { low: Integer; high: Integer };
+  /** "Readiness 41 · his bar 55", with how the two are read in its hint. */
+  line: Cell;
 }
 
 /** How long the club controls a player, served structured (never parsed from words). */

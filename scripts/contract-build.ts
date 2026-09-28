@@ -1,14 +1,14 @@
 /**
  * `npm run contract:build`: writes the presentation contract, `contract/openapi.json`, from the server's TypeScript
- * types (`server/contract/`), and the tests' shape contract into the Swift package's shape tests. Commit both; the
- * drift test fails while either differs from a fresh build.
+ * types (`server/contract/`), the tests' shape contract into the Swift package's shape tests, and the contract's digest
+ * into PennantAPI (`ContractDigest.swift`). Commit all three; the drift test fails while any differs from a fresh build.
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { SHAPES_SPEC_PATH, SPEC_PATH, buildShapesSpec, buildSpec, serializeSpec } from './lib/contractSpec.js';
+import { DIGEST_SWIFT_PATH, SHAPES_SPEC_PATH, SPEC_PATH, buildShapesSpec, buildSpec, digestSwift, serializeSpec } from './lib/contractSpec.js';
 
-for (const [file, spec] of [[SPEC_PATH, buildSpec()], [SHAPES_SPEC_PATH, buildShapesSpec()]] as const) {
-  const text = serializeSpec(spec);
+const spec = serializeSpec(buildSpec());
+for (const [file, text] of [[SPEC_PATH, spec], [SHAPES_SPEC_PATH, serializeSpec(buildShapesSpec())], [DIGEST_SWIFT_PATH, digestSwift(spec)]] as const) {
   const before = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, text);

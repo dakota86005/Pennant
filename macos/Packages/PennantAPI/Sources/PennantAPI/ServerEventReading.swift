@@ -33,6 +33,7 @@ extension Components.Schemas.ImportFinishedEvent: ServerEventShape {}
 extension Components.Schemas.ExportPendingEvent: ServerEventShape {}
 extension Components.Schemas.JobEvent: ServerEventShape {}
 extension Components.Schemas.FrontOfficeUpdatedEvent: ServerEventShape {}
+extension Components.Schemas.SavePlayedElsewhereEvent: ServerEventShape {}
 
 /// Lets the reading find an event shape's names through the optional that holds it in `ServerEvent`.
 protocol OptionalServerEventShape {
@@ -65,5 +66,60 @@ extension Components.Schemas.ServerEvent {
         if decodedShape { return .known(self) }
         let name = typeName ?? ""
         return Self.knownTypeNames.contains(name) ? .malformed(type: name) : .unknown(type: name)
+    }
+
+    /// A known event by its shape (SWIFTUI_REBUILD.md "The Mac stage's first items", 1). The generated union holds
+    /// its members by position (`value1` … `valueN`, in the spec's order), so a member added to the union moves every
+    /// later one; nothing reads a member by position but this accessor, which finds each shape by its type. A shape
+    /// the union has that this enum lacks fails `PennantAPITests` ("the typed accessor covers every shape").
+    public enum Kind: Sendable, Equatable {
+        case hello(Components.Schemas.HelloEvent)
+        case importStarted(Components.Schemas.ImportStartedEvent)
+        case importProgress(Components.Schemas.ImportProgressEvent)
+        case importFinished(Components.Schemas.ImportFinishedEvent)
+        case exportPending(Components.Schemas.ExportPendingEvent)
+        case job(Components.Schemas.JobEvent)
+        case frontOfficeUpdated(Components.Schemas.FrontOfficeUpdatedEvent)
+        case savePlayedElsewhere(Components.Schemas.SavePlayedElsewhereEvent)
+
+        /// The served `type` of each kind, in the order this enum lists them (the coverage test compares them with
+        /// the generated shapes' names).
+        public static var typeNames: [String] {
+            [
+                Components.Schemas.HelloEvent.typeNames, Components.Schemas.ImportStartedEvent.typeNames,
+                Components.Schemas.ImportProgressEvent.typeNames, Components.Schemas.ImportFinishedEvent.typeNames,
+                Components.Schemas.ExportPendingEvent.typeNames, Components.Schemas.JobEvent.typeNames,
+                Components.Schemas.FrontOfficeUpdatedEvent.typeNames, Components.Schemas.SavePlayedElsewhereEvent.typeNames,
+            ].flatMap { $0 }
+        }
+
+        /// The kind a decoded shape is, by its type; nil for a value that is no known shape.
+        static func of(_ value: Any) -> Kind? {
+            switch value {
+            case let event as Components.Schemas.HelloEvent: .hello(event)
+            case let event as Components.Schemas.ImportStartedEvent: .importStarted(event)
+            case let event as Components.Schemas.ImportProgressEvent: .importProgress(event)
+            case let event as Components.Schemas.ImportFinishedEvent: .importFinished(event)
+            case let event as Components.Schemas.ExportPendingEvent: .exportPending(event)
+            case let event as Components.Schemas.JobEvent: .job(event)
+            case let event as Components.Schemas.FrontOfficeUpdatedEvent: .frontOfficeUpdated(event)
+            case let event as Components.Schemas.SavePlayedElsewhereEvent: .savePlayedElsewhere(event)
+            default: nil
+            }
+        }
+    }
+
+    /// The event by its shape, whatever position the shape holds in the union; nil when no known shape decoded (the
+    /// event is unknown or malformed: `reading` says which).
+    public var kind: Kind? {
+        for child in Mirror(reflecting: self).children {
+            if let kind = Kind.of(child.value) { return kind }
+        }
+        return nil
+    }
+
+    /// The `hello` that opens every stream, when this is one.
+    public var hello: Components.Schemas.HelloEvent? {
+        if case .hello(let event) = kind { event } else { nil }
     }
 }

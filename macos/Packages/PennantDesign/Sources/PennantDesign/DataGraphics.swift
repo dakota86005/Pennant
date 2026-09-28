@@ -10,8 +10,10 @@ import SwiftUI
 
 /// A league place among `of` clubs, best on the left: the club's place filled in the accent, the clubs tied with it
 /// drawn at the same size (a tie shares the size; they are paler, and the place's served words say "T-"), a hollow
-/// ring at its recent place, and the top and bottom fifths shaded so a strength and a weakness are visible. Too early
-/// to call (no place) draws the shading and the dots alone. Drawn with Canvas, so it fits a tile or a row.
+/// ring at its recent place, and the top and bottom fifths shaded where the server says they fall (none in a league
+/// too small to have them), so a strength and a weakness are visible. Too early to call (no place) draws the shading
+/// and the dots alone. Every number is served: the clubs, the place, the lines. Drawn with Canvas, so it fits a tile
+/// or a row.
 public struct PlaceStrip: View {
     let dimension: PlaceDimension
     let height: CGFloat
@@ -33,9 +35,12 @@ public struct PlaceStrip: View {
     /// How much larger the club's dot is than the others (and every club tied with it: a tie shares the size).
     nonisolated static let clubScale: CGFloat = 1.7
 
-    /// The dots, best place first: the club's and those tied with it at the club's size, the rest plain.
+    /// The dots, best place first: the club's and those tied with it at the club's size, the rest plain. No dots at
+    /// all when the size of the league is not served (`of` below one): a strip of one dot would read as a league of
+    /// one.
     nonisolated static func dots(_ dimension: PlaceDimension) -> [Dot] {
-        (1...max(1, dimension.of)).map { p in
+        guard dimension.of >= 1 else { return [] }
+        return (1...dimension.of).map { p in
             let kind: Dot.Kind
             if p == dimension.place {
                 kind = .club
@@ -54,19 +59,40 @@ public struct PlaceStrip: View {
         self.maxDot = maxDot
     }
 
+    /// The shaded ends as places along the strip (the first place shaded for a strength through the last, and the
+    /// first for a weakness through the end), exactly as served; nil for an end the server does not serve, or with no
+    /// strip to shade.
+    nonisolated static func shading(_ dimension: PlaceDimension) -> (strength: ClosedRange<Int>?, weakness: ClosedRange<Int>?) {
+        guard dimension.of >= 1 else { return (nil, nil) }
+        let strength = dimension.strengthThrough.flatMap { $0 >= 1 ? 1...min($0, dimension.of) : nil }
+        let weakness = dimension.weaknessFrom.flatMap { $0 <= dimension.of ? max(1, $0)...dimension.of : nil }
+        return (strength, weakness)
+    }
+
     public var body: some View {
         let palette = theme.palette(colorScheme: colorScheme, contrast: contrast)
         let accent = palette.isNeutral ? Color.accentColor : palette.accent
-        let of = max(1, dimension.of)
         let dots = Self.dots(dimension)
+        let shading = Self.shading(dimension)
         Canvas { ctx, size in
-            let step = size.width / CGFloat(of)
+            // The track's width over the served clubs (a place is a slot on it); no clubs, no slots
+            let step = dots.isEmpty ? 0 : size.width / CGFloat(dots.count)
             let dot = min(maxDot, step * 0.62)
             let midY = size.height / 2
-            // The top and bottom fifths, the stated lines for a strength and a weakness
-            let fifth = CGFloat((Double(of) / 5).rounded(.down)) * step
-            ctx.fill(Path(roundedRect: CGRect(x: 0, y: 0, width: fifth, height: size.height), cornerRadius: 4), with: .color(Tone.good.color.opacity(0.14)))
-            ctx.fill(Path(roundedRect: CGRect(x: size.width - fifth, y: 0, width: fifth, height: size.height), cornerRadius: 4), with: .color(Tone.bad.color.opacity(0.14)))
+            // The top and bottom fifths, where the server says the lines fall (none in a small league, none without clubs)
+            let band = { (places: ClosedRange<Int>) -> CGRect in
+                CGRect(x: step * CGFloat(places.lowerBound - 1), y: 0, width: step * CGFloat(places.count), height: size.height)
+            }
+            if let strength = shading.strength {
+                ctx.fill(Path(roundedRect: band(strength), cornerRadius: 4), with: .color(Tone.good.color.opacity(0.14)))
+            }
+            if let weakness = shading.weakness {
+                ctx.fill(Path(roundedRect: band(weakness), cornerRadius: 4), with: .color(Tone.bad.color.opacity(0.14)))
+            }
+            if dots.isEmpty {
+                // Not placed, no size: a quiet empty track, never dots that read as a league
+                ctx.fill(Path(roundedRect: CGRect(x: 0, y: midY - 2, width: size.width, height: 4), cornerRadius: 2), with: .color(Color(nsColor: .quaternaryLabelColor).opacity(0.5)))
+            }
             for d in dots {
                 let cx = step * (CGFloat(d.place) - 0.5)
                 let size = dot * d.scale
@@ -88,7 +114,8 @@ public struct PlaceStrip: View {
     }
 }
 
-/// Strength or weakness, as a symbol and a word (never only the colour); nothing for the rest.
+/// Strength or weakness, as a symbol and a word (never only the colour); nothing for the rest, and nothing for a
+/// dimension not placed (the export lacks the figure: that is not a weakness).
 public struct StrengthMark: View {
     let group: PlaceDimension.Group
 
@@ -102,7 +129,7 @@ public struct StrengthMark: View {
             Image(systemName: "arrow.up.circle.fill").foregroundStyle(Tone.good.color).accessibilityLabel(Text("Strength"))
         case .weakness:
             Image(systemName: "arrow.down.circle.fill").foregroundStyle(Tone.bad.color).accessibilityLabel(Text("Weakness"))
-        case .rest, .tooEarly:
+        case .rest, .tooEarly, .notPlaced:
             EmptyView()
         }
     }
@@ -120,8 +147,10 @@ public struct PlaceRow: View {
 
     public var body: some View {
         HStack(spacing: 12) {
+            // A dimension not placed reads quieter: the export lacks its figure, which is no judgment of the club
             Label { Text(verbatim: dimension.name) } icon: { Image(systemName: dimension.symbol).frame(width: 18) }
                 .font(.body)
+                .foregroundStyle(dimension.group == .notPlaced ? .secondary : .primary)
                 .frame(width: wide ? 200 : 170, alignment: .leading)
             PlaceStrip(dimension).frame(maxWidth: 480)
             Spacer(minLength: 8)
@@ -140,35 +169,35 @@ public struct PlaceRow: View {
     }
 }
 
-/// "How we win and lose": the served dimensions in their served groups (strengths, weaknesses, the rest, too early),
-/// each group under its structural header with the served policy line beside it, and the served legend (the view keeps
-/// only its symbols).
+/// "How we win and lose": the served dimensions in their served groups (strengths, weaknesses, the rest, too early,
+/// not placed), each group under its served heading (the title, and the policy line beside it where there is one, each
+/// with its served help tag), and the served legend (the view keeps only its symbols; the shaded ends' entry only where
+/// the server serves one).
 public struct PlaceStrips: View {
     let dimensions: [PlaceDimension]
-    /// The policy lines as served, by group ("Top fifth of the league").
-    let lines: [PlaceDimension.Group: String]
-    /// The legend as served (the catalog's `phrases.placeLegend`); nil draws none.
-    let legend: Components.Schemas.PlaceLegend?
+    /// Each group's heading as served, by group.
+    let headings: [PlaceDimension.Group: PlaceDimension.Heading]
+    /// The legend as served (the club profile's `legend`); nil draws none.
+    let legend: Components.Schemas.ProfileLegend?
     let wide: Bool
 
-    public init(_ dimensions: [PlaceDimension], lines: [PlaceDimension.Group: String], legend: Components.Schemas.PlaceLegend?, wide: Bool = true) {
+    public init(_ dimensions: [PlaceDimension], headings: [PlaceDimension.Group: PlaceDimension.Heading], legend: Components.Schemas.ProfileLegend?, wide: Bool = true) {
         self.dimensions = dimensions
-        self.lines = lines
+        self.headings = headings
         self.legend = legend
         self.wide = wide
     }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            group(Text("Strengths"), .strength)
-            group(Text("Weaknesses"), .weakness)
-            group(Text("The rest"), .rest)
-            group(Text("Too early to call"), .tooEarly)
+            ForEach(PlaceDimension.Group.allCases, id: \.self) { group in
+                self.group(group)
+            }
             if let legend {
                 HStack(spacing: 14) {
-                    LegendEntry(legend.season, symbol: "circle.fill")
-                    LegendEntry(legend.recent, symbol: "circle")
-                    LegendEntry(legend.fifths, symbol: "rectangle.lefthalf.filled")
+                    LegendEntry(legend.dot, symbol: "circle.fill")
+                    LegendEntry(legend.ring, symbol: "circle")
+                    if let shading = legend.shading { LegendEntry(shading, symbol: "rectangle.lefthalf.filled") }
                 }
                 .font(.caption).foregroundStyle(.secondary).padding(.top, 4)
             }
@@ -178,15 +207,23 @@ public struct PlaceStrips: View {
     }
 
     @ViewBuilder
-    private func group(_ title: Text, _ group: PlaceDimension.Group) -> some View {
+    private func group(_ group: PlaceDimension.Group) -> some View {
         let members = dimensions.filter { $0.group == group }
+        // A group with members and no served heading is drawn without one: its rows still say where each falls
         if !members.isEmpty {
             VStack(alignment: .leading, spacing: 2) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    title.font(.headline)
-                    if let line = lines[group] { Text(verbatim: line).font(.caption).foregroundStyle(.secondary) }
+                if let heading = headings[group] {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(verbatim: heading.title).font(.headline)
+                            .help(Text(verbatim: heading.titleHint ?? heading.title))
+                            .accessibilityAddTraits(.isHeader)
+                        if let line = heading.line {
+                            Text(verbatim: line).font(.caption).foregroundStyle(.secondary)
+                                .help(Text(verbatim: heading.lineHint ?? line))
+                        }
+                    }
+                    .padding(.top, 8)
                 }
-                .padding(.top, 8)
                 ForEach(members) { d in
                     PlaceRow(d, wide: wide).padding(.vertical, 3)
                     if d.id != members.last?.id { Divider() }
@@ -384,7 +421,8 @@ public struct InlineBar: View {
 }
 
 /// Control as small pips: one per season the club holds him (none for none: a pip is never invented), a hollow pip for
-/// a clock, a hatched pip when not known. The served words are in the help tag and the accessibility label.
+/// a clock, a hatched pip when not known, and hatched too when the server gives seasons through a year but no count
+/// (unknown is never drawn as none). The served words are in the help tag and the accessibility label.
 public struct ControlPips: View {
     let control: ControlTerm
     @Environment(\.theme) private var theme
@@ -395,9 +433,10 @@ public struct ControlPips: View {
         self.control = control
     }
 
-    /// How many filled pips the served seasons draw: exactly that many, none for zero (or a count below it).
-    nonisolated static func seasonPips(_ control: ControlTerm) -> Int {
-        if case .seasons(let count, _) = control { return max(0, count) }
+    /// How many filled pips the served seasons draw: exactly that many, none for zero (or a count below it); nil when
+    /// the count is not served (drawn hatched, as not known).
+    nonisolated static func seasonPips(_ control: ControlTerm) -> Int? {
+        if case .seasons(let count, _) = control { return count.map { max(0, $0) } }
         return 0
     }
 
@@ -407,8 +446,12 @@ public struct ControlPips: View {
         HStack(spacing: 2) {
             switch control {
             case .seasons:
-                ForEach(0..<Self.seasonPips(control), id: \.self) { _ in
-                    RoundedRectangle(cornerRadius: 1).fill(accent).frame(width: 5, height: 7)
+                if let pips = Self.seasonPips(control) {
+                    ForEach(0..<pips, id: \.self) { _ in
+                        RoundedRectangle(cornerRadius: 1).fill(accent).frame(width: 5, height: 7)
+                    }
+                } else {
+                    Hatch().frame(width: 12, height: 7).clipShape(RoundedRectangle(cornerRadius: 1))
                 }
             case .clock:
                 RoundedRectangle(cornerRadius: 1).strokeBorder(accent, lineWidth: 1).frame(width: 5, height: 7)
@@ -422,7 +465,8 @@ public struct ControlPips: View {
     }
 }
 
-/// The last five results, oldest first: a filled dot with a W, a hollow one with an L, on the masthead.
+/// The last five results, oldest first: a filled dot with a W, a hollow one with an L, a dashed one with a T for a
+/// tie, on the masthead.
 public struct LastFiveDots: View {
     let results: [GameResult]
     let size: CGFloat
@@ -444,12 +488,16 @@ public struct LastFiveDots: View {
             ForEach(Array(results.enumerated()), id: \.offset) { _, result in
                 ZStack {
                     // Each letter in a served, checked pair as served (the masthead's text and its colour), never faded
-                    if result == .win {
+                    switch result {
+                    case .win:
                         Circle().fill(palette.mastheadText)
                         Text("W").font(.system(size: size * 0.55, weight: .bold)).foregroundStyle(palette.masthead.first ?? palette.mastheadTop)
-                    } else {
+                    case .loss:
                         Circle().strokeBorder(palette.mastheadText.opacity(0.7), lineWidth: 1.5)
                         Text("L").font(.system(size: size * 0.55, weight: .semibold)).foregroundStyle(palette.mastheadText)
+                    case .tie:
+                        Circle().strokeBorder(palette.mastheadText.opacity(0.7), style: StrokeStyle(lineWidth: 1.5, dash: [2.5, 2]))
+                        Text("T").font(.system(size: size * 0.55, weight: .semibold)).foregroundStyle(palette.mastheadText)
                     }
                 }
                 .frame(width: size, height: size)

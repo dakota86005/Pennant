@@ -84,7 +84,7 @@ struct ServerIntegrationTests {
         let found = HelloBox()
         let reader = Task {
             try? await EventClient(client: client).readOnce { signal in
-                if case .event(let event) = signal, let hello = event.value1 { found.hello = hello }
+                if case .event(let event) = signal, let hello = event.hello { found.hello = hello }
             }
         }
         #expect(await eventually(timeout: .seconds(10)) { found.hello != nil })

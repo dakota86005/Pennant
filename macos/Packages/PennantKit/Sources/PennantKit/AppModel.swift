@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import Observation
 import OpenAPIRuntime
@@ -53,6 +54,14 @@ public final class AppModel {
     public private(set) var client: Client?
     /// The Front Office's desk, cards and department reports (`FrontOfficeStore`), loaded on `storeKey`.
     public private(set) var frontOffice: FrontOfficeStore
+    /// Another save (or a newer OOTP version's) played since the chosen one, as the server last said (`/api/status`
+    /// and the `save-played-elsewhere` event; D-063): the sentence, the switch's label and the save. Nil when none.
+    /// The app shows it (N6, Stage B2); Pennant never switches by itself.
+    public private(set) var savePlayedElsewhere: Components.Schemas.SavePlayedElsewhere?
+    /// When the first Morning Report's frame was drawn, as milliseconds after the process started (after the model was
+    /// made if the process's start cannot be read), and whether it was the kept payload or a fresh one (the launch
+    /// budget, SWIFTUI_REBUILD.md "The speed budgets"); nil until then.
+    public private(set) var firstMorningReport: (afterMs: Int, kept: Bool)?
 
     /// How many event problems are kept (the log has them all).
     public static let keptEventProblems = 20
@@ -70,10 +79,15 @@ public final class AppModel {
     private var eventTask: Task<Void, Never>?
     private var started = false
     private var shuttingDown = false
+    /// When the model was made: the app's launch, as near as the app can time it.
+    private let launched = ContinuousClock.now
 
+    /// - Parameter keptReports: where the Morning Report is kept across launches; the configuration's caches folder
+    ///   by default (the app's own, never the data folder). Tests give a scratch folder.
     public init(
         configuration: ServerConfiguration,
         controller: ServerController? = nil,
+        keptReports: KeptReports? = nil,
         makeClient: @escaping @Sendable (ServerConnection) -> Client = { PennantClient.make(port: $0.port, token: $0.token) }
     ) {
         self.configuration = configuration
@@ -82,7 +96,10 @@ public final class AppModel {
         self.backups = controller.backups
         self.makeClient = makeClient
         let log = controller.log
-        frontOffice = FrontOfficeStore { line in log.write(line, source: "app") }
+        frontOffice = FrontOfficeStore(
+            kept: keptReports ?? KeptReports(folder: configuration.cachesFolder.appending(path: "front-office", directoryHint: .isDirectory)),
+            contract: contractDigest
+        ) { line in log.write(line, source: "app") }
     }
 
     #if DEBUG
@@ -125,12 +142,16 @@ public final class AppModel {
         /// The server's current Front Office build (`reportStamp`), empty before one is kept: it moves whenever the
         /// server builds again without a new import (a settings change, a calibration, the live log).
         public var reportStamp: String
+        /// The chosen save's id as the status serves it (D-063); nil with no save chosen. A payload kept across
+        /// launches is read only for this save (`KeptReports`).
+        public var saveId: String?
 
-        public init(importStamp: String, club: ClubRef?, restores: Int, reportStamp: String = "") {
+        public init(importStamp: String, club: ClubRef?, restores: Int, reportStamp: String = "", saveId: String? = nil) {
             self.importStamp = importStamp
             self.club = club
             self.restores = restores
             self.reportStamp = reportStamp
+            self.saveId = saveId
         }
     }
 
@@ -138,7 +159,7 @@ public final class AppModel {
     /// launch rather than once for the first status and again when the club arrives.
     public var storeKey: StoreKey? {
         guard client != nil, settings != nil else { return nil }
-        return StoreKey(importStamp: importStamp, club: club?.ref, restores: restoreCount, reportStamp: reportStamp)
+        return StoreKey(importStamp: importStamp, club: club?.ref, restores: restoreCount, reportStamp: reportStamp, saveId: status?.saveId)
     }
 
     // MARK: Derived from the served status
@@ -148,10 +169,24 @@ public final class AppModel {
     public var lastImport: Components.Schemas.ImportResult? { status?.lastImport }
     /// Why the import is not where it should be, in the server's words (a failure, an interruption, a missing export).
     public var importNote: Components.Schemas.ImportNote? { status?.importNote }
-    /// The catalog's entry for the current club: its palette, logo and record, as served.
+    /// The catalog's entry for the current club: its palette, logo and record, as served. Until the catalog arrives, the
+    /// entry the shown Morning Report was kept with (the same club's), so a kept report is drawn in the club's colours
+    /// at once, as the live one is (N6 B1 review M5).
     public var catalogClub: Components.Schemas.CatalogClub? {
         guard let id = club?.ref.id else { return nil }
-        return catalog?.clubs.first { $0.teamId == id }
+        if let catalog { return catalog.clubs.first { $0.teamId == id } }
+        return frontOffice.keptCatalog?.club.flatMap { $0.teamId == id ? $0 : nil }
+    }
+    /// The catalog's phrases (the legends, the missing-value line); the kept ones until the catalog arrives.
+    public var phrases: Components.Schemas.CatalogPhrases? {
+        catalog?.phrases ?? frontOffice.keptCatalog?.phrases
+    }
+    /// What a kept Morning Report is drawn with next launch: the club's catalog entry, the phrases and the report's
+    /// served name, as the live catalog serves them now; nil until the catalog is here.
+    var keptCatalogNow: KeptReports.Catalog? {
+        guard let catalog, let id = club?.ref.id, let entry = catalog.clubs.first(where: { $0.teamId == id }) else { return nil }
+        let name = catalog.departments.first { ($0.id.value1?.rawValue ?? $0.id.value2) == "frontOffice" }?.views.first { $0.id == "morningReport" }?.name
+        return KeptReports.Catalog(club: entry, phrases: catalog.phrases, viewName: name)
     }
     /// When OOTP wrote the export that is imported (as served).
     public var exportedAt: String? { status?.csvExportedAt }
@@ -219,7 +254,11 @@ public final class AppModel {
         await controller.stop()
         let backups = backups
         let result = await Task.detached(priority: .userInitiated) { Result { try backups.restore() } }.value
-        if case .success = result { restoreCount += 1 }
+        if case .success = result {
+            restoreCount += 1
+            // The folder now holds another state of the save: no report kept from before it is drawn
+            await frontOffice.forgetKept()
+        }
         if !shuttingDown { await controller.start() }
         return try result.get()
     }
@@ -342,6 +381,7 @@ public final class AppModel {
     /// Loads the Morning Report's desk and cards for the current key (a view calls it in `.task(id: storeKey)`).
     public func loadFrontOffice() async {
         await frontOffice.loadSummary(client: client, key: storeKey)
+        await frontOffice.keep(catalog: keptCatalogNow, for: storeKey)
     }
 
     /// Loads one department's report for the current key.
@@ -361,8 +401,36 @@ public final class AppModel {
 
     // MARK: Following the server
 
+    /// Milliseconds since the model was made.
+    private var sinceLaunchMs: Int { Int((ContinuousClock.now - launched) / .milliseconds(1)) }
+
+    /// When this process started, as the kernel records it (the launch as the Dock, Finder or a test began it): the
+    /// launch budget is measured from here, not from the model's making (N6 B1 review M9). Nil if it cannot be read.
+    public nonisolated static let processStarted: Date? = {
+        var info = kinfo_proc()
+        var size = MemoryLayout<kinfo_proc>.stride
+        var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()]
+        guard sysctl(&mib, u_int(mib.count), &info, &size, nil, 0) == 0, size > 0 else { return nil }
+        let start = info.kp_proc.p_un.__p_starttime
+        return Date(timeIntervalSince1970: TimeInterval(start.tv_sec) + TimeInterval(start.tv_usec) / 1_000_000)
+    }()
+
+    /// Milliseconds since this process started; nil if its start cannot be read.
+    private var sinceProcessStartMs: Int? { Self.processStarted.map { Int(Date().timeIntervalSince($0) * 1000) } }
+
+    /// "N ms after launch (M ms after the process started)": both clocks, for the log.
+    private var launchClock: String {
+        "\(sinceLaunchMs) ms after launch" + (sinceProcessStartMs.map { " (\($0) ms after the process started)" } ?? "")
+    }
+    private var loggedReady = false
+    private var loggedKey = false
+
     private func apply(_ state: ServerState) {
         serverState = state
+        if state.connection != nil, !loggedReady {
+            loggedReady = true
+            controller.log.write("server ready \(launchClock)", source: "app")
+        }
         guard let connection = state.connection else {
             eventTask?.cancel()
             eventTask = nil
@@ -404,18 +472,20 @@ public final class AppModel {
     }
 
     private func apply(_ event: Components.Schemas.ServerEvent) async {
-        if let hello = event.value1 {
+        // Each event by its shape (`ServerEvent.kind`), never by its position in the union
+        switch event.kind {
+        case .hello(let hello):
             apply(status: hello.status, reload: true)
-        } else if event.value2 != nil {
+        case .importStarted:
             importRequestProblem = nil
             status?.importing = true
             status?.importProgress = nil
             status?.lastError = nil
             status?.importNote = nil
-        } else if let progress = event.value3 {
+        case .importProgress(let progress):
             status?.importing = true
             status?.importProgress = progress.progress
-        } else if let finished = event.value4 {
+        case .importFinished(let finished):
             if var next = status {
                 next.importing = false
                 next.importProgress = nil
@@ -426,18 +496,44 @@ public final class AppModel {
             }
             // The status says the rest (the export's time, a pending export)
             await reloadStatus()
-        } else if let pending = event.value5 {
+        case .exportPending(let pending):
             status?.exportPending = pending.since
-        } else if let updated = event.value7 {
+        case .frontOfficeUpdated(let updated):
             // A new Front Office build is kept: follow it only for the club the app shows (with no club known yet, the
             // next status read carries the stamp)
             if let shown = club?.ref.id, shown == updated.orgId { reportStamp = updated.reportStamp }
+        case .savePlayedElsewhere(let played):
+            // The minute's look changed what it says (first seen, another save, cleared): as the status would serve it
+            savePlayedElsewhere = played.savePlayedElsewhere
+            status?.savePlayedElsewhere = played.savePlayedElsewhere
+        case .job, nil:
+            // The storylines and briefing jobs arrive with N13
+            break
         }
-        // `job` (value6): the storylines and briefing jobs arrive with N13
+    }
+
+    /// The Morning Report's first frame was drawn this launch (the view calls it once the frame is committed): the time
+    /// since the process started (the launch budget's measure) and since the model was made, and whether it was the
+    /// kept payload. Once a launch; a later call changes nothing.
+    public func noteMorningReportDrawn(kept: Bool) {
+        guard firstMorningReport == nil else { return }
+        firstMorningReport = (sinceProcessStartMs ?? sinceLaunchMs, kept)
+        let how = ["fresh from the server", "from the kept payload"][kept ? 1 : 0]
+        controller.log.write("first Morning Report drawn \(launchClock), \(how)", source: "app")
+    }
+
+    private var loggedUpdating = false
+    /// The Morning Report's kicker says "Updating" (the kept report, or a fresh one on its way): logged once a launch,
+    /// so the launch test can tell it was drawn however briefly.
+    public func noteMorningReportUpdating() {
+        guard !loggedUpdating else { return }
+        loggedUpdating = true
+        controller.log.write("the Morning Report said Updating \(launchClock)", source: "app")
     }
 
     private func apply(status next: Components.Schemas.ServerStatus, reload: Bool) {
         status = next
+        savePlayedElsewhere = next.savePlayedElsewhere
         if let served = next.reportStamp, served != reportStamp { reportStamp = served }
         let stamp = next.lastImport?.finishedAt ?? ""
         guard stamp != importStamp else { return }
@@ -455,15 +551,17 @@ public final class AppModel {
         }
     }
 
-    /// Re-reads the settings, the clubs, the data status and the catalog, and resolves the current club again.
+    /// Re-reads the settings, the clubs, the data status and the catalog, and resolves the current club again. The
+    /// settings, the clubs and the club they resolve to land together, and first: `storeKey` never appears with the
+    /// settings but before the club (a store would load twice, and another club's build could be followed), and it
+    /// does not wait on the data status and the catalog, so the Morning Report kept from the last launch is drawn as
+    /// soon as the club is known (N6, Stage B1: the launch budget).
     public func reloadAll() async {
         guard let client else { return }
         async let settingsAnswer = client.getSettings()
         async let orgsAnswer = client.listOrgs()
         async let dataStatusAnswer = client.getDataStatusWords()
         async let catalogAnswer = client.getCatalog()
-        // The settings, the clubs and the club they resolve to land together, so `storeKey` never appears with the
-        // settings but before the club (a store would load twice, and another club's build could be followed)
         var nextSettings = settings
         var nextOrgs = orgs
         do {
@@ -476,6 +574,13 @@ public final class AppModel {
         } catch {
             note(error, reading: "clubs")
         }
+        orgs = nextOrgs
+        club = CurrentClub.from(served: nextSettings?.organization, orgs: nextOrgs)
+        settings = nextSettings
+        if storeKey != nil, !loggedKey {
+            loggedKey = true
+            controller.log.write("store key known \(launchClock)", source: "app")
+        }
         do {
             dataStatus = try await dataStatusAnswer.ok.body.json
         } catch {
@@ -486,9 +591,8 @@ public final class AppModel {
         } catch {
             note(error, reading: "catalog")
         }
-        orgs = nextOrgs
-        club = CurrentClub.from(served: nextSettings?.organization, orgs: nextOrgs)
-        settings = nextSettings
+        // The report shown is kept with the catalog it is drawn with, once both are here
+        await frontOffice.keep(catalog: keptCatalogNow, for: storeKey)
     }
 
     private func note(_ error: any Error, reading what: String) {

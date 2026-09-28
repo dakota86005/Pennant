@@ -1403,27 +1403,59 @@
       "display": "Through May 5, 2040 · 30 games",
       "hint": "With 4 clubs the league has no top or bottom fifth"
     },
-    "lines": {
+    "clubs": 4,
+    "groups": {
       "strength": {
-        "display": "Top fifth of the league",
-        "hint": "A place in the top fifth of the clubs that have the figure"
+        "title": {
+          "display": "Strengths"
+        },
+        "line": {
+          "display": "Top fifth of the league",
+          "hint": "A place in the top fifth of the clubs that have the figure"
+        }
       },
       "weakness": {
-        "display": "Bottom fifth",
-        "hint": "A place in the bottom fifth of the clubs that have the figure"
+        "title": {
+          "display": "Weaknesses"
+        },
+        "line": {
+          "display": "Bottom fifth of the league",
+          "hint": "A place in the bottom fifth of the clubs that have the figure"
+        }
       },
       "rest": {
-        "display": "The rest",
-        "hint": "Neither a strength nor a weakness"
+        "title": {
+          "display": "The rest",
+          "hint": "Neither a strength nor a weakness"
+        },
+        "line": null
       },
       "tooEarly": {
-        "display": "Fewer than 20 games",
-        "hint": "Too early to call a strength or a weakness"
+        "title": {
+          "display": "Too early to call",
+          "hint": "Too early to call a strength or a weakness"
+        },
+        "line": {
+          "display": "Fewer than 20 games",
+          "hint": "Too early to call a strength or a weakness"
+        }
       },
       "notPlaced": {
-        "display": "Not placed",
-        "hint": "The export lacks the figure for the club"
+        "title": {
+          "display": "Not placed",
+          "hint": "The export lacks the figure for the club, which says nothing about it"
+        },
+        "line": null
       }
+    },
+    "legend": {
+      "dot": {
+        "display": "Filled dot: this season"
+      },
+      "ring": {
+        "display": "Ring: the last 15 games"
+      },
+      "shading": null
     },
     "dimensions": [
       {
@@ -1436,6 +1468,11 @@
           "tiedWith": 0
         },
         "placeText": "3rd of 4",
+        "strip": {
+          "of": 4,
+          "strengthThrough": null,
+          "weaknessFrom": null
+        },
         "recent": {
           "place": {
             "rank": 2,
@@ -1510,6 +1547,11 @@
           "tiedWith": 1
         },
         "placeText": "T-1st of 4",
+        "strip": {
+          "of": 4,
+          "strengthThrough": null,
+          "weaknessFrom": null
+        },
         "recent": {
           "place": {
             "rank": 2,
@@ -1588,6 +1630,11 @@
           "tiedWith": 0
         },
         "placeText": "1st of 4",
+        "strip": {
+          "of": 4,
+          "strengthThrough": null,
+          "weaknessFrom": null
+        },
         "recent": {
           "place": {
             "rank": 1,
@@ -1662,6 +1709,11 @@
           "tiedWith": 0
         },
         "placeText": "4th of 4",
+        "strip": {
+          "of": 4,
+          "strengthThrough": null,
+          "weaknessFrom": null
+        },
         "recent": {
           "place": {
             "rank": 4,
@@ -1736,6 +1788,11 @@
           "tiedWith": 0
         },
         "placeText": "1st of 4",
+        "strip": {
+          "of": 4,
+          "strengthThrough": null,
+          "weaknessFrom": null
+        },
         "recent": {
           "place": {
             "rank": 2,
@@ -1810,6 +1867,11 @@
           "tiedWith": 0
         },
         "placeText": "2nd of 4",
+        "strip": {
+          "of": 4,
+          "strengthThrough": null,
+          "weaknessFrom": null
+        },
         "recent": {
           "place": {
             "rank": 2,
@@ -1884,6 +1946,11 @@
           "tiedWith": 0
         },
         "placeText": "2nd of 4",
+        "strip": {
+          "of": 4,
+          "strengthThrough": null,
+          "weaknessFrom": null
+        },
         "recent": {
           "place": {
             "rank": 3,
@@ -1958,6 +2025,11 @@
           "tiedWith": 0
         },
         "placeText": "3rd of 4",
+        "strip": {
+          "of": 4,
+          "strengthThrough": null,
+          "weaknessFrom": null
+        },
         "recent": {
           "place": {
             "rank": 3,

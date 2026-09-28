@@ -21,5 +21,6 @@
   "logoToken": "none",
   "reportStamp": "rstamp",
   "savePlayedElsewhere": null,
+  "saveId": null,
   "ratingScaleMax": 80
 }
