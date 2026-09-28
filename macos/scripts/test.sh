@@ -94,8 +94,23 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
       cp -R "$ROOT/docs/theme-packs/$pack" "$root/data/theme-packs/"
     done
   }
+  # A pretend home for the server to find OOTP saves in (PENNANT_DEV_HOME): the synthetic league's save, last played
+  # the given hours ago with its export, where OOTP 27 (direct download) keeps saves
+  prepare_home() {
+    local test="$1" name="$2" hours="$3"
+    local lg="$UI_SCRATCH/$test/home/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games/$name.lg"
+    mkdir -p "$lg/import_export/csv" "$lg/settings"
+    cp -p "$SCRATCH/league/export/"*.csv "$lg/import_export/csv/"
+    printf 'Show real player ratings,1\n' > "$lg/settings/db_dump_standard_csv.cfg"
+    local at
+    at="$(node -e 'const d = new Date(Date.now() - Number(process.argv[1]) * 3600e3); const p = (n) => String(n).padStart(2, "0"); process.stdout.write(`${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}${p(d.getHours())}${p(d.getMinutes())}.${p(d.getSeconds())}`)' "$hours")"
+    for f in players.dat flag_save_completed.dat; do echo x > "$lg/$f"; touch -t "$at" "$lg/$f"; done
+  }
   prepare_ui_test testStartsTheServerAndQuitsCleanly configured
   prepare_ui_test testSetupFlowOnAScratchFolder new
+  # The zero-question first run (N6, Stage B2): one save that clearly stands out, nothing chosen yet
+  prepare_ui_test testZeroQuestionFirstRun new '{"theme":"light"}'
+  prepare_home testZeroQuestionFirstRun "Synthetic League" 2
   prepare_ui_test testDepartmentsInspectorAndSettings configured
   # The glass shell (N5): the synthetic club (team 1, the human's) in its own colours and in the example pack
   prepare_ui_test testGlassShellClubColorsLight configured '{"theme":"light"}'

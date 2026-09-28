@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 
 /// Smoke flows on the real app, its bundled server and scratch data folders holding the synthetic league
@@ -68,6 +69,8 @@ final class PennantUITests: XCTestCase {
         }
         XCTAssertFalse(problem.exists, "the server did not start; see \(scratch.path)/logs/server.log")
         XCTAssertTrue(sidebar.exists)
+        // The shell is drawn while the server starts (N6, Stage B2): the view says "Starting…" until it is ready
+        XCTAssertTrue(element(app, "server.waiting").waitForNonExistence(timeout: 60), "the server did not become ready; see \(scratch.path)/logs/server.log")
     }
 
     @MainActor
@@ -81,27 +84,64 @@ final class PennantUITests: XCTestCase {
     /// The accessibility audit, with every issue it finds named: its kind, what it says and the element, kept as a
     /// text attachment and in the failure, so a finding says where it is.
     ///
-    /// One kind is set aside, and listed in the attachment: "no description" on a nameless, id-less group that spans
-    /// a window's full height (the window's and the split view's own column containers, which SwiftUI's hosting views
-    /// draw and no SwiftUI modifier reaches; labelling a SwiftUI container above them made the sidebar's rows stop
-    /// scrolling into view for a click), and on the Touch Bar the system draws. Anything else fails the test.
+    /// Set aside, each listed in the attachment with its reason (anything else fails the test):
+    /// - "no description" on a nameless, id-less group that spans a window's full height (the window's and the split
+    ///   view's own column containers, which SwiftUI's hosting views draw and no SwiftUI modifier reaches), and on the
+    ///   Touch Bar the system draws;
+    /// - "parent/child mismatch" inside the window's own close, minimise or zoom button (AppKit's zoom-menu view in the
+    ///   title bar; the app draws nothing there);
+    /// - a contrast finding on an element outside its window's frame or cut off by the sidebar's edge (GitHub's runner has
+    ///   a 1024 × 768 screen, so the window is short and rows below it are measured against pixels that are not theirs);
+    /// - a contrast finding whose own pixels, in a screenshot of the window taken at the audit, read at 4.5:1 or better
+    ///   (`WindowPixels.contrast`: the text's darkest (or lightest) tenth against the element's middle). On the runner
+    ///   the sidebar's row labels, the system's vibrant text on its glass, were reported in a different handful on each
+    ///   run while their pixels read at 9:1 to 19:1; the set-aside line carries the measured ratio, so it is checked,
+    ///   not muted. Text whose pixels read below 4.5:1 still fails.
     @MainActor
     private func audit(_ app: XCUIApplication, named name: String = "accessibility-audit") throws {
         var issues: [String] = []
         var setAside: [String] = []
         let windows = app.windows.allElementsBoundByIndex.map(\.frame)
+        let window = app.windows.firstMatch
+        let pixels = WindowPixels(window.screenshot().image, frame: window.frame)
+        let sidebar = app.outlines["sidebar"].firstMatch
+        let sidebarFrame = sidebar.exists ? sidebar.frame : nil
+        let controls = [XCUIIdentifierCloseWindow, XCUIIdentifierMinimizeWindow, XCUIIdentifierZoomWindow].compactMap { id -> CGRect? in
+            let button = window.buttons[id].firstMatch
+            return button.exists ? button.frame.insetBy(dx: -2, dy: -2) : nil
+        }
         try app.performAccessibilityAudit { issue in
             let element = issue.element
             let line = "\(issue.auditType): \(issue.compactDescription): "
                 + (element.map { "type \($0.elementType.rawValue) id='\($0.identifier)' label='\($0.label)' frame=\($0.frame)" } ?? "no element")
-            let structural = issue.auditType == .sufficientElementDescription && element.map { e in
-                e.elementType == .touchBar || (e.elementType == .group && e.identifier.isEmpty && e.label.isEmpty
-                    && windows.contains { $0.minY == e.frame.minY && $0.height == e.frame.height })
-            } == true
-            if structural { setAside.append(line) } else { issues.append(line) }
+            guard let element else {
+                issues.append(line)
+                return true
+            }
+            let frame = element.frame
+            if issue.auditType == .sufficientElementDescription,
+               element.elementType == .touchBar || (element.elementType == .group && element.identifier.isEmpty && element.label.isEmpty
+                   && windows.contains { $0.minY == frame.minY && $0.height == frame.height }) {
+                setAside.append(line + " (the system's own container)")
+            } else if issue.auditType == .parentChild, controls.contains(where: { $0.contains(frame) }) {
+                setAside.append(line + " (inside the window's own title-bar button)")
+            } else if issue.auditType == .contrast {
+                let inWindow = windows.contains { $0.contains(frame) }
+                let inSidebar = !element.identifier.hasPrefix("sidebar.") || (sidebarFrame.map { $0.contains(frame) } ?? true)
+                if !inWindow || !inSidebar {
+                    setAside.append(line + " (outside its window or cut off by the sidebar's edge)")
+                } else if let ratio = pixels?.contrast(in: frame), ratio >= 4.5 {
+                    setAside.append(line + String(format: " (its own pixels read at %.1f:1)", ratio))
+                } else {
+                    let measured = pixels?.contrast(in: frame).map { String(format: " (its own pixels read at %.1f:1)", $0) } ?? ""
+                    issues.append(line + measured)
+                }
+            } else {
+                issues.append(line)
+            }
             return true
         }
-        let attachment = XCTAttachment(string: (["Findings:"] + issues + ["", "Set aside (the system's own containers):"] + setAside).joined(separator: "\n"))
+        let attachment = XCTAttachment(string: (["Findings:"] + issues + ["", "Set aside, each with its reason:"] + setAside).joined(separator: "\n"))
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
@@ -132,8 +172,9 @@ final class PennantUITests: XCTestCase {
         quitCleanly(app)
     }
 
-    /// First run: the server has no save, so Setup opens by itself. A folder is picked by path, the import runs, and
-    /// a club is saved; Setup closes and the main window shows the club.
+    /// First run with no pretend home (so nothing is chosen by itself): the server has no save, so Setup opens. A
+    /// folder is picked by path and the import runs; the save's export names the one club its human manages, so the
+    /// club is taken from it (N6, Stage B2): Setup closes on its own and the main window shows the club.
     @MainActor
     func testSetupFlowOnAScratchFolder() throws {
         let app = launch()
@@ -146,15 +187,38 @@ final class PennantUITests: XCTestCase {
         path.typeText(save.path(percentEncoded: false))
         element(app, "setup.useFolder").click()
 
-        let clubs = element(app, "setup.clubs")
-        XCTAssertTrue(clubs.waitForExistence(timeout: 60), "the import did not reach the club step")
-        keep(app.windows.firstMatch.screenshot(), named: "setup-pick-club")
-        element(app, "setup.saveClub").click()
-
-        XCTAssertTrue(setup.waitForNonExistence(timeout: 20), "Setup did not close after the club was saved")
+        XCTAssertTrue(setup.waitForNonExistence(timeout: 60), "Setup did not close once the import landed with the club taken from the save")
+        XCTAssertFalse(element(app, "setup.clubs").exists, "the club was asked though the save names it")
         waitForShell(app)
         XCTAssertTrue(element(app, "club.card").waitForExistence(timeout: 10))
         keep(app.windows.firstMatch.screenshot(), named: "main-window-after-setup")
+        quitCleanly(app)
+    }
+
+    /// The zero-question first run (N6, Stage B2, D-063): a pretend home holds one OOTP save, played two hours ago with
+    /// an export, and nothing is chosen yet. The app asks nothing: the server chooses and imports that save, takes the
+    /// club from it, and the Morning Report appears. No list of saves and no club question are ever shown.
+    @MainActor
+    func testZeroQuestionFirstRun() throws {
+        let home = scratch.appending(path: "home", directoryHint: .isDirectory)
+        let app = launch(environment: ["PENNANT_DEV_HOME": home.path(percentEncoded: false)])
+        let desk = element(app, "morningReport.desk")
+        var sawChooser = false
+        var sawClubs = false
+        let deadline = Date.now.addingTimeInterval(90)
+        while !desk.exists && Date.now < deadline {
+            if element(app, "setup.save.Synthetic League").exists { sawChooser = true }
+            if element(app, "setup.clubs").exists { sawClubs = true }
+            _ = desk.waitForExistence(timeout: 0.5)
+        }
+        XCTAssertTrue(desk.exists, "the Morning Report did not appear; see \(scratch.path)/logs/server.log")
+        XCTAssertFalse(sawChooser, "the saves were listed though one clearly stands out")
+        XCTAssertFalse(sawClubs, "the club was asked though the save names it")
+        XCTAssertTrue(element(app, "setup").waitForNonExistence(timeout: 20), "Setup stayed open")
+        XCTAssertTrue(element(app, "club.card").waitForExistence(timeout: 10))
+        let config = (try? String(contentsOf: dataFolder.appending(path: "config.json"), encoding: .utf8)) ?? ""
+        XCTAssertTrue(config.contains("Synthetic League.lg"), "the server did not choose the save that stands out: \(config)")
+        keep(app.windows.firstMatch.screenshot(), named: "setup-zero-question-morning-report")
         quitCleanly(app)
     }
 
@@ -323,7 +387,9 @@ final class PennantUITests: XCTestCase {
         let deadline = Date.now.addingTimeInterval(20)
         var keptFiles: [String] = []
         while keptFiles.isEmpty && Date.now < deadline {
-            keptFiles = ((try? FileManager.default.contentsOfDirectory(atPath: kept.path(percentEncoded: false))) ?? []).filter { $0.hasSuffix(".json") }
+            // The kept reports, not the index that names the last one (`index.json`) or a write under way
+            keptFiles = ((try? FileManager.default.contentsOfDirectory(atPath: kept.path(percentEncoded: false))) ?? [])
+                .filter { $0.hasSuffix(".json") && $0 != "index.json" && !$0.hasPrefix(".") }
             if keptFiles.isEmpty { RunLoop.current.run(until: Date.now.addingTimeInterval(0.25)) }
         }
         XCTAssertEqual(keptFiles.count, 1, "the Morning Report was not kept in \(kept.path)")
@@ -385,6 +451,9 @@ final class PennantUITests: XCTestCase {
         app.typeKey("k", modifierFlags: .command)
         let query = element(app, "palette.query")
         XCTAssertTrue(query.waitForExistence(timeout: 5), "⌘K did not open the palette")
+        // The query takes the keyboard as the palette opens; a click makes sure of it on a runner whose window is slow
+        // to become key
+        query.click()
         query.typeText("major")
         XCTAssertTrue(element(app, "palette.result.view.majorLeague.report").waitForExistence(timeout: 5), "the palette did not list Major League Ops' report")
         sidebarAtTop(app)
@@ -451,5 +520,61 @@ final class PennantUITests: XCTestCase {
         app = launch(arguments: ["-PennantDebugAppearance", "increasedContrastDark"])
         try shellFlow(app, look: "aurora-nights-dark-increased-contrast")
         quitCleanly(app)
+    }
+}
+
+/// A window's screenshot as pixels, to read an element's own contrast where the audit reports one (see `audit`).
+struct WindowPixels {
+    private let width: Int
+    private let height: Int
+    private let data: [UInt8]
+    private let frame: CGRect
+    private let scale: CGFloat
+
+    init?(_ image: NSImage, frame: CGRect) {
+        guard frame.width > 0, let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return nil }
+        let w = cg.width, h = cg.height
+        var bytes = [UInt8](repeating: 0, count: w * h * 4)
+        let drawn = bytes.withUnsafeMutableBytes { buffer -> Bool in
+            guard let context = CGContext(data: buffer.baseAddress, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                                          space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+            else { return false }
+            context.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+            return true
+        }
+        guard drawn else { return nil }
+        width = w
+        height = h
+        data = bytes
+        self.frame = frame
+        scale = CGFloat(width) / frame.width
+    }
+
+    private static func channel(_ value: UInt8) -> Double {
+        let v = Double(value) / 255
+        return v <= 0.03928 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4)
+    }
+
+    /// The contrast of the element's text against its background, from its own pixels: its middle luminance (the
+    /// background, which most of a text's frame is) against its tenth furthest from it (dark text on a light page, or
+    /// light on dark). Nil when the frame is not in the picture.
+    func contrast(in element: CGRect) -> Double? {
+        let local = element.offsetBy(dx: -frame.minX, dy: -frame.minY)
+        let x0 = max(0, Int((local.minX * scale).rounded(.down))), x1 = min(width, Int((local.maxX * scale).rounded(.up)))
+        let y0 = max(0, Int((local.minY * scale).rounded(.down))), y1 = min(height, Int((local.maxY * scale).rounded(.up)))
+        guard x1 > x0, y1 > y0 else { return nil }
+        var values: [Double] = []
+        values.reserveCapacity((x1 - x0) * (y1 - y0))
+        for y in y0..<y1 {
+            for x in x0..<x1 {
+                let i = (y * width + x) * 4
+                values.append(0.2126 * Self.channel(data[i]) + 0.7152 * Self.channel(data[i + 1]) + 0.0722 * Self.channel(data[i + 2]))
+            }
+        }
+        values.sort()
+        let middle = values[values.count / 2]
+        let dark = values[values.count / 10], light = values[values.count - 1 - values.count / 10]
+        let text = abs(middle - dark) >= abs(light - middle) ? dark : light
+        return (max(middle, text) + 0.05) / (min(middle, text) + 0.05)
     }
 }
