@@ -69,6 +69,12 @@ export interface RatingHistoryCarryOver {
 
 /** This save's rating history: what isn't used or started fresh, the questions, the other histories, and carry-overs. */
 export interface RatingHistoryView {
+  /**
+   * This save's rating history in a sentence, always served (Settings ▸ History's line): the note when some isn't used
+   * or it started fresh, else how many imports it holds and the latest ("This save has rating history from 12 imports,
+   * the latest on May 6, 2040."), or that it has none yet.
+   */
+  status: Claim;
   /** Some of this save's rating history isn't used, or it started fresh, in a sentence with its basis; null when all is its own. */
   note: Claim | null;
   /** Questions to ask the GM now; empty when there is nothing to ask. */
@@ -248,9 +254,37 @@ export function stackingWarning(carries: HistoryCarryOver[]): Claim | null {
   });
 }
 
+/** This save's history in a sentence: the note when there is one, else how many imports it holds, or none yet. */
+export function ratingHistoryStatus(note: HistoryNote, dates: readonly string[]) {
+  const noted = ratingHistoryNoteClaim(note);
+  if (noted) return noted;
+  const parsed = dates.map((d) => parseGameDate(d)).filter((d): d is NonNullable<typeof d> => d !== null);
+  const latest = parsed.length ? gameDateWords(parsed.reduce((a, b) => (b > a ? b : a))) : null;
+  const text = dates.length === 0
+    ? 'This save has no rating history yet.'
+    : `This save has rating history from ${dates.length} import${dates.length === 1 ? '' : 's'}${latest ? `, the latest on ${latest}` : ''}.`;
+  return claim({
+    text,
+    tone: 'neutral',
+    hint: 'Each import keeps the ratings your scouts saw, to show how players develop',
+    basis: basis({
+      because: [
+        { label: 'Imports kept', value: dates.length === 0 ? 'None yet: the next import keeps the first' : String(dates.length) },
+        ...note.because.map((line) => ({ label: 'Rating history', value: line })),
+      ],
+      source: SOURCE,
+      unknown: [],
+      wouldChange: [],
+      lean: null,
+      certainty: 'fact',
+    }),
+  });
+}
+
 /** The view. */
-export function ratingHistoryView(note: HistoryNote, offers: HistoryOffer[], candidates: HistoryOffer[], carries: HistoryCarryOver[]): RatingHistoryView {
+export function ratingHistoryView(note: HistoryNote, offers: HistoryOffer[], candidates: HistoryOffer[], carries: HistoryCarryOver[], dates: readonly string[] = []): RatingHistoryView {
   return {
+    status: ratingHistoryStatus(note, dates),
     note: ratingHistoryNoteClaim(note),
     offers: offers.map(offerWords),
     candidates: candidates.map(candidateWords),

@@ -1,4 +1,29 @@
 {
+  "status": {
+    "text": "This save has no rating history yet.",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Imports kept",
+          "value": "None yet: the next import keeps the first"
+        }
+      ],
+      "source": {
+        "department": "frontOffice",
+        "specialist": "Rating history",
+        "asOf": null,
+        "gameDate": null
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": [],
+    "hint": "Each import keeps the ratings your scouts saw, to show how players develop"
+  },
   "note": null,
   "offers": [],
   "candidates": [],

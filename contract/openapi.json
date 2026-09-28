@@ -4305,6 +4305,10 @@
       "RatingHistoryView": {
         "type": "object",
         "properties": {
+          "status": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "This save's rating history in a sentence, always served (Settings ▸ History's line): the note when some isn't used or it started fresh, else how many imports it holds and the latest (\"This save has rating history from 12 imports, the latest on May 6, 2040.\"), or that it has none yet."
+          },
           "note": {
             "$ref": "#/components/schemas/Claim",
             "description": "Some of this save's rating history isn't used, or it started fresh, in a sentence with its basis; null when all is its own."
@@ -4336,6 +4340,7 @@
           }
         },
         "required": [
+          "status",
           "offers",
           "candidates",
           "carriedOver"

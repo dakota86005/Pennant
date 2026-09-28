@@ -1,4 +1,29 @@
 {
+  "status": {
+    "text": "This save has rating history from 1 import, the latest on May 6, 2040.",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Imports kept",
+          "value": "1"
+        }
+      ],
+      "source": {
+        "department": "frontOffice",
+        "specialist": "Rating history",
+        "asOf": null,
+        "gameDate": null
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": [],
+    "hint": "Each import keeps the ratings your scouts saw, to show how players develop"
+  },
   "note": null,
   "offers": [
     {

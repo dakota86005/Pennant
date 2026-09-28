@@ -22,7 +22,7 @@ import type { ClaimTrail, DepartmentReport, FrontOfficeSummary } from './present
 import type { ThemeChoice, ThemeChoices } from './contract/themePack.js';
 import { ThemeChoiceRefusal, activePack, chooseTheme, chosenPacks, installedPacks, themeChoices } from './themePackStore.js';
 import { currentOrganization } from './viewingOrganization.js';
-import { answerHistoryOffer, carryOvers, currentHistoryKey, HistoryChoiceRefusal, historyCandidates, historyNote, historyOffers } from './historyIdentity.js';
+import { answerHistoryOffer, carryOvers, currentHistoryKey, HistoryChoiceRefusal, historyCandidates, historyDates, historyNote, historyOffers } from './historyIdentity.js';
 import { ratingHistoryView, type RatingHistoryChoice, type RatingHistoryView } from './presentation/ratingHistoryWords.js';
 
 export const v2Routes = Router();
@@ -93,7 +93,7 @@ v2Routes.post('/theme-packs/:org', (req: Request, res: Response<ThemeChoices | A
 /** This save's rating history (D-064): what isn't used or started fresh, and any earlier save it could be. */
 function ratingHistoryNow(): RatingHistoryView {
   const key = currentHistoryKey();
-  return ratingHistoryView(historyNote(key), historyOffers(key), historyCandidates(key), carryOvers(key));
+  return ratingHistoryView(historyNote(key), historyOffers(key), historyCandidates(key), carryOvers(key), historyDates(key));
 }
 
 v2Routes.get('/rating-history', (_req, res: Response<RatingHistoryView>) => {

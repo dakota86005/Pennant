@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { HistoryCarryOver, HistoryOffer } from '../server/historyIdentity.js';
-import { carryOverWords, offerWords } from '../server/presentation/ratingHistoryWords.js';
+import { carryOverWords, offerWords, ratingHistoryStatus } from '../server/presentation/ratingHistoryWords.js';
 import { BANNED_JARGON, bannedIn } from './bannedJargon';
 
 /**
@@ -42,5 +42,22 @@ describe('what "Undo carry-over" asks first', () => {
   it('counts one rating as one, and names no save it doesn\'t know', () => {
     expect(carryOverWords(carry({ fromName: null, rows: 1 })).undoQuestion)
       .toBe('Undo the carry-over from another save? The 1 player rating it copied is removed from this save\'s history; that save keeps its own.');
+  });
+});
+
+describe('this save\'s rating history in a sentence, always served (Settings ▸ History)', () => {
+  it('counts the imports it holds and names the latest, ordering unpadded dates as dates', () => {
+    const status = ratingHistoryStatus({ note: null, because: [] }, ['2040-5-9', '2040-5-10', '2040-4-1']);
+    expect(status.text).toBe('This save has rating history from 3 imports, the latest on May 10, 2040.');
+    expect(status.basis.because).toEqual([{ label: 'Imports kept', value: '3' }]);
+  });
+
+  it('says there is none yet, never a zero dressed as history', () => {
+    expect(ratingHistoryStatus({ note: null, because: [] }, []).text).toBe('This save has no rating history yet.');
+  });
+
+  it('is the note when some of it isn\'t used or it started fresh', () => {
+    const note = { note: 'This save\'s rating history starts fresh: its players don\'t match the history kept for its folder.', because: ['Why.'] };
+    expect(ratingHistoryStatus(note, ['2040-5-9'])).toMatchObject({ text: note.note, tone: 'caution' });
   });
 });
