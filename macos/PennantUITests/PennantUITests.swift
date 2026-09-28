@@ -114,10 +114,11 @@ final class PennantUITests: XCTestCase {
         let touchBarFrame = touchBar.exists ? touchBar.frame.insetBy(dx: -2, dy: -2) : nil
         let sidebar = app.outlines["sidebar"].firstMatch
         let sidebarFrame = sidebar.exists ? sidebar.frame : nil
-        // Every window's own close, minimise and zoom buttons
+        // Every window's own close, minimise and zoom buttons: found by their identifiers, and the strip of the title bar
+        // they sit in (on GitHub's runner the zoom button's menu view was reported where no button was found)
         let controls = [XCUIIdentifierCloseWindow, XCUIIdentifierMinimizeWindow, XCUIIdentifierZoomWindow].flatMap { id in
             app.buttons.matching(identifier: id).allElementsBoundByIndex.map { $0.frame.insetBy(dx: -2, dy: -2) }
-        }
+        } + windows.map { CGRect(x: $0.frame.minX, y: $0.frame.minY, width: 90, height: 52) }
         /// The sidebar column's container: a window's full height, from its left edge to the sidebar's right edge.
         func isSidebarColumn(_ frame: CGRect) -> Bool {
             guard let sidebarFrame else { return false }
@@ -144,7 +145,8 @@ final class PennantUITests: XCTestCase {
             } else if issue.auditType == .sufficientElementDescription, element.elementType == .group,
                       element.identifier.isEmpty, element.label.isEmpty, isSidebarColumn(frame) {
                 setAside.append(line + " (the sidebar column's own container)")
-            } else if issue.auditType == .parentChild, element.elementType == .group, controls.contains(where: { $0.contains(frame) }) {
+            } else if issue.auditType == .parentChild, element.elementType == .group, frame.width <= 16, frame.height <= 16,
+                      controls.contains(where: { $0.contains(frame) }) {
                 setAside.append(line + " (inside the window's own title-bar button)")
             } else if issue.auditType == .contrast, element.identifier.hasPrefix("sidebar.") {
                 let holder = windows.first { $0.frame.contains(frame) }

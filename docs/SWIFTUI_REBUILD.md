@@ -610,7 +610,11 @@ only words (additive, through the contract).
   8.5:1 and 8.9:1 on the window's backgrounds), for the runner's 1× screen. Three identifiers that replaced their
   children's (the basis popover's, the inspector's, the held view's under the route's) are containers now, so the
   XCUITests reach Pin to Inspector, the pinned evidence and the held view; the design test scrolls the report back to its
-  top before auditing the inspector (the click scrolled text under the toolbar's fading edge). The test's own flakiness: the kept-report count no longer counts `index.json`; the
+  top before auditing the inspector (the click scrolled text under the toolbar's fading edge). Locally (a Retina
+  screen) all thirteen XCUITests pass with no finding. On GitHub's runner (a 1024 × 768 screen at 1×, run 36495046919)
+  eight still fail on contrast the audit reports for regular text whose own pixels read 4.5:1 to 7.2:1 (the
+  "Last 15" lines, some place-strip labels in primary black, the masthead's bold kicker): no longer set aside, and
+  left open for the owner (a scaled display on the runner, a runner-only set-aside, or heavier type). The test's own flakiness: the kept-report count no longer counts `index.json`; the
   palette's query is clicked before typing; `waitForShell` waits for the server too.
 - **Verification.** `SetupModelTests` (the zero-question run, the club asked, nothing standing out, no setup with a
   save chosen or without a pretend home, the pick marked, the switch), `SetupB2IntegrationTests` on the real server
