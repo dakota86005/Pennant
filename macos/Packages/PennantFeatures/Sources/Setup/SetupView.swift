@@ -43,12 +43,14 @@ public struct SetupView: View {
         .onChange(of: status, initial: true) { _, next in
             Task { await model.observe(next) }
         }
-        .onChange(of: model.step, initial: true) { _, step in
+        .onChange(of: model.step, initial: true) { old, step in
             #if DEBUG
             // A development build given a capture folder draws this window at each step (the window only, by the app)
             AfterNextFrame.run { DevWindowCapture.capture("setup-\(step)", title: "Set Up Pennant") }
             #endif
-            if step == .done { dismissWindow(id: SceneID.setup) }
+            // Closes when the club is saved or taken from the save; the model outlives the window, so a window opened
+            // on a finished model is not closed at once (the scene starts it again at the saves)
+            if step == .done, old != .done { dismissWindow(id: SceneID.setup) }
         }
         // A container, so the window's id does not replace its controls' own (the Save Club button's, in the inset)
         .accessibilityElement(children: .contain)
@@ -76,7 +78,7 @@ private struct StepHeader: View {
         } icon: {
             Image(systemName: done ? "checkmark.circle.fill" : (current ? symbol + ".fill" : symbol))
         }
-        .foregroundStyle(current ? .primary : .secondary)
+        .foregroundStyle(current ? Color.primary : Color.readableSecondary)
         .accessibilityAddTraits(current ? .isSelected : [])
     }
 }
@@ -130,7 +132,7 @@ private struct FindSaveStep: View {
                     ProgressView()
                 } else if model.saves.isEmpty {
                     Text("None found")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.readableSecondary)
                 } else {
                     SaveList(saves: model.saves, pick: { model.isPick($0) ? model.pickClaim : nil }, disabled: model.busy || importing) { save in
                         Task { await model.choose(save, status: status) }
@@ -162,21 +164,23 @@ private struct FindSaveStep: View {
                 Text("Or choose a folder")
             }
             if !model.locations.isEmpty {
-                Section("Where Pennant looked") {
-                    ForEach(model.locations, id: \.path) { location in
-                        LabeledContent {
-                            Text(verbatim: location.path)
-                                .textSelection(.enabled)
-                                .foregroundStyle(.secondary)
-                        } label: {
+                // Where Pennant looked, by the served names of the places OOTP keeps saves; each folder is in its hover.
+                // Folded away until the GM opens it: the saves are what the step is about
+                Section {
+                    DisclosureGroup {
+                        ForEach(model.locations, id: \.path) { location in
                             Label {
                                 Text(verbatim: location.label)
                             } icon: {
                                 Image(systemName: location.exists ? "checkmark.circle" : "xmark.circle")
                                     .accessibilityLabel(location.exists ? Text("Found") : Text("Not found"))
                             }
+                            .help(Text(verbatim: location.path))
                         }
+                    } label: {
+                        Text("Where Pennant looked")
                     }
+                    .accessibilityIdentifier("setup.searched")
                 }
             }
         }
@@ -201,8 +205,8 @@ private struct FindSaveStep: View {
 }
 
 /// Saves as served, most recently played first: each one's name, when it was last played (or why it can't be used),
-/// where it is, and how many export files it has. The save the server picked as clearly standing out carries its
-/// served line, and its basis on hover. Choosing one is one click; a save with no export files cannot be chosen.
+/// and the served name of where it is. The save the server picked as clearly standing out carries its served line, and
+/// its basis on hover. Choosing one is one click; a save with no export files cannot be chosen.
 private struct SaveList: View {
     let saves: [Components.Schemas.SaveInfo]
     let pick: (Components.Schemas.SaveInfo) -> Components.Schemas.Claim?
@@ -245,19 +249,12 @@ private struct SaveList: View {
                             Text(verbatim: note).font(.callout).fixedSize(horizontal: false, vertical: true)
                         }
                         if let location = save.location {
-                            Text(verbatim: location).font(.caption).foregroundStyle(.secondary)
+                            Text(verbatim: location).font(.caption).foregroundStyle(.readableSecondary)
                         }
                     }
                     Spacer(minLength: 8)
-                    HStack(spacing: 4) {
-                        Text("Export files")
-                        Text(save.csvCount, format: .number).monospacedDigit()
-                    }
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .accessibilityElement(children: .combine)
                     Image(systemName: "chevron.forward")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.readableSecondary)
                         .opacity(choosable ? 1 : 0)
                         .accessibilityHidden(true)
                 }
@@ -285,11 +282,10 @@ private struct ImportStep: View {
                         }
                     }
                 }
-                if let chosen = model.chosen {
+                // The save, unless the server's line above already names it; its export folder is in the hover
+                if let chosen = model.chosen, model.automatic?.outcome.value1 != .started {
                     LabeledContent("Save") { Text(verbatim: chosen.name) }
-                    LabeledContent("Export folder") {
-                        Text(verbatim: chosen.csvDir).textSelection(.enabled).lineLimit(2).truncationMode(.middle)
-                    }
+                        .help(Text(verbatim: chosen.csvDir))
                 }
                 if let club = model.club {
                     Label { Text(verbatim: club.text) } icon: { Image(systemName: club.decided ? "person.crop.circle.badge.checkmark" : "person.crop.circle.badge.questionmark") }
@@ -354,7 +350,7 @@ private struct PickClubStep: View {
                             HStack {
                                 Text(verbatim: club.label)
                                 if club.isHuman {
-                                    Text("Managed by you in this save").foregroundStyle(.secondary)
+                                    Text("Managed by you in this save").foregroundStyle(.readableSecondary)
                                 }
                             }
                             .tag(Optional(club.teamId))
@@ -372,6 +368,12 @@ private struct PickClubStep: View {
         .formStyle(.grouped)
         .safeAreaInset(edge: .bottom) {
             HStack {
+                // Another save instead: the club is owed only for the save chosen
+                Button("Choose Another Save") {
+                    model.restart()
+                    Task { await model.load() }
+                }
+                .disabled(model.busy)
                 if model.busy { ProgressView().controlSize(.small) }
                 Spacer()
                 Button("Save Club") { Task { await model.saveClub() } }

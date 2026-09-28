@@ -85,6 +85,17 @@ public final class SetupModel {
     public private(set) var clubProblem: RequestProblem?
     /// A request is under way.
     public private(set) var busy = false
+    /// The club the server could not settle for the save chosen here (its human manages several clubs or none, or the
+    /// export doesn't say), from the moment the save is chosen until the GM saves a club (or a later choice settles
+    /// it). The main window holds its report meanwhile, whether or not this window is open (N6 Stage B2 review, M4).
+    public private(set) var clubQuestion: Components.Schemas.SetupClub?
+    /// The save and the import the club question belongs to, to come back to it (`resumeClubQuestion`).
+    private var clubQuestionSave: Components.Schemas.SaveInfo?
+    private var clubQuestionStamp: String?
+
+    /// Whether the main window holds its report: the served club is not decided for the save chosen here, or the club
+    /// is being asked. Never a judgment of Swift's: only what the server answered about the club.
+    public var holdsReport: Bool { clubQuestion != nil || step == .pickClub }
 
     private var startStamp: String?
     private var sawImportRunning = false
@@ -171,6 +182,7 @@ public final class SetupModel {
         guard answer.outcome.value1 == .started, let save = answer.save else { return }
         club = answer.club
         startStamp = status?.lastImport?.finishedAt
+        noteClub(answer.club, for: save)
         chosen = save
         progress = nil
         importProblem = nil
@@ -208,10 +220,10 @@ public final class SetupModel {
     }
 
     /// Checks the folder the GM typed or picked (`POST /api/resolve-folder`): an export or a save is chosen at once; a
-    /// folder of saves lists them; anything else shows the server's sentence.
+    /// folder of saves lists them; anything else shows the server's sentence. Nothing while a request is under way.
     public func useFolder(status: Components.Schemas.ServerStatus?) async {
         let path = folderPath.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !path.isEmpty, status?.importing != true else { return }
+        guard !busy, !path.isEmpty, status?.importing != true else { return }
         guard let client = client() else {
             folderProblem = .notRunning
             return
@@ -299,6 +311,7 @@ public final class SetupModel {
         }
         chosen = save
         club = accepted.club
+        noteClub(accepted.club, for: save)
         automatic = nil
         progress = nil
         importProblem = nil
@@ -398,8 +411,8 @@ public final class SetupModel {
 
     // MARK: Pick the club
 
-    /// Reads the clubs and preselects the served current club (else the one the save's human manages). A failed read is
-    /// a problem with Try Again, never an empty list.
+    /// Reads the clubs and preselects the served current club when the save's human manages it (else the first he
+    /// manages). A failed read is a problem with Try Again, never an empty list.
     public func loadClubs() async {
         guard let client = client() else {
             clubProblem = .notRunning
@@ -418,7 +431,9 @@ public final class SetupModel {
         }
         let served = (try? await settingsAnswer.ok.body.json)?.organization?.id
         clubs = orgs.filter(\.isHuman) + orgs.filter { !$0.isHuman }
-        selectedClub = clubs.first { $0.teamId == served }?.teamId ?? clubs.first?.teamId
+        // The served club is preselected only when it is one this save's human manages: a club chosen before may be
+        // another league's id (N6 Stage B2 review, H1)
+        selectedClub = clubs.first { $0.teamId == served && $0.isHuman }?.teamId ?? clubs.first?.teamId
     }
 
     /// Saves the chosen club (`POST /api/settings`), then closes the window. When the save's human manages exactly one
@@ -442,8 +457,53 @@ public final class SetupModel {
             clubProblem = problem(error, "saving the club")
             return
         }
+        clubQuestion = nil
+        clubQuestionSave = nil
+        clubQuestionStamp = nil
         await onClubSaved()
         step = .done
+    }
+
+    /// Remembers what the server answered about the club for a save chosen here: a club it could not settle holds the
+    /// report until the GM answers; a settled one (taken from the save, or the GM's kept) lets it go.
+    private func noteClub(_ served: Components.Schemas.SetupClub?, for save: Components.Schemas.SaveInfo) {
+        if let served, !served.decided {
+            clubQuestion = served
+            clubQuestionSave = save
+            clubQuestionStamp = startStamp
+        } else {
+            clubQuestion = nil
+            clubQuestionSave = nil
+            clubQuestionStamp = nil
+        }
+    }
+
+    /// Back to the club question (the main window's "Choose Your Club…", Set Up Pennant…, Import Export…): the window
+    /// was closed, or went back to the saves, while the club was still owed. It follows the owed save's import again
+    /// from the served status: the club question once it has landed, the import's own problem if it did not.
+    public func resumeClubQuestion(status: Components.Schemas.ServerStatus?) async {
+        guard let question = clubQuestion, step != .pickClub, step != .importing else { return }
+        began = true
+        folderChoices = nil
+        folderProblem = nil
+        importProblem = nil
+        progress = nil
+        automatic = nil
+        chosen = clubQuestionSave
+        club = question
+        startStamp = clubQuestionStamp
+        sawImportRunning = false
+        step = .importing
+        await observe(status, fresh: true)
+    }
+
+    /// The window appears again after it closed itself (the club saved): it starts at the saves, at once, and the list
+    /// is read again. Returns whether it started again.
+    @discardableResult
+    public func reopen() -> Bool {
+        guard step == .done else { return false }
+        restart()
+        return true
     }
 
     #if DEBUG

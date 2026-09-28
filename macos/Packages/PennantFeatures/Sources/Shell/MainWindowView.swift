@@ -66,8 +66,14 @@ struct ShellSplitView: View {
             DetailView(window: window)
                 // The quiet notices: played since, a rating-history question, an import that did not start
                 .safeAreaInset(edge: .top, spacing: 0) { NoticeStack() }
+                // AppKit's containers above the content, named for VoiceOver (the audit)
+                .background(WindowContainerNames())
                 .navigationTitle(Text(window.descriptor?.title ?? "Pennant"))
                 .navigationSubtitle(ServedText.subtitle(dataStatus: model.dataStatus) ?? "")
+                // Kept as the window's title (VoiceOver, the Window menu) but not drawn in the toolbar: the system's
+                // subtitle grey, and the title over the masthead, failed the contrast audit; the masthead carries the
+                // view's title and the Data Status button its state (N6 Stage B2 review)
+                .toolbar(removing: .title)
                 .toolbar { WindowToolbar(window: window) }
                 .inspector(isPresented: $window.inspectorPresented) {
                     InspectorView(window: window)
@@ -75,6 +81,8 @@ struct ShellSplitView: View {
                 }
         }
         .searchable(text: $window.searchText, placement: .toolbar, prompt: Text("Search"))
+        // While the palette is up the window behind it is dimmed and out of reach, so VoiceOver reads only the palette
+        .accessibilityHidden(window.paletteShown)
         // The ⌘K palette: a glass control over the whole window, keyboard first; a click outside closes it
         .overlay(alignment: .top) {
             if window.paletteShown { PaletteOverlay(window: window) }
@@ -229,11 +237,17 @@ struct DetailView: View {
             } else if model.status?.configured == false {
                 NoSaveView()
             } else if routing.awaitingClub {
+                // Its own identifier: the route's would name a view that is not drawn
                 ClubPendingView()
-            } else if let descriptor = window.descriptor {
-                descriptor.makeView()
             } else {
-                PlaceholderView(title: "Pennant", symbol: "questionmark.square.dashed")
+                Group {
+                    if let descriptor = window.descriptor {
+                        descriptor.makeView()
+                    } else {
+                        PlaceholderView(title: "Pennant", symbol: "questionmark.square.dashed")
+                    }
+                }
+                .accessibilityIdentifier("detail.\(window.route.department.rawValue).\(window.route.view)")
             }
         }
         .id(window.route)
@@ -241,7 +255,6 @@ struct DetailView: View {
         .environment(\.claimActions, claimActions)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(.background)
-        .accessibilityIdentifier("detail.\(window.route.department.rawValue).\(window.route.view)")
     }
 }
 
@@ -266,17 +279,28 @@ struct ImportRequestBanner: View {
     }
 }
 
-/// The Setup window is asking which club to follow: no report is drawn until the GM answers there.
+/// The club is owed for the save chosen in Setup: no report is drawn until the GM saves one there. It says why in the
+/// server's words ("You manage 2 clubs in this save, …"), and its button brings the Setup window back to the question.
 struct ClubPendingView: View {
+    @Environment(AppRouting.self) private var routing
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         ContentUnavailableView {
             Label("Pick the Club", systemImage: "person.crop.circle.badge.questionmark")
+        } description: {
+            if let text = routing.owedClubText {
+                Text(verbatim: text)
+                    .accessibilityIdentifier("detail.clubPending.why")
+            }
         } actions: {
-            Button("Set Up Pennant…") { openWindow(id: SceneID.setup) }
-                .accessibilityIdentifier("detail.pickClub")
+            Button("Choose Your Club…") {
+                routing.requestClubQuestion()
+                openWindow(id: SceneID.setup)
+            }
+            .accessibilityIdentifier("detail.pickClub")
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("detail.clubPending")
     }
 }
@@ -321,6 +345,9 @@ struct InspectorView: View {
                         registry.name(of: id, catalog: catalog)
                     }))
                     .frame(maxHeight: .infinity)
+                    // Content, so opaque: the column's glass shows the masthead's colour extended beneath it, and the
+                    // evidence's text must read on the page, not on that (the audit, N6 Stage B2 review)
+                    .background(.background)
             } else {
                 // Drawn by hand rather than with ContentUnavailableView, whose dimmed text failed the contrast audit
                 VStack(spacing: 10) {
@@ -335,6 +362,10 @@ struct InspectorView: View {
             }
         }
         .controlSize(.small)
+        // AppKit's container for the column, named for VoiceOver (the audit)
+        .background(InspectorColumnName())
+        // A container, so its identifier does not replace the pinned evidence's own
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("inspector")
     }
 }

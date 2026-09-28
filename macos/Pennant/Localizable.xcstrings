@@ -138,12 +138,6 @@
     "Export": {
       "extractionState": "manual"
     },
-    "Export files": {
-      "extractionState": "manual"
-    },
-    "Export folder": {
-      "extractionState": "manual"
-    },
     "Farm & Development": {
       "extractionState": "manual"
     },
@@ -643,7 +637,19 @@
     "Choose Another Save…": {
       "extractionState": "manual"
     },
+    "Choose Your Club…": {
+      "extractionState": "manual"
+    },
     "Sidebar": {
+      "extractionState": "manual"
+    },
+    "Content": {
+      "extractionState": "manual"
+    },
+    "Content and Inspector": {
+      "extractionState": "manual"
+    },
+    "Main Window": {
       "extractionState": "manual"
     }
   },

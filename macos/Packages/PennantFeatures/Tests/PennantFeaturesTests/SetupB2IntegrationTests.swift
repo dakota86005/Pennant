@@ -63,6 +63,14 @@ struct SetupB2IntegrationTests {
         let home: PretendHome
         let data: URL
         let configuration: ServerConfiguration
+        /// The run's scratch folder (`b2-…`), removed when the test ends.
+        let folder: URL
+    }
+
+    /// Stops the server and removes the run's scratch folder (its data folder, logs and pretend home).
+    private func finish(_ run: Run) async {
+        await run.model.shutdown()
+        try? FileManager.default.removeItem(at: run.folder)
     }
 
     private func until(_ timeout: Duration = .seconds(60), _ condition: () async -> Bool) async -> Bool {
@@ -96,7 +104,7 @@ struct SetupB2IntegrationTests {
         let model = AppModel(configuration: configuration, controller: ServerController(configuration: configuration, keySource: NoKeys()))
         await model.start()
         #expect(await until { model.isReady && model.settings != nil }, "not ready; see \(configuration.logFile.path)")
-        return Run(model: model, home: home, data: data, configuration: configuration)
+        return Run(model: model, home: home, data: data, configuration: configuration, folder: run)
     }
 
     private func setup(_ run: Run) -> SetupModel {
@@ -141,8 +149,17 @@ struct SetupB2IntegrationTests {
         let again = self.setup(run)
         await again.begin(status: run.model.status)
         #expect(again.automatic == nil)
+        // Asked to set up by itself again (a window holding a status from before the save was chosen): the server
+        // answers that a save is already chosen, and nothing is imported again
+        let stale = self.setup(run)
+        await stale.setUpAutomatically(status: run.model.status)
+        #expect(stale.automatic?.outcome.value1 == .alreadyChosen)
+        #expect(stale.automatic?.save?.name == "Synthetic League")
+        #expect(stale.step == .findSave)
+        try? await Task.sleep(for: .milliseconds(300))
+        #expect(run.model.status?.importing == false)
         #expect(run.model.status?.lastImport?.finishedAt == finished)
-        await run.model.shutdown()
+        await finish(run)
     }
 
     @Test("two saves played within two days: nothing is chosen, the reason and the saves are shown, one click chooses")
@@ -161,7 +178,7 @@ struct SetupB2IntegrationTests {
         await setup.choose(setup.saves[1], status: run.model.status)
         #expect(await follow(setup, run.model))
         #expect(setup.step == .done)
-        await run.model.shutdown()
+        await finish(run)
     }
 
     @Test("a save whose human manages two clubs: chosen by itself, then only the club is asked")
@@ -179,7 +196,7 @@ struct SetupB2IntegrationTests {
         setup.selectedClub = second.teamId
         await setup.saveClub()
         #expect(run.model.club?.ref == ClubRef(id: second.teamId))
-        await run.model.shutdown()
+        await finish(run)
     }
 
     @Test("another save played since: the notice is served, never acted on; the switch is the GM's, and the report follows")
@@ -207,7 +224,7 @@ struct SetupB2IntegrationTests {
         // The Morning Report follows the new save's import
         await run.model.loadFrontOffice()
         #expect(run.model.frontOffice.summary?.importStamp == run.model.storeKey?.importStamp)
-        await run.model.shutdown()
+        await finish(run)
     }
 
     /// Runs `sqlite3` on a file (the history database, while no server holds it).
@@ -244,7 +261,7 @@ struct SetupB2IntegrationTests {
         let model = AppModel(configuration: first.configuration, controller: ServerController(configuration: first.configuration, keySource: NoKeys()))
         await model.start()
         #expect(await until { model.isReady && model.settings != nil && model.status?.importing == false })
-        let run = Run(model: model, home: first.home, data: first.data, configuration: first.configuration)
+        let run = Run(model: model, home: first.home, data: first.data, configuration: first.configuration, folder: first.folder)
         let setup = setup(run)
         let moved = Components.Schemas.SaveInfo(name: "New Name", lgPath: now.path(percentEncoded: false), csvDir: now.appending(path: "import_export/csv").path(percentEncoded: false), csvCount: 1)
         await setup.switchTo(moved, status: model.status)
@@ -277,6 +294,6 @@ struct SetupB2IntegrationTests {
             }
             #expect(sentence == "There is no carry-over like that to undo.")
         }
-        await model.shutdown()
+        await finish(run)
     }
 }

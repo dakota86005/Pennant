@@ -87,8 +87,10 @@ public struct CommandPalette: View {
             }
             Divider()
             HStack(spacing: 14) {
-                Label("Open", systemImage: "return").font(.caption)
-                Label("Close", systemImage: "escape").font(.caption)
+                // Each key's symbol beside its word and hidden from VoiceOver, so the word is the element (the audit
+                // measured the symbol's thin strokes as the word's contrast)
+                HStack(spacing: 4) { Image(systemName: "return").accessibilityHidden(true); Text("Open") }.font(.caption.weight(.medium))
+                HStack(spacing: 4) { Image(systemName: "escape").accessibilityHidden(true); Text("Close") }.font(.caption.weight(.medium))
                 Spacer()
                 // One format key ("%lld of %lld"), so a language can order the counts its own way
                 Text("\(visible.count) of \(results.count)").font(.caption).foregroundStyle(.readableSecondary).monospacedDigit()

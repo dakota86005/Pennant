@@ -45,6 +45,9 @@ let package = Package(
             name: "Shell",
             dependencies: [
                 "FeatureCore",
+                // The Setup window's model lives as long as the app (`AppRouting.setup`): the main window holds its
+                // report while the club it asks is owed, even with the window closed
+                "Setup",
                 .product(name: "PennantAPI", package: "PennantAPI"),
                 .product(name: "PennantKit", package: "PennantKit"),
                 .product(name: "PennantDesign", package: "PennantDesign"),

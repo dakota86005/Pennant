@@ -129,7 +129,7 @@ struct GeneralSettings: View {
             Text("OOTP save")
         } footer: {
             Text("Pennant reads the save's export each time it imports.")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.readableSecondary)
         }
     }
 
@@ -168,14 +168,14 @@ struct GeneralSettings: View {
                 .accessibilityIdentifier("settings.club")
                 if let note = model.settings?.organization?.note {
                     Label { Text(verbatim: note) } icon: { Image(systemName: "info.circle") }
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.readableSecondary)
                 }
                 if let clubProblem { ProblemLine(clubProblem) }
             } header: {
                 Text("Club")
             } footer: {
                 Text("Automatic follows the club you manage in the save.")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.readableSecondary)
             }
         }
     }
@@ -199,7 +199,7 @@ struct GeneralSettings: View {
             Text("Transaction log")
         } footer: {
             Text("Pennant reads the transaction log from the save's folder, which it finds from the export. Name the folder here only if it isn't found.")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.readableSecondary)
         }
         .fileImporter(isPresented: $choosingSaveFolder, allowedContentTypes: [.folder]) { result in
             if case .success(let url) = result { saveFolder = url.path(percentEncoded: false) }
@@ -417,7 +417,7 @@ struct DataStatusSection: View {
                 ForEach(status.facts, id: \.id) { row in
                     LabeledContent {
                         Text(verbatim: row.cells.value.display)
-                            .foregroundStyle(row.cells.value.tone?.value1 == .unknown ? .secondary : .primary)
+                            .foregroundStyle(row.cells.value.tone?.value1 == .unknown ? Color.readableSecondary : Color.primary)
                             .textSelection(.enabled)
                             .lineLimit(2)
                             .truncationMode(.middle)
@@ -530,7 +530,7 @@ struct ThemeSettings: View {
                 ForEach(choices.refused, id: \.folder) { refused in
                     LabeledContent {
                         Text(verbatim: refused.problem.display)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.readableSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                     } label: {
                         Label { Text(verbatim: refused.folder) } icon: { Image(systemName: "exclamationmark.triangle") }
@@ -542,7 +542,7 @@ struct ThemeSettings: View {
                     HStack {
                         Text(verbatim: choices.folder)
                             .font(.callout)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.readableSecondary)
                             .lineLimit(1)
                             .truncationMode(.middle)
                             .textSelection(.enabled)
@@ -671,7 +671,7 @@ struct AISettings: View {
                 }
                 Section {
                     Text("Adding or changing a key arrives in a later build")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.readableSecondary)
                 }
             } else if let problem {
                 Section("Providers") {
@@ -718,7 +718,7 @@ private struct ProviderRow: View {
         LabeledContent {
             VStack(alignment: .trailing, spacing: 2) {
                 keyLine
-                Text(verbatim: provider.model).font(.caption).foregroundStyle(.secondary)
+                Text(verbatim: provider.model).font(.caption).foregroundStyle(.readableSecondary)
             }
         } label: {
             HStack(spacing: 6) {
@@ -727,7 +727,7 @@ private struct ProviderRow: View {
                     Label("In use", systemImage: "checkmark.circle.fill")
                         .labelStyle(.titleAndIcon)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.readableSecondary)
                 }
             }
         }
@@ -740,7 +740,7 @@ private struct ProviderRow: View {
         } else if let key, key.configured {
             HStack(spacing: 4) {
                 if let hint = key.hint { Text(verbatim: hint).monospaced() }
-                if let source = key.sourceText { Text(verbatim: source).foregroundStyle(.secondary) }
+                if let source = key.sourceText { Text(verbatim: source).foregroundStyle(.readableSecondary) }
             }
         } else {
             Text("No key")

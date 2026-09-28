@@ -95,12 +95,23 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
     done
   }
   # A pretend home for the server to find OOTP saves in (PENNANT_DEV_HOME): the synthetic league's save, last played
-  # the given hours ago with its export, where OOTP 27 (direct download) keeps saves
+  # the given hours ago with its export, where OOTP 27 (direct download) keeps saves; a fourth argument makes the
+  # human manage that many clubs (the export's first ones), its teams file's time kept
   prepare_home() {
-    local test="$1" name="$2" hours="$3"
+    local test="$1" name="$2" hours="$3" clubs="${4:-1}"
     local lg="$UI_SCRATCH/$test/home/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games/$name.lg"
     mkdir -p "$lg/import_export/csv" "$lg/settings"
     cp -p "$SCRATCH/league/export/"*.csv "$lg/import_export/csv/"
+    if [ "$clubs" != "1" ]; then
+      node -e '
+        const fs = require("fs"); const [file, n] = [process.argv[1], Number(process.argv[2])];
+        const { mtime, atime } = fs.statSync(file);
+        const lines = fs.readFileSync(file, "utf8").split("\n");
+        const col = lines[0].split(",").indexOf("human_team");
+        const out = lines.map((line, i) => { if (i === 0 || !line) return line; const f = line.split(","); f[col] = i <= n ? "1" : "0"; return f.join(","); });
+        fs.writeFileSync(file, out.join("\n")); fs.utimesSync(file, atime, mtime);
+      ' "$lg/import_export/csv/teams.csv" "$clubs"
+    fi
     printf 'Show real player ratings,1\n' > "$lg/settings/db_dump_standard_csv.cfg"
     local at
     at="$(node -e 'const d = new Date(Date.now() - Number(process.argv[1]) * 3600e3); const p = (n) => String(n).padStart(2, "0"); process.stdout.write(`${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}${p(d.getHours())}${p(d.getMinutes())}.${p(d.getSeconds())}`)' "$hours")"
@@ -111,6 +122,9 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   # The zero-question first run (N6, Stage B2): one save that clearly stands out, nothing chosen yet
   prepare_ui_test testZeroQuestionFirstRun new '{"theme":"light"}'
   prepare_home testZeroQuestionFirstRun "Synthetic League" 2
+  # The club owed (N6, Stage B2 review): one save that stands out, whose human manages two clubs
+  prepare_ui_test testClubOwedAfterSetupCloses new '{"theme":"light"}'
+  prepare_home testClubOwedAfterSetupCloses "Two Clubs" 2 2
   prepare_ui_test testDepartmentsInspectorAndSettings configured
   # The glass shell (N5): the synthetic club (team 1, the human's) in its own colours and in the example pack
   prepare_ui_test testGlassShellClubColorsLight configured '{"theme":"light"}'
@@ -133,6 +147,8 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
     xcodebuild -project "$ROOT/macos/Pennant.xcodeproj" -scheme Pennant -destination 'platform=macOS' \
       -derivedDataPath "$OUT/DerivedData" -resultBundlePath "$OUT/Pennant.xcresult" \
       -skipPackagePluginValidation ${signing[@]+"${signing[@]}"} test || failed=1
+  # What each accessibility audit set aside, and why, and any finding: printed by the tests, repeated here for the CI log
+  grep -E "^\[audit\]" "$LOGS/xcodebuild-test.log" | sort -u || true
   if grep -q "Failed to activate application" "$LOGS/xcodebuild-test.log"; then
     echo "The app started (see each test's logs/server.log under $UI_SCRATCH) but XCUITest could not bring it to the"
     echo "front. That happens while the Mac's screen is locked or asleep: unlock it and run the tests again."

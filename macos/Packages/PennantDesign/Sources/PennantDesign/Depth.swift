@@ -166,6 +166,8 @@ public struct BasisPopover<Detail: View>: View {
         .font(.callout)
         .padding(16)
         .frame(width: 380, alignment: .leading)
+        // A container, so its own identifier does not replace its buttons' (Pin to Inspector, Detach, Open in …)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("basis.popover")
     }
 
@@ -211,7 +213,9 @@ public struct BasisSections: View {
                 }
             }
             section("From") {
-                Text(verbatim: from).fixedSize(horizontal: false, vertical: true)
+                // Medium weight: who answered is the line the GM looks for, and at the regular weight the audit read its
+                // wrapped line (a long first line and a short date) below 4.5:1 in the inspector (N6 Stage B2 review)
+                Text(verbatim: from).fontWeight(.medium).fixedSize(horizontal: false, vertical: true)
             }
             section("How it's called") {
                 VStack(alignment: .leading, spacing: 2) {

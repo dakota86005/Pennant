@@ -205,7 +205,7 @@ public struct PlaceStrips: View {
                     LegendEntry(legend.ring, symbol: "circle")
                     if let shading = legend.shading { LegendEntry(shading, symbol: "rectangle.lefthalf.filled") }
                 }
-                .font(.caption).foregroundStyle(.readableSecondary).padding(.top, 4)
+                .font(.caption.weight(.medium)).foregroundStyle(.readableSecondary).padding(.top, 4)
             }
         }
         .accessibilityElement(children: .contain)
@@ -239,7 +239,9 @@ public struct PlaceStrips: View {
     }
 }
 
-/// One line of a legend: its symbol (structural) and its served words, with the served help tag.
+/// One line of a legend: its symbol (structural) and its served words, with the served help tag. The symbol is drawn
+/// beside the words and hidden from VoiceOver, so the words are the element read (and measured: a ring's thin outline
+/// measured as the words' own contrast, N6 Stage B2 review).
 public struct LegendEntry: View {
     let line: Components.Schemas.Cell
     let symbol: String
@@ -250,8 +252,11 @@ public struct LegendEntry: View {
     }
 
     public var body: some View {
-        Label { Text(verbatim: line.display) } icon: { Image(systemName: symbol) }
-            .help(line.hint.map { Text(verbatim: $0) } ?? Text(verbatim: line.display))
+        HStack(spacing: 5) {
+            Image(systemName: symbol).accessibilityHidden(true)
+            Text(verbatim: line.display)
+        }
+        .help(line.hint.map { Text(verbatim: $0) } ?? Text(verbatim: line.display))
     }
 }
 

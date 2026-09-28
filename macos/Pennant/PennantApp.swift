@@ -126,7 +126,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let identifier = (read("accessibilityIdentifier") as? String) ?? ""
             let frame = (read("accessibilityFrame") as? NSRect) ?? .zero
             lines.append(String(repeating: "  ", count: depth) + "\(role) id='\(identifier)' label='\(label)' title='\(title)' \(NSStringFromRect(frame)) <\(type(of: object))>")
-            for child in (read("accessibilityChildren") as? [Any]) ?? [] { walk(child, depth: depth + 1) }
+            for child in (read("accessibilityChildren") as? [Any]) ?? [] {
+                // A child whose parent is not this element: what the audit calls a parent/child mismatch
+                if let node = child as? NSObject, node.responds(to: NSSelectorFromString("accessibilityParent")),
+                   let parent = node.value(forKey: "accessibilityParent") as AnyObject?, parent !== object {
+                    lines.append(String(repeating: "  ", count: depth + 1) + "MISMATCH: parent is <\(type(of: parent))>")
+                }
+                walk(child, depth: depth + 1)
+            }
         }
         for window in NSApp.windows where window.isVisible { walk(window, depth: 0) }
         // The AppKit views, with the role each vends: where a container the audit names comes from

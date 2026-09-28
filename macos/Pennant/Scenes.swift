@@ -57,28 +57,42 @@ struct MainWindowScene: View {
 /// The Setup window: the steps, fed the served status (kept current by the event stream). On a first run it asks the
 /// server to set up by itself (N6, Stage B2); it starts again at the save step whenever something asks for it
 /// (Club ▸ Import Export…, Settings ▸ Choose Another Save…), and on a save the GM clicked to switch to ("played since").
+/// Its model is the app's (`AppRouting.setup`), not the window's: closing the window while the club is owed keeps the
+/// main window's report held, and opening it again comes back to the club question (N6 Stage B2 review, M4).
 struct SetupScene: View {
     @Environment(AppModel.self) private var model
     @Environment(AppRouting.self) private var routing
-    @State private var setup: SetupModel?
 
     var body: some View {
         Group {
-            if let setup, model.isReady {
+            if let setup = routing.setup, model.isReady {
                 SetupView(model: setup, status: model.status)
             } else {
                 ServerStateView()
             }
         }
         .frame(width: SetupView.size.width, height: SetupView.size.height)
-        .onAppear { _ = ensureSetup() }
-        // While the club is asked, the main window holds its report; closing the window lets it go
-        .onChange(of: setup?.step) { _, step in routing.awaitingClub = step == .pickClub }
-        .onDisappear { routing.awaitingClub = false }
-        .onChange(of: routing.setupRequest) {
+        .onAppear {
             let setup = ensureSetup()
-            setup.restart()
-            Task { await setup.load() }
+            // The window closed itself when the club was saved; opened again, it starts at the saves
+            if setup.reopen() { Task { await setup.load() } }
+        }
+        // Start again at the saves (or come back to the club question while one is owed); taken when the window
+        // appears too, since the request may come before the window opens
+        .task(id: routing.setupRequest) {
+            guard routing.takeSetupRequest() else { return }
+            let setup = ensureSetup()
+            if setup.clubQuestion != nil {
+                await setup.resumeClubQuestion(status: model.status)
+            } else {
+                setup.restart()
+                await setup.load()
+            }
+        }
+        // The main window's "Choose Your Club…": back to the club question
+        .task(id: routing.clubRequest) {
+            guard routing.takeClubRequest() else { return }
+            await ensureSetup().resumeClubQuestion(status: model.status)
         }
         // A switch the GM clicked in the main window: this save's import at once
         .task(id: routing.switchRequest) {
@@ -87,19 +101,18 @@ struct SetupScene: View {
         }
     }
 
-    /// The window's model, made once: its client is the running server's, and a first run sets up by itself where the
-    /// configuration lets it (`ServerConfiguration.findsSavesAutomatically`).
+    /// The app's Setup model, made once: its client is the running server's, and a first run sets up by itself where
+    /// the configuration lets it (`ServerConfiguration.findsSavesAutomatically`).
     private func ensureSetup() -> SetupModel {
-        if let setup { return setup }
         let model = model
-        let made = SetupModel(
-            client: { model.client },
-            onClubSaved: { await model.reloadAll() },
-            log: { model.logProblem($0) },
-            setsUpAutomatically: model.configuration.findsSavesAutomatically
-        )
-        setup = made
-        return made
+        return routing.setupModel {
+            SetupModel(
+                client: { model.client },
+                onClubSaved: { await model.reloadAll() },
+                log: { model.logProblem($0) },
+                setsUpAutomatically: model.configuration.findsSavesAutomatically
+            )
+        }
     }
 }
 

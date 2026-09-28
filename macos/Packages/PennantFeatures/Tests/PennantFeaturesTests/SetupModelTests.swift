@@ -470,4 +470,94 @@ struct SetupModelTests {
         #expect(model.step == .done)
         #expect(reloaded)
     }
+
+    // MARK: The club owed (N6 Stage B2 review, M4 and H1)
+
+    private static let severalClubs = #"{"ok":true,"importStarted":true,"why":null,"club":{"decided":false,"teamId":null,"name":null,"humanClubs":2,"text":"You manage 2 clubs in this save, so Pennant will ask which to follow."}}"#
+
+    @Test("a club the server can't settle holds the report from the choice until the club is saved, with no window involved")
+    func clubOwedHoldsTheReport() async throws {
+        let routing = AppRouting()
+        let model = routing.setupModel { makeModel() }
+        server.answer("setSave", (200, Self.severalClubs))
+        server.answer("getStatus", (200, try json(status(importing: true, finishedAt: "2040-07-01T10:00:00.000Z"))))
+        await model.load()
+        #expect(!routing.awaitingClub)
+        await model.choose(model.saves[0], status: try status(finishedAt: "2040-07-01T10:00:00.000Z"))
+        // Held from the moment the save is chosen, while it imports, and it says why in the server's words
+        #expect(model.step == .importing)
+        #expect(routing.awaitingClub)
+        #expect(routing.owedClubText == "You manage 2 clubs in this save, so Pennant will ask which to follow.")
+        // The same model is the app's: asking again makes no other
+        #expect(routing.setupModel { makeModel() } === model)
+        await model.observe(try status(finishedAt: "2040-07-01T12:00:00.000Z"))
+        #expect(model.step == .pickClub)
+        #expect(routing.awaitingClub)
+        model.selectedClub = 1
+        await model.saveClub()
+        #expect(!routing.awaitingClub)
+    }
+
+    @Test("closing Setup mid-import on a save with several clubs keeps the hold; opening it again comes back to the club question")
+    func closedMidImport() async throws {
+        let routing = AppRouting()
+        let model = routing.setupModel { makeModel() }
+        server.answer("setSave", (200, Self.severalClubs))
+        server.answer("getStatus", (200, try json(status(importing: true, finishedAt: "2040-07-01T10:00:00.000Z"))))
+        await model.load()
+        await model.choose(model.saves[0], status: try status(finishedAt: "2040-07-01T10:00:00.000Z"))
+        // The window closes mid-import: nothing tells the model, and the import lands meanwhile, unseen. Then the GM goes
+        // back to the saves in the window and closes it again: the club is still owed
+        model.restart()
+        #expect(model.step == .findSave)
+        #expect(routing.awaitingClub)
+        // "Choose Your Club…" (or Set Up Pennant…): back to the question, from the served status
+        routing.requestClubQuestion()
+        #expect(routing.takeClubRequest())
+        #expect(!routing.takeClubRequest())
+        await model.resumeClubQuestion(status: try status(finishedAt: "2040-07-01T12:00:00.000Z"))
+        #expect(model.step == .pickClub)
+        #expect(model.club?.decided == false)
+        #expect(routing.awaitingClub)
+    }
+
+    @Test("a choice whose club is settled lets an owed club go: the GM's kept club, or the one the save names")
+    func settledChoiceReleases() async throws {
+        let routing = AppRouting()
+        let model = routing.setupModel { makeModel() }
+        server.answer("setSave", (200, Self.severalClubs), (200, #"{"ok":true,"importStarted":true,"why":null,"club":{"decided":true,"teamId":3,"name":"Club 3 N","humanClubs":2,"text":"Keeping the Club 3 N, the club you chose."}}"#))
+        server.answer("getStatus", (200, try json(status(importing: true, finishedAt: "2040-07-01T10:00:00.000Z"))))
+        await model.load()
+        await model.choose(model.saves[0], status: try status(finishedAt: "2040-07-01T10:00:00.000Z"))
+        #expect(routing.awaitingClub)
+        model.restart()
+        await model.choose(model.saves[0], status: try status(finishedAt: "2040-07-01T10:00:00.000Z"))
+        #expect(!routing.awaitingClub)
+        #expect(model.club?.text == "Keeping the Club 3 N, the club you chose.")
+    }
+
+    @Test("the served club is preselected only when this save's human manages it: a club from another league never is")
+    func preselectsOnlyAHumanClub() async throws {
+        // The served club is team 2, which no human manages in this save (a club chosen in another league)
+        let settings = try String(contentsOf: PreviewFixtures.responses.appending(path: "getSettings.json"), encoding: .utf8)
+        server.answer("getSettings", (200, settings.replacingOccurrences(of: "\"id\": 1,", with: "\"id\": 2,")))
+        let model = makeModel()
+        await model.loadClubs()
+        let human = try #require(model.clubs.first { $0.isHuman })
+        #expect(model.clubs.contains { $0.teamId == 2 && !$0.isHuman })
+        #expect(model.selectedClub == human.teamId)
+    }
+
+    @Test("a folder is not checked twice while a request is under way")
+    func useFolderWhileBusy() async throws {
+        let model = makeModel()
+        server.answer("resolveFolder", (200, #"{"ok":true,"csvDir":"/tmp/x/import_export/csv","saveName":"X","csvCount":3}"#))
+        server.answer("getStatus", (200, try json(status(importing: true))))
+        model.folderPath = "/tmp/x"
+        let now = try status()
+        async let first: Void = model.useFolder(status: now)
+        async let second: Void = model.useFolder(status: now)
+        _ = await (first, second)
+        #expect(server.requests.filter { $0.operation == "resolveFolder" }.count == 1)
+    }
 }

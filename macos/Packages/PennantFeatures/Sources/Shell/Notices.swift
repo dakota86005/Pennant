@@ -44,7 +44,7 @@ struct NoticeStrip<Message: View, Actions: View>: View {
         HStack(alignment: .center, spacing: 12) {
             Image(systemName: symbol)
                 .font(.title3)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.readableSecondary)
                 .accessibilityHidden(true)
             message()
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -68,7 +68,7 @@ struct NoticeStrip<Message: View, Actions: View>: View {
     }
 }
 
-/// "You've played RIGHTS-EXP since this save …" (or "Pennant can't find the save it was using …", or a save in a newer
+/// "You've played "RIGHTS-EXP" since this save …" (or "Pennant can't find the save it was using …", or a save in a newer
 /// OOTP): the served sentence, its hint on hover, and the served switch as the one button. The switch goes through the
 /// Setup window's choice of a save and its import; the report then follows the new save.
 struct PlayedSinceNotice: View {
