@@ -110,10 +110,11 @@ material implementation state changes.
 - Pennant for Mac finds the save by itself (N6, Stage B2, D-063): a first run with one save that clearly stands out
   asks nothing (the server chooses and imports it and takes the club from it; the window shows only the import, then the
   Morning Report); otherwise Setup shows the served reason and the saves most recently played first, one click to choose,
-  and the club question only when the save's human manages several. "Played since" (another save, a newer OOTP, the
+  and the club question only when the save's human manages several (no report is drawn until it is answered, and a
+  club never carries from one save's league into another's). "Played since" (another save, a newer OOTP, the
   chosen save gone) is a quiet notice above the content with the served switch and Dismiss; the rating-history
   questions are a notice with their two served answers, and Settings ▸ General ▸ Rating history has the served sentence,
-  the carry-overs with Undo and the other histories. The kicker says "Updated to <date>" for a moment when an import
+  the carry-overs with Undo and the other histories. The kicker says "Just updated" for a moment when an import
   lands in place. The window's shell is built while the server starts: a Debug build draws the kept Morning Report about
   0.95 s after its process starts (median of seven launches on the synthetic league).
 - A data-folder lock (`server.lock`, `server/dataLock.ts`) is taken by every server start (Electron, the

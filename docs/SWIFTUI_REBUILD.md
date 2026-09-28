@@ -152,7 +152,10 @@ request that fails shows the server's sentence, or one of three structural lines
   - A **Following** section: clubs and players the GM follows (drag a player or club here to follow it).
   - Sidebar icons are SF Symbols.
 - **Toolbar** (glass groups arranged with `ToolbarSpacer`):
-  - Back and Forward, and the view title and subtitle (the date, and how current the data is).
+  - Back and Forward, and the view title and subtitle (the date, and how current the data is). *Since the N6 Stage B2
+    review the title and subtitle are not drawn in the toolbar* (`.toolbar(removing: .title)`): the system's subtitle
+    grey failed the contrast audit and the title over the masthead did too; the masthead carries the view's title, the
+    Data Status button its state, and the window keeps both as its title for VoiceOver and the Window menu.
   - Per-view scope controls (for example a level picker or a filter), with `.visibilityPriority` where space is
     short.
   - `.searchable` with tokens (`position:SS`, `club:SF`, `level:AAA`) placed top trailing.
@@ -528,35 +531,50 @@ only words (additive, through the contract).
   lands, and the Morning Report follows; the GM is asked nothing. When nothing stands out the window shows the served
   reason (`noPick`), how to switch the export on (`exportHelp`, when the save played last has none) and the saves most
   recently played first (`GET /api/v2/saves`): each row its name, "Last played" with the served time (or the pick's
-  served line, its basis on hover), where it is, its export note; one click chooses. A save with no export files is
-  shown in full but is not a control. `alreadyChosen` does nothing more; the window's model begins once. A development
+  served line, its basis on hover), the served name of where it is, its export note; one click chooses. A save with no
+  export files is shown in full but is not a control. "Where Pennant looked" is folded away (a `DisclosureGroup`) and
+  names each place by its served label, the folder in its hover; the import step names the save once (the server's
+  "Using …" line, or a Save row with the export folder in its hover) and shows no folder path. `alreadyChosen` does nothing more; the window's model begins once. A development
   build sets up by itself only on a pretend home (`PENNANT_DEV_HOME`, `ServerConfiguration.findsSavesAutomatically`),
   so it never imports the developer's own save by itself.
 - **The club, taken from the save.** Every choice the Mac app makes (the list, a folder, a switch) sends
-  `club: "fromSave"` on `POST /api/config`; the server answers `ConfigAccepted.club` as the first run does (followed when
-  one human club, else why the GM is asked). With the club decided the window closes when the import lands; with
-  several human clubs it asks only the club, with the served sentence, and the main window draws no report until the GM
-  answers or closes the window (`AppRouting.awaitingClub`, "Pick the Club").
+  `club: "fromSave"` on `POST /api/config`; the server answers `ConfigAccepted.club` (D-063, amended): the same save
+  chosen again keeps the club the GM chose ("Keeping the …, the club you chose."); another save follows its one human
+  club, or, with none, several or not said, the club chosen before is forgotten when its import lands (never when it is
+  chosen: a failed import leaves the club as it was) and the GM is asked. The club step preselects the served club only
+  when this save's human manages it. With the club decided the window closes when the import lands; otherwise it asks
+  only the club, with the served sentence. The main window draws no report from the moment such a save is chosen until
+  a club is saved (`SetupModel.clubQuestion`, `AppRouting.awaitingClub`), whether the Setup window is open or not: its
+  model is the app's (`AppRouting.setup`), so closing the window keeps the hold, and the held view ("Pick the Club",
+  the served reason, "Choose Your Club…") brings the window back to the club question.
 - **Played since** (`NoticeStack`, `PlayedSinceNotice`). `AppModel.savePlayedElsewhere` (the status and the event) is
   a quiet strip above the content: a symbol by kind (another save, a newer OOTP, the chosen save gone), the served
   sentence with its hint on hover, the served switch as its one button (disabled while an import runs) and Dismiss. A
   dismissed notice stays hidden until its key (kind, the save's id, when it was last played) changes, per save
-  (`NoticeMemory`, `notices.json` in the app's caches). The switch opens Setup on that save (`AppRouting.requestSwitch`,
+  (`NoticeMemory`, `notices.json` in the app's caches). The sentences quote the save's name, as the history questions do
+  ("You've played "RIGHTS-EXP" since this save, …"). The switch opens Setup on that save (`AppRouting.requestSwitch`,
   `SetupModel.switchTo`), the same choice and import as the list; the kept report is keyed by the save, so the report
   follows the new one and another save's is never drawn. The strip's text wraps to three lines without a fixed size:
   a height that depends on the width fed back into the split view's minimum size and looped.
 - **The rating history** (D-064). The server's questions (`GET /api/v2/rating-history`, read with the rest after each
   import) appear one at a time as a strip with the served question (its basis a click away) and its two served answers
-  (`adoptText`, `freshText`, new). Settings ▸ General ▸ Rating history: the served sentence (`status`, new: the note, or
+  (`adoptText`, `freshText`, new). Dismissing a question's strip only hides the strip (per save, as above): the question
+  stays in Settings ▸ General ▸ Rating history until it is answered. A save is named by the place the GM knows ("OOTP
+  27, direct download", `place`, the save list's own label), never a folder path, which is in the basis; a save that
+  moved is asked about in words that fit this save's own history (none yet, or "has only just started" after its first
+  import), so the question never contradicts the status line. Settings ▸ General ▸ Rating history: the served sentence (`status`, new: the note, or
   how many imports the history holds, or none yet), the stacking warning, the questions, each carry-over in force with
   Undo (confirmed once with the served `undoQuestion`, new) and "Other Saves' Histories", each with its served line and
   basis and Carry Over. Every answer posts `POST /api/v2/rating-history/choice` and redraws from the reply, and the
   data status is read again; a refusal (400) is the served sentence in place, never an alert. A carry-over or its undo
-  now builds the Front Office again on the server (`invalidateFrontOffice` and `warmFrontOffice`; the reports read the
+  now builds the Front Office again on the server the way every rebuild goes (`rebuildFrontOfficeLater`: the kept build
+  dropped at once, the new one built after the refits of a finishing import when they hold rebuilds; the reports read the
   observed history), whose `front-office-updated` reloads the report.
 - **Updated in place.** When an import lands while a report of an earlier import is shown (`FrontOfficeStore.importLandings`),
-  the kicker ends in the served "Updated to <date>" (`DataStatusView.updated`, new, with when it was imported in its
-  hint) for four seconds, then fades; with Reduce Motion it goes without a fade. "Updating" is looked up once from the
+  the kicker ends in the served "Just updated" (`DataStatusView.updated`, new: the day it brought the league to and when
+  it was imported in its hint, and the import it is about, `importStamp`) for four seconds, then fades; with Reduce
+  Motion it goes without a fade. It shows only when its `importStamp` is the report's (`MorningReportView.landedLine`),
+  so it never speaks for another import, and it does not repeat the kicker's date. "Updating" is looked up once from the
   catalog and the kicker is one `Text` of served parts (no deprecated `Text +`).
 - **B1's help slots**: each dimension's served figure (`detail`) on its name, why it has no recent place (`recent.why`),
   the profile's note hint (`clubProfile.note.hint`), the league's day (`kicker.today.hint`, joined with how current),
@@ -573,11 +591,26 @@ only words (additive, through the contract).
   role); secondary text on the content is a readable grey (`NSColor.readableSecondaryLabel`: 4.5:1 or better on the
   window's own backgrounds; the system's secondary measured near 3:1 at the runner's 1× scale); the section kickers are
   bold; the masthead holds its top colour under the whole toolbar, so the window's title sits on it alone; the ⌘K
-  palette asks for the keyboard again once the window has settled. Set aside in the test, each listed with its reason:
-  AppKit's zoom-menu view inside the title-bar button; contrast on elements outside the window or cut off by the
-  sidebar (the runner's 1024 × 768 screen); and contrast whose own pixels in a window screenshot taken at the audit read
-  at 4.5:1 or better, with the measured ratio (the sidebar's system labels measured 9:1 to 19:1 while the audit named a
-  different handful each run). The test's own flakiness: the kept-report count no longer counts `index.json`; the
+  palette asks for the keyboard again once the window has settled. The new and touched screens (Setup, Settings, the
+  notices) use the readable grey too; the ⌘K palette's secondary text stays the system's vibrant secondary, since it
+  sits on glass. Set aside in the test, each listed with its reason, counted and printed to the test output
+  (`[audit] …`, repeated by `test.sh` for the CI log): AppKit's zoom-menu view inside the title-bar button; the Touch
+  Bar; a nameless group only when it is the sidebar column's own container (a window's full height over the sidebar's
+  columns); and contrast only on a sidebar row label (`sidebar.…`): outside the sidebar's visible frame (the runner's
+  1024 × 768 screen), or inside it when its own pixels, in a screenshot of the window that holds it taken at the audit,
+  read at 4.5:1 or better, with the measured ratio (the sidebar's system labels measured 9:1 to 19:1 while the audit
+  named a different handful each run). Every other contrast finding fails. Also set aside: the Touch Bar's own keys
+  ("emoji & symbols"), and a parent/child mismatch the audit attributes to no element (only with the ⌘K palette up).
+  Run locally for the first time (automation mode no longer needs a password), the audits found more, each fixed in the
+  app: AppKit's full-window containers are named ("Content", "Content and Inspector", "Main Window", and the inspector
+  column "Inspector"); the toolbar no longer draws the title and subtitle; a legend's and the palette footer's symbol
+  sits beside its word, hidden from VoiceOver, with the words at medium weight; the window behind the ⌘K palette is
+  hidden from VoiceOver while it is up; the inspector's evidence is opaque (the column's glass showed the masthead's
+  colour under it); the basis's "From" line is medium weight; the readable grey is darker (0.30 in light, 0.74 in dark:
+  8.5:1 and 8.9:1 on the window's backgrounds), for the runner's 1× screen. Three identifiers that replaced their
+  children's (the basis popover's, the inspector's, the held view's under the route's) are containers now, so the
+  XCUITests reach Pin to Inspector, the pinned evidence and the held view; the design test scrolls the report back to its
+  top before auditing the inspector (the click scrolled text under the toolbar's fading edge). The test's own flakiness: the kept-report count no longer counts `index.json`; the
   palette's query is clicked before typing; `waitForShell` waits for the server too.
 - **Verification.** `SetupModelTests` (the zero-question run, the club asked, nothing standing out, no setup with a
   save chosen or without a pretend home, the pick marked, the switch), `SetupB2IntegrationTests` on the real server
@@ -587,7 +620,14 @@ only words (additive, through the contract).
   help slots, snapshots (`setup-automatic-importing`, `setup-nothing-stands-out`, `setup-choose-another`,
   `setup-club-asked`, `main-window-notice-*`, `settings-history-*`, `served-morning-report-updated`, light and dark),
   the XCUITest `testZeroQuestionFirstRun` (a pretend home prepared by `test.sh`), and window captures of a Debug build on
-  scratch folders with one, two and three pretend saves.
+  scratch folders with one, two and three pretend saves. After the independent review: the club rules on the real
+  server (`tests/automaticSetup.test.ts`: the same save chosen again keeps the GM's club; a switch between two saves with
+  several clubs never keeps the other league's id; a failed import leaves the club as it was; a club saved meanwhile is
+  never forgotten), the places and the non-contradiction (`tests/ratingHistoryWords.test.ts`, and the contract test's
+  folder-path check on the history payloads), the rebuild under a hold (`tests/historyIdentity.test.ts`), the club owed
+  held with no window (`SetupModelTests`), the "Just updated" line's import match, `alreadyChosen` reached on the real
+  server, and the XCUITest `testClubOwedAfterSetupCloses` (Setup closed before the club is answered: the report stays
+  held, "Choose Your Club…" brings the question back, and saving it lets the report through).
 
 ### 3.5 One anatomy for every department report
 
