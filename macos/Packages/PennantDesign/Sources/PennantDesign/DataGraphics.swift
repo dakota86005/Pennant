@@ -111,6 +111,8 @@ public struct PlaceStrip: View {
         .frame(height: height)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(verbatim: [dimension.name, dimension.placeText, dimension.recentText].joined(separator: ", ")))
+        // A graphic with its served sentence: an image to VoiceOver and the audit, never an element of no role
+        .accessibilityAddTraits(.isImage)
     }
 }
 
@@ -150,8 +152,10 @@ public struct PlaceRow: View {
             // A dimension not placed reads quieter: the export lacks its figure, which is no judgment of the club
             Label { Text(verbatim: dimension.name) } icon: { Image(systemName: dimension.symbol).frame(width: 18) }
                 .font(.body)
-                .foregroundStyle(dimension.group == .notPlaced ? .secondary : .primary)
+                .foregroundStyle(dimension.group == .notPlaced ? Color.readableSecondary : Color.primary)
                 .frame(width: wide ? 200 : 170, alignment: .leading)
+                // The figure behind the place, as served ("4.63 runs a game · league middle 4.31"), on hover
+                .help(dimension.detail.map { detail in Text(verbatim: [detail, dimension.detailHint].compactMap { $0 }.joined(separator: "\n")) } ?? Text(verbatim: dimension.name))
             PlaceStrip(dimension).frame(maxWidth: 480)
             Spacer(minLength: 8)
             ClaimText(dimension.claim) {
@@ -161,8 +165,10 @@ public struct PlaceRow: View {
                 }
             }
             .frame(width: 130, alignment: .trailing)
-            Text(verbatim: dimension.recentText).font(.callout).foregroundStyle(.secondary).monospacedDigit()
+            Text(verbatim: dimension.recentText).font(.callout).foregroundStyle(.readableSecondary).monospacedDigit()
                 .frame(width: wide ? 120 : 96, alignment: .trailing)
+                // Why there is no recent place, as served, when there is none
+                .help(Text(verbatim: dimension.recentWhy ?? dimension.recentText))
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("place.\(dimension.id)")
@@ -199,7 +205,7 @@ public struct PlaceStrips: View {
                     LegendEntry(legend.ring, symbol: "circle")
                     if let shading = legend.shading { LegendEntry(shading, symbol: "rectangle.lefthalf.filled") }
                 }
-                .font(.caption).foregroundStyle(.secondary).padding(.top, 4)
+                .font(.caption).foregroundStyle(.readableSecondary).padding(.top, 4)
             }
         }
         .accessibilityElement(children: .contain)
@@ -218,7 +224,7 @@ public struct PlaceStrips: View {
                             .help(Text(verbatim: heading.titleHint ?? heading.title))
                             .accessibilityAddTraits(.isHeader)
                         if let line = heading.line {
-                            Text(verbatim: line).font(.caption).foregroundStyle(.secondary)
+                            Text(verbatim: line).font(.caption).foregroundStyle(.readableSecondary)
                                 .help(Text(verbatim: heading.lineHint ?? line))
                         }
                     }
@@ -293,6 +299,8 @@ public struct RangeBar: View {
         .frame(height: height)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(verbatim: label))
+        // A graphic with its served sentence: an image to VoiceOver and the audit, never an element of no role
+        .accessibilityAddTraits(.isImage)
     }
 }
 
@@ -354,6 +362,8 @@ public struct Sparkline: View {
             .frame(height: height)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(Text(verbatim: label))
+            // A graphic with its served sentence: an image to VoiceOver and the audit, never an element of no role
+            .accessibilityAddTraits(.isImage)
         }
     }
 }
@@ -414,7 +424,7 @@ public struct InlineBar: View {
             }
             .frame(height: 6)
             .accessibilityHidden(true)
-            Text(verbatim: text).font(.caption.weight(.medium)).monospacedDigit().foregroundStyle(.secondary).frame(width: 58, alignment: .trailing)
+            Text(verbatim: text).font(.caption.weight(.medium)).monospacedDigit().foregroundStyle(.readableSecondary).frame(width: 58, alignment: .trailing)
         }
         .accessibilityElement(children: .combine)
     }
@@ -462,6 +472,8 @@ public struct ControlPips: View {
         .help(Text(verbatim: control.text))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(verbatim: control.text))
+        // A graphic with its served sentence: an image to VoiceOver and the audit, never an element of no role
+        .accessibilityAddTraits(.isImage)
     }
 }
 
@@ -505,5 +517,7 @@ public struct LastFiveDots: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(verbatim: label))
+        // A graphic with its served sentence: an image to VoiceOver and the audit, never an element of no role
+        .accessibilityAddTraits(.isImage)
     }
 }

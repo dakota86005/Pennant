@@ -93,7 +93,7 @@ public struct TrailButton: View {
     public var body: some View {
         Button { showing.toggle() } label: {
             if compact {
-                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.readableSecondary)
                     .accessibilityLabel(Text("Staff's Options"))
             } else {
                 Text("Staff's Options")
@@ -148,7 +148,7 @@ public struct TrailContent: View {
                                 ClaimLine(claim, font: .callout)
                             }
                             if let empty = section.empty {
-                                Text(verbatim: empty.display).font(.callout).foregroundStyle(.secondary)
+                                Text(verbatim: empty.display).font(.callout).foregroundStyle(.readableSecondary)
                             }
                         }
                     }
@@ -275,7 +275,7 @@ public struct DepartmentReportContent: View {
         VStack(alignment: .leading, spacing: 28) {
             if showsHeader {
                 VStack(alignment: .leading, spacing: 8) {
-                    Kicker(served: [report.preparedBy.display, report.asOf.display]).foregroundStyle(.secondary)
+                    Kicker(served: [report.preparedBy.display, report.asOf.display]).foregroundStyle(.readableSecondary)
                     HStack(alignment: .firstTextBaseline) {
                         Text(verbatim: report.name).font(.system(size: 40, weight: .bold, design: .serif))
                         if refreshing { ProgressView { Text("Refreshing") }.controlSize(.small) }
@@ -312,7 +312,7 @@ public struct DepartmentReportContent: View {
                         Label {
                             Text(verbatim: line.display).fixedSize(horizontal: false, vertical: true)
                         } icon: {
-                            Image(systemName: "questionmark.circle").foregroundStyle(.secondary)
+                            Image(systemName: "questionmark.circle").foregroundStyle(.readableSecondary)
                         }
                         .help(detail: line.hint)
                     }
@@ -342,7 +342,7 @@ struct ItemSection: View {
             VStack(alignment: .leading, spacing: 8) {
                 MagazineSection(title: Text(verbatim: section.title.display))
                 if let empty = section.empty {
-                    Text(verbatim: empty.display).foregroundStyle(.secondary)
+                    Text(verbatim: empty.display).foregroundStyle(.readableSecondary)
                 }
                 if !section.items.isEmpty {
                     RowGroup {

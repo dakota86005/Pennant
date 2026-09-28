@@ -13,6 +13,8 @@ import PennantAPI
 public final class AppModel {
     public let configuration: ServerConfiguration
     public let backups: BackupManager
+    /// The notices the GM dismissed in the main window, per save (kept in the app's own caches folder).
+    public let notices: NoticeMemory
 
     /// Where the server is in its life.
     public private(set) var serverState: ServerState = .idle
@@ -58,6 +60,12 @@ public final class AppModel {
     /// and the `save-played-elsewhere` event; D-063): the sentence, the switch's label and the save. Nil when none.
     /// The app shows it (N6, Stage B2); Pennant never switches by itself.
     public private(set) var savePlayedElsewhere: Components.Schemas.SavePlayedElsewhere?
+    /// `GET /api/v2/rating-history` (D-064): this save's history in words, the questions to ask (an earlier save whose
+    /// folder has gone, or this folder's own history set aside), the other histories the GM may carry over and the
+    /// carry-overs in force. Read with the rest after each import; every answer redraws it from the server's reply.
+    public private(set) var ratingHistory: Components.Schemas.RatingHistoryView?
+    /// Why the rating history could not be read; nil when it was.
+    public private(set) var ratingHistoryProblem: RequestProblem?
     /// When the first Morning Report's frame was drawn, as milliseconds after the process started (after the model was
     /// made if the process's start cannot be read), and whether it was the kept payload or a fresh one (the launch
     /// budget, SWIFTUI_REBUILD.md "The speed budgets"); nil until then.
@@ -95,6 +103,7 @@ public final class AppModel {
         self.controller = controller
         self.backups = controller.backups
         self.makeClient = makeClient
+        notices = NoticeMemory(folder: configuration.cachesFolder)
         let log = controller.log
         frontOffice = FrontOfficeStore(
             kept: keptReports ?? KeptReports(folder: configuration.cachesFolder.appending(path: "front-office", directoryHint: .isDirectory)),
@@ -114,7 +123,9 @@ public final class AppModel {
         catalog: Components.Schemas.Catalog? = nil,
         themeChoices: Components.Schemas.ThemeChoices? = nil,
         importRequestProblem: RequestProblem? = nil,
-        frontOffice: FrontOfficeStore? = nil
+        frontOffice: FrontOfficeStore? = nil,
+        ratingHistory: Components.Schemas.RatingHistoryView? = nil,
+        savePlayedElsewhere: Components.Schemas.SavePlayedElsewhere? = nil
     ) -> AppModel {
         let model = AppModel(configuration: configuration)
         model.serverState = state
@@ -127,6 +138,8 @@ public final class AppModel {
         model.importRequestProblem = importRequestProblem
         model.club = CurrentClub.from(served: settings?.organization, orgs: orgs)
         if let frontOffice { model.frontOffice = frontOffice }
+        model.ratingHistory = ratingHistory
+        model.savePlayedElsewhere = savePlayedElsewhere ?? model.status?.savePlayedElsewhere
         return model
     }
     #endif
@@ -394,6 +407,48 @@ public final class AppModel {
         await frontOffice.loadTrail(evidence, client: client, key: storeKey)
     }
 
+    // MARK: Rating history (D-064): the GM decides, and nothing is lost for good
+
+    /// Reads this save's rating history (`GET /api/v2/rating-history`). A failed read keeps what was shown and says so.
+    public func loadRatingHistory() async {
+        guard let client else { return }
+        do {
+            ratingHistory = try await client.getRatingHistory().ok.body.json
+            ratingHistoryProblem = nil
+        } catch {
+            let problem = RequestProblem.from(error)
+            if let detail = problem.detail { logProblem("could not read the rating history: \(detail)") }
+            ratingHistoryProblem = problem
+        }
+    }
+
+    /// The GM's answer to a rating-history question, or a carry-over or undo from Settings
+    /// (`POST /api/v2/rating-history/choice`): the view is redrawn from the server's reply, and the data status (its
+    /// sentence about this save's history) is read again. A carry-over and an undo change what the reports read: the
+    /// server builds the Front Office again and says so (`front-office-updated`), which reloads the report. Throws the
+    /// server's sentence when it refuses (an answer that no longer fits), or the kind of failure.
+    public func answerRatingHistory(_ offerId: String, choice: Components.Schemas.RatingHistoryChoice.ChoicePayload.Value1Payload) async throws(RequestProblem) {
+        guard let client else { throw .notRunning }
+        let problem: RequestProblem
+        do {
+            switch try await client.answerRatingHistoryOffer(body: .json(.init(offerId: offerId, choice: .init(value1: choice, value2: choice.rawValue)))) {
+            case .ok(let answer):
+                ratingHistory = try answer.body.json
+                ratingHistoryProblem = nil
+                if let words = try? await client.getDataStatusWords().ok.body.json { dataStatus = words }
+                return
+            case .badRequest(let refused):
+                problem = .served(try refused.body.json.error)
+            case .undocumented(let code, let payload):
+                problem = await .undocumented(code, body: payload.body, operation: "answerRatingHistoryOffer", fromV2: true)
+            }
+        } catch {
+            problem = .from(error)
+        }
+        if let detail = problem.detail { logProblem("could not answer the rating-history question: \(detail)") }
+        throw problem
+    }
+
     /// Writes a line to the server's log (a raw error a window shows only as a kind).
     public func logProblem(_ line: String) {
         controller.log.write(line, source: "app")
@@ -441,6 +496,9 @@ public final class AppModel {
         let client = makeClient(connection)
         self.client = client
         apply(status: connection.status, reload: false)
+        // The settings and the clubs (the store key) are asked for first, before anything else this turn: the window's
+        // shell is already built (N6, Stage B2), so the kept report waits only on the server's answer
+        Task { await reloadAll() }
         eventTask?.cancel()
         let log = controller.log
         let events = EventClient(
@@ -451,7 +509,6 @@ public final class AppModel {
         eventTask = Task { [weak self] in
             await events.run { signal in await self?.handle(signal) }
         }
-        Task { await reloadAll() }
     }
 
     /// Applies one signal from the event stream.
@@ -591,6 +648,8 @@ public final class AppModel {
         } catch {
             note(error, reading: "catalog")
         }
+        // This save's rating history: after an import it may have a question to ask (D-064)
+        await loadRatingHistory()
         // The report shown is kept with the catalog it is drawn with, once both are here
         await frontOffice.keep(catalog: keptCatalogNow, for: storeKey)
     }

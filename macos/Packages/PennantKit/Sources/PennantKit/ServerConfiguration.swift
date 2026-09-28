@@ -21,6 +21,11 @@ public struct ServerConfiguration: Sendable, Equatable {
     /// The app's own caches (the Morning Report kept across launches, `KeptReports`): the bundle's caches folder in a
     /// release build; never the data folder. Beside the log folder when none is given (a test's scratch).
     public var cachesFolder: URL
+    /// Whether a first run may choose and import the save that clearly stands out by itself
+    /// (`POST /api/v2/setup/automatic`, D-063). Always in a release build. A development build does it only on a pretend
+    /// home (`PENNANT_DEV_HOME`), so a Debug build on a scratch data folder never imports the developer's own save by
+    /// itself; it still lists the saves it finds, as before.
+    public var findsSavesAutomatically: Bool
 
     public init(
         nodeExecutable: URL,
@@ -30,8 +35,10 @@ public struct ServerConfiguration: Sendable, Equatable {
         appVersion: String,
         extraEnvironment: [String: String] = [:],
         dataFolderChosen: Bool = true,
-        cachesFolder: URL? = nil
+        cachesFolder: URL? = nil,
+        findsSavesAutomatically: Bool = true
     ) {
+        self.findsSavesAutomatically = findsSavesAutomatically
         self.nodeExecutable = nodeExecutable
         self.serverRoot = serverRoot
         self.dataFolder = dataFolder
@@ -121,7 +128,8 @@ extension ServerConfiguration {
     /// - `PENNANT_DEV_DATA_DIR=<folder>` or `-PennantDevDataFolder <folder>`: that scratch folder, with the log in
     ///   `PENNANT_DEV_LOG_DIR` / `-PennantDevLogFolder`, else `logs/` inside it, and the app's own caches (the kept
     ///   Morning Report) in `PENNANT_DEV_CACHES_DIR` / `-PennantDevCachesFolder`, else the Debug bundle's own caches
-    ///   folder; `OOTP_FO_DB_READONLY` is passed on.
+    ///   folder; `OOTP_FO_DB_READONLY` is passed on. `PENNANT_DEV_HOME` / `-PennantDevHome <folder>` is the home the
+    ///   server looks for OOTP saves in (a pretend one), and only then does a first run choose a save by itself.
     /// - `PENNANT_DEV_USE_REAL_DATA=1` or `-PennantUseRealDataFolder YES`: the release folders, on purpose.
     /// - Neither: the release paths are named but `dataFolderChosen` is false, so no server starts and nothing is
     ///   written there; the log goes to a temporary folder.
@@ -144,8 +152,13 @@ extension ServerConfiguration {
                 ?? dataFolder.appending(path: "logs", directoryHint: .isDirectory)
             var extra: [String: String] = [:]
             if let readOnly = environment["OOTP_FO_DB_READONLY"] { extra["OOTP_FO_DB_READONLY"] = readOnly }
+            // A pretend home for the server to find saves in (the UI tests' and the captures' pretend OOTP saves)
+            let home = text("PENNANT_DEV_HOME", "PennantDevHome").map(folder)
+            if let home { extra["HOME"] = home.plainPath }
             let caches = text("PENNANT_DEV_CACHES_DIR", "PennantDevCachesFolder").map(folder)
-            return .bundled(in: bundle, dataFolder: dataFolder, logFolder: logs, extraEnvironment: extra, cachesFolder: caches)
+            var configuration = ServerConfiguration.bundled(in: bundle, dataFolder: dataFolder, logFolder: logs, extraEnvironment: extra, cachesFolder: caches)
+            configuration.findsSavesAutomatically = home != nil
+            return configuration
         }
         if environment["PENNANT_DEV_USE_REAL_DATA"] == "1" || defaults.bool(forKey: "PennantUseRealDataFolder") {
             return .bundled(in: bundle)

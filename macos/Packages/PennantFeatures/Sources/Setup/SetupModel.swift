@@ -4,14 +4,23 @@ import OpenAPIRuntime
 import PennantAPI
 import PennantKit
 
-/// The Setup window's steps (SWIFTUI_REBUILD.md section 3.1), as React's first run does them: find the save (the saves
-/// the server found, where it looked, or a folder the GM picks), choose it (`POST /api/config`, which starts an
-/// import), follow the import from the served status until it lands, then pick the club (the clubs as served, the one
-/// the save's human manages first) and save it (`POST /api/settings`).
+/// The Setup window's steps (SWIFTUI_REBUILD.md sections 3.1 and 3.4, "As built at N6 (Stage B2)"): find the save,
+/// choose it (`POST /api/config`, which starts an import), follow the import from the served status until it lands,
+/// then pick the club when the save does not name it, and save it (`POST /api/settings`).
+///
+/// **The zero-question first run (D-063).** With no save chosen, the window first asks the server to set up by itself
+/// (`POST /api/v2/setup/automatic`): when one save clearly stands out the server chooses and imports it, and takes the
+/// club from it when its export names exactly one club the human manages; the window then only follows the import and
+/// closes, and the GM is asked nothing. When nothing stands out, the window shows the server's reason and the saves it
+/// found, most recently played first (`GET /api/v2/saves`), with how to switch the export on when the save played last
+/// has none; choosing one is one click. Every choice made here (a save in the list, a folder, "played since") asks the
+/// server to take the club from the save the same way (`club: fromSave`); several human clubs, or none named, bring the
+/// club question.
 ///
 /// Every sentence it holds is the server's (`error` from a refusal, `why` when a chosen save's import did not start,
-/// the status's `importNote` when an import failed, stopped partway or has no export); a request that failed otherwise
-/// is a `RequestProblem` kind, its raw detail logged. It never decides which save or club is right: the GM does.
+/// the status's `importNote` when an import failed, stopped partway or has no export, the automatic setup's and the
+/// club's lines); a request that failed otherwise is a `RequestProblem` kind, its raw detail logged. It never decides
+/// which save or club is right: the server picks only when one clearly stands out, and the GM does otherwise.
 ///
 /// The import has landed only when the served last import's finish time moves past the one before the save was
 /// chosen. An import that stops without that (an error, or an interruption the server reports) is a problem with Try
@@ -42,7 +51,16 @@ public final class SetupModel {
     }
 
     public private(set) var step: Step = .findSave
-    /// `/api/saves`: the saves found in the usual places.
+    /// `GET /api/v2/saves`: the saves found, most recently played first, the one that clearly stands out with its reason,
+    /// or why none does, and how to switch the export on when the save played last has none.
+    public private(set) var discovery: Components.Schemas.SaveDiscovery?
+    /// What the first run's automatic setup answered (`POST /api/v2/setup/automatic`): the save it chose and why, or
+    /// why none; nil until asked, and when it was not asked (a save chosen, or a development build on the real home).
+    public private(set) var automatic: Components.Schemas.AutomaticSetup?
+    /// The club as the server took it from the chosen save (the automatic setup's, or a choice's with `club: fromSave`):
+    /// decided, or why the GM is asked; nil before a save is chosen here.
+    public private(set) var club: Components.Schemas.SetupClub?
+    /// The saves found, most recently played first (the discovery's).
     public private(set) var saves: [Components.Schemas.SaveInfo] = []
     public private(set) var savesLoaded = false
     /// Reading the saves or where the server looked failed.
@@ -70,22 +88,29 @@ public final class SetupModel {
 
     private var startStamp: String?
     private var sawImportRunning = false
+    private var began = false
     private let client: @MainActor () -> Client?
     private let onClubSaved: @MainActor () async -> Void
     private let log: @MainActor (String) -> Void
+    private let setsUpAutomatically: Bool
 
     /// - Parameters:
     ///   - client: the running server's client (nil while it is down).
-    ///   - onClubSaved: runs after the club is saved, before the window closes (the app re-reads its settings).
+    ///   - onClubSaved: runs after the club is saved (or taken from the save), before the window closes (the app
+    ///     re-reads its settings).
     ///   - log: where a failed request's raw detail goes (the server's log).
+    ///   - setsUpAutomatically: whether a first run asks the server to choose the save that clearly stands out
+    ///     (`ServerConfiguration.findsSavesAutomatically`).
     public init(
         client: @escaping @MainActor () -> Client?,
         onClubSaved: @escaping @MainActor () async -> Void = {},
-        log: @escaping @MainActor (String) -> Void = { _ in }
+        log: @escaping @MainActor (String) -> Void = { _ in },
+        setsUpAutomatically: Bool = true
     ) {
         self.client = client
         self.onClubSaved = onClubSaved
         self.log = log
+        self.setsUpAutomatically = setsUpAutomatically
     }
 
     /// A failed request as a kind, with its raw detail logged.
@@ -104,7 +129,7 @@ public final class SetupModel {
 
     // MARK: Find the save
 
-    /// Back to the first step (Club ▸ Import Export…, or Choose Another Save).
+    /// Back to the first step (Club ▸ Import Export…, Settings ▸ Choose Another Save…, or Choose Another Save here).
     public func restart() {
         step = .findSave
         folderChoices = nil
@@ -112,31 +137,74 @@ public final class SetupModel {
         importProblem = nil
         progress = nil
         chosen = nil
+        club = nil
         clubProblem = nil
         busy = false
     }
 
-    /// Reads the saves the server found and where it looked. A failed read is a problem with Try Again, never "none
-    /// found".
+    /// The window appeared: on a first run (no save chosen) the server is asked to set up by itself first, and the
+    /// saves are listed only if it did not; otherwise the saves are listed. Once per window's model.
+    public func begin(status: Components.Schemas.ServerStatus?) async {
+        guard !began else { return }
+        began = true
+        if setsUpAutomatically, status?.configured == false, status?.importing != true {
+            await setUpAutomatically(status: status)
+        }
+        if step == .findSave, !savesLoaded { await load() }
+    }
+
+    /// `POST /api/v2/setup/automatic`: the save that clearly stands out is chosen and imported by the server (the window
+    /// follows the import, asking nothing), or the server says why none does (the window shows it with the list). A
+    /// failed request is logged and the list shown, as before.
+    public func setUpAutomatically(status: Components.Schemas.ServerStatus?) async {
+        guard let client = client() else { return }
+        busy = true
+        defer { busy = false }
+        let answer: Components.Schemas.AutomaticSetup
+        do {
+            answer = try await client.setUpAutomatically().ok.body.json
+        } catch {
+            _ = problem(error, "setting up by itself")
+            return
+        }
+        automatic = answer
+        guard answer.outcome.value1 == .started, let save = answer.save else { return }
+        club = answer.club
+        startStamp = status?.lastImport?.finishedAt
+        chosen = save
+        progress = nil
+        importProblem = nil
+        sawImportRunning = false
+        step = .importing
+        await readStatus(client)
+    }
+
+    /// Reads the saves the server found (most recently played first, the pick or why none, the export's help) and where
+    /// it looked. A failed read is a problem with Try Again, never "none found".
     public func load() async {
         guard let client = client() else {
             loadProblem = .notRunning
             return
         }
         loadProblem = nil
-        async let savesAnswer = client.listSaves()
-        async let locationsAnswer = client.getSearchLocations()
         do {
-            saves = try await savesAnswer.ok.body.json
+            let found = try await client.getSaveDiscovery().ok.body.json
+            discovery = found
+            saves = found.saves
+            locations = found.searched
         } catch {
             loadProblem = problem(error, "reading the saves")
         }
-        do {
-            locations = try await locationsAnswer.ok.body.json.locations
-        } catch {
-            if loadProblem == nil { loadProblem = problem(error, "reading where the server looked") }
-        }
         savesLoaded = true
+    }
+
+    /// The saves as the list shows them: the discovery's, most recently played first.
+    public var pickClaim: Components.Schemas.Claim? { discovery?.pick?.claim }
+
+    /// Whether a save is the one the server picked as clearly standing out.
+    public func isPick(_ save: Components.Schemas.SaveInfo) -> Bool {
+        guard let id = save.id, let pick = discovery?.pick else { return false }
+        return pick.saveId == id
     }
 
     /// Checks the folder the GM typed or picked (`POST /api/resolve-folder`): an export or a save is chosen at once; a
@@ -185,6 +253,17 @@ public final class SetupModel {
         }
     }
 
+    /// "Played since" (and "the save you were using has gone"): the GM clicked the switch in the main window, so the
+    /// window starts on that save's import at once, through the same choice as the list (`choose`). Never called without
+    /// the GM's click.
+    public func switchTo(_ save: Components.Schemas.SaveInfo, status: Components.Schemas.ServerStatus?) async {
+        began = true
+        restart()
+        await choose(save, status: status)
+        // Refused (an import running, a folder gone): the list, with the server's sentence
+        if step == .findSave, !savesLoaded { await load() }
+    }
+
     /// Chooses a save (`POST /api/config`); the server starts importing it, and the window follows the import. Nothing
     /// is asked while an import is running (the server would refuse it too).
     public func choose(_ save: Components.Schemas.SaveInfo, status: Components.Schemas.ServerStatus?) async {
@@ -199,7 +278,9 @@ public final class SetupModel {
         startStamp = status?.lastImport?.finishedAt
         let accepted: Components.Schemas.ConfigAccepted
         do {
-            switch try await client.setSave(body: .json(.init(csvDir: save.csvDir, saveName: save.name))) {
+            // The club is taken from the save when it names one, as the first run does
+            let request = Components.Schemas.ConfigRequest(csvDir: save.csvDir, saveName: save.name, club: .init(value1: .fromSave, value2: "fromSave"))
+            switch try await client.setSave(body: .json(request)) {
             case .ok(let ok):
                 accepted = try ok.body.json
             case .badRequest(let refused):
@@ -217,6 +298,8 @@ public final class SetupModel {
             return
         }
         chosen = save
+        club = accepted.club
+        automatic = nil
         progress = nil
         importProblem = nil
         sawImportRunning = false
@@ -300,8 +383,15 @@ public final class SetupModel {
         }
     }
 
+    /// The import landed: with the club taken from the save there is nothing to ask (the app reads its settings again
+    /// and the window closes); otherwise the club question.
     private func importLanded() async {
         progress = nil
+        if club?.decided == true {
+            await onClubSaved()
+            step = .done
+            return
+        }
         step = .pickClub
         await loadClubs()
     }
@@ -360,6 +450,9 @@ public final class SetupModel {
     /// A model at a given step, for `#Preview`s and snapshots.
     public static func preview(
         step: Step,
+        discovery: Components.Schemas.SaveDiscovery? = nil,
+        automatic: Components.Schemas.AutomaticSetup? = nil,
+        club: Components.Schemas.SetupClub? = nil,
         saves: [Components.Schemas.SaveInfo] = [],
         locations: [Components.Schemas.SearchLocation] = [],
         loadProblem: RequestProblem? = nil,
@@ -371,11 +464,15 @@ public final class SetupModel {
         clubProblem: RequestProblem? = nil
     ) -> SetupModel {
         let model = SetupModel(client: { nil })
+        model.began = true
         model.step = step
-        model.saves = saves
+        model.discovery = discovery
+        model.automatic = automatic
+        model.club = club
+        model.saves = discovery?.saves ?? saves
         model.savesLoaded = true
         model.loadProblem = loadProblem
-        model.locations = locations
+        model.locations = discovery?.searched ?? locations
         model.folderProblem = folderProblem
         model.chosen = chosen
         model.progress = progress

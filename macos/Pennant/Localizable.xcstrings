@@ -615,6 +615,36 @@
     },
     "Against the other clubs": {
       "extractionState": "manual"
+    },
+    "Last played %@": {
+      "extractionState": "manual"
+    },
+    "Uses this save": {
+      "extractionState": "manual"
+    },
+    "Undo": {
+      "extractionState": "manual"
+    },
+    "Carry Over": {
+      "extractionState": "manual"
+    },
+    "Other Saves' Histories": {
+      "extractionState": "manual"
+    },
+    "Rating history": {
+      "extractionState": "manual"
+    },
+    "Undo the carry-over?": {
+      "extractionState": "manual"
+    },
+    "Undo Carry-Over": {
+      "extractionState": "manual"
+    },
+    "Choose Another Save…": {
+      "extractionState": "manual"
+    },
+    "Sidebar": {
+      "extractionState": "manual"
     }
   },
   "version": "1.0"

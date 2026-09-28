@@ -21,7 +21,8 @@ struct MorningReportAdapterTests {
         let design = MorningReportDesign(served: summary)
         let season = try #require(summary.teamSeason)
         #expect(design.kicker == [season.kicker.today.display, season.kicker.through.display])
-        #expect(design.kickerHint == season.kicker.through.hint)
+        // Each part's served help tag, the league's day then how current the export is (N6, Stage B2's help slot)
+        #expect(design.kickerHint == [season.kicker.today.hint, season.kicker.through.hint].compactMap { $0 }.joined(separator: "\n"))
         #expect(design.club == season.kicker.club?.display)
         #expect(design.lede == summary.lede?.text)
         #expect(design.ledeHint == summary.lede?.hint)
@@ -282,5 +283,24 @@ struct MorningReportAdapterTests {
         // No scale: no diagram (the positions are kept for their notes; the view draws none without a scale)
         #expect(design.valueScale == nil)
         #expect(design.positions != nil)
+    }
+
+    @Test("B1's leftover help slots: each dimension's served figure and why it has no recent place, the profile's note, the control's hint")
+    func helpSlots() throws {
+        let summary = try served()
+        let design = MorningReportDesign(served: summary)
+        let profile = try #require(summary.clubProfile)
+        let dimensions = try #require(design.dimensions)
+        for (mapped, served) in zip(dimensions, profile.dimensions) {
+            #expect(mapped.detail == served.detail.display)
+            #expect(mapped.detailHint == served.detail.hint)
+            #expect(mapped.recentWhy == served.recent.why)
+        }
+        #expect(design.placesNoteHint == profile.note.hint)
+        let map = try #require(summary.rosterMap)
+        let positions = try #require(design.positions)
+        for (mapped, served) in zip(positions, map.positions) {
+            #expect(mapped.controlHint == served.control.hint)
+        }
     }
 }

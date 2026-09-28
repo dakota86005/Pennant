@@ -171,9 +171,9 @@ public struct PositionFigures: View {
         HStack(spacing: 8) {
             RangeBar(range: position.value, label: position.value?.text ?? position.valueText, scale: scale, height: 5).frame(width: barWidth)
             Text(verbatim: position.valueText).font(.system(size: 11, weight: .semibold)).fontWidth(.condensed).monospacedDigit()
-                .foregroundStyle(position.value == nil ? .secondary : .primary).lineLimit(1)
+                .foregroundStyle(position.value == nil ? Color.readableSecondary : Color.primary).lineLimit(1)
             Text(verbatim: position.placeText).font(.system(size: 11)).fontWidth(.condensed).monospacedDigit()
-                .foregroundStyle(.secondary).lineLimit(1)
+                .foregroundStyle(.readableSecondary).lineLimit(1)
         }
     }
 }
@@ -254,10 +254,11 @@ public struct PositionPlate: View {
                         .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(accent, lineWidth: listed ? 1 : 0))
                     Text(verbatim: position.holder).font(.system(size: 13, weight: .semibold)).lineLimit(1).truncationMode(.tail)
                         .layoutPriority(-1)
-                    if listed { Text("Listed").font(.system(size: 9, weight: .semibold)).foregroundStyle(.secondary).lineLimit(1).fixedSize() }
+                    if listed { Text("Listed").font(.system(size: 9, weight: .semibold)).foregroundStyle(.readableSecondary).lineLimit(1).fixedSize() }
                     if position.need { Text("Need").font(.system(size: 9, weight: .bold)).foregroundStyle(Tone.caution.color).lineLimit(1).fixedSize() }
                     Spacer(minLength: 0)
                     ControlPips(position.control).fixedSize()
+                        .help(Text(verbatim: position.controlHint ?? position.control.text))
                 }
                 PositionFigures(position, scale: scale)
                 if hovering || showsDetail {
@@ -303,8 +304,8 @@ struct DetailLine: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            label.font(.system(size: 9, weight: .semibold)).foregroundStyle(.tertiary).textCase(.uppercase).kerning(0.4)
-            Text(verbatim: value).font(.system(size: 10)).foregroundStyle(.secondary)
+            label.font(.system(size: 9, weight: .semibold)).foregroundStyle(.readableSecondary).textCase(.uppercase).kerning(0.4)
+            Text(verbatim: value).font(.system(size: 10)).foregroundStyle(.readableSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .combine)
@@ -331,7 +332,7 @@ public struct FarmBarView: View {
         let palette = theme.palette(colorScheme: colorScheme, contrast: contrast)
         let accent = palette.isNeutral ? Color.accentColor : palette.accent
         VStack(alignment: .leading, spacing: 4) {
-            Text("Farm's next man").font(.caption.weight(.semibold)).foregroundStyle(.secondary).textCase(.uppercase).kerning(0.6)
+            Text("Farm's next man").font(.caption.weight(.semibold)).foregroundStyle(.readableSecondary).textCase(.uppercase).kerning(0.6)
             if let name { Text(verbatim: name).font(.callout) }
             HStack(spacing: 10) {
                 GeometryReader { g in
@@ -347,7 +348,7 @@ public struct FarmBarView: View {
                 Text(verbatim: bar.text).font(.caption.weight(.medium)).lineLimit(2).fixedSize(horizontal: false, vertical: true)
             }
             .help(Text(verbatim: bar.hint ?? bar.text))
-            Text(verbatim: bar.line).font(.caption2).monospacedDigit().foregroundStyle(.secondary)
+            Text(verbatim: bar.line).font(.caption2).monospacedDigit().foregroundStyle(.readableSecondary)
                 .help(Text(verbatim: bar.lineHint ?? bar.line))
         }
         .accessibilityElement(children: .combine)
@@ -381,6 +382,6 @@ public struct RosterLegend: View {
                     .help(Text(verbatim: note.hint ?? note.text))
             }
         }
-        .font(.caption).foregroundStyle(.secondary)
+        .font(.caption).foregroundStyle(.readableSecondary)
     }
 }

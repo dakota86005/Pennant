@@ -107,7 +107,7 @@ public struct ClaimValue: View {
                     .font(.system(size: size, weight: .bold)).fontWidth(.condensed).monospacedDigit().lineLimit(1)
                     .contentTransition(reduceMotion ? .identity : .numericText())
                 if claim.value != nil {
-                    Kicker(claim.text, size: .small).foregroundStyle(.secondary)
+                    Kicker(claim.text, size: .small).foregroundStyle(.readableSecondary)
                 }
             }
         }
@@ -132,7 +132,7 @@ public struct BasisPopover<Detail: View>: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(verbatim: claim.text).font(.headline).fixedSize(horizontal: false, vertical: true)
             if let hint = claim.hint {
-                Text(verbatim: hint).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(verbatim: hint).font(.callout).foregroundStyle(.readableSecondary).fixedSize(horizontal: false, vertical: true)
             }
             Divider()
             BasisSections(basis: claim.basis)
@@ -202,7 +202,7 @@ public struct BasisSections: View {
                     Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 4) {
                         ForEach(Array(basis.because.enumerated()), id: \.offset) { _, line in
                             GridRow(alignment: .firstTextBaseline) {
-                                Text(verbatim: line.label).foregroundStyle(.secondary).gridColumnAlignment(.leading)
+                                Text(verbatim: line.label).foregroundStyle(.readableSecondary).gridColumnAlignment(.leading)
                                     .fixedSize(horizontal: false, vertical: true)
                                 Text(verbatim: line.value).monospacedDigit().fixedSize(horizontal: false, vertical: true)
                             }
@@ -217,7 +217,7 @@ public struct BasisSections: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: basis.called).fixedSize(horizontal: false, vertical: true)
                     if let stamp = basis.stamp {
-                        Text(verbatim: stamp).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        Text(verbatim: stamp).font(.caption).foregroundStyle(.readableSecondary).fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
@@ -261,7 +261,7 @@ public struct BasisSections: View {
 
     private func section<C: View>(_ title: LocalizedStringKey, @ViewBuilder _ content: () -> C) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(title).font(.caption.weight(.semibold)).foregroundStyle(.secondary).textCase(.uppercase).kerning(0.6)
+            Text(title).font(.caption.weight(.semibold)).foregroundStyle(.readableSecondary).textCase(.uppercase).kerning(0.6)
             content()
         }
     }
@@ -283,7 +283,7 @@ public struct EvidenceView<Trail: View>: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text(verbatim: claim.text).font(.headline).fixedSize(horizontal: false, vertical: true)
                 if let hint = claim.hint {
-                    Text(verbatim: hint).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    Text(verbatim: hint).font(.callout).foregroundStyle(.readableSecondary).fixedSize(horizontal: false, vertical: true)
                 }
                 Divider()
                 BasisSections(basis: claim.basis)

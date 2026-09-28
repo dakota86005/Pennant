@@ -1,4 +1,5 @@
 import Observation
+import PennantAPI
 import PennantKit
 
 /// What the app's windows ask of each other: which step the Setup window opens on, which Settings tab shows, and
@@ -27,6 +28,24 @@ public final class AppRouting {
 
     /// Club ▸ Import Export…: the Setup window, at the save step.
     public func requestSetup() { setupRequest += 1 }
+
+    /// Bumped each time the GM clicks a "played since" switch: the Setup window takes `pendingSwitch` and starts on it.
+    public private(set) var switchRequest = 0
+    /// The save the GM clicked to switch to, until the Setup window takes it.
+    public private(set) var pendingSwitch: Components.Schemas.SaveInfo?
+
+    /// "Switch to …" in the main window's notice: the Setup window chooses that save and follows its import (only ever
+    /// on the GM's click).
+    public func requestSwitch(to save: Components.Schemas.SaveInfo) {
+        pendingSwitch = save
+        switchRequest += 1
+    }
+
+    /// The save to switch to, once: the Setup window takes it when it starts on it.
+    public func takeSwitch() -> Components.Schemas.SaveInfo? {
+        defer { pendingSwitch = nil }
+        return pendingSwitch
+    }
 
     /// Whether the main window should open Setup now: the server is up with no save chosen, and Setup has not been
     /// opened for that yet this launch. Answering true records that it was.

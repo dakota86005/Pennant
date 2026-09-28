@@ -5,8 +5,10 @@ import PennantKit
 import SwiftUI
 
 /// The main window (SWIFTUI_REBUILD.md section 3.2): the sidebar from the registry with the club card, the current
-/// view, the toolbar and the inspector. While the server is not ready the window shows its state instead. When the
-/// server is up with no save chosen, the Setup window opens (once per launch; Club ▸ Import Export… opens it again).
+/// view, the toolbar and the inspector. The shell is built at once, while the server starts (N6, Stage B2: the launch
+/// budget), with "Starting…" where the view will be; a server that failed, is locked out or is stopping shows its state
+/// instead. When the server is up with no save chosen, the Setup window opens (once per launch; Club ▸ Import Export…
+/// opens it again).
 public struct MainWindowView: View {
     @Environment(AppModel.self) private var model
     @Environment(AppRouting.self) private var routing
@@ -19,7 +21,7 @@ public struct MainWindowView: View {
 
     public var body: some View {
         Group {
-            if model.isReady {
+            if Self.showsShell(model.serverState) {
                 ShellSplitView(window: window)
             } else {
                 ServerStateView()
@@ -37,6 +39,18 @@ public struct MainWindowView: View {
     }
 }
 
+extension MainWindowView {
+    /// Whether the window draws its shell: while the server starts (so the window's shell is built before it is ready,
+    /// and the first report waits only on the server) and once it is up. A failure, a locked folder, a restart after a
+    /// crash and a stop show the server's state instead.
+    nonisolated static func showsShell(_ state: ServerState) -> Bool {
+        switch state {
+        case .idle, .starting, .ready: true
+        case .restarting, .failed, .locked, .stopping, .stopped: false
+        }
+    }
+}
+
 /// The split view: sidebar, the view, the inspector, and the toolbar.
 struct ShellSplitView: View {
     @Environment(AppModel.self) private var model
@@ -50,7 +64,8 @@ struct ShellSplitView: View {
                 )
         } detail: {
             DetailView(window: window)
-                .safeAreaInset(edge: .top, spacing: 0) { ImportRequestBanner() }
+                // The quiet notices: played since, a rating-history question, an import that did not start
+                .safeAreaInset(edge: .top, spacing: 0) { NoticeStack() }
                 .navigationTitle(Text(window.descriptor?.title ?? "Pennant"))
                 .navigationSubtitle(ServedText.subtitle(dataStatus: model.dataStatus) ?? "")
                 .toolbar { WindowToolbar(window: window) }
@@ -206,7 +221,11 @@ struct DetailView: View {
 
     var body: some View {
         Group {
-            if model.status?.configured == false {
+            if !model.isReady {
+                // The shell is up before the server: the view waits for it, and no report is drawn before its save and
+                // club are known
+                StartingView()
+            } else if model.status?.configured == false {
                 NoSaveView()
             } else if let descriptor = window.descriptor {
                 descriptor.makeView()

@@ -1,12 +1,15 @@
 import FeatureCore
 import PennantAPI
+import PennantDesign
 import PennantKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The Setup window (SWIFTUI_REBUILD.md section 3.1): find the save, import it, pick the club. `status` is the app's
-/// served status, which the event stream keeps current; each change is passed to the model so it can follow the
-/// import. The window closes itself when the club is saved.
+/// The Setup window (SWIFTUI_REBUILD.md section 3.1; "As built at N6 (Stage B2)"): on a first run it asks the server to
+/// set up by itself and, when one save clearly stands out, only follows its import; otherwise it finds the save, imports
+/// it and picks the club when the save does not name it. `status` is the app's served status, which the event stream
+/// keeps current; each change is passed to the model so it can follow the import. The window closes itself when the
+/// club is saved or taken from the save.
 public struct SetupView: View {
     @Bindable var model: SetupModel
     let status: Components.Schemas.ServerStatus?
@@ -36,11 +39,15 @@ public struct SetupView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .background(.background)
-        .task { if !model.savesLoaded { await model.load() } }
+        .task { await model.begin(status: status) }
         .onChange(of: status, initial: true) { _, next in
             Task { await model.observe(next) }
         }
-        .onChange(of: model.step) { _, step in
+        .onChange(of: model.step, initial: true) { _, step in
+            #if DEBUG
+            // A development build given a capture folder draws this window at each step (the window only, by the app)
+            AfterNextFrame.run { DevWindowCapture.capture("setup-\(step)", title: "Set Up Pennant") }
+            #endif
             if step == .done { dismissWindow(id: SceneID.setup) }
         }
         // A container, so the window's id does not replace its controls' own (the Save Club button's, in the inset)
@@ -79,11 +86,15 @@ private struct StepHeader: View {
 private struct FindSaveStep: View {
     @Bindable var model: SetupModel
     let status: Components.Schemas.ServerStatus?
-    @State private var selected: String?
     @State private var choosingFolder = false
 
     /// Nothing is chosen while an import runs: the server would refuse it, and the window says why.
     private var importing: Bool { status?.importing == true }
+
+    /// Why the server picked nothing: the automatic setup's answer on a first run, else the list's.
+    private var noPick: Components.Schemas.Claim? {
+        model.discovery?.noPick?.claim ?? (model.automatic?.outcome.value1 == .nothingStandsOut ? model.automatic?.why : nil)
+    }
 
     var body: some View {
         Form {
@@ -97,6 +108,19 @@ private struct FindSaveStep: View {
                     ImportProgressView(progress: status?.importProgress)
                 }
             }
+            // Why nothing was chosen by itself, and how to switch the export on, in the server's words
+            if let noPick {
+                Section {
+                    ServedClaimLine(noPick)
+                        .accessibilityIdentifier("setup.noPick")
+                    if let help = model.discovery?.exportHelp {
+                        ServedClaimLine(help)
+                            .accessibilityIdentifier("setup.exportHelp")
+                    }
+                }
+            } else if let help = model.discovery?.exportHelp {
+                Section { ServedClaimLine(help).accessibilityIdentifier("setup.exportHelp") }
+            }
             Section("Saves Pennant found") {
                 if let problem = model.loadProblem {
                     ProblemLine(problem)
@@ -108,7 +132,9 @@ private struct FindSaveStep: View {
                     Text("None found")
                         .foregroundStyle(.secondary)
                 } else {
-                    SaveList(saves: model.saves, selected: $selected)
+                    SaveList(saves: model.saves, pick: { model.isPick($0) ? model.pickClaim : nil }, disabled: model.busy || importing) { save in
+                        Task { await model.choose(save, status: status) }
+                    }
                 }
             }
             Section {
@@ -125,7 +151,9 @@ private struct FindSaveStep: View {
                         .accessibilityIdentifier("setup.useFolder")
                 }
                 if let choices = model.folderChoices {
-                    SaveList(saves: choices, selected: $selected)
+                    SaveList(saves: choices, pick: { _ in nil }, disabled: model.busy || importing) { save in
+                        Task { await model.choose(save, status: status) }
+                    }
                 }
                 if let problem = model.folderProblem {
                     ProblemLine(problem)
@@ -160,47 +188,67 @@ private struct FindSaveStep: View {
             }
         }
         .safeAreaInset(edge: .bottom) {
-            HStack {
-                if model.busy { ProgressView().controlSize(.small) }
-                Spacer()
-                Button("Use This Save") {
-                    if let save = (model.saves + (model.folderChoices ?? [])).first(where: { $0.lgPath == selected }) {
-                        Task { await model.choose(save, status: status) }
-                    }
+            if model.busy {
+                HStack {
+                    ProgressView().controlSize(.small)
+                    Spacer()
                 }
-                .keyboardShortcut(.defaultAction)
-                .disabled(selected == nil || model.busy || importing)
-                .accessibilityIdentifier("setup.useSave")
+                .padding(12)
+                .background(.bar)
             }
-            .padding(16)
-            .background(.bar)
         }
     }
 }
 
-/// Saves as served: name, when their export was written, and how many export files there are. A save with no
-/// export files cannot be chosen.
+/// Saves as served, most recently played first: each one's name, when it was last played (or why it can't be used),
+/// where it is, and how many export files it has. The save the server picked as clearly standing out carries its
+/// served line, and its basis on hover. Choosing one is one click; a save with no export files cannot be chosen.
 private struct SaveList: View {
-    static let chosenSymbol = "largecircle.fill.circle"
-    static let unchosenSymbol = "circle"
     let saves: [Components.Schemas.SaveInfo]
-    @Binding var selected: String?
+    let pick: (Components.Schemas.SaveInfo) -> Components.Schemas.Claim?
+    let disabled: Bool
+    let choose: (Components.Schemas.SaveInfo) -> Void
 
     var body: some View {
         ForEach(saves, id: \.lgPath) { save in
-            Button {
-                selected = save.lgPath
-            } label: {
-                HStack {
-                    Image(systemName: selected == save.lgPath ? Self.chosenSymbol : Self.unchosenSymbol)
-                        .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 2) {
+            let picked = pick(save)
+            if save.csvCount == 0 {
+                // Nothing to import yet: shown in full (its served sentence says why), never a dimmed control
+                row(save, picked: picked, choosable: false)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("setup.save.\(save.name)")
+            } else {
+                Button { choose(save) } label: { row(save, picked: picked, choosable: true) }
+                    .buttonStyle(.plain)
+                    .disabled(disabled)
+                    // The pick's served basis, or the save's served facts, on hover
+                    .help(Text(verbatim: picked?.hoverText ?? [save.lastPlayedText, save.location, save.csvLastModifiedText].compactMap { $0 }.joined(separator: "\n")))
+                    .accessibilityHint(Text("Uses this save"))
+                    .accessibilityIdentifier("setup.save.\(save.name)")
+            }
+        }
+    }
+
+    private func row(_ save: Components.Schemas.SaveInfo, picked: Components.Schemas.Claim?, choosable: Bool) -> some View {
+                HStack(alignment: .center, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 3) {
                         Text(verbatim: save.name).font(.headline)
-                        if let written = save.csvLastModifiedText {
-                            Text(verbatim: written).font(.caption).foregroundStyle(.secondary)
+                        if let picked {
+                            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                                ToneSymbol(tone: picked.tone)
+                                Text(verbatim: picked.text).font(.callout)
+                            }
+                        } else if let played = save.lastPlayedText {
+                            Text("Last played \(played)").font(.callout)
+                        }
+                        if let note = save.exportNote {
+                            Text(verbatim: note).font(.callout).fixedSize(horizontal: false, vertical: true)
+                        }
+                        if let location = save.location {
+                            Text(verbatim: location).font(.caption).foregroundStyle(.secondary)
                         }
                     }
-                    Spacer()
+                    Spacer(minLength: 8)
                     HStack(spacing: 4) {
                         Text("Export files")
                         Text(save.csvCount, format: .number).monospacedDigit()
@@ -208,14 +256,12 @@ private struct SaveList: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .accessibilityElement(children: .combine)
+                    Image(systemName: "chevron.forward")
+                        .foregroundStyle(.secondary)
+                        .opacity(choosable ? 1 : 0)
+                        .accessibilityHidden(true)
                 }
                 .contentShape(.rect)
-            }
-            .buttonStyle(.plain)
-            .disabled(save.csvCount == 0)
-            .accessibilityAddTraits(selected == save.lgPath ? .isSelected : [])
-            .accessibilityIdentifier("setup.save.\(save.name)")
-        }
     }
 }
 
@@ -228,11 +274,26 @@ private struct ImportStep: View {
     var body: some View {
         Form {
             Section {
+                // The save the server chose by itself, and why, in its words (its basis a click away)
+                if let automatic = model.automatic, automatic.outcome.value1 == .started {
+                    Text(verbatim: automatic.text).font(.headline)
+                        .accessibilityIdentifier("setup.automatic")
+                    if let why = automatic.why {
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            ToneSymbol(tone: why.tone)
+                            ClaimText(why, font: .callout)
+                        }
+                    }
+                }
                 if let chosen = model.chosen {
                     LabeledContent("Save") { Text(verbatim: chosen.name) }
                     LabeledContent("Export folder") {
                         Text(verbatim: chosen.csvDir).textSelection(.enabled).lineLimit(2).truncationMode(.middle)
                     }
+                }
+                if let club = model.club {
+                    Label { Text(verbatim: club.text) } icon: { Image(systemName: club.decided ? "person.crop.circle.badge.checkmark" : "person.crop.circle.badge.questionmark") }
+                        .accessibilityIdentifier("setup.club")
                 }
                 if let problem = model.importProblem {
                     switch problem {
@@ -242,7 +303,10 @@ private struct ImportStep: View {
                     case .unexplained: ProblemLine(Text("The import did not finish"))
                     }
                     HStack {
-                        Button("Choose Another Save") { model.restart() }
+                        Button("Choose Another Save") {
+                            model.restart()
+                            Task { await model.load() }
+                        }
                         Spacer()
                         Button("Try Again") { Task { await model.retryImport(status: status) } }
                             .keyboardShortcut(.defaultAction)
@@ -269,10 +333,17 @@ private struct PickClubStep: View {
     var body: some View {
         Form {
             Section("Your club") {
+                // Why the club is asked, in the server's words ("You manage 2 clubs in this save, …")
+                if let club = model.club, !club.decided {
+                    Text(verbatim: club.text).accessibilityIdentifier("setup.club")
+                }
                 if model.clubs.isEmpty, let problem = model.clubProblem {
                     ProblemLine(problem)
                     HStack {
-                        Button("Choose Another Save") { model.restart() }
+                        Button("Choose Another Save") {
+                            model.restart()
+                            Task { await model.load() }
+                        }
                         Spacer()
                         Button("Try Again") { Task { await model.loadClubs() } }
                             .accessibilityIdentifier("setup.reloadClubs")

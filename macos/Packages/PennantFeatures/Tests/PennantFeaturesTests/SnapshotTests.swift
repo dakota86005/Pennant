@@ -388,6 +388,134 @@ struct SnapshotTests {
         try draw(view, size: CGSize(width: 1160, height: height), look: look, name: "design-component-\(name)")
     }
 
+    // MARK: Finding the save, played since, the rating history (N6, Stage B2)
+
+    nonisolated static let findingSteps = ["automatic-importing", "nothing-stands-out", "choose-another", "club-asked"]
+
+    /// A captured claim with the server's words for another line (the fixtures have no save without an export, so the
+    /// export's help is drawn with the server's own sentence, `EXPORT_OFF_NOTE`, on the captured claim's shape).
+    static func claim(_ claim: Components.Schemas.Claim, text: String, hint: String?, tone: Components.Schemas.Tone.Value1Payload) -> Components.Schemas.Claim {
+        var claim = claim
+        claim.text = text
+        claim.hint = hint
+        claim.tone = .init(value1: tone)
+        return claim
+    }
+
+    static func findingModel(_ name: String) throws -> SetupModel {
+        let discovery = try #require(PreviewFixtures.discovery)
+        let nothing = try #require(PreviewFixtures.nothingStandsOut)
+        let why = try #require(nothing.why)
+        let save = try #require(PreviewFixtures.saves.first)
+        switch name {
+        case "automatic-importing":
+            var started = nothing
+            started.outcome = .init(value1: .started)
+            started.text = "Using Test League, the save you've played most recently."
+            started.save = save
+            started.why = claim(why, text: "Last played Jul 1, the most recent of your saves, and it has an export", hint: "No other save was played in the 2 days before it.", tone: .good)
+            let club = Components.Schemas.SetupClub(decided: true, teamId: 1, name: "Club 1 N", humanClubs: 1, text: "Following the Club 1 N, the club you manage in this save.")
+            let progress = Components.Schemas.ImportProgress(
+                table: "players", fileIndex: 9, files: 36, rows: 52_000, phase: .init(value1: .writing),
+                words: .init(phase: "Writing the league", table: "Players", display: "Writing players · 9 of 36")
+            )
+            return .preview(step: .importing, automatic: started, club: club, chosen: save, progress: progress)
+        case "nothing-stands-out":
+            var found = discovery
+            var second = save
+            second.name = "Old League"
+            second.lgPath += "-old"
+            second.csvCount = 0
+            second.exportNote = "No export yet. In OOTP, open Game Settings, then the Database tab, and use Database Tools to export the league to CSV files."
+            found.saves = [save, second]
+            found.exportHelp = claim(why, text: second.exportNote!, hint: "Pennant imports it by itself once OOTP has written it.", tone: .neutral)
+            found.searched = Self.locations
+            return .preview(step: .findSave, discovery: found, automatic: nothing)
+        case "choose-another":
+            var found = discovery
+            var picked = save
+            picked.lastPlayedText = "Jul 1, 2040, 12:00 PM"
+            var other = save
+            other.name = "Research Copy"
+            other.id = "other"
+            other.lgPath += "-copy"
+            other.lastPlayedText = "Jun 12, 2040, 9:14 AM"
+            other.location = "OOTP 27, Mac App Store version"
+            found.saves = [picked, other]
+            found.pick = .init(saveId: "saveid", claim: claim(why, text: "Last played Jul 1, the most recent of your saves, and it has an export", hint: "No other save was played in the 2 days before it.", tone: .good))
+            found.noPick = nil
+            found.searched = Self.locations
+            return .preview(step: .findSave, discovery: found)
+        default:
+            let club = Components.Schemas.SetupClub(decided: false, teamId: nil, name: nil, humanClubs: 2, text: "You manage 2 clubs in this save, so Pennant will ask which to follow.")
+            return .preview(step: .pickClub, club: club, clubs: PreviewFixtures.orgs)
+        }
+    }
+
+    @Test("finding the save: the zero-question import, nothing standing out, choosing another, the club asked", arguments: findingSteps, [false, true])
+    func finding(step: String, dark: Bool) throws {
+        let view = SetupView(model: try Self.findingModel(step), status: nil)
+        try draw(view, size: SetupView.size, dark: dark, name: "setup-\(step)", titled: true)
+    }
+
+    nonisolated static let notices = ["played-since", "newer-ootp", "chosen-missing", "history-question"]
+
+    static func noticeModel(_ name: String) throws -> AppModel {
+        var played = try #require(PreviewFixtures.playedElsewhere)
+        switch name {
+        case "history-question":
+            return PreviewFixtures.ready(ratingHistory: PreviewFixtures.ratingHistory("offer"))
+        case "newer-ootp":
+            played.kind = .init(value1: .newerOotp)
+            played.text = "You've played Played Since in OOTP 28 since this save, last on Jul 1, 2040, 12:00 PM."
+        case "chosen-missing":
+            played.kind = .init(value1: .chosenMissing)
+            played.text = "Pennant can't find the save it was using. You've played Played Since most recently, last on Jul 1, 2040, 12:00 PM."
+            played.hint = "It may have been renamed or moved in OOTP."
+        default:
+            break
+        }
+        return PreviewFixtures.ready(savePlayedElsewhere: played)
+    }
+
+    @Test("the main window's notices: played since, a newer OOTP, the chosen save gone, a rating-history question", arguments: notices, [Look.light, .dark])
+    func notice(name: String, look: Look) throws {
+        let model = try Self.noticeModel(name)
+        let window = MainWindowModel(registry: registry, expanded: ["frontOffice"])
+        window.go(to: AppRoute(department: "frontOffice", view: "morningReport"))
+        try drawMainWindow(model: model, window: window, look: look, name: "main-window-notice-\(name)", size: Self.designWindow)
+    }
+
+    /// Settings ▸ General's rating history: the served sentence, the question with its two answers, a carry-over in force
+    /// with Undo, the warning, and the other histories (opened) each with Carry Over; and with nothing to ask.
+    @Test("Settings' rating history", arguments: ["full", "quiet"], [false, true])
+    func history(state: String, dark: Bool) throws {
+        let offer = try #require(PreviewFixtures.ratingHistory("offer"))
+        let adopt = try #require(PreviewFixtures.ratingHistory("adopt"))
+        var shown = offer
+        if state == "full" {
+            shown.carriedOver = adopt.carriedOver
+            shown.warning = adopt.warning
+        }
+        let model = PreviewFixtures.ready(ratingHistory: state == "full" ? shown : PreviewFixtures.ratingHistory(""))
+        let view = Form { RatingHistorySection(candidatesShown: state == "full") }.formStyle(.grouped).environment(model).environment(AppRouting())
+        try draw(view, size: CGSize(width: SettingsView.width, height: state == "full" ? 760 : 240), dark: dark, name: "settings-history-\(state)", titled: true)
+    }
+
+    /// The kicker's served "Updated to …" line, as it shows for a moment when an import lands while the GM reads.
+    @Test("the Morning Report's kicker just after an import landed in place", arguments: [Look.light, .dark])
+    func updatedKicker(look: Look) throws {
+        let model = PreviewFixtures.ready()
+        let summary = try #require(model.frontOffice.summary)
+        let updated = Components.Schemas.Cell(display: "Updated to May 6, 2040", hint: "Pennant imported OOTP's export on Jul 1, 2040, 12:00 PM")
+        let view = MorningReportMasthead(summary: summary, record: model.catalogClub?.record, headline: Text(verbatim: DesignFixtures.served("Morning Report")), updated: updated)
+            .environment(\.mastheadTopInset, 52)
+            .environment(model).environment(AppRouting()).environment(\.theme, model.theme).environment(\.contentWidth, 1160)
+            .environment(\.claimActions, ClaimActions(pin: { _ in }, detach: { _ in }, canOpen: { _ in true }, open: { _ in }, departmentName: { _ in "Major League Ops" }))
+            .environment(\.routeOpener, MainWindowModel(registry: registry))
+        try draw(view, size: CGSize(width: 1160, height: 520), look: look, name: "served-morning-report-updated")
+    }
+
     // MARK: Drawing
 
     private func sidebarView(model: AppModel, window: MainWindowModel) -> some View {

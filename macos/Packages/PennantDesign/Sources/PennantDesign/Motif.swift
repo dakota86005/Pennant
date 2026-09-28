@@ -110,10 +110,10 @@ public struct GroupHeader: View {
 
     public var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            title.font(.caption.weight(.semibold)).foregroundStyle(.secondary).textCase(.uppercase).kerning(0.6)
-            if let note { Text(verbatim: note).font(.caption).foregroundStyle(.secondary) }
+            title.font(.caption.weight(.semibold)).foregroundStyle(.readableSecondary).textCase(.uppercase).kerning(0.6)
+            if let note { Text(verbatim: note).font(.caption).foregroundStyle(.readableSecondary) }
             Spacer()
-            if let trailing { Text(verbatim: trailing).font(.caption).foregroundStyle(.secondary).monospacedDigit() }
+            if let trailing { Text(verbatim: trailing).font(.caption).foregroundStyle(.readableSecondary).monospacedDigit() }
         }
     }
 }
@@ -139,7 +139,7 @@ public struct UtilityRow<Trailing: View>: View {
             SymbolTile(symbol: symbol, tint: tint)
             VStack(alignment: .leading, spacing: 2) {
                 title.font(.body.weight(.semibold)).lineLimit(2).fixedSize(horizontal: false, vertical: true)
-                if let line { line.font(.callout).foregroundStyle(.secondary).lineLimit(2).fixedSize(horizontal: false, vertical: true) }
+                if let line { line.font(.callout).foregroundStyle(.readableSecondary).lineLimit(2).fixedSize(horizontal: false, vertical: true) }
             }
             Spacer(minLength: 8)
             trailing()
@@ -163,7 +163,7 @@ public struct MetricTile: View {
             VStack(alignment: .leading, spacing: 4) {
                 // The served label may wrap to a second line rather than truncate ("On the injured list")
                 Text(verbatim: figure.claim.text).font(.caption2.weight(.semibold)).kerning(0.5).textCase(.uppercase)
-                    .foregroundStyle(.secondary).lineLimit(2).minimumScaleFactor(0.85).fixedSize(horizontal: false, vertical: true)
+                    .foregroundStyle(.readableSecondary).lineLimit(2).minimumScaleFactor(0.85).fixedSize(horizontal: false, vertical: true)
                 HStack(alignment: .lastTextBaseline, spacing: 8) {
                     Text(verbatim: figure.claim.value?.display ?? figure.claim.text)
                         .font(.system(size: 22, weight: .bold)).fontWidth(.condensed).monospacedDigit().lineLimit(1)
@@ -256,7 +256,7 @@ public struct DeskRow<Trailing: View>: View {
                     Text(verbatim: line)
                         .font(compact ? .caption : .callout)
                         .monospacedDigit()
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.readableSecondary)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -264,7 +264,7 @@ public struct DeskRow<Trailing: View>: View {
                 if let detail = item.detail {
                     Text(verbatim: detail.display)
                         .font(compact ? .caption : .callout)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.readableSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                         .help(detail.hint.map { Text(verbatim: $0) } ?? Text(verbatim: detail.display))
                 }
@@ -311,7 +311,7 @@ public struct DepartmentTile: View {
                     SymbolTile(symbol: symbol, tint: tint, size: 30)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(verbatim: card.name).font(.headline).lineLimit(1)
-                        Text(verbatim: card.preparedBy.display).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        Text(verbatim: card.preparedBy.display).font(.caption).foregroundStyle(.readableSecondary).lineLimit(1)
                             .help(card.preparedBy.hint.map { Text(verbatim: $0) } ?? Text(verbatim: card.preparedBy.display))
                     }
                     Spacer(minLength: 0)
@@ -340,7 +340,7 @@ public struct DepartmentTile: View {
                         HStack(spacing: 6) {
                             Text("Open Report").font(.callout)
                             Spacer(minLength: 4)
-                            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+                            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.readableSecondary)
                         }
                         .contentShape(.rect)
                     }
@@ -371,7 +371,7 @@ public struct DepartmentPlaceholderRow: View {
 
     public var body: some View {
         UtilityRow(symbol: symbol, tint: Color.secondary, title: Text(verbatim: card.name), line: Text(verbatim: card.summary.text)) {
-            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.readableSecondary)
         }
         .help(card.summary.hint.map { Text(verbatim: $0) } ?? Text(verbatim: card.summary.text))
         .accessibilityElement(children: .combine)
@@ -409,10 +409,10 @@ public struct WireRow: View {
                             .accessibilityLabel(Text("Followed"))
                     }
                 }
-                Text(verbatim: item.text).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(verbatim: item.text).font(.callout).foregroundStyle(.readableSecondary).fixedSize(horizontal: false, vertical: true)
             }
             Spacer()
-            Text(verbatim: item.when).font(.caption).foregroundStyle(.secondary)
+            Text(verbatim: item.when).font(.caption).foregroundStyle(.readableSecondary)
         }
         .padding(.vertical, 7)
         .accessibilityElement(children: .combine)
@@ -438,7 +438,7 @@ public struct StaffColumn: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            title.font(.caption.weight(.semibold)).foregroundStyle(.secondary).textCase(.uppercase).kerning(0.6)
+            title.font(.caption.weight(.semibold)).foregroundStyle(.readableSecondary).textCase(.uppercase).kerning(0.6)
             ForEach(pitchers) { p in
                 if let claim = p.claim {
                     ClaimText(claim, edge: .trailing) { row(p) }
@@ -460,14 +460,14 @@ public struct StaffColumn: View {
 
     private func row(_ p: StaffPitcher) -> some View {
         HStack(spacing: 8) {
-            Text(verbatim: p.role).font(.caption2.weight(.bold)).foregroundStyle(.secondary).frame(width: 26, alignment: .leading)
+            Text(verbatim: p.role).font(.caption2.weight(.bold)).foregroundStyle(.readableSecondary).frame(width: 26, alignment: .leading)
             Text(verbatim: p.name).font(.callout.weight(.medium)).lineLimit(1)
             if p.need { Text("Need").font(.system(size: 9, weight: .bold)).foregroundStyle(Tone.caution.color) }
             Spacer(minLength: 4)
             if let note = p.note {
                 Text(verbatim: note).font(.caption2).foregroundStyle(Tone.caution.color).lineLimit(1)
             }
-            Text(verbatim: p.line).font(.caption).monospacedDigit().foregroundStyle(.secondary)
+            Text(verbatim: p.line).font(.caption).monospacedDigit().foregroundStyle(.readableSecondary)
             RangeBar(range: p.value, label: p.hint, scale: scale, height: 5).frame(width: 54)
         }
         .contentShape(.rect)

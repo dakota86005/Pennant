@@ -163,7 +163,9 @@ struct MastheadBackground: View {
     var body: some View {
         let stops = palette.masthead.count == 1 ? palette.masthead + palette.masthead : palette.masthead
         let band = topInset + Masthead.fade
-        let hold = band > 0 ? max(0, topInset - 6) / band : 0
+        // The top colour is held under the whole toolbar, so the window's title and subtitle sit on it alone (the
+        // pack check's 17:1 or 14:1 pair), never on the fade: an accessibility audit reads the title's whole frame
+        let hold = band > 0 ? topInset / band : 0
         ZStack(alignment: .top) {
             LinearGradient(colors: stops, startPoint: .topLeading, endPoint: .bottomTrailing)
             if let art {

@@ -58,6 +58,13 @@ extension ServerFailure.Kind {
     }
 }
 
+/// The view's place while the server starts, inside the shell (the window's shell is built before the server is ready).
+struct StartingView: View {
+    var body: some View {
+        WaitingView(title: "Starting…")
+    }
+}
+
 private struct WaitingView: View {
     let title: LocalizedStringKey
 
