@@ -20,7 +20,7 @@ import { historyDb, SNAPSHOT_DATA_COLUMNS, takeSnapshot } from '../server/histor
 import { currentHistoryKey, forgetHistoryKey } from '../server/historyIdentity.js';
 import { registeredRoutes, type RegisteredRoute } from './apiRoutes';
 import {
-  BANNED_JARGON, BANNED_VERDICTS, JARGON_EXCEPTIONS, bannedIn, bannedInPayload, exceptionsUsed, shownStrings,
+  BANNED_JARGON, BANNED_VERDICTS, FOLDER_PATHS, JARGON_EXCEPTIONS, bannedIn, bannedInPayload, exceptionsUsed, shownStrings,
   type JargonException,
 } from './bannedJargon';
 import { buildSave, type BuiltSave } from './syntheticSave';
@@ -508,6 +508,10 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
         const validate = validator(type);
         expect(validate(answer) ? [] : validate.errors, name).toEqual([]);
         expect(bannedInPayload(answer, name.split('-')[0])).toEqual([]);
+        // The save is placed by the place the GM knows, never a folder's path (M1): the questions, the list, the carry-overs
+        const placed = [...shownStrings(answer).map((s) => s.text), ...answer.offers.map((o: { place: string }) => o.place),
+          ...answer.candidates.map((c: { place: string }) => c.place), ...answer.carriedOver.map((c: { undoQuestion: string }) => c.undoQuestion)];
+        for (const text of placed) expect(bannedIn(text, [FOLDER_PATHS]), `${name}: ${text}`).toEqual([]);
         expect(servedBasisProblems(answer)).toEqual([]);
         if (name.endsWith('offer')) expect(answer.offers).toHaveLength(1);
         if (name.endsWith('offer')) expect(answer.offers[0]).toMatchObject({ adoptText: 'Carry It Over', freshText: 'Keep Them Apart' });

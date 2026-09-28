@@ -467,10 +467,10 @@ struct SnapshotTests {
             return PreviewFixtures.ready(ratingHistory: PreviewFixtures.ratingHistory("offer"))
         case "newer-ootp":
             played.kind = .init(value1: .newerOotp)
-            played.text = "You've played Played Since in OOTP 28 since this save, last on Jul 1, 2040, 12:00 PM."
+            played.text = "You've played \"Played Since\" in OOTP 28 since this save, last on Jul 1, 2040, 12:00 PM."
         case "chosen-missing":
             played.kind = .init(value1: .chosenMissing)
-            played.text = "Pennant can't find the save it was using. You've played Played Since most recently, last on Jul 1, 2040, 12:00 PM."
+            played.text = "Pennant can't find the save it was using. You've played \"Played Since\" most recently, last on Jul 1, 2040, 12:00 PM."
             played.hint = "It may have been renamed or moved in OOTP."
         default:
             break
@@ -507,7 +507,7 @@ struct SnapshotTests {
     func updatedKicker(look: Look) throws {
         let model = PreviewFixtures.ready()
         let summary = try #require(model.frontOffice.summary)
-        let updated = Components.Schemas.Cell(display: "Updated to May 6, 2040", hint: "Pennant imported OOTP's export on Jul 1, 2040, 12:00 PM")
+        let updated = Components.Schemas.ImportLandedLine(display: "Just updated", hint: "Updated to May 6, 2040 · imported Jul 1, 2040, 12:00 PM", importStamp: summary.importStamp ?? "")
         let view = MorningReportMasthead(summary: summary, record: model.catalogClub?.record, headline: Text(verbatim: DesignFixtures.served("Morning Report")), updated: updated)
             .environment(\.mastheadTopInset, 52)
             .environment(model).environment(AppRouting()).environment(\.theme, model.theme).environment(\.contentWidth, 1160)

@@ -4,12 +4,11 @@
  * decides that itself: the GM answers with one click (`POST /api/v2/rating-history/choice`), and only a yes carries the
  * earlier history over. Every sentence is authored here; `historyIdentity.ts` decides what is offered.
  */
-import os from 'node:os';
-import path from 'node:path';
 import type { Claim } from '../contract/presentation.js';
 import type { Integer } from '../contract/primitives.js';
 import { parseGameDate, type GameDate } from '../dataFreshness.js';
 import { gameDateWords } from '../dataStatus.js';
+import { saveLocationLabel } from '../paths.js';
 import type { HistoryCarryOver, HistoryNote, HistoryOffer } from '../historyIdentity.js';
 import { basis, claim } from './claim.js';
 
@@ -29,7 +28,7 @@ export interface RatingHistoryOffer {
   question: Claim;
   /** The name that history's save last had; null when not recorded. */
   saveName: string | null;
-  /** Where it was, in words (the home folder shortened to ~). */
+  /** Where it was, as the place OOTP keeps saves ("OOTP 27, direct download"); its folder is in the basis. */
   place: string;
   /** Its latest rating snapshot's game date, and the latest one carrying it over would copy (as filed, unpadded). */
   lastDate: GameDate | null;
@@ -50,6 +49,7 @@ export interface RatingHistoryCandidate {
   /** The history in one line, with what carrying it over does in its basis. */
   label: Claim;
   saveName: string | null;
+  /** Where it is or was, as the place OOTP keeps saves ("OOTP 27, direct download"); its folder is in the basis. */
   place: string;
   /** Whether its folder is there now, has gone, or can't be told. */
   folder: 'present' | 'gone' | 'unknown';
@@ -95,12 +95,14 @@ export interface RatingHistoryChoice {
 
 const SOURCE = { department: 'frontOffice' as const, specialist: 'Rating history', asOf: null, gameDate: null };
 
-/** A folder in words: the home folder shortened to ~. */
+/**
+ * Where a save's folder was, as the GM knows the place ("OOTP 27, direct download", the save list's own label), never
+ * the folder's path: the path is in the basis (N6 Stage B2 review, M1). A folder outside every place OOTP keeps saves is
+ * one the GM chose.
+ */
 export function placeWords(folder: string | null): string {
   if (!folder) return 'a folder Pennant no longer knows';
-  const home = os.homedir();
-  const parent = path.dirname(folder);
-  return parent.startsWith(home) ? `~${parent.slice(home.length)}` : parent;
+  return saveLocationLabel(folder) ?? 'a folder you chose';
 }
 
 const dateWords = (date: string | null): string | null => {
@@ -147,14 +149,18 @@ function evidence(o: HistoryOffer): Array<{ label: string; value: string }> {
   ];
 }
 
-/** One question as the app asks it. */
-export function offerWords(o: HistoryOffer): RatingHistoryOffer {
+/**
+ * One question as the app asks it. `ownImports` is how many imports this save's own history holds: a save that moved is
+ * asked about while it has at most its first, and the question says which, so it never contradicts the status line
+ * ("This save has rating history from 1 import", N6 Stage B2 review, M2).
+ */
+export function offerWords(o: HistoryOffer, ownImports = 0): RatingHistoryOffer {
   const name = o.saveName ? `"${o.saveName}"` : 'the save';
   const place = placeWords(o.folderPath);
   const through = dateWords(o.carriesThrough);
   const kind = o.kind === 'listed' ? 'moved' : o.kind;
   const text = kind === 'moved'
-    ? `This save has no rating history yet. Is it ${name}, the save that used to be in ${place}?`
+    ? `${ownImports === 0 ? 'This save has no rating history yet.' : 'This save\'s rating history has only just started.'} Is it ${name}, the save that used to be in ${place}?`
     : kind === 'went_back'
       ? `This save went back to an earlier date than its rating history. Continue that history${through ? ` up to ${through}` : ''}, or keep the new start?`
       : 'This save\'s players no longer match its rating history. Continue that history, or keep the new start?';
@@ -286,7 +292,7 @@ export function ratingHistoryView(note: HistoryNote, offers: HistoryOffer[], can
   return {
     status: ratingHistoryStatus(note, dates),
     note: ratingHistoryNoteClaim(note),
-    offers: offers.map(offerWords),
+    offers: offers.map((o) => offerWords(o, dates.length)),
     candidates: candidates.map(candidateWords),
     carriedOver: carries.map(carryOverWords),
     warning: stackingWarning(carries),

@@ -303,4 +303,20 @@ struct MorningReportAdapterTests {
             #expect(mapped.controlHint == served.control.hint)
         }
     }
+
+    @Test("the \"Just updated\" line shows only over the report built from the import it names (N6 Stage B2 review, L2)")
+    func landedLineMatchesTheReport() throws {
+        var summary = try served()
+        let stamp = "2040-07-01T12:00:00.000Z"
+        summary.importStamp = stamp
+        var status = try #require(PreviewFixtures.dataStatus(configured: true))
+        status.updated = .init(display: "Just updated", hint: "Updated to May 6, 2040 · imported Jul 1, 2040, 12:00 PM", importStamp: stamp)
+        #expect(MorningReportView.landedLine(status, for: summary)?.display == "Just updated")
+        // The data status is about another import (a newer one not built yet, or the one before): nothing is said
+        status.updated?.importStamp = "2040-07-02T08:00:00.000Z"
+        #expect(MorningReportView.landedLine(status, for: summary) == nil)
+        status.updated = nil
+        #expect(MorningReportView.landedLine(status, for: summary) == nil)
+        #expect(MorningReportView.landedLine(nil, for: summary) == nil)
+    }
 }

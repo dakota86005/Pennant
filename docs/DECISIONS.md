@@ -2349,7 +2349,12 @@ Mac can hold saves under several OOTP versions and locations.
   chooses and imports it without asking. Otherwise nothing is picked: the saves are served most recently played first,
   and the app asks. The export's time never picks a save.
 - **The club** is taken from the save when its export names exactly one human-managed club (the existing automatic
-  resolution, `viewingOrganization.ts`); with several the app asks.
+  resolution, `viewingOrganization.ts`); with several the app asks. *Amended 2026-09-28 (N6 Stage B2 review, H1):* a
+  team id belongs to one league, so it never crosses into another save's. Choosing the save Pennant already holds (the
+  last import's folder) keeps the club the GM chose; choosing another save follows its one human club, or, with none,
+  several or not said, forgets the club chosen before and the app asks. The forgetting is written when the new save's
+  import lands, never when it is chosen, so an import that fails leaves the club as it was; a club the GM saves
+  meanwhile cancels it. The settings file keeps its shape (`defaultOrgId`, shared with the Electron app).
 - **Played since.** When another save (or a newer OOTP version's) has been played since the chosen one, the status says
   so with that save's id and one sentence, once OOTP has finished saving it (its times still for a minute). Pennant never
   switches by itself: the GM chooses with one click.

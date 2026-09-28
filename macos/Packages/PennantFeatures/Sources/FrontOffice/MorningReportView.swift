@@ -20,7 +20,7 @@ public struct MorningReportView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.routeOpener) private var opener
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// The served "Updated to …" line is in the kicker (for a few seconds after an import lands while the GM reads).
+    /// The served "Just updated" line is in the kicker (for a few seconds after an import lands while the GM reads).
     @State private var showsUpdated = false
     /// Moves each time an import lands in place, so the line's timer starts again.
     @State private var updatedMoment = 0
@@ -29,8 +29,17 @@ public struct MorningReportView: View {
 
     /// The Front Office's report: the whole desk.
     static let wholeDesk = AppRoute(department: "frontOffice", view: "report")
-    /// How long the served "Updated to …" line stays in the kicker before it fades.
+    /// How long the served "Just updated" line stays in the kicker before it fades.
     static let updatedFor: Duration = .seconds(4)
+
+    /// The served "Just updated" line, only when it is about the import the report shown was built from (its
+    /// `importStamp`): never over a report from another import, or before the data status has caught up.
+    public static func landedLine(
+        _ status: Components.Schemas.DataStatusView?, for summary: Components.Schemas.FrontOfficeSummary
+    ) -> Components.Schemas.ImportLandedLine? {
+        guard let line = status?.updated, let stamp = summary.importStamp, line.importStamp == stamp else { return nil }
+        return line
+    }
 
     public var body: some View {
         let store = model.frontOffice
@@ -41,7 +50,7 @@ public struct MorningReportView: View {
                 MastheadScrollView {
                     MorningReportMasthead(
                         summary: summary, record: model.catalogClub?.record, headline: headline, updating: updating,
-                        updated: showsUpdated && !updating ? model.dataStatus?.updated : nil
+                        updated: showsUpdated && !updating ? Self.landedLine(model.dataStatus, for: summary) : nil
                     )
                 } content: {
                     VStack(alignment: .leading, spacing: 12) {
@@ -119,18 +128,18 @@ public struct MorningReportMasthead: View {
     let record: Components.Schemas.Cell?
     let headline: Text
     let updating: Bool
-    let updated: Components.Schemas.Cell?
+    let updated: Components.Schemas.ImportLandedLine?
     @Environment(\.morningReportDesign) private var override
     @Environment(\.routeOpener) private var opener
 
     /// The word after the kicker while the report shown is the kept one or a fresh one is on its way.
     static let updatingWord: LocalizedStringResource = "Updating"
 
-    /// - Parameter updated: the served "Updated to …" line, shown after the kicker while it is given (an import just
+    /// - Parameter updated: the served "Just updated" line, shown after the kicker while it is given (an import just
     ///   landed in place); nil shows none.
     public init(
         summary: Components.Schemas.FrontOfficeSummary, record: Components.Schemas.Cell?, headline: Text, updating: Bool = false,
-        updated: Components.Schemas.Cell? = nil
+        updated: Components.Schemas.ImportLandedLine? = nil
     ) {
         self.summary = summary
         self.record = record

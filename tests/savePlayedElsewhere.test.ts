@@ -55,7 +55,7 @@ describe('a save played since the chosen one', () => {
       hint: 'Pennant stays on this save until you switch.',
       save: { name: 'RIGHTS-EXP', csvDir: other.csvDir },
     });
-    expect(notice.text).toMatch(/^You've played RIGHTS-EXP since this save, last on .+\.$/);
+    expect(notice.text).toMatch(/^You've played "RIGHTS-EXP" since this save, last on .+\.$/);
     expect(notice.save.id).toBeTruthy();
     // A second look finds the same, and the choice is untouched
     expect(scanSaves()).toEqual(notice);
@@ -74,7 +74,7 @@ describe('a save played since the chosen one', () => {
     at(0);
     const notice = scanSaves()!;
     expect(notice.kind).toBe('newerOotp');
-    expect(notice.text).toMatch(/^You've played First in 28 in OOTP 28 since this save, last on .+\. It has no export yet\.$/);
+    expect(notice.text).toMatch(/^You've played "First in 28" in OOTP 28 since this save, last on .+\. It has no export yet\.$/);
   });
 
   it('says nothing when the chosen save is the one played last, when none is chosen, and when the chosen save\'s time is not known', () => {
@@ -237,7 +237,7 @@ describe('"played since" when the chosen save has gone, or a time is in the futu
     at(0);
     const notice = scanSaves()!;
     expect(notice).toMatchObject({ kind: 'chosenMissing', actionText: 'Switch to Renamed in OOTP', save: { name: 'Renamed in OOTP' }, chosenLastPlayedAt: null });
-    expect(notice.text).toMatch(/^Pennant can't find the save it was using\. You've played Renamed in OOTP most recently, last on .+\.$/);
+    expect(notice.text).toMatch(/^Pennant can't find the save it was using\. You've played "Renamed in OOTP" most recently, last on .+\.$/);
   });
 
   it('never calls a save with a time in the future "played since"', () => {

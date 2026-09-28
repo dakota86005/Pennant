@@ -76,6 +76,28 @@ const SAVE_BASES: SaveBase[] = [
   { label: 'OneDrive Documents', segments: ['OneDrive', 'Documents', OOTP_DATA, OOTP_VERSION_FOLDER, 'saved_games'], platform: 'win' },
 ];
 
+/**
+ * Where a save's folder is (or was), as the GM knows the place: the label of the place OOTP keeps saves that holds it
+ * ("OOTP 27, direct download", as the save list's `location`), read from the path alone, so a folder that has gone is
+ * still placed. Null when it is under none of them.
+ */
+export function saveLocationLabel(folder: string, home: string = os.homedir()): string | null {
+  const parts = path.relative(home, path.resolve(folder)).split(path.sep);
+  if (parts[0] === '..' || path.isAbsolute(parts[0] ?? '')) return null;
+  for (const base of SAVE_BASES) {
+    if (parts.length <= base.segments.length) continue;
+    let version: number | null = null;
+    const matches = base.segments.every((segment, i) => {
+      if (typeof segment === 'string') return parts[i] === segment;
+      const m = segment.exec(parts[i]);
+      if (m && m[1] !== undefined) version = Number(m[1]);
+      return m !== null;
+    });
+    if (matches) return version === null ? base.label : `OOTP ${version}, ${base.label}`;
+  }
+  return null;
+}
+
 /** A `saved_games` folder found on disk, with the OOTP version its path names. */
 export interface SaveRoot {
   path: string;

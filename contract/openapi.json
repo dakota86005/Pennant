@@ -1927,8 +1927,8 @@
             "description": "Rating history of this save that isn't used, or that started fresh, in a sentence with its basis; null when all is its own (D-064)."
           },
           "updated": {
-            "$ref": "#/components/schemas/Cell",
-            "description": "What the last import brought the league up to (\"Updated to May 6, 2040\"), with when it was imported in its hint: the line the Mac app shows for a moment when an import lands while the GM reads (N6 Stage B2). Null with nothing imported."
+            "$ref": "#/components/schemas/ImportLandedLine",
+            "description": "\"Just updated\", with the day the last import brought the league to and when it was imported in its hint: the line the Mac app shows for a moment when an import lands while the GM reads (N6 Stage B2; the kicker already names the day). Null with nothing imported."
           }
         },
         "required": [
@@ -2728,6 +2728,29 @@
           "type",
           "error"
         ]
+      },
+      "ImportLandedLine": {
+        "type": "object",
+        "properties": {
+          "display": {
+            "type": "string",
+            "description": "The line: \"Just updated\"."
+          },
+          "hint": {
+            "type": "string",
+            "description": "The day the import brought the league to, and when it was imported."
+          },
+          "importStamp": {
+            "type": "string",
+            "description": "The import it is about (the last import's finish time, as a report's `importStamp`): shown only over a report built from that import."
+          }
+        },
+        "required": [
+          "display",
+          "hint",
+          "importStamp"
+        ],
+        "description": "The line shown for a moment when an import lands while the GM reads (N6 Stage B2)."
       },
       "ImportNote": {
         "type": "object",
@@ -4122,7 +4145,8 @@
             ]
           },
           "place": {
-            "type": "string"
+            "type": "string",
+            "description": "Where it is or was, as the place OOTP keeps saves (\"OOTP 27, direct download\"); its folder is in the basis."
           },
           "folder": {
             "description": "Whether its folder is there now, has gone, or can't be told.",
@@ -4248,7 +4272,7 @@
           },
           "place": {
             "type": "string",
-            "description": "Where it was, in words (the home folder shortened to ~)."
+            "description": "Where it was, as the place OOTP keeps saves (\"OOTP 27, direct download\"); its folder is in the basis."
           },
           "lastDate": {
             "$ref": "#/components/schemas/GameDate",
@@ -5039,7 +5063,7 @@
           },
           "text": {
             "type": "string",
-            "description": "The line the app shows (\"You've played RIGHTS-EXP since this save, last on Sep 20, 2026, 6:58 AM.\")."
+            "description": "The line the app shows (\"You've played \"RIGHTS-EXP\" since this save, last on Sep 20, 2026, 6:58 AM.\")."
           },
           "hint": {
             "type": "string",
@@ -5622,11 +5646,11 @@
         "properties": {
           "decided": {
             "type": "boolean",
-            "description": "Whether the club was taken from the save: exactly one club is managed by the save's human."
+            "description": "Whether the club is settled without asking: the save's human manages exactly one club, or the same save was chosen again and the club the GM chose is kept. False: the GM is asked."
           },
           "teamId": {
             "$ref": "#/components/schemas/Integer",
-            "description": "The club followed; null when none was taken."
+            "description": "The club followed or kept; null when none is."
           },
           "name": {
             "type": [

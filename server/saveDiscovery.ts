@@ -60,6 +60,12 @@ export function saveLabel(save: SaveInfo, saves: readonly SaveInfo[]): string {
   return twin ? `${save.name} (${save.location ?? save.lgPath})` : save.name;
 }
 
+/** A save named inside a sentence: its name in quotes, as the rating-history questions name one (N6 Stage B2 review, L5). */
+function quotedSaveLabel(save: SaveInfo, saves: readonly SaveInfo[]): string {
+  const twin = saves.some((o) => o.name === save.name && o.id !== save.id);
+  return twin ? `"${save.name}" (${save.location ?? 'another folder'})` : `"${save.name}"`;
+}
+
 /** The pick, or why there is none, and the save played next most recently (the pick's margin). */
 export interface SavePick {
   pick: SaveInfo | null;
@@ -113,7 +119,7 @@ export interface SavePlayedElsewhere {
    * most recently.
    */
   kind: 'otherSave' | 'newerOotp' | 'chosenMissing';
-  /** The line the app shows ("You've played RIGHTS-EXP since this save, last on Sep 20, 2026, 6:58 AM."). */
+  /** The line the app shows ("You've played "RIGHTS-EXP" since this save, last on Sep 20, 2026, 6:58 AM."). */
   text: string;
   /** The help tag: at most about 75 characters. */
   hint: string;
@@ -171,7 +177,7 @@ export function playedElsewhere(saves: readonly SaveInfo[], chosen: SaveInfo | '
     const name = saveLabel(latest, saves);
     return {
       kind: 'chosenMissing',
-      text: `Pennant can't find the save it was using. You've played ${name} most recently, last on ${latest.lastPlayedText ?? 'a date that couldn\'t be read'}.${latest.hasExport ? '' : ' It has no export yet.'}`,
+      text: `Pennant can't find the save it was using. You've played ${quotedSaveLabel(latest, saves)} most recently, last on ${latest.lastPlayedText ?? 'a date that couldn\'t be read'}.${latest.hasExport ? '' : ' It has no export yet.'}`,
       hint: 'It may have been renamed or moved in OOTP.',
       actionText: `Switch to ${name}`,
       save: latest,
@@ -193,7 +199,7 @@ export function playedElsewhere(saves: readonly SaveInfo[], chosen: SaveInfo | '
   const exportLine = other.hasExport ? '' : ' It has no export yet.';
   return {
     kind: newer ? 'newerOotp' : 'otherSave',
-    text: `You've played ${name}${where} since this save, last on ${when}.${exportLine}`,
+    text: `You've played ${quotedSaveLabel(other, saves)}${where} since this save, last on ${when}.${exportLine}`,
     hint: 'Pennant stays on this save until you switch.',
     actionText: `Switch to ${name}`,
     save: other,
@@ -402,36 +408,50 @@ export function splitLine(line: string, delimiter: string): string[] {
 }
 
 /**
- * The clubs the save's human manages, read from the export's `teams.csv` before any import (its `human_team` column,
- * as `viewingOrganization.ts` reads it after one). Null when the file or the column is not there: not known, never none.
+ * Every club in the export's `teams.csv`, read before any import, with whether the save's human manages it (its
+ * `human_team` column, as `viewingOrganization.ts` reads it after one). Null when the file, its id column or its
+ * `human_team` column is not there: not known, never none.
  */
-export function humanClubsInExport(csvDir: string): HumanClub[] | null {
+function clubsInExport(csvDir: string): Array<HumanClub & { human: boolean }> | null {
   let text: string;
   try {
     const buf = fs.readFileSync(path.join(csvDir, 'teams.csv'));
     text = buf.toString('utf8');
-    if (text.includes('�')) text = buf.toString('latin1');
+    if (text.includes('\uFFFD')) text = buf.toString('latin1');
   } catch {
     return null;
   }
-  const lines = text.replace(/^﻿/, '').split(/\r?\n/).filter((l) => l.trim() !== '');
+  const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter((l) => l.trim() !== '');
   if (lines.length === 0) return null;
   const delimiter = delimiterOf(lines[0]);
   const header = splitLine(lines[0], delimiter).map((h) => h.trim());
   const col = (name: string): number => header.indexOf(name);
   const [id, human, name, nickname] = [col('team_id'), col('human_team'), col('name'), col('nickname')];
   if (id < 0 || human < 0) return null;
-  const clubs: HumanClub[] = [];
+  const clubs: Array<HumanClub & { human: boolean }> = [];
   for (const line of lines.slice(1)) {
     const f = splitLine(line, delimiter);
-    if (Number(f[human]) !== 1) continue;
     const teamId = Number(f[id]);
     if (!Number.isInteger(teamId)) continue;
     const place = name >= 0 ? f[name]?.trim() ?? '' : '';
     const nick = nickname >= 0 ? f[nickname]?.trim() ?? '' : '';
-    clubs.push({ teamId, name: [place, nick && nick !== place ? nick : ''].filter(Boolean).join(' ') || `Club ${teamId}` });
+    clubs.push({ teamId, name: [place, nick && nick !== place ? nick : ''].filter(Boolean).join(' ') || `Club ${teamId}`, human: Number(f[human]) === 1 });
   }
   return clubs.sort((a, b) => a.teamId - b.teamId);
+}
+
+/**
+ * The clubs the save's human manages, read from the export's `teams.csv` before any import (its `human_team` column,
+ * as `viewingOrganization.ts` reads it after one). Null when the file or the column is not there: not known, never none.
+ */
+export function humanClubsInExport(csvDir: string): HumanClub[] | null {
+  const clubs = clubsInExport(csvDir);
+  return clubs === null ? null : clubs.filter((c) => c.human).map(({ teamId, name }) => ({ teamId, name }));
+}
+
+/** A club's name as the save's export has it; null when the export doesn't list that club (or can't be read). */
+export function clubNameInExport(csvDir: string, teamId: number): string | null {
+  return clubsInExport(csvDir)?.find((c) => c.teamId === teamId)?.name ?? null;
 }
 
 /** For a test: the last look forgotten and the watch stopped. */

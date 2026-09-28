@@ -179,10 +179,12 @@ describe('what the export carries and what the import left out (N3.5, D-061)', (
 });
 
 describe('the line shown when an import lands while the GM reads (N6 Stage B2)', () => {
-  it('says what day the import brought the league to, with when it was imported in its hint', () => {
+  it('says it was just updated, with the day the import brought the league to and when in its hint, and names the import', () => {
     const view = dataStatusView(current);
-    expect(view.updated).toMatchObject({ display: 'Updated to May 9, 2040', hint: expect.stringMatching(/^Pennant imported OOTP's export on /) });
-    expect(bannedIn([view.updated!.display], BANNED_JARGON)).toEqual([]);
+    // The kicker already names the league's day: the line doesn't repeat it (N6 Stage B2 review, L2)
+    expect(view.updated).toMatchObject({ display: 'Just updated', hint: expect.stringMatching(/^Updated to May 9, 2040 · imported /) });
+    expect(view.updated!.importStamp).toBe(current.csv.importedAt);
+    expect(bannedIn([view.updated!.display, view.updated!.hint], BANNED_JARGON)).toEqual([]);
   });
 
   it('says nothing before an import, and nothing with no game date (never a date made up)', () => {

@@ -37,6 +37,14 @@ export const BANNED_JARGON: readonly RegExp[] = [
   /\bnull\b/i, /\bundefined\b/i, /\bNaN\b/i,
 ];
 
+/**
+ * A folder's path, where a save is placed in words (N6 Stage B2 review, M1): the rating-history question, the histories
+ * the GM may carry over and the carry-overs name the place the GM knows ("OOTP 27, direct download"), never the path,
+ * which goes in the basis. Not on the jargon list: a data status's "Save folder" row is the folder itself, and a basis
+ * may name it.
+ */
+export const FOLDER_PATHS: readonly RegExp[] = [/saved_games/i, /import_export/i, /\.lg\//i, /~\/Library/i, /\/Users\//];
+
 /** The rendering leaks alone: what no string the app can show may carry, a breakdown's included. */
 export const RENDERING_LEAKS: readonly RegExp[] = [/\bnull\b/i, /\bundefined\b/i, /\bNaN\b/i];
 
