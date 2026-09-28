@@ -204,6 +204,7 @@ struct DataStatusButton: View {
 /// into a floating panel (the app's basis window), open a served target, and the departments' served names.
 struct DetailView: View {
     @Environment(AppModel.self) private var model
+    @Environment(AppRouting.self) private var routing
     @Environment(\.openWindow) private var openWindow
     let window: MainWindowModel
 
@@ -227,6 +228,8 @@ struct DetailView: View {
                 StartingView()
             } else if model.status?.configured == false {
                 NoSaveView()
+            } else if routing.awaitingClub {
+                ClubPendingView()
             } else if let descriptor = window.descriptor {
                 descriptor.makeView()
             } else {
@@ -260,6 +263,21 @@ struct ImportRequestBanner: View {
             .background(.bar)
             .accessibilityIdentifier("banner.importProblem")
         }
+    }
+}
+
+/// The Setup window is asking which club to follow: no report is drawn until the GM answers there.
+struct ClubPendingView: View {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        ContentUnavailableView {
+            Label("Pick the Club", systemImage: "person.crop.circle.badge.questionmark")
+        } actions: {
+            Button("Set Up Pennant…") { openWindow(id: SceneID.setup) }
+                .accessibilityIdentifier("detail.pickClub")
+        }
+        .accessibilityIdentifier("detail.clubPending")
     }
 }
 

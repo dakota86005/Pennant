@@ -82,6 +82,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let after = UserDefaults.standard.double(forKey: "PennantDebugCaptureAfter")
             DispatchQueue.main.asyncAfter(deadline: .now() + (after > 0 ? after : 3)) { Self.captureMainWindow(to: path) }
         }
+        // Settings opened by itself (`-PennantDebugOpenSettings YES`), for its captures
+        if UserDefaults.standard.bool(forKey: "PennantDebugOpenSettings") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) }
+        }
         // Every visible window drawn by itself (`-PennantDebugCaptureWindows <folder>` after `-PennantDebugCaptureAfter`):
         // the Setup and Settings windows as well as the main one, named by title and appearance
         if let folder = UserDefaults.standard.string(forKey: "PennantDebugCaptureWindows"), !folder.isEmpty {

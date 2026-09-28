@@ -72,6 +72,9 @@ struct SetupScene: View {
         }
         .frame(width: SetupView.size.width, height: SetupView.size.height)
         .onAppear { _ = ensureSetup() }
+        // While the club is asked, the main window holds its report; closing the window lets it go
+        .onChange(of: setup?.step) { _, step in routing.awaitingClub = step == .pickClub }
+        .onDisappear { routing.awaitingClub = false }
         .onChange(of: routing.setupRequest) {
             let setup = ensureSetup()
             setup.restart()

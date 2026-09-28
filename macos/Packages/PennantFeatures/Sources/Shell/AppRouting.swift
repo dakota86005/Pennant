@@ -29,6 +29,10 @@ public final class AppRouting {
     /// Club ▸ Import Export…: the Setup window, at the save step.
     public func requestSetup() { setupRequest += 1 }
 
+    /// The Setup window is asking which club to follow (a save whose human manages several): the main window draws no
+    /// report until the GM answers or closes it, so no report is drawn before its club is confirmed.
+    public var awaitingClub = false
+
     /// Bumped each time the GM clicks a "played since" switch: the Setup window takes `pendingSwitch` and starts on it.
     public private(set) var switchRequest = 0
     /// The save the GM clicked to switch to, until the Setup window takes it.
