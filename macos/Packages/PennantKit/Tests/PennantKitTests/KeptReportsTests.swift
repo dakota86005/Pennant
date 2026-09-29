@@ -142,8 +142,8 @@ struct KeptReportsTests {
 @MainActor
 struct KeptSummaryStoreTests {
     private let club = ClubRef(id: 1)
-    private func key(saveId: String? = "save-a", restores: Int = 0, importStamp: String = "") -> AppModel.StoreKey {
-        AppModel.StoreKey(importStamp: importStamp, club: club, restores: restores, saveId: saveId)
+    private func key(saveId: String? = "save-a", restores: Int = 0, importStamp: String = "", reportStamp: String = "") -> AppModel.StoreKey {
+        AppModel.StoreKey(importStamp: importStamp, club: club, restores: restores, reportStamp: reportStamp, saveId: saveId)
     }
 
     private func client(_ transport: any ClientTransport) -> Client {
@@ -254,28 +254,50 @@ struct KeptSummaryStoreTests {
         #expect(FrontOfficeStore.keptKey(AppModel.StoreKey(importStamp: "", club: nil, restores: 0, saveId: "save-a"), contract: "digest-a") == nil)
     }
 
-    @Test("a switch to another save keeps the report on screen with its own club's catalog until the new save's report lands (N6 polish)")
+    @Test("a switch to another save keeps the report on screen with its own club's catalog, said to be updating, from the moment the save is chosen until the new save's report lands (N6 polish and its review)")
     func switchHoldsTheWindowTogether() async throws {
+        // The fixture's own build stamp, so the real "current" test runs (an empty stamp would pass anything)
+        func key(saveId: String? = "save-a", importStamp: String = "") -> AppModel.StoreKey {
+            self.key(saveId: saveId, importStamp: importStamp, reportStamp: "rstamp")
+        }
         let kept = KeptReports(folder: try scratchFolder("kept"))
         let store = FrontOfficeStore(kept: kept, contract: "digest-a")
         await store.loadSummary(client: client(try transport()), key: key(), catalog: try catalog())
         #expect(store.shownKey == key())
         #expect(store.heldCatalog(for: key()) == nil)
-        // The key moves to the new save (its import landed): the old report is still on screen, drawn with its catalog
+        #expect(store.summaryIsCurrent(for: key()))
+        #expect(store.showsUpdating(for: key()) == false)
+
+        // Another save is chosen: until its import lands the key names no save, and the server still serves the old
+        // save's import. Updating at once, before any request, and nothing is asked (the answer would be the old save's)
+        let chosen = key(saveId: nil)
+        #expect(store.showsUpdating(for: chosen))
+        #expect(store.summaryIsCurrent(for: chosen) == false)
+        #expect(store.heldCatalog(for: chosen) == (try catalog()))
+        let refused = GatedTransport(try RoutedTransport.json("getFrontOffice"))
+        refused.open()
+        await store.loadSummary(client: client(refused), key: chosen)
+        #expect(refused.wasAsked == false, "a report was asked for while the chosen save was not yet imported")
+        #expect(store.shownKey == key())
+        #expect(store.showsUpdating(for: chosen))
+        #expect(store.heldCatalog(for: chosen) == (try catalog()))
+
+        // The new save's import landed (a new import, the new save's id): still updating, before and while it is asked
         let next = key(saveId: "save-b")
+        #expect(store.showsUpdating(for: next))
+        #expect(store.heldCatalog(for: next) == (try catalog()))
         let gate = GatedTransport(try RoutedTransport.json("getFrontOffice"))
         let load = Task { await store.loadSummary(client: client(gate), key: next, catalog: nil) }
         await gate.waitUntilAsked()
         #expect(store.shownKey == key())
         #expect(store.heldCatalog(for: next) == (try catalog()))
         #expect(store.showsUpdating(for: next))
-        // A save chosen and not yet imported (no id served): held too
-        #expect(store.heldCatalog(for: key(saveId: nil)) == (try catalog()))
         gate.open()
         await load.value
-        // The new save's report landed: the whole window moves to it together
+        // The new save's report landed: the whole window moves to it together, and it is no longer updating
         #expect(store.shownKey == next)
         #expect(store.heldCatalog(for: next) == nil)
+        #expect(store.showsUpdating(for: next) == false)
         // A new import of the same save: held too until its report lands; a rebuild of the same import is not
         var rebuilt = next
         rebuilt.reportStamp = "another-build"
@@ -285,6 +307,23 @@ struct KeptSummaryStoreTests {
         await store.keep(catalog: try catalog(), for: next)
         #expect(store.shownCatalog == (try catalog()))
         #expect(store.heldCatalog(for: key(saveId: "save-b", importStamp: "2040-07-03T00:00:00.000Z")) == (try catalog()))
+    }
+
+    @Test("another save is never only a build moving, and only a save chosen over the same import waits for it (N6 polish review)")
+    func saveMovesAreNotBuildMoves() {
+        let a = key(reportStamp: "one")
+        var build = a
+        build.reportStamp = "two"
+        #expect(FrontOfficeStore.onlyTheBuildMoved(a, build))
+        #expect(!FrontOfficeStore.onlyTheBuildMoved(a, key(saveId: "save-b", reportStamp: "two")))
+        #expect(!FrontOfficeStore.onlyTheBuildMoved(a, key(saveId: nil, reportStamp: "two")))
+        // A save chosen, its import not landed: the key names no save over the shown report's import
+        #expect(FrontOfficeStore.awaitsTheChosenSave(shown: a, key: key(saveId: nil)))
+        // Its import landed, a restore, nothing shown for a save, or nothing shown: asked as usual
+        #expect(!FrontOfficeStore.awaitsTheChosenSave(shown: a, key: key(saveId: nil, importStamp: "2040-07-03T00:00:00.000Z")))
+        #expect(!FrontOfficeStore.awaitsTheChosenSave(shown: a, key: key(saveId: nil, restores: 1)))
+        #expect(!FrontOfficeStore.awaitsTheChosenSave(shown: key(saveId: nil), key: key(saveId: nil)))
+        #expect(!FrontOfficeStore.awaitsTheChosenSave(shown: nil, key: key(saveId: nil)))
     }
 
     @Test("at launch the report kept last is read before its key is confirmed, for its club card only, and dropped for another key (N6 polish)")

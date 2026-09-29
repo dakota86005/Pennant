@@ -43,10 +43,15 @@ public final class FrontOfficeStore {
     /// key's (a switch or an import under way, until the new report lands): the window moves to the new one together,
     /// tied to one import; nil otherwise (`AppModel.heldCatalog`).
     public func heldCatalog(for key: AppModel.StoreKey?) -> KeptReports.Catalog? {
-        guard let key, summary != nil, let shown = shownKey,
-              shown.saveId != key.saveId || shown.club != key.club || shown.importStamp != key.importStamp
-        else { return nil }
-        return shownCatalog
+        shownIsAnothers(key) ? shownCatalog : nil
+    }
+
+    /// The report on screen is another save's, club's or import's than the key names: a save chosen and not yet
+    /// imported (the key names no save while the served data is still the old save's), an import or a switch under way.
+    /// The report is drawn as updating until the key's own lands (N6 polish review).
+    func shownIsAnothers(_ key: AppModel.StoreKey?) -> Bool {
+        guard let key, summary != nil, let shown = shownKey else { return false }
+        return shown.saveId != key.saveId || shown.club != key.club || shown.importStamp != key.importStamp
     }
 
     /// Each department's report, as last served, by department id.
@@ -101,6 +106,13 @@ public final class FrontOfficeStore {
         }
     }
 
+    /// A save was chosen and its import has not landed: the report on screen is a save's, and the key names no save
+    /// while its import is still the one that report was built from.
+    nonisolated static func awaitsTheChosenSave(shown: AppModel.StoreKey?, key: AppModel.StoreKey) -> Bool {
+        guard let shown, shown.saveId != nil else { return false }
+        return key.saveId == nil && key.importStamp == shown.importStamp && key.restores == shown.restores
+    }
+
     /// What a kept payload is for, from a store key: the save the imported data came from and the club the app shows;
     /// nil while either is not known (nothing kept is read or written then).
     nonisolated static func keptKey(_ key: AppModel.StoreKey, contract: String) -> KeptReports.Key? {
@@ -116,11 +128,12 @@ public final class FrontOfficeStore {
     #endif
 
     /// Whether the view says the report is updating: the kept one is shown, a fresh one is on its way, or the shown one
-    /// is not the key's; never while the last request failed (the problem line says so instead, and "Updating" would
-    /// otherwise stay on for good).
+    /// is not the key's (another save's, club's or import's: from the moment another save is chosen until its report
+    /// lands); never while the last request failed (the problem line says so instead, and "Updating" would otherwise stay
+    /// on for good).
     public func showsUpdating(for key: AppModel.StoreKey?) -> Bool {
         guard summary != nil, summaryProblem == nil else { return false }
-        return summaryIsKept || loadingSummary || !summaryIsCurrent(for: key)
+        return summaryIsKept || loadingSummary || shownIsAnothers(key) || !summaryIsCurrent(for: key)
     }
 
     /// Whether a payload was built from what the key names: the same import, the same club, and (once the server has
@@ -133,9 +146,9 @@ public final class FrontOfficeStore {
         return key.reportStamp.isEmpty || reportStamp == key.reportStamp
     }
 
-    /// Two keys that differ in nothing but the server's build stamp.
+    /// Two keys that differ in nothing but the server's build stamp (the same save, import, club and restores).
     nonisolated static func onlyTheBuildMoved(_ a: AppModel.StoreKey, _ b: AppModel.StoreKey) -> Bool {
-        a.importStamp == b.importStamp && a.club == b.club && a.restores == b.restores
+        a.saveId == b.saveId && a.importStamp == b.importStamp && a.club == b.club && a.restores == b.restores
     }
 
     /// The club a request names: the served current club's id, or `automatic` (the server resolves it the same way).
@@ -143,8 +156,10 @@ public final class FrontOfficeStore {
         key.club.map { String($0.id) } ?? "automatic"
     }
 
+    /// The shown summary was built from what the key names: its import, club and build (`isCurrent`), for the key's save
+    /// (the payload names no save: the key it was shown for does).
     public func summaryIsCurrent(for key: AppModel.StoreKey?) -> Bool {
-        guard let summary else { return false }
+        guard let summary, !shownIsAnothers(key) else { return false }
         return Self.isCurrent(importStamp: summary.importStamp, reportStamp: summary.reportStamp, orgId: summary.orgId, for: key)
     }
 
@@ -163,6 +178,14 @@ public final class FrontOfficeStore {
         guard let client, let key, summaryKey != key || summary == nil else { return }
         // Only the build stamp moved, to the build the store already has (read just before the event): nothing to ask
         if let loaded = summaryKey, Self.onlyTheBuildMoved(loaded, key), summary?.reportStamp == key.reportStamp {
+            summaryKey = key
+            return
+        }
+        // Another save chosen and not yet imported: the key names no save, and the server still serves the old save's
+        // import, so there is nothing new to ask. The old report stays on screen, as updating, with its own club, until
+        // the new save's import lands and moves the key (N6 polish review: a report fetched now was taken as current,
+        // and "Updating" went off before the new save's report came)
+        if Self.awaitsTheChosenSave(shown: shownKey, key: key), summary != nil {
             summaryKey = key
             return
         }
@@ -338,6 +361,7 @@ public final class FrontOfficeStore {
         let store = FrontOfficeStore()
         store.summary = summary
         store.summaryKey = key
+        store.shownKey = key
         store.reports = reports
         for department in reports.keys { store.reportKeys[department] = key }
         store.trails = trails

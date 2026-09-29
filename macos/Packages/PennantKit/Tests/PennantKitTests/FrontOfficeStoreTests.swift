@@ -188,6 +188,9 @@ final class GatedTransport: ClientTransport, @unchecked Sendable {
 
     func open() { lock.withLock { opened = true } }
 
+    /// Whether a request was sent through it.
+    var wasAsked: Bool { lock.withLock { asked } }
+
     func waitUntilAsked() async {
         while !lock.withLock({ asked }) { try? await Task.sleep(for: .milliseconds(5)) }
     }
