@@ -260,13 +260,13 @@ public final class FrontOfficeStore {
     /// A write that fails is logged and costs nothing. The app calls it when a fresh payload lands and when the catalog
     /// arrives or changes.
     public func keep(catalog: KeptReports.Catalog?, for key: AppModel.StoreKey?) async {
-        guard let kept, let key, let summary, !summaryIsKept, let catalog, catalog.club != nil,
-              let keptKey = Self.keptKey(key, contract: contract),
-              summary.orgId == keptKey.clubId,
-              Self.isCurrent(importStamp: summary.importStamp, reportStamp: summary.reportStamp, orgId: summary.orgId, for: key)
+        guard let key, let summary, !summaryIsKept, let catalog, let club = catalog.club, club.teamId == summary.orgId,
+              summaryIsCurrent(for: key)
         else { return }
-        // The report on screen is drawn with this catalog from now on
+        // The report on screen is drawn with its own club's catalog from now on, whether or not it can be kept (no save
+        // id served, nowhere to keep): a later import or switch holds the window together with it (N6 polish review)
         shownCatalog = catalog
+        guard let kept, let keptKey = Self.keptKey(key, contract: contract), summary.orgId == keptKey.clubId else { return }
         let stamp = "\(summary.importStamp ?? "")|\(summary.reportStamp)"
         if let last = lastKept, last.key == keptKey, last.stamp == stamp, last.catalog == catalog { return }
         lastKept = (keptKey, stamp, catalog)

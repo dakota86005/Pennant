@@ -326,6 +326,30 @@ struct KeptSummaryStoreTests {
         #expect(!FrontOfficeStore.awaitsTheChosenSave(shown: nil, key: key(saveId: nil)))
     }
 
+    @Test("the report on screen takes its own club's catalog even where it cannot be kept, so a later switch holds the window together (N6 polish review)")
+    func shownCatalogWithoutKeeping() async throws {
+        // Nowhere to keep
+        let unkept = FrontOfficeStore(kept: nil, contract: "digest-a")
+        await unkept.loadSummary(client: client(try transport()), key: key())
+        await unkept.keep(catalog: try catalog(), for: key())
+        #expect(unkept.shownCatalog == (try catalog()))
+        #expect(unkept.heldCatalog(for: key(saveId: "save-b")) == (try catalog()))
+        // No save id served: nothing kept, but the report is drawn with its catalog
+        let kept = KeptReports(folder: try scratchFolder("kept"))
+        let noSave = FrontOfficeStore(kept: kept, contract: "digest-a")
+        await noSave.loadSummary(client: client(try transport()), key: key(saveId: nil))
+        await noSave.keep(catalog: try catalog(), for: key(saveId: nil))
+        #expect(noSave.shownCatalog == (try catalog()))
+        #expect(await kept.readLast() == nil)
+        // Another club's catalog is never the report's
+        let other = FrontOfficeStore(kept: nil, contract: "digest-a")
+        await other.loadSummary(client: client(try transport()), key: key())
+        var clubTwo = try catalog()
+        clubTwo.club?.teamId = 2
+        await other.keep(catalog: clubTwo, for: key())
+        #expect(other.shownCatalog == nil)
+    }
+
     @Test("at launch the report kept last is read before its key is confirmed, for its club card only, and dropped for another key (N6 polish)")
     func waitingKept() async throws {
         let kept = KeptReports(folder: try scratchFolder("kept"))
