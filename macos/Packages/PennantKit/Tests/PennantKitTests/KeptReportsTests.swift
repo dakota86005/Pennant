@@ -262,7 +262,7 @@ struct KeptSummaryStoreTests {
         #expect(store.shownKey == key())
         #expect(store.heldCatalog(for: key()) == nil)
         // The key moves to the new save (its import landed): the old report is still on screen, drawn with its catalog
-        let next = key(saveId: "save-b", importStamp: "2040-07-02T00:00:00.000Z")
+        let next = key(saveId: "save-b")
         let gate = GatedTransport(try RoutedTransport.json("getFrontOffice"))
         let load = Task { await store.loadSummary(client: client(gate), key: next, catalog: nil) }
         await gate.waitUntilAsked()
@@ -276,6 +276,15 @@ struct KeptSummaryStoreTests {
         // The new save's report landed: the whole window moves to it together
         #expect(store.shownKey == next)
         #expect(store.heldCatalog(for: next) == nil)
+        // A new import of the same save: held too until its report lands; a rebuild of the same import is not
+        var rebuilt = next
+        rebuilt.reportStamp = "another-build"
+        #expect(store.heldCatalog(for: rebuilt) == nil)
+        // The new report's catalog is its own, once it arrives (never the old save's)
+        #expect(store.shownCatalog == nil)
+        await store.keep(catalog: try catalog(), for: next)
+        #expect(store.shownCatalog == (try catalog()))
+        #expect(store.heldCatalog(for: key(saveId: "save-b", importStamp: "2040-07-03T00:00:00.000Z")) == (try catalog()))
     }
 
     @Test("at launch the report kept last is read before its key is confirmed, for its club card only, and dropped for another key (N6 polish)")

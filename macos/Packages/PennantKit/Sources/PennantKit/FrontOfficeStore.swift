@@ -39,10 +39,13 @@ public final class FrontOfficeStore {
     /// club with it, so the whole window moves to the new save together when its report lands (N6 polish).
     public private(set) var shownKey: AppModel.StoreKey?
     public private(set) var shownCatalog: KeptReports.Catalog?
-    /// The catalog the report on screen is drawn with, while that report is another save's or club's than the key's (a
-    /// switch under way, until the new save's report lands); nil otherwise (`AppModel.heldCatalog`).
+    /// The catalog the report on screen is drawn with, while that report is another save's, club's or import's than the
+    /// key's (a switch or an import under way, until the new report lands): the window moves to the new one together,
+    /// tied to one import; nil otherwise (`AppModel.heldCatalog`).
     public func heldCatalog(for key: AppModel.StoreKey?) -> KeptReports.Catalog? {
-        guard let key, summary != nil, let shown = shownKey, shown.saveId != key.saveId || shown.club != key.club else { return nil }
+        guard let key, summary != nil, let shown = shownKey,
+              shown.saveId != key.saveId || shown.club != key.club || shown.importStamp != key.importStamp
+        else { return nil }
         return shownCatalog
     }
 
@@ -219,7 +222,8 @@ public final class FrontOfficeStore {
             summaryIsKept = false
             // The whole window moves to this report's save and club together (the club card, the colours, the report)
             shownKey = key
-            if let catalog, catalog.club?.teamId == served.orgId { shownCatalog = catalog }
+            // Its own club's catalog, or none until it arrives (`keep`): never the report before it's
+            shownCatalog = catalog?.club?.teamId == served.orgId ? catalog : nil
             waitingKept = nil
             if landed { importLandings += 1 }
         }
