@@ -213,11 +213,14 @@ public struct MagazineMasthead<Figures: View, Control: View>: View {
         .padding(.leading, 28)
         .padding(.trailing, 28)
         .padding(.bottom, 22)
-        .padding(.top, topInset > 0 ? topInset + Masthead.fade + 8 : 22)
+        .padding(.top, topInset > 0 ? Masthead.fade + 8 : 22)
         .frame(maxWidth: .infinity, alignment: .leading)
         .coordinateSpace(.named(MastheadBackground.space))
         .background {
-            MastheadBackground(palette: palette, topInset: topInset, art: art, textTrailing: textEdges.values.max() ?? 0, control: controlFrame)
+            // Run up under the toolbar, above the masthead's own frame (the scroll view keeps its content below the
+            // toolbar, so the content scrolled under it gets the soft edge; N6 polish): the control's frame moves with it
+            MastheadBackground(palette: palette, topInset: topInset, art: art, textTrailing: textEdges.values.max() ?? 0, control: controlFrame?.offsetBy(dx: 0, dy: topInset))
+                .padding(.top, -topInset)
                 .backgroundExtensionEffect()
         }
         .overlay(alignment: .bottom) {

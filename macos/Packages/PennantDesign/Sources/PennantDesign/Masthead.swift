@@ -98,11 +98,14 @@ public struct Masthead: View {
         .padding(.leading, 28)
         .padding(.trailing, 48)
         .padding(.bottom, 22)
-        .padding(.top, topInset > 0 ? topInset + Self.fade + 8 : 22)
+        .padding(.top, topInset > 0 ? Self.fade + 8 : 22)
         .frame(maxWidth: .infinity, alignment: .leading)
         .coordinateSpace(.named(MastheadBackground.space))
         .background {
+            // Run up under the toolbar, above the masthead's own frame (N6 polish: the scroll view keeps its content below
+            // the toolbar, so content scrolled under it gets the soft edge instead of overprinting the toolbar)
             MastheadBackground(palette: palette, topInset: topInset, art: art, textTrailing: textTrailing)
+                .padding(.top, -topInset)
                 .backgroundExtensionEffect()
         }
         .overlay(alignment: .bottom) {
@@ -243,6 +246,16 @@ public struct MastheadScrollView<Header: View, Content: View, Actions: View>: Vi
         self.hasActions = Actions.self != EmptyView.self
     }
 
+    #if DEBUG
+    /// A development build scrolls itself there once drawn (`-PennantDebugScrollTo <points>`), for window captures of
+    /// content under the toolbar without any input (never in a release build).
+    @State private var position = ScrollPosition()
+    private static var debugScroll: CGFloat? {
+        let y = UserDefaults.standard.double(forKey: "PennantDebugScrollTo")
+        return y > 0 ? y : nil
+    }
+    #endif
+
     public var body: some View {
         GeometryReader { proxy in
             ScrollView {
@@ -252,14 +265,25 @@ public struct MastheadScrollView<Header: View, Content: View, Actions: View>: Vi
                 }
                 .environment(\.contentWidth, proxy.size.width)
             }
-            .ignoresSafeArea(edges: .top)
+            // The content keeps below the toolbar (the safe area the HIG intends), and what scrolls under it gets the soft
+            // scroll edge; only the masthead's colour runs up beneath the toolbar (N6 polish: with the safe area ignored,
+            // the report's text scrolled under the toolbar crisp, overprinting its controls)
             .scrollEdgeEffectStyle(.soft, for: .top)
             .contentMargins(.bottom, hasActions ? 72 : 0, for: .scrollContent)
+            #if DEBUG
+            .scrollPosition($position)
+            .task {
+                guard let y = Self.debugScroll else { return }
+                try? await Task.sleep(for: .seconds(1.5))
+                position.scrollTo(y: y)
+            }
+            #endif
             .overlay(alignment: .bottom) {
                 actions.padding(.bottom, 18)
             }
         }
-        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+        // The toolbar's background is the scroll edge itself (the system's, macOS 26): hidden, it took the soft edge with it
+        .toolbarBackgroundVisibility(.automatic, for: .windowToolbar)
     }
 }
 
