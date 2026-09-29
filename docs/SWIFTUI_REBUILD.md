@@ -16,7 +16,8 @@ Milestone N3.5, Stage B1 is built (2026-09-26: the all-or-nothing, automatic imp
 Stage B2 (2026-09-28: the zero-question first run, played since and the rating-history questions, section 3.4). Milestone
 N6 (the Morning Report) is complete. Milestone N7, Stage A (the server: snapshots, "since the last export", the desk's statuses,
 Following, the league wire, club reports, search and the club owed across a relaunch) is built (2026-09-29; "As built at
-N7 (Stage A)" in section 3.4); Stage B draws it.
+N7 (Stage A)" in section 3.4), and Stage B draws it in the Mac app (2026-09-29; "As built at N7 (Stage B)" in section
+3.4): **N7 is complete.**
 Nothing else in this document is implemented yet. It supersedes the UI parts of the
 V2 web plan (`~/.claude/plans/okay-can-we-please-effervescent-cherny.md`, sections 3 and 4). The server-side
 parts of that plan (the Front Office contract, the Club Profile, the roster map, the horizon board, the league
@@ -828,6 +829,95 @@ is built again when opened (about 0.9 s), since the report reads the log through
 *Left for later:* clubs with open trade talk as Following suggestions (the plan's second kind; no trade-talk source is
 read yet); `players_injury_history` read whole each gathering (fine at 28 to 43 ms on the owner's export); the wire's
 moves were not measured with a live log (the scratch export has none).
+
+**As built at N7 (Stage B), 2026-09-29: the memory and the league, drawn (Mac).** Branch `feature/swiftui-n7-mac`, from
+`feature/swiftui-n7-server`. The Mac app draws what Stage A serves; the server gained only what a view needed and Swift
+must not work out (additive, through the contract): the desk's `deferChoices` (tomorrow, a week, two weeks, a month from
+the league's day, each a game date as OOTP writes one with its words, "A week · May 13, 2040"; none when the day is not
+known, D-018) and `openCount` (the items the desk shows plus each department's "more", never the set-aside ones: the Dock
+badge), and a player's `Target.teamId` on search and Following (his organization's club, the nearest view the app opens
+for him until player windows, N11).
+- **Since the last export** (`MorningReportDesign.chips`, `SinceLastExportRow`, `ChangeItemsView`): the served chips in
+  the served order with the served "since" line as their label (its hint on hover); each chip with items opens them in a
+  popover (each line a claim with its basis, and "Open" where this build has the view); a chip that counts nothing ("None
+  moved") is words, not a control. With no earlier export the served `changesNote` stands in its place, never an empty
+  row. A department report's `changes` are drawn the same way (each line under its kind's symbol, `ChangeKind`), and its
+  `changesNote` when served. The counts roll (`.numericText()`, not with Reduce Motion).
+- **The desk's statuses** (`DeskAction`, `DeskItemMenu`, `DeskItemRow`, `DeskAttentionLines`, `FrontOfficeStore.setDeskStatus`,
+  `AppModel.changeDesk`): every item's context menu, the menu bar's Desk menu while the keyboard focus is in an item
+  (`FocusedValues.deskItem`: Mark Reviewed ⇧⌘R, Defer ▸ the served days with the first on ⇧⌘D, Mark Handled in OOTP ⇧⌘H,
+  Put Back on Desk ⇧⌘O, Note… ⇧⌘N) and VoiceOver's actions send `PUT /api/v2/desk/:org`; a note is edited in a popover and
+  saved with the status as it is (an empty note clears it). Each change registers the served `undo` on the window's
+  `UndoManager` under its action's name; undoing registers the GM's own request as the redo, so ⌘Z and ⇧⌘Z alternate
+  through the same two served requests. The answer's desk replaces the summary's (only the same club's, import's and
+  build's); with `view` null the change is recorded and the `desk-changed` event reads the desk again
+  (`reloadDesk`, only when its stamp is not the one shown). The served done line ("Marked reviewed") shows for four
+  seconds and is announced to VoiceOver; a refusal is the server's sentence in place. The reports' items carry their
+  statuses too, so they are asked again quietly (`attentionRevision`). Beneath an item: its served status (not when
+  open), "The latest export still shows it" where served, and the GM's note; the tile keeps the department's tone,
+  whatever the status. The served "1 reviewed" line (`SetAsideButton`) opens the items set aside, in a list the GM can
+  swipe or right-click to put one back.
+- **The wire.** The Morning Report's "Around the league" (`AroundTheLeague`): the served title and stated order, the top
+  entries (followed first, as served), the gaps as sentences, and the served "more" line (else "The Whole Wire") opening
+  League Office ▸ Wire (`WireView`): every entry since the last export or this season, the served filters as the toolbar's
+  scope controls (a kind with its served count, a club, Followed Only), the stated order above the list, and each entry's
+  other clubs and players as names the GM can open, follow or drag. League Office ▸ Club Reports lists the catalog's
+  clubs with their served records.
+- **Club windows** (`WindowGroup("Club", for: ClubRef.self)`, `ClubReportView`, `MorningReportDesign(club:)`): any club's
+  report in its own window, in its served theme (neutral without one or with team colours off): the same masthead, box
+  score, "how they win and lose", roster map and staff, then what our scouts see, head to head, the next series with us,
+  moves and injuries, each missing part in its served sentence; Follow in its toolbar. A club's name anywhere
+  (`clubName`: the wire, a report's moves, Following, the suggestions, Club Reports) opens it on a double-click, Return
+  while focused, or its context menu's "Open in New Window" (also Follow or Unfollow, Copy Name), and can be dragged. The
+  File menu offers no empty club window (`commandsRemoved`).
+- **Following** (`FollowingSection`, `FollowingStore`): a sidebar section after the departments with the followed clubs
+  and players (each its served line; a club opens its window, a player his club's), the served empty line, the division
+  rivals with the served why and a Follow button (never followed by themselves), the watchlist line; a club or player
+  dropped on the section is followed. Follow and Unfollow in every context menu where a club or player appears, undone
+  with ⌘Z (an unfollow's undo sends the served `restore`). A refusal ("The save you chose isn't imported yet, …") is said
+  in the section. `following-changed` reads it again when its stamp moved, and the summary is composed again quietly (the
+  wire's order).
+- **Search** (`PaletteIndex(search:)`, `CommandPalette(served:)`, the toolbar's `searchSuggestions`): the ⌘K palette and
+  the toolbar's field ask `/api/v2/search` 120 to 150 ms after the last key (a `.task(id:)`, so the next key cancels the
+  question); the served groups under their served titles and in the served order (followed first, starred), never ranked
+  again in Swift, with the window's commands after them; the registry's views are searched locally only until an answer
+  is in. Return (`onKeyPress(.return)`: with an answer in, the field's own submit did not always arrive) opens the
+  selection: a view in the window, a club's window, a player's club's window.
+- **Notifications and the Dock badge** (`OutsideTheWindow`, app target): on `changes-ready` for the club shown, and only
+  while Pennant is not frontmost, a notification with the served title and text; permission is asked the first time
+  there is one to post, never at launch. The Dock badge is the served `openCount` (none at zero or unserved). Settings ▸
+  General ▸ Notifications switches either off (`AppPreferences`, the app's own defaults).
+- **The club owed** (`AppModel.clubOwed`, from the status and the settings, the settings' answer winning when fresher):
+  while it is set the window holds the report with the served sentence and "Choose Your Club…", which asks the club
+  from the served sentence after a relaunch (`SetupModel.askOwedClub`); the club card claims no club.
+- **Accessibility.** Every new view has labels, roles and actions (a club's name is one button element with "Open in New
+  Window" and Follow as actions; the set-aside list, the Following header's AppKit row and the club window's containers
+  are named). The palette's footer uses the glass's own primary (a short palette sits over the masthead, where a fixed
+  grey read at 2:1) and its count is the palette's accessibility value; the wire's dates are medium weight. The audit in
+  the UI tests gains two set-asides, each listed with its reason: contrast on text wholly outside every window's frame,
+  or cut by its window's edge (a report longer than its window). A club window is audited alone (the main window closed:
+  a covered window's text is measured against the pixels of the one above it).
+- **Verification.** Server: `desk.test.ts` (the served days, none without a league day, the open count), `search.test.ts`
+  and `following.test.ts` (a player's club on his target); fixtures and the spec regenerated. PennantKit
+  `AttentionTests` (a change puts the served desk in place and keeps the cards, a refusal is the server's sentence, a desk
+  from another build is left, `desk-changed` reads only a moved stamp, Undo and Redo send the served requests, Following
+  once per key and again on a moved stamp, a follow's and an unfollow's undo, the wire's query, a club's report once per
+  key, search, `changes-ready` only for the club shown, the club owed). PennantFeatures `AttentionFeatureTests` (the
+  chips, no chips without an earlier export, the wire's rows, another club's adapters, a desk action's request, the
+  palette's served answer, the nearest view, the toolbar's answer for the text now, the club owed asked and the card).
+  Snapshots `n7-*` in `build/macos-snapshots/`, light and dark (the Morning Report since the last export, in the window
+  with Following, each chip's items, a desk row in each status with the set-aside list, the note, the wire, Club
+  Reports, a club's window also with Increase Contrast, Following suggested, followed and refused, the palette's served
+  results, the club owed, a report's changes). XCUITests, each audited: `testDeskMarkAndUndo` (right-click, Mark Reviewed,
+  the set-aside line, ⌘Z, ⇧⌘Z), `testFollowByDrag` (a club's name from the wire onto Following, ⌘Z), `testSearchToClubWindow`
+  (⌘K, "club 3", the palette audited, Return, the club's window audited), `testClubWindow` (Club Reports, Open, every part,
+  Follow and ⌘Z, audited in light and with Increase Contrast). On macOS a UI test drags with `click(forDuration:thenDragTo:)`:
+  `press(forDuration:thenDragTo:)` is a trackpad press and starts no drag. Window captures of a Debug build on a scratch
+  folder (the app's own drawing, `-PennantDebugCaptureWindows`; `-PennantDebugOpenClub <id>` opens a club's window).
+- *Left for later:* a notification's click opens nothing in particular (the app comes forward); swipe actions only in the
+  set-aside list (the desk and the reports are not lists); the toolbar field's suggestions were checked in snapshots and
+  code, not by a UI test (the palette's path is); the live captures show no "since the last export" chips (a re-import
+  of the same export on the scratch folder was not taken as new), which the snapshots draw from the fixture.
 
 ### 3.5 One anatomy for every department report
 
@@ -2011,8 +2101,12 @@ real folder (the supervisor's), `projectUrl` (the owner's), and a Release build'
 scratch folder).
 
 **N7, Stage A (2026-09-29)** on `feature/swiftui-n7-server`: the server side of "it remembers; the league is alive"
-(section 3.4, "As built at N7 (Stage A)", with its timings and the payload shapes). **Next: N7, Stage B** (the Mac app
-draws the desk with undo, the changes, the wire, club windows, Following in the sidebar and the notifications).
+(section 3.4, "As built at N7 (Stage A)", with its timings and the payload shapes).
+
+**N7, Stage B (2026-09-29)** on `feature/swiftui-n7-mac`: the Mac app draws it (section 3.4, "As built at N7 (Stage B)"):
+the chips, the desk's statuses with Undo, the wire, club windows, Following with drag to follow, search, the notification
+and the Dock badge, and the club owed across a relaunch. **N7 is complete.** Left open: the items in that section's "Left
+for later". **Next: N8** (Major League Ops).
 
 Read first: AGENTS.md, this document, D-001, D-008, D-018, D-020, D-043, D-046, D-049, D-052 (with its
 amendments), D-054 and D-055 to D-060.
