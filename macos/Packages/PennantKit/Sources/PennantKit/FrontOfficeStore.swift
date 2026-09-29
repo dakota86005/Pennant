@@ -269,7 +269,7 @@ public final class FrontOfficeStore {
         // id served, nowhere to keep): a later import or switch holds the window together with it (N6 polish review)
         shownCatalog = catalog
         guard let kept, let keptKey = Self.keptKey(key, contract: contract), summary.orgId == keptKey.clubId else { return }
-        let stamp = "\(summary.importStamp ?? "")|\(summary.reportStamp)"
+        let stamp = "\(summary.importStamp ?? "")|\(summary.reportStamp)|\(summary.deskStamp)"
         if let last = lastKept, last.key == keptKey, last.stamp == stamp, last.catalog == catalog { return }
         lastKept = (keptKey, stamp, catalog)
         keepSequence += 1
@@ -300,13 +300,15 @@ public final class FrontOfficeStore {
 
     /// Loads one department's report for the key, once per key.
     public func loadReport(_ department: String, client: Client?, key: AppModel.StoreKey?) async {
-        guard let client, let key, reportKeys[department] != key || reports[department] == nil else { return }
-        if let loaded = reportKeys[department], Self.onlyTheBuildMoved(loaded, key), reports[department]?.reportStamp == key.reportStamp {
+        let restatus = reportKeys[department] == key && reports[department] != nil && attentionStale.contains(department)
+        guard let client, let key, reportKeys[department] != key || reports[department] == nil || restatus else { return }
+        if !restatus, let loaded = reportKeys[department], Self.onlyTheBuildMoved(loaded, key), reports[department]?.reportStamp == key.reportStamp {
             reportKeys[department] = key
             return
         }
         reportAsked[department] = key
-        loadingReports.insert(department)
+        // Only the statuses changed: the report is read again quietly, with what it shows kept in place
+        if !restatus { loadingReports.insert(department) }
         defer { if reportAsked[department] == key { loadingReports.remove(department) } }
         var served: Components.Schemas.DepartmentReport?
         var problem: RequestProblem?
@@ -326,6 +328,7 @@ public final class FrontOfficeStore {
         if let served {
             reports[department] = served
             reportKeys[department] = key
+            attentionStale.remove(department)
         }
         reportProblems[department] = problem
         if let detail = problem?.detail { log("could not read the \(department) report: \(detail)") }
@@ -361,6 +364,98 @@ public final class FrontOfficeStore {
         if let served { trails[evidence] = served }
         trailProblems[evidence] = problem
         if let detail = problem?.detail { log("could not read an evidence trail: \(detail)") }
+    }
+
+    // MARK: The desk's statuses (N7, Stage B; D-058)
+
+    /// The GM's last status change here in the server's words ("Marked reviewed", "Back on your desk"), with a moment
+    /// that moves on each, so the view can say it for a moment and VoiceOver announces it; nil before any.
+    public private(set) var deskDone: (text: String, moment: Int)?
+    /// Why the last status change was refused, in the server's sentence (or the kind of failure); nil when it was not.
+    public private(set) var deskProblem: RequestProblem?
+    /// The items whose status is being sent.
+    public private(set) var deskBusy: Set<String> = []
+    /// Moves each time the statuses change (the GM's own change, or the `desk-changed` event's): the reports' items carry
+    /// their status too, so a report view reloads on it (the key alone does not move).
+    public private(set) var attentionRevision = 0
+    private var deskMoments = 0
+
+    /// Puts the served desk in the summary shown when it is the same club's and build's (a status never changes the
+    /// build: the server composes it on the kept one). The reports are asked again on the next look, since their items
+    /// carry the statuses too. A desk from another build is left: that build's summary follows the key.
+    public func apply(deskView view: Components.Schemas.DeskView) {
+        guard var shown = summary, shown.orgId == view.orgId, shown.reportStamp == view.reportStamp,
+              shown.importStamp == view.importStamp else { return }
+        shown.desk = view.desk
+        shown.deskStamp = view.deskStamp
+        summary = shown
+        attentionStale = Set(reports.keys)
+        attentionRevision += 1
+    }
+
+    /// The reports shown before the statuses last changed: asked again quietly (no "Refreshing") on the next look.
+    private var attentionStale: Set<String> = []
+
+    /// Changes one item's status (`PUT /api/v2/desk/:org`) and returns the server's answer (with the request that undoes
+    /// it), or nil when it was refused or failed (`deskProblem` says why, in the server's words). The answer's desk is
+    /// put in place at once; when the server serves none (the Front Office being built again), the `desk-changed` event
+    /// that follows reads it (`reloadDesk`).
+    @discardableResult
+    public func setDeskStatus(_ update: Components.Schemas.DeskUpdate, client: Client?, key: AppModel.StoreKey?) async -> Components.Schemas.DeskChange? {
+        guard let client, let key else {
+            deskProblem = .notRunning
+            return nil
+        }
+        deskBusy.insert(update.key)
+        defer { deskBusy.remove(update.key) }
+        var problem: RequestProblem?
+        var change: Components.Schemas.DeskChange?
+        do {
+            switch try await client.setDeskStatus(path: .init(org: Self.org(key)), body: .json(update)) {
+            case .ok(let answer): change = try answer.body.json
+            case .badRequest(let refused): problem = .served(try refused.body.json.error)
+            case .notFound(let refused): problem = .served(try refused.body.json.error)
+            case .undocumented(let code, let payload):
+                problem = await .undocumented(code, body: payload.body, operation: "setDeskStatus", fromV2: true)
+            }
+        } catch {
+            problem = .from(error)
+        }
+        deskProblem = problem
+        if let detail = problem?.detail { log("could not change a desk status: \(detail)") }
+        guard let change else { return nil }
+        deskMoments += 1
+        deskDone = (change.done.display, deskMoments)
+        if let view = change.view { apply(deskView: view) } else {
+            attentionStale = Set(reports.keys)
+            attentionRevision += 1
+        }
+        return change
+    }
+
+    /// Clears the last refusal (the GM dismissed it).
+    public func dismissDeskProblem() { deskProblem = nil }
+
+    /// Reads the desk again (`GET /api/v2/desk/:org`) when the served stamp is not the one shown: the `desk-changed` event
+    /// (another window's change, an import that resolved items, a change whose answer served no desk).
+    public func reloadDesk(stamp: String?, client: Client?, key: AppModel.StoreKey?) async {
+        guard let client, let key, summary != nil else { return }
+        if let stamp, stamp == summary?.deskStamp { return }
+        do {
+            let view = try await client.getDesk(path: .init(org: Self.org(key))).ok.body.json
+            apply(deskView: view)
+        } catch {
+            log("could not read the desk again: \(error)")
+        }
+    }
+
+    /// Reads the summary again in place, without saying "Updating" (a follow reorders the wire: the server composes the
+    /// summary again on the same build). Nothing when no summary is shown or the key moved meanwhile.
+    public func refreshQuietly(client: Client?, key: AppModel.StoreKey?) async {
+        guard let client, let key, summary != nil, summaryKey == key else { return }
+        guard let served = try? await client.getFrontOffice(path: .init(org: Self.org(key))).ok.body.json,
+              summaryKey == key, served.orgId == summary?.orgId, served.reportStamp == summary?.reportStamp else { return }
+        summary = served
     }
 
     #if DEBUG

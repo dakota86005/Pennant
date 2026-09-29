@@ -56,6 +56,17 @@ public final class AppModel {
     public private(set) var client: Client?
     /// The Front Office's desk, cards and department reports (`FrontOfficeStore`), loaded on `storeKey`.
     public private(set) var frontOffice: FrontOfficeStore
+    /// What the GM follows (`FollowingStore`, N7): the sidebar's Following section, loaded on `storeKey` and the served
+    /// follow stamp.
+    public private(set) var following: FollowingStore
+    /// Around the league (`LeagueStore`, N7): the full wire, each club's report for its window, and search.
+    public private(set) var league: LeagueStore
+    /// The club question still open for the chosen save, as the server last said on the status or the settings (N7,
+    /// D-063's club question): while it is set the window holds the report and asks, across a relaunch. Nil when none.
+    public private(set) var clubOwed: Components.Schemas.ClubOwed?
+    /// Runs when a new import's "since the last export" is ready for the club the app follows (`changes-ready`): the
+    /// app target posts the served notification when it isn't frontmost. Nil does nothing.
+    public var onChangesReady: (@MainActor (Components.Schemas.ChangesReadyEvent) -> Void)?
     /// Another save (or a newer OOTP version's) played since the chosen one, as the server last said (`/api/status`
     /// and the `save-played-elsewhere` event; D-063): the sentence, the switch's label and the save. Nil when none.
     /// The app shows it (N6, Stage B2); Pennant never switches by itself.
@@ -109,6 +120,8 @@ public final class AppModel {
             kept: keptReports ?? KeptReports(folder: configuration.cachesFolder.appending(path: "front-office", directoryHint: .isDirectory)),
             contract: contractDigest
         ) { line in log.write(line, source: "app") }
+        following = FollowingStore { line in log.write(line, source: "app") }
+        league = LeagueStore { line in log.write(line, source: "app") }
     }
 
     #if DEBUG
@@ -125,7 +138,9 @@ public final class AppModel {
         importRequestProblem: RequestProblem? = nil,
         frontOffice: FrontOfficeStore? = nil,
         ratingHistory: Components.Schemas.RatingHistoryView? = nil,
-        savePlayedElsewhere: Components.Schemas.SavePlayedElsewhere? = nil
+        savePlayedElsewhere: Components.Schemas.SavePlayedElsewhere? = nil,
+        following: FollowingStore? = nil,
+        league: LeagueStore? = nil
     ) -> AppModel {
         let model = AppModel(configuration: configuration)
         model.serverState = state
@@ -140,6 +155,9 @@ public final class AppModel {
         if let frontOffice { model.frontOffice = frontOffice }
         model.ratingHistory = ratingHistory
         model.savePlayedElsewhere = savePlayedElsewhere ?? model.status?.savePlayedElsewhere
+        if let following { model.following = following }
+        if let league { model.league = league }
+        model.clubOwed = model.status?.clubOwed ?? settings?.clubOwed
         return model
     }
     #endif
@@ -641,9 +659,21 @@ public final class AppModel {
         case .job, nil:
             // The storylines and briefing jobs arrive with N13
             break
-        case .deskChanged, .followingChanged, .changesReady:
-            // N7's desk, Following and "since the last export" events: N7 Stage B draws them
-            break
+        case .deskChanged(let changed):
+            // A status changed (another window, an import that resolved items, a change served with no desk): the desk is
+            // read again when its stamp is not the one shown, for the club the app shows
+            guard club?.ref.id == changed.orgId else { return }
+            await frontOffice.reloadDesk(stamp: changed.deskStamp, client: client, key: storeKey)
+            await frontOffice.keep(catalog: keptCatalogNow, for: storeKey)
+        case .followingChanged(let changed):
+            guard changed.followStamp != following.following?.followStamp else { return }
+            await following.load(client: client, key: storeKey, stamp: changed.followStamp)
+            // Following orders the wire (followed first): the summary is composed again on the same build
+            await frontOffice.refreshQuietly(client: client, key: storeKey)
+        case .changesReady(let ready):
+            // Only for the club the app shows; the words are the server's
+            guard club?.ref.id == ready.orgId else { return }
+            onChangesReady?(ready)
         }
     }
 
@@ -677,6 +707,7 @@ public final class AppModel {
 
     private func apply(status next: Components.Schemas.ServerStatus, reload: Bool) {
         status = next
+        clubOwed = next.clubOwed
         savePlayedElsewhere = next.savePlayedElsewhere
         if let served = next.reportStamp, served != reportStamp { reportStamp = served }
         let stamp = next.lastImport?.finishedAt ?? ""
@@ -732,6 +763,8 @@ public final class AppModel {
         orgs = nextOrgs
         club = CurrentClub.from(served: nextSettings?.organization, orgs: nextOrgs)
         settings = nextSettings
+        // The settings are the fresher word on the club question when they were just read (a club saved clears it)
+        if case .success(let answer) = settingsAnswer { clubOwed = answer.clubOwed }
         // Answered, whether or not they succeeded: the club card of the report kept last stays only for the key's own
         // save and club (N6 polish review: a failed answer left it drawn for a club never confirmed)
         frontOffice.settleWaitingKept(for: storeKey)
