@@ -19,11 +19,27 @@ import SwiftUI
 public struct MorningReportView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.routeOpener) private var opener
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The served "Just updated" line is in the kicker (for a few seconds after an import lands while the GM reads).
+    @State private var showsUpdated = false
+    /// Moves each time an import lands in place, so the line's timer starts again.
+    @State private var updatedMoment = 0
 
     public init() {}
 
     /// The Front Office's report: the whole desk.
     static let wholeDesk = AppRoute(department: "frontOffice", view: "report")
+    /// How long the served "Just updated" line stays in the kicker before it fades.
+    static let updatedFor: Duration = .seconds(4)
+
+    /// The served "Just updated" line, only when it is about the import the report shown was built from (its
+    /// `importStamp`): never over a report from another import, or before the data status has caught up.
+    public static func landedLine(
+        _ status: Components.Schemas.DataStatusView?, for summary: Components.Schemas.FrontOfficeSummary
+    ) -> Components.Schemas.ImportLandedLine? {
+        guard let line = status?.updated, let stamp = summary.importStamp, line.importStamp == stamp else { return nil }
+        return line
+    }
 
     public var body: some View {
         let store = model.frontOffice
@@ -32,7 +48,10 @@ public struct MorningReportView: View {
                 // Never "Updating" while a reload has failed: the problem line says so instead
                 let updating = store.showsUpdating(for: model.storeKey)
                 MastheadScrollView {
-                    MorningReportMasthead(summary: summary, record: model.catalogClub?.record, headline: headline, updating: updating)
+                    MorningReportMasthead(
+                        summary: summary, record: model.catalogClub?.record, headline: headline, updating: updating,
+                        updated: showsUpdated && !updating ? Self.landedLine(model.dataStatus, for: summary) : nil
+                    )
                 } content: {
                     VStack(alignment: .leading, spacing: 12) {
                         // A reload that failed says so above what is kept, never "updating" for ever
@@ -45,6 +64,18 @@ public struct MorningReportView: View {
                     // Timed once the frame holding it is committed to the screen, not when the view is made
                     let kept = store.summaryIsKept
                     AfterNextFrame.run { model.noteMorningReportDrawn(kept: kept) }
+                }
+                // An import landed while the GM reads: the report was swapped in place, and the kicker says so in the
+                // server's words for a moment, then fades (no fade with Reduce Motion)
+                .onChange(of: store.importLandings) {
+                    withAnimation(reduceMotion ? nil : .easeIn(duration: 0.2)) { showsUpdated = true }
+                    updatedMoment += 1
+                }
+                .task(id: updatedMoment) {
+                    guard updatedMoment > 0 else { return }
+                    try? await Task.sleep(for: Self.updatedFor)
+                    guard !Task.isCancelled else { return }
+                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.8)) { showsUpdated = false }
                 }
                 .onChange(of: updating, initial: true) { was, now in
                     if now { model.noteMorningReportUpdating() }
@@ -97,23 +128,34 @@ public struct MorningReportMasthead: View {
     let record: Components.Schemas.Cell?
     let headline: Text
     let updating: Bool
+    let updated: Components.Schemas.ImportLandedLine?
     @Environment(\.morningReportDesign) private var override
     @Environment(\.routeOpener) private var opener
 
-    public init(summary: Components.Schemas.FrontOfficeSummary, record: Components.Schemas.Cell?, headline: Text, updating: Bool = false) {
+    /// The word after the kicker while the report shown is the kept one or a fresh one is on its way.
+    static let updatingWord: LocalizedStringResource = "Updating"
+
+    /// - Parameter updated: the served "Just updated" line, shown after the kicker while it is given (an import just
+    ///   landed in place); nil shows none.
+    public init(
+        summary: Components.Schemas.FrontOfficeSummary, record: Components.Schemas.Cell?, headline: Text, updating: Bool = false,
+        updated: Components.Schemas.ImportLandedLine? = nil
+    ) {
         self.summary = summary
         self.record = record
         self.headline = headline
         self.updating = updating
+        self.updated = updated
     }
 
     public var body: some View {
         let design = MorningReportDesign.shown(override, for: summary)
+        let hints = [design.kickerHint ?? summary.asOf.hint, updated?.hint].compactMap { $0 }.filter { !$0.isEmpty }
         ClubMagazineMasthead(
             club: design.kicker == nil ? nil : .some(design.club),
             kicker: design.kicker ?? [summary.asOf.display],
-            kickerHint: design.kickerHint ?? summary.asOf.hint,
-            kickerStatus: updating ? Text("Updating") : nil,
+            kickerHint: hints.isEmpty ? nil : hints.joined(separator: "\n"),
+            kickerStatus: updating ? String(localized: Self.updatingWord) : updated?.display,
             headline: headline,
             deck: design.ledeClaim,
             deckText: design.lede,
@@ -262,7 +304,7 @@ public struct MorningReportPage: View {
         VStack(alignment: .leading, spacing: 36) {
             if let dimensions = design.dimensions {
                 VStack(alignment: .leading, spacing: 8) {
-                    MagazineSection(kicker: Text("The club"), title: Text("How we win and lose"), trailing: design.placesNote)
+                    MagazineSection(kicker: Text("The club"), title: Text("How we win and lose"), trailing: design.placesNote, trailingHint: design.placesNoteHint)
                     if let unavailable = design.placesUnavailable {
                         ProblemLine(served: unavailable.text, detail: unavailable.hint)
                     }
@@ -285,7 +327,7 @@ public struct MorningReportPage: View {
                     } else {
                         // No scale: nothing on the map is valued, and the map's own notes say what it can say
                         ForEach(design.rosterNotes) { note in
-                            Text(verbatim: note.text).foregroundStyle(.secondary).help(Text(verbatim: note.hint ?? note.text))
+                            Text(verbatim: note.text).foregroundStyle(.readableSecondary).help(Text(verbatim: note.hint ?? note.text))
                         }
                     }
                 }
@@ -322,7 +364,7 @@ public struct MorningReportPage: View {
                 ProblemLine(served: incomplete.display, detail: incomplete.hint)
             }
             if let empty = summary.desk.empty {
-                Text(verbatim: empty.display).foregroundStyle(.secondary)
+                Text(verbatim: empty.display).foregroundStyle(.readableSecondary)
             }
             if !summary.desk.items.isEmpty {
                 RowGroup {
@@ -379,48 +421,10 @@ struct MoreLine: View {
                 .buttonStyle(.link)
                 .accessibilityIdentifier("desk.more.\(more.department.rawValue)")
         } else {
-            Text(verbatim: more.line.display).foregroundStyle(.secondary)
+            Text(verbatim: more.line.display).foregroundStyle(.readableSecondary)
         }
     }
 }
 
-/// Runs a closure once the run loop has finished its current pass, after Core Animation has committed the frame the
-/// pass laid out (an observer before the loop waits, ordered after Core Animation's commit): when a view's first frame
-/// is on the screen, as near as the app can tell.
-@MainActor
-enum AfterNextFrame {
-    static func run(_ body: @escaping @MainActor () -> Void) {
-        let observer = CFRunLoopObserverCreateWithHandler(nil, CFRunLoopActivity.beforeWaiting.rawValue, false, CFIndex.max) { observer, _ in
-            if let observer { CFRunLoopRemoveObserver(CFRunLoopGetMain(), observer, .commonModes) }
-            MainActor.assumeIsolated { body() }
-        }
-        CFRunLoopAddObserver(CFRunLoopGetMain(), observer, .commonModes)
-    }
-}
 
-#if DEBUG
-/// Development builds only: with `PENNANT_DEV_CAPTURE_DIR` set, the Morning Report's window draws itself to a PNG in
-/// that folder at the moments a screen capture cannot time (the kept report said to be updating, then the fresh one),
-/// the window only and by the app itself, so no screen-recording permission is involved. Each moment once a launch,
-/// named for the appearance ("morning-report-updating-dark.png"). Nothing happens without the variable.
-@MainActor
-enum DevWindowCapture {
-    private static var taken: Set<String> = []
 
-    static func capture(_ moment: String) {
-        guard let folder = ProcessInfo.processInfo.environment["PENNANT_DEV_CAPTURE_DIR"], !folder.isEmpty,
-              !taken.contains(moment),
-              let window = NSApp.windows.first(where: { $0.isVisible && $0.frame.height > 400 && $0.contentView != nil }),
-              let view = window.contentView?.superview ?? window.contentView,
-              let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds)
-        else { return }
-        taken.insert(moment)
-        view.cacheDisplay(in: view.bounds, to: rep)
-        let dark = window.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-        guard let png = rep.representation(using: .png, properties: [:]) else { return }
-        let url = URL(fileURLWithPath: folder, isDirectory: true).appending(path: "\(moment)-\(dark ? "dark" : "light").png")
-        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try? png.write(to: url)
-    }
-}
-#endif

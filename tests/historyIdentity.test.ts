@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { DATA_DIR, saveConfig } from '../server/config.js';
+import { frontOfficeRevision, frontOfficeStats, holdFrontOfficeRebuilds } from '../server/frontOfficeService.js';
 import { db, forgetImportRecord, LAST_IMPORT_PATH } from '../server/db.js';
 import { getDataStatus } from '../server/dataStatus.js';
 import { baselineSnapshot, developmentTrendByPlayer, historyDb, SNAPSHOT_DATA_COLUMNS, snapshotDates, stampSnapshotMode, takeSnapshot } from '../server/history.js';
@@ -353,6 +354,32 @@ describe('one folder, one history: the players test only refuses, and a refusal 
     expect(keyedRows(key)).toEqual(before);
   });
 
+  it('rebuilds the reports after a carry-over and its undo the way every rebuild goes: dropped at once, built after a hold (N6 Stage B2 review, L1)', async () => {
+    const a = saveFolder('mac-app-store', 'New Game');
+    useSave(a.csvDir, 'New Game');
+    const key = currentHistoryKey();
+    takeSnapshot();
+    copyDate(key, '2030-5-1');
+    historyDb.prepare(`UPDATE save_rating_snapshots SET game_date = '2031-1-1' WHERE save_key = ? AND game_date = ?`).run(key, LEAGUE_DATE);
+    useSave(a.csvDir, 'New Game');
+    takeSnapshot();
+    const [offer] = historyOffers();
+    const runs = () => frontOfficeStats().inlineRuns + frontOfficeStats().workerRuns;
+    // The refits after an import hold the rebuilds: a carry-over meanwhile drops the kept build and waits its turn
+    const release = holdFrontOfficeRebuilds();
+    const revision = frontOfficeRevision();
+    const started = runs();
+    try {
+      expect((await choose(offer.id, 'adopt')).status).toBe(200);
+      expect(frontOfficeRevision()).toBeGreaterThan(revision);
+      expect(runs()).toBe(started);
+    } finally {
+      release();
+    }
+    // Released: one rebuild
+    expect(runs()).toBe(started + 1);
+  });
+
   it('never writes over the folder\'s history when the league is earlier than it, even with too few players to compare', () => {
     const a = saveFolder('mac-app-store', 'New Game');
     useSave(a.csvDir, 'New Game');
@@ -460,7 +487,8 @@ describe('the GM decides: questions about a save that might have moved, the list
     const view = await request('/api/v2/rating-history');
     expect(view.offers).toHaveLength(1);
     expect(view.offers[0]).toMatchObject({ id: `${keyNew}:${keyA}`, kind: 'moved', saveName: 'New Game', imports: 2, carriesThrough: '2030-5-1', players: 'same' });
-    expect(view.offers[0].question.text).toMatch(/^This save has no rating history yet\. Is it "New Game", the save that used to be in /);
+    // Its first import is in: the question says its history has only just started, as the status line counts it (M2)
+    expect(view.offers[0].question.text).toMatch(/^This save's rating history has only just started\. Is it "New Game", the save that used to be in a folder you chose\?$/);
     for (const banned of BANNED_JARGON) expect(view.offers[0].question.text).not.toMatch(banned);
     // Answers name this save: another save's, a made-up one, or an unknown choice is refused in words
     expect((await choose(`save-someone-else:${keyA}`, 'adopt')).status).toBe(400);
@@ -546,7 +574,9 @@ describe('the GM decides: questions about a save that might have moved, the list
     const view = await request('/api/v2/rating-history');
     expect(view.candidates.map((c: { id: string }) => c.id)).toEqual([`${keyB}:${keyA}`]);
     expect(view.candidates[0]).toMatchObject({ folder: 'present', players: 'same', imports: 2 });
-    expect(view.candidates[0].label.text).toMatch(/^"Franchise" in .*ootp-26: 2 imports, the latest on June 1, 2030$/);
+    // Placed by the place the GM knows, never its folder's path (the path is in the basis)
+    expect(view.candidates[0].label.text).toBe('"Franchise" in a folder you chose: 2 imports, the latest on June 1, 2030');
+    expect(JSON.stringify(view.candidates[0].label.basis)).toContain(a.lgPath);
     expect((await choose(`${keyB}:${keyA}`, 'adopt')).status).toBe(200);
     expect(snapshotDates()).toEqual(['2030-5-1', '2030-5-15', LEAGUE_DATE]);
     expect(keyedRows(keyA)).toEqual(aBefore);

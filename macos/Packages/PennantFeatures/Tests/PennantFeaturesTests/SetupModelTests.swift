@@ -87,6 +87,36 @@ private func json(_ status: Components.Schemas.ServerStatus) throws -> String {
     String(decoding: try JSONEncoder().encode(status), as: UTF8.self)
 }
 
+/// The captured discovery (`getSaveDiscovery.json`), with where the server looked filled in and, when given, a pick.
+private func discoveryJSON(pick: Bool = false) throws -> String {
+    let data = try Data(contentsOf: PreviewFixtures.responses.appending(path: "getSaveDiscovery.json"))
+    var object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+    object["searched"] = [["label": "OOTP 27", "path": "/tmp/saved_games", "exists": true]]
+    if pick, let noPick = object["noPick"] as? [String: Any] {
+        object["pick"] = ["saveId": "saveid", "claim": noPick["claim"] as Any]
+        object["noPick"] = NSNull()
+    }
+    return String(decoding: try JSONSerialization.data(withJSONObject: object), as: UTF8.self)
+}
+
+/// What `POST /api/v2/setup/automatic` answers: `started` with the captured save and a club taken from it (or not),
+/// else the captured "nothing stands out".
+private func automaticJSON(started: Bool, clubDecided: Bool = true) throws -> String {
+    guard started else {
+        return try String(contentsOf: PreviewFixtures.responses.appending(path: "setUpAutomatically-nothing-stands-out.json"), encoding: .utf8)
+    }
+    let nothing = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: PreviewFixtures.responses.appending(path: "setUpAutomatically-nothing-stands-out.json"))) as? [String: Any])
+    let saves = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: PreviewFixtures.responses.appending(path: "listSaves.json"))) as? [[String: Any]])
+    let club: [String: Any] = clubDecided
+        ? ["decided": true, "teamId": 1, "name": "Club 1 N", "humanClubs": 1, "text": "Following the Club 1 N, the club you manage in this save."]
+        : ["decided": false, "teamId": NSNull(), "name": NSNull(), "humanClubs": 2, "text": "You manage 2 clubs in this save, so Pennant will ask which to follow."]
+    let object: [String: Any] = [
+        "outcome": "started", "text": "Using Test League, the save you've played most recently.",
+        "save": saves[0], "club": club, "why": nothing["why"] as Any,
+    ]
+    return String(decoding: try JSONSerialization.data(withJSONObject: object), as: UTF8.self)
+}
+
 @MainActor
 @Suite("The Setup window's steps")
 struct SetupModelTests {
@@ -95,17 +125,16 @@ struct SetupModelTests {
 
     init() throws {
         client = PennantClient.make(port: 1, token: String(repeating: "t", count: 64), transport: server)
-        try server.answer("listSaves", fixture: "listSaves")
-        server.answer("getSearchLocations", (200, #"{"platform":"darwin","locations":[{"label":"OOTP 27","path":"/tmp/saved_games","exists":true}]}"#))
-        server.answer("setSave", (200, #"{"ok":true,"importStarted":true,"why":null}"#))
+        try server.answer("getSaveDiscovery", (200, discoveryJSON()))
+        server.answer("setSave", (200, #"{"ok":true,"importStarted":true,"why":null,"club":null}"#))
         try server.answer("listOrgs", fixture: "listOrgs")
         try server.answer("getSettings", fixture: "getSettings")
         server.answer("saveSettings", (200, try String(contentsOf: PreviewFixtures.responses.appending(path: "saveSettings-club.json"), encoding: .utf8)))
     }
 
-    func makeModel(onSaved: @escaping @MainActor () async -> Void = {}) -> SetupModel {
+    func makeModel(onSaved: @escaping @MainActor () async -> Void = {}, automatic: Bool = true) -> SetupModel {
         let client = client
-        return SetupModel(client: { client }, onClubSaved: onSaved)
+        return SetupModel(client: { client }, onClubSaved: onSaved, setsUpAutomatically: automatic)
     }
 
     @Test("finds the saves the server found and where it looked")
@@ -129,6 +158,8 @@ struct SetupModelTests {
         let body = try #require(server.bodies(of: "setSave").first)
         #expect(body["csvDir"] as? String == model.saves[0].csvDir)
         #expect(body["saveName"] as? String == "Test League")
+        // The club is taken from the save when it names one (N6, Stage B2); this one's answer took none
+        #expect(body["club"] as? String == "fromSave")
 
         let progress = Components.Schemas.ImportProgress(
             table: "players", fileIndex: 3, files: 10, rows: 1200, phase: .init(value1: .writing),
@@ -322,7 +353,7 @@ struct SetupModelTests {
         var logged: [String] = []
         let client = client
         let model = SetupModel(client: { client }, log: { logged.append($0) })
-        server.answer("listSaves", (500, "{}"))
+        server.answer("getSaveDiscovery", (500, "{}"))
         await model.load()
         guard case .failed = model.loadProblem else {
             Issue.record("expected a failure, got \(String(describing: model.loadProblem))")
@@ -340,5 +371,193 @@ struct SetupModelTests {
         let down = SetupModel(client: { nil })
         await down.load()
         #expect(down.loadProblem == .notRunning)
+    }
+
+    // MARK: The zero-question first run (N6, Stage B2)
+
+    @Test("a first run with a save that clearly stands out asks nothing: it follows the import, the club taken from the save, and closes")
+    func zeroQuestions() async throws {
+        var reloaded = false
+        let model = makeModel { reloaded = true }
+        server.answer("setUpAutomatically", (200, try automaticJSON(started: true)))
+        server.answer("getStatus", (200, try json(status(importing: true, finishedAt: "2040-07-01T10:00:00.000Z"))))
+        var first = try status(finishedAt: "2040-07-01T10:00:00.000Z")
+        first.configured = false
+        await model.begin(status: first)
+        #expect(model.step == .importing)
+        #expect(model.automatic?.text == "Using Test League, the save you've played most recently.")
+        #expect(model.club?.decided == true)
+        #expect(model.chosen?.name == "Test League")
+        // No list was read and no save was chosen by the window: the server chose it
+        #expect(server.requests.filter { $0.operation == "getSaveDiscovery" || $0.operation == "setSave" }.isEmpty)
+        await model.observe(try status(finishedAt: "2040-07-01T12:00:00.000Z"))
+        #expect(model.step == .done)
+        #expect(reloaded)
+        #expect(server.requests.filter { $0.operation == "listOrgs" || $0.operation == "saveSettings" }.isEmpty)
+        // Asked again (the window reappears): nothing more
+        await model.begin(status: first)
+        #expect(server.requests.filter { $0.operation == "setUpAutomatically" }.count == 1)
+    }
+
+    @Test("a first run where the save's human manages several clubs asks only the club")
+    func zeroQuestionsButTheClub() async throws {
+        let model = makeModel()
+        server.answer("setUpAutomatically", (200, try automaticJSON(started: true, clubDecided: false)))
+        server.answer("getStatus", (200, try json(status(importing: true, finishedAt: "2040-07-01T10:00:00.000Z"))))
+        var first = try status(finishedAt: "2040-07-01T10:00:00.000Z")
+        first.configured = false
+        await model.begin(status: first)
+        await model.observe(try status(finishedAt: "2040-07-01T12:00:00.000Z"))
+        #expect(model.step == .pickClub)
+        #expect(model.club?.text == "You manage 2 clubs in this save, so Pennant will ask which to follow.")
+    }
+
+    @Test("when nothing stands out the served reason is kept and the saves are listed; choosing one is one click")
+    func nothingStandsOut() async throws {
+        let model = makeModel()
+        server.answer("setUpAutomatically", (200, try automaticJSON(started: false)))
+        var first = try status()
+        first.configured = false
+        await model.begin(status: first)
+        #expect(model.step == .findSave)
+        #expect(model.automatic?.outcome.value1 == .nothingStandsOut)
+        #expect(model.automatic?.why?.text == "None of these saves has been saved in OOTP yet")
+        #expect(model.savesLoaded)
+        #expect(model.discovery?.noPick?.reason.value1 == .neverPlayed)
+        #expect(model.saves.map(\.name) == ["Test League"])
+        server.answer("getStatus", (200, try json(status(importing: true))))
+        await model.choose(model.saves[0], status: try status())
+        #expect(model.step == .importing)
+        #expect(server.bodies(of: "setSave").first?["club"] as? String == "fromSave")
+    }
+
+    @Test("with a save chosen, or on a development build without a pretend home, nothing is set up by itself")
+    func noAutomaticSetup() async throws {
+        let chosen = makeModel()
+        await chosen.begin(status: try status())
+        let unconfigured = makeModel(automatic: false)
+        var first = try status()
+        first.configured = false
+        await unconfigured.begin(status: first)
+        #expect(server.requests.filter { $0.operation == "setUpAutomatically" }.isEmpty)
+        #expect(chosen.savesLoaded && unconfigured.savesLoaded)
+    }
+
+    @Test("the pick is marked with its served line, and only the pick")
+    func pickMarked() async throws {
+        server.answer("getSaveDiscovery", (200, try discoveryJSON(pick: true)))
+        let model = makeModel()
+        await model.load()
+        let save = try #require(model.saves.first)
+        #expect(model.isPick(save))
+        #expect(model.pickClaim?.text == "None of these saves has been saved in OOTP yet")
+        var other = save
+        other.id = "another"
+        #expect(!model.isPick(other))
+    }
+
+    @Test("a switch clicked in the main window chooses that save at once; with the club taken from it, it closes on landing")
+    func switchToPlayedSince() async throws {
+        var reloaded = false
+        let model = makeModel { reloaded = true }
+        server.answer("setSave", (200, #"{"ok":true,"importStarted":true,"why":null,"club":{"decided":true,"teamId":1,"name":"Club 1 N","humanClubs":1,"text":"Following the Club 1 N, the club you manage in this save."}}"#))
+        server.answer("getStatus", (200, try json(status(importing: true, finishedAt: "2040-07-01T10:00:00.000Z"))))
+        let other = PreviewFixtures.saves[0]
+        await model.switchTo(other, status: try status(finishedAt: "2040-07-01T10:00:00.000Z"))
+        #expect(model.step == .importing)
+        #expect(server.bodies(of: "setSave").first?["csvDir"] as? String == other.csvDir)
+        await model.observe(try status(finishedAt: "2040-07-01T12:00:00.000Z"))
+        #expect(model.step == .done)
+        #expect(reloaded)
+    }
+
+    // MARK: The club owed (N6 Stage B2 review, M4 and H1)
+
+    private static let severalClubs = #"{"ok":true,"importStarted":true,"why":null,"club":{"decided":false,"teamId":null,"name":null,"humanClubs":2,"text":"You manage 2 clubs in this save, so Pennant will ask which to follow."}}"#
+
+    @Test("a club the server can't settle holds the report from the choice until the club is saved, with no window involved")
+    func clubOwedHoldsTheReport() async throws {
+        let routing = AppRouting()
+        let model = routing.setupModel { makeModel() }
+        server.answer("setSave", (200, Self.severalClubs))
+        server.answer("getStatus", (200, try json(status(importing: true, finishedAt: "2040-07-01T10:00:00.000Z"))))
+        await model.load()
+        #expect(!routing.awaitingClub)
+        await model.choose(model.saves[0], status: try status(finishedAt: "2040-07-01T10:00:00.000Z"))
+        // Held from the moment the save is chosen, while it imports, and it says why in the server's words
+        #expect(model.step == .importing)
+        #expect(routing.awaitingClub)
+        #expect(routing.owedClubText == "You manage 2 clubs in this save, so Pennant will ask which to follow.")
+        // The same model is the app's: asking again makes no other
+        #expect(routing.setupModel { makeModel() } === model)
+        await model.observe(try status(finishedAt: "2040-07-01T12:00:00.000Z"))
+        #expect(model.step == .pickClub)
+        #expect(routing.awaitingClub)
+        model.selectedClub = 1
+        await model.saveClub()
+        #expect(!routing.awaitingClub)
+    }
+
+    @Test("closing Setup mid-import on a save with several clubs keeps the hold; opening it again comes back to the club question")
+    func closedMidImport() async throws {
+        let routing = AppRouting()
+        let model = routing.setupModel { makeModel() }
+        server.answer("setSave", (200, Self.severalClubs))
+        server.answer("getStatus", (200, try json(status(importing: true, finishedAt: "2040-07-01T10:00:00.000Z"))))
+        await model.load()
+        await model.choose(model.saves[0], status: try status(finishedAt: "2040-07-01T10:00:00.000Z"))
+        // The window closes mid-import: nothing tells the model, and the import lands meanwhile, unseen. Then the GM goes
+        // back to the saves in the window and closes it again: the club is still owed
+        model.restart()
+        #expect(model.step == .findSave)
+        #expect(routing.awaitingClub)
+        // "Choose Your Club…" (or Set Up Pennant…): back to the question, from the served status
+        routing.requestClubQuestion()
+        #expect(routing.takeClubRequest())
+        #expect(!routing.takeClubRequest())
+        await model.resumeClubQuestion(status: try status(finishedAt: "2040-07-01T12:00:00.000Z"))
+        #expect(model.step == .pickClub)
+        #expect(model.club?.decided == false)
+        #expect(routing.awaitingClub)
+    }
+
+    @Test("a choice whose club is settled lets an owed club go: the GM's kept club, or the one the save names")
+    func settledChoiceReleases() async throws {
+        let routing = AppRouting()
+        let model = routing.setupModel { makeModel() }
+        server.answer("setSave", (200, Self.severalClubs), (200, #"{"ok":true,"importStarted":true,"why":null,"club":{"decided":true,"teamId":3,"name":"Club 3 N","humanClubs":2,"text":"Keeping the Club 3 N, the club you chose."}}"#))
+        server.answer("getStatus", (200, try json(status(importing: true, finishedAt: "2040-07-01T10:00:00.000Z"))))
+        await model.load()
+        await model.choose(model.saves[0], status: try status(finishedAt: "2040-07-01T10:00:00.000Z"))
+        #expect(routing.awaitingClub)
+        model.restart()
+        await model.choose(model.saves[0], status: try status(finishedAt: "2040-07-01T10:00:00.000Z"))
+        #expect(!routing.awaitingClub)
+        #expect(model.club?.text == "Keeping the Club 3 N, the club you chose.")
+    }
+
+    @Test("the served club is preselected only when this save's human manages it: a club from another league never is")
+    func preselectsOnlyAHumanClub() async throws {
+        // The served club is team 2, which no human manages in this save (a club chosen in another league)
+        let settings = try String(contentsOf: PreviewFixtures.responses.appending(path: "getSettings.json"), encoding: .utf8)
+        server.answer("getSettings", (200, settings.replacingOccurrences(of: "\"id\": 1,", with: "\"id\": 2,")))
+        let model = makeModel()
+        await model.loadClubs()
+        let human = try #require(model.clubs.first { $0.isHuman })
+        #expect(model.clubs.contains { $0.teamId == 2 && !$0.isHuman })
+        #expect(model.selectedClub == human.teamId)
+    }
+
+    @Test("a folder is not checked twice while a request is under way")
+    func useFolderWhileBusy() async throws {
+        let model = makeModel()
+        server.answer("resolveFolder", (200, #"{"ok":true,"csvDir":"/tmp/x/import_export/csv","saveName":"X","csvCount":3}"#))
+        server.answer("getStatus", (200, try json(status(importing: true))))
+        model.folderPath = "/tmp/x"
+        let now = try status()
+        async let first: Void = model.useFolder(status: now)
+        async let second: Void = model.useFolder(status: now)
+        _ = await (first, second)
+        #expect(server.requests.filter { $0.operation == "resolveFolder" }.count == 1)
     }
 }

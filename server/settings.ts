@@ -209,6 +209,32 @@ export function followSaveClub(): void {
   if (current.defaultOrgId !== null) writeSettings({ ...current, defaultOrgId: null });
 }
 
+/**
+ * The export folder of a save chosen with `club: 'fromSave'` whose club chosen before must be forgotten once its import
+ * lands (N6 Stage B2 review, H1): a team id belongs to one league, so it never crosses into another save's. It is
+ * written when the import lands, never when the save is chosen, so an import that fails leaves the club as it was.
+ * One at a time: a later choice replaces it, and the GM choosing a club (`POST /api/settings`) cancels it.
+ */
+let clubForgottenOnImport: string | null = null;
+
+/** The club chosen before is forgotten when the import of `csvDir` lands; null owes nothing. */
+export function forgetClubWhenImported(csvDir: string | null): void {
+  clubForgottenOnImport = csvDir;
+}
+
+/** Whether the import of `csvDir` still owes forgetting the club chosen before. */
+export function clubForgottenWhenImported(csvDir: string): boolean {
+  return clubForgottenOnImport === csvDir;
+}
+
+/** The import of `csvDir` landed: the club it owed is forgotten now (automatic). Returns whether one was owed. */
+export function importLandedForClub(csvDir: string): boolean {
+  if (clubForgottenOnImport !== csvDir) return false;
+  clubForgottenOnImport = null;
+  followSaveClub();
+  return true;
+}
+
 function writeSettings(next: Settings): void {
   fs.writeFileSync(SETTINGS_PATH, JSON.stringify(next, null, 2));
 }
@@ -626,6 +652,8 @@ settingsRoutes.post('/settings', (req, res: Response<SettingsSaved>) => {
     next.defaultOrgId = body.defaultOrgId;
   }
   if (body.clubChoice === 'automatic') next.defaultOrgId = null;
+  // The GM chose the club: a club owed to an import still running is his answer now, never forgotten after it
+  if (body.defaultOrgId === null || typeof body.defaultOrgId === 'number' || body.clubChoice === 'automatic') forgetClubWhenImported(null);
   if (body.theme === 'system' || body.theme === 'dark' || body.theme === 'light') {
     next.theme = body.theme;
   }

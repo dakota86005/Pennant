@@ -10,7 +10,7 @@ import { Router } from 'express';
 import { DIGEST_SWIFT_PATH, SHAPES_SPEC_PATH, SPEC_PATH, buildShapesSpec, buildSpec, digestSwift, serializeSpec, transform } from '../scripts/lib/contractSpec.js';
 import { operations } from '../server/contract/routes.js';
 import { basisProblems } from '../server/presentation/claim.js';
-import { departmentReport } from '../server/frontOfficeService.js';
+import { departmentReport, frontOfficeRevision } from '../server/frontOfficeService.js';
 import type { Basis } from '../server/contract/presentation.js';
 import { api, importState, runImport } from '../server/api.js';
 import { loadConfig, saveConfig } from '../server/config.js';
@@ -20,7 +20,7 @@ import { historyDb, SNAPSHOT_DATA_COLUMNS, takeSnapshot } from '../server/histor
 import { currentHistoryKey, forgetHistoryKey } from '../server/historyIdentity.js';
 import { registeredRoutes, type RegisteredRoute } from './apiRoutes';
 import {
-  BANNED_JARGON, BANNED_VERDICTS, JARGON_EXCEPTIONS, bannedIn, bannedInPayload, exceptionsUsed, shownStrings,
+  BANNED_JARGON, BANNED_VERDICTS, FOLDER_PATHS, JARGON_EXCEPTIONS, bannedIn, bannedInPayload, exceptionsUsed, shownStrings,
   type JargonException,
 } from './bannedJargon';
 import { buildSave, type BuiltSave } from './syntheticSave';
@@ -413,6 +413,8 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     setSave: [
       { name: 'no-folder', body: {}, status: 400 },
       { name: 'no-export', body: { csvDir: '$HOME/Library/Nowhere/csv', saveName: 'No Export' }, status: 200 },
+      // The Mac app's choice takes the club from the save; an export that isn't there names none, so Pennant will ask
+      { name: 'club-from-save', body: { csvDir: '$HOME/Library/Nowhere/csv', saveName: 'No Export', club: 'fromSave' }, status: 200 },
     ],
     // The Setup window saves the club it picked, then goes back to automatic; the last case puts the preferences back
     saveSettings: [
@@ -458,7 +460,8 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
         expect(validate(answer) ? [] : validate.errors, `${op.operationId} ${c.name} against ${type}`).toEqual([]);
         fixture(`responses/${op.operationId}-${c.name}.json`, json(answer));
         if (op.operationId === 'saveSettings' && c.name === 'automatic') expect(answer.settings.defaultOrgId).toBeNull();
-        if (op.operationId === 'setSave' && c.name === 'no-export') expect(answer).toMatchObject({ importStarted: false });
+        if (op.operationId === 'setSave' && c.name === 'no-export') expect(answer).toMatchObject({ importStarted: false, club: null });
+        if (op.operationId === 'setSave' && c.name === 'club-from-save') expect(answer.club).toMatchObject({ decided: false, teamId: null, humanClubs: null });
         // Choosing a save is put back at once, so the answers after it read the unconfigured server
         if (op.operationId === 'setSave') saveConfig(previous);
       }
@@ -492,17 +495,28 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
         ['answerRatingHistoryOffer-undo', '/api/v2/rating-history/choice', { offerId: `${key}:carry:1`, choice: 'undo' }, 'RatingHistoryView'],
       ];
       for (const [name, route, body, type] of steps) {
+        const revision = frontOfficeRevision();
         const res = await fetch(`${base}${route}`, body === undefined ? undefined : {
           method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
         });
         expect(res.status, name).toBe(200);
+        // A carry-over and its undo change what the reports read, so the Front Office is built again (N6 Stage B2); a
+        // question read changes nothing
+        if (body === undefined) expect(frontOfficeRevision(), name).toBe(revision);
+        else expect(frontOfficeRevision(), name).toBeGreaterThan(revision);
         const answer = await res.json();
         const validate = validator(type);
         expect(validate(answer) ? [] : validate.errors, name).toEqual([]);
         expect(bannedInPayload(answer, name.split('-')[0])).toEqual([]);
+        // The save is placed by the place the GM knows, never a folder's path (M1): the questions, the list, the carry-overs
+        const placed = [...shownStrings(answer).map((s) => s.text), ...answer.offers.map((o: { place: string }) => o.place),
+          ...answer.candidates.map((c: { place: string }) => c.place), ...answer.carriedOver.map((c: { undoQuestion: string }) => c.undoQuestion)];
+        for (const text of placed) expect(bannedIn(text, [FOLDER_PATHS]), `${name}: ${text}`).toEqual([]);
         expect(servedBasisProblems(answer)).toEqual([]);
         if (name.endsWith('offer')) expect(answer.offers).toHaveLength(1);
+        if (name.endsWith('offer')) expect(answer.offers[0]).toMatchObject({ adoptText: 'Carry It Over', freshText: 'Keep Them Apart' });
         if (name.endsWith('adopt')) expect(answer.carriedOver).toHaveLength(1);
+        if (name.endsWith('adopt')) expect(answer.carriedOver[0].undoQuestion).toMatch(/^Undo the carry-over from "Old League"\? The \d+ player ratings it copied are removed/);
         if (name.endsWith('undo')) expect(answer.carriedOver).toEqual([]);
         fixture(`responses/${name}.json`, json(answer));
       }

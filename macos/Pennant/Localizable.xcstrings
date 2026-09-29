@@ -138,12 +138,6 @@
     "Export": {
       "extractionState": "manual"
     },
-    "Export files": {
-      "extractionState": "manual"
-    },
-    "Export folder": {
-      "extractionState": "manual"
-    },
     "Farm & Development": {
       "extractionState": "manual"
     },
@@ -614,6 +608,48 @@
       "extractionState": "manual"
     },
     "Against the other clubs": {
+      "extractionState": "manual"
+    },
+    "Last played %@": {
+      "extractionState": "manual"
+    },
+    "Uses this save": {
+      "extractionState": "manual"
+    },
+    "Undo": {
+      "extractionState": "manual"
+    },
+    "Carry Over": {
+      "extractionState": "manual"
+    },
+    "Other Saves' Histories": {
+      "extractionState": "manual"
+    },
+    "Rating history": {
+      "extractionState": "manual"
+    },
+    "Undo the carry-over?": {
+      "extractionState": "manual"
+    },
+    "Undo Carry-Over": {
+      "extractionState": "manual"
+    },
+    "Choose Another Save…": {
+      "extractionState": "manual"
+    },
+    "Choose Your Club…": {
+      "extractionState": "manual"
+    },
+    "Sidebar": {
+      "extractionState": "manual"
+    },
+    "Content": {
+      "extractionState": "manual"
+    },
+    "Content and Inspector": {
+      "extractionState": "manual"
+    },
+    "Main Window": {
       "extractionState": "manual"
     }
   },

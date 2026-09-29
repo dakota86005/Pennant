@@ -30,8 +30,9 @@ enum StagedServer {
 /// The Setup flow against the real server, as the app runs it: the staged bundle (`npm run mac:stage`), a scratch
 /// data folder with the synthetic league, the app's model following the event stream, and a pretend OOTP save whose
 /// export is the synthetic league's own (the import builds a whole new database from the export, so an export without
-/// the league's tables would leave no clubs to pick). The folder is picked by path, the save chosen, the import followed to its end, and a club
-/// saved; the server then serves that club as the configured one.
+/// the league's tables would leave no clubs to pick). The folder is picked by path, the save chosen and the import
+/// followed to its end; the club the save names is taken from it. `SetupB2IntegrationTests` has the rest of finding the
+/// save.
 ///
 /// It runs when the staged server exists and `PENNANT_TEST_LEAGUE` names a synthetic `league.db` with its `export/`
 /// beside it (`macos/scripts/test.sh` sets both up). Never point it at a real save.
@@ -55,7 +56,7 @@ struct SetupIntegrationTests {
         return await condition()
     }
 
-    @Test("pick a folder, import the save, pick a club: the server serves that club afterwards")
+    @Test("pick a folder, import the save: the club the save names is followed, and nothing more is asked")
     func setupFlow() async throws {
         let run = try scratch()
         let data = run.appending(path: "data", directoryHint: .isDirectory)
@@ -102,16 +103,12 @@ struct SetupIntegrationTests {
         }
         #expect(landed)
         #expect(setup.importProblem == nil)
-        #expect(setup.step == .pickClub)
-        #expect(setup.clubs.first?.isHuman == true)
-        #expect(setup.selectedClub == setup.clubs.first?.teamId)
-
-        let other = try #require(setup.clubs.first { !$0.isHuman })
-        setup.selectedClub = other.teamId
-        await setup.saveClub()
+        // The synthetic league's export names the one club its human manages: the club is taken from the save, and
+        // nothing is asked (N6, Stage B2)
+        #expect(setup.club?.decided == true)
         #expect(setup.step == .done)
-        #expect(model.club?.ref == ClubRef(id: other.teamId))
-        #expect(model.club?.source == .configured)
+        #expect(model.club?.ref == ClubRef(id: 1))
+        #expect(model.club?.source == .humanManaged)
         // The status the event stream re-reads after the import says the save is chosen
         #expect(
             await until(.seconds(10)) { model.status?.configured == true },

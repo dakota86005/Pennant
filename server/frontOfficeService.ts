@@ -71,6 +71,11 @@ export function invalidateFrontOffice(): void {
   trailsBuilding.clear();
 }
 
+/** How many times the cache was forgotten (for the tests: a carry-over of rating history rebuilds the Front Office). */
+export function frontOfficeRevision(): number {
+  return revision;
+}
+
 /** For the tests: empty cache and zero counts. */
 export function resetFrontOfficeCache(): void {
   invalidateFrontOffice();

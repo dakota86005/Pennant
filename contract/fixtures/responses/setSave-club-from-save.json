@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "importStarted": false,
+  "why": "That save has no export yet. In OOTP, export the league's database, then choose the save again.",
+  "club": {
+    "decided": false,
+    "teamId": null,
+    "name": null,
+    "humanClubs": null,
+    "text": "The export doesn't say which club you manage, so Pennant will ask."
+  }
+}

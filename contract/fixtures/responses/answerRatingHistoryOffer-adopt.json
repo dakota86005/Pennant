@@ -1,4 +1,33 @@
 {
+  "status": {
+    "text": "This save has rating history from 2 imports, the latest on May 6, 2040.",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Imports kept",
+          "value": "2"
+        },
+        {
+          "label": "Rating history",
+          "value": "You carried over the rating history of \"Old League\" (in /tmp/pennant-contract-home/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games/Old League.lg) through April 1, 2040; its own history is unchanged."
+        }
+      ],
+      "source": {
+        "department": "frontOffice",
+        "specialist": "Rating history",
+        "asOf": null,
+        "gameDate": null
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": [],
+    "hint": "Each import keeps the ratings your scouts saw, to show how players develop"
+  },
   "note": null,
   "offers": [],
   "candidates": [],
@@ -33,7 +62,8 @@
         },
         "links": [],
         "hint": "Undoing it removes exactly what was copied; the other save keeps its own"
-      }
+      },
+      "undoQuestion": "Undo the carry-over from \"Old League\"? The 104 player ratings it copied are removed from this save's history; \"Old League\" keeps its own."
     }
   ],
   "warning": {

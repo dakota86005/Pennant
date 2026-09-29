@@ -94,11 +94,21 @@ nonisolated public struct PlaceDimension: Identifiable, Sendable, Hashable {
     public var recentText: String
     public var group: Group
     public var claim: Components.Schemas.Claim
+    /// The figure behind the place, as served ("4.63 runs a game · league middle 4.31"), with its help tag: the name's
+    /// hover. Nil when not served (a fixture).
+    public var detail: String?
+    public var detailHint: String?
+    /// Why there is no recent place, as served; nil when there is one (the recent reading's hover).
+    public var recentWhy: String?
 
     public init(
         id: String, name: String, symbol: String, place: Int?, of: Int, strengthThrough: Int? = nil, weaknessFrom: Int? = nil,
-        tiedWith: Int, recentPlace: Int?, placeText: String, recentText: String, group: Group, claim: Components.Schemas.Claim
+        tiedWith: Int, recentPlace: Int?, placeText: String, recentText: String, group: Group, claim: Components.Schemas.Claim,
+        detail: String? = nil, detailHint: String? = nil, recentWhy: String? = nil
     ) {
+        self.detail = detail
+        self.detailHint = detailHint
+        self.recentWhy = recentWhy
         self.id = id
         self.name = name
         self.symbol = symbol
@@ -213,12 +223,16 @@ nonisolated public struct RosterPosition: Identifiable, Sendable, Hashable {
     public var holderRule: HolderRule?
     /// The farm's next man's readiness against its bar; nil when either is not known, or not served.
     public var farmBar: FarmBar?
+    /// What his control means and how it is read, as served (the pips' hover); nil when not served.
+    public var controlHint: String?
 
     public init(
         id: String, holder: String, value: ValueRange?, valueText: String, placeText: String, behind: String,
         farmNext: String?, control: ControlTerm, need: Bool, claim: Components.Schemas.Claim,
-        name: String = "", overlapText: String? = nil, overlapHint: String? = nil, holderRule: HolderRule? = nil, farmBar: FarmBar? = nil
+        name: String = "", overlapText: String? = nil, overlapHint: String? = nil, holderRule: HolderRule? = nil, farmBar: FarmBar? = nil,
+        controlHint: String? = nil
     ) {
+        self.controlHint = controlHint
         self.id = id
         self.holder = holder
         self.value = value

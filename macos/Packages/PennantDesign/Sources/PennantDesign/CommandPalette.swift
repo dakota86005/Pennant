@@ -35,7 +35,7 @@ public struct CommandPalette: View {
         let visible = Array(results.prefix(Self.shown))
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 10) {
-                Image(systemName: "magnifyingglass").foregroundStyle(.secondary).accessibilityHidden(true)
+                Image(systemName: "magnifyingglass").foregroundStyle(.readableSecondary).accessibilityHidden(true)
                 TextField("Find anything", text: $query)
                     .textFieldStyle(.plain)
                     .font(.title3)
@@ -45,17 +45,17 @@ public struct CommandPalette: View {
                     .onKeyPress(.upArrow) { move(-1, in: visible); return .handled }
                     .onKeyPress(.escape) { dismiss(); return .handled }
                     .accessibilityIdentifier("palette.query")
-                Text("⌘K").font(.caption).foregroundStyle(.secondary).accessibilityHidden(true)
+                Text("⌘K").font(.caption).foregroundStyle(.readableSecondary).accessibilityHidden(true)
             }
             .padding(.horizontal, 16).padding(.vertical, 12)
             Divider()
             if visible.isEmpty {
-                Text("Nothing matches").font(.callout).foregroundStyle(.secondary).padding(16)
+                Text("Nothing matches").font(.callout).foregroundStyle(.readableSecondary).padding(16)
             } else {
                 VStack(alignment: .leading, spacing: 2) {
                     ForEach(Array(visible.enumerated()), id: \.element.id) { index, entry in
                         if index == 0 || visible[index - 1].group != entry.group {
-                            Text(verbatim: entry.group).font(.caption.weight(.semibold)).foregroundStyle(.secondary).textCase(.uppercase).kerning(0.6)
+                            Text(verbatim: entry.group).font(.caption.weight(.semibold)).foregroundStyle(.readableSecondary).textCase(.uppercase).kerning(0.6)
                                 .padding(.horizontal, 12).padding(.top, index == 0 ? 8 : 10).padding(.bottom, 2)
                                 .accessibilityAddTraits(.isHeader)
                         }
@@ -64,11 +64,11 @@ public struct CommandPalette: View {
                                 SymbolTile(symbol: entry.symbol, tint: accent, size: 26)
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(verbatim: entry.title).font(.body.weight(.medium))
-                                    if let line = entry.line { Text(verbatim: line).font(.caption).foregroundStyle(.secondary) }
+                                    if let line = entry.line { Text(verbatim: line).font(.caption).foregroundStyle(.readableSecondary) }
                                 }
                                 Spacer()
-                                if let shortcut = entry.shortcut { Text(verbatim: shortcut).font(.caption).foregroundStyle(.secondary) }
-                                if index == selected { Text("↩").font(.caption).foregroundStyle(.secondary).accessibilityHidden(true) }
+                                if let shortcut = entry.shortcut { Text(verbatim: shortcut).font(.caption).foregroundStyle(.readableSecondary) }
+                                if index == selected { Text("↩").font(.caption).foregroundStyle(.readableSecondary).accessibilityHidden(true) }
                             }
                             .padding(.horizontal, 10).padding(.vertical, 6)
                             .background(index == selected ? accent.opacity(0.14) : .clear, in: .rect(cornerRadius: 8))
@@ -87,18 +87,27 @@ public struct CommandPalette: View {
             }
             Divider()
             HStack(spacing: 14) {
-                Label("Open", systemImage: "return").font(.caption)
-                Label("Close", systemImage: "escape").font(.caption)
+                // Each key's symbol beside its word and hidden from VoiceOver, so the word is the element (the audit
+                // measured the symbol's thin strokes as the word's contrast)
+                HStack(spacing: 4) { Image(systemName: "return").accessibilityHidden(true); Text("Open") }.font(.caption.weight(.medium))
+                HStack(spacing: 4) { Image(systemName: "escape").accessibilityHidden(true); Text("Close") }.font(.caption.weight(.medium))
                 Spacer()
                 // One format key ("%lld of %lld"), so a language can order the counts its own way
-                Text("\(visible.count) of \(results.count)").font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                Text("\(visible.count) of \(results.count)").font(.caption).foregroundStyle(.readableSecondary).monospacedDigit()
             }
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.readableSecondary)
             .padding(.horizontal, 16).padding(.vertical, 8)
         }
         .frame(width: 640)
         .modifier(PanelGlass(reduceTransparency: reduceTransparency, increasedContrast: contrast == .increased))
-        .onAppear { focused = true }
+        .defaultFocus($focused, true)
+        // The query takes the keyboard as the palette opens, and again once the window has settled: on a Mac whose
+        // window became key a moment late (GitHub's runner), the first request alone was lost
+        .task {
+            focused = true
+            try? await Task.sleep(for: .milliseconds(120))
+            if !focused { focused = true }
+        }
         .onChange(of: query) { selected = 0 }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("palette")

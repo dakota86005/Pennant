@@ -35,6 +35,9 @@ public final class FrontOfficeStore {
     /// Evidence trails fetched on demand, by evidence key (dropped when the key moves).
     public private(set) var trails: [String: Components.Schemas.ClaimTrail] = [:]
     public private(set) var trailProblems: [String: RequestProblem] = [:]
+    /// Counts the times an import landed while a report from an earlier import was shown and the fresh one replaced it
+    /// in place (never the kept report's replacement at launch): the view says "Updated to …" for a moment on each.
+    public private(set) var importLandings = 0
     /// Requests under way.
     public private(set) var loadingSummary = false
     public private(set) var loadingReports: Set<String> = []
@@ -178,9 +181,12 @@ public final class FrontOfficeStore {
             if summaryIsKept {
                 log("the fresh Morning Report replaced the kept one \(Int((ContinuousClock.now - made) / .milliseconds(1))) ms after the store was made")
             }
+            // An import landed while a live report of an earlier import was on the screen
+            let landed = summary != nil && !summaryIsKept && summary?.importStamp != served.importStamp
             summary = served
             summaryKey = key
             summaryIsKept = false
+            if landed { importLandings += 1 }
         }
         summaryProblem = problem
         if let detail = problem?.detail { log("could not read the Front Office: \(detail)") }

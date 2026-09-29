@@ -1,7 +1,9 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { importState } from '../server/api.js';
 import { loadConfig, saveConfig, type AppConfig } from '../server/config.js';
-import { loadSettings } from '../server/settings.js';
+import { clubForgottenWhenImported, forgetClubWhenImported, loadSettings } from '../server/settings.js';
 import { stopWatcher } from '../server/watcher.js';
 import { APP_STORE_27, PretendHome } from './saveHomeFixture';
 import { post } from './request';
@@ -53,9 +55,9 @@ describe('a first run with no save chosen', () => {
     });
     expect(first.why.basis.certainty).toBe('policy');
     expect(loadConfig()).toMatchObject({ csvDir: current.csvDir, saveName: 'D-backs real save' });
-    // Automatic: the club the save's human manages, never the club chosen before
-    expect(loadSettings().defaultOrgId).toBeNull();
     await until(() => !importState.importing && importState.lastImport?.csvDir === current.csvDir);
+    // Automatic once the import lands: the club the save's human manages, never the club chosen before
+    expect(loadSettings().defaultOrgId).toBeNull();
     const imported = importState.lastImport!.startedAt;
 
     const again = await post('/api/v2/setup/automatic', {});
@@ -71,8 +73,10 @@ describe('a first run with no save chosen', () => {
     const answer = await post('/api/v2/setup/automatic', {});
     expect(answer).toMatchObject({ outcome: 'started', club: { decided: false, teamId: null, humanClubs: 2 } });
     expect(answer.club.text).toBe('You manage 2 clubs in this save, so Pennant will ask which to follow.');
-    expect(loadSettings().defaultOrgId).toBe(3);
-    await post('/api/settings', { defaultOrgId: null });
+    // The club chosen before belongs to another league: forgotten once this save's import lands, and the GM is asked
+    await until(() => !importState.importing);
+    expect(importState.lastError).toBeNull();
+    expect(loadSettings().defaultOrgId).toBeNull();
   });
 
   it('chooses nothing when no save clearly stands out, and says why', async () => {
@@ -92,5 +96,88 @@ describe('a first run with no save chosen', () => {
     const answer = await post('/api/v2/setup/automatic', {});
     expect(answer).toMatchObject({ outcome: 'alreadyChosen', text: 'Chosen is already chosen.', save: { name: 'Chosen' } });
     expect(loadConfig().csvDir).toBe(chosen.csvDir);
+  });
+});
+
+describe('a save chosen by the GM, with its club taken from the save (N6 Stage B2)', () => {
+  /** Chooses a save with its club taken from it, and waits for its import to finish. */
+  async function choose(csvDir: string, saveName: string): Promise<{ club: Record<string, unknown> }> {
+    const answer = await post('/api/config', { csvDir, saveName, club: 'fromSave' });
+    await until(() => !importState.importing);
+    return answer;
+  }
+
+  it('follows the one club the chosen save\'s human manages, as the first run does, once its import lands', async () => {
+    const other = home.save(APP_STORE_27, 'Played since', { playedHoursAgo: 1 });
+    await post('/api/settings', { defaultOrgId: 3 });
+    const answer = await post('/api/config', { csvDir: other.csvDir, saveName: 'Played since', club: 'fromSave' });
+    expect(answer).toMatchObject({
+      ok: true, importStarted: true, why: null,
+      club: { decided: true, teamId: 1, name: 'Arizona Diamondbacks', humanClubs: 1 },
+    });
+    expect(loadConfig()).toMatchObject({ csvDir: other.csvDir, saveName: 'Played since' });
+    await until(() => !importState.importing);
+    expect(importState.lastError).toBeNull();
+    expect(loadSettings().defaultOrgId).toBeNull();
+  });
+
+  it('keeps the club the GM chose when the same save is chosen again (Choose Another Save…, or a switch back)', async () => {
+    const two = home.save(APP_STORE_27, 'Two clubs', { playedHoursAgo: 1, humanClubs: [[1, 'Arizona', 'Diamondbacks'], [3, 'Boston', 'Red Sox']] });
+    expect((await choose(two.csvDir, 'Two clubs')).club).toMatchObject({ decided: false, humanClubs: 2 });
+    // The GM answers the club question
+    await post('/api/settings', { defaultOrgId: 3 });
+    const again = await choose(two.csvDir, 'Two clubs');
+    expect(again.club).toEqual({ decided: true, teamId: 3, name: 'Boston Red Sox', humanClubs: 2, text: 'Keeping the Boston Red Sox, the club you chose.' });
+    expect(importState.lastError).toBeNull();
+    expect(loadSettings().defaultOrgId).toBe(3);
+    await post('/api/settings', { defaultOrgId: null });
+  });
+
+  it('never keeps a club from another league: a switch between two saves with several clubs forgets it, and asks', async () => {
+    const clubs: Array<[number, string, string]> = [[1, 'Arizona', 'Diamondbacks'], [3, 'Boston', 'Red Sox']];
+    const first = home.save(APP_STORE_27, 'League one', { playedHoursAgo: 1, humanClubs: clubs });
+    const second = home.save(APP_STORE_27, 'League two', { playedHoursAgo: 2, humanClubs: clubs });
+    await choose(first.csvDir, 'League one');
+    await post('/api/settings', { defaultOrgId: 3 });
+    const switched = await post('/api/config', { csvDir: second.csvDir, saveName: 'League two', club: 'fromSave' });
+    expect(switched.club).toMatchObject({ decided: false, teamId: null, humanClubs: 2 });
+    await until(() => !importState.importing);
+    expect(importState.lastError).toBeNull();
+    // Team 3 of League one is not team 3 of League two: forgotten, and the GM is asked
+    expect(loadSettings().defaultOrgId).toBeNull();
+  });
+
+  it('leaves the club untouched when the new save\'s import fails', async () => {
+    const held = home.save(APP_STORE_27, 'Held', { playedHoursAgo: 1, humanClubs: [[1, 'Arizona', 'Diamondbacks'], [3, 'Boston', 'Red Sox']] });
+    const broken = home.save(APP_STORE_27, 'Broken', { playedHoursAgo: 2 });
+    // Its players file is days older than the rest of its export: the import refuses it
+    const old = new Date(Date.now() - 3 * 24 * 3_600_000);
+    fs.utimesSync(path.join(broken.csvDir, 'players.csv'), old, old);
+    await choose(held.csvDir, 'Held');
+    await post('/api/settings', { defaultOrgId: 3 });
+    const answer = await choose(broken.csvDir, 'Broken');
+    expect(answer.club).toMatchObject({ decided: true, teamId: 1 });
+    expect(importState.lastError).not.toBeNull();
+    expect(loadSettings().defaultOrgId).toBe(3);
+    // Choosing the save Pennant still holds keeps it too
+    expect((await choose(held.csvDir, 'Held')).club).toMatchObject({ decided: true, teamId: 3, text: 'Keeping the Boston Red Sox, the club you chose.' });
+    expect(loadSettings().defaultOrgId).toBe(3);
+    await post('/api/settings', { defaultOrgId: null });
+  });
+
+  it('never forgets a club the GM chose while the import was still running', async () => {
+    forgetClubWhenImported('/somewhere/import_export/csv');
+    await post('/api/settings', { defaultOrgId: 3 });
+    expect(clubForgottenWhenImported('/somewhere/import_export/csv')).toBe(false);
+    await post('/api/settings', { defaultOrgId: null });
+  });
+
+  it('leaves the club alone when not asked (the React app and the folder typed by hand)', async () => {
+    const save = home.save(APP_STORE_27, 'By hand', { playedHoursAgo: 1 });
+    await post('/api/settings', { defaultOrgId: 3 });
+    const answer = await post('/api/config', { csvDir: save.csvDir, saveName: 'By hand' });
+    expect(answer).toMatchObject({ ok: true, importStarted: true, club: null });
+    expect(loadSettings().defaultOrgId).toBe(3);
+    await post('/api/settings', { defaultOrgId: null });
   });
 });

@@ -136,13 +136,48 @@ nonisolated public enum PreviewFixtures {
         )
     }
 
+    // MARK: Finding the save and the rating history (N6, Stage B2)
+
+    /// The captured discovery (`GET /api/v2/saves`: the pretend save, nothing picked, why).
+    public static var discovery: Components.Schemas.SaveDiscovery? {
+        decode(Components.Schemas.SaveDiscovery.self, "getSaveDiscovery")
+    }
+
+    /// The captured "nothing stands out" answer of the first run's automatic setup.
+    public static var nothingStandsOut: Components.Schemas.AutomaticSetup? {
+        decode(Components.Schemas.AutomaticSetup.self, "setUpAutomatically-nothing-stands-out")
+    }
+
+    /// The captured "played since" notice (the `save-played-elsewhere` event's payload).
+    public static var playedElsewhere: Components.Schemas.SavePlayedElsewhere? {
+        guard let text = try? String(contentsOf: repositoryRoot.appending(path: "contract/fixtures/events-save-played-elsewhere.sse"), encoding: .utf8),
+              let line = text.split(separator: "\n").first(where: { $0.hasPrefix("data: ") })
+        else { return nil }
+        struct Event: Decodable { var savePlayedElsewhere: Components.Schemas.SavePlayedElsewhere? }
+        return (try? JSONDecoder().decode(Event.self, from: Data(line.dropFirst(6).utf8)))?.savePlayedElsewhere
+    }
+
+    /// The captured rating history: `offer` (a save that moved, with its question and the picker), `adopt` (a
+    /// carry-over in force, with the warning), or none to ask (`getRatingHistory`).
+    public static func ratingHistory(_ name: String) -> Components.Schemas.RatingHistoryView? {
+        let file: String
+        switch name {
+        case "": file = "getRatingHistory"
+        case "adopt": file = "answerRatingHistoryOffer-adopt"
+        default: file = "getRatingHistory-" + name
+        }
+        return decode(Components.Schemas.RatingHistoryView.self, file)
+    }
+
     /// A model with the server ready and the captured payloads.
     @MainActor
     public static func ready(
         configured: Bool = true,
         useTeamColors: Bool = true,
         themePack: String? = nil,
-        importRequestProblem: RequestProblem? = nil
+        importRequestProblem: RequestProblem? = nil,
+        ratingHistory: Components.Schemas.RatingHistoryView? = nil,
+        savePlayedElsewhere: Components.Schemas.SavePlayedElsewhere? = nil
     ) -> AppModel {
         let status = status(configured: configured)
         let settings = decode(Components.Schemas.SettingsResponse.self, "getSettings").map {
@@ -172,7 +207,9 @@ nonisolated public enum PreviewFixtures {
                 return choices
             },
             importRequestProblem: importRequestProblem,
-            frontOffice: configured ? frontOffice : nil
+            frontOffice: configured ? frontOffice : nil,
+            ratingHistory: ratingHistory ?? (configured ? Self.ratingHistory("") : nil),
+            savePlayedElsewhere: savePlayedElsewhere
         )
     }
 

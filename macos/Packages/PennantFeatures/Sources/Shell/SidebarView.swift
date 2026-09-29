@@ -59,6 +59,8 @@ public struct SidebarView: View {
             }
         }
         .listStyle(.sidebar)
+        // The column's own container (AppKit's, which no SwiftUI modifier reaches) is named for VoiceOver and the audit
+        .background(SidebarColumnName())
         // The departments' counts to decide come from the Front Office's served cards (a cached read on the server)
         .task(id: model.storeKey) { await model.loadFrontOffice() }
         .accessibilityIdentifier("sidebar")
@@ -119,5 +121,104 @@ extension CurrentClub.Source {
         case .configured: Text("Chosen in Settings")
         case .other: nil
         }
+    }
+}
+
+/// Names the sidebar column's container for VoiceOver (N6, Stage B2: the accessibility audit on GitHub's runner found it
+/// a group with no description). The container is the split view's hosting view for the column, drawn by AppKit, so no
+/// SwiftUI modifier reaches it; labelling a SwiftUI container above the rows instead made them stop scrolling into view
+/// for a click (N5). This finds the nearest enclosing view that vends itself as an unnamed group, inside the split view,
+/// and gives it the structural name "Sidebar": only its label changes, never its children.
+struct SidebarColumnName: NSViewRepresentable {
+    static let name: LocalizedStringResource = "Sidebar"
+
+    func makeNSView(context: Context) -> Finder { Finder() }
+    func updateNSView(_ view: Finder, context: Context) { view.nameColumn() }
+
+    final class Finder: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            nameColumn()
+        }
+
+        func nameColumn() {
+            var view = superview
+            while let current = view, !(current is NSSplitView) {
+                if current.isAccessibilityElement(), current.accessibilityRole() == .group {
+                    if current.accessibilityLabel()?.isEmpty ?? true {
+                        current.setAccessibilityLabel(String(localized: SidebarColumnName.name))
+                    }
+                    return
+                }
+                view = current.superview
+            }
+        }
+
+        override func isAccessibilityElement() -> Bool { false }
+    }
+}
+
+/// Names the inspector column's container for VoiceOver (N6 Stage B2 review, M3: the audit found it a group with no
+/// description): AppKit's hosting view for the column, found as the sidebar's is (`SidebarColumnName`), named
+/// "Inspector".
+struct InspectorColumnName: NSViewRepresentable {
+    static let name: LocalizedStringResource = "Inspector"
+
+    func makeNSView(context: Context) -> Finder { Finder() }
+    func updateNSView(_ view: Finder, context: Context) { view.nameColumn() }
+
+    final class Finder: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            nameColumn()
+        }
+
+        func nameColumn() {
+            var view = superview
+            while let current = view, !(current is NSSplitView) {
+                if current.isAccessibilityElement(), current.accessibilityRole() == .group {
+                    if current.accessibilityLabel()?.isEmpty ?? true {
+                        current.setAccessibilityLabel(String(localized: InspectorColumnName.name))
+                    }
+                    return
+                }
+                view = current.superview
+            }
+        }
+
+        override func isAccessibilityElement() -> Bool { false }
+    }
+}
+
+/// Names the containers above the window's content for VoiceOver (N6 Stage B2 review, M3: the audit found each a group
+/// with no description, spanning the whole window). AppKit draws them (the content column's hosting view, the hosting
+/// view of the column that holds the content and the inspector, and the window's own), so no SwiftUI modifier reaches
+/// them. Walking up from the content, each view that vends itself as an unnamed group gets the next structural name:
+/// "Content", "Content and Inspector", then "Main Window". Only labels change, never children or roles.
+struct WindowContainerNames: NSViewRepresentable {
+    static let names: [LocalizedStringResource] = ["Content", "Content and Inspector", "Main Window"]
+
+    func makeNSView(context: Context) -> Finder { Finder() }
+    func updateNSView(_ view: Finder, context: Context) { view.nameContainers() }
+
+    final class Finder: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            nameContainers()
+        }
+
+        func nameContainers() {
+            var names = WindowContainerNames.names
+            var view = superview
+            while let current = view, !names.isEmpty {
+                if current.isAccessibilityElement(), current.accessibilityRole() == .group {
+                    let name = names.removeFirst()
+                    if current.accessibilityLabel()?.isEmpty ?? true { current.setAccessibilityLabel(String(localized: name)) }
+                }
+                view = current.superview
+            }
+        }
+
+        override func isAccessibilityElement() -> Bool { false }
     }
 }

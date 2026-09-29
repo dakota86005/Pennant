@@ -5,8 +5,8 @@ import PennantKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Settings (SWIFTUI_REBUILD.md section 3.1): General (the OOTP save and its import, the club, the transaction log's
-/// save folder, the data status, the data folder and its backup), Appearance, and AI (each provider's key status, read
+/// Settings (SWIFTUI_REBUILD.md section 3.1): General (the OOTP save and its import, its rating history, the club, the
+/// transaction log's save folder, the data status, the data folder and its backup), Appearance, and AI (each provider's key status, read
 /// only until N13). Updates arrive with N14. Every value shown is served; the labels are structural.
 public struct SettingsView: View {
     @Environment(AppRouting.self) private var routing
@@ -74,6 +74,8 @@ struct GeneralSettings: View {
         ScrollViewReader { proxy in
             Form {
                 saveSection
+                RatingHistorySection()
+                    .id("history")
                 clubSection
                 transactionLogSection
                 DataStatusSection(dataStatus: model.dataStatus)
@@ -110,11 +112,12 @@ struct GeneralSettings: View {
                 ProblemLine(served: note.text, detail: note.detail)
             }
             HStack {
-                Button("Choose Save…") {
+                Button(model.status?.configured == true ? "Choose Another Save…" : "Choose Save…") {
                     routing.requestSetup()
                     openWindow(id: SceneID.setup)
                 }
                 .disabled(!can.importExport)
+                .accessibilityIdentifier("settings.chooseSave")
                 Spacer()
                 Button("Import Now") {
                     Task { await model.startImport() }
@@ -126,7 +129,7 @@ struct GeneralSettings: View {
             Text("OOTP save")
         } footer: {
             Text("Pennant reads the save's export each time it imports.")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.readableSecondary)
         }
     }
 
@@ -165,14 +168,14 @@ struct GeneralSettings: View {
                 .accessibilityIdentifier("settings.club")
                 if let note = model.settings?.organization?.note {
                     Label { Text(verbatim: note) } icon: { Image(systemName: "info.circle") }
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.readableSecondary)
                 }
                 if let clubProblem { ProblemLine(clubProblem) }
             } header: {
                 Text("Club")
             } footer: {
                 Text("Automatic follows the club you manage in the save.")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.readableSecondary)
             }
         }
     }
@@ -196,7 +199,7 @@ struct GeneralSettings: View {
             Text("Transaction log")
         } footer: {
             Text("Pennant reads the transaction log from the save's folder, which it finds from the export. Name the folder here only if it isn't found.")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.readableSecondary)
         }
         .fileImporter(isPresented: $choosingSaveFolder, allowedContentTypes: [.folder]) { result in
             if case .success(let url) = result { saveFolder = url.path(percentEncoded: false) }
@@ -276,6 +279,107 @@ struct GeneralSettings: View {
     }
 }
 
+/// This save's rating history (D-064; N6, Stage B2): the served sentence about it, the questions the server asks (the
+/// same as the main window's notice), the carry-overs in force, each with Undo (confirmed once, in the server's words),
+/// and the other histories the GM may carry over, each with its served basis. Every answer posts the GM's choice and
+/// redraws from the server's reply; a refusal shows the server's sentence here, never an alert. Nothing is carried over
+/// without a click, and every carry-over can be undone.
+struct RatingHistorySection: View {
+    @Environment(AppModel.self) private var model
+    @State private var problem: RequestProblem?
+    @State private var busy = false
+    @State private var confirmingUndo: Components.Schemas.RatingHistoryCarryOver?
+    @State private var candidatesShown: Bool
+
+    /// - Parameter candidatesShown: whether the other histories start unfolded (a snapshot shows them).
+    init(candidatesShown: Bool = false) {
+        _candidatesShown = State(initialValue: candidatesShown)
+    }
+
+    var body: some View {
+        Section {
+            if let history = model.ratingHistory {
+                ServedClaimLine(history.status)
+                    .accessibilityIdentifier("settings.history.status")
+                if let warning = history.warning {
+                    ServedClaimLine(warning, font: .callout)
+                }
+                ForEach(history.offers, id: \.id) { offer in
+                    VStack(alignment: .leading, spacing: 8) {
+                        ServedClaimLine(offer.question)
+                        HStack {
+                            Spacer()
+                            Button { answer(offer.id, .fresh) } label: { Text(verbatim: offer.freshText) }
+                            Button { answer(offer.id, .adopt) } label: { Text(verbatim: offer.adoptText) }
+                                .accessibilityIdentifier("settings.history.adopt")
+                        }
+                        .controlSize(.small)
+                    }
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("settings.history.offer")
+                }
+                ForEach(history.carriedOver, id: \.id) { carry in
+                    HStack(alignment: .firstTextBaseline) {
+                        ServedClaimLine(carry.text, font: .callout)
+                        Spacer(minLength: 8)
+                        Button("Undo") { confirmingUndo = carry }
+                            .controlSize(.small)
+                            .accessibilityIdentifier("settings.history.undo")
+                    }
+                }
+                if !history.candidates.isEmpty {
+                    DisclosureGroup(isExpanded: $candidatesShown) {
+                        ForEach(history.candidates, id: \.id) { candidate in
+                            HStack(alignment: .firstTextBaseline) {
+                                ServedClaimLine(candidate.label, font: .callout)
+                                Spacer(minLength: 8)
+                                Button("Carry Over") { answer(candidate.id, .adopt) }
+                                    .controlSize(.small)
+                                    .accessibilityIdentifier("settings.history.carryOver")
+                            }
+                        }
+                    } label: {
+                        Text("Other Saves' Histories")
+                    }
+                    .accessibilityIdentifier("settings.history.candidates")
+                }
+                if let problem {
+                    ProblemLine(problem)
+                        .accessibilityIdentifier("settings.history.problem")
+                }
+            } else if let failure = model.ratingHistoryProblem {
+                ProblemLine(failure)
+                Button("Try Again") { Task { await model.loadRatingHistory() } }
+            } else {
+                ProgressView().controlSize(.small)
+            }
+        } header: {
+            Text("Rating history")
+        }
+        .disabled(busy)
+        .confirmationDialog("Undo the carry-over?", isPresented: Binding(get: { confirmingUndo != nil }, set: { if !$0 { confirmingUndo = nil } }), presenting: confirmingUndo) { carry in
+            Button("Undo Carry-Over", role: .destructive) { answer(carry.id, .undo) }
+        } message: { carry in
+            Text(verbatim: carry.undoQuestion)
+        }
+        .task { await model.loadRatingHistory() }
+        .accessibilityIdentifier("settings.history")
+    }
+
+    private func answer(_ id: String, _ choice: Components.Schemas.RatingHistoryChoice.ChoicePayload.Value1Payload) {
+        busy = true
+        Task {
+            defer { busy = false }
+            do {
+                try await model.answerRatingHistory(id, choice: choice)
+                problem = nil
+            } catch {
+                problem = RequestProblem.from(error)
+            }
+        }
+    }
+}
+
 /// The data status as the server words it (`/api/v2/data-status`): the headline with a symbol for its tone and its
 /// basis one click away (the reasons are the breakdown, not the face), each source's line (why the log is unavailable in
 /// its help tag), the dates and places (a missing one saying why), and what to do. Every word is served; the labels are
@@ -313,7 +417,7 @@ struct DataStatusSection: View {
                 ForEach(status.facts, id: \.id) { row in
                     LabeledContent {
                         Text(verbatim: row.cells.value.display)
-                            .foregroundStyle(row.cells.value.tone?.value1 == .unknown ? .secondary : .primary)
+                            .foregroundStyle(row.cells.value.tone?.value1 == .unknown ? Color.readableSecondary : Color.primary)
                             .textSelection(.enabled)
                             .lineLimit(2)
                             .truncationMode(.middle)
@@ -426,7 +530,7 @@ struct ThemeSettings: View {
                 ForEach(choices.refused, id: \.folder) { refused in
                     LabeledContent {
                         Text(verbatim: refused.problem.display)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.readableSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                     } label: {
                         Label { Text(verbatim: refused.folder) } icon: { Image(systemName: "exclamationmark.triangle") }
@@ -438,7 +542,7 @@ struct ThemeSettings: View {
                     HStack {
                         Text(verbatim: choices.folder)
                             .font(.callout)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.readableSecondary)
                             .lineLimit(1)
                             .truncationMode(.middle)
                             .textSelection(.enabled)
@@ -567,7 +671,7 @@ struct AISettings: View {
                 }
                 Section {
                     Text("Adding or changing a key arrives in a later build")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.readableSecondary)
                 }
             } else if let problem {
                 Section("Providers") {
@@ -614,7 +718,7 @@ private struct ProviderRow: View {
         LabeledContent {
             VStack(alignment: .trailing, spacing: 2) {
                 keyLine
-                Text(verbatim: provider.model).font(.caption).foregroundStyle(.secondary)
+                Text(verbatim: provider.model).font(.caption).foregroundStyle(.readableSecondary)
             }
         } label: {
             HStack(spacing: 6) {
@@ -623,7 +727,7 @@ private struct ProviderRow: View {
                     Label("In use", systemImage: "checkmark.circle.fill")
                         .labelStyle(.titleAndIcon)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.readableSecondary)
                 }
             }
         }
@@ -636,7 +740,7 @@ private struct ProviderRow: View {
         } else if let key, key.configured {
             HStack(spacing: 4) {
                 if let hint = key.hint { Text(verbatim: hint).monospaced() }
-                if let source = key.sourceText { Text(verbatim: source).foregroundStyle(.secondary) }
+                if let source = key.sourceText { Text(verbatim: source).foregroundStyle(.readableSecondary) }
             }
         } else {
             Text("No key")

@@ -18,11 +18,11 @@ public struct Kicker: View {
     }
 
     /// A served kicker, its parts joined with a middle dot ("Bay City Admirals · July 14, 2041 · Through July 13"),
-    /// and a structural status after them ("Updating") while the caller has one.
-    public init(served parts: [String?], status: Text? = nil, size: Size = .regular) {
-        let separator = " · "
-        let served = Text(verbatim: parts.compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: separator))
-        text = status.map { served + Text(verbatim: separator) + $0 } ?? served
+    /// and a status after them while the caller has one: a structural word already looked up in the String Catalog
+    /// ("Updating") or a served line ("Updated to May 6, 2040"). One string, one `Text`: no concatenated `Text`s.
+    public init(served parts: [String?], status: String? = nil, size: Size = .regular) {
+        let all = parts + [status]
+        text = Text(verbatim: all.compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
         self.size = size
     }
 
@@ -46,29 +46,33 @@ public struct MagazineSection: View {
     let kicker: Text?
     let title: Text
     let trailing: String?
+    let trailingHint: String?
     @Environment(\.theme) private var theme
     @Environment(\.colorScheme) private var colorScheme
     @EffectiveContrast private var contrast
 
-    public init(kicker: Text? = nil, title: Text, trailing: String? = nil) {
+    /// - Parameter trailingHint: the trailing note's served help tag; nil draws none.
+    public init(kicker: Text? = nil, title: Text, trailing: String? = nil, trailingHint: String? = nil) {
         self.kicker = kicker
         self.title = title
         self.trailing = trailing
+        self.trailingHint = trailingHint
     }
 
     public var body: some View {
         let palette = theme.palette(colorScheme: colorScheme, contrast: contrast)
         VStack(alignment: .leading, spacing: 6) {
             if let kicker {
-                kicker.font(.caption.weight(.semibold)).kerning(1.2).textCase(.uppercase)
-                    .foregroundStyle(palette.isNeutral ? Color.secondary : palette.accent)
+                kicker.font(.caption.weight(.bold)).kerning(1.2).textCase(.uppercase)
+                    .foregroundStyle(palette.isNeutral ? Color.readableSecondary : palette.accent)
             }
             HStack(alignment: .firstTextBaseline) {
                 title.font(.system(size: 28, weight: .bold, design: .serif))
                     .accessibilityAddTraits(.isHeader)
                 Spacer()
                 if let trailing {
-                    Text(verbatim: trailing).font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.trailing)
+                    Text(verbatim: trailing).font(.callout).foregroundStyle(.readableSecondary).multilineTextAlignment(.trailing)
+                        .help(Text(verbatim: trailingHint ?? trailing))
                 }
             }
             Rectangle().fill(Color(nsColor: .separatorColor)).frame(height: 1)
@@ -113,8 +117,9 @@ public struct BoxFigure<Graphic: View>: View {
 public struct MagazineMasthead<Figures: View, Control: View>: View {
     let kicker: [String?]
     let kickerHint: String?
-    /// A structural word after the kicker's served parts ("Updating" while the kept report waits on the fresh one).
-    let kickerStatus: Text?
+    /// A word after the kicker's served parts: "Updating" while the kept report waits on the fresh one (looked up in the
+    /// String Catalog), or the served "Updated to …" for a moment after an import lands.
+    let kickerStatus: String?
     let headline: Text
     let deck: String?
     let deckHint: String?
@@ -133,7 +138,7 @@ public struct MagazineMasthead<Figures: View, Control: View>: View {
 
     /// - Parameters:
     ///   - kicker: the served parts of the kicker (the club, the game date, how current), joined with middle dots.
-    ///   - kickerStatus: a structural word after them ("Updating"), or nil.
+    ///   - kickerStatus: a word after them ("Updating", or the served "Updated to …"), or nil.
     ///   - headline: the view's served title.
     ///   - kickerHint: the kicker's help tag (how current the report is, as served).
     ///   - deck: the served lede, with its help tag; nil draws none. With `deckClaim`, the deck opens that claim's basis.
@@ -143,7 +148,7 @@ public struct MagazineMasthead<Figures: View, Control: View>: View {
     public init(
         kicker: [String?],
         kickerHint: String? = nil,
-        kickerStatus: Text? = nil,
+        kickerStatus: String? = nil,
         headline: Text,
         deck: String? = nil,
         deckHint: String? = nil,

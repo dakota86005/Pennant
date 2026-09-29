@@ -82,8 +82,72 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let after = UserDefaults.standard.double(forKey: "PennantDebugCaptureAfter")
             DispatchQueue.main.asyncAfter(deadline: .now() + (after > 0 ? after : 3)) { Self.captureMainWindow(to: path) }
         }
+        // Settings opened by itself (`-PennantDebugOpenSettings YES`), for its captures
+        if UserDefaults.standard.bool(forKey: "PennantDebugOpenSettings") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) }
+        }
+        // Every visible window drawn by itself (`-PennantDebugCaptureWindows <folder>` after `-PennantDebugCaptureAfter`):
+        // the Setup and Settings windows as well as the main one, named by title and appearance
+        if let folder = UserDefaults.standard.string(forKey: "PennantDebugCaptureWindows"), !folder.isEmpty {
+            let after = UserDefaults.standard.double(forKey: "PennantDebugCaptureAfter")
+            DispatchQueue.main.asyncAfter(deadline: .now() + (after > 0 ? after : 3)) { Self.captureWindows(to: folder) }
+        }
+        // The app's own accessibility tree, as it vends it, written to a file (`-PennantDebugAXDump <path>`): each element's
+        // role, label, identifier and frame, so a finding of the audit can be looked for without UI automation
+        if let path = UserDefaults.standard.string(forKey: "PennantDebugAXDump"), !path.isEmpty {
+            let after = UserDefaults.standard.double(forKey: "PennantDebugCaptureAfter")
+            DispatchQueue.main.asyncAfter(deadline: .now() + (after > 0 ? after : 3) + 0.5) { Self.dumpAccessibility(to: path) }
+        }
         #endif
     }
+
+    #if DEBUG
+    private static func captureWindows(to folder: String) {
+        for window in NSApp.windows where window.isVisible && window.styleMask.contains(.titled) {
+            guard let view = window.contentView?.superview ?? window.contentView,
+                  let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { continue }
+            view.cacheDisplay(in: view.bounds, to: rep)
+            let dark = window.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            let name = (window.title.isEmpty ? "window" : window.title).replacingOccurrences(of: " ", with: "-").lowercased()
+            let url = URL(fileURLWithPath: folder, isDirectory: true).appending(path: "\(name)-\(dark ? "dark" : "light").png")
+            try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            if let png = rep.representation(using: .png, properties: [:]) { try? png.write(to: url) }
+        }
+    }
+
+    private static func dumpAccessibility(to path: String) {
+        var lines: [String] = []
+        func walk(_ element: Any, depth: Int) {
+            guard depth < 60, let object = element as? NSObject else { return }
+            func read(_ key: String) -> Any? { object.responds(to: NSSelectorFromString(key)) ? object.value(forKey: key) : nil }
+            let role = (read("accessibilityRole") as? String) ?? "-"
+            let label = (read("accessibilityLabel") as? String) ?? ""
+            let title = (read("accessibilityTitle") as? String) ?? ""
+            let identifier = (read("accessibilityIdentifier") as? String) ?? ""
+            let frame = (read("accessibilityFrame") as? NSRect) ?? .zero
+            lines.append(String(repeating: "  ", count: depth) + "\(role) id='\(identifier)' label='\(label)' title='\(title)' \(NSStringFromRect(frame)) <\(type(of: object))>")
+            for child in (read("accessibilityChildren") as? [Any]) ?? [] {
+                // A child whose parent is not this element: what the audit calls a parent/child mismatch
+                if let node = child as? NSObject, node.responds(to: NSSelectorFromString("accessibilityParent")),
+                   let parent = node.value(forKey: "accessibilityParent") as AnyObject?, parent !== object {
+                    lines.append(String(repeating: "  ", count: depth + 1) + "MISMATCH: parent is <\(type(of: parent))>")
+                }
+                walk(child, depth: depth + 1)
+            }
+        }
+        for window in NSApp.windows where window.isVisible { walk(window, depth: 0) }
+        // The AppKit views, with the role each vends: where a container the audit names comes from
+        func views(_ view: NSView, depth: Int) {
+            guard depth < 40 else { return }
+            let frame = view.window.map { _ in view.convert(view.bounds, to: nil) } ?? view.frame
+            let role = view.accessibilityRole()?.rawValue ?? "-"
+            lines.append("V " + String(repeating: "  ", count: depth) + "\(type(of: view)) element=\(view.isAccessibilityElement()) role=\(role) label='\(view.accessibilityLabel() ?? "")' \(NSStringFromRect(frame))")
+            for sub in view.subviews { views(sub, depth: depth + 1) }
+        }
+        for window in NSApp.windows where window.isVisible { if let root = window.contentView?.superview { views(root, depth: 0) } }
+        try? lines.joined(separator: "\n").write(toFile: path, atomically: true, encoding: .utf8)
+    }
+    #endif
 
     #if DEBUG
     /// The main window's content, drawn by the app (`cacheDisplay`), as a PNG at `path`; the failure, if any, is on stderr.

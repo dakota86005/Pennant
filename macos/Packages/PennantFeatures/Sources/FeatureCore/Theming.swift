@@ -65,7 +65,7 @@ public struct ClubMagazineMasthead<Figures: View, Control: View>: View {
     private let club: String??
     private let kicker: [String?]
     private let kickerHint: String?
-    private let kickerStatus: Text?
+    private let kickerStatus: String?
     private let headline: Text
     private let deck: Components.Schemas.Claim?
     private let deckText: String?
@@ -77,14 +77,14 @@ public struct ClubMagazineMasthead<Figures: View, Control: View>: View {
     /// - Parameters:
     ///   - club: the club's name as the caller's payload serves it (`.some(name)`, or `.some(nil)` for none); leave
     ///     it out for the catalog's.
-    ///   - kickerStatus: a structural word after the kicker ("Updating"), or nil.
+    ///   - kickerStatus: a word after the kicker ("Updating", or the served "Updated to …"), or nil.
     ///   - deck: a served claim as the deck (its basis a click away); else `deckText` with its help tag, a served lede
     ///     that is not a claim of its own; nil draws none.
     public init(
         club: String?? = nil,
         kicker: [String?],
         kickerHint: String? = nil,
-        kickerStatus: Text? = nil,
+        kickerStatus: String? = nil,
         headline: Text,
         deck: Components.Schemas.Claim? = nil,
         deckText: String? = nil,

@@ -1,11 +1,36 @@
 {
+  "status": {
+    "text": "This save has rating history from 1 import, the latest on May 6, 2040.",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Imports kept",
+          "value": "1"
+        }
+      ],
+      "source": {
+        "department": "frontOffice",
+        "specialist": "Rating history",
+        "asOf": null,
+        "gameDate": null
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": [],
+    "hint": "Each import keeps the ratings your scouts saw, to show how players develop"
+  },
   "note": null,
   "offers": [
     {
       "id": "save-none:save-fixture-old-league",
       "kind": "moved",
       "question": {
-        "text": "This save has no rating history yet. Is it \"Old League\", the save that used to be in ~/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games?",
+        "text": "This save's rating history has only just started. Is it \"Old League\", the save that used to be in OOTP 27, direct download?",
         "tone": "neutral",
         "basis": {
           "because": [
@@ -46,18 +71,20 @@
         "hint": "Only you can say: Pennant never joins two histories by itself"
       },
       "saveName": "Old League",
-      "place": "~/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games",
+      "place": "OOTP 27, direct download",
       "lastDate": "2040-5-6",
       "carriesThrough": "2040-4-1",
       "imports": 2,
-      "players": "same"
+      "players": "same",
+      "adoptText": "Carry It Over",
+      "freshText": "Keep Them Apart"
     }
   ],
   "candidates": [
     {
       "id": "save-none:save-fixture-old-league",
       "label": {
-        "text": "\"Old League\" in ~/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games: 2 imports, the latest on May 6, 2040",
+        "text": "\"Old League\" in OOTP 27, direct download: 2 imports, the latest on May 6, 2040",
         "tone": "neutral",
         "basis": {
           "because": [
@@ -94,7 +121,7 @@
         "hint": "Carrying it over copies its history into this save's; you can undo it"
       },
       "saveName": "Old League",
-      "place": "~/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games",
+      "place": "OOTP 27, direct download",
       "folder": "gone",
       "lastDate": "2040-5-6",
       "carriesThrough": "2040-4-1",

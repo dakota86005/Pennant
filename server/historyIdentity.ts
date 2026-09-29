@@ -910,6 +910,12 @@ export function reviewLegacyHistory(saveKey: string, save: ServedSave, names: ()
 
 // ── what is said about it ─────────────────────────────────────────────────────
 
+/** The rating snapshots this save's history holds (its own and any carried over): their game dates, as filed. */
+export function historyDates(saveKey: string = currentHistoryKey()): string[] {
+  return (historyDb.prepare(`SELECT DISTINCT game_date FROM save_rating_snapshots WHERE save_key = ?`).all(saveKey) as Array<{ game_date: string }>)
+    .map((r) => r.game_date);
+}
+
 export interface HistoryNote {
   /** One plain sentence when some of this save's rating history is not used or started fresh; null when all is well. */
   note: string | null;

@@ -26,8 +26,9 @@ public struct MorningReportDesign {
     public var placeHeadings: [PlaceDimension.Group: PlaceDimension.Heading]
     /// The legend under the strips as served (the shaded ends' entry only where a strip shows them); nil draws none.
     public var placeLegend: Components.Schemas.ProfileLegend?
-    /// The note beside "How we win and lose" ("Through July 13 · 89 games"), as served.
+    /// The note beside "How we win and lose" ("Through July 13 · 89 games"), as served, with its help tag.
     public var placesNote: String?
+    public var placesNoteHint: String?
     /// Why "How we win and lose" could not be read this time, as served; nil when it was.
     public var placesUnavailable: ServedLine?
     public var positions: [RosterPosition]?
@@ -98,7 +99,9 @@ extension MorningReportDesign {
         self.init()
         if let season = summary.teamSeason {
             kicker = [season.kicker.today.display, season.kicker.through.display]
-            kickerHint = season.kicker.through.hint
+            // Each part's served help tag: the league's day, then how current the export is
+            let hints = [season.kicker.today.hint, season.kicker.through.hint].compactMap { $0 }.filter { !$0.isEmpty }
+            kickerHint = hints.isEmpty ? nil : hints.joined(separator: "\n")
             club = season.kicker.club?.display
             scoreboard = Self.scoreboard(season)
             if scoreboard == nil { mastheadMissing = Self.missing(season) }
@@ -113,6 +116,7 @@ extension MorningReportDesign {
             placeHeadings = Self.headings(profile.groups)
             placeLegend = profile.legend
             placesNote = profile.note.display
+            placesNoteHint = profile.note.hint
             placesUnavailable = profile.unavailable.map { ServedLine(id: "profile", text: $0.display, hint: $0.hint) }
         }
         if let map = summary.rosterMap {
@@ -192,7 +196,8 @@ extension MorningReportDesign {
                 tiedWith: served.place?.tiedWith ?? 0,
                 recentPlace: served.recent.place?.rank,
                 placeText: served.placeText, recentText: served.recent.text,
-                group: group(served.group), claim: served.claim
+                group: group(served.group), claim: served.claim,
+                detail: served.detail.display, detailHint: served.detail.hint, recentWhy: served.recent.why
             )
         }
     }
@@ -243,7 +248,8 @@ extension MorningReportDesign {
                     FarmBar(readiness: $0.readiness, required: $0.required, scaleLow: $0.scale.low, scaleHigh: $0.scale.high,
                             line: $0.line.display, lineHint: $0.line.hint, text: next.readiness.display, hint: next.readiness.hint)
                 }
-            }
+            },
+            controlHint: node.control.hint
         )
     }
 

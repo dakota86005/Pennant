@@ -92,5 +92,11 @@ and those documents differ, they win. The presentation cases are in `docs/BEHAVI
   about the served save is worked out off the request path (`lookAtTheServedSave`). Read a server
   event through `ServerEvent.kind`, never `value1` … `valueN`. SWIFTUI_REBUILD.md section 3.4, "As built at N6 (Stage
   B1)".
+- **Finding the save (N6, Stage B2):** a first run asks the server to set up by itself (`POST /api/v2/setup/automatic`)
+  and asks the GM nothing when a save clearly stands out; every choice sends `club: "fromSave"`; "played since" and
+  the rating-history questions are notices with the served actions (`NoticeStack`, dismissals per save in
+  `NoticeMemory`), never acted on without a click; a Debug build sets up by itself only on a pretend home
+  (`PENNANT_DEV_HOME`). Secondary text on the content is `.readableSecondary`, never the system's `.secondary`
+  (the audit). SWIFTUI_REBUILD.md section 3.4, "As built at N6 (Stage B2)".
 - Verify with `macos/scripts/test.sh` plus the server baseline; visual checks come from XCUITest and
   snapshot PNGs (`build/macos-snapshots/`), not from asking the owner to look.

@@ -13,11 +13,11 @@ import { readRatingMode } from './ratingMode.js';
 import { registerPostImportHook, runPostImportHooks } from './postImport.js';
 import { snapshotsAfterImport } from './importSnapshots.js';
 import { currentHistoryKey } from './historyIdentity.js';
-import { currentPlayedElsewhere, forgetSaveScan, lookAtTheServedSave, onLookAtTheServedSave, servedSaveId, humanClubsInExport, pickSave, saveLabel, type SavePlayedElsewhere } from './saveDiscovery.js';
+import { currentPlayedElsewhere, forgetSaveScan, lookAtTheServedSave, onLookAtTheServedSave, servedSaveId, humanClubsInExport, clubNameInExport, pickSave, saveLabel, type SavePlayedElsewhere } from './saveDiscovery.js';
 import { saveDiscoveryView, type SaveDiscovery } from './presentation/saveWords.js';
 import { assertAuthored } from './presentation/claim.js';
 import type { Claim } from './contract/presentation.js';
-import { featureProvider, followSaveClub, providerCredential, loadSettings } from './settings.js';
+import { clubForgottenWhenImported, featureProvider, forgetClubWhenImported, importLandedForClub, providerCredential, loadSettings } from './settings.js';
 import { orgRoutes } from './org.js';
 import { contractRoutes } from './contracts.js';
 import { freeAgentRoutes } from './freeagents.js';
@@ -386,6 +386,8 @@ export async function runImport(csvDir: string, trigger: ImportTrigger = 'manual
         importState.lastImport = result;
         importedAt.value = result.finishedAt;
         clearLeagueCaches();
+        // A club chosen in another save's league is forgotten as this save's league is served, not before (H1)
+        importLandedForClub(csvDir);
         // The save this import came from, before `import-finished` announces it (the status serves it with the import)
         lookAtTheServedSave();
       },
@@ -663,12 +665,22 @@ export interface ConfigAccepted {
   importStarted: boolean;
   /** Why the import did not start; null when it did. */
   why: string | null;
+  /**
+   * The club, when the request asked for it to be taken from the save (`club: 'fromSave'`, N6 Stage B2): followed when
+   * the save's export names exactly one club the human manages, else none and why the app asks. Null when not asked.
+   */
+  club: SetupClub | null;
 }
 
-/** The save to use (`POST /api/config`): its CSV export folder and its name. */
+/**
+ * The save to use (`POST /api/config`): its CSV export folder and its name. `club: 'fromSave'` (the Mac app's choice
+ * of a save, D-063) also takes the club from the save, as the first run does: followed when the save's export names
+ * exactly one human club, asked for otherwise.
+ */
 export interface ConfigRequest {
   csvDir: string;
   saveName?: string | null;
+  club?: 'fromSave' | null;
 }
 
 /** Where `GET /api/search-locations` looked for saves, so the user can see why auto-detection came up empty. */
@@ -790,18 +802,23 @@ function chooseSave(csvDir: string, saveName: string | null): boolean {
 }
 
 api.post('/config', (req, res: Response<ConfigAccepted | ApiError>) => {
-  const { csvDir, saveName } = req.body as Partial<ConfigRequest>;
+  const { csvDir, saveName, club: clubChoice } = req.body as Partial<ConfigRequest>;
   if (!csvDir) return res.status(400).json({ error: 'csvDir is required' });
   if (importState.importing) return res.status(409).json({ error: IMPORT_RUNNING });
-  if (chooseSave(csvDir, saveName ?? null)) return res.json({ ok: true, importStarted: true, why: null });
-  res.json({ ok: true, importStarted: false, why: EXPORT_NOT_FOUND });
+  // The club is read from the export before the save is chosen, as the first run does (a folder that isn't there says so)
+  const club = clubChoice === 'fromSave' ? clubFromSave(csvDir) : null;
+  if (chooseSave(csvDir, saveName ?? null)) return res.json({ ok: true, importStarted: true, why: null, club });
+  res.json({ ok: true, importStarted: false, why: EXPORT_NOT_FOUND, club });
 });
 
 /** The club a first run follows, taken from the save's export (N3.5 Stage B2, D-063). */
 export interface SetupClub {
-  /** Whether the club was taken from the save: exactly one club is managed by the save's human. */
+  /**
+   * Whether the club is settled without asking: the save's human manages exactly one club, or the same save was chosen
+   * again and the club the GM chose is kept. False: the GM is asked.
+   */
   decided: boolean;
-  /** The club followed; null when none was taken. */
+  /** The club followed or kept; null when none is. */
   teamId: Integer | null;
   name: string | null;
   /** How many clubs the save's human manages, as the export's teams file says; null when it doesn't say. */
@@ -828,15 +845,35 @@ export interface AutomaticSetup {
   why: Claim | null;
 }
 
-/** The club a first run takes from the export: followed when the save's human manages exactly one. */
+/**
+ * The club a choice with `club: 'fromSave'` takes from the save (N6 Stage B2 review, H1):
+ * - the same save chosen again (the league Pennant holds is already its import) keeps the club the GM chose;
+ * - otherwise, or with no club chosen, the save's club is followed when its human manages exactly one;
+ * - a save that is not the one Pennant holds, whose export names no human club, several, or doesn't say, gets no club:
+ *   the club chosen before belongs to another league, so it is forgotten and the GM is asked.
+ * Forgetting a club is written when the save's import lands, never now, so a failed import leaves the club as it was
+ * (`forgetClubWhenImported`). Nothing here reads the league being left: only its folder is compared.
+ */
 function clubFromSave(csvDir: string): SetupClub {
+  const config = loadConfig();
+  const chosenClub = loadSettings().defaultOrgId;
   const clubs = humanClubsInExport(csvDir);
+  const humanClubs = clubs === null ? null : clubs.length;
+  // The save whose league Pennant holds: the last import's folder, else the one chosen (an import from before N3.5)
+  const held = importState.lastImport?.csvDir ?? config.csvDir;
+  const sameSave = held === csvDir && !clubForgottenWhenImported(csvDir);
+  if (sameSave && chosenClub !== null) {
+    forgetClubWhenImported(null);
+    const name = clubNameInExport(csvDir, chosenClub);
+    return { decided: true, teamId: chosenClub, name, humanClubs, text: name ? `Keeping the ${name}, the club you chose.` : 'Keeping the club you chose.' };
+  }
+  // A club chosen in another save's league is forgotten once this save's import lands
+  forgetClubWhenImported(!sameSave && chosenClub !== null ? csvDir : null);
   if (clubs === null) {
     return { decided: false, teamId: null, name: null, humanClubs: null, text: 'The export doesn\'t say which club you manage, so Pennant will ask.' };
   }
   if (clubs.length === 1) {
     // Automatic: the server follows the club the save's human manages (`viewingOrganization.ts`), once imported
-    followSaveClub();
     return { decided: true, teamId: clubs[0].teamId, name: clubs[0].name, humanClubs: 1, text: `Following the ${clubs[0].name}, the club you manage in this save.` };
   }
   return {

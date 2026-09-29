@@ -4,12 +4,11 @@
  * decides that itself: the GM answers with one click (`POST /api/v2/rating-history/choice`), and only a yes carries the
  * earlier history over. Every sentence is authored here; `historyIdentity.ts` decides what is offered.
  */
-import os from 'node:os';
-import path from 'node:path';
 import type { Claim } from '../contract/presentation.js';
 import type { Integer } from '../contract/primitives.js';
 import { parseGameDate, type GameDate } from '../dataFreshness.js';
 import { gameDateWords } from '../dataStatus.js';
+import { saveLocationLabel } from '../paths.js';
 import type { HistoryCarryOver, HistoryNote, HistoryOffer } from '../historyIdentity.js';
 import { basis, claim } from './claim.js';
 
@@ -29,7 +28,7 @@ export interface RatingHistoryOffer {
   question: Claim;
   /** The name that history's save last had; null when not recorded. */
   saveName: string | null;
-  /** Where it was, in words (the home folder shortened to ~). */
+  /** Where it was, as the place OOTP keeps saves ("OOTP 27, direct download"); its folder is in the basis. */
   place: string;
   /** Its latest rating snapshot's game date, and the latest one carrying it over would copy (as filed, unpadded). */
   lastDate: GameDate | null;
@@ -37,6 +36,10 @@ export interface RatingHistoryOffer {
   /** How many imports its history holds. */
   imports: Integer;
   players: RatingHistoryPlayers;
+  /** The label of the answer that carries it over (`adopt`): "Carry It Over", "Continue That History". */
+  adoptText: string;
+  /** The label of the answer that keeps them apart (`fresh`): "Keep Them Apart", "Keep the New Start". */
+  freshText: string;
 }
 
 /** Another history the GM may carry over by choice (the list behind "Carry over another save's history..."). */
@@ -46,6 +49,7 @@ export interface RatingHistoryCandidate {
   /** The history in one line, with what carrying it over does in its basis. */
   label: Claim;
   saveName: string | null;
+  /** Where it is or was, as the place OOTP keeps saves ("OOTP 27, direct download"); its folder is in the basis. */
   place: string;
   /** Whether its folder is there now, has gone, or can't be told. */
   folder: 'present' | 'gone' | 'unknown';
@@ -59,10 +63,18 @@ export interface RatingHistoryCandidate {
 export interface RatingHistoryCarryOver {
   id: string;
   text: Claim;
+  /** What "Undo carry-over" asks before it undoes: what is removed and what is kept, in a sentence. */
+  undoQuestion: string;
 }
 
 /** This save's rating history: what isn't used or started fresh, the questions, the other histories, and carry-overs. */
 export interface RatingHistoryView {
+  /**
+   * This save's rating history in a sentence, always served (Settings ▸ History's line): the note when some isn't used
+   * or it started fresh, else how many imports it holds and the latest ("This save has rating history from 12 imports,
+   * the latest on May 6, 2040."), or that it has none yet.
+   */
+  status: Claim;
   /** Some of this save's rating history isn't used, or it started fresh, in a sentence with its basis; null when all is its own. */
   note: Claim | null;
   /** Questions to ask the GM now; empty when there is nothing to ask. */
@@ -83,12 +95,14 @@ export interface RatingHistoryChoice {
 
 const SOURCE = { department: 'frontOffice' as const, specialist: 'Rating history', asOf: null, gameDate: null };
 
-/** A folder in words: the home folder shortened to ~. */
+/**
+ * Where a save's folder was, as the GM knows the place ("OOTP 27, direct download", the save list's own label), never
+ * the folder's path: the path is in the basis (N6 Stage B2 review, M1). A folder outside every place OOTP keeps saves is
+ * one the GM chose.
+ */
 export function placeWords(folder: string | null): string {
   if (!folder) return 'a folder Pennant no longer knows';
-  const home = os.homedir();
-  const parent = path.dirname(folder);
-  return parent.startsWith(home) ? `~${parent.slice(home.length)}` : parent;
+  return saveLocationLabel(folder) ?? 'a folder you chose';
 }
 
 const dateWords = (date: string | null): string | null => {
@@ -135,14 +149,18 @@ function evidence(o: HistoryOffer): Array<{ label: string; value: string }> {
   ];
 }
 
-/** One question as the app asks it. */
-export function offerWords(o: HistoryOffer): RatingHistoryOffer {
+/**
+ * One question as the app asks it. `ownImports` is how many imports this save's own history holds: a save that moved is
+ * asked about while it has at most its first, and the question says which, so it never contradicts the status line
+ * ("This save has rating history from 1 import", N6 Stage B2 review, M2).
+ */
+export function offerWords(o: HistoryOffer, ownImports = 0): RatingHistoryOffer {
   const name = o.saveName ? `"${o.saveName}"` : 'the save';
   const place = placeWords(o.folderPath);
   const through = dateWords(o.carriesThrough);
   const kind = o.kind === 'listed' ? 'moved' : o.kind;
   const text = kind === 'moved'
-    ? `This save has no rating history yet. Is it ${name}, the save that used to be in ${place}?`
+    ? `${ownImports === 0 ? 'This save has no rating history yet.' : 'This save\'s rating history has only just started.'} Is it ${name}, the save that used to be in ${place}?`
     : kind === 'went_back'
       ? `This save went back to an earlier date than its rating history. Continue that history${through ? ` up to ${through}` : ''}, or keep the new start?`
       : 'This save\'s players no longer match its rating history. Continue that history, or keep the new start?';
@@ -168,6 +186,8 @@ export function offerWords(o: HistoryOffer): RatingHistoryOffer {
     carriesThrough: servedDate(o.carriesThrough),
     imports: o.dates,
     players: o.players,
+    adoptText: kind === 'moved' ? 'Carry It Over' : 'Continue That History',
+    freshText: kind === 'moved' ? 'Keep Them Apart' : 'Keep the New Start',
   };
 }
 
@@ -216,6 +236,7 @@ export function carryOverWords(c: HistoryCarryOver): RatingHistoryCarryOver {
         certainty: 'fact',
       }),
     }),
+    undoQuestion: `Undo the carry-over from ${name}? The ${c.rows} player rating${c.rows === 1 ? '' : 's'} it copied ${c.rows === 1 ? 'is' : 'are'} removed from this save's history; ${c.fromName ? name : 'that save'} keeps its own.`,
   };
 }
 
@@ -239,11 +260,39 @@ export function stackingWarning(carries: HistoryCarryOver[]): Claim | null {
   });
 }
 
+/** This save's history in a sentence: the note when there is one, else how many imports it holds, or none yet. */
+export function ratingHistoryStatus(note: HistoryNote, dates: readonly string[]) {
+  const noted = ratingHistoryNoteClaim(note);
+  if (noted) return noted;
+  const parsed = dates.map((d) => parseGameDate(d)).filter((d): d is NonNullable<typeof d> => d !== null);
+  const latest = parsed.length ? gameDateWords(parsed.reduce((a, b) => (b > a ? b : a))) : null;
+  const text = dates.length === 0
+    ? 'This save has no rating history yet.'
+    : `This save has rating history from ${dates.length} import${dates.length === 1 ? '' : 's'}${latest ? `, the latest on ${latest}` : ''}.`;
+  return claim({
+    text,
+    tone: 'neutral',
+    hint: 'Each import keeps the ratings your scouts saw, to show how players develop',
+    basis: basis({
+      because: [
+        { label: 'Imports kept', value: dates.length === 0 ? 'None yet: the next import keeps the first' : String(dates.length) },
+        ...note.because.map((line) => ({ label: 'Rating history', value: line })),
+      ],
+      source: SOURCE,
+      unknown: [],
+      wouldChange: [],
+      lean: null,
+      certainty: 'fact',
+    }),
+  });
+}
+
 /** The view. */
-export function ratingHistoryView(note: HistoryNote, offers: HistoryOffer[], candidates: HistoryOffer[], carries: HistoryCarryOver[]): RatingHistoryView {
+export function ratingHistoryView(note: HistoryNote, offers: HistoryOffer[], candidates: HistoryOffer[], carries: HistoryCarryOver[], dates: readonly string[] = []): RatingHistoryView {
   return {
+    status: ratingHistoryStatus(note, dates),
     note: ratingHistoryNoteClaim(note),
-    offers: offers.map(offerWords),
+    offers: offers.map((o) => offerWords(o, dates.length)),
     candidates: candidates.map(candidateWords),
     carriedOver: carries.map(carryOverWords),
     warning: stackingWarning(carries),

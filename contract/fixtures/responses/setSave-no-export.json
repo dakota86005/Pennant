@@ -1,5 +1,6 @@
 {
   "ok": true,
   "importStarted": false,
-  "why": "That save has no export yet. In OOTP, export the league's database, then choose the save again."
+  "why": "That save has no export yet. In OOTP, export the league's database, then choose the save again.",
+  "club": null
 }

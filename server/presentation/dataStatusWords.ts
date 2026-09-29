@@ -50,6 +50,25 @@ export interface DataStatusView {
   leftOut: Claim | null;
   /** Rating history of this save that isn't used, or that started fresh, in a sentence with its basis; null when all is its own (D-064). */
   ratingHistory: Claim | null;
+  /**
+   * "Just updated", with the day the last import brought the league to and when it was imported in its hint: the line
+   * the Mac app shows for a moment when an import lands while the GM reads (N6 Stage B2; the kicker already names the
+   * day). Null with nothing imported.
+   */
+  updated: ImportLandedLine | null;
+}
+
+/** The line shown for a moment when an import lands while the GM reads (N6 Stage B2). */
+export interface ImportLandedLine {
+  /** The line: "Just updated". */
+  display: string;
+  /** The day the import brought the league to, and when it was imported. */
+  hint: string;
+  /**
+   * The import it is about (the last import's finish time, as a report's `importStamp`): shown only over a report built
+   * from that import.
+   */
+  importStamp: string;
 }
 
 const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -235,7 +254,16 @@ export function dataStatusView(s: DataStatus): DataStatusView {
     action: action ? cell(action) : null,
     leftOut: leftOutCell(s),
     ratingHistory: ratingHistoryCell(s),
+    updated: updatedCell(gameDate, s.csv.importedAt),
   };
+}
+
+/** "Just updated", with the league's day the last import brought and when it was imported in its hint; null before one. */
+function updatedCell(gameDate: string | null, importedAt: string | null): ImportLandedLine | null {
+  if (!gameDate || !importedAt) return null;
+  const when = timestampWords(importedAt);
+  const line = cell('Just updated', { hint: `Updated to ${gameDate}${when ? ` · imported ${when}` : ''}` });
+  return { display: line.display, hint: line.hint ?? '', importStamp: importedAt };
 }
 
 /** What became of this save's rating history, when some isn't used or it started fresh (D-064). */
