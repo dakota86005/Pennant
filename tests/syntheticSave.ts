@@ -372,15 +372,17 @@ export function buildSave(spec: SaveSpec): BuiltSave {
 /** The league's own record of what happened (N7's wire), as a current export carries it; the fixture has only streaks. */
 const NEWS_TABLES: Record<string, string> = {
   trade_history: 'date TEXT, summary TEXT, message_id INTEGER, team_id_0 INTEGER, player_id_0_0 INTEGER, player_id_0_1 INTEGER, team_id_1 INTEGER, player_id_1_0 INTEGER, player_id_1_1 INTEGER',
-  messages: 'message_id INTEGER, subject TEXT, player_id_0 INTEGER, player_id_1 INTEGER, team_id_0 INTEGER, team_id_1 INTEGER, league_id_0 INTEGER, importance INTEGER, message_type INTEGER, date TEXT, deleted INTEGER',
+  messages: 'message_id INTEGER, subject TEXT, player_id_0 INTEGER, player_id_1 INTEGER, team_id_0 INTEGER, team_id_1 INTEGER, league_id_0 INTEGER, importance INTEGER, message_type INTEGER, sender_type INTEGER, sender_id INTEGER, recipient_id INTEGER, trade_id INTEGER, date TEXT, deleted INTEGER',
   players_injury_history: 'player_id INTEGER, date TEXT, length INTEGER, setbacks INTEGER, day_to_day INTEGER, effect INTEGER, body_part INTEGER',
   players_awards: 'player_id INTEGER, league_id INTEGER, team_id INTEGER, sub_league_id INTEGER, award_id INTEGER, year INTEGER, season INTEGER, position INTEGER, day INTEGER, month INTEGER, finish INTEGER',
 };
 
 /**
- * What happened around the league lately, as OOTP records it (N7, D-059): a trade between two clubs, two news items, an
- * injury to a regular, a Player of the Week and a hitting streak, dated in the days before the league's day. The names
- * and clubs are the synthetic league's own, so every entry names real rows.
+ * What happened around the league lately, as OOTP records it (N7, D-059): a trade between two clubs, an injury to a
+ * regular, a Player of the Week and a hitting streak, dated in the days before the league's day. The names and clubs are
+ * the synthetic league's own, so every entry names real rows. `messages` holds what a real one mixes (N7 review, H1): two
+ * league headlines, a staff note naming a trade target (`recipient_id = 1`, `sender_type = 0`) and another club's trade
+ * proposal (`trade_id != 0`), so the wire's refusal to read the GM's inbox as league news stays covered.
  */
 function writeLeagueNews(save: BuiltSave): void {
   for (const [table, ddl] of Object.entries(NEWS_TABLES)) if (!tableExists(table)) db.exec(`CREATE TABLE ${table} (${ddl})`);
@@ -407,9 +409,12 @@ function writeLeagueNews(save: BuiltSave): void {
   const star = regularOf(save.org, 2);
   const week = daysBefore(1);
   insert('players_awards', { player_id: star, league_id: save.leagueId, team_id: save.org, sub_league_id: 0, award_id: 0, year: week.year, season: week.year, position: 0, day: week.day, month: week.month, finish: 1 });
-  insert('messages', { message_id: 9002, subject: `${nameOf(star)} Named Player of the Week`, player_id_0: star, team_id_0: save.org, league_id_0: save.leagueId, importance: 3, message_type: 7, date: week.date, deleted: 0 });
+  insert('messages', { message_id: 9002, subject: `${nameOf(star)} Named Player of the Week`, player_id_0: star, team_id_0: save.org, league_id_0: save.leagueId, importance: 3, message_type: 7, sender_type: 5, sender_id: save.org, recipient_id: 0, trade_id: 0, date: week.date, deleted: 0 });
+  // The GM's inbox: his staff's note on a trade target, and another club's trade proposal (never league news)
+  insert('messages', { message_id: 9004, subject: `${nameOf(back)} could be the answer.`, player_id_0: back, team_id_0: b, team_id_1: save.org, league_id_0: save.leagueId, importance: 0, message_type: 0, sender_type: 0, sender_id: 1, recipient_id: 1, trade_id: 0, date: daysBefore(2).date, deleted: 0 });
+  insert('messages', { message_id: 9005, subject: `Trade Proposal from the ${clubOf(a)}`, player_id_0: traded, player_id_1: star, team_id_0: a, team_id_1: save.org, league_id_0: save.leagueId, importance: 1, message_type: 0, sender_type: 1, sender_id: a, recipient_id: 1, trade_id: 77, date: daysBefore(1).date, deleted: 0 });
   if (c !== undefined) {
-    insert('messages', { message_id: 9003, subject: `${clubOf(c)} Sweep a Three-Game Set`, team_id_0: c, league_id_0: save.leagueId, importance: 3, message_type: 0, date: daysBefore(4).date, deleted: 0 });
+    insert('messages', { message_id: 9003, subject: `${clubOf(c)} Sweep a Three-Game Set`, team_id_0: c, league_id_0: save.leagueId, importance: 3, message_type: 0, sender_type: 5, sender_id: 0, recipient_id: 0, trade_id: 0, date: daysBefore(4).date, deleted: 0 });
     insert('players_streak', { player_id: regularOf(c, 0), streak_id: 0, value: 16, started: daysBefore(20).date, has_ended: 0 });
   }
 }

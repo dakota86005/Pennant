@@ -3,11 +3,12 @@
  * headline is a claim with its basis, and the wire's stated order.
  *
  * - **The source's own words** (D-020, case 17): a move from OOTP's transaction log reads exactly as the log wrote it, a
- *   trade as the export's trade record summarises it, league news as OOTP headlined it. Pennant words only what it
+ *   trade as the export's trade record summarises it. League news is not on the wire: the export files it with the GM's
+ *   own mail (a staff note, another club's trade offer), so it is named as a gap (N7 review, H1). Pennant words only what it
  *   reads from a table whose meaning is established (an injury, a streak, an award, a standings move), and a roster
  *   difference between two exports, which it states as a change and never as a transaction.
  * - **A stated order, no hidden score** (case 18): followed clubs and players first when asked, then the newest day,
- *   then the kind in a stated order (trades, moves, injuries, awards, streaks, standings, news), then the source's own
+ *   then the kind in a stated order (trades, moves, injuries, awards, streaks, standings), then the source's own
  *   order. Following changes the order only, never an entry's words (case 20).
  *
  * Pure: the service hands in the facts and what the GM follows; nothing here reads a table.
@@ -20,10 +21,10 @@ import { gamesWords, ordinal } from './morning.js';
 import type { Wire, WireEntry, WireKind, WireKindChoice, WireOrder, WireTop } from './leagueTypes.js';
 
 /** The kinds in the wire's stated order within a day. */
-export const KIND_ORDER: readonly WireKind[] = ['trade', 'move', 'injury', 'award', 'streak', 'standings', 'news'];
+export const KIND_ORDER: readonly WireKind[] = ['trade', 'move', 'injury', 'award', 'streak', 'standings'];
 
 const KIND_NAMES: Record<WireKind, string> = {
-  trade: 'Trades', move: 'Moves', injury: 'Injuries', award: 'Awards', streak: 'Streaks', standings: 'Standings', news: 'League news',
+  trade: 'Trades', move: 'Moves', injury: 'Injuries', award: 'Awards', streak: 'Streaks', standings: 'Standings',
 };
 
 /** The rule, in the words the order's help tag carries. */
@@ -32,7 +33,6 @@ export const WIRE_ORDER_RULE = 'Followed first if asked, then newest, then by ki
 const SOURCE_WORDS: Record<WireFact['source'], string> = {
   log: 'OOTP\'s transaction log',
   trades: 'The export\'s trade record',
-  news: 'OOTP\'s league news',
   injuries: 'The export\'s injury history',
   streaks: 'The export\'s streaks',
   awards: 'The export\'s awards',
@@ -84,7 +84,6 @@ function headlineText(f: WireFact): string {
   switch (f.detail.kind) {
     case 'log':
     case 'trade':
-    case 'news':
       return f.ownWords ?? who;
     case 'injury':
       return `${who} was hurt${f.detail.dayToDay ? ' (day-to-day)' : ''}`;
@@ -104,7 +103,6 @@ function headlineText(f: WireFact): string {
 const HINTS: Record<WireFact['source'], string> = {
   log: 'In the transaction log\'s own words',
   trades: 'As the export\'s trade record words it',
-  news: 'League news, as OOTP headlined it',
   injuries: 'From the export\'s injury history',
   streaks: 'A streak still running',
   awards: 'From the export\'s awards',
@@ -219,27 +217,30 @@ export function gapWords(g: WireGap): Cell {
         return 'The transaction log is still being read, so moves will follow.';
       case 'no_snapshots':
         return 'Without the log, moves come from two exports compared, and there is only one so far.';
+      case 'not_read':
+        return 'League news isn\'t on the wire: the export files it with your own mail, and Pennant can\'t tell the two apart.';
       case 'no_earlier_standings':
         return 'Standings moves start with the next export: there is no earlier one to compare.';
       case 'unreadable':
         return ({
           trades: 'Trades couldn\'t be read this time.',
-          news: 'League news couldn\'t be read this time.',
           injuries: 'Injuries couldn\'t be read this time.',
           streaks: 'Streaks couldn\'t be read this time.',
           awards: 'Awards couldn\'t be read this time.',
-        } as Partial<Record<WireFact['source'], string>>)[g.source] ?? 'Part of the wire couldn\'t be read this time.';
+        } as Partial<Record<WireGap['source'], string>>)[g.source] ?? 'Part of the wire couldn\'t be read this time.';
       default:
         return ({
           trades: 'The export has no trade record, so trades aren\'t on the wire.',
-          news: 'The export has no league news.',
           injuries: 'The export has no injury history, so injuries aren\'t on the wire.',
           streaks: 'The export has no streaks.',
           awards: 'The export has no awards.',
-        } as Partial<Record<WireFact['source'], string>>)[g.source] ?? 'Part of the wire couldn\'t be read.';
+        } as Partial<Record<WireGap['source'], string>>)[g.source] ?? 'Part of the wire couldn\'t be read.';
     }
   })();
-  return cell(line, { tone: 'unknown' });
+  const hint = g.why === 'not_read'
+    ? 'The export mixes headlines with staff notes and trade offers'
+    : undefined;
+  return cell(line, { tone: 'unknown', ...(hint ? { hint } : {}) });
 }
 
 /** Whether a fact is on or after a day (both compared as ISO days); a fact with no day is never "since". */

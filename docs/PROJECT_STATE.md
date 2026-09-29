@@ -104,7 +104,8 @@ material implementation state changes.
   between the two exports, never which transaction did it); the desk's statuses (open, reviewed, deferred until a game
   date, handled in OOTP) with a one-step undo (`/api/v2/desk/:org`); Following (`/api/v2/following`, the watchlist
   copied in, division rivals suggested); the league wire (`/api/v2/wire/:org` and the Morning Report's top five: the log's
-  own words, trades, news, injuries, streaks, awards and standings movement, a stated order); a club report for any club
+  own words, trades, injuries, streaks, awards and standings movement, a stated order; league news named as a gap,
+  since the export files it with the GM's own mail); a club report for any club
   under our scouting (`/api/v2/club/:teamId`); search (`/api/v2/search`); the club question kept across a relaunch
   (`clubOwed`); and the events `desk-changed`, `following-changed` and `changes-ready`. The Mac app draws them at N7,
   Stage B. Not built: the horizon board (N12).

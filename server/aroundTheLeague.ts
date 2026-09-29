@@ -74,7 +74,7 @@ export function wireView(orgParam: string, query: Record<string, unknown>): Wire
   const clubParam = one(query.club);
   const kindParam = one(query.kind);
   const followedParam = one(query.followed);
-  if (kindParam !== null && !WIRE_KINDS.has(kindParam)) throw new LeagueRefusal('Choose moves, trades, injuries, streaks, awards, standings or news.', 400);
+  if (kindParam !== null && !WIRE_KINDS.has(kindParam)) throw new LeagueRefusal('Choose moves, trades, injuries, streaks, awards or standings.', 400);
   const club = clubParam === null ? null : Number(clubParam);
   if (club !== null && (!Number.isInteger(club) || club <= 0)) throw new LeagueRefusal('Pennant doesn\'t know that club in this save.', 400);
   let sinceFrom: WireQuery['sinceFrom'] = 'lastExport';

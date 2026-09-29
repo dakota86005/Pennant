@@ -168,73 +168,6 @@
       "followed": false
     },
     {
-      "id": "news:9002",
-      "date": "2040-5-5",
-      "when": {
-        "display": "May 5, 2040"
-      },
-      "kind": "news",
-      "clubs": [
-        {
-          "teamId": 1,
-          "name": "Club 1 N",
-          "abbreviation": "C1",
-          "followed": false
-        }
-      ],
-      "players": [
-        {
-          "playerId": 1002,
-          "name": "P 1002",
-          "followed": false
-        }
-      ],
-      "headline": {
-        "text": "P 1002 Named Player of the Week",
-        "tone": "neutral",
-        "basis": {
-          "because": [
-            {
-              "label": "From",
-              "value": "OOTP's league news"
-            },
-            {
-              "label": "Day",
-              "value": "May 5, 2040"
-            },
-            {
-              "label": "Club",
-              "value": "Club 1 N"
-            }
-          ],
-          "source": {
-            "department": "league",
-            "specialist": "The league wire",
-            "asOf": null,
-            "gameDate": "2040-5-6"
-          },
-          "unknown": [],
-          "wouldChange": [],
-          "lean": null,
-          "certainty": "fact",
-          "called": "A fact from the export"
-        },
-        "links": [
-          {
-            "kind": "player",
-            "playerId": 1002
-          },
-          {
-            "kind": "club",
-            "teamId": 1
-          }
-        ],
-        "hint": "League news, as OOTP headlined it"
-      },
-      "source": "news",
-      "followed": false
-    },
-    {
       "id": "injuries:1053:2040-5-4",
       "date": "2040-5-4",
       "when": {
@@ -390,66 +323,9 @@
       },
       "source": "trades",
       "followed": false
-    },
-    {
-      "id": "news:9003",
-      "date": "2040-5-2",
-      "when": {
-        "display": "May 2, 2040"
-      },
-      "kind": "news",
-      "clubs": [
-        {
-          "teamId": 4,
-          "name": "Club 4 N",
-          "abbreviation": "C4",
-          "followed": false
-        }
-      ],
-      "players": [],
-      "headline": {
-        "text": "Club 4 Sweep a Three-Game Set",
-        "tone": "neutral",
-        "basis": {
-          "because": [
-            {
-              "label": "From",
-              "value": "OOTP's league news"
-            },
-            {
-              "label": "Day",
-              "value": "May 2, 2040"
-            },
-            {
-              "label": "Club",
-              "value": "Club 4 N"
-            }
-          ],
-          "source": {
-            "department": "league",
-            "specialist": "The league wire",
-            "asOf": null,
-            "gameDate": "2040-5-6"
-          },
-          "unknown": [],
-          "wouldChange": [],
-          "lean": null,
-          "certainty": "fact",
-          "called": "A fact from the export"
-        },
-        "links": [
-          {
-            "kind": "club",
-            "teamId": 4
-          }
-        ],
-        "hint": "League news, as OOTP headlined it"
-      },
-      "source": "news",
-      "followed": false
     }
   ],
-  "total": 6,
+  "total": 4,
   "more": null,
   "gaps": [
     {
@@ -459,6 +335,11 @@
     {
       "display": "Without the log, moves come from two exports compared, and there is only one so far.",
       "tone": "unknown"
+    },
+    {
+      "display": "League news isn't on the wire: the export files it with your own mail, and Pennant can't tell the two apart.",
+      "tone": "unknown",
+      "hint": "The export mixes headlines with staff notes and trade offers"
     }
   ],
   "empty": null,
@@ -492,11 +373,6 @@
       "kind": "standings",
       "name": "Standings",
       "count": 0
-    },
-    {
-      "kind": "news",
-      "name": "League news",
-      "count": 2
     }
   ]
 }

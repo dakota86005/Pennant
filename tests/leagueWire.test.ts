@@ -59,7 +59,7 @@ describe('a wire entry says what its source says (case 17)', () => {
 
 describe('the wire\'s order is stated and has no hidden score (case 18)', () => {
   const facts = [
-    fact({ id: 'news:1', source: 'news', kind: 'news', ownWords: 'A sweep', day: '2040-05-05', clubs: [{ teamId: 3, name: 'Club 3 N', abbr: 'C3' }], players: [] }),
+    fact({ id: 'awards:1', source: 'awards', kind: 'award', ownWords: null, day: '2040-05-05', clubs: [{ teamId: 3, name: 'Club 3 N', abbr: 'C3' }], detail: { kind: 'award', award: 'Player of the Week', league: null } }),
     fact({ id: 'log:2', day: '2040-05-04' }),
     fact({ id: 'trades:1', source: 'trades', kind: 'trade', ownWords: 'A trade', day: '2040-05-05', clubs: [{ teamId: 2, name: 'Club 2 N', abbr: 'C2' }], players: [] }),
     fact({ id: 'log:3', day: null, date: null }),
@@ -67,13 +67,13 @@ describe('the wire\'s order is stated and has no hidden score (case 18)', () => 
   ];
 
   it('orders by the newest day, then the kind in its stated order, then the source\'s own order; a day not known last', () => {
-    expect(wireOrder(facts, none, false).map((f) => f.id)).toEqual(['trades:1', 'log:4', 'news:1', 'log:2', 'log:3']);
-    expect(KIND_ORDER).toEqual(['trade', 'move', 'injury', 'award', 'streak', 'standings', 'news']);
+    expect(wireOrder(facts, none, false).map((f) => f.id)).toEqual(['trades:1', 'log:4', 'awards:1', 'log:2', 'log:3']);
+    expect(KIND_ORDER).toEqual(['trade', 'move', 'injury', 'award', 'streak', 'standings']);
   });
 
   it('puts followed clubs first only when asked, and following changes no entry\'s words (case 20)', () => {
     const followed: Followed = { clubs: new Set([3]), players: new Set() };
-    expect(wireOrder(facts, followed, true).map((f) => f.id)[0]).toBe('news:1');
+    expect(wireOrder(facts, followed, true).map((f) => f.id)[0]).toBe('awards:1');
     expect(wireOrder(facts, followed, false).map((f) => f.id)).toEqual(wireOrder(facts, none, false).map((f) => f.id));
     const plain = facts.map((f) => wireEntry(f, none, ctx).headline.text);
     const withFollow = facts.map((f) => wireEntry(f, followed, ctx).headline.text);
@@ -82,7 +82,7 @@ describe('the wire\'s order is stated and has no hidden score (case 18)', () => 
     const wire = wireWords(1, { facts, gaps: [], fromLog: true, gameDate: '2040-5-6', previousGameDate: null }, followed, q, ctx);
     expect(wire.order.line.display).toBe('Followed first, then newest');
     expect(wire.entries[0].followed).toBe(true);
-    expect(wireWords(1, { facts, gaps: [], fromLog: true, gameDate: '2040-5-6', previousGameDate: null }, followed, { ...q, followedOnly: true }, ctx).entries.map((e) => e.id)).toEqual(['news:1']);
+    expect(wireWords(1, { facts, gaps: [], fromLog: true, gameDate: '2040-5-6', previousGameDate: null }, followed, { ...q, followedOnly: true }, ctx).entries.map((e) => e.id)).toEqual(['awards:1']);
   });
 });
 
@@ -103,16 +103,29 @@ describe('the wire on the synthetic save: its sources, and the ones it lacks', (
     importedAt.value = '2040-05-06T10:00:00.000Z';
   });
 
-  it('reads the trades, news, injuries, awards and streaks the export records, each in its own words or established names', () => {
+  it('reads the trades, injuries, awards and streaks the export records, each in its own words or established names', () => {
     const w = wireFacts(importedAt.value, save.org);
     const kinds = new Set(w.facts.map((f) => f.kind));
-    for (const k of ['trade', 'news', 'injury', 'award', 'streak'] as const) expect(kinds.has(k), k).toBe(true);
+    for (const k of ['trade', 'injury', 'award', 'streak'] as const) expect(kinds.has(k), k).toBe(true);
     expect(w.facts.find((f) => f.kind === 'award')!.detail).toMatchObject({ award: 'Player of the Week' });
     expect(w.facts.find((f) => f.kind === 'trade')!.ownWords).toMatch(/^The Club 2 traded /);
     // Gathered once per import: the second ask is the kept one
     const builds = wireBuilds();
     wireFacts(importedAt.value, save.org);
     expect(wireBuilds()).toBe(builds);
+  });
+
+  it('never reads the GM\'s inbox as league news: no staff note, no trade proposal, and news named as a gap (H1)', () => {
+    // The synthetic save's messages hold a staff note on a trade target and another club's trade proposal
+    expect(db.prepare(`SELECT COUNT(*) AS n FROM messages WHERE recipient_id = 1`).get()).toEqual({ n: 2 });
+    const w = wireFacts(importedAt.value, save.org);
+    const words = w.facts.map((f) => f.ownWords ?? '').join(' | ');
+    expect(words).not.toMatch(/Trade Proposal|could be the answer|Sweep a Three-Game Set/);
+    expect(w.facts.some((f) => (f.source as string) === 'news' || (f.kind as string) === 'news')).toBe(false);
+    expect(w.gaps).toContainEqual({ source: 'news', why: 'not_read', detail: null });
+    const line = gapWords({ source: 'news', why: 'not_read', detail: null });
+    expect(line.display).toBe('League news isn\'t on the wire: the export files it with your own mail, and Pennant can\'t tell the two apart.');
+    expect(line.tone).toBe('unknown');
   });
 
   it('shows a streak only from its stated line, and only a streak whose meaning is established', () => {

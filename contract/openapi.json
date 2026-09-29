@@ -7896,8 +7896,7 @@
               "injury",
               "streak",
               "award",
-              "standings",
-              "news"
+              "standings"
             ]
           },
           {
@@ -7964,14 +7963,13 @@
         "description": "A player named by a wire entry."
       },
       "WireSource": {
-        "description": "Where a wire entry was read: OOTP's live transaction log, the export's trades, news, injuries, streaks or awards, the standings Pennant kept at each import, or a difference between two of Pennant's roster snapshots (where the log could not be read).",
+        "description": "Where a wire entry was read: OOTP's live transaction log, the export's trades, injuries, streaks or awards, the standings Pennant kept at each import, or a difference between two of Pennant's roster snapshots (where the log could not be read).",
         "anyOf": [
           {
             "type": "string",
             "enum": [
               "log",
               "trades",
-              "news",
               "injuries",
               "streaks",
               "awards",

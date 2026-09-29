@@ -2206,14 +2206,19 @@ Stage A (2026-09-29); the Mac app draws it at N7, Stage B. `server/leagueWire.ts
 `GET /api/v2/club/:teamId`, `GET /api/v2/search?q=`. As built:
 - **Sources.** Moves from the copy of the live log the server already holds (`peekTransactionLog`, D-021: never read on a
   request's path), only a major-league club's own log rows; without the log, the difference between Pennant's two latest
-  roster snapshots (`rosterStateHistory.ts`) stated as a change. Trades (`trade_history`, its own summary), league news
-  (`messages`, OOTP's own subject, those naming a major-league club), injuries this season to players now on a
-  major-league club (`players_injury_history`), streaks and awards only where the code's meaning is established (the
+  roster snapshots (`rosterStateHistory.ts`) stated as a change. Trades (`trade_history`, its own summary), injuries
+  this season to players now on a major-league club (`players_injury_history`), streaks and awards only where the code's meaning is established (the
   hitting and on-base streaks, `WIRE_STREAK_POLICY`; the awards the player card names), and standings movement from the
   standings kept at the last two imports (a new division leader; places moved in ours). A table the export lacks is a
   named gap, and one that could not be read says so; neither is an empty league.
+- **No league news** (the independent review, H1). OOTP's `messages` is the GM's inbox as much as the league's news:
+  his staff's notes on trade targets (`recipient_id = 1`, `sender_type = 0`, as the dashboard reads them), other clubs'
+  trade proposals (`trade_id != 0`, as the trade desk reads them) and his owner's mail sit beside the headlines, and no
+  code, schema or export establishes what each `message_type` means (on a scratch copy of a real export `trade_id` is
+  also -5 on injury stories). Read as news, a proposed trade would stand on the wire as if made (D-020) and a trade target
+  as posture on the landing (D-060). So `messages` is not read, and the wire names news as a gap in one sentence.
 - **The order** is followed first (when asked), then the newest day, then the kind (trades, moves, injuries, awards,
-  streaks, standings, news), then the source's own order, and the answer says so. No entry carries odds or posture
+  streaks, standings), then the source's own order, and the answer says so. No entry carries odds or posture
   (D-060).
 - **A club report** runs the Morning Report's own reader and words for that club (`teamSeason`, `clubProfile`,
   `rosterMap`), counts how many of its major-league players our scouts see fully, partly or not at all and says so,

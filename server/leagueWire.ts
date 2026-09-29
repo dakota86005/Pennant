@@ -8,12 +8,19 @@
  *   affiliate's side of the same move is its own row, with its own wording).
  * - **Without the log**, the difference between Pennant's two latest roster snapshots (`rosterStateHistory.ts`) is
  *   stated as a change ("now on the injured list"), never as a transaction.
- * - **Trades** from `trade_history` (its own summary), **league news** from `messages` (their own subjects, those that
- *   name a major-league club), **injuries** from `players_injury_history` (players now on a major-league club),
+ * - **Trades** from `trade_history` (its own summary), **injuries** from `players_injury_history` (players now on a
+ *   major-league club),
  *   **streaks** from `players_streak` and **awards** from `players_awards`, each only where its code's meaning is
  *   established (the hitting and on-base streaks, as the dashboard pinned them; the awards the player card names), and
  *   **standings** from the standings Pennant kept at each import.
  * - **Schema-tolerant**: a table the export lacks is a named gap, never an empty league (D-018).
+ * - **No league news** (N7 review, H1). OOTP's `messages` is the GM's inbox as much as the league's news: staff
+ *   trade-target notes (`recipient_id = 1`, `sender_type = 0`, as `dashboard.ts` reads them), other clubs' trade
+ *   proposals (`trade_id != 0`, as `trade.ts` reads them) and the owner's mail sit beside the headlines, and no code,
+ *   schema or export establishes what each `message_type` means (on a scratch copy of a real export, `trade_id` is -5 on
+ *   injury stories, and the injury stories' dates do not match the injury history's). Reading it would put a proposed
+ *   trade on the wire as if done (D-020) and buyer posture on the landing (D-060), so it is not read: the wire names news
+ *   as a gap in a sentence.
  *
  * Nothing here orders by importance: the wire's order is stated in its words (case 18). Nothing here reads a rating.
  */
@@ -27,8 +34,11 @@ import { latestRosterStateSnapshot, rosterStateEventsForSnapshot, type Structure
 import { onLookAtTheServedSave } from './saveDiscovery.js';
 import type { TransactionLog } from './transactionLog.js';
 
-export type WireKind = 'move' | 'trade' | 'injury' | 'streak' | 'award' | 'standings' | 'news';
-export type WireSource = 'log' | 'trades' | 'news' | 'injuries' | 'streaks' | 'awards' | 'standings' | 'snapshots';
+export type WireKind = 'move' | 'trade' | 'injury' | 'streak' | 'award' | 'standings';
+/** Where an entry was read. */
+export type WireSource = 'log' | 'trades' | 'injuries' | 'streaks' | 'awards' | 'standings' | 'snapshots';
+/** A source the wire names when it is missing: the ones it reads, and league news, which it does not read (H1). */
+export type WireGapSource = WireSource | 'news';
 
 /** A club as the wire names it. */
 export interface WireClubRef {
@@ -49,7 +59,7 @@ export interface WireFact {
   /** The major-league clubs it names. */
   clubs: WireClubRef[];
   players: Array<{ playerId: number; name: string }>;
-  /** The source's own sentence (the log, a trade's summary, a message's subject); null for the facts worded here. */
+  /** The source's own sentence (the log, a trade's summary); null for the facts worded here. */
   ownWords: string | null;
   /** What the words are built from, for the kinds worded here. */
   detail: WireDetail;
@@ -58,7 +68,6 @@ export interface WireFact {
 export type WireDetail =
   | { kind: 'log'; logKind: string; supported: boolean; logIds: number[] }
   | { kind: 'trade' }
-  | { kind: 'news'; messageId: number }
   | { kind: 'injury'; dayToDay: boolean | null; length: number | null }
   | { kind: 'streak'; streak: 'hitting' | 'onBase'; games: number; started: string | null; line: number }
   | { kind: 'award'; award: string; league: string | null }
@@ -82,8 +91,8 @@ export type SnapshotChange =
 
 /** A source the wire could not read, and why (a named gap, never an empty league). */
 export interface WireGap {
-  source: WireSource;
-  why: 'not_in_export' | 'unreadable' | 'log_unavailable' | 'log_reading' | 'no_earlier_standings' | 'no_snapshots';
+  source: WireGapSource;
+  why: 'not_in_export' | 'unreadable' | 'log_unavailable' | 'log_reading' | 'no_earlier_standings' | 'no_snapshots' | 'not_read';
   /** The log's own reason, where it gave one. */
   detail: string | null;
 }
@@ -272,35 +281,6 @@ function tradeFacts(clubs: LeagueClubs): WireFact[] {
       players,
       ownWords: summary,
       detail: { kind: 'trade' as const },
-    }];
-  });
-}
-
-function newsFacts(clubs: LeagueClubs): WireFact[] {
-  const cols = has('messages');
-  if (!cols.has('subject') || !cols.has('date')) return [];
-  const teamCols = [0, 1, 2, 3, 4].map((i) => `team_id_${i}`).filter((c) => cols.has(c));
-  const playerCols = Array.from({ length: 10 }, (_, i) => `player_id_${i}`).filter((c) => cols.has(c));
-  const rows = db.prepare(`SELECT rowid AS rid, * FROM messages${cols.has('deleted') ? ' WHERE COALESCE(deleted, 0) = 0' : ''}`).all() as Array<Record<string, unknown>>;
-  const names = playersNamed(rows.flatMap((r) => playerCols.map((c) => num(r[c])).filter((v): v is number => v !== null)));
-  return rows.flatMap((r) => {
-    const subject = text(r.subject);
-    // League news on the wire names a major-league club; the rest (a minor league's own news, the office's memos) is not the league's
-    const named = uniqueClubs(teamCols.map((c) => num(r[c])).map((id) => (id !== null && clubs.byId.get(id)?.level === 1 ? clubs.byId.get(id)!.ref : null)));
-    if (!subject || !named.length) return [];
-    const players = playerCols.map((c) => num(r[c])).filter((v): v is number => v !== null && v > 0)
-      .map((id) => ({ playerId: id, name: names.get(id)?.name ?? `Player ${id}` }));
-    const messageId = num(r.message_id) ?? Number(r.rid);
-    return [{
-      id: `news:${messageId}`,
-      source: 'news' as const,
-      kind: 'news' as const,
-      date: text(r.date),
-      day: parseGameDate(r.date),
-      clubs: named,
-      players,
-      ownWords: subject,
-      detail: { kind: 'news' as const, messageId },
     }];
   });
 }
@@ -519,7 +499,8 @@ export function wireFacts(importStamp: string | null, ourTeamId: number | null):
     }
   };
   table('trades', 'trade_history', () => tradeFacts(clubs));
-  table('news', 'messages', () => newsFacts(clubs));
+  // League news is not read: the export files it with the GM's own mail (see the header)
+  gaps.push({ source: 'news', why: 'not_read', detail: null });
   table('injuries', 'players_injury_history', () => injuryFacts(clubs, season));
   table('streaks', 'players_streak', () => streakFacts(clubs, gameDate));
   table('awards', 'players_awards', () => awardFacts(clubs, season));

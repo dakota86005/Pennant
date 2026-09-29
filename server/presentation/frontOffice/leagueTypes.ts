@@ -12,14 +12,14 @@ import type { GameDate } from '../../dataFreshness.js';
 import type { ClubProfile, RosterMap, TeamSeason } from './morningTypes.js';
 
 /** What a wire entry is about. */
-export type WireKind = 'move' | 'trade' | 'injury' | 'streak' | 'award' | 'standings' | 'news';
+export type WireKind = 'move' | 'trade' | 'injury' | 'streak' | 'award' | 'standings';
 
 /**
- * Where a wire entry was read: OOTP's live transaction log, the export's trades, news, injuries, streaks or awards, the
+ * Where a wire entry was read: OOTP's live transaction log, the export's trades, injuries, streaks or awards, the
  * standings Pennant kept at each import, or a difference between two of Pennant's roster snapshots (where the log could
  * not be read).
  */
-export type WireSource = 'log' | 'trades' | 'news' | 'injuries' | 'streaks' | 'awards' | 'standings' | 'snapshots';
+export type WireSource = 'log' | 'trades' | 'injuries' | 'streaks' | 'awards' | 'standings' | 'snapshots';
 
 /** A club named by a wire entry. */
 export interface WireClub {
