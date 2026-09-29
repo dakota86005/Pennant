@@ -105,10 +105,14 @@ public struct PlaceStrip: View {
                 if d.recent {
                     let r = d.kind == .other ? dot * Self.clubScale : dot * 2.5
                     let ring = Path(ellipseIn: CGRect(x: cx - r / 2, y: midY - r / 2, width: r, height: r))
-                    // In dark the club's accent sits close to the shaded ends and the other dots: a halo in the window's
-                    // own colour behind a heavier ring keeps it apart (N6 polish: the rings read faint in dark)
+                    // In dark the club's accent sits close to the shaded ends and the other dots: a halo behind a heavier
+                    // ring keeps it apart (N6 polish: the rings read faint in dark). The halo is knocked out of the strip,
+                    // so the page it sits on shows through, whatever that page is drawn in (the window's background is
+                    // tinted on macOS 26, so no colour of the app's own would match it)
                     if colorScheme == .dark {
-                        ctx.stroke(ring, with: .color(Color(nsColor: .windowBackgroundColor)), lineWidth: 4)
+                        var halo = ctx
+                        halo.blendMode = .clear
+                        halo.stroke(ring, with: .color(.black), lineWidth: 4)
                         ctx.stroke(ring, with: .color(accent), lineWidth: 2)
                     } else {
                         ctx.stroke(ring, with: .color(accent), lineWidth: 1.5)
