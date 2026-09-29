@@ -83,6 +83,9 @@ struct GeneralSettings: View {
                 dataFolderSection
             }
             .formStyle(.grouped)
+            // Nothing is focused when the window opens (the first focusable piece was the rating history's sentence, drawn
+            // with a focus ring for no reason; N6 polish); Tab still moves through every control
+            .background(ClearsInitialFocus())
             .onChange(of: routing.revealDataStatus, initial: true) { _, reveal in
                 guard reveal else { return }
                 withAnimation { proxy.scrollTo("dataStatus", anchor: .top) }
@@ -203,6 +206,11 @@ struct GeneralSettings: View {
         }
         .fileImporter(isPresented: $choosingSaveFolder, allowedContentTypes: [.folder]) { result in
             if case .success(let url) = result { saveFolder = url.path(percentEncoded: false) }
+        }
+        // The folder in use as served (named here, else found for the chosen save), so the field is never empty while
+        // the server knows it (N6 polish: it was, after a switch)
+        .onChange(of: model.status?.saveFolder, initial: true) { _, served in
+            if let served, !served.isEmpty { saveFolder = served }
         }
     }
 
@@ -758,6 +766,25 @@ extension Components.Schemas.ProvidersResponse.KeysPayload {
         case .opencode: opencode
         case .ollama: ollama
         case nil: nil
+        }
+    }
+}
+
+/// Leaves nothing focused when its window first shows its content, as the system's own Settings windows open: AppKit
+/// otherwise focuses the first focusable view and draws its ring. Keyboard focus still moves with Tab.
+struct ClearsInitialFocus: NSViewRepresentable {
+    func makeNSView(context: Context) -> Clearer { Clearer() }
+    func updateNSView(_ view: Clearer, context: Context) {}
+
+    final class Clearer: NSView {
+        private weak var cleared: NSWindow?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard let window, window !== cleared else { return }
+            cleared = window
+            // After AppKit has chosen its initial first responder for the window
+            DispatchQueue.main.async { [weak window] in window?.makeFirstResponder(nil) }
         }
     }
 }

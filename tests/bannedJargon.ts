@@ -31,6 +31,8 @@ export const BANNED_JARGON: readonly RegExp[] = [
   /calibrat/i, /\bprovisional\b/i, /\bprior\b/i, /\bgate\b/i, /held-out/i, /coverage/i, /quantile/i,
   // The evidence vocabulary: said in plain words on the face ("not known"), never by its code
   /indeterminate/i,
+  // The roster map's method word for the man at a position (N6 polish): "the regular", "the man listed there"
+  /\bholders?\b/i,
   // Doc ids (D-, Q-, R-, A-numbers)
   /\b[DQRA]-\d/i,
   // Rendering leaks

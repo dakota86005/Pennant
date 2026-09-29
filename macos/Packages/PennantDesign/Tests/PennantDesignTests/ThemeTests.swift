@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import PennantAPI
 import SwiftUI
@@ -75,6 +76,38 @@ struct ThemeTests {
         #expect(Theme.neutral.palette(for: .dark).isNeutral)
     }
 
+    @Test("the neutral masthead's secondary lines read at 4.5:1 or better on its colours, in light and dark (N6 polish review)")
+    func neutralSecondaryReads() throws {
+        func luminance(_ color: NSColor) -> Double {
+            let c = color.usingColorSpace(.sRGB)!
+            func channel(_ v: CGFloat) -> Double { let v = Double(v); return v <= 0.03928 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4) }
+            return 0.2126 * channel(c.redComponent) + 0.7152 * channel(c.greenComponent) + 0.0722 * channel(c.blueComponent)
+        }
+        /// The colour as drawn on the background: its own alpha composited over it (the system's secondary label is
+        /// the label colour at part strength).
+        func contrast(_ text: Color, on background: Color, in name: NSAppearance.Name) -> Double {
+            var ratio = 0.0
+            NSAppearance(named: name)!.performAsCurrentDrawingAppearance {
+                let fg = NSColor(text).usingColorSpace(.sRGB)!
+                let bg = NSColor(background).usingColorSpace(.sRGB)!
+                let a = fg.alphaComponent
+                let drawn = NSColor(srgbRed: fg.redComponent * a + bg.redComponent * (1 - a),
+                                    green: fg.greenComponent * a + bg.greenComponent * (1 - a),
+                                    blue: fg.blueComponent * a + bg.blueComponent * (1 - a), alpha: 1)
+                let (l1, l2) = (luminance(drawn), luminance(bg))
+                ratio = (max(l1, l2) + 0.05) / (min(l1, l2) + 0.05)
+            }
+            return ratio
+        }
+        let neutral = Theme.Palette.neutral
+        for name in [NSAppearance.Name.aqua, .darkAqua] {
+            for background in neutral.masthead + [neutral.mastheadTop] {
+                let ratio = contrast(neutral.mastheadSecondaryText, on: background, in: name)
+                #expect(ratio >= 4.5, "\(name.rawValue): \(ratio)")
+            }
+        }
+    }
+
     @Test("an appearance whose served text does not read is drawn neutral, never half-themed; the others keep the club's colours")
     func unreadableAppearance() throws {
         var pack = try Self.clubColors()
@@ -116,6 +149,28 @@ struct ThemeTests {
         pack.tokens.lightIncreasedContrast.cardText = "#ffffff"
         #expect(Theme.palette(pack.tokens.light, variant: .light) != nil)
         #expect(!Theme(served: pack, useTeamColors: true).isThemed(.lightIncreasedContrast))
+    }
+
+    @Test("the Tonight card's words read on its plate, for every club in the synthetic league and the example pack, in every appearance")
+    func tonightPlateReads() throws {
+        let catalog = try Self.decode(Components.Schemas.Catalog.self, "getCatalog")
+        let packs = catalog.clubs.map(\.theme) + [try Self.examplePack()]
+        #expect(catalog.clubs.count >= 4)
+        for pack in packs {
+            let theme = Theme(served: pack, useTeamColors: true)
+            for (variant, tokens) in [
+                (Theme.Variant.light, pack.tokens.light), (.dark, pack.tokens.dark),
+                (.lightIncreasedContrast, pack.tokens.lightIncreasedContrast), (.darkIncreasedContrast, pack.tokens.darkIncreasedContrast),
+            ] {
+                let plate = try #require(Theme.controlPlate(tokens).flatMap(ServedColor.components))
+                for text in [tokens.mastheadText, tokens.mastheadSecondaryText] {
+                    let ratio = Contrast.ratio(plate, try #require(ServedColor.components(text)))
+                    #expect(ratio >= variant.requiredContrast, "\(pack.id) \(variant): \(text) on the plate reads \(ratio)")
+                }
+                // The plate the card draws is that served colour
+                #expect(theme.palette(for: variant).controlPlate == ServedColor.color(Theme.controlPlate(tokens)!))
+            }
+        }
     }
 
     @Test("the contrast ratio is WCAG's: black on white is 21:1, a colour on itself 1:1")

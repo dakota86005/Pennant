@@ -18,8 +18,8 @@
       "unknown": [],
       "wouldChange": [],
       "lean": null,
-      "certainty": "fact",
-      "called": "A fact from the export"
+      "certainty": "recorded",
+      "called": "From Pennant's own record"
     },
     "links": [],
     "hint": "Each import keeps the ratings your scouts saw, to show how players develop"

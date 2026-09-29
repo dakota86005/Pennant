@@ -142,8 +142,8 @@ struct KeptReportsTests {
 @MainActor
 struct KeptSummaryStoreTests {
     private let club = ClubRef(id: 1)
-    private func key(saveId: String? = "save-a", restores: Int = 0, importStamp: String = "") -> AppModel.StoreKey {
-        AppModel.StoreKey(importStamp: importStamp, club: club, restores: restores, saveId: saveId)
+    private func key(saveId: String? = "save-a", restores: Int = 0, importStamp: String = "", reportStamp: String = "") -> AppModel.StoreKey {
+        AppModel.StoreKey(importStamp: importStamp, club: club, restores: restores, reportStamp: reportStamp, saveId: saveId)
     }
 
     private func client(_ transport: any ClientTransport) -> Client {
@@ -252,6 +252,153 @@ struct KeptSummaryStoreTests {
         }
         #expect(FrontOfficeStore.keptKey(key(saveId: nil), contract: "digest-a") == nil)
         #expect(FrontOfficeStore.keptKey(AppModel.StoreKey(importStamp: "", club: nil, restores: 0, saveId: "save-a"), contract: "digest-a") == nil)
+    }
+
+    @Test("a switch to another save keeps the report on screen with its own club's catalog, said to be updating, from the moment the save is chosen until the new save's report lands (N6 polish and its review)")
+    func switchHoldsTheWindowTogether() async throws {
+        // The fixture's own build stamp, so the real "current" test runs (an empty stamp would pass anything)
+        func key(saveId: String? = "save-a", importStamp: String = "") -> AppModel.StoreKey {
+            self.key(saveId: saveId, importStamp: importStamp, reportStamp: "rstamp")
+        }
+        let kept = KeptReports(folder: try scratchFolder("kept"))
+        let store = FrontOfficeStore(kept: kept, contract: "digest-a")
+        await store.loadSummary(client: client(try transport()), key: key(), catalog: try catalog())
+        #expect(store.shownKey == key())
+        #expect(store.heldCatalog(for: key()) == nil)
+        #expect(store.summaryIsCurrent(for: key()))
+        #expect(store.showsUpdating(for: key()) == false)
+
+        // Another save is chosen: until its import lands the key names no save, and the server still serves the old
+        // save's import. Updating at once, before any request, and nothing is asked (the answer would be the old save's)
+        let chosen = key(saveId: nil)
+        #expect(store.showsUpdating(for: chosen))
+        #expect(store.summaryIsCurrent(for: chosen) == false)
+        #expect(store.heldCatalog(for: chosen) == (try catalog()))
+        let refused = GatedTransport(try RoutedTransport.json("getFrontOffice"))
+        refused.open()
+        await store.loadSummary(client: client(refused), key: chosen)
+        #expect(refused.wasAsked == false, "a report was asked for while the chosen save was not yet imported")
+        #expect(store.shownKey == key())
+        #expect(store.showsUpdating(for: chosen))
+        #expect(store.heldCatalog(for: chosen) == (try catalog()))
+
+        // The new save's import landed (a new import, the new save's id): still updating, before and while it is asked
+        let next = key(saveId: "save-b")
+        #expect(store.showsUpdating(for: next))
+        #expect(store.heldCatalog(for: next) == (try catalog()))
+        let gate = GatedTransport(try RoutedTransport.json("getFrontOffice"))
+        let load = Task { await store.loadSummary(client: client(gate), key: next, catalog: nil) }
+        await gate.waitUntilAsked()
+        #expect(store.shownKey == key())
+        #expect(store.heldCatalog(for: next) == (try catalog()))
+        #expect(store.showsUpdating(for: next))
+        gate.open()
+        await load.value
+        // The new save's report landed: the whole window moves to it together, and it is no longer updating
+        #expect(store.shownKey == next)
+        #expect(store.heldCatalog(for: next) == nil)
+        #expect(store.showsUpdating(for: next) == false)
+        // A new import of the same save: held too until its report lands; a rebuild of the same import is not
+        var rebuilt = next
+        rebuilt.reportStamp = "another-build"
+        #expect(store.heldCatalog(for: rebuilt) == nil)
+        // The new report's catalog is its own, once it arrives (never the old save's)
+        #expect(store.shownCatalog == nil)
+        await store.keep(catalog: try catalog(), for: next)
+        #expect(store.shownCatalog == (try catalog()))
+        #expect(store.heldCatalog(for: key(saveId: "save-b", importStamp: "2040-07-03T00:00:00.000Z")) == (try catalog()))
+    }
+
+    @Test("another save is never only a build moving, and only a save chosen over the same import waits for it (N6 polish review)")
+    func saveMovesAreNotBuildMoves() {
+        let a = key(reportStamp: "one")
+        var build = a
+        build.reportStamp = "two"
+        #expect(FrontOfficeStore.onlyTheBuildMoved(a, build))
+        #expect(!FrontOfficeStore.onlyTheBuildMoved(a, key(saveId: "save-b", reportStamp: "two")))
+        #expect(!FrontOfficeStore.onlyTheBuildMoved(a, key(saveId: nil, reportStamp: "two")))
+        // A save chosen, its import not landed: the key names no save over the shown report's import
+        #expect(FrontOfficeStore.awaitsTheChosenSave(shown: a, key: key(saveId: nil)))
+        // Its import landed, a restore, nothing shown for a save, or nothing shown: asked as usual
+        #expect(!FrontOfficeStore.awaitsTheChosenSave(shown: a, key: key(saveId: nil, importStamp: "2040-07-03T00:00:00.000Z")))
+        #expect(!FrontOfficeStore.awaitsTheChosenSave(shown: a, key: key(saveId: nil, restores: 1)))
+        #expect(!FrontOfficeStore.awaitsTheChosenSave(shown: key(saveId: nil), key: key(saveId: nil)))
+        #expect(!FrontOfficeStore.awaitsTheChosenSave(shown: nil, key: key(saveId: nil)))
+    }
+
+    @Test("the report on screen takes its own club's catalog even where it cannot be kept, so a later switch holds the window together (N6 polish review)")
+    func shownCatalogWithoutKeeping() async throws {
+        // Nowhere to keep
+        let unkept = FrontOfficeStore(kept: nil, contract: "digest-a")
+        await unkept.loadSummary(client: client(try transport()), key: key())
+        await unkept.keep(catalog: try catalog(), for: key())
+        #expect(unkept.shownCatalog == (try catalog()))
+        #expect(unkept.heldCatalog(for: key(saveId: "save-b")) == (try catalog()))
+        // No save id served: nothing kept, but the report is drawn with its catalog
+        let kept = KeptReports(folder: try scratchFolder("kept"))
+        let noSave = FrontOfficeStore(kept: kept, contract: "digest-a")
+        await noSave.loadSummary(client: client(try transport()), key: key(saveId: nil))
+        await noSave.keep(catalog: try catalog(), for: key(saveId: nil))
+        #expect(noSave.shownCatalog == (try catalog()))
+        #expect(await kept.readLast() == nil)
+        // Another club's catalog is never the report's
+        let other = FrontOfficeStore(kept: nil, contract: "digest-a")
+        await other.loadSummary(client: client(try transport()), key: key())
+        var clubTwo = try catalog()
+        clubTwo.club?.teamId = 2
+        await other.keep(catalog: clubTwo, for: key())
+        #expect(other.shownCatalog == nil)
+    }
+
+    @Test("the club card of the report kept last goes once the settings are answered, unless they confirm its save and club (N6 polish review)")
+    func settleWaitingKept() async throws {
+        let kept = KeptReports(folder: try scratchFolder("kept"))
+        let first = FrontOfficeStore(kept: kept, contract: "digest-a")
+        await first.loadSummary(client: client(try transport()), key: key())
+        await first.keep(catalog: try catalog(), for: key())
+        func waiting() async throws -> FrontOfficeStore {
+            let store = FrontOfficeStore(kept: kept, contract: "digest-a")
+            for _ in 0..<200 where store.waitingKept == nil { try await Task.sleep(for: .milliseconds(5)) }
+            #expect(store.waitingKept != nil)
+            return store
+        }
+        // The settings failed: no key, and the card goes
+        let failed = try await waiting()
+        failed.settleWaitingKept(for: nil)
+        #expect(failed.waitingKept == nil)
+        // Another save's key: it goes
+        let another = try await waiting()
+        another.settleWaitingKept(for: key(saveId: "save-b"))
+        #expect(another.waitingKept == nil)
+        // Its own save and club: it stays, until the report itself is shown
+        let own = try await waiting()
+        own.settleWaitingKept(for: key())
+        #expect(own.waitingKept != nil)
+        // Answered before the kept report was even read: it is never drawn afterwards for a key that is not its own
+        let early = FrontOfficeStore(kept: kept, contract: "digest-a")
+        early.settleWaitingKept(for: nil)
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(early.waitingKept == nil)
+    }
+
+    @Test("at launch the report kept last is read before its key is confirmed, for its club card only, and dropped for another key (N6 polish)")
+    func waitingKept() async throws {
+        let kept = KeptReports(folder: try scratchFolder("kept"))
+        let first = FrontOfficeStore(kept: kept, contract: "digest-a")
+        await first.loadSummary(client: client(try transport()), key: key())
+        await first.keep(catalog: try catalog(), for: key())
+        let second = FrontOfficeStore(kept: kept, contract: "digest-a")
+        for _ in 0..<200 where second.waitingKept == nil { try await Task.sleep(for: .milliseconds(5)) }
+        #expect(second.waitingKept?.kept.catalog == (try catalog()))
+        // Never the report on screen before its key is confirmed
+        #expect(second.summary == nil)
+        let gate = GatedTransport(try RoutedTransport.json("getFrontOffice"))
+        let load = Task { await second.loadSummary(client: client(gate), key: key(saveId: "save-b")) }
+        await gate.waitUntilAsked()
+        #expect(second.waitingKept == nil)
+        #expect(second.summary == nil)
+        gate.open()
+        await load.value
     }
 
     @Test("a load the view cancelled (the key moved) records no problem and keeps what is shown")

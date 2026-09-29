@@ -17,7 +17,7 @@ extension AppModel {
     /// until the catalog arrives; else nil.
     public func servedViewName(department: DeptID, view: String) -> String? {
         guard let catalog else {
-            return department.rawValue == "frontOffice" && view == "morningReport" ? frontOffice.keptCatalog?.viewName : nil
+            return department.rawValue == "frontOffice" && view == "morningReport" ? (frontOffice.keptCatalog ?? frontOffice.waitingKept?.kept.catalog)?.viewName : nil
         }
         return catalog.departments.first { ($0.id.value1?.rawValue ?? $0.id.value2) == department.rawValue }?
             .views.first { $0.id == view }?.name

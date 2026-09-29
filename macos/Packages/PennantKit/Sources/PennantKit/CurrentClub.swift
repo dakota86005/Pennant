@@ -35,3 +35,24 @@ public struct CurrentClub: Sendable, Equatable {
         return CurrentClub(ref: ClubRef(id: served.id), org: orgs.first { $0.teamId == served.id }, source: source)
     }
 }
+
+extension CurrentClub.Source {
+    /// The served word for the source (`configured`, `human`), kept with a report so its club card can be drawn again.
+    public var servedWord: String {
+        switch self {
+        case .configured: "configured"
+        case .humanManaged: "human"
+        case .other(let word): word
+        }
+    }
+
+    /// The source a kept word names; nil for none.
+    public static func from(servedWord word: String?) -> Self? {
+        switch word {
+        case nil: nil
+        case "configured": .configured
+        case "human": .humanManaged
+        case let other?: .other(other)
+        }
+    }
+}

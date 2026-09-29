@@ -1,7 +1,7 @@
 import { Router, type NextFunction, type Request, type Response } from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
-import { db, tableExists, tableColumns, locateColumn, LAST_IMPORT_PATH, LEAGUE_DB_PATH, NEXT_DB_PATH, swapWhenFree } from './db.js';
+import { db, tableExists, tableColumns, locateColumn, LAST_IMPORT_PATH, LEAGUE_DB_PATH, NEXT_DB_PATH, leagueUpgradeUnderWay, noteLeagueUpgrade, swapWhenFree } from './db.js';
 import { detectSaves, findSaves, resolveChosenFolder, searchLocations, type ResolveResult, type SaveInfo, type SearchLocation } from './paths.js';
 import { DATA_DIR, loadConfig, saveConfig } from './config.js';
 import { diskSpace, importCsvDir, upgradeState, ImportRefused, type ImportProgress, type ImportResult } from './importer.js';
@@ -14,7 +14,7 @@ import { registerPostImportHook, runPostImportHooks } from './postImport.js';
 import { clubOwed, importLandedForClubQuestion, oweClubWhenImported, type ClubOwed } from './clubOwed.js';
 import { snapshotsAfterImport } from './importSnapshots.js';
 import { currentHistoryKey } from './historyIdentity.js';
-import { currentPlayedElsewhere, forgetSaveScan, lookAtTheServedSave, onLookAtTheServedSave, servedSaveId, humanClubsInExport, clubNameInExport, pickSave, saveLabel, type SavePlayedElsewhere } from './saveDiscovery.js';
+import { currentPlayedElsewhere, forgetSaveScan, lookAtTheServedSave, onLookAtTheServedSave, servedSaveFolder, servedSaveId, humanClubsInExport, clubNameInExport, pickSave, saveLabel, type SavePlayedElsewhere } from './saveDiscovery.js';
 import { saveDiscoveryView, type SaveDiscovery } from './presentation/saveWords.js';
 import { assertAuthored } from './presentation/claim.js';
 import type { Claim } from './contract/presentation.js';
@@ -71,7 +71,7 @@ import { eventStream, progressThrottle, publish } from './serverEvents.js';
 import { v2Routes } from './v2Routes.js';
 import { currentReportStamp, holdFrontOfficeRebuilds, relocateLiveLog, valueRefitsRecorded, warmFrontOffice } from './frontOfficeService.js';
 import { afterImport } from './frontOfficeAttention.js';
-import { EXPORT_NOT_FOUND, importNote, importWords, leftOutNote, type ImportNote } from './presentation/importWords.js';
+import { EXPORT_NOT_FOUND, LEAGUE_UPGRADE_LINE, importNote, importWords, leftOutNote, type ImportNote, type LeagueUpgradeLine } from './presentation/importWords.js';
 import type { Integer } from './contract/primitives.js';
 
 export const api = Router();
@@ -453,8 +453,10 @@ export function upgradeLeagueInBackground(): Promise<void> {
       console.error('[import] could not bring the league database up to date; it is served as it is:', (err as Error).message);
     } finally {
       upgrading = null;
+      noteLeagueUpgrade(null);
     }
   })();
+  noteLeagueUpgrade(upgrading);
   return upgrading;
 }
 
@@ -641,6 +643,17 @@ export interface ServerStatus {
    * when nothing is owed.
    */
   clubOwed: ClubOwed | null;
+  /**
+   * The save's own folder (`<save>.lg`), where Pennant reads the transaction log (N6 polish): the one named in Settings,
+   * else the one found for the chosen save (filled in when a save is chosen, or found at the last look at the served
+   * save); null when none is known. Settings shows it, so the field is never empty while the folder is known.
+   */
+  saveFolder: string | null;
+  /**
+   * While a league an earlier build imported is brought up to date, once (the one-time upgrade; the server answers
+   * meanwhile and the report follows when it is done): the line to show where the report will be; null otherwise.
+   */
+  leagueUpgrade: LeagueUpgradeLine | null;
 }
 
 /** A request the server accepted, with nothing more to say. */
@@ -750,6 +763,9 @@ export function statusSnapshot(): ServerStatus {
     // Worked out off this request's path (at start, the minute's look, a new configuration, an import): only read here
     saveId: servedSaveId(),
     clubOwed: clubOwed(),
+    // The configuration's folder, else the one the last look found (never located on this path)
+    saveFolder: config.lgPath ?? servedSaveFolder(),
+    leagueUpgrade: leagueUpgradeUnderWay() ? LEAGUE_UPGRADE_LINE : null,
     /*
      * The scale OOTP is set to show ratings on, read off the save. Bars used
      * to divide by eighty regardless, so a 5 on the 1-to-5 scale drew at six
@@ -791,6 +807,16 @@ api.use('/v2', v2Routes);
  */
 export const IMPORT_RUNNING = 'An import is already running. Wait for it to finish, then try again.';
 
+/** The `<save>.lg` folder the export belongs to, as the save list finds it; null when it isn't found. */
+function foundSaveFolder(csvDir: string, saveName: string | null): string | null {
+  try {
+    const location = locateSave({ csvDir, saveName });
+    return location.found && location.lgPath ? location.lgPath : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Chooses a save: its export folder and name become the configuration, and its import starts when the folder is there
  * (with the watcher). Returns whether the import started. The caller has checked that no import is running.
@@ -798,7 +824,10 @@ export const IMPORT_RUNNING = 'An import is already running. Wait for it to fini
 function chooseSave(csvDir: string, saveName: string | null): boolean {
   // A hand-picked .lg folder belongs to the save it was picked for
   const previous = loadConfig();
-  saveConfig({ csvDir, saveName, lgPath: previous.csvDir === csvDir ? previous.lgPath ?? null : null });
+  // Otherwise the save's own folder, as the save list finds it (D-063), so the transaction log's setting names it
+  // (N6 polish: it was left empty after a switch); a folder named by hand for this save is kept
+  const kept = previous.csvDir === csvDir ? previous.lgPath ?? null : null;
+  saveConfig({ csvDir, saveName, lgPath: kept ?? foundSaveFolder(csvDir, saveName) });
   // The served league is not this save's until its import lands: the status stops naming the save being left at once
   lookAtTheServedSave();
   resetTransactionLogCache();

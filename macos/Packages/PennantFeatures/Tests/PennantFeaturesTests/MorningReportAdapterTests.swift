@@ -256,7 +256,9 @@ struct MorningReportAdapterTests {
             #expect(drawn.note == served.note?.display)
             #expect(drawn.hint == served.hint && drawn.need == served.need && drawn.claim == served.claim)
         }
-        #expect(design.rotation.first?.note == "Next game")
+        // The next starter is said once, by his role, never again as a note (N6 polish)
+        #expect(design.rotation.first?.role == "Next")
+        #expect(design.rotation.first?.note == nil)
         #expect(design.rotationNeeds == [ServedLine(id: "rotation:0", text: "A fifth starter until the rehab ends", hint: "Raised by the bench coach")])
         #expect(design.bullpenNeeds == [ServedLine(id: "bullpen:0", text: "A second left-hander", hint: nil)])
         #expect(design.rosterUnavailable == nil)

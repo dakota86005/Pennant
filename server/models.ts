@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import Anthropic from '@anthropic-ai/sdk';
+import type Anthropic from '@anthropic-ai/sdk';
+import { anthropicSdk } from './aiSdk.js';
 import { activeProvider, getApiKey, providerCredential } from './settings.js';
 import { DEFAULT_MODEL, isProviderId, providerFor, type ProviderId } from './providers.js';
 import { unusableModels } from './unusable.js';
@@ -146,7 +147,7 @@ export async function listModels(
  * else's computer.
  */
 async function anthropicModels(key: string): Promise<ModelChoice[]> {
-  const client = new Anthropic({ apiKey: key });
+  const client = new (await anthropicSdk())({ apiKey: key });
   const models: ModelChoice[] = [];
   // The page object auto-paginates when iterated
   for await (const m of client.models.list()) {

@@ -3365,10 +3365,7 @@
           "text": "Most likely 1.1 wins · could be 0.1 to 1.9",
           "short": "1.1 wins"
         },
-        "note": {
-          "display": "Next game",
-          "hint": "OOTP's projected starter for the club's next game"
-        },
+        "note": null,
         "hint": "Most likely 1.1 wins · could be 0.1 to 1.9, rest of season",
         "need": false,
         "claim": {
@@ -4191,7 +4188,7 @@
     "bullpenNeeds": [],
     "notes": [
       {
-        "display": "Holders are each club's listed men: the game log doesn't show who starts",
+        "display": "Each position shows the man each club lists there: the game log doesn't show who starts",
         "hint": "The export's game log doesn't say who started where. Each club's man listed"
       }
     ],

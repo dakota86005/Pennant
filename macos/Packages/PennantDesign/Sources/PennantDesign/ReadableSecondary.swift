@@ -10,7 +10,7 @@ import SwiftUI
 /// at the runner's 1× scale the first grey's thin strokes measured near 4:1); with Increase Contrast it is the label
 /// colour itself. It is a system label shade, not a club's colour: a pack's colours stay the pack's.
 public extension NSColor {
-    static let readableSecondaryLabel = NSColor(name: "PennantReadableSecondaryLabel") { appearance in
+    nonisolated static let readableSecondaryLabel = NSColor(name: "PennantReadableSecondaryLabel") { appearance in
         switch appearance.bestMatch(from: [.aqua, .darkAqua, .accessibilityHighContrastAqua, .accessibilityHighContrastDarkAqua]) {
         case .accessibilityHighContrastAqua?: .labelColor
         case .accessibilityHighContrastDarkAqua?: .labelColor

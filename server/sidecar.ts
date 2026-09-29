@@ -72,6 +72,13 @@ async function main(): Promise<void> {
   const lines = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
   let stop: Stop = () => process.exit(0);
 
+  // While the handshake is on its way (the app reads the Keychain meanwhile), the libraries the server needs are
+  // loaded: code only, no data folder, no database, no lock
+  setImmediate(() => {
+    void import('express').catch(() => undefined);
+    void import('better-sqlite3').catch(() => undefined);
+  });
+
   const first = await new Promise<string | null>((resolve) => {
     const timer = setTimeout(() => resolve(null), HANDSHAKE_TIMEOUT_MS);
     lines.once('line', (line) => {

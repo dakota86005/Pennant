@@ -2,7 +2,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { HistoryCarryOver, HistoryOffer } from '../server/historyIdentity.js';
-import { carryOverWords, offerWords, placeWords, ratingHistoryStatus, ratingHistoryView } from '../server/presentation/ratingHistoryWords.js';
+import { carryOverWords, offerWords, placeWords, playersWords, ratingHistoryStatus, ratingHistoryView } from '../server/presentation/ratingHistoryWords.js';
 import { BANNED_JARGON, bannedIn, FOLDER_PATHS, shownStrings } from './bannedJargon';
 
 /**
@@ -103,5 +103,30 @@ describe('the status line and the question never contradict each other (N6 Stage
     const afterFirst = ratingHistoryView({ note: null, because: [] }, [offer({})], [], [], ['2040-5-9']);
     expect(afterFirst.status.text).toBe('This save has rating history from 1 import, the latest on May 9, 2040.');
     expect(afterFirst.offers[0].question.text).toMatch(/^This save's rating history has only just started\. Is it "Old League", /);
+  });
+});
+
+describe('how far a history\'s players match, said as the share it is (N6 polish)', () => {
+  it('states the share plainly, never "only some" of 99.3%, and says below the line that only the GM can say', () => {
+    expect(playersWords('unclear', 7948, 8007, 'unclear')).toBe('99.2% of its players match this save\'s (7948 of 8007 compared): short of the 99.9% the check asks for, so only you can say whether it\'s this league\'s');
+    // The players test only ever refuses (D-064): the line is never said to make it the same league
+    expect(playersWords('unclear', 7948, 8007, 'unclear')).not.toMatch(/surely|same league/);
+    // Well below a match: it reads as another league's, never "only you can say"
+    expect(playersWords('unclear', 30, 100, 'different')).toBe('30% of its players match this save\'s (30 of 100 compared): well below a match, so it reads as another league\'s');
+    // Exact integer maths: 999 of 1000 is 99.9%, and 1 short of a tenth is rounded down
+    expect(playersWords('same', 999, 1000)).toMatch(/^99\.9% /);
+    expect(playersWords('unclear', 2997, 3001)).toMatch(/^99\.8% /);
+    expect(playersWords('unclear', 1, 3)).toMatch(/^33\.3% /);
+    expect(playersWords('same', 8007, 8007)).toBe('100% of its players match this save\'s (8007 of 8007 compared)');
+    // Rounded down: a share short of the line is never shown as reaching it
+    expect(playersWords('unclear', 9989, 10000)).toMatch(/^99\.8% /);
+    expect(playersWords('same', 9999, 10000)).toMatch(/^99\.9% /);
+    expect(playersWords('too_few', 3, 5)).toBe('Too few of its players are in this save to compare them (3 of 5 compared)');
+  });
+
+  it('calls the rating history Pennant\'s own record, never a fact from the export', () => {
+    const status = ratingHistoryStatus({ note: null, because: [] }, ['2040-5-1']);
+    expect(status.basis.certainty).toBe('recorded');
+    expect(status.basis.called).toBe('From Pennant\'s own record');
   });
 });

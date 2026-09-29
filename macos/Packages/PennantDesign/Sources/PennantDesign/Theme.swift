@@ -29,12 +29,15 @@ nonisolated public struct Theme: Sendable, Equatable {
         public var isNeutral: Bool
 
         /// The system's colours, following the window's appearance: the window's background under the title, a
-        /// grouped section's fill for the masthead, the label colours for its text, the system accent.
+        /// content background's fill for the masthead, the label colours for its text (its secondary lines in the
+        /// readable secondary grey: the system's secondary label reads about 3.9:1 on the window's background), the
+        /// system accent. Not the under-page colour: on macOS 26 it is a mid grey in light (the readable grey read 2.9:1
+        /// on it, caught on GitHub's macOS 26 runner), while macOS 27 draws it near white.
         public static let neutral = Palette(
             mastheadTop: Color(nsColor: .windowBackgroundColor),
-            masthead: [Color(nsColor: .windowBackgroundColor), Color(nsColor: .underPageBackgroundColor)],
+            masthead: [Color(nsColor: .windowBackgroundColor), Color(nsColor: .controlBackgroundColor)],
             mastheadText: Color(nsColor: .labelColor),
-            mastheadSecondaryText: Color(nsColor: .secondaryLabelColor),
+            mastheadSecondaryText: Color(nsColor: .readableSecondaryLabel),
             accent: .accentColor,
             accentText: .white,
             tint: .accentColor,
@@ -121,6 +124,10 @@ nonisolated public struct Theme: Sendable, Equatable {
     /// Whether an appearance draws the club's colours (false: the system's).
     public func isThemed(_ variant: Variant) -> Bool { palettes[variant] != nil }
 
+    /// The served colour a control's words sit on inside its glass on the masthead (`Palette.controlPlate`), as a hex
+    /// string: the masthead's first colour.
+    public static func controlPlate(_ tokens: Components.Schemas.ThemeTokens) -> String? { tokens.masthead.first }
+
     /// One appearance's served colours, or nil when one is not a colour or a text pair does not read at the contrast
     /// the appearance needs (the server's check, held again where the colours are drawn).
     static func palette(_ tokens: Components.Schemas.ThemeTokens, variant: Variant) -> Palette? {
@@ -161,6 +168,12 @@ nonisolated public struct Theme: Sendable, Equatable {
 }
 
 extension Theme.Palette {
+    /// What a control's words sit on inside its glass on the masthead (the Tonight card; N6 polish): the masthead's first
+    /// colour, which the server checked against both of the masthead's text colours (4.5:1, 7:1 with Increase Contrast).
+    /// The system's glass alone lightens under a light appearance (white on a club's red read about 1.9:1 there), so
+    /// the words never sit on the glass itself.
+    nonisolated public var controlPlate: Color { masthead.first ?? mastheadTop }
+
     /// How strong a tonal wash is: a card's fill, a chip's, or the field of the roster diagram.
     public enum Wash: Sendable {
         case card, chip, field, fieldInner

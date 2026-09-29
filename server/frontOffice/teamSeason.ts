@@ -454,6 +454,13 @@ export interface DivisionPlace {
   members: number[];
   /** The clubs sharing the place with ours (team ids). */
   levelWith: number[];
+  /**
+   * The clubs level with ours on games back that do not share its place, with each winning percentage the order goes by
+   * (at the standings' three decimals; null with none decided), and ours (N6 polish: 26–17 and 27–18, both 0 back).
+   * Empty where games back is counted from the records.
+   */
+  levelOnGamesBack: Array<{ teamId: number; pct: number | null }>;
+  pct: number | null;
 }
 
 const gbFromRecords = (leader: ClubRecord, r: ClubRecord) => ((leader.w - leader.l) - (r.w - r.l)) / 2;
@@ -502,6 +509,10 @@ export function divisionPlace(facts: TeamSeasonFacts): DivisionPlace | null {
     gamesAhead: rank === 1 && level.length === 0 && others.length ? Math.max(0, Math.min(...others) - mine) : null,
     division, source: exported ? 'exported' : 'records', order,
     members: members.map((c) => c.teamId), levelWith: level.map((c) => c.teamId),
+    levelOnGamesBack: exported
+      ? members.filter((c) => c.teamId !== me.teamId && !level.includes(c) && gb(c) === mine).map((c) => ({ teamId: c.teamId, pct: pctOf(c.record!) }))
+      : [],
+    pct: myPct,
   };
 }
 
