@@ -22,5 +22,6 @@
   "reportStamp": "rstamp",
   "savePlayedElsewhere": null,
   "saveId": null,
+  "saveFolder": null,
   "ratingScaleMax": 80
 }

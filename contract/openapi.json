@@ -5346,6 +5346,13 @@
               "null"
             ],
             "description": "The id of the save the imported data came from (D-063: its folder's real path, hashed, as the save list identifies it), tied to the last import (`lastImport`); null with nothing imported, while a save chosen but not yet imported is configured, or until it is worked out. The Mac app keys the Morning Report it keeps across launches on it, so another save's is never drawn and a save being left never has its report kept under the new one's id."
+          },
+          "saveFolder": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The save's own folder (`<save>.lg`), where Pennant reads the transaction log (N6 polish): the one named in Settings, else the one found for the chosen save (filled in when a save is chosen, or found at the last look at the served save); null when none is known. Settings shows it, so the field is never empty while the folder is known."
           }
         },
         "required": [
@@ -5363,7 +5370,8 @@
           "logoToken",
           "ratingScaleMax",
           "reportStamp",
-          "saveId"
+          "saveId",
+          "saveFolder"
         ],
         "description": "What `/api/status` serves, and the snapshot `/api/v2/events` opens with (described in `contract/openapi.json`)."
       },

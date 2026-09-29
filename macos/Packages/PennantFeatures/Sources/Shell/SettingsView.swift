@@ -204,6 +204,11 @@ struct GeneralSettings: View {
         .fileImporter(isPresented: $choosingSaveFolder, allowedContentTypes: [.folder]) { result in
             if case .success(let url) = result { saveFolder = url.path(percentEncoded: false) }
         }
+        // The folder in use as served (named here, else found for the chosen save), so the field is never empty while
+        // the server knows it (N6 polish: it was, after a switch)
+        .onChange(of: model.status?.saveFolder, initial: true) { _, served in
+            if let served, !served.isEmpty { saveFolder = served }
+        }
     }
 
     /// Where Pennant keeps its own data, and the backup it took before it first ran there.

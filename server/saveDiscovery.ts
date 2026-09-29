@@ -238,7 +238,7 @@ export function noticeKey(notice: SavePlayedElsewhere | null): string {
  * configured (`servedLeagueCertain`), or until it has been worked out. A save whose folder could not be found is
  * worked out again at the next look, never kept for good.
  */
-let servedId: { signature: string; id: string | null; located: boolean; seeded?: boolean } | null = null;
+let servedId: { signature: string; id: string | null; located: boolean; seeded?: boolean; folder?: string | null } | null = null;
 
 /** What the served save's id depends on: the database, its import, and the configuration. Cheap (no file is read). */
 function servedSignature(): string {
@@ -253,7 +253,7 @@ export function refreshServedSaveId(): string | null {
   if (servedId?.signature === signature && servedId.located && !servedId.seeded) return servedId.id;
   try {
     const save = tableExists('players') && servedLeagueCertain() ? servedSave() : null;
-    servedId = { signature, id: save?.folderId || null, located: save === null || save.located };
+    servedId = { signature, id: save?.folderId || null, located: save === null || save.located, folder: save?.located ? save.folderPath : null };
     // Remembered for the next start, which serves it at once (`servedFacts.ts`); only an id worked out for good
     if (servedId.located && servedId.id) rememberFact('saveId', servedId.id);
   } catch (err) {
@@ -296,6 +296,11 @@ export function lookAtTheServedSave(): void {
       console.error('[saves] a look at the served save failed:', err);
     }
   }
+}
+
+/** The served save's own folder as last found, while it is still the served one's; null otherwise. Never locates one. */
+export function servedSaveFolder(): string | null {
+  return servedId && servedId.signature === servedSignature() ? servedId.folder ?? null : null;
 }
 
 /** The served save's id as last worked out, while it is still the served one's; null otherwise. Never locates a save. */

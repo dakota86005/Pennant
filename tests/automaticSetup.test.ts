@@ -6,7 +6,7 @@ import { loadConfig, saveConfig, type AppConfig } from '../server/config.js';
 import { clubForgottenWhenImported, forgetClubWhenImported, loadSettings } from '../server/settings.js';
 import { stopWatcher } from '../server/watcher.js';
 import { APP_STORE_27, PretendHome } from './saveHomeFixture';
-import { post } from './request';
+import request, { post } from './request';
 
 /**
  * The first run's zero-question setup (D-063, BEHAVIOR_CASES "Finding the save"): with no save chosen, the save that
@@ -179,5 +179,22 @@ describe('a save chosen by the GM, with its club taken from the save (N6 Stage B
     expect(answer).toMatchObject({ ok: true, importStarted: true, club: null });
     expect(loadSettings().defaultOrgId).toBe(3);
     await post('/api/settings', { defaultOrgId: null });
+  });
+
+  it('names the save\'s own folder for the transaction log when it is chosen, unless the GM named one for this save (N6 polish)', async () => {
+    const first = home.save(APP_STORE_27, 'Transaction log', { playedHoursAgo: 1 });
+    await post('/api/config', { csvDir: first.csvDir, saveName: 'Transaction log', club: 'fromSave' });
+    expect(loadConfig().lgPath).toBe(path.resolve(first.lg));
+    await until(() => !importState.importing);
+    expect((await request('/api/status')).saveFolder).toBe(path.resolve(first.lg));
+    // A folder the GM named for this save is kept when the same save is chosen again
+    saveConfig({ ...loadConfig(), lgPath: '/by/hand/My.lg' });
+    await post('/api/config', { csvDir: first.csvDir, saveName: 'Transaction log', club: 'fromSave' });
+    expect(loadConfig().lgPath).toBe('/by/hand/My.lg');
+    await until(() => !importState.importing);
+    // Another save: its own folder, never the other save's
+    const second = home.save(APP_STORE_27, 'Another', { playedHoursAgo: 1 });
+    await post('/api/config', { csvDir: second.csvDir, saveName: 'Another', club: 'fromSave' });
+    expect(loadConfig().lgPath).toBe(path.resolve(second.lg));
   });
 });

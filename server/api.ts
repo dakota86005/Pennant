@@ -13,7 +13,7 @@ import { readRatingMode } from './ratingMode.js';
 import { registerPostImportHook, runPostImportHooks } from './postImport.js';
 import { snapshotsAfterImport } from './importSnapshots.js';
 import { currentHistoryKey } from './historyIdentity.js';
-import { currentPlayedElsewhere, forgetSaveScan, lookAtTheServedSave, onLookAtTheServedSave, servedSaveId, humanClubsInExport, clubNameInExport, pickSave, saveLabel, type SavePlayedElsewhere } from './saveDiscovery.js';
+import { currentPlayedElsewhere, forgetSaveScan, lookAtTheServedSave, onLookAtTheServedSave, servedSaveFolder, servedSaveId, humanClubsInExport, clubNameInExport, pickSave, saveLabel, type SavePlayedElsewhere } from './saveDiscovery.js';
 import { saveDiscoveryView, type SaveDiscovery } from './presentation/saveWords.js';
 import { assertAuthored } from './presentation/claim.js';
 import type { Claim } from './contract/presentation.js';
@@ -631,6 +631,12 @@ export interface ServerStatus {
    * another save's is never drawn and a save being left never has its report kept under the new one's id.
    */
   saveId: string | null;
+  /**
+   * The save's own folder (`<save>.lg`), where Pennant reads the transaction log (N6 polish): the one named in Settings,
+   * else the one found for the chosen save (filled in when a save is chosen, or found at the last look at the served
+   * save); null when none is known. Settings shows it, so the field is never empty while the folder is known.
+   */
+  saveFolder: string | null;
 }
 
 /** A request the server accepted, with nothing more to say. */
@@ -739,6 +745,8 @@ export function statusSnapshot(): ServerStatus {
     savePlayedElsewhere: currentPlayedElsewhere(),
     // Worked out off this request's path (at start, the minute's look, a new configuration, an import): only read here
     saveId: servedSaveId(),
+    // The configuration's folder, else the one the last look found (never located on this path)
+    saveFolder: config.lgPath ?? servedSaveFolder(),
     /*
      * The scale OOTP is set to show ratings on, read off the save. Bars used
      * to divide by eighty regardless, so a 5 on the 1-to-5 scale drew at six
@@ -780,6 +788,16 @@ api.use('/v2', v2Routes);
  */
 export const IMPORT_RUNNING = 'An import is already running. Wait for it to finish, then try again.';
 
+/** The `<save>.lg` folder the export belongs to, as the save list finds it; null when it isn't found. */
+function foundSaveFolder(csvDir: string, saveName: string | null): string | null {
+  try {
+    const location = locateSave({ csvDir, saveName });
+    return location.found && location.lgPath ? location.lgPath : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Chooses a save: its export folder and name become the configuration, and its import starts when the folder is there
  * (with the watcher). Returns whether the import started. The caller has checked that no import is running.
@@ -787,7 +805,10 @@ export const IMPORT_RUNNING = 'An import is already running. Wait for it to fini
 function chooseSave(csvDir: string, saveName: string | null): boolean {
   // A hand-picked .lg folder belongs to the save it was picked for
   const previous = loadConfig();
-  saveConfig({ csvDir, saveName, lgPath: previous.csvDir === csvDir ? previous.lgPath ?? null : null });
+  // Otherwise the save's own folder, as the save list finds it (D-063), so the transaction log's setting names it
+  // (N6 polish: it was left empty after a switch); a folder named by hand for this save is kept
+  const kept = previous.csvDir === csvDir ? previous.lgPath ?? null : null;
+  saveConfig({ csvDir, saveName, lgPath: kept ?? foundSaveFolder(csvDir, saveName) });
   // The served league is not this save's until its import lands: the status stops naming the save being left at once
   lookAtTheServedSave();
   resetTransactionLogCache();
