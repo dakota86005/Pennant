@@ -61,7 +61,7 @@ describe('the masthead reads the season as the export gives it', () => {
     expect(words.place?.claim.text).toBe('1st in the East');
     // The basis names the level games back and why the order is the standings' own (N6 polish)
     const level = words.place!.claim.basis.because.find((b) => b.label === 'Level on games back');
-    expect(level?.value).toMatch(/\(\.600\): level with us \(\.605\) on games back; the place is the standings' own order, which goes by winning percentage$/);
+    expect(level?.value).toMatch(/\(\.600\): level with us \(\.605\) on games back; the place is the standings' own order$/);
     expect(divisionPlace(readTeamSeason(2))).toMatchObject({ rank: 2, tiedWith: 0, gamesBack: 0 });
     // The runner-up's basis names it too, from its side
     const second = teamSeasonWords(buildOf(2), { ...readMorning(2, getDataStatus(), null), division: divisionPlace(readTeamSeason(2))! });

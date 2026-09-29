@@ -289,7 +289,8 @@ describe('the farm\'s readiness against its bar', () => {
     let man = rosterMapWords(build, m).positions[0].farmNext!;
     // Readiness 98 clears his bar; what holds him back is the evidence: said as such, never "readiness 98 · not ready"
     expect(man.readiness.display).toBe('Not ready yet: too little time at Triple-A to judge him');
-    expect(man.readiness.hint).toBe('Evidence 33, a look needs 45; readiness 98 clears his bar of 76');
+    expect(man.readiness.hint).toBe('Playing time at Triple-A: 33 of the 45 a look asks');
+    expect(man.readiness.hint).not.toMatch(/evidence/i);
     expect(man.bar!.line.display).toBe('Readiness 98 clears his bar of 76');
     expect(man.text).toBe('A. Castle · Triple-A · not ready yet');
     m.map.positions[0] = { ...m.map.positions[0], farmNext: castle(['readiness'], 60) } as never;

@@ -108,7 +108,15 @@ describe('the status line and the question never contradict each other (N6 Stage
 
 describe('how far a history\'s players match, said as the share it is (N6 polish)', () => {
   it('states the share plainly, never "only some" of 99.3%, and says below the line that only the GM can say', () => {
-    expect(playersWords('unclear', 7948, 8007)).toBe('99.2% of its players match this save\'s (7948 of 8007 compared): short of the 99.9% that makes it surely the same league, so only you can say');
+    expect(playersWords('unclear', 7948, 8007, 'unclear')).toBe('99.2% of its players match this save\'s (7948 of 8007 compared): short of the 99.9% the check asks for, so only you can say whether it\'s this league\'s');
+    // The players test only ever refuses (D-064): the line is never said to make it the same league
+    expect(playersWords('unclear', 7948, 8007, 'unclear')).not.toMatch(/surely|same league/);
+    // Well below a match: it reads as another league's, never "only you can say"
+    expect(playersWords('unclear', 30, 100, 'different')).toBe('30% of its players match this save\'s (30 of 100 compared): well below a match, so it reads as another league\'s');
+    // Exact integer maths: 999 of 1000 is 99.9%, and 1 short of a tenth is rounded down
+    expect(playersWords('same', 999, 1000)).toMatch(/^99\.9% /);
+    expect(playersWords('unclear', 2997, 3001)).toMatch(/^99\.8% /);
+    expect(playersWords('unclear', 1, 3)).toMatch(/^33\.3% /);
     expect(playersWords('same', 8007, 8007)).toBe('100% of its players match this save\'s (8007 of 8007 compared)');
     // Rounded down: a share short of the line is never shown as reaching it
     expect(playersWords('unclear', 9989, 10000)).toMatch(/^99\.8% /);

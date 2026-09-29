@@ -179,14 +179,16 @@ function standingLine(build: BuildContext, facts: TeamSeasonFacts, me: ClubFacts
 
 /**
  * Clubs level with ours on games back that do not share its place (N6 polish: 26–17 and 27–18, both 0 back, and the
- * line said "1st"): the basis names them and why the order is what it is, the winning percentage the standings order by
- * (or, with no order exported, the records'). Nothing when none is.
+ * line said "1st"): the basis names them with their winning percentages, and that the place is the standings' own order
+ * (never how OOTP orders them, which the export does not say), or, with no order exported, the records' order by
+ * winning percentage. Nothing when none is.
  */
 function levelOnGamesBack(members: ClubFacts[], place: DivisionPlace): Array<{ label: string; value: string }> {
   if (!place.levelOnGamesBack?.length) return [];
   const pct = (v: number | null) => (v === null ? 'not known' : v.toFixed(3).replace(/^0/, ''));
   const name = (id: number) => members.find((c) => c.teamId === id)?.name ?? 'Another club';
-  const order = place.order === 'standings' ? 'the standings\' own order, which goes by winning percentage' : 'counted from the records, by winning percentage';
+  // The standings' own order is the export's: how OOTP orders them is not said, only that it is theirs (N6 polish review)
+  const order = place.order === 'standings' ? 'the standings\' own order' : 'counted from the records, by winning percentage';
   return [{
     label: 'Level on games back',
     value: `${listWords(place.levelOnGamesBack.map((c) => `${name(c.teamId)} (${pct(c.pct)})`))}: level with us (${pct(place.pct)}) on games back; the place is ${order}`,
@@ -705,10 +707,13 @@ function notYetWords(f: FarmNext, level: string): { text: string; hint: string }
   // An assessment from before its bars were served (a kept test double) names none: the plain "Not ready yet"
   for (const id of a.unmet ?? []) {
     if (id === 'sample_confidence' && a.sample) {
-      const need = a.sample.need !== null ? `, a look needs ${Math.round(a.sample.need)}` : '';
+      // In plain words, never "evidence 33, a look needs 45" (N6 polish review); his readiness against his bar is the
+      // bar's own line beside it, so the hover (75 characters at most) holds the playing time alone
+      const have = Math.round(a.sample.have);
+      const time = a.sample.need !== null ? `${have} of the ${Math.round(a.sample.need)} a look asks` : `${have}`;
       return {
         text: `Not ready yet: too little time at ${level} to judge him`,
-        hint: `Evidence ${Math.round(a.sample.have)}${need}${readiness ? `; ${readiness}` : ''}`,
+        hint: `Playing time at ${level}: ${time}`,
       };
     }
     if (id === 'readiness') return { text: 'Not ready yet: short of his bar', hint: readiness ? capital(readiness) : 'Player Development: not yet, by its bar' };

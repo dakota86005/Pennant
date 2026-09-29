@@ -677,9 +677,12 @@ yet "it just works" on a 1.1 GB league). Measured on a scratch import of a read-
   toolbar's background is the system's (on macOS 26, that edge), so content under the toolbar blurs and never
   overprints it; the masthead's colour alone runs up beneath the toolbar.
 - **Words** (server, with tests): the farm's next man's blocker in plain words on the visible line, the numbers in the
-  hover; the next starter said once ("Next"); "the regular", never "holder" (now banned jargon); a history's players as
-  the share they are, rounded down, never "only some" and never past the 99.9% line (D-064); a new certainty, `recorded`
-  ("From Pennant's own record"), for the rating history; a place level on games back named in its basis.
+  hover ("Playing time at Triple-A: 33 of the 45 a look asks"); the next starter said once ("Next"); "the regular", never
+  "holder" (now banned jargon); a history's players as the share they are, rounded down in whole tenths, never "only
+  some", never past the check's 99.9% line and never said to make it the same league (the players test only ever
+  refuses, D-064), and a history well below a match said to read as another league's; a new certainty, `recorded`
+  ("From Pennant's own record"), for the rating history; a place level on games back named in its basis, with each
+  club's winning percentage and "the standings' own order", never how the game orders them.
 - **Also:** the history migration logs what it did in plain words (saves bound, the backup, dates brought over, rows
   copied, dates and rows left in place and why); choosing a save names its `.lg` folder for the transaction log unless
   the GM named one, and the status serves the folder in use (`saveFolder`) for Settings; Settings opens with nothing
@@ -958,7 +961,7 @@ All of it moves to the server, for three reasons:
 ### 4.1 Types (in `server/contract/`)
 
 ```ts
-type Certainty = 'calibrated' | 'provisional' | 'policy' | 'unknown';         // open enum in the spec
+type Certainty = 'calibrated' | 'provisional' | 'policy' | 'unknown';         // open enum in the spec (as built: + 'fact', 'recorded')
 interface Claim {
   text: string;                    // the visible line, GM voice
   hint?: string;                   // ≤ 75 chars, the help tag
@@ -987,7 +990,8 @@ interface Cell { display: string; tone?: Tone; hint?: string; claimRef?: string 
 **As built at N4 (Stage A), 2026-09-26.**
 - The types are in `server/contract/presentation.ts`, as sketched above, with four changes: `Certainty` gains `fact` (an
   objective fact read from the export, which no fitted number and no chosen line decided, so a plain fact is never
-  stamped policy); `Target` is one flat shape (`kind` plus the fields a kind needs: `department`, `view`, `playerId`,
+  stamped policy), and at the N6 polish `recorded` (what Pennant itself recorded, such as the rating history: "From
+  Pennant's own record", never a fact from the export); `Target` is one flat shape (`kind` plus the fields a kind needs: `department`, `view`, `playerId`,
   `teamId`, `key`), so Swift reads one struct; `DeptId` is the Mac app's own ids (`frontOffice`, `majorLeague`, ...);
   `Unit` is `count | share | rate | dollars | wins | runs | games | days | years | place`. `Row<K>` is generic over its
   columns (`cells: Record<K, Cell>`, `sort: Record<K, number | string | null>`) and is never exported: a payload exports
