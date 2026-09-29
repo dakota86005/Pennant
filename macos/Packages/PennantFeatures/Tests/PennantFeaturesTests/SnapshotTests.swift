@@ -1,6 +1,7 @@
 import AppKit
-import FeatureCore
-import FrontOffice
+@testable import FeatureCore
+@testable import FrontOffice
+import League
 import Foundation
 import PennantAPI
 import PennantDesign
@@ -516,6 +517,155 @@ struct SnapshotTests {
             .environment(\.claimActions, ClaimActions(pin: { _ in }, detach: { _ in }, canOpen: { _ in true }, open: { _ in }, departmentName: { _ in "Major League Ops" }))
             .environment(\.routeOpener, MainWindowModel(registry: registry))
         try draw(view, size: CGSize(width: 1160, height: 520), look: look, name: "served-morning-report-updated")
+    }
+
+    // MARK: The GM's attention and the league (N7, Stage B)
+
+    private var n7Actions: ClaimActions {
+        ClaimActions(pin: { _ in }, detach: { _ in }, canOpen: { _ in true }, open: { _ in }, departmentName: { _ in "Major League Ops" })
+    }
+
+    /// The Morning Report after a second export, through the adapters: the "since" chips, the desk with an item set aside
+    /// and its served line, and around the league with its stated order and gaps.
+    @Test("the Morning Report since the last export: the chips, the desk set aside, around the league", arguments: [Look.light, .dark])
+    func sinceMorningReport(look: Look) throws {
+        let model = PreviewFixtures.ready(since: true, following: PreviewFixtures.following(followed: true))
+        let summary = try #require(model.frontOffice.summary)
+        let view = ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                MorningReportMasthead(summary: summary, record: model.catalogClub?.record, headline: Text(verbatim: DesignFixtures.served("Morning Report")))
+                    .environment(\.mastheadTopInset, 52)
+                MorningReportPage(summary: summary).padding(.horizontal, 28).padding(.vertical, 24)
+            }
+        }
+        .environment(model).environment(AppRouting()).environment(\.theme, model.theme).environment(\.contentWidth, 1160)
+        .environment(\.claimActions, n7Actions).environment(\.routeOpener, MainWindowModel(registry: registry))
+        try draw(view, size: CGSize(width: 1160, height: 2900), look: look, name: "n7-morning-report-since")
+    }
+
+    @Test("the main window since the last export, with Following in the sidebar", arguments: [Look.light, .dark])
+    func sinceWindow(look: Look) throws {
+        let model = PreviewFixtures.ready(since: true, following: PreviewFixtures.following(followed: true))
+        let window = MainWindowModel(registry: registry, expanded: ["frontOffice"])
+        window.go(to: AppRoute(department: "frontOffice", view: "morningReport"))
+        try drawMainWindow(model: model, window: window, look: look, name: "n7-main-window-since", size: Self.designWindow)
+    }
+
+    nonisolated static let chipKinds = ["new", "resolved", "results"]
+
+    @Test("what each chip opens", arguments: chipKinds, [Look.light, .dark])
+    func chipItems(kind: String, look: Look) throws {
+        let model = PreviewFixtures.ready(since: true)
+        let changes = try #require(model.frontOffice.summary?.changes)
+        let chip = try #require([changes.new, changes.resolved, changes.moved, changes.results].first { $0.kind.value1?.rawValue == kind })
+        let view = ChangeItemsView(chip: chip).environment(model).environment(\.claimActions, n7Actions)
+            .environment(\.routeOpener, MainWindowModel(registry: registry))
+        try draw(view, size: CGSize(width: 400, height: 300), look: look, name: "n7-chip-\(kind)")
+    }
+
+    /// A desk item in each status, as served words beneath it: reviewed with a note, deferred, handled while the latest
+    /// export still shows it, a deferral that ended. The tile keeps the department's tone in every one.
+    @Test("a desk row in each status, and the items set aside", arguments: [Look.light, .dark])
+    func deskStatuses(look: Look) throws {
+        let model = PreviewFixtures.ready(since: true)
+        let desk = try #require(model.frontOffice.summary?.desk)
+        let aside = try #require(desk.setAside)
+        let base = try #require(desk.items.first)
+        func item(_ status: Components.Schemas.DeskStatus.Value1Payload, line: String, tone: Components.Schemas.Tone.Value1Payload? = nil, note: String? = nil, still: Bool = false, ended: Bool = false) -> Components.Schemas.FoItem {
+            var item = base
+            item.key = "\(base.key).\(status.rawValue)\(ended ? ".ended" : "")"
+            item.attention.status = .init(value1: status, value2: status.rawValue)
+            item.attention.line = .init(display: line, tone: tone.map { .init(value1: $0, value2: $0.rawValue) })
+            item.attention.note = note
+            item.attention.deferralEnded = ended
+            item.attention.stillShown = still ? .init(display: "The latest export still shows it", tone: .init(value1: .caution, value2: "caution")) : nil
+            return item
+        }
+        let items = [
+            item(.reviewed, line: "Reviewed", note: "Talked it over with the manager"),
+            item(.deferred, line: "Deferred until May 20, 2040"),
+            item(.handled, line: "Handled in OOTP", still: true),
+            item(.deferred, line: "Deferral ended May 9, 2040", tone: .caution, ended: true),
+        ]
+        let view = HStack(alignment: .top, spacing: 24) {
+            RowGroup {
+                ForEach(items, id: \.key) { DeskItemRow($0) }
+            }
+            .frame(width: 520)
+            SetAsideList(aside: aside)
+        }
+        .padding(20)
+        .environment(model).environment(\.claimActions, n7Actions).environment(\.theme, model.theme)
+        try draw(view, size: CGSize(width: 1020, height: 520), look: look, name: "n7-desk-statuses")
+    }
+
+    @Test("an item's note, as the GM edits it", arguments: [Look.light, .dark])
+    func deskNote(look: Look) throws {
+        let model = PreviewFixtures.ready(since: true)
+        let item = try #require(model.frontOffice.summary?.desk.setAside?.items.first)
+        try draw(DeskNoteEditor(item: item) {}.environment(model), size: CGSize(width: 340, height: 230), look: look, name: "n7-desk-note")
+    }
+
+    @Test("League Office's wire in the window, with its filters", arguments: [Look.light, .dark])
+    func wireWindow(look: Look) throws {
+        let model = PreviewFixtures.ready(following: PreviewFixtures.following(followed: true))
+        let window = MainWindowModel(registry: registry, expanded: ["league"])
+        window.go(to: AppRoute(department: "league", view: "wire"))
+        try drawMainWindow(model: model, window: window, look: look, name: "n7-wire-window", size: Self.designWindow)
+    }
+
+    @Test("League Office's club reports", arguments: [Look.light, .dark])
+    func clubReports(look: Look) throws {
+        let model = PreviewFixtures.ready(following: PreviewFixtures.following(followed: true))
+        let window = MainWindowModel(registry: registry, expanded: ["league"])
+        window.go(to: AppRoute(department: "league", view: "clubReports"))
+        try drawMainWindow(model: model, window: window, look: look, name: "n7-club-reports-window", size: Self.designWindow)
+    }
+
+    /// A rival's report in its own window, in its own served colours.
+    @Test("a club's window", arguments: [Look.light, .dark, .lightIncreasedContrast])
+    func clubWindow(look: Look) throws {
+        let model = PreviewFixtures.ready()
+        let view = ClubReportView(teamId: 2).environment(model).environment(AppRouting()).environment(\.claimActions, n7Actions)
+        try draw(view, size: CGSize(width: 1180, height: 2000), look: look, name: "n7-club-window", titled: true)
+    }
+
+    nonisolated static let followingStates = ["suggested", "followed", "refused"]
+
+    @Test("the sidebar's Following: the rivals suggested, clubs and players followed, a refusal in the server's words", arguments: followingStates, [Look.light, .dark])
+    func followingSidebar(state: String, look: Look) throws {
+        let following = PreviewFixtures.following(
+            followed: state != "suggested",
+            refusal: state == "refused" ? .served("The save you chose isn't imported yet, so its follows can't be changed.") : nil
+        )
+        let model = PreviewFixtures.ready(following: following)
+        let window = MainWindowModel(registry: registry, expanded: ["frontOffice"])
+        try draw(looked(sidebarView(model: model, window: window), look), size: CGSize(width: SidebarView.idealWidth, height: 900), look: look, name: "n7-sidebar-following-\(state)", titled: true)
+    }
+
+    @Test("the ⌘K palette with the server's results", arguments: [Look.light, .dark])
+    func paletteSearch(look: Look) throws {
+        let model = PreviewFixtures.ready(following: PreviewFixtures.following(followed: true))
+        let index = PaletteIndex(registry: registry, catalog: model.catalog, can: .of(model, window: nil), inspectorShown: false, search: PreviewFixtures.search)
+        let view = CommandPalette(entries: index.entries, served: index.served, emptyLine: index.emptyLine, query: .constant("club"), open: { _ in }, dismiss: {})
+            .padding(30).environment(\.theme, model.theme)
+        try draw(view, size: CGSize(width: 700, height: 560), look: look, name: "n7-palette-search")
+    }
+
+    @Test("the club owed after a relaunch: the report held, the served sentence, Choose Your Club…", arguments: [Look.light, .dark])
+    func clubOwed(look: Look) throws {
+        let model = PreviewFixtures.ready(clubOwed: .init(text: "You manage 2 clubs in this save. Choose the one to follow.", humanClubs: 2, since: "2040-07-02T10:01:00.000Z"))
+        let window = MainWindowModel(registry: registry, expanded: ["frontOffice"])
+        try drawMainWindow(model: model, window: window, look: look, name: "n7-club-owed", size: Self.designWindow)
+    }
+
+    @Test("a department's report with what changed since the last export", arguments: [Look.light, .dark])
+    func reportChanges(look: Look) throws {
+        let model = PreviewFixtures.ready(since: true)
+        let report = try #require(model.frontOffice.reports.values.first { $0.changes?.isEmpty == false })
+        let view = ScrollView { DepartmentReportContent(report: report).padding(24) }.environment(model).environment(AppRouting())
+            .environment(\.claimActions, n7Actions)
+        try draw(view, size: CGSize(width: 900, height: 1500), look: look, name: "n7-report-changes")
     }
 
     // MARK: Drawing

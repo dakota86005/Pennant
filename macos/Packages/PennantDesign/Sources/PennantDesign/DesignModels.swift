@@ -288,12 +288,15 @@ nonisolated public struct Chip: Identifiable, Sendable, Hashable {
     public var symbol: String
     public var text: String
     public var hint: String
+    /// Whether it opens its items (a chip that counts none, "None moved", is drawn as words, not a control).
+    public var opens: Bool
 
-    public init(id: String, symbol: String, text: String, hint: String) {
+    public init(id: String, symbol: String, text: String, hint: String, opens: Bool = true) {
         self.id = id
         self.symbol = symbol
         self.text = text
         self.hint = hint
+        self.opens = opens
     }
 }
 
@@ -307,14 +310,21 @@ nonisolated public struct WireItem: Identifiable, Sendable, Hashable {
     public var text: String
     /// When, as served ("Yesterday", "July 12").
     public var when: String
+    /// What happened as a served claim, so its basis opens; nil draws the text alone (the fixtures).
+    public var claim: Components.Schemas.Claim?
+    /// The club's id, for its window and a drag; nil when not served.
+    public var clubId: Int?
 
-    public init(id: String, club: String, abbreviation: String, followed: Bool, text: String, when: String) {
+    public init(id: String, club: String, abbreviation: String, followed: Bool, text: String, when: String,
+                claim: Components.Schemas.Claim? = nil, clubId: Int? = nil) {
         self.id = id
         self.club = club
         self.abbreviation = abbreviation
         self.followed = followed
         self.text = text
         self.when = when
+        self.claim = claim
+        self.clubId = clubId
     }
 }
 
@@ -462,8 +472,10 @@ nonisolated public struct PaletteEntry: Identifiable, Sendable, Hashable {
     public var keywords: [String]
     /// A keyboard shortcut to show beside it ("⌘2"); nil for none.
     public var shortcut: String?
+    /// The GM follows it (a served search result): a star beside it.
+    public var followed: Bool
 
-    public init(id: String, group: String, symbol: String, title: String, line: String? = nil, keywords: [String] = [], shortcut: String? = nil) {
+    public init(id: String, group: String, symbol: String, title: String, line: String? = nil, keywords: [String] = [], shortcut: String? = nil, followed: Bool = false) {
         self.id = id
         self.group = group
         self.symbol = symbol
@@ -471,6 +483,7 @@ nonisolated public struct PaletteEntry: Identifiable, Sendable, Hashable {
         self.line = line
         self.keywords = keywords
         self.shortcut = shortcut
+        self.followed = followed
     }
 
     /// Whether the query matches: every word of the query is a prefix of a word in the title, the group, the line or

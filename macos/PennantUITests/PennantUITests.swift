@@ -94,6 +94,9 @@ final class PennantUITests: XCTestCase {
     /// - "parent/child mismatch" inside the window's own close, minimise or zoom button (AppKit's zoom-menu view in the
     ///   title bar; the app draws nothing there), and one the audit attributes to no element (seen only with the ⌘K
     ///   palette up);
+    /// - a contrast finding on an element wholly outside every window's frame, or cut by its window's edge (text of a
+    ///   report longer than its window, scrolled wholly or partly out of view: the audit measures pixels that are not the
+    ///   text's, or a sliver of it; N7);
     /// - a contrast finding on a sidebar row label (`sidebar.…`) only: outside the sidebar's visible frame (GitHub's runner
     ///   has a 1024 × 768 screen, so rows below the window are measured against pixels that are not theirs), or inside it
     ///   when its own pixels, in a screenshot of the window that holds it taken at the audit, read at 4.5:1 or better
@@ -140,7 +143,15 @@ final class PennantUITests: XCTestCase {
                 return true
             }
             let frame = element.frame
-            if element.elementType == .touchBar || (touchBarFrame.map { $0.contains(frame) } ?? false) {
+            if issue.auditType == .contrast, !windows.contains(where: { $0.frame.intersects(frame) }) {
+                // Scrolled wholly out of its window (a report longer than the window): none of its pixels are on the
+                // screen, so what the audit measured there is not its text
+                setAside.append(line + " (wholly outside its window's frame: scrolled out of view)")
+            } else if issue.auditType == .contrast, !windows.contains(where: { $0.frame.contains(frame) }) {
+                // Cut by its window's edge (a line of a report longer than the window, partly scrolled out of view): the
+                // audit measures the whole line, of which only a sliver is on the screen
+                setAside.append(line + " (cut by its window's edge: partly scrolled out of view)")
+            } else if element.elementType == .touchBar || (touchBarFrame.map { $0.contains(frame) } ?? false) {
                 setAside.append(line + " (the Touch Bar the system draws, or a key on it)")
             } else if issue.auditType == .sufficientElementDescription, element.elementType == .group,
                       element.identifier.isEmpty, element.label.isEmpty, isSidebarColumn(frame) {
@@ -604,6 +615,189 @@ final class PennantUITests: XCTestCase {
         app = launch(arguments: ["-PennantDebugAppearance", "increasedContrastDark"])
         try shellFlow(app, look: "aurora-nights-dark-increased-contrast")
         quitCleanly(app)
+    }
+
+    // MARK: Pennant remembers, and the league is alive (N7, Stage B)
+
+    /// A context menu's item by its title: the open menu's, never the menu bar's closed menu of the same title (whose
+    /// items are in the tree with no size).
+    @MainActor
+    private func contextMenuItem(_ app: XCUIApplication, _ title: String) -> XCUIElement {
+        let deadline = Date.now.addingTimeInterval(5)
+        repeat {
+            let open = app.menuItems.matching(NSPredicate(format: "title == %@", title)).allElementsBoundByIndex.first { $0.frame.width > 0 }
+            if let open { return open }
+            Thread.sleep(forTimeInterval: 0.2)
+        } while Date.now < deadline
+        return app.menuItems["no open menu item titled \(title)"]
+    }
+
+    /// The first open item on the desk, as the Morning Report shows it.
+    @MainActor
+    private func firstDeskItem(_ app: XCUIApplication) -> XCUIElement {
+        element(app, "morningReport.desk").descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'item.' AND NOT (identifier BEGINSWITH 'item.urgency') AND NOT (identifier BEGINSWITH 'item.options') AND NOT (identifier BEGINSWITH 'item.status') AND NOT (identifier BEGINSWITH 'item.note') AND NOT (identifier BEGINSWITH 'item.still')")).firstMatch
+    }
+
+    /// The desk (D-058): an item marked Reviewed from its context menu leaves the lead list for the served "1 reviewed"
+    /// line, and ⌘Z puts it back through the server's own undo request; ⇧⌘Z marks it again. Audited with the item set
+    /// aside and the set-aside list open.
+    @MainActor
+    func testDeskMarkAndUndo() throws {
+        let app = launch()
+        waitForShell(app)
+        app.typeKey("1", modifierFlags: .command)
+        XCTAssertTrue(element(app, "morningReport.desk").waitForExistence(timeout: 30), "the Morning Report's desk did not load")
+        let item = firstDeskItem(app)
+        XCTAssertTrue(item.waitForExistence(timeout: 10), "no item on the desk")
+        let key = item.identifier
+        item.rightClick()
+        let mark = contextMenuItem(app, "Mark Reviewed")
+        XCTAssertTrue(mark.waitForExistence(timeout: 5), "the item's context menu has no Mark Reviewed")
+        mark.click()
+        XCTAssertTrue(element(app, "desk.setAside").waitForExistence(timeout: 10), "the served set-aside line did not appear")
+        XCTAssertTrue(element(app, "morningReport.desk").descendants(matching: .any)[key].firstMatch.waitForNonExistence(timeout: 10), "the item stayed on the desk")
+        // The report back at its top: the right-click scrolled the item into view, and text under the toolbar's fading
+        // edge is not text the GM reads there
+        element(app, "detail.frontOffice.morningReport").scroll(byDeltaX: 0, deltaY: 5000)
+        keep(app.windows.firstMatch.screenshot(), named: "n7-desk-marked")
+        sidebarAtTop(app)
+        try audit(app, named: "accessibility-audit-n7-desk-marked")
+        element(app, "desk.setAside").click()
+        XCTAssertTrue(element(app, "desk.setAside.list").waitForExistence(timeout: 5), "the set-aside line did not open its items")
+        keep(app.windows.firstMatch.screenshot(), named: "n7-desk-set-aside")
+        app.typeKey(.escape, modifierFlags: [])
+        // Undo, through the window's undo manager and the server's own request
+        app.typeKey("z", modifierFlags: .command)
+        XCTAssertTrue(element(app, "morningReport.desk").descendants(matching: .any)[key].firstMatch.waitForExistence(timeout: 10), "⌘Z did not put the item back on the desk")
+        XCTAssertTrue(element(app, "desk.setAside").waitForNonExistence(timeout: 10), "the set-aside line stayed after ⌘Z")
+        // Redo marks it again
+        app.typeKey("z", modifierFlags: [.command, .shift])
+        XCTAssertTrue(element(app, "desk.setAside").waitForExistence(timeout: 10), "⇧⌘Z did not mark it again")
+        keep(app.windows.firstMatch.screenshot(), named: "n7-desk-redone")
+        quitCleanly(app)
+    }
+
+    /// Following by drag (D-058): a club's name dragged from around the league onto the sidebar's Following section is
+    /// followed (the server's answer redraws the section), and ⌘Z unfollows it again.
+    @MainActor
+    func testFollowByDrag() throws {
+        let app = launch()
+        waitForShell(app)
+        app.typeKey("1", modifierFlags: .command)
+        let wire = element(app, "morningReport.wire")
+        XCTAssertTrue(wire.waitForExistence(timeout: 30), "around the league did not load")
+        let target = element(app, "sidebar.following")
+        XCTAssertTrue(target.waitForExistence(timeout: 10), "the sidebar has no Following section")
+        let club = wire.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'club.'")).firstMatch
+        XCTAssertTrue(club.waitForExistence(timeout: 10), "no club's name on the wire")
+        let id = String(club.identifier.dropFirst("club.".count))
+        // Around the league sits below the roster: scrolled into view, a step at a time
+        let report = element(app, "detail.frontOffice.morningReport")
+        for _ in 0..<12 where !club.isHittable { report.scroll(byDeltaX: 0, deltaY: -300) }
+        XCTAssertTrue(club.isHittable, "the wire's club could not be scrolled into view")
+        // A mouse drag (macOS's click-and-drag, not a trackpad's press), held over the section until it takes it
+        club.click(forDuration: 0.4, thenDragTo: target, withVelocity: .slow, thenHoldForDuration: 0.8)
+        let followed = element(app, "following.club.\(id)")
+        XCTAssertTrue(followed.waitForExistence(timeout: 10), "the dropped club was not followed")
+        keep(app.windows.firstMatch.screenshot(), named: "n7-followed-by-drag")
+        // The pointer off the content (a help tag it left up covers text) and the report back at its top, as the GM
+        // reads it, before the audit
+        target.hover()
+        report.scroll(byDeltaX: 0, deltaY: 5000)
+        sidebarAtTop(app)
+        try audit(app, named: "accessibility-audit-n7-following")
+        app.typeKey("z", modifierFlags: .command)
+        XCTAssertTrue(followed.waitForNonExistence(timeout: 10), "⌘Z did not unfollow the club")
+        quitCleanly(app)
+    }
+
+    /// Search (D-059): ⌘K asks the server as the GM types, shows its groups, and Return on a club opens its report in its
+    /// own window, audited.
+    @MainActor
+    func testSearchToClubWindow() throws {
+        let app = launch()
+        waitForShell(app)
+        app.typeKey("1", modifierFlags: .command)
+        XCTAssertTrue(element(app, "morningReport.desk").waitForExistence(timeout: 30))
+        app.typeKey("k", modifierFlags: .command)
+        let query = element(app, "palette.query")
+        XCTAssertTrue(query.waitForExistence(timeout: 5), "⌘K did not open the palette")
+        query.click()
+        query.typeText("club 3")
+        let result = element(app, "palette.result.search.club.3")
+        XCTAssertTrue(result.waitForExistence(timeout: 10), "the palette did not list the server's club")
+        keep(app.windows.firstMatch.screenshot(), named: "n7-palette-search")
+        sidebarAtTop(app)
+        try audit(app, named: "accessibility-audit-n7-palette-search")
+        query.typeKey(.return, modifierFlags: [])
+        let window = element(app, "club.window.3")
+        XCTAssertTrue(window.waitForExistence(timeout: 10), "Return did not open the club's window")
+        XCTAssertTrue(element(app, "club.scouting").waitForExistence(timeout: 30), "the club's report did not load")
+        keep(app.windows.firstMatch.screenshot(), named: "n7-club-window-from-search")
+        try auditClubWindow(app, named: "accessibility-audit-n7-club-window")
+        quitCleanly(app)
+    }
+
+    /// Audits a club's window on its own: the main window behind it closed (its covered text would be measured against
+    /// the club window's pixels, and a minimised window stays in the tree) and the pointer off the content (a help tag it
+    /// leaves up is the system's).
+    @MainActor
+    private func auditClubWindow(_ app: XCUIApplication, named name: String) throws {
+        let main = app.windows.matching(NSPredicate(format: "identifier BEGINSWITH 'main'")).firstMatch
+        if main.exists {
+            main.buttons[XCUIIdentifierCloseWindow].firstMatch.click()
+            XCTAssertTrue(main.waitForNonExistence(timeout: 5), "the main window did not close")
+        }
+        let club = app.windows.firstMatch
+        club.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.01)).hover()
+        Thread.sleep(forTimeInterval: 0.5)
+        try audit(app, named: name)
+    }
+
+    /// A club's window (D-059) from League Office ▸ Club Reports: the masthead, what our scouts see, head to head, the
+    /// next series, moves and injuries as served; Follow in its toolbar, undone with ⌘Z. Audited in light and with
+    /// Increase Contrast.
+    @MainActor
+    func testClubWindow() throws {
+        let app = launch()
+        waitForShell(app)
+        let league = element(app, "sidebar.league")
+        XCTAssertTrue(league.waitForExistence(timeout: 10))
+        app.typeKey("8", modifierFlags: .command)
+        let reports = element(app, "sidebar.league.clubReports")
+        XCTAssertTrue(reports.waitForExistence(timeout: 10))
+        reports.click()
+        let open = element(app, "clubReports.open.2")
+        XCTAssertTrue(open.waitForExistence(timeout: 20), "Club Reports lists no club")
+        open.click()
+        XCTAssertTrue(element(app, "club.window.2").waitForExistence(timeout: 10), "Open did not open the club's window")
+        for part in ["club.scouting", "club.headToHead", "club.nextSeries", "club.moves", "club.injuries", "masthead"] {
+            XCTAssertTrue(element(app, part).waitForExistence(timeout: 30), "the club's window has no \(part)")
+        }
+        keep(app.windows.firstMatch.screenshot(), named: "n7-club-window")
+        let follow = element(app, "club.follow")
+        XCTAssertTrue(follow.waitForExistence(timeout: 5))
+        follow.click()
+        // Followed: the main window's sidebar names it; ⌘Z in the club's window unfollows it again
+        let followed = element(app, "following.club.2")
+        XCTAssertTrue(followed.waitForExistence(timeout: 10), "Follow in the club's window did not follow it")
+        app.typeKey("z", modifierFlags: .command)
+        XCTAssertTrue(followed.waitForNonExistence(timeout: 10), "⌘Z did not unfollow the club")
+        try auditClubWindow(app, named: "accessibility-audit-n7-club-window-light")
+        quitCleanly(app)
+
+        // The same window with Increase Contrast (the app's own pieces as the setting draws them)
+        let contrast = launch(arguments: ["-PennantDebugAppearance", "increasedContrastLight"])
+        waitForShell(contrast)
+        contrast.typeKey("8", modifierFlags: .command)
+        XCTAssertTrue(element(contrast, "sidebar.league.clubReports").waitForExistence(timeout: 10))
+        element(contrast, "sidebar.league.clubReports").click()
+        XCTAssertTrue(element(contrast, "clubReports.open.3").waitForExistence(timeout: 20))
+        element(contrast, "clubReports.open.3").click()
+        XCTAssertTrue(element(contrast, "club.scouting").waitForExistence(timeout: 30))
+        keep(contrast.windows.firstMatch.screenshot(), named: "n7-club-window-increased-contrast")
+        try auditClubWindow(contrast, named: "accessibility-audit-n7-club-window-increased-contrast")
+        quitCleanly(contrast)
     }
 }
 

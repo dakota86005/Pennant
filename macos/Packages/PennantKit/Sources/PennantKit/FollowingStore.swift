@@ -66,6 +66,8 @@ public final class FollowingStore {
             loadedKey = key
             problem = nil
         } catch {
+            // A read cancelled (the key moved and the view asked again) is no problem to show
+            if Task.isCancelled { return }
             let failed = RequestProblem.from(error)
             problem = failed
             if let detail = failed.detail { log("could not read Following: \(detail)") }

@@ -504,6 +504,18 @@ public final class SetupModel {
         await observe(status, fresh: true)
     }
 
+    /// The club the server says is still owed for the chosen save (`clubOwed` on the status or the settings, N7): across a
+    /// relaunch this window no longer remembers the question, so it asks it from the served sentence. Nothing while an
+    /// import is followed or the club is already being asked.
+    public func askOwedClub(_ owed: Components.Schemas.ClubOwed) async {
+        guard step != .importing, step != .pickClub else { return }
+        began = true
+        club = .init(decided: false, name: nil, humanClubs: owed.humanClubs, text: owed.text)
+        clubWasAsked = true
+        step = .pickClub
+        await loadClubs()
+    }
+
     /// The window appears again after it closed itself (the club saved): it starts at the saves, at once, and the list
     /// is read again. Returns whether it started again.
     @discardableResult

@@ -232,6 +232,8 @@ public final class AppModel {
     }
 
     public var clubCard: ClubCard? {
+        // The club question is open (N7): the card claims no club until the GM answers it
+        if clubOwed != nil { return nil }
         if let held = heldCatalog, let club = held.club {
             return ClubCard(name: club.name, source: CurrentClub.Source.from(servedWord: held.clubSource), record: club.record, notInSave: false)
         }

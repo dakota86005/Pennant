@@ -33,6 +33,16 @@ struct PennantApp: App {
         .restorationBehavior(.disabled)
         .defaultSize(width: 380, height: 520)
 
+        // Any club's report, one window per club (N7)
+        WindowGroup("Club", for: ClubRef.self) { club in
+            ClubWindowScene(club: club.wrappedValue)
+                .environment(appDelegate.model)
+                .environment(appDelegate.routing)
+        }
+        .defaultSize(width: 1180, height: 820)
+        // A club window opens only for a club (never File ▸ New Club Window with none)
+        .commandsRemoved()
+
         Window("Set Up Pennant", id: SceneID.setup) {
             SetupScene()
                 .environment(appDelegate.model)
@@ -55,6 +65,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let model: AppModel
     /// What the windows ask of each other (the Setup step, the Settings tab).
     let routing = AppRouting()
+    /// The served notification when a new export is read, and the desk's count on the Dock icon (N7).
+    private let outside: OutsideTheWindow
     private let quit: QuitCoordinator
     private var terminationSignal: (any DispatchSourceSignal)?
 
@@ -62,6 +74,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let model = AppModel(configuration: AppConfiguration.server())
         let controller = model.serverController
         self.model = model
+        outside = OutsideTheWindow(model: model)
         quit = QuitCoordinator(prepare: { model.beginShutdown() }, stop: { await controller.stop() })
         super.init()
         // The server starts now, while the windows are built (the launch budget); `applicationDidFinishLaunching` follows it
@@ -77,6 +90,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         model.noteLaunchStep("the app finished launching")
         terminationSignal = Self.quitOnTerminationSignal()
+        outside.start()
         Task { await model.start() }
         #if DEBUG
         // A Debug build launched by a script for window screenshots comes to the front (`-PennantDebugActivate YES`)

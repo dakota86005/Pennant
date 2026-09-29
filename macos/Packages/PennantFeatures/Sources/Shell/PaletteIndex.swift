@@ -5,7 +5,8 @@ import PennantKit
 
 /// What the ⌘K palette can open in a main window (SWIFTUI_REBUILD.md section 3.6): every department's views from the
 /// registry (their served names when the catalog is there, the structural titles until then), with the Go menu's
-/// shortcuts, and the commands that act on the window. Players and clubs join when the server serves search (N7).
+/// shortcuts, and the commands that act on the window; and, with a query, the server's search answer (N7): its players,
+/// clubs and views as served, grouped and ordered by the server (followed first), the registry's views then left out.
 public struct PaletteIndex: Sendable {
     /// A command the palette can run.
     public enum Command: String, Sendable, Hashable, CaseIterable {
@@ -16,20 +17,41 @@ public struct PaletteIndex: Sendable {
     public enum Action: Sendable, Hashable {
         case route(AppRoute)
         case command(Command)
+        /// A served search result's target: a view, a club's window, or a player's nearest view (his club's window).
+        case served(Components.Schemas.Target)
     }
 
     public let entries: [PaletteEntry]
+    /// The served answer's results, in its order; empty with no answer.
+    public let served: [PaletteEntry]
+    /// The served line when nothing matches; nil with no answer.
+    public let emptyLine: String?
     public let actions: [String: Action]
 
     /// - Parameters:
     ///   - catalog: the served catalog, for the departments' and views' served names; nil uses the structural titles.
     ///   - can: which commands can act now (`CommandAvailability`); a command that cannot is left out.
     ///   - inspectorShown: whether the inspector is up, for the command's label.
-    public init(registry: DepartmentRegistry, catalog: Components.Schemas.Catalog?, can: CommandAvailability, inspectorShown: Bool) {
+    ///   - search: the server's answer for the query typed; nil when none is here (the registry's views are searched).
+    public init(registry: DepartmentRegistry, catalog: Components.Schemas.Catalog?, can: CommandAvailability, inspectorShown: Bool,
+                search: Components.Schemas.SearchAnswer? = nil) {
         var entries: [PaletteEntry] = []
         var actions: [String: Action] = [:]
+        var served: [PaletteEntry] = []
+        for group in search?.groups ?? [] {
+            for result in group.results {
+                let kind = result.kind.value1?.rawValue ?? result.kind.value2 ?? "result"
+                let id = "search.\(kind).\(result.id)"
+                served.append(PaletteEntry(id: id, group: group.title.display, symbol: Self.symbol(kind), title: result.title,
+                                           line: result.line.isEmpty ? nil : result.line, followed: result.followed))
+                actions[id] = .served(result.open)
+            }
+        }
+        self.served = served
+        emptyLine = search?.empty?.display
         let shortcuts = Dictionary(uniqueKeysWithValues: registry.shortcutDepartments.map { ($0.department.id, $0.number) })
-        for department in registry.departments {
+        // With the server's answer here its views stand for the registry's (the same views, in its order)
+        for department in registry.departments where search == nil {
             let served = catalog?.departments.first { $0.id.rawValue == department.id.rawValue }
             let departmentName = served?.name ?? String(localized: department.title)
             for (index, view) in department.views.enumerated() {
@@ -61,4 +83,13 @@ public struct PaletteIndex: Sendable {
     }
 
     public func action(for entry: PaletteEntry) -> Action? { actions[entry.id] }
+
+    /// A served result's symbol by its kind.
+    static func symbol(_ kind: String) -> String {
+        switch kind {
+        case "player": "person"
+        case "club": "building.2"
+        default: "rectangle.stack"
+        }
+    }
 }

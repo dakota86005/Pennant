@@ -4,7 +4,8 @@ import PennantKit
 import SwiftUI
 
 /// The sidebar (SWIFTUI_REBUILD.md section 3.2): the club card, then every department from the registry disclosing its
-/// views (two levels, the HIG's most), with SF Symbols and a badge with the count its card serves to decide.
+/// views (two levels, the HIG's most), with SF Symbols and a badge with the count its card serves to decide, then the
+/// clubs and players the GM follows (N7).
 public struct SidebarView: View {
     @Environment(AppModel.self) private var model
     @Bindable var window: MainWindowModel
@@ -57,6 +58,8 @@ public struct SidebarView: View {
                     .accessibilityIdentifier("sidebar.\(department.id.rawValue)")
                 }
             }
+            // The clubs and players the GM follows (N7); drop one here to follow it
+            FollowingSection()
         }
         .listStyle(.sidebar)
         // The column's own container (AppKit's, which no SwiftUI modifier reaches) is named for VoiceOver and the audit

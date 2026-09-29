@@ -1,4 +1,5 @@
 import FeatureCore
+import PennantAPI
 import PennantKit
 import Shell
 import SwiftUI
@@ -10,6 +11,8 @@ struct PennantCommands: Commands {
     let routing: AppRouting
     let registry: DepartmentRegistry
     @FocusedValue(\.mainWindow) private var window
+    /// The desk item the keyboard focus is in (its context menu's actions, by key).
+    @FocusedValue(\.deskItem) private var deskItem
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
 
@@ -48,6 +51,34 @@ struct PennantCommands: Commands {
             Button("Forward") { window?.goForward() }
                 .keyboardShortcut("]", modifiers: .command)
                 .disabled(!can.forward)
+        }
+
+        // The desk item in focus (N7, D-058): its status by key, each undone with ⌘Z
+        CommandMenu("Desk") {
+            Button("Mark Reviewed") { deskItem?.perform(.reviewed) }
+                .keyboardShortcut("r", modifiers: [.command, .shift])
+                .disabled(deskItem == nil || deskItem?.status.value1 == .reviewed)
+            Menu("Defer") {
+                ForEach(Array((deskItem?.deferChoices ?? []).enumerated()), id: \.element.until) { index, choice in
+                    if index == 0 {
+                        Button { deskItem?.perform(.deferred(until: choice.until)) } label: { Text(verbatim: choice.text.display) }
+                            .keyboardShortcut("d", modifiers: [.command, .shift])
+                    } else {
+                        Button { deskItem?.perform(.deferred(until: choice.until)) } label: { Text(verbatim: choice.text.display) }
+                    }
+                }
+            }
+            .disabled(deskItem?.deferChoices.isEmpty ?? true)
+            Button("Mark Handled in OOTP") { deskItem?.perform(.handled) }
+                .keyboardShortcut("h", modifiers: [.command, .shift])
+                .disabled(deskItem == nil || deskItem?.status.value1 == .handled)
+            Button("Put Back on Desk") { deskItem?.perform(.open) }
+                .keyboardShortcut("o", modifiers: [.command, .shift])
+                .disabled(deskItem == nil || deskItem?.status.value1 == .open)
+            Divider()
+            Button("Note…") { deskItem?.editNote() }
+                .keyboardShortcut("n", modifiers: [.command, .shift])
+                .disabled(deskItem == nil)
         }
 
         CommandMenu("Club") {

@@ -136,6 +136,43 @@ nonisolated public enum PreviewFixtures {
         )
     }
 
+    // MARK: The GM's attention and the league (N7, Stage B)
+
+    /// The captured Front Office after a second export: "since the last export" with its chips, an item set aside, the
+    /// wire's top entries, and the department reports with what changed.
+    @MainActor
+    public static var frontOfficeSince: FrontOfficeStore {
+        var reports = Dictionary(uniqueKeysWithValues: reportedDepartments.compactMap { id in
+            decode(Components.Schemas.DepartmentReport.self, "getDepartmentReport-\(id)").map { (id, $0) }
+        })
+        if let since = decode(Components.Schemas.DepartmentReport.self, "getDepartmentReport-since-last-export") {
+            reports[since.department.rawValue] = since
+        }
+        return .preview(summary: decode(Components.Schemas.FrontOfficeSummary.self, "getFrontOffice-since-last-export"), reports: reports, key: nil)
+    }
+
+    /// Following as captured: nothing followed yet with the division's rivals suggested (`getFollowing`), or with a club
+    /// followed (`follow-club`'s view) and a player (`follow-player`'s); with a refusal's sentence when given.
+    @MainActor
+    public static func following(followed: Bool = false, refusal: RequestProblem? = nil) -> FollowingStore {
+        guard followed else { return .preview(decode(Components.Schemas.Following.self, "getFollowing"), refusal: refusal) }
+        var view = decode(Components.Schemas.FollowChange.self, "follow-club")?.view
+        if let player = decode(Components.Schemas.FollowChange.self, "follow-player")?.view.players { view?.players = player }
+        view?.empty = nil
+        return .preview(view, refusal: refusal)
+    }
+
+    /// The captured wire and a rival's report (`getWire`, `getClubReport`).
+    @MainActor
+    public static var league: LeagueStore {
+        .preview(wire: decode(Components.Schemas.Wire.self, "getWire"), clubs: decode(Components.Schemas.ClubReport.self, "getClubReport").map { [$0] } ?? [])
+    }
+
+    /// The captured search answer for "club".
+    public static var search: Components.Schemas.SearchAnswer? {
+        decode(Components.Schemas.SearchAnswer.self, "search")
+    }
+
     // MARK: Finding the save and the rating history (N6, Stage B2)
 
     /// The captured discovery (`GET /api/v2/saves`: the pretend save, nothing picked, why).
@@ -177,9 +214,13 @@ nonisolated public enum PreviewFixtures {
         themePack: String? = nil,
         importRequestProblem: RequestProblem? = nil,
         ratingHistory: Components.Schemas.RatingHistoryView? = nil,
-        savePlayedElsewhere: Components.Schemas.SavePlayedElsewhere? = nil
+        savePlayedElsewhere: Components.Schemas.SavePlayedElsewhere? = nil,
+        since: Bool = false,
+        following: FollowingStore? = nil,
+        clubOwed: Components.Schemas.ClubOwed? = nil
     ) -> AppModel {
-        let status = status(configured: configured)
+        var status = status(configured: configured)
+        if let clubOwed { status?.clubOwed = clubOwed }
         let settings = decode(Components.Schemas.SettingsResponse.self, "getSettings").map {
             var settings = $0
             settings.settings.useTeamColors = useTeamColors
@@ -207,9 +248,11 @@ nonisolated public enum PreviewFixtures {
                 return choices
             },
             importRequestProblem: importRequestProblem,
-            frontOffice: configured ? frontOffice : nil,
+            frontOffice: configured ? (since ? frontOfficeSince : frontOffice) : nil,
             ratingHistory: ratingHistory ?? (configured ? Self.ratingHistory("") : nil),
-            savePlayedElsewhere: savePlayedElsewhere
+            savePlayedElsewhere: savePlayedElsewhere,
+            following: configured ? (following ?? Self.following()) : nil,
+            league: configured ? league : nil
         )
     }
 

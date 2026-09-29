@@ -1,3 +1,4 @@
+import FeatureCore
 import PennantAPI
 import PennantDesign
 import SwiftUI
@@ -5,8 +6,8 @@ import SwiftUI
 /// The Morning Report's slots in the design's shapes (SWIFTUI_REBUILD.md section 3.4): the scoreboard and the lede,
 /// the chips, "How we win and lose", the roster diagram with its staff, and the wire. In the running app they are
 /// mapped from the served payload by `MorningReportDesign(served:)` (N6, Stage B1); a preview or a snapshot may set one
-/// in the environment (`\.morningReportDesign`) from `DesignFixtures` instead. A slot the server does not serve yet
-/// (the chips, the wire: N7) is nil and draws nothing.
+/// in the environment (`\.morningReportDesign`) from `DesignFixtures` instead. A slot the server does not serve (no
+/// earlier export to compare with, no wire built) is nil and draws nothing, or its served sentence.
 public struct MorningReportDesign {
     /// The kicker's served parts after the club (the league's day, "Through …"); nil until the season's facts are served.
     public var kicker: [String?]?
@@ -96,8 +97,23 @@ extension EnvironmentValues {
 /// hatched bar with its sentence), never a blank or a placeholder number.
 extension MorningReportDesign {
     public init(served summary: Components.Schemas.FrontOfficeSummary) {
+        self.init(season: summary.teamSeason, lede: summary.lede, profile: summary.clubProfile, map: summary.rosterMap)
+        chips = summary.changes.map(Self.chips)
+        wire = summary.wire.map { Self.wire($0.entries) }
+    }
+
+    /// Another club's report in the same shapes (N7, D-059): the same reader and words for that club's season, its "how
+    /// it wins and loses" and its roster map, mapped by the same functions; no chips (those are our desk's).
+    public init(club report: Components.Schemas.ClubReport) {
+        self.init(season: report.teamSeason, lede: report.lede, profile: report.clubProfile, map: report.rosterMap)
+    }
+
+    init(
+        season: Components.Schemas.TeamSeason?, lede: Components.Schemas.Claim?, profile: Components.Schemas.ClubProfile?,
+        map: Components.Schemas.RosterMap?
+    ) {
         self.init()
-        if let season = summary.teamSeason {
+        if let season {
             kicker = [season.kicker.today.display, season.kicker.through.display]
             // Each part's served help tag: the league's day, then how current the export is
             let hints = [season.kicker.today.hint, season.kicker.through.hint].compactMap { $0 }.filter { !$0.isEmpty }
@@ -106,12 +122,12 @@ extension MorningReportDesign {
             scoreboard = Self.scoreboard(season)
             if scoreboard == nil { mastheadMissing = Self.missing(season) }
         }
-        if let lede = summary.lede {
+        if let lede {
             self.lede = lede.text
             ledeHint = lede.hint
             ledeClaim = lede
         }
-        if let profile = summary.clubProfile {
+        if let profile {
             dimensions = Self.dimensions(profile)
             placeHeadings = Self.headings(profile.groups)
             placeLegend = profile.legend
@@ -119,7 +135,7 @@ extension MorningReportDesign {
             placesNoteHint = profile.note.hint
             placesUnavailable = profile.unavailable.map { ServedLine(id: "profile", text: $0.display, hint: $0.hint) }
         }
-        if let map = summary.rosterMap {
+        if let map {
             positions = map.positions.map(Self.position)
             valueScale = map.valueScale.flatMap { ValueScale(low: $0.low, high: $0.high) }
             rotation = map.rotation.map(Self.pitcher)
@@ -128,6 +144,34 @@ extension MorningReportDesign {
             bullpenNeeds = Self.lines(map.bullpenNeeds, prefix: "bullpen")
             rosterNotes = Self.lines(map.notes, prefix: "note")
             rosterUnavailable = map.unavailable.map { ServedLine(id: "roster", text: $0.display, hint: $0.hint) }
+        }
+    }
+
+    // MARK: Since the last export, and the wire (N7)
+
+    /// The served chips in their served order (new, resolved, moved, results), each with its served words; a chip with
+    /// no items is drawn as words, never a control that opens nothing. Nothing is counted here.
+    nonisolated static func chips(_ changes: Components.Schemas.SinceLastExport) -> [Chip] {
+        [changes.new, changes.resolved, changes.moved, changes.results].map { chip in
+            let kind = chip.kind.value1?.rawValue ?? chip.kind.value2 ?? "change"
+            return Chip(id: kind, symbol: chipSymbol(kind), text: chip.text, hint: chip.hint, opens: !chip.items.isEmpty)
+        }
+    }
+
+    /// A chip's symbol by its served kind (`ChangeKind`, shared with the reports).
+    nonisolated static func chipSymbol(_ kind: String) -> String {
+        ChangeKind.symbol(kind)
+    }
+
+    /// Each wire entry as the design's row: its first club (the one the log files it under) by its served name and
+    /// abbreviation, the headline as a claim (its basis opens), and when, as served.
+    nonisolated static func wire(_ entries: [Components.Schemas.WireEntry]) -> [WireItem] {
+        entries.map { entry in
+            let club = entry.clubs.first
+            return WireItem(
+                id: entry.id, club: club?.name ?? "", abbreviation: club?.abbreviation ?? "", followed: entry.followed,
+                text: entry.headline.text, when: entry.when.display, claim: entry.headline, clubId: club?.teamId
+            )
         }
     }
 

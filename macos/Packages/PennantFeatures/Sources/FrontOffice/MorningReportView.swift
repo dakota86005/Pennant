@@ -8,9 +8,10 @@ import SwiftUI
 /// The Morning Report (SWIFTUI_REBUILD.md section 3.4) in the design language (section 3.7, R2): the magazine
 /// masthead, then the lead column and the side column (stacked below 1080 points). The server serves the desk and the
 /// department cards (N4), the masthead's box score, the lede, "How we win and lose" and the roster map with its staff
-/// (N6, Stage A), each mapped into the design's shapes by `MorningReportDesign(served:)` (Stage B1); the "since the last
-/// export" chips and the wire arrive with N7 and show nothing until then. The previews and the snapshots may draw the
-/// slots from `DesignFixtures` instead (`\.morningReportDesign`).
+/// (N6, Stage A), each mapped into the design's shapes by `MorningReportDesign(served:)` (Stage B1); since N7 the "since
+/// the last export" chips (each opening its items), the desk's statuses with the set-aside items, and around the league
+/// (followed clubs first). The previews and the snapshots may draw the slots from `DesignFixtures` instead
+/// (`\.morningReportDesign`).
 ///
 /// At launch the report the app kept from the last launch for this save and club is drawn at once and said to be
 /// updating in the kicker (its own served kicker says how current it is); the fresh one replaces it in place, without
@@ -311,9 +312,7 @@ public struct MorningReportPage: View {
         let designed = design.dimensions != nil || design.positions != nil || design.wire != nil
         let twoColumns = contentWidth >= Self.twoColumns
         VStack(alignment: .leading, spacing: 32) {
-            if let chips = design.chips {
-                ChipRow(label: Text("Since the last export"), chips: chips)
-            }
+            SinceLastExportRow(summary: summary, chips: design.chips)
             if twoColumns {
                 HStack(alignment: .top, spacing: 40) {
                     lead(design, designed: designed).frame(maxWidth: .infinity, alignment: .leading)
@@ -367,15 +366,7 @@ public struct MorningReportPage: View {
             }
             if !designed { desk(compact: false) }
             if let wire = design.wire {
-                VStack(alignment: .leading, spacing: 8) {
-                    MagazineSection(kicker: Text("The league"), title: Text("Around the league"))
-                    RowGroup {
-                        ForEach(wire) { item in
-                            WireRow(item)
-                            if item.id != wire.last?.id { Divider() }
-                        }
-                    }
-                }
+                AroundTheLeague(top: summary.wire, items: wire)
             }
         }
     }
@@ -399,6 +390,7 @@ public struct MorningReportPage: View {
             if let empty = summary.desk.empty {
                 Text(verbatim: empty.display).foregroundStyle(.readableSecondary)
             }
+            DeskChangeLines()
             if !summary.desk.items.isEmpty {
                 RowGroup {
                     ForEach(Array(summary.desk.items.enumerated()), id: \.element.key) { index, item in
@@ -410,6 +402,10 @@ public struct MorningReportPage: View {
             // The rest of a department's items to decide are in its report
             ForEach(summary.desk.more, id: \.department.rawValue) { more in
                 MoreLine(more: more)
+            }
+            // What the GM set aside, one click away
+            if let aside = summary.desk.setAside {
+                SetAsideButton(aside: aside)
             }
         }
         .accessibilityElement(children: .contain)
@@ -459,5 +455,221 @@ struct MoreLine: View {
     }
 }
 
+// MARK: Since the last export, the desk's statuses, around the league (N7, Stage B)
 
+/// "Since the last export": the served "since" line as the label, then each served chip (new, resolved, moved, results),
+/// which opens its items; with no earlier export, the served sentence saying so (never an empty row read as "nothing
+/// changed"). The fixtures' chips, in a preview or a snapshot, draw with the structural label.
+struct SinceLastExportRow: View {
+    let summary: Components.Schemas.FrontOfficeSummary
+    let chips: [Chip]?
 
+    var body: some View {
+        if let changes = summary.changes, let chips {
+            ChipRow(label: Text(verbatim: changes.since.display), labelHint: changes.since.hint, chips: chips) { chip in
+                if let served = [changes.new, changes.resolved, changes.moved, changes.results].first(where: { ($0.kind.value1?.rawValue ?? $0.kind.value2) == chip.id }) {
+                    ChangeItemsView(chip: served)
+                }
+            }
+        } else if let chips {
+            ChipRow(label: Text("Since the last export"), chips: chips)
+        } else if let note = summary.changesNote {
+            HStack(spacing: 8) {
+                Text("Since the last export")
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(.readableSecondary)
+                    .accessibilityAddTraits(.isHeader)
+                Text(verbatim: note.display)
+                    .font(.callout)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .help(detail: note.hint)
+                    .accessibilityIdentifier("changes.note")
+                Spacer()
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("chips")
+        }
+    }
+}
+
+/// What a chip opens: its served words, then each item as served (its line with its basis a click away, and where it
+/// opens when this build has the view).
+struct ChangeItemsView: View {
+    let chip: Components.Schemas.ChangeChip
+    @Environment(\.routeOpener) private var opener
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(verbatim: chip.text).font(.headline)
+            Text(verbatim: chip.hint).font(.callout).foregroundStyle(.readableSecondary)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(chip.items, id: \.key) { item in
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            ClaimLine(item.line, font: .callout)
+                            Spacer(minLength: 4)
+                            if let target = route(item.open), let opener, opener.canOpen(target) {
+                                Button { opener.open(target) } label: {
+                                    Image(systemName: "arrow.up.forward.square").accessibilityLabel(Text("Open"))
+                                }
+                                .buttonStyle(.borderless)
+                                .help(Text("Open"))
+                            }
+                        }
+                        .accessibilityElement(children: .contain)
+                        .accessibilityIdentifier("change.\(item.key)")
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxHeight: 360)
+        }
+        .padding(16)
+        .frame(width: 400, alignment: .leading)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("chip.items")
+    }
+}
+
+/// The GM's last change on the desk in the server's words ("Marked reviewed"), said for a moment and announced to
+/// VoiceOver; and why the last one was refused, in the server's sentence, until dismissed.
+struct DeskChangeLines: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var shown: Int?
+
+    var body: some View {
+        let store = model.frontOffice
+        VStack(alignment: .leading, spacing: 4) {
+            if let done = store.deskDone, shown == done.moment {
+                Label { Text(verbatim: done.text) } icon: { Image(systemName: "checkmark").accessibilityHidden(true) }
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(.readableSecondary)
+                    .transition(.opacity)
+                    .accessibilityIdentifier("desk.done")
+            }
+            if let problem = store.deskProblem {
+                HStack {
+                    ProblemLine(problem)
+                    Spacer()
+                    Button("Dismiss") { store.dismissDeskProblem() }.controlSize(.small)
+                }
+                .accessibilityIdentifier("desk.problem")
+            }
+        }
+        .task(id: store.deskDone?.moment) {
+            guard let done = store.deskDone else { return }
+            withAnimation(reduceMotion ? nil : .easeIn(duration: 0.2)) { shown = done.moment }
+            AccessibilityNotification.Announcement(done.text).post()
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled else { return }
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.6)) { shown = nil }
+        }
+    }
+}
+
+/// The served "2 reviewed · 1 deferred" line, which opens the items set aside: each with its status and note, and the
+/// way to put it back on the desk (its context menu, or a swipe).
+struct SetAsideButton: View {
+    let aside: Components.Schemas.DeskSetAside
+    @State private var showing = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        Button { showing.toggle() } label: {
+            Label { Text(verbatim: aside.line.display).contentTransition(reduceMotion ? .identity : .numericText()) } icon: {
+                Image(systemName: "tray")
+            }
+        }
+        .buttonStyle(.link)
+        .help(detail: aside.line.hint)
+        .accessibilityIdentifier("desk.setAside")
+        .popover(isPresented: $showing, arrowEdge: .bottom) {
+            SetAsideList(aside: aside)
+        }
+    }
+}
+
+/// The items set aside, as served: a list the GM can swipe or right-click to put an item back.
+struct SetAsideList: View {
+    let aside: Components.Schemas.DeskSetAside
+    @Environment(AppModel.self) private var model
+    @Environment(\.undoManager) private var undoManager
+
+    var body: some View {
+        // The live set-aside list (a change made here redraws it), else the one the button was drawn with
+        let items = model.frontOffice.summary?.desk.setAside?.items ?? []
+        VStack(alignment: .leading, spacing: 8) {
+            Text(verbatim: model.frontOffice.summary?.desk.setAside?.line.display ?? aside.line.display).font(.headline)
+            if items.isEmpty {
+                if let empty = model.frontOffice.summary?.desk.empty { Text(verbatim: empty.display).foregroundStyle(.readableSecondary) }
+            } else {
+                List(items, id: \.key) { item in
+                    DeskItemRow(item, compact: true)
+                        .swipeActions(edge: .trailing) {
+                            Button("Put Back on Desk", systemImage: "tray.and.arrow.up") { model.perform(.open, on: item, undoManager: undoManager) }
+                                .tint(.accentColor)
+                        }
+                }
+                .listStyle(.plain)
+                .frame(minHeight: 120, maxHeight: 420)
+                .accessibilityLabel(Text(verbatim: aside.line.display))
+            }
+        }
+        .padding(14)
+        .frame(width: 420)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text(verbatim: aside.line.display))
+        .accessibilityIdentifier("desk.setAside.list")
+    }
+}
+
+/// Around the league on the Morning Report: the served title and stated order, the top entries (followed clubs first),
+/// each club's name opening its window, the served gaps ("League news isn't on the wire…") as sentences, and the way to
+/// the whole wire in League Office. The fixtures draw the entries alone.
+struct AroundTheLeague: View {
+    let top: Components.Schemas.WireTop?
+    let items: [WireItem]
+    @Environment(\.routeOpener) private var opener
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            MagazineSection(
+                kicker: Text("The league"),
+                title: top.map { Text(verbatim: $0.title.display) } ?? Text("Around the league"),
+                trailing: top?.order.line.display, trailingHint: top?.order.line.hint
+            )
+            if let empty = top?.empty {
+                Text(verbatim: empty.display).foregroundStyle(.readableSecondary).help(detail: empty.hint)
+            }
+            if !items.isEmpty {
+                RowGroup {
+                    ForEach(items) { item in
+                        WireRow(item) { name in
+                            if let id = item.clubId { name.clubName(id: id, name: item.club) } else { name }
+                        }
+                        if item.id != items.last?.id { Divider() }
+                    }
+                }
+            }
+            if let top {
+                ForEach(Array(top.gaps.enumerated()), id: \.offset) { _, gap in
+                    Label { Text(verbatim: gap.display).fixedSize(horizontal: false, vertical: true) } icon: { ToneMark(served: gap.tone) }
+                        .font(.callout)
+                        .foregroundStyle(.readableSecondary)
+                        .help(detail: gap.hint)
+                }
+                if let target = route(top.open), let opener, opener.canOpen(target) {
+                    Button { opener.open(target) } label: {
+                        if let more = top.more { Text(verbatim: more.display) } else { Text("The Whole Wire") }
+                    }
+                    .buttonStyle(.link)
+                    .help(detail: top.more?.hint)
+                    .accessibilityIdentifier("wire.open")
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("morningReport.wire")
+    }
+}

@@ -16,8 +16,15 @@ public final class MainWindowModel {
     public var sidebarVisibility: NavigationSplitViewVisibility
     /// The departments open in the sidebar.
     public var expanded: Set<DeptID>
-    /// The search field (a stub until search arrives).
+    /// The toolbar's search field, and the server's answer for what was typed (N7).
     public var searchText = ""
+    public var searchAnswer: (query: String, answer: Components.Schemas.SearchAnswer)?
+    /// The answer for the text in the field now; nil while it is being asked, or with nothing typed.
+    public var currentSearch: Components.Schemas.SearchAnswer? {
+        let query = searchText.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty, let searchAnswer, searchAnswer.query == query else { return nil }
+        return searchAnswer.answer
+    }
     /// The ⌘K palette: whether it is up, and what is typed in it.
     public var paletteShown = false
     public var paletteQuery = ""

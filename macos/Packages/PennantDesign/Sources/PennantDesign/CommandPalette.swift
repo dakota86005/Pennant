@@ -2,10 +2,15 @@ import SwiftUI
 
 /// The ⌘K palette ("Find anything"): a floating glass panel over the window, its results grouped, keyboard first
 /// (↑ and ↓ move, ↩ opens, esc closes). It is a control, so glass is allowed on it; with Reduce Transparency it is
-/// opaque with a border. The entries are the registry's (departments, views, commands) and, once the server serves
-/// search, players and clubs; their words are the caller's, and the palette adds only its labels.
+/// opaque with a border. The entries are the registry's (departments, views, commands) and the server's search results
+/// (players, clubs, views: N7), which come first, grouped and ordered as served and never re-ranked here; their words are
+/// the caller's, and the palette adds only its labels.
 public struct CommandPalette: View {
     let entries: [PaletteEntry]
+    /// The server's answer for the query, in its order (followed first), shown before the local entries that match.
+    let served: [PaletteEntry]
+    /// The served line when nothing matches; nil uses the structural one.
+    let emptyLine: String?
     @Binding var query: String
     let open: (PaletteEntry) -> Void
     let dismiss: () -> Void
@@ -17,16 +22,18 @@ public struct CommandPalette: View {
     @EffectiveReduceTransparency private var reduceTransparency
 
     /// How many results are shown at most; the footer says how many matched.
-    public static let shown = 9
+    public static let shown = 12
 
-    public init(entries: [PaletteEntry], query: Binding<String>, open: @escaping (PaletteEntry) -> Void, dismiss: @escaping () -> Void) {
+    public init(entries: [PaletteEntry], served: [PaletteEntry] = [], emptyLine: String? = nil, query: Binding<String>, open: @escaping (PaletteEntry) -> Void, dismiss: @escaping () -> Void) {
         self.entries = entries
+        self.served = served
+        self.emptyLine = emptyLine
         _query = query
         self.open = open
         self.dismiss = dismiss
     }
 
-    private var matches: [PaletteEntry] { PaletteEntry.matching(query, in: entries) }
+    private var matches: [PaletteEntry] { served + PaletteEntry.matching(query, in: entries) }
 
     public var body: some View {
         let palette = theme.palette(colorScheme: colorScheme, contrast: contrast)
@@ -41,6 +48,9 @@ public struct CommandPalette: View {
                     .font(.title3)
                     .focused($focused)
                     .onSubmit { openSelected(visible) }
+                    // Return opens the selected result whatever the field does with it (with the server's answer in, the
+                    // field's own submit did not always reach here)
+                    .onKeyPress(.return) { openSelected(visible); return .handled }
                     .onKeyPress(.downArrow) { move(1, in: visible); return .handled }
                     .onKeyPress(.upArrow) { move(-1, in: visible); return .handled }
                     .onKeyPress(.escape) { dismiss(); return .handled }
@@ -50,7 +60,11 @@ public struct CommandPalette: View {
             .padding(.horizontal, 16).padding(.vertical, 12)
             Divider()
             if visible.isEmpty {
-                Text("Nothing matches").font(.callout).foregroundStyle(.readableSecondary).padding(16)
+                Group {
+                    if let emptyLine { Text(verbatim: emptyLine) } else { Text("Nothing matches") }
+                }
+                .font(.callout).foregroundStyle(.readableSecondary).padding(16)
+                .accessibilityIdentifier("palette.empty")
             } else {
                 VStack(alignment: .leading, spacing: 2) {
                     ForEach(Array(visible.enumerated()), id: \.element.id) { index, entry in
@@ -63,7 +77,13 @@ public struct CommandPalette: View {
                             HStack(spacing: 10) {
                                 SymbolTile(symbol: entry.symbol, tint: accent, size: 26)
                                 VStack(alignment: .leading, spacing: 1) {
-                                    Text(verbatim: entry.title).font(.body.weight(.medium))
+                                    HStack(spacing: 4) {
+                                        Text(verbatim: entry.title).font(.body.weight(.medium))
+                                        if entry.followed {
+                                            Image(systemName: "star.fill").font(.caption2).foregroundStyle(Tone.caution.color)
+                                                .accessibilityLabel(Text("Followed"))
+                                        }
+                                    }
                                     if let line = entry.line { Text(verbatim: line).font(.caption).foregroundStyle(.readableSecondary) }
                                 }
                                 Spacer()
@@ -93,9 +113,13 @@ public struct CommandPalette: View {
                 HStack(spacing: 4) { Image(systemName: "escape").accessibilityHidden(true); Text("Close") }.font(.caption.weight(.medium))
                 Spacer()
                 // One format key ("%lld of %lld"), so a language can order the counts its own way
-                Text("\(visible.count) of \(results.count)").font(.caption).foregroundStyle(.readableSecondary).monospacedDigit()
+                // Said to VoiceOver as the palette's value (the audit misread this short count at the glass's corner)
+                Text("\(visible.count) of \(results.count)").font(.caption.weight(.medium)).monospacedDigit()
+                    .accessibilityHidden(true)
             }
-            .foregroundStyle(.readableSecondary)
+            // The glass's own primary: a short palette sits over the masthead's dark colour, where a fixed grey read at
+            // 2:1 (the N7 audit); the system's label on glass reads on whatever is behind it
+            .foregroundStyle(.primary)
             .padding(.horizontal, 16).padding(.vertical, 8)
         }
         .frame(width: 640)
@@ -110,6 +134,7 @@ public struct CommandPalette: View {
         }
         .onChange(of: query) { selected = 0 }
         .accessibilityElement(children: .contain)
+        .accessibilityValue(Text("\(visible.count) of \(results.count)"))
         .accessibilityIdentifier("palette")
     }
 
