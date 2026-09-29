@@ -33,7 +33,7 @@ import { publish } from './serverEvents.js';
 import { timestampWords } from './timeWords.js';
 import { searchIndex } from './search.js';
 import { copyWatchlist } from './frontOfficeMemory.js';
-import { wireFacts } from './leagueWire.js';
+import { wireFacts, wireGatherMs } from './leagueWire.js';
 import { currentOrganization } from './viewingOrganization.js';
 
 // ── composing ──────────────────────────────────────────────────────────────
@@ -300,8 +300,9 @@ async function warmAfter(org: number, importStamp: string | null): Promise<void>
     console.error('[following] the watchlist could not be copied:', err);
   }
   try {
-    wireFacts(importStamp, org);
-    searchIndex(importStamp);
+    const wire = wireFacts(importStamp, org);
+    const index = searchIndex(importStamp);
+    console.log(`[wire] ${wire.facts.length} entries, gathered in ${wireGatherMs() ?? '?'} ms; search indexed ${index.entries.length} in ${index.ms} ms`);
   } catch (err) {
     console.error('[wire] the wire or the search index could not be gathered ahead:', err);
   }

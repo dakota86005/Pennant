@@ -15,6 +15,9 @@ export const SEARCH_LIMITS: Readonly<Record<SearchKind, number>> = { player: 20,
 
 export const SEARCH_ORDER_RULE = 'Followed first, then names starting with what you typed, then ours';
 
+/** Names in English order, case and accents set aside (one collator: `localeCompare` with options builds one per call). */
+const BY_NAME = new Intl.Collator('en', { sensitivity: 'base' });
+
 const GROUP_TITLES: Record<SearchKind, string> = { player: 'Players', club: 'Clubs', view: 'Views' };
 
 const levelWord = (level: number | null | undefined): string | null => (level === 1 ? 'Majors' : level ? LEVEL_WORDS[level] ?? null : null);
@@ -51,14 +54,17 @@ export interface SearchContext {
 export function searchWords(query: string, q: SearchQuery, matched: readonly SearchEntry[], ctx: SearchContext): SearchAnswer {
   const isFollowed = (e: SearchEntry) => (e.kind === 'club' && ctx.followedClubs.has(e.teamId!)) || (e.kind === 'player' && ctx.followedPlayers.has(e.playerId!));
   const groups: SearchGroup[] = (['player', 'club', 'view'] as const).map((kind) => {
+    // The stated order's keys, worked out once per entry (a one-letter query can match thousands of players)
     const all = matched.filter((e) => e.kind === kind)
-      .map((e) => ({ e, followed: isFollowed(e) }))
+      .map((e) => ({
+        e, followed: isFollowed(e), starts: e.folded.startsWith(q.folded), ours: ctx.ourOrgId !== null && e.orgId === ctx.ourOrgId,
+      }))
       .sort((a, b) =>
         Number(b.followed) - Number(a.followed)
-        || Number(b.e.folded.startsWith(q.folded)) - Number(a.e.folded.startsWith(q.folded))
-        || Number(ctx.ourOrgId !== null && b.e.orgId === ctx.ourOrgId) - Number(ctx.ourOrgId !== null && a.e.orgId === ctx.ourOrgId)
-        || a.e.name.localeCompare(b.e.name, 'en', { sensitivity: 'base' })
-        || a.e.id.localeCompare(b.e.id));
+        || Number(b.starts) - Number(a.starts)
+        || Number(b.ours) - Number(a.ours)
+        || BY_NAME.compare(a.e.name, b.e.name)
+        || (a.e.id < b.e.id ? -1 : a.e.id > b.e.id ? 1 : 0));
     return { kind, title: cell(GROUP_TITLES[kind]), results: all.slice(0, SEARCH_LIMITS[kind]).map((x) => resultOf(x.e, x.followed)), total: all.length };
   }).filter((g) => g.total > 0);
   return {

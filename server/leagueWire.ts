@@ -441,6 +441,10 @@ let builds = 0;
 /** How many times the wire was gathered (for the tests' "served from the cache"). */
 export const wireBuilds = (): number => builds;
 
+let lastGatherMs: number | null = null;
+/** How long the last gathering took, in milliseconds (the log's and the measurements'); null before the first. */
+export const wireGatherMs = (): number | null => lastGatherMs;
+
 /** Forgets the gathered wire (an import, a test). */
 export function forgetWire(): void {
   cached = null;
@@ -465,6 +469,7 @@ export function wireFacts(importStamp: string | null, ourTeamId: number | null):
   const key = `${importStamp ?? 'none'}|${ourTeamId ?? '-'}|${peek === null ? 'reading' : log ? 'log' : 'no-log'}|${previousStandings(importStamp)?.importStamp ?? '-'}`;
   if (cached && cached.key === key && cached.log === log) return cached.facts;
   builds += 1;
+  const started = performance.now();
   const clubs = leagueClubs();
   const { season, gameDate } = seasonOf();
   const gaps: WireGap[] = [];
@@ -509,5 +514,6 @@ export function wireFacts(importStamp: string | null, ourTeamId: number | null):
     previousGameDate: previousStandings(importStamp)?.gameDate ?? null,
   };
   cached = { key, log, facts: result };
+  lastGatherMs = Math.round((performance.now() - started) * 10) / 10;
   return result;
 }
