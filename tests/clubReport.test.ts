@@ -3,8 +3,8 @@ import { db } from '../server/db.js';
 import { forgetHistoryKey } from '../server/historyIdentity.js';
 import { clubReportNow } from '../server/aroundTheLeague.js';
 import { forgetMemoryCaches } from '../server/frontOfficeMemory.js';
-import { afterImport, resetAttention } from '../server/frontOfficeAttention.js';
-import { frontOfficeStats, frontOfficeSummary, invalidateFrontOffice, resetFrontOfficeCache } from '../server/frontOfficeService.js';
+import { afterImport, resetAttention, rivalsWarmed } from '../server/frontOfficeAttention.js';
+import { frontOfficeStats, frontOfficeSummary, holdFrontOfficeRebuilds, invalidateFrontOffice, resetFrontOfficeCache, warmClubReports } from '../server/frontOfficeService.js';
 import { forgetWire } from '../server/leagueWire.js';
 import { importedAt } from '../server/playerStateRoutes.js';
 import { readClubReport } from '../server/clubReport.js';
@@ -16,6 +16,8 @@ import { buildSave, dropColumn, type BuiltSave } from './syntheticSave';
  * A club report for any club (BEHAVIOR_CASES.md "Pennant for Mac", `clubReport.test.ts`, case 19; D-059): the same modules
  * as ours, under our organization's scouting, with objective facts about the two clubs, and no odds or posture (D-060).
  */
+
+const settle = () => new Promise((resolve) => setImmediate(resolve));
 
 const ODDS_OR_POSTURE = [/postseason/i, /playoff/i, /\bodds\b/i, /\bbuy(?:er|ing)?\b/i, /\bsell(?:er|ing)?\b/i, /\bposture\b/i, /\bcontend/i, /\brebuild/i, /\bthreat/i];
 
@@ -97,22 +99,40 @@ describe('another club\'s report (case 19)', () => {
     expect(ours.headToHead).toBeNull();
   });
 
-  it('has our division\'s reports built ahead after an import, and again after a rebuild of the same import', async () => {
+  it('has our division\'s reports built ahead once per import, after the refits\' hold, never again for a rebuild of the same import (M5)', async () => {
     resetAttention();
+    // The refits after an import hold the rebuilds: the rivals wait for them
+    const release = holdFrontOfficeRebuilds();
+    const before = frontOfficeStats().clubBuilds;
     await afterImport();
+    await settle();
+    expect(frontOfficeStats().clubBuilds).toBe(before);
+    release();
+    await rivalsWarmed();
     const ahead = frontOfficeStats().clubBuilds;
-    expect(ahead).toBe(save.clubs.length - 1);
+    expect(ahead).toBe(before + save.clubs.length - 1);
     await clubReportNow(String(them));
     expect(frontOfficeStats().clubBuilds).toBe(ahead);
 
-    // A rebuild of the same import (Player Value's adopted refit, a new copy of the live log) drops the kept reports:
-    // they are built ahead again, so the GM's first open is still a cached read
+    // A rebuild of the same import (Player Value's adopted refit, a new copy of the live log) warms nothing again: a
+    // rival's report is built when opened
     invalidateFrontOffice();
     await afterImport();
-    const again = frontOfficeStats().clubBuilds;
-    expect(again).toBe(ahead + save.clubs.length - 1);
+    await rivalsWarmed();
+    expect(frontOfficeStats().clubBuilds).toBe(ahead);
     await clubReportNow(String(them));
-    expect(frontOfficeStats().clubBuilds).toBe(again);
+    expect(frontOfficeStats().clubBuilds).toBe(ahead + 1);
+  });
+
+  it('builds a rival\'s report ahead only after our own Front Office\'s build that is running (M5)', async () => {
+    invalidateFrontOffice();
+    const before = frontOfficeStats().clubBuilds;
+    const ours = frontOfficeSummary(save.org);
+    const warm = warmClubReports([them], save.org);
+    await ours;
+    expect(frontOfficeStats().clubBuilds).toBe(before);
+    await warm;
+    expect(frontOfficeStats().clubBuilds).toBe(before + 1);
   });
 
   it('says an injured list or a list of players the export lacks isn\'t known, never "nobody" (D-018)', () => {

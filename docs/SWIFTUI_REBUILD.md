@@ -677,7 +677,9 @@ Nothing is drawn yet: Stage B draws it. Cases 15 to 20 and the search and club-o
   `FrontOfficeSummary.wire` is the top five since the last export, followed clubs first.
 - **A club report** (`clubReport.ts`, `presentation/frontOffice/clubReport.ts`, `buildClubReport` in the Front
   Office's worker): D-059's "As built". `GET /api/v2/club/:teamId` (our own club too, marked `ours`); kept per import and
-  club; our division's are built ahead after every kept build of our Front Office.
+  club (and copy of the live log, which the report reads through the data status's freshness); our division's are built
+  ahead once per import, after the refits' hold is released, each after any running build of our own Front Office, and
+  never again for a later build of the same import (a rival's report is then built when opened).
 - **Search** (`search.ts`, `presentation/searchWords.ts`): every word typed must begin a word of the name; players (ours
   and the league's, not retired), major-league clubs and the catalog's views, each with its `open` target, grouped;
   followed first, then names that start with the query, then our organization's players, then by name (stated in

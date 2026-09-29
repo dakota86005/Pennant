@@ -385,6 +385,12 @@ export async function claimTrail(key: string): Promise<ClaimTrail> {
  * Another club's report (N7, D-059): built in the worker on its first open for the current inputs (the club, the import,
  * the settings, the live log) and kept, like the Front Office; `ourTeamId` is the report's "us". A request that arrives
  * during a build waits on it. The GM's attention (what he follows, the club's moves on the wire) is put on it when served.
+ *
+ * The live log stays in its key (checked for the review, M5): the report reads the log, though not through Player Rights
+ * (`playerRights.ts` reads no log; the report never calls `rightsFor`). `buildClubReport` reads the data status
+ * (`getDataStatus` → `currentTransactionLog`), whose freshness weighs the log's last transaction against the export's
+ * day (`assessFreshness`); an export the log shows to be behind turns Player Value's control and costs on the roster
+ * map to "not known". So a new copy of the log can change a club report, and a report kept past one would be stale.
  */
 export async function clubReportBuilt(teamId: number, ourTeamId: number | null): Promise<{ report: ClubReport; ms: number }> {
   const key = `club|${ourTeamId ?? '-'}|${inputsKey(teamId)}`;
@@ -414,9 +420,18 @@ export async function clubReportBuilt(teamId: number, ourTeamId: number | null):
   return job;
 }
 
-/** Builds other clubs' reports in the background, one at a time (after an import: our division's). Never throws. */
+/** Resolves once no Front Office build of ours is running (the kept ones and the requests' come first). */
+async function ourBuildsSettled(): Promise<void> {
+  while (building.size) await Promise.allSettled([...building.values()]);
+}
+
+/**
+ * Builds other clubs' reports in the background, one at a time (after an import: our division's), each after any build
+ * of our own Front Office that is running: a rival's report never holds up ours (M5). Never throws.
+ */
 export async function warmClubReports(teamIds: readonly number[], ourTeamId: number | null): Promise<void> {
   for (const teamId of teamIds) {
+    await ourBuildsSettled();
     try {
       await clubReportBuilt(teamId, ourTeamId);
     } catch (err) {
@@ -450,6 +465,17 @@ export function frontOfficeTimings(orgId: number): Record<string, number> | null
 
 let rebuildHolds = 0;
 let rebuildOwed = false;
+let holdWaiters: Array<() => void> = [];
+
+/**
+ * Resolves when no refit holds the rebuilds (straight away when none does), after the rebuild a released hold owes has
+ * started: the work that should follow the refits (N7: our division's club reports, built ahead once per import) waits
+ * on it, so it is built on the fits the refits leave, once.
+ */
+export function rebuildHoldsReleased(): Promise<void> {
+  if (rebuildHolds === 0) return Promise.resolve();
+  return new Promise((resolve) => holdWaiters.push(resolve));
+}
 
 /**
  * Drops the kept builds at once, so no request is answered from the old one, and builds the club's again in the
@@ -480,6 +506,11 @@ export function holdFrontOfficeRebuilds(): () => void {
     if (rebuildHolds === 0 && rebuildOwed) {
       rebuildOwed = false;
       void warmFrontOffice();
+    }
+    if (rebuildHolds === 0) {
+      const waiting = holdWaiters;
+      holdWaiters = [];
+      for (const resolve of waiting) resolve();
     }
   };
 }

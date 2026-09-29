@@ -2227,8 +2227,10 @@ Stage A (2026-09-29); the Mac app draws it at N7, Stage B. `server/leagueWire.ts
 - **A club report** runs the Morning Report's own reader and words for that club (`teamSeason`, `clubProfile`,
   `rosterMap`), counts how many of its major-league players our scouts see fully, partly or not at all and says so,
   and adds its injured list, its record against us and its next series with us from the export's games, and its moves
-  from the wire. It is kept per import and club; our division's are built ahead after every kept build of our Front
-  Office.
+  from the wire. It is kept per import, club and copy of the live log (the report reads the log through the data
+  status's freshness, which can turn Player Value's control and costs to "not known"; not through Player Rights, which
+  reads no log). Our division's are built ahead once per import, after the refits release their hold and after any
+  build of our own Front Office; a later build of the same import builds none ahead again (the independent review, M5).
 - **Search** reads an index of names, clubs and views built once per import: no rating, no value.
 
 - **Wire sources and wording (D-020).** An entry from OOTP's transaction log says what the log says. An entry from a
