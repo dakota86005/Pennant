@@ -8,7 +8,8 @@
     "request": {
       "kind": "club",
       "id": 2,
-      "note": "Division rival"
+      "note": "Division rival",
+      "restore": true
     }
   },
   "view": {

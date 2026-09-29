@@ -667,7 +667,10 @@ Nothing is drawn yet: Stage B draws it. Cases 15 to 20 and the search and club-o
 - **Following** (`aroundTheLeague.ts`, `presentation/frontOffice/following.ts`): the watchlist is copied in once per
   save (with its notes; `following_watchlist_copies` keeps a player unfollowed from being copied back; the `watchlist`
   table is untouched); division rivals are `suggestions`, each with `why`. `PUT` follows or changes a note, `DELETE`
-  (`?kind&id`) unfollows; both answer with `undo` and the new view.
+  (`?kind&id`) unfollows; both answer with `undo` and the new view. An unfollow's undo carries `restore: true`, which
+  puts the follow back as it was (its note, how it began and when) while the server remembers it (a relaunch forgets:
+  it is then followed again). Both are refused in a sentence while a newly chosen save's import hasn't landed, as the
+  desk is, and the watchlist is copied only into the save whose league is served.
 - **The wire** (`leagueWire.ts`, `presentation/frontOffice/wire.ts`): the sources and the order are D-059's "As built".
   Gathered once per import (and per copy of the log) on the server's thread after the club's build is remembered, and
   kept for up to four clubs (the club whose division's standings it reads); this season only (the log by its own season,
@@ -726,7 +729,7 @@ the log showed no rebuild in them, so it is put down to the machine's load, not 
   `DeskChange {key, done: Cell, attention, previous, undo: DeskUpdate, view: DeskView}`.
 - `Following {title, clubs, players: FollowedItem[], empty, suggestions: FollowSuggestion[], watchlist: Cell | null,
   followStamp}`; `FollowedItem {kind, id, name, line, note, since, open}`; `FollowSuggestion {kind: club, id, name,
-  why}`; `FollowUpdate {kind, id, note?}`; `FollowChange {done, following, undo {action: follow | unfollow, request},
+  why}`; `FollowUpdate {kind, id, note?, restore?}`; `FollowChange {done, following, undo {action: follow | unfollow, request},
   view}`.
 - `WireTop {title, order: WireOrder, entries, more, gaps, empty, open}` (the `WireRow`s); `Wire {orgId, importStamp,
   title, since, sinceDate, order, entries, total, more, gaps, empty, kinds: WireKindChoice[]}`; `WireEntry {id, date,
@@ -741,8 +744,7 @@ the log showed no rebuild in them, so it is put down to the machine's load, not 
 
 *Left for later:* clubs with open trade talk as Following suggestions (the plan's second kind; no trade-talk source is
 read yet); `players_injury_history` read whole each gathering (fine at 28 to 43 ms on the owner's export); the wire's
-moves were not measured with a live log (the scratch export has none); an unfollow's undo follows again as a new follow
-(its first "since" is the undo's).
+moves were not measured with a live log (the scratch export has none).
 
 ### 3.5 One anatomy for every department report
 

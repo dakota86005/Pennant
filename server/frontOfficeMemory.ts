@@ -606,7 +606,7 @@ export function watchlistCopies(saveKey: string = memoryKey()): { copied: number
 
 async function copyWatchlistNow(): Promise<WatchlistCopy> {
   const name = rollbackName();
-  if (name === null) return { copied: 0, notInLeague: 0, looked: false };
+  if (name === null || !snapshotsAllowed()) return { copied: 0, notInLeague: 0, looked: false };
   const saveKey = memoryKey();
   const pending = historyDb.prepare(
     `SELECT w.player_id, w.name, w.note, w.added_at, w.updated_at FROM watchlist w

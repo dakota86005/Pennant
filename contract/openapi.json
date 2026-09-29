@@ -3387,6 +3387,10 @@
           },
           "note": {
             "type": "string"
+          },
+          "restore": {
+            "type": "boolean",
+            "description": "Set on an unfollow's undo: the follow is put back as it was (its note, how it began and when), not begun again. The server remembers the follows it just removed; one it no longer remembers (after a relaunch) is followed again."
           }
         },
         "required": [

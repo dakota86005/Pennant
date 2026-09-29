@@ -1,9 +1,16 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+/** Whether the served league is the chosen save's own (the real gate, or false for "a new save's import hasn't landed"). */
+const gate = vi.hoisted(() => ({ imported: true }));
+vi.mock('../server/historyIdentity.js', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../server/historyIdentity.js')>();
+  return { ...real, servedLeagueCertain: () => gate.imported && real.servedLeagueCertain() };
+});
 import { db } from '../server/db.js';
 import { historyDb } from '../server/history.js';
 import { forgetHistoryKey, rollbackName } from '../server/historyIdentity.js';
 import { followNow, followingView, searchNow, unfollowNow, wireView } from '../server/aroundTheLeague.js';
-import { forgetMemoryCaches, follows } from '../server/frontOfficeMemory.js';
+import { copyWatchlist, forgetMemoryCaches, follows } from '../server/frontOfficeMemory.js';
 import { frontOfficeSummaryNow, resetAttention } from '../server/frontOfficeAttention.js';
 import { resetFrontOfficeCache } from '../server/frontOfficeService.js';
 import { forgetWire } from '../server/leagueWire.js';
@@ -75,8 +82,38 @@ describe('Following (case 20)', () => {
     expect(followed.following).toBe(true);
     expect(followed.undo).toEqual({ action: 'unfollow', request: { kind: 'club', id: club } });
     const dropped = await unfollowNow({ kind: 'club', id: String(club) });
-    expect(dropped.undo).toEqual({ action: 'follow', request: { kind: 'club', id: club, note: 'Rival' } });
+    expect(dropped.undo).toEqual({ action: 'follow', request: { kind: 'club', id: club, note: 'Rival', restore: true } });
     await expect(followNow({ kind: 'club', id: 99_999 })).rejects.toThrow('Pennant doesn\'t know that club in this save.');
+  });
+
+  it('puts an unfollowed follow back as it was when the unfollow is undone: its note, how it began and when (L8)', async () => {
+    const player = save.hitters[3];
+    watch(player, nameOf(player), 'Keep an eye on him');
+    await copyWatchlist();
+    const before = follows().find((f) => f.kind === 'player' && f.id === player)!;
+    expect(before).toMatchObject({ source: 'watchlist', createdAt: '2040-01-01T00:00:00.000Z', note: 'Keep an eye on him' });
+    const dropped = await unfollowNow({ kind: 'player', id: String(player) });
+    const back = await followNow(dropped.undo.request);
+    expect(back.done.display).toBe(`Following ${nameOf(player)} again`);
+    expect(follows().find((f) => f.kind === 'player' && f.id === player)).toMatchObject({ source: 'watchlist', createdAt: '2040-01-01T00:00:00.000Z', note: 'Keep an eye on him' });
+    expect(back.undo).toEqual({ action: 'unfollow', request: { kind: 'player', id: player } });
+  });
+
+  it('refuses a follow or an unfollow in a sentence while a newly chosen save\'s import hasn\'t landed, and copies nothing (L1)', async () => {
+    const club = save.clubs.find((c) => c !== save.org)!;
+    await followNow({ kind: 'club', id: club });
+    watch(save.hitters[4], nameOf(save.hitters[4]), 'Later');
+    gate.imported = false;
+    try {
+      await expect(followNow({ kind: 'club', id: club, note: 'x' })).rejects.toThrow('The save you chose isn\'t imported yet, so its follows can\'t be changed.');
+      await expect(unfollowNow({ kind: 'club', id: String(club) })).rejects.toThrow('The save you chose isn\'t imported yet');
+      await followingView();
+      expect(await copyWatchlist()).toMatchObject({ copied: 0, looked: false });
+      expect(follows().some((f) => f.kind === 'player')).toBe(false);
+    } finally {
+      gate.imported = true;
+    }
+    expect(follows().find((f) => f.kind === 'club' && f.id === club)!.note).toBeNull();
   });
 
   it('changes no figure, place or severity anywhere: only the wire\'s and the search\'s order', async () => {

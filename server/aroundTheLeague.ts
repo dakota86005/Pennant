@@ -14,8 +14,8 @@ import { parseGameDate } from './dataFreshness.js';
 import { clubOwed } from './clubOwed.js';
 import { clubReportBuilt, FrontOfficeRefusal, resolveOrg } from './frontOfficeService.js';
 import {
-  copyWatchlist, follow, followedSets, follows, memoryKey, memoryRevision, previousReportSnapshot, snapshotsAllowed, unfollow, watchlistCopies,
-  type FollowKind,
+  copyWatchlist, follow, followedSets, follows, memoryKey, memoryRevision, previousReportSnapshot, restoreFollow, snapshotsAllowed, unfollow, watchlistCopies,
+  type FollowKind, type FollowRecord,
 } from './frontOfficeMemory.js';
 import { wireFacts, type WireKind } from './leagueWire.js';
 import { importedAt } from './playerStateRoutes.js';
@@ -189,7 +189,8 @@ let watchlistLooked: string | null = null;
 /** Following (`GET /api/v2/following`): the watchlist is copied in first, once per save (never moved). */
 export async function followingView(): Promise<Following> {
   const key = memoryKey();
-  if (watchlistLooked !== key) {
+  // The watchlist is copied only into the save whose league is served (L1: never before a new save's import lands)
+  if (watchlistLooked !== key && snapshotsAllowed()) {
     watchlistLooked = key;
     try {
       const copy = await copyWatchlist();
@@ -217,15 +218,38 @@ export async function followingView(): Promise<Following> {
 
 const MAX_NOTE = 1000;
 
-/** Follows a club or a player, or changes a follow's note (`PUT /api/v2/following`). */
+/** Why a follow can't be changed while a newly chosen save's import hasn't landed (as the desk refuses, L1). */
+const NOT_IMPORTED = 'The save you chose isn\'t imported yet, so its follows can\'t be changed.';
+
+/** The follows just removed, by save, kind and id, so an unfollow's undo puts one back as it was (L8). A few at most. */
+const MAX_REMOVED = 32;
+const removed = new Map<string, FollowRecord>();
+const removedKey = (kind: FollowKind, id: number) => `${memoryKey()}|${kind}|${id}`;
+
+/** Follows a club or a player, or changes a follow's note (`PUT /api/v2/following`); `restore` undoes an unfollow. */
 export async function followNow(body: unknown): Promise<FollowChange> {
   const b = (body ?? {}) as Partial<FollowUpdate>;
   if (b.kind !== 'club' && b.kind !== 'player') throw new LeagueRefusal('Say whether it is a club or a player to follow.', 400);
   const id = Number(b.id);
   if (!Number.isInteger(id) || id <= 0) throw new LeagueRefusal('Say which club or player to follow.', 400);
   if (b.note !== undefined && (typeof b.note !== 'string' || b.note.length > MAX_NOTE)) throw new LeagueRefusal('Keep the note under 1,000 characters.', 400);
+  if (!snapshotsAllowed()) throw new LeagueRefusal(NOT_IMPORTED, 400);
   const name = b.kind === 'club' ? clubsNow().get(id)?.name ?? null : playersNow([id]).get(id)?.name ?? null;
   if (name === null) throw new LeagueRefusal(b.kind === 'club' ? 'Pennant doesn\'t know that club in this save.' : 'Pennant doesn\'t know that player in this save.', 404);
+  // An unfollow undone: the follow comes back as it was, its note, how it began and when (never begun again)
+  const was = b.restore === true ? removed.get(removedKey(b.kind, id)) : undefined;
+  if (was && !follows().some((f) => f.kind === was.kind && f.id === id)) {
+    removed.delete(removedKey(b.kind, id));
+    await restoreFollow({ ...was, note: b.note === undefined ? was.note : b.note.trim() || null });
+    const view = await followingView();
+    publish({ type: 'following-changed', followStamp: view.followStamp });
+    return {
+      done: cell(`Following ${b.kind === 'club' ? `the ${name}` : name} again`),
+      following: true,
+      undo: { action: 'unfollow', request: { kind: b.kind, id } },
+      view,
+    };
+  }
   const { previous } = await follow(b.kind, id, name, b.note === undefined ? undefined : b.note.trim());
   const view = await followingView();
   publish({ type: 'following-changed', followStamp: view.followStamp });
@@ -245,15 +269,19 @@ export async function unfollowNow(query: Record<string, unknown>): Promise<Follo
   const id = Number(query.id);
   if (!kind) throw new LeagueRefusal('Say whether it is a club or a player to stop following.', 400);
   if (!Number.isInteger(id) || id <= 0) throw new LeagueRefusal('Say which club or player to stop following.', 400);
-  const removed = await unfollow(kind, id);
-  if (!removed) throw new LeagueRefusal('You weren\'t following that one.', 404);
+  if (!snapshotsAllowed()) throw new LeagueRefusal(NOT_IMPORTED, 400);
+  const gone = await unfollow(kind, id);
+  if (!gone) throw new LeagueRefusal('You weren\'t following that one.', 404);
+  removed.delete(removedKey(kind, id));
+  removed.set(removedKey(kind, id), gone);
+  while (removed.size > MAX_REMOVED) removed.delete(removed.keys().next().value!);
   const view = await followingView();
   publish({ type: 'following-changed', followStamp: view.followStamp });
-  const name = removed.name ?? (kind === 'club' ? 'that club' : 'that player');
+  const name = gone.name ?? (kind === 'club' ? 'that club' : 'that player');
   return {
-    done: cell(`No longer following ${kind === 'club' && removed.name ? `the ${name}` : name}`),
+    done: cell(`No longer following ${kind === 'club' && gone.name ? `the ${name}` : name}`),
     following: false,
-    undo: { action: 'follow', request: { kind, id, note: removed.note ?? '' } },
+    undo: { action: 'follow', request: { kind, id, note: gone.note ?? '', restore: true } },
     view,
   };
 }

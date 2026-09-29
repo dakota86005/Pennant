@@ -191,6 +191,11 @@ export interface FollowUpdate {
   kind: 'club' | 'player';
   id: Integer;
   note?: string;
+  /**
+   * Set on an unfollow's undo: the follow is put back as it was (its note, how it began and when), not begun again. The
+   * server remembers the follows it just removed; one it no longer remembers (after a relaunch) is followed again.
+   */
+  restore?: boolean;
 }
 
 /** How to undo a follow or an unfollow in one step: follow again (`PUT`, with the note it had) or unfollow (`DELETE`). */
