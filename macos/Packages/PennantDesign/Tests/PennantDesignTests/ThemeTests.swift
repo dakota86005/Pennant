@@ -118,6 +118,28 @@ struct ThemeTests {
         #expect(!Theme(served: pack, useTeamColors: true).isThemed(.lightIncreasedContrast))
     }
 
+    @Test("the Tonight card's words read on its plate, for every club in the synthetic league and the example pack, in every appearance")
+    func tonightPlateReads() throws {
+        let catalog = try Self.decode(Components.Schemas.Catalog.self, "getCatalog")
+        let packs = catalog.clubs.map(\.theme) + [try Self.examplePack()]
+        #expect(catalog.clubs.count >= 4)
+        for pack in packs {
+            let theme = Theme(served: pack, useTeamColors: true)
+            for (variant, tokens) in [
+                (Theme.Variant.light, pack.tokens.light), (.dark, pack.tokens.dark),
+                (.lightIncreasedContrast, pack.tokens.lightIncreasedContrast), (.darkIncreasedContrast, pack.tokens.darkIncreasedContrast),
+            ] {
+                let plate = try #require(Theme.controlPlate(tokens).flatMap(ServedColor.components))
+                for text in [tokens.mastheadText, tokens.mastheadSecondaryText] {
+                    let ratio = Contrast.ratio(plate, try #require(ServedColor.components(text)))
+                    #expect(ratio >= variant.requiredContrast, "\(pack.id) \(variant): \(text) on the plate reads \(ratio)")
+                }
+                // The plate the card draws is that served colour
+                #expect(theme.palette(for: variant).controlPlate == ServedColor.color(Theme.controlPlate(tokens)!))
+            }
+        }
+    }
+
     @Test("the contrast ratio is WCAG's: black on white is 21:1, a colour on itself 1:1")
     func contrastRatio() {
         #expect(abs(Contrast.ratio((0, 0, 0), (1, 1, 1)) - 21) < 0.001)
