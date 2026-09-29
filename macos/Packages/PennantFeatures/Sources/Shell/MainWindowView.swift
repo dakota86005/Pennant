@@ -388,7 +388,31 @@ public enum AppAppearance {
         return theme.value1?.rawValue ?? theme.value2
     }
 
+    /// Where the served appearance is remembered, in the app's own preferences (never the data folder), so the next
+    /// launch draws its first frame in it: a window drawn in the system's appearance and redrawn in the served one when
+    /// the settings arrive cost about 80 ms of the launch (N6 polish).
+    static let rememberedKey = "PennantServedAppearance"
+
+    /// The appearance the settings served last time, applied before the first window is built; the served settings
+    /// correct it when they arrive.
+    @MainActor public static func applyRemembered() {
+        guard let theme = UserDefaults.standard.string(forKey: rememberedKey) else { return }
+        apply(theme, remember: false)
+    }
+
     public static func apply(_ theme: String?) {
+        apply(theme, remember: true)
+    }
+
+    static func apply(_ theme: String?, remember: Bool) {
+        // Nil: the settings are not served yet; the appearance applied at launch stays until they are
+        guard let theme else {
+            #if DEBUG
+            if let override = debugAppearance, NSApp.appearance != override { NSApp.appearance = override }
+            #endif
+            return
+        }
+        if remember { UserDefaults.standard.set(theme, forKey: rememberedKey) }
         var appearance: NSAppearance? = switch theme {
         case "dark": NSAppearance(named: .darkAqua)
         case "light": NSAppearance(named: .aqua)

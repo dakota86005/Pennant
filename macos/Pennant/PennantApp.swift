@@ -69,6 +69,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.noteLaunchStep("the app's model is made and the server started")
     }
 
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        // The appearance the settings served last time, before the first window is built (the served one follows)
+        AppAppearance.applyRemembered()
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         model.noteLaunchStep("the app finished launching")
         terminationSignal = Self.quitOnTerminationSignal()
