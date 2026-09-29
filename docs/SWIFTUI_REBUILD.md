@@ -767,34 +767,36 @@ Nothing is drawn yet: Stage B draws it. Cases 15 to 20 and the search and club-o
   "Pennant will compare the next export with this one."). The Swift client reads them by kind (`ServerEventReading`);
   `AppModel` ignores them until Stage B.
 
-*Speed* (re-measured after the independent review's fixes: the sidecar bundle, `scratchpad/n7/bench-n7b.mjs`; the
-owner's export is a read-only scratch copy, 70 CSVs, 2.79 million rows, imported twice into a scratch folder with no
-live log; the synthetic save is `npm run synthetic:league`; two runs on the owner's export, ranges across them):
+*Speed* (re-measured after the independent review's fixes and the merge of the N6 polish: the sidecar bundle,
+`scratchpad/n7/bench-n7b.mjs`; the owner's export is a read-only scratch copy, 70 CSVs, 2.79 million rows, imported twice
+into a scratch folder with no live log; the synthetic save is `npm run synthetic:league`; two runs on the owner's
+export, ranges across them):
 
 | | Synthetic save | The owner's export |
 |---|---|---|
-| Import finished to `changes-ready` (first import; second) | 0.56 s; 0.31 s | 4.0 to 6.6 s; 2.1 to 2.3 s (the club's cold build, about 2 s, is most of it) |
-| The wire gathered (once per import, off the request path) | 1 ms, 4 entries | 20 to 33 ms, 360 entries this season |
-| Search index built (once per import, off the request path) | 1 ms, 150 entries | 50 to 52 ms, 12,647 entries |
-| `front-office`, warm p50 / p95 (with changes) | 1.1 / 3.7 ms | 1.4 to 1.7 / 2.4 to 3.5 ms (130 kB) |
-| `wire`, first / warm p50 / p95 | 1 / 0.3 / 0.4 ms | 3 to 6 / 2.9 to 5.1 / 6.6 to 7.5 ms (187 kB, 200 of 360) |
-| `club`, a rival: first open once built ahead / in the refits' window | 1 ms / 1 ms | 3 ms / 1.0 to 1.4 s (cold, in the worker) |
-| `club`, another club: cold (in the worker) / warm p50 / p95 | — (every club is a rival) | 1.0 to 1.1 s / 1.3 to 1.8 / 2.6 ms (one run saw 1.5 s once: an adopted calibration dropped the kept reports mid-loop) |
-| `search`, p50 / p95 (54 queries typed a letter at a time) | 0.3 / 0.4 ms | 0.8 to 1.3 / 2.7 to 2.8 ms |
-| `desk` GET p95; `PUT` p95 over 40 marks and undos | 0.4 ms; 1 ms | 0.7 to 1.5 ms; 1.1 to 1.6 ms (a `PUT` never builds) |
-| `following` GET p95 | 0.4 ms | 0.9 to 1.4 ms |
+| Import finished to `changes-ready` (first import; second) | 1.4 s; 0.26 s (the first waits for the start's first answers, or 1.5 s) | 3.7 to 3.9 s; 1.8 to 2.1 s (the club's cold build, about 1.6 s, is most of it) |
+| The wire gathered (once per import, off the request path) | 1 to 2 ms, 4 entries | 16 to 26 ms, 360 entries this season |
+| Search index built (once per import, off the request path) | 2 ms, 150 entries | 39 to 60 ms, 12,647 entries |
+| `front-office`, warm p50 / p95 | 1.2 / 3.7 ms | 1.7 / 2.5 to 4.4 ms (133 kB) |
+| `wire`, first / warm p50 / p95 | 1 / 0.4 / 0.5 ms | 4 / 2.8 to 3.1 / 3.7 to 4.1 ms (187 kB, 200 of 360) |
+| `club`, a rival: first open once built ahead / before (the refits' window) | 1 ms / 1 ms | 3 to 4 ms / 0.96 to 0.97 s (cold, in the worker) |
+| `club`, another club: cold (in the worker) / warm p50 / p95 | — (every club is a rival) | 0.86 to 0.87 s / 1.3 / 3.5 to 4.5 ms |
+| `search`, p50 / p95 (54 queries typed a letter at a time) | 0.3 / 0.4 ms | 0.8 / 2.6 to 2.9 ms |
+| `desk` GET p95; `PUT` p95 over 40 marks and undos | 0.5 ms; 0.9 ms | 0.6 ms; 1.6 to 2.2 ms (a `PUT` never builds) |
+| `following` GET p95 | 0.4 ms | 0.5 to 0.6 ms |
 
-*What an import costs in the background now* (the owner's export): our Front Office built once in its worker (1.8 to
-3.1 s), then on the server's thread the snapshot, the wire (20 to 33 ms) and the search index (about 50 ms); the refits
-in their own workers (17.6 to 22.5 s, on the first import and on a re-import alike, since the calibrations refit each
-time), and our Front Office built once more if one was adopted (1.4 to 2.0 s); then, once, our division's four club
-reports, one at a time in the worker, each after any build of ours (5.2 s in all, about 1.3 s each). Before the review
-the rivals were built again after every kept build of ours, so twice or more per import. Until they are built (about 20 s
-after the import finishes), a rival's first open is a cold build (about 1 s).
+*What an import costs in the background now* (the owner's export): our Front Office built once in its worker (about
+1.6 s), then on the server's thread the snapshot, the wire (16 to 26 ms) and the search index (39 to 60 ms); the refits
+in their own workers (17.2 to 19.1 s, on the first import and on a re-import alike, since the calibrations refit each
+time), and our Front Office built once more if one was adopted (about 1.6 s); then, once, our division's four club
+reports, one at a time in the worker, each after any build of ours (4.7 to 4.8 s in all, about 1.2 s each), stopped if a
+newer import lands meanwhile. Before the review the rivals were built again after every kept build of ours, so twice or
+more per import. Until they are built (about 20 s after the import finishes), a rival's first open is a cold build
+(about 1 s). At a start, a build kept before the app's first answers are out is remembered after them.
 *What one new copy of the live log costs* (measured as a settings change, which moves the same key, since the scratch
-export has no log): our Front Office built again in the worker (a request waiting on it had its answer in 2.0 to 2.2 s),
-the wire gathered again (20 to 33 ms) on the next read, and no club report built ahead: each other club's report is
-built again when opened (about 1 s), since the report reads the log through the data status's freshness.
+export has no log): our Front Office built again in the worker (a request waiting on it had its answer in 1.5 to
+1.6 s), the wire gathered again (16 to 26 ms) on the next read, and no club report built ahead: each other club's report
+is built again when opened (about 0.9 s), since the report reads the log through the data status's freshness.
 
 *Payload shapes for Stage B* (`server/presentation/frontOffice/types.ts` and `leagueTypes.ts`):
 - `FrontOfficeSummary`: adds `changes: SinceLastExport | null`, `changesNote: Cell | null`, `wire: WireTop | null`,
