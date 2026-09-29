@@ -729,6 +729,9 @@ public final class AppModel {
         orgs = nextOrgs
         club = CurrentClub.from(served: nextSettings?.organization, orgs: nextOrgs)
         settings = nextSettings
+        // Answered, whether or not they succeeded: the club card of the report kept last stays only for the key's own
+        // save and club (N6 polish review: a failed answer left it drawn for a club never confirmed)
+        frontOffice.settleWaitingKept(for: storeKey)
         if storeKey != nil, !loggedKey {
             loggedKey = true
             controller.log.write("store key known \(launchClock)", source: "app")

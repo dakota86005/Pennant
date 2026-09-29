@@ -101,6 +101,8 @@ public final class FrontOfficeStore {
             Task { [weak self] in
                 let last = await preloaded.value
                 guard let self, self.summary == nil, self.shownKey == nil else { return }
+                // Read after the settings were answered: drawn only for the key's own save and club
+                if let settled = self.settledFor, last?.key != settled { return }
                 self.waitingKept = last
             }
         }
@@ -196,7 +198,7 @@ public final class FrontOfficeStore {
         if summary == nil, let kept, let keptKey {
             // Read and decoded at launch, off the main actor (the index's one file); another key's is read now, off it
             let last = await preloaded?.value
-            // The report laid out hidden is another save's or club's: dropped, never shown
+            // The report kept last is another save's or club's: its club card is dropped, and it is never shown
             if last?.key != keptKey { waitingKept = nil }
             let stored = last?.key == keptKey ? last?.kept : await kept.read(keptKey)
             guard summaryAsked == key else { return }
@@ -278,6 +280,17 @@ public final class FrontOfficeStore {
             log("could not keep the Morning Report: \(error)")
         }
     }
+
+    /// The settings have been answered (the launch's first key): the club card of the report kept last is drawn no longer
+    /// unless its save and club are the key's own (the report itself then follows, `loadSummary`). A settings request
+    /// that failed leaves no key, so the card goes: never a club that was not confirmed (N6 polish review).
+    public func settleWaitingKept(for key: AppModel.StoreKey?) {
+        let confirmed = key.flatMap { Self.keptKey($0, contract: contract) }
+        settledFor = .some(confirmed)
+        if let waiting = waitingKept, waiting.key != confirmed { waitingKept = nil }
+    }
+    /// The kept key the settings confirmed (`.some(nil)`: none), once they are answered; nil before.
+    private var settledFor: KeptReports.Key??
 
     /// Forgets every kept payload (a data-folder restore).
     public func forgetKept() async {

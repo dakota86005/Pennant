@@ -260,9 +260,10 @@ struct DetailView: View {
 }
 
 extension DetailView {
-    /// The Morning Report is drawn while the server starts (it says "Starting…" itself, and lays out the report it kept,
-    /// hidden until its save and club are confirmed), so the window's toolbar and content are the same from the first
-    /// frame to the report (N6 polish: the relaunch's layout jump). Every other view waits in `StartingView`.
+    /// The Morning Report is drawn while the server starts (it says "Starting…" itself, with the club card of the report
+    /// kept last drawn at once; the report itself only once its save and club are confirmed), so the window's toolbar and
+    /// content are the same from the first frame to the report (N6 polish: the relaunch's layout jump). Every other view
+    /// waits in `StartingView`.
     nonisolated static func drawsWhileStarting(_ route: AppRoute) -> Bool {
         route.department.rawValue == "frontOffice" && route.view == "morningReport"
     }

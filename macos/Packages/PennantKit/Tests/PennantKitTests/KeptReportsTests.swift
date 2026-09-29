@@ -350,6 +350,37 @@ struct KeptSummaryStoreTests {
         #expect(other.shownCatalog == nil)
     }
 
+    @Test("the club card of the report kept last goes once the settings are answered, unless they confirm its save and club (N6 polish review)")
+    func settleWaitingKept() async throws {
+        let kept = KeptReports(folder: try scratchFolder("kept"))
+        let first = FrontOfficeStore(kept: kept, contract: "digest-a")
+        await first.loadSummary(client: client(try transport()), key: key())
+        await first.keep(catalog: try catalog(), for: key())
+        func waiting() async throws -> FrontOfficeStore {
+            let store = FrontOfficeStore(kept: kept, contract: "digest-a")
+            for _ in 0..<200 where store.waitingKept == nil { try await Task.sleep(for: .milliseconds(5)) }
+            #expect(store.waitingKept != nil)
+            return store
+        }
+        // The settings failed: no key, and the card goes
+        let failed = try await waiting()
+        failed.settleWaitingKept(for: nil)
+        #expect(failed.waitingKept == nil)
+        // Another save's key: it goes
+        let another = try await waiting()
+        another.settleWaitingKept(for: key(saveId: "save-b"))
+        #expect(another.waitingKept == nil)
+        // Its own save and club: it stays, until the report itself is shown
+        let own = try await waiting()
+        own.settleWaitingKept(for: key())
+        #expect(own.waitingKept != nil)
+        // Answered before the kept report was even read: it is never drawn afterwards for a key that is not its own
+        let early = FrontOfficeStore(kept: kept, contract: "digest-a")
+        early.settleWaitingKept(for: nil)
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(early.waitingKept == nil)
+    }
+
     @Test("at launch the report kept last is read before its key is confirmed, for its club card only, and dropped for another key (N6 polish)")
     func waitingKept() async throws {
         let kept = KeptReports(folder: try scratchFolder("kept"))
