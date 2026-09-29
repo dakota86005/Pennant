@@ -96,11 +96,11 @@ describe('the shown strings are checked as they are built', () => {
   });
 
   it('says how every basis is called in words, one sentence per certainty (review S5)', () => {
-    for (const certainty of ['fact', 'calibrated', 'provisional', 'policy', 'unknown'] as const) {
+    for (const certainty of ['fact', 'recorded', 'calibrated', 'provisional', 'policy', 'unknown'] as const) {
       const built = basis({ ...plain, certainty, stamp: ['calibrated', 'provisional', 'policy'].includes(certainty) ? 'A stated line.' : undefined });
       expect(built.called).toBe(CERTAINTY_WORDS[certainty]);
     }
-    expect(new Set(Object.values(CERTAINTY_WORDS)).size).toBe(5);
+    expect(new Set(Object.values(CERTAINTY_WORDS)).size).toBe(6);
   });
 
   it('serves an unknown value as null with its sentence, never a zero', () => {
