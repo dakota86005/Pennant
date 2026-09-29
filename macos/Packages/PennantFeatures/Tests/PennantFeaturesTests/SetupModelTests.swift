@@ -180,6 +180,7 @@ struct SetupModelTests {
         #expect(server.bodies(of: "saveSettings").first?["clubChoice"] == nil)
         #expect(saved)
         #expect(model.step == .done)
+        #expect(model.clubWasAsked)
     }
 
     @Test("with several human clubs, the chosen one is saved by its id: Automatic would follow only the first")
@@ -392,6 +393,8 @@ struct SetupModelTests {
         #expect(server.requests.filter { $0.operation == "getSaveDiscovery" || $0.operation == "setSave" }.isEmpty)
         await model.observe(try status(finishedAt: "2040-07-01T12:00:00.000Z"))
         #expect(model.step == .done)
+        // Closing shows the import it followed: the club was never asked (N6 polish: never an empty club step)
+        #expect(model.clubWasAsked == false)
         #expect(reloaded)
         #expect(server.requests.filter { $0.operation == "listOrgs" || $0.operation == "saveSettings" }.isEmpty)
         // Asked again (the window reappears): nothing more

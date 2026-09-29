@@ -390,7 +390,7 @@ struct SnapshotTests {
 
     // MARK: Finding the save, played since, the rating history (N6, Stage B2)
 
-    nonisolated static let findingSteps = ["automatic-importing", "nothing-stands-out", "choose-another", "club-asked"]
+    nonisolated static let findingSteps = ["automatic-importing", "automatic-closing", "nothing-stands-out", "choose-another", "club-asked"]
 
     /// A captured claim with the server's words for another line (the fixtures have no save without an export, so the
     /// export's help is drawn with the server's own sentence, `EXPORT_OFF_NOTE`, on the captured claim's shape).
@@ -408,7 +408,7 @@ struct SnapshotTests {
         let why = try #require(nothing.why)
         let save = try #require(PreviewFixtures.saves.first)
         switch name {
-        case "automatic-importing":
+        case "automatic-importing", "automatic-closing":
             var started = nothing
             started.outcome = .init(value1: .started)
             started.text = "Using Test League, the save you've played most recently."
@@ -419,6 +419,8 @@ struct SnapshotTests {
                 table: "players", fileIndex: 9, files: 36, rows: 52_000, phase: .init(value1: .writing),
                 words: .init(phase: "Writing the league", table: "Players", display: "Writing players · 9 of 36")
             )
+            // Closing (the import landed, the club taken from the save): the import it followed, never an empty club step
+            if name == "automatic-closing" { return .preview(step: .done, automatic: started, club: club, chosen: save) }
             return .preview(step: .importing, automatic: started, club: club, chosen: save, progress: progress)
         case "nothing-stands-out":
             var found = discovery
