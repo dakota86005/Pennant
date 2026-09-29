@@ -30,6 +30,7 @@ import {
 import { REPORTING } from './presentation/frontOffice/desk.js';
 import type { DepartmentReport, DeskChange, DeskStatus, DeskUpdate, DeskView, FrontOfficeSummary, ReportChange } from './presentation/frontOffice/types.js';
 import { publish } from './serverEvents.js';
+import { afterFirstAnswers, startupWorkHeld } from './startupWork.js';
 import { timestampWords } from './timeWords.js';
 import { searchIndex } from './search.js';
 import { copyWatchlist } from './frontOfficeMemory.js';
@@ -307,9 +308,15 @@ export async function rememberBuild(built: FrontOfficeBuilt): Promise<boolean> {
 }
 
 onFrontOfficeKept((built) => {
-  rememberBuild(built)
-    .then((filed) => { if (filed) void warmAfter(built.orgId, built.importStamp); })
-    .catch((err) => console.error('[front office] what this import served could not be remembered:', err));
+  const remember = () => {
+    rememberBuild(built)
+      .then((filed) => { if (filed) void warmAfter(built.orgId, built.importStamp); })
+      .catch((err) => console.error('[front office] what this import served could not be remembered:', err));
+  };
+  // A build kept while the start's own work still waits for the app's first answers (N6 polish) waits with it: the
+  // snapshot, the wire and the search index never go in front of those answers
+  if (startupWorkHeld()) afterFirstAnswers('remember a kept build', remember);
+  else remember();
 });
 
 let warmed: string | null = null;

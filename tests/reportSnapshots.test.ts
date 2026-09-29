@@ -12,6 +12,7 @@ import { frontOfficeSummaryNow, rememberBuild, resetAttention, departmentReportN
 import { frontOfficeBuilt, resetFrontOfficeCache } from '../server/frontOfficeService.js';
 import { importedAt } from '../server/playerStateRoutes.js';
 import { subscribe, type ServerEvent } from '../server/serverEvents.js';
+import { releaseStartupWork, resetStartupWork, startupWorkClock } from '../server/startupWork.js';
 import { servedDepartments, departmentOffice } from '../server/presentation/catalog.js';
 import { basis, claim } from '../server/presentation/claim.js';
 import { sinceLastExport, type PreviousExport } from '../server/presentation/frontOffice/attention.js';
@@ -171,6 +172,23 @@ describe('the snapshots behind it, per save and per import (D-058, D-064)', () =
     resetFrontOfficeCache();
     resetAttention();
     heard.length = 0;
+  });
+
+  it('remembers a build kept at a start only once the app\'s first answers are out, never in front of them', async () => {
+    const turn = () => new Promise((resolve) => setImmediate(resolve));
+    resetStartupWork();
+    startupWorkClock(60_000);
+    try {
+      importedAt.value = '2040-05-01T10:00:00.000Z';
+      await frontOfficeBuilt(save.org);
+      for (let i = 0; i < 5; i++) await turn();
+      expect(reportSnapshotOf(save.org, importedAt.value)).toBeNull();
+      releaseStartupWork('the first answers are out');
+      for (let i = 0; i < 50 && !reportSnapshotOf(save.org, importedAt.value); i++) await turn();
+      expect(reportSnapshotOf(save.org, importedAt.value)).not.toBeNull();
+    } finally {
+      resetStartupWork();
+    }
   });
 
   it('with no earlier export of this save says there is nothing to compare, in a sentence, never an empty list', async () => {

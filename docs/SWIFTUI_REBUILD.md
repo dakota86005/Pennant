@@ -709,7 +709,8 @@ Nothing is drawn yet: Stage B draws it. Cases 15 to 20 and the search and club-o
   and filed only while the served league is certainly the save's own; `history.db` is copied into `backups/` once before
   the first row, a failed copy tried again at most once per start and per import; the new tables are created empty
   before it, which D-058 records as safe). After each kept build of the club's Front Office (`onFrontOfficeKept`, after the requests that waited
-  on it are answered; the post-import hook `remember` waits on it after an import): what it served (each department's
+  on it are answered, and at a start after the app's first answers too, with the start's own work, `startupWork.ts`; the
+  post-import hook `remember` waits on it after an import): what it served (each department's
   state, every item's key, plain severity, headline and count, the key figures) and every club's standings (record,
   place, games back, runs). A rebuild of the same import replaces that import's snapshot. The roster state "since the
   last export" is `rosterStateHistory.ts`'s, not a copy.
