@@ -9,7 +9,7 @@ import type { Integer } from '../contract/primitives.js';
 import { parseGameDate, type GameDate } from '../dataFreshness.js';
 import { gameDateWords } from '../dataStatus.js';
 import { saveLocationLabel } from '../paths.js';
-import type { HistoryCarryOver, HistoryNote, HistoryOffer } from '../historyIdentity.js';
+import { CONTINUITY_POLICY, type HistoryCarryOver, type HistoryNote, type HistoryOffer } from '../historyIdentity.js';
 import { basis, claim } from './claim.js';
 
 /** How a history's players compare with this save's: the same, unclear, or too few to tell. */
@@ -125,16 +125,25 @@ export function ratingHistoryNoteClaim(note: HistoryNote): Claim | null {
       unknown: [],
       wouldChange: [],
       lean: null,
-      certainty: 'fact',
+      certainty: 'recorded',
     }),
   });
 }
 
-const PLAYERS_WORDS: Record<RatingHistoryPlayers, string> = {
-  same: 'Its players match this save\'s',
-  unclear: 'Only some of its players match this save\'s',
-  too_few: 'Too few of its players are in this save to compare them',
-};
+/**
+ * How far its players match this save's, as the share it is (N6 polish: "only some" was said of 99.3%). Rounded down,
+ * so a share short of the line that makes it the same league (D-064, `CONTINUITY_POLICY.sameShare`) is never shown as
+ * reaching it; below that line it says so, and the GM decides.
+ */
+export function playersWords(players: RatingHistoryPlayers, matched: number, compared: number): string {
+  const counted = `${matched} of ${compared} compared`;
+  if (players === 'too_few' || compared === 0) return `Too few of its players are in this save to compare them (${counted})`;
+  const share = Math.floor((matched / compared) * 1000) / 10;
+  const shown = share === 100 && matched < compared ? '99.9' : share.toFixed(share === Math.floor(share) ? 0 : 1);
+  if (players === 'same') return `${shown}% of its players match this save's (${counted})`;
+  const line = CONTINUITY_POLICY.sameShare * 100;
+  return `${shown}% of its players match this save's (${counted}): short of the ${line}% that makes it surely the same league, so only you can say`;
+}
 
 /** What an offer or a listed history is, as basis lines. */
 function evidence(o: HistoryOffer): Array<{ label: string; value: string }> {
@@ -144,7 +153,7 @@ function evidence(o: HistoryOffer): Array<{ label: string; value: string }> {
   return [
     { label: 'Its folder', value: `${o.folderPath ?? 'A folder not recorded'} ${folder}.` },
     { label: 'Its history', value: `${o.dates} import${o.dates === 1 ? '' : 's'}${last ? `, the latest on ${last}` : ''}.` },
-    { label: 'Its players', value: `${PLAYERS_WORDS[o.players]} (${o.continuity.matched} of ${o.continuity.compared} compared).` },
+    { label: 'Its players', value: `${playersWords(o.players, o.continuity.matched, o.continuity.compared)}.` },
     { label: 'Carrying it over', value: `Copies its imports${through ? ` up to ${through}` : ''} into this save's history. Its own history is left as it is, and it can be undone.` },
   ];
 }
@@ -177,7 +186,7 @@ export function offerWords(o: HistoryOffer, ownImports = 0): RatingHistoryOffer 
         unknown: ['Whether it is the same save: the export doesn\'t say.'],
         wouldChange: ['Carry it over to continue it here, or keep them apart.'],
         lean: null,
-        certainty: 'fact',
+        certainty: 'recorded',
       }),
     }),
     saveName: o.saveName,
@@ -202,7 +211,7 @@ export function candidateWords(o: HistoryOffer): RatingHistoryCandidate {
       text: `${name} in ${place}: ${o.dates} import${o.dates === 1 ? '' : 's'}${last ? `, the latest on ${last}` : ''}`,
       tone: 'neutral',
       hint: 'Carrying it over copies its history into this save\'s; you can undo it',
-      basis: basis({ because: evidence(o), source: SOURCE, unknown: [], wouldChange: [], lean: null, certainty: 'fact' }),
+      basis: basis({ because: evidence(o), source: SOURCE, unknown: [], wouldChange: [], lean: null, certainty: 'recorded' }),
     }),
     saveName: o.saveName,
     place,
@@ -233,7 +242,7 @@ export function carryOverWords(c: HistoryCarryOver): RatingHistoryCarryOver {
         unknown: [],
         wouldChange: [],
         lean: null,
-        certainty: 'fact',
+        certainty: 'recorded',
       }),
     }),
     undoQuestion: `Undo the carry-over from ${name}? The ${c.rows} player rating${c.rows === 1 ? '' : 's'} it copied ${c.rows === 1 ? 'is' : 'are'} removed from this save's history; ${c.fromName ? name : 'that save'} keeps its own.`,
@@ -255,7 +264,7 @@ export function stackingWarning(carries: HistoryCarryOver[]): Claim | null {
       unknown: [],
       wouldChange: ['Undo a carry-over first to carry over only the other.'],
       lean: null,
-      certainty: 'fact',
+      certainty: 'recorded',
     }),
   });
 }
@@ -282,7 +291,7 @@ export function ratingHistoryStatus(note: HistoryNote, dates: readonly string[])
       unknown: [],
       wouldChange: [],
       lean: null,
-      certainty: 'fact',
+      certainty: 'recorded',
     }),
   });
 }

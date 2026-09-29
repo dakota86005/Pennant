@@ -758,6 +758,8 @@ export interface MlbDiscussionAssessment {
   missingEvidence: MissingEvidence[];
   evidence: ProspectAssignmentEvaluation['evidence'];
   requirements: ProspectAssignmentEvaluation['requirements'];
+  /** Which of its bars Player Development found not met (its constraints' ids), in its own order. */
+  unmet: ProspectAssignmentEvaluation['constraints'][number]['id'][];
 }
 
 export function mlbDiscussionAssessments(orgId: number): Map<number, MlbDiscussionAssessment> {
@@ -782,6 +784,7 @@ export function mlbDiscussionAssessments(orgId: number): Map<number, MlbDiscussi
       missingEvidence: evaluation.missingEvidence,
       evidence: evaluation.evidence,
       requirements: evaluation.requirements,
+      unmet: evaluation.constraints.filter((c) => c.state === 'not_satisfied').map((c) => c.id),
     });
   }
   return out;

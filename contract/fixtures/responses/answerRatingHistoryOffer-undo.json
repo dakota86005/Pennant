@@ -18,8 +18,8 @@
       "unknown": [],
       "wouldChange": [],
       "lean": null,
-      "certainty": "fact",
-      "called": "A fact from the export"
+      "certainty": "recorded",
+      "called": "From Pennant's own record"
     },
     "links": [],
     "hint": "Each import keeps the ratings your scouts saw, to show how players develop"
@@ -44,7 +44,7 @@
             },
             {
               "label": "Its players",
-              "value": "Its players match this save's (104 of 104 compared)."
+              "value": "100% of its players match this save's (104 of 104 compared)."
             },
             {
               "label": "Carrying it over",
@@ -64,8 +64,8 @@
             "Carry it over to continue it here, or keep them apart."
           ],
           "lean": null,
-          "certainty": "fact",
-          "called": "A fact from the export"
+          "certainty": "recorded",
+          "called": "From Pennant's own record"
         },
         "links": [],
         "hint": "Only you can say: Pennant never joins two histories by itself"
@@ -98,7 +98,7 @@
             },
             {
               "label": "Its players",
-              "value": "Its players match this save's (104 of 104 compared)."
+              "value": "100% of its players match this save's (104 of 104 compared)."
             },
             {
               "label": "Carrying it over",
@@ -114,8 +114,8 @@
           "unknown": [],
           "wouldChange": [],
           "lean": null,
-          "certainty": "fact",
-          "called": "A fact from the export"
+          "certainty": "recorded",
+          "called": "From Pennant's own record"
         },
         "links": [],
         "hint": "Carrying it over copies its history into this save's; you can undo it"

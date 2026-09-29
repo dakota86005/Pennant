@@ -24,6 +24,7 @@ public enum DesignFixtures {
     static func calledWords(_ certainty: Components.Schemas.Certainty) -> String {
         switch certainty.value1 {
         case .fact: served("A fact from the export")
+        case .recorded: served("From Pennant's own record")
         case .calibrated: served("Fitted on this save's own history")
         case .provisional: served("A starting number, not yet fitted on this save")
         case .policy: served("A line chosen and stated")

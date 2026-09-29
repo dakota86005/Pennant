@@ -594,6 +594,11 @@ export interface FarmNext {
     reasons: string[];
     blockers: string[];
     missing: string[];
+    /** Which of its bars it found not met (its constraints' ids: `readiness`, `sample_confidence`, …), in its order. */
+    unmet: string[];
+    /** How much evidence from his time at his level it has, and how much its bar asks (its own numbers; null when it
+     * states none). */
+    sample: { have: number; need: number | null };
   } | null;
 }
 
@@ -611,6 +616,7 @@ export function farmNextByPosition(orgId: number): Map<number, FarmNext[]> {
       assessment: a ? {
         judgment: a.judgment, readiness: a.evidence.readiness, required: a.requirements.readiness, scale: { ...READINESS_SCALE },
         reasons: a.reasons, blockers: a.blockers, missing: a.missingEvidence.map((m) => m.detail),
+        unmet: [...a.unmet], sample: { have: a.evidence.sampleConfidence, need: a.requirements.sampleConfidence },
       } : null,
     };
     const list = out.get(s.position.value!) ?? [];

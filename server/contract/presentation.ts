@@ -34,9 +34,11 @@ export type DeptId =
  * parameter that ought to be fitted and has not been), `policy` (a line chosen and stated, never fitted), `unknown`
  * (the basis cannot say), and `fact`: an objective fact read from the export or the save (a record, a date, how many
  * days one source is behind another), which no fitted number and no chosen line decided. Section 4.1 listed the first
- * four; `fact` was added at N4 so a plain fact is never stamped as policy.
+ * four; `fact` was added at N4 so a plain fact is never stamped as policy. `recorded` (N6 polish): what Pennant itself
+ * kept, in its own record (the rating history it took at each import, what a carry-over copied), which the export
+ * no longer says and no fitted number or chosen line decided; never called a fact from the export.
  */
-export type Certainty = 'fact' | 'calibrated' | 'provisional' | 'policy' | 'unknown';
+export type Certainty = 'fact' | 'recorded' | 'calibrated' | 'provisional' | 'policy' | 'unknown';
 
 /** How a line reads at a glance. Colour is never the only signal: the app pairs a tone with a symbol and a word. */
 export type Tone = 'good' | 'bad' | 'caution' | 'neutral' | 'unknown';

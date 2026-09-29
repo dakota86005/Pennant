@@ -159,6 +159,7 @@ function standingLine(build: BuildContext, facts: TeamSeasonFacts, me: ClubFacts
             label: 'Level with',
             value: `${listWords(members.filter((c) => place.levelWith.includes(c.teamId)).map((c) => c.name))}: the same winning percentage shares the place`,
           }] : []),
+          ...levelOnGamesBack(members, place),
         ],
         source: source(build, STANDINGS),
         unknown: [
@@ -174,6 +175,22 @@ function standingLine(build: BuildContext, facts: TeamSeasonFacts, me: ClubFacts
     gamesBack: place.gamesBack,
     gamesAhead: place.gamesAhead,
   };
+}
+
+/**
+ * Clubs level with ours on games back that do not share its place (N6 polish: 26–17 and 27–18, both 0 back, and the
+ * line said "1st"): the basis names them and why the order is what it is, the winning percentage the standings order by
+ * (or, with no order exported, the records'). Nothing when none is.
+ */
+function levelOnGamesBack(members: ClubFacts[], place: DivisionPlace): Array<{ label: string; value: string }> {
+  if (!place.levelOnGamesBack?.length) return [];
+  const pct = (v: number | null) => (v === null ? 'not known' : v.toFixed(3).replace(/^0/, ''));
+  const name = (id: number) => members.find((c) => c.teamId === id)?.name ?? 'Another club';
+  const order = place.order === 'standings' ? 'the standings\' own order, which goes by winning percentage' : 'counted from the records, by winning percentage';
+  return [{
+    label: 'Level on games back',
+    value: `${listWords(place.levelOnGamesBack.map((c) => `${name(c.teamId)} (${pct(c.pct)})`))}: level with us (${pct(place.pct)}) on games back; the place is ${order}`,
+  }];
 }
 
 function starterOf(line: PitcherLine | undefined, id: number | null): ProbableStarter | null {
@@ -668,10 +685,37 @@ export function barOf(f: Pick<FarmNext, 'assessment'>): FarmNextMan['bar'] {
   const required = Math.round(a.required);
   return {
     readiness, required, scale: { low: a.scale.low, high: a.scale.high },
-    line: cell(`Readiness ${readiness} · his bar ${required}`, {
+    // Said as the two read against each other, so the line never seems to contradict a "not ready yet" another bar holds
+    line: cell(readiness >= required ? `Readiness ${readiness} clears his bar of ${required}` : `Readiness ${readiness}, short of his bar of ${required}`, {
       hint: `Readiness runs ${a.scale.low} to ${a.scale.high}; his bar is what a look asks of him`,
     }),
   };
+}
+
+/**
+ * Why Player Development says "not yet", in plain words, from the first of its bars it found not met (N6 polish: the
+ * real save showed "Readiness 98 · his bar 76 · not ready yet", the blocker, too little evidence, only in the basis).
+ * The numbers go in the hover. Null when it names none this build words.
+ */
+function notYetWords(f: FarmNext, level: string): { text: string; hint: string } | null {
+  const a = f.assessment;
+  if (!a) return null;
+  const bar = barOf(f);
+  const readiness = bar ? `readiness ${bar.readiness} ${bar.readiness >= bar.required ? 'clears' : 'is short of'} his bar of ${bar.required}` : null;
+  // An assessment from before its bars were served (a kept test double) names none: the plain "Not ready yet"
+  for (const id of a.unmet ?? []) {
+    if (id === 'sample_confidence' && a.sample) {
+      const need = a.sample.need !== null ? `, a look needs ${Math.round(a.sample.need)}` : '';
+      return {
+        text: `Not ready yet: too little time at ${level} to judge him`,
+        hint: `Evidence ${Math.round(a.sample.have)}${need}${readiness ? `; ${readiness}` : ''}`,
+      };
+    }
+    if (id === 'readiness') return { text: 'Not ready yet: short of his bar', hint: readiness ? capital(readiness) : 'Player Development: not yet, by its bar' };
+    if (id === 'performance') return { text: `Not ready yet: his results at ${level} aren't there yet`, hint: `Player Development: not yet, by his results at ${level}` };
+    if (id === 'ratings_maturity') return { text: 'Not ready yet: too much development left', hint: 'Player Development: too much of his development is still ahead' };
+  }
+  return null;
 }
 
 function farmMan(f: FarmNext): FarmNextMan {
@@ -682,7 +726,7 @@ function farmMan(f: FarmNext): FarmNextMan {
   const against = bar ? ` (readiness ${bar.readiness}, bar ${bar.required})` : '';
   const words: Record<ReadinessState, { text: string; hint: string }> = {
     ready: { text: 'Ready for a look', hint: `Player Development: a look is defensible now${against}` },
-    notYet: {
+    notYet: notYetWords(f, level) ?? {
       text: 'Not ready yet',
       // Readiness may clear its bar while another of its bars (the evidence behind it) is not met: never read as the readiness
       hint: bar && bar.readiness >= bar.required
@@ -692,13 +736,14 @@ function farmMan(f: FarmNext): FarmNextMan {
     cantTell: { text: 'Can\'t tell yet', hint: 'Player Development can\'t judge it without more evidence' },
     notAssessed: { text: 'Not assessed', hint: 'Player Development hasn\'t assessed him for the majors' },
   };
+  const short: Record<ReadinessState, string> = { ready: 'ready for a look', notYet: 'not ready yet', cantTell: 'can\'t tell yet', notAssessed: 'not assessed' };
   return {
     ...ref(f),
     level,
     state,
     readiness: cell(words[state].text, { tone: state === 'ready' ? 'good' : state === 'notYet' ? 'neutral' : 'unknown', hint: fit(words[state].hint) }),
     bar,
-    text: `${shortName(f.name)} · ${level} · ${words[state].text.toLowerCase()}`,
+    text: `${shortName(f.name)} · ${level} · ${short[state]}`,
   };
 }
 
@@ -872,7 +917,8 @@ function pitcherWords(build: BuildContext, p: MapPitcher, role: string, part: Ro
   const value = winsValue(p.wins);
   const kind = pen ? (p.kind === 'closer' ? 'closer' : 'reliever') : 'starter';
   const line = pitcherLineWords(p.line, kind);
-  const note = p.next ? cell('Next game', { hint: 'OOTP\'s projected starter for the club\'s next game' }) : p.standing ? cell(p.standing, { tone: 'caution' }) : null;
+  // The next game's starter says so once, in his role ("Next"): no second "Next game" beside it (N6 polish)
+  const note = p.standing ? cell(p.standing, { tone: 'caution' }) : null;
   const partWords = part === 'rest_of_season' ? 'the rest of this season' : 'this season';
   const hint = value ? fit(`${value.text}, ${part === 'rest_of_season' ? 'rest of season' : 'this season'}`) : NOT_VALUED_HINT;
   const stamp = p.stamp ?? null;
@@ -915,10 +961,10 @@ export function rosterMapWords(build: BuildContext, m: MorningMaterial): RosterM
   const notes = [
     ...(map.noDh ? [cell(map.noDh)] : []),
     map.logWhy
-      ? cell('Holders are each club\'s listed men: the game log doesn\'t show who starts', {
+      ? cell('Each position shows the man each club lists there: the game log doesn\'t show who starts', {
         hint: fit(`${map.logWhy} Each club's man listed there with the most expected wins.`),
       })
-      : cell('Each club\'s holder is its regular: the man who\'s been starting there', {
+      : cell('Each position shows its regular: the man who\'s been starting there', {
         hint: `Most starts this season among those starting there in the last ${map.holderWindow} games`,
       }),
   ];

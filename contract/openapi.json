@@ -1204,12 +1204,13 @@
         "description": "One cell of a served table: what it shows, and its tone and help tag when it has them."
       },
       "Certainty": {
-        "description": "How a claim's number or line is called (D-041): `calibrated` (fitted on the save's own history), `provisional` (a model parameter that ought to be fitted and has not been), `policy` (a line chosen and stated, never fitted), `unknown` (the basis cannot say), and `fact`: an objective fact read from the export or the save (a record, a date, how many days one source is behind another), which no fitted number and no chosen line decided. Section 4.1 listed the first four; `fact` was added at N4 so a plain fact is never stamped as policy.",
+        "description": "How a claim's number or line is called (D-041): `calibrated` (fitted on the save's own history), `provisional` (a model parameter that ought to be fitted and has not been), `policy` (a line chosen and stated, never fitted), `unknown` (the basis cannot say), and `fact`: an objective fact read from the export or the save (a record, a date, how many days one source is behind another), which no fitted number and no chosen line decided. Section 4.1 listed the first four; `fact` was added at N4 so a plain fact is never stamped as policy. `recorded` (N6 polish): what Pennant itself kept, in its own record (the rating history it took at each import, what a carry-over copied), which the export no longer says and no fitted number or chosen line decided; never called a fact from the export.",
         "anyOf": [
           {
             "type": "string",
             "enum": [
               "fact",
+              "recorded",
               "calibrated",
               "provisional",
               "policy",
@@ -5797,7 +5798,7 @@
           },
           "note": {
             "$ref": "#/components/schemas/Cell",
-            "description": "\"Next game\", \"IL · 12 days\"; null when none."
+            "description": "His standing (\"IL · 12 days\"); null when none (the next game's starter is said by his role, \"Next\")."
           },
           "hint": {
             "type": "string",

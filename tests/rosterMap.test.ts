@@ -254,7 +254,7 @@ describe('the farm\'s next man is Player Development\'s answer as served', () =>
       // On the scale readiness is read on, with a line that labels both numbers: the app joins and scales nothing
       if (bar) {
         expect(bar.scale).toEqual({ low: 0, high: 100 });
-        expect(bar.line.display).toBe(`Readiness ${bar.readiness} · his bar ${bar.required}`);
+        expect(bar.line.display).toBe(bar.readiness >= bar.required ? `Readiness ${bar.readiness} clears his bar of ${bar.required}` : `Readiness ${bar.readiness}, short of his bar of ${bar.required}`);
       }
     }
   });
@@ -277,6 +277,27 @@ describe('the farm\'s readiness against its bar', () => {
     m.map.positions[0] = { ...m.map.positions[0], farmNext: { playerId: 99, name: 'Adrian Castle', level: 2, assessment: { judgment: 'defensible', readiness: 96, required: 81, scale: { low: 0, high: 100 }, reasons: [], blockers: [], missing: [] } } } as never;
     expect(rosterMapWords(build, m).positions[0].farmNext!.readiness.hint).toBe('Player Development: a look is defensible now (readiness 96, bar 81)');
   });
+
+  it('says on the visible line which bar holds him back, in plain words, with the numbers in the hover (N6 polish)', () => {
+    const [r] = positionReadings(1, clubs, [player(11, 1, SS, 2.0), player(20, 2, SS, 1.0)], [SS]);
+    const m = mapMaterial(r);
+    const castle = (unmet: string[], readiness: number) => ({
+      playerId: 99, name: 'Adrian Castle', level: 2,
+      assessment: { judgment: 'indefensible', readiness, required: 76, scale: { low: 0, high: 100 }, reasons: [], blockers: ['x'], missing: [], unmet, sample: { have: 33, need: 45 } },
+    });
+    m.map.positions[0] = { ...m.map.positions[0], farmNext: castle(['sample_confidence'], 98) } as never;
+    let man = rosterMapWords(build, m).positions[0].farmNext!;
+    // Readiness 98 clears his bar; what holds him back is the evidence: said as such, never "readiness 98 · not ready"
+    expect(man.readiness.display).toBe('Not ready yet: too little time at Triple-A to judge him');
+    expect(man.readiness.hint).toBe('Evidence 33, a look needs 45; readiness 98 clears his bar of 76');
+    expect(man.bar!.line.display).toBe('Readiness 98 clears his bar of 76');
+    expect(man.text).toBe('A. Castle · Triple-A · not ready yet');
+    m.map.positions[0] = { ...m.map.positions[0], farmNext: castle(['readiness'], 60) } as never;
+    man = rosterMapWords(build, m).positions[0].farmNext!;
+    expect(man.readiness.display).toBe('Not ready yet: short of his bar');
+    expect(man.bar!.line.display).toBe('Readiness 60, short of his bar of 76');
+    expect(man.readiness.hint).toBe('Readiness 60 is short of his bar of 76');
+  });
 });
 
 describe('the map on the synthetic save', () => {
@@ -296,6 +317,9 @@ describe('the map on the synthetic save', () => {
     expect(words.bullpen.some((p) => p.need)).toBe(false);
     expect(words.bullpenNeeds.map((c) => c.display)).toEqual(['No backup on the bench for relief pitcher']);
     expect(words.rotationNeeds).toEqual([]);
+    // The next game's starter is said once, by his role, never "Next … Next game" (N6 polish)
+    for (const p of words.rotation) expect(p.note?.display).not.toBe('Next game');
+    expect(first.rotation.filter((p) => p.role === 'Next').length).toBeLessThanOrEqual(1);
   });
 
   it('draws every range on its one served scale, places inside "of N", and a basis on every node', () => {
@@ -356,7 +380,8 @@ describe('the farm\'s next man against his bar (N6 B1 review)', () => {
     const past = barOf({ assessment: { readiness: 88.4, required: 76, judgment: 'defensible', scale } } as never)!;
     expect(past).toMatchObject({ readiness: 88, required: 76, scale: { low: 0, high: 100 } });
     expect(past.readiness).toBeLessThan(past.scale.high);
-    expect(past.line.display).toBe('Readiness 88 · his bar 76');
+    expect(past.line.display).toBe('Readiness 88 clears his bar of 76');
+    expect(barOf({ assessment: { readiness: 41, required: 55, judgment: 'indefensible', scale } } as never)!.line.display).toBe('Readiness 41, short of his bar of 55');
     expect(barOf({ assessment: { readiness: null, required: 76, judgment: 'indeterminate', scale } } as never)).toBeNull();
     expect(barOf({ assessment: null } as never)).toBeNull();
   });

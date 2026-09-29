@@ -326,7 +326,7 @@ export interface StaffPitcher {
   /** "7–4 · 3.21 ERA". */
   line: Cell;
   value: WinsValue | null;
-  /** "Next game", "IL · 12 days"; null when none. */
+  /** His standing ("IL · 12 days"); null when none (the next game's starter is said by his role, "Next"). */
   note: Cell | null;
   /** What the range says, or why he is not valued. */
   hint: string;

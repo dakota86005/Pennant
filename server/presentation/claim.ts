@@ -33,6 +33,7 @@ const BUILT_CLAIMS = new WeakSet<object>();
 /** Each certainty (D-041) in the GM's words, served on every basis as `called`. */
 export const CERTAINTY_WORDS: Readonly<Record<Certainty, string>> = {
   fact: 'A fact from the export',
+  recorded: 'From Pennant\'s own record',
   calibrated: 'Fitted on this save\'s own history',
   provisional: 'A starting number, not yet fitted on this save',
   policy: 'A line chosen and stated',
