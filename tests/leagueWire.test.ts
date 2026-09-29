@@ -128,13 +128,27 @@ describe('the wire on the synthetic save: its sources, and the ones it lacks', (
     expect(line.tone).toBe('unknown');
   });
 
-  it('shows a streak only from its stated line, and only a streak whose meaning is established', () => {
-    db.prepare(`INSERT INTO players_streak (player_id, streak_id, value, started, has_ended) VALUES (?, 0, ?, '2040-4-30', 0)`).run(save.regular, WIRE_STREAK_POLICY.hitting - 1);
-    db.prepare(`INSERT INTO players_streak (player_id, streak_id, value, started, has_ended) VALUES (?, 5, 40, '2040-4-1', 0)`).run(save.regular);
+  it('shows a streak only from its stated line: a hitting streak from exactly 15, an on-base streak from exactly 25, and only a streak whose meaning is established (L10)', () => {
+    // Four regulars on major-league clubs with no streak yet
+    const [h14, h15, ob24, ob25] = (db.prepare(`SELECT p.player_id FROM players p JOIN teams t ON t.team_id = p.team_id
+      WHERE t.level = 1 AND COALESCE(p.retired, 0) = 0 AND p.player_id NOT IN (SELECT player_id FROM players_streak) ORDER BY p.player_id LIMIT 4`).all() as Array<{ player_id: number }>).map((r) => r.player_id);
+    const add = (player: number, type: number, games: number) => db.prepare(`INSERT INTO players_streak (player_id, streak_id, value, started, has_ended) VALUES (?, ?, ?, '2040-4-1', 0)`).run(player, type, games);
+    add(h14, 0, WIRE_STREAK_POLICY.hitting - 1);
+    add(h15, 0, WIRE_STREAK_POLICY.hitting);
+    add(ob24, 9, WIRE_STREAK_POLICY.onBase - 1);
+    add(ob25, 9, WIRE_STREAK_POLICY.onBase);
+    add(save.regular, 5, 40);
+    expect([WIRE_STREAK_POLICY.hitting, WIRE_STREAK_POLICY.onBase]).toEqual([15, 25]);
+    forgetWire();
     const streaks = wireFacts(importedAt.value, save.org).facts.filter((f) => f.kind === 'streak');
-    expect(streaks.every((f) => f.detail.kind === 'streak' && f.detail.games >= f.detail.line)).toBe(true);
-    expect(streaks.some((f) => f.players[0].playerId === save.regular)).toBe(false);
-    db.prepare(`DELETE FROM players_streak WHERE player_id = ?`).run(save.regular);
+    const shown = new Set(streaks.map((f) => f.players[0].playerId));
+    expect([h14, h15, ob24, ob25].map((p) => shown.has(p))).toEqual([false, true, false, true]);
+    expect(streaks.find((f) => f.players[0].playerId === h15)!.detail).toMatchObject({ streak: 'hitting', games: 15, line: 15 });
+    expect(streaks.find((f) => f.players[0].playerId === ob25)!.detail).toMatchObject({ streak: 'onBase', games: 25, line: 25 });
+    // An unpinned streak type is never shown, however long
+    expect(shown.has(save.regular)).toBe(false);
+    db.prepare(`DELETE FROM players_streak WHERE player_id IN (?, ?, ?, ?, ?)`).run(h14, h15, ob24, ob25, save.regular);
+    forgetWire();
   });
 
   it('names a table the export lacks as a gap, never an empty league', () => {

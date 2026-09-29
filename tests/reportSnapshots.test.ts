@@ -1,9 +1,12 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import Database from 'better-sqlite3';
+import fs from 'node:fs';
+import path from 'node:path';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { historyDb } from '../server/history.js';
-import { forgetHistoryKey } from '../server/historyIdentity.js';
+import { BACKUP_DIR, forgetHistoryKey } from '../server/historyIdentity.js';
 import {
   previousReportSnapshot, previousStandings, recordReportSnapshot, recordStandingsSnapshot, reportSnapshotCount, reportSnapshotOf, standingsOf,
-  forgetMemoryCaches, memoryBackupPath, ensureMemoryBackup, type StandingsRow,
+  forgetMemoryCaches, memoryBackupPath, ensureMemoryBackup, allowMemoryBackupRetry, memoryBackupState, type StandingsRow,
 } from '../server/frontOfficeMemory.js';
 import { frontOfficeSummaryNow, rememberBuild, resetAttention, departmentReportNow, resultsSince } from '../server/frontOfficeAttention.js';
 import { frontOfficeBuilt, resetFrontOfficeCache } from '../server/frontOfficeService.js';
@@ -254,8 +257,58 @@ describe('the snapshots behind it, per save and per import (D-058, D-064)', () =
     expect(results.games!.map((g) => g.gameId)).toEqual(games.slice(10).map((g) => g.gameId));
   });
 
-  it('copies history.db into backups/ once before the first row is remembered', async () => {
-    await ensureMemoryBackup();
-    expect(memoryBackupPath()).toMatch(/backups\/history-before-remembering-.*\.db$/);
+  /** Forgets the backup made, so the next write makes one (the test's own scratch data folder). */
+  const forgetBackup = () => {
+    historyDb.prepare(`DELETE FROM history_identity_meta WHERE key = 'remembering_backup'`).run();
+    if (fs.existsSync(BACKUP_DIR)) for (const f of fs.readdirSync(BACKUP_DIR)) if (f.startsWith('history-before-remembering-')) fs.rmSync(path.join(BACKUP_DIR, f));
+  };
+
+  it('copies history.db into backups/ once, before the first row is remembered (L10)', async () => {
+    forgetBackup();
+    allowMemoryBackupRetry();
+    importedAt.value = '2040-05-01T10:00:00.000Z';
+    await recordReportSnapshot({ orgId: save.org, importStamp: importedAt.value, gameDate: '2040-5-1', departments: { farm: 'ready' }, items: [], figures: [] });
+    const file = memoryBackupPath();
+    expect(file).toMatch(/backups\/history-before-remembering-.*\.db$/);
+    expect(fs.existsSync(file!)).toBe(true);
+    // Taken before the first row: the backup holds no remembered import (its tables, created empty, at most)
+    const copy = new Database(file!, { readonly: true });
+    try {
+      const has = copy.prepare(`SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'report_snapshot_imports'`).get() as { n: number };
+      expect(has.n ? (copy.prepare(`SELECT COUNT(*) AS n FROM report_snapshot_imports`).get() as { n: number }).n : 0).toBe(0);
+    } finally {
+      copy.close();
+    }
+    expect(reportSnapshotCount(save.org)).toBe(1);
+    // Once: the next write makes no second copy
+    await recordReportSnapshot({ orgId: save.org, importStamp: '2040-05-02T10:00:00.000Z', gameDate: '2040-5-2', departments: { farm: 'ready' }, items: [], figures: [] });
+    expect(fs.readdirSync(BACKUP_DIR).filter((f) => f.startsWith('history-before-remembering-') && f.endsWith('.db'))).toEqual([path.basename(file!)]);
+  });
+
+  it('tries a failed backup again at most once per start or import, never on every write (L2)', async () => {
+    forgetBackup();
+    allowMemoryBackupRetry();
+    const backup = vi.spyOn(historyDb, 'backup').mockRejectedValue(new Error('disk full'));
+    try {
+      await ensureMemoryBackup();
+      await ensureMemoryBackup();
+      await recordStandingsSnapshot('2040-05-01T10:00:00.000Z', '2040-5-1', [{
+        teamId: save.org, name: 'Us', abbr: 'US', leagueId: save.leagueId, subLeagueId: 0, divisionId: 0, division: 'East', w: 1, l: 0, t: 0, pos: 1,
+        divisionClubs: 4, gb: 0, runsScored: 1, runsAllowed: 0,
+      }]);
+      expect(backup).toHaveBeenCalledTimes(1);
+      expect(memoryBackupState.failed).toBe('disk full');
+      // The next import may try once more
+      allowMemoryBackupRetry();
+      await ensureMemoryBackup();
+      await ensureMemoryBackup();
+      expect(backup).toHaveBeenCalledTimes(2);
+    } finally {
+      backup.mockRestore();
+      forgetBackup();
+      allowMemoryBackupRetry();
+      await ensureMemoryBackup();
+    }
+    expect(memoryBackupPath()).not.toBeNull();
   });
 });

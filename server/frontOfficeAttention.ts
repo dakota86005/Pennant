@@ -341,6 +341,8 @@ async function warmAfter(org: number, importStamp: string | null): Promise<void>
 
 /** After an import (the last post-import hook): the club's build is waited on and remembered, and the rest warmed. */
 export async function afterImport(): Promise<void> {
+  // A backup of history.db that failed before may be tried once more for this import (L2)
+  memory.allowMemoryBackupRetry();
   const org = ourClub();
   if (org === null) return;
   try {

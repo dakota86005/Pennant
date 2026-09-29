@@ -2187,6 +2187,11 @@ statuses), `presentation/frontOffice/attention.ts` and `following.ts` (the words
   severities and the standings); an import rebuilt later (a refit, a new copy of the log) replaces its own snapshot, so
   the comparison is always with what was last served for that import.
 - A follow is per save. Following orders the wire and the search, and changes no figure, place or severity.
+- The backup (the independent review, L2 and L3): `history.db` is copied into `backups/` before the first row is
+  remembered; a copy that fails is logged and tried again at most once per start and once per import, never on every
+  write. The new tables are created, empty, when the server loads the module, before that copy: `CREATE TABLE IF NOT
+  EXISTS` of new tables changes no row or table that was there, so the copy holds the history exactly as it was plus
+  those empty tables, and restoring it loses nothing.
 
 - **Report and standings snapshots** are kept per import in `history.db` (new tables, D-009 and D-055's additive rule), so
   "what changed since the last export" compares two exports' served figures. A difference says what changed, never which

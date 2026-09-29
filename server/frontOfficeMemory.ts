@@ -123,6 +123,13 @@ const BACKUP_META = 'remembering_backup';
 export const memoryBackupState: { failed: string | null } = { failed: null };
 
 let backingUp: Promise<void> | null = null;
+/** Whether the backup was tried since the start or the last import (a failed one is tried again at most once each, L2). */
+let backupTried = false;
+
+/** An import landed: a backup that failed may be tried once more (the post-import `remember` step calls it). */
+export function allowMemoryBackupRetry(): void {
+  backupTried = false;
+}
 
 /** The backup made before the first row was remembered, or null when none has been made. */
 export function memoryBackupPath(): string | null {
@@ -135,11 +142,18 @@ export function memoryBackupPath(): string | null {
  * migration), with SQLite's online backup, off the event loop's turn: a large history is copied in steps while the
  * server answers. Written under a temporary name and renamed, so a copy cut short is never taken for a backup. Every
  * writer here waits on it. A backup that fails is logged and said; the writes go ahead, since they add rows to new
- * tables and change nothing that was there.
+ * tables and change nothing that was there. A failed backup is tried again at most once per start and once per import
+ * (`allowMemoryBackupRetry`), never on every write (L2).
+ *
+ * The new tables themselves are created when this module loads, before the backup (L3). That is safe: `CREATE TABLE IF
+ * NOT EXISTS` of new, empty tables changes no row or table that was there, so the backup, taken before the first row,
+ * holds the history exactly as it was plus those empty tables, and restoring it loses nothing.
  */
 export function ensureMemoryBackup(): Promise<void> {
   if (memoryBackupPath()) return Promise.resolve();
   if (backingUp) return backingUp;
+  if (backupTried) return Promise.resolve();
+  backupTried = true;
   backingUp = (async () => {
     try {
       fs.mkdirSync(BACKUP_DIR, { recursive: true });
