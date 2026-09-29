@@ -64,9 +64,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.model = model
         quit = QuitCoordinator(prepare: { model.beginShutdown() }, stop: { await controller.stop() })
         super.init()
+        // The server starts now, while the windows are built (the launch budget); `applicationDidFinishLaunching` follows it
+        model.startEarly()
+        model.noteLaunchStep("the app's model is made and the server started")
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        model.noteLaunchStep("the app finished launching")
         terminationSignal = Self.quitOnTerminationSignal()
         Task { await model.start() }
         #if DEBUG

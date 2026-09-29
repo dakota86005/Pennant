@@ -29,6 +29,23 @@ public final class FrontOfficeStore {
     /// The catalog entry the kept summary was kept with (the club's theme and name, the phrases): drawn until the live
     /// catalog arrives (`AppModel.catalogClub`, `AppModel.phrases`). Nil when nothing kept was read.
     public private(set) var keptCatalog: KeptReports.Catalog?
+    /// The report kept last (the one the index names), read at launch before the save and club are confirmed: never
+    /// shown as a report until they are (`summary`), but its club card is drawn at once, so the window's first frame
+    /// already has it (N6 polish: the relaunch's layout jump). Nil once a report is shown or another key is confirmed,
+    /// or with nothing kept.
+    public private(set) var waitingKept: (key: KeptReports.Key, kept: KeptReports.Kept)?
+    /// The key the report on screen is for (the kept one's, or the fresh one's), and the catalog it is drawn with: while
+    /// the app's key has moved to another save or club (a switch under way), the window keeps drawing that report's
+    /// club with it, so the whole window moves to the new save together when its report lands (N6 polish).
+    public private(set) var shownKey: AppModel.StoreKey?
+    public private(set) var shownCatalog: KeptReports.Catalog?
+    /// The catalog the report on screen is drawn with, while that report is another save's or club's than the key's (a
+    /// switch under way, until the new save's report lands); nil otherwise (`AppModel.heldCatalog`).
+    public func heldCatalog(for key: AppModel.StoreKey?) -> KeptReports.Catalog? {
+        guard let key, summary != nil, let shown = shownKey, shown.saveId != key.saveId || shown.club != key.club else { return nil }
+        return shownCatalog
+    }
+
     /// Each department's report, as last served, by department id.
     public private(set) var reports: [String: Components.Schemas.DepartmentReport] = [:]
     public private(set) var reportProblems: [String: RequestProblem] = [:]
@@ -70,7 +87,15 @@ public final class FrontOfficeStore {
         self.kept = kept
         self.contract = contract
         self.log = log
-        preloaded = kept.map { kept in Task.detached(priority: .userInitiated) { await kept.readLast() } }
+        let preloaded = kept.map { kept in Task.detached(priority: .userInitiated) { await kept.readLast() } }
+        self.preloaded = preloaded
+        if let preloaded {
+            Task { [weak self] in
+                let last = await preloaded.value
+                guard let self, self.summary == nil, self.shownKey == nil else { return }
+                self.waitingKept = last
+            }
+        }
     }
 
     /// What a kept payload is for, from a store key: the save the imported data came from and the club the app shows;
@@ -131,7 +156,7 @@ public final class FrontOfficeStore {
 
     /// Loads the desk and cards for the key, once per key; nothing without a server or a key. With nothing shown yet,
     /// the payload kept from an earlier launch for the key's save and club is shown first, as updating.
-    public func loadSummary(client: Client?, key: AppModel.StoreKey?) async {
+    public func loadSummary(client: Client?, key: AppModel.StoreKey?, catalog: KeptReports.Catalog? = nil) async {
         guard let client, let key, summaryKey != key || summary == nil else { return }
         // Only the build stamp moved, to the build the store already has (read just before the event): nothing to ask
         if let loaded = summaryKey, Self.onlyTheBuildMoved(loaded, key), summary?.reportStamp == key.reportStamp {
@@ -145,12 +170,17 @@ public final class FrontOfficeStore {
         if summary == nil, let kept, let keptKey {
             // Read and decoded at launch, off the main actor (the index's one file); another key's is read now, off it
             let last = await preloaded?.value
+            // The report laid out hidden is another save's or club's: dropped, never shown
+            if last?.key != keptKey { waitingKept = nil }
             let stored = last?.key == keptKey ? last?.kept : await kept.read(keptKey)
             guard summaryAsked == key else { return }
             if let stored, summary == nil {
                 summary = stored.summary
                 keptCatalog = stored.catalog
                 summaryIsKept = true
+                shownKey = key
+                shownCatalog = stored.catalog
+                waitingKept = nil
                 log("showing the kept Morning Report \(Int((ContinuousClock.now - made) / .milliseconds(1))) ms after the store was made")
             }
         }
@@ -177,6 +207,7 @@ public final class FrontOfficeStore {
         }
         // The view's task was cancelled (the key moved, and a load for the new key follows): no answer, no problem
         guard summaryAsked == key, !Task.isCancelled else { return }
+        if served == nil { waitingKept = nil }
         if let served {
             if summaryIsKept {
                 log("the fresh Morning Report replaced the kept one \(Int((ContinuousClock.now - made) / .milliseconds(1))) ms after the store was made")
@@ -186,6 +217,10 @@ public final class FrontOfficeStore {
             summary = served
             summaryKey = key
             summaryIsKept = false
+            // The whole window moves to this report's save and club together (the club card, the colours, the report)
+            shownKey = key
+            if let catalog, catalog.club?.teamId == served.orgId { shownCatalog = catalog }
+            waitingKept = nil
             if landed { importLandings += 1 }
         }
         summaryProblem = problem
@@ -203,6 +238,8 @@ public final class FrontOfficeStore {
               summary.orgId == keptKey.clubId,
               Self.isCurrent(importStamp: summary.importStamp, reportStamp: summary.reportStamp, orgId: summary.orgId, for: key)
         else { return }
+        // The report on screen is drawn with this catalog from now on
+        shownCatalog = catalog
         let stamp = "\(summary.importStamp ?? "")|\(summary.reportStamp)"
         if let last = lastKept, last.key == keptKey, last.stamp == stamp, last.catalog == catalog { return }
         lastKept = (keptKey, stamp, catalog)

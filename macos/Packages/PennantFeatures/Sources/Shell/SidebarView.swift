@@ -91,14 +91,15 @@ struct SidebarClubCard: View {
     @State private var logo: Image?
 
     var body: some View {
-        if let club = model.club {
-            if let org = club.org {
-                let served = model.catalogClub
+        // The club the window is about, from the same place as its colours and its report: the kept one's at launch
+        // before the club is served, and the report's own during a switch (N6 polish)
+        if let card = model.clubCard {
+            if !card.notInSave {
                 ClubCard(
-                    name: org.label,
-                    detail: club.source.label,
-                    record: served?.record.display,
-                    recordHint: served?.record.hint,
+                    name: card.name,
+                    detail: card.source?.label,
+                    record: card.record?.display,
+                    recordHint: card.record?.hint,
                     logo: logo
                 )
                 .task(id: theme.logo) { logo = await ServedImages.image(theme.logo, model: model) }

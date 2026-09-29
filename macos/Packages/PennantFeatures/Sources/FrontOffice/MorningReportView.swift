@@ -88,7 +88,7 @@ public struct MorningReportView: View {
             } else if let problem = store.summaryProblem {
                 ProblemLine(problem).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ProgressView { Text("Loading") }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                waiting
             }
         }
         .toolbar {
@@ -104,6 +104,20 @@ public struct MorningReportView: View {
             }
         }
         .task(id: model.storeKey) { await model.loadFrontOffice() }
+    }
+
+    /// While there is no report to show: the server starting, then the report on its way (structural words only).
+    @ViewBuilder
+    private var waiting: some View {
+        if model.isReady {
+            ProgressView { Text("Loading") }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            // The server's waiting state while it starts, named as the shell's own view names it (the UI tests wait on it)
+            ProgressView { Text("Starting…") }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityIdentifier("server.waiting")
+        }
     }
 
     private var headline: Text {
@@ -280,22 +294,33 @@ public struct MorningReportPage: View {
     /// Below this width the two columns stack.
     public static let twoColumns: CGFloat = 1080
 
+    /// Whether the parts below the first screen are built yet: the page's first frame holds the masthead, the places
+    /// and the roster map (what the window shows), and the rest (the staff, and in one column the desk and the
+    /// departments) follows in the next frame (N6 polish: the launch budget; they cost about a third of the page's first
+    /// layout, and nobody sees them before they scroll).
+    @State private var belowTheFold = false
+
     public var body: some View {
         let design = MorningReportDesign.shown(override, for: summary)
         let designed = design.dimensions != nil || design.positions != nil || design.wire != nil
+        let twoColumns = contentWidth >= Self.twoColumns
         VStack(alignment: .leading, spacing: 32) {
             if let chips = design.chips {
                 ChipRow(label: Text("Since the last export"), chips: chips)
             }
-            if contentWidth >= Self.twoColumns {
+            if twoColumns {
                 HStack(alignment: .top, spacing: 40) {
                     lead(design, designed: designed).frame(maxWidth: .infinity, alignment: .leading)
                     side(designed: designed).frame(width: 340)
                 }
             } else {
                 lead(design, designed: designed)
-                side(designed: designed)
+                if belowTheFold { side(designed: designed) }
             }
+        }
+        .onAppear {
+            guard !belowTheFold else { return }
+            AfterNextFrame.run { belowTheFold = true }
         }
     }
 
@@ -320,9 +345,11 @@ public struct MorningReportPage: View {
                     if let scale = design.valueScale {
                         RosterDiagram(positions, scale: scale).frame(height: 540)
                         if let legend = model.phrases?.rosterLegend { RosterLegend(legend, notes: design.rosterNotes) }
-                        HStack(alignment: .top, spacing: 24) {
-                            Card { StaffColumn(title: Text("Rotation"), pitchers: design.rotation, scale: scale, needs: design.rotationNeeds) }
-                            Card { StaffColumn(title: Text("Bullpen"), pitchers: design.bullpen, scale: scale, needs: design.bullpenNeeds) }
+                        if belowTheFold {
+                            HStack(alignment: .top, spacing: 24) {
+                                Card { StaffColumn(title: Text("Rotation"), pitchers: design.rotation, scale: scale, needs: design.rotationNeeds) }
+                                Card { StaffColumn(title: Text("Bullpen"), pitchers: design.bullpen, scale: scale, needs: design.bullpenNeeds) }
+                            }
                         }
                     } else {
                         // No scale: nothing on the map is valued, and the map's own notes say what it can say

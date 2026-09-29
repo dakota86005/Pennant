@@ -254,6 +254,50 @@ struct KeptSummaryStoreTests {
         #expect(FrontOfficeStore.keptKey(AppModel.StoreKey(importStamp: "", club: nil, restores: 0, saveId: "save-a"), contract: "digest-a") == nil)
     }
 
+    @Test("a switch to another save keeps the report on screen with its own club's catalog until the new save's report lands (N6 polish)")
+    func switchHoldsTheWindowTogether() async throws {
+        let kept = KeptReports(folder: try scratchFolder("kept"))
+        let store = FrontOfficeStore(kept: kept, contract: "digest-a")
+        await store.loadSummary(client: client(try transport()), key: key(), catalog: try catalog())
+        #expect(store.shownKey == key())
+        #expect(store.heldCatalog(for: key()) == nil)
+        // The key moves to the new save (its import landed): the old report is still on screen, drawn with its catalog
+        let next = key(saveId: "save-b", importStamp: "2040-07-02T00:00:00.000Z")
+        let gate = GatedTransport(try RoutedTransport.json("getFrontOffice"))
+        let load = Task { await store.loadSummary(client: client(gate), key: next, catalog: nil) }
+        await gate.waitUntilAsked()
+        #expect(store.shownKey == key())
+        #expect(store.heldCatalog(for: next) == (try catalog()))
+        #expect(store.showsUpdating(for: next))
+        // A save chosen and not yet imported (no id served): held too
+        #expect(store.heldCatalog(for: key(saveId: nil)) == (try catalog()))
+        gate.open()
+        await load.value
+        // The new save's report landed: the whole window moves to it together
+        #expect(store.shownKey == next)
+        #expect(store.heldCatalog(for: next) == nil)
+    }
+
+    @Test("at launch the report kept last is read before its key is confirmed, for its club card only, and dropped for another key (N6 polish)")
+    func waitingKept() async throws {
+        let kept = KeptReports(folder: try scratchFolder("kept"))
+        let first = FrontOfficeStore(kept: kept, contract: "digest-a")
+        await first.loadSummary(client: client(try transport()), key: key())
+        await first.keep(catalog: try catalog(), for: key())
+        let second = FrontOfficeStore(kept: kept, contract: "digest-a")
+        for _ in 0..<200 where second.waitingKept == nil { try await Task.sleep(for: .milliseconds(5)) }
+        #expect(second.waitingKept?.kept.catalog == (try catalog()))
+        // Never the report on screen before its key is confirmed
+        #expect(second.summary == nil)
+        let gate = GatedTransport(try RoutedTransport.json("getFrontOffice"))
+        let load = Task { await second.loadSummary(client: client(gate), key: key(saveId: "save-b")) }
+        await gate.waitUntilAsked()
+        #expect(second.waitingKept == nil)
+        #expect(second.summary == nil)
+        gate.open()
+        await load.value
+    }
+
     @Test("a load the view cancelled (the key moved) records no problem and keeps what is shown")
     func cancelledLoad() async throws {
         let kept = KeptReports(folder: try scratchFolder("kept"))

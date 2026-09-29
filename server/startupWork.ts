@@ -16,7 +16,7 @@
 import type { NextFunction, Request, Response } from 'express';
 
 /** How long the start-up's work waits for the app's first requests at most. */
-export const START_WORK_DELAY_MS = 600;
+export const START_WORK_DELAY_MS = 1_500;
 
 type Job = { name: string; run: () => void };
 

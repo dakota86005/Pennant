@@ -282,6 +282,12 @@ public actor ServerController {
         }
     }
 
+    /// " (N ms after the process started)", for the launch's log lines (the launch budget), or nothing when the process's
+    /// start cannot be read.
+    nonisolated static var sinceProcessStart: String {
+        AppModel.processStarted.map { " (\(Int(Date().timeIntervalSince($0) * 1000)) ms after the process started)" } ?? ""
+    }
+
     private func launch() async {
         restartTask?.cancel()
         generation += 1
@@ -328,7 +334,7 @@ public actor ServerController {
         }
         process = child
         phase = .awaitingReady(token: token)
-        log.write("started process \(child.pid) on \(configuration.dataFolder.plainPath)", source: "app")
+        log.write("started process \(child.pid) on \(configuration.dataFolder.plainPath)\(Self.sinceProcessStart)", source: "app")
         do {
             try child.send(SidecarProtocol.handshakeLine(token: token, keys: keys))
         } catch {
@@ -393,6 +399,7 @@ public actor ServerController {
         case .ready(let ready):
             guard case .awaitingReady(let token) = phase else { return }
             readyTimeoutTask?.cancel()
+            log.write("the ready line arrived\(Self.sinceProcessStart)", source: "app")
             phase = .confirming
             confirmTask = Task { await self.confirm(ready, token: token, launch: launchNumber) }
         case .failed(let failure):
@@ -409,7 +416,7 @@ public actor ServerController {
                 let status = try await probe(ready.port, token)
                 guard launchNumber == generation, !stopRequested, case .confirming = phase, let child = process else { return }
                 phase = .running(since: .now)
-                log.write("ready on port \(ready.port)", source: "app")
+                log.write("ready on port \(ready.port)\(Self.sinceProcessStart)", source: "app")
                 set(.ready(ServerConnection(port: ready.port, token: token, pid: child.pid, status: status)))
                 return
             } catch {

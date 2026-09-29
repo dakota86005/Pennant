@@ -28,6 +28,7 @@ public struct MainWindowView: View {
             }
         }
         .focusedSceneValue(\.mainWindow, model.isReady ? window : nil)
+        .onAppear { AfterNextFrame.run { model.noteLaunchStep("the main window's first frame is drawn") } }
         .onChange(of: model.needsSetup, initial: true) { _, needsSetup in
             if routing.shouldOpenSetupAutomatically(needsSetup: needsSetup) {
                 openWindow(id: SceneID.setup)
@@ -230,7 +231,7 @@ struct DetailView: View {
 
     var body: some View {
         Group {
-            if !model.isReady {
+            if !model.isReady && !Self.drawsWhileStarting(window.route) {
                 // The shell is up before the server: the view waits for it, and no report is drawn before its save and
                 // club are known
                 StartingView()
@@ -255,6 +256,15 @@ struct DetailView: View {
         .environment(\.claimActions, claimActions)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(.background)
+    }
+}
+
+extension DetailView {
+    /// The Morning Report is drawn while the server starts (it says "Starting…" itself, and lays out the report it kept,
+    /// hidden until its save and club are confirmed), so the window's toolbar and content are the same from the first
+    /// frame to the report (N6 polish: the relaunch's layout jump). Every other view waits in `StartingView`.
+    nonisolated static func drawsWhileStarting(_ route: AppRoute) -> Bool {
+        route.department.rawValue == "frontOffice" && route.view == "morningReport"
     }
 }
 
