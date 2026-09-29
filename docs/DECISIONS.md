@@ -2167,9 +2167,24 @@ places, never a thin prediction.
 
 ## D-058 — Pennant remembers: snapshots, the GM's desk and follows record attention, never transactions
 
-**Status:** Accepted in direction by the owner (2026-09-25); drafted at N0. **Implementation:** Partial: N4, Stage B
-serves the desk itself (every department's items to decide, each naming the department and who raised it, in the stated
-severity order, `FrontOfficeSummary.desk`); the snapshots, the statuses and follows are N7.
+**Status:** Accepted in direction by the owner (2026-09-25); drafted at N0. **Implementation:** Server built at N7,
+Stage A (2026-09-29); the Mac app draws it at N7, Stage B. N4, Stage B serves the desk itself (every department's items to
+decide, each naming the department and who raised it, in the stated severity order, `FrontOfficeSummary.desk`). N7 adds
+`server/frontOfficeMemory.ts` (the tables `report_snapshot_imports`, `report_snapshots`, `report_snapshot_figures`,
+`standings_snapshots`, `desk_items`, `following`, `following_watchlist_copies` in `history.db`, keyed by the save's
+identity, D-064, and filed only while the served league is certainly the save's own; `history.db` is copied into
+`backups/` once before the first row), `server/frontOfficeAttention.ts` (the snapshot after each kept build, off every
+request's path; "since the last export" as `FrontOfficeSummary.changes` and the departments' `changes`; the desk's
+statuses), `presentation/frontOffice/attention.ts` and `following.ts` (the words), `GET`/`PUT /api/v2/desk/:org` and
+`GET`/`PUT`/`DELETE /api/v2/following`, and the events `desk-changed`, `following-changed` and `changes-ready`
+(SWIFTUI_REBUILD.md "As built at N7 (Stage A)"). As built:
+- An item's status lives until the item is resolved: an import whose department was read and no longer raises the item
+  resolves it, and an item that comes back later is a new item with no status. A department that could not be read
+  resolves nothing and makes nothing new (D-018).
+- "Since the last export" compares what two exports of the same save served for the same club (their items, their
+  severities and the standings); an import rebuilt later (a refit, a new copy of the log) replaces its own snapshot, so
+  the comparison is always with what was last served for that import.
+- A follow is per save. Following orders the wire and the search, and changes no figure, place or severity.
 
 - **Report and standings snapshots** are kept per import in `history.db` (new tables, D-009 and D-055's additive rule), so
   "what changed since the last export" compares two exports' served figures. A difference says what changed, never which
@@ -2182,7 +2197,30 @@ severity order, `FrontOfficeSummary.desk`); the snapshots, the statuses and foll
 
 ## D-059 — Around the League: a wire in the log's own words, and club reports under the same fog of war
 
-**Status:** Accepted in direction by the owner (2026-09-25); drafted at N0. **Implementation:** Not started (milestone N7).
+**Status:** Accepted in direction by the owner (2026-09-25); drafted at N0. **Implementation:** Server built at N7,
+Stage A (2026-09-29); the Mac app draws it at N7, Stage B. `server/leagueWire.ts` (the reader),
+`presentation/frontOffice/wire.ts` (the words and the stated order), `server/clubReport.ts` and
+`presentation/frontOffice/clubReport.ts` (another club's report, built in the Front Office's worker by
+`frontOfficeBuild.buildClubReport`), `server/search.ts` and `presentation/searchWords.ts`, served by
+`server/aroundTheLeague.ts`: `GET /api/v2/wire/:org`, `FrontOfficeSummary.wire` (the top five),
+`GET /api/v2/club/:teamId`, `GET /api/v2/search?q=`. As built:
+- **Sources.** Moves from the copy of the live log the server already holds (`peekTransactionLog`, D-021: never read on a
+  request's path), only a major-league club's own log rows; without the log, the difference between Pennant's two latest
+  roster snapshots (`rosterStateHistory.ts`) stated as a change. Trades (`trade_history`, its own summary), league news
+  (`messages`, OOTP's own subject, those naming a major-league club), injuries this season to players now on a
+  major-league club (`players_injury_history`), streaks and awards only where the code's meaning is established (the
+  hitting and on-base streaks, `WIRE_STREAK_POLICY`; the awards the player card names), and standings movement from the
+  standings kept at the last two imports (a new division leader; places moved in ours). A table the export lacks is a
+  named gap, and one that could not be read says so; neither is an empty league.
+- **The order** is followed first (when asked), then the newest day, then the kind (trades, moves, injuries, awards,
+  streaks, standings, news), then the source's own order, and the answer says so. No entry carries odds or posture
+  (D-060).
+- **A club report** runs the Morning Report's own reader and words for that club (`teamSeason`, `clubProfile`,
+  `rosterMap`), counts how many of its major-league players our scouts see fully, partly or not at all and says so,
+  and adds its injured list, its record against us and its next series with us from the export's games, and its moves
+  from the wire. It is kept per import and club; our division's are built ahead after every kept build of our Front
+  Office.
+- **Search** reads an index of names, clubs and views built once per import: no rating, no value.
 
 - **Wire sources and wording (D-020).** An entry from OOTP's transaction log says what the log says. An entry from a
   snapshot difference says the state changed ("now on the injured list", "no longer on the 40-man") and never names a
@@ -2326,8 +2364,11 @@ built at N5 (Stage A)"; how to make one: DEVELOPMENT.md "Making a theme pack".
 **Status:** Accepted (owner, 2026-09-26: the N3.5 decisions 2, 3 and 4; the policy line is the builder's, stated for
 review). **Implementation:** N3.5, Stage B2: `server/paths.ts` (where saves are found, and each save's facts),
 `server/saveDiscovery.ts` (the ranking, the pick and the "played since" notice), `GET /api/v2/saves`,
-`POST /api/v2/setup/automatic`, `savePlayedElsewhere` on `/api/status`. Refines D-021 (normal use needs nothing but the
-export) and D-061 (automatic import).
+`POST /api/v2/setup/automatic`, `savePlayedElsewhere` on `/api/status`. N7, Stage A: the club question survives a
+relaunch (`server/clubOwed.ts`, `clubOwed` on `/api/status` and `/api/settings`): set when the chosen save's import lands
+with no human club or several and nobody has chosen, cleared when the GM chooses (or another save's import lands); while
+it is set, `automatic` is not served as if chosen (the Front Office and the wire refuse it with the question's sentence).
+Refines D-021 (normal use needs nothing but the export) and D-061 (automatic import).
 
 The owner asked for "automated finding of the right files". The investigation (N3.5 Stage A, section 1.1) found that the
 only safe signal of which save is being played is when OOTP last saved it, that the newest export is the wrong signal

@@ -98,8 +98,16 @@ material implementation state changes.
   the last 15 games' place) and the roster map (`rosterMap`: each position's holder, the regular the club's game log shows
   (the listed man only where the log is silent, said so), expected wins, league place stated as clearly ahead of / not
   separable from / clearly behind on the half-time range, depth, the farm's next man with Player Development's answer, control served structured, needs; the
-  rotation and bullpen; one value scale). The Mac app draws them in N6, Stage B. Not built: "since the last export" and
-  "around the league" (N7) and the horizon board (N12).
+  rotation and bullpen; one value scale). The Mac app draws them in N6, Stage B. N7, Stage A (server, 2026-09-29;
+  D-058, D-059) added what Pennant remembers and the league around it: each import's served report and every club's
+  standings kept per save in `history.db`; "since the last export" (`changes`: new, resolved, moved and the results
+  between the two exports, never which transaction did it); the desk's statuses (open, reviewed, deferred until a game
+  date, handled in OOTP) with a one-step undo (`/api/v2/desk/:org`); Following (`/api/v2/following`, the watchlist
+  copied in, division rivals suggested); the league wire (`/api/v2/wire/:org` and the Morning Report's top five: the log's
+  own words, trades, news, injuries, streaks, awards and standings movement, a stated order); a club report for any club
+  under our scouting (`/api/v2/club/:teamId`); search (`/api/v2/search`); the club question kept across a relaunch
+  (`clubOwed`); and the events `desk-changed`, `following-changed` and `changes-ready`. The Mac app draws them at N7,
+  Stage B. Not built: the horizon board (N12).
 - Pennant for Mac, the app skeleton (SwiftUI rebuild N3, D-055): `macos/Pennant.xcodeproj` and its packages. The app
   carries the server and starts it as its sidecar (after a one-time backup of the data folder), and has the window shell:
   the sidebar from the department registry with the served club card, the toolbar, the inspector, the Go, View and Club

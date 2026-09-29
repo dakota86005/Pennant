@@ -14,7 +14,9 @@ sections 3.4, 3.5, 4.2 and 6).
 Milestone N3.5, Stage B1 is built (2026-09-26: the all-or-nothing, automatic import and the export's rating mode, D-061;
 "N3.5, Stage B1: the import, as built" in section 9); Stage B2 (discovery, server) is built, and its Mac side at N6,
 Stage B2 (2026-09-28: the zero-question first run, played since and the rating-history questions, section 3.4). Milestone
-N6 (the Morning Report) is complete.
+N6 (the Morning Report) is complete. Milestone N7, Stage A (the server: snapshots, "since the last export", the desk's statuses,
+Following, the league wire, club reports, search and the club owed across a relaunch) is built (2026-09-29; "As built at
+N7 (Stage A)" in section 3.4); Stage B draws it.
 Nothing else in this document is implemented yet. It supersedes the UI parts of the
 V2 web plan (`~/.claude/plans/okay-can-we-please-effervescent-cherny.md`, sections 3 and 4). The server-side
 parts of that plan (the Front Office contract, the Club Profile, the roster map, the horizon board, the league
@@ -633,6 +635,108 @@ only words (additive, through the contract).
   server, and the XCUITest `testClubOwedAfterSetupCloses` (Setup closed before the club is answered: the report stays
   held, "Choose Your Club…" brings the question back, and saving it lets the report through).
 
+**As built at N7 (Stage A), 2026-09-29: Pennant remembers, and the league is alive (server).** Branch
+`feature/swiftui-n7-server`. D-058, D-059 and D-063's club question, through the contract pipeline (fixtures in
+`contract/fixtures/responses/`: `getFrontOffice-since-last-export`, `getDepartmentReport-since-last-export`, `getDesk`,
+`setDeskStatus-*`, `getFollowing`, `follow-*`, `unfollow-*`, `getWire`, `getClubReport`, `search`; events in `events.sse`).
+Nothing is drawn yet: Stage B draws it. Cases 15 to 20 and the search and club-owed cases are in BEHAVIOR_CASES.md.
+- **What is remembered** (`server/frontOfficeMemory.ts`, new tables in `history.db`, keyed by the save's identity, D-064,
+  and filed only while the served league is certainly the save's own; `history.db` is copied into `backups/` once before
+  the first row). After each kept build of the club's Front Office (`onFrontOfficeKept`, after the requests that waited
+  on it are answered; the post-import hook `remember` waits on it after an import): what it served (each department's
+  state, every item's key, plain severity, headline and count, the key figures) and every club's standings (record,
+  place, games back, runs). A rebuild of the same import replaces that import's snapshot. The roster state "since the
+  last export" is `rosterStateHistory.ts`'s, not a copy.
+- **"Since the last export"** (`FrontOfficeSummary.changes`, `DepartmentReport.changes`,
+  `presentation/frontOffice/attention.ts`): this import's served items against the previous import's snapshot of the
+  same save and club. New: raised now, not then (both exports read that department); resolved: raised then, not now (the
+  department read now); moved: the same item at another urgency; results: the club's games between the two exports (by
+  count from the last standings, else by date). Each item's line is the item as served, with a basis ("What two exports
+  served"; "Two exports show that it changed, not which move or event changed it"). A department not read at one of the
+  two says so. With no earlier export, `changes` is null and `changesNote` says why; with one, nothing changed is a count
+  of zero.
+- **The desk's statuses** (`frontOfficeAttention.ts`): each item carries `attention`; reviewed, deferred and handled
+  items leave `desk.items` for `desk.setAside` (a served line, "2 reviewed · 1 deferred", and the items); a deferral ends
+  on its game date and comes back with "Deferral ended …"; an item marked handled that this export still raises says
+  "The latest export still shows it". `PUT` answers with the status it replaced and `undo`, the request that puts it
+  back; refusals are sentences (400/404). The composed answer is kept per build, remembered state, desk and wire, so a
+  status composes again in a few milliseconds without reading the league.
+- **Following** (`aroundTheLeague.ts`, `presentation/frontOffice/following.ts`): the watchlist is copied in once per
+  save (with its notes; `following_watchlist_copies` keeps a player unfollowed from being copied back; the `watchlist`
+  table is untouched); division rivals are `suggestions`, each with `why`. `PUT` follows or changes a note, `DELETE`
+  (`?kind&id`) unfollows; both answer with `undo` and the new view.
+- **The wire** (`leagueWire.ts`, `presentation/frontOffice/wire.ts`): the sources and the order are D-059's "As built".
+  Gathered once per import (and per copy of the log) on the server's thread after the club's build is remembered;
+  filtered and ordered per request. `?since=` a game date, `season`, or by default the last export's day (the season
+  when there is none); `club`, `kind`, `followed=first|only`; at most 200 entries, with `total` and `more`.
+  `FrontOfficeSummary.wire` is the top five since the last export, followed clubs first.
+- **A club report** (`clubReport.ts`, `presentation/frontOffice/clubReport.ts`, `buildClubReport` in the Front
+  Office's worker): D-059's "As built". `GET /api/v2/club/:teamId` (our own club too, marked `ours`); kept per import and
+  club; our division's are built ahead after every kept build of our Front Office.
+- **Search** (`search.ts`, `presentation/searchWords.ts`): every word typed must begin a word of the name; players (ours
+  and the league's, not retired), major-league clubs and the catalog's views, each with its `open` target, grouped;
+  followed first, then names that start with the query, then our organization's players, then by name (stated in
+  `order`). The index is built once per import (warmed after it).
+- **The club owed** (`clubOwed.ts`): `clubOwed {text, humanClubs, since} | null` on `/api/status` and `/api/settings`;
+  kept in `club-owed.json` in the data folder, so it survives a relaunch. While it is set, `automatic` is refused with its
+  sentence on the Front Office, desk, wire and club routes, and the warm-up builds no report for it.
+- **Events** (`serverEvents.ts`): `desk-changed {orgId, deskStamp, key | null}` (null when an import resolved several),
+  `following-changed {followStamp}`, `changes-ready {orgId, importStamp, reportStamp, title, text, newToDecide | null}`
+  once per import (title "New export read"; text "3 new on your desk", "Nothing new on your desk", or on a first export
+  "Pennant will compare the next export with this one."). The Swift client reads them by kind (`ServerEventReading`);
+  `AppModel` ignores them until Stage B.
+
+*Speed* (the sidecar bundle, `scratchpad/n7/bench-n7.mjs`; the owner's export is a read-only scratch copy, 70 CSVs,
+2.79 million rows, imported twice into a scratch folder with no live log; an M4 with a load average of 8 to 12 from
+other work, so the worst figures are loose):
+
+| | Synthetic save | The owner's export |
+|---|---|---|
+| Import finished to `changes-ready` (first import; second) | 0.54 s; 0.29 s | 4.0 to 5.3 s; 2.4 to 2.6 s (the club's cold build, about 2 s, is most of it) |
+| The wire gathered (once per import, off the request path) | — | 28 to 43 ms, 502 entries |
+| Search index built (once per import, off the request path) | — | 42 to 64 ms, 12,647 entries |
+| `front-office`, warm p50 / p95 (with changes) | 1.2 / 2.9 ms | 1.6 to 3.6 / 2.4 to 6.3 ms (129 kB) |
+| `wire`, first / warm p50 / p95 | 1 / 0.4 / 0.5 ms | 4 / 3.6 / 6.3 to 9 ms (182 kB, 200 of 502) |
+| `club`, a rival (built ahead) first open | 1 ms | 2 to 4 ms |
+| `club`, another club: cold (in the worker) / warm p50 / p95 | — (every club is a rival) | 1.1 to 1.5 s / 1.4 to 3.6 / 2.4 to 11 ms |
+| `search`, p50 / p95 (47 queries typed a letter at a time) | 0.3 / 0.5 ms | 1.1 to 1.9 / 4.3 to 6.4 ms (was 46 ms before the collator fix) |
+| `desk` GET p95; `PUT` and its undo | 0.3 ms; 7 ms, 1 ms | 1 ms; 8 to 9 ms, 2 to 3 ms |
+| `following` GET p95 | 0.5 ms | 1.4 ms |
+
+One early run on the owner's export saw a `PUT` take 1.7 s and one warm club read 1.0 s; three later runs did not, and
+the log showed no rebuild in them, so it is put down to the machine's load, not explained.
+
+*Payload shapes for Stage B* (`server/presentation/frontOffice/types.ts` and `leagueTypes.ts`):
+- `FrontOfficeSummary`: adds `changes: SinceLastExport | null`, `changesNote: Cell | null`, `wire: WireTop | null`,
+  `deskStamp`; `desk.setAside: DeskSetAside | null`; each `FoItem` adds `attention: DeskAttention`.
+  `DepartmentReport.changes: ChangeItem[] | null` and `changesNote: Cell | null`.
+- `SinceLastExport {new, resolved, moved, results: ChangeChip, since: Cell, previousImport, previousGameDate}`;
+  `ChangeChip {kind, count, text, hint, items: ChangeItem[]}`; `ChangeItem {key, department | null, line: Claim, open:
+  Target | null}` (the `ChipRow`).
+- `DeskAttention {status: open | reviewed | deferred | handled, line: Cell, until, deferralEnded, note, stillShown: Cell
+  | null, since}`; `DeskSetAside {line, reviewed, deferred, handled, items}`; `DeskView {orgId, importStamp, reportStamp,
+  deskStamp, desk}`; `DeskUpdate {key, status, until?, note?}` (the `PUT` body; `note: ""` clears it, absent keeps it);
+  `DeskChange {key, done: Cell, attention, previous, undo: DeskUpdate, view: DeskView}`.
+- `Following {title, clubs, players: FollowedItem[], empty, suggestions: FollowSuggestion[], watchlist: Cell | null,
+  followStamp}`; `FollowedItem {kind, id, name, line, note, since, open}`; `FollowSuggestion {kind: club, id, name,
+  why}`; `FollowUpdate {kind, id, note?}`; `FollowChange {done, following, undo {action: follow | unfollow, request},
+  view}`.
+- `WireTop {title, order: WireOrder, entries, more, gaps, empty, open}` (the `WireRow`s); `Wire {orgId, importStamp,
+  title, since, sinceDate, order, entries, total, more, gaps, empty, kinds: WireKindChoice[]}`; `WireEntry {id, date,
+  when: Cell, kind, clubs: WireClub[] {teamId, name, abbreviation, followed}, players: WirePlayer[], headline: Claim,
+  source, followed}`.
+- `ClubReport {teamId, club, abbreviation, importStamp, reportStamp, asOf, followed, ours, teamSeason, lede,
+  clubProfile, rosterMap (N6's shapes), scouting: Claim, headToHead: Claim | null, nextSeries: Claim | null,
+  nextSeriesNote, moves: WireEntry[], movesNote, injuries: ClubInjury[] {playerId, line}, injuriesNote, openWire}`.
+- `SearchAnswer {query, groups: SearchGroup[] {kind, title, results, total}, order: Cell, empty, importStamp}`;
+  `SearchResult {kind: player | club | view, id, title, line, followed, open: Target}` (the palette's rows).
+- `ClubOwed {text, humanClubs, since}` on `ServerStatus.clubOwed` and `SettingsResponse.clubOwed`.
+
+*Left for later:* clubs with open trade talk as Following suggestions (the plan's second kind; no trade-talk source is
+read yet); `players_injury_history` read whole each gathering (fine at 28 to 43 ms on the owner's export); the wire's
+moves were not measured with a live log (the scratch export has none); an unfollow's undo follows again as a new follow
+(its first "since" is the undo's).
+
 ### 3.5 One anatomy for every department report
 
 Every report reads the same way:
@@ -985,7 +1089,8 @@ Everything new lives under `/api/v2/`, so the React app keeps working on the old
 | `GET /api/v2/claims/:key` | The evidence trail on demand (for example an MLB need's staff recommendation, which takes about 3.6 s, so it is never in a summary) |
 | `GET /api/v2/player/:id` · `/club/:id` · `/compare?…` | Dossier, club report, comparison |
 | `GET/PUT /api/v2/desk/:org` · `GET/PUT/DELETE /api/v2/following` | The GM's desk and follows |
-| `GET /api/v2/wire/:org?since&club&kind&followed` | Around the league |
+| `GET /api/v2/wire/:org?since&club&kind&followed` | Around the league (built at N7, Stage A, with the desk, Following and `/club/:id`: section 3.4, "As built at N7 (Stage A)") |
+| `GET /api/v2/search?q=` | Players, clubs and views for the palette and the toolbar, each with its route (N7, Stage A) |
 | `GET /api/v2/catalog` | Glossary, stat catalog, theme tokens per club, department list and staff heads |
 | `GET /api/v2/events` (SSE) | Import progress and finished, job progress, desk changes, freshness. This replaces 8-second polling |
 | existing chat SSE, jobs, settings, import, trade analyze | Reused, and described in the spec by the milestone that first uses each: status, import, setup and settings at N2 (for N3), trade analyze at N12, chat SSE and jobs at N13 |
@@ -1145,7 +1250,7 @@ real process under tsx) hold each point.
 | Token | `server/apiToken.ts` | Bearer token on `/api`, after the Host check, compared as SHA-256 digests with `timingSafeEqual`. No token set (Electron, `npm run dev`): no check. The assistant's tools and the site export send it (`ownApiHeaders`). |
 | Lock | `server/dataLock.ts` | `server.lock` (`pid`, `startedAt`, which app) taken by `startServer`, so by Electron, the sidecar and `npm run dev` alike. A lock whose process has gone, or that cannot be read, is taken over; a running holder is refused by name. Electron shows the refusal instead of retrying another port. |
 | Keys | `setInjectedKeys` in `server/settings.ts` | Once set, keys come from the hand-over (an environment variable still wins, as before), key status says `source: "keychain"`, and saving or clearing a key in Settings changes only the in-memory set: the sidecar never writes `credentials.json`. The app stores a newly saved key in the Keychain itself (N13). |
-| Events | `server/serverEvents.ts`, `GET /api/v2/events` | Server-sent events: `hello` (the `/api/status` snapshot), `import-started`, `import-progress` (at most every 200 ms, but always on a new file or phase), `import-finished`, `export-pending`, `job`. A 15 s comment keeps the stream alive. Desk changes and freshness beyond the pending export arrive with N7. |
+| Events | `server/serverEvents.ts`, `GET /api/v2/events` | Server-sent events: `hello` (the `/api/status` snapshot), `import-started`, `import-progress` (at most every 200 ms, but always on a new file or phase), `import-finished`, `export-pending`, `job`. A 15 s comment keeps the stream alive. N7, Stage A added `desk-changed`, `following-changed` and `changes-ready` (section 3.4, "As built at N7 (Stage A)"). |
 | Bundle | `npm run build:sidecar` → `build/sidecar/` | `server.cjs`, both refit workers beside it, and a `package.json` with the version and the runtime dependencies (not `electron-updater`). Shares its esbuild settings with the Electron build (`scripts/lib/serverBundle.mjs`). |
 | Node runtime | `npm run sidecar:node` → `build/node-runtime/` | Node 24.21.0 darwin-arm64, the archive checked against a pinned SHA-256 before extraction and the binary against the pinned version after, renamed `pennant-server`, with Node's licence beside it. |
 
@@ -1803,8 +1908,9 @@ runner's accessibility audit, answered from its first report but not yet re-run 
 `pennant-mac-ui` on the PR); the first launch after a build (1.39 s) and a Release build's launch (a Release build cannot
 use a scratch folder yet).
 
-**Next: N7** (it remembers; the league is alive). Open a fresh session on `feature/swiftui` once N6 Stage B2's PR is
-merged.
+**N7, Stage A (2026-09-29)** on `feature/swiftui-n7-server`: the server side of "it remembers; the league is alive"
+(section 3.4, "As built at N7 (Stage A)", with its timings and the payload shapes). **Next: N7, Stage B** (the Mac app
+draws the desk with undo, the changes, the wire, club windows, Following in the sidebar and the notifications).
 
 Read first: AGENTS.md, this document, D-001, D-008, D-018, D-020, D-043, D-046, D-049, D-052 (with its
 amendments), D-054 and D-055 to D-060.
