@@ -286,25 +286,27 @@ onFrontOfficeKept((built) => {
 let warmed: string | null = null;
 
 /**
- * Once per import (and at start), after the club's build is remembered: the watchlist is copied into Following, the
- * wire and the search index are gathered, and our division's club reports are built ahead, one at a time, off every
- * request's path.
+ * After the club's build is remembered, off every request's path. Once per import (and at start): the watchlist is
+ * copied into Following, and the wire and the search index are gathered. After every kept build: our division's club
+ * reports are built ahead, one at a time (a rebuild of the same import, as after Player Value's refit or a new copy of
+ * the live log, dropped the kept ones; those still kept are cache hits).
  */
 async function warmAfter(org: number, importStamp: string | null): Promise<void> {
   const once = `${org}|${importStamp}`;
-  if (warmed === once) return;
-  warmed = once;
-  try {
-    await copyWatchlist();
-  } catch (err) {
-    console.error('[following] the watchlist could not be copied:', err);
-  }
-  try {
-    const wire = wireFacts(importStamp, org);
-    const index = searchIndex(importStamp);
-    console.log(`[wire] ${wire.facts.length} entries, gathered in ${wireGatherMs() ?? '?'} ms; search indexed ${index.entries.length} in ${index.ms} ms`);
-  } catch (err) {
-    console.error('[wire] the wire or the search index could not be gathered ahead:', err);
+  if (warmed !== once) {
+    warmed = once;
+    try {
+      await copyWatchlist();
+    } catch (err) {
+      console.error('[following] the watchlist could not be copied:', err);
+    }
+    try {
+      const wire = wireFacts(importStamp, org);
+      const index = searchIndex(importStamp);
+      console.log(`[wire] ${wire.facts.length} entries, gathered in ${wireGatherMs() ?? '?'} ms; search indexed ${index.entries.length} in ${index.ms} ms`);
+    } catch (err) {
+      console.error('[wire] the wire or the search index could not be gathered ahead:', err);
+    }
   }
   await warmClubReports(divisionRivals(org), org);
 }

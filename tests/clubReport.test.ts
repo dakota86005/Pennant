@@ -3,7 +3,8 @@ import { db } from '../server/db.js';
 import { forgetHistoryKey } from '../server/historyIdentity.js';
 import { clubReportNow } from '../server/aroundTheLeague.js';
 import { forgetMemoryCaches } from '../server/frontOfficeMemory.js';
-import { frontOfficeStats, frontOfficeSummary, resetFrontOfficeCache } from '../server/frontOfficeService.js';
+import { afterImport, resetAttention } from '../server/frontOfficeAttention.js';
+import { frontOfficeStats, frontOfficeSummary, invalidateFrontOffice, resetFrontOfficeCache } from '../server/frontOfficeService.js';
 import { forgetWire } from '../server/leagueWire.js';
 import { importedAt } from '../server/playerStateRoutes.js';
 import { buildSave, type BuiltSave } from './syntheticSave';
@@ -91,5 +92,23 @@ describe('another club\'s report (case 19)', () => {
     const ours = await clubReportNow(String(save.org));
     expect(ours.ours).toBe(true);
     expect(ours.headToHead).toBeNull();
+  });
+
+  it('has our division\'s reports built ahead after an import, and again after a rebuild of the same import', async () => {
+    resetAttention();
+    await afterImport();
+    const ahead = frontOfficeStats().clubBuilds;
+    expect(ahead).toBe(save.clubs.length - 1);
+    await clubReportNow(String(them));
+    expect(frontOfficeStats().clubBuilds).toBe(ahead);
+
+    // A rebuild of the same import (Player Value's adopted refit, a new copy of the live log) drops the kept reports:
+    // they are built ahead again, so the GM's first open is still a cached read
+    invalidateFrontOffice();
+    await afterImport();
+    const again = frontOfficeStats().clubBuilds;
+    expect(again).toBe(ahead + save.clubs.length - 1);
+    await clubReportNow(String(them));
+    expect(frontOfficeStats().clubBuilds).toBe(again);
   });
 });
