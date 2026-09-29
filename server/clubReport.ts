@@ -46,7 +46,33 @@ export interface ClubMaterial {
   nextSeries: SeriesGame[] | null;
   /** Why there is no series or no head-to-head, when the export can't say. */
   scheduleWhy: string | null;
+  /**
+   * Why their injured list isn't known, when the export lacks what it is read from (a table or a column, named); null
+   * when it was read. An injured list that can't be read is unknown, never "nobody hurt" (D-018).
+   */
+  injuriesWhy: string | null;
   scouting: ScoutingCoverage;
+  /** Why their players (and so what our scouts see of them) aren't known, named the same way; null when read. */
+  playersWhy: string | null;
+}
+
+/** The columns each part of the report reads, by table: what is missing is named, never read as "none" (D-018). */
+const INJURY_COLUMNS: Record<string, readonly string[]> = {
+  players: ['player_id', 'first_name', 'last_name', 'age', 'position', 'team_id', 'organization_id', 'retired', 'injury_is_injured', 'injury_dtd_injury', 'injury_left'],
+  teams: ['team_id', 'level', 'name', 'nickname'],
+  players_roster_status: ['player_id', 'is_active', 'is_on_dl', 'is_on_dl60', 'dl_days_this_year'],
+};
+const PLAYER_COLUMNS: Record<string, readonly string[]> = { players: ['player_id', 'team_id'] };
+
+/** The first table or column the export lacks, as "table" or "table.column"; null when every one is there. */
+export function missingFrom(needed: Record<string, readonly string[]>): string | null {
+  for (const [table, columns] of Object.entries(needed)) {
+    if (!tableExists(table)) return table;
+    const has = new Set(tableColumns(table));
+    const lacking = columns.find((c) => !has.has(c));
+    if (lacking) return `${table}.${lacking}`;
+  }
+  return null;
 }
 
 const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
@@ -90,11 +116,15 @@ export function readClubReport(teamId: number, ourTeamId: number | null, status:
       nextSeries = nextSeriesWith(teamId, ourTeamId, facts.currentDate);
     }
   }
-  const injuries = tableExists('players_roster_status') ? orgInjuries(teamId).filter((i) => i.levelName === 'MLB') : [];
+  const injuryGap = missingFrom(INJURY_COLUMNS);
+  const injuriesWhy = injuryGap ? `Not in the export: ${injuryGap}` : null;
+  const injuries = injuryGap ? [] : orgInjuries(teamId).filter((i) => i.levelName === 'MLB');
   // The club's major-league players, as our scouts see them (D-017): complete, partly seen, or not seen
-  const ids = tableExists('players') && new Set(tableColumns('players')).has('team_id')
-    ? (db.prepare(`SELECT player_id FROM players WHERE team_id = ?${new Set(tableColumns('players')).has('retired') ? ' AND COALESCE(retired, 0) = 0' : ''}`).all(teamId) as Array<{ player_id: number }>).map((r) => r.player_id)
-    : [];
+  const playerGap = missingFrom(PLAYER_COLUMNS);
+  const playersWhy = playerGap ? `Not in the export: ${playerGap}` : null;
+  const ids = playerGap
+    ? []
+    : (db.prepare(`SELECT player_id FROM players WHERE team_id = ?${new Set(tableColumns('players')).has('retired') ? ' AND COALESCE(retired, 0) = 0' : ''}`).all(teamId) as Array<{ player_id: number }>).map((r) => r.player_id);
   const abilities = loadScoutedAbilities(ids);
   const count = (s: EvidenceStatus) => ids.filter((id) => abilities.for(id).status === s).length;
   return {
@@ -102,9 +132,11 @@ export function readClubReport(teamId: number, ourTeamId: number | null, status:
     ourTeamId,
     morning,
     injuries,
+    injuriesWhy,
     headToHead,
     nextSeries,
     scheduleWhy,
+    playersWhy,
     scouting: {
       players: ids.length, complete: count('complete'), partial: count('partial'), unknown: count('unknown'),
       source: ratingSource(), viewerOrgId: viewerContext().viewerOrgId,

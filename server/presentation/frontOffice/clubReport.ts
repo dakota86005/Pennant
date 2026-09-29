@@ -20,7 +20,11 @@ const source = (build: BuildContext, specialist: string) => ({ department: 'leag
 export function scoutingWords(build: BuildContext, m: ClubMaterial) {
   const s = m.scouting;
   const withheld = s.source.mode === 'none';
-  const text = withheld
+  // Their players can't be listed: what our scouts see of them is unknown, never "nobody" (D-018)
+  const unlisted = m.playersWhy !== null;
+  const text = unlisted
+    ? 'The export doesn\'t list their players, so what our scouts see of them isn\'t known'
+    : withheld
     ? 'The export carries no ratings, so no player here is judged on ability'
     : s.players === 0
       ? 'Nobody is on the club in this export'
@@ -28,6 +32,7 @@ export function scoutingWords(build: BuildContext, m: ClubMaterial) {
         ? `Our scouts have a full report on all ${plural(s.players, 'player')}`
         : `Our scouts have a full report on ${s.complete} of ${plural(s.players, 'player')}`;
   const unknown = [
+    ...(unlisted ? [`The club's players couldn't be listed (${m.playersWhy}), so nothing about them is read.`] : []),
     ...(s.partial ? [`Our scouts see ${plural(s.partial, 'player')} only in part: what they can't see is left out, never filled in.`] : []),
     ...(s.unknown && !withheld ? [`Our scouts have no report on ${plural(s.unknown, 'player')}, so nothing about their ability is read.`] : []),
     ...(s.viewerOrgId === null ? ['The save doesn\'t say whose scouts these are: it names no one club as yours.'] : []),
@@ -39,10 +44,12 @@ export function scoutingWords(build: BuildContext, m: ClubMaterial) {
     basis: basis({
       because: [
         { label: 'Ratings', value: s.source.text },
-        { label: 'Players on the club', value: String(s.players) },
-        { label: 'A full report', value: String(s.complete) },
-        { label: 'Seen in part', value: String(s.partial) },
-        { label: 'No report', value: String(s.unknown) },
+        ...(unlisted ? [] : [
+          { label: 'Players on the club', value: String(s.players) },
+          { label: 'A full report', value: String(s.complete) },
+          { label: 'Seen in part', value: String(s.partial) },
+          { label: 'No report', value: String(s.unknown) },
+        ]),
         { label: 'The same as ours', value: 'Every club\'s players are read through our organization\'s scouting, never the game\'s own ratings.' },
       ],
       source: source(build, 'Scouting'),
@@ -129,6 +136,8 @@ function injuryWords(build: BuildContext, m: ClubMaterial): { list: ClubInjury[]
       links: [target({ kind: 'player', playerId: Number(i.player_id) })],
     }),
   }));
+  // An injured list the export can't give is unknown, never empty (D-018)
+  if (m.injuriesWhy !== null) return { list: [], note: cell('Their injured list isn\'t in this export', { tone: 'unknown', hint: m.injuriesWhy }) };
   return { list, note: list.length ? null : cell('Nobody on their injured list') };
 }
 

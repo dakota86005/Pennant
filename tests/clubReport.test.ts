@@ -7,7 +7,10 @@ import { afterImport, resetAttention } from '../server/frontOfficeAttention.js';
 import { frontOfficeStats, frontOfficeSummary, invalidateFrontOffice, resetFrontOfficeCache } from '../server/frontOfficeService.js';
 import { forgetWire } from '../server/leagueWire.js';
 import { importedAt } from '../server/playerStateRoutes.js';
-import { buildSave, type BuiltSave } from './syntheticSave';
+import { readClubReport } from '../server/clubReport.js';
+import { getDataStatus } from '../server/dataStatus.js';
+import { clubReportWords } from '../server/presentation/frontOffice/clubReport.js';
+import { buildSave, dropColumn, type BuiltSave } from './syntheticSave';
 
 /**
  * A club report for any club (BEHAVIOR_CASES.md "Pennant for Mac", `clubReport.test.ts`, case 19; D-059): the same modules
@@ -110,5 +113,22 @@ describe('another club\'s report (case 19)', () => {
     expect(again).toBe(ahead + save.clubs.length - 1);
     await clubReportNow(String(them));
     expect(frontOfficeStats().clubBuilds).toBe(again);
+  });
+
+  it('says an injured list or a list of players the export lacks isn\'t known, never "nobody" (D-018)', () => {
+    const status = getDataStatus({ importedAt: importedAt.value });
+    const build = { orgId: them, club: 'Them', importStamp: importedAt.value, reportStamp: 'r1', gameDate: null, subject: 'theirs' as const };
+    // A column the injured list is read from is missing: the reader names it, the words say it isn't known
+    dropColumn('players_roster_status', 'dl_days_this_year');
+    const material = readClubReport(them, save.org, status);
+    expect(material.injuriesWhy).toBe('Not in the export: players_roster_status.dl_days_this_year');
+    const words = clubReportWords(build, material, 'Us', null);
+    expect(words.injuries).toEqual([]);
+    expect(words.injuriesNote).toMatchObject({ display: 'Their injured list isn\'t in this export', tone: 'unknown', hint: 'Not in the export: players_roster_status.dl_days_this_year' });
+    // Their players can't be listed: what our scouts see is unknown, never "nobody on the club"
+    const unlisted = clubReportWords(build, { ...material, playersWhy: 'Not in the export: players.team_id', scouting: { ...material.scouting, players: 0, complete: 0, partial: 0, unknown: 0 } }, 'Us', null);
+    expect(unlisted.scouting.text).toBe('The export doesn\'t list their players, so what our scouts see of them isn\'t known');
+    expect(unlisted.scouting.tone).toBe('unknown');
+    expect(unlisted.scouting.basis.unknown.join(' ')).toMatch(/players\.team_id/);
   });
 });
