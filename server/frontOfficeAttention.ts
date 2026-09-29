@@ -144,7 +144,7 @@ function compose(built: FrontOfficeBuilt): Composed {
   }
   const summary: FrontOfficeSummary = {
     ...built.summary,
-    desk: attendDesk(withChanges),
+    desk: attendDesk(withChanges, today),
     departments: attendCards(withChanges),
     changes,
     changesNote,

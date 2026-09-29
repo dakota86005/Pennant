@@ -28,7 +28,8 @@ function resultOf(e: SearchEntry, followed: boolean): SearchResult {
       return {
         kind: 'player', id: e.id, title: e.name,
         line: [e.position, e.clubName ?? 'Free agent', levelWord(e.level)].filter(Boolean).join(' · '),
-        followed, open: target({ kind: 'player', playerId: e.playerId! }),
+        // His organization's club with him, so the Mac app can open the nearest view (its window) until player windows
+        followed, open: target({ kind: 'player', playerId: e.playerId!, ...(e.orgId ? { teamId: e.orgId } : {}) }),
       };
     case 'club':
       return {

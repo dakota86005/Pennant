@@ -2624,6 +2624,24 @@
         ],
         "description": "The trade deadline, only as the league's own row gives it."
       },
+      "DeferChoice": {
+        "type": "object",
+        "properties": {
+          "until": {
+            "$ref": "#/components/schemas/GameDate",
+            "description": "The game date, written as OOTP writes dates (unpadded), after the league's day."
+          },
+          "text": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"A week · May 13, 2040\", with what it does in its help tag."
+          }
+        },
+        "required": [
+          "until",
+          "text"
+        ],
+        "description": "One day the GM can defer an item to (`DeskUpdate.until`), in words."
+      },
       "DepartmentCard": {
         "type": "object",
         "properties": {
@@ -2849,13 +2867,26 @@
           "setAside": {
             "$ref": "#/components/schemas/DeskSetAside",
             "description": "The items the GM set aside (N7): reviewed, handled in OOTP, or deferred to a day still ahead. They leave the lead list and stay one click away, with a served count (\"2 reviewed · 1 handled in OOTP\"); null when none is."
+          },
+          "openCount": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "How many items to decide are open: the ones the desk shows and each department's \"more\", never the ones set aside (N7, Stage B: the Mac app's dock badge counts nothing itself). A floor when `incomplete` names a department that couldn't be read."
+          },
+          "deferChoices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeferChoice"
+            },
+            "description": "The days an item can be deferred to, each a game date after the league's day with its words (\"A week · May 13, 2040\"), soonest first (N7, Stage B: the Mac app's Defer menu, which never works out a date itself); empty when the league's day isn't known, so nothing can be deferred from a menu."
           }
         },
         "required": [
           "title",
           "order",
           "items",
-          "more"
+          "more",
+          "openCount",
+          "deferChoices"
         ],
         "description": "The desk: the items to decide from every department (a stated share of each), in a stated order."
       },
@@ -7268,7 +7299,8 @@
             "$ref": "#/components/schemas/Integer"
           },
           "teamId": {
-            "$ref": "#/components/schemas/Integer"
+            "$ref": "#/components/schemas/Integer",
+            "description": "A club's id; on a player's target, his organization's club when known (the nearest view a client opens for him)."
           },
           "key": {
             "type": "string",

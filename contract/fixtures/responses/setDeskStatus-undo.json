@@ -353,7 +353,38 @@
       "more": [],
       "empty": null,
       "incomplete": null,
-      "setAside": null
+      "setAside": null,
+      "openCount": 3,
+      "deferChoices": [
+        {
+          "until": "2040-5-7",
+          "text": {
+            "display": "Tomorrow · May 7, 2040",
+            "hint": "Back on your desk when the league reaches May 7, 2040"
+          }
+        },
+        {
+          "until": "2040-5-13",
+          "text": {
+            "display": "A week · May 13, 2040",
+            "hint": "Back on your desk when the league reaches May 13, 2040"
+          }
+        },
+        {
+          "until": "2040-5-20",
+          "text": {
+            "display": "Two weeks · May 20, 2040",
+            "hint": "Back on your desk when the league reaches May 20, 2040"
+          }
+        },
+        {
+          "until": "2040-6-5",
+          "text": {
+            "display": "A month · June 5, 2040",
+            "hint": "Back on your desk when the league reaches June 5, 2040"
+          }
+        }
+      ]
     }
   }
 }

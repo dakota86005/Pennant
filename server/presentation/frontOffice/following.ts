@@ -36,6 +36,8 @@ export interface PlayerNow {
   position: string | null;
   club: string | null;
   level: string | null;
+  /** His organization's major-league club, when the export says (the nearest view the Mac app opens for him). */
+  orgId?: number | null;
 }
 
 export interface WatchlistNote {
@@ -69,7 +71,7 @@ function playerItem(f: FollowInput, now: PlayerNow | undefined): FollowedItem {
       : cell('Not in this league now', { tone: 'unknown', hint: 'He isn\'t in the latest export' }),
     note: f.note,
     since: sinceWords(f),
-    open: target({ kind: 'player', playerId: f.id }),
+    open: target({ kind: 'player', playerId: f.id, ...(now?.orgId ? { teamId: now.orgId } : {}) }),
   };
 }
 

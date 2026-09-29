@@ -107,6 +107,26 @@ describe('a desk status records attention and changes nothing else (case 15)', (
     expect(back.view.desk.items.some((it) => it.key === key)).toBe(true);
   });
 
+  it('serves the days a deferral can run to, from the league\'s day, and how many items are open (N7, Stage B)', async () => {
+    const view = await deskViewNow(save.org);
+    const today = (await frontOfficeSummaryNow(save.org)).teamSeason!.kicker;
+    expect(today).toBeTruthy();
+    expect(view.desk.deferChoices.map((c) => c.text.display.split(' · ')[0])).toEqual(['Tomorrow', 'A week', 'Two weeks', 'A month']);
+    // Written as OOTP writes a date, and each one accepted as a deferral
+    for (const choice of view.desk.deferChoices) expect(choice.until).toMatch(/^\d{4}-[1-9]\d?-[1-9]\d?$/);
+    const openBefore = view.desk.openCount;
+    expect(openBefore).toBe(view.desk.items.length + view.desk.more.reduce((n, m) => n + m.count, 0));
+    const deferred = await setDeskStatus(save.org, { key, status: 'deferred', until: view.desk.deferChoices[1].until });
+    expect(deferred.view!.desk.openCount).toBe(openBefore - 1);
+    expect(deferred.view!.desk.setAside!.deferred).toBe(1);
+  });
+
+  it('serves no day to defer to when the league\'s day isn\'t known: a date is never guessed', async () => {
+    const { deferChoices } = await import('../server/presentation/frontOffice/attention.js');
+    expect(deferChoices(null)).toEqual([]);
+    expect(deferChoices('2040-12-31').map((c) => c.until)).toEqual(['2041-1-1', '2041-1-7', '2041-1-14', '2041-1-30']);
+  });
+
   it('defers only to a day after the league\'s day, and refuses an item this export doesn\'t raise, in sentences', async () => {
     await expect(setDeskStatus(save.org, { key, status: 'deferred', until: '2000-1-1' })).rejects.toThrow(DeskRefusal);
     await expect(setDeskStatus(save.org, { key, status: 'deferred' })).rejects.toThrow('Choose the day to defer it to.');

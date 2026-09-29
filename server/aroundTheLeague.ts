@@ -160,7 +160,9 @@ function playersNow(ids: readonly number[]): Map<number, PlayerNow> {
   const out = new Map<number, PlayerNow>();
   const cols = tableExists('players') ? new Set(tableColumns('players')) : new Set<string>();
   if (!ids.length || !cols.has('player_id') || !cols.has('first_name')) return out;
+  const teamCols = tableExists('teams') ? new Set(tableColumns('teams')) : new Set<string>();
   const rows = db.prepare(`SELECT p.player_id, p.first_name || ' ' || p.last_name AS name, ${cols.has('position') ? 'p.position' : 'NULL'} AS position,
+      ${cols.has('organization_id') ? 'p.organization_id' : 'NULL'} AS org, t.team_id AS team, ${teamCols.has('parent_team_id') ? 't.parent_team_id' : 'NULL'} AS parent,
       t.name AS club, t.nickname AS nickname, t.level AS level
     FROM players p LEFT JOIN teams t ON t.team_id = p.team_id WHERE p.player_id IN (${ids.map(Number).join(',')})`).all() as Array<Record<string, unknown>>;
   for (const r of rows) {
@@ -169,6 +171,10 @@ function playersNow(ids: readonly number[]): Map<number, PlayerNow> {
     out.set(Number(r.player_id), {
       playerId: Number(r.player_id), name: String(r.name).trim(), position: typeof r.position === 'number' ? POSITION_NAMES[r.position] ?? null : null,
       club, level: level === 1 ? 'Majors' : level !== null ? LEVEL_WORDS[level] ?? null : null,
+      // His organization: as the export names it, else his club's (a major-league club is its own, a farm club its parent's)
+      orgId: typeof r.org === 'number' && r.org > 0 ? r.org
+        : level === 1 && typeof r.team === 'number' ? r.team
+          : typeof r.parent === 'number' && r.parent > 0 ? r.parent : null,
     });
   }
   return out;

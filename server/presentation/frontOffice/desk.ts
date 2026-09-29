@@ -366,6 +366,8 @@ export function desk(reports: readonly DepartmentReport[]): Desk {
       ? cell(`${listWords(missing)} couldn't be read, so the desk may be missing items`, { tone: 'unknown' })
       : null,
     setAside: null,
+    openCount: items.length + more.reduce((sum, m) => sum + m.count, 0),
+    deferChoices: [],
   };
 }
 

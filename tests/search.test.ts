@@ -35,7 +35,8 @@ describe('search', () => {
     const player = db.prepare(`SELECT player_id, first_name, last_name FROM players WHERE player_id = ?`).get(save.regular) as { player_id: number; first_name: string; last_name: string };
     const found = searchNow(`${player.first_name} ${player.last_name}`);
     const players = found.groups.find((g) => g.kind === 'player')!;
-    expect(players.results[0]).toMatchObject({ id: String(save.regular), open: { kind: 'player', playerId: save.regular } });
+    // His organization's club rides along, the nearest view the Mac app opens for a player until player windows (N7 B)
+    expect(players.results[0]).toMatchObject({ id: String(save.regular), open: { kind: 'player', playerId: save.regular, teamId: save.org } });
     const views = searchNow('depth chart').groups.find((g) => g.kind === 'view')!;
     expect(views.results[0]).toMatchObject({ title: 'Depth Chart', line: 'Major League Ops', open: { kind: 'view', department: 'majorLeague', view: 'depthChart' } });
     const clubs = searchNow('club 2').groups.find((g) => g.kind === 'club')!;

@@ -221,6 +221,26 @@ export interface Desk {
    * list and stay one click away, with a served count ("2 reviewed · 1 handled in OOTP"); null when none is.
    */
   setAside: DeskSetAside | null;
+  /**
+   * How many items to decide are open: the ones the desk shows and each department's "more", never the ones set aside
+   * (N7, Stage B: the Mac app's dock badge counts nothing itself). A floor when `incomplete` names a department that
+   * couldn't be read.
+   */
+  openCount: Integer;
+  /**
+   * The days an item can be deferred to, each a game date after the league's day with its words ("A week · May 13,
+   * 2040"), soonest first (N7, Stage B: the Mac app's Defer menu, which never works out a date itself); empty when the
+   * league's day isn't known, so nothing can be deferred from a menu.
+   */
+  deferChoices: DeferChoice[];
+}
+
+/** One day the GM can defer an item to (`DeskUpdate.until`), in words. */
+export interface DeferChoice {
+  /** The game date, written as OOTP writes dates (unpadded), after the league's day. */
+  until: GameDate;
+  /** "A week · May 13, 2040", with what it does in its help tag. */
+  text: Cell;
 }
 
 /** The desk's set-aside items and their count, in words. */
