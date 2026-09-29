@@ -34,6 +34,9 @@ extension Components.Schemas.ExportPendingEvent: ServerEventShape {}
 extension Components.Schemas.JobEvent: ServerEventShape {}
 extension Components.Schemas.FrontOfficeUpdatedEvent: ServerEventShape {}
 extension Components.Schemas.SavePlayedElsewhereEvent: ServerEventShape {}
+extension Components.Schemas.DeskChangedEvent: ServerEventShape {}
+extension Components.Schemas.FollowingChangedEvent: ServerEventShape {}
+extension Components.Schemas.ChangesReadyEvent: ServerEventShape {}
 
 /// Lets the reading find an event shape's names through the optional that holds it in `ServerEvent`.
 protocol OptionalServerEventShape {
@@ -81,6 +84,9 @@ extension Components.Schemas.ServerEvent {
         case job(Components.Schemas.JobEvent)
         case frontOfficeUpdated(Components.Schemas.FrontOfficeUpdatedEvent)
         case savePlayedElsewhere(Components.Schemas.SavePlayedElsewhereEvent)
+        case deskChanged(Components.Schemas.DeskChangedEvent)
+        case followingChanged(Components.Schemas.FollowingChangedEvent)
+        case changesReady(Components.Schemas.ChangesReadyEvent)
 
         /// The served `type` of each kind, in the order this enum lists them (the coverage test compares them with
         /// the generated shapes' names).
@@ -90,6 +96,8 @@ extension Components.Schemas.ServerEvent {
                 Components.Schemas.ImportProgressEvent.typeNames, Components.Schemas.ImportFinishedEvent.typeNames,
                 Components.Schemas.ExportPendingEvent.typeNames, Components.Schemas.JobEvent.typeNames,
                 Components.Schemas.FrontOfficeUpdatedEvent.typeNames, Components.Schemas.SavePlayedElsewhereEvent.typeNames,
+                Components.Schemas.DeskChangedEvent.typeNames, Components.Schemas.FollowingChangedEvent.typeNames,
+                Components.Schemas.ChangesReadyEvent.typeNames,
             ].flatMap { $0 }
         }
 
@@ -104,6 +112,9 @@ extension Components.Schemas.ServerEvent {
             case let event as Components.Schemas.JobEvent: .job(event)
             case let event as Components.Schemas.FrontOfficeUpdatedEvent: .frontOfficeUpdated(event)
             case let event as Components.Schemas.SavePlayedElsewhereEvent: .savePlayedElsewhere(event)
+            case let event as Components.Schemas.DeskChangedEvent: .deskChanged(event)
+            case let event as Components.Schemas.FollowingChangedEvent: .followingChanged(event)
+            case let event as Components.Schemas.ChangesReadyEvent: .changesReady(event)
             default: nil
             }
         }

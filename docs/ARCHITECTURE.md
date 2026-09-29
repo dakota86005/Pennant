@@ -112,6 +112,18 @@ player is from Player State, the farm's next man through `mlbEvidence.ts` (`farm
 with Player Development's durable Triple-A assessment, never the farm's solver), and Major League Ops' needs as its
 overview served them. `server/presentation/frontOffice/morning.ts` words it.
 
+Pennant remembers, and the league is alive (N7, Stage A; D-058, D-059). Two served views sit over the Front Office's
+kept build and change none of it. `server/frontOfficeAttention.ts` puts the GM's attention on it when it is served (each
+item's desk status, the items set aside, "since the last export" and the wire's column) and, after each kept build, off
+every request's path, records what it served (`server/frontOfficeMemory.ts`, `history.db`, keyed by the save's
+identity), resolves the statuses whose items the import no longer raises, and warms the rest. A status, a note or a
+follow is attention, never a transaction and never an input to a specialist: nothing Pennant remembers is read by a
+department's answer. `server/aroundTheLeague.ts` serves the league wire (`leagueWire.ts`: the log only through the copy
+the server already holds, D-021; a roster difference stated as a change, D-020), another club's report (the Morning
+Report's reader run for that club in the Front Office's worker, `clubReport.ts`, its players through our scouting,
+D-017), Following and search (`search.ts`, an index per import). `tests/presentationBoundary.test.ts` holds who may
+import each.
+
 ## Data and persistence
 
 ### Imported league database
@@ -211,7 +223,11 @@ when the league served is certainly the configured save's (`servedLeagueCertain`
 History filed under a save's name before D-064 is brought over only where it is certainly
 that save's, after a copy of `history.db` is made in `backups/`, and what is left unused
 is said on the data status (`history`). The watchlist, player notes and per-save fits keep
-their own keys.
+their own keys. The N7 tables (`report_snapshot_imports`, `report_snapshots`,
+`report_snapshot_figures`, `standings_snapshots`, `desk_items`, `following`,
+`following_watchlist_copies`) are keyed by the save's history key and filed only while the
+league served is certainly the save's; `history.db` is copied into `backups/` once before
+their first row. The watchlist is copied into `following`, never moved.
 
 From source, `DATA_DIR` defaults to `./data`. In the packaged desktop app,
 `electron/main.ts` sets it to Electron's OS user-data directory before loading

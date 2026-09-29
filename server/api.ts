@@ -11,6 +11,7 @@ import { assessExport, importedExport, type ExportAssessment } from './exportFil
 import { locateSave } from './ootpSave.js';
 import { readRatingMode } from './ratingMode.js';
 import { registerPostImportHook, runPostImportHooks } from './postImport.js';
+import { clubOwed, importLandedForClubQuestion, oweClubWhenImported, type ClubOwed } from './clubOwed.js';
 import { snapshotsAfterImport } from './importSnapshots.js';
 import { currentHistoryKey } from './historyIdentity.js';
 import { currentPlayedElsewhere, forgetSaveScan, lookAtTheServedSave, onLookAtTheServedSave, servedSaveFolder, servedSaveId, humanClubsInExport, clubNameInExport, pickSave, saveLabel, type SavePlayedElsewhere } from './saveDiscovery.js';
@@ -69,6 +70,7 @@ import { scoutedDevelopmentRoutes } from './scoutedDevelopment.js';
 import { eventStream, progressThrottle, publish } from './serverEvents.js';
 import { v2Routes } from './v2Routes.js';
 import { currentReportStamp, holdFrontOfficeRebuilds, relocateLiveLog, valueRefitsRecorded, warmFrontOffice } from './frontOfficeService.js';
+import { afterImport } from './frontOfficeAttention.js';
 import { EXPORT_NOT_FOUND, LEAGUE_UPGRADE_LINE, importNote, importWords, leftOutNote, type ImportNote, type LeagueUpgradeLine } from './presentation/importWords.js';
 import type { Integer } from './contract/primitives.js';
 
@@ -388,6 +390,8 @@ export async function runImport(csvDir: string, trigger: ImportTrigger = 'manual
         clearLeagueCaches();
         // A club chosen in another save's league is forgotten as this save's league is served, not before (H1)
         importLandedForClub(csvDir);
+        // A save whose club is not settled owes the question from now on, across a relaunch (N7)
+        importLandedForClubQuestion(csvDir);
         // The save this import came from, before `import-finished` announces it (the status serves it with the import)
         lookAtTheServedSave();
       },
@@ -548,6 +552,8 @@ registerPostImportHook('refits', (context) => {
 });
 // The GM's first look after an import is a cached read (N4's Front Office, built in its own worker)
 registerPostImportHook('frontOffice', () => void warmFrontOffice());
+// What this import served, remembered, and the league around it gathered (N7): last, so nothing waits on it
+registerPostImportHook('remember', () => afterImport());
 // The Front Office's stamp reads the save's live log: its files are found with every look at the served save, never on
 // a request's path (`/api/status` serves the stamp)
 onLookAtTheServedSave(relocateLiveLog);
@@ -631,6 +637,12 @@ export interface ServerStatus {
    * another save's is never drawn and a save being left never has its report kept under the new one's id.
    */
   saveId: string | null;
+  /**
+   * The club question still open across a relaunch (N7): a save was chosen whose export names no club the GM manages,
+   * or several, and nobody has chosen. While it is set the automatic club's report is not served as if chosen; null
+   * when nothing is owed.
+   */
+  clubOwed: ClubOwed | null;
   /**
    * The save's own folder (`<save>.lg`), where Pennant reads the transaction log (N6 polish): the one named in Settings,
    * else the one found for the chosen save (filled in when a save is chosen, or found at the last look at the served
@@ -750,6 +762,7 @@ export function statusSnapshot(): ServerStatus {
     savePlayedElsewhere: currentPlayedElsewhere(),
     // Worked out off this request's path (at start, the minute's look, a new configuration, an import): only read here
     saveId: servedSaveId(),
+    clubOwed: clubOwed(),
     // The configuration's folder, else the one the last look found (never located on this path)
     saveFolder: config.lgPath ?? servedSaveFolder(),
     leagueUpgrade: leagueUpgradeUnderWay() ? LEAGUE_UPGRADE_LINE : null,
@@ -893,11 +906,14 @@ function clubFromSave(csvDir: string): SetupClub {
   const sameSave = held === csvDir && !clubForgottenWhenImported(csvDir);
   if (sameSave && chosenClub !== null) {
     forgetClubWhenImported(null);
+    oweClubWhenImported(null);
     const name = clubNameInExport(csvDir, chosenClub);
     return { decided: true, teamId: chosenClub, name, humanClubs, text: name ? `Keeping the ${name}, the club you chose.` : 'Keeping the club you chose.' };
   }
   // A club chosen in another save's league is forgotten once this save's import lands
   forgetClubWhenImported(!sameSave && chosenClub !== null ? csvDir : null);
+  // The club question is owed once this save's import lands, unless the choice below settles it (N7)
+  oweClubWhenImported(clubs !== null && clubs.length === 1 ? null : { csvDir, humanClubs });
   if (clubs === null) {
     return { decided: false, teamId: null, name: null, humanClubs: null, text: 'The export doesn\'t say which club you manage, so Pennant will ask.' };
   }

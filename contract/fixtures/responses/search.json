@@ -1,0 +1,85 @@
+{
+  "query": "club",
+  "groups": [
+    {
+      "kind": "club",
+      "title": {
+        "display": "Clubs"
+      },
+      "results": [
+        {
+          "kind": "club",
+          "id": "1",
+          "title": "Club 1 N",
+          "line": "C1 · East",
+          "followed": false,
+          "open": {
+            "kind": "club",
+            "teamId": 1
+          }
+        },
+        {
+          "kind": "club",
+          "id": "2",
+          "title": "Club 2 N",
+          "line": "C2 · East",
+          "followed": false,
+          "open": {
+            "kind": "club",
+            "teamId": 2
+          }
+        },
+        {
+          "kind": "club",
+          "id": "3",
+          "title": "Club 3 N",
+          "line": "C3 · East",
+          "followed": false,
+          "open": {
+            "kind": "club",
+            "teamId": 3
+          }
+        },
+        {
+          "kind": "club",
+          "id": "4",
+          "title": "Club 4 N",
+          "line": "C4 · East",
+          "followed": false,
+          "open": {
+            "kind": "club",
+            "teamId": 4
+          }
+        }
+      ],
+      "total": 4
+    },
+    {
+      "kind": "view",
+      "title": {
+        "display": "Views"
+      },
+      "results": [
+        {
+          "kind": "view",
+          "id": "league/clubReports",
+          "title": "Club Reports",
+          "line": "League Office",
+          "followed": false,
+          "open": {
+            "kind": "view",
+            "department": "league",
+            "view": "clubReports"
+          }
+        }
+      ],
+      "total": 1
+    }
+  ],
+  "order": {
+    "display": "Followed first",
+    "hint": "Followed first, then names starting with what you typed, then ours"
+  },
+  "empty": null,
+  "importStamp": null
+}

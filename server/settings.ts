@@ -1,4 +1,5 @@
 import { Router, type Response } from 'express';
+import { clearClubOwed, clubOwed, type ClubOwed } from './clubOwed.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { DATA_DIR, loadConfig } from './config.js';
@@ -479,6 +480,11 @@ export interface SettingsResponse {
   dataDir: string;
   /** The club the app is about: the configured organization, else the human-managed one (`viewingOrganization.ts`). */
   organization: CurrentOrganization | null;
+  /**
+   * The club question still open across a relaunch (N7): a save was chosen whose export names no club the GM manages,
+   * or several, and nobody has chosen. While it is set the app holds the report; null when nothing is owed.
+   */
+  clubOwed: ClubOwed | null;
 }
 
 /** A provider on offer, with the model it would use (`GET /api/settings/providers`). */
@@ -495,7 +501,7 @@ export interface ProvidersResponse {
 export const settingsRoutes = Router();
 
 settingsRoutes.get('/settings', (_req, res: Response<SettingsResponse>) => {
-  res.json({ settings: loadSettings(), apiKey: apiKeyStatus(), dataDir: DATA_DIR, organization: currentOrganization() });
+  res.json({ settings: loadSettings(), apiKey: apiKeyStatus(), dataDir: DATA_DIR, organization: currentOrganization(), clubOwed: clubOwed() });
 });
 
 /**
@@ -653,7 +659,11 @@ settingsRoutes.post('/settings', (req, res: Response<SettingsSaved>) => {
   }
   if (body.clubChoice === 'automatic') next.defaultOrgId = null;
   // The GM chose the club: a club owed to an import still running is his answer now, never forgotten after it
-  if (body.defaultOrgId === null || typeof body.defaultOrgId === 'number' || body.clubChoice === 'automatic') forgetClubWhenImported(null);
+  if (body.defaultOrgId === null || typeof body.defaultOrgId === 'number' || body.clubChoice === 'automatic') {
+    forgetClubWhenImported(null);
+    // The club question is answered (N7): nothing is owed across a relaunch any more
+    clearClubOwed();
+  }
   if (body.theme === 'system' || body.theme === 'dark' || body.theme === 'light') {
     next.theme = body.theme;
   }

@@ -434,6 +434,48 @@
         }
       }
     },
+    "/api/v2/club/{teamId}": {
+      "get": {
+        "operationId": "getClubReport",
+        "summary": "Another club's report under our scouting: its masthead, how it wins and loses, its roster map, its recent moves, injuries, record against us and next series with us.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "description": "A team id (or `automatic` for the club the app follows).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClubReport"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v2/data-status": {
       "get": {
         "operationId": "getDataStatusWords",
@@ -506,6 +548,108 @@
         }
       }
     },
+    "/api/v2/desk/{org}": {
+      "get": {
+        "operationId": "getDesk",
+        "summary": "The GM's desk: every item to decide with its status (open, reviewed, deferred, handled in OOTP), in the stated order, and the items set aside. A status records attention only.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeskView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "setDeskStatus",
+        "summary": "Marks an item open, reviewed, deferred until a game date, or handled in OOTP (and keeps a note). Answers with the status it replaced and the request that undoes it. Nothing is written to OOTP.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeskUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeskChange"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request could not be done",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v2/events": {
       "get": {
         "operationId": "streamEvents",
@@ -518,6 +662,135 @@
             "description": "A stream of server-sent events; each event's data is a JSON ServerEvent.",
             "content": {
               "text/event-stream": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/following": {
+      "get": {
+        "operationId": "getFollowing",
+        "summary": "The clubs and players the GM follows in this save (the watchlist copied in, with its notes), and the division rivals suggested.",
+        "tags": [
+          "v2"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Following"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "follow",
+        "summary": "Follows a club or a player, or changes a follow's note; answers with the request that undoes it.",
+        "tags": [
+          "v2"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FollowUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowChange"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request could not be done",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "unfollow",
+        "summary": "Stops following a club or a player; answers with the request that undoes it.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": true,
+            "description": "`club` or `player`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "description": "The team id or the player id.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowChange"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request could not be done",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
             }
           }
         }
@@ -648,6 +921,38 @@
         }
       }
     },
+    "/api/v2/search": {
+      "get": {
+        "operationId": "search",
+        "summary": "Players (ours and the league's), clubs and views matching every word typed, each with where it opens; followed first, then a stated order.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "What was typed.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchAnswer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v2/setup/automatic": {
       "post": {
         "operationId": "setUpAutomatically",
@@ -744,6 +1049,94 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ThemeChoices"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request could not be done",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/wire/{org}": {
+      "get": {
+        "operationId": "getWire",
+        "summary": "Around the league: moves (in the transaction log's own words), trades, injuries, streaks, awards, standings and news, since the last export unless asked, in the stated order (followed first when asked, then newest, then kind).",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "description": "A game date (`2040-5-1`), or `season`; the last export's day when left out.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "club",
+            "in": "query",
+            "required": false,
+            "description": "Only entries naming this club (a team id).",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "description": "`move`, `trade`, `injury`, `streak`, `award`, `standings` or `news`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "followed",
+            "in": "query",
+            "required": false,
+            "description": "`first` puts followed clubs and players first; `only` keeps only them.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Wire"
                 }
               }
             }
@@ -1222,6 +1615,118 @@
           }
         ]
       },
+      "ChangeChip": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "new",
+                  "resolved",
+                  "moved",
+                  "results"
+                ]
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "count": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "text": {
+            "type": "string",
+            "description": "\"3 new\", \"2 resolved\", \"1 moved\", \"4–2 since May 1\"."
+          },
+          "hint": {
+            "type": "string",
+            "description": "What the chip counts, in one line."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChangeItem"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "count",
+          "text",
+          "hint",
+          "items"
+        ],
+        "description": "One chip of \"since the last export\": how many, its words, and what it opens (the design's `ChipRow`)."
+      },
+      "ChangeItem": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "The item's key (a game's is `game:<id>`)."
+          },
+          "department": {
+            "$ref": "#/components/schemas/DeptId",
+            "description": "The department that raised it; null for a game."
+          },
+          "line": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target",
+            "description": "Where it opens: the item's department report, or the schedule for a game; null when nowhere."
+          }
+        },
+        "required": [
+          "key",
+          "line"
+        ],
+        "description": "One entry behind a \"since the last export\" chip: an item that is new, resolved or moved, or a game played."
+      },
+      "ChangesReadyEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "changes-ready"
+            ]
+          },
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "newToDecide": {
+            "$ref": "#/components/schemas/Integer"
+          }
+        },
+        "required": [
+          "type",
+          "orgId",
+          "importStamp",
+          "reportStamp",
+          "title",
+          "text"
+        ],
+        "description": "A new import's \"since the last export\" is ready for the club the app follows (N7): the words for the notification (\"New export read\", \"3 new on your desk\"), served, with how many new items are to decide (null with nothing to compare). Sent once per import, after its report was recorded."
+      },
       "Claim": {
         "type": "object",
         "properties": {
@@ -1297,6 +1802,44 @@
           "sections"
         ],
         "description": "The evidence trail behind an item, fetched on demand (`GET /api/v2/claims/:key`): too slow to put in a summary (an MLB need's staff recommendation takes seconds on a real save), so the inspector asks for it when the GM opens the item."
+      },
+      "ClubInjury": {
+        "type": "object",
+        "properties": {
+          "playerId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "line": {
+            "$ref": "#/components/schemas/Claim"
+          }
+        },
+        "required": [
+          "playerId",
+          "line"
+        ],
+        "description": "One line of a club's injured list in its report."
+      },
+      "ClubOwed": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "\"You manage 2 clubs in this save. Choose the one to follow.\""
+          },
+          "humanClubs": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "How many clubs the save's export says the human manages; null when it doesn't say."
+          },
+          "since": {
+            "type": "string",
+            "description": "When the save's import landed with the question open (ISO 8601)."
+          }
+        },
+        "required": [
+          "text",
+          "since"
+        ],
+        "description": "The club question still open, as served on the status and the settings."
       },
       "ClubPalette": {
         "type": "object",
@@ -1417,6 +1960,109 @@
           "legend",
           "dimensions"
         ]
+      },
+      "ClubReport": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "club": {
+            "type": "string"
+          },
+          "abbreviation": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string",
+            "description": "The build it comes from; moves with every rebuild."
+          },
+          "asOf": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "followed": {
+            "type": "boolean",
+            "description": "The GM follows the club."
+          },
+          "ours": {
+            "type": "boolean",
+            "description": "This is the club the app follows (its own report is the Morning Report)."
+          },
+          "teamSeason": {
+            "$ref": "#/components/schemas/TeamSeason"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "clubProfile": {
+            "$ref": "#/components/schemas/ClubProfile"
+          },
+          "rosterMap": {
+            "$ref": "#/components/schemas/RosterMap"
+          },
+          "scouting": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Whose eyes the ratings are and how much of the club our scouts see, with what they can't see as its basis."
+          },
+          "headToHead": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Their record against us this season; null for our own club."
+          },
+          "nextSeries": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Their next series with us; null for our own club, or when none is scheduled (`nextSeriesNote` says so)."
+          },
+          "nextSeriesNote": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "moves": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WireEntry"
+            },
+            "description": "Their recent moves: the wire filtered to the club, newest first."
+          },
+          "movesNote": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "injuries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClubInjury"
+            }
+          },
+          "injuriesNote": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "openWire": {
+            "$ref": "#/components/schemas/Target",
+            "description": "Open the wire filtered to the club."
+          }
+        },
+        "required": [
+          "teamId",
+          "club",
+          "abbreviation",
+          "importStamp",
+          "reportStamp",
+          "asOf",
+          "followed",
+          "ours",
+          "scouting",
+          "moves",
+          "injuries",
+          "openWire"
+        ],
+        "description": "Another club's report (`GET /api/v2/club/:teamId`): the same masthead, \"How they win and lose\" and roster map as ours (the same modules, D-059), under our organization's scouting, with their recent moves, their injuries, their record against us and their next series with us. Nothing ranks the club or reads it as a buyer or a seller (D-060)."
       },
       "ConfigAccepted": {
         "type": "object",
@@ -2116,7 +2762,11 @@
             "items": {
               "$ref": "#/components/schemas/ReportChange"
             },
-            "description": "What changed since the last export; null until Pennant keeps each import's reports (N7), never an empty list."
+            "description": "What changed in this department since the last export of this save (N7); null when there is no earlier export to compare with (`changesNote` says so), never an empty list read as \"nothing changed\"."
+          },
+          "changesNote": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Why there is nothing to compare with, or that nothing changed; null when `changes` has lines."
           },
           "unknowns": {
             "$ref": "#/components/schemas/ReportUnknowns"
@@ -2195,6 +2845,10 @@
           "incomplete": {
             "$ref": "#/components/schemas/Cell",
             "description": "Which departments could not be read, so the desk may be missing items; null when every one was."
+          },
+          "setAside": {
+            "$ref": "#/components/schemas/DeskSetAside",
+            "description": "The items the GM set aside (N7): reviewed, handled in OOTP, or deferred to a day still ahead. They leave the lead list and stay one click away, with a served count (\"2 reviewed · 1 handled in OOTP\"); null when none is."
           }
         },
         "required": [
@@ -2204,6 +2858,117 @@
           "more"
         ],
         "description": "The desk: the items to decide from every department (a stated share of each), in a stated order."
+      },
+      "DeskAttention": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/DeskStatus"
+          },
+          "line": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Open\", \"Reviewed\", \"Deferred until May 20\", \"Handled in OOTP\", with when it was set in its help tag."
+          },
+          "until": {
+            "$ref": "#/components/schemas/GameDate",
+            "description": "The game date a deferral runs to, as sent; null unless deferred."
+          },
+          "deferralEnded": {
+            "type": "boolean",
+            "description": "Whether a deferral's date has come (the item is back on the lead list); false otherwise."
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The GM's own note on the item, as he wrote it; null when he wrote none."
+          },
+          "stillShown": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Marked handled in OOTP while the latest export still shows it: said, never read as resolved; null otherwise."
+          },
+          "since": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "When the status was set (ISO 8601); null for an item never marked."
+          }
+        },
+        "required": [
+          "status",
+          "line",
+          "deferralEnded",
+          "note",
+          "since"
+        ],
+        "description": "An item's status on the desk, in words (N7, D-058)."
+      },
+      "DeskChange": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "done": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Marked reviewed\", \"Deferred until May 20\", \"Back on your desk\", in words."
+          },
+          "attention": {
+            "$ref": "#/components/schemas/DeskAttention"
+          },
+          "previous": {
+            "$ref": "#/components/schemas/DeskAttention",
+            "description": "The status (and note) it replaced."
+          },
+          "undo": {
+            "$ref": "#/components/schemas/DeskUpdate",
+            "description": "The request that puts it back in one step (the Mac app's Undo)."
+          },
+          "view": {
+            "$ref": "#/components/schemas/DeskView",
+            "description": "The desk with the change on it; null while the club's Front Office is being built again (a new copy of the live log, a refit): the change is recorded all the same, checked against what this export's desk last served, and the `desk-changed` event that follows says to read the desk again. A change never builds the Front Office itself."
+          }
+        },
+        "required": [
+          "key",
+          "done",
+          "attention",
+          "previous",
+          "undo"
+        ],
+        "description": "The answer to a status change: the item as it is now, the request that undoes it, and the desk."
+      },
+      "DeskChangedEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "desk-changed"
+            ]
+          },
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "deskStamp": {
+            "type": "string"
+          },
+          "key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "type",
+          "orgId",
+          "deskStamp",
+          "key"
+        ],
+        "description": "A desk status or note changed (N7, D-058): the club's new `deskStamp`, and the item's key (null when several changed, as when an import resolved items). The Mac app re-reads the desk; its own change it already has from the answer."
       },
       "DeskMore": {
         "type": "object",
@@ -2231,6 +2996,38 @@
         ],
         "description": "A department's items to decide beyond the desk's stated share, and where they are."
       },
+      "DeskSetAside": {
+        "type": "object",
+        "properties": {
+          "line": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"2 reviewed · 1 handled in OOTP\"."
+          },
+          "reviewed": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "deferred": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "handled": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FoItem"
+            }
+          }
+        },
+        "required": [
+          "line",
+          "reviewed",
+          "deferred",
+          "handled",
+          "items"
+        ],
+        "description": "The desk's set-aside items and their count, in words."
+      },
       "DeskSeverity": {
         "description": "The desk's common scale, most urgent first.",
         "anyOf": [
@@ -2246,6 +3043,77 @@
             "type": "string"
           }
         ]
+      },
+      "DeskStatus": {
+        "description": "What the GM did with an item on the desk. `open` is every item he has not marked.",
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "open",
+              "reviewed",
+              "deferred",
+              "handled"
+            ]
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "DeskUpdate": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DeskStatus"
+          },
+          "until": {
+            "$ref": "#/components/schemas/GameDate"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "status"
+        ],
+        "description": "A change to one item's status (`PUT /api/v2/desk/:org`). `status` is required; `until` (a game date after the league's day) only with `deferred`; `note` left out keeps the note as it is, and an empty note clears it."
+      },
+      "DeskView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "deskStamp": {
+            "type": "string",
+            "description": "Moves whenever a status or a note changes, so a client knows its copy is current."
+          },
+          "desk": {
+            "$ref": "#/components/schemas/Desk"
+          }
+        },
+        "required": [
+          "orgId",
+          "importStamp",
+          "reportStamp",
+          "deskStamp",
+          "desk"
+        ],
+        "description": "The desk on its own (`GET /api/v2/desk/:org`): the same desk the Morning Report shows, with every status."
       },
       "ExportPendingEvent": {
         "type": "object",
@@ -2399,6 +3267,10 @@
           "count": {
             "$ref": "#/components/schemas/Integer",
             "description": "How many of the department's own items this row stands for: 1, or more when the grouping rule put several in one row."
+          },
+          "attention": {
+            "$ref": "#/components/schemas/DeskAttention",
+            "description": "What the GM has done with it (N7, D-058): open, reviewed, deferred until a game date, or handled in OOTP. It records his attention only: it never changes the item's severity, its place in its department's order or its counts (case 15)."
           }
         },
         "required": [
@@ -2410,9 +3282,242 @@
           "urgency",
           "headline",
           "evidence",
-          "count"
+          "count",
+          "attention"
         ],
         "description": "One thing a department raised for the GM."
+      },
+      "FollowChange": {
+        "type": "object",
+        "properties": {
+          "done": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Following the Padres\", \"No longer following Mookie Betts\"."
+          },
+          "following": {
+            "type": "boolean"
+          },
+          "undo": {
+            "$ref": "#/components/schemas/FollowUndo"
+          },
+          "view": {
+            "$ref": "#/components/schemas/Following"
+          }
+        },
+        "required": [
+          "done",
+          "following",
+          "undo",
+          "view"
+        ],
+        "description": "The answer to a follow or an unfollow: what was done, the request that undoes it, and Following."
+      },
+      "FollowSuggestion": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "club"
+            ]
+          },
+          "id": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "why": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "name",
+          "why"
+        ],
+        "description": "A club Pennant suggests following, with why; never followed until the GM says so."
+      },
+      "FollowUndo": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "follow",
+                  "unfollow"
+                ]
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "request": {
+            "$ref": "#/components/schemas/FollowUpdate"
+          }
+        },
+        "required": [
+          "action",
+          "request"
+        ],
+        "description": "How to undo a follow or an unfollow in one step: follow again (`PUT`, with the note it had) or unfollow (`DELETE`)."
+      },
+      "FollowUpdate": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "club",
+                  "player"
+                ]
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "id": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "note": {
+            "type": "string"
+          },
+          "restore": {
+            "type": "boolean",
+            "description": "Set on an unfollow's undo: the follow is put back as it was (its note, how it began and when), not begun again. The server remembers the follows it just removed; one it no longer remembers (after a relaunch) is followed again."
+          }
+        },
+        "required": [
+          "kind",
+          "id"
+        ],
+        "description": "A follow to add, or a note to change (`PUT /api/v2/following`); `note` left out keeps it, an empty note clears it."
+      },
+      "FollowedItem": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "club",
+                  "player"
+                ]
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "id": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "name": {
+            "type": "string",
+            "description": "The club's or the player's name, as the league has it now (as recorded when the league no longer has it)."
+          },
+          "line": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Padres · SD\", or the player's club and position; \"Not in this league now\" when gone."
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The GM's own note, as he wrote it; null when none."
+          },
+          "since": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Copied from your watchlist\", or when he began following, in words."
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "name",
+          "line",
+          "note",
+          "since",
+          "open"
+        ],
+        "description": "A club or player to follow, as Following shows it."
+      },
+      "Following": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "clubs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FollowedItem"
+            }
+          },
+          "players": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FollowedItem"
+            }
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Nothing followed yet\" when nothing is; null otherwise."
+          },
+          "suggestions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FollowSuggestion"
+            }
+          },
+          "watchlist": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "What happened to the watchlist: copied, with its notes, and what was left because it is another save's."
+          },
+          "followStamp": {
+            "type": "string",
+            "description": "Moves whenever a follow or a note changes."
+          }
+        },
+        "required": [
+          "title",
+          "clubs",
+          "players",
+          "suggestions",
+          "followStamp"
+        ],
+        "description": "Following (`GET /api/v2/following`): what the GM follows in this save, and the clubs suggested."
+      },
+      "FollowingChangedEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "following-changed"
+            ]
+          },
+          "followStamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "followStamp"
+        ],
+        "description": "What the GM follows changed (a follow, an unfollow, a note, the watchlist copied in): Following's new `followStamp`."
       },
       "FreshnessAssessment": {
         "type": "object",
@@ -2551,6 +3656,22 @@
           "rosterMap": {
             "$ref": "#/components/schemas/RosterMap",
             "description": "The roster map: each position's holder, his value, his place, who is behind him, control, needs; the staff beside it."
+          },
+          "changes": {
+            "$ref": "#/components/schemas/SinceLastExport",
+            "description": "Since the last export of this save (N7): new, resolved and moved items, and the results; null when there is no earlier export to compare with (`changesNote` says so in a sentence), never an empty list read as \"nothing changed\"."
+          },
+          "changesNote": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Why there is nothing to compare with yet; null when `changes` is served."
+          },
+          "wire": {
+            "$ref": "#/components/schemas/WireTop",
+            "description": "Around the league: the top wire entries since the last export, followed clubs first (N7, D-059); null when not built."
+          },
+          "deskStamp": {
+            "type": "string",
+            "description": "Moves whenever a desk status, a note or a follow changes (the summary's attention, not its build)."
           }
         },
         "required": [
@@ -2560,7 +3681,8 @@
           "reportStamp",
           "asOf",
           "desk",
-          "departments"
+          "departments",
+          "deskStamp"
         ],
         "description": "The Morning Report's desk and department cards (`GET /api/v2/front-office/:org`)."
       },
@@ -4545,7 +5667,7 @@
           "kind",
           "line"
         ],
-        "description": "What changed since the last export (N7 fills it)."
+        "description": "What changed since the last export in one department (N7): an item new, resolved, or at another urgency."
       },
       "ReportSection": {
         "type": "object",
@@ -5159,6 +6281,86 @@
         ],
         "description": "What `POST /api/save-source` answers once the save folder is set or cleared."
       },
+      "SearchAnswer": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SearchGroup"
+            }
+          },
+          "order": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The stated order: \"Followed first, then the closest match\", with the rule in its help tag."
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"No players, clubs or views match\" when nothing does, or what to type when the query is empty; null otherwise."
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The import the index was built from."
+          }
+        },
+        "required": [
+          "query",
+          "groups",
+          "order",
+          "importStamp"
+        ],
+        "description": "The answer to a search (`GET /api/v2/search?q=`)."
+      },
+      "SearchGroup": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/SearchKind"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SearchResult"
+            }
+          },
+          "total": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "How many matched before the group was cut; more than shown when cut."
+          }
+        },
+        "required": [
+          "kind",
+          "title",
+          "results",
+          "total"
+        ],
+        "description": "A group of results under its name (\"Players\", \"Clubs\", \"Views\")."
+      },
+      "SearchKind": {
+        "description": "What a search result is.",
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "player",
+              "club",
+              "view"
+            ]
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
       "SearchLocation": {
         "type": "object",
         "properties": {
@@ -5201,6 +6403,40 @@
           "locations"
         ],
         "description": "Where `GET /api/search-locations` looked for saves, so the user can see why auto-detection came up empty."
+      },
+      "SearchResult": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/SearchKind"
+          },
+          "id": {
+            "type": "string",
+            "description": "The result's id within its kind: a player or team id, or a view's `department/view`."
+          },
+          "title": {
+            "type": "string"
+          },
+          "line": {
+            "type": "string",
+            "description": "\"SS · Padres · Triple-A\", \"NL West\", \"Major League Ops\"."
+          },
+          "followed": {
+            "type": "boolean"
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "title",
+          "line",
+          "followed",
+          "open"
+        ],
+        "description": "One search result (`CommandPalette`): its group, its line, and where it opens."
       },
       "ServedValue": {
         "type": "object",
@@ -5263,6 +6499,15 @@
           },
           {
             "$ref": "#/components/schemas/SavePlayedElsewhereEvent"
+          },
+          {
+            "$ref": "#/components/schemas/DeskChangedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/FollowingChangedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ChangesReadyEvent"
           },
           {
             "$ref": "#/components/schemas/UnknownServerEvent"
@@ -5363,6 +6608,10 @@
               "null"
             ],
             "description": "The id of the save the imported data came from (D-063: its folder's real path, hashed, as the save list identifies it), tied to the last import (`lastImport`); null with nothing imported, while a save chosen but not yet imported is configured, or until it is worked out. The Mac app keys the Morning Report it keeps across launches on it, so another save's is never drawn and a save being left never has its report kept under the new one's id."
+          },
+          "clubOwed": {
+            "$ref": "#/components/schemas/ClubOwed",
+            "description": "The club question still open across a relaunch (N7): a save was chosen whose export names no club the GM manages, or several, and nobody has chosen. While it is set the automatic club's report is not served as if chosen; null when nothing is owed."
           },
           "saveFolder": {
             "type": [
@@ -5543,6 +6792,10 @@
           "organization": {
             "$ref": "#/components/schemas/CurrentOrganization",
             "description": "The club the app is about: the configured organization, else the human-managed one (`viewingOrganization.ts`)."
+          },
+          "clubOwed": {
+            "$ref": "#/components/schemas/ClubOwed",
+            "description": "The club question still open across a relaunch (N7): a save was chosen whose export names no club the GM manages, or several, and nobody has chosen. While it is set the app holds the report; null when nothing is owed."
           }
         },
         "required": [
@@ -5702,6 +6955,43 @@
           "text"
         ],
         "description": "The club a first run follows, taken from the save's export (N3.5 Stage B2, D-063)."
+      },
+      "SinceLastExport": {
+        "type": "object",
+        "properties": {
+          "new": {
+            "$ref": "#/components/schemas/ChangeChip"
+          },
+          "resolved": {
+            "$ref": "#/components/schemas/ChangeChip"
+          },
+          "moved": {
+            "$ref": "#/components/schemas/ChangeChip"
+          },
+          "results": {
+            "$ref": "#/components/schemas/ChangeChip"
+          },
+          "since": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Since the export of May 1, 2040\", with when that import was read in its help tag."
+          },
+          "previousImport": {
+            "type": "string",
+            "description": "The earlier import compared with (its finish time), and the league's day it reflected."
+          },
+          "previousGameDate": {
+            "$ref": "#/components/schemas/GameDate"
+          }
+        },
+        "required": [
+          "new",
+          "resolved",
+          "moved",
+          "results",
+          "since",
+          "previousImport"
+        ],
+        "description": "What changed since the last export of this save (N7, D-058): the departments' items that are new, resolved or at another urgency, and the games played between the two exports. It says what changed, never which transaction did it (D-020, case 16)."
       },
       "SnapshotMeta": {
         "type": "object",
@@ -6475,6 +7765,299 @@
           "short"
         ],
         "description": "Expected wins as the map draws them: the most likely value inside its range."
+      },
+      "Wire": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "since": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "What the entries are since: \"Since the export of May 1, 2040\", \"Since May 1, 2040\", or \"This season\"."
+          },
+          "sinceDate": {
+            "$ref": "#/components/schemas/GameDate",
+            "description": "The day asked for (or the last export's), as OOTP writes a date; null for the whole season."
+          },
+          "order": {
+            "$ref": "#/components/schemas/WireOrder"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WireEntry"
+            }
+          },
+          "total": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "How many entries matched before the list was cut to its length."
+          },
+          "more": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Showing the newest 200 of 340\" when cut; null otherwise."
+          },
+          "gaps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WireKindChoice"
+            },
+            "description": "The kinds and clubs the filters can offer, in words."
+          }
+        },
+        "required": [
+          "orgId",
+          "importStamp",
+          "title",
+          "since",
+          "order",
+          "entries",
+          "total",
+          "gaps",
+          "kinds"
+        ],
+        "description": "The whole wire (`GET /api/v2/wire/:org`), filtered as asked."
+      },
+      "WireClub": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "abbreviation": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "followed": {
+            "type": "boolean",
+            "description": "The GM follows it."
+          }
+        },
+        "required": [
+          "teamId",
+          "name",
+          "abbreviation",
+          "followed"
+        ],
+        "description": "A club named by a wire entry."
+      },
+      "WireEntry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable for the same event across builds: its source and the source's own id."
+          },
+          "date": {
+            "$ref": "#/components/schemas/GameDate",
+            "description": "The day it happened, as OOTP wrote it; null when the source gives no day."
+          },
+          "when": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"May 3\", or \"Day not known\"."
+          },
+          "kind": {
+            "$ref": "#/components/schemas/WireKind"
+          },
+          "clubs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WireClub"
+            }
+          },
+          "players": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WirePlayer"
+            }
+          },
+          "headline": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "The line, in the source's own words where it has them, with its basis."
+          },
+          "source": {
+            "$ref": "#/components/schemas/WireSource"
+          },
+          "followed": {
+            "type": "boolean",
+            "description": "Whether it names a club or a player the GM follows."
+          }
+        },
+        "required": [
+          "id",
+          "when",
+          "kind",
+          "clubs",
+          "players",
+          "headline",
+          "source",
+          "followed"
+        ],
+        "description": "One thing that happened around the league."
+      },
+      "WireKind": {
+        "description": "What a wire entry is about.",
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "move",
+              "trade",
+              "injury",
+              "streak",
+              "award",
+              "standings"
+            ]
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "WireKindChoice": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/WireKind"
+          },
+          "name": {
+            "type": "string"
+          },
+          "count": {
+            "$ref": "#/components/schemas/Integer"
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "count"
+        ],
+        "description": "A kind the wire can be filtered to, with its name and how many entries it has in this answer's window."
+      },
+      "WireOrder": {
+        "type": "object",
+        "properties": {
+          "line": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Followed first, then newest\" or \"Newest first\", with the whole rule in its help tag."
+          },
+          "followedFirst": {
+            "type": "boolean",
+            "description": "Whether followed clubs and players come first in this answer."
+          }
+        },
+        "required": [
+          "line",
+          "followedFirst"
+        ],
+        "description": "The wire's stated order and what it holds, in words."
+      },
+      "WirePlayer": {
+        "type": "object",
+        "properties": {
+          "playerId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "followed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "playerId",
+          "name",
+          "followed"
+        ],
+        "description": "A player named by a wire entry."
+      },
+      "WireSource": {
+        "description": "Where a wire entry was read: OOTP's live transaction log, the export's trades, injuries, streaks or awards, the standings Pennant kept at each import, or a difference between two of Pennant's roster snapshots (where the log could not be read).",
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "log",
+              "trades",
+              "injuries",
+              "streaks",
+              "awards",
+              "standings",
+              "snapshots"
+            ]
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "WireTop": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "order": {
+            "$ref": "#/components/schemas/WireOrder"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WireEntry"
+            }
+          },
+          "more": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"12 more since May 1\" when there are more, opening the wire; null otherwise."
+          },
+          "gaps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            },
+            "description": "The sources the export or the save could not give, each in a sentence (never an empty league)."
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Nothing around the league since May 1\" when nothing was read; null otherwise."
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target",
+            "description": "The whole wire (League Office)."
+          }
+        },
+        "required": [
+          "title",
+          "order",
+          "entries",
+          "gaps",
+          "open"
+        ],
+        "description": "The Morning Report's column: the top entries since the last export, followed clubs first (the design's `WireRow`)."
       }
     }
   }

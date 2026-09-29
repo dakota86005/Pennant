@@ -8,6 +8,7 @@
  * status or no season, which no later read would change. Any other failure is "couldn't be read this time", with the
  * raw error in the log. Neither is ever read as all clear.
  */
+import { readClubReport } from './clubReport.js';
 import { computeContracts } from './contracts.js';
 import type { DeptId } from './contract/presentation.js';
 import { orgInjuries } from './dashboard.js';
@@ -27,8 +28,10 @@ import { majorLeagueMaterial, type MajorLeagueInput } from './presentation/front
 import { medicalMaterial } from './presentation/frontOffice/medical.js';
 import { morningUnavailable, morningWords } from './presentation/frontOffice/morning.js';
 import type { MorningParts } from './presentation/frontOffice/morningTypes.js';
-import { readMorning } from './morningReport.js';
+import { readMorning, type SeasonMemory } from './morningReport.js';
 import type { ClaimTrail, DepartmentReport, FrontOfficeSummary } from './presentation/frontOffice/types.js';
+import { clubReportWords } from './presentation/frontOffice/clubReport.js';
+import type { ClubReport } from './presentation/frontOffice/leagueTypes.js';
 import { readDepartment } from './presentation/severity.js';
 import { computeRosterCrunchIssues } from './rosterops.js';
 import { LEVEL_NAMES } from './valuation.js';
@@ -41,6 +44,8 @@ export interface BuildResult {
   majorLeague: MajorLeagueInput['overview'] | null;
   /** How long each department took to read and word, in milliseconds. */
   ms: Record<string, number>;
+  /** The season as this import leaves it (standings, the club's games), for the snapshots (N7); null when unread. */
+  season: SeasonMemory | null;
 }
 
 /** What one build is asked for. */
@@ -149,9 +154,11 @@ export async function buildFrontOffice(request: BuildRequest): Promise<BuildResu
   // The Morning Report's own parts (N6): the masthead, "How we win and lose" and the roster map, each part timed
   await tick();
   let morning: MorningParts;
+  let season: SeasonMemory | null = null;
   try {
     const needs = (majorLeague as MajorLeagueInput['overview'] | null)?.needs ?? null;
     const material = readMorning(orgId, status, needs);
+    season = material.memory;
     for (const [part, took] of Object.entries(material.ms)) ms[part] = took;
     morning = timed('morningWords', () => morningWords(build, material));
   } catch (err) {
@@ -160,7 +167,7 @@ export async function buildFrontOffice(request: BuildRequest): Promise<BuildResu
   }
 
   const { summary, reports } = timed('words', () => assemble(build, departments, departmentOffice, answers, morning));
-  return { summary, reports: [...reports.entries()], majorLeague, ms };
+  return { summary, reports: [...reports.entries()], majorLeague, ms, season };
 }
 
 /** What one evidence trail is asked for. */
@@ -183,4 +190,37 @@ export function buildTrail(request: TrailRequest): ClaimTrail | null {
   const { build, departments } = contextFor(request.orgId, request.importStamp, request.reportStamp);
   const ctx: DepartmentContext = { build, department: departments.find((d) => d.id === 'majorLeague')!, office: departmentOffice('majorLeague') };
   return needTrail(ctx, request.key, need, packet, request.overview, (level) => LEVEL_NAMES[level] ?? null);
+}
+
+/** What one club report is asked for (N7, D-059). */
+export interface ClubRequest {
+  teamId: number;
+  /** The club the app follows (the report's "us"); null when none is known. */
+  ourTeamId: number | null;
+  importStamp: string | null;
+  reportStamp: string;
+}
+
+/**
+ * Another club's report, read and worded: the same Morning Report modules run for that club, under our organization's
+ * scouting (D-017, case 19). The service adds what the GM follows and the club's recent moves when it is served.
+ */
+export function buildClubReport(request: ClubRequest): { report: ClubReport; ms: number } {
+  const started = performance.now();
+  const status = getDataStatus({ importedAt: request.importStamp });
+  const clubs = catalogClubs();
+  const club = clubs.find((c) => c.team_id === request.teamId);
+  const ours = request.ourTeamId === null ? null : clubs.find((c) => c.team_id === request.ourTeamId)?.label ?? null;
+  const build: BuildContext = {
+    orgId: request.teamId,
+    club: club?.label ?? null,
+    importStamp: request.importStamp,
+    reportStamp: request.reportStamp,
+    gameDate: status.csv.simulatedThrough ?? status.csv.currentDate,
+    subject: request.ourTeamId === request.teamId ? 'ours' : 'theirs',
+  };
+  const material = readClubReport(request.teamId, request.ourTeamId, status);
+  const abbr = material.morning.facts.clubs.find((c) => c.teamId === request.teamId)?.abbr ?? null;
+  const report = clubReportWords(build, material, ours, abbr);
+  return { report, ms: Math.round((performance.now() - started) * 10) / 10 };
 }

@@ -13,7 +13,7 @@ import type { CatalogDepartment } from '../catalog.js';
 import { basis, cell, claim, target } from '../claim.js';
 import { gameDateDisplay } from '../dataStatusWords.js';
 import { DESK_SEVERITIES, rankOf, type DepartmentReading, type DeskSeverity, type NormalizedSeverity } from '../severity.js';
-import type { DepartmentCard, DepartmentReport, Desk, FoItem, FrontOfficeSummary, ReportSection } from './types.js';
+import type { DepartmentCard, DepartmentReport, Desk, DeskAttention, FoItem, FrontOfficeSummary, ReportSection } from './types.js';
 import type { MorningParts } from './morningTypes.js';
 
 /** What every claim of one build shares: the club, the import it reads and the game date it reflects. */
@@ -26,6 +26,11 @@ export interface BuildContext {
   reportStamp: string;
   /** The last game day the imported export reflects, as OOTP wrote it. */
   gameDate: GameDate | null;
+  /**
+   * Whose report this is (N7): the club the app follows (`ours`, the default) or another club's report (`theirs`,
+   * D-059), so a line that says "us" says "this club" instead. The facts and places are the same either way.
+   */
+  subject?: 'ours' | 'theirs';
 }
 
 /** One department as the report needs it: the catalog's entry (name, head, "prepared by") and its staff in words. */
@@ -145,6 +150,11 @@ function urgencyClaim(ctx: DepartmentContext, s: NormalizedSeverity, shading: re
 /** The line that places an item on the desk (D-041 policy, D-060). */
 export const DESK_PLACEMENT = 'The desk places each item by its department\'s plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing.';
 
+/** An item the GM has not marked (N7): open, with no note. The service puts each item's own status on it when served. */
+export function openAttention(): DeskAttention {
+  return { status: 'open', line: cell('Open'), until: null, deferralEnded: false, note: null, stillShown: null, since: null };
+}
+
 /** One item on the desk, at its department's own severity (never raised: `severity.ts` holds that). */
 export function item(ctx: DepartmentContext, input: ItemInput): FoItem {
   const s = input.severity;
@@ -164,6 +174,7 @@ export function item(ctx: DepartmentContext, input: ItemInput): FoItem {
     dueInDays: s.dueInDays,
     evidence: input.evidence ?? null,
     count: input.count ?? 1,
+    attention: openAttention(),
   };
 }
 
@@ -222,6 +233,7 @@ export function report(ctx: DepartmentContext, answer: DepartmentAnswer): Depart
     head: d.head,
     asOf: asOfCell(ctx.build),
     changes: null,
+    changesNote: null,
     memo: null,
   };
   if (answer.status === 'notYet') {
@@ -353,6 +365,7 @@ export function desk(reports: readonly DepartmentReport[]): Desk {
     incomplete: missing.length
       ? cell(`${listWords(missing)} couldn't be read, so the desk may be missing items`, { tone: 'unknown' })
       : null,
+    setAside: null,
   };
 }
 
@@ -379,6 +392,11 @@ export function summary(build: BuildContext, reports: readonly DepartmentReport[
     lede: morning?.lede ?? null,
     clubProfile: morning?.clubProfile ?? null,
     rosterMap: morning?.rosterMap ?? null,
+    // The GM's attention (N7) is put on the summary when it is served: the statuses, "since the last export", the wire
+    changes: null,
+    changesNote: null,
+    wire: null,
+    deskStamp: 'd0',
   };
 }
 

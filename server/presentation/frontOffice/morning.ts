@@ -154,7 +154,7 @@ function standingLine(build: BuildContext, facts: TeamSeasonFacts, me: ClubFacts
       place: { rank: place.rank, of: place.of, tiedWith: place.tiedWith },
       basis: basis({
         because: [
-          ...members.slice(0, 8).map((c) => ({ label: c.teamId === me.teamId ? `${c.name} (us)` : c.name, value: lineOf(c) })),
+          ...members.slice(0, 8).map((c) => ({ label: c.teamId === me.teamId ? `${c.name} (${build.subject === 'theirs' ? 'this club' : 'us'})` : c.name, value: lineOf(c) })),
           ...(tied ? [{
             label: 'Level with',
             value: `${listWords(members.filter((c) => place.levelWith.includes(c.teamId)).map((c) => c.name))}: the same winning percentage shares the place`,
@@ -255,8 +255,8 @@ function tonight(build: BuildContext, m: MorningMaterial): TonightGame | null {
           { label: 'Date', value: gameDateDisplay(next.date) ?? next.date },
           { label: 'Start', value: time ? `${time}, the park's local time as the export gives it` : 'Not in the export' },
           { label: 'Where', value: home ? 'At home' : `At ${oppName}` },
-          { label: 'Our starter', value: ours ? `${ours.name} · ${ours.line.display}` : 'Not projected' },
-          { label: 'Their starter', value: theirs ? `${theirs.name} · ${theirs.line.display}` : 'Not projected' },
+          { label: build.subject === 'theirs' ? 'The club\'s starter' : 'Our starter', value: ours ? `${ours.name} · ${ours.line.display}` : 'Not projected' },
+          { label: build.subject === 'theirs' ? 'The opponent\'s starter' : 'Their starter', value: theirs ? `${theirs.name} · ${theirs.line.display}` : 'Not projected' },
           ...(oppRecord ? [{ label: `${possessive(oppName)} record`, value: oppRecord.display }] : []),
         ],
         source: source(build, SCHEDULE),
@@ -661,7 +661,7 @@ const POSITIONS: Record<number, { pos: string; name: string; at: string }> = {
  * none, and level 6 the complex and Dominican leagues, so 4 and 5 are both "Single-A": the level number cannot tell the
  * two A levels apart, and the words never claim to.
  */
-const LEVEL_WORDS: Record<number, string> = { 2: 'Triple-A', 3: 'Double-A', 4: 'Single-A', 5: 'Single-A', 6: 'Rookie ball' };
+export const LEVEL_WORDS: Record<number, string> = { 2: 'Triple-A', 3: 'Double-A', 4: 'Single-A', 5: 'Single-A', 6: 'Rookie ball' };
 
 const wins1 = (v: number) => v.toFixed(1).replace(/^-0\.0$/, '0.0').replace(/^-/, '−');
 
@@ -869,7 +869,7 @@ function nodeWords(build: BuildContext, p: MapPosition, clubs: number, part: Ros
     { label: 'How the farm\'s next man is chosen', value: `The man Player Development reads as readiest at ${where.at}, at the highest level where anyone is listed there; men it hasn't assessed follow, by name.` },
     { label: 'Control', value: control.text },
     ...(p.standing ? [{ label: 'Standing', value: p.standing }] : []),
-    { label: 'Major League Ops', value: need ? p.needs.map(needWords).join('; ') : 'No need raised here' },
+    { label: 'Major League Ops', value: need ? p.needs.map(needWords).join('; ') : build.subject === 'theirs' ? 'Reads only your club' : 'No need raised here' },
     { label: 'How the holder is chosen', value: chosen },
     { label: 'The same rule for every club', value: `The man now on the club with the most starts there this season, among those who started there in its last ${window} games; where the game log shows no such start, its man listed there with the most expected wins.` },
   ];

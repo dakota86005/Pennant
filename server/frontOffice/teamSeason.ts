@@ -531,3 +531,42 @@ export function daysFrom(current: string | null, to: string | null): number | nu
   const b = parseGameDate(to);
   return a && b ? daysBetween(a, b) : null;
 }
+
+/**
+ * Every club's line in the standings at this import, for the snapshot Pennant keeps of it (N7, D-058): the record as
+ * exported, the club's place in its division as the Morning Report reads it (`divisionPlace`), games back, and its runs
+ * scored and allowed from the games played. A club with no record keeps its name and nothing else (never zeros).
+ */
+export interface StandingsLine {
+  teamId: number;
+  name: string;
+  abbr: string | null;
+  leagueId: number | null;
+  subLeagueId: number | null;
+  divisionId: number | null;
+  division: string | null;
+  w: number | null;
+  l: number | null;
+  t: number | null;
+  pos: number | null;
+  divisionClubs: number | null;
+  gb: number | null;
+  runsScored: number | null;
+  runsAllowed: number | null;
+}
+
+export function standingsLines(facts: TeamSeasonFacts): StandingsLine[] {
+  const gamesRead = facts.gamesWhy === null;
+  return facts.clubs.map((c) => {
+    const place = c.record ? divisionPlace({ ...facts, orgId: c.teamId }) : null;
+    const games = gamesRead ? clubGames(facts, c.teamId) : null;
+    return {
+      teamId: c.teamId, name: c.name, abbr: c.abbr, leagueId: facts.leagueId, subLeagueId: c.subLeagueId, divisionId: c.divisionId,
+      division: place?.division ?? null,
+      w: c.record?.w ?? null, l: c.record?.l ?? null, t: c.record?.t ?? null,
+      pos: place?.rank ?? null, divisionClubs: place?.of ?? null, gb: place?.gamesBack ?? null,
+      runsScored: games ? games.reduce((sum, g) => sum + g.scored, 0) : null,
+      runsAllowed: games ? games.reduce((sum, g) => sum + g.allowed, 0) : null,
+    };
+  });
+}

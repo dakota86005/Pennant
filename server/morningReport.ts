@@ -20,7 +20,7 @@ import { db, tableColumns, tableExists } from './db.js';
 import { freshnessCue, type DataStatus } from './dataStatus.js';
 import { clubProfileOf, type ClubProfileReading } from './frontOffice/clubProfile.js';
 import { HOLDER_WINDOW, positionReadings, staffOrder, valueScaleOf, type PositionPlayer, type PositionReading, type StaffInput, type StartsLog, type WinsRange } from './frontOffice/rosterMap.js';
-import { divisionPlace, pitcherLines, positionStartsOf, readTeamSeason, type DivisionPlace, type PitcherLine, type TeamSeasonFacts } from './frontOffice/teamSeason.js';
+import { clubGames, divisionPlace, pitcherLines, positionStartsOf, readTeamSeason, standingsLines, type DivisionPlace, type PitcherLine, type StandingsLine, type TeamSeasonFacts } from './frontOffice/teamSeason.js';
 import { farmNextByPosition, type FarmNext } from './mlbEvidence.js';
 import type { MlbNeed } from './mlbNeeds.js';
 import { controlEndOf, playerValues, productionHeadlineOf, type ControlEnd, type ControlStatus, type PlayerValuation } from './playerValue.js';
@@ -83,7 +83,21 @@ export interface MorningMaterial {
   map: RosterMaterial | { why: string };
   /** Tonight's probable starters' season lines. */
   starters: PitcherLine[];
+  /**
+   * What Pennant keeps of this import's season (N7, D-058): every club's line in the standings, and the club's own games
+   * played, in order (their opponents named), for "since the last export".
+   */
+  memory: SeasonMemory;
   ms: Record<string, number>;
+}
+
+/** The season as an import leaves it, for the snapshots and "since the last export" (plain data). */
+export interface SeasonMemory {
+  /** The league's day, as OOTP wrote it. */
+  gameDate: string | null;
+  standings: StandingsLine[];
+  /** The club's games played this season, in order; null when the export has no game-by-game schedule. */
+  games: Array<{ gameId: number; date: string; scored: number; allowed: number; home: boolean; opponent: string }> | null;
 }
 
 type Stamp = { status: 'calibrated' | 'provisional' | 'policy'; basis: string };
@@ -259,5 +273,18 @@ export function readMorning(orgId: number, status: DataStatus, needs: readonly M
     const ids = [orgId, opponent].map((t) => facts.projected.find((p) => p.teamId === t)?.starters[0] ?? null).filter((id): id is number => id !== null);
     starters = [...pitcherLines(ids, facts.leagueId, facts.season).values()];
   }
-  return { facts, division: divisionPlace(facts), profile, map, starters, ms };
+  let memory: SeasonMemory = { gameDate: facts.currentDate, standings: [], games: null };
+  try {
+    const names = new Map(facts.clubs.map((c) => [c.teamId, c.name]));
+    memory = timed('seasonMemory', () => ({
+      gameDate: facts.currentDate,
+      standings: standingsLines(facts),
+      games: facts.gamesWhy === null
+        ? clubGames(facts, orgId).map((g) => ({ ...g, opponent: names.get(g.opponent) ?? `Club ${g.opponent}` }))
+        : null,
+    }));
+  } catch (err) {
+    console.error('[front office] the season\'s standings could not be kept:', err);
+  }
+  return { facts, division: divisionPlace(facts), profile, map, starters, memory, ms };
 }

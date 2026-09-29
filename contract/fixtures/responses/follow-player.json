@@ -1,0 +1,75 @@
+{
+  "done": {
+    "display": "Following P 1000"
+  },
+  "following": true,
+  "undo": {
+    "action": "unfollow",
+    "request": {
+      "kind": "player",
+      "id": 1000
+    }
+  },
+  "view": {
+    "title": {
+      "display": "Following"
+    },
+    "clubs": [
+      {
+        "kind": "club",
+        "id": 2,
+        "name": "Club 2 N",
+        "line": {
+          "display": "C2 · East"
+        },
+        "note": "Division rival",
+        "since": {
+          "display": "Following since Jul 1, 2040, 12:00 PM"
+        },
+        "open": {
+          "kind": "club",
+          "teamId": 2
+        }
+      }
+    ],
+    "players": [
+      {
+        "kind": "player",
+        "id": 1000,
+        "name": "P 1000",
+        "line": {
+          "display": "3B · Club 1 N · Majors"
+        },
+        "note": null,
+        "since": {
+          "display": "Following since Jul 1, 2040, 12:00 PM"
+        },
+        "open": {
+          "kind": "player",
+          "playerId": 1000
+        }
+      }
+    ],
+    "empty": null,
+    "suggestions": [
+      {
+        "kind": "club",
+        "id": 3,
+        "name": "Club 3 N",
+        "why": {
+          "display": "In your division, the East"
+        }
+      },
+      {
+        "kind": "club",
+        "id": 4,
+        "name": "Club 4 N",
+        "why": {
+          "display": "In your division, the East"
+        }
+      }
+    ],
+    "watchlist": null,
+    "followStamp": "fstamp"
+  }
+}

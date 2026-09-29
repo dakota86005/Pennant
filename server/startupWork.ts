@@ -24,6 +24,7 @@ let queue: Job[] = [];
 let released = false;
 let timer: ReturnType<typeof setTimeout> | null = null;
 let startedAt = 0;
+let clockStarted = false;
 
 /** Queues a piece of the start-up's work, or runs it on the next turn when the start-up's work is under way. */
 export function afterFirstAnswers(name: string, run: () => void): void {
@@ -63,6 +64,7 @@ export function releaseStartupWork(why: string): void {
 /** Starts the fallback clock when the server starts listening. */
 export function startupWorkClock(delayMs = START_WORK_DELAY_MS): void {
   startedAt = performance.now();
+  clockStarted = true;
   if (released || timer) return;
   timer = setTimeout(() => releaseStartupWork('no client asked'), delayMs);
   timer.unref?.();
@@ -92,6 +94,7 @@ export function resetStartupWork(): void {
   queue = [];
   answered = new Set();
   released = false;
+  clockStarted = false;
   if (timer) clearTimeout(timer);
   timer = null;
 }
@@ -99,4 +102,12 @@ export function resetStartupWork(): void {
 /** Whether the start-up's work has begun (for tests and the log). */
 export function startupWorkReleased(): boolean {
   return released;
+}
+
+/**
+ * Whether a server's start-up work is still held back for the first answers (N7: work that follows a kept build, such
+ * as remembering it, queues behind them too). False before a server starts listening (a test, a script).
+ */
+export function startupWorkHeld(): boolean {
+  return clockStarted && !released;
 }

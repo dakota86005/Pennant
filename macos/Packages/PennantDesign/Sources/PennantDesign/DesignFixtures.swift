@@ -309,7 +309,8 @@ public enum DesignFixtures {
         headline: claim("Short of healthy catchers: Mendez is out three to four weeks and Okafor is the only one on the 40.", hint: "Urgent · Major League Ops", tone: .init(value1: .bad),
                         basis: basis([("Catchers on the 40", "2, one on the injured list"), ("Mendez", "Strained oblique · 3–4 weeks"), ("Nearest on the farm", "L. Moreau (AA) · not yet")], from: "Major League Ops · needs from the current export", called: policy,
                                      unknown: ["The league's waiver rules aren't in the export; what a claim costs is not known."], wouldChange: ["A claim or a trade for a catcher clears it.", "Mendez back sooner than four weeks."]), links: [mlbView]),
-        detail: nil, due: .init(display: "5 days left"), dueInDays: 5, evidence: "majorLeague:need:catchers", count: 1
+        detail: nil, due: .init(display: "5 days left"), dueInDays: 5, evidence: "majorLeague:need:catchers", count: 1,
+        attention: .init(status: .init(value1: .open), line: .init(display: "Open"), deferralEnded: false)
     )
 
     public static let departmentCard = Components.Schemas.DepartmentCard(

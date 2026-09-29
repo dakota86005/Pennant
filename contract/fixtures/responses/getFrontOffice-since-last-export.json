@@ -1,0 +1,4849 @@
+{
+  "orgId": 1,
+  "club": "Club 1 N",
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "asOf": {
+    "display": "Through May 5, 2040",
+    "hint": "The last game day in the imported export"
+  },
+  "desk": {
+    "title": {
+      "display": "Your desk"
+    },
+    "order": {
+      "display": "Most urgent first",
+      "hint": "Urgent first, then the nearest deadline; five from each department"
+    },
+    "items": [
+      {
+        "key": "majorLeague:need:mlb:role_below_standard:catcher",
+        "department": "majorLeague",
+        "raisedBy": {
+          "display": "Raised by Rafael Dunn, bench coach",
+          "hint": "From the club's staff in the save"
+        },
+        "severity": "attention",
+        "neutralSeverity": "attention",
+        "urgency": {
+          "text": "Needs attention",
+          "tone": "caution",
+          "basis": {
+            "because": [
+              {
+                "label": "Major League Ops said",
+                "value": "Needs attention"
+              },
+              {
+                "label": "With no philosophy and no season",
+                "value": "Needs attention"
+              },
+              {
+                "label": "On the desk",
+                "value": "Needs attention"
+              }
+            ],
+            "source": {
+              "department": "majorLeague",
+              "specialist": "The desk",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "policy",
+            "called": "A line chosen and stated",
+            "stamp": "Major League Ops states critical, elevated or watch; they read critical, attention and noted on the desk, in the same order and never higher. A flag the philosophy shaded keeps its philosophy-free severity beside it. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
+          },
+          "links": []
+        },
+        "headline": {
+          "text": "Short of healthy catchers",
+          "tone": "caution",
+          "basis": {
+            "because": [
+              {
+                "label": "Coverage floor",
+                "value": "two healthy catchers: Pennant's first-pass minimum, not a league rule or an ideal roster"
+              },
+              {
+                "label": "Active in role",
+                "value": "1 (1 available)"
+              },
+              {
+                "label": "Active roster",
+                "value": "26 of 26"
+              },
+              {
+                "label": "When",
+                "value": "Now"
+              }
+            ],
+            "source": {
+              "department": "majorLeague",
+              "specialist": "Major League Ops' roster review",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [
+              "No injured or unavailable player in this role explains the shortfall; Pennant cannot say how the roster came to be this way."
+            ],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "policy",
+            "called": "A line chosen and stated",
+            "stamp": "Pennant's first-pass minimum for each role: a stated floor, not a league rule or an ideal roster."
+          },
+          "links": [],
+          "hint": "Fewer healthy on the active roster than the club's minimum"
+        },
+        "detail": null,
+        "due": null,
+        "dueInDays": null,
+        "evidence": "1.majorLeague:need:mlb:role_below_standard:catcher",
+        "count": 1,
+        "attention": {
+          "status": "open",
+          "line": {
+            "display": "Open"
+          },
+          "until": null,
+          "deferralEnded": false,
+          "note": null,
+          "stillShown": null,
+          "since": null
+        }
+      },
+      {
+        "key": "farm:position_single_cover:organization:attention",
+        "department": "farm",
+        "raisedBy": {
+          "display": "Raised by the minor league staff"
+        },
+        "severity": "attention",
+        "neutralSeverity": "attention",
+        "urgency": {
+          "text": "Needs attention",
+          "tone": "caution",
+          "basis": {
+            "because": [
+              {
+                "label": "Farm & Development said",
+                "value": "Needs attention"
+              },
+              {
+                "label": "With no philosophy and no season",
+                "value": "Needs attention"
+              },
+              {
+                "label": "On the desk",
+                "value": "Needs attention"
+              }
+            ],
+            "source": {
+              "department": "farm",
+              "specialist": "The desk",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "policy",
+            "called": "A line chosen and stated",
+            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
+          },
+          "links": []
+        },
+        "headline": {
+          "text": "Little depth in the upper minors at 1B, 3B, CF and LF.",
+          "tone": "caution",
+          "basis": {
+            "because": [
+              {
+                "label": "1B",
+                "value": "No one in the upper minors can play 1B."
+              },
+              {
+                "label": "3B",
+                "value": "No one in the upper minors can play 3B."
+              },
+              {
+                "label": "CF",
+                "value": "No one in the upper minors can play CF."
+              },
+              {
+                "label": "LF",
+                "value": "No one in the upper minors can play LF."
+              }
+            ],
+            "source": {
+              "department": "farm",
+              "specialist": "Minor League Operations",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "The farm's stated lines, 10 of 30 still starting values. The same kind of finding about the same club or the organization, at the same urgency, is one row listing its positions"
+          },
+          "links": [
+            {
+              "kind": "view",
+              "department": "farm",
+              "view": "organization"
+            }
+          ],
+          "hint": "4 findings, one row: each is in the breakdown"
+        },
+        "detail": null,
+        "due": null,
+        "dueInDays": null,
+        "evidence": null,
+        "count": 4,
+        "attention": {
+          "status": "open",
+          "line": {
+            "display": "Open"
+          },
+          "until": null,
+          "deferralEnded": false,
+          "note": null,
+          "stillShown": null,
+          "since": null
+        }
+      }
+    ],
+    "more": [],
+    "empty": null,
+    "incomplete": null,
+    "setAside": {
+      "line": {
+        "display": "1 reviewed",
+        "hint": "Set aside from your desk; still in each department's report"
+      },
+      "reviewed": 1,
+      "deferred": 0,
+      "handled": 0,
+      "items": [
+        {
+          "key": "farm:position_single_cover:organization:critical",
+          "department": "farm",
+          "raisedBy": {
+            "display": "Raised by the minor league staff"
+          },
+          "severity": "critical",
+          "neutralSeverity": "critical",
+          "urgency": {
+            "text": "Urgent",
+            "tone": "bad",
+            "basis": {
+              "because": [
+                {
+                  "label": "Farm & Development said",
+                  "value": "Urgent"
+                },
+                {
+                  "label": "With no philosophy and no season",
+                  "value": "Urgent"
+                },
+                {
+                  "label": "On the desk",
+                  "value": "Urgent"
+                }
+              ],
+              "source": {
+                "department": "farm",
+                "specialist": "The desk",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [],
+              "lean": null,
+              "certainty": "policy",
+              "called": "A line chosen and stated",
+              "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
+            },
+            "links": []
+          },
+          "headline": {
+            "text": "The major-league club is thin at 2B, C, RF and SS, with little in the upper minors to step in.",
+            "tone": "bad",
+            "basis": {
+              "because": [
+                {
+                  "label": "2B",
+                  "value": "The major-league club is thin at 2B, and no one in the upper minors can step in."
+                },
+                {
+                  "label": "C",
+                  "value": "The major-league club is thin at C, and no one in the upper minors can step in."
+                },
+                {
+                  "label": "RF",
+                  "value": "The major-league club is thin at RF, and no one in the upper minors can step in."
+                },
+                {
+                  "label": "SS",
+                  "value": "The major-league club is thin at SS, and no one in the upper minors can step in."
+                }
+              ],
+              "source": {
+                "department": "farm",
+                "specialist": "Minor League Operations",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [],
+              "lean": null,
+              "certainty": "provisional",
+              "called": "A starting number, not yet fitted on this save",
+              "stamp": "The farm's stated lines, 10 of 30 still starting values. The same kind of finding about the same club or the organization, at the same urgency, is one row listing its positions"
+            },
+            "links": [
+              {
+                "kind": "view",
+                "department": "farm",
+                "view": "organization"
+              }
+            ],
+            "hint": "4 findings, one row: each is in the breakdown"
+          },
+          "detail": null,
+          "due": null,
+          "dueInDays": null,
+          "evidence": null,
+          "count": 4,
+          "attention": {
+            "note": null,
+            "since": "2040-07-01T12:00:00.000Z",
+            "until": null,
+            "deferralEnded": false,
+            "stillShown": null,
+            "status": "reviewed",
+            "line": {
+              "display": "Reviewed",
+              "hint": "Marked Jul 1, 2040, 12:00 PM"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "departments": [
+    {
+      "department": "majorLeague",
+      "name": "Major League Ops",
+      "status": "ready",
+      "preparedBy": {
+        "display": "Prepared by Rafael Dunn, bench coach",
+        "hint": "From the club's staff in the save"
+      },
+      "summary": {
+        "text": "One to decide.",
+        "tone": "caution",
+        "basis": {
+          "because": [
+            {
+              "label": "To decide",
+              "value": "1"
+            },
+            {
+              "label": "To watch",
+              "value": "0"
+            }
+          ],
+          "source": {
+            "department": "majorLeague",
+            "specialist": "Major League Ops' roster review",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [
+            "A new export."
+          ],
+          "lean": null,
+          "certainty": "fact",
+          "called": "A fact from the export"
+        },
+        "links": []
+      },
+      "figures": [
+        {
+          "text": "Active roster",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Players",
+                "value": "26"
+              },
+              {
+                "label": "Limit",
+                "value": "26"
+              }
+            ],
+            "source": {
+              "department": "majorLeague",
+              "specialist": "Major League Ops' roster review",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact",
+            "called": "A fact from the export"
+          },
+          "links": [],
+          "value": {
+            "n": 26,
+            "unit": "count",
+            "display": "26 of 26",
+            "whole": 26
+          }
+        },
+        {
+          "text": "40-man roster",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Players",
+                "value": "26"
+              },
+              {
+                "label": "Limit",
+                "value": "40"
+              }
+            ],
+            "source": {
+              "department": "majorLeague",
+              "specialist": "Player State",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact",
+            "called": "A fact from the export"
+          },
+          "links": [],
+          "value": {
+            "n": 26,
+            "unit": "count",
+            "display": "26 of 40",
+            "whole": 40
+          }
+        },
+        {
+          "text": "On the injured list",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Major league players on the injured list",
+                "value": "0"
+              }
+            ],
+            "source": {
+              "department": "majorLeague",
+              "specialist": "Major League Ops' roster review",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact",
+            "called": "A fact from the export"
+          },
+          "links": [],
+          "value": {
+            "n": 0,
+            "unit": "count",
+            "display": "0"
+          }
+        }
+      ],
+      "top": [],
+      "toDecide": 1,
+      "watching": 0,
+      "open": {
+        "kind": "view",
+        "department": "majorLeague",
+        "view": "report"
+      },
+      "memo": null
+    },
+    {
+      "department": "farm",
+      "name": "Farm & Development",
+      "status": "ready",
+      "preparedBy": {
+        "display": "Prepared by the minor league staff"
+      },
+      "summary": {
+        "text": "Two to decide.",
+        "tone": "bad",
+        "basis": {
+          "because": [
+            {
+              "label": "To decide",
+              "value": "2"
+            },
+            {
+              "label": "To watch",
+              "value": "0"
+            }
+          ],
+          "source": {
+            "department": "farm",
+            "specialist": "Minor League Operations",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [
+            "A new export."
+          ],
+          "lean": null,
+          "certainty": "fact",
+          "called": "A fact from the export"
+        },
+        "links": []
+      },
+      "figures": [
+        {
+          "text": "Players in the system",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Players",
+                "value": "0"
+              },
+              {
+                "label": "Read by Player Development",
+                "value": "0"
+              },
+              {
+                "label": "Too little to read yet",
+                "value": "0"
+              }
+            ],
+            "source": {
+              "department": "farm",
+              "specialist": "Minor League Operations",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact",
+            "called": "A fact from the export"
+          },
+          "links": [],
+          "value": {
+            "n": 0,
+            "unit": "count",
+            "display": "0"
+          }
+        },
+        {
+          "text": "Affiliates",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Affiliates",
+                "value": "None in the export"
+              }
+            ],
+            "source": {
+              "department": "farm",
+              "specialist": "Minor League Operations",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact",
+            "called": "A fact from the export"
+          },
+          "links": [],
+          "value": {
+            "n": 0,
+            "unit": "count",
+            "display": "0"
+          }
+        },
+        {
+          "text": "Players we have a read on",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Read",
+                "value": "0"
+              },
+              {
+                "label": "Players",
+                "value": "0"
+              }
+            ],
+            "source": {
+              "department": "farm",
+              "specialist": "Minor League Operations",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact",
+            "called": "A fact from the export"
+          },
+          "links": [],
+          "value": {
+            "n": 0,
+            "unit": "count",
+            "display": "0 of 0"
+          }
+        }
+      ],
+      "top": [],
+      "toDecide": 2,
+      "watching": 0,
+      "open": {
+        "kind": "view",
+        "department": "farm",
+        "view": "report"
+      },
+      "memo": null
+    },
+    {
+      "department": "scouting",
+      "name": "Scouting",
+      "status": "notYet",
+      "preparedBy": {
+        "display": "Prepared by Terry Ellis, head scout",
+        "hint": "From the club's staff in the save"
+      },
+      "summary": {
+        "text": "No scouting report yet.",
+        "tone": "neutral",
+        "basis": {
+          "because": [],
+          "source": {
+            "department": "scouting",
+            "specialist": "Scouting",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [
+            "No scouting report yet."
+          ],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "unknown",
+          "called": "Not known"
+        },
+        "links": [],
+        "hint": "The draft board and player search come in a later version"
+      },
+      "figures": [],
+      "top": [],
+      "toDecide": null,
+      "watching": null,
+      "open": null,
+      "memo": null
+    },
+    {
+      "department": "trades",
+      "name": "Trades",
+      "status": "notYet",
+      "preparedBy": {
+        "display": "Prepared by the front office"
+      },
+      "summary": {
+        "text": "No trade report yet.",
+        "tone": "neutral",
+        "basis": {
+          "because": [],
+          "source": {
+            "department": "trades",
+            "specialist": "Trades",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [
+            "No trade report yet."
+          ],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "unknown",
+          "called": "Not known"
+        },
+        "links": [],
+        "hint": "The trade desk comes in a later version"
+      },
+      "figures": [],
+      "top": [],
+      "toDecide": null,
+      "watching": null,
+      "open": null,
+      "memo": null
+    },
+    {
+      "department": "finance",
+      "name": "Finance",
+      "status": "ready",
+      "preparedBy": {
+        "display": "Prepared by the front office"
+      },
+      "summary": {
+        "text": "Nothing to decide or watch.",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "To decide",
+              "value": "0"
+            },
+            {
+              "label": "To watch",
+              "value": "0"
+            }
+          ],
+          "source": {
+            "department": "finance",
+            "specialist": "Contracts",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [
+            "A new export."
+          ],
+          "lean": null,
+          "certainty": "fact",
+          "called": "A fact from the export"
+        },
+        "links": []
+      },
+      "figures": [
+        {
+          "text": "Payroll this season",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Committed this season",
+                "value": "$84.1M"
+              }
+            ],
+            "source": {
+              "department": "finance",
+              "specialist": "Payroll",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact",
+            "called": "A fact from the export"
+          },
+          "links": [],
+          "value": {
+            "n": 84143000,
+            "unit": "dollars",
+            "display": "$84.1M"
+          }
+        },
+        {
+          "text": "Room under the budget",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Budget less committed payroll",
+                "value": "$65.9M"
+              }
+            ],
+            "source": {
+              "department": "finance",
+              "specialist": "Payroll",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact",
+            "called": "A fact from the export"
+          },
+          "links": [],
+          "value": {
+            "n": 65857000,
+            "unit": "dollars",
+            "display": "$65.9M"
+          }
+        },
+        {
+          "text": "Free agents after this season",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Contracts ending",
+                "value": "0"
+              },
+              {
+                "label": "Options to decide",
+                "value": "0"
+              },
+              {
+                "label": "Headed to arbitration",
+                "value": "0"
+              }
+            ],
+            "source": {
+              "department": "finance",
+              "specialist": "Contracts",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact",
+            "called": "A fact from the export"
+          },
+          "links": [],
+          "value": {
+            "n": 0,
+            "unit": "count",
+            "display": "0"
+          }
+        }
+      ],
+      "top": [],
+      "toDecide": 0,
+      "watching": 0,
+      "open": {
+        "kind": "view",
+        "department": "finance",
+        "view": "report"
+      },
+      "memo": null
+    },
+    {
+      "department": "medical",
+      "name": "Medical",
+      "status": "ready",
+      "preparedBy": {
+        "display": "Prepared by Ana Frey, team doctor",
+        "hint": "From the club's staff in the save"
+      },
+      "summary": {
+        "text": "Nothing to decide or watch.",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "To decide",
+              "value": "0"
+            },
+            {
+              "label": "To watch",
+              "value": "0"
+            }
+          ],
+          "source": {
+            "department": "medical",
+            "specialist": "The injury report",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [
+            "A new export."
+          ],
+          "lean": null,
+          "certainty": "fact",
+          "called": "A fact from the export"
+        },
+        "links": []
+      },
+      "figures": [
+        {
+          "text": "Injured",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Injured in the organization",
+                "value": "0"
+              }
+            ],
+            "source": {
+              "department": "medical",
+              "specialist": "The injury report",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact",
+            "called": "A fact from the export"
+          },
+          "links": [],
+          "value": {
+            "n": 0,
+            "unit": "count",
+            "display": "0"
+          }
+        },
+        {
+          "text": "With the major league club",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Injured major leaguers",
+                "value": "0"
+              }
+            ],
+            "source": {
+              "department": "medical",
+              "specialist": "The injury report",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact",
+            "called": "A fact from the export"
+          },
+          "links": [],
+          "value": {
+            "n": 0,
+            "unit": "count",
+            "display": "0"
+          }
+        },
+        {
+          "text": "Day-to-day",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Playing through it or day-to-day",
+                "value": "0"
+              }
+            ],
+            "source": {
+              "department": "medical",
+              "specialist": "The injury report",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact",
+            "called": "A fact from the export"
+          },
+          "links": [],
+          "value": {
+            "n": 0,
+            "unit": "count",
+            "display": "0"
+          }
+        }
+      ],
+      "top": [],
+      "toDecide": 0,
+      "watching": 0,
+      "open": {
+        "kind": "view",
+        "department": "medical",
+        "view": "report"
+      },
+      "memo": null
+    },
+    {
+      "department": "league",
+      "name": "League Office",
+      "status": "notYet",
+      "preparedBy": {
+        "display": "Prepared by the front office"
+      },
+      "summary": {
+        "text": "No league report yet.",
+        "tone": "neutral",
+        "basis": {
+          "because": [],
+          "source": {
+            "department": "league",
+            "specialist": "League Office",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [
+            "No league report yet."
+          ],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "unknown",
+          "called": "Not known"
+        },
+        "links": [],
+        "hint": "The wire, standings and club reports come in a later version"
+      },
+      "figures": [],
+      "top": [],
+      "toDecide": null,
+      "watching": null,
+      "open": null,
+      "memo": null
+    },
+    {
+      "department": "philosophy",
+      "name": "Philosophy & Staff",
+      "status": "notYet",
+      "preparedBy": {
+        "display": "Prepared by the front office"
+      },
+      "summary": {
+        "text": "No staff report yet.",
+        "tone": "neutral",
+        "basis": {
+          "because": [],
+          "source": {
+            "department": "philosophy",
+            "specialist": "Philosophy & Staff",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [
+            "No staff report yet."
+          ],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "unknown",
+          "called": "Not known"
+        },
+        "links": [],
+        "hint": "The philosophy and coaching staff views come in a later version"
+      },
+      "figures": [],
+      "top": [],
+      "toDecide": null,
+      "watching": null,
+      "open": null,
+      "memo": null
+    }
+  ],
+  "teamSeason": {
+    "kicker": {
+      "club": {
+        "display": "Club 1 N"
+      },
+      "today": {
+        "display": "May 6, 2040",
+        "hint": "The league's day in the export"
+      },
+      "through": {
+        "display": "Through May 5, 2040",
+        "hint": "The last game day in the imported export"
+      }
+    },
+    "record": {
+      "text": "Won 15, lost 15",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Games played",
+            "value": "30"
+          },
+          {
+            "label": "At home",
+            "value": "0–15"
+          },
+          {
+            "label": "On the road",
+            "value": "15–0"
+          },
+          {
+            "label": "Last 10",
+            "value": "5–5"
+          }
+        ],
+        "source": {
+          "department": "frontOffice",
+          "specialist": "The standings in the export",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [
+        {
+          "kind": "view",
+          "department": "league",
+          "view": "standings"
+        }
+      ],
+      "hint": "Won 15, lost 15, as the standings have it",
+      "value": {
+        "n": 15,
+        "unit": "games",
+        "display": "15–15"
+      }
+    },
+    "place": {
+      "claim": {
+        "text": "3rd in the East · 3 back",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "Club 3 N",
+              "value": "18–12 · leads"
+            },
+            {
+              "label": "Club 4 N",
+              "value": "18–12 · leads"
+            },
+            {
+              "label": "Club 1 N (us)",
+              "value": "15–15 · 3 back"
+            },
+            {
+              "label": "Club 2 N",
+              "value": "9–21 · 9 back"
+            }
+          ],
+          "source": {
+            "department": "frontOffice",
+            "specialist": "The standings in the export",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "fact",
+          "called": "A fact from the export"
+        },
+        "links": [
+          {
+            "kind": "view",
+            "department": "league",
+            "view": "standings"
+          }
+        ],
+        "hint": "The division's standings, as the export has them",
+        "place": {
+          "rank": 3,
+          "of": 4,
+          "tiedWith": 0
+        }
+      },
+      "gamesBack": 3,
+      "gamesAhead": null
+    },
+    "runs": {
+      "claim": {
+        "text": "Run differential",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "Runs scored",
+              "value": "136 · 4.53 a game"
+            },
+            {
+              "label": "Runs allowed",
+              "value": "128 · 4.27 a game"
+            },
+            {
+              "label": "Last 20 games",
+              "value": "+10"
+            }
+          ],
+          "source": {
+            "department": "frontOffice",
+            "specialist": "The clubs' season totals in the export",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "fact",
+          "called": "A fact from the export"
+        },
+        "links": [
+          {
+            "kind": "view",
+            "department": "majorLeague",
+            "view": "seasonTrends"
+          }
+        ],
+        "hint": "Runs scored less runs allowed, this season",
+        "value": {
+          "n": 8,
+          "unit": "runs",
+          "display": "+8"
+        }
+      },
+      "line": {
+        "display": "136 scored · 128 allowed"
+      },
+      "scored": 136,
+      "allowed": 128,
+      "diff": 8,
+      "trend": [
+        0,
+        -1,
+        2,
+        -5,
+        1,
+        0,
+        6,
+        4,
+        7,
+        4,
+        7,
+        4,
+        5,
+        3,
+        9,
+        8,
+        11,
+        7,
+        10,
+        8
+      ]
+    },
+    "lastFive": {
+      "results": [
+        "L",
+        "W",
+        "L",
+        "W",
+        "L"
+      ],
+      "line": {
+        "display": "Lost 1 · last five 2–3"
+      }
+    },
+    "streak": {
+      "display": "Lost 1",
+      "hint": "The current run of wins or losses"
+    },
+    "tonight": {
+      "gameId": 61,
+      "gameDate": "2040-5-6",
+      "when": {
+        "display": "Tonight · 7:05 PM",
+        "hint": "Jul 1, 2040, 12:00 PM local start, as the export gives it"
+      },
+      "homeAway": "away",
+      "opponent": {
+        "teamId": 4,
+        "name": "Club 4 N",
+        "abbr": "C4",
+        "record": {
+          "display": "18–12",
+          "hint": "Club 4 N's record"
+        }
+      },
+      "matchup": {
+        "display": "at Club 4 N"
+      },
+      "ours": {
+        "playerId": 1013,
+        "name": "P 1013",
+        "short": "P. 1013",
+        "line": {
+          "display": "3–3 · 4.81 ERA"
+        }
+      },
+      "theirs": {
+        "playerId": 1091,
+        "name": "P 1091",
+        "short": "P. 1091",
+        "line": {
+          "display": "3–3 · 6.16 ERA"
+        }
+      },
+      "starters": {
+        "display": "P. 1013 (3–3 · 4.81 ERA) vs P. 1091 (3–3 · 6.16 ERA)",
+        "hint": "The probable starters, as OOTP projects them"
+      },
+      "open": {
+        "kind": "view",
+        "department": "majorLeague",
+        "view": "scheduleGamePlans"
+      },
+      "claim": {
+        "text": "Tonight: at Club 4 N",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "Date",
+              "value": "May 6, 2040"
+            },
+            {
+              "label": "Start",
+              "value": "7:05 PM, the park's local time as the export gives it"
+            },
+            {
+              "label": "Where",
+              "value": "At Club 4 N"
+            },
+            {
+              "label": "Our starter",
+              "value": "P 1013 · 3–3 · 4.81 ERA"
+            },
+            {
+              "label": "Their starter",
+              "value": "P 1091 · 3–3 · 6.16 ERA"
+            },
+            {
+              "label": "Club 4 N's record",
+              "value": "18–12"
+            }
+          ],
+          "source": {
+            "department": "frontOffice",
+            "specialist": "The schedule in the export",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [
+            "OOTP changes its projected starters as the rotation turns over."
+          ],
+          "lean": null,
+          "certainty": "fact",
+          "called": "A fact from the export"
+        },
+        "links": [
+          {
+            "kind": "view",
+            "department": "majorLeague",
+            "view": "scheduleGamePlans"
+          }
+        ],
+        "hint": "Open the schedule and game plans"
+      }
+    },
+    "deadline": {
+      "gameDate": "2040-7-31",
+      "daysLeft": 86,
+      "passed": false,
+      "count": {
+        "display": "86 days"
+      },
+      "text": {
+        "display": "to the deadline · July 31, 2040",
+        "hint": "The trade deadline, as the league's own rules give it"
+      },
+      "claim": {
+        "text": "86 days to the trade deadline",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "The league's trade deadline",
+              "value": "July 31, 2040"
+            },
+            {
+              "label": "The league's day",
+              "value": "May 6, 2040"
+            }
+          ],
+          "source": {
+            "department": "frontOffice",
+            "specialist": "The league's rules in the export",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "fact",
+          "called": "A fact from the export"
+        },
+        "links": [],
+        "value": {
+          "n": 86,
+          "unit": "days",
+          "display": "86 days"
+        }
+      }
+    },
+    "missing": []
+  },
+  "lede": {
+    "text": "Third in the East, three games back. Run scoring has climbed to 2nd over the last fifteen. The deadline is 86 days out.",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Place",
+          "value": "3rd in the East · 3 back"
+        },
+        {
+          "label": "Scoring runs",
+          "value": "3rd of 4 this season; Last 15: 2nd"
+        },
+        {
+          "label": "Trade deadline",
+          "value": "86 days to the deadline · July 31, 2040"
+        }
+      ],
+      "source": {
+        "department": "frontOffice",
+        "specialist": "The Morning Report",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "The lede says only what is on this page: the division place and games back; the first dimension, in the page's order, whose place over the last 15 games moved from its season place by a fifth of the league or more, else the club's best-placed strength; and the days to the trade deadline while it is ahead. It adds nothing that is not shown with its own basis."
+    },
+    "links": [],
+    "hint": "Written from the facts on this page; each is below with its basis"
+  },
+  "clubProfile": {
+    "note": {
+      "display": "Through May 5, 2040 · 30 games",
+      "hint": "With 4 clubs the league has no top or bottom fifth"
+    },
+    "clubs": 4,
+    "groups": {
+      "strength": {
+        "title": {
+          "display": "Strengths"
+        },
+        "line": {
+          "display": "Top fifth of the league",
+          "hint": "A place in the top fifth of the clubs that have the figure"
+        }
+      },
+      "weakness": {
+        "title": {
+          "display": "Weaknesses"
+        },
+        "line": {
+          "display": "Bottom fifth of the league",
+          "hint": "A place in the bottom fifth of the clubs that have the figure"
+        }
+      },
+      "rest": {
+        "title": {
+          "display": "The rest",
+          "hint": "Neither a strength nor a weakness"
+        },
+        "line": null
+      },
+      "tooEarly": {
+        "title": {
+          "display": "Too early to call",
+          "hint": "Too early to call a strength or a weakness"
+        },
+        "line": {
+          "display": "Fewer than 20 games",
+          "hint": "Too early to call a strength or a weakness"
+        }
+      },
+      "notPlaced": {
+        "title": {
+          "display": "Not placed",
+          "hint": "The export lacks the figure for the club, which says nothing about it"
+        },
+        "line": null
+      }
+    },
+    "legend": {
+      "dot": {
+        "display": "Filled dot: this season"
+      },
+      "ring": {
+        "display": "Ring: the last 15 games"
+      },
+      "shading": null
+    },
+    "dimensions": [
+      {
+        "id": "scoring",
+        "name": "Scoring runs",
+        "symbol": "figure.baseball",
+        "place": {
+          "rank": 3,
+          "of": 4,
+          "tiedWith": 0
+        },
+        "placeText": "3rd of 4",
+        "strip": {
+          "of": 4,
+          "strengthThrough": null,
+          "weaknessFrom": null
+        },
+        "recent": {
+          "place": {
+            "rank": 2,
+            "of": 4,
+            "tiedWith": 0
+          },
+          "text": "Last 15: 2nd",
+          "why": null
+        },
+        "detail": {
+          "display": "4.53 runs a game"
+        },
+        "group": "rest",
+        "claim": {
+          "text": "Scoring runs: 3rd of 4",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "This season",
+                "value": "4.53 runs a game · 3rd of 4"
+              },
+              {
+                "label": "Last 15 games",
+                "value": "4.93 runs a game · 2nd of 4"
+              },
+              {
+                "label": "How it is read",
+                "value": "Runs scored over games played."
+              },
+              {
+                "label": "Where it falls",
+                "value": "Neither"
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "The clubs' season totals in the export",
+              "asOf": null,
+              "gameDate": "2040-05-05",
+              "sample": "30 games"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "policy",
+            "called": "A line chosen and stated",
+            "stamp": "A strength is a place in the top fifth of the clubs that have the figure and a weakness a place in the bottom fifth; below 20 games it is too early to call either. Lines chosen and stated, not fitted."
+          },
+          "links": [
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "seasonTrends"
+            }
+          ],
+          "hint": "Runs scored a game, against the other 3 clubs",
+          "place": {
+            "rank": 3,
+            "of": 4,
+            "tiedWith": 0
+          }
+        }
+      },
+      {
+        "id": "preventing",
+        "name": "Preventing runs",
+        "symbol": "shield",
+        "place": {
+          "rank": 1,
+          "of": 4,
+          "tiedWith": 1
+        },
+        "placeText": "T-1st of 4",
+        "strip": {
+          "of": 4,
+          "strengthThrough": null,
+          "weaknessFrom": null
+        },
+        "recent": {
+          "place": {
+            "rank": 2,
+            "of": 4,
+            "tiedWith": 0
+          },
+          "text": "Last 15: 2nd",
+          "why": null
+        },
+        "detail": {
+          "display": "4.27 allowed a game"
+        },
+        "group": "rest",
+        "claim": {
+          "text": "Preventing runs: T-1st of 4",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "This season",
+                "value": "4.27 allowed a game · T-1st of 4"
+              },
+              {
+                "label": "Level with",
+                "value": "Club 4 N"
+              },
+              {
+                "label": "Last 15 games",
+                "value": "4.47 allowed a game · 2nd of 4"
+              },
+              {
+                "label": "How it is read",
+                "value": "Runs allowed over games played."
+              },
+              {
+                "label": "Where it falls",
+                "value": "Neither"
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "The clubs' season totals in the export",
+              "asOf": null,
+              "gameDate": "2040-05-05",
+              "sample": "30 games"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "policy",
+            "called": "A line chosen and stated",
+            "stamp": "A strength is a place in the top fifth of the clubs that have the figure and a weakness a place in the bottom fifth; below 20 games it is too early to call either. Lines chosen and stated, not fitted."
+          },
+          "links": [
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "seasonTrends"
+            }
+          ],
+          "hint": "Runs allowed a game (fewer is better), against the other 3 clubs",
+          "place": {
+            "rank": 1,
+            "of": 4,
+            "tiedWith": 1
+          }
+        }
+      },
+      {
+        "id": "onBase",
+        "name": "Getting on base",
+        "symbol": "figure.walk",
+        "place": {
+          "rank": 1,
+          "of": 4,
+          "tiedWith": 0
+        },
+        "placeText": "1st of 4",
+        "strip": {
+          "of": 4,
+          "strengthThrough": null,
+          "weaknessFrom": null
+        },
+        "recent": {
+          "place": {
+            "rank": 1,
+            "of": 4,
+            "tiedWith": 0
+          },
+          "text": "Last 15: 1st",
+          "why": null
+        },
+        "detail": {
+          "display": ".319 on base"
+        },
+        "group": "rest",
+        "claim": {
+          "text": "Getting on base: 1st of 4",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "This season",
+                "value": ".319 on base · 1st of 4"
+              },
+              {
+                "label": "Last 15 games",
+                "value": ".345 on base · 1st of 4"
+              },
+              {
+                "label": "How it is read",
+                "value": "Hits, walks and hit batsmen over at-bats, walks, hit batsmen and sacrifice flies."
+              },
+              {
+                "label": "Where it falls",
+                "value": "Neither"
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "The clubs' season totals in the export",
+              "asOf": null,
+              "gameDate": "2040-05-05",
+              "sample": "30 games"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "policy",
+            "called": "A line chosen and stated",
+            "stamp": "A strength is a place in the top fifth of the clubs that have the figure and a weakness a place in the bottom fifth; below 20 games it is too early to call either. Lines chosen and stated, not fitted."
+          },
+          "links": [
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "seasonTrends"
+            }
+          ],
+          "hint": "How often the club reaches base, against the other 3 clubs",
+          "place": {
+            "rank": 1,
+            "of": 4,
+            "tiedWith": 0
+          }
+        }
+      },
+      {
+        "id": "power",
+        "name": "Hitting for power",
+        "symbol": "bolt",
+        "place": {
+          "rank": 4,
+          "of": 4,
+          "tiedWith": 0
+        },
+        "placeText": "4th of 4",
+        "strip": {
+          "of": 4,
+          "strengthThrough": null,
+          "weaknessFrom": null
+        },
+        "recent": {
+          "place": {
+            "rank": 4,
+            "of": 4,
+            "tiedWith": 0
+          },
+          "text": "Last 15: 4th",
+          "why": null
+        },
+        "detail": {
+          "display": ".113 extra bases an at-bat"
+        },
+        "group": "rest",
+        "claim": {
+          "text": "Hitting for power: 4th of 4",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "This season",
+                "value": ".113 extra bases an at-bat · 4th of 4"
+              },
+              {
+                "label": "Last 15 games",
+                "value": ".109 extra bases an at-bat · 4th of 4"
+              },
+              {
+                "label": "How it is read",
+                "value": "Total bases less hits, over at-bats (isolated power)."
+              },
+              {
+                "label": "Where it falls",
+                "value": "Neither"
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "The clubs' season totals in the export",
+              "asOf": null,
+              "gameDate": "2040-05-05",
+              "sample": "30 games"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "policy",
+            "called": "A line chosen and stated",
+            "stamp": "A strength is a place in the top fifth of the clubs that have the figure and a weakness a place in the bottom fifth; below 20 games it is too early to call either. Lines chosen and stated, not fitted."
+          },
+          "links": [
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "seasonTrends"
+            }
+          ],
+          "hint": "Extra bases an at-bat, against the other 3 clubs",
+          "place": {
+            "rank": 4,
+            "of": 4,
+            "tiedWith": 0
+          }
+        }
+      },
+      {
+        "id": "rotation",
+        "name": "Rotation",
+        "symbol": "arrow.trianglehead.2.clockwise",
+        "place": {
+          "rank": 1,
+          "of": 4,
+          "tiedWith": 0
+        },
+        "placeText": "1st of 4",
+        "strip": {
+          "of": 4,
+          "strengthThrough": null,
+          "weaknessFrom": null
+        },
+        "recent": {
+          "place": {
+            "rank": 2,
+            "of": 4,
+            "tiedWith": 0
+          },
+          "text": "Last 15: 2nd",
+          "why": null
+        },
+        "detail": {
+          "display": "4.12 starters' ERA"
+        },
+        "group": "rest",
+        "claim": {
+          "text": "Rotation: 1st of 4",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "This season",
+                "value": "4.12 starters' ERA · 1st of 4"
+              },
+              {
+                "label": "Last 15 games",
+                "value": "4.25 starters' ERA · 2nd of 4"
+              },
+              {
+                "label": "How it is read",
+                "value": "The starters' earned runs a nine innings."
+              },
+              {
+                "label": "Where it falls",
+                "value": "Neither"
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "The clubs' season totals in the export",
+              "asOf": null,
+              "gameDate": "2040-05-05",
+              "sample": "30 games"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "policy",
+            "called": "A line chosen and stated",
+            "stamp": "A strength is a place in the top fifth of the clubs that have the figure and a weakness a place in the bottom fifth; below 20 games it is too early to call either. Lines chosen and stated, not fitted."
+          },
+          "links": [
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "seasonTrends"
+            }
+          ],
+          "hint": "Starters' earned runs a nine innings, against the other 3 clubs",
+          "place": {
+            "rank": 1,
+            "of": 4,
+            "tiedWith": 0
+          }
+        }
+      },
+      {
+        "id": "bullpen",
+        "name": "Bullpen",
+        "symbol": "phone.arrow.up.right",
+        "place": {
+          "rank": 2,
+          "of": 4,
+          "tiedWith": 0
+        },
+        "placeText": "2nd of 4",
+        "strip": {
+          "of": 4,
+          "strengthThrough": null,
+          "weaknessFrom": null
+        },
+        "recent": {
+          "place": {
+            "rank": 2,
+            "of": 4,
+            "tiedWith": 0
+          },
+          "text": "Last 15: 2nd",
+          "why": null
+        },
+        "detail": {
+          "display": "4.05 relievers' ERA"
+        },
+        "group": "rest",
+        "claim": {
+          "text": "Bullpen: 2nd of 4",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "This season",
+                "value": "4.05 relievers' ERA · 2nd of 4"
+              },
+              {
+                "label": "Last 15 games",
+                "value": "4.30 relievers' ERA · 2nd of 4"
+              },
+              {
+                "label": "How it is read",
+                "value": "The relievers' earned runs a nine innings."
+              },
+              {
+                "label": "Where it falls",
+                "value": "Neither"
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "The clubs' season totals in the export",
+              "asOf": null,
+              "gameDate": "2040-05-05",
+              "sample": "30 games"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "policy",
+            "called": "A line chosen and stated",
+            "stamp": "A strength is a place in the top fifth of the clubs that have the figure and a weakness a place in the bottom fifth; below 20 games it is too early to call either. Lines chosen and stated, not fitted."
+          },
+          "links": [
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "seasonTrends"
+            }
+          ],
+          "hint": "Relievers' earned runs a nine innings, against the other 3 clubs",
+          "place": {
+            "rank": 2,
+            "of": 4,
+            "tiedWith": 0
+          }
+        }
+      },
+      {
+        "id": "defense",
+        "name": "Turning balls into outs",
+        "symbol": "hand.raised",
+        "place": {
+          "rank": 2,
+          "of": 4,
+          "tiedWith": 0
+        },
+        "placeText": "2nd of 4",
+        "strip": {
+          "of": 4,
+          "strengthThrough": null,
+          "weaknessFrom": null
+        },
+        "recent": {
+          "place": {
+            "rank": 3,
+            "of": 4,
+            "tiedWith": 0
+          },
+          "text": "Last 15: 3rd",
+          "why": null
+        },
+        "detail": {
+          "display": ".708 of balls in play made outs"
+        },
+        "group": "rest",
+        "claim": {
+          "text": "Turning balls into outs: 2nd of 4",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "This season",
+                "value": ".708 of balls in play made outs · 2nd of 4"
+              },
+              {
+                "label": "Last 15 games",
+                "value": ".689 of balls in play made outs · 3rd of 4"
+              },
+              {
+                "label": "How it is read",
+                "value": "One less the hits allowed in play (not home runs) over the balls put in play (batters faced less walks, hit batsmen, strikeouts and home runs)."
+              },
+              {
+                "label": "Where it falls",
+                "value": "Neither"
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "The clubs' season totals in the export",
+              "asOf": null,
+              "gameDate": "2040-05-05",
+              "sample": "30 games"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "policy",
+            "called": "A line chosen and stated",
+            "stamp": "A strength is a place in the top fifth of the clubs that have the figure and a weakness a place in the bottom fifth; below 20 games it is too early to call either. Lines chosen and stated, not fitted."
+          },
+          "links": [
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "seasonTrends"
+            }
+          ],
+          "hint": "Balls in play turned into outs, against the other 3 clubs",
+          "place": {
+            "rank": 2,
+            "of": 4,
+            "tiedWith": 0
+          }
+        }
+      },
+      {
+        "id": "baserunning",
+        "name": "Baserunning",
+        "symbol": "figure.run",
+        "place": {
+          "rank": 3,
+          "of": 4,
+          "tiedWith": 0
+        },
+        "placeText": "3rd of 4",
+        "strip": {
+          "of": 4,
+          "strengthThrough": null,
+          "weaknessFrom": null
+        },
+        "recent": {
+          "place": {
+            "rank": 3,
+            "of": 4,
+            "tiedWith": 0
+          },
+          "text": "Last 15: 3rd",
+          "why": null
+        },
+        "detail": {
+          "display": "−0.03 runs a game on the bases"
+        },
+        "group": "rest",
+        "claim": {
+          "text": "Baserunning: 3rd of 4",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "This season",
+                "value": "−0.03 runs a game on the bases · 3rd of 4"
+              },
+              {
+                "label": "Last 15 games",
+                "value": "−0.02 runs a game on the bases · 3rd of 4"
+              },
+              {
+                "label": "How it is read",
+                "value": "The players' base-running runs, summed for the club, over games played."
+              },
+              {
+                "label": "Where it falls",
+                "value": "Neither"
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "The clubs' season totals in the export",
+              "asOf": null,
+              "gameDate": "2040-05-05",
+              "sample": "30 games"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "policy",
+            "called": "A line chosen and stated",
+            "stamp": "A strength is a place in the top fifth of the clubs that have the figure and a weakness a place in the bottom fifth; below 20 games it is too early to call either. Lines chosen and stated, not fitted."
+          },
+          "links": [
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "seasonTrends"
+            }
+          ],
+          "hint": "Runs gained on the bases a game, against the other 3 clubs",
+          "place": {
+            "rank": 3,
+            "of": 4,
+            "tiedWith": 0
+          }
+        }
+      }
+    ],
+    "unavailable": null
+  },
+  "rosterMap": {
+    "positions": [
+      {
+        "pos": "C",
+        "name": "Catcher",
+        "holder": {
+          "playerId": 1012,
+          "name": "P 1012",
+          "short": "P. 1012"
+        },
+        "holderRule": "listed",
+        "value": {
+          "low": -0.2150173672805822,
+          "likely": 0.055051633077749136,
+          "high": 0.6326783789978412,
+          "unit": "wins",
+          "text": "Most likely 0.1 wins · could be −0.2 to 0.6",
+          "short": "0.1 wins"
+        },
+        "valueText": "0.1 wins",
+        "place": {
+          "rank": 3,
+          "of": 3,
+          "tiedWith": 0,
+          "overlap": 2
+        },
+        "placeText": "3rd of 3",
+        "overlap": 2,
+        "clearlyAhead": 0,
+        "clearlyBehind": 0,
+        "overlapText": {
+          "display": "Not separable from the other 2",
+          "hint": "Clubs are told apart on the range each lands in half the time"
+        },
+        "behind": {
+          "display": "Nobody else plays catcher"
+        },
+        "farmNext": null,
+        "farmText": {
+          "display": "Nobody in the farm listed at catcher"
+        },
+        "control": {
+          "kind": "through",
+          "text": "Through 2046 at least",
+          "hint": "Held on every branch through it; the export doesn't settle later seasons",
+          "through": 2046,
+          "latest": null,
+          "seasonsLeft": 7,
+          "atLeast": true,
+          "clock": null
+        },
+        "need": true,
+        "claim": {
+          "text": "P 1012 at catcher",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Expected wins, the rest of this season",
+                "value": "Most likely 0.1 wins · could be −0.2 to 0.6"
+              },
+              {
+                "label": "At catcher in the league",
+                "value": "3rd of 3"
+              },
+              {
+                "label": "Against the other clubs",
+                "value": "Not separable from the other 2"
+              },
+              {
+                "label": "How clubs are told apart",
+                "value": "On the range each holder lands in half the time: two whose half-time ranges meet aren't said to differ. The range drawn is the one he lands in four times in five."
+              },
+              {
+                "label": "Behind him",
+                "value": "Nobody else there"
+              },
+              {
+                "label": "The farm's next man",
+                "value": "Nobody listed there"
+              },
+              {
+                "label": "How the farm's next man is chosen",
+                "value": "The man Player Development reads as readiest at catcher, at the highest level where anyone is listed there; men it hasn't assessed follow, by name."
+              },
+              {
+                "label": "Control",
+                "value": "Through 2046 at least"
+              },
+              {
+                "label": "Major League Ops",
+                "value": "Short of healthy catchers"
+              },
+              {
+                "label": "How the holder is chosen",
+                "value": "Listed at catcher, the club's man there with the most expected wins: The export's game log doesn't say who started where."
+              },
+              {
+                "label": "The same rule for every club",
+                "value": "The man now on the club with the most starts there this season, among those who started there in its last 15 games; where the game log shows no such start, its man listed there with the most expected wins."
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "Player Value, Player Rights and Player Development",
+              "asOf": null,
+              "gameDate": "2040-05-05",
+              "sample": "4 clubs"
+            },
+            "unknown": [
+              "1 club not placed at catcher: Club 2 N.",
+              "3 clubs' holders at catcher are their listed men: the game log shows nobody now on the club starting there lately."
+            ],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+          },
+          "links": [
+            {
+              "kind": "player",
+              "playerId": 1012
+            },
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "positionPlayers"
+            }
+          ],
+          "hint": "Most likely 0.1 wins · could be −0.2 to 0.6, rest of season",
+          "place": {
+            "rank": 3,
+            "of": 3,
+            "tiedWith": 0,
+            "overlap": 2
+          }
+        }
+      },
+      {
+        "pos": "1B",
+        "name": "First base",
+        "holder": {
+          "playerId": 1006,
+          "name": "P 1006",
+          "short": "P. 1006"
+        },
+        "holderRule": "listed",
+        "value": {
+          "low": -0.39220938032543673,
+          "likely": 0.1552296232183763,
+          "high": 0.6443254468559889,
+          "unit": "wins",
+          "text": "Most likely 0.2 wins · could be −0.4 to 0.6",
+          "short": "0.2 wins"
+        },
+        "valueText": "0.2 wins",
+        "place": {
+          "rank": 4,
+          "of": 4,
+          "tiedWith": 0,
+          "overlap": 3
+        },
+        "placeText": "4th of 4",
+        "overlap": 3,
+        "clearlyAhead": 0,
+        "clearlyBehind": 0,
+        "overlapText": {
+          "display": "Not separable from the other 3",
+          "hint": "Clubs are told apart on the range each lands in half the time"
+        },
+        "behind": {
+          "display": "P. 1010",
+          "hint": "P. 1010: 0.1 wins most likely"
+        },
+        "farmNext": null,
+        "farmText": {
+          "display": "Nobody in the farm listed at first base"
+        },
+        "control": {
+          "kind": "through",
+          "text": "Through 2046 at least",
+          "hint": "Held on every branch through it; the export doesn't settle later seasons",
+          "through": 2046,
+          "latest": null,
+          "seasonsLeft": 7,
+          "atLeast": true,
+          "clock": null
+        },
+        "need": false,
+        "claim": {
+          "text": "P 1006 at first base",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Expected wins, the rest of this season",
+                "value": "Most likely 0.2 wins · could be −0.4 to 0.6"
+              },
+              {
+                "label": "At first base in the league",
+                "value": "4th of 4"
+              },
+              {
+                "label": "Against the other clubs",
+                "value": "Not separable from the other 3"
+              },
+              {
+                "label": "How clubs are told apart",
+                "value": "On the range each holder lands in half the time: two whose half-time ranges meet aren't said to differ. The range drawn is the one he lands in four times in five."
+              },
+              {
+                "label": "Behind him",
+                "value": "P 1010 (0.1)"
+              },
+              {
+                "label": "The farm's next man",
+                "value": "Nobody listed there"
+              },
+              {
+                "label": "How the farm's next man is chosen",
+                "value": "The man Player Development reads as readiest at first base, at the highest level where anyone is listed there; men it hasn't assessed follow, by name."
+              },
+              {
+                "label": "Control",
+                "value": "Through 2046 at least"
+              },
+              {
+                "label": "Major League Ops",
+                "value": "No need raised here"
+              },
+              {
+                "label": "How the holder is chosen",
+                "value": "Listed at first base, the club's man there with the most expected wins: The export's game log doesn't say who started where."
+              },
+              {
+                "label": "The same rule for every club",
+                "value": "The man now on the club with the most starts there this season, among those who started there in its last 15 games; where the game log shows no such start, its man listed there with the most expected wins."
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "Player Value, Player Rights and Player Development",
+              "asOf": null,
+              "gameDate": "2040-05-05",
+              "sample": "4 clubs"
+            },
+            "unknown": [
+              "4 clubs' holders at first base are their listed men: the game log shows nobody now on the club starting there lately."
+            ],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+          },
+          "links": [
+            {
+              "kind": "player",
+              "playerId": 1006
+            },
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "positionPlayers"
+            }
+          ],
+          "hint": "Most likely 0.2 wins · could be −0.4 to 0.6, rest of season",
+          "place": {
+            "rank": 4,
+            "of": 4,
+            "tiedWith": 0,
+            "overlap": 3
+          }
+        }
+      },
+      {
+        "pos": "2B",
+        "name": "Second base",
+        "holder": {
+          "playerId": 1001,
+          "name": "P 1001",
+          "short": "P. 1001"
+        },
+        "holderRule": "listed",
+        "value": {
+          "low": -0.33951719627719057,
+          "likely": 0.2011319151368171,
+          "high": 0.6752587464041018,
+          "unit": "wins",
+          "text": "Most likely 0.2 wins · could be −0.3 to 0.7",
+          "short": "0.2 wins"
+        },
+        "valueText": "0.2 wins",
+        "place": {
+          "rank": 3,
+          "of": 4,
+          "tiedWith": 1,
+          "overlap": 3
+        },
+        "placeText": "T-3rd of 4",
+        "overlap": 3,
+        "clearlyAhead": 0,
+        "clearlyBehind": 0,
+        "overlapText": {
+          "display": "Not separable from the other 3",
+          "hint": "Clubs are told apart on the range each lands in half the time"
+        },
+        "behind": {
+          "display": "Nobody else plays second base"
+        },
+        "farmNext": null,
+        "farmText": {
+          "display": "Nobody in the farm listed at second base"
+        },
+        "control": {
+          "kind": "through",
+          "text": "Through 2046 at least",
+          "hint": "Held on every branch through it; the export doesn't settle later seasons",
+          "through": 2046,
+          "latest": null,
+          "seasonsLeft": 7,
+          "atLeast": true,
+          "clock": null
+        },
+        "need": false,
+        "claim": {
+          "text": "P 1001 at second base",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Expected wins, the rest of this season",
+                "value": "Most likely 0.2 wins · could be −0.3 to 0.7"
+              },
+              {
+                "label": "At second base in the league",
+                "value": "T-3rd of 4, level with Club 4 N"
+              },
+              {
+                "label": "Against the other clubs",
+                "value": "Not separable from the other 3"
+              },
+              {
+                "label": "How clubs are told apart",
+                "value": "On the range each holder lands in half the time: two whose half-time ranges meet aren't said to differ. The range drawn is the one he lands in four times in five."
+              },
+              {
+                "label": "Behind him",
+                "value": "Nobody else there"
+              },
+              {
+                "label": "The farm's next man",
+                "value": "Nobody listed there"
+              },
+              {
+                "label": "How the farm's next man is chosen",
+                "value": "The man Player Development reads as readiest at second base, at the highest level where anyone is listed there; men it hasn't assessed follow, by name."
+              },
+              {
+                "label": "Control",
+                "value": "Through 2046 at least"
+              },
+              {
+                "label": "Major League Ops",
+                "value": "No need raised here"
+              },
+              {
+                "label": "How the holder is chosen",
+                "value": "Listed at second base, the club's man there with the most expected wins: The export's game log doesn't say who started where."
+              },
+              {
+                "label": "The same rule for every club",
+                "value": "The man now on the club with the most starts there this season, among those who started there in its last 15 games; where the game log shows no such start, its man listed there with the most expected wins."
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "Player Value, Player Rights and Player Development",
+              "asOf": null,
+              "gameDate": "2040-05-05",
+              "sample": "4 clubs"
+            },
+            "unknown": [
+              "4 clubs' holders at second base are their listed men: the game log shows nobody now on the club starting there lately."
+            ],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+          },
+          "links": [
+            {
+              "kind": "player",
+              "playerId": 1001
+            },
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "positionPlayers"
+            }
+          ],
+          "hint": "Most likely 0.2 wins · could be −0.3 to 0.7, rest of season",
+          "place": {
+            "rank": 3,
+            "of": 4,
+            "tiedWith": 1,
+            "overlap": 3
+          }
+        }
+      },
+      {
+        "pos": "3B",
+        "name": "Third base",
+        "holder": {
+          "playerId": 1000,
+          "name": "P 1000",
+          "short": "P. 1000"
+        },
+        "holderRule": "listed",
+        "value": {
+          "low": -0.38420347295275126,
+          "likely": 0.40368866672759235,
+          "high": 0.8901158080929377,
+          "unit": "wins",
+          "text": "Most likely 0.4 wins · could be −0.4 to 0.9",
+          "short": "0.4 wins"
+        },
+        "valueText": "0.4 wins",
+        "place": {
+          "rank": 1,
+          "of": 4,
+          "tiedWith": 1,
+          "overlap": 3
+        },
+        "placeText": "T-1st of 4",
+        "overlap": 3,
+        "clearlyAhead": 0,
+        "clearlyBehind": 0,
+        "overlapText": {
+          "display": "Not separable from the other 3",
+          "hint": "Clubs are told apart on the range each lands in half the time"
+        },
+        "behind": {
+          "display": "P. 1004, P. 1011",
+          "hint": "P. 1004: 0.3 wins most likely"
+        },
+        "farmNext": null,
+        "farmText": {
+          "display": "Nobody in the farm listed at third base"
+        },
+        "control": {
+          "kind": "through",
+          "text": "Through 2046 at least",
+          "hint": "Held on every branch through it; the export doesn't settle later seasons",
+          "through": 2046,
+          "latest": null,
+          "seasonsLeft": 7,
+          "atLeast": true,
+          "clock": null
+        },
+        "need": false,
+        "claim": {
+          "text": "P 1000 at third base",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Expected wins, the rest of this season",
+                "value": "Most likely 0.4 wins · could be −0.4 to 0.9"
+              },
+              {
+                "label": "At third base in the league",
+                "value": "T-1st of 4, level with Club 4 N"
+              },
+              {
+                "label": "Against the other clubs",
+                "value": "Not separable from the other 3"
+              },
+              {
+                "label": "How clubs are told apart",
+                "value": "On the range each holder lands in half the time: two whose half-time ranges meet aren't said to differ. The range drawn is the one he lands in four times in five."
+              },
+              {
+                "label": "Behind him",
+                "value": "P 1004 (0.3), P 1011 (0.0)"
+              },
+              {
+                "label": "The farm's next man",
+                "value": "Nobody listed there"
+              },
+              {
+                "label": "How the farm's next man is chosen",
+                "value": "The man Player Development reads as readiest at third base, at the highest level where anyone is listed there; men it hasn't assessed follow, by name."
+              },
+              {
+                "label": "Control",
+                "value": "Through 2046 at least"
+              },
+              {
+                "label": "Major League Ops",
+                "value": "No need raised here"
+              },
+              {
+                "label": "How the holder is chosen",
+                "value": "Listed at third base, the club's man there with the most expected wins: The export's game log doesn't say who started where."
+              },
+              {
+                "label": "The same rule for every club",
+                "value": "The man now on the club with the most starts there this season, among those who started there in its last 15 games; where the game log shows no such start, its man listed there with the most expected wins."
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "Player Value, Player Rights and Player Development",
+              "asOf": null,
+              "gameDate": "2040-05-05",
+              "sample": "4 clubs"
+            },
+            "unknown": [
+              "4 clubs' holders at third base are their listed men: the game log shows nobody now on the club starting there lately."
+            ],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+          },
+          "links": [
+            {
+              "kind": "player",
+              "playerId": 1000
+            },
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "positionPlayers"
+            }
+          ],
+          "hint": "Most likely 0.4 wins · could be −0.4 to 0.9, rest of season",
+          "place": {
+            "rank": 1,
+            "of": 4,
+            "tiedWith": 1,
+            "overlap": 3
+          }
+        }
+      },
+      {
+        "pos": "SS",
+        "name": "Shortstop",
+        "holder": {
+          "playerId": 1003,
+          "name": "P 1003",
+          "short": "P. 1003"
+        },
+        "holderRule": "listed",
+        "value": {
+          "low": -0.02649380999106321,
+          "likely": 0.7764465938002244,
+          "high": 1.2693144692864242,
+          "unit": "wins",
+          "text": "Most likely 0.8 wins · could be 0.0 to 1.3",
+          "short": "0.8 wins"
+        },
+        "valueText": "0.8 wins",
+        "place": {
+          "rank": 1,
+          "of": 2,
+          "tiedWith": 0,
+          "overlap": 0
+        },
+        "placeText": "1st of 2",
+        "overlap": 0,
+        "clearlyAhead": 1,
+        "clearlyBehind": 0,
+        "overlapText": {
+          "display": "Clearly ahead of the other 1",
+          "hint": "Clubs are told apart on the range each lands in half the time"
+        },
+        "behind": {
+          "display": "Nobody else plays shortstop"
+        },
+        "farmNext": null,
+        "farmText": {
+          "display": "Nobody in the farm listed at shortstop"
+        },
+        "control": {
+          "kind": "through",
+          "text": "Through 2046 at least",
+          "hint": "Held on every branch through it; the export doesn't settle later seasons",
+          "through": 2046,
+          "latest": null,
+          "seasonsLeft": 7,
+          "atLeast": true,
+          "clock": null
+        },
+        "need": false,
+        "claim": {
+          "text": "P 1003 at shortstop",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Expected wins, the rest of this season",
+                "value": "Most likely 0.8 wins · could be 0.0 to 1.3"
+              },
+              {
+                "label": "At shortstop in the league",
+                "value": "1st of 2"
+              },
+              {
+                "label": "Against the other clubs",
+                "value": "Clearly ahead of the other 1"
+              },
+              {
+                "label": "Clearly ahead of",
+                "value": "Club 4 N"
+              },
+              {
+                "label": "How clubs are told apart",
+                "value": "On the range each holder lands in half the time: two whose half-time ranges meet aren't said to differ. The range drawn is the one he lands in four times in five."
+              },
+              {
+                "label": "Behind him",
+                "value": "Nobody else there"
+              },
+              {
+                "label": "The farm's next man",
+                "value": "Nobody listed there"
+              },
+              {
+                "label": "How the farm's next man is chosen",
+                "value": "The man Player Development reads as readiest at shortstop, at the highest level where anyone is listed there; men it hasn't assessed follow, by name."
+              },
+              {
+                "label": "Control",
+                "value": "Through 2046 at least"
+              },
+              {
+                "label": "Major League Ops",
+                "value": "No need raised here"
+              },
+              {
+                "label": "How the holder is chosen",
+                "value": "Listed at shortstop, the club's man there with the most expected wins: The export's game log doesn't say who started where."
+              },
+              {
+                "label": "The same rule for every club",
+                "value": "The man now on the club with the most starts there this season, among those who started there in its last 15 games; where the game log shows no such start, its man listed there with the most expected wins."
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "Player Value, Player Rights and Player Development",
+              "asOf": null,
+              "gameDate": "2040-05-05",
+              "sample": "4 clubs"
+            },
+            "unknown": [
+              "2 clubs not placed at shortstop: Club 2 N, Club 3 N.",
+              "2 clubs' holders at shortstop are their listed men: the game log shows nobody now on the club starting there lately."
+            ],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+          },
+          "links": [
+            {
+              "kind": "player",
+              "playerId": 1003
+            },
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "positionPlayers"
+            }
+          ],
+          "hint": "Most likely 0.8 wins · could be 0.0 to 1.3, rest of season",
+          "place": {
+            "rank": 1,
+            "of": 2,
+            "tiedWith": 0,
+            "overlap": 0
+          }
+        }
+      },
+      {
+        "pos": "LF",
+        "name": "Left field",
+        "holder": {
+          "playerId": 1007,
+          "name": "P 1007",
+          "short": "P. 1007"
+        },
+        "holderRule": "listed",
+        "value": {
+          "low": -0.18826183886245873,
+          "likely": 0.617410663583015,
+          "high": 1.0952610467013275,
+          "unit": "wins",
+          "text": "Most likely 0.6 wins · could be −0.2 to 1.1",
+          "short": "0.6 wins"
+        },
+        "valueText": "0.6 wins",
+        "place": {
+          "rank": 3,
+          "of": 4,
+          "tiedWith": 0,
+          "overlap": 3
+        },
+        "placeText": "3rd of 4",
+        "overlap": 3,
+        "clearlyAhead": 0,
+        "clearlyBehind": 0,
+        "overlapText": {
+          "display": "Not separable from the other 3",
+          "hint": "Clubs are told apart on the range each lands in half the time"
+        },
+        "behind": {
+          "display": "P. 1009",
+          "hint": "P. 1009: 0.1 wins most likely"
+        },
+        "farmNext": null,
+        "farmText": {
+          "display": "Nobody in the farm listed at left field"
+        },
+        "control": {
+          "kind": "through",
+          "text": "Through 2046 at least",
+          "hint": "Held on every branch through it; the export doesn't settle later seasons",
+          "through": 2046,
+          "latest": null,
+          "seasonsLeft": 7,
+          "atLeast": true,
+          "clock": null
+        },
+        "need": false,
+        "claim": {
+          "text": "P 1007 at left field",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Expected wins, the rest of this season",
+                "value": "Most likely 0.6 wins · could be −0.2 to 1.1"
+              },
+              {
+                "label": "At left field in the league",
+                "value": "3rd of 4"
+              },
+              {
+                "label": "Against the other clubs",
+                "value": "Not separable from the other 3"
+              },
+              {
+                "label": "How clubs are told apart",
+                "value": "On the range each holder lands in half the time: two whose half-time ranges meet aren't said to differ. The range drawn is the one he lands in four times in five."
+              },
+              {
+                "label": "Behind him",
+                "value": "P 1009 (0.1)"
+              },
+              {
+                "label": "The farm's next man",
+                "value": "Nobody listed there"
+              },
+              {
+                "label": "How the farm's next man is chosen",
+                "value": "The man Player Development reads as readiest at left field, at the highest level where anyone is listed there; men it hasn't assessed follow, by name."
+              },
+              {
+                "label": "Control",
+                "value": "Through 2046 at least"
+              },
+              {
+                "label": "Major League Ops",
+                "value": "No need raised here"
+              },
+              {
+                "label": "How the holder is chosen",
+                "value": "Listed at left field, the club's man there with the most expected wins: The export's game log doesn't say who started where."
+              },
+              {
+                "label": "The same rule for every club",
+                "value": "The man now on the club with the most starts there this season, among those who started there in its last 15 games; where the game log shows no such start, its man listed there with the most expected wins."
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "Player Value, Player Rights and Player Development",
+              "asOf": null,
+              "gameDate": "2040-05-05",
+              "sample": "4 clubs"
+            },
+            "unknown": [
+              "4 clubs' holders at left field are their listed men: the game log shows nobody now on the club starting there lately."
+            ],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+          },
+          "links": [
+            {
+              "kind": "player",
+              "playerId": 1007
+            },
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "positionPlayers"
+            }
+          ],
+          "hint": "Most likely 0.6 wins · could be −0.2 to 1.1, rest of season",
+          "place": {
+            "rank": 3,
+            "of": 4,
+            "tiedWith": 0,
+            "overlap": 3
+          }
+        }
+      },
+      {
+        "pos": "CF",
+        "name": "Center field",
+        "holder": {
+          "playerId": 1005,
+          "name": "P 1005",
+          "short": "P. 1005"
+        },
+        "holderRule": "listed",
+        "value": {
+          "low": 0.0997675658153131,
+          "likely": 0.9602537073480558,
+          "high": 1.5313571548144622,
+          "unit": "wins",
+          "text": "Most likely 1.0 wins · could be 0.1 to 1.5",
+          "short": "1.0 wins"
+        },
+        "valueText": "1.0 wins",
+        "place": {
+          "rank": 1,
+          "of": 3,
+          "tiedWith": 0,
+          "overlap": 1
+        },
+        "placeText": "1st of 3",
+        "overlap": 1,
+        "clearlyAhead": 1,
+        "clearlyBehind": 0,
+        "overlapText": {
+          "display": "Clearly ahead of 1 · not separable from 1",
+          "hint": "Clubs are told apart on the range each lands in half the time"
+        },
+        "behind": {
+          "display": "P. 1002",
+          "hint": "P. 1002: 0.6 wins most likely"
+        },
+        "farmNext": null,
+        "farmText": {
+          "display": "Nobody in the farm listed at center field"
+        },
+        "control": {
+          "kind": "through",
+          "text": "Through 2046 at least",
+          "hint": "Held on every branch through it; the export doesn't settle later seasons",
+          "through": 2046,
+          "latest": null,
+          "seasonsLeft": 7,
+          "atLeast": true,
+          "clock": null
+        },
+        "need": false,
+        "claim": {
+          "text": "P 1005 at center field",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Expected wins, the rest of this season",
+                "value": "Most likely 1.0 wins · could be 0.1 to 1.5"
+              },
+              {
+                "label": "At center field in the league",
+                "value": "1st of 3"
+              },
+              {
+                "label": "Against the other clubs",
+                "value": "Clearly ahead of 1 · not separable from 1"
+              },
+              {
+                "label": "Clearly ahead of",
+                "value": "Club 2 N"
+              },
+              {
+                "label": "Not separable from",
+                "value": "Club 3 N"
+              },
+              {
+                "label": "How clubs are told apart",
+                "value": "On the range each holder lands in half the time: two whose half-time ranges meet aren't said to differ. The range drawn is the one he lands in four times in five."
+              },
+              {
+                "label": "Behind him",
+                "value": "P 1002 (0.6)"
+              },
+              {
+                "label": "The farm's next man",
+                "value": "Nobody listed there"
+              },
+              {
+                "label": "How the farm's next man is chosen",
+                "value": "The man Player Development reads as readiest at center field, at the highest level where anyone is listed there; men it hasn't assessed follow, by name."
+              },
+              {
+                "label": "Control",
+                "value": "Through 2046 at least"
+              },
+              {
+                "label": "Major League Ops",
+                "value": "No need raised here"
+              },
+              {
+                "label": "How the holder is chosen",
+                "value": "Listed at center field, the club's man there with the most expected wins: The export's game log doesn't say who started where."
+              },
+              {
+                "label": "The same rule for every club",
+                "value": "The man now on the club with the most starts there this season, among those who started there in its last 15 games; where the game log shows no such start, its man listed there with the most expected wins."
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "Player Value, Player Rights and Player Development",
+              "asOf": null,
+              "gameDate": "2040-05-05",
+              "sample": "4 clubs"
+            },
+            "unknown": [
+              "1 club not placed at center field: Club 4 N.",
+              "3 clubs' holders at center field are their listed men: the game log shows nobody now on the club starting there lately."
+            ],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+          },
+          "links": [
+            {
+              "kind": "player",
+              "playerId": 1005
+            },
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "positionPlayers"
+            }
+          ],
+          "hint": "Most likely 1.0 wins · could be 0.1 to 1.5, rest of season",
+          "place": {
+            "rank": 1,
+            "of": 3,
+            "tiedWith": 0,
+            "overlap": 1
+          }
+        }
+      },
+      {
+        "pos": "RF",
+        "name": "Right field",
+        "holder": null,
+        "holderRule": null,
+        "value": null,
+        "valueText": "Not valued",
+        "place": null,
+        "placeText": "Not placed",
+        "overlap": null,
+        "clearlyAhead": null,
+        "clearlyBehind": null,
+        "overlapText": {
+          "display": "Not placed: nobody plays right field",
+          "tone": "unknown"
+        },
+        "behind": {
+          "display": "Nobody else plays right field"
+        },
+        "farmNext": null,
+        "farmText": {
+          "display": "Nobody in the farm listed at right field"
+        },
+        "control": {
+          "kind": "unknown",
+          "text": "Nobody there",
+          "hint": "Nobody on the club plays right field",
+          "through": null,
+          "latest": null,
+          "seasonsLeft": null,
+          "atLeast": false,
+          "clock": null
+        },
+        "need": false,
+        "claim": {
+          "text": "Nobody at right field",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Expected wins, the rest of this season",
+                "value": "Nobody there"
+              },
+              {
+                "label": "At right field in the league",
+                "value": "Not placed"
+              },
+              {
+                "label": "Behind him",
+                "value": "Nobody else there"
+              },
+              {
+                "label": "The farm's next man",
+                "value": "Nobody listed there"
+              },
+              {
+                "label": "How the farm's next man is chosen",
+                "value": "The man Player Development reads as readiest at right field, at the highest level where anyone is listed there; men it hasn't assessed follow, by name."
+              },
+              {
+                "label": "Control",
+                "value": "Nobody there"
+              },
+              {
+                "label": "Major League Ops",
+                "value": "No need raised here"
+              },
+              {
+                "label": "How the holder is chosen",
+                "value": "The export's game log doesn't say who started where."
+              },
+              {
+                "label": "The same rule for every club",
+                "value": "The man now on the club with the most starts there this season, among those who started there in its last 15 games; where the game log shows no such start, its man listed there with the most expected wins."
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "Player Value, Player Rights and Player Development",
+              "asOf": null,
+              "gameDate": "2040-05-05",
+              "sample": "4 clubs"
+            },
+            "unknown": [
+              "2 clubs not placed at right field: Club 1 N, Club 4 N.",
+              "2 clubs' holders at right field are their listed men: the game log shows nobody now on the club starting there lately."
+            ],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "unknown",
+            "called": "Not known"
+          },
+          "links": [
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "positionPlayers"
+            }
+          ],
+          "hint": "Nobody on the club plays right field"
+        }
+      },
+      {
+        "pos": "DH",
+        "name": "Designated hitter",
+        "holder": {
+          "playerId": 1008,
+          "name": "P 1008",
+          "short": "P. 1008"
+        },
+        "holderRule": "listed",
+        "value": {
+          "low": -0.23076305846185252,
+          "likely": 0.4841703576287041,
+          "high": 1.0484882653515821,
+          "unit": "wins",
+          "text": "Most likely 0.5 wins · could be −0.2 to 1.0",
+          "short": "0.5 wins"
+        },
+        "valueText": "0.5 wins",
+        "place": {
+          "rank": 2,
+          "of": 4,
+          "tiedWith": 0,
+          "overlap": 3
+        },
+        "placeText": "2nd of 4",
+        "overlap": 3,
+        "clearlyAhead": 0,
+        "clearlyBehind": 0,
+        "overlapText": {
+          "display": "Not separable from the other 3",
+          "hint": "Clubs are told apart on the range each lands in half the time"
+        },
+        "behind": {
+          "display": "Nobody else plays designated hitter"
+        },
+        "farmNext": null,
+        "farmText": {
+          "display": "Nobody in the farm listed at designated hitter"
+        },
+        "control": {
+          "kind": "through",
+          "text": "Through 2046 at least",
+          "hint": "Held on every branch through it; the export doesn't settle later seasons",
+          "through": 2046,
+          "latest": null,
+          "seasonsLeft": 7,
+          "atLeast": true,
+          "clock": null
+        },
+        "need": false,
+        "claim": {
+          "text": "P 1008 at designated hitter",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Expected wins, the rest of this season",
+                "value": "Most likely 0.5 wins · could be −0.2 to 1.0"
+              },
+              {
+                "label": "At designated hitter in the league",
+                "value": "2nd of 4"
+              },
+              {
+                "label": "Against the other clubs",
+                "value": "Not separable from the other 3"
+              },
+              {
+                "label": "How clubs are told apart",
+                "value": "On the range each holder lands in half the time: two whose half-time ranges meet aren't said to differ. The range drawn is the one he lands in four times in five."
+              },
+              {
+                "label": "Behind him",
+                "value": "Nobody else there"
+              },
+              {
+                "label": "The farm's next man",
+                "value": "Nobody listed there"
+              },
+              {
+                "label": "How the farm's next man is chosen",
+                "value": "The man Player Development reads as readiest at designated hitter, at the highest level where anyone is listed there; men it hasn't assessed follow, by name."
+              },
+              {
+                "label": "Control",
+                "value": "Through 2046 at least"
+              },
+              {
+                "label": "Major League Ops",
+                "value": "No need raised here"
+              },
+              {
+                "label": "How the holder is chosen",
+                "value": "Listed at designated hitter, the club's man there with the most expected wins: The export's game log doesn't say who started where."
+              },
+              {
+                "label": "The same rule for every club",
+                "value": "The man now on the club with the most starts there this season, among those who started there in its last 15 games; where the game log shows no such start, its man listed there with the most expected wins."
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "Player Value, Player Rights and Player Development",
+              "asOf": null,
+              "gameDate": "2040-05-05",
+              "sample": "4 clubs"
+            },
+            "unknown": [
+              "4 clubs' holders at designated hitter are their listed men: the game log shows nobody now on the club starting there lately."
+            ],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+          },
+          "links": [
+            {
+              "kind": "player",
+              "playerId": 1008
+            },
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "positionPlayers"
+            }
+          ],
+          "hint": "Most likely 0.5 wins · could be −0.2 to 1.0, rest of season",
+          "place": {
+            "rank": 2,
+            "of": 4,
+            "tiedWith": 0,
+            "overlap": 3
+          }
+        }
+      }
+    ],
+    "valueScale": {
+      "low": -1,
+      "high": 2,
+      "unit": "wins"
+    },
+    "rotation": [
+      {
+        "playerId": 1013,
+        "role": "Next",
+        "name": "P 1013",
+        "short": "P. 1013",
+        "line": {
+          "display": "3–3 · 4.81 ERA"
+        },
+        "value": {
+          "low": 0.1272238999793679,
+          "likely": 1.1328682174224738,
+          "high": 1.854904574300668,
+          "unit": "wins",
+          "text": "Most likely 1.1 wins · could be 0.1 to 1.9",
+          "short": "1.1 wins"
+        },
+        "note": null,
+        "hint": "Most likely 1.1 wins · could be 0.1 to 1.9, rest of season",
+        "need": false,
+        "claim": {
+          "text": "P 1013, starter",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Role",
+                "value": "Projected to start the next game"
+              },
+              {
+                "label": "This season",
+                "value": "3–3 · 4.81 ERA"
+              },
+              {
+                "label": "Expected wins, the rest of this season",
+                "value": "Most likely 1.1 wins · could be 0.1 to 1.9"
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "Player Value, Player Rights and Player Development",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+          },
+          "links": [
+            {
+              "kind": "player",
+              "playerId": 1013
+            },
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "pitchingStaff"
+            }
+          ],
+          "hint": "Most likely 1.1 wins · could be 0.1 to 1.9, rest of season"
+        }
+      },
+      {
+        "playerId": 1014,
+        "role": "2nd",
+        "name": "P 1014",
+        "short": "P. 1014",
+        "line": {
+          "display": "3–3 · 4.60 ERA"
+        },
+        "value": {
+          "low": -0.8025527919179216,
+          "likely": 0.05949421261758508,
+          "high": 0.634525174445374,
+          "unit": "wins",
+          "text": "Most likely 0.1 wins · could be −0.8 to 0.6",
+          "short": "0.1 wins"
+        },
+        "note": null,
+        "hint": "Most likely 0.1 wins · could be −0.8 to 0.6, rest of season",
+        "need": false,
+        "claim": {
+          "text": "P 1014, starter",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Role",
+                "value": "Projected to start the 2nd game from now"
+              },
+              {
+                "label": "This season",
+                "value": "3–3 · 4.60 ERA"
+              },
+              {
+                "label": "Expected wins, the rest of this season",
+                "value": "Most likely 0.1 wins · could be −0.8 to 0.6"
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "Player Value, Player Rights and Player Development",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+          },
+          "links": [
+            {
+              "kind": "player",
+              "playerId": 1014
+            },
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "pitchingStaff"
+            }
+          ],
+          "hint": "Most likely 0.1 wins · could be −0.8 to 0.6, rest of season"
+        }
+      },
+      {
+        "playerId": 1015,
+        "role": "3rd",
+        "name": "P 1015",
+        "short": "P. 1015",
+        "line": {
+          "display": "3–3 · 4.78 ERA"
+        },
+        "value": {
+          "low": -0.21325050476000976,
+          "likely": 0.24715369046363947,
+          "high": 0.8472781963345136,
+          "unit": "wins",
+          "text": "Most likely 0.2 wins · could be −0.2 to 0.8",
+          "short": "0.2 wins"
+        },
+        "note": null,
+        "hint": "Most likely 0.2 wins · could be −0.2 to 0.8, rest of season",
+        "need": false,
+        "claim": {
+          "text": "P 1015, starter",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Role",
+                "value": "Projected to start the 3rd game from now"
+              },
+              {
+                "label": "This season",
+                "value": "3–3 · 4.78 ERA"
+              },
+              {
+                "label": "Expected wins, the rest of this season",
+                "value": "Most likely 0.2 wins · could be −0.2 to 0.8"
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "Player Value, Player Rights and Player Development",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+          },
+          "links": [
+            {
+              "kind": "player",
+              "playerId": 1015
+            },
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "pitchingStaff"
+            }
+          ],
+          "hint": "Most likely 0.2 wins · could be −0.2 to 0.8, rest of season"
+        }
+      },
+      {
+        "playerId": 1016,
+        "role": "4th",
+        "name": "P 1016",
+        "short": "P. 1016",
+        "line": {
+          "display": "3–3 · 4.78 ERA"
+        },
+        "value": {
+          "low": -0.12999993222211448,
+          "likely": 0.5591681269852733,
+          "high": 1.2642395747574682,
+          "unit": "wins",
+          "text": "Most likely 0.6 wins · could be −0.1 to 1.3",
+          "short": "0.6 wins"
+        },
+        "note": null,
+        "hint": "Most likely 0.6 wins · could be −0.1 to 1.3, rest of season",
+        "need": false,
+        "claim": {
+          "text": "P 1016, starter",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Role",
+                "value": "Projected to start the 4th game from now"
+              },
+              {
+                "label": "This season",
+                "value": "3–3 · 4.78 ERA"
+              },
+              {
+                "label": "Expected wins, the rest of this season",
+                "value": "Most likely 0.6 wins · could be −0.1 to 1.3"
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "Player Value, Player Rights and Player Development",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+          },
+          "links": [
+            {
+              "kind": "player",
+              "playerId": 1016
+            },
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "pitchingStaff"
+            }
+          ],
+          "hint": "Most likely 0.6 wins · could be −0.1 to 1.3, rest of season"
+        }
+      },
+      {
+        "playerId": 1017,
+        "role": "5th",
+        "name": "P 1017",
+        "short": "P. 1017",
+        "line": {
+          "display": "3–3 · 3.29 ERA"
+        },
+        "value": {
+          "low": 0.20290011653596962,
+          "likely": 1.2320831242760726,
+          "high": 1.9228808301309774,
+          "unit": "wins",
+          "text": "Most likely 1.2 wins · could be 0.2 to 1.9",
+          "short": "1.2 wins"
+        },
+        "note": null,
+        "hint": "Most likely 1.2 wins · could be 0.2 to 1.9, rest of season",
+        "need": false,
+        "claim": {
+          "text": "P 1017, starter",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Role",
+                "value": "Projected to start the 5th game from now"
+              },
+              {
+                "label": "This season",
+                "value": "3–3 · 3.29 ERA"
+              },
+              {
+                "label": "Expected wins, the rest of this season",
+                "value": "Most likely 1.2 wins · could be 0.2 to 1.9"
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "Player Value, Player Rights and Player Development",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+          },
+          "links": [
+            {
+              "kind": "player",
+              "playerId": 1017
+            },
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "pitchingStaff"
+            }
+          ],
+          "hint": "Most likely 1.2 wins · could be 0.2 to 1.9, rest of season"
+        }
+      }
+    ],
+    "bullpen": [
+      {
+        "playerId": 1018,
+        "role": "CL",
+        "name": "P 1018",
+        "short": "P. 1018",
+        "line": {
+          "display": "2 saves · 1.50 ERA"
+        },
+        "value": {
+          "low": -0.3472261093687789,
+          "likely": -0.11629773362621453,
+          "high": 0.04044804668488049,
+          "unit": "wins",
+          "text": "Most likely −0.1 wins · could be −0.3 to 0.0",
+          "short": "−0.1 wins"
+        },
+        "note": null,
+        "hint": "Most likely −0.1 wins · could be −0.3 to 0.0, rest of season",
+        "need": false,
+        "claim": {
+          "text": "P 1018, closer",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Role",
+                "value": "The club's closer, as the export lists him"
+              },
+              {
+                "label": "This season",
+                "value": "2 saves · 1.50 ERA"
+              },
+              {
+                "label": "Expected wins, the rest of this season",
+                "value": "Most likely −0.1 wins · could be −0.3 to 0.0"
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "Player Value, Player Rights and Player Development",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+          },
+          "links": [
+            {
+              "kind": "player",
+              "playerId": 1018
+            },
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "pitchingStaff"
+            }
+          ],
+          "hint": "Most likely −0.1 wins · could be −0.3 to 0.0, rest of season"
+        }
+      },
+      {
+        "playerId": 1025,
+        "role": "RP",
+        "name": "P 1025",
+        "short": "P. 1025",
+        "line": {
+          "display": "3.38 ERA · 13.1 innings"
+        },
+        "value": {
+          "low": -0.45972781861005296,
+          "likely": -0.23982946885629308,
+          "high": -0.08514345924420733,
+          "unit": "wins",
+          "text": "Most likely −0.2 wins · could be −0.5 to −0.1",
+          "short": "−0.2 wins"
+        },
+        "note": null,
+        "hint": "Most likely −0.2 wins · could be −0.5 to −0.1, rest of season",
+        "need": false,
+        "claim": {
+          "text": "P 1025, reliever",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Role",
+                "value": "Relief"
+              },
+              {
+                "label": "This season",
+                "value": "3.38 ERA · 13.1 innings"
+              },
+              {
+                "label": "Expected wins, the rest of this season",
+                "value": "Most likely −0.2 wins · could be −0.5 to −0.1"
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "Player Value, Player Rights and Player Development",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+          },
+          "links": [
+            {
+              "kind": "player",
+              "playerId": 1025
+            },
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "pitchingStaff"
+            }
+          ],
+          "hint": "Most likely −0.2 wins · could be −0.5 to −0.1, rest of season"
+        }
+      },
+      {
+        "playerId": 1023,
+        "role": "RP",
+        "name": "P 1023",
+        "short": "P. 1023",
+        "line": {
+          "display": "6.39 ERA · 12.2 innings"
+        },
+        "value": {
+          "low": -0.27797525777248827,
+          "likely": -0.050603315109966025,
+          "high": 0.09977204737172377,
+          "unit": "wins",
+          "text": "Most likely −0.1 wins · could be −0.3 to 0.1",
+          "short": "−0.1 wins"
+        },
+        "note": null,
+        "hint": "Most likely −0.1 wins · could be −0.3 to 0.1, rest of season",
+        "need": false,
+        "claim": {
+          "text": "P 1023, reliever",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Role",
+                "value": "Relief"
+              },
+              {
+                "label": "This season",
+                "value": "6.39 ERA · 12.2 innings"
+              },
+              {
+                "label": "Expected wins, the rest of this season",
+                "value": "Most likely −0.1 wins · could be −0.3 to 0.1"
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "Player Value, Player Rights and Player Development",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+          },
+          "links": [
+            {
+              "kind": "player",
+              "playerId": 1023
+            },
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "pitchingStaff"
+            }
+          ],
+          "hint": "Most likely −0.1 wins · could be −0.3 to 0.1, rest of season"
+        }
+      },
+      {
+        "playerId": 1019,
+        "role": "RP",
+        "name": "P 1019",
+        "short": "P. 1019",
+        "line": {
+          "display": "5.11 ERA · 12.1 innings"
+        },
+        "value": {
+          "low": -0.3869851307166033,
+          "likely": -0.16035906102312192,
+          "high": -0.023764962211843516,
+          "unit": "wins",
+          "text": "Most likely −0.2 wins · could be −0.4 to 0.0",
+          "short": "−0.2 wins"
+        },
+        "note": null,
+        "hint": "Most likely −0.2 wins · could be −0.4 to 0.0, rest of season",
+        "need": false,
+        "claim": {
+          "text": "P 1019, reliever",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Role",
+                "value": "Relief"
+              },
+              {
+                "label": "This season",
+                "value": "5.11 ERA · 12.1 innings"
+              },
+              {
+                "label": "Expected wins, the rest of this season",
+                "value": "Most likely −0.2 wins · could be −0.4 to 0.0"
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "Player Value, Player Rights and Player Development",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+          },
+          "links": [
+            {
+              "kind": "player",
+              "playerId": 1019
+            },
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "pitchingStaff"
+            }
+          ],
+          "hint": "Most likely −0.2 wins · could be −0.4 to 0.0, rest of season"
+        }
+      },
+      {
+        "playerId": 1021,
+        "role": "RP",
+        "name": "P 1021",
+        "short": "P. 1021",
+        "line": {
+          "display": "4.91 ERA · 11 innings"
+        },
+        "value": {
+          "low": -0.2612042333221651,
+          "likely": -0.04695867750463249,
+          "high": 0.08668042753921266,
+          "unit": "wins",
+          "text": "Most likely 0.0 wins · could be −0.3 to 0.1",
+          "short": "0.0 wins"
+        },
+        "note": null,
+        "hint": "Most likely 0.0 wins · could be −0.3 to 0.1, rest of season",
+        "need": false,
+        "claim": {
+          "text": "P 1021, reliever",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Role",
+                "value": "Relief"
+              },
+              {
+                "label": "This season",
+                "value": "4.91 ERA · 11 innings"
+              },
+              {
+                "label": "Expected wins, the rest of this season",
+                "value": "Most likely 0.0 wins · could be −0.3 to 0.1"
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "Player Value, Player Rights and Player Development",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+          },
+          "links": [
+            {
+              "kind": "player",
+              "playerId": 1021
+            },
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "pitchingStaff"
+            }
+          ],
+          "hint": "Most likely 0.0 wins · could be −0.3 to 0.1, rest of season"
+        }
+      },
+      {
+        "playerId": 1022,
+        "role": "RP",
+        "name": "P 1022",
+        "short": "P. 1022",
+        "line": {
+          "display": "3.27 ERA · 11 innings"
+        },
+        "value": {
+          "low": -0.4009880562465833,
+          "likely": -0.17788163791731268,
+          "high": -0.04497002655481925,
+          "unit": "wins",
+          "text": "Most likely −0.2 wins · could be −0.4 to 0.0",
+          "short": "−0.2 wins"
+        },
+        "note": null,
+        "hint": "Most likely −0.2 wins · could be −0.4 to 0.0, rest of season",
+        "need": false,
+        "claim": {
+          "text": "P 1022, reliever",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Role",
+                "value": "Relief"
+              },
+              {
+                "label": "This season",
+                "value": "3.27 ERA · 11 innings"
+              },
+              {
+                "label": "Expected wins, the rest of this season",
+                "value": "Most likely −0.2 wins · could be −0.4 to 0.0"
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "Player Value, Player Rights and Player Development",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+          },
+          "links": [
+            {
+              "kind": "player",
+              "playerId": 1022
+            },
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "pitchingStaff"
+            }
+          ],
+          "hint": "Most likely −0.2 wins · could be −0.4 to 0.0, rest of season"
+        }
+      },
+      {
+        "playerId": 1020,
+        "role": "RP",
+        "name": "P 1020",
+        "short": "P. 1020",
+        "line": {
+          "display": "4.22 ERA · 10.2 innings"
+        },
+        "value": {
+          "low": -0.06520673229627112,
+          "likely": 0.08489412887401308,
+          "high": 0.28656389265666526,
+          "unit": "wins",
+          "text": "Most likely 0.1 wins · could be −0.1 to 0.3",
+          "short": "0.1 wins"
+        },
+        "note": null,
+        "hint": "Most likely 0.1 wins · could be −0.1 to 0.3, rest of season",
+        "need": false,
+        "claim": {
+          "text": "P 1020, reliever",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Role",
+                "value": "Relief"
+              },
+              {
+                "label": "This season",
+                "value": "4.22 ERA · 10.2 innings"
+              },
+              {
+                "label": "Expected wins, the rest of this season",
+                "value": "Most likely 0.1 wins · could be −0.1 to 0.3"
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "Player Value, Player Rights and Player Development",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+          },
+          "links": [
+            {
+              "kind": "player",
+              "playerId": 1020
+            },
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "pitchingStaff"
+            }
+          ],
+          "hint": "Most likely 0.1 wins · could be −0.1 to 0.3, rest of season"
+        }
+      },
+      {
+        "playerId": 1024,
+        "role": "RP",
+        "name": "P 1024",
+        "short": "P. 1024",
+        "line": {
+          "display": "2.53 ERA · 10.2 innings"
+        },
+        "value": {
+          "low": -0.2975996739414717,
+          "likely": -0.08062758853964394,
+          "high": 0.0833193304079359,
+          "unit": "wins",
+          "text": "Most likely −0.1 wins · could be −0.3 to 0.1",
+          "short": "−0.1 wins"
+        },
+        "note": null,
+        "hint": "Most likely −0.1 wins · could be −0.3 to 0.1, rest of season",
+        "need": false,
+        "claim": {
+          "text": "P 1024, reliever",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Role",
+                "value": "Relief"
+              },
+              {
+                "label": "This season",
+                "value": "2.53 ERA · 10.2 innings"
+              },
+              {
+                "label": "Expected wins, the rest of this season",
+                "value": "Most likely −0.1 wins · could be −0.3 to 0.1"
+              }
+            ],
+            "source": {
+              "department": "frontOffice",
+              "specialist": "Player Value, Player Rights and Player Development",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+          },
+          "links": [
+            {
+              "kind": "player",
+              "playerId": 1024
+            },
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "pitchingStaff"
+            }
+          ],
+          "hint": "Most likely −0.1 wins · could be −0.3 to 0.1, rest of season"
+        }
+      }
+    ],
+    "rotationNeeds": [],
+    "bullpenNeeds": [],
+    "notes": [
+      {
+        "display": "Each position shows the man each club lists there: the game log doesn't show who starts",
+        "hint": "The export's game log doesn't say who started where. Each club's man listed"
+      }
+    ],
+    "unavailable": null
+  },
+  "changes": {
+    "new": {
+      "kind": "new",
+      "count": 1,
+      "text": "1 new",
+      "hint": "Raised since the last export",
+      "items": [
+        {
+          "key": "majorLeague:need:mlb:role_below_standard:catcher",
+          "department": "majorLeague",
+          "line": {
+            "text": "Short of healthy catchers",
+            "tone": "caution",
+            "basis": {
+              "because": [
+                {
+                  "label": "Raised by",
+                  "value": "Major League Ops"
+                },
+                {
+                  "label": "The last export",
+                  "value": "Did not raise it"
+                },
+                {
+                  "label": "This export",
+                  "value": "Needs attention"
+                }
+              ],
+              "source": {
+                "department": "majorLeague",
+                "specialist": "Since the last export",
+                "asOf": null,
+                "gameDate": "2040-5-6"
+              },
+              "unknown": [
+                "Two exports show that it changed, not which move or event changed it."
+              ],
+              "wouldChange": [],
+              "lean": null,
+              "certainty": "fact",
+              "called": "A fact from the export"
+            },
+            "links": [
+              {
+                "kind": "view",
+                "department": "majorLeague",
+                "view": "report"
+              }
+            ],
+            "hint": "New since the export of May 3, 2040"
+          },
+          "open": {
+            "kind": "view",
+            "department": "majorLeague",
+            "view": "report"
+          }
+        }
+      ]
+    },
+    "resolved": {
+      "kind": "resolved",
+      "count": 1,
+      "text": "1 resolved",
+      "hint": "Raised at the last export, not now",
+      "items": [
+        {
+          "key": "medical:injury:9999",
+          "department": "medical",
+          "line": {
+            "text": "P 9999 is on the injured list",
+            "tone": "neutral",
+            "basis": {
+              "because": [
+                {
+                  "label": "Raised by",
+                  "value": "Medical"
+                },
+                {
+                  "label": "The last export",
+                  "value": "Noted"
+                },
+                {
+                  "label": "This export",
+                  "value": "Does not raise it"
+                }
+              ],
+              "source": {
+                "department": "medical",
+                "specialist": "Since the last export",
+                "asOf": null,
+                "gameDate": "2040-5-6"
+              },
+              "unknown": [
+                "Two exports show that it changed, not which move or event changed it."
+              ],
+              "wouldChange": [],
+              "lean": null,
+              "certainty": "fact",
+              "called": "A fact from the export"
+            },
+            "links": [
+              {
+                "kind": "view",
+                "department": "medical",
+                "view": "report"
+              }
+            ],
+            "hint": "Raised at the export of May 3, 2040, not now"
+          },
+          "open": {
+            "kind": "view",
+            "department": "medical",
+            "view": "report"
+          }
+        }
+      ]
+    },
+    "moved": {
+      "kind": "moved",
+      "count": 0,
+      "text": "None moved",
+      "hint": "The same item, at another urgency",
+      "items": []
+    },
+    "results": {
+      "kind": "results",
+      "count": 3,
+      "text": "1–2 since May 3, 2040",
+      "hint": "The club's games between the two exports",
+      "items": [
+        {
+          "key": "game:55",
+          "department": null,
+          "line": {
+            "text": "L 7–3 vs Club 4 N",
+            "tone": "bad",
+            "basis": {
+              "because": [
+                {
+                  "label": "Day",
+                  "value": "May 3, 2040"
+                },
+                {
+                  "label": "Score",
+                  "value": "3–7"
+                },
+                {
+                  "label": "Where",
+                  "value": "At home"
+                },
+                {
+                  "label": "Since the last export",
+                  "value": "Played after the games the last export counted"
+                }
+              ],
+              "source": {
+                "department": "majorLeague",
+                "specialist": "The schedule",
+                "asOf": null,
+                "gameDate": "2040-5-6"
+              },
+              "unknown": [],
+              "wouldChange": [],
+              "lean": null,
+              "certainty": "fact",
+              "called": "A fact from the export"
+            },
+            "links": [
+              {
+                "kind": "view",
+                "department": "majorLeague",
+                "view": "scheduleGamePlans"
+              }
+            ],
+            "hint": "May 3, 2040"
+          },
+          "open": {
+            "kind": "view",
+            "department": "majorLeague",
+            "view": "scheduleGamePlans"
+          }
+        },
+        {
+          "key": "game:57",
+          "department": null,
+          "line": {
+            "text": "W 5–2 at Club 2 N",
+            "tone": "good",
+            "basis": {
+              "because": [
+                {
+                  "label": "Day",
+                  "value": "May 4, 2040"
+                },
+                {
+                  "label": "Score",
+                  "value": "5–2"
+                },
+                {
+                  "label": "Where",
+                  "value": "At Club 2 N"
+                },
+                {
+                  "label": "Since the last export",
+                  "value": "Played after the games the last export counted"
+                }
+              ],
+              "source": {
+                "department": "majorLeague",
+                "specialist": "The schedule",
+                "asOf": null,
+                "gameDate": "2040-5-6"
+              },
+              "unknown": [],
+              "wouldChange": [],
+              "lean": null,
+              "certainty": "fact",
+              "called": "A fact from the export"
+            },
+            "links": [
+              {
+                "kind": "view",
+                "department": "majorLeague",
+                "view": "scheduleGamePlans"
+              }
+            ],
+            "hint": "May 4, 2040"
+          },
+          "open": {
+            "kind": "view",
+            "department": "majorLeague",
+            "view": "scheduleGamePlans"
+          }
+        },
+        {
+          "key": "game:59",
+          "department": null,
+          "line": {
+            "text": "L 6–4 vs Club 3 N",
+            "tone": "bad",
+            "basis": {
+              "because": [
+                {
+                  "label": "Day",
+                  "value": "May 5, 2040"
+                },
+                {
+                  "label": "Score",
+                  "value": "4–6"
+                },
+                {
+                  "label": "Where",
+                  "value": "At home"
+                },
+                {
+                  "label": "Since the last export",
+                  "value": "Played after the games the last export counted"
+                }
+              ],
+              "source": {
+                "department": "majorLeague",
+                "specialist": "The schedule",
+                "asOf": null,
+                "gameDate": "2040-5-6"
+              },
+              "unknown": [],
+              "wouldChange": [],
+              "lean": null,
+              "certainty": "fact",
+              "called": "A fact from the export"
+            },
+            "links": [
+              {
+                "kind": "view",
+                "department": "majorLeague",
+                "view": "scheduleGamePlans"
+              }
+            ],
+            "hint": "May 5, 2040"
+          },
+          "open": {
+            "kind": "view",
+            "department": "majorLeague",
+            "view": "scheduleGamePlans"
+          }
+        }
+      ]
+    },
+    "since": {
+      "display": "Since the export of May 3, 2040",
+      "hint": "That export was read Jul 1, 2040, 12:00 PM"
+    },
+    "previousImport": "2040-07-01T12:00:00.000Z",
+    "previousGameDate": "2040-5-3"
+  },
+  "changesNote": null,
+  "wire": {
+    "title": {
+      "display": "Around the league"
+    },
+    "order": {
+      "line": {
+        "display": "Followed first, then newest",
+        "hint": "Followed first if asked, then newest, then by kind, trades first"
+      },
+      "followedFirst": true
+    },
+    "entries": [
+      {
+        "id": "injuries:1053:2040-5-4",
+        "date": "2040-5-4",
+        "when": {
+          "display": "May 4, 2040"
+        },
+        "kind": "injury",
+        "clubs": [
+          {
+            "teamId": 3,
+            "name": "Club 3 N",
+            "abbreviation": "C3",
+            "followed": true
+          }
+        ],
+        "players": [
+          {
+            "playerId": 1053,
+            "name": "P 1053",
+            "followed": false
+          }
+        ],
+        "headline": {
+          "text": "P 1053 was hurt",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "From",
+                "value": "The export's injury history"
+              },
+              {
+                "label": "Day",
+                "value": "May 4, 2040"
+              },
+              {
+                "label": "Club",
+                "value": "Club 3 N"
+              },
+              {
+                "label": "Day-to-day",
+                "value": "No"
+              },
+              {
+                "label": "Length, as the export records it",
+                "value": "12"
+              }
+            ],
+            "source": {
+              "department": "league",
+              "specialist": "The league wire",
+              "asOf": null,
+              "gameDate": "2040-5-6"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact",
+            "called": "A fact from the export"
+          },
+          "links": [
+            {
+              "kind": "player",
+              "playerId": 1053
+            },
+            {
+              "kind": "club",
+              "teamId": 3
+            }
+          ],
+          "hint": "From the export's injury history"
+        },
+        "source": "injuries",
+        "followed": true
+      },
+      {
+        "id": "trades:9001",
+        "date": "2040-5-3",
+        "when": {
+          "display": "May 3, 2040"
+        },
+        "kind": "trade",
+        "clubs": [
+          {
+            "teamId": 2,
+            "name": "Club 2 N",
+            "abbreviation": "C2",
+            "followed": false
+          },
+          {
+            "teamId": 3,
+            "name": "Club 3 N",
+            "abbreviation": "C3",
+            "followed": true
+          }
+        ],
+        "players": [
+          {
+            "playerId": 1036,
+            "name": "P 1036",
+            "followed": false
+          },
+          {
+            "playerId": 1062,
+            "name": "P 1062",
+            "followed": false
+          }
+        ],
+        "headline": {
+          "text": "The Club 2 traded P 1036 to the Club 3 for P 1062.",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "From",
+                "value": "The export's trade record"
+              },
+              {
+                "label": "Day",
+                "value": "May 3, 2040"
+              },
+              {
+                "label": "Clubs",
+                "value": "Club 2 N, Club 3 N"
+              }
+            ],
+            "source": {
+              "department": "league",
+              "specialist": "The league wire",
+              "asOf": null,
+              "gameDate": "2040-5-6"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact",
+            "called": "A fact from the export"
+          },
+          "links": [
+            {
+              "kind": "player",
+              "playerId": 1036
+            },
+            {
+              "kind": "club",
+              "teamId": 2
+            },
+            {
+              "kind": "club",
+              "teamId": 3
+            }
+          ],
+          "hint": "As the export's trade record words it"
+        },
+        "source": "trades",
+        "followed": true
+      },
+      {
+        "id": "streaks:1078:hitting:2040-4-16",
+        "date": "2040-5-6",
+        "when": {
+          "display": "May 6, 2040"
+        },
+        "kind": "streak",
+        "clubs": [
+          {
+            "teamId": 4,
+            "name": "Club 4 N",
+            "abbreviation": "C4",
+            "followed": false
+          }
+        ],
+        "players": [
+          {
+            "playerId": 1078,
+            "name": "P 1078",
+            "followed": false
+          }
+        ],
+        "headline": {
+          "text": "P 1078 has hit in 16 straight games",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "From",
+                "value": "The export's streaks"
+              },
+              {
+                "label": "Day",
+                "value": "May 6, 2040"
+              },
+              {
+                "label": "Club",
+                "value": "Club 4 N"
+              },
+              {
+                "label": "Games",
+                "value": "16"
+              },
+              {
+                "label": "Began",
+                "value": "April 16, 2040"
+              },
+              {
+                "label": "Shown from",
+                "value": "15 games"
+              }
+            ],
+            "source": {
+              "department": "league",
+              "specialist": "The league wire",
+              "asOf": null,
+              "gameDate": "2040-5-6"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "policy",
+            "called": "A line chosen and stated",
+            "stamp": "The wire shows hitting streaks of 15 games or more and on-base streaks of 25 or more, for players on a major-league club."
+          },
+          "links": [
+            {
+              "kind": "player",
+              "playerId": 1078
+            },
+            {
+              "kind": "club",
+              "teamId": 4
+            }
+          ],
+          "hint": "A streak still running"
+        },
+        "source": "streaks",
+        "followed": false
+      },
+      {
+        "id": "awards:1002:0:2040-5-5",
+        "date": "2040-5-5",
+        "when": {
+          "display": "May 5, 2040"
+        },
+        "kind": "award",
+        "clubs": [
+          {
+            "teamId": 1,
+            "name": "Club 1 N",
+            "abbreviation": "C1",
+            "followed": false
+          }
+        ],
+        "players": [
+          {
+            "playerId": 1002,
+            "name": "P 1002",
+            "followed": false
+          }
+        ],
+        "headline": {
+          "text": "P 1002: Player of the Week",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "From",
+                "value": "The export's awards"
+              },
+              {
+                "label": "Day",
+                "value": "May 5, 2040"
+              },
+              {
+                "label": "Club",
+                "value": "Club 1 N"
+              },
+              {
+                "label": "Award",
+                "value": "Player of the Week"
+              }
+            ],
+            "source": {
+              "department": "league",
+              "specialist": "The league wire",
+              "asOf": null,
+              "gameDate": "2040-5-6"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact",
+            "called": "A fact from the export"
+          },
+          "links": [
+            {
+              "kind": "player",
+              "playerId": 1002
+            },
+            {
+              "kind": "club",
+              "teamId": 1
+            }
+          ],
+          "hint": "From the export's awards"
+        },
+        "source": "awards",
+        "followed": false
+      }
+    ],
+    "more": null,
+    "gaps": [
+      {
+        "display": "OOTP's transaction log couldn't be read, so moves are shown as changes between exports.",
+        "tone": "unknown"
+      },
+      {
+        "display": "Without the log, moves come from two exports compared, and there is only one so far.",
+        "tone": "unknown"
+      },
+      {
+        "display": "League news isn't on the wire: the export files it with your own mail, and Pennant can't tell the two apart.",
+        "tone": "unknown",
+        "hint": "The export mixes headlines with staff notes and trade offers"
+      }
+    ],
+    "empty": null,
+    "open": {
+      "kind": "view",
+      "department": "league",
+      "view": "wire"
+    }
+  },
+  "deskStamp": "dstamp"
+}

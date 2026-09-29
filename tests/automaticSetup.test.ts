@@ -7,6 +7,7 @@ import { clubForgottenWhenImported, forgetClubWhenImported, loadSettings } from 
 import { stopWatcher } from '../server/watcher.js';
 import { APP_STORE_27, PretendHome } from './saveHomeFixture';
 import request, { post } from './request';
+import { clubOwed } from '../server/clubOwed.js';
 
 /**
  * The first run's zero-question setup (D-063, BEHAVIOR_CASES "Finding the save"): with no save chosen, the save that
@@ -130,6 +131,22 @@ describe('a save chosen by the GM, with its club taken from the save (N6 Stage B
     expect(again.club).toEqual({ decided: true, teamId: 3, name: 'Boston Red Sox', humanClubs: 2, text: 'Keeping the Boston Red Sox, the club you chose.' });
     expect(importState.lastError).toBeNull();
     expect(loadSettings().defaultOrgId).toBe(3);
+    await post('/api/settings', { defaultOrgId: null });
+  });
+
+  it('owes the club question from the import of a save with several clubs until the GM chooses, through the routes (L4)', async () => {
+    const two = home.save(APP_STORE_27, 'Owed', { playedHoursAgo: 1, humanClubs: [[1, 'Arizona', 'Diamondbacks'], [3, 'Boston', 'Red Sox']] });
+    await post('/api/settings', { defaultOrgId: null });
+    const answer = await post('/api/config', { csvDir: two.csvDir, saveName: 'Owed', club: 'fromSave' });
+    expect(answer.club).toMatchObject({ decided: false, humanClubs: 2 });
+    await until(() => !importState.importing && importState.lastImport?.csvDir === two.csvDir);
+    expect(importState.lastError).toBeNull();
+    expect((await request('/api/status')).clubOwed).toMatchObject({ humanClubs: 2, text: 'You manage 2 clubs in this save. Choose the one to follow.' });
+    expect((await request('/api/settings')).clubOwed).toMatchObject({ humanClubs: 2 });
+    // The GM answers: nothing is owed any more, across a relaunch too
+    await post('/api/settings', { defaultOrgId: 3 });
+    expect((await request('/api/status')).clubOwed).toBeNull();
+    expect(clubOwed()).toBeNull();
     await post('/api/settings', { defaultOrgId: null });
   });
 
