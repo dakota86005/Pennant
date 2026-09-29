@@ -49,6 +49,22 @@ describe('search', () => {
     expect(searchNow('jose ram').groups.find((g) => g.kind === 'player')!.results[0].id).toBe(String(save.regular));
   });
 
+  it('finds a name written with punctuation without it, and needs a word of the name for each word typed (L7)', () => {
+    const [oneil, jojo] = save.hitters.slice(5, 7);
+    const rename = db.prepare(`UPDATE players SET first_name = ?, last_name = ? WHERE player_id = ?`);
+    rename.run('Shay', 'O\'Neil', oneil);
+    rename.run('Jo', 'Jo Reyes', jojo);
+    forgetSearchIndex();
+    const ids = (q: string) => (searchNow(q).groups.find((g) => g.kind === 'player')?.results ?? []).map((r) => r.id);
+    expect(ids('oneil')).toContain(String(oneil));
+    expect(ids('shay oneil')).toContain(String(oneil));
+    expect(ids('o\'neil')).toContain(String(oneil));
+    // Each word typed takes a word of its own: "jo jo" finds Jo Jo Reyes, and one "jo" twice finds no one with one "Jo"
+    expect(ids('jo jo')).toContain(String(jojo));
+    expect(ids('reyes reyes')).not.toContain(String(jojo));
+    expect(ids('oneil o')).not.toContain(String(oneil));
+  });
+
   it('says what to type when nothing is typed, and that nothing matches when nothing does', () => {
     expect(searchNow('').empty!.display).toBe('Type a player, a club or a view');
     expect(searchNow('zzzzqx').empty!.display).toBe('No players, clubs or views match');

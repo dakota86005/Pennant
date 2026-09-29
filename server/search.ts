@@ -5,7 +5,8 @@
  * - **An index built once per import**, never the league read on every keystroke: the players still in the game, the
  *   major-league clubs and the views the catalog serves, each with its words split and folded (case and accents set
  *   aside). Built on the first search after an import (or warmed after it) and kept until the served league changes.
- * - **Every word of the query** must begin a word of the entry, as the palette matches views.
+ * - **Every word of the query** must begin a word of the entry, each a word of its own, as the palette matches views;
+ *   a name written with punctuation is found without it too ("oneil" finds "O'Neil").
  * - **A stated order, no hidden score:** what the GM follows first, then entries whose name starts with what was typed,
  *   then our organization's players, then by name (`presentation/searchWords.ts` says so).
  *
@@ -23,8 +24,13 @@ export interface SearchEntry {
   /** A player or team id, or a view's `department/view`. */
   id: string;
   name: string;
-  /** The name's words, folded, for matching. */
+  /** The name's words, folded, for matching (each a word of its own: "O'Neil" is "o" and "neil"). */
   words: string[];
+  /**
+   * A word written with punctuation inside it, folded without it ("O'Neil" as "oneil", "Jean-Luc" as "jeanluc"), with the
+   * words it stands for (their places in `words`), so "oneil" finds "O'Neil" (L7).
+   */
+  joined: Array<{ form: string; parts: number[] }>;
   /** The whole name, folded, for "starts with what was typed". */
   folded: string;
   // A player's
@@ -48,8 +54,22 @@ export function fold(s: string): string {
   return s.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 }
 
-const wordsOf = (...parts: Array<string | null | undefined>): string[] =>
-  [...new Set(parts.filter((p): p is string => !!p).flatMap((p) => fold(p).split(' ')).filter(Boolean))];
+/** Case and accents set aside, and punctuation dropped rather than spaced: "O'Neil" reads "oneil". */
+const foldJoined = (s: string): string => s.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+
+/** An entry's words (every word, in order, repeats kept: each query word must match a word of its own) and joined forms. */
+function wordsOf(...parts: Array<string | null | undefined>): Pick<SearchEntry, 'words' | 'joined'> {
+  const words: string[] = [];
+  const joined: SearchEntry['joined'] = [];
+  for (const token of parts.filter((p): p is string => !!p).flatMap((p) => p.split(/\s+/))) {
+    const spaced = fold(token).split(' ').filter(Boolean);
+    if (!spaced.length) continue;
+    const at = words.length;
+    words.push(...spaced);
+    if (spaced.length > 1) joined.push({ form: foldJoined(token), parts: spaced.map((_, i) => at + i) });
+  }
+  return { words, joined };
+}
 
 let index: { key: string; entries: SearchEntry[]; ms: number } | null = null;
 let builds = 0;
@@ -75,7 +95,7 @@ function buildIndex(): SearchEntry[] {
       const parent = typeof r.parent === 'number' && r.parent > 0 ? r.parent : null;
       clubs.set(id, { name: String(r.label), abbr: typeof r.abbr === 'string' ? r.abbr : null, level, org: level === 1 ? id : parent });
       if (level === 1 && !Number(r.allstar)) {
-        entries.push({ kind: 'club', id: String(id), name: String(r.label), words: wordsOf(String(r.label), typeof r.abbr === 'string' ? r.abbr : null), folded: fold(String(r.label)), teamId: id, abbr: typeof r.abbr === 'string' ? r.abbr : null, division: null });
+        entries.push({ kind: 'club', id: String(id), name: String(r.label), ...wordsOf(String(r.label), typeof r.abbr === 'string' ? r.abbr : null), folded: fold(String(r.label)), teamId: id, abbr: typeof r.abbr === 'string' ? r.abbr : null, division: null });
       }
     }
   }
@@ -106,7 +126,7 @@ function buildIndex(): SearchEntry[] {
       const teamId = typeof r.team_id === 'number' && r.team_id > 0 ? r.team_id : null;
       const club = teamId !== null ? clubs.get(teamId) : undefined;
       entries.push({
-        kind: 'player', id: String(r.player_id), name, words: wordsOf(name), folded: fold(name), playerId: Number(r.player_id),
+        kind: 'player', id: String(r.player_id), name, ...wordsOf(name), folded: fold(name), playerId: Number(r.player_id),
         teamId, orgId: typeof r.org === 'number' && r.org > 0 ? r.org : club?.org ?? null,
         position: typeof r.position === 'number' ? POSITION_NAMES[r.position] ?? null : null,
         level: club?.level ?? null, clubName: club?.name ?? null,
@@ -115,7 +135,7 @@ function buildIndex(): SearchEntry[] {
   }
   for (const d of servedDepartments(null)) {
     for (const v of d.views) {
-      entries.push({ kind: 'view', id: `${d.id}/${v.id}`, name: v.name, words: wordsOf(v.name, d.name), folded: fold(v.name), department: d.id, view: v.id, departmentName: d.name });
+      entries.push({ kind: 'view', id: `${d.id}/${v.id}`, name: v.name, ...wordsOf(v.name, d.name), folded: fold(v.name), department: d.id, view: v.id, departmentName: d.name });
     }
   }
   return entries;
@@ -132,9 +152,32 @@ export function searchIndex(importStamp: string | null): { entries: SearchEntry[
   return index;
 }
 
-/** Whether every word of the query begins a word of the entry. */
+/**
+ * Whether every word of the query begins a word of the entry, each a word of its own (L7): "jo jo" finds "Jo Jo Reyes",
+ * never "John Smith". A joined form ("oneil") stands for the words it joins, so it takes them all.
+ */
 export function matches(entry: SearchEntry, queryWords: readonly string[]): boolean {
-  return queryWords.every((q) => entry.words.some((w) => w.startsWith(q)));
+  // Cheap refusal first: a query word no word or joined form begins
+  if (!queryWords.every((q) => entry.words.some((w) => w.startsWith(q)) || entry.joined.some((j) => j.form.startsWith(q)))) return false;
+  const used = new Array<boolean>(entry.words.length).fill(false);
+  const assign = (i: number): boolean => {
+    if (i === queryWords.length) return true;
+    const q = queryWords[i];
+    for (let w = 0; w < entry.words.length; w += 1) {
+      if (used[w] || !entry.words[w].startsWith(q)) continue;
+      used[w] = true;
+      if (assign(i + 1)) return true;
+      used[w] = false;
+    }
+    for (const j of entry.joined) {
+      if (!j.form.startsWith(q) || j.parts.some((p) => used[p])) continue;
+      for (const p of j.parts) used[p] = true;
+      if (assign(i + 1)) return true;
+      for (const p of j.parts) used[p] = false;
+    }
+    return false;
+  };
+  return assign(0);
 }
 
 export interface SearchQuery {

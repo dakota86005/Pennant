@@ -686,7 +686,8 @@ Nothing is drawn yet: Stage B draws it. Cases 15 to 20 and the search and club-o
   club (and copy of the live log, which the report reads through the data status's freshness); our division's are built
   ahead once per import, after the refits' hold is released, each after any running build of our own Front Office, and
   never again for a later build of the same import (a rival's report is then built when opened).
-- **Search** (`search.ts`, `presentation/searchWords.ts`): every word typed must begin a word of the name; players (ours
+- **Search** (`search.ts`, `presentation/searchWords.ts`): every word typed must begin a word of the name, each a word of its own ("jo jo" needs two),
+  and a name written with punctuation is found without it ("oneil" finds "O'Neil"); players (ours
   and the league's, not retired), major-league clubs and the catalog's views, each with its `open` target, grouped;
   followed first, then names that start with the query, then our organization's players, then by name (stated in
   `order`). The index is built once per import (warmed after it).
