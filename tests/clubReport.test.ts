@@ -124,6 +124,19 @@ describe('another club\'s report (case 19)', () => {
     expect(frontOfficeStats().clubBuilds).toBe(ahead + 1);
   });
 
+  it('stops building an import\'s rivals ahead once a newer import is served (its own warm-up builds them)', async () => {
+    invalidateFrontOffice();
+    const before = frontOfficeStats().clubBuilds;
+    const stamp = importedAt.value;
+    const rivals = save.clubs.filter((c) => c !== save.org);
+    const warm = warmClubReports(rivals, save.org, () => importedAt.value === stamp);
+    await settle();
+    importedAt.value = '2040-05-07T10:00:00.000Z';
+    await warm;
+    expect(frontOfficeStats().clubBuilds - before).toBeLessThan(rivals.length);
+    importedAt.value = stamp;
+  });
+
   it('builds a rival\'s report ahead only after our own Front Office\'s build that is running (M5)', async () => {
     invalidateFrontOffice();
     const before = frontOfficeStats().clubBuilds;

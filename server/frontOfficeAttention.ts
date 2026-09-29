@@ -354,7 +354,7 @@ async function warmAfter(org: number, importStamp: string | null): Promise<void>
     if (importedAt.value !== importStamp) return;
     const started = performance.now();
     const rivals = divisionRivals(org);
-    await warmClubReports(rivals, org);
+    await warmClubReports(rivals, org, () => importedAt.value === importStamp);
     if (rivals.length) console.log(`[club reports] ${rivals.length} division rivals built ahead in ${Math.round(performance.now() - started)} ms`);
   })().catch((err) => console.error('[club reports] the division rivals could not be built ahead:', err));
 }

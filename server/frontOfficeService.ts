@@ -443,11 +443,14 @@ async function ourBuildsSettled(): Promise<void> {
 
 /**
  * Builds other clubs' reports in the background, one at a time (after an import: our division's), each after any build
- * of our own Front Office that is running: a rival's report never holds up ours (M5). Never throws.
+ * of our own Front Office that is running: a rival's report never holds up ours (M5). `stillWanted` is asked before each
+ * (a warm-up for an import no longer served stops). Never throws.
  */
-export async function warmClubReports(teamIds: readonly number[], ourTeamId: number | null): Promise<void> {
+export async function warmClubReports(teamIds: readonly number[], ourTeamId: number | null, stillWanted: () => boolean = () => true): Promise<void> {
   for (const teamId of teamIds) {
     await ourBuildsSettled();
+    // A newer import meanwhile: its own warm-up builds its reports; this one stops
+    if (!stillWanted()) return;
     try {
       await clubReportBuilt(teamId, ourTeamId);
     } catch (err) {
