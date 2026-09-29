@@ -663,7 +663,9 @@ Nothing is drawn yet: Stage B draws it. Cases 15 to 20 and the search and club-o
   on its game date and comes back with "Deferral ended …"; an item marked handled that this export still raises says
   "The latest export still shows it". Statuses resolve only on the first remembered build of a new import, never on a
   rebuild of the same one, and never one set during that import. `PUT` answers with the status it replaced and `undo`, the request that puts it
-  back; refusals are sentences (400/404). The composed answer is kept per build, remembered state, desk and wire, so a
+  back; refusals are sentences (400/404). A `PUT` never builds the Front Office: the item is checked against the build kept
+  for the current inputs, else this import's last served desk (its snapshot), else refused ("Pennant is still reading
+  this export's desk"). The composed answer is kept per build, remembered state, desk and wire, so a
   status composes again in a few milliseconds without reading the league.
 - **Following** (`aroundTheLeague.ts`, `presentation/frontOffice/following.ts`): the watchlist is copied in once per
   save (with its notes; `following_watchlist_copies` keeps a player unfollowed from being copied back; the `watchlist`
@@ -728,7 +730,8 @@ the log showed no rebuild in them, so it is put down to the machine's load, not 
 - `DeskAttention {status: open | reviewed | deferred | handled, line: Cell, until, deferralEnded, note, stillShown: Cell
   | null, since}`; `DeskSetAside {line, reviewed, deferred, handled, items}`; `DeskView {orgId, importStamp, reportStamp,
   deskStamp, desk}`; `DeskUpdate {key, status, until?, note?}` (the `PUT` body; `note: ""` clears it, absent keeps it);
-  `DeskChange {key, done: Cell, attention, previous, undo: DeskUpdate, view: DeskView}`.
+  `DeskChange {key, done: Cell, attention, previous, undo: DeskUpdate, view: DeskView | null}` (null while the Front Office
+  is being built again: the change is recorded and `desk-changed` says to read the desk again).
 - `Following {title, clubs, players: FollowedItem[], empty, suggestions: FollowSuggestion[], watchlist: Cell | null,
   followStamp}`; `FollowedItem {kind, id, name, line, note, since, open}`; `FollowSuggestion {kind: club, id, name,
   why}`; `FollowUpdate {kind, id, note?, restore?}`; `FollowChange {done, following, undo {action: follow | unfollow, request},

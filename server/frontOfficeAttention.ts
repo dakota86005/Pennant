@@ -86,9 +86,12 @@ export function resultsSince(built: Pick<FrontOfficeBuilt, 'orgId' | 'season'>, 
   return { games: games.filter((g) => (parseGameDate(g.date) ?? '') >= from), how: 'date' };
 }
 
+/** A short stamp of the club's desk statuses (moves with every change). */
+const deskStampOf = (recs: Map<string, AttentionRecord>): string => `d${hash(JSON.stringify([...recs].map(([k, r]) => [k, r.status, r.until, r.note, r.since])))}`;
+
 function compose(built: FrontOfficeBuilt): Composed {
   const recs = records(built.orgId);
-  const deskStamp = `d${hash(JSON.stringify([...recs].map(([k, r]) => [k, r.status, r.until, r.note, r.since])))}`;
+  const deskStamp = deskStampOf(recs);
   // The wire's column is on the answer: a copy of the live log read after it was composed composes it again
   const key = `${built.key}|${memory.memoryRevision()}|${deskStamp}|${wireStamp(built.importStamp, built.orgId)}`;
   const hit = composed.get(key);
@@ -203,6 +206,10 @@ function doneWords(status: DeskStatus, until: string | null, previous: DeskStatu
  * Sets an item's status (`PUT /api/v2/desk/:org`): the item must be in this export's reports; a deferral needs a game
  * date after the league's day. Answers with the status it replaced and the request that puts it back (one-step undo).
  * Records the GM's attention only: nothing is written to OOTP (D-004), and nothing the department said changes.
+ *
+ * Never builds the Front Office (L5): the item is checked against the build kept for the current inputs, else against
+ * what this import's desk last served (its snapshot); with neither, the change is refused in a sentence. Without a kept
+ * build the answer carries no view (`view: null`) and the `desk-changed` event says to read the desk again.
  */
 export async function setDeskStatus(orgId: number, body: unknown): Promise<DeskChange> {
   const b = (body ?? {}) as Partial<DeskUpdate>;
@@ -210,32 +217,38 @@ export async function setDeskStatus(orgId: number, body: unknown): Promise<DeskC
   if (typeof b.status !== 'string' || !STATUSES.has(b.status as DeskStatus)) throw new DeskRefusal('Choose open, reviewed, deferred or handled in OOTP.', 400);
   if (b.note !== undefined && (typeof b.note !== 'string' || b.note.length > MAX_NOTE)) throw new DeskRefusal('Keep the note under 1,000 characters.', 400);
   if (!memory.snapshotsAllowed()) throw new DeskRefusal('The save you chose isn\'t imported yet, so its desk can\'t be marked.', 400);
-  const built = await frontOfficeBuilt(orgId);
-  const keys = new Set([...built.reports.values()].flatMap((r) => [...r.toDecide.items, ...r.watching.items].map((it) => it.key)));
+  const importStamp = importedAt.value;
+  const kept = keptFrontOffice(orgId);
+  const built = kept && kept.importStamp === importStamp ? kept : null;
+  const snapshot = built || !importStamp ? null : memory.reportSnapshotOf(orgId, importStamp);
+  if (!built && !snapshot) throw new DeskRefusal('Pennant is still reading this export\'s desk. Mark it again in a moment.', 400);
+  const keys = built
+    ? new Set([...built.reports.values()].flatMap((r) => [...r.toDecide.items, ...r.watching.items].map((it) => it.key)))
+    : new Set(snapshot!.items.keys());
   if (!keys.has(b.key)) throw new DeskRefusal('That item isn\'t in this export\'s reports. It may have been resolved.', 404);
+  const today = built ? built.season?.gameDate ?? null : snapshot!.gameDate;
   const status = b.status as DeskStatus;
   let until: string | null = null;
   if (status === 'deferred') {
     const day = typeof b.until === 'string' ? parseGameDate(b.until) : null;
     if (!day) throw new DeskRefusal('Choose the day to defer it to.', 400);
-    const today = parseGameDate(built.season?.gameDate ?? null);
-    if (today && day <= today) throw new DeskRefusal(`Choose a day after the league's day, ${gameDateDisplay(built.season?.gameDate ?? null) ?? today}.`, 400);
+    const league = parseGameDate(today);
+    if (league && day <= league) throw new DeskRefusal(`Choose a day after the league's day, ${gameDateDisplay(today) ?? league}.`, 400);
     until = b.until as string;
   }
   const before = records(orgId).get(b.key) ?? null;
-  const { previous } = await memory.setDeskRecord(orgId, b.key, { status, until, note: b.note === undefined ? undefined : b.note.trim() }, built.importStamp);
-  const c = compose(built);
-  const today = built.season?.gameDate ?? null;
-  const now = attentionOf(records(orgId).get(b.key), today, built.importStamp);
-  const was = attentionOf(before, today, built.importStamp);
-  publish({ type: 'desk-changed', orgId, deskStamp: c.deskStamp, key: b.key });
+  const { previous } = await memory.setDeskRecord(orgId, b.key, { status, until, note: b.note === undefined ? undefined : b.note.trim() }, importStamp);
+  const c = built ? compose(built) : null;
+  const now = attentionOf(records(orgId).get(b.key), today, importStamp);
+  const was = attentionOf(before, today, importStamp);
+  publish({ type: 'desk-changed', orgId, deskStamp: c?.deskStamp ?? deskStampOf(records(orgId)), key: b.key });
   return {
     key: b.key,
     done: cell(doneWords(status, until, previous?.status ?? 'open')),
     attention: now,
     previous: was,
     undo: { key: b.key, status: previous?.status ?? 'open', until: previous?.until ?? null, note: previous?.note ?? '' },
-    view: viewOf(built, c),
+    view: built && c ? viewOf(built, c) : null,
   };
 }
 

@@ -3,7 +3,7 @@ import { historyDb } from '../server/history.js';
 import { forgetHistoryKey } from '../server/historyIdentity.js';
 import { deskRecords, forgetMemoryCaches, resolveDeskRecords, setDeskRecord } from '../server/frontOfficeMemory.js';
 import { DeskRefusal, departmentReportNow, deskViewNow, frontOfficeSummaryNow, rememberBuild, resetAttention, setDeskStatus } from '../server/frontOfficeAttention.js';
-import { frontOfficeBuilt, frontOfficeSummary, resetFrontOfficeCache, type FrontOfficeBuilt } from '../server/frontOfficeService.js';
+import { frontOfficeBuilt, frontOfficeStats, frontOfficeSummary, invalidateFrontOffice, resetFrontOfficeCache, type FrontOfficeBuilt } from '../server/frontOfficeService.js';
 import { importedAt } from '../server/playerStateRoutes.js';
 import { subscribe, type ServerEvent } from '../server/serverEvents.js';
 import { attentionOf, onLeadList } from '../server/presentation/frontOffice/attention.js';
@@ -176,5 +176,26 @@ describe('a desk status records attention and changes nothing else (case 15)', (
     await setDeskRecord(save.org, key, { status: 'reviewed', until: null }, 'i-next');
     expect(await resolveDeskRecords(save.org, new Set(), new Set([dept]), 'i-next')).toBe(0);
     expect(deskRecords(save.org).get(key)!.status).toBe('reviewed');
+  });
+
+  it('marks an item without ever building the Front Office: checked against the kept build, else this import\'s last desk (L5)', async () => {
+    const built = await frontOfficeBuilt(save.org);
+    await settle();
+    await rememberBuild(built);
+    // The kept build is dropped (a new copy of the log, a refit): the change is checked against what this import served
+    invalidateFrontOffice();
+    const builds = frontOfficeStats().builds;
+    const change = await setDeskStatus(save.org, { key, status: 'reviewed' });
+    expect(change.attention.status).toBe('reviewed');
+    expect(change.view).toBeNull();
+    expect(heard.filter((e) => e.type === 'desk-changed').at(-1)).toMatchObject({ key });
+    await expect(setDeskStatus(save.org, { key: 'majorLeague:nothing', status: 'reviewed' })).rejects.toThrow(/isn't in this export's reports/);
+    expect(frontOfficeStats().builds).toBe(builds);
+
+    // A new import with neither a kept build nor a desk served yet: refused in a sentence, and nothing is built
+    importedAt.value = '2040-05-03T10:00:00.000Z';
+    invalidateFrontOffice();
+    await expect(setDeskStatus(save.org, { key, status: 'handled' })).rejects.toThrow('Pennant is still reading this export\'s desk. Mark it again in a moment.');
+    expect(frontOfficeStats().builds).toBe(builds);
   });
 });

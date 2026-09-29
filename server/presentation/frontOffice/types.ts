@@ -264,7 +264,12 @@ export interface DeskChange {
   previous: DeskAttention;
   /** The request that puts it back in one step (the Mac app's Undo). */
   undo: DeskUpdate;
-  view: DeskView;
+  /**
+   * The desk with the change on it; null while the club's Front Office is being built again (a new copy of the live log,
+   * a refit): the change is recorded all the same, checked against what this export's desk last served, and the
+   * `desk-changed` event that follows says to read the desk again. A change never builds the Front Office itself.
+   */
+  view: DeskView | null;
 }
 
 /** The Morning Report's desk and department cards (`GET /api/v2/front-office/:org`). */

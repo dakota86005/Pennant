@@ -2926,7 +2926,8 @@
             "description": "The request that puts it back in one step (the Mac app's Undo)."
           },
           "view": {
-            "$ref": "#/components/schemas/DeskView"
+            "$ref": "#/components/schemas/DeskView",
+            "description": "The desk with the change on it; null while the club's Front Office is being built again (a new copy of the live log, a refit): the change is recorded all the same, checked against what this export's desk last served, and the `desk-changed` event that follows says to read the desk again. A change never builds the Front Office itself."
           }
         },
         "required": [
@@ -2934,8 +2935,7 @@
           "done",
           "attention",
           "previous",
-          "undo",
-          "view"
+          "undo"
         ],
         "description": "The answer to a status change: the item as it is now, the request that undoes it, and the desk."
       },
