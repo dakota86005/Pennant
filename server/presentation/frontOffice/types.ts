@@ -11,7 +11,9 @@ import type { Cell, Claim, DeptId, Target } from '../../contract/presentation.js
 import type { Integer } from '../../contract/primitives.js';
 import type { DepartmentHead } from '../catalog.js';
 import type { DeskSeverity } from '../severity.js';
+import type { GameDate } from '../../dataFreshness.js';
 import type { ClubProfile, RosterMap, TeamSeason } from './morningTypes.js';
+import type { WireTop } from './leagueTypes.js';
 
 export type { DeskSeverity } from '../severity.js';
 
@@ -46,6 +48,31 @@ export interface FoItem {
   evidence: string | null;
   /** How many of the department's own items this row stands for: 1, or more when the grouping rule put several in one row. */
   count: Integer;
+  /**
+   * What the GM has done with it (N7, D-058): open, reviewed, deferred until a game date, or handled in OOTP. It records
+   * his attention only: it never changes the item's severity, its place in its department's order or its counts (case 15).
+   */
+  attention: DeskAttention;
+}
+
+/** What the GM did with an item on the desk. `open` is every item he has not marked. */
+export type DeskStatus = 'open' | 'reviewed' | 'deferred' | 'handled';
+
+/** An item's status on the desk, in words (N7, D-058). */
+export interface DeskAttention {
+  status: DeskStatus;
+  /** "Open", "Reviewed", "Deferred until May 20", "Handled in OOTP", with when it was set in its help tag. */
+  line: Cell;
+  /** The game date a deferral runs to, as sent; null unless deferred. */
+  until: GameDate | null;
+  /** Whether a deferral's date has come (the item is back on the lead list); false otherwise. */
+  deferralEnded: boolean;
+  /** The GM's own note on the item, as he wrote it; null when he wrote none. */
+  note: string | null;
+  /** Marked handled in OOTP while the latest export still shows it: said, never read as resolved; null otherwise. */
+  stillShown: Cell | null;
+  /** When the status was set (ISO 8601); null for an item never marked. */
+  since: string | null;
 }
 
 /** A department's report is ready, could not be read this time, or has nothing to report yet. */
@@ -65,10 +92,49 @@ export interface ReportUnknowns {
   lines: Cell[];
 }
 
-/** What changed since the last export (N7 fills it). */
+/** What changed since the last export in one department (N7): an item new, resolved, or at another urgency. */
 export interface ReportChange {
   kind: 'new' | 'resolved' | 'moved';
   line: Claim;
+}
+
+/** One entry behind a "since the last export" chip: an item that is new, resolved or moved, or a game played. */
+export interface ChangeItem {
+  /** The item's key (a game's is `game:<id>`). */
+  key: string;
+  /** The department that raised it; null for a game. */
+  department: DeptId | null;
+  line: Claim;
+  /** Where it opens: the item's department report, or the schedule for a game; null when nowhere. */
+  open: Target | null;
+}
+
+/** One chip of "since the last export": how many, its words, and what it opens (the design's `ChipRow`). */
+export interface ChangeChip {
+  kind: 'new' | 'resolved' | 'moved' | 'results';
+  count: Integer;
+  /** "3 new", "2 resolved", "1 moved", "4–2 since May 1". */
+  text: string;
+  /** What the chip counts, in one line. */
+  hint: string;
+  items: ChangeItem[];
+}
+
+/**
+ * What changed since the last export of this save (N7, D-058): the departments' items that are new, resolved or at
+ * another urgency, and the games played between the two exports. It says what changed, never which transaction did it
+ * (D-020, case 16).
+ */
+export interface SinceLastExport {
+  new: ChangeChip;
+  resolved: ChangeChip;
+  moved: ChangeChip;
+  results: ChangeChip;
+  /** "Since the export of May 1, 2040", with when that import was read in its help tag. */
+  since: Cell;
+  /** The earlier import compared with (its finish time), and the league's day it reflected. */
+  previousImport: string;
+  previousGameDate: GameDate | null;
 }
 
 /** A staff member's memo (the later AI pass fills it; never part of a decision, D-001). */
@@ -97,8 +163,13 @@ export interface DepartmentReport {
   figures: Claim[];
   toDecide: ReportSection;
   watching: ReportSection;
-  /** What changed since the last export; null until Pennant keeps each import's reports (N7), never an empty list. */
+  /**
+   * What changed in this department since the last export of this save (N7); null when there is no earlier export to
+   * compare with (`changesNote` says so), never an empty list read as "nothing changed".
+   */
   changes: ReportChange[] | null;
+  /** Why there is nothing to compare with, or that nothing changed; null when `changes` has lines. */
+  changesNote: Cell | null;
   unknowns: ReportUnknowns;
   /** The staff memo; null until the AI pass writes one. */
   memo: StaffMemo | null;
@@ -145,6 +216,55 @@ export interface Desk {
   empty: Cell | null;
   /** Which departments could not be read, so the desk may be missing items; null when every one was. */
   incomplete: Cell | null;
+  /**
+   * The items the GM set aside (N7): reviewed, handled in OOTP, or deferred to a day still ahead. They leave the lead
+   * list and stay one click away, with a served count ("2 reviewed · 1 handled in OOTP"); null when none is.
+   */
+  setAside: DeskSetAside | null;
+}
+
+/** The desk's set-aside items and their count, in words. */
+export interface DeskSetAside {
+  /** "2 reviewed · 1 handled in OOTP". */
+  line: Cell;
+  reviewed: Integer;
+  deferred: Integer;
+  handled: Integer;
+  items: FoItem[];
+}
+
+/** The desk on its own (`GET /api/v2/desk/:org`): the same desk the Morning Report shows, with every status. */
+export interface DeskView {
+  orgId: Integer;
+  importStamp: string | null;
+  reportStamp: string;
+  /** Moves whenever a status or a note changes, so a client knows its copy is current. */
+  deskStamp: string;
+  desk: Desk;
+}
+
+/**
+ * A change to one item's status (`PUT /api/v2/desk/:org`). `status` is required; `until` (a game date after the league's
+ * day) only with `deferred`; `note` left out keeps the note as it is, and an empty note clears it.
+ */
+export interface DeskUpdate {
+  key: string;
+  status: DeskStatus;
+  until?: GameDate | null;
+  note?: string;
+}
+
+/** The answer to a status change: the item as it is now, the request that undoes it, and the desk. */
+export interface DeskChange {
+  key: string;
+  /** "Marked reviewed", "Deferred until May 20", "Back on your desk", in words. */
+  done: Cell;
+  attention: DeskAttention;
+  /** The status (and note) it replaced. */
+  previous: DeskAttention;
+  /** The request that puts it back in one step (the Mac app's Undo). */
+  undo: DeskUpdate;
+  view: DeskView;
 }
 
 /** The Morning Report's desk and department cards (`GET /api/v2/front-office/:org`). */
@@ -170,6 +290,17 @@ export interface FrontOfficeSummary {
   clubProfile: ClubProfile | null;
   /** The roster map: each position's holder, his value, his place, who is behind him, control, needs; the staff beside it. */
   rosterMap: RosterMap | null;
+  /**
+   * Since the last export of this save (N7): new, resolved and moved items, and the results; null when there is no
+   * earlier export to compare with (`changesNote` says so in a sentence), never an empty list read as "nothing changed".
+   */
+  changes: SinceLastExport | null;
+  /** Why there is nothing to compare with yet; null when `changes` is served. */
+  changesNote: Cell | null;
+  /** Around the league: the top wire entries since the last export, followed clubs first (N7, D-059); null when not built. */
+  wire: WireTop | null;
+  /** Moves whenever a desk status, a note or a follow changes (the summary's attention, not its build). */
+  deskStamp: string;
 }
 
 /** One titled part of an evidence trail. */

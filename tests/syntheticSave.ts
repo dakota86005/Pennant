@@ -362,8 +362,56 @@ export function buildSave(spec: SaveSpec): BuiltSave {
     spec, leagueId: L, aaaLeagueId: AAA, clubs, farmClubs: farm, hitters, pitchers, prospects,
     regular: hitters[0], reliever: pitchers[6], org: 1,
   };
-  if (spec.teamSeason) writeTeamSeason(built, rnd);
+  if (spec.teamSeason) {
+    writeTeamSeason(built, rnd);
+    writeLeagueNews(built);
+  }
   return built;
+}
+
+/** The league's own record of what happened (N7's wire), as a current export carries it; the fixture has only streaks. */
+const NEWS_TABLES: Record<string, string> = {
+  trade_history: 'date TEXT, summary TEXT, message_id INTEGER, team_id_0 INTEGER, player_id_0_0 INTEGER, player_id_0_1 INTEGER, team_id_1 INTEGER, player_id_1_0 INTEGER, player_id_1_1 INTEGER',
+  messages: 'message_id INTEGER, subject TEXT, player_id_0 INTEGER, player_id_1 INTEGER, team_id_0 INTEGER, team_id_1 INTEGER, league_id_0 INTEGER, importance INTEGER, message_type INTEGER, date TEXT, deleted INTEGER',
+  players_injury_history: 'player_id INTEGER, date TEXT, length INTEGER, setbacks INTEGER, day_to_day INTEGER, effect INTEGER, body_part INTEGER',
+  players_awards: 'player_id INTEGER, league_id INTEGER, team_id INTEGER, sub_league_id INTEGER, award_id INTEGER, year INTEGER, season INTEGER, position INTEGER, day INTEGER, month INTEGER, finish INTEGER',
+};
+
+/**
+ * What happened around the league lately, as OOTP records it (N7, D-059): a trade between two clubs, two news items, an
+ * injury to a regular, a Player of the Week and a hitting streak, dated in the days before the league's day. The names
+ * and clubs are the synthetic league's own, so every entry names real rows.
+ */
+function writeLeagueNews(save: BuiltSave): void {
+  for (const [table, ddl] of Object.entries(NEWS_TABLES)) if (!tableExists(table)) db.exec(`CREATE TABLE ${table} (${ddl})`);
+  const today = (db.prepare(`SELECT "current_date" AS d FROM leagues WHERE league_id = ?`).get(save.leagueId) as { d?: string } | undefined)?.d;
+  if (!today || save.clubs.length < 3) return;
+  const [y, m, d] = today.split('-').map(Number);
+  const daysBefore = (n: number) => {
+    const at = new Date(Date.UTC(y, m - 1, d) - n * 86_400_000);
+    return { date: `${at.getUTCFullYear()}-${at.getUTCMonth() + 1}-${at.getUTCDate()}`, year: at.getUTCFullYear(), month: at.getUTCMonth() + 1, day: at.getUTCDate() };
+  };
+  const nameOf = (id: number) => (db.prepare(`SELECT first_name || ' ' || last_name AS n FROM players WHERE player_id = ?`).get(id) as { n: string }).n;
+  const clubOf = (id: number) => (db.prepare(`SELECT name FROM teams WHERE team_id = ?`).get(id) as { name: string }).name;
+  const regularOf = (club: number, i = 0) => save.hitters.filter((h) => (db.prepare(`SELECT team_id FROM players WHERE player_id = ?`).get(h) as { team_id: number }).team_id === club)[i];
+  const [, a, b, c] = save.clubs;
+  const traded = regularOf(a, 10);
+  const back = regularOf(b, 10);
+  const trade = daysBefore(3);
+  insert('trade_history', {
+    date: trade.date, summary: `The ${clubOf(a)} traded ${nameOf(traded)} to the ${clubOf(b)} for ${nameOf(back)}.`, message_id: 9001,
+    team_id_0: a, player_id_0_0: traded, player_id_0_1: 0, team_id_1: b, player_id_1_0: back, player_id_1_1: 0,
+  });
+  const hurt = regularOf(b, 1);
+  insert('players_injury_history', { player_id: hurt, date: daysBefore(2).date, length: 12, setbacks: 0, day_to_day: 0, effect: 0, body_part: 3 });
+  const star = regularOf(save.org, 2);
+  const week = daysBefore(1);
+  insert('players_awards', { player_id: star, league_id: save.leagueId, team_id: save.org, sub_league_id: 0, award_id: 0, year: week.year, season: week.year, position: 0, day: week.day, month: week.month, finish: 1 });
+  insert('messages', { message_id: 9002, subject: `${nameOf(star)} Named Player of the Week`, player_id_0: star, team_id_0: save.org, league_id_0: save.leagueId, importance: 3, message_type: 7, date: week.date, deleted: 0 });
+  if (c !== undefined) {
+    insert('messages', { message_id: 9003, subject: `${clubOf(c)} Sweep a Three-Game Set`, team_id_0: c, league_id_0: save.leagueId, importance: 3, message_type: 0, date: daysBefore(4).date, deleted: 0 });
+    insert('players_streak', { player_id: regularOf(c, 0), streak_id: 0, value: 16, started: daysBefore(20).date, has_ended: 0 });
+  }
 }
 
 /** The tables and columns the Morning Report reads, as a current export has them (the fixture carries only `g` and `r`). */

@@ -1,0 +1,95 @@
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { db } from '../server/db.js';
+import { forgetHistoryKey } from '../server/historyIdentity.js';
+import { clubReportNow } from '../server/aroundTheLeague.js';
+import { forgetMemoryCaches } from '../server/frontOfficeMemory.js';
+import { frontOfficeStats, frontOfficeSummary, resetFrontOfficeCache } from '../server/frontOfficeService.js';
+import { forgetWire } from '../server/leagueWire.js';
+import { importedAt } from '../server/playerStateRoutes.js';
+import { buildSave, type BuiltSave } from './syntheticSave';
+
+/**
+ * A club report for any club (BEHAVIOR_CASES.md "Pennant for Mac", `clubReport.test.ts`, case 19; D-059): the same modules
+ * as ours, under our organization's scouting, with objective facts about the two clubs, and no odds or posture (D-060).
+ */
+
+const ODDS_OR_POSTURE = [/postseason/i, /playoff/i, /\bodds\b/i, /\bbuy(?:er|ing)?\b/i, /\bsell(?:er|ing)?\b/i, /\bposture\b/i, /\bcontend/i, /\brebuild/i, /\bthreat/i];
+
+describe('another club\'s report (case 19)', () => {
+  let save: BuiltSave;
+  let them = 0;
+  const realStamp = importedAt.value;
+
+  beforeAll(() => {
+    save = buildSave({ season: 2040, historySeasons: 1, gamesPerTeam: 60, playedShare: 0.5, clubs: 4, seed: 11, teamSeason: true });
+    them = save.clubs.find((c) => c !== save.org)!;
+  });
+  afterAll(() => {
+    importedAt.value = realStamp;
+  });
+  beforeEach(() => {
+    forgetHistoryKey();
+    forgetMemoryCaches();
+    forgetWire();
+    resetFrontOfficeCache();
+    importedAt.value = '2040-05-06T10:00:00.000Z';
+  });
+
+  it('is built by the same modules as our Morning Report: the same record, places and roster map the club would see as its own', async () => {
+    const report = await clubReportNow(String(them));
+    const asOurs = await frontOfficeSummary(them);
+    expect(report.teamSeason!.record!.text).toBe(asOurs.teamSeason!.record!.text);
+    expect(report.clubProfile!.dimensions.map((d) => [d.id, d.place])).toEqual(asOurs.clubProfile!.dimensions.map((d) => [d.id, d.place]));
+    expect(report.rosterMap!.positions.map((p) => [p.pos, p.holder?.playerId ?? null, p.value?.likely ?? null]))
+      .toEqual(asOurs.rosterMap!.positions.map((p) => [p.pos, p.holder?.playerId ?? null, p.value?.likely ?? null]));
+    // Where our report says "us", theirs names the club it is about
+    const standing = report.teamSeason!.place!.claim.basis.because.map((b) => b.label).join(' ');
+    expect(standing).toMatch(/\(this club\)/);
+    expect(standing).not.toMatch(/\(us\)/);
+    expect(report.ours).toBe(false);
+  });
+
+  it('reads their players through our scouting and says what our scouts can\'t see, filling nothing in', async () => {
+    const full = await clubReportNow(String(them));
+    const players = Number(full.scouting.basis.because.find((b) => b.label === 'Players on the club')!.value);
+    expect(full.scouting.text).toMatch(new RegExp(`all ${players} players|of ${players} players`));
+    // Our scouts lose sight of one of their hitters: his tools are no longer in the export
+    const hidden = (db.prepare(`SELECT player_id FROM players WHERE team_id = ? AND position <> 1 LIMIT 1`).get(them) as { player_id: number }).player_id;
+    const saved = db.prepare(`SELECT batting_ratings_overall_contact AS c FROM players_batting WHERE player_id = ?`).get(hidden) as { c: number };
+    db.prepare(`UPDATE players_batting SET batting_ratings_overall_contact = 0 WHERE player_id = ?`).run(hidden);
+    resetFrontOfficeCache();
+    const partial = await clubReportNow(String(them));
+    expect(partial.scouting.text).toBe(`Our scouts have a full report on ${players - 1} of ${players} players`);
+    expect(partial.scouting.basis.unknown.join(' ')).toMatch(/what they can't see is left out, never filled in/);
+    expect(partial.scouting.basis.because).toContainEqual({ label: 'The same as ours', value: 'Every club\'s players are read through our organization\'s scouting, never the game\'s own ratings.' });
+    db.prepare(`UPDATE players_batting SET batting_ratings_overall_contact = ? WHERE player_id = ?`).run(saved.c, hidden);
+  });
+
+  it('states their record against us and their next series with us from the export\'s games', async () => {
+    const report = await clubReportNow(String(them));
+    const games = db.prepare(`SELECT home_team, runs0, runs1 FROM games WHERE played = 1 AND game_type = 0 AND ((home_team = ? AND away_team = ?) OR (home_team = ? AND away_team = ?))`)
+      .all(them, save.org, save.org, them) as Array<{ home_team: number; runs0: number; runs1: number }>;
+    const won = games.filter((g) => (g.home_team === them ? g.runs1 > g.runs0 : g.runs0 > g.runs1)).length;
+    const lost = games.filter((g) => (g.home_team === them ? g.runs1 < g.runs0 : g.runs0 < g.runs1)).length;
+    expect(report.headToHead!.text).toMatch(new RegExp(`^${won}–${lost}(–\\d+)? against the `));
+    expect(report.nextSeries ?? report.nextSeriesNote).not.toBeNull();
+    if (report.nextSeries) expect(report.nextSeries.text).toMatch(/^\d+ games? from .+, in (our park|theirs)$/);
+  });
+
+  it('ranks nothing and reads the club as no buyer, seller or threat (D-060)', async () => {
+    const report = await clubReportNow(String(them));
+    const text = JSON.stringify(report);
+    for (const p of ODDS_OR_POSTURE) expect(text, String(p)).not.toMatch(p);
+  });
+
+  it('is built once for an import and kept, and our own club\'s report says it is ours', async () => {
+    await clubReportNow(String(them));
+    const built = frontOfficeStats().clubBuilds;
+    await clubReportNow(String(them));
+    expect(frontOfficeStats().clubBuilds).toBe(built);
+    expect(frontOfficeStats().clubHits).toBeGreaterThan(0);
+    const ours = await clubReportNow(String(save.org));
+    expect(ours.ours).toBe(true);
+    expect(ours.headToHead).toBeNull();
+  });
+});

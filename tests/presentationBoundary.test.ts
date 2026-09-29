@@ -184,9 +184,12 @@ describe('the presentation boundary', () => {
   it.each(['frontOfficeService.ts', 'frontOfficeBuild.ts', 'frontOfficeWorker.ts'])('%s reads the specialists only through their public modules', (file) => {
     // `morningReport` is the Morning Report's own reader (N6): the masthead's and the profile's facts, and the roster map
     // through Player Value, Player State and the farm's door (`mlbEvidence`); its own imports are held below
+    // `clubReport` is another club's report's reader (N7), held like `morningReport` below; `clubOwed` is the club question
+    // still open (no specialist: it says whether the automatic club may be served as chosen)
     const PUBLIC = new Set([
-      'contracts', 'config', 'dashboard', 'dataStatus', 'db', 'farmOperations', 'frontOfficeBuild', 'leagueRules', 'mlbOperations', 'morningReport',
-      'org', 'payroll', 'playerStateRoutes', 'rosterops', 'saveCalibration', 'serverEvents', 'valuation', 'viewingOrganization',
+      'clubOwed', 'clubReport', 'contracts', 'config', 'dashboard', 'dataStatus', 'db', 'farmOperations', 'frontOfficeBuild', 'leagueRules',
+      'mlbOperations', 'morningReport', 'org', 'payroll', 'playerStateRoutes', 'rosterops', 'saveCalibration', 'serverEvents', 'valuation',
+      'viewingOrganization',
     ]);
     const outside = valueImports(file)
       .filter((s) => s.startsWith('./') && !s.startsWith('./presentation/'))
@@ -211,17 +214,39 @@ describe('the presentation boundary', () => {
     }
   });
 
+  /**
+   * Another club's report's reader (N7, D-059, case 19) asks the same doors as the Morning Report's, and reads the club's
+   * players' ability only through `scoutedEvidence.ts` (our organization's scouting, D-017): no rating column, no
+   * `players_value`, no philosophy, no odds or posture of its own.
+   */
+  it('clubReport.ts reads another club only through the Morning Report\'s reader and our scouting', () => {
+    const allowed = new Set(['db', 'dashboard', 'dataFreshness', 'dataStatus', 'morningReport', 'scoutedEvidence']);
+    const outside = valueImports('clubReport.ts').filter((s) => s.startsWith('./')).map(moduleName).filter((m) => !allowed.has(m));
+    expect(outside).toEqual([]);
+    const source = code('clubReport.ts');
+    for (const pattern of [...RATINGS, /developmentalContext|protectionTier/, /philosophy|posture|playoffs|oddsModel/]) {
+      expect(source, `clubReport.ts matches ${pattern}`).not.toMatch(pattern);
+    }
+  });
+
   it('keeps the Front Office service to the routes, the start and the import: no specialist calls it', () => {
     const importers = (name: string) => filesUnder('')
       .filter((f) => new RegExp(`from\\s+'\\./${name}\\.js'`).test(code(f)));
-    expect(importers('frontOfficeService').sort()).toEqual(['api.ts', 'index.ts', 'v2Routes.ts']);
+    // N7: the attention put on the Front Office when served, and Around the League (the club reports it builds), are
+    // served views over it, like the routes; no specialist calls either
+    expect(importers('frontOfficeService').sort()).toEqual(['api.ts', 'aroundTheLeague.ts', 'frontOfficeAttention.ts', 'index.ts', 'v2Routes.ts']);
+    expect(importers('frontOfficeAttention').sort()).toEqual(['api.ts', 'v2Routes.ts']);
+    expect(importers('aroundTheLeague').sort()).toEqual(['frontOfficeAttention.ts', 'v2Routes.ts']);
     expect(importers('frontOfficeBuild').sort()).toEqual(['frontOfficeService.ts', 'frontOfficeWorker.ts']);
   });
 
   it('is imported only by the modules that serve it, never by a specialist', () => {
     // The API and the v2 routes serve its words; the event stream names its import note; the theme pack store reads the
     // pack files and hands them to the pack check (D-062)
-    const allowed = new Set(['api.ts', 'v2Routes.ts', 'serverEvents.ts', 'frontOfficeService.ts', 'frontOfficeBuild.ts', 'themePackStore.ts']);
+    // N7: the served views that put the GM's attention on the Front Office, Around the League, and search's index (the
+    // catalog's views)
+    const allowed = new Set(['api.ts', 'v2Routes.ts', 'serverEvents.ts', 'frontOfficeService.ts', 'frontOfficeBuild.ts', 'themePackStore.ts',
+      'frontOfficeAttention.ts', 'aroundTheLeague.ts', 'search.ts']);
     const importers = filesUnder('')
       .filter((f) => !f.startsWith('presentation/') && !f.startsWith('contract/'))
       .filter((f) => /from\s+'\.\/presentation\//.test(code(f)));

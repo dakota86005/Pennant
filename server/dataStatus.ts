@@ -294,6 +294,22 @@ export function currentTransactionLog(location: SaveLocation = currentSaveLocati
   return { log: cache.log, status: cache.status };
 }
 
+/**
+ * The log as last read for this save, without reading it (N7: the league wire is built from what is already copied,
+ * never on a request's path): a copy OOTP has written since is read again in the background, as for a request. Null
+ * while no copy of this save's log has been read yet (one is started in the background).
+ */
+export function peekTransactionLog(location: SaveLocation = currentSaveLocation()): { log: TransactionLog | null; status: LogSourceStatus } | null {
+  if (!location.found || !location.live) return { log: null, status: emptyLogStatus({ unavailableReason: 'save_not_found' }) };
+  if (!location.live.dbExists) return currentTransactionLog(location);
+  if (cache && cache.lgPath === location.lgPath) {
+    if (cache.key !== logKey(location)) scheduleRefresh(location);
+    return { log: cache.log, status: cache.status };
+  }
+  warmTransactionLog();
+  return null;
+}
+
 /** Reads the current save's log in the background (at start), so no request makes the first copy. */
 export function warmTransactionLog(): void {
   const location = currentSaveLocation();

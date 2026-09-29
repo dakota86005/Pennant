@@ -21,7 +21,7 @@ export const playerRoutes = Router();
  * are pitchers. Aaron Judge's record in an imported real-history save matches
  * his actual honours exactly, which is what confirms the mapping.
  */
-const AWARD_NAMES: Record<number, string> = {
+export const AWARD_NAMES: Record<number, string> = {
   0: 'Player of the Week',
   1: 'Pitcher of the Month',
   2: 'Batter of the Month',

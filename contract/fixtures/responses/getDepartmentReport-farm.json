@@ -12,6 +12,11 @@
     "hint": "The last game day in the imported export"
   },
   "changes": null,
+  "changesNote": {
+    "display": "This is the first export of this save Pennant has read, so there's nothing to compare yet.",
+    "tone": "unknown",
+    "hint": "The next export is compared with this one"
+  },
   "memo": null,
   "status": "ready",
   "summary": {
@@ -239,7 +244,18 @@
         "due": null,
         "dueInDays": null,
         "evidence": null,
-        "count": 4
+        "count": 4,
+        "attention": {
+          "status": "open",
+          "line": {
+            "display": "Open"
+          },
+          "until": null,
+          "deferralEnded": false,
+          "note": null,
+          "stillShown": null,
+          "since": null
+        }
       },
       {
         "key": "farm:position_single_cover:organization:attention",
@@ -330,7 +346,18 @@
         "due": null,
         "dueInDays": null,
         "evidence": null,
-        "count": 4
+        "count": 4,
+        "attention": {
+          "status": "open",
+          "line": {
+            "display": "Open"
+          },
+          "until": null,
+          "deferralEnded": false,
+          "note": null,
+          "stillShown": null,
+          "since": null
+        }
       }
     ],
     "empty": null

@@ -25,7 +25,10 @@ export type ServerEvent =
   | ExportPendingEvent
   | JobEvent
   | FrontOfficeUpdatedEvent
-  | SavePlayedElsewhereEvent;
+  | SavePlayedElsewhereEvent
+  | DeskChangedEvent
+  | FollowingChangedEvent
+  | ChangesReadyEvent;
 
 /** The first event on every stream: the `/api/status` snapshot, so nothing is missed between loading and listening. */
 export interface HelloEvent { type: 'hello'; status: ServerStatus }
@@ -55,6 +58,28 @@ export interface FrontOfficeUpdatedEvent { type: 'front-office-updated'; orgId: 
  * never on every look. The app shows it; Pennant never switches by itself.
  */
 export interface SavePlayedElsewhereEvent { type: 'save-played-elsewhere'; savePlayedElsewhere: SavePlayedElsewhere | null }
+
+/**
+ * A desk status or note changed (N7, D-058): the club's new `deskStamp`, and the item's key (null when several changed,
+ * as when an import resolved items). The Mac app re-reads the desk; its own change it already has from the answer.
+ */
+export interface DeskChangedEvent { type: 'desk-changed'; orgId: Integer; deskStamp: string; key: string | null }
+/** What the GM follows changed (a follow, an unfollow, a note, the watchlist copied in): Following's new `followStamp`. */
+export interface FollowingChangedEvent { type: 'following-changed'; followStamp: string }
+/**
+ * A new import's "since the last export" is ready for the club the app follows (N7): the words for the notification
+ * ("New export read", "3 new on your desk"), served, with how many new items are to decide (null with nothing to
+ * compare). Sent once per import, after its report was recorded.
+ */
+export interface ChangesReadyEvent {
+  type: 'changes-ready';
+  orgId: Integer;
+  importStamp: string | null;
+  reportStamp: string;
+  title: string;
+  text: string;
+  newToDecide: Integer | null;
+}
 
 type Listener = (event: ServerEvent) => void;
 const listeners = new Set<Listener>();

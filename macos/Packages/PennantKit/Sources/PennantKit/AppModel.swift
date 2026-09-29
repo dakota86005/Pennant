@@ -566,6 +566,9 @@ public final class AppModel {
         case .job, nil:
             // The storylines and briefing jobs arrive with N13
             break
+        case .deskChanged, .followingChanged, .changesReady:
+            // N7's desk, Following and "since the last export" events: N7 Stage B draws them
+            break
         }
     }
 

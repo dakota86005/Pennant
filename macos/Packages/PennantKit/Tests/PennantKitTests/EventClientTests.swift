@@ -80,7 +80,7 @@ struct EventClientTests {
             .replacingOccurrences(of: "\n", with: "")
         let sse = [
             ("hello", #"{"type":"hello","status":\#(status)}"#),
-            ("desk-changed", #"{"type":"desk-changed","count":3}"#),
+            ("pennant-later", #"{"type":"pennant-later","count":3}"#),
             ("import-progress", #"{"type":"import-progress","progress":"half"}"#),
             ("export-pending", #"{"type":"export-pending","since":"2040-07-01T12:05:00.000Z"}"#),
         ].map { "event: \($0.0)\ndata: \($0.1)\n\n" }.joined(separator: ": keep-alive\n\n")
@@ -97,7 +97,7 @@ struct EventClientTests {
         #expect(signals[2] == .malformed(type: "import-progress"))
         guard case .event(let pending) = signals[3] else { Issue.record("export-pending"); return }
         #expect({ if case .exportPending(let p) = pending.kind { p.since } else { nil } }() == "2040-07-01T12:05:00.000Z")
-        #expect(unknown.unknownTypes == ["desk-changed"])
+        #expect(unknown.unknownTypes == ["pennant-later"])
     }
 
     @Test("when the stream ends while the server is up, it reconnects")

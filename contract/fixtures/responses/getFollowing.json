@@ -1,0 +1,39 @@
+{
+  "title": {
+    "display": "Following"
+  },
+  "clubs": [],
+  "players": [],
+  "empty": {
+    "display": "Nothing followed yet",
+    "hint": "Follow a club or a player to see them first on the wire"
+  },
+  "suggestions": [
+    {
+      "kind": "club",
+      "id": 2,
+      "name": "Club 2 N",
+      "why": {
+        "display": "In your division, the East"
+      }
+    },
+    {
+      "kind": "club",
+      "id": 3,
+      "name": "Club 3 N",
+      "why": {
+        "display": "In your division, the East"
+      }
+    },
+    {
+      "kind": "club",
+      "id": 4,
+      "name": "Club 4 N",
+      "why": {
+        "display": "In your division, the East"
+      }
+    }
+  ],
+  "watchlist": null,
+  "followStamp": "fstamp"
+}

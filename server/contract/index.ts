@@ -29,6 +29,9 @@ export type {
   JobEvent,
   FrontOfficeUpdatedEvent,
   SavePlayedElsewhereEvent,
+  DeskChangedEvent,
+  FollowingChangedEvent,
+  ChangesReadyEvent,
 } from '../serverEvents.js';
 export type { ImportProgress, ImportResult, ImportWords } from '../importer.js';
 export type { ImportNote } from '../presentation/importWords.js';
@@ -99,7 +102,14 @@ export type { RosterEvidenceLevel } from '../dataFreshness.js';
 export type {
   FoItem, DeskSeverity, ReportStatus, ReportSection, ReportUnknowns, ReportChange, StaffMemo, DepartmentReport, DepartmentCard,
   Desk, DeskMore, FrontOfficeSummary, TrailSection, ClaimTrail,
+  DeskStatus, DeskAttention, DeskSetAside, DeskView, DeskUpdate, DeskChange, ChangeItem, ChangeChip, SinceLastExport,
 } from '../presentation/frontOffice/types.js';
+// Around the League and Following (N7): the wire, club reports, following, search
+export type {
+  WireKind, WireSource, WireClub, WirePlayer, WireEntry, WireOrder, WireTop, Wire, WireKindChoice, ClubInjury, ClubReport, FollowedItem,
+  FollowSuggestion, Following, FollowUpdate, FollowUndo, FollowChange, SearchKind, SearchResult, SearchGroup, SearchAnswer,
+} from '../presentation/frontOffice/leagueTypes.js';
+export type { ClubOwed } from '../clubOwed.js';
 // The Morning Report's own parts on `FrontOfficeSummary` (N6): the masthead, "How we win and lose", the roster map
 export type {
   GameLetter, MastheadKicker, StandingLine, RunsFigure, LastFive, ProbableStarter, TonightGame, DeadlineNote, MastheadPart, MissingPart,

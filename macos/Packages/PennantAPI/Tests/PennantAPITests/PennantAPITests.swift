@@ -277,7 +277,7 @@ struct PennantAPITests {
     func eventReading() async throws {
         let events = try await decodedEvents(from: sse([
             ("hello", #"{"type":"hello","status":\#(status)}"#),
-            ("desk-changed", #"{"type":"desk-changed","count":3}"#),
+            ("a-later-event", #"{"type":"a-later-event","count":3}"#),
             // A hello whose status lost a field this build requires
             ("hello", #"{"type":"hello","status":{"app":null}}"#),
             ("import-progress", #"{"type":"import-progress","progress":"half"}"#),
@@ -285,7 +285,7 @@ struct PennantAPITests {
         #expect(events.count == 4)
         guard case .known(let hello) = events[0].reading else { Issue.record("hello"); return }
         #expect(hello.hello?.status.saveName == "Test League")
-        #expect(events[1].reading == .unknown(type: "desk-changed"))
+        #expect(events[1].reading == .unknown(type: "a-later-event"))
         #expect(events[2].reading == .malformed(type: "hello"))
         #expect(events[2].hello == nil && events[2].kind == nil)
         #expect(events[3].reading == .malformed(type: "import-progress"))
@@ -295,7 +295,7 @@ struct PennantAPITests {
     func readingCoversEveryShape() {
         let names = Components.Schemas.ServerEvent.knownTypeNames
         #expect(names.count == Components.Schemas.ServerEvent.shapeCount)
-        #expect(names == ["hello", "import-started", "import-progress", "import-finished", "export-pending", "job", "front-office-updated", "save-played-elsewhere"])
+        #expect(names == ["hello", "import-started", "import-progress", "import-finished", "export-pending", "job", "front-office-updated", "save-played-elsewhere", "desk-changed", "following-changed", "changes-ready"])
     }
 
     /// The union holds its members by position, so a new member moves every later one (N3.5 B2 review, item 1): the
@@ -349,6 +349,39 @@ struct PennantAPITests {
         #expect(notice.kind.value1 == .otherSave)
         #expect(notice.actionText == "Switch to Played Since")
         #expect(notice.save.id == "saveid")
+    }
+
+    @Test("the fixtures N7 added decode: the desk and its changes, since the last export, the wire, a club report, Following and search")
+    func rememberingFixtures() async throws {
+        let decoder = JSONDecoder()
+        let data = { (name: String) in Data(try fixture("responses/\(name).json").utf8) }
+        let summary = try decoder.decode(Components.Schemas.FrontOfficeSummary.self, from: data("getFrontOffice-since-last-export"))
+        #expect(summary.changes?.results.count == 3)
+        #expect(summary.desk.setAside?.reviewed == 1)
+        #expect(summary.wire?.entries.first?.followed == true)
+        let first = try await jsonClient("getFrontOffice").getFrontOffice(path: .init(org: "1")).ok.body.json
+        #expect(first.changes == nil && first.changesNote != nil)
+        _ = try decoder.decode(Components.Schemas.DepartmentReport.self, from: data("getDepartmentReport-since-last-export"))
+        _ = try decoder.decode(Components.Schemas.DeskView.self, from: data("getDesk"))
+        let reviewed = try decoder.decode(Components.Schemas.DeskChange.self, from: data("setDeskStatus-reviewed"))
+        #expect(reviewed.undo.key == reviewed.key)
+        _ = try decoder.decode(Components.Schemas.DeskChange.self, from: data("setDeskStatus-undo"))
+        for name in ["setDeskStatus-no-status", "setDeskStatus-not-in-this-export", "setDeskStatus-deferred-to-a-day-gone",
+                     "follow-no-kind", "follow-not-in-this-save", "unfollow-no-kind", "unfollow-not-followed"] {
+            #expect(try decoder.decode(Components.Schemas.ApiError.self, from: data(name)).error.isEmpty == false)
+        }
+        _ = try decoder.decode(Components.Schemas.Following.self, from: data("getFollowing"))
+        for name in ["follow-club", "follow-player", "unfollow-club"] {
+            _ = try decoder.decode(Components.Schemas.FollowChange.self, from: data(name))
+        }
+        let wire = try decoder.decode(Components.Schemas.Wire.self, from: data("getWire"))
+        #expect(wire.entries.isEmpty == false)
+        let club = try decoder.decode(Components.Schemas.ClubReport.self, from: data("getClubReport"))
+        #expect(club.ours == false)
+        let found = try decoder.decode(Components.Schemas.SearchAnswer.self, from: data("search"))
+        #expect(found.groups.isEmpty == false)
+        let status = try await jsonClient("getStatus").getStatus().ok.body.json
+        #expect(status.clubOwed == nil)
     }
 
     @Test("a game date stays the string the server sent, unpadded")

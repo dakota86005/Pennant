@@ -1,0 +1,323 @@
+{
+  "department": "majorLeague",
+  "name": "Major League Ops",
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "preparedBy": {
+    "display": "Prepared by Rafael Dunn, bench coach",
+    "hint": "From the club's staff in the save"
+  },
+  "head": {
+    "name": "Rafael Dunn",
+    "role": "Bench Coach",
+    "coachId": 5012
+  },
+  "asOf": {
+    "display": "Through May 5, 2040",
+    "hint": "The last game day in the imported export"
+  },
+  "changes": [
+    {
+      "kind": "new",
+      "line": {
+        "text": "Short of healthy catchers",
+        "tone": "caution",
+        "basis": {
+          "because": [
+            {
+              "label": "Raised by",
+              "value": "Major League Ops"
+            },
+            {
+              "label": "The last export",
+              "value": "Did not raise it"
+            },
+            {
+              "label": "This export",
+              "value": "Needs attention"
+            }
+          ],
+          "source": {
+            "department": "majorLeague",
+            "specialist": "Since the last export",
+            "asOf": null,
+            "gameDate": "2040-5-6"
+          },
+          "unknown": [
+            "Two exports show that it changed, not which move or event changed it."
+          ],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "fact",
+          "called": "A fact from the export"
+        },
+        "links": [
+          {
+            "kind": "view",
+            "department": "majorLeague",
+            "view": "report"
+          }
+        ],
+        "hint": "New since the export of May 3, 2040"
+      }
+    }
+  ],
+  "changesNote": null,
+  "memo": null,
+  "status": "ready",
+  "summary": {
+    "text": "One to decide.",
+    "tone": "caution",
+    "basis": {
+      "because": [
+        {
+          "label": "To decide",
+          "value": "1"
+        },
+        {
+          "label": "To watch",
+          "value": "0"
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "Major League Ops' roster review",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [
+        "A new export."
+      ],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  },
+  "figures": [
+    {
+      "text": "Active roster",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Players",
+            "value": "26"
+          },
+          {
+            "label": "Limit",
+            "value": "26"
+          }
+        ],
+        "source": {
+          "department": "majorLeague",
+          "specialist": "Major League Ops' roster review",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "value": {
+        "n": 26,
+        "unit": "count",
+        "display": "26 of 26",
+        "whole": 26
+      }
+    },
+    {
+      "text": "40-man roster",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Players",
+            "value": "26"
+          },
+          {
+            "label": "Limit",
+            "value": "40"
+          }
+        ],
+        "source": {
+          "department": "majorLeague",
+          "specialist": "Player State",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "value": {
+        "n": 26,
+        "unit": "count",
+        "display": "26 of 40",
+        "whole": 40
+      }
+    },
+    {
+      "text": "On the injured list",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Major league players on the injured list",
+            "value": "0"
+          }
+        ],
+        "source": {
+          "department": "majorLeague",
+          "specialist": "Major League Ops' roster review",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "value": {
+        "n": 0,
+        "unit": "count",
+        "display": "0"
+      }
+    }
+  ],
+  "toDecide": {
+    "title": {
+      "display": "To decide"
+    },
+    "items": [
+      {
+        "key": "majorLeague:need:mlb:role_below_standard:catcher",
+        "department": "majorLeague",
+        "raisedBy": {
+          "display": "Raised by Rafael Dunn, bench coach",
+          "hint": "From the club's staff in the save"
+        },
+        "severity": "attention",
+        "neutralSeverity": "attention",
+        "urgency": {
+          "text": "Needs attention",
+          "tone": "caution",
+          "basis": {
+            "because": [
+              {
+                "label": "Major League Ops said",
+                "value": "Needs attention"
+              },
+              {
+                "label": "With no philosophy and no season",
+                "value": "Needs attention"
+              },
+              {
+                "label": "On the desk",
+                "value": "Needs attention"
+              }
+            ],
+            "source": {
+              "department": "majorLeague",
+              "specialist": "The desk",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "policy",
+            "called": "A line chosen and stated",
+            "stamp": "Major League Ops states critical, elevated or watch; they read critical, attention and noted on the desk, in the same order and never higher. A flag the philosophy shaded keeps its philosophy-free severity beside it. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
+          },
+          "links": []
+        },
+        "headline": {
+          "text": "Short of healthy catchers",
+          "tone": "caution",
+          "basis": {
+            "because": [
+              {
+                "label": "Coverage floor",
+                "value": "two healthy catchers: Pennant's first-pass minimum, not a league rule or an ideal roster"
+              },
+              {
+                "label": "Active in role",
+                "value": "1 (1 available)"
+              },
+              {
+                "label": "Active roster",
+                "value": "26 of 26"
+              },
+              {
+                "label": "When",
+                "value": "Now"
+              }
+            ],
+            "source": {
+              "department": "majorLeague",
+              "specialist": "Major League Ops' roster review",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [
+              "No injured or unavailable player in this role explains the shortfall; Pennant cannot say how the roster came to be this way."
+            ],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "policy",
+            "called": "A line chosen and stated",
+            "stamp": "Pennant's first-pass minimum for each role: a stated floor, not a league rule or an ideal roster."
+          },
+          "links": [],
+          "hint": "Fewer healthy on the active roster than the club's minimum"
+        },
+        "detail": null,
+        "due": null,
+        "dueInDays": null,
+        "evidence": "1.majorLeague:need:mlb:role_below_standard:catcher",
+        "count": 1,
+        "attention": {
+          "status": "open",
+          "line": {
+            "display": "Open"
+          },
+          "until": null,
+          "deferralEnded": false,
+          "note": null,
+          "stillShown": null,
+          "since": null
+        }
+      }
+    ],
+    "empty": null
+  },
+  "watching": {
+    "title": {
+      "display": "Watching"
+    },
+    "items": [],
+    "empty": {
+      "display": "Nothing to watch"
+    }
+  },
+  "unknowns": {
+    "title": {
+      "display": "What we can't see"
+    },
+    "lines": [
+      {
+        "display": "Nothing missing that we know of"
+      }
+    ]
+  }
+}

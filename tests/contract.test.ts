@@ -10,7 +10,7 @@ import { Router } from 'express';
 import { DIGEST_SWIFT_PATH, SHAPES_SPEC_PATH, SPEC_PATH, buildShapesSpec, buildSpec, digestSwift, serializeSpec, transform } from '../scripts/lib/contractSpec.js';
 import { operations } from '../server/contract/routes.js';
 import { basisProblems } from '../server/presentation/claim.js';
-import { departmentReport, frontOfficeRevision } from '../server/frontOfficeService.js';
+import { departmentReport, frontOfficeBuilt, frontOfficeRevision } from '../server/frontOfficeService.js';
 import type { Basis } from '../server/contract/presentation.js';
 import { api, importState, runImport } from '../server/api.js';
 import { loadConfig, saveConfig } from '../server/config.js';
@@ -18,6 +18,7 @@ import { startJob } from '../server/jobs.js';
 import { themePacksFolder } from '../server/themePackStore.js';
 import { historyDb, SNAPSHOT_DATA_COLUMNS, takeSnapshot } from '../server/history.js';
 import { currentHistoryKey, forgetHistoryKey } from '../server/historyIdentity.js';
+import { forgetMemoryCaches, recordReportSnapshot, recordStandingsSnapshot } from '../server/frontOfficeMemory.js';
 import { registeredRoutes, type RegisteredRoute } from './apiRoutes';
 import {
   BANNED_JARGON, BANNED_VERDICTS, FOLDER_PATHS, JARGON_EXCEPTIONS, bannedIn, bannedInPayload, exceptionsUsed, shownStrings,
@@ -250,9 +251,13 @@ function stable(value: unknown): unknown {
     if (key === 'version') return '0.0.0';
     // A build's stamp hashes the data folder's file times, which differ on every run
     if (key === 'reportStamp') return 'rstamp';
+    // The desk's and Following's stamps hash the times their changes were made (N7)
+    if (key === 'deskStamp') return 'dstamp';
+    if (key === 'followStamp') return 'fstamp';
     // A served time in words is written in the host's zone; the fixture keeps a fixed one
     if (key === 'csvLastModifiedText' || key === 'lastPlayedText') return PLAYED_WORDS;
-    let text = node;
+    // A time in words inside a line ("Marked Sep 28, 2026, 9:16 PM", N7) is the host's clock: the fixture keeps a fixed one
+    let text = node.replace(/\b[A-Z][a-z]{2} \d{1,2}, \d{4}, \d{1,2}:\d{2}\s[AP]M\b/g, PLAYED_WORDS);
     for (const root of roots) {
       text = text.split(root).join('/tmp');
     }
@@ -339,7 +344,11 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     org: () => String(save.org),
     dept: () => 'majorLeague',
     key: () => evidenceKey,
+    // Another club's report (N7): the league's second club, not the one the app follows
+    teamId: () => String(save.clubs[1]),
   };
+  /** A query a GET is captured with, where it takes one (N7: search needs something typed). */
+  const SAMPLE_QUERIES: Record<string, string> = { search: '?q=club' };
 
   it('has an item with an evidence trail on the synthetic save, for the claims route', async () => {
     const report = await departmentReport(save.org, 'majorLeague');
@@ -357,7 +366,7 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
       if (!sample) throw new Error(`Give ${op.operationId}'s :${name} a sample value in SAMPLE_PARAMS`);
       return sample();
     });
-    const res = await fetch(`${base}${url}`);
+    const res = await fetch(`${base}${url}${SAMPLE_QUERIES[op.operationId] ?? ''}`);
     expect(res.status, url).toBe(200);
     const body = await res.json();
     const validate = validator(op.response);
@@ -468,6 +477,102 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     }
     } finally {
       saveConfig(previous);
+    }
+  }, SLOW);
+
+  /**
+   * The PUTs and the DELETE (N7): the desk's statuses and Following, each answer in the contract's shape and captured for
+   * the Mac stage (Stage B draws the desk's statuses, the undo and Following from them). Every change is put back.
+   */
+  it('answers the desk\'s and Following\'s changes in the contract\'s shape, and puts each back (captured for the previews)', async () => {
+    const changes = operations.filter((op) => op.method === 'put' || op.method === 'delete').map((op) => op.operationId).sort();
+    expect(changes).toEqual(['follow', 'setDeskStatus', 'unfollow']);
+    const call = async (method: 'PUT' | 'DELETE', url: string, body?: unknown) => {
+      const res = await fetch(`${base}${url}`, {
+        method, headers: { 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body),
+      });
+      return { status: res.status, body: await res.json() };
+    };
+    const check = (operationId: string, name: string, answer: { status: number; body: unknown }, status: number) => {
+      const op = operations.find((o) => o.operationId === operationId)!;
+      expect(answer.status, `${operationId} ${name}`).toBe(status);
+      const type = status === 200 ? op.response : op.errors?.[status];
+      expect(type, `${operationId} documents ${status}`).toBeDefined();
+      const validate = validator(type!);
+      expect(validate(answer.body) ? [] : validate.errors, `${operationId} ${name} against ${type}`).toEqual([]);
+      if (status === 200) {
+        expect(bannedInPayload(answer.body, operationId)).toEqual([]);
+        expect(servedBasisProblems(answer.body)).toEqual([]);
+      }
+      fixture(`responses/${operationId}-${name}.json`, json(answer.body));
+    };
+    const desk = (await (await fetch(`${base}/api/v2/desk/${save.org}`)).json()) as { desk: { items: Array<{ key: string }> } };
+    const key = desk.desk.items[0]?.key;
+    expect(key, 'the synthetic save has an item on the desk').toBeTruthy();
+    const reviewed = await call('PUT', `/api/v2/desk/${save.org}`, { key, status: 'reviewed', note: 'Talked it over with the manager' });
+    check('setDeskStatus', 'reviewed', reviewed, 200);
+    check('setDeskStatus', 'undo', await call('PUT', `/api/v2/desk/${save.org}`, (reviewed.body as { undo: unknown }).undo), 200);
+    check('setDeskStatus', 'deferred-to-a-day-gone', await call('PUT', `/api/v2/desk/${save.org}`, { key, status: 'deferred', until: '2000-1-1' }), 400);
+    check('setDeskStatus', 'no-status', await call('PUT', `/api/v2/desk/${save.org}`, { key }), 400);
+    check('setDeskStatus', 'not-in-this-export', await call('PUT', `/api/v2/desk/${save.org}`, { key: 'majorLeague:nothing:here', status: 'reviewed' }), 404);
+
+    const club = save.clubs[1];
+    check('follow', 'club', await call('PUT', '/api/v2/following', { kind: 'club', id: club, note: 'Division rival' }), 200);
+    check('follow', 'player', await call('PUT', '/api/v2/following', { kind: 'player', id: save.regular }), 200);
+    check('follow', 'not-in-this-save', await call('PUT', '/api/v2/following', { kind: 'club', id: 99_999 }), 404);
+    check('follow', 'no-kind', await call('PUT', '/api/v2/following', { id: club }), 400);
+    check('unfollow', 'club', await call('DELETE', `/api/v2/following?kind=club&id=${club}`), 200);
+    check('unfollow', 'not-followed', await call('DELETE', `/api/v2/following?kind=club&id=${club}`), 404);
+    check('unfollow', 'no-kind', await call('DELETE', `/api/v2/following?id=${club}`), 400);
+    // Put back: nothing followed, nothing marked
+    expect((await call('DELETE', `/api/v2/following?kind=player&id=${save.regular}`)).status).toBe(200);
+  }, SLOW);
+
+  /**
+   * The Morning Report once an earlier export of the save is remembered (N7): "since the last export" with an item new and
+   * one resolved and the games between, an item set aside on the desk, and a followed club first on the wire. Captured
+   * for Stage B, which draws the chips, the set-aside line and the column from it.
+   */
+  it('serves "since the last export", a set-aside item and a followed club on the Morning Report (captured for the previews)', async () => {
+    const built = await frontOfficeBuilt(save.org);
+    const items = [...built.reports.values()].filter((r) => r.department !== 'frontOffice').flatMap((r) => [...r.toDecide.items, ...r.watching.items]);
+    const [newNow, ...kept] = items;
+    const earlier = '2040-04-30T12:00:00.000Z';
+    await recordReportSnapshot({
+      orgId: save.org, importStamp: earlier, gameDate: '2040-5-3',
+      departments: { majorLeague: 'ready', farm: 'ready', finance: 'ready', medical: 'ready' },
+      items: [...kept.map((it) => ({ key: it.key, department: it.department, severity: it.neutralSeverity, headline: it.headline.text, count: it.count })),
+        { key: 'medical:injury:9999', department: 'medical', severity: 'noted', headline: 'P 9999 is on the injured list', count: 1 }],
+      figures: [],
+    });
+    // The club's standings three games ago: its record less the last three games' results
+    const last3 = built.season!.games!.slice(-3);
+    const won = last3.filter((g) => g.scored > g.allowed).length;
+    const standings = built.season!.standings.map((r) => (r.teamId === save.org && r.w !== null && r.l !== null ? { ...r, w: r.w - won, l: r.l - (3 - won) } : r));
+    await recordStandingsSnapshot(earlier, '2040-5-3', standings);
+    const deskKey = (await (await fetch(`${base}/api/v2/desk/${save.org}`)).json()).desk.items.find((it: { key: string }) => it.key !== newNow.key)?.key;
+    await fetch(`${base}/api/v2/desk/${save.org}`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: deskKey, status: 'reviewed' }) });
+    await fetch(`${base}/api/v2/following`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind: 'club', id: save.clubs[2] }) });
+    try {
+      const res = await fetch(`${base}/api/v2/front-office/${save.org}`);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      const validate = validator('FrontOfficeSummary');
+      expect(validate(body) ? [] : validate.errors).toEqual([]);
+      expect(bannedInPayload(body, 'getFrontOffice')).toEqual([]);
+      expect(servedBasisProblems(body)).toEqual([]);
+      expect(body.changes.new.items.map((i: { key: string }) => i.key)).toEqual([newNow.key]);
+      expect(body.changes.resolved.items.map((i: { key: string }) => i.key)).toEqual(['medical:injury:9999']);
+      expect(body.changes.results.count).toBe(3);
+      expect(body.desk.setAside.reviewed).toBe(1);
+      expect(body.wire.entries[0].followed).toBe(true);
+      fixture('responses/getFrontOffice-since-last-export.json', json(body));
+      const farm = await (await fetch(`${base}/api/v2/departments/${save.org}/${newNow.department}`)).json();
+      expect(validator('DepartmentReport')(farm)).toBe(true);
+      fixture('responses/getDepartmentReport-since-last-export.json', json(farm));
+    } finally {
+      for (const t of ['report_snapshot_imports', 'report_snapshots', 'report_snapshot_figures', 'standings_snapshots', 'desk_items', 'following']) historyDb.exec(`DELETE FROM ${t}`);
+      forgetMemoryCaches();
     }
   }, SLOW);
 

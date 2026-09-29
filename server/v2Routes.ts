@@ -16,9 +16,12 @@ import { buildCatalog, type Catalog } from './presentation/catalog.js';
 import { assertAuthored } from './presentation/claim.js';
 import { dataStatusView, type DataStatusView } from './presentation/dataStatusWords.js';
 import {
-  FrontOfficeRefusal, UNKNOWN_CLUB, claimTrail, departmentReport, frontOfficeSummary, rebuildFrontOfficeLater, resolveOrg,
+  FrontOfficeRefusal, UNKNOWN_CLUB, claimTrail, rebuildFrontOfficeLater, resolveOrg,
 } from './frontOfficeService.js';
-import type { ClaimTrail, DepartmentReport, FrontOfficeSummary } from './presentation/frontOffice/types.js';
+import { DeskRefusal, departmentReportNow, deskViewNow, frontOfficeSummaryNow, setDeskStatus } from './frontOfficeAttention.js';
+import { LeagueRefusal, clubReportNow, followNow, followingView, searchNow, unfollowNow, wireView } from './aroundTheLeague.js';
+import type { ClaimTrail, DepartmentReport, DeskChange, DeskView, FrontOfficeSummary } from './presentation/frontOffice/types.js';
+import type { ClubReport, FollowChange, Following, SearchAnswer, Wire } from './presentation/frontOffice/leagueTypes.js';
 import type { ThemeChoice, ThemeChoices } from './contract/themePack.js';
 import { ThemeChoiceRefusal, activePack, chooseTheme, chosenPacks, installedPacks, themeChoices } from './themePackStore.js';
 import { currentOrganization } from './viewingOrganization.js';
@@ -49,22 +52,46 @@ v2Routes.get('/data-status', (_req, res: Response<DataStatusView>) => {
   send(res, dataStatusView(getDataStatus({ importedAt: importedAt.value })));
 });
 
-/** A Front Office route: its answer, or its refusal in a sentence (a 404 the contract documents). */
+/** A Front Office route: its answer, or its refusal in a sentence (a 404 or a 400 the contract documents). */
 function frontOffice<T>(answer: (req: Request) => Promise<T>) {
   return (req: Request, res: Response<T | ApiError>, next: NextFunction): void => {
     Promise.resolve().then(() => answer(req)).then((payload) => send(res, payload)).catch((err: unknown) => {
-      if (err instanceof FrontOfficeRefusal) res.status(err.status).json({ error: err.message });
+      if (err instanceof FrontOfficeRefusal || err instanceof DeskRefusal || err instanceof LeagueRefusal) res.status(err.status).json({ error: err.message });
       else next(err);
     });
   };
 }
 
-/** The Morning Report's desk and department cards, for a club (a team id, or `automatic`). */
-v2Routes.get('/front-office/:org', frontOffice<FrontOfficeSummary>((req) => frontOfficeSummary(resolveOrg(String(req.params.org)))));
+/** The Morning Report, for a club (a team id, or `automatic`), with the GM's attention on it (N7). */
+v2Routes.get('/front-office/:org', frontOffice<FrontOfficeSummary>((req) => frontOfficeSummaryNow(resolveOrg(String(req.params.org)))));
 
 /** One department's full report. */
 v2Routes.get('/departments/:org/:dept', frontOffice<DepartmentReport>((req) =>
-  departmentReport(resolveOrg(String(req.params.org)), String(req.params.dept))));
+  departmentReportNow(resolveOrg(String(req.params.org)), String(req.params.dept))));
+
+/** The GM's desk (N7, D-058): every item to decide with its status, and the ones he set aside. */
+v2Routes.get('/desk/:org', frontOffice<DeskView>((req) => deskViewNow(resolveOrg(String(req.params.org)))));
+
+/** Marks an item (open, reviewed, deferred until a game date, handled in OOTP); answers with the undo. */
+v2Routes.put('/desk/:org', frontOffice<DeskChange>((req) => setDeskStatus(resolveOrg(String(req.params.org)), req.body)));
+
+/** What the GM follows in this save, and the division rivals suggested (N7, D-058). */
+v2Routes.get('/following', frontOffice<Following>(() => followingView()));
+
+/** Follows a club or a player, or changes a follow's note. */
+v2Routes.put('/following', frontOffice<FollowChange>((req) => followNow(req.body)));
+
+/** Stops following a club or a player (`?kind=club&id=12`). */
+v2Routes.delete('/following', frontOffice<FollowChange>((req) => unfollowNow(req.query as Record<string, unknown>)));
+
+/** The league wire (N7, D-059): `?since=<game date>|season`, `club`, `kind`, `followed=first|only`. */
+v2Routes.get('/wire/:org', frontOffice<Wire>(async (req) => wireView(String(req.params.org), req.query as Record<string, unknown>)));
+
+/** Another club's report, under our scouting (N7, D-059). */
+v2Routes.get('/club/:teamId', frontOffice<ClubReport>((req) => clubReportNow(String(req.params.teamId))));
+
+/** Search: players, clubs and views, with where each opens (`?q=`). */
+v2Routes.get('/search', frontOffice<SearchAnswer>(async (req) => searchNow(req.query.q)));
 
 /** The evidence trail behind an item, on demand (an MLB need's responses). */
 v2Routes.get('/claims/:key', frontOffice<ClaimTrail>((req) => claimTrail(String(req.params.key))));
