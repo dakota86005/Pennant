@@ -643,8 +643,9 @@ yet "it just works" on a 1.1 GB league). Measured on a scratch import of a read-
   saves' look, the market record's check and the Front Office's warm-up just after it). Now the ready line comes about
   205 ms after the spawn and the clubs are answered 13 ms after it: the AI providers' SDKs load when first used
   (`aiSdk.ts`, about 140 ms); what the status serves about the league (the save's id, the rating scale) is remembered
-  per league file, import and configuration (`served-facts.json`, a new file; `servedFacts.ts`) and worked out as before
-  when nothing is remembered; the start's looks and upkeep wait until the status, the settings and the clubs are
+  per build, league file, import and configuration (`served-facts.json`, a new file; `servedFacts.ts`) and worked out
+  as before when nothing is remembered, and a start that serves the remembered id finds the save's live log before the
+  ready line all the same (a few `stat` calls), so no report is built without it; the start's looks and upkeep wait until the status, the settings and the clubs are
   answered, or 1.5 s for a client that never asks, one job a turn (`startupWork.ts`); the sidecar loads express and
   better-sqlite3 while the handshake is on its way.
 - **The first launch on a folder the Electron app last used.** The one-time upgrade begins before the ready line, in its

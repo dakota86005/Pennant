@@ -289,6 +289,23 @@ export function onLookAtTheServedSave(look: () => void): void {
  */
 export function lookAtTheServedSave(): void {
   refreshServedSaveId();
+  runServedSaveLooks();
+}
+
+/**
+ * At start: the served save's id as an earlier start worked it out for this very league (`seedServedSaveId`), and,
+ * when it is remembered, the other looks at the served save (its live log's files: a few `stat` calls where the export
+ * sits inside its save) run now, before the first answers, so nothing a request builds meanwhile goes without them (a
+ * Front Office built before the live log was found would be keyed "no log", and built again the moment it was found).
+ * False when nothing is remembered: the caller then looks at the served save in full (`lookAtTheServedSave`).
+ */
+export function seedServedSave(): boolean {
+  if (!seedServedSaveId()) return false;
+  runServedSaveLooks();
+  return true;
+}
+
+function runServedSaveLooks(): void {
   for (const look of servedSaveLooks) {
     try {
       look();

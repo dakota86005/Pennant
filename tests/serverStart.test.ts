@@ -1,10 +1,12 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EventEmitter } from 'node:events';
 import fs from 'node:fs';
+import { threadId } from 'node:worker_threads';
+import { appVersion } from '../server/appInfo.js';
 import type { NextFunction, Request, Response } from 'express';
 import { LEAGUE_DB_PATH, leagueUpgradeUnderWay, noteLeagueUpgrade } from '../server/db.js';
-import { resetFrontOfficeCache } from '../server/frontOfficeService.js';
-import { lookAtTheServedSave, seedServedSaveId, servedSaveId } from '../server/saveDiscovery.js';
+import { forgetLiveLog, liveLogLooked, resetFrontOfficeCache } from '../server/frontOfficeService.js';
+import { lookAtTheServedSave, seedServedSave, seedServedSaveId, servedSaveId } from '../server/saveDiscovery.js';
 import { SERVED_FACTS_PATH, rememberFact, rememberedFact, servedFactKey } from '../server/servedFacts.js';
 import {
   afterFirstAnswers, releaseAfterFirstAnswers, releaseStartupWork, resetStartupWork, startupWorkClock, startupWorkReleased,
@@ -132,6 +134,41 @@ describe('what the status serves about the league, remembered across starts', ()
     expect(servedSaveId()).toBe(real);
     fs.rmSync(SERVED_FACTS_PATH, { force: true });
     expect(seedServedSaveId()).toBe(false);
+  });
+
+  it("a start with the save's id remembered finds its live log before the first answers, so no report is built without it", () => {
+    forgetLiveLog();
+    fs.rmSync(SERVED_FACTS_PATH, { force: true });
+    // Nothing remembered: the caller looks at the served save in full
+    expect(seedServedSave()).toBe(false);
+    expect(liveLogLooked()).toBe(false);
+    rememberFact('saveId', 'remembered-id');
+    expect(seedServedSave()).toBe(true);
+    expect(servedSaveId()).toBe('remembered-id');
+    expect(liveLogLooked()).toBe(true);
+  });
+
+  it('what another build remembered is not read back: each build works its facts out again', () => {
+    rememberFact('ratingScaleMax', 20);
+    expect(rememberedFact('ratingScaleMax')).toBe(20);
+    const stored = JSON.parse(fs.readFileSync(SERVED_FACTS_PATH, 'utf8')) as Record<string, { key: string; value: unknown }>;
+    const version = JSON.stringify(appVersion());
+    expect(stored.ratingScaleMax.key).toContain(version);
+    stored.ratingScaleMax.key = stored.ratingScaleMax.key.replace(version, JSON.stringify('another-build'));
+    fs.writeFileSync(SERVED_FACTS_PATH, JSON.stringify(stored));
+    expect(rememberedFact('ratingScaleMax')).toBeUndefined();
+  });
+
+  it('writes through a temporary file of its own process and thread', () => {
+    fs.rmSync(SERVED_FACTS_PATH, { force: true });
+    const write = vi.spyOn(fs, 'writeFileSync');
+    try {
+      rememberFact('ratingScaleMax', 7);
+      expect(String(write.mock.calls.at(-1)?.[0])).toBe(`${SERVED_FACTS_PATH}.${process.pid}.${threadId}.tmp`);
+    } finally {
+      write.mockRestore();
+    }
+    expect(rememberedFact('ratingScaleMax')).toBe(7);
   });
 });
 

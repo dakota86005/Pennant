@@ -11,7 +11,7 @@ import { checkExport, startWatcher, stopWatcher } from './watcher.js';
 import { closeLeagueDatabase, prepareLeagueDatabase, tableExists } from './db.js';
 import { baselineSnapshot, historyDb } from './history.js';
 import { loadSettings } from './settings.js';
-import { lookAtTheServedSave, seedServedSaveId, startSaveWatch, stopSaveWatch } from './saveDiscovery.js';
+import { lookAtTheServedSave, seedServedSave, startSaveWatch, stopSaveWatch } from './saveDiscovery.js';
 import { afterFirstAnswers, releaseAfterFirstAnswers, startupWorkClock } from './startupWork.js';
 import { ratingScaleMax } from './valuation.js';
 import { warmTransactionLog } from './dataStatus.js';
@@ -112,8 +112,9 @@ function bootstrapData(): void {
     console.error('[import] could not tidy the league database:', err);
   }
   // What the status serves about the served save: remembered for this very league and configuration, else worked out
-  // now, as before (the first start after an import or on a new build)
-  const seeded = seedServedSaveId();
+  // now, as before (the first start after an import or on a new build). Either way its live log is found now, before
+  // the first answers, so no Front Office is built without it
+  const seeded = seedServedSave();
   if (!seeded) lookAtTheServedSave();
   if (tableExists('players')) ratingScaleMax();
 

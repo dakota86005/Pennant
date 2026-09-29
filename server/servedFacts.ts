@@ -15,6 +15,8 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { threadId } from 'node:worker_threads';
+import { appVersion } from './appInfo.js';
 import { DATA_DIR, APP_ROOT, loadConfig } from './config.js';
 import { LAST_IMPORT_PATH, LEAGUE_DB_PATH, importRecord } from './db.js';
 
@@ -36,13 +38,14 @@ function stamp(file: string): string {
 }
 
 /**
- * What a fact was worked out for: the league file itself (size, time, inode: an import or an upgrade swaps a new file
- * in), its import (the record and `last-import.json`), and, for the save's id, the configuration (the save chosen, and
- * whether it was chosen before or after the import, which `servedLeagueCertain` reads from the two files' times).
+ * What a fact was worked out for: the build that worked it out (its version: another build may work it out another
+ * way), the league file itself (size, time, inode: an import or an upgrade swaps a new file in), its import (the record
+ * and `last-import.json`), and, for the save's id, the configuration (the save chosen, and whether it was chosen before
+ * or after the import, which `servedLeagueCertain` reads from the two files' times).
  */
 export function servedFactKey(fact: Fact): string {
   const record = importRecord();
-  const league = [stamp(LEAGUE_DB_PATH), stamp(LAST_IMPORT_PATH), record?.startedAt ?? null];
+  const league = [appVersion(), stamp(LEAGUE_DB_PATH), stamp(LAST_IMPORT_PATH), record?.startedAt ?? null];
   if (fact === 'ratingScaleMax') return JSON.stringify(league);
   const config = loadConfig();
   const configFile = fs.existsSync(path.join(DATA_DIR, 'config.json')) ? path.join(DATA_DIR, 'config.json') : path.join(APP_ROOT, 'config.json');
@@ -72,7 +75,8 @@ export function rememberFact(fact: Fact, value: string | number | null): void {
     const key = servedFactKey(fact);
     if (all[fact]?.key === key && all[fact]?.value === value) return;
     all[fact] = { key, value };
-    const temporary = `${SERVED_FACTS_PATH}.${process.pid}.tmp`;
+    // Its own name for each process and thread, so two writers never share a temporary file
+    const temporary = `${SERVED_FACTS_PATH}.${process.pid}.${threadId}.tmp`;
     fs.writeFileSync(temporary, JSON.stringify(all));
     fs.renameSync(temporary, SERVED_FACTS_PATH);
   } catch (err) {

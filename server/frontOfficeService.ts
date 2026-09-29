@@ -110,6 +110,16 @@ export function relocateLiveLog(): void {
 }
 const liveLogFiles = (): { db: string; wal: string } | null => located?.live ?? null;
 
+/** Whether the live log's files have been looked for since the start (the tests: a start with a remembered save looks at once). */
+export function liveLogLooked(): boolean {
+  return located !== null;
+}
+
+/** For the tests: as at a start, before any look. */
+export function forgetLiveLog(): void {
+  located = null;
+}
+
 /** Everything the answer for this club depends on, as one string. */
 function inputsKey(orgId: number): string {
   const config = statKey(path.join(DATA_DIR, 'config.json'));
