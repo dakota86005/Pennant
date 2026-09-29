@@ -104,7 +104,15 @@ public struct PlaceStrip: View {
                 ctx.fill(Path(ellipseIn: CGRect(x: cx - size / 2, y: midY - size / 2, width: size, height: size)), with: .color(color))
                 if d.recent {
                     let r = d.kind == .other ? dot * Self.clubScale : dot * 2.5
-                    ctx.stroke(Path(ellipseIn: CGRect(x: cx - r / 2, y: midY - r / 2, width: r, height: r)), with: .color(accent), lineWidth: 1.5)
+                    let ring = Path(ellipseIn: CGRect(x: cx - r / 2, y: midY - r / 2, width: r, height: r))
+                    // In dark the club's accent sits close to the shaded ends and the other dots: a halo in the window's
+                    // own colour behind a heavier ring keeps it apart (N6 polish: the rings read faint in dark)
+                    if colorScheme == .dark {
+                        ctx.stroke(ring, with: .color(Color(nsColor: .windowBackgroundColor)), lineWidth: 4)
+                        ctx.stroke(ring, with: .color(accent), lineWidth: 2)
+                    } else {
+                        ctx.stroke(ring, with: .color(accent), lineWidth: 1.5)
+                    }
                 }
             }
         }

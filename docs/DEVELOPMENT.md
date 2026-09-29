@@ -330,11 +330,26 @@ nothing else in it (no clubs to pick). The tests' pretend saves copy it (`macos/
 PENNANT_DEV_DATA_DIR=/tmp/pennant-dev "<DerivedData>/Build/Products/Debug/Pennant.app/Contents/MacOS/Pennant"
 ```
 
+A Debug build finds and chooses an OOTP save by itself (the zero-question first run, D-063) only when it is given a
+pretend home to look in, `PENNANT_DEV_HOME` (or `-PennantDevHome <folder>`): the server then looks for saves there and
+nowhere else, so a development build never imports the developer's own saves. Without one, a Debug build on a scratch
+folder with no save chosen opens Setup and asks. One script does all of it, a synthetic league, a pretend home holding
+one pretend save that exports it, and the data folder, log and caches, all inside a scratch folder, and launches the
+build by its path (never through LaunchServices, which may open another worktree's build):
+
+```bash
+macos/scripts/run-dev.sh /tmp/pennant-dev            # this checkout's Debug build
+macos/scripts/run-dev.sh /tmp/pennant-dev <path/to/Pennant.app>
+```
+
 A Debug build keeps the Morning Report it received (for the next launch) in `PENNANT_DEV_CACHES_DIR` when set. To see
 the kept report as it waits for the fresh one (the synthetic league answers faster than a frame), set
 `PENNANT_DEV_HOLD_FRESH_MS=2500`; with `PENNANT_DEV_CAPTURE_DIR=<folder>` the window draws itself to a PNG there when
 the report is first drawn updating and when the fresh one has replaced it (the app's own window, no screen recording).
-The log's "first Morning Report drawn" line times the first committed frame from the process's start.
+The log's "first Morning Report drawn" line times the first committed frame from the process's start, and the lines
+beginning "launch:" time the launch's own steps (the model made and the server started, the launch finished, the main
+window's first frame). `-PennantDebugScrollTo <points>` scrolls the Morning Report there once it is drawn, for window
+captures of content under the toolbar without any input.
 
 The first start on a folder backs up its irreplaceable files to `backups/pre-swiftui-<date>/` (SWIFTUI_REBUILD.md
 section 7.5). The server's log is `server.log` in the log folder (`~/Library/Logs/Pennant/` for a release build; Help ▸
