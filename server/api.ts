@@ -1,7 +1,7 @@
 import { Router, type NextFunction, type Request, type Response } from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
-import { db, tableExists, tableColumns, locateColumn, LAST_IMPORT_PATH, LEAGUE_DB_PATH, NEXT_DB_PATH, noteLeagueUpgrade, swapWhenFree } from './db.js';
+import { db, tableExists, tableColumns, locateColumn, LAST_IMPORT_PATH, LEAGUE_DB_PATH, NEXT_DB_PATH, leagueUpgradeUnderWay, noteLeagueUpgrade, swapWhenFree } from './db.js';
 import { detectSaves, findSaves, resolveChosenFolder, searchLocations, type ResolveResult, type SaveInfo, type SearchLocation } from './paths.js';
 import { DATA_DIR, loadConfig, saveConfig } from './config.js';
 import { diskSpace, importCsvDir, upgradeState, ImportRefused, type ImportProgress, type ImportResult } from './importer.js';
@@ -69,7 +69,7 @@ import { scoutedDevelopmentRoutes } from './scoutedDevelopment.js';
 import { eventStream, progressThrottle, publish } from './serverEvents.js';
 import { v2Routes } from './v2Routes.js';
 import { currentReportStamp, holdFrontOfficeRebuilds, relocateLiveLog, valueRefitsRecorded, warmFrontOffice } from './frontOfficeService.js';
-import { EXPORT_NOT_FOUND, importNote, importWords, leftOutNote, type ImportNote } from './presentation/importWords.js';
+import { EXPORT_NOT_FOUND, LEAGUE_UPGRADE_LINE, importNote, importWords, leftOutNote, type ImportNote, type LeagueUpgradeLine } from './presentation/importWords.js';
 import type { Integer } from './contract/primitives.js';
 
 export const api = Router();
@@ -637,6 +637,11 @@ export interface ServerStatus {
    * save); null when none is known. Settings shows it, so the field is never empty while the folder is known.
    */
   saveFolder: string | null;
+  /**
+   * While a league an earlier build imported is brought up to date, once (the one-time upgrade; the server answers
+   * meanwhile and the report follows when it is done): the line to show where the report will be; null otherwise.
+   */
+  leagueUpgrade: LeagueUpgradeLine | null;
 }
 
 /** A request the server accepted, with nothing more to say. */
@@ -747,6 +752,7 @@ export function statusSnapshot(): ServerStatus {
     saveId: servedSaveId(),
     // The configuration's folder, else the one the last look found (never located on this path)
     saveFolder: config.lgPath ?? servedSaveFolder(),
+    leagueUpgrade: leagueUpgradeUnderWay() ? LEAGUE_UPGRADE_LINE : null,
     /*
      * The scale OOTP is set to show ratings on, read off the save. Bars used
      * to divide by eighty regardless, so a 5 on the 1-to-5 scale drew at six

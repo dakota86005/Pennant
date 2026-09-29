@@ -1,5 +1,5 @@
 event: hello
-data: {"type":"hello","status":{"app":{"name":"Pennant","version":"0.0.0","projectUrl":"https://github.com/dakota86005/ootp-front-office","upstreamUrl":"https://github.com/lsukev/ootp-front-office"},"csvExportedAt":null,"configured":false,"saveName":null,"csvDir":null,"csvDirExists":false,"importing":false,"importProgress":null,"lastImport":null,"lastError":null,"importInterruptedSince":null,"importNote":null,"hasData":true,"exportPending":null,"logoToken":"none","reportStamp":null,"savePlayedElsewhere":null,"saveId":null,"saveFolder":null,"ratingScaleMax":80}}
+data: {"type":"hello","status":{"app":{"name":"Pennant","version":"0.0.0","projectUrl":"https://github.com/dakota86005/ootp-front-office","upstreamUrl":"https://github.com/lsukev/ootp-front-office"},"csvExportedAt":null,"configured":false,"saveName":null,"csvDir":null,"csvDirExists":false,"importing":false,"importProgress":null,"lastImport":null,"lastError":null,"importInterruptedSince":null,"importNote":null,"hasData":true,"exportPending":null,"logoToken":"none","reportStamp":null,"savePlayedElsewhere":null,"saveId":null,"saveFolder":null,"leagueUpgrade":null,"ratingScaleMax":80}}
 
 event: import-started
 data: {"type":"import-started","startedAt":"2040-07-01T12:00:00.000Z"}

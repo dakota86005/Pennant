@@ -109,7 +109,13 @@ public struct MorningReportView: View {
     /// While there is no report to show: the server starting, then the report on its way (structural words only).
     @ViewBuilder
     private var waiting: some View {
-        if model.isReady {
+        if model.isReady, let upgrade = model.status?.leagueUpgrade {
+            // A league an earlier version imported, brought up to date once: said in the server's words
+            ProgressView { Text(verbatim: upgrade.text) }
+                .help(Text(verbatim: upgrade.hint))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityIdentifier("morningReport.leagueUpgrade")
+        } else if model.isReady {
             ProgressView { Text("Loading") }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {

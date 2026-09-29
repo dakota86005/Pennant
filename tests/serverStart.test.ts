@@ -138,6 +138,17 @@ describe('what the status serves about the league, remembered across starts', ()
 describe("an earlier build's league being upgraded", () => {
   afterEach(() => noteLeagueUpgrade(null));
 
+  it('the status says so in one plain sentence while it runs, and nothing once it is done', async () => {
+    let finish!: () => void;
+    noteLeagueUpgrade(new Promise<void>((resolve) => { finish = resolve; }));
+    const during = await request('/api/status');
+    expect(during.leagueUpgrade).toEqual({ text: 'Getting your league ready. This happens once.', hint: expect.any(String) });
+    expect(during.leagueUpgrade.hint.length).toBeLessThanOrEqual(75);
+    noteLeagueUpgrade(null);
+    finish();
+    expect((await request('/api/status')).leagueUpgrade).toBeNull();
+  });
+
   it('holds the Front Office build until the upgraded file is served (built on the old one, it takes minutes)', async () => {
     resetFrontOfficeCache();
     let finish!: () => void;

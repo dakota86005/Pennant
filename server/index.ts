@@ -136,11 +136,12 @@ function bootstrapData(): void {
   // Nothing imported yet: the import starts now (its progress is what the first answers say)
   if (exportThere && !tableExists('players')) void runImport(config.csvDir!);
 
+  // A database an earlier build imported gets its one-time upgrade: a converted copy made in a worker, swapped in (never
+  // in place). Begun now, so the first status says so ("Getting your league ready"); the served file stays as it is
+  // meanwhile (D-061), and the first answers never wait on it
+  const upgraded = needsUpgrade ? upgradeLeagueInBackground() : Promise.resolve();
   afterFirstAnswers('upkeep', () => {
-    // A database an earlier build imported gets its one-time upgrade: a converted copy, swapped in (never in place).
-    // The upkeep below reads the league; on the old file (no indexes) its queries take seconds, so it waits for the
-    // upgraded one, and the first answers never wait on either (the served file stays read-only meanwhile, D-061)
-    const upgraded = needsUpgrade ? upgradeLeagueInBackground() : Promise.resolve();
+    // The upkeep reads the league; on the old file (no indexes) its queries take seconds, so it waits for the upgraded one
     void upgraded.then(() => setImmediate(() => upkeep(config.csvDir, exportThere)));
   });
 }
