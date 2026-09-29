@@ -250,7 +250,7 @@ public enum DesignFixtures {
     }
 
     public static let rotation: [StaffPitcher] = [
-        pitcher("sp1", "Next", "R. Castillo", "7–4 · 3.21", value: (1.2, 1.8, 2.5), note: "Next game"),
+        pitcher("sp1", "Next", "R. Castillo", "7–4 · 3.21", value: (1.2, 1.8, 2.5), note: nil),
         pitcher("sp2", "2nd", "W. Tanaka", "8–5 · 3.64", value: (0.8, 1.3, 1.9), note: nil),
         pitcher("sp3", "3rd", "Z. Kowalski", "5–6 · 4.10", value: (0.2, 0.6, 1.0), note: nil),
         pitcher("sp4", "4th", "P. Quinlan", "6–3 · 3.95", value: (0.4, 0.8, 1.2), note: nil),
