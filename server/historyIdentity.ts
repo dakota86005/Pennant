@@ -372,8 +372,16 @@ function createKey(save: ServedSave, origin: HistoryOrigin, now: string, replace
     `INSERT INTO history_saves (save_key, folder_id, folder_path, save_name, bound, origin, replaces, refused_at, created_at, last_seen_at)
      VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, ?)`
   ).run(key, save.folderId, save.folderPath, save.name, origin, replaces, replaces ? snapshotGameDate() : null, now, now);
+  if (isMainThread) console.log(`[history] ${ORIGIN_LOG_WORDS[origin](save.name)}`);
   return key;
 }
+
+/** What binding a save to a history of its own says in the log (N6 polish: the migration's counts in plain words). */
+const ORIGIN_LOG_WORDS: Record<HistoryOrigin, (name: string) => string> = {
+  new: (name) => `bound the save "${name}" to a rating history of its own (the first time Pennant has seen its folder)`,
+  fresh_new_league: (name) => `started a fresh rating history for the save "${name}": its folder's earlier history had another league's players, and is kept apart`,
+  fresh_went_back: (name) => `started a fresh rating history for the save "${name}": its folder's earlier history runs later than the save's own date, and is kept apart`,
+};
 
 /**
  * The key to file under now, given one resolved earlier: itself while still bound, else the key bound to its folder
@@ -835,6 +843,7 @@ function ensureLegacyBackup(): boolean {
       historyDb.exec(`VACUUM INTO '${partial.replaceAll("'", "''")}'`);
       fs.renameSync(partial, final);
       remember(final);
+      console.log(`[history] copied history.db to backups/${path.basename(final)} before bringing the earlier rating history over`);
     }
     legacyState.backupFailed = null;
     return true;
@@ -888,6 +897,10 @@ export function reviewLegacyHistory(saveKey: string, save: ServedSave, names: ()
     `INSERT OR IGNORE INTO save_rating_snapshot_modes (save_key, game_date, mode, additional_scouted, source, import_started_at, recorded_at)
      SELECT ?, game_date, mode, additional_scouted, source, import_started_at, recorded_at FROM rating_snapshot_modes WHERE save_name = ? AND game_date = ?`
   );
+  // What the review did, for the log in plain words: dates brought over and rows copied, and dates left in place by why
+  let attributedDates = 0;
+  let rowsCopied = 0;
+  const leftInPlace = new Map<LegacyReason | 'unclear_rows', { dates: number; rows: number }>();
   for (const date of pending) {
     historyIdentityDeps.beforeLegacyDate(date);
     const rows = rowsOf.all(save.legacyName, date) as Array<{ player_id: number; name: string | null }>;
@@ -904,8 +917,46 @@ export function reviewLegacyHistory(saveKey: string, save: ServedSave, names: ()
       }
       if (decision.playerIds.length > 0) copyMode.run(saveKey, save.legacyName, date);
       record.run(saveKey, save.legacyName, date, decision.verdict, decision.reason, rows.length, copied, decision.compared, decision.matched, stamp, new Date().toISOString());
+      if (decision.verdict === 'attributed') {
+        attributedDates += 1;
+        rowsCopied += copied;
+        const notCopied = rows.length - copied;
+        if (notCopied > 0) {
+          const left = leftInPlace.get('unclear_rows') ?? { dates: 0, rows: 0 };
+          leftInPlace.set('unclear_rows', { dates: left.dates, rows: left.rows + notCopied });
+        }
+      } else {
+        const left = leftInPlace.get(decision.reason) ?? { dates: 0, rows: 0 };
+        leftInPlace.set(decision.reason, { dates: left.dates + 1, rows: left.rows + rows.length });
+      }
     }).immediate();
   }
+  if (isMainThread) console.log(`[history] ${legacyReviewLogLine(save.legacyName, pending.length, attributedDates, rowsCopied, leftInPlace)}`);
+}
+
+/**
+ * The review of the name-keyed history in one line for the log (N6 polish): how many dates were looked at, how many
+ * were this save's and brought over with how many rows, and each reason the rest stayed where they were (the rows stay
+ * in place under the name; nothing is deleted).
+ */
+export function legacyReviewLogLine(
+  name: string,
+  looked: number,
+  attributedDates: number,
+  rowsCopied: number,
+  leftInPlace: ReadonlyMap<LegacyReason | 'unclear_rows', { dates: number; rows: number }>,
+): string {
+  const parts = [`looked at ${plural(looked, 'date')} of the rating history kept under the name "${name}"`];
+  parts.push(attributedDates > 0
+    ? `brought ${plural(attributedDates, 'date')} over as this save's (${plural(rowsCopied, 'row')} copied)`
+    : 'brought none over');
+  const left: string[] = [];
+  for (const [reason, { dates, rows }] of leftInPlace) {
+    if (reason === 'unclear_rows') left.push(`${plural(rows, 'row')} of the dates brought over, whose players aren't in this league under the same name`);
+    else left.push(`${plural(dates, 'date')} (${plural(rows, 'row')}) that ${REASON_WORDS[reason]}`);
+  }
+  if (left.length > 0) parts.push(`left in place, under the name: ${left.join('; ')}`);
+  return `${parts.join('; ')}.`;
 }
 
 // ── what is said about it ─────────────────────────────────────────────────────
