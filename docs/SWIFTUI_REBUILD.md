@@ -662,9 +662,12 @@ yet "it just works" on a 1.1 GB league). Measured on a scratch import of a read-
   shows, and the staff, and in one column the desk and the departments, follow in the next frame. Laying the kept report
   out hidden before its key was confirmed was tried and dropped: the main thread's work is the same, and the window's
   first frame came later. The log's "launch:" lines time the launch's own steps. Where the time goes now, in a typical
-  relaunch: the process's start to the app's model 0.10 s; the launch finished 0.25 s; the server confirmed 0.35 s; the
-  window's first frame 0.67 s (the main thread builds the window's shell); the store key 0.72 s; the report's first
-  layout about 0.2 s.
+  relaunch after the review (from the process's start): the app's model and the server started 0.09 s; the launch
+  finished 0.21 s; the server's ready line 0.25 s; the window's first frame 0.43 s (the main thread builds the window's
+  shell, and the server's readiness is taken up once it is drawn); the store key 0.46 s; the report's first layout
+  about 0.14 s. A sample of the main thread over a launch finds no hot spot of the app's own: the shell's time is
+  SwiftUI's and AppKit's first layout (the toolbar about a quarter of it) and the window server's, so no cheap win was
+  left there.
 - **One window at a time.** The club card is drawn from the same place as the colours and the report. During a switch,
   the report on screen stays the old save's, said to be updating, and the club card and colours stay with it until the
   new save's report lands (`FrontOfficeStore.heldCatalog`: the report's own key and catalog); at launch the card is drawn
@@ -1672,7 +1675,7 @@ export (M4, load average about 2.5; B1's build measured back to back for compari
 |---|---|---|---|
 | Launch to server ready | ≤ 0.5 s | **0.30 s** | 0.29 s |
 | Launch to the first Morning Report payload | ≤ 1.0 s | **2.5 s: not met** (the Front Office is built cold at each launch; the request waits on the start-up build, 2.0 s) | 2.5 s |
-| Launch to the first drawn Morning Report, the Mac app, on a scratch import of the owner's 1.1 GB league (N6 polish: a Debug build with Release optimisation, seven relaunches) | ≤ 1.0 s | **Met: median 0.91 s (0.85 to 0.95 s)**; the first launch after a build about 2 s (the system checks the new build). On the real folder the check measured 1.7 to 2.2 s before this pass | |
+| Launch to the first drawn Morning Report, the Mac app, on a scratch import of the owner's 1.1 GB league (N6 polish, after its review: a Debug build with Release optimisation, `SWIFT_OPTIMIZATION_LEVEL=-O`, whole-module, no testability; not a Release build, which cannot use a scratch folder; seven relaunches, load average 3 to 5) | ≤ 1.0 s | **Met: median 0.53 s, worst 0.70 s** (0.44, 0.52, 0.52, 0.52, 0.53, 0.61, 0.70 s), from the process's start to the first committed frame; the fresh report replaced it 1.6 to 2.2 s after the store was made. The first launch after a build is slower (1.0 s here: the system checks the new build). The polish's own final seven, before the review, on a busier machine: median 1.00 s, worst 1.14 s (0.92 to 1.14 s); the two were not run back to back, so the gap is not all the review's. On the real folder the check measured 1.7 to 2.2 s before this pass | |
 | Launch to the first drawn Morning Report, the Mac app (N6, Stage B1: the kept payload, replaced in place when the fresh one lands; Stage B2: the shell built while the server starts) | ≤ 1.0 s | **Met at the median: 0.96 s, worst 1.39 s** (the first launch after a build), from the process's start to the first committed frame (a Debug build on the synthetic league, seven launches, N6 Stage B2): the server ready at about 0.58 s, the store key 0.08 s after it (was 0.32 s), the page's first layout about 0.3 s. B1's build: median 1.36 s, worst 1.59 s | 1.36 s |
 | A view switch from the cache (a department's report asked again) | ≤ 100 ms | **1 ms** (median; 2 ms worst) | 1 ms |
 | `/api/status` during an import, p99 | ≤ 50 ms | **5 ms** (p95 3 ms, max 78 ms) | p95 2 ms |
