@@ -463,10 +463,29 @@ function seasonOf(): { season: number | null; gameDate: string | null } {
  * Everything on the wire this season, gathered once per import (and per copy of the log the server holds), newest
  * first by day. `importStamp` is the import served; `ourTeamId` the club the app follows (its division's standings).
  */
-export function wireFacts(importStamp: string | null, ourTeamId: number | null): WireFacts {
+function wireInputs(importStamp: string | null, ourTeamId: number | null) {
   const peek = located ? peekTransactionLog(located) : peekTransactionLog();
   const log = peek?.log ?? null;
   const key = `${importStamp ?? 'none'}|${ourTeamId ?? '-'}|${peek === null ? 'reading' : log ? 'log' : 'no-log'}|${previousStandings(importStamp)?.importStamp ?? '-'}`;
+  return { peek, log, key };
+}
+
+const logCopies = new WeakMap<TransactionLog, number>();
+let logCopyCount = 0;
+
+/**
+ * What the wire would be gathered from now, as a short stamp, without gathering it: it moves when the import, the club,
+ * the copy of the log the server holds (the first copy read after start included) or the last standings move. A view
+ * that puts the wire on its answer keeps it by this stamp, so a log read after it was composed is not missed.
+ */
+export function wireStamp(importStamp: string | null, ourTeamId: number | null): string {
+  const { key, log } = wireInputs(importStamp, ourTeamId);
+  if (log && !logCopies.has(log)) logCopies.set(log, ++logCopyCount);
+  return `${key}|${log ? logCopies.get(log) : 0}`;
+}
+
+export function wireFacts(importStamp: string | null, ourTeamId: number | null): WireFacts {
+  const { peek, log, key } = wireInputs(importStamp, ourTeamId);
   if (cached && cached.key === key && cached.log === log) return cached.facts;
   builds += 1;
   const started = performance.now();

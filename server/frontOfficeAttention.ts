@@ -33,7 +33,7 @@ import { publish } from './serverEvents.js';
 import { timestampWords } from './timeWords.js';
 import { searchIndex } from './search.js';
 import { copyWatchlist } from './frontOfficeMemory.js';
-import { wireFacts, wireGatherMs } from './leagueWire.js';
+import { wireFacts, wireGatherMs, wireStamp } from './leagueWire.js';
 import { currentOrganization } from './viewingOrganization.js';
 
 // ── composing ──────────────────────────────────────────────────────────────
@@ -85,7 +85,8 @@ function resultsSince(built: FrontOfficeBuilt, previous: memory.ReportSnapshot):
 function compose(built: FrontOfficeBuilt): Composed {
   const recs = records(built.orgId);
   const deskStamp = `d${hash(JSON.stringify([...recs].map(([k, r]) => [k, r.status, r.until, r.note, r.since])))}`;
-  const key = `${built.key}|${memory.memoryRevision()}|${deskStamp}`;
+  // The wire's column is on the answer: a copy of the live log read after it was composed composes it again
+  const key = `${built.key}|${memory.memoryRevision()}|${deskStamp}|${wireStamp(built.importStamp, built.orgId)}`;
   const hit = composed.get(key);
   if (hit) return hit;
   composeCount += 1;
