@@ -3,9 +3,9 @@ import { historyDb } from '../server/history.js';
 import { forgetHistoryKey } from '../server/historyIdentity.js';
 import {
   previousReportSnapshot, previousStandings, recordReportSnapshot, recordStandingsSnapshot, reportSnapshotCount, reportSnapshotOf, standingsOf,
-  forgetMemoryCaches, memoryBackupPath, ensureMemoryBackup,
+  forgetMemoryCaches, memoryBackupPath, ensureMemoryBackup, type StandingsRow,
 } from '../server/frontOfficeMemory.js';
-import { frontOfficeSummaryNow, rememberBuild, resetAttention, departmentReportNow } from '../server/frontOfficeAttention.js';
+import { frontOfficeSummaryNow, rememberBuild, resetAttention, departmentReportNow, resultsSince } from '../server/frontOfficeAttention.js';
 import { frontOfficeBuilt, resetFrontOfficeCache } from '../server/frontOfficeService.js';
 import { importedAt } from '../server/playerStateRoutes.js';
 import { subscribe, type ServerEvent } from '../server/serverEvents.js';
@@ -70,7 +70,7 @@ describe('what changed since the last export (case 16)', () => {
     const now = reportsWith([farmItem('a', 'attention', 'Arms short at Double-A'), farmItem('b', 'critical', 'Nobody to catch at Triple-A')]);
     const { summary, byDepartment } = sinceLastExport({
       reports: now, previous: previousWith([['b', 'attention', 'Nobody to catch at Triple-A'], ['c', 'noted', 'A shortstop idle at Single-A']]),
-      results: null, importStamp: build.importStamp, gameDate: build.gameDate,
+      results: { games: null, why: 'noSchedule' }, importStamp: build.importStamp, gameDate: build.gameDate,
     });
     expect(summary.new.items.map((i) => i.key)).toEqual(['farm:a']);
     expect(summary.moved.items.map((i) => i.key)).toEqual(['farm:b']);
@@ -83,7 +83,7 @@ describe('what changed since the last export (case 16)', () => {
   it('never names the transaction behind a change: the line is the item as served, and its basis says a change is not a cause (D-020)', () => {
     const now = reportsWith([farmItem('a', 'attention', 'Arms short at Double-A')]);
     const { summary } = sinceLastExport({
-      reports: now, previous: previousWith([['c', 'noted', 'A shortstop idle at Single-A']]), results: null, importStamp: build.importStamp, gameDate: build.gameDate,
+      reports: now, previous: previousWith([['c', 'noted', 'A shortstop idle at Single-A']]), results: { games: null, why: 'noSchedule' }, importStamp: build.importStamp, gameDate: build.gameDate,
     });
     for (const chip of [summary.new, summary.resolved, summary.moved]) {
       for (const it of chip.items) {
@@ -97,14 +97,14 @@ describe('what changed since the last export (case 16)', () => {
 
   it('resolves nothing, and calls nothing new, for a department not read at one of the two exports: its silence is not evidence (D-018)', () => {
     const unreadNow = sinceLastExport({
-      reports: reportsWith('unavailable'), previous: previousWith([['c', 'noted', 'A shortstop idle at Single-A']]), results: null,
+      reports: reportsWith('unavailable'), previous: previousWith([['c', 'noted', 'A shortstop idle at Single-A']]), results: { games: null, why: 'noSchedule' },
       importStamp: build.importStamp, gameDate: build.gameDate,
     });
     expect(unreadNow.summary.resolved.count).toBe(0);
     expect(unreadNow.byDepartment.get('farm')).toMatchObject({ changes: null });
     expect(unreadNow.byDepartment.get('farm')!.note!.display).toMatch(/wasn't read at one of the two exports/);
     const unreadBefore = sinceLastExport({
-      reports: reportsWith([farmItem('a', 'attention', 'Arms short at Double-A')]), previous: previousWith([], 'unavailable'), results: null,
+      reports: reportsWith([farmItem('a', 'attention', 'Arms short at Double-A')]), previous: previousWith([], 'unavailable'), results: { games: null, why: 'noSchedule' },
       importStamp: build.importStamp, gameDate: build.gameDate,
     });
     expect(unreadBefore.summary.new.count).toBe(0);
@@ -131,6 +131,19 @@ describe('what changed since the last export (case 16)', () => {
     });
     expect(summary.results.text).toBe('1–1 since July 1, 2040');
     expect(summary.results.items.map((i) => i.line.text)).toEqual(['W 5–2 vs Club 2 N', 'L 3–1 at Club 3 N']);
+  });
+
+  it('says why the results aren\'t known: no schedule, no day at the last export, or a season that couldn\'t be read (L9)', () => {
+    const hint = (why: 'noSchedule' | 'noPreviousDay' | 'noSeason') => sinceLastExport({
+      reports: reportsWith([]), previous: previousWith([]), results: { games: null, why }, importStamp: build.importStamp, gameDate: build.gameDate,
+    }).summary.results;
+    expect(hint('noSchedule')).toMatchObject({ text: 'Results not known', hint: 'The export has no game-by-game schedule' });
+    expect(hint('noPreviousDay').hint).toBe('The last export doesn\'t say which day it reflected');
+    expect(hint('noSeason').hint).toBe('The club\'s season couldn\'t be read this time');
+    const season = (games: null | []) => ({ orgId: 1, season: { gameDate: '2040-7-2', standings: [], games } });
+    expect(resultsSince({ orgId: 1, season: null }, { importStamp: 'x', gameDate: '2040-7-1' })).toEqual({ games: null, why: 'noSeason' });
+    expect(resultsSince(season(null), { importStamp: 'x', gameDate: '2040-7-1' })).toEqual({ games: null, why: 'noSchedule' });
+    expect(resultsSince(season([]), { importStamp: 'x', gameDate: null })).toEqual({ games: null, why: 'noPreviousDay' });
   });
 });
 
@@ -225,6 +238,20 @@ describe('the snapshots behind it, per save and per import (D-058, D-064)', () =
     expect(previousReportSnapshot(save.org, importedAt.value)).toBeNull();
     expect((await frontOfficeSummaryNow(save.org)).changes).toBeNull();
     expect(reportSnapshotOf(save.org, 'another-save-import')).toBeNull();
+  });
+
+  it('counts the results from the standings kept at the import it compares with, never a later one (M4)', async () => {
+    const row = (w: number, l: number): StandingsRow => ({
+      teamId: save.org, name: 'Us', abbr: 'US', leagueId: save.leagueId, subLeagueId: 0, divisionId: 0, division: 'East', w, l, t: 0, pos: 1,
+      divisionClubs: 4, gb: 0, runsScored: 1, runsAllowed: 1,
+    });
+    // The export compared with (A) had played 10; a later import (B) whose report wasn't kept had played 20
+    await recordStandingsSnapshot('A', '2040-5-1', [row(6, 4)]);
+    await recordStandingsSnapshot('B', '2040-5-11', [row(12, 8)]);
+    const games = Array.from({ length: 30 }, (_, i) => ({ gameId: i + 1, date: `2040-5-${i + 1}`, scored: 1, allowed: 0, home: true, opponent: 'Them' }));
+    const results = resultsSince({ orgId: save.org, season: { gameDate: '2040-5-30', standings: [], games } }, { importStamp: 'A', gameDate: '2040-5-1' });
+    expect(results).toMatchObject({ how: 'count' });
+    expect(results.games!.map((g) => g.gameId)).toEqual(games.slice(10).map((g) => g.gameId));
   });
 
   it('copies history.db into backups/ once before the first row is remembered', async () => {

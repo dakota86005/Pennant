@@ -183,11 +183,27 @@ export interface ResultsSince {
   how: 'count' | 'date';
 }
 
+/**
+ * Why the games between the two exports aren't known: the export has no game-by-game schedule, the last export's
+ * snapshot doesn't say which day it reflected (and its standings don't say how many games had been played), or the
+ * club's season couldn't be read this time.
+ */
+export interface ResultsUnknown {
+  games: null;
+  why: 'noSchedule' | 'noPreviousDay' | 'noSeason';
+}
+
+const RESULTS_WHY: Record<ResultsUnknown['why'], string> = {
+  noSchedule: 'The export has no game-by-game schedule',
+  noPreviousDay: 'The last export doesn\'t say which day it reflected',
+  noSeason: 'The club\'s season couldn\'t be read this time',
+};
+
 export interface ChangesInput {
   /** The reports now (every department but the Front Office), with statuses. */
   reports: readonly DepartmentReport[];
   previous: PreviousExport;
-  results: ResultsSince | null;
+  results: ResultsSince | ResultsUnknown;
   /** The import now and the league's day it reflects. */
   importStamp: string | null;
   gameDate: GameDate | null;
@@ -342,7 +358,7 @@ export function sinceLastExport(input: ChangesInput): {
   }
 
   const since = gameDateDisplay(previous.gameDate);
-  const results = input.results;
+  const results = input.results.games === null ? null : input.results as ResultsSince;
   const games = results?.games ?? [];
   const w = games.filter((g) => g.scored > g.allowed).length;
   const l = games.filter((g) => g.scored < g.allowed).length;
@@ -380,7 +396,7 @@ export function sinceLastExport(input: ChangesInput): {
         'results',
         resultItems,
         results === null ? 'Results not known' : games.length ? `${record} since ${since ?? 'the last export'}` : `No games since ${since ?? 'the last export'}`,
-        results === null ? 'The export has no game-by-game schedule' : 'The club\'s games between the two exports',
+        results === null ? RESULTS_WHY[(input.results as ResultsUnknown).why] : 'The club\'s games between the two exports',
       ),
       since: cell(`Since ${sinceWords(previous)}`, { hint: previous.importedText ? `That export was read ${previous.importedText}` : undefined }),
       previousImport: previous.importStamp,

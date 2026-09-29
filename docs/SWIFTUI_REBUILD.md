@@ -651,7 +651,9 @@ Nothing is drawn yet: Stage B draws it. Cases 15 to 20 and the search and club-o
   `presentation/frontOffice/attention.ts`): this import's served items against the previous import's snapshot of the
   same save and club. New: raised now, not then (both exports read that department); resolved: raised then, not now (the
   department read now); moved: the same item at another urgency; results: the club's games between the two exports (by
-  count from the last standings, else by date). Each item's line is the item as served, with a basis ("What two exports
+  count from the standings kept at the export compared with, never a later import's, else by that export's day; when
+  neither can be read, "Results not known" with the reason in its hint: no schedule, no day at the last export, or a
+  season that couldn't be read). Each item's line is the item as served, with a basis ("What two exports
   served"; "Two exports show that it changed, not which move or event changed it"). A department not read at one of the
   two says so. With no earlier export, `changes` is null and `changesNote` says why; with one, nothing changed is a count
   of zero.

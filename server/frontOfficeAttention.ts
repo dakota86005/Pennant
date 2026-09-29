@@ -25,7 +25,7 @@ import { cell } from './presentation/claim.js';
 import { gameDateDisplay } from './presentation/dataStatusWords.js';
 import {
   FIRST_EXPORT, NOT_FILED, attendCards, attendDesk, attendReports, attentionOf, newOnDesk, nothingToCompare, sinceLastExport,
-  type AttentionRecord, type PreviousExport, type ResultsSince,
+  type AttentionRecord, type PreviousExport, type ResultsSince, type ResultsUnknown,
 } from './presentation/frontOffice/attention.js';
 import { REPORTING } from './presentation/frontOffice/desk.js';
 import type { DepartmentReport, DeskChange, DeskStatus, DeskUpdate, DeskView, FrontOfficeSummary, ReportChange } from './presentation/frontOffice/types.js';
@@ -68,17 +68,21 @@ function records(orgId: number): Map<string, AttentionRecord> {
   }]));
 }
 
-/** The club's games between the last export and this one (by count where the last export's standings say how many). */
-function resultsSince(built: FrontOfficeBuilt, previous: memory.ReportSnapshot): ResultsSince | null {
-  const games = built.season?.games ?? null;
-  if (!games) return null;
-  const before = memory.previousStandings(built.importStamp)?.rows.find((r) => r.teamId === built.orgId);
+/**
+ * The club's games between the last export and this one: by count where the standings kept at that same import say how
+ * many it had played (never another import's standings, M4), else from that export's day; when neither can be read, why.
+ */
+export function resultsSince(built: Pick<FrontOfficeBuilt, 'orgId' | 'season'>, previous: Pick<memory.ReportSnapshot, 'importStamp' | 'gameDate'>): ResultsSince | ResultsUnknown {
+  if (!built.season) return { games: null, why: 'noSeason' };
+  const games = built.season.games;
+  if (!games) return { games: null, why: 'noSchedule' };
+  const before = memory.standingsOf(previous.importStamp)?.rows.find((r) => r.teamId === built.orgId);
   if (before && before.w !== null && before.l !== null) {
     const played = before.w + before.l + (before.t ?? 0);
     if (played <= games.length) return { games: games.slice(played), how: 'count' };
   }
   const from = parseGameDate(previous.gameDate);
-  if (!from) return null;
+  if (!from) return { games: null, why: 'noPreviousDay' };
   return { games: games.filter((g) => (parseGameDate(g.date) ?? '') >= from), how: 'date' };
 }
 
