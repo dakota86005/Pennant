@@ -10,6 +10,7 @@ import SwiftUI
 /// A main window: its state, kept across relaunches per window with `@SceneStorage` (the route and its history, the
 /// inspector, the sidebar and its open departments; SWIFTUI_REBUILD.md section 3.1).
 struct MainWindowScene: View {
+    @Environment(\.openWindow) private var openWindow
     @SceneStorage("pennant.history") private var historyData = Data()
     @SceneStorage("pennant.inspector") private var inspectorPresented = false
     @SceneStorage("pennant.sidebarVisible") private var sidebarVisible = true
@@ -48,6 +49,10 @@ struct MainWindowScene: View {
             if let query = defaults.string(forKey: "PennantDebugPalette") {
                 restored.paletteShown = true
                 restored.paletteQuery = query
+            }
+            // …or with a club's window open beside it (`-PennantDebugOpenClub <team id>`), for its captures
+            if let club = defaults.string(forKey: "PennantDebugOpenClub").flatMap(Int.init) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { openWindow(value: ClubRef(id: club)) }
             }
             #endif
             window = restored
