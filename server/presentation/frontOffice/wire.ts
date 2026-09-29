@@ -221,6 +221,14 @@ export function gapWords(g: WireGap): Cell {
         return 'Without the log, moves come from two exports compared, and there is only one so far.';
       case 'no_earlier_standings':
         return 'Standings moves start with the next export: there is no earlier one to compare.';
+      case 'unreadable':
+        return ({
+          trades: 'Trades couldn\'t be read this time.',
+          news: 'League news couldn\'t be read this time.',
+          injuries: 'Injuries couldn\'t be read this time.',
+          streaks: 'Streaks couldn\'t be read this time.',
+          awards: 'Awards couldn\'t be read this time.',
+        } as Partial<Record<WireFact['source'], string>>)[g.source] ?? 'Part of the wire couldn\'t be read this time.';
       default:
         return ({
           trades: 'The export has no trade record, so trades aren\'t on the wire.',

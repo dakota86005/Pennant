@@ -83,7 +83,7 @@ export type SnapshotChange =
 /** A source the wire could not read, and why (a named gap, never an empty league). */
 export interface WireGap {
   source: WireSource;
-  why: 'not_in_export' | 'log_unavailable' | 'log_reading' | 'no_earlier_standings' | 'no_snapshots';
+  why: 'not_in_export' | 'unreadable' | 'log_unavailable' | 'log_reading' | 'no_earlier_standings' | 'no_snapshots';
   /** The log's own reason, where it gave one. */
   detail: string | null;
 }
@@ -495,7 +495,8 @@ export function wireFacts(importStamp: string | null, ourTeamId: number | null):
       facts.push(...read());
     } catch (err) {
       console.error(`[wire] ${name} could not be read:`, err);
-      gaps.push({ source, why: 'not_in_export', detail: name });
+      // A table that is there but could not be read is not a table the export lacks (D-018)
+      gaps.push({ source, why: 'unreadable', detail: name });
     }
   };
   table('trades', 'trade_history', () => tradeFacts(clubs));

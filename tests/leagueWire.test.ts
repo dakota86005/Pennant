@@ -6,7 +6,7 @@ import { forgetMemoryCaches, recordStandingsSnapshot, type StandingsRow } from '
 import { forgetWire, wireBuilds, wireFacts, WIRE_STREAK_POLICY, type WireFact } from '../server/leagueWire.js';
 import { captureRosterStateSnapshot } from '../server/rosterStateHistory.js';
 import { importedAt } from '../server/playerStateRoutes.js';
-import { KIND_ORDER, wireEntry, wireOrder, wireWords, type Followed } from '../server/presentation/frontOffice/wire.js';
+import { KIND_ORDER, gapWords, wireEntry, wireOrder, wireWords, type Followed } from '../server/presentation/frontOffice/wire.js';
 import { buildSave, dropTable, type BuiltSave } from './syntheticSave';
 
 /**
@@ -131,6 +131,11 @@ describe('the wire on the synthetic save: its sources, and the ones it lacks', (
     expect(w.facts.some((f) => f.kind === 'trade')).toBe(false);
     const words = wireWords(save.org, w, none, { sinceDay: null, sinceRaw: null, sinceFrom: 'season', club: null, kind: null, followedOnly: false, followedFirst: false, limit: 50 }, ctx);
     expect(words.gaps.map((g) => g.display)).toContain('The export has no trade record, so trades aren\'t on the wire.');
+  });
+
+  it('says a table it could not read couldn\'t be read, never that the export lacks it (D-018)', () => {
+    expect(gapWords({ source: 'trades', why: 'unreadable', detail: 'trade_history' }).display).toBe('Trades couldn\'t be read this time.');
+    expect(gapWords({ source: 'trades', why: 'not_in_export', detail: 'trade_history' }).display).toBe('The export has no trade record, so trades aren\'t on the wire.');
   });
 
   it('without the log, states a roster change between two exports as a change', () => {
