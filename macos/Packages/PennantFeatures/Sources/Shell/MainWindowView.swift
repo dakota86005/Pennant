@@ -28,6 +28,7 @@ public struct MainWindowView: View {
             }
         }
         .focusedSceneValue(\.mainWindow, model.isReady ? window : nil)
+        .onAppear { AfterNextFrame.run { model.noteLaunchStep("the main window's first frame is drawn") } }
         .onChange(of: model.needsSetup, initial: true) { _, needsSetup in
             if routing.shouldOpenSetupAutomatically(needsSetup: needsSetup) {
                 openWindow(id: SceneID.setup)
@@ -230,7 +231,7 @@ struct DetailView: View {
 
     var body: some View {
         Group {
-            if !model.isReady {
+            if !model.isReady && !Self.drawsWhileStarting(window.route) {
                 // The shell is up before the server: the view waits for it, and no report is drawn before its save and
                 // club are known
                 StartingView()
@@ -255,6 +256,16 @@ struct DetailView: View {
         .environment(\.claimActions, claimActions)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(.background)
+    }
+}
+
+extension DetailView {
+    /// The Morning Report is drawn while the server starts (it says "Starting…" itself, with the club card of the report
+    /// kept last drawn at once; the report itself only once its save and club are confirmed), so the window's toolbar and
+    /// content are the same from the first frame to the report (N6 polish: the relaunch's layout jump). Every other view
+    /// waits in `StartingView`.
+    nonisolated static func drawsWhileStarting(_ route: AppRoute) -> Bool {
+        route.department.rawValue == "frontOffice" && route.view == "morningReport"
     }
 }
 
@@ -378,7 +389,31 @@ public enum AppAppearance {
         return theme.value1?.rawValue ?? theme.value2
     }
 
+    /// Where the served appearance is remembered, in the app's own preferences (never the data folder), so the next
+    /// launch draws its first frame in it: a window drawn in the system's appearance and redrawn in the served one when
+    /// the settings arrive cost about 80 ms of the launch (N6 polish).
+    static let rememberedKey = "PennantServedAppearance"
+
+    /// The appearance the settings served last time, applied before the first window is built; the served settings
+    /// correct it when they arrive.
+    @MainActor public static func applyRemembered() {
+        guard let theme = UserDefaults.standard.string(forKey: rememberedKey) else { return }
+        apply(theme, remember: false)
+    }
+
     public static func apply(_ theme: String?) {
+        apply(theme, remember: true)
+    }
+
+    static func apply(_ theme: String?, remember: Bool) {
+        // Nil: the settings are not served yet; the appearance applied at launch stays until they are
+        guard let theme else {
+            #if DEBUG
+            if let override = debugAppearance, NSApp.appearance != override { NSApp.appearance = override }
+            #endif
+            return
+        }
+        if remember { UserDefaults.standard.set(theme, forKey: rememberedKey) }
         var appearance: NSAppearance? = switch theme {
         case "dark": NSAppearance(named: .darkAqua)
         case "light": NSAppearance(named: .aqua)

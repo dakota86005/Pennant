@@ -11,7 +11,9 @@ import { checkExport, startWatcher, stopWatcher } from './watcher.js';
 import { closeLeagueDatabase, prepareLeagueDatabase, tableExists } from './db.js';
 import { baselineSnapshot, historyDb } from './history.js';
 import { loadSettings } from './settings.js';
-import { lookAtTheServedSave, startSaveWatch, stopSaveWatch } from './saveDiscovery.js';
+import { lookAtTheServedSave, seedServedSave, startSaveWatch, stopSaveWatch } from './saveDiscovery.js';
+import { afterFirstAnswers, releaseAfterFirstAnswers, startupWorkClock } from './startupWork.js';
+import { ratingScaleMax } from './valuation.js';
 import { warmTransactionLog } from './dataStatus.js';
 import { requireApiToken } from './apiToken.js';
 import { acquireDataLock, releaseDataLock } from './dataLock.js';
@@ -92,23 +94,37 @@ function requireLocalHost(
     );
 }
 
-/** Import on boot if needed, then watch for fresh OOTP exports. */
+/**
+ * Import on boot if needed, then watch for fresh OOTP exports.
+ *
+ * Only what the first answers need happens before the ready line (N6 polish): the league file tidied, the served
+ * save's id and the rating scale as an earlier start worked them out for this league (`servedFacts.ts`; worked out now
+ * when none is remembered), and an import that must start (an interrupted one, or none yet). Everything else, in the
+ * order it always ran, waits until the Mac app's first answers are out (`startupWork.ts`).
+ */
 function bootstrapData(): void {
   // Under the data-folder lock: a crashed import's unfinished file goes, and a database from an earlier build is
   // brought to the served shape (rollback journal, every index) once
   let needsUpgrade = false;
-  // The saves on this Mac, looked at now and every minute: whether another has been played since the chosen one
-  // (D-063). After this turn, so the start-up answers first
-  setImmediate(() => startSaveWatch());
-  // The save's live transaction log, copied in the background so no request makes the first copy
-  setImmediate(() => warmTransactionLog());
   try {
     needsUpgrade = prepareLeagueDatabase().needsUpgrade;
   } catch (err) {
     console.error('[import] could not tidy the league database:', err);
   }
-  // The imported data's save and its live log, worked out before the first request (the status only reads them)
-  lookAtTheServedSave();
+  // What the status serves about the served save: remembered for this very league and configuration, else worked out
+  // now, as before (the first start after an import or on a new build). Either way its live log is found now, before
+  // the first answers, so no Front Office is built without it
+  const seeded = seedServedSave();
+  if (!seeded) lookAtTheServedSave();
+  if (tableExists('players')) ratingScaleMax();
+
+  // The saves on this Mac, looked at now and every minute: whether another has been played since the chosen one (D-063)
+  afterFirstAnswers('look at the saves', () => startSaveWatch());
+  // The save's live transaction log, copied in the background so no request makes the first copy
+  afterFirstAnswers('live log', () => warmTransactionLog());
+  // The imported data's save and its live log, worked out again (the status served the remembered id meanwhile)
+  if (seeded) afterFirstAnswers('look at the served save', () => lookAtTheServedSave());
+
   // An import the last run never finished: import it again (the previous import is whole; this is a retry, and its
   // new file needs no upgrade)
   if (recoverInterruptedImport()) {
@@ -116,33 +132,51 @@ function bootstrapData(): void {
     if (csvDir && loadSettings().autoImport) startWatcher(csvDir);
     return;
   }
-  // A database an earlier build imported gets its one-time upgrade: a converted copy, swapped in (never in place)
-  if (needsUpgrade) void upgradeLeagueInBackground();
+  const config = loadConfig();
+  const exportThere = !!config.csvDir && fs.existsSync(config.csvDir);
+  // Nothing imported yet: the import starts now (its progress is what the first answers say)
+  if (exportThere && !tableExists('players')) void runImport(config.csvDir!);
+
+  // A database an earlier build imported gets its one-time upgrade: a converted copy made in a worker, swapped in (never
+  // in place). Begun now, so the first status says so ("Getting your league ready"); the served file stays as it is
+  // meanwhile (D-061), and the first answers never wait on it
+  const upgraded = needsUpgrade ? upgradeLeagueInBackground() : Promise.resolve();
+  afterFirstAnswers('upkeep', () => {
+    // The upkeep reads the league; on the old file (no indexes) its queries take seconds, so it waits for the upgraded one
+    void upgraded.then(() => setImmediate(() => upkeep(config.csvDir, exportThere)));
+  });
+}
+
+/** The start-up's upkeep once the league is in its served shape (in the order it always ran). */
+function upkeep(csvDir: string | null, exportThere: boolean): void {
   // An import whose snapshots never ran takes them now (they write history.db), before the refits read them
   const finishing = finishInterruptedPostImport();
+  const imported = tableExists('players') && !finishing;
+  if (csvDir && exportThere) {
+    try {
+      // Ensure development tracking has a baseline for already-imported data, before the reports read the history
+      // (none for an export that carries no ratings; stamped with the kind the export carries, N3.5)
+      baselineSnapshot();
+    } catch (err) {
+      console.error('[history] baseline snapshot failed:', err);
+    }
+  }
+  // The Front Office for the club the app follows, in its worker, so the first look after a launch is a cached read
+  // (first of the rest: the fresh report is what the GM waits for)
+  if (imported) void warmFrontOffice();
   // A save that is already imported but has no fit for its latest completed season gets one now,
   // in the background, instead of waiting for the next import (D-053: nothing for the user to do).
   // It reads only the imported database, so it does not depend on the export folder being present.
-  // Deferred with setImmediate, so it runs after the synchronous start-up below.
-  if (tableExists('players') && !finishing) void refitAfterImport();
+  if (imported) afterFirstAnswers('refit check', () => void refitAfterImport());
   // The export already imported records its market and contracts if this build has not yet (idempotent: a second
-  // start writes nothing). Deferred like the refit, after the synchronous start-up below
-  if (tableExists('players') && !finishing) setImmediate(() => recordImportMarket());
-  // The Front Office for the club the app follows, in its worker, so the first look after a launch is a cached read
-  if (tableExists('players') && !finishing) setImmediate(() => void warmFrontOffice());
-  const config = loadConfig();
-  if (!config.csvDir || !fs.existsSync(config.csvDir)) return;
-  if (!tableExists('players')) void runImport(config.csvDir);
-  // An export written while Pennant was closed: the same judgement the watcher makes (import it, or offer it)
-  else checkExport(config.csvDir);
-  if (loadSettings().autoImport) startWatcher(config.csvDir);
-  try {
-    // Ensure development tracking has a baseline for already-imported data
-    // (none for an export that carries no ratings; stamped with the kind the export carries, N3.5)
-    baselineSnapshot();
-  } catch (err) {
-    console.error('[history] baseline snapshot failed:', err);
-  }
+  // start writes nothing)
+  if (imported) afterFirstAnswers('market record', () => recordImportMarket());
+  if (!csvDir || !exportThere) return;
+  afterFirstAnswers('export watch', () => {
+    // An export written while Pennant was closed: the same judgement the watcher makes (import it, or offer it)
+    if (tableExists('players')) checkExport(csvDir);
+    if (loadSettings().autoImport) startWatcher(csvDir);
+  });
 }
 
 /**
@@ -184,6 +218,8 @@ export function startServer(port = 5178): Promise<number> {
   app.use(express.json());
   // After the Host check: a request that fails both is told about the Host. No-op unless a token is set (sidecar)
   app.use('/api', requireApiToken);
+  // The start-up's own work begins once the app's first answers are out (`startupWork.ts`)
+  app.use('/api', releaseAfterFirstAnswers);
   app.use('/api', api);
 
   const dist = path.join(APP_ROOT, 'dist');
@@ -216,6 +252,7 @@ export function startServer(port = 5178): Promise<number> {
             'Only do this on a network you trust, and never forward the port from a router.'
         );
       }
+      startupWorkClock();
       bootstrapData();
       resolve(actual);
     });

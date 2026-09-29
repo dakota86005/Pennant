@@ -8,6 +8,21 @@ import Testing
 @MainActor
 @Suite("Design language")
 struct DesignLanguageTests {
+    @Test("the masthead's colour runs under the toolbar at rest; once anything scrolls under it, the toolbar's background and the soft edge come back (N6 polish review)")
+    func mastheadUnderTheToolbar() {
+        // At rest (the offset is minus the top inset), and pulled down by a rubber band: nothing under the toolbar
+        #expect(!MastheadToolbar.scrolledUnder(offset: -52, topInset: 52))
+        #expect(!MastheadToolbar.scrolledUnder(offset: -80, topInset: 52))
+        #expect(!MastheadToolbar.scrolledUnder(offset: -51.8, topInset: 52))
+        #expect(MastheadToolbar.background(underToolbar: false) == .hidden)
+        // Scrolled by a point or more: the system's background (the soft scroll edge) over what passes beneath
+        #expect(MastheadToolbar.scrolledUnder(offset: -51, topInset: 52))
+        #expect(MastheadToolbar.scrolledUnder(offset: 400, topInset: 52))
+        #expect(MastheadToolbar.background(underToolbar: true) == .automatic)
+        // No toolbar above (a preview): at rest at zero
+        #expect(!MastheadToolbar.scrolledUnder(offset: 0, topInset: 0))
+    }
+
     @Test("the palette matches every word of the query as a prefix, in the title, the group, the line or the keywords")
     func paletteMatching() {
         let entries = DesignFixtures.paletteEntries

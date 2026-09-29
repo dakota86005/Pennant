@@ -213,11 +213,14 @@ public struct MagazineMasthead<Figures: View, Control: View>: View {
         .padding(.leading, 28)
         .padding(.trailing, 28)
         .padding(.bottom, 22)
-        .padding(.top, topInset > 0 ? topInset + Masthead.fade + 8 : 22)
+        .padding(.top, topInset > 0 ? Masthead.fade + 8 : 22)
         .frame(maxWidth: .infinity, alignment: .leading)
         .coordinateSpace(.named(MastheadBackground.space))
         .background {
-            MastheadBackground(palette: palette, topInset: topInset, art: art, textTrailing: textEdges.values.max() ?? 0, control: controlFrame)
+            // Run up under the toolbar, above the masthead's own frame (the scroll view keeps its content below the
+            // toolbar, so the content scrolled under it gets the soft edge; N6 polish): the control's frame moves with it
+            MastheadBackground(palette: palette, topInset: topInset, art: art, textTrailing: textEdges.values.max() ?? 0, control: controlFrame?.offsetBy(dx: 0, dy: topInset))
+                .padding(.top, -topInset)
                 .backgroundExtensionEffect()
         }
         .overlay(alignment: .bottom) {
@@ -361,20 +364,27 @@ public struct DeadlineFigures: View {
     }
 }
 
-/// The Tonight card's surface: the system's glass (a control's layer), or, with Reduce Transparency, an opaque
-/// rounded surface in the masthead's own colour with a border in its text colour, so the checked text pair reads on it.
+/// The Tonight card's surface: the system's glass (a control's layer) around an opaque plate in the masthead's own
+/// colour, which the words sit on (N6 polish: on the bare glass, which lightens in a light appearance, the club's white
+/// words read about 1.9:1; on the plate they read as the checked pair does, 4.5:1 or better in every appearance and 7:1
+/// with Increase Contrast). The glass shows as the control's rim and its response to the pointer. With Reduce
+/// Transparency, the plate alone with a border in its text colour.
 struct ControlSurface: ViewModifier {
     let reduceTransparency: Bool
     let palette: Theme.Palette
+    /// How much of the glass shows around the plate.
+    static let rim: CGFloat = 2
 
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
         if reduceTransparency {
             content
-                .background(palette.masthead.first ?? palette.mastheadTop, in: shape)
+                .background(palette.controlPlate, in: shape)
                 .overlay(shape.strokeBorder(palette.mastheadText.opacity(0.6), lineWidth: 1))
         } else {
-            content.glassEffect(.regular.interactive(), in: shape)
+            content
+                .background(palette.controlPlate, in: shape.inset(by: Self.rim))
+                .glassEffect(.regular.interactive(), in: shape)
         }
     }
 }

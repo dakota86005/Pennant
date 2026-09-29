@@ -176,5 +176,5 @@ lineage — not the first code written in this repository. Several models are st
   work.
 - Pennant proposes and explains; it never executes a transaction or writes to an OOTP save.
 
-[Unreleased]: https://github.com/dakota86005/ootp-front-office/compare/pennant-v0.1.0...HEAD
-[0.1.0]: https://github.com/dakota86005/ootp-front-office/releases/tag/pennant-v0.1.0
+[Unreleased]: https://github.com/dakota86005/Pennant/compare/pennant-v0.1.0...HEAD
+[0.1.0]: https://github.com/dakota86005/Pennant/releases/tag/pennant-v0.1.0

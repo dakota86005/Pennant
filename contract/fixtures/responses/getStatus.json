@@ -2,7 +2,7 @@
   "app": {
     "name": "Pennant",
     "version": "0.0.0",
-    "projectUrl": "https://github.com/dakota86005/ootp-front-office",
+    "projectUrl": "https://github.com/dakota86005/Pennant",
     "upstreamUrl": "https://github.com/lsukev/ootp-front-office"
   },
   "csvExportedAt": null,
@@ -22,5 +22,7 @@
   "reportStamp": "rstamp",
   "savePlayedElsewhere": null,
   "saveId": null,
+  "saveFolder": null,
+  "leagueUpgrade": null,
   "ratingScaleMax": 80
 }

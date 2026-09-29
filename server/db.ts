@@ -106,6 +106,19 @@ let generation = 0;
 export const databaseGeneration = (): number => generation;
 
 /**
+ * The one-time upgrade of an earlier build's league file while it runs (`api.ts` `upgradeLeagueInBackground`), else
+ * null. The server answers meanwhile (N6 polish), but a report built on the old file (no indexes) takes minutes on a
+ * large league, so the Front Office's build waits for the upgraded file instead.
+ */
+let upgradeUnderWay: Promise<void> | null = null;
+export function leagueUpgradeUnderWay(): Promise<void> | null {
+  return upgradeUnderWay;
+}
+export function noteLeagueUpgrade(upgrade: Promise<void> | null): void {
+  upgradeUnderWay = upgrade;
+}
+
+/**
  * How long a replaced connection stays open after a swap. Every read is synchronous and no statement or iterator is
  * kept across an `await`, so nothing can still be reading it after the swap's turn; the grace only covers a handler
  * that holds `db` in a local across one. Short, because until it closes the replaced file's space is not given back.

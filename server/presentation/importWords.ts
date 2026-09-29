@@ -126,6 +126,21 @@ export function importNote(state: {
   return null;
 }
 
+/**
+ * What the status says while a league an earlier build imported is brought up to date, once (N6 polish: the first
+ * launch on a folder the Electron app last used waited 5.5 s with only "Starting…" on screen). The server answers
+ * meanwhile; the report follows when it is done.
+ */
+export interface LeagueUpgradeLine {
+  text: string;
+  hint: string;
+}
+
+export const LEAGUE_UPGRADE_LINE: LeagueUpgradeLine = {
+  text: 'Getting your league ready. This happens once.',
+  hint: 'An earlier version imported this league; Pennant is bringing it up to date',
+};
+
 /** Why a chosen save did not start importing: its export folder is not there yet. */
 export const EXPORT_NOT_FOUND =
   'That save has no export yet. In OOTP, export the league\'s database, then choose the save again.';

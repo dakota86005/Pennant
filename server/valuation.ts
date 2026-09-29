@@ -1,5 +1,6 @@
 import { db, tableExists } from './db.js';
 import { leagueRulesForLeague } from './leagueRules.js';
+import { rememberFact, rememberedFact } from './servedFacts.js';
 
 /**
  * SQL fragment restricting a `players p` query to men genuinely on the club.
@@ -258,6 +259,12 @@ let scaleCache: number | null = null;
 
 export function ratingScaleMax(): number {
   if (scaleCache !== null) return scaleCache;
+  // Worked out for this league on an earlier start (`servedFacts.ts`): the status serves it without the scan
+  const remembered = rememberedFact('ratingScaleMax');
+  if (typeof remembered === 'number' && Number.isFinite(remembered)) {
+    scaleCache = remembered;
+    return scaleCache;
+  }
   const columns: Array<[string, string]> = [
     ['players_batting', 'batting_ratings_overall_contact'],
     ['players_batting', 'batting_ratings_overall_power'],
@@ -278,6 +285,8 @@ export function ratingScaleMax(): number {
   // maximum on a small scale, so the bands are generous at the bottom
   const known = [5, 8, 10, 20, 80];
   scaleCache = known.find((max) => observed <= max) ?? 80;
+  // Only a served league's scale is remembered (a test's or a script's writable league changes under it)
+  if (db.readonly) rememberFact('ratingScaleMax', scaleCache);
   return scaleCache;
 }
 

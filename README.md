@@ -97,7 +97,7 @@ Player State  →  Player Rights  →  Operations  →  GM
 ### Desktop app
 
 Pennant has not published installers yet. When it does, they will appear on the
-[Releases page](https://github.com/dakota86005/ootp-front-office/releases). Until then you can build one locally:
+[Releases page](https://github.com/dakota86005/Pennant/releases). Until then you can build one locally:
 
 ```bash
 npm install
@@ -121,7 +121,7 @@ Requirements:
 - Optionally, an AI provider key, or a running local Ollama service
 
 ```bash
-git clone https://github.com/dakota86005/ootp-front-office.git
+git clone https://github.com/dakota86005/Pennant.git
 cd ootp-front-office
 npm install
 npm run dev

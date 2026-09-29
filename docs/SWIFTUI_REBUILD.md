@@ -633,6 +633,71 @@ only words (additive, through the contract).
   server, and the XCUITest `testClubOwedAfterSetupCloses` (Setup closed before the club is answered: the report stays
   held, "Choose Your Club…" brings the question back, and saving it lets the report through).
 
+**As built at N6 (polish), 2026-09-29: what the owner's real save showed.** Branch `feature/swiftui-n6-polish`, after
+the first check on the owner's real saves (the Morning Report correct field for field on his D-backs save; the app not
+yet "it just works" on a 1.1 GB league). Measured on a scratch import of a read-only copy of his export (70 CSVs,
+2.79 million rows), never his data folder.
+- **The server's start.** Profiled (the bundled sidecar, five starts): the ready line came 460 ms after the spawn and
+  the status, the settings and the clubs 210 ms after it; the status itself scanned four rating columns (80 ms), and the
+  start's own work ran in front of the answers (the history's key read every player's name before the ready line; the
+  saves' look, the market record's check and the Front Office's warm-up just after it). Now the ready line comes about
+  205 ms after the spawn and the clubs are answered 13 ms after it: the AI providers' SDKs load when first used
+  (`aiSdk.ts`, about 140 ms); what the status serves about the league (the save's id, the rating scale) is remembered
+  per build, league file, import and configuration (`served-facts.json`, a new file; `servedFacts.ts`) and worked out
+  as before when nothing is remembered, and a start that serves the remembered id finds the save's live log before the
+  ready line all the same (a few `stat` calls), so no report is built without it; the start's looks and upkeep wait until the status, the settings and the clubs are
+  answered, or 1.5 s for a client that never asks, one job a turn (`startupWork.ts`); the sidecar loads express and
+  better-sqlite3 while the handshake is on its way.
+- **The first launch on a folder the Electron app last used.** The one-time upgrade begins before the ready line, in its
+  worker, and the server answers meanwhile (D-061: the served file is only read); the start's upkeep and the Front
+  Office's build wait for the upgraded file (built on the old, unindexed one it took minutes). The status serves one
+  sentence while it runs (`leagueUpgrade`: "Getting your league ready. This happens once."), which the Morning Report
+  shows where the report will be. On a copy made to look as the Electron build left it (write-ahead log, no indexes):
+  the server was confirmed 2.3 s after the app's start (9.5 s on the real folder), the upgrade took 7.1 s behind it, and
+  the report followed 2.7 s later.
+- **The app's launch.** The server starts from the app delegate's making, off the main actor, while the windows are
+  built (it was started once they were); the settings and the clubs are asked the moment it is confirmed, off the main
+  actor, and alone (the four first requests reached the server in any order); the served appearance is applied before
+  the first window is built (remembered in the app's own preferences); the report's first frame holds what the window
+  shows, and the staff, and in one column the desk and the departments, follow in the next frame. Laying the kept report
+  out hidden before its key was confirmed was tried and dropped: the main thread's work is the same, and the window's
+  first frame came later. The log's "launch:" lines time the launch's own steps. Where the time goes now, in a typical
+  relaunch after the review (from the process's start): the app's model and the server started 0.09 s; the launch
+  finished 0.21 s; the server's ready line 0.25 s; the window's first frame 0.43 s (the main thread builds the window's
+  shell, and the server's readiness is taken up once it is drawn); the store key 0.46 s; the report's first layout
+  about 0.14 s. A sample of the main thread over a launch finds no hot spot of the app's own: the shell's time is
+  SwiftUI's and AppKit's first layout (the toolbar about a quarter of it) and the window server's, so no cheap win was
+  left there.
+- **One window at a time.** The club card is drawn from the same place as the colours and the report. During a switch,
+  the report on screen stays the old save's, said to be updating, and the club card and colours stay with it until the
+  new save's report lands (`FrontOfficeStore.heldCatalog`: the report's own key and catalog); at launch the card is drawn
+  at once from the report kept last (its club only; the report waits for its save and club), and the Morning Report says
+  "Starting…" itself, so the toolbar and the sidebar are the same from the first frame. Setup never shows the club step
+  when the club was taken from the save: closing shows the import it followed, finished.
+- **The Tonight card** puts its words on an opaque plate in the masthead's first colour inside its glass, the pair the
+  server checked (4.5:1, 7:1 with Increase Contrast); on the bare glass, which lightens in a light appearance, they read
+  1.9:1. **The scroll edge:** the report's scroll view keeps its content in the safe area, and the masthead's colour runs
+  up beneath the toolbar, drawn above its own frame. At rest the toolbar's background and the soft top edge are hidden,
+  so that colour shows through the toolbar's glass; once anything scrolls under the toolbar
+  (`onScrollGeometryChange`), both come back (on macOS 26 the toolbar's background is that edge), so what passes
+  beneath blurs and fades and never overprints it (the polish review: the edge left on at rest laid a plain system
+  band where the club's colour belongs).
+- **Words** (server, with tests): the farm's next man's blocker in plain words on the visible line, the numbers in the
+  hover ("Playing time at Triple-A: 33 of the 45 a look asks"); the next starter said once ("Next"); "the regular", never
+  "holder" (now banned jargon); a history's players as the share they are, rounded down in whole tenths, never "only
+  some", never past the check's 99.9% line and never said to make it the same league (the players test only ever
+  refuses, D-064), and a history well below a match said to read as another league's; a new certainty, `recorded`
+  ("From Pennant's own record"), for the rating history; a place level on games back named in its basis, with each
+  club's winning percentage and "the standings' own order", never how the game orders them.
+- **Also:** the history migration logs what it did in plain words (saves bound, the backup, dates brought over, rows
+  copied, dates and rows left in place and why); choosing a save names its `.lg` folder for the transaction log unless
+  the GM named one, and the status serves the folder in use (`saveFolder`) for Settings; Settings opens with nothing
+  focused; the "last 15" ring reads in dark; `macos/scripts/run-dev.sh` runs a Debug build with a pretend home.
+- **The repository's name (owner-approved, 2026-09-29):** the repository is now `dakota86005/Pennant`, and D-049 says the
+  in-app links name Pennant's repository, so `PROJECT_URL` (`server/project.ts`, and so `/api/status`'s `projectUrl`),
+  `electron-builder.yml`'s `publish.repo` (the Electron app's update feed), `package.json`'s homepage and repository, and
+  the README and changelog links now name it. GitHub redirects the old name, so a copy already installed keeps updating.
+
 ### 3.5 One anatomy for every department report
 
 Every report reads the same way:
@@ -767,9 +832,11 @@ modular: "theme packs" per club (D-062).
   and club card in the chosen pack), the packs refused with the first thing wrong (every finding in the help tag), and the
   theme-packs folder with Show in Finder.
 - **The masthead** (`Masthead`, `MastheadScrollView`; `ClubMasthead` in FeatureCore): content colour, not glass. The
-  scroll view runs under the toolbar (`ignoresSafeArea(edges: .top)`, the toolbar's background hidden), the masthead's
-  colour is extended under the sidebar and the inspector (`backgroundExtensionEffect`, on its background only, so its
-  text and logo are not mirrored), and the soft top scroll edge is back (`scrollEdgeEffectStyle(.soft)`). Its top colour
+  masthead's colour runs up under the toolbar (drawn above its frame; the scroll view keeps its content in the safe
+  area), with the toolbar's background hidden at rest, and is extended under the sidebar and the inspector
+  (`backgroundExtensionEffect`, on its background only, so its text and logo are not mirrored); the soft top scroll edge
+  (`scrollEdgeEffectStyle(.soft)`) comes on, with the toolbar's background, once content scrolls under the toolbar (N6
+  polish and its review). Its top colour
   is held under the toolbar and fades into the club's colours over 20 points below it, and its text starts below that
   band, so no text sits on the blend. It carries the view's served title (the catalog's name, the structural title until
   the catalog arrives), the club's served name and record (condensed-width numerals, `.monospacedDigit()`,
@@ -902,7 +969,7 @@ All of it moves to the server, for three reasons:
 ### 4.1 Types (in `server/contract/`)
 
 ```ts
-type Certainty = 'calibrated' | 'provisional' | 'policy' | 'unknown';         // open enum in the spec
+type Certainty = 'calibrated' | 'provisional' | 'policy' | 'unknown';         // open enum in the spec (as built: + 'fact', 'recorded')
 interface Claim {
   text: string;                    // the visible line, GM voice
   hint?: string;                   // ≤ 75 chars, the help tag
@@ -931,7 +998,8 @@ interface Cell { display: string; tone?: Tone; hint?: string; claimRef?: string 
 **As built at N4 (Stage A), 2026-09-26.**
 - The types are in `server/contract/presentation.ts`, as sketched above, with four changes: `Certainty` gains `fact` (an
   objective fact read from the export, which no fitted number and no chosen line decided, so a plain fact is never
-  stamped policy); `Target` is one flat shape (`kind` plus the fields a kind needs: `department`, `view`, `playerId`,
+  stamped policy), and at the N6 polish `recorded` (what Pennant itself recorded, such as the rating history: "From
+  Pennant's own record", never a fact from the export); `Target` is one flat shape (`kind` plus the fields a kind needs: `department`, `view`, `playerId`,
   `teamId`, `key`), so Swift reads one struct; `DeptId` is the Mac app's own ids (`frontOffice`, `majorLeague`, ...);
   `Unit` is `count | share | rate | dollars | wins | runs | games | days | years | place`. `Row<K>` is generic over its
   columns (`cells: Record<K, Cell>`, `sort: Record<K, number | string | null>`) and is never exported: a payload exports
@@ -1607,6 +1675,7 @@ export (M4, load average about 2.5; B1's build measured back to back for compari
 |---|---|---|---|
 | Launch to server ready | ≤ 0.5 s | **0.30 s** | 0.29 s |
 | Launch to the first Morning Report payload | ≤ 1.0 s | **2.5 s: not met** (the Front Office is built cold at each launch; the request waits on the start-up build, 2.0 s) | 2.5 s |
+| Launch to the first drawn Morning Report, the Mac app, on a scratch import of the owner's 1.1 GB league (N6 polish, after its review: a Debug build with Release optimisation, `SWIFT_OPTIMIZATION_LEVEL=-O`, whole-module, no testability; not a Release build, which cannot use a scratch folder; seven relaunches, load average 3 to 5) | ≤ 1.0 s | **Met: median 0.53 s, worst 0.70 s** (0.44, 0.52, 0.52, 0.52, 0.53, 0.61, 0.70 s), from the process's start to the first committed frame; the fresh report replaced it 1.6 to 2.2 s after the store was made. The first launch after a build is slower (1.0 s here: the system checks the new build). The polish's own final seven, before the review, on a busier machine: median 1.00 s, worst 1.14 s (0.92 to 1.14 s); the two were not run back to back, so the gap is not all the review's. On the real folder the check measured 1.7 to 2.2 s before this pass | |
 | Launch to the first drawn Morning Report, the Mac app (N6, Stage B1: the kept payload, replaced in place when the fresh one lands; Stage B2: the shell built while the server starts) | ≤ 1.0 s | **Met at the median: 0.96 s, worst 1.39 s** (the first launch after a build), from the process's start to the first committed frame (a Debug build on the synthetic league, seven launches, N6 Stage B2): the server ready at about 0.58 s, the store key 0.08 s after it (was 0.32 s), the page's first layout about 0.3 s. B1's build: median 1.36 s, worst 1.59 s | 1.36 s |
 | A view switch from the cache (a department's report asked again) | ≤ 100 ms | **1 ms** (median; 2 ms worst) | 1 ms |
 | `/api/status` during an import, p99 | ≤ 50 ms | **5 ms** (p95 3 ms, max 78 ms) | p95 2 ms |
@@ -1802,6 +1871,12 @@ the Mac app, and the launch budget (section 3.4, "As built at N6 (Stage B2)"). *
 runner's accessibility audit, answered from its first report but not yet re-run there (the supervisor runs
 `pennant-mac-ui` on the PR); the first launch after a build (1.39 s) and a Release build's launch (a Release build cannot
 use a scratch folder yet).
+
+**N6 polish (2026-09-29)** on `feature/swiftui-n6-polish`: what the first check on the owner's real saves found
+(section 3.4, "As built at N6 (polish)"): the kept report in under a second on his league's size, the first launch on
+an Electron folder, one window at a time, the Tonight card, the scroll edge and the words. Left open: a check on the
+real folder (the supervisor's), `projectUrl` (the owner's), and a Release build's launch (a Release build cannot use a
+scratch folder).
 
 **Next: N7** (it remembers; the league is alive). Open a fresh session on `feature/swiftui` once N6 Stage B2's PR is
 merged.

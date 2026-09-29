@@ -1,9 +1,11 @@
 import SwiftUI
 
 /// The masthead at the top of a view (SWIFTUI_REBUILD.md sections 3.4 and 3.7): the club's colour band, carrying the
-/// view's title, the club and its record, a served line and the club's logo. It is content-layer colour, not glass: it
-/// runs up under the toolbar (the scroll view ignores the top safe area) and its colour is extended beneath the sidebar
-/// and the inspector (`backgroundExtensionEffect`), so the glass of the window's chrome has the club's colour to refract.
+/// view's title, the club and its record, a served line and the club's logo. It is content-layer colour, not glass: its
+/// colour runs up under the toolbar (drawn above the masthead's own frame, which starts in the safe area below it; at
+/// rest the toolbar's background and the scroll edge are hidden, so the colour shows through the toolbar's glass,
+/// `MastheadScrollView`) and is extended beneath the sidebar and the inspector (`backgroundExtensionEffect`), so the
+/// glass of the window's chrome has the club's colour to refract.
 ///
 /// Every word on it is served (the title, the club's name, the record, the line); it states facts and shows no odds or
 /// posture (D-060). Its colours are the theme's: under the toolbar the pack's top colour, nearly white in light and
@@ -98,11 +100,14 @@ public struct Masthead: View {
         .padding(.leading, 28)
         .padding(.trailing, 48)
         .padding(.bottom, 22)
-        .padding(.top, topInset > 0 ? topInset + Self.fade + 8 : 22)
+        .padding(.top, topInset > 0 ? Self.fade + 8 : 22)
         .frame(maxWidth: .infinity, alignment: .leading)
         .coordinateSpace(.named(MastheadBackground.space))
         .background {
+            // Run up under the toolbar, above the masthead's own frame (N6 polish: the scroll view keeps its content in the
+            // safe area below the toolbar, so content scrolled under it gets the soft edge instead of overprinting it)
             MastheadBackground(palette: palette, topInset: topInset, art: art, textTrailing: textTrailing)
+                .padding(.top, -topInset)
                 .backgroundExtensionEffect()
         }
         .overlay(alignment: .bottom) {
@@ -222,10 +227,12 @@ extension EnvironmentValues {
     @Entry public var mastheadTopInset: CGFloat = 0
 }
 
-/// A view that opens on a masthead (SWIFTUI_REBUILD.md section 3.7): the scroll view runs up under the toolbar, which
-/// shows the masthead's colour through its glass (its own background hidden), with the soft scroll edge once content
-/// scrolls beneath it. The content below the masthead is the caller's, opaque. At most one floating control group sits
-/// at the bottom, and the content keeps room for it.
+/// A view that opens on a masthead (SWIFTUI_REBUILD.md section 3.7). At rest the masthead's colour runs up under the
+/// toolbar, which shows it through its glass: the toolbar's background and the top scroll edge are hidden. Once anything
+/// scrolls under the toolbar, both come back, so what passes beneath it blurs and fades into the soft scroll edge and
+/// never overprints the toolbar's controls (N6 polish and its review). The scroll view keeps its content in the safe area
+/// the HIG intends, so the system knows where that edge is. The content below the masthead is the caller's, opaque. At
+/// most one floating control group sits at the bottom, and the content keeps room for it.
 public struct MastheadScrollView<Header: View, Content: View, Actions: View>: View {
     private let header: Header
     private let content: Content
@@ -243,6 +250,19 @@ public struct MastheadScrollView<Header: View, Content: View, Actions: View>: Vi
         self.hasActions = Actions.self != EmptyView.self
     }
 
+    /// Something has scrolled under the toolbar (`MastheadToolbar.scrolledUnder`).
+    @State private var underToolbar = false
+
+    #if DEBUG
+    /// A development build scrolls itself there once drawn (`-PennantDebugScrollTo <points>`), for window captures of
+    /// content under the toolbar without any input (never in a release build).
+    @State private var position = ScrollPosition()
+    private static var debugScroll: CGFloat? {
+        let y = UserDefaults.standard.double(forKey: "PennantDebugScrollTo")
+        return y > 0 ? y : nil
+    }
+    #endif
+
     public var body: some View {
         GeometryReader { proxy in
             ScrollView {
@@ -252,14 +272,49 @@ public struct MastheadScrollView<Header: View, Content: View, Actions: View>: Vi
                 }
                 .environment(\.contentWidth, proxy.size.width)
             }
-            .ignoresSafeArea(edges: .top)
+            // The content keeps in the safe area below the toolbar (the scroll view still reaches up under it, so the
+            // masthead's colour, drawn above its own frame, shows there). At rest the soft edge is hidden, so that colour is
+            // not washed out; once anything scrolls under the toolbar it is back, and what passes beneath blurs and fades
             .scrollEdgeEffectStyle(.soft, for: .top)
+            .scrollEdgeEffectHidden(!underToolbar, for: .top)
+            .onScrollGeometryChange(for: Bool.self) { geometry in
+                MastheadToolbar.scrolledUnder(offset: geometry.contentOffset.y, topInset: geometry.contentInsets.top)
+            } action: { _, now in
+                underToolbar = now
+            }
             .contentMargins(.bottom, hasActions ? 72 : 0, for: .scrollContent)
+            #if DEBUG
+            .scrollPosition($position)
+            .task {
+                guard let y = Self.debugScroll else { return }
+                try? await Task.sleep(for: .seconds(1.5))
+                position.scrollTo(y: y)
+            }
+            #endif
             .overlay(alignment: .bottom) {
                 actions.padding(.bottom, 18)
             }
         }
-        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+        // Hidden at rest (the masthead's colour through the toolbar's glass); the system's once content scrolls under it
+        .toolbarBackgroundVisibility(MastheadToolbar.background(underToolbar: underToolbar), for: .windowToolbar)
+    }
+}
+
+/// The toolbar above a masthead (`MastheadScrollView`): at rest the masthead's colour shows through it; once anything
+/// scrolls under it, the system's background and the soft scroll edge.
+nonisolated enum MastheadToolbar {
+    /// Whether anything has scrolled under the toolbar: the content's top has moved above the top of the safe area, by
+    /// more than half a point (a scroll view at rest reports its offset as minus its top inset; a rubber band pulls it
+    /// further down, which is still at rest). At rest the only thing under the toolbar is the masthead's own colour.
+    static func scrolledUnder(offset: CGFloat, topInset: CGFloat) -> Bool {
+        offset + topInset > 0.5
+    }
+
+    /// The toolbar's background: hidden at rest, so the masthead's colour shows through the toolbar's glass; the
+    /// system's once content scrolls under it (on macOS 26 and 27 that background is the scroll edge itself, which
+    /// hiding it takes away).
+    static func background(underToolbar: Bool) -> Visibility {
+        underToolbar ? .automatic : .hidden
     }
 }
 

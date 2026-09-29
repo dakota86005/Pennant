@@ -25,7 +25,7 @@ public struct SetupView: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            StepHeader(step: model.step)
+            StepHeader(step: model.step, clubWasAsked: model.clubWasAsked)
                 .padding([.horizontal, .top], 20)
                 .padding(.bottom, 12)
             Divider()
@@ -33,7 +33,9 @@ public struct SetupView: View {
                 switch model.step {
                 case .findSave: FindSaveStep(model: model, status: status)
                 case .importing: ImportStep(model: model, status: status)
-                case .pickClub, .done: PickClubStep(model: model)
+                case .pickClub: PickClubStep(model: model)
+                // Closing: the step the GM last saw, never an empty club step when the club was taken from the save
+                case .done: if model.clubWasAsked { PickClubStep(model: model) } else { ImportStep(model: model, status: status) }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -62,12 +64,14 @@ public struct SetupView: View {
 /// colour alone.
 private struct StepHeader: View {
     let step: SetupModel.Step
+    /// Whether the GM was asked the club: when it was taken from the save, the club step is never the current one.
+    var clubWasAsked = true
 
     var body: some View {
         HStack(spacing: 16) {
             item("Find the Save", symbol: "1.circle", current: step == .findSave, done: step != .findSave)
-            item("Import", symbol: "2.circle", current: step == .importing, done: step == .pickClub || step == .done)
-            item("Pick the Club", symbol: "3.circle", current: step == .pickClub || step == .done, done: step == .done)
+            item("Import", symbol: "2.circle", current: step == .importing || (step == .done && !clubWasAsked), done: step == .pickClub || step == .done)
+            item("Pick the Club", symbol: "3.circle", current: step == .pickClub || (step == .done && clubWasAsked), done: step == .done)
         }
         .font(.callout)
     }
@@ -309,6 +313,10 @@ private struct ImportStep: View {
                             .disabled(model.busy || status?.importing == true)
                             .accessibilityIdentifier("setup.retryImport")
                     }
+                } else if model.step == .done {
+                    // Landed: the window is closing, with the club taken from the save
+                    ProgressView(value: 1, total: 1) { Text("Imported") }
+                        .accessibilityIdentifier("import.progress")
                 } else {
                     ImportProgressView(progress: model.progress)
                 }

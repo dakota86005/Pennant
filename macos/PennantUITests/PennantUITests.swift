@@ -475,6 +475,11 @@ final class PennantUITests: XCTestCase {
         // The next launch: the kept report at once, updating
         let started = Date.now
         app = launch()
+        // The frame is stable from the first draw (N6 polish): when the sidebar is first there, the club card (from the
+        // report kept last) and the report's toolbar (Whole Desk) are there with it, whether or not the report is yet
+        XCTAssertTrue(element(app, "sidebar").waitForExistence(timeout: 60))
+        XCTAssertTrue(element(app, "club.card").exists, "the club card was not in the window's first frames")
+        XCTAssertTrue(element(app, "morningReport.wholeDesk").exists, "the toolbar changed after the window's first frames")
         let desk = element(app, "morningReport.desk")
         XCTAssertTrue(desk.waitForExistence(timeout: 60), "the kept Morning Report was not drawn")
         let wallMs = Int(Date.now.timeIntervalSince(started) * 1000)

@@ -93,6 +93,10 @@ public final class SetupModel {
     private var clubQuestionSave: Components.Schemas.SaveInfo?
     private var clubQuestionStamp: String?
 
+    /// Whether the club was asked on the way to `.done` (the GM picked it); false when it was taken from the save or kept,
+    /// so the finished window shows the import it followed, never an empty club step (N6 polish).
+    public private(set) var clubWasAsked = false
+
     /// Whether the main window holds its report: the served club is not decided for the save chosen here, or the club
     /// is being asked. Never a judgment of Swift's: only what the server answered about the club.
     public var holdsReport: Bool { clubQuestion != nil || step == .pickClub }
@@ -143,6 +147,7 @@ public final class SetupModel {
     /// Back to the first step (Club ▸ Import Export…, Settings ▸ Choose Another Save…, or Choose Another Save here).
     public func restart() {
         step = .findSave
+        clubWasAsked = false
         folderChoices = nil
         folderProblem = nil
         importProblem = nil
@@ -401,10 +406,12 @@ public final class SetupModel {
     private func importLanded() async {
         progress = nil
         if club?.decided == true {
+            clubWasAsked = false
             await onClubSaved()
             step = .done
             return
         }
+        clubWasAsked = true
         step = .pickClub
         await loadClubs()
     }

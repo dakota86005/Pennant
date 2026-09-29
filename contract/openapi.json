@@ -1204,12 +1204,13 @@
         "description": "One cell of a served table: what it shows, and its tone and help tag when it has them."
       },
       "Certainty": {
-        "description": "How a claim's number or line is called (D-041): `calibrated` (fitted on the save's own history), `provisional` (a model parameter that ought to be fitted and has not been), `policy` (a line chosen and stated, never fitted), `unknown` (the basis cannot say), and `fact`: an objective fact read from the export or the save (a record, a date, how many days one source is behind another), which no fitted number and no chosen line decided. Section 4.1 listed the first four; `fact` was added at N4 so a plain fact is never stamped as policy.",
+        "description": "How a claim's number or line is called (D-041): `calibrated` (fitted on the save's own history), `provisional` (a model parameter that ought to be fitted and has not been), `policy` (a line chosen and stated, never fitted), `unknown` (the basis cannot say), and `fact`: an objective fact read from the export or the save (a record, a date, how many days one source is behind another), which no fitted number and no chosen line decided. Section 4.1 listed the first four; `fact` was added at N4 so a plain fact is never stamped as policy. `recorded` (N6 polish): what Pennant itself kept, in its own record (the rating history it took at each import, what a carry-over copied), which the export no longer says and no fitted number or chosen line decided; never called a fact from the export.",
         "anyOf": [
           {
             "type": "string",
             "enum": [
               "fact",
+              "recorded",
               "calibrated",
               "provisional",
               "policy",
@@ -3131,6 +3132,22 @@
           "line"
         ],
         "description": "The last five results, oldest first, and the line under them."
+      },
+      "LeagueUpgradeLine": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "hint": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "hint"
+        ],
+        "description": "What the status says while a league an earlier build imported is brought up to date, once (N6 polish: the first launch on a folder the Electron app last used waited 5.5 s with only \"Starting…\" on screen). The server answers meanwhile; the report follows when it is done."
       },
       "Lean": {
         "type": "object",
@@ -5346,6 +5363,17 @@
               "null"
             ],
             "description": "The id of the save the imported data came from (D-063: its folder's real path, hashed, as the save list identifies it), tied to the last import (`lastImport`); null with nothing imported, while a save chosen but not yet imported is configured, or until it is worked out. The Mac app keys the Morning Report it keeps across launches on it, so another save's is never drawn and a save being left never has its report kept under the new one's id."
+          },
+          "saveFolder": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The save's own folder (`<save>.lg`), where Pennant reads the transaction log (N6 polish): the one named in Settings, else the one found for the chosen save (filled in when a save is chosen, or found at the last look at the served save); null when none is known. Settings shows it, so the field is never empty while the folder is known."
+          },
+          "leagueUpgrade": {
+            "$ref": "#/components/schemas/LeagueUpgradeLine",
+            "description": "While a league an earlier build imported is brought up to date, once (the one-time upgrade; the server answers meanwhile and the report follows when it is done): the line to show where the report will be; null otherwise."
           }
         },
         "required": [
@@ -5363,7 +5391,8 @@
           "logoToken",
           "ratingScaleMax",
           "reportStamp",
-          "saveId"
+          "saveId",
+          "saveFolder"
         ],
         "description": "What `/api/status` serves, and the snapshot `/api/v2/events` opens with (described in `contract/openapi.json`)."
       },
@@ -5789,7 +5818,7 @@
           },
           "note": {
             "$ref": "#/components/schemas/Cell",
-            "description": "\"Next game\", \"IL · 12 days\"; null when none."
+            "description": "His standing (\"IL · 12 days\"); null when none (the next game's starter is said by his role, \"Next\")."
           },
           "hint": {
             "type": "string",

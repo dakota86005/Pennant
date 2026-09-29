@@ -186,20 +186,54 @@ public final class AppModel {
     /// entry the shown Morning Report was kept with (the same club's), so a kept report is drawn in the club's colours
     /// at once, as the live one is (N6 B1 review M5).
     public var catalogClub: Components.Schemas.CatalogClub? {
-        guard let id = club?.ref.id else { return nil }
+        // A switch under way: the report on screen is another save's or club's, and its club is drawn with it
+        if let held = heldCatalog { return held.club }
+        guard let id = club?.ref.id else {
+            // Before the club is served (a launch): the club the report kept last is for, for its card and colours only
+            return settings == nil ? frontOffice.waitingKept?.kept.catalog?.club : nil
+        }
         if let catalog { return catalog.clubs.first { $0.teamId == id } }
-        return frontOffice.keptCatalog?.club.flatMap { $0.teamId == id ? $0 : nil }
+        return (frontOffice.keptCatalog ?? frontOffice.waitingKept?.kept.catalog)?.club.flatMap { $0.teamId == id ? $0 : nil }
+    }
+
+    /// The catalog the report on screen was drawn with, while that report is another save's or club's than the key's
+    /// (a switch, until the new save's report lands): the club card, the colours and the report stay together, and the
+    /// report says it is updating (N6 polish: the real-save check saw the new save's club card over the old save's
+    /// department cards). Nil otherwise.
+    public var heldCatalog: KeptReports.Catalog? { frontOffice.heldCatalog(for: storeKey) }
+
+    /// What the sidebar's club card draws: the club (its served name, how it was chosen, its record), from the same place
+    /// as the colours and the report (`catalogClub`); at launch, before the club is served, the club the report kept last
+    /// is for, so the card is there from the first frame (N6 polish); nil with no club.
+    public struct ClubCard: Equatable, Sendable {
+        public var name: String
+        public var source: CurrentClub.Source?
+        public var record: Components.Schemas.Cell?
+        /// The served club is not in this save's club list (a configured club from another save).
+        public var notInSave: Bool
+    }
+
+    public var clubCard: ClubCard? {
+        if let held = heldCatalog, let club = held.club {
+            return ClubCard(name: club.name, source: CurrentClub.Source.from(servedWord: held.clubSource), record: club.record, notInSave: false)
+        }
+        if let club {
+            guard let org = club.org else { return ClubCard(name: "", source: club.source, record: nil, notInSave: true) }
+            return ClubCard(name: org.label, source: club.source, record: catalogClub?.record, notInSave: false)
+        }
+        guard settings == nil, let waiting = frontOffice.waitingKept?.kept.catalog, let kept = waiting.club else { return nil }
+        return ClubCard(name: kept.name, source: CurrentClub.Source.from(servedWord: waiting.clubSource), record: kept.record, notInSave: false)
     }
     /// The catalog's phrases (the legends, the missing-value line); the kept ones until the catalog arrives.
     public var phrases: Components.Schemas.CatalogPhrases? {
-        catalog?.phrases ?? frontOffice.keptCatalog?.phrases
+        catalog?.phrases ?? frontOffice.keptCatalog?.phrases ?? frontOffice.waitingKept?.kept.catalog?.phrases
     }
     /// What a kept Morning Report is drawn with next launch: the club's catalog entry, the phrases and the report's
     /// served name, as the live catalog serves them now; nil until the catalog is here.
     var keptCatalogNow: KeptReports.Catalog? {
         guard let catalog, let id = club?.ref.id, let entry = catalog.clubs.first(where: { $0.teamId == id }) else { return nil }
         let name = catalog.departments.first { ($0.id.value1?.rawValue ?? $0.id.value2) == "frontOffice" }?.views.first { $0.id == "morningReport" }?.name
-        return KeptReports.Catalog(club: entry, phrases: catalog.phrases, viewName: name)
+        return KeptReports.Catalog(club: entry, phrases: catalog.phrases, viewName: name, clubSource: club?.source.servedWord)
     }
     /// When OOTP wrote the export that is imported (as served).
     public var exportedAt: String? { status?.csvExportedAt }
@@ -232,8 +266,49 @@ public final class AppModel {
                 self.backupOutcome = await self.controller.backupOutcome
             }
         }
-        await controller.start()
+        // Started already, before the windows were built: the updates begin with where it has got to
+        if !startedEarly { await controller.start() }
     }
+
+    private var startedEarly = false
+
+    /// Starts the server at once, off the main actor, before the app's windows are built (the app delegate's making;
+    /// N6 polish: the launch budget, where the start waited about half a second for the window); `start()` then only
+    /// follows it. Does nothing once started or shutting down.
+    public func startEarly() {
+        guard !started, !startedEarly, !shuttingDown else { return }
+        startedEarly = true
+        let controller = controller
+        let makeClient = makeClient
+        // The settings and the clubs (the store key) are asked the moment the server is confirmed, off the main actor,
+        // while the window is still being built: the first `reloadAll` takes their answers (N6 polish: the key was
+        // asked only once the window was up, and then waited behind the server's start-up work)
+        firstKeyAnswers = Task.detached(priority: .userInitiated) {
+            let updates = await controller.stateUpdates()
+            for await state in updates {
+                if let connection = state.connection {
+                    let client = makeClient(connection)
+                    async let settings = Self.attempt { try await client.getSettings().ok.body.json }
+                    async let orgs = Self.attempt { try await client.listOrgs().ok.body.json }
+                    return FirstKeyAnswers(pid: connection.pid, settings: await settings, orgs: await orgs)
+                }
+                switch state {
+                case .failed, .locked, .stopped, .stopping: return nil
+                case .idle, .starting, .ready, .restarting: continue
+                }
+            }
+            return nil
+        }
+        Task.detached(priority: .userInitiated) { await controller.start() }
+    }
+
+    /// The settings and the clubs asked the moment the server was first confirmed (`startEarly`), for the first key.
+    struct FirstKeyAnswers: Sendable {
+        var pid: Int32
+        var settings: Result<Components.Schemas.SettingsResponse, any Error>
+        var orgs: Result<[Components.Schemas.Org], any Error>
+    }
+    private var firstKeyAnswers: Task<FirstKeyAnswers?, Never>?
 
     /// Try Again after a failure or a locked data folder (the backup is retried first, by the controller).
     public func tryAgain() async {
@@ -393,7 +468,7 @@ public final class AppModel {
 
     /// Loads the Morning Report's desk and cards for the current key (a view calls it in `.task(id: storeKey)`).
     public func loadFrontOffice() async {
-        await frontOffice.loadSummary(client: client, key: storeKey)
+        await frontOffice.loadSummary(client: client, key: storeKey, catalog: keptCatalogNow)
         await frontOffice.keep(catalog: keptCatalogNow, for: storeKey)
     }
 
@@ -579,6 +654,15 @@ public final class AppModel {
         controller.log.write("first Morning Report drawn \(launchClock), \(how)", source: "app")
     }
 
+    /// One of the launch's own steps (the app delegate made, the launch finished, the window's first appearance), with
+    /// its time from the process's start, for the log: where the launch budget goes. Each step is logged once.
+    public func noteLaunchStep(_ step: String) {
+        guard !loggedSteps.contains(step) else { return }
+        loggedSteps.insert(step)
+        controller.log.write("launch: \(step) \(launchClock)", source: "app")
+    }
+    private var loggedSteps: Set<String> = []
+
     private var loggedUpdating = false
     /// The Morning Report's kicker says "Updating" (the kept report, or a fresh one on its way): logged once a launch,
     /// so the launch test can tell it was drawn however briefly.
@@ -615,29 +699,45 @@ public final class AppModel {
     /// soon as the club is known (N6, Stage B1: the launch budget).
     public func reloadAll() async {
         guard let client else { return }
-        async let settingsAnswer = client.getSettings()
-        async let orgsAnswer = client.listOrgs()
-        async let dataStatusAnswer = client.getDataStatusWords()
-        async let catalogAnswer = client.getCatalog()
+        // The settings and the clubs (the store key) first and alone, asked off the main actor so they leave at once even
+        // while the window is busy drawing, and answered before the data status and the catalog are asked (N6 polish:
+        // the launch budget; the four at once reached the server in any order)
+        let settingsAnswer: Result<Components.Schemas.SettingsResponse, any Error>
+        let orgsAnswer: Result<[Components.Schemas.Org], any Error>
+        // The first time, the answers asked when the server was confirmed (this server's, not a restarted one's)
+        let early = await firstKeyAnswers?.value
+        firstKeyAnswers = nil
+        if let early, early.pid == serverState.connection?.pid {
+            (settingsAnswer, orgsAnswer) = (early.settings, early.orgs)
+        } else {
+            (settingsAnswer, orgsAnswer) = await Task.detached(priority: .userInitiated) {
+                async let settings = Self.attempt { try await client.getSettings().ok.body.json }
+                async let orgs = Self.attempt { try await client.listOrgs().ok.body.json }
+                return await (settings, orgs)
+            }.value
+        }
         var nextSettings = settings
         var nextOrgs = orgs
-        do {
-            nextSettings = try await settingsAnswer.ok.body.json
-        } catch {
-            note(error, reading: "settings")
+        switch settingsAnswer {
+        case .success(let answer): nextSettings = answer
+        case .failure(let error): note(error, reading: "settings")
         }
-        do {
-            nextOrgs = try await orgsAnswer.ok.body.json
-        } catch {
-            note(error, reading: "clubs")
+        switch orgsAnswer {
+        case .success(let answer): nextOrgs = answer
+        case .failure(let error): note(error, reading: "clubs")
         }
         orgs = nextOrgs
         club = CurrentClub.from(served: nextSettings?.organization, orgs: nextOrgs)
         settings = nextSettings
+        // Answered, whether or not they succeeded: the club card of the report kept last stays only for the key's own
+        // save and club (N6 polish review: a failed answer left it drawn for a club never confirmed)
+        frontOffice.settleWaitingKept(for: storeKey)
         if storeKey != nil, !loggedKey {
             loggedKey = true
             controller.log.write("store key known \(launchClock)", source: "app")
         }
+        async let dataStatusAnswer = client.getDataStatusWords()
+        async let catalogAnswer = client.getCatalog()
         do {
             dataStatus = try await dataStatusAnswer.ok.body.json
         } catch {
@@ -652,6 +752,11 @@ public final class AppModel {
         await loadRatingHistory()
         // The report shown is kept with the catalog it is drawn with, once both are here
         await frontOffice.keep(catalog: keptCatalogNow, for: storeKey)
+    }
+
+    /// An answer or its error, off the main actor.
+    private nonisolated static func attempt<T: Sendable>(_ body: @Sendable () async throws -> T) async -> Result<T, any Error> {
+        do { return .success(try await body()) } catch { return .failure(error) }
     }
 
     private func note(_ error: any Error, reading what: String) {

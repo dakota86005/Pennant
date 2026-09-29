@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import Anthropic from '@anthropic-ai/sdk';
+import type Anthropic from '@anthropic-ai/sdk';
+import { anthropicSdk } from './aiSdk.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { db, tableExists } from './db.js';
@@ -919,7 +920,7 @@ chatRoutes.post('/chat', async (req, res) => {
     res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
   };
 
-  const client = provider === 'anthropic' ? new Anthropic({ apiKey: key }) : null;
+  const client = provider === 'anthropic' ? new (await anthropicSdk())({ apiKey: key }) : null;
   // Only send the thinking parameter to a model the API reports as supporting
   // it. Omitting it is valid everywhere; sending it to a model that does not
   // take it is a 400, and the model is now the user's choice rather than ours.

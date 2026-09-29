@@ -43,11 +43,16 @@ public actor KeptReports {
         public var phrases: Components.Schemas.CatalogPhrases?
         /// The Morning Report's served name ("Morning Report"), its headline.
         public var viewName: String?
+        /// How the club was chosen when it was kept (`CurrentClub.Source.servedWord`: "human", "configured"), so the club
+        /// card drawn from a kept report says which club it is, as the live one does (N6 polish); nil in a file an
+        /// earlier build kept.
+        public var clubSource: String?
 
-        public init(club: Components.Schemas.CatalogClub?, phrases: Components.Schemas.CatalogPhrases?, viewName: String?) {
+        public init(club: Components.Schemas.CatalogClub?, phrases: Components.Schemas.CatalogPhrases?, viewName: String?, clubSource: String? = nil) {
             self.club = club
             self.phrases = phrases
             self.viewName = viewName
+            self.clubSource = clubSource
         }
     }
 
