@@ -468,11 +468,15 @@ export async function setDeskRecord(orgId: number, itemKey: string, write: DeskW
 /**
  * The items an import no longer produces are resolved: a record in force whose item the department was read for and did
  * not raise stops applying, so an item that comes back later is a new item with no status (D-058). A department that
- * could not be read resolves nothing (its absence is not evidence, D-018). Returns how many records were resolved.
+ * could not be read resolves nothing (its absence is not evidence, D-018), and a record set during this very import is
+ * left alone (the GM marked what this import showed him). Called once per import, for its first remembered build
+ * (`frontOfficeAttention.rememberBuild`). Returns how many records were resolved.
  */
 export async function resolveDeskRecords(orgId: number, present: ReadonlySet<string>, readDepartments: ReadonlySet<string>, importStamp: string | null): Promise<number> {
   const saveKey = memoryKey();
-  const open = [...deskRecords(orgId, saveKey).keys()].filter((key) => readDepartments.has(key.split(':')[0]) && !present.has(key));
+  const open = [...deskRecords(orgId, saveKey)]
+    .filter(([key, r]) => readDepartments.has(key.split(':')[0]) && !present.has(key) && (importStamp === null || r.setImport !== importStamp))
+    .map(([key]) => key);
   if (!open.length) return 0;
   await ensureMemoryBackup();
   const now = new Date().toISOString();

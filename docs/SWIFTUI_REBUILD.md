@@ -658,7 +658,8 @@ Nothing is drawn yet: Stage B draws it. Cases 15 to 20 and the search and club-o
 - **The desk's statuses** (`frontOfficeAttention.ts`): each item carries `attention`; reviewed, deferred and handled
   items leave `desk.items` for `desk.setAside` (a served line, "2 reviewed · 1 deferred", and the items); a deferral ends
   on its game date and comes back with "Deferral ended …"; an item marked handled that this export still raises says
-  "The latest export still shows it". `PUT` answers with the status it replaced and `undo`, the request that puts it
+  "The latest export still shows it". Statuses resolve only on the first remembered build of a new import, never on a
+  rebuild of the same one, and never one set during that import. `PUT` answers with the status it replaced and `undo`, the request that puts it
   back; refusals are sentences (400/404). The composed answer is kept per build, remembered state, desk and wire, so a
   status composes again in a few milliseconds without reading the league.
 - **Following** (`aroundTheLeague.ts`, `presentation/frontOffice/following.ts`): the watchlist is copied in once per

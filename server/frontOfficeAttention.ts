@@ -239,21 +239,30 @@ export async function setDeskStatus(orgId: number, body: unknown): Promise<DeskC
 
 const FIRST_TEXT = 'Pennant will compare the next export with this one.';
 let recorded = new Set<string>();
+/** The imports whose first remembered build has been claimed (save, club and import), so only that build resolves. */
+let firstBuilds = new Set<string>();
 
 /**
  * Records what the club's Front Office served for this import, once its build is kept (the club the app follows, and
- * only for the import still served): the report and standings snapshots, the statuses this import resolves, and, the
- * first time for an import, `changes-ready` with the notification's words.
+ * only for the import still served): the report and standings snapshots, and, for the first remembered build of a new
+ * import only, the statuses it resolves and `changes-ready` with the notification's words. A later build of the same
+ * import (a settings change, a refit, a new copy of the live log) replaces the snapshot and resolves nothing: an item
+ * that a refit stops raising within one export is not an item handled in OOTP (D-058), and a status the GM set during
+ * this import is never resolved by it.
  */
 export async function rememberBuild(built: FrontOfficeBuilt): Promise<boolean> {
-  if (clubOwed()) return false;
+  if (clubOwed() || !memory.snapshotsAllowed()) return false;
   const org = currentOrganization()?.id ?? null;
   if (org !== built.orgId || !built.importStamp || built.importStamp !== importedAt.value) return false;
   if (keptFrontOffice(org)?.key !== built.key) return false;
+  // Claimed on this turn, before any write, so two remembers of the same import can't both be its first
+  const claim = `${memory.memoryKey()}|${org}|${built.importStamp}`;
+  const firstBuild = !firstBuilds.has(claim) && memory.reportSnapshotOf(org, built.importStamp) === null;
+  firstBuilds.add(claim);
   const listed = REPORTING.map((d) => built.reports.get(d)).filter((r): r is DepartmentReport => !!r);
   const items = listed.flatMap((r) => [...r.toDecide.items, ...r.watching.items]
     .map((it) => ({ key: it.key, department: it.department, severity: it.neutralSeverity, headline: it.headline.text, count: it.count })));
-  const first = memory.reportSnapshotOf(org, built.importStamp) === null;
+  const first = firstBuild;
   const filed = await memory.recordReportSnapshot({
     orgId: org,
     importStamp: built.importStamp,
@@ -264,7 +273,9 @@ export async function rememberBuild(built: FrontOfficeBuilt): Promise<boolean> {
   });
   if (!filed) return false;
   if (built.season?.standings.length) await memory.recordStandingsSnapshot(built.importStamp, built.season.gameDate, built.season.standings);
-  const resolved = await memory.resolveDeskRecords(org, new Set(items.map((i) => i.key)), new Set(listed.filter((r) => r.status === 'ready').map((r) => r.department)), built.importStamp);
+  const resolved = first
+    ? await memory.resolveDeskRecords(org, new Set(items.map((i) => i.key)), new Set(listed.filter((r) => r.status === 'ready').map((r) => r.department)), built.importStamp)
+    : 0;
   const c = compose(built);
   if (resolved) publish({ type: 'desk-changed', orgId: org, deskStamp: c.deskStamp, key: null });
   const once = `${org}|${built.importStamp}`;
@@ -335,6 +346,7 @@ function divisionRivals(org: number): number[] {
 export function resetAttention(): void {
   composed.clear();
   recorded = new Set();
+  firstBuilds = new Set();
   warmed = null;
   composeCount = 0;
 }

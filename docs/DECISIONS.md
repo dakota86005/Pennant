@@ -2178,9 +2178,11 @@ request's path; "since the last export" as `FrontOfficeSummary.changes` and the 
 statuses), `presentation/frontOffice/attention.ts` and `following.ts` (the words), `GET`/`PUT /api/v2/desk/:org` and
 `GET`/`PUT`/`DELETE /api/v2/following`, and the events `desk-changed`, `following-changed` and `changes-ready`
 (SWIFTUI_REBUILD.md "As built at N7 (Stage A)"). As built:
-- An item's status lives until the item is resolved: an import whose department was read and no longer raises the item
+- An item's status lives until the item is resolved: a new import whose department was read and no longer raises the item
   resolves it, and an item that comes back later is a new item with no status. A department that could not be read
-  resolves nothing and makes nothing new (D-018).
+  resolves nothing and makes nothing new (D-018). Only the first remembered build of a new import resolves (the
+  independent review, M1): a later build of the same import (a settings change, a refit, a new copy of the live log)
+  replaces the import's snapshot and resolves nothing, and a status set during an import is never resolved by it.
 - "Since the last export" compares what two exports of the same save served for the same club (their items, their
   severities and the standings); an import rebuilt later (a refit, a new copy of the log) replaces its own snapshot, so
   the comparison is always with what was last served for that import.

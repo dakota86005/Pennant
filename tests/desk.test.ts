@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { historyDb } from '../server/history.js';
 import { forgetHistoryKey } from '../server/historyIdentity.js';
-import { deskRecords, forgetMemoryCaches, resolveDeskRecords } from '../server/frontOfficeMemory.js';
-import { DeskRefusal, departmentReportNow, deskViewNow, frontOfficeSummaryNow, resetAttention, setDeskStatus } from '../server/frontOfficeAttention.js';
-import { frontOfficeSummary, resetFrontOfficeCache } from '../server/frontOfficeService.js';
+import { deskRecords, forgetMemoryCaches, resolveDeskRecords, setDeskRecord } from '../server/frontOfficeMemory.js';
+import { DeskRefusal, departmentReportNow, deskViewNow, frontOfficeSummaryNow, rememberBuild, resetAttention, setDeskStatus } from '../server/frontOfficeAttention.js';
+import { frontOfficeBuilt, frontOfficeSummary, resetFrontOfficeCache, type FrontOfficeBuilt } from '../server/frontOfficeService.js';
 import { importedAt } from '../server/playerStateRoutes.js';
 import { subscribe, type ServerEvent } from '../server/serverEvents.js';
 import { attentionOf, onLeadList } from '../server/presentation/frontOffice/attention.js';
@@ -140,6 +140,41 @@ describe('a desk status records attention and changes nothing else (case 15)', (
   it('resolves nothing for a department that could not be read: its silence is not evidence', async () => {
     await setDeskStatus(save.org, { key, status: 'reviewed' });
     expect(await resolveDeskRecords(save.org, new Set(), new Set(['somethingElse']), 'i-next')).toBe(0);
+    expect(deskRecords(save.org).get(key)!.status).toBe('reviewed');
+  });
+
+  /** The same build with one item no longer raised (as a refit or a settings change can leave it within one export). */
+  const without = (built: FrontOfficeBuilt, k: string): FrontOfficeBuilt => ({
+    ...built,
+    reports: new Map([...built.reports].map(([d, r]) => [d, {
+      ...r,
+      toDecide: { ...r.toDecide, items: r.toDecide.items.filter((it) => it.key !== k) },
+      watching: { ...r.watching, items: r.watching.items.filter((it) => it.key !== k) },
+    }])),
+  });
+  const settle = () => new Promise((resolve) => setImmediate(resolve));
+
+  it('resolves statuses only on the first remembered build of a new import, never on a rebuild of the same one (M1)', async () => {
+    const built = await frontOfficeBuilt(save.org);
+    await settle();
+    await rememberBuild(built);
+    await setDeskStatus(save.org, { key, status: 'reviewed' });
+    // A later build of the same import that no longer raises the item (a refit, a settings change, a copy of the log)
+    expect(await rememberBuild(without(built, key))).toBe(true);
+    expect(deskRecords(save.org).get(key)?.status).toBe('reviewed');
+
+    // The next import's first remembered build that no longer raises it resolves it
+    importedAt.value = '2040-05-02T10:00:00.000Z';
+    resetFrontOfficeCache();
+    const next = await frontOfficeBuilt(save.org);
+    expect(await rememberBuild(without(next, key))).toBe(true);
+    expect(deskRecords(save.org).has(key)).toBe(false);
+  });
+
+  it('leaves a status set during this very import alone when it resolves (M1)', async () => {
+    const dept = key.split(':')[0];
+    await setDeskRecord(save.org, key, { status: 'reviewed', until: null }, 'i-next');
+    expect(await resolveDeskRecords(save.org, new Set(), new Set([dept]), 'i-next')).toBe(0);
     expect(deskRecords(save.org).get(key)!.status).toBe('reviewed');
   });
 });
