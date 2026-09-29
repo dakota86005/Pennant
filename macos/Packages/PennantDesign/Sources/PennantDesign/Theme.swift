@@ -29,12 +29,13 @@ nonisolated public struct Theme: Sendable, Equatable {
         public var isNeutral: Bool
 
         /// The system's colours, following the window's appearance: the window's background under the title, a
-        /// grouped section's fill for the masthead, the label colours for its text, the system accent.
+        /// grouped section's fill for the masthead, the label colours for its text (its secondary lines in the readable
+        /// secondary grey: the system's secondary label reads about 3.9:1 on the window's background), the system accent.
         public static let neutral = Palette(
             mastheadTop: Color(nsColor: .windowBackgroundColor),
             masthead: [Color(nsColor: .windowBackgroundColor), Color(nsColor: .underPageBackgroundColor)],
             mastheadText: Color(nsColor: .labelColor),
-            mastheadSecondaryText: Color(nsColor: .secondaryLabelColor),
+            mastheadSecondaryText: Color(nsColor: .readableSecondaryLabel),
             accent: .accentColor,
             accentText: .white,
             tint: .accentColor,
