@@ -673,9 +673,12 @@ yet "it just works" on a 1.1 GB league). Measured on a scratch import of a read-
   when the club was taken from the save: closing shows the import it followed, finished.
 - **The Tonight card** puts its words on an opaque plate in the masthead's first colour inside its glass, the pair the
   server checked (4.5:1, 7:1 with Increase Contrast); on the bare glass, which lightens in a light appearance, they read
-  1.9:1. **The scroll edge:** the report's scroll view keeps its content in the safe area with the soft edge, and the
-  toolbar's background is the system's (on macOS 26, that edge), so content under the toolbar blurs and never
-  overprints it; the masthead's colour alone runs up beneath the toolbar.
+  1.9:1. **The scroll edge:** the report's scroll view keeps its content in the safe area, and the masthead's colour runs
+  up beneath the toolbar, drawn above its own frame. At rest the toolbar's background and the soft top edge are hidden,
+  so that colour shows through the toolbar's glass; once anything scrolls under the toolbar
+  (`onScrollGeometryChange`), both come back (on macOS 26 the toolbar's background is that edge), so what passes
+  beneath blurs and fades and never overprints it (the polish review: the edge left on at rest laid a plain system
+  band where the club's colour belongs).
 - **Words** (server, with tests): the farm's next man's blocker in plain words on the visible line, the numbers in the
   hover ("Playing time at Triple-A: 33 of the 45 a look asks"); the next starter said once ("Next"); "the regular", never
   "holder" (now banned jargon); a history's players as the share they are, rounded down in whole tenths, never "only
@@ -826,9 +829,11 @@ modular: "theme packs" per club (D-062).
   and club card in the chosen pack), the packs refused with the first thing wrong (every finding in the help tag), and the
   theme-packs folder with Show in Finder.
 - **The masthead** (`Masthead`, `MastheadScrollView`; `ClubMasthead` in FeatureCore): content colour, not glass. The
-  scroll view runs under the toolbar (`ignoresSafeArea(edges: .top)`, the toolbar's background hidden), the masthead's
-  colour is extended under the sidebar and the inspector (`backgroundExtensionEffect`, on its background only, so its
-  text and logo are not mirrored), and the soft top scroll edge is back (`scrollEdgeEffectStyle(.soft)`). Its top colour
+  masthead's colour runs up under the toolbar (drawn above its frame; the scroll view keeps its content in the safe
+  area), with the toolbar's background hidden at rest, and is extended under the sidebar and the inspector
+  (`backgroundExtensionEffect`, on its background only, so its text and logo are not mirrored); the soft top scroll edge
+  (`scrollEdgeEffectStyle(.soft)`) comes on, with the toolbar's background, once content scrolls under the toolbar (N6
+  polish and its review). Its top colour
   is held under the toolbar and fades into the club's colours over 20 points below it, and its text starts below that
   band, so no text sits on the blend. It carries the view's served title (the catalog's name, the structural title until
   the catalog arrives), the club's served name and record (condensed-width numerals, `.monospacedDigit()`,
