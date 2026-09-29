@@ -669,8 +669,10 @@ Nothing is drawn yet: Stage B draws it. Cases 15 to 20 and the search and club-o
   table is untouched); division rivals are `suggestions`, each with `why`. `PUT` follows or changes a note, `DELETE`
   (`?kind&id`) unfollows; both answer with `undo` and the new view.
 - **The wire** (`leagueWire.ts`, `presentation/frontOffice/wire.ts`): the sources and the order are D-059's "As built".
-  Gathered once per import (and per copy of the log) on the server's thread after the club's build is remembered;
-  filtered and ordered per request. `?since=` a game date, `season`, or by default the last export's day (the season
+  Gathered once per import (and per copy of the log) on the server's thread after the club's build is remembered, and
+  kept for up to four clubs (the club whose division's standings it reads); this season only (the log by its own season,
+  trades and injuries by their day's year, awards by their year; a day not known is never another season's); filtered
+  and ordered per request. `?since=` a game date, `season`, or by default the last export's day (the season
   when there is none); `club`, `kind`, `followed=first|only`; at most 200 entries, with `total` and `more`.
   `FrontOfficeSummary.wire` is the top five since the last export, followed clubs first.
 - **A club report** (`clubReport.ts`, `presentation/frontOffice/clubReport.ts`, `buildClubReport` in the Front

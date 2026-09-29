@@ -229,6 +229,15 @@ export function gapWords(g: WireGap): Cell {
           awards: 'Awards couldn\'t be read this time.',
         } as Partial<Record<WireGap['source'], string>>)[g.source] ?? 'Part of the wire couldn\'t be read this time.';
       default:
+        // A column the source needs is missing: named in the hover
+        if (g.detail?.includes('.')) {
+          return ({
+            trades: 'The export\'s trade record lacks what the wire needs, so trades aren\'t on the wire.',
+            injuries: 'The export\'s injury history lacks what the wire needs, so injuries aren\'t on the wire.',
+            streaks: 'The export\'s streaks lack what the wire needs.',
+            awards: 'The export\'s awards lack what the wire needs.',
+          } as Partial<Record<WireGap['source'], string>>)[g.source] ?? 'Part of the wire isn\'t in the export.';
+        }
         return ({
           trades: 'The export has no trade record, so trades aren\'t on the wire.',
           injuries: 'The export has no injury history, so injuries aren\'t on the wire.',
@@ -239,7 +248,7 @@ export function gapWords(g: WireGap): Cell {
   })();
   const hint = g.why === 'not_read'
     ? 'The export mixes headlines with staff notes and trade offers'
-    : undefined;
+    : g.why === 'not_in_export' && g.detail ? `Not in the export: ${g.detail}` : undefined;
   return cell(line, { tone: 'unknown', ...(hint ? { hint } : {}) });
 }
 

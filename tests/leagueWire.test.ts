@@ -3,11 +3,11 @@ import { db } from '../server/db.js';
 import { historyDb } from '../server/history.js';
 import { forgetHistoryKey } from '../server/historyIdentity.js';
 import { forgetMemoryCaches, recordStandingsSnapshot, type StandingsRow } from '../server/frontOfficeMemory.js';
-import { forgetWire, wireBuilds, wireFacts, WIRE_STREAK_POLICY, type WireFact } from '../server/leagueWire.js';
+import { forgetWire, leagueClubs, logFacts, wireBuilds, wireFacts, WIRE_STREAK_POLICY, type WireFact } from '../server/leagueWire.js';
 import { captureRosterStateSnapshot } from '../server/rosterStateHistory.js';
 import { importedAt } from '../server/playerStateRoutes.js';
 import { KIND_ORDER, gapWords, wireEntry, wireOrder, wireWords, type Followed } from '../server/presentation/frontOffice/wire.js';
-import { buildSave, dropTable, type BuiltSave } from './syntheticSave';
+import { buildSave, dropColumn, dropTable, insert, type BuiltSave } from './syntheticSave';
 
 /**
  * The league wire (BEHAVIOR_CASES.md "Pennant for Mac", `leagueWire.test.ts`, cases 17 and 18; D-059): the log's own
@@ -179,5 +179,44 @@ describe('the wire on the synthetic save: its sources, and the ones it lacks', (
     expect(standings.map((f) => f.clubs[0].teamId).sort()).toEqual([1, 2]);
     const leader = wireEntry(standings.find((f) => f.clubs[0].teamId === 1)!, none, ctx);
     expect(leader.headline.text).toBe('Club 1 N: 1st in the East (was 2nd)');
+  });
+
+  it('covers this season only: a trade or a log move from last season is not on "This season", and the count follows (M2)', () => {
+    insert('trade_history', { date: '2039-7-30', summary: 'The Club 3 traded P 1 to the Club 4 for P 2.', message_id: 8001, team_id_0: save.clubs[2], player_id_0_0: 0, player_id_0_1: 0, team_id_1: save.clubs[3], player_id_1_0: 0, player_id_1_1: 0 });
+    forgetWire();
+    const w = wireFacts(importedAt.value, save.org);
+    expect(w.facts.some((f) => f.ownWords === 'The Club 3 traded P 1 to the Club 4 for P 2.')).toBe(false);
+    const all = wireWords(save.org, w, none, { sinceDay: null, sinceRaw: null, sinceFrom: 'season', club: null, kind: null, followedOnly: false, followedFirst: false, limit: 50 }, ctx);
+    expect(all.since.display).toBe('This season');
+    expect(all.total).toBe(w.facts.length);
+    // The log's moves by its own season: last season's, and one whose season the log doesn't give but whose day is last year
+    const club = save.org;
+    const event = (id: string, date: string | null, season: number | null) => ({
+      id, date, season, kind: 'optioned', supported: true, playerId: 7, playerName: 'Sam Arm', from: null, to: null, text: `Move ${id}`,
+      sources: [{ teamId: club, logId: 1 }],
+    });
+    const moves = logFacts({ events: [event('a', '2040-05-01', 2040), event('b', '2039-09-01', 2039), event('c', '2039-09-02', null), event('d', null, null)] } as never, leagueClubs(), 2040);
+    expect(moves.map((f) => f.ownWords)).toEqual(['Move a', 'Move d']);
+  });
+
+  it('keeps the gathered wire for a few clubs, so asking for another club\'s wire doesn\'t gather ours again (L6)', () => {
+    forgetWire();
+    const other = save.clubs.find((c) => c !== save.org)!;
+    wireFacts(importedAt.value, save.org);
+    const once = wireBuilds();
+    wireFacts(importedAt.value, other);
+    wireFacts(importedAt.value, save.org);
+    wireFacts(importedAt.value, other);
+    expect(wireBuilds()).toBe(once + 1);
+  });
+
+  it('names a column a source needs that the export lacks, never an empty list (M3)', () => {
+    dropColumn('players_awards', 'year');
+    forgetWire();
+    const w = wireFacts(importedAt.value, save.org);
+    expect(w.gaps).toContainEqual({ source: 'awards', why: 'not_in_export', detail: 'players_awards.year' });
+    expect(gapWords({ source: 'awards', why: 'not_in_export', detail: 'players_awards.year' })).toMatchObject({
+      display: 'The export\'s awards lack what the wire needs.', tone: 'unknown', hint: 'Not in the export: players_awards.year',
+    });
   });
 });

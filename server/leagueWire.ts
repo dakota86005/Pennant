@@ -13,7 +13,10 @@
  *   **streaks** from `players_streak` and **awards** from `players_awards`, each only where its code's meaning is
  *   established (the hitting and on-base streaks, as the dashboard pinned them; the awards the player card names), and
  *   **standings** from the standings Pennant kept at each import.
- * - **Schema-tolerant**: a table the export lacks is a named gap, never an empty league (D-018).
+ * - **Schema-tolerant**: a table the export lacks, or a column a source needs, is a named gap, never an empty league
+ *   (D-018).
+ * - **This season only**: the log by its own `season`, trades and injuries by their day's year, awards by their year; a
+ *   day or season not known is never read as another season's.
  * - **No league news** (N7 review, H1). OOTP's `messages` is the GM's inbox as much as the league's news: staff
  *   trade-target notes (`recipient_id = 1`, `sender_type = 0`, as `dashboard.ts` reads them), other clubs' trade
  *   proposals (`trade_id != 0`, as `trade.ts` reads them) and the owner's mail sit beside the headlines, and no code,
@@ -93,7 +96,10 @@ export type SnapshotChange =
 export interface WireGap {
   source: WireGapSource;
   why: 'not_in_export' | 'unreadable' | 'log_unavailable' | 'log_reading' | 'no_earlier_standings' | 'no_snapshots' | 'not_read';
-  /** The log's own reason, where it gave one. */
+  /**
+   * The log's own reason, where it gave one; for a source the export lacks, the table ("trade_history") or the column
+   * ("trade_history.summary") it lacks.
+   */
   detail: string | null;
 }
 
@@ -139,14 +145,37 @@ const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFi
 const text = (v: unknown): string | null => (typeof v === 'string' && v.trim() !== '' ? v.trim() : null);
 const has = (table: string): Set<string> => (tableExists(table) ? new Set(tableColumns(table)) : new Set<string>());
 
-interface LeagueClubs {
+/** A column a source needs that the export's table lacks: a named gap, never an empty list (M3, D-018). */
+class MissingColumn extends Error {
+  constructor(readonly table: string, readonly column: string) {
+    super(`${table}.${column}`);
+    this.name = 'MissingColumn';
+  }
+}
+
+/** The table's columns, once every one the source needs is there; the first one missing is thrown, named. */
+function need(table: string, columns: readonly string[]): Set<string> {
+  const cols = has(table);
+  const missing = columns.find((c) => !cols.has(c));
+  if (missing) throw new MissingColumn(table, missing);
+  return cols;
+}
+
+/** Whether a day (ISO) is outside the season; a day or season not known is never outside it (unknown stays unknown). */
+const outsideSeason = (day: string | null, season: number | null, ownSeason: number | null = null): boolean => {
+  if (season === null) return false;
+  const year = ownSeason ?? (day !== null ? Number(day.slice(0, 4)) : null);
+  return year !== null && year !== season;
+};
+
+export interface LeagueClubs {
   /** Every club, by team id: its name, abbreviation, level and the major-league club it belongs to. */
   byId: Map<number, { ref: WireClubRef; level: number | null; parent: number | null }>;
   /** The major-league club a club belongs to (itself when it is one); null when not known. */
   majorOf: (teamId: number | null | undefined) => WireClubRef | null;
 }
 
-function leagueClubs(): LeagueClubs {
+export function leagueClubs(): LeagueClubs {
   const byId = new Map<number, { ref: WireClubRef; level: number | null; parent: number | null }>();
   const cols = has('teams');
   if (cols.has('team_id')) {
@@ -196,9 +225,11 @@ function playersNamed(ids: Iterable<number>): Map<number, { name: string; teamId
 
 // ── each source ────────────────────────────────────────────────────────────
 
-function logFacts(log: TransactionLog, clubs: LeagueClubs): WireFact[] {
+/** The log's moves this season (by the log's own `season`, else its date's year) that involve a major-league club's rows. */
+export function logFacts(log: Pick<TransactionLog, 'events'>, clubs: LeagueClubs, season: number | null): WireFact[] {
   const out: WireFact[] = [];
   for (const e of log.events) {
+    if (outsideSeason(parseGameDate(e.date), season, e.season)) continue;
     // A move on the wire involves a major-league club's own log rows; the affiliate's side is its own row
     const own = e.sources.map((s) => (s.teamId === null ? null : clubs.byId.get(s.teamId))).filter((c) => c?.level === 1).map((c) => c!.ref);
     if (!own.length) continue;
@@ -260,15 +291,14 @@ function snapshotFacts(clubs: LeagueClubs): { facts: WireFact[]; gap: WireGap | 
   return { facts: out, gap: null };
 }
 
-function tradeFacts(clubs: LeagueClubs): WireFact[] {
-  const cols = has('trade_history');
-  if (!cols.has('date') || !cols.has('summary')) return [];
+function tradeFacts(clubs: LeagueClubs, season: number | null): WireFact[] {
+  const cols = need('trade_history', ['date', 'summary']);
   const playerCols = [...cols].filter((c) => /^player_id_[01]_\d+$/.test(c));
   const rows = db.prepare(`SELECT rowid AS rid, * FROM trade_history`).all() as Array<Record<string, unknown>>;
   const names = playersNamed(rows.flatMap((r) => playerCols.map((c) => num(r[c])).filter((v): v is number => v !== null)));
   return rows.flatMap((r) => {
     const summary = text(r.summary);
-    if (!summary) return [];
+    if (!summary || outsideSeason(parseGameDate(r.date), season)) return [];
     const players = playerCols.map((c) => num(r[c])).filter((v): v is number => v !== null && v > 0)
       .map((id) => ({ playerId: id, name: names.get(id)?.name ?? `Player ${id}` }));
     return [{
@@ -286,14 +316,13 @@ function tradeFacts(clubs: LeagueClubs): WireFact[] {
 }
 
 function injuryFacts(clubs: LeagueClubs, season: number | null): WireFact[] {
-  const cols = has('players_injury_history');
-  if (!cols.has('player_id') || !cols.has('date')) return [];
+  const cols = need('players_injury_history', ['player_id', 'date']);
   const rows = db.prepare(`SELECT rowid AS rid, player_id, date${cols.has('length') ? ', length' : ''}${cols.has('day_to_day') ? ', day_to_day' : ''} FROM players_injury_history`)
     .all() as Array<Record<string, unknown>>;
   const names = playersNamed(rows.map((r) => Number(r.player_id)));
   return rows.flatMap((r) => {
     const day = parseGameDate(r.date);
-    if (season !== null && day !== null && Number(day.slice(0, 4)) !== season) return [];
+    if (outsideSeason(day, season)) return [];
     const player = names.get(Number(r.player_id));
     // Injuries to regulars: players now on a major-league club
     const club = player && player.teamId !== null && clubs.byId.get(player.teamId)?.level === 1 ? clubs.byId.get(player.teamId)!.ref : null;
@@ -314,8 +343,7 @@ function injuryFacts(clubs: LeagueClubs, season: number | null): WireFact[] {
 }
 
 function streakFacts(clubs: LeagueClubs, gameDate: string | null): WireFact[] {
-  const cols = has('players_streak');
-  if (!['player_id', 'streak_id', 'value', 'has_ended'].every((c) => cols.has(c))) return [];
+  const cols = need('players_streak', ['player_id', 'streak_id', 'value', 'has_ended']);
   const rows = db.prepare(`SELECT player_id, streak_id, value${cols.has('started') ? ', started' : ''} FROM players_streak
     WHERE has_ended = 0 AND ((streak_id = ${STREAK_HITTING} AND value >= ${WIRE_STREAK_POLICY.hitting}) OR (streak_id = ${STREAK_ON_BASE} AND value >= ${WIRE_STREAK_POLICY.onBase}))`)
     .all() as Array<Record<string, unknown>>;
@@ -341,8 +369,7 @@ function streakFacts(clubs: LeagueClubs, gameDate: string | null): WireFact[] {
 }
 
 function awardFacts(clubs: LeagueClubs, season: number | null): WireFact[] {
-  const cols = has('players_awards');
-  if (!['player_id', 'award_id', 'year'].every((c) => cols.has(c))) return [];
+  need('players_awards', ['player_id', 'award_id', 'year']);
   const known = Object.keys(AWARD_NAMES).map(Number);
   const where = [`award_id IN (${known.join(',')})`, ...(season !== null ? [`year = ${season}`] : [])];
   const rows = db.prepare(`SELECT rowid AS rid, * FROM players_awards WHERE ${where.join(' AND ')}`).all() as Array<Record<string, unknown>>;
@@ -415,7 +442,12 @@ function standingsFacts(importStamp: string | null, ourTeamId: number | null): {
 
 // ── the whole wire, cached per import ───────────────────────────────────────
 
-let cached: { key: string; log: TransactionLog | null; facts: WireFacts } | null = null;
+/**
+ * The gathered wire, kept per club (the club whose division's standings it reads), a few clubs at most (L6): the
+ * Morning Report's column for our club and a wire asked for another club don't evict each other.
+ */
+const MAX_WIRE_CLUBS = 4;
+const cached = new Map<string, { key: string; log: TransactionLog | null; facts: WireFacts }>();
 let builds = 0;
 
 /** How many times the wire was gathered (for the tests' "served from the cache"). */
@@ -427,7 +459,7 @@ export const wireGatherMs = (): number | null => lastGatherMs;
 
 /** Forgets the gathered wire (an import, a test). */
 export function forgetWire(): void {
-  cached = null;
+  cached.clear();
 }
 
 /** The league's major-league season and day, from the served club's league (null when not known). */
@@ -466,7 +498,9 @@ export function wireStamp(importStamp: string | null, ourTeamId: number | null):
 
 export function wireFacts(importStamp: string | null, ourTeamId: number | null): WireFacts {
   const { peek, log, key } = wireInputs(importStamp, ourTeamId);
-  if (cached && cached.key === key && cached.log === log) return cached.facts;
+  const slot = String(ourTeamId ?? '-');
+  const hit = cached.get(slot);
+  if (hit && hit.key === key && hit.log === log) return hit.facts;
   builds += 1;
   const started = performance.now();
   const clubs = leagueClubs();
@@ -476,7 +510,7 @@ export function wireFacts(importStamp: string | null, ourTeamId: number | null):
   let fromLog = false;
   if (log) {
     fromLog = true;
-    facts.push(...logFacts(log, clubs));
+    facts.push(...logFacts(log, clubs, season));
   } else {
     gaps.push(peek === null
       ? { source: 'log', why: 'log_reading', detail: null }
@@ -493,12 +527,16 @@ export function wireFacts(importStamp: string | null, ourTeamId: number | null):
     try {
       facts.push(...read());
     } catch (err) {
+      if (err instanceof MissingColumn) {
+        gaps.push({ source, why: 'not_in_export', detail: err.message });
+        return;
+      }
       console.error(`[wire] ${name} could not be read:`, err);
       // A table that is there but could not be read is not a table the export lacks (D-018)
       gaps.push({ source, why: 'unreadable', detail: name });
     }
   };
-  table('trades', 'trade_history', () => tradeFacts(clubs));
+  table('trades', 'trade_history', () => tradeFacts(clubs, season));
   // League news is not read: the export files it with the GM's own mail (see the header)
   gaps.push({ source: 'news', why: 'not_read', detail: null });
   table('injuries', 'players_injury_history', () => injuryFacts(clubs, season));
@@ -514,7 +552,9 @@ export function wireFacts(importStamp: string | null, ourTeamId: number | null):
     gameDate,
     previousGameDate: previousStandings(importStamp)?.gameDate ?? null,
   };
-  cached = { key, log, facts: result };
+  cached.delete(slot);
+  cached.set(slot, { key, log, facts: result });
+  while (cached.size > MAX_WIRE_CLUBS) cached.delete(cached.keys().next().value!);
   lastGatherMs = Math.round((performance.now() - started) * 10) / 10;
   return result;
 }

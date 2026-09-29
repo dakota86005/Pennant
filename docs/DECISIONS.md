@@ -2211,8 +2211,10 @@ Stage A (2026-09-29); the Mac app draws it at N7, Stage B. `server/leagueWire.ts
   roster snapshots (`rosterStateHistory.ts`) stated as a change. Trades (`trade_history`, its own summary), injuries
   this season to players now on a major-league club (`players_injury_history`), streaks and awards only where the code's meaning is established (the
   hitting and on-base streaks, `WIRE_STREAK_POLICY`; the awards the player card names), and standings movement from the
-  standings kept at the last two imports (a new division leader; places moved in ours). A table the export lacks is a
-  named gap, and one that could not be read says so; neither is an empty league.
+  standings kept at the last two imports (a new division leader; places moved in ours). A table the export lacks, or a
+  column a source needs, is a named gap (the column in the hover), and one that could not be read says so; neither is an
+  empty league. The wire covers this season: the log by its own `season`, trades and injuries by their day's year,
+  awards by their year, and a day or season not known is never read as another season's.
 - **No league news** (the independent review, H1). OOTP's `messages` is the GM's inbox as much as the league's news:
   his staff's notes on trade targets (`recipient_id = 1`, `sender_type = 0`, as the dashboard reads them), other clubs'
   trade proposals (`trade_id != 0`, as the trade desk reads them) and his owner's mail sit beside the headlines, and no
