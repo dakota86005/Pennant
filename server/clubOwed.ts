@@ -71,7 +71,10 @@ export function importLandedForClubQuestion(csvDir: string): boolean {
     const stored: Stored = { csvDir, humanClubs: owedOnImport.humanClubs, text: owedText(owedOnImport.humanClubs), since: new Date().toISOString() };
     owedOnImport = null;
     try {
-      fs.writeFileSync(FILE, JSON.stringify(stored, null, 2));
+      // Written whole or not at all (L4): a stop mid-write never leaves a torn file, which would read as nothing owed
+      const partial = `${FILE}.partial`;
+      fs.writeFileSync(partial, JSON.stringify(stored, null, 2));
+      fs.renameSync(partial, FILE);
     } catch (err) {
       console.error('[settings] could not record the club question:', err);
     }

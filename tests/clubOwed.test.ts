@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -35,6 +35,23 @@ describe('the club owed across a relaunch', () => {
     expect(importLandedForClubQuestion('/saves/Two Clubs.lg/import_export/csv')).toBe(true);
     expect(importLandedForClubQuestion('/saves/Other.lg/import_export/csv')).toBe(false);
     expect(clubOwed()).toBeNull();
+  });
+
+  it('writes the question whole or not at all: a temporary file, then a rename (L4)', () => {
+    const file = path.join(DATA_DIR, 'club-owed.json');
+    const writes = vi.spyOn(fs, 'writeFileSync');
+    const renames = vi.spyOn(fs, 'renameSync');
+    try {
+      oweClubWhenImported({ csvDir: '/saves/Atomic.lg/import_export/csv', humanClubs: 3 });
+      importLandedForClubQuestion('/saves/Atomic.lg/import_export/csv');
+      expect(writes.mock.calls.map((c) => String(c[0]))).not.toContain(file);
+      expect(renames).toHaveBeenCalledWith(`${file}.partial`, file);
+      expect(fs.existsSync(`${file}.partial`)).toBe(false);
+      expect(clubOwed()).toMatchObject({ humanClubs: 3 });
+    } finally {
+      writes.mockRestore();
+      renames.mockRestore();
+    }
   });
 
   it('serves the automatic club\'s report as if chosen only once the GM chooses', async () => {

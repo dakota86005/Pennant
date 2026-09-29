@@ -689,7 +689,8 @@ Nothing is drawn yet: Stage B draws it. Cases 15 to 20 and the search and club-o
   followed first, then names that start with the query, then our organization's players, then by name (stated in
   `order`). The index is built once per import (warmed after it).
 - **The club owed** (`clubOwed.ts`): `clubOwed {text, humanClubs, since} | null` on `/api/status` and `/api/settings`;
-  kept in `club-owed.json` in the data folder, so it survives a relaunch. While it is set, `automatic` is refused with its
+  kept in `club-owed.json` in the data folder (written whole: a temporary file, then a rename), so it survives a
+  relaunch. While it is set, `automatic` is refused with its
   sentence on the Front Office, desk, wire and club routes, and the warm-up builds no report for it.
 - **Events** (`serverEvents.ts`): `desk-changed {orgId, deskStamp, key | null}` (null when an import resolved several),
   `following-changed {followStamp}`, `changes-ready {orgId, importStamp, reportStamp, title, text, newToDecide | null}`
