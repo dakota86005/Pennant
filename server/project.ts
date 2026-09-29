@@ -9,7 +9,7 @@
 export const PRODUCT_NAME = 'Pennant';
 
 /** Pennant's own repository. Releases, the updater feed and the Help menu point here. */
-export const PROJECT_URL = 'https://github.com/dakota86005/ootp-front-office';
+export const PROJECT_URL = 'https://github.com/dakota86005/Pennant';
 export const RELEASES_URL = `${PROJECT_URL}/releases`;
 
 /**

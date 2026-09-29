@@ -116,6 +116,6 @@ linux:
 publish:
   provider: github
   owner: dakota86005
-  repo: ootp-front-office
+  repo: Pennant
   tagNamePrefix: pennant-v
   releaseType: release

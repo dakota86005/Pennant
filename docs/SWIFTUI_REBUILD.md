@@ -683,10 +683,10 @@ yet "it just works" on a 1.1 GB league). Measured on a scratch import of a read-
   copied, dates and rows left in place and why); choosing a save names its `.lg` folder for the transaction log unless
   the GM named one, and the status serves the folder in use (`saveFolder`) for Settings; Settings opens with nothing
   focused; the "last 15" ring reads in dark; `macos/scripts/run-dev.sh` runs a Debug build with a pretend home.
-- **Not changed:** `/api/status`'s `projectUrl` still names `dakota86005/ootp-front-office`; the repository is now
-  `dakota86005/Pennant` (GitHub redirects). D-049 says the in-app links name Pennant's repository; the change (the
-  constant, `electron-builder.yml`'s `publish.repo`, `package.json`, the README and the changelog links) was left for the
-  owner.
+- **The repository's name (owner-approved, 2026-09-29):** the repository is now `dakota86005/Pennant`, and D-049 says the
+  in-app links name Pennant's repository, so `PROJECT_URL` (`server/project.ts`, and so `/api/status`'s `projectUrl`),
+  `electron-builder.yml`'s `publish.repo` (the Electron app's update feed), `package.json`'s homepage and repository, and
+  the README and changelog links now name it. GitHub redirects the old name, so a copy already installed keeps updating.
 
 ### 3.5 One anatomy for every department report
 

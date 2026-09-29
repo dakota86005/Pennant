@@ -4,10 +4,10 @@
   "description": "Pennant — an organization-first decision-support companion for Out of the Park Baseball. Advice only: the GM decides.",
   "license": "MIT",
   "author": "Dakota Wise",
-  "homepage": "https://github.com/dakota86005/ootp-front-office#readme",
+  "homepage": "https://github.com/dakota86005/Pennant#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dakota86005/ootp-front-office.git"
+    "url": "https://github.com/dakota86005/Pennant.git"
   },
   "private": true,
   "type": "module",
