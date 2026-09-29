@@ -1,7 +1,7 @@
 import { Router, type NextFunction, type Request, type Response } from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
-import { db, tableExists, tableColumns, locateColumn, LAST_IMPORT_PATH, LEAGUE_DB_PATH, NEXT_DB_PATH, swapWhenFree } from './db.js';
+import { db, tableExists, tableColumns, locateColumn, LAST_IMPORT_PATH, LEAGUE_DB_PATH, NEXT_DB_PATH, noteLeagueUpgrade, swapWhenFree } from './db.js';
 import { detectSaves, findSaves, resolveChosenFolder, searchLocations, type ResolveResult, type SaveInfo, type SearchLocation } from './paths.js';
 import { DATA_DIR, loadConfig, saveConfig } from './config.js';
 import { diskSpace, importCsvDir, upgradeState, ImportRefused, type ImportProgress, type ImportResult } from './importer.js';
@@ -449,8 +449,10 @@ export function upgradeLeagueInBackground(): Promise<void> {
       console.error('[import] could not bring the league database up to date; it is served as it is:', (err as Error).message);
     } finally {
       upgrading = null;
+      noteLeagueUpgrade(null);
     }
   })();
+  noteLeagueUpgrade(upgrading);
   return upgrading;
 }
 

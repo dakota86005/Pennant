@@ -16,6 +16,7 @@ import { servedLeagueCertain, servedSave } from './historyIdentity.js';
 import { locateSave } from './ootpSave.js';
 import { describeSave, detectSaves, saveId, versionFromPath, type SaveInfo } from './paths.js';
 import { publish } from './serverEvents.js';
+import { rememberFact, rememberedFact } from './servedFacts.js';
 import { timestampWords } from './timeWords.js';
 
 /**
@@ -237,7 +238,7 @@ export function noticeKey(notice: SavePlayedElsewhere | null): string {
  * configured (`servedLeagueCertain`), or until it has been worked out. A save whose folder could not be found is
  * worked out again at the next look, never kept for good.
  */
-let servedId: { signature: string; id: string | null; located: boolean } | null = null;
+let servedId: { signature: string; id: string | null; located: boolean; seeded?: boolean } | null = null;
 
 /** What the served save's id depends on: the database, its import, and the configuration. Cheap (no file is read). */
 function servedSignature(): string {
@@ -249,15 +250,29 @@ function servedSignature(): string {
 /** Works out the served save's id now (a few `stat` calls; never on a request's path). */
 export function refreshServedSaveId(): string | null {
   const signature = servedSignature();
-  if (servedId?.signature === signature && servedId.located) return servedId.id;
+  if (servedId?.signature === signature && servedId.located && !servedId.seeded) return servedId.id;
   try {
     const save = tableExists('players') && servedLeagueCertain() ? servedSave() : null;
     servedId = { signature, id: save?.folderId || null, located: save === null || save.located };
+    // Remembered for the next start, which serves it at once (`servedFacts.ts`); only an id worked out for good
+    if (servedId.located && servedId.id) rememberFact('saveId', servedId.id);
   } catch (err) {
     console.error('[saves] could not work out the served save:', err);
     servedId = { signature, id: null, located: false };
   }
   return servedId.id;
+}
+
+/**
+ * At start, the served save's id as an earlier start worked it out for this very league, import and configuration
+ * (`servedFacts.ts`), so the first status serves it without locating the save; the look after the first answers works
+ * it out again. False when nothing is remembered for them: the caller then works it out now, as before.
+ */
+export function seedServedSaveId(): boolean {
+  const remembered = rememberedFact('saveId');
+  if (typeof remembered !== 'string' || !remembered) return false;
+  servedId = { signature: servedSignature(), id: remembered, located: true, seeded: true };
+  return true;
 }
 
 /** What else is worked out about the served save off the request path, beside its id (the live log's files). */

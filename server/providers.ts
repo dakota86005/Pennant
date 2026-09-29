@@ -1,6 +1,6 @@
-import Anthropic from '@anthropic-ai/sdk';
-import OpenAI from 'openai';
-import { GoogleGenAI } from '@google/genai';
+import type Anthropic from '@anthropic-ai/sdk';
+import type OpenAI from 'openai';
+import { anthropicSdk, googleGenAiSdk, openAiSdk } from './aiSdk.js';
 import { isUnusable, markUnusable } from './unusable.js';
 
 /**
@@ -132,7 +132,7 @@ export interface Provider {
 
 const anthropic: Provider = {
   async complete({ key, model, system, messages, maxTokens, schema }) {
-    const client = new Anthropic({ apiKey: key });
+    const client = new (await anthropicSdk())({ apiKey: key });
     const response = await client.messages.create({
       model,
       max_tokens: maxTokens,
@@ -148,7 +148,7 @@ const anthropic: Provider = {
   },
 
   async listModels(key) {
-    const client = new Anthropic({ apiKey: key });
+    const client = new (await anthropicSdk())({ apiKey: key });
     const out: ModelChoice[] = [];
     for await (const m of client.models.list()) {
       out.push({ id: m.id, label: m.display_name ?? m.id });
@@ -157,7 +157,7 @@ const anthropic: Provider = {
   },
 
   async validateKey(key) {
-    await new Anthropic({ apiKey: key }).models.list({ limit: 1 });
+    await new (await anthropicSdk())({ apiKey: key }).models.list({ limit: 1 });
   },
 };
 
@@ -175,11 +175,11 @@ function openAiCompatible(
   keepModel: (id: string) => boolean,
   options: { sdkKey?: string; ollama?: boolean } = {}
 ): Provider {
-  const connect = (key: string) =>
-    new OpenAI({ apiKey: options.sdkKey ?? key, ...(baseURL ? { baseURL } : {}) });
+  const connect = async (key: string) =>
+    new (await openAiSdk())({ apiKey: options.sdkKey ?? key, ...(baseURL ? { baseURL } : {}) });
   return {
   async complete({ key, model, system, messages, maxTokens, schema }) {
-    const client = connect(key);
+    const client = await connect(key);
     const isOllama = options.ollama === true;
     const isGptOss = /^gpt-oss(?::|$)/i.test(model);
     const response = await client.chat.completions.create({
@@ -213,14 +213,14 @@ function openAiCompatible(
   },
 
   async listModels(key) {
-    const client = connect(key);
+    const client = await connect(key);
     const out: ModelChoice[] = [];
     for await (const m of client.models.list()) out.push({ id: m.id, label: m.id });
     return out.filter((m) => keepModel(m.id));
   },
 
   async validateKey(key) {
-    await connect(key).models.list();
+    await (await connect(key)).models.list();
   },
   };
 }
@@ -275,7 +275,7 @@ const opencode: Provider = {
    * sent anywhere else.
    */
   async listModels(key) {
-    const client = new OpenAI({ apiKey: key || 'public-catalogue', baseURL: OPENCODE_BASE_URL });
+    const client = new (await openAiSdk())({ apiKey: key || 'public-catalogue', baseURL: OPENCODE_BASE_URL });
     const out: ModelChoice[] = [];
     for await (const m of client.models.list()) out.push({ id: m.id, label: m.id });
     return out;
@@ -296,7 +296,7 @@ const opencode: Provider = {
    */
   async validateKey(key) {
     try {
-      await new OpenAI({ apiKey: key, baseURL: OPENCODE_BASE_URL }).chat.completions.create({
+      await new (await openAiSdk())({ apiKey: key, baseURL: OPENCODE_BASE_URL }).chat.completions.create({
         model: OPENCODE_PROBE_MODEL,
         max_completion_tokens: 1,
         messages: [{ role: 'user', content: 'hi' }],
@@ -392,7 +392,7 @@ const gemini: Provider = {
     }
   },
   async listModels(key) {
-    const client = new GoogleGenAI({ apiKey: key });
+    const client = new (await googleGenAiSdk())({ apiKey: key });
     const out: ModelChoice[] = [];
     for await (const m of await client.models.list()) {
       const id = (m.name ?? '').replace(/^models\//, '');
@@ -404,7 +404,7 @@ const gemini: Provider = {
   },
 
   async validateKey(key) {
-    await new GoogleGenAI({ apiKey: key }).models.list();
+    await new (await googleGenAiSdk())({ apiKey: key }).models.list();
   },
 };
 
@@ -412,7 +412,7 @@ async function geminiComplete(
   { key, system, messages, maxTokens, schema }: CompleteOpts,
   model: string
 ): Promise<string> {
-    const client = new GoogleGenAI({ apiKey: key });
+    const client = new (await googleGenAiSdk())({ apiKey: key });
     const response = await client.models.generateContent({
       model,
       contents: messages.map((m) => ({
@@ -555,7 +555,7 @@ async function openAiToolLoop(
   baseURL?: string,
   sdkKey?: string
 ): Promise<ToolLoopResult> {
-  const client = new OpenAI({ apiKey: sdkKey ?? o.key, ...(baseURL ? { baseURL } : {}) });
+  const client = new (await openAiSdk())({ apiKey: sdkKey ?? o.key, ...(baseURL ? { baseURL } : {}) });
   let answer = '';
 
   for (let turn = 0; turn < o.maxTurns; turn++) {
@@ -747,7 +747,7 @@ function remember(model: string, key: string, err: unknown): void {
 }
 
 async function geminiLoop(o: ToolLoopOpts, model: string): Promise<ToolLoopResult> {
-  const client = new GoogleGenAI({ apiKey: o.key });
+  const client = new (await googleGenAiSdk())({ apiKey: o.key });
   let answer = '';
 
   for (let turn = 0; turn < o.maxTurns; turn++) {
@@ -929,7 +929,7 @@ function statusIn(raw: string): number | undefined {
  * and is what the trade desk uses to go and look something up mid-conversation.
  */
 async function anthropicToolLoop(o: ToolLoopOpts): Promise<ToolLoopResult> {
-  const client = new Anthropic({ apiKey: o.key });
+  const client = new (await anthropicSdk())({ apiKey: o.key });
   let answer = '';
 
   for (let turn = 0; turn < o.maxTurns; turn++) {

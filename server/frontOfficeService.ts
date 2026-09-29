@@ -26,7 +26,7 @@ import { Worker } from 'node:worker_threads';
 import { DATA_DIR } from './config.js';
 import type { DeptId } from './contract/presentation.js';
 import { currentSaveLocation } from './dataStatus.js';
-import { databaseGeneration, tableExists } from './db.js';
+import { databaseGeneration, leagueUpgradeUnderWay, tableExists } from './db.js';
 import { buildFrontOffice, buildTrail, type BuildRequest, type BuildResult, type TrailRequest } from './frontOfficeBuild.js';
 import { catalogClubs } from './org.js';
 import { importedAt } from './playerStateRoutes.js';
@@ -204,6 +204,12 @@ async function run<T>(job: Job): Promise<T> {
 
 /** The club's build for the current inputs: the kept one, the one being built, or a new build. */
 async function current(orgId: number): Promise<Built> {
+  // An earlier build's league file being upgraded: built on the upgraded file, never the old one (minutes, unindexed)
+  const upgrade = leagueUpgradeUnderWay();
+  if (upgrade) {
+    await upgrade;
+    return current(orgId);
+  }
   const key = inputsKey(orgId);
   const hit = builds.get(key);
   if (hit) {
