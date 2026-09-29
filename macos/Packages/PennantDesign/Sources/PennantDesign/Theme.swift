@@ -29,11 +29,13 @@ nonisolated public struct Theme: Sendable, Equatable {
         public var isNeutral: Bool
 
         /// The system's colours, following the window's appearance: the window's background under the title, a
-        /// grouped section's fill for the masthead, the label colours for its text (its secondary lines in the readable
-        /// secondary grey: the system's secondary label reads about 3.9:1 on the window's background), the system accent.
+        /// content background's fill for the masthead, the label colours for its text (its secondary lines in the
+        /// readable secondary grey: the system's secondary label reads about 3.9:1 on the window's background), the
+        /// system accent. Not the under-page colour: on macOS 26 it is a mid grey in light (the readable grey read 2.9:1
+        /// on it, caught on GitHub's macOS 26 runner), while macOS 27 draws it near white.
         public static let neutral = Palette(
             mastheadTop: Color(nsColor: .windowBackgroundColor),
-            masthead: [Color(nsColor: .windowBackgroundColor), Color(nsColor: .underPageBackgroundColor)],
+            masthead: [Color(nsColor: .windowBackgroundColor), Color(nsColor: .controlBackgroundColor)],
             mastheadText: Color(nsColor: .labelColor),
             mastheadSecondaryText: Color(nsColor: .readableSecondaryLabel),
             accent: .accentColor,
