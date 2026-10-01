@@ -869,22 +869,13 @@ final class PennantUITests: XCTestCase {
 extension PennantUITests {
     @MainActor
     func testUIDiagnostics() throws {
-        let app = launch()
-        waitForShell(app)
-        app.typeKey("1", modifierFlags: .command)
-        XCTAssertTrue(element(app, "morningReport.desk").waitForExistence(timeout: 20))
-        sidebarAtTop(app)
+        let app = launch(arguments: ["-PennantDebugTextSamples", "YES"])
+        XCTAssertTrue(element(app, "sample.0.callout.black").waitForExistence(timeout: 30))
         print("[diag] window \(app.windows.firstMatch.frame)")
-        try audit(app, named: "accessibility-audit-diag-0", strict: false)
-        let report = element(app, "detail.frontOffice.morningReport")
-        for (step, delta) in [(1, -60.0), (2, -150.0), (3, -300.0)] {
-            report.scroll(byDeltaX: 0, deltaY: delta)
-            let kicker = element(app, "masthead.kicker")
-            print("[diag] step \(step) kicker \(kicker.exists ? kicker.frame : .null)")
-            keep(app.windows.firstMatch.screenshot(), named: "accessibility-audit-diag-\(step)-shot")
-            try audit(app, named: "accessibility-audit-diag-\(step)", strict: false)
-        }
-        quitCleanly(app)
+        keep(app.windows.firstMatch.screenshot(), named: "accessibility-audit-diag-samples-shot")
+        try audit(app, named: "accessibility-audit-diag-samples-a", strict: false)
+        try audit(app, named: "accessibility-audit-diag-samples-b", strict: false)
+        app.terminate()
     }
 }
 
