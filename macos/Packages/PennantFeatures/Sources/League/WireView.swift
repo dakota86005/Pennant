@@ -39,9 +39,10 @@ public struct WireView: View {
             }
         }
         .toolbar { WireFilters(query: $query, kinds: league.wire?.kinds ?? [], clubs: model.catalog?.clubs ?? []) }
-        .task(id: TaskKey(query: query, key: model.storeKey, stamp: model.frontOffice.summary?.deskStamp)) {
-            await model.loadWire(query)
+        // Again when the follow stamp moves (a follow here or anywhere): Following first, so the first look asks once
+        .task(id: TaskKey(query: query, key: model.storeKey, stamp: model.following.following?.followStamp)) {
             await model.loadFollowing()
+            await model.loadWire(query)
         }
     }
 

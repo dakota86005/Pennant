@@ -12,14 +12,18 @@ extension AppModel {
         await following.load(client: client, key: storeKey)
     }
 
-    /// The full wire for the query and the current key.
+    /// The served follow stamp (Following's), or empty before Following is read: the wire and a club's report are read
+    /// again when it moves (M1).
+    public var followStamp: String { following.following?.followStamp ?? "" }
+
+    /// The full wire for the query, the current key and the follow stamp.
     public func loadWire(_ query: LeagueStore.WireQuery) async {
-        await league.loadWire(query, client: client, key: storeKey, stamp: frontOffice.summary?.deskStamp ?? "")
+        await league.loadWire(query, client: client, key: storeKey, stamp: followStamp)
     }
 
-    /// A club's report for the current key.
+    /// A club's report for the current key and the follow stamp.
     public func loadClub(_ id: Int) async {
-        await league.loadClub(id, client: client, key: storeKey)
+        await league.loadClub(id, client: client, key: storeKey, stamp: followStamp)
     }
 
     /// What matches a query, as served; nil when the question was cancelled.

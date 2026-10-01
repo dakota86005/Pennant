@@ -38,8 +38,9 @@ public final class LeagueStore {
     public private(set) var clubs: [Int: Components.Schemas.ClubReport] = [:]
     public private(set) var clubProblems: [Int: RequestProblem] = [:]
     public private(set) var loadingClubs: Set<Int> = []
-    private var clubKeys: [Int: AppModel.StoreKey] = [:]
-    private var clubAsked: [Int: AppModel.StoreKey] = [:]
+    /// The key and follow stamp each club's report was read for, and last asked for.
+    private var clubKeys: [Int: (key: AppModel.StoreKey, stamp: String)] = [:]
+    private var clubAsked: [Int: (key: AppModel.StoreKey, stamp: String)] = [:]
 
     private let log: @MainActor (String) -> Void
 
@@ -49,8 +50,8 @@ public final class LeagueStore {
 
     // MARK: The wire
 
-    /// Reads the wire for the query and key, once each (and again when `stamp`, the summary's `deskStamp`, moves: a
-    /// follow reorders it).
+    /// Reads the wire for the query and key, once each (and again when `stamp`, the served follow stamp, moves: a follow
+    /// reorders it and changes what "only followed" holds, M1).
     public func loadWire(_ query: WireQuery, client: Client?, key: AppModel.StoreKey?, stamp: String = "") async {
         guard let client, let key else { return }
         if let loaded = wireLoaded, loaded == (query, key, stamp), wire != nil { return }
@@ -89,16 +90,18 @@ public final class LeagueStore {
     /// Whether the shown report of a club was read for this key.
     public func clubIsCurrent(_ id: Int, for key: AppModel.StoreKey?) -> Bool {
         guard let key, clubs[id] != nil else { return false }
-        return clubKeys[id] == key
+        return clubKeys[id]?.key == key
     }
 
-    /// Reads a club's report for the key, once per key (a new import, club, save or build moves it); the last good one
-    /// stays while it is read again.
-    public func loadClub(_ id: Int, client: Client?, key: AppModel.StoreKey?) async {
-        guard let client, let key, clubKeys[id] != key || clubs[id] == nil else { return }
-        clubAsked[id] = key
+    /// Reads a club's report for the key, once per key (a new import, club, save or build moves it) and follow stamp
+    /// (`stamp`, the served one: a follow reorders its moves and says whether the club is followed, M1); the last good
+    /// one stays while it is read again.
+    public func loadClub(_ id: Int, client: Client?, key: AppModel.StoreKey?, stamp: String = "") async {
+        guard let client, let key else { return }
+        if let loaded = clubKeys[id], loaded == (key, stamp), clubs[id] != nil { return }
+        clubAsked[id] = (key, stamp)
         loadingClubs.insert(id)
-        defer { if clubAsked[id] == key { loadingClubs.remove(id) } }
+        defer { if clubAsked[id].map({ $0 == (key, stamp) }) ?? false { loadingClubs.remove(id) } }
         var served: Components.Schemas.ClubReport?
         var problem: RequestProblem?
         do {
@@ -111,10 +114,10 @@ public final class LeagueStore {
         } catch {
             problem = .from(error)
         }
-        guard clubAsked[id] == key, !Task.isCancelled else { return }
+        guard let asked = clubAsked[id], asked == (key, stamp), !Task.isCancelled else { return }
         if let served {
             clubs[id] = served
-            clubKeys[id] = key
+            clubKeys[id] = (key, stamp)
         }
         clubProblems[id] = problem
         if let detail = problem?.detail { log("could not read a club's report: \(detail)") }
@@ -145,7 +148,7 @@ public final class LeagueStore {
         store.wireQuery = WireQuery()
         for club in clubs {
             store.clubs[club.teamId] = club
-            if let key { store.clubKeys[club.teamId] = key }
+            if let key { store.clubKeys[club.teamId] = (key, "") }
         }
         if let key { store.wireLoaded = (WireQuery(), key, "") }
         return store

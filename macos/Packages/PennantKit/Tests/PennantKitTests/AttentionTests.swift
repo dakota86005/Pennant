@@ -201,6 +201,76 @@ struct AttentionTests {
         await model.shutdown()
     }
 
+    @Test("a quiet refresh asked before a status change keeps the newer desk the change put in place (M2)")
+    func quietRefreshKeepsNewerDesk() async throws {
+        let transport = RoutedTransport([
+            "/api/v2/front-office/1": try RoutedTransport.json("getFrontOffice"),
+            "PUT /api/v2/desk/1": ("application/json", try restamped("setDeskStatus-reviewed", at: ["view"], "d-after-the-change")),
+        ])
+        let store = FrontOfficeStore()
+        await store.loadSummary(client: client(transport), key: key())
+        transport.delay("GET /api/v2/front-office/1", by: .milliseconds(300))
+        let refresh = Task { await store.refreshQuietly(client: client(transport), key: key()) }
+        #expect(await eventually { transport.paths.filter { $0 == "/api/v2/front-office/1" }.count == 2 })
+        #expect(await store.setDeskStatus(update(.reviewed, key: Self.item), client: client(transport), key: key()) != nil)
+        #expect(store.summary?.deskStamp == "d-after-the-change")
+        await refresh.value
+        #expect(store.summary?.deskStamp == "d-after-the-change")
+        #expect(store.summary?.desk.setAside?.line.display == "1 reviewed")
+    }
+
+    @Test("a desk answer to an older request never goes over a newer one (M2)")
+    func olderDeskAnswerDropped() async throws {
+        let transport = RoutedTransport([
+            "/api/v2/front-office/1": try RoutedTransport.json("getFrontOffice"),
+            "PUT /api/v2/desk/1": ("application/json", try restamped("setDeskStatus-reviewed", at: ["view"], "d-older")),
+            "/api/v2/desk/1": ("application/json", try restamped("getDesk", at: [], "d-newer")),
+        ])
+        let store = FrontOfficeStore()
+        await store.loadSummary(client: client(transport), key: key())
+        transport.delay("PUT /api/v2/desk/1", by: .milliseconds(300))
+        let change = Task { await store.setDeskStatus(update(.reviewed, key: Self.item), client: client(transport), key: key()) }
+        #expect(await eventually { transport.paths.filter { $0 == "/api/v2/desk/1" }.count == 1 })
+        await store.reloadDesk(stamp: "d-newer", client: client(transport), key: key())
+        #expect(store.summary?.deskStamp == "d-newer")
+        #expect(await change.value != nil)
+        #expect(store.summary?.deskStamp == "d-newer")
+    }
+
+    @Test("the wire and a club's report are read again when the follow stamp moves, once per stamp (M1)")
+    func followStampRereads() async throws {
+        let wire = WireTransport(RoutedTransport(["/api/v2/wire/1": try RoutedTransport.json("getWire")]))
+        let store = LeagueStore()
+        await store.loadWire(.init(), client: client(wire), key: key(), stamp: "f1")
+        await store.loadWire(.init(), client: client(wire), key: key(), stamp: "f1")
+        #expect(wire.paths.count == 1)
+        await store.loadWire(.init(), client: client(wire), key: key(), stamp: "f2")
+        #expect(wire.paths.count == 2)
+        let clubs = RoutedTransport(["/api/v2/club/2": try RoutedTransport.json("getClubReport")])
+        await store.loadClub(2, client: client(clubs), key: key(), stamp: "f1")
+        await store.loadClub(2, client: client(clubs), key: key(), stamp: "f1")
+        #expect(clubs.paths.count == 1)
+        await store.loadClub(2, client: client(clubs), key: key(), stamp: "f2")
+        #expect(clubs.paths.count == 2)
+        #expect(store.clubIsCurrent(2, for: key()))
+    }
+
+    /// A fixture with the desk stamp at `path` (an object's keys from the top) set to `stamp`.
+    private func restamped(_ fixture: String, at path: [String], _ stamp: String) throws -> Data {
+        var json = try #require(try JSONSerialization.jsonObject(with: fixtureData("responses/\(fixture).json")) as? [String: Any])
+        func set(_ object: inout [String: Any], _ path: ArraySlice<String>) {
+            guard let first = path.first else {
+                object["deskStamp"] = stamp
+                return
+            }
+            var inner = object[first] as? [String: Any] ?? [:]
+            set(&inner, path.dropFirst())
+            object[first] = inner
+        }
+        set(&json, path[...])
+        return try JSONSerialization.data(withJSONObject: json)
+    }
+
     private func deskTransport(_ change: String) throws -> RoutedTransport {
         RoutedTransport([
             "/api/status": try RoutedTransport.json("getStatus"),

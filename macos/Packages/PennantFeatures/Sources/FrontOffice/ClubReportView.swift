@@ -10,6 +10,11 @@ import SwiftUI
 /// their injured list, each part the export could not give said in the server's sentence. It wears the club's own served
 /// theme, else the neutral one. Nothing here is computed: every word and number is served.
 public struct ClubReportView: View {
+    struct ClubTaskKey: Hashable {
+        let key: AppModel.StoreKey?
+        let stamp: String?
+    }
+
     let teamId: Int
     @Environment(AppModel.self) private var model
     @Environment(\.undoManager) private var undoManager
@@ -68,9 +73,11 @@ public struct ClubReportView: View {
         .environment(\.theme, Self.theme(for: teamId, model: model))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("club.window.\(teamId)")
-        .task(id: model.storeKey) {
-            await model.loadClub(teamId)
+        // Again when the follow stamp moves (its moves are ordered followed first, M1): Following first, so the first
+        // look asks once
+        .task(id: ClubTaskKey(key: model.storeKey, stamp: model.following.following?.followStamp)) {
             await model.loadFollowing()
+            await model.loadClub(teamId)
         }
     }
 }

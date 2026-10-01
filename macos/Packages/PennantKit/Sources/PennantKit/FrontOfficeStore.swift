@@ -396,6 +396,25 @@ public final class FrontOfficeStore {
     /// The reports shown before the statuses last changed: asked again quietly (no "Refreshing") on the next look.
     private var attentionStale: Set<String> = []
 
+    /// Every request that answers with a desk (a status change, the desk read again, the summary read quietly) is
+    /// numbered when sent, and the number of the newest answer put in place is kept per key: an answer to an older
+    /// request never goes over a newer one (M2).
+    private var deskSequence = 0
+    private var deskApplied: (key: AppModel.StoreKey, sequence: Int)?
+
+    private func nextDeskSequence() -> Int {
+        deskSequence += 1
+        return deskSequence
+    }
+
+    /// Whether the answer to request `sequence` for `key` may go in place (no newer one for the key went first), and if
+    /// so, it is now the newest.
+    private func claimDesk(_ sequence: Int, key: AppModel.StoreKey) -> Bool {
+        if let applied = deskApplied, applied.key == key, applied.sequence > sequence { return false }
+        deskApplied = (key, sequence)
+        return true
+    }
+
     /// Changes one item's status (`PUT /api/v2/desk/:org`) and returns the server's answer (with the request that undoes
     /// it), or nil when it was refused or failed (`deskProblem` says why, in the server's words). The answer's desk is
     /// put in place at once; when the server serves none (the Front Office being built again), the `desk-changed` event
@@ -408,6 +427,7 @@ public final class FrontOfficeStore {
         }
         deskBusy.insert(update.key)
         defer { deskBusy.remove(update.key) }
+        let sequence = nextDeskSequence()
         var problem: RequestProblem?
         var change: Components.Schemas.DeskChange?
         do {
@@ -426,7 +446,9 @@ public final class FrontOfficeStore {
         guard let change else { return nil }
         deskMoments += 1
         deskDone = (change.done.display, deskMoments)
-        if let view = change.view { apply(deskView: view) } else {
+        if let view = change.view {
+            if claimDesk(sequence, key: key) { apply(deskView: view) }
+        } else {
             attentionStale = Set(reports.keys)
             attentionRevision += 1
         }
@@ -441,20 +463,28 @@ public final class FrontOfficeStore {
     public func reloadDesk(stamp: String?, client: Client?, key: AppModel.StoreKey?) async {
         guard let client, let key, summary != nil else { return }
         if let stamp, stamp == summary?.deskStamp { return }
+        let sequence = nextDeskSequence()
         do {
             let view = try await client.getDesk(path: .init(org: Self.org(key))).ok.body.json
-            apply(deskView: view)
+            if claimDesk(sequence, key: key) { apply(deskView: view) }
         } catch {
             log("could not read the desk again: \(error)")
         }
     }
 
     /// Reads the summary again in place, without saying "Updating" (a follow reorders the wire: the server composes the
-    /// summary again on the same build). Nothing when no summary is shown or the key moved meanwhile.
+    /// summary again on the same build). Nothing when no summary is shown or the key moved meanwhile. When the desk
+    /// moved while it was asked (a status changed, the desk was read again), the desk shown stays, with its stamp (M2).
     public func refreshQuietly(client: Client?, key: AppModel.StoreKey?) async {
         guard let client, let key, summary != nil, summaryKey == key else { return }
-        guard let served = try? await client.getFrontOffice(path: .init(org: Self.org(key))).ok.body.json,
-              summaryKey == key, served.orgId == summary?.orgId, served.reportStamp == summary?.reportStamp else { return }
+        let sequence = nextDeskSequence()
+        let deskStampAsked = summary?.deskStamp
+        guard var served = try? await client.getFrontOffice(path: .init(org: Self.org(key))).ok.body.json,
+              summaryKey == key, let shown = summary, served.orgId == shown.orgId, served.reportStamp == shown.reportStamp else { return }
+        if shown.deskStamp != deskStampAsked || !claimDesk(sequence, key: key) {
+            served.desk = shown.desk
+            served.deskStamp = shown.deskStamp
+        }
         summary = served
     }
 
