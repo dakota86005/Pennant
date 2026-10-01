@@ -864,6 +864,30 @@ final class PennantUITests: XCTestCase {
     }
 }
 
+// MARK: Diagnostics (temporary, uihealth)
+
+extension PennantUITests {
+    @MainActor
+    func testUIDiagnostics() throws {
+        let app = launch()
+        waitForShell(app)
+        app.typeKey("1", modifierFlags: .command)
+        XCTAssertTrue(element(app, "morningReport.desk").waitForExistence(timeout: 20))
+        sidebarAtTop(app)
+        print("[diag] window \(app.windows.firstMatch.frame)")
+        try audit(app, named: "accessibility-audit-diag-0", strict: false)
+        let report = element(app, "detail.frontOffice.morningReport")
+        for (step, delta) in [(1, -60.0), (2, -150.0), (3, -300.0)] {
+            report.scroll(byDeltaX: 0, deltaY: delta)
+            let kicker = element(app, "masthead.kicker")
+            print("[diag] step \(step) kicker \(kicker.exists ? kicker.frame : .null)")
+            keep(app.windows.firstMatch.screenshot(), named: "accessibility-audit-diag-\(step)-shot")
+            try audit(app, named: "accessibility-audit-diag-\(step)", strict: false)
+        }
+        quitCleanly(app)
+    }
+}
+
 /// A window's screenshot as pixels, to read an element's own contrast where the audit reports one (see `audit`).
 struct WindowPixels {
     private let width: Int
