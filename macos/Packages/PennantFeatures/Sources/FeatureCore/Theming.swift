@@ -70,6 +70,7 @@ public struct ClubMagazineMasthead<Figures: View, Control: View>: View {
     private let deck: Components.Schemas.Claim?
     private let deckText: String?
     private let deckHint: String?
+    private let decorateHeadline: (@MainActor (AnyView) -> AnyView)?
     private let figures: () -> Figures
     private let control: () -> Control
     @State private var art: Image?
@@ -89,9 +90,11 @@ public struct ClubMagazineMasthead<Figures: View, Control: View>: View {
         deck: Components.Schemas.Claim? = nil,
         deckText: String? = nil,
         deckHint: String? = nil,
+        decorateHeadline: (@MainActor (AnyView) -> AnyView)? = nil,
         @ViewBuilder figures: @escaping () -> Figures,
         @ViewBuilder control: @escaping () -> Control = { EmptyView() }
     ) {
+        self.decorateHeadline = decorateHeadline
         self.club = club
         self.kicker = kicker
         self.kickerHint = kickerHint
@@ -114,6 +117,7 @@ public struct ClubMagazineMasthead<Figures: View, Control: View>: View {
             deckHint: deckHint,
             deckClaim: deck,
             art: art,
+            decorateHeadline: decorateHeadline,
             figures: figures,
             control: control
         )

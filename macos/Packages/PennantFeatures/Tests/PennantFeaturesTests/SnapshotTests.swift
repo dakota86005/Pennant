@@ -592,7 +592,7 @@ struct SnapshotTests {
                 ForEach(items, id: \.key) { DeskItemRow($0) }
             }
             .frame(width: 520)
-            SetAsideList(aside: aside)
+            SetAsideList(aside: aside, undoManager: nil) {}
         }
         .padding(20)
         .environment(model).environment(\.claimActions, n7Actions).environment(\.theme, model.theme)
@@ -603,7 +603,7 @@ struct SnapshotTests {
     func deskNote(look: Look) throws {
         let model = PreviewFixtures.ready(since: true)
         let item = try #require(model.frontOffice.summary?.desk.setAside?.items.first)
-        try draw(DeskNoteEditor(item: item) {}.environment(model), size: CGSize(width: 340, height: 230), look: look, name: "n7-desk-note")
+        try draw(DeskNoteEditor(item: item, undoManager: nil) {}.environment(model), size: CGSize(width: 340, height: 230), look: look, name: "n7-desk-note")
     }
 
     @Test("League Office's wire in the window, with its filters", arguments: [Look.light, .dark])

@@ -22,7 +22,7 @@ public struct ClubReportsView: View {
                     RowGroup {
                         ForEach(Array(clubs.enumerated()), id: \.element.teamId) { index, club in
                             HStack(spacing: 12) {
-                                SymbolTile(symbol: "building.2", tint: .accentColor)
+                                SymbolTile(symbol: "building.2", tint: .readableSecondary)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(verbatim: club.name).font(.body.weight(.semibold))
                                         .clubName(id: club.teamId, name: club.name)
@@ -41,6 +41,13 @@ public struct ClubReportsView: View {
                             if index < clubs.count - 1 { Divider() }
                         }
                     }
+                } else if model.catalog != nil {
+                    // The catalog is here and serves no club: said, never "Loading" for ever (L6)
+                    ContentUnavailableView("No Clubs", systemImage: "building.2")
+                        .frame(maxWidth: .infinity)
+                        .accessibilityIdentifier("clubReports.empty")
+                } else if !model.isReady {
+                    ProgressView { Text("Starting…") }
                 } else {
                     ProgressView { Text("Loading") }
                 }

@@ -149,6 +149,46 @@ struct AttentionFeatureTests {
         #expect(window.currentSearch == nil)
     }
 
+    @Test("between keystrokes the last answer stays, said to be updating; a failure for the text now is said, never silent (L3)")
+    func toolbarUpdatingAndFailure() throws {
+        let window = MainWindowModel(registry: registry)
+        let answer = try #require(PreviewFixtures.search)
+        window.searchText = "club"
+        window.searchAnswer = ("club", answer)
+        #expect(window.shownSearch == answer)
+        #expect(!window.searchUpdating)
+        window.searchText = "club 2"
+        #expect(window.shownSearch == answer)
+        #expect(window.searchUpdating)
+        window.searchProblem = ("club 2", .served("Pennant is still reading this export."))
+        #expect(window.currentSearchProblem == .served("Pennant is still reading this export."))
+        #expect(window.shownSearch == nil)
+        #expect(!window.searchUpdating)
+        window.searchText = ""
+        #expect(window.shownSearch == nil)
+    }
+
+    @Test("a failed search lists no registry views in its place, and a result that opens nothing is drawn disabled (L3)")
+    func paletteFailureAndDisabled() throws {
+        let can = CommandAvailability(serverReady: true, configured: true, importing: false, window: (false, false))
+        let failed = PaletteIndex(registry: registry, catalog: nil, can: can, inspectorShown: false, search: nil, searchFailed: true)
+        #expect(!failed.entries.contains { $0.id.hasPrefix("view.") })
+        #expect(failed.entries.contains { $0.id == "command.refreshData" })
+        let offline = PaletteIndex(registry: registry, catalog: nil, can: can, inspectorShown: false)
+        #expect(offline.entries.contains { $0.id.hasPrefix("view.") })
+        // A free agent: a player target with no club to open
+        var answer = try #require(PreviewFixtures.search)
+        var group = try #require(answer.groups.first)
+        var result = try #require(group.results.first)
+        result.open = .init(kind: .init(value1: .player, value2: "player"), playerId: 1000)
+        group.results = [result] + group.results
+        answer.groups = [group] + answer.groups.dropFirst()
+        let index = PaletteIndex(registry: registry, catalog: nil, can: can, inspectorShown: false, search: answer)
+        #expect(index.served.first?.opens == false)
+        let closed = index.served.dropFirst().filter { !$0.opens }
+        #expect(closed.isEmpty)
+    }
+
     // MARK: The club owed
 
     @Test("the club owed after a relaunch is asked from the served sentence, and the report is held until it is answered")

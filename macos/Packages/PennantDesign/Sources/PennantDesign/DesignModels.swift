@@ -474,8 +474,10 @@ nonisolated public struct PaletteEntry: Identifiable, Sendable, Hashable {
     public var shortcut: String?
     /// The GM follows it (a served search result): a star beside it.
     public var followed: Bool
+    /// Whether it opens anything (a served player with no club to open, a free agent, does not): drawn disabled.
+    public var opens: Bool
 
-    public init(id: String, group: String, symbol: String, title: String, line: String? = nil, keywords: [String] = [], shortcut: String? = nil, followed: Bool = false) {
+    public init(id: String, group: String, symbol: String, title: String, line: String? = nil, keywords: [String] = [], shortcut: String? = nil, followed: Bool = false, opens: Bool = true) {
         self.id = id
         self.group = group
         self.symbol = symbol
@@ -484,6 +486,7 @@ nonisolated public struct PaletteEntry: Identifiable, Sendable, Hashable {
         self.keywords = keywords
         self.shortcut = shortcut
         self.followed = followed
+        self.opens = opens
     }
 
     /// Whether the query matches: every word of the query is a prefix of a word in the title, the group, the line or

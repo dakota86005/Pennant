@@ -777,6 +777,9 @@
     },
     "Club Window": {
       "extractionState": "manual"
+    },
+    "No Clubs": {
+      "extractionState": "manual"
     }
   },
   "version": "1.0"

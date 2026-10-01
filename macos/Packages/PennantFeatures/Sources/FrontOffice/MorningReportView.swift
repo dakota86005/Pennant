@@ -574,6 +574,9 @@ struct SetAsideButton: View {
     let aside: Components.Schemas.DeskSetAside
     @State private var showing = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The main window's undo manager: the popover is a window of its own with its own, so the list is handed this one
+    /// and ⌘Z in the main window undoes what was done in it (M6).
+    @Environment(\.undoManager) private var undoManager
 
     var body: some View {
         Button { showing.toggle() } label: {
@@ -585,7 +588,7 @@ struct SetAsideButton: View {
         .help(detail: aside.line.hint)
         .accessibilityIdentifier("desk.setAside")
         .popover(isPresented: $showing, arrowEdge: .bottom) {
-            SetAsideList(aside: aside)
+            SetAsideList(aside: aside, undoManager: undoManager) { showing = false }
         }
     }
 }
@@ -593,8 +596,11 @@ struct SetAsideButton: View {
 /// The items set aside, as served: a list the GM can swipe or right-click to put an item back.
 struct SetAsideList: View {
     let aside: Components.Schemas.DeskSetAside
+    /// The undo manager of the window the list was opened from (M6), not the popover's.
+    let undoManager: UndoManager?
+    /// Closes the popover: when nothing is set aside any longer (L2).
+    let dismiss: () -> Void
     @Environment(AppModel.self) private var model
-    @Environment(\.undoManager) private var undoManager
 
     var body: some View {
         // The live set-aside list (a change made here redraws it), else the one the button was drawn with
@@ -605,22 +611,31 @@ struct SetAsideList: View {
                 if let empty = model.frontOffice.summary?.desk.empty { Text(verbatim: empty.display).foregroundStyle(.readableSecondary) }
             } else {
                 List(items, id: \.key) { item in
-                    DeskItemRow(item, compact: true)
+                    DeskItemRow(item, compact: true, undoManager: undoManager)
                         .swipeActions(edge: .trailing) {
                             Button("Put Back on Desk", systemImage: "tray.and.arrow.up") { model.perform(.open, on: item, undoManager: undoManager) }
-                                .tint(.accentColor)
+                                .tint(.readableActionTint)
+                                .accessibilityIdentifier("desk.setAside.putBack")
                         }
+                        .listRowBackground(Color.readablePage)
                 }
                 .listStyle(.plain)
+                .scrollContentBackground(.hidden)
                 .frame(minHeight: 120, maxHeight: 420)
                 .accessibilityLabel(Text(verbatim: aside.line.display))
             }
         }
         .padding(14)
         .frame(width: 420)
+        // A fixed, checked page under the words, never the popover's system background (L5)
+        .background(Color.readablePage)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text(verbatim: aside.line.display))
         .accessibilityIdentifier("desk.setAside.list")
+        // Nothing set aside any longer (the last item put back, here or anywhere): the popover closes (L2)
+        .onChange(of: model.frontOffice.summary.map { $0.desk.setAside == nil } ?? false) { _, gone in
+            if gone { dismiss() }
+        }
     }
 }
 

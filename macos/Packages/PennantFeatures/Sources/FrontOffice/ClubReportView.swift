@@ -54,7 +54,8 @@ public struct ClubReportView: View {
             }
         }
         .frame(minWidth: 760, minHeight: 520)
-        .background(.background)
+        // A fixed, checked page, never a system background (L5)
+        .background(Color.readablePage)
         // AppKit's containers above the report, named for VoiceOver (the audit)
         .background(WindowContainerLabels(["Club Report", "Club Window"]))
         .toolbar {
@@ -96,7 +97,9 @@ struct ClubReportMasthead: View {
             kickerHint: design.kickerHint ?? report.asOf.hint,
             kickerStatus: report.ours ? String(localized: "Your club") : nil,
             headline: Text(verbatim: report.club),
-            deck: design.ledeClaim
+            deck: design.ledeClaim,
+            // The club's name alone opens its menu (Follow, Copy Name) and takes the focus, never the whole masthead (M5)
+            decorateHeadline: { [report] title in AnyView(title.clubName(id: report.teamId, name: report.club)) }
         ) {
             if let scoreboard = design.scoreboard {
                 ScoreboardFigures(scoreboard: scoreboard)
@@ -104,7 +107,6 @@ struct ClubReportMasthead: View {
                 MissingLines(design.mastheadMissing)
             }
         }
-        .clubName(id: report.teamId, name: report.club)
     }
 }
 
@@ -175,7 +177,13 @@ struct ClubReportPage: View {
         VStack(alignment: .leading, spacing: 36) {
             VStack(alignment: .leading, spacing: 8) {
                 MagazineSection(kicker: Text("Against us"), title: Text("Head to Head"))
-                if let headToHead = report.headToHead { ClaimLine(headToHead).accessibilityIdentifier("club.headToHead") }
+                if let headToHead = report.headToHead {
+                    ClaimLine(headToHead).accessibilityIdentifier("club.headToHead")
+                } else if let note = report.headToHeadNote {
+                    // Why there is no record against us, as served (L7)
+                    Text(verbatim: note.display).foregroundStyle(.readableSecondary).help(detail: note.hint)
+                        .accessibilityIdentifier("club.headToHead")
+                }
                 if let next = report.nextSeries {
                     ClaimLine(next).accessibilityIdentifier("club.nextSeries")
                 } else if let note = report.nextSeriesNote {

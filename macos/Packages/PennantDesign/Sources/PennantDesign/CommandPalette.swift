@@ -11,6 +11,10 @@ public struct CommandPalette: View {
     let served: [PaletteEntry]
     /// The served line when nothing matches; nil uses the structural one.
     let emptyLine: String?
+    /// Why the search failed (the server's sentence or the kind of failure), said above the results; nil when it didn't.
+    let problem: Text?
+    /// The served results answer an earlier query while this one is asked: said beside the field.
+    let updating: Bool
     @Binding var query: String
     let open: (PaletteEntry) -> Void
     let dismiss: () -> Void
@@ -24,10 +28,15 @@ public struct CommandPalette: View {
     /// How many results are shown at most; the footer says how many matched.
     public static let shown = 12
 
-    public init(entries: [PaletteEntry], served: [PaletteEntry] = [], emptyLine: String? = nil, query: Binding<String>, open: @escaping (PaletteEntry) -> Void, dismiss: @escaping () -> Void) {
+    public init(
+        entries: [PaletteEntry], served: [PaletteEntry] = [], emptyLine: String? = nil, problem: Text? = nil, updating: Bool = false,
+        query: Binding<String>, open: @escaping (PaletteEntry) -> Void, dismiss: @escaping () -> Void
+    ) {
         self.entries = entries
         self.served = served
         self.emptyLine = emptyLine
+        self.problem = problem
+        self.updating = updating
         _query = query
         self.open = open
         self.dismiss = dismiss
@@ -55,10 +64,25 @@ public struct CommandPalette: View {
                     .onKeyPress(.upArrow) { move(-1, in: visible); return .handled }
                     .onKeyPress(.escape) { dismiss(); return .handled }
                     .accessibilityIdentifier("palette.query")
+                if updating {
+                    ProgressView().controlSize(.small).accessibilityHidden(true)
+                    Text("Updating").font(.caption).foregroundStyle(.readableSecondary)
+                        .accessibilityIdentifier("palette.updating")
+                }
                 Text("⌘K").font(.caption).foregroundStyle(.readableSecondary).accessibilityHidden(true)
             }
             .padding(.horizontal, 16).padding(.vertical, 12)
             Divider()
+            if let problem {
+                Label {
+                    problem.foregroundStyle(.primary)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Tone.caution.color).accessibilityHidden(true)
+                }
+                .font(.callout).padding(.horizontal, 16).padding(.top, 12)
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("palette.problem")
+            }
             if visible.isEmpty {
                 Group {
                     if let emptyLine { Text(verbatim: emptyLine) } else { Text("Nothing matches") }
@@ -98,6 +122,8 @@ public struct CommandPalette: View {
                             .contentShape(.rect)
                         }
                         .buttonStyle(.plain)
+                        // A result that opens nothing (a free agent, no club to open) is shown, not offered
+                        .disabled(!entry.opens)
                         .onHover { if $0 { selected = index } }
                         .accessibilityAddTraits(index == selected ? .isSelected : [])
                         .accessibilityIdentifier("palette.result.\(entry.id)")
@@ -144,7 +170,7 @@ public struct CommandPalette: View {
     }
 
     private func openSelected(_ visible: [PaletteEntry]) {
-        guard visible.indices.contains(selected) else { return }
+        guard visible.indices.contains(selected), visible[selected].opens else { return }
         open(visible[selected])
     }
 }

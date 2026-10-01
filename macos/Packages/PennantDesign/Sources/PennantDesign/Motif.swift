@@ -212,8 +212,10 @@ public struct ChipRow<Detail: View>: View {
             label
                 .font(.callout.weight(.semibold))
                 .padding(.horizontal, 12).padding(.vertical, 6)
-                .foregroundStyle(palette.isNeutral ? Color.white : palette.accentText)
-                .background(palette.isNeutral ? Color.accentColor : palette.accent, in: .capsule)
+                // In the system's colours a fixed, checked pair, never white on the system accent (a yellow accent read
+                // about 1.5:1, L5); a pack's accent and its words are the server's, checked there
+                .foregroundStyle(palette.isNeutral ? Color.readableHeadingText : palette.accentText)
+                .background(palette.isNeutral ? Color.readableHeadingFill : palette.accent, in: .capsule)
                 .servedHelp(labelHint)
                 .accessibilityAddTraits(.isHeader)
             ForEach(chips) { chip in

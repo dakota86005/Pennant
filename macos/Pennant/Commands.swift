@@ -13,6 +13,8 @@ struct PennantCommands: Commands {
     @FocusedValue(\.mainWindow) private var window
     /// The desk item the keyboard focus is in (its context menu's actions, by key).
     @FocusedValue(\.deskItem) private var deskItem
+    /// The club or player name the keyboard focus is on (Follow or Unfollow, by key).
+    @FocusedValue(\.followable) private var followable
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
 
@@ -79,6 +81,11 @@ struct PennantCommands: Commands {
             Button("Note…") { deskItem?.editNote() }
                 .keyboardShortcut("n", modifiers: [.command, .shift])
                 .disabled(deskItem == nil)
+            Divider()
+            // The club or player name in focus (M4), undone with ⌘Z like a status
+            Button { followable?.toggle() } label: { followable?.following == true ? Text("Unfollow") : Text("Follow") }
+                .keyboardShortcut("f", modifiers: [.command, .shift])
+                .disabled(followable == nil)
         }
 
         CommandMenu("Club") {

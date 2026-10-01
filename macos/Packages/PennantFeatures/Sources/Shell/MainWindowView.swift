@@ -87,14 +87,25 @@ struct ShellSplitView: View {
         .searchable(text: $window.searchText, placement: .toolbar, prompt: Text("Search"))
         .searchSuggestions { ToolbarSearchSuggestions(window: window, open: openSearchResult) }
         .onSubmit(of: .search) {
-            if let first = window.currentSearch?.groups.first(where: { !$0.results.isEmpty })?.results.first { openSearchResult(first.open) }
+            let results = window.currentSearch?.groups.flatMap(\.results) ?? []
+            if let first = results.first(where: { PaletteIndex.opens($0.open) }) { openSearchResult(first.open) }
         }
         .task(id: window.searchText) {
             let query = window.searchText.trimmingCharacters(in: .whitespaces)
             guard !query.isEmpty else { return }
             try? await Task.sleep(for: .milliseconds(150))
-            guard !Task.isCancelled, case .success(let served)? = await model.search(query) else { return }
-            window.searchAnswer = (query, served)
+            // The last answer stays, said to be updating, until this one is in; a failure is said, never left silent (L3)
+            switch await model.search(query) {
+            case .success(let served)?:
+                guard !Task.isCancelled else { return }
+                window.searchAnswer = (query, served)
+                window.searchProblem = nil
+            case .failure(let problem)?:
+                guard !Task.isCancelled else { return }
+                window.searchProblem = (query, problem)
+            case nil:
+                return
+            }
         }
         // While the palette is up the window behind it is dimmed and out of reach, so VoiceOver reads only the palette
         .accessibilityHidden(window.paletteShown)
@@ -126,7 +137,13 @@ struct ToolbarSearchSuggestions: View {
     let open: (Components.Schemas.Target) -> Void
 
     var body: some View {
-        if let answer = window.currentSearch {
+        if let problem = window.currentSearchProblem {
+            ProblemLine(problem).accessibilityIdentifier("search.problem")
+        } else if let answer = window.shownSearch {
+            if window.searchUpdating {
+                Label { Text("Updating") } icon: { ProgressView().controlSize(.small) }
+                    .accessibilityIdentifier("search.updating")
+            }
             ForEach(Array(answer.groups.enumerated()), id: \.offset) { _, group in
                 Section {
                     ForEach(group.results, id: \.id) { result in
@@ -137,6 +154,8 @@ struct ToolbarSearchSuggestions: View {
                                 Image(systemName: result.followed ? "star.fill" : PaletteIndex.symbol(result.kind.value1?.rawValue ?? result.kind.value2 ?? ""))
                             }
                         }
+                        // A result that opens nothing here (a free agent, no club to open) is shown, not offered (L3)
+                        .disabled(!PaletteIndex.opens(result.open))
                         .accessibilityIdentifier("search.result.\(result.id)")
                     }
                 } header: {
@@ -160,17 +179,24 @@ struct PaletteOverlay: View {
     @Bindable var window: MainWindowModel
     /// The server's answer for the query typed, and the query it answers.
     @State private var answer: (query: String, answer: Components.Schemas.SearchAnswer)?
+    /// Why the search for a query failed, and the query.
+    @State private var problem: (query: String, problem: RequestProblem)?
 
     var body: some View {
         let query = window.paletteQuery.trimmingCharacters(in: .whitespaces)
-        let search = answer.flatMap { $0.query == query && !query.isEmpty ? $0.answer : nil }
+        // A failure for the query typed is said in place of results (L3); otherwise the last answer stays, said to be
+        // updating, until the one for the query typed is in
+        let failed = problem.flatMap { $0.query == query && !query.isEmpty ? $0.problem : nil }
+        let search = failed == nil && !query.isEmpty ? answer?.answer : nil
+        let updating = search != nil && answer?.query != query
         let index = PaletteIndex(registry: window.registry, catalog: model.catalog, can: .of(model, window: window),
-                                 inspectorShown: window.inspectorPresented, search: search)
+                                 inspectorShown: window.inspectorPresented, search: search, searchFailed: failed != nil)
         ZStack(alignment: .top) {
             Color.black.opacity(0.18).ignoresSafeArea()
                 .onTapGesture { window.paletteShown = false }
                 .accessibilityHidden(true)
-            CommandPalette(entries: index.entries, served: index.served, emptyLine: index.emptyLine, query: $window.paletteQuery, open: { entry in
+            CommandPalette(entries: index.entries, served: index.served, emptyLine: index.emptyLine, problem: failed?.title,
+                           updating: updating, query: $window.paletteQuery, open: { entry in
                 window.paletteShown = false
                 switch index.action(for: entry) {
                 case .served(let target): open(target)
@@ -190,8 +216,17 @@ struct PaletteOverlay: View {
         .task(id: query) {
             guard !query.isEmpty else { return }
             try? await Task.sleep(for: .milliseconds(120))
-            guard !Task.isCancelled, case .success(let served)? = await model.search(query) else { return }
-            answer = (query, served)
+            switch await model.search(query) {
+            case .success(let served)?:
+                guard !Task.isCancelled else { return }
+                answer = (query, served)
+                problem = nil
+            case .failure(let failure)?:
+                guard !Task.isCancelled else { return }
+                problem = (query, failure)
+            case nil:
+                return
+            }
         }
     }
 

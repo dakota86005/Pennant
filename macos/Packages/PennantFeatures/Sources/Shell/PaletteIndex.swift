@@ -33,8 +33,10 @@ public struct PaletteIndex: Sendable {
     ///   - can: which commands can act now (`CommandAvailability`); a command that cannot is left out.
     ///   - inspectorShown: whether the inspector is up, for the command's label.
     ///   - search: the server's answer for the query typed; nil when none is here (the registry's views are searched).
+    ///   - searchFailed: the server couldn't answer the query: the registry's views are not searched in its place, so a
+    ///     failure never reads as an answer (L3).
     public init(registry: DepartmentRegistry, catalog: Components.Schemas.Catalog?, can: CommandAvailability, inspectorShown: Bool,
-                search: Components.Schemas.SearchAnswer? = nil) {
+                search: Components.Schemas.SearchAnswer? = nil, searchFailed: Bool = false) {
         var entries: [PaletteEntry] = []
         var actions: [String: Action] = [:]
         var served: [PaletteEntry] = []
@@ -43,7 +45,8 @@ public struct PaletteIndex: Sendable {
                 let kind = result.kind.value1?.rawValue ?? result.kind.value2 ?? "result"
                 let id = "search.\(kind).\(result.id)"
                 served.append(PaletteEntry(id: id, group: group.title.display, symbol: Self.symbol(kind), title: result.title,
-                                           line: result.line.isEmpty ? nil : result.line, followed: result.followed))
+                                           line: result.line.isEmpty ? nil : result.line, followed: result.followed,
+                                           opens: Self.opens(result.open)))
                 actions[id] = .served(result.open)
             }
         }
@@ -51,7 +54,7 @@ public struct PaletteIndex: Sendable {
         emptyLine = search?.empty?.display
         let shortcuts = Dictionary(uniqueKeysWithValues: registry.shortcutDepartments.map { ($0.department.id, $0.number) })
         // With the server's answer here its views stand for the registry's (the same views, in its order)
-        for department in registry.departments where search == nil {
+        for department in registry.departments where search == nil && !searchFailed {
             let served = catalog?.departments.first { $0.id.rawValue == department.id.rawValue }
             let departmentName = served?.name ?? String(localized: department.title)
             for (index, view) in department.views.enumerated() {
@@ -83,6 +86,12 @@ public struct PaletteIndex: Sendable {
     }
 
     public func action(for entry: PaletteEntry) -> Action? { actions[entry.id] }
+
+    /// Whether a served target opens anything here: a view, or a club's window (a player with no club served opens
+    /// nothing until player windows).
+    static func opens(_ target: Components.Schemas.Target) -> Bool {
+        route(target) != nil || clubRef(opening: target) != nil
+    }
 
     /// A served result's symbol by its kind.
     static func symbol(_ kind: String) -> String {

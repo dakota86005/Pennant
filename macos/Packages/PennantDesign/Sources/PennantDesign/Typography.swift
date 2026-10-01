@@ -125,6 +125,8 @@ public struct MagazineMasthead<Figures: View, Control: View>: View {
     let deckHint: String?
     let deckClaim: Components.Schemas.Claim?
     let art: Image?
+    /// What the caller puts on the headline alone (a club window's name opening its menu, M5), or nil.
+    let decorateHeadline: (@MainActor (AnyView) -> AnyView)?
     @ViewBuilder let figures: () -> Figures
     @ViewBuilder let control: () -> Control
     @Environment(\.theme) private var theme
@@ -143,6 +145,7 @@ public struct MagazineMasthead<Figures: View, Control: View>: View {
     ///   - kickerHint: the kicker's help tag (how current the report is, as served).
     ///   - deck: the served lede, with its help tag; nil draws none. With `deckClaim`, the deck opens that claim's basis.
     ///   - art: the pack's masthead art, as served.
+    ///   - decorateHeadline: what goes on the headline alone (its own menu, focus and actions), or nil.
     ///   - figures: the box score (`BoxFigure`s, `ClaimText`s), laid out by the caller.
     ///   - control: the masthead's one control (`TonightControl`), or nothing.
     public init(
@@ -154,6 +157,7 @@ public struct MagazineMasthead<Figures: View, Control: View>: View {
         deckHint: String? = nil,
         deckClaim: Components.Schemas.Claim? = nil,
         art: Image? = nil,
+        decorateHeadline: (@MainActor (AnyView) -> AnyView)? = nil,
         @ViewBuilder figures: @escaping () -> Figures,
         @ViewBuilder control: @escaping () -> Control = { EmptyView() }
     ) {
@@ -165,6 +169,7 @@ public struct MagazineMasthead<Figures: View, Control: View>: View {
         self.deckHint = deckHint
         self.deckClaim = deckClaim
         self.art = art
+        self.decorateHeadline = decorateHeadline
         self.figures = figures
         self.control = control
     }
@@ -176,10 +181,13 @@ public struct MagazineMasthead<Figures: View, Control: View>: View {
                 .help(kickerHint.map { Text(verbatim: $0) } ?? Text(verbatim: kicker.compactMap { $0 }.joined(separator: " · ")))
                 .modifier(TextEdge(id: "kicker", edges: $textEdges))
                 .accessibilityIdentifier("masthead.kicker")
-            headline.font(.system(size: 62, weight: .bold, design: .serif)).kerning(-0.5)
+            let title = headline.font(.system(size: 62, weight: .bold, design: .serif)).kerning(-0.5)
                 .lineLimit(2).minimumScaleFactor(0.6)
                 .accessibilityAddTraits(.isHeader)
-                .modifier(TextEdge(id: "headline", edges: $textEdges))
+            Group {
+                if let decorateHeadline { decorateHeadline(AnyView(title)) } else { title }
+            }
+            .modifier(TextEdge(id: "headline", edges: $textEdges))
             if let deck {
                 let text = Text(verbatim: deck)
                     .font(.system(size: 20, weight: .regular, design: .serif)).lineSpacing(3)

@@ -113,14 +113,16 @@ extension AppModel {
 /// Edits an item's note: the GM's own words, saved with the status as it is (an empty note clears it).
 struct DeskNoteEditor: View {
     let item: Components.Schemas.FoItem
+    /// The undo manager of the row's window (M6): the popover's own would keep the note's undo out of ⌘Z there.
+    let undoManager: UndoManager?
     let dismiss: () -> Void
     @Environment(AppModel.self) private var model
-    @Environment(\.undoManager) private var undoManager
     @State private var text: String
     @FocusState private var focused: Bool
 
-    init(item: Components.Schemas.FoItem, dismiss: @escaping () -> Void) {
+    init(item: Components.Schemas.FoItem, undoManager: UndoManager?, dismiss: @escaping () -> Void) {
         self.item = item
+        self.undoManager = undoManager
         self.dismiss = dismiss
         _text = State(initialValue: item.attention.note ?? "")
     }
@@ -168,6 +170,19 @@ extension AppModel {
         let name: LocalizedStringResource = following ? "Unfollow" : "Follow"
         Task { await changeFollow(request, undoManager: undoManager, actionName: String(localized: name)) }
     }
+}
+
+/// The club or player name the keyboard focus is on, for the Desk menu's Follow or Unfollow (M4): whether the served
+/// Following names it, and what toggling it means in its window (the window's undo manager).
+public struct FocusedFollowable {
+    public var kind: String
+    public var id: Int
+    public var following: Bool
+    public var toggle: @MainActor () -> Void
+}
+
+extension FocusedValues {
+    @Entry public var followable: FocusedFollowable?
 }
 
 /// Follow or Unfollow in a menu, by what the served Following names.
@@ -253,6 +268,10 @@ struct ClubNameModifier: ViewModifier {
             .accessibilityAction(named: model.following.isFollowing(kind: "club", id: id) ? Text("Unfollow") : Text("Follow")) {
                 model.toggleFollow(kind: "club", id: id, undoManager: undoManager)
             }
+            .focusedValue(\.followable, FocusedFollowable(
+                kind: "club", id: id, following: model.following.isFollowing(kind: "club", id: id),
+                toggle: { model.toggleFollow(kind: "club", id: id, undoManager: undoManager) }
+            ))
             .accessibilityIdentifier("club.\(id)")
     }
 }
@@ -268,6 +287,13 @@ struct PlayerNameModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .contentShape(.rect)
+            // Reached by the keyboard too (M4): Return opens his club when one is served, the Desk menu follows him
+            .focusable()
+            .onKeyPress(.return) {
+                guard let club else { return .ignored }
+                openWindow(value: club)
+                return .handled
+            }
             .onTapGesture(count: 2) { if let club { openWindow(value: club) } }
             .contextMenu {
                 if let club {
@@ -284,9 +310,20 @@ struct PlayerNameModifier: ViewModifier {
                     .padding(6).background(.regularMaterial, in: .capsule)
             }
             .accessibilityElement(children: .combine)
+            // A button that opens his club when one is served; Open His Club and Follow as actions
+            .accessibilityAddTraits(club != nil ? .isButton : [])
+            .accessibilityActions {
+                if let club {
+                    Button("Open His Club") { openWindow(value: club) }
+                }
+            }
             .accessibilityAction(named: model.following.isFollowing(kind: "player", id: id) ? Text("Unfollow") : Text("Follow")) {
                 model.toggleFollow(kind: "player", id: id, undoManager: undoManager)
             }
+            .focusedValue(\.followable, FocusedFollowable(
+                kind: "player", id: id, following: model.following.isFollowing(kind: "player", id: id),
+                toggle: { model.toggleFollow(kind: "player", id: id, undoManager: undoManager) }
+            ))
             .accessibilityIdentifier("player.\(id)")
     }
 }

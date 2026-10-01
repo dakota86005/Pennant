@@ -65,15 +65,21 @@ public struct DeskItemRow: View {
     /// Shows which department raised it (on the desk, where items from every department are merged).
     let showsDepartment: Bool
     let compact: Bool
+    /// The undo manager to register on when the row is drawn in a popover (its own window): the window it was opened
+    /// from (M6); nil for the row's own window's.
+    let handedUndoManager: UndoManager?
     @Environment(AppModel.self) private var model
-    @Environment(\.undoManager) private var undoManager
+    @Environment(\.undoManager) private var windowUndoManager
     @State private var editingNote = false
 
-    public init(_ item: Components.Schemas.FoItem, showsDepartment: Bool = true, compact: Bool = false) {
+    public init(_ item: Components.Schemas.FoItem, showsDepartment: Bool = true, compact: Bool = false, undoManager: UndoManager? = nil) {
         self.item = item
         self.showsDepartment = showsDepartment
         self.compact = compact
+        self.handedUndoManager = undoManager
     }
+
+    private var undoManager: UndoManager? { handedUndoManager ?? windowUndoManager }
 
     public var body: some View {
         let choices = model.frontOffice.summary?.desk.deferChoices ?? []
@@ -92,7 +98,8 @@ public struct DeskItemRow: View {
             DeskItemMenu(status: item.attention.status, deferChoices: choices, perform: perform, editNote: { editingNote = true })
         }
         .popover(isPresented: $editingNote, arrowEdge: .trailing) {
-            DeskNoteEditor(item: item) { editingNote = false }
+            // The popover is a window of its own: the note is undone in the row's window (M6)
+            DeskNoteEditor(item: item, undoManager: undoManager) { editingNote = false }
         }
         .focusedValue(\.deskItem, FocusedDeskItem(
             key: item.key, status: item.attention.status, deferChoices: choices, perform: perform, editNote: { editingNote = true }
@@ -365,9 +372,13 @@ public struct DepartmentReportContent: View {
                         RowGroup {
                             ForEach(Array(changes.enumerated()), id: \.offset) { index, change in
                                 HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                    // The kind in the served word beside its symbol (M8): never a symbol alone, and
+                                    // the word is what VoiceOver reads
                                     Image(systemName: ChangeKind.symbol(change.kind.value1?.rawValue ?? change.kind.value2 ?? ""))
                                         .foregroundStyle(.readableSecondary)
                                         .accessibilityHidden(true)
+                                    Text(verbatim: change.word).font(.callout.weight(.semibold)).foregroundStyle(.readableSecondary)
+                                        .frame(minWidth: 64, alignment: .leading)
                                     ClaimLine(change.line)
                                 }
                                 .padding(.vertical, 8)

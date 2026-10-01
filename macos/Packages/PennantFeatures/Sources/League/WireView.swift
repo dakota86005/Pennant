@@ -163,7 +163,7 @@ struct WireEntryRow: View {
                     ForEach(entry.clubs.dropFirst(), id: \.teamId) { club in
                         Text(verbatim: club.name).font(.caption.weight(.medium))
                             .padding(.horizontal, 7).padding(.vertical, 2)
-                            .background(Color(nsColor: .quaternarySystemFill), in: .capsule)
+                            .background(Color.readableChipFill, in: .capsule)
                             .clubName(id: club.teamId, name: club.name)
                     }
                     ForEach(entry.players, id: \.playerId) { player in
@@ -172,7 +172,7 @@ struct WireEntryRow: View {
                             Text(verbatim: player.name).font(.caption.weight(.medium))
                         }
                         .padding(.horizontal, 7).padding(.vertical, 2)
-                        .background(Color(nsColor: .quaternarySystemFill), in: .capsule)
+                        .background(Color.readableChipFill, in: .capsule)
                         .accessibilityElement(children: .combine)
                         // His club as served (his organization's), never the entry's first club; none served, nothing to open (M3)
                         .playerName(id: player.playerId, name: player.name, opens: clubRef(opening: player.open))

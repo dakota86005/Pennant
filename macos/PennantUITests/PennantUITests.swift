@@ -47,8 +47,9 @@ final class PennantUITests: XCTestCase {
         // The app's own caches (the Morning Report kept across launches) in the test's folder, never the Mac's
         app.launchEnvironment["PENNANT_DEV_CACHES_DIR"] = scratch.appending(path: "caches").path(percentEncoded: false)
         for (name, value) in environment { app.launchEnvironment[name] = value }
-        // A fresh window each time: no restored route from an earlier run
-        app.launchArguments += ["-ApplePersistenceIgnoreState", "YES"] + arguments
+        // A fresh window each time: no restored route from an earlier run; no notification permission asked of the Mac
+        // running the tests (Pennant asks at the first export read while it is in front, L4)
+        app.launchArguments += ["-ApplePersistenceIgnoreState", "YES", "-PennantNotifiesNewExport", "NO"] + arguments
         app.launch()
         return app
     }
@@ -623,13 +624,14 @@ final class PennantUITests: XCTestCase {
     /// items are in the tree with no size).
     @MainActor
     private func contextMenuItem(_ app: XCUIApplication, _ title: String) -> XCUIElement {
-        let deadline = Date.now.addingTimeInterval(5)
-        repeat {
-            let open = app.menuItems.matching(NSPredicate(format: "title == %@", title)).allElementsBoundByIndex.first { $0.frame.width > 0 }
-            if let open { return open }
-            Thread.sleep(forTimeInterval: 0.2)
-        } while Date.now < deadline
-        return app.menuItems["no open menu item titled \(title)"]
+        // Waited for as an expectation (L8), never a fixed sleep
+        var found: XCUIElement?
+        let open = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            found = app.menuItems.matching(NSPredicate(format: "title == %@", title)).allElementsBoundByIndex.first { $0.frame.width > 0 }
+            return found != nil
+        }, object: nil)
+        _ = XCTWaiter.wait(for: [open], timeout: 5)
+        return found ?? app.menuItems["no open menu item titled \(title)"]
     }
 
     /// The first open item on the desk, as the Morning Report shows it.
@@ -674,6 +676,22 @@ final class PennantUITests: XCTestCase {
         app.typeKey("z", modifierFlags: [.command, .shift])
         XCTAssertTrue(element(app, "desk.setAside").waitForExistence(timeout: 10), "⇧⌘Z did not mark it again")
         keep(app.windows.firstMatch.screenshot(), named: "n7-desk-redone")
+        // Put back from the set-aside list (a popover, a window of its own): the list closes once nothing is set aside
+        // (L2), and ⌘Z in the main window undoes it, since the list registers on the main window's undo manager (M6)
+        element(app, "desk.setAside").click()
+        let list = element(app, "desk.setAside.list")
+        XCTAssertTrue(list.waitForExistence(timeout: 5), "the set-aside line did not open its items")
+        let row = list.descendants(matching: .any)[key].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5), "the set-aside list did not list the item")
+        row.rightClick()
+        let putBack = contextMenuItem(app, "Put Back on Desk")
+        XCTAssertTrue(putBack.waitForExistence(timeout: 5), "the set-aside item's context menu has no Put Back on Desk")
+        putBack.click()
+        XCTAssertTrue(element(app, "morningReport.desk").descendants(matching: .any)[key].firstMatch.waitForExistence(timeout: 10), "Put Back on Desk did not put the item back")
+        XCTAssertTrue(list.waitForNonExistence(timeout: 10), "the set-aside list stayed open with nothing set aside")
+        app.typeKey("z", modifierFlags: .command)
+        XCTAssertTrue(element(app, "desk.setAside").waitForExistence(timeout: 10), "⌘Z in the main window did not undo the put-back made in the set-aside list")
+        XCTAssertTrue(element(app, "morningReport.desk").descendants(matching: .any)[key].firstMatch.waitForNonExistence(timeout: 10), "the item stayed on the desk after ⌘Z")
         quitCleanly(app)
     }
 
@@ -750,7 +768,8 @@ final class PennantUITests: XCTestCase {
         }
         let club = app.windows.firstMatch
         club.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.01)).hover()
-        Thread.sleep(forTimeInterval: 0.5)
+        // Any help tag the pointer left up gone before the audit (L8: waited for, never a fixed sleep)
+        XCTAssertTrue(app.helpTags.firstMatch.waitForNonExistence(timeout: 5), "a help tag stayed up over the club's window")
         try audit(app, named: name)
     }
 
