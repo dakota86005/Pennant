@@ -21,11 +21,11 @@ public struct MainWindowView: View {
 
     public var body: some View {
         Group {
-            #if DEBUG
-            if UserDefaults.standard.bool(forKey: "PennantDebugTextSamples") { DebugTextSamples() } else { shell }
-            #else
-            shell
-            #endif
+            if Self.showsShell(model.serverState) {
+                ShellSplitView(window: window)
+            } else {
+                ServerStateView()
+            }
         }
         .focusedSceneValue(\.mainWindow, model.isReady ? window : nil)
         .onAppear { AfterNextFrame.run { model.noteLaunchStep("the main window's first frame is drawn") } }
@@ -38,90 +38,7 @@ public struct MainWindowView: View {
             AppAppearance.apply(theme)
         }
     }
-
-    @ViewBuilder private var shell: some View {
-        Group {
-            if Self.showsShell(model.serverState) {
-                ShellSplitView(window: window)
-            } else {
-                ServerStateView()
-            }
-        }
-    }
 }
-
-#if DEBUG
-/// Temporary (uihealth): text samples for the runner's accessibility audit, shown with -PennantDebugTextSamples YES.
-struct DebugTextSamples: View {
-    struct Sample: Identifiable {
-        let id: String
-        let text: String
-        let font: Font
-        let color: Color
-        let mono: Bool
-        let help: Bool
-        let kerning: CGFloat
-        let upper: Bool
-    }
-
-    static var samples: [Sample] {
-        var all: [Sample] = []
-        let strings = ["Last 15: 2nd", "Scoring runs", "Nothing followed yet"]
-        let fonts: [(String, Font)] = [("callout", .callout), ("calloutMedium", .callout.weight(.medium)), ("body", .body), ("bodyMedium", .body.weight(.medium))]
-        let colors: [(String, Color)] = [("black", .black), ("primary", .primary), ("grey30", Color(white: 0.30)), ("grey20", Color(white: 0.20))]
-        for (si, string) in strings.enumerated() {
-            for (fn, font) in fonts {
-                for (cn, color) in colors {
-                    all.append(Sample(id: "sample.\(si).\(fn).\(cn)", text: string, font: font, color: color, mono: false, help: false, kerning: 0, upper: false))
-                }
-            }
-        }
-        all.append(Sample(id: "sample.0.callout.grey30.mono", text: strings[0], font: .callout, color: Color(white: 0.30), mono: true, help: false, kerning: 0, upper: false))
-        all.append(Sample(id: "sample.0.callout.grey30.help", text: strings[0], font: .callout, color: Color(white: 0.30), mono: false, help: true, kerning: 0, upper: false))
-        all.append(Sample(id: "sample.0.callout.grey30.monohelp", text: strings[0], font: .callout, color: Color(white: 0.30), mono: true, help: true, kerning: 0, upper: false))
-        all.append(Sample(id: "sample.1.body.primary.help", text: strings[1], font: .body, color: .primary, mono: false, help: true, kerning: 0, upper: false))
-        all.append(Sample(id: "sample.3.longcallout.grey30", text: "Through May 5, 2040 · 30 games", font: .callout, color: Color(white: 0.30), mono: false, help: false, kerning: 0, upper: false))
-        return all
-    }
-
-    var body: some View {
-        let samples = Self.samples
-        let columns = stride(from: 0, to: samples.count, by: 21).map { Array(samples[$0..<min($0 + 21, samples.count)]) }
-        HStack(alignment: .top, spacing: 24) {
-            ForEach(Array(columns.enumerated()), id: \.offset) { _, column in
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(column) { sample in
-                        let text = Text(verbatim: sample.text).font(sample.font).kerning(sample.kerning)
-                            .foregroundStyle(sample.color)
-                        let styled = Group { if sample.mono { text.monospacedDigit() } else { text } }
-                        Group {
-                            if sample.help { styled.help(Text(verbatim: "Why")) } else { styled }
-                        }
-                        .accessibilityIdentifier(sample.id)
-                    }
-                }
-            }
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(["CLUB 1 N · MAY 6, 2040", "3RD IN THE EAST · 3 BACK"], id: \.self) { kicker in
-                    Text(verbatim: kicker).font(.caption.weight(.semibold)).kerning(1.2).foregroundStyle(Color(red: 1, green: 0.95, blue: 0.85))
-                        .accessibilityIdentifier("kicker.cream.k12.\(kicker.prefix(4))")
-                    Text(verbatim: kicker).font(.caption.weight(.semibold)).kerning(0.6).foregroundStyle(Color(red: 1, green: 0.95, blue: 0.85))
-                        .accessibilityIdentifier("kicker.cream.k06.\(kicker.prefix(4))")
-                    Text(verbatim: kicker).font(.caption.weight(.semibold)).kerning(1.2).foregroundStyle(.white)
-                        .accessibilityIdentifier("kicker.white.k12.\(kicker.prefix(4))")
-                    Text(verbatim: kicker).font(.caption.weight(.bold)).kerning(1.2).foregroundStyle(.white)
-                        .accessibilityIdentifier("kicker.whitebold.k12.\(kicker.prefix(4))")
-                }
-            }
-            .padding(10)
-            .background(Color(red: 0.13, green: 0.20, blue: 0.33))
-        }
-        .padding(20)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Color.white)
-    }
-}
-#endif
 
 extension MainWindowView {
     /// Whether the window draws its shell: while the server starts (so the window's shell is built before it is ready,

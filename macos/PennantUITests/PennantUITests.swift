@@ -104,9 +104,19 @@ final class PennantUITests: XCTestCase {
     ///   (`WindowPixels.contrast`: the text's darkest (or lightest) tenth against the element's middle). On the runner
     ///   those labels, the system's vibrant text on its glass, were reported in a different handful on each run while
     ///   their pixels read at 9:1 to 19:1; the line carries the measured ratio, so it is checked, not muted. Every other
-    ///   contrast finding fails, and so does a sidebar label whose pixels read below 4.5:1.
+    ///   contrast finding fails, and so does a sidebar label whose pixels read below 4.5:1;
+    /// - a contrast finding on a text element on a 1× screen only (a window whose screenshot has one pixel per point:
+    ///   GitHub's runner, never a Retina Mac), when its own pixels read at 4.5:1 or better (`WindowPixels.contrast`, which
+    ///   reads a 1× text below its colours' ratio, since its thin strokes are blended with the page). At 1× the audit's
+    ///   contrast does not follow the text's colours: on the runner (run 36910001280) a page of text samples on white had
+    ///   "Scoring runs" in the callout size at medium weight reported in pure black ("nearly passed", 16.7:1 by its pixels),
+    ///   in the label colour and in 20% and 30% greys ("failed"), while the same words at regular weight or in the body
+    ///   size, and other words in every size, weight and colour sampled, passed; the app's findings there were black and
+    ///   dark-grey text reading 4.6:1 to 9.5:1 by their pixels, which pass the same audit on a Retina screen. The line
+    ///   carries the measured ratio, so it is checked, not muted; below 4.5:1 it fails, and on a Retina screen every
+    ///   contrast finding fails.
     @MainActor
-    private func audit(_ app: XCUIApplication, named name: String = "accessibility-audit", strict: Bool = true) throws {
+    private func audit(_ app: XCUIApplication, named name: String = "accessibility-audit") throws {
         // The pointer off the content first, and any help tag it left up gone (waited for, never a fixed sleep): a tag
         // is the system's, and one left over a line by the last click is measured as that line's background
         let front = app.windows.firstMatch
@@ -179,6 +189,12 @@ final class PennantUITests: XCTestCase {
                 } else {
                     issues.append(line + (ratio.map { String(format: " (its own pixels read at %.1f:1)", $0) } ?? ""))
                 }
+            } else if issue.auditType == .contrast, element.elementType == .staticText,
+                      let pixels = windows.first(where: { $0.frame.contains(frame) })?.pixels, pixels.scale < 1.5,
+                      let ratio = pixels.contrast(in: frame), ratio >= 4.5 {
+                // Text on a 1× screen (GitHub's runner) whose own pixels read at 4.5:1 or better: there the audit's
+                // contrast is not the text's colour (see the doc comment); its pixels are the check
+                setAside.append(line + String(format: " (text on a 1× screen whose own pixels read at %.1f:1)", ratio))
             } else if issue.auditType == .contrast {
                 // Never set aside: its own pixels are measured only to help find it
                 let ratio = windows.first { $0.frame.contains(frame) }?.pixels?.contrast(in: frame)
@@ -199,7 +215,7 @@ final class PennantUITests: XCTestCase {
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
-        if strict { XCTAssertEqual(issues, [], "the accessibility audit found issues") }
+        XCTAssertEqual(issues, [], "the accessibility audit found issues")
     }
 
     /// The sidebar at its top, as a window opens: its departments stay unfolded (the audit reads every row there is).
@@ -864,28 +880,14 @@ final class PennantUITests: XCTestCase {
     }
 }
 
-// MARK: Diagnostics (temporary, uihealth)
-
-extension PennantUITests {
-    @MainActor
-    func testUIDiagnostics() throws {
-        let app = launch(arguments: ["-PennantDebugTextSamples", "YES"])
-        XCTAssertTrue(element(app, "sample.0.callout.black").waitForExistence(timeout: 30))
-        print("[diag] window \(app.windows.firstMatch.frame)")
-        keep(app.windows.firstMatch.screenshot(), named: "accessibility-audit-diag-samples-shot")
-        try audit(app, named: "accessibility-audit-diag-samples-a", strict: false)
-        try audit(app, named: "accessibility-audit-diag-samples-b", strict: false)
-        app.terminate()
-    }
-}
-
 /// A window's screenshot as pixels, to read an element's own contrast where the audit reports one (see `audit`).
 struct WindowPixels {
     private let width: Int
     private let height: Int
     private let data: [UInt8]
     private let frame: CGRect
-    private let scale: CGFloat
+    /// Pixels per point: 2 on a Retina screen, 1 on GitHub's runner.
+    let scale: CGFloat
 
     init?(_ image: NSImage, frame: CGRect) {
         guard frame.width > 0, let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return nil }

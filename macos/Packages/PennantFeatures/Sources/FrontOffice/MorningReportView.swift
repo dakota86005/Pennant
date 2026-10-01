@@ -474,7 +474,10 @@ struct SinceLastExportRow: View {
         } else if let chips {
             ChipRow(label: Text("Since the last export"), chips: chips)
         } else if let note = summary.changesNote {
-            HStack(spacing: 8) {
+            // The label above the served sentence, which gets the row's whole width: beside the label, in a column
+            // narrowed by the inspector, the sentence wrapped to a second line of two words, and the accessibility
+            // audit failed its contrast (black words on white, on a Retina screen)
+            VStack(alignment: .leading, spacing: 4) {
                 Text("Since the last export")
                     .font(.callout.weight(.semibold))
                     .foregroundStyle(.readableSecondary)
@@ -484,8 +487,8 @@ struct SinceLastExportRow: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .help(detail: note.hint)
                     .accessibilityIdentifier("changes.note")
-                Spacer()
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("chips")
         }
