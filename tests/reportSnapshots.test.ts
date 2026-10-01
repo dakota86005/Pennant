@@ -82,6 +82,8 @@ describe('what changed since the last export (case 16)', () => {
     expect(summary.moved.items[0].line.hint).toBe('Now urgent; was needs attention');
     expect([summary.new.text, summary.resolved.text, summary.moved.text]).toEqual(['1 new', '1 resolved', '1 moved']);
     expect(byDepartment.get('farm')!.changes!.map((c) => c.kind).sort()).toEqual(['moved', 'new', 'resolved']);
+    // Each kind in a word beside its line, never a symbol alone (M8)
+    expect(byDepartment.get('farm')!.changes!.map((c) => [c.kind, c.word]).sort()).toEqual([['moved', 'Moved'], ['new', 'New'], ['resolved', 'Resolved']]);
   });
 
   it('never names the transaction behind a change: the line is the item as served, and its basis says a change is not a cause (D-020)', () => {

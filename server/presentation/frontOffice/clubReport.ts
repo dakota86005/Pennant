@@ -61,6 +61,18 @@ export function scoutingWords(build: BuildContext, m: ClubMaterial) {
   });
 }
 
+/**
+ * Why there is no record against us, in a sentence, when there is none (L7, N7 review): our club not known yet, or the
+ * export without its games. Null for our own club, or when the record is served.
+ */
+function headToHeadNote(m: ClubMaterial, ourName: string | null): Cell | null {
+  if (m.ourTeamId === m.teamId || m.headToHead) return null;
+  if (m.ourTeamId === null) return cell('Their record against your club shows once your club is chosen', { tone: 'unknown' });
+  return cell(`Their record against ${ourName ? `the ${ourName}` : 'your club'} isn't known`, {
+    tone: 'unknown', hint: m.scheduleWhy ?? 'The export has no game-by-game results.',
+  });
+}
+
 function headToHeadWords(build: BuildContext, m: ClubMaterial, ourName: string | null): Claim | null {
   if (!m.headToHead || m.ourTeamId === null) return null;
   const h = m.headToHead;
@@ -164,6 +176,7 @@ export function clubReportWords(build: BuildContext, m: ClubMaterial, ourName: s
     rosterMap: morning.rosterMap,
     scouting: scoutingWords(build, m),
     headToHead: headToHeadWords(build, m, ourName),
+    headToHeadNote: headToHeadNote(m, ourName),
     nextSeries: series.claim,
     nextSeriesNote: series.note,
     moves: [],

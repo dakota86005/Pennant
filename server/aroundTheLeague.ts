@@ -23,7 +23,7 @@ import { cell } from './presentation/claim.js';
 import { followingWords, type ClubNow, type PlayerNow } from './presentation/frontOffice/following.js';
 import type { ClubReport, FollowChange, FollowUpdate, Following, SearchAnswer, Wire, WireTop } from './presentation/frontOffice/leagueTypes.js';
 import { LEVEL_WORDS } from './presentation/frontOffice/morning.js';
-import { KIND_ORDER, wireEntry, wireOrder, wireTopWords, wireWords, type WireQuery } from './presentation/frontOffice/wire.js';
+import { KIND_ORDER, wireEntries, wireOrder, wireTopWords, wireWords, type WireQuery } from './presentation/frontOffice/wire.js';
 import { searchWords } from './presentation/searchWords.js';
 import { POSITION_NAMES } from './positionNeeds.js';
 import { matches, queryOf, searchIndex } from './search.js';
@@ -48,7 +48,7 @@ function lastExportDay(orgId: number | null): string | null {
 export function wireTopFor(orgId: number, importStamp: string | null, sinceRaw: string | null): WireTop | null {
   try {
     const facts = wireFacts(importStamp, orgId);
-    return wireTopWords(facts, followedSets(), parseGameDate(sinceRaw), sinceRaw, { importStamp, gameDate: facts.gameDate });
+    return wireTopWords(facts, followedSets(), parseGameDate(sinceRaw), sinceRaw, { importStamp, gameDate: facts.gameDate, playerOrgs });
   } catch (err) {
     console.error('[wire] the Morning Report\'s column could not be put together:', err);
     return null;
@@ -99,7 +99,7 @@ export function wireView(orgParam: string, query: Record<string, unknown>): Wire
     followedOnly: followedParam === 'only',
     followedFirst: followedParam !== null && followedParam !== '0' && followedParam !== 'false',
     limit: WIRE_LIMIT,
-  }, { importStamp, gameDate: facts.gameDate });
+  }, { importStamp, gameDate: facts.gameDate, playerOrgs });
 }
 
 // ── a club report ───────────────────────────────────────────────────────────
@@ -119,7 +119,7 @@ export async function clubReportNow(teamParam: string): Promise<ClubReport> {
   try {
     const facts = wireFacts(importStamp, ours);
     const theirs = wireOrder(facts.facts.filter((f) => f.clubs.some((c) => c.teamId === teamId)), followed, false);
-    moves = theirs.slice(0, CLUB_MOVES).map((f) => wireEntry(f, followed, { importStamp, gameDate: facts.gameDate }));
+    moves = wireEntries(theirs.slice(0, CLUB_MOVES), followed, { importStamp, gameDate: facts.gameDate, playerOrgs });
     movesNote = moves.length ? null : cell('Nothing on the wire about them this season');
   } catch (err) {
     console.error('[wire] the club\'s moves could not be put together:', err);
@@ -160,7 +160,9 @@ function playersNow(ids: readonly number[]): Map<number, PlayerNow> {
   const out = new Map<number, PlayerNow>();
   const cols = tableExists('players') ? new Set(tableColumns('players')) : new Set<string>();
   if (!ids.length || !cols.has('player_id') || !cols.has('first_name')) return out;
+  const teamCols = tableExists('teams') ? new Set(tableColumns('teams')) : new Set<string>();
   const rows = db.prepare(`SELECT p.player_id, p.first_name || ' ' || p.last_name AS name, ${cols.has('position') ? 'p.position' : 'NULL'} AS position,
+      ${cols.has('organization_id') ? 'p.organization_id' : 'NULL'} AS org, t.team_id AS team, ${teamCols.has('parent_team_id') ? 't.parent_team_id' : 'NULL'} AS parent,
       t.name AS club, t.nickname AS nickname, t.level AS level
     FROM players p LEFT JOIN teams t ON t.team_id = p.team_id WHERE p.player_id IN (${ids.map(Number).join(',')})`).all() as Array<Record<string, unknown>>;
   for (const r of rows) {
@@ -169,10 +171,17 @@ function playersNow(ids: readonly number[]): Map<number, PlayerNow> {
     out.set(Number(r.player_id), {
       playerId: Number(r.player_id), name: String(r.name).trim(), position: typeof r.position === 'number' ? POSITION_NAMES[r.position] ?? null : null,
       club, level: level === 1 ? 'Majors' : level !== null ? LEVEL_WORDS[level] ?? null : null,
+      // His organization: as the export names it, else his club's (a major-league club is its own, a farm club its parent's)
+      orgId: typeof r.org === 'number' && r.org > 0 ? r.org
+        : level === 1 && typeof r.team === 'number' ? r.team
+          : typeof r.parent === 'number' && r.parent > 0 ? r.parent : null,
     });
   }
   return out;
 }
+
+/** Each player's organization's club, when the export says (a wire chip's `open` target). */
+const playerOrgs = (ids: readonly number[]): Map<number, number | null> => new Map([...playersNow(ids)].map(([id, p]) => [id, p.orgId ?? null]));
 
 /** A short stamp of what is followed (moves with every follow, unfollow or note). */
 function followStamp(): string {

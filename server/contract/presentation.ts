@@ -137,6 +137,7 @@ export interface Target {
   /** A view's id inside its department (`fortyManOptions`). */
   view?: string;
   playerId?: Integer;
+  /** A club's id; on a player's target, his organization's club when known (the nearest view a client opens for him). */
   teamId?: Integer;
   /** A decision's key inside its department. */
   key?: string;

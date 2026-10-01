@@ -77,6 +77,7 @@ struct GeneralSettings: View {
                 RatingHistorySection()
                     .id("history")
                 clubSection
+                OutsideTheWindowSection()
                 transactionLogSection
                 DataStatusSection(dataStatus: model.dataStatus)
                     .id("dataStatus")
@@ -785,6 +786,23 @@ struct ClearsInitialFocus: NSViewRepresentable {
             cleared = window
             // After AppKit has chosen its initial first responder for the window
             DispatchQueue.main.async { [weak window] in window?.makeFirstResponder(nil) }
+        }
+    }
+}
+
+/// What Pennant says outside its windows (N7): a notification when a new export has been read (only while Pennant is
+/// not in front), and the desk's open count on the Dock icon. Both are on until turned off; kept in the app's own
+/// defaults, never the data folder.
+struct OutsideTheWindowSection: View {
+    @AppStorage(AppPreferences.notifiesNewExportKey) private var notifies = true
+    @AppStorage(AppPreferences.showsDockBadgeKey) private var badge = true
+
+    var body: some View {
+        Section("Notifications") {
+            Toggle("Notify When a New Export Is Read", isOn: $notifies)
+                .accessibilityIdentifier("settings.notifies")
+            Toggle("Show Open Desk Items on the Dock Icon", isOn: $badge)
+                .accessibilityIdentifier("settings.dockBadge")
         }
     }
 }

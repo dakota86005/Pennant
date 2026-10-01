@@ -3190,6 +3190,7 @@
     ],
     "hint": "Their record against your club this season"
   },
+  "headToHeadNote": null,
   "nextSeries": {
     "text": "1 game from May 7, 2040, in our park",
     "tone": "neutral",
@@ -3262,12 +3263,22 @@
         {
           "playerId": 1036,
           "name": "P 1036",
-          "followed": false
+          "followed": false,
+          "open": {
+            "kind": "player",
+            "playerId": 1036,
+            "teamId": 2
+          }
         },
         {
           "playerId": 1062,
           "name": "P 1062",
-          "followed": false
+          "followed": false,
+          "open": {
+            "kind": "player",
+            "playerId": 1062,
+            "teamId": 3
+          }
         }
       ],
       "headline": {

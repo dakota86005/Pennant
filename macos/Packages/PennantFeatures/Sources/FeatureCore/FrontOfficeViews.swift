@@ -56,25 +56,69 @@ public struct ClaimLine: View {
     }
 }
 
-/// One item on the desk or in a report: the design's desk row, with the staff's options trailing when it has them.
+/// One item on the desk or in a report: the design's desk row, with the staff's options trailing when it has them, and
+/// what the GM did with it beneath (its served status and his note). Its context menu, the Desk menu's keys (while the
+/// keyboard focus is in it) and VoiceOver's actions mark it Reviewed, Deferred until one of the served days, or Handled
+/// in OOTP, put it back, or change its note; each is undone with ⌘Z. A status never changes how urgent it is drawn.
 public struct DeskItemRow: View {
     let item: Components.Schemas.FoItem
     /// Shows which department raised it (on the desk, where items from every department are merged).
     let showsDepartment: Bool
     let compact: Bool
+    /// The undo manager to register on when the row is drawn in a popover (its own window): the window it was opened
+    /// from (M6); nil for the row's own window's.
+    let handedUndoManager: UndoManager?
+    @Environment(AppModel.self) private var model
+    @Environment(\.undoManager) private var windowUndoManager
+    @State private var editingNote = false
 
-    public init(_ item: Components.Schemas.FoItem, showsDepartment: Bool = true, compact: Bool = false) {
+    public init(_ item: Components.Schemas.FoItem, showsDepartment: Bool = true, compact: Bool = false, undoManager: UndoManager? = nil) {
         self.item = item
         self.showsDepartment = showsDepartment
         self.compact = compact
+        self.handedUndoManager = undoManager
     }
 
+    private var undoManager: UndoManager? { handedUndoManager ?? windowUndoManager }
+
     public var body: some View {
+        let choices = model.frontOffice.summary?.desk.deferChoices ?? []
         DeskRow(item, showsDepartment: showsDepartment, compact: compact) {
-            if let evidence = item.evidence {
-                TrailButton(evidence: evidence, compact: compact)
+            HStack(spacing: 6) {
+                if model.frontOffice.deskBusy.contains(item.key) {
+                    ProgressView().controlSize(.small).accessibilityLabel(Text("Saving"))
+                }
+                if let evidence = item.evidence {
+                    TrailButton(evidence: evidence, compact: compact)
+                }
             }
         }
+        .contentShape(.rect)
+        .contextMenu {
+            DeskItemMenu(status: item.attention.status, deferChoices: choices, perform: perform, editNote: { editingNote = true })
+        }
+        .popover(isPresented: $editingNote, arrowEdge: .trailing) {
+            // The popover is a window of its own: the note is undone in the row's window (M6)
+            DeskNoteEditor(item: item, undoManager: undoManager) { editingNote = false }
+        }
+        .focusedValue(\.deskItem, FocusedDeskItem(
+            key: item.key, status: item.attention.status, deferChoices: choices, perform: perform, editNote: { editingNote = true }
+        ))
+        .accessibilityAction(named: Text("Mark Reviewed")) { perform(.reviewed) }
+        .accessibilityAction(named: Text("Mark Handled in OOTP")) { perform(.handled) }
+        .accessibilityActions {
+            if let first = choices.first {
+                Button { perform(.deferred(until: first.until)) } label: { Text(verbatim: first.text.display) }
+            }
+            if item.attention.status.value1 != .open {
+                Button("Put Back on Desk") { perform(.open) }
+            }
+            Button("Note…") { editingNote = true }
+        }
+    }
+
+    private func perform(_ action: DeskAction) {
+        model.perform(action, on: item, undoManager: undoManager)
     }
 }
 
@@ -233,7 +277,28 @@ public struct DepartmentReportView: View {
                 ProgressView { Text("Loading") }.frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .task(id: model.storeKey) { await model.loadReport(department) }
+        // The statuses of its items change without a new key (the GM's own change, the desk-changed event)
+        .task(id: ReportTaskKey(key: model.storeKey, attention: store.attentionRevision)) { await model.loadReport(department) }
+    }
+}
+
+/// What a report view reloads on: the store key, and the statuses' revision.
+struct ReportTaskKey: Hashable {
+    let key: AppModel.StoreKey?
+    let attention: Int
+}
+
+/// The symbol for a served kind of change (new, resolved, moved, results), shared by the chips and the reports; a kind
+/// this build has not heard of gets a plain one.
+nonisolated public enum ChangeKind {
+    public static func symbol(_ kind: String) -> String {
+        switch kind {
+        case "new": "plus.circle"
+        case "resolved": "checkmark.circle"
+        case "moved": "arrow.up.arrow.down.circle"
+        case "results": "calendar"
+        default: "circle"
+        }
     }
 }
 
@@ -294,14 +359,33 @@ public struct DepartmentReportContent: View {
             }
             ItemSection(section: report.toDecide, showsDepartment: report.department.rawValue == "frontOffice")
             ItemSection(section: report.watching, showsDepartment: report.department.rawValue == "frontOffice")
-            if let changes = report.changes, !changes.isEmpty {
+            // What changed since the last export, drawn as the Morning Report's chips draw their items: each served line
+            // under its kind's symbol; with nothing to compare, or nothing changed, the served sentence
+            if (report.changes?.isEmpty == false) || report.changesNote != nil {
                 VStack(alignment: .leading, spacing: 8) {
                     MagazineSection(title: Text("What changed"))
-                    RowGroup {
-                        ForEach(Array(changes.enumerated()), id: \.offset) { index, change in
-                            ClaimLine(change.line).padding(.vertical, 8)
-                            if index < changes.count - 1 { Divider() }
+                    if let note = report.changesNote {
+                        Text(verbatim: note.display).foregroundStyle(.readableSecondary).help(detail: note.hint)
+                            .accessibilityIdentifier("report.changesNote")
+                    }
+                    if let changes = report.changes, !changes.isEmpty {
+                        RowGroup {
+                            ForEach(Array(changes.enumerated()), id: \.offset) { index, change in
+                                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                    // The kind in the served word beside its symbol (M8): never a symbol alone, and
+                                    // the word is what VoiceOver reads
+                                    Image(systemName: ChangeKind.symbol(change.kind.value1?.rawValue ?? change.kind.value2 ?? ""))
+                                        .foregroundStyle(.readableSecondary)
+                                        .accessibilityHidden(true)
+                                    Text(verbatim: change.word).font(.callout.weight(.semibold)).foregroundStyle(.readableSecondary)
+                                        .frame(minWidth: 64, alignment: .leading)
+                                    ClaimLine(change.line)
+                                }
+                                .padding(.vertical, 8)
+                                if index < changes.count - 1 { Divider() }
+                            }
                         }
+                        .accessibilityIdentifier("report.changes")
                     }
                 }
             }

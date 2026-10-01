@@ -107,8 +107,13 @@ material implementation state changes.
   own words, trades, injuries, streaks, awards and standings movement, a stated order; league news named as a gap,
   since the export files it with the GM's own mail); a club report for any club
   under our scouting (`/api/v2/club/:teamId`); search (`/api/v2/search`); the club question kept across a relaunch
-  (`clubOwed`); and the events `desk-changed`, `following-changed` and `changes-ready`. The Mac app draws them at N7,
-  Stage B. Not built: the horizon board (N12).
+  (`clubOwed`); and the events `desk-changed`, `following-changed` and `changes-ready`. The Mac app draws them since N7,
+  Stage B (2026-09-29): the "since the last export" chips, the desk's statuses from context menus, the Desk menu and
+  VoiceOver with ⌘Z through the server's undo request, the set-aside items, around the league and League Office ▸ Wire
+  and Club Reports, any club's report in its own window, the sidebar's Following (drag to follow, the rivals suggested),
+  search in the ⌘K palette and the toolbar, the served notification and Dock badge (switchable in Settings), and the club
+  owed held across a relaunch; the server added the desk's `deferChoices` and `openCount` and a player's club on his
+  search and Following target. Not built: the horizon board (N12).
 - Pennant for Mac, the app skeleton (SwiftUI rebuild N3, D-055): `macos/Pennant.xcodeproj` and its packages. The app
   carries the server and starts it as its sidecar (after a one-time backup of the data folder), and has the window shell:
   the sidebar from the department registry with the served club card, the toolbar, the inspector, the Go, View and Club
@@ -1072,6 +1077,8 @@ resolution across all organization-specific features is future work.
   real-life database, at no earlier a date, continues the folder's history; the Electron-era certainty rule rests on
   file times (a restored `config.json`, coarse file-system times).
 
+- Pennant for Mac, N7 Stage B left for later: a notification's click opens nothing in particular; swipe actions only
+  in the set-aside list; the toolbar search field's suggestions have no UI test (the palette's path has one).
 - Pennant for Mac, N6 Stage B2 left for later: the XCUITests' accessibility audit has been answered from the runner's
   first report (fixes in the app, evidenced set-asides in the test) but not yet re-run on the runner; the launch budget
   (1 s) is met at the median of a Debug build, not by the first launch after a build (1.39 s); a Release build cannot yet

@@ -1,35 +1,38 @@
 {
   "key": "farm:position_single_cover:organization:critical",
   "done": {
-    "display": "Marked reviewed"
+    "display": "Note saved"
   },
   "attention": {
-    "note": "Talked it over with the manager",
+    "note": "Ask again after the break",
     "since": "2040-07-01T12:00:00.000Z",
-    "until": null,
-    "deferralEnded": false,
+    "until": "2040-1-1",
+    "deferralEnded": true,
     "stillShown": null,
-    "status": "reviewed",
+    "status": "deferred",
     "line": {
-      "display": "Reviewed",
-      "hint": "Marked Jul 1, 2040, 12:00 PM"
+      "display": "Deferral ended January 1, 2040",
+      "tone": "caution",
+      "hint": "Back on your desk: the league has reached the day you chose"
     }
   },
   "previous": {
-    "status": "open",
-    "line": {
-      "display": "Open"
-    },
-    "until": null,
-    "deferralEnded": false,
     "note": null,
+    "since": "2040-07-01T12:00:00.000Z",
+    "until": "2040-1-1",
+    "deferralEnded": true,
     "stillShown": null,
-    "since": null
+    "status": "deferred",
+    "line": {
+      "display": "Deferral ended January 1, 2040",
+      "tone": "caution",
+      "hint": "Back on your desk: the league has reached the day you chose"
+    }
   },
   "undo": {
     "key": "farm:position_single_cover:organization:critical",
-    "status": "open",
-    "until": null,
+    "status": "deferred",
+    "until": "2040-1-1",
     "note": "",
     "restore": true
   },
@@ -47,6 +50,110 @@
         "hint": "Urgent first, then the nearest deadline; five from each department"
       },
       "items": [
+        {
+          "key": "farm:position_single_cover:organization:critical",
+          "department": "farm",
+          "raisedBy": {
+            "display": "Raised by the minor league staff"
+          },
+          "severity": "critical",
+          "neutralSeverity": "critical",
+          "urgency": {
+            "text": "Urgent",
+            "tone": "bad",
+            "basis": {
+              "because": [
+                {
+                  "label": "Farm & Development said",
+                  "value": "Urgent"
+                },
+                {
+                  "label": "With no philosophy and no season",
+                  "value": "Urgent"
+                },
+                {
+                  "label": "On the desk",
+                  "value": "Urgent"
+                }
+              ],
+              "source": {
+                "department": "farm",
+                "specialist": "The desk",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [],
+              "lean": null,
+              "certainty": "policy",
+              "called": "A line chosen and stated",
+              "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
+            },
+            "links": []
+          },
+          "headline": {
+            "text": "The major-league club is thin at 2B, C, RF and SS, with little in the upper minors to step in.",
+            "tone": "bad",
+            "basis": {
+              "because": [
+                {
+                  "label": "2B",
+                  "value": "The major-league club is thin at 2B, and no one in the upper minors can step in."
+                },
+                {
+                  "label": "C",
+                  "value": "The major-league club is thin at C, and no one in the upper minors can step in."
+                },
+                {
+                  "label": "RF",
+                  "value": "The major-league club is thin at RF, and no one in the upper minors can step in."
+                },
+                {
+                  "label": "SS",
+                  "value": "The major-league club is thin at SS, and no one in the upper minors can step in."
+                }
+              ],
+              "source": {
+                "department": "farm",
+                "specialist": "Minor League Operations",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [],
+              "lean": null,
+              "certainty": "provisional",
+              "called": "A starting number, not yet fitted on this save",
+              "stamp": "The farm's stated lines, 10 of 30 still starting values. The same kind of finding about the same club or the organization, at the same urgency, is one row listing its positions"
+            },
+            "links": [
+              {
+                "kind": "view",
+                "department": "farm",
+                "view": "organization"
+              }
+            ],
+            "hint": "4 findings, one row: each is in the breakdown"
+          },
+          "detail": null,
+          "due": null,
+          "dueInDays": null,
+          "evidence": null,
+          "count": 4,
+          "attention": {
+            "note": "Ask again after the break",
+            "since": "2040-07-01T12:00:00.000Z",
+            "until": "2040-1-1",
+            "deferralEnded": true,
+            "stillShown": null,
+            "status": "deferred",
+            "line": {
+              "display": "Deferral ended January 1, 2040",
+              "tone": "caution",
+              "hint": "Back on your desk: the league has reached the day you chose"
+            }
+          }
+        },
         {
           "key": "majorLeague:need:mlb:role_below_standard:catcher",
           "department": "majorLeague",
@@ -252,121 +359,8 @@
       "more": [],
       "empty": null,
       "incomplete": null,
-      "setAside": {
-        "line": {
-          "display": "1 reviewed",
-          "hint": "Set aside from your desk; still in each department's report"
-        },
-        "reviewed": 1,
-        "deferred": 0,
-        "handled": 0,
-        "items": [
-          {
-            "key": "farm:position_single_cover:organization:critical",
-            "department": "farm",
-            "raisedBy": {
-              "display": "Raised by the minor league staff"
-            },
-            "severity": "critical",
-            "neutralSeverity": "critical",
-            "urgency": {
-              "text": "Urgent",
-              "tone": "bad",
-              "basis": {
-                "because": [
-                  {
-                    "label": "Farm & Development said",
-                    "value": "Urgent"
-                  },
-                  {
-                    "label": "With no philosophy and no season",
-                    "value": "Urgent"
-                  },
-                  {
-                    "label": "On the desk",
-                    "value": "Urgent"
-                  }
-                ],
-                "source": {
-                  "department": "farm",
-                  "specialist": "The desk",
-                  "asOf": null,
-                  "gameDate": "2040-05-05"
-                },
-                "unknown": [],
-                "wouldChange": [],
-                "lean": null,
-                "certainty": "policy",
-                "called": "A line chosen and stated",
-                "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
-              },
-              "links": []
-            },
-            "headline": {
-              "text": "The major-league club is thin at 2B, C, RF and SS, with little in the upper minors to step in.",
-              "tone": "bad",
-              "basis": {
-                "because": [
-                  {
-                    "label": "2B",
-                    "value": "The major-league club is thin at 2B, and no one in the upper minors can step in."
-                  },
-                  {
-                    "label": "C",
-                    "value": "The major-league club is thin at C, and no one in the upper minors can step in."
-                  },
-                  {
-                    "label": "RF",
-                    "value": "The major-league club is thin at RF, and no one in the upper minors can step in."
-                  },
-                  {
-                    "label": "SS",
-                    "value": "The major-league club is thin at SS, and no one in the upper minors can step in."
-                  }
-                ],
-                "source": {
-                  "department": "farm",
-                  "specialist": "Minor League Operations",
-                  "asOf": null,
-                  "gameDate": "2040-05-05"
-                },
-                "unknown": [],
-                "wouldChange": [],
-                "lean": null,
-                "certainty": "provisional",
-                "called": "A starting number, not yet fitted on this save",
-                "stamp": "The farm's stated lines, 10 of 30 still starting values. The same kind of finding about the same club or the organization, at the same urgency, is one row listing its positions"
-              },
-              "links": [
-                {
-                  "kind": "view",
-                  "department": "farm",
-                  "view": "organization"
-                }
-              ],
-              "hint": "4 findings, one row: each is in the breakdown"
-            },
-            "detail": null,
-            "due": null,
-            "dueInDays": null,
-            "evidence": null,
-            "count": 4,
-            "attention": {
-              "note": "Talked it over with the manager",
-              "since": "2040-07-01T12:00:00.000Z",
-              "until": null,
-              "deferralEnded": false,
-              "stillShown": null,
-              "status": "reviewed",
-              "line": {
-                "display": "Reviewed",
-                "hint": "Marked Jul 1, 2040, 12:00 PM"
-              }
-            }
-          }
-        ]
-      },
-      "openCount": 2,
+      "setAside": null,
+      "openCount": 3,
       "deferChoices": [
         {
           "until": "2040-5-7",

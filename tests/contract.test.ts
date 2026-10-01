@@ -18,7 +18,7 @@ import { startJob } from '../server/jobs.js';
 import { themePacksFolder } from '../server/themePackStore.js';
 import { historyDb, SNAPSHOT_DATA_COLUMNS, takeSnapshot } from '../server/history.js';
 import { currentHistoryKey, forgetHistoryKey } from '../server/historyIdentity.js';
-import { forgetMemoryCaches, recordReportSnapshot, recordStandingsSnapshot } from '../server/frontOfficeMemory.js';
+import { forgetMemoryCaches, recordReportSnapshot, recordStandingsSnapshot, setDeskRecord } from '../server/frontOfficeMemory.js';
 import { registeredRoutes, type RegisteredRoute } from './apiRoutes';
 import {
   BANNED_JARGON, BANNED_VERDICTS, FOLDER_PATHS, JARGON_EXCEPTIONS, bannedIn, bannedInPayload, exceptionsUsed, shownStrings,
@@ -515,6 +515,11 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     check('setDeskStatus', 'deferred-to-a-day-gone', await call('PUT', `/api/v2/desk/${save.org}`, { key, status: 'deferred', until: '2000-1-1' }), 400);
     check('setDeskStatus', 'no-status', await call('PUT', `/api/v2/desk/${save.org}`, { key }), 400);
     check('setDeskStatus', 'not-in-this-export', await call('PUT', `/api/v2/desk/${save.org}`, { key: 'majorLeague:nothing:here', status: 'reviewed' }), 404);
+    // An item whose deferral has ended (H1): a change on it serves the way back with the day passed, and a note keeps it
+    await setDeskRecord(save.org, key!, { status: 'deferred', until: '2040-1-1' }, null);
+    check('setDeskStatus', 'note-on-a-deferral-ended', await call('PUT', `/api/v2/desk/${save.org}`, { key, status: 'deferred', note: 'Ask again after the break' }), 200);
+    check('setDeskStatus', 'on-a-deferral-ended', await call('PUT', `/api/v2/desk/${save.org}`, { key, status: 'reviewed' }), 200);
+    await call('PUT', `/api/v2/desk/${save.org}`, { key, status: 'open', note: '' });
 
     const club = save.clubs[1];
     check('follow', 'club', await call('PUT', '/api/v2/following', { kind: 'club', id: club, note: 'Division rival' }), 200);

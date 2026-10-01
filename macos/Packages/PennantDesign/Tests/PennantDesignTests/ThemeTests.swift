@@ -108,6 +108,49 @@ struct ThemeTests {
         }
     }
 
+    @Test("Pennant's fixed fills read at 4.5:1 or better under their words, 7:1 with Increase Contrast, with any system accent (L5)")
+    func readableFills() throws {
+        func luminance(_ color: NSColor) -> Double {
+            let c = color.usingColorSpace(.sRGB)!
+            func channel(_ v: CGFloat) -> Double { let v = Double(v); return v <= 0.03928 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4) }
+            return 0.2126 * channel(c.redComponent) + 0.7152 * channel(c.greenComponent) + 0.0722 * channel(c.blueComponent)
+        }
+        func contrast(_ text: NSColor, on background: NSColor, in name: NSAppearance.Name) -> Double {
+            var ratio = 0.0
+            NSAppearance(named: name)!.performAsCurrentDrawingAppearance {
+                let fg = text.usingColorSpace(.sRGB)!
+                let bg = background.usingColorSpace(.sRGB)!
+                let a = fg.alphaComponent
+                let drawn = NSColor(srgbRed: fg.redComponent * a + bg.redComponent * (1 - a),
+                                    green: fg.greenComponent * a + bg.greenComponent * (1 - a),
+                                    blue: fg.blueComponent * a + bg.blueComponent * (1 - a), alpha: 1)
+                let (l1, l2) = (luminance(drawn), luminance(bg))
+                ratio = (max(l1, l2) + 0.05) / (min(l1, l2) + 0.05)
+            }
+            return ratio
+        }
+        let appearances: [(NSAppearance.Name, Double)] = [
+            (.aqua, 4.5), (.darkAqua, 4.5), (.accessibilityHighContrastAqua, 7), (.accessibilityHighContrastDarkAqua, 7),
+        ]
+        for (name, needed) in appearances {
+            // Text on the page and on a chip: the label colour and the readable secondary grey
+            for fill in [NSColor.readablePage, .readableChipFill] {
+                for text in [NSColor.labelColor, .readableSecondaryLabel] {
+                    let ratio = contrast(text, on: fill, in: name)
+                    #expect(ratio >= needed, "\(name.rawValue): \(ratio)")
+                }
+            }
+            // The heading chip's words on its fill, which no system accent touches
+            let heading = contrast(.readableHeadingText, on: .readableHeadingFill, in: name)
+            #expect(heading >= needed, "heading \(name.rawValue): \(heading)")
+            // The system's white words on an action's tint
+            let action = contrast(.white, on: .readableActionTint, in: name)
+            #expect(action >= needed, "action \(name.rawValue): \(action)")
+        }
+        // The neutral heading chip no longer draws on the system accent
+        #expect(Theme.Palette.neutral.isNeutral)
+    }
+
     @Test("an appearance whose served text does not read is drawn neutral, never half-themed; the others keep the club's colours")
     func unreadableAppearance() throws {
         var pack = try Self.clubColors()

@@ -25,7 +25,7 @@ import { SEVERITY_WORDS, card, desk as deskOf, openAttention } from './desk.js';
 
 export { openAttention };
 import type {
-  ChangeChip, ChangeItem, DepartmentCard, DepartmentReport, Desk, DeskAttention, DeskSetAside, DeskStatus, FoItem, ReportChange, SinceLastExport,
+  ChangeChip, ChangeItem, DeferChoice, DepartmentCard, DepartmentReport, Desk, DeskAttention, DeskSetAside, DeskStatus, FoItem, ReportChange, SinceLastExport,
 } from './types.js';
 
 // ── an item's status ────────────────────────────────────────────────────────
@@ -119,15 +119,40 @@ function setAsideLine(reviewed: number, deferred: number, handled: number): stri
   ].filter(Boolean).join(' · ');
 }
 
+/** The spans the Defer menu offers, each a stated policy line in calendar days after the league's day (N7, Stage B). */
+export const DEFER_SPANS: ReadonlyArray<{ days: number; words: string }> = [
+  { days: 1, words: 'Tomorrow' },
+  { days: 7, words: 'A week' },
+  { days: 14, words: 'Two weeks' },
+  { days: 30, words: 'A month' },
+];
+
+/**
+ * The days an item can be deferred to from the league's day, each written as OOTP writes a date (unpadded) with its
+ * words; none when the league's day isn't known (a date is never guessed, D-018).
+ */
+export function deferChoices(today: GameDate | null): DeferChoice[] {
+  const iso = isoDay(today);
+  const start = iso === null ? NaN : Date.parse(`${iso}T00:00:00Z`);
+  if (!Number.isFinite(start)) return [];
+  return DEFER_SPANS.map(({ days, words }) => {
+    const at = new Date(start + days * 86_400_000);
+    const until = `${at.getUTCFullYear()}-${at.getUTCMonth() + 1}-${at.getUTCDate()}`;
+    const day = gameDateDisplay(until) ?? until;
+    return { until, text: cell(`${words} · ${day}`, { hint: `Back on your desk when the league reaches ${day}` }) };
+  });
+}
+
 /**
  * The desk as the GM left it: the lead list holds what is open (and deferrals whose day has come), in the desk's stated
  * order and share, from each department's items to decide; what he set aside is counted and listed beside it. The
- * departments' own reports, counts and order are unchanged.
+ * departments' own reports, counts and order are unchanged. `today` is the league's day, for the days a deferral can
+ * run to.
  */
-export function attendDesk(reports: readonly DepartmentReport[]): Desk {
+export function attendDesk(reports: readonly DepartmentReport[], today: GameDate | null = null): Desk {
   const lead = reports.map((r) => ({ ...r, toDecide: { ...r.toDecide, items: r.toDecide.items.filter((it) => onLeadList(it.attention)) } }));
   const aside = reports.flatMap((r) => r.toDecide.items.filter((it) => !onLeadList(it.attention)));
-  const d = deskOf(lead);
+  const d = { ...deskOf(lead), deferChoices: deferChoices(today) };
   if (!aside.length) return { ...d, setAside: null };
   const count = (s: DeskStatus) => aside.filter((it) => it.attention.status === s).length;
   const setAside: DeskSetAside = {
@@ -315,6 +340,9 @@ function chip(kind: ChangeChip['kind'], items: ChangeItem[], text: string, hint:
   return { kind, count: items.length, text, hint, items };
 }
 
+/** A change's kind in a word, drawn beside its line so the kind is never a symbol alone (M8, N7 review). */
+const CHANGE_WORDS: Record<ReportChange['kind'], string> = { new: 'New', moved: 'Moved', resolved: 'Resolved' };
+
 /**
  * What changed since the last export: the four chips, and each department's own changes (null where its department
  * was not read at one of the two exports, with why).
@@ -343,18 +371,18 @@ export function sinceLastExport(input: ChangesInput): {
     if (!was) {
       const line = newLine(it, name, input);
       fresh.push({ key, department: it.department, line, open: target({ kind: 'view', department: it.department, view: 'report' }) });
-      add(it.department, { kind: 'new', line });
+      add(it.department, { kind: 'new', word: CHANGE_WORDS.new, line });
     } else if (was.severity !== it.neutralSeverity) {
       const line = movedLine(it, was, name, input);
       moved.push({ key, department: it.department, line, open: target({ kind: 'view', department: it.department, view: 'report' }) });
-      add(it.department, { kind: 'moved', line });
+      add(it.department, { kind: 'moved', word: CHANGE_WORDS.moved, line });
     }
   }
   for (const [key, was] of previous.items) {
     if (current.has(key) || !readBoth(was.department)) continue;
     const line = resolvedLine(key, was, names.get(was.department) ?? was.department, input);
     resolved.push({ key, department: was.department, line, open: target({ kind: 'view', department: was.department, view: 'report' }) });
-    add(was.department, { kind: 'resolved', line });
+    add(was.department, { kind: 'resolved', word: CHANGE_WORDS.resolved, line });
   }
 
   const since = gameDateDisplay(previous.gameDate);

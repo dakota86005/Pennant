@@ -97,6 +97,21 @@ describe('another club\'s report (case 19)', () => {
     const ours = await clubReportNow(String(save.org));
     expect(ours.ours).toBe(true);
     expect(ours.headToHead).toBeNull();
+    expect(ours.headToHeadNote).toBeNull();
+  });
+
+  it('says why there is no record against us when there is none, never nothing (L7)', () => {
+    const status = getDataStatus({ importedAt: importedAt.value });
+    const build = { orgId: them, club: 'Them', importStamp: importedAt.value, reportStamp: 'r1', gameDate: null, subject: 'theirs' as const };
+    const material = readClubReport(them, save.org, status);
+    expect(clubReportWords(build, material, 'Us', null).headToHeadNote).toBeNull();
+    // Our club not known yet
+    const noClub = clubReportWords(build, readClubReport(them, null, status), null, null);
+    expect(noClub.headToHead).toBeNull();
+    expect(noClub.headToHeadNote).toMatchObject({ display: 'Their record against your club shows once your club is chosen', tone: 'unknown' });
+    // The export without its games: the reason in the hint
+    const noGames = clubReportWords(build, { ...material, headToHead: null, nextSeries: null, scheduleWhy: 'Not in the export: games.runs0' }, 'Us', null);
+    expect(noGames.headToHeadNote).toMatchObject({ display: "Their record against the Us isn't known", tone: 'unknown', hint: 'Not in the export: games.runs0' });
   });
 
   it('has our division\'s reports built ahead once per import, after the refits\' hold, never again for a rebuild of the same import (M5)', async () => {

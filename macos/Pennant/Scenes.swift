@@ -2,6 +2,7 @@ import FeatureCore
 import PennantAPI
 import PennantDesign
 import PennantKit
+import FrontOffice
 import Setup
 import Shell
 import SwiftUI
@@ -9,6 +10,7 @@ import SwiftUI
 /// A main window: its state, kept across relaunches per window with `@SceneStorage` (the route and its history, the
 /// inspector, the sidebar and its open departments; SWIFTUI_REBUILD.md section 3.1).
 struct MainWindowScene: View {
+    @Environment(\.openWindow) private var openWindow
     @SceneStorage("pennant.history") private var historyData = Data()
     @SceneStorage("pennant.inspector") private var inspectorPresented = false
     @SceneStorage("pennant.sidebarVisible") private var sidebarVisible = true
@@ -48,6 +50,10 @@ struct MainWindowScene: View {
                 restored.paletteShown = true
                 restored.paletteQuery = query
             }
+            // …or with a club's window open beside it (`-PennantDebugOpenClub <team id>`), for its captures
+            if let club = defaults.string(forKey: "PennantDebugOpenClub").flatMap(Int.init) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { openWindow(value: ClubRef(id: club)) }
+            }
             #endif
             window = restored
         }
@@ -84,6 +90,9 @@ struct SetupScene: View {
             let setup = ensureSetup()
             if setup.clubQuestion != nil {
                 await setup.resumeClubQuestion(status: model.status)
+            } else if let owed = model.clubOwed {
+                // The club the server says is still owed (across a relaunch): the question, in its words
+                await setup.askOwedClub(owed)
             } else {
                 setup.restart()
                 await setup.load()
@@ -92,7 +101,12 @@ struct SetupScene: View {
         // The main window's "Choose Your Club…": back to the club question
         .task(id: routing.clubRequest) {
             guard routing.takeClubRequest() else { return }
-            await ensureSetup().resumeClubQuestion(status: model.status)
+            let setup = ensureSetup()
+            if setup.clubQuestion != nil {
+                await setup.resumeClubQuestion(status: model.status)
+            } else if let owed = model.clubOwed {
+                await setup.askOwedClub(owed)
+            }
         }
         // A switch the GM clicked in the main window: this save's import at once
         .task(id: routing.switchRequest) {
@@ -131,6 +145,27 @@ struct BasisPanelScene: View {
                 .frame(width: 380, height: 520)
         } else {
             Text("Nothing pinned").padding()
+        }
+    }
+}
+
+/// A club's report in its own window (SWIFTUI_REBUILD.md section 3.1, N7): any club, ours included, opened from its name
+/// anywhere (a double-click, Return, "Open in New Window"), the wire, search or Following; restored at relaunch, since its
+/// value is the club's id. A basis detaches into its own panel; there is no inspector to pin to here.
+struct ClubWindowScene: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.openWindow) private var openWindow
+    let club: ClubRef?
+
+    var body: some View {
+        if let club {
+            ClubReportView(teamId: club.id)
+                .environment(\.claimActions, ClaimActions(
+                    detach: { openWindow(value: $0) },
+                    departmentName: { [catalog = model.catalog] id in AppRegistry.shared.name(of: id, catalog: catalog) }
+                ))
+        } else {
+            Text("Nothing to show").padding()
         }
     }
 }

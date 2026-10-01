@@ -144,7 +144,7 @@ function compose(built: FrontOfficeBuilt): Composed {
   }
   const summary: FrontOfficeSummary = {
     ...built.summary,
-    desk: attendDesk(withChanges),
+    desk: attendDesk(withChanges, today),
     departments: attendCards(withChanges),
     changes,
     changesNote,
@@ -194,11 +194,40 @@ export class DeskRefusal extends Error {
 const STATUSES = new Set<DeskStatus>(['open', 'reviewed', 'deferred', 'handled']);
 const MAX_NOTE = 1000;
 
-function doneWords(status: DeskStatus, until: string | null, previous: DeskStatus): string {
+/** The records each change replaced, by save, club and item (the latest last), so an undo puts one back exactly. */
+const MAX_REPLACED = 8;
+const MAX_REPLACED_ITEMS = 64;
+const replaced = new Map<string, Array<memory.DeskRecord | null>>();
+const replacedKey = (orgId: number, itemKey: string) => `${memory.memoryKey()}|${orgId}|${itemKey}`;
+
+function rememberReplaced(orgId: number, itemKey: string, record: memory.DeskRecord | null): void {
+  const k = replacedKey(orgId, itemKey);
+  const list = replaced.get(k) ?? [];
+  replaced.delete(k);
+  replaced.set(k, [...list, record].slice(-MAX_REPLACED));
+  while (replaced.size > MAX_REPLACED_ITEMS) replaced.delete(replaced.keys().next().value!);
+}
+
+/** The latest record a change replaced that the undo request describes (null for "no record"), else undefined. */
+function replacedMatching(orgId: number, itemKey: string, status: DeskStatus, until: string | null, note: string | undefined): memory.DeskRecord | null | undefined {
+  const list = replaced.get(replacedKey(orgId, itemKey)) ?? [];
+  for (let i = list.length - 1; i >= 0; i -= 1) {
+    const r = list[i];
+    const rStatus = r?.status ?? 'open';
+    const rUntil = rStatus === 'deferred' ? r?.until ?? null : null;
+    if (rStatus === status && rUntil === until && (note === undefined || (r?.note ?? '') === note.trim())) return r;
+  }
+  return undefined;
+}
+
+function doneWords(status: DeskStatus, until: string | null, previous: DeskStatus, how: { noteOnly: boolean; ended: boolean }): string {
+  if (how.noteOnly) return 'Note saved';
   switch (status) {
     case 'reviewed': return 'Marked reviewed';
     case 'handled': return 'Marked handled in OOTP';
-    case 'deferred': return `Deferred until ${gameDateDisplay(until) ?? until ?? 'the day you chose'}`;
+    case 'deferred': return how.ended
+      ? `Deferral ended ${gameDateDisplay(until) ?? until ?? 'on the day you chose'}`
+      : `Deferred until ${gameDateDisplay(until) ?? until ?? 'the day you chose'}`;
     default: return previous !== 'open' ? 'Back on your desk' : 'Note saved';
   }
 }
@@ -206,6 +235,11 @@ function doneWords(status: DeskStatus, until: string | null, previous: DeskStatu
 /**
  * Sets an item's status (`PUT /api/v2/desk/:org`): the item must be in this export's reports; a deferral needs a game
  * date after the league's day. Answers with the status it replaced and the request that puts it back (one-step undo).
+ *
+ * Two forms skip the day check (H1, N7 review): a note-only change to a deferred item (`status: 'deferred'` with no
+ * `until`, or the `until` recorded) keeps the recorded day, even one the league has passed; and `restore: true` (every
+ * served `undo` carries it) puts the record back exactly as it was, its day, its note and when it was set, so an undo
+ * works on an item whose deferral has ended or whose day passed between the change and its undo.
  * Records the GM's attention only: nothing is written to OOTP (D-004), and nothing the department said changes.
  *
  * Never builds the Front Office (L5): the item is checked against the build kept for the current inputs, else against
@@ -217,6 +251,7 @@ export async function setDeskStatus(orgId: number, body: unknown): Promise<DeskC
   if (typeof b.key !== 'string' || b.key.trim() === '') throw new DeskRefusal('Say which item to mark.', 400);
   if (typeof b.status !== 'string' || !STATUSES.has(b.status as DeskStatus)) throw new DeskRefusal('Choose open, reviewed, deferred or handled in OOTP.', 400);
   if (b.note !== undefined && (typeof b.note !== 'string' || b.note.length > MAX_NOTE)) throw new DeskRefusal('Keep the note under 1,000 characters.', 400);
+  if (b.restore !== undefined && typeof b.restore !== 'boolean') throw new DeskRefusal('Say whether this puts a change back.', 400);
   if (!memory.snapshotsAllowed()) throw new DeskRefusal('The save you chose isn\'t imported yet, so its desk can\'t be marked.', 400);
   const importStamp = importedAt.value;
   const kept = keptFrontOffice(orgId);
@@ -229,26 +264,44 @@ export async function setDeskStatus(orgId: number, body: unknown): Promise<DeskC
   if (!keys.has(b.key)) throw new DeskRefusal('That item isn\'t in this export\'s reports. It may have been resolved.', 404);
   const today = built ? built.season?.gameDate ?? null : snapshot!.gameDate;
   const status = b.status as DeskStatus;
-  let until: string | null = null;
-  if (status === 'deferred') {
-    const day = typeof b.until === 'string' ? parseGameDate(b.until) : null;
-    if (!day) throw new DeskRefusal('Choose the day to defer it to.', 400);
-    const league = parseGameDate(today);
-    if (league && day <= league) throw new DeskRefusal(`Choose a day after the league's day, ${gameDateDisplay(today) ?? league}.`, 400);
-    until = b.until as string;
-  }
+  const restore = b.restore === true;
+  const recorded = memory.deskRecords(orgId).get(b.key) ?? null;
   const before = records(orgId).get(b.key) ?? null;
-  const { previous } = await memory.setDeskRecord(orgId, b.key, { status, until, note: b.note === undefined ? undefined : b.note.trim() }, importStamp);
+  let until: string | null = null;
+  // A note-only change to a deferred item keeps the day recorded, even one the league has passed
+  const noteOnly = !restore && status === 'deferred' && recorded?.status === 'deferred'
+    && (b.until === undefined || b.until === null || b.until === recorded.until);
+  if (status === 'deferred') {
+    if (noteOnly) until = recorded!.until;
+    else {
+      const day = typeof b.until === 'string' ? parseGameDate(b.until) : null;
+      if (!day) throw new DeskRefusal('Choose the day to defer it to.', 400);
+      const league = parseGameDate(today);
+      // An undo puts back the day it was, whatever the league's day is now
+      if (!restore && league && day <= league) throw new DeskRefusal(`Choose a day after the league's day, ${gameDateDisplay(today) ?? league}.`, 400);
+      until = b.until as string;
+    }
+  }
+  const note = b.note === undefined ? undefined : b.note.trim();
+  const exact = restore ? replacedMatching(orgId, b.key, status, until, note) : undefined;
+  let previous: memory.DeskRecord | null;
+  if (exact !== undefined) {
+    previous = recorded;
+    await memory.restoreDeskRecord(orgId, b.key, exact);
+  } else {
+    ({ previous } = await memory.setDeskRecord(orgId, b.key, { status, until, note }, importStamp));
+  }
+  rememberReplaced(orgId, b.key, previous);
   const c = built ? compose(built) : null;
   const now = attentionOf(records(orgId).get(b.key), today, importStamp);
   const was = attentionOf(before, today, importStamp);
   publish({ type: 'desk-changed', orgId, deskStamp: c?.deskStamp ?? deskStampOf(records(orgId)), key: b.key });
   return {
     key: b.key,
-    done: cell(doneWords(status, until, previous?.status ?? 'open')),
+    done: cell(doneWords(status, until, previous?.status ?? 'open', { noteOnly, ended: now.deferralEnded })),
     attention: now,
     previous: was,
-    undo: { key: b.key, status: previous?.status ?? 'open', until: previous?.until ?? null, note: previous?.note ?? '' },
+    undo: { key: b.key, status: previous?.status ?? 'open', until: previous?.status === 'deferred' ? previous.until : null, note: previous?.note ?? '', restore: true },
     view: built && c ? viewOf(built, c) : null,
   };
 }
@@ -383,6 +436,7 @@ function divisionRivals(org: number): number[] {
 /** For the tests: forget what was composed and announced. */
 export function resetAttention(): void {
   composed.clear();
+  replaced.clear();
   recorded = new Set();
   firstBuilds = new Set();
   warmed = null;

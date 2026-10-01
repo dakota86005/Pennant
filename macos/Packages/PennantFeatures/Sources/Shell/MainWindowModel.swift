@@ -16,8 +16,36 @@ public final class MainWindowModel {
     public var sidebarVisibility: NavigationSplitViewVisibility
     /// The departments open in the sidebar.
     public var expanded: Set<DeptID>
-    /// The search field (a stub until search arrives).
+    /// The toolbar's search field, and the server's answer for what was typed (N7).
     public var searchText = ""
+    public var searchAnswer: (query: String, answer: Components.Schemas.SearchAnswer)?
+    /// Why the search for a query failed (the server's sentence or the kind of failure), and the query.
+    public var searchProblem: (query: String, problem: RequestProblem)?
+    /// The answer for the text in the field now; nil while it is being asked, or with nothing typed.
+    public var currentSearch: Components.Schemas.SearchAnswer? {
+        let query = searchText.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty, let searchAnswer, searchAnswer.query == query else { return nil }
+        return searchAnswer.answer
+    }
+    /// The answer shown: the one for the text now, else the last one while the text now is asked (`searchUpdating`);
+    /// none once the text now failed (L3).
+    public var shownSearch: Components.Schemas.SearchAnswer? {
+        let query = searchText.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty, currentSearchProblem == nil else { return nil }
+        return searchAnswer?.answer
+    }
+    /// The answer shown answers an earlier text while the text now is asked.
+    public var searchUpdating: Bool {
+        let query = searchText.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty, currentSearchProblem == nil, let searchAnswer else { return false }
+        return searchAnswer.query != query
+    }
+    /// Why the search for the text now failed; nil when it didn't (or hasn't answered).
+    public var currentSearchProblem: RequestProblem? {
+        let query = searchText.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty, let searchProblem, searchProblem.query == query else { return nil }
+        return searchProblem.problem
+    }
     /// The ⌘K palette: whether it is up, and what is typed in it.
     public var paletteShown = false
     public var paletteQuery = ""

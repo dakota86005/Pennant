@@ -181,18 +181,29 @@ public struct MetricTile: View {
 }
 
 /// "Since the last export": a leading label filled in the accent, then each served chip as a capsule the GM can open.
-public struct ChipRow: View {
+/// A chip that opens shows its items in a popover (`detail`); one that counts nothing is drawn as its served words. The
+/// counts roll when a new import lands, unless Reduce Motion is on.
+public struct ChipRow<Detail: View>: View {
     let label: Text
+    let labelHint: String?
     let chips: [Chip]
     let open: (Chip) -> Void
+    let detail: ((Chip) -> Detail)?
+    @State private var shown: Chip.ID?
     @Environment(\.theme) private var theme
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EffectiveContrast private var contrast
 
-    public init(label: Text, chips: [Chip], open: @escaping (Chip) -> Void = { _ in }) {
+    /// - Parameters:
+    ///   - labelHint: the label's help tag (the served "since" line's), or nil.
+    ///   - detail: what a chip opens, in a popover beneath it.
+    public init(label: Text, labelHint: String? = nil, chips: [Chip], @ViewBuilder detail: @escaping (Chip) -> Detail) {
         self.label = label
+        self.labelHint = labelHint
         self.chips = chips
-        self.open = open
+        self.open = { _ in }
+        self.detail = detail
     }
 
     public var body: some View {
@@ -201,24 +212,52 @@ public struct ChipRow: View {
             label
                 .font(.callout.weight(.semibold))
                 .padding(.horizontal, 12).padding(.vertical, 6)
-                .foregroundStyle(palette.isNeutral ? Color.white : palette.accentText)
-                .background(palette.isNeutral ? Color.accentColor : palette.accent, in: .capsule)
+                // In the system's colours a fixed, checked pair, never white on the system accent (a yellow accent read
+                // about 1.5:1, L5); a pack's accent and its words are the server's, checked there
+                .foregroundStyle(palette.isNeutral ? Color.readableHeadingText : palette.accentText)
+                .background(palette.isNeutral ? Color.readableHeadingFill : palette.accent, in: .capsule)
+                .servedHelp(labelHint)
+                .accessibilityAddTraits(.isHeader)
             ForEach(chips) { chip in
-                Button { open(chip) } label: {
-                    Label { Text(verbatim: chip.text) } icon: { Image(systemName: chip.symbol) }
-                        .font(.callout.weight(.medium))
-                        .padding(.horizontal, 11).padding(.vertical, 6)
-                        .background(palette.wash(.chip, in: colorScheme), in: .capsule)
-                        .overlay(Capsule().strokeBorder(Color(nsColor: .separatorColor), lineWidth: contrast == .increased ? 1 : 0))
-                        .contentShape(.capsule)
+                let face = Label { Text(verbatim: chip.text).contentTransition(reduceMotion ? .identity : .numericText()) } icon: { Image(systemName: chip.symbol) }
+                    .font(.callout.weight(.medium))
+                    .padding(.horizontal, 11).padding(.vertical, 6)
+                    .background(palette.wash(.chip, in: colorScheme), in: .capsule)
+                    .overlay(Capsule().strokeBorder(Color(nsColor: .separatorColor), lineWidth: contrast == .increased ? 1 : 0))
+                if chip.opens {
+                    Button {
+                        if detail != nil { shown = shown == chip.id ? nil : chip.id } else { open(chip) }
+                    } label: { face.contentShape(.capsule) }
+                    .buttonStyle(.plain)
+                    .help(Text(verbatim: chip.hint))
+                    .accessibilityHint(Text(verbatim: chip.hint))
+                    .accessibilityIdentifier("chip.\(chip.id)")
+                    .popover(isPresented: Binding(get: { shown == chip.id }, set: { if !$0, shown == chip.id { shown = nil } }), arrowEdge: .bottom) {
+                        if let detail { detail(chip) }
+                    }
+                } else {
+                    face
+                        .help(Text(verbatim: chip.hint))
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("chip.\(chip.id)")
                 }
-                .buttonStyle(.plain)
-                .help(Text(verbatim: chip.hint))
             }
             Spacer()
         }
+        .animation(reduceMotion ? nil : .default, value: chips)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("chips")
+    }
+}
+
+extension ChipRow where Detail == EmptyView {
+    /// Chips that call back when opened (the fixtures, the previews).
+    public init(label: Text, chips: [Chip], open: @escaping (Chip) -> Void = { _ in }) {
+        self.label = label
+        self.labelHint = nil
+        self.chips = chips
+        self.open = open
+        self.detail = nil
     }
 }
 
@@ -268,6 +307,7 @@ public struct DeskRow<Trailing: View>: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .help(detail.hint.map { Text(verbatim: $0) } ?? Text(verbatim: detail.display))
                 }
+                DeskAttentionLines(attention: item.attention, compact: compact)
             }
             Spacer(minLength: 8)
             trailing()
@@ -280,6 +320,49 @@ public struct DeskRow<Trailing: View>: View {
     private var line: String {
         [item.urgency.text, item.due?.display, showsDepartment ? item.raisedBy.display : nil]
             .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+}
+
+/// What the GM did with an item, as served, beneath it: its status when it is not open ("Reviewed", "Deferred until May
+/// 20, 2040", "Handled in OOTP", "Deferral ended …"), "The latest export still shows it" where served, and his own note.
+/// The status never changes how urgent the item is drawn: the tile keeps the department's tone.
+public struct DeskAttentionLines: View {
+    let attention: Components.Schemas.DeskAttention
+    let compact: Bool
+
+    public init(attention: Components.Schemas.DeskAttention, compact: Bool = false) {
+        self.attention = attention
+        self.compact = compact
+    }
+
+    public var body: some View {
+        let open = attention.status.value1 == .open
+        if !open || attention.deferralEnded || attention.stillShown != nil || attention.note != nil {
+            VStack(alignment: .leading, spacing: 3) {
+                if !open || attention.deferralEnded {
+                    Pill(attention.line.display, tone: Tone(attention.line.tone))
+                        .help(Text(verbatim: attention.line.hint ?? attention.line.display))
+                        .accessibilityIdentifier("item.status")
+                }
+                if let still = attention.stillShown {
+                    Label { Text(verbatim: still.display).fixedSize(horizontal: false, vertical: true) } icon: { ToneMark(served: still.tone) }
+                        .font(compact ? .caption : .callout)
+                        .help(Text(verbatim: still.hint ?? still.display))
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("item.stillShown")
+                }
+                if let note = attention.note, !note.isEmpty {
+                    Label { Text(verbatim: note).italic().fixedSize(horizontal: false, vertical: true) } icon: {
+                        Image(systemName: "note.text").accessibilityHidden(true)
+                    }
+                    .font(compact ? .caption : .callout)
+                    .foregroundStyle(.readableSecondary)
+                    .accessibilityHint(Text("Your note"))
+                    .accessibilityIdentifier("item.note")
+                }
+            }
+            .padding(.top, 2)
+        }
     }
 }
 
@@ -379,16 +462,19 @@ public struct DepartmentPlaceholderRow: View {
     }
 }
 
-/// One entry on the league wire: the club's abbreviation in a tile, its name (a star when followed), what happened,
-/// and when.
-public struct WireRow: View {
+/// One entry on the league wire: the club's abbreviation in a tile, its name (a star when followed), what happened (a
+/// claim with its basis when served), and when. The caller may wrap the club's name (`name`: its window, its menu, a
+/// drag), since a club's name opens its window anywhere it appears.
+public struct WireRow<Name: View>: View {
     let item: WireItem
+    let name: (Text) -> Name
     @Environment(\.theme) private var theme
     @Environment(\.colorScheme) private var colorScheme
     @EffectiveContrast private var contrast
 
-    public init(_ item: WireItem) {
+    public init(_ item: WireItem, @ViewBuilder name: @escaping (Text) -> Name) {
         self.item = item
+        self.name = name
     }
 
     public var body: some View {
@@ -403,19 +489,34 @@ public struct WireRow: View {
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    Text(verbatim: item.club).font(.body.weight(.semibold))
+                    name(Text(verbatim: item.club).font(.body.weight(.semibold)))
                     if item.followed {
                         Image(systemName: "star.fill").font(.caption2).foregroundStyle(Tone.caution.color)
                             .accessibilityLabel(Text("Followed"))
                     }
                 }
-                Text(verbatim: item.text).font(.callout).foregroundStyle(.readableSecondary).fixedSize(horizontal: false, vertical: true)
+                if let claim = item.claim {
+                    ClaimText(claim, edge: .trailing) {
+                        Text(verbatim: item.text).font(.callout).foregroundStyle(.readableSecondary)
+                            .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                    }
+                } else {
+                    Text(verbatim: item.text).font(.callout).foregroundStyle(.readableSecondary).fixedSize(horizontal: false, vertical: true)
+                }
             }
             Spacer()
-            Text(verbatim: item.when).font(.caption).foregroundStyle(.readableSecondary)
+            Text(verbatim: item.when).font(.caption.weight(.medium)).foregroundStyle(.readableSecondary)
         }
         .padding(.vertical, 7)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: item.claim == nil ? .combine : .contain)
+        .accessibilityIdentifier("wire.\(item.id)")
+    }
+}
+
+extension WireRow where Name == Text {
+    /// The club's name as plain text (the fixtures, the previews).
+    public init(_ item: WireItem) {
+        self.init(item) { $0 }
     }
 }
 
@@ -472,5 +573,13 @@ public struct StaffColumn: View {
         }
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
+    }
+}
+
+extension View {
+    /// A served help tag when there is one; nothing otherwise (never an empty tag).
+    @ViewBuilder
+    public func servedHelp(_ text: String?) -> some View {
+        if let text, !text.isEmpty { help(Text(verbatim: text)) } else { self }
     }
 }

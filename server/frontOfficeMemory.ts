@@ -480,6 +480,35 @@ export async function setDeskRecord(orgId: number, itemKey: string, write: DeskW
 }
 
 /**
+ * Puts an item's record back exactly as it was before a change (an undo, `DeskUpdate.restore`): its status, the day a
+ * deferral ran to (even one the league has passed), its note, when it was set and under which import. `null` puts the
+ * item back as it was with no record (open, no note). Nothing else is checked here: the caller checked the item.
+ */
+export async function restoreDeskRecord(orgId: number, itemKey: string, record: DeskRecord | null): Promise<DeskRecord | null> {
+  await ensureMemoryBackup();
+  const saveKey = memoryKey();
+  historyDb.transaction(() => {
+    const row = historyDb.prepare(`SELECT id FROM desk_items WHERE save_key = ? AND org_id = ? AND item_key = ? AND resolved_at IS NULL ORDER BY id DESC LIMIT 1`)
+      .get(saveKey, orgId, itemKey) as { id: number } | undefined;
+    if (!record) {
+      if (row) historyDb.prepare(`DELETE FROM desk_items WHERE id = ?`).run(row.id);
+      return;
+    }
+    const until = record.status === 'deferred' ? record.until : null;
+    if (row) {
+      historyDb.prepare(`UPDATE desk_items SET status = ?, defer_until = ?, note = ?, updated_at = ?, set_import = ? WHERE id = ?`)
+        .run(record.status, until, record.note, record.updatedAt, record.setImport, row.id);
+    } else {
+      historyDb.prepare(
+        `INSERT INTO desk_items (save_key, org_id, item_key, status, defer_until, note, created_at, updated_at, set_import) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(saveKey, orgId, itemKey, record.status, until, record.note, record.createdAt, record.updatedAt, record.setImport);
+    }
+  }).immediate();
+  changed();
+  return deskRecords(orgId, saveKey).get(itemKey) ?? null;
+}
+
+/**
  * The items an import no longer produces are resolved: a record in force whose item the department was read for and did
  * not raise stops applying, so an item that comes back later is a new item with no status (D-058). A department that
  * could not be read resolves nothing (its absence is not evidence, D-018), and a record set during this very import is

@@ -35,6 +35,11 @@ export interface WirePlayer {
   playerId: Integer;
   name: string;
   followed: boolean;
+  /**
+   * Where his name opens: a player target with his organization's club (`teamId`, the nearest view a client opens for
+   * him until player windows); null when the export doesn't say which organization he is with.
+   */
+  open: Target | null;
 }
 
 /** One thing that happened around the league. */
@@ -135,8 +140,10 @@ export interface ClubReport {
   rosterMap: RosterMap | null;
   /** Whose eyes the ratings are and how much of the club our scouts see, with what they can't see as its basis. */
   scouting: Claim;
-  /** Their record against us this season; null for our own club. */
+  /** Their record against us this season; null for our own club, or when it can't be read (`headToHeadNote` says why). */
   headToHead: Claim | null;
+  /** Why there is no record against us (our club not known yet, the export without its games); null when served or ours. */
+  headToHeadNote: Cell | null;
   /** Their next series with us; null for our own club, or when none is scheduled (`nextSeriesNote` says so). */
   nextSeries: Claim | null;
   nextSeriesNote: Cell | null;

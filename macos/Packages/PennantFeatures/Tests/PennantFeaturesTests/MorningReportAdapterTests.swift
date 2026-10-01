@@ -271,6 +271,9 @@ struct MorningReportAdapterTests {
         summary.lede = nil
         summary.clubProfile = nil
         summary.rosterMap = nil
+        // N7's parts: nothing to compare with, no wire built
+        summary.changes = nil
+        summary.wire = nil
         let empty = MorningReportDesign(served: summary)
         #expect(empty.kicker == nil && empty.scoreboard == nil && empty.mastheadMissing.isEmpty && empty.lede == nil)
         #expect(empty.dimensions == nil && empty.positions == nil && empty.valueScale == nil)

@@ -32,6 +32,24 @@ describe('a wire entry says what its source says (case 17)', () => {
     expect(entry.headline.basis.because).toContainEqual({ label: 'From', value: 'OOTP\'s transaction log' });
   });
 
+  it('serves where a player\'s name opens: his organization\'s club when the export says, else nothing to open (M3)', () => {
+    const asked: number[][] = [];
+    const orgs = (ids: readonly number[]) => {
+      asked.push([...ids]);
+      return new Map([[7, 4], [8, null]]);
+    };
+    const facts = [fact({}), fact({ id: 'log:2', players: [{ playerId: 8, name: 'Lee Free' }] }), fact({ id: 'log:3', players: [{ playerId: 7, name: 'Sam Arm' }] })];
+    const q = { sinceDay: null, sinceRaw: null, sinceFrom: 'season' as const, club: null, kind: null, followedOnly: false, followedFirst: false, limit: 50 };
+    const wire = wireWords(1, { facts, gaps: [], fromLog: true, gameDate: '2040-5-6', previousGameDate: null }, none, q, { ...ctx, playerOrgs: orgs });
+    const byId = new Map(wire.entries.map((e) => [e.id, e.players[0]]));
+    expect(byId.get('log:1')!.open).toMatchObject({ kind: 'player', playerId: 7, teamId: 4 });
+    // A free agent, or a player the export doesn't place: nothing to open, never a club guessed from the entry
+    expect(byId.get('log:2')!.open).toBeNull();
+    // Asked once for the whole answer
+    expect(asked).toEqual([[7, 8]]);
+    expect(wireEntry(fact({}), none, ctx).players[0].open).toBeNull();
+  });
+
   it('shows wording Pennant does not read as the log wrote it, and says so', () => {
     const entry = wireEntry(fact({ ownWords: 'Signed a minor league deal with the Tides.', detail: { kind: 'log', logKind: 'unsupported', supported: false, logIds: [2] } }), none, ctx);
     expect(entry.headline.text).toBe('Signed a minor league deal with the Tides.');

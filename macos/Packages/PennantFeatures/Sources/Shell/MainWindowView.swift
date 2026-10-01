@@ -55,6 +55,7 @@ extension MainWindowView {
 /// The split view: sidebar, the view, the inspector, and the toolbar.
 struct ShellSplitView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.openWindow) private var openWindow
     @Bindable var window: MainWindowModel
 
     var body: some View {
@@ -81,7 +82,31 @@ struct ShellSplitView: View {
                         .inspectorColumnWidth(min: 280, ideal: 320, max: 440)
                 }
         }
+        // The toolbar's search field (N7): the server's results as suggestions, grouped as served, followed first; a
+        // suggestion opens its view or its club's window, and Return opens the first
         .searchable(text: $window.searchText, placement: .toolbar, prompt: Text("Search"))
+        .searchSuggestions { ToolbarSearchSuggestions(window: window, open: openSearchResult) }
+        .onSubmit(of: .search) {
+            let results = window.currentSearch?.groups.flatMap(\.results) ?? []
+            if let first = results.first(where: { PaletteIndex.opens($0.open) }) { openSearchResult(first.open) }
+        }
+        .task(id: window.searchText) {
+            let query = window.searchText.trimmingCharacters(in: .whitespaces)
+            guard !query.isEmpty else { return }
+            try? await Task.sleep(for: .milliseconds(150))
+            // The last answer stays, said to be updating, until this one is in; a failure is said, never left silent (L3)
+            switch await model.search(query) {
+            case .success(let served)?:
+                guard !Task.isCancelled else { return }
+                window.searchAnswer = (query, served)
+                window.searchProblem = nil
+            case .failure(let problem)?:
+                guard !Task.isCancelled else { return }
+                window.searchProblem = (query, problem)
+            case nil:
+                return
+            }
+        }
         // While the palette is up the window behind it is dimmed and out of reach, so VoiceOver reads only the palette
         .accessibilityHidden(window.paletteShown)
         // The ⌘K palette: a glass control over the whole window, keyboard first; a click outside closes it
@@ -94,6 +119,56 @@ struct ShellSplitView: View {
     }
 }
 
+extension ShellSplitView {
+    /// A served result: its view in this window, or a club's window (a player's for now: his club's); the field clears.
+    func openSearchResult(_ target: Components.Schemas.Target) {
+        if let route = route(target) {
+            window.go(to: route)
+        } else if let club = clubRef(opening: target) {
+            openWindow(value: club)
+        }
+        window.searchText = ""
+    }
+}
+
+/// The toolbar search field's suggestions: the server's groups and results, in its order, each with its served line.
+struct ToolbarSearchSuggestions: View {
+    let window: MainWindowModel
+    let open: (Components.Schemas.Target) -> Void
+
+    var body: some View {
+        if let problem = window.currentSearchProblem {
+            ProblemLine(problem).accessibilityIdentifier("search.problem")
+        } else if let answer = window.shownSearch {
+            if window.searchUpdating {
+                Label { Text("Updating") } icon: { ProgressView().controlSize(.small) }
+                    .accessibilityIdentifier("search.updating")
+            }
+            ForEach(Array(answer.groups.enumerated()), id: \.offset) { _, group in
+                Section {
+                    ForEach(group.results, id: \.id) { result in
+                        Button { open(result.open) } label: {
+                            Label {
+                                Text(verbatim: result.line.isEmpty ? result.title : "\(result.title) · \(result.line)")
+                            } icon: {
+                                Image(systemName: result.followed ? "star.fill" : PaletteIndex.symbol(result.kind.value1?.rawValue ?? result.kind.value2 ?? ""))
+                            }
+                        }
+                        // A result that opens nothing here (a free agent, no club to open) is shown, not offered (L3)
+                        .disabled(!PaletteIndex.opens(result.open))
+                        .accessibilityIdentifier("search.result.\(result.id)")
+                    }
+                } header: {
+                    Text(verbatim: group.title.display)
+                }
+            }
+            if let empty = answer.empty {
+                Text(verbatim: empty.display)
+            }
+        }
+    }
+}
+
 /// The ⌘K palette over the window (SWIFTUI_REBUILD.md section 3.6): the registry's views and the window's commands,
 /// from `PaletteIndex`; opening an entry goes there or runs the command, and closes the palette.
 struct PaletteOverlay: View {
@@ -102,16 +177,29 @@ struct PaletteOverlay: View {
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
     @Bindable var window: MainWindowModel
+    /// The server's answer for the query typed, and the query it answers.
+    @State private var answer: (query: String, answer: Components.Schemas.SearchAnswer)?
+    /// Why the search for a query failed, and the query.
+    @State private var problem: (query: String, problem: RequestProblem)?
 
     var body: some View {
-        let index = PaletteIndex(registry: window.registry, catalog: model.catalog, can: .of(model, window: window), inspectorShown: window.inspectorPresented)
+        let query = window.paletteQuery.trimmingCharacters(in: .whitespaces)
+        // A failure for the query typed is said in place of results (L3); otherwise the last answer stays, said to be
+        // updating, until the one for the query typed is in
+        let failed = problem.flatMap { $0.query == query && !query.isEmpty ? $0.problem : nil }
+        let search = failed == nil && !query.isEmpty ? answer?.answer : nil
+        let updating = search != nil && answer?.query != query
+        let index = PaletteIndex(registry: window.registry, catalog: model.catalog, can: .of(model, window: window),
+                                 inspectorShown: window.inspectorPresented, search: search, searchFailed: failed != nil)
         ZStack(alignment: .top) {
             Color.black.opacity(0.18).ignoresSafeArea()
                 .onTapGesture { window.paletteShown = false }
                 .accessibilityHidden(true)
-            CommandPalette(entries: index.entries, query: $window.paletteQuery, open: { entry in
+            CommandPalette(entries: index.entries, served: index.served, emptyLine: index.emptyLine, problem: failed?.title,
+                           updating: updating, query: $window.paletteQuery, open: { entry in
                 window.paletteShown = false
                 switch index.action(for: entry) {
+                case .served(let target): open(target)
                 case .route(let route): window.go(to: route)
                 case .command(.inspector): window.toggleInspector()
                 case .command(.refreshData): Task { await model.startImport() }
@@ -123,6 +211,31 @@ struct PaletteOverlay: View {
                 }
             }, dismiss: { window.paletteShown = false })
             .padding(.top, 120)
+        }
+        // Asked as the GM types, a moment after the last key, and cancelled by the next one
+        .task(id: query) {
+            guard !query.isEmpty else { return }
+            try? await Task.sleep(for: .milliseconds(120))
+            switch await model.search(query) {
+            case .success(let served)?:
+                guard !Task.isCancelled else { return }
+                answer = (query, served)
+                problem = nil
+            case .failure(let failure)?:
+                guard !Task.isCancelled else { return }
+                problem = (query, failure)
+            case nil:
+                return
+            }
+        }
+    }
+
+    /// A served target: a view in this window, or a club's window (a player's for now: his club's).
+    private func open(_ target: Components.Schemas.Target) {
+        if let route = route(target) {
+            window.go(to: route)
+        } else if let club = clubRef(opening: target) {
+            openWindow(value: club)
         }
     }
 }
@@ -237,8 +350,9 @@ struct DetailView: View {
                 StartingView()
             } else if model.status?.configured == false {
                 NoSaveView()
-            } else if routing.awaitingClub {
-                // Its own identifier: the route's would name a view that is not drawn
+            } else if routing.awaitingClub || model.clubOwed != nil {
+                // Its own identifier: the route's would name a view that is not drawn. The club the server says is still
+                // owed holds it too, across a relaunch (N7)
                 ClubPendingView()
             } else {
                 Group {
@@ -294,13 +408,14 @@ struct ImportRequestBanner: View {
 /// server's words ("You manage 2 clubs in this save, …"), and its button brings the Setup window back to the question.
 struct ClubPendingView: View {
     @Environment(AppRouting.self) private var routing
+    @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         ContentUnavailableView {
             Label("Pick the Club", systemImage: "person.crop.circle.badge.questionmark")
         } description: {
-            if let text = routing.owedClubText {
+            if let text = routing.owedClubText ?? model.clubOwed?.text {
                 Text(verbatim: text)
                     .accessibilityIdentifier("detail.clubPending.why")
             }

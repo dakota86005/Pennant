@@ -31,7 +31,8 @@
         },
         "open": {
           "kind": "player",
-          "playerId": 1000
+          "playerId": 1000,
+          "teamId": 1
         }
       }
     ],

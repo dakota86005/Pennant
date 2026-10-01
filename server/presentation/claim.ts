@@ -270,7 +270,8 @@ export function adoptAuthored<T>(payload: T): T {
 export type TargetInput =
   | { kind: 'department'; department: DeptId }
   | { kind: 'view'; department: DeptId; view: string }
-  | { kind: 'player'; playerId: Integer }
+  /** A player, with his organization's club when known (`teamId`: the nearest view a client opens for him). */
+  | { kind: 'player'; playerId: Integer; teamId?: Integer | null }
   | { kind: 'club'; teamId: Integer }
   | { kind: 'decision'; department: DeptId; key: string };
 
@@ -283,7 +284,7 @@ export function target(input: TargetInput): Target {
       return { kind: 'view', department: input.department, view: sentence(input.view, 'target.view') };
     case 'player':
       if (!whole(input.playerId)) throw new AuthoringError(`a player target needs a player id, not ${String(input.playerId)}`);
-      return { kind: 'player', playerId: input.playerId };
+      return whole(input.teamId) ? { kind: 'player', playerId: input.playerId, teamId: input.teamId! } : { kind: 'player', playerId: input.playerId };
     case 'club':
       if (!whole(input.teamId)) throw new AuthoringError(`a club target needs a team id, not ${String(input.teamId)}`);
       return { kind: 'club', teamId: input.teamId };

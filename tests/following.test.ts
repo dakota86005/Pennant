@@ -84,6 +84,9 @@ describe('Following (case 20)', () => {
     const dropped = await unfollowNow({ kind: 'club', id: String(club) });
     expect(dropped.undo).toEqual({ action: 'follow', request: { kind: 'club', id: club, note: 'Rival', restore: true } });
     await expect(followNow({ kind: 'club', id: 99_999 })).rejects.toThrow('Pennant doesn\'t know that club in this save.');
+    // A followed player opens with his organization's club, the nearest view the Mac app has for him (N7, Stage B)
+    const player = await followNow({ kind: 'player', id: save.regular });
+    expect(player.view.players.find((p) => p.id === save.regular)!.open).toMatchObject({ kind: 'player', playerId: save.regular, teamId: save.org });
   });
 
   it('puts an unfollowed follow back as it was when the unfollow is undone: its note, how it began and when (L8)', async () => {
