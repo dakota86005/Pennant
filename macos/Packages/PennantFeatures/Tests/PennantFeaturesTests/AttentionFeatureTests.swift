@@ -69,6 +69,19 @@ struct AttentionFeatureTests {
         #expect(design.ledeClaim == report.lede)
     }
 
+    @Test("a wire chip opens the player's own club as served, never the entry's first club, and nothing when none is served (M3)")
+    func wirePlayerOpensServedClub() throws {
+        let wire = try #require(PreviewFixtures.decode(Components.Schemas.Wire.self, "getWire"))
+        let players = wire.entries.flatMap(\.players)
+        #expect(!players.isEmpty)
+        for player in players {
+            #expect(clubRef(opening: player.open) == player.open?.teamId.map(ClubRef.init(id:)))
+        }
+        var free = try #require(players.first)
+        free.open = nil
+        #expect(clubRef(opening: free.open) == nil)
+    }
+
     // MARK: The desk's actions
 
     @Test("a desk action is the served request: statuses by word, a deferral to a served day, a note that keeps the status and its day (sends none)")

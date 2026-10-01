@@ -8023,6 +8023,10 @@
           },
           "followed": {
             "type": "boolean"
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target",
+            "description": "Where his name opens: a player target with his organization's club (`teamId`, the nearest view a client opens for him until player windows); null when the export doesn't say which organization he is with."
           }
         },
         "required": [

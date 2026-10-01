@@ -48,7 +48,26 @@ export interface Followed {
 export interface WireContext {
   importStamp: string | null;
   gameDate: string | null;
+  /**
+   * Each player's organization's club, when the export says (his chip's `open` target, the nearest view a client opens
+   * for him); asked once per answer for the entries it shows. Left out, no player's club is known.
+   */
+  playerOrgs?: (playerIds: readonly number[]) => ReadonlyMap<number, number | null>;
 }
+
+type PlayerOrgs = ReadonlyMap<number, number | null>;
+
+/** The organizations of the players on the entries shown, asked once. */
+const orgsOf = (facts: readonly WireFact[], ctx: WireContext): PlayerOrgs => {
+  const ids = [...new Set(facts.flatMap((f) => f.players.map((p) => p.playerId)).filter((id) => id > 0))];
+  return ids.length && ctx.playerOrgs ? ctx.playerOrgs(ids) : new Map();
+};
+
+/** Many facts as the wire shows them, each player's club asked once for all of them. */
+export const wireEntries = (facts: readonly WireFact[], followed: Followed, ctx: WireContext): WireEntry[] => {
+  const orgs = orgsOf(facts, ctx);
+  return facts.map((f) => wireEntry(f, followed, ctx, orgs));
+};
 
 const source = (ctx: WireContext) => ({ department: 'league' as const, specialist: 'The league wire', asOf: ctx.importStamp, gameDate: ctx.gameDate });
 
@@ -172,9 +191,15 @@ function headline(f: WireFact, ctx: WireContext) {
 }
 
 /** One fact as the wire shows it. */
-export function wireEntry(f: WireFact, followed: Followed, ctx: WireContext): WireEntry {
+export function wireEntry(f: WireFact, followed: Followed, ctx: WireContext, orgs: PlayerOrgs = orgsOf([f], ctx)): WireEntry {
   const clubs = f.clubs.map((c) => ({ teamId: c.teamId, name: c.name, abbreviation: c.abbr, followed: followed.clubs.has(c.teamId) }));
-  const players = f.players.map((p) => ({ playerId: p.playerId, name: p.name, followed: followed.players.has(p.playerId) }));
+  const players = f.players.map((p) => {
+    const org = p.playerId > 0 ? orgs.get(p.playerId) ?? null : null;
+    return {
+      playerId: p.playerId, name: p.name, followed: followed.players.has(p.playerId),
+      open: org !== null ? target({ kind: 'player', playerId: p.playerId, teamId: org }) : null,
+    };
+  });
   return {
     id: f.id,
     date: f.date,
@@ -289,7 +314,7 @@ export function wireWords(orgId: number, facts: WireFacts, followed: Followed, q
     since,
     sinceDate: q.sinceRaw,
     order: orderOf(q.followedFirst),
-    entries: shown.map((f) => wireEntry(f, followed, ctx)),
+    entries: wireEntries(shown, followed, ctx),
     total: matched.length,
     more: matched.length > shown.length ? cell(`Showing the newest ${shown.length} of ${matched.length}`) : null,
     gaps: facts.gaps.map(gapWords),
@@ -310,7 +335,7 @@ export function wireTopWords(facts: WireFacts, followed: Followed, sinceDay: str
   return {
     title: cell('Around the league'),
     order: orderOf(true),
-    entries: shown.map((f) => wireEntry(f, followed, ctx)),
+    entries: wireEntries(shown, followed, ctx),
     more: inWindow.length > shown.length
       ? cell(`${inWindow.length - shown.length} more${day ? ` since ${day}` : ''}`, { hint: 'Open the wire' })
       : null,

@@ -3262,12 +3262,22 @@
         {
           "playerId": 1036,
           "name": "P 1036",
-          "followed": false
+          "followed": false,
+          "open": {
+            "kind": "player",
+            "playerId": 1036,
+            "teamId": 2
+          }
         },
         {
           "playerId": 1062,
           "name": "P 1062",
-          "followed": false
+          "followed": false,
+          "open": {
+            "kind": "player",
+            "playerId": 1062,
+            "teamId": 3
+          }
         }
       ],
       "headline": {

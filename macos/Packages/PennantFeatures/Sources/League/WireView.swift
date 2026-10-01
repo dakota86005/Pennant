@@ -174,7 +174,8 @@ struct WireEntryRow: View {
                         .padding(.horizontal, 7).padding(.vertical, 2)
                         .background(Color(nsColor: .quaternarySystemFill), in: .capsule)
                         .accessibilityElement(children: .combine)
-                        .playerName(id: player.playerId, name: player.name, opens: entry.clubs.first.map { ClubRef(id: $0.teamId) })
+                        // His club as served (his organization's), never the entry's first club; none served, nothing to open (M3)
+                        .playerName(id: player.playerId, name: player.name, opens: clubRef(opening: player.open))
                     }
                 }
                 .padding(.leading, 40)

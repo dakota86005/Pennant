@@ -4563,7 +4563,12 @@
           {
             "playerId": 1053,
             "name": "P 1053",
-            "followed": false
+            "followed": false,
+            "open": {
+              "kind": "player",
+              "playerId": 1053,
+              "teamId": 3
+            }
           }
         ],
         "headline": {
@@ -4644,12 +4649,22 @@
           {
             "playerId": 1036,
             "name": "P 1036",
-            "followed": false
+            "followed": false,
+            "open": {
+              "kind": "player",
+              "playerId": 1036,
+              "teamId": 2
+            }
           },
           {
             "playerId": 1062,
             "name": "P 1062",
-            "followed": false
+            "followed": false,
+            "open": {
+              "kind": "player",
+              "playerId": 1062,
+              "teamId": 3
+            }
           }
         ],
         "headline": {
@@ -4720,7 +4735,12 @@
           {
             "playerId": 1078,
             "name": "P 1078",
-            "followed": false
+            "followed": false,
+            "open": {
+              "kind": "player",
+              "playerId": 1078,
+              "teamId": 4
+            }
           }
         ],
         "headline": {
@@ -4800,7 +4820,12 @@
           {
             "playerId": 1002,
             "name": "P 1002",
-            "followed": false
+            "followed": false,
+            "open": {
+              "kind": "player",
+              "playerId": 1002,
+              "teamId": 1
+            }
           }
         ],
         "headline": {

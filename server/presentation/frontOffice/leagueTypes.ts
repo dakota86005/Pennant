@@ -35,6 +35,11 @@ export interface WirePlayer {
   playerId: Integer;
   name: string;
   followed: boolean;
+  /**
+   * Where his name opens: a player target with his organization's club (`teamId`, the nearest view a client opens for
+   * him until player windows); null when the export doesn't say which organization he is with.
+   */
+  open: Target | null;
 }
 
 /** One thing that happened around the league. */
