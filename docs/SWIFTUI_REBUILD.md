@@ -884,9 +884,10 @@ for him until player windows, N11).
   is in. Return (`onKeyPress(.return)`: with an answer in, the field's own submit did not always arrive) opens the
   selection: a view in the window, a club's window, a player's club's window.
 - **Notifications and the Dock badge** (`OutsideTheWindow`, app target): on `changes-ready` for the club shown, and only
-  while Pennant is not frontmost, a notification with the served title and text; permission is asked the first time
-  there is one to post, never at launch. The Dock badge is the served `openCount` (none at zero or unserved). Settings ▸
-  General ▸ Notifications switches either off (`AppPreferences`, the app's own defaults).
+  while Pennant is not frontmost, a notification with the served title and text; permission is asked only with Pennant in
+  front (the Settings switch turned on, or the first export read while it is frontmost), never at launch and never from
+  the background. The Dock badge is the served `openCount` (none at zero, unserved, or while the club question is open).
+  Settings ▸ General ▸ Notifications switches either off (`AppPreferences`, the app's own defaults).
 - **The club owed** (`AppModel.clubOwed`, from the status and the settings, the settings' answer winning when fresher):
   while it is set the window holds the report with the served sentence and "Choose Your Club…", which asks the club
   from the served sentence after a relaunch (`SetupModel.askOwedClub`); the club card claims no club.
@@ -918,6 +919,25 @@ for him until player windows, N11).
   set-aside list (the desk and the reports are not lists); the toolbar field's suggestions were checked in snapshots and
   code, not by a UI test (the palette's path is); the live captures show no "since the last export" chips (a re-import
   of the same export on the scratch folder was not taken as new), which the snapshots draw from the fixture.
+- *After the independent review (2026-10-01).* **Undo and notes on a deferral that has ended** (H1): every served
+  `DeskChange.undo` carries `restore: true`, which puts the record back exactly (its day, note, when and under which
+  import it was set) with no check of the day against the league's, so an undo works on an item whose deferral has ended
+  and on a deferral whose day passed before the undo; a note-only change to a deferred item (`status: 'deferred'` with no
+  `until`, or the recorded one) keeps the recorded day, and the Mac app sends that form. Each undo step has its own
+  target on the window's `UndoManager`: the inverse it registers is taken off when its request fails, and every desk and
+  follow step leaves every window's manager when the save or the club changes (`AppModel.settleUndoScope`). The set-aside
+  list and the note editor (popovers, windows of their own) register on the manager of the window they were opened from,
+  and the list closes once nothing is set aside. The full wire and a club window's report are keyed on the served follow
+  stamp as well as the store key. Every request that answers with a desk is numbered, and an older answer never goes
+  over a newer one; a quiet refresh in flight while the desk moved keeps the desk shown. A wire chip opens the player's
+  served club (`WirePlayer.open`, null when the export doesn't place him: no Open His Club). A player's name takes the
+  keyboard focus (Return opens his served club) and the Desk menu's Follow or Unfollow (⇧⌘F) acts on the club or player
+  name in focus. A club window's name behaviour sits on its headline alone. A report's changes carry their kind as a
+  served word (`ReportChange.word`). A failed search says its problem instead of the registry's views, the last answer
+  stays (said to be updating) while the next is asked, and a result that opens nothing is disabled. A club report serves
+  `headToHeadNote` when there is no record against us. Fixed, checked fills (`readablePage`, `readableChipFill`,
+  `readableHeadingFill` with `readableHeadingText`, `readableActionTint`) replace the system colours and the system accent
+  in the new views. The XCUITests wait with expectations and turn notifications off.
 
 ### 3.5 One anatomy for every department report
 
