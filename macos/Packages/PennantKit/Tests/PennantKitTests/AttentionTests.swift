@@ -131,6 +131,99 @@ struct AttentionTests {
         await model.shutdown()
     }
 
+    @Test("Undo of a change on an item whose deferral has ended sends the served restore, the passed day with it (H1)")
+    func deskUndoDeferralEnded() async throws {
+        let transport = try deskTransport("setDeskStatus-on-a-deferral-ended")
+        let model = try readyModel(transport)
+        await model.start()
+        #expect(await eventually { model.storeKey?.club != nil })
+        await model.loadFrontOffice()
+        let undoManager = ungroupedUndoManager()
+        undoManager.beginUndoGrouping()
+        #expect(await model.changeDesk(update(.reviewed, key: Self.item), undoManager: undoManager, actionName: "Mark Reviewed") != nil)
+        undoManager.endUndoGrouping()
+        undoManager.undo()
+        #expect(await eventually { self.sentStatus(transport) == "deferred" })
+        let sent = try #require(sentJSON(transport))
+        #expect(sent["until"] as? String == "2040-1-1")
+        #expect(sent["restore"] as? Bool == true)
+        #expect(sent["note"] as? String == "Ask again after the break")
+        #expect(undoManager.canRedo)
+        await model.shutdown()
+    }
+
+    @Test("a refused undo leaves no redo behind it (L1)")
+    func refusedUndoLeavesNoRedo() async throws {
+        let transport = try deskTransport("setDeskStatus-reviewed")
+        let model = try readyModel(transport)
+        await model.start()
+        #expect(await eventually { model.storeKey?.club != nil })
+        await model.loadFrontOffice()
+        let undoManager = ungroupedUndoManager()
+        undoManager.beginUndoGrouping()
+        #expect(await model.changeDesk(update(.reviewed, key: Self.item), undoManager: undoManager, actionName: "Mark Reviewed") != nil)
+        undoManager.endUndoGrouping()
+        // The item was resolved meanwhile: the undo is refused in the server's sentence
+        transport.answer("PUT /api/v2/desk/1", with: try RoutedTransport.json("setDeskStatus-not-in-this-export"), status: 404)
+        undoManager.undo()
+        #expect(await eventually { model.frontOffice.deskProblem != nil })
+        #expect(await eventually { !undoManager.canRedo })
+        #expect(!undoManager.canUndo)
+        await model.shutdown()
+    }
+
+    @Test("the desk and follow steps go from every window's undo manager when the save or the club changes (M7)")
+    func undoStepsGoWithTheSave() async throws {
+        let transport = try deskTransport("setDeskStatus-reviewed")
+        let model = try readyModel(transport)
+        await model.start()
+        #expect(await eventually { model.storeKey?.club != nil })
+        await model.loadFrontOffice()
+        let main = ungroupedUndoManager()
+        let clubWindow = ungroupedUndoManager()
+        main.beginUndoGrouping()
+        #expect(await model.changeDesk(update(.reviewed, key: Self.item), undoManager: main, actionName: "Mark Reviewed") != nil)
+        main.endUndoGrouping()
+        clubWindow.beginUndoGrouping()
+        #expect(await model.changeDesk(update(.handled, key: Self.item), undoManager: clubWindow, actionName: "Mark Handled in OOTP") != nil)
+        clubWindow.endUndoGrouping()
+        #expect(main.canUndo && clubWindow.canUndo)
+        // The same save and club read again: the steps stay
+        await model.reloadStatus()
+        #expect(main.canUndo && clubWindow.canUndo)
+        // Another save chosen: the status serves its id, and the steps go
+        var status = try fixtureStatus()
+        status.saveId = "another-save"
+        transport.answer("/api/status", with: ("application/json", try JSONEncoder().encode(status)))
+        await model.reloadStatus()
+        #expect(!main.canUndo)
+        #expect(!clubWindow.canUndo)
+        await model.shutdown()
+    }
+
+    private func deskTransport(_ change: String) throws -> RoutedTransport {
+        RoutedTransport([
+            "/api/status": try RoutedTransport.json("getStatus"),
+            "/api/settings": try RoutedTransport.json("getSettings"),
+            "/api/orgs": try RoutedTransport.json("listOrgs"),
+            "/api/v2/data-status": try RoutedTransport.json("getDataStatusWords"),
+            "/api/v2/catalog": try RoutedTransport.json("getCatalog"),
+            "/api/v2/front-office/1": try RoutedTransport.json("getFrontOffice"),
+            "PUT /api/v2/desk/1": try RoutedTransport.json(change),
+        ])
+    }
+
+    private func ungroupedUndoManager() -> UndoManager {
+        let undoManager = UndoManager()
+        undoManager.groupsByEvent = false
+        return undoManager
+    }
+
+    private func sentJSON(_ transport: RoutedTransport) -> [String: Any]? {
+        guard let sent = transport.body("PUT /api/v2/desk/1") else { return nil }
+        return try? JSONSerialization.jsonObject(with: sent) as? [String: Any]
+    }
+
     private func sentStatus(_ transport: RoutedTransport) -> String? {
         guard let sent = transport.body("PUT /api/v2/desk/1"),
               let json = try? JSONSerialization.jsonObject(with: sent) as? [String: Any] else { return nil }

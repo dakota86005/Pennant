@@ -48,16 +48,59 @@ extension AppModel {
     }
 
     /// Registers one step: undoing sends `undo` and registers its own undo (the redo, `redo`), so Undo and Redo alternate
-    /// through the same two served requests. The inverse is registered while the undo manager runs the step, as it asks.
-    func registerDeskUndo(undo: Components.Schemas.DeskUpdate, redo: Components.Schemas.DeskUpdate, undoManager: UndoManager?, actionName: String) {
-        guard let undoManager else { return }
-        undoManager.registerUndo(withTarget: self) { model in
+    /// through the same two served requests. The inverse is registered while the undo manager runs the step, as it asks,
+    /// and taken off again when the request fails (L1): a refused undo leaves no redo behind it.
+    @discardableResult
+    func registerDeskUndo(undo: Components.Schemas.DeskUpdate, redo: Components.Schemas.DeskUpdate, undoManager: UndoManager?, actionName: String) -> UndoStep? {
+        registerStep(undoManager: undoManager, actionName: actionName) { model, undoManager in
+            let inverse = model.registerDeskUndo(undo: redo, redo: undo, undoManager: undoManager, actionName: actionName)
+            return { await model.sendDesk(undo) != nil ? nil : inverse }
+        }
+    }
+
+    /// Registers a step on `undoManager` under its own target (`UndoStep`), so it can be taken off alone (its request
+    /// failed) or with every other step (the save or the club changed, M7). `run` registers the inverse and returns the
+    /// request to send, which answers the inverse to take off when it failed.
+    private func registerStep(
+        undoManager: UndoManager?, actionName: String,
+        run: @escaping @MainActor (AppModel, UndoManager) -> () async -> UndoStep?
+    ) -> UndoStep? {
+        guard let undoManager else { return nil }
+        let step = UndoStep()
+        undoManager.registerUndo(withTarget: step) { [weak self] _ in
             MainActor.assumeIsolated {
-                model.registerDeskUndo(undo: redo, redo: undo, undoManager: undoManager, actionName: actionName)
-                Task { await model.sendDesk(undo) }
+                guard let self else { return }
+                let send = run(self, undoManager)
+                Task { @MainActor in
+                    if let failed = await send() { self.dropUndoStep(failed, from: undoManager) }
+                }
             }
         }
         undoManager.setActionName(actionName)
+        undoSteps.removeAll { $0.manager == nil }
+        undoSteps.append(UndoRegistration(manager: undoManager, step: step))
+        return step
+    }
+
+    /// Takes one step off its undo manager (its request was refused or failed).
+    func dropUndoStep(_ step: UndoStep, from undoManager: UndoManager) {
+        undoManager.removeAllActions(withTarget: step)
+        undoSteps.removeAll { $0.step === step }
+    }
+
+    /// Takes every desk and follow step off the windows' undo managers: they belong to the save and the club they were
+    /// made for, and undoing one under another would send it to the wrong desk (M7).
+    func dropAllUndoSteps() {
+        for registration in undoSteps { registration.manager?.removeAllActions(withTarget: registration.step) }
+        undoSteps.removeAll()
+    }
+
+    /// Called whenever the status or the club is put in place: when the save or the club moved, the steps go (M7).
+    func settleUndoScope() {
+        let scope = UndoScope(saveId: status?.saveId, club: club?.ref.id)
+        defer { undoScope = scope }
+        guard let undoScope, undoScope != scope else { return }
+        dropAllUndoSteps()
     }
 
     // MARK: Following
@@ -78,16 +121,28 @@ extension AppModel {
         return change
     }
 
-    func registerFollowUndo(undo: FollowingStore.Request, redo: FollowingStore.Request, undoManager: UndoManager?, actionName: String) {
-        guard let undoManager else { return }
-        undoManager.registerUndo(withTarget: self) { model in
-            MainActor.assumeIsolated {
-                model.registerFollowUndo(undo: redo, redo: undo, undoManager: undoManager, actionName: actionName)
-                Task { await model.sendFollow(undo) }
-            }
+    @discardableResult
+    func registerFollowUndo(undo: FollowingStore.Request, redo: FollowingStore.Request, undoManager: UndoManager?, actionName: String) -> UndoStep? {
+        registerStep(undoManager: undoManager, actionName: actionName) { model, undoManager in
+            let inverse = model.registerFollowUndo(undo: redo, redo: undo, undoManager: undoManager, actionName: actionName)
+            return { await model.sendFollow(undo) != nil ? nil : inverse }
         }
-        undoManager.setActionName(actionName)
     }
+}
+
+/// One step's target on an undo manager (a desk status, a follow), so it can be taken off alone.
+public final class UndoStep {}
+
+/// A step and the undo manager it is on (held weakly: a closed window's manager goes with it).
+struct UndoRegistration {
+    weak var manager: UndoManager?
+    let step: UndoStep
+}
+
+/// What the steps were made for: the chosen save and the club.
+struct UndoScope: Equatable {
+    var saveId: String?
+    var club: Int?
 }
 
 /// The app's own preferences for what it says outside its windows (Settings ▸ General): a notification when a new

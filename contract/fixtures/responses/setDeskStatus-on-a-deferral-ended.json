@@ -4,7 +4,7 @@
     "display": "Marked reviewed"
   },
   "attention": {
-    "note": "Talked it over with the manager",
+    "note": "Ask again after the break",
     "since": "2040-07-01T12:00:00.000Z",
     "until": null,
     "deferralEnded": false,
@@ -16,21 +16,23 @@
     }
   },
   "previous": {
-    "status": "open",
-    "line": {
-      "display": "Open"
-    },
-    "until": null,
-    "deferralEnded": false,
-    "note": null,
+    "note": "Ask again after the break",
+    "since": "2040-07-01T12:00:00.000Z",
+    "until": "2040-1-1",
+    "deferralEnded": true,
     "stillShown": null,
-    "since": null
+    "status": "deferred",
+    "line": {
+      "display": "Deferral ended January 1, 2040",
+      "tone": "caution",
+      "hint": "Back on your desk: the league has reached the day you chose"
+    }
   },
   "undo": {
     "key": "farm:position_single_cover:organization:critical",
-    "status": "open",
-    "until": null,
-    "note": "",
+    "status": "deferred",
+    "until": "2040-1-1",
+    "note": "Ask again after the break",
     "restore": true
   },
   "view": {
@@ -352,7 +354,7 @@
             "evidence": null,
             "count": 4,
             "attention": {
-              "note": "Talked it over with the manager",
+              "note": "Ask again after the break",
               "since": "2040-07-01T12:00:00.000Z",
               "until": null,
               "deferralEnded": false,

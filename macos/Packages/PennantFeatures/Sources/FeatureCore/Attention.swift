@@ -33,8 +33,8 @@ public enum DeskAction: Hashable, Sendable {
         }
     }
 
-    /// The request for an item as it stands (a note kept as it is unless this is the note; a deferral's day kept when
-    /// only the note changes).
+    /// The request for an item as it stands (a note kept as it is unless this is the note). A note on a deferred item is
+    /// the note-only form: no day is sent, so the server keeps the day recorded, even one the league has passed (H1).
     public func update(for attention: Components.Schemas.DeskAttention, key: String) -> Components.Schemas.DeskUpdate {
         func status(_ value: Components.Schemas.DeskStatus.Value1Payload) -> Components.Schemas.DeskStatus { .init(value1: value, value2: value.rawValue) }
         switch self {
@@ -43,8 +43,7 @@ public enum DeskAction: Hashable, Sendable {
         case .open: return .init(key: key, status: status(.open))
         case .deferred(let until): return .init(key: key, status: status(.deferred), until: until)
         case .note(let text):
-            let deferred = attention.status.value1 == .deferred
-            return .init(key: key, status: attention.status, until: deferred ? attention.until : nil, note: text)
+            return .init(key: key, status: attention.status, note: text)
         }
     }
 }

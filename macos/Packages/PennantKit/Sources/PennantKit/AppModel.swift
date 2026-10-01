@@ -54,6 +54,10 @@ public final class AppModel {
     public private(set) var lastRequestError: String?
     /// The client for the running server; nil while it is not ready.
     public private(set) var client: Client?
+    /// The desk and follow steps on the windows' undo managers (`Attention.swift`), and the save and club they were made
+    /// for: taken off when either moves (M7).
+    @ObservationIgnored var undoSteps: [UndoRegistration] = []
+    @ObservationIgnored var undoScope: UndoScope?
     /// The Front Office's desk, cards and department reports (`FrontOfficeStore`), loaded on `storeKey`.
     public private(set) var frontOffice: FrontOfficeStore
     /// What the GM follows (`FollowingStore`, N7): the sidebar's Following section, loaded on `storeKey` and the served
@@ -709,6 +713,7 @@ public final class AppModel {
 
     private func apply(status next: Components.Schemas.ServerStatus, reload: Bool) {
         status = next
+        settleUndoScope()
         clubOwed = next.clubOwed
         savePlayedElsewhere = next.savePlayedElsewhere
         if let served = next.reportStamp, served != reportStamp { reportStamp = served }
@@ -764,6 +769,7 @@ public final class AppModel {
         }
         orgs = nextOrgs
         club = CurrentClub.from(served: nextSettings?.organization, orgs: nextOrgs)
+        settleUndoScope()
         settings = nextSettings
         // The settings are the fresher word on the club question when they were just read (a club saved clears it)
         if case .success(let answer) = settingsAnswer { clubOwed = answer.clubOwed }

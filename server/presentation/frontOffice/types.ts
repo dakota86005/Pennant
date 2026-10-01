@@ -270,8 +270,17 @@ export interface DeskView {
 export interface DeskUpdate {
   key: string;
   status: DeskStatus;
+  /**
+   * The day a deferral runs to, after the league's day. Left out (or the day recorded) on a deferred item, the change is
+   * to the note only and keeps the recorded day, even one the league has passed.
+   */
   until?: GameDate | null;
   note?: string;
+  /**
+   * An undo (every served `DeskChange.undo` carries it): the record is put back exactly as it was, its day, note and when
+   * it was set, with no check of the day against the league's.
+   */
+  restore?: boolean;
 }
 
 /** The answer to a status change: the item as it is now, the request that undoes it, and the desk. */

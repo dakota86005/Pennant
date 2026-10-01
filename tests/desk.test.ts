@@ -3,7 +3,7 @@ import { historyDb } from '../server/history.js';
 import { forgetHistoryKey } from '../server/historyIdentity.js';
 import { deskRecords, forgetMemoryCaches, resolveDeskRecords, setDeskRecord } from '../server/frontOfficeMemory.js';
 import { DeskRefusal, departmentReportNow, deskViewNow, frontOfficeSummaryNow, rememberBuild, resetAttention, setDeskStatus } from '../server/frontOfficeAttention.js';
-import { frontOfficeBuilt, frontOfficeStats, frontOfficeSummary, invalidateFrontOffice, resetFrontOfficeCache, type FrontOfficeBuilt } from '../server/frontOfficeService.js';
+import { frontOfficeBuilt, frontOfficeStats, frontOfficeSummary, invalidateFrontOffice, keptFrontOffice, resetFrontOfficeCache, type FrontOfficeBuilt } from '../server/frontOfficeService.js';
 import { importedAt } from '../server/playerStateRoutes.js';
 import { subscribe, type ServerEvent } from '../server/serverEvents.js';
 import { attentionOf, onLeadList } from '../server/presentation/frontOffice/attention.js';
@@ -99,7 +99,7 @@ describe('a desk status records attention and changes nothing else (case 15)', (
     await setDeskStatus(save.org, { key, status: 'reviewed', note: 'First look' });
     const handled = await setDeskStatus(save.org, { key, status: 'handled' });
     expect(handled.previous.status).toBe('reviewed');
-    expect(handled.undo).toEqual({ key, status: 'reviewed', until: null, note: 'First look' });
+    expect(handled.undo).toEqual({ key, status: 'reviewed', until: null, note: 'First look', restore: true });
     const undone = await setDeskStatus(save.org, handled.undo);
     expect(undone.attention).toMatchObject({ status: 'reviewed', note: 'First look' });
     const back = await setDeskStatus(save.org, { key, status: 'open' });
@@ -135,6 +135,58 @@ describe('a desk status records attention and changes nothing else (case 15)', (
     const deferred = await setDeskStatus(save.org, { key, status: 'deferred', until: '2040-12-1' });
     expect(deferred.done.display).toBe('Deferred until December 1, 2040');
     expect(deferred.view.desk.setAside!.deferred).toBe(1);
+  });
+
+  // H1 (N7 review): an item whose deferral has ended keeps `deferred` with a day the league has passed
+  const deferralEnded = async () => {
+    await frontOfficeBuilt(save.org);
+    await setDeskRecord(save.org, key, { status: 'deferred', until: '2000-1-1', note: 'Wait for the trade deadline' }, importedAt.value);
+    const item = (await deskViewNow(save.org)).desk.items.find((it) => it.key === key)!;
+    expect(item.attention).toMatchObject({ status: 'deferred', until: '2000-1-1', deferralEnded: true });
+  };
+
+  it('undoes a change made on an item whose deferral has ended, putting the record back exactly (H1)', async () => {
+    await deferralEnded();
+    const before = deskRecords(save.org).get(key)!;
+    const reviewed = await setDeskStatus(save.org, { key, status: 'reviewed' });
+    expect(reviewed.undo).toEqual({ key, status: 'deferred', until: '2000-1-1', note: 'Wait for the trade deadline', restore: true });
+    const undone = await setDeskStatus(save.org, reviewed.undo);
+    expect(undone.attention).toMatchObject({ status: 'deferred', until: '2000-1-1', deferralEnded: true, note: 'Wait for the trade deadline' });
+    expect(undone.done.display).toBe('Deferral ended January 1, 2000');
+    // Exactly as it was: when it was set and under which import too
+    expect(deskRecords(save.org).get(key)).toEqual(before);
+    // And the redo it serves puts the review back the same way
+    const redone = await setDeskStatus(save.org, undone.undo);
+    expect(redone.attention.status).toBe('reviewed');
+    // A plain deferral to a passed day is still refused
+    await expect(setDeskStatus(save.org, { key, status: 'deferred', until: '2000-1-1' })).rejects.toThrow(/Choose a day after the league's day/);
+  });
+
+  it('saves a note on an item whose deferral has ended, keeping the day recorded, and undoes it (H1)', async () => {
+    await deferralEnded();
+    const noted = await setDeskStatus(save.org, { key, status: 'deferred', note: 'Ask again after the break' });
+    expect(noted.done.display).toBe('Note saved');
+    expect(noted.attention).toMatchObject({ status: 'deferred', until: '2000-1-1', note: 'Ask again after the break' });
+    // The day recorded may be sent back as it is, too
+    const again = await setDeskStatus(save.org, { key, status: 'deferred', until: '2000-1-1', note: 'Ask after the break' });
+    expect(again.attention.note).toBe('Ask after the break');
+    const undone = await setDeskStatus(save.org, again.undo);
+    expect(undone.attention).toMatchObject({ status: 'deferred', until: '2000-1-1', note: 'Ask again after the break' });
+    // A note-only change to an item that isn't deferred still needs its day
+    await setDeskStatus(save.org, { key, status: 'open' });
+    await expect(setDeskStatus(save.org, { key, status: 'deferred', note: 'x' })).rejects.toThrow('Choose the day to defer it to.');
+  });
+
+  it('undoes a change whose deferral\'s day the league reached before the undo (H1)', async () => {
+    const view = await deskViewNow(save.org);
+    const day = view.desk.deferChoices[0].until;
+    await setDeskStatus(save.org, { key, status: 'deferred', until: day });
+    const reviewed = await setDeskStatus(save.org, { key, status: 'reviewed' });
+    // The league reaches the day (the kept build's own day moves on)
+    const built = keptFrontOffice(save.org)!;
+    (built.season as { gameDate: string }).gameDate = day;
+    const undone = await setDeskStatus(save.org, reviewed.undo);
+    expect(undone.attention).toMatchObject({ status: 'deferred', until: day, deferralEnded: true });
   });
 
   it('marks an item handled in OOTP without asserting anything happened: the next export that still raises it says so', async () => {

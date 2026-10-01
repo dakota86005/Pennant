@@ -71,7 +71,7 @@ struct AttentionFeatureTests {
 
     // MARK: The desk's actions
 
-    @Test("a desk action is the served request: statuses by word, a deferral to a served day, a note that keeps the status and its day")
+    @Test("a desk action is the served request: statuses by word, a deferral to a served day, a note that keeps the status and its day (sends none)")
     func deskActions() throws {
         let summary = try since()
         let item = try #require(summary.desk.setAside?.items.first)
@@ -88,8 +88,13 @@ struct AttentionFeatureTests {
         waiting.until = "2040-5-20"
         let note = DeskAction.note("Call him back").update(for: waiting, key: item.key)
         #expect(note.status.value1 == .deferred)
-        #expect(note.until == "2040-5-20")
+        // The note-only form: no day sent, so the server keeps the one recorded, even one the league has passed (H1)
+        #expect(note.until == nil)
+        #expect(note.restore == nil)
         #expect(note.note == "Call him back")
+        waiting.deferralEnded = true
+        waiting.until = "2000-1-1"
+        #expect(DeskAction.note("Later").update(for: waiting, key: item.key).until == nil)
         #expect(DeskAction.note("").update(for: item.attention, key: item.key).note == "")
     }
 

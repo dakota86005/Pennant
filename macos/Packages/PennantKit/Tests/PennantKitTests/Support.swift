@@ -202,6 +202,18 @@ final class RoutedTransport: ClientTransport, @unchecked Sendable {
     private let answers: [String: (contentType: String, body: Data)]
     private let statuses: [String: Int]
     private var _bodies: [String: Data] = [:]
+    private var _overrides: [String: (status: Int, answer: (contentType: String, body: Data))] = [:]
+    private var _delays: [String: Duration] = [:]
+
+    /// Answers `key` (`METHOD path` or a path) with this from now on, over the table.
+    func answer(_ key: String, with answer: (contentType: String, body: Data), status: Int = 200) {
+        lock.withLock { _overrides[key] = (status, answer) }
+    }
+
+    /// Holds the answer to `key` this long before sending it (a request still in flight); nil sends at once.
+    func delay(_ key: String, by duration: Duration?) {
+        lock.withLock { _delays[key] = duration }
+    }
 
     /// `answers` and `statuses` are keyed by path, or by `METHOD path` (`POST /api/settings`), which wins; a missing
     /// status is 200.
@@ -222,9 +234,16 @@ final class RoutedTransport: ClientTransport, @unchecked Sendable {
         let keyed = "\(request.method.rawValue) \(path)"
         var sent: Data?
         if let body { sent = try await Data(collecting: body, upTo: 1 << 20) }
-        lock.withLock {
+        let (override, delay) = lock.withLock {
             _paths.append(path)
             if let sent { _bodies[keyed] = sent }
+            return (_overrides[keyed] ?? _overrides[path], _delays[keyed] ?? _delays[path])
+        }
+        if let delay { try await Task.sleep(for: delay) }
+        if let override {
+            var response = HTTPResponse(status: .init(code: override.status))
+            response.headerFields[.contentType] = override.answer.contentType
+            return (response, HTTPBody(override.answer.body))
         }
         guard let answer = answers[keyed] ?? answers[path] else { return (HTTPResponse(status: .notFound), nil) }
         var response = HTTPResponse(status: .init(code: statuses[keyed] ?? statuses[path] ?? 200))
