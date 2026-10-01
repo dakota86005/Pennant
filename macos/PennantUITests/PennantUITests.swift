@@ -106,7 +106,7 @@ final class PennantUITests: XCTestCase {
     ///   their pixels read at 9:1 to 19:1; the line carries the measured ratio, so it is checked, not muted. Every other
     ///   contrast finding fails, and so does a sidebar label whose pixels read below 4.5:1.
     @MainActor
-    private func audit(_ app: XCUIApplication, named name: String = "accessibility-audit") throws {
+    private func audit(_ app: XCUIApplication, named name: String = "accessibility-audit", strict: Bool = true) throws {
         // The pointer off the content first, and any help tag it left up gone (waited for, never a fixed sleep): a tag
         // is the system's, and one left over a line by the last click is measured as that line's background
         let front = app.windows.firstMatch
@@ -199,7 +199,7 @@ final class PennantUITests: XCTestCase {
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
-        XCTAssertEqual(issues, [], "the accessibility audit found issues")
+        if strict { XCTAssertEqual(issues, [], "the accessibility audit found issues") }
     }
 
     /// The sidebar at its top, as a window opens: its departments stay unfolded (the audit reads every row there is).
@@ -792,20 +792,29 @@ final class PennantUITests: XCTestCase {
         try audit(app, named: name)
     }
 
-    /// Brings a window to the front by its item in the Window menu (its title), and waits until its close button is the
-    /// element at its own place on the screen (hittable), so a click on it reaches it.
+    /// Brings a window to the front by its item in the Window menu (its title), and waits until it is the front window
+    /// (the first in the app's list), so a click on its own controls reaches it. A click on a covered window's button
+    /// would reach whatever covers it, and `isHittable` was seen true for one under another window on the runner.
     @MainActor
     private func raiseFromWindowMenu(_ app: XCUIApplication, _ window: XCUIElement) {
-        let close = window.buttons[XCUIIdentifierCloseWindow].firstMatch
-        if close.isHittable { return }
+        let identifier = window.identifier
         let menu = app.menuBars.menuBarItems["Window"].firstMatch
         XCTAssertTrue(menu.waitForExistence(timeout: 5), "the menu bar has no Window menu")
         menu.click()
-        let item = menu.menuItems[window.title].firstMatch
-        XCTAssertTrue(item.waitForExistence(timeout: 5), "the Window menu does not list '\(window.title)'")
+        // The menu lists each window by its title and subtitle ("Club Reports (May 6, 2040 · No log)", where the
+        // window's own title reads "Club Reports – May 6, 2040 · No log"): the item that brings a window forward whose
+        // title starts with the window's title before its subtitle
+        let title = window.title
+        let head = title.components(separatedBy: " – ").first ?? title
+        XCTAssertTrue(menu.menuItems.firstMatch.waitForExistence(timeout: 5), "the Window menu did not open")
+        let items = menu.menuItems.matching(identifier: "makeKeyAndOrderFront:").allElementsBoundByIndex
+        let matches = items.filter { !head.isEmpty && $0.title.hasPrefix(head) }
+        guard matches.count == 1, let item = matches.first else {
+            return XCTFail("the Window menu lists \(matches.count) window(s) for '\(title)': \(items.map(\.title))")
+        }
         item.click()
-        let hittable = expectation(for: NSPredicate(format: "isHittable == true"), evaluatedWith: close)
-        wait(for: [hittable], timeout: 5)
+        let front = expectation(for: NSPredicate(format: "identifier == %@", identifier), evaluatedWith: app.windows.firstMatch)
+        wait(for: [front], timeout: 5)
     }
 
     /// A club's window (D-059) from League Office ▸ Club Reports: the masthead, what our scouts see, head to head, the

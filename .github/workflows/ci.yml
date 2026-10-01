@@ -7,8 +7,13 @@ on:
   pull_request:
   push:
     branches: [main]
-  # The XCUITest job (pennant-mac-ui) can be asked for by hand on any branch
+  # The XCUITest job (pennant-mac-ui) can be asked for by hand on any branch, all of it or one test
   workflow_dispatch:
+    inputs:
+      only:
+        description: "One UI test only, as xcodebuild's -only-testing names it (PennantUITests/PennantUITests/testX); empty runs them all"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -125,6 +130,7 @@ jobs:
           PENNANT_TEST_NO_PACKAGES: "1"
           PENNANT_TEST_UNSIGNED: "1"
           PENNANT_TEST_SCRATCH: ${{ runner.temp }}/pennant-ui
+          PENNANT_TEST_ONLY: ${{ inputs.only }}
         run: macos/scripts/test.sh
       # The job may fail without failing the run (continue-on-error), so its outcome is written where it is seen: the
       # run's summary page, with the launch timing the kept-payload test recorded
