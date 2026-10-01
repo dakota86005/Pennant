@@ -100,15 +100,15 @@ jobs:
     # The XCUITests (SWIFTUI_REBUILD.md section 8) on GitHub's macOS runner, which has a logged-in GUI session no one is
     # using, so no one's screen is taken over: the app with its bundled server on the synthetic league (never a real
     # save), each test on a scratch folder of its own, as macos/scripts/test.sh runs them locally. The window
-    # screenshots, the accessibility audits and the launch timing (N6, Stage B1) are kept as an artifact. Off the
-    # critical path: its own job, only for pull requests into feature/swiftui (or by hand), and a failure here blocks
-    # nothing else. If the runner's UI automation refuses (TCC), the log says so and nothing here changes the runner's
-    # security settings. No secrets: the app is built unsigned.
+    # screenshots, the accessibility audits and the launch timing (N6, Stage B1) are kept as an artifact. Its own job,
+    # only for pull requests into feature/swiftui (or by hand), and a hard gate: a failing XCUITest fails the run (it
+    # passed on the runner twice in a row before `continue-on-error` was removed, runs 36919366664 and 36922465784). If
+    # the runner's UI automation refuses (TCC), the log says so and nothing here changes the runner's security settings.
+    # No secrets: the app is built unsigned.
     name: Mac app (XCUITests on the runner)
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.base_ref == 'feature/swiftui')
     runs-on: macos-26
     timeout-minutes: 90
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -132,8 +132,7 @@ jobs:
           PENNANT_TEST_SCRATCH: ${{ runner.temp }}/pennant-ui
           PENNANT_TEST_ONLY: ${{ inputs.only }}
         run: macos/scripts/test.sh
-      # The job may fail without failing the run (continue-on-error), so its outcome is written where it is seen: the
-      # run's summary page, with the launch timing the kept-payload test recorded
+      # The outcome on the run's summary page, with the launch timing the kept-payload test recorded
       - name: Say how the XCUITests went, on the run's summary
         if: always()
         env:
@@ -143,7 +142,7 @@ jobs:
           {
             echo "### Mac app XCUITests: $line"
             echo
-            echo "This job may fail without failing the run; the screenshots, audits and logs are in the xcuitest-screenshots artifact."
+            echo "The screenshots, audits and logs are in the xcuitest-screenshots artifact."
             timing=$(cat build/macos-test/screenshots/launch-timing* 2>/dev/null)
             if [ -n "$timing" ]; then echo; echo '```'; echo "$timing"; echo '```'; fi
           } >> "$GITHUB_STEP_SUMMARY"

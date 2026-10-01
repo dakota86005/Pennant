@@ -1811,6 +1811,22 @@ The rebuild is one big rewrite, but it is built so that *any* point can be aband
   around. `testLaunchWithKeptPayload` records the launch-to-first-report time (the app's own measure and the runner's
   wall clock) in `launch-timing.txt`. Whether the runner's session lets XCUITest drive the app is not yet seen (this
   stage's PR is the first run).
+- *As built in the UI-test health pass (after N7, 2026-10-01):* all seventeen XCUITests pass on the owner's Retina Mac
+  and on the runner with no audit finding, and `pennant-mac-ui` is a hard gate in `ci.yml` (no `continue-on-error`;
+  making it a required check is a repository setting). The runner's failures and their fixes: the club's window
+  (1180 × 820) covers the main window on the runner's 1024 × 768 screen, so the test brings the main window forward
+  from the Window menu before closing it; the club window's title is no longer drawn in its toolbar (as in the main
+  window); the first-export note sits under its label, since beside it, with the inspector open, it wrapped and failed
+  the audit on a Retina screen. Every audit first moves the pointer to the window's title strip and waits any help tag
+  away, and keeps a picture of each contrast finding's element. The window's own pixels are read by the text's ink
+  (`WindowPixels.contrast`, which never reads above the text's colours' own ratio). Two set-asides were added, each
+  printed with its reason: report text under the inspector, which the system lays over the report on a window too
+  narrow for the sidebar, the report and the inspector; and, on a 1× screen only, text whose own pixels read at 4.5:1
+  or better. The evidence for the second: on the runner a page of text samples had the audit report "Scoring runs" at
+  the callout size and medium weight in pure black on white ("nearly passed") and fail it in the label colour and two
+  dark greys, while the same colours on other words, and the same words at another size or weight, passed (run
+  36910001280); its findings in the app read 6.5:1 to 19.9:1 by their pixels. A Retina screen keeps every contrast
+  finding a failure. `workflow_dispatch` takes `only` (one test, as `-only-testing` names it) for a run by hand.
 - **Manual matrix per milestone:**
   - light and dark; Reduce Transparency; Increase Contrast; Reduce Motion; VoiceOver spot check;
   - window widths 900, 1280 and 1728+;

@@ -379,9 +379,10 @@ app on screen. **Running them locally is optional** since N6, Stage B1: CI runs 
 (`pennant-mac-ui` in `ci.yml`, its own job, for pull requests into `feature/swiftui` and by hand from the Actions tab),
 where a logged-in session no one is using takes the driving, on the synthetic league, with the same script
 (`PENNANT_TEST_NO_PACKAGES=1 PENNANT_TEST_UNSIGNED=1 macos/scripts/test.sh`); the window screenshots, the
-accessibility audits, the launch timing and the logs come back as the `xcuitest-screenshots` artifact. That job is off
-the critical path (`continue-on-error`) and changes nothing on the runner: if its UI automation refuses, the log says
-so. `pennant-mac` runs the PennantKit, PennantDesign and PennantFeatures tests and builds the app and its UI tests
+accessibility audits, the launch timing and the logs come back as the `xcuitest-screenshots` artifact. That job is a
+hard gate since the UI-test health pass (a failing XCUITest fails the run; making it a required check is a repository
+setting), and changes nothing on the runner: if its UI automation refuses, the log says so. By hand, the Actions tab's
+`only` input runs one test (`PennantUITests/PennantUITests/testX`). `pennant-mac` runs the PennantKit, PennantDesign and PennantFeatures tests and builds the app and its UI tests
 unsigned, without the server, on every pull request.
 
 **Snapshots.** PennantFeatures' tests also draw the shell (the sidebar with the club card, the main window, each server
