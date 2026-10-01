@@ -107,8 +107,16 @@ final class PennantUITests: XCTestCase {
     ///   contrast finding fails, and so does a sidebar label whose pixels read below 4.5:1.
     @MainActor
     private func audit(_ app: XCUIApplication, named name: String = "accessibility-audit") throws {
+        // The pointer off the content first, and any help tag it left up gone (waited for, never a fixed sleep): a tag
+        // is the system's, and one left over a line by the last click is measured as that line's background
+        let front = app.windows.firstMatch
+        if front.exists { front.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.01)).hover() }
+        XCTAssertTrue(app.helpTags.firstMatch.waitForNonExistence(timeout: 5), "a help tag stayed up over the window")
         var issues: [String] = []
         var setAside: [String] = []
+        // Each contrast finding's element, whose own picture is kept beside the findings (the element alone, as the
+        // audit asks for it)
+        var pictured: [XCUIElement] = []
         // Each window with its own pixels, so an element is measured in the window that holds it
         let shots = app.windows.allElementsBoundByIndex.map { window in (frame: window.frame, shot: window.screenshot()) }
         let windows = shots.map { (frame: $0.frame, pixels: WindowPixels($0.shot.image, frame: $0.frame)) }
@@ -175,6 +183,7 @@ final class PennantUITests: XCTestCase {
                 // Never set aside: its own pixels are measured only to help find it
                 let ratio = windows.first { $0.frame.contains(frame) }?.pixels?.contrast(in: frame)
                 issues.append(line + (ratio.map { String(format: " (its own pixels read at %.1f:1)", $0) } ?? ""))
+                pictured.append(element)
             } else {
                 issues.append(line)
             }
@@ -183,6 +192,9 @@ final class PennantUITests: XCTestCase {
         print("[audit] \(name): \(issues.count) finding(s), \(setAside.count) set aside")
         for line in setAside { print("[audit] \(name): set aside: \(line)") }
         for line in issues { print("[audit] \(name): FINDING: \(line)") }
+        for (index, element) in pictured.enumerated() where element.exists {
+            keep(element.screenshot(), named: "\(name)-finding-\(index + 1)")
+        }
         let attachment = XCTAttachment(string: (["Findings:"] + issues + ["", "Set aside (\(setAside.count)), each with its reason:"] + setAside).joined(separator: "\n"))
         attachment.name = name
         attachment.lifetime = .keepAlways
@@ -770,14 +782,30 @@ final class PennantUITests: XCTestCase {
     private func auditClubWindow(_ app: XCUIApplication, named name: String) throws {
         let main = app.windows.matching(NSPredicate(format: "identifier BEGINSWITH 'main'")).firstMatch
         if main.exists {
+            // The main window brought to the front first, from the Window menu: on a small screen (GitHub's runner,
+            // 1024 × 768) the club's window covers the main window's close button, and a click there reaches the club's
+            raiseFromWindowMenu(app, main)
             main.buttons[XCUIIdentifierCloseWindow].firstMatch.click()
             XCTAssertTrue(main.waitForNonExistence(timeout: 5), "the main window did not close")
         }
-        let club = app.windows.firstMatch
-        club.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.01)).hover()
-        // Any help tag the pointer left up gone before the audit (L8: waited for, never a fixed sleep)
-        XCTAssertTrue(app.helpTags.firstMatch.waitForNonExistence(timeout: 5), "a help tag stayed up over the club's window")
+        // The pointer is moved off the content, and any help tag waited away, by the audit itself
         try audit(app, named: name)
+    }
+
+    /// Brings a window to the front by its item in the Window menu (its title), and waits until its close button is the
+    /// element at its own place on the screen (hittable), so a click on it reaches it.
+    @MainActor
+    private func raiseFromWindowMenu(_ app: XCUIApplication, _ window: XCUIElement) {
+        let close = window.buttons[XCUIIdentifierCloseWindow].firstMatch
+        if close.isHittable { return }
+        let menu = app.menuBars.menuBarItems["Window"].firstMatch
+        XCTAssertTrue(menu.waitForExistence(timeout: 5), "the menu bar has no Window menu")
+        menu.click()
+        let item = menu.menuItems[window.title].firstMatch
+        XCTAssertTrue(item.waitForExistence(timeout: 5), "the Window menu does not list '\(window.title)'")
+        item.click()
+        let hittable = expectation(for: NSPredicate(format: "isHittable == true"), evaluatedWith: close)
+        wait(for: [hittable], timeout: 5)
     }
 
     /// A club's window (D-059) from League Office ▸ Club Reports: the masthead, what our scouts see, head to head, the
