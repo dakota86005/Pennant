@@ -547,8 +547,15 @@ final class PennantUITests: XCTestCase {
         // The query takes the keyboard as the palette opens; a click makes sure of it on a runner whose window is slow
         // to become key
         query.click()
-        query.typeText("major")
-        XCTAssertTrue(element(app, "palette.result.view.majorLeague.report").waitForExistence(timeout: 5), "the palette did not list Major League Ops' report")
+        // Words that name one view, so the first result is the same whichever list is up (the registry's, or the
+        // server's, which orders a department's views by name)
+        query.typeText("major report")
+        // The registry's entry until the server's answer is in, the served one after (the last answer stays while the
+        // next is asked, L3, so which one shows depends on how fast the keys arrive)
+        let report = app.descendants(matching: .any).matching(NSPredicate(
+            format: "identifier IN %@", ["palette.result.view.majorLeague.report", "palette.result.search.view.majorLeague/report"]
+        )).firstMatch
+        XCTAssertTrue(report.waitForExistence(timeout: 10), "the palette did not list Major League Ops' report")
         sidebarAtTop(app)
         keep(app.windows.firstMatch.screenshot(), named: "design-palette")
         try audit(app, named: "accessibility-audit-design-palette")
