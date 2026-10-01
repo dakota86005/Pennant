@@ -101,10 +101,14 @@ final class PennantUITests: XCTestCase {
     /// - a contrast finding on a sidebar row label (`sidebar.…`) only: outside the sidebar's visible frame (GitHub's runner
     ///   has a 1024 × 768 screen, so rows below the window are measured against pixels that are not theirs), or inside it
     ///   when its own pixels, in a screenshot of the window that holds it taken at the audit, read at 4.5:1 or better
-    ///   (`WindowPixels.contrast`: the text's darkest (or lightest) tenth against the element's middle). On the runner
+    ///   (`WindowPixels.contrast`: the darkest (or lightest) tenth of the text's own ink against the element's middle). On the runner
     ///   those labels, the system's vibrant text on its glass, were reported in a different handful on each run while
     ///   their pixels read at 9:1 to 19:1; the line carries the measured ratio, so it is checked, not muted. Every other
     ///   contrast finding fails, and so does a sidebar label whose pixels read below 4.5:1;
+    /// - a contrast finding on the report's text under the inspector, which the system lays over the report's trailing
+    ///   side on a window too narrow for the sidebar, the report and the inspector (GitHub's runner: "Through May 5, 2040
+    ///   · 30 games" was measured with all but "Throu" under the inspector); the inspector's own texts are never set
+    ///   aside this way;
     /// - a contrast finding on a text element on a 1× screen only (a window whose screenshot has one pixel per point:
     ///   GitHub's runner, never a Retina Mac), when its own pixels read at 4.5:1 or better (`WindowPixels.contrast`, which
     ///   reads a 1× text below its colours' ratio, since its thin strokes are blended with the page). At 1× the audit's
@@ -141,6 +145,16 @@ final class PennantUITests: XCTestCase {
         let controls = [XCUIIdentifierCloseWindow, XCUIIdentifierMinimizeWindow, XCUIIdentifierZoomWindow].flatMap { id in
             app.buttons.matching(identifier: id).allElementsBoundByIndex.map { $0.frame.insetBy(dx: -2, dy: -2) }
         } + windows.map { CGRect(x: $0.frame.minX, y: $0.frame.minY, width: 90, height: 52) }
+        // The inspector column, where one is open: on a window too narrow for the sidebar, the report and the inspector
+        // (GitHub's runner, a 1024-point-wide screen) the system lays the inspector over the report's trailing side
+        let inspector = app.descendants(matching: .any)["inspector"].firstMatch
+        let inspectorFrame = inspector.exists ? inspector.frame : nil
+        /// Whether an element is text of the report under the inspector: its frame meets the inspector's, and it is not
+        /// one of the inspector's own texts.
+        func isUnderInspector(_ frame: CGRect) -> Bool {
+            guard let inspectorFrame, inspectorFrame.intersects(frame) else { return false }
+            return !inspector.staticTexts.allElementsBoundByIndex.contains { $0.frame == frame }
+        }
         /// The sidebar column's container: a window's full height, from its left edge to the sidebar's right edge.
         func isSidebarColumn(_ frame: CGRect) -> Bool {
             guard let sidebarFrame else { return false }
@@ -189,6 +203,10 @@ final class PennantUITests: XCTestCase {
                 } else {
                     issues.append(line + (ratio.map { String(format: " (its own pixels read at %.1f:1)", $0) } ?? ""))
                 }
+            } else if issue.auditType == .contrast, isUnderInspector(frame) {
+                // Covered, wholly or partly, by the inspector laid over the report: what the audit measured there is the
+                // inspector's pixels, not the text's
+                setAside.append(line + " (report text under the inspector laid over it on a narrow window)")
             } else if issue.auditType == .contrast, element.elementType == .staticText,
                       let pixels = windows.first(where: { $0.frame.contains(frame) })?.pixels, pixels.scale < 1.5,
                       let ratio = pixels.contrast(in: frame), ratio >= 4.5 {
@@ -914,8 +932,11 @@ struct WindowPixels {
     }
 
     /// The contrast of the element's text against its background, from its own pixels: its middle luminance (the
-    /// background, which most of a text's frame is) against its tenth furthest from it (dark text on a light page, or
-    /// light on dark). Nil when the frame is not in the picture.
+    /// background, which most of a text's frame is) against the tenth of its ink furthest from it (the strokes' cores:
+    /// dark text on a light page, or light on dark), where its ink is the pixels that differ visibly from the background
+    /// (more than 1.1:1), on the side most of them fall. Only the ink counts, so a frame wider than its words (a title
+    /// strip, a wrapped line's empty end) reads its words, not its empty space. Every pixel blends the text's colour with
+    /// the page's, so this never reads above the text's colours' own ratio. Nil when the frame is not in the picture.
     func contrast(in element: CGRect) -> Double? {
         let local = element.offsetBy(dx: -frame.minX, dy: -frame.minY)
         let x0 = max(0, Int((local.minX * scale).rounded(.down))), x1 = min(width, Int((local.maxX * scale).rounded(.up)))
@@ -931,8 +952,17 @@ struct WindowPixels {
         }
         values.sort()
         let middle = values[values.count / 2]
-        let dark = values[values.count / 10], light = values[values.count - 1 - values.count / 10]
-        let text = abs(middle - dark) >= abs(light - middle) ? dark : light
-        return (max(middle, text) + 0.05) / (min(middle, text) + 0.05)
+        func ratio(_ a: Double, _ b: Double) -> Double { (max(a, b) + 0.05) / (min(a, b) + 0.05) }
+        let darker = values.filter { $0 < middle && ratio($0, middle) > 1.1 }
+        let lighter = values.filter { $0 > middle && ratio($0, middle) > 1.1 }
+        // Both sorted lightest last: dark ink's darkest tenth is near its start, light ink's lightest tenth near its end
+        let text: Double
+        if darker.count >= lighter.count {
+            guard !darker.isEmpty else { return 1 }
+            text = darker[darker.count / 10]
+        } else {
+            text = lighter[lighter.count - 1 - lighter.count / 10]
+        }
+        return ratio(text, middle)
     }
 }
