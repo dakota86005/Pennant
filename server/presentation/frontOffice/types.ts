@@ -95,6 +95,8 @@ export interface ReportUnknowns {
 /** What changed since the last export in one department (N7): an item new, resolved, or at another urgency. */
 export interface ReportChange {
   kind: 'new' | 'resolved' | 'moved';
+  /** The kind in a word ("New", "Resolved", "Moved"), drawn beside the line: the kind is never a symbol alone. */
+  word: string;
   line: Claim;
 }
 

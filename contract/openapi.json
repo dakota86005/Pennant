@@ -2015,7 +2015,11 @@
           },
           "headToHead": {
             "$ref": "#/components/schemas/Claim",
-            "description": "Their record against us this season; null for our own club."
+            "description": "Their record against us this season; null for our own club, or when it can't be read (`headToHeadNote` says why)."
+          },
+          "headToHeadNote": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Why there is no record against us (our club not known yet, the export without its games); null when served or ours."
           },
           "nextSeries": {
             "$ref": "#/components/schemas/Claim",
@@ -5695,12 +5699,17 @@
               }
             ]
           },
+          "word": {
+            "type": "string",
+            "description": "The kind in a word (\"New\", \"Resolved\", \"Moved\"), drawn beside the line: the kind is never a symbol alone."
+          },
           "line": {
             "$ref": "#/components/schemas/Claim"
           }
         },
         "required": [
           "kind",
+          "word",
           "line"
         ],
         "description": "What changed since the last export in one department (N7): an item new, resolved, or at another urgency."
