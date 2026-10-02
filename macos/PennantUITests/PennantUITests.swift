@@ -1160,6 +1160,12 @@ struct WindowPixels {
             return true
         }
         guard drawn else { return nil }
+        // The picture must be the whole window at one scale: a window running past its screen's edge is pictured only in
+        // the part on the screen, and a scale taken from its width would read every element's pixels from the wrong place
+        // (PR #54: a 1280-point window on the runner's 1024-point screen read black text at 1.0:1). No pixels, then, and
+        // nothing is set aside by them
+        let across = CGFloat(w) / frame.width, down = CGFloat(h) / frame.height
+        guard abs(across - down) < 0.05 else { return nil }
         width = w
         height = h
         data = bytes
