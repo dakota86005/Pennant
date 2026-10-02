@@ -2536,9 +2536,9 @@ identity (PROJECT_STATE lists both as known gaps).
 
 ## D-067 — The club's own scouts' complete ratings are the scouted evidence when the export carries them
 
-**Status:** Accepted (supervisor, 2026-10-02: the brief "read the club's own scouts' complete ratings"); the rule for a
-player our scouts haven't rated is the builder's recommendation, implemented behind one policy line and **open for the
-owner**. **Implementation:** `server/scoutedEvidence.ts` (`ourScoutsRatings`, `evidenceRatingMode`,
+**Status:** Accepted (supervisor, 2026-10-02: the brief "read the club's own scouts' complete ratings"). The rule for a
+player our scouts haven't rated was **decided by the owner, 2026-10-02: OSA's view, said so** (over the builder's
+recommendation, "unknown to our scouts"). **Implementation:** `server/scoutedEvidence.ts` (`ourScoutsRatings`, `evidenceRatingMode`,
 `scoutedRatingRow`, `UNRATED_BY_OUR_SCOUTS`); the rating snapshot (`takeSnapshot`, `history.ts`) and its stamp; the
 `scouted-complete` kind (`ratingMode.ts`); the data status's ratings line. Refines D-002 and D-017 (what "the
 organisation's scouted ratings" are), D-018, D-061 (the kind of ratings) and D-064 (the stamps are the save's).
@@ -2578,14 +2578,19 @@ The rule:
 - **Otherwise the current behaviour stands** (D-061): the main tables, labelled with their kind. "Show no player
   ratings" still withholds every rating, the file included: what OOTP writes into the file in that mode is not
   established, and the GM's choice of no ratings is kept.
-- **A player our scouts haven't rated is unknown to our scouts** (`UNRATED_BY_OUR_SCOUTS = 'unknown'`, the policy line):
-  he is never filled from OSA's view or true ratings (D-018). The builder's reasons: one source per evidence population
-  (a peer percentile, a lineup or a snapshot never mixes our scouts' grades with OSA's); a snapshot's kind is stamped per
-  snapshot, so a mixed one could not be stamped honestly; under "real ratings" the fill would be true ratings, a fog-of-war
-  breach, so an "OSA's view" alternative would exist under one export setting only; and on the USBL save our scouts
-  rated every active player, so the cost is nil there. The alternative (use OSA's view and say so per player, "OSA's
-  view: our scouts haven't rated him") is the owner's to choose; it would need a per-player source on every rating and
-  on the snapshot row, and is not built.
+- **A player our scouts haven't rated is read from OSA's view, and said so** (`UNRATED_BY_OUR_SCOUTS = 'osa'`, the
+  policy line; the owner's decision). When our scouts' rows are the evidence and the file has no row of ours for him, his
+  OSA row in the same file (`scouting_team_id` 0) is used, never the main tables: so never true ratings, whatever the
+  export's mode. With no OSA row either he is unknown (D-018). Every rating served from the fill says so for that
+  player, in plain words ("OSA's view: our scouts haven't rated him"): the player card, the evidence summary and an MLB
+  need's evidence trail carry the sentence, and the roster, staff and draft rows carry a quiet mark ("OSA") with the
+  sentence as its hint. The builder had recommended leaving him unknown (one source per population, a snapshot stamped
+  per snapshot); the per-player source below answers both concerns.
+- **A change of source is never development, per player.** Each snapshot row records where that player's ratings came
+  from (`src`: `our_scouts` or `osa`). Between two snapshots in which a player's source differs, his comparison is a
+  source switch, stated, never a change in his ratings: his rows from the other source are left out of his development
+  trend and observed history, and the rating-change list shows the switch and no changes for him (D-061's rule, applied
+  per player). A row with no recorded source is never evidence of a switch.
 - **A new kind of ratings, never mixed in history.** A rating snapshot read from our scouts' rows is stamped
   `scouted-complete`, a kind of its own (D-061's switch rule applies unchanged: two known, different kinds are a switch,
   never development). It is not equated with the scouts'-view main tables (`scouted`), since nothing establishes the two
