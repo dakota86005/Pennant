@@ -1,0 +1,351 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "asOf": {
+    "display": "Through May 5, 2040",
+    "hint": "The last game day in the imported export"
+  },
+  "preparedBy": {
+    "display": "Prepared by the minor league staff"
+  },
+  "note": {
+    "display": "Player Development says whether the level is developing him; Minor League Operations says whether he can get the work there. Both are shown, with who said what."
+  },
+  "order": {
+    "display": "Whether you need to look, then by name",
+    "hint": "Needs attention, then worth a look, then routine"
+  },
+  "levels": [
+    {
+      "id": "2",
+      "name": "AAA"
+    }
+  ],
+  "rows": [
+    {
+      "id": "assignment:1104",
+      "cells": {
+        "player": {
+          "display": "P 1104"
+        },
+        "age": {
+          "display": "22"
+        },
+        "club": {
+          "display": "AAA · Farm 1 F"
+        },
+        "level": {
+          "display": "not established · not established"
+        },
+        "results": {
+          "display": "The league's own run environment could not be established from the export.",
+          "tone": "unknown"
+        },
+        "work": {
+          "display": "Regular work",
+          "tone": "good"
+        },
+        "stakes": {
+          "display": "Protected prospect",
+          "tone": "neutral",
+          "hint": "How careful to be with his development; not where he plays"
+        },
+        "conclusion": {
+          "display": "Nothing to read yet",
+          "tone": "neutral"
+        }
+      },
+      "sort": {
+        "player": "P 1104",
+        "age": 22,
+        "club": "02 Farm 1 F",
+        "level": null,
+        "results": null,
+        "work": 0,
+        "stakes": null,
+        "conclusion": 207
+      },
+      "playerId": 1104,
+      "teamId": 101,
+      "levelId": "2",
+      "inQuestion": false,
+      "open": {
+        "kind": "decision",
+        "department": "farm",
+        "key": "1104"
+      }
+    },
+    {
+      "id": "assignment:1105",
+      "cells": {
+        "player": {
+          "display": "P 1105"
+        },
+        "age": {
+          "display": "23"
+        },
+        "club": {
+          "display": "AAA · Farm 1 F"
+        },
+        "level": {
+          "display": "not established · not established"
+        },
+        "results": {
+          "display": "The league's own run environment could not be established from the export.",
+          "tone": "unknown"
+        },
+        "work": {
+          "display": "Regular work",
+          "tone": "good"
+        },
+        "stakes": {
+          "display": "Protected prospect",
+          "tone": "neutral",
+          "hint": "How careful to be with his development; not where he plays"
+        },
+        "conclusion": {
+          "display": "Nothing to read yet",
+          "tone": "neutral"
+        }
+      },
+      "sort": {
+        "player": "P 1105",
+        "age": 23,
+        "club": "02 Farm 1 F",
+        "level": null,
+        "results": null,
+        "work": 0,
+        "stakes": null,
+        "conclusion": 207
+      },
+      "playerId": 1105,
+      "teamId": 101,
+      "levelId": "2",
+      "inQuestion": false,
+      "open": {
+        "kind": "decision",
+        "department": "farm",
+        "key": "1105"
+      }
+    },
+    {
+      "id": "assignment:1106",
+      "cells": {
+        "player": {
+          "display": "P 1106"
+        },
+        "age": {
+          "display": "21"
+        },
+        "club": {
+          "display": "AAA · Farm 1 F"
+        },
+        "level": {
+          "display": "not established · not established"
+        },
+        "results": {
+          "display": "The league's own run environment could not be established from the export.",
+          "tone": "unknown"
+        },
+        "work": {
+          "display": "Regular work",
+          "tone": "good"
+        },
+        "stakes": {
+          "display": "Core prospect",
+          "tone": "neutral",
+          "hint": "How careful to be with his development; not where he plays"
+        },
+        "conclusion": {
+          "display": "Nothing to read yet",
+          "tone": "neutral"
+        }
+      },
+      "sort": {
+        "player": "P 1106",
+        "age": 21,
+        "club": "02 Farm 1 F",
+        "level": null,
+        "results": null,
+        "work": 0,
+        "stakes": null,
+        "conclusion": 207
+      },
+      "playerId": 1106,
+      "teamId": 101,
+      "levelId": "2",
+      "inQuestion": false,
+      "open": {
+        "kind": "decision",
+        "department": "farm",
+        "key": "1106"
+      }
+    },
+    {
+      "id": "assignment:1107",
+      "cells": {
+        "player": {
+          "display": "P 1107"
+        },
+        "age": {
+          "display": "20"
+        },
+        "club": {
+          "display": "AAA · Farm 1 F"
+        },
+        "level": {
+          "display": "not established · not established"
+        },
+        "results": {
+          "display": "11 is below the minimum sample this evaluation requires.",
+          "tone": "unknown"
+        },
+        "work": {
+          "display": "Regular work",
+          "tone": "good"
+        },
+        "stakes": {
+          "display": "Core prospect",
+          "tone": "neutral",
+          "hint": "How careful to be with his development; not where he plays"
+        },
+        "conclusion": {
+          "display": "Nothing to read yet",
+          "tone": "neutral"
+        }
+      },
+      "sort": {
+        "player": "P 1107",
+        "age": 20,
+        "club": "02 Farm 1 F",
+        "level": null,
+        "results": null,
+        "work": 0,
+        "stakes": null,
+        "conclusion": 207
+      },
+      "playerId": 1107,
+      "teamId": 101,
+      "levelId": "2",
+      "inQuestion": false,
+      "open": {
+        "kind": "decision",
+        "department": "farm",
+        "key": "1107"
+      }
+    },
+    {
+      "id": "assignment:1108",
+      "cells": {
+        "player": {
+          "display": "P 1108"
+        },
+        "age": {
+          "display": "22"
+        },
+        "club": {
+          "display": "AAA · Farm 1 F"
+        },
+        "level": {
+          "display": "not established · not established"
+        },
+        "results": {
+          "display": "The league's own run environment could not be established from the export.",
+          "tone": "unknown"
+        },
+        "work": {
+          "display": "Regular work",
+          "tone": "good"
+        },
+        "stakes": {
+          "display": "Protected prospect",
+          "tone": "neutral",
+          "hint": "How careful to be with his development; not where he plays"
+        },
+        "conclusion": {
+          "display": "Nothing to read yet",
+          "tone": "neutral"
+        }
+      },
+      "sort": {
+        "player": "P 1108",
+        "age": 22,
+        "club": "02 Farm 1 F",
+        "level": null,
+        "results": null,
+        "work": 0,
+        "stakes": null,
+        "conclusion": 207
+      },
+      "playerId": 1108,
+      "teamId": 101,
+      "levelId": "2",
+      "inQuestion": false,
+      "open": {
+        "kind": "decision",
+        "department": "farm",
+        "key": "1108"
+      }
+    },
+    {
+      "id": "assignment:1109",
+      "cells": {
+        "player": {
+          "display": "P 1109"
+        },
+        "age": {
+          "display": "23"
+        },
+        "club": {
+          "display": "AAA · Farm 1 F"
+        },
+        "level": {
+          "display": "not established · not established"
+        },
+        "results": {
+          "display": "The league's own run environment could not be established from the export.",
+          "tone": "unknown"
+        },
+        "work": {
+          "display": "Regular work",
+          "tone": "good"
+        },
+        "stakes": {
+          "display": "Protected prospect",
+          "tone": "neutral",
+          "hint": "How careful to be with his development; not where he plays"
+        },
+        "conclusion": {
+          "display": "Nothing to read yet",
+          "tone": "neutral"
+        }
+      },
+      "sort": {
+        "player": "P 1109",
+        "age": 23,
+        "club": "02 Farm 1 F",
+        "level": null,
+        "results": null,
+        "work": 0,
+        "stakes": null,
+        "conclusion": 207
+      },
+      "playerId": 1109,
+      "teamId": 101,
+      "levelId": "2",
+      "inQuestion": false,
+      "open": {
+        "kind": "decision",
+        "department": "farm",
+        "key": "1109"
+      }
+    }
+  ],
+  "emptyInQuestion": {
+    "display": "No assignment is in question here. Every one Player Development could read is defensible, and nobody is short of work."
+  },
+  "emptyAll": {
+    "display": "No players."
+  }
+}

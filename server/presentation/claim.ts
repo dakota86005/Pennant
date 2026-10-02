@@ -269,7 +269,8 @@ export function adoptAuthored<T>(payload: T): T {
 /** Where a claim or a row leads, with the fields its kind needs (a player target without a player is refused). */
 export type TargetInput =
   | { kind: 'department'; department: DeptId }
-  | { kind: 'view'; department: DeptId; view: string }
+  /** A view, opened on one subject when `key` names it (an affiliate's team id on Farm & Development's Affiliates, N10). */
+  | { kind: 'view'; department: DeptId; view: string; key?: string }
   /** A player, with his organization's club when known (`teamId`: the nearest view a client opens for him). */
   | { kind: 'player'; playerId: Integer; teamId?: Integer | null }
   | { kind: 'club'; teamId: Integer }
@@ -281,7 +282,9 @@ export function target(input: TargetInput): Target {
     case 'department':
       return { kind: 'department', department: input.department };
     case 'view':
-      return { kind: 'view', department: input.department, view: sentence(input.view, 'target.view') };
+      return input.key === undefined
+        ? { kind: 'view', department: input.department, view: sentence(input.view, 'target.view') }
+        : { kind: 'view', department: input.department, view: sentence(input.view, 'target.view'), key: sentence(input.key, 'target.key') };
     case 'player':
       if (!whole(input.playerId)) throw new AuthoringError(`a player target needs a player id, not ${String(input.playerId)}`);
       return whole(input.teamId) ? { kind: 'player', playerId: input.playerId, teamId: input.teamId! } : { kind: 'player', playerId: input.playerId };

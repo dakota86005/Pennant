@@ -186,8 +186,10 @@ describe('the presentation boundary', () => {
     // through Player Value, Player State and the farm's door (`mlbEvidence`); its own imports are held below
     // `clubReport` is another club's report's reader (N7), held like `morningReport` below; `clubOwed` is the club question
     // still open (no specialist: it says whether the automatic club may be served as chosen)
+    // `farmViewsBuild` is Farm & Development's views' reader (N10), run by the same worker; its own imports are held in
+    // farmViews.test.ts
     const PUBLIC = new Set([
-      'clubOwed', 'clubReport', 'contracts', 'config', 'dashboard', 'dataStatus', 'db', 'farmOperations', 'frontOfficeBuild', 'leagueRules',
+      'clubOwed', 'clubReport', 'contracts', 'config', 'dashboard', 'dataStatus', 'db', 'farmOperations', 'farmViewsBuild', 'frontOfficeBuild', 'leagueRules',
       'mlbOperations', 'morningReport', 'org', 'payroll', 'playerStateRoutes', 'rosterops', 'saveCalibration', 'serverEvents', 'valuation',
       'viewingOrganization',
     ]);
@@ -234,7 +236,10 @@ describe('the presentation boundary', () => {
       .filter((f) => new RegExp(`from\\s+'\\./${name}\\.js'`).test(code(f)));
     // N7: the attention put on the Front Office when served, and Around the League (the club reports it builds), are
     // served views over it, like the routes; no specialist calls either
-    expect(importers('frontOfficeService').sort()).toEqual(['api.ts', 'aroundTheLeague.ts', 'frontOfficeAttention.ts', 'index.ts', 'v2Routes.ts']);
+    // N10: the farm's views are kept on the Front Office's inputs and built in its worker, a served view like the others
+    expect(importers('frontOfficeService').sort()).toEqual(['api.ts', 'aroundTheLeague.ts', 'farmViewService.ts', 'frontOfficeAttention.ts', 'index.ts', 'v2Routes.ts']);
+    expect(importers('farmViewService').sort()).toEqual(['v2Routes.ts']);
+    expect(importers('farmViewsBuild').sort()).toEqual(['farmViewService.ts', 'frontOfficeWorker.ts']);
     expect(importers('frontOfficeAttention').sort()).toEqual(['api.ts', 'v2Routes.ts']);
     expect(importers('aroundTheLeague').sort()).toEqual(['frontOfficeAttention.ts', 'v2Routes.ts']);
     expect(importers('frontOfficeBuild').sort()).toEqual(['frontOfficeService.ts', 'frontOfficeWorker.ts']);
@@ -245,8 +250,9 @@ describe('the presentation boundary', () => {
     // pack files and hands them to the pack check (D-062)
     // N7: the served views that put the GM's attention on the Front Office, Around the League, and search's index (the
     // catalog's views)
+    // N10: Farm & Development's views, read in the build and kept by their service
     const allowed = new Set(['api.ts', 'v2Routes.ts', 'serverEvents.ts', 'frontOfficeService.ts', 'frontOfficeBuild.ts', 'themePackStore.ts',
-      'frontOfficeAttention.ts', 'aroundTheLeague.ts', 'search.ts']);
+      'frontOfficeAttention.ts', 'aroundTheLeague.ts', 'search.ts', 'farmViewsBuild.ts', 'farmViewService.ts']);
     const importers = filesUnder('')
       .filter((f) => !f.startsWith('presentation/') && !f.startsWith('contract/'))
       .filter((f) => /from\s+'\.\/presentation\//.test(code(f)));

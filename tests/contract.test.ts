@@ -11,6 +11,7 @@ import { DIGEST_SWIFT_PATH, SHAPES_SPEC_PATH, SPEC_PATH, buildShapesSpec, buildS
 import { operations } from '../server/contract/routes.js';
 import { basisProblems } from '../server/presentation/claim.js';
 import { departmentReport, frontOfficeBuilt, frontOfficeRevision } from '../server/frontOfficeService.js';
+import { farmAssignmentsNow, resetFarmViews } from '../server/farmViewService.js';
 import type { Basis } from '../server/contract/presentation.js';
 import { api, importState, runImport } from '../server/api.js';
 import { loadConfig, saveConfig } from '../server/config.js';
@@ -303,7 +304,8 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
   const realKeys = Object.fromEntries(KEY_VARS.map((k) => [k, process.env[k]]));
 
   beforeAll(async () => {
-    save = buildSave({ season: 2040, historySeasons: 1, gamesPerTeam: 60, playedShare: 0.5, clubs: 4, seed: 11, teamSeason: true });
+    // With a farm (N10): Farm & Development's views read an affiliate, its assignments and a farm player's history
+    save = buildSave({ season: 2040, historySeasons: 1, gamesPerTeam: 60, playedShare: 0.5, clubs: 4, seed: 11, teamSeason: true, minors: true });
     // A pretend Mac home with one OOTP save, so finding saves reads neither the real disk nor nothing at all
     home = fs.mkdtempSync(path.join(os.tmpdir(), 'pennant-contract-home-'));
     const csv = path.join(home, 'Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games/Test League.lg/import_export/csv');
@@ -339,6 +341,8 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
   const exceptionsInUse = new Set<JargonException>();
   /** An item's evidence key on the synthetic save (a Major League Ops need), found once the save is built. */
   let evidenceKey = '';
+  /** A farm player with an assignment and scouting history (N10), for the farm's decision and development detail. */
+  let farmPlayer = 0;
   const SAMPLE_PARAMS: Record<string, () => string> = {
     orgId: () => String(save.org),
     org: () => String(save.org),
@@ -346,6 +350,7 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     key: () => evidenceKey,
     // Another club's report (N7): the league's second club, not the one the app follows
     teamId: () => String(save.clubs[1]),
+    playerId: () => String(farmPlayer),
   };
   /** A query a GET is captured with, where it takes one (N7: search needs something typed). */
   const SAMPLE_QUERIES: Record<string, string> = { search: '?q=club' };
@@ -354,6 +359,19 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     const report = await departmentReport(save.org, 'majorLeague');
     evidenceKey = [...report.toDecide.items, ...report.watching.items].find((it) => it.evidence)?.evidence ?? '';
     expect(evidenceKey).not.toBe('');
+  });
+
+  it('has a farm player with an assignment and three snapshots of this save\'s rating history, for the farm\'s views (N10)', async () => {
+    farmPlayer = (await farmAssignmentsNow(String(save.org))).rows[0]?.playerId ?? 0;
+    expect(farmPlayer).toBeGreaterThan(0);
+    const insert = historyDb.prepare(
+      'INSERT INTO save_rating_snapshots (save_key, game_date, player_id, name, team_id, org_id, level, position, age, cur, pot, con, gap, pow, eye, avk, spd) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    );
+    for (const [date, step] of [['2040-3-20', 0], ['2040-4-30', 1], ['2040-6-20', 2]] as const) {
+      insert.run(currentHistoryKey(), date, farmPlayer, 'Farm Player', save.farmClubs[0], save.org, 2, 6, 21, 40 + step, 60, 40 + step, 40, 40, 40, 40, 50);
+    }
+    // The views are built again with the history in place
+    resetFarmViews();
   });
 
   it('has JSON GETs to check, so the check cannot pass vacuously', () => {
@@ -385,6 +403,11 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     if (op.operationId === 'getSaveDiscovery') body.searched = [];
     if (op.operationId !== 'getSearchLocations') fixture(`responses/${op.operationId}.json`, json(body));
   }, SLOW);
+
+  it('takes the farm player\'s snapshots out again, so the history questions below start from a save with none (N10)', () => {
+    historyDb.prepare('DELETE FROM save_rating_snapshots WHERE save_key = ? AND player_id = ?').run(currentHistoryKey(), farmPlayer);
+    resetFarmViews();
+  });
 
   it('serves every department\'s report in the contract\'s shape, plain, with every basis sound (captured for the previews)', async () => {
     const validate = validator('DepartmentReport');

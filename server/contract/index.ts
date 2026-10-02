@@ -104,6 +104,15 @@ export type {
   Desk, DeskMore, FrontOfficeSummary, TrailSection, ClaimTrail,
   DeskStatus, DeskAttention, DeskSetAside, DeskView, DeskUpdate, DeskChange, ChangeItem, ChangeChip, SinceLastExport,
 } from '../presentation/frontOffice/types.js';
+// Farm & Development's views (N10): `/api/v2/views/:org/farm/…`
+export type {
+  FarmViewHead, FarmLevelChoice, FarmPlayerLine, FarmEvidenceRow, FarmFactRow, FarmFindingView, FarmDepthRow, FarmDepthSort, FarmStartersRow,
+  FarmPlayerRow, FarmLineRow, FarmPastWindow, FarmOrganizationView, FarmClubStep, FarmCoverRow, FarmConcernRow, FarmAffiliateDetail,
+  FarmAffiliatesView, FarmAssignmentRow, FarmAssignmentsView, FarmAlternativeRow, FarmWorkRow, FarmCascadeStepView, FarmCascadeView,
+  FarmReplacementLine, FarmConsequenceView, FarmRetentionView, FarmDecisionView, FarmFilter, FarmProspectRow, FarmNextAssignment,
+  FarmEvaluationRow, FarmProspectCard, FarmProspectsView, FarmDevelopmentTab, FarmDevelopmentRow, FarmSnapshotRow, FarmMovementRow,
+  FarmDevelopmentDetail, FarmDevelopmentView,
+} from '../presentation/farm/types.js';
 // Around the League and Following (N7): the wire, club reports, following, search
 export type {
   WireKind, WireSource, WireClub, WirePlayer, WireEntry, WireOrder, WireTop, Wire, WireKindChoice, ClubInjury, ClubReport, FollowedItem,

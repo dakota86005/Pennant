@@ -1,0 +1,206 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "asOf": {
+    "display": "Through May 5, 2040",
+    "hint": "The last game day in the imported export"
+  },
+  "preparedBy": {
+    "display": "Prepared by the minor league staff"
+  },
+  "playerId": 1104,
+  "teamId": 101,
+  "name": "P 1104",
+  "line": {
+    "display": "22 · 2B · AAA · Farm 1 F"
+  },
+  "pace": {
+    "display": "History still building",
+    "tone": "unknown"
+  },
+  "first": {
+    "display": "40"
+  },
+  "latest": {
+    "display": "42"
+  },
+  "change": {
+    "text": "Change in our scouts' read",
+    "tone": "good",
+    "basis": {
+      "because": [
+        {
+          "label": "First snapshot",
+          "value": "March 20, 2040: 40"
+        },
+        {
+          "label": "Latest snapshot",
+          "value": "June 20, 2040: 42"
+        },
+        {
+          "label": "Snapshots in this save",
+          "value": "3"
+        },
+        {
+          "label": "History",
+          "value": "Current-skill scouting composite improved by 2.0 across 3 snapshots and 92 in-game days."
+        }
+      ],
+      "source": {
+        "department": "farm",
+        "specialist": "Player Development",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": [],
+    "value": {
+      "n": 2,
+      "unit": "count",
+      "display": "+2"
+    }
+  },
+  "ceilingChange": {
+    "display": "0"
+  },
+  "summary": {
+    "text": "Our scouts' read of his current skills has changed +2; there aren't enough comparable players yet to say how that compares.",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "History",
+          "value": "Current-skill scouting composite improved by 2.0 across 3 snapshots and 92 in-game days."
+        },
+        {
+          "label": "Against his peers",
+          "value": "Peer evidence is still insufficient: not enough comparable scouting-history observations are available for a stable baseline."
+        }
+      ],
+      "source": {
+        "department": "farm",
+        "specialist": "Player Development",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  },
+  "snapshots": [
+    {
+      "id": "snap:1104:0",
+      "cells": {
+        "date": {
+          "display": "March 20, 2040"
+        },
+        "level": {
+          "display": "AAA"
+        },
+        "current": {
+          "display": "40"
+        },
+        "ceiling": {
+          "display": "60"
+        }
+      },
+      "sort": {
+        "date": 0,
+        "level": 2,
+        "current": 40,
+        "ceiling": 60
+      }
+    },
+    {
+      "id": "snap:1104:1",
+      "cells": {
+        "date": {
+          "display": "April 30, 2040"
+        },
+        "level": {
+          "display": "AAA"
+        },
+        "current": {
+          "display": "41"
+        },
+        "ceiling": {
+          "display": "60"
+        }
+      },
+      "sort": {
+        "date": 1,
+        "level": 2,
+        "current": 41,
+        "ceiling": 60
+      }
+    },
+    {
+      "id": "snap:1104:2",
+      "cells": {
+        "date": {
+          "display": "June 20, 2040"
+        },
+        "level": {
+          "display": "AAA"
+        },
+        "current": {
+          "display": "42"
+        },
+        "ceiling": {
+          "display": "60"
+        }
+      },
+      "sort": {
+        "date": 2,
+        "level": 2,
+        "current": 42,
+        "ceiling": 60
+      }
+    }
+  ],
+  "movement": [
+    {
+      "id": "move:1104:con",
+      "cells": {
+        "tool": {
+          "display": "Contact"
+        },
+        "from": {
+          "display": "40"
+        },
+        "to": {
+          "display": "42"
+        },
+        "change": {
+          "display": "+2",
+          "tone": "good"
+        }
+      },
+      "sort": {
+        "tool": "Contact",
+        "from": 40,
+        "to": 42,
+        "change": 2
+      }
+    }
+  ],
+  "movementEmpty": null,
+  "peers": [
+    {
+      "display": "Peer evidence is still insufficient: not enough comparable scouting-history observations are available for a stable baseline."
+    }
+  ],
+  "fogNote": {
+    "display": "These snapshots keep what the organization could see at the time. A change can be real development, a revised scouting read, or both; Pennant never puts OOTP's hidden ratings in their place."
+  }
+}

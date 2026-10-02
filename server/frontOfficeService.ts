@@ -240,6 +240,35 @@ async function run<T>(job: Job): Promise<T> {
   return (job.kind === 'build' ? await buildFrontOffice(job.request) : buildTrail(job.request)) as T;
 }
 
+/**
+ * Another department's job in the Front Office's worker (N10: the farm's views and a decision read on the click), off the
+ * event loop like a build; in-process when no worker can start. What it posts back is the caller's to check and keep
+ * (`adoptAuthored`), keyed on the same inputs as the Front Office (`frontOfficeInputsKey`).
+ */
+export async function runDepartmentJob<T>(job: { kind: 'farmViews' | 'farmDecision'; request: unknown }, inProcess: () => T): Promise<T> {
+  // Counted by the department's own service, never in the Front Office's builds and runs
+  if (workerAvailable()) {
+    try {
+      return await inWorker<T>(job as unknown as Job);
+    } catch (err) {
+      workerBroken = true;
+      console.error('[front office] worker unavailable, building in-process from now on:', err);
+    }
+  }
+  await new Promise((resolve) => setImmediate(resolve));
+  return inProcess();
+}
+
+/** Everything a club's answers depend on, as one string (N10: the farm's views key on the Front Office's inputs). */
+export function frontOfficeInputsKey(orgId: number): string {
+  return inputsKey(orgId);
+}
+
+/** A key's stamp, as every payload built for it carries (`reportStamp`). */
+export function frontOfficeStampOf(key: string): string {
+  return stampOf(key);
+}
+
 // ── the cache ───────────────────────────────────────────────────────────────
 
 /** The club's build for the current inputs: the kept one, the one being built, or a new build. */

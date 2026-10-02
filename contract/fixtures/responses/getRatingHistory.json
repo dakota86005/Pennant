@@ -1,12 +1,12 @@
 {
   "status": {
-    "text": "This save has no rating history yet.",
+    "text": "This save has rating history from 3 imports, the latest on June 20, 2040.",
     "tone": "neutral",
     "basis": {
       "because": [
         {
           "label": "Imports kept",
-          "value": "None yet: the next import keeps the first"
+          "value": "3"
         }
       ],
       "source": {

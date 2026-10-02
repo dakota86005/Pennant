@@ -17,7 +17,7 @@
     },
     "items": [
       {
-        "key": "farm:position_single_cover:organization:critical",
+        "key": "farm:rotation_short:affiliate:101:ej78gq",
         "department": "farm",
         "raisedBy": {
           "display": "Raised by the minor league staff"
@@ -58,25 +58,123 @@
           "links": []
         },
         "headline": {
-          "text": "The major-league club is thin at 2B, C, RF and SS, with little in the upper minors to step in.",
+          "text": "Farm 1 F: No pitcher is taking this club's starts; the rotation needs five.",
           "tone": "bad",
           "basis": {
             "because": [
               {
-                "label": "2B",
-                "value": "The major-league club is thin at 2B, and no one in the upper minors can step in."
+                "label": "About",
+                "value": "An affiliate"
+              },
+              {
+                "label": "Why",
+                "value": "Taking starts: 0"
+              }
+            ],
+            "source": {
+              "department": "farm",
+              "specialist": "Minor League Operations",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "The farm's stated lines, 10 of 30 still starting values"
+          },
+          "links": [
+            {
+              "kind": "view",
+              "department": "farm",
+              "view": "affiliates",
+              "key": "101"
+            }
+          ]
+        },
+        "detail": null,
+        "due": null,
+        "dueInDays": null,
+        "evidence": null,
+        "count": 1,
+        "attention": {
+          "status": "open",
+          "line": {
+            "display": "Open"
+          },
+          "until": null,
+          "deferralEnded": false,
+          "note": null,
+          "stillShown": null,
+          "since": null
+        }
+      },
+      {
+        "key": "farm:position_uncovered:affiliate:101:critical",
+        "department": "farm",
+        "raisedBy": {
+          "display": "Raised by the minor league staff"
+        },
+        "severity": "critical",
+        "neutralSeverity": "critical",
+        "urgency": {
+          "text": "Urgent",
+          "tone": "bad",
+          "basis": {
+            "because": [
+              {
+                "label": "Farm & Development said",
+                "value": "Urgent"
+              },
+              {
+                "label": "With no philosophy and no season",
+                "value": "Urgent"
+              },
+              {
+                "label": "On the desk",
+                "value": "Urgent"
+              }
+            ],
+            "source": {
+              "department": "farm",
+              "specialist": "The desk",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "policy",
+            "called": "A line chosen and stated",
+            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
+          },
+          "links": []
+        },
+        "headline": {
+          "text": "Farm 1 F: Nobody on the roster covers 1B, 3B, C, LF or RF.",
+          "tone": "bad",
+          "basis": {
+            "because": [
+              {
+                "label": "1B",
+                "value": "Farm 1 F: Nobody on the roster covers 1B."
+              },
+              {
+                "label": "3B",
+                "value": "Farm 1 F: Nobody on the roster covers 3B."
               },
               {
                 "label": "C",
-                "value": "The major-league club is thin at C, and no one in the upper minors can step in."
+                "value": "Farm 1 F: Nobody on the roster covers C."
+              },
+              {
+                "label": "LF",
+                "value": "Farm 1 F: Nobody on the roster covers LF."
               },
               {
                 "label": "RF",
-                "value": "The major-league club is thin at RF, and no one in the upper minors can step in."
-              },
-              {
-                "label": "SS",
-                "value": "The major-league club is thin at SS, and no one in the upper minors can step in."
+                "value": "Farm 1 F: Nobody on the roster covers RF."
               }
             ],
             "source": {
@@ -96,16 +194,299 @@
             {
               "kind": "view",
               "department": "farm",
-              "view": "organization"
+              "view": "affiliates",
+              "key": "101"
             }
           ],
-          "hint": "4 findings, one row: each is in the breakdown"
+          "hint": "5 findings, one row: each is in the breakdown"
         },
         "detail": null,
         "due": null,
         "dueInDays": null,
         "evidence": null,
-        "count": 4,
+        "count": 5,
+        "attention": {
+          "status": "open",
+          "line": {
+            "display": "Open"
+          },
+          "until": null,
+          "deferralEnded": false,
+          "note": null,
+          "stillShown": null,
+          "since": null
+        }
+      },
+      {
+        "key": "farm:pitcher_bodies_short:affiliate:101:gv3ubl",
+        "department": "farm",
+        "raisedBy": {
+          "display": "Raised by the minor league staff"
+        },
+        "severity": "critical",
+        "neutralSeverity": "critical",
+        "urgency": {
+          "text": "Urgent",
+          "tone": "bad",
+          "basis": {
+            "because": [
+              {
+                "label": "Farm & Development said",
+                "value": "Urgent"
+              },
+              {
+                "label": "With no philosophy and no season",
+                "value": "Urgent"
+              },
+              {
+                "label": "On the desk",
+                "value": "Urgent"
+              }
+            ],
+            "source": {
+              "department": "farm",
+              "specialist": "The desk",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "policy",
+            "called": "A line chosen and stated",
+            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
+          },
+          "links": []
+        },
+        "headline": {
+          "text": "Farm 1 F: Only three pitchers: short of what the club needs to cover a schedule.",
+          "tone": "bad",
+          "basis": {
+            "because": [
+              {
+                "label": "About",
+                "value": "An affiliate"
+              },
+              {
+                "label": "Why",
+                "value": "Pitchers: 3"
+              }
+            ],
+            "source": {
+              "department": "farm",
+              "specialist": "Minor League Operations",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "The farm's stated lines, 10 of 30 still starting values"
+          },
+          "links": [
+            {
+              "kind": "view",
+              "department": "farm",
+              "view": "affiliates",
+              "key": "101"
+            }
+          ]
+        },
+        "detail": null,
+        "due": null,
+        "dueInDays": null,
+        "evidence": null,
+        "count": 1,
+        "attention": {
+          "status": "open",
+          "line": {
+            "display": "Open"
+          },
+          "until": null,
+          "deferralEnded": false,
+          "note": null,
+          "stillShown": null,
+          "since": null
+        }
+      },
+      {
+        "key": "farm:hitter_bodies_short:affiliate:101:1wxylwd",
+        "department": "farm",
+        "raisedBy": {
+          "display": "Raised by the minor league staff"
+        },
+        "severity": "critical",
+        "neutralSeverity": "critical",
+        "urgency": {
+          "text": "Urgent",
+          "tone": "bad",
+          "basis": {
+            "because": [
+              {
+                "label": "Farm & Development said",
+                "value": "Urgent"
+              },
+              {
+                "label": "With no philosophy and no season",
+                "value": "Urgent"
+              },
+              {
+                "label": "On the desk",
+                "value": "Urgent"
+              }
+            ],
+            "source": {
+              "department": "farm",
+              "specialist": "The desk",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "policy",
+            "called": "A line chosen and stated",
+            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
+          },
+          "links": []
+        },
+        "headline": {
+          "text": "Farm 1 F: Only three position players: short of what the club needs to rest a lineup.",
+          "tone": "bad",
+          "basis": {
+            "because": [
+              {
+                "label": "About",
+                "value": "An affiliate"
+              },
+              {
+                "label": "Why",
+                "value": "Position players: 3"
+              }
+            ],
+            "source": {
+              "department": "farm",
+              "specialist": "Minor League Operations",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "The farm's stated lines, 10 of 30 still starting values"
+          },
+          "links": [
+            {
+              "kind": "view",
+              "department": "farm",
+              "view": "affiliates",
+              "key": "101"
+            }
+          ]
+        },
+        "detail": null,
+        "due": null,
+        "dueInDays": null,
+        "evidence": null,
+        "count": 1,
+        "attention": {
+          "status": "open",
+          "line": {
+            "display": "Open"
+          },
+          "until": null,
+          "deferralEnded": false,
+          "note": null,
+          "stillShown": null,
+          "since": null
+        }
+      },
+      {
+        "key": "farm:relief_short:affiliate:101:1xkhrzj",
+        "department": "farm",
+        "raisedBy": {
+          "display": "Raised by the minor league staff"
+        },
+        "severity": "critical",
+        "neutralSeverity": "critical",
+        "urgency": {
+          "text": "Urgent",
+          "tone": "bad",
+          "basis": {
+            "because": [
+              {
+                "label": "Farm & Development said",
+                "value": "Urgent"
+              },
+              {
+                "label": "With no philosophy and no season",
+                "value": "Urgent"
+              },
+              {
+                "label": "On the desk",
+                "value": "Urgent"
+              }
+            ],
+            "source": {
+              "department": "farm",
+              "specialist": "The desk",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "policy",
+            "called": "A line chosen and stated",
+            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
+          },
+          "links": []
+        },
+        "headline": {
+          "text": "Farm 1 F: Only three relief arms: short of the seven a schedule takes.",
+          "tone": "bad",
+          "basis": {
+            "because": [
+              {
+                "label": "About",
+                "value": "An affiliate"
+              },
+              {
+                "label": "Why",
+                "value": "Relief arms: 3"
+              }
+            ],
+            "source": {
+              "department": "farm",
+              "specialist": "Minor League Operations",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "The farm's stated lines, 10 of 30 still starting values"
+          },
+          "links": [
+            {
+              "kind": "view",
+              "department": "farm",
+              "view": "affiliates",
+              "key": "101"
+            }
+          ]
+        },
+        "detail": null,
+        "due": null,
+        "dueInDays": null,
+        "evidence": null,
+        "count": 1,
         "attention": {
           "status": "open",
           "line": {
@@ -216,115 +597,26 @@
           "stillShown": null,
           "since": null
         }
-      },
+      }
+    ],
+    "more": [
       {
-        "key": "farm:position_single_cover:organization:attention",
         "department": "farm",
-        "raisedBy": {
-          "display": "Raised by the minor league staff"
+        "line": {
+          "display": "And 4 more in Farm & Development"
         },
-        "severity": "attention",
-        "neutralSeverity": "attention",
-        "urgency": {
-          "text": "Needs attention",
-          "tone": "caution",
-          "basis": {
-            "because": [
-              {
-                "label": "Farm & Development said",
-                "value": "Needs attention"
-              },
-              {
-                "label": "With no philosophy and no season",
-                "value": "Needs attention"
-              },
-              {
-                "label": "On the desk",
-                "value": "Needs attention"
-              }
-            ],
-            "source": {
-              "department": "farm",
-              "specialist": "The desk",
-              "asOf": null,
-              "gameDate": "2040-05-05"
-            },
-            "unknown": [],
-            "wouldChange": [],
-            "lean": null,
-            "certainty": "policy",
-            "called": "A line chosen and stated",
-            "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
-          },
-          "links": []
-        },
-        "headline": {
-          "text": "Little depth in the upper minors at 1B, 3B, CF and LF.",
-          "tone": "caution",
-          "basis": {
-            "because": [
-              {
-                "label": "1B",
-                "value": "No one in the upper minors can play 1B."
-              },
-              {
-                "label": "3B",
-                "value": "No one in the upper minors can play 3B."
-              },
-              {
-                "label": "CF",
-                "value": "No one in the upper minors can play CF."
-              },
-              {
-                "label": "LF",
-                "value": "No one in the upper minors can play LF."
-              }
-            ],
-            "source": {
-              "department": "farm",
-              "specialist": "Minor League Operations",
-              "asOf": null,
-              "gameDate": "2040-05-05"
-            },
-            "unknown": [],
-            "wouldChange": [],
-            "lean": null,
-            "certainty": "provisional",
-            "called": "A starting number, not yet fitted on this save",
-            "stamp": "The farm's stated lines, 10 of 30 still starting values. The same kind of finding about the same club or the organization, at the same urgency, is one row listing its positions"
-          },
-          "links": [
-            {
-              "kind": "view",
-              "department": "farm",
-              "view": "organization"
-            }
-          ],
-          "hint": "4 findings, one row: each is in the breakdown"
-        },
-        "detail": null,
-        "due": null,
-        "dueInDays": null,
-        "evidence": null,
         "count": 4,
-        "attention": {
-          "status": "open",
-          "line": {
-            "display": "Open"
-          },
-          "until": null,
-          "deferralEnded": false,
-          "note": null,
-          "stillShown": null,
-          "since": null
+        "open": {
+          "kind": "view",
+          "department": "farm",
+          "view": "report"
         }
       }
     ],
-    "more": [],
     "empty": null,
     "incomplete": null,
     "setAside": null,
-    "openCount": 3,
+    "openCount": 10,
     "deferChoices": [
       {
         "until": "2040-5-7",
@@ -437,7 +729,7 @@
             "because": [
               {
                 "label": "Players",
-                "value": "26"
+                "value": "32"
               },
               {
                 "label": "Limit",
@@ -458,9 +750,9 @@
           },
           "links": [],
           "value": {
-            "n": 26,
+            "n": 32,
             "unit": "count",
-            "display": "26 of 40",
+            "display": "32 of 40",
             "whole": 40
           }
         },
@@ -512,13 +804,13 @@
         "display": "Prepared by the minor league staff"
       },
       "summary": {
-        "text": "Two to decide.",
+        "text": "Nine to decide.",
         "tone": "bad",
         "basis": {
           "because": [
             {
               "label": "To decide",
-              "value": "2"
+              "value": "9"
             },
             {
               "label": "To watch",
@@ -531,7 +823,10 @@
             "asOf": null,
             "gameDate": "2040-05-05"
           },
-          "unknown": [],
+          "unknown": [
+            "Farm 1 F: 6 of its players have no readable production this season, so their assignments are not assessed rather than judged.",
+            "Farm 1 F: It has played 0 games, fewer than the 20 a work share needs, so how it is using its roster cannot be read yet and no playing-time conflict is reported for it."
+          ],
           "wouldChange": [
             "A new export."
           ],
@@ -549,7 +844,7 @@
             "because": [
               {
                 "label": "Players",
-                "value": "0"
+                "value": "6"
               },
               {
                 "label": "Read by Player Development",
@@ -557,7 +852,7 @@
               },
               {
                 "label": "Too little to read yet",
-                "value": "0"
+                "value": "6"
               }
             ],
             "source": {
@@ -572,21 +867,27 @@
             "certainty": "fact",
             "called": "A fact from the export"
           },
-          "links": [],
+          "links": [
+            {
+              "kind": "view",
+              "department": "farm",
+              "view": "assignments"
+            }
+          ],
           "value": {
-            "n": 0,
+            "n": 6,
             "unit": "count",
-            "display": "0"
+            "display": "6"
           }
         },
         {
           "text": "Affiliates",
-          "tone": "neutral",
+          "tone": "caution",
           "basis": {
             "because": [
               {
-                "label": "Affiliates",
-                "value": "None in the export"
+                "label": "Farm 1 F (AAA)",
+                "value": "Short"
               }
             ],
             "source": {
@@ -601,11 +902,18 @@
             "certainty": "fact",
             "called": "A fact from the export"
           },
-          "links": [],
+          "links": [
+            {
+              "kind": "view",
+              "department": "farm",
+              "view": "affiliates"
+            }
+          ],
+          "hint": "1 short of what the club needs to play",
           "value": {
-            "n": 0,
+            "n": 1,
             "unit": "count",
-            "display": "0"
+            "display": "1"
           }
         },
         {
@@ -619,7 +927,7 @@
               },
               {
                 "label": "Players",
-                "value": "0"
+                "value": "6"
               }
             ],
             "source": {
@@ -628,22 +936,31 @@
               "asOf": null,
               "gameDate": "2040-05-05"
             },
-            "unknown": [],
+            "unknown": [
+              "6 players could not be read on the evidence there is."
+            ],
             "wouldChange": [],
             "lean": null,
             "certainty": "fact",
             "called": "A fact from the export"
           },
-          "links": [],
+          "links": [
+            {
+              "kind": "view",
+              "department": "farm",
+              "view": "organization"
+            }
+          ],
           "value": {
             "n": 0,
             "unit": "count",
-            "display": "0 of 0"
+            "display": "0 of 6",
+            "whole": 6
           }
         }
       ],
       "top": [],
-      "toDecide": 2,
+      "toDecide": 9,
       "watching": 0,
       "open": {
         "kind": "view",
@@ -1143,25 +1460,29 @@
     },
     "place": {
       "claim": {
-        "text": "3rd in the East · 3 back",
+        "text": "Tied for 2nd in the East · 4 back",
         "tone": "neutral",
         "basis": {
           "because": [
             {
               "label": "Club 3 N",
-              "value": "18–12 · leads"
-            },
-            {
-              "label": "Club 4 N",
-              "value": "18–12 · leads"
+              "value": "19–11 · leads"
             },
             {
               "label": "Club 1 N (us)",
-              "value": "15–15 · 3 back"
+              "value": "15–15 · 4 back"
             },
             {
               "label": "Club 2 N",
-              "value": "9–21 · 9 back"
+              "value": "15–15 · 4 back"
+            },
+            {
+              "label": "Club 4 N",
+              "value": "11–19 · 8 back"
+            },
+            {
+              "label": "Level with",
+              "value": "Club 2 N: the same winning percentage shares the place"
             }
           ],
           "source": {
@@ -1185,12 +1506,12 @@
         ],
         "hint": "The division's standings, as the export has them",
         "place": {
-          "rank": 3,
+          "rank": 2,
           "of": 4,
-          "tiedWith": 0
+          "tiedWith": 1
         }
       },
-      "gamesBack": 3,
+      "gamesBack": 4,
       "gamesAhead": null
     },
     "runs": {
@@ -1201,15 +1522,15 @@
           "because": [
             {
               "label": "Runs scored",
-              "value": "136 · 4.53 a game"
+              "value": "161 · 5.37 a game"
             },
             {
               "label": "Runs allowed",
-              "value": "128 · 4.27 a game"
+              "value": "177 · 5.90 a game"
             },
             {
               "label": "Last 20 games",
-              "value": "+10"
+              "value": "−34"
             }
           ],
           "source": {
@@ -1233,38 +1554,38 @@
         ],
         "hint": "Runs scored less runs allowed, this season",
         "value": {
-          "n": 8,
+          "n": -16,
           "unit": "runs",
-          "display": "+8"
+          "display": "−16"
         }
       },
       "line": {
-        "display": "136 scored · 128 allowed"
+        "display": "161 scored · 177 allowed"
       },
-      "scored": 136,
-      "allowed": 128,
-      "diff": 8,
+      "scored": 161,
+      "allowed": 177,
+      "diff": -16,
       "trend": [
-        0,
-        -1,
-        2,
-        -5,
-        1,
-        0,
-        6,
-        4,
-        7,
-        4,
-        7,
-        4,
-        5,
-        3,
-        9,
+        20,
         8,
+        16,
+        13,
+        15,
+        12,
+        14,
         11,
+        13,
+        6,
         7,
-        10,
-        8
+        -7,
+        -6,
+        -14,
+        -13,
+        -22,
+        -20,
+        -24,
+        -14,
+        -16
       ]
     },
     "lastFive": {
@@ -1296,7 +1617,7 @@
         "name": "Club 4 N",
         "abbr": "C4",
         "record": {
-          "display": "18–12",
+          "display": "11–19",
           "hint": "Club 4 N's record"
         }
       },
@@ -1308,7 +1629,7 @@
         "name": "P 1013",
         "short": "P. 1013",
         "line": {
-          "display": "3–3 · 4.81 ERA"
+          "display": "3–3 · 5.61 ERA"
         }
       },
       "theirs": {
@@ -1316,11 +1637,11 @@
         "name": "P 1091",
         "short": "P. 1091",
         "line": {
-          "display": "3–3 · 6.16 ERA"
+          "display": "3–3 · 5.58 ERA"
         }
       },
       "starters": {
-        "display": "P. 1013 (3–3 · 4.81 ERA) vs P. 1091 (3–3 · 6.16 ERA)",
+        "display": "P. 1013 (3–3 · 5.61 ERA) vs P. 1091 (3–3 · 5.58 ERA)",
         "hint": "The probable starters, as OOTP projects them"
       },
       "open": {
@@ -1347,15 +1668,15 @@
             },
             {
               "label": "Our starter",
-              "value": "P 1013 · 3–3 · 4.81 ERA"
+              "value": "P 1013 · 3–3 · 5.61 ERA"
             },
             {
               "label": "Their starter",
-              "value": "P 1091 · 3–3 · 6.16 ERA"
+              "value": "P 1091 · 3–3 · 5.58 ERA"
             },
             {
               "label": "Club 4 N's record",
-              "value": "18–12"
+              "value": "11–19"
             }
           ],
           "source": {
@@ -1430,17 +1751,17 @@
     "missing": []
   },
   "lede": {
-    "text": "Third in the East, three games back. Run scoring has climbed to 2nd over the last fifteen. The deadline is 86 days out.",
+    "text": "Tied for second in the East, four games back. Run scoring has slipped to 4th over the last fifteen. The deadline is 86 days out.",
     "tone": "neutral",
     "basis": {
       "because": [
         {
           "label": "Place",
-          "value": "3rd in the East · 3 back"
+          "value": "Tied for 2nd in the East · 4 back"
         },
         {
           "label": "Scoring runs",
-          "value": "3rd of 4 this season; Last 15: 2nd"
+          "value": "1st of 4 this season; Last 15: 4th"
         },
         {
           "label": "Trade deadline",
@@ -1528,11 +1849,11 @@
         "name": "Scoring runs",
         "symbol": "figure.baseball",
         "place": {
-          "rank": 3,
+          "rank": 1,
           "of": 4,
           "tiedWith": 0
         },
-        "placeText": "3rd of 4",
+        "placeText": "1st of 4",
         "strip": {
           "of": 4,
           "strengthThrough": null,
@@ -1540,29 +1861,29 @@
         },
         "recent": {
           "place": {
-            "rank": 2,
+            "rank": 4,
             "of": 4,
             "tiedWith": 0
           },
-          "text": "Last 15: 2nd",
+          "text": "Last 15: 4th",
           "why": null
         },
         "detail": {
-          "display": "4.53 runs a game"
+          "display": "5.37 runs a game"
         },
         "group": "rest",
         "claim": {
-          "text": "Scoring runs: 3rd of 4",
+          "text": "Scoring runs: 1st of 4",
           "tone": "neutral",
           "basis": {
             "because": [
               {
                 "label": "This season",
-                "value": "4.53 runs a game · 3rd of 4"
+                "value": "5.37 runs a game · 1st of 4"
               },
               {
                 "label": "Last 15 games",
-                "value": "4.93 runs a game · 2nd of 4"
+                "value": "4.33 runs a game · 4th of 4"
               },
               {
                 "label": "How it is read",
@@ -1596,7 +1917,7 @@
           ],
           "hint": "Runs scored a game, against the other 3 clubs",
           "place": {
-            "rank": 3,
+            "rank": 1,
             "of": 4,
             "tiedWith": 0
           }
@@ -1607,11 +1928,11 @@
         "name": "Preventing runs",
         "symbol": "shield",
         "place": {
-          "rank": 1,
+          "rank": 4,
           "of": 4,
-          "tiedWith": 1
+          "tiedWith": 0
         },
-        "placeText": "T-1st of 4",
+        "placeText": "4th of 4",
         "strip": {
           "of": 4,
           "strengthThrough": null,
@@ -1619,33 +1940,29 @@
         },
         "recent": {
           "place": {
-            "rank": 2,
+            "rank": 4,
             "of": 4,
             "tiedWith": 0
           },
-          "text": "Last 15: 2nd",
+          "text": "Last 15: 4th",
           "why": null
         },
         "detail": {
-          "display": "4.27 allowed a game"
+          "display": "5.90 allowed a game"
         },
         "group": "rest",
         "claim": {
-          "text": "Preventing runs: T-1st of 4",
+          "text": "Preventing runs: 4th of 4",
           "tone": "neutral",
           "basis": {
             "because": [
               {
                 "label": "This season",
-                "value": "4.27 allowed a game · T-1st of 4"
-              },
-              {
-                "label": "Level with",
-                "value": "Club 4 N"
+                "value": "5.90 allowed a game · 4th of 4"
               },
               {
                 "label": "Last 15 games",
-                "value": "4.47 allowed a game · 2nd of 4"
+                "value": "6.40 allowed a game · 4th of 4"
               },
               {
                 "label": "How it is read",
@@ -1679,9 +1996,9 @@
           ],
           "hint": "Runs allowed a game (fewer is better), against the other 3 clubs",
           "place": {
-            "rank": 1,
+            "rank": 4,
             "of": 4,
-            "tiedWith": 1
+            "tiedWith": 0
           }
         }
       },
@@ -1690,11 +2007,11 @@
         "name": "Getting on base",
         "symbol": "figure.walk",
         "place": {
-          "rank": 1,
+          "rank": 3,
           "of": 4,
-          "tiedWith": 0
+          "tiedWith": 1
         },
-        "placeText": "1st of 4",
+        "placeText": "T-3rd of 4",
         "strip": {
           "of": 4,
           "strengthThrough": null,
@@ -1702,29 +2019,33 @@
         },
         "recent": {
           "place": {
-            "rank": 1,
+            "rank": 4,
             "of": 4,
             "tiedWith": 0
           },
-          "text": "Last 15: 1st",
+          "text": "Last 15: 4th",
           "why": null
         },
         "detail": {
-          "display": ".319 on base"
+          "display": ".315 on base"
         },
         "group": "rest",
         "claim": {
-          "text": "Getting on base: 1st of 4",
+          "text": "Getting on base: T-3rd of 4",
           "tone": "neutral",
           "basis": {
             "because": [
               {
                 "label": "This season",
-                "value": ".319 on base · 1st of 4"
+                "value": ".315 on base · T-3rd of 4"
+              },
+              {
+                "label": "Level with",
+                "value": "Club 2 N"
               },
               {
                 "label": "Last 15 games",
-                "value": ".345 on base · 1st of 4"
+                "value": ".314 on base · 4th of 4"
               },
               {
                 "label": "How it is read",
@@ -1758,9 +2079,9 @@
           ],
           "hint": "How often the club reaches base, against the other 3 clubs",
           "place": {
-            "rank": 1,
+            "rank": 3,
             "of": 4,
-            "tiedWith": 0
+            "tiedWith": 1
           }
         }
       },
@@ -1781,15 +2102,15 @@
         },
         "recent": {
           "place": {
-            "rank": 4,
+            "rank": 3,
             "of": 4,
-            "tiedWith": 0
+            "tiedWith": 1
           },
-          "text": "Last 15: 4th",
+          "text": "Last 15: T-3rd",
           "why": null
         },
         "detail": {
-          "display": ".113 extra bases an at-bat"
+          "display": ".128 extra bases an at-bat"
         },
         "group": "rest",
         "claim": {
@@ -1799,11 +2120,11 @@
             "because": [
               {
                 "label": "This season",
-                "value": ".113 extra bases an at-bat · 4th of 4"
+                "value": ".128 extra bases an at-bat · 4th of 4"
               },
               {
                 "label": "Last 15 games",
-                "value": ".109 extra bases an at-bat · 4th of 4"
+                "value": ".120 extra bases an at-bat · T-3rd of 4"
               },
               {
                 "label": "How it is read",
@@ -1848,11 +2169,11 @@
         "name": "Rotation",
         "symbol": "arrow.trianglehead.2.clockwise",
         "place": {
-          "rank": 1,
+          "rank": 4,
           "of": 4,
           "tiedWith": 0
         },
-        "placeText": "1st of 4",
+        "placeText": "4th of 4",
         "strip": {
           "of": 4,
           "strengthThrough": null,
@@ -1860,29 +2181,29 @@
         },
         "recent": {
           "place": {
-            "rank": 2,
+            "rank": 4,
             "of": 4,
             "tiedWith": 0
           },
-          "text": "Last 15: 2nd",
+          "text": "Last 15: 4th",
           "why": null
         },
         "detail": {
-          "display": "4.12 starters' ERA"
+          "display": "5.70 starters' ERA"
         },
         "group": "rest",
         "claim": {
-          "text": "Rotation: 1st of 4",
+          "text": "Rotation: 4th of 4",
           "tone": "neutral",
           "basis": {
             "because": [
               {
                 "label": "This season",
-                "value": "4.12 starters' ERA · 1st of 4"
+                "value": "5.70 starters' ERA · 4th of 4"
               },
               {
                 "label": "Last 15 games",
-                "value": "4.25 starters' ERA · 2nd of 4"
+                "value": "6.26 starters' ERA · 4th of 4"
               },
               {
                 "label": "How it is read",
@@ -1916,7 +2237,7 @@
           ],
           "hint": "Starters' earned runs a nine innings, against the other 3 clubs",
           "place": {
-            "rank": 1,
+            "rank": 4,
             "of": 4,
             "tiedWith": 0
           }
@@ -1927,11 +2248,11 @@
         "name": "Bullpen",
         "symbol": "phone.arrow.up.right",
         "place": {
-          "rank": 2,
+          "rank": 4,
           "of": 4,
           "tiedWith": 0
         },
-        "placeText": "2nd of 4",
+        "placeText": "4th of 4",
         "strip": {
           "of": 4,
           "strengthThrough": null,
@@ -1939,29 +2260,29 @@
         },
         "recent": {
           "place": {
-            "rank": 2,
+            "rank": 4,
             "of": 4,
             "tiedWith": 0
           },
-          "text": "Last 15: 2nd",
+          "text": "Last 15: 4th",
           "why": null
         },
         "detail": {
-          "display": "4.05 relievers' ERA"
+          "display": "6.19 relievers' ERA"
         },
         "group": "rest",
         "claim": {
-          "text": "Bullpen: 2nd of 4",
+          "text": "Bullpen: 4th of 4",
           "tone": "neutral",
           "basis": {
             "because": [
               {
                 "label": "This season",
-                "value": "4.05 relievers' ERA · 2nd of 4"
+                "value": "6.19 relievers' ERA · 4th of 4"
               },
               {
                 "label": "Last 15 games",
-                "value": "4.30 relievers' ERA · 2nd of 4"
+                "value": "6.46 relievers' ERA · 4th of 4"
               },
               {
                 "label": "How it is read",
@@ -1995,7 +2316,7 @@
           ],
           "hint": "Relievers' earned runs a nine innings, against the other 3 clubs",
           "place": {
-            "rank": 2,
+            "rank": 4,
             "of": 4,
             "tiedWith": 0
           }
@@ -2006,11 +2327,11 @@
         "name": "Turning balls into outs",
         "symbol": "hand.raised",
         "place": {
-          "rank": 2,
+          "rank": 3,
           "of": 4,
           "tiedWith": 0
         },
-        "placeText": "2nd of 4",
+        "placeText": "3rd of 4",
         "strip": {
           "of": 4,
           "strengthThrough": null,
@@ -2026,21 +2347,21 @@
           "why": null
         },
         "detail": {
-          "display": ".708 of balls in play made outs"
+          "display": ".686 of balls in play made outs"
         },
         "group": "rest",
         "claim": {
-          "text": "Turning balls into outs: 2nd of 4",
+          "text": "Turning balls into outs: 3rd of 4",
           "tone": "neutral",
           "basis": {
             "because": [
               {
                 "label": "This season",
-                "value": ".708 of balls in play made outs · 2nd of 4"
+                "value": ".686 of balls in play made outs · 3rd of 4"
               },
               {
                 "label": "Last 15 games",
-                "value": ".689 of balls in play made outs · 3rd of 4"
+                "value": ".687 of balls in play made outs · 3rd of 4"
               },
               {
                 "label": "How it is read",
@@ -2074,7 +2395,7 @@
           ],
           "hint": "Balls in play turned into outs, against the other 3 clubs",
           "place": {
-            "rank": 2,
+            "rank": 3,
             "of": 4,
             "tiedWith": 0
           }
@@ -2097,11 +2418,11 @@
         },
         "recent": {
           "place": {
-            "rank": 3,
+            "rank": 1,
             "of": 4,
             "tiedWith": 0
           },
-          "text": "Last 15: 3rd",
+          "text": "Last 15: 1st",
           "why": null
         },
         "detail": {
@@ -2119,7 +2440,7 @@
               },
               {
                 "label": "Last 15 games",
-                "value": "−0.02 runs a game on the bases · 3rd of 4"
+                "value": "+0.21 runs a game on the bases · 1st of 4"
               },
               {
                 "label": "How it is read",
@@ -2174,9 +2495,9 @@
         },
         "holderRule": "listed",
         "value": {
-          "low": -0.2150173672805822,
-          "likely": 0.055051633077749136,
-          "high": 0.6326783789978412,
+          "low": -0.21076606427618896,
+          "likely": 0.05372796566716078,
+          "high": 0.6242393853154302,
           "unit": "wins",
           "text": "Most likely 0.1 wins · could be −0.2 to 0.6",
           "short": "0.1 wins"
@@ -2311,9 +2632,9 @@
         },
         "holderRule": "listed",
         "value": {
-          "low": -0.39220938032543673,
-          "likely": 0.1552296232183763,
-          "high": 0.6443254468559889,
+          "low": -0.3861040021056692,
+          "likely": 0.1514972653949147,
+          "high": 0.6466901574393504,
           "unit": "wins",
           "text": "Most likely 0.2 wins · could be −0.4 to 0.6",
           "short": "0.2 wins"
@@ -2448,21 +2769,21 @@
         },
         "holderRule": "listed",
         "value": {
-          "low": -0.33951719627719057,
-          "likely": 0.2011319151368171,
-          "high": 0.6752587464041018,
+          "low": -0.3374358078625863,
+          "likely": 0.1962958776496125,
+          "high": 0.6736786431946522,
           "unit": "wins",
           "text": "Most likely 0.2 wins · could be −0.3 to 0.7",
           "short": "0.2 wins"
         },
         "valueText": "0.2 wins",
         "place": {
-          "rank": 3,
+          "rank": 2,
           "of": 4,
-          "tiedWith": 1,
+          "tiedWith": 2,
           "overlap": 3
         },
-        "placeText": "T-3rd of 4",
+        "placeText": "T-2nd of 4",
         "overlap": 3,
         "clearlyAhead": 0,
         "clearlyBehind": 0,
@@ -2473,9 +2794,23 @@
         "behind": {
           "display": "Nobody else plays second base"
         },
-        "farmNext": null,
+        "farmNext": {
+          "playerId": 1104,
+          "name": "P 1104",
+          "short": "P. 1104",
+          "level": "Triple-A",
+          "state": "notAssessed",
+          "readiness": {
+            "display": "Not assessed",
+            "tone": "unknown",
+            "hint": "Player Development hasn't assessed him for the majors"
+          },
+          "bar": null,
+          "text": "P. 1104 · Triple-A · not assessed"
+        },
         "farmText": {
-          "display": "Nobody in the farm listed at second base"
+          "display": "P. 1104 · Triple-A · not assessed",
+          "hint": "Player Development hasn't assessed him for the majors"
         },
         "control": {
           "kind": "through",
@@ -2499,7 +2834,7 @@
               },
               {
                 "label": "At second base in the league",
-                "value": "T-3rd of 4, level with Club 4 N"
+                "value": "T-2nd of 4, level with Club 2 N and Club 4 N"
               },
               {
                 "label": "Against the other clubs",
@@ -2515,7 +2850,7 @@
               },
               {
                 "label": "The farm's next man",
-                "value": "Nobody listed there"
+                "value": "P 1104, Triple-A: Not assessed"
               },
               {
                 "label": "How the farm's next man is chosen",
@@ -2546,7 +2881,8 @@
               "sample": "4 clubs"
             },
             "unknown": [
-              "4 clubs' holders at second base are their listed men: the game log shows nobody now on the club starting there lately."
+              "4 clubs' holders at second base are their listed men: the game log shows nobody now on the club starting there lately.",
+              "Player Development hasn't assessed P 1104 for the majors (it assesses Triple-A players with enough of a season)."
             ],
             "wouldChange": [],
             "lean": null,
@@ -2567,9 +2903,9 @@
           ],
           "hint": "Most likely 0.2 wins · could be −0.3 to 0.7, rest of season",
           "place": {
-            "rank": 3,
+            "rank": 2,
             "of": 4,
-            "tiedWith": 1,
+            "tiedWith": 2,
             "overlap": 3
           }
         }
@@ -2584,9 +2920,9 @@
         },
         "holderRule": "listed",
         "value": {
-          "low": -0.38420347295275126,
-          "likely": 0.40368866672759235,
-          "high": 0.8901158080929377,
+          "low": -0.37944502315364453,
+          "likely": 0.3939823328316202,
+          "high": 0.8891871705436296,
           "unit": "wins",
           "text": "Most likely 0.4 wins · could be −0.4 to 0.9",
           "short": "0.4 wins"
@@ -2721,9 +3057,9 @@
         },
         "holderRule": "listed",
         "value": {
-          "low": -0.02649380999106321,
-          "likely": 0.7764465938002244,
-          "high": 1.2693144692864242,
+          "low": -0.0229887644891954,
+          "likely": 0.7577776280526652,
+          "high": 1.2670641783993686,
           "unit": "wins",
           "text": "Most likely 0.8 wins · could be 0.0 to 1.3",
           "short": "0.8 wins"
@@ -2746,9 +3082,23 @@
         "behind": {
           "display": "Nobody else plays shortstop"
         },
-        "farmNext": null,
+        "farmNext": {
+          "playerId": 1106,
+          "name": "P 1106",
+          "short": "P. 1106",
+          "level": "Triple-A",
+          "state": "notAssessed",
+          "readiness": {
+            "display": "Not assessed",
+            "tone": "unknown",
+            "hint": "Player Development hasn't assessed him for the majors"
+          },
+          "bar": null,
+          "text": "P. 1106 · Triple-A · not assessed"
+        },
         "farmText": {
-          "display": "Nobody in the farm listed at shortstop"
+          "display": "P. 1106 · Triple-A · not assessed",
+          "hint": "Player Development hasn't assessed him for the majors"
         },
         "control": {
           "kind": "through",
@@ -2792,7 +3142,7 @@
               },
               {
                 "label": "The farm's next man",
-                "value": "Nobody listed there"
+                "value": "P 1106, Triple-A: Not assessed"
               },
               {
                 "label": "How the farm's next man is chosen",
@@ -2824,7 +3174,8 @@
             },
             "unknown": [
               "2 clubs not placed at shortstop: Club 2 N, Club 3 N.",
-              "2 clubs' holders at shortstop are their listed men: the game log shows nobody now on the club starting there lately."
+              "2 clubs' holders at shortstop are their listed men: the game log shows nobody now on the club starting there lately.",
+              "Player Development hasn't assessed P 1106 for the majors (it assesses Triple-A players with enough of a season)."
             ],
             "wouldChange": [],
             "lean": null,
@@ -2862,9 +3213,9 @@
         },
         "holderRule": "listed",
         "value": {
-          "low": -0.18826183886245873,
-          "likely": 0.617410663583015,
-          "high": 1.0952610467013275,
+          "low": -0.18411004091704197,
+          "likely": 0.6025655749154295,
+          "high": 1.093645705144008,
           "unit": "wins",
           "text": "Most likely 0.6 wins · could be −0.2 to 1.1",
           "short": "0.6 wins"
@@ -2999,21 +3350,21 @@
         },
         "holderRule": "listed",
         "value": {
-          "low": 0.0997675658153131,
-          "likely": 0.9602537073480558,
-          "high": 1.5313571548144622,
+          "low": 0.09754793132282824,
+          "likely": 0.9371652635135529,
+          "high": 1.5228766991125768,
           "unit": "wins",
-          "text": "Most likely 1.0 wins · could be 0.1 to 1.5",
-          "short": "1.0 wins"
+          "text": "Most likely 0.9 wins · could be 0.1 to 1.5",
+          "short": "0.9 wins"
         },
-        "valueText": "1.0 wins",
+        "valueText": "0.9 wins",
         "place": {
           "rank": 1,
           "of": 3,
-          "tiedWith": 0,
+          "tiedWith": 1,
           "overlap": 1
         },
-        "placeText": "1st of 3",
+        "placeText": "T-1st of 3",
         "overlap": 1,
         "clearlyAhead": 1,
         "clearlyBehind": 0,
@@ -3023,11 +3374,25 @@
         },
         "behind": {
           "display": "P. 1002",
-          "hint": "P. 1002: 0.6 wins most likely"
+          "hint": "P. 1002: 0.5 wins most likely"
         },
-        "farmNext": null,
+        "farmNext": {
+          "playerId": 1108,
+          "name": "P 1108",
+          "short": "P. 1108",
+          "level": "Triple-A",
+          "state": "notAssessed",
+          "readiness": {
+            "display": "Not assessed",
+            "tone": "unknown",
+            "hint": "Player Development hasn't assessed him for the majors"
+          },
+          "bar": null,
+          "text": "P. 1108 · Triple-A · not assessed"
+        },
         "farmText": {
-          "display": "Nobody in the farm listed at center field"
+          "display": "P. 1108 · Triple-A · not assessed",
+          "hint": "Player Development hasn't assessed him for the majors"
         },
         "control": {
           "kind": "through",
@@ -3047,11 +3412,11 @@
             "because": [
               {
                 "label": "Expected wins, the rest of this season",
-                "value": "Most likely 1.0 wins · could be 0.1 to 1.5"
+                "value": "Most likely 0.9 wins · could be 0.1 to 1.5"
               },
               {
                 "label": "At center field in the league",
-                "value": "1st of 3"
+                "value": "T-1st of 3, level with Club 3 N"
               },
               {
                 "label": "Against the other clubs",
@@ -3071,11 +3436,11 @@
               },
               {
                 "label": "Behind him",
-                "value": "P 1002 (0.6)"
+                "value": "P 1002 (0.5)"
               },
               {
                 "label": "The farm's next man",
-                "value": "Nobody listed there"
+                "value": "P 1108, Triple-A: Not assessed"
               },
               {
                 "label": "How the farm's next man is chosen",
@@ -3107,7 +3472,8 @@
             },
             "unknown": [
               "1 club not placed at center field: Club 4 N.",
-              "3 clubs' holders at center field are their listed men: the game log shows nobody now on the club starting there lately."
+              "3 clubs' holders at center field are their listed men: the game log shows nobody now on the club starting there lately.",
+              "Player Development hasn't assessed P 1108 for the majors (it assesses Triple-A players with enough of a season)."
             ],
             "wouldChange": [],
             "lean": null,
@@ -3126,11 +3492,11 @@
               "view": "positionPlayers"
             }
           ],
-          "hint": "Most likely 1.0 wins · could be 0.1 to 1.5, rest of season",
+          "hint": "Most likely 0.9 wins · could be 0.1 to 1.5, rest of season",
           "place": {
             "rank": 1,
             "of": 3,
-            "tiedWith": 0,
+            "tiedWith": 1,
             "overlap": 1
           }
         }
@@ -3247,9 +3613,9 @@
         },
         "holderRule": "listed",
         "value": {
-          "low": -0.23076305846185252,
-          "likely": 0.4841703576287041,
-          "high": 1.0484882653515821,
+          "low": -0.22774131030468053,
+          "likely": 0.4725289132657201,
+          "high": 1.0464445366951773,
           "unit": "wins",
           "text": "Most likely 0.5 wins · could be −0.2 to 1.0",
           "short": "0.5 wins"
@@ -3386,12 +3752,12 @@
         "name": "P 1013",
         "short": "P. 1013",
         "line": {
-          "display": "3–3 · 4.81 ERA"
+          "display": "3–3 · 5.61 ERA"
         },
         "value": {
-          "low": 0.1272238999793679,
-          "likely": 1.1328682174224738,
-          "high": 1.854904574300668,
+          "low": 0.12671195452174888,
+          "likely": 1.1439257464402315,
+          "high": 1.8574766832726108,
           "unit": "wins",
           "text": "Most likely 1.1 wins · could be 0.1 to 1.9",
           "short": "1.1 wins"
@@ -3410,7 +3776,7 @@
               },
               {
                 "label": "This season",
-                "value": "3–3 · 4.81 ERA"
+                "value": "3–3 · 5.61 ERA"
               },
               {
                 "label": "Expected wins, the rest of this season",
@@ -3450,12 +3816,12 @@
         "name": "P 1014",
         "short": "P. 1014",
         "line": {
-          "display": "3–3 · 4.60 ERA"
+          "display": "3–3 · 9.19 ERA"
         },
         "value": {
-          "low": -0.8025527919179216,
-          "likely": 0.05949421261758508,
-          "high": 0.634525174445374,
+          "low": -0.8058081885051817,
+          "likely": 0.0600749147436491,
+          "high": 0.6338958144537374,
           "unit": "wins",
           "text": "Most likely 0.1 wins · could be −0.8 to 0.6",
           "short": "0.1 wins"
@@ -3474,7 +3840,7 @@
               },
               {
                 "label": "This season",
-                "value": "3–3 · 4.60 ERA"
+                "value": "3–3 · 9.19 ERA"
               },
               {
                 "label": "Expected wins, the rest of this season",
@@ -3514,18 +3880,18 @@
         "name": "P 1015",
         "short": "P. 1015",
         "line": {
-          "display": "3–3 · 4.78 ERA"
+          "display": "3–3 · 5.34 ERA"
         },
         "value": {
-          "low": -0.21325050476000976,
-          "likely": 0.24715369046363947,
-          "high": 0.8472781963345136,
+          "low": -0.21334711110440469,
+          "likely": 0.24956607088187166,
+          "high": 0.8509758562334879,
           "unit": "wins",
-          "text": "Most likely 0.2 wins · could be −0.2 to 0.8",
+          "text": "Most likely 0.2 wins · could be −0.2 to 0.9",
           "short": "0.2 wins"
         },
         "note": null,
-        "hint": "Most likely 0.2 wins · could be −0.2 to 0.8, rest of season",
+        "hint": "Most likely 0.2 wins · could be −0.2 to 0.9, rest of season",
         "need": false,
         "claim": {
           "text": "P 1015, starter",
@@ -3538,11 +3904,11 @@
               },
               {
                 "label": "This season",
-                "value": "3–3 · 4.78 ERA"
+                "value": "3–3 · 5.34 ERA"
               },
               {
                 "label": "Expected wins, the rest of this season",
-                "value": "Most likely 0.2 wins · could be −0.2 to 0.8"
+                "value": "Most likely 0.2 wins · could be −0.2 to 0.9"
               }
             ],
             "source": {
@@ -3569,7 +3935,7 @@
               "view": "pitchingStaff"
             }
           ],
-          "hint": "Most likely 0.2 wins · could be −0.2 to 0.8, rest of season"
+          "hint": "Most likely 0.2 wins · could be −0.2 to 0.9, rest of season"
         }
       },
       {
@@ -3578,12 +3944,12 @@
         "name": "P 1016",
         "short": "P. 1016",
         "line": {
-          "display": "3–3 · 4.78 ERA"
+          "display": "3–3 · 5.06 ERA"
         },
         "value": {
-          "low": -0.12999993222211448,
-          "likely": 0.5591681269852733,
-          "high": 1.2642395747574682,
+          "low": -0.13148267022398663,
+          "likely": 0.5646259707969857,
+          "high": 1.2643094671682036,
           "unit": "wins",
           "text": "Most likely 0.6 wins · could be −0.1 to 1.3",
           "short": "0.6 wins"
@@ -3602,7 +3968,7 @@
               },
               {
                 "label": "This season",
-                "value": "3–3 · 4.78 ERA"
+                "value": "3–3 · 5.06 ERA"
               },
               {
                 "label": "Expected wins, the rest of this season",
@@ -3642,12 +4008,12 @@
         "name": "P 1017",
         "short": "P. 1017",
         "line": {
-          "display": "3–3 · 3.29 ERA"
+          "display": "3–3 · 5.40 ERA"
         },
         "value": {
-          "low": 0.20290011653596962,
-          "likely": 1.2320831242760726,
-          "high": 1.9228808301309774,
+          "low": 0.2017694689242271,
+          "likely": 1.2441090551738159,
+          "high": 1.924925182924816,
           "unit": "wins",
           "text": "Most likely 1.2 wins · could be 0.2 to 1.9",
           "short": "1.2 wins"
@@ -3666,7 +4032,7 @@
               },
               {
                 "label": "This season",
-                "value": "3–3 · 3.29 ERA"
+                "value": "3–3 · 5.40 ERA"
               },
               {
                 "label": "Expected wins, the rest of this season",
@@ -3708,7 +4074,7 @@
         "name": "P 1018",
         "short": "P. 1018",
         "line": {
-          "display": "2 saves · 1.50 ERA"
+          "display": "0 saves · 3.00 ERA"
         },
         "value": {
           "low": -0.3472261093687789,
@@ -3732,7 +4098,7 @@
               },
               {
                 "label": "This season",
-                "value": "2 saves · 1.50 ERA"
+                "value": "0 saves · 3.00 ERA"
               },
               {
                 "label": "Expected wins, the rest of this season",
@@ -3772,7 +4138,7 @@
         "name": "P 1025",
         "short": "P. 1025",
         "line": {
-          "display": "3.38 ERA · 13.1 innings"
+          "display": "4.72 ERA · 13.1 innings"
         },
         "value": {
           "low": -0.45972781861005296,
@@ -3796,7 +4162,7 @@
               },
               {
                 "label": "This season",
-                "value": "3.38 ERA · 13.1 innings"
+                "value": "4.72 ERA · 13.1 innings"
               },
               {
                 "label": "Expected wins, the rest of this season",
@@ -3836,7 +4202,7 @@
         "name": "P 1023",
         "short": "P. 1023",
         "line": {
-          "display": "6.39 ERA · 12.2 innings"
+          "display": "11.37 ERA · 12.2 innings"
         },
         "value": {
           "low": -0.27797525777248827,
@@ -3860,7 +4226,7 @@
               },
               {
                 "label": "This season",
-                "value": "6.39 ERA · 12.2 innings"
+                "value": "11.37 ERA · 12.2 innings"
               },
               {
                 "label": "Expected wins, the rest of this season",
@@ -3900,7 +4266,7 @@
         "name": "P 1019",
         "short": "P. 1019",
         "line": {
-          "display": "5.11 ERA · 12.1 innings"
+          "display": "8.03 ERA · 12.1 innings"
         },
         "value": {
           "low": -0.3869851307166033,
@@ -3924,7 +4290,7 @@
               },
               {
                 "label": "This season",
-                "value": "5.11 ERA · 12.1 innings"
+                "value": "8.03 ERA · 12.1 innings"
               },
               {
                 "label": "Expected wins, the rest of this season",
@@ -3964,7 +4330,7 @@
         "name": "P 1021",
         "short": "P. 1021",
         "line": {
-          "display": "4.91 ERA · 11 innings"
+          "display": "9.00 ERA · 11 innings"
         },
         "value": {
           "low": -0.2612042333221651,
@@ -3988,7 +4354,7 @@
               },
               {
                 "label": "This season",
-                "value": "4.91 ERA · 11 innings"
+                "value": "9.00 ERA · 11 innings"
               },
               {
                 "label": "Expected wins, the rest of this season",
@@ -4092,7 +4458,7 @@
         "name": "P 1020",
         "short": "P. 1020",
         "line": {
-          "display": "4.22 ERA · 10.2 innings"
+          "display": "3.38 ERA · 10.2 innings"
         },
         "value": {
           "low": -0.06520673229627112,
@@ -4116,7 +4482,7 @@
               },
               {
                 "label": "This season",
-                "value": "4.22 ERA · 10.2 innings"
+                "value": "3.38 ERA · 10.2 innings"
               },
               {
                 "label": "Expected wins, the rest of this season",
@@ -4156,7 +4522,7 @@
         "name": "P 1024",
         "short": "P. 1024",
         "line": {
-          "display": "2.53 ERA · 10.2 innings"
+          "display": "5.06 ERA · 10.2 innings"
         },
         "value": {
           "low": -0.2975996739414717,
@@ -4180,7 +4546,7 @@
               },
               {
                 "label": "This season",
-                "value": "2.53 ERA · 10.2 innings"
+                "value": "5.06 ERA · 10.2 innings"
               },
               {
                 "label": "Expected wins, the rest of this season",

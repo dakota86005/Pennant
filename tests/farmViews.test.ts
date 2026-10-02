@@ -1,0 +1,351 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import express from 'express';
+import type { AddressInfo } from 'node:net';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { api } from '../server/api.js';
+import { computeFarmSystem, type FarmSystemView } from '../server/farmOperations.js';
+import type { FarmConsequenceV2 } from '../server/farmConsequence.js';
+import { buildFarmViews } from '../server/farmViewsBuild.js';
+import {
+  NOT_ON_THE_FARM, farmAssignmentsNow, farmDecisionNow, farmDevelopmentNow, farmOrganizationNow, farmViewStats, resetFarmViews, warmFarmViews,
+} from '../server/farmViewService.js';
+import { FrontOfficeRefusal, invalidateFrontOffice, resetFrontOfficeCache } from '../server/frontOfficeService.js';
+import { developmentHistoryFor, historyDb } from '../server/history.js';
+import { currentHistoryKey } from '../server/historyIdentity.js';
+import { cell } from '../server/presentation/claim.js';
+import { decisionView } from '../server/presentation/farm/decision.js';
+import { developmentViews, MOVERS_SHOWN } from '../server/presentation/farm/development.js';
+import type { DevelopmentHistoryInput, FarmContext, HistoryRowInput } from '../server/presentation/farm/input.js';
+import { prospectsView } from '../server/presentation/farm/prospects.js';
+import { CALL_ORDER, MEETING_CALLS, PLAIN, plain } from '../server/presentation/farm/words.js';
+import type { ScoutedDevelopmentPlayer } from '../server/scoutedDevelopment.js';
+import { BANNED_JARGON, BANNED_VERDICTS, bannedInPayload } from './bannedJargon';
+import { buildSave, type BuiltSave } from './syntheticSave';
+
+/*
+ * Farm & Development's views (N10; BEHAVIOR_CASES.md "Pennant for Mac", the `farmViews.test.ts` rows): they say only
+ * what Minor League Operations, Player Development and the save's rating history already decided, worded once on the
+ * server, and the old routes answer as before.
+ */
+
+const ctx: FarmContext = {
+  orgId: 1, importStamp: '2040-07-01T12:00:00.000Z', reportStamp: 'r1', gameDate: '2040-7-1', preparedBy: cell('Prepared by the minor league staff'), department: 'farm',
+};
+const RATING = { scaleMax: 80, roundToFive: false };
+
+let save: BuiltSave;
+let system: FarmSystemView;
+
+beforeAll(() => {
+  save = buildSave({ season: 2040, historySeasons: 1, gamesPerTeam: 60, playedShare: 0.5, clubs: 6, seed: 11, minors: true });
+  resetFrontOfficeCache();
+  resetFarmViews();
+  system = computeFarmSystem(save.org);
+});
+
+describe('the farm\'s views say what the specialists decided (N10)', () => {
+  it('has a farm to read, so the checks cannot pass vacuously', () => {
+    expect(system.affiliates.length).toBeGreaterThan(0);
+    expect(system.assignments.length).toBeGreaterThan(5);
+  });
+
+  it('serves each assignment\'s conclusion and the level\'s verdict as the farm answered them', () => {
+    const { views } = buildFarmViews({ orgId: save.org, importStamp: null, reportStamp: 'r1' });
+    expect(views.assignments.rows.map((r) => r.playerId).sort()).toEqual(system.assignments.map((a) => a.playerId).sort());
+    for (const r of views.assignments.rows) {
+      const a = system.assignments.find((x) => x.playerId === r.playerId)!;
+      expect(r.inQuestion).toBe(a.attention !== 'routine');
+      expect(r.open).toEqual({ kind: 'decision', department: 'farm', key: String(a.playerId) });
+    }
+  });
+
+  it('keeps a club\'s two readings apart: can it field a team, and are its players developing (D-045)', () => {
+    const { views } = buildFarmViews({ orgId: save.org, importStamp: null, reportStamp: 'r1' });
+    for (const a of views.affiliates.affiliates) {
+      const own = system.affiliates.find((x) => x.teamId === a.teamId)!;
+      expect(['Able', 'Thin', 'Short']).toContain(a.operational.text);
+      expect(['No issue found', 'Worth a look', 'Costing development']).toContain(a.developmental.text);
+      expect(a.operational.basis.source.specialist).toBe('Minor League Operations');
+      expect(a.developmental.basis.source.specialist).toBe('Player Development');
+      // Only a shortage is operational: the operational findings are the farm's operational ones, and no developmental one
+      expect(a.operationalFindings.map((f) => f.id)).toEqual(own.operational.findings.map((f) => f.id));
+      expect(a.developmentalFindings.map((f) => f.id)).toEqual(own.developmental.findings.map((f) => f.id));
+    }
+    // The organization from the major-league club down, each affiliate opening on Affiliates
+    expect(views.affiliates.clubs[0].majorLeague).toBe(true);
+    for (const c of views.affiliates.clubs.slice(1)) expect(c.open).toEqual({ kind: 'view', department: 'farm', view: 'affiliates', key: String(c.teamId) });
+  });
+
+  it('orders the assignments as the farm states (whether to look, then name), and gives developmental stakes no sort key (D-050)', () => {
+    const { views } = buildFarmViews({ orgId: save.org, importStamp: null, reportStamp: 'r1' });
+    const rank = { needs_attention: 0, worth_a_look: 1, routine: 2 } as const;
+    const att = (id: number) => rank[system.assignments.find((a) => a.playerId === id)!.attention];
+    const rows = views.assignments.rows;
+    for (let i = 1; i < rows.length; i += 1) {
+      const [a, b] = [rows[i - 1], rows[i]];
+      expect(att(a.playerId) < att(b.playerId) || (att(a.playerId) === att(b.playerId) && String(a.sort.player).localeCompare(String(b.sort.player)) <= 0)).toBe(true);
+    }
+    for (const r of rows) expect(r.sort.stakes).toBeNull();
+    // A tier that cannot be read says so, never the lowest tier
+    for (const r of rows) {
+      const a = system.assignments.find((x) => x.playerId === r.playerId)!;
+      if (a.protection.tier === null) expect(r.cells.stakes.display).toBe('Stakes not known');
+      else expect(r.cells.stakes.display).not.toBe('Stakes not known');
+    }
+  });
+
+  it('keeps the old routes answering as before: the farm system and this save\'s rating history (route extraction)', async () => {
+    const app = express();
+    app.use('/api', api);
+    const server = app.listen(0);
+    try {
+      const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+      const farm = await (await fetch(`${base}/api/farm-operations/${save.org}`)).json();
+      expect(farm.assignments.length).toBe(system.assignments.length);
+      expect(farm.attention).toEqual(JSON.parse(JSON.stringify(computeFarmSystem(save.org).attention)));
+      const history = await (await fetch(`${base}/api/development-history/${save.org}`)).json();
+      expect(history).toEqual(JSON.parse(JSON.stringify(developmentHistoryFor(save.org))));
+    } finally {
+      server.close();
+    }
+  });
+});
+
+describe('a decision\'s cascade is a chain that stops (D-045)', () => {
+  const review = () => system.assignments[0];
+  const consequence = (over: Partial<FarmConsequenceV2>): FarmConsequenceV2 => ({
+    player: { playerId: review().playerId, name: review().name },
+    sourceAffiliate: { teamId: review().teamId, label: review().team, level: review().level, levelName: review().levelName },
+    lostRole: 'a rotation spot',
+    affiliateImpact: { before: 'five starters', after: 'four starters', absorbed: false, statusBefore: 'healthy', statusAfter: 'thin', findingsAfter: [] },
+    currentOpportunity: null,
+    playingTimeImpact: [],
+    replacementOptions: [],
+    cascade: {
+      origin: { playerId: review().playerId, name: review().name, fromTeamId: review().teamId, fromTeam: review().team, job: { kind: 'rotation' }, reason: 'He leaves.' },
+      steps: [
+        {
+          index: 1,
+          vacancy: { teamId: review().teamId, team: review().team, level: 2, levelName: 'Triple-A', job: { kind: 'rotation' }, after: 4, floor: 5, absorbed: false, detail: 'x' },
+          candidate: { playerId: 9001, name: 'Al Arm', age: 21, fromTeamId: 77, fromTeam: 'Double-A Club', fromLevel: 3, fromLevelName: 'Double-A' },
+          development: { judgment: 'indeterminate', blockers: [], missingEvidence: [{ dimension: 'sample', detail: 'He has too small a sample at his level.' }] },
+          // A preference beside a step that is not defensible is never shown: philosophy orders defensible choices only
+          preference: 'preferred',
+          preferenceBasis: null,
+          alternatives: [],
+          consequence: { destination: 'Triple-A gains a starter.', source: 'Double-A loses one.', destinationOpportunity: 'He would start.', opensFurtherVacancy: true },
+          uncertainty: ['One step cannot be judged.'],
+          usable: false,
+        },
+      ],
+      stop: 'indeterminate',
+      stopDetail: 'The next step can\'t be judged on the evidence.',
+      unresolved: [{ teamId: 77, team: 'Double-A Club', job: 'the rotation', detail: 'one short of five.' }],
+      certainty: 'indeterminate',
+      gmDecision: [],
+    },
+    unresolvedIssues: ['Double-A Club is one starter short.'],
+    confidence: 'indeterminate',
+    evidence: ['Measured on the active list.'],
+    summary: 'He can move; Double-A is left one starter short.',
+    ...over,
+  });
+
+  it('serves each step with Player Development\'s judgment, the stop in words, and a hole as information', () => {
+    const view = decisionView(ctx, system, review(), consequence({}));
+    const cascade = view.consequence!.cascade!;
+    expect(cascade.steps).toHaveLength(1);
+    expect(cascade.steps[0].judgment.display).toBe('Can\'t be judged');
+    expect(cascade.steps[0].preference).toBeNull();
+    expect(cascade.stop.text).toMatch(/^The next step can't be judged\./);
+    // An unresolved hole is information: never toned as bad, and said not to make the move impossible
+    expect(cascade.stop.tone).not.toBe('bad');
+    expect(cascade.unresolved.map((u) => u.tone ?? 'neutral')).not.toContain('bad');
+    expect(cascade.unresolvedNote?.display).toMatch(/information, not an illegality/);
+    expect(cascade.howSure?.tone).toBe('unknown');
+  });
+
+  it('shows philosophy\'s preference only beside a defensible step', () => {
+    const c = consequence({});
+    c.cascade!.steps[0] = { ...c.cascade!.steps[0], usable: true, development: { judgment: 'defensible', blockers: [], missingEvidence: [] } };
+    c.cascade!.stop = 'absorbed';
+    c.cascade!.unresolved = [];
+    const view = decisionView(ctx, system, review(), c);
+    expect(view.consequence!.cascade!.steps[0].preference?.display).toBe('The club prefers it');
+    expect(view.consequence!.cascade!.unresolvedNote).toBeNull();
+  });
+
+  it('says why a consequence could not be read, rather than leaving the section empty', () => {
+    const view = decisionView(ctx, system, review(), { problem: 'What follows if he moves couldn\'t be read this time.' });
+    expect(view.consequence).toBeNull();
+    expect(view.consequenceProblem?.display).toMatch(/couldn't be read/);
+  });
+});
+
+/** A minor leaguer as scouted development serves him. */
+function scoutedPlayer(id: number, level: number, over: Partial<ScoutedDevelopmentPlayer['evidence']['peerDevelopment']> = {}, delta: number | null = null): ScoutedDevelopmentPlayer {
+  return {
+    playerId: id, name: `Player ${id}`, age: 21, kind: 'hitter', teamId: 100 + level, team: `Club ${level}`, level, levelName: `Level ${level}`, current: 45, potential: 60,
+    protection: { tier: 'normal', reasons: [] }, transaction: { active: true, onInjuredList: false }, role: { listedPosition: 'SS', developmentalPitcherRole: null },
+    evidence: {
+      developmentHistory: { status: delta === null ? 'insufficient' : 'improving', snapshotCount: 3, observationDays: 90, currentDelta: delta, potentialDelta: null, reasons: [] },
+      peerDevelopment: { pace: 'typical', percentile: 50, cohortSize: 30, cohort: null, reasons: [], ...over },
+    },
+  };
+}
+
+describe('no hidden score orders the prospects (D-044)', () => {
+  const prospect = (id: number, recommendation: string, readiness: number) => ({
+    player_id: id, team_id: 100, name: `Player ${id}`, age: 21, team: 'Club', level: 3, levelName: 'Level 3', cur: 45, pot: 60, pa: 200, opsVal: 0.8, hr: 5,
+    decision: { recommendation, confidence: 'moderate', evidence: { performance: 60, ageLevelUrgency: 50, ratingsMaturity: 50, sampleConfidence: 60, readiness }, positives: [], cautions: [], missingEvidence: [] },
+    assignments: { evaluations: [], eligible: [], indeterminate: [] },
+  });
+
+  it('keeps the roster\'s order on the board, puts no evidence score in a column, and meets on the raised calls only', () => {
+    const players = [scoutedPlayer(1, 2), scoutedPlayer(2, 3), scoutedPlayer(3, 3)];
+    const view = prospectsView(ctx, players, [prospect(1, 'hold', 10), prospect(2, 'strong_promotion_case', 90), prospect(3, 'watch', 99)], RATING);
+    expect(view.rows.map((r) => r.playerId)).toEqual([1, 2, 3]);
+    expect(view.order.display).toMatch(/level, then by last name/);
+    // Every column's sort key is a visible fact or a stated order of calls, never the readiness score
+    for (const r of view.rows) expect(Object.values(r.sort)).not.toContain(99);
+    expect(view.rows[1].sort.call).toBe(CALL_ORDER.strong_promotion_case);
+    expect(view.meetings.map((m) => m.playerId)).toEqual([2]);
+    expect(MEETING_CALLS.has('strong_promotion_case')).toBe(true);
+    for (const m of view.meetings) expect(m.scores).toHaveLength(4);
+    expect(view.filters.find((f) => f.id === 'watch')!.count).toBe(1);
+  });
+});
+
+describe('development tracking compares only this save\'s own history (D-064, D-061)', () => {
+  const rowsFor = (id: number, dates: string[], cur: number[]): HistoryRowInput[] => dates.map((d, i) => ({
+    game_date: d, player_id: id, name: `Player ${id}`, team_id: 103, level: 3, levelName: 'Level 3', position: 6, age: 21, cur: cur[i], pot: 60,
+    con: 40 + i, gap: 40, pow: 40, eye: 40, avk: 40, spd: 50, stu: null, mov: null, ctl: null,
+  }));
+  const history = (rows: HistoryRowInput[], dates: string[]): DevelopmentHistoryInput => ({
+    snapshots: dates.length, dates, observationDays: dates.length > 1 ? 90 : null, rows, ratingModeSwitches: [], history: { note: null, because: [] },
+  });
+
+  it('says the history is building with fewer than two snapshots, never a change of zero', () => {
+    const { view, details } = developmentViews(ctx, [scoutedPlayer(1, 3)], history(rowsFor(1, ['2040-4-1'], [45]), ['2040-4-1']), RATING);
+    expect(view.ready).toBe(false);
+    expect(view.building?.text).toMatch(/One snapshot/);
+    expect(details[0].change.value?.n).toBeNull();
+    expect(details[0].change.value?.display).not.toBe('0');
+    expect(view.rows[0].cells.change.display).toBe('Not enough history yet');
+  });
+
+  it('lists the biggest changes either way, by the stated rule, over the whole organization', () => {
+    const players = Array.from({ length: MOVERS_SHOWN + 5 }, (_, i) => scoutedPlayer(i + 1, 2 + (i % 2), {}, i % 3 === 0 ? -(i + 1) : i + 1));
+    players.push(scoutedPlayer(999, 3, {}, 0));
+    const dates = ['2040-4-1', '2040-7-1'];
+    const rows = players.flatMap((p) => rowsFor(p.playerId, dates, [45, 46]));
+    const { view } = developmentViews(ctx, players, history(rows, dates), RATING);
+    const changes = view.tabs.find((t) => t.id === 'changes')!;
+    expect(changes.order).toHaveLength(MOVERS_SHOWN);
+    expect(changes.order).not.toContain('development:999');
+    const size = (id: string) => Math.abs(players.find((p) => `development:${p.playerId}` === id)!.evidence.developmentHistory.currentDelta!);
+    for (let i = 1; i < changes.order.length; i += 1) expect(size(changes.order[i - 1])).toBeGreaterThanOrEqual(size(changes.order[i]));
+    // Both directions are movers
+    expect(changes.order.some((id) => players.find((p) => `development:${p.playerId}` === id)!.evidence.developmentHistory.currentDelta! < 0)).toBe(true);
+    expect(changes.rule.display).toMatch(new RegExp(`${MOVERS_SHOWN} largest changes`));
+  });
+
+  it('reads the save\'s own history only: a snapshot filed under another save is never in the comparison', () => {
+    const key = currentHistoryKey();
+    const pid = save.prospects[0];
+    const insert = historyDb.prepare(
+      'INSERT INTO save_rating_snapshots (save_key, game_date, player_id, name, team_id, org_id, level, position, age, cur, pot) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    );
+    insert.run(key, '2040-4-1', pid, 'Mine', save.farmClubs[0], save.org, 2, 6, 21, 40, 60);
+    insert.run('another-save', '2040-5-1', pid, 'Theirs', save.farmClubs[0], save.org, 2, 6, 21, 70, 75);
+    try {
+      const h = developmentHistoryFor(save.org);
+      expect(h.rows.filter((r) => r.player_id === pid).map((r) => r.game_date)).toEqual(['2040-4-1']);
+    } finally {
+      historyDb.prepare('DELETE FROM save_rating_snapshots WHERE player_id = ? AND game_date IN (\'2040-4-1\', \'2040-5-1\')').run(pid);
+    }
+  });
+});
+
+describe('the club\'s farm views are built once per import and served from the cache', () => {
+  it('builds once for the club\'s inputs, serves every view from that build, and builds again when an input moves', async () => {
+    resetFarmViews();
+    await warmFarmViews(save.org);
+    expect(farmViewStats().builds).toBe(1);
+    await farmOrganizationNow(String(save.org));
+    await farmAssignmentsNow(String(save.org));
+    await farmDevelopmentNow(String(save.org));
+    expect(farmViewStats().builds).toBe(1);
+    expect(farmViewStats().hits).toBeGreaterThanOrEqual(3);
+    invalidateFrontOffice();
+    await farmOrganizationNow(String(save.org));
+    expect(farmViewStats().builds).toBe(2);
+  });
+
+  it('works out the desk\'s decisions ahead and any other on the request, once', async () => {
+    resetFarmViews();
+    const routine = system.assignments.find((a) => a.attention === 'routine' && !system.attention.some((x) => x.target.kind === 'player' && x.target.playerId === a.playerId));
+    expect(routine).toBeDefined();
+    const first = await farmDecisionNow(String(save.org), String(routine!.playerId));
+    expect(first.playerId).toBe(routine!.playerId);
+    expect(farmViewStats().decisionBuilds).toBe(1);
+    await farmDecisionNow(String(save.org), String(routine!.playerId));
+    expect(farmViewStats().decisionBuilds).toBe(1);
+    expect(farmViewStats().decisionHits).toBe(1);
+    const asked = system.assignments.find((a) => a.attention !== 'routine');
+    if (asked) {
+      await farmDecisionNow(String(save.org), String(asked.playerId));
+      expect(farmViewStats().decisionBuilds).toBe(1);
+    }
+  });
+
+  it('refuses a player who is not on the farm in a sentence', async () => {
+    await expect(farmDecisionNow(String(save.org), String(save.regular))).rejects.toThrow(FrontOfficeRefusal);
+    await expect(farmDecisionNow(String(save.org), String(save.regular))).rejects.toThrow(NOT_ON_THE_FARM);
+  });
+});
+
+describe('the farm\'s words are plain (AGENTS.md "Writing for the GM")', () => {
+  it('serves every view of the synthetic save free of the banned words', () => {
+    const { views } = buildFarmViews({ orgId: save.org, importStamp: null, reportStamp: 'r1' });
+    expect(bannedInPayload(views)).toEqual([]);
+  });
+
+  it('puts each specialist phrase the rule keeps off the screen in the GM\'s words', () => {
+    expect(plain('developmental stakes indeterminate')).toBe('developmental stakes not known');
+    expect(plain('3 priority prospects at AA')).toBe('3 high-stakes prospects at AA');
+    expect(plain('his 85.4th percentile line')).toBe('his 85th of 100 line');
+    expect(plain('A development decision about whether he should be starting.')).toBe('A development decision about whether he starts.');
+    for (const [, words] of PLAIN) {
+      if (words === '#place#') continue;
+      for (const pattern of [...BANNED_JARGON, ...BANNED_VERDICTS]) expect(pattern.test(words), `${words} against ${pattern}`).toBe(false);
+    }
+  });
+
+  it('adds no view folder that reads a table or loads a specialist (the adapters word what the build hands them)', () => {
+    const folder = path.join(process.cwd(), 'server/presentation/farm');
+    for (const file of fs.readdirSync(folder)) {
+      const source = fs.readFileSync(path.join(folder, file), 'utf8');
+      expect(source, file).not.toMatch(/\bdb\.|\.prepare\(|\btableExists\(/);
+      const byValue = [...source.matchAll(/^import (?!type )[^;]*from '([^']+)'/gm)].map((m) => m[1]);
+      expect(byValue.filter((s) => !s.startsWith('./') && !s.startsWith('../claim.js') && !s.startsWith('../frontOffice/desk.js') && !s.startsWith('../dataStatusWords.js')), file).toEqual([]);
+    }
+  });
+});
+
+describe('the farm\'s views read the specialists only through their public modules', () => {
+  it('farmViewsBuild.ts loads only the public modules it words, and nothing of odds, posture or AI (D-001, D-060)', () => {
+    const source = fs.readFileSync(path.join(process.cwd(), 'server/farmViewsBuild.ts'), 'utf8');
+    const byValue = [...source.matchAll(/^import (?!type )[^;]*from '\.\/([^']+)\.js'/gm)].map((m) => m[1]).filter((m) => !m.startsWith('presentation/'));
+    const PUBLIC = new Set(['org', 'dataStatus', 'farmConsequence', 'farmOperations', 'history', 'scoutedDevelopment', 'settings', 'valuation']);
+    expect(byValue.filter((m) => !PUBLIC.has(m))).toEqual([]);
+    expect(source).not.toMatch(/posture|playoffs|from '\.\/(ai|chat|providers|storylines)/);
+    // Developmental stakes reach the views only inside the farm's own answer (D-050): never read here
+    expect(source).not.toMatch(/developmentalContext|openDevelopmentalContext/);
+  });
+});
+
+afterAll(() => {
+  resetFarmViews();
+});

@@ -27,6 +27,12 @@ import { ThemeChoiceRefusal, activePack, chooseTheme, chosenPacks, installedPack
 import { currentOrganization } from './viewingOrganization.js';
 import { answerHistoryOffer, carryOvers, currentHistoryKey, HistoryChoiceRefusal, historyCandidates, historyDates, historyNote, historyOffers } from './historyIdentity.js';
 import { ratingHistoryView, type RatingHistoryChoice, type RatingHistoryView } from './presentation/ratingHistoryWords.js';
+import {
+  farmAffiliatesNow, farmAssignmentsNow, farmDecisionNow, farmDevelopmentDetailNow, farmDevelopmentNow, farmOrganizationNow, farmProspectsNow,
+} from './farmViewService.js';
+import type {
+  FarmAffiliatesView, FarmAssignmentsView, FarmDecisionView, FarmDevelopmentDetail, FarmDevelopmentView, FarmOrganizationView, FarmProspectsView,
+} from './presentation/farm/types.js';
 
 export const v2Routes = Router();
 
@@ -68,6 +74,31 @@ v2Routes.get('/front-office/:org', frontOffice<FrontOfficeSummary>((req) => fron
 /** One department's full report. */
 v2Routes.get('/departments/:org/:dept', frontOffice<DepartmentReport>((req) =>
   departmentReportNow(resolveOrg(String(req.params.org)), String(req.params.dept))));
+
+// ── Farm & Development's views (N10): one path per view, each its own payload, from the club's kept build ──────────
+
+/** The farm as one organization: system-wide findings, depth by level, starters against spots, the lines it used. */
+v2Routes.get('/views/:org/farm/organization', frontOffice<FarmOrganizationView>((req) => farmOrganizationNow(String(req.params.org))));
+
+/** The organization from the major-league club down, and each affiliate read twice (can it play, are its players developing). */
+v2Routes.get('/views/:org/farm/affiliates', frontOffice<FarmAffiliatesView>((req) => farmAffiliatesNow(String(req.params.org))));
+
+/** Every minor leaguer's assignment, in the farm's stated order. */
+v2Routes.get('/views/:org/farm/assignments', frontOffice<FarmAssignmentsView>((req) => farmAssignmentsNow(String(req.params.org))));
+
+/** One player's assignment, in the order a GM decides, with what follows if he moves. */
+v2Routes.get('/views/:org/farm/decision/:playerId', frontOffice<FarmDecisionView>((req) =>
+  farmDecisionNow(String(req.params.org), String(req.params.playerId))));
+
+/** Player Development's calls: the development meetings and the board. */
+v2Routes.get('/views/:org/farm/prospects', frontOffice<FarmProspectsView>((req) => farmProspectsNow(String(req.params.org))));
+
+/** What our scouts have seen over this save's rating history (D-064), and the movers. */
+v2Routes.get('/views/:org/farm/development', frontOffice<FarmDevelopmentView>((req) => farmDevelopmentNow(String(req.params.org))));
+
+/** One player's scouting history in this save. */
+v2Routes.get('/views/:org/farm/development/:playerId', frontOffice<FarmDevelopmentDetail>((req) =>
+  farmDevelopmentDetailNow(String(req.params.org), String(req.params.playerId))));
 
 /** The GM's desk (N7, D-058): every item to decide with its status, and the ones he set aside. */
 v2Routes.get('/desk/:org', frontOffice<DeskView>((req) => deskViewNow(resolveOrg(String(req.params.org)))));

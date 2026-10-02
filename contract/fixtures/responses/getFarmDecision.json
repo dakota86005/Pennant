@@ -1,0 +1,512 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "asOf": {
+    "display": "Through May 5, 2040",
+    "hint": "The last game day in the imported export"
+  },
+  "preparedBy": {
+    "display": "Prepared by the minor league staff"
+  },
+  "playerId": 1104,
+  "teamId": 101,
+  "name": "P 1104",
+  "line": {
+    "display": "22, position player · AAA · Farm 1 F · Fictional Triple-A"
+  },
+  "conclusion": {
+    "text": "Nothing to read yet",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Why",
+          "value": "His level standing cannot be read: The league's own run environment could not be established from the export."
+        }
+      ],
+      "source": {
+        "department": "farm",
+        "specialist": "Minor League Operations",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [
+        "The league's own run environment could not be established from the export.",
+        "The level's rostered average age is unavailable, so the developmental window cannot be read."
+      ],
+      "wouldChange": [
+        "More of the season: there is no line to read yet."
+      ],
+      "lean": null,
+      "certainty": "provisional",
+      "called": "A starting number, not yet fitted on this save",
+      "stamp": "The farm's stated lines, 10 of 30 still starting values"
+    },
+    "links": [
+      {
+        "kind": "decision",
+        "department": "farm",
+        "key": "1104"
+      }
+    ]
+  },
+  "stakes": {
+    "text": "Developmental stakes: Protected prospect",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Why",
+          "value": "Visible ceiling of an impact major leaguer: a potential of 80 is among the best tenth of major-league hitters (56, Pennant's starting line)."
+        },
+        {
+          "label": "And",
+          "value": "At 22 most of his development is still ahead of him."
+        },
+        {
+          "label": "And",
+          "value": "The age profile of Fictional Triple-A could not be established, so whether he is behind his level's schedule was not read and nothing was discounted for it."
+        },
+        {
+          "label": "And",
+          "value": "His visible projection is nearly all realized (current 80 against a potential of 80), so what the scouts see ahead of him has largely happened."
+        },
+        {
+          "label": "And",
+          "value": "Developmental stakes: protected prospect. That ceiling alone would set core prospect; it is lowered one step for the development that has run out."
+        }
+      ],
+      "source": {
+        "department": "farm",
+        "specialist": "Player Development",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "Player Development's stakes (D-050): a ceiling, lowered by how much development is left"
+    },
+    "links": [],
+    "hint": "How careful to be with his development; never where he plays"
+  },
+  "stakesReasons": [
+    {
+      "display": "Visible ceiling of an impact major leaguer: a potential of 80 is among the best tenth of major-league hitters (56, Pennant's starting line)."
+    },
+    {
+      "display": "At 22 most of his development is still ahead of him."
+    },
+    {
+      "display": "The age profile of Fictional Triple-A could not be established, so whether he is behind his level's schedule was not read and nothing was discounted for it."
+    },
+    {
+      "display": "His visible projection is nearly all realized (current 80 against a potential of 80), so what the scouts see ahead of him has largely happened."
+    },
+    {
+      "display": "Developmental stakes: protected prospect. That ceiling alone would set core prospect; it is lowered one step for the development that has run out."
+    }
+  ],
+  "why": [
+    {
+      "display": "His level standing cannot be read: The league's own run environment could not be established from the export."
+    }
+  ],
+  "verdict": {
+    "text": "Nothing to read yet: his results are not established, and he is not established.",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Level standing",
+          "value": "not established (The league's own run environment could not be established from the export.)"
+        },
+        {
+          "label": "Developmental window",
+          "value": "the level's own age profile could not be established (The level's rostered age profile is unavailable.)"
+        },
+        {
+          "label": "Developmental stakes",
+          "value": "protected_prospect (Player Development's protection tier: his organization-visible ceiling, lowered by how much of his development has run out.)"
+        }
+      ],
+      "source": {
+        "department": "farm",
+        "specialist": "Player Development",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [
+        "The league's own run environment could not be established from the export.",
+        "The level's rostered average age is unavailable, so the developmental window cannot be read."
+      ],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "provisional",
+      "called": "A starting number, not yet fitted on this save",
+      "stamp": "The farm's stated lines, 10 of 30 still starting values"
+    },
+    "links": [],
+    "hint": "The same answer at every club: no philosophy enters it"
+  },
+  "verdictParts": [
+    {
+      "id": "part:0",
+      "cells": {
+        "label": {
+          "display": "Level standing"
+        },
+        "value": {
+          "display": "not established"
+        },
+        "why": {
+          "display": "The league's own run environment could not be established from the export."
+        }
+      },
+      "sort": {
+        "label": "Level standing",
+        "value": "not established",
+        "why": "The league's own run environment could not be established from the export."
+      }
+    },
+    {
+      "id": "part:1",
+      "cells": {
+        "label": {
+          "display": "Developmental window"
+        },
+        "value": {
+          "display": "the level's own age profile could not be established"
+        },
+        "why": {
+          "display": "The level's rostered age profile is unavailable."
+        }
+      },
+      "sort": {
+        "label": "Developmental window",
+        "value": "the level's own age profile could not be established",
+        "why": "The level's rostered age profile is unavailable."
+      }
+    },
+    {
+      "id": "part:2",
+      "cells": {
+        "label": {
+          "display": "Developmental stakes"
+        },
+        "value": {
+          "display": "Protected prospect"
+        },
+        "why": {
+          "display": "Player Development's protection tier: his organization-visible ceiling, lowered by how much of his development has run out."
+        }
+      },
+      "sort": {
+        "label": "Developmental stakes",
+        "value": "Protected prospect",
+        "why": "Player Development's protection tier: his organization-visible ceiling, lowered by how much of his development has run out."
+      }
+    }
+  ],
+  "results": [
+    {
+      "id": "results:league",
+      "cells": {
+        "label": {
+          "display": "Against the Fictional Triple-A"
+        },
+        "value": {
+          "display": "The league's own run environment could not be established from the export.",
+          "tone": "unknown"
+        }
+      },
+      "sort": {
+        "label": "Against the Fictional Triple-A",
+        "value": null
+      }
+    },
+    {
+      "id": "results:sample",
+      "cells": {
+        "label": {
+          "display": "Sample"
+        },
+        "value": {
+          "display": "55 plate appearances over 0 games of his club's; 0% trusted"
+        }
+      },
+      "sort": {
+        "label": "Sample",
+        "value": "55 plate appearances over 0 games of his club's; 0% trusted"
+      }
+    }
+  ],
+  "alternativesNote": {
+    "display": "Philosophy orders only what is defensible. A move the club leans against is exactly as defensible as one it prefers."
+  },
+  "alternatives": [],
+  "alternativesEmpty": {
+    "display": "Player Development hasn't looked at another assignment for him: the league's own run environment could not be established from the export. An assignment can't be judged without a line at his current level to judge it against."
+  },
+  "opportunityNote": {
+    "display": "What he is actually doing now, with the season beside it."
+  },
+  "opportunity": {
+    "display": "No job on this club is contested for him."
+  },
+  "work": [],
+  "workMissing": {
+    "display": "His work at his job can't be read yet.",
+    "tone": "unknown"
+  },
+  "roleChange": null,
+  "ahead": null,
+  "aheadPlayers": [],
+  "gone": null,
+  "consequenceNote": {
+    "display": "Minor League Operations follows the chain; each step is defensible on its own or the chain stops there."
+  },
+  "consequence": {
+    "summary": {
+      "text": "No defensible move follows, and Farm 1 F is left short at 2B.",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "How sure",
+            "value": "Established"
+          },
+          {
+            "label": "The job he leaves",
+            "value": "2B"
+          }
+        ],
+        "source": {
+          "department": "farm",
+          "specialist": "Minor League Operations",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [
+          "Farm 1 F is left short at 2B: 0 remain at 2B, 2 short of the 2 it needs."
+        ],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "policy",
+        "called": "A line chosen and stated",
+        "stamp": "Minor League Operations' consequence of a departure"
+      },
+      "links": []
+    },
+    "impact": [
+      {
+        "id": "impact:now",
+        "cells": {
+          "label": {
+            "display": "Farm 1 F now"
+          },
+          "value": {
+            "display": "Short: 3 position players and 3 pitchers; 0 starters, 3 relief arms; 3 of 8 positions fillable at once.",
+            "tone": "bad"
+          }
+        },
+        "sort": {
+          "label": "Farm 1 F now",
+          "value": "Short: 3 position players and 3 pitchers; 0 starters, 3 relief arms; 3 of 8 positions fillable at once."
+        }
+      },
+      {
+        "id": "impact:after",
+        "cells": {
+          "label": {
+            "display": "Without him"
+          },
+          "value": {
+            "display": "Short: 2 position players and 3 pitchers; 0 starters, 3 relief arms; 2 of 8 positions fillable at once. Nobody on the roster covers C. Nobody on the roster covers 1B. Nobody on the roster covers 2B. Nobody on the roster covers 3B. Only one man covers SS; a day off or an injury leaves the club without it. Nobody on the roster covers LF. Only one man covers CF; a day off or an injury leaves the club without it. Nobody on the roster covers RF. The club can fill only two of the eight fielding positions at once. Only two position players: short of what the club needs to rest a lineup. Only three pitchers: short of what the club needs to cover a schedule. No pitcher is taking this club's starts; the rotation needs five. Only three relief arms: short of the seven a schedule takes.",
+            "tone": "bad"
+          }
+        },
+        "sort": {
+          "label": "Without him",
+          "value": "Short: 2 position players and 3 pitchers; 0 starters, 3 relief arms; 2 of 8 positions fillable at once. Nobody on the roster covers C. Nobody on the roster covers 1B. Nobody on the roster covers 2B. Nobody on the roster covers 3B. Only one man covers SS; a day off or an injury leaves the club without it. Nobody on the roster covers LF. Only one man covers CF; a day off or an injury leaves the club without it. Nobody on the roster covers RF. The club can fill only two of the eight fielding positions at once. Only two position players: short of what the club needs to rest a lineup. Only three pitchers: short of what the club needs to cover a schedule. No pitcher is taking this club's starts; the rotation needs five. Only three relief arms: short of the seven a schedule takes."
+        }
+      },
+      {
+        "id": "impact:job",
+        "cells": {
+          "label": {
+            "display": "The job he leaves"
+          },
+          "value": {
+            "display": "2B · leaves a hole",
+            "tone": "caution"
+          }
+        },
+        "sort": {
+          "label": "The job he leaves",
+          "value": "2B · leaves a hole"
+        }
+      }
+    ],
+    "playingTime": [],
+    "replacements": [],
+    "cascade": {
+      "steps": [],
+      "noSteps": {
+        "display": "No move follows: Farm 1 F is at the bottom of the organization's levels; there is no level below to draw a replacement from."
+      },
+      "stop": {
+        "text": "There is nothing below to draw from. Farm 1 F is at the bottom of the organization's levels; there is no level below to draw a replacement from.",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "Where it stops",
+              "value": "There is nothing below to draw from"
+            },
+            {
+              "label": "Steps followed",
+              "value": "0"
+            },
+            {
+              "label": "Left open",
+              "value": "Farm 1 F at 2B: 0 remain at 2B, 2 short of the 2 it needs."
+            }
+          ],
+          "source": {
+            "department": "farm",
+            "specialist": "Minor League Operations",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "policy",
+          "called": "A line chosen and stated",
+          "stamp": "Each step defensible on its own, or the chain stops there"
+        },
+        "links": []
+      },
+      "unresolved": [
+        {
+          "display": "Farm 1 F at 2B: 0 remain at 2B, 2 short of the 2 it needs."
+        }
+      ],
+      "unresolvedNote": {
+        "display": "A hole the chain leaves open is information, not an illegality: it doesn't make a major-league move impossible."
+      },
+      "howSure": null
+    },
+    "measured": [
+      {
+        "display": "Nothing in the export or the log explains why he is at Farm 1 F, so he is counted as one of its own; if he is in fact on a rehab assignment this overstates the cost."
+      },
+      {
+        "display": "Farm 1 F is measured on its active list with rehab assignees excluded, against 5 rotation spots and 7 relief arms."
+      }
+    ]
+  },
+  "consequenceProblem": null,
+  "retention": null,
+  "uncertain": [
+    {
+      "display": "The league's own run environment could not be established from the export."
+    },
+    {
+      "display": "The level's rostered average age is unavailable, so the developmental window cannot be read."
+    }
+  ],
+  "uncertainEmpty": null,
+  "wouldSettle": [
+    {
+      "display": "More of the season: there is no line to read yet."
+    }
+  ],
+  "yours": [
+    {
+      "display": "Whether to move him at all. Nothing here is a transaction and Pennant executes nothing."
+    }
+  ],
+  "owners": [
+    {
+      "id": "owner:0",
+      "cells": {
+        "label": {
+          "display": "Is this level still developing him?"
+        },
+        "value": {
+          "display": "Player Development"
+        },
+        "why": {
+          "display": "not assessable"
+        }
+      },
+      "sort": {
+        "label": "Is this level still developing him?",
+        "value": "Player Development",
+        "why": "not assessable"
+      }
+    },
+    {
+      "id": "owner:1",
+      "cells": {
+        "label": {
+          "display": "Can he get the work his development needs here?"
+        },
+        "value": {
+          "display": "Minor League Operations"
+        },
+        "why": {
+          "display": "regular work"
+        }
+      },
+      "sort": {
+        "label": "Can he get the work his development needs here?",
+        "value": "Minor League Operations",
+        "why": "regular work"
+      }
+    },
+    {
+      "id": "owner:2",
+      "cells": {
+        "label": {
+          "display": "Which other assignments are defensible?"
+        },
+        "value": {
+          "display": "Player Development"
+        },
+        "why": {
+          "display": "no alternative was evaluated"
+        }
+      },
+      "sort": {
+        "label": "Which other assignments are defensible?",
+        "value": "Player Development",
+        "why": "no alternative was evaluated"
+      }
+    },
+    {
+      "id": "owner:3",
+      "cells": {
+        "label": {
+          "display": "Which of the defensible alternatives does this club prefer?"
+        },
+        "value": {
+          "display": "Organizational Philosophy"
+        },
+        "why": {
+          "display": "no preference is expressed: preference applies only to a defensible assignment"
+        }
+      },
+      "sort": {
+        "label": "Which of the defensible alternatives does this club prefer?",
+        "value": "Organizational Philosophy",
+        "why": "no preference is expressed: preference applies only to a defensible assignment"
+      }
+    }
+  ]
+}

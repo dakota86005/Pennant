@@ -45,7 +45,7 @@
             },
             {
               "label": "Copied",
-              "value": "104 player ratings."
+              "value": "128 player ratings."
             }
           ],
           "source": {
@@ -63,7 +63,7 @@
         "links": [],
         "hint": "Undoing it removes exactly what was copied; the other save keeps its own"
       },
-      "undoQuestion": "Undo the carry-over from \"Old League\"? The 104 player ratings it copied are removed from this save's history; \"Old League\" keeps its own."
+      "undoQuestion": "Undo the carry-over from \"Old League\"? The 128 player ratings it copied are removed from this save's history; \"Old League\" keeps its own."
     }
   ],
   "warning": {
@@ -73,7 +73,7 @@
       "because": [
         {
           "label": "Carried over",
-          "value": "From \"Old League\" (/tmp/pennant-contract-home/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games/Old League.lg), 104 player ratings."
+          "value": "From \"Old League\" (/tmp/pennant-contract-home/Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games/Old League.lg), 128 player ratings."
         }
       ],
       "source": {
