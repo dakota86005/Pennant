@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { db, tableExists } from './db.js';
+import { ratingFrom } from './scoutedEvidence.js';
 import { countsAsPitcherSql } from './twoway.js';
 import { healthOf, type Health } from './health.js';
 import { computePitching, leagueBaseline } from './stats.js';
@@ -107,6 +108,8 @@ export function computePitchingStaff(teamId: number): Computed<PitchingStaff> {
 }
 
 function staffOf(teamId: number, team: { league_id: number; level: number }) {
+  // The grades as the evidence reads them: our scouts' full reports when the export carries them (D-067)
+  const pitchingFrom = ratingFrom('pitching')?.from ?? 'players_pitching';
 
   const todayKey = currentDateKey(team.league_id);
 
@@ -121,7 +124,7 @@ function staffOf(teamId: number, team: { league_id: number; level: number }) {
               p.injury_is_injured, p.injury_dtd_injury, p.injury_left,
               rs.is_on_dl, rs.is_on_dl60, rs.is_active
        FROM players p
-       LEFT JOIN players_pitching pi ON pi.player_id = p.player_id
+       LEFT JOIN ${pitchingFrom} pi ON pi.player_id = p.player_id
        LEFT JOIN players_roster_status rs ON rs.player_id = p.player_id
        -- A two-way man's innings belong on the staff page as much as anyone's
        WHERE p.team_id = ? AND ${countsAsPitcherSql()} AND p.retired = 0 AND ${ON_ROSTER}`

@@ -186,6 +186,15 @@ describe('our scouts\' full reports as the scouted evidence (D-067)', () => {
     expect(scoutedRatingRow('batting', UNRATED)!.batting_ratings_overall_contact).toBeNull();
     const card = await request(`/api/player/${RATED}`);
     expect(card.battingRatings.contact[0]).toBe(OUR_GRADE);
+    // And the roster's grades column, for both men
+    const teamOf = (id: number) => (db.prepare('SELECT team_id FROM players WHERE player_id = ?').get(id) as { team_id: number }).team_id;
+    for (const [id, expected] of [[RATED, OUR_GRADE], [UNRATED, null]] as const) {
+      const roster = await request(`/api/roster/${teamOf(id)}`);
+      const man = roster.players.find((p: { player_id: number }) => p.player_id === id);
+      // He may not be on a served roster list (the fixture's optioned man is); one who is shows our scouts' grade or none
+      if (id === RATED) expect(man).toBeDefined();
+      if (man) expect(man.ratings.contact ?? null).toBe(expected);
+    }
   });
 
   it('stamps a snapshot read from our scouts\' reports as their own kind, and never compares it with another kind', async () => {
