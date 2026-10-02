@@ -2533,3 +2533,37 @@ overwrote part of the other's.
 
 Not changed: the watchlist and player notes are still filed under the save's name, and the per-save fits keep D-053's
 identity (PROJECT_STATE lists both as known gaps).
+
+## D-065 — A department's views are served one payload per view, worded with its report; a decision is built when opened
+
+**Status:** Proposed (N8 builder, 2026-10-01; the supervisor renumbers on a collision). **Implementation:**
+`server/presentation/majorLeague/` (`types.ts`, `words.ts`, `common.ts`, `views.ts`, `decision.ts`),
+`buildFrontOffice` and `buildDecision` (`server/frontOfficeBuild.ts`), `majorLeagueView`, `majorLeagueDecision` and the
+decisions built ahead (`server/frontOfficeService.ts`), the routes in `server/v2Routes.ts` and `server/contract/routes.ts`;
+`MajorLeagueStore` (PennantKit) and the MajorLeague target (PennantFeatures). Refines D-024, D-036, D-043, D-056 and D-060.
+
+SWIFTUI_REBUILD.md section 4.2 planned one per-view endpoint, `GET /api/v2/views/:org/:dept/:view`. A department's views
+are each a payload of a different shape, and a contract operation has one response type, so each view is its own
+operation under that path (`/api/v2/views/:org/majorLeague/positionPlayers`, ...): one named type per view, its surface
+for the scoped jargon exceptions named by its operation.
+
+- **Worded with the department's report, in the same build.** Major League Ops' standing views (the report's companion,
+  Position players, Pitching staff, Bench & Backups) are worded from the very overview its report reads, inside the
+  club's Front Office build (in the worker, warmed after every import), so they cost a few milliseconds more there and a
+  warm read is a map lookup. They are never built on their own and never kept across an import.
+- **A decision is the one deep read a click computes.** A need's decision (Major League Ops' response packet for the need
+  and the GM's served choices) is built in the worker on its first open and kept with the build per need and choice;
+  after a warm-up the open needs' decisions are built ahead, one at a time, so opening one from the desk is a cached
+  read. A choice (a what-if's days, the assignment to judge, the role for an open spot) is served as the request that
+  asks it, and the app sends it back as served.
+- **The words moved from React.** The label maps, the platoon copy and the need badges are server words; the specialists'
+  own sentences lost their method and verdict words at the source (percentile, coverage, holders, must, recommend,
+  accepted), which the React pages show too. The stakes tier Player Development calls "development priority" reads
+  "development first" in these views: "priority" is a verdict word on every shown string, and the tier is a consequence,
+  never an instruction (D-050). The staff's call is advice ("Make the move", "Worth pursuing", "Keep watching", "Hold"),
+  its rubric in the basis.
+- **D-060 in a department's views.** No view or decision carries the postseason odds or the deadline posture, its basis
+  included; the club's philosophy and season shade a flag or the staff's call only as a lean in the basis, beside what a
+  club with no philosophy would get, and no window label is on the face. A need's badge takes the department's
+  philosophy-free severity, as the desk does.
+

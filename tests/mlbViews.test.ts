@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
-  departmentReport, frontOfficeStats, majorLeagueDecision, majorLeagueView, resetFrontOfficeCache,
+  departmentReport, frontOfficeStats, majorLeagueDecision, majorLeagueView, resetFrontOfficeCache, warmFrontOffice,
 } from '../server/frontOfficeService.js';
 import { mlbOverview } from '../server/mlbOperations.js';
 import { reviewClub, reviewNeeds, type ReviewPorts } from '../server/mlbReview.js';
@@ -102,6 +102,19 @@ describe('Major League Ops\' views on the synthetic save, from the per-import ca
     expect(first.needId).toBe(need);
     expect(bannedInPayload(first, 'getMajorLeagueDecision')).toEqual([]);
     await expect(majorLeagueDecision(save.org, { need: 'mlb:nothing:1' })).rejects.toThrow(/isn't open in the current export/);
+  });
+
+  it('builds the open needs\' decisions ahead after a warm-up, so opening one from the desk builds nothing', async () => {
+    resetFrontOfficeCache();
+    await warmFrontOffice(save.org);
+    const needs = mlbOverview(save.org).needs;
+    expect(needs.length).toBeGreaterThan(0);
+    const deadline = Date.now() + 20_000;
+    while (frontOfficeStats().decisionBuilds < Math.min(needs.length, 8) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 20));
+    const built = frontOfficeStats().decisionBuilds;
+    await majorLeagueDecision(save.org, { need: needs[0].id });
+    expect(frontOfficeStats().decisionBuilds).toBe(built);
+    expect(frontOfficeStats().decisionHits).toBeGreaterThan(0);
   });
 
   it('opens every need in the inbox and every view action at a decision the department can answer', async () => {

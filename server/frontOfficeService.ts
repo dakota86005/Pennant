@@ -243,7 +243,8 @@ async function run<T>(job: Job): Promise<T> {
   if (workerAvailable()) {
     let result: T | undefined;
     try {
-      stats.workerRuns += 1;
+      // A decision is counted by its own stat (decisionBuilds), so the build counters stay the club's builds
+      if (job.kind !== 'decision') stats.workerRuns += 1;
       result = await inWorker<T>(job);
     } catch (err) {
       workerBroken = true;
@@ -252,7 +253,7 @@ async function run<T>(job: Job): Promise<T> {
     // An authoring defect in what it built throws here, as it would have in-process
     if (result !== undefined) return adopt(job, result);
   }
-  stats.inlineRuns += 1;
+  if (job.kind !== 'decision') stats.inlineRuns += 1;
   await new Promise((resolve) => setImmediate(resolve));
   if (job.kind === 'club') return buildClubReport(job.request) as T;
   if (job.kind === 'decision') return buildDecision(job.request) as T;
@@ -448,7 +449,11 @@ const decisionKey = (built: Built, ask: DecisionAsk): string =>
  */
 export async function majorLeagueDecision(orgId: number, ask: DecisionAsk): Promise<MlbDecisionView> {
   if (!ask.need.trim()) throw new FrontOfficeRefusal(UNKNOWN_DECISION, 404);
-  const built = await current(orgId);
+  return decisionOn(await current(orgId), orgId, ask);
+}
+
+/** A decision on a given build (the request's current one, or the one a warm-up kept). */
+async function decisionOn(built: Built, orgId: number, ask: DecisionAsk): Promise<MlbDecisionView> {
   if (!built.majorLeague) throw new FrontOfficeRefusal(VIEW_UNREADABLE, 404);
   const cacheKey = decisionKey(built, ask);
   const hit = decisions.get(cacheKey);
@@ -550,9 +555,32 @@ export async function warmFrontOffice(org: number | 'automatic' = 'automatic'): 
     if (orgId === null || !tableExists('players') || !tableExists('teams')) return;
     const started = performance.now();
     const built = await current(orgId);
+    // The open needs' decisions, built ahead one at a time in the worker (N8): opening one from the desk is then a
+    // cached read, and nothing waits for them
+    void warmDecisions(orgId, built);
     console.log(`[front office] warmed club ${orgId} in ${Math.round(performance.now() - started)} ms (${Object.entries(built.ms).map(([k, v]) => `${k} ${v}`).join(', ')})`);
   } catch (err) {
     console.error('[front office] warm-up failed; the next request builds:', err);
+  }
+}
+
+/** At most this many open needs have their decision built ahead after a warm-up. */
+const DECISIONS_AHEAD = 8;
+
+/**
+ * Builds the open needs' decisions ahead (N8), one at a time, each after any build of our own Front Office that is
+ * running, and stops when the build it warmed for is no longer the one kept. Never throws.
+ */
+async function warmDecisions(orgId: number, built: Built): Promise<void> {
+  const needs = (builds.get(built.key)?.majorLeague?.needs ?? []).slice(0, DECISIONS_AHEAD);
+  for (const need of needs) {
+    await ourBuildsSettled();
+    if (builds.get(built.key) !== built) return;
+    try {
+      await decisionOn(built, orgId, { need: need.id });
+    } catch (err) {
+      console.error(`[front office] the decision for ${need.id} could not be built ahead:`, err);
+    }
   }
 }
 

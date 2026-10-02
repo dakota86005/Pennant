@@ -985,6 +985,44 @@ The Mac app draws a report plainly (`DepartmentReportView`): the header, the sum
 we can't see"; an item with an evidence trail has a Staff's Options button that fetches it (the need's basis above the
 responses). The Front Office's own report is its Report view.
 
+**As built at N8, 2026-10-01: Major League Ops (server and Mac).** Branch `feature/swiftui-n8-mlb`; D-065.
+- **Served** (`server/presentation/majorLeague/`): `GET /api/v2/views/:org/majorLeague/overview` (the report's companion:
+  the staff at a glance with each view's count, the open needs grouped as the React inbox grouped them, each opening its
+  decision, the what-if's players, how the philosophy leans, roster data when not current), `positionPlayers` (the lineup
+  as one table: spot, regular, bats, share, estimate, bat, glove, run, platoon, read; each row's detail the bat, glove and
+  running, and platoon blocks; Replacement options and Platoon partner as decision actions), `pitchingStaff` (rotation and
+  bullpen tables, the pen's deployment and pen findings as blocks, the reliever note with the long-man line in its
+  basis), `benchBackups` (each bench job with its strength and who does it, Who could back it up? on a required position
+  nobody backs up, the bench table, its findings and hands) and `decision?need=&role=&context=&days=` (in the GM's order:
+  the problem, why it was flagged with the gauge's served numbers and the estimate's parts, the role's picture as lenses,
+  the staff's read and call, the assignment Player Development judges, the ways to respond and pathways followed through,
+  the role to explore for an open spot, every candidate in Major League Ops' own groups with each row's detail, the roster
+  mechanics; a what-if's served durations). Tables are `MlbTable`: served columns, `MlbRow` (a `Row<string>` with the player,
+  the detail blocks and the actions), a null sort key where the evidence gives none. Each desk item that is a need carries
+  `open`, a decision target. Bench & coverage is Bench & Backups everywhere (registry id `benchBackups`).
+- **Drawn** (MajorLeague target): the report is `DepartmentReportView` with the companion beneath; Position players,
+  Pitching staff (a segmented Rotation | Bullpen) and Bench & Backups are pages of native `Table`s over the served columns
+  (sorted by the served keys with an unknown last whichever way, columns the window remembers, rows that drag as the player,
+  a context menu and double-click or Return that open his club, follow him, copy his name or open the row's decisions) with
+  the selected row's served detail beneath; Decision lists the open needs without a key and draws the decision with one
+  (`AppRoute.key`, so Back and Forward step through decisions; the sidebar selects Decision itself). A served choice is a
+  segmented control (a menu past four) and asks again as served; the last decision shown stays, said to be refreshing.
+  The desk's items have Open Decision (button, context menu, VoiceOver action).
+- **Measured** (in process over HTTP, M4): the views add 3 to 6 ms to the club's build (the synthetic save; 4.9 ms on the
+  owner's export, a read-only scratch copy); warm GETs p50 0.6 to 1.1 ms, p95 0.9 to 2.0 ms on both; a decision 0.3 s cold
+  on the synthetic save and 1.1 to 1.6 s on the owner's export (in the worker; built ahead after a warm-up), warm p95
+  1 to 2 ms.
+- **Native layout** (the inspector on a narrow window): the sidebar is 270 to 380 pt (wider than the system's default, so
+  every view title fits, `SidebarWidthTests`), the inspector 280 to 440, the window at least 900. At 1000 pt with the
+  inspector open nothing is covered: the content column is squeezed to about 410 pt, and macOS does not collapse the
+  sidebar for it. A minimum on the detail column (with the inspector's width while it is open) did not make macOS collapse
+  the sidebar on a programmatic resize and was taken out; the tables take the width they are given (no column minimums
+  summed past the content) and scroll sideways. Mail and Notes were not compared side by side (no UI automation of other
+  apps); left for the owner's eye.
+- **Setup's zero-question flake:** the window now closes when the model's count of ended runs moves while it is open,
+  asking again while it is still opening, rather than on a step change its view could miss (`SetupModel.completions`).
+- *Left for later:* the per-view sidebar counts (the counts are on the glances); the clubhouse tools are N9's.
+
 ### 3.6 Signature interactions
 
 - **Drag and drop** (`Transferable` `PlayerRef` and `ClubRef`): drag a player from any table into:
@@ -2144,6 +2182,9 @@ scratch folder).
 the chips, the desk's statuses with Undo, the wire, club windows, Following with drag to follow, search, the notification
 and the Dock badge, and the club owed across a relaunch. **N7 is complete.** Left open: the items in that section's "Left
 for later". **Next: N8** (Major League Ops).
+
+**N8 (2026-10-01)** on `feature/swiftui-n8-mlb`: Major League Ops served per view and drawn natively (section 3.5, "As
+built at N8"; D-065). Left open: the items in that section's "Left for later".
 
 Read first: AGENTS.md, this document, D-001, D-008, D-018, D-020, D-043, D-046, D-049, D-052 (with its
 amendments), D-054 and D-055 to D-060.
