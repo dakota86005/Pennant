@@ -98,6 +98,12 @@ final class PennantUITests: XCTestCase {
     /// - a contrast finding on an element wholly outside every window's frame, or cut by its window's edge (text of a
     ///   report longer than its window, scrolled wholly or partly out of view: the audit measures pixels that are not the
     ///   text's, or a sliver of it; N7);
+    /// - a contrast or description finding on an element of a served table that lies wholly or partly outside the visible
+    ///   rectangle of the table's own scroll area (`ScrollClip`: the innermost scroll view holding the table in the
+    ///   accessibility tree, inside its window, less its scroll bars), matched to the table through one snapshot of its
+    ///   tree. A native table clips its rows and columns there, as Finder's list view does, and VoiceOver scrolls to
+    ///   them; the audit measured pixels that are not theirs (PR #54 on the runner: the row under the detail pane, the
+    ///   column past the trailing edge). Anything inside the rectangle fails as before (`ScrollClipTests`);
     /// - a contrast finding on a sidebar row label (`sidebar.…`) only: outside the sidebar's visible frame (GitHub's runner
     ///   has a 1024 × 768 screen, so rows below the window are measured against pixels that are not theirs), or inside it
     ///   when its own pixels, in a screenshot of the window that holds it taken at the audit, read at 4.5:1 or better
@@ -165,6 +171,32 @@ final class PennantUITests: XCTestCase {
         let servedTables = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'table.'"))
             .allElementsBoundByIndex.map(\.frame)
         func isInServedTable(_ frame: CGRect) -> Bool { servedTables.contains { $0.contains(frame) } }
+        // Each served table's own scroll area as the tree reports it: the innermost scroll view holding the table (or
+        // the table itself when it is one), less its scroll bars, inside its window; and every element of the table,
+        // from one snapshot, so an element is matched to its own table, never guessed from where it sits
+        let tableClips: [(clip: ScrollClip, members: Set<ScrollClip.Member>)] = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'table.'")).allElementsBoundByIndex.compactMap { table in
+                let area = table.elementType == .scrollView ? table
+                    : app.scrollViews.containing(.any, identifier: table.identifier).allElementsBoundByIndex
+                        .min { $0.frame.width * $0.frame.height < $1.frame.width * $1.frame.height }
+                guard let window = windows.first(where: { $0.frame.intersects(table.frame) })?.frame,
+                      let snapshot = try? (area ?? table).snapshot() else { return nil }
+                var members: Set<ScrollClip.Member> = []
+                var bars: [CGRect] = []
+                func walk(_ node: XCUIElementSnapshot, depth: Int) {
+                    members.insert(ScrollClip.Member(node.elementType, node.frame))
+                    // The scroll area's own scroll bars, not a scroll bar of something inside a row
+                    if node.elementType == .scrollBar, depth == 1 { bars.append(node.frame) }
+                    for child in node.children { walk(child, depth: depth + 1) }
+                }
+                walk(snapshot, depth: 0)
+                return (ScrollClip(scrollArea: snapshot.frame, window: window, scrollBars: bars), members)
+            }
+        /// The scroll area clipping an element of a served table, when the element lies wholly or partly outside it.
+        func clippingArea(_ element: XCUIElement, _ frame: CGRect) -> ScrollClip? {
+            let key = ScrollClip.Member(element.elementType, frame)
+            return tableClips.first { $0.members.contains(key) && $0.clip.clips(frame) }?.clip
+        }
         try app.performAccessibilityAudit { issue in
             let element = issue.element
             let line = "\(issue.auditType): \(issue.compactDescription): "
@@ -188,6 +220,13 @@ final class PennantUITests: XCTestCase {
                 // Cut by its window's edge (a line of a report longer than the window, partly scrolled out of view): the
                 // audit measures the whole line, of which only a sliver is on the screen
                 setAside.append(line + " (cut by its window's edge: partly scrolled out of view)")
+            } else if issue.auditType == .contrast || issue.auditType == .sufficientElementDescription,
+                      let clip = clippingArea(element, frame) {
+                // A row or column of a served table past its own scroll area's edge (under the detail pane, or past the
+                // trailing edge on a narrow window): the native table clips it there and VoiceOver scrolls to it, and
+                // what the audit measured on the screen is not its own. Only outside the visible rectangle measured from
+                // the tree; a cell inside it fails as before (`ScrollClipTests`)
+                setAside.append(line + " (clipped by its own table's scroll area, visible \(clip.visible))")
             } else if element.elementType == .touchBar || (touchBarFrame.map { $0.contains(frame) } ?? false) {
                 setAside.append(line + " (the Touch Bar the system draws, or a key on it)")
             } else if issue.auditType == .sufficientElementDescription, element.elementType == .group,
@@ -836,6 +875,16 @@ final class PennantUITests: XCTestCase {
         glance.click()
         let lineup = element(app, "table.lineup")
         XCTAssertTrue(lineup.waitForExistence(timeout: 20), "Position players' table did not load")
+        // A native table on whatever window this is (on the runner's screen, about 1024 points): its scroll area lies
+        // inside the window, columns past it scroll sideways inside it, and its first row's first cell is in its visible
+        // rectangle, so the audit's scroll-area rule never excuses it
+        let lineupArea = app.scrollViews.containing(.any, identifier: "table.lineup").allElementsBoundByIndex
+            .min { $0.frame.width * $0.frame.height < $1.frame.width * $1.frame.height }?.frame ?? lineup.frame
+        let mainWindow = app.windows.firstMatch.frame
+        XCTAssertTrue(mainWindow.insetBy(dx: -1, dy: -1).contains(lineupArea), "the table's scroll area \(lineupArea) runs past the window \(mainWindow)")
+        let firstCell = firstRow(of: lineup).staticTexts.firstMatch
+        XCTAssertTrue(firstCell.waitForExistence(timeout: 10), "the table's first row has no text")
+        XCTAssertFalse(ScrollClip(scrollArea: lineupArea, window: mainWindow).clips(firstCell.frame), "the first row's first cell \(firstCell.frame) is outside the table's visible rectangle")
         keep(app.windows.firstMatch.screenshot(), named: "n8-1280-position-players")
         sidebarAtTop(app)
         try audit(app, named: "accessibility-audit-n8-position-players")
@@ -1211,5 +1260,77 @@ struct WindowPixels {
             text = lighter[lighter.count - 1 - lighter.count / 10]
         }
         return ratio(text, middle)
+    }
+}
+
+/// The visible rectangle of a native table's own scroll area, measured from the accessibility tree, and whether an
+/// element of that table is clipped by it (see `audit`). A native `Table` clips its rows and columns to its own scroll
+/// view, as Finder's list view does, and VoiceOver scrolls to them; the audit still measures a row or a column past
+/// that edge, whose pixels on the screen are not its own.
+nonisolated struct ScrollClip: Equatable {
+    /// What of the scroll area shows: its frame, inside its window, less the strips its scroll bars draw over.
+    let visible: CGRect
+
+    /// An element of a table's tree as the audit names one: its type and its frame, to whole points.
+    struct Member: Hashable {
+        let type: UInt
+        let x, y, w, h: Int
+
+        init(_ type: XCUIElement.ElementType, _ frame: CGRect) {
+            self.type = type.rawValue
+            x = Int(frame.minX.rounded()); y = Int(frame.minY.rounded()); w = Int(frame.width.rounded()); h = Int(frame.height.rounded())
+        }
+    }
+
+    /// - Parameters:
+    ///   - scrollArea: the frame of the table's enclosing scroll view as the accessibility tree reports it (or the
+    ///     table's own frame, when the tree has no scroll view around it).
+    ///   - window: the frame of the window that holds it.
+    ///   - scrollBars: the frames of that scroll view's own scroll bars in the tree (none while they are hidden).
+    init(scrollArea: CGRect, window: CGRect, scrollBars: [CGRect] = []) {
+        var visible = scrollArea.intersection(window)
+        for bar in scrollBars where visible.intersects(bar) {
+            if bar.width > bar.height, bar.minY > visible.midY {
+                visible.size.height = max(0, bar.minY - visible.minY)
+            } else if bar.height > bar.width, bar.minX > visible.midX {
+                visible.size.width = max(0, bar.minX - visible.minX)
+            }
+        }
+        self.visible = visible.isNull ? .zero : visible
+    }
+
+    /// Whether an element's frame lies wholly or partly outside the visible rectangle. One wholly inside is never
+    /// clipped, whatever the audit says of it.
+    func clips(_ frame: CGRect) -> Bool {
+        !visible.contains(frame)
+    }
+}
+
+/// The scroll-area rule on its own: it excuses only what lies outside the visible rectangle (no app needed).
+final class ScrollClipTests: XCTestCase {
+    private let window = CGRect(x: 0, y: 23, width: 1024, height: 677)
+    private let table = CGRect(x: 290, y: 194, width: 734, height: 240)
+
+    func testAVisibleCellIsNeverExcused() {
+        let clip = ScrollClip(scrollArea: table, window: window)
+        XCTAssertFalse(clip.clips(CGRect(x: 304, y: 234, width: 46, height: 16)), "a cell wholly in the table's visible rectangle was excused")
+        XCTAssertFalse(clip.clips(table), "the visible rectangle itself was excused")
+    }
+
+    func testAClippedCellIsExcused() {
+        let clip = ScrollClip(scrollArea: table, window: window)
+        // A row past the table's bottom edge (under the detail pane), and a column past its trailing edge
+        XCTAssertTrue(clip.clips(CGRect(x: 304, y: 444, width: 104, height: 16)))
+        XCTAssertTrue(clip.clips(CGRect(x: 976, y: 230, width: 64, height: 24)), "a column cut by the table's edge")
+        XCTAssertTrue(clip.clips(CGRect(x: 1100, y: 230, width: 64, height: 24)), "a column wholly past it")
+    }
+
+    func testScrollBarsAndTheWindowNarrowTheVisibleRectangle() {
+        let bars = [CGRect(x: 290, y: 420, width: 720, height: 14), CGRect(x: 1010, y: 194, width: 14, height: 226)]
+        // A scroll area wider than its window: the window's edge bounds it too
+        let clip = ScrollClip(scrollArea: CGRect(x: 290, y: 194, width: 900, height: 240), window: window, scrollBars: bars)
+        XCTAssertEqual(clip.visible, CGRect(x: 290, y: 194, width: 720, height: 226))
+        XCTAssertTrue(clip.clips(CGRect(x: 814, y: 418.5, width: 17, height: 16)), "a cell under the horizontal scroll bar")
+        XCTAssertFalse(clip.clips(CGRect(x: 814, y: 391.5, width: 17, height: 16)), "a cell above the scroll bar")
     }
 }
